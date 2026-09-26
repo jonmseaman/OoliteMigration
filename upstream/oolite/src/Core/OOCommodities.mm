@@ -315,14 +315,14 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 
 	if (!OK)
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - unable to call updateLocalCommodityDefinition",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityName)));
+		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - unable to call updateLocalCommodityDefinition",errorType,StringFor(good, kOOCommodityName).value_or("(null)"));
 		OOJSRelinquishContext(context);
 		return good;
 	}
 
 	if (!ooscript::isObjectOrNull(rval))
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityKey)));
+		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - return value invalid",errorType,StringFor(good, kOOCommodityKey).value_or("(null)"));
 		OOJSRelinquishContext(context);
 		return good;
 	}
@@ -331,7 +331,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 	OOJSRelinquishContext(context);
 	if (!oo::IsNSDictionary(result))
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityKey)));
+		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - return value invalid",errorType,StringFor(good, kOOCommodityKey).value_or("(null)"));
 		return good;
 	}
 

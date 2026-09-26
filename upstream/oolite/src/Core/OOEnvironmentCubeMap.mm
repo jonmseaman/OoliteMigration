@@ -209,7 +209,7 @@ SOFTWARE.
 	OOGL(status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT));
 	if (status != GL_FRAMEBUFFER_COMPLETE_EXT)
 	{
-		OOLogERR(@"environmentCube.fbo.setup.failed", @"Failed to set up FBO for environment cube map - status is %u.", status);
+		OO_LOG_ERR("environmentCube.fbo.setup.failed", "Failed to set up FBO for environment cube map - status is {}.", static_cast<unsigned>(status));
 		DESTROY(self);
 	}
 	

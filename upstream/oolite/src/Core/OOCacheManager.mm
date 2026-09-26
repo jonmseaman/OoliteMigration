@@ -182,16 +182,22 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 		if (entry != cache->end())  result = entry->second.get();
 		if (result != nil)
 		{
-			OODebugLog(@"dataCache.retrieve.success", @"Retrieved \"%@\" cache object %@.", oo::NSStringFrom(inCacheKey), oo::NSStringFrom(inKey));
+#if OO_DEBUG
+			OO_LOG("dataCache.retrieve.success", "Retrieved \"{}\" cache object {}.", inCacheKey, inKey);
+#endif
 		}
 		else
 		{
-			OODebugLog(@"dataCache.retrieve.failed", @"Failed to retrieve \"%@\" cache object %@ -- no such entry.", oo::NSStringFrom(inCacheKey), oo::NSStringFrom(inKey));
+#if OO_DEBUG
+			OO_LOG("dataCache.retrieve.failed", "Failed to retrieve \"{}\" cache object {} -- no such entry.", inCacheKey, inKey);
+#endif
 		}
 	}
 	else
 	{
-		OODebugLog(@"dataCache.retrieve.failed", @"Failed to retrieve \"%@\" cache object %@ -- no such cache.", oo::NSStringFrom(inCacheKey), oo::NSStringFrom(inKey));
+#if OO_DEBUG
+		OO_LOG("dataCache.retrieve.failed", "Failed to retrieve \"{}\" cache object {} -- no such cache.", inCacheKey, inKey);
+#endif
 	}
 	
 	return result;
@@ -208,7 +214,9 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	// A missing cache is created, empty, as before.
 	(*_caches)[inCacheKey][inKey] = oo::ObjCRef<id>(inObject);
 	_dirty = YES;
-	OODebugLog(@"dataCache.set.success", @"Updated entry %@ in cache \"%@\".", oo::NSStringFrom(inKey), oo::NSStringFrom(inCacheKey));
+#if OO_DEBUG
+	OO_LOG("dataCache.set.success", "Updated entry {} in cache \"{}\".", inKey, inCacheKey);
+#endif
 }
 
 
@@ -220,16 +228,22 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 		if (cache->erase(inKey) != 0)
 		{
 			_dirty = YES;
-			OODebugLog(@"dataCache.remove.success", @"Removed entry keyed %@ from cache \"%@\".", oo::NSStringFrom(inKey), oo::NSStringFrom(inCacheKey));
+#if OO_DEBUG
+			OO_LOG("dataCache.remove.success", "Removed entry keyed {} from cache \"{}\".", inKey, inCacheKey);
+#endif
 		}
 		else
 		{
-			OODebugLog(@"dataCache.remove.success", @"No need to remove non-existent entry keyed %@ from cache \"%@\".", oo::NSStringFrom(inKey), oo::NSStringFrom(inCacheKey));
+#if OO_DEBUG
+			OO_LOG("dataCache.remove.success", "No need to remove non-existent entry keyed {} from cache \"{}\".", inKey, inCacheKey);
+#endif
 		}
 	}
 	else
 	{
-		OODebugLog(@"dataCache.remove.success", @"No need to remove entry keyed %@ from non-existent cache \"%@\".", oo::NSStringFrom(inKey), oo::NSStringFrom(inCacheKey));
+#if OO_DEBUG
+		OO_LOG("dataCache.remove.success", "No need to remove entry keyed {} from non-existent cache \"{}\".", inKey, inCacheKey);
+#endif
 	}
 }
 
@@ -240,11 +254,15 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	{
 		_caches->erase(inCacheKey);
 		_dirty = YES;
-		OODebugLog(@"dataCache.clear.success", @"Cleared cache \"%@\".", oo::NSStringFrom(inCacheKey));
+#if OO_DEBUG
+		OO_LOG("dataCache.clear.success", "Cleared cache \"{}\".", inCacheKey);
+#endif
 	}
 	else
 	{
-		OODebugLog(@"dataCache.clear.success", @"No need to clear non-existent cache \"%@\".", oo::NSStringFrom(inCacheKey));
+#if OO_DEBUG
+		OO_LOG("dataCache.clear.success", "No need to clear non-existent cache \"{}\".", inCacheKey);
+#endif
 	}
 }
 
@@ -329,22 +347,22 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	if (!cache.isNull())
 	{
 		// We have a cache
-		OOLog(@"dataCache.found", @"%@", @"Found data cache.");
-		OOLogIndentIf(@"dataCache.found");
+		OO_LOG("dataCache.found", "{}", "Found data cache.");
+		oo::log::indentIf("dataCache.found");
 		
 		const oo::PList *cacheVersion = cache.find(kCacheKeyVersion);
 		const std::string *cacheVersionString = cacheVersion != nullptr ? cacheVersion->getIf<std::string>() : nullptr;
 		// -isEqual: between the two; a missing version on either side never matched.
 		if (cacheVersionString == nullptr || !ooliteVersion.has_value() || *cacheVersionString != *ooliteVersion)
 		{
-			OOLog(@"dataCache.rebuild", @"Data cache version (%@) does not match Oolite version (%@), rebuilding cache.", oo::ObjectFromPList(cacheVersion != nullptr ? *cacheVersion : oo::PList()), oo::NSStringOrNil(ooliteVersion));
+			OO_LOG("dataCache.rebuild", "Data cache version ({}) does not match Oolite version ({}), rebuilding cache.", oo::DescriptionOf(oo::ObjectFromPList(cacheVersion != nullptr ? *cacheVersion : oo::PList())), ooliteVersion.value_or("(null)"));
 			accept = NO;
 		}
 		
 		const oo::PList *formatVersion = cache.find(kCacheKeyFormatVersion);
 		if (accept && (formatVersion != nullptr ? static_cast<unsigned>(formatVersion->uint64Value()) : 0U) != kFormatVersionValue)
 		{
-			OOLog(@"dataCache.rebuild", @"Data cache format (%@) is not supported format (%zu), rebuilding cache.", oo::ObjectFromPList(formatVersion != nullptr ? *formatVersion : oo::PList()), kFormatVersionValue);
+			OO_LOG("dataCache.rebuild", "Data cache format ({}) is not supported format ({}), rebuilding cache.", oo::DescriptionOf(oo::ObjectFromPList(formatVersion != nullptr ? *formatVersion : oo::PList())), static_cast<std::size_t>(kFormatVersionValue));
 			accept = NO;
 		}
 		
@@ -354,7 +372,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 			const oo::Data *endianTag = endianTagObject != nullptr ? endianTagObject->getIf<oo::Data>() : nullptr;
 			if (endianTag == nullptr || endianTag->length() != sizeof endianTagValue)
 			{
-				OOLog(@"dataCache.rebuild", @"%@", @"Data cache endian tag is invalid, rebuilding cache.");
+				OO_LOG("dataCache.rebuild", "{}", "Data cache endian tag is invalid, rebuilding cache.");
 				accept = NO;
 			}
 			else
@@ -362,7 +380,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 				memcpy(&endianTagValue, endianTag->bytes(), sizeof endianTagValue);
 				if (endianTagValue != kEndianTagValue)
 				{
-					OOLog(@"dataCache.rebuild", @"%@", @"Data cache endianness is inappropriate for this system, rebuilding cache.");
+					OO_LOG("dataCache.rebuild", "{}", "Data cache endianness is inappropriate for this system, rebuilding cache.");
 					accept = NO;
 				}
 			}
@@ -374,12 +392,12 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 			[self buildCachesFromDictionary:cache.find(kCacheKeyCaches)];
 		}
 		
-		OOLogOutdentIf(@"dataCache.found");
+		oo::log::outdentIf("dataCache.found");
 	}
 	else
 	{
 		// No cache
-		OOLog(@"dataCache.notFound", @"%@", @"No data cache found, starting from scratch.");
+		OO_LOG("dataCache.notFound", "{}", "No data cache found, starting from scratch.");
 	}
 	
 	// If loading failed, or there was a version or endianness conflict
@@ -400,9 +418,9 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 #endif
 	
 #if WRITE_ASYNC
-	OOLog(@"dataCache.willWrite", @"%@", @"Scheduling data cache write.");
+	OO_LOG("dataCache.willWrite", "{}", "Scheduling data cache write.");
 #else
-	OOLog(@"dataCache.willWrite", @"%@", @"About to write cache.");
+	OO_LOG("dataCache.willWrite", "{}", "About to write cache.");
 #endif
 	
 	const std::optional<std::string> ooliteVersion = oo::OptionalString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
@@ -410,7 +428,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	oo::PList pListRep = [self dictionaryOfCaches];
 	if (!ooliteVersion.has_value() || pListRep.isNull())
 	{
-		OOLog(@"dataCache.cantWrite", @"%@", @"Failed to write data cache -- prerequisites not fulfilled. This is an internal error, please report it.");
+		OO_LOG("dataCache.cantWrite", "{}", "Failed to write data cache -- prerequisites not fulfilled. This is an internal error, please report it.");
 		return;
 	}
 	
@@ -429,23 +447,23 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	
 #if PROFILE_WRITES
 	OOTimeDelta endT = [stopwatch reset];
-	OOLog(@"dataCache.profile", @"Time to prepare cache data: %g seconds.", endT);
+	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", endT);
 #endif
 	
 	[[OOAsyncWorkManager sharedAsyncWorkManager] addTask:_scheduledWrite priority:kOOAsyncPriorityLow];
 #else
 #if PROFILE_WRITES
-	OOLog(@"dataCache.profile", @"Time to prepare cache data: %g seconds.", prepareT);
+	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", prepareT);
 #endif
 	
 	if ([self writeDict:oo::PList(std::move(newCache))])
 	{
 		[self markClean];
-		OOLog(@"dataCache.write.success", @"%@", @"Wrote data cache.");
+		OO_LOG("dataCache.write.success", "{}", "Wrote data cache.");
 	}
 	else
 	{
-		OOLog(@"dataCache.write.failed", @"%@", @"Failed to write data cache.");
+		OO_LOG("dataCache.write.failed", "{}", "Failed to write data cache.");
 	}
 #endif
 }
@@ -480,7 +498,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	auto contents = oo::parsePropertyListData(std::string_view(reinterpret_cast<const char *>(data->bytes()), data->length()));
 	if (!contents.has_value())
 	{
-		OOLog(@"dataCache.badData", @"Could not read data cache: %@", oo::NSStringFrom(contents.error().message));
+		OO_LOG("dataCache.badData", "Could not read data cache: {}", contents.error().message);
 		return oo::PList();
 	}
 	if (!contents->isDict())  return oo::PList();
@@ -501,7 +519,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	const auto plist = oo::writeXMLPList(inDict);
 	if (!plist.has_value())
 	{
-		OOLog(@"dataCache.write.serialize.failed", @"Could not convert data cache to property list data: %@", oo::NSStringFrom(plist.error().message));
+		OO_LOG("dataCache.write.serialize.failed", "Could not convert data cache to property list data: {}", plist.error().message);
 		return NO;
 	}
 	
@@ -514,7 +532,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 #if PROFILE_WRITES
 	OOTimeDelta writeT = [stopwatch reset];
 	
-	OOLog(@"dataCache.profile", @"Time to serialize cache: %g seconds. Time to write data: %g seconds.", serializeT, writeT);
+	OO_LOG("dataCache.profile", "Time to serialize cache: {:g} seconds. Time to write data: {:g} seconds.", serializeT, writeT);
 #endif
 	
 #if WRITE_ASYNC
@@ -569,7 +587,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	
 	if (exists && type != oo::fs::FileType::directory)
 	{
-		OOLog(@"dataCache.write.buildPath.failed", @"Expected %@ to be a folder, but it is a file.", oo::NSStringFrom(inPath));
+		OO_LOG("dataCache.write.buildPath.failed", "Expected {} to be a folder, but it is a file.", inPath);
 		return NO;
 	}
 	if (!exists)
@@ -577,7 +595,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 		if (!inCreate) return NO;
 		if (!oo::fs::createDirectories(path).has_value())
 		{
-			OOLog(@"dataCache.write.buildPath.failed", @"Could not create folder %@.", oo::NSStringFrom(inPath));
+			OO_LOG("dataCache.write.buildPath.failed", "Could not create folder {}.", inPath);
 			return NO;
 		}
 	}
@@ -683,11 +701,11 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 {
 	if ([[OOCacheManager sharedCache] writeDict:_cacheContents])
 	{
-		OOLog(@"dataCache.write.success", @"%@", @"Wrote data cache.");
+		OO_LOG("dataCache.write.success", "{}", "Wrote data cache.");
 	}
 	else
 	{
-		OOLog(@"dataCache.write.failed", @"%@", @"Failed to write data cache.");
+		OO_LOG("dataCache.write.failed", "{}", "Failed to write data cache.");
 	}
 	_cacheContents = oo::PList();
 }
