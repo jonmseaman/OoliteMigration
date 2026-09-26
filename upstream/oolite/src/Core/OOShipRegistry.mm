@@ -716,7 +716,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		OOProbabilitySet *pset = [[mutableSet.get() copy] autorelease];
 		sets[role] = oo::ObjCRef<OOProbabilitySet *>(pset);
 		// OOProbabilitySet is an unmigrated callee (its weights are floats: single reals, written to disk)
-		cacheEntry[role] = oo::PListFrom([pset propertyListRepresentation]);
+		cacheEntry[role] = [pset propertyListRepresentation];
 	}
 
 	_probabilitySets = std::move(sets);

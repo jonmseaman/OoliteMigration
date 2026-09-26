@@ -154,31 +154,31 @@ return [result autorelease];
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents
 {
 	return [(id)_object descriptionComponents];
 }
 
 
-- (NSString *) shortDescription
+- (id) shortDescription
 {
 	return [(id)_object shortDescription];
 }
 
 
-- (NSString *) shortDescriptionComponents
+- (id) shortDescriptionComponents
 {
 	return [(id)_object shortDescriptionComponents];
 }
 
 
-- (NSString *) className
+- (id) className
 {
 	return [(id)_object className];
 }
 
 
-- (id) ooDeepCopyWithSharedObjects:(NSMutableSet *)objects
+- (id) ooDeepCopyWithSharedObjects:(id)objects
 {
 	return [(id)_object ooDeepCopyWithSharedObjects:objects];
 }

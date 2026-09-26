@@ -202,7 +202,7 @@ static int OOCloseOXZVorbis (void *datasource);
 			uf = unzOpen64(zipFile.c_str());
 			if (uf == NULL)
 			{
-				OOLog(kOOLogFileNotFound, @"Could not unzip OXZ at %@", oo::NSStringFrom(zipFile));
+				OO_LOG(cxx_kOOLogFileNotFound, "Could not unzip OXZ at {}", zipFile);
 				[self release];
 				self = nil;
 			}
@@ -224,7 +224,7 @@ static int OOCloseOXZVorbis (void *datasource);
 					if (err != UNZ_OK)
 					{
 						unzClose(uf);
-						OOLog(kOOLogFileNotFound, @"Could not get properties of %@ within OXZ at %@", oo::NSStringFrom(containedFile), oo::NSStringFrom(zipFile));
+						OO_LOG(cxx_kOOLogFileNotFound, "Could not get properties of {} within OXZ at {}", containedFile, zipFile);
 						[self release];
 						self = nil;
 					}
@@ -234,7 +234,7 @@ static int OOCloseOXZVorbis (void *datasource);
 						if (err != UNZ_OK)
 						{
 							unzClose(uf);
-							OOLog(kOOLogFileNotFound, @"Could not read %@ within OXZ at %@", oo::NSStringFrom(containedFile), oo::NSStringFrom(zipFile));
+							OO_LOG(cxx_kOOLogFileNotFound, "Could not read {} within OXZ at {}", containedFile, zipFile);
 							[self release];
 							self = nil;
 						}
@@ -267,7 +267,7 @@ static int OOCloseOXZVorbis (void *datasource);
 #ifdef OOLITE_DEBUG_SOUND_FILE_OPENING
 	if (self != nil)
 	{
-		OOLog(@"sound.retain",@"%@",oo::NSStringOrNil(_name));
+		OO_LOG("sound.retain", "{}", _name.value_or("(null)"));
 	}
 #endif
 	return self;
@@ -279,7 +279,7 @@ static int OOCloseOXZVorbis (void *datasource);
 #ifdef OOLITE_DEBUG_SOUND_FILE_OPENING
 	if (self != nil)
 	{
-		OOLog(@"sound.release",@"%@",oo::NSStringOrNil(_name));
+		OO_LOG("sound.release", "{}", _name.value_or("(null)"));
 	}
 #endif
 
@@ -508,7 +508,7 @@ static size_t OOReadOXZVorbis (void *ptr, size_t size, size_t nmemb, void *datas
 	void *buf = (void*)malloc(toRead);
 	int err = UNZ_OK;
 	err = unzReadCurrentFile(src->uf, buf, toRead);
-//	OOLog(@"sound.replay",@"Read %d blocks, got %d",toRead,err);
+//	OO_LOG("sound.replay", "Read {} blocks, got {}", static_cast<int>(toRead), static_cast<int>(err));
 	if (err > 0)
 	{
 		memcpy(ptr, buf, err);
