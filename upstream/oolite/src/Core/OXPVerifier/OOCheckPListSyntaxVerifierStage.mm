@@ -95,7 +95,7 @@ bool Contains(const std::vector<std::string> &strings, const std::string &string
 					 referencedFrom:nil
 					   checkBuiltIn:NO])
 		{
-			OOLog(@"verifyOXP.syntaxCheck",@"Checking %@",oo::NSStringFrom(plistName));
+			OO_LOG("verifyOXP.syntaxCheck", "Checking {}", plistName);
 			id retrieve = [fileScanner plistNamed:oo::NSStringFrom(plistName)
 										 inFolder:@"Config"
 								   referencedFrom:nil
@@ -106,19 +106,19 @@ bool Contains(const std::vector<std::string> &strings, const std::string &string
 				{
 					if (!Contains(arrayPlists, plistName))
 					{
-						OOLog(@"verifyOXP.syntaxCheck.error",@"%@ should be an array but isn't.",oo::NSStringFrom(plistName));
+						OO_LOG("verifyOXP.syntaxCheck.error", "{} should be an array but isn't.", plistName);
 					}
 				}
 				else if (oo::IsNSDictionary(retrieve))
 				{
 					if (!Contains(dictionaryPlists, plistName))
 					{
-						OOLog(@"verifyOXP.syntaxCheck.error",@"%@ should be an array but isn't.",oo::NSStringFrom(plistName));
+						OO_LOG("verifyOXP.syntaxCheck.error", "{} should be an array but isn't.", plistName);
 					}
 				}
 				else
 				{
-					OOLog(@"verifyOXP.syntaxCheck.error",@"%@ is neither an array nor a dictionary.",oo::NSStringFrom(plistName));
+					OO_LOG("verifyOXP.syntaxCheck.error", "{} is neither an array nor a dictionary.", plistName);
 				}
 			}
 		}
