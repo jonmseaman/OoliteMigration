@@ -29,6 +29,8 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 @implementation OOColor
@@ -218,13 +220,13 @@ MA 02110-1301, USA.
 + (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString
 {
 	float			rgbaValue[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	NSScanner		*scanner = [NSScanner scannerWithString:oo::NSStringFrom(colorFloatString)];	// the NSScanner family (oo-3rb.12) retires this
+	oo::str::Scanner	scanner(colorFloatString);
 	float			factor = 1.0f;
 	int				i;
 	
 	for (i = 0; i != 4; ++i)
 	{
-		if (![scanner scanFloat:&rgbaValue[i]])
+		if (!scanner.scanFloat(&rgbaValue[i]))
 		{
 			// Less than three floats or non-float, can't parse -> quit
 			if (i < 3) return nil;
@@ -371,7 +373,7 @@ MA 02110-1301, USA.
 
 - (void) getRed:(float *)red green:(float *)green blue:(float *)blue alpha:(float *)alpha
 {
-	NSParameterAssert(red != NULL && green != NULL && blue != NULL && alpha != NULL);
+	OOParameterAssert(red != NULL && green != NULL && blue != NULL && alpha != NULL);
 	
 	*red = rgba[0];
 	*green = rgba[1];
@@ -441,7 +443,7 @@ MA 02110-1301, USA.
 
 - (void) getHue:(float *)hue saturation:(float *)saturation brightness:(float *)brightness alpha:(float *)alpha
 {
-	NSParameterAssert(hue != NULL && saturation != NULL && brightness != NULL && alpha != NULL);
+	OOParameterAssert(hue != NULL && saturation != NULL && brightness != NULL && alpha != NULL);
 	
 	*alpha = rgba[3];
 	

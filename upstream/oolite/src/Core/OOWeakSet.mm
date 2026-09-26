@@ -11,17 +11,27 @@ This code is hereby placed in the public domain.
 
 
 
-@interface OOWeakRefUnpackingEnumerator: NSEnumerator
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
+
+
+namespace {
+
+// The objects behind the live references, in insertion order.
+std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakReference *>> &references)
 {
-@private
-	NSEnumerator			*_enumerator;
+	std::vector<oo::ObjCRef<id>> result;
+	result.reserve(references.size());
+	for (const auto &weakRef : references)
+	{
+		id object = [weakRef.get() weakRefUnderlyingObject];
+		if (object != nil)  result.emplace_back(object);
+	}
+	return result;
 }
 
-- (id) initWithEnumerator:(NSEnumerator *)enumerator;
-
-+ (instancetype) enumeratorWithCollection:(id)collection;	// Collection must implement -objectEnumerator
-
-@end
+}	// namespace
 
 
 @interface OOWeakSet (OOPrivate)
@@ -43,12 +53,7 @@ This code is hereby placed in the public domain.
 {
 	if ((self = [super init]))
 	{
-		_objects = [[NSMutableSet alloc] initWithCapacity:capacity];
-		if (_objects == NULL)
-		{
-			[self release];
-			return nil;
-		}
+		_objects.reserve(capacity);
 	}
 	return self;
 }
@@ -68,32 +73,27 @@ This code is hereby placed in the public domain.
 
 - (void) dealloc
 {
-	DESTROY(_objects);
+	_objects.clear();
 	
 	[super dealloc];
 }
 
 
-- (NSString *) description
+- (id) description
 {
-	NSMutableString *result = [NSMutableString stringWithFormat:@"<%@ %p>{", [self class], self];
-	NSEnumerator *selfEnum = [self objectEnumerator];
-	id object = nil;
+	std::string result = oo::str::format("<%s %s>{", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str());
 	BOOL first = YES;
-	while ((object = [selfEnum nextObject]))
+	for (const oo::ObjCRef<id> &object : LiveObjects(_objects))
 	{
-		if (!first)  [result appendString:@", "];
+		if (!first)  result += ", ";
 		else  first = NO;
-		
-		NSString *desc = nil;
-		if ([object respondsToSelector:@selector(shortDescription)])  desc = [object shortDescription];
-		else  desc = [object description];
-		
-		[result appendString:desc];
+
+		if ([object.get() respondsToSelector:@selector(shortDescription)])  result += oo::DescriptionOf([object.get() shortDescription]);
+		else  result += oo::DescriptionOf(object.get());
 	}
-	
-	[result appendString:@"}"];
-	return result;
+
+	result += "}";
+	return oo::NSStringFrom(result);
 }
 
 
@@ -122,7 +122,7 @@ This code is hereby placed in the public domain.
 	BOOL result = YES;
 	@autoreleasepool
 	{
-		NSEnumerator *selfEnum = [self objectEnumerator];
+		id selfEnum = [self objectEnumerator];
 		id object = nil;
 		while ((object = [selfEnum nextObject]))
 		{
@@ -143,23 +143,24 @@ This code is hereby placed in the public domain.
 - (NSUInteger) count
 {
 	[self compact];
-	return [_objects count];
+	return _objects.size();
 }
 
 
 - (BOOL) containsObject:(id<OOWeakReferenceSupport>)object
 {
 	[self compact];
+	// (a live object has one weak reference, so membership is identity, as the set's was)
 	OOWeakReference *weakObj = [object weakRetain];
-	BOOL result = [_objects containsObject:weakObj];
+	BOOL result = std::find_if(_objects.begin(), _objects.end(), [weakObj](const auto &ref) { return ref.get() == weakObj; }) != _objects.end();
 	[weakObj release];
 	return result;
 }
 
 
-- (NSEnumerator *) objectEnumerator
+- (id) objectEnumerator
 {
-	return [OOWeakRefUnpackingEnumerator enumeratorWithCollection:_objects];
+	return [oo::NSArrayFromObjects(LiveObjects(_objects)) objectEnumerator];
 }
 
 
@@ -169,7 +170,10 @@ This code is hereby placed in the public domain.
 	NSAssert([object conformsToProtocol:@protocol(OOWeakReferenceSupport)], @"Attempt to add object to OOWeakSet which does not conform to OOWeakReferenceSupport.");
 	
 	OOWeakReference *weakObj = [object weakRetain];
-	[_objects addObject:weakObj];
+	if (std::find_if(_objects.begin(), _objects.end(), [weakObj](const auto &ref) { return ref.get() == weakObj; }) == _objects.end())
+	{
+		_objects.emplace_back(weakObj);	// (a set holds each once)
+	}
 	[weakObj release];
 }
 
@@ -177,12 +181,12 @@ This code is hereby placed in the public domain.
 - (void) removeObject:(id<OOWeakReferenceSupport>)object
 {
 	OOWeakReference *weakObj = [object weakRetain];
-	[_objects removeObject:weakObj];
+	std::erase_if(_objects, [weakObj](const auto &ref) { return ref.get() == weakObj; });
 	[weakObj release];
 }
 
 
-- (void) addObjectsByEnumerating:(NSEnumerator *)enumerator
+- (void) addObjectsByEnumerating:(id)enumerator
 {
 	id object = nil;
 	[self compact];
@@ -195,123 +199,40 @@ This code is hereby placed in the public domain.
 
 - (void) makeObjectsPerformSelector:(SEL)selector
 {
-	OOWeakReference *weakRef = nil;
-	foreach (weakRef, _objects)
+	// (over a copy of the references: a selector may change the set)
+	const std::vector<oo::ObjCRef<OOWeakReference *>> references = _objects;
+	for (const auto &weakRef : references)
 	{
-		[[weakRef weakRefUnderlyingObject] performSelector:selector];
+		[[weakRef.get() weakRefUnderlyingObject] performSelector:selector];
 	}
 }
 
 
 - (void) makeObjectsPerformSelector:(SEL)selector withObject:(id)argument
 {
-	OOWeakReference *weakRef = nil;
-	foreach (weakRef, _objects)
+	const std::vector<oo::ObjCRef<OOWeakReference *>> references = _objects;
+	for (const auto &weakRef : references)
 	{
-		[[weakRef weakRefUnderlyingObject] performSelector:selector withObject:argument];
+		[[weakRef.get() weakRefUnderlyingObject] performSelector:selector withObject:argument];
 	}
 }
 
 
-- (NSArray *) allObjects
+- (id) allObjects
 {
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:[_objects count]];
-	OOWeakReference *weakRef = nil;
-	foreach (weakRef, _objects)
-	{
-		id object = [weakRef weakRefUnderlyingObject];
-		if (object != nil)  [result addObject:object];
-	}
-	
-#ifdef NDEBUG
-	return result;
-#else
-	return [NSArray arrayWithArray:result];
-#endif
+	return oo::NSArrayFromObjects(LiveObjects(_objects));
 }
 
 
 - (void) removeAllObjects
 {
-	[_objects removeAllObjects];
+	_objects.clear();
 }
 
 
 - (void) compact
 {
-	OOWeakReference *weakRef = nil;
-	BOOL compactRequired = NO;
-	foreach (weakRef, _objects)
-	{
-		if ([weakRef weakRefUnderlyingObject] == nil)
-		{
-			compactRequired = YES;
-			break;
-		}
-	}
-	
-	if (compactRequired)
-	{
-		NSMutableSet *newObjects = [[NSMutableSet alloc] initWithCapacity:[_objects count]];
-		foreach (weakRef, _objects)
-		{
-			if ([weakRef weakRefUnderlyingObject] != nil)
-			{
-				[newObjects addObject:weakRef];
-			}
-		}
-		
-		[_objects release];
-		_objects = newObjects;
-	}
-}
-
-@end
-
-
-@implementation OOWeakRefUnpackingEnumerator
-
-- (id) initWithEnumerator:(NSEnumerator *)enumerator
-{
-	if (enumerator == nil)
-	{
-		[self release];
-		return nil;
-	}
-	
-	if ((self = [super init]))
-	{
-		_enumerator = [enumerator retain];
-	}
-	
-	return self;
-}
-
-
-+ (instancetype) enumeratorWithCollection:(id)collection
-{
-	return [[[self alloc] initWithEnumerator:[collection objectEnumerator]] autorelease];
-}
-
-
-- (void) dealloc
-{
-	[_enumerator release];
-	
-	[super dealloc];
-}
-
-
-- (id) nextObject
-{
-	id next = nil;
-	while ((next = [_enumerator nextObject]))
-	{
-		next = [next weakRefUnderlyingObject];
-		if (next != nil)  return next;
-	}
-	
-	return nil;
+	std::erase_if(_objects, [](const auto &weakRef) { return [weakRef.get() weakRefUnderlyingObject] == nil; });
 }
 
 @end

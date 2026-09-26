@@ -61,6 +61,8 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
@@ -409,8 +411,6 @@ void OpenLogFile();
 	id						name = nil;
 	std::map<OOOXPVerifierStage *, std::vector<std::string>>	dependenciesByStage,
 															dependentsByStage;
-	id						dependencies = nil,
-							dependents = nil;
 
 	@autoreleasepool
 	{
@@ -429,16 +429,18 @@ void OpenLogFile();
 			_waitingStages.erase(_waitingStages.begin());
 			stage = waiting.get();
 
-			dependencies = [stage dependencies];
-			if (dependencies != nil)
+			std::optional<std::vector<std::string>> dependencies = [stage cxx_dependencies];
+			if (dependencies.has_value())
 			{
-				dependenciesByStage[stage] = oo::StringsFrom(dependencies);
+				dependenciesByStage[stage] = std::move(*dependencies);
 			}
 
-			dependents = [stage dependents];
-			if (dependents != nil)
+			const std::optional<std::vector<std::string>> dependents = [stage dependents];
+			if (dependents.has_value())
 			{
-				dependentsByStage[stage] = oo::StringsFrom(dependents);
+				// Through the Objective-C set the stages returned before, so the names keep its
+				// enumeration order (-setUpDependents: registers them in that order).
+				dependentsByStage[stage] = oo::StringsFrom(oo::NSSetFromStrings(*dependents));
 			}
 		}
 		_waitingStages.clear();
@@ -551,7 +553,12 @@ void OpenLogFile();
 				[stageToRun noteSkipped];
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			if (stageName == nil)  stageName = [[stageToRun class] description];
+			OOLog(@"verifyOXP.exception", @"***** Exception occurred when running OXP verifier stage \"%@\": %@: %@", stageName, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			if (stageName == nil)  stageName = [[stageToRun class] description];
 			OOLog(@"verifyOXP.exception", @"***** Exception occurred when running OXP verifier stage \"%@\": %@: %@", stageName, [exception name], [exception reason]);

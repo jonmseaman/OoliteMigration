@@ -36,7 +36,6 @@
 #define ALBEDO_FACTOR		0.7f	// Overall darkening of everything, allowing better contrast for snow and specular highlights.
 
 #import "OOStandaloneAtmosphereGenerator.h"
-#import "OOPListView.h"
 #import "OOColor.h"
 #import "OOFoundationBridge.h"
 
@@ -75,7 +74,7 @@ enum
 
 namespace {
 
-FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key);	// dictionary: the planet info (holds OOColors; not a plist)
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key);	// dictionary: the planet info (colours are Object nodes)
 
 }	// namespace
 
@@ -101,7 +100,7 @@ enum
 
 @implementation OOStandaloneAtmosphereGenerator
 
-- (id) initWithPlanetInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
+- (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOLog(@"texture.planet.generate", @"%@", @"Initialising standalone atmosphere generator");
 
@@ -113,8 +112,8 @@ enum
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
 		// we are an atmosphere:
-		_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
-		_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
+		_info.cloudAlpha = planetInfo.get<float>("cloud_alpha", 1.0f);
+		_info.cloudFraction = OOClamp_0_1_f(planetInfo.get<float>("cloud_fraction", 0.3));
 		_info.cloudColor = FloatRGBFromDictColor(planetInfo, "cloud_color");
 		_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		
@@ -132,7 +131,7 @@ enum
 #else
 		_planetScale = kPlanetScale4096x4096;
 #endif
-		_info.perlin3d = oo::PListView(planetInfo).get<BOOL>(@"perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
+		_info.perlin3d = planetInfo.get<bool>("perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset	= 8 - _info.planetAspectRatio;
 	}
@@ -141,7 +140,7 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
++ (OOTexture *) planetTextureWithInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOTexture *result = nil;
 	OOStandaloneAtmosphereGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
@@ -155,7 +154,7 @@ enum
 }
 
 
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(id)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
@@ -427,9 +426,10 @@ static FloatRGBA CloudMix(OOStandaloneAtmosphereGeneratorInfo *info, float q, fl
 
 namespace {
 
-FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key)
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key)
 {
-	OOColor *color = [dictionary objectForKey:oo::NSStringFrom(key)];
+	const oo::PList *value = dictionary.find(key);
+	OOColor *color = (value != nullptr) ? oo::ObjectIn(*value) : nil;	// an Object node (Amendment 2)
 	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
 	
 	return (FloatRGB){ [color redComponent] * ALBEDO_FACTOR, [color greenComponent] * ALBEDO_FACTOR, [color blueComponent] * ALBEDO_FACTOR };

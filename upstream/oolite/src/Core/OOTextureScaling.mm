@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OOMaths.h"
 #import "OOCPUInfo.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
@@ -150,7 +151,7 @@ OOINLINE void SqueezeVertically(OOPixMap pixMap, OOPixMapDimension dstHeight)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(pixMap.format))];
+	[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(pixMap.format).c_str()];
 #else
 	abort();
 #endif
@@ -180,7 +181,7 @@ OOINLINE void StretchHorizontally(OOPixMap srcPx, OOPixMap dstPx)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(srcPx.format))];
+	[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(srcPx.format).c_str()];
 #else
 	abort();
 #endif
@@ -208,7 +209,7 @@ OOINLINE void SqueezeHorizontally(OOPixMap pixMap, OOPixMapDimension dstHeight)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(pixMap.format))];
+	[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(pixMap.format).c_str()];
 #else
 	abort();
 #endif	
@@ -347,12 +348,12 @@ BOOL OOGenerateMipMaps(void *textureBytes, OOPixMapDimension width, OOPixMapDime
 {
 	if (EXPECT_NOT(width != OORoundUpToPowerOf2_PixMap(width) || height != OORoundUpToPowerOf2_PixMap(height)))
 	{
-		OOLog(kOOLogParameterError, @"Non-power-of-two dimensions (%ux%u) passed to %s() - ignoring, data will be junk.", width, height, __PRETTY_FUNCTION__);
+		OO_LOG(cxx_kOOLogParameterError, "Non-power-of-two dimensions ({}x{}) passed to {}() - ignoring, data will be junk.", static_cast<unsigned>(width), static_cast<unsigned>(height), __PRETTY_FUNCTION__);
 		return NO;
 	}
 	if (EXPECT_NOT(textureBytes == NULL))
 	{
-		OOLog(kOOLogParameterError, @"%@", @"NULL texture pointer passed to GenerateMipMaps().");
+		OO_LOG(cxx_kOOLogParameterError, "{}", "NULL texture pointer passed to GenerateMipMaps().");
 		return NO;
 	}
 	
@@ -372,7 +373,7 @@ BOOL OOGenerateMipMaps(void *textureBytes, OOPixMapDimension width, OOPixMapDime
 	}
 	
 
-	OOLog(kOOLogParameterError, @"%s(): bad pixmap format (%@) - ignoring, data will be junk.", __PRETTY_FUNCTION__, oo::NSStringFrom(OOPixMapFormatName(format)));
+	OO_LOG(cxx_kOOLogParameterError, "{}(): bad pixmap format ({}) - ignoring, data will be junk.", __PRETTY_FUNCTION__, OOPixMapFormatName(format));
 	return NO;
 }
 
