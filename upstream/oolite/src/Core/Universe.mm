@@ -3111,7 +3111,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			{
 				[my_ship enterTargetWormhole];
 			}
-			else if ([[[my_ship getAI] state] isEqualToString:@"ENTER_WORMHOLE"])
+			else if ([[my_ship getAI] cxx_state] == "ENTER_WORMHOLE")
 			{
 				[my_ship enterTargetWormhole];
 			}

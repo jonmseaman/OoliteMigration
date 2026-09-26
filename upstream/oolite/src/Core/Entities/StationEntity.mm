@@ -338,7 +338,7 @@ std::optional<std::string> OptionalStringValue(id object)
 	if (soa == 0)
 	{
 		// if all docks have no ships on approach
-		[shipAI message:@"DOCKING_COMPLETE"];
+		[shipAI message:"DOCKING_COMPLETE"];
 		[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];	
 	}
 }
@@ -409,7 +409,7 @@ std::optional<std::string> OptionalStringValue(id object)
 
 	[_shipsOnHold removeAllObjects];
 	
-	[shipAI message:@"DOCKING_COMPLETE"];
+	[shipAI message:"DOCKING_COMPLETE"];
 	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 
 }
@@ -436,7 +436,7 @@ std::optional<std::string> OptionalStringValue(id object)
 
 	[self autoDockShipsOnHold];
 	
-	[shipAI message:@"DOCKING_COMPLETE"];
+	[shipAI message:"DOCKING_COMPLETE"];
 	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 
 }
@@ -906,7 +906,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[player doScriptEvent:OOJSID("playerDockingClearanceExpired")];
 				if ([self currentlyInDockingQueues] == 0) 
 				{
-					[[self getAI] message:@"DOCKING_COMPLETE"];
+					[[self getAI] message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
 				player_reserved_dock = nil;
@@ -920,7 +920,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 				if ([self currentlyInDockingQueues] == 0) 
 				{
-					[[self getAI] message:@"DOCKING_COMPLETE"];
+					[[self getAI] message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
 			}
@@ -2091,7 +2091,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				player_reserved_dock = nil;
 				if ([self currentlyInDockingQueues] == 0)
 				{
-					[shipAI message:@"DOCKING_COMPLETE"];
+					[shipAI message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
 				break;
