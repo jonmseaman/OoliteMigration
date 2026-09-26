@@ -14,7 +14,6 @@ oolite_sources += files(
     'NSDataOOExtensions.mm',
     'NSDictionaryOOExtensions.mm',
     'NSFileManagerOOExtensions.mm',
-    'NSMutableDictionaryOOExtensions.mm',
     'NSNumberOOExtensions.mm',
     'NSObjectOOExtensions.mm',
     'NSStringOOExtensions.mm',
@@ -54,7 +53,6 @@ oolite_sources += files(
     'OOEnumerationShuffle.mm',
     'OOEquipmentType.mm',
     'OOEquipmentType+FoundationBridge.mm',
-    'OOExcludeObjectEnumerator.mm',
     'OOFilteringEnumerator.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
@@ -102,6 +100,7 @@ oolite_sources += files(
     'OOSoundSourcePool.mm',
     'OOSpatialReference.mm',
     'OOStringExpander.mm',
+    'OOStringExpander+FoundationBridge.mm',
     'OOStringParsing.mm',
     'OOStringParsing+FoundationBridge.mm',
     'OOSystemDescriptionManager.mm',
@@ -115,7 +114,6 @@ oolite_sources += files(
     'OOWeakSet.mm',
     'OOXMLExtensions.mm',
     'Octree.mm',
-    'OldSchoolPropertyListWriting.mm',
     'ResourceManager.mm',
     'ResourceManager+FoundationBridge.mm',
     'TextureStore.mm',
@@ -128,6 +126,7 @@ if host_os != 'darwin'
     oolite_sources += files(
         'NSBundle+Override.mm',
         'NSUserDefaults+Override.mm',
+        'NSUserDefaults+OODefaultsBridge.mm',
     )
 endif
 

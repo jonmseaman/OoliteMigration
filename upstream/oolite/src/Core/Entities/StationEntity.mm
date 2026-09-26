@@ -80,7 +80,7 @@ std::optional<std::string> OptionalStringValue(id object)
 - (void) addShipToStationCount:(ShipEntity *)ship;
 
 - (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(id)role;	// shared selector (proposed ADR-0043): DockEntity
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
 
 - (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship;
 
@@ -482,9 +482,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 // this method does initial traffic control, before passing the ship
 // to an appropriate dock for docking coordinates and instructions.
 // used for NPCs, and the player when they use the docking computer
-- (id) dockingInstructionsForShip:(ShipEntity *) ship	// shared selector (proposed ADR-0043)
-{	
-	if (ship == nil)  return nil;
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *) ship
+{
+	if (ship == nil)  return oo::PList();
 
 	[self doScriptEvent:OOJSID("stationReceivedDockingRequest") withArgument:ship];
 
@@ -496,7 +496,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if ([ship isPlayer] && [ship legalStatus] > 50)	// note: non-player fugitives dock as normal
 	{
 		// refuse docking to the fugitive player
-		return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1));
+		return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1);
 	}
 	
 	if	(magnitude2(velocity) > 1.0 ||
@@ -504,7 +504,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			 fabs(flightYaw) > 0.01)
 	{
 		// no docking while station is moving, pitching or yawing
-		return oo::ObjectFromPList([self holdPositionInstructionForShip:ship]);
+		return [self holdPositionInstructionForShip:ship];
 	}
 	PlayerEntity *player = PLAYER;
 	BOOL player_is_ahead = (![ship isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == [player getTargetDockStation]));
@@ -580,14 +580,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			docking = "TRY_AGAIN_LATER";
 		}
 		// no docks accept this ship (or the player is blocking them)
-		return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1));
+		return cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1);
 	}
 
 
 	// rolling is okay for some
 	if	(fabs(flightRoll) > 0.01 && [chosenDock isOffCentre])
 	{
-		return oo::ObjectFromPList([self holdPositionInstructionForShip:ship]);
+		return [self holdPositionInstructionForShip:ship];
 	}
 	
 	// we made it through holding!
@@ -1143,7 +1143,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(id)role	// shared selector (proposed ADR-0043)
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role
 {
 	unsigned result = 0;
 	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
@@ -1685,7 +1685,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	ShipEntity  *scavenger_ship;
 	
-	unsigned scavs = [UNIVERSE countShipsWithPrimaryRole:@"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:@"scavenger"];
+	unsigned scavs = [UNIVERSE countShipsWithPrimaryRole:@"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"scavenger"];
 	
 	if (scavs >= max_scavengers)  return nil;
 	if (scavengers_launched >= max_scavengers)  return nil;
@@ -1730,7 +1730,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	ShipEntity  *miner_ship;
 	
-	int		n_miners = [UNIVERSE countShipsWithPrimaryRole:@"miner" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:@"miner"];
+	int		n_miners = [UNIVERSE countShipsWithPrimaryRole:@"miner" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"miner"];
 	
 	if (n_miners >= 1)	// just the one
 		return nil;

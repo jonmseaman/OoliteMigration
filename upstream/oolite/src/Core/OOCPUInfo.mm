@@ -73,7 +73,7 @@ void OOCPUInfoInit(void)
 #if OOLITE_BIG_ENDIAN
 	if (*(uint32_t*)endianTag != 0x12345678)
 	{
-		OOLog(@"cpuInfo.endianTest.failed", @"%@", @"OOLITE_BIG_ENDIAN is set, but the system is not big-endian -- aborting.");
+		OO_LOG("cpuInfo.endianTest.failed", "{}", "OOLITE_BIG_ENDIAN is set, but the system is not big-endian -- aborting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -81,7 +81,7 @@ void OOCPUInfoInit(void)
 #if OOLITE_LITTLE_ENDIAN
 	if (*(uint32_t*)endianTag != 0x78563412)
 	{
-		OOLog(@"cpuInfo.endianTest.failed", @"%@", @"OOLITE_LITTLE_ENDIAN is set, but the system is not little-endian -- aborting.");
+		OO_LOG("cpuInfo.endianTest.failed", "{}", "OOLITE_LITTLE_ENDIAN is set, but the system is not little-endian -- aborting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
