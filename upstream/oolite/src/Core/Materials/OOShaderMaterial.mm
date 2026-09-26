@@ -74,17 +74,23 @@ NSString * const kOOIsSynthesizedMaterialConfigurationKey = @"_oo_is_synthesized
 NSString * const kOOIsSynthesizedMaterialMacrosKey = @"_oo_synthesized_material_macros";
 
 
-static BOOL GetShaderSource(NSString *fileName, NSString *shaderType, NSString *prefix, NSString **outResult);
-static NSString *MacrosToString(NSDictionary *macros);
+namespace {
+
+// nullopt fileName: no shader of this type (YES, *outResult untouched).
+BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> &prefix, std::optional<std::string> *outResult);
+// A macro dictionary as #define lines; nullopt for none or an empty result.
+std::optional<std::string> MacrosToString(const oo::PList &macros);
+
+} // namespace
 
 
 @interface OOShaderMaterial (OOPrivate)
 
-// Convert a "textures" array to an "_oo_texture_objects" array.
-- (NSArray *) loadTexturesFromArray:(NSArray *)textureSpecs unitCount:(GLuint)max;
+// Convert a "textures" array (texture specifiers) to texture objects.
+- (std::vector<oo::ObjCRef<OOTexture *>>) loadTexturesFromArray:(const oo::PList &)textureSpecs unitCount:(GLuint)max;
 
 // Load up an array of texture objects.
-- (void) addTexturesFromArray:(NSArray *)textureObjects unitCount:(GLuint)max;
+- (void) addTexturesFromArray:(const std::vector<oo::ObjCRef<OOTexture *>> &)textureObjects unitCount:(GLuint)max;
 
 @end
 
@@ -143,7 +149,8 @@ static NSString *MacrosToString(NSDictionary *macros);
 						   forKey:@"OO_TEXTURE_UNIT_COUNT"];
 		
 		// used to test for simplified shaders - OO_REDUCED_COMPLEXITY - here
-		macroString = MacrosToString(modifiedMacros);
+		// (The configuration and macros stay Objective-C until chunk 4: converted at the call.)
+		macroString = oo::NSStringOrNil(MacrosToString(oo::PListFrom(modifiedMacros)));
 	}
 	
 	if (OK)
@@ -155,7 +162,9 @@ static NSString *MacrosToString(NSDictionary *macros);
 			vsCacheKey = vsName;
 			if (vsName != nil)
 			{
-				if (!GetShaderSource(vsName, @"vertex", macroString, &vertexShader))  OK = NO;
+				std::optional<std::string> source;
+				if (!GetShaderSource(oo::OptionalString(vsName), "vertex", oo::OptionalString(macroString), &source))  OK = NO;
+				vertexShader = oo::NSStringOrNil(source);
 			}
 		}
 		else
@@ -173,7 +182,9 @@ static NSString *MacrosToString(NSDictionary *macros);
 			fsCacheKey = fsName;
 			if (fsName != nil)
 			{
-				if (!GetShaderSource(fsName, @"fragment", macroString, &fragmentShader))  OK = NO;
+				std::optional<std::string> source;
+				if (!GetShaderSource(oo::OptionalString(fsName), "fragment", oo::OptionalString(macroString), &source))  OK = NO;
+				fragmentShader = oo::NSStringOrNil(source);
 			}
 		}
 		else
@@ -220,7 +231,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 					OOLogWARN(@"shader.load.fullModeFailed", @"Could not build shader %@/%@ in full complexity mode, trying simple mode.", vsName, fsName);
 					
 					[modifiedMacros setObject:[NSNumber numberWithInt:1] forKey:@"OO_REDUCED_COMPLEXITY"];
-					macroString = MacrosToString(modifiedMacros);
+					macroString = oo::NSStringOrNil(MacrosToString(oo::PListFrom(modifiedMacros)));
 					cacheKey = [cacheKey stringByAppendingString:@"\n$SIMPLIFIED FALLBACK\n"];
 					
 					OOLogIndent();
@@ -260,18 +271,25 @@ static NSString *MacrosToString(NSDictionary *macros);
 		// Load uniforms and textures, which are a flavour of uniform for our purpose.
 		NSDictionary *uniformDefs = oo::PListView(configuration).get<NSDictionary *>(kOOUniformsKey);	// until chunk 4
 		
+		// The texture objects given (until chunk 4 the configuration is Objective-C: its array is
+		// read into a vector here), else the texture specifiers loaded.
+		std::vector<oo::ObjCRef<OOTexture *>> textureObjects;
 		NSArray *textureArray = oo::PListView(configuration).get<NSArray *>(kOOTextureObjectsKey);
-		if (textureArray == nil)
+		if (textureArray != nil)
 		{
-			NSArray *textureSpecs = oo::PListView(configuration).get<NSArray *>(kOOTexturesKey);
-			if (textureSpecs != nil)
+			for (id texture in textureArray)  textureObjects.push_back(oo::ObjCRef<OOTexture *>(texture));
+		}
+		else
+		{
+			const oo::PList textureSpecs = oo::PListFrom(oo::PListView(configuration).get<NSArray *>(kOOTexturesKey));
+			if (textureSpecs.isArray())
 			{
-				textureArray = [self loadTexturesFromArray:textureSpecs unitCount:textureUnits];
+				textureObjects = [self loadTexturesFromArray:textureSpecs unitCount:textureUnits];
 			}
 		}
-		
+
 		[self addUniformsFromDictionary:oo::PListFrom(uniformDefs) withBindingTarget:target];
-		[self addTexturesFromArray:textureArray unitCount:textureUnits];
+		[self addTexturesFromArray:textureObjects unitCount:textureUnits];
 	}
 	
 	if (OK)
@@ -777,9 +795,9 @@ static NSString *MacrosToString(NSDictionary *macros);
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObjects:textures count:texCount];
+	return oo::NSSetFromObjects(std::vector<OOTexture *>(textures, textures + texCount));
 }
 #endif
 
@@ -788,27 +806,27 @@ static NSString *MacrosToString(NSDictionary *macros);
 
 @implementation OOShaderMaterial (OOPrivate)
 
-- (NSArray *) loadTexturesFromArray:(NSArray *)textureSpecs unitCount:(GLuint)max
+- (std::vector<oo::ObjCRef<OOTexture *>>) loadTexturesFromArray:(const oo::PList &)textureSpecs unitCount:(GLuint)max
 {
-	GLuint i, count = (GLuint)MIN([textureSpecs count], (NSUInteger)max);
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:count];
-	
+	GLuint i, count = (GLuint)MIN(textureSpecs.count(), (size_t)max);
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	result.reserve(count);
+
 	for (i = 0; i < count; i++)
 	{
-		id textureSpec = [textureSpecs objectAtIndex:i];
-		OOTexture *texture = [OOTexture textureWithConfiguration:textureSpec];
+		OOTexture *texture = [OOTexture cxx_textureWithConfiguration:*textureSpecs.at(i)];
 		if (texture == nil)  texture = [OOTexture nullTexture];
-		[result addObject:texture];
+		result.push_back(oo::ObjCRef<OOTexture *>(texture));
 	}
-	
+
 	return result;
 }
 
 
-- (void) addTexturesFromArray:(NSArray *)textureObjects unitCount:(GLuint)max
+- (void) addTexturesFromArray:(const std::vector<oo::ObjCRef<OOTexture *>> &)textureObjects unitCount:(GLuint)max
 {
 	// Allocate space for texture object name array
-	texCount = (uint32_t)MIN([textureObjects count], (NSUInteger)max);
+	texCount = (uint32_t)MIN(textureObjects.size(), (size_t)max);
 	if (texCount == 0)  return;
 	
 	textures = (OOTexture **)malloc(texCount * sizeof *textures);
@@ -822,7 +840,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	unsigned i;
 	for (i = 0; i != texCount; ++i)
 	{
-		textures[i] = [textureObjects objectAtIndex:i];
+		textures[i] = textureObjects[i].get();
 		[textures[i] retain];
 	}
 }
@@ -830,26 +848,32 @@ static NSString *MacrosToString(NSDictionary *macros);
 @end
 
 
-static NSString *MacrosToString(NSDictionary *macros)
+namespace {
+
+std::optional<std::string> MacrosToString(const oo::PList &macros)
 {
-	NSMutableString			*result = nil;
-	id						key = nil, value = nil;
-	
-	if (macros == nil)  return nil;
-	
-	result = [NSMutableString string];
-	foreachkey (key, macros)
+	const oo::PList::Dict *entries = macros.getIf<oo::PList::Dict>();
+	if (entries == nullptr)  return std::nullopt;
+
+	// Keys in std::map order (was the dictionary's hash order); each value as %@ printed it.
+	std::string result;
+	for (const auto &entry : *entries)
 	{
-		if (![key isKindOfClass:[NSString class]]) continue;
-		value = [macros objectForKey:key];
-		
-		[result appendFormat:@"#define %@  %@\n", key, value];
+		const oo::PList &value = entry.second;
+		std::string text;
+		if (const std::string *string = value.getIf<std::string>())  text = *string;
+		else if (value.isNumber())  text = oo::plist_get::numberStringValue(value);
+		else  text = oo::DescriptionOf(oo::ObjectFromPList(value));
+
+		result += "#define " + entry.first + "  " + text + "\n";
 	}
-	
-	if ([result length] == 0) return nil;
-	[result appendString:@"\n\n"];
+
+	if (result.empty())  return std::nullopt;
+	result += "\n\n";
 	return result;
 }
+
+} // namespace
 
 #endif
 
@@ -858,38 +882,38 @@ static NSString *MacrosToString(NSDictionary *macros)
 	Returns YES if source was loaded or no shader was specified, and NO if an
 	external shader was specified but could not be found.
 */
-static BOOL GetShaderSource(NSString *fileName, NSString *shaderType, NSString *prefix, NSString **outResult)
+namespace {
+
+BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> & /* prefix: unused, as before */, std::optional<std::string> *outResult)
 {
-	NSString				*result = nil;
-	NSArray					*extensions = nil;
-	NSString				*extension = nil;
-	NSString				*nameWithExtension = nil;
-	
-	if (fileName == nil)  return YES;	// It's OK for one or the other of the shaders to be undefined.
-	
-	result = [ResourceManager stringFromFilesNamed:fileName inFolder:@"Shaders"];
-	if (result == nil)
+	if (!fileName.has_value())  return YES;	// It's OK for one or the other of the shaders to be undefined.
+
+	std::optional<std::string> result = [ResourceManager cxx_stringFromFilesNamed:*fileName inFolder:std::string("Shaders")];
+	if (!result.has_value())
 	{
-		extensions = [NSArray arrayWithObjects:shaderType, [shaderType substringToIndex:4], nil];	// vertex and vert, or fragment and frag
-		
+		const std::vector<std::string> extensions = { shaderType, shaderType.substr(0, 4) };	// vertex and vert, or fragment and frag
+
 		// Futureproofing -- in future, we may wish to support automatic selection between supported shader languages.
-		if (!oo::str::pathHasExtensionIn(oo::StdString(fileName), oo::StringsFrom(extensions)))
+		if (!oo::str::pathHasExtensionIn(*fileName, extensions))
 		{
-			foreach (extension, extensions)
+			for (const std::string &extension : extensions)
 			{
-				nameWithExtension = [fileName stringByAppendingPathExtension:extension];
-				result = [ResourceManager stringFromFilesNamed:nameWithExtension
-													  inFolder:@"Shaders"];
-				if (result != nil) break;
+				// No oofnd form of -stringByAppendingPathExtension: yet: kept at the boundary.
+				const std::string nameWithExtension = oo::StdString([oo::NSStringFrom(*fileName) stringByAppendingPathExtension:oo::NSStringFrom(extension)]);
+				result = [ResourceManager cxx_stringFromFilesNamed:nameWithExtension
+														  inFolder:std::string("Shaders")];
+				if (result.has_value()) break;
 			}
 		}
-		if (result == nil)
+		if (!result.has_value())
 		{
-			OOLog(kOOLogFileNotFound, @"GLSL ERROR: failed to find %@ program %@.", shaderType, fileName);
+			OOLog(kOOLogFileNotFound, @"GLSL ERROR: failed to find %@ program %@.", oo::NSStringFrom(shaderType), oo::NSStringFrom(*fileName));
 			return NO;
 		}
 	}
-	
+
 	if (outResult != NULL) *outResult = result;
 	return YES;
 }
+
+} // namespace
