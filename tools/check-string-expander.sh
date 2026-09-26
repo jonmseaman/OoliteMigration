@@ -63,9 +63,15 @@ flags=(-x objective-c++ -std=gnu++20 -O2 -Wall -DOOLITE_DEBUG=1 -D_FILE_OFFSET_B
 w="$(native "$WORK")"
 clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
 clang++ "${flags[@]}" "${inc[@]}" -c "$w/test_string_expander.mm" -o "$w/test.o" || die "the test does not compile"
+# The expander's Foundation-typed entry points live in its transitional bridge since bead
+# oo-3rb.145, and oo::PListFrom (used there) needs NSNumberOOExtensions' -oo_isBoolean: both are
+# compiled in (additive build plumbing; the test and its digests are unchanged).
+cp "$SRC/Core/OOStringExpander+FoundationBridge.mm" "$WORK/OOStringExpander+FoundationBridge.mm"
+clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOStringExpander+FoundationBridge.mm" -o "$w/expander-bridge.o" || die "OOStringExpander+FoundationBridge.mm does not compile against the stubs"
+clang++ "${flags[@]}" "${inc[@]}" -c "$(native "$SRC/Core/NSNumberOOExtensions.mm")" -o "$w/nsnumber-ext.o" || die "NSNumberOOExtensions.mm does not compile"
 clang -O2 "-I$(native "$SRC/Core")" -c "$(native "$SRC/Core/legacy_random.c")" -o "$w/legacy_random.o"
 read -r -a libs <<< "$(gnustep-config --base-libs)"
-clang++ -fuse-ld=lld -o "$w/test_string_expander.exe" "$w/expander.o" "$w/test.o" "$w/legacy_random.o" "${libs[@]}" \
+clang++ -fuse-ld=lld -o "$w/test_string_expander.exe" "$w/expander.o" "$w/expander-bridge.o" "$w/nsnumber-ext.o" "$w/test.o" "$w/legacy_random.o" "${libs[@]}" \
   || die "link failed"
 
 config="$(native "$OOLITE/Resources/Config")"

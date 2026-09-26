@@ -73,6 +73,119 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (Class) shipClassForShipDictionary:(NSDictionary *)dict;	// -> -cxx_shipClassForShipDictionary:
 - (ShipEntity *) addWreckageFrom:(ShipEntity *)ship withRole:(NSString *)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;	// -> -cxx_addWreckageFrom:withRole:at:scale:lifetime:
 
+// Chunk 5 (oo-3rb.224): adding and spawning ships, coordinate systems, roles, condition scripts.
+- (void) addShipWithRole:(NSString *) desc nearRouteOneAt:(double) route_fraction;	// -> -cxx_addShipWithRole:nearRouteOneAt:
+- (HPVector) coordinatesForPosition:(HPVector) pos withCoordinateSystem:(NSString *) system returningScalar:(GLfloat*) my_scalar;	// -> -cxx_coordinatesForPosition:...
+- (NSString *) expressPosition:(HPVector) pos inCoordinateSystem:(NSString *) system;	// -> -cxx_expressPosition:inCoordinateSystem:
+- (HPVector) legacyPositionFrom:(HPVector) pos asCoordinateSystem:(NSString *) system;	// -> -cxx_legacyPositionFrom:asCoordinateSystem:
+- (HPVector) coordinatesFromCoordinateSystemString:(NSString *) system_x_y_z;	// -> -cxx_coordinatesFromCoordinateSystemString:
+- (BOOL) addShipWithRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;	// -> -cxx_addShipWithRole:nearPosition:withCoordinateSystem:
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc atPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;	// -> -cxx_addShips:...
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;	// -> -cxx_addShips:...
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system withinRadius:(GLfloat) radius;	// -> -cxx_addShips:...
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc intoBoundingBox:(BoundingBox) bbox;	// -> -cxx_addShips:withRole:intoBoundingBox:
+- (void) witchspaceShipWithPrimaryRole:(NSString *)role;	// -> -cxx_witchspaceShipWithPrimaryRole:
+- (ShipEntity *) spawnShipWithRole:(NSString *) desc near:(Entity *) entity;	// -> -cxx_spawnShipWithRole:near:
+- (OOVisualEffectEntity *) addVisualEffectAt:(HPVector)pos withKey:(NSString *)key;	// -> -cxx_addVisualEffectAt:withKey:
+- (NSArray *) addShipsAt:(HPVector)pos withRole:(NSString *)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;	// -> -cxx_addShipsAt:...
+- (NSArray *) addShipsToRoute:(NSString *)route withRole:(NSString *)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;	// -> -cxx_addShipsToRoute:...
+- (BOOL) roleIsPirateVictim:(NSString *)role;	// -> -cxx_roleIsPirateVictim:
+- (BOOL) role:(NSString *)role isInCategory:(NSString *)category;	// -> -cxx_role:isInCategory:
+- (OOJSScript *) getConditionScript:(NSString *)scriptname;	// -> -cxx_getConditionScript:
+
+// Chunk 6 (oo-3rb.225): system population.
+- (NSDictionary *) getPopulatorSettings;	// -> -cxx_getPopulatorSettings (a fresh immutable snapshot per call; the old one was live, and callers only read it)
+- (void) setPopulatorSetting:(NSString *)key to:(NSDictionary *)setting;	// -> -cxx_setPopulatorSetting:to:
+- (HPVector) locationByCode:(NSString *)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;	// -> -cxx_locationByCode:withSun:andPlanet:
+
+// Chunk 7 (oo-3rb.226): commodities, cargo pods, equipment data, station markets.
+- (OOCargoQuantity) maxCargoForShip:(NSString *) desc;	// -> -cxx_maxCargoForShip:
+- (OOCreditsQuantity) getEquipmentPriceForKey:(NSString *) eq_key;	// -> -cxx_getEquipmentPriceForKey:
+- (NSArray *) getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;	// -> -cxx_getContainersOfGoods:scarce:legal:
+- (NSArray *) getContainersOfCommodity:(OOCommodityType) commodity_name :(OOCargoQuantity) how_many;	// -> -cxx_getContainersOfCommodity::
+- (OOCargoQuantity) getRandomAmountOfCommodity:(OOCommodityType) co_type;	// -> -cxx_getRandomAmountOfCommodity:
+- (NSString *) displayNameForCommodity:(OOCommodityType)co_type;	// -> -cxx_displayNameForCommodity:
+- (NSString *) describeCommodity:(OOCommodityType)co_type amount:(OOCargoQuantity) co_amount;	// -> -cxx_describeCommodity:amount:
+- (NSArray *) equipmentData;	// -> -cxx_equipmentData (a fresh immutable copy per call; OOEquipmentType reads it at load)
+- (NSArray *) equipmentDataOutfitting;	// -> -cxx_equipmentDataOutfitting
+- (void) loadStationMarkets:(NSArray *)marketData;	// -> -cxx_loadStationMarkets:
+- (NSArray *) getStationMarkets;	// -> -cxx_getStationMarkets
+
+// Chunk 8 (oo-3rb.227): shipyard offers, trade-in value.
+- (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// -> -cxx_shipsForSaleForSystem:withTL:atTime:
+- (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict;	// -> -cxx_tradeInValueForCommanderDictionary:
+
+// Chunk 9 (oo-3rb.228): entity lists, stations, planets, wormholes, waypoints, predicate searches.
+// The lists are snapshots (the old -planets / -wormholes / -currentWaypoints were the live
+// collections; their callers only read them).
+#ifndef NDEBUG
+- (NSArray *) entityList;	// -> -cxx_entityList
+#endif
+- (NSArray *) planets;	// Note: does not include sun.	// -> -cxx_planets
+- (NSArray *) stations; // includes main station	// -> -cxx_stations
+- (NSArray *) wormholes; 	// -> -cxx_wormholes
+- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position;	// -> -cxx_stationWithRole:andPosition:
+- (NSDictionary *) currentWaypoints;	// -> -cxx_currentWaypoints
+- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key;	// -> -cxx_defineWaypoint:forKey:
+- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_entitiesWithinRange:ofEntity:
+- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_countShipsWithRole:inRange:ofEntity:
+- (unsigned) countShipsWithRole:(NSString *)role;	// -> -cxx_countShipsWithRole:
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_countShipsWithPrimaryRole:inRange:ofEntity:
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role;	// -> -cxx_countShipsWithPrimaryRole:
+// -> -cxx_findEntitiesMatchingPredicate:... / -cxx_findShipsMatchingPredicate:... /
+// -cxx_findVisualEffectsMatchingPredicate:... (each call a fresh mutable array, as before)
+- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+										 parameter:(void *)parameter
+										   inRange:(double)range
+										  ofEntity:(Entity *)entity;
+- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (NSArray*) listBeaconsWithCode:(NSString*) code;	// -> -cxx_listBeaconsWithCode:
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;	// -> -cxx_allShipsDoScriptEvent:andReactToAIMessage:
+
+// Chunk 10 (oo-3rb.229): messages, speech, custom sounds, screen backgrounds.
+- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key;	// -> -cxx_screenTextureDescriptorForKey:
+- (void) setScreenTextureDescriptorForKey:(NSString *) key descriptor:(NSDictionary *)desc;	// -> -cxx_setScreenTextureDescriptorForKey:descriptor:
+- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_displayMessage:forCount:
+- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_displayCountdownMessage:forCount:
+- (void) addDelayedMessage:(NSString *) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;	// -> -cxx_addDelayedMessage:forCount:afterDelay:
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_addMessage:forCount:
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;	// -> -cxx_addMessage:forCount:forceDisplay:
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_addCommsMessage:forCount:
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;	// -> -cxx_addCommsMessage:forCount:andShowComms:logOnly:
+- (void) startSpeakingString:(NSString *) text;	// -> -cxx_startSpeakingString:
+#if OOLITE_ESPEAK
+- (NSString *) voiceName:(unsigned int) index;	// -> -cxx_voiceName:
+- (unsigned int) voiceNumber:(NSString *) name;	// -> -cxx_voiceNumber:
+#endif
+
+// Chunk 11 (oo-3rb.230): demo ships.
+- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning;	// -> -cxx_makeDemoShipWithRole:spinning:
+
+// Chunk 12 (oo-3rb.231): add-ons, settings.
+- (NSString *) useAddOns;	// -> -cxx_useAddOns
+- (BOOL) setUseAddOns:(NSString *)newUse fromSaveGame: (BOOL)saveGame;	// -> -cxx_setUseAddOns:fromSaveGame:
+- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;	// -> -cxx_setUseAddOns:fromSaveGame:forceReinit:
+- (NSDictionary *) gameSettings;	// -> -cxx_gameSettings
+- (NSDictionary *) globalSettings;	// -> -cxx_globalSettings (a fresh immutable copy per call; its callers only read it)
+
+@end
+
+
+// Chunk 10 (oo-3rb.229): the custom sound categories.
+@interface OOSound (OOCustomSoundsFoundationBridge)
++ (id) soundWithCustomSoundKey:(NSString *)key;	// -> +cxx_soundWithCustomSoundKey:
+@end
+
+
+@interface OOSoundSource (OOCustomSoundsFoundationBridge)
+- (void) playCustomSoundWithKey:(NSString *)key;	// -> -cxx_playCustomSoundWithKey:
 @end
 
 
@@ -85,5 +198,17 @@ NSString *OOLookUpDescriptionPRIV(NSString *key);	// -> cxx_OOLookUpDescriptionP
 }
 #endif
 NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);	// -> cxx_OOLookUpPluralDescriptionPRIV
+
+
+// Chunk 12 (oo-3rb.231): OOConstToString's display strings, declared in Universe.h before
+// (defined in OOConstToString.mm; -> cxx_OODisplayStringFromGovernmentID / EconomyID).
+#ifdef __cplusplus
+extern "C" {
+#endif
+NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
+NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
+#ifdef __cplusplus
+}
+#endif
 
 #endif	// UNIVERSE_FOUNDATIONBRIDGE_H

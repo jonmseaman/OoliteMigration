@@ -339,7 +339,7 @@ typedef struct
 
 
 //Methods that should be overridden by all subclasses
-- (id) nameOfJoystick:(NSUInteger)stickNumber;	// an Objective-C string. Shared selector (proposed ADR-0043).
+- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber;	// nullopt: the device has no name
 - (int16_t) getAxisWithStick:(NSUInteger) stickNum axis:(NSUInteger)axisNum;
 
 @end

@@ -49,10 +49,14 @@
 # (oo-9aq4). One S1+S5 session is ~140 s, so 5 fit the 1800 s per-line timeout comfortably. The
 # component conftest takes tools/gui-lock per session.
 [oo-sjvz] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && for i in 1 2 3 4 5; do python3 -m pytest test_s1_police_kills_pirate.py test_s5_escorts_converge_on_their_mother.py -q -p no:cacheprovider || { echo "oo-sjvz: S1/S5 red on run $i of 5"; exit 1; }; done
-[oo-sjvz] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && for i in 1 2 3 4 5; do python3 -m pytest test_s1_police_kills_pirate.py test_s5_escorts_converge_on_their_mother.py -q -p no:cacheprovider || { echo "oo-sjvz: S1/S5 red on run $i of 5"; exit 1; }; done
 # The memo (oo-n712) must not answer a stability proof: every run here is a real one.
 [oo-3rb.68] for i in 1 2 3; do OO_CHECK_OOFND_NO_MEMO=1 bash tools/check-oofnd.sh || exit 1; done
 # check-oofnd.sh answers accept from a memo of its last fully green run with the same inputs
 # (oo-n712); the night always runs it for real, so a flake or toolchain drift the memo's hash
 # missed still turns the night red.
 [oo-n712] OO_CHECK_OOFND_NO_MEMO=1 bash tools/check-oofnd.sh
+
+# S6 damaged-ship-flees: its survival assertion depends on a real-time dogfight (ADR-0048). It stays
+# as written in the gates (retried per the flake policy); this line tracks its pass rate and fails the
+# night below 3 of 5 runs, so a regression or crash still turns the night red.
+[oo-9aq4] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && p=0; for i in 1 2 3 4 5; do python3 -m pytest test_s6_damaged_ship_flees.py -q -p no:cacheprovider && p=$((p+1)); done; echo "oo-9aq4: S6 passed $p/5"; [ "$p" -ge 3 ]
