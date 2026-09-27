@@ -217,7 +217,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 #endif
 				if (canFallBack)
 				{
-					OOLogWARN(@"shader.load.fullModeFailed", @"Could not build shader %@/%@ in full complexity mode, trying simple mode.", oo::NSStringOrNil(vsName), oo::NSStringOrNil(fsName));
+					OO_LOG_WARN("shader.load.fullModeFailed", "Could not build shader {}/{} in full complexity mode, trying simple mode.", vsName.value_or("(null)"), fsName.value_or("(null)"));
 					
 					(*modifiedMacros.getIf<oo::PList::Dict>())["OO_REDUCED_COMPLEXITY"] = oo::PList::signedInteger(1);
 					macroString = MacrosToString(modifiedMacros);
@@ -235,7 +235,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 					
 					if (shaderProgram != nil)
 					{
-						OOLog(@"shader.load.fallbackSuccess", @"Simple mode fallback successful.");
+						OO_LOG("shader.load.fallbackSuccess", "{}", "Simple mode fallback successful.");
 					}
 				}
 			}
@@ -243,12 +243,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 			
 			if (shaderProgram == nil)
 			{
-				OOLogERR(@"shader.load.failed", @"Could not build shader %@/%@.", oo::NSStringOrNil(vsName), oo::NSStringOrNil(fsName));
+				OO_LOG_ERR("shader.load.failed", "Could not build shader {}/{}.", vsName.value_or("(null)"), fsName.value_or("(null)"));
 			}
 		}
 		else
 		{
-			OOLog(@"shader.load.noShader", @"***** Error: no vertex or fragment shader specified in shader dictionary:\n%@", oo::ObjectFromPList(configuration));
+			OO_LOG("shader.load.noShader", "***** Error: no vertex or fragment shader specified in shader dictionary:\n{}", oo::DescriptionOf(oo::ObjectFromPList(configuration)));
 		}
 		
 		OK = (shaderProgram != nil);
@@ -341,13 +341,13 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 									 convertOptions:options];
 	if (uniform != nil)
 	{
-		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
 		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 		return YES;
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		OO_LOG("shader.uniform.unSet", "Did not set uniform \"{}\"", uniformName);
 		uniforms.erase(uniformName);
 		return NO;
 	}
@@ -372,7 +372,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unpermittedMethod", @"Did not bind uniform \"%@\" to property -[%@ %@] - unpermitted method.", oo::NSStringFrom(uniformName), [target class], oo::NSStringOrNil(property));
+		OO_LOG("shader.uniform.unpermittedMethod", "Did not bind uniform \"{}\" to property -[{} {}] - unpermitted method.", uniformName, oo::DescriptionOf([target class]), property.value_or("(null)"));
 	}
 	
 	return NO;
@@ -388,12 +388,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 										   intValue:value];
 	if (uniform != nil)
 	{
-		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
 		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		OO_LOG("shader.uniform.unSet", "Did not set uniform \"{}\"", uniformName);
 		uniforms.erase(uniformName);
 	}
 }
@@ -408,12 +408,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 										 floatValue:value];
 	if (uniform != nil)
 	{
-		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
 		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		OO_LOG("shader.uniform.unSet", "Did not set uniform \"{}\"", uniformName);
 		uniforms.erase(uniformName);
 	}
 }
@@ -428,12 +428,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 										vectorValue:value];
 	if (uniform != nil)
 	{
-		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
 		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		OO_LOG("shader.uniform.unSet", "Did not set uniform \"{}\"", uniformName);
 		uniforms.erase(uniformName);
 	}
 }
@@ -463,12 +463,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 														 vectorValue:vecArray];
 	if (uniform != nil)
 	{
-		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
 		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		OO_LOG("shader.uniform.unSet", "Did not set uniform \"{}\"", uniformName);
 		uniforms.erase(uniformName);
 	}
 }
@@ -484,12 +484,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 										   asMatrix:asMatrix];
 	if (uniform != nil)
 	{
-		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
 		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		OO_LOG("shader.uniform.unSet", "Did not set uniform \"{}\"", uniformName);
 		uniforms.erase(uniformName);
 	}
 }
@@ -668,7 +668,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 
 		if (!gotValue)
 		{
-			OOLog(@"shader.uniform.badDescription", @"----- Warning: could not bind uniform \"%@\" for target %@ -- could not interpret definition:\n%@", oo::NSStringFrom(name), target, oo::ObjectFromPList(definition));
+			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, oo::DescriptionOf(target), oo::DescriptionOf(oo::ObjectFromPList(definition)));
 		}
 	}
 
@@ -893,7 +893,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 		}
 		if (!result.has_value())
 		{
-			OOLog(kOOLogFileNotFound, @"GLSL ERROR: failed to find %@ program %@.", oo::NSStringFrom(shaderType), oo::NSStringFrom(*fileName));
+			OO_LOG(cxx_kOOLogFileNotFound, "GLSL ERROR: failed to find {} program {}.", shaderType, *fileName);
 			return NO;
 		}
 	}

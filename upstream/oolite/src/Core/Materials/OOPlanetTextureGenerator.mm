@@ -159,13 +159,13 @@ enum
 
 - (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	OOLog(@"texture.planet.generate", @"%@", @"Initialising planetary generator");
+	OO_LOG("texture.planet.generate", "{}", "Initialising planetary generator");
 
 	// AllowCubeMap not used yet but might be in future
 	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
-		OOLog(@"texture.planet.generate", @"Extracting parameters for generator %@",self);
+		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(self));
 
 		_info.landFraction = OOClamp_0_1_f(planetInfo.get<float>("land_fraction", 0.3));
 		_info.polarFraction = OOClamp_0_1_f(planetInfo.get<float>("polar_fraction", 0.05));
@@ -176,7 +176,7 @@ enum
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		if (planetInfo.find("cloud_alpha") != nullptr)
 		{
-			OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
+			OO_LOG("texture.planet.generate", "{}", "Extracting atmosphere parameters");
 			// we have an atmosphere:
 			_info.cloudAlpha = planetInfo.get<float>("cloud_alpha", 1.0f);
 			_info.cloudFraction = OOClamp_0_1_f(planetInfo.get<float>("cloud_fraction", 0.3));
@@ -301,7 +301,7 @@ enum
 	}
 	enqueue = enqueue || [atmoGen enqueued];
 
-	OOLog(@"texture.planet.generate",@"Generator %@ has atmosphere %@",diffuseGen,*atmosphere);
+	OO_LOG("texture.planet.generate", "Generator {} has atmosphere {}", oo::DescriptionOf(diffuseGen), oo::DescriptionOf(*atmosphere));
 	
 	*texture = [OOTexture textureWithGenerator:diffuseGen enqueue: enqueue];
 	return *texture != nil;
@@ -378,18 +378,18 @@ enum
 	if (![self isReady])
 	{
 		waiting = true;
-		OOLog(@"texture.planet.generate.wait", @"%s generator %@", "Waiting for", self);
+		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(self));
 	}
 	
 	BOOL result = [super getResult:outData format:outFormat originalWidth:outWidth originalHeight:outHeight];
 	
 	if (waiting)
 	{
-		OOLog(@"texture.planet.generate.dequeue", @"%s generator %@", result ? "Dequeued" : "Failed to dequeue", self);
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
 	}
 	else
 	{
-		OOLog(@"texture.planet.generate.dequeue", @"%s generator %@ without waiting.", result ? "Dequeued" : "Failed to dequeue", self);
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
 	}
 	
 	return result;
@@ -398,7 +398,7 @@ enum
 
 - (void) loadTexture
 {
-	OOLog(@"texture.planet.generate.begin", @"Started generator %@", self);
+	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(self));
 	
 	BOOL success = NO;
 	BOOL generateNormalMap = (_nMapGenerator != nil);
@@ -571,7 +571,7 @@ END:
 	DESTROY(_nMapGenerator);
 	DESTROY(_atmoGenerator);
 	
-	OOLog(@"texture.planet.generate.complete", @"Completed generator %@ %@successfully", self, success ? @"" : @"un");
+	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(self), success ? "" : "un");
 	
 #if DEBUG_DUMP
 	if (success)
@@ -1291,7 +1291,7 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 - (id) initWithCacheKey:(const std::string &)cacheKey seed:(RANROTSeed)seed andParent:(OOPlanetTextureGenerator *)parent
 {
-	OOLog(@"texture.planet.generate",@"Initialising atmosphere generator %@",oo::NSStringFrom(cacheKey));
+	OO_LOG("texture.planet.generate", "Initialising atmosphere generator {}", cacheKey);
 	// AllowCubeMap not used yet but might be in future
 	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetAtmoTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
 	if (self != nil)
@@ -1371,7 +1371,7 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 - (void) completeWithData:(void *)data_ width:(unsigned)width_ height:(unsigned)height_
 {
-	OOLog(@"texture.planet.generate", @"%@", @"Completing atmosphere generator");
+	OO_LOG("texture.planet.generate", "{}", "Completing atmosphere generator");
 
 	_data = data_;
 	_width = width_;
