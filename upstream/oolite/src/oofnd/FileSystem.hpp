@@ -21,6 +21,8 @@
 	        objectForKey:NSFileSystemFreeSize         oo::fs::freeSpace(p)
 	    [[fm oo_fileAttributesAtPath:p ...] fileSize] oo::fs::fileSize(p)
 	    [NSData dataWithContentsOfFile:p]             oo::fs::readFile(p)
+	    +[NSData oo_dataWithOXZFile:] (path may        OODataFromOXZFile(path)  (declared below; defined in
+	        pass through a .oxz zip component)          Core/OODataFromOXZFile.mm)
 	    [data writeToFile:p atomically:YES / NO]      oo::fs::writeFile(p, data, WriteMode::atomic / direct)
 	    [fm createFileAtPath:p contents:nil ...] +
 	        [NSFileHandle fileHandleForWritingAtPath:p] oo::fs::createFileForWriting(p)  (a FILE *)
@@ -67,6 +69,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -333,6 +336,14 @@ inline bool synchronizeFile(std::FILE* file) noexcept
 }
 
 } // namespace oo::fs
+
+/*	The contents of the file at path, where a path component with the extension .oxz (any case)
+	is a zip archive and the rest of the path names a file inside it (bead oo-3rb.131). nullopt
+	where +oo_dataWithOXZFile: returned nil: no such file, a directory, an empty plain file, or an
+	archive or entry that cannot be read (with the same log lines). Defined in Core
+	(OODataFromOXZFile.mm); uses MiniZip for .oxz segments.
+*/
+std::optional<oo::Data> OODataFromOXZFile(const std::string &path);
 
 #pragma pop_macro("false")
 #pragma pop_macro("true")

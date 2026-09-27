@@ -48,7 +48,7 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Encoding.hpp"
-#import "NSDataOOExtensions.h"
+#include "oofnd/FileSystem.hpp"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
 #import "OOFoundationException.h"

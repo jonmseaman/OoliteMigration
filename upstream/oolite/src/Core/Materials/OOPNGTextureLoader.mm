@@ -29,7 +29,7 @@ SOFTWARE.
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
 #import "OOCPUInfo.h"
-#import "NSDataOOExtensions.h"
+#include "oofnd/FileSystem.hpp"
 #import "OOStringBridge.h"
 #include "oofnd/String.hpp"
 

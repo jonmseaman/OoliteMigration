@@ -44,7 +44,6 @@ MA 02110-1301, USA.
 #import "OOManifestProperties.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
-#import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"

@@ -26,9 +26,9 @@ MA 02110-1301, USA.
 #import "OOPListParsing.h"
 #import "OOLogging.h"
 #import "OOStringParsing.h"
-#import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
+#include "oofnd/FileSystem.hpp"
 
 #include "oofnd/PListParsing.hpp"
 
