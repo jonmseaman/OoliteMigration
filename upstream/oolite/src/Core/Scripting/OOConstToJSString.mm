@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 */
 
 #include "OOConstToJSString.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 /*
@@ -143,8 +144,8 @@ static void InitTable(ooscript::Context context, ConstTable *table);
 
 void OOConstToJSStringInit(ooscript::Context context)
 {
-	NSCAssert(!sInited, @"OOConstToJSStringInit() called while already inited.");
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOCAssert(!sInited, "OOConstToJSStringInit() called while already inited.");
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	
 	sUndefinedString = ooscript::internString(context, "UNDEFINED");
 	
@@ -164,7 +165,7 @@ void OOConstToJSStringInit(ooscript::Context context)
 
 void OOConstToJSStringDestroy(void)
 {
-	NSCAssert(sInited, @"OOConstToJSStringDestroy() called while not inited.");
+	OOCAssert(sInited, "OOConstToJSStringDestroy() called while not inited.");
 	sInited = NO;
 	// jsString pointers are now officially junk.
 }
@@ -183,7 +184,7 @@ static int CompareEntries(const void *a, const void *b)
 
 static void InitTable(ooscript::Context context, ConstTable *table)
 {
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context) && table != NULL);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context) && table != NULL);
 	
 	NSUInteger i;
 	for(i = 0; i < table->count; i++)
@@ -199,9 +200,9 @@ static void InitTable(ooscript::Context context, ConstTable *table)
 
 ooscript::String OOJSStringFromConstantPRIVATE(ooscript::Context context, NSInteger value, struct ConstTable *table)
 {
-	NSCAssert1(sInited, @"%s called before OOConstToJSStringInit().", __PRETTY_FUNCTION__);
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
-	NSCParameterAssert(table != NULL && table->count > 0);
+	OOCAssert(sInited, "%s called before OOConstToJSStringInit().", __PRETTY_FUNCTION__);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOCParameterAssert(table != NULL && table->count > 0);
 	
 	// Binary search.
 	NSUInteger min = 0, max = table->count - 1;
@@ -231,8 +232,8 @@ ooscript::String OOJSStringFromConstantPRIVATE(ooscript::Context context, NSInte
 
 NSUInteger OOConstantFromJSStringPRIVATE(ooscript::Context context, ooscript::String string, struct ConstTable *table, NSInteger defaultValue)
 {
-	NSCAssert1(sInited, @"%s called before OOConstToJSStringInit().", __PRETTY_FUNCTION__);
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context) && table != NULL);
+	OOCAssert(sInited, "%s called before OOConstToJSStringInit().", __PRETTY_FUNCTION__);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context) && table != NULL);
 	
 	// Quick pass: look for pointer-equal string.
 	NSUInteger i, count = table->count;
