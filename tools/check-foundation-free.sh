@@ -137,7 +137,11 @@ link_check() {
 		local d
 		while IFS= read -r d; do
 			all="$all $d"
-			if printf '%s' "$d" | grep -qi 'gnustep[-]base'; then bad="$bad $(basename "$f")->$d"; fi
+			# case (not `printf | grep -q`): under pipefail a successful grep -q can
+			# SIGPIPE the producer and report 141 (oo-kw6r / test_guardrails_pipefail).
+			case "${d,,}" in
+				*gnustep-base*) bad="$bad $(basename "$f")->$d" ;;
+			esac
 			[ -f "$dir/$d" ] && queue+=("$dir/$d")
 		done <<<"$imports"
 	done
