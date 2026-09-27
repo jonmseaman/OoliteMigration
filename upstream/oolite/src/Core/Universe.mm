@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #include "oofnd/Process.hpp"
 #include "oofnd/Date.hpp"
+#include "oofnd/Log.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -446,7 +447,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		OOLogERR(@"initTargetFramebufferWithViewSize.result", @"%@", @"***** Error: Multisample framebuffer not complete");
+		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Multisample framebuffer not complete");
 	}
 	
 	// create framebuffer and attach texture and depth buffer to framebuffer
@@ -474,7 +475,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		OOLogERR(@"initTargetFramebufferWithViewSize.result", @"%@", @"***** Error: Framebuffer not complete");
+		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Framebuffer not complete");
 	}
 	
 	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
@@ -508,7 +509,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		OOLogERR(@"initTargetFramebufferWithViewSize.result", @"%@", @"***** Error: Passthrough framebuffer not complete");
+		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Passthrough framebuffer not complete");
 	}
 	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
 	
@@ -528,7 +529,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
         // check if framebuffers are complete (no need for depth buffer)
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-            OOLogERR(@"initTargetFramebufferWithViewSize.result", @"%@", @"***** Error: Pingpong framebuffers not complete");
+            OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Pingpong framebuffers not complete");
 		}
     }
 	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
@@ -802,7 +803,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[OOCacheManager sharedCache];
 	
 #if OOLITE_SPEECH_SYNTH
-	OOLog(@"speech.synthesis", @"Spoken messages are %@.", (oo::PListView(prefs).get<BOOL>(@"speech_on", NO) ? @"on" :@"off"));
+	OO_LOG("speech.synthesis", "Spoken messages are {}.", (oo::PListView(prefs).get<BOOL>(@"speech_on", NO) ? "on" : "off"));
 #endif
 	
 	// init the Resource Manager
@@ -819,7 +820,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	wireframeGraphics = oo::PListView(prefs).get<BOOL>(@"wireframe-graphics", NO);
 	doProcedurallyTexturedPlanets = oo::PListView(prefs).get<BOOL>(@"procedurally-textured-planets", YES);
 	[inGameView setMsaa:oo::PListView(prefs).get<BOOL>(@"anti-aliasing", NO)];
-	OOLog(@"MSAA.setup", @"Multisample anti-aliasing %@requested.", [inGameView msaa] ? @"" : @"not ");
+	OO_LOG("MSAA.setup", "Multisample anti-aliasing {}requested.", [inGameView msaa] ? "" : "not ");
 	[inGameView setFov:OOClamp_0_max_f(oo::PListView(prefs).get<float>(@"fov-value", 57.2f), MAX_FOV_DEG) fromFraction:NO];
 	if ([inGameView fov:NO] < MIN_FOV_DEG)  [inGameView setFov:MIN_FOV_DEG fromFraction:NO];
 
@@ -838,9 +839,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			default one-thread-at-a-time access rule applies.
 			-- Ahruman 2012-09-13
 		*/
-		OOLog(@"speech.setup.begin", @"Starting to set up speech synthesizer.");
+		OO_LOG("speech.setup.begin", "Starting to set up speech synthesizer.");
 		NSSpeechSynthesizer *synth = [[NSSpeechSynthesizer alloc] init];
-		OOLog(@"speech.setup.end", @"Finished setting up speech synthesizer.");
+		OO_LOG("speech.setup.end", "Finished setting up speech synthesizer.");
 		speechSynthesizer = synth;
 	});
 #elif OOLITE_ESPEAK
@@ -1041,18 +1042,18 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (!OOLogWillDisplayMessagesInClass(@"universe.objectDump"))  return;
 	
-	OOLog(@"universe.objectDump", @"DEBUG: Entity Dump - [entities count] = %zu,\tn_entities = %u", entities.size(), n_entities);
+	OO_LOG("universe.objectDump", "DEBUG: Entity Dump - [entities count] = {},\tn_entities = {}", static_cast<size_t>(entities.size()), static_cast<unsigned>(n_entities));
 	
 	OOLogIndent();
 	for (i = 0; i < show_count; i++)
 	{
-		OOLog(@"universe.objectDump", @"Ent:%4u  %@", i, [sortedEntities[i] descriptionForObjDump]);
+		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), oo::DescriptionOf([sortedEntities[i] descriptionForObjDump]));
 	}
 	OOLogOutdent();
 	
 	if (entities.size() != n_entities)
 	{
-		OOLog(@"universe.objectDump", @"entities = %@", [oo::NSArrayFromObjects(entities) description]);
+		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf([oo::NSArrayFromObjects(entities) description]));
 	}
 }
 
@@ -1102,7 +1103,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) quitGame
 {
-	OOLog(@"universe.quit", @"%@", @"Quit command received by Universe.");
+	OO_LOG("universe.quit", "{}", "Quit command received by Universe.");
 	[[self gameController] exitAppWithContext:@"Universe Request"];
 }
 
@@ -1366,8 +1367,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
 	[self setLighting];	// also sets initial lights positions.
 
-	OOLog(oo::NSStringFrom(kOOLogUniversePopulateWitchspace), @"%@", @"Populating witchspace ...");
-	OOLogIndentIf(oo::NSStringFrom(kOOLogUniversePopulateWitchspace));
+	OO_LOG(kOOLogUniversePopulateWitchspace, "{}", "Populating witchspace ...");
+	oo::log::indentIf(kOOLogUniversePopulateWitchspace);
 
 	[self clearSystemPopulator];
 	const std::string populator = systeminfo.get<std::string>("populator", "interstellarSpaceWillPopulate");
@@ -1394,7 +1395,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
 
-	OOLogOutdentIf(oo::NSStringFrom(kOOLogUniversePopulateWitchspace));
+	oo::log::outdentIf(kOOLogUniversePopulateWitchspace);
 }
 
 
@@ -1414,7 +1415,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	planet_zpos *= planetDict.get<float>("planet_distance_multiplier", 1.0);
 	
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"planet zpos = %f",planet_zpos);
+	OO_LOG("planetinfo.record", "planet zpos = {:f}", planet_zpos);
 #endif
 	[a_planet setPosition:(HPVector){ 0, 0, planet_zpos }];
 	[a_planet setEnergy:1000000.0];
@@ -1475,12 +1476,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"seed = %d %d %d %d",system_seed.c,system_seed.d,system_seed.e,system_seed.f);
-	OOLog(@"planetinfo.record",@"coordinates = %d %d",system_seed.d,system_seed.b);
+	OO_LOG("planetinfo.record", "seed = {} {} {} {}", system_seed.c, system_seed.d, system_seed.e, system_seed.f);
+	OO_LOG("planetinfo.record", "coordinates = {} {}", system_seed.d, system_seed.b);
 
-#define SPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = \"%@\";",oo::NSStringOrNil(OptionalStringIn(systeminfo, "" #PROP)));
-#define IPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %d;",systeminfo.get<int>(#PROP));
-#define FPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %f;",systeminfo.get<float>("" #PROP));
+#define SPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = \"{}\";", OptionalStringIn(systeminfo, "" #PROP).value_or("(null)"));
+#define IPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", systeminfo.get<int>(#PROP));
+#define FPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {:f};", systeminfo.get<float>("" #PROP));
 	IPROP(government);
 	IPROP(economy);
 	IPROP(techlevel);
@@ -1579,11 +1580,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// clamp the sun radius
 	if ((sun_radius < 1000.0) || (sun_radius > sun_distance / 2  && !sunGoneNova))
 	{
-		OOLogWARN(@"universe.setup.badSun",@"Sun radius of %f is not valid for this system",sun_radius);
+		OO_LOG_WARN("universe.setup.badSun", "Sun radius of {:f} is not valid for this system", sun_radius);
 		sun_radius = sun_radius < 1000.0 ? 1000.0 : (sun_distance / 2);
 	}
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"sun_radius = %f",sun_radius);
+	OO_LOG("planetinfo.record", "sun_radius = {:f}", sun_radius);
 #endif
 	safeDistance=36 * sun_radius * sun_radius; // 6 times the sun radius
 	
@@ -1606,8 +1607,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[a_planet setOrientation:quaternion_rotation_betweenHP(sun_dir,make_HPvector(1.0,0.0,0.0))];
 
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"sun_vector = %.3f %.3f %.3f",vf.x,vf.y,vf.z);
-	OOLog(@"planetinfo.record",@"sun_distance = %.0f",sun_distance);
+	OO_LOG("planetinfo.record", "sun_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
+	OO_LOG("planetinfo.record", "sun_distance = {:.0f}", sun_distance);
 #endif
 	
 
@@ -1639,9 +1640,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	const oo::PList sun_dict(std::move(sunSettings));
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"corona_flare = %f",sun_dict.get<float>("corona_flare"));
-	OOLog(@"planetinfo.record",@"corona_hues = %f",sun_dict.get<float>("corona_hues"));
-	OOLog(@"planetinfo.record",@"sun_color = %@",[bgcolor descriptionComponents]);
+	OO_LOG("planetinfo.record", "corona_flare = {:f}", sun_dict.get<float>("corona_flare"));
+	OO_LOG("planetinfo.record", "corona_hues = {:f}", sun_dict.get<float>("corona_hues"));
+	OO_LOG("planetinfo.record", "sun_color = {}", oo::DescriptionOf([bgcolor descriptionComponents]));
 #endif
 	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
 	
@@ -1667,7 +1668,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	vf = VectorIn(systeminfo, "station_vector", kZeroVector);
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"station_vector = %.3f %.3f %.3f",vf.x,vf.y,vf.z);
+	OO_LOG("planetinfo.record", "station_vector = {:.3f} {:.3f} {:.3f}", vf.x, vf.y, vf.z);
 #endif
 	stationPos = HPvector_subtract(stationPos, vectorToHPVector(vector_multiply_scalar(vf, 2.0 * planet_radius)));
 	
@@ -1675,7 +1676,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	//// possibly systeminfo has an override for the station
 	stationDesc = systeminfo.get<std::string>("station", "coriolis");
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"station = %@",oo::NSStringOrNil(stationDesc));
+	OO_LOG("planetinfo.record", "station = {}", stationDesc.value_or("(null)"));
 #endif
 
 	// a missing role (the unset default) gives no ship, as a nil role did
@@ -1696,11 +1697,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (a_station == nil)
 		{
 			// Should have had a more specific error already, just specify context
-			OOLog(@"universe.setup.badStation", @"Failed to set up a ship for role \"%@\" as system station, trying again with \"%@\".", oo::NSStringOrNil(stationDesc), oo::NSStringOrNil(defaultStationDesc));
+			OO_LOG("universe.setup.badStation", "Failed to set up a ship for role \"{}\" as system station, trying again with \"{}\".", stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
 		}
 		else
 		{
-			OOLog(@"universe.setup.badStation", @"***** ERROR: Attempt to use non-station ship of type \"%@\" for role \"%@\" as system station, trying again with \"%@\".", [a_station name], oo::NSStringOrNil(stationDesc), oo::NSStringOrNil(defaultStationDesc));
+			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", oo::DescriptionOf([a_station name]), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
 		}
 		[a_station release];
 		stationDesc = defaultStationDesc;
@@ -1710,18 +1711,18 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		{
 			if (a_station == nil)
 			{
-				OOLog(@"universe.setup.badStation", @"On retry, failed to set up a ship for role \"%@\" as system station. Trying to fall back to built-in Coriolis station.", oo::NSStringOrNil(stationDesc));
+				OO_LOG("universe.setup.badStation", "On retry, failed to set up a ship for role \"{}\" as system station. Trying to fall back to built-in Coriolis station.", stationDesc.value_or("(null)"));
 			}
 			else
 			{
-				OOLog(@"universe.setup.badStation", @"***** ERROR: On retry, rolled non-station ship of type \"%@\" for role \"%@\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station name], oo::NSStringOrNil(stationDesc));
+				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", oo::DescriptionOf([a_station name]), stationDesc.value_or("(null)"));
 			}
 			[a_station release];
 
 			a_station = (StationEntity *)[self cxx_newShipWithName:"coriolis-station"];
 			if (![a_station isStation] || ![a_station validForAddToUniverse])
 			{
-				OOLog(@"universe.setup.badStation", @"%@", @"Could not create built-in Coriolis station! Generating a stationless system.");
+				OO_LOG("universe.setup.badStation", "{}", "Could not create built-in Coriolis station! Generating a stationless system.");
 				DESTROY(a_station);
 			}
 		}
@@ -2070,7 +2071,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			OOLog(oo::NSStringFrom(kOOLogUniversePopulateError),@"Named populator region %@ is not implemented, falling back to WITCHPOINT",oo::NSStringFrom(code)); 
+			OO_LOG(kOOLogUniversePopulateError, "Named populator region {} is not implemented, falling back to WITCHPOINT", code); 
 			result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
 		}
 	}
@@ -2706,7 +2707,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
 		{
-			OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"position",@"entity",shipdescObject);
+			OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "position", "entity", oo::DescriptionOf(shipdescObject));
 		}
 
 		pos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
@@ -2715,7 +2716,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		// without position defined, the ship will be added on top of the witchpoint buoy.
 		pos = OOHPVectorRandomRadial(SCANNER_MAX_RANGE);
-		OOLogERR(@"universe.spawnShip.error", @"***** ERROR: failed to find a spawn position for ship %@.", shipdescObject);
+		OO_LOG_ERR("universe.spawnShip.error", "***** ERROR: failed to find a spawn position for ship {}.", oo::DescriptionOf(shipdescObject));
 	}
 	[ship setPosition:pos];
 
@@ -2725,7 +2726,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
 		{
-			OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"facing_position",@"entity",shipdescObject);
+			OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "facing_position", "entity", oo::DescriptionOf(shipdescObject));
 		}
 
 		spos = [ship position];
@@ -3169,7 +3170,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		color = [OOColor colorWithDescription:colorDesc];
 		if (color != nil)  col1 = color;
-		else  OOLogWARN(@"hyperspaceTunnel.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 
 	colorDesc = ObjectForKeyIn(globalSettings, "hyperspace_tunnel_color_2");
@@ -3177,7 +3178,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		color = [OOColor colorWithDescription:colorDesc];
 		if (color != nil)  col2 = color;
-		else  OOLogWARN(@"hyperspaceTunnel.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 	
 	unsigned	sides = kOOBreakPatternMaxSides;
@@ -3953,7 +3954,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	else
 	{
-		OOLog(@"universe.beacon.error", @"***** ERROR: Universe setNextBeacon '%@'. The ship has no beacon code set.", beaconShip);
+		OO_LOG("universe.beacon.error", "***** ERROR: Universe setNextBeacon '{}'. The ship has no beacon code set.", oo::DescriptionOf(beaconShip));
 	}
 }
 
@@ -4131,7 +4132,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	++profSlowPath;
 	if ((profSlowPath % 10) == 0)	// Only print every tenth slow path, to reduce spamminess.
 	{
-		OOLog(@"shipRegistry.selection.profile", @"Hit slow path in ship selection for role \"%@\", having selected ship \"%@\". Now %zu of %zu on slow path (%f%%).", oo::NSStringFrom(role), oo::NSStringOrNil(shipKey), profSlowPath, profTotal, ((double)profSlowPath)/((double)profTotal) * 100.0f);
+		OO_LOG("shipRegistry.selection.profile", "Hit slow path in ship selection for role \"{}\", having selected ship \"{}\". Now {} of {} on slow path ({:f}%).", role, shipKey.value_or("(null)"), static_cast<size_t>(profSlowPath), static_cast<size_t>(profTotal), ((double)profSlowPath)/((double)profTotal) * 100.0f);
 	}
 #endif
 	
@@ -4220,7 +4221,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", oo::NSStringFrom([exception reason]), oo::NSStringFrom(effectKey));
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newVisualEffectWithName: {} ] *****", [exception reason], effectKey);
 		}
 		else  @throw exception;
 	}
@@ -4285,7 +4286,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", oo::NSStringFrom([exception reason]), oo::NSStringFrom(shipKey));
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newShipWithName: {} ] *****", [exception reason], shipKey);
 		}
 		else  @throw exception;
 	}
@@ -4324,7 +4325,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", oo::NSStringFrom([exception reason]), oo::NSStringFrom(shipDataKey));
+			OO_LOG(cxx_kOOLogException, "***** Oolite Exception : '{}' in [Universe newDockWithName: {} ] *****", [exception reason], shipDataKey);
 		}
 		else  @throw exception;
 	}
@@ -4507,7 +4508,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		else
 		{
-			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@ (%zu).", oo::NSStringOrNil(goodsKey), co_type);
+			OO_LOG("universe.createContainer.failed", "***** ERROR: failed to find a container to fill with {} ({}).", goodsKey.value_or("(null)"), static_cast<size_t>(co_type));
 
 		}
 	}
@@ -4535,7 +4536,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		else
 		{
-			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@", oo::NSStringFrom(commodity_name));
+			OO_LOG("universe.createContainer.failed", "***** ERROR: failed to find a container to fill with {}", commodity_name);
 		}
 
 		how_much--;
@@ -4579,7 +4580,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		case UNITS_UNKNOWN :	// not a unit (ADR-0036): warned about below, as any other value was
 			break;
 	}
-	OOLog(@"universe.commodityAmount.warning",@"Commodity %@ has an unrecognised mass unit, assuming tonnes",oo::NSStringFrom(co_type));
+	OO_LOG("universe.commodityAmount.warning", "Commodity {} has an unrecognised mass unit, assuming tonnes", co_type);
 	return 1;
 }
 
@@ -4981,7 +4982,7 @@ static const OOMatrix	starboard_matrix =
 	int currentPostFX = [self currentPostFX];
 	BOOL hudSeparateRenderPass =  [self useShaders] && (currentPostFX == OO_POSTFX_NONE || ((currentPostFX == OO_POSTFX_CLOAK || currentPostFX == OO_POSTFX_CRTBADSIGNAL) && [self colorblindMode] == OO_POSTFX_NONE));
  	NSSize  viewSize = [gameView backingViewSize];
-	OOLog(@"universe.profile.draw", @"%@", @"Begin draw");
+	OO_LOG("universe.profile.draw", "{}", "Begin draw");
 	
 	if (!no_update)
 	{
@@ -5190,7 +5191,7 @@ static const OOMatrix	starboard_matrix =
 
 					OOVerifyOpenGLState();
 					OOCheckOpenGLErrors(@"Universe after setting up for opaque pass");
-					OOLog(@"universe.profile.draw", @"%@", @"Begin opaque pass");
+					OO_LOG("universe.profile.draw", "{}", "Begin opaque pass");
 
 				
 					//		DRAW ALL THE OPAQUE ENTITIES
@@ -5341,17 +5342,17 @@ static const OOMatrix	starboard_matrix =
 				[self prepareToRenderIntoDefaultFramebuffer];	
 				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
 				
-				OOLog(@"universe.profile.secondPassDraw", @"%@", @"Begin second pass draw");
+				OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
 				[self drawTargetTextureIntoDefaultFramebuffer];
 				OOCheckOpenGLErrors(@"Universe after drawing from custom framebuffer to screen framebuffer");
-				OOLog(@"universe.profile.secondPassDraw", @"%@", @"End second pass drawing");
+				OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
 	
-				OOLog(@"universe.profile.drawHUD", @"%@", @"Begin HUD drawing");
+				OO_LOG("universe.profile.drawHUD", "{}", "Begin HUD drawing");
 			}
 			
 			/* Reset for HUD drawing */
 			OOCheckOpenGLErrors(@"Universe after drawing entities");
-			OOLog(@"universe.profile.draw", @"%@", @"Begin HUD");
+			OO_LOG("universe.profile.draw", "{}", "Begin HUD");
 			
 			GLfloat	lineWidth = [gameView backingViewSize].width / 1024.0; // restore line size
 			if (lineWidth < 1.0)  lineWidth = 1.0;
@@ -5410,7 +5411,7 @@ static const OOMatrix	starboard_matrix =
 			[self drawWatermarkString:"Development version " OO_VERSION_FULL];
 #endif
 			
-			OOLog(@"universe.profile.drawHUD", @"%@", @"End HUD drawing");
+			OO_LOG("universe.profile.drawHUD", "{}", "End HUD drawing");
 			OOCheckOpenGLErrors(@"Universe after drawing HUD");
 			
 			OOGL(glFlush());	// don't wait around for drawing to complete
@@ -5434,7 +5435,7 @@ static const OOMatrix	starboard_matrix =
 			}
 			else
 			{
-				OOLog(kOOLogException, @"***** Exception: %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", [exception name], [exception reason]);
 				@throw exception;
 			}
 		}
@@ -5448,13 +5449,13 @@ static const OOMatrix	starboard_matrix =
 			}
 			else
 			{
-				OOLog(kOOLogException, @"***** Exception: %@ : %@ *****",[exception name], [exception reason]);
+				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 				@throw exception;
 			}
 		}
 	}
 	
-	OOLog(@"universe.profile.draw", @"%@", @"End drawing");
+	OO_LOG("universe.profile.draw", "{}", "End drawing");
 	
 	// actions when the HUD should be rendered together with the 3d universe
 	if(!hudSeparateRenderPass)
@@ -5464,9 +5465,9 @@ static const OOMatrix	starboard_matrix =
 			[self prepareToRenderIntoDefaultFramebuffer];
 			OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
 			
-			OOLog(@"universe.profile.secondPassDraw", @"%@", @"Begin second pass draw");
+			OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
 			[self drawTargetTextureIntoDefaultFramebuffer];
-			OOLog(@"universe.profile.secondPassDraw", @"%@", @"End second pass drawing");
+			OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
 		}
 	}
 }
@@ -5550,7 +5551,7 @@ static const OOMatrix	starboard_matrix =
 	
 	if (MAX_ENTITY_UID < u_id)
 	{
-		OOLog(@"universe.badUID", @"Attempt to retrieve entity for out-of-range UID %u. (This is an internal programming error, please report it.)", u_id);
+		OO_LOG("universe.badUID", "Attempt to retrieve entity for out-of-range UID {}. (This is an internal programming error, please report it.)", static_cast<unsigned>(u_id));
 		return nil;
 	}
 	
@@ -5594,7 +5595,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken x_next %@ list (%d) ***", uni->x_list_start, n);
+#ifndef NDEBUG
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(uni->x_list_start), n);
+#endif
 			result = NO;
 		}
 		
@@ -5603,10 +5606,14 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->x_previous;
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken x_previous %@ list (%d) ***", uni->x_list_start, n);
+#ifndef NDEBUG
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(uni->x_list_start), n);
+#endif
 			if (result)
 			{
-				OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"REBUILDING x_previous list from x_next list");
+#ifndef NDEBUG
+				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING x_previous list from x_next list");
+#endif
 				checkEnt = uni->x_list_start;
 				checkEnt->x_previous = nil;
 				while (checkEnt->x_next)
@@ -5627,7 +5634,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken *** broken y_next %@ list (%d) ***", uni->y_list_start, n);
+#ifndef NDEBUG
+			OO_LOG(kOOLogEntityVerificationError, "Broken *** broken y_next {} list ({}) ***", oo::DescriptionOf(uni->y_list_start), n);
+#endif
 			result = NO;
 		}
 		
@@ -5636,10 +5645,14 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->y_previous;
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken y_previous %@ list (%d) ***", uni->y_list_start, n);
+#ifndef NDEBUG
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(uni->y_list_start), n);
+#endif
 			if (result)
 			{
-				OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"REBUILDING y_previous list from y_next list");
+#ifndef NDEBUG
+				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING y_previous list from y_next list");
+#endif
 				checkEnt = uni->y_list_start;
 				checkEnt->y_previous = nil;
 				while (checkEnt->y_next)
@@ -5660,7 +5673,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken z_next %@ list (%d) ***", uni->z_list_start, n);
+#ifndef NDEBUG
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(uni->z_list_start), n);
+#endif
 			result = NO;
 		}
 		
@@ -5669,10 +5684,14 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->z_previous;
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken z_previous %@ list (%d) ***", uni->z_list_start, n);
+#ifndef NDEBUG
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(uni->z_list_start), n);
+#endif
 			if (result)
 			{
-				OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"REBUILDING z_previous list from z_next list");
+#ifndef NDEBUG
+				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING z_previous list from z_next list");
+#endif
 				checkEnt = uni->z_list_start;
 				NSCAssert(checkEnt != nil, @"Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
 				checkEnt->z_previous = nil;
@@ -5688,7 +5707,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 	if (!result)
 	{
-		OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"Rebuilding all linked lists from scratch");
+#ifndef NDEBUG
+		OO_LOG(kOOLogEntityVerificationRebuild, "{}", "Rebuilding all linked lists from scratch");
+#endif
 		const std::vector<oo::ObjCRef<Entity *>> allEntities = uni->entities;	// a snapshot, as the enumeration was
 		uni->x_list_start = nil;
 		uni->y_list_start = nil;
@@ -5729,7 +5750,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if (n_entities >= UNIVERSE_MAX_ENTITIES - 1)
 		{
 			// throw an exception here...
-			OOLog(@"universe.addEntity.failed", @"***** Universe cannot addEntity:%@ -- Universe is full (%d entities out of %d)", entity, n_entities, UNIVERSE_MAX_ENTITIES);
+			OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Universe is full ({} entities out of {})", oo::DescriptionOf(entity), static_cast<int>(n_entities), static_cast<int>(UNIVERSE_MAX_ENTITIES));
 #ifndef NDEBUG
 			if (OOLogWillDisplayMessagesInClass(@"universe.maxEntitiesDump")) [self debugDumpEntities];
 #endif
@@ -5749,7 +5770,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				if (limiter-- == 0)
 				{
 					// Every slot has been tried! This should not happen due to previous test, but there was a problem here in 1.70.
-					OOLog(@"universe.addEntity.failed", @"***** Universe cannot addEntity:%@ -- Could not find free slot for entity.", entity);
+					OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Could not find free slot for entity.", oo::DescriptionOf(entity));
 					return NO;
 				}
 			}
@@ -5903,7 +5924,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 {
 	if ([entity universalID] != NO_TARGET)
 	{
-		OOLog(@"universe.unremovedEntity", @"Entity %@ dealloced without being removed from universe! (This is an internal programming error, please report it.)", entity);
+		OO_LOG("universe.unremovedEntity", "Entity {} dealloced without being removed from universe! (This is an internal programming error, please report it.)", oo::DescriptionOf(entity));
 		[self doRemoveEntity:entity];
 	}
 }
@@ -5918,7 +5939,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	Entity* p0 = entities[0].get();
 	if (!(p0->isPlayer))
 	{
-		OOLog(kOOLogInconsistentState, @"%@", @"***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -6144,7 +6165,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 	if (!e1)
 	{
-		OOLog(kOOLogParameterError, @"%@", @"***** No entity set in Universe getSafeVectorFromEntity:toDistance:fromPoint:");
+		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No entity set in Universe getSafeVectorFromEntity:toDistance:fromPoint:");
 		return kZeroHPVector;
 	}
 	
@@ -7040,7 +7061,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				if (!result.has_value() || !oo::str::hasPrefix(*result, "[") || !oo::str::hasSuffix(*result, "]"))  break;
 				if (seen.contains(*result))
 				{
-					OOLogERR(@"sound.customSounds.recursion", @"recursion in customsounds.plist for '%@' (at '%@'), no sound will be played.", oo::NSStringOrNil(key), oo::NSStringFrom(*result));
+					OO_LOG_ERR("sound.customSounds.recursion", "recursion in customsounds.plist for '{}' (at '{}'), no sound will be played.", key.value_or("(null)"), *result);
 					result = std::nullopt;
 					break;
 				}
@@ -7053,7 +7074,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 	if (*result == "__oolite-no-sound")
 	{
-		OOLog(@"sound.customSounds", @"Could not resolve sound name in customsounds.plist for '%@', no sound will be played.", oo::NSStringOrNil(key));
+		OO_LOG("sound.customSounds", "Could not resolve sound name in customsounds.plist for '{}', no sound will be played.", key.value_or("(null)"));
 		result = std::nullopt;
 	}
 	return result;
@@ -7310,7 +7331,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 {
 	volatile OOTimeDelta delta_t = inDeltaT * [self timeAccelerationFactor];
 	NSUInteger sessionID = _sessionID;
-	OOLog(@"universe.profile.update", @"%@", @"Begin update");
+	OO_LOG("universe.profile.update", "{}", "Begin update");
 	if (EXPECT(!no_update))
 	{
 		next_repopulation -= delta_t;
@@ -7427,7 +7448,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			
 			update_stage = "update:entity";
 			std::vector<oo::ObjCRef<Entity *>> zombies;	// each once, in the order found
-			OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
+			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
 			for (i = 0; i < ent_count; i++)
 			{
 				Entity *thing = my_entities[i];
@@ -7495,14 +7516,14 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				for (const oo::ObjCRef<Entity *> &entry : zombies)
 				{
 					zombie = entry.get();
-					OOLogERR(@"universe.zombie", @"Found dead entity %@ in active entity list, removing. This is an internal error, please report it.", zombie);
+					OO_LOG_ERR("universe.zombie", "Found dead entity {} in active entity list, removing. This is an internal error, please report it.", oo::DescriptionOf(zombie));
 					[self removeEntity:zombie];
 				}
 			}
 			
 			// Maintain x/y/z order lists
 			update_stage = "updating linked lists";
-			OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
+			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
 			for (i = 0; i < ent_count; i++)
 			{
 				[my_entities[i] updateLinkedLists];
@@ -7511,7 +7532,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			// detect collisions and light ships that can see the sun
 			
 			update_stage = "collision and shadow detection";
-			OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
+			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
 			[self filterSortedLists];
 			[self findCollisionsAndShadows];
 			
@@ -7535,7 +7556,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 #ifndef NDEBUG
 				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
 #endif
-				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", oo::NSStringFrom(stage), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, [exception name], [exception reason]);
 				@throw exception;
 			}
 		}
@@ -7551,14 +7572,14 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 #ifndef NDEBUG
 				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
 #endif
-				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", oo::NSStringFrom(stage), [exception name], [exception reason]);
+				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 				@throw exception;
 			}
 		}
 		
 		// dispose of the non-mutable copy and everything it references neatly
 		update_stage = "clean up";
-		OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
+		OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
 		for (i = 0; i < ent_count; i++)
 		{
 			[my_entities[i] release];	// explicitly release each one
@@ -7572,7 +7593,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		 * time. - CIM: 4/8/2013
 		 */
 		update_stage = "JS Garbage Collection";
-		OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage)); 
+		OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage)); 
 #ifndef NDEBUG
 		ooscript::Context context = OOJSAcquireContext(); 
 		uint32_t gcbytes1 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
@@ -7585,7 +7606,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		OOJSRelinquishContext(context);
 		if (gcbytes2 < gcbytes1)
 		{
-			OOLog(@"universe.profile.jsgc",@"Unplanned JS Garbage Collection from %d to %d",gcbytes1,gcbytes2);
+			OO_LOG("universe.profile.jsgc", "Unplanned JS Garbage Collection from {} to {}", gcbytes1, gcbytes2);
 		}
 #endif
 
@@ -7605,7 +7626,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	[self prunePreloadingPlanetMaterials];
 #endif
 
-	OOLog(@"universe.profile.update", @"%@", @"Update complete");
+	OO_LOG("universe.profile.update", "{}", "Update complete");
 }
 
 
@@ -8125,7 +8146,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 							{
 								/* This shouldn't happen... If it does, we accept
 								 * missing collision checks and move on */
-								OOLog(@"general.error.inconsistentState",@"Unexpected state in collision chain builder prev=%@, prev->c=%@, e0=%@, e0->c=%@",prev,prev->collision_chain,e0,e0->collision_chain);
+								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(prev), oo::DescriptionOf(prev->collision_chain), oo::DescriptionOf(e0), oo::DescriptionOf(e0->collision_chain));
 							}
 						}
 					}
@@ -8412,7 +8433,7 @@ void VerifyDescString(const std::string &key, const std::string &desc)
 {
 	if (desc.find("%n") != std::string::npos)
 	{
-		OOLog(@"descriptions.verify.percentN", @"***** FATAL: descriptions.plist entry \"%@\" contains the dangerous control sequence %%n.", oo::NSStringFrom(key));
+		OO_LOG("descriptions.verify.percentN", "***** FATAL: descriptions.plist entry \"{}\" contains the dangerous control sequence %n.", key);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -8443,7 +8464,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	}
 	else
 	{
-		OOLogERR(@"descriptions.verify.badType", @"***** FATAL: descriptions.plist entry for \"%@\" is neither a string nor an array.", oo::NSStringFrom(key));
+		OO_LOG_ERR("descriptions.verify.badType", "***** FATAL: descriptions.plist entry for \"{}\" is neither a string nor an array.", key);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -8465,7 +8486,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	
 	if (_descriptions.isNull())
 	{
-		OOLog(@"descriptions.verify", @"%@", @"***** FATAL: Tried to verify descriptions, but descriptions was nil - unable to load any descriptions.plist file.");
+		OO_LOG("descriptions.verify", "{}", "***** FATAL: Tried to verify descriptions, but descriptions was nil - unable to load any descriptions.plist file.");
 		exit(EXIT_FAILURE);
 	}
 	// Byte order of the key (was hash order): it decides only which bad entry is reported first.
@@ -8636,7 +8657,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	static BOOL sysdataLocked = NO;
 	if (sysdataLocked)
 	{
-		OOLogERR(@"script.error", @"%@", @"System properties cannot be set during 'systemInformationChanged' events to avoid infinite loops.");
+		OO_LOG_ERR("script.error", "{}", "System properties cannot be set during 'systemInformationChanged' events to avoid infinite loops.");
 		return;
 	}
 
@@ -8646,13 +8667,13 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	// trying to set  unsettable properties?  
 	if (key == oo::StdString(KEY_RADIUS) && sameGalaxy && sameSystem) // buggy if we allow this key to be set while in the system
 	{
-		OOLogERR(@"script.error", @"System property '%@' cannot be set while in the system.",oo::NSStringFrom(key));
+		OO_LOG_ERR("script.error", "System property '{}' cannot be set while in the system.", key);
 		return;
 	}
 
 	if (key == "coordinates") // setting this in game would be very confusing
 	{
-		OOLogERR(@"script.error", @"System property '%@' cannot be set.",oo::NSStringFrom(key));
+		OO_LOG_ERR("script.error", "System property '{}' cannot be set.", key);
 		return;
 	}
 
@@ -8866,7 +8887,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g
 {
-	OOLog(@"deprecated.function", @"%@", @"findSystemAtCoords");
+	OO_LOG("deprecated.function", "{}", "findSystemAtCoords");
 	return [self findSystemNumberAtCoords:coords withGalaxy:g includingHidden:YES];
 }
 
@@ -9682,7 +9703,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 			// more info for potential purchasers - how to reveal this I'm not yet sure...
 			//std::optional<std::string> brochure_desc = [self brochureDescriptionWithDictionary:shipDict standardEquipment:extras optionalEquipment:options];
-			//OOLog(@"shipyard.brochure", @"%@ Brochure description : \"%@\"", ship name, brochure_desc);
+			//OO_LOG("shipyard.brochure", "{} Brochure description : \"{}\"", oo::DescriptionOf([ship name]), brochure_desc);
 
 			shortShipDescription += TextOrNull(shipName) + ":";
 
@@ -9988,8 +10009,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// does not have a shipyard dictionary entry, report it and set its base price to 0 -- Nikos 20090613.
 	if (shipyard_info.isNull())
 	{
-		OOLogERR(@"universe.tradeInValueForCommanderDictionary.valueCalculationError",
-			@"Shipyard dictionary entry for ship %@ required for trade in value calculation, but does not exist. Setting ship value to 0.", oo::NSStringOrNil(ship_desc));
+		OO_LOG_ERR("universe.tradeInValueForCommanderDictionary.valueCalculationError", "Shipyard dictionary entry for ship {} required for trade in value calculation, but does not exist. Setting ship value to 0.", ship_desc.value_or("(null)"));
 	}
 	else
 	{
@@ -10293,14 +10313,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 {
 	if (!ship)
 	{
-		OOLog(kOOLogParameterError, @"%@", @"***** No ship set in Universe getSunSkimStartPositionForShip:");
+		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No ship set in Universe getSunSkimStartPositionForShip:");
 		return kZeroHPVector;
 	}
 	OOSunEntity* the_sun = [self sun];
 	// get vector from sun position to ship
 	if (!the_sun)
 	{
-		OOLog(kOOLogInconsistentState, @"%@", @"***** No sun set in Universe getSunSkimStartPositionForShip:");
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimStartPositionForShip:");
 		return kZeroHPVector;
 	}
 	HPVector v0 = the_sun->position;
@@ -10323,13 +10343,13 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	OOSunEntity* the_sun = [self sun];
 	if (!ship)
 	{
-		OOLog(kOOLogParameterError, @"%@", @"***** No ship set in Universe getSunSkimEndPositionForShip:");
+		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No ship set in Universe getSunSkimEndPositionForShip:");
 		return kZeroHPVector;
 	}
 	// get vector from sun position to ship
 	if (!the_sun)
 	{
-		OOLog(kOOLogInconsistentState, @"%@", @"***** No sun set in Universe getSunSkimEndPositionForShip:");
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimEndPositionForShip:");
 		return kZeroHPVector;
 	}
 	HPVector v0 = the_sun->position;
@@ -10544,7 +10564,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// (some items now require this even if shader on/off mode unchanged)
 	if (old != detailLevel)
 	{
-		OOLog(@"rendering.detail-level", @"Detail level set to %@.", OOStringFromGraphicsDetail(detailLevel));
+		OO_LOG("rendering.detail-level", "Detail level set to {}.", oo::DescriptionOf(OOStringFromGraphicsDetail(detailLevel)));
 		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
 	}
 
@@ -10571,14 +10591,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			PlayerEntity *player = PLAYER;
 			[player setStatus:STATUS_HANDLING_ERROR];
 			
-			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", [exception name], [exception reason]);
 			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
 			[self cxx_addMessage:exception_msg forCount:30.0];
 			[[self gameController] setGamePaused:YES];
 		}
 		else
 		{
-			OOLog(kOOLogException, @"***** Handling Non-fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			OO_LOG(cxx_kOOLogException, "***** Handling Non-fatal : {} : {} *****", [exception name], [exception reason]);
 		}
 	}
 }
@@ -10891,7 +10911,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		entity = sortedEntities[i];
 		if ([entity sessionID] != _sessionID)
 		{
-			OOLogERR(@"universe.sessionIDs.verify.failed", @"Invalid entity %@ (came from session %zu, current session is %zu).", [entity shortDescription], [entity sessionID], _sessionID);
+			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::DescriptionOf([entity shortDescription]), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_sessionID));
 			badEntities.emplace_back(entity);
 		}
 	}
@@ -11108,14 +11128,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		if (sortedEntities[index] != entity)
 		{
-			OOLog(kOOLogInconsistentState, @"DEBUG: Universe removeEntity:%@ ENTITY IS NOT IN THE RIGHT PLACE IN THE ZERO_DISTANCE SORTED LIST -- FIXING...", entity);
+			OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE RIGHT PLACE IN THE ZERO_DISTANCE SORTED LIST -- FIXING...", oo::DescriptionOf(entity));
 			unsigned i;
 			index = -1;
 			for (i = 0; (i < n_entities)&&(index == -1); i++)
 				if (sortedEntities[i] == entity)
 					index = i;
 			if (index == -1)
-				 OOLog(kOOLogInconsistentState, @"DEBUG: Universe removeEntity:%@ ENTITY IS NOT IN THE ZERO_DISTANCE SORTED LIST -- CONTINUING...", entity);
+				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE ZERO_DISTANCE SORTED LIST -- CONTINUING...", oo::DescriptionOf(entity));
 		}
 		if (index != -1)
 		{
@@ -11148,7 +11168,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 				index++;
 			}
 			if (n > 1)
-				 OOLog(kOOLogInconsistentState, @"DEBUG: Universe removeEntity: REMOVED %d EXTRA COPIES OF %@ FROM THE ZERO_DISTANCE SORTED LIST", n - 1, entity);
+				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity: REMOVED {} EXTRA COPIES OF {} FROM THE ZERO_DISTANCE SORTED LIST", n - 1, oo::DescriptionOf(entity));
 			while (n--)
 			{
 				n_entities--;
@@ -11260,11 +11280,11 @@ static void PreloadOneSound(const std::string &soundName)
 			}
 			@catch (OOException *exception)
 			{
-				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", [exception name], [exception reason]);
 			}
 			@catch (OOFoundationException *exception)
 			{
-				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
+				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 			}
 		}
 	}
@@ -11613,7 +11633,7 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 
 		if (!warned.contains(*tmp))
 		{
-			OOLogWARN(@"localization.plurals", @"'%@' found in descriptions.plist, should be '%@%%0'. Localization data needs updating.",oo::NSStringFrom(key),oo::NSStringFrom(key));
+			OO_LOG_WARN("localization.plurals", "'{}' found in descriptions.plist, should be '{}%0'. Localization data needs updating.", key, key);
 			warned.insert(*tmp);
 		}
 	}
