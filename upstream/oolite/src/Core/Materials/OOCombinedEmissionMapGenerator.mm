@@ -380,9 +380,15 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 }
 
 
+- (std::optional<std::string>) cxx_cacheKey
+{
+	return _cacheKey;
+}
+
+
 - (id) cacheKey
 {
-	return oo::NSStringFrom(_cacheKey);
+	return oo::NSStringOrNil([self cxx_cacheKey]);
 }
 
 

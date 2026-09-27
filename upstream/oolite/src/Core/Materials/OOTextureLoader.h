@@ -93,7 +93,8 @@ SOFTWARE.
 /*	Hopefully-unique string for texture loader; analagous, but not identical,
 	to corresponding texture cacheKey.
 */
-- (id) cacheKey;	// an Objective-C string. Shared selector (proposed ADR-0043).
+- (std::optional<std::string>) cxx_cacheKey;
+- (id) cacheKey;	// -> -cxx_cacheKey (shared selector until oo-3rb.270.2)
 
 
 

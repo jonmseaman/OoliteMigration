@@ -224,7 +224,7 @@ const char *sGlobalTraceContext = nullptr;
 	if (generator == nil)  return nil;
 	
 #ifndef OOTEXTURE_NO_CACHE
-	OOTexture *existing = [OOTexture cxx_existingTextureForKey:oo::OptionalString([generator cacheKey])];
+	OOTexture *existing = [OOTexture cxx_existingTextureForKey:[generator cxx_cacheKey]];
 	if (existing != nil && !enqueue)  return [[existing retain] autorelease];
 #endif
 	
@@ -236,7 +236,7 @@ const char *sGlobalTraceContext = nullptr;
 	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
 	
 	OOTexture *result = [[[OOConcreteTexture alloc] initWithLoader:generator
-															   key:oo::OptionalString([generator cacheKey])
+															   key:[generator cxx_cacheKey]
 														   options:OOApplyTextureOptionDefaults([generator textureOptions])
 														anisotropy:[generator anisotropy]
 														   lodBias:[generator lodBias]] autorelease];

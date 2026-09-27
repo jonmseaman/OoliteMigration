@@ -284,9 +284,15 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringFrom(oo::str::format("%s:0x%.4X", oo::str::lastPathComponent(*[self cxx_path]).c_str(), _options));
+	return oo::str::format("%s:0x%.4X", oo::str::lastPathComponent(*[self cxx_path]).c_str(), _options);
+}
+
+
+- (id) cacheKey
+{
+	return oo::NSStringOrNil([self cxx_cacheKey]);
 }
 
 
