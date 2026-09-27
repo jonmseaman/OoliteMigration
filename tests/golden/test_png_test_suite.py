@@ -292,8 +292,8 @@ def test_the_texture_upload_regex_matches_the_engines_real_format():
     """The evidence is scraped out of a log line, so the SCRAPER is pinned against the format
     string in the engine's own source - not against a line somebody remembered.
 
-    OOConcreteTexture.m:525 emits
-        OOLog(@"texture.upload", @"Uploaded texture %u (%ux%u pixels, %@)", ...)
+    OOConcreteTexture.mm emits
+        OO_LOG("texture.upload", "Uploaded texture {} ({}x{} pixels, {})", ...)
     A refactor of that line silently empties png_texture_uploads, which the checker would then
     report as 'no PNG was decoded' - a confusing red. This test makes the drift itself the red.
     """
@@ -302,8 +302,8 @@ def test_the_texture_upload_regex_matches_the_engines_real_format():
     source = resolve_source("Core", "Materials", "OOConcreteTexture")
     with open(source, encoding="utf-8", errors="replace") as handle:
         text = handle.read()
-    assert '@"Uploaded texture %u (%ux%u pixels, %@)"' in text, (
-        "OOConcreteTexture.m no longer emits the [texture.upload] line this scenario scrapes; the "
+    assert '"Uploaded texture {} ({}x{} pixels, {})"' in text, (
+        "OOConcreteTexture.mm no longer emits the [texture.upload] line this scenario scrapes; the "
         "texture-decode evidence must be re-derived from whatever replaced it")
 
     sample = ("07:16:48.087 [texture.upload]: Uploaded texture 8 "
