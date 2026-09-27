@@ -25,7 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOJoystickManager.h"
-#import "OOLogging.h"
+#include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
@@ -594,7 +594,7 @@ static id sSharedStickHandler = nil;
 	}
 	else
 	{
-		OOLog(@"decodeAxisEvent", @"Stick axis out of range - axis was %d", evt->axis);
+		OO_LOG("decodeAxisEvent", "Stick axis out of range - axis was {}", evt->axis);
 		return;
 	}
 	switch (function)
@@ -649,7 +649,7 @@ static id sSharedStickHandler = nil;
 	}
 	else
 	{
-		OOLog(@"decodeButtonEvent", @"Joystick button out of range: %d", evt->button);
+		OO_LOG("decodeButtonEvent", "Joystick button out of range: {}", evt->button);
 		return;
 	}
 	if (evt->type == JOYBUTTONDOWN)

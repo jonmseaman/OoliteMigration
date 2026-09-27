@@ -78,7 +78,7 @@ MA 02110-1301, USA.
 
 #import "OOMaths.h"
 #import "Octree.h"
-#import "OOLogging.h"
+#include "oofnd/Log.hpp"
 
 
 // MARK: GeometryData operations.
@@ -926,7 +926,7 @@ static NO_INLINE_FUNC void AddTriangle_slow(GeometryData *data, Triangle tri)
 	
 	if (EXPECT_NOT(data->triangles == NULL))
 	{
-		OOLog(kOOLogAllocationFailure, @"%@", @"!!!!! Ran out of memory to allocate more geometry!");
+		OO_LOG("general.error.allocationFailure", "{}", "!!!!! Ran out of memory to allocate more geometry!");
 		exit(EXIT_FAILURE);
 	}
 	
