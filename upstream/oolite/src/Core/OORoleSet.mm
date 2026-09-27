@@ -133,9 +133,9 @@ SOFTWARE.
 }
 
 
-- (BOOL)hasRole:(id)role
+- (BOOL)hasRole:(const std::string &)role
 {
-	return role != nil && _rolesAndProbabilities.contains(oo::StdString(role));
+	return !role.empty() && _rolesAndProbabilities.contains(role);
 }
 
 

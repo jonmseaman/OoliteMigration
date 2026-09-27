@@ -6974,7 +6974,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ((killIsCargo) || (killClass == CLASS_BUOY) || (killClass == CLASS_ROCK))
 	{
 		// EMMSTRAN: no killaward (but full bounty) for tharglets?
-		if (![other hasRole:@"tharglet"])	// okay, we'll count tharglets as proper kills
+		if (![other hasRole:"tharglet"])	// okay, we'll count tharglets as proper kills
 		{
 			score /= 10;	// reduce bounty awarded
 			killAward = NO;	// don't award a kill

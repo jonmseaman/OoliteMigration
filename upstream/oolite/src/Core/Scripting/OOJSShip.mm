@@ -2255,7 +2255,7 @@ static bool ShipHasRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		return NO;
 	}
 	
-	OOJS_RETURN_BOOL([thisEnt hasRole:oo::NSStringFrom(*role)]);
+	OOJS_RETURN_BOOL([thisEnt hasRole:*role]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -4295,7 +4295,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 		if ([thisEnt isThargoid])
 		{
 			assessment *= 1.5;
-			if ([thisEnt hasRole:@"thargoid-mothership"])
+			if ([thisEnt hasRole:"thargoid-mothership"])
 			{
 				assessment += 5;
 			}

@@ -790,7 +790,7 @@ typedef enum
 - (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
 - (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 
-- (BOOL) hasRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
 - (OORoleSet *)roleSet;
 
 - (void) addRole:(const std::string &)role;
