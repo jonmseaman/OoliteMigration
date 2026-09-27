@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "Universe.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 
 
 namespace {
@@ -231,7 +232,7 @@ float cxx_OOMaterialParallaxBias(const oo::PList &configuration)
 
 bool cxx_OOMaterialGammaCorrect(const oo::PList &configuration)
 {
-	return configuration.get<bool>(cxx_kOOMaterialGammaCorrectName, ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
+	return configuration.get<bool>(cxx_kOOMaterialGammaCorrectName, !oo::Defaults::standard().boolForKey("no-gamma-correct"));
 }
 
 

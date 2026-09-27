@@ -69,6 +69,8 @@ SOFTWARE.
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -361,8 +363,6 @@ void OpenLogFile();
 
 - (void)setUpLogOverrides
 {
-	id						verbose = nil;
-
 	OOLogSetShowMessageClassTemporary(_verifierPList.get<bool>("logShowMessageClassOverride", NO));
 
 	const oo::PList *overrides = _verifierPList.get<oo::PList::Dict>("logControlOverride");
@@ -378,8 +378,10 @@ void OpenLogFile();
 		overriding verifyOXP.verbose through user defaults. This is at least
 		as much a pain under GNUstep, but very convenient under OS X.
 	*/
-	verbose = [[NSUserDefaults standardUserDefaults] objectForKey:@"oxp-verifier-verbose-logging"];
-	if (verbose != nil)  oo::log::logger().setDisplay("verifyOXP.verbose", OOBooleanFromObject(verbose, NO));
+	{
+		const oo::PList verbose = oo::Defaults::standard().object("oxp-verifier-verbose-logging");
+		if (!verbose.isNull())  oo::log::logger().setDisplay("verifyOXP.verbose", oo::PListGet<bool>::from(&verbose, false));
+	}
 }
 
 
@@ -507,7 +509,7 @@ void OpenLogFile();
 		for (const auto &entry : _stagesByName)  _waitingStages.push_back(entry.second);
 		for (const auto &waiting : _waitingStages)  [waiting.get() dependencyRegistrationComplete];
 
-		if ([[NSUserDefaults standardUserDefaults] boolForKey:@"oxp-verifier-dump-debug-graphviz"])
+		if (oo::Defaults::standard().boolForKey("oxp-verifier-dump-debug-graphviz"))
 		{
 			[self dumpDebugGraphviz];
 		}
@@ -758,8 +760,10 @@ void OpenLogFile()
 {
 	//	Open log file in appropriate application / provide feedback.
 	
-	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"oxp-verifier-open-log", YES))
 	{
+		const oo::PList openLog = oo::Defaults::standard().object("oxp-verifier-open-log");
+		if (oo::PListGet<bool>::from(openLog.isNull() ? nullptr : &openLog, true))
+		{
 #if OOLITE_MAC_OS_X
 		[[NSWorkspace sharedWorkspace] openFile:oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath())];
 #elif OOLITE_WINDOWS
@@ -776,6 +780,7 @@ void OpenLogFile()
 #else 
 		do {} while (0);
 #endif
+		}
 	}
 }
 

@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OOMultiTextureMaterial.h"
 #import "OOPListView.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 #import "Universe.h"
 #import "OOCacheManager.h"
 #import "OOTexture.h"
@@ -203,7 +204,7 @@ static BOOL sDumpShaderSource = NO;
 
 + (void) initialize
 {
-	sDumpShaderSource = [[NSUserDefaults standardUserDefaults] boolForKey:@"dump-synthesized-shaders"];
+	sDumpShaderSource = oo::Defaults::standard().boolForKey("dump-synthesized-shaders") ? YES : NO;
 }
 #endif
 

@@ -47,6 +47,7 @@ SOFTWARE.
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/PListGet.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
 
 namespace {
@@ -289,7 +290,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 
 		if (uniforms.find("uGammaCorrect") == uniforms.end())
 		{
-			BOOL gammaCorrect = configuration.get<bool>("gamma_correct", ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
+			BOOL gammaCorrect = configuration.get<bool>("gamma_correct", !oo::Defaults::standard().boolForKey("no-gamma-correct"));
 			[self setUniform:"uGammaCorrect" floatValue:(float)gammaCorrect];
 		}
 	}

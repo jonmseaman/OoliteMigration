@@ -41,6 +41,8 @@ SOFTWARE.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -303,7 +305,10 @@ static BOOL					sHaveSetUp = NO;
 	OO_LOG("texture.load.rescale.maxSize", "GL maximum texture size: {}", static_cast<unsigned>(sGLMaxSize));
 	
 	// Why 0x80000000? Because it's the biggest number OORoundUpToPowerOf2() can handle.
-	sUserMaxSize = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned int>(@"max-texture-size", 0x80000000);
+	{
+		const oo::PList maxTex = oo::Defaults::standard().object("max-texture-size");
+		sUserMaxSize = oo::PListGet<unsigned int>::from(maxTex.isNull() ? nullptr : &maxTex, 0x80000000);
+	}
 	if (sUserMaxSize < 0x80000000)  OO_LOG("texture.load.rescale.maxSize", "User maximum texture size: {}", static_cast<unsigned>(sUserMaxSize));
 	sUserMaxSize = OORoundUpToPowerOf2_32(sUserMaxSize);
 	sUserMaxSize = MAX(sUserMaxSize, 64U);
