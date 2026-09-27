@@ -342,7 +342,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	// if runtime creation failed, end the program here.
 	if (_runtime == NULL)
 	{
-		OOLog(@"script.javaScript.init.error", @"***** FATAL ERROR: failed to create JavaScript runtime with size %uMiB.", jsRuntimeInMiB);
+		OO_LOG("script.javaScript.init.error", "***** FATAL ERROR: failed to create JavaScript runtime with size {}MiB.", static_cast<unsigned>(jsRuntimeInMiB));
 		exit(1);
 	}
 	
@@ -365,7 +365,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	// if context creation failed, end the program here.
 	if (gOOJSMainThreadContext == NULL)
 	{
-		OOLog(@"script.javaScript.init.error", @"%@", @"***** FATAL ERROR: failed to create JavaScript context.");
+		OO_LOG("script.javaScript.init.error", "{}", "***** FATAL ERROR: failed to create JavaScript context.");
 		exit(1);
 	}
 	
@@ -381,7 +381,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		if (gcZeal > 0)
 		{
 			// Useful js-gc-zeal values are 0 (off), 1 and 2.
-			OOLog(@"script.javaScript.debug.gcZeal", @"Setting JavaScript garbage collector zeal to %u.", gcZeal);
+			OO_LOG("script.javaScript.debug.gcZeal", "Setting JavaScript garbage collector zeal to {}.", static_cast<unsigned>(gcZeal));
 			ooscript::setGCZeal((gOOJSMainThreadContext), gcZeal);
 		}
 	}
@@ -395,7 +395,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	ooscript::initStandardClasses((gOOJSMainThreadContext), (_globalObject));
 	if (![self lookUpStandardClassPointers])
 	{
-		OOLog(@"script.javaScript.init.error", @"%@", @"***** FATAL ERROR: failed to look up standard JavaScript classes.");
+		OO_LOG("script.javaScript.init.error", "{}", "***** FATAL ERROR: failed to look up standard JavaScript classes.");
 		exit(1);
 	}
 	[self registerStandardObjectConverters];
@@ -443,7 +443,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 	ooscript::endRequest((gOOJSMainThreadContext));
 	
-	OOLog(@"script.javaScript.init.success", @"%@", @"Set up JavaScript context.");
+	OO_LOG("script.javaScript.init.success", "{}", "Set up JavaScript context.");
 }
 
 
@@ -485,12 +485,12 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	static int counter = 3;		// loading a savegame with different strict mode calls js reset twice
 	if (counter-- == 0) {
 	counter = 3;
-	OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
+	OO_LOG("script.javascript.init.error", "{}", "JavaScript processes still pending. Can't reset JavaScript engine.");
 		return NO;
 	}
 	else
 	{
-		OOLog(@"script.javascript.init", @"%@", @"JavaScript reset successful.");
+		OO_LOG("script.javascript.init", "{}", "JavaScript reset successful.");
 	}
 #endif
 		
@@ -501,12 +501,12 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		if (ooscript::isInRequest((gOOJSMainThreadContext)))
 		{
 			// some threads are still pending, this should mean timers are still being removed.
-			OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
+			OO_LOG("script.javascript.init.error", "{}", "JavaScript processes still pending. Can't reset JavaScript engine.");
 			return NO;
 		}
 		else
 		{
-			OOLog(@"script.javascript.init", @"%@", @"JavaScript reset successful.");
+			OO_LOG("script.javascript.init", "{}", "JavaScript reset successful.");
 		}
 	}
 	
@@ -695,7 +695,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
-	OOLog(@"script.javaScript.debugger", @"debugger invoked during %@:", [[OOJSScript currentlyRunningScript] displayName]);
+	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", oo::DescriptionOf([[OOJSScript currentlyRunningScript] displayName]));
 	OOJSDumpStack(context);
 	
 	OOJSResumeTimeLimiter();
@@ -939,11 +939,11 @@ ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 		}
 		@catch (OOException *exception)
 		{
-			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", [exception name], [exception reason]);
 		}
 		@catch (OOFoundationException *exception)
 		{
-			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		}
 	}
 }
@@ -1139,7 +1139,7 @@ void OOJSReportWrappedException(ooscript::Context context, id exception)
 
 void OOJSUnreachable(const char *function, const char *file, unsigned line)
 {
-	OOLog(@"fatal.unreachable", @"Supposedly unreachable statement reached in %s (%@:%u) -- terminating.", function, OOLogAbbreviatedFileName(file), line);
+	OO_LOG("fatal.unreachable", "Supposedly unreachable statement reached in {} ({}:{}) -- terminating.", function, oo::log::abbreviatedFileName(file), static_cast<unsigned>(line));
 	abort();
 }
 

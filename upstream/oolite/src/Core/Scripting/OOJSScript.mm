@@ -43,6 +43,7 @@ MA 02110-1301, USA.
 #import "OOPListParsing.h"
 #import "OODebugStandards.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOException.h"
 #import "NSDataOOExtensions.h"
 #include "oofnd/Encoding.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -207,7 +208,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 		if (ooscript::isExceptionPending((context)))
 		{
 			ooscript::clearPendingException((context));
-			OOLogERR(@"script.javaScript.load.waitingException", @"Prior to loading script %@, there was a pending JavaScript exception, which has been cleared. This is an internal error, please report it.", oo::NSStringOrNil(path));
+			OO_LOG_ERR("script.javaScript.load.waitingException", "Prior to loading script {}, there was a pending JavaScript exception, which has been cleared. This is an internal error, please report it.", path.value_or("(null)"));
 		}
 		
 		// Set up JS object
@@ -247,10 +248,10 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 		
 		if (!problem.has_value())
 		{
-			OOLog(@"script.javaScript.willLoad", @"About to load JavaScript %@", oo::NSStringOrNil(path));
+			OO_LOG("script.javaScript.willLoad", "About to load JavaScript {}", path.value_or("(null)"));
 			script = LoadScriptWithName(context, path, _jsSelf, &scriptObject, &problem);
 		}
-		OOLogIndentIf(@"script.javaScript.willLoad");
+		oo::log::indentIf("script.javaScript.willLoad");
 		
 		// Set default properties from manifest.plist
 		// Order-sensitive: the properties are set in key order (they were set in hash order).
@@ -323,17 +324,17 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 			version = DescriptionOrNil([self propertyWithID:OOJSID("version") inContext:context]);
 			description = DescriptionOrNil([self propertyWithID:OOJSID("description") inContext:context]);
 			
-			OOLog(@"script.javaScript.load.success", @"Loaded JavaScript: %@ -- %@", [self displayName], oo::NSStringFrom(description.value_or("(no description)")));
+			OO_LOG("script.javaScript.load.success", "Loaded JavaScript: {} -- {}", oo::DescriptionOf([self displayName]), description.value_or("(no description)"));
 		}
 		
-		OOLogOutdentIf(@"script.javaScript.willLoad");
+		oo::log::outdentIf("script.javaScript.willLoad");
 		
 		filePath.reset();	// Only used for error reporting during startup.
 	}
 	
 	if (problem.has_value())
 	{
-		OOLog(@"script.javaScript.load.failed", @"***** Error loading JavaScript script %@ -- %@", oo::NSStringOrNil(path), oo::NSStringFrom(*problem));
+		OO_LOG("script.javaScript.load.failed", "***** Error loading JavaScript script {} -- {}", path.value_or("(null)"), *problem);
 		ooscript::reportPendingException((context));
 		DESTROY(self);
 	}
@@ -475,12 +476,12 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 #ifndef NDEBUG
 		if (ooscript::isExceptionPending((context)))
 		{
-			OOLog(@"script.internalBug", @"Exception pending on context before calling method in %s, clearing. This is an internal error, please report it.", __PRETTY_FUNCTION__);
+			OO_LOG("script.internalBug", "Exception pending on context before calling method in {}, clearing. This is an internal error, please report it.", __PRETTY_FUNCTION__);
 			ooscript::clearPendingException((context));
 		}
 		
-		OOLog(@"script.javaScript.call", @"Calling [%@].%@()", [self name], OOStringFromJSID(methodID));
-		OOLogIndentIf(@"script.javaScript.call");
+		OO_LOG("script.javaScript.call", "Calling [{}].{}()", oo::DescriptionOf([self name]), oo::DescriptionOf(OOStringFromJSID(methodID)));
+		oo::log::indentIf("script.javaScript.call");
 #endif
 		
 		// Push self on stack of running scripts.
@@ -506,7 +507,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 		sRunningStack = stackElement.back;
 		
 #ifndef NDEBUG
-		OOLogOutdentIf(@"script.javaScript.call");
+		oo::log::outdentIf("script.javaScript.call");
 #endif
 	}
 	
@@ -761,7 +762,7 @@ static void AddStackToArrayReversed(std::vector<oo::ObjCRef<OOJSScript *>> &arra
 	{
 		AddStackToArrayReversed(array, stack->back);
 		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text).
-		if (stack->current == nil)  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil to array"];
+		if (stack->current == nil)  [OOException raise:OOInvalidArgumentException format:"Tried to add nil to array"];
 		array.emplace_back(stack->current);
 	}
 }
@@ -898,7 +899,7 @@ static std::optional<std::string> StringForKey(const oo::PList &dictionary, cons
 // A string value for -setObject:forKey:, which raised on nil (GNUstep 1.31.1's text).
 static std::string ValueForKey(const std::optional<std::string> &value, id key)
 {
-	if (!value.has_value())  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", key];
+	if (!value.has_value())  [OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", oo::DescriptionOf(key).c_str()];
 	return *value;
 }
 } // namespace
