@@ -37,9 +37,10 @@ MA 02110-1301, USA.
 #import "OOShipGroup.h"
 #import "OOStringParsing.h"
 #import "OOPListView.h"
-#import "OOLoggingExtended.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOFoundationBridge.h"
+#import "OOLogging.h"
+#include "oofnd/Log.hpp"
 
 #define OO_WORMHOLE_COLOR_BOOST	25.0
 #define OO_WORMHOLE_COLOR_FVEC4	{ 0.067, 0.067, 1.0, 0.25 }
@@ -144,7 +145,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 					else
 					{
 						const oo::PList *shipKey = shipInfo->find("ship_key");
-						OOLog(@"wormhole.load.warning", @"Wormhole ship \"%@\" failed to initialize - missing OXP or old-style saved wormhole data.", (shipKey != nullptr && (shipKey->isString() || shipKey->isNumber())) ? oo::NSStringFrom(shipInfo->get<std::string>("ship_key")) : nil);
+						OO_LOG("wormhole.load.warning", "Wormhole ship \"{}\" failed to initialize - missing OXP or old-style saved wormhole data.", (shipKey != nullptr && (shipKey->isString() || shipKey->isNumber())) ? shipInfo->get<std::string>("ship_key") : std::string("(null)"));
 					}
 				}
 			}
@@ -632,7 +633,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	}
 	else
 	{
-		OOLogERR(kOOLogInconsistentState, @"%@", @"Wormhole identified when ship has no EQ_WORMHOLE_SCANNER.");
+		OO_LOG_ERR(cxx_kOOLogInconsistentState, "{}", "Wormhole identified when ship has no EQ_WORMHOLE_SCANNER.");
 		/*
 			This was previously an assertion, but a player reported hitting it.
 			http://aegidian.org/bb/viewtopic.php?p=128110#p128110
@@ -855,22 +856,22 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 - (void)dumpSelfState
 {
 	[super dumpSelfState];
-	OOLog(@"dumpState.wormholeEntity", @"Origin                 : %@", [UNIVERSE getSystemName:origin]);
-	OOLog(@"dumpState.wormholeEntity", @"Destination            : %@", [UNIVERSE getSystemName:destination]);
-	OOLog(@"dumpState.wormholeEntity", @"Expiry Time            : %@", ClockToString(expiry_time, false));
-	OOLog(@"dumpState.wormholeEntity", @"Arrival Time           : %@", ClockToString(arrival_time, false));
-	OOLog(@"dumpState.wormholeEntity", @"Projected Arrival Time : %@", ClockToString(estimated_arrival_time, false));
-	OOLog(@"dumpState.wormholeEntity", @"Scanned Time           : %@", ClockToString(scan_time, false));
-	OOLog(@"dumpState.wormholeEntity", @"Scanned State          : %s", [self scanInfoString]);
+	OO_LOG("dumpState.wormholeEntity", "Origin                 : {}", oo::DescriptionOf([UNIVERSE getSystemName:origin]));
+	OO_LOG("dumpState.wormholeEntity", "Destination            : {}", oo::DescriptionOf([UNIVERSE getSystemName:destination]));
+	OO_LOG("dumpState.wormholeEntity", "Expiry Time            : {}", cxx_ClockToString(expiry_time, false));
+	OO_LOG("dumpState.wormholeEntity", "Arrival Time           : {}", cxx_ClockToString(arrival_time, false));
+	OO_LOG("dumpState.wormholeEntity", "Projected Arrival Time : {}", cxx_ClockToString(estimated_arrival_time, false));
+	OO_LOG("dumpState.wormholeEntity", "Scanned Time           : {}", cxx_ClockToString(scan_time, false));
+	OO_LOG("dumpState.wormholeEntity", "Scanned State          : {}", [self scanInfoString]);
 
-	OOLog(@"dumpState.wormholeEntity", @"Mass                   : %.2lf", witch_mass);
-	OOLog(@"dumpState.wormholeEntity", @"Ships                  : %zu", shipsInTransit.size());
+	OO_LOG("dumpState.wormholeEntity", "Mass                   : {:.2f}", witch_mass);
+	OO_LOG("dumpState.wormholeEntity", "Ships                  : {}", shipsInTransit.size());
 	unsigned i;
 	for (i = 0; i < shipsInTransit.size(); ++i)
 	{
 		ShipEntity* ship = shipsInTransit[i].ship.get();
 		double	ship_arrival_time = arrival_time + shipsInTransit[i].time;
-		OOLog(@"dumpState.wormholeEntity.ships", @"Ship %d: %@  mass %.2f  arrival time %@", i+1, ship, [ship mass], ClockToString(ship_arrival_time, false));
+		OO_LOG("dumpState.wormholeEntity.ships", "Ship {}: {}  mass {:.2f}  arrival time {}", i+1, oo::DescriptionOf(ship), [ship mass], cxx_ClockToString(ship_arrival_time, false));
 	}
 }
 

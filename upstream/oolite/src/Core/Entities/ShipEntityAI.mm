@@ -310,7 +310,7 @@ using ooscript::Context;
 	aiScript = [OOScript jsAIScriptFromFileNamed:aiString properties:properties];
 	if (aiScript == nil)
 	{
-		OOLog(@"ai.load.failed.unknownAI",@"Unable to load JS AI %@ for ship %@ (%@ for role %@)",aiString,self,[self shipDataKey],[self primaryRole]);
+		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", oo::DescriptionOf(aiString), oo::DescriptionOf(self), oo::DescriptionOf([self shipDataKey]), oo::DescriptionOf([self primaryRole]));
 		aiScript = [OOScript jsAIScriptFromFileNamed:@"oolite-nullAI.js" properties:properties];
 	}
 	else
@@ -741,7 +741,7 @@ using ooscript::Context;
 #ifndef NDEBUG
 		if (reportAIMessages)
 		{
-			OOLog(@"ai.suggestEscort", @"DEBUG: %@ suggests escorting %@", self, mother);
+			OO_LOG("ai.suggestEscort", "DEBUG: {} suggests escorting {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
 		}
 #endif
 		
@@ -765,7 +765,7 @@ using ooscript::Context;
 #ifndef NDEBUG
 		if (reportAIMessages)
 		{
-			OOLog(@"ai.suggestEscort.refused", @"DEBUG: %@ refused by %@", self, mother);
+			OO_LOG("ai.suggestEscort.refused", "DEBUG: {} refused by {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
 		}
 #endif
 		
@@ -878,7 +878,7 @@ using ooscript::Context;
 	
 	if ([tokens count] != 2)
 	{
-		OOLog(@"ai.syntax.randomPauseAI", @"***** ERROR: cannot read min and max value for randomPauseAI:, needs 2 values: '%@'.", intervalString);
+		OO_LOG("ai.syntax.randomPauseAI", "***** ERROR: cannot read min and max value for randomPauseAI:, needs 2 values: '{}'.", oo::DescriptionOf(intervalString));
 		return;
 	}
 	
@@ -1364,7 +1364,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		OOLog(@"ai.setTakeOffFromPlanet.noPlanet", @"%@", @"***** Error. Planet not found during take off!");
+		OO_LOG("ai.setTakeOffFromPlanet.noPlanet", "{}", "***** Error. Planet not found during take off!");
 	}
 }
 
@@ -1659,7 +1659,7 @@ using ooscript::Context;
 
 - (void) disengageAutopilot
 {
-	OOLogERR(@"ai.invalid.notPlayer", @"Error in %@:%@, AI method endAutoPilot is only applicable to the player.", [shipAI name], [shipAI state]);
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", oo::DescriptionOf([shipAI name]), oo::DescriptionOf([shipAI state]));
 }
 
 
@@ -2293,7 +2293,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		OOLog(@"ai.rollD.invalidValue", @"***** ERROR: invalid value supplied to rollD: '%@'.", die_number);
+		OO_LOG("ai.rollD.invalidValue", "***** ERROR: invalid value supplied to rollD: '{}'.", oo::DescriptionOf(die_number));
 	}
 }
 
@@ -2447,7 +2447,7 @@ using ooscript::Context;
 		
 		if (![errorCache containsObject:key])
 		{
-			OOLog(@"ai.scanForNearestShipMatchingPredicate.compile.failed", @"Could not compile JavaScript predicate \"%@\" for AI %@.", predicateExpression, [[self getAI] name]);
+			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), oo::DescriptionOf([[self getAI] name]));
 			if (errorCache == nil)  errorCache = [[NSMutableSet alloc] init];
 			[errorCache addObject:key];
 		}
@@ -2472,7 +2472,7 @@ using ooscript::Context;
 	
 	if ([tokens count] != 4)
 	{
-		OOLog(@"ai.syntax.setCoordinates", @"***** ERROR: cannot setCoordinates: '%@'.",system_x_y_z);
+		OO_LOG("ai.syntax.setCoordinates", "***** ERROR: cannot setCoordinates: '{}'.", oo::DescriptionOf(system_x_y_z));
 		return;
 	}
 	
@@ -2594,11 +2594,11 @@ using ooscript::Context;
 	if (!deprecationWarning)
 	{
 		deprecationWarning = YES;
-		OOLog(@"script.deprecated.scriptActionOnTarget", @"----- WARNING in AI %@: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", [AI currentlyRunningAIDescription]);
+		OO_LOG("script.deprecated.scriptActionOnTarget", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", oo::DescriptionOf([AI currentlyRunningAIDescription]));
 	}
 	else
 	{
-		OOLog(@"script.deprecated.scriptActionOnTarget.repeat", @"----- WARNING in AI %@: the AI method scriptActionOnTarget: is deprecated and should not be used.", [AI currentlyRunningAIDescription]);
+		OO_LOG("script.deprecated.scriptActionOnTarget.repeat", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used.", oo::DescriptionOf([AI currentlyRunningAIDescription]));
 	}
 #endif
 	
@@ -2669,7 +2669,7 @@ using ooscript::Context;
 {
 	NSString *desc = [NSString stringWithFormat:@"%@ %d", [self name], [self universalID]];
 	if ([self isPlayer])  desc = @"player autopilot";
-	OOLog(@"ai.takeAction.debugMessage", @"DEBUG: AI MESSAGE from %@: %@", desc, message);
+	OO_LOG("ai.takeAction.debugMessage", "DEBUG: AI MESSAGE from {}: {}", oo::DescriptionOf(desc), oo::DescriptionOf(message));
 }
 
 
@@ -2849,7 +2849,7 @@ using ooscript::Context;
 	float dist = oo::PListView(oo::PListView(sDests).at<NSDictionary *>(i)).get<float>(@"distance");
 	if (dist > [self maxHyperspaceDistance] || dist > fuel/10.0f) 
 	{
-		OOLogWARN(@"script.debug", @"DEBUG: %@ Jumping %f which is further than allowed.  I have %d fuel", self, dist, fuel);
+		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, fuel);
 	}
 	fuel -= 10 * dist;
 	
@@ -2942,7 +2942,7 @@ using ooscript::Context;
 
 // AI methods for stations, have no effect on normal ships.
 
-#define STATION_STUB_BASE(PROTO, NAME)  PROTO { OOLog(@"ai.invalid.notAStation", @"Attempt to use station AI method \"%s\" on non-station %@.", NAME, self); }
+#define STATION_STUB_BASE(PROTO, NAME)  PROTO { OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", NAME, oo::DescriptionOf(self)); }
 #define STATION_STUB_NOARG(NAME)	STATION_STUB_BASE(- (void) NAME, #NAME)  // NOLINT(bugprone-macro-parentheses): Objective-C method-name macro arg, pre-existing; behaviour unchanged by this retarget.
 #define STATION_STUB_ARG(NAME)		STATION_STUB_BASE(- (void) NAME (NSString *)param, #NAME)
 
@@ -2958,7 +2958,7 @@ STATION_STUB_NOARG(launchTrader)
 STATION_STUB_NOARG(launchEscort)
 - (BOOL) launchPatrol
 {
-	OOLog(@"ai.invalid.notAStation", @"Attempt to use station AI method \"%s\" on non-station %@.", "launchPatrol", self);
+	OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", "launchPatrol", oo::DescriptionOf(self));
 	return NO;
 }
 STATION_STUB_ARG(launchShipWithRole:)

@@ -36,6 +36,7 @@ SOFTWARE.
 #import "OOFoundationException.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
+#include "oofnd/Log.hpp"
 
 /* 
  * GNUstep 1.20.1 does not support NSIntegerHashCallBacks but uses 
@@ -634,7 +635,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	if (texOptions & kOOTextureAllowCubeMap)
 	{
 		// cube_map = true; fail regardless of whether actual texture qualifies.
-		OOLogERR(@"material.synthesis.error.cubeMap", @"The material \"%@\" of \"%@\" specifies a cube map texture, but doesn't have custom shaders. Cube map textures are not supported with the default shaders.", oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]));
+		OO_LOG_ERR("material.synthesis.error.cubeMap", "The material \"{}\" of \"{}\" specifies a cube map texture, but doesn't have custom shaders. Cube map textures are not supported with the default shaders.", [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"));
 		[OOException raise:OOGenericException format:"Invalid material"];
 	}
 	
@@ -724,7 +725,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		return sample + "." + swizzle;
 	}
 	
-	OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", oo::NSStringFrom(mapName), oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1 or 3");
+	OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", mapName, [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"), channelCount, "1 or 3");
 	return std::nullopt;
 }
 
@@ -746,7 +747,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		return sample + "." + swizzle;
 	}
 	
-	OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", oo::NSStringFrom(mapName), oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1");
+	OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", mapName, [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"), channelCount, "1");
 	return std::nullopt;
 }
 
@@ -757,7 +758,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	// Ensure that we aren’t recursing.
 	if (_stagesInProgress.count(stage) != 0)
 	{
-		OOLogERR(@"material.synthesis.error.recursion", @"Shader synthesis recursion for stage %s.", OOSelectorName(stage));
+		OO_LOG_ERR("material.synthesis.error.recursion", "Shader synthesis recursion for stage {}.", OOSelectorName(stage));
 		[OOException raise:OOInternalInconsistencyException format:"stage recursion"];
 	}
 	
@@ -869,7 +870,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			}
 			else
 			{
-				OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", @"parallax", oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1");
+				OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", "parallax", [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"), channelCount, "1");
 			}
 		}
 	}
@@ -1020,7 +1021,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		}
 		else
 		{
-			OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", @"normal", oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), swizzle.size(), @"3");
+			OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", "normal", [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"), swizzle.size(), "3");
 		}
 	}
 	_constZNormal = YES;
@@ -1278,11 +1279,11 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			{
 				if (!bindingType.has_value())
 				{
-					OOLogERR(@"material.binding.error.unknown", @"Cannot bind light map to unknown attribute \"%@\".", oo::NSStringFrom(bindingName));
+					OO_LOG_ERR("material.binding.error.unknown", "Cannot bind light map to unknown attribute \"{}\".", bindingName);
 				}
 				else
 				{
-					OOLogERR(@"material.binding.error.badType", @"Cannot bind light map to attribute \"%@\" of type %@.", oo::NSStringFrom(bindingName), oo::NSStringFrom(*bindingType));
+					OO_LOG_ERR("material.binding.error.badType", "Cannot bind light map to attribute \"{}\" of type {}.", bindingName, *bindingType);
 				}
 				_fragmentBody += "\tlightMapColor = vec3(0.0);  // Bad binding, see log.\n";
 			}
@@ -1621,7 +1622,7 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 	}
 	
 	oo::PList canonical(std::move(result));
-	OOLog(@"material.canonicalForm", @"Canonicalized material %@:\nORIGINAL:\n%@\n\n@CANONICAL:\n%@", oo::NSStringOrNil(materialKey), oo::ObjectFromPList(spec), oo::ObjectFromPList(canonical));
+	OO_LOG("material.canonicalForm", "Canonicalized material {}:\nORIGINAL:\n{}\n\n@CANONICAL:\n{}", materialKey.value_or("(null)"), oo::DescriptionOf(oo::ObjectFromPList(spec)), oo::DescriptionOf(oo::ObjectFromPList(canonical)));
 	
 	return canonical;
 }
