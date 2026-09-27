@@ -162,7 +162,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	
 	gui_screen = GUI_SCREEN_STICKMAPPER;
 	[gui clear];
-	[gui setTitle:@"Configure Joysticks"];
+	[gui cxx_setTitle:"Configure Joysticks"];
 	
 	for(i=0; i < stickCount; i++)
  	{

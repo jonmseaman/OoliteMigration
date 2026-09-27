@@ -1335,14 +1335,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #endif
 
 	[gui clearAndKeepBackground:YES];
-	[gui setTitle:DESC(@"oolite-oxzmanager-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title"))];
 
 	/* This switch will give warnings unless all states are
 	 * covered. */
 	switch (_interfaceState)
 	{
 	case OXZ_STATE_SETFILTER:
-		[gui setTitle:DESC(@"oolite-oxzmanager-title-setfilter")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-setfilter"))];
 		[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-currentfilter-is-@"), {_currentFilter}) forRow:OXZ_GUI_ROW_FILTERCURRENT align:GUI_ALIGN_LEFT];
 		[gui addLongText:DESC(@"oolite-oxzmanager-filterhelp") startingAtRow:OXZ_GUI_ROW_FILTERHELP align:GUI_ALIGN_LEFT];
 
@@ -1400,7 +1400,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		break;
 	case OXZ_STATE_UPDATING:
 	case OXZ_STATE_INSTALLING:
-		[gui setTitle:DESC(@"oolite-oxzmanager-title-downloading")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-downloading"))];
 
 		if (_downloadStatus == OXZ_DOWNLOAD_ERROR)
 		{
@@ -1417,7 +1417,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		startRow = OXZ_GUI_ROW_UPDATE;
 		break;
 	case OXZ_STATE_DEPENDENCIES:
-		[gui setTitle:DESC(@"oolite-oxzmanager-title-dependencies")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-dependencies"))];
 
 		[gui setText:DESC(@"oolite-oxzmanager-dependencies-decision") forRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 
@@ -1461,7 +1461,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
 			const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
 			const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
-			[gui setTitle:DESC(@"oolite-oxzmanager-title-extract")];
+			[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-extract"))];
 			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-title-@-version-@"), {Arg(title), Arg(version)})
 				  forRow:0 align:GUI_ALIGN_LEFT];
 			[gui addLongText:DESC(@"oolite-oxzmanager-extract-info") startingAtRow:2 align:GUI_ALIGN_LEFT];
@@ -1505,19 +1505,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL)
 	{
-		[gui setTitle:DESC(@"oolite-oxzmanager-title-install")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-install"))];
 		[self setFilteredList:[self applyCurrentFilter:_oxzList]];
 		startRow = [self showInstallOptions];
 	}
 	else if (_interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
-		[gui setTitle:DESC(@"oolite-oxzmanager-title-installed")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-installed"))];
 		[self setFilteredList:[self applyCurrentFilter:[self managedOXZs]]];
 		startRow = [self showInstallOptions];
 	}
 	else if (_interfaceState == OXZ_STATE_PICK_REMOVE)
 	{
-		[gui setTitle:DESC(@"oolite-oxzmanager-title-remove")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-remove"))];
 		[self setFilteredList:[self applyCurrentFilter:[self managedOXZs]]];
 		startRow = [self showRemoveOptions];
 	}
@@ -1797,7 +1797,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			_interfaceShowingOXZDetail = YES;
 
 			[gui clearAndKeepBackground:YES];
-			[gui setTitle:DESC(@"oolite-oxzmanager-title-infopage")];
+			[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-infopage"))];
 
 // title, version			
 			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-title-@-version-@"),

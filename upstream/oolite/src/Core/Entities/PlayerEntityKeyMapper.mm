@@ -290,7 +290,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(std::string("Configure Keyboard"))];
+	[gui cxx_setTitle:std::string("Configure Keyboard")];
 
 	// show keyboard layout
 	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-keyboard")), [self keyboardDescription:kbd] }) forRow:GUI_ROW_KC_SELECTKBD];
@@ -566,7 +566,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	gui_screen = GUI_SCREEN_KEYBOARD_CONFIG;
 	BOOL guiChanged = (oldScreen != gui_screen);
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-update-title")))];	// @"%@"
+	[gui cxx_setTitle:oo::DescriptionOf(DESC(@"oolite-keyconfig-update-title"))];	// @"%@"
 
 	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-function")), OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_GUIDESC)) })
 					forRow: GUI_ROW_KC_UPDATE_FUNCNAME];
@@ -755,7 +755,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[gameView setStringInput:gvStringInputAll];
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-update-entry-title")))];	// @"%@"
+	[gui cxx_setTitle:oo::DescriptionOf(DESC(@"oolite-keyconfig-update-entry-title"))];	// @"%@"
 
 	NSUInteger end_row = 21;
 	if ([[self hud] allowBigGui])
@@ -892,7 +892,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	BOOL guiChanged = (oldScreen != gui_screen);
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides-title")))];	// @"%@"
+	[gui cxx_setTitle:oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides-title"))];	// @"%@"
 
 	[gui cxx_addLongText:oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides"))	// @"%@"
 								startingAtRow:GUI_ROW_KC_CONFIRMCLEAR align:GUI_ALIGN_LEFT];
@@ -1302,7 +1302,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(std::string("Select Keyboard Layout"))];
+	[gui cxx_setTitle:std::string("Select Keyboard Layout")];
 
 	[self displayKeyboardLayoutList:gui skip:skip];
 

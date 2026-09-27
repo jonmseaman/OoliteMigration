@@ -1054,7 +1054,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	}
 
 	OOJSInterfaceDefinition* definition = [[OOJSInterfaceDefinition alloc] init];
-	[definition setTitle:oo::NSStringOrNil(title)];
+	[definition cxx_setTitle:title];
 	[definition setCategory:*category];
 	[definition setSummary:*summary];
 	[definition setCallback:callback];
