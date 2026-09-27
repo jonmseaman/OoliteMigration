@@ -32,7 +32,6 @@ SOFTWARE.
 
 #import "OODebugMonitor.h"
 #import "OOPListView.h"
-#import "OOLoggingExtended.h"
 #import "ResourceManager.h"
 #import "NSStringOOExtensions.h"
 
@@ -46,6 +45,7 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Encoding.hpp"
 #import "NSDataOOExtensions.h"
@@ -187,16 +187,16 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 				}
 				else
 				{
-					OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an error occurred: %@", newDebugger, error);
+					OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an error occurred: {}", oo::DescriptionOf(newDebugger), oo::DescriptionOf(error));
 				}
 			}
 			@catch (OOException *exception)
 			{
-				OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an exception occurred: %@ -- %@", newDebugger, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", oo::DescriptionOf(newDebugger), [exception name], [exception reason]);
 			}
 			@catch (OOFoundationException *exception)
 			{
-				OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an exception occurred: %@ -- %@", newDebugger, [exception name], [exception reason]);
+				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", oo::DescriptionOf(newDebugger), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 			}
 		}
 	}
@@ -231,11 +231,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send JavaScript console text to debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send JavaScript console text to debugger: {} -- {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send JavaScript console text to debugger: %@ -- %@", [exception name], [exception reason]);
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send JavaScript console text to debugger: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -259,11 +259,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to clear JavaScript console: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to clear JavaScript console: {} -- {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to clear JavaScript console: %@ -- %@", [exception name], [exception reason]);
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to clear JavaScript console: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -278,11 +278,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to show JavaScript console: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to show JavaScript console: {} -- {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to show JavaScript console: %@ -- %@", [exception name], [exception reason]);
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to show JavaScript console: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -365,11 +365,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send configuration update to debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send configuration update to debugger: {} -- {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send configuration update to debugger: %@ -- %@", [exception name], [exception reason]);
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send configuration update to debugger: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -400,7 +400,7 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 
 - (void) writeMemStat:(const std::string &)line
 {
-	OOLog(@"debug.memStats", @"%@", oo::NSStringFrom(line));
+	OO_LOG("debug.memStats", "{}", line);
 	[self appendJSConsoleLine:oo::NSStringFrom(line) colorKey:"command-result"];
 }
 
@@ -499,7 +499,7 @@ struct EntityDumpState
 	state->totalEntityObjSize += entitySize;
 	state->totalDrawableSize += drawableSize;
 
-	OOLogIndent();
+	oo::log::indent();
 	if ([entity isShip])
 	{
 		for (id subentity in [entity subEntityEnumerator])
@@ -537,14 +537,14 @@ struct EntityDumpState
 			[self dumpEntity:ship withState:state parentVisible:NO];
 		}
 	}
-	OOLogOutdent();
+	oo::log::outdent();
 }
 
 
 - (void) dumpMemoryStatistics
 {
-	OOLog(@"debug.memStats", @"%@", @"Memory statistics:");
-	OOLogIndent();
+	OO_LOG("debug.memStats", "{}", "Memory statistics:");
+	oo::log::indent();
 
 	//	Get texture retain counts before the entity dumper starts messing with them.
 	const std::vector<oo::ObjCRef<OOTexture *>> allTextures = [OOTexture cxx_allTextures];
@@ -559,7 +559,7 @@ struct EntityDumpState
 	size_t totalSize = 0;
 
 	[self writeMemStat:"Entitites:"];
-	OOLogIndent();
+	oo::log::indent();
 
 	EntityDumpState entityDumpState;
 
@@ -572,7 +572,7 @@ struct EntityDumpState
 		[self dumpEntity:entity withState:&entityDumpState parentVisible:YES];
 	}
 
-	OOLogOutdent();
+	oo::log::outdent();
 	[self writeMemStat:oo::str::format("Total entity size (excluding %u entities not accounted for): %s (%s entity objects, %s drawables)",
 	 gLiveEntityCount - entityDumpState.seenCount,
 	 SizeString(entityDumpState.totalEntityObjSize + entityDumpState.totalDrawableSize).c_str(),
@@ -598,7 +598,7 @@ struct EntityDumpState
 	size_t visibleTextureDataSize = 0;
 
 	[self writeMemStat:"Textures:"];
-	OOLogIndent();
+	oo::log::indent();
 
 	for (const oo::ObjCRef<OOTexture *> &texRef : textures)
 	{
@@ -638,7 +638,7 @@ struct EntityDumpState
 	}
 	totalSize += totalTextureObjSize + totalTextureDataSize;
 
-	OOLogOutdent();
+	oo::log::outdent();
 
 #if !OOTEXTURE_RELOADABLE
 	totalTextureDataSize *= 2;
@@ -653,7 +653,7 @@ struct EntityDumpState
 
 	[self writeMemStat:oo::str::format("Total: %s", SizeString(totalSize).c_str())];
 
-	OOLogOutdent();
+	oo::log::outdent();
 }
 
 
@@ -677,8 +677,8 @@ struct EntityDumpState
 {
 	if (_TCPIgnoresDroppedPackets != flag)
 	{
-		OOLog(@"debugMonitor.TCPSettings", @"The TCP console will %@ TCP packets.",
-				(flag ? @"try to stay connected, ignoring dropped" : @"disconnect if an error affects"));
+		OO_LOG("debugMonitor.TCPSettings", "The TCP console will {} TCP packets.",
+				(flag ? "try to stay connected, ignoring dropped" : "disconnect if an error affects"));
 	}
 	_TCPIgnoresDroppedPackets = flag;
 }
@@ -733,7 +733,7 @@ struct EntityDumpState
 	}
 	else
 	{
-		OOLog(@"debugMonitor.disconnect.ignored", @"Attempt to disconnect debugger %@, which is not current debugger; ignoring.", debugger);
+		OO_LOG("debugMonitor.disconnect.ignored", "Attempt to disconnect debugger {}, which is not current debugger; ignoring.", oo::DescriptionOf(debugger));
 	}
 }
 
@@ -813,11 +813,11 @@ struct EntityDumpState
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to disconnect debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to disconnect debugger: {} -- {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to disconnect debugger: %@ -- %@", [exception name], [exception reason]);
+		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to disconnect debugger: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	
 	id debugger = _debugger;
