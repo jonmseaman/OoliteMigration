@@ -129,7 +129,7 @@ using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>
 
 - (void) setScript:(const std::optional<std::string> &)script_name;
 - (OOJSScript *)script;
-- (id)scriptInfo;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (oo::PList)scriptInfo;	// flipped with its family (bead oo-3rb.284)
 - (void) doScriptEvent:(ooscript::PropertyId)message;
 - (void) remove;
 

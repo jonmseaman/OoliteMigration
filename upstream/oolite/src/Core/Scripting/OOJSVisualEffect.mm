@@ -401,8 +401,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			break;
 
 		case kVisualEffect_scriptInfo:
-			result = [entity scriptInfo];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
+			result = oo::ObjectFromPList([entity scriptInfo]);	// empty dict, never null
 			break;
 
 		default:

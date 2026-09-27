@@ -14654,9 +14654,9 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (id)scriptInfo	// shared selector (proposed ADR-0043)
+- (oo::PList)scriptInfo
 {
-	return oo::ObjectFromPList(scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : scriptInfo);	// empty rather than nil
+	return scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : scriptInfo;	// empty rather than null
 }
 
 

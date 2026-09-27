@@ -1062,8 +1062,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, [entity scriptedMisjumpRange], value);
 			
 		case kShip_scriptInfo:
-			result = [entity scriptInfo];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
+			result = oo::ObjectFromPList([entity scriptInfo]);	// empty dict, never null
 			break;
 			
 		case kShip_sunGlareFilter:

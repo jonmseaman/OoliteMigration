@@ -799,9 +799,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 }
 
 
-- (id)scriptInfo	// shared selector (proposed ADR-0043)
+- (oo::PList)scriptInfo
 {
-	return oo::ObjectFromPList(scriptInfo ? scriptInfo : oo::PList(oo::PList::Dict{}));
+	return scriptInfo ? scriptInfo : oo::PList(oo::PList::Dict{});
 }
 
 // unlikely to need events with arguments
