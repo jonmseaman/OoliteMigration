@@ -1376,14 +1376,14 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	
    	if(width && height)
    	{
-      		currentSize=[self findDisplayModeForWidth: width Height: height Refresh: refresh];
+      		currentSize=[self indexOfDisplayModeForWidth: width Height: height Refresh: refresh];
       		return currentSize;
    	}
    	return currentSize;
 }
 
 
-- (int) findDisplayModeForWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh
+- (int) indexOfDisplayModeForWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh
 {
 	int i, modeCount;
 	unsigned int modeWidth, modeHeight, modeRefresh;

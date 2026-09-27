@@ -200,8 +200,8 @@ MA 02110-1301, USA.
 - (BOOL) inFullScreenMode;
 
 - (BOOL) setDisplayWidth:(unsigned int) d_width Height:(unsigned int)d_height Refresh:(unsigned int) d_refresh;
-- (id) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh;	// a display-mode dictionary. Shared selector (proposed ADR-0043).
-- (id) displayModes;	// an Objective-C array of display-mode dictionaries. Shared selector (proposed ADR-0043).
+- (oo::PList) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh;	// a mode dictionary; null: none (flipped with its family, bead oo-3rb.273)
+- (oo::PList) displayModes;	// an array of mode dictionaries (flipped with its family, bead oo-3rb.273)
 - (NSUInteger) indexOfCurrentDisplayMode;
 
 - (void) pauseFullScreenModeToPerform:(SEL) selector onTarget:(id) target;

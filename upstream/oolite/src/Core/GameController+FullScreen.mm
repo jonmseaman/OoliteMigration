@@ -148,13 +148,13 @@ MA 02110-1301, USA.
 }
 
 
-- (id) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh	// shared selector (proposed ADR-0043)
+- (oo::PList) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh
 {
-	return oo::ObjectFromPList([_fullScreenController findDisplayModeForWidth:d_width height:d_height refreshRate:d_refresh]);
+	return [_fullScreenController findDisplayModeForWidth:d_width height:d_height refreshRate:d_refresh];
 }
 
 
-- (id) displayModes	// shared selector (proposed ADR-0043)
+- (oo::PList) displayModes
 {
 	return [_fullScreenController displayModes];
 }
