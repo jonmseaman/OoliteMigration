@@ -50,6 +50,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
 
@@ -284,7 +285,7 @@ typedef GLvoid (*TessFuncPtr)();
 	polygonData.OK = YES;
 #ifndef NDEBUG
 	polygonData.name = _name;
-	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"polygon-sprite-dump-svg"])  SVGDumpBegin(&polygonData);
+	if (oo::Defaults::standard().boolForKey("polygon-sprite-dump-svg"))  SVGDumpBegin(&polygonData);
 #endif
 	
 	// For efficiency, grow to more than big enough for most cases to avoid regrowing.

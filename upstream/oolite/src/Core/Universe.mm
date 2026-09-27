@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #include "oofnd/Process.hpp"
 #include "oofnd/Date.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/objc/OOAssert.h"
 #import "MyOpenGLView.h"
 #import "GameController.h"
@@ -776,7 +777,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
 	
-	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &prefs = oo::Defaults::standard();
 	
 	// prefs value no longer used - per save game but startup needs to
 	// be non-strict
@@ -793,8 +794,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// init OpenGL extension manager (must be done before any other threads might use it)
 	[OOOpenGLExtensionManager sharedManager];
-	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(static_cast<unsigned int>(oo::PListView(prefs).get<int>(@"detailLevel",
-								[[OOOpenGLExtensionManager sharedManager] defaultDetailLevel])))];
+	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(prefs.object("detailLevel").isNull() ? [[OOOpenGLExtensionManager sharedManager] defaultDetailLevel] : static_cast<unsigned int>(prefs.integerForKey("detailLevel")))];
 								
 	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
 	
@@ -804,7 +804,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[OOCacheManager sharedCache];
 	
 #if OOLITE_SPEECH_SYNTH
-	OO_LOG("speech.synthesis", "Spoken messages are {}.", (oo::PListView(prefs).get<BOOL>(@"speech_on", NO) ? "on" : "off"));
+	OO_LOG("speech.synthesis", "Spoken messages are {}.", (prefs.boolForKey("speech_on") ? "on" : "off"));
 #endif
 	
 	// init the Resource Manager
@@ -817,15 +817,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// load starting saves
 	[self loadScenarios];
 
-	autoSave = oo::PListView(prefs).get<BOOL>(@"autosave", NO);
-	wireframeGraphics = oo::PListView(prefs).get<BOOL>(@"wireframe-graphics", NO);
-	doProcedurallyTexturedPlanets = oo::PListView(prefs).get<BOOL>(@"procedurally-textured-planets", YES);
-	[inGameView setMsaa:oo::PListView(prefs).get<BOOL>(@"anti-aliasing", NO)];
+	autoSave = prefs.boolForKey("autosave");
+	wireframeGraphics = prefs.boolForKey("wireframe-graphics");
+	doProcedurallyTexturedPlanets = prefs.object("procedurally-textured-planets").isNull() ? YES : prefs.boolForKey("procedurally-textured-planets");
+	[inGameView setMsaa:prefs.boolForKey("anti-aliasing")];
 	OO_LOG("MSAA.setup", "Multisample anti-aliasing {}requested.", [inGameView msaa] ? "" : "not ");
-	[inGameView setFov:OOClamp_0_max_f(oo::PListView(prefs).get<float>(@"fov-value", 57.2f), MAX_FOV_DEG) fromFraction:NO];
+	[inGameView setFov:OOClamp_0_max_f(prefs.object("fov-value").isNull() ? 57.2f : prefs.floatForKey("fov-value"), MAX_FOV_DEG) fromFraction:NO];
 	if ([inGameView fov:NO] < MIN_FOV_DEG)  [inGameView setFov:MIN_FOV_DEG fromFraction:NO];
 
- 	[self setECMVisualFXEnabled:oo::PListView(prefs).get<BOOL>(@"ecm-visual-fx", YES)];
+ 	[self setECMVisualFXEnabled:prefs.object("ecm-visual-fx").isNull() ? YES : prefs.boolForKey("ecm-visual-fx")];
   	
 	// Set up speech synthesizer.
 #if OOLITE_SPEECH_SYNTH
@@ -1000,7 +1000,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) setDoProcedurallyTexturedPlanets:(BOOL) value
 {
 	doProcedurallyTexturedPlanets = !!value;	// ensure yes or no
-	[[NSUserDefaults standardUserDefaults] setBool:doProcedurallyTexturedPlanets forKey:@"procedurally-textured-planets"];
+	oo::Defaults::standard().setBool("procedurally-textured-planets", doProcedurallyTexturedPlanets);
 }
 
 
@@ -10496,7 +10496,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (void) setAutoSave:(BOOL) value
 {
 	autoSave = !!value;
-	[[NSUserDefaults standardUserDefaults] setBool:autoSave forKey:@"autosave"];
+	oo::Defaults::standard().setBool("autosave", autoSave);
 }
 
 
@@ -10521,7 +10521,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (void) setWireframeGraphics:(BOOL) value
 {
 	wireframeGraphics = !!value;
-	[[NSUserDefaults standardUserDefaults] setBool:wireframeGraphics forKey:@"wireframe-graphics"];
+	oo::Defaults::standard().setBool("wireframe-graphics", wireframeGraphics);
 }
 
 
@@ -10560,7 +10560,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 {
 	OOGraphicsDetail old = detailLevel;
 	[self setDetailLevelDirectly:value];
-	[[NSUserDefaults standardUserDefaults] setInteger:detailLevel forKey:@"detailLevel"];
+	oo::Defaults::standard().setInteger("detailLevel", detailLevel);
 	// if changed then reset graphics state
 	// (some items now require this even if shader on/off mode unchanged)
 	if (old != detailLevel)
@@ -11307,7 +11307,7 @@ static void PreloadOneSound(const std::string &soundName)
 #if DEBUG_GRAPHVIZ
 - (void) dumpDebugGraphViz
 {
-	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"universe-dump-debug-graphviz"])
+	if (oo::Defaults::standard().boolForKey("universe-dump-debug-graphviz"))
 	{
 		[self dumpSystemDescriptionGraphViz];
 	}

@@ -50,6 +50,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -1351,7 +1352,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	id					oldPaths = nil;
 	id					modDate = nil;
 
-	if (EXPECT_NOT([[NSUserDefaults standardUserDefaults] boolForKey:@"always-flush-cache"]))
+	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("always-flush-cache")))
 	{
 		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
 		upToDate = NO;
@@ -1875,7 +1876,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	// Finally, look in preferences, which can override all of the above.
-	const oo::PList preferences = oo::PListFrom([[NSUserDefaults standardUserDefaults] dictionaryForKey:@"logging-enable"]);
+	const oo::PList preferences = oo::Defaults::standard().dictionaryForKey("logging-enable");
 	if (const oo::PList::Dict *entries = preferences.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[key, value] : *entries)  logControlEntries[key] = value;
