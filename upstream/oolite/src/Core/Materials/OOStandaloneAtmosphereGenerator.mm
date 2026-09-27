@@ -186,16 +186,22 @@ enum
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringFrom(oo::str::format("OOStandaloneAtmosphereGenerator-@%u\n%u,%u/%u,%u/%f/%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
+	return oo::str::format("OOStandaloneAtmosphereGenerator-@%u\n%u,%u/%u,%u/%f/%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
 			_planetScale,
 			_info.width, _info.height, _info.seed.high, _info.seed.low,
 			_info.cloudAlpha, _info.cloudFraction,
 			 _info.airColor.r, _info.airColor.g, _info.airColor.b,
 			 _info.cloudColor.r, _info.cloudColor.g, _info.cloudColor.b,
 			 _info.paleCloudColor.r, _info.paleCloudColor.g, _info.paleCloudColor.b					 
-		));
+		);
+}
+
+
+- (id) cacheKey
+{
+	return oo::NSStringOrNil([self cxx_cacheKey]);
 }
 
 

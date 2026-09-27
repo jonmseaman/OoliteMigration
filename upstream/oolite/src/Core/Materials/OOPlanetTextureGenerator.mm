@@ -329,11 +329,17 @@ enum
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
 	std::string type =(_nMapGenerator == nil) ? "diffuse-baked" : "diffuse-raw";
 	if (_atmoGenerator != nil) type = oo::str::format("%s-atmo", type.c_str());
-	return oo::NSStringOrNil([self cacheKeyForType:type]);
+	return [self cacheKeyForType:type];
+}
+
+
+- (id) cacheKey
+{
+	return oo::NSStringOrNil([self cxx_cacheKey]);
 }
 
 
@@ -1225,9 +1231,15 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringFrom(_cacheKey);
+	return _cacheKey;
+}
+
+
+- (id) cacheKey
+{
+	return oo::NSStringOrNil([self cxx_cacheKey]);
 }
 
 
@@ -1312,9 +1324,15 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringFrom(_cacheKey);
+	return _cacheKey;
+}
+
+
+- (id) cacheKey
+{
+	return oo::NSStringOrNil([self cxx_cacheKey]);
 }
 
 
