@@ -632,9 +632,9 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (id) scriptInfo	// shared selector (proposed ADR-0043)
+- (oo::PList) scriptInfo
 {
-	return oo::ObjectFromPList(_scriptInfo);
+	return _scriptInfo;
 }
 
 

@@ -495,8 +495,10 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			break;
 			
 		case kEquipmentInfo_scriptInfo:
-			result = [eqType scriptInfo];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
+			{
+				const oo::PList info = [eqType scriptInfo];
+				result = oo::ObjectFromPList(info.isNull() ? oo::PList(oo::PList::Dict{}) : info);	// empty rather than null
+			}
 			break;
 			
 		case kEquipmentInfo_scriptName:

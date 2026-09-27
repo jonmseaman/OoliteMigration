@@ -1240,7 +1240,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 - (OOJSScript *) script;
-- (id) scriptInfo;	// shared selector (proposed ADR-0043): an Objective-C dictionary (empty when there is none)
+- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
 - (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 - (BOOL) scriptedMisjump;
