@@ -34,7 +34,6 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOOXPVerifier.h"
 #import "OOLoggingExtended.h"
-#import "NSFileManagerOOExtensions.h"
 #import "OOLogOutputHandler.h"
 #import "OODebugFlags.h"
 #import "OOJSFrameCallbacks.h"
@@ -796,7 +795,7 @@ static void RemovePreference(const std::string &key)
 			{
 				if (!oo::fs::fileExists(oo::fs::pathFromUTF8(*path)))
 				{
-					[[NSFileManager defaultManager] oo_createDirectoryAtPath:oo::NSStringFrom(*path) attributes:nil];
+					(void)oo::fs::createDirectories(oo::fs::pathFromUTF8(*path));
 				}
 			}
 		}
@@ -847,10 +846,7 @@ static void RemovePreference(const std::string &key)
 	}
 
 	// None found, create the default path.
-	[NSFileManager.defaultManager createDirectoryAtPath:oo::NSStringFrom(paths.front())
-							withIntermediateDirectories:YES
-											 attributes:nil
-												  error:NULL];
+	(void)oo::fs::createDirectories(oo::fs::pathFromUTF8(paths.front()));
 	[self cxx_openPath:paths.front()];
 }
 
@@ -866,9 +862,13 @@ static void RemovePreference(const std::string &key)
 	if (![self cxx_isDirectoryAtPath:path])  return NO;
 
 	NSWorkspace *workspace = NSWorkspace.sharedWorkspace;
-	// The directory enumerator yields each relative sub-path, as an Objective-C string.
-	for (id subPath in [NSFileManager.defaultManager enumeratorAtPath:oo::NSStringFrom(path)]) {
-		const std::string fullPath = oo::str::appendingPathComponent(path, oo::StdString(subPath));
+	// Recursive walk in OS enumeration order (first match wins; not sorted), as the Foundation
+	// directory enumerator did.
+	const oo::fs::Path root = oo::fs::pathFromUTF8(path);
+	std::error_code ec;
+	for (std::filesystem::recursive_directory_iterator it(root, ec), end; !ec && it != end; it.increment(ec))
+	{
+		const std::string fullPath = oo::fs::utf8String(it->path());
 		const std::optional<std::string> type = oo::OptionalString([workspace typeOfFile:oo::NSStringFrom(fullPath) error:NULL]);
 		if ([workspace type:oo::NSStringOrNil(type) conformsToType:@"org.aegidian.oolite.expansion"])  return YES;
 	}
@@ -890,7 +890,9 @@ static void RemovePreference(const std::string &key)
 	if (action == @selector(showLogAction:))
 	{
 		// the first path is always Resources
-		return ([[NSFileManager defaultManager] fileExistsAtPath:[oo::NSStringOrNil(cxx_OOLogHandlerGetLogBasePath()) stringByAppendingPathComponent:@"Previous.log"]]);
+		const std::optional<std::string> base = cxx_OOLogHandlerGetLogBasePath();
+		if (!base.has_value())  return NO;
+		return oo::fs::fileExists(oo::fs::pathFromUTF8(oo::str::appendingPathComponent(*base, "Previous.log")));
 	}
 	
 	if (action == @selector(showAddOnsAction:))
@@ -901,12 +903,9 @@ static void RemovePreference(const std::string &key)
 	
 	if (action == @selector(showSnapshotsAction:))
 	{
-		BOOL	pathIsDirectory;
-		if(![[NSFileManager defaultManager] fileExistsAtPath:[self snapshotsURLCreatingIfNeeded:NO].path isDirectory:&pathIsDirectory])
-		{
-			return NO;
-		}
-		return pathIsDirectory;
+		const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(oo::StdString([self snapshotsURLCreatingIfNeeded:NO].path)));
+		if (type == oo::fs::FileType::none)  return NO;
+		return type == oo::fs::FileType::directory;
 	}
 	
 	if (action == @selector(toggleFullScreenAction:))
@@ -1160,8 +1159,34 @@ std::vector<std::string> sMessageStack;
 		{
 			playerFileDirectory = std::nullopt;
 		}
-		// NSFileManagerOOExtensions is not migrated yet: converted at the call.
-		if (!playerFileDirectory.has_value())  playerFileDirectory = oo::OptionalString([[NSFileManager defaultManager] defaultCommanderPath]);
+		// -[defaultCommanderPath]: OO_SAVEDIR or ~/oolite-saves, create if missing, else home.
+		if (!playerFileDirectory.has_value())
+		{
+			const oo::ResourcePaths paths = oo::ResourcePaths::current();
+			const oo::fs::Path savedir = paths.saveDirectory();
+			const oo::fs::FileType type = oo::fs::fileType(savedir);
+			if (type == oo::fs::FileType::none)
+			{
+				if (oo::fs::createDirectories(savedir))
+				{
+					playerFileDirectory = oo::fs::utf8String(savedir);
+				}
+				else
+				{
+					OOLogERR(@"savedGame.defaultPath.create.failed", @"Unable to create '%@'. Saved games will go to the home directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+					playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+				}
+			}
+			else if (type != oo::fs::FileType::directory)
+			{
+				OOLogERR(@"savedGame.defaultPath.notDirectory", @"'%@' is not a directory, saved games will go to the home directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+				playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+			}
+			else
+			{
+				playerFileDirectory = oo::fs::utf8String(savedir);
+			}
+		}
 	}
 
 	return playerFileDirectory;
