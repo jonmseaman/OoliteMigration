@@ -97,7 +97,7 @@ static const char * const kStageName	= "Testing textures and images";
 				  referencedFrom:oo::NSStringFrom(context)
 					checkBuiltIn:YES])
 	{
-		OO_LOG("verifyOXP.texture.notFound", "----- WARNING: texture \"{}\" referenced in {} could not be found in {} or in Oolite.", name, context, oo::DescriptionOf([[self verifier] oxpDisplayName]));
+		OO_LOG("verifyOXP.texture.notFound", "----- WARNING: texture \"{}\" referenced in {} could not be found in {} or in Oolite.", name, context, [[self verifier] cxx_oxpDisplayName].value_or("(null)"));
 	}
 }
 
@@ -183,7 +183,7 @@ static const char * const kStageName	= "Testing textures and images";
 
 - (OOTextureVerifierStage *)textureVerifierStage
 {
-	return [self stageWithName:oo::NSStringFrom(kStageName)];
+	return [self cxx_stageWithName:kStageName];
 }
 
 @end

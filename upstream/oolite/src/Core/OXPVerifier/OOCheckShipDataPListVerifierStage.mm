@@ -165,7 +165,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	// Keys that apply to all ships
 	for (const std::string &shipName : ooliteShipData)  AddString(_ooliteShipNames, shipName);
-	settings = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"shipdataPListSettings"]);
+	settings = [[self verifier] cxx_configurationDictionaryForKey:"shipdataPListSettings"];
 	_basicKeys = StringSetForKey(settings, "knownShipKeys");
 
 	// Keys that apply to stations/carriers
@@ -364,7 +364,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 												withMaterials:materials != nullptr ? *materials : oo::PList()
 												   andShaders:shaders != nullptr ? *shaders : oo::PList()])
 		{
-			[self reportMessage:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), [[self verifier] oxpDisplayName]];
+			[self reportMessage:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), oo::NSStringOrNil([[self verifier] cxx_oxpDisplayName])];
 		}
 	}
 	else

@@ -63,6 +63,21 @@ const char * const kFileScannerStageName	= "Scanning files";
 const char * const kUnusedListerStageName	= "Checking for unused files";
 
 
+// The strings of a configuration array (was oo::StringsFrom of -configurationArrayForKey:).
+std::vector<std::string> StringsFromArray(const oo::PList &array)
+{
+	std::vector<std::string> result;
+	if (const oo::PList::Array *elements = array.getIf<oo::PList::Array>())
+	{
+		for (const oo::PList &element : *elements)
+		{
+			if (const std::string *string = element.getIf<std::string>())  result.push_back(*string);
+		}
+	}
+	return result;
+}
+
+
 BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, std::string, std::less<>> &directoryCases, const std::map<std::string, std::string, std::less<>> &rootFiles, std::string *outExisting, std::string *outExistingType);
 
 }	// namespace
@@ -124,7 +139,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 + (std::optional<std::string>)nameForDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	OOFileScannerVerifierStage *stage = [verifier stageWithName:oo::NSStringFrom(kFileScannerStageName)];
+	OOFileScannerVerifierStage *stage = [verifier cxx_stageWithName:kFileScannerStageName];
 	if (stage == nil)
 	{
 		stage = [[OOFileScannerVerifierStage alloc] init];
@@ -350,10 +365,10 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 													rootFiles;
 	std::set<std::string>	readMeNames;
 	
-	_basePath = oo::StdString([[self verifier] oxpPath]);
+	_basePath = [[self verifier] cxx_oxpPath].value_or("");
 	
-	for (const std::string &junk : oo::StringsFrom([[self verifier] configurationSetForKey:@"junkFiles"]))  _junkFileNames.insert(junk);
-	for (const std::string &skip : oo::StringsFrom([[self verifier] configurationSetForKey:@"skipDirectories"]))  _skipDirectoryNames.insert(skip);
+	for (const std::string &junk : [[self verifier] cxx_configurationSetForKey:"junkFiles"].value_or(std::vector<std::string>()))  _junkFileNames.insert(junk);
+	for (const std::string &skip : [[self verifier] cxx_configurationSetForKey:"skipDirectories"].value_or(std::vector<std::string>()))  _skipDirectoryNames.insert(skip);
 	
 	for (const std::string &readMe : [self constructReadMeNames])  readMeNames.insert(readMe);
 	
@@ -433,7 +448,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 {
 	std::string				lcName;
 	
-	for (const std::string &name : oo::StringsFrom([[self verifier] configurationArrayForKey:@"knownRootDirectories"]))
+	for (const std::string &name : StringsFromArray([[self verifier] cxx_configurationArrayForKey:"knownRootDirectories"]))
 	{
 		lcName = oo::str::lowercase(name);
 		const auto actual = _directoryCases.find(lcName);
@@ -454,7 +469,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 	std::optional<std::string>	realFileName;
 	BOOL						inConfigDir;
 	
-	for (const std::string &name : oo::StringsFrom([[self verifier] configurationArrayForKey:@"knownConfigFiles"]))
+	for (const std::string &name : StringsFromArray([[self verifier] cxx_configurationArrayForKey:"knownConfigFiles"]))
 	{
 		/*	In theory, we could use -fileExists:inFolder:referencedFrom:checkBuiltIn:
 		here, but we want a different error message.
@@ -483,7 +498,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 	BOOL						inDirectory;
 	
 	// Folders in byte order of their names (they were in dictionary order).
-	const oo::PList directories = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"knownFiles"]);
+	const oo::PList directories = [[self verifier] cxx_configurationDictionaryForKey:"knownFiles"];
 	const oo::PList::Dict *directoryDict = directories.getIf<oo::PList::Dict>();
 	if (directoryDict == nullptr)  return;
 	for (const auto &[directory, fileList] : *directoryDict)
@@ -650,7 +665,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 	std::string					stem,
 								extension;
 	
-	const oo::PList dict = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"readMeNames"]);
+	const oo::PList dict = [[self verifier] cxx_configurationDictionaryForKey:"readMeNames"];
 	const oo::PList *stems = dict.get<oo::PList::Array>("stems");
 	const oo::PList *extensions = dict.get<oo::PList::Array>("extensions");
 	stemCount = stems != nullptr ? stems->count() : 0;
@@ -705,7 +720,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 + (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	OOListUnusedFilesStage *stage = [verifier stageWithName:oo::NSStringFrom(kUnusedListerStageName)];
+	OOListUnusedFilesStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
 	if (stage == nil)
 	{
 		stage = [[OOListUnusedFilesStage alloc] init];
@@ -723,7 +738,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 - (OOFileScannerVerifierStage *)fileScannerStage
 {
-	return [self stageWithName:oo::NSStringFrom(kFileScannerStageName)];
+	return [self cxx_stageWithName:kFileScannerStageName];
 }
 
 @end
