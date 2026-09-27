@@ -80,7 +80,7 @@ bool Contains(const std::vector<std::string> &strings, const std::string &string
 	
 	fileScanner = [[self verifier] fileScannerStage];
 
-	const oo::PList knownFiles = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"knownFiles"]);
+	const oo::PList knownFiles = [[self verifier] cxx_configurationDictionaryForKey:"knownFiles"];
 	const std::vector<std::string> plists = StringsForKey(knownFiles, "Config");
 	const std::vector<std::string> arrayPlists = StringsForKey(knownFiles, "ConfigArrays");
 	const std::vector<std::string> dictionaryPlists = StringsForKey(knownFiles, "ConfigDictionaries");

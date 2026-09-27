@@ -99,7 +99,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 	}
 
 	// Check that all the keys are known.
-	knownKeys = oo::StringsFrom([[self verifier] configurationSetForKey:@"requiresPListSupportedKeys"]);
+	knownKeys = [[self verifier] cxx_configurationSetForKey:"requiresPListSupportedKeys"].value_or(std::vector<std::string>());
 	for (const auto &[key, value] : *requiresPList.getIf<oo::PList::Dict>())
 	{
 		if (std::find(knownKeys.begin(), knownKeys.end(), key) != knownKeys.end())  continue;

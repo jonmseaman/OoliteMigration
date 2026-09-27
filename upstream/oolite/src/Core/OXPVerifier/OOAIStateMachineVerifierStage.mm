@@ -145,7 +145,7 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 				  referencedFrom:oo::NSStringFrom(oo::str::format("shipdata.plist entry \"%s\"", shipName.c_str()))
 					checkBuiltIn:YES])
 	{
-		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, oo::DescriptionOf([[self verifier] oxpDisplayName]));
+		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, [[self verifier] cxx_oxpDisplayName].value_or("(null)"));
 	}
 }
 
