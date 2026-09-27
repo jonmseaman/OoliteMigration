@@ -1274,7 +1274,7 @@ static int shipsFound;
 
 - (id) commanderShipDisplayName_string	// called by name (ADR-0043 item 21)
 {
-	return [self displayName];
+	return oo::NSStringOrNil([self displayName]);
 }
 
 /*-----------------------------------------------------*/

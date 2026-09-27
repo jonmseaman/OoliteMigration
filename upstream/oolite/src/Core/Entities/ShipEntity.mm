@@ -7238,7 +7238,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (id) displayName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) displayName
 {
 	if (!displayName.has_value() || displayName->empty())
 	{
@@ -7246,11 +7246,11 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 		{
 			if (!shipClassName.has_value())
 			{
-				return oo::NSStringOrNil(name);
+				return name;
 			}
 			else
 			{
-				return oo::NSStringFrom(*shipClassName);
+				return *shipClassName;
 			}
 		}
 		else
@@ -7258,15 +7258,15 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 			// %@ printed nil as (null)
 			if (!shipClassName.has_value())
 			{
-				return oo::NSStringFrom(oo::str::format("%s: %s", name.value_or("(null)").c_str(), shipUniqueName->c_str()));
+				return oo::str::format("%s: %s", name.value_or("(null)").c_str(), shipUniqueName->c_str());
 			}
 			else
 			{
-				return oo::NSStringFrom(oo::str::format("%s: %s", shipClassName->c_str(), shipUniqueName->c_str()));
+				return oo::str::format("%s: %s", shipClassName->c_str(), shipUniqueName->c_str());
 			}
 		}
 	}
-	return oo::NSStringFrom(*displayName);
+	return *displayName;
 }
 
 
@@ -7359,7 +7359,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 	{
 		return oo::OptionalString(DESC(@"unknown-target"));
 	}
-	return oo::OptionalString([self displayName]);
+	return [self displayName];
 }
 
 
@@ -8154,7 +8154,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "launch_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_launchActions"] = *actions;
@@ -8164,7 +8164,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "script_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_scriptActions"] = *actions;
@@ -8174,7 +8174,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "death_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_deathActions"] = *actions;
@@ -8184,7 +8184,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "setup_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_setupActions"] = *actions;
@@ -13061,7 +13061,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					if (isPlayer && [other showScoopMessage] && procMessages)
 					{
 						[UNIVERSE clearPreviousMessage];
-						const std::optional<std::string> shipName = oo::OptionalString([other displayName]);
+						const std::optional<std::string> shipName = [other displayName];
 						[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName)) forCount:4];
 					}
 					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
@@ -14249,7 +14249,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	// The specials dictionary as +dictionaryWithObjectsAndKeys: built it: it ended at the first nil.
 	oo::PList::Dict specials;
-	const std::optional<std::string> selfName = oo::OptionalString([self displayName]);
+	const std::optional<std::string> selfName = [self displayName];
 	if (selfName.has_value())
 	{
 		specials["[self:name]"] = *selfName;
@@ -14578,7 +14578,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	OOLog(@"dumpState.shipEntity", @"Type: %@", [self shipDataKey]);
 	OOLog(@"dumpState.shipEntity", @"Name: %@", oo::NSStringOrNil(name));
-	OOLog(@"dumpState.shipEntity", @"Display Name: %@", [self displayName]);
+	OOLog(@"dumpState.shipEntity", @"Display Name: %@", oo::NSStringOrNil([self displayName]));
 	OOLog(@"dumpState.shipEntity", @"Roles: %@", [self roleSet]);
 	OOLog(@"dumpState.shipEntity", @"Primary role: %@", oo::NSStringOrNil(primaryRole));
 	OOLog(@"dumpState.shipEntity", @"Script: %@", script);

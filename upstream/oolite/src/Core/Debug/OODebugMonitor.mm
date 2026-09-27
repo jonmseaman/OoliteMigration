@@ -945,7 +945,7 @@ FIXME: this works with CRLF and LF, but not CR.
 
 	// avoid windows DEP exceptions!
 	OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-	scriptLine = oo::OptionalString([[thisScript weakRefUnderlyingObject] displayName]);
+	scriptLine = [[thisScript weakRefUnderlyingObject] displayName];
 	[thisScript release];
 
 	if (scriptLine.has_value())

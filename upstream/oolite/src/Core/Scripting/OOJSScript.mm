@@ -323,7 +323,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 			version = DescriptionOrNil([self propertyWithID:OOJSID("version") inContext:context]);
 			description = DescriptionOrNil([self propertyWithID:OOJSID("description") inContext:context]);
 			
-			OO_LOG("script.javaScript.load.success", "Loaded JavaScript: {} -- {}", oo::DescriptionOf([self displayName]), description.value_or("(no description)"));
+			OO_LOG("script.javaScript.load.success", "Loaded JavaScript: {} -- {}", [self displayName].value_or("(null)"), description.value_or("(no description)"));
 		}
 		
 		oo::log::outdentIf("script.javaScript.willLoad");

@@ -102,7 +102,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 - (std::optional<std::string>) cxx_dockedStationDisplayName
 {
-	return oo::OptionalString([[self dockedStation] displayName]);
+	return [[self dockedStation] displayName];
 }
 
 
