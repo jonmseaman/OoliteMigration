@@ -299,19 +299,17 @@ using ooscript::Context;
 }
 
 
-- (void) setAIScript:(NSString *)aiString
+- (void) setAIScript:(const std::string &)aiString
 {
-	NSMutableDictionary		*properties = nil;
-	
-	properties = [NSMutableDictionary dictionary];
-	[properties setObject:self forKey:@"ship"];
+	oo::PList::Dict properties;
+	properties["ship"] = oo::PListObject(self);
 	
 	[aiScript autorelease];
-	aiScript = [OOScript jsAIScriptFromFileNamed:aiString properties:properties];
+	aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:oo::PList(properties)];
 	if (aiScript == nil)
 	{
-		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", oo::DescriptionOf(aiString), oo::DescriptionOf(self), oo::DescriptionOf([self shipDataKey]), oo::DescriptionOf([self primaryRole]));
-		aiScript = [OOScript jsAIScriptFromFileNamed:@"oolite-nullAI.js" properties:properties];
+		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), oo::DescriptionOf([self shipDataKey]), oo::DescriptionOf([self primaryRole]));
+		aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:oo::PList(properties)];
 	}
 	else
 	{
