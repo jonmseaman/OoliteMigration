@@ -50,14 +50,16 @@ SELECTORS DISPATCHED THROUGH A TYPED IMP (bead oo-bzjh)
 An @selector literal is not always handed to a by-name dispatcher: code may fetch the IMP
 (-methodForSelector:) and call it through a function-pointer type whose parameters ARE the
 method's C++ types (OOOXZManager's manifest filters, bead oo-3rb.53). Such a selector is listed
-in tools/typed-imp-selectors.txt with the file:line of the cast call, and is then exempt from
+in tools/typed-imp-selectors.txt with its file and an ANCHOR, the text of the cast call (so
+the entry survives edits that move the call: bead oo-x3t6), and is then exempt from
 the called-by-name rule, but only while the tool can verify, mechanically, that
   * the selector's only by-name source is @selector literals (not whitelist.plist, the AI plists
     or dynamic-selectors.txt);
   * every declaration of it has the same types, and every file with an @selector literal of it
     declares `typedef RET (*T)(id, SEL, PARAMS...)` with exactly those types (normalised) and
     calls through `((T)`;
-  * the listed file:line exists and calls through one of those typedefs.
+  * the anchor occurs on exactly one line of the listed file, and that line calls through one
+    of those typedefs.
 An entry that fails any of these is an error (TYPED-IMP ... not verified), and the selector is
 treated as called by name as before. --root DIR runs against another tree (the probe's).
 """
@@ -267,12 +269,12 @@ def typed_imp_exemptions(table):
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
-        parts = line.split()
-        if len(parts) != 2 or ":" not in parts[1]:
-            errors.append(f"TYPED-IMP typed-imp-selectors.txt:{n}: want '<selector> <file>:<line>', got {raw.strip()!r}")
+        parts = line.split(None, 2)
+        if len(parts) != 3:
+            errors.append(f"TYPED-IMP typed-imp-selectors.txt:{n}: want '<selector> <file> <anchor text>', got {raw.strip()!r}")
             continue
         sel = parts[0].lstrip("-")
-        where, _, lineno = parts[1].rpartition(":")
+        where, anchor = parts[1], parts[2].strip()
 
         def fail(why):
             errors.append(f"TYPED-IMP -{sel} not verified: {why} (typed-imp-selectors.txt:{n})")
@@ -307,14 +309,16 @@ def typed_imp_exemptions(table):
         if bad:
             continue
         full = os.path.join(REPO_ROOT, where)
-        lines = _read(full).splitlines()
-        try:
-            cast_line = lines[int(lineno) - 1]
-        except (ValueError, IndexError):
-            fail(f"{where}:{lineno} does not exist")
+        if not os.path.isfile(full):
+            fail(f"{where} does not exist")
             continue
+        hits = [(i, l) for i, l in enumerate(_read(full).splitlines(), 1) if anchor in l]
+        if len(hits) != 1:
+            fail(f"anchor {anchor!r} is on {len(hits)} lines of {where} (need exactly one)")
+            continue
+        lineno, cast_line = hits[0]
         if not any(re.search(r"\(\(\s*" + re.escape(t) + r"\s*\)", cast_line) for t in good_typedefs):
-            fail(f"{where}:{lineno} does not call through {' / '.join(sorted(good_typedefs))}")
+            fail(f"{where}:{lineno} (the anchor's line) does not call through {' / '.join(sorted(good_typedefs))}")
             continue
         ok[sel] = f"{where}:{lineno}"
     return ok, errors
