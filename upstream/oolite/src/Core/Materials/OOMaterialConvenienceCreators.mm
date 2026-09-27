@@ -156,35 +156,34 @@ void SynthSpecular(OOMaterialSynthContext *context);
 }
 
 
-+ (OOMaterial *)defaultShaderMaterialWithName:(NSString *)name
-									 cacheKey:(NSString *)cacheKey
-								configuration:(NSDictionary *)configuration
-									   macros:(NSDictionary *)macros
++ (OOMaterial *)defaultShaderMaterialWithName:(const std::optional<std::string> &)name
+									 cacheKey:(const std::optional<std::string> &)cacheKey
+								configuration:(const oo::PList &)configuration
+									   macros:(const oo::PList &)macros
 								bindingTarget:(id<OOWeakReferenceSupport>)target
 {
 	OOCacheManager			*cache = nil;
 	oo::PList				synthesizedConfig;
 	OOMaterial				*result = nil;
 	
-	const oo::PList configurationPList = oo::PListFrom(configuration);
-	
 	// Avoid looping (can happen if shader fails to compile).
-	if (configurationPList.find("_oo_is_synthesized_config") != nullptr)
+	if (configuration.find("_oo_is_synthesized_config") != nullptr)
 	{
-		OO_LOG("material.synthesize.loop", "Synthesis loop for material {}.", oo::DescriptionOf(name));
+		OO_LOG("material.synthesize.loop", "Synthesis loop for material {}.",
+			   name ? *name : std::string("(null)"));
 		return nil;
 	}
 	
 	std::string cacheKeyStr;
-	if (cacheKey != nil)
+	if (cacheKey.has_value())
 	{
 		cache = [OOCacheManager sharedCache];
 		// configuration must be in cache key, as otherwise changes in
 		// non-diffuse map can end up miscached
 		cacheKeyStr = oo::str::format("%s/%s/%s",
-									  oo::StdString(cacheKey).c_str(),
-									  oo::StdString(name).c_str(),
-									  oo::DescriptionOf(configuration).c_str());
+									  cacheKey->c_str(),
+									  name.value_or("").c_str(),
+									  oo::DescriptionOf(oo::ObjectFromPList(configuration)).c_str());
 		id cached = [cache cxx_objectForKey:cacheKeyStr inCache:"synthesized shader materials"];
 		if (cached != nil)
 		{
@@ -194,10 +193,10 @@ void SynthSpecular(OOMaterialSynthContext *context);
 	
 	if (synthesizedConfig.isNull())
 	{
-		synthesizedConfig = [self synthesizeMaterialDictionaryWithName:oo::OptionalString(name)
-														 configuration:configurationPList.isNull() ? oo::PList(oo::PList::Dict{}) : configurationPList
-																macros:oo::PListFrom(macros)];
-		if (!synthesizedConfig.isNull() && cacheKey != nil)
+		synthesizedConfig = [self synthesizeMaterialDictionaryWithName:name
+														 configuration:configuration.isNull() ? oo::PList(oo::PList::Dict{}) : configuration
+																macros:macros];
+		if (!synthesizedConfig.isNull() && cacheKey.has_value())
 		{
 			[cache cxx_setObject:oo::ObjectFromPList(synthesizedConfig)
 						  forKey:cacheKeyStr
@@ -212,8 +211,8 @@ void SynthSpecular(OOMaterialSynthContext *context);
 		{
 			macrosPList = *found;
 		}
-		result =  [self materialWithName:oo::OptionalString(name)
-								cacheKey:oo::OptionalString(cacheKey)
+		result =  [self materialWithName:name
+								cacheKey:cacheKey
 						   configuration:synthesizedConfig
 								  macros:macrosPList
 						   bindingTarget:target
@@ -235,59 +234,65 @@ static BOOL sDumpShaderSource = NO;
 #endif
 
 
-+ (OOMaterial *) defaultShaderMaterialWithName:(NSString *)name
-									  cacheKey:(NSString *)cacheKey
-								 configuration:(NSDictionary *)configuration
-										macros:(NSDictionary *)macros
++ (OOMaterial *) defaultShaderMaterialWithName:(const std::optional<std::string> &)name
+									  cacheKey:(const std::optional<std::string> &)cacheKey
+								 configuration:(const oo::PList &)configuration
+										macros:(const oo::PList &)macros
 								 bindingTarget:(id<OOWeakReferenceSupport>)target
 {
+	(void)macros;
 	std::string		vertexShaderSource, fragmentShaderSource;
 	oo::PList		textureSpecList, uniformSpecDict;
 	
-	if (!OOSynthesizeMaterialShader(oo::PListFrom(configuration), oo::OptionalString(name), oo::OptionalString(cacheKey) /* FIXME: entity name for error reporting */, &vertexShaderSource, &fragmentShaderSource, &textureSpecList, &uniformSpecDict))
+	if (!OOSynthesizeMaterialShader(configuration, name, cacheKey /* FIXME: entity name for error reporting */, &vertexShaderSource, &fragmentShaderSource, &textureSpecList, &uniformSpecDict))
 	{
 		return nil;
 	}
 	// A failed synthesis leaves the texture list null (and the shaders empty) where it left all four nil.
+	// Mirror dictionaryWithObjectsAndKeys: nil-stop — unsynthesized keeps only the is-synthesized flag.
 	BOOL			synthesized = !textureSpecList.isNull();
-	NSString		*vertexShader = synthesized ? oo::NSStringFrom(vertexShaderSource) : nil;
-	NSString		*fragmentShader = synthesized ? oo::NSStringFrom(fragmentShaderSource) : nil;
-	NSArray			*textureSpecs = oo::ObjectFromPList(textureSpecList);
-	NSDictionary	*uniformSpecs = oo::ObjectFromPList(uniformSpecDict);
-	
-	NSDictionary	*synthesizedConfig = [NSDictionary dictionaryWithObjectsAndKeys:
-										  [NSNumber numberWithBool:YES], oo::NSStringFrom(kOOIsSynthesizedMaterialConfigurationKey),
-										  textureSpecs, oo::NSStringFrom(kOOTexturesKey),
-										  uniformSpecs, oo::NSStringFrom(kOOUniformsKey),
-										  vertexShader, oo::NSStringFrom(kOOVertexShaderSourceKey),
-										  fragmentShader, oo::NSStringFrom(kOOFragmentShaderSourceKey),
-										  nil];
+	oo::PList::Dict	synthesizedConfigDict;
+	synthesizedConfigDict[kOOIsSynthesizedMaterialConfigurationKey] = oo::PList(true);
+	if (synthesized)
+	{
+		if (!textureSpecList.isNull())  synthesizedConfigDict[kOOTexturesKey] = textureSpecList;
+		if (!uniformSpecDict.isNull())  synthesizedConfigDict[kOOUniformsKey] = uniformSpecDict;
+		synthesizedConfigDict[kOOVertexShaderSourceKey] = oo::PList(vertexShaderSource);
+		synthesizedConfigDict[kOOFragmentShaderSourceKey] = oo::PList(fragmentShaderSource);
+	}
+	oo::PList synthesizedConfig(std::move(synthesizedConfigDict));
 	
 #ifndef NDEBUG
 	if (sDumpShaderSource)
 	{
-		NSString *dumpPath = [NSString stringWithFormat:@"Synthesized Materials/%@/%@", cacheKey, name];
+		const char *cacheKeyText = cacheKey ? cacheKey->c_str() : "(null)";
+		const char *nameText = name ? name->c_str() : "(null)";
+		std::string dumpPath = oo::str::format("Synthesized Materials/%s/%s", cacheKeyText, nameText);
 		
-		[ResourceManager writeDiagnosticString:vertexShader toFileNamed:[dumpPath stringByAppendingPathExtension:@"vertex"]];
-		[ResourceManager writeDiagnosticString:fragmentShader toFileNamed:[dumpPath stringByAppendingPathExtension:@"fragment"]];
+		[ResourceManager cxx_writeDiagnosticString:synthesized ? vertexShaderSource : std::string()
+									  toFileNamed:dumpPath + ".vertex"];
+		[ResourceManager cxx_writeDiagnosticString:synthesized ? fragmentShaderSource : std::string()
+									  toFileNamed:dumpPath + ".fragment"];
 		
 		// Hide internal keys in the synthesized config before writing it.
-		NSMutableDictionary *humanFriendlyConfig = [[synthesizedConfig mutableCopy] autorelease];
-		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOVertexShaderSourceKey)];
-		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOFragmentShaderSourceKey)];
-		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOIsSynthesizedMaterialConfigurationKey)];
-		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.vertex", name] forKey:oo::NSStringFrom(kOOVertexShaderNameKey)];
-		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.fragment", name] forKey:oo::NSStringFrom(kOOFragmentShaderNameKey)];
+		oo::PList::Dict humanFriendlyConfig = *synthesizedConfig.getIf<oo::PList::Dict>();
+		humanFriendlyConfig.erase(kOOVertexShaderSourceKey);
+		humanFriendlyConfig.erase(kOOFragmentShaderSourceKey);
+		humanFriendlyConfig.erase(kOOIsSynthesizedMaterialConfigurationKey);
+		humanFriendlyConfig[kOOVertexShaderNameKey] = oo::PList(oo::str::format("%s.vertex", nameText));
+		humanFriendlyConfig[kOOFragmentShaderNameKey] = oo::PList(oo::str::format("%s.fragment", nameText));
 		
-		[ResourceManager writeDiagnosticPList:humanFriendlyConfig toFileNamed:[dumpPath stringByAppendingPathExtension:@"plist"]];
+		[ResourceManager cxx_writeDiagnosticPList:oo::ObjectFromPList(oo::PList(humanFriendlyConfig))
+									 toFileNamed:dumpPath + ".plist"];
 		
-		[ResourceManager writeDiagnosticPList:configuration toFileNamed:[[dumpPath stringByAppendingString:@"-original"] stringByAppendingPathExtension:@"plist"]];
+		[ResourceManager cxx_writeDiagnosticPList:oo::ObjectFromPList(configuration)
+									 toFileNamed:dumpPath + "-original.plist"];
 	}
 #endif
 	
-	return [self materialWithName:oo::OptionalString(name)
-						 cacheKey:oo::OptionalString(cacheKey)
-					configuration:oo::PListFrom(synthesizedConfig)
+	return [self materialWithName:name
+						 cacheKey:cacheKey
+					configuration:synthesizedConfig
 						   macros:oo::PList()
 					bindingTarget:target
 				  forSmoothedMesh:YES];
@@ -331,11 +336,10 @@ static BOOL sDumpShaderSource = NO;
 				 !cxx_OOMaterialEmissionAndIlluminationMapSpecifier(configuration).isNull()
 				 ))
 		{
-			// defaultShaderMaterialWithName: still speaks Foundation (chunk 3).
-			result = [self defaultShaderMaterialWithName:oo::NSStringOrNil(name)
-												cacheKey:oo::NSStringOrNil(cacheKey)
-										   configuration:oo::ObjectFromPList(configuration)
-												  macros:oo::ObjectFromPList(macros)
+			result = [self defaultShaderMaterialWithName:name
+												cacheKey:cacheKey
+										   configuration:configuration
+												  macros:macros
 										   bindingTarget:(id<OOWeakReferenceSupport>)object];
 		}
 	}
