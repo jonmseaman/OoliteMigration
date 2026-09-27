@@ -643,7 +643,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_displayName:
-			result = [entity displayName];
+			result = oo::NSStringOrNil([entity displayName]);
 			break;
 
 		case kShip_shipUniqueName:
