@@ -37,12 +37,13 @@ MA 02110-1301, USA.
 #import "GuiDisplayGen.h"
 #import "PlanetEntity.h"
 #import "OOGraphicsResetManager.h"
-#import "OOPListView.h" // for splash screen settings
 #import "OOFullScreenController.h"
 #import "ResourceManager.h"
 #import "OOConstToString.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -91,7 +92,7 @@ namespace {
 // -stringValue, else the fallback.
 std::string DefaultsString(const char *key, const std::string &fallback)
 {
-	const oo::PList value = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:oo::NSStringFrom(key)]);
+	const oo::PList value = oo::Defaults::standard().object(key);
 	return oo::PListGet<std::string>::from(value.isNull() ? nullptr : &value, fallback);
 }
 
@@ -177,7 +178,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	SDL_Surface     *icon=NULL;
 	std::string		imagesDir;
 
-	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &prefs = oo::Defaults::standard();
 
 	OO_LOG("display.initGL", "Trying {}-bpcc, 24-bit depth buffer", static_cast<int>(bitsPerColorComponent));
 	if (bitsPerColorComponent > 8)
@@ -204,7 +205,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	 * doesn't give any problems (other than speed on low-end graphics
 	 * cards) a game options entry might be useful. - CIM, 24 Aug 2013*/
 
-	if (oo::PListView(prefs).get<BOOL>(@"anti-aliasing", NO))
+	const oo::PList antiAliasing = prefs.object("anti-aliasing");
+	if (oo::PListGet<bool>::from(antiAliasing.isNull() ? nullptr : &antiAliasing, false))
 	{
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
@@ -315,8 +317,10 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	_colorSaturation = 1.0f;
 
 #if OOLITE_WINDOWS
-	_hdrMaxBrightness = oo::PListView(prefs).get<float>(@"hdr-max-brightness", 1000.0f);
-	_hdrPaperWhiteBrightness = oo::PListView(prefs).get<float>(@"hdr-paperwhite-brightness", 200.0f);
+	const oo::PList hdrMaxBrightness = prefs.object("hdr-max-brightness");
+	_hdrMaxBrightness = oo::PListGet<float>::from(hdrMaxBrightness.isNull() ? nullptr : &hdrMaxBrightness, 1000.0f);
+	const oo::PList hdrPaperWhiteBrightness = prefs.object("hdr-paperwhite-brightness");
+	_hdrPaperWhiteBrightness = oo::PListGet<float>::from(hdrPaperWhiteBrightness.isNull() ? nullptr : &hdrPaperWhiteBrightness, 200.0f);
 	_hdrToneMapper = OOHDRToneMapperFromString(oo::NSStringFrom(DefaultsString("hdr-tone-mapper", "OOHDR_TONEMAPPER_ACES_APPROX")));
 #endif
 
@@ -372,10 +376,13 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 	// SDL splash screen  settings
 
-	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	showSplashScreen = oo::PListView(prefs).get<BOOL>(@"splash-screen", YES);
-	vSyncPreference = oo::PListView(prefs).get<BOOL>(@"v-sync", YES);
-	bitsPerColorComponent = oo::PListView(prefs).get<BOOL>(@"hdr", NO) ? 16 : 8;
+	oo::Defaults &prefs = oo::Defaults::standard();
+	const oo::PList splashScreen = prefs.object("splash-screen");
+	showSplashScreen = oo::PListGet<bool>::from(splashScreen.isNull() ? nullptr : &splashScreen, true) ? YES : NO;
+	const oo::PList vSync = prefs.object("v-sync");
+	vSyncPreference = oo::PListGet<bool>::from(vSync.isNull() ? nullptr : &vSync, true) ? YES : NO;
+	const oo::PList hdr = prefs.object("hdr");
+	bitsPerColorComponent = oo::PListGet<bool>::from(hdr.isNull() ? nullptr : &hdr, false) ? 16 : 8;
 
 	BOOL				noSplashArgFound = NO;
 
@@ -468,7 +475,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	virtualJoystickPosition = NSMakePoint(0.0,0.0);
 	mouseWarped = NO;
 
-	_mouseVirtualStickSensitivityFactor = OOClamp_0_1_f(oo::PListView(prefs).get<float>(@"mouse-flight-sensitivity", 0.95f));
+	const oo::PList mouseFlightSensitivity = prefs.object("mouse-flight-sensitivity");
+	_mouseVirtualStickSensitivityFactor = OOClamp_0_1_f(oo::PListGet<float>::from(mouseFlightSensitivity.isNull() ? nullptr : &mouseFlightSensitivity, 0.95f));
 	// ensure no chance of a divide by zero later on
 	if (_mouseVirtualStickSensitivityFactor < 0.005f)  _mouseVirtualStickSensitivityFactor = 0.005f;
 
@@ -734,9 +742,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	fullScreen = fsm;
 
 	// Save the settings for later.
-	[[NSUserDefaults standardUserDefaults]
-		setBool: fullScreen forKey:@"fullscreen"];
-	[[NSUserDefaults standardUserDefaults] synchronize];
+	oo::Defaults::standard().setBool("fullscreen", fullScreen);
+	oo::Defaults::standard().synchronize();
 }
 
 
@@ -1053,7 +1060,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	if (newMaxBrightness > MAX_HDR_MAXBRIGHTNESS)  newMaxBrightness = MAX_HDR_MAXBRIGHTNESS;
 	_hdrMaxBrightness = newMaxBrightness;
 	
-	[[NSUserDefaults standardUserDefaults] setFloat:_hdrMaxBrightness forKey:@"hdr-max-brightness"];
+	oo::Defaults::standard().setFloat("hdr-max-brightness", _hdrMaxBrightness);
 }
 
 
@@ -1069,7 +1076,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	if (newPaperWhiteBrightness > MAX_HDR_PAPERWHITE)  newPaperWhiteBrightness = MAX_HDR_PAPERWHITE;
 	_hdrPaperWhiteBrightness = newPaperWhiteBrightness;
 	
-	[[NSUserDefaults standardUserDefaults] setFloat:_hdrPaperWhiteBrightness forKey:@"hdr-paperwhite-brightness"];
+	oo::Defaults::standard().setFloat("hdr-paperwhite-brightness", _hdrPaperWhiteBrightness);
 }
 
 
@@ -1314,9 +1321,9 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 // Save and restore window sizes to/from defaults.
 - (void) saveWindowSize: (NSSize) windowSize
 {
-	NSUserDefaults *defaults=[NSUserDefaults standardUserDefaults];
-	[defaults setInteger: (int)windowSize.width forKey: @"window_width"];
-	[defaults setInteger: (int)windowSize.height forKey: @"window_height"];
+	oo::Defaults &defaults = oo::Defaults::standard();
+	defaults.setInteger("window_width", (int)windowSize.width);
+	defaults.setInteger("window_height", (int)windowSize.height);
 	currentWindowSize=windowSize;
 }
 
@@ -1324,11 +1331,11 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 - (NSSize) loadWindowSize
 {
 	NSSize windowSize;
-	NSUserDefaults *defaults=[NSUserDefaults standardUserDefaults];
-	if([defaults objectForKey:@"window_width"] && [defaults objectForKey:@"window_height"])
+	oo::Defaults &defaults = oo::Defaults::standard();
+	if(!defaults.object("window_width").isNull() && !defaults.object("window_height").isNull())
 	{
-		windowSize=NSMakeSize([defaults integerForKey: @"window_width"],
-					[defaults integerForKey: @"window_height"]);
+		windowSize=NSMakeSize(defaults.integerForKey("window_width"),
+					defaults.integerForKey("window_height"));
 	}
 	else
 	{
@@ -1347,15 +1354,15 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 	const std::vector<std::string> &cmdline_arguments = oo::process::arguments();
 
-	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-	if ([userDefaults objectForKey:@"display_width"])
-		width = [userDefaults integerForKey:@"display_width"];
-	if ([userDefaults objectForKey:@"display_height"])
-		height = [userDefaults integerForKey:@"display_height"];
-	if ([userDefaults objectForKey:@"display_refresh"])
-		refresh = [userDefaults integerForKey:@"display_refresh"];
-	if([userDefaults objectForKey:@"fullscreen"])
-		fullScreen=[userDefaults boolForKey:@"fullscreen"];
+	oo::Defaults &userDefaults = oo::Defaults::standard();
+	if (!userDefaults.object("display_width").isNull())
+		width = (int)userDefaults.integerForKey("display_width");
+	if (!userDefaults.object("display_height").isNull())
+		height = (int)userDefaults.integerForKey("display_height");
+	if (!userDefaults.object("display_refresh").isNull())
+		refresh = (int)userDefaults.integerForKey("display_refresh");
+	if(!userDefaults.object("fullscreen").isNull())
+		fullScreen=userDefaults.boolForKey("fullscreen") ? YES : NO;
 
 	// Check if -fullscreen or -windowed has been passed on the command line. If yes,
 	// set it regardless of what is set by .GNUstepDefaults. If both are found in the
