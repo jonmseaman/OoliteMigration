@@ -72,23 +72,23 @@ SOFTWARE.
 // Handle "delegated types". Return YES for valid, NO for invalid.
 // name: a string; keyPath: an array of strings and numbers; typeKey: a string.
 - (BOOL)verifier:(OOPListSchemaVerifier *)verifier
-withPropertyList:(id)rootPList
-		   named:(id)name
-	testProperty:(id)subPList
-		  atPath:(id)keyPath
-	 againstType:(id)typeKey
-		   error:(NSError **)outError;	// shared selector (proposed ADR-0043)
+withPropertyList:(const oo::PList &)rootPList
+		   named:(const std::string &)name
+	testProperty:(const oo::PList &)subPList
+		  atPath:(const oo::PList &)keyPath
+	 againstType:(const oo::PList &)typeKey
+		   error:(NSError **)outError;	// flipped with its family (bead oo-3rb.275)
 
 /*	Method notifying of verification failure.
 	Return YES to continue verifying, NO to stop.
 */
 // name: a string; localSchema: the schema type specifier (a string or a dictionary).
 - (BOOL)verifier:(OOPListSchemaVerifier *)verifier
-withPropertyList:(id)rootPList
-		   named:(id)name
- failedForProperty:(id)subPList
+withPropertyList:(const oo::PList &)rootPList
+		   named:(const std::string &)name
+ failedForProperty:(const oo::PList &)subPList
 	   withError:(NSError *)error
-	expectedType:(id)localSchema;	// shared selector (proposed ADR-0043)
+	expectedType:(const oo::PList &)localSchema;	// flipped with its family (bead oo-3rb.275)
 
 @end
 
