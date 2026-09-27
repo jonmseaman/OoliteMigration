@@ -466,7 +466,7 @@ MA 02110-1301, USA.
 	}
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"SunEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SunEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

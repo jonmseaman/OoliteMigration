@@ -262,7 +262,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	
 	[super drawImmediate:immediate translucent:translucent];
 	
-	OOCheckOpenGLErrors(@"SkyEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SkyEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

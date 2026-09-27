@@ -1021,7 +1021,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 
 	OOGL(glPopAttrib());
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"PlanetEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "PlanetEntity after drawing " + oo::DescriptionOf(self); });
 
 	if (atmosphere)
 	{

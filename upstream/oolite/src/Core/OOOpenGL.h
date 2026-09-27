@@ -70,7 +70,7 @@ typedef enum
 	  3. Draw
 	  4. Reverse state changes from stage 2
 	  5. Call OOVerifyOpenGLState()
-	  6. Call OOCheckOpenGLErrors().
+	  6. Call cxx_OOCheckOpenGLErrors().
 	
 	
 	The states are:
@@ -231,7 +231,7 @@ void GLDrawQuadStrip(OOGLVector *points, int n);
 	OOGL(foo) checks for GL errors before and after performing the statement foo.
 	OOGLBEGIN(mode) checks for GL errors, then calls glBegin(mode).
 	OOGLEND() calls glEnd(), then checks for GL errors.
-	CheckOpenGLErrorsHeavy() checks for errors exactly like OOCheckOpenGLErrors().
+	CheckOpenGLErrorsHeavy() checks for errors exactly like cxx_OOCheckOpenGLErrors().
 	
 	If OO_CHECK_GL_HEAVY is zero, these macros don't perform error checking,
 	but otherwise continue to work as before, so:
@@ -270,7 +270,7 @@ extern "C++" {
 #endif
 #define OOGL_PERFORM_CHECK(label, code)  cxx_OOCheckOpenGLErrors("%s %s:%u (%s)%s", label, oo::log::abbreviatedFileName(__FILE__).c_str(), __LINE__, __PRETTY_FUNCTION__, code)
 #define OOGL(statement)  do { OOGLNoteCurrentFunction(__FUNCTION__, __LINE__); OOGL_PERFORM_CHECK("PRE", " -- " #statement); statement; OOGL_PERFORM_CHECK("POST", " -- " #statement); } while (0)
-#define CheckOpenGLErrorsHeavy OOCheckOpenGLErrors
+#define CheckOpenGLErrorsHeavy cxx_OOCheckOpenGLErrors
 #define OOGLBEGIN(mode) do { OOGLNoteCurrentFunction(__FUNCTION__, __LINE__); OOGL_PERFORM_CHECK("PRE-BEGIN", " -- " #mode); glBegin(mode); } while (0)
 #define OOGLEND() do { glEnd(); OOGLNoteCurrentFunction(__FUNCTION__, __LINE__); OOGL_PERFORM_CHECK("POST-END", ""); } while (0)
 
@@ -303,11 +303,3 @@ std::string OOGLFlagToString(bool value);
 #endif
 
 #endif
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): OOCheckOpenGLErrors() as it was
-	declared before its sweep (bead oo-zpz4, chunk oo-3rb.143), forwarding to cxx_OOCheckOpenGLErrors,
-	so unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads;
-	the bridge goes in its own bead.
-*/
-#import "OOOpenGL+FoundationBridge.h"

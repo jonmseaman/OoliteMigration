@@ -200,7 +200,7 @@ static Vector offsetForOctant(int oct, GLfloat r)
 	OOGLEND();
 	
 	OODebugEndWireframe(state);
-	OOCheckOpenGLErrors(@"Octree after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing " + oo::DescriptionOf(self); });
 }
 
 
@@ -292,7 +292,7 @@ static BOOL drawTestForCollisions;
 	_hasCollision = drawTestForCollisions;
 	
 	OODebugEndWireframe(state);
-	OOCheckOpenGLErrors(@"Octree after drawing collisions for %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing collisions for " + oo::DescriptionOf(self); });
 }
 
 

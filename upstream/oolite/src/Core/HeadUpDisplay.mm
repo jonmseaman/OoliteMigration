@@ -953,7 +953,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	[self drawDials];
 	[self drawMFDs];
-	OOCheckOpenGLErrors(@"After drawing HUD");
+	cxx_OOCheckOpenGLErrors("After drawing HUD");
 	
 	OOVerifyOpenGLState();
 	
@@ -1241,7 +1241,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	// use the selector value stored during init; the dial is called by name with the configuration
 	// as an Objective-C object (ADR-0043 item 21), made once when the dial was added.
 	[self performSelector:sCurrentDrawItem->selector withObject:sCurrentDrawItem->infoObject.get()];
-	OOCheckOpenGLErrors(@"HeadUpDisplay after drawHUDItem %@", sCurrentDrawItem->infoObject.get());
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "HeadUpDisplay after drawHUDItem " + oo::DescriptionOf(sCurrentDrawItem->infoObject.get()); });
 	
 	OOVerifyOpenGLState();
 }
