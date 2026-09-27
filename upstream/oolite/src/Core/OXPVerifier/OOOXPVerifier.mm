@@ -242,10 +242,10 @@ void OpenLogFile();
 }
 
 
-- (id)configurationValueForKey:(id)key	// shared selector (proposed ADR-0043)
+- (oo::PList)configurationValueForKey:(const std::string &)key
 {
-	const oo::PList *value = _verifierPList.find(oo::StdString(key));
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	const oo::PList *value = _verifierPList.find(key);
+	return value != nullptr ? *value : oo::PList();
 }
 
 

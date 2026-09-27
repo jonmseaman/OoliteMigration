@@ -581,18 +581,18 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJ
 @protocol OOJavaScriptEngineMonitor <NSObject>
 
 // Sent for JS errors or warnings.
-- (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in ooscript::Context)context
-				  error:(in ooscript::ErrorReport *)errorReport
-			  stackSkip:(in unsigned)stackSkip
-		showingLocation:(in BOOL)showLocation
-			withMessage:(in id)message;	// shared selector (proposed ADR-0043): OODebugMonitor implements it with a string
+- (void)jsEngine:(OOJavaScriptEngine *)engine
+		 context:(ooscript::Context)context
+		   error:(ooscript::ErrorReport *)errorReport
+	   stackSkip:(unsigned)stackSkip
+ showingLocation:(BOOL)showLocation
+	 withMessage:(const std::string &)message;
 
-// Sent for JS log messages. Note: messageClass will be nil if Log() is used rather than LogWithClass().
-- (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in ooscript::Context)context
-			 logMessage:(in id)message
-				ofClass:(in id)messageClass;	// shared selector (proposed ADR-0043): OODebugMonitor implements it with strings
+// Sent for JS log messages. Note: messageClass is nullopt if Log() is used rather than LogWithClass().
+- (void)jsEngine:(OOJavaScriptEngine *)engine
+		 context:(ooscript::Context)context
+	  logMessage:(const std::string &)message
+		 ofClass:(const std::optional<std::string> &)messageClass;
 
 @end
 

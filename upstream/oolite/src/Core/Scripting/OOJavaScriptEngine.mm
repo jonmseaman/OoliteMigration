@@ -756,7 +756,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:error:stackSkip:showingLocation:withMessage:)])
 	{
-		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:oo::NSStringFrom(message)];
+		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:message];
 	}
 }
 
@@ -767,7 +767,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:logMessage:ofClass:)])
 	{
-		[_monitor jsEngine:self context:theContext logMessage:oo::NSStringOrNil(message) ofClass:oo::NSStringOrNil(messageClass)];
+		[_monitor jsEngine:self context:theContext logMessage:message.value_or("") ofClass:messageClass];
 	}
 }
 
