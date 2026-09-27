@@ -32,6 +32,7 @@ SOFTWARE.
 
 #import "OOMaterialConvenienceCreators.h"
 #import "OOMaterialSpecifier.h"
+#import "OOColor.h"
 
 #if USE_NEW_SHADER_SYNTHESIZER
 #import "OODefaultShaderSynthesizer.h"
@@ -45,6 +46,8 @@ SOFTWARE.
 #import "OOPListView.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/String.hpp"
 #import "Universe.h"
 #import "OOCacheManager.h"
 #import "OOTexture.h"
@@ -52,21 +55,23 @@ SOFTWARE.
 
 
 #if !USE_NEW_SHADER_SYNTHESIZER
-typedef struct
+namespace {
+
+struct OOMaterialSynthContext
 {
-	NSDictionary			*inConfig;
-	NSMutableDictionary		*outConfig;
+	oo::PList				inConfig;
+	oo::PList::Dict			outConfig;
 	NSUInteger				texturesUsed;
 	NSUInteger				maxTextures;
 	
-	NSMutableDictionary		*macros;
-	NSMutableArray			*textures;
-	NSMutableDictionary		*uniforms;
-} OOMaterialSynthContext;
+	oo::PList::Dict			macros;
+	std::vector<oo::PList>	textures;
+	oo::PList::Dict			uniforms;
+};
 
 
-static void SetUniform(NSMutableDictionary *uniforms, NSString *key, NSString *type, id value);
-static void SetUniformFloat(OOMaterialSynthContext *context, NSString *key, float value);
+void SetUniform(oo::PList::Dict &uniforms, const std::string &key, const char *type, const oo::PList &value);
+void SetUniformFloat(OOMaterialSynthContext *context, const std::string &key, float value);
 
 /*	AddTexture(): add a texture to the configuration being synthesized.
 	* specifier is added to the textures array.
@@ -74,16 +79,17 @@ static void SetUniformFloat(OOMaterialSynthContext *context, NSString *key, floa
 	* If nonShaderKey is not nil, nonShaderKey (e.g. diffuse_map) is set to specifier.
 	* If macroName is not nil, macroName is set to 1 in the macros dictionary.
 */
-static void AddTexture(OOMaterialSynthContext *context, NSString *uniformName, NSString *nonShaderKey, NSString *macroName, NSDictionary *specifier);
+void AddTexture(OOMaterialSynthContext *context, const char *uniformName, const char *nonShaderKey, const char *macroName, const oo::PList &specifier);
 
-static void AddColorIfAppropriate(OOMaterialSynthContext *context, SEL selector, NSString *key, NSString *macroName);
-static void AddMacroColorIfAppropriate(OOMaterialSynthContext *context, SEL selector, NSString *macroName);
+void AddColorIfAppropriate(OOMaterialSynthContext *context, OOColor *color, const char *key, const char *macroName);
+void AddMacroColorIfAppropriate(OOMaterialSynthContext *context, OOColor *color, const char *macroName);
 
-static void SynthDiffuse(OOMaterialSynthContext *context, NSString *name);
-static void SynthEmissionAndIllumination(OOMaterialSynthContext *context);
-static void SynthNormalMap(OOMaterialSynthContext *context);
-static void SynthSpecular(OOMaterialSynthContext *context);
+void SynthDiffuse(OOMaterialSynthContext *context, const std::optional<std::string> &name);
+void SynthEmissionAndIllumination(OOMaterialSynthContext *context);
+void SynthNormalMap(OOMaterialSynthContext *context);
+void SynthSpecular(OOMaterialSynthContext *context);
 
+}	// namespace
 #endif
 
 
@@ -91,20 +97,25 @@ static void SynthSpecular(OOMaterialSynthContext *context);
 
 #if !USE_NEW_SHADER_SYNTHESIZER
 
-+ (NSDictionary *)synthesizeMaterialDictionaryWithName:(NSString *)name
-										 configuration:(NSDictionary *)configuration
-												macros:(NSDictionary *)macros
++ (oo::PList)synthesizeMaterialDictionaryWithName:(const std::optional<std::string> &)name
+										 configuration:(const oo::PList &)configuration
+												macros:(const oo::PList &)macros
 {
-	if (configuration == nil)  configuration = [NSDictionary dictionary];
+	oo::PList::Dict macrosCopy;
+	if (const oo::PList::Dict *src = macros.getIf<oo::PList::Dict>())
+	{
+		macrosCopy = *src;
+	}
+	
 	OOMaterialSynthContext context =
 	{
-		.inConfig = configuration,
-		.outConfig = [NSMutableDictionary dictionary],
+		.inConfig = configuration.isNull() ? oo::PList(oo::PList::Dict{}) : configuration,
+		.outConfig = oo::PList::Dict{},
 		.maxTextures = (NSUInteger)[[OOOpenGLExtensionManager sharedManager] textureImageUnitCount],
 		
-		.macros = [NSMutableDictionary dictionaryWithDictionary:macros],
-		.textures = [NSMutableArray array],
-		.uniforms = [NSMutableDictionary dictionary]
+		.macros = std::move(macrosCopy),
+		.textures = {},
+		.uniforms = {}
 	};
 	
 	if ([UNIVERSE reducedDetail])
@@ -127,21 +138,21 @@ static void SynthSpecular(OOMaterialSynthContext *context);
 	if ([UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS)
 	{
 		//	Add uniforms required for hull heat glow.
-		[context.uniforms setObject:@"hullHeatLevel" forKey:@"uHullHeatLevel"];
-		[context.uniforms setObject:@"timeElapsedSinceSpawn" forKey:@"uTime"];
-		[context.uniforms setObject:@"fogUniform" forKey:@"uFogColor"];
+		context.uniforms["uHullHeatLevel"] = oo::PList("hullHeatLevel");
+		context.uniforms["uTime"] = oo::PList("timeElapsedSinceSpawn");
+		context.uniforms["uFogColor"] = oo::PList("fogUniform");
 	}
 	
 	//	Stuff in the general properties.
-	[context.outConfig setObject:@"true" forKey:@"_oo_is_synthesized_config"];
-	[context.outConfig setObject:@"oolite-tangent-space-vertex.vertex" forKey:@"vertex_shader"];
-	[context.outConfig setObject:@"oolite-default-shader.fragment" forKey:@"fragment_shader"];
+	context.outConfig["_oo_is_synthesized_config"] = oo::PList("true");
+	context.outConfig["vertex_shader"] = oo::PList("oolite-tangent-space-vertex.vertex");
+	context.outConfig["fragment_shader"] = oo::PList("oolite-default-shader.fragment");
 	
-	if ([context.textures count] != 0)  [context.outConfig setObject:context.textures forKey:@"textures"];
-	if ([context.uniforms count] != 0)  [context.outConfig setObject:context.uniforms forKey:@"uniforms"];
-	if ([context.macros count] != 0)  [context.outConfig setObject:context.macros forKey:@"_oo_synthesized_material_macros"];
+	if (!context.textures.empty())  context.outConfig["textures"] = oo::PList(oo::PList::Array(context.textures));
+	if (!context.uniforms.empty())  context.outConfig["uniforms"] = oo::PList(context.uniforms);
+	if (!context.macros.empty())  context.outConfig["_oo_synthesized_material_macros"] = oo::PList(context.macros);
 	
-	return context.outConfig;
+	return oo::PList(std::move(context.outConfig));
 }
 
 
@@ -152,44 +163,59 @@ static void SynthSpecular(OOMaterialSynthContext *context);
 								bindingTarget:(id<OOWeakReferenceSupport>)target
 {
 	OOCacheManager			*cache = nil;
-	NSDictionary			*synthesizedConfig = nil;
+	oo::PList				synthesizedConfig;
 	OOMaterial				*result = nil;
 	
+	const oo::PList configurationPList = oo::PListFrom(configuration);
+	
 	// Avoid looping (can happen if shader fails to compile).
-	if ([configuration objectForKey:@"_oo_is_synthesized_config"] != nil)
+	if (configurationPList.find("_oo_is_synthesized_config") != nullptr)
 	{
 		OO_LOG("material.synthesize.loop", "Synthesis loop for material {}.", oo::DescriptionOf(name));
 		return nil;
 	}
 	
+	std::string cacheKeyStr;
 	if (cacheKey != nil)
 	{
 		cache = [OOCacheManager sharedCache];
 		// configuration must be in cache key, as otherwise changes in
 		// non-diffuse map can end up miscached
-		cacheKey = [NSString stringWithFormat:@"%@/%@/%@", cacheKey, name, configuration];
-		synthesizedConfig = [cache objectForKey:cacheKey inCache:@"synthesized shader materials"];
-	}
-	
-	if (synthesizedConfig == nil)
-	{
-		synthesizedConfig = [self synthesizeMaterialDictionaryWithName:name
-														 configuration:configuration
-																macros:macros];
-		if (synthesizedConfig != nil && cacheKey != nil)
+		cacheKeyStr = oo::str::format("%s/%s/%s",
+									  oo::StdString(cacheKey).c_str(),
+									  oo::StdString(name).c_str(),
+									  oo::DescriptionOf(configuration).c_str());
+		id cached = [cache cxx_objectForKey:cacheKeyStr inCache:"synthesized shader materials"];
+		if (cached != nil)
 		{
-			[cache setObject:synthesizedConfig
-					  forKey:cacheKey
-					 inCache:@"synthesized shader materials"];
+			synthesizedConfig = oo::PListFrom(cached);
 		}
 	}
 	
-	if (synthesizedConfig != nil)
+	if (synthesizedConfig.isNull())
 	{
+		synthesizedConfig = [self synthesizeMaterialDictionaryWithName:oo::OptionalString(name)
+														 configuration:configurationPList.isNull() ? oo::PList(oo::PList::Dict{}) : configurationPList
+																macros:oo::PListFrom(macros)];
+		if (!synthesizedConfig.isNull() && cacheKey != nil)
+		{
+			[cache cxx_setObject:oo::ObjectFromPList(synthesizedConfig)
+						  forKey:cacheKeyStr
+						 inCache:"synthesized shader materials"];
+		}
+	}
+	
+	if (!synthesizedConfig.isNull())
+	{
+		id macrosObj = nil;
+		if (const oo::PList *macrosPList = synthesizedConfig.find("_oo_synthesized_material_macros"))
+		{
+			macrosObj = oo::ObjectFromPList(*macrosPList);
+		}
 		result =  [self materialWithName:name
 								cacheKey:cacheKey
-						   configuration:synthesizedConfig
-								  macros:[synthesizedConfig objectForKey:@"_oo_synthesized_material_macros"]
+						   configuration:oo::ObjectFromPList(synthesizedConfig)
+								  macros:macrosObj
 						   bindingTarget:target
 						 forSmoothedMesh:YES];
 	}
@@ -393,105 +419,111 @@ static BOOL sDumpShaderSource = NO;
 
 
 #if !USE_NEW_SHADER_SYNTHESIZER
+namespace {
 
-static void SetUniform(NSMutableDictionary *uniforms, NSString *key, NSString *type, id value)
+void SetUniform(oo::PList::Dict &uniforms, const std::string &key, const char *type, const oo::PList &value)
 {
-	[uniforms setObject:[NSDictionary dictionaryWithObjectsAndKeys:type, @"type", value, @"value", nil] forKey:key];
+	uniforms[key] = oo::PList(oo::PList::Dict{
+		{ "type", oo::PList(type) },
+		{ "value", value }
+	});
 }
 
 
-static void SetUniformFloat(OOMaterialSynthContext *context, NSString *key, float value)
+void SetUniformFloat(OOMaterialSynthContext *context, const std::string &key, float value)
 {
-	SetUniform(context->uniforms, key, @"float", [NSNumber numberWithFloat:value]);
+	SetUniform(context->uniforms, key, "float", oo::PList::singleReal(value));
 }
 
 
-static void AddTexture(OOMaterialSynthContext *context, NSString *uniformName, NSString *nonShaderKey, NSString *macroName, NSDictionary *specifier)
+void AddTexture(OOMaterialSynthContext *context, const char *uniformName, const char *nonShaderKey, const char *macroName, const oo::PList &specifier)
 {
 	NSCParameterAssert(context->texturesUsed < context->maxTextures);
 	
 	context->texturesUsed++;
-	SetUniform(context->uniforms, uniformName, @"texture", [NSNumber numberWithUnsignedInteger:[context->textures count]]);
-	[context->textures addObject:specifier];
-	if (nonShaderKey != nil)
+	SetUniform(context->uniforms, uniformName, "texture", oo::PList::unsignedInteger(context->textures.size()));
+	context->textures.push_back(specifier);
+	if (nonShaderKey != nullptr)
 	{
-		[context->outConfig setObject:specifier forKey:kOOMaterialDiffuseMapName];
+		// Upstream always wrote kOOMaterialDiffuseMapName when nonShaderKey was non-nil.
+		context->outConfig[cxx_kOOMaterialDiffuseMapName] = specifier;
 	}
-	if (macroName != nil)
+	if (macroName != nullptr)
 	{
-		[context->macros setObject:@"1" forKey:macroName];
-	}
-}
-
-
-static void AddColorIfAppropriate(OOMaterialSynthContext *context, SEL selector, NSString *key, NSString *macroName)
-{
-	OOColor *color = [context->inConfig performSelector:selector];
-	
-	if (color != nil)
-	{
-		[context->outConfig setObject:[color normalizedArray] forKey:key];
-		if (macroName != nil)  [context->macros setObject:@"1" forKey:macroName];
+		context->macros[macroName] = oo::PList("1");
 	}
 }
 
 
-static void AddMacroColorIfAppropriate(OOMaterialSynthContext *context, SEL selector, NSString *macroName)
+void AddColorIfAppropriate(OOMaterialSynthContext *context, OOColor *color, const char *key, const char *macroName)
 {
-	OOColor *color = [context->inConfig performSelector:selector];
-	
 	if (color != nil)
 	{
-		NSString *macroText = [NSString stringWithFormat:@"vec4(%g, %g, %g, %g)",
+		oo::PList::Array components;
+		for (float component : [color cxx_normalizedArray])
+		{
+			components.push_back(oo::PList::singleReal(component));
+		}
+		context->outConfig[key] = oo::PList(std::move(components));
+		if (macroName != nullptr)  context->macros[macroName] = oo::PList("1");
+	}
+}
+
+
+void AddMacroColorIfAppropriate(OOMaterialSynthContext *context, OOColor *color, const char *macroName)
+{
+	if (color != nil)
+	{
+		std::string macroText = oo::str::format("vec4(%g, %g, %g, %g)",
 							   [color redComponent],
 							   [color greenComponent],
 							   [color blueComponent],
-							   [color alphaComponent]];
-		[context->macros setObject:macroText forKey:macroName];
+							   [color alphaComponent]);
+		context->macros[macroName] = oo::PList(std::move(macroText));
 	}
 }
 
 
-static void SynthDiffuse(OOMaterialSynthContext *context, NSString *name)
+void SynthDiffuse(OOMaterialSynthContext *context, const std::optional<std::string> &name)
 {
 	// Set up diffuse map if appropriate.
-	NSDictionary *diffuseMapSpec = [context->inConfig oo_diffuseMapSpecifierWithDefaultName:name];
-	if (diffuseMapSpec != nil && context->texturesUsed < context->maxTextures)
+	oo::PList diffuseMapSpec = cxx_OOMaterialDiffuseMapSpecifier(context->inConfig, name);
+	if (!diffuseMapSpec.isNull() && context->texturesUsed < context->maxTextures)
 	{
-		AddTexture(context, @"uDiffuseMap", kOOMaterialDiffuseMapName, @"OOSTD_DIFFUSE_MAP", diffuseMapSpec);
+		AddTexture(context, "uDiffuseMap", cxx_kOOMaterialDiffuseMapName, "OOSTD_DIFFUSE_MAP", diffuseMapSpec);
 		
-		if (oo::PListView(diffuseMapSpec).get<BOOL>(@"cube_map"))
+		if (diffuseMapSpec.get<bool>("cube_map"))
 		{
-			[context->macros setObject:@"1" forKey:@"OOSTD_DIFFUSE_MAP_IS_CUBE_MAP"];
+			context->macros["OOSTD_DIFFUSE_MAP_IS_CUBE_MAP"] = oo::PList("1");
 		}
 	}
 	else
 	{
 		// No diffuse map must be specified explicitly.
-		[context->outConfig setObject:@"" forKey:kOOMaterialDiffuseMapName];
+		context->outConfig[cxx_kOOMaterialDiffuseMapName] = oo::PList("");
 	}
 	
 	// Set up diffuse colour if any.
-	AddColorIfAppropriate(context, @selector(oo_diffuseColor), kOOMaterialDiffuseColorName, nil);
+	AddColorIfAppropriate(context, cxx_OOMaterialDiffuseColor(context->inConfig), cxx_kOOMaterialDiffuseColorName, nullptr);
 }
 
 
-static void SynthEmissionAndIllumination(OOMaterialSynthContext *context)
+void SynthEmissionAndIllumination(OOMaterialSynthContext *context)
 {
 	// Read the various emission and illumination textures, and decide what to do with them.
-	NSDictionary *emissionMapSpec = [context->inConfig oo_emissionMapSpecifier];
-	NSDictionary *illuminationMapSpec = [context->inConfig oo_illuminationMapSpecifier];
-	NSDictionary *emissionAndIlluminationSpec = [context->inConfig oo_emissionAndIlluminationMapSpecifier];
+	oo::PList emissionMapSpec = cxx_OOMaterialEmissionMapSpecifier(context->inConfig);
+	oo::PList illuminationMapSpec = cxx_OOMaterialIlluminationMapSpecifier(context->inConfig);
+	oo::PList emissionAndIlluminationSpec = cxx_OOMaterialEmissionAndIlluminationMapSpecifier(context->inConfig);
 	BOOL isCombinedSpec = NO;
 	BOOL haveIlluminationMap = NO;
 	
-	if (emissionMapSpec == nil && emissionAndIlluminationSpec != nil)
+	if (emissionMapSpec.isNull() && !emissionAndIlluminationSpec.isNull())
 	{
 		emissionMapSpec = emissionAndIlluminationSpec;
-		if (illuminationMapSpec == nil)  isCombinedSpec = YES;  // Else use only emission part of emission_and_illumination_map, combined with full illumination_map.
+		if (illuminationMapSpec.isNull())  isCombinedSpec = YES;  // Else use only emission part of emission_and_illumination_map, combined with full illumination_map.
 	}
 	
-	if (emissionMapSpec != nil && context->texturesUsed < context->maxTextures)
+	if (!emissionMapSpec.isNull() && context->texturesUsed < context->maxTextures)
 	{
 		/*	FIXME: at this point, if there is an illumination map, we should
 			consider merging it into the emission map using
@@ -500,90 +532,90 @@ static void SynthEmissionAndIllumination(OOMaterialSynthContext *context)
 			require adding a new type of texture specifier - not a big deal.
 			-- Ahruman 2010-05-21
 		*/
-		AddTexture(context, @"uEmissionMap", nil, isCombinedSpec ? @"OOSTD_EMISSION_AND_ILLUMINATION_MAP" : @"OOSTD_EMISSION_MAP", emissionMapSpec);
+		AddTexture(context, "uEmissionMap", nullptr, isCombinedSpec ? "OOSTD_EMISSION_AND_ILLUMINATION_MAP" : "OOSTD_EMISSION_MAP", emissionMapSpec);
 		/*	Note that this sets emission_color, not emission_modulate_color.
 			This is because the emission colour value is sent through the
 			standard OpenGL emission colour attribute by OOBasicMaterial.
 		*/
-		AddColorIfAppropriate(context, @selector(oo_emissionModulateColor), kOOMaterialEmissionColorName, @"OOSTD_EMISSION");
+		AddColorIfAppropriate(context, cxx_OOMaterialEmissionModulateColor(context->inConfig), cxx_kOOMaterialEmissionColorName, "OOSTD_EMISSION");
 		
 		haveIlluminationMap = isCombinedSpec;
 	}
 	else
 	{
 		//	No emission map, use overall emission colour if specified.
-		AddColorIfAppropriate(context, @selector(oo_emissionColor), kOOMaterialEmissionColorName, @"OOSTD_EMISSION");
+		AddColorIfAppropriate(context, cxx_OOMaterialEmissionColor(context->inConfig), cxx_kOOMaterialEmissionColorName, "OOSTD_EMISSION");
 	}
 	
-	if (illuminationMapSpec != nil && context->texturesUsed < context->maxTextures)
+	if (!illuminationMapSpec.isNull() && context->texturesUsed < context->maxTextures)
 	{
-		AddTexture(context, @"uIlluminationMap", nil, @"OOSTD_ILLUMINATION_MAP", illuminationMapSpec);
+		AddTexture(context, "uIlluminationMap", nullptr, "OOSTD_ILLUMINATION_MAP", illuminationMapSpec);
 		haveIlluminationMap = YES;
 	}
 	
 	if (haveIlluminationMap)
 	{
-		AddMacroColorIfAppropriate(context, @selector(oo_illuminationModulateColor), @"OOSTD_ILLUMINATION_COLOR");
+		AddMacroColorIfAppropriate(context, cxx_OOMaterialIlluminationModulateColor(context->inConfig), "OOSTD_ILLUMINATION_COLOR");
 	}
 }
 
 
-static void SynthNormalMap(OOMaterialSynthContext *context)
+void SynthNormalMap(OOMaterialSynthContext *context)
 {
 	if (context->texturesUsed < context->maxTextures)
 	{
 		BOOL hasParallax = YES;
-		NSDictionary *normalMapSpec = [context->inConfig oo_normalAndParallaxMapSpecifier];
-		if (normalMapSpec == nil)
+		oo::PList normalMapSpec = cxx_OOMaterialNormalAndParallaxMapSpecifier(context->inConfig);
+		if (normalMapSpec.isNull())
 		{
 			hasParallax = NO;
-			normalMapSpec = [context->inConfig oo_normalMapSpecifier];
+			normalMapSpec = cxx_OOMaterialNormalMapSpecifier(context->inConfig);
 		}
 		
-		if (normalMapSpec != nil)
+		if (!normalMapSpec.isNull())
 		{
-			AddTexture(context, @"uNormalMap", nil, @"OOSTD_NORMAL_MAP", normalMapSpec);
+			AddTexture(context, "uNormalMap", nullptr, "OOSTD_NORMAL_MAP", normalMapSpec);
 			
 			if (hasParallax)
 			{
-				[context->macros setObject:@"1" forKey:@"OOSTD_NORMAL_AND_PARALLAX_MAP"];
-				SetUniformFloat(context, @"uParallaxScale", [context->inConfig oo_parallaxScale]);
-				SetUniformFloat(context, @"uParallaxBias", [context->inConfig oo_parallaxBias]);
+				context->macros["OOSTD_NORMAL_AND_PARALLAX_MAP"] = oo::PList("1");
+				SetUniformFloat(context, "uParallaxScale", cxx_OOMaterialParallaxScale(context->inConfig));
+				SetUniformFloat(context, "uParallaxBias", cxx_OOMaterialParallaxBias(context->inConfig));
 			}
 		}
 	}
 }
 
 
-static void SynthSpecular(OOMaterialSynthContext *context)
+void SynthSpecular(OOMaterialSynthContext *context)
 {
-	GLint shininess = [context->inConfig oo_specularExponent];
+	GLint shininess = cxx_OOMaterialSpecularExponent(context->inConfig);
 	if (shininess <= 0)  return;
 	
-	GLfloat gloss = [context->inConfig oo_gloss];
+	GLfloat gloss = cxx_OOMaterialGloss(context->inConfig);
 	if (gloss < 0.0f || gloss > 1.0f)  return;
 	
-	BOOL gammaCorrect = [context->inConfig oo_gammaCorrect];
+	BOOL gammaCorrect = cxx_OOMaterialGammaCorrect(context->inConfig) ? YES : NO;
 	
-	NSDictionary *specularMapSpec = nil;
+	oo::PList specularMapSpec;
 	OOColor *specularColor = nil;
 	
 	if (context->texturesUsed < context->maxTextures)
 	{
-		specularMapSpec = [context->inConfig oo_combinedSpecularMapSpecifier];
+		specularMapSpec = cxx_OOMaterialCombinedSpecularMapSpecifier(context->inConfig);
 	}
 	
-	if (specularMapSpec != nil)  specularColor = [context->inConfig oo_specularModulateColor];
-	else  specularColor = [context->inConfig oo_specularColor];
+	if (!specularMapSpec.isNull())  specularColor = cxx_OOMaterialSpecularModulateColor(context->inConfig);
+	else  specularColor = cxx_OOMaterialSpecularColor(context->inConfig);
 	if ([specularColor isBlack])  return;
 	
-	SetUniformFloat(context, @"uGloss", gloss);
+	SetUniformFloat(context, "uGloss", gloss);
 	
-	[context->outConfig setObject:[NSNumber numberWithUnsignedInt:shininess] forKey:kOOMaterialSpecularExponentLegacyName];
+	context->outConfig[cxx_kOOMaterialSpecularExponentLegacyName] = oo::PList::unsignedInteger(static_cast<unsigned int>(shininess));
 	
-	if (specularMapSpec != nil)
+	if (!specularMapSpec.isNull())
 	{
-		AddTexture(context, @"uSpecularMap", kOOMaterialDiffuseMapName, @"OOSTD_SPECULAR_MAP", specularMapSpec);
+		AddTexture(context, "uSpecularMap", cxx_kOOMaterialDiffuseMapName, "OOSTD_SPECULAR_MAP", specularMapSpec);
 	}
 	
 	if (specularColor != nil)
@@ -592,15 +624,21 @@ static void SynthSpecular(OOMaterialSynthContext *context)
 		 specular_color here because the shader reads it from the standard
 		 material specular colour property set by OOBasicMaterial.
 		 */
-		[context->outConfig setObject:[specularColor normalizedArray] forKey:kOOMaterialSpecularColorName];
+		oo::PList::Array components;
+		for (float component : [specularColor cxx_normalizedArray])
+		{
+			components.push_back(oo::PList::singleReal(component));
+		}
+		context->outConfig[cxx_kOOMaterialSpecularColorName] = oo::PList(std::move(components));
 	}
-	[context->macros setObject:@"1" forKey:@"OOSTD_SPECULAR"];
+	context->macros["OOSTD_SPECULAR"] = oo::PList("1");
 	
 	// setting a bool as a float uniform, to be used in the shader as a bool again
 	// this is how hackish I can get... maybe a better way exists, but this is quick
 	// and can be used also for the shader materials in a not too different way
 	// - Nikos 20181001
-	SetUniformFloat(context, @"uGammaCorrect", (float)gammaCorrect);
+	SetUniformFloat(context, "uGammaCorrect", (float)gammaCorrect);
 }
 
+}	// namespace
 #endif
