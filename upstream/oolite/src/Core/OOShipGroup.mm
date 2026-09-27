@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 enum
@@ -90,7 +91,7 @@ public:
 		id operator*() const  { return _buffer[_position]; }
 		Iterator &operator++()
 		{
-			NSCAssert([_group updateCount] == _updateCount, @"OOShipGroup was mutated while being enumerated.");
+			OOCAssert([_group updateCount] == _updateCount, "OOShipGroup was mutated while being enumerated.");
 			if (++_position == _batchCount)  Fill();
 			return *this;
 		}

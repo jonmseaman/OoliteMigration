@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #include <cstring>
 #include "oofnd/Notification.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -2141,7 +2142,7 @@ static BOOL ValidateContracts(ooscript::Context context, ooscript::CallArgs &ooj
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && oojsArgs.rawVp() != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
+	OOCParameterAssert(context != NULL && oojsArgs.rawVp() != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
 	
 	Context cx = (context);
 	unsigned		uValue, offset = isCargo ? 2 : 1;

@@ -40,6 +40,7 @@
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"
@@ -156,7 +157,7 @@ enum
 
 + (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	NSParameterAssert(texture != NULL);
+	OOParameterAssert(texture != NULL);
 	
 	OOStandaloneAtmosphereGenerator *atmoGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (atmoGen == nil)  return NO;
@@ -430,7 +431,7 @@ FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &k
 {
 	const oo::PList *value = dictionary.find(key);
 	OOColor *color = (value != nullptr) ? oo::ObjectIn(*value) : nil;	// an Object node (Amendment 2)
-	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
+	OOCAssert([color isKindOfClass:[OOColor class]], "Expected OOColor, got %s", oo::DescriptionOf([color class]).c_str());
 	
 	return (FloatRGB){ [color redComponent] * ALBEDO_FACTOR, [color greenComponent] * ALBEDO_FACTOR, [color blueComponent] * ALBEDO_FACTOR };
 }
@@ -465,7 +466,7 @@ static BOOL GenerateFBMNoise3D(OOStandaloneAtmosphereGeneratorInfo *info);
 
 static BOOL FillFBMBuffer(OOStandaloneAtmosphereGeneratorInfo *info)
 {
-	NSCParameterAssert(info != NULL);
+	OOCParameterAssert(info != NULL);
 	
 	// Allocate result buffer.
 	info->fbmBuffer = (float *)calloc(info->width * info->height, sizeof (float));

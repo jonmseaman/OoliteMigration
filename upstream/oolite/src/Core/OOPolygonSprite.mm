@@ -51,6 +51,7 @@ SOFTWARE.
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 #ifndef APIENTRY
@@ -194,7 +195,7 @@ typedef GLvoid (*TessFuncPtr)();
 - (void) drawWithData:(GLfloat *)data count:(size_t)count VBO:(GLuint *)vbo
 {
 	if (count == 0)  return;
-	NSParameterAssert(vbo != NULL && data != NULL);
+	OOParameterAssert(vbo != NULL && data != NULL);
 	
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
@@ -272,7 +273,7 @@ typedef GLvoid (*TessFuncPtr)();
 // FIXME: this method is absolutely horrible.
 - (BOOL) loadPolygons:(const oo::PList &)dataArray outlineWidth:(float)outlineWidth
 {
-	NSParameterAssert(dataArray);
+	OOParameterAssert(dataArray);
 	
 	void *pool = objc_autoreleasePoolPush();
 	GLUtesselator *tesselator = NULL;
@@ -629,7 +630,7 @@ OOPolygonContour BuildOutlineContour(const OOPolygonContour &dataArray, GLfloat 
 
 static BOOL GrowTessPolygonData(TessPolygonData *data, size_t capacityHint)
 {
-	NSCParameterAssert(data != NULL);
+	OOCParameterAssert(data != NULL);
 	
 	size_t minCapacity = data->capacity + 1;
 	size_t desiredCapacity = MAX(capacityHint, minCapacity);
@@ -648,7 +649,7 @@ static BOOL GrowTessPolygonData(TessPolygonData *data, size_t capacityHint)
 	
 	if (newData == NULL)  return NO;
 	
-	NSCAssert(newCapacity > data->capacity, @"Buffer regrow logic error");
+	OOCAssert(newCapacity > data->capacity, "Buffer regrow logic error");
 	
 	data->data = newData;
 	data->capacity = newCapacity;
@@ -658,7 +659,7 @@ static BOOL GrowTessPolygonData(TessPolygonData *data, size_t capacityHint)
 
 static BOOL AppendVertex(TessPolygonData *data, NSPoint vertex)
 {
-	NSCParameterAssert(data != NULL);
+	OOCParameterAssert(data != NULL);
 	
 	if (data->capacity == data->count && !GrowTessPolygonData(data, data->capacity * 2))  return NO;
 	
@@ -672,7 +673,7 @@ static BOOL AppendVertex(TessPolygonData *data, NSPoint vertex)
 static void APIENTRY TessBeginCallback(GLenum type, void *polygonData)
 {
 	TessPolygonData *data = (TessPolygonData *)polygonData;
-	NSCParameterAssert(data != NULL);
+	OOCParameterAssert(data != NULL);
 	
 	data->mode = type;
 	data->vCount = 0;
@@ -685,7 +686,7 @@ static void APIENTRY TessVertexCallback(void *vertexData, void *polygonData)
 {
 	TessPolygonData *data = (TessPolygonData *)polygonData;
 	const NSPoint *vertPoint = static_cast<const NSPoint *>(vertexData);
-	NSCParameterAssert(vertPoint != NULL && data != NULL);
+	OOCParameterAssert(vertPoint != NULL && data != NULL);
 	if (!data->OK)  return;
 	
 	NSPoint p = *vertPoint;
@@ -764,7 +765,7 @@ static void APIENTRY TessVertexCallback(void *vertexData, void *polygonData)
 			break;
 			
 		default:
-			OOLog(@"polygonSprite.tesselate.error", @"Unexpected tesselator primitive mode %u.", data->mode);
+			OO_LOG("polygonSprite.tesselate.error", "Unexpected tesselator primitive mode {}.", static_cast<unsigned>(data->mode));
 			data->OK = NO;
 	}
 }
@@ -782,7 +783,7 @@ static void APIENTRY TessCombineCallback(GLdouble	coords[3], void *vertexData[4]
 static void APIENTRY TessEndCallback(void *polygonData)
 {
 	TessPolygonData *data = (TessPolygonData *)polygonData;
-	NSCParameterAssert(data != NULL);
+	OOCParameterAssert(data != NULL);
 	
 	data->mode = 0;
 	data->vCount = 0;
@@ -794,7 +795,7 @@ static void APIENTRY TessEndCallback(void *polygonData)
 static void APIENTRY ErrorCallback(GLenum error, void *polygonData)
 {
 	TessPolygonData *data = (TessPolygonData *)polygonData;
-	NSCParameterAssert(data != NULL);
+	OOCParameterAssert(data != NULL);
 	
 	std::string name;
 #ifndef NDEBUG
@@ -803,7 +804,7 @@ static void APIENTRY ErrorCallback(GLenum error, void *polygonData)
 	
 	char *errStr = (char *)gluErrorString(error);
 	
-	OOLog(@"polygonSprite.tesselate.error", @"Error %s (%u) while tesselating polygon%@.", errStr, error, oo::NSStringFrom(name));
+	OO_LOG("polygonSprite.tesselate.error", "Error {} ({}) while tesselating polygon{}.", errStr, static_cast<unsigned>(error), name);
 	data->OK = NO;
 }
 

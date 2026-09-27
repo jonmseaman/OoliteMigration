@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "OOPixMapChannelOperations.h"
 #import "OOCPUInfo.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 static void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex);
@@ -60,7 +61,7 @@ BOOL OOExtractPixMapChannel(OOPixMap *ioPixMap, uint8_t channelIndex, BOOL compa
 
 static void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex)
 {
-	NSCParameterAssert(ioPixMap != NULL);
+	OOCParameterAssert(ioPixMap != NULL);
 	
 	uint32_t			*src;
 	uint8_t				*dst;
@@ -128,7 +129,7 @@ BOOL OOPixMapToRGBA(OOPixMap *ioPixMap)
 
 static void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx)
 {
-	NSCParameterAssert(OOPixMapBytesPerPixel(srcPx) == 1 && dstPx.format == kOOPixMapRGBA && srcPx.width == dstPx.width && srcPx.height == dstPx.height);
+	OOCParameterAssert(OOPixMapBytesPerPixel(srcPx) == 1 && dstPx.format == kOOPixMapRGBA && srcPx.width == dstPx.width && srcPx.height == dstPx.height);
 	
 	uint8_t				*src;
 	uint32_t			*dst;
@@ -152,7 +153,7 @@ static void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx)
 
 static void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx)
 {
-	NSCParameterAssert(OOPixMapBytesPerPixel(srcPx) == 2 && dstPx.format == kOOPixMapRGBA && srcPx.width == dstPx.width && srcPx.height == dstPx.height);
+	OOCParameterAssert(OOPixMapBytesPerPixel(srcPx) == 2 && dstPx.format == kOOPixMapRGBA && srcPx.width == dstPx.width && srcPx.height == dstPx.height);
 	
 	uint16_t			*src;
 	uint32_t		px;
@@ -195,7 +196,7 @@ BOOL OOPixMapModulateUniform(OOPixMap *ioPixMap, float f0, float f1, float f2, f
 
 static void ModulateUniform_4(OOPixMap pixMap, uint16_t f3, uint16_t f2, uint16_t f1, uint16_t f0)
 {
-	NSCParameterAssert(OOPixMapBytesPerPixel(pixMap) == 4);
+	OOCParameterAssert(OOPixMapBytesPerPixel(pixMap) == 4);
 	
 	uint32_t			*curr;
 	uint32_t		px;

@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOFunctionAttributes.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOStringBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*	DESIGN NOTES
 	
@@ -442,7 +443,7 @@ static inline void SetFunctionTracking(bool value)  {}
 
 void OOSetOpenGLState_(OOOpenGLStateID state, const char *function, unsigned line)
 {
-	NSCParameterAssert((unsigned)state < OPENGL_STATE_INTERNAL_USE_ONLY);
+	OOCParameterAssert((unsigned)state < OPENGL_STATE_INTERNAL_USE_ONLY);
 	
 	OOGLNoteCurrentFunction(function, line);
 	SetFunctionTracking(false);
@@ -474,7 +475,7 @@ static void GetCurrentOpenGLState(OOOpenGLState *state)
 {
 	static const char *name = "<current state>";
 	
-	NSCParameterAssert(state != NULL);
+	OOCParameterAssert(state != NULL);
 	OO_ENTER_OPENGL();
 	memset(state, 0, sizeof *state);
 	state->name = name;
@@ -498,7 +499,7 @@ static void GetCurrentOpenGLState(OOOpenGLState *state)
 
 static bool StatesEqual(const OOOpenGLState *a, const OOOpenGLState *b)
 {
-	NSCParameterAssert(a != NULL && b != NULL);
+	OOCParameterAssert(a != NULL && b != NULL);
 	
 	#define ITEM_STATEFLAG(NAME)		do { if (a->NAME != b->NAME && a->NAME != kStateMaybe && b->NAME != kStateMaybe)  return false; } while (0)
 	#define ITEM_CLIENTSTATEFLAG(NAME)	do { if (a->NAME != b->NAME)  return false; } while (0)
@@ -521,7 +522,7 @@ static void VerifyOpenGLStateInternal(const char *caller, const char *nominalCal
 	OOOpenGLState currentState;
 	GetCurrentOpenGLState(&currentState);
 	
-	NSCParameterAssert(sCurrentStateID <= OPENGL_STATE_INTERNAL_USE_ONLY);
+	OOCParameterAssert(sCurrentStateID <= OPENGL_STATE_INTERNAL_USE_ONLY);
 	
 	const OOOpenGLState *expectedState = &kStandardStates[sCurrentStateID];
 	
@@ -579,7 +580,7 @@ static void VerifyOpenGLStateInternal(const char *caller, const char *nominalCal
 
 void OOSetOpenGLState(OOOpenGLStateID state)
 {
-	NSCParameterAssert((unsigned)state < OPENGL_STATE_INTERNAL_USE_ONLY);
+	OOCParameterAssert((unsigned)state < OPENGL_STATE_INTERNAL_USE_ONLY);
 	
 	if (state != sCurrentStateID)
 	{
@@ -593,7 +594,7 @@ void OOSetOpenGLState(OOOpenGLStateID state)
 
 static void SwitchOpenGLStateInternal(const OOOpenGLState *sourceState, const OOOpenGLState *targetState)
 {
-	NSCParameterAssert(sourceState != NULL && targetState != NULL);
+	OOCParameterAssert(sourceState != NULL && targetState != NULL);
 	OO_ENTER_OPENGL();
 	
 	#define ITEM_STATEFLAG(NAME) \

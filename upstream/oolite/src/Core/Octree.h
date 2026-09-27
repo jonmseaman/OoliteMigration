@@ -53,12 +53,15 @@ MA 02110-1301, USA.
 }
 
 /*
-	- (id) initWithDictionary:
+	- (id) cxx_initWithDictionary:
 	
 	Deserialize an octree from cache representation.
 	(To make a new octree, build it with OOOctreeBuilder.)
+	Foundation declares -initWithDictionary: too, so the typed form is the twin
+	(bead oo-3rb.292.1); -initWithDictionary: converts and forwards to it.
 */
-- (id) initWithDictionary:(id)dictionary;	// shared selector: an Objective-C dictionary
+- (id) initWithDictionary:(id)dictionary;	// shared selector (Foundation declares -initWithDictionary: too): -cxx_initWithDictionary: with an Objective-C dictionary
+- (id) cxx_initWithDictionary:(const oo::PList &)dictionary OO_RETURNS_RETAINED;
 
 - (Octree *) octreeScaledBy:(GLfloat)factor;
 

@@ -37,7 +37,9 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
+#include <optional>
+#include <string>
 #include <string_view>
 
 
@@ -49,10 +51,17 @@ void OOLogOutputHandlerPrintLine(std::string_view line);
 // Queue the pending log-file flush if its deadline has passed. Called from the frame loop (proposed ADR-0033).
 void OOLogOutputHandlerFlushIfDue(void);
 
-// This will attempt to ensure the containing directory exists. If it fails, it will return nil.
-NSString *OOLogHandlerGetLogPath(void);
-NSString *OOLogHandlerGetLogBasePath(void);
-void OOLogOutputHandlerChangeLogFile(NSString *newLogName);
+// This will attempt to ensure the containing directory exists. If it fails, it will return nullopt.
+std::optional<std::string> cxx_OOLogHandlerGetLogPath(void);
+std::optional<std::string> cxx_OOLogHandlerGetLogBasePath(void);
+void cxx_OOLogOutputHandlerChangeLogFile(const std::string &newLogName);
 
 void OOLogOutputHandlerStartLoggingToStdout(void);
 void OOLogOutputHandlerStopLoggingToStdout(void);
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"; bead oo-vjts): gnustep-base's NSLog
+	hook, and the Foundation-typed API this header declared before its sweep, forwarding to the
+	cxx_ functions above so unmigrated callers compile unchanged.
+*/
+#import "OOLogOutputHandler+FoundationBridge.h"

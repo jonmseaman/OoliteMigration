@@ -553,7 +553,7 @@ static std::optional<std::string> SanitizeActionMethod(const std::string &select
 		aliases = WhitelistDictionary(whitelistDictionary, "action_method_aliases");
 
 		// ai_method_aliases overlaid with action_method_aliases: the action entries win, as
-		// -dictionaryByAddingEntriesFromDictionary:aliases did.
+		// merging dictionary entriesaliases did.
 		aliasesWithAI = WhitelistDictionary(whitelistDictionary, "ai_method_aliases");
 		if (!aliasesWithAI.isNull())
 		{

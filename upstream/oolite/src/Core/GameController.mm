@@ -710,13 +710,13 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 
 - (IBAction) showLogAction:sender
 {
-	[[NSWorkspace sharedWorkspace] openFile:[OOLogHandlerGetLogBasePath() stringByAppendingPathComponent:@"Previous.log"]];
+	[[NSWorkspace sharedWorkspace] openFile:[oo::NSStringOrNil(cxx_OOLogHandlerGetLogBasePath()) stringByAppendingPathComponent:@"Previous.log"]];
 }
 
 
 - (IBAction) showLogFolderAction:sender
 {
-	[[NSWorkspace sharedWorkspace] openFile:OOLogHandlerGetLogBasePath()];
+	[[NSWorkspace sharedWorkspace] openFile:oo::NSStringOrNil(cxx_OOLogHandlerGetLogBasePath())];
 }
 
 
@@ -889,7 +889,7 @@ static void RemovePreference(const std::string &key)
 	if (action == @selector(showLogAction:))
 	{
 		// the first path is always Resources
-		return ([[NSFileManager defaultManager] fileExistsAtPath:[OOLogHandlerGetLogBasePath() stringByAppendingPathComponent:@"Previous.log"]]);
+		return ([[NSFileManager defaultManager] fileExistsAtPath:[oo::NSStringOrNil(cxx_OOLogHandlerGetLogBasePath()) stringByAppendingPathComponent:@"Previous.log"]]);
 	}
 	
 	if (action == @selector(showAddOnsAction:))
