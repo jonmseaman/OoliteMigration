@@ -599,22 +599,17 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 
 	if (materialCount != 0)
 	{
-		// OOMaterialConvenienceCreators is not migrated: hand it the same objects, converted once.
-		id materialDict = oo::ObjectFromPList(_materialDict);
-		id shadersDict = oo::ObjectFromPList(_shadersDict);
-		id shaderMacros = oo::ObjectFromPList(_shaderMacros);
-
 		for (i = 0; i != materialCount; ++i)
 		{
 			OOMaterial *oldMaterial = materials[i];
 
 			if (materialKeys[i] != "_oo_placeholder_material")
 			{
-				material = [OOMaterial materialWithName:oo::NSStringFrom(materialKeys[i])
-											   cacheKey:oo::NSStringOrNil(_cacheKey)
-									 materialDictionary:materialDict
-									  shadersDictionary:shadersDict
-												 macros:shaderMacros
+				material = [OOMaterial materialWithName:materialKeys[i]
+											   cacheKey:_cacheKey
+									 materialDictionary:_materialDict
+									  shadersDictionary:_shadersDict
+												 macros:_shaderMacros
 										  bindingTarget:[_shaderBindingTarget weakRefUnderlyingObject]	// Windows DEP fix.
 										forSmoothedMesh:IsPerVertexNormalMode((OOMeshNormalMode)_normalMode)];
 			}

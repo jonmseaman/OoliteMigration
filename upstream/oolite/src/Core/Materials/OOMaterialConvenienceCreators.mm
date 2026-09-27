@@ -207,15 +207,15 @@ void SynthSpecular(OOMaterialSynthContext *context);
 	
 	if (!synthesizedConfig.isNull())
 	{
-		id macrosObj = nil;
-		if (const oo::PList *macrosPList = synthesizedConfig.find("_oo_synthesized_material_macros"))
+		oo::PList macrosPList;
+		if (const oo::PList *found = synthesizedConfig.find("_oo_synthesized_material_macros"))
 		{
-			macrosObj = oo::ObjectFromPList(*macrosPList);
+			macrosPList = *found;
 		}
-		result =  [self materialWithName:name
-								cacheKey:cacheKey
-						   configuration:oo::ObjectFromPList(synthesizedConfig)
-								  macros:macrosObj
+		result =  [self materialWithName:oo::OptionalString(name)
+								cacheKey:oo::OptionalString(cacheKey)
+						   configuration:synthesizedConfig
+								  macros:macrosPList
 						   bindingTarget:target
 						 forSmoothedMesh:YES];
 	}
@@ -285,10 +285,10 @@ static BOOL sDumpShaderSource = NO;
 	}
 #endif
 	
-	return [self materialWithName:name
-						 cacheKey:cacheKey
-					configuration:synthesizedConfig
-						   macros:nil
+	return [self materialWithName:oo::OptionalString(name)
+						 cacheKey:oo::OptionalString(cacheKey)
+					configuration:oo::PListFrom(synthesizedConfig)
+						   macros:oo::PList()
 					bindingTarget:target
 				  forSmoothedMesh:YES];
 }
@@ -296,10 +296,10 @@ static BOOL sDumpShaderSource = NO;
 #endif
 
 
-+ (OOMaterial *) materialWithName:(NSString *)name
-						 cacheKey:(NSString *)cacheKey
-					configuration:(NSDictionary *)configuration
-						   macros:(NSDictionary *)macros
++ (OOMaterial *) materialWithName:(const std::optional<std::string> &)name
+						 cacheKey:(const std::optional<std::string> &)cacheKey
+					configuration:(const oo::PList &)configuration
+						   macros:(const oo::PList &)macros
 					bindingTarget:(id<OOWeakReferenceSupport>)object
 				  forSmoothedMesh:(BOOL)smooth	// Internally, this flg really means "force use of shaders".
 {
@@ -309,12 +309,11 @@ static BOOL sDumpShaderSource = NO;
 
 	if ([UNIVERSE useShaders])
 	{
-		const oo::PList configurationPList = oo::PListFrom(configuration);
-		if ([OOShaderMaterial configurationDictionarySpecifiesShaderMaterial:configurationPList])
+		if ([OOShaderMaterial configurationDictionarySpecifiesShaderMaterial:configuration])
 		{
-			result = [OOShaderMaterial shaderMaterialWithName:oo::OptionalString(name)
-												configuration:configurationPList
-													   macros:oo::PListFrom(macros)
+			result = [OOShaderMaterial shaderMaterialWithName:name
+												configuration:configuration
+													   macros:macros
 												bindingTarget:object];
 		}
 		
@@ -323,19 +322,20 @@ static BOOL sDumpShaderSource = NO;
 				(smooth ||
 				 gDebugFlags & DEBUG_NO_SHADER_FALLBACK ||
 				 [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS ||
-				 [configuration oo_combinedSpecularMapSpecifier] != nil ||
-				 [configuration oo_normalMapSpecifier] != nil ||
-				 [configuration oo_parallaxMapSpecifier] != nil ||
-				 [configuration oo_normalAndParallaxMapSpecifier] != nil ||
-				 [configuration oo_emissionMapSpecifier] != nil ||
-				 [configuration oo_illuminationMapSpecifier] != nil ||
-				 [configuration oo_emissionAndIlluminationMapSpecifier] != nil
+				 !cxx_OOMaterialCombinedSpecularMapSpecifier(configuration).isNull() ||
+				 !cxx_OOMaterialNormalMapSpecifier(configuration).isNull() ||
+				 !cxx_OOMaterialParallaxMapSpecifier(configuration).isNull() ||
+				 !cxx_OOMaterialNormalAndParallaxMapSpecifier(configuration).isNull() ||
+				 !cxx_OOMaterialEmissionMapSpecifier(configuration).isNull() ||
+				 !cxx_OOMaterialIlluminationMapSpecifier(configuration).isNull() ||
+				 !cxx_OOMaterialEmissionAndIlluminationMapSpecifier(configuration).isNull()
 				 ))
 		{
-			result = [self defaultShaderMaterialWithName:name
-												cacheKey:cacheKey
-										   configuration:configuration
-												  macros:macros
+			// defaultShaderMaterialWithName: still speaks Foundation (chunk 3).
+			result = [self defaultShaderMaterialWithName:oo::NSStringOrNil(name)
+												cacheKey:oo::NSStringOrNil(cacheKey)
+										   configuration:oo::ObjectFromPList(configuration)
+												  macros:oo::ObjectFromPList(macros)
 										   bindingTarget:(id<OOWeakReferenceSupport>)object];
 		}
 	}
@@ -344,11 +344,12 @@ static BOOL sDumpShaderSource = NO;
 #if OO_MULTITEXTURE
 	if (result == nil /*&& ![UNIVERSE reducedDetail]*/)
 	{
-		if ([configuration oo_emissionMapSpecifier] != nil ||
-			[configuration oo_illuminationMapSpecifier] ||
-			[configuration oo_emissionAndIlluminationMapSpecifier] != nil)
+		if (!cxx_OOMaterialEmissionMapSpecifier(configuration).isNull() ||
+			!cxx_OOMaterialIlluminationMapSpecifier(configuration).isNull() ||
+			!cxx_OOMaterialEmissionAndIlluminationMapSpecifier(configuration).isNull())
 		{
-			result = [[OOMultiTextureMaterial alloc] initWithName:name configuration:configuration];
+			result = [[OOMultiTextureMaterial alloc] initWithName:oo::NSStringOrNil(name)
+													configuration:oo::ObjectFromPList(configuration)];
 			[result autorelease];
 		}
 	}
@@ -356,17 +357,19 @@ static BOOL sDumpShaderSource = NO;
 	
 	if (result == nil)
 	{
-		if ([configuration oo_diffuseMapSpecifierWithDefaultName:name] == nil)
+		id nameObj = oo::NSStringOrNil(name);
+		id configurationObj = oo::ObjectFromPList(configuration);
+		if (cxx_OOMaterialDiffuseMapSpecifier(configuration, name).isNull())
 		{
-			result = [[OOBasicMaterial alloc] initWithName:name configuration:configuration];
+			result = [[OOBasicMaterial alloc] initWithName:nameObj configuration:configurationObj];
 		}
 		else
 		{
-			result = [[OOSingleTextureMaterial alloc] initWithName:name configuration:configuration];
+			result = [[OOSingleTextureMaterial alloc] initWithName:nameObj configuration:configurationObj];
 		}
 		if (result == nil)
 		{
-			result = [[OOBasicMaterial alloc] initWithName:name configuration:configuration];
+			result = [[OOBasicMaterial alloc] initWithName:nameObj configuration:configurationObj];
 		}
 		[result autorelease];
 	}
@@ -374,37 +377,44 @@ static BOOL sDumpShaderSource = NO;
 }
 
 
-+ (OOMaterial *) materialWithName:(NSString *)name
-						 cacheKey:(NSString *)cacheKey
-			   materialDictionary:(NSDictionary *)materialDict
-				shadersDictionary:(NSDictionary *)shadersDict
-						   macros:(NSDictionary *)macros
++ (OOMaterial *) materialWithName:(const std::optional<std::string> &)name
+						 cacheKey:(const std::optional<std::string> &)cacheKey
+			   materialDictionary:(const oo::PList &)materialDict
+				shadersDictionary:(const oo::PList &)shadersDict
+						   macros:(const oo::PList &)macros
 					bindingTarget:(id<OOWeakReferenceSupport>)object
 				  forSmoothedMesh:(BOOL)smooth
 {
-	NSDictionary			*configuration = nil;
+	oo::PList				configuration;
 	
 #if OO_SHADERS
 
-	if ([UNIVERSE useShaders])
+	if ([UNIVERSE useShaders] && name.has_value())
 	{
-		configuration = oo::PListView(shadersDict).get<NSDictionary *>(name);
+		if (const oo::PList *found = shadersDict.get<oo::PList::Dict>(*name))
+		{
+			configuration = *found;
+		}
 	}
 #endif
 	
-	if (configuration == nil)
+	if (configuration.isNull() && name.has_value())
 	{
-		configuration = oo::PListView(materialDict).get<NSDictionary *>(name);
+		if (const oo::PList *found = materialDict.get<oo::PList::Dict>(*name))
+		{
+			configuration = *found;
+		}
 	}
 	
-	if (configuration == nil)
+	if (configuration.isNull())
 	{
 		// Use fallback material for non-existent simple texture.
 		// Texture caching means this won't be wasted in the general case.
-		OOTexture *texture = [OOTexture textureWithName:name inFolder:@"Textures"];
+		OOTexture *texture = [OOTexture cxx_textureWithName:name
+												   inFolder:std::optional<std::string>("Textures")];
 		if (texture == nil)  return nil;
 		
-		configuration = [NSDictionary dictionary];
+		configuration = oo::PList(oo::PList::Dict{});
 	}
 	
 	return [self materialWithName:name
