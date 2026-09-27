@@ -95,6 +95,21 @@ static ooscript::Object sPlayerShipObject;
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -578,15 +593,15 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 			
 		case kPlayerShip_reticleColorTarget:
-			result = [[[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET]));
 			break;
 			
 		case kPlayerShip_reticleColorTargetSensitive:
-			result = [[[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE]));
 			break;
 			
 		case kPlayerShip_reticleColorWormhole:
-			result = [[[player hud] reticleColorForIndex:OO_RETICLE_COLOR_WORMHOLE] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[player hud] reticleColorForIndex:OO_RETICLE_COLOR_WORMHOLE]));
 			break;
 			
 		case kPlayerShip_reticleTargetSensitive:
@@ -802,11 +817,11 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return ooscript::newNumberValue(cx, -[player flightYaw], value);
 			
 		case kPlayerShip_messageGuiTextColor:
-			result = [[[UNIVERSE messageGUI] textColor] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[UNIVERSE messageGUI] textColor]));
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			result = [[[UNIVERSE messageGUI] textCommsColor] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[UNIVERSE messageGUI] textCommsColor]));
 			break;
 			
 		default:

@@ -63,6 +63,21 @@ static ooscript::Object sEquipmentInfoPrototype;
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -364,7 +379,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			return ooscript::newNumberValue(cx, [eqType damageProbability], value);
 
 		case kEquipmentInfo_displayColor:
-			result = [[eqType displayColor] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([eqType displayColor]));
 			break;
 
 		case kEquipmentInfo_fastAffinityDefensive:

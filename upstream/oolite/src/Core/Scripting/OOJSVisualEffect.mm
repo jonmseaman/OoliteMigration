@@ -66,6 +66,21 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -346,11 +361,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			return ooscript::newNumberValue(cx, [entity scaleZ], value);
 
 		case kVisualEffect_scannerDisplayColor1:
-			result = [[entity scannerDisplayColor1] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColor1]));
 			break;
 			
 		case kVisualEffect_scannerDisplayColor2:
-			result = [[entity scannerDisplayColor2] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColor2]));
 			break;
 
 		case kVisualEffect_hullHeatLevel:
