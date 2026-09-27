@@ -158,7 +158,7 @@ static void SynthSpecular(OOMaterialSynthContext *context);
 	// Avoid looping (can happen if shader fails to compile).
 	if ([configuration objectForKey:@"_oo_is_synthesized_config"] != nil)
 	{
-		OOLog(@"material.synthesize.loop", @"Synthesis loop for material %@.", name);
+		OO_LOG("material.synthesize.loop", "Synthesis loop for material {}.", oo::DescriptionOf(name));
 		return nil;
 	}
 	

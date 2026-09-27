@@ -103,15 +103,15 @@ enum
 
 - (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	OOLog(@"texture.planet.generate", @"%@", @"Initialising standalone atmosphere generator");
+	OO_LOG("texture.planet.generate", "{}", "Initialising standalone atmosphere generator");
 
 	// AllowCubeMap not used yet but might be in future
 	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
-		OOLog(@"texture.planet.generate",@"Extracting parameters for generator %@",self);
+		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(self));
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
-		OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
+		OO_LOG("texture.planet.generate", "{}", "Extracting atmosphere parameters");
 		// we are an atmosphere:
 		_info.cloudAlpha = planetInfo.get<float>("cloud_alpha", 1.0f);
 		_info.cloudFraction = OOClamp_0_1_f(planetInfo.get<float>("cloud_fraction", 0.3));
@@ -209,18 +209,18 @@ enum
 	if (![self isReady])
 	{
 		waiting = true;
-		OOLog(@"texture.planet.generate.wait", @"%s generator %@", "Waiting for", self);
+		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(self));
 	}
 	
 	BOOL result = [super getResult:outData format:outFormat originalWidth:outWidth originalHeight:outHeight];
 	
 	if (waiting)
 	{
-		OOLog(@"texture.planet.generate.dequeue", @"%s generator %@", result ? "Dequeued" : "Failed to dequeue", self);
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
 	}
 	else
 	{
-		OOLog(@"texture.planet.generate.dequeue", @"%s generator %@ without waiting.", result ? "Dequeued" : "Failed to dequeue", self);
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
 	}
 	
 	return result;
@@ -230,7 +230,7 @@ enum
  * various noise, interpolation, etc. functions */
 - (void) loadTexture
 {
-	OOLog(@"texture.planet.generate.begin", @"Started generator %@", self);
+	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(self));
 	
 	BOOL success = NO;
 	
@@ -295,7 +295,7 @@ END:
 		FREE(aBuffer);
 	}
 	
-	OOLog(@"texture.planet.generate.complete", @"Completed generator %@ %@successfully", self, success ? @"" : @"un");
+	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(self), success ? "" : "un");
 	
 #if DEBUG_DUMP
 	if (success)
