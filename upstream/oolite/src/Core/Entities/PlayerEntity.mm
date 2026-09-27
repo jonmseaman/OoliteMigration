@@ -89,6 +89,9 @@ MA 02110-1301, USA.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -332,6 +335,27 @@ static GLfloat		sBaseMass = 0.0;
 
 @end
 
+
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
 
 @implementation PlayerEntity
 
@@ -1072,7 +1096,7 @@ static GLfloat		sBaseMass = 0.0;
 
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
 	
-	[result setObject:[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"] forKey:@"written_by_version"];
+	[result setObject:oo::NSStringOrNil(OoliteInfoString("CFBundleVersion")) forKey:@"written_by_version"];
 
 	NSString	*gal_id = [NSString stringWithFormat:@"%u", galaxy_number];
 	NSString	*sys_id = [NSString stringWithFormat:@"%d", system_id];

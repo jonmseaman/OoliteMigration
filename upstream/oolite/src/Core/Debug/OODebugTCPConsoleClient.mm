@@ -35,6 +35,9 @@ SOFTWARE.
 #import "OODebugMonitor.h"
 #import "OOFunctionAttributes.h"
 #include "oofnd/Log.hpp"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
 #include <stdint.h>
 #include "oofnd/StdLib.hpp"
 
@@ -235,6 +238,27 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 @end
 
 
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
+
 @implementation OODebugTCPConsoleClient
 
 - (id) init
@@ -280,7 +304,8 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 			// none: +dictionaryWithObjectsAndKeys: stopped at the nil).
 			oo::PList::Dict parameters;
 			parameters[ProtocolName(kOOTCPProtocolVersion)] = oo::PList(static_cast<std::int64_t>(kOOTCPProtocolVersion_1_1_0));
-			const oo::PList version = oo::PListFrom([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+			const std::optional<std::string> versionStr = OoliteInfoString("CFBundleVersion");
+			const oo::PList version = versionStr ? oo::PList(*versionStr) : oo::PList();
 			if (!version.isNull())  parameters[ProtocolName(kOOTCPOoliteVersion)] = version;
 			[self sendPacket:ProtocolName(kOOTCPPacket_RequestConnection)
 			   withParameters:oo::PList(std::move(parameters))];
@@ -459,9 +484,8 @@ noteChangedConfigrationValue:(in id)newValue
 	hints.ai_socktype = SOCK_STREAM;
 	if (getaddrinfo(address.c_str(), NULL, &hints, &found) != 0 || found == NULL)
 	{
-		// gnustep-base's own message for an unknown host, through the real NSLog as it was
-		// (parenthesised: the NSLog macro is function-like).
-		(NSLog)(@"Host '%@' not found - perhaps the hostname is wrong or networking is not set up on your machine", oo::NSStringFrom(address));
+		// Same text as gnustep-base's unknown-host message, via OO_LOG.
+		OO_LOG("unclassified", "Host '{}' not found - perhaps the hostname is wrong or networking is not set up on your machine", address);
 		return NO;
 	}
 	memcpy(&host, found->ai_addr, sizeof host);

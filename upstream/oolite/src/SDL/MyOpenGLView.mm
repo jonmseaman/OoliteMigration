@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/ResourcePaths.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #import "stb_image_write.h"
@@ -301,7 +302,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 #endif
 #endif //OOLITE_WINDOWS
 
-	imagesDir = oo::str::appendingPathComponent(oo::StdString([[NSBundle mainBundle] resourcePath]), "Images");
+	imagesDir = oo::fs::utf8String(oo::ResourcePaths::current().builtInResourcesDirectory() / "Images");
 	icon = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "WMicon.bmp").c_str());
 
 	if (icon != NULL)
