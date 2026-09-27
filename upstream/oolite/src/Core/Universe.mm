@@ -11571,10 +11571,10 @@ std::string StringifiedLabel(id line, id keyMap)
 }
 
 
-- (id) initWithCustomSoundKey:(id)key	// shared selector (proposed ADR-0043): an Objective-C string, as OOSoundSource's
+- (id) initWithCustomSoundKey:(const std::string &)key
 {
 	[self release];
-	return [[OOSound cxx_soundWithCustomSoundKey:oo::StdString(key)] retain];
+	return [[OOSound cxx_soundWithCustomSoundKey:key] retain];
 }
 
 @end
@@ -11584,13 +11584,13 @@ std::string StringifiedLabel(id line, id keyMap)
 
 + (id) sourceWithCustomSoundKey:(const std::string &)key
 {
-	return [[[self alloc] initWithCustomSoundKey:oo::NSStringFrom(key)] autorelease];
+	return [[[self alloc] initWithCustomSoundKey:key] autorelease];
 }
 
 
-- (id) initWithCustomSoundKey:(id)key	// shared selector (proposed ADR-0043): an Objective-C string, as OOSound's
+- (id) initWithCustomSoundKey:(const std::string &)key
 {
-	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:oo::StdString(key)];
+	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:key];
 	if (theSound != nil)
 	{
 		self = [self initWithSound:theSound];
