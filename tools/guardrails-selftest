@@ -980,6 +980,24 @@ fixture deny_gs || exit 1
 printf '#import <Foundation/Foundation.h>\n' >> upstream/oolite/src/Core/OOColor.m
 expect_fail "reintroduced Foundation import refused" "reintroduces deny-listed symbols"
 
+# oo-qps.2: the build-level spellings of the library, each with a negative control.
+fixture deny_gs_include || exit 1
+printf '#include <Foundation/NSString.h>\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "reintroduced Foundation #include refused" "reintroduces deny-listed symbols"
+
+fixture deny_gs_meson || exit 1
+printf "dep = dependency('gnustep""-base')\n" >> upstream/oolite/src/Core/meson.build
+expect_fail "gnustep-base as a meson dependency refused" "reintroduces deny-listed symbols"
+
+fixture deny_gs_pkgs || exit 1
+printf '#!/bin/sh\nPKGS=(libobjc2 gnustep''-base)\n' > tools/setup-deps.sh
+git add tools/setup-deps.sh
+expect_fail "gnustep-base in a shell package array refused" "reintroduces deny-listed symbols"
+
+fixture neg_gs_prose || exit 1
+printf '/* gnustep''-base (deleted by oo-qps) still raises these */\n' >> upstream/oolite/src/Core/OOColor.m
+expect_pass "(control) a comment naming gnustep-base in prose passes"
+
 echo
 echo "=== 4b. FINDING 1 (deny-list half): a PURE RENAME of a file full of JS_* passes ==="
 # `git mv OOJSEngine.m OOScriptEngine.m` with NO content change reported 0 -> 3 hits, because

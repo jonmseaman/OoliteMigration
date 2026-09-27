@@ -1579,7 +1579,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	NSSize		characterSize = pixel_text_size;
 	NSSize		titleCharacterSize = pixel_title_size;
 	float		backgroundAlpha = self == [UNIVERSE messageGUI] && ![UNIVERSE permanentMessageLog] ? 0.0f : alpha;
-	float		row_alpha[n_rows];
+	std::vector<float>	row_alpha(n_rows);
 	
 	// calculate fade out time and alpha for each row. Do it before
 	// applying a potential background because we need the maximum alpha

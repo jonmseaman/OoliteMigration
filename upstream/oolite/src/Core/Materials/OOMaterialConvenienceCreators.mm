@@ -43,6 +43,7 @@ SOFTWARE.
 #import "OOSingleTextureMaterial.h"
 #import "OOMultiTextureMaterial.h"
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
 #import "Universe.h"
 #import "OOCacheManager.h"
 #import "OOTexture.h"
@@ -213,22 +214,26 @@ static BOOL sDumpShaderSource = NO;
 										macros:(NSDictionary *)macros
 								 bindingTarget:(id<OOWeakReferenceSupport>)target
 {
-	NSString		*vertexShader = nil;
-	NSString		*fragmentShader = nil;
-	NSArray			*textureSpecs = nil;
-	NSDictionary	*uniformSpecs = nil;
+	std::string		vertexShaderSource, fragmentShaderSource;
+	oo::PList		textureSpecList, uniformSpecDict;
 	
-	if (!OOSynthesizeMaterialShader(configuration, name, cacheKey /* FIXME: entity name for error reporting */, &vertexShader, &fragmentShader, &textureSpecs, &uniformSpecs))
+	if (!OOSynthesizeMaterialShader(oo::PListFrom(configuration), oo::OptionalString(name), oo::OptionalString(cacheKey) /* FIXME: entity name for error reporting */, &vertexShaderSource, &fragmentShaderSource, &textureSpecList, &uniformSpecDict))
 	{
 		return nil;
 	}
+	// A failed synthesis leaves the texture list null (and the shaders empty) where it left all four nil.
+	BOOL			synthesized = !textureSpecList.isNull();
+	NSString		*vertexShader = synthesized ? oo::NSStringFrom(vertexShaderSource) : nil;
+	NSString		*fragmentShader = synthesized ? oo::NSStringFrom(fragmentShaderSource) : nil;
+	NSArray			*textureSpecs = oo::ObjectFromPList(textureSpecList);
+	NSDictionary	*uniformSpecs = oo::ObjectFromPList(uniformSpecDict);
 	
 	NSDictionary	*synthesizedConfig = [NSDictionary dictionaryWithObjectsAndKeys:
-										  [NSNumber numberWithBool:YES], kOOIsSynthesizedMaterialConfigurationKey,
-										  textureSpecs, kOOTexturesKey,
-										  uniformSpecs, kOOUniformsKey,
-										  vertexShader, kOOVertexShaderSourceKey,
-										  fragmentShader, kOOFragmentShaderSourceKey,
+										  [NSNumber numberWithBool:YES], oo::NSStringFrom(kOOIsSynthesizedMaterialConfigurationKey),
+										  textureSpecs, oo::NSStringFrom(kOOTexturesKey),
+										  uniformSpecs, oo::NSStringFrom(kOOUniformsKey),
+										  vertexShader, oo::NSStringFrom(kOOVertexShaderSourceKey),
+										  fragmentShader, oo::NSStringFrom(kOOFragmentShaderSourceKey),
 										  nil];
 	
 #ifndef NDEBUG
@@ -241,11 +246,11 @@ static BOOL sDumpShaderSource = NO;
 		
 		// Hide internal keys in the synthesized config before writing it.
 		NSMutableDictionary *humanFriendlyConfig = [[synthesizedConfig mutableCopy] autorelease];
-		[humanFriendlyConfig removeObjectForKey:kOOVertexShaderSourceKey];
-		[humanFriendlyConfig removeObjectForKey:kOOFragmentShaderSourceKey];
-		[humanFriendlyConfig removeObjectForKey:kOOIsSynthesizedMaterialConfigurationKey];
-		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.vertex", name] forKey:kOOVertexShaderNameKey];
-		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.fragment", name] forKey:kOOFragmentShaderNameKey];
+		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOVertexShaderSourceKey)];
+		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOFragmentShaderSourceKey)];
+		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOIsSynthesizedMaterialConfigurationKey)];
+		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.vertex", name] forKey:oo::NSStringFrom(kOOVertexShaderNameKey)];
+		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.fragment", name] forKey:oo::NSStringFrom(kOOFragmentShaderNameKey)];
 		
 		[ResourceManager writeDiagnosticPList:humanFriendlyConfig toFileNamed:[dumpPath stringByAppendingPathExtension:@"plist"]];
 		
@@ -277,11 +282,12 @@ static BOOL sDumpShaderSource = NO;
 
 	if ([UNIVERSE useShaders])
 	{
-		if ([OOShaderMaterial configurationDictionarySpecifiesShaderMaterial:configuration])
+		const oo::PList configurationPList = oo::PListFrom(configuration);
+		if ([OOShaderMaterial configurationDictionarySpecifiesShaderMaterial:configurationPList])
 		{
-			result = [OOShaderMaterial shaderMaterialWithName:name
-												configuration:configuration
-													   macros:macros
+			result = [OOShaderMaterial shaderMaterialWithName:oo::OptionalString(name)
+												configuration:configurationPList
+													   macros:oo::PListFrom(macros)
 												bindingTarget:object];
 		}
 		

@@ -36,7 +36,10 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOShipGroup.h"
 #import "OOMaths.h"
+#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 enum
@@ -44,23 +47,6 @@ enum
 	kMinSize				= 4,
 	kMaxFreeSpace			= 128
 };
-
-
-@interface OOShipGroupEnumerator: NSEnumerator
-{
-	// ivars are public so ShipGroupIterate() can peek at both these and OOShipGroup's. Naughty!
-@public
-	OOShipGroup				*_group;
-	NSUInteger				_index, _updateCount;
-	BOOL					_considerCleanup, _cleanupNeeded;
-}
-
-- (id) initWithShipGroup:(OOShipGroup *)group;
-
-- (NSUInteger) index;
-- (void) setPerformCleanup:(BOOL)flag;
-
-@end
 
 
 @interface OOShipGroup (Private)
@@ -73,8 +59,6 @@ enum
 @end
 
 
-static id ShipGroupIterate(OOShipGroupEnumerator *enumerator);
-static NSUInteger ShipGroupFillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length);
 
 
 /*	OOShipGroupMembers: range-for over a group's live members, in _members order, replacing the
@@ -107,7 +91,7 @@ public:
 		id operator*() const  { return _buffer[_position]; }
 		Iterator &operator++()
 		{
-			NSCAssert([_group updateCount] == _updateCount, @"OOShipGroup was mutated while being enumerated.");
+			OOCAssert([_group updateCount] == _updateCount, "OOShipGroup was mutated while being enumerated.");
 			if (++_position == _batchCount)  Fill();
 			return *this;
 		}
@@ -116,7 +100,7 @@ public:
 	private:
 		void Fill()
 		{
-			_batchCount = ShipGroupFillBatch(_group, &_index, _buffer, kBatchSize);
+			_batchCount = FillBatch(_group, &_index, _buffer, kBatchSize);
 			_position = 0;
 		}
 
@@ -130,6 +114,9 @@ public:
 	End end() const  { return End(); }
 
 private:
+	// One batch of live members (defined in OOShipGroup's @implementation, for its ivars).
+	static NSUInteger FillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length);
+
 	OOShipGroup		*_group;
 };
 
@@ -142,7 +129,7 @@ private:
 }
 
 
-- (id) initWithName:(NSString *)name
+- (id) initWithName:(id)name
 {
 	if ((self = [super init]))
 	{
@@ -161,15 +148,15 @@ private:
 }
 
 
-+ (instancetype) groupWithName:(NSString *)name
++ (instancetype) cxx_groupWithName:(const std::optional<std::string> &)name
 {
-	return [[[self alloc] initWithName:name] autorelease];
+	return [[[self alloc] initWithName:oo::NSStringOrNil(name)] autorelease];
 }
 
 
-+ (instancetype) groupWithName:(NSString *)name leader:(ShipEntity *)leader
++ (instancetype) cxx_groupWithName:(const std::optional<std::string> &)name leader:(ShipEntity *)leader
 {
-	OOShipGroup *result = [self groupWithName:name];
+	OOShipGroup *result = [self cxx_groupWithName:name];
 	[result setLeader:leader];
 	return result;
 }
@@ -184,42 +171,38 @@ private:
 		[_members[i] release];
 	}
 	free(_members);
-	[_name release];
+	_name.reset();
 	
 	[super dealloc];
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents
 {
-	NSString *desc = [NSString stringWithFormat:@"%zu ships", _count];
-	if ([self name] != nil)
+	std::string desc = oo::str::format("%zu ships", _count);
+	if (_name.has_value())
 	{
-		desc = [NSString stringWithFormat:@"\"%@\", %@", [self name], desc];
+		desc = oo::str::format("\"%s\", %s", _name->c_str(), desc.c_str());
 	}
 	if ([self leader] != nil)
 	{
-		desc = [NSString stringWithFormat:@"%@, leader: %@", desc, [[self leader] shortDescription]];
+		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::DescriptionOf([[self leader] shortDescription]).c_str());
 	}
-	return desc;
+	return oo::NSStringFrom(desc);
 }
 
 
-- (NSString *) name
+- (id) name
 {
-	return _name;
+	return oo::NSStringOrNil(_name);
 }
 
 
-- (void) setName:(NSString *)name
+- (void) setName:(id)name
 {
 	_updateCount++;
-	
-	if (_name != name)
-	{
-		[_name release];
-		_name = [name retain];
-	}
+
+	_name = oo::OptionalString(name);
 }
 
 
@@ -251,73 +234,39 @@ private:
 }
 
 
-- (NSEnumerator *) objectEnumerator
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_memberArray
 {
-	return [[[OOShipGroupEnumerator alloc] initWithShipGroup:self] autorelease];
-}
+	std::vector<oo::ObjCRef<ShipEntity *>>	result;
 
+	if (_count == 0)  return result;
 
-- (NSEnumerator *) mutationSafeEnumerator
-{
-	return [[self memberArray] objectEnumerator];
-}
-
-
-- (NSSet *) members
-{
-	return [NSSet setWithArray:[self memberArray]];
-}
-
-
-- (NSSet *) membersExcludingLeader
-{
-	return [NSSet setWithArray:[self memberArrayExcludingLeader]];
-}
-
-
-- (NSArray *) memberArray
-{
-	id						*objects = NULL;
-	NSUInteger				count = 0;
-	NSArray					*result = nil;
-	
-	if (_count == 0)  return [NSArray array];
-	
-	objects = (id *)malloc(sizeof *objects * _count);
-	for (id ship : OOShipGroupMembers(self))
+	result.reserve(_count);
+	for (ShipEntity *ship : OOShipGroupMembers(self))
 	{
-		objects[count++] = ship;
+		result.emplace_back(ship);
 	}
-	
-	result = [NSArray arrayWithObjects:objects count:count];
-	free(objects);
-	
+
 	return result;
 }
 
 
-- (NSArray *) memberArrayExcludingLeader
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_memberArrayExcludingLeader
 {
-	id						*objects = NULL;
-	NSUInteger				count = 0;
-	NSArray					*result = nil;
+	std::vector<oo::ObjCRef<ShipEntity *>>	result;
 	ShipEntity				*leader = nil;
-	
-	if (_count == 0)  return [NSArray array];
+
+	if (_count == 0)  return result;
 	leader = self.leader;
-	
-	objects = (id *)malloc(sizeof *objects * _count);
-	for (id ship : OOShipGroupMembers(self))
+
+	result.reserve(_count);
+	for (ShipEntity *ship : OOShipGroupMembers(self))
 	{
 		if (ship != leader)
 		{
-			objects[count++] = ship;
+			result.emplace_back(ship);
 		}
 	}
-	
-	result = [NSArray arrayWithObjects:objects count:count];
-	free(objects);
-	
+
 	return result;
 }
 
@@ -361,22 +310,21 @@ private:
 
 - (BOOL) removeShip:(ShipEntity *)ship
 {
-	OOShipGroupEnumerator	*shipEnum = nil;
 	ShipEntity				*containedShip = nil;
 	NSUInteger				index;
 	BOOL					foundIt = NO;
-	
+
 	_updateCount++;
-	
+
 	if (ship == [self leader])  [self setLeader:nil];
-	
-	shipEnum = (OOShipGroupEnumerator *)[self objectEnumerator];
-	[shipEnum setPerformCleanup:NO];
-	while ((containedShip = [shipEnum nextObject]))
+
+	OOShipGroupCursor		shipEnum(self);
+	shipEnum.setPerformCleanup(NO);
+	while ((containedShip = shipEnum.next()))
 	{
 		if ([ship isEqual:containedShip])
 		{
-			index = [shipEnum index] - 1;
+			index = shipEnum.index() - 1;
 			_members[index] = _members[--_count];
 			foundIt = YES;
 			
@@ -398,13 +346,12 @@ private:
 
 - (NSUInteger) count
 {
-	NSEnumerator		*memberEnum = nil;
 	NSUInteger			result = 0;
-	
+
 	if (_count != 0)
 	{
-		memberEnum = [self objectEnumerator];
-		while ([memberEnum nextObject] != nil)  result++;
+		OOShipGroupCursor	memberEnum(self);
+		while (memberEnum.next() != nil)  result++;
 	}
 	
 	assert(result == _count);
@@ -417,7 +364,7 @@ private:
 {
 	if (_count == 0)  return YES;
 	
-	return [[self objectEnumerator] nextObject] == nil;
+	return OOShipGroupCursor(self).next() == nil;
 }
 
 
@@ -466,11 +413,12 @@ private:
 }
 
 
-static id ShipGroupIterate(OOShipGroupEnumerator *enumerator)
+ShipEntity *OOShipGroupCursor::next()
 {
-	// The work is done here so that we can have access to both OOShipGroup's and OOShipGroupEnumerator's ivars.
+	// The work is done here, in OOShipGroup's @implementation, so that we can have access to both OOShipGroup's and OOShipGroupCursor's ivars.
 	
-	OOShipGroup				*group = enumerator->_group;
+	OOShipGroupCursor		*enumerator = this;
+	OOShipGroup				*group = enumerator->_group.get();
 	ShipEntity				*result = nil;
 	BOOL					cleanupNeeded = NO;
 	
@@ -509,7 +457,7 @@ static id ShipGroupIterate(OOShipGroupEnumerator *enumerator)
 
 // One batch of live members for OOShipGroupMembers: the body of the former
 // -countByEnumeratingWithState:objects:count:, unchanged.
-static NSUInteger ShipGroupFillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length)
+NSUInteger OOShipGroupMembers::FillBatch(OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length)
 {
 	NSUInteger				srcIndex, dstIndex = 0;
 	ShipEntity				*item = nil;
@@ -552,46 +500,11 @@ static NSUInteger ShipGroupFillBatch(OOShipGroup *group, NSUInteger *ioIndex, id
 @end
 
 
-@implementation OOShipGroupEnumerator
-
-- (id) initWithShipGroup:(OOShipGroup *)group
+OOShipGroupCursor::OOShipGroupCursor(OOShipGroup *group)
 {
 	assert(group != nil);
-	
-	if ((self = [super init]))
-	{
-		_group = [group retain];
-		_considerCleanup = YES;
-		_updateCount = [_group updateCount];
-	}
-	
-	return self;
+
+	_group = oo::ObjCRef<OOShipGroup *>(group);
+	_considerCleanup = YES;
+	_updateCount = [group updateCount];
 }
-
-
-- (void) dealloc
-{
-	DESTROY(_group);
-	
-	[super dealloc];
-}
-
-
-- (id) nextObject
-{
-	return ShipGroupIterate(self);
-}
-
-
-- (NSUInteger) index
-{
-	return _index;
-}
-
-
-- (void) setPerformCleanup:(BOOL)flag
-{
-	_considerCleanup = flag;
-}
-
-@end

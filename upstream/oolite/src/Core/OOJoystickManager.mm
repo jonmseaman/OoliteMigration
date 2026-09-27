@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 static Class sStickHandlerClass = Nil;
@@ -65,8 +66,8 @@ static id sSharedStickHandler = nil;
 
 + (BOOL) setStickHandlerClass:(Class)aClass
 {
-	NSAssert(sStickHandlerClass == nil, @"Can't set joystick handler class after joystick handler is initialized.");
-	NSParameterAssert(aClass == Nil || [aClass isSubclassOfClass:[OOJoystickManager class]]);
+	OOAssert(sStickHandlerClass == nil, "Can't set joystick handler class after joystick handler is initialized.");
+	OOParameterAssert(aClass == Nil || [aClass isSubclassOfClass:[OOJoystickManager class]]);
 	
 	sStickHandlerClass = aClass;
 	return YES;
@@ -411,7 +412,7 @@ static id sSharedStickHandler = nil;
                    function:(int)function
                       stick:(int)stickNum
 {
-	NSParameterAssert(axis < MAX_AXES && stickNum < MAX_STICKS);
+	OOParameterAssert(axis < MAX_AXES && stickNum < MAX_STICKS);
 	
 	int16_t axisvalue = [self getAxisWithStick:stickNum axis:axis];
 	[self unsetAxisFunction:function];
@@ -435,7 +436,7 @@ static id sSharedStickHandler = nil;
                      function:(int)function 
                         stick:(int)stickNum
 {
-	NSParameterAssert(button < MAX_BUTTONS && stickNum < MAX_STICKS);
+	OOParameterAssert(button < MAX_BUTTONS && stickNum < MAX_STICKS);
 	
 	int i, j;
 	for (i = 0; i < MAX_BUTTONS; i++)

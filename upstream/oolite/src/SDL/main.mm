@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOLoggingExtended.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #if OOLITE_WINDOWS
 #include <locale.h>
@@ -217,7 +218,7 @@ int main(int argc, char *argv[])
 							"\n\n", processName
 						);
 				OO_SHOW_MSG(s, processName, MB_OK);
-    				OOLog(@"process.args", @"%s option detected, exiting after help page has been displayed.", argv[i]);
+    				OO_LOG("process.args", "{} option detected, exiting after help page has been displayed.", argv[i]);
 				return 0;
 			}
 		}
@@ -232,12 +233,12 @@ int main(int argc, char *argv[])
 	}
 	@catch (OOException *exception)
 	{
-		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", [exception name], [exception reason]);
 		return EXIT_FAILURE;
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", [exception name], [exception reason]);
+		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		return EXIT_FAILURE;
 	}
 #endif

@@ -40,7 +40,9 @@ MA 02110-1301, USA.
 #import "NSFileManagerOOExtensions.h"
 #import "OOJSGuiScreenKeyDefinition.h"
 #import "OOFoundationBridge.h"
+#import "OOStringBridge.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/Scanner.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -983,14 +985,14 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	value;
-	NSCharacterSet			*alphanumerics = [NSCharacterSet alphanumericCharacterSet];
+	const oo::str::CharacterSet	alphanumerics = oo::str::CharacterSet::alphanumeric();
 	BOOL					result = NO;	
 	
 	// Allowed: the alphanumeric character set plus "_-", tested per UTF-16 unit as -rangeOfCharacterFromSet: did.
-	auto isAllowed = [alphanumerics](const std::string &name) {
+	auto isAllowed = [&alphanumerics](const std::string &name) {
 		for (char16_t unit : oo::utf8ToUtf16(name))
 		{
-			if (unit != u'_' && unit != u'-' && ![alphanumerics characterIsMember:unit])  return false;
+			if (unit != u'_' && unit != u'-' && !alphanumerics.contains(unit))  return false;
 		}
 		return true;
 	};

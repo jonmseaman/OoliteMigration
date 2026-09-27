@@ -82,7 +82,7 @@ BOOL cxx_ScanVectorFromString(const std::optional<std::string> &xyzString, Vecto
 	}
 	else
 	{
-		 OOLogERR(@"strings.conversion.vector", @"cannot make vector from '%@': %s", oo::NSStringFrom(*xyzString), error);
+		 OO_LOG_ERR("strings.conversion.vector", "cannot make vector from '{}': {}", *xyzString, error);
 		 return NO;
 	}
 }
@@ -128,7 +128,7 @@ BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &wxyzString, 
 	}
 	else
 	{
-		OOLogERR(@"strings.conversion.quaternion", @"cannot make quaternion from '%@': %s", oo::NSStringFrom(*wxyzString), error);
+		OO_LOG_ERR("strings.conversion.quaternion", "cannot make quaternion from '{}': {}", *wxyzString, error);
 		return NO;
 	}
 }
@@ -153,7 +153,7 @@ BOOL cxx_ScanVectorAndQuaternionFromString(const std::optional<std::string> &xyz
 
 	if (error)
 	{
-		OOLogERR(@"strings.conversion.quaternion", @"cannot make vector and quaternion from '%@': %s", oo::NSStringFrom(*xyzwxyzString), error);
+		OO_LOG_ERR("strings.conversion.quaternion", "cannot make vector and quaternion from '{}': {}", *xyzwxyzString, error);
 		return NO;
 	}
 
@@ -231,7 +231,7 @@ Random_Seed cxx_RandomSeedFromString(const std::optional<std::string> &abcdefStr
 	}
 	else
 	{
-		OOLogERR(@"strings.conversion.randomSeed", @"cannot make Random_Seed from '%@': %s", oo::NSStringOrNil(abcdefString), error);
+		OO_LOG_ERR("strings.conversion.randomSeed", "cannot make Random_Seed from '{}': {}", abcdefString.value_or("(null)"), error);
 		result = kNilRandomSeed;
 	}
 
@@ -326,12 +326,12 @@ std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string)
 }
 
 
-NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
+OOComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
 {
 	const int order = oo::str::compareVersions(version1, version2);
-	if (order < 0) return NSOrderedAscending;
-	if (order > 0) return NSOrderedDescending;
-	return NSOrderedSame;
+	if (order < 0) return OOOrderedAscending;
+	if (order > 0) return OOOrderedDescending;
+	return OOOrderedSame;
 }
 
 
