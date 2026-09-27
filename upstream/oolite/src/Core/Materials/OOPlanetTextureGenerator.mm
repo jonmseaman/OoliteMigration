@@ -40,6 +40,8 @@
 #import "OOPListView.h"
 #import "OOColor.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -442,12 +444,14 @@ enum
 	float seaBias = _info.landFraction - 1.0f;
 	
 	_info.paleSeaColor = Blend(0.35f, _info.polarSeaColor, Blend(0.7f, _info.seaColor, _info.landColor));
-	float normalScale = (1 << _planetScale)
+	float normalScale = (1 << _planetScale);
 #ifndef NDEBUG
-						// test-release only, make normalScale adjustable from within user defaults
-						* oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"p3dnsf", 1.0f)
+	// test-release only, make normalScale adjustable from within user defaults
+	{
+		const oo::PList p3dnsf = oo::Defaults::standard().object("p3dnsf");
+		normalScale *= oo::PListGet<float>::from(p3dnsf.isNull() ? nullptr : &p3dnsf, 1.0f);
+	}
 #endif
-						; // float normalScale = ...
 	if (!generateNormalMap)  normalScale *= 3.0f;
 	
 	// Deep sea colour: sea darker past the continental shelf.

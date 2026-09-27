@@ -37,6 +37,7 @@ SOFTWARE.
 #import "OOPListView.h"
 #import "OOMaths.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
 #include <limits.h>
 #import "OOFoundationException.h"
@@ -265,7 +266,7 @@ VERIFY_PROTO(DelegatedType);
 		_schema = schema;
 		const oo::PList *definitions = _schema.get<oo::PList::Dict>("$definitions");
 		_definitions = (definitions != nullptr) ? *definitions : oo::PList();
-		sDebugDump = [[NSUserDefaults standardUserDefaults] boolForKey:@"plist-schema-verifier-dump-structure"];
+		sDebugDump = oo::Defaults::standard().boolForKey("plist-schema-verifier-dump-structure") ? YES : NO;
 		if (sDebugDump)  oo::log::logger().setDisplay("verifyOXP.verbose.plistDebugDump", YES);
 
 		if (!_schema)
