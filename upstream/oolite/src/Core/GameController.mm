@@ -120,7 +120,7 @@ static GameController *sSharedController = nil;
 		if (seedEnv != NULL && *seedEnv != '\0')
 		{
 			ranrot_srand((uint32_t)strtoul(seedEnv, NULL, 10));
-			OOLog(@"rand.seed", @"RANROT seeded from OO_RANDOM_SEED=%s", seedEnv);
+			OO_LOG("rand.seed", "RANROT seeded from OO_RANDOM_SEED={}", seedEnv);
 		}
 		else
 		{
@@ -192,7 +192,7 @@ static GameController *sSharedController = nil;
 		
 		if (EXPECT_NOT(!SetPriorityClass(currentProcess, setEfficiencyMode ? IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS)))
 		{
-			OOLog(@"gameController.setEcoQos", @"SetPriorityClass failed with error %lu", GetLastError());
+			OO_LOG("gameController.setEcoQos", "SetPriorityClass failed with error {}", static_cast<unsigned long>(GetLastError()));
 		}
 		
 		PROCESS_POWER_THROTTLING_STATE powerThrottling;
@@ -202,7 +202,7 @@ static GameController *sSharedController = nil;
 		powerThrottling.StateMask = setEfficiencyMode ? PROCESS_POWER_THROTTLING_EXECUTION_SPEED : 0;
 		if (EXPECT_NOT(!SetProcessInformation(currentProcess, ProcessPowerThrottling, &powerThrottling, sizeof(powerThrottling))))
 		{
-			OOLog(@"gameController.setEcoQos", @"SetProcessInformation failed with error %lu", GetLastError());
+			OO_LOG("gameController.setEcoQos", "SetProcessInformation failed with error {}", static_cast<unsigned long>(GetLastError()));
 		}
 	}
 #endif
@@ -221,7 +221,7 @@ static GameController *sSharedController = nil;
 	if (mode == oldMode)  return;
 	
 	_mouseMode = mode;
-	OOLog(@"input.mouseMode.changed", @"Mouse interaction mode changed from %@ to %@", oo::NSStringFrom(OOStringFromMouseInteractionMode(oldMode)), oo::NSStringFrom(OOStringFromMouseInteractionMode(mode)));
+	OO_LOG("input.mouseMode.changed", "Mouse interaction mode changed from {} to {}", OOStringFromMouseInteractionMode(oldMode), OOStringFromMouseInteractionMode(mode));
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	if ([self inFullScreenMode])
@@ -329,7 +329,7 @@ static GameController *sSharedController = nil;
 		exit(EXIT_FAILURE);
 	}
 	
-	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
+	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	[self setFullScreenMode:[[NSUserDefaults standardUserDefaults] boolForKey:@"fullscreen"]];
@@ -437,11 +437,11 @@ static GameController *sSharedController = nil;
 			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
 			// out of this handler), so name the exception instead (proposed ADR-0037).
 			OOException *ooException = (OOException *)exception;
-			OOLog(@"exception.backtrace",@"%@ : %@",oo::NSStringFrom([ooException name]),oo::NSStringFrom([ooException reason]));
+			OO_LOG("exception.backtrace","{} : {}",[ooException name],[ooException reason]);
 		}
 		else
 		{
-			OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+			OO_LOG("exception.backtrace","{}",oo::DescriptionOf([exception callStackSymbols]));
 		}
 	}
 	
@@ -949,7 +949,7 @@ static void RemovePreference(const std::string &key)
 #endif
 	if (!message.empty())
 	{
-		OOLog(@"startup.progress", @"===== [%.2f s] %@", oo::date::monotonicSeconds() - _splashStart, oo::NSStringFrom(message));
+		OO_LOG("startup.progress", "===== [{:.2f} s] {}", oo::date::monotonicSeconds() - _splashStart, message);
 	}
 }
 
@@ -998,13 +998,13 @@ std::vector<std::string> sMessageStack;
 		[self cxx_debugLogProgress:message];
 	}
 
-	OOLogIndentIf(@"startup.progress");
+	oo::log::indentIf("startup.progress");
 }
 
 
 - (void) debugPopProgressMessage
 {
-	OOLogOutdentIf(@"startup.progress");
+	oo::log::outdentIf("startup.progress");
 
 	if (!sMessageStack.empty())
 	{
@@ -1096,7 +1096,7 @@ std::vector<std::string> sMessageStack;
 
 - (void) cxx_exitAppWithContext:(const std::string &)context
 {
-	OOLog(@"exit.context", @"Exiting: %@.", oo::NSStringFrom(context));
+	OO_LOG("exit.context", "Exiting: {}.", context);
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
 	[[OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
 #endif
@@ -1105,12 +1105,12 @@ std::vector<std::string> sMessageStack;
 	// desktop resolution is restored also on some Intel cards on Win10
 	if (![gameView atDesktopResolution])
 	{
-		OOLog(@"gameController.exitApp", @"%@", @"Restoring desktop resolution.");
+		OO_LOG("gameController.exitApp", "{}", "Restoring desktop resolution.");
 		ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
 	}
 #endif
 	[[NSUserDefaults standardUserDefaults] synchronize];
-	OOLog(@"gameController.exitApp", @"%@", @".GNUstepDefaults synchronized.");
+	OO_LOG("gameController.exitApp", "{}", ".GNUstepDefaults synchronized.");
 	OOLoggingTerminate();
 	SDL_Quit();
 	[[OOOpenALController sharedController] shutdown];
@@ -1173,13 +1173,13 @@ std::vector<std::string> sMessageStack;
 				}
 				else
 				{
-					OOLogERR(@"savedGame.defaultPath.create.failed", @"Unable to create '%@'. Saved games will go to the home directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+					OO_LOG_ERR("savedGame.defaultPath.create.failed", "Unable to create '{}'. Saved games will go to the home directory.", oo::fs::utf8String(savedir));
 					playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 				}
 			}
 			else if (type != oo::fs::FileType::directory)
 			{
-				OOLogERR(@"savedGame.defaultPath.notDirectory", @"'%@' is not a directory, saved games will go to the home directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+				OO_LOG_ERR("savedGame.defaultPath.notDirectory", "'{}' is not a directory, saved games will go to the home directory.", oo::fs::utf8String(savedir));
 				playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 			}
 			else
@@ -1209,7 +1209,7 @@ std::vector<std::string> sMessageStack;
 - (void)cxx_reportUnhandledStartupExceptionName:(const std::string &)name reason:(const std::optional<std::string> &)reason
 {
 	// %@ of a nil reason printed "(null)", as NSStringOrNil's nil still does.
-	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", oo::NSStringFrom(name), oo::NSStringOrNil(reason));
+	OO_LOG("startup.exception", "***** Unhandled exception during startup: {} ({}).", name, reason.value_or("(null)"));
 
 	#if OOLITE_MAC_OS_X
 		// Display an error alert.

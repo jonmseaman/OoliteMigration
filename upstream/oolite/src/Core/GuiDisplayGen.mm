@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 #include <map>
 
@@ -289,7 +290,7 @@ static BOOL _refreshStarChart = NO;
 	pixel_text_size = NSMakeSize(csize, csize);
 	pixel_title_size = NSMakeSize(csize * 1.75f, csize * 1.5f);
 	
-	OOLog(@"gui.reset", @"gui %@ reset to rows:%d columns:%d start:%d", self, n_rows, n_columns, pixel_row_start);
+	OO_LOG("gui.reset", "gui {} reset to rows:{} columns:{} start:{}", oo::DescriptionOf(self), n_rows, n_columns, pixel_row_start);
 
 	rowRange = NSMakeRange(0,n_rows);
 	[self clear];

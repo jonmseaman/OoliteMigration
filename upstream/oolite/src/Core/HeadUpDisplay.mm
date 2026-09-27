@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
 
@@ -819,7 +820,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 										 lodBias:kOOTextureDefaultLODBias];
 		if (texture == nil)
 		{
-			OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", oo::NSStringFrom(*imageName));
+			OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *imageName);
 			return;
 		}
 
@@ -864,13 +865,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	std::optional<std::string> selectorString = OptionalStringIn(info, SELECTOR_KEY);
 	if (!selectorString.has_value())
 	{
-		OOLogERR(@"hud.dial.noSelector", @"HUD dial in %@ is missing selector.", oo::NSStringOrNil(hudName));
+		OO_LOG_ERR("hud.dial.noSelector", "HUD dial in {} is missing selector.", hudName.value_or("(null)"));
 		return;
 	}
 
 	if (!allowedSelectors.contains(*selectorString))
 	{
-		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\" which is not in whitelist, and will be ignored.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
+		OO_LOG_ERR("hud.dial.invalidSelector", "HUD dial in {} uses selector \"{}\" which is not in whitelist, and will be ignored.", hudName.value_or("(null)"), *selectorString);
 		return;
 	}
 
@@ -881,7 +882,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	//  handle the case above with NS_BLOCK_ASSERTIONS too.
 	if (![self respondsToSelector:selector])
 	{
-		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\"  which is in whitelist, but not implemented, and will be ignored.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
+		OO_LOG_ERR("hud.dial.invalidSelector", "HUD dial in {} uses selector \"{}\"  which is in whitelist, but not implemented, and will be ignored.", hudName.value_or("(null)"), *selectorString);
 		return;
 	}
 	
@@ -2119,7 +2120,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 												lodBias:kOOTextureDefaultLODBias];
 	if (texture == nil)
 	{
-		OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", oo::NSStringFrom(*textureFile));
+		OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *textureFile);
 		return;
 	}
 		
