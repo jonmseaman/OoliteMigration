@@ -740,7 +740,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	}
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"WormholeEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "WormholeEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

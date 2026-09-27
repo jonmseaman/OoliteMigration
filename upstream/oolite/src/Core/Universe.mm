@@ -5043,7 +5043,7 @@ static const OOMatrix	starboard_matrix =
 			
 			v_status = [player status];
 			
-			OOCheckOpenGLErrors(@"Universe before doing anything");
+			cxx_OOCheckOpenGLErrors("Universe before doing anything");
 			
 			OOSetOpenGLState(OPENGL_STATE_OPAQUE);  // FIXME: should be redundant.
 			
@@ -5191,7 +5191,7 @@ static const OOMatrix	starboard_matrix =
 					[self defineFrustum]; // camera is set up for this frame
 
 					OOVerifyOpenGLState();
-					OOCheckOpenGLErrors(@"Universe after setting up for opaque pass");
+					cxx_OOCheckOpenGLErrors("Universe after setting up for opaque pass");
 					OO_LOG("universe.profile.draw", "{}", "Begin opaque pass");
 
 				
@@ -5337,7 +5337,7 @@ static const OOMatrix	starboard_matrix =
 			// actions when the HUD should be rendered separately from the 3d universe
 			if (hudSeparateRenderPass)
 			{
-				OOCheckOpenGLErrors(@"Universe after drawing entities");
+				cxx_OOCheckOpenGLErrors("Universe after drawing entities");
 				OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
 				
 				[self prepareToRenderIntoDefaultFramebuffer];	
@@ -5345,14 +5345,14 @@ static const OOMatrix	starboard_matrix =
 				
 				OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
 				[self drawTargetTextureIntoDefaultFramebuffer];
-				OOCheckOpenGLErrors(@"Universe after drawing from custom framebuffer to screen framebuffer");
+				cxx_OOCheckOpenGLErrors("Universe after drawing from custom framebuffer to screen framebuffer");
 				OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
 	
 				OO_LOG("universe.profile.drawHUD", "{}", "Begin HUD drawing");
 			}
 			
 			/* Reset for HUD drawing */
-			OOCheckOpenGLErrors(@"Universe after drawing entities");
+			cxx_OOCheckOpenGLErrors("Universe after drawing entities");
 			OO_LOG("universe.profile.draw", "{}", "Begin HUD");
 			
 			GLfloat	lineWidth = [gameView backingViewSize].width / 1024.0; // restore line size
@@ -5413,7 +5413,7 @@ static const OOMatrix	starboard_matrix =
 #endif
 			
 			OO_LOG("universe.profile.drawHUD", "{}", "End HUD drawing");
-			OOCheckOpenGLErrors(@"Universe after drawing HUD");
+			cxx_OOCheckOpenGLErrors("Universe after drawing HUD");
 			
 			OOGL(glFlush());	// don't wait around for drawing to complete
 			

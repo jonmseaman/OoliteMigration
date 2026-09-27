@@ -557,7 +557,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 #endif
 	
 	[OOMaterial applyNone];
-	OOCheckOpenGLErrors(@"OOMesh after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOMesh after drawing " + oo::DescriptionOf(self); });
 	
 #if OO_MULTITEXTURE
 	if (_textureUnitCount <= 1)

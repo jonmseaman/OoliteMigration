@@ -213,7 +213,7 @@ SOFTWARE.
 		DESTROY(self);
 	}
 	
-	OOCheckOpenGLErrors(@"after setting up environment cube map FBO");
+	cxx_OOCheckOpenGLErrors("after setting up environment cube map FBO");
 #endif
 	OOGL(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
 	OOGL(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0));

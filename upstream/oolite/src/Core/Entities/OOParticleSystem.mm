@@ -237,7 +237,7 @@ do { \
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOParticleSystem after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOParticleSystem after drawing " + oo::DescriptionOf(self); });
 }
 
 
