@@ -279,14 +279,14 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 }
 
 
-- (id)displayName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)displayName
 {
 	id name = [self name];
 	std::optional<std::string> version = [self cxx_version];
 	
-	if (version.has_value())  return oo::NSStringFrom(oo::str::format("%s %s", oo::DescriptionOf(name).c_str(), version->c_str()));
-	else if (name != nil)  return oo::NSStringFrom(oo::DescriptionOf(name));
-	else  return nil;
+	if (version.has_value())  return oo::str::format("%s %s", oo::DescriptionOf(name).c_str(), version->c_str());
+	else if (name != nil)  return oo::DescriptionOf(name);
+	else  return std::nullopt;
 }
 
 

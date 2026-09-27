@@ -5588,7 +5588,7 @@ static BOOL autopilot_pause;
 	// We found a dockable, check whether we can dock with it
 	// NSAssert([target isKindOfClass:[StationEntity class]], @"Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
 	StationEntity *ts; ts = (StationEntity *)target;
-	stationName = oo::StdString([ts displayName]);	// (nil raised in the expansion)
+	stationName = [ts displayName].value_or("");	// (nil raised in the expansion)
 	
 	// If station is not transmitting docking instructions, we cannot use autopilot.
 	if (![ts allowsAutoDocking])

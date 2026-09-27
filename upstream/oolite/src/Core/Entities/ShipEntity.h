@@ -780,7 +780,7 @@ typedef enum
 - (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 - (std::optional<std::string>) cxx_shipUniqueName;
 - (std::optional<std::string>) cxx_shipClassName;
-- (id) displayName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) displayName;	// flipped with its family (bead oo-3rb.267)
 - (std::optional<std::string>) cxx_scanDescription;
 - (std::optional<std::string>) cxx_scanDescriptionForScripting;
 - (void) setName:(id)inName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil

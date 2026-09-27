@@ -1766,7 +1766,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	OOCreditsQuantity tradeIn = [self tradeInValue];
 	OOCreditsQuantity total = tradeIn + credits;
-	const oo::PList shipType = oo::PListFrom([self displayName]);
+	const oo::PList shipType = oo::PList([self displayName].value_or(""));
 	
 	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH - 1];
 	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];

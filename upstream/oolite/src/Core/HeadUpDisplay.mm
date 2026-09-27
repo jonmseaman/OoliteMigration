@@ -1555,7 +1555,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						cxx_OODrawString(oo::StdString([(ShipEntity *)scannedEntity displayName]), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
+						cxx_OODrawString([(ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);

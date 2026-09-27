@@ -250,7 +250,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		// First line: problem description
 		// avoid windows DEP exceptions!
 		OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-		activeScript = oo::OptionalString([[thisScript weakRefUnderlyingObject] displayName]).value_or("<unidentified script>");
+		activeScript = [[thisScript weakRefUnderlyingObject] displayName].value_or("<unidentified script>");
 		[thisScript release];
 
 		OO_LOG(messageClass, "{} JavaScript {} ({}): {}", highlight, severity, activeScript, messageText);
@@ -694,7 +694,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
-	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", oo::DescriptionOf([[OOJSScript currentlyRunningScript] displayName]));
+	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", [[OOJSScript currentlyRunningScript] displayName].value_or("(null)"));
 	OOJSDumpStack(context);
 	
 	OOJSResumeTimeLimiter();

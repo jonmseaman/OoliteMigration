@@ -114,7 +114,7 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 		return;
 	}
 
-	OO_LOG("script.legacy.run", "Running script {}", oo::DescriptionOf([self displayName]));
+	OO_LOG("script.legacy.run", "Running script {}", [self displayName].value_or("(null)"));
 	oo::log::indentIf("script.legacy.run");
 
 	[PLAYER runScriptActions:oo::ObjectFromPList(_script)

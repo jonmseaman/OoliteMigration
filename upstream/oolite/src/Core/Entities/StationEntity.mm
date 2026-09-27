@@ -778,7 +778,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		ShipEntity *subEntity = sub;
 		if ([subEntity isStation])
 		{
-			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), oo::DescriptionOf([subEntity shipDataKey]), oo::DescriptionOf([self displayName]));
+			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), oo::DescriptionOf([subEntity shipDataKey]), [self displayName].value_or("(null)"));
 		}
 	}
 #endif
@@ -935,7 +935,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			if ([self hasMultipleDocks]) 
 			{
 				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
-								{ oo::DescriptionOf([dock displayName]),
+								{ [dock displayName].value_or("(null)"),
 								  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
 					toShip:player];
 			}
@@ -1140,7 +1140,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	
 	OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as the {} has too many ships in its launch queue(s) or no suitable launch docks.",
-			  oo::DescriptionOf([ship displayName]), oo::DescriptionOf([ship primaryRole]), oo::DescriptionOf([self displayName]));
+			  [ship displayName].value_or("(null)"), oo::DescriptionOf([ship primaryRole]), [self displayName].value_or("(null)"));
 }
 
 
@@ -1175,7 +1175,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 
 	if (logNoFit) OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as it is too large for the docking port of the {}.",
-			  oo::DescriptionOf([ship displayName]), oo::DescriptionOf([ship primaryRole]), oo::DescriptionOf(self));
+			  [ship displayName].value_or("(null)"), oo::DescriptionOf([ship primaryRole]), oo::DescriptionOf(self));
 	return NO;
 }	
 
@@ -1401,7 +1401,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a ship with role {}, as the {} has no launch docks.",
-			  oo::DescriptionOf(role), oo::DescriptionOf([self displayName]));
+			  oo::DescriptionOf(role), [self displayName].value_or("(null)"));
 		return nil;
 	}
 
@@ -1503,7 +1503,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a police ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return oo::NSArrayFromObjects(result);
 	}
 
@@ -1567,7 +1567,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a defense ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 
@@ -1680,7 +1680,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a scavenger ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 
@@ -1725,7 +1725,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a miner ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 
@@ -1774,7 +1774,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a pirate ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 	//Pirate ships are launched from the same pool as defence ships.
@@ -1833,7 +1833,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a shuttle ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 	ShipEntity  *shuttle_ship;
@@ -1871,7 +1871,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for an escort ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 	ShipEntity  *escort_ship;
@@ -1902,7 +1902,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a patrol ship, as the {} has no launch docks.",
-			  oo::DescriptionOf([self displayName]));
+			  [self displayName].value_or("(null)"));
 		return nil;
 	}
 	if (defenders_launched < max_police)
@@ -1958,7 +1958,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![self hasLaunchDock])
 	{
 		OO_LOG("station.launchShip.impossible", "Cancelled launch for a ship with role {}, as the {} has no launch docks.",
-			  oo::DescriptionOf(role), oo::DescriptionOf([self displayName]));
+			  oo::DescriptionOf(role), [self displayName].value_or("(null)"));
 		return;
 	}
 	const std::string shipRole = oo::StdString(role);
@@ -2219,7 +2219,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		if ([self hasMultipleDocks] && [other isPlayer])
 		{
 			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
-					{ oo::DescriptionOf([player_reserved_dock displayName]),
+					{ [player_reserved_dock displayName].value_or("(null)"),
 					  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
 				toShip:other];
 		}
@@ -2474,7 +2474,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		unsigned		i = 1;
 		for (ShipEntity *ship in [_shipsOnHold objectEnumerator])
 		{
-			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, oo::DescriptionOf([ship displayName]), HPdistance([self position], [ship position]), oo::DescriptionOf([ship primaryRole]));
+			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, [ship displayName].value_or("(null)"), HPdistance([self position], [ship position]), oo::DescriptionOf([ship primaryRole]));
 		}
 		oo::log::outdent();
 	}

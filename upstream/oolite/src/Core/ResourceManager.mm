@@ -2256,7 +2256,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 			for (const auto &[name, script] : loadedScripts)
 			{
-				displayNames.push_back(oo::StdString([script.get() displayName]));
+				displayNames.push_back([script.get() displayName].value_or(""));
 			}
 
 			std::stable_sort(displayNames.begin(), displayNames.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });

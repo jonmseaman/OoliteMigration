@@ -5380,7 +5380,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	case COMPASS_MODE_SUN:
 		return oo::OptionalString([[UNIVERSE sun] name]);
 	case COMPASS_MODE_STATION:
-		return oo::OptionalString([[UNIVERSE station] displayName]);
+		return [[UNIVERSE station] displayName];
 	case COMPASS_MODE_TARGET:
 		return oo::StdString(DESC(@"oolite-beacon-label-target"));
 	}
@@ -8024,7 +8024,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	systemName = oo::OptionalString([UNIVERSE inInterstellarSpace] ? DESC(@"interstellar-space") : [UNIVERSE getSystemName:system_id]);
 	if ([self isDocked] && [self dockedStation] != [UNIVERSE station])
 	{
-		systemName = oo::str::format("%s : %s", systemName.value_or("(null)").c_str(), oo::DescriptionOf([[self dockedStation] displayName]).c_str());
+		systemName = oo::str::format("%s : %s", systemName.value_or("(null)").c_str(), [[self dockedStation] displayName].value_or("(null)").c_str());
 	}
 
 	targetSystemName =	oo::OptionalString([UNIVERSE getSystemName:target_system_id]);
@@ -8045,7 +8045,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	// GUI stuff
 	{
-		const std::optional<std::string>	shipName = oo::OptionalString([self displayName]);
+		const std::optional<std::string>	shipName = [self displayName];
 		std::optional<std::string>	legal_desc, rating_desc,
 							alert_desc, fuel_desc,
 							credits_desc;
@@ -9951,7 +9951,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui setShowTextCursor:NO];
 
 		const std::string desc = oo::str::formatRuntime(oo::StdString(DESC(@"interfaces-for-ship-@-and-station-@")),
-			{ oo::DescriptionOf([self displayName]), oo::DescriptionOf([[self dockedStation] displayName]) });
+			{ [self displayName].value_or("(null)"), [[self dockedStation] displayName].value_or("(null)") });
 		[gui setColor:[gui colorFromSetting:kGuiInterfaceHeadingColor defaultValue:nil] forRow:GUI_ROW_INTERFACES_HEADING];
 		[gui cxx_setText:desc forRow:GUI_ROW_INTERFACES_HEADING];
 
@@ -11166,7 +11166,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else
 	{
-		const std::string station = oo::StdString([dockedStation displayName]);
+		const std::string station = [dockedStation displayName].value_or("");
 		return ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "station-commodity-market", { { "station", oo::PList(station) } });
 	}
 }
@@ -11984,7 +11984,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		// only when in flight
 		return;
 	}
-	[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::format("%s:\n %s", oo::DescriptionOf([other displayName]).c_str(), oo::DescriptionOf(message_text).c_str())) forCount:4.5];
+	[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::format("%s:\n %s", [other displayName].value_or("(null)").c_str(), oo::DescriptionOf(message_text).c_str())) forCount:4.5];
 	[super receiveCommsMessage:message_text from:other];
 }
 
