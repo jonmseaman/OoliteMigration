@@ -43,7 +43,7 @@ MA 02110-1301, USA.
 #import "OODebugStandards.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
-#import "NSDataOOExtensions.h"
+#include "oofnd/FileSystem.hpp"
 #include "oofnd/Encoding.hpp"
 #include "oofnd/objc/OOAssert.h"
 

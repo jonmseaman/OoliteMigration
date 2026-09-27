@@ -42,6 +42,7 @@ oolite_sources += files(
     'OOConvertCubeMapToLatLong.mm',
     'OOConvertSystemDescriptions.mm',
     'OOCrosshairs.mm',
+    'OODataFromOXZFile.mm',
     'OODebugGLDrawing.mm',
     'OODeepCopy.mm',
     'OODrawable.mm',
