@@ -48,6 +48,7 @@
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -1514,7 +1515,7 @@ using ooscript::Context;
 			return;
 	}
 	
-	NSLog(@"Aegis status for %@ has taken on invalid value %i. This is an internal error, please report it.", self, aegis_status);
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(aegis_status));
 	aegis_status = AEGIS_NONE;
 	[shipAI message:"AEGIS_NONE"];
 }

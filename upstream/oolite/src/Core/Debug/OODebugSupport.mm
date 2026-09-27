@@ -126,35 +126,10 @@ void OOInitDebugSupport(void)
 
 static id LoadDebugPlugIn()
 {
-	OO_DEBUG_PUSH_PROGRESS(@"Loading debug plug-in");
-	
-	id debugController = nil;
-	
-	NSURL *plugInURL = NSBundle.mainBundle.builtInPlugInsURL;
-	plugInURL = [plugInURL URLByAppendingPathComponent:@"Debug.bundle"];
-	NSBundle *debugBundle = [NSBundle bundleWithURL:plugInURL];
-	
-	if ([debugBundle load])
-	{
-		Class principalClass = debugBundle.principalClass;
-		if (principalClass != Nil)
-		{
-			// Instantiate principal class of debug bundle, and let it do whatever it wants.
-			debugController = [[principalClass new] autorelease];
-		}
-		else
-		{
-			OO_LOG("debugSupport.load.failed", "Failed to find principal class of debug bundle.");
-		}
-	}
-	else
-	{
-		OO_LOG("debugSupport.load.failed", "Failed to load debug OXP plug-in from {}.", oo::DescriptionOf(plugInURL.path));
-	}
-	
-	OO_DEBUG_POP_PROGRESS();
-	
-	return debugController;
+	// Mac Contents/PlugIns/Debug.bundle load used the application bundle APIs; ResourcePaths
+	// (ADR-0017) covers the SDL layout only. Until a PlugIns root exists there, skip the load.
+	OO_LOG("debugSupport.load.failed", "{}", "Debug plug-in load is unavailable on this platform layout.");
+	return nil;
 }
 
 #endif
