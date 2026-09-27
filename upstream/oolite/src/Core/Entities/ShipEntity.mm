@@ -869,10 +869,10 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 	
 	// beacons
-	[self setBeaconCode:oo::NSStringOrNil(StringForKey(shipDict, "beacon"))];
+	[self setBeaconCode:StringForKey(shipDict, "beacon")];
 	std::optional<std::string> label = StringForKey(shipDict, "beacon_label");
 	if (!label.has_value())  label = StringForKey(shipDict, "beacon");	// the fallback
-	[self setBeaconLabel:oo::NSStringOrNil(label)];
+	[self setBeaconLabel:label];
 
 	
 	// contact tracking entities
@@ -1657,17 +1657,17 @@ DESTROY(laser_color);
 }
 
 
-- (id) beaconCode	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) beaconCode
 {
-	return oo::NSStringOrNil(_beaconCode);
+	return _beaconCode;
 }
 
 
-// bcode: an Objective-C string or nil. The Foundation version compared the new string with the
+// bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
 // old by pointer, so any new string (every string this class hands out is new) replaced it.
-- (void) setBeaconCode:(id)bcode	// shared selector (proposed ADR-0043)
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode
 {
-	std::optional<std::string> code = oo::OptionalString(bcode);
+	std::optional<std::string> code = bcode;
 	if (code.has_value() && code->empty())  code.reset();
 
 	if (code.has_value() || _beaconCode.has_value())
@@ -1679,20 +1679,21 @@ DESTROY(laser_color);
 	// if not blanking code and label is currently blank, default label to code
 	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
 	{
-		[self setBeaconLabel:oo::NSStringFrom(*code)];
+		[self setBeaconLabel:code];
 	}
+
 }
 
 
-- (id) beaconLabel	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) beaconLabel
 {
-	return oo::NSStringOrNil(_beaconLabel);
+	return _beaconLabel;
 }
 
 
-- (void) setBeaconLabel:(id)blabel	// shared selector (proposed ADR-0043): an Objective-C string or nil
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel
 {
-	std::optional<std::string> label = oo::OptionalString(blabel);
+	std::optional<std::string> label = blabel;
 	if (label.has_value() && label->empty())  label.reset();
 
 	if (label.has_value() || _beaconLabel.has_value())
@@ -1710,7 +1711,7 @@ DESTROY(laser_color);
 
 - (BOOL) isBeacon
 {
-	return [self beaconCode] != nil;
+	return [self beaconCode].has_value();
 }
 
 
@@ -9797,7 +9798,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (NSComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
 {
-	return [[self beaconCode] compare:[other beaconCode] options: NSCaseInsensitiveSearch];
+	return (NSComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
 }
 
 
@@ -14618,7 +14619,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	OOLog(@"dumpState.shipEntity", @"Spawn time: %g (%g seconds ago)", [self spawnTime], [self timeElapsedSinceSpawn]);
 	if ([self isBeacon])
 	{
-		OOLog(@"dumpState.shipEntity", @"Beacon code: %@", [self beaconCode]);
+		OOLog(@"dumpState.shipEntity", @"Beacon code: %@", oo::NSStringOrNil([self beaconCode]));
 	}
 	OOLog(@"dumpState.shipEntity", @"Hull temperature: %g", ship_temperature);
 	OOLog(@"dumpState.shipEntity", @"Heat insulation: %g", [self heatInsulation]);

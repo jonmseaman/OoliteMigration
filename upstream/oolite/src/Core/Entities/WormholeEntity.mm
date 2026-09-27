@@ -307,7 +307,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	
 	shipsInTransit.push_back(OOWormholeTransit{ oo::ObjCRef<ShipEntity *>(ship),
 						now + travel_time - arrival_time,
-						oo::OptionalString([ship beaconCode]) });	// in case a beacon code has been set, nil otherwise
+						[ship beaconCode] });	// in case a beacon code has been set, nullopt otherwise
 	witch_mass += [ship mass];
 	expiry_time = now + (witch_mass / WORMHOLE_SHRINK_RATE / shrink_factor);
 	// and, again, cap to be earlier than arrival time
@@ -420,7 +420,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 
 			if (shipBeacon)
 			{
-				[ship setBeaconCode:oo::NSStringFrom(*shipBeacon)];
+				[ship setBeaconCode:shipBeacon];
 			}
 			
 			// Don't reduce bounty on misjump. Fixes #17992
