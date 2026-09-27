@@ -632,7 +632,7 @@ enum
 - (OOTimeDelta) getTimeDelta;
 
 - (void) findCollisionsAndShadows;
-- (id) collisionDescription;	// shared selector (proposed ADR-0043): an Objective-C string, as CollisionRegion's
+- (std::string) collisionDescription;	// flipped with its family (bead oo-3rb.277)
 - (void) dumpCollisions;
 
 - (OOViewID) viewDirection;
