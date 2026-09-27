@@ -32,6 +32,9 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
 
 static const char * const kStageName	= "Checking requires.plist";
 
@@ -51,6 +54,27 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 }	// namespace
 
 
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
+
 @implementation OOCheckRequiresPListVerifierStage
 
 - (id)name	// shared selector (proposed ADR-0043)
@@ -64,10 +88,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 	OOFileScannerVerifierStage	*fileScanner = nil;
 	
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"requires.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"requires.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -84,10 +105,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 											maxVersionComponents;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	requiresPList = oo::PListFrom([fileScanner plistNamed:@"requires.plist"
-												inFolder:@"Config"
-										  referencedFrom:nil
-											checkBuiltIn:NO]);
+	requiresPList = [fileScanner cxx_plistNamed:"requires.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 
 	if (requiresPList.isNull())  return;
 
@@ -99,7 +117,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 	}
 
 	// Check that all the keys are known.
-	knownKeys = oo::StringsFrom([[self verifier] configurationSetForKey:@"requiresPListSupportedKeys"]);
+	knownKeys = [[self verifier] cxx_configurationSetForKey:"requiresPListSupportedKeys"].value_or(std::vector<std::string>());
 	for (const auto &[key, value] : *requiresPList.getIf<oo::PList::Dict>())
 	{
 		if (std::find(knownKeys.begin(), knownKeys.end(), key) != knownKeys.end())  continue;
@@ -119,7 +137,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 
 	if (version.has_value() || maxVersion.has_value())
 	{
-		ooVersionComponents = oo::str::versionComponents(oo::StdString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]));
+		ooVersionComponents = oo::str::versionComponents(OoliteInfoString("CFBundleVersion").value_or(""));
 		if (ooVersionComponents.empty())
 		{
 			OO_LOG("verifyOXP.requiresPList.cantFindOoliteVersion", "{}", "----- WARNING: could not find Oolite's version for requires.plist sanity check.");

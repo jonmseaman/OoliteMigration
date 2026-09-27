@@ -51,6 +51,8 @@ MA 02110-1301, USA.
 #include <cstring>
 #include "oofnd/Notification.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OOException.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -1741,7 +1743,7 @@ static bool PlayerShipSetCustomView(ooscript::Context context, ooscript::CallArg
 	{
 		std::optional<std::string> facing = oo::OptionalString(OOStringFromJSValue(context,OOJS_ARGV[2]));
 		// -setObject:forKey: raised on a nil facing (GNUstep 1.31.1's text).
-		if (!facing.has_value())  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", @"weapon_facing"];
+		if (!facing.has_value())  [OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", "weapon_facing"];
 		viewData["weapon_facing"] = *facing;
 	} 
 
@@ -2141,7 +2143,7 @@ static BOOL ValidateContracts(ooscript::Context context, ooscript::CallArgs &ooj
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && oojsArgs.rawVp() != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
+	OOCParameterAssert(context != NULL && oojsArgs.rawVp() != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
 	
 	Context cx = (context);
 	unsigned		uValue, offset = isCargo ? 2 : 1;

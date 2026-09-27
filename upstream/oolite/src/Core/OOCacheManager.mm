@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/PListWriting.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/ResourcePaths.hpp"
 
 /*
 	Phase 1 sweep js-retarget (bead oo-vz2), exemplar OOJSVector.mm: this file has no
@@ -128,6 +129,27 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 @end
 #endif
 
+
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
 
 @implementation OOCacheManager
 
@@ -339,7 +361,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	BOOL					accept = YES;
 	uint64_t				endianTagValue = 0;
 	
-	const std::optional<std::string> ooliteVersion = oo::OptionalString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+	const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
 	
 	[self clear];
 	
@@ -423,7 +445,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	OO_LOG("dataCache.willWrite", "{}", "About to write cache.");
 #endif
 	
-	const std::optional<std::string> ooliteVersion = oo::OptionalString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+	const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
 	
 	oo::PList pListRep = [self dictionaryOfCaches];
 	if (!ooliteVersion.has_value() || pListRep.isNull())

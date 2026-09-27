@@ -43,8 +43,11 @@
 
 #include "oofnd/StdLib.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 namespace {
@@ -493,7 +496,7 @@ const char *sGlobalTraceContext = nullptr;
 		 * needed to generate a planet texture compared with loading a
 		 * standard one may be why this problem shows up.  - CIM 20140122
 		 */
-		NSAssert2(0, @"Texture retain count error for %@; cacheKey is %@.", self, oo::NSStringFrom(*cacheKey)); //miscount in autorelease
+		OOAssert(0, "Texture retain count error for %s; cacheKey is %s.", oo::DescriptionOf(self).c_str(), cacheKey->c_str()); //miscount in autorelease
 		// The following line is needed in order to avoid crashes when there's a 'texture retain count error'. Please do not delete. -- Kaks 20091221
 		[sRecentTextures removeObjectForKey:oo::NSStringFrom(*cacheKey)]; // make sure there's no reference left inside sRecentTexture ( was a show stopper for 1.73)
 	}
@@ -530,7 +533,10 @@ const char *sGlobalTraceContext = nullptr;
 #if GL_EXT_texture_filter_anisotropic
 	gOOTextureInfo.anisotropyAvailable = [extMgr haveExtension:"GL_EXT_texture_filter_anisotropic"] ? 1 : 0;
 	OOGL(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &gOOTextureInfo.anisotropyScale));
-	gOOTextureInfo.anisotropyScale *= OOClamp_0_1_f(oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"texture-anisotropy-scale", 0.5));
+	{
+		const oo::PList anisoScale = oo::Defaults::standard().object("texture-anisotropy-scale");
+		gOOTextureInfo.anisotropyScale *= OOClamp_0_1_f(oo::PListGet<float>::from(anisoScale.isNull() ? nullptr : &anisoScale, 0.5f));
+	}
 #endif
 	
 #ifdef GL_CLAMP_TO_EDGE
@@ -544,13 +550,16 @@ const char *sGlobalTraceContext = nullptr;
 	gOOTextureInfo.textureMaxLevelAvailable = ver120 || [extMgr haveExtension:"GL_SGIS_texture_lod"];
 	
 #if GL_EXT_texture_lod_bias
-	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"use-texture-lod-bias", YES))
 	{
-		gOOTextureInfo.textureLODBiasAvailable = [extMgr haveExtension:"GL_EXT_texture_lod_bias"] ? 1 : 0;
-	}
-	else
-	{
-		gOOTextureInfo.textureLODBiasAvailable = NO;
+		const oo::PList lodBias = oo::Defaults::standard().object("use-texture-lod-bias");
+		if (oo::PListGet<bool>::from(lodBias.isNull() ? nullptr : &lodBias, true))
+		{
+			gOOTextureInfo.textureLODBiasAvailable = [extMgr haveExtension:"GL_EXT_texture_lod_bias"] ? 1 : 0;
+		}
+		else
+		{
+			gOOTextureInfo.textureLODBiasAvailable = NO;
+		}
 	}
 #endif
 	
@@ -559,7 +568,7 @@ const char *sGlobalTraceContext = nullptr;
 #endif
 	
 #if OO_TEXTURE_CUBE_MAP
-	if (![[NSUserDefaults standardUserDefaults] boolForKey:@"disable-cube-maps"])
+	if (!oo::Defaults::standard().boolForKey("disable-cube-maps"))
 	{
 		gOOTextureInfo.cubeMapAvailable = ver130 || [extMgr haveExtension:"GL_ARB_texture_cube_map"];
 	}

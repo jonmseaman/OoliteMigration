@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOFullScreenController.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 
 
 namespace
@@ -104,7 +105,7 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 
 - (void) exitFullScreenMode
 {
-	[[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"fullscreen"];
+	oo::Defaults::standard().setBool("fullscreen", false);
 	stayInFullScreenMode = NO;
 }
 
@@ -125,14 +126,14 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 		refresh = d_refresh;
 		fullscreenDisplayMode = *d_mode;
 		
-		NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+		oo::Defaults &userDefaults = oo::Defaults::standard();
 		
-		[userDefaults setInteger:width   forKey:@"display_width"];
-		[userDefaults setInteger:height  forKey:@"display_height"];
-		[userDefaults setInteger:refresh forKey:@"display_refresh"];
+		userDefaults.setInteger("display_width", width);
+		userDefaults.setInteger("display_height", height);
+		userDefaults.setInteger("display_refresh", refresh);
 		
 		// Manual synchronization is required for SDL And doesn't hurt much for OS X.
-		[userDefaults synchronize];
+		userDefaults.synchronize();
 		
 		return YES;
 	}

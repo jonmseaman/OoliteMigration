@@ -80,7 +80,7 @@ bool Contains(const std::vector<std::string> &strings, const std::string &string
 	
 	fileScanner = [[self verifier] fileScannerStage];
 
-	const oo::PList knownFiles = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"knownFiles"]);
+	const oo::PList knownFiles = [[self verifier] cxx_configurationDictionaryForKey:"knownFiles"];
 	const std::vector<std::string> plists = StringsForKey(knownFiles, "Config");
 	const std::vector<std::string> arrayPlists = StringsForKey(knownFiles, "ConfigArrays");
 	const std::vector<std::string> dictionaryPlists = StringsForKey(knownFiles, "ConfigDictionaries");
@@ -90,26 +90,20 @@ bool Contains(const std::vector<std::string> &strings, const std::string &string
 		// don't scan a js file as a plist
 		if (plistName == "script.js") continue;
 
-		if ([fileScanner fileExists:oo::NSStringFrom(plistName)
-						   inFolder:@"Config"
-					 referencedFrom:nil
-					   checkBuiltIn:NO])
+		if ([fileScanner cxx_fileExists:plistName inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO])
 		{
 			OO_LOG("verifyOXP.syntaxCheck", "Checking {}", plistName);
-			id retrieve = [fileScanner plistNamed:oo::NSStringFrom(plistName)
-										 inFolder:@"Config"
-								   referencedFrom:nil
-									 checkBuiltIn:NO];
-			if (retrieve != nil)
+			const oo::PList retrieve = [fileScanner cxx_plistNamed:plistName inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
+			if (!retrieve.isNull())
 			{
-				if (oo::IsNSArray(retrieve))
+				if (retrieve.isArray())
 				{
 					if (!Contains(arrayPlists, plistName))
 					{
 						OO_LOG("verifyOXP.syntaxCheck.error", "{} should be an array but isn't.", plistName);
 					}
 				}
-				else if (oo::IsNSDictionary(retrieve))
+				else if (retrieve.isDict())
 				{
 					if (!Contains(dictionaryPlists, plistName))
 					{

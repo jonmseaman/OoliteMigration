@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 
@@ -144,7 +145,7 @@ MA 02110-1301, USA.
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOQuiriumCascadeEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOQuiriumCascadeEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

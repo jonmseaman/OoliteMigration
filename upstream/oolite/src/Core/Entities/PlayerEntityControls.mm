@@ -68,6 +68,8 @@ MA 02110-1301, USA.
 #import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
@@ -314,9 +316,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 - (void) initKeyConfigSettings
 {
 	const oo::PList kdicmaster = [ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 	// the stored keyboard code (oo_stringForKey:defaultValue: over the value)
-	const oo::PList kbdValue = oo::PListFrom([defaults objectForKey:@"keyboard-code"]);
+	const oo::PList kbdValue = defaults.object("keyboard-code");
 	const std::string kbd = oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
 	const oo::PList *kbdDefs = kdicmaster.get<oo::PList::Dict>(kbd);
 	oo::PList::Dict kdic2 = (kbdDefs != nullptr) ? *kbdDefs->getIf<oo::PList::Dict>() : oo::PList::Dict();
@@ -327,14 +329,14 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 
 	// load custom equipment keys/buttons (the live entries, edited in place)
-	const oo::PList savedCustomEquip = oo::PListFrom([defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP]);
+	const oo::PList savedCustomEquip = defaults.arrayForKey(oo::StdString(KEYCONFIG_CUSTOMEQUIP));
 	const oo::PList::Array *customEntries = savedCustomEquip.getIf<oo::PList::Array>();
 	customEquipActivation = (customEntries != nullptr) ? *customEntries : std::vector<oo::PList>();
 	customActivatePressed.assign(customEquipActivation.size(), NO);
 	customModePressed.assign(customEquipActivation.size(), NO);
 
 	// update with overrides from defaults file (unprocessed, as before)
-	const oo::PList overrides = oo::PListFrom([defaults objectForKey:KEYCONFIG_OVERRIDES]);
+	const oo::PList overrides = defaults.object(oo::StdString(KEYCONFIG_OVERRIDES));
 	if (const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>())
 	{
 		for (const auto &entry : *dict)  kdic2[entry.first] = entry.second;
@@ -1023,7 +1025,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		allowMouseControl = YES;
 	#else
 		allowMouseControl = [gameController inFullScreenMode] ||
-					[[NSUserDefaults standardUserDefaults] boolForKey:@"mouse-control-in-windowed-mode"];
+					oo::Defaults::standard().boolForKey("mouse-control-in-windowed-mode");
 	#endif
 		
 		if (allowMouseControl)
@@ -1042,7 +1044,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						 is reset */
 					#if OOLITE_GNUSTEP
 						[gameView resetMouse];
-						if ([[NSUserDefaults standardUserDefaults] boolForKey:@"grab-mouse-on-mouse-control"])
+						if (oo::Defaults::standard().boolForKey("grab-mouse-on-mouse-control"))
 						{
 							[gameView grabMouseInsideGameWindow:YES];
 						}
@@ -1603,7 +1605,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							// user defaults file.
 				if (([self checkKeyPress:n_key_launch_escapepod] || joyButtonState[BUTTON_ESCAPE]) && [self hasEscapePod])
 				{
-					BOOL	goodToLaunch = [[NSUserDefaults standardUserDefaults] boolForKey:@"escape-pod-activation-immediate"];
+					BOOL	goodToLaunch = oo::Defaults::standard().boolForKey("escape-pod-activation-immediate");
 					static	OOTimeDelta 	escapePodKeyResetTime;
 					
 					if (!goodToLaunch)
@@ -3746,7 +3748,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - fovTicks));
 			// %c 176 gave U+00B0 (probed on GNUstep base with this toolchain); written as its UTF-8 bytes
 			[gui cxx_setText:oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/)	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
-			[[NSUserDefaults standardUserDefaults] setFloat:[gameView fov:NO] forKey:@"fov-value"];
+			oo::Defaults::standard().setFloat("fov-value", [gameView fov:NO]);
 			timeLastKeyPress = script_time;
 		}
 		fovControlPressed = YES;
@@ -4406,7 +4408,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	
 	BOOL	isCtrlDown = [gameView isCtrlDown];
 	
-	double	flightArrowKeyPrecisionFactor = oo::PListView([NSUserDefaults standardUserDefaults]).get<double>(@"flight-arrow-key-precision-factor", 0.5);
+	const oo::PList arrowPrec = oo::Defaults::standard().object("flight-arrow-key-precision-factor");
+	double	flightArrowKeyPrecisionFactor = oo::PListGet<double>::from(arrowPrec.isNull() ? nullptr : &arrowPrec, 0.5);
 	if (flightArrowKeyPrecisionFactor < 0.05)  flightArrowKeyPrecisionFactor = 0.05;
 	if (flightArrowKeyPrecisionFactor > 1.0)  flightArrowKeyPrecisionFactor = 1.0; 
 	

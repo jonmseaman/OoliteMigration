@@ -13079,7 +13079,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			break;
 	}
 	
-	/*	Bug: docking failed due to NSRangeException while looking for element
+	/*	Bug: docking failed due to OORangeException while looking for element
 		NSNotFound of cargo mainfest in -[PlayerEntity unloadCargoPods].
 		Analysis: bad cargo pods being generated due to
 		-[Universe commodityForName:] looking in wrong place for names.

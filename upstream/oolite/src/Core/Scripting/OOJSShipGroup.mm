@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -174,7 +175,7 @@ namespace {
 static BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)  GCC_ATTR((unused));
 static BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)
 {
-	NSCParameterAssert(outObject != NULL);
+	OOCParameterAssert(outObject != NULL);
 	static Class cls = Nil;
 	if (EXPECT_NOT(cls == Nil))  cls = [OOShipGroup class];
 	return OOJSObjectGetterImplPRIVATE(context, inObject, &sShipGroupClass, cls, "JSShipGroupGetShipGroup", (id *)outObject);

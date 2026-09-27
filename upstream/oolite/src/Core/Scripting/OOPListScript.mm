@@ -110,18 +110,18 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 {
 	if (target != nil && ![target isKindOfClass:[ShipEntity class]])
 	{
-		OOLog(@"script.legacy.run.badTarget", @"Expected ShipEntity or nil for target, got %@.", [target class]);
+		OO_LOG("script.legacy.run.badTarget", "Expected ShipEntity or nil for target, got {}.", oo::DescriptionOf([target class]));
 		return;
 	}
 
-	OOLog(@"script.legacy.run", @"Running script %@", [self displayName]);
-	OOLogIndentIf(@"script.legacy.run");
+	OO_LOG("script.legacy.run", "Running script {}", oo::DescriptionOf([self displayName]));
+	oo::log::indentIf("script.legacy.run");
 
 	[PLAYER runScriptActions:oo::ObjectFromPList(_script)
 			 withContextName:[self name]
 				   forTarget:(ShipEntity *)target];
 
-	OOLogOutdentIf(@"script.legacy.run");
+	oo::log::outdentIf("script.legacy.run");
 }
 
 @end

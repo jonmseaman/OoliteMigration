@@ -56,6 +56,8 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
+#include "oofnd/ResourcePaths.hpp"
 #include <chrono>
 #include <thread>
 
@@ -551,14 +553,13 @@ void FireOneDueDeferredCall(void)
 			@catch (OOException *exception)
 			{
 				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
-				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), call.target);
+				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", [exception name], [exception reason], oo::str::pointerDescription(call.target));
 				return;	// target and argument stay retained, as the performer leaked them
 			}
 			@catch (OOFoundationException *exception)
 			{
-				// NSTimer's own message, through the real NSLog (parenthesised: OOLogging.h's
-				// NSLog macro is function-like), so it still reaches the log as a "gnustep" line.
-				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", [exception name], [exception reason], call.target);
+				// Foundation exceptions: same text as before (was a direct Foundation log call).
+				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]), oo::str::pointerDescription(call.target));
 				return;	// target and argument stay retained, as the performer leaked them
 			}
 			
@@ -1041,7 +1042,8 @@ std::vector<std::string> sMessageStack;
 - (void)awakeFromNib
 {
 	// Set contents of Help window
-	const std::optional<std::string> path = oo::OptionalString([[NSBundle mainBundle] pathForResource:@"OoliteReadMe" ofType:@"pdf"]);
+	const oo::fs::Path readMePath = oo::ResourcePaths::current().builtInResourcesDirectory() / "OoliteReadMe.pdf";
+	const std::optional<std::string> path = oo::fs::fileExists(readMePath) ? std::optional<std::string>(oo::fs::utf8String(readMePath)) : std::nullopt;
 	if (path.has_value())
 	{
 		PDFDocument *document = [[PDFDocument alloc] initWithURL:[NSURL fileURLWithPath:oo::NSStringFrom(*path)]];

@@ -28,6 +28,8 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
 
 
 static id sSingleton = nil;
@@ -71,7 +73,7 @@ enum
 	self = [super init];
 	if (self != nil)
 	{
-		const std::optional<std::string> modeString = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"music mode"]);
+		const std::optional<std::string> modeString = oo::Defaults::standard().stringForKey("music mode");
 		if (modeString == "off")  _mode = kOOMusicOff;
 		else if (modeString == "iTunes")  _mode = kOOMusicITunes;
 		else  _mode = kOOMusicOn;
@@ -286,7 +288,7 @@ enum
 			case kOOMusicOn:		modeString = "on"; break;
 			case kOOMusicITunes:	modeString = "iTunes"; break;
 		}
-		[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(modeString) forKey:@"music mode"];
+		oo::Defaults::standard().setObject("music mode", modeString ? oo::PList(*modeString) : oo::PList());
 	}
 }
 
@@ -367,7 +369,7 @@ enum
 	
 	[ootunesScript executeAndReturnError:&errDict];
 	if (errDict)
-		OOLog(@"sound.music.iTunesIntegration.failed", @"ootunes returned :%@", errDict);
+		OO_LOG("sound.music.iTunesIntegration.failed", "ootunes returned :{}", oo::DescriptionOf(errDict));
 }
 
 
@@ -378,7 +380,7 @@ enum
 	NSDictionary *errDict = nil;
 	[ootunesScript executeAndReturnError:&errDict];
 	if (errDict)
-		OOLog(@"sound.music.iTunesIntegration.failed", @"ootunes returned :%@", errDict);
+		OO_LOG("sound.music.iTunesIntegration.failed", "ootunes returned :{}", oo::DescriptionOf(errDict));
 	[ootunesScript release]; 
 }
 #else

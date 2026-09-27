@@ -33,18 +33,16 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 
-
 @interface OOMaterial: OOObject
 
 // Called once at startup (by -[Universe init]).
 + (void) setUp;
-
 
 - (id) name;	// an Objective-C string. Shared selector (proposed ADR-0043).
 
@@ -82,7 +80,6 @@ SOFTWARE.
 #endif
 
 @end
-
 
 @interface OOMaterial (OOSubclassInterface)
 

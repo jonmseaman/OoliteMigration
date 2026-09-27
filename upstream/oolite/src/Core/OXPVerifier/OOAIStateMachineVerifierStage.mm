@@ -140,12 +140,9 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 	if (!AddString(_usedAIs, name))  return;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	if (![fileScanner fileExists:oo::NSStringFrom(name)
-						inFolder:@"AIs"
-				  referencedFrom:oo::NSStringFrom(oo::str::format("shipdata.plist entry \"%s\"", shipName.c_str()))
-					checkBuiltIn:YES])
+	if (![fileScanner cxx_fileExists:name inFolder:"AIs" referencedFrom:oo::str::format("shipdata.plist entry \"%s\"", shipName.c_str()) checkBuiltIn:YES])
 	{
-		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, oo::DescriptionOf([[self verifier] oxpDisplayName]));
+		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, [[self verifier] cxx_oxpDisplayName].value_or("(null)"));
 	}
 }
 
@@ -166,7 +163,7 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 	oo::log::indentIf("verifyOXP.verbose.validateAI");
 
 	// Attempt to load AI.
-	path = oo::OptionalString([[[self verifier] fileScannerStage] pathForFile:oo::NSStringFrom(aiName) inFolder:@"AIs" referencedFrom:@"AI list" checkBuiltIn:NO]);
+	path = [[[self verifier] fileScannerStage] cxx_pathForFile:aiName inFolder:"AIs" referencedFrom:"AI list" checkBuiltIn:NO];
 	if (!path.has_value())  return;
 
 	aiStateMachine = PListDictionaryFromFile(*path);

@@ -60,6 +60,8 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
+#include "oofnd/Log.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 // If set, collision octree depth varies depending on the size of the mesh.
 #define ADAPTIVE_OCTREE_DEPTH		1
@@ -86,7 +88,7 @@ typedef enum
 } OOMeshNormalMode;
 
 
-static const char * const kOOLogMeshDataNotFound			= "mesh.load.failed.fileNotFound";	// an OOLog class: oo::NSStringFrom() it
+static const char * const kOOLogMeshDataNotFound			= "mesh.load.failed.fileNotFound";	// an OO_LOG message class
 static const char * const kOOLogMeshTooManyMaterials		= "mesh.load.failed.tooManyMaterials";
 
 
@@ -95,7 +97,7 @@ static const char * const kOOLogMeshTooManyMaterials		= "mesh.load.failed.tooMan
 static OOTimeDelta Profile(const char *tag, OOProfilingStopwatch *stopwatch, OOTimeDelta lastTime)
 {
 	OOTimeDelta now = [stopwatch currentTime];
-	OOLog(@"mesh.profile", @"Mesh profile: stage %@, %g seconds (delta %g)", oo::NSStringFrom(tag), now, now - lastTime);
+	OO_LOG("mesh.profile", "Mesh profile: stage {}, {:g} seconds (delta {:g})", tag, now, now - lastTime);
 	return now;
 }
 #else
@@ -457,7 +459,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 		/*	It should not be possible to have multiple texture units if
 			texture combiners are not available.
 		*/
-		NSAssert2([[OOOpenGLExtensionManager sharedManager] textureCombinersSupported], @"Mesh %@ uses %zu texture units, but multitexturing is not available.", [self shortDescription], _textureUnitCount);
+		OOAssert([[OOOpenGLExtensionManager sharedManager] textureCombinersSupported], "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::DescriptionOf([self shortDescription]).c_str(), _textureUnitCount);
 		
 		for (unit = 0; unit < _textureUnitCount; unit++)
 		{
@@ -531,7 +533,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 	{
 		if (!brokenInRender)
 		{
-			OOLog(kOOLogException, @"***** %s for %@ encountered exception: %@ : %@ *****", __PRETTY_FUNCTION__, self, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, oo::DescriptionOf(self), [exception name], [exception reason]);
 			brokenInRender = YES;
 		}
 		if (strncmp([exception name], "Oolite", 6) == 0)  [UNIVERSE handleOoliteException:exception];	// handle these ourself
@@ -541,7 +543,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 	{
 		if (!brokenInRender)
 		{
-			OOLog(kOOLogException, @"***** %s for %@ encountered exception: %@ : %@ *****", __PRETTY_FUNCTION__, self, [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, oo::DescriptionOf(self), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 			brokenInRender = YES;
 		}
 		if ([[exception name] hasPrefix:@"Oolite"])  [UNIVERSE handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];	// handle these ourself
@@ -556,7 +558,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 #endif
 	
 	[OOMaterial applyNone];
-	OOCheckOpenGLErrors(@"OOMesh after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOMesh after drawing " + oo::DescriptionOf(self); });
 	
 #if OO_MULTITEXTURE
 	if (_textureUnitCount <= 1)
@@ -689,7 +691,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 		result++;
 	}
 	
-	OOLog(@"mesh.load.octree.size", @"Selected octree depth %u for size %g for %@", result, size, oo::NSStringOrNil(baseFile));
+	OO_LOG("mesh.load.octree.size", "Selected octree depth {} for size {:g} for {}", result, size, baseFile.value_or("(null)"));
 	return result;
 }
 #else
@@ -731,7 +733,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 		}
 		else
 		{
-			OOLog(@"mesh.load.octreeCached", @"Retrieved octree \"%@\" from cache.", oo::NSStringOrNil(baseFileOctreeCacheRef));
+			OO_LOG("mesh.load.octreeCached", "Retrieved octree \"{}\" from cache.", baseFileOctreeCacheRef.value_or("(null)"));
 		}
 	}
 	
@@ -842,9 +844,9 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 {
 	[super dumpSelfState];
 	
-	if (baseFile)  OOLog(@"dumpState.mesh", @"Model file: %@", oo::NSStringFrom(*baseFile));
-	OOLog(@"dumpState.mesh", @"Vertex count: %u, face count: %u", vertexCount, faceCount);
-	OOLog(@"dumpState.mesh", @"Normals: %@", oo::NSStringFrom(NormalModeDescription((OOMeshNormalMode)_normalMode)));
+	if (baseFile)  OO_LOG("dumpState.mesh", "Model file: {}", *baseFile);
+	OO_LOG("dumpState.mesh", "Vertex count: {}, face count: {}", static_cast<unsigned>(vertexCount), static_cast<unsigned>(faceCount));
+	OO_LOG("dumpState.mesh", "Normals: {}", NormalModeDescription((OOMeshNormalMode)_normalMode));
 }
 #endif
 
@@ -1106,7 +1108,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		faceData == nullptr ||
 		mtlKeys == nullptr)
 	{
-		OOLog(@"mesh.load.error.badCacheData", @"Ignoring bad cache data for mesh \"%@\".", oo::NSStringFrom(fileName));
+		OO_LOG("mesh.load.error.badCacheData", "Ignoring bad cache data for mesh \"{}\".", fileName);
 		return NO;
 	}
 
@@ -1116,7 +1118,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		tanData = dict.get<oo::PList::Data>("tangent data");
 		if (normData == nullptr || tanData == nullptr)
 		{
-			OOLog(@"mesh.load.error.badCacheData", @"Ignoring bad normal/tangent cache data for mesh \"%@\".", oo::NSStringFrom(fileName));
+			OO_LOG("mesh.load.error.badCacheData", "Ignoring bad normal/tangent cache data for mesh \"{}\".", fileName);
 			return NO;
 		}
 	}
@@ -1157,7 +1159,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		if (key.isString() || key.isNumber())  materialKeys[i] = oo::PListGet<std::string>::from(&key, std::string());
 		else
 		{
-			OOLog(@"mesh.load.error.badCacheData", @"Ignoring bad cache data for mesh \"%@\".", oo::NSStringFrom(fileName));
+			OO_LOG("mesh.load.error.badCacheData", "Ignoring bad cache data for mesh \"{}\".", fileName);
 			return NO;
 		}
 	}
@@ -1187,13 +1189,13 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		{
 			using_preloaded = YES;
 			PROFILE("loaded from cache");
-			OOLog(@"mesh.load.cached", @"Retrieved mesh \"%@\" from cache.", oo::NSStringFrom(filename));
+			OO_LOG("mesh.load.cached", "Retrieved mesh \"{}\" from cache.", filename);
 		}
 	}
 	
 	if (!using_preloaded)
 	{
-		OOLog(@"mesh.load.uncached", @"Mesh \"%@\" is not in cache, loading.", oo::NSStringFrom(cacheKey));
+		OO_LOG("mesh.load.uncached", "Mesh \"{}\" is not in cache, loading.", cacheKey);
 		
 		const oo::str::CharacterSet	whitespaceCharSet = oo::str::CharacterSet::whitespace();
 		const oo::str::CharacterSet	whitespaceAndNewlineCharSet = oo::str::CharacterSet::whitespaceAndNewline();
@@ -1207,8 +1209,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			if (!dataOpt)
 			{
 				// Model not found
-				OOLog(oo::NSStringFrom(kOOLogMeshDataNotFound), @"***** ERROR: could not find %@", oo::NSStringFrom(filename));
-				OOStandardsError(@"Model file not found");
+				OO_LOG(kOOLogMeshDataNotFound, "***** ERROR: could not find {}", filename);
+				cxx_OOStandardsError("Model file not found");
 				objc_autoreleasePoolPop(pool);
 				return NO;
 			}
@@ -1275,7 +1277,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		
 		if (![self allocateVertexBuffersWithCount:vertexCount])
 		{
-			OOLog(kOOLogAllocationFailure, @"***** ERROR: failed to allocate memory for model %@ (%u vertices).", oo::NSStringFrom(filename), vertexCount);
+			OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(vertexCount));
 			return NO;
 		}
 		
@@ -1305,7 +1307,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 
 		if (![self allocateFaceBuffersWithCount:faceCount])
 		{
-			OOLog(kOOLogAllocationFailure, @"***** ERROR: failed to allocate memory for model %@ (%u vertices, %u faces).", oo::NSStringFrom(filename), vertexCount, faceCount);
+			OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices, {} faces).", filename, static_cast<unsigned>(vertexCount), static_cast<unsigned>(faceCount));
 			return NO;
 		}
 		
@@ -1383,7 +1385,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						}
 						else if (n_v > 3)
 						{
-							OOLogWARN(@"mesh.load.warning.nonTriangular", @"Face[%u] of %@ has %u vertices specified. Only the first three will be used.", j, oo::NSStringOrNil(baseFile), n_v);
+							OO_LOG_WARN("mesh.load.warning.nonTriangular", "Face[{}] of {} has {} vertices specified. Only the first three will be used.", static_cast<unsigned>(j), baseFile.value_or("(null)"), static_cast<unsigned>(n_v));
 							n_v = 3;
 						}
 					}
@@ -1450,7 +1452,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						{
 							if (materialCount == kOOMeshMaxMaterials)
 							{
-								OOLog(oo::NSStringFrom(kOOLogMeshTooManyMaterials), @"***** ERROR: model %@ has too many materials (maximum is %d)", oo::NSStringFrom(filename), kOOMeshMaxMaterials);
+								OO_LOG(kOOLogMeshTooManyMaterials, "***** ERROR: model {} has too many materials (maximum is {})", filename, static_cast<int>(kOOMeshMaxMaterials));
 								return NO;
 							}
 							_faces[j].materialIndex = materialCount;
@@ -1538,7 +1540,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			_normalMode = kNormalModeExplicit;
 			if (![self allocateNormalBuffersWithCount:vertexCount])
 			{
-				OOLog(kOOLogAllocationFailure, @"***** ERROR: failed to allocate memory for model %@ (%u vertices).", oo::NSStringFrom(filename), vertexCount);
+				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(vertexCount));
 				return NO;
 			}
 			
@@ -1603,7 +1605,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		{
 			if (![self allocateNormalBuffersWithCount:vertexCount])
 			{
-				OOLog(kOOLogAllocationFailure, @"***** ERROR: failed to allocate memory for model %@ (%u vertices).", oo::NSStringFrom(filename), vertexCount);
+				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(vertexCount));
 				return NO;
 			}
 			[self calculateVertexNormalsAndTangentsWithFaceRefs:faceRefs];
@@ -1625,7 +1627,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		
 		if (failFlag)
 		{
-			OOLog(@"mesh.error", @"%@ ..... from %@ %@", oo::NSStringFrom(failString), oo::NSStringFrom(filename), (using_preloaded)? @"(from preloaded data)" :@"(from file)");
+			OO_LOG("mesh.error", "{} ..... from {} {}", failString, filename, (using_preloaded)? "(from preloaded data)" : "(from file)");
 		}
 	}
 	
@@ -1649,7 +1651,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	Vector				calculatedNormal;
 	OOMeshFaceCount		i;
 	
-	NSParameterAssert(_normalMode != kNormalModeExplicit);
+	OOParameterAssert(_normalMode != kNormalModeExplicit);
 	
 	for (i = 0; i < faceCount; i++)
 	{
@@ -1748,12 +1750,12 @@ static float FaceArea(GLuint *vertIndices, Vector *vertices)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSParameterAssert(faceRefs != NULL);
+	OOParameterAssert(faceRefs != NULL);
 	
 	NSUInteger	i,j;
 	std::vector<float>	triangle_area(faceCount);
 	
-	NSAssert1(_normals != NULL && _tangents != NULL, @"Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
+	OOAssert(_normals != NULL && _tangents != NULL, "Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
 	
 	for (i = 0 ; i < faceCount; i++)
 	{
@@ -1807,7 +1809,7 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSParameterAssert(faceRefs != NULL);
+	OOParameterAssert(faceRefs != NULL);
 	
 	/*	This is conceptually broken.
 		At the moment, it's calculating one tangent per "input" vertex. It should
@@ -1945,7 +1947,7 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 						}
 						else
 						{
-							NSAssert1(_normals != NULL && _tangents != NULL, @"Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
+							OOAssert(_normals != NULL && _tangents != NULL, "Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
 							
 							normal = _normals[v];
 							tangent = _tangents[v];
@@ -2254,7 +2256,7 @@ static const char * const kOOCacheOctrees = "octrees";
 
 static void VFRAddFace(VertexFaceRef *vfr, NSUInteger index)
 {
-	NSCParameterAssert(vfr != NULL);
+	OOCParameterAssert(vfr != NULL);
 	
 	if (index < UINT16_MAX && vfr->internCount < kVertexFaceDefInternalCount)
 	{
@@ -2269,7 +2271,7 @@ static void VFRAddFace(VertexFaceRef *vfr, NSUInteger index)
 
 static NSUInteger VFRGetCount(VertexFaceRef *vfr)
 {
-	NSCParameterAssert(vfr != NULL);
+	OOCParameterAssert(vfr != NULL);
 	
 	return vfr->internCount + vfr->extra.size();
 }
@@ -2277,7 +2279,7 @@ static NSUInteger VFRGetCount(VertexFaceRef *vfr)
 
 static NSUInteger VFRGetFaceAtIndex(VertexFaceRef *vfr, NSUInteger index)
 {
-	NSCParameterAssert(vfr != NULL && index < VFRGetCount(vfr));
+	OOCParameterAssert(vfr != NULL && index < VFRGetCount(vfr));
 	
 	if (index < vfr->internCount)  return vfr->internFaces[index];
 	else  return vfr->extra[index - vfr->internCount];

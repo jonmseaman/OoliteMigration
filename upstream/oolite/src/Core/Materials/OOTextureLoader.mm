@@ -41,8 +41,11 @@ SOFTWARE.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define DUMP_CONVERTED_CUBE_MAPS	0
@@ -251,7 +254,7 @@ static BOOL					sHaveSetUp = NO;
 	 originalWidth:(uint32_t *)outWidth
 	originalHeight:(uint32_t *)outHeight
 {
-	NSParameterAssert(result != NULL && outFormat != NULL);
+	OOParameterAssert(result != NULL && outFormat != NULL);
 	
 	BOOL		OK = YES;
 	
@@ -302,7 +305,10 @@ static BOOL					sHaveSetUp = NO;
 	OO_LOG("texture.load.rescale.maxSize", "GL maximum texture size: {}", static_cast<unsigned>(sGLMaxSize));
 	
 	// Why 0x80000000? Because it's the biggest number OORoundUpToPowerOf2() can handle.
-	sUserMaxSize = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned int>(@"max-texture-size", 0x80000000);
+	{
+		const oo::PList maxTex = oo::Defaults::standard().object("max-texture-size");
+		sUserMaxSize = oo::PListGet<unsigned int>::from(maxTex.isNull() ? nullptr : &maxTex, 0x80000000);
+	}
 	if (sUserMaxSize < 0x80000000)  OO_LOG("texture.load.rescale.maxSize", "User maximum texture size: {}", static_cast<unsigned>(sUserMaxSize));
 	sUserMaxSize = OORoundUpToPowerOf2_32(sUserMaxSize);
 	sUserMaxSize = MAX(sUserMaxSize, 64U);
@@ -356,7 +362,7 @@ static BOOL					sHaveSetUp = NO;
 - (void) generateMipMapsForCubeMap
 {
 	// Generate mip maps for each cube face.
-	NSParameterAssert(_data != NULL);
+	OOParameterAssert(_data != NULL);
 	
 	uint8_t components = OOTextureComponentsForFormat(_format);
 	size_t srcSideSize = _width * _width * components;	// Space for one side without mip-maps.

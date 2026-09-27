@@ -186,10 +186,10 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 - (double) selfTimeMax;
 - (BOOL) isJavaScriptFrame;
 
-- (NSComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other;
-- (NSComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other;
-- (NSComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other;
-- (NSComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other;
+- (OOComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other;
+- (OOComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other;
+- (OOComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other;
+- (OOComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other;
 
 @end
 

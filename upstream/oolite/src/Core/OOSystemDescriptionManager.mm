@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "ResourceManager.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 namespace {
 
@@ -586,7 +587,7 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 
 - (void) updateCacheEntry:(NSUInteger)i
 {
-	NSAssert(i < OO_SYSTEM_CACHE_LENGTH,@"Invalid cache entry number");
+	OOAssert(i < OO_SYSTEM_CACHE_LENGTH,"Invalid cache entry number");
 	const std::string key = oo::str::format("%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY);
 	propertyCache[i] = [self calculatePropertiesForSystemKey:key];
 }
@@ -594,7 +595,7 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 
 - (void) updateCacheEntry:(NSUInteger)i forProperty:(const std::string &)property
 {
-	NSAssert(i < OO_SYSTEM_CACHE_LENGTH,@"Invalid cache entry number");
+	OOAssert(i < OO_SYSTEM_CACHE_LENGTH,"Invalid cache entry number");
 	const std::string key = oo::str::format("%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY);
 	oo::PList current = [self cxx_getProperty:property forSystemKey:key];
 	oo::PList::Dict &cache = *propertyCache[i].getIf<oo::PList::Dict>();

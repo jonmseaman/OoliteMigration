@@ -128,7 +128,7 @@ typedef enum
 #define CUSTOMEQUIP_KEYMODE @"keyMode"
 #define CUSTOMEQUIP_BUTTONACTIVATE @"buttonActivate"
 #define CUSTOMEQUIP_BUTTONMODE @"buttonMode"
-#define KEYCONFIG_CUSTOMEQUIP @"CustomEquipActivation"  // NSUserDefaults
+#define KEYCONFIG_CUSTOMEQUIP @"CustomEquipActivation"  // preferences key (oo::Defaults)
 
 enum
 {

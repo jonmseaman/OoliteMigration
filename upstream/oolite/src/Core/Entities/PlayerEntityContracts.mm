@@ -221,7 +221,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 	// check escape pods...
 	// TODO
 	
-	std::string			result;	// each report line ends in "\n" (-appendFormatLine:)
+	std::string			result;	// each report line ends in "\n" (legacy format-line helper)
 	unsigned			i;
 	
 	// check passenger contracts

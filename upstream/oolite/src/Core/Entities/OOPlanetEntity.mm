@@ -52,7 +52,9 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOFoundationBridge.h"
+#import "OOJavaScriptEngine.h"	// OONull
 
+#include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
@@ -114,7 +116,7 @@ oo::PList DictionaryForKey(const oo::PList &dict, std::string_view key)
 }
 
 
-// -dictionaryWithValuesForKeys: of the planet info: NSNull for a missing key; nil for no info.
+// -dictionaryWithValuesForKeys: of the planet info: OONull for a missing key; nil for no info.
 oo::PList ValuesForKeys(const oo::PList &info, std::initializer_list<const char *> keys)
 {
 	if (!info.isDict())  return oo::PList();
@@ -122,7 +124,7 @@ oo::PList ValuesForKeys(const oo::PList &info, std::initializer_list<const char 
 	for (const char *key : keys)
 	{
 		const oo::PList *value = info.find(key);
-		result[key] = value != nullptr ? *value : oo::PListObject([NSNull null]);
+		result[key] = value != nullptr ? *value : oo::PListObject([OONull null]);
 	}
 	return oo::PList(std::move(result));
 }
@@ -206,7 +208,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	{
 		Random_Seed overrideSeed = RandomSeedFromString(oo::NSStringFrom(*seedStr));
 		if (!is_nil_seed(overrideSeed))  seed = overrideSeed;
-		else  OOLogERR(@"planet.fromDict", @"could not interpret \"%@\" as planet seed, using default.", oo::NSStringFrom(*seedStr));
+		else  OO_LOG_ERR("planet.fromDict", "could not interpret \"{}\" as planet seed, using default.", *seedStr);
 	}
 	
 	// Generate various planet info.
@@ -271,7 +273,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 		_airColorMixRatio = planetInfo.get<float>("air_color_mix_ratio");
 
 		_airDensity = OOClamp_0_1_f(planetInfo.get<float>("air_density"));
-		// OOLog (@"planet.debug",@" translated air colour:%@ cloud colour:%@ polar cloud color:%@", [_airColor rgbaDescription],[(OOColor *)[planetInfo objectForKey:@"cloud_color"] rgbaDescription],[(OOColor *)[planetInfo objectForKey:@"polar_cloud_color"] rgbaDescription]);
+		// (debug) translated air colour / cloud colour / polar cloud color via descriptionComponents
 
 		_materialParameters = ValuesForKeys(planetInfo, { "cloud_fraction", "air_color", "air_color_mix_ratio", "air_density", "cloud_color", "polar_cloud_color", "cloud_alpha", "land_fraction", "land_color", "sea_color", "polar_land_color", "polar_sea_color", "economy", "polar_fraction", "isMiniature", "perlin_3d", "terminator_threshold_vector" });
 	}
@@ -328,8 +330,8 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	
 	
 #ifdef OO_DUMP_PLANETINFO
-#define CPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %@;",[(OOColor *)ObjectForKey(planetInfo, #PROP) descriptionComponents]);
-#define FPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %f;",planetInfo.get<float>(#PROP));
+#define CPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", oo::DescriptionOf([(OOColor *)ObjectForKey(planetInfo, #PROP) descriptionComponents]));
+#define FPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {:f};", planetInfo.get<float>(#PROP));
 	CPROP(air_color);
 	CPROP(illumination_color);
 	FPROP(air_color_mix_ratio);
@@ -342,7 +344,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	CPROP(polar_land_color);
 	CPROP(polar_sea_color);
 	CPROP(sea_color);
-	OOLog(@"planetinfo.record",@"rotation_speed = %f",_rotationalVelocity);
+	OO_LOG("planetinfo.record", "rotation_speed = {:f}", _rotationalVelocity);
 #endif
 
 	[self setStatus:STATUS_ACTIVE];
@@ -1117,14 +1119,14 @@ static OOColor *ColorWithHSBColor(Vector c)
 	/* Generate atmosphere texture */
 	if (!isMoon)
 	{
-		OOLog(@"texture.planet.generate",@"Preparing atmosphere for planet %@",self);
+		OO_LOG("texture.planet.generate", "Preparing atmosphere for planet {}", oo::DescriptionOf(self));
 		/* Generate a standalone atmosphere texture */
 		OOTexture *atmosphere = nil;
 		[OOStandaloneAtmosphereGenerator generateAtmosphereTexture:&atmosphere
 														withInfo:_materialParameters
 															seed:_noiseMapSeed];
 		
-		OOLog(@"texture.planet.generate",@"Planet %@ has atmosphere %@",self,atmosphere);
+		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(self), oo::DescriptionOf(atmosphere));
 		
 		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:nil];
 		[_atmosphereDrawable setMaterial:dynamicMaterial];

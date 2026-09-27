@@ -34,9 +34,11 @@ SOFTWARE.
 #import "OODebugTCPConsoleProtocol.h"
 #import "OODebugMonitor.h"
 #import "OOFunctionAttributes.h"
-#import "OOLogging.h"
+#include "oofnd/Log.hpp"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
 #include <stdint.h>
-#import "NSDictionaryOOExtensions.h"
 #include "oofnd/StdLib.hpp"
 
 #if OOLITE_WINDOWS
@@ -236,6 +238,27 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 @end
 
 
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
+
 @implementation OODebugTCPConsoleClient
 
 - (id) init
@@ -281,7 +304,8 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 			// none: +dictionaryWithObjectsAndKeys: stopped at the nil).
 			oo::PList::Dict parameters;
 			parameters[ProtocolName(kOOTCPProtocolVersion)] = oo::PList(static_cast<std::int64_t>(kOOTCPProtocolVersion_1_1_0));
-			const oo::PList version = oo::PListFrom([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+			const std::optional<std::string> versionStr = OoliteInfoString("CFBundleVersion");
+			const oo::PList version = versionStr ? oo::PList(*versionStr) : oo::PList();
 			if (!version.isNull())  parameters[ProtocolName(kOOTCPOoliteVersion)] = version;
 			[self sendPacket:ProtocolName(kOOTCPPacket_RequestConnection)
 			   withParameters:oo::PList(std::move(parameters))];
@@ -292,7 +316,7 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 		
 		if (!OK)
 		{
-			OOLog(@"debugTCP.connect.failed", @"Failed to connect to debug console at address %@:%i.", oo::NSStringFrom(address), port);
+			OO_LOG("debugTCP.connect.failed", "Failed to connect to debug console at address {}:{}.", address, port);
 			[self release];
 			self = nil;
 		}
@@ -460,9 +484,8 @@ noteChangedConfigrationValue:(in id)newValue
 	hints.ai_socktype = SOCK_STREAM;
 	if (getaddrinfo(address.c_str(), NULL, &hints, &found) != 0 || found == NULL)
 	{
-		// gnustep-base's own message for an unknown host, through the real NSLog as it was
-		// (parenthesised: OOLogging.h's NSLog macro is function-like).
-		(NSLog)(@"Host '%@' not found - perhaps the hostname is wrong or networking is not set up on your machine", oo::NSStringFrom(address));
+		// Same text as gnustep-base's unknown-host message, via OO_LOG.
+		OO_LOG("unclassified", "Host '{}' not found - perhaps the hostname is wrong or networking is not set up on your machine", address);
 		return NO;
 	}
 	memcpy(&host, found->ai_addr, sizeof host);
@@ -706,7 +729,7 @@ noteChangedConfigrationValue:(in id)newValue
 	const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(dictionary);
 	if (!data)
 	{
-		OOLog(@"debugTCP.conversionFailure", @"Could not convert dictionary to data for transmission to debug console: %@", @"unknown error.");
+		OO_LOG("debugTCP.conversionFailure", "Could not convert dictionary to data for transmission to debug console: {}", "unknown error.");
 		return;
 	}
 
@@ -724,12 +747,12 @@ noteChangedConfigrationValue:(in id)newValue
 	*/
 	if (![self sendBytes:&header count:sizeof header])
 	{
-		OOLog(@"debugTCP.send.warning", @"%@", @"Error sending packet header, retrying.");
+		OO_LOG("debugTCP.send.warning", "{}", "Error sending packet header, retrying.");
 		// wait 8 milliseconds, resend the header
 		[self serviceSocketFor:.008];
 		if (![self sendBytes:&header count:sizeof header])
 		{
-			//OOLog(@"debugTCP.send.warning", @"Error sending packet header, retrying one more time.");
+			// debugTCP.send.warning: Error sending packet header, retrying one more time.
 			// wait 16 milliseconds, try to resend the header one last time!
 			[self serviceSocketFor:.016];
 			if (![self sendBytes:&header count:sizeof header])
@@ -741,7 +764,7 @@ noteChangedConfigrationValue:(in id)newValue
 	
 	if(sentOK && ![self sendBytes:bytes count:count])
 	{
-		OOLog(@"debugTCP.send.warning", @"%@", @"Error sending packet body, retrying.");
+		OO_LOG("debugTCP.send.warning", "{}", "Error sending packet body, retrying.");
 		// wait 8 milliseconds, try again.
 		[self serviceSocketFor:.008];
 		if(![self sendBytes:bytes count:count])
@@ -752,7 +775,7 @@ noteChangedConfigrationValue:(in id)newValue
 	
 	if (!sentOK)
 	{
-		OOLog(@"debugTCP.send.error", @"The following packet could not be sent: %@", oo::ObjectFromPList(dictionary));
+		OO_LOG("debugTCP.send.error", "The following packet could not be sent: {}", oo::DescriptionOf(oo::ObjectFromPList(dictionary)));
 		if(![[OODebugMonitor sharedDebugMonitor] TCPIgnoresDroppedPackets])
 		{
 			[self breakConnectionWithStreamError:(_socket != kNoSocket ? _outError : 0)];
@@ -764,7 +787,7 @@ noteChangedConfigrationValue:(in id)newValue
 - (void) sendPacket:(const std::string &)packetType
 	 withParameters:(const oo::PList &)parameters
 {
-	// A copy of the parameters with the packet type set (was -dictionaryByAddingObject:forKey:);
+	// A copy of the parameters with the packet type set (was dictionary copy with one added entry);
 	// no parameters: the type alone.
 	oo::PList::Dict dict;
 	if (const oo::PList::Dict *given = parameters.getIf<oo::PList::Dict>())  dict = *given;
@@ -827,7 +850,7 @@ noteChangedConfigrationValue:(in id)newValue
 	PACKET_CASE(Pong)
 	else
 	{
-		OOLog(@"debugTCP.protocolError.unknownPacketType", @"Unhandled packet type %@.", oo::NSStringFrom(packetType));
+		OO_LOG("debugTCP.protocolError.unknownPacketType", "Unhandled packet type {}.", packetType);
 	}
 }
 
@@ -853,11 +876,11 @@ noteChangedConfigrationValue:(in id)newValue
 			connectedMessage += " at " + hostName;
 		}
 
-		OOLog(@"debugTCP.connected", @"%@.", oo::NSStringFrom(connectedMessage));
+		OO_LOG("debugTCP.connected", "{}.", connectedMessage);
 	}
 	else
 	{
-		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_ApproveConnection);
+		OO_LOG("debugTCP.protocolError.outOfOrder", "Got {} packet from debug console in wrong context.", oo::DescriptionOf(kOOTCPPacket_ApproveConnection));
 	}	
 }
 
@@ -870,7 +893,7 @@ noteChangedConfigrationValue:(in id)newValue
 	}
 	else
 	{
-		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_RejectConnection);
+		OO_LOG("debugTCP.protocolError.outOfOrder", "Got {} packet from debug console in wrong context.", oo::DescriptionOf(kOOTCPPacket_RejectConnection));
 	}
 	
 	[self breakConnectionWithMessage:PacketString(packet, kOOTCPMessage).value_or("Console refused connection.")];
@@ -881,7 +904,7 @@ noteChangedConfigrationValue:(in id)newValue
 {
 	if (!StatusIsSendable(_status))
 	{
-		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_CloseConnection);
+		OO_LOG("debugTCP.protocolError.outOfOrder", "Got {} packet from debug console in wrong context.", oo::DescriptionOf(kOOTCPPacket_CloseConnection));
 	}
 	[self breakConnectionWithMessage:PacketString(packet, kOOTCPMessage).value_or("Console closed connection.")];
 }
@@ -975,11 +998,11 @@ noteChangedConfigrationValue:(in id)newValue
 
 	if (message.length() > 0)
 	{
-		OOLog(@"debugTCP.disconnect", @"No connection to debug console: \"%@\"", oo::NSStringFrom(message));
+		OO_LOG("debugTCP.disconnect", "No connection to debug console: \"{}\"", message);
 	}
 	else
 	{
-		OOLog(@"debugTCP.disconnect", @"%@", @"Debug console not connected.");	
+		OO_LOG("debugTCP.disconnect", "{}", "Debug console not connected.");	
 	}
 	
 #if 0
@@ -1099,7 +1122,7 @@ void LogOOTCPStreamDecoderPacket(OOALObjectRef packetHandle)
 	// GNUstep's XML property-list serialisation, byte for byte (ADR-0043 item 15).
 	const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(OOALObjectPList(packetHandle));
 	const std::string xml = data ? std::string(data->stringView()) : std::string();
-	OOLog(@"debugTCP.receive", @"Received packet:\n%@", oo::NSStringFrom(xml));
+	OO_LOG("debugTCP.receive", "Received packet:\n{}", xml);
 }
 
 
@@ -1107,7 +1130,7 @@ static void LogSendPacket(const oo::PList &packet)
 {
 	const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(packet);
 	const std::string xml = data ? std::string(data->stringView()) : std::string();
-	OOLog(@"debugTCP.send", @"Sent packet:\n%@", oo::NSStringFrom(xml));
+	OO_LOG("debugTCP.send", "Sent packet:\n{}", xml);
 }
 #endif
 

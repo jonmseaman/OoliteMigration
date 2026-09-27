@@ -378,7 +378,7 @@ class ScenarioCatalogueSweepTest(unittest.TestCase):
         if not cat:
             self.skipTest("no scenario catalogue in this checkout")
         p = subprocess.run([sys.executable, str(TOOLS / "gen-stories.py"), "--dry-run"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(p.returncode, 0, p.stderr[-2000:])
         printed = [ln for ln in p.stdout.splitlines() if "Golden scenario 0" in ln]
         expected = [s["id"] for s in cat if s.get("status") != "landed"]

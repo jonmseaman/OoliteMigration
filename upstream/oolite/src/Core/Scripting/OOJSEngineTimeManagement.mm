@@ -30,9 +30,11 @@ SOFTWARE.
 #import "OOJSScript.h"
 #import "OOCollectionExtractors.h"
 #import "OOLoggingExtended.h"
+#include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #if OOLITE_LINUX
 // Workaround for clang/glibc incompatibility.
@@ -90,7 +92,7 @@ void OOJSStartTimeLimiterWithTimeLimit(OOTimeDelta limit)
 #endif
 {
 #if OOJS_DEBUG_LIMITER
-	OOLog(@"script.javaScript.timeLimit.debug",@"Limiter starting: %u => %u",sLimiterStartDepth,sLimiterStartDepth+1);
+	OO_LOG("script.javaScript.timeLimit.debug", "Limiter starting: {} => {}", sLimiterStartDepth, sLimiterStartDepth+1);
 #endif
 	if (sLimiterStartDepth++ == 0)
 	{
@@ -118,7 +120,7 @@ void OOJSStopTimeLimiter(void)
 #ifndef NDEBUG
 	if (sLimiterStartDepth == 0)
 	{
-		OOLog(@"bug.javaScript.limiterDepth", @"Attempt to stop JavaScript time limiter while it is already fully stopped. This is an internal bug, please report it. (Last start: %@:%u, last valid stop: %@:%u, this stop attempt: %@:%u.)", OOLogAbbreviatedFileName(sLastStartedFile), sLastStartedLine, OOLogAbbreviatedFileName(sLastStoppedFile), sLastStoppedLine, OOLogAbbreviatedFileName(file), line);
+		OO_LOG("bug.javaScript.limiterDepth", "Attempt to stop JavaScript time limiter while it is already fully stopped. This is an internal bug, please report it. (Last start: {}:{}, last valid stop: {}:{}, this stop attempt: {}:{}.)", oo::log::abbreviatedFileName(sLastStartedFile), sLastStartedLine, oo::log::abbreviatedFileName(sLastStoppedFile), sLastStoppedLine, oo::log::abbreviatedFileName(file), line);
 		return;
 	}
 	
@@ -126,7 +128,7 @@ void OOJSStopTimeLimiter(void)
 	sLastStoppedLine = line;
 
 #if OOJS_DEBUG_LIMITER
-	OOLog(@"script.javaScript.timeLimit.debug",@"Limiter ending: %u <= %u",sLimiterStartDepth-1,sLimiterStartDepth);
+	OO_LOG("script.javaScript.timeLimit.debug", "Limiter ending: {} <= {}", sLimiterStartDepth-1, sLimiterStartDepth);
 #endif
 
 #endif
@@ -231,7 +233,7 @@ static bool OperationCallback(ooscript::Context context)
 	
 	if (elapsed <= sLimiterTimeLimit)  return YES;
 	
-	OOLogERR(@"script.javaScript.timeLimit", @"Script \"%@\" ran for %g seconds and has been terminated.", [[OOJSScript currentlyRunningScript] name], elapsed);
+	OO_LOG_ERR("script.javaScript.timeLimit", "Script \"{}\" ran for {:g} seconds and has been terminated.", oo::DescriptionOf([[OOJSScript currentlyRunningScript] name]), elapsed);
 #ifndef NDEBUG
 	OOJSDumpStack(context);
 #endif
@@ -345,8 +347,8 @@ void OOJSBeginProfiling(BOOL trace)
 	
 	if (trace)
 	{
-		OOLog(@"script.javaScript.trace", @"%@", @">>>> Beginning trace.");
-		OOLogIndent();
+		OO_LOG("script.javaScript.trace", "{}", ">>>> Beginning trace.");
+		oo::log::indent();
 	}
 }
 
@@ -377,13 +379,13 @@ OOTimeProfile *OOJSEndProfiling(void)
 	std::vector<oo::ObjCRef<OOTimeProfileEntry *>> entries;
 	entries.reserve(sProfileInfo->size());
 	for (const auto &keyAndEntry : *sProfileInfo)  entries.emplace_back(keyAndEntry.second);
-	std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return [a.get() compareBySelfTimeReverse:b.get()] == NSOrderedAscending; });
+	std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return [a.get() compareBySelfTimeReverse:b.get()] == OOOrderedAscending; });
 	[result setProfileEntries:entries];
 	
 	if (sTracing)
 	{
-		OOLogOutdent();
-		OOLog(@"script.javaScript.trace", @"%@", @"<<<< End of trace.");
+		oo::log::outdent();
+		OO_LOG("script.javaScript.trace", "{}", "<<<< End of trace.");
 		sTracing = NO;
 	}
 	
@@ -484,8 +486,8 @@ static void TraceEnterJSFunction(ooscript::Context context, ooscript::Function f
 	}
 	
 	name += ")";
-	OOLog(oo::NSStringFrom(logMsgClass), @">> %@ [%@]", oo::NSStringFrom(name), oo::NSStringFrom(frameTag));
-	OOLogIndent();
+	OO_LOG(logMsgClass, ">> {} [{}]", name, frameTag);
+	oo::log::indent();
 }
 
 
@@ -557,8 +559,8 @@ void OOJSProfileEnter(OOJSProfileStackFrame *frame, const char *function)
 	if (EXPECT_NOT(sTracing))
 	{
 		// We use EXPECT_NOT here because profiles are time-critical and traces are not.
-		OOLog(@"script.javaScript.trace.ON", @">> %s [ON]", function);
-		OOLogIndent();
+		OO_LOG("script.javaScript.trace.ON", ">> {} [ON]", function);
+		oo::log::indent();
 	}
 	
 	*frame = (OOJSProfileStackFrame)
@@ -635,7 +637,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 	
 	if (frame->cleanup != NULL)  frame->cleanup(frame);
 	
-	if (EXPECT_NOT(sTracing))  OOLogOutdent();
+	if (EXPECT_NOT(sTracing))  oo::log::outdent();
 }
 
 
@@ -796,7 +798,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 
 - (id) initWithCName:(const char *)name
 {
-	NSAssert(sProfiling, @"Can't create profile entries while not profiling.");
+	OOAssert(sProfiling, "Can't create profile entries while not profiling.");
 	
 	if ((self = [super init]))
 	{
@@ -959,37 +961,37 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 }
 
 
-- (NSComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other
 {
-	return (NSComparisonResult)-[self compareByTotalTimeReverse:other];
+	return (OOComparisonResult)-[self compareByTotalTimeReverse:other];
 }
 
 
-- (NSComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other
 {
 	double selfTotal = [self totalTimeSum];
 	double otherTotal = [other totalTimeSum];
 	
-	if (selfTotal < otherTotal)  return NSOrderedDescending;
-	if (selfTotal > otherTotal)  return NSOrderedAscending;
-	return NSOrderedSame;
+	if (selfTotal < otherTotal)  return OOOrderedDescending;
+	if (selfTotal > otherTotal)  return OOOrderedAscending;
+	return OOOrderedSame;
 }
 
 
-- (NSComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other
 {
-	return (NSComparisonResult)-[self compareBySelfTimeReverse:other];
+	return (OOComparisonResult)-[self compareBySelfTimeReverse:other];
 }
 
 
-- (NSComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other
 {
 	double selfTotal = [self selfTimeSum];
 	double otherTotal = [other selfTimeSum];
 	
-	if (selfTotal < otherTotal)  return NSOrderedDescending;
-	if (selfTotal > otherTotal)  return NSOrderedAscending;
-	return NSOrderedSame;
+	if (selfTotal < otherTotal)  return OOOrderedDescending;
+	if (selfTotal > otherTotal)  return OOOrderedAscending;
+	return OOOrderedSame;
 }
 
 

@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "NSObjectOOExtensions.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 #ifndef NDEBUG
@@ -97,7 +98,7 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 		_radius = radius;
 
 		NSUInteger nodeCount = _data.length() / sizeof *_octree;
-		NSParameterAssert(nodeCount < UINT32_MAX);
+		OOParameterAssert(nodeCount < UINT32_MAX);
 		_nodeCount = (uint32_t)nodeCount;
 
 		// (no bytes read as NULL, as they did for empty Foundation data)
@@ -199,7 +200,7 @@ static Vector offsetForOctant(int oct, GLfloat r)
 	OOGLEND();
 	
 	OODebugEndWireframe(state);
-	OOCheckOpenGLErrors(@"Octree after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing " + oo::DescriptionOf(self); });
 }
 
 
@@ -291,7 +292,7 @@ static BOOL drawTestForCollisions;
 	_hasCollision = drawTestForCollisions;
 	
 	OODebugEndWireframe(state);
-	OOCheckOpenGLErrors(@"Octree after drawing collisions for %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "Octree after drawing collisions for " + oo::DescriptionOf(self); });
 }
 
 
@@ -824,7 +825,7 @@ OOINLINE void SetNode(OOOctreeBuilder *self, uint32_t index, int value)
 // InsertNode(): set the node at the current insertion point, and increment insertion point.
 OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 {
-	NSCAssert(State(self)->remaining > 0, @"Attempt to add node to a full parent in octree builder.");
+	OOCAssert(State(self)->remaining > 0, "Attempt to add node to a full parent in octree builder.");
 	State(self)->remaining--;
 	
 	SetNode(self, State(self)->insertionPoint++, value);
@@ -864,7 +865,7 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 
 - (Octree *) buildOctreeWithRadius:(GLfloat)radius
 {
-	NSAssert(State(self)->remaining == 0 && _level == 0, @"Attempt to produce octree from an octree builder in an incomplete state.");
+	OOAssert(State(self)->remaining == 0 && _level == 0, "Attempt to produce octree from an octree builder in an incomplete state.");
 	
 	size_t dataSize = _nodeCount * sizeof *_octree;
 	int *resized = (int *)realloc(_octree, dataSize);
@@ -898,7 +899,7 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 
 - (void) beginInnerNode
 {
-	NSAssert(_level < kMaxOctreeDepth, @"Attempt to build octree exceeding maximum depth.");
+	OOAssert(_level < kMaxOctreeDepth, "Attempt to build octree exceeding maximum depth.");
 	
 	// Insert relative offset to next free space.
 	uint32_t newInsertionPoint = _nodeCount;
@@ -922,8 +923,8 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 
 - (void) endInnerNode
 {
-	NSAssert(State(self)->remaining == 0, @"Attempt to end an inner octree node with fewer than eight children.");
-	NSAssert1(_level > 0, @"Unbalanced call to %s", __FUNCTION__);
+	OOAssert(State(self)->remaining == 0, "Attempt to end an inner octree node with fewer than eight children.");
+	OOAssert(_level > 0, "Unbalanced call to %s", __FUNCTION__);
 	
 	_level--;
 	
@@ -938,7 +939,7 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 		never recurse into an empty subtree.
 	*/
 	
-	NSAssert(_nodeCount > 8, @"After ending an inner node, there must be at least eight nodes in buffer.");
+	OOAssert(_nodeCount > 8, "After ending an inner node, there must be at least eight nodes in buffer.");
 	for (uint32_t node = _nodeCount - 8; node < _nodeCount; node++)
 	{
 		if (_octree[node] != -1)  return;

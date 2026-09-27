@@ -127,10 +127,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	OOFileScannerVerifierStage	*fileScanner = nil;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"shipdata.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -142,10 +139,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	std::vector<std::string>	shipList;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	_shipdataPList = oo::PListFrom([fileScanner plistNamed:@"shipdata.plist"
-												 inFolder:@"Config"
-										   referencedFrom:nil
-											 checkBuiltIn:NO]);
+	_shipdataPList = [fileScanner cxx_plistNamed:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 
 	if (_shipdataPList.isNull())  return;
 
@@ -165,7 +159,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	// Keys that apply to all ships
 	for (const std::string &shipName : ooliteShipData)  AddString(_ooliteShipNames, shipName);
-	settings = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"shipdataPListSettings"]);
+	settings = [[self verifier] cxx_configurationDictionaryForKey:"shipdataPListSettings"];
 	_basicKeys = StringSetForKey(settings, "knownShipKeys");
 
 	// Keys that apply to stations/carriers
@@ -364,7 +358,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 												withMaterials:materials != nullptr ? *materials : oo::PList()
 												   andShaders:shaders != nullptr ? *shaders : oo::PList()])
 		{
-			[self reportMessage:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), [[self verifier] oxpDisplayName]];
+			[self reportMessage:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), oo::NSStringOrNil([[self verifier] cxx_oxpDisplayName])];
 		}
 	}
 	else

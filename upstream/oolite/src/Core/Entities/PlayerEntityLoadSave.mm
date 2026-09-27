@@ -1467,7 +1467,7 @@ uint16_t PersonalityForCommanderDict(const oo::PList &dict)
 	if (personality == ENTITY_PERSONALITY_INVALID)
 	{
 		// For pre-1.74 saved games, generate a default personality based on some hashes.
-		// (-oo_hash of a missing string was a message to nil: 0.)
+		// (ooHash of a missing string was a message to nil: 0.)
 		const std::optional<std::string> shipDesc = OptionalStringValue(dict.find("ship_desc"));
 		const std::optional<std::string> playerName = OptionalStringValue(dict.find("player_name"));
 		personality = (shipDesc ? oo::str::ooHash(*shipDesc) : 0) * (playerName ? oo::str::ooHash(*playerName) : 0);

@@ -14,6 +14,7 @@ This code is hereby placed in the public domain.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 namespace {
@@ -167,7 +168,7 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 - (void) addObject:(id<OOWeakReferenceSupport>)object
 {
 	if (object == nil)  return;
-	NSAssert([object conformsToProtocol:@protocol(OOWeakReferenceSupport)], @"Attempt to add object to OOWeakSet which does not conform to OOWeakReferenceSupport.");
+	OOAssert([object conformsToProtocol:@protocol(OOWeakReferenceSupport)], "Attempt to add object to OOWeakSet which does not conform to OOWeakReferenceSupport.");
 	
 	OOWeakReference *weakObj = [object weakRetain];
 	if (std::find_if(_objects.begin(), _objects.end(), [weakObj](const auto &ref) { return ref.get() == weakObj; }) == _objects.end())

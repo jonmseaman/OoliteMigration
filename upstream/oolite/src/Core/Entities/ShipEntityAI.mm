@@ -48,6 +48,8 @@
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -891,12 +893,17 @@ using ooscript::Context;
 {
 	NSArray				*messages = nil;
 	NSString			*message = nil;
-	NSCharacterSet		*whiteSpace = [NSCharacterSet whitespaceCharacterSet];
+	// GNUstep whitespaceCharacterSet: whitespace-and-newline without newlines (see IsWhitespaceNotNewline).
+	auto isWhitespaceNotNewline = [](char16_t c) {
+		return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
+			|| c == 0x202F || c == 0x205F || c == 0x3000;
+	};
 	
 	messages = [messageString componentsSeparatedByString:@","];
 	foreach (message, messages)
 	{
-		[shipAI dropMessage:[message stringByTrimmingCharactersInSet:whiteSpace]];
+		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
+		[shipAI dropMessage:oo::NSStringFrom(trimmed)];
 	}
 }
 
@@ -1514,7 +1521,7 @@ using ooscript::Context;
 			return;
 	}
 	
-	NSLog(@"Aegis status for %@ has taken on invalid value %i. This is an internal error, please report it.", self, aegis_status);
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(aegis_status));
 	aegis_status = AEGIS_NONE;
 	[shipAI message:"AEGIS_NONE"];
 }

@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 #include "oofnd/PListWriting.hpp"
 
 
@@ -372,7 +373,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		// some error has occurred - log it, and send the try-again message
 		oo::PList::Dict queue;
 		for (const auto &[queuedID, queuedStack] : shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
-		OOLogERR(@"station.issueDockingInstructions.failed", @"couldn't addShipToShipsOnApproach:%@ in %@, retrying later -- shipsOnApproach:\n%@", ship, self, oo::NSStringFrom(DescriptionForLog(oo::PList(std::move(queue)))));
+		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::DescriptionOf(ship), oo::DescriptionOf(self), DescriptionForLog(oo::PList(std::move(queue))));
 		
 		return DockingInstructions(station, [ship position], 200, 100, "TRY_AGAIN_LATER", NO, -1);
 	}
@@ -384,7 +385,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 	if (coordinatesStack.empty())
 	{
-		OOLogERR(@"station.issueDockingInstructions.failed", @" -- coordinatesStack = %@", oo::NSStringFrom(DescriptionForLog(oo::PList(oo::PList::Array(coordinatesStack)))));
+		OO_LOG_ERR("station.issueDockingInstructions.failed", " -- coordinatesStack = {}", DescriptionForLog(oo::PList(oo::PList::Array(coordinatesStack))));
 		
 		return DockingInstructions(station, [ship position], 0, 100, "HOLD_POSITION", NO, -1);
 	}
@@ -576,7 +577,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			ry += s2 * ssize; 
 			rz += ssize * ((float)offset_id3 / 4.0);
 
-//			OOLog(@"docking.debug",@"Adjusted coordinates by %f x %f x %f",c2 * ssize,s2 * ssize,ssize * ((float)offset_id3 / 4.0));
+//			// docking.debug: Adjusted coordinates by c2/s2/ssize factors
 		}
 		
 		// add the lenght inside the station to the corridor, except for the final position, inside the dock.
@@ -779,10 +780,10 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		inLane = laneFlags == 0xF;
 		range = 0.90 * arbb.max.z + 0.10 * arbb.min.z;
 		
-		OOLog(@"docking.debug", @"Normalised port dimensions are %g x %g x %g.  Player bounding box is at %@-%@ -- %s (%X), range: %g",
+		OO_LOG("docking.debug", "Normalised port dimensions are {:g} x {:g} x {:g}.  Player bounding box is at {}-{} -- {} ({:X}), range: {:g}",
 			ww * 2.0, hh * 2.0, dd,
-			oo::NSStringFrom(VectorDescription(arbb.min)), oo::NSStringFrom(VectorDescription(arbb.max)),
-			inLane ? "in lane" : "out of lane", laneFlags,
+			VectorDescription(arbb.min), VectorDescription(arbb.max),
+			inLane ? "in lane" : "out of lane", static_cast<unsigned>(laneFlags),
 			range);
 	}
 #endif
