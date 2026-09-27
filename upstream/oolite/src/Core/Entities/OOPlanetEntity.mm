@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOFoundationBridge.h"
+#import "OOJavaScriptEngine.h"	// OONull
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
@@ -115,7 +116,7 @@ oo::PList DictionaryForKey(const oo::PList &dict, std::string_view key)
 }
 
 
-// -dictionaryWithValuesForKeys: of the planet info: NSNull for a missing key; nil for no info.
+// -dictionaryWithValuesForKeys: of the planet info: OONull for a missing key; nil for no info.
 oo::PList ValuesForKeys(const oo::PList &info, std::initializer_list<const char *> keys)
 {
 	if (!info.isDict())  return oo::PList();
@@ -123,7 +124,7 @@ oo::PList ValuesForKeys(const oo::PList &info, std::initializer_list<const char 
 	for (const char *key : keys)
 	{
 		const oo::PList *value = info.find(key);
-		result[key] = value != nullptr ? *value : oo::PListObject([NSNull null]);
+		result[key] = value != nullptr ? *value : oo::PListObject([OONull null]);
 	}
 	return oo::PList(std::move(result));
 }
