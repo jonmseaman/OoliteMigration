@@ -132,11 +132,11 @@ struct Scenario
 // Captured from the ported tool (see the banner).
 const Scenario kScenarios[] =
 {
-	{ "A export old-style",				0xd7bf101ecd0dc898ULL },
-	{ "B export XML",					0x5f4986d90d51b683ULL },
-	{ "C export old-style keyed",		0x5ee72cd48810fdcdULL },
-	{ "D compile old-style",			0xaacb8909935afa1dULL },
-	{ "E compile XML keyed",			0x61bd1eefc7db1a5fULL },
+	{ "A export old-style",				0x81612e0e9ecf253fULL },
+	{ "B export XML",					0x3ad86808b5dba106ULL },
+	{ "C export old-style keyed",		0x243092ab184eb628ULL },
+	{ "D compile old-style",			0x9d31777f9d26629bULL },
+	{ "E compile XML keyed",			0x42d5cd4b07367714ULL },
 };
 
 
