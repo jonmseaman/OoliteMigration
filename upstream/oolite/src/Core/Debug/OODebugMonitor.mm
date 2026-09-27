@@ -82,9 +82,10 @@ static OODebugMonitor *sSingleton = nil;
 
 /*	The monitor's private "application will terminate" notification: posted by
 	-applicationWillTerminate (GameController calls it on exit) and observed by the monitor
-	itself, on oo::NotificationCenter with no object (bead oo-3rb.40). Was an NSString of the
-	same text on the Foundation center; on Mac OS X it was AppKit's notification, which
-	oo::NotificationCenter does not receive (that build is not maintained, ADR-0009).
+	itself, on oo::NotificationCenter with no object (bead oo-3rb.40). Was the same text as a
+	Foundation notification name on the Foundation center; on Mac OS X it was AppKit's
+	notification, which oo::NotificationCenter does not receive (that build is not maintained,
+	ADR-0009).
 */
 static const char * const kOODebugMonitorApplicationWillTerminateNotificationName = "ApplicationWillTerminate";
 
