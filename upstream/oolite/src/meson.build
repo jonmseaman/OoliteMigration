@@ -20,11 +20,20 @@ endif
 # (Phase 1; SpiderMonkey 1.8.5 and NSPR were removed by bead oo-7wx).
 # QuickJS-ng is part of the game binary, so it is held to the same golden flag policy as Oolite's own
 # code (meson.build; tests/golden/check_build_flags.py): its dtoa/number code produces floats that
-# land in the dumps. Its own project defaults to buildtype=release (-O3); meson lets a parent
-# override a subproject's buildtype but not its optimization or c_args, so debugoptimized (-O2)
-# with b_ndebug keeps release semantics at the pinned level. -ffp-contract=off reaches it through
-# the add_global_arguments in meson.build.
-quickjs_ng_proj = subproject('quickjs-ng', default_options: ['default_library=static', 'buildtype=debugoptimized', 'b_ndebug=true'])
+# land in the dumps. Its own project() defaults to buildtype=release (-O3). Passing only
+# buildtype=debugoptimized from the parent is NOT enough on current meson: the subproject still
+# emits an effective -O3 (measured 2026-09-27, oo-6ece; 10 TUs). Pass optimization=2 explicitly
+# so the last -O on each QuickJS compile line is the pinned level. b_ndebug=true keeps release
+# NDEBUG semantics. -ffp-contract=off reaches it through add_global_arguments in meson.build.
+quickjs_ng_proj = subproject(
+    'quickjs-ng',
+    default_options: [
+        'default_library=static',
+        'buildtype=debugoptimized',
+        'optimization=2',
+        'b_ndebug=true',
+    ],
+)
 oolite_dependencies += [quickjs_ng_proj.get_variable('qjs_dep')]
 
 subdir('meson')
