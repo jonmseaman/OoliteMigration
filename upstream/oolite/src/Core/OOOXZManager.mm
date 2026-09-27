@@ -36,7 +36,6 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "PlayerEntitySound.h"
 #import "OOPListView.h"
-#import "NSFileManagerOOExtensions.h"
 #import "NSDataOOExtensions.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
@@ -925,7 +924,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// GNUstep's property-list writer still writes the cache file.
 		[oo::ObjectFromPList(_oxzList) writeToFile:oo::NSStringOrNil([self manifestPath]) atomically:YES];
 		// and clean up the temp file
-		[[NSFileManager defaultManager] oo_removeItemAtPath:oo::NSStringOrNil([self downloadPath])];
+		if (const std::optional<std::string> downloadPath = [self downloadPath])
+		{
+			(void)oo::fs::removeItem(oo::fs::pathFromUTF8(*downloadPath));
+		}
 		// invalidate the managed list
 		_managedList = oo::PList();
 		_interfaceState = OXZ_STATE_TASKDONE;
