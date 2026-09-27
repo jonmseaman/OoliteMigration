@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOColor.h"
 
 #import "NSStringOOExtensions.h"
-#import "NSDictionaryOOExtensions.h"
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
 #import "OOFoundationException.h"
@@ -1352,7 +1351,7 @@ oo::PList StringOrDictionarySpecifier(const oo::PList *texSpec)
 }
 
 
-// -dictionaryByAddingObject:object forKey:key on a dictionary specifier.
+// PList dict with one added entry on a dictionary specifier.
 oo::PList AddingValue(oo::PList specifier, const char *key, oo::PList value)
 {
 	if (oo::PList::Dict *dict = specifier.getIf<oo::PList::Dict>())  (*dict)[key] = std::move(value);
