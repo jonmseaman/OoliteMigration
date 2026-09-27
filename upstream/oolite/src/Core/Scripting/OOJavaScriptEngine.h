@@ -36,6 +36,8 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #import "OOJSPropID.h"
 
+#include "oofnd/objc/OOAssert.h"
+
 #ifdef __cplusplus
 #define OOJS_EXTERN_C extern "C"
 #else
@@ -120,7 +122,7 @@ MA 02110-1301, USA.
 OOINLINE ooscript::Context OOJSAcquireContext(void)
 {
 	extern ooscript::Context gOOJSMainThreadContext;
-	NSCAssert(gOOJSMainThreadContext != NULL, @"Attempt to use JavaScript context before JavaScript engine is initialized.");
+	OOCAssert(gOOJSMainThreadContext != NULL, "Attempt to use JavaScript context before JavaScript engine is initialized.");
 	ooscript::beginRequest(gOOJSMainThreadContext);
 	return gOOJSMainThreadContext;
 }
@@ -131,7 +133,7 @@ OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 {
 #ifndef NDEBUG
 	extern ooscript::Context gOOJSMainThreadContext;
-	NSCParameterAssert(context == gOOJSMainThreadContext && ooscript::isInRequest(context));
+	OOCParameterAssert(context == gOOJSMainThreadContext && ooscript::isInRequest(context));
 #endif
 	ooscript::endRequest(context);
 }
@@ -483,7 +485,7 @@ oo::PList OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Val
 static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject)  GCC_ATTR((unused)); \
 static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject) \
 { \
-	NSCParameterAssert(outObject != NULL); \
+	OOCParameterAssert(outObject != NULL); \
 	static Class cls = Nil; \
 	if (EXPECT_NOT(cls == Nil))  cls = [OBJCCLASSNAME class]; \
 	return OOJSObjectGetterImplPRIVATE(context, inObject, JSCLASS, cls, #NAME, (id *)outObject); \

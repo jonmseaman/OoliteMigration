@@ -107,6 +107,8 @@ MA 02110-1301, USA.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 
+#include "oofnd/objc/OOAssert.h"
+
 #include <stdlib.h>
 
 
@@ -311,7 +313,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 - (id) init
 {
-	NSAssert(sSharedEngine == nil, @"Attempt to create multiple OOJavaScriptEngines.");
+	OOAssert(sSharedEngine == nil, "Attempt to create multiple OOJavaScriptEngines.");
 	
 	self = [super init];
 	if (!self)  { return nil; }
@@ -355,7 +357,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 - (void) createMainThreadContext
 {
-	NSAssert(gOOJSMainThreadContext == NULL, @"-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
+	OOAssert(gOOJSMainThreadContext == NULL, "-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
 	
 	// create a context and associate it with the JS runtime.
 	gOOJSMainThreadContext = (ooscript::newContext(_runtime, OOJS_STACK_SIZE));
@@ -474,7 +476,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 - (BOOL) reset
 {
-	NSAssert(gOOJSMainThreadContext != NULL, @"JavaScript engine not active. Can't reset.");
+	OOAssert(gOOJSMainThreadContext != NULL, "JavaScript engine not active. Can't reset.");
 	
 	OOJSFrameCallbacksRemoveAll();
 	
@@ -494,7 +496,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		
 	if (ooscript::isThreadsafeBuild())
 	{
-		//NSAssert(!ooscript::isInRequest((gOOJSMainThreadContext)), @"JavaScript processes still pending. Can't reset JavaScript engine.");
+		//OOAssert(!ooscript::isInRequest((gOOJSMainThreadContext)), "JavaScript processes still pending. Can't reset JavaScript engine.");
 		
 		if (ooscript::isInRequest((gOOJSMainThreadContext)))
 		{
@@ -552,7 +554,7 @@ OOJSRelinquishContext(context);
 	ooscript::Context context = NULL;
 	BOOL						result;
 	
-	NSParameterAssert(OOJSValueIsFunction(context, function));
+	OOParameterAssert(OOJSValueIsFunction(context, function));
 	
 	context = OOJSAcquireContext();
 	
@@ -958,7 +960,7 @@ static NSUInteger sConsoleEvalLineNo;
 namespace {
 static void GetLocationNameAndLine(ooscript::Context context, ooscript::StackFrame stackFrame, const char **name, NSUInteger *line)
 {
-	NSCParameterAssert(context != NULL && stackFrame != NULL && name != NULL && line != NULL);
+	OOCParameterAssert(context != NULL && stackFrame != NULL && name != NULL && line != NULL);
 	
 	*name = NULL;
 	*line = 0;
@@ -982,7 +984,7 @@ static void GetLocationNameAndLine(ooscript::Context context, ooscript::StackFra
 
 std::optional<std::string> OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame)
 {
-	NSCParameterAssert(context != NULL && stackFrame != NULL);
+	OOCParameterAssert(context != NULL && stackFrame != NULL);
 
 	const char	*fileName;
 	NSUInteger	lineNo;
@@ -1012,7 +1014,7 @@ void OOJSMarkConsoleEvalLocation(ooscript::Context context, ooscript::StackFrame
 
 void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 {
-	NSCParameterAssert(name != NULL && name[0] != '\0' && idCache != NULL);
+	OOCParameterAssert(name != NULL && name[0] != '\0' && idCache != NULL);
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -1107,7 +1109,7 @@ void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional
 
 void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args)
 {
-	NSCParameterAssert(ooscript::isInRequest((context)));
+	OOCParameterAssert(ooscript::isInRequest((context)));
 
 	@try
 	{
@@ -1252,7 +1254,7 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 	
 	double					value;
 	
-	NSCParameterAssert(context != NULL && (argv != NULL || argc == 0) && outNumber != NULL);
+	OOCParameterAssert(context != NULL && (argv != NULL || argc == 0) && outNumber != NULL);
 	
 	// Get value, if possible.
 	if (EXPECT_NOT(!ooscript::valueToNumber((context), (argv[0]), &value) || isnan(value)))
@@ -1422,7 +1424,7 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 
 void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited)
 {
-	NSCParameterAssert(string != NULL && strCache != NULL && inited != NULL && !*inited);
+	OOCParameterAssert(string != NULL && strCache != NULL && inited != NULL && !*inited);
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -1465,7 +1467,7 @@ std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context c
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
 	ooscript::String string = (ooscript::valueToString((context), (value)));	// Calls the value's toString method if needed.
 	return cxx_OOStringFromJSString(context, string);
@@ -1516,7 +1518,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
 	if (OOJSValueIsFunction(context, value))
 	{
@@ -1843,9 +1845,9 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 	ooscript::Value							rval = ooscript::undefinedValue();
 	bool							result = NO;
 	
-	NSCParameterAssert(entity != nil && param != NULL);
-	NSCParameterAssert(param->context != NULL && ooscript::isInRequest((param->context)));
-	NSCParameterAssert(OOJSValueIsFunction(param->context, param->function));
+	OOCParameterAssert(entity != nil && param != NULL);
+	OOCParameterAssert(param->context != NULL && ooscript::isInRequest((param->context)));
+	OOCParameterAssert(OOJSValueIsFunction(param->context, param->function));
 	
 	if (EXPECT_NOT(param->errorFlag))  return NO;
 	
@@ -1935,14 +1937,14 @@ static std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *> *sRe
 
 void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass)
 {
-	NSCParameterAssert(subclass != NULL && superclass != NULL);
+	OOCParameterAssert(subclass != NULL && superclass != NULL);
 	
 	if (sRegisteredSubClasses == NULL)
 	{
 		sRegisteredSubClasses = new std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *>;
 	}
 
-	NSCAssert(sRegisteredSubClasses->count(subclass) == 0, @"A JS class cannot be registered as a subclass of multiple classes.");
+	OOCAssert(sRegisteredSubClasses->count(subclass) == 0, "A JS class cannot be registered as a subclass of multiple classes.");
 
 	sRegisteredSubClasses->emplace(subclass, superclass);
 }
@@ -1959,8 +1961,8 @@ static void UnregisterSubclasses(void)
 
 BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
 {
-	NSCParameterAssert(putativeSubclass != NULL && superclass != NULL);
-	NSCAssert(sRegisteredSubClasses != NULL, @"OOJSIsSubclass() called before any subclasses registered (disallowed for hot path efficiency).");
+	OOCParameterAssert(putativeSubclass != NULL && superclass != NULL);
+	OOCAssert(sRegisteredSubClasses != NULL, "OOJSIsSubclass() called before any subclasses registered (disallowed for hot path efficiency).");
 	
 	do
 	{
@@ -1983,8 +1985,8 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 {
 #ifndef NDEBUG
 	OOJS_PROFILE_ENTER_NAMED(name)
-	NSCParameterAssert(requiredObjCClass != Nil);
-	NSCParameterAssert(context != NULL && object != NULL && requiredJSClass != NULL && outObject != NULL);
+	OOCParameterAssert(requiredObjCClass != Nil);
+	OOCParameterAssert(context != NULL && object != NULL && requiredJSClass != NULL && outObject != NULL);
 #else
 	OOJS_PROFILE_ENTER
 #endif
@@ -2008,7 +2010,7 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, got ? got->c_str() : "(null)");
 		return NO;
 	}
-	NSCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), @"Native object accessor requires JS class with private storage.");
+	OOCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), "Native object accessor requires JS class with private storage.");
 	
 	// Get the underlying object.
 	*outObject = [(id)ooscript::getPrivate((context), (object)) weakRefUnderlyingObject];
