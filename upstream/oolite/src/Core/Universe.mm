@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #include "oofnd/Process.hpp"
 #include "oofnd/Date.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/objc/OOAssert.h"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -2081,7 +2082,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) setAmbientLightLevel:(float)newValue
 {
-	NSAssert(UNIVERSE != nil, @"Attempt to set ambient light level with a non yet existent universe.");
+	OOAssert(UNIVERSE != nil, "Attempt to set ambient light level with a non yet existent universe.");
 	
 	ambientLightLevel = OOClamp_0_max_f(newValue, 10.0f);
 	return;
@@ -4488,7 +4489,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			co_type = 0;
 			while (qr > 0)
 			{
-				NSAssert((NSUInteger)co_type < commodityCount, @"Commodity type index out of range.");
+				OOAssert((NSUInteger)co_type < commodityCount, "Commodity type index out of range.");
 				qr -= quantities[co_type++];
 			}
 			co_type--;
@@ -5575,7 +5576,7 @@ static const OOMatrix	starboard_matrix =
 
 static BOOL MaintainLinkedLists(Universe *uni)
 {
-	NSCParameterAssert(uni != NULL);
+	OOCParameterAssert(uni != NULL);
 	BOOL result = YES;
 	
 	// DEBUG check for loops and short lists
@@ -5693,7 +5694,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING z_previous list from z_next list");
 #endif
 				checkEnt = uni->z_list_start;
-				NSCAssert(checkEnt != nil, @"Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
+				OOCAssert(checkEnt != nil, "Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
 				checkEnt->z_previous = nil;
 				while (checkEnt->z_next)
 				{
