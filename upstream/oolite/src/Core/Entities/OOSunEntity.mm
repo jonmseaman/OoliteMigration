@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OODebugFlags.h"
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
@@ -157,7 +158,7 @@ MA 02110-1301, USA.
 		corona_speed_factor=OOClamp_0_1_f(corona_speed_factor) * 2.0 + randf() * randf();
 	}
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"corona_shimmer = %f",corona_speed_factor);
+	OO_LOG("planetinfo.record", "corona_shimmer = {:f}", corona_speed_factor);
 #endif
 
 	corona_stage = 0.0;
@@ -247,7 +248,7 @@ MA 02110-1301, USA.
 {
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OOLog(@"sun.collide", @"%@", @"SUN Collision!");
+		OO_LOG("sun.collide", "{}", "SUN Collision!");
 	}
 	
 	return [super checkCloseCollisionWith:other];
@@ -301,7 +302,7 @@ MA 02110-1301, USA.
 					// Novas are stored under the core manifest if the
 					// player was there at the time. Default layer 2
 					// is fine.
-					OOLog(@"sun.nova.start", @"DEBUG: NOVA original radius %.1f", collision_radius);
+					OO_LOG("sun.nova.start", "DEBUG: NOVA original radius {:.1f}", collision_radius);
 				}
 				discColor[0] = 1.0 * _sunBrightnessFactor;	discColor[1] = 1.0 * _sunBrightnessFactor;	discColor[2] = 1.0 * _sunBrightnessFactor;
 				_novaExpansionTimer += delta_t;
@@ -309,7 +310,7 @@ MA 02110-1301, USA.
 			}
 			else
 			{
-				OOLog(@"sun.nova.end", @"DEBUG: NOVA final radius %.1f", collision_radius);
+				OO_LOG("sun.nova.end", "DEBUG: NOVA final radius {:.1f}", collision_radius);
 				
 				// reset at the new size
 				[self resetNova];
@@ -727,7 +728,7 @@ MA 02110-1301, USA.
 	}
 	else
 	{
-		OOLogWARN(@"script.warning", @"Change to property '%@' not applied, will apply only after leaving this system.",oo::NSStringFrom(key));
+		OO_LOG_WARN("script.warning", "Change to property '{}' not applied, will apply only after leaving this system.", key);
 		return NO;
 	}
 	return YES;
@@ -799,7 +800,7 @@ MA 02110-1301, USA.
 	if (throw_sparks)
 	{
 		_novaCountdown = fmax(interval, 0.0);
-		OOLog(@"script.debug.setSunNovaIn", @"NOVA activated! time until Nova : %.1f s", _novaCountdown);
+		OO_LOG("script.debug.setSunNovaIn", "NOVA activated! time until Nova : {:.1f} s", _novaCountdown);
 	}
 	
 	_novaExpansionTimer = 0;

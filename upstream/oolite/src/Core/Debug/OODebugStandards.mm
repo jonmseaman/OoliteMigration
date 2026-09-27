@@ -28,7 +28,7 @@ SOFTWARE.
 */
 
 #import "OODebugStandards.h"
-#import "OOLogging.h"
+#include "oofnd/Log.hpp"
 #import "OOPListView.h"
 #import "GameController.h"
 #import "OOStringBridge.h"
@@ -95,7 +95,7 @@ void OOStandardsInternal(const std::string &type, const std::string &message)
 		return;
 	}
 
-	OOLog(oo::NSStringFrom(type), @"%@", oo::NSStringFrom(message));
+	OO_LOG(type, "{}", message);
 
 	if (sEnforcement == STANDARDS_ENFORCEMENT_QUIT)
 	{
