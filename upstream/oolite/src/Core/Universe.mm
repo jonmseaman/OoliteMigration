@@ -1048,7 +1048,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOLogIndent();
 	for (i = 0; i < show_count; i++)
 	{
-		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), oo::DescriptionOf([sortedEntities[i] descriptionForObjDump]));
+		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [sortedEntities[i] descriptionForObjDump].value_or("(null)"));
 	}
 	OOLogOutdent();
 	

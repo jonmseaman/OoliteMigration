@@ -446,10 +446,10 @@ enum
 
 
 #ifndef NDEBUG
-- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) descriptionForObjDump
 {
 	// Don't include range and visibility flag as they're irrelevant.
-	return oo::NSStringOrNil([self descriptionForObjDumpBasic]);
+	return [self descriptionForObjDumpBasic];
 }
 #endif
 

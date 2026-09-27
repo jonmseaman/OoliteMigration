@@ -304,7 +304,7 @@ enum OOScanClass
 
 #ifndef NDEBUG
 - (std::optional<std::string>) descriptionForObjDumpBasic;
-- (id) descriptionForObjDump;	// shared selector (proposed ADR-0043): an Objective-C string
+- (std::optional<std::string>) descriptionForObjDump;	// flipped with its family (bead oo-3rb.278)
 
 - (id) allTextures;	// shared selector (proposed ADR-0043): an Objective-C set of textures
 #endif
