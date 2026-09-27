@@ -386,6 +386,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (NSUInteger) statusPage;
 - (void) refreshStarChart;
 - (void) setStarChartTitle;
+- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
 
 - (OOSystemID) targetNextFoundSystem:(int)direction;
 
