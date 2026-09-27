@@ -46,6 +46,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Encoding.hpp"
 #import "NSDataOOExtensions.h"
@@ -94,8 +95,6 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 
 - (id)init
 {
-	NSUserDefaults				*defaults = nil;
-
 	self = [super init];
 	if (self != nil)
 	{
@@ -103,8 +102,7 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 																										   inFolder:@"Config"
 																										   andMerge:YES])];
 
-		defaults = [NSUserDefaults standardUserDefaults];
-		_configOverrides = [self normalizeConfigDictionary:oo::PListFrom([defaults dictionaryForKey:@"debug-settings-override"])];
+		_configOverrides = [self normalizeConfigDictionary:oo::Defaults::standard().dictionaryForKey("debug-settings-override")];
 		
 		_TCPIgnoresDroppedPackets = NO;
 		
@@ -751,7 +749,7 @@ struct EntityDumpState
 {
 	if (_configOverrides)
 	{
-		[[NSUserDefaults standardUserDefaults] setObject:oo::ObjectFromPList(_configOverrides) forKey:@"debug-settings-override"];
+		oo::Defaults::standard().setObject("debug-settings-override", _configOverrides);
 	}
 
 	[self disconnectDebuggerWithMessage:"Oolite is terminating."];

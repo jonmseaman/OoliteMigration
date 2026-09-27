@@ -56,6 +56,7 @@ MA 02110-1301, USA.
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/PListParsing.hpp"
 
 #import "OOManifestProperties.h"
@@ -495,7 +496,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (std::optional<std::string>) dataURL
 {
 	/* Not expected to be set in general, but might be useful for some users */
-	const std::optional<std::string> url = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:oo::NSStringFrom(kOOOXZDataConfig)]);
+	const std::optional<std::string> url = oo::Defaults::standard().stringForKey(kOOOXZDataConfig);
 	if (url.has_value())
 	{
 		return url;
