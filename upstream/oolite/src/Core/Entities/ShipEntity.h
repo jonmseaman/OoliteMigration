@@ -788,7 +788,7 @@ typedef enum
 - (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
 - (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
 - (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
-- (id) identFromShip:(ShipEntity*) otherShip; // shared selector (proposed ADR-0043): an Objective-C string. Name displayed to other ships
+- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 
 - (BOOL) hasRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
 - (OORoleSet *)roleSet;

@@ -5579,7 +5579,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if ([target_entity respondsToSelector:@selector(identFromShip:)])
 	{
-		result = oo::OptionalString([(ShipEntity*)target_entity identFromShip:self]);
+		result = [(ShipEntity*)target_entity identFromShip:self];
 	}
 
 	if (!result.has_value())  result = oo::StdString(DESC(@"unknown-target"));
@@ -12535,7 +12535,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if ([self primaryTarget] == nil) return;
 	
 	const std::string fmt = missile ? "missile-locked-onto-target" : "ident-locked-onto-target";
-	const std::string target = oo::StdString([[self primaryTarget] identFromShip:self]);	// (nil raised in the expansion)
+	const std::string target = [[self primaryTarget] identFromShip:self].value_or("");	// (disengaged raised in the expansion; was nil)
 	[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), fmt, { { "target", oo::PList(target) } })) forCount:4.5];
 }
 
