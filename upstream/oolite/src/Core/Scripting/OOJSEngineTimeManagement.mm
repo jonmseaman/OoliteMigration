@@ -378,7 +378,7 @@ OOTimeProfile *OOJSEndProfiling(void)
 	std::vector<oo::ObjCRef<OOTimeProfileEntry *>> entries;
 	entries.reserve(sProfileInfo->size());
 	for (const auto &keyAndEntry : *sProfileInfo)  entries.emplace_back(keyAndEntry.second);
-	std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return [a.get() compareBySelfTimeReverse:b.get()] == NSOrderedAscending; });
+	std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return [a.get() compareBySelfTimeReverse:b.get()] == OOOrderedAscending; });
 	[result setProfileEntries:entries];
 	
 	if (sTracing)
@@ -960,37 +960,37 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 }
 
 
-- (NSComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareByTotalTime:(OOTimeProfileEntry *)other
 {
-	return (NSComparisonResult)-[self compareByTotalTimeReverse:other];
+	return (OOComparisonResult)-[self compareByTotalTimeReverse:other];
 }
 
 
-- (NSComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareByTotalTimeReverse:(OOTimeProfileEntry *)other
 {
 	double selfTotal = [self totalTimeSum];
 	double otherTotal = [other totalTimeSum];
 	
-	if (selfTotal < otherTotal)  return NSOrderedDescending;
-	if (selfTotal > otherTotal)  return NSOrderedAscending;
-	return NSOrderedSame;
+	if (selfTotal < otherTotal)  return OOOrderedDescending;
+	if (selfTotal > otherTotal)  return OOOrderedAscending;
+	return OOOrderedSame;
 }
 
 
-- (NSComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareBySelfTime:(OOTimeProfileEntry *)other
 {
-	return (NSComparisonResult)-[self compareBySelfTimeReverse:other];
+	return (OOComparisonResult)-[self compareBySelfTimeReverse:other];
 }
 
 
-- (NSComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other
+- (OOComparisonResult) compareBySelfTimeReverse:(OOTimeProfileEntry *)other
 {
 	double selfTotal = [self selfTimeSum];
 	double otherTotal = [other selfTimeSum];
 	
-	if (selfTotal < otherTotal)  return NSOrderedDescending;
-	if (selfTotal > otherTotal)  return NSOrderedAscending;
-	return NSOrderedSame;
+	if (selfTotal < otherTotal)  return OOOrderedDescending;
+	if (selfTotal > otherTotal)  return OOOrderedAscending;
+	return OOOrderedSame;
 }
 
 
