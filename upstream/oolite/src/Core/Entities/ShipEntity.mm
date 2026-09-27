@@ -7353,13 +7353,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (id) identFromShip:(ShipEntity*) otherShip	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip
 {
 	if ([self isJammingScanning] && ![otherShip hasMilitaryScannerFilter])
 	{
-		return DESC(@"unknown-target");
+		return oo::OptionalString(DESC(@"unknown-target"));
 	}
-	return [self displayName];
+	return oo::OptionalString([self displayName]);
 }
 
 
@@ -14255,7 +14255,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	if (selfName.has_value())
 	{
 		specials["[self:name]"] = *selfName;
-		const std::optional<std::string> targetName = oo::OptionalString([other_ship identFromShip: self]);
+		const std::optional<std::string> targetName = [other_ship identFromShip: self];
 		if (targetName.has_value())  specials["[target:name]"] = *targetName;
 	}
 	const std::optional<std::string> expandedMessage = oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(message_text), oo::ObjectFromPList(oo::PList(std::move(specials))), nil, nil, kOOExpandNoOptions));

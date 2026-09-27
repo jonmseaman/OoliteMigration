@@ -618,17 +618,17 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 }
 
 
-- (id) identFromShip:(ShipEntity*)ship	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) identFromShip:(ShipEntity*)ship
 {
 	if ([ship hasEquipmentItem:@"EQ_WORMHOLE_SCANNER"])
 	{
 		if ([self scanInfo] >= WH_SCANINFO_DESTINATION)
 		{
-			return oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-to-@")), { oo::DescriptionOf([UNIVERSE getSystemName:destination]) }));
+			return oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-to-@")), { oo::DescriptionOf([UNIVERSE getSystemName:destination]) });
 		}
 		else
 		{
-			return DESC(@"wormhole-desc");
+			return oo::OptionalString(DESC(@"wormhole-desc"));
 		}
 	}
 	else
@@ -639,7 +639,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 			http://aegidian.org/bb/viewtopic.php?p=128110#p128110
 			-- Ahruman 2011-01-27
 		*/
-		return nil;
+		return std::nullopt;
 	}
 
 }
