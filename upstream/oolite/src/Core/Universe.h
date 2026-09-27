@@ -543,7 +543,7 @@ enum
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
 - (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
 
-- (id) getRandomCommodity;	// shared selector (proposed ADR-0043): an Objective-C string (a commodity key)
+- (std::string) getRandomCommodity;	// a commodity key
 - (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;
 
 - (oo::PList) commodityDataForType:(const std::string &)type;	// null: no such good

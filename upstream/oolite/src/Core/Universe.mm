@@ -4456,7 +4456,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	OOCargoQuantity quantities[commodityCount];
 	OOCargoQuantity total_quantity = 0;
 
-	const std::vector<std::string>	goodsKeys = oo::StringsFrom([commodityMarket goods]);	// -goods is shared: an array of the keys
+	const std::vector<std::string>	goodsKeys = [commodityMarket goods];
 
 	for (const std::string &goodsKey : goodsKeys)
 	{
@@ -4552,14 +4552,14 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	if ([cargopod commodityType] == nil || ![cargopod commodityAmount])
 	{
-		const std::optional<std::string> aCommodity = oo::OptionalString([self getRandomCommodity]);
-		OOCargoQuantity aQuantity = aCommodity.has_value() ? [self cxx_getRandomAmountOfCommodity:*aCommodity] : 0;
-		[cargopod setCommodity:oo::NSStringOrNil(aCommodity) andAmount:aQuantity];
+		const std::string aCommodity = [self getRandomCommodity];
+		OOCargoQuantity aQuantity = [self cxx_getRandomAmountOfCommodity:aCommodity];
+		[cargopod setCommodity:oo::NSStringFrom(aCommodity) andAmount:aQuantity];
 	}
 }
 
 
-- (id) getRandomCommodity	// shared selector (proposed ADR-0043)
+- (std::string) getRandomCommodity
 {
 	return [commodities getRandomCommodity];
 }
@@ -4569,7 +4569,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	OOMassUnit		units;
 
-	units = [commodities massUnitForGood:oo::NSStringFrom(co_type)];	// OOCommodities is not migrated yet
+	units = [commodities massUnitForGood:co_type];
 	switch (units)
 	{
 		case 0 :	// TONNES
@@ -4607,7 +4607,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	if (commodity.isNull()) return std::string();
 
-	units = [commodityMarket massUnitForGood:oo::NSStringFrom(co_type)];	// shared: an Objective-C string
+	units = [commodityMarket massUnitForGood:co_type];
 	if (co_amount == 1)
 	{
 		switch (units)
@@ -10890,7 +10890,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (void) setUpCargoPods
 {
 	std::map<std::string, oo::ObjCRef<ShipEntity *>, std::less<>> tmp;
-	for (const std::string &type : oo::StringsFrom([commodities goods]))	// OOCommodities is not migrated yet
+	for (const std::string &type : [commodities goods])
 	{
 		ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
 		[container setScanClass:CLASS_CARGO];

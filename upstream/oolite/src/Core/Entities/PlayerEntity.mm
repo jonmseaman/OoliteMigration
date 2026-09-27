@@ -189,7 +189,7 @@ int marketSorterByQuantity(const std::string &a, const std::string &b, OOCommodi
 
 int marketSorterByMassUnit(const std::string &a, const std::string &b, OOCommodityMarket *market)
 {
-	int result = (int)[market massUnitForGood:oo::NSStringFrom(a)] - (int)[market massUnitForGood:oo::NSStringFrom(b)];
+	int result = (int)[market massUnitForGood:a] - (int)[market massUnitForGood:b];
 	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
 }
 
@@ -481,7 +481,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	NSAssert([self isDocked], @"Cannot unload cargo pods unless docked.");
 	
 	/* loads commodities from the cargo pods onto the ship's manifest */
-	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &good : [shipCommodityData goods])
 	{
 		[self unloadAllCargoPodsForType:good toManifest:shipCommodityData];
 	}
@@ -524,7 +524,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	unsigned j;
 	
 	OOCargoQuantity	quantity = [manifest cxx_quantityForGood:type];
-	OOMassUnit		units =	[manifest massUnitForGood:oo::NSStringFrom(type)];
+	OOMassUnit		units =	[manifest massUnitForGood:type];
 	
 	if (quantity > 0)
 	{
@@ -596,7 +596,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) loadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity)quantity
 {
-	OOMassUnit unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
+	OOMassUnit unit = [shipCommodityData massUnitForGood:type];
 	
 	while (quantity)
 	{
@@ -659,7 +659,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) loadCargoPods
 {
 	/* loads commodities from the ships manifest into individual cargo pods */
-	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &good : [shipCommodityData goods])
 	{
 		[self loadCargoPodsForType:good fromManifest:shipCommodityData];
 	}
@@ -1711,11 +1711,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		OOCargoQuantity remainingExcess = (OOCargoQuantity)excessCargo;
 		
 		// manifest always contains entries for all 17 commodities, even if their quantity is 0.
-		foreach (type, [shipCommodityData goods])
+		for (const std::string &type : [shipCommodityData goods])
 		{
 			units =	[shipCommodityData massUnitForGood:type];
 
-			oldAmount = [shipCommodityData quantityForGood:type];
+			oldAmount = [shipCommodityData cxx_quantityForGood:type];
 			BOOL roundedTon = (units != UNITS_TONS) && ((units == UNITS_KILOGRAMS && oldAmount > MAX_KILOGRAMS_IN_SAFE) || (units == UNITS_GRAMS && oldAmount > MAX_GRAMS_IN_SAFE));
 			if (roundedTon || (units == UNITS_TONS && oldAmount > 0))
 			{
@@ -1742,7 +1742,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 						partAmount = 0;
 					}
 				}
-				[shipCommodityData removeQuantity:toRemove forGood:type];
+				[shipCommodityData cxx_removeQuantity:toRemove forGood:type];
 			}
 		}
 	}
@@ -8458,7 +8458,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	oo::PList::Array	list;
 
-	const std::vector<std::string> goods = oo::StringsFrom([shipCommodityData goods]);
+	const std::vector<std::string> goods = [shipCommodityData goods];
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity>	quantityInHold(commodityCount, 0);
 	std::vector<OOCargoQuantity>	containersInHold(commodityCount, 0);
@@ -8506,7 +8506,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	OOCargoQuantity amount;
 	unsigned		penalty = 0;
 
-	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &good : [shipCommodityData goods])
 	{
 		amount = [shipCommodityData cxx_quantityForGood:good];
 		penalty += [shipCommodityData cxx_exportLegalityForGood:good] * amount;
@@ -10853,7 +10853,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount
 {
-	OOMassUnit			unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
+	OOMassUnit			unit = [shipCommodityData massUnitForGood:type];
 	if([self cxx_specialCargo].has_value() && unit == UNITS_TONS) return 0;	// don't do anything if we've got a special cargo...
 	
 	OOCargoQuantity		oldAmount = [self cxx_cargoQuantityForType:type];
@@ -10922,11 +10922,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	*/
 	OOCargoQuantity		cargoQtyOnBoard = 0;
 
-	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &good : [shipCommodityData goods])
 	{
 		OOCargoQuantity quantity = [shipCommodityData cxx_quantityForGood:good];
 
-		OOMassUnit commodityUnits = [shipCommodityData massUnitForGood:oo::NSStringFrom(good)];
+		OOMassUnit commodityUnits = [shipCommodityData massUnitForGood:good];
 		
 		if (commodityUnits != UNITS_TONS)
 		{
@@ -11085,7 +11085,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	OOCargoQuantity available_units = [localMarket cxx_quantityForGood:good];
 	OOCargoQuantity units_in_hold = quantity;
 	OOCreditsQuantity pricePerUnit = [localMarket cxx_priceForGood:good];
-	OOMassUnit unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(good)];
+	OOMassUnit unit = [shipCommodityData massUnitForGood:good];
 
 	const std::string available = cxx_OOPadStringToEms(((available_units > 0) ? oo::str::format("%d",available_units) : oo::StdString(DESC(@"commodity-quantity-none"))), 2.5);
 
@@ -11191,7 +11191,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 
 	// following changed to work whether docked or not
-	const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:oo::StringsFrom([localMarket goods]) onMarket:localMarket] onMarket:localMarket];
+	const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 	NSInteger maxOffset = 0;
 	if (goods.size() > (GUI_ROW_MARKET_END-GUI_ROW_MARKET_START))
 	{
@@ -11392,7 +11392,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 
 	// following changed to work whether docked or not
-	const std::vector<std::string>	goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:oo::StringsFrom([localMarket goods]) onMarket:localMarket] onMarket:localMarket];
+	const std::vector<std::string>	goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 
 	NSUInteger			i, j, commodityCount = [shipCommodityData count];
 	OOCargoQuantity		quantityInHold[commodityCount];
@@ -11437,7 +11437,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		OOCargoQuantity contracted = [self cxx_contractedVolumeForGood:selectedCommodity];
 		if (contracted > 0)
 		{
-			OOMassUnit unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(selectedCommodity)];
+			OOMassUnit unit = [shipCommodityData massUnitForGood:selectedCommodity];
 			[gui setColor:[gui colorFromSetting:kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
 			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, oo::DescriptionOf(DisplayStringForMassUnit(unit)) }) forRow:GUI_ROW_MARKET_START+1];
 		}
@@ -11501,7 +11501,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	OOCommodityMarket	*localMarket = [self localMarket];
 	OOCreditsQuantity	pricePerUnit	= [localMarket cxx_priceForGood:index];
-	OOMassUnit			unit			= [localMarket massUnitForGood:oo::NSStringFrom(index)];
+	OOMassUnit			unit			= [localMarket massUnitForGood:index];
 
 	if (specialCargo.has_value() && unit == UNITS_TONS)
 	{

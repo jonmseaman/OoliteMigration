@@ -1071,7 +1071,7 @@ for (unsigned i=0;i<amount;i++)
 	// check available space
 
 	OOCargoQuantity		cargoSpaceRequired = qty;
-	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];	// shared selector (OOCommodities): an Objective-C string
+	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:type];	// shared selector (OOCommodities): an Objective-C string
 
 	if (contractCargoUnits == UNITS_KILOGRAMS)  cargoSpaceRequired /= 1000;
 	if (contractCargoUnits == UNITS_GRAMS)  cargoSpaceRequired /= 1000000;
@@ -1876,7 +1876,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		withArguments:oo::ObjectFromPList(oo::PList(std::move(buyArguments)))];
 
 	// sell all the commodities carried
-	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &good : [shipCommodityData goods])
 	{
 		[self trySellingCommodity:oo::NSStringFrom(good) all:YES];
 	}

@@ -1476,7 +1476,7 @@ static int shipsFound;
 		return;
 	}
 
-	unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
+	unit = [shipCommodityData massUnitForGood:type];
 	if (specialCargo && unit == UNITS_TONS)
 	{
 		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "cargo hold full with special cargo");
@@ -1505,9 +1505,9 @@ static int shipsFound;
 
 	OO_LOG(kOOLogNoteRemoveAllCargo, "{} removeAllCargo", forceRemoval ? "Forcing" : "Going to");
 
-	for (const std::string &type : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &type : [shipCommodityData goods])
 	{
-		if ([shipCommodityData massUnitForGood:oo::NSStringFrom(type)] == UNITS_TONS)
+		if ([shipCommodityData massUnitForGood:type] == UNITS_TONS)
 		{
 			[shipCommodityData cxx_setQuantity:0 forGood:type];
 		}

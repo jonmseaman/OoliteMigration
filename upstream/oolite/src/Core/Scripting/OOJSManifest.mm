@@ -273,7 +273,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	{
 		std::string key = oo::StdString(OOStringFromJSString(context, ooscript::idToString(propID)));
 
-		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(key)];
+		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:key];
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
 		if (unit == UNITS_TONS && [entity specialCargo])
 		{

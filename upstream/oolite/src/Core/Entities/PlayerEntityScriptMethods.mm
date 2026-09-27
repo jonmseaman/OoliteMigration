@@ -123,7 +123,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	
 	OOLog(@"script.debug.note.awardCargo", @"Going to award cargo: %d x '%@'", amount, oo::NSStringFrom(type));
 
-	unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
+	unit = [shipCommodityData massUnitForGood:type];
 	
 	if ([self status] != STATUS_DOCKED)
 	{

@@ -88,9 +88,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 }
 
 
-- (id) goods
+- (std::vector<std::string>) goods
 {
-	return oo::NSArrayFromStrings([self sortedGoodKeys]);
+	return [self sortedGoodKeys];
 }
 
 
@@ -236,9 +236,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 }
 
 
-- (OOMassUnit) massUnitForGood:(id)good
+- (OOMassUnit) massUnitForGood:(const std::string &)good
 {
-	const oo::PList *definition = [self definitionPointerForGood:oo::StdString(good)];
+	const oo::PList *definition = [self definitionPointerForGood:good];
 	if (definition == nullptr)
 	{
 		return UNITS_TONS;

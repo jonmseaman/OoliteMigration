@@ -8439,7 +8439,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	}
 	// pod content should never be greater than 1 ton or this will give cargo counting problems elsewhere in the code.
 	// so do first a mass check for cargo added by script/plist.
-	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(*co_type)];
+	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:*co_type];
 	if (unit == UNITS_TONS && co_amount > 1) co_amount = 1;
 	else if (unit == UNITS_KILOGRAMS && co_amount > 1000) co_amount = 1000;
 	else if (unit == UNITS_GRAMS && co_amount > 1000000) co_amount = 1000000;
@@ -8513,7 +8513,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	oo::PList::Array	list;
 
-	const std::vector<std::string> goods = oo::StringsFrom([[UNIVERSE commodityMarket] goods]);
+	const std::vector<std::string> goods = [[UNIVERSE commodityMarket] goods];
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
 
@@ -13085,7 +13085,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	*/
 	if (!co_type.has_value() && co_amount > 0)
 	{
-		co_type = oo::OptionalString([UNIVERSE getRandomCommodity]);
+		co_type = std::optional<std::string>([UNIVERSE getRandomCommodity]);
 		co_amount = [UNIVERSE getRandomAmountOfCommodity:oo::NSStringOrNil(co_type)];
 	}
 

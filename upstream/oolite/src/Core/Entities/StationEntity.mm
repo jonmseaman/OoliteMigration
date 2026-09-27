@@ -186,7 +186,7 @@ std::optional<std::string> OptionalStringValue(id object)
 {
 	OOCreditsQuantity penalty, status = 0;
 	OOCommodityMarket *market = [self localMarket];
-	for (const std::string &good : oo::StringsFrom([market goods]))
+	for (const std::string &good : [market goods])
 	{
 		if (isExport)
 		{
