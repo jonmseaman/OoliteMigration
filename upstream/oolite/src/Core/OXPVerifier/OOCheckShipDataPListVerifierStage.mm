@@ -127,10 +127,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	OOFileScannerVerifierStage	*fileScanner = nil;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"shipdata.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -142,10 +139,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	std::vector<std::string>	shipList;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	_shipdataPList = oo::PListFrom([fileScanner plistNamed:@"shipdata.plist"
-												 inFolder:@"Config"
-										   referencedFrom:nil
-											 checkBuiltIn:NO]);
+	_shipdataPList = [fileScanner cxx_plistNamed:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 
 	if (_shipdataPList.isNull())  return;
 

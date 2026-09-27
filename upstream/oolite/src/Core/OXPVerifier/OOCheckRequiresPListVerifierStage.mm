@@ -64,10 +64,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 	OOFileScannerVerifierStage	*fileScanner = nil;
 	
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"requires.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"requires.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -84,10 +81,7 @@ std::optional<std::string> VersionStringForKey(const oo::PList &requiresPList, s
 											maxVersionComponents;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	requiresPList = oo::PListFrom([fileScanner plistNamed:@"requires.plist"
-												inFolder:@"Config"
-										  referencedFrom:nil
-											checkBuiltIn:NO]);
+	requiresPList = [fileScanner cxx_plistNamed:"requires.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 
 	if (requiresPList.isNull())  return;
 

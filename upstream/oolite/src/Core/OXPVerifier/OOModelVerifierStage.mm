@@ -107,10 +107,7 @@ static const char * const kStageName	= "Testing models";
 	else context = fileName;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	if (![fileScanner fileExists:oo::NSStringFrom(name)
-						inFolder:@"Models"
-				  referencedFrom:oo::NSStringFrom(context)
-					checkBuiltIn:YES])
+	if (![fileScanner cxx_fileExists:name inFolder:"Models" referencedFrom:context checkBuiltIn:YES])
 	{
 		return NO;
 	}

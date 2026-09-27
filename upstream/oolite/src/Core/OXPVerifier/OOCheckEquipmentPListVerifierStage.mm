@@ -72,10 +72,7 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 	OOFileScannerVerifierStage	*fileScanner = nil;
 	
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"equipment.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"equipment.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -86,10 +83,7 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 
 	fileScanner = [[self verifier] fileScannerStage];
 
-	equipmentPList = oo::PListFrom([fileScanner plistNamed:@"equipment.plist"
-												 inFolder:@"Config"
-										   referencedFrom:nil
-											 checkBuiltIn:NO]);
+	equipmentPList = [fileScanner cxx_plistNamed:"equipment.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 
 	if (equipmentPList.isNull())  return;
 

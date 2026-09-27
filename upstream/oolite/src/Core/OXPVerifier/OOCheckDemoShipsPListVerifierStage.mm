@@ -54,10 +54,7 @@ static const char * const kStageName	= "Checking demoships.plist";
 	OOFileScannerVerifierStage	*fileScanner = nil;
 	
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"demoships.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"demoships.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -69,10 +66,7 @@ static const char * const kStageName	= "Checking demoships.plist";
 	
 	fileScanner = [[self verifier] fileScannerStage];
 	
-	demoshipsPList = oo::PListFrom([fileScanner plistNamed:@"demoships.plist"
-												 inFolder:@"Config"
-										   referencedFrom:nil
-											 checkBuiltIn:NO]);
+	demoshipsPList = [fileScanner cxx_plistNamed:"demoships.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 	
 	if (demoshipsPList.isNull())  return;
 	
@@ -84,10 +78,7 @@ static const char * const kStageName	= "Checking demoships.plist";
 	}
 	
 	
-	shipdataPList = oo::PListFrom([fileScanner plistNamed:@"shipdata.plist"
-												inFolder:@"Config"
-										  referencedFrom:nil
-											checkBuiltIn:NO]);
+	shipdataPList = [fileScanner cxx_plistNamed:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 	
 	if (shipdataPList.isNull())  return;
 	
