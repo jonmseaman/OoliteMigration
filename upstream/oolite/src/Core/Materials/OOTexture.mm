@@ -45,6 +45,7 @@
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 namespace {
@@ -493,7 +494,7 @@ const char *sGlobalTraceContext = nullptr;
 		 * needed to generate a planet texture compared with loading a
 		 * standard one may be why this problem shows up.  - CIM 20140122
 		 */
-		NSAssert2(0, @"Texture retain count error for %@; cacheKey is %@.", self, oo::NSStringFrom(*cacheKey)); //miscount in autorelease
+		OOAssert(0, "Texture retain count error for %s; cacheKey is %s.", oo::DescriptionOf(self).c_str(), cacheKey->c_str()); //miscount in autorelease
 		// The following line is needed in order to avoid crashes when there's a 'texture retain count error'. Please do not delete. -- Kaks 20091221
 		[sRecentTextures removeObjectForKey:oo::NSStringFrom(*cacheKey)]; // make sure there's no reference left inside sRecentTexture ( was a show stopper for 1.73)
 	}

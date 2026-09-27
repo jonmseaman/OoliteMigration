@@ -31,6 +31,7 @@ SOFTWARE.
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 /*
@@ -148,7 +149,7 @@ void InitOOJSFrameCallbacks(ooscript::Context context, ooscript::Object global)
 
 void OOJSFrameCallbacksInvoke(OOTimeDelta inDeltaT)
 {
-	NSCAssert1(!sRunning, @"%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
+	OOCAssert(!sRunning, "%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
 	if (sCount != 0)
 	{
@@ -192,7 +193,7 @@ void OOJSFrameCallbacksInvoke(OOTimeDelta inDeltaT)
 
 void OOJSFrameCallbacksRemoveAll(void)
 {
-	NSCAssert1(!sRunning, @"%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
+	OOCAssert(!sRunning, "%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
 	if (sCount != 0)
 	{
@@ -309,9 +310,9 @@ static bool GlobalIsValidFrameCallback(ooscript::Context context, ooscript::Call
 namespace {
 static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString)
 {
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
-	NSCParameterAssert(errorString != NULL);
-	NSCAssert1(!sRunning, @"%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOCParameterAssert(errorString != NULL);
+	OOCAssert(!sRunning, "%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
 	if (EXPECT_NOT(sCount == sSpace))
 	{
@@ -345,8 +346,8 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 namespace {
 static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString)
 {
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
-	NSCParameterAssert(errorString != NULL);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOCParameterAssert(errorString != NULL);
 	
 	NSUInteger newSpace = MAX(sSpace * 2, (NSUInteger)kMinCount);
 	
@@ -397,7 +398,7 @@ static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::strin
 
 static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex)
 {
-	NSCParameterAssert(outIndex != NULL);
+	OOCParameterAssert(outIndex != NULL);
 	
 	/*	It is assumed that few frame callbacks will be active at once, so a
 		linear search is reasonable. If they become unexpectedly popular, we
@@ -420,8 +421,8 @@ static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex)
 
 static BOOL RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t trackingID)
 {
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
-	NSCAssert1(!sRunning, @"%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOCAssert(!sRunning, "%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
 	NSUInteger index = 0;
 	if (GetIndexForTrackingID(trackingID, &index))
@@ -436,9 +437,9 @@ static BOOL RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t tra
 
 static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index)
 {
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
-	NSCParameterAssert(index < sCount && sCallbacks != NULL);
-	NSCAssert1(!sRunning, @"%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
+	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOCParameterAssert(index < sCount && sCallbacks != NULL);
+	OOCAssert(!sRunning, "%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
 	FCBLog("script.frameCallback.debug.remove", "Removing frame callback with tracking ID {}.", sCallbacks[index].trackingID);
 	
@@ -460,7 +461,7 @@ static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index)
 namespace {
 static void QueueDeferredOperation(const std::string &opType, uint32_t trackingID, OOJSValue *value)
 {
-	NSCAssert1(sRunning, @"%s can only be called while frame callbacks are running.", __PRETTY_FUNCTION__);
+	OOCAssert(sRunning, "%s can only be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
 	if (sDeferredOps == NULL)  sDeferredOps = new std::vector<DeferredOperation>;
 	sDeferredOps->push_back(DeferredOperation{ opType, trackingID, oo::ObjCRef<OOJSValue *>(value) });

@@ -43,6 +43,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define DUMP_CONVERTED_CUBE_MAPS	0
@@ -251,7 +252,7 @@ static BOOL					sHaveSetUp = NO;
 	 originalWidth:(uint32_t *)outWidth
 	originalHeight:(uint32_t *)outHeight
 {
-	NSParameterAssert(result != NULL && outFormat != NULL);
+	OOParameterAssert(result != NULL && outFormat != NULL);
 	
 	BOOL		OK = YES;
 	
@@ -356,7 +357,7 @@ static BOOL					sHaveSetUp = NO;
 - (void) generateMipMapsForCubeMap
 {
 	// Generate mip maps for each cube face.
-	NSParameterAssert(_data != NULL);
+	OOParameterAssert(_data != NULL);
 	
 	uint8_t components = OOTextureComponentsForFormat(_format);
 	size_t srcSideSize = _width * _width * components;	// Space for one side without mip-maps.

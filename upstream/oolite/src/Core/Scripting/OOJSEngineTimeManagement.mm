@@ -34,6 +34,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #if OOLITE_LINUX
 // Workaround for clang/glibc incompatibility.
@@ -797,7 +798,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 
 - (id) initWithCName:(const char *)name
 {
-	NSAssert(sProfiling, @"Can't create profile entries while not profiling.");
+	OOAssert(sProfiling, "Can't create profile entries while not profiling.");
 	
 	if ((self = [super init]))
 	{
