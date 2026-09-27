@@ -5,7 +5,6 @@ OOPListSchemaVerifier.h
 Utility class to verify the structure of a property list based on a schema
 (which is itself a property list).
 
-
 Copyright (C) 2007-2013 Jens Ayton
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,13 +31,12 @@ SOFTWARE.
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOFunctionAttributes.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-
 
 @interface OOPListSchemaVerifier: OOObject
 {
@@ -69,7 +67,6 @@ SOFTWARE.
 
 @end
 
-
 @interface NSObject (OOPListSchemaVerifierDelegate)
 
 // Handle "delegated types". Return YES for valid, NO for invalid.
@@ -95,7 +92,6 @@ withPropertyList:(id)rootPList
 
 @end
 
-
 // NSError domain and codes used to report schema verifier errors (UTF-8; the NSError's domain and
 // userInfo keys are these texts).
 extern const char * const kOOPListSchemaVerifierErrorDomain;
@@ -113,7 +109,6 @@ extern const char * const kErrorsByOptionErrorKey;		// Dictionary of errors for 
 
 extern const char * const kUnknownTypeErrorKey;			// Set for kPListErrorSchemaUnknownType.
 extern const char * const kUndefinedMacroErrorKey;		// Set for kPListErrorSchemaUndefiniedMacroReference.
-
 
 // All plist verifier errors have a short error description in their -localizedFailureReason.
 
@@ -156,11 +151,9 @@ typedef enum
 	kPListErrorLastErrorCode
 } OOPListSchemaVerifierErrorCode;
 
-
 OOINLINE BOOL OOPlistErrorIsSchemaError(OOPListSchemaVerifierErrorCode error)
 {
 	return kPListErrorStartOfSchemaErrors < error && error < kPListErrorLastErrorCode;
 }
-
 
 #endif	// OO_OXP_VERIFIER_ENABLED
