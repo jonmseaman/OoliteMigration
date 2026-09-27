@@ -8,7 +8,6 @@ OOMaterial.
 Note: OOTexture is abstract. The factory methods return instances of
 OOConcreteTexture, but special-case implementations are possible.
 
-
 Copyright (C) 2007-2013 Jens Ayton and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,7 +30,7 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 
 #import "OOOpenGL.h"
 #import "OOPixMap.h"
@@ -42,7 +41,6 @@ SOFTWARE.
 #include "oofnd/objc/OOObjCRef.h"
 
 @class OOTextureLoader, OOTextureGenerator;
-
 
 enum
 {
@@ -98,13 +96,10 @@ enum
 									kOOTextureDefinedFlags & ~(kOOTextureRepeatS | kOOTextureRepeatT)
 };
 
-
 typedef uint32_t OOTextureFlags;
-
 
 #define kOOTextureDefaultAnisotropy		0.5
 #define kOOTextureDefaultLODBias		-0.25
-
 
 enum
 {
@@ -115,7 +110,6 @@ enum
 	kOOTextureDataGrayscaleAlpha	= kOOPixMapGrayscaleAlpha	// GL_LUMINANCE_ALPHA
 };
 typedef OOPixMapFormat OOTextureDataFormat;
-
 
 /*	Foundation sweep (proposed ADR-0043 Amendments 1-2, bead oo-japz): names and folders are UTF-8
 	std::strings (std::optional where the old code accepted nil); texture specifiers and
@@ -230,7 +224,6 @@ typedef OOPixMapFormat OOTextureDataFormat;
 - (BOOL) isRectangleTexture;
 - (BOOL) isCubeMap;
 
-
 /*	Dimensions in texture coordinates.
 	
 	If kOOTextureAllowRectTexture is set, and GL_EXT_texture_rectangle is
@@ -281,18 +274,14 @@ typedef OOPixMapFormat OOTextureDataFormat;
 
 @end
 
-
 /*	The specifier for object (a string, a dictionary, or null for the default name), or null.
 	A dictionary without a string "name" gets defaultName, if given.
 */
 oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::optional<std::string> &defaultName);
 
-
 uint8_t OOTextureComponentsForFormat(OOTextureDataFormat format);
 
-
 BOOL OOCubeMapsAvailable(void);
-
 
 /*	cxx_OOInterpretTextureSpecifier()
 	
@@ -316,7 +305,6 @@ oo::PList cxx_OOMakeTextureSpecifier(const std::string &name, OOTextureFlags opt
 */
 OOTextureFlags OOApplyTextureOptionDefaults(OOTextureFlags options);
 
-
 // Texture specifier keys.
 inline constexpr const char *cxx_kOOTextureSpecifierNameKey = "name";
 inline constexpr const char *cxx_kOOTextureSpecifierSwizzleKey = "extract_channel";
@@ -336,7 +324,6 @@ inline constexpr const char *cxx_kOOTextureSpecifierIlluminationModeKey = "illum
 inline constexpr const char *cxx_kOOTextureSpecifierSelfColorKey = "self_color";
 inline constexpr const char *cxx_kOOTextureSpecifierScaleFactorKey = "scale_factor";
 inline constexpr const char *cxx_kOOTextureSpecifierBindingKey = "binding";
-
 
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
 	declared before bead oo-japz, forwarding to the cxx_ API above, so unmigrated callers compile
