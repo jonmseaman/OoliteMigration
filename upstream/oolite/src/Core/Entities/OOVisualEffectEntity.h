@@ -35,15 +35,15 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class	OOColor, OOMesh, OOScript, OOJSScript;
+@class	OOColor, OOMesh, OOScript, OOJSScript, OOFlasherEntity;
 
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-ensq). The effect definition and script_info are
 	oo::PLists (script_info null where it was nil); the effect key and beacon strings are
 	std::optional (nullopt where they were nil). The subentity list is nullopt until the first
-	subentity is added and again after -clearSubEntities, as the array was nil. Shared selectors
-	(-initWithKey:definition:, -subEntities, -subEntityEnumerator, -flasherEnumerator, -scriptInfo,
-	the beacon accessors) keep Objective-C object types, spelled id.
+	subentity is added and again after -clearSubEntities, as the array was nil. -subEntities /
+	-subEntityEnumerator / -flasherEnumerator return std::vector snapshots (empty where the
+	array was nil).
 */
 using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>>;
 
@@ -107,14 +107,14 @@ using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>
 - (BOOL) setUpSubEntities;
 - (void) removeSubEntity:(Entity<OOSubEntity> *)sub;
 - (void) setNoDrawDistance;
-- (id)subEntities;	// shared selector (proposed ADR-0043): an Objective-C array, nil before the first subentity
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty before the first subentity (was nil)
 - (NSUInteger) subEntityCount;
 - (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator;	// the visual-effect subentities; nullopt where the array was nil
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (id)subEntityEnumerator;	// shared selector (proposed ADR-0043): an Objective-C enumerator over a snapshot
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
 - (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator;
-- (id)flasherEnumerator;	// shared selector (proposed ADR-0043): an Objective-C enumerator over a snapshot
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
 
 - (void) orientationChanged;
 - (Vector) forwardVector;

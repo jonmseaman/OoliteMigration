@@ -60,8 +60,8 @@ MA 02110-1301, USA.
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent;
 
 - (void) addSubEntity:(Entity<OOSubEntity> *) subent;
-- (BOOL) setUpOneSubentity:(id) subentDict;	// shared selector (proposed ADR-0043, ShipEntity): an Objective-C dictionary or nil
-- (BOOL) setUpOneFlasher:(id) subentDict;	// shared selector (proposed ADR-0043, ShipEntity): an Objective-C dictionary
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict;
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict;
 - (BOOL) setUpOneStandardSubentity:(const oo::PList &)subentDict;
 
 @end
@@ -296,7 +296,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
 		const oo::PList *subentDict = subs->at<oo::PList::Dict>(i);	// nil for anything but a dictionary
-		[self setUpOneSubentity:subentDict != nullptr ? oo::ObjectFromPList(*subentDict) : nil];
+		[self setUpOneSubentity:subentDict != nullptr ? *subentDict : oo::PList()];
 	}
 
 	[self setNoDrawDistance];
@@ -320,13 +320,12 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (BOOL) setUpOneSubentity:(id) subentDictObject	// shared selector (proposed ADR-0043)
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
 {
-	const oo::PList subentDict = oo::PListFrom(subentDictObject);
 	const std::optional<std::string> type = OptionalStringForKey(subentDict, "type");
 	if (type == "flasher")
 	{
-		return [self setUpOneFlasher:subentDictObject];
+		return [self setUpOneFlasher:subentDict];
 	}
 	else
 	{
@@ -337,9 +336,8 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (BOOL) setUpOneFlasher:(id) subentDictObject	// shared selector (proposed ADR-0043)
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
 {
-	const oo::PList subentDict = oo::PListFrom(subentDictObject);
 	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
 	[flasher setPosition:subentDict ? OOHPVectorFromObject(ObjectForKey(subentDict, "position"), kZeroHPVector) : kZeroHPVector];
 	[self addSubEntity:flasher];
@@ -398,9 +396,16 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (id)subEntities	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities
 {
-	return subEntities.has_value() ? oo::NSArrayFromObjects(*subEntities) : nil;
+	if (!subEntities.has_value())  return {};
+	std::vector<oo::ObjCRef<Entity *>> result;
+	result.reserve(subEntities->size());
+	for (const auto &sub : *subEntities)
+	{
+		result.emplace_back(sub.get());
+	}
+	return result;
 }
 
 
@@ -424,9 +429,9 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (id)subEntityEnumerator	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator
 {
-	return [[self subEntities] objectEnumerator];
+	return [self subEntities];
 }
 
 
@@ -436,16 +441,16 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (id)flasherEnumerator	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator
 {
-	if (!subEntities.has_value())  return nil;
-	std::vector<Entity<OOSubEntity> *> flashers;
+	std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers;
+	if (!subEntities.has_value())  return flashers;
 	for (const auto &sub : *subEntities)
 	{
 		if (![sub.get() isFlasher])  continue;
-		flashers.push_back(sub.get());
+		flashers.emplace_back((OOFlasherEntity *)sub.get());
 	}
-	return [oo::NSArrayFromObjects(flashers) objectEnumerator];
+	return flashers;
 }
 
 

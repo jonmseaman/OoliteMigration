@@ -277,8 +277,8 @@ std::set<std::string> NamesInArrayForKey(const oo::PList &dict, std::string_view
 - (void) rescaleBy:(GLfloat)factor;
 - (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
 
-- (BOOL) setUpOneSubentity:(id) subentDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
-- (BOOL) setUpOneFlasher:(id) subentDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict;
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict;
 
 - (Entity<OOStellarBody> *) lastAegisLock;
 
@@ -999,7 +999,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
 		const oo::PList *subentDict = subs->at(i);
-		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? oo::ObjectFromPList(*subentDict) : nil];
+		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? *subentDict : oo::PList()];
 	}
 	
 	no_draw_distance = _profileRadius * _profileRadius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
@@ -1025,30 +1025,28 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (BOOL) setUpOneSubentity:(id) subentDict	// shared selector (proposed ADR-0043)
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
 {
 	OOJS_PROFILE_ENTER
 
-	const oo::PList		dict = oo::PListFrom(subentDict);
-	const std::optional<std::string> type = StringForKey(dict, "type");
+	const std::optional<std::string> type = StringForKey(subentDict, "type");
 	if (type == "flasher")
 	{
 		return [self setUpOneFlasher:subentDict];
 	}
 	else
 	{
-		return [self cxx_setUpOneStandardSubentity:dict asTurret:type == "ball_turret"];
+		return [self cxx_setUpOneStandardSubentity:subentDict asTurret:type == "ball_turret"];
 	}
 
 	OOJS_PROFILE_EXIT
 }
 
 
-- (BOOL) setUpOneFlasher:(id) subentDict	// shared selector (proposed ADR-0043)
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
 {
-	const oo::PList dict = oo::PListFrom(subentDict);
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:dict];
-	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(dict, "position"),_scaleFactor)];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor)];
 	[flasher rescaleBy:_scaleFactor];
 	[self addSubEntity:flasher];
 	return YES;
@@ -1405,10 +1403,9 @@ DESTROY(laser_color);
 }
 
 
-- (id) subEntities	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntities
 {
-	if (subEntities.empty())  return nil;
-	return oo::NSArrayFromObjects(subEntities);
+	return subEntities;
 }
 
 
@@ -1425,9 +1422,9 @@ DESTROY(laser_color);
 }
 
 
-- (id) subEntityEnumerator	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator
 {
-	return [oo::NSArrayFromObjects(subEntities) objectEnumerator];
+	return subEntities;
 }
 
 
@@ -1442,14 +1439,14 @@ DESTROY(laser_color);
 }
 
 
-- (id) flasherEnumerator	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator
 {
-	std::vector<oo::ObjCRef<Entity *>> flashers;
+	std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers;
 	for (const auto &sub : subEntities)
 	{
-		if ([sub.get() isFlasher])  flashers.push_back(sub);
+		if ([sub.get() isFlasher])  flashers.emplace_back((OOFlasherEntity *)sub.get());
 	}
-	return [oo::NSArrayFromObjects(flashers) objectEnumerator];
+	return flashers;
 }
 
 

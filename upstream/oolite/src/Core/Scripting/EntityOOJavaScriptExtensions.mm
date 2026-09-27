@@ -130,9 +130,14 @@ MA 02110-1301, USA.
 }
 
 
-- (id) subEntitiesForScript	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript
 {
-	return [[self shipSubEntityEnumerator] allObjects];
+	std::vector<oo::ObjCRef<Entity *>> result;
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		result.emplace_back(sub.get());
+	}
+	return result;
 }
 
 

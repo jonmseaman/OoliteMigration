@@ -297,10 +297,17 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 	return YES;
 }
 
-- (id) subEntitiesForScript	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript
 {
 	const auto subs = [self visualEffectSubEntityEnumerator];
-	return subs.has_value() ? oo::NSArrayFromObjects(*subs) : nil;	// nil before the first subentity, as before
+	if (!subs.has_value())  return {};
+	std::vector<oo::ObjCRef<Entity *>> result;
+	result.reserve(subs->size());
+	for (const auto &sub : *subs)
+	{
+		result.emplace_back(sub.get());
+	}
+	return result;
 }
 
 @end
@@ -392,7 +399,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			return VectorToJSValue(context, [entity shaderVector2], value_raw);
 
 		case kVisualEffect_subEntities:
-			result = [entity subEntitiesForScript];
+			{
+				// nil before the first subentity (was [subEntitiesForScript] == nil)
+				const auto subs = [entity visualEffectSubEntityEnumerator];
+				result = subs.has_value() ? oo::NSArrayFromObjects(*subs) : nil;
+			}
 			break;
 			
 			
@@ -881,12 +892,12 @@ static bool VisualEffectRestoreSubEntities(ooscript::Context cx, ooscript::CallA
 	
 	GET_THIS_EFFECT(thisEnt);
 	
-	NSUInteger subCount = [[thisEnt subEntitiesForScript] count];
+	NSUInteger subCount = [thisEnt subEntitiesForScript].size();
 	
 	[thisEnt clearSubEntities];
 	[thisEnt setUpSubEntities];
 	
-	if ([[thisEnt subEntitiesForScript] count] - subCount > 0)  numSubEntitiesRestored = [[thisEnt subEntitiesForScript] count] - subCount;
+	if ([thisEnt subEntitiesForScript].size() - subCount > 0)  numSubEntitiesRestored = [thisEnt subEntitiesForScript].size() - subCount;
 	
 	OOJS_RETURN_BOOL(numSubEntitiesRestored > 0);
 	

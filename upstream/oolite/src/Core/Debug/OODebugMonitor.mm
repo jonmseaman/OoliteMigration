@@ -500,9 +500,9 @@ struct EntityDumpState
 	oo::log::indent();
 	if ([entity isShip])
 	{
-		for (id subentity in [entity subEntityEnumerator])
+		for (const auto &subRef : [(ShipEntity *)entity subEntityEnumerator])
 		{
-			[self dumpEntity:subentity withState:state parentVisible:visible];
+			[self dumpEntity:subRef.get() withState:state parentVisible:visible];
 		}
 
 		if ([entity isPlayer])
