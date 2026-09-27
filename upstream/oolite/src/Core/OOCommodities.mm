@@ -437,12 +437,12 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 }
 
 
-- (id) goods
+- (std::vector<std::string>) goods
 {
 	// key order (was -allKeys, hash order)
 	std::vector<std::string> keys;
 	for (const auto &entry : _commodityLists)  keys.push_back(entry.first);
-	return oo::NSArrayFromStrings(keys);
+	return keys;
 }
 
 
@@ -467,19 +467,19 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 
 
 
-- (id) getRandomCommodity
+- (std::string) getRandomCommodity
 {
 	// Ranrot() % count indexes the keys in key order (was -allKeys, hash order).
 	NSUInteger idx = Ranrot() % _commodityLists.size();
 	auto entry = _commodityLists.begin();
 	std::advance(entry, idx);
-	return oo::NSStringFrom(entry->first);
+	return entry->first;
 }
 
 
-- (OOMassUnit) massUnitForGood:(id)good
+- (OOMassUnit) massUnitForGood:(const std::string &)good
 {
-	const auto entry = _commodityLists.find(oo::StdString(good));
+	const auto entry = _commodityLists.find(good);
 	if (entry == _commodityLists.end() || !entry->second.isDict())
 	{
 		return UNITS_TONS;

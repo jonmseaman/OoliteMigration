@@ -3167,7 +3167,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((!pageUpDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 				if (goods.size() > 0)
 				{
 					const std::optional<std::string> selected = marketSelectedCommodity;
@@ -3221,7 +3221,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 				if (goods.size() > 0)
 				{
 					const std::optional<std::string> selected = marketSelectedCommodity;
