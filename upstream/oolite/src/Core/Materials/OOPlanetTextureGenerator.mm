@@ -337,11 +337,6 @@ enum
 }
 
 
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
-
 
 - (std::optional<std::string>) cacheKeyForType:(const std::string &)type
 {
@@ -1237,11 +1232,6 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 }
 
 
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
-
 
 - (uint32_t) textureOptions
 {
@@ -1329,11 +1319,6 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	return _cacheKey;
 }
 
-
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
 
 
 - (uint32_t) textureOptions

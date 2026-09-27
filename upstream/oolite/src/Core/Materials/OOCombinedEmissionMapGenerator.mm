@@ -282,7 +282,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 	
 	if (!illuminationDesc.empty())
 	{
-		cacheKey += oo::str::format("illumination:{%s}*{%s}", illuminationDesc.c_str(), oo::StdString([_diffuseMap cacheKey]).c_str());
+		cacheKey += oo::str::format("illumination:{%s}*{%s}", illuminationDesc.c_str(), [_diffuseMap cxx_cacheKey].value_or("").c_str());
 		if (_illuminationColor != nil)
 		{
 			const std::optional<std::string> rgba = [_illuminationColor cxx_rgbaDescription];
@@ -385,11 +385,6 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 	return _cacheKey;
 }
 
-
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
 
 
 - (void) loadTexture

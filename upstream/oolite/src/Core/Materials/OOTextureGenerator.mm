@@ -56,11 +56,6 @@ SOFTWARE.
 }
 
 
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
-
 
 - (BOOL) enqueue
 {

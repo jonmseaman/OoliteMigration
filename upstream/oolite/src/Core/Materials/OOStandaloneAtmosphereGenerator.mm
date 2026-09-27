@@ -199,11 +199,6 @@ enum
 }
 
 
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
-
 
 
 - (BOOL)getResult:(OOPixMap *)outData

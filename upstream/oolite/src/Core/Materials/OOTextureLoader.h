@@ -94,7 +94,6 @@ SOFTWARE.
 	to corresponding texture cacheKey.
 */
 - (std::optional<std::string>) cxx_cacheKey;
-- (id) cacheKey;	// -> -cxx_cacheKey (shared selector until oo-3rb.270.2)
 
 
 

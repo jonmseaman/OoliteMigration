@@ -296,9 +296,9 @@ const char *sGlobalTraceContext = nullptr;
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return nil;
+	return std::nullopt;
 }
 
 
@@ -449,7 +449,7 @@ const char *sGlobalTraceContext = nullptr;
 - (void) addToCaches
 {
 #ifndef OOTEXTURE_NO_CACHE
-	const std::optional<std::string> cacheKey = oo::OptionalString([self cacheKey]);
+	const std::optional<std::string> cacheKey = [self cxx_cacheKey];
 	if (!cacheKey.has_value())  return;
 	
 	// Add self to in-use textures cache, as a raw pointer so the texture isn't retained by the cache.
@@ -478,7 +478,7 @@ const char *sGlobalTraceContext = nullptr;
 - (void) removeFromCaches
 {
 #ifndef OOTEXTURE_NO_CACHE
-	const std::optional<std::string> cacheKey = oo::OptionalString([self cacheKey]);
+	const std::optional<std::string> cacheKey = [self cxx_cacheKey];
 	if (!cacheKey.has_value())  return;
 	
 	if (sLiveTextureCache != NULL)  sLiveTextureCache->erase(*cacheKey);

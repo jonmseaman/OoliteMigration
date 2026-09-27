@@ -51,7 +51,6 @@ typedef struct
 
 // Key for in-memory cache; nullopt for no cache.
 - (std::optional<std::string>) cxx_cacheKey;
-- (id) cacheKey;	// -> -cxx_cacheKey (shared selector until oo-3rb.270.2)
 
 // For use by OOTexture.
 - (BOOL) enqueue;
