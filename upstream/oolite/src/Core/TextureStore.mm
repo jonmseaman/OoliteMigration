@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #define DEBUG_DUMP			(	0	&& OOLITE_DEBUG)
 
@@ -59,7 +60,7 @@ static FloatRGB FloatRGBFromDictColor(id dictionary, const char *key)	// diction
 		color = [OOColor colorWithDescription:@"whiteColor"];
 		OO_LOG("textureStore.FloatRGBFromDictColor.nilColor", "Expected color for key \"{}\" in dictionary {}, got nil. Setting color to {}", key, oo::DescriptionOf(dictionary), oo::DescriptionOf([color rgbaDescription]));
 	}
-	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
+	OOCAssert([color isKindOfClass:[OOColor class]], "Expected OOColor, got %s", oo::DescriptionOf([color class]).c_str());
 	
 	return (FloatRGB){ [color redComponent], [color greenComponent], [color blueComponent] };
 }
@@ -122,7 +123,7 @@ static void fillSquareImageWithPlanetTex(unsigned char * imageBuffer, int width,
 
 	int					tex_bytes = texture_w * texture_h * 4;
 	
-	NSParameterAssert(textureData != NULL && textureWidth != NULL && textureHeight != NULL);
+	OOParameterAssert(textureData != NULL && textureWidth != NULL && textureHeight != NULL);
 	
 	unsigned char *imageBuffer = malloc(tex_bytes);
 	if (imageBuffer == NULL)  return NO;
@@ -162,7 +163,7 @@ static void fillSquareImageWithPlanetTex(unsigned char * imageBuffer, int width,
 	
 	tex_bytes = texture_w * texture_h * 4;
 	
-	NSParameterAssert(textureData != NULL && textureWidth != NULL && textureHeight != NULL);
+	OOParameterAssert(textureData != NULL && textureWidth != NULL && textureHeight != NULL);
 	
 	unsigned char *imageBuffer = malloc(tex_bytes);
 	if (imageBuffer == NULL)  return NO;
@@ -250,7 +251,7 @@ static float q_factor(float* accbuffer, int x, int y, int width, BOOL polar_y_sm
 
 static void fillSquareImageDataWithCloudTexture(unsigned char * imageBuffer, int width, OOColor* cloudcolor, float impress, float bias)
 {
-	NSCParameterAssert(width > 0);
+	OOCParameterAssert(width > 0);
 	
 	float accbuffer[width * width];
 	memset(accbuffer, 0, sizeof accbuffer);
