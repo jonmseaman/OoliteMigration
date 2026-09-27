@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOAssert.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
@@ -2127,7 +2128,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		star.y = (float)(sys_coordinates.y * vscale + voffset);
 
 		noNova = !nearby_systems[i].nova;
-		NSAssert1(chart_mode <= OOLRC_MODE_TECHLEVEL, @"Long range chart mode %i out of range", (int)chart_mode);
+		OOAssert(chart_mode <= OOLRC_MODE_TECHLEVEL, "Long range chart mode %i out of range", (int)chart_mode);
 	
 		if (markedDestinations.has_value())
 		{
