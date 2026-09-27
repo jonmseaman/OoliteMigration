@@ -162,7 +162,7 @@ enum
 	OO_LOG("texture.planet.generate", "{}", "Initialising planetary generator");
 
 	// AllowCubeMap not used yet but might be in future
-	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	self = [super cxx_initWithPath:oo::str::format("OOPlanetTexture@%s", oo::str::pointerDescription(self).c_str()) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
 		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(self));
@@ -1208,7 +1208,7 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 - (id) initWithCacheKey:(const std::string &)cacheKey seed:(RANROTSeed)seed
 {
 	// AllowCubeMap not used yet but might be in future
-	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetNormalTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	self = [super cxx_initWithPath:oo::str::format("OOPlanetNormalTexture@%s", oo::str::pointerDescription(self).c_str()) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
 		_enqueued = NO;
@@ -1293,7 +1293,7 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 {
 	OO_LOG("texture.planet.generate", "Initialising atmosphere generator {}", cacheKey);
 	// AllowCubeMap not used yet but might be in future
-	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetAtmoTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	self = [super cxx_initWithPath:oo::str::format("OOPlanetAtmoTexture@%s", oo::str::pointerDescription(self).c_str()) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
 		_cacheKey = cacheKey;

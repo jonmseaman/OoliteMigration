@@ -119,7 +119,7 @@ static const char * const kStageName	= "Testing textures and images";
 	
 	if (!path.has_value())  return;
 	
-	loader = [OOTextureLoader loaderWithPath:oo::NSStringFrom(*path)
+	loader = [OOTextureLoader cxx_loaderWithPath:path
 									 options:kOOTextureMinFilterNearest |
 											 kOOTextureMinFilterNearest |
 											 kOOTextureNoShrink |

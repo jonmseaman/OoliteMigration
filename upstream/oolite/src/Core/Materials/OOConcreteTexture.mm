@@ -125,7 +125,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 		anisotropy:(float)anisotropy
 		   lodBias:(GLfloat)lodBias
 {
-	OOTextureLoader *loader = [OOTextureLoader loaderWithPath:oo::NSStringFrom(path) options:options];
+	OOTextureLoader *loader = [OOTextureLoader cxx_loaderWithPath:path options:options];
 	if (loader == nil)
 	{
 		[self release];
@@ -656,7 +656,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 			_uploaded = NO;
 			_valid = NO;
 			
-			_loader = [[OOTextureLoader loaderWithPath:oo::NSStringOrNil(_path) options:_options] retain];
+			_loader = [[OOTextureLoader cxx_loaderWithPath:_path options:_options] retain];
 		}
 #endif
 	}

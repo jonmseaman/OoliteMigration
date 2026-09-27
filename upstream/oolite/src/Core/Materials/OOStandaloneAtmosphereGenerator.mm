@@ -106,7 +106,7 @@ enum
 	OO_LOG("texture.planet.generate", "{}", "Initialising standalone atmosphere generator");
 
 	// AllowCubeMap not used yet but might be in future
-	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	self = [super cxx_initWithPath:oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str()) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
 		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(self));

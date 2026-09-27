@@ -172,7 +172,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 	cxx_OOInterpretTextureSpecifier(spec, NULL, &options, &anisotropy, &lodBias, YES);
 	options = OOApplyTextureOptionDefaults(options);
 	
-	self = [super initWithPath:@"<generated emission map>" options:options];
+	self = [super cxx_initWithPath:std::string("<generated emission map>") options:options];
 	if (self != nil)
 	{
 		/*	Illumination contribution is:
