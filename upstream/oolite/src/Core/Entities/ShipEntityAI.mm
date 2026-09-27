@@ -48,6 +48,7 @@
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
 
 /*
@@ -892,12 +893,17 @@ using ooscript::Context;
 {
 	NSArray				*messages = nil;
 	NSString			*message = nil;
-	NSCharacterSet		*whiteSpace = [NSCharacterSet whitespaceCharacterSet];
+	// GNUstep whitespaceCharacterSet: whitespace-and-newline without newlines (see IsWhitespaceNotNewline).
+	auto isWhitespaceNotNewline = [](char16_t c) {
+		return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
+			|| c == 0x202F || c == 0x205F || c == 0x3000;
+	};
 	
 	messages = [messageString componentsSeparatedByString:@","];
 	foreach (message, messages)
 	{
-		[shipAI dropMessage:[message stringByTrimmingCharactersInSet:whiteSpace]];
+		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
+		[shipAI dropMessage:oo::NSStringFrom(trimmed)];
 	}
 }
 
