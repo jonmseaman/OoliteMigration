@@ -679,7 +679,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	const std::optional<std::string> portDimensionsStr = OptionalStringValue([dict objectForKey:@"port_dimensions"]);	// -oo_stringForKey:
 	if (portDimensionsStr)
 	{
-		OOStandardsDeprecated(@"The port_dimensions key is deprecated");
+		cxx_OOStandardsDeprecated("The port_dimensions key is deprecated");
 		if (!OOEnforceStandards())
 		{
 			const std::vector<std::string> tokens = oo::str::split(*portDimensionsStr, "x");

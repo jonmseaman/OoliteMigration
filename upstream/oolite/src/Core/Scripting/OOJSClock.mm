@@ -248,7 +248,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 			return ooscript::newNumberValue(cx, [player clockTimeAdjusted], value);
 
 		case kClock_legacy_scriptTimer:
-			OOStandardsDeprecated(@"The legacy_scriptTimer property is deprecated");
+			cxx_OOStandardsDeprecated("The legacy_scriptTimer property is deprecated");
 			return ooscript::newNumberValue(cx, [player scriptTimer], value);
 
 		default:

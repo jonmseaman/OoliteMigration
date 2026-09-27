@@ -1209,7 +1209,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			{
 				// Model not found
 				OO_LOG(kOOLogMeshDataNotFound, "***** ERROR: could not find {}", filename);
-				OOStandardsError(@"Model file not found");
+				cxx_OOStandardsError("Model file not found");
 				objc_autoreleasePoolPop(pool);
 				return NO;
 			}

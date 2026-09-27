@@ -1202,7 +1202,7 @@ static bool SystemAddGroupToRoute(ooscript::Context cx, ooscript::CallArgs &oojs
 namespace {
 static bool SystemLegacyAddShips(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	OOStandardsDeprecated(@"system.legacy_addShips() is deprecated");
+	cxx_OOStandardsDeprecated("system.legacy_addShips() is deprecated");
 
 
 	OOJS_NATIVE_ENTER(context)
@@ -1235,7 +1235,7 @@ static bool SystemLegacyAddShips(ooscript::Context context, ooscript::CallArgs &
 namespace {
 static bool SystemLegacyAddSystemShips(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	OOStandardsDeprecated(@"system.legacy_addSystemShips() is deprecated");
+	cxx_OOStandardsDeprecated("system.legacy_addSystemShips() is deprecated");
 
 
 	OOJS_NATIVE_ENTER(context)
@@ -1270,7 +1270,7 @@ static bool SystemLegacyAddSystemShips(ooscript::Context context, ooscript::Call
 namespace {
 static bool SystemLegacyAddShipsAt(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	OOStandardsDeprecated(@"system.legacy_addShipsAt() is deprecated");
+	cxx_OOStandardsDeprecated("system.legacy_addShipsAt() is deprecated");
 
 
 	OOJS_NATIVE_ENTER(context)
@@ -1311,7 +1311,7 @@ static bool SystemLegacyAddShipsAt(ooscript::Context context, ooscript::CallArgs
 namespace {
 static bool SystemLegacyAddShipsAtPrecisely(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	OOStandardsDeprecated(@"system.legacy_addShipsAtPrecisely() is deprecated");
+	cxx_OOStandardsDeprecated("system.legacy_addShipsAtPrecisely() is deprecated");
 
 
 	OOJS_NATIVE_ENTER(context)
@@ -1352,7 +1352,7 @@ static bool SystemLegacyAddShipsAtPrecisely(ooscript::Context context, ooscript:
 namespace {
 static bool SystemLegacyAddShipsWithinRadius(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	OOStandardsDeprecated(@"system.legacy_addShipsWithinRadius() is deprecated");
+	cxx_OOStandardsDeprecated("system.legacy_addShipsWithinRadius() is deprecated");
 
 
 	OOJS_NATIVE_ENTER(context)
@@ -1396,7 +1396,7 @@ static bool SystemLegacyAddShipsWithinRadius(ooscript::Context context, ooscript
 namespace {
 static bool SystemLegacySpawnShip(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	OOStandardsDeprecated(@"system.legacy_spawnShip() is deprecated");
+	cxx_OOStandardsDeprecated("system.legacy_spawnShip() is deprecated");
 
 
 	OOJS_NATIVE_ENTER(context)
