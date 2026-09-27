@@ -92,24 +92,23 @@ SOFTWARE.
 			
 			if (!emissionAndIlluminationSpec.isNull())
 			{
-				id spec = oo::ObjectFromPList(emissionAndIlluminationSpec);	// one object for both arguments, as before
-				generator = [[OOCombinedEmissionMapGenerator alloc] initWithEmissionAndIlluminationMapSpec:spec
+				generator = [[OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionAndIlluminationMapSpec:emissionAndIlluminationSpec
 																							diffuseMap:_diffuseMap
 																						  diffuseColor:diffuseColor
 																						 emissionColor:emissionColor
 																					 illuminationColor:illuminationColor
-																					  optionsSpecifier:spec];
+																					  optionsSpecifier:emissionAndIlluminationSpec];
 			}
 			else
 			{
-				id emission = oo::ObjectFromPList(emissionSpec), illumination = oo::ObjectFromPList(illuminationSpec);	// one object each, as before
-				generator = [[OOCombinedEmissionMapGenerator alloc] initWithEmissionMapSpec:emission
+				const oo::PList optionsSpec = !emissionSpec.isNull() ? emissionSpec : illuminationSpec;
+				generator = [[OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionMapSpec:emissionSpec
 																			  emissionColor:emissionColor
 																				 diffuseMap:_diffuseMap
 																			   diffuseColor:diffuseColor
-																		illuminationMapSpec:illumination
+																		illuminationMapSpec:illuminationSpec
 																		  illuminationColor:illuminationColor
-																		   optionsSpecifier:emission ?: illumination];
+																		   optionsSpecifier:optionsSpec];
 			}
 			
 			_emissionMap = [[OOTexture textureWithGenerator:[generator autorelease]] retain];
