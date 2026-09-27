@@ -557,7 +557,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			else if (iValue <= 0xFF) keychar = iValue;
 			else {
-				OOLogWARN(@"testing", @"continue hit for key %@.", nil);
+				OO_LOG_WARN("testing", "continue hit for key {}.", oo::DescriptionOf(nil));
 				defNew["key"] = *value;
 				newList.push_back(oo::PList(std::move(defNew)));
 				continue;
@@ -689,11 +689,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -1113,11 +1113,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -2020,11 +2020,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -2598,10 +2598,10 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					}
 					@catch (OOException *exception)
 					{
-						OOLog(kOOLogException, @"\n\n***** Handling exception: %@ : %@ *****\n\n",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", [exception name], [exception reason]);
 						if (strcmp([exception name], "GameNotSavedException") == 0)	// try saving game instead
 						{
-							OOLog(kOOLogException, @"%@", @"\n\n***** Trying a normal save instead *****\n\n");
+							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ([controller inFullScreenMode])
 								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:self];
 							else
@@ -2614,10 +2614,10 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					}
 					@catch (OOFoundationException *exception)
 					{
-						OOLog(kOOLogException, @"\n\n***** Handling exception: %@ : %@ *****\n\n",[exception name], [exception reason]);
+						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 						if ([[exception name] isEqual:@"GameNotSavedException"])	// try saving game instead
 						{
-							OOLog(kOOLogException, @"%@", @"\n\n***** Trying a normal save instead *****\n\n");
+							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ([controller inFullScreenMode])
 								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:self];
 							else
@@ -3105,7 +3105,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						}
 						else
 						{
-							OOLog(@"interface.missingCallback", @"Unable to find callback definition for %@ using key %@", [definition name], oo::NSStringFrom(key));
+							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", oo::DescriptionOf([definition name]), key);
 						}
 					}
 					extra_gui_key_pressed = YES;
@@ -3458,7 +3458,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				
 				if (brightnessIdx == NSNotFound)
 				{
-					OOLogWARN(@"hdr.maxBrightness.notFound", @"%@", @"couldn't find current max brightness setting, switching to lowest.");
+					OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to lowest.");
 					brightnessIdx = 0;
 				}
 				
@@ -3502,7 +3502,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		
 		if (displayModeIndex == (NSInteger)NSNotFound)
 		{
-			OOLogWARN(@"graphics.mode.notFound", @"%@", @"couldn't find current fullscreen setting, switching to default.");
+			OO_LOG_WARN("graphics.mode.notFound", "{}", "couldn't find current fullscreen setting, switching to default.");
 			displayModeIndex = 0;
 		}
 		
@@ -4939,11 +4939,11 @@ static BOOL autopilot_pause;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -5515,7 +5515,7 @@ static BOOL autopilot_pause;
 		}
 		else
 		{
-			OOLogERR(kOOLogParameterError, @"%s called with processWeaponFacing=YES for non-main view %i.", __FUNCTION__, viewDirection);
+			OO_LOG_ERR(cxx_kOOLogParameterError, "{} called with processWeaponFacing=YES for non-main view {}.", __FUNCTION__, viewDirection);
 		}
 	}
 	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![[UNIVERSE gameController] isGamePaused])
