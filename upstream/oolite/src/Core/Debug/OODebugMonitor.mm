@@ -158,7 +158,7 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 
 - (BOOL)setDebugger:(id<OODebuggerInterface>)newDebugger
 {
-	id							error = nil;	// the shared -connectDebugMonitor:errorMessage:'s string
+	std::optional<std::string>	error;	// -connectDebugMonitor:errorMessage:
 
 	if (newDebugger != _debugger)
 	{
@@ -180,12 +180,12 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 				if ([newDebugger connectDebugMonitor:self errorMessage:&error])
 				{
 					[newDebugger debugMonitor:self
-							noteConfiguration:oo::ObjectFromPList([self mergedConfiguration])];
+							noteConfiguration:[self mergedConfiguration]];
 					_debugger = [newDebugger retain];
 				}
 				else
 				{
-					OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an error occurred: {}", oo::DescriptionOf(newDebugger), oo::DescriptionOf(error));
+					OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an error occurred: {}", oo::DescriptionOf(newDebugger), error.value_or("(null)"));
 				}
 			}
 			@catch (OOException *exception)
@@ -203,10 +203,10 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 }
 
 
-- (oneway void)performJSConsoleCommand:(in id)command	// shared selector (proposed ADR-0043)
+- (void)performJSConsoleCommand:(const std::string &)command
 {
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value commandVal = OOJSValueFromNativeObject(context, command);
+	ooscript::Value commandVal = OOJSValueFromNativeObject(context, oo::NSStringFrom(command));
 	OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
 	[_script callMethod:OOJSID("consolePerformJSCommand") inContext:context withArguments:&commandVal count:1 result:NULL];
 	OOJSStopTimeLimiter();
@@ -223,8 +223,8 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	@try
 	{
 		[_debugger debugMonitor:self
-				jsConsoleOutput:string
-					   colorKey:oo::NSStringOrNil(colorKey)
+				jsConsoleOutput:oo::StdString(string)
+					   colorKey:colorKey
 				  emphasisRange:emphasisRange];
 	}
 	@catch (OOException *exception)
@@ -286,13 +286,13 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 }
 
 
-- (id)configurationValueForKey:(in id)key	// shared selector (proposed ADR-0043)
+- (oo::PList)configurationValueForKey:(const std::string &)key
 {
-	return [self configurationValueForKey:oo::StdString(key) class:Nil defaultValue:nil];
+	return oo::PListFrom([self cxx_configurationValueForKey:key class:Nil defaultValue:nil]);
 }
 
 
-- (id)configurationValueForKey:(const std::string &)key class:(Class)klass defaultValue:(id)value
+- (id)cxx_configurationValueForKey:(const std::string &)key class:(Class)klass defaultValue:(id)value
 {
 	id							result = nil;
 
@@ -318,7 +318,7 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	long long					result;
 	id							object = nil;
 
-	object = [self configurationValueForKey:key class:Nil defaultValue:nil];
+	object = [self cxx_configurationValueForKey:key class:Nil defaultValue:nil];
 	if ([object respondsToSelector:@selector(longLongValue)])  result = [object longLongValue];
 	else if ([object respondsToSelector:@selector(intValue)])  result = [object intValue];
 	else  result = value;
@@ -327,12 +327,12 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 }
 
 
-- (void)setConfigurationValue:(in id)value forKey:(in id)key	// shared selector (proposed ADR-0043)
+- (void)setConfigurationValue:(const oo::PList &)value forKey:(const std::string &)key
 {
-	if (key == nil)  return;
+	if (key.empty())  return;
 
-	const std::string keyString = oo::StdString(key);
-	const oo::PList normalized = [self normalizeConfigValue:oo::PListFrom(value) forKey:keyString];
+	const std::string keyString = key;
+	const oo::PList normalized = [self normalizeConfigValue:value forKey:keyString];
 
 	if (!_configOverrides.isDict())  _configOverrides = oo::PList(oo::PList::Dict());
 	oo::PList::Dict &overrides = *_configOverrides.getIf<oo::PList::Dict>();
@@ -346,20 +346,21 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	}
 
 	// Send changed value to debugger
+	oo::PList notifyValue;
 	if (!normalized)
 	{
-		// Setting a nil value removes an override, and may reveal an underlying OXP-defined value
-		value = [self configurationValueForKey:keyString class:Nil defaultValue:nil];
+		// Setting a null value removes an override, and may reveal an underlying OXP-defined value
+		notifyValue = [self configurationValueForKey:keyString];
 	}
 	else
 	{
-		value = oo::ObjectFromPList(normalized);
+		notifyValue = normalized;
 	}
 	@try
 	{
 		[_debugger debugMonitor:self
-   noteChangedConfigrationValue:value
-						 forKey:key];
+   noteChangedConfigrationValue:notifyValue
+						 forKey:keyString];
 	}
 	@catch (OOException *exception)
 	{
@@ -700,34 +701,34 @@ struct EntityDumpState
 }
 
 
-- (id)sourceCodeForFile:(in id)filePath line:(in unsigned)line	// shared selector (proposed ADR-0043)
+- (std::string)sourceCodeForFile:(const std::string &)filePath line:(unsigned)line
 {
-	const std::string			path = oo::StdString(filePath);
+	const std::string			path = filePath;
 	auto						cached = _sourceFiles.find(path);
 
 	if (cached == _sourceFiles.end())
 	{
 		std::optional<std::vector<std::string>> lines = [self loadSourceFile:path];
-		if (!lines.has_value())  lines = std::vector<std::string>{ oo::str::format("<Can't load file %s>", oo::DescriptionOf(filePath).c_str()) };
+		if (!lines.has_value())  lines = std::vector<std::string>{ oo::str::format("<Can't load file %s>", path.c_str()) };
 
 		cached = _sourceFiles.emplace(path, std::move(*lines)).first;
 	}
 
 	const std::vector<std::string> &linesForFile = cached->second;
-	if (linesForFile.size() < line || line == 0)  return oo::NSStringFrom("<line out of range!>");
+	if (linesForFile.size() < line || line == 0)  return "<line out of range!>";
 
-	return oo::NSStringFrom(linesForFile[line - 1]);
+	return linesForFile[line - 1];
 }
 
 
-- (void)disconnectDebugger:(in id<OODebuggerInterface>)debugger
-				   message:(in id)message	// shared selector (proposed ADR-0043)
+- (void)disconnectDebugger:(id<OODebuggerInterface>)debugger
+				   message:(const std::optional<std::string> &)message
 {
 	if (debugger == nil)  return;
 
 	if (debugger == _debugger)
 	{
-		[self disconnectDebuggerWithMessage:oo::OptionalString(message)];
+		[self disconnectDebuggerWithMessage:message];
 	}
 	else
 	{
@@ -807,7 +808,7 @@ struct EntityDumpState
 {
 	@try
 	{
-		[_debugger disconnectDebugMonitor:self message:oo::NSStringOrNil(message)];
+		[_debugger disconnectDebugMonitor:self message:message];
 	}
 	@catch (OOException *exception)
 	{
@@ -897,12 +898,12 @@ FIXME: this works with CRLF and LF, but not CR.
 }
 
 
-- (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in ooscript::Context)context
-				  error:(in ooscript::ErrorReport *)errorReport
-			  stackSkip:(in unsigned)stackSkip
-		showingLocation:(in BOOL)showLocation
-			withMessage:(in id)message
+- (void)jsEngine:(OOJavaScriptEngine *)engine
+		 context:(ooscript::Context)context
+		   error:(ooscript::ErrorReport *)errorReport
+	   stackSkip:(unsigned)stackSkip
+ showingLocation:(BOOL)showLocation
+	 withMessage:(const std::string &)message
 {
 	std::string					colorKey;
 	std::string					prefix;
@@ -938,7 +939,7 @@ FIXME: this works with CRLF and LF, but not CR.
 	// Prefix and subsequent colon should be bold (the prefixes are ASCII, so bytes are UTF-16 units):
 	emphasisRange = NSMakeRange(0, prefix.size() + 1);
 
-	formattedMessage = oo::str::format("%s: %s", prefix.c_str(), oo::DescriptionOf(message).c_str());
+	formattedMessage = oo::str::format("%s: %s", prefix.c_str(), message.c_str());
 
 	// Note that the "active script" isn't necessarily the one causing the
 	// error, since one script can call another's methods.
@@ -961,12 +962,8 @@ FIXME: this works with CRLF and LF, but not CR.
 		{
 			formattedMessage += oo::str::format("\n    %s, line %u", oo::str::lastPathComponent(filePath).c_str(), errorReport->lineno);
 
-			// Append source code (-sourceCodeForFile:line: is a shared selector: a string in and out)
-			const std::optional<std::string> sourceLine = oo::OptionalString([self sourceCodeForFile:oo::NSStringFrom(filePath) line:errorReport->lineno]);
-			if (sourceLine.has_value())
-			{
-				formattedMessage += ":\n    " + *sourceLine;
-			}
+			// Append source code
+			formattedMessage += ":\n    " + [self sourceCodeForFile:filePath line:errorReport->lineno];
 		}
 	}
 
@@ -976,20 +973,20 @@ FIXME: this works with CRLF and LF, but not CR.
 
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = "show-console-on-warning";
 	else  showKey = "show-console-on-error";	// if not a warning, it's a proper error.
-	if (OOBooleanFromObject([self configurationValueForKey:oo::NSStringFrom(showKey)], NO))
+	if (OOBooleanFromObject(oo::ObjectFromPList([self configurationValueForKey:showKey]), NO))
 	{
 		[self showJSConsole];
 	}
 }
 
 
-- (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in ooscript::Context)context
-			 logMessage:(in id)message
-				ofClass:(in id)messageClass
+- (void)jsEngine:(OOJavaScriptEngine *)engine
+		 context:(ooscript::Context)context
+	  logMessage:(const std::string &)message
+		 ofClass:(const std::optional<std::string> &)messageClass
 {
-	[self appendJSConsoleLine:message colorKey:"log"];
-	if (OOBooleanFromObject([self configurationValueForKey:oo::NSStringFrom("show-console-on-log")], NO))
+	[self appendJSConsoleLine:oo::NSStringFrom(message) colorKey:"log"];
+	if (OOBooleanFromObject(oo::ObjectFromPList([self configurationValueForKey:"show-console-on-log"]), NO))
 	{
 		[self showJSConsole];
 	}
