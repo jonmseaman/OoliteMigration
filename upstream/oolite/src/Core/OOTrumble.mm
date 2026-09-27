@@ -983,8 +983,8 @@ static void InitTrumbleSounds(void)
 	if (sTrumbleSoundSource == nil)
 	{
 		sTrumbleSoundSource = [[OOSoundSource alloc] init];
-		sTrumbleIdleSound = [[OOSound alloc] initWithCustomSoundKey:@"[trumble-idle]"];
-		sTrumbleSqealSound = [[OOSound alloc] initWithCustomSoundKey:@"[trumble-squeal]"];
+		sTrumbleIdleSound = [[OOSound alloc] initWithCustomSoundKey:"[trumble-idle]"];
+		sTrumbleSqealSound = [[OOSound alloc] initWithCustomSoundKey:"[trumble-squeal]"];
 	}
 }
 

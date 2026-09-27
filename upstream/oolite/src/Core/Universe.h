@@ -873,7 +873,7 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 @interface OOSound (OOCustomSounds)
 
 + (id) cxx_soundWithCustomSoundKey:(const std::string &)key;
-- (id) initWithCustomSoundKey:(id)key;	// shared selector (proposed ADR-0043): an Objective-C string, as OOSoundSource's
+- (id) initWithCustomSoundKey:(const std::string &)key;
 
 @end
 
@@ -881,7 +881,7 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 @interface OOSoundSource (OOCustomSounds)
 
 + (id) sourceWithCustomSoundKey:(const std::string &)key;
-- (id) initWithCustomSoundKey:(id)key;	// shared selector (proposed ADR-0043): an Objective-C string, as OOSound's
+- (id) initWithCustomSoundKey:(const std::string &)key;
 
 - (void) cxx_playCustomSoundWithKey:(const std::string &)key;
 
