@@ -29,7 +29,6 @@ SOFTWARE.
 #import "OOCacheManager.h"
 #import "ResourceManager.h"
 #import "OOPListView.h"
-#import "NSDictionaryOOExtensions.h"
 #import "OOProbabilitySet.h"
 #import "OORoleSet.h"
 #import "OOStringParsing.h"
@@ -971,7 +970,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 			auto shipEntry = ships.find(shipKey);
 			if (shipEntry != ships.end())
 			{
-				// -dictionaryByAddingEntriesFromDictionary:
+				// merging dictionary entries
 				oo::PList mergedEntry = shipyardEntry;
 				const oo::PList *shipyardOverridesEntry = shipyardOverrides.find(shipKey);
 				if (shipyardOverridesEntry != nullptr && mergedEntry.isDict())

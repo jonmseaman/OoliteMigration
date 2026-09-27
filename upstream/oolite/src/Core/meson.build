@@ -12,7 +12,6 @@ oolite_sources += files(
     'HeadUpDisplay.mm',
     'HeadUpDisplay+FoundationBridge.mm',
     'NSDataOOExtensions.mm',
-    'NSDictionaryOOExtensions.mm',
     'NSFileManagerOOExtensions.mm',
     'NSObjectOOExtensions.mm',
     'NSStringOOExtensions.mm',

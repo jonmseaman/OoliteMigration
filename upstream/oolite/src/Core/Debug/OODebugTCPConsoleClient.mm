@@ -36,7 +36,6 @@ SOFTWARE.
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
 #include <stdint.h>
-#import "NSDictionaryOOExtensions.h"
 #include "oofnd/StdLib.hpp"
 
 #if OOLITE_WINDOWS
@@ -764,7 +763,7 @@ noteChangedConfigrationValue:(in id)newValue
 - (void) sendPacket:(const std::string &)packetType
 	 withParameters:(const oo::PList &)parameters
 {
-	// A copy of the parameters with the packet type set (was -dictionaryByAddingObject:forKey:);
+	// A copy of the parameters with the packet type set (was dictionary copy with one added entry);
 	// no parameters: the type alone.
 	oo::PList::Dict dict;
 	if (const oo::PList::Dict *given = parameters.getIf<oo::PList::Dict>())  dict = *given;
