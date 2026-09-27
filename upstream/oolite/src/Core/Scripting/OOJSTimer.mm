@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #include "oofnd/Notification.hpp"
 #include <cstring>
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -196,7 +197,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	self = [super initWithNextTime:[UNIVERSE getTime] + delay interval:interval];
 	if (self != nil)
 	{
-		NSAssert(OOJSValueIsFunction(context, function), @"Attempt to init OOJSTimer with a function that isn't.");
+		OOAssert(OOJSValueIsFunction(context, function), "Attempt to init OOJSTimer with a function that isn't.");
 		
 		_jsThis = jsThis;
 		OOJSAddGCObjectRoot(context, &_jsThis, "OOJSTimer this");
