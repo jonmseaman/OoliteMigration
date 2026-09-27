@@ -2204,7 +2204,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[ship setPosition:launchPos];	// minimise 'lollipop flash'
 
 		// Deal with scripted cargopods and ensure they are filled with something.
-		if ([ship hasRole:@"cargopod"])  [self fillCargopodWithRandomCargo:ship];
+		if ([ship hasRole:"cargopod"])  [self fillCargopodWithRandomCargo:ship];
 
 		// Ensure piloted ships have pilots.
 		if (![ship crew] && ![ship isUnpiloted])
@@ -2774,7 +2774,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	ship = [self cxx_newShipWithRole:role];   // retain count = 1
 	
 	// Deal with scripted cargopods and ensure they are filled with something.
-	if (ship && [ship hasRole:@"cargopod"])
+	if (ship && [ship hasRole:"cargopod"])
 	{		
 		[self fillCargopodWithRandomCargo:ship];
 	}
@@ -2786,7 +2786,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (role == "trader")
 		{
 			[ship setCargoFlag: CARGO_FLAG_FULL_SCARCE];
-			if ([ship hasRole:@"sunskim-trader"] && randf() < 0.25) // select 1/4 of the traders suitable for sunskimming.
+			if ([ship hasRole:"sunskim-trader"] && randf() < 0.25) // select 1/4 of the traders suitable for sunskimming.
 			{
 				[ship setCargoFlag: CARGO_FLAG_FULL_PLENTIFUL];
 				[self makeSunSkimmer:ship andSetAI:YES];
@@ -2891,7 +2891,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	if (ship != nil)
 	{
 		[ship setPosition:pos];
-		if ([ship hasRole:@"cargopod"]) [self fillCargopodWithRandomCargo:ship];
+		if ([ship hasRole:"cargopod"]) [self fillCargopodWithRandomCargo:ship];
 		OOScanClass scanClass = [ship scanClass];
 		if (scanClass == CLASS_NOT_SET)
 		{
@@ -2939,7 +2939,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			if (trader)
 			{
 				[ship setCargoFlag:CARGO_FLAG_FULL_SCARCE];
-				if ([ship hasRole:@"sunskim-trader"] && randf() < 0.25) 
+				if ([ship hasRole:"sunskim-trader"] && randf() < 0.25) 
 				{
 					[ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
 					[self makeSunSkimmer:ship andSetAI:YES];
@@ -4294,7 +4294,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	// Set primary role to same as ship name, if ship name is also a role.
 	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([ship hasRole:oo::NSStringFrom(shipKey)])  [ship setPrimaryRole:oo::NSStringFrom(shipKey)];
+	if ([ship hasRole:shipKey])  [ship setPrimaryRole:oo::NSStringFrom(shipKey)];
 	
 	return ship;
 	
@@ -4333,7 +4333,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	// Set primary role to same as name, if ship name is also a role.
 	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([dock hasRole:oo::NSStringFrom(shipDataKey)])  [dock setPrimaryRole:oo::NSStringFrom(shipDataKey)];
+	if ([dock hasRole:shipDataKey])  [dock setPrimaryRole:oo::NSStringFrom(shipDataKey)];
 	
 	return dock;
 	
@@ -4548,7 +4548,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod
 {
-	if (cargopod == nil || ![cargopod hasRole:@"cargopod"] || [cargopod cargoType] == CARGO_SCRIPTED_ITEM)  return;
+	if (cargopod == nil || ![cargopod hasRole:"cargopod"] || [cargopod cargoType] == CARGO_SCRIPTED_ITEM)  return;
 
 	if ([cargopod commodityType] == nil || ![cargopod commodityAmount])
 	{
@@ -6573,7 +6573,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-// The role predicates read an Objective-C string (-hasRole: / -hasPrimaryRole: are the unmigrated ShipEntity's).
+// The role predicates read an Objective-C string (-hasRole: takes std::string; -hasPrimaryRole: is still unmigrated).
 - (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
 {
 	return [self countShipsMatchingPredicate:HasRolePredicate

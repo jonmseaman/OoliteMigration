@@ -1452,7 +1452,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 // JSAI: not needed - oolite-traderAI.js handles exiting if full fuel and plentiful cargo
 //				[ship switchAITo:@"exitingTraderAI.plist"];
 				if([ship fuel] == 0) [ship setFuel:70];
-//				if ([ship hasRole:@"sunskim-trader"]) [UNIVERSE makeSunSkimmer:ship andSetAI:NO];
+//				if ([ship hasRole:"sunskim-trader"]) [UNIVERSE makeSunSkimmer:ship andSetAI:NO];
 			}
 		}
 		

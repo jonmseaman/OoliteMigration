@@ -1781,13 +1781,13 @@ DESTROY(laser_color);
 
 - (BOOL) isBoulder
 {
-	return [roleSet hasRole:kBoulderRole];
+	return [roleSet hasRole:oo::StdString(kBoulderRole)];
 }
 
 
 - (BOOL) isMinable
 {
-	if ([self hasRole:@"asteroid"] || [self isBoulder])
+	if ([self hasRole:"asteroid"] || [self isBoulder])
 	{
 		if (!noRocks)
 		{
@@ -7363,12 +7363,10 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (BOOL) hasRole:(id)role	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) hasRole:(const std::string &)role
 {
 	if ([roleSet hasRole:role])  return YES;
-	if (!oo::IsNSString(role))  return NO;	// -isEqual: of a non-string (or nil) with a string was NO
-	const std::string roleString = oo::StdString(role);
-	return roleString == primaryRole || roleString == [self cxx_shipDataKeyAutoRole];
+	return role == primaryRole || role == [self cxx_shipDataKeyAutoRole];
 }
 
 
@@ -7387,7 +7385,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (void) cxx_addRole:(const std::string &)role withProbability:(float)probability
 {
-	if (![self hasRole:oo::NSStringFrom(role)])
+	if (![self hasRole:role])
 	{
 		OORoleSet *newRoles = nil;
 		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:role probability:probability];
@@ -7403,7 +7401,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (void) cxx_removeRole:(const std::string &)role
 {
-	if ([self hasRole:oo::NSStringFrom(role)])
+	if ([self hasRole:role])
 	{
 		OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:role];
 		if (newRoles != nil)
@@ -9311,7 +9309,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	
 	@try
 	{
-		if ([self isThargoid] && [roleSet hasRole:@"thargoid-mothership"])  [self broadcastThargoidDestroyed];
+		if ([self isThargoid] && [roleSet hasRole:"thargoid-mothership"])  [self broadcastThargoidDestroyed];
 		
 		if (!suppressExplosion && ([self isVisible] || HPdistance2([self position], [PLAYER position]) < SCANNER_MAX_RANGE2))
 		{
@@ -9392,7 +9390,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				[self releaseCargoPodsDebris];
 				
 				//  Throw out rocks and alloys to be scooped up
-				if ([self hasRole:@"asteroid"] || [self isBoulder])
+				if ([self hasRole:"asteroid"] || [self isBoulder])
 				{
 					if (!noRocks && (being_mined || randf() < 0.20))
 					{
@@ -13814,7 +13812,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		
 		// check total number acceptable
 		// the system's patrols don't have escorts set inside their dictionary, but accept max escorts.
-		if (_maxEscortCount == 0 && ([self hasPrimaryRole:@"police"] || [self hasPrimaryRole:@"hunter"] || [self hasRole:@"thargoid-mothership"])) 
+		if (_maxEscortCount == 0 && ([self hasPrimaryRole:@"police"] || [self hasPrimaryRole:@"hunter"] || [self hasRole:"thargoid-mothership"])) 
 		{
 			_maxEscortCount = MAX_ESCORTS;
 		}
@@ -14533,7 +14531,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		{
 			scanShip = (ShipEntity *)scan;
 			
-			if ([self hasRole:@"pilot"] == YES)
+			if ([self hasRole:"pilot"] == YES)
 			{
 				if ([scanShip primaryTarget] == nil)
 				{
