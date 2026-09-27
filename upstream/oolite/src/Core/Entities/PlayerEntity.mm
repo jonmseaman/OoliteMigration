@@ -384,13 +384,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// First call with initialised mass (in [UNIVERSE setUpInitialUniverse]) is always to the cobra 3, even when starting with a savegame.
 		if ([self mass] > 0.0)	// bootstrap the base mass.
 		{
-			OOLog(@"fuelPrices", @"Setting Cobra3 base mass to: %.2f ", [self mass]);
+			OO_LOG("fuelPrices", "Setting Cobra3 base mass to: {:.2f} ", [self mass]);
 			sBaseMass = [self mass];
 		}
 		else 
 		{
 			// This happened on startup when [UNIVERSE setUpSpace] was called before player init, inside [UNIVERSE setUpInitialUniverse].
-			OOLog(@"fuelPrices", @"%@", @"Player ship not initialised properly yet, using precalculated base mass.");
+			OO_LOG("fuelPrices", "{}", "Player ship not initialised properly yet, using precalculated base mass.");
 			return 185580.0;
 		}
 	}
@@ -418,7 +418,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			}
 			else	// undefined
 			{
-				OOLog(@"player.badCargoPod", @"Cargo pod %@ has bad commodity type, rejecting.", cargoItem);
+				OO_LOG("player.badCargoPod", "Cargo pod {} has bad commodity type, rejecting.", oo::DescriptionOf(cargoItem));
 				continue;
 			}
 			cargo.erase(cargo.begin() + i);
@@ -462,7 +462,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			}
 			else	// undefined
 			{
-				OOLog(@"player.badCargoPod", @"Cargo pod %@ has bad commodity type (COMMODITY_UNDEFINED), rejecting.", cargoItem);
+				OO_LOG("player.badCargoPod", "Cargo pod {} has bad commodity type (COMMODITY_UNDEFINED), rejecting.", oo::DescriptionOf(cargoItem));
 				continue;
 			}
 		}
@@ -488,7 +488,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #ifndef NDEBUG
 	if (cargo.size() > 0)
 	{
-		OOLog(@"player.unloadCargo",@"Cargo remains in pods after unloading - %@",oo::NSArrayFromObjects(cargo));
+		OO_LOG("player.unloadCargo", "Cargo remains in pods after unloading - {}", oo::DescriptionOf(oo::NSArrayFromObjects(cargo)));
 	}
 #endif
 
@@ -510,7 +510,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	else
 	{
-		OOLogERR(@"player.loadCargoPods.noContainer", @"%@", @"couldn't create a container in [PlayerEntity loadCargoPods]");
+		OO_LOG_ERR("player.loadCargoPods.noContainer", "{}", "couldn't create a container in [PlayerEntity loadCargoPods]");
 		// throw an exception here...
 		[OOException raise:OOLITE_EXCEPTION_FATAL
 								format:"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
@@ -1420,7 +1420,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	NSDictionary *shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:[self shipDataKey]];
 	if (shipDict == nil)  return NO;
 	if (![self setUpShipFromDictionary:shipDict])  return NO;
-	OOLog(@"fuelPrices", @"Got \"%@\", fuel charge rate: %.2f", [self shipDataKey],[self fuelChargeRate]);
+	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", oo::DescriptionOf([self shipDataKey]), [self fuelChargeRate]);
 	
 	// ship depreciation
 	ship_trade_in_factor = oo::PListView(dict).get<int>(@"ship_trade_in_factor", 95);
@@ -1637,7 +1637,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			// check that that the type still exists
 			if (![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(new_type)])
 			{
-				OOLog(@"setCommanderDataFromDictionary.warning.contract",@"Cargo contract to deliver %@ could not be loaded from the saved game, as the commodity is no longer defined",oo::NSStringOrNil(new_type));
+				OO_LOG("setCommanderDataFromDictionary.warning.contract", "Cargo contract to deliver {} could not be loaded from the saved game, as the commodity is no longer defined", new_type.value_or("(null)"));
 				contracts.erase(contracts.begin() + i);
 			}
 		}
@@ -1682,14 +1682,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// Something went wrong. Possibly the save file was hacked to contain more passenger cabins than the available cargo space would allow - Nikos 20110731
 		unsigned originalMaxPassengers = max_passengers;
 		max_passengers = (unsigned)(max_cargo / PASSENGER_BERTH_SPACE);
-		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.max_passengers", @"player ship %@ had max_passengers set to a value requiring more cargo space than currently available (%u). Setting max_passengers to maximum possible value (%u).", [self name], originalMaxPassengers, max_passengers);
+		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.max_passengers", "player ship {} had max_passengers set to a value requiring more cargo space than currently available ({}). Setting max_passengers to maximum possible value ({}).", oo::DescriptionOf([self name]), static_cast<unsigned>(originalMaxPassengers), static_cast<unsigned>(max_passengers));
 	}
 	max_cargo -= max_passengers * PASSENGER_BERTH_SPACE;
 	
 	// Do we have extra passengers?
 	if (passengers.size() > max_passengers)
 	{
-		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], passengers.size(), max_passengers);
+		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.passengers", "player ship {} had more passengers ({}) than passenger berths ({}). Removing extra passengers.", oo::DescriptionOf([self name]), passengers.size(), static_cast<unsigned>(max_passengers));
 		for (NSInteger i = (NSInteger)passengers.size() - 1; i >= max_passengers; i--)
 		{
 			const oo::PList *passengerName = passengers[i].find(oo::StdString(PASSENGER_KEY_NAME));
@@ -1702,7 +1702,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	NSInteger excessCargo = (NSInteger)[self cargoQuantityOnBoard] - (NSInteger)[self maxAvailableCargoSpace];
 	if (excessCargo > 0)
 	{
-		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.cargo", @"player ship %@ had more cargo (%i) than it can hold (%u). Removing extra cargo.", [self name], [self cargoQuantityOnBoard], [self maxAvailableCargoSpace]);
+		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.cargo", "player ship {} had more cargo ({}) than it can hold ({}). Removing extra cargo.", oo::DescriptionOf([self name]), [self cargoQuantityOnBoard], static_cast<unsigned>([self maxAvailableCargoSpace]));
 		
 		OOCommodityType		type;
 		OOMassUnit			units;
@@ -1889,7 +1889,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				}
 				else
 				{
-					OOLogWARN(@"load.failed.missileNotFound", @"couldn't find missile with role '%@' in [PlayerEntity setCommanderDataFromDictionary:], missile entry discarded.", missile_desc);
+					OO_LOG_WARN("load.failed.missileNotFound", "couldn't find missile with role '{}' in [PlayerEntity setCommanderDataFromDictionary:], missile entry discarded.", oo::DescriptionOf(missile_desc));
 				}
 			}
 			missiles = missileCount;
@@ -1914,12 +1914,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		*/
 		if ([self mountMissileWithRole:@"EQ_QC_MINE"])
 		{
-			OOLog(@"load.upgrade.replacedEnergyBomb", @"%@", @"Replaced legacy energy bomb with Quirium cascade mine.");
+			OO_LOG("load.upgrade.replacedEnergyBomb", "{}", "Replaced legacy energy bomb with Quirium cascade mine.");
 		}
 		else
 		{
 			credits += 9000;
-			OOLog(@"load.upgrade.replacedEnergyBomb", @"%@", @"Compensated legacy energy bomb with 900 credits.");
+			OO_LOG("load.upgrade.replacedEnergyBomb", "{}", "Compensated legacy energy bomb with 900 credits.");
 		}
 	}
 	
@@ -2085,7 +2085,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// set up STATUS_DEAD
 		[self setDockedStation:nil];	// needed for STATUS_DEAD
 		[self setStatus:STATUS_DEAD];
-		OOLog(@"script.javascript.init.error", @"%@", @"Scheduling new JavaScript reset.");
+		OO_LOG("script.javascript.init.error", "{}", "Scheduling new JavaScript reset.");
 		shot_time = kDeadResetTime - 0.02f;	// schedule reinit 20 milliseconds from now.
 		
 		if (![gc inFullScreenMode])	[gc startAnimationTimer];	// keep the game ticking over.
@@ -2685,11 +2685,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (thresholdAngleCos <= measuredCosAbs && measuredCosAbs <= 1.1f)	// angle from viewpoint to sun <= desired threshold
 	{
 		sunBrightness =  (measuredCos - thresholdAngleCos) / (1.0f - thresholdAngleCos);
-//		OOLog(@"glare.debug",@"raw brightness = %f",sunBrightness);
+//		/* glare.debug */ raw brightness = %f,sunBrightness);
 		if (sunBrightness < 0.0f)  sunBrightness = 0.0f;
 		else if (sunBrightness > 1.0f)  sunBrightness = 1.0f;
 	}
-//	OOLog(@"glare.debug",@"cos=%f, threshold = %f, brightness = %f",measuredCosAbs,thresholdAngleCos,sunBrightness);
+//	/* glare.debug */ cos=%f, threshold = %f, brightness = %f,measuredCosAbs,thresholdAngleCos,sunBrightness);
 	return sunBrightness * sunBrightness * sunBrightness;
 }
 
@@ -2714,12 +2714,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #define STAGE_TRACKING_END			} \
 									@catch (OOException *exception) \
 									{ \
-										OOLog(kOOLogException, @"***** Exception during [%s] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])); \
+										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), [exception name], [exception reason]); \
 										@throw exception; \
 									} \
 									@catch (OOFoundationException *exception) \
 									{ \
-										OOLog(kOOLogException, @"***** Exception during [%s] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
+										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason])); \
 										@throw exception; \
 									} \
 								}
@@ -4203,7 +4203,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	[ship wasAddedToUniverse];
 	
-	if (context.has_value())  OOLog(@"script.debug.note.showShipModel", @"::::: showShipModel:'%@' in context: %@.", [ship name], oo::NSStringFrom(*context));
+	if (context.has_value())  OO_LOG("script.debug.note.showShipModel", "::::: showShipModel:'{}' in context: {}.", oo::DescriptionOf([ship name]), *context);
 	
 	GLfloat cr = [ship collisionRadius];
 	[ship setOrientation: q2];
@@ -4305,7 +4305,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		switch ([wh scanInfo])
 		{
 			case WH_SCANINFO_NONE:
-				OOLog(kOOLogInconsistentState, @"%@", @"Internal Error - WH_SCANINFO_NONE reached in [PlayerEntity updateTargeting:]");
+				OO_LOG(cxx_kOOLogInconsistentState, "{}", "Internal Error - WH_SCANINFO_NONE reached in [PlayerEntity updateTargeting:]");
 				[self dumpState];
 				[wh dumpState];
 				// Workaround a reported hit of the assert here.  We really
@@ -4648,7 +4648,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// hud defined, but buggy?
 	if (hudDict.isNull())
 	{
-		OOLog(@"PlayerEntity.switchHudTo.failed", @"HUD dictionary file %@ to switch to not found or invalid.", oo::NSStringFrom(hudFileName));
+		OO_LOG("PlayerEntity.switchHudTo.failed", "HUD dictionary file {} to switch to not found or invalid.", hudFileName);
 		return NO;
 	}
 	
@@ -5060,7 +5060,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// Invariant/safety interlock: weapons offline implies missiles safe. -- Ahruman 2012-07-21
 		if (missile_status != MISSILE_STATUS_SAFE)
 		{
-			OOLogERR(@"player.missilesUnsafe", @"%@", @"Missile state is not SAFE when weapons are offline. This is a bug, please report it.");
+			OO_LOG_ERR("player.missilesUnsafe", "{}", "Missile state is not SAFE when weapons are offline. This is a bug, please report it.");
 			[self safeAllMissiles];
 		}
 		return MISSILE_STATUS_SAFE;
@@ -5787,10 +5787,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	// Make sure there's no gaps between missiles, synchronise missile_entity & missile_list.
 	int i, pylon = 0;
-	OOLog(@"missile.tidying.debug",@"Tidying fitted %d of possible %d missiles",missiles,PLAYER_MAX_MISSILES);
+	OO_LOG("missile.tidying.debug", "Tidying fitted {} of possible {} missiles", missiles, PLAYER_MAX_MISSILES);
 	for(i = 0; i < PLAYER_MAX_MISSILES; i++)
 	{
-		OOLog(@"missile.tidying.debug",@"%d %@ %@",i,missile_entity[i],missile_list[i]);
+		OO_LOG("missile.tidying.debug", "{} {} {}", i, oo::DescriptionOf(missile_entity[i]), oo::DescriptionOf(missile_list[i]));
 		if(missile_entity[i] != nil)
 		{
 			missile_entity[pylon] = missile_entity[i];
@@ -6439,7 +6439,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	OOScalar		d_forward, d_right, d_up;
 	BOOL		internal_damage = NO;	// base chance
 	
-	OOLog(@"player.ship.damage",  @"Player took damage from %@ becauseOf %@", ent, other);
+	OO_LOG("player.ship.damage", "Player took damage from {} becauseOf {}", oo::DescriptionOf(ent), oo::DescriptionOf(other));
 	
 	if ([self status] == STATUS_DEAD)  return;
 	if ([self status] == STATUS_ESCAPE_SEQUENCE) return; // if the player has ejected, don't deal more damage
@@ -6559,10 +6559,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (amount < 0) 
 	{
-		OOLog(@"player.ship.damage",  @"Player took negative scrape damage %.3f so we made it positive", amount);
+		OO_LOG("player.ship.damage", "Player took negative scrape damage {:.3f} so we made it positive", amount);
 		amount = -amount;
 	}
-	OOLog(@"player.ship.damage",  @"Player took %.3f scrape damage from %@", amount, ent);
+	OO_LOG("player.ship.damage", "Player took {:.3f} scrape damage from {}", amount, oo::DescriptionOf(ent));
 	
 	[[ent retain] autorelease];
 	rel_pos = ent ? [ent position] : kZeroHPVector;
@@ -7102,7 +7102,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	if ([self isDocked])  return;	// Can't die while docked. (Doing so would cause breakage elsewhere.)
 	
-	OOLog(@"player.ship.damage",  @"Player destroyed by %@ due to %@", whom, OOStringFromShipDamageType(type));	
+	OO_LOG("player.ship.damage", "Player destroyed by {} due to {}", oo::DescriptionOf(whom), cxx_OOStringFromShipDamageType(type));
 	
 	if (![[UNIVERSE gameController] playerFileToLoad])
 	{
@@ -7453,7 +7453,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if ( ![self wormhole] && !galactic_witchjump)	// galactic hyperspace does not generate a wormhole
 	{
-		OOLog(kOOLogInconsistentState, @"%@", @"Internal Error : Player entering witchspace with no wormhole.");
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "Internal Error : Player entering witchspace with no wormhole.");
 	}
 	[UNIVERSE allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:@"PLAYER WITCHSPACE"];
 	
@@ -8981,7 +8981,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		NSUInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
 		if (displayModeIndex == NSNotFound)
 		{
-			OOLogWARN(@"display.currentMode.notFound", @"%@", @"couldn't find current fullscreen setting, switching to default.");
+			OO_LOG_WARN("display.currentMode.notFound", "{}", "couldn't find current fullscreen setting, switching to default.");
 			displayModeIndex = 0;
 		}
 		
@@ -9039,7 +9039,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			
 			if (brightnessIdx == NSNotFound)
 			{
-				OOLogWARN(@"hdr.maxBrightness.notFound", @"%@", @"couldn't find current max brightness setting, switching to 400 nits.");
+				OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to 400 nits.");
 				brightnessIdx = 0;
 			}
 				
@@ -10027,7 +10027,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else
 	{
-		OOLog(@"interface.missingCallback", @"Unable to find callback definition for key %@", oo::NSStringOrNil(key));
+		OO_LOG("interface.missingCallback", "Unable to find callback definition for key {}", key.value_or("(null)"));
 	}
 }
 
@@ -10592,7 +10592,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([eqType isMissileOrMine] && missiles >= max_missiles)
 	{
-		OOLog(@"equip.buy.mounted.failed.full", @"%@", @"rejecting missile because already full");
+		OO_LOG("equip.buy.mounted.failed.full", "{}", "rejecting missile because already full");
 		return NO;
 	}
 	
@@ -10672,8 +10672,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (oo::str::hasSuffix(eqKey, "MISSILE") || oo::str::hasSuffix(eqKey, "MINE"))
 	{
 		ShipEntity* weapon = [[UNIVERSE newShipWithRole:oo::NSStringFrom(eqKey)] autorelease];
-		if (weapon)  OOLog(@"equip.buy.mounted", @"Got ship for mounted weapon role %@", oo::NSStringFrom(eqKey));
-		else  OOLog(@"equip.buy.mounted.failed", @"Could not find ship for mounted weapon role %@", oo::NSStringFrom(eqKey));
+		if (weapon)  OO_LOG("equip.buy.mounted", "Got ship for mounted weapon role {}", eqKey);
+		else  OO_LOG("equip.buy.mounted.failed", "Could not find ship for mounted weapon role {}", eqKey);
 		
 		BOOL mounted_okay = [self mountMissile:weapon];
 		if (mounted_okay)
@@ -12162,7 +12162,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	if (trumble_index == NSNotFound)
 	{
-		OOLog(@"trumble.zombie", @"DEBUG can't get rid of inactive trumble %@", deadTrumble);
+		OO_LOG("trumble.zombie", "DEBUG can't get rid of inactive trumble {}", oo::DescriptionOf(deadTrumble));
 		return;
 	}
 	trumbleCount--;	// reduce number of trumbles
@@ -12248,7 +12248,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 		if (info_failed)
 		{
-			OOLog(@"cheat.tentative", @"%@", @"POSSIBLE CHEAT DETECTED");
+			OO_LOG("cheat.tentative", "{}", "POSSIBLE CHEAT DETECTED");
 			possible_cheat = YES;
 		}
 		
@@ -12268,13 +12268,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		
 		if (possible_cheat && !info_failed)
-			OOLog(@"cheat.verified", @"%@", @"CHEAT DEFEATED - that's not the way to get rid of trumbles!");
+			OO_LOG("cheat.verified", "{}", "CHEAT DEFEATED - that's not the way to get rid of trumbles!");
 	}
 	else
 	// if trumbleValue comes in as nil, then probably someone has toyed with the save file
 	// by removing the entire trumbles array
 	{
-		OOLog(@"cheat.tentative", @"%@", @"POSSIBLE CHEAT DETECTED");
+		OO_LOG("cheat.tentative", "{}", "POSSIBLE CHEAT DETECTED");
 		info_failed = YES;
 	}
 	
@@ -12297,7 +12297,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		
 		if (!info_failed)
-			OOLog(@"cheat.verified", @"%@", @"CHEAT DEFEATED - that's not the way to get rid of trumbles!");
+			OO_LOG("cheat.verified", "{}", "CHEAT DEFEATED - that's not the way to get rid of trumbles!");
 	}
 	// at this stage we've done the best we can to stop cheaters
 	trumbleCount = putativeNTrumbles;
@@ -13018,7 +13018,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else
 	{
-		OOLog(@"script.commodityScript.load",@"Could not load script %@",scriptName);
+		OO_LOG("script.commodityScript.load", "Could not load script {}", oo::DescriptionOf(scriptName));
 	}
 	return cscript;
 }
@@ -13152,7 +13152,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (EXPECT(ship_trade_in_factor <= 90 && ship_trade_in_factor >= 75))
 	{
 		rate *= 2.0 - (ship_trade_in_factor / 100); // between 1.1x and 1.25x
-		//OOLog(@"fuelPrices", @"\"%@\" - repair status: %d%%, adjusted rate to:%.2f)", [self shipDataKey], ship_trade_in_factor, rate);
+		//fuelPrices: shipDataKey repair status ship_trade_in_factor rate (retired log)
 	}
 
 	return rate;
@@ -13248,7 +13248,7 @@ else _dockTarget = NO_TARGET;
 		if ([self dockedStation] == nil)
 		{
 			//there are a number of possible current statuses, not just STATUS_DOCKED
-			OOLogERR(kOOLogInconsistentState, @"status is %@, but dockedStation is nil; treating as not docked. %@", OOStringFromEntityStatus([self status]), @"This is an internal error, please report it.");
+			OO_LOG_ERR(cxx_kOOLogInconsistentState, "status is {}, but dockedStation is nil; treating as not docked. {}", cxx_OOStringFromEntityStatus([self status]), "This is an internal error, please report it.");
 			[self setStatus:STATUS_IN_FLIGHT];
 			isDockedStatus = NO;
 		}
@@ -13257,7 +13257,7 @@ else _dockTarget = NO_TARGET;
 	{
 		if ([self dockedStation] != nil && [self status] != STATUS_LAUNCHING)
 		{
-			OOLogERR(kOOLogInconsistentState, @"status is %@, but dockedStation is not nil; treating as docked. %@", OOStringFromEntityStatus([self status]), @"This is an internal error, please report it.");
+			OO_LOG_ERR(cxx_kOOLogInconsistentState, "status is {}, but dockedStation is not nil; treating as docked. {}", cxx_OOStringFromEntityStatus([self status]), "This is an internal error, please report it.");
 			[self setStatus:STATUS_DOCKED];
 			isDockedStatus = YES;
 		}
@@ -13289,7 +13289,7 @@ else _dockTarget = NO_TARGET;
 		}
 		else
 		{
-			OOLog(@"player.badDockingTarget", @"Attempt to dock at %@.", [self primaryTarget]);
+			OO_LOG("player.badDockingTarget", "Attempt to dock at {}.", oo::DescriptionOf([self primaryTarget]));
 			targetDockStation = nil;
 			dockingClearanceStatus = DOCKING_CLEARANCE_STATUS_NONE;
 		}
@@ -13546,7 +13546,7 @@ else _dockTarget = NO_TARGET;
 						if (oo::DescriptionOf(oo::ObjectFromPList(keydef)) == oo::DescriptionOf(oo::ObjectFromPList(checklist[j])))
 						{
 							result = NO;
-							OOLog(kOOLogException, @"***** Exception in setExtraGuiScreenKeys: %@ : %@ (%@)", @"invalid key settings", @"key already in use", oo::NSStringFrom(key));
+							OO_LOG(cxx_kOOLogException, "***** Exception in setExtraGuiScreenKeys: {} : {} ({})", "invalid key settings", "key already in use", key);
 						}
 					}
 				}
@@ -13568,16 +13568,16 @@ else _dockTarget = NO_TARGET;
 	
 	[super dumpSelfState];
 	
-	OOLog(@"dumpState.playerEntity", @"Script time: %g", script_time);
-	OOLog(@"dumpState.playerEntity", @"Script time check: %g", script_time_check);
-	OOLog(@"dumpState.playerEntity", @"Script time interval: %g", script_time_interval);
-	OOLog(@"dumpState.playerEntity", @"Roll/pitch/yaw delta: %g, %g, %g", roll_delta, pitch_delta, yaw_delta);
-	OOLog(@"dumpState.playerEntity", @"Shield: %g fore, %g aft", forward_shield, aft_shield);
-	OOLog(@"dumpState.playerEntity", @"Alert level: %u, flags: %#x", alertFlags, alertCondition);
-	OOLog(@"dumpState.playerEntity", @"Missile status: %i", missile_status);
-	OOLog(@"dumpState.playerEntity", @"Energy unit: %@", EnergyUnitTypeToString([self installedEnergyUnitType]));
-	OOLog(@"dumpState.playerEntity", @"Fuel leak rate: %g", fuel_leak_rate);
-	OOLog(@"dumpState.playerEntity", @"Trumble count: %zu", trumbleCount);
+	OO_LOG("dumpState.playerEntity", "Script time: {:g}", script_time);
+	OO_LOG("dumpState.playerEntity", "Script time check: {:g}", script_time_check);
+	OO_LOG("dumpState.playerEntity", "Script time interval: {:g}", script_time_interval);
+	OO_LOG("dumpState.playerEntity", "Roll/pitch/yaw delta: {:g}, {:g}, {:g}", roll_delta, pitch_delta, yaw_delta);
+	OO_LOG("dumpState.playerEntity", "Shield: {:g} fore, {:g} aft", forward_shield, aft_shield);
+	OO_LOG("dumpState.playerEntity", "Alert level: {}, flags: {:#x}", static_cast<unsigned>(alertFlags), static_cast<unsigned>(alertCondition));
+	OO_LOG("dumpState.playerEntity", "Missile status: {}", static_cast<unsigned>(missile_status));
+	OO_LOG("dumpState.playerEntity", "Energy unit: {}", cxx_EnergyUnitTypeToString([self installedEnergyUnitType]));
+	OO_LOG("dumpState.playerEntity", "Fuel leak rate: {:g}", fuel_leak_rate);
+	OO_LOG("dumpState.playerEntity", "Trumble count: {}", trumbleCount);
 	
 	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
 	ADD_FLAG_IF_SET(found_equipment);
@@ -13610,7 +13610,7 @@ else _dockTarget = NO_TARGET;
 	ADD_FLAG_IF_SET(waitingForStickCallback);
 	for (const std::string &flag : flags)  flagsString += (flagsString.empty() ? "" : ", ") + flag;
 	if (flags.empty())  flagsString = "none";
-	OOLog(@"dumpState.playerEntity", @"Flags: %@", oo::NSStringFrom(flagsString));
+	OO_LOG("dumpState.playerEntity", "Flags: {}", flagsString);
 }
 
 

@@ -356,13 +356,13 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	
 	subentKey = OptionalStringForKey(subentDict, "subentity_key");
 	if (!subentKey.has_value()) {
-		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",oo::ObjectFromPList(subentDict));
+		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(oo::ObjectFromPList(subentDict)));
 		return NO;
 	}
 	
 	subentity = [UNIVERSE newVisualEffectWithName:oo::NSStringFrom(*subentKey)];
 	if (subentity == nil) {
-		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity %@",oo::NSStringFrom(*subentKey));
+		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity {}", *subentKey);
 		return NO;
 	}
 	
@@ -1046,7 +1046,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	// Sanity check; this should always be true.
 	if (![self hasSubEntity:(OOVisualEffectEntity *)other])
 	{
-		OOLogERR(@"visualeffect.subentity.sanityCheck.failed", @"%@ thinks it's a subentity of %@, but the supposed parent does not agree. %@", [other shortDescription], [self shortDescription], @"This is an internal error, please report it.");
+		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::DescriptionOf([other shortDescription]), oo::DescriptionOf([self shortDescription]), "This is an internal error, please report it.");
 		[other setOwner:nil];
 		return NO;
 	}
