@@ -56,6 +56,7 @@ MA 02110-1301, USA.
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/PListParsing.hpp"
 
 #import "OOManifestProperties.h"
 #include "oofnd/Date.hpp"
@@ -334,6 +335,27 @@ static OOOXZManager *sSingleton = nil;
 @end 
 
 
+
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
 
 @implementation OOOXZManager
 
@@ -736,8 +758,8 @@ static OOOXZManager *sSingleton = nil;
 - (BOOL) beginDownload:(const std::string &)url
 {
 	// No cookies are sent or kept, as -setHTTPShouldHandleCookies:NO had it (oofnd/Http.hpp).
-	id bundleVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-	const std::string userAgent = oo::str::format("Oolite/%s", oo::DescriptionOf(bundleVersion).c_str());
+	const std::optional<std::string> bundleVersion = OoliteInfoString("CFBundleVersion");
+	const std::string userAgent = oo::str::format("Oolite/%s", bundleVersion.value_or("").c_str());
 	// A download always starts: a URL it cannot fetch arrives as a failure callback.
 	oo::http::Download *download = new oo::http::Download(url, userAgent);
 	_downloadProgress = 0;

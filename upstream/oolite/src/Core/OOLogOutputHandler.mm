@@ -39,6 +39,7 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/PListParsing.hpp"
 #include "oofnd/LogFile.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/StdLib.hpp"
@@ -55,7 +56,7 @@ SOFTWARE.
 	ADR-0042): the rotation to Previous.log, the writer thread, CRLF, the 1 GiB saturation and
 	the flush are its, byte for byte as OOAsyncLogger did them. What stays here is the glue: the
 	log directory, the logging-echo-to-stderr / stdout switches, the flush deadline of ADR-0033,
-	and, while gnustep-base is linked, the hook that brings its own NSLog output into the log.
+	and, while gnustep-base is linked, the hook that brings its own Foundation log output into the log.
 */
 
 
@@ -168,10 +169,10 @@ void OOLogOutputHandlerInit(void)
 	}
 	else
 	{
-		OO_LOG("logging.nsLogFilter.install.failed", "{}", "Failed to install NSLog() filter; system messages will not be logged in log file.");
+		OO_LOG("logging.nsLogFilter.install.failed", "{}", "Failed to install Foundation log filter; system messages will not be logged in log file.");
 	}
 #else
-	// gnustep-base's NSLog hook lives in the bridge (OOLogOutputHandler+FoundationBridge.mm).
+	// gnustep-base's Foundation log hook lives in the bridge (OOLogOutputHandler+FoundationBridge.mm).
 	OOLogOutputHandlerInstallNSLogHook();
 #endif
 
@@ -443,13 +444,24 @@ static void ExcludeFromTimeMachine(const std::string &path)
 static std::string GetAppName(void)
 {
 	static std::optional<std::string>	appName;
-	NSBundle							*bundle = nil;
 
 	if (!appName.has_value())
 	{
-		bundle = [NSBundle mainBundle];
-		appName = oo::OptionalString([bundle objectForInfoDictionaryKey:@"CFBundleName"]);
-		if (!appName.has_value())  appName = oo::OptionalString([bundle bundleIdentifier]);
+		const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+		oo::PList info;
+		if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+		{
+			if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+			    parsed && parsed->isDict())
+				info = std::move(*parsed);
+		}
+		if (const oo::PList *name = info.find("CFBundleName"); name && name->isString())
+			appName = *name->getIf<std::string>();
+		if (!appName.has_value())
+		{
+			if (const oo::PList *ident = info.find("CFBundleIdentifier"); ident && ident->isString())
+				appName = *ident->getIf<std::string>();
+		}
 		if (!appName.has_value())  appName = "<unknown application>";
 	}
 
