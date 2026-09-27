@@ -794,7 +794,7 @@ static Script LoadScriptWithName(ooscript::Context context, const std::optional<
 	
 	if (script == NULL)
 	{
-		// +stringWithContentsOfUnicodeFile: (it read through .oxz archives)
+		// decodeUnicodeText (it read through .oxz archives)
 		if (path.has_value())
 		{
 			if (const std::optional<oo::Data> bytes = OODataFromOXZFile(*path))  fileContents = oo::str::decodeUnicodeText(bytes->stringView());
