@@ -14913,14 +14913,15 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 
 #ifndef NDEBUG
-- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) descriptionForObjDump
 {
-	std::string desc = oo::str::format("%s mass %g", oo::DescriptionOf([super descriptionForObjDump]).c_str(), [self mass]);
+	// DescriptionOf(nil) was "(null)"; preserve that for a disengaged super result.
+	std::string desc = oo::str::format("%s mass %g", [super descriptionForObjDump].value_or("(null)").c_str(), [self mass]);
 	if (![self isPlayer])
 	{
 		desc = oo::str::format("%s AI: %s", desc.c_str(), oo::DescriptionOf([[self getAI] shortDescriptionComponents]).c_str());
 	}
-	return oo::NSStringFrom(desc);
+	return desc;
 }
 #endif
 

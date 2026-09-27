@@ -1111,12 +1111,12 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 }
 
 
-- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) descriptionForObjDump
 {
 	const std::optional<std::string> result = [self descriptionForObjDumpBasic];
-	if (!result)  return nil;	// -stringByAppendingFormat: sent to nil
+	if (!result)  return std::nullopt;	// -stringByAppendingFormat: sent to nil
 
-	return oo::NSStringFrom(*result + oo::str::format(" range: %g (visible: %s)", HPdistance([self position], [PLAYER position]), [self isVisible] ? "yes" : "no"));
+	return *result + oo::str::format(" range: %g (visible: %s)", HPdistance([self position], [PLAYER position]), [self isVisible] ? "yes" : "no");
 }
 
 
