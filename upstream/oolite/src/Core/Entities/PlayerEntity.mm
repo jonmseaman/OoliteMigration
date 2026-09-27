@@ -89,6 +89,8 @@ MA 02110-1301, USA.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
@@ -2416,7 +2418,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	ooscript::Context context = OOJSAcquireContext();
-	[self doWorldScriptEvent:OOJSID("startUp") inContext:context withArguments:NULL count:0 timeLimit:MAX(0.0, oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"start-script-limit-value", kOOJSLongTimeLimit))];
+	{ const oo::PList startLimit = oo::Defaults::standard().object("start-script-limit-value");
+	  [self doWorldScriptEvent:OOJSID("startUp") inContext:context withArguments:NULL count:0 timeLimit:MAX(0.0, oo::PListGet<float>::from(startLimit.isNull() ? nullptr : &startLimit, kOOJSLongTimeLimit))]; }
 	OOJSRelinquishContext(context);
 }
 
@@ -4093,7 +4096,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) gameOverFadeToBW
 {
-	float secondsToBWFadeOut = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"gameover-seconds-to-bw-fadeout", 5.0f);
+	const oo::PList fadeOut = oo::Defaults::standard().object("gameover-seconds-to-bw-fadeout");
+	float secondsToBWFadeOut = oo::PListGet<float>::from(fadeOut.isNull() ? nullptr : &fadeOut, 5.0f);
 	if ([UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS && secondsToBWFadeOut > 0.0f)
 	{
 		MyOpenGLView *gameView = [UNIVERSE gameView];
@@ -8097,7 +8101,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[[UNIVERSE gameView] clearMouse];
 	
 	// Contributed by Pleb - show ship model if the appropriate user default key has been set - Nikos 20140127
-	if (EXPECT_NOT([[NSUserDefaults standardUserDefaults] boolForKey:@"show-ship-model-in-status-screen"]))
+	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("show-ship-model-in-status-screen")))
 	{
 		[UNIVERSE removeDemoShips];
 		[self showShipModelWithKey:[self shipDataKey] shipData:nil personality:[self entityPersonalityInt]
@@ -11748,8 +11752,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			customActivatePressed.push_back(NO);
 			customModePressed.push_back(NO);			
 
-			NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-			[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+			oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 			return;
 		}
 	}
@@ -11773,8 +11776,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 	}
 	if (update) {
-		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 }
 
@@ -12192,7 +12194,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	munge_checksum(ship_kills);
 	trumbleHash = munge_checksum(trumbleCount);
 	
-	[[NSUserDefaults standardUserDefaults] setInteger:trumbleHash forKey:oo::NSStringFrom(namekey)];
+	oo::Defaults::standard().setInteger(namekey, trumbleHash);
 	
 	int i;
 	oo::PList::Array trumbleArray;
@@ -12276,10 +12278,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		info_failed = YES;
 	}
 	
-	if (info_failed && [[NSUserDefaults standardUserDefaults] objectForKey:oo::NSStringFrom(namekey)])
+	if (info_failed && !oo::Defaults::standard().object(namekey).isNull())
 	{
 		// try to determine trumbleCount from the key in user defaults
-		putativeHash = (int)[[NSUserDefaults standardUserDefaults] integerForKey:oo::NSStringFrom(namekey)];
+		putativeHash = (int)oo::Defaults::standard().integerForKey(namekey);
 		for (i = 1; (info_failed)&&(i < PLAYER_MAX_TRUMBLES); i++)
 		{
 			clear_checksum();
@@ -12312,7 +12314,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	munge_checksum(ship_kills);
 	trumbleHash = munge_checksum(trumbleCount);
 	
-	[[NSUserDefaults standardUserDefaults]  setInteger:trumbleHash forKey:oo::NSStringFrom(namekey)];
+	oo::Defaults::standard().setInteger(namekey, trumbleHash);
 }
 
 
