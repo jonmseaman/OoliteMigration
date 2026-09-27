@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 
 static id sSingleton = nil;
@@ -367,7 +368,7 @@ enum
 	
 	[ootunesScript executeAndReturnError:&errDict];
 	if (errDict)
-		OOLog(@"sound.music.iTunesIntegration.failed", @"ootunes returned :%@", errDict);
+		OO_LOG("sound.music.iTunesIntegration.failed", "ootunes returned :{}", oo::DescriptionOf(errDict));
 }
 
 
@@ -378,7 +379,7 @@ enum
 	NSDictionary *errDict = nil;
 	[ootunesScript executeAndReturnError:&errDict];
 	if (errDict)
-		OOLog(@"sound.music.iTunesIntegration.failed", @"ootunes returned :%@", errDict);
+		OO_LOG("sound.music.iTunesIntegration.failed", "ootunes returned :{}", oo::DescriptionOf(errDict));
 	[ootunesScript release]; 
 }
 #else

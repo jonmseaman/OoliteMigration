@@ -168,7 +168,7 @@ void OOLogOutputHandlerInit(void)
 	}
 	else
 	{
-		OOLog(@"logging.nsLogFilter.install.failed", @"Failed to install NSLog() filter; system messages will not be logged in log file.");
+		OO_LOG("logging.nsLogFilter.install.failed", "{}", "Failed to install NSLog() filter; system messages will not be logged in log file.");
 	}
 #else
 	// gnustep-base's NSLog hook lives in the bridge (OOLogOutputHandler+FoundationBridge.mm).
