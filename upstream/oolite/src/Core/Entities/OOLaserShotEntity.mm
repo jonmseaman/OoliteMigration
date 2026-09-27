@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define kLaserDuration		(0.09)	// seconds
@@ -66,7 +67,7 @@ static OOTexture *sShotTexture2 = nil;
 	ShipEntity			*ship = [srcEntity rootShipEntity];
 	Vector				middle = OOBoundingBoxCenter([srcEntity boundingBox]);
 	
-	NSCParameterAssert([srcEntity isShip] && [ship isShip]);
+	OOCParameterAssert([srcEntity isShip] && [ship isShip]);
 	
 	[self setStatus:STATUS_EFFECT];
 	

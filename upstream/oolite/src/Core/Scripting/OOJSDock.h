@@ -24,10 +24,9 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 @class DockEntity;
-
 
 #ifdef __cplusplus
 extern "C" {

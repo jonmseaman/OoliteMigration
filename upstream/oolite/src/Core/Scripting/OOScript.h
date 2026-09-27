@@ -33,7 +33,7 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -62,7 +62,8 @@ MA 02110-1301, USA.
 
 - (id)name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 - (std::optional<std::string>)scriptDescription;	// nullopt: none
-- (id)version;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (id)version;	// shared selector (Foundation declares -version too): -cxx_version as an Objective-C string, or nil
+- (std::optional<std::string>)cxx_version;	// nullopt: none (bead oo-3rb.291.1)
 - (id)displayName;	// shared selector (proposed ADR-0043): "name version" if version is defined, otherwise just "name".
 
 - (BOOL) requiresTickle;

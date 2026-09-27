@@ -13,6 +13,9 @@ __pycache__/
 # Per-bead git worktrees created by the beads-worker skill
 .worktrees/
 
+# Agent session scratch (scripts, logs); never commit
+.agent-tmp/
+
 # Golden harness run artifacts (tests/golden/run.sh); one directory per run
 tests/golden/artifacts/
 

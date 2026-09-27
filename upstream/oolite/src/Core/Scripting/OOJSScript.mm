@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #import "NSDataOOExtensions.h"
 #include "oofnd/Encoding.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -441,9 +442,9 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id) version	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_version
 {
-	return oo::NSStringOrNil(version);
+	return version;
 }
 
 
@@ -458,7 +459,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	  withArguments:(ooscript::Value *)argv count:(int)argc
 			 result:(ooscript::Value *)outResult
 {
-	NSParameterAssert(name.has_value() && (argv != NULL || argc == 0) && context != NULL && ooscript::isInRequest((context)));
+	OOParameterAssert(name.has_value() && (argv != NULL || argc == 0) && context != NULL && ooscript::isInRequest((context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Object root = NULL;
@@ -517,7 +518,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 
 - (id) propertyWithID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context
 {
-	NSParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	if (_jsSelf == NULL)  return nil;
 	
 	ooscript::Value jsValue = ooscript::undefinedValue();
@@ -531,7 +532,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 
 - (BOOL) setProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context
 {
-	NSParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Value jsValue = OOJSValueFromNativeObject(context, value);
@@ -541,7 +542,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 
 - (BOOL) defineProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context
 {
-	NSParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Value jsValue = OOJSValueFromNativeObject(context, value);
@@ -777,7 +778,7 @@ static Script LoadScriptWithName(ooscript::Context context, const std::optional<
 	std::optional<std::u16string>	data;	// the script's UTF-16 units
 	Script						script = NULL;
 	
-	NSCParameterAssert(outScriptObject != NULL && outErrorMessage != NULL);
+	OOCParameterAssert(outScriptObject != NULL && outErrorMessage != NULL);
 	outErrorMessage->reset();
 	
 #if OO_CACHE_JS_SCRIPTS

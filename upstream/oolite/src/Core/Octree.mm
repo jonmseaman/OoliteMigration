@@ -30,12 +30,13 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
-#import "OOPListView.h"
+#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 #ifndef NDEBUG
-#define OctreeDebugLog(format, ...) do { if (EXPECT_NOT(gDebugFlags & DEBUG_OCTREE_LOGGING))  OOLog(@"octree.debug", format, ## __VA_ARGS__); } while (0)
+#define OctreeDebugLog(format, ...) do { if (EXPECT_NOT(gDebugFlags & DEBUG_OCTREE_LOGGING))  OO_LOG("octree.debug", format, ## __VA_ARGS__); } while (0)
 #else
 #define OctreeDebugLog(...) do {} while (0)
 #endif
@@ -88,19 +89,20 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 
 
 // Designated initializer.
-- (id) initWithData:(NSData *)data
+- (id) initWithData:(const oo::Data &)data
 			 radius:(GLfloat)radius
 {
 	if ((self = [super init]))
 	{
-		_data = [data copy];
+		_data = data;
 		_radius = radius;
-		
-		NSUInteger nodeCount = [_data length] / sizeof *_octree;
-		NSParameterAssert(nodeCount < UINT32_MAX);
+
+		NSUInteger nodeCount = _data.length() / sizeof *_octree;
+		OOParameterAssert(nodeCount < UINT32_MAX);
 		_nodeCount = (uint32_t)nodeCount;
-		
-		_octree = (const int *)[_data bytes];
+
+		// (no bytes read as NULL, as they did for empty Foundation data)
+		_octree = (_data.length() != 0) ? (const int *)_data.bytes() : NULL;
 		
 		_collisionOctree = (unsigned char *)calloc(1, _nodeCount);
 		if (_octree == NULL || _collisionOctree == NULL)
@@ -114,23 +116,30 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 }
 
 
-- (id) initWithDictionary:(NSDictionary *)dict
+- (id) initWithDictionary:(id)dict	// shared selector (Foundation declares it too)
 {
-	NSData *data = [dict objectForKey:@"octree"];
-	if (![data isKindOfClass:[NSData class]] || ([data length] % sizeof (int)) != 0)
+	return [self cxx_initWithDictionary:oo::PListFrom(dict)];
+}
+
+
+- (id) cxx_initWithDictionary:(const oo::PList &)representation
+{
+	const oo::PList *octree = representation.find("octree");
+	const oo::Data *data = (octree != nullptr) ? octree->getIf<oo::Data>() : nullptr;
+	if (data == nullptr || (data->length() % sizeof (int)) != 0)
 	{
 		// Invalid representation.
 		[self release];
 		return nil;
 	}
-	
-	return [self initWithData:data radius:oo::PListView(dict).get<float>(@"radius")];
+
+	return [self initWithData:*data radius:representation.get<float>("radius")];
 }
 
 
 - (void) dealloc
 {
-	DESTROY(_data);
+	_data = oo::Data();
 	free(_collisionOctree);
 	
 	[super dealloc];
@@ -163,7 +172,7 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 
 - (Octree *) octreeScaledBy:(GLfloat)factor
 {
-	// Since octree data is immutable, we can share.
+	// (the octree data is copied; it was shared, being immutable)
 	return [[[Octree alloc] initWithData:_data radius:_radius * factor] autorelease];
 }
 
@@ -376,18 +385,17 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 	Vector u0 = make_vector(v0.x + off.x, v0.y + off.y, v0.z + off.z);
 	Vector u1 = make_vector(v1.x + off.x, v1.y + off.y, v1.z + off.z);
 	
-	OctreeDebugLog(@"DEBUG octant: [%d] radius: %.2f vs. line: (%.2f, %.2f, %.2f) - (%.2f, %.2f, %.2f)",
-		level, rad, u0.x, u0.y, u0.z, u1.x, u1.y, u1.z);
+	OctreeDebugLog("DEBUG octant: [{}] radius: {:.2f} vs. line: ({:.2f}, {:.2f}, {:.2f}) - ({:.2f}, {:.2f}, {:.2f})", static_cast<int>(level), rad, u0.x, u0.y, u0.z, u1.x, u1.y, u1.z);
 
 	if (octbuffer[level] == 0)
 	{
-		OctreeDebugLog(@"DEBUG Hit an empty octant: [%d]", level);
+		OctreeDebugLog("DEBUG Hit an empty octant: [{}]", static_cast<int>(level));
 		return NO;
 	}
 	
 	if (octbuffer[level] == -1)
 	{
-		OctreeDebugLog(@"DEBUG Hit a solid octant: [%d]", level);
+		OctreeDebugLog("DEBUG Hit a solid octant: [{}]", static_cast<int>(level));
 		collbuffer[level] = 2;	// green
 		hit_dist = sqrt(u0.x * u0.x + u0.y * u0.y + u0.z * u0.z);
 		return YES;
@@ -399,7 +407,7 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 
 	if (faces == 0)
 	{
-		OctreeDebugLog(@"----> Line misses octant: [%d].", level);
+		OctreeDebugLog("----> Line misses octant: [{}].", static_cast<int>(level));
 		return NO;
 	}
 	
@@ -424,19 +432,18 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 		if (CUBE_FACE_BOTTOM & faces)
 			octantIntersected = ((vi.x < 0.0)? 0: 4) + ((vi.z < 0.0)? 0: 1);
 
-		OctreeDebugLog(@"----> found intersection with face 0x%2x of cube of radius %.2f at (%.2f, %.2f, %.2f) octant:%d",
-				faces, rad, vi.x, vi.y, vi.z, octantIntersected);
+		OctreeDebugLog("----> found intersection with face 0x{:2x} of cube of radius {:.2f} at ({:.2f}, {:.2f}, {:.2f}) octant:{}", static_cast<unsigned>(faces), rad, vi.x, vi.y, vi.z, static_cast<int>(octantIntersected));
 	}
 	else
 	{	
-		OctreeDebugLog(@"----> inside cube of radius %.2f octant:%d", rad, octantIntersected);
+		OctreeDebugLog("----> inside cube of radius {:.2f} octant:{}", rad, static_cast<int>(octantIntersected));
 	}
 	
 	hasCollided = YES;
 	
 	collbuffer[level] = 1;	// red
 	
-	OctreeDebugLog(@"%@", @"----> testing octants...");
+	OctreeDebugLog("{}", "----> testing octants...");
 	
 	int nextLevel = level + octbuffer[level];
 		
@@ -449,12 +456,12 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 	oct2 = oct0 ^ 0x02;	// adjacent y
 	oct3 = oct0 ^ 0x04;	// adjacent z
 	
-	OctreeDebugLog(@"----> testing first octant hit [+%d]", oct0);
+	OctreeDebugLog("----> testing first octant hit [+{}]", static_cast<int>(oct0));
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct0))  return YES;	// first octant
 		
 	// test the three adjacent octants
 
-	OctreeDebugLog(@"----> testing next three octants [+%d] [+%d] [+%d]", oct1, oct2, oct3);
+	OctreeDebugLog("----> testing next three octants [+{}] [+{}] [+{}]", static_cast<int>(oct1), static_cast<int>(oct2), static_cast<int>(oct3));
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct1))  return YES;	// second octant
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct2))  return YES;	// third octant
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct3))  return YES;	// fourth octant
@@ -463,13 +470,13 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 	
 	oct0 ^= 0x07;	oct1 ^= 0x07;	oct2 ^= 0x07;	oct3 ^= 0x07;
 	
-	OctreeDebugLog(@"----> testing back three octants [+%d] [+%d] [+%d]", oct1, oct2, oct3);
+	OctreeDebugLog("----> testing back three octants [+{}] [+{}] [+{}]", static_cast<int>(oct1), static_cast<int>(oct2), static_cast<int>(oct3));
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct1))  return YES;	// fifth octant
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct2))  return YES;	// sixth octant
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct3))  return YES;	// seventh octant
 	
 	// and check the last octant
-	OctreeDebugLog(@"----> testing final octant [+%d]", oct0);
+	OctreeDebugLog("----> testing final octant [+{}]", static_cast<int>(oct0));
 	if (isHitByLineSub(octbuffer, collbuffer, nextLevel, rad, rd2, u0, u1, oct0))  return YES;	// last octant
 	
 	return NO;
@@ -482,13 +489,13 @@ static BOOL isHitByLine(const int *octbuffer, unsigned char *collbuffer, int lev
 	
 	if (isHitByLine(_octree, _collisionOctree, 0, _radius, v0, v1, kZeroVector, 0))
 	{
-		OctreeDebugLog(@"DEBUG Hit at distance %.2f", hit_dist);
+		OctreeDebugLog("DEBUG Hit at distance {:.2f}", hit_dist);
 		_hasCollision = hasCollided;
 		return hit_dist;
 	}
 	else
 	{
-		OctreeDebugLog(@"%@", @"DEBUG Missed!");
+		OctreeDebugLog("{}", "DEBUG Missed!");
 		_hasCollision = hasCollided;
 		return 0.0f;
 	}
@@ -503,19 +510,19 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 
 	if (axialBuffer[0] == 0)
 	{
-		OctreeDebugLog(@"%@", @"DEBUG Axial octree is empty.");
+		OctreeDebugLog("{}", "DEBUG Axial octree is empty.");
 		return NO;
 	}
 	
 	if (!otherBuffer)
 	{
-		OctreeDebugLog(@"%@", @"DEBUG Other octree is undefined.");
+		OctreeDebugLog("{}", "DEBUG Other octree is undefined.");
 		return NO;
 	}
 	
 	if (otherBuffer[0] == 0)
 	{
-		OctreeDebugLog(@"%@", @"DEBUG Other octree is empty.");
+		OctreeDebugLog("{}", "DEBUG Other octree is empty.");
 		return NO;
 	}
 	
@@ -529,7 +536,7 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 			(otherPosition.y + otherRadius < -axialRadius)||(otherPosition.y - otherRadius > axialRadius)||
 			(otherPosition.z + otherRadius < -axialRadius)||(otherPosition.z - otherRadius > axialRadius))
 		{
-			OctreeDebugLog(@"%@", @"----> Other sphere does not intersect axial cube");
+			OctreeDebugLog("{}", "----> Other sphere does not intersect axial cube");
 			return NO;
 		}
 	}
@@ -541,7 +548,7 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 			(axialPosition.y + axialRadius < -otherRadius)||(axialPosition.y - axialRadius > otherRadius)||
 			(axialPosition.z + axialRadius < -otherRadius)||(axialPosition.z - axialRadius > otherRadius))
 		{
-			OctreeDebugLog(@"%@", @"----> Axial sphere does not intersect other cube");
+			OctreeDebugLog("{}", "----> Axial sphere does not intersect other cube");
 			return NO;
 		}
 	}
@@ -558,7 +565,7 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 			axialCollisionBuffer[0] = (unsigned char)255;	// mark
 			otherCollisionBuffer[0] = (unsigned char)255;	// mark
 			
-			OctreeDebugLog(@"%@", @"DEBUG Octrees collide!");
+			OctreeDebugLog("{}", "DEBUG Octrees collide!");
 			return YES;
 		}
 		// the other octree must be decomposed
@@ -566,7 +573,7 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 		// if any of them collides with this octant
 		// then we have a solid collision
 		
-		OctreeDebugLog(@"%@", @"----> testing other octants...");
+		OctreeDebugLog("{}", "----> testing other octants...");
 		
 		// work out the nearest octant to the axial octree
 		int	nearest_oct = ((otherPosition.x > 0.0)? 0:4)|((otherPosition.y > 0.0)? 0:2)|((otherPosition.z > 0.0)? 0:1);
@@ -602,7 +609,7 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 	// the other octree, if any of them collide
 	// we have a solid collision
 	
-	OctreeDebugLog(@"%@", @"----> testing axial octants...");
+	OctreeDebugLog("{}", "----> testing axial octants...");
 	
 	// work out the nearest octant to the other octree
 	int	nearest_oct = ((otherPosition.x > 0.0)? 4:0)|((otherPosition.y > 0.0)? 2:0)|((otherPosition.z > 0.0)? 1:0);
@@ -665,12 +672,13 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 }
 
 
-- (NSDictionary *) dictionaryRepresentation
+- (oo::PList) cxx_dictionaryRepresentation
 {
-	return [NSDictionary dictionaryWithObjectsAndKeys:
-		_data, @"octree",
-		[NSNumber numberWithFloat:_radius],	@"radius",
-		nil];
+	// (the radius is a single real: it comes back as +numberWithFloat:, so the cache text is unchanged)
+	oo::PList::Dict result;
+	result.emplace("octree", oo::PList(_data));
+	result.emplace("radius", oo::PList::singleReal(_radius));
+	return oo::PList(std::move(result));
 }
 
 
@@ -770,7 +778,8 @@ static Vector randomFullNodeFrom(Octree_details details, Vector offset)
 #ifndef NDEBUG
 - (size_t) totalSize
 {
-	return [self oo_objectSize] + _nodeCount * [_data oo_objectSize] + [_data length] + _nodeCount * sizeof *_collisionOctree;
+	// (the data object is now a member: its size is sizeof _data where it was the Foundation object's)
+	return [self oo_objectSize] + _nodeCount * sizeof _data + _data.length() + _nodeCount * sizeof *_collisionOctree;
 }
 #endif
 
@@ -816,7 +825,7 @@ OOINLINE void SetNode(OOOctreeBuilder *self, uint32_t index, int value)
 // InsertNode(): set the node at the current insertion point, and increment insertion point.
 OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 {
-	NSCAssert(State(self)->remaining > 0, @"Attempt to add node to a full parent in octree builder.");
+	OOCAssert(State(self)->remaining > 0, "Attempt to add node to a full parent in octree builder.");
 	State(self)->remaining--;
 	
 	SetNode(self, State(self)->insertionPoint++, value);
@@ -856,18 +865,17 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 
 - (Octree *) buildOctreeWithRadius:(GLfloat)radius
 {
-	NSAssert(State(self)->remaining == 0 && _level == 0, @"Attempt to produce octree from an octree builder in an incomplete state.");
+	OOAssert(State(self)->remaining == 0 && _level == 0, "Attempt to produce octree from an octree builder in an incomplete state.");
 	
 	size_t dataSize = _nodeCount * sizeof *_octree;
 	int *resized = (int *)realloc(_octree, dataSize);
 	if (resized == NULL)  resized = _octree;
 	
-	/*	Hand over the bytes to the data object, which will be used directly by
-		the Octree.
+	/*	Copy the bytes into the data object, which will be used directly by
+		the Octree, and free them (the Foundation data object took them over).
 	*/
-	NSData *data = [NSData dataWithBytesNoCopy:resized
-										length:dataSize
-								  freeWhenDone:YES];
+	oo::Data data(resized, dataSize);
+	free(resized);
 	
 	_octree = NULL;
 	_nodeCount = 0;
@@ -891,7 +899,7 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 
 - (void) beginInnerNode
 {
-	NSAssert(_level < kMaxOctreeDepth, @"Attempt to build octree exceeding maximum depth.");
+	OOAssert(_level < kMaxOctreeDepth, "Attempt to build octree exceeding maximum depth.");
 	
 	// Insert relative offset to next free space.
 	uint32_t newInsertionPoint = _nodeCount;
@@ -915,8 +923,8 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 
 - (void) endInnerNode
 {
-	NSAssert(State(self)->remaining == 0, @"Attempt to end an inner octree node with fewer than eight children.");
-	NSAssert1(_level > 0, @"Unbalanced call to %s", __FUNCTION__);
+	OOAssert(State(self)->remaining == 0, "Attempt to end an inner octree node with fewer than eight children.");
+	OOAssert(_level > 0, "Unbalanced call to %s", __FUNCTION__);
 	
 	_level--;
 	
@@ -931,7 +939,7 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 		never recurse into an empty subtree.
 	*/
 	
-	NSAssert(_nodeCount > 8, @"After ending an inner node, there must be at least eight nodes in buffer.");
+	OOAssert(_nodeCount > 8, "After ending an inner node, there must be at least eight nodes in buffer.");
 	for (uint32_t node = _nodeCount - 8; node < _nodeCount; node++)
 	{
 		if (_octree[node] != -1)  return;

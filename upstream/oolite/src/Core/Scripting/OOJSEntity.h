@@ -24,13 +24,12 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "OOJavaScriptEngine.h"
 #import "Universe.h"
 #include "oofnd/StdLib.hpp"
 
 @class Entity;
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +53,6 @@ DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, JSEntityClass(), gOOEntityJSPrototy
 
 OOINLINE ooscript::Object JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 
-
 /*	EntityFromArgumentList()
 	
 	Construct a entity from an argument list containing a JS Entity object.
@@ -74,7 +72,6 @@ BOOL EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 #ifdef __cplusplus
 }
 #endif
-
 
 /*
 	For scripting purposes, a JS entity object is a stale reference if its

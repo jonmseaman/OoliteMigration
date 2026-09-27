@@ -457,6 +457,24 @@ OO_TEST(trimFindAndSplitBySet)
 	OO_CHECK(parts[0].empty() && parts[1] == "A" && parts[2] == "B" && parts[3].empty());
 }
 
+// Captured from GNUstep base (bead oo-3rb.67): -rangeOfCharacterFromSet:options:NSLiteralSearch
+// range: with the old-style plist writer's escape set, and -longCharacterIsMember: of a unit.
+OO_TEST(rangedSearchAndLongMembership)
+{
+	const CharacterSet escapes = CharacterSet::fromCharacters("\"\r\n\\");
+	OO_CHECK_EQ(oo::str::findFirstOf("x\ny\rz\\w\"", escapes, 0), 1u);
+	OO_CHECK_EQ(oo::str::findFirstOf("x\ny\rz\\w\"", escapes, 2), 3u);
+	OO_CHECK_EQ(oo::str::findFirstOf("x\ny\rz\\w\"", escapes, 6), 7u);
+	OO_CHECK_EQ(oo::str::findFirstOf("x\ny\rz\\w\"", escapes, 8), std::string_view::npos);
+	OO_CHECK_EQ(oo::str::findFirstOf("e\xCC\x81\"", escapes, 1), 2u);	// after a combining mark
+	OO_CHECK_EQ(oo::str::findFirstOf("\xF0\x9F\x98\x80\"a\\", escapes, 1), 2u);	// after a surrogate pair
+	OO_CHECK_EQ(oo::str::findFirstOf("abc", escapes, 3), std::string_view::npos);
+	OO_CHECK(CharacterSet::decimalDigit().contains(u'7'));
+	OO_CHECK(CharacterSet::decimalDigit().contains(u'٣'));	// ARABIC-INDIC DIGIT THREE
+	OO_CHECK(!CharacterSet::decimalDigit().contains(u'A'));
+}
+
+
 OO_TEST(scriptCorpusMatchesGNUstep)
 {
 	ScriptCorpus corpus(0x12);

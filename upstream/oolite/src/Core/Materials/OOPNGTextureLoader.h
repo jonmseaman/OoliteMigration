@@ -30,6 +30,9 @@ SOFTWARE.
 #import "png.h"
 #import "OOTextureLoader.h"
 
+#include "oofnd/Data.hpp"
+#include "oofnd/StdLib.hpp"
+
 
 @interface OOPNGTextureLoader: OOTextureLoader
 {
@@ -37,7 +40,7 @@ SOFTWARE.
 	png_structp					png;
 	png_infop					pngInfo;
 	png_infop					pngEndInfo;
-	NSData						*fileData;
+	std::optional<oo::Data>		fileData;
 	size_t						length;
 	size_t						offset;
 }

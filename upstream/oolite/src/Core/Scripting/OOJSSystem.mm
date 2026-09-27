@@ -100,7 +100,7 @@ namespace {
 static std::vector<oo::ObjCRef<Entity *>> FindShips(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
 } // namespace
 namespace {
-static NSComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo);
+static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo);
 } // namespace
 
 namespace {
@@ -1887,7 +1887,7 @@ static std::vector<oo::ObjCRef<Entity *>> FindJSVisibleEntities(EntityFilterPred
 		// -sortUsingFunction:context: with the same comparison (a stable sort: GNUstep's is timsort).
 		std::stable_sort(result.begin(), result.end(), [relativeTo](const oo::ObjCRef<Entity *> &a, const oo::ObjCRef<Entity *> &b)
 		{
-			return CompareEntitiesByDistance(a.get(), b.get(), relativeTo) == NSOrderedAscending;
+			return CompareEntitiesByDistance(a.get(), b.get(), relativeTo) == OOOrderedAscending;
 		});
 	}
 	return result;	// empty for no matches, as the empty array was
@@ -1915,7 +1915,7 @@ static std::vector<oo::ObjCRef<Entity *>> FindShips(EntityFilterPredicate predic
 
 
 namespace {
-static NSComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo)
+static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1927,10 +1927,10 @@ static NSComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo
 	d1 = HPdistance2(ea->position, r->position);
 	d2 = HPdistance2(eb->position, r->position);
 	
-	if (d1 < d2)  return NSOrderedAscending;
-	else if (d1 > d2)  return NSOrderedDescending;
-	else return NSOrderedSame;
+	if (d1 < d2)  return OOOrderedAscending;
+	else if (d1 > d2)  return OOOrderedDescending;
+	else return OOOrderedSame;
 	
-	OOJS_PROFILE_EXIT_VAL(NSOrderedSame)
+	OOJS_PROFILE_EXIT_VAL(OOOrderedSame)
 }
 } // namespace
