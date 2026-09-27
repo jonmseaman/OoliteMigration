@@ -27,9 +27,11 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 #include <cstring>
 #include "oofnd/StdLib.hpp"
@@ -56,7 +58,6 @@ MA 02110-1301, USA.
 	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
 
-#import "OOPListView.h"
 #import "OOFoundationBridge.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
@@ -318,21 +319,22 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
 	ooscript::setCStringsAreUTF8();
 	
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 #ifndef NDEBUG
 	/*	Set stack trace preferences from preferences. These will be overriden
 		by the debug OXP script if installed, but being able to enable traces
 		without setting up the debug console could be useful for debugging
 		users' problems.
 	*/
-	[self setDumpStackForErrors:[defaults boolForKey:@"dump-stack-for-errors"]];
-	[self setDumpStackForWarnings:[defaults boolForKey:@"dump-stack-for-warnings"]];
+	[self setDumpStackForErrors:defaults.boolForKey("dump-stack-for-errors")];
+	[self setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
 #endif
 	
 	assert(sizeof(ooscript::Char16) == sizeof(unichar));
 	
 	// initialize the JS run time, and return result in runtime.
-	uint32_t jsRuntimeInMiB = oo::PListView(defaults).get<int>(@"jsruntime-size-mib", OOJS_RUNTIME_SIZE_MiB);
+	const oo::PList jsRuntimeSize = defaults.object("jsruntime-size-mib");
+	uint32_t jsRuntimeInMiB = static_cast<uint32_t>(oo::PListGet<int>::from(jsRuntimeSize.isNull() ? nullptr : &jsRuntimeSize, OOJS_RUNTIME_SIZE_MiB));
 	_runtime = ooscript::newRuntime(jsRuntimeInMiB * 1024L * 1024L);
 	
 	// if runtime creation failed, end the program here.
@@ -372,7 +374,8 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
 	if (ooscript::gcZealSupported())
 	{
-		uint8_t gcZeal = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned char>(@"js-gc-zeal");
+		const oo::PList gcZealValue = oo::Defaults::standard().object("js-gc-zeal");
+		uint8_t gcZeal = static_cast<uint8_t>(oo::PListGet<unsigned char>::from(gcZealValue.isNull() ? nullptr : &gcZealValue, 0));
 		if (gcZeal > 0)
 		{
 			// Useful js-gc-zeal values are 0 (off), 1 and 2.
