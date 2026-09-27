@@ -79,7 +79,7 @@ static const char * const kStageName	= "Checking demoships.plist";
 	// Check that it's an array
 	if (!demoshipsPList.isArray())
 	{
-		OOLog(@"verifyOXP.demoshipsPList.notArray", @"%@", @"***** ERROR: demoships.plist is not an array.");
+		OO_LOG("verifyOXP.demoshipsPList.notArray", "{}", "***** ERROR: demoships.plist is not an array.");
 		return;
 	}
 	
@@ -94,7 +94,7 @@ static const char * const kStageName	= "Checking demoships.plist";
 	// Check that it's a dictionary
 	if (!shipdataPList.isDict())
 	{
-		OOLog(@"verifyOXP.demoshipsPList.notDict", @"%@", @"***** ERROR: shipdata.plist is not a dictionary.");
+		OO_LOG("verifyOXP.demoshipsPList.notDict", "{}", "***** ERROR: shipdata.plist is not a dictionary.");
 		return;
 	}
 	
@@ -110,11 +110,11 @@ static const char * const kStageName	= "Checking demoships.plist";
 {
 	for (const oo::PList &entry : *demoshipsPList.getIf<oo::PList::Array>())
 	{
-		// An entry that is not a string is no key of shipdata.plist; "%@" prints the entry itself.
+		// An entry that is not a string is no key of shipdata.plist; print the entry description.
 		const std::string *name = entry.getIf<std::string>();
 		if (name == nullptr || shipdataPList.find(*name) == nullptr)
 		{
-			OOLog(@"verifyOXP.demoshipsPList.unknownShip", @"----- WARNING: demoships.plist entry \"%@\" not found in shipdata.plist.", name != nullptr ? oo::NSStringFrom(*name) : oo::ObjectFromPList(entry));
+			OO_LOG("verifyOXP.demoshipsPList.unknownShip", "----- WARNING: demoships.plist entry \"{}\" not found in shipdata.plist.", name != nullptr ? *name : oo::DescriptionOf(oo::ObjectFromPList(entry)));
 		}
 	}
 }
