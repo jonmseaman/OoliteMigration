@@ -10393,7 +10393,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 	while (beacon != nil)
 	{
-		const std::optional<std::string> beaconCode = oo::OptionalString([beacon beaconCode]);
+		const std::optional<std::string> beaconCode = [beacon beaconCode];
 		if (BeaconCodeMatches(beaconCode, code))
 		{
 			result.emplace_back(beacon);
