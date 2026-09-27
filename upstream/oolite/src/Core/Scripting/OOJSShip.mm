@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOEntityFilterPredicate.h"
 #import "OOCharacter.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 static ooscript::Object sShipPrototype;
@@ -688,7 +689,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 		
 		case kShip_AIState:
-			result = [[entity getAI] state];
+			result = oo::NSStringOrNil([[entity getAI] cxx_state]);
 			break;
 		
 		case kShip_AIFoundTarget:
@@ -1254,7 +1255,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return NO;
 	if (OOIsStaleEntity(entity))  return YES;
 
-	NSCAssert(![entity isTemplateCargoPod], @"-OOJSShip: a template cargo pod has become accessible to Javascript");
+	OOCAssert(![entity isTemplateCargoPod], "-OOJSShip: a template cargo pod has become accessible to Javascript");
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -3435,7 +3436,7 @@ static BOOL RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &o
 	
 	if (EXPECT_NOT([thisEnt isPlayer]))
 	{
-		NSCAssert(explode, @"RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
+		OOCAssert(explode, "RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
 		PlayerEntity *player = (PlayerEntity *)thisEnt;
 		
 		if ([player isDocked])

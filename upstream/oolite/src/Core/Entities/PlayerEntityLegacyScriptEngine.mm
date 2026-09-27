@@ -157,7 +157,7 @@ const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
 }
 
 
-/*	-[NSCharacterSet whitespaceCharacterSet]: GNUstep's whitespace-and-newline set (the scanner's,
+/*	Whitespace without newlines: GNUstep's whitespace-and-newline set (the scanner's
 	oo::str::isWhitespaceOrNewline) without its newlines (U+000A-U+000D, U+0085, U+2028, U+2029).
 	The later chunks of oo-j924 reuse it.
 */
@@ -1182,13 +1182,13 @@ static int shipsFound;
 
 - (id) missionChoice_string	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
 {
-	return missionChoice;
+	return oo::NSStringOrNil(missionChoice);
 }
 
 
 - (id) missionKeyPress_string	// called by name (ADR-0043 item 21)
 {
-	return missionKeyPress;
+	return oo::NSStringOrNil(missionKeyPress);
 }
 
 
@@ -1527,7 +1527,7 @@ static int shipsFound;
 		}
 	}
 
-	DESTROY(specialCargo);
+	specialCargo.reset();
 
 	[self calculateCurrentCargo];
 }
@@ -1540,7 +1540,7 @@ static int shipsFound;
 	const std::string description = oo::StdString(descriptionString);
 	[self removeAllCargo:YES];
 	OO_LOG(kOOLogNoteUseSpecialCargo, "Going to useSpecialCargo:'{}'", description);
-	specialCargo = [OOExpand(oo::NSStringFrom(description)) retain];
+	specialCargo = oo::OptionalString(OOExpand(oo::NSStringFrom(description)));
 }
 
 
@@ -1977,9 +1977,8 @@ static int shipsFound;
 {
 	const std::optional<std::string> key = oo::OptionalString(textKey);
 
-	if (key.has_value() && key == oo::OptionalString(lastTextKey))  return; // don't repeatedly add the same text
-	[lastTextKey release];
-	lastTextKey = [textKey copy];
+	if (key.has_value() && key == lastTextKey)  return; // don't repeatedly add the same text
+	lastTextKey = key;
 
 	// Replace literal \n in strings with line breaks and perform expansions.
 	const std::optional<std::string> text = MissionTextForKey(key.value_or(std::string()));
@@ -2223,15 +2222,14 @@ static int shipsFound;
 
 - (std::optional<std::string>) cxx_missionTitle
 {
-	return oo::OptionalString(_missionTitle);
+	return _missionTitle;
 }
 
 
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value
 {
 	// (nil matters: the mission screen then falls back to DESC(mission-information))
-	[_missionTitle release];
-	_missionTitle = [oo::NSStringOrNil(value) retain];	// PlayerEntity.h's ivar
+	_missionTitle = value;
 }
 
 
@@ -2509,20 +2507,19 @@ static int shipsFound;
 
 - (void) clearMissionScreenID
 {
-	[_missionScreenID release];
-	_missionScreenID = nil;
+	_missionScreenID.reset();
 }
 
 
 - (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid
 {
-	_missionScreenID = [oo::NSStringOrNil(msid) retain];	// PlayerEntity.h's ivar; retained as before
+	_missionScreenID = msid;
 }
 
 
 - (std::optional<std::string>) cxx_missionScreenID
 {
-	return oo::OptionalString(_missionScreenID);
+	return _missionScreenID;
 }
 
 
@@ -2616,11 +2613,7 @@ static int shipsFound;
 	if (gui)
 		gui_screen = GUI_SCREEN_MISSION;
 
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[[OOMusicController sharedController] playMissionMusic];
 	
@@ -2935,8 +2928,8 @@ static int shipsFound;
 
 	if (!scriptName.has_value()) return NO;
 
-	// no duplicates! (eqScripts, PlayerEntity.h's, holds (key, script) pairs)
-	if ([self cxx_eqScriptIndexForKey:eq_key] != [eqScripts count])  return NO;
+	// no duplicates! (eqScripts holds (key, script) pairs)
+	if ([self cxx_eqScriptIndexForKey:eq_key] != eqScripts.size())  return NO;
 
 	// the script's properties: a mixed configuration (Amendment 2)
 	oo::PList::Dict properties;
@@ -2947,23 +2940,23 @@ static int shipsFound;
 
 	OOLog(@"player.equipmentScript", @"Script '%@': installation %@successful.", oo::NSStringFrom(*scriptName),(s == nil ? @"un" : @""));
 
-	[eqScripts addObject:oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(eq_key), s })];
-	if (primedEquipment == [eqScripts count] - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
-	OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", [eqScripts count]);
+	eqScripts.emplace_back(eq_key, oo::ObjCRef<OOJSScript *>(static_cast<OOJSScript *>(s)));
+	if (primedEquipment == eqScripts.size() - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
+	OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", eqScripts.size());
 	return YES;
 }
 
 
 - (void) cxx_removeEqScriptForKey:(const std::string &)eq_key
 {
-	NSUInteger			i, count = [eqScripts count];
+	NSUInteger			i, count = eqScripts.size();
 
 	for (i = 0; i < count; i++)
 	{
 		// (count is not updated after a removal: an index past the end read nil, matching nothing)
-		if (i < [eqScripts count] && oo::StdString([[eqScripts objectAtIndex:i] objectAtIndex:0]) == eq_key)
+		if (i < eqScripts.size() && eqScripts[i].first == eq_key)
 		{
-			[eqScripts removeObjectAtIndex:i];
+			eqScripts.erase(eqScripts.begin() + static_cast<std::ptrdiff_t>(i));
 
 			if (i == primedEquipment)  primedEquipment = count;	// primed-none
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
@@ -2977,11 +2970,11 @@ static int shipsFound;
 
 - (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key
 {
-	NSUInteger			i, count = [eqScripts count];
+	NSUInteger			i, count = eqScripts.size();
 
 	for (i = 0; i < count; i++)
 	{
-		if (oo::StdString([[eqScripts objectAtIndex:i] objectAtIndex:0]) == eq_key) return i;
+		if (eqScripts[i].first == eq_key) return i;
 	}
 
 	return count;

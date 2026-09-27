@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "OOMaterial.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
@@ -203,7 +204,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else
 	{
-		OOLogWARN(@"script.warning", @"Change to property '%@' not applied, will apply only on leaving and re-entering this system.",oo::NSStringFrom(key));
+		OO_LOG_WARN("script.warning", "Change to property '{}' not applied, will apply only on leaving and re-entering this system.", key);
 		return NO;
 	}
 	return YES;
@@ -221,7 +222,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else
 	{
-		OOLog(@"sky.warning", @"%@", @"PLAYER is nil");
+		OO_LOG("sky.warning", "{}", "PLAYER is nil");
 	}
 }
 
@@ -262,7 +263,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	
 	[super drawImmediate:immediate translucent:translucent];
 	
-	OOCheckOpenGLErrors(@"SkyEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SkyEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 
@@ -307,7 +308,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		}
 		else
 		{
-			OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as two RGB colours (must be six numbers).", oo::NSStringFrom(*string));
+			OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as two RGB colours (must be six numbers).", *string);
 		}
 	}
 	colorDesc = ObjectForKey(dictionary, "sky_color_1");
@@ -315,14 +316,14 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
 		if (color != nil)  *ioColor1 = color;
-		else  OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+		else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 	colorDesc = ObjectForKey(dictionary, "sky_color_2");
 	if (colorDesc != nil)
 	{
 		color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
 		if (color != nil)  *ioColor2 = color;
-		else  OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+		else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 
 	colorDesc = ObjectForKey(dictionary, "nebula_color_1");
@@ -334,7 +335,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 			*ioColor3 = color;
 			nebulaSet = YES;
 		}
-		else  OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+		else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 	else
 	{
@@ -343,7 +344,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		{
 			color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
 			if (color != nil)  *ioColor3 = color;
-			else  OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+			else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 		}
 	}
 	
@@ -356,7 +357,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 			*ioColor4 = color;
 			nebulaSet = YES;
 		}
-		else  OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+		else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 	else
 	{
@@ -365,7 +366,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		{
 			color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
 			if (color != nil)  *ioColor4 = color;
-			else  OOLogWARN(@"sky.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
+			else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 		}
 	}
 	return nebulaSet;

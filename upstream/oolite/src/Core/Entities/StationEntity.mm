@@ -49,6 +49,7 @@
 #import "OODebugStandards.h"
 #import "OOWeakSet.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 
 // -oo_stringForKey:'s value without the Foundation type (proposed ADR-0043): a string as is, a
@@ -80,7 +81,7 @@ std::optional<std::string> OptionalStringValue(id object)
 - (void) addShipToStationCount:(ShipEntity *)ship;
 
 - (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(id)role;	// shared selector (proposed ADR-0043): DockEntity
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
 
 - (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship;
 
@@ -338,7 +339,7 @@ std::optional<std::string> OptionalStringValue(id object)
 	if (soa == 0)
 	{
 		// if all docks have no ships on approach
-		[shipAI message:@"DOCKING_COMPLETE"];
+		[shipAI message:"DOCKING_COMPLETE"];
 		[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];	
 	}
 }
@@ -409,7 +410,7 @@ std::optional<std::string> OptionalStringValue(id object)
 
 	[_shipsOnHold removeAllObjects];
 	
-	[shipAI message:@"DOCKING_COMPLETE"];
+	[shipAI message:"DOCKING_COMPLETE"];
 	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 
 }
@@ -436,7 +437,7 @@ std::optional<std::string> OptionalStringValue(id object)
 
 	[self autoDockShipsOnHold];
 	
-	[shipAI message:@"DOCKING_COMPLETE"];
+	[shipAI message:"DOCKING_COMPLETE"];
 	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 
 }
@@ -482,9 +483,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 // this method does initial traffic control, before passing the ship
 // to an appropriate dock for docking coordinates and instructions.
 // used for NPCs, and the player when they use the docking computer
-- (id) dockingInstructionsForShip:(ShipEntity *) ship	// shared selector (proposed ADR-0043)
-{	
-	if (ship == nil)  return nil;
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *) ship
+{
+	if (ship == nil)  return oo::PList();
 
 	[self doScriptEvent:OOJSID("stationReceivedDockingRequest") withArgument:ship];
 
@@ -496,7 +497,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if ([ship isPlayer] && [ship legalStatus] > 50)	// note: non-player fugitives dock as normal
 	{
 		// refuse docking to the fugitive player
-		return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1));
+		return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1);
 	}
 	
 	if	(magnitude2(velocity) > 1.0 ||
@@ -504,7 +505,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			 fabs(flightYaw) > 0.01)
 	{
 		// no docking while station is moving, pitching or yawing
-		return oo::ObjectFromPList([self holdPositionInstructionForShip:ship]);
+		return [self holdPositionInstructionForShip:ship];
 	}
 	PlayerEntity *player = PLAYER;
 	BOOL player_is_ahead = (![ship isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == [player getTargetDockStation]));
@@ -580,14 +581,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			docking = "TRY_AGAIN_LATER";
 		}
 		// no docks accept this ship (or the player is blocking them)
-		return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1));
+		return cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1);
 	}
 
 
 	// rolling is okay for some
 	if	(fabs(flightRoll) > 0.01 && [chosenDock isOffCentre])
 	{
-		return oo::ObjectFromPList([self holdPositionInstructionForShip:ship]);
+		return [self holdPositionInstructionForShip:ship];
 	}
 	
 	// we made it through holding!
@@ -679,7 +680,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	const std::optional<std::string> portDimensionsStr = OptionalStringValue([dict objectForKey:@"port_dimensions"]);	// -oo_stringForKey:
 	if (portDimensionsStr)
 	{
-		OOStandardsDeprecated(@"The port_dimensions key is deprecated");
+		cxx_OOStandardsDeprecated("The port_dimensions key is deprecated");
 		if (!OOEnforceStandards())
 		{
 			const std::vector<std::string> tokens = oo::str::split(*portDimensionsStr, "x");
@@ -777,7 +778,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		ShipEntity *subEntity = sub;
 		if ([subEntity isStation])
 		{
-			OOLog(@"setup.ship.badType.subentities",@"Subentity %@ (%@) of station %@ is itself a StationEntity. This is an internal error - please report it. ",subEntity,[subEntity shipDataKey],[self displayName]);
+			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), oo::DescriptionOf([subEntity shipDataKey]), oo::DescriptionOf([self displayName]));
 		}
 	}
 #endif
@@ -789,7 +790,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 
 	cxx_OOStandardsDeprecated(oo::str::format("No docks set up for %s", oo::DescriptionOf(self).c_str()));
-	OOLog(@"ship.setup.docks",@"No docks set up for %@, making virtual dock",self);
+	OO_LOG("ship.setup.docks", "No docks set up for {}, making virtual dock", oo::DescriptionOf(self));
 
 	// no real docks, make a virtual one
 	// position and orientation as OOPropertyListFromVector / OOPropertyListFromQuaternion built them (floats)
@@ -906,7 +907,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[player doScriptEvent:OOJSID("playerDockingClearanceExpired")];
 				if ([self currentlyInDockingQueues] == 0) 
 				{
-					[[self getAI] message:@"DOCKING_COMPLETE"];
+					[[self getAI] message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
 				player_reserved_dock = nil;
@@ -920,7 +921,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 				if ([self currentlyInDockingQueues] == 0) 
 				{
-					[[self getAI] message:@"DOCKING_COMPLETE"];
+					[[self getAI] message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
 			}
@@ -1138,12 +1139,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		threshold++;
 	}
 	
-	OOLog(@"station.launchShip.failed", @"Cancelled launch for a %@ with role %@, as the %@ has too many ships in its launch queue(s) or no suitable launch docks.",
-			  [ship displayName], [ship primaryRole], [self displayName]);
+	OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as the {} has too many ships in its launch queue(s) or no suitable launch docks.",
+			  oo::DescriptionOf([ship displayName]), oo::DescriptionOf([ship primaryRole]), oo::DescriptionOf([self displayName]));
 }
 
 
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(id)role	// shared selector (proposed ADR-0043)
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role
 {
 	unsigned result = 0;
 	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
@@ -1173,8 +1174,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 	}
 
-	if (logNoFit) OOLog(@"station.launchShip.failed", @"Cancelled launch for a %@ with role %@, as it is too large for the docking port of the %@.",
-			  [ship displayName], [ship primaryRole], self);
+	if (logNoFit) OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as it is too large for the docking port of the {}.",
+			  oo::DescriptionOf([ship displayName]), oo::DescriptionOf([ship primaryRole]), oo::DescriptionOf(self));
 	return NO;
 }	
 
@@ -1399,8 +1400,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a ship with role %@, as the %@ has no launch docks.",
-			  role, [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a ship with role {}, as the {} has no launch docks.",
+			  oo::DescriptionOf(role), oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 
@@ -1501,8 +1502,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	std::vector<oo::ObjCRef<ShipEntity *>>	result;
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a police ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a police ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return oo::NSArrayFromObjects(result);
 	}
 
@@ -1565,8 +1566,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a defense ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a defense ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 
@@ -1596,7 +1597,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return nil;
 	}
 	
-	const std::optional<std::string> defense_ship_key = OptionalStringValue([shipinfoDictionary objectForKey:@"defense_ship"]);	// -oo_stringForKey:
+	const std::optional<std::string> defense_ship_key = OptionalStringValue(shipinfoDictionary.find("defense_ship"));	// -oo_stringForKey:
 	if (defense_ship_key)
 	{
 		defense_ship = [UNIVERSE newShipWithName:oo::NSStringFrom(*defense_ship_key)];
@@ -1607,7 +1608,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	bool shipdataSuppliedRole = false;
 	if (!defense_ship)
 	{
-		const std::optional<std::string> defense_ship_role = OptionalStringValue([shipinfoDictionary objectForKey:@"defense_ship_role"]);
+		const std::optional<std::string> defense_ship_role = OptionalStringValue(shipinfoDictionary.find("defense_ship_role"));
 		shipdataSuppliedRole = defense_ship_role.has_value();
 		defense_ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(defense_ship_role.value_or(default_defense_ship_role))];
 	}
@@ -1678,14 +1679,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a scavenger ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a scavenger ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 
 	ShipEntity  *scavenger_ship;
 	
-	unsigned scavs = [UNIVERSE countShipsWithPrimaryRole:@"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:@"scavenger"];
+	unsigned scavs = [UNIVERSE countShipsWithPrimaryRole:@"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"scavenger"];
 	
 	if (scavs >= max_scavengers)  return nil;
 	if (scavengers_launched >= max_scavengers)  return nil;
@@ -1723,14 +1724,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a miner ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a miner ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 
 	ShipEntity  *miner_ship;
 	
-	int		n_miners = [UNIVERSE countShipsWithPrimaryRole:@"miner" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:@"miner"];
+	int		n_miners = [UNIVERSE countShipsWithPrimaryRole:@"miner" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"miner"];
 	
 	if (n_miners >= 1)	// just the one
 		return nil;
@@ -1772,8 +1773,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a pirate ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a pirate ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 	//Pirate ships are launched from the same pool as defence ships.
@@ -1831,8 +1832,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a shuttle ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a shuttle ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 	ShipEntity  *shuttle_ship;
@@ -1869,8 +1870,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for an escort ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for an escort ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 	ShipEntity  *escort_ship;
@@ -1900,8 +1901,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a patrol ship, as the %@ has no launch docks.",
-			  [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a patrol ship, as the {} has no launch docks.",
+			  oo::DescriptionOf([self displayName]));
 		return nil;
 	}
 	if (defenders_launched < max_police)
@@ -1956,8 +1957,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![self hasLaunchDock])
 	{
-		OOLog(@"station.launchShip.impossible", @"Cancelled launch for a ship with role %@, as the %@ has no launch docks.",
-			  role, [self displayName]);
+		OO_LOG("station.launchShip.impossible", "Cancelled launch for a ship with role {}, as the {} has no launch docks.",
+			  oo::DescriptionOf(role), oo::DescriptionOf([self displayName]));
 		return;
 	}
 	const std::string shipRole = oo::StdString(role);
@@ -2091,7 +2092,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				player_reserved_dock = nil;
 				if ([self currentlyInDockingQueues] == 0)
 				{
-					[shipAI message:@"DOCKING_COMPLETE"];
+					[shipAI message:"DOCKING_COMPLETE"];
 					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
 				}
 				break;
@@ -2307,8 +2308,10 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (BOOL) isRotatingStation
 {
-	if (oo::PListView(shipinfoDictionary).get<BOOL>(@"rotating", NO))  return YES;
-	return [[shipinfoDictionary objectForKey:@"roles"] rangeOfString:@"rotating-station"].location != NSNotFound;	// legacy
+	if (shipinfoDictionary.get<bool>("rotating", false))  return YES;
+	// legacy. Sent to the roles object as before (nil when absent, whose zeroed range is not NSNotFound).
+	const oo::PList *roles = shipinfoDictionary.find("roles");
+	return [(roles != nullptr ? oo::ObjectFromPList(*roles) : nil) rangeOfString:@"rotating-station"].location != NSNotFound;
 }
 
 
@@ -2319,7 +2322,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	//				work properly with the various overrides.  The primary role will get
 	//				used if either there is no market override, or the market wasn't
 	//				defined.
-	return OptionalStringValue([shipinfoDictionary objectForKey:@"market"]);
+	return OptionalStringValue(shipinfoDictionary.find("market"));
 }
 
 
@@ -2327,10 +2330,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if ([UNIVERSE station] == self)
 		return YES;
-	id	determinant = [shipinfoDictionary objectForKey:@"has_shipyard"];
+	const oo::PList	*determinantValue = shipinfoDictionary.find("has_shipyard");
 
-	if (!determinant)
-		determinant = [shipinfoDictionary objectForKey:@"hasShipyard"];
+	if (determinantValue == nullptr)
+		determinantValue = shipinfoDictionary.find("hasShipyard");
+	id	determinant = determinantValue != nullptr ? oo::ObjectFromPList(*determinantValue) : nil;
 		
 	// NOTE: non-standard capitalization is documented and entrenched.
 	if (determinant)
@@ -2409,7 +2413,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\" %s", oo::DescriptionOf(name).c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
+	return oo::NSStringFrom(oo::str::format("\"%s\" %s", name.value_or("(null)").c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
 }
 
 
@@ -2436,16 +2440,16 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			break;
 	}
 	
-	OOLog(@"dumpState.stationEntity", @"Alert level: %@", oo::NSStringFrom(alertString));
-	OOLog(@"dumpState.stationEntity", @"Max police: %u", max_police);
-	OOLog(@"dumpState.stationEntity", @"Max defense ships: %u", max_defense_ships);
-	OOLog(@"dumpState.stationEntity", @"Defenders launched: %u", defenders_launched);
-	OOLog(@"dumpState.stationEntity", @"Max scavengers: %u", max_scavengers);
-	OOLog(@"dumpState.stationEntity", @"Scavengers launched: %u", scavengers_launched);
-	OOLog(@"dumpState.stationEntity", @"Docked shuttles: %u", docked_shuttles);
-	OOLog(@"dumpState.stationEntity", @"Docked traders: %u", docked_traders);
-	OOLog(@"dumpState.stationEntity", @"Equivalent tech level: %zu", equivalentTechLevel);
-	OOLog(@"dumpState.stationEntity", @"Equipment price factor: %g", equipmentPriceFactor);
+	OO_LOG("dumpState.stationEntity", "Alert level: {}", alertString);
+	OO_LOG("dumpState.stationEntity", "Max police: {}", static_cast<unsigned>(max_police));
+	OO_LOG("dumpState.stationEntity", "Max defense ships: {}", static_cast<unsigned>(max_defense_ships));
+	OO_LOG("dumpState.stationEntity", "Defenders launched: {}", static_cast<unsigned>(defenders_launched));
+	OO_LOG("dumpState.stationEntity", "Max scavengers: {}", static_cast<unsigned>(max_scavengers));
+	OO_LOG("dumpState.stationEntity", "Scavengers launched: {}", static_cast<unsigned>(scavengers_launched));
+	OO_LOG("dumpState.stationEntity", "Docked shuttles: {}", static_cast<unsigned>(docked_shuttles));
+	OO_LOG("dumpState.stationEntity", "Docked traders: {}", static_cast<unsigned>(docked_traders));
+	OO_LOG("dumpState.stationEntity", "Equivalent tech level: {}", equivalentTechLevel);
+	OO_LOG("dumpState.stationEntity", "Equipment price factor: {:g}", equipmentPriceFactor);
 	
 	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
 	ADD_FLAG_IF_SET(no_docking_while_launching);
@@ -2457,22 +2461,22 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		flagsString += flag;
 	}
 	if (flags.empty())  flagsString = "none";
-	OOLog(@"dumpState.stationEntity", @"Flags: %@", oo::NSStringFrom(flagsString));
+	OO_LOG("dumpState.stationEntity", "Flags: {}", flagsString);
 	
 	// approach and hold lists.
 	
 	// Ships on hold list, only used with moving stations (= carriers)
 	if([_shipsOnHold count] > 0)
 	{
-		OOLog(@"dumpState.stationEntity", @"%zu Ships on hold (unsorted):", [_shipsOnHold count]);
+		OO_LOG("dumpState.stationEntity", "{} Ships on hold (unsorted):", [_shipsOnHold count]);
 		
-		OOLogIndent();
+		oo::log::indent();
 		unsigned		i = 1;
 		for (ShipEntity *ship in [_shipsOnHold objectEnumerator])
 		{
-			OOLog(@"dumpState.stationEntity", @"Nr %i: %@ at distance %g with role: %@", i++, [ship displayName], HPdistance([self position], [ship position]), [ship primaryRole]);
+			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, oo::DescriptionOf([ship displayName]), HPdistance([self position], [ship position]), oo::DescriptionOf([ship primaryRole]));
 		}
-		OOLogOutdent();
+		oo::log::outdent();
 	}
 }
 

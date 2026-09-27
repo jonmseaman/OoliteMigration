@@ -63,6 +63,21 @@ static ooscript::Object sPlanetPrototype;
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -217,7 +232,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			*value_raw = OOJSValueFromNativeObject(context, [[planet airColor] normalizedArray]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList(NormalizedColorComponents([planet airColor])));
 			return YES;
 			
 		case kPlanet_airColorMixRatio:
@@ -227,7 +242,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [planet airDensity], value);
 			
 		case kPlanet_illuminationColor:
-			*value_raw = OOJSValueFromNativeObject(context, [[planet illuminationColor] normalizedArray]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList(NormalizedColorComponents([planet illuminationColor])));
 			return YES;
 
 		case kPlanet_isMainPlanet:
@@ -242,7 +257,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 			
 		case kPlanet_texture:
-			*value_raw = OOJSValueFromNativeObject(context, [planet textureFileName]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([planet textureFileName]));
 			return YES;
 			
 		case kPlanet_name:
@@ -350,7 +365,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 			if (OK)
 			{
-				OK = [planet setUpPlanetFromTexture:oo::NSStringFrom(*sValue)];
+				OK = [planet setUpPlanetFromTexture:sValue];	// has a value here
 				if (!OK)  OOJSReportWarning(context, @"Cannot find texture \"%@\". Value not set.", oo::NSStringFrom(*sValue));
 			}
 

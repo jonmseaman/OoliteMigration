@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 #include "oofnd/PListWriting.hpp"
 
 
@@ -70,10 +71,10 @@ std::string DescriptionForLog(const oo::PList &plist)
 }
 
 
-// OOMakeDockingInstructions() with no comms message, as the dictionary -dockingInstructionsForShip: returns.
-id DockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const char *ai_message, BOOL match_rotation, int docking_stage)
+// OOMakeDockingInstructions() with no comms message, as -dockingInstructionsForShip: returns it.
+oo::PList DockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const char *ai_message, BOOL match_rotation, int docking_stage)
 {
-	return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(station, coords, speed, range, std::string(ai_message), std::nullopt, match_rotation, docking_stage));
+	return cxx_OOMakeDockingInstructions(station, coords, speed, range, std::string(ai_message), std::nullopt, match_rotation, docking_stage);
 }
 
 
@@ -319,9 +320,9 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (id) dockingInstructionsForShip:(ShipEntity *)ship	// shared selector (proposed ADR-0043)
-{	
-	if (ship == nil)  return nil;
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship
+{
+	if (ship == nil)  return oo::PList();
 	
 	OOUniversalID	ship_id = [ship universalID];
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
@@ -372,7 +373,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		// some error has occurred - log it, and send the try-again message
 		oo::PList::Dict queue;
 		for (const auto &[queuedID, queuedStack] : shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
-		OOLogERR(@"station.issueDockingInstructions.failed", @"couldn't addShipToShipsOnApproach:%@ in %@, retrying later -- shipsOnApproach:\n%@", ship, self, oo::NSStringFrom(DescriptionForLog(oo::PList(std::move(queue)))));
+		OO_LOG_ERR("station.issueDockingInstructions.failed", "couldn't addShipToShipsOnApproach:{} in {}, retrying later -- shipsOnApproach:\n{}", oo::DescriptionOf(ship), oo::DescriptionOf(self), DescriptionForLog(oo::PList(std::move(queue))));
 		
 		return DockingInstructions(station, [ship position], 200, 100, "TRY_AGAIN_LATER", NO, -1);
 	}
@@ -384,7 +385,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 	if (coordinatesStack.empty())
 	{
-		OOLogERR(@"station.issueDockingInstructions.failed", @" -- coordinatesStack = %@", oo::NSStringFrom(DescriptionForLog(oo::PList(oo::PList::Array(coordinatesStack)))));
+		OO_LOG_ERR("station.issueDockingInstructions.failed", " -- coordinatesStack = {}", DescriptionForLog(oo::PList(oo::PList::Array(coordinatesStack))));
 		
 		return DockingInstructions(station, [ship position], 0, 100, "HOLD_POSITION", NO, -1);
 	}
@@ -422,7 +423,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	// get the NEXT coordinates (a copy: the messages below may run code that changes the queue)
 	if (coordinatesStack.size() < 2 || !coordinatesStack[1].isDict())
 	{
-		return nil;
+		return oo::PList();
 	}
 	const oo::PList next = coordinatesStack[1];
 	
@@ -471,7 +472,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	
 	// else, approach isn't clear - hold position..
 	//
-	[[ship getAI] message:@"HOLD_POSITION"];
+	[[ship getAI] message:"HOLD_POSITION"];
 	
 	if (next.find("hold_message_given") == nullptr)
 	{
@@ -576,7 +577,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			ry += s2 * ssize; 
 			rz += ssize * ((float)offset_id3 / 4.0);
 
-//			OOLog(@"docking.debug",@"Adjusted coordinates by %f x %f x %f",c2 * ssize,s2 * ssize,ssize * ((float)offset_id3 / 4.0));
+//			// docking.debug: Adjusted coordinates by c2/s2/ssize factors
 		}
 		
 		// add the lenght inside the station to the corridor, except for the final position, inside the dock.
@@ -779,10 +780,10 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		inLane = laneFlags == 0xF;
 		range = 0.90 * arbb.max.z + 0.10 * arbb.min.z;
 		
-		OOLog(@"docking.debug", @"Normalised port dimensions are %g x %g x %g.  Player bounding box is at %@-%@ -- %s (%X), range: %g",
+		OO_LOG("docking.debug", "Normalised port dimensions are {:g} x {:g} x {:g}.  Player bounding box is at {}-{} -- {} ({:X}), range: {:g}",
 			ww * 2.0, hh * 2.0, dd,
-			oo::NSStringFrom(VectorDescription(arbb.min)), oo::NSStringFrom(VectorDescription(arbb.max)),
-			inLane ? "in lane" : "out of lane", laneFlags,
+			VectorDescription(arbb.min), VectorDescription(arbb.max),
+			inLane ? "in lane" : "out of lane", static_cast<unsigned>(laneFlags),
 			range);
 	}
 #endif
@@ -978,12 +979,12 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(id)role	// shared selector (proposed ADR-0043)
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role
 {
 	NSUInteger count = 0;
 	for (const oo::ObjCRef<ShipEntity *> &ship : launchQueue)
 	{
-		if ([ship.get() hasPrimaryRole:role])  count++;
+		if ([ship.get() hasPrimaryRole:oo::NSStringFrom(role)])  count++;
 	}
 	return count;
 }
@@ -1048,7 +1049,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	BOOL			isEmpty = YES;
 	int				ent_count =		UNIVERSE->n_entities;
 	Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
 	
@@ -1108,7 +1109,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	BOOL			isClear = YES;
 	int				ent_count =			UNIVERSE->n_entities;
 	Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
 	

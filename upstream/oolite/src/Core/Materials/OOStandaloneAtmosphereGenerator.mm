@@ -36,11 +36,11 @@
 #define ALBEDO_FACTOR		0.7f	// Overall darkening of everything, allowing better contrast for snow and specular highlights.
 
 #import "OOStandaloneAtmosphereGenerator.h"
-#import "OOPListView.h"
 #import "OOColor.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"
@@ -75,7 +75,7 @@ enum
 
 namespace {
 
-FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key);	// dictionary: the planet info (holds OOColors; not a plist)
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key);	// dictionary: the planet info (colours are Object nodes)
 
 }	// namespace
 
@@ -101,20 +101,20 @@ enum
 
 @implementation OOStandaloneAtmosphereGenerator
 
-- (id) initWithPlanetInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
+- (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	OOLog(@"texture.planet.generate", @"%@", @"Initialising standalone atmosphere generator");
+	OO_LOG("texture.planet.generate", "{}", "Initialising standalone atmosphere generator");
 
 	// AllowCubeMap not used yet but might be in future
-	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	self = [super cxx_initWithPath:oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str()) options:kOOTextureAllowCubeMap];
 	if (self != nil)
 	{
-		OOLog(@"texture.planet.generate",@"Extracting parameters for generator %@",self);
+		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(self));
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
-		OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
+		OO_LOG("texture.planet.generate", "{}", "Extracting atmosphere parameters");
 		// we are an atmosphere:
-		_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
-		_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
+		_info.cloudAlpha = planetInfo.get<float>("cloud_alpha", 1.0f);
+		_info.cloudFraction = OOClamp_0_1_f(planetInfo.get<float>("cloud_fraction", 0.3));
 		_info.cloudColor = FloatRGBFromDictColor(planetInfo, "cloud_color");
 		_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		
@@ -132,7 +132,7 @@ enum
 #else
 		_planetScale = kPlanetScale4096x4096;
 #endif
-		_info.perlin3d = oo::PListView(planetInfo).get<BOOL>(@"perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
+		_info.perlin3d = planetInfo.get<bool>("perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset	= 8 - _info.planetAspectRatio;
 	}
@@ -141,7 +141,7 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
++ (OOTexture *) planetTextureWithInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOTexture *result = nil;
 	OOStandaloneAtmosphereGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
@@ -155,9 +155,9 @@ enum
 }
 
 
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(id)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	NSParameterAssert(texture != NULL);
+	OOParameterAssert(texture != NULL);
 	
 	OOStandaloneAtmosphereGenerator *atmoGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (atmoGen == nil)  return NO;
@@ -209,18 +209,18 @@ enum
 	if (![self isReady])
 	{
 		waiting = true;
-		OOLog(@"texture.planet.generate.wait", @"%s generator %@", "Waiting for", self);
+		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(self));
 	}
 	
 	BOOL result = [super getResult:outData format:outFormat originalWidth:outWidth originalHeight:outHeight];
 	
 	if (waiting)
 	{
-		OOLog(@"texture.planet.generate.dequeue", @"%s generator %@", result ? "Dequeued" : "Failed to dequeue", self);
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
 	}
 	else
 	{
-		OOLog(@"texture.planet.generate.dequeue", @"%s generator %@ without waiting.", result ? "Dequeued" : "Failed to dequeue", self);
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
 	}
 	
 	return result;
@@ -230,7 +230,7 @@ enum
  * various noise, interpolation, etc. functions */
 - (void) loadTexture
 {
-	OOLog(@"texture.planet.generate.begin", @"Started generator %@", self);
+	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(self));
 	
 	BOOL success = NO;
 	
@@ -295,7 +295,7 @@ END:
 		FREE(aBuffer);
 	}
 	
-	OOLog(@"texture.planet.generate.complete", @"Completed generator %@ %@successfully", self, success ? @"" : @"un");
+	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(self), success ? "" : "un");
 	
 #if DEBUG_DUMP
 	if (success)
@@ -427,10 +427,11 @@ static FloatRGBA CloudMix(OOStandaloneAtmosphereGeneratorInfo *info, float q, fl
 
 namespace {
 
-FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key)
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key)
 {
-	OOColor *color = [dictionary objectForKey:oo::NSStringFrom(key)];
-	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
+	const oo::PList *value = dictionary.find(key);
+	OOColor *color = (value != nullptr) ? oo::ObjectIn(*value) : nil;	// an Object node (Amendment 2)
+	OOCAssert([color isKindOfClass:[OOColor class]], "Expected OOColor, got %s", oo::DescriptionOf([color class]).c_str());
 	
 	return (FloatRGB){ [color redComponent] * ALBEDO_FACTOR, [color greenComponent] * ALBEDO_FACTOR, [color blueComponent] * ALBEDO_FACTOR };
 }
@@ -465,7 +466,7 @@ static BOOL GenerateFBMNoise3D(OOStandaloneAtmosphereGeneratorInfo *info);
 
 static BOOL FillFBMBuffer(OOStandaloneAtmosphereGeneratorInfo *info)
 {
-	NSCParameterAssert(info != NULL);
+	OOCParameterAssert(info != NULL);
 	
 	// Allocate result buffer.
 	info->fbmBuffer = (float *)calloc(info->width * info->height, sizeof (float));

@@ -36,8 +36,6 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "PlayerEntitySound.h"
 #import "OOPListView.h"
-#import "NSFileManagerOOExtensions.h"
-#import "NSDataOOExtensions.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #import "OOColor.h"
@@ -45,10 +43,19 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "GameController.h"
 
+#include <algorithm>
+#include <optional>
+#include <string>
+#include <vector>
+
 #import "unzip.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/Http.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListParsing.hpp"
 
 #import "OOManifestProperties.h"
 #include "oofnd/Date.hpp"
@@ -68,10 +75,7 @@ const char *const kOOOXZTmpPath = "Oolite-download.oxz";
 const char *const kOOOXZTmpPlistPath = "Oolite-download.plist";
 } // namespace
 
-/* Log file record types */
-static NSString * const kOOOXZErrorLog = @"oxz.manager.error";
-static NSString * const kOOOXZDebugLog = @"oxz.manager.debug";
-
+/* Log file record types: literals at each OOLog call (@"oxz.manager.error" / @"oxz.manager.debug"). */
 
 /* Filter components */
 namespace {
@@ -128,7 +132,7 @@ enum {
 
 namespace {
 
-// -[NSDictionary oo_stringForKey:] (a string, or a number's -stringValue); nullopt (nil) otherwise.
+// Manifest string-or-number key (a string, or a number's stringValue); nullopt (nil) otherwise.
 std::optional<std::string> ManifestString(const oo::PList &manifest, const std::string &key)
 {
 	const oo::PList *value = manifest.find(key);
@@ -198,7 +202,7 @@ bool OXZOrderedBefore(const oo::PList &m1, const oo::PList &m2)
 	return result < 0;
 }
 
-// [NSString stringWithFormat:DESC(...), ...]: a format read at run time (proposed ADR-0043
+// DESC(...) formatRuntime: a format read at run time (proposed ADR-0043
 // Amendment 3 item 19).
 std::string DescFormat(id format, std::initializer_list<oo::str::FormatArg> args)
 {
@@ -218,8 +222,8 @@ std::optional<std::string> ManifestStringOr(const oo::PList &manifest, const std
 	return value.has_value() ? value : fallback;
 }
 
-// The columns of +[NSArray arrayWithObjects:...nil] for -setArray:forRow:, which ended at the
-// first nil.
+// The columns of a nil-terminated column list for -setArray:forRow:, which ended at the
+// first missing value.
 std::vector<std::string> Columns(std::initializer_list<std::optional<std::string>> columns)
 {
 	std::vector<std::string> result;
@@ -229,6 +233,21 @@ std::vector<std::string> Columns(std::initializer_list<std::optional<std::string
 		result.push_back(*column);
 	}
 	return result;
+}
+
+// Unique-by-== insert for the dependency stack (was a mutable set of manifests).
+void DependencyStackAdd(std::vector<oo::PList> &stack, const oo::PList &item)
+{
+	for (const oo::PList &existing : stack)
+	{
+		if (existing == item)  return;
+	}
+	stack.push_back(item);
+}
+
+void DependencyStackRemove(std::vector<oo::PList> &stack, const oo::PList &item)
+{
+	stack.erase(std::remove(stack.begin(), stack.end(), item), stack.end());
 }
 
 // The first line of a manifest's description (nullopt: no description, as the nil array gave).
@@ -259,13 +278,7 @@ std::optional<std::string> JoinedTags(const oo::PList &manifest)
 
 static OOOXZManager *sSingleton = nil;
 
-// protocol was only formalised in 10.7
-#if OOLITE_MAC_OS_X_10_7 
-
-@interface OOOXZManager (OOPrivate) <NSURLConnectionDataDelegate> 
-#else
-@interface OOOXZManager (NSURLConnectionDataDelegate) 
-#endif
+@interface OOOXZManager (OOPrivate)
 
 - (std::optional<std::string>) manifestPath;	// nullopt: no cache directory
 - (std::optional<std::string>) downloadPath;	// nullopt: no cache directory
@@ -275,7 +288,7 @@ static OOOXZManager *sSingleton = nil;
 
 - (BOOL) ensureInstallPath;
 
-- (BOOL) beginDownload:(NSMutableURLRequest *)request;
+- (BOOL) beginDownload:(const std::string &)url;
 - (BOOL) processDownloadedManifests;
 - (BOOL) processDownloadedOXZ;
 
@@ -289,7 +302,7 @@ static OOOXZManager *sSingleton = nil;
 - (void) setFilteredList:(const oo::PList &)list;
 - (oo::PList) applyCurrentFilter:(const oo::PList &)list;	// an Array
 
-- (void) setCurrentDownload:(NSURLConnection *)download withLabel:(NSString *)label;
+- (void) setCurrentDownload:(oo::http::Download *)download withLabel:(const std::string &)label;
 - (void) setProgressStatus:(const std::string &)newStatus;
 
 - (BOOL) installOXZ:(NSUInteger)item;
@@ -300,11 +313,11 @@ static OOOXZManager *sSingleton = nil;
 
 - (std::string) extractOXZ:(NSUInteger)item;	// the extraction log
 
-/* Delegates for URL downloader */
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response;
-- (void)connection:(NSURLConnection *)connection didReceiveData:(id)data;	// shared selector (NSURLConnectionDataDelegate): the data object
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection;
+/* The download's callbacks (HTTP client events until proposed ADR-0044) */
+- (void) downloadDidFailWithError:(const std::string &)error;
+- (void) downloadDidReceiveResponse:(long long)expectedContentLength;
+- (void) downloadDidReceiveData:(const std::string &)data;
+- (void) downloadDidFinishLoading;
 
 @end
 
@@ -321,6 +334,27 @@ static OOOXZManager *sSingleton = nil;
 @end 
 
 
+
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
 
 @implementation OOOXZManager
 
@@ -340,14 +374,15 @@ static OOOXZManager *sSingleton = nil;
 		_downloadStatus = OXZ_DOWNLOAD_NONE;
 		// if the file has not been downloaded, this will be nil
 		[self setOXZList:oo::PListFrom(OOArrayFromFile(oo::NSStringOrNil([self manifestPath])))];
-		OOLog(kOOOXZDebugLog,@"Initialised with %@",oo::ObjectFromPList(_oxzList));
+		OO_LOG("oxz.manager.debug", "Initialised with {}", oo::DescriptionOf(oo::ObjectFromPList(_oxzList)));
 		_interfaceState = OXZ_STATE_NODATA;
 		_currentFilter = "*";
 		
 		_interfaceShowingOXZDetail = NO;
 		_changesMade = NO;
 		_downloadAllDependencies = NO;
-		_dependencyStack = [[NSMutableSet alloc] initWithCapacity:8];
+		_dependencyStack.clear();
+		_dependencyStack.reserve(8);
 		[self setProgressStatus:""];
 	}
 	return self;
@@ -358,7 +393,7 @@ static OOOXZManager *sSingleton = nil;
 {
 	if (sSingleton == self)  sSingleton = nil;
 
-	[self setCurrentDownload:nil withLabel:nil];
+	[self setCurrentDownload:nil withLabel:""];
 
 	[super dealloc];
 }
@@ -414,14 +449,14 @@ static OOOXZManager *sSingleton = nil;
 
 	if (exists && !oo::fs::isDirectory(fsPath))
 	{
-		OOLog(kOOOXZErrorLog, @"Expected %@ to be a folder, but it is a file.", oo::NSStringOrNil(path));
+		OO_LOG("oxz.manager.error", "Expected {} to be a folder, but it is a file.", path.value_or("(null)"));
 		return NO;
 	}
 	if (!exists)
 	{
 		if (!path.has_value() || !oo::fs::createDirectories(fsPath))
 		{
-			OOLog(kOOOXZErrorLog, @"Could not create folder %@.", oo::NSStringOrNil(path));
+			OO_LOG("oxz.manager.error", "Could not create folder {}.", path.value_or("(null)"));
 			return NO;
 		}
 	}
@@ -459,7 +494,7 @@ static OOOXZManager *sSingleton = nil;
 - (std::optional<std::string>) dataURL
 {
 	/* Not expected to be set in general, but might be useful for some users */
-	const std::optional<std::string> url = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:oo::NSStringFrom(kOOOXZDataConfig)]);
+	const std::optional<std::string> url = oo::Defaults::standard().stringForKey(kOOOXZDataConfig);
 	if (url.has_value())
 	{
 		return url;
@@ -690,15 +725,12 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void) setCurrentDownload:(NSURLConnection *)download withLabel:(NSString *)label
+- (void) setCurrentDownload:(oo::http::Download *)download withLabel:(const std::string &)label
 {
-	if (_currentDownload != nil)
-	{
-		[_currentDownload cancel]; // releases via delegate
-	}
-	_currentDownload = [download retain];
-	DESTROY(_currentDownloadName);
-	_currentDownloadName = [label copy];
+	// Deleting the previous download cancels it and frees it.
+	delete _currentDownload;
+	_currentDownload = download;
+	_currentDownloadName = label;
 }
 
 
@@ -709,7 +741,7 @@ static OOOXZManager *sSingleton = nil;
 
 - (BOOL) updateManifests
 {
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:oo::NSStringOrNil([self dataURL])]];
+	const std::string url = [self dataURL].value_or("");
 	if (_downloadStatus != OXZ_DOWNLOAD_NONE)
 	{
 		return NO;
@@ -718,39 +750,59 @@ static OOOXZManager *sSingleton = nil;
 	_interfaceState = OXZ_STATE_UPDATING;
 	[self setProgressStatus:""];
 
-	return [self beginDownload:request];
+	return [self beginDownload:url];
 }
 
 
-- (BOOL) beginDownload:(NSMutableURLRequest *)request
+- (BOOL) beginDownload:(const std::string &)url
 {
-	NSString *userAgent = [NSString stringWithFormat:@"Oolite/%@", [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]];
-	[request setValue:userAgent forHTTPHeaderField:@"User-Agent"];
-	[request setHTTPShouldHandleCookies:NO];
-	NSURLConnection *download = [[NSURLConnection alloc] initWithRequest:request delegate:self];
-	if (download)
+	// No cookies are sent or kept, as -setHTTPShouldHandleCookies:NO had it (oofnd/Http.hpp).
+	const std::optional<std::string> bundleVersion = OoliteInfoString("CFBundleVersion");
+	const std::string userAgent = oo::str::format("Oolite/%s", bundleVersion.value_or("").c_str());
+	// A download always starts: a URL it cannot fetch arrives as a failure callback.
+	oo::http::Download *download = new oo::http::Download(url, userAgent);
+	_downloadProgress = 0;
+	_downloadExpected = 0;
+	std::string label = oo::StdString(DESC(@"oolite-oxzmanager-download-label-list"));
+	if (_interfaceState != OXZ_STATE_UPDATING)
 	{
-		_downloadProgress = 0;
-		_downloadExpected = 0;
-		NSString *label = DESC(@"oolite-oxzmanager-download-label-list");
-		if (_interfaceState != OXZ_STATE_UPDATING)
-		{
-			NSDictionary *expectedManifest = nil;
-			expectedManifest = oo::ObjectFromPList(ElementAt(_filteredList, _item));
-
-			label = oo::PListView(expectedManifest).get<NSString *>(kOOManifestTitle, DESC(@"oolite-oxzmanager-download-label-oxz"));
-		}
-
-		[self setCurrentDownload:download withLabel:label]; // retains it
-		[download release];
-		OOLog(kOOOXZDebugLog,@"Download request received, using %@ and downloading to %@",[request URL],oo::NSStringOrNil([self downloadPath]));
-		return YES;
+		const oo::PList expectedManifest = ElementAt(_filteredList, _item);
+		label = ManifestStringOr(expectedManifest, oo::StdString(kOOManifestTitle),
+			oo::StdString(DESC(@"oolite-oxzmanager-download-label-oxz"))).value_or("");
 	}
-	else
+
+	[self setCurrentDownload:download withLabel:label]; // owns it
+	OO_LOG("oxz.manager.debug", "Download request received, using {} and downloading to {}", url, [self downloadPath].value_or("(null)"));
+	return YES;
+}
+
+
+- (void) processDownloadEvents
+{
+	// The current download is read afresh for every event: a callback may cancel it or start
+	// another, and a cancelled download answers nothing more.
+	while (_currentDownload != nullptr)
 	{
-		OOLog(kOOOXZErrorLog,@"Unable to start downloading file at %@",[request URL]);
-		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		return NO;
+		std::optional<oo::http::Event> event = _currentDownload->nextEvent();
+		if (!event.has_value())  break;
+		@autoreleasepool
+		{
+			switch (event->kind)
+			{
+				case oo::http::Event::Kind::response:
+					[self downloadDidReceiveResponse:event->expectedLength];
+					break;
+				case oo::http::Event::Kind::data:
+					[self downloadDidReceiveData:event->bytes];
+					break;
+				case oo::http::Event::Kind::finished:
+					[self downloadDidFinishLoading];
+					break;
+				case oo::http::Event::Kind::failed:
+					[self downloadDidFailWithError:event->error];
+					break;
+			}
+		}
 	}
 }
 
@@ -761,15 +813,17 @@ static OOOXZManager *sSingleton = nil;
 	{
 		return NO;
 	}
-	OOLog(kOOOXZDebugLog, @"%@", @"Trying to cancel file download");
-	if (_currentDownload != nil)
+	OO_LOG("oxz.manager.debug", "{}", "Trying to cancel file download");
+	if (_currentDownload != nullptr)
 	{
-		[_currentDownload cancel];
+		_currentDownload->cancel();	// kept until the next download replaces it, as the connection was
 	}
 	else if (_downloadStatus == OXZ_DOWNLOAD_COMPLETE)
 	{
-		NSString *path = oo::NSStringOrNil([self downloadPath]);
-		[[NSFileManager defaultManager] oo_removeItemAtPath:path];
+		if (const std::optional<std::string> path = [self downloadPath])
+		{
+			(void)oo::fs::removeItem(oo::fs::pathFromUTF8(*path));
+		}
 	}
 	_downloadStatus = OXZ_DOWNLOAD_NONE;
 	if (_interfaceState == OXZ_STATE_INSTALLING)
@@ -869,7 +923,10 @@ static OOOXZManager *sSingleton = nil;
 		// GNUstep's property-list writer still writes the cache file.
 		[oo::ObjectFromPList(_oxzList) writeToFile:oo::NSStringOrNil([self manifestPath]) atomically:YES];
 		// and clean up the temp file
-		[[NSFileManager defaultManager] oo_removeItemAtPath:oo::NSStringOrNil([self downloadPath])];
+		if (const std::optional<std::string> downloadPath = [self downloadPath])
+		{
+			(void)oo::fs::removeItem(oo::fs::pathFromUTF8(*downloadPath));
+		}
 		// invalidate the managed list
 		_managedList = oo::PList();
 		_interfaceState = OXZ_STATE_TASKDONE;
@@ -879,7 +936,7 @@ static OOOXZManager *sSingleton = nil;
 	else
 	{
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		OOLog(kOOOXZErrorLog,@"Downloaded manifest was not a valid plist, has been left in %@",oo::NSStringOrNil([self downloadPath]));
+		OO_LOG("oxz.manager.error", "Downloaded manifest was not a valid plist, has been left in {}", [self downloadPath].value_or("(null)"));
 		// revert to the old one
 		[self setOXZList:oo::PListFrom(OOArrayFromFile(oo::NSStringOrNil([self manifestPath])))];
 		_interfaceState = OXZ_STATE_TASKDONE;
@@ -896,169 +953,173 @@ static OOOXZManager *sSingleton = nil;
 		return NO;
 	}
 
-	NSDictionary *downloadedManifest = OODictionaryFromFile([oo::NSStringOrNil([self downloadPath]) stringByAppendingPathComponent:@"manifest.plist"]);
-	if (downloadedManifest == nil)
+	const std::optional<std::string> downloadPath = [self downloadPath];
+	const oo::PList downloadedManifest = downloadPath.has_value()
+		? cxx_OOPropertyListFromFile(oo::str::appendingPathComponent(*downloadPath, "manifest.plist"))
+		: oo::PList();
+	if (!downloadedManifest)
 	{
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		OOLog(kOOOXZErrorLog,@"Downloaded OXZ does not contain a manifest.plist, has been left in %@",oo::NSStringOrNil([self downloadPath]));
+		OO_LOG("oxz.manager.error", "Downloaded OXZ does not contain a manifest.plist, has been left in {}", downloadPath.value_or("(null)"));
 		_interfaceState = OXZ_STATE_TASKDONE;
 		[self gui];
 		return NO;
 	}
-	NSDictionary *expectedManifest = nil;
-	expectedManifest = oo::ObjectFromPList(ElementAt(_filteredList, _item));
+	const oo::PList expectedManifest = ElementAt(_filteredList, _item);
 
-	if (expectedManifest == nil || 
-		(![oo::PListView(downloadedManifest).get<NSString *>(kOOManifestIdentifier) isEqualToString:oo::PListView(expectedManifest).get<NSString *>(kOOManifestIdentifier)]) || 
-		(![oo::PListView(downloadedManifest).get<NSString *>(kOOManifestVersion) isEqualToString:oo::PListView(expectedManifest).get<NSString *>(kOOManifestAvailableVersion, oo::PListView(expectedManifest).get<NSString *>(kOOManifestVersion))])
-		)
+	const std::optional<std::string> downloadedId = ManifestString(downloadedManifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> expectedId = ManifestString(expectedManifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> downloadedVer = ManifestString(downloadedManifest, oo::StdString(kOOManifestVersion));
+	const std::optional<std::string> expectedVer = ManifestStringOr(expectedManifest, oo::StdString(kOOManifestAvailableVersion),
+		ManifestString(expectedManifest, oo::StdString(kOOManifestVersion)));
+	if (!expectedManifest || !downloadedId.has_value() || !expectedId.has_value() || *downloadedId != *expectedId
+		|| !downloadedVer.has_value() || !expectedVer.has_value() || *downloadedVer != *expectedVer)
 	{
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		OOLog(kOOOXZErrorLog, @"%@", @"Downloaded OXZ does not have the same identifer and version as expected. This might be due to your manifests list being out of date - try updating it.");
+		OO_LOG("oxz.manager.error", "{}", "Downloaded OXZ does not have the same identifer and version as expected. This might be due to your manifests list being out of date - try updating it.");
 		_interfaceState = OXZ_STATE_TASKDONE;
 		[self gui];
 		return NO;
 	}
-	// this appears to be the OXZ we expected
 	// filename is going to be identifier.oxz
-	NSString *filename = [oo::PListView(downloadedManifest).get<NSString *>(kOOManifestIdentifier) stringByAppendingString:@".oxz"];
+	const std::string filename = *downloadedId + ".oxz";
 
 	if (![self ensureInstallPath])
 	{
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		OOLog(kOOOXZErrorLog, @"%@", @"Unable to create installation folder.");
+		OO_LOG("oxz.manager.error", "{}", "Unable to create installation folder.");
 		_interfaceState = OXZ_STATE_TASKDONE;
 		[self gui];
 		return NO;
 	}
 
-	// delete filename if it exists from OXZ folder
-	NSString *destination = [oo::NSStringOrNil([self installPath]) stringByAppendingPathComponent:filename];
-	[[NSFileManager defaultManager] oo_removeItemAtPath:destination];
-
-	// move the temp file on to it
-	if (![[NSFileManager defaultManager] oo_moveItemAtPath:oo::NSStringOrNil([self downloadPath]) toPath:destination])
+	const std::optional<std::string> installPath = [self installPath];
+	if (!installPath.has_value() || !downloadPath.has_value())
 	{
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		OOLog(kOOOXZErrorLog, @"%@", @"Downloaded OXZ could not be installed.");
+		OO_LOG("oxz.manager.error", "{}", "Downloaded OXZ could not be installed.");
+		_interfaceState = OXZ_STATE_TASKDONE;
+		[self gui];
+		return NO;
+	}
+	const std::string destination = oo::str::appendingPathComponent(*installPath, filename);
+	(void)oo::fs::removeItem(oo::fs::pathFromUTF8(destination));
+
+	if (!oo::fs::moveItem(oo::fs::pathFromUTF8(*downloadPath), oo::fs::pathFromUTF8(destination)))
+	{
+		_downloadStatus = OXZ_DOWNLOAD_ERROR;
+		OO_LOG("oxz.manager.error", "{}", "Downloaded OXZ could not be installed.");
 		_interfaceState = OXZ_STATE_TASKDONE;
 		[self gui];
 		return NO;
 	}
 	_changesMade = YES;
 	_managedList = oo::PList(); // will need updating
-	// do this now to cope with circular dependencies on download
 	[ResourceManager resetManifestKnowledgeForOXZManager];
 
-	/** 
-	 * If downloadedManifest is in _dependencyStack, remove it
-	 * Get downloadedManifest requires_oxp list
-	 * Add entries ones to _dependencyStack
-	 * If _dependencyStack has contents, update _progressStatus
-	 * ...and start the download of the 'first' item in _dependencyStack
-	 * ...which isn't already installed (_dependencyStack is unordered
-	 * ...so 'first' isn't really defined)
-	 *
-	 * ...if the item in _dependencyStack is not findable (e.g. wrong
-	 * ...version) then stop here.
-	 */
-	NSArray *requiredOXPs = oo::PListView(downloadedManifest).get<NSArray *>(kOOManifestRequiresOXPs, nil);
-	if (requiredOXPs == nil)
+	const oo::PList *requiredNode = downloadedManifest.find(oo::StdString(kOOManifestRequiresOXPs));
+	if (requiredNode == nullptr || !requiredNode->isArray())
 	{
-		// just in case the requirements are only specified in the online copy
-		requiredOXPs = oo::PListView(expectedManifest).get<NSArray *>(kOOManifestRequiresOXPs, nil);
+		requiredNode = expectedManifest.find(oo::StdString(kOOManifestRequiresOXPs));
 	}
-	NSDictionary *requirement = nil;
-	NSMutableString *progress = [NSMutableString stringWithCapacity:2048];
-	OOLog(kOOOXZDebugLog,@"Dependency stack has %zu elements",[_dependencyStack count]);
+	const oo::PList::Array &requiredOXPs = (requiredNode != nullptr && requiredNode->isArray())
+		? Elements(*requiredNode)
+		: Elements(oo::PList());
 
-	if ([_dependencyStack count] > 0)
+	std::string progress;
+	progress.reserve(2048);
+	OO_LOG("oxz.manager.debug", "Dependency stack has {} elements", _dependencyStack.size());
+
+	if (!_dependencyStack.empty())
 	{
-		// will remove as iterate, so create a temp copy to iterate over
-		NSSet *tempStack = [NSSet setWithSet:_dependencyStack];
-		foreach (requirement, tempStack)
+		const std::vector<oo::PList> tempStack = _dependencyStack;
+		for (const oo::PList &requirement : tempStack)
 		{
-			OOLog(kOOOXZDebugLog,@"Dependency stack: checking %@",oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier));
-			if (![ResourceManager manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO]
-				&& requiredOXPs != nil && [requiredOXPs containsObject:requirement])
+			OO_LOG("oxz.manager.debug", "Dependency stack: checking {}", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+			bool inRequired = false;
+			for (const oo::PList &req : requiredOXPs)
 			{
-				// it was unmet, but now it's met					
-				[progress appendFormat:DESC(@"oolite-oxzmanager-progress-now-has-@"),oo::PListView(requirement).get<NSString *>(kOOManifestRelationDescription, oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier))];
-				[_dependencyStack removeObject:requirement];
-				OOLog(kOOOXZDebugLog, @"%@", @"Dependency stack: requirement met");
-			} else if ([oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier) isEqualToString:oo::PListView(downloadedManifest).get<NSString *>(kOOManifestIdentifier)]) {
-				// remove the requirement for the just downloaded OXP
-				[_dependencyStack removeObject:requirement];
+				if (req == requirement)  { inRequired = true; break; }
+			}
+			if (![ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO]
+				&& !requiredOXPs.empty() && inRequired)
+			{
+				progress += DescFormat(DESC(@"oolite-oxzmanager-progress-now-has-@"), {
+					Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
+						ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+				});
+				DependencyStackRemove(_dependencyStack, requirement);
+				OO_LOG("oxz.manager.debug", "{}", "Dependency stack: requirement met");
+			}
+			else if (ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)) == downloadedId)
+			{
+				DependencyStackRemove(_dependencyStack, requirement);
 			}
 		}
 	}
-	if (requiredOXPs != nil)
+	if (!requiredOXPs.empty())
 	{
-		foreach (requirement, requiredOXPs)
+		for (const oo::PList &requirement : requiredOXPs)
 		{
-			if ([ResourceManager manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO])
+			if ([ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO])
 			{
-				OOLog(kOOOXZDebugLog,@"Dependency stack: adding %@",oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier));
-				[_dependencyStack addObject:requirement];
-				[progress appendFormat:DESC(@"oolite-oxzmanager-progress-requires-@"),oo::PListView(requirement).get<NSString *>(kOOManifestRelationDescription, oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier))];
+				OO_LOG("oxz.manager.debug", "Dependency stack: adding {}", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+				DependencyStackAdd(_dependencyStack, requirement);
+				progress += DescFormat(DESC(@"oolite-oxzmanager-progress-requires-@"), {
+					Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
+						ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+				});
 			}
 		}
 	}
-	if ([_dependencyStack count] > 0)
+	if (!_dependencyStack.empty())
 	{
-		// get an object from the requirements list, and download it
-		// if it can be found
 		BOOL undownloadedRequirement = NO;
 		BOOL foundDownload = NO;
 		NSUInteger index = 0;
-		NSString *needsIdentifier = nil;
+		std::optional<std::string> needsIdentifier;
+		oo::PList requirement;
 
 		do
 		{
 			undownloadedRequirement = YES;
-			requirement = [_dependencyStack anyObject];
-			OOLog(kOOOXZDebugLog,@"Dependency stack: next is %@",oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier));
+			requirement = _dependencyStack.front();	// was anyObject; order-sensitive — named in commit
+			OO_LOG("oxz.manager.debug", "Dependency stack: next is {}", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
 
 			if (!_downloadAllDependencies)
 			{
-				[progress appendString:DESC(@"oolite-oxzmanager-progress-get-required")];
+				progress += oo::StdString(DESC(@"oolite-oxzmanager-progress-get-required"));
 			}
-			needsIdentifier = oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier);
-		
+			needsIdentifier = ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier));
+
 			for (NSUInteger i = 0; i < _oxzList.count(); i++)
 			{
 				const oo::PList &availableDownload = *_oxzList.at(i);
 				const std::optional<std::string> availableIdentifier = ManifestString(availableDownload, oo::StdString(kOOManifestIdentifier));
-				if (availableIdentifier.has_value() && needsIdentifier != nil && *availableIdentifier == oo::StdString(needsIdentifier))
+				if (availableIdentifier.has_value() && needsIdentifier.has_value() && *availableIdentifier == *needsIdentifier)
 				{
-					if ([ResourceManager matchVersions:requirement withVersion:oo::NSStringOrNil(ManifestString(availableDownload, oo::StdString(kOOManifestVersion)))])
+					if ([ResourceManager cxx_matchVersions:requirement withVersion:ManifestString(availableDownload, oo::StdString(kOOManifestVersion)).value_or("")])
 					{
-						OOLog(kOOOXZDebugLog, @"%@", @"Dependency stack: found download for next item");
+						OO_LOG("oxz.manager.debug", "{}", "Dependency stack: found download for next item");
 						foundDownload = YES;
-						index = i;	// the first equal manifest, as -indexOfObject: found
+						index = i;
 						break;
 					}
 				}
 			}
-			
+
 			if (foundDownload)
 			{
 				if ([self installableState:ElementAt(_oxzList, index)] == OXZ_UNINSTALLABLE_ALREADY)
 				{
-					OOLog(kOOOXZDebugLog,@"Dependency stack: %@ is downloaded but not yet loadable, removing from list.",oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier));
-					// then this has already been downloaded, but
-					// can't be configured yet presumably because
-					// another dependency is still to be loaded
-					[_dependencyStack removeObject:requirement];
-					if ([_dependencyStack count] > 0)
+					OO_LOG("oxz.manager.debug", "Dependency stack: {} is downloaded but not yet loadable, removing from list.", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+					DependencyStackRemove(_dependencyStack, requirement);
+					if (!_dependencyStack.empty())
 					{
-						// try again
 						undownloadedRequirement = NO;
 					}
 					else
 					{
-						// this case should probably never happen
-						// is handled below just in case
 						foundDownload = NO;
 					}
 				}
@@ -1068,21 +1129,20 @@ static OOOXZManager *sSingleton = nil;
 
 		if (foundDownload)
 		{
-			// must clear filters entirely at this point
 			[self setFilteredList:_oxzList];
-			// then download that item
 			_downloadStatus = OXZ_DOWNLOAD_NONE;
 			if (_downloadAllDependencies)
 			{
-				OOLog(kOOOXZDebugLog,@"Dependency stack: installing %zu from list",index);
+				OO_LOG("oxz.manager.debug", "Dependency stack: installing {} from list", index);
 				if (![self installOXZ:index]) {
-					// if a required dependency is somehow uninstallable
-					// e.g. required+maximum version don't match this Oolite
-					[progress appendFormat:DESC(@"oolite-oxzmanager-progress-required-@-not-found"),oo::PListView(requirement).get<NSString *>(kOOManifestRelationDescription, oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier))];
-					[self setProgressStatus:oo::StdString(progress)];
-					OOLog(kOOOXZErrorLog,@"OXZ dependency %@ could not be found for automatic download.",needsIdentifier);
+					progress += DescFormat(DESC(@"oolite-oxzmanager-progress-required-@-not-found"), {
+						Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
+							ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+					});
+					[self setProgressStatus:progress];
+					OO_LOG("oxz.manager.error", "OXZ dependency {} could not be found for automatic download.", needsIdentifier.value_or("(null)"));
 					_downloadStatus = OXZ_DOWNLOAD_ERROR;
-					OOLog(kOOOXZErrorLog, @"%@", @"Downloaded OXZ could not be installed.");
+					OO_LOG("oxz.manager.error", "{}", "Downloaded OXZ could not be installed.");
 					_interfaceState = OXZ_STATE_TASKDONE;
 					[self gui];
 					return NO;
@@ -1093,18 +1153,20 @@ static OOOXZManager *sSingleton = nil;
 				_interfaceState = OXZ_STATE_DEPENDENCIES;
 				_item = index;
 			}
-			[self setProgressStatus:oo::StdString(progress)];
+			[self setProgressStatus:progress];
 			[self gui];
 			return YES;
 		}
-		// this is probably always the case, see above
-		else if ([_dependencyStack count] > 0)
+		else if (!_dependencyStack.empty())
 		{
-			[progress appendFormat:DESC(@"oolite-oxzmanager-progress-required-@-not-found"),oo::PListView(requirement).get<NSString *>(kOOManifestRelationDescription, oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier))];
-			[self setProgressStatus:oo::StdString(progress)];
-			OOLog(kOOOXZErrorLog,@"OXZ dependency %@ could not be found for automatic download.",needsIdentifier);
+			progress += DescFormat(DESC(@"oolite-oxzmanager-progress-required-@-not-found"), {
+				Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
+					ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+			});
+			[self setProgressStatus:progress];
+			OO_LOG("oxz.manager.error", "OXZ dependency {} could not be found for automatic download.", needsIdentifier.value_or("(null)"));
 			_downloadStatus = OXZ_DOWNLOAD_ERROR;
-			OOLog(kOOOXZErrorLog, @"%@", @"Downloaded OXZ could not be installed.");
+			OO_LOG("oxz.manager.error", "{}", "Downloaded OXZ could not be installed.");
 			_interfaceState = OXZ_STATE_TASKDONE;
 			[self gui];
 			return NO;
@@ -1113,7 +1175,7 @@ static OOOXZManager *sSingleton = nil;
 
 	[self setProgressStatus:""];
 	_interfaceState = OXZ_STATE_TASKDONE;
-	[_dependencyStack removeAllObjects]; // just in case
+	_dependencyStack.clear(); // just in case
 	_downloadAllDependencies = NO;
 	[self gui];
 	return YES;
@@ -1192,7 +1254,7 @@ static OOOXZManager *sSingleton = nil;
 	if (installed)
 	{
 		const std::optional<std::string> installedVersion = ManifestString(installed, oo::StdString(kOOManifestVersion));
-		OOLog(@"version.debug",@"%@ mv:%@ mav:%@",oo::NSStringOrNil(identifier),oo::NSStringOrNil(installedVersion),oo::NSStringOrNil(availableVersion));
+		OO_LOG("version.debug", "{} mv:{} mav:{}", identifier.value_or("(null)"), installedVersion.value_or("(null)"), availableVersion.value_or("(null)"));
 		// CompareVersions / ComponentsFromVersionString are unmigrated: strings at the call.
 		if (CompareVersions(ComponentsFromVersionString(oo::NSStringOrNil(installedVersion)),ComponentsFromVersionString(oo::NSStringOrNil(availableVersion))) == NSOrderedDescending)
 		{
@@ -1346,7 +1408,7 @@ static OOOXZManager *sSingleton = nil;
 		}
 		else
 		{
-			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-progress-@-is-@-of-@"), {oo::DescriptionOf(_currentDownloadName), Arg([self humanSize:_downloadProgress]), Arg([self humanSize:_downloadExpected])}) startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-progress-@-is-@-of-@"), {_currentDownloadName, Arg([self humanSize:_downloadProgress]), Arg([self humanSize:_downloadExpected])}) startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		}
 		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
 
@@ -1515,7 +1577,7 @@ static OOOXZManager *sSingleton = nil;
 	if (selection == OXZ_GUI_ROW_EXIT)
 	{
 		[self cancelUpdate]; // doesn't hurt if no update in progress
-		[_dependencyStack removeAllObjects]; // cleanup
+		_dependencyStack.clear(); // cleanup
 		_downloadAllDependencies = NO;
 		_downloadStatus = OXZ_DOWNLOAD_NONE; // clear error state
 		if (_changesMade)
@@ -1545,14 +1607,14 @@ static OOOXZManager *sSingleton = nil;
 		}
 		else if (_interfaceState == OXZ_STATE_TASKDONE || _interfaceState == OXZ_STATE_DEPENDENCIES)
 		{
-			[_dependencyStack removeAllObjects];
+			_dependencyStack.clear();
 			_downloadAllDependencies = NO;
 			_interfaceState = OXZ_STATE_PICK_INSTALL;
 			_downloadStatus = OXZ_DOWNLOAD_NONE;
 		}
 		else if (_interfaceState == OXZ_STATE_EXTRACTDONE)
 		{
-			[_dependencyStack removeAllObjects];
+			_dependencyStack.clear();
 			_downloadAllDependencies = NO;
 			_interfaceState = OXZ_STATE_PICK_INSTALLED;
 			_downloadStatus = OXZ_DOWNLOAD_NONE;
@@ -1608,7 +1670,7 @@ static OOOXZManager *sSingleton = nil;
 	}
 	else if (selection == OXZ_GUI_ROW_UPDATE_ALL)
 	{
-		OOLog(kOOOXZDebugLog, @"%@", @"Trying to update all managed OXPs");
+		OO_LOG("oxz.manager.debug", "{}", "Trying to update all managed OXPs");
 		[self updateAllOXZ];
 	}
 	else if (selection == OXZ_GUI_ROW_LISTPREV)
@@ -1630,12 +1692,12 @@ static OOOXZManager *sSingleton = nil;
 		}
 		else if (_interfaceState == OXZ_STATE_PICK_INSTALL)
 		{
-			OOLog(kOOOXZDebugLog, @"Trying to install index %zu", item);
+			OO_LOG("oxz.manager.debug", "Trying to install index {}", item);
 			[self installOXZ:item];
 		}
 		else if (_interfaceState == OXZ_STATE_PICK_INSTALLED)
 		{
-			OOLog(kOOOXZDebugLog, @"Trying to install index %zu", item);
+			OO_LOG("oxz.manager.debug", "Trying to install index {}", item);
 			[self installOXZ:item];
 		}
 
@@ -1810,17 +1872,18 @@ static OOOXZManager *sSingleton = nil;
 
 	if ([self installableState:manifest] >= OXZ_UNINSTALLABLE_ALREADY)
 	{
-		OOLog(kOOOXZDebugLog,@"Cannot install %@",oo::ObjectFromPList(manifest));
+		OO_LOG("oxz.manager.debug", "Cannot install {}", oo::DescriptionOf(oo::ObjectFromPList(manifest)));
 		// can't be installed on this version of Oolite, or already is installed
 		return NO;
 	}
 	const oo::PList *url = manifest.find(oo::StdString(kOOManifestDownloadURL));
 	if (url == nullptr)
 	{
-		OOLog(kOOOXZErrorLog, @"%@", @"Manifest does not have a download URL - cannot install");
+		OO_LOG("oxz.manager.error", "{}", "Manifest does not have a download URL - cannot install");
 		return NO;
 	}
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:oo::ObjectFromPList(*url)]];
+	// The URL as a string; any other kind fetches nothing and fails at once (proposed ADR-0044).
+	const std::string urlString = ManifestString(manifest, oo::StdString(kOOManifestDownloadURL)).value_or("");
 	if (_downloadStatus != OXZ_DOWNLOAD_NONE)
 	{
 		return NO;
@@ -1829,13 +1892,13 @@ static OOOXZManager *sSingleton = nil;
 	_interfaceState = OXZ_STATE_INSTALLING;
 	
 	[self setProgressStatus:""];
-	return [self beginDownload:request];
+	return [self beginDownload:urlString];
 }
 
 
 - (BOOL) updateAllOXZ
 {
-	[_dependencyStack removeAllObjects];
+	_dependencyStack.clear();
 	_downloadAllDependencies = YES;
 	[self setFilteredList:_oxzList];
 
@@ -1843,13 +1906,14 @@ static OOOXZManager *sSingleton = nil;
 	{
 		if ([self installableState:entry] == OXZ_INSTALLABLE_UPDATE)
 		{
-			id manifest = oo::ObjectFromPList(entry);	// the dependency stack is chunk 5
-			OOLog(kOOOXZDebugLog, @"Queuing in for update: %@", manifest);
-			[_dependencyStack addObject:manifest];
+			OO_LOG("oxz.manager.debug", "Queuing in for update: {}", oo::DescriptionOf(oo::ObjectFromPList(entry)));
+			DependencyStackAdd(_dependencyStack, entry);
 		}
 	}
-	// the dependency stack is chunk 5: its first requirement arrives through oo::PListFrom
-	const std::optional<std::string> identifier = ManifestString(oo::PListFrom([_dependencyStack anyObject]), oo::StdString(kOOManifestRelationIdentifier));
+	// First requirement is front() (was anyObject; order-sensitive — named in commit).
+	const std::optional<std::string> identifier = _dependencyStack.empty()
+		? std::nullopt
+		: ManifestString(_dependencyStack.front(), oo::StdString(kOOManifestRelationIdentifier));
 	NSUInteger item = NSUIntegerMax;
 	for (NSUInteger i = 0; i < _oxzList.count(); i++)
 	{
@@ -2062,19 +2126,19 @@ static OOOXZManager *sSingleton = nil;
 {
 	if (_filteredList.count() <= item)
 	{
-		OOLog(kOOOXZDebugLog, @"Unable to remove item %zu as only %zu in list", item, _filteredList.count());
+		OO_LOG("oxz.manager.debug", "Unable to remove item {} as only {} in list", item, _filteredList.count());
 		return NO;
 	}
 	const std::optional<std::string> filename = ManifestString(ElementAt(_filteredList, item), oo::StdString(kOOManifestFilePath));
 	if (!filename.has_value())
 	{
-		OOLog(kOOOXZDebugLog, @"Unable to remove item %zu as filename not found", item);
+		OO_LOG("oxz.manager.debug", "Unable to remove item {} as filename not found", item);
 		return NO;
 	}
 
 	if (!oo::fs::removeItem(oo::fs::pathFromUTF8(*filename)))
 	{
-		OOLog(kOOOXZErrorLog, @"Unable to remove file %@", oo::NSStringFrom(*filename));
+		OO_LOG("oxz.manager.error", "Unable to remove file {}", *filename);
 		return NO;
 	}
 	_changesMade = YES;
@@ -2285,112 +2349,107 @@ static OOOXZManager *sSingleton = nil;
 
 - (std::string) extractOXZ:(NSUInteger)item
 {
-	NSFileManager *fmgr 			= [NSFileManager defaultManager];
-	NSMutableString *extractionLog	= [[NSMutableString alloc] init];
-	NSDictionary *manifest 			= oo::ObjectFromPList(ElementAt(_filteredList, item));
-	NSString *version 				= oo::PListView(manifest).get<NSString *>(kOOManifestVersion);
-	NSString *identifier 			= oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier);
-	NSString *path 					= oo::NSStringOrNil([self extractionBasePathForIdentifier:oo::DescriptionOf(identifier) andVersion:oo::DescriptionOf(version)]);
+	std::string extractionLog;
+	const oo::PList manifest = ElementAt(_filteredList, item);
+	const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
+	const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> path = [self extractionBasePathForIdentifier:identifier.value_or("") andVersion:version.value_or("")];
 
-	// OXZ errors should really never happen unless someone is messing
-	// directly with the managed folder while Oolite is running, but
-	// it's possible.
-
-	NSString *oxzfile = oo::PListView(manifest).get<NSString *>(kOOManifestFilePath);
-	if (![fmgr fileExistsAtPath:oxzfile])
+	const std::optional<std::string> oxzfile = ManifestString(manifest, oo::StdString(kOOManifestFilePath));
+	if (!oxzfile.has_value() || !oo::fs::fileExists(oo::fs::pathFromUTF8(*oxzfile)))
 	{
-		OOLog(kOOOXZErrorLog,@"OXZ %@ could not be found",oxzfile);
-		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-no-original")];
-		return oo::StdString([extractionLog autorelease]);
+		OO_LOG("oxz.manager.error", "OXZ {} could not be found", oxzfile.value_or("(null)"));
+		extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-no-original"));
+		return extractionLog;
 	}
-	const char* zipname = [oxzfile UTF8String];
+	const char* zipname = oxzfile->c_str();
 	unzFile uf = NULL;
 	uf = unzOpen64(zipname);
 	if (uf == NULL)
 	{
-		OOLog(kOOOXZErrorLog,@"Could not open .oxz at %@ as zip file",path);
-		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-bad-original")];
-		return oo::StdString([extractionLog autorelease]);
-	}	
+		OO_LOG("oxz.manager.error", "Could not open .oxz at {} as zip file", path.value_or("(null)"));
+		extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-bad-original"));
+		return extractionLog;
+	}
 
-	if ([fmgr fileExistsAtPath:path])
+	if (!path.has_value())
 	{
-		OOLog(kOOOXZErrorLog,@"Path %@ already exists",path);
-		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-main-exists")];
 		unzClose(uf);
-		return oo::StdString([extractionLog autorelease]);
+		extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-main-unmakeable"));
+		return extractionLog;
 	}
-	if (![fmgr oo_createDirectoryAtPath:path attributes:nil])
+	if (oo::fs::fileExists(oo::fs::pathFromUTF8(*path)))
 	{
-		OOLog(kOOOXZErrorLog,@"Path %@ could not be created",path);
-		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-main-unmakeable")];
+		OO_LOG("oxz.manager.error", "Path {} already exists", *path);
+		extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-main-exists"));
 		unzClose(uf);
-		return oo::StdString([extractionLog autorelease]);
+		return extractionLog;
 	}
-	[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-main-created")];
+	if (!oo::fs::createDirectories(oo::fs::pathFromUTF8(*path)))
+	{
+		OO_LOG("oxz.manager.error", "Path {} could not be created", *path);
+		extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-main-unmakeable"));
+		unzClose(uf);
+		return extractionLog;
+	}
+	extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-main-created"));
 	NSUInteger counter = 0;
 	char rawComponentName[512];
 	BOOL error = NO;
 	unz_file_info64 file_info = {0};
 	if (unzGoToFirstFile(uf) == UNZ_OK)
 	{
-		do 
+		do
 		{
 			unzGetCurrentFileInfo64(uf, &file_info,
 									rawComponentName, 512,
 									NULL, 0,
 									NULL, 0);
-			NSString *componentName = [NSString stringWithUTF8String:rawComponentName];
-			if ([componentName hasSuffix:@"/"])
+			const std::string componentName = rawComponentName;
+			if (oo::str::hasSuffix(componentName, "/"))
 			{
-				// folder
-				if (![fmgr oo_createDirectoryAtPath:[path stringByAppendingPathComponent:componentName] attributes:nil])
+				const std::string folderPath = oo::str::appendingPathComponent(*path, componentName);
+				if (!oo::fs::createDirectories(oo::fs::pathFromUTF8(folderPath)))
 				{
-					OOLog(kOOOXZErrorLog,@"Subpath %@ could not be created",componentName);
-					[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
+					OO_LOG("oxz.manager.error", "Subpath {} could not be created", componentName);
+					extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-sub-failed"));
 					error = YES;
 					break;
 				}
 				else
 				{
-					OOLog(kOOOXZDebugLog,@"Subpath %@ created OK",componentName);
+					OO_LOG("oxz.manager.debug", "Subpath {} created OK", componentName);
 				}
 			}
 			else
 			{
-				// file
-				// usually folder must now exist, but just in case...
-				NSString *folder = [[path stringByAppendingPathComponent:componentName] stringByDeletingLastPathComponent];
-				if ([folder length] > 0 && ![fmgr fileExistsAtPath:folder] && ![fmgr oo_createDirectoryAtPath:folder attributes:nil])
+				const std::string fullComponent = oo::str::appendingPathComponent(*path, componentName);
+				const std::string folder = oo::str::deletingLastPathComponent(fullComponent);
+				if (!folder.empty() && !oo::fs::fileExists(oo::fs::pathFromUTF8(folder))
+					&& !oo::fs::createDirectories(oo::fs::pathFromUTF8(folder)))
 				{
-					OOLog(kOOOXZErrorLog,@"Subpath %@ could not be created",folder);
-					[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
+					OO_LOG("oxz.manager.error", "Subpath {} could not be created", folder);
+					extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-sub-failed"));
 					error = YES;
 					break;
 				}
-				
 
-				// This is less efficient in memory use than just
-				// streaming out of the ZIP file onto disk
-				// but it makes error handling easier
-				void *pool = objc_autoreleasePoolPush();
-				NSData *tmp = [NSData oo_dataWithOXZFile:[oxzfile stringByAppendingPathComponent:componentName]];
-				if (tmp == nil)
+				const std::string entryPath = oo::str::appendingPathComponent(*oxzfile, componentName);
+				std::optional<oo::Data> tmp = OODataFromOXZFile(entryPath);
+				if (!tmp.has_value())
 				{
-					OOLog(kOOOXZErrorLog,@"Sub file %@ could not be extracted from the OXZ",componentName);
-					[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
+					OO_LOG("oxz.manager.error", "Sub file {} could not be extracted from the OXZ", componentName);
+					extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-sub-failed"));
 					error = YES;
-					objc_autoreleasePoolPop(pool);
 					break;
 				}
 				else
 				{
-					if (![tmp writeToFile:[path stringByAppendingPathComponent:componentName] atomically:YES])
+					if (!oo::fs::writeFile(oo::fs::pathFromUTF8(fullComponent), *tmp, oo::fs::WriteMode::atomic))
 					{
-						OOLog(kOOOXZErrorLog,@"Sub file %@ could not be created",componentName);
-						[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
+						OO_LOG("oxz.manager.error", "Sub file {} could not be created", componentName);
+						extractionLog += oo::StdString(DESC(@"oolite-oxzmanager-extract-log-sub-failed"));
 						error = YES;
-						objc_autoreleasePoolPop(pool);
 						break;
 					}
 					else
@@ -2398,8 +2457,6 @@ static OOOXZManager *sSingleton = nil;
 						++counter;
 					}
 				}
-				objc_autoreleasePoolPop(pool);
-
 			}
 		}
 		while (unzGoToNextFile(uf) == UNZ_OK);
@@ -2408,40 +2465,46 @@ static OOOXZManager *sSingleton = nil;
 
 	if (!error)
 	{
-		[extractionLog appendFormat:DESC(@"oolite-oxzmanager-extract-log-num-u-extracted"),counter];
-		[extractionLog appendFormat:DESC(@"oolite-oxzmanager-extract-log-extracted-to-@"),path];
+		extractionLog += DescFormat(DESC(@"oolite-oxzmanager-extract-log-num-u-extracted"), {static_cast<unsigned long long>(counter)});
+		extractionLog += DescFormat(DESC(@"oolite-oxzmanager-extract-log-extracted-to-@"), {*path});
 	}
 
-	return oo::StdString([extractionLog autorelease]);
+	return extractionLog;
 }
 
 
 
 
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+- (void) downloadDidReceiveResponse:(long long)expectedContentLength
 {
 	_downloadStatus = OXZ_DOWNLOAD_RECEIVING;
-	OOLog(kOOOXZDebugLog, @"%@", @"Download receiving");
-	_downloadExpected = [response expectedContentLength];
+	OO_LOG("oxz.manager.debug", "{}", "Download receiving");
+	_downloadExpected = expectedContentLength;
 	_downloadProgress = 0;
-	DESTROY(_fileWriter);
-	[[NSFileManager defaultManager] createFileAtPath:oo::NSStringOrNil([self downloadPath]) contents:nil attributes:nil];
-	_fileWriter = [[NSFileHandle fileHandleForWritingAtPath:oo::NSStringOrNil([self downloadPath])] retain];
-	if (_fileWriter == nil)
+	if (_fileWriter != NULL)
+	{
+		fclose(_fileWriter);
+		_fileWriter = NULL;
+	}
+	const std::optional<std::string> path = [self downloadPath];
+	_fileWriter = path.has_value() ? oo::fs::createFileForWriting(oo::fs::pathFromUTF8(*path)) : NULL;
+	if (_fileWriter == NULL)
 	{
 		// file system is full or read-only or something
-		OOLog(kOOOXZErrorLog, @"%@", @"Unable to create download file");
+		OO_LOG("oxz.manager.error", "{}", "Unable to create download file");
 		[self cancelUpdate];
 	}
 }
 
 
-- (void)connection:(NSURLConnection *)connection didReceiveData:(id)data
+- (void) downloadDidReceiveData:(const std::string &)data
 {
-	OOLog(kOOOXZDebugLog,@"Downloaded %zu bytes",[data length]);
-	[_fileWriter seekToEndOfFile];
-	[_fileWriter writeData:data];
-	_downloadProgress += [data length];
+	OO_LOG("oxz.manager.debug", "Downloaded {} bytes", data.size());
+	if (_fileWriter != NULL)
+	{
+		fwrite(data.data(), 1, data.size(), _fileWriter);
+	}
+	_downloadProgress += data.size();
 	[self gui]; // update GUI
 #if OOLITE_WINDOWS
 	/* Irritating fix to issue https://github.com/OoliteProject/oolite/issues/95
@@ -2461,21 +2524,27 @@ static OOOXZManager *sSingleton = nil;
 	 *
 	 * The game tick is no longer a run-loop timer, so GameController fires
 	 * it (and the run loop's own due timers) here, as the run loop did.
-	 * Proposed ADR-0033.
+	 * Proposed ADR-0033. The download itself no longer blocks the frame
+	 * loop (it runs on its own thread, proposed ADR-0044); the call stays
+	 * so a burst of queued chunks still lets the game tick between them.
 	 */
 	[[GameController sharedController] fireDueTimers];
 #endif
 }
 
 
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+- (void) downloadDidFinishLoading
 {
 	_downloadStatus = OXZ_DOWNLOAD_COMPLETE;
-	OOLog(kOOOXZDebugLog, @"%@", @"Download complete");
-	[_fileWriter synchronizeFile];
-	[_fileWriter closeFile];
-	DESTROY(_fileWriter);
-	DESTROY(_currentDownload);
+	OO_LOG("oxz.manager.debug", "{}", "Download complete");
+	if (_fileWriter != NULL)
+	{
+		oo::fs::synchronizeFile(_fileWriter);
+		fclose(_fileWriter);
+		_fileWriter = NULL;
+	}
+	delete _currentDownload;
+	_currentDownload = nullptr;
 	if (_interfaceState == OXZ_STATE_UPDATING)
 	{
 		if (![self processDownloadedManifests])
@@ -2492,19 +2561,23 @@ static OOOXZManager *sSingleton = nil;
 	}
 	else
 	{
-		OOLog(kOOOXZErrorLog,@"Error: download completed in unexpected state %d. This is an internal error - please report it.",_interfaceState);
+		OO_LOG("oxz.manager.error", "Error: download completed in unexpected state {}. This is an internal error - please report it.", static_cast<int>(_interfaceState));
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
 	}
 }
 
 
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
+- (void) downloadDidFailWithError:(const std::string &)error
 {
 	_downloadStatus = OXZ_DOWNLOAD_ERROR;
-	OOLog(kOOOXZErrorLog,@"Error downloading file: %@",[error description]);
-	[_fileWriter closeFile];
-	DESTROY(_fileWriter);
-	DESTROY(_currentDownload);
+	OO_LOG("oxz.manager.error", "Error downloading file: {}", error);
+	if (_fileWriter != NULL)
+	{
+		fclose(_fileWriter);
+		_fileWriter = NULL;
+	}
+	delete _currentDownload;
+	_currentDownload = nullptr;
 }
 
 

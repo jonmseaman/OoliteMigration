@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "Universe.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 
 
 namespace {
@@ -55,7 +56,7 @@ oo::PList TextureSpecifierFor(const oo::PList &configuration, const char *key, c
 }
 
 
-// -dictionaryByAddingObject:@"a" forKey:@"extract_channel" (nil stays nil).
+// PList dict with extract_channel set (nil stays nil).
 oo::PList AddingExtractChannelA(oo::PList specifier)
 {
 	if (oo::PList::Dict *dict = specifier.getIf<oo::PList::Dict>())  (*dict)["extract_channel"] = oo::PList("a");
@@ -231,7 +232,7 @@ float cxx_OOMaterialParallaxBias(const oo::PList &configuration)
 
 bool cxx_OOMaterialGammaCorrect(const oo::PList &configuration)
 {
-	return configuration.get<bool>(cxx_kOOMaterialGammaCorrectName, ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
+	return configuration.get<bool>(cxx_kOOMaterialGammaCorrectName, !oo::Defaults::standard().boolForKey("no-gamma-correct"));
 }
 
 

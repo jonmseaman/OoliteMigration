@@ -6,7 +6,6 @@ Encapsulates a vertex + fragment shader combo. In general, this should only be
 used though OOShaderMaterial. The point of this separation is that more than
 one OOShaderMaterial can use the same OOShaderProgram.
 
-
 Copyright (C) 2007-2013 Jens Ayton
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,8 +28,7 @@ SOFTWARE.
 
 */
 
-
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOOpenGLExtensionManager.h"
@@ -39,7 +37,6 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-vqvw): shader sources, names, prefix and cache key
 	are nil-able strings (std::optional: a missing source means no shader of that kind, an empty
