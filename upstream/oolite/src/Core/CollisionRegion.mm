@@ -722,9 +722,9 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 }
 
 
-- (id) collisionDescription	// shared selector (proposed ADR-0043)
+- (std::string) collisionDescription
 {
-	return oo::NSStringFrom(oo::str::format("p%u - c%u", checks_this_tick, checks_within_range));
+	return oo::str::format("p%u - c%u", checks_this_tick, checks_within_range);
 }
 
 

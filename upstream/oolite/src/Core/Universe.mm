@@ -6896,10 +6896,10 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (id) collisionDescription	// shared selector (proposed ADR-0043): an Objective-C string, as CollisionRegion's
+- (std::string) collisionDescription
 {
 	if (universeRegion != nil)  return [universeRegion collisionDescription];
-	else  return @"-";
+	else  return "-";
 }
 
 

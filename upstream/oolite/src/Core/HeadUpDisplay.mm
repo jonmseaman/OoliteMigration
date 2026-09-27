@@ -3282,7 +3282,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
-	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), oo::DescriptionOf([UNIVERSE collisionDescription]).c_str());
+	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), [UNIVERSE collisionDescription].c_str());
 	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
 
 	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
