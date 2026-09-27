@@ -34,6 +34,7 @@ SOFTWARE.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 @interface OOOXPVerifierStage (OOPrivate)
 
@@ -175,7 +176,7 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 {
 	assert(_canRun && !_hasRun);
 	
-	OOLogPushIndent();
+	oo::log::pushIndent();
 	@try
 	{
 		[self run];
@@ -184,13 +185,13 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 	{
 		// %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
 		// OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
-		OOLog(@"verifyOXP.exception", @"***** Exception while running verification stage \"%@\": <OOException: %p> NAME:%@ REASON:%@", [self name], (void *)exception, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", oo::DescriptionOf([self name]), oo::str::pointerDescription(exception), [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"verifyOXP.exception", @"***** Exception while running verification stage \"%@\": %@", [self name], exception);
+		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": {}", oo::DescriptionOf([self name]), oo::DescriptionOf(exception));
 	}
-	OOLogPopIndent();
+	oo::log::popIndent();
 	
 	_hasRun = YES;
 	_canRun = NO;

@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOPListView.h"
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 
 /*
@@ -54,9 +55,9 @@ SOFTWARE.
 #endif
 
 #if DEBUG_FCB_VERBOSE_LOGGING
-#define FCBLog					OOLog
-#define FCBLogIndentIf			OOLogIndentIf
-#define FCBLogOutdentIf			OOLogOutdentIf
+#define FCBLog					OO_LOG
+#define FCBLogIndentIf(key)		oo::log::indentIf(key)
+#define FCBLogOutdentIf(key)	oo::log::outdentIf(key)
 #else
 #define FCBLog(...)				do {} while (0)
 #define FCBLogIndentIf(key)		do {} while (0)
@@ -234,7 +235,7 @@ static bool GlobalAddFrameCallback(ooscript::Context context, ooscript::CallArgs
 	else
 	{
 		// Defer mutations during callback invocation.
-		FCBLog(@"script.frameCallback.debug.add.deferred", @"Deferring addition of frame callback with tracking ID %u.", trackingID);
+		FCBLog("script.frameCallback.debug.add.deferred", "Deferring addition of frame callback with tracking ID {}.", trackingID);
 		QueueDeferredOperation("add", trackingID, [OOJSValue valueWithJSValue:callback inContext:context]);
 	}
 	
@@ -268,7 +269,7 @@ static bool GlobalRemoveFrameCallback(ooscript::Context context, ooscript::CallA
 	else
 	{
 		// Defer mutations during callback invocation.
-		FCBLog(@"script.frameCallback.debug.remove.deferred", @"Deferring removal of frame callback with tracking ID %u.", trackingID);
+		FCBLog("script.frameCallback.debug.remove.deferred", "Deferring removal of frame callback with tracking ID {}.", trackingID);
 		QueueDeferredOperation("remove", trackingID, nil);
 	}
 	
@@ -317,7 +318,7 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 		if (!GrowCallbackList(context, errorString))  return NO;
 	}
 	
-	FCBLog(@"script.frameCallback.debug.add", @"Adding frame callback with tracking ID %u.", trackingID);
+	FCBLog("script.frameCallback.debug.add", "Adding frame callback with tracking ID {}.", trackingID);
 	
 	sCallbacks[sCount].callback = callback;
 	if (sCount >= sHighWaterMark)
@@ -439,7 +440,7 @@ static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index)
 	NSCParameterAssert(index < sCount && sCallbacks != NULL);
 	NSCAssert1(!sRunning, @"%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
-	FCBLog(@"script.frameCallback.debug.remove", @"Removing frame callback with tracking ID %u.", sCallbacks[index].trackingID);
+	FCBLog("script.frameCallback.debug.remove", "Removing frame callback with tracking ID {}.", sCallbacks[index].trackingID);
 	
 	// Overwrite entry to be removed with last entry, and decrement count.
 	sCount--;
@@ -449,7 +450,7 @@ static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index)
 #if DEBUG_FCB_SIMPLE_TRACKING_IDS
 	if (sCount == 0)
 	{
-		OOLog(@"script.frameCallback.debug.reset", @"All frame callbacks removed, resetting next ID to 1.");
+		OO_LOG("script.frameCallback.debug.reset", "All frame callbacks removed, resetting next ID to 1.");
 		sNextID = 1;
 	}
 #endif
@@ -469,8 +470,8 @@ static void QueueDeferredOperation(const std::string &opType, uint32_t trackingI
 
 static void RunDeferredOperations(ooscript::Context context)
 {
-	FCBLog(@"script.frameCallback.debug.run-deferred", @"Running %zu deferred frame callback operations.", (long)sDeferredOps->size());
-	FCBLogIndentIf(@"script.frameCallback.debug.run-deferred");
+	FCBLog("script.frameCallback.debug.run-deferred", "Running {} deferred frame callback operations.", (long)sDeferredOps->size());
+	FCBLogIndentIf("script.frameCallback.debug.run-deferred");
 	
 	for (const DeferredOperation &operation : *sDeferredOps)
 	{
@@ -484,7 +485,7 @@ static void RunDeferredOperations(ooscript::Context context)
 			
 			if (!AddCallback(context, OOJSValueFromNativeObject(context, callbackObj), trackingID, &errorString))
 			{
-				OOLogWARN(@"script.frameCallback.deferredAdd.failed", @"Deferred frame callback insertion failed: %@", oo::NSStringOrNil(errorString));
+				OO_LOG_WARN("script.frameCallback.deferredAdd.failed", "Deferred frame callback insertion failed: {}", errorString.value_or("(null)"));
 			}
 		}
 		else if (opType == "remove")
@@ -493,5 +494,5 @@ static void RunDeferredOperations(ooscript::Context context)
 		}
 	}
 	
-	FCBLogOutdentIf(@"script.frameCallback.debug.run-deferred");
+	FCBLogOutdentIf("script.frameCallback.debug.run-deferred");
 }

@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOFileScannerVerifierStage.h"
 #import "OOMaths.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 static const char * const kStageName	= "Testing textures and images";
 
@@ -96,7 +97,7 @@ static const char * const kStageName	= "Testing textures and images";
 				  referencedFrom:oo::NSStringFrom(context)
 					checkBuiltIn:YES])
 	{
-		OOLog(@"verifyOXP.texture.notFound", @"----- WARNING: texture \"%@\" referenced in %@ could not be found in %@ or in Oolite.", oo::NSStringFrom(name), oo::NSStringFrom(context), [[self verifier] oxpDisplayName]);
+		OO_LOG("verifyOXP.texture.notFound", "----- WARNING: texture \"{}\" referenced in {} could not be found in {} or in Oolite.", name, context, oo::DescriptionOf([[self verifier] oxpDisplayName]));
 	}
 }
 
@@ -134,7 +135,7 @@ static const char * const kStageName	= "Testing textures and images";
 	displayName = oo::OptionalString([fileScanner displayNameForFile:oo::NSStringFrom(name) andFolder:oo::NSStringFrom(folder)]);
 	if (loader == nil)
 	{
-		OOLog(@"verifyOXP.texture.failed", @"***** ERROR: image %@ could not be read.", oo::NSStringOrNil(displayName));
+		OO_LOG("verifyOXP.texture.failed", "***** ERROR: image {} could not be read.", displayName.value_or("(null)"));
 	}
 	else
 	{
@@ -146,18 +147,18 @@ static const char * const kStageName	= "Testing textures and images";
 			rHeight = OORoundUpToPowerOf2_PixMap((2 * pixmap.height) / 3);
 			if (pixmap.width != rWidth || pixmap.height != rHeight)
 			{
-				OOLog(@"verifyOXP.texture.notPOT", @"----- WARNING: image %@ has non-power-of-two dimensions; it will have to be rescaled (from %ux%u pixels to %ux%u pixels) at runtime.", oo::NSStringOrNil(displayName), pixmap.width, pixmap.height, rWidth, rHeight);
+				OO_LOG("verifyOXP.texture.notPOT", "----- WARNING: image {} has non-power-of-two dimensions; it will have to be rescaled (from {}x{} pixels to {}x{} pixels) at runtime.", displayName.value_or("(null)"), pixmap.width, pixmap.height, rWidth, rHeight);
 			}
 			else
 			{
-				OOLog(@"verifyOXP.verbose.texture.OK", @"- %@ (%ux%u px) OK.", oo::NSStringOrNil(displayName), pixmap.width, pixmap.height);
+				OO_LOG("verifyOXP.verbose.texture.OK", "- {} ({}x{} px) OK.", displayName.value_or("(null)"), pixmap.width, pixmap.height);
 			}
 			
 			OOFreePixMap(&pixmap);
 		}
 		else
 		{
-			OOLog(@"verifyOXP.texture.failed", @"***** ERROR: texture loader failed to load %@.", oo::NSStringOrNil(displayName));
+			OO_LOG("verifyOXP.texture.failed", "***** ERROR: texture loader failed to load {}.", displayName.value_or("(null)"));
 		}
 	}
 }

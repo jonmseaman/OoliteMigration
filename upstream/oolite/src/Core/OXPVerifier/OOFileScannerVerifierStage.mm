@@ -55,6 +55,7 @@ SOFTWARE.
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 
 namespace {
 
@@ -194,7 +195,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 			if (!_caseWarnings.contains(lcDirName))
 			{
 				_caseWarnings.insert(lcDirName);
-				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: directory '%@' should be called '%@'.", oo::NSStringFrom(*realDirName), oo::NSStringFrom(*folder));
+				OO_LOG("verifyOXP.files.caseMismatch", "***** ERROR: case mismatch: directory '{}' should be called '{}'.", *realDirName, *folder);
 			}
 		}
 		
@@ -209,7 +210,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 				
 				const std::string contextText = context.has_value() ? " referenced in " + *context : std::string();
 				
-				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: request for file '%@'%@ resolved to '%@'.", oo::NSStringOrNil(expectedPath), oo::NSStringFrom(contextText), oo::NSStringFrom(*path));
+				OO_LOG("verifyOXP.files.caseMismatch", "***** ERROR: case mismatch: request for file '{}'{} resolved to '{}'.", expectedPath.value_or("(null)"), contextText, *path);
 			}
 		}
 		
@@ -282,8 +283,8 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 			if (!_badPLists.contains(errorKey))
 			{
 				_badPLists.insert(errorKey);
-				OOLog(@"verifyOXP.plist.parseError", @"Could not interpret property list %@.", oo::NSStringOrNil(displayName));
-				OOLogIndent();
+				OO_LOG("verifyOXP.plist.parseError", "Could not interpret property list {}.", displayName.value_or("(null)"));
+				oo::log::indent();
 				if (errorString.has_value())
 				{
 					for (std::string errorLine : oo::str::split(*errorString, "\n"))
@@ -292,10 +293,10 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 						{
 							errorLine = "    " + errorLine.substr(1);
 						}
-						OOLog(@"verifyOXP.plist.parseError", @"%@", oo::NSStringFrom(errorLine));
+						OO_LOG("verifyOXP.plist.parseError", "{}", errorLine);
 					}
 				}
-				OOLogOutdent();
+				oo::log::outdent();
 			}
 		}
 	}
@@ -374,48 +375,48 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 			if (_skipDirectoryNames.contains(name))
 			{
 				// Silently skip .svn and CVS
-				OOLog(@"verifyOXP.verbose.listFiles", @"- Skipping %@/", oo::NSStringFrom(name));
+				OO_LOG("verifyOXP.verbose.listFiles", "- Skipping {}/", name);
 			}
 			else if (!CheckNameConflict(lcName, directoryCases, rootFiles, &existing, &existingType))
 			{
-				OOLog(@"verifyOXP.verbose.listFiles", @"- %@/", oo::NSStringFrom(name));
-				OOLogIndentIf(@"verifyOXP.verbose.listFiles");
+				OO_LOG("verifyOXP.verbose.listFiles", "- {}/", name);
+				oo::log::indentIf("verifyOXP.verbose.listFiles");
 				directoryListings[lcName] = *[self scanDirectory:path];
 				directoryCases[lcName] = name;
-				OOLogOutdentIf(@"verifyOXP.verbose.listFiles");
+				oo::log::outdentIf("verifyOXP.verbose.listFiles");
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"directory", oo::NSStringFrom(name), oo::NSStringFrom(existingType), oo::NSStringFrom(existing));
+				OO_LOG("verifyOXP.scanFiles.overloadedName", "***** ERROR: {} '{}' conflicts with {} named '{}', ignoring. (OXPs must work on case-insensitive file systems!)", "directory", name, existingType, existing);
 			}
 		}
 		else if (type == oo::StdString(NSFileTypeRegular))
 		{
 			if (_junkFileNames.contains(name))
 			{
-				OOLog(@"verifyOXP.scanFiles.skipJunk", @"NOTE: skipping junk file %@.", oo::NSStringFrom(name));
+				OO_LOG("verifyOXP.scanFiles.skipJunk", "NOTE: skipping junk file {}.", name);
 			}
 			else if (readMeNames.contains(lcName))
 			{
-				OOLog(@"verifyOXP.scanFiles.readMe", @"----- WARNING: apparent Read Me file (\"%@\") inside OXP. This is the wrong place for a Read Me file, because it will not be read.", oo::NSStringFrom(name));
+				OO_LOG("verifyOXP.scanFiles.readMe", "----- WARNING: apparent Read Me file (\"{}\") inside OXP. This is the wrong place for a Read Me file, because it will not be read.", name);
 			}
 			else if (!CheckNameConflict(lcName, directoryCases, rootFiles, &existing, &existingType))
 			{
-				OOLog(@"verifyOXP.verbose.listFiles", @"- %@", oo::NSStringFrom(name));
+				OO_LOG("verifyOXP.verbose.listFiles", "- {}", name);
 				rootFiles[lcName] = name;
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"file", oo::NSStringFrom(name), oo::NSStringFrom(existingType), oo::NSStringFrom(existing));
+				OO_LOG("verifyOXP.scanFiles.overloadedName", "***** ERROR: {} '{}' conflicts with {} named '{}', ignoring. (OXPs must work on case-insensitive file systems!)", "file", name, existingType, existing);
 			}
 		}
 		else if (type == oo::StdString(NSFileTypeSymbolicLink))
 		{
-			OOLog(@"verifyOXP.scanFiles.symLink", @"----- WARNING: \"%@\" is a symbolic link, ignoring.", oo::NSStringFrom(name));
+			OO_LOG("verifyOXP.scanFiles.symLink", "----- WARNING: \"{}\" is a symbolic link, ignoring.", name);
 		}
 		else
 		{
-			OOLog(@"verifyOXP.scanFiles.nonStandardFile", @"----- WARNING: \"%@\" is a non-standard file (%@), ignoring.", oo::NSStringFrom(name), oo::NSStringOrNil(type));
+			OO_LOG("verifyOXP.scanFiles.nonStandardFile", "----- WARNING: \"{}\" is a non-standard file ({}), ignoring.", name, type.value_or("(null)"));
 		}
 	}
 	
@@ -440,7 +441,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 		
 		if (actual->second != name)
 		{
-			OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: directory '%@' should be called '%@'.", oo::NSStringFrom(actual->second), oo::NSStringFrom(name));
+			OO_LOG("verifyOXP.files.caseMismatch", "***** ERROR: case mismatch: directory '{}' should be called '{}'.", actual->second, name);
 		}
 		_caseWarnings.insert(lcName);
 	}
@@ -468,7 +469,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 		if (*realFileName != name)
 		{
 			if (inConfigDir)  realFileName = oo::str::appendingPathComponent("Config", *realFileName);
-			OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: configuration file '%@' should be called '%@'.", oo::NSStringFrom(*realFileName), oo::NSStringFrom(name));
+			OO_LOG("verifyOXP.files.caseMismatch", "***** ERROR: case mismatch: configuration file '{}' should be called '{}'.", *realFileName, name);
 		}
 	}
 }
@@ -512,7 +513,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 			if (*realFileName != *name)
 			{
 				if (inDirectory)  realFileName = oo::str::appendingPathComponent(directory, *realFileName);
-				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: file '%@' should be called '%@'.", oo::NSStringFrom(*realFileName), oo::NSStringFrom(*name));
+				OO_LOG("verifyOXP.files.caseMismatch", "***** ERROR: case mismatch: file '{}' should be called '{}'.", *realFileName, *name);
 			}
 		}
 	}
@@ -554,7 +555,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 		if (_junkFileNames.contains(name))
 		{
-			OOLog(@"verifyOXP.scanFiles.skipJunk", @"NOTE: skipping junk file %@/%@.", oo::NSStringFrom(dirName), oo::NSStringFrom(name));
+			OO_LOG("verifyOXP.scanFiles.skipJunk", "NOTE: skipping junk file {}/{}.", dirName, name);
 		}
 		else if (type == oo::StdString(NSFileTypeRegular))
 		{
@@ -563,12 +564,12 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 			
 			if (existing == result.end())
 			{
-				OOLog(@"verifyOXP.verbose.listFiles", @"- %@", oo::NSStringFrom(name));
+				OO_LOG("verifyOXP.verbose.listFiles", "- {}", name);
 				result[lcName] = name;
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"file", oo::NSStringFrom(relativeName), @"file", oo::NSStringFrom(oo::str::appendingPathComponent(dirName, existing->second)));
+				OO_LOG("verifyOXP.scanFiles.overloadedName", "***** ERROR: {} '{}' conflicts with {} named '{}', ignoring. (OXPs must work on case-insensitive file systems!)", "file", relativeName, "file", oo::str::appendingPathComponent(dirName, existing->second));
 			}
 		}
 		else
@@ -578,20 +579,20 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 				[dirEnum skipDescendents];
 				if (!_skipDirectoryNames.contains(name))
 				{
-					OOLog(@"verifyOXP.scanFiles.directory", @"----- WARNING: \"%@\" is a nested directory, ignoring.", oo::NSStringFrom(relativeName));
+					OO_LOG("verifyOXP.scanFiles.directory", "----- WARNING: \"{}\" is a nested directory, ignoring.", relativeName);
 				}
 				else
 				{
-					OOLog(@"verifyOXP.verbose.listFiles", @"- Skipping %@/%@/", oo::NSStringFrom(dirName), oo::NSStringFrom(name));
+					OO_LOG("verifyOXP.verbose.listFiles", "- Skipping {}/{}/", dirName, name);
 				}
 			}
 			else if (type == oo::StdString(NSFileTypeSymbolicLink))
 			{
-				OOLog(@"verifyOXP.scanFiles.symLink", @"----- WARNING: \"%@\" is a symbolic link, ignoring.", oo::NSStringFrom(relativeName));
+				OO_LOG("verifyOXP.scanFiles.symLink", "----- WARNING: \"{}\" is a symbolic link, ignoring.", relativeName);
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.nonStandardFile", @"----- WARNING: \"%@\" is a non-standard file (%@), ignoring.", oo::NSStringFrom(relativeName), oo::NSStringOrNil(type));
+				OO_LOG("verifyOXP.scanFiles.nonStandardFile", "----- WARNING: \"{}\" is a non-standard file ({}), ignoring.", relativeName, type.value_or("(null)"));
 			}
 		}
 	}
@@ -636,7 +637,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 					formatDesc = oo::str::format("unknown format (%i)", (int)format);
 			}
 			
-			OOLog(@"verifyOXP.plist.weirdFormat", @"----- WARNING: Property list %@ is in %@; OpenStep text format and XML format are the recommended formats for Oolite.", oo::NSStringOrNil(displayPath), oo::NSStringFrom(formatDesc));
+			OO_LOG("verifyOXP.plist.weirdFormat", "----- WARNING: Property list {} is in {}; OpenStep text format and XML format are the recommended formats for Oolite.", displayPath.value_or("(null)"), formatDesc);
 		}
 	}
 }
@@ -698,7 +699,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 - (void)run
 {
-	OOLog(@"verifyOXP.unusedFiles.unimplemented", @"%@", @"TODO: implement unused files check.");
+	OO_LOG("verifyOXP.unusedFiles.unimplemented", "{}", "TODO: implement unused files check.");
 }
 
 
