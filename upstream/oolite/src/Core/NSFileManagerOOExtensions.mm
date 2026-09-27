@@ -29,11 +29,11 @@ MA 02110-1301, USA.
 
 #include <stdlib.h>
 #import "NSFileManagerOOExtensions.h"
-#import "OOLogging.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #import "unzip.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/Log.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 
@@ -59,7 +59,7 @@ MA 02110-1301, USA.
 	}
 	else
 	{
-		OOLogERR(@"savedGame.read.fail.fileNotFound", @"File at path '%@' could not be found.", savePath);
+		OO_LOG_ERR("savedGame.read.fail.fileNotFound", "File at path '{}' could not be found.", oo::DescriptionOf(savePath));
 		return nil;
 	}
 }
@@ -81,7 +81,7 @@ MA 02110-1301, USA.
 		}
 		else
 		{
-			OOLogERR(@"savedGame.defaultPath.create.failed", @"Unable to create '%@'. Saved games will go to the home directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+			OO_LOG_ERR("savedGame.defaultPath.create.failed", "Unable to create '{}'. Saved games will go to the home directory.", oo::fs::utf8String(savedir));
 			return oo::NSStringFrom(oo::fs::utf8String(paths.homeDirectory()));
 		}
 	}
@@ -89,7 +89,7 @@ MA 02110-1301, USA.
 	// is it a directory?
 	if (type != oo::fs::FileType::directory)
 	{
-		OOLogERR(@"savedGame.defaultPath.notDirectory", @"'%@' is not a directory, saved games will go to the home directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+		OO_LOG_ERR("savedGame.defaultPath.notDirectory", "'{}' is not a directory, saved games will go to the home directory.", oo::fs::utf8String(savedir));
 		return oo::NSStringFrom(oo::fs::utf8String(paths.homeDirectory()));
 	}
 	
@@ -202,12 +202,12 @@ MA 02110-1301, USA.
 	   // it probably doesn't exist.
 		if (!oo::fs::createDirectories(savedir))
 		{
-			OOLog(@"savedSnapshot.defaultPath.create.failed", @"Unable to create directory %@", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+			OO_LOG("savedSnapshot.defaultPath.create.failed", "Unable to create directory {}", oo::fs::utf8String(savedir));
 			return NO;
 		}
 		if (!oo::fs::setCurrentDirectory(savedir))
 		{
-			OOLog(@"savedSnapshot.defaultPath.chdir.failed", @"Created %@ but couldn't make it the current directory.", oo::NSStringFrom(oo::fs::utf8String(savedir)));
+			OO_LOG("savedSnapshot.defaultPath.chdir.failed", "Created {} but couldn't make it the current directory.", oo::fs::utf8String(savedir));
 			return NO;
 		}
 	}
