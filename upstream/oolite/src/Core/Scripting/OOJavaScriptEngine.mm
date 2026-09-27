@@ -60,7 +60,6 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
-#import "NSStringOOExtensions.h"
 #import "OOWeakReference.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "ResourceManager.h"

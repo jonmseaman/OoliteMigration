@@ -34,7 +34,6 @@ SOFTWARE.
 #import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "ResourceManager.h"
-#import "NSStringOOExtensions.h"
 
 #import "OOJSConsole.h"
 #import "OOJSScript.h"
