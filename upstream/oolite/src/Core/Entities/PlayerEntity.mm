@@ -8985,7 +8985,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			displayModeIndex = 0;
 		}
 		
-		const oo::PList	modeList = oo::PListFrom([controller displayModes]);
+		const oo::PList	modeList = [controller displayModes];
 		const oo::PList	*mode = nullptr;
 		if (modeList.count())
 		{

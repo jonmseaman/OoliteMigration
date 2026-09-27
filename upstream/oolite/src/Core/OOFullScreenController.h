@@ -66,7 +66,7 @@ MA 02110-1301, USA.
 
 @property (nonatomic, readonly) MyOpenGLView *gameView;
 @property (nonatomic, getter=inFullScreenMode) BOOL fullScreenMode;
-@property (nonatomic, readonly) id displayModes;	// shared selector: an Objective-C array of mode dictionaries
+@property (nonatomic, readonly) oo::PList displayModes;	// array of mode dictionaries (flipped with its family, bead oo-3rb.273)
 @property (nonatomic, readonly) oo::PList currentDisplayMode;	// a mode dictionary
 @property (nonatomic, readonly) NSUInteger indexOfCurrentDisplayMode;
 
@@ -77,7 +77,7 @@ MA 02110-1301, USA.
 - (BOOL) inFullScreenMode;
 - (void) setFullScreenMode:(BOOL)value;
 
-- (id) displayModes;	// shared selector: an Objective-C array of mode dictionaries
+- (oo::PList) displayModes;	// flipped with its family (bead oo-3rb.273)
 - (oo::PList) currentDisplayMode;	// a mode dictionary
 - (NSUInteger) indexOfCurrentDisplayMode;
 

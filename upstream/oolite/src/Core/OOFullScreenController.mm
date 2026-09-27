@@ -67,16 +67,21 @@ MA 02110-1301, USA.
 }
 
 
-- (id) displayModes	// shared selector (proposed ADR-0043)
+- (oo::PList) displayModes
 {
 	OOLogGenericSubclassResponsibility();
-	return nil;
+	return oo::PList();
 }
 
 
 - (oo::PList) currentDisplayMode
 {
-	return oo::PListFrom([[self displayModes] objectAtIndex:[self indexOfCurrentDisplayMode]]);
+	const oo::PList modes = [self displayModes];
+	const oo::PList::Array *arr = modes.getIf<oo::PList::Array>();
+	if (arr == nullptr)  return oo::PList();
+	const NSUInteger idx = [self indexOfCurrentDisplayMode];
+	if (idx >= arr->size())  return oo::PList();
+	return (*arr)[idx];
 }
 
 

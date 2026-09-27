@@ -3498,7 +3498,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		GameController	*controller = [UNIVERSE gameController];
 		int				direction = ([self checkKeyPress:n_key_gui_arrow_right]) ? 1 : -1;
 		NSInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
-		const oo::PList	modes = oo::PListFrom([controller displayModes]);
+		const oo::PList	modes = [controller displayModes];
 		
 		if (displayModeIndex == (NSInteger)NSNotFound)
 		{
