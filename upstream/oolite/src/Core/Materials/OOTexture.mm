@@ -45,6 +45,7 @@
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 namespace {
@@ -161,7 +162,7 @@ const char *sGlobalTraceContext = nullptr;
 		path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(*name) inFolder:oo::NSStringOrNil(directory)]);
 		if (!path.has_value())
 		{
-			if (!noFNF)  OOLogWARN(kOOLogFileNotFound, @"Could not find texture file \"%@\".", oo::NSStringFrom(*name));
+			if (!noFNF)  OO_LOG_WARN(cxx_kOOLogFileNotFound, "Could not find texture file \"{}\".", *name);
 			return nil;
 		}
 		
@@ -227,10 +228,10 @@ const char *sGlobalTraceContext = nullptr;
 	
 	if (![generator enqueue])
 	{
-		OOLogERR(@"texture.generator.queue.failed", @"Failed to queue generator %@", generator);
+		OO_LOG_ERR("texture.generator.queue.failed", "Failed to queue generator {}", oo::DescriptionOf(generator));
 		return nil;
 	}
-	OOLog(@"texture.generator.queue", @"Queued texture generator %@", generator);
+	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
 	
 	OOTexture *result = [[[OOConcreteTexture alloc] initWithLoader:generator
 															   key:oo::OptionalString([generator cacheKey])
@@ -385,7 +386,7 @@ const char *sGlobalTraceContext = nullptr;
 {
 	if (trace && !_trace)
 	{
-		OOLog(@"texture.allocTrace.begin", @"Started tracing texture %p with retain count %zu.", self, [self retainCount]);
+		OO_LOG("texture.allocTrace.begin", "Started tracing texture {} with retain count {}.", oo::str::pointerDescription(self), [self retainCount]);
 	}
 	_trace = trace;
 }
@@ -493,7 +494,7 @@ const char *sGlobalTraceContext = nullptr;
 		 * needed to generate a planet texture compared with loading a
 		 * standard one may be why this problem shows up.  - CIM 20140122
 		 */
-		NSAssert2(0, @"Texture retain count error for %@; cacheKey is %@.", self, oo::NSStringFrom(*cacheKey)); //miscount in autorelease
+		OOAssert(0, "Texture retain count error for %s; cacheKey is %s.", oo::DescriptionOf(self).c_str(), cacheKey->c_str()); //miscount in autorelease
 		// The following line is needed in order to avoid crashes when there's a 'texture retain count error'. Please do not delete. -- Kaks 20091221
 		[sRecentTextures removeObjectForKey:oo::NSStringFrom(*cacheKey)]; // make sure there's no reference left inside sRecentTexture ( was a show stopper for 1.73)
 	}
@@ -577,8 +578,8 @@ const char *sGlobalTraceContext = nullptr;
 {
 	if (_trace)
 	{
-		if (context)  OOLog(@"texture.allocTrace.retain", @"Texture %p retained (retain count -> %zu) - %@.", self, [self retainCount] + 1, oo::NSStringFrom(context));
-		else  OOLog(@"texture.allocTrace.retain", @"Texture %p retained  (retain count -> %zu).", self, [self retainCount] + 1);
+		if (context)  OO_LOG("texture.allocTrace.retain", "Texture {} retained (retain count -> {}) - {}.", oo::str::pointerDescription(self), [self retainCount] + 1, context);
+		else  OO_LOG("texture.allocTrace.retain", "Texture {} retained  (retain count -> {}).", oo::str::pointerDescription(self), [self retainCount] + 1);
 	}
 	
 	return [super retain];
@@ -589,8 +590,8 @@ const char *sGlobalTraceContext = nullptr;
 {
 	if (_trace)
 	{
-		if (context)  OOLog(@"texture.allocTrace.release", @"Texture %p released (retain count -> %zu) - %@.", self, [self retainCount] - 1, oo::NSStringFrom(context));
-		else  OOLog(@"texture.allocTrace.release", @"Texture %p released (retain count -> %zu).", self, [self retainCount] - 1);
+		if (context)  OO_LOG("texture.allocTrace.release", "Texture {} released (retain count -> {}) - {}.", oo::str::pointerDescription(self), [self retainCount] - 1, context);
+		else  OO_LOG("texture.allocTrace.release", "Texture {} released (retain count -> {}).", oo::str::pointerDescription(self), [self retainCount] - 1);
 	}
 	
 	[super release];
@@ -601,8 +602,8 @@ const char *sGlobalTraceContext = nullptr;
 {
 	if (_trace)
 	{
-		if (context)  OOLog(@"texture.allocTrace.autoreleased", @"Texture %p autoreleased - %@.", self, oo::NSStringFrom(context));
-		else  OOLog(@"texture.allocTrace.autoreleased", @"Texture %p autoreleased.", self);
+		if (context)  OO_LOG("texture.allocTrace.autoreleased", "Texture {} autoreleased - {}.", oo::str::pointerDescription(self), context);
+		else  OO_LOG("texture.allocTrace.autoreleased", "Texture {} autoreleased.", oo::str::pointerDescription(self));
 	}
 	
 	return [super autorelease];
@@ -645,7 +646,7 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 	}
 	if (!value.isDict())  return oo::PList();
 
-	// If we're here, it's a dictionary. (A "name" the old -oo_stringForKey: read: a string or a number.)
+	// If we're here, it's a dictionary. (A "name" as the old string extractor read it: a string or a number.)
 	const oo::PList *name = value.find("name");
 	if (!defaultName.has_value() || (name != nullptr && (name->isString() || name->isNumber())))  return value;
 	
@@ -696,11 +697,11 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 	}
 	else if (specifier.isDict())
 	{
-		// -oo_stringForKey: gave nil unless the value was a string or a number.
+		// The old string extractor gave nil unless the value was a string or a number.
 		const oo::PList *nameValue = specifier.find(cxx_kOOTextureSpecifierNameKey);
 		if (nameValue == nullptr || !(nameValue->isString() || nameValue->isNumber()))
 		{
-			OOLog(@"texture.load.noName", @"Invalid texture configuration dictionary (must specify name):\n%@", oo::ObjectFromPList(specifier));
+			OO_LOG("texture.load.noName", "Invalid texture configuration dictionary (must specify name):\n{}", oo::DescriptionOf(oo::ObjectFromPList(specifier)));
 			return NO;
 		}
 		name = specifier.get<std::string>(cxx_kOOTextureSpecifierNameKey);
@@ -740,7 +741,7 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 					else if (extractChannel == "a")  options |= kOOTextureExtractChannelA;
 					else
 					{
-						OOLogWARN(@"texture.load.extractChannel.invalid", @"Unknown value \"%@\" for extract_channel in specifier \"%@\" (should be \"r\", \"g\", \"b\" or \"a\").", oo::NSStringFrom(extractChannel), oo::ObjectFromPList(specifier));
+						OO_LOG_WARN("texture.load.extractChannel.invalid", "Unknown value \"{}\" for extract_channel in specifier \"{}\" (should be \"r\", \"g\", \"b\" or \"a\").", extractChannel, oo::DescriptionOf(oo::ObjectFromPList(specifier)));
 					}
 				}
 			}
@@ -751,7 +752,7 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 	else
 	{
 		// Bad type
-		if (!specifier.isNull())  OOLog(kOOLogParameterError, @"%s: expected string or dictionary, got %@.", __PRETTY_FUNCTION__, [oo::ObjectFromPList(specifier) class]);
+		if (!specifier.isNull())  OO_LOG(cxx_kOOLogParameterError, "{}: expected string or dictionary, got {}.", __PRETTY_FUNCTION__, oo::DescriptionOf([oo::ObjectFromPList(specifier) class]));
 		return NO;
 	}
 	

@@ -239,7 +239,7 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 	// Resetting fog is draw loop's responsibility.
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOSkyDrawable after rendering");
+	cxx_OOCheckOpenGLErrors("OOSkyDrawable after rendering");
 }
 
 
@@ -650,7 +650,7 @@ do { \
 		}
 		
 		_texture = [texture retain];
-		OOLog(@"sky.setup", @"Generated quadset with %u quads for texture %@", count, _texture);
+		OO_LOG("sky.setup", "Generated quadset with {} quads for texture {}", static_cast<unsigned>(count), oo::DescriptionOf(_texture));
 	}
 	
 	if (!OK)

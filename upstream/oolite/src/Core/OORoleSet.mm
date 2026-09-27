@@ -209,7 +209,7 @@ SOFTWARE.
 	if (!role.has_value())
 	{
 		role = _rolesAndProbabilities.begin()->first;
-		OOLog(@"roleSet.anyRole.failed", @"Could not get a weighted-random role from role set %@, returning unweighted selection %@. TotalProb: %g, selected: %g, prob at end: %f", self, oo::NSStringOrNil(role), _totalProb, selected, prob);
+		OO_LOG("roleSet.anyRole.failed", "Could not get a weighted-random role from role set {}, returning unweighted selection {}. TotalProb: {:g}, selected: {:g}, prob at end: {:f}", oo::DescriptionOf(self), role.value_or("(null)"), _totalProb, selected, prob);
 	}
 	return role;
 }
@@ -288,7 +288,7 @@ SOFTWARE.
 	{
 		if (prob < 0)
 		{
-			OOLog(@"roleSet.badValue", @"Attempt to create a role set with negative or non-numerical probability for role %@.", oo::NSStringFrom(role));
+			OO_LOG("roleSet.badValue", "Attempt to create a role set with negative or non-numerical probability for role {}.", role);
 			[self release];
 			return nil;
 		}
@@ -314,7 +314,7 @@ std::map<std::string, float> OOParseRolesFromString(std::string_view string)
 		const std::size_t open = token.find('(');
 		if (open != std::string::npos)
 		{
-			// -[NSScanner scanUpToString:@"("] (which leaves role alone when "(" comes first),
+			// The old scanner's -scanUpToString:@"(" (which leaves role alone when "(" comes first),
 			// scanString:@"(", then scanFloat: (-scanDouble:, narrowed). Ignore rest of string.
 			if (open != 0)  role = token.substr(0, open);
 			double scanned = 0.0;

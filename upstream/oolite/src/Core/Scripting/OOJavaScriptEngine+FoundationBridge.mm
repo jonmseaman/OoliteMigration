@@ -12,7 +12,10 @@ gnustep-base (bead oo-3rb.199).
 
 #import "OOJavaScriptEngine.h"	// declares the bridge at its end
 #import "OOFoundationBridge.h"
-#import "NSNumberOOExtensions.h"
+
+
+NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
+NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
 
 
 NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string)
@@ -514,7 +517,15 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 	BOOL					isFloat = NO;
 	long long				longLongValue;
 	
-	isFloat = [self oo_isFloatingPointNumber];
+	// Former NSNumber (OOExtensions) float/double objCType test.
+#if __COREFOUNDATION_CFNUMBER__
+	isFloat = CFNumberIsFloatType((CFNumberRef)self);
+#else
+	{
+		const char *type = [self objCType];
+		isFloat = (strcmp(type, @encode(double)) == 0 || strcmp(type, @encode(float)) == 0);
+	}
+#endif
 	if (!isFloat)
 	{
 		longLongValue = [self longLongValue];
@@ -546,3 +557,69 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 }
 
 @end
+
+
+NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object)
+{
+	OOJS_PROFILE_ENTER
+	
+	ooscript::IdArray			*ids = NULL;
+	std::size_t					i;
+	NSMutableDictionary			*result = nil;
+	ooscript::Value						value = ooscript::undefinedValue();
+	id							objKey = nil;
+	id							objValue = nil;
+	
+	ids = ooscript::enumerate((context), (object));
+	if (EXPECT_NOT(ids == NULL))
+	{
+		return nil;
+	}
+	
+	result = [NSMutableDictionary dictionaryWithCapacity:ids->length];
+	for (i = 0; i != ids->length; ++i)
+	{
+		ooscript::PropertyId thisID = (ids->ids[i]);
+		
+		if (ooscript::isStringId(thisID))
+		{
+			objKey = OOStringFromJSString(context, ooscript::idToString(thisID));
+		}
+		else if (ooscript::isInt32Id(thisID))
+		{
+			/* this causes problems with native functions which expect string keys
+			 * e.g. in mission.runScreen with the 'choices' parameter
+			 * should this instead be making the objKey a string?
+			 * is there anything that relies on the current behaviour?
+			 * - CIM 15/2/13 */
+			objKey = [NSNumber numberWithInt:ooscript::idToInt32(thisID)];
+		}
+		else
+		{
+			objKey = nil;
+		}
+		
+		value = ooscript::undefinedValue();
+		if (objKey != nil && !ooscript::lookupPropertyById((context), (object), (thisID), (&value)))  value = ooscript::undefinedValue();
+		
+		if (objKey != nil && !ooscript::isUndefined(value))
+		{
+			objValue = OOJSNativeObjectFromJSValue(context, value);
+			if (objValue != nil)
+			{
+				[result setObject:objValue forKey:objKey];
+			}
+		}
+	}
+	
+	ooscript::destroyIdArray((context), ids);
+	return result;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+void OOJSRegisterFoundationObjectConverter(ooscript::ClassDef *objectClass)
+{
+	OOJSRegisterObjectConverter(objectClass, (OOJSClassConverterCallback)OOJSDictionaryFromJSObject);
+}

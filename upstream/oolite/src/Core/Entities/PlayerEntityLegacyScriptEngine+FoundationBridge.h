@@ -33,6 +33,32 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScr
 // Test (sanitized) legacy script conditions array.
 - (BOOL) scriptTestConditions:(NSArray *)array;	// -> -cxx_scriptTestConditions:
 
+// Chunk 2 (oo-3rb.191): the mission-variable store.
+- (NSDictionary*) missionVariables;	// the live dictionary, as before (-cxx_missionVariables is a snapshot)
+
+- (NSString *)missionVariableForKey:(NSString *)key;	// -> -cxx_missionVariableForKey:
+- (void)setMissionVariable:(NSString *)value forKey:(NSString *)key;	// -> -cxx_setMissionVariable:forKey:
+
+// Chunk 4 (oo-3rb.193): mission instructions, the manifest list and the mission title.
+- (NSArray *) missionsList;	// -> -cxx_missionsList
+- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key;	// -> -cxx_setMissionInstructions:forMission:
+- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key;	// -> -cxx_setMissionInstructionsList:forMission:
+- (NSString *)missionTitle;	// -> -cxx_missionTitle
+- (void) setMissionTitle:(NSString *)value;	// -> -cxx_setMissionTitle:
+
+// Chunk 5 (oo-3rb.194): mission choices and the mission screen ID.
+- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict;	// -> -cxx_setMissionChoicesDictionary:
+- (void) setMissionScreenID:(NSString *)msid;	// -> -cxx_setMissionScreenID:
+- (NSString *) missionScreenID;	// -> -cxx_missionScreenID
+
+// Chunk 6 (oo-3rb.195): equipment scripts.
+- (BOOL) addEqScriptForKey:(NSString *)eq_key;	// -> -cxx_addEqScriptForKey:
+- (void) removeEqScriptForKey:(NSString *)eq_key;	// -> -cxx_removeEqScriptForKey:
+- (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key;	// -> -cxx_eqScriptIndexForKey:
+
+// Chunk 8 (oo-3rb.197): scene backgrounds.
+- (void) setBackgroundFromDescriptionsKey:(NSString*) d_key;	// -> -cxx_setBackgroundFromDescriptionsKey:
+
 @end
 
 

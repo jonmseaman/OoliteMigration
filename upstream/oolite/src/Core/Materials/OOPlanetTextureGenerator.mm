@@ -42,6 +42,7 @@
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"
@@ -121,7 +122,7 @@ enum
 
 namespace {
 
-FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key);	// dictionary: the planet info (holds OOColors; not a plist)
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key);	// dictionary: the planet info (colours are Object nodes)
 
 }	// namespace
 
@@ -154,7 +155,7 @@ enum
 
 @implementation OOPlanetTextureGenerator
 
-- (id) initWithPlanetInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
+- (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOLog(@"texture.planet.generate", @"%@", @"Initialising planetary generator");
 
@@ -164,19 +165,19 @@ enum
 	{
 		OOLog(@"texture.planet.generate", @"Extracting parameters for generator %@",self);
 
-		_info.landFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"land_fraction", 0.3));
-		_info.polarFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"polar_fraction", 0.05));
+		_info.landFraction = OOClamp_0_1_f(planetInfo.get<float>("land_fraction", 0.3));
+		_info.polarFraction = OOClamp_0_1_f(planetInfo.get<float>("polar_fraction", 0.05));
 		_info.landColor = FloatRGBFromDictColor(planetInfo, "land_color");
 		_info.seaColor = FloatRGBFromDictColor(planetInfo, "sea_color");
 		_info.paleLandColor = FloatRGBFromDictColor(planetInfo, "polar_land_color");
 		_info.polarSeaColor = FloatRGBFromDictColor(planetInfo, "polar_sea_color");
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
-		if ([planetInfo objectForKey:@"cloud_alpha"])
+		if (planetInfo.find("cloud_alpha") != nullptr)
 		{
 			OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
 			// we have an atmosphere:
-			_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
-			_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
+			_info.cloudAlpha = planetInfo.get<float>("cloud_alpha", 1.0f);
+			_info.cloudFraction = OOClamp_0_1_f(planetInfo.get<float>("cloud_fraction", 0.3));
 			_info.cloudColor = FloatRGBFromDictColor(planetInfo, "cloud_color");
 			_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		}
@@ -184,7 +185,7 @@ enum
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
 		
 #ifndef TEXGEN_TEST_RIG
-		if (detailLevel < DETAIL_LEVEL_SHADERS || oo::PListView(planetInfo).get<BOOL>(@"isMiniature", NO))
+		if (detailLevel < DETAIL_LEVEL_SHADERS || planetInfo.get<bool>("isMiniature", false))
 		{
 			_planetScale = kPlanetScaleReducedDetail;
 		}
@@ -199,7 +200,7 @@ enum
 #else
 		_planetScale = kPlanetScale4096x4096;
 #endif
-		_info.perlin3d = oo::PListView(planetInfo).get<BOOL>(@"perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
+		_info.perlin3d = planetInfo.get<bool>("perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset = 8 - _info.planetAspectRatio;
 	}
@@ -208,7 +209,7 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
++ (OOTexture *) planetTextureWithInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOTexture *result = nil;
 	OOPlanetTextureGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
@@ -222,9 +223,9 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture andAtmosphere:(OOTexture **)atmosphere withInfo:(id)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generatePlanetTexture:(OOTexture **)texture andAtmosphere:(OOTexture **)atmosphere withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	NSParameterAssert(texture != NULL);
+	OOParameterAssert(texture != NULL);
 	
 	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (diffuseGen == nil)  return NO;
@@ -241,9 +242,9 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture withInfo:(id)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	NSParameterAssert(texture != NULL);
+	OOParameterAssert(texture != NULL);
 
 	BOOL enqueue = NO;
 	
@@ -266,9 +267,9 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture andAtmosphere:(OOTexture **)atmosphere withInfo:(id)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture andAtmosphere:(OOTexture **)atmosphere withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
-	NSParameterAssert(texture != NULL);
+	OOParameterAssert(texture != NULL);
 	
 	BOOL enqueue = NO;
 
@@ -770,10 +771,11 @@ static FloatRGBA PlanetMix(OOPlanetTextureGeneratorInfo *info, float q, float ne
 
 namespace {
 
-FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key)
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key)
 {
-	OOColor *color = [dictionary objectForKey:oo::NSStringFrom(key)];
-	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
+	const oo::PList *value = dictionary.find(key);
+	OOColor *color = (value != nullptr) ? oo::ObjectIn(*value) : nil;	// an Object node (Amendment 2)
+	OOCAssert([color isKindOfClass:[OOColor class]], "Expected OOColor, got %s", oo::DescriptionOf([color class]).c_str());
 	
 	return (FloatRGB){ [color redComponent] * ALBEDO_FACTOR, [color greenComponent] * ALBEDO_FACTOR, [color blueComponent] * ALBEDO_FACTOR };
 }
@@ -808,7 +810,7 @@ static BOOL GenerateFBMNoise3D(OOPlanetTextureGeneratorInfo *info);
 
 static BOOL FillFBMBuffer(OOPlanetTextureGeneratorInfo *info)
 {
-	NSCParameterAssert(info != NULL);
+	OOCParameterAssert(info != NULL);
 	
 	// Allocate result buffer.
 	info->fbmBuffer = (float *)calloc(info->width * info->height, sizeof (float));

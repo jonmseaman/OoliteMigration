@@ -37,6 +37,7 @@ SOFTWARE.
 #import "OOJavaScriptEngine.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
 
 
@@ -97,7 +98,7 @@ void OOInitDebugSupport(void)
 		// Otherwise, use TCP debugger connection.
 		if (debugger == nil)
 		{
-			debugger = [[OODebugTCPConsoleClient alloc] initWithAddress:oo::NSStringOrNil(consoleHost)
+			debugger = [[OODebugTCPConsoleClient alloc] initWithAddress:consoleHost
 																   port:consolePort];
 			[debugger autorelease];
 			[[OODebugMonitor sharedDebugMonitor] setUsingPlugInController:NO];
@@ -143,12 +144,12 @@ static id LoadDebugPlugIn()
 		}
 		else
 		{
-			OOLog(@"debugSupport.load.failed", @"Failed to find principal class of debug bundle.");
+			OO_LOG("debugSupport.load.failed", "Failed to find principal class of debug bundle.");
 		}
 	}
 	else
 	{
-		OOLog(@"debugSupport.load.failed", @"Failed to load debug OXP plug-in from %@.", plugInURL.path);
+		OO_LOG("debugSupport.load.failed", "Failed to load debug OXP plug-in from {}.", oo::DescriptionOf(plugInURL.path));
 	}
 	
 	OO_DEBUG_POP_PROGRESS();

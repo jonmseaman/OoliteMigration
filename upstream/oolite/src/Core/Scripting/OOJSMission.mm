@@ -245,12 +245,12 @@ void MissionRunCallback()
 	@catch (OOException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
-		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
-		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	[OOJSScript popScript:cbScript];
 	
@@ -536,16 +536,16 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	{
 		if (isKey)
 		{
-			[player setMissionDescription:oo::NSStringFrom(*text) forMission:oo::NSStringOrNil(missionKey)];
+			[player setMissionDescription:*text forMission:missionKey];
 		}
 		else
 		{
-			[player setMissionInstructions:oo::NSStringFrom(*text) forMission:oo::NSStringOrNil(missionKey)];
+			[player cxx_setMissionInstructions:*text forMission:missionKey];
 		}
 	}
 	else if (!texts.isNull() && !isKey)
 	{
-		[player setMissionInstructionsList:oo::ObjectFromPList(texts) forMission:oo::NSStringOrNil(missionKey)];
+		[player cxx_setMissionInstructionsList:texts forMission:missionKey];
 	}
 	else
 	{

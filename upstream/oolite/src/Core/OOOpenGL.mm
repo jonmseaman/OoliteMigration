@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #ifndef NDEBUG
 static const char *const kOOLogOpenGLStateDump				= "rendering.opengl.stateDump";
@@ -260,7 +261,7 @@ GLfloat GLGetDisplayScaleFactor(void)
 
 void GLSetDisplayScaleFactor(GLfloat factor)
 {
-	NSCParameterAssert(factor >= 0.0f && isfinite(factor));
+	OOCParameterAssert(factor >= 0.0f && isfinite(factor));
 	sDisplayScaleFactor = factor;
 }
 

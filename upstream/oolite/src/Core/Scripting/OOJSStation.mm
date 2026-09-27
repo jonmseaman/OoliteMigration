@@ -41,6 +41,7 @@ MA 02110-1301, USA.
 #include <cstdint>
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOException.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -169,7 +170,7 @@ std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t ind
 // and the calling script saw it as "Native exception: <reason>". (Exceptions have their own beads.)
 void RaiseNilValueForKey(id key)
 {
-	[NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", key];
+	[OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", oo::DescriptionOf(key).c_str()];
 }
 
 
