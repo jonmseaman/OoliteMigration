@@ -61,6 +61,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 // If set, collision octree depth varies depending on the size of the mesh.
 #define ADAPTIVE_OCTREE_DEPTH		1
@@ -458,7 +459,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 		/*	It should not be possible to have multiple texture units if
 			texture combiners are not available.
 		*/
-		NSAssert2([[OOOpenGLExtensionManager sharedManager] textureCombinersSupported], @"Mesh %@ uses %zu texture units, but multitexturing is not available.", [self shortDescription], _textureUnitCount);
+		OOAssert([[OOOpenGLExtensionManager sharedManager] textureCombinersSupported], "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::DescriptionOf([self shortDescription]).c_str(), _textureUnitCount);
 		
 		for (unit = 0; unit < _textureUnitCount; unit++)
 		{
@@ -1650,7 +1651,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	Vector				calculatedNormal;
 	OOMeshFaceCount		i;
 	
-	NSParameterAssert(_normalMode != kNormalModeExplicit);
+	OOParameterAssert(_normalMode != kNormalModeExplicit);
 	
 	for (i = 0; i < faceCount; i++)
 	{
@@ -1749,12 +1750,12 @@ static float FaceArea(GLuint *vertIndices, Vector *vertices)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSParameterAssert(faceRefs != NULL);
+	OOParameterAssert(faceRefs != NULL);
 	
 	NSUInteger	i,j;
 	std::vector<float>	triangle_area(faceCount);
 	
-	NSAssert1(_normals != NULL && _tangents != NULL, @"Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
+	OOAssert(_normals != NULL && _tangents != NULL, "Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
 	
 	for (i = 0 ; i < faceCount; i++)
 	{
@@ -1808,7 +1809,7 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSParameterAssert(faceRefs != NULL);
+	OOParameterAssert(faceRefs != NULL);
 	
 	/*	This is conceptually broken.
 		At the moment, it's calculating one tangent per "input" vertex. It should
@@ -1946,7 +1947,7 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 						}
 						else
 						{
-							NSAssert1(_normals != NULL && _tangents != NULL, @"Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
+							OOAssert(_normals != NULL && _tangents != NULL, "Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
 							
 							normal = _normals[v];
 							tangent = _tangents[v];
@@ -2255,7 +2256,7 @@ static const char * const kOOCacheOctrees = "octrees";
 
 static void VFRAddFace(VertexFaceRef *vfr, NSUInteger index)
 {
-	NSCParameterAssert(vfr != NULL);
+	OOCParameterAssert(vfr != NULL);
 	
 	if (index < UINT16_MAX && vfr->internCount < kVertexFaceDefInternalCount)
 	{
@@ -2270,7 +2271,7 @@ static void VFRAddFace(VertexFaceRef *vfr, NSUInteger index)
 
 static NSUInteger VFRGetCount(VertexFaceRef *vfr)
 {
-	NSCParameterAssert(vfr != NULL);
+	OOCParameterAssert(vfr != NULL);
 	
 	return vfr->internCount + vfr->extra.size();
 }
@@ -2278,7 +2279,7 @@ static NSUInteger VFRGetCount(VertexFaceRef *vfr)
 
 static NSUInteger VFRGetFaceAtIndex(VertexFaceRef *vfr, NSUInteger index)
 {
-	NSCParameterAssert(vfr != NULL && index < VFRGetCount(vfr));
+	OOCParameterAssert(vfr != NULL && index < VFRGetCount(vfr));
 	
 	if (index < vfr->internCount)  return vfr->internFaces[index];
 	else  return vfr->extra[index - vfr->internCount];
