@@ -35,6 +35,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 #import "OOTextureLoader.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 
@@ -486,7 +487,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 	}
 	if (_data == NULL)
 	{
-		OOLogERR(@"texture.combinedEmissionMap.error", @"Unknown error loading %@", self);
+		OO_LOG_ERR("texture.combinedEmissionMap.error", "Unknown error loading {}", oo::DescriptionOf(self));
 	}
 }
 
