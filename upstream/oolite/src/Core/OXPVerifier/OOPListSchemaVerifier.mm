@@ -371,13 +371,12 @@ VERIFY_PROTO(DelegatedType);
 	{
 		@try
 		{
-			// The delegate selector is shared (id): it gets the same objects as before.
 			result = [_delegate verifier:self
-						withPropertyList:oo::ObjectFromPList(rootPList)
-								   named:oo::NSStringFrom(name)
-							testProperty:oo::ObjectFromPList(subPList)
-								  atPath:oo::ObjectFromPList(KeyPathToArray(keyPath))
-							 againstType:oo::ObjectFromPList(typeKey)
+						withPropertyList:rootPList
+								   named:name
+							testProperty:subPList
+								  atPath:KeyPathToArray(keyPath)
+							 againstType:typeKey
 								   error:&error];
 		}
 		@catch (OOException *exception)
@@ -429,13 +428,12 @@ VERIFY_PROTO(DelegatedType);
 	{
 		@try
 		{
-			// The delegate selector is shared (id): it gets the same objects as before.
 			result = [_delegate verifier:self
-						withPropertyList:oo::ObjectFromPList(rootPList)
-								   named:oo::NSStringFrom(name)
-					   failedForProperty:oo::ObjectFromPList(subPList)
+						withPropertyList:rootPList
+								   named:name
+					   failedForProperty:subPList
 							   withError:error
-							expectedType:oo::ObjectFromPList(localSchema)];
+							expectedType:localSchema];
 		}
 		@catch (OOException *exception)
 		{
