@@ -38,10 +38,8 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 
 
-/*	Foundation sweep (proposed ADR-0043, bead oo-56tr): file and folder names are UTF-8
-	std::strings; a name that could be nil is std::optional. The Foundation-typed API this header
-	declared moved to OOFileScannerVerifierStage+FoundationBridge.h (transitional), forwarding to
-	the cxx_ methods below.
+/*	Foundation sweep (proposed ADR-0043, bead oo-56tr / oo-cjel): file and folder names are UTF-8
+	std::strings; a name that could be nil is std::optional. Callers use the cxx_ methods below.
 */
 
 @interface OOFileScannerVerifierStage: OOOXPVerifierStage
@@ -126,12 +124,5 @@ SOFTWARE.
 @interface OOFileHandlingVerifierStage: OOOXPVerifierStage
 
 @end
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-56tr, forwarding to the cxx_ methods above, so unmigrated callers compile
-	unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "OOFileScannerVerifierStage+FoundationBridge.h"
 
 #endif

@@ -59,7 +59,7 @@ static const char * const kStageName	= "Testing textures and images";
 
 - (BOOL)shouldRun
 {
-	return !_usedTextures.empty() || [[[self verifier] fileScannerStage] filesInFolder:@"Images"] != nil;
+	return !_usedTextures.empty() || [[[self verifier] fileScannerStage] cxx_filesInFolder:"Images"].has_value();
 }
 
 
@@ -75,7 +75,7 @@ static const char * const kStageName	= "Testing textures and images";
 	_usedTextures.clear();
 	
 	// All "images" are considered used, since we don't have a reasonable way to look for images referenced in JavaScript scripts.
-	for (const std::string &name : oo::StringsFrom([[[self verifier] fileScannerStage] filesInFolder:@"Images"]))
+	for (const std::string &name : [[[self verifier] fileScannerStage] cxx_filesInFolder:"Images"].value_or(std::vector<std::string>{}))
 	{
 		[self checkTextureNamed:name inFolder:"Images"];
 	}
@@ -92,10 +92,7 @@ static const char * const kStageName	= "Testing textures and images";
 	_usedTextures.insert(where, name);
 	
 	fileScanner = [[self verifier] fileScannerStage];
-	if (![fileScanner fileExists:oo::NSStringFrom(name)
-						inFolder:@"Textures"
-				  referencedFrom:oo::NSStringFrom(context)
-					checkBuiltIn:YES])
+	if (![fileScanner cxx_fileExists:name inFolder:"Textures" referencedFrom:context checkBuiltIn:YES])
 	{
 		OO_LOG("verifyOXP.texture.notFound", "----- WARNING: texture \"{}\" referenced in {} could not be found in {} or in Oolite.", name, context, [[self verifier] cxx_oxpDisplayName].value_or("(null)"));
 	}
@@ -118,10 +115,7 @@ static const char * const kStageName	= "Testing textures and images";
 	OOTextureDataFormat			format;
 	
 	fileScanner = [[self verifier] fileScannerStage];
-	path = oo::OptionalString([fileScanner pathForFile:oo::NSStringFrom(name)
-											  inFolder:oo::NSStringFrom(folder)
-										referencedFrom:nil
-										  checkBuiltIn:NO]);
+	path = [fileScanner cxx_pathForFile:name inFolder:folder referencedFrom:std::nullopt checkBuiltIn:NO];
 	
 	if (!path.has_value())  return;
 	
@@ -132,7 +126,7 @@ static const char * const kStageName	= "Testing textures and images";
 											 kOOTextureNoFNFMessage |
 											 kOOTextureNeverScale];
 	
-	displayName = oo::OptionalString([fileScanner displayNameForFile:oo::NSStringFrom(name) andFolder:oo::NSStringFrom(folder)]);
+	displayName = [fileScanner cxx_displayNameForFile:name andFolder:folder];
 	if (loader == nil)
 	{
 		OO_LOG("verifyOXP.texture.failed", "***** ERROR: image {} could not be read.", displayName.value_or("(null)"));
