@@ -220,8 +220,11 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 	if (!_path.has_value())  return nil;
 	std::string name = oo::StdString([oo::NSStringFrom(*_path) lastPathComponent]);
 #else
-	if ([self cacheKey] == nil)  return nil;
-	std::string name = oo::StdString([[[[self cacheKey] componentsSeparatedByString:@":"] objectAtIndex:0] lastPathComponent]);
+	const std::optional<std::string> key = [self cxx_cacheKey];
+	if (!key.has_value())  return nil;
+	const std::string::size_type colon = key->find(':');
+	const std::string head = colon == std::string::npos ? *key : key->substr(0, colon);
+	std::string name = oo::str::lastPathComponent(head);
 #endif
 
 	const char *channelSuffix = nullptr;
@@ -277,9 +280,9 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringOrNil(_key);
+	return _key;
 }
 
 

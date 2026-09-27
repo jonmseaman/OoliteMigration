@@ -197,7 +197,7 @@ typedef OOPixMapFormat OOTextureDataFormat;
 */
 - (BOOL) isFinishedLoading;
 
-- (id) cacheKey;	// an Objective-C string, or nil. Shared selector (proposed ADR-0043).
+- (std::optional<std::string>) cxx_cacheKey;	// nullopt: not cacheable
 
 /*	Dimensions in pixels.
 	This will block until loading is completed.

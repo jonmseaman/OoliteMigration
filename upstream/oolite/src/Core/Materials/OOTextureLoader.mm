@@ -290,11 +290,6 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-- (id) cacheKey
-{
-	return oo::NSStringOrNil([self cxx_cacheKey]);
-}
-
 
 - (void)loadTexture
 {
