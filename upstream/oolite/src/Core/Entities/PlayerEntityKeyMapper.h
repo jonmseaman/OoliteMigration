@@ -64,7 +64,7 @@ MA 02110-1301, USA.
 #define KEY_KC_HEADER @"header"
 
 // Dictionary keys - used in the defaults file
-#define KEYCONFIG_OVERRIDES @"KeyConfigOverrides"  // NSUserDefaults
+#define KEYCONFIG_OVERRIDES @"KeyConfigOverrides"  // preferences key (oo::Defaults)
 
 @interface PlayerEntity (KeyMapper)
    - (void) resetKeyFunctions;

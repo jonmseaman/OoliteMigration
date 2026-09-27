@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OODebugFlags.h"
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/Log.hpp"
 
 #include "oofnd/PListGet.hpp"
@@ -137,8 +138,13 @@ MA 02110-1301, USA.
 	
 	scanClass = CLASS_NO_DRAW;
 	
-	_sunBrightnessFactor = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"sbf", 80.0f);
-	_sunCoronaAlphaFactor = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"scaf", 0.005f);
+	{
+		oo::Defaults &prefs = oo::Defaults::standard();
+		const oo::PList sbf = prefs.object("sbf");
+		_sunBrightnessFactor = oo::PListGet<float>::from(sbf.isNull() ? nullptr : &sbf, 80.0f);
+		const oo::PList scaf = prefs.object("scaf");
+		_sunCoronaAlphaFactor = oo::PListGet<float>::from(scaf.isNull() ? nullptr : &scaf, 0.005f);
+	}
 	
 	[self setSunColor:sun_color];
 

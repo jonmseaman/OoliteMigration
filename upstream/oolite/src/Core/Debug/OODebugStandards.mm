@@ -29,6 +29,8 @@ SOFTWARE.
 
 #import "OODebugStandards.h"
 #include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 #import "OOPListView.h"
 #import "GameController.h"
 #import "OOStringBridge.h"
@@ -71,8 +73,9 @@ void OOStandardsSetup()
 	{
 		return;
 	}
-	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	int s = oo::PListView(prefs).get<int>(@"enforce-oxp-standards", STANDARDS_ENFORCEMENT_WARN);
+	oo::Defaults &prefs = oo::Defaults::standard();
+	const oo::PList enforce = prefs.object("enforce-oxp-standards");
+	int s = oo::PListGet<int>::from(enforce.isNull() ? nullptr : &enforce, STANDARDS_ENFORCEMENT_WARN);
 	if (s < STANDARDS_ENFORCEMENT_OFF)
 	{
 		s = STANDARDS_ENFORCEMENT_OFF;
