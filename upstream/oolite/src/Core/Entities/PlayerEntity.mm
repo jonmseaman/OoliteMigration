@@ -8068,7 +8068,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 		[gui clearAndKeepBackground:!guiChanged];
 		text = oo::StdString(DESC(@"status-commander-@"));
-		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(text, { [self cxx_commanderName].value_or("(null)") }))];
+		[gui cxx_setTitle:oo::str::formatRuntime(text, { [self cxx_commanderName].value_or("(null)") })];
 
 		[gui cxx_setText:shipName forRow:0 align:GUI_ALIGN_CENTER];
 
@@ -8648,11 +8648,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 		if (concealment < OO_SYSTEMCONCEALMENT_NONAME)
 		{
-			[gui setTitle:oo::NSStringFrom(ExpandKeyWithSeed(infoSystemRandomSeed, "sysdata-data-on-system", { { "system", oo::PList(infoSystemName) } }))];
+			[gui cxx_setTitle:ExpandKeyWithSeed(infoSystemRandomSeed, "sysdata-data-on-system", { { "system", oo::PList(infoSystemName) } })];
 		}
 		else
 		{
-			[gui setTitle:OOExpandKey(@"sysdata-data-on-system-no-name")];
+			[gui cxx_setTitle:oo::OptionalString(OOExpandKey(@"sysdata-data-on-system-no-name"))];
 		}
 
 		if (concealment >= OO_SYSTEMCONCEALMENT_NODATA)
@@ -8973,7 +8973,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		int first_sel_row = GUI_FIRST_ROW(GAME)-4; // repositioned menu
 
 		[gui clear];
-		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) }))]; // Same title as status screen.
+		[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) })]; // Same title as status screen.
 		
 #if OO_RESOLUTION_OPTION
 		GameController	*controller = [UNIVERSE gameController];
@@ -9252,7 +9252,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			first_sel_row = GUI_ROW(,QUICKSAVE);
 
 		[gui clear];
-		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) }))]; //Same title as status screen.
+		[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) })]; //Same title as status screen.
 		
 		[gui cxx_setText:oo::StdString(DESC(@"options-quick-save")) forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
 		if (canQuickSave)
@@ -9533,7 +9533,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		gui_screen = GUI_SCREEN_EQUIP_SHIP;
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"equip-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"equip-title"))];
 		
 		[gui setColor:[gui colorFromSetting:kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
 		[gui cxx_setText:oo::StdString(OOExpandKey(@"equip-cash-value", credits)) forRow:GUI_ROW_EQUIPMENT_CASH];
@@ -9862,7 +9862,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_INTERFACES);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"interfaces-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"interfaces-title"))];
 		
 		gui_screen = GUI_SCREEN_INTERFACES;
 		
@@ -9909,10 +9909,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				[gui cxx_setKey:interfaceKey forRow:row];
 				// title, category: the list ends at the first nil, as arrayWithObjects: did
 				std::vector<std::string> columns;
-				id title = [definition title];
-				if (title != nil)
+				const std::optional<std::string> title = [definition cxx_title];
+				if (title.has_value())
 				{
-					columns.push_back(oo::StdString(title));
+					columns.push_back(*title);
 					const std::optional<std::string> category = [definition category];
 					if (category.has_value())  columns.push_back(*category);
 				}
@@ -10041,7 +10041,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	[gui clear];
 
-	[gui setTitle:@"Oolite"];
+	[gui cxx_setTitle:"Oolite"];
 
 	text = oo::StdString(DESC(@"game-copyright"));
 	[gui cxx_setText:text forRow:15 align:GUI_ALIGN_CENTER];
@@ -10200,7 +10200,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui clear];
 
         text = oo::StdString(DESC(@"oolite-ship-library-title"));
-		[gui setTitle:oo::NSStringFrom(text)];
+		[gui cxx_setTitle:text];
 
         text = oo::StdString(DESC(@"oolite-ship-library-exit"));
         [gui cxx_setText:text forRow:27 align:GUI_ALIGN_CENTER];
@@ -11270,7 +11270,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			dockedStation = [self primaryTarget];
 		}
 
-		[gui setTitle:oo::NSStringOrNil([self marketScreenTitle])];
+		[gui cxx_setTitle:[self marketScreenTitle]];
 		
 		[self showMarketScreenHeaders];
 
@@ -11429,7 +11429,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui clearAndKeepBackground:!guiChanged];
 
 		const std::string selectedCommodity = *marketSelectedCommodity;	// (non-nil here)
-		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-information-@")), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) }))];
+		[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-information-@")), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) })];
 
 		[self showMarketScreenHeaders];
 		[self showMarketScreenDataLine:GUI_ROW_MARKET_START forGood:selectedCommodity inMarket:localMarket holdQuantity:quantityInHold[j]];

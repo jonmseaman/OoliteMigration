@@ -290,7 +290,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_NEWGAME);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"oolite-newgame-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-newgame-title"))];
 
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -1014,7 +1014,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_LOAD;
 	
 	[gui clear];
-	[gui setTitle:DESC(@"loadscreen-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"loadscreen-title"))];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1039,7 +1039,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE;
 	
 	[gui clear];
-	[gui setTitle:DESC(@"savescreen-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"savescreen-title"))];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1071,7 +1071,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE_OVERWRITE;
 	
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName }))];
+	[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName })];
 	
 	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"overwritescreen-commander-@-already-exists-overwrite-query")), { cdrName })
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];

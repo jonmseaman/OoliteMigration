@@ -1264,7 +1264,7 @@ for (unsigned i=0;i<amount;i++)
 		current_cargo = [self cargoQuantityOnBoard];
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"manifest-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"manifest-title"))];
 		
 		current = current_cargo;
 		max = [self maxAvailableCargoSpace];
@@ -1432,7 +1432,7 @@ for (unsigned i=0;i<amount;i++)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:OOExpandKey(@"arrival-report-title")];
+		[gui cxx_setTitle:oo::OptionalString(OOExpandKey(@"arrival-report-title"))];
 		
 		for (i=1;i<=18;i++) {
 			[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingReportColor) defaultValue:nil] forRow:21];
@@ -1588,7 +1588,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:oo::NSStringFrom(ExpandKey("shipyard-title", { { "system", oo::PListFrom([UNIVERSE getSystemName:system_id]) } }))];
+		[gui cxx_setTitle:ExpandKey("shipyard-title", { { "system", oo::PListFrom([UNIVERSE getSystemName:system_id]) } })];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;

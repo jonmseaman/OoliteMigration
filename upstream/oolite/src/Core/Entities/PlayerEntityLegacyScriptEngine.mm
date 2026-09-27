@@ -2582,7 +2582,7 @@ static int shipsFound;
 	// GUI stuff
 	{
 		[gui clear];
-		[gui setTitle:oo::NSStringFrom([self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information"))))];
+		[gui cxx_setTitle:[self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information")))];
 
 		if (!_missionTextEntry)
 		{

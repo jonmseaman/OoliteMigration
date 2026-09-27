@@ -154,7 +154,6 @@ static BOOL _refreshStarChart = NO;
 		}
 		
 		title = std::string();	// an empty title, not none (-setTitle: would have made it none)
-
 		textColor = [[OOColor yellowColor] retain];
 		
 		drawPosition = make_vector(0.0f, 0.0f, 640.0f);
@@ -206,8 +205,7 @@ static BOOL _refreshStarChart = NO;
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 	}
 	
-	title = gui_title;	// as given (not through -setTitle:)
-	
+	title = gui_title;	// as given (not through -setTitle:)	
 	textColor = [[OOColor yellowColor] retain];
 
 	return self;
@@ -327,15 +325,27 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (id)title	// shared selector (proposed ADR-0043)
+- (id)title	// shared selector (Foundation declares -title too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(title);
+	return oo::NSStringOrNil([self cxx_title]);
 }
 
 
-- (void) setTitle:(id)str	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_title
 {
-	title = TitleFrom(oo::OptionalString(str));
+	return title;
+}
+
+
+- (void) setTitle:(id)str	// shared selector (Foundation declares -setTitle: too; retires with oo-qps)
+{
+	[self cxx_setTitle:oo::OptionalString(str)];
+}
+
+
+- (void) cxx_setTitle:(const std::optional<std::string> &)str
+{
+	title = TitleFrom(str);
 }
 
 
@@ -718,7 +728,7 @@ static BOOL _refreshStarChart = NO;
 - (void) clearAndKeepBackground:(BOOL)keepBackground
 {
 	unsigned i;
-	[self setTitle: nil];
+	[self cxx_setTitle:std::nullopt];
 	for (i = 0; i < n_rows; i++)
 	{
 		[self setText:@"" forRow:i align:GUI_ALIGN_LEFT];
@@ -1838,16 +1848,16 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		const std::string gal_key = oo::str::format("long-range-chart-title-%d", galaxy_number);
 		if (![UNIVERSE cxx_descriptionForKey:gal_key])
 		{
-			[self setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-title-d")), { galaxy_number + 1 }))];
+			[self cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-title-d")), { galaxy_number + 1 })];
 		}
 		else
 		{
-			[self setTitle:oo::NSStringOrNil([UNIVERSE cxx_descriptionForKey:gal_key])];
+			[self cxx_setTitle:[UNIVERSE cxx_descriptionForKey:gal_key]];
 		}
 	}
 	else
 	{
-		[self setTitle:oo::NSStringOrNil([UNIVERSE cxx_descriptionForKey:location_key])];
+		[self cxx_setTitle:[UNIVERSE cxx_descriptionForKey:location_key]];
 	}
 }
 
