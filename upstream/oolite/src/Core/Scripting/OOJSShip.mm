@@ -803,11 +803,11 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return YES;
 			
 		case kShip_beaconCode:
-			result = [entity beaconCode];
+			result = oo::NSStringOrNil([entity beaconCode]);
 			break;
 
 		case kShip_beaconLabel:
-			result = [entity beaconLabel];
+			result = oo::NSStringOrNil([entity beaconLabel]);
 			break;
 		
 		case kShip_isFrangible:
@@ -1346,11 +1346,11 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			{
 				if ([entity isBeacon])
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 					[UNIVERSE setNextBeacon:entity];
 				}
 			}
@@ -1362,7 +1362,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
 			if (sValue.has_value())
 			{
-				[entity setBeaconLabel:oo::NSStringFrom(*sValue)];
+				[entity setBeaconLabel:sValue];
 				return YES;
 			}
 			break;

@@ -326,11 +326,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 	switch (ooscript::idToInt32(propID))
 	{
 		case kVisualEffect_beaconCode:
-			result = [entity beaconCode];
+			result = oo::NSStringOrNil([entity beaconCode]);
 			break;
 
 		case kVisualEffect_beaconLabel:
-			result = [entity beaconLabel];
+			result = oo::NSStringOrNil([entity beaconLabel]);
 			break;
 
 		case kVisualEffect_dataKey:
@@ -459,11 +459,11 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			{
 				if ([entity isBeacon]) 
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 					[UNIVERSE setNextBeacon:entity];
 				}
 			}
@@ -474,7 +474,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
 			if (sValue.has_value())
 			{
-				[entity setBeaconLabel:oo::NSStringFrom(*sValue)];
+				[entity setBeaconLabel:sValue];
 				return YES;
 			}
 			break;

@@ -5371,7 +5371,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		Entity *target = [self compassTarget];
 		if (target)
 		{
-			return oo::OptionalString([(Entity <OOBeaconEntity> *)target beaconLabel]);
+			return [(Entity <OOBeaconEntity> *)target beaconLabel];
 		}
 		return "";
 	}

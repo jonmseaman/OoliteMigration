@@ -317,10 +317,10 @@ enum OOScanClass
 @protocol OOBeaconEntity
 
 - (NSComparisonResult) compareBeaconCodeWith:(Entity <OOBeaconEntity>*) other;
-- (id) beaconCode;	// shared selector (proposed ADR-0043): an Objective-C string
-- (void) setBeaconCode:(id)bcode;	// shared selector (proposed ADR-0043)
-- (id) beaconLabel;	// shared selector (proposed ADR-0043): an Objective-C string
-- (void) setBeaconLabel:(id)blabel;	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) beaconCode;	// flipped with its family (bead oo-3rb.260)
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode;	// flipped with its family (bead oo-3rb.260)
+- (std::optional<std::string>) beaconLabel;	// flipped with its family (bead oo-3rb.260)
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel;	// flipped with its family (bead oo-3rb.260)
 - (BOOL) isBeacon;
 - (id <OOHUDBeaconIcon>) beaconDrawable;
 - (Entity <OOBeaconEntity> *) prevBeacon;
