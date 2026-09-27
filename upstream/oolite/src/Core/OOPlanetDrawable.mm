@@ -34,6 +34,7 @@
 #import "Universe.h"
 #import "MyOpenGLView.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 #ifndef NDEBUG
 #import "Entity.h"
@@ -366,8 +367,8 @@
 - (void) dumpSelfState
 {
 	[super dumpSelfState];
-	OOLog(@"dumpState.planetDrawable", @"radius: %g", [self radius]);
-	OOLog(@"dumpState.planetDrawable", @"LOD: %g", [self levelOfDetail]);
+	OO_LOG("dumpState.planetDrawable", "radius: {:g}", [self radius]);
+	OO_LOG("dumpState.planetDrawable", "LOD: {:g}", [self levelOfDetail]);
 }
 
 

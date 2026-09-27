@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 #include "oofnd/PListParsing.hpp"
 
@@ -39,7 +40,7 @@ oo::PList cxx_OOPropertyListFromData(const std::optional<oo::Data> &data, const 
 	const std::string source = whereFrom.value_or("<data in memory>");
 	if (UNIVERSE != nil)
 	{
-		OOLog(@"plist.information", @"Parsing %@ as a property list.", oo::NSStringFrom(source));
+		OO_LOG("plist.information", "Parsing {} as a property list.", source);
 	}
 
 	if (data.has_value())
@@ -53,7 +54,7 @@ oo::PList cxx_OOPropertyListFromData(const std::optional<oo::Data> &data, const 
 			// Ensure we can say something sensible...
 			const std::string error = parsed ? std::string("<no error message>") : parsed.error().description();
 
-			OOLog(@"plist.parse.failed", @"Failed to parse %@ as a property list.\n%@", oo::NSStringFrom(source), oo::NSStringFrom(error));
+			OO_LOG("plist.parse.failed", "Failed to parse {} as a property list.\n{}", source, error);
 		}
 	}
 
