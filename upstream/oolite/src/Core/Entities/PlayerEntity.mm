@@ -2714,12 +2714,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #define STAGE_TRACKING_END			} \
 									@catch (OOException *exception) \
 									{ \
-										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
+										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), [exception name], [exception reason]); \
 										@throw exception; \
 									} \
 									@catch (OOFoundationException *exception) \
 									{ \
-										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", updateStage, __PRETTY_FUNCTION__, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason])); \
+										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason])); \
 										@throw exception; \
 									} \
 								}
@@ -13574,7 +13574,7 @@ else _dockTarget = NO_TARGET;
 	OO_LOG("dumpState.playerEntity", "Roll/pitch/yaw delta: {:g}, {:g}, {:g}", roll_delta, pitch_delta, yaw_delta);
 	OO_LOG("dumpState.playerEntity", "Shield: {:g} fore, {:g} aft", forward_shield, aft_shield);
 	OO_LOG("dumpState.playerEntity", "Alert level: {}, flags: {:#x}", static_cast<unsigned>(alertFlags), static_cast<unsigned>(alertCondition));
-	OO_LOG("dumpState.playerEntity", "Missile status: {}", missile_status);
+	OO_LOG("dumpState.playerEntity", "Missile status: {}", static_cast<unsigned>(missile_status));
 	OO_LOG("dumpState.playerEntity", "Energy unit: {}", cxx_EnergyUnitTypeToString([self installedEnergyUnitType]));
 	OO_LOG("dumpState.playerEntity", "Fuel leak rate: {:g}", fuel_leak_rate);
 	OO_LOG("dumpState.playerEntity", "Trumble count: {}", trumbleCount);

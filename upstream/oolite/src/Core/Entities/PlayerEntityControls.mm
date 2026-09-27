@@ -5515,7 +5515,7 @@ static BOOL autopilot_pause;
 		}
 		else
 		{
-			OO_LOG_ERR(cxx_kOOLogParameterError, "{} called with processWeaponFacing=YES for non-main view {}.", __FUNCTION__, viewDirection);
+			OO_LOG_ERR(cxx_kOOLogParameterError, "{} called with processWeaponFacing=YES for non-main view {}.", static_cast<const char *>(__FUNCTION__), static_cast<unsigned>(viewDirection));
 		}
 	}
 	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![[UNIVERSE gameController] isGamePaused])
