@@ -50,6 +50,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/PListWriting.hpp"
@@ -335,6 +336,27 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 }	// namespace
 
 
+
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
 
 @implementation ResourceManager
 
@@ -803,9 +825,9 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	}
 	if (!requirementsMet)
 	{
-		id version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, oo::DescriptionOf(version));
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(version)];
+		const std::optional<std::string> version = OoliteInfoString("CFBundleVersion");
+		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, version.value_or("(null)"));
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:version.value_or("")];
 		return;
 	}
 
@@ -889,9 +911,9 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (!OK)
 	{
-		id ooliteVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, oo::DescriptionOf(ooliteVersion));
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(ooliteVersion)];
+		const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
+		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, ooliteVersion.value_or("(null)"));
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:ooliteVersion.value_or("")];
 		return NO;
 	}
 
@@ -937,7 +959,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (!ooVersionComponents.has_value())
 	{
-		ooVersionComponents = oo::str::versionComponents(oo::StdString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]));
+		ooVersionComponents = oo::str::versionComponents(OoliteInfoString("CFBundleVersion").value_or(""));
 	}
 
 	// Check "version" (minimum version)
