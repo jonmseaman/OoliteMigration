@@ -66,7 +66,7 @@ SOFTWARE.
 + (instancetype) queueWithComparator:(SEL)comparator;
 - (id) initWithComparator:(SEL)comparator;
 
-- (void) addObject:(id)object;			// May throw NSInvalidArgumentException or NSMallocException.
+- (void) addObject:(id)object;			// May throw OOInvalidArgumentException or OOMallocException.
 - (void) removeObject:(id)object;		// Uses comparator (looking for NSOrderedEqual) to find object. Note: relatively expensive.
 - (void) removeExactObject:(id)object;	// Uses pointer comparison to find object. Note: still relatively expensive.
 

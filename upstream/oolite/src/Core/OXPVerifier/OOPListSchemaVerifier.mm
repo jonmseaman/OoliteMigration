@@ -668,7 +668,7 @@ bool HasSubString(const std::string &string, const std::string &sub)
 }
 
 
-// -substringToIndex: over UTF-16 units. Past the end GNUstep raised NSRangeException with this
+// -substringToIndex: over UTF-16 units. Past the end GNUstep raised OORangeException with this
 // reason (captured, whatever the string's class); -verifyPList: reports it as before.
 std::u16string SubstringToIndex(const std::u16string &units, unsigned long long index)
 {

@@ -2906,7 +2906,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 			id sec_id = [[player targetMemory] objectAtIndex:i];
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
-			// NSInvalidArgumentException when called on a weakref
+			// OOInvalidArgumentException when called on a weakref
 			// with a dropped object.
 			// TODO: fix OOWeakReference so isKindOfClass works
 			if (sec_id != nil && [sec_id isProxy])

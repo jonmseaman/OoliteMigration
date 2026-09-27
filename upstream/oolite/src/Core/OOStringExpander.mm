@@ -1378,7 +1378,7 @@ OOUnits Digram(const std::optional<std::string> &digrams, const OOUnits &units, 
 {
 	if (location + 2 > units.size())
 	{
-		// Raises NSRangeException, as it did (by messaging the string itself); answers nothing
+		// Raises OORangeException, as it did (by messaging the string itself); answers nothing
 		// (nothing appended) for no <digrams>.
 		[oo::NSStringOrNil(digrams) substringWithRange:NSMakeRange(location, 2)];
 		return OOUnits();

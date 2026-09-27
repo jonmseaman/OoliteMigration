@@ -1685,7 +1685,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	/*	Sanity check: ensure that only stations are generated here. This is an
 		attempt to fix exceptions of the form:
-			NSInvalidArgumentException : *** -[ShipEntity setPlanet:]: selector
+			OOInvalidArgumentException : *** -[ShipEntity setPlanet:]: selector
 			not recognized [self = 0x19b7e000] *****
 		which I presume to be originating here since all other uses of
 		setPlanet: are guarded by isStation checks. This error could happen if
@@ -9504,7 +9504,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 namespace {
 
 /*	-removeObjectAtIndex: on the shipyard's candidate keys: an index past the end raised
-	NSRangeException (the conditions test below can remove the same slot twice).
+	OORangeException (the conditions test below can remove the same slot twice).
 */
 void RemoveKeyAt(std::vector<std::string> &keys, unsigned index)
 {

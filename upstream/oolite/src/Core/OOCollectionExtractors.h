@@ -118,7 +118,7 @@ SOFTWARE.
 - (double) oo_nonNegativeDoubleAtIndex:(NSUInteger)index;
 
 // Default: nil
-- (id) oo_objectAtIndex:(NSUInteger)index;	// Differs from objectAtIndex: in that it returns nil rather than throwing NSRangeException.
+- (id) oo_objectAtIndex:(NSUInteger)index;	// Differs from objectAtIndex: in that it returns nil rather than throwing OORangeException.
 - (id) oo_objectOfClass:(Class)aClass atIndex:(NSUInteger)index;
 - (NSString *) oo_stringAtIndex:(NSUInteger)index;
 - (NSArray *) oo_arrayAtIndex:(NSUInteger)index;
