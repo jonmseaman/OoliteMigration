@@ -529,12 +529,12 @@ typedef enum
 - (Vector) upVector;
 - (Vector) rightVector;
 
-- (id)subEntities;	// shared selector (proposed ADR-0043): an Objective-C array (a copy; nil when there are none)
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
 - (NSUInteger) subEntityCount;
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (id)subEntityEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
-- (id)flasherEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
 // The ship / exhaust subentities, a snapshot in subentity order (empty for a nil receiver).
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
 - (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;

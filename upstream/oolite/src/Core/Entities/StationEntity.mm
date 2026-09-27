@@ -317,10 +317,11 @@ std::optional<std::string> OptionalStringValue(id object)
 - (std::vector<oo::ObjCRef<DockEntity *>>) cxx_dockSubEntities
 {
 	std::vector<oo::ObjCRef<DockEntity *>> result;
-	for (id sub in [self subEntities])
+	for (const auto &subRef : [self subEntities])
 	{
+		Entity *sub = subRef.get();
 		if (![sub isDock])  continue;
-		result.push_back(oo::ObjCRef<DockEntity *>(sub));
+		result.push_back(oo::ObjCRef<DockEntity *>((DockEntity *)sub));
 	}
 	return result;
 }
@@ -772,10 +773,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 
 #ifndef NDEBUG
-	for (id sub in [self subEntities])
+	for (const auto &subRef : [self subEntities])
 	{
+		Entity *sub = subRef.get();
 		if (![sub isShip])  continue;
-		ShipEntity *subEntity = sub;
+		ShipEntity *subEntity = (ShipEntity *)sub;
 		if ([subEntity isStation])
 		{
 			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), oo::DescriptionOf([subEntity shipDataKey]), [self displayName].value_or("(null)"));

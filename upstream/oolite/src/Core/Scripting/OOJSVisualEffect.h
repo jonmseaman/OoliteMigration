@@ -44,6 +44,6 @@ void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
 - (BOOL) isVisibleToScripts;
-- (id) subEntitiesForScript;	// shared selector (proposed ADR-0043): an Objective-C array
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript;	// empty before the first subentity; JS nil via visualEffectSubEntityEnumerator
 
 @end

@@ -3274,13 +3274,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// update subentities
 	UPDATE_STAGE("updating subentities");
 	totalBoundingBox = boundingBox; //	reset totalBoundingBox
-	ShipEntity *se = nil;
-	foreach (se, [self subEntities])
+	for (const auto &seRef : [self subEntities])
 	{
+		Entity *se = seRef.get();
 		[se update:delta_t];
 		if ([se isShip])
 		{
-			BoundingBox sebb = [se findSubentityBoundingBox];
+			BoundingBox sebb = [(ShipEntity *)se findSubentityBoundingBox];
 			bounding_box_add_vector(&totalBoundingBox, sebb.max);
 			bounding_box_add_vector(&totalBoundingBox, sebb.min);
 		}

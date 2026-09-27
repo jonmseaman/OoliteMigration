@@ -725,7 +725,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return YES;
 			
 		case kShip_subEntities:
-			result = [entity subEntitiesForScript];
+			result = oo::NSArrayFromObjects([entity subEntitiesForScript]);
 			break;
 
 		case kShip_exhausts:
@@ -733,7 +733,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 
 		case kShip_flashers:
-			result = [[entity flasherEnumerator] allObjects];
+			result = oo::NSArrayFromObjects([entity flasherEnumerator]);
 			break;
 			
 		case kShip_subEntityCapacity:
@@ -2851,12 +2851,12 @@ static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	NSUInteger subCount = [[thisEnt subEntitiesForScript] count];
+	NSUInteger subCount = [thisEnt subEntitiesForScript].size();
 	
 	[thisEnt clearSubEntities];
 	[thisEnt setUpSubEntities];
 	
-	if ([[thisEnt subEntitiesForScript] count] - subCount > 0)  numSubEntitiesRestored = [[thisEnt subEntitiesForScript] count] - subCount;
+	if ([thisEnt subEntitiesForScript].size() - subCount > 0)  numSubEntitiesRestored = [thisEnt subEntitiesForScript].size() - subCount;
 	
 	// for each subentity restored, slightly increase the trade-in factor
 	if ([thisEnt isPlayer])
