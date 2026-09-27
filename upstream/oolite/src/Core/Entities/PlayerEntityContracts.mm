@@ -41,7 +41,6 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOConstToString.h"
 #import "MyOpenGLView.h"
-#import "NSStringOOExtensions.h"
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "OOTexture.h"

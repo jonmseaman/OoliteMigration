@@ -14,7 +14,6 @@ oolite_sources += files(
     'NSDataOOExtensions.mm',
     'NSFileManagerOOExtensions.mm',
     'NSObjectOOExtensions.mm',
-    'NSStringOOExtensions.mm',
     'NSUserDefaults+Override.mm',
     'OOALBufferedSound.mm',
     'OOALMusic.mm',

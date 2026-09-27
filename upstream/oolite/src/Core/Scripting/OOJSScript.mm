@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "OOLogging.h"
 #import "OOConstToString.h"
 #import "Entity.h"
-#import "NSStringOOExtensions.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOConstToJSString.h"
 #import "OOManifestProperties.h"

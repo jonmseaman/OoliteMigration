@@ -33,7 +33,6 @@ SOFTWARE.
 #import "OODebugMonitor.h"
 #import "OOPListView.h"
 #import "ResourceManager.h"
-#import "NSStringOOExtensions.h"
 
 #import "OOJSConsole.h"
 #import "OOJSScript.h"

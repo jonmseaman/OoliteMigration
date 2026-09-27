@@ -31,7 +31,6 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOColor.h"
 
-#import "NSStringOOExtensions.h"
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
 #import "OOFoundationException.h"
