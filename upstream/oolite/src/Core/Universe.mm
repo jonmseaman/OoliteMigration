@@ -3983,7 +3983,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			[[beaconShip nextBeacon] setPrevBeacon:[beaconShip prevBeacon]];
 			[[beaconShip prevBeacon] setNextBeacon:[beaconShip nextBeacon]];
 		}
-		[beaconShip setBeaconCode:nil];
+		[beaconShip setBeaconCode:std::nullopt];	// not nil: nil built a std::string from a null char* (bead oo-2o5x)
 	}
 }
 
