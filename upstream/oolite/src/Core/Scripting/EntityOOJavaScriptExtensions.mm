@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "OOJSVisualEffect.h"
 #import "WormholeEntity.h"
 #import "OOJSWormhole.h"
+#import "OOFoundationBridge.h"
 #include "oofnd/Notification.hpp"
 
 
@@ -46,9 +47,15 @@ MA 02110-1301, USA.
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Entity";
+	return std::string("Entity");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 
@@ -124,9 +131,15 @@ MA 02110-1301, USA.
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Ship";
+	return std::string("Ship");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 

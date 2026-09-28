@@ -1281,36 +1281,55 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	return std::nullopt;
+}
+
+
 - (id) oo_jsClassName
 {
-	return nil;
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsDescription
+{
+	return [self cxx_oo_jsDescriptionWithClassName:[self cxx_oo_jsClassName]];
 }
 
 
 - (id) oo_jsDescription
 {
-	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
+	return oo::NSStringOrNil([self cxx_oo_jsDescription]);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className
+{
+	OOJS_PROFILE_ENTER
+
+	id						components = [self descriptionComponents];
+	std::optional<std::string> name = className;
+	if (!name.has_value())  name = oo::OptionalString([[self class] description]);
+
+	// "%@" of each: oo::DescriptionOf prints the same text.
+	if (components != nil)
+	{
+		return oo::str::format("[%s %s]", name->c_str(), oo::DescriptionOf(components).c_str());
+	}
+	else
+	{
+		return oo::str::format("[object %s]", name->c_str());
+	}
+
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
 - (id) oo_jsDescriptionWithClassName:(id)className
 {
-	OOJS_PROFILE_ENTER
-
-	id						components = [self descriptionComponents];
-	if (className == nil)  className = [[self class] description];
-
-	// "%@" of each: oo::DescriptionOf prints the same text.
-	if (components != nil)
-	{
-		return oo::NSStringFrom(oo::str::format("[%s %s]", oo::DescriptionOf(className).c_str(), oo::DescriptionOf(components).c_str()));
-	}
-	else
-	{
-		return oo::NSStringFrom(oo::str::format("[object %s]", oo::DescriptionOf(className).c_str()));
-	}
-
-	OOJS_PROFILE_EXIT
+	return oo::NSStringOrNil([self cxx_oo_jsDescriptionWithClassName:oo::OptionalString(className)]);
 }
 
 

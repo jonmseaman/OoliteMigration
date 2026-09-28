@@ -388,9 +388,15 @@ static BOOL JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Station";
+	return std::string("Station");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 @end

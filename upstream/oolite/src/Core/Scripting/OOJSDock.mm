@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "OOJSShip.h"
 #import "OOJSPlayer.h"
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 
 #import "DockEntity.h"
 #import "GameController.h"
@@ -218,9 +219,15 @@ static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Dock";
+	return std::string("Dock");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 @end
