@@ -29,7 +29,7 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 @class OODebugMonitor;
 

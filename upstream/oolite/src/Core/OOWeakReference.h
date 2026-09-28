@@ -92,7 +92,7 @@ This code is hereby placed in the public domain.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "OOFunctionAttributes.h"
 #import "oofnd/objc/OOObject.h"
 

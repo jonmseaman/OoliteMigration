@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 */
 
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
