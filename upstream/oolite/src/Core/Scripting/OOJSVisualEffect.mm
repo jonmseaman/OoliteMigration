@@ -292,12 +292,6 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 	return std::string("VisualEffect");
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 - (BOOL) isVisibleToScripts
 {
 	return YES;

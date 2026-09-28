@@ -43,7 +43,6 @@ void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
-- (id) oo_jsClassName;	// -> -cxx_oo_jsClassName
 - (BOOL) isVisibleToScripts;
 
 @end

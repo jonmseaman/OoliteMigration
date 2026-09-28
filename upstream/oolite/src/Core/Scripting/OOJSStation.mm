@@ -393,12 +393,6 @@ static BOOL JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 	return std::string("Station");
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 @end
 
 

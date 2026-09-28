@@ -212,12 +212,6 @@ static BOOL JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 	return std::string("Flasher");
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 - (BOOL) isVisibleToScripts
 {
 	return YES;

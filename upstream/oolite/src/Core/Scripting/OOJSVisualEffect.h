@@ -43,7 +43,6 @@ void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (std::optional<std::string>) cxx_oo_jsClassName;
-- (id) oo_jsClassName;	// -> -cxx_oo_jsClassName
 - (BOOL) isVisibleToScripts;
 - (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript;	// empty before the first subentity; JS nil via visualEffectSubEntityEnumerator
 

@@ -2616,7 +2616,7 @@ static bool ShipFireECM(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OK = [thisEnt fireECM];
 	if (!OK)
 	{
-		OOJSReportWarning(context, @"Ship %@ was requested to fire ECM burst but does not carry ECM equipment.", [thisEnt oo_jsDescription]);
+		OOJSReportWarning(context, @"Ship %@ was requested to fire ECM burst but does not carry ECM equipment.", oo::NSStringOrNil([thisEnt cxx_oo_jsDescription]));
 	}
 	
 	OOJS_RETURN_BOOL(OK);

@@ -224,12 +224,6 @@ static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 	return std::string("Dock");
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 @end
 
 

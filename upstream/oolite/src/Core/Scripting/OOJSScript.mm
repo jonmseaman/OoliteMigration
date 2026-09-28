@@ -372,9 +372,9 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Script";
+	return std::string("Script");
 }
 
 

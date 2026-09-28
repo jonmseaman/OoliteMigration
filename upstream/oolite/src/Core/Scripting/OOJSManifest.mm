@@ -158,9 +158,9 @@ static FunctionSpec sManifestMethods[] =
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Manifest";
+	return std::string("Manifest");
 }
 
 

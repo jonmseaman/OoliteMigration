@@ -151,12 +151,6 @@ void InitOOJSSun(ooscript::Context context, ooscript::Object global)
 	return std::string("Sun");
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 @end
 
 

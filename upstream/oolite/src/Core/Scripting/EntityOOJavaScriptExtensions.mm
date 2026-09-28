@@ -53,12 +53,6 @@ MA 02110-1301, USA.
 }
 
 
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
-
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
 	ooscript::ClassDef					*jsClass = NULL;
@@ -134,12 +128,6 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) cxx_oo_jsClassName
 {
 	return std::string("Ship");
-}
-
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 

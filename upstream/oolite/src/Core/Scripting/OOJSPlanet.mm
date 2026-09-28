@@ -212,12 +212,6 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global)
 	}
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 @end
 
 

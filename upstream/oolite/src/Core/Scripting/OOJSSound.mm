@@ -383,21 +383,9 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 }
 
 
-- (id) oo_jsDescription
-{
-	return oo::NSStringOrNil([self cxx_oo_jsDescription]);
-}
-
-
 - (std::optional<std::string>) cxx_oo_jsClassName
 {
 	return std::string("Sound");
-}
-
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 @end

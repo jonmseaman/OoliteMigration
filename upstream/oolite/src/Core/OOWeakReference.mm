@@ -197,21 +197,24 @@ return [result autorelease];
 }
 
 
-- (id) oo_jsDescription
+- (std::optional<std::string>) cxx_oo_jsDescription
 {
-	return [(id)_object oo_jsDescription];
+	if (_object == nil)  return std::nullopt;
+	return [(id)_object cxx_oo_jsDescription];
 }
 
 
-- (id) oo_jsDescriptionWithClassName:(id)className
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className
 {
-	return [(id)_object oo_jsDescriptionWithClassName:className];
+	if (_object == nil)  return std::nullopt;
+	return [(id)_object cxx_oo_jsDescriptionWithClassName:className];
 }
 
 
-- (id) oo_jsClassName
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return [(id)_object oo_jsClassName];
+	if (_object == nil)  return std::nullopt;
+	return [(id)_object cxx_oo_jsClassName];
 }
 
 
