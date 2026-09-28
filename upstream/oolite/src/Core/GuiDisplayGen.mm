@@ -160,7 +160,7 @@ static BOOL _refreshStarChart = NO;
 		
 		backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
 
-		guiUserSettings = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"gui-settings.plist" inFolder:@"Config" andMerge:YES]);
+		guiUserSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
 	}
 	return self;
 }

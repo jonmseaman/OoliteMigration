@@ -128,7 +128,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 + (std::optional<std::vector<oo::ObjCRef<OOScript *>>>)scriptsFromFileNamed:(const std::string &)fileName
 {
 	std::optional<std::vector<oo::ObjCRef<OOScript *>>> result;
-	std::optional<std::string> path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(fileName) inFolder:@"Scripts"]);
+	std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:fileName inFolder:"Scripts"];
 	if (path.has_value())
 	{
 		result = [self scriptsFromFileAtPath:*path];
@@ -198,7 +198,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	extension = oo::str::lowercase(oo::str::pathExtension(fileName));
 	if (extension == "js" || extension == "es")
 	{
-		path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(fileName) inFolder:@"Scripts"]);
+		path = [ResourceManager cxx_pathForFileNamed:fileName inFolder:"Scripts"];
 		if (!path.has_value())
 		{
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);
@@ -227,7 +227,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	extension = oo::str::lowercase(oo::str::pathExtension(fileName));
 	if (extension == "js" || extension == "es")
 	{
-		path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(fileName) inFolder:@"AIs"]);
+		path = [ResourceManager cxx_pathForFileNamed:fileName inFolder:"AIs"];
 		if (!path.has_value())
 		{
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);

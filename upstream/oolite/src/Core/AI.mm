@@ -872,7 +872,7 @@ static AIStackElement *sStack = NULL;
 		@try
 		{
 			// Load state machine and validate against whitelist.
-			const std::optional<std::string> aiPath = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(smName) inFolder:@"AIs"]);
+			const std::optional<std::string> aiPath = [ResourceManager cxx_pathForFileNamed:smName inFolder:"AIs"];
 			if (aiPath.has_value())
 			{
 				newSM = PListDictionaryFromFile(*aiPath);
@@ -959,7 +959,7 @@ static AIStackElement *sStack = NULL;
 
 	if (!whitelist.has_value())
 	{
-		const oo::PList whitelistDictionary = oo::PListFrom([ResourceManager whitelistDictionary]);
+		const oo::PList whitelistDictionary = [ResourceManager cxx_whitelistDictionary];
 		whitelist.emplace();
 		for (const char *key : { "ai_methods", "ai_and_action_methods" })
 		{

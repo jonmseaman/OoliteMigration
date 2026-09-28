@@ -161,7 +161,7 @@ const char *sGlobalTraceContext = nullptr;
 	result = [OOTexture cxx_existingTextureForKey:key];
 	if (result == nil)
 	{
-		path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(*name) inFolder:oo::NSStringOrNil(directory)]);
+		path = [ResourceManager cxx_pathForFileNamed:*name inFolder:directory];
 		if (!path.has_value())
 		{
 			if (!noFNF)  OO_LOG_WARN(cxx_kOOLogFileNotFound, "Could not find texture file \"{}\".", *name);

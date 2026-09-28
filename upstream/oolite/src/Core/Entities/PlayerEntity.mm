@@ -2116,7 +2116,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		[UNIVERSE preloadSounds];
 		[self setUpSound];
-		worldScripts = [[ResourceManager loadScripts] retain];
+		worldScripts = [NSMutableDictionary new];	// filled in load order, as +loadScripts filled it
+		for (const auto &[scriptName, loadedScript] : [ResourceManager cxx_loadScripts])  [(NSMutableDictionary *)worldScripts setObject:loadedScript.get() forKey:oo::NSStringFrom(scriptName)];
 		[UNIVERSE loadConditionScripts];
 		commodityScripts = [[NSMutableDictionary alloc] init];
 	}
@@ -2127,7 +2128,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self setUpSound];
 	if (saveGame)
 	{
-		worldScripts = [[ResourceManager loadScripts] retain];
+		worldScripts = [NSMutableDictionary new];	// filled in load order, as +loadScripts filled it
+		for (const auto &[scriptName, loadedScript] : [ResourceManager cxx_loadScripts])  [(NSMutableDictionary *)worldScripts setObject:loadedScript.get() forKey:oo::NSStringFrom(scriptName)];
 		[UNIVERSE loadConditionScripts];
 		commodityScripts = [[NSMutableDictionary alloc] init];
 	}

@@ -900,7 +900,7 @@ static void RemovePreference(const std::string &key)
 	if (action == @selector(showAddOnsAction:))
 	{
 		// Always enabled in unrestricted mode, to allow users to add OXPs more easily.
-		return [ResourceManager useAddOns] != nil;
+		return [ResourceManager cxx_useAddOns].has_value();
 	}
 	
 	if (action == @selector(showSnapshotsAction:))

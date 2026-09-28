@@ -959,7 +959,8 @@ static bool ConsoleDumpNamedRoots(ooscript::Context context, ooscript::CallArgs 
 	BOOL OK = NO;
 	@autoreleasepool
 	{
-		const std::string path = oo::StdString([[ResourceManager diagnosticFileLocation] stringByAppendingPathComponent:@"js-roots.txt"]);
+		const std::optional<std::string> diagnosticDirectory = [ResourceManager cxx_diagnosticFileLocation];
+		const std::string path = diagnosticDirectory.has_value() ? oo::str::appendingPathComponent(*diagnosticDirectory, "js-roots.txt") : std::string();
 		FILE *file = fopen(path.c_str(), "w");
 		if (file != NULL)
 		{
@@ -985,7 +986,8 @@ static bool ConsoleDumpHeap(ooscript::Context context, ooscript::CallArgs &oojsA
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL OK = NO;
-	const std::string path = oo::StdString([[ResourceManager diagnosticFileLocation] stringByAppendingPathComponent:@"js-heaps.txt"]);
+	const std::optional<std::string> diagnosticDirectory = [ResourceManager cxx_diagnosticFileLocation];
+	const std::string path = diagnosticDirectory.has_value() ? oo::str::appendingPathComponent(*diagnosticDirectory, "js-heaps.txt") : std::string();
 	FILE *file = fopen(path.c_str(), "w");
 	if (file != NULL)
 	{
