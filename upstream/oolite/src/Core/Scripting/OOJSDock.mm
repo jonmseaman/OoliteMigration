@@ -343,7 +343,7 @@ static bool DockIsQueued(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	JSDockGetDockEntity(context, OOJS_THIS, &dock); 
 	if (oojsArgs.count() == 0)
 	{
-		OOJSReportBadArguments(context, @"Dock", @"isQueued", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship");
+		cxx_OOJSReportBadArguments(context, "Dock", "isQueued", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "ship");
 		return NO;
 	}
 	ShipEntity *ship = nil;
