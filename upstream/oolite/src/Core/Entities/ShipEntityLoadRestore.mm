@@ -216,10 +216,10 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 		mergedData["auto_ai"] = oo::PList(static_cast<bool>(NO));
 		mergedData["escorts"] = oo::PList::unsignedInteger(0);
 
-		// One Objective-C dictionary for both callees, as before.
-		id definition = oo::ObjectFromPList(oo::PList(std::move(mergedData)));
+		const oo::PList mergedPlist(std::move(mergedData));
+		id definition = oo::ObjectFromPList(mergedPlist);
 		Class shipClass = [UNIVERSE shipClassForShipDictionary:definition];
-		ship = [[[shipClass alloc] initWithKey:oo::NSStringFrom(shipKey) definition:definition] autorelease];
+		ship = [[[shipClass alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
 
 		// FIXME: restore AI.
 		[ship setAITo:oo::NSStringFrom(dict.get<std::string>(KEY_AI, "nullAI.plist"))];

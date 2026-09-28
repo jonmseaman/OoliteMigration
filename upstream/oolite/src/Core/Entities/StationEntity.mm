@@ -638,13 +638,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 //////////////////////////////////////////////// from superclass
 
-- (id)initWithKey:(id)key definition:(id)dict	// forwards to cxx_ until part 2
-{
-	NSParameterAssert(dict != nil);
-	return [self cxx_initWithKey:oo::OptionalString(key).value_or(std::string{}) definition:oo::PListFrom(dict)];
-}
-
-
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
 {
 	OOJS_PROFILE_ENTER

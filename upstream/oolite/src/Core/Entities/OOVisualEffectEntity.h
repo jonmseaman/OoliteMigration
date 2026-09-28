@@ -93,7 +93,6 @@ using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>
 
 }
 
-- (id)initWithKey:(id)key definition:(id) dict;	// forwards to cxx_ until part 2
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
 - (BOOL) setUpVisualEffectFromDictionary:(const oo::PList &) effectDict;
 
