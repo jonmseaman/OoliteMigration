@@ -1428,7 +1428,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	for (i=0; i < cdrDetailArray.size(); i++)
 	{
 		const std::optional<std::string> currentName = CommanderSaveName(cdrDetailArray[i]);
-		if(currentName && cdrName == *currentName)	// -compare: == NSOrderedSame
+		if(currentName && cdrName == *currentName)	// -compare: == OOOrderedSame
 		{
 			return i;
 		}

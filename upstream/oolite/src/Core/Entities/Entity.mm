@@ -703,12 +703,12 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 }
 
 
-- (NSComparisonResult) compareZeroDistance:(Entity *)otherEntity
+- (OOComparisonResult) compareZeroDistance:(Entity *)otherEntity
 {
 	if ((otherEntity)&&(zero_distance > otherEntity->zero_distance))
-		return NSOrderedAscending;
+		return OOOrderedAscending;
 	else
-		return NSOrderedDescending;
+		return OOOrderedDescending;
 }
 
 

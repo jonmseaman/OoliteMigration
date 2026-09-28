@@ -228,7 +228,7 @@ enum OOScanClass
 
 - (double) zeroDistance;
 - (double) camZeroDistance;
-- (NSComparisonResult) compareZeroDistance:(Entity *)otherEntity;
+- (OOComparisonResult) compareZeroDistance:(Entity *)otherEntity;
 
 - (BoundingBox) boundingBox;
 
@@ -316,7 +316,7 @@ enum OOScanClass
 // Methods that must be supported by entities with beacons, regardless of type.
 @protocol OOBeaconEntity
 
-- (NSComparisonResult) compareBeaconCodeWith:(Entity <OOBeaconEntity>*) other;
+- (OOComparisonResult) compareBeaconCodeWith:(Entity <OOBeaconEntity>*) other;
 - (std::optional<std::string>) beaconCode;	// flipped with its family (bead oo-3rb.260)
 - (void) setBeaconCode:(const std::optional<std::string> &)bcode;	// flipped with its family (bead oo-3rb.260)
 - (std::optional<std::string>) beaconLabel;	// flipped with its family (bead oo-3rb.260)

@@ -10401,7 +10401,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// ORDER-SENSITIVE (decision D): beacons whose codes compare the same keep their list order.
 	std::stable_sort(result.begin(), result.end(), [](const oo::ObjCRef<Entity <OOBeaconEntity> *> &a, const oo::ObjCRef<Entity <OOBeaconEntity> *> &b)
 	{
-		return [a.get() compareBeaconCodeWith:b.get()] == NSOrderedAscending;
+		return [a.get() compareBeaconCodeWith:b.get()] == OOOrderedAscending;
 	});
 	return result;
 }
