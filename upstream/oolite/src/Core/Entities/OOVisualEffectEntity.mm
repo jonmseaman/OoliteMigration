@@ -825,9 +825,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 /* beacons */
 
-- (NSComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
 {
-	return (NSComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
 }
 
 

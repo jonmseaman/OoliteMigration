@@ -163,7 +163,7 @@ NSUInteger IndexOfGood(const std::vector<std::string> &goods, const std::optiona
 }
 
 
-// The market sorters, as orderings (< 0, 0, > 0 for NSOrderedAscending, Same, Descending) over
+// The market sorters, as orderings (< 0, 0, > 0 for OOOrderedAscending, Same, Descending) over
 // commodity keys; used with std::stable_sort, as -sortedArrayUsingFunction:context: is a stable
 // sort in GNUstep (probed on gnustep-base: ties keep their order).
 int marketSorterByName(const std::string &a, const std::string &b, OOCommodityMarket *market)
@@ -2599,9 +2599,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (NSComparisonResult) compareZeroDistance:(Entity *)otherEntity
+- (OOComparisonResult) compareZeroDistance:(Entity *)otherEntity
 {
-	return NSOrderedDescending;  // always the most near
+	return OOOrderedDescending;  // always the most near
 }
 
 
@@ -9847,7 +9847,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		// sorts by category, then title. ORDER-SENSITIVE: ties now keep the map's byte order of keys
 		std::stable_sort(interfaceKeys.begin(), interfaceKeys.end(), [interfaces](const std::string &a, const std::string &b)
 		{
-			return [interfaces->find(a)->second.get() interfaceCompare:interfaces->find(b)->second.get()] == NSOrderedAscending;
+			return [interfaces->find(a)->second.get() interfaceCompare:interfaces->find(b)->second.get()] == OOOrderedAscending;
 		});
 	}
 	int i;

@@ -216,9 +216,9 @@ id ObjectForKey(const oo::PList &dict, std::string_view key)
 
 /* beacons */
 
-- (NSComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
 {
-	return (NSComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
 }
 
 

@@ -7720,7 +7720,7 @@ static float SurfaceDistanceSqared(Entity *reference, Entity<OOStellarBody> *ste
 }
 
 
-NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
+OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	HPVector p = [(ShipEntity*) context position];
 	OOPlanetEntity* e1 = i1;
@@ -7729,10 +7729,10 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	float p1 = SurfaceDistanceSqaredV(p, e1);
 	float p2 = SurfaceDistanceSqaredV(p, e2);
 	
-	if (p1 < p2) return NSOrderedAscending;
-	if (p1 > p2) return NSOrderedDescending;
+	if (p1 < p2) return OOOrderedAscending;
+	if (p1 > p2) return OOOrderedDescending;
 	
-	return NSOrderedSame;
+	return OOOrderedSame;
 }
 
 
@@ -7801,7 +7801,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// ComparePlanetsBySurfaceDistance's order; the nearest comes first.
 	std::stable_sort(planets.begin(), planets.end(), [self](const oo::ObjCRef<OOPlanetEntity *> &a, const oo::ObjCRef<OOPlanetEntity *> &b)
 	{
-		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == NSOrderedAscending;
+		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == OOOrderedAscending;
 	});
 	result = planets[0].get();
 
@@ -9789,9 +9789,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (NSComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
 {
-	return (NSComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
 }
 
 
