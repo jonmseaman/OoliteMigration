@@ -9470,7 +9470,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 
 // Saved in the savegame: the market rows as OOCommodityMarket saves them, the position as the
-// doubles ArrayFromHPVector stored.
+// doubles from cxx_ArrayFromHPVector stored.
 - (oo::PList) cxx_getStationMarkets
 {
 	oo::PList::Array markets;
