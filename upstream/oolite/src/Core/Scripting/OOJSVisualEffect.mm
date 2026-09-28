@@ -454,7 +454,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 	switch (ooscript::idToInt32(propID))
 	{
 		case kVisualEffect_beaconCode:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (!sValue.has_value() || sValue->empty()) 
 			{
 				if ([entity isBeacon]) 
@@ -482,7 +482,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			break;
 
 		case kVisualEffect_beaconLabel:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
 				[entity setBeaconLabel:sValue];
@@ -708,7 +708,7 @@ static bool VisualEffectSetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 	
 	if (oojsArgs.count() < 1)
 	{
-		OOJSReportBadArguments(context, @"VisualEffect", @"setMaterials", 0, OOJS_ARGV, nil, @"parameter object");
+		cxx_OOJSReportBadArguments(context, "VisualEffect", "setMaterials", 0, OOJS_ARGV, std::nullopt, "parameter object");
 		return NO;
 	}
 	
@@ -735,14 +735,14 @@ static bool VisualEffectSetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 	
 	if (oojsArgs.count() < 1)
 	{
-		OOJSReportBadArguments(context, @"VisualEffect", @"setShaders", 0, OOJS_ARGV, nil, @"parameter object");
+		cxx_OOJSReportBadArguments(context, "VisualEffect", "setShaders", 0, OOJS_ARGV, std::nullopt, "parameter object");
 		return NO;
 	}
 	
 	if (ooscript::isNull(OOJS_ARGV[0]) || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::isObjectOrNull(OOJS_ARGV[0])))
 	{
 		// EMMSTRAN: valueToObject() and normal error handling here.
-		OOJSReportWarning(context, @"VisualEffect.%@: expected %@ instead of '%@'.", @"setShaders", @"object", OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]));
+		cxx_OOJSReportWarning(context, "VisualEffect.%s: expected %s instead of '%s'.", "setShaders", "object", cxx_OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]).value_or("(null)").c_str());
 		OOJS_RETURN_BOOL(NO);
 	}
 	
@@ -773,7 +773,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	
 	if (ooscript::isNull(OOJS_ARGV[0]) || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::isObjectOrNull(OOJS_ARGV[0])))
 	{
-		OOJSReportWarning(context, @"VisualEffect.%@: expected %@ instead of '%@'.", @"setMaterials", @"object", OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]));
+		cxx_OOJSReportWarning(context, "VisualEffect.%s: expected %s instead of '%s'.", "setMaterials", "object", cxx_OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]).value_or("(null)").c_str());
 		OOJS_RETURN_BOOL(NO);
 	}
 	
@@ -782,7 +782,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 		withShaders = YES;
 		if (ooscript::isNull(OOJS_ARGV[1]) || (!ooscript::isNull(OOJS_ARGV[1]) && !ooscript::isObjectOrNull(OOJS_ARGV[1])))
 		{
-			OOJSReportWarning(context, @"VisualEffect.%@: expected %@ instead of '%@'.",  @"setMaterials", @"object as second parameter", OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[1]));
+			cxx_OOJSReportWarning(context, "VisualEffect.%s: expected %s instead of '%s'.",  "setMaterials", "object as second parameter", cxx_OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[1]).value_or("(null)").c_str());
 			withShaders = NO;
 		}
 	}
@@ -856,14 +856,14 @@ static bool VisualEffectScale(ooscript::Context cx, ooscript::CallArgs &oojsArgs
  
 	if (oojsArgs.count() < 1)
 	{
-		OOJSReportBadArguments(context, @"VisualEffect", @"scale", oojsArgs.count(), OOJS_ARGV, nil, @"scale factor needed");
+		cxx_OOJSReportBadArguments(context, "VisualEffect", "scale", oojsArgs.count(), OOJS_ARGV, std::nullopt, "scale factor needed");
 		return NO;
 	}
  
 	gotScale = ooscript::valueToNumber(cx, (OOJS_ARGV[0]), &scale);
 	if (EXPECT_NOT(scale <= 0.0 || !gotScale))
 	{
-		OOJSReportBadArguments(context, @"VisualEffect", @"scale", oojsArgs.count(), OOJS_ARGV, nil, @"scale factor must be positive");
+		cxx_OOJSReportBadArguments(context, "VisualEffect", "scale", oojsArgs.count(), OOJS_ARGV, std::nullopt, "scale factor must be positive");
 		return NO;
 	}
  
