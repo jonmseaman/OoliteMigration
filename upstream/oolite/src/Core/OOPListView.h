@@ -49,6 +49,7 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 #import "OOCollectionExtractors.h"
 
+#import "OOFoundationBridge.h"
 #include "oofnd/PListGet.hpp"   // oo::NonNegative<F>, and the PList API this mirrors
 
 namespace oo {
@@ -135,7 +136,7 @@ struct TextureSpecifier
 
 }	// namespace oo
 
-NSDictionary *OOTextureSpecFromObject(id object, NSString *defaultName);	// OOTexture.h
+oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::optional<std::string> &defaultName);	// OOTexture.h
 
 namespace oo {
 
@@ -145,7 +146,7 @@ struct PListViewGet<TextureSpecifier>
 	using Result = NSDictionary *;
 	using Fallback = NSString *;
 	static NSString *defaultFallback() { return nil; }
-	static NSDictionary *from(id object, NSString *defaultName) { return OOTextureSpecFromObject(object, defaultName); }
+	static NSDictionary *from(id object, NSString *defaultName) { return oo::ObjectFromPList(cxx_OOTextureSpecFromObject(oo::PListFrom(object), oo::OptionalString(defaultName))); }
 };
 
 // oo_objectForKey: any object.

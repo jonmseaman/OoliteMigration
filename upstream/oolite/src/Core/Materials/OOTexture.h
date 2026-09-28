@@ -114,8 +114,8 @@ typedef OOPixMapFormat OOTextureDataFormat;
 /*	Foundation sweep (proposed ADR-0043 Amendments 1-2, bead oo-japz): names and folders are UTF-8
 	std::strings (std::optional where the old code accepted nil); texture specifiers and
 	configurations are oo::PList (a string or a dictionary; null = nil). The Foundation-typed API
-	this header declared moved to OOTexture+FoundationBridge.h (transitional), forwarding to the
-	cxx_ API below.
+	this header declared went through a transitional bridge until its last caller moved to the cxx_
+	API below (bead oo-x3ni).
 */
 @interface OOTexture: OOWeakRefObject
 {
@@ -324,9 +324,3 @@ inline constexpr const char *cxx_kOOTextureSpecifierIlluminationModeKey = "illum
 inline constexpr const char *cxx_kOOTextureSpecifierSelfColorKey = "self_color";
 inline constexpr const char *cxx_kOOTextureSpecifierScaleFactorKey = "scale_factor";
 inline constexpr const char *cxx_kOOTextureSpecifierBindingKey = "binding";
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-japz, forwarding to the cxx_ API above, so unmigrated callers compile
-	unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "OOTexture+FoundationBridge.h"

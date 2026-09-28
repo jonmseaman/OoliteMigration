@@ -293,8 +293,8 @@ static OOTexture *sBlobTexture = nil;
 {
 	if (sBlobTexture == nil)
 	{
-		sBlobTexture = [[OOTexture textureWithName:@"oolite-particle-blur.png"
-										  inFolder:@"Textures"
+		sBlobTexture = [[OOTexture cxx_textureWithName:"oolite-particle-blur.png"
+										  inFolder:"Textures"
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];

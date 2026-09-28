@@ -200,8 +200,8 @@ static void PlayTrumbleSqueal(void);
 	animationTime = 0.0;
 	animationDuration = 1.5 + randf() * 3.0;	// time until next animation
 	//
-	texture = [OOTexture textureWithName:@"trumblekit.png"
-								inFolder:@"Textures"
+	texture = [OOTexture cxx_textureWithName:"trumblekit.png"
+								inFolder:"Textures"
 								 options:kOOTextureDefaultOptions | kOOTextureNoShrink
 							  anisotropy:0.0f
 								 lodBias:kOOTextureDefaultLODBias];
