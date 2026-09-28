@@ -79,11 +79,11 @@ static bool FontMeasureString(ooscript::Context context, ooscript::CallArgs &ooj
 	if (EXPECT_NOT(oojsArgs.count() < 1) || ooscript::isUndefined(OOJS_ARGV[0]))
 	{
 		ooscript::Value undefined = ooscript::undefinedValue();
-		OOJSReportBadArguments(context, nil, @"defaultFont.measureString", MIN(oojsArgs.count(), 1U), &undefined, nil, @"string");
+		cxx_OOJSReportBadArguments(context, std::nullopt, "defaultFont.measureString", MIN(oojsArgs.count(), 1U), &undefined, std::nullopt, "string");
 		return NO;
 	}
 	
-	OOJS_RETURN_DOUBLE(OOStringWidthInEm(OOStringFromJSValue(context, OOJS_ARGV[0])));
+	OOJS_RETURN_DOUBLE(OOStringWidthInEm(oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]))));
 	
 	OOJS_NATIVE_EXIT
 }
