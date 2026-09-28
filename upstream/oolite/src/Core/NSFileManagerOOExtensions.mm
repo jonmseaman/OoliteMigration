@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 */
 
 #include <stdlib.h>
+#include <string>
 #import "NSFileManagerOOExtensions.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
@@ -247,17 +248,15 @@ MA 02110-1301, USA.
 	NSString *containedFile = [NSString pathWithComponents:[components subarrayWithRange:range]];
 
 	unzFile uf = NULL;
-	const char* zipname = [zipFile cStringUsingEncoding:NSUTF8StringEncoding];
-	if (zipname != NULL)
-	{
-		uf = unzOpen64(zipname);
-	}
+	const std::string zipnameStr = oo::StdString(zipFile);
+	uf = unzOpen64(zipnameStr.c_str());
 	if (uf == NULL)
 	{
 		// no such zip file
 		return NO;
 	}
-	const char* filename = [containedFile cStringUsingEncoding:NSUTF8StringEncoding];
+	const std::string filenameStr = oo::StdString(containedFile);
+	const char* filename = filenameStr.c_str();
 	// unzLocateFile(*, *, 1) = case-sensitive extract
 	BOOL result = YES;
 	if (unzLocateFile(uf, filename, 1) != UNZ_OK)
