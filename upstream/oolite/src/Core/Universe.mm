@@ -4215,8 +4215,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	@try
 	{
-		// -initWithKey:definition: is shared: the key and definition as the objects it took before
-		effect = [[OOVisualEffectEntity alloc] initWithKey:oo::NSStringFrom(effectKey) definition:oo::ObjectFromPList(effectDict)];
+		effect = [[OOVisualEffectEntity alloc] cxx_initWithKey:effectKey definition:effectDict];
 	}
 	@catch (OOException *exception)
 	{
@@ -4280,8 +4279,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
 			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
 		}
-		// -initWithKey:definition: is shared: the key and definition as the objects it took before
-		ship = [[shipClass alloc] initWithKey:oo::NSStringFrom(shipKey) definition:oo::ObjectFromPList(shipDict)];
+		ship = [[shipClass alloc] cxx_initWithKey:shipKey definition:shipDict];
 	}
 	@catch (OOException *exception)
 	{
@@ -4319,8 +4317,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
 			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
 		}
-		// -initWithKey:definition: is shared: the key and definition as the objects it took before
-		dock = [[DockEntity alloc] initWithKey:oo::NSStringFrom(shipDataKey) definition:oo::ObjectFromPList(shipDict)];
+		dock = [[DockEntity alloc] cxx_initWithKey:shipDataKey definition:shipDict];
 	}
 	@catch (OOException *exception)
 	{
@@ -9726,7 +9723,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			std::string shortExtrasKey = "shipyard-first-extra";
 
 			// for testing condition scripts
-			ShipEntity *testship = [[ProxyPlayerEntity alloc] initWithKey:oo::NSStringFrom(ship_key) definition:oo::ObjectFromPList(shipDict)];
+			ShipEntity *testship = [[ProxyPlayerEntity alloc] cxx_initWithKey:ship_key definition:shipDict];
 			// customise the ship (if chance = 1, then ship will get all possible add ons)
 			while ((randf() < chance) && (options.size()))
 			{
