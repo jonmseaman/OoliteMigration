@@ -82,7 +82,6 @@ SOFTWARE.
 
 #ifndef NDEBUG
 - (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
-- (id) allTextures;	// -> -cxx_allTextures (forwards until part 3)
 #endif
 
 @end

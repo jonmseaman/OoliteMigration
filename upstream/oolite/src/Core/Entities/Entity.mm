@@ -1120,9 +1120,9 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 }
 
 
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return nil;
+	return {};
 }
 #endif
 

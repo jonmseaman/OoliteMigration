@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class Universe, CollisionRegion, ShipEntity, OOVisualEffectEntity;
+@class Universe, CollisionRegion, ShipEntity, OOVisualEffectEntity, OOTexture;
 
 
 #ifndef NDEBUG
@@ -306,7 +306,7 @@ enum OOScanClass
 - (std::optional<std::string>) descriptionForObjDumpBasic;
 - (std::optional<std::string>) descriptionForObjDump;	// flipped with its family (bead oo-3rb.278)
 
-- (id) allTextures;	// shared selector (proposed ADR-0043): an Objective-C set of textures
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
 #endif
 
 @end
