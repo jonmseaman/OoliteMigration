@@ -315,7 +315,7 @@ enum {
 	and -oo_jsDescription will wrap them like this:
 		[oo_jsClassName descriptionComponents]
 */
-- (NSString *)descriptionComponents;
+- (id)descriptionComponents; // shared selector (proposed ADR-0043): root-class description family
 
 
 /*	A lot of Oolite's -description implementations are rather long, and many
@@ -323,8 +323,8 @@ enum {
 	alternative, while -shortDescriptionComponents provides a
 	-descriptionComponents-like mechanism to simplify implementation.
 */
-- (NSString *) shortDescription;
-- (NSString *) shortDescriptionComponents;
+- (id) shortDescription; // shared selector (proposed ADR-0043): root-class description family
+- (id) shortDescriptionComponents; // shared selector (proposed ADR-0043): root-class description family
 
 @end
 
@@ -337,10 +337,10 @@ enum {
 
 @interface OOObject (OODescriptionComponents)
 
-- (NSString *) description;
-- (NSString *) descriptionComponents;
-- (NSString *) shortDescription;
-- (NSString *) shortDescriptionComponents;
+- (id) description; // shared selector (proposed ADR-0043): root-class description family
+- (id) descriptionComponents; // shared selector (proposed ADR-0043): root-class description family
+- (id) shortDescription; // shared selector (proposed ADR-0043): root-class description family
+- (id) shortDescriptionComponents; // shared selector (proposed ADR-0043): root-class description family
 
 @end
 
@@ -441,15 +441,6 @@ id OOShuffledObjects(id collection);
 
 #endif
 /* OO_ENUMERATION_MACROS_END */
-
-
-/*	Support for foreach() with NSEnumerators in GCC.
-	It works without this with for (x in y) support, but we leave it defined
-	to reduce differences between different build environments.
-*/
-@interface NSEnumerator (OOForEachSupport)
-- (NSEnumerator *) objectEnumerator;
-@end
 
 
 /*	@optional directive for protocols: added in Objective-C 2.0.
