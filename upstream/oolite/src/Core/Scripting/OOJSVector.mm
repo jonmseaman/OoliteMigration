@@ -795,7 +795,7 @@ static bool VectorToString(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, "toString"))) return NO;
 	
-	OOJS_RETURN_OBJECT(HPVectorDescription(thisv));
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(cxx_HPVectorDescription(thisv)));
 	
 	OOJS_NATIVE_EXIT
 }

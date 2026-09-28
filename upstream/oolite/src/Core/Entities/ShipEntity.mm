@@ -14582,8 +14582,8 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	id target = [self primaryTarget];
 	if (target == nil)  target = @"<none>";
 	OOLog(@"dumpState.shipEntity", @"Target: %@", target);
-	OOLog(@"dumpState.shipEntity", @"Destination: %@", HPVectorDescription(_destination));
-	OOLog(@"dumpState.shipEntity", @"Other destination: %@", HPVectorDescription(coordinates));
+	OOLog(@"dumpState.shipEntity", @"Destination: %@", oo::NSStringFrom(cxx_HPVectorDescription(_destination)));
+	OOLog(@"dumpState.shipEntity", @"Other destination: %@", oo::NSStringFrom(cxx_HPVectorDescription(coordinates)));
 	OOLog(@"dumpState.shipEntity", @"Waypoint count: %u", number_of_navpoints);
 	OOLog(@"dumpState.shipEntity", @"Desired speed: %g", desired_speed);
 	OOLog(@"dumpState.shipEntity", @"Thrust: %g", thrust);
