@@ -1322,7 +1322,7 @@ OOINLINE PlayerEntity *OOGetPlayer(void)
 {
 	extern PlayerEntity *gOOPlayer;
 #if OO_DEBUG
-	NSCAssert(gOOPlayer != nil, @"PLAYER used when [PlayerEntity sharedPlayer] has not been called.");
+	OOCAssert(gOOPlayer != nil, "PLAYER used when [PlayerEntity sharedPlayer] has not been called.");
 #endif
 	return gOOPlayer;
 }
@@ -1367,3 +1367,4 @@ std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
 // TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
 // sweep, forwarding to the cxx_ API above. Keep this the last line.
 #import "PlayerEntity+FoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"

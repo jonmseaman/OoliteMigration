@@ -94,6 +94,7 @@ MA 02110-1301, USA.
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -478,7 +479,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) unloadCargoPods
 {
-	NSAssert([self isDocked], @"Cannot unload cargo pods unless docked.");
+	OOAssert([self isDocked], "Cannot unload cargo pods unless docked.");
 	
 	/* loads commodities from the cargo pods onto the ship's manifest */
 	for (const std::string &good : [shipCommodityData goods])
@@ -1995,15 +1996,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 */
 - (id) init
 {
-	NSAssert(gOOPlayer == nil, @"Expected only one PlayerEntity to exist at a time.");
+	OOAssert(gOOPlayer == nil, "Expected only one PlayerEntity to exist at a time.");
 	return [super initBypassForPlayer];
 }
 
 
 - (void) deferredInit
 {
-	NSAssert(gOOPlayer == self, @"Expected only one PlayerEntity to exist at a time.");
-	NSAssert([super cxx_initWithKey:oo::StdString(PLAYER_SHIP_DESC) definition:oo::PList(oo::PList::Dict{})] == self, @"PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
+	OOAssert(gOOPlayer == self, "Expected only one PlayerEntity to exist at a time.");
+	OOAssert([super cxx_initWithKey:oo::StdString(PLAYER_SHIP_DESC) definition:oo::PList(oo::PList::Dict{})] == self, "PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
 
 	maxFieldOfView = MAX_FOV;
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
@@ -7179,7 +7180,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) enterDock:(StationEntity *)station
 {
-	NSParameterAssert(station != nil);
+	OOParameterAssert(station != nil);
 	if ([self status] == STATUS_DEAD)  return;
 	
 	[self setStatus:STATUS_DOCKING];
@@ -7320,7 +7321,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) leaveDock:(StationEntity *)station
 {
 	if (station == nil)  return;
-	NSParameterAssert(station == [self dockedStation]);
+	OOParameterAssert(station == [self dockedStation]);
 	
 	// ensure we've not left keyboard entry on
 	[[UNIVERSE gameView] allowStringInput: NO];
@@ -8344,7 +8345,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		OOJSScript *eqScript = eqScripts[index].second.get();
 		ooscript::Context context = OOJSAcquireContext();
-		NSAssert1(mode <= OOPRIMEDEQUIP_MODE, @"Primable equipment mode %i out of range", (int)mode);
+		OOAssert(mode <= OOPRIMEDEQUIP_MODE, "Primable equipment mode %i out of range", (int)mode);
 		
 		switch (mode)
 		{
@@ -13064,7 +13065,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (void) doWorldScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc timeLimit:(OOTimeDelta)limit
 {
-	NSParameterAssert(context != NULL && ooscript::isInRequest(context));
+	OOParameterAssert(context != NULL && ooscript::isInRequest(context));
 	
 	OOScript				*theScript = nil;
 	
@@ -13176,7 +13177,7 @@ else _dockTarget = NO_TARGET;
 
 - (void) cxx_setJumpCause:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value.has_value());
+	OOParameterAssert(value.has_value());
 	_jumpCause = value;
 }
 
@@ -13195,14 +13196,14 @@ else _dockTarget = NO_TARGET;
 
 - (void) cxx_setCommanderName:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value.has_value());
+	OOParameterAssert(value.has_value());
 	_commanderName = value;
 }
 
 
 - (void) cxx_setLastsaveName:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value.has_value());
+	OOParameterAssert(value.has_value());
 	_lastsaveName = value;
 }
 

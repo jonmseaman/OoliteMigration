@@ -70,6 +70,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
@@ -5586,7 +5587,7 @@ static BOOL autopilot_pause;
 	}
 	
 	// We found a dockable, check whether we can dock with it
-	// NSAssert([target isKindOfClass:[StationEntity class]], @"Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
+	// OOAssert([target isKindOfClass:[StationEntity class]], "Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
 	StationEntity *ts; ts = (StationEntity *)target;
 	stationName = [ts displayName].value_or("");	// (nil raised in the expansion)
 	

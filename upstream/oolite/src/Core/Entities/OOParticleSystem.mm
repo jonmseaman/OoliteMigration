@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 //	Testing toy: cause particle systems to stop after half a second.
@@ -59,7 +60,7 @@ MA 02110-1301, USA.
 			   duration:(OOTimeDelta)duration
 			  baseColor:(GLfloat[4])baseColor
 {
-	NSParameterAssert(count <= kFragmentBurstMaxParticles);
+	OOParameterAssert(count <= kFragmentBurstMaxParticles);
 	
 	if ((self = [super init]))
 	{

@@ -57,6 +57,7 @@ MA 02110-1301, USA.
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define OO_TERMINATOR_THRESHOLD_VECTOR_DEFAULT	(make_vector(0.105, 0.18, 0.28))	// used to be (0.1, 0.105, 0.12);
@@ -634,7 +635,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		BOOL canDrawShaderAtmosphere = _atmosphereShaderDrawable && [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS;
 		if (EXPECT_NOT(_atmosphereDrawable && cam_zero_distance < _mesopause2))
 		{
-			NSAssert(_airColor != nil, @"Expected a non-nil air colour for normal planet. Exiting.");
+			OOAssert(_airColor != nil, "Expected a non-nil air colour for normal planet. Exiting.");
 			double		alt = (sqrt(cam_zero_distance) - collision_radius) / kMesosphere; // the viewpoint altitude
 			double		trueAlt = (sqrt(zero_distance) - collision_radius) / kMesosphere; // the actual ship altitude
 			// if at long distance external view, rotating the camera could potentially end up with it being
