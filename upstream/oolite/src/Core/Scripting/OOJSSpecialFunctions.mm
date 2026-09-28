@@ -78,12 +78,12 @@ static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojs
 	
 	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
-		OOJSReportBadArguments(context, @"special", @"jsWarning", oojsArgs.count(), OOJS_ARGV, nil, @"string");
+		cxx_OOJSReportBadArguments(context, "special", "jsWarning", oojsArgs.count(), OOJS_ARGV, std::nullopt, "string");
 		return NO;
 	}
 	
 	OOJSSetWarningOrErrorStackSkip(1);
-	OOJSReportWarning(context, @"%@", OOStringFromJSValue(context, OOJS_ARGV[0]));
+	cxx_OOJSReportWarning(context, "%s", cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or("(null)").c_str());
 	OOJSSetWarningOrErrorStackSkip(0);
 	
 	OOJS_RETURN_VOID;

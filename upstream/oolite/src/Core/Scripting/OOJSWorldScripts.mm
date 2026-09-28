@@ -107,7 +107,7 @@ static bool WorldScriptsGetProperty(Context cx, Object obj, PropertyId propID, V
 	id							script = nil;
 	
 	if (!ooscript::isStringId(jsPropID))  return YES;
-	scriptName = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(jsPropID)));
+	scriptName = cxx_OOStringFromJSString(context, ooscript::idToString(jsPropID));
 	
 	if (scriptName.has_value())
 	{

@@ -174,7 +174,7 @@ static bool SoundSourceConstruct(ooscript::Context context, ooscript::CallArgs &
 
 	if (EXPECT_NOT(!oojsArgs.isConstructing()))
 	{
-		OOJSReportError(context, @"SoundSource() cannot be called as a function, it must be used as a constructor (as in new SoundSource()).");
+		cxx_OOJSReportError(context, "SoundSource() cannot be called as a function, it must be used as a constructor (as in new SoundSource()).");
 		return NO;
 	}
 
@@ -336,7 +336,7 @@ static bool SoundSourcePlay(ooscript::Context context, ooscript::CallArgs &oojsA
 	if (EXPECT_NOT(!JSSoundSourceGetSoundSource(context, OOJS_THIS, &thisv)))  return NO;
 	if (oojsArgs.count() > 0 && !ooscript::isUndefined(OOJS_ARGV[0]) && !ooscript::valueToInt32(context, (OOJS_ARGV[0]), &count))
 	{
-		OOJSReportBadArguments(context, @"SoundSource", @"play", 1, OOJS_ARGV, nil, @"integer count or no argument");
+		cxx_OOJSReportBadArguments(context, "SoundSource", "play", 1, OOJS_ARGV, std::nullopt, "integer count or no argument");
 		return NO;
 	}
 
