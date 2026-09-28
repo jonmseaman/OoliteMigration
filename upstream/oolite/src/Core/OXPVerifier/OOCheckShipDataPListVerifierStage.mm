@@ -398,7 +398,7 @@ withPropertyList:(const oo::PList &)rootPList
 	testProperty:(const oo::PList &)subPList
 		  atPath:(const oo::PList &)keyPath
 	 againstType:(const oo::PList &)typeKey
-		   error:(NSError **)outError
+		   error:(std::optional<OOPListSchemaVerifierError> *)outError
 {
 	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", oo::ObjectFromPList(typeKey), oo::NSStringFrom(_name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:keyPath])];
 	return YES;
@@ -409,11 +409,11 @@ withPropertyList:(const oo::PList &)rootPList
 withPropertyList:(const oo::PList &)rootPList
 		   named:(const std::string &)name
  failedForProperty:(const oo::PList &)subPList
-	   withError:(NSError *)error
+	   withError:(const OOPListSchemaVerifierError &)error
 	expectedType:(const oo::PList &)localSchema
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	[self reportMessage:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", oo::NSStringFrom(name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom([[error userInfo] objectForKey:oo::NSStringFrom(kPListKeyPathErrorKey)])]), [error localizedFailureReason]];
+	[self reportMessage:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", oo::NSStringFrom(name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:(error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList()]), oo::NSStringOrNil(error.failureReason)];
 	return YES;
 }
 

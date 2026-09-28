@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
-#import "NSFileManagerOOExtensions.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
