@@ -83,7 +83,7 @@ static bool FontMeasureString(ooscript::Context context, ooscript::CallArgs &ooj
 		return NO;
 	}
 	
-	OOJS_RETURN_DOUBLE(OOStringWidthInEm(oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]))));
+	OOJS_RETURN_DOUBLE(cxx_OOStringWidthInEm(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or(std::string())));	// nil measured as ""
 	
 	OOJS_NATIVE_EXIT
 }
