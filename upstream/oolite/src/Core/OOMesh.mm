@@ -847,17 +847,23 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	// Every material's textures; NSSetFromObjects drops duplicates as -unionSet: did.
-	std::vector<oo::ObjCRef<id>> result;
+	// Every material's textures; id forwarder NSSetFromObjects drops duplicates as -unionSet: did.
+	std::vector<oo::ObjCRef<OOTexture *>> result;
 	OOMeshMaterialCount i;
 	for (i = 0; i != materialCount; i++)
 	{
-		for (const oo::ObjCRef<id> &texture : oo::ObjCRefsFrom<id>([materials[i] allTextures]))  result.push_back(texture);
+		for (const oo::ObjCRef<OOTexture *> &texture : [materials[i] cxx_allTextures])  result.push_back(texture);
 	}
 
-	return oo::NSSetFromObjects(result);
+	return result;
+}
+
+
+- (id) allTextures	// forwards to cxx_ until part 3
+{
+	return oo::NSSetFromObjects([self cxx_allTextures]);
 }
 
 

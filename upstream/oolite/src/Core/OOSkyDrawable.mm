@@ -255,17 +255,23 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 }
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	std::vector<id> result;
+	std::vector<oo::ObjCRef<OOTexture *>> result;
 	result.reserve(_quadSets.size());
 	
 	for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)
 	{
-		result.push_back([quadSet.get() texture]);
+		result.emplace_back([quadSet.get() texture]);
 	}
 	
-	return oo::NSSetFromObjects(result);
+	return result;
+}
+
+
+- (id) allTextures	// forwards to cxx_ until part 3
+{
+	return oo::NSSetFromObjects([self cxx_allTextures]);
 }
 
 
