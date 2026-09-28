@@ -238,7 +238,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		 * others map to the commodity keys in trade-goods.plist
 		 * compatible-ish with 1.80 and earlier except that
 		 * alienItems and similar aliases don't work */
-		std::string key = oo::StdString(OOStringFromJSString(context, ooscript::idToString(propID)));
+		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
 		if ([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(key)])
 		{
 			*value = ooscript::int32Value([entity cargoQuantityForType:oo::NSStringFrom(key)]);
@@ -271,13 +271,13 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	
 	if (ooscript::isStringId(propID))
 	{
-		std::string key = oo::StdString(OOStringFromJSString(context, ooscript::idToString(propID)));
+		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
 
 		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:key];
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
 		if (unit == UNITS_TONS && [entity specialCargo])
 		{
-			OOJSReportWarning(context, @"PlayerShip.manifest['foo'] - cannot modify cargo tonnage when Special Cargo is in use.");
+			cxx_OOJSReportWarning(context, "PlayerShip.manifest['foo'] - cannot modify cargo tonnage when Special Cargo is in use.");
 			return YES;
 		}
 	
@@ -312,11 +312,11 @@ static bool ManifestComment(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (oojsArgs.count() > 0)
 	{
-		good = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+		good = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	}
 	if (!good.has_value())
 	{
-		OOJSReportBadArguments(context, @"Manifest", @"comment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"good");
+		cxx_OOJSReportBadArguments(context, "Manifest", "comment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "good");
 		return NO;
 	}
 
@@ -342,12 +342,12 @@ static bool ManifestSetComment(ooscript::Context context, ooscript::CallArgs &oo
 
 	if (oojsArgs.count() > 1)
 	{
-		good = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
-		information = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[1]));
+		good = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
+		information = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 	}
 	if (!good.has_value() || !information.has_value())
 	{
-		OOJSReportBadArguments(context, @"Manifest", @"setComment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"good and information text");
+		cxx_OOJSReportBadArguments(context, "Manifest", "setComment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "good and information text");
 		return NO;
 	}
 
@@ -372,11 +372,11 @@ static bool ManifestShortComment(ooscript::Context context, ooscript::CallArgs &
 
 	if (oojsArgs.count() > 0)
 	{
-		good = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+		good = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	}
 	if (!good.has_value())
 	{
-		OOJSReportBadArguments(context, @"Manifest", @"shortComment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"good");
+		cxx_OOJSReportBadArguments(context, "Manifest", "shortComment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "good");
 		return NO;
 	}
 
@@ -402,12 +402,12 @@ static bool ManifestSetShortComment(ooscript::Context context, ooscript::CallArg
 
 	if (oojsArgs.count() > 1)
 	{
-		good = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
-		information = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[1]));
+		good = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
+		information = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 	}
 	if (!good.has_value() || !information.has_value())
 	{
-		OOJSReportBadArguments(context, @"Manifest", @"setShortComment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"good and information text");
+		cxx_OOJSReportBadArguments(context, "Manifest", "setShortComment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "good and information text");
 		return NO;
 	}
 

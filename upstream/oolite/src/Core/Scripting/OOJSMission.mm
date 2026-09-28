@@ -357,7 +357,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 			ooscript::clearPendingException(context); // or valueToInt32 exception crashes JS engine
 			if (!ooscript::isObjectOrNull(OOJS_ARGV[i]))
 			{
-				OOJSReportBadArguments(context, @"Mission", @"markSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"numbers or objects");
+				cxx_OOJSReportBadArguments(context, "Mission", "markSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "numbers or objects");
 				return NO;
 			}
 		}
@@ -410,7 +410,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 			ooscript::clearPendingException(context); // or valueToInt32 exception crashes JS engine
 			if (!ooscript::isObjectOrNull(OOJS_ARGV[i]))
 			{
-				OOJSReportBadArguments(context, @"Mission", @"unmarkSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"numbers or objects");
+				cxx_OOJSReportBadArguments(context, "Mission", "unmarkSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "numbers or objects");
 				return NO;
 			}
 		}
@@ -467,7 +467,7 @@ static bool MissionAddMessageText(ooscript::Context context, ooscript::CallArgs 
 	
 	// Found "FIXME: warning if no mission screen running.",,,
 	// However: used routinely by the Constrictor mission in F7, without mission screens.
-	text = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	text = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	[player addLiteralMissionText:oo::NSStringOrNil(text)];
 	
 	OOJS_RETURN_VOID;
@@ -507,11 +507,11 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	
 	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
-		OOJSReportWarning(context, @"Usage error: mission.%@() called with no arguments. Treating as Mission.%@(null). This call may fail in a future version of Oolite.", isKey ? @"setInstructionsKey" : @"setInstructions", isKey ? @"setInstructionsKey" : @"setInstructions");
+		cxx_OOJSReportWarning(context, "Usage error: mission.%s() called with no arguments. Treating as Mission.%s(null). This call may fail in a future version of Oolite.", (isKey ? "setInstructionsKey" : "setInstructions"), (isKey ? "setInstructionsKey" : "setInstructions"));
 	}
 	else if (EXPECT_NOT(ooscript::isUndefined(OOJS_ARGV[0])))
 	{
-		OOJSReportBadArguments(context, @"Mission", isKey ? @"setInstructionsKey" : @"setInstructions", 1, OOJS_ARGV, NULL, @"string or null");
+		cxx_OOJSReportBadArguments(context, "Mission", std::string(isKey ? "setInstructionsKey" : "setInstructions"), 1, OOJS_ARGV, std::nullopt, "string or null");
 		return NO;
 	}
 	else if (!ooscript::isNull(OOJS_ARGV[0]) && ooscript::isObjectOrNull(OOJS_ARGV[0]))
@@ -520,12 +520,12 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		text = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+		text = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	}
 	
 	if (oojsArgs.count() > 1)
 	{
-		missionKey = oo::OptionalString(OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[1]));
+		missionKey = cxx_OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[1]);
 	}
 	else
 	{
@@ -581,7 +581,7 @@ static std::optional<std::string> GetParameterString(ooscript::Context context, 
 	ooscript::Value value = ooscript::nullValue();
 	if (ooscript::getProperty((context), (object), key, (&value)))
 	{
-		return oo::OptionalString(OOStringFromJSValue(context, value));
+		return cxx_OOStringFromJSValue(context, value);
 	}
 	return std::nullopt;
 }
@@ -637,14 +637,14 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	// Validate arguments.
 	if (oojsArgs.count() < 1 || !ooscript::valueToObject(context, (OOJS_ARGV[0]), &params))
 	{
-		OOJSReportBadArguments(context, @"mission", @"runScreen", MIN(oojsArgs.count(), 1U), &OOJS_ARGV[0], nil, @"parameter object");
+		cxx_OOJSReportBadArguments(context, "mission", "runScreen", MIN(oojsArgs.count(), 1U), &OOJS_ARGV[0], std::nullopt, "parameter object");
 		return NO;
 	}
 	
 	if (oojsArgs.count() > 1)  function = OOJS_ARGV[1];
 	if (!ooscript::isNull(function) && !OOJSValueIsFunction(context, function))
 	{
-		OOJSReportBadArguments(context, @"mission", @"runScreen", 1, &OOJS_ARGV[1], nil, @"function");
+		cxx_OOJSReportBadArguments(context, "mission", "runScreen", 1, &OOJS_ARGV[1], std::nullopt, "function");
 		return NO;
 	}
 	
@@ -675,7 +675,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	// Apply settings.
 	if (ooscript::getProperty(context, (params), "title", (&value)) && !ooscript::isUndefined(value))
 	{
-		[player setMissionTitle:OOStringFromJSValue(context, value)];
+		[player setMissionTitle:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
 	}
 	else
 	{
@@ -689,7 +689,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			}
 			else
 			{
-				OOJSReportWarning(context, @"Mission.runScreen: titleKey '%@' has no entry in missiontext.plist.", oo::NSStringFrom(*titleKey));
+				cxx_OOJSReportWarning(context, "Mission.runScreen: titleKey '%s' has no entry in missiontext.plist.", titleKey->c_str());
 			}
 		}
 	}
@@ -710,7 +710,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			}
 			else 
 			{
-				OOJSReportWarning(context, @"Mission.runScreen: invalid customChartZoom value specified.");
+				cxx_OOJSReportWarning(context, "Mission.runScreen: invalid customChartZoom value specified.");
 				[player setCustomChartZoom:1];
 			}
 		}
@@ -726,7 +726,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		else 
 		{
 			[player setCustomChartCentre:[player galaxy_coordinates]];
-			OOJSReportWarning(context, @"Mission.runScreen: invalid value for customChartCentre. Must be valid vector. Defaulting to current location.");
+			cxx_OOJSReportWarning(context, "Mission.runScreen: invalid value for customChartCentre. Must be valid vector. Defaulting to current location.");
 		}
 	}
 	if (ooscript::getProperty(context, (params), "customChartCentreInLY", (&value)) && !ooscript::isUndefined(value))
@@ -740,7 +740,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		else 
 		{
 			[player setCustomChartCentre:[player galaxy_coordinates]];
-			OOJSReportWarning(context, @"Mission.runScreen: invalid value for customChartCentreInLY. Must be valid vector. Defaulting to current location.");
+			cxx_OOJSReportWarning(context, "Mission.runScreen: invalid value for customChartCentreInLY. Must be valid vector. Defaulting to current location.");
 		}
 	}
 
@@ -751,11 +751,11 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	{
 		if ([player status] == STATUS_IN_FLIGHT && ooscript::isString(value))
 		{
-			OOJSReportWarning(context, @"Mission.runScreen: model cannot be displayed while in flight.");
+			cxx_OOJSReportWarning(context, "Mission.runScreen: model cannot be displayed while in flight.");
 		}
 		else
 		{
-			std::optional<std::string> role = oo::OptionalString(OOStringFromJSValue(context, value));
+			std::optional<std::string> role = cxx_OOStringFromJSValue(context, value);
 			
 			bool spinning = true;
 			if (ooscript::getProperty(context, (params), "spinModel", (&value)) && !ooscript::isUndefined(value))
@@ -763,7 +763,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 				ooscript::valueToBoolean(context, (value), &spinning);
 			}
 			
-		//	[player showShipModel:OOStringFromJSValue(context, value)];
+		//	[player showShipModel:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
 			demoShip = [UNIVERSE makeDemoShipWithRole:oo::NSStringOrNil(role) spinning:(bool)spinning];
 		}
 	}
@@ -808,7 +808,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 
 	if (ooscript::getProperty(context, (params), "screenID", (&value)) && !ooscript::isUndefined(value))
 	{
-		[player setMissionScreenID:OOStringFromJSValue(context, value)];
+		[player setMissionScreenID:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
 	}
 	else
 	{
@@ -902,7 +902,7 @@ static bool MissionRunShipLibrary(ooscript::Context context, ooscript::CallArgs 
 	BOOL			OK = YES;
 	if ([player status] != STATUS_DOCKED)
 	{
-		OOJSReportWarning(context, @"Mission.runShipLibrary: must be docked.");
+		cxx_OOJSReportWarning(context, "Mission.runShipLibrary: must be docked.");
 		OK = NO;
 	}
 	else
