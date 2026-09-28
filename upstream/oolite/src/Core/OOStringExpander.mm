@@ -193,7 +193,7 @@ OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, con
 	Errors that are not syntax or invalid keys are reported with OO_LOG_ERR().
 */
 void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, const char *logMessageClass, const char *prefix, const char *format, ...)  __attribute__((format(printf, 7, 8)));
-void ReportJavaScriptWarning(ooscript::Context jsc, id format, ...);
+void ReportJavaScriptWarning(ooscript::Context jsc, const char *format, ...)  __attribute__((format(printf, 2, 3)));
 }	// namespace
 
 // OOLOG_WARNING_PREFIX's text, as a C string.
@@ -1522,7 +1522,7 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 				expander didn't.
 			*/
 			ooscript::Context jsc = OOJSAcquireContext();
-			ReportJavaScriptWarning(jsc, @"%@", oo::NSStringFrom(message));
+			ReportJavaScriptWarning(jsc, "%s", message.c_str());
 			OOJSRelinquishContext(jsc);
 		}
 		else
@@ -1533,12 +1533,12 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 }
 
 
-// OOJSReportWarningWithArguments with a %@ format and its argument (the engine's va_list entry).
-void ReportJavaScriptWarning(ooscript::Context jsc, id format, ...)
+// cxx_OOJSReportWarningWithArguments with a printf format and its arguments (the engine's va_list entry).
+void ReportJavaScriptWarning(ooscript::Context jsc, const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	OOJSReportWarningWithArguments(jsc, format, args);
+	cxx_OOJSReportWarningWithArguments(jsc, format, args);
 	va_end(args);
 }
 

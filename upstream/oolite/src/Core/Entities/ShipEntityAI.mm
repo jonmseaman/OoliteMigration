@@ -2642,13 +2642,13 @@ using ooscript::Context;
 	
 	if ([components count] == 1)
 	{
-		[self doScriptEvent:OOJSIDFromString(message)];
+		[self doScriptEvent:cxx_OOJSIDFromString(oo::StdString(message))];	// one component: message is not nil
 	}
 	else
 	{
 		NSString *function = [components objectAtIndex:0];
 		components = [components subarrayWithRange:NSMakeRange(1, [components count] - 1)];
-		[self doScriptEvent:OOJSIDFromString(function) withArgument:components];
+		[self doScriptEvent:cxx_OOJSIDFromString(oo::StdString(function)) withArgument:components];
 	}
 }
 
