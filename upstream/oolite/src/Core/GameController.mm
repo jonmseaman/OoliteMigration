@@ -57,6 +57,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/ResourcePaths.hpp"
+#include "oofnd/Defaults.hpp"
 #include <chrono>
 #include <thread>
 
@@ -109,7 +110,8 @@ static GameController *sSharedController = nil;
 		_finishedLaunching = NO;
 		last_timeInterval = oo::date::monotonicSeconds();	// the frame clock: intervals only (-doPerformGameTick)
 		delta_t = 0.01; // one hundredth of a second 
-		_animationTimerInterval = oo::PListView([NSUserDefaults standardUserDefaults]).get<double>(@"animation_timer_interval", MINIMUM_ANIMATION_TICK);
+		{ oo::Defaults &prefs = oo::Defaults::standard();
+		_animationTimerInterval = prefs.object("animation_timer_interval").isNull() ? MINIMUM_ANIMATION_TICK : prefs.doubleForKey("animation_timer_interval"); }
 		
 		// rather than seeding this with the date repeatedly, seed it
 		// once here at startup
@@ -185,7 +187,7 @@ static GameController *sSharedController = nil;
 - (void) setEcoQoS: (BOOL)efficiencyModeRequested
 {
 #if OOLITE_WINDOWS
-	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"ecoqos", YES))
+	if (oo::Defaults::standard().object("ecoqos").isNull() ? YES : oo::Defaults::standard().boolForKey("ecoqos"))
 	{
 		BOOL setEfficiencyMode = !!efficiencyModeRequested; // yes or no, not 42
 		HANDLE currentProcess = GetCurrentProcess();
@@ -332,7 +334,7 @@ static GameController *sSharedController = nil;
 	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
-	[self setFullScreenMode:[[NSUserDefaults standardUserDefaults] boolForKey:@"fullscreen"]];
+	[self setFullScreenMode:oo::Defaults::standard().boolForKey("fullscreen")];
 #endif
 
 	_finishedLaunching = YES;
@@ -721,22 +723,22 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 
 
 // Helpers to allow -snapshotsURLCreatingIfNeeded: code to be identical here and in dock tile plug-in.
-// The preferences stay on NSUserDefaults here (the dock tile plug-in reads the same domain).
+// Same domain as the dock tile plug-in: oo::Defaults (backed by the shared store; ADR-0032 / oo-mwo0).
 static id GetPreference(const std::string &key)
 {
-	return [[NSUserDefaults standardUserDefaults] objectForKey:oo::NSStringFrom(key)];
+	return oo::ObjectFromPList(oo::Defaults::standard().object(key));
 }
 
 
 static void SetPreference(const std::string &key, id value)
 {
-	[[NSUserDefaults standardUserDefaults] setObject:value forKey:oo::NSStringFrom(key)];
+	oo::Defaults::standard().setObject(key, oo::PListFrom(value));
 }
 
 
 static void RemovePreference(const std::string &key)
 {
-	[[NSUserDefaults standardUserDefaults] removeObjectForKey:oo::NSStringFrom(key)];
+	oo::Defaults::standard().removeObject(key);
 }
 
 
@@ -1109,7 +1111,7 @@ std::vector<std::string> sMessageStack;
 		ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
 	}
 #endif
-	[[NSUserDefaults standardUserDefaults] synchronize];
+	oo::Defaults::standard().synchronize();
 	OO_LOG("gameController.exitApp", "{}", ".GNUstepDefaults synchronized.");
 	OOLoggingTerminate();
 	SDL_Quit();
@@ -1152,9 +1154,8 @@ std::vector<std::string> sMessageStack;
 {
 	if (!playerFileDirectory.has_value())
 	{
-		// The defaults stay on NSUserDefaults until its last consumer migrates (ADR-0032): this
-		// process writes save-directory through it below, so it is read through it too.
-		playerFileDirectory = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"]);
+		// save-directory via oo::Defaults (ADR-0032 / oo-mwo0 shared store).
+		playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
 		if (playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*playerFileDirectory)))
 		{
 			playerFileDirectory = std::nullopt;
@@ -1202,7 +1203,8 @@ std::vector<std::string> sMessageStack;
 	}
 
 	playerFileDirectory = directory;
-	[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(directory) forKey:@"save-directory"];
+	if (directory.has_value())  oo::Defaults::standard().setObject("save-directory", oo::PList(*directory));
+	else  oo::Defaults::standard().removeObject("save-directory");
 }
 
 
@@ -1251,8 +1253,8 @@ static void SetUpSparkle(void)
 #define DEFAULT_TEST_RELEASE	1
 #endif
 	
-	BOOL useTestReleases = oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"use-test-release-updates",
-																   DEFAULT_TEST_RELEASE);
+	BOOL useTestReleases = oo::Defaults::standard().object("use-test-release-updates").isNull()
+		? DEFAULT_TEST_RELEASE : oo::Defaults::standard().boolForKey("use-test-release-updates");
 	
 	SUUpdater *updater = [SUUpdater sharedUpdater];
 	[updater setFeedURL:[NSURL URLWithString:useTestReleases ? TEST_RELEASE_FEED_URL : DEPLOYMENT_FEED_URL]];

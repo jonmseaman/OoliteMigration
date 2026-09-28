@@ -411,27 +411,6 @@ static NSString *StringForObject(id object, NSString *defaultValue);
 @end
 
 
-@implementation NSUserDefaults (OOExtractor)
-
-- (id) oo_objectOfClass:(Class)klass forKey:(id)key defaultValue:(id)value
-{
-	id					objVal = [self objectForKey:key];
-	id					result;
-	
-	if ([objVal isKindOfClass:klass])  result = objVal;
-	else  result = value;
-	
-	return result;
-}
-
-
-- (id) oo_objectOfClass:(Class)klass forKey:(id)key
-{
-	return [self oo_objectOfClass:klass forKey:key defaultValue:nil];
-}
-
-
-@end
 
 
 @implementation NSMutableArray (OOInserter)

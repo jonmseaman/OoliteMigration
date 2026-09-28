@@ -127,6 +127,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 #if DEBUG_GRAPHVIZ
 #import "AIGraphViz.h"
+#include "oofnd/Defaults.hpp"
 #endif
 
 
@@ -908,7 +909,7 @@ static AIStackElement *sStack = NULL;
 			newSM = oo::PList(std::move(cleanSM));
 
 #if DEBUG_GRAPHVIZ
-			if ([[NSUserDefaults standardUserDefaults] boolForKey:@"generate-ai-graphviz"])
+			if (oo::Defaults::standard().boolForKey("generate-ai-graphviz"))
 			{
 				GenerateGraphVizForAIStateMachine(newSM, smName);
 			}

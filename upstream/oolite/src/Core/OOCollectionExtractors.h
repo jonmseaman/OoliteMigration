@@ -149,17 +149,6 @@ SOFTWARE.
 @end
 
 
-@interface NSUserDefaults (OOExtractor)
-
-// The typed readers (oo_*ForKey:) are retired (bead oo-m5u9): read through oo::PListView or
-// oo::PList::get<T> instead (src/oofnd/README.md, "Migrating oo_*ForKey").
-
-- (id) oo_objectOfClass:(Class)aClass forKey:(id)key defaultValue:(id)value;
-
-// Default: nil
-- (id) oo_objectOfClass:(Class)aClass forKey:(id)key;
-
-@end
 
 
 @interface NSMutableArray (OOInserter)
