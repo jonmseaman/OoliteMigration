@@ -199,17 +199,23 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global)
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
 	switch ([self planetType])
 	{
 		case STELLAR_TYPE_NORMAL_PLANET:
-			return @"Planet";
+			return std::string("Planet");
 		case STELLAR_TYPE_MOON:
-			return @"Moon";
+			return std::string("Moon");
 		default:
-			return @"Unknown";
+			return std::string("Unknown");
 	}
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 @end

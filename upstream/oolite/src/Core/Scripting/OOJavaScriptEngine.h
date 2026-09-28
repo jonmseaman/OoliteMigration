@@ -233,9 +233,12 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 @interface OOObject (OOJavaScript)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (id) oo_jsDescription;	// shared selector (proposed ADR-0043)
-- (id) oo_jsDescriptionWithClassName:(id)className;	// shared selector (proposed ADR-0043)
-- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsDescription;
+- (id) oo_jsDescription;	// -> -cxx_oo_jsDescription
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
+- (id) oo_jsDescriptionWithClassName:(id)className;	// -> -cxx_oo_jsDescriptionWithClassName:
+- (std::optional<std::string>) cxx_oo_jsClassName;
+- (id) oo_jsClassName;	// -> -cxx_oo_jsClassName
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end
