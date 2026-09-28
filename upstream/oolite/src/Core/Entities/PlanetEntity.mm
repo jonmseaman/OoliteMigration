@@ -1658,10 +1658,11 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	if (_texture != nil)  return oo::NSSetFromObjects(std::vector<id>{ _texture });
-	else  return nil;
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	if (_texture != nil)  result.emplace_back(_texture);
+	return result;
 }
 #endif
 

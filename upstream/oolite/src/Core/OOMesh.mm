@@ -861,12 +861,6 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 }
 
 
-- (id) allTextures	// forwards to cxx_ until part 3
-{
-	return oo::NSSetFromObjects([self cxx_allTextures]);
-}
-
-
 - (size_t) totalSize
 {
 	size_t result = [super totalSize];

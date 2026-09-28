@@ -331,9 +331,11 @@ static OOTexture *sBlobTexture = nil;
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return oo::NSSetFromObjects(std::vector<id>{ [self texture] });
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	result.emplace_back([self texture]);
+	return result;
 }
 #endif
 

@@ -475,11 +475,10 @@ struct EntityDumpState
 
 	BOOL visible = parentVisible && [entity isVisible];
 
-	// -allTextures is a shared selector (id): read the set it returns with for-in.
-	for (id texture in [entity allTextures])
+	for (const oo::ObjCRef<OOTexture *> &texture : [entity cxx_allTextures])
 	{
-		state->entityTextures.insert(oo::ObjCRef<id>(texture));
-		if (visible)  state->visibleEntityTextures.insert(oo::ObjCRef<id>(texture));
+		state->entityTextures.insert(oo::ObjCRef<id>(texture.get()));
+		if (visible)  state->visibleEntityTextures.insert(oo::ObjCRef<id>(texture.get()));
 	}
 
 	std::string extra;

@@ -58,7 +58,6 @@ SOFTWARE.
 
 #ifndef NDEBUG
 - (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
-- (id) allTextures;	// -> -cxx_allTextures (forwards until part 3)
 - (size_t) totalSize;	// Size including dynamic data, not counting textures.
 #endif
 

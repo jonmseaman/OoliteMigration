@@ -252,9 +252,11 @@ do { \
 }
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return oo::NSSetFromObjects(std::vector<id>{ [OOLightParticleEntity defaultParticleTexture] });
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	result.emplace_back([OOLightParticleEntity defaultParticleTexture]);
+	return result;
 }
 #endif
 

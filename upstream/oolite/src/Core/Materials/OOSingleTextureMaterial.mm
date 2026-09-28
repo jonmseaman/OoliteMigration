@@ -129,12 +129,6 @@ SOFTWARE.
 	result.emplace_back(_texture);
 	return result;
 }
-
-
-- (id) allTextures	// forwards to cxx_ until part 3
-{
-	return oo::NSSetFromObjects([self cxx_allTextures]);
-}
 #endif
 
 @end
