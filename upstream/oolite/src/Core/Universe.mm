@@ -3983,7 +3983,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			[[beaconShip nextBeacon] setPrevBeacon:[beaconShip prevBeacon]];
 			[[beaconShip prevBeacon] setNextBeacon:[beaconShip nextBeacon]];
 		}
-		[beaconShip setBeaconCode:nil];
+		[beaconShip setBeaconCode:std::nullopt];	// not nil: nil built a std::string from a null char* (bead oo-2o5x)
 	}
 }
 
@@ -11055,7 +11055,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Player init: setUpShipFromDictionary");
-	[player setUpShipFromDictionary:[[OOShipRegistry sharedRegistry] shipInfoForKey:[player shipDataKey]]];	// the standard cobra at this point
+	[player setUpShipFromDictionary:oo::ObjectFromPList([[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())])];	// the standard cobra at this point
 	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
 	OO_DEBUG_POP_PROGRESS();
 	

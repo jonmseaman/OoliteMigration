@@ -1,19 +1,19 @@
 {
   "build_flags": {
-    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
-    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "build_dir": "C:/Users/jon/OoliteMigration/.worktrees/oo-3rb.256/upstream/oolite/build/meson_test",
+    "detail": "compliant",
     "effective_optimization_levels": {
-      "-O2": 242
+      "-O2": 335
     },
     "policy_fp_contract": "-ffp-contract=off",
     "policy_optimization": "-O2",
-    "translation_units": 242,
-    "verified": false
+    "translation_units": 335,
+    "verified": true
   },
-  "commit": "0ebcc8c769601dc4c03974e115976cf41fa1cb17",
-  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "commit": "9e67cb68c66909efe51c00d8fba858de45f11fd7",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages d34feaaa1d0aff624c870910b6f2589aa40d20de)",
   "dump_tool": "tests/golden/launch_dock.py",
-  "note": "Scenario 001 launch/dock (bead oo-jor): player launches, flies 24 ticks of game time, docks. The system populator is switched off (system.setPopulator(key,null), 36 settings) and traffic removed, so the world is the system's own fixed entities plus the player - the smallest reproducible world. Evidence block carries ENGINE-dispatched shipWillLaunchFromStation/shipDockedWithStation counts. See tests/golden/scenarios/001-launch-dock/README.md.",
+  "note": "Scenario 001 launch/dock (bead oo-jor): player launches, flies 24 ticks of game time, docks. The system populator is switched off (system.setPopulator(key,null), 36 settings) and traffic removed, so the world is the system's own fixed entities plus the player - the smallest reproducible world. Evidence block carries ENGINE-dispatched shipWillLaunchFromStation/shipDockedWithStation counts. See tests/golden/scenarios/001-launch-dock/README.md. Re-blessed 2026-09-28 (oo-yx6x, Jon; approval oo-pabc): world scripts enumerate in load order (ADR-0043, oo-3rb.256), so evidence.probe_script is oolite-populator.",
   "os": "Windows-11-10.0.26200-SP0",
   "platform": "windows-x64",
   "quant_decimals": 3,
