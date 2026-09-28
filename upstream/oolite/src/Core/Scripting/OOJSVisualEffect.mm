@@ -287,9 +287,15 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"VisualEffect";
+	return std::string("VisualEffect");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 - (BOOL) isVisibleToScripts
