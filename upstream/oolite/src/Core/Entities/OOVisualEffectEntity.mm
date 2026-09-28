@@ -102,7 +102,7 @@ OOVisualEffectSubEntities SubEntitiesOf(const std::optional<OOVisualEffectSubEnt
 }
 
 
-// The subentities that answer YES to -isVisualEffect (OOFilteringEnumerator's test).
+// The subentities that answer YES to -isVisualEffect.
 std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualEffectSubEntities &subEntities)
 {
 	std::vector<oo::ObjCRef<OOVisualEffectEntity *>> result;

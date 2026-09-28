@@ -27,7 +27,6 @@
 #import "ShipEntityAI.h"
 #import "OOPListView.h"
 #import "OOStringParsing.h"
-#import "OOFilteringEnumerator.h"
 
 #import "Universe.h"
 #import "GameController.h"
