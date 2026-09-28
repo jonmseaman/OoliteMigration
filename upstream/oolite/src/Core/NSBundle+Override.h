@@ -1,4 +1,4 @@
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 
 @interface NSBundle (Override)
 
