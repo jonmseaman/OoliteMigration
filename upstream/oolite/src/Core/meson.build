@@ -13,7 +13,6 @@ oolite_sources += files(
     'HeadUpDisplay+FoundationBridge.mm',
     'NSFileManagerOOExtensions.mm',
     'NSObjectOOExtensions.mm',
-    'NSUserDefaults+Override.mm',
     'OOALBufferedSound.mm',
     'OOALMusic.mm',
     'OOALSound.mm',
@@ -117,8 +116,6 @@ oolite_sources += files(
 if host_os != 'darwin'
     oolite_sources += files(
         'NSBundle+Override.mm',
-        'NSUserDefaults+Override.mm',
-        'NSUserDefaults+OODefaultsBridge.mm',
     )
 endif
 
