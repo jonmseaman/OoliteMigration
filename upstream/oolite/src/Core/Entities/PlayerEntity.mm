@@ -68,7 +68,6 @@ MA 02110-1301, USA.
 #import "OOEntityFilterPredicate.h"
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
-#import "NSFileManagerOOExtensions.h"
 #import "OOFullScreenController.h"
 #import "OODebugSupport.h"
 
