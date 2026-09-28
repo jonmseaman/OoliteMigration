@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOSDLJoystickManager.h"
 #import "OOSound.h"
-#import "NSFileManagerOOExtensions.h" // to find savedir
 #import "PlayerEntity.h"
 #import "GuiDisplayGen.h"
 #import "PlanetEntity.h"
@@ -1164,8 +1163,21 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 	// backup the previous directory
 	const auto originalDirectory = oo::fs::currentDirectory();
-	// use the snapshots directory
-	[[NSFileManager defaultManager] chdirToSnapshotPath];
+	// use the snapshots directory (mkdir + chdir of ResourcePaths::snapshotDirectory)
+	{
+		const oo::fs::Path snapshotDir = oo::ResourcePaths::current().snapshotDirectory();
+		if (!oo::fs::setCurrentDirectory(snapshotDir))
+		{
+			if (!oo::fs::createDirectories(snapshotDir))
+			{
+				OO_LOG("savedSnapshot.defaultPath.create.failed", "Unable to create directory {}", oo::fs::utf8String(snapshotDir));
+			}
+			else if (!oo::fs::setCurrentDirectory(snapshotDir))
+			{
+				OO_LOG("savedSnapshot.defaultPath.chdir.failed", "Created {} but couldn't make it the current directory.", oo::fs::utf8String(snapshotDir));
+			}
+		}
+	}
 
 	BOOL				withFilename = filename.has_value();
 	static unsigned		imageNo = 0;

@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "NSFileManagerOOExtensions.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
-#import "unzip.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/ResourcePaths.hpp"
@@ -219,67 +218,7 @@ MA 02110-1301, USA.
 
 - (BOOL) oo_oxzFileExistsAtPath:(NSString *)path
 {
-	NSUInteger i, cl;
-	NSArray *components = [path pathComponents];
-	cl = [components count];
-	for (i = 0 ; i < cl ; i++)
-	{
-		NSString *component = [components objectAtIndex:i];
-		if ([[[component pathExtension] lowercaseString] isEqualToString:@"oxz"])
-		{
-			break;
-		}
-	}
-	// if i == cl then the path is entirely uncompressed
-	if (i == cl)
-	{
-		const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(oo::StdString(path)));
-		if (type == oo::fs::FileType::directory)
-		{
-			return NO;
-		}
-		return type != oo::fs::FileType::none;
-	}
-	
-	NSRange range;
-	range.location = 0; range.length = i+1;
-	NSString *zipFile = [NSString pathWithComponents:[components subarrayWithRange:range]];
-	range.location = i+1; range.length = cl-(i+1);
-	NSString *containedFile = [NSString pathWithComponents:[components subarrayWithRange:range]];
-
-	unzFile uf = NULL;
-	const std::string zipnameStr = oo::StdString(zipFile);
-	uf = unzOpen64(zipnameStr.c_str());
-	if (uf == NULL)
-	{
-		// no such zip file
-		return NO;
-	}
-	const std::string filenameStr = oo::StdString(containedFile);
-	const char* filename = filenameStr.c_str();
-	// unzLocateFile(*, *, 1) = case-sensitive extract
-	BOOL result = YES;
-	if (unzLocateFile(uf, filename, 1) != UNZ_OK)
-    {
-		result = NO;
-	}
-	else
-	{
-		int err = UNZ_OK;
-		unz_file_info64 file_info = {0};
-		err = unzGetCurrentFileInfo64(uf, &file_info, NULL, 0, NULL, 0, NULL, 0);
-		if (err != UNZ_OK)
-		{
-			result = NO;
-		}
-		else
-		{
-			
-
-		}
-	}
-	unzClose(uf);
-	return result;
+	return static_cast<BOOL>(OOOxzFileExistsAtPath(oo::StdString(path)));
 }
 
 
