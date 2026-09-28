@@ -670,16 +670,16 @@ static BOOL IsZeroString(NSString *string)
 
 static BOOL BooleanFromString(NSString *string, BOOL defaultValue)
 {
-	if (NSOrderedSame == [string caseInsensitiveCompare:@"yes"] ||
-		NSOrderedSame == [string caseInsensitiveCompare:@"true"] ||
-		NSOrderedSame == [string caseInsensitiveCompare:@"on"] ||
+	if (OOOrderedSame == [string caseInsensitiveCompare:@"yes"] ||
+		OOOrderedSame == [string caseInsensitiveCompare:@"true"] ||
+		OOOrderedSame == [string caseInsensitiveCompare:@"on"] ||
 		[string doubleValue] != 0.0)	// Floating point is used so values like @"0.1" are treated as nonzero.
 	{
 		return YES;
 	}
-	else if (NSOrderedSame == [string caseInsensitiveCompare:@"no"] ||
-			 NSOrderedSame == [string caseInsensitiveCompare:@"false"] ||
-			 NSOrderedSame == [string caseInsensitiveCompare:@"off"] ||
+	else if (OOOrderedSame == [string caseInsensitiveCompare:@"no"] ||
+			 OOOrderedSame == [string caseInsensitiveCompare:@"false"] ||
+			 OOOrderedSame == [string caseInsensitiveCompare:@"off"] ||
 			 IsZeroString(string))
 	{
 		return NO;
@@ -691,16 +691,16 @@ static BOOL BooleanFromString(NSString *string, BOOL defaultValue)
 #ifndef OOCOLLECTIONEXTRACTORS_SIMPLE
 static float FuzzyBooleanProbabilityFromString(NSString *string, float defaultValue)
 {
-	if (NSOrderedSame == [string caseInsensitiveCompare:@"yes"] ||
-		NSOrderedSame == [string caseInsensitiveCompare:@"true"] ||
-		NSOrderedSame == [string caseInsensitiveCompare:@"on"] ||
+	if (OOOrderedSame == [string caseInsensitiveCompare:@"yes"] ||
+		OOOrderedSame == [string caseInsensitiveCompare:@"true"] ||
+		OOOrderedSame == [string caseInsensitiveCompare:@"on"] ||
 		[string doubleValue] != 0.0)	// Floating point is used so values like @"0.1" are treated as nonzero.
 	{
 		return 1.0f;
 	}
-	else if (NSOrderedSame == [string caseInsensitiveCompare:@"no"] ||
-			 NSOrderedSame == [string caseInsensitiveCompare:@"false"] ||
-			 NSOrderedSame == [string caseInsensitiveCompare:@"off"] ||
+	else if (OOOrderedSame == [string caseInsensitiveCompare:@"no"] ||
+			 OOOrderedSame == [string caseInsensitiveCompare:@"false"] ||
+			 OOOrderedSame == [string caseInsensitiveCompare:@"off"] ||
 			 IsZeroString(string))
 	{
 		return 0.0f;
