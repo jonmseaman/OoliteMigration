@@ -121,6 +121,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (NSString *) primedEquipmentName:(NSInteger)offset;	// -> -cxx_primedEquipmentName:
 - (NSString *) currentPrimedEquipment;	// -> -cxx_currentPrimedEquipment
 
+// oo-3rb.256: world scripts, commodity scripts, mission and local variables
+- (NSArray *) worldScriptNames;	// -> -cxx_worldScriptNames (load order)
+- (NSDictionary *) worldScriptsByName;	// -> -cxx_worldScriptsByName (rebuilt per call)
+- (OOScript *) commodityScriptNamed:(NSString *)script;	// -> -cxx_commodityScriptNamed: (nil: nil)
+// oo-3rb.257: save and load dictionaries
+- (NSDictionary *) commanderDataDictionary;	// -> -cxx_commanderDataDictionary
+- (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict;	// -> -cxx_setCommanderDataFromDictionary:
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H
