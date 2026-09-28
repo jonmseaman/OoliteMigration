@@ -1046,7 +1046,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 
 - (void) appendNodesFromSubTree:(OOCacheNode *)subTree toString:(std::string &)ioString
 {
-	ioString += oo::str::format("\tn%s [label=\"<f0> | <f1> %s | <f2>\"];\n", oo::str::pointerDescription(subTree).c_str(), oo::DescriptionOf(EscapedGraphVizString([subTree->key description])).c_str());
+	ioString += oo::str::format("\tn%s [label=\"<f0> | <f1> %s | <f2>\"];\n", oo::str::pointerDescription(subTree).c_str(), oo::DescriptionOf(EscapedGraphVizString([(id)subTree->key description])).c_str());
 	
 	if (subTree->leftChild != NULL)
 	{
