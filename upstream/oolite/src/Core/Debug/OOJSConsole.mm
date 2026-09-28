@@ -430,7 +430,7 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 #endif		
 		case kConsole_detailLevel:
-			sValue = oo::OptionalString(OOStringFromJSValue(context, *value));
+			sValue = cxx_OOStringFromJSValue(context, *value);
 			OOJS_BEGIN_FULL_NATIVE(context)
 			[UNIVERSE setDetailLevel:OOGraphicsDetailFromString(oo::NSStringOrNil(sValue))];
 			OOJS_END_FULL_NATIVE
@@ -543,12 +543,12 @@ static bool ConsoleSettingsDeleteProperty(ooscript::Context context, ooscript::O
 	id					monitor = nil;
 
 	if (!ooscript::isStringId(propID))  return NO;
-	key = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(propID)));
+	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 	
 	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
 	{
-		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
+		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
 		return NO;
 	}
 	
@@ -570,12 +570,12 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 	id					settingValue = nil;
 	id					monitor = nil;
 
-	key = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(propID)));
+	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 
 	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
 	{
-		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
+		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
 		return NO;
 	}
 
@@ -600,12 +600,12 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	id					settingValue = nil;
 	id					monitor = nil;
 
-	key = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(propID)));
+	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 
 	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
 	{
-		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
+		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
 		return NO;
 	}
 
@@ -624,7 +624,7 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 		}
 		else
 		{
-			OOJSReportWarning(context, @"debugConsole.settings: could not convert %@ to native object.", OOStringFromJSValue(context, *value));
+			cxx_OOJSReportWarning(context, "debugConsole.settings: could not convert %s to native object.", cxx_OOStringFromJSValue(context, *value).value_or("(null)").c_str());
 		}
 	}
 	OOJSResumeTimeLimiter();
@@ -654,13 +654,13 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 	monitor = OOJSNativeObjectOfClassFromJSObject(context, OOJS_THIS, [OODebugMonitor class]);
 	if (monitor == nil)
 	{
-		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
+		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
 		OOJSResumeTimeLimiter();
 		return NO;
 	}
 	
-	if (oojsArgs.count() > 0) colorKey = oo::OptionalString(OOStringFromJSValue(context,OOJS_ARGV[0]));
-	if (oojsArgs.count() > 1) message = oo::OptionalString(OOStringFromJSValue(context,OOJS_ARGV[1]));
+	if (oojsArgs.count() > 0) colorKey = cxx_OOStringFromJSValue(context,OOJS_ARGV[0]);
+	if (oojsArgs.count() > 1) message = cxx_OOStringFromJSValue(context,OOJS_ARGV[1]);
 	
 	if (oojsArgs.count() > 3)
 	{
@@ -676,7 +676,7 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 	{
 		if (!colorKey.has_value())
 		{
-			OOJSReportWarning(context, @"Console.consoleMessage() called with no parameters.");
+			cxx_OOJSReportWarning(context, "Console.consoleMessage() called with no parameters.");
 		}
 		else
 		{
@@ -709,7 +709,7 @@ static bool ConsoleClearConsole(ooscript::Context context, ooscript::CallArgs &o
 	monitor = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
 	{
-		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
+		cxx_OOJSReportError(context, "Expected OODebugMonitor, got %s in %s. %s", oo::DescriptionOf([monitor class]).c_str(), __PRETTY_FUNCTION__, "This is an internal error, please report it.");
 		return NO;
 	}
 	
@@ -767,7 +767,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object == nil)
 	{
-		OOJSReportError(context, @"Attempt to call __callObjCMethod() for non-Objective-C object %@.", OOStringFromJSValueEvenIfNull(context, ooscript::objectValue(OOJS_THIS)));
+		cxx_OOJSReportError(context, "Attempt to call __callObjCMethod() for non-Objective-C object %s.", cxx_OOStringFromJSValueEvenIfNull(context, ooscript::objectValue(OOJS_THIS)).value_or("(null)").c_str());
 		return NO;
 	}
 	
@@ -790,7 +790,7 @@ static bool ConsoleSetUpCallObjC(ooscript::Context context, ooscript::CallArgs &
 	
 	if (EXPECT_NOT(!ooscript::isObjectOrNull(OOJS_ARGV[0])))
 	{
-		OOJSReportBadArguments(context, @"Console", @"__setUpCallObjC", oojsArgs.count(), OOJS_ARGV, nil, @"Object.prototype");
+		cxx_OOJSReportBadArguments(context, "Console", "__setUpCallObjC", oojsArgs.count(), OOJS_ARGV, std::nullopt, "Object.prototype");
 		return NO;
 	}
 	
@@ -820,7 +820,7 @@ static bool ConsoleIsExecutableJavaScript(ooscript::Context context, ooscript::C
 	OOJSPauseTimeLimiter();
 	
 	// FIXME: this must be possible using just JSAPI functions.
-	const std::string string = oo::StdString(OOStringFromJSValue(context, OOJS_ARGV[1]));	// its UTF-8 bytes
+	const std::string string = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]).value_or(std::string());	// its UTF-8 bytes
 	result = ooscript::bufferIsCompilableUnit(context, target, string.data(), string.size());
 	
 	OOJSResumeTimeLimiter();
@@ -838,7 +838,7 @@ static bool ConsoleDisplayMessagesInClass(ooscript::Context context, ooscript::C
 	
 	std::optional<std::string>	messageClass;
 
-	messageClass = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	messageClass = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	OOJS_RETURN_BOOL(messageClass.has_value() && OOLogWillDisplayMessagesInClass(oo::NSStringFrom(*messageClass)));
 	
 	OOJS_NATIVE_EXIT
@@ -853,7 +853,7 @@ static bool ConsoleSetDisplayMessagesInClass(ooscript::Context context, ooscript
 	std::optional<std::string>	messageClass;
 	bool					flag;
 
-	messageClass = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	messageClass = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (messageClass.has_value() && ooscript::valueToBoolean(context, OOJS_ARGV[1], &flag))
 	{
 		OOLogSetDisplayMessagesInClass(oo::NSStringFrom(*messageClass), flag);
@@ -948,7 +948,7 @@ static void DumpCallback(const char *name, void *rp, ooscript::RootKind type, vo
 			value = ooscript::objectValue(*(ooscript::Object *)rp);
 	}
 	
-	fprintf(data->file, "%s @ %p (%s): %s\n", name, rp, typeString, [OOJSDescribeValue(data->context, value, NO) UTF8String]);
+	fprintf(data->file, "%s @ %p (%s): %s\n", name, rp, typeString, cxx_OOJSDescribeValue(data->context, value, NO).c_str());
 }
 
 
@@ -1011,7 +1011,7 @@ static bool ConsoleProfile(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	if (EXPECT_NOT(OOJSIsProfiling()))
 	{
-		OOJSReportError(context, @"Profiling functions may not be called while already profiling.");
+		cxx_OOJSReportError(context, "Profiling functions may not be called while already profiling.");
 		return NO;
 	}
 	
@@ -1041,7 +1041,7 @@ static bool ConsoleGetProfile(ooscript::Context context, ooscript::CallArgs &ooj
 	
 	if (EXPECT_NOT(OOJSIsProfiling()))
 	{
-		OOJSReportError(context, @"Profiling functions may not be called while already profiling.");
+		cxx_OOJSReportError(context, "Profiling functions may not be called while already profiling.");
 		return NO;
 	}
 	
@@ -1070,7 +1070,7 @@ static bool ConsoleTrace(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	
 	if (EXPECT_NOT(OOJSIsProfiling()))
 	{
-		OOJSReportError(context, @"Profiling functions may not be called while already profiling.");
+		cxx_OOJSReportError(context, "Profiling functions may not be called while already profiling.");
 		return NO;
 	}
 	
@@ -1099,7 +1099,7 @@ bool PerformProfiling(ooscript::Context context, const char *nominalFunction, un
 	ooscript::Value function = argv[0];
 	if (!OOJSValueIsFunction(context, function))
 	{
-		OOJSReportBadArguments(context, @"Console", oo::NSStringFrom(nominalFunction), 1, argv, nil, @"function");
+		cxx_OOJSReportBadArguments(context, "Console", nominalFunction, 1, argv, std::nullopt, "function");
 		return NO;
 	}
 	
