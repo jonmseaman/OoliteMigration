@@ -340,14 +340,14 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 
 		case kPlanet_name:
-			sValue = oo::OptionalString(OOStringFromJSValue(context, *value_raw));
+			sValue = cxx_OOStringFromJSValue(context, *value_raw);
 			[planet setName:oo::NSStringOrNil(sValue)];
 			return YES;
 
 		case kPlanet_texture:
 		{
 			BOOL OK = NO;
-			sValue = oo::OptionalString(OOStringFromJSValue(context, *value_raw));
+			sValue = cxx_OOStringFromJSValue(context, *value_raw);
 			
 			OOJSPauseTimeLimiter();
 	
@@ -355,7 +355,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (!sValue.has_value())
 				{
-					OOJSReportWarning(context, @"Expected texture string. Value not set.");
+					cxx_OOJSReportWarning(context, "Expected texture string. Value not set.");
 				}
 				else
 				{
@@ -366,7 +366,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (OK)
 			{
 				OK = [planet setUpPlanetFromTexture:sValue];	// has a value here
-				if (!OK)  OOJSReportWarning(context, @"Cannot find texture \"%@\". Value not set.", oo::NSStringFrom(*sValue));
+				if (!OK)  cxx_OOJSReportWarning(context, "Cannot find texture \"%s\". Value not set.", sValue->c_str());
 			}
 
 			OOJSResumeTimeLimiter();

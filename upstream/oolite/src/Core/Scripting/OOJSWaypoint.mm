@@ -278,7 +278,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kWaypoint_beaconCode:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (!sValue.has_value() || sValue->empty()) 
 			{
 				if ([entity isBeacon]) 
@@ -306,7 +306,7 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			break;
 
 		case kWaypoint_beaconLabel:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
 				[entity setBeaconLabel:sValue];

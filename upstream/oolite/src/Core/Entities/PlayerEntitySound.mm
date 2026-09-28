@@ -113,7 +113,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 	sMiscSoundPool = [[OOSoundSourcePool alloc] initWithCount:kMiscPoolSize minRepeatTime:0.0];
 	
 	// Two sources with the same sound are used to simulate looping.
-	OOSound *afterburnerSound = [ResourceManager ooSoundNamed:@"afterburner1.ogg" inFolder:@"Sounds"];
+	OOSound *afterburnerSound = [ResourceManager cxx_ooSoundNamed:"afterburner1.ogg" inFolder:"Sounds"];
 	sAfterburnerSources[0] = [[OOSoundSource alloc] initWithSound:afterburnerSound];
 	[sAfterburnerSources[0] setPosition:kAfterburner1Position];
 	sAfterburnerSources[1] = [[OOSoundSource alloc] initWithSound:afterburnerSound];

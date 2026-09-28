@@ -38,11 +38,20 @@ MA 02110-1301, USA.
 
 
 namespace {
-// The strings in an array a callee still returns as a Foundation array; nullopt for nil.
-static std::optional<std::vector<std::string>> StringsOrNil(id array)
+// The strings in the array a property-list file holds (other elements skipped); nullopt when the
+// file holds no array (what OOArrayFromFile answered nil for; its plist.wrongType line, which named
+// the Foundation class, is not kept).
+static std::optional<std::vector<std::string>> StringsFromArrayFile(const std::string &path)
 {
-	if (array == nil)  return std::nullopt;
-	return oo::StringsFrom(array);
+	const oo::PList list = cxx_OOPropertyListFromFile(path);
+	const oo::PList::Array *array = list.getIf<oo::PList::Array>();
+	if (array == nullptr)  return std::nullopt;
+	std::vector<std::string> result;
+	for (const oo::PList &element : *array)
+	{
+		if (const std::string *string = element.getIf<std::string>())  result.push_back(*string);
+	}
+	return result;
 }
 } // namespace
 
@@ -59,7 +68,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	// First, look for world-scripts.plist.
 	filePath = oo::str::appendingPathComponent(path, "world-scripts.plist");
 	{
-		std::optional<std::vector<std::string>> names = StringsOrNil(OOArrayFromFile(oo::NSStringFrom(filePath)));
+		std::optional<std::vector<std::string>> names = StringsFromArrayFile(filePath);
 		if (names.has_value())
 		{
 			foundScript = YES;
@@ -128,7 +137,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 + (std::optional<std::vector<oo::ObjCRef<OOScript *>>>)scriptsFromFileNamed:(const std::string &)fileName
 {
 	std::optional<std::vector<oo::ObjCRef<OOScript *>>> result;
-	std::optional<std::string> path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(fileName) inFolder:@"Scripts"]);
+	std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:fileName inFolder:"Scripts"];
 	if (path.has_value())
 	{
 		result = [self scriptsFromFileAtPath:*path];
@@ -198,7 +207,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	extension = oo::str::lowercase(oo::str::pathExtension(fileName));
 	if (extension == "js" || extension == "es")
 	{
-		path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(fileName) inFolder:@"Scripts"]);
+		path = [ResourceManager cxx_pathForFileNamed:fileName inFolder:"Scripts"];
 		if (!path.has_value())
 		{
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);
@@ -227,7 +236,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	extension = oo::str::lowercase(oo::str::pathExtension(fileName));
 	if (extension == "js" || extension == "es")
 	{
-		path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(fileName) inFolder:@"AIs"]);
+		path = [ResourceManager cxx_pathForFileNamed:fileName inFolder:"AIs"];
 		if (!path.has_value())
 		{
 			OO_LOG_ERR("script.load.notFound", "Could not find script file {}.", fileName);

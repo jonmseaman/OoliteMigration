@@ -347,12 +347,12 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 		case kOolite_hdrToneMapper:
 			if (!ooscript::isString(*value_raw))  break; // non-string is not allowed
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
 #if OOLITE_WINDOWS
 				if ([gameView hdrOutput])  [gameView setHDRToneMapper:OOHDRToneMapperFromString(oo::NSStringFrom(*sValue))];
-				else  OOJSReportWarning(context, @"hdrToneMapper cannot be set if not running in HDR mode");
+				else  cxx_OOJSReportWarning(context, "hdrToneMapper cannot be set if not running in HDR mode");
 #endif
 				return YES;
 			}
@@ -360,11 +360,11 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 		case kOolite_sdrToneMapper:
 			if (!ooscript::isString(*value_raw))  break; // non-string is not allowed
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
 				if (![gameView hdrOutput])  [gameView setSDRToneMapper:OOSDRToneMapperFromString(oo::NSStringFrom(*sValue))];
-				else  OOJSReportWarning(context, @"sdrToneMapper cannot be set if not running in SDR mode");
+				else  cxx_OOJSReportWarning(context, "sdrToneMapper cannot be set if not running in SDR mode");
 				return YES;
 			}
 			break;

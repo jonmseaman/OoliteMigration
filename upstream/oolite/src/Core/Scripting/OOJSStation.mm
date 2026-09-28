@@ -550,7 +550,7 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			break;
 
 		case kStation_allegiance:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
 				[entity setAllegiance:oo::NSStringOrNil(sValue)];
@@ -652,7 +652,7 @@ static bool StationAbortDockingForShip(ooscript::Context context, ooscript::Call
 	JSStationGetStationEntity(context, OOJS_THIS, &station); 
 	if (oojsArgs.count() == 0)
 	{
-		OOJSReportBadArguments(context, @"Station", @"abortDockingForShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship in docking queue");
+		cxx_OOJSReportBadArguments(context, "Station", "abortDockingForShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "ship in docking queue");
 		return NO;
 	}
 	if (!ooscript::isObjectOrNull(OOJS_ARGV[0]))  return NO;
@@ -695,7 +695,7 @@ static bool StationCanDockShip(ooscript::Context context, ooscript::CallArgs &oo
    }
    if (EXPECT_NOT(shipToCheck == nil))
    {
-      OOJSReportBadArguments(context, @"Station", @"canDockShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"shipEntity");
+      cxx_OOJSReportBadArguments(context, "Station", "canDockShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "shipEntity");
       return NO;
    }
    
@@ -798,10 +798,10 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 	
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 	
-	if (oojsArgs.count() > 0)  shipRole = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() > 0)  shipRole = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!shipRole.has_value()))
 	{
-		OOJSReportBadArguments(context, @"Station", @"launchShipWithRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
+		cxx_OOJSReportBadArguments(context, "Station", "launchShipWithRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (role)");
 		return NO;
 	}
 	
@@ -975,10 +975,10 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	if (oojsArgs.count() < 1)
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]");
 		return NO;
 	}
-	std::optional<std::string> key = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	std::optional<std::string> key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 
 	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
@@ -998,20 +998,20 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	if (!ooscript::valueToObject(context, (OOJS_ARGV[1]), OOJSFOBJP(&params)))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]");
 		return NO;
 	}
 
 	// get and validate title
 	if (!ooscript::getProperty(context, (params), "title", (&value)) || ooscript::isUndefined(value))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'title' property.");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]; if definition is set, it must have a 'title' property.");
 		return NO;
 	}
-	title = oo::OptionalString(OOStringFromJSValue(context, value));
+	title = cxx_OOStringFromJSValue(context, value);
 	if (!title.has_value() || title->empty())  
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, 'title' property must be a non-empty string.");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]; if definition is set, 'title' property must be a non-empty string.");
 		return NO;
 	}
 
@@ -1022,7 +1022,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	}
 	else
 	{
-		category = oo::OptionalString(OOStringFromJSValue(context, value));
+		category = cxx_OOStringFromJSValue(context, value);
 		if (!category.has_value() || category->empty()) {
 			category = oo::StdString(DESC(@"interfaces-category-uncategorised"));
 		}
@@ -1031,25 +1031,25 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	// get and validate summary
 	if (!ooscript::getProperty(context, (params), "summary", (&value)) || ooscript::isUndefined(value))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'summary' property.");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]; if definition is set, it must have a 'summary' property.");
 		return NO;
 	}
-	summary = oo::OptionalString(OOStringFromJSValue(context, value));
+	summary = cxx_OOStringFromJSValue(context, value);
 	if (!summary.has_value() || summary->empty())  
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, 'summary' property must be a non-empty string.");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]; if definition is set, 'summary' property must be a non-empty string.");
 		return NO;
 	}
 
 	// get and validate callback
 	if (!ooscript::getProperty(context, (params), "callback", (&callback)) || ooscript::isUndefined(callback))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'callback' property.");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]; if definition is set, it must have a 'callback' property.");
 		return NO;
 	}
 	if (!OOJSValueIsFunction(context,callback))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; 'callback' property must be a function.");
+		cxx_OOJSReportBadArguments(context, "Station", "setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key [, definition]; 'callback' property must be a function.");
 		return NO;
 	}
 
@@ -1088,14 +1088,14 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 
 	if (oojsArgs.count() < 2)
 	{
-		OOJSReportBadArguments(context, @"Station", @"setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"commodity, credits");
+		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "commodity, credits");
 		return NO;
 	}
 	
-	std::optional<std::string> commodity = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(commodity)]))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"Unrecognised commodity type");
+		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
 	}
 
@@ -1103,7 +1103,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 	BOOL gotPrice = ooscript::valueToInt32((context), (OOJS_ARGV[1]), &price);
 	if (EXPECT_NOT(!gotPrice || price < 0))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"Price must be at least 0 decicredits");
+		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Price must be at least 0 decicredits");
 		return NO;
 	}
 
@@ -1131,14 +1131,14 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 
 	if (oojsArgs.count() < 2)
 	{
-		OOJSReportBadArguments(context, @"Station", @"setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"commodity, units");
+		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "commodity, units");
 		return NO;
 	}
 	
-	OOCommodityType commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	OOCommodityType commodity = oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]));
 	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:commodity]))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"Unrecognised commodity type");
+		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
 	}
 
@@ -1146,7 +1146,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 	BOOL gotQuantity = ooscript::valueToInt32((context), (OOJS_ARGV[1]), &quantity);
 	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] capacityForGood:commodity]))
 	{
-		OOJSReportBadArguments(context, @"Station", @"setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"Quantity must be between 0 and the station market capacity");
+		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Quantity must be between 0 and the station market capacity");
 		return NO;
 	}
 
@@ -1175,13 +1175,13 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 
 	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::valueToObject((context), (OOJS_ARGV[0]), OOJSFOBJP(&params))))
 	{
-		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"shipyard item definition");
+		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "shipyard item definition");
 		return NO;
 	}
 
 	// make sure the station has a shipyard
 	if (![station hasShipyard]) {
-		OOJSReportWarningForCaller(context, @"Station", @"removeShipFromShipyard", @"Station does not have shipyard.");
+		cxx_OOJSReportWarningForCaller(context, "Station", "removeShipFromShipyard", "Station does not have shipyard.");
 		return NO;
 	}
 	// make sure the shipyard has been generated
@@ -1195,21 +1195,21 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	// validate each element of the dictionary
 	if (!shipyardDefinitionObject)  
 	{
-		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"valid dictionary object");
+		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "valid dictionary object");
 		return NO;
 	}
 	// This first test messages the converted object, as it did: a JavaScript array converts to an
 	// array, which raised on -objectForKey:.
 	if (![shipyardDefinitionObject objectForKey:KEY_SHORT_DESCRIPTION])
 	{
-		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'short_description' in dictionary");
+		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'short_description' in dictionary");
 		return NO;
 	}
 	const oo::PList shipyardDefinition = oo::PListFrom(shipyardDefinitionObject);
 	result[oo::StdString(KEY_SHORT_DESCRIPTION)] = ValueForKey(StringForKey(shipyardDefinition, "short_description"), KEY_SHORT_DESCRIPTION);
 	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)))  
 	{
-		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'shipdata_key' in dictionary");
+		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'shipdata_key' in dictionary");
 		return NO;
 	}
 	// get the shipInfo and shipyardInfo for this key
@@ -1218,19 +1218,19 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	// A copy of the registry's entry: -dictionaryWithDictionary: made an empty one for an unknown
 	// key, never nil, so an unknown key goes on to the tests below (its "Invalid shipdata_key" test
 	// could not fire and is gone).
-	oo::PList			shipInfo = oo::PListFrom([registry shipInfoForKey:oo::NSStringOrNil(shipKey)]);
+	oo::PList			shipInfo = (shipKey.has_value() ? [registry cxx_shipInfoForKey:*shipKey] : oo::PList());
 	if (!shipInfo.isDict())  shipInfo = oo::PList(oo::PList::Dict());
-	const oo::PList		shipyardInfo = oo::PListFrom([registry shipyardInfoForKey:oo::NSStringOrNil(shipKey)]);
+	const oo::PList		shipyardInfo = (shipKey.has_value() ? [registry cxx_shipyardInfoForKey:*shipKey] : oo::PList());
 	// make sure the ship is a player ship (no roles string searched as a nil receiver: found at 0)
 	const std::optional<std::string> roles = StringForKey(shipInfo, "roles");
 	if (roles.has_value() && roles->find("player") == std::string::npos)
 	{
-		OOJSReportWarningForCaller(context, @"Station", @"addShipToShipyard", @"shipdata_key not suitable for player role.");
+		cxx_OOJSReportWarningForCaller(context, "Station", "addShipToShipyard", "shipdata_key not suitable for player role.");
 		return NO;
 	}
 	if (!shipyardInfo) 
 	{
-		OOJSReportWarningForCaller(context, @"Station", @"addShipToShipyard", @"No shipyard information found for shipdata_key.");
+		cxx_OOJSReportWarningForCaller(context, "Station", "addShipToShipyard", "No shipyard information found for shipdata_key.");
 		return NO;
 	}
 	// ok, feel pretty safe to include this ship now
@@ -1259,7 +1259,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		}
 		else
 		{
-			OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'price' in dictionary");
+			cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'price' in dictionary");
 			return NO;
 		}
 	}
@@ -1350,7 +1350,7 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 
 	// make sure the station has a shipyard
 	if (![station hasShipyard]) {
-		OOJSReportWarningForCaller(context, @"Station", @"removeShipFromShipyard", @"Station does not have shipyard.");
+		cxx_OOJSReportWarningForCaller(context, "Station", "removeShipFromShipyard", "Station does not have shipyard.");
 		return NO;
 	}
 	// make sure the shipyard has been generated
@@ -1363,7 +1363,7 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 
 	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > (shipyard != nullptr ? shipyard->size() : 0)) 
 	{
-		OOJSReportBadArguments(context, @"Station", @"removeShipFromShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"valid ship index");
+		cxx_OOJSReportBadArguments(context, "Station", "removeShipFromShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "valid ship index");
 		return NO;
 	}
 

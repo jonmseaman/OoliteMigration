@@ -161,7 +161,13 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 
 - (id) objectEnumerator
 {
-	return [oo::NSArrayFromObjects(LiveObjects(_objects)) objectEnumerator];
+	return [oo::NSArrayFromObjects([self cxx_objectEnumerator]) objectEnumerator];
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_objectEnumerator
+{
+	return LiveObjects(_objects);
 }
 
 
@@ -221,7 +227,13 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 
 - (id) allObjects
 {
-	return oo::NSArrayFromObjects(LiveObjects(_objects));
+	return oo::NSArrayFromObjects([self cxx_allObjects]);
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects
+{
+	return LiveObjects(_objects);
 }
 
 

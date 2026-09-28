@@ -302,8 +302,8 @@ std::string cxx_OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL 
 				ooscript::callFunctionValue((context), (global), (method), 3, (args), (&rval));
 				OOJSStopTimeLimiter();
 
-				// OOStringFromJSValue is an unmigrated callee (nil for null or undefined)
-				result = oo::OptionalString(OOStringFromJSValue(context, rval));
+				// nullopt (was nil) for null or undefined
+				result = cxx_OOStringFromJSValue(context, rval);
 			}
 		}
 	}

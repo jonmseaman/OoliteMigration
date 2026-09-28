@@ -226,8 +226,8 @@ BOOL EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 		if (scriptClass.has_value() && function.has_value())
 		{
 			// The argument described as +stringWithJavaScriptParameters:count:1 described it: "(value)".
-			const std::string parameters = "(" + oo::StdString(OOJSDescribeValue(context, argv[0], NO)) + ")";
-			OOJSReportWarning(context, @"%@.%@(): expected entity, got %@.", oo::NSStringFrom(*scriptClass), oo::NSStringFrom(*function), oo::NSStringFrom(parameters));
+			const std::string parameters = "(" + cxx_OOJSDescribeValue(context, argv[0], NO) + ")";
+			cxx_OOJSReportWarning(context, "%s.%s(): expected entity, got %s.", scriptClass->c_str(), function->c_str(), parameters.c_str());
 			return NO;
 		}
 	}
@@ -422,7 +422,7 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (fValue <= 0.0)
 				{
-					OOJSReportError(context, @"entity.maxEnergy must be positive.");
+					cxx_OOJSReportError(context, "entity.maxEnergy must be positive.");
 					return NO;
 				}
 				[entity setMaxEnergy:fValue];
@@ -437,7 +437,7 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 				OOScanClass newClass = OOScanClassFromJSValue(context, *value);
 				if (newClass == CLASS_NOT_SET || newClass == CLASS_NO_DRAW || newClass == CLASS_TARGET || newClass == CLASS_WORMHOLE || newClass == CLASS_PLAYER || newClass == CLASS_VISUAL_EFFECT)
 				{
-					OOJSReportError(context, @"entity.scanClass cannot be set to that value.");
+					cxx_OOJSReportError(context, "entity.scanClass cannot be set to that value.");
 					return NO;
 				}
 				[entity setScanClass:newClass];
@@ -445,7 +445,7 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			}
 			else
 			{
-				OOJSReportError(context, @"entity.scanClass is read-only except on NPC ships.");
+				cxx_OOJSReportError(context, "entity.scanClass is read-only except on NPC ships.");
 				return NO;
 			}
 		default:

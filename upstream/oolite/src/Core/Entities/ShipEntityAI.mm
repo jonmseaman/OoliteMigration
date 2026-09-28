@@ -286,8 +286,8 @@ using ooscript::Context;
 	}
 	else
 	{
-		NSString *path = [ResourceManager pathForFileNamed:[aiString stringByAppendingString:@".js"] inFolder:@"AIs"];
-		if (path == nil) // no js, use plist
+		const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:oo::StdString(aiString) + ".js" inFolder:"AIs"];
+		if (!path.has_value()) // no js, use plist
 		{
 			[self setAITo:[aiString stringByAppendingString:@".plist"]];
 		}
@@ -368,18 +368,18 @@ using ooscript::Context;
 		return;
 	}
 	
-	foreach (ship, [[self group] mutationSafeEnumerator])
+	for (const oo::ObjCRef<ShipEntity *> &member : [[self group] cxx_memberArray])
 	{
+		ship = member.get();
 		[ship setFoundTarget:target];
 		[ship reactToAIMessage:@"GROUP_ATTACK_TARGET" context:@"groupAttackTarget"];
 		[ship doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
 
 		if ([ship escortGroup] != [ship group] && [[ship escortGroup] count] > 1) // Ship has a seperate escort group.
 		{
-			ShipEntity		*escort = nil;
-			NSArray			*escortMembers = [[ship escortGroup] memberArrayExcludingLeader];
-			foreach (escort, escortMembers)
+			for (const oo::ObjCRef<ShipEntity *> &escortRef : [[ship escortGroup] cxx_memberArrayExcludingLeader])
 			{
+				ShipEntity		*escort = escortRef.get();
 				[escort setFoundTarget:target];
 				[escort reactToAIMessage:@"GROUP_ATTACK_TARGET" context:@"groupAttackTarget"];
 				[escort doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
@@ -1297,8 +1297,9 @@ using ooscript::Context;
 		// Note: prior to 1.73 this was done only if we had ECM.
 		ShipEntity		*police = nil;
 		
-		foreach (police, [[self group] mutationSafeEnumerator])
+		for (const oo::ObjCRef<ShipEntity *> &member : [[self group] cxx_memberArray])
 		{
+			police = member.get();
 			[police setFoundTarget:hunter];
 			[police setPrimaryAggressor:hunter];
 		}
@@ -1669,8 +1670,9 @@ using ooscript::Context;
 	whole = [self primaryTarget];
 	if (![whole isWormhole])  return;
 	
-	foreach (ship, [[self group] mutationSafeEnumerator])
+	for (const oo::ObjCRef<ShipEntity *> &member : [[self group] cxx_memberArray])
 	{
+		ship = member.get();
 		[ship addTarget:whole];
 		[ship reactToAIMessage:@"ENTER WORMHOLE" context:@"wormholeGroup"];
 		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
@@ -2640,13 +2642,13 @@ using ooscript::Context;
 	
 	if ([components count] == 1)
 	{
-		[self doScriptEvent:OOJSIDFromString(message)];
+		[self doScriptEvent:cxx_OOJSIDFromString(oo::StdString(message))];	// one component: message is not nil
 	}
 	else
 	{
 		NSString *function = [components objectAtIndex:0];
 		components = [components subarrayWithRange:NSMakeRange(1, [components count] - 1)];
-		[self doScriptEvent:OOJSIDFromString(function) withArgument:components];
+		[self doScriptEvent:cxx_OOJSIDFromString(oo::StdString(function)) withArgument:components];
 	}
 }
 

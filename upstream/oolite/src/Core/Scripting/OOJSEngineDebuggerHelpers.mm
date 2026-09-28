@@ -83,6 +83,7 @@ MA 02110-1301, USA.
 #ifndef NDEBUG
 
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
@@ -124,7 +125,7 @@ static const char *DebuggerCString(std::string text)
 const char *JSValueToStrDbg(ooscript::Value val)  // NOLINT(misc-use-internal-linkage): called by name from gdb, see file header.
 {
 	ooscript::Context context = OOJSAcquireContext();
-	const char *result = [OOStringFromJSValueEvenIfNull(context, val) UTF8String];
+	const char *result = [oo::NSStringOrNil(cxx_OOStringFromJSValueEvenIfNull(context, val)) UTF8String];
 	OOJSRelinquishContext(context);
 	
 	return result;

@@ -34,7 +34,7 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScr
 - (BOOL) scriptTestConditions:(NSArray *)array;	// -> -cxx_scriptTestConditions:
 
 // Chunk 2 (oo-3rb.191): the mission-variable store.
-- (NSDictionary*) missionVariables;	// the live dictionary, as before (-cxx_missionVariables is a snapshot)
+- (NSDictionary*) missionVariables;	// a snapshot of -cxx_missionVariables (callers only read it: OOJSMissionVariables' key enumeration and its debug converter)
 
 - (NSString *)missionVariableForKey:(NSString *)key;	// -> -cxx_missionVariableForKey:
 - (void)setMissionVariable:(NSString *)value forKey:(NSString *)key;	// -> -cxx_setMissionVariable:forKey:

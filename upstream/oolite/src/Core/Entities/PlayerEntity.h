@@ -379,11 +379,11 @@ typedef enum
 	OOSystemID				found_system_id;
 	int						ship_trade_in_factor;
 	
-	NSDictionary			*worldScripts;
-	NSDictionary			*worldScriptsRequiringTickle;
-	NSMutableDictionary		*commodityScripts;
-	NSMutableDictionary		*mission_variables;
-	NSMutableDictionary		*localVariables;
+	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>	worldScripts;	// in load order (+cxx_loadScripts)
+	std::optional<std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>>	worldScriptsRequiringTickle;	// PlayerEntityLegacyScriptEngine's cache; nullopt: not built
+	std::map<std::string, oo::ObjCRef<OOScript *>, std::less<>>	commodityScripts;	// by script file name
+	oo::PList				mission_variables;	// a Dict (saved as mission_variables); null before set-up
+	std::map<std::string, oo::PList, std::less<>>	localVariables;	// mission key -> that mission's variables (a Dict)
 	std::optional<std::string>	_missionTitle;	// nullopt: the mission screen falls back on its default
 	NSInteger /*OOGUIRow*/	missionTextRow;
 	std::optional<std::string>	missionChoice;
@@ -705,8 +705,8 @@ typedef enum
 	std::map<int, std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>>>	extraGuiScreenKeys;	// by GUI screen ID
 
 	// save-file
-	NSString				*save_path;
-	NSString				*scenarioKey;
+	std::optional<std::string>	save_path;
+	std::optional<std::string>	scenarioKey;
 	
 	// position of viewports
 	Vector					forwardViewOffset, aftViewOffset, portViewOffset, starboardViewOffset;
@@ -881,8 +881,8 @@ typedef enum
 - (BOOL) infoSystemOnRoute;
 
 
-- (NSDictionary *) commanderDataDictionary;
-- (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict;
+- (oo::PList) cxx_commanderDataDictionary;	// a Dict, as saved
+- (BOOL) cxx_setCommanderDataFromDictionary:(const oo::PList &) dict;
 
 - (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
 - (void) validateCustomEquipActivationArray;
@@ -1101,7 +1101,6 @@ typedef enum
 - (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
 
 - (std::vector<std::string>) cxx_cargoList;
-//- (NSArray *) cargoListForScripting; // now in ShipEntity
 - (unsigned) legalStatusOfCargoList;
 
 - (void) setGuiToSystemDataScreen;
@@ -1257,10 +1256,10 @@ typedef enum
 - (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor;
 
 - (BOOL) scriptsLoaded;
-- (NSArray *) worldScriptNames;
-- (NSDictionary *) worldScriptsByName;
+- (std::vector<std::string>) cxx_worldScriptNames;	// in load order
+- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_worldScriptsByName;	// in load order
 
-- (OOScript *) commodityScriptNamed:(NSString *)script;
+- (OOScript *) cxx_commodityScriptNamed:(const std::optional<std::string> &)script;	// nullopt: nil
 
 // *** World script events.
 // In general, script events should be sent through doScriptEvent:..., which

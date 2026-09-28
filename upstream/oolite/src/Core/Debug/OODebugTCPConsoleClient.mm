@@ -263,7 +263,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (id) init
 {
-	return [self initWithAddress:nil port:0];
+	return [self initWithAddress:std::nullopt port:0];
 }
 
 

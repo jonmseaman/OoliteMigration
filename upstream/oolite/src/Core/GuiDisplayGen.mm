@@ -160,7 +160,7 @@ static BOOL _refreshStarChart = NO;
 		
 		backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
 
-		guiUserSettings = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"gui-settings.plist" inFolder:@"Config" andMerge:YES]);
+		guiUserSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"gui-settings.plist" inFolder:"Config" andMerge:YES];
 	}
 	return self;
 }
@@ -1294,7 +1294,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	
 	if (result.isNull())
 	{
-		const std::optional<std::string> name = oo::OptionalString(OOStringFromJSValue(context, value));
+		const std::optional<std::string> name = cxx_OOStringFromJSValue(context, value);
 
 		if (name.has_value())
 		{
@@ -1306,7 +1306,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	// Start loading the texture, and return nil if it doesn't exist.
 	if (!result.isNull() && ![self cxx_preloadGUITexture:result])
 	{
-		OOJSReportWarning(context, @"%@: texture \"%@\" could not be found.", oo::NSStringOrNil(callerDescription), oo::NSStringOrNil(DescriptorName(result)));
+		cxx_OOJSReportWarning(context, "%s: texture \"%s\" could not be found.", (callerDescription ? callerDescription->c_str() : "(null)"), DescriptorName(result).value_or("(null)").c_str());
 		result = oo::PList();
 	}
 	

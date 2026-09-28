@@ -178,7 +178,7 @@ void cxx_OOJSReportBadArguments(ooscript::Context context, const std::optional<s
 OOJS_EXTERN_C void OOJSSetWarningOrErrorStackSkip(unsigned skip);
 
 
-/*	OOJSArgumentListGetNumber()
+/*	cxx_OOJSArgumentListGetNumber()
 	
 	Get a single number from an argument list. The optional outConsumed
 	argument can be used to find out how many parameters were used (currently,

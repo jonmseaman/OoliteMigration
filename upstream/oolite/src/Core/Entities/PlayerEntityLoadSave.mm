@@ -224,7 +224,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const std::string			dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 
 	tmp_name = oo::OptionalString([self lastsaveName]);
-	tmp_path = oo::OptionalString(save_path);
+	tmp_path = save_path;
 	
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
 	
@@ -250,8 +250,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (tmp_path.has_value())
 	{
-		[save_path autorelease];
-		save_path = [oo::NSStringFrom(*tmp_path) copy];
+		save_path = *tmp_path;
 	}
 	[self setLastsaveName:oo::NSStringOrNil(tmp_name)];
 }
@@ -262,7 +261,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
 	std::optional<std::string>	path;
 
-	path = oo::OptionalString(save_path);
+	path = save_path;
 	if (!path)  path = oo::OptionalString([[gameView gameController] playerFileToLoad]);
 	if (!path)
 	{
@@ -423,8 +422,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		return NO;
 	}
-	[scenarioKey release];
-	scenarioKey = [oo::NSStringOrNil(OptionalStringValue(scenario->find("scenario"))) retain];
+	scenarioKey = OptionalStringValue(scenario->find("scenario"));
 
 	// don't drop the save game directory in
 	return YES;
@@ -696,7 +694,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Reading file");
-		fileDic = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(fileToOpen)));
+		fileDic = cxx_OOPropertyListFromFile(fileToOpen);
+		if (!fileDic.isDict())  fileDic = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 		if (!fileDic.isDict())
 		{
 			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-load-file"));
@@ -779,8 +778,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		OOLog(@"load.progress", @"%@", @"Recording save path");
 		if (!asNew)
 		{
-			[save_path autorelease];
-			save_path = [oo::NSStringFrom(fileToOpen) retain];
+			save_path = fileToOpen;
 		
 			[[[UNIVERSE gameView] gameController] setPlayerFileToLoad:oo::NSStringFrom(fileToOpen)];
 			[[[UNIVERSE gameView] gameController] setPlayerFileDirectory:oo::NSStringFrom(fileToOpen)];
@@ -845,10 +843,10 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	OOLog(@"load.progress", @"%@", @"Setting scenario key");
 	// set scenario key if the scenario allows saving and has one
 	const std::optional<std::string> scenario = OptionalStringValue(fileDic.find("scenario_key"));
-	DESTROY(scenarioKey);
+	scenarioKey.reset();
 	if (scenario)
 	{
-		scenarioKey = [oo::NSStringFrom(*scenario) retain];
+		scenarioKey = *scenario;
 	}
 
 	OOLog(@"load.progress", @"%@", @"Starting JS engine");
@@ -974,10 +972,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
 		[UNIVERSE addMessage:DESC(@"game-saved") forCount:2];
-		[save_path autorelease];
-		save_path = [oo::NSStringFrom(path) copy];
-		[[UNIVERSE gameController] setPlayerFileToLoad:save_path];
-		[[UNIVERSE gameController] setPlayerFileDirectory:save_path];
+		save_path = path;
+		[[UNIVERSE gameController] setPlayerFileToLoad:oo::NSStringFrom(*save_path)];
+		[[UNIVERSE gameController] setPlayerFileDirectory:oo::NSStringFrom(*save_path)];
 		// no duplicated autosave immediately after a save.
 		[UNIVERSE setAutoSaveNow:NO];
 	}
@@ -1139,7 +1136,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		{
 			if (type != oo::fs::FileType::directory && oo::str::lowercase(oo::str::pathExtension(path)) == "oolite-save")
 			{
-				oo::PList cdr = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(path)));
+				oo::PList cdr = cxx_OOPropertyListFromFile(path);
+				if (!cdr.isDict())  cdr = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 				if (oo::PList::Dict *cdr1 = cdr.getIf<oo::PList::Dict>())
 				{
 					// okay use the same dictionary but add a 'saved_game_path' attribute

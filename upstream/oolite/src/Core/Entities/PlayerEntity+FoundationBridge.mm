@@ -498,4 +498,41 @@ and converts the result exactly as the old method produced it.
 	return oo::NSStringFrom([self cxx_currentPrimedEquipment]);
 }
 
+
+// oo-3rb.256: world scripts, commodity scripts, mission and local variables
+- (NSArray *) worldScriptNames
+{
+	return oo::NSArrayFromStrings([self cxx_worldScriptNames]);
+}
+
+
+- (NSDictionary *) worldScriptsByName
+{
+	NSMutableDictionary *result = [NSMutableDictionary dictionary];
+	for (const auto &[scriptName, scriptRef] : [self cxx_worldScriptsByName])
+	{
+		if (scriptRef.get() != nil)  [result setObject:scriptRef.get() forKey:oo::NSStringFrom(scriptName)];
+	}
+	return [[result copy] autorelease];
+}
+
+
+- (OOScript *) commodityScriptNamed:(NSString *)scriptName
+{
+	return [self cxx_commodityScriptNamed:oo::OptionalString(scriptName)];
+}
+
+
+// oo-3rb.257: save and load dictionaries
+- (NSDictionary *) commanderDataDictionary
+{
+	return oo::ObjectFromPList([self cxx_commanderDataDictionary]);	// (was a mutable dictionary; its callers only read it)
+}
+
+
+- (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict
+{
+	return [self cxx_setCommanderDataFromDictionary:oo::PListFrom(dict)];
+}
+
 @end

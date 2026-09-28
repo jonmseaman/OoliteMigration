@@ -47,7 +47,7 @@ MA 02110-1301, USA.
 	{
 		_function = function;
 		OOJSAddGCObjectRoot(context, (ooscript::Object *)&_function, "OOJSFunction._function");
-		_name = oo::OptionalString(OOStringFromJSString(context, ooscript::getFunctionId(function)));
+		_name = cxx_OOStringFromJSString(context, ooscript::getFunctionId(function));
 		
 		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
 															[OOJavaScriptEngine sharedEngine],

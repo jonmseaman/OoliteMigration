@@ -288,7 +288,7 @@ static bool ClockClockStringForTime(ooscript::Context context, ooscript::CallArg
 	{
 		ooscript::Value arg = ooscript::undefinedValue();
 		if (oojsArgs.count() > 0)  arg = OOJS_ARGV[0];
-		OOJSReportBadArguments(context, @"Clock", @"clockStringForTime", 1, &arg, nil, @"number");
+		cxx_OOJSReportBadArguments(context, "Clock", "clockStringForTime", 1, &arg, std::nullopt, "number");
 		return NO;
 	}
 
@@ -312,7 +312,7 @@ static bool ClockAddSeconds(ooscript::Context context, ooscript::CallArgs &oojsA
 	{
 		ooscript::Value arg = ooscript::undefinedValue();
 		if (oojsArgs.count() > 0)  arg = OOJS_ARGV[0];
-		OOJSReportBadArguments(context, @"Clock", @"addSeconds", 1, &arg, nil, @"number");
+		cxx_OOJSReportBadArguments(context, "Clock", "addSeconds", 1, &arg, std::nullopt, "number");
 		return NO;
 	}
 
