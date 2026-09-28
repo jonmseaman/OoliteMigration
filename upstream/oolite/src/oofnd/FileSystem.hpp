@@ -172,7 +172,7 @@ inline Result<double> modificationTimeSince1970(const Path& path)
 	if (ec)  return oo::Unexpected(ec);
 	using namespace std::chrono;
 	const auto systemNow = system_clock::now();
-	const auto fileNow = file_time_type::clock::now();
+	const auto fileNow = std::filesystem::file_time_type::clock::now();
 	const auto systemTime = time_point_cast<system_clock::duration>(ftime - fileNow + systemNow);
 	return duration<double>(systemTime.time_since_epoch()).count();
 }
