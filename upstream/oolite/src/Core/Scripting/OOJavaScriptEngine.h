@@ -578,7 +578,7 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJ
 	is provided with debugging information by the OOJavaScriptEngine.
 */
 
-@protocol OOJavaScriptEngineMonitor <NSObject>
+@protocol OOJavaScriptEngineMonitor <OOObject>
 
 // Sent for JS errors or warnings.
 - (void)jsEngine:(OOJavaScriptEngine *)engine

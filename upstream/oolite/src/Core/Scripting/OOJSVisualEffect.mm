@@ -661,7 +661,7 @@ static bool VisualEffectGetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 
 	OOJS_PROFILE_ENTER
 
-	NSObject			*result = nil;
+	OOObject			*result = nil;
 	OOVisualEffectEntity				*thisEnt = nil;
 
 	GET_THIS_EFFECT(thisEnt);
@@ -682,7 +682,7 @@ static bool VisualEffectGetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 	
 	OOJS_PROFILE_ENTER
 	
-	NSObject			*result = nil;
+	OOObject			*result = nil;
 	OOVisualEffectEntity				*thisEnt = nil;
 
 	GET_THIS_EFFECT(thisEnt);
