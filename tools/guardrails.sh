@@ -12,7 +12,8 @@
 #
 #   goldens      no change under a protected golden path without a recorded re-bless approval
 #   suppression  no NEW warning suppression (-Wno-*, #pragma/_Pragma diagnostic, unused-attribute)
-#   tests        no test file deleted, renamed out of the COLLECTED set, or gutted
+#   tests        no test file deleted (unless listed in tools/retire-test-approvals.txt; ADR-0049),
+#                renamed out of the COLLECTED set, or gutted
 #   deny-list    no NEW hit for a tools/deny-list.txt pattern in a changed source file
 #
 # ---------------------------------------------------------------------------------------
@@ -272,6 +273,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 DENY_LIST="tools/deny-list.txt"
 APPROVALS="tools/rebless-approvals.txt"
+RETIRE_TEST_APPROVALS="tools/retire-test-approvals.txt"
 
 # Paths whose content is Jon's alone to change (CLAUDE.md rule 1). A change touching any of
 # these needs a line in tools/rebless-approvals.txt naming the path.
@@ -520,6 +522,21 @@ approval_on_record() {  # approval_on_record <path>
     first=${line%%[[:space:]]*}
     [ "$first" = "$1" ] && return 0
   done < "$APPROVALS"
+  return 1
+}
+
+retire_test_approval_on_record() {  # retire_test_approval_on_record <path>
+  [ -f "$RETIRE_TEST_APPROVALS" ] || return 1
+  local line first
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}
+    case "$line" in
+      ''|'#'*) continue ;;
+      [[:space:]]*) continue ;;
+    esac
+    first=${line%%[[:space:]]*}
+    [ "$first" = "$1" ] && return 0
+  done < "$RETIRE_TEST_APPROVALS"
   return 1
 }
 
@@ -941,7 +958,20 @@ check_tests() {
     [ -n "${st:-}" ] || continue
     case "$st" in
       D*)
-        is_test_path "$base" && bad "tests: $base is deleted (CLAUDE.md rule 2: never modify or delete a test)"
+        if is_test_path "$base"; then
+          # ADR-0049: a listed retirement is allowed unless this change also edits the approvals file.
+          local retire_self=0 rp
+          while IFS= read -r rp; do
+            [ "$rp" = "$RETIRE_TEST_APPROVALS" ] && { retire_self=1; break; }
+          done < <(all_paths)
+          if [ "$retire_self" = 1 ]; then
+            bad "tests: $base is deleted by a change that also edits $RETIRE_TEST_APPROVALS - a change may not approve its own test retirement (ADR-0049)"
+          elif retire_test_approval_on_record "$base"; then
+            note "tests: $base is deleted, retire-test approval on record - allowed (ADR-0049)"
+          else
+            bad "tests: $base is deleted (CLAUDE.md rule 2: never modify or delete a test)"
+          fi
+        fi
         ;;
       R*|C*)
         if is_collectable_test "$base" && ! is_collectable_test "$disk"; then

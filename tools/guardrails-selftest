@@ -424,6 +424,29 @@ git rm -q upstream/oolite/tests/component/features/s1.feature
 expect_fail "deleted .feature refused" "is deleted"
 
 echo
+echo "=== 3a. ...but a deletion listed in retire-test-approvals.txt is ALLOWED (ADR-0049) ==="
+fixture test_retire_ok || exit 1
+# Seed an approval for a disposable feature copy, then delete it in a SEPARATE commit state:
+# the fixture workspace already has the approvals file from HEAD; append approval, commit that,
+# then delete in a second commit so the change under test does not edit the approvals file.
+cp tools/retire-test-approvals.txt tools/retire-test-approvals.txt.bak
+printf '%s\tselftest\n' 'upstream/oolite/tests/component/features/s1.feature' >> tools/retire-test-approvals.txt
+git add tools/retire-test-approvals.txt
+git -c user.name=selftest -c user.email=selftest@local commit -q -m 'selftest: approve s1.feature retirement'
+git rm -q upstream/oolite/tests/component/features/s1.feature
+expect_pass "approved test deletion allowed"
+# restore approvals file content for later fixtures via the bak? next fixture resets tree.
+
+echo
+echo "=== 3a2. ...and approving in the SAME change as the deletion is REFUSED ==="
+fixture test_retire_self || exit 1
+printf '%s\tselftest\n' 'upstream/oolite/tests/component/features/s1.feature' >> tools/retire-test-approvals.txt
+git add tools/retire-test-approvals.txt
+git rm -q upstream/oolite/tests/component/features/s1.feature
+expect_fail "self-approving test retirement refused" "may not approve its own test retirement"
+
+
+echo
 echo "=== 3b. ...the component step library counts as a test (ADR-0018 §5) ==="
 fixture test_steps || exit 1
 git rm -q upstream/oolite/tests/component/steps/world_steps.py
