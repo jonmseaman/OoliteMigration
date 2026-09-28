@@ -1422,7 +1422,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	//base ship description
 	[self setShipDataKey:oo::PListView(dict).get<NSString *>(@"ship_desc")];
 	
-	NSDictionary *shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:[self shipDataKey]];
+	NSDictionary *shipDict = oo::ObjectFromPList([[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[self cxx_shipDataKey].value_or(std::string())]);	// "" finds no ship, as nil did
 	if (shipDict == nil)  return NO;
 	if (![self setUpShipFromDictionary:shipDict])  return NO;
 	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", oo::DescriptionOf([self shipDataKey]), [self fuelChargeRate]);
@@ -1757,7 +1757,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	fuel = oo::PListView(dict).get<unsigned int>(@"fuel", fuel);
 	galaxy_number = oo::PListView(dict).get<int>(@"galaxy_number");
 //
-	NSDictionary *shipyard_info = [[OOShipRegistry sharedRegistry] shipyardInfoForKey:[self shipDataKey]];
+	NSDictionary *shipyard_info = oo::ObjectFromPList([[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or(std::string())]);
 	OOWeaponFacingSet available_facings = oo::PListView(shipyard_info).get<unsigned int>(KEY_WEAPON_FACINGS, [self weaponFacings]);
 
 	if (available_facings & WEAPON_FACING_FORWARD)

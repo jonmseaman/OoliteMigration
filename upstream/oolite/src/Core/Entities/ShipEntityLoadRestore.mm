@@ -196,7 +196,7 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 	ShipEntity *ship = nil;
 
 	const std::string shipKey = dict.get<std::string>(KEY_SHIP_KEY);	// "" finds no ship, as nil did
-	const oo::PList shipData = oo::PListFrom([[OOShipRegistry sharedRegistry] shipInfoForKey:oo::NSStringFrom(shipKey)]);
+	const oo::PList shipData = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
 
 	if (shipData)
 	{
@@ -297,7 +297,7 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 	deletes->clear();
 
 	// Get original ship data.
-	oo::PList::Dict referenceData = DictFrom(oo::PListFrom([[OOShipRegistry sharedRegistry] shipInfoForKey:[self shipDataKey]]));
+	oo::PList::Dict referenceData = DictFrom([[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[self cxx_shipDataKey].value_or(std::string())]);
 
 	// Discard stuff that we handle separately.
 	StripIgnoredKeys(referenceData);

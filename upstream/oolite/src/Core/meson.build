@@ -84,7 +84,6 @@ oolite_sources += files(
     'OOShipGroup+FoundationBridge.mm',
     'OOShipLibraryDescriptions.mm',
     'OOShipRegistry.mm',
-    'OOShipRegistry+FoundationBridge.mm',
     'OOSkyDrawable.mm',
     'OOSoundSource.mm',
     'OOSoundSourcePool.mm',
