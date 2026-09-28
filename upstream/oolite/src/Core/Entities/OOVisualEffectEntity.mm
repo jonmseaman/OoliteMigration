@@ -124,18 +124,23 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	return [self initWithKey:@"" definition:nil];
 }
 
-- (id)initWithKey:(id)key definition:(id)dict	// shared selector (proposed ADR-0043)
+- (id)initWithKey:(id)key definition:(id)dict	// forwards to cxx_ until part 2
+{
+	NSParameterAssert(dict != nil);
+	return [self cxx_initWithKey:oo::OptionalString(key).value_or(std::string{}) definition:oo::PListFrom(dict)];
+}
+
+
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
 {
 	OOJS_PROFILE_ENTER
-	
-	NSParameterAssert(dict != nil);
 	
 	self = [super init];
 	if (self == nil)  return nil;
 
-	_effectKey = oo::OptionalString(key);
+	_effectKey = key;
 
-	if (![self setUpVisualEffectFromDictionary:oo::PListFrom(dict)])
+	if (![self setUpVisualEffectFromDictionary:dict])
 	{
 		[self release];
 		self = nil;
