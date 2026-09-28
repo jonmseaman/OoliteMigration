@@ -63,7 +63,7 @@ static std::optional<std::string> KeyForPropertyID(ooscript::Context context, oo
 {
 	OOCParameterAssert(ooscript::isStringId(propID));
 	
-	std::string key = oo::StdString(OOStringFromJSString(context, ooscript::idToString(propID)));
+	std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
 	if (oo::str::hasPrefix(key, "_"))  return std::nullopt;
 	return "mission_" + key;
 }
@@ -224,13 +224,14 @@ static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propI
 		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
 		if (!key.has_value())
 		{
-			OOJSReportError(context, @"Invalid mission variable name \"%@\".", [OOStringFromJSID(jsPropID) escapedForJavaScriptLiteral]);
+			const std::optional<std::string> badName = cxx_OOStringFromJSID(jsPropID);
+			cxx_OOJSReportError(context, "Invalid mission variable name \"%s\".", badName.has_value() ? cxx_OOJSEscapedForJavaScriptLiteral(*badName).c_str() : "(null)");
 			return NO;
 		}
 		
 		// nil (a value with no string form) clears the variable. (The old OONull test could not match
 		// a string and is gone.)
-		std::optional<std::string> objValue = oo::OptionalString(OOStringFromJSValue(context, *jsvalue));
+		std::optional<std::string> objValue = cxx_OOStringFromJSValue(context, *jsvalue);
 		
 		[player setMissionVariable:oo::NSStringOrNil(objValue) forKey:oo::NSStringFrom(*key)];
 	}

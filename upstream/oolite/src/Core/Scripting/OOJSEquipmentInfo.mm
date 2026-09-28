@@ -274,7 +274,7 @@ OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Val
 		}
 	}
 	
-	std::optional<std::string> string = oo::OptionalString(OOStringFromJSValue(context, value));
+	std::optional<std::string> string = cxx_OOStringFromJSValue(context, value);
 	if (string.has_value())  return [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*string)];
 	return nil;
 	
@@ -572,7 +572,7 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 			}
 			else
 			{
-				OOJSReportWarning(context, @"Cannot modify effective tech level for %@, because its base tech level is not 99.", [eqType identifier]);
+				cxx_OOJSReportWarning(context, "Cannot modify effective tech level for %s, because its base tech level is not 99.", oo::DescriptionOf([eqType identifier]).c_str());
 				return YES;
 			}
 			break;
@@ -646,10 +646,10 @@ static bool EquipmentInfoStaticInfoForKey(ooscript::Context context, ooscript::C
 	
 	std::optional<std::string>	key;
 	
-	if (oojsArgs.count() > 0)  key = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() > 0)  key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (!key.has_value())
 	{
-		OOJSReportBadArguments(context, @"EquipmentInfo", @"infoForKey", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
+		cxx_OOJSReportBadArguments(context, "EquipmentInfo", "infoForKey", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
 		return NO;
 	}
 	

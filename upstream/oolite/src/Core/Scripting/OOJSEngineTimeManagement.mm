@@ -451,7 +451,7 @@ static void TraceEnterJSFunction(ooscript::Context context, ooscript::Function f
 			
 			if (ooscript::frameThis(context, frame, &thisVal))
 			{
-				name += oo::str::format("this: %s", oo::DescriptionOf(OOJSDescribeValue(context, thisVal, YES)).c_str());
+				name += oo::str::format("this: %s", (cxx_OOJSDescribeValue(context, thisVal, YES)).c_str());
 				first = NO;
 			}
 			
@@ -468,7 +468,7 @@ static void TraceEnterJSFunction(ooscript::Context context, ooscript::Function f
 						
 						ooscript::Value propName = ooscript::undefinedValue();
 						ooscript::idToValue(context, prop->id, &propName);
-						name += oo::str::format("%s: %s", oo::DescriptionOf(OOStringFromJSValueEvenIfNull(context, propName)).c_str(), oo::DescriptionOf(OOJSDescribeValue(context, prop->value, YES)).c_str());
+						name += oo::str::format("%s: %s", (cxx_OOStringFromJSValueEvenIfNull(context, propName)).value_or("(null)").c_str(), (cxx_OOJSDescribeValue(context, prop->value, YES)).c_str());
 					}
 				}
 			}
@@ -823,7 +823,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 		
 		std::string funcName;
 		ooscript::String jsName = ooscript::getFunctionId(_jsFunction);
-		if (jsName != NULL)  funcName = oo::StdString(OOStringFromJSString(context, jsName));
+		if (jsName != NULL)  funcName = cxx_OOStringFromJSString(context, jsName).value_or(std::string());
 		else  funcName = "<anonymous>";
 		
 		// If it's a non-native function, get its source location.
