@@ -1208,9 +1208,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[result oo_setInteger:ship_trade_in_factor forKey:@"ship_trade_in_factor"];
 
 	// mission variables
-	if (mission_variables != nil)
+	if (!mission_variables.isNull())
 	{
-		[result setObject:[NSDictionary dictionaryWithDictionary:mission_variables] forKey:@"mission_variables"];
+		[result setObject:oo::ObjectFromPList(mission_variables) forKey:@"mission_variables"];
 	}
 
 	// communications log
@@ -1361,9 +1361,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	munge_checksum(max_cargo);		munge_checksum(missiles);
 	munge_checksum(legalStatus);	munge_checksum(market_rnd);		munge_checksum(ship_kills);
 	
-	if (mission_variables != nil)
+	if (!mission_variables.isNull())
 	{
-		munge_checksum([[mission_variables description] length]);
+		// the length of the dictionary's -description, as before (the same GNUstep text)
+		munge_checksum(oo::str::length(oo::DescriptionOf(oo::ObjectFromPList(mission_variables))));
 	}
 	if (equipment != nil)
 	{
@@ -1831,9 +1832,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 
 	// mission_variables
-	[mission_variables release];
-	mission_variables = [oo::PListView(dict).get<NSDictionary *>(@"mission_variables") mutableCopy];
-	if (mission_variables == nil)  mission_variables = [[NSMutableDictionary alloc] init];
+	mission_variables = oo::PListFrom([dict objectForKey:@"mission_variables"]);
+	if (!mission_variables.isDict())  mission_variables = oo::PList(oo::PList::Dict{});	// absent or not a dictionary: empty
 	
 	// persistant UNIVERSE info
 	NSDictionary *planetInfoOverrides = oo::PListView(dict).get<NSDictionary *>(@"scripted_planetinfo_overrides");
@@ -2107,19 +2107,17 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[[GameController sharedController] logProgress:DESC(@"loading-scripts")];
 	
 	[UNIVERSE setBlockJSPlayerShipProps:NO];	// full access to player.ship properties!
-	DESTROY(worldScripts);
-	DESTROY(worldScriptsRequiringTickle);
-	DESTROY(commodityScripts);
+	worldScripts.clear();
+	worldScriptsRequiringTickle.reset();
+	commodityScripts.clear();
 
 #if OOLITE_WINDOWS
 	if (saveGame)
 	{
 		[UNIVERSE preloadSounds];
 		[self setUpSound];
-		worldScripts = [NSMutableDictionary new];	// filled in load order, as +loadScripts filled it
-		for (const auto &[scriptName, loadedScript] : [ResourceManager cxx_loadScripts])  [(NSMutableDictionary *)worldScripts setObject:loadedScript.get() forKey:oo::NSStringFrom(scriptName)];
+		worldScripts = [ResourceManager cxx_loadScripts];
 		[UNIVERSE loadConditionScripts];
-		commodityScripts = [[NSMutableDictionary alloc] init];
 	}
 #else
 	/* on OSes that allow safe deletion of open files, can use sounds
@@ -2128,10 +2126,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self setUpSound];
 	if (saveGame)
 	{
-		worldScripts = [NSMutableDictionary new];	// filled in load order, as +loadScripts filled it
-		for (const auto &[scriptName, loadedScript] : [ResourceManager cxx_loadScripts])  [(NSMutableDictionary *)worldScripts setObject:loadedScript.get() forKey:oo::NSStringFrom(scriptName)];
+		worldScripts = [ResourceManager cxx_loadScripts];
 		[UNIVERSE loadConditionScripts];
-		commodityScripts = [[NSMutableDictionary alloc] init];
 	}
 #endif
 
@@ -2163,11 +2159,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	scanner_zoom_rate = 0.0f;
 	longRangeChartMode = OOLRC_MODE_SUNCOLOR;
 
-	[mission_variables release];
-	mission_variables = [[NSMutableDictionary alloc] init];
-	
-	[localVariables release];
-	localVariables = [[NSMutableDictionary alloc] init];
+	mission_variables = oo::PList(oo::PList::Dict{});
+
+	localVariables.clear();
 	
 	[self setScriptTarget:nil];
 	[self resetMissionChoice];
@@ -2543,12 +2537,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	
 
-	DESTROY(worldScripts);
-	DESTROY(worldScriptsRequiringTickle);
-	DESTROY(commodityScripts);
-	DESTROY(mission_variables);
-	
-	DESTROY(localVariables);
+	worldScripts.clear();
+	worldScriptsRequiringTickle.reset();
+	commodityScripts.clear();
+	mission_variables = oo::PList();
+
+	localVariables.clear();
 	
 	
 	
@@ -12990,42 +12984,45 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (BOOL) scriptsLoaded
 {
-	return worldScripts != nil && [worldScripts count] > 0;
+	return !worldScripts.empty();
 }
 
 
-- (NSArray *) worldScriptNames
+- (std::vector<std::string>) cxx_worldScriptNames
 {
-	return [worldScripts allKeys];
+	std::vector<std::string> names;
+	for (const auto &entry : worldScripts)  names.push_back(entry.first);
+	return names;
 }
 
 
-- (NSDictionary *) worldScriptsByName
+- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_worldScriptsByName
 {
-	return [[worldScripts copy] autorelease];
+	return worldScripts;
 }
 
 
-- (OOScript *) commodityScriptNamed:(NSString *)scriptName
+- (OOScript *) cxx_commodityScriptNamed:(const std::optional<std::string> &)scriptName
 {
-	if (scriptName == nil)
+	if (!scriptName.has_value())
 	{
 		return nil;
 	}
 	OOScript *cscript = nil;
-	if ((cscript = [commodityScripts objectForKey:scriptName]))
+	const auto found = commodityScripts.find(*scriptName);
+	if (found != commodityScripts.end() && (cscript = found->second.get()))
 	{
 		return cscript;
 	}
-	cscript = [OOScript jsScriptFromFileNamed:scriptName properties:nil];
+	cscript = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:nil];
 	if (cscript != nil)
 	{
 		// storing it in here retains it
-		[commodityScripts setObject:cscript forKey:scriptName];
+		commodityScripts[*scriptName] = oo::ObjCRef<OOScript *>(cscript);
 	}
 	else
 	{
-		OO_LOG("script.commodityScript.load", "Could not load script {}", oo::DescriptionOf(scriptName));
+		OO_LOG("script.commodityScript.load", "Could not load script {}", *scriptName);
 	}
 	return cscript;
 }
@@ -13038,10 +13035,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
+// ORDER-SENSITIVE (decision D): the world scripts run in load order (was the dictionary's order).
 - (BOOL) doWorldEventUntilMissionScreen:(ooscript::PropertyId)message
 {
-	NSEnumerator	*scriptEnum = [worldScripts objectEnumerator];
-	OOScript		*theScript;
+	const std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> scripts = worldScripts;	// a snapshot, as the enumerator kept the dictionary
+	auto			scriptEntry = scripts.begin();
 
 	// Check for the presence of report messages first.
 	if (gui_screen != GUI_SCREEN_MISSION && !dockingReport.empty() && [self isDocked] && ![[self dockedStation] suppressArrivalReports])
@@ -13052,9 +13050,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	ooscript::Context context = OOJSAcquireContext();
-	while ((theScript = [scriptEnum nextObject]) && gui_screen != GUI_SCREEN_MISSION && [self isDocked])
+	while (scriptEntry != scripts.end() && gui_screen != GUI_SCREEN_MISSION && [self isDocked])
 	{
-		[theScript callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+		[scriptEntry->second.get() callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+		++scriptEntry;
 	}
 	OOJSRelinquishContext(context);
 	
@@ -13073,12 +13072,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	OOParameterAssert(context != NULL && ooscript::isInRequest(context));
 	
-	OOScript				*theScript = nil;
-	
-	foreach (theScript, [worldScripts allValues])
+	// ORDER-SENSITIVE (decision D): load order (was -allValues order); a snapshot, as -allValues was.
+	const std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> scripts = worldScripts;
+	for (const auto &entry : scripts)
 	{
 		OOJSStartTimeLimiterWithTimeLimit(limit);
-		[theScript callMethod:message inContext:context withArguments:argv count:argc result:NULL];
+		[entry.second.get() callMethod:message inContext:context withArguments:argv count:argc result:NULL];
 		OOJSStopTimeLimiter();
 	}
 }
