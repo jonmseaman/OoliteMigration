@@ -1,6 +1,6 @@
 # ADR-0049: Intentional retirement of a unit test when its subject is deleted
 
-- Status: Proposed (default applied by the authoring agent until Jon adjudicates)
+- Status: Accepted (Jon, 2026-09-28, in chat; recorded by Claude Code)
 - Date: 2026-09-28
 - Beads: oo-iobt (blocked), discovered from guardrails vs bead AC
 
