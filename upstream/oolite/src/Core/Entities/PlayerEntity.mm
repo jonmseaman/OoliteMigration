@@ -1333,7 +1333,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (dockedStation)
 	{
 		HPVector dpos = [dockedStation position];
-		[result setObject:ArrayFromHPVector(dpos) forKey:@"docked_station_position"];
+		{
+			oo::PList::Array coords;
+			for (double component : cxx_ArrayFromHPVector(dpos))  coords.push_back(oo::PList(component));
+			[result setObject:oo::ObjectFromPList(oo::PList(std::move(coords))) forKey:@"docked_station_position"];
+		}
 	}
 	else
 	{

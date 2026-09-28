@@ -48,7 +48,6 @@ oolite_sources += files(
     'OOEquipmentType+FoundationBridge.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
-    'OOHPVector+FoundationBridge.mm',
     'OOIsNumberLiteral.mm',
     'OOJoystickManager.mm',
     'OOJoystickProfile.mm',
