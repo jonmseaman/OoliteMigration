@@ -1218,9 +1218,9 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	// A copy of the registry's entry: -dictionaryWithDictionary: made an empty one for an unknown
 	// key, never nil, so an unknown key goes on to the tests below (its "Invalid shipdata_key" test
 	// could not fire and is gone).
-	oo::PList			shipInfo = oo::PListFrom([registry shipInfoForKey:oo::NSStringOrNil(shipKey)]);
+	oo::PList			shipInfo = (shipKey.has_value() ? [registry cxx_shipInfoForKey:*shipKey] : oo::PList());
 	if (!shipInfo.isDict())  shipInfo = oo::PList(oo::PList::Dict());
-	const oo::PList		shipyardInfo = oo::PListFrom([registry shipyardInfoForKey:oo::NSStringOrNil(shipKey)]);
+	const oo::PList		shipyardInfo = (shipKey.has_value() ? [registry cxx_shipyardInfoForKey:*shipKey] : oo::PList());
 	// make sure the ship is a player ship (no roles string searched as a nil receiver: found at 0)
 	const std::optional<std::string> roles = StringForKey(shipInfo, "roles");
 	if (roles.has_value() && roles->find("player") == std::string::npos)
