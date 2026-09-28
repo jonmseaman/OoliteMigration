@@ -186,7 +186,7 @@ oo::PList ElementAt(const oo::PList &list, NSUInteger index)
 }
 
 /* Sort by category, then title, then version - and that should be unique (was the C function
-   oxzSort, an NSComparisonResult sort function). The version orders descending. Each key collates
+   oxzSort, an OOComparisonResult sort function). The version orders descending. Each key collates
    as the old -localizedCompare did: oo::str::localizedCompare, ICU in the default locale. */
 bool OXZOrderedBefore(const oo::PList &m1, const oo::PList &m2)
 {
@@ -1256,7 +1256,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		const std::optional<std::string> installedVersion = ManifestString(installed, oo::StdString(kOOManifestVersion));
 		OO_LOG("version.debug", "{} mv:{} mav:{}", identifier.value_or("(null)"), installedVersion.value_or("(null)"), availableVersion.value_or("(null)"));
 		// CompareVersions / ComponentsFromVersionString are unmigrated: strings at the call.
-		if (CompareVersions(ComponentsFromVersionString(oo::NSStringOrNil(installedVersion)),ComponentsFromVersionString(oo::NSStringOrNil(availableVersion))) == NSOrderedDescending)
+		if (CompareVersions(ComponentsFromVersionString(oo::NSStringOrNil(installedVersion)),ComponentsFromVersionString(oo::NSStringOrNil(availableVersion))) == OOOrderedDescending)
 		{
 			// the installed copy is more recent than the server copy
 			return OXZ_UNINSTALLABLE_NOREMOTE;
