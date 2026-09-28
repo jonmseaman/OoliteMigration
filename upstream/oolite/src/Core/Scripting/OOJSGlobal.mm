@@ -115,11 +115,16 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 
 // What -oo_stringForKey: made of the value it found: a string, or a number's text; nullopt (was
 // nil) for no value or any other kind of value.
+static std::optional<std::string> StringFromPList(const oo::PList *value)
+{
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
+}
+
 static std::optional<std::string> StringFromObject(id object)
 {
 	const oo::PList value = oo::PListFrom(object);
-	if (!(value.isString() || value.isNumber()))  return std::nullopt;
-	return oo::PListGet<std::string>::from(&value, std::string());
+	return StringFromPList(&value);
 }
 } // namespace
 #ifndef NDEBUG
@@ -1066,7 +1071,8 @@ static bool GlobalAutoAIForRole(ooscript::Context context, ooscript::CallArgs &o
 		return NO;
 	}
 
-	std::optional<std::string> autoAI = StringFromObject([[ResourceManager dictionaryFromFilesNamed:@"autoAImap.plist" inFolder:@"Config" andMerge:YES] objectForKey:oo::NSStringFrom(*string)]);
+	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
+	std::optional<std::string> autoAI = StringFromPList(autoAIMap.find(*string));
 
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(autoAI));
 	

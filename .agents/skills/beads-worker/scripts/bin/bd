@@ -1,24 +1,60 @@
 #!/usr/bin/env bash
-# Guard shim: put this directory first on PATH before starting an agent. Refuses to close a bead
-# unless BEADS_ACCEPT=1 (set only by scripts/accept.sh). Everything else passes through.
+# Guard shim: put this directory first on PATH before starting an agent. Unless BEADS_ACCEPT=1 (set
+# only by scripts/accept.sh), it refuses every way bd 1.3.0 can close or remove a bead:
+#   close / done, todo done, epic close-eligible, duplicate, supersede, gate resolve,
+#   update to status closed, batch scripts with a close line or an update status=closed line,
+#   and the destructive delete / prune / purge / gc / flatten / import.
+# The subcommand is found after any global flags (bd --json close x is refused too).
+# Everything else passes through to the real bd. Probe: scripts/guard-probe.sh.
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 p="$(echo "$PATH" | tr ':' '\n' | grep -vx "$here" | paste -sd: -)"
 real="$(PATH="$p" command -v bd || true)"
 [ -n "$real" ] || { echo "bd guard: real bd not found on PATH" >&2; exit 127; }
+
+refuse() {
+  echo "bd guard: refusing 'bd $*'. Beads are closed only by scripts/accept.sh after acceptance passes." >&2
+  exit 77
+}
+closed_status() { case "$1" in closed|CLOSED|Closed) return 0;; esac; return 1; }
+
 if [ "${BEADS_ACCEPT:-0}" != "1" ]; then
-  case "${1:-}" in
-    close|done)
-      echo "bd guard: refusing 'bd $1'. Beads are closed only by scripts/accept.sh after acceptance passes." >&2; exit 77;;
+  args=("$@"); n=${#args[@]}; i=0
+  # Skip global flags; the ones listed take a separate value argument.
+  while [ "$i" -lt "$n" ]; do
+    case "${args[$i]}" in
+      --actor|--database|--db|-C|--directory|--dolt-auto-commit|--mem-profile) i=$((i + 2)) ;;
+      -*) i=$((i + 1)) ;;
+      *) break ;;
+    esac
+  done
+  cmd="${args[$i]:-}"; sub="${args[$((i + 1))]:-}"
+  rest=("${args[@]:$((i + 1))}")
+  case "$cmd" in
+    close|done|duplicate|supersede|delete|prune|purge|gc|flatten|import) refuse "$cmd" ;;
+    todo) [ "$sub" = done ] && refuse "todo done" ;;
+    epic) [ "$sub" = close-eligible ] && refuse "epic close-eligible" ;;
+    gate) [ "$sub" = resolve ] && refuse "gate resolve" ;;
     update)
-      for a in "$@"; do
-        case "$a" in --status=closed|-s=closed) echo "bd guard: refusing status=closed. Use scripts/accept.sh." >&2; exit 77;; esac
-      done
       prev=""
-      for a in "$@"; do
-        if { [ "$prev" = "--status" ] || [ "$prev" = "-s" ]; } && [ "$a" = "closed" ]; then
-          echo "bd guard: refusing status=closed. Use scripts/accept.sh." >&2; exit 77
-        fi; prev="$a"
-      done;;
+      for a in "${rest[@]}"; do
+        case "$a" in --status=*|-s=*) closed_status "${a#*=}" && refuse "update $a" ;; esac
+        if { [ "$prev" = --status ] || [ "$prev" = -s ]; } && closed_status "$a"; then refuse "update $prev $a"; fi
+        prev="$a"
+      done ;;
+    batch)
+      # Read the batch script (from -f/--file, else stdin), refuse close or status=closed lines,
+      # then hand the same script to the real bd.
+      file=""; prev=""
+      for a in "${rest[@]}"; do
+        case "$a" in --file=*|-f=*) file="${a#*=}" ;; esac
+        { [ "$prev" = -f ] || [ "$prev" = --file ]; } && file="$a"
+        prev="$a"
+      done
+      if [ -n "$file" ]; then script="$(cat -- "$file")" || exit 1; else script="$(cat)"; fi
+      if printf '%s\n' "$script" | grep -qiE '^[[:space:]]*(close([[:space:]]|$)|update[[:space:]].*status=closed([[:space:]]|$))'; then
+        refuse "batch (a close or status=closed line)"
+      fi
+      [ -z "$file" ] && { printf '%s\n' "$script" | "$real" "$@"; exit $?; } ;;
   esac
 fi
 exec "$real" "$@"

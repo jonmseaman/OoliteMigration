@@ -237,7 +237,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 	
 	// If we get here, the file wasn't found in the OXP.
 	// FIXME: should check case for built-in files.
-	if (checkBuiltIn)  return oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringOrNil(file) inFolder:oo::NSStringOrNil(folder)]);
+	if (checkBuiltIn && file.has_value())  return [ResourceManager cxx_pathForFileNamed:*file inFolder:folder];	// a nil name found no path
 	
 	return std::nullopt;
 }

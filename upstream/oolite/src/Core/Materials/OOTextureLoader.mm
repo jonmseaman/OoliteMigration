@@ -120,7 +120,7 @@ static BOOL					sHaveSetUp = NO;
 	
 	if (!cxx_OOInterpretTextureSpecifier(specifier, &name, &options, NULL, NULL, NO))  return nil;
 	options |= extraOptions;
-	path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(name) inFolder:oo::NSStringOrNil(folder)]);
+	path = [ResourceManager cxx_pathForFileNamed:name inFolder:folder];
 	if (!path.has_value())
 	{
 		if (!(options & kOOTextureNoFNFMessage))

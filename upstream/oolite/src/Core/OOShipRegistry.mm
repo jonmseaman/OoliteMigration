@@ -1117,8 +1117,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 				cxx_OOStandardsError("Error in shipdata.plist");
 				remove = YES;
 			}
-			// ResourceManager's path lookup is an unmigrated callee: convert at the call.
-			else if (!modelName.empty() && [ResourceManager pathForFileNamed:oo::NSStringFrom(modelName) inFolder:@"Models"] == nil)
+			else if (!modelName.empty() && ![ResourceManager cxx_pathForFileNamed:modelName inFolder:"Models"].has_value())
 			{
 				OO_LOG_ERR("shipData.load.error", "the shipdata.plist entry \"{}\" specifies non-existent model \"{}\".", shipKey, modelName);
 				cxx_OOStandardsError("Error in shipdata.plist");

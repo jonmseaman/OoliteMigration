@@ -146,9 +146,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	// Get AI verifier stage (may be nil).
 	_aiVerifierStage = [[self verifier] cxx_stageWithName:[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
 	
-	ooliteShipData = oo::StringsFrom([ResourceManager dictionaryFromFilesNamed:@"shipdata.plist"
-																	  inFolder:@"Config"
-																	  andMerge:YES]);
+	const oo::PList ooliteShipDataPList = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist" inFolder:"Config" andMerge:YES];
+	if (const oo::PList::Dict *shipDataDict = ooliteShipDataPList.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[shipKey, shipEntry] : *shipDataDict)  ooliteShipData.push_back(shipKey);	// byte order of the key (hash order before; only used as a set)
+	}
 	
 	// Check that it's a dictionary
 	if (!_shipdataPList.isDict())
@@ -174,7 +176,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	_allKeys = _playerKeys;
 	for (const std::string &key : _stationKeys)  AddString(_allKeys, key);
 
-	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"shipdataEntrySchema.plist" inFolder:@"Schemata" andMerge:NO])];
+	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:[ResourceManager cxx_dictionaryFromFilesNamed:"shipdataEntrySchema.plist" inFolder:"Schemata" andMerge:NO]];
 	[_schemaVerifier setDelegate:self];
 
 	for (const auto &[shipKey, value] : *_shipdataPList.getIf<oo::PList::Dict>())  shipList.push_back(shipKey);
