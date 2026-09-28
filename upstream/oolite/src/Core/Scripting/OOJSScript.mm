@@ -479,7 +479,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 			ooscript::clearPendingException((context));
 		}
 		
-		OO_LOG("script.javaScript.call", "Calling [{}].{}()", oo::DescriptionOf([self name]), oo::DescriptionOf(OOStringFromJSID(methodID)));
+		OO_LOG("script.javaScript.call", "Calling [{}].{}()", oo::DescriptionOf([self name]), (cxx_OOStringFromJSID(methodID)).value_or("(null)"));
 		oo::log::indentIf("script.javaScript.call");
 #endif
 		
@@ -555,7 +555,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	if (_jsSelf == NULL)  return nil;
 	
 	ooscript::Context context = OOJSAcquireContext();
-	id result = [self propertyWithID:OOJSIDFromString(oo::NSStringFrom(propName)) inContext:context];
+	id result = [self propertyWithID:cxx_OOJSIDFromString(propName) inContext:context];
 	OOJSRelinquishContext(context);
 	
 	return result;
@@ -568,7 +568,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Context context = OOJSAcquireContext();
-	BOOL result = [self setProperty:value withID:OOJSIDFromString(oo::NSStringFrom(propName)) inContext:context];
+	BOOL result = [self setProperty:value withID:cxx_OOJSIDFromString(propName) inContext:context];
 	OOJSRelinquishContext(context);
 	
 	return result;
@@ -581,7 +581,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Context context = OOJSAcquireContext();
-	BOOL result = [self defineProperty:value withID:OOJSIDFromString(oo::NSStringFrom(propName)) inContext:context];
+	BOOL result = [self defineProperty:value withID:cxx_OOJSIDFromString(propName) inContext:context];
 	OOJSRelinquishContext(context);
 	
 	return result;
@@ -746,7 +746,7 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 		if (ooscript::stringEqualsAscii(cx, propNameStr, "tickle", &match) && match)
 		{
 			OOJSScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOJSScript class]);
-			OOJSReportWarning(context, @"Script %@ appears to use the tickle() event handler, which is no longer supported.", [thisScript name]);
+			cxx_OOJSReportWarning(context, "Script %s appears to use the tickle() event handler, which is no longer supported.", oo::DescriptionOf([thisScript name]).c_str());
 		}
 	}
 	
