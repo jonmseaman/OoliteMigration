@@ -377,15 +377,27 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 }
 
 
-- (id) oo_jsDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsDescription
 {
-	return oo::NSStringFrom(oo::str::format("[Sound \"%s\"]", oo::DescriptionOf([self name]).c_str()));
+	return oo::str::format("[Sound \"%s\"]", oo::DescriptionOf([self name]).c_str());
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (id) oo_jsDescription
 {
-	return @"Sound";
+	return oo::NSStringOrNil([self cxx_oo_jsDescription]);
+}
+
+
+- (std::optional<std::string>) cxx_oo_jsClassName
+{
+	return std::string("Sound");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 @end

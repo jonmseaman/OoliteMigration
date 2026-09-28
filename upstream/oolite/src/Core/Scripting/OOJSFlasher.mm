@@ -207,9 +207,15 @@ static BOOL JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Flasher";
+	return std::string("Flasher");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 - (BOOL) isVisibleToScripts

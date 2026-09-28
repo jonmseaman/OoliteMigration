@@ -42,7 +42,8 @@ void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
 @interface OOVisualEffectEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName;
+- (id) oo_jsClassName;	// -> -cxx_oo_jsClassName
 - (BOOL) isVisibleToScripts;
 - (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript;	// empty before the first subentity; JS nil via visualEffectSubEntityEnumerator
 

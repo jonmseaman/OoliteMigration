@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "OOJSEntity.h"
 #import "OOJSVector.h"
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "ShipEntity.h"
 
@@ -183,9 +184,15 @@ static BOOL JSExhaustPlumeGetExhaustPlumeEntity(ooscript::Context context, ooscr
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"ExhaustPlume";
+	return std::string("ExhaustPlume");
+}
+
+
+- (id) oo_jsClassName
+{
+	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
 }
 
 - (BOOL) isVisibleToScripts
