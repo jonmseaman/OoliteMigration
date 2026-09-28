@@ -229,7 +229,7 @@ static OOSound *GetNamedSound(const std::string &name)
 	}
 	else
 	{
-		sound = [ResourceManager ooSoundNamed:oo::NSStringFrom(name) inFolder:@"Sounds"];
+		sound = [ResourceManager cxx_ooSoundNamed:name inFolder:"Sounds"];
 	}
 	
 	return sound;

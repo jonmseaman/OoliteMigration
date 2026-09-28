@@ -1200,7 +1200,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		
 		{
 			void *pool = objc_autoreleasePoolPush();
-			const std::optional<std::string> dataOpt = oo::OptionalString([ResourceManager stringFromFilesNamed:oo::NSStringFrom(filename) inFolder:@"Models" cache:NO]);
+			const std::optional<std::string> dataOpt = [ResourceManager cxx_stringFromFilesNamed:filename inFolder:"Models" cache:NO];
 			if (!dataOpt)
 			{
 				// Model not found

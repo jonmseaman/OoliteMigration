@@ -967,7 +967,7 @@ SEL LookUpLegacySelector(const std::string &key)
 		static std::set<std::string, std::less<>> *whitelist = nullptr;
 		if (whitelist == nullptr)
 		{
-			const oo::PList whitelistDict = oo::PListFrom([ResourceManager whitelistDictionary]);
+			const oo::PList whitelistDict = [ResourceManager cxx_whitelistDictionary];
 			whitelist = new std::set<std::string, std::less<>>;
 			aliases = new std::map<std::string, std::string, std::less<>>;
 			const oo::PList *methods = whitelistDict.find("query_methods");

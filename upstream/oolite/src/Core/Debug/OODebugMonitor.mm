@@ -97,9 +97,9 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	self = [super init];
 	if (self != nil)
 	{
-		_configFromOXPs = [self normalizeConfigDictionary:oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"debugConfig.plist"
-																										   inFolder:@"Config"
-																										   andMerge:YES])];
+		_configFromOXPs = [self normalizeConfigDictionary:[ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
+																										   inFolder:"Config"
+																										   andMerge:YES]];
 
 		_configOverrides = [self normalizeConfigDictionary:oo::Defaults::standard().dictionaryForKey("debug-settings-override")];
 		
