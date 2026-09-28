@@ -174,7 +174,7 @@ OOSound *SoundFromJSValue(ooscript::Context context, ooscript::Value value)
 	OOJSPauseTimeLimiter();
 	if ([PLAYER status] != STATUS_START_GAME && ooscript::isString(value))
 	{
-		return GetNamedSound(oo::StdString(OOStringFromJSValue(context, value)));
+		return GetNamedSound(cxx_OOStringFromJSValue(context, value).value_or(std::string()));
 	}
 	else
 	{
@@ -248,10 +248,10 @@ static bool SoundStaticLoad(ooscript::Context context, ooscript::CallArgs &oojsA
 	std::optional<std::string>	name;
 	OOSound						*sound = nil;
 	
-	if (oojsArgs.count() > 0)  name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() > 0)  name = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (!name.has_value())
 	{
-		OOJSReportBadArguments(context, @"Sound", @"load", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
+		cxx_OOJSReportBadArguments(context, "Sound", "load", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
 		return NO;
 	}
 	
@@ -291,26 +291,26 @@ static bool SoundStaticPlayMusic(ooscript::Context context, ooscript::CallArgs &
 	bool						loop = false;
 	double						gain = OO_DEFAULT_SOUNDSOURCE_GAIN;
 	
-	if (oojsArgs.count() > 0)  name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() > 0)  name = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (!name.has_value())
 	{
-		OOJSReportBadArguments(context, @"Sound", @"playMusic", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
+		cxx_OOJSReportBadArguments(context, "Sound", "playMusic", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
 		return NO;
 	}
 	if (oojsArgs.count() > 1)
 	{
 		if (!ooscript::valueToBoolean(context, (OOJS_ARGV[1]), &loop))
 		{
-			OOJSReportBadArguments(context, @"Sound", @"playMusic", 1, OOJS_ARGV + 1, nil, @"boolean");
+			cxx_OOJSReportBadArguments(context, "Sound", "playMusic", 1, OOJS_ARGV + 1, std::nullopt, "boolean");
 			return NO;
 		}
 	}
 	
 	if (oojsArgs.count() > 2)
 	{
-		if (!OOJSArgumentListGetNumber(context, @"Sound", @"playMusic", 2, OOJS_ARGV + 2, &gain, NULL))
+		if (!cxx_OOJSArgumentListGetNumber(context, "Sound", "playMusic", 2, OOJS_ARGV + 2, &gain, NULL))
 		{
-			OOJSReportBadArguments(context, @"Sound", @"playMusic", 1, OOJS_ARGV + 2, nil, @"float");
+			cxx_OOJSReportBadArguments(context, "Sound", "playMusic", 1, OOJS_ARGV + 2, std::nullopt, "float");
 			return NO;
 		}
 	}
@@ -336,10 +336,10 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 	
 	if (oojsArgs.count() > 0)
 	{
-		name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+		name = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 		if (EXPECT_NOT(!name.has_value()))
 		{
-			OOJSReportBadArguments(context, @"Sound", @"stopMusic", oojsArgs.count(), OOJS_ARGV, nil, @"string or no argument");
+			cxx_OOJSReportBadArguments(context, "Sound", "stopMusic", oojsArgs.count(), OOJS_ARGV, std::nullopt, "string or no argument");
 			return NO;
 		}
 	}
