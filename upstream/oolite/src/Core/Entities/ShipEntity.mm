@@ -326,17 +326,22 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-// Designated initializer
-- (id)initWithKey:(id)key definition:(id)dict	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+// Designated initializer (id edge; forwards to cxx_ until part 2)
+- (id)initWithKey:(id)key definition:(id)dict
+{
+	NSParameterAssert(dict != nil);
+	return [self cxx_initWithKey:oo::OptionalString(key).value_or(std::string{}) definition:oo::PListFrom(dict)];
+}
+
+
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
 {
 	OOJS_PROFILE_ENTER
-	
-	NSParameterAssert(dict != nil);
 	
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	_shipKey = oo::OptionalString(key);
+	_shipKey = key;
 
 	isShip = YES;
 	entity_personality = Ranrot() & ENTITY_PERSONALITY_MAX;
@@ -356,7 +361,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	_nextAegisCheck = -0.1f;
 	aiScriptWakeTime = 0;
 	
-	if (![self setUpShipFromDictionary:dict])
+	if (![self setUpShipFromDictionary:oo::ObjectFromPList(dict)])
 	{
 		[self release];
 		self = nil;

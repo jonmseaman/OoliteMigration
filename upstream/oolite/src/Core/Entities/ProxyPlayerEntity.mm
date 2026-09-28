@@ -24,13 +24,21 @@ MA 02110-1301, USA.
 */
 
 #import "ProxyPlayerEntity.h"
+#import "OOFoundationBridge.h"
 
 
 @implementation ProxyPlayerEntity
 
-- (id)initWithKey:(id)key definition:(id)dict	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (id)initWithKey:(id)key definition:(id)dict	// forwards to cxx_ until part 2
 {
-	self = [super initWithKey:key definition:dict];
+	NSParameterAssert(dict != nil);
+	return [self cxx_initWithKey:oo::OptionalString(key).value_or(std::string{}) definition:oo::PListFrom(dict)];
+}
+
+
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
+{
+	self = [super cxx_initWithKey:key definition:dict];
 	if (self != nil)
 	{
 		[self setDialForwardShield:1.0f];

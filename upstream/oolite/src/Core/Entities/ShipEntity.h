@@ -577,7 +577,8 @@ typedef enum
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (id)initWithKey:(id)key definition:(id)dict;	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (id)initWithKey:(id)key definition:(id)dict;	// forwards to cxx_ until part 2
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
 - (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
 - (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 - (BOOL)setUpSubEntities;

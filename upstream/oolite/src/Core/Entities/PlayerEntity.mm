@@ -1985,7 +1985,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	PlayerEntity is alloced and inited on demand by +sharedPlayer. This
 	initialization doesn't actually set anything up -- apart from the
 	assertion, it's like doing a bare alloc. -deferredInit does the work
-	that -init "should" be doing. It assumes that -[ShipEntity initWithKey:
+	that -init "should" be doing. It assumes that -[ShipEntity cxx_initWithKey:
 	definition:] will not return an object other than self.
 	This is necessary because we need a pointer to the PlayerEntity early in
 	startup, when ship data hasn't been loaded yet. In particular, we need
@@ -2003,7 +2003,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) deferredInit
 {
 	NSAssert(gOOPlayer == self, @"Expected only one PlayerEntity to exist at a time.");
-	NSAssert([super initWithKey:PLAYER_SHIP_DESC definition:[NSDictionary dictionary]] == self, @"PlayerEntity requires -[ShipEntity initWithKey:definition:] to return unmodified self.");
+	NSAssert([super cxx_initWithKey:oo::StdString(PLAYER_SHIP_DESC) definition:oo::PList(oo::PList::Dict{})] == self, @"PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
 
 	maxFieldOfView = MAX_FOV;
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
@@ -4198,7 +4198,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[demoShip release];
 	}
 	
-	ShipEntity *ship = [[ProxyPlayerEntity alloc] initWithKey:oo::NSStringFrom(shipKey) definition:oo::ObjectFromPList(shipData)];
+	ShipEntity *ship = [[ProxyPlayerEntity alloc] cxx_initWithKey:shipKey definition:shipData];
 	if (personality != ENTITY_PERSONALITY_INVALID)  [ship setEntityPersonalityInt:personality];
 	
 	[ship wasAddedToUniverse];
