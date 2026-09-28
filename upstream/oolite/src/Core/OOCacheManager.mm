@@ -587,7 +587,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-// A deep copy of the caches as property-list data (was OODeepCopy of the dictionary of caches).
+// A deep copy of the caches as property-list data (was a deep-copy of the dictionary of caches).
 - (oo::PList)dictionaryOfCaches
 {
 	oo::PList::Dict result;
