@@ -286,8 +286,8 @@ using ooscript::Context;
 	}
 	else
 	{
-		NSString *path = [ResourceManager pathForFileNamed:[aiString stringByAppendingString:@".js"] inFolder:@"AIs"];
-		if (path == nil) // no js, use plist
+		const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:oo::StdString(aiString) + ".js" inFolder:"AIs"];
+		if (!path.has_value()) // no js, use plist
 		{
 			[self setAITo:[aiString stringByAppendingString:@".plist"]];
 		}

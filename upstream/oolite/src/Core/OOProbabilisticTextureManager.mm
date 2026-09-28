@@ -83,7 +83,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	
 	if (OK)
 	{
-		config = oo::PListFrom([ResourceManager arrayFromFilesNamed:oo::NSStringFrom(plistName) inFolder:@"Config" andMerge:YES]);
+		config = [ResourceManager cxx_arrayFromFilesNamed:plistName inFolder:"Config" andMerge:YES];
 		if (!config)  OK = NO;
 	}
 	

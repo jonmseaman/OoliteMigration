@@ -105,7 +105,6 @@ oolite_sources += files(
     'OOXMLExtensions.mm',
     'Octree.mm',
     'ResourceManager.mm',
-    'ResourceManager+FoundationBridge.mm',
     'TextureStore.mm',
     'Universe.mm',
     'Universe+FoundationBridge.mm',
