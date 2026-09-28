@@ -9,7 +9,6 @@ This code is hereby placed in the public domain.
 
 #import "OOWeakReference.h"
 #import "OOCocoa.h"	// OOObject's -description components
-#import "OODeepCopy.h"
 #import "NSObjectOOExtensions.h"
 #import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
 #import "OOStringBridge.h"
@@ -175,12 +174,6 @@ return [result autorelease];
 - (id) className
 {
 	return [(id)_object className];
-}
-
-
-- (id) ooDeepCopyWithSharedObjects:(id)objects
-{
-	return [(id)_object ooDeepCopyWithSharedObjects:objects];
 }
 
 

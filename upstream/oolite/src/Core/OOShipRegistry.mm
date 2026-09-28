@@ -35,7 +35,6 @@ SOFTWARE.
 #import "OOMesh.h"
 #import "GameController.h"
 #import "OOLegacyScriptWhitelist.h"
-#import "OODeepCopy.h"
 #import "OOColor.h"
 #import "OOStringExpander.h"
 #import "OOShipLibraryDescriptions.h"
