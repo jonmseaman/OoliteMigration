@@ -39,7 +39,6 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #include "oofnd/Scanner.hpp"
-#import "OOFilteringEnumerator.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
 #import "OOWeakSet.h"

@@ -39,7 +39,6 @@
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #import "OOEntityFilterPredicate.h"
-#import "OOFilteringEnumerator.h"
 #import "OOJSPopulatorDefinition.h"
 #import "OODebugStandards.h"
 #import "EntityOOJavaScriptExtensions.h"
@@ -455,9 +454,16 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			break;
 			
 		case kSystem_planets:
-			result = [[[UNIVERSE planets] objectEnumeratorFilteredWithSelector:@selector(isVisibleToScripts)] allObjects];
+		{
+			std::vector<oo::ObjCRef<OOPlanetEntity *>> visible;
+			for (const auto &r : [UNIVERSE cxx_planets]) {
+				if (![r.get() isVisibleToScripts])  continue;
+				visible.push_back(r);
+			}
+			result = oo::NSArrayFromObjects(visible);
 			handled = YES;
 			break;
+		}
 			
 		case kSystem_stations:
 			result = [UNIVERSE stations];
