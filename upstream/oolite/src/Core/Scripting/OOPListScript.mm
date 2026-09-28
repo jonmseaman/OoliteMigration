@@ -69,7 +69,8 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 	}
 	else
 	{
-		const oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(filePath)));
+		oo::PList dict = cxx_OOPropertyListFromFile(filePath);
+		if (!dict.isDict())  dict = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 		if (!dict)  return std::nullopt;
 		return [self scriptsFromDictionaryOfScripts:dict filePath:filePath];
 	}
