@@ -423,7 +423,7 @@ else. Until then, a caller's sweep bead moves off them with:
 |---|---|
 | `NSString (OOExtensions)`, `(OOUtilities)` | `oo::str` (tables above and in `String.hpp`) |
 | `NSFileManager (OOExtensions)`, `NSData` file reading | `oo::fs` (`oofnd/FileSystem.hpp`) |
-| `NSDictionary` / `NSMutableDictionary (OOExtensions)`, `OOCollectionExtractors` | `oo::PList` / std containers; `get<T>` (the `oo_*ForKey` recipe) |
+| `NSDictionary` / `NSMutableDictionary (OOExtensions)`, `OOCollectionExtractors` | `oo::PList` / std containers; `get<T>` (the `oo_*ForKey` recipe); `OO{Vector,HPVector,Quaternion}FromObject` / `OOPropertyListFrom*` / `OOFuzzyBooleanFromObject` -> `Core/OOPListGameTypes.h` (`get<Vector>(key, fallback)`, `OOVectorFromPList`, `OOPListFromVector`, `OOFuzzyBooleanFromPList`) |
 | `NSNumber (OOExtensions)` | the scalar |
 | `OODeepCopy(x)` | a value copy of the `oo::PList` / std container (already deep) |
 | `[e objectEnumeratorFilteredWithSelector:@selector(isFoo)]` & co. | `for (const auto &r : v) { if (![r.get() isFoo]) continue; ... }` |
