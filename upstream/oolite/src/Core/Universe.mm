@@ -2979,7 +2979,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	if (isGroup)
 	{
-		group = [OOShipGroup groupWithName:oo::NSStringFrom(oo::str::format("%s group", role.c_str()))];
+		group = [OOShipGroup cxx_groupWithName:oo::str::format("%s group", role.c_str())];
 	}
 
 	while (count--)
