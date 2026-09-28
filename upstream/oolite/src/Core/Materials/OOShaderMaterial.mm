@@ -781,9 +781,21 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return oo::NSSetFromObjects(std::vector<OOTexture *>(textures, textures + texCount));
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	result.reserve(texCount);
+	for (uint32_t i = 0; i < texCount; i++)
+	{
+		result.emplace_back(textures[i]);
+	}
+	return result;
+}
+
+
+- (id) allTextures	// forwards to cxx_ until part 3
+{
+	return oo::NSSetFromObjects([self cxx_allTextures]);
 }
 #endif
 
