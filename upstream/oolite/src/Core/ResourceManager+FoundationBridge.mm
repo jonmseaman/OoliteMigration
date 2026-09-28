@@ -206,14 +206,14 @@ NSString *ArrayCacheKey(NSString *fileName, NSString *folderName, BOOL mergeFile
 	OOCacheManager *cacheMgr = [OOCacheManager sharedCache];
 	if (cacheKey != nil)
 	{
-		id cached = [cacheMgr objectForKey:cacheKey inCache:@"dictionaries"];
+		id cached = [cacheMgr cxx_objectForKey:oo::StdString(cacheKey) inCache:"dictionaries"];
 		if (cached != nil)  return cached;
 	}
 
 	const oo::PList result = [self cxx_dictionaryFromFilesNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) mergeMode:mergeMode cache:useCache];
 	if (cacheKey != nil)
 	{
-		id cached = [cacheMgr objectForKey:cacheKey inCache:@"dictionaries"];	// what the load just cached
+		id cached = [cacheMgr cxx_objectForKey:oo::StdString(cacheKey) inCache:"dictionaries"];	// what the load just cached
 		if (cached != nil)  return cached;
 	}
 	return oo::ObjectFromPList(result);
@@ -239,14 +239,14 @@ NSString *ArrayCacheKey(NSString *fileName, NSString *folderName, BOOL mergeFile
 	OOCacheManager *cacheMgr = [OOCacheManager sharedCache];
 	if (cacheKey != nil)
 	{
-		id cached = [cacheMgr objectForKey:cacheKey inCache:@"arrays"];
+		id cached = [cacheMgr cxx_objectForKey:oo::StdString(cacheKey) inCache:"arrays"];
 		if (cached != nil)  return [NSArray arrayWithArray:cached];
 	}
 
 	const oo::PList result = [self cxx_arrayFromFilesNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) andMerge:mergeFiles cache:useCache];
 	if (cacheKey != nil)
 	{
-		id cached = [cacheMgr objectForKey:cacheKey inCache:@"arrays"];	// what the load just cached
+		id cached = [cacheMgr cxx_objectForKey:oo::StdString(cacheKey) inCache:"arrays"];	// what the load just cached
 		if (cached != nil)  return [NSArray arrayWithArray:cached];
 	}
 	// No file to merge was nil; a missing unmerged array went through +arrayWithArray: of nil, an empty array.
@@ -360,13 +360,13 @@ NSString *ArrayCacheKey(NSString *fileName, NSString *folderName, BOOL mergeFile
 	// that object too (see the loaders above).
 	NSString *cacheKey = (folderName != nil) ? [NSString stringWithFormat:@"%@/%@", folderName, fileName] : fileName;
 	OOCacheManager *cacheMgr = [OOCacheManager sharedCache];
-	id cached = [cacheMgr objectForKey:cacheKey inCache:@"resolved paths"];
+	id cached = [cacheMgr cxx_objectForKey:oo::StdString(cacheKey) inCache:"resolved paths"];
 	if (cached != nil)  return cached;
 
 	const std::optional<std::string> result = [self cxx_pathForFileNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) cache:useCache];
 	if (useCache && result.has_value())
 	{
-		cached = [cacheMgr objectForKey:cacheKey inCache:@"resolved paths"];	// what the lookup just cached
+		cached = [cacheMgr cxx_objectForKey:oo::StdString(cacheKey) inCache:"resolved paths"];	// what the lookup just cached
 		if (cached != nil)  return cached;
 	}
 	return oo::NSStringOrNil(result);
