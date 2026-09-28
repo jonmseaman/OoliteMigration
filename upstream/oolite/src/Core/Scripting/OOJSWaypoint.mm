@@ -191,9 +191,9 @@ static BOOL JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Obj
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Waypoint";
+	return std::string("Waypoint");
 }
 
 - (BOOL) isVisibleToScripts

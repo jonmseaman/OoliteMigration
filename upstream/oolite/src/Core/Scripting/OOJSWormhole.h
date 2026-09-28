@@ -42,7 +42,7 @@ void InitOOJSWormhole(ooscript::Context context, ooscript::Object global);
 @interface WormholeEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 
 @end

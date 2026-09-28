@@ -280,9 +280,9 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Timer";
+	return std::string("Timer");
 }
 
 
@@ -298,7 +298,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	id object = OOJSNativeObjectFromJSObject(context, _jsThis);
 	if (object != nil)
 	{
-		described = [object oo_jsDescription] != nil;
+		described = [object cxx_oo_jsDescription].has_value();
 		if (!described)  described = [object description] != nil;
 	}
 	

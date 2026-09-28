@@ -34,7 +34,6 @@ MA 02110-1301, USA.
 - (BOOL) isVisibleToScripts;
 
 - (std::optional<std::string>) cxx_oo_jsClassName;
-- (id) oo_jsClassName;	// -> -cxx_oo_jsClassName
 
 // Internal:
 - (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;

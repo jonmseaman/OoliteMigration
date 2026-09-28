@@ -419,9 +419,9 @@ static bool SoundSourcePlayOrRepeat(ooscript::Context context, ooscript::CallArg
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"SoundSource";
+	return std::string("SoundSource");
 }
 
 @end

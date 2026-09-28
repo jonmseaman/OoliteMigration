@@ -622,9 +622,9 @@ static bool EquipmentInfoGetAllEqipment(Context cx, Object /*obj*/, PropertyId /
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"EquipmentInfo";
+	return std::string("EquipmentInfo");
 }
 
 

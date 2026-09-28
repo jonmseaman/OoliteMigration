@@ -189,12 +189,6 @@ static BOOL JSExhaustPlumeGetExhaustPlumeEntity(ooscript::Context context, ooscr
 	return std::string("ExhaustPlume");
 }
 
-
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
 - (BOOL) isVisibleToScripts
 {
 	return YES;

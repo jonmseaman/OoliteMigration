@@ -219,12 +219,12 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 
 	Requires a request on context.
 
-	-oo_jsDescription
-	-oo_jsDescriptionWithClassName:
-	-oo_jsClassName
+	-cxx_oo_jsDescription
+	-cxx_oo_jsDescriptionWithClassName:
+	-cxx_oo_jsClassName
 
-	See comments for -descriptionComponents in OOCocoa.h. Strings, typed id: the selectors are
-	shared with the Foundation root class and every class that overrides them.
+	See comments for -descriptionComponents in OOCocoa.h. C++ string twins on OOObject;
+	Foundation NSObject/NSString/NSNumber keep the id selectors in OOJavaScriptEngine+FoundationBridge.
 
 	oo_clearJSSelf:
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
@@ -234,11 +234,8 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
 - (std::optional<std::string>) cxx_oo_jsDescription;
-- (id) oo_jsDescription;	// -> -cxx_oo_jsDescription
 - (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
-- (id) oo_jsDescriptionWithClassName:(id)className;	// -> -cxx_oo_jsDescriptionWithClassName:
 - (std::optional<std::string>) cxx_oo_jsClassName;
-- (id) oo_jsClassName;	// -> -cxx_oo_jsClassName
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end
@@ -664,7 +661,7 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript
 	Implementation of toString() for JS classes whose private storage is an
 	Objective-C object reference (generally an OOWeakReference).
 	
-	Calls -oo_jsDescription and, if that fails, -description.
+	Calls -cxx_oo_jsDescription and, if that fails, -description.
 */
 OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 

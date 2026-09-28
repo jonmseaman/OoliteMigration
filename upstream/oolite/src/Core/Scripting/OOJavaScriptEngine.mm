@@ -1287,21 +1287,9 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
-
 - (std::optional<std::string>) cxx_oo_jsDescription
 {
 	return [self cxx_oo_jsDescriptionWithClassName:[self cxx_oo_jsClassName]];
-}
-
-
-- (id) oo_jsDescription
-{
-	return oo::NSStringOrNil([self cxx_oo_jsDescription]);
 }
 
 
@@ -1324,12 +1312,6 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 	}
 
 	OOJS_PROFILE_EXIT_VAL(std::nullopt)
-}
-
-
-- (id) oo_jsDescriptionWithClassName:(id)className
-{
-	return oo::NSStringOrNil([self cxx_oo_jsDescriptionWithClassName:oo::OptionalString(className)]);
 }
 
 
@@ -1829,13 +1811,13 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_NATIVE_ENTER(context)
 	
 	id						object = nil;
-	id						description = nil;	// the object's own -oo_jsDescription / -description
+	id						description = nil;	// the object's own -cxx_oo_jsDescription / -description
 	ooscript::ClassDef					*jsClass = NULL;
 
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object != nil)
 	{
-		description = [object oo_jsDescription];
+		description = oo::NSStringOrNil([object cxx_oo_jsDescription]);
 		if (description == nil)  description = [object description];
 	}
 	if (description == nil)

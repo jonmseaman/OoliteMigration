@@ -527,12 +527,6 @@ ooscript::Object JSPlayerShipObject(void)
 }
 
 
-- (id) oo_jsClassName
-{
-	return oo::NSStringOrNil([self cxx_oo_jsClassName]);
-}
-
-
 - (void) setJSSelf:(ooscript::Object)val context:(ooscript::Context)context
 {
 	_jsSelf = val;
