@@ -154,7 +154,7 @@ BOOL IsVisualEffectPredicate(Entity *entity, void *parameter)
 
 BOOL HasRolePredicate(Entity *ship, void *parameter)
 {
-	return [(ShipEntity *)ship hasRole:(id)parameter];	// an Objective-C string; -hasRole: is a shared selector (proposed ADR-0043)
+	return parameter != nullptr && [(ShipEntity *)ship hasRole:oo::StdString((NSString *)parameter)];
 }
 
 

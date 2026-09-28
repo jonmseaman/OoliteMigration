@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -174,7 +175,7 @@ namespace {
 static BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)  GCC_ATTR((unused));
 static BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)
 {
-	NSCParameterAssert(outObject != NULL);
+	OOCParameterAssert(outObject != NULL);
 	static Class cls = Nil;
 	if (EXPECT_NOT(cls == Nil))  cls = [OOShipGroup class];
 	return OOJSObjectGetterImplPRIVATE(context, inObject, &sShipGroupClass, cls, "JSShipGroupGetShipGroup", (id *)outObject);
@@ -218,7 +219,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShipGroup_ships:
-			result = [group memberArray];
+			result = oo::NSArrayFromObjects((group != nil) ? [group cxx_memberArray] : std::vector<oo::ObjCRef<ShipEntity *>>());	// (no C++ value from a message to nil)
 			if (result == nil)  result = oo::NSArrayFromObjects(std::vector<id>());	// an empty array
 			break;
 			
@@ -327,7 +328,7 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 		}
 	}
 	
-	OOJS_RETURN_OBJECT([OOShipGroup groupWithName:oo::NSStringOrNil(name) leader:leader]);
+	OOJS_RETURN_OBJECT([OOShipGroup cxx_groupWithName:name leader:leader]);
 	
 	OOJS_NATIVE_EXIT
 }

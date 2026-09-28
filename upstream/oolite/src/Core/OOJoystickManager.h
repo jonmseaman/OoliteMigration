@@ -149,8 +149,8 @@ enum {
 #define AXCBTHRESH 20000
 
 // Dictionary keys - used in the defaults file
-#define AXIS_SETTINGS @"JoystickAxes"  // NSUserDefaults
-#define BUTTON_SETTINGS @"JoystickButs" // NSUserDefaults
+#define AXIS_SETTINGS @"JoystickAxes"  // oo::Defaults key
+#define BUTTON_SETTINGS @"JoystickButs" // oo::Defaults key
 #define STICK_ISAXIS @"isAxis"      // YES=axis NO=button
 #define STICK_NUMBER @"stickNum"    // Stick number 0 to 4
 #define STICK_AXBUT  @"stickAxBt"   // Axis or button number
@@ -339,7 +339,7 @@ typedef struct
 
 
 //Methods that should be overridden by all subclasses
-- (id) nameOfJoystick:(NSUInteger)stickNumber;	// an Objective-C string. Shared selector (proposed ADR-0043).
+- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber;	// nullopt: the device has no name
 - (int16_t) getAxisWithStick:(NSUInteger) stickNum axis:(NSUInteger)axisNum;
 
 @end

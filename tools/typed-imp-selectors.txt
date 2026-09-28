@@ -1,0 +1,17 @@
+# Selectors whose @selector() literals are only ever fed to a TYPED IMP call, never to a by-name
+# dispatcher (bead oo-bzjh; tools/check-selector-types.py, "SELECTORS DISPATCHED THROUGH A TYPED
+# IMP"). One entry per line: <selector> <file> <anchor>, the anchor being text of the cast call
+# that occurs on exactly one line of the file (bead oo-x3t6: line numbers drifted). The tool
+# re-verifies each entry on every run (same declared types as the typedef, called through it in
+# every file with a literal, the anchor's line calls through it) and fails on one it cannot verify.
+#
+# OOOXZManager -applyFilter:... picks the filter by @selector and calls it through
+# -methodForSelector: cast to OneArgumentFilter / TwoArgumentFilter (bead oo-3rb.53).
+applyFilterByNoFilter:            upstream/oolite/src/Core/OOOXZManager.mm  ((OneArgumentFilter)filterIMP)
+applyFilterByUpdateRequired:      upstream/oolite/src/Core/OOOXZManager.mm  ((OneArgumentFilter)filterIMP)
+applyFilterByInstallable:         upstream/oolite/src/Core/OOOXZManager.mm  ((OneArgumentFilter)filterIMP)
+applyFilterByKeyword:keyword:     upstream/oolite/src/Core/OOOXZManager.mm  ((TwoArgumentFilter)filterIMP)
+applyFilterByAuthor:author:       upstream/oolite/src/Core/OOOXZManager.mm  ((TwoArgumentFilter)filterIMP)
+applyFilterByDays:days:           upstream/oolite/src/Core/OOOXZManager.mm  ((TwoArgumentFilter)filterIMP)
+applyFilterByTag:tag:             upstream/oolite/src/Core/OOOXZManager.mm  ((TwoArgumentFilter)filterIMP)
+applyFilterByCategory:category:   upstream/oolite/src/Core/OOOXZManager.mm  ((TwoArgumentFilter)filterIMP)

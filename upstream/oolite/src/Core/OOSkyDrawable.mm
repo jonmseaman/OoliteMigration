@@ -239,7 +239,7 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 	// Resetting fog is draw loop's responsibility.
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOSkyDrawable after rendering");
+	cxx_OOCheckOpenGLErrors("OOSkyDrawable after rendering");
 }
 
 
@@ -255,17 +255,17 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 }
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	std::vector<id> result;
+	std::vector<oo::ObjCRef<OOTexture *>> result;
 	result.reserve(_quadSets.size());
 	
 	for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)
 	{
-		result.push_back([quadSet.get() texture]);
+		result.emplace_back([quadSet.get() texture]);
 	}
 	
-	return oo::NSSetFromObjects(result);
+	return result;
 }
 
 
@@ -650,7 +650,7 @@ do { \
 		}
 		
 		_texture = [texture retain];
-		OOLog(@"sky.setup", @"Generated quadset with %u quads for texture %@", count, _texture);
+		OO_LOG("sky.setup", "Generated quadset with {} quads for texture {}", static_cast<unsigned>(count), oo::DescriptionOf(_texture));
 	}
 	
 	if (!OK)

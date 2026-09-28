@@ -66,6 +66,21 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -272,9 +287,9 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"VisualEffect";
+	return std::string("VisualEffect");
 }
 
 - (BOOL) isVisibleToScripts
@@ -282,10 +297,17 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 	return YES;
 }
 
-- (id) subEntitiesForScript	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript
 {
 	const auto subs = [self visualEffectSubEntityEnumerator];
-	return subs.has_value() ? oo::NSArrayFromObjects(*subs) : nil;	// nil before the first subentity, as before
+	if (!subs.has_value())  return {};
+	std::vector<oo::ObjCRef<Entity *>> result;
+	result.reserve(subs->size());
+	for (const auto &sub : *subs)
+	{
+		result.emplace_back(sub.get());
+	}
+	return result;
 }
 
 @end
@@ -311,11 +333,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 	switch (ooscript::idToInt32(propID))
 	{
 		case kVisualEffect_beaconCode:
-			result = [entity beaconCode];
+			result = oo::NSStringOrNil([entity beaconCode]);
 			break;
 
 		case kVisualEffect_beaconLabel:
-			result = [entity beaconLabel];
+			result = oo::NSStringOrNil([entity beaconLabel]);
 			break;
 
 		case kVisualEffect_dataKey:
@@ -346,11 +368,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			return ooscript::newNumberValue(cx, [entity scaleZ], value);
 
 		case kVisualEffect_scannerDisplayColor1:
-			result = [[entity scannerDisplayColor1] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColor1]));
 			break;
 			
 		case kVisualEffect_scannerDisplayColor2:
-			result = [[entity scannerDisplayColor2] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColor2]));
 			break;
 
 		case kVisualEffect_hullHeatLevel:
@@ -377,7 +399,11 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			return VectorToJSValue(context, [entity shaderVector2], value_raw);
 
 		case kVisualEffect_subEntities:
-			result = [entity subEntitiesForScript];
+			{
+				// nil before the first subentity (was [subEntitiesForScript] == nil)
+				const auto subs = [entity visualEffectSubEntityEnumerator];
+				result = subs.has_value() ? oo::NSArrayFromObjects(*subs) : nil;
+			}
 			break;
 			
 			
@@ -386,8 +412,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			break;
 
 		case kVisualEffect_scriptInfo:
-			result = [entity scriptInfo];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
+			result = oo::ObjectFromPList([entity scriptInfo]);	// empty dict, never null
 			break;
 
 		default:
@@ -445,11 +470,11 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			{
 				if ([entity isBeacon]) 
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 					[UNIVERSE setNextBeacon:entity];
 				}
 			}
@@ -460,7 +485,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
 			if (sValue.has_value())
 			{
-				[entity setBeaconLabel:oo::NSStringFrom(*sValue)];
+				[entity setBeaconLabel:sValue];
 				return YES;
 			}
 			break;
@@ -636,7 +661,7 @@ static bool VisualEffectGetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 
 	OOJS_PROFILE_ENTER
 
-	NSObject			*result = nil;
+	OOObject			*result = nil;
 	OOVisualEffectEntity				*thisEnt = nil;
 
 	GET_THIS_EFFECT(thisEnt);
@@ -657,7 +682,7 @@ static bool VisualEffectGetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 	
 	OOJS_PROFILE_ENTER
 	
-	NSObject			*result = nil;
+	OOObject			*result = nil;
 	OOVisualEffectEntity				*thisEnt = nil;
 
 	GET_THIS_EFFECT(thisEnt);
@@ -867,12 +892,12 @@ static bool VisualEffectRestoreSubEntities(ooscript::Context cx, ooscript::CallA
 	
 	GET_THIS_EFFECT(thisEnt);
 	
-	NSUInteger subCount = [[thisEnt subEntitiesForScript] count];
+	NSUInteger subCount = [thisEnt subEntitiesForScript].size();
 	
 	[thisEnt clearSubEntities];
 	[thisEnt setUpSubEntities];
 	
-	if ([[thisEnt subEntitiesForScript] count] - subCount > 0)  numSubEntitiesRestored = [[thisEnt subEntitiesForScript] count] - subCount;
+	if ([thisEnt subEntitiesForScript].size() - subCount > 0)  numSubEntitiesRestored = [thisEnt subEntitiesForScript].size() - subCount;
 	
 	OOJS_RETURN_BOOL(numSubEntitiesRestored > 0);
 	

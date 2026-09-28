@@ -33,18 +33,21 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 
+#include <vector>
+#include "oofnd/objc/OOObjCRef.h"
+
+@class OOTexture;
 
 @interface OOMaterial: OOObject
 
 // Called once at startup (by -[Universe init]).
 + (void) setUp;
-
 
 - (id) name;	// an Objective-C string. Shared selector (proposed ADR-0043).
 
@@ -78,11 +81,10 @@ SOFTWARE.
 #endif
 
 #ifndef NDEBUG
-- (id) allTextures;	// an Objective-C set of textures. Shared selector (proposed ADR-0043).
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
 #endif
 
 @end
-
 
 @interface OOMaterial (OOSubclassInterface)
 

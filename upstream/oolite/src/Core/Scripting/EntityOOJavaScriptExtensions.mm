@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "OOJSVisualEffect.h"
 #import "WormholeEntity.h"
 #import "OOJSWormhole.h"
+#import "OOFoundationBridge.h"
 #include "oofnd/Notification.hpp"
 
 
@@ -46,9 +47,9 @@ MA 02110-1301, USA.
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Entity";
+	return std::string("Entity");
 }
 
 
@@ -124,15 +125,20 @@ MA 02110-1301, USA.
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Ship";
+	return std::string("Ship");
 }
 
 
-- (id) subEntitiesForScript	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript
 {
-	return [[self shipSubEntityEnumerator] allObjects];
+	std::vector<oo::ObjCRef<Entity *>> result;
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		result.emplace_back(sub.get());
+	}
+	return result;
 }
 
 

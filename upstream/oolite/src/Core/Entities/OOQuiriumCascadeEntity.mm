@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 
@@ -105,9 +106,10 @@ MA 02110-1301, USA.
 
 	// manage collisions
 	Entity *owner = [self owner];
-	Entity *e = nil;
-	foreach (e, collidingEntities)
+	const std::vector<oo::ObjCRef<Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	for (const oo::ObjCRef<Entity *> &collidingEntity : colliding)
 	{
+		Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
 		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:@"EQ_QC_MINE"];
@@ -143,7 +145,7 @@ MA 02110-1301, USA.
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOQuiriumCascadeEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOQuiriumCascadeEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

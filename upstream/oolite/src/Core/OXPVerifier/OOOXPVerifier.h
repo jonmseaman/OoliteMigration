@@ -52,9 +52,8 @@ SOFTWARE.
 /*	Foundation sweep (proposed ADR-0043, bead oo-hkvv): verifyOXP.plist is an oo::PList, paths
 	and names are UTF-8 std::strings, stages are retained through oo::ObjCRef. The stages waiting
 	to be examined or run are a vector in registration order (they were a set). The configuration
-	accessors are cxx_ methods; the Foundation-typed ones they replace live on in the transitional
-	bridge imported at the end of this header. -configurationValueForKey: is a shared selector
-	(OODebugMonitor) and keeps Objective-C objects.
+	accessors are cxx_ methods. -configurationValueForKey: is a shared selector (OODebugMonitor)
+	and keeps Objective-C objects.
 */
 @interface OOOXPVerifier: OOObject
 {
@@ -94,19 +93,12 @@ SOFTWARE.
 - (id)cxx_stageWithName:(const std::string &)name;
 
 // Read from verifyOXP.plist
-- (id)configurationValueForKey:(id)key;	// key: an Objective-C string. Shared selector (proposed ADR-0043).
+- (oo::PList)configurationValueForKey:(const std::string &)key;
 - (oo::PList)cxx_configurationArrayForKey:(const std::string &)key;		// an Array, or null (was nil) if absent or not an array
 - (oo::PList)cxx_configurationDictionaryForKey:(const std::string &)key;	// a Dict, or null (was nil) if absent or not a dictionary
 - (std::optional<std::string>)cxx_configurationStringForKey:(const std::string &)key;	// a string, or a number's text; nullopt (was nil) otherwise
 - (std::optional<std::vector<std::string>>)cxx_configurationSetForKey:(const std::string &)key;	// the array's distinct strings in byte order; nullopt (was nil) if not an array
 
 @end
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-hkvv, forwarding to the cxx_ methods above, so unmigrated callers compile
-	unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "OOOXPVerifier+FoundationBridge.h"
 
 #endif

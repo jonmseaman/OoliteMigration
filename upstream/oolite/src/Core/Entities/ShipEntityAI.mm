@@ -48,6 +48,8 @@
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -275,12 +277,12 @@ using ooscript::Context;
 	if ([aiString hasSuffix:@".plist"])
 	{
 		[[self getAI] setStateMachine:aiString withJSScript:@"oolite-nullAI.js"];
-		[self setAIScript:@"oolite-nullAI.js"];
+		[self setAIScript:"oolite-nullAI.js"];
 	}
 	else if ([aiString hasSuffix:@".js"])
 	{
 		[[self getAI] setStateMachine:@"nullAI.plist" withJSScript:aiString];
-		[self setAIScript:aiString];
+		[self setAIScript:oo::StdString(aiString)];
 	}
 	else
 	{
@@ -297,19 +299,17 @@ using ooscript::Context;
 }
 
 
-- (void) setAIScript:(NSString *)aiString
+- (void) setAIScript:(const std::string &)aiString
 {
-	NSMutableDictionary		*properties = nil;
-	
-	properties = [NSMutableDictionary dictionary];
-	[properties setObject:self forKey:@"ship"];
+	oo::PList::Dict properties;
+	properties["ship"] = oo::PListObject(self);
 	
 	[aiScript autorelease];
-	aiScript = [OOScript jsAIScriptFromFileNamed:aiString properties:properties];
+	aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:oo::PList(properties)];
 	if (aiScript == nil)
 	{
-		OOLog(@"ai.load.failed.unknownAI",@"Unable to load JS AI %@ for ship %@ (%@ for role %@)",aiString,self,[self shipDataKey],[self primaryRole]);
-		aiScript = [OOScript jsAIScriptFromFileNamed:@"oolite-nullAI.js" properties:properties];
+		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), oo::DescriptionOf([self shipDataKey]), oo::DescriptionOf([self primaryRole]));
+		aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:oo::PList(properties)];
 	}
 	else
 	{
@@ -484,7 +484,7 @@ using ooscript::Context;
 	else
 	{
 		behaviour = BEHAVIOUR_IDLE;
-		[shipAI message:@"NO_PLANET_NEARBY"];
+		[shipAI message:"NO_PLANET_NEARBY"];
 	}
 	
 	frustration = 0.0;
@@ -586,14 +586,14 @@ using ooscript::Context;
 	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
 	{
 		// remember the instructions (the station's weak reference is kept as an Object node)
-		dockingInstructions = oo::PListFrom([station dockingInstructionsForShip:self]);
+		dockingInstructions = [station dockingInstructionsForShip:self];
 		if (!dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];
 			
 			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
 			message = aiMessage != nullptr ? oo::ObjectFromPList(*aiMessage) : nil;
-			if (message != nil)  [shipAI message:message];
+			if (message != nil)  [shipAI message:oo::StdString(message)];
 			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
 			message = commsMessage != nullptr ? oo::ObjectFromPList(*commsMessage) : nil;
 			if (message != nil)  [station sendExpandedMessage:message toShip:self];
@@ -606,7 +606,7 @@ using ooscript::Context;
 	
 	if (dockingInstructions.isNull())
 	{
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 	}
 }
 
@@ -739,7 +739,7 @@ using ooscript::Context;
 #ifndef NDEBUG
 		if (reportAIMessages)
 		{
-			OOLog(@"ai.suggestEscort", @"DEBUG: %@ suggests escorting %@", self, mother);
+			OO_LOG("ai.suggestEscort", "DEBUG: {} suggests escorting {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
 		}
 #endif
 		
@@ -756,20 +756,20 @@ using ooscript::Context;
 			
 			[self setOwner:mother];
 			[self setGroup:[mother escortGroup]];
-			[shipAI message:@"ESCORTING"];
+			[shipAI message:"ESCORTING"];
 			return YES;
 		}
 		
 #ifndef NDEBUG
 		if (reportAIMessages)
 		{
-			OOLog(@"ai.suggestEscort.refused", @"DEBUG: %@ refused by %@", self, mother);
+			OO_LOG("ai.suggestEscort.refused", "DEBUG: {} refused by {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
 		}
 #endif
 		
 	}
 	[self setOwner:self];
-	[shipAI message:@"NOT_ESCORTING"];
+	[shipAI message:"NOT_ESCORTING"];
 	[self doScriptEvent:OOJSID("escortRejected") withArgument:mother];
 	return NO;
 }
@@ -876,7 +876,7 @@ using ooscript::Context;
 	
 	if ([tokens count] != 2)
 	{
-		OOLog(@"ai.syntax.randomPauseAI", @"***** ERROR: cannot read min and max value for randomPauseAI:, needs 2 values: '%@'.", intervalString);
+		OO_LOG("ai.syntax.randomPauseAI", "***** ERROR: cannot read min and max value for randomPauseAI:, needs 2 values: '{}'.", oo::DescriptionOf(intervalString));
 		return;
 	}
 	
@@ -891,12 +891,17 @@ using ooscript::Context;
 {
 	NSArray				*messages = nil;
 	NSString			*message = nil;
-	NSCharacterSet		*whiteSpace = [NSCharacterSet whitespaceCharacterSet];
+	// GNUstep whitespaceCharacterSet: whitespace-and-newline without newlines (see IsWhitespaceNotNewline).
+	auto isWhitespaceNotNewline = [](char16_t c) {
+		return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
+			|| c == 0x202F || c == 0x205F || c == 0x3000;
+	};
 	
 	messages = [messageString componentsSeparatedByString:@","];
 	foreach (message, messages)
 	{
-		[shipAI dropMessage:[message stringByTrimmingCharactersInSet:whiteSpace]];
+		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
+		[shipAI dropMessage:oo::NSStringFrom(trimmed)];
 	}
 }
 
@@ -980,7 +985,7 @@ using ooscript::Context;
 		if ((primeTarget)&&(primeTarget->isShip))
 		{
 			ShipEntity *currentShip = [self primaryTarget];
-			[[currentShip getAI] message:[NSString stringWithFormat:@"%@ %d %d", AIMS_AGGRESSOR_SWITCHED_TARGET, universalID, [[self primaryAggressor] universalID]]];
+			[[currentShip getAI] message:oo::StdString([NSString stringWithFormat:@"%@ %d %d", AIMS_AGGRESSOR_SWITCHED_TARGET, universalID, [[self primaryAggressor] universalID]])];
 			[currentShip doScriptEvent:OOJSID("shipAttackerDistracted") withArgument:[self primaryAggressor]];
 		}
 		
@@ -1057,13 +1062,13 @@ using ooscript::Context;
 	}
 	if (n_found == 0)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 	}
 	else
 	{
 		i = ranrot_rand() % n_found;	// pick a number from 0 -> (n_found - 1)
 		[self setFoundTarget:ids_found[i]];
-		[shipAI message:@"TARGET_FOUND"];
+		[shipAI message:"TARGET_FOUND"];
 	}
 }
 
@@ -1075,13 +1080,13 @@ using ooscript::Context;
 	{
 		if (![self hasCargoScoop])
 		{
-			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
+			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 			return;
 		}
 		if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 		{
-			if (max_cargo)  [shipAI message:@"HOLD_FULL"];	//can't collect loot if holds are full!
-			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if holds are full!
+			if (max_cargo)  [shipAI message:"HOLD_FULL"];	//can't collect loot if holds are full!
+			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if holds are full!
 			return;
 		}
 	}
@@ -1089,7 +1094,7 @@ using ooscript::Context;
 	{
 		if (magnitude2([self velocity]))
 		{
-			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if you're a moving station
+			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you're a moving station
 			return;
 		}
 	}
@@ -1124,7 +1129,7 @@ using ooscript::Context;
 	/*-- Locates the all debris in range and chooses a piece at random from the first sixteen found --*/
 	if (![self isStation] && ![self hasCargoScoop])
 	{
-		[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
+		[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 		return;
 	}
 	//
@@ -1146,10 +1151,10 @@ using ooscript::Context;
 	if (things_found != 0)
 	{
 		[self setFoundTarget:thing_uids_found[ranrot_rand() % things_found]];
-		[shipAI message:@"TARGET_FOUND"];
+		[shipAI message:"TARGET_FOUND"];
 	}
 	else
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 }
 
 
@@ -1161,7 +1166,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		[shipAI message:@"TARGET_LOST"]; // to prevent the ship going for a wrong, previous target. Should not be a reactToMessage.
+		[shipAI message:"TARGET_LOST"]; // to prevent the ship going for a wrong, previous target. Should not be a reactToMessage.
 	}
 }
 
@@ -1182,15 +1187,15 @@ using ooscript::Context;
 {
 	if (!max_cargo)
 	{
-		[shipAI message:@"NO_CARGO_BAY"];
+		[shipAI message:"NO_CARGO_BAY"];
 	}
 	else if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 	{
-		[shipAI message:@"HOLD_FULL"];
+		[shipAI message:"HOLD_FULL"];
 	}
 	else
 	{
-		[shipAI message:@"HOLD_NOT_FULL"];
+		[shipAI message:"HOLD_NOT_FULL"];
 	}
 }
 
@@ -1316,7 +1321,7 @@ using ooscript::Context;
 	// RUN AWAY !!
 	desired_range = 10000;
 	[self performFlee];
-	[shipAI message:@"FLEEING"];
+	[shipAI message:"FLEEING"];
 }
 
 
@@ -1340,7 +1345,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		[shipAI message:@"NO_PLANET_FOUND"];
+		[shipAI message:"NO_PLANET_FOUND"];
 	}
 }
 
@@ -1357,7 +1362,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		OOLog(@"ai.setTakeOffFromPlanet.noPlanet", @"%@", @"***** Error. Planet not found during take off!");
+		OO_LOG("ai.setTakeOffFromPlanet.noPlanet", "{}", "***** Error. Planet not found during take off!");
 	}
 }
 
@@ -1374,7 +1379,7 @@ using ooscript::Context;
 	ShipEntity  *other_ship = [self primaryTarget];
 	if (!other_ship)
 	{
-		[shipAI message:@"NO_TARGET"];
+		[shipAI message:"NO_TARGET"];
 		return;
 	}
 	else
@@ -1382,20 +1387,20 @@ using ooscript::Context;
 		int ls = [other_ship legalStatus];
 		if (ls > 50)
 		{
-			[shipAI message:@"TARGET_FUGITIVE"];
+			[shipAI message:"TARGET_FUGITIVE"];
 			return;
 		}
 		if (ls > 20)
 		{
-			[shipAI message:@"TARGET_OFFENDER"];
+			[shipAI message:"TARGET_OFFENDER"];
 			return;
 		}
 		if (ls > 0)
 		{
-			[shipAI message:@"TARGET_MINOR_OFFENDER"];
+			[shipAI message:"TARGET_MINOR_OFFENDER"];
 			return;
 		}
-		[shipAI message:@"TARGET_CLEAN"];
+		[shipAI message:"TARGET_CLEAN"];
 	}
 }
 
@@ -1404,26 +1409,26 @@ using ooscript::Context;
 {
 	if (scanClass == CLASS_THARGOID)
 	{
-		[shipAI message:@"SELF_THARGOID"];
+		[shipAI message:"SELF_THARGOID"];
 		return;
 	}
 	int ls = [self legalStatus];
 	if (ls > 50)
 	{
-		[shipAI message:@"SELF_FUGITIVE"];
+		[shipAI message:"SELF_FUGITIVE"];
 		return;
 	}
 	if (ls > 20)
 	{
-		[shipAI message:@"SELF_OFFENDER"];
+		[shipAI message:"SELF_OFFENDER"];
 		return;
 	}
 	if (ls > 0)
 	{
-		[shipAI message:@"SELF_MINOR_OFFENDER"];
+		[shipAI message:"SELF_MINOR_OFFENDER"];
 		return;
 	}
-	[shipAI message:@"SELF_CLEAN"];
+	[shipAI message:"SELF_CLEAN"];
 }
 
 
@@ -1461,7 +1466,7 @@ using ooscript::Context;
 	Entity *hazard = [UNIVERSE hazardOnRouteFromEntity: self toDistance: desired_range fromPoint: _destination];
 	
 	if (hazard == nil || ([hazard isShip] && HPdistance(position, [hazard position]) > scannerRange) || ([hazard isPlanet] && aegis_status == AEGIS_NONE)) 
-		[shipAI message:@"COURSE_OK"]; // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
+		[shipAI message:"COURSE_OK"]; // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
 	else
 	{
 		if ([hazard isShip] && (weapon_damage * 24.0 > [hazard energy]))
@@ -1470,7 +1475,7 @@ using ooscript::Context;
 		}
 		
 		_destination = [UNIVERSE getSafeVectorFromEntity:self toDistance:desired_range fromPoint:_destination];
-		[shipAI message:@"WAYPOINT_SET"];
+		[shipAI message:"WAYPOINT_SET"];
 	}
 }
 
@@ -1480,7 +1485,7 @@ using ooscript::Context;
 	switch (aegis_status)
 	{
 		case AEGIS_CLOSE_TO_MAIN_PLANET: 
-			[shipAI message:@"AEGIS_CLOSE_TO_MAIN_PLANET"];
+			[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];
 			// It's been a few years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
 			//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	     // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
 			return;
@@ -1490,33 +1495,33 @@ using ooscript::Context;
 			
 			if([nearest isSun])
 			{
-				[shipAI message:@"CLOSE_TO_SUN"];
+				[shipAI message:"CLOSE_TO_SUN"];
 			}
 			else
 			{
-				[shipAI message:@"CLOSE_TO_PLANET"];
+				[shipAI message:"CLOSE_TO_PLANET"];
 				if ([nearest planetType] == STELLAR_TYPE_MOON)
 				{
-					[shipAI message:@"CLOSE_TO_MOON"];
+					[shipAI message:"CLOSE_TO_MOON"];
 				}
 				else
 				{
-					[shipAI message:@"CLOSE_TO_SECONDARY_PLANET"];
+					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
 				}
 			}
 			return;
 		}
 		case AEGIS_IN_DOCKING_RANGE:
-			[shipAI message:@"AEGIS_IN_DOCKING_RANGE"];
+			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
 			return;
 		case AEGIS_NONE:
-			[shipAI message:@"AEGIS_NONE"];
+			[shipAI message:"AEGIS_NONE"];
 			return;
 	}
 	
-	NSLog(@"Aegis status for %@ has taken on invalid value %i. This is an internal error, please report it.", self, aegis_status);
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(aegis_status));
 	aegis_status = AEGIS_NONE;
-	[shipAI message:@"AEGIS_NONE"];
+	[shipAI message:"AEGIS_NONE"];
 }
 
 
@@ -1524,20 +1529,20 @@ using ooscript::Context;
 {
 	if (energy == maxEnergy)
 	{
-		[shipAI message:@"ENERGY_FULL"];
+		[shipAI message:"ENERGY_FULL"];
 		return;
 	}
 	if (energy >= maxEnergy * 0.75)
 	{
-		[shipAI message:@"ENERGY_HIGH"];
+		[shipAI message:"ENERGY_HIGH"];
 		return;
 	}
 	if (energy <= maxEnergy * 0.25)
 	{
-		[shipAI message:@"ENERGY_LOW"];
+		[shipAI message:"ENERGY_LOW"];
 		return;
 	}
-	[shipAI message:@"ENERGY_MEDIUM"];
+	[shipAI message:"ENERGY_MEDIUM"];
 }
 
 - (void) checkHeatInsulation
@@ -1546,10 +1551,10 @@ using ooscript::Context;
 	
 	if ([self heatInsulation] < minInsulation)
 	{
-		[shipAI message:@"INSULATION_POOR"];
+		[shipAI message:"INSULATION_POOR"];
 		return;
 	}
-	[shipAI message:@"INSULATION_OK"];
+	[shipAI message:"INSULATION_OK"];
 }
 
 
@@ -1652,7 +1657,7 @@ using ooscript::Context;
 
 - (void) disengageAutopilot
 {
-	OOLogERR(@"ai.invalid.notPlayer", @"Error in %@:%@, AI method endAutoPilot is only applicable to the player.", [shipAI name], [shipAI state]);
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", oo::DescriptionOf([shipAI name]), oo::DescriptionOf([shipAI state]));
 }
 
 
@@ -1739,7 +1744,7 @@ using ooscript::Context;
 	
 	if (mother && mother != self && HPdistance2(mother->position, position) < maxRange2)
 	{
-		[shipAI message:@"TARGET_FOUND"]; // no need for scanning, we still have our mother.
+		[shipAI message:"TARGET_FOUND"]; // no need for scanning, we still have our mother.
 	}
 	else
 	{
@@ -1788,7 +1793,7 @@ using ooscript::Context;
 - (void) checkDistanceTravelled
 {
 	if (distanceTravelled > desired_range)
-		[shipAI message:@"GONE_BEYOND_RANGE"];
+		[shipAI message:"GONE_BEYOND_RANGE"];
 }
 
 
@@ -1802,15 +1807,15 @@ using ooscript::Context;
 		if (leTarget != nil)
 		{
 			[self setFoundTarget:leTarget];
-			[shipAI message:@"FLEEING"];
+			[shipAI message:"FLEEING"];
 			return;
 		}
 		
 		[self setPrimaryAggressor:[self foundTarget]];
 		[self addTarget:[self foundTarget]];
 		[self deployEscorts];
-		[shipAI message:@"DEPLOYING_ESCORTS"];
-		[shipAI message:@"FLEEING"];
+		[shipAI message:"DEPLOYING_ESCORTS"];
+		[shipAI message:"FLEEING"];
 		return;
 	}
 	
@@ -1822,7 +1827,7 @@ using ooscript::Context;
 			[self setPrimaryAggressor:[self foundTarget]];
 			[self addTarget:[self foundTarget]];
 			[self fireMissile];
-			[shipAI message:@"FLEEING"];
+			[shipAI message:"FLEEING"];
 			return;
 		}
 	}
@@ -1832,11 +1837,11 @@ using ooscript::Context;
 	{
 		[self setPrimaryAggressor:[self foundTarget]];
 		//[self performAttack];
-		[shipAI message:@"FIGHTING"];
+		[shipAI message:"FIGHTING"];
 		return;
 	}
 	
-	[shipAI message:@"FLEEING"];
+	[shipAI message:"FLEEING"];
 }
 
 
@@ -1856,13 +1861,13 @@ using ooscript::Context;
 	{
 		[self setOwner:mother];
 		[self setGroup:[mother escortGroup]];
-		[shipAI message:@"ESCORTING"];
+		[shipAI message:"ESCORTING"];
 	}
 	else
 	{
 		[self setOwner:self];
 		if ([self group] == [mother escortGroup])  [self setGroup:nil];
-		[shipAI message:@"NOT_ESCORTING"];
+		[shipAI message:"NOT_ESCORTING"];
 	}
 }
 
@@ -1874,15 +1879,15 @@ using ooscript::Context;
 	
 	if (ownGroupCount == targetGroupCount)
 	{
-		[shipAI message:@"ODDS_LEVEL"];
+		[shipAI message:"ODDS_LEVEL"];
 	}
 	else if (ownGroupCount > targetGroupCount)
 	{
-		[shipAI message:@"ODDS_GOOD"];
+		[shipAI message:"ODDS_GOOD"];
 	}
 	else
 	{
-		[shipAI message:@"ODDS_BAD"];
+		[shipAI message:"ODDS_BAD"];
 	}
 }
 
@@ -1910,10 +1915,10 @@ using ooscript::Context;
 		}
 	}
 	
-	if ([self foundTarget] != nil)  [shipAI message:@"TARGET_FOUND"];
+	if ([self foundTarget] != nil)  [shipAI message:"TARGET_FOUND"];
 	else
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 		if ([self hasPrimaryRole:@"wingman"])
 		{
 			// become free-lance police :)
@@ -2009,7 +2014,7 @@ using ooscript::Context;
 			}
 		}
 	}
-	[shipAI message:@"APPROACH_COORDINATES"];
+	[shipAI message:"APPROACH_COORDINATES"];
 }
 
 
@@ -2017,7 +2022,7 @@ using ooscript::Context;
 {
 	if ([UNIVERSE sun] == nil)
 	{
-		[shipAI message:@"NO_SUN_FOUND"];
+		[shipAI message:"NO_SUN_FOUND"];
 		return;
 	}
 	
@@ -2026,11 +2031,11 @@ using ooscript::Context;
 	if (!HPvector_equal(v0, kZeroHPVector))
 	{
 		coordinates = v0;
-		[shipAI message:@"APPROACH_COORDINATES"];
+		[shipAI message:"APPROACH_COORDINATES"];
 	}
 	else
 	{
-		[shipAI message:@"WAIT_FOR_SUN"];
+		[shipAI message:"WAIT_FOR_SUN"];
 	}
 }
 
@@ -2039,12 +2044,12 @@ using ooscript::Context;
 {
 	if ([UNIVERSE sun] == nil)
 	{
-		[shipAI message:@"NO_SUN_FOUND"];
+		[shipAI message:"NO_SUN_FOUND"];
 		return;
 	}
 	
 	coordinates = [UNIVERSE getSunSkimEndPositionForShip:self];
-	[shipAI message:@"APPROACH_COORDINATES"];
+	[shipAI message:"APPROACH_COORDINATES"];
 }
 
 
@@ -2061,7 +2066,7 @@ using ooscript::Context;
 		vout.z = 1.0;
 	v1.x += 10000 * vout.x;	v1.y += 10000 * vout.y;	v1.z += 10000 * vout.z;
 	coordinates = v1;
-	[shipAI message:@"APPROACH_COORDINATES"];
+	[shipAI message:"APPROACH_COORDINATES"];
 }
 
 
@@ -2079,17 +2084,17 @@ using ooscript::Context;
 	ShipEntity *motherStation = [[self group] leader];
 	if ((!motherStation) || (!(motherStation->isStation)))
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 		return;
 	}
 	double found_d2 = scannerRange * scannerRange;
 	HPVector v0 = motherStation->position;
 	if (HPdistance2(v0,position) > found_d2)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 		return;
 	}
-	[shipAI message:@"STATION_FOUND"];		
+	[shipAI message:"STATION_FOUND"];		
 }
 
 
@@ -2113,7 +2118,7 @@ using ooscript::Context;
 		[self noteLostTarget];
 		return;
 	}
-	if ([ship markForFines])  [shipAI message:@"TARGET_MARKED"];
+	if ([ship markForFines])  [shipAI message:"TARGET_MARKED"];
 }
 
 
@@ -2165,12 +2170,12 @@ using ooscript::Context;
 	if (found)
 	{
 		[self setFoundTarget:oldTarget];
-		[shipAI message:@"TARGET_FOUND"];
+		[shipAI message:"TARGET_FOUND"];
 	}
 	else
 	{
 		if (oldTarget == nil) DESTROY(_rememberedShip); // ship no longer exists
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 	}
 	
 }
@@ -2203,7 +2208,7 @@ using ooscript::Context;
 		for (i = 0; i < n_scanned_ships; i++)
 		{
 			ShipEntity *thing = scanned_ships[i];
-			if ([thing hasRole:@"asteroid"])
+			if ([thing hasRole:"asteroid"])
 			{
 				GLfloat d2 = distance2_scanned_ships[i];
 				if (d2 < found_d2)
@@ -2246,7 +2251,7 @@ using ooscript::Context;
 	ShipEntity *mother = [[self group] leader];
 	if (mother == nil)
 	{
-		[shipAI message:@"MOTHER_LOST"];
+		[shipAI message:"MOTHER_LOST"];
 		return;
 	}
 	
@@ -2286,7 +2291,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		OOLog(@"ai.rollD.invalidValue", @"***** ERROR: invalid value supplied to rollD: '%@'.", die_number);
+		OO_LOG("ai.rollD.invalidValue", "***** ERROR: invalid value supplied to rollD: '{}'.", oo::DescriptionOf(die_number));
 	}
 }
 
@@ -2319,7 +2324,7 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithScanClass:(NSString *)scanScanClass
 {
-	NSNumber *parameter = [NSNumber numberWithInt:OOScanClassFromString(scanScanClass)];
+	NSNumber *parameter = [NSNumber numberWithInt:cxx_OOScanClassFromString(oo::StdString(scanScanClass))];
 	[self scanForNearestShipWithPredicate:HasScanClassPredicate parameter:parameter];
 }
 
@@ -2352,7 +2357,7 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithoutScanClass:(NSString *)scanScanClass
 {
-	NSNumber *parameter = [NSNumber numberWithInt:OOScanClassFromString(scanScanClass)];
+	NSNumber *parameter = [NSNumber numberWithInt:cxx_OOScanClassFromString(oo::StdString(scanScanClass))];
 	[self scanForNearestShipWithNegatedPredicate:HasScanClassPredicate parameter:parameter];
 }
 
@@ -2440,14 +2445,14 @@ using ooscript::Context;
 		
 		if (![errorCache containsObject:key])
 		{
-			OOLog(@"ai.scanForNearestShipMatchingPredicate.compile.failed", @"Could not compile JavaScript predicate \"%@\" for AI %@.", predicateExpression, [[self getAI] name]);
+			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), oo::DescriptionOf([[self getAI] name]));
 			if (errorCache == nil)  errorCache = [[NSMutableSet alloc] init];
 			[errorCache addObject:key];
 		}
 		
 		// Select nothing
 		DESTROY(_foundTarget);
-		[[self getAI] message:@"NOTHING_FOUND"];
+		[[self getAI] message:"NOTHING_FOUND"];
 	}
 	
 	ooscript::reportPendingException((context));
@@ -2465,7 +2470,7 @@ using ooscript::Context;
 	
 	if ([tokens count] != 4)
 	{
-		OOLog(@"ai.syntax.setCoordinates", @"***** ERROR: cannot setCoordinates: '%@'.",system_x_y_z);
+		OO_LOG("ai.syntax.setCoordinates", "***** ERROR: cannot setCoordinates: '{}'.", oo::DescriptionOf(system_x_y_z));
 		return;
 	}
 	
@@ -2485,16 +2490,16 @@ using ooscript::Context;
 	
 	coordinates = [UNIVERSE coordinatesForPosition:posn withCoordinateSystem:systemString returningScalar:&scalar];
 	
-	[shipAI message:@"APPROACH_COORDINATES"];
+	[shipAI message:"APPROACH_COORDINATES"];
 }
 
 
 - (void) checkForNormalSpace
 {
 	if ([UNIVERSE sun] && [UNIVERSE planet])
-		[shipAI message:@"NORMAL_SPACE"];
+		[shipAI message:"NORMAL_SPACE"];
 	else
-		[shipAI message:@"INTERSTELLAR_SPACE"];
+		[shipAI message:"INTERSTELLAR_SPACE"];
 }
 
 
@@ -2543,11 +2548,11 @@ using ooscript::Context;
 	{
 		[self addTarget:station];
 		[self setTargetStation:station];
-		[shipAI message:@"STATION_FOUND"];
+		[shipAI message:"STATION_FOUND"];
 	}
 	else
 	{
-		[shipAI message:@"NO_STATION_IN_RANGE"];
+		[shipAI message:"NO_STATION_IN_RANGE"];
 	}
 }
 
@@ -2561,7 +2566,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 		[self setTargetStation:nil];
 	}
 	
@@ -2587,11 +2592,11 @@ using ooscript::Context;
 	if (!deprecationWarning)
 	{
 		deprecationWarning = YES;
-		OOLog(@"script.deprecated.scriptActionOnTarget", @"----- WARNING in AI %@: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", [AI currentlyRunningAIDescription]);
+		OO_LOG("script.deprecated.scriptActionOnTarget", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", oo::DescriptionOf([AI currentlyRunningAIDescription]));
 	}
 	else
 	{
-		OOLog(@"script.deprecated.scriptActionOnTarget.repeat", @"----- WARNING in AI %@: the AI method scriptActionOnTarget: is deprecated and should not be used.", [AI currentlyRunningAIDescription]);
+		OO_LOG("script.deprecated.scriptActionOnTarget.repeat", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used.", oo::DescriptionOf([AI currentlyRunningAIDescription]));
 	}
 #endif
 	
@@ -2601,7 +2606,7 @@ using ooscript::Context;
 		[player setScriptTarget:(ShipEntity*)targEnt];
 		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", [[self getAI] name], [[self getAI] state]]
+							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])]
 								  forTarget:targEnt];
 		[player checkScript];	// react immediately to any changes this makes
 		[player setScriptTarget:oldTarget];
@@ -2621,7 +2626,7 @@ using ooscript::Context;
 		[player setScriptTarget:(ShipEntity*)targEnt];
 		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", [[self getAI] name], [[self getAI] state]]
+							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])]
 								  forTarget:targEnt];
 		[player setScriptTarget:oldTarget];
 	}
@@ -2662,7 +2667,7 @@ using ooscript::Context;
 {
 	NSString *desc = [NSString stringWithFormat:@"%@ %d", [self name], [self universalID]];
 	if ([self isPlayer])  desc = @"player autopilot";
-	OOLog(@"ai.takeAction.debugMessage", @"DEBUG: AI MESSAGE from %@: %@", desc, message);
+	OO_LOG("ai.takeAction.debugMessage", "DEBUG: AI MESSAGE from {}: {}", oo::DescriptionOf(desc), oo::DescriptionOf(message));
 }
 
 
@@ -2674,10 +2679,10 @@ using ooscript::Context;
 	if ([all_beacons count])
 	{
 		[self addTarget:(ShipEntity*)[all_beacons objectAtIndex:0]];
-		[shipAI message:@"TARGET_FOUND"];
+		[shipAI message:"TARGET_FOUND"];
 	}
 	else
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 }
 
 
@@ -2688,8 +2693,8 @@ using ooscript::Context;
 	
 	if ((!current_beacon)||(![current_beacon isBeacon]))
 	{
-		[shipAI message:@"NO_CURRENT_BEACON"];
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NO_CURRENT_BEACON"];
+		[shipAI message:"NOTHING_FOUND"];
 		return;
 	}
 	
@@ -2698,7 +2703,7 @@ using ooscript::Context;
 	
 	if (i == NSNotFound)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 		return;
 	}
 	
@@ -2708,12 +2713,12 @@ using ooscript::Context;
 	{
 		// locate current target in list
 		[self addTarget:(ShipEntity*)[all_beacons objectAtIndex:i]];
-		[shipAI message:@"TARGET_FOUND"];
+		[shipAI message:"TARGET_FOUND"];
 	}
 	else
 	{
-		[shipAI message:@"LAST_BEACON"];
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"LAST_BEACON"];
+		[shipAI message:"NOTHING_FOUND"];
 	}
 }
 
@@ -2724,7 +2729,7 @@ using ooscript::Context;
 	ShipEntity *ship = [self primaryTarget];
 	if (ship == nil)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 		return;
 	}
 	Vector k = ship->v_forward;
@@ -2736,7 +2741,7 @@ using ooscript::Context;
 	number_of_navpoints = 2;
 	next_navpoint_index = 0;
 	_destination = navpoints[0];
-	[shipAI message:@"RACEPOINTS_SET"];
+	[shipAI message:"RACEPOINTS_SET"];
 }
 
 
@@ -2757,11 +2762,11 @@ using ooscript::Context;
 {
 	if ([self foundTarget] != nil) 
 	{
-		[shipAI message:@"TARGET_FOUND"];
+		[shipAI message:"TARGET_FOUND"];
 	}
 	else
 	{
-		[shipAI message:@"NOTHING_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
 	}
 }
 
@@ -2842,7 +2847,7 @@ using ooscript::Context;
 	float dist = oo::PListView(oo::PListView(sDests).at<NSDictionary *>(i)).get<float>(@"distance");
 	if (dist > [self maxHyperspaceDistance] || dist > fuel/10.0f) 
 	{
-		OOLogWARN(@"script.debug", @"DEBUG: %@ Jumping %f which is further than allowed.  I have %d fuel", self, dist, fuel);
+		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, fuel);
 	}
 	fuel -= 10 * dist;
 	
@@ -2935,7 +2940,7 @@ using ooscript::Context;
 
 // AI methods for stations, have no effect on normal ships.
 
-#define STATION_STUB_BASE(PROTO, NAME)  PROTO { OOLog(@"ai.invalid.notAStation", @"Attempt to use station AI method \"%s\" on non-station %@.", NAME, self); }
+#define STATION_STUB_BASE(PROTO, NAME)  PROTO { OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", NAME, oo::DescriptionOf(self)); }
 #define STATION_STUB_NOARG(NAME)	STATION_STUB_BASE(- (void) NAME, #NAME)  // NOLINT(bugprone-macro-parentheses): Objective-C method-name macro arg, pre-existing; behaviour unchanged by this retarget.
 #define STATION_STUB_ARG(NAME)		STATION_STUB_BASE(- (void) NAME (NSString *)param, #NAME)
 
@@ -2951,7 +2956,7 @@ STATION_STUB_NOARG(launchTrader)
 STATION_STUB_NOARG(launchEscort)
 - (BOOL) launchPatrol
 {
-	OOLog(@"ai.invalid.notAStation", @"Attempt to use station AI method \"%s\" on non-station %@.", "launchPatrol", self);
+	OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", "launchPatrol", oo::DescriptionOf(self));
 	return NO;
 }
 STATION_STUB_ARG(launchShipWithRole:)

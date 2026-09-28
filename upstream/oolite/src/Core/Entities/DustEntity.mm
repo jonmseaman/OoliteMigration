@@ -425,7 +425,7 @@ enum
 	OOGL(glEnableClientState(GL_NORMAL_ARRAY));
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"DustEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "DustEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 
@@ -446,7 +446,7 @@ enum
 
 
 #ifndef NDEBUG
-- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) descriptionForObjDump
 {
 	// Don't include range and visibility flag as they're irrelevant.
 	return [self descriptionForObjDumpBasic];

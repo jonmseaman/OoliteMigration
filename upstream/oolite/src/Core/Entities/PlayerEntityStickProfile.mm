@@ -296,7 +296,7 @@ std::string Bars(char mark, int count)
 	gui = gui_display_gen;
 	[self startEdit];
 	[gui clear];
-	[gui setTitle:DESC(@"oolite-stickprofile-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-stickprofile-title"))];
 	[self showScreen];
 	[gui setSelectedRow: GUI_ROW_STICKPROFILE_AXIS];
 	return;

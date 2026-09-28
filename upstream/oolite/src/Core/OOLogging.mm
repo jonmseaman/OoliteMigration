@@ -39,6 +39,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
 
 #include <string>
 #include <utility>
@@ -64,10 +65,7 @@ namespace {
 // before it oo::log writes to stderr, which is what the output handler did before its init.
 void LogSink(std::string_view line)
 {
-	@autoreleasepool
-	{
-		OOLogOutputHandlerPrint(oo::NSStringFrom(line));
-	}
+	OOLogOutputHandlerPrintLine(line);
 }
 
 // A logcontrol dictionary as oo::log settings, in the dictionary's key order (byte order; was
@@ -155,7 +153,7 @@ void OOLogSetShowFunction(BOOL flag)
 	{
 		options.showFunction = flag;
 		oo::log::logger().setOptions(options);
-		[[NSUserDefaults standardUserDefaults] setBool:flag forKey:@"logging-show-function"];
+		oo::Defaults::standard().setBool("logging-show-function", flag);
 	}
 }
 
@@ -175,7 +173,7 @@ void OOLogSetShowFileAndLine(BOOL flag)
 	{
 		options.showFileAndLine = flag;
 		oo::log::logger().setOptions(options);
-		[[NSUserDefaults standardUserDefaults] setBool:flag forKey:@"logging-show-file-and-line"];
+		oo::Defaults::standard().setBool("logging-show-file-and-line", flag);
 	}
 }
 
@@ -195,7 +193,7 @@ void OOLogSetShowTime(BOOL flag)
 	{
 		options.showTime = flag;
 		oo::log::logger().setOptions(options);
-		[[NSUserDefaults standardUserDefaults] setBool:flag forKey:@"logging-show-time"];
+		oo::Defaults::standard().setBool("logging-show-time", flag);
 	}
 }
 
@@ -215,7 +213,7 @@ void OOLogSetShowMessageClass(BOOL flag)
 	{
 		options.showClass = flag;
 		oo::log::logger().setOptions(options);
-		[[NSUserDefaults standardUserDefaults] setBool:flag forKey:@"logging-show-class"];
+		oo::Defaults::standard().setBool("logging-show-class", flag);
 	}
 }
 
@@ -300,12 +298,12 @@ const char *const cxx_kOOLogUnconvertedNSLog		= "unclassified";
 static void LoadExplicitSettings(void)
 {
 	// Load display settings.
-	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &prefs = oo::Defaults::standard();
 	oo::log::Options options;
-	options.showFunction = oo::PListView(prefs).get<BOOL>(@"logging-show-function", NO);
-	options.showFileAndLine = oo::PListView(prefs).get<BOOL>(@"logging-show-file-and-line", NO);
-	options.showTime = oo::PListView(prefs).get<BOOL>(@"logging-show-time", YES);
-	options.showClass = oo::PListView(prefs).get<BOOL>(@"logging-show-class", YES);
+	options.showFunction = prefs.object("logging-show-function").isNull() ? NO : prefs.boolForKey("logging-show-function");
+	options.showFileAndLine = prefs.object("logging-show-file-and-line").isNull() ? NO : prefs.boolForKey("logging-show-file-and-line");
+	options.showTime = prefs.object("logging-show-time").isNull() ? YES : prefs.boolForKey("logging-show-time");
+	options.showClass = prefs.object("logging-show-class").isNull() ? YES : prefs.boolForKey("logging-show-class");
 	oo::log::logger().setOptions(options);
 
 	/*

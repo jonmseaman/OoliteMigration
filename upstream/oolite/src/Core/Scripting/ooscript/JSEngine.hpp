@@ -400,7 +400,7 @@ void setPendingException(Context cx, Value v);                                  
 void clearPendingException(Context cx);                                                // engine: ClearPendingException
 bool reportPendingException(Context cx);                                               // engine: ReportPendingException
 
-// Report an already-formatted message. (Oolite formats with NSString and passes "%s"; the
+// Report an already-formatted message. (Oolite formats the text and passes "%s"; the
 // printf-style variants are therefore not part of the façade.)
 void reportError(Context cx, const char* message);                                     // engine: ReportError(cx, "%s", message)
 bool reportWarning(Context cx, const char* message);                                   // engine: ReportWarning(cx, "%s", message)

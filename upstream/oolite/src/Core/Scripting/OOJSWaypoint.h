@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 @class OOWaypointEntity;
 
@@ -42,7 +42,7 @@ void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global);
 @interface OOWaypointEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 
 @end

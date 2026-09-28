@@ -36,7 +36,7 @@ static OOSoundSource	*sMusicSource = nil;
 
 + (id)allocWithZone:(OOZone *)inZone
 {
-	return class_createInstance([OOMusic class], 0);	// NSAllocateObject without Foundation; zones unused (ADR-0029)
+	return class_createInstance([OOMusic class], 0);	// zones unused (ADR-0029)
 }
 
 
@@ -48,12 +48,12 @@ static OOSoundSource	*sMusicSource = nil;
 	[super dealloc];
 }
 
-- (id)initWithContentsOfFile:(id)inPath	// inPath: an Objective-C string. Shared selector (proposed ADR-0043).
+- (id)cxx_initWithContentsOfFile:(const std::optional<std::string> &)inPath	// -initWithContentsOfFile: is OOSound's, which forwards here
 {
 	self = [super init];
 	if (nil != self)
 	{
-		sound = [[OOSound alloc] initWithContentsOfFile:inPath];
+		sound = [[OOSound alloc] cxx_initWithContentsOfFile:inPath];
 		if (nil == sound)
 		{
 			[self release];

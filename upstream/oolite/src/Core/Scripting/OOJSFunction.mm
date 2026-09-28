@@ -28,13 +28,14 @@ MA 02110-1301, USA.
 #import "OOJSEngineTimeManagement.h"
 #include "oofnd/Notification.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 @implementation OOJSFunction
 
 - (id) initWithFunction:(ooscript::Function)function context:(ooscript::Context)context
 {
-	NSParameterAssert(context != NULL);
+	OOParameterAssert(context != NULL);
 	
 	if (function == NULL)
 	{

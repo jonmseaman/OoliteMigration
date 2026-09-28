@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "GameController.h"
 #import "MyOpenGLView.h"
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
 
 
 #if OOLITE_MAC_OS_X	// TEMP, should be used for SDL too
@@ -36,6 +37,7 @@ MA 02110-1301, USA.
 #import "OOMacSnowLeopardFullScreenController.h"
 #import "OOMacSystemStandardFullScreenController.h"
 #import "OOPrimaryWindow.h"
+#include "oofnd/Defaults.hpp"
 
 
 @interface GameController (OOPrimaryWindowDelegate) <OOPrimaryWindowDelegate>
@@ -65,15 +67,15 @@ MA 02110-1301, USA.
 #endif
 	
 	// Load preferred display mode, falling back to current mode if no preferences set.
-	NSDictionary *currentMode = [fullScreenController currentDisplayMode];
-	NSUInteger width = oo::PListView(currentMode).get<NSUInteger>(kOODisplayWidth);
-	NSUInteger height = oo::PListView(currentMode).get<NSUInteger>(kOODisplayHeight);
-	NSUInteger refresh = oo::PListView(currentMode).get<NSUInteger>(kOODisplayRefreshRate);
+	const oo::PList currentMode = [fullScreenController currentDisplayMode];
+	NSUInteger width = currentMode.get<NSUInteger>(oo::StdString(kOODisplayWidth));
+	NSUInteger height = currentMode.get<NSUInteger>(oo::StdString(kOODisplayHeight));
+	NSUInteger refresh = currentMode.get<NSUInteger>(oo::StdString(kOODisplayRefreshRate));
 	
-	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-	width = oo::PListView(userDefaults).get<NSUInteger>(@"display_width", width);
-	height = oo::PListView(userDefaults).get<NSUInteger>(@"display_height", height);
-	refresh = oo::PListView(userDefaults).get<NSUInteger>(@"display_refresh", refresh);
+	oo::Defaults &userDefaults = oo::Defaults::standard();
+	width = userDefaults.object("display_width").isNull() ? width : static_cast<NSUInteger>(userDefaults.integerForKey("display_width"));
+	height = userDefaults.object("display_height").isNull() ? height : static_cast<NSUInteger>(userDefaults.integerForKey("display_height"));
+	refresh = userDefaults.object("display_refresh").isNull() ? refresh : static_cast<NSUInteger>(userDefaults.integerForKey("display_refresh"));
 	
 	[fullScreenController setDisplayWidth:width height:height refreshRate:refresh];
 	
@@ -107,7 +109,7 @@ MA 02110-1301, USA.
 {
 	if (value == [self inFullScreenMode])  return;
 	
-	[[NSUserDefaults standardUserDefaults] setBool:value forKey:@"fullscreen"];
+	oo::Defaults::standard().setBool("fullscreen", value);
 	
 	if (value)
 	{
@@ -130,13 +132,11 @@ MA 02110-1301, USA.
 {
 	if ([_fullScreenController setDisplayWidth:width height:height refreshRate:refreshRate])
 	{
-		NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-		
-		[userDefaults setInteger:width			forKey:@"display_width"];
-		[userDefaults setInteger:height			forKey:@"display_height"];
-		[userDefaults setInteger:refreshRate	forKey:@"display_refresh"];
-		
-		[userDefaults synchronize];
+		oo::Defaults &userDefaults = oo::Defaults::standard();
+		userDefaults.setInteger("display_width", width);
+		userDefaults.setInteger("display_height", height);
+		userDefaults.setInteger("display_refresh", refreshRate);
+		userDefaults.synchronize();
 		
 		return YES;
 	}
@@ -147,13 +147,13 @@ MA 02110-1301, USA.
 }
 
 
-- (NSDictionary *) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh
+- (oo::PList) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh
 {
 	return [_fullScreenController findDisplayModeForWidth:d_width height:d_height refreshRate:d_refresh];
 }
 
 
-- (NSArray *) displayModes
+- (oo::PList) displayModes
 {
 	return [_fullScreenController displayModes];
 }

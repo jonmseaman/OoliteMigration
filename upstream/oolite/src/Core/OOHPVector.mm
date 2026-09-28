@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 #include "OOMaths.h"
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 
 
 const HPVector			kZeroHPVector = { 0.0, 0.0, 0.0 };
@@ -114,7 +115,7 @@ HPVector OORandomPositionInCylinder(HPVector centre1, OOHPScalar exclusion1, HPV
 	OOHPScalar exc22 = exclusion2*exclusion2;
 	if (HPdistance(centre1,centre2) < (exclusion1+exclusion2)*1.2)
 	{
-		OOLog(@"position.cylinder.error",@"Trying to generate cylinder position in range %f long with exclusions %f and %f",HPdistance(centre1,centre2),exclusion1,exclusion2);
+		OO_LOG("position.cylinder.error", "Trying to generate cylinder position in range {:f} long with exclusions {:f} and {:f}", HPdistance(centre1,centre2), exclusion1, exclusion2);
 	}
 	HPVector result;
 	do

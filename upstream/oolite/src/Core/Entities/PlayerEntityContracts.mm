@@ -41,7 +41,6 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOConstToString.h"
 #import "MyOpenGLView.h"
-#import "NSStringOOExtensions.h"
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "OOTexture.h"
@@ -145,9 +144,9 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		{
 			[rescuee doScriptEvent:OOJSID("unloadCharacter")];
 		}
-		else if ([rescuee legacyScript])
+		else if (![rescuee legacyScript].isNull())
 		{
-			[self runUnsanitizedScriptActions:[rescuee legacyScript]
+			[self runUnsanitizedScriptActions:oo::ObjectFromPList([rescuee legacyScript])
 							allowingAIMethods:YES
 							  withContextName:oo::NSStringFrom(oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str()))
 									forTarget:nil];
@@ -162,7 +161,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits-@-alt")),
 				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)),
 				 oo::DescriptionOf(OOStringFromDeciCredits(insurance, YES, NO)) });
-				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), oo::PListObject([rescuee infoForScripting]) }))];
+				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] }))];
 			}
 			else
 			{
@@ -171,7 +170,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(insurance - reward, YES, NO)),
 				 oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
 				reward = insurance - reward;
-				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), oo::PListObject([rescuee infoForScripting]) }))];
+				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), [rescuee infoForScripting] }))];
 			}
 			credits += reward;
 			added_entry = YES;
@@ -182,7 +181,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			result += oo::str::formatRuntime(oo::StdString(DESC(@"rescue-reward-for-@@-@-credits")),
 				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO)) });
 			credits += 10 * [rescuee insuranceCredits];
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), oo::PListObject([rescuee infoForScripting]) }))];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), [rescuee infoForScripting] }))];
 
 			added_entry = YES;
 		}
@@ -193,14 +192,14 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits")),
 				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
 			credits += reward;
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), oo::PListObject([rescuee infoForScripting]) }))];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] }))];
 			added_entry = YES;
 		}
 		else
 		{
 			// sell as slave - increase no. of slaves in manifest
 			[shipCommodityData cxx_addQuantity:1 forGood:"slaves"];
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(0), oo::PList("slave"), oo::PListObject([rescuee infoForScripting]) }))];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(0), oo::PList("slave"), [rescuee infoForScripting] }))];
 
 		}
 		if ((i < rescuees.size() - 1) && added_entry)
@@ -222,7 +221,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 	// check escape pods...
 	// TODO
 	
-	std::string			result;	// each report line ends in "\n" (-appendFormatLine:)
+	std::string			result;	// each report line ends in "\n" (legacy format-line helper)
 	unsigned			i;
 	
 	// check passenger contracts
@@ -1072,7 +1071,7 @@ for (unsigned i=0;i<amount;i++)
 	// check available space
 
 	OOCargoQuantity		cargoSpaceRequired = qty;
-	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];	// shared selector (OOCommodities): an Objective-C string
+	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:type];	// shared selector (OOCommodities): an Objective-C string
 
 	if (contractCargoUnits == UNITS_KILOGRAMS)  cargoSpaceRequired /= 1000;
 	if (contractCargoUnits == UNITS_GRAMS)  cargoSpaceRequired /= 1000000;
@@ -1265,7 +1264,7 @@ for (unsigned i=0;i<amount;i++)
 		current_cargo = [self cargoQuantityOnBoard];
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"manifest-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"manifest-title"))];
 		
 		current = current_cargo;
 		max = [self maxAvailableCargoSpace];
@@ -1433,7 +1432,7 @@ for (unsigned i=0;i<amount;i++)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:OOExpandKey(@"arrival-report-title")];
+		[gui cxx_setTitle:oo::OptionalString(OOExpandKey(@"arrival-report-title"))];
 		
 		for (i=1;i<=18;i++) {
 			[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingReportColor) defaultValue:nil] forRow:21];
@@ -1589,7 +1588,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:oo::NSStringFrom(ExpandKey("shipyard-title", { { "system", oo::PListFrom([UNIVERSE getSystemName:system_id]) } }))];
+		[gui cxx_setTitle:ExpandKey("shipyard-title", { { "system", oo::PListFrom([UNIVERSE getSystemName:system_id]) } })];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -1767,7 +1766,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	OOCreditsQuantity tradeIn = [self tradeInValue];
 	OOCreditsQuantity total = tradeIn + credits;
-	const oo::PList shipType = oo::PListFrom([self displayName]);
+	const oo::PList shipType = oo::PList([self displayName].value_or(""));
 	
 	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH - 1];
 	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
@@ -1877,7 +1876,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		withArguments:oo::ObjectFromPList(oo::PList(std::move(buyArguments)))];
 
 	// sell all the commodities carried
-	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &good : [shipCommodityData goods])
 	{
 		[self trySellingCommodity:oo::NSStringFrom(good) all:YES];
 	}

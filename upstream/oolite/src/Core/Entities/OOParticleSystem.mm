@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 //	Testing toy: cause particle systems to stop after half a second.
@@ -59,7 +60,7 @@ MA 02110-1301, USA.
 			   duration:(OOTimeDelta)duration
 			  baseColor:(GLfloat[4])baseColor
 {
-	NSParameterAssert(count <= kFragmentBurstMaxParticles);
+	OOParameterAssert(count <= kFragmentBurstMaxParticles);
 	
 	if ((self = [super init]))
 	{
@@ -237,7 +238,7 @@ do { \
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOParticleSystem after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOParticleSystem after drawing " + oo::DescriptionOf(self); });
 }
 
 
@@ -252,9 +253,11 @@ do { \
 }
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return oo::NSSetFromObjects(std::vector<id>{ [OOLightParticleEntity defaultParticleTexture] });
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	result.emplace_back([OOLightParticleEntity defaultParticleTexture]);
+	return result;
 }
 #endif
 

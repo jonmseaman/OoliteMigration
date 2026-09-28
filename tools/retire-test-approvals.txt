@@ -1,0 +1,6 @@
+# Intentional test retirements (ADR-0049). One path per line (first token), then a reason.
+# A change that deletes a listed test may not also edit this file (no self-approval).
+# Blank lines and lines starting with # are ignored.
+
+upstream/oolite/tests/unit/game/test_defaults_bridge.mm	oo-iobt: subject NSUserDefaults+OODefaultsBridge deleted; suite emptied
+upstream/oolite/tests/unit/game/meson.build	oo-iobt: game-unit suite emptied with the bridge test

@@ -367,7 +367,6 @@ OOINLINE HPVector HPnormal_to_surface(HPVector v1, HPVector v2, HPVector v3)
 	unchanged (with their old C linkage). Callers move to the cxx_ API in their own sweep beads; the
 	bridge goes in its own bead.
 */
-#import "OOHPVector+FoundationBridge.h"
 #endif
 
 #endif	/* INCLUDED_OOMATHS_h */

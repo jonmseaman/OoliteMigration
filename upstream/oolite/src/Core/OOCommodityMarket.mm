@@ -88,9 +88,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 }
 
 
-- (id) goods
+- (std::vector<std::string>) goods
 {
-	return oo::NSArrayFromStrings([self sortedGoodKeys]);
+	return [self sortedGoodKeys];
 }
 
 
@@ -236,9 +236,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 }
 
 
-- (OOMassUnit) massUnitForGood:(id)good
+- (OOMassUnit) massUnitForGood:(const std::string &)good
 {
-	const oo::PList *definition = [self definitionPointerForGood:oo::StdString(good)];
+	const oo::PList *definition = [self definitionPointerForGood:good];
 	if (definition == nullptr)
 	{
 		return UNITS_TONS;
@@ -351,7 +351,7 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 		}
 		if (!loadedOK)
 		{
-			OOLog(@"setCommanderDataFromDictionary.warning.cargo",@"Cargo %@ (%u units) could not be loaded from the saved game, as it is no longer defined",oo::NSStringOrNil(good),q);
+			OO_LOG("setCommanderDataFromDictionary.warning.cargo","Cargo {} ({} units) could not be loaded from the saved game, as it is no longer defined",good.value_or("(null)"),q);
 		}
 	}
 }
@@ -405,7 +405,7 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 		}
 		if (!loadedOK)
 		{
-			OOLog(@"load.warning.cargo",@"Station market good %@ (%u units) could not be loaded from the saved game, as it is no longer defined",oo::NSStringOrNil(good),q);
+			OO_LOG("load.warning.cargo","Station market good {} ({} units) could not be loaded from the saved game, as it is no longer defined",good.value_or("(null)"),q);
 		}
 	}
 }

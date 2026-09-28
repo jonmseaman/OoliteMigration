@@ -35,6 +35,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
+
 #include "oofnd/String.hpp"
 
 
@@ -270,7 +272,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 	HPVector		p1;
 	double		dist2, r1, r2, r0, min_dist2;
 	unsigned	i;
-	Entity		*entities_to_test[n_entities];
+	std::vector<Entity *>	entities_to_test(n_entities);
 	
 	// only check unfiltered entities
 	unsigned n_entities_to_test = 0;
@@ -286,7 +288,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OOLog(@"collisionRegion.debug", @"DEBUG in collision region %@ testing %d out of %d entities", self, n_entities_to_test, n_entities);
+		OO_LOG("collisionRegion.debug", "DEBUG in collision region {} testing {} out of {} entities", oo::DescriptionOf(self), n_entities_to_test, n_entities);
 	}
 #endif
 	
@@ -299,7 +301,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 		e1 = entities_to_test[i];
 		if (e1->hasCollided)
 		{
-			[[e1 collisionArray] removeAllObjects];
+			if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e1 cxx_collidingEntities])  colliding->clear();
 			e1->hasCollided = NO;
 		}
 		if (e1->isShip)
@@ -344,8 +346,8 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 					if (gDebugFlags & DEBUG_COLLISIONS)
 					{
-						OOLog(@"collisionRegion.debug", @"DEBUG Testing collision between %@ (%@) and %@ (%@)",
-							  e1, (e1->collisionTestFilter==3)?@"YES":@"NO", e2, (e2->collisionTestFilter==3)?@"YES":@"NO");
+						OO_LOG("collisionRegion.debug", "DEBUG Testing collision between {} ({}) and {} ({})",
+							  oo::DescriptionOf(e1), (e1->collisionTestFilter==3)?"YES":"NO", oo::DescriptionOf(e2), (e2->collisionTestFilter==3)?"YES":"NO");
 					}
 #endif
 					checks_within_range++;
@@ -411,21 +413,21 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 							// now we have no need to check the e2-e1 collision
 							if (e1->collider)
 							{
-								[[e1 collisionArray] addObject:e1->collider];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e1 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e1->collider));
 							}
 							else
 							{
-								[[e1 collisionArray] addObject:e2];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e1 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e2));
 							}
 							e1->hasCollided = YES;
 						
 							if (e2->collider)
 							{
-								[[e2 collisionArray] addObject:e2->collider];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e2 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e2->collider));
 							}
 							else
 							{
-								[[e2 collisionArray] addObject:e1];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e2 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e1));
 							}
 							e2->hasCollided = YES;
 						}
@@ -440,7 +442,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OOLog(@"collisionRegion.debug",@"Collision test checks %d, within range %d, for %d entities",checks_this_tick,checks_within_range,n_entities_to_test);
+		OO_LOG("collisionRegion.debug","Collision test checks {}, within range {}, for {} entities",checks_this_tick,checks_within_range,n_entities_to_test);
 	}
 #endif
 }
@@ -604,9 +606,9 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 	
 	unsigned	ent_count =	UNIVERSE->n_entities;
 	Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity		*planets[ent_count];
+	std::vector<Entity *>	planets(ent_count);
 	unsigned	n_planets = 0;
-	Entity		*ships[ent_count];
+	std::vector<Entity *>	ships(ent_count);
 	unsigned	n_ships = 0;
 	
 	for (i = 0; i < ent_count; i++)
@@ -720,9 +722,9 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 }
 
 
-- (id) collisionDescription	// shared selector (proposed ADR-0043)
+- (std::string) collisionDescription
 {
-	return oo::NSStringFrom(oo::str::format("p%u - c%u", checks_this_tick, checks_within_range));
+	return oo::str::format("p%u - c%u", checks_this_tick, checks_within_range);
 }
 
 

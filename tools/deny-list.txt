@@ -27,6 +27,15 @@
 [-]lgnustep-base\b
 \bNS_DURING\b
 \bNS_HANDLER\b
+# The build-level spellings -lgnustep-base misses (bead oo-qps.2): an #include of a Foundation
+# header; the library named as a quoted string (meson's dependency lists and
+# find_library('...')); and as an item of a shell array assignment (tools/setup-windows.sh
+# WINDEPS_PKGS). Deliberately NOT the bare word: comments in bridge headers and tools name the
+# library in prose, and a new file's baseline is empty, so a bare-word pattern would fail
+# legitimate work. The absolute "none left" check is tools/check-foundation-free.sh.
+[#][[:space:]]*include[[:space:]]*<Foundation/
+['"][g]nustep-base['"]
+=\([^)]*\b[g]nustep-base\b
 
 # --- SpiderMonkey build dependencies (Phase 1 item 1.7: deleted with the backend) ---
 # NSPR ships with mozjs and only ever arrives as its transitive dependency; a PR_* call or an

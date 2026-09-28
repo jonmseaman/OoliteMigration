@@ -245,12 +245,12 @@ void MissionRunCallback()
 	@catch (OOException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
-		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
-		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	[OOJSScript popScript:cbScript];
 	
@@ -367,7 +367,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 	{
 		if (ooscript::valueToInt32(context, (OOJS_ARGV[i]), &dest)) 
 		{
-			OOStandardsDeprecated(@"Use of numbers for mission.markSystem is deprecated");
+			cxx_OOStandardsDeprecated("Use of numbers for mission.markSystem is deprecated");
 			if (!OOEnforceStandards())
 			{
 				[player addMissionDestinationMarker:[player defaultMarker:dest]];
@@ -421,7 +421,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 	{
 		if (ooscript::valueToInt32(context, (OOJS_ARGV[i]), &dest)) 
 		{
-			OOStandardsDeprecated(@"Use of numbers for mission.unmarkSystem is deprecated");
+			cxx_OOStandardsDeprecated("Use of numbers for mission.unmarkSystem is deprecated");
 			if (!OOEnforceStandards())
 			{
 				if (![player removeMissionDestinationMarker:[player defaultMarker:dest]]) {

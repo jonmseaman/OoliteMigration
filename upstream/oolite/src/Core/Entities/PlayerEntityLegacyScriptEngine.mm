@@ -157,7 +157,7 @@ const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
 }
 
 
-/*	-[NSCharacterSet whitespaceCharacterSet]: GNUstep's whitespace-and-newline set (the scanner's,
+/*	Whitespace without newlines: GNUstep's whitespace-and-newline set (the scanner's
 	oo::str::isWhitespaceOrNewline) without its newlines (U+000A-U+000D, U+0085, U+2028, U+2029).
 	The later chunks of oo-j924 reuse it.
 */
@@ -1031,7 +1031,7 @@ static BOOL sRunningScript = NO;
 
 - (id) status_string	// called by name (ADR-0043 item 21)
 {
-	return OOStringFromEntityStatus([self status]);
+	return oo::NSStringFrom(cxx_OOStringFromEntityStatus([self status]));
 }
 
 
@@ -1277,7 +1277,7 @@ static int shipsFound;
 
 - (id) commanderShipDisplayName_string	// called by name (ADR-0043 item 21)
 {
-	return [self displayName];
+	return oo::NSStringOrNil([self displayName]);
 }
 
 /*-----------------------------------------------------*/
@@ -1479,7 +1479,7 @@ static int shipsFound;
 		return;
 	}
 
-	unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
+	unit = [shipCommodityData massUnitForGood:type];
 	if (specialCargo && unit == UNITS_TONS)
 	{
 		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "cargo hold full with special cargo");
@@ -1508,9 +1508,9 @@ static int shipsFound;
 
 	OO_LOG(kOOLogNoteRemoveAllCargo, "{} removeAllCargo", forceRemoval ? "Forcing" : "Going to");
 
-	for (const std::string &type : oo::StringsFrom([shipCommodityData goods]))
+	for (const std::string &type : [shipCommodityData goods])
 	{
-		if ([shipCommodityData massUnitForGood:oo::NSStringFrom(type)] == UNITS_TONS)
+		if ([shipCommodityData massUnitForGood:type] == UNITS_TONS)
 		{
 			[shipCommodityData cxx_setQuantity:0 forGood:type];
 		}
@@ -2585,7 +2585,7 @@ static int shipsFound;
 	// GUI stuff
 	{
 		[gui clear];
-		[gui setTitle:oo::NSStringFrom([self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information"))))];
+		[gui cxx_setTitle:[self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information")))];
 
 		if (!_missionTextEntry)
 		{

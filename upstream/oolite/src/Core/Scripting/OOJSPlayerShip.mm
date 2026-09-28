@@ -51,6 +51,8 @@ MA 02110-1301, USA.
 #include <cstring>
 #include "oofnd/Notification.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OOException.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -93,6 +95,21 @@ static ooscript::Object sPlayerShipObject;
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -504,9 +521,9 @@ ooscript::Object JSPlayerShipObject(void)
 
 @implementation PlayerEntity (OOJavaScriptExtensions)
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"PlayerShip";
+	return std::string("PlayerShip");
 }
 
 
@@ -576,15 +593,15 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 			
 		case kPlayerShip_reticleColorTarget:
-			result = [[[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET]));
 			break;
 			
 		case kPlayerShip_reticleColorTargetSensitive:
-			result = [[[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[player hud] reticleColorForIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE]));
 			break;
 			
 		case kPlayerShip_reticleColorWormhole:
-			result = [[[player hud] reticleColorForIndex:OO_RETICLE_COLOR_WORMHOLE] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[player hud] reticleColorForIndex:OO_RETICLE_COLOR_WORMHOLE]));
 			break;
 			
 		case kPlayerShip_reticleTargetSensitive:
@@ -800,11 +817,11 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return ooscript::newNumberValue(cx, -[player flightYaw], value);
 			
 		case kPlayerShip_messageGuiTextColor:
-			result = [[[UNIVERSE messageGUI] textColor] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[UNIVERSE messageGUI] textColor]));
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			result = [[[UNIVERSE messageGUI] textCommsColor] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([[UNIVERSE messageGUI] textCommsColor]));
 			break;
 			
 		default:
@@ -1741,7 +1758,7 @@ static bool PlayerShipSetCustomView(ooscript::Context context, ooscript::CallArg
 	{
 		std::optional<std::string> facing = oo::OptionalString(OOStringFromJSValue(context,OOJS_ARGV[2]));
 		// -setObject:forKey: raised on a nil facing (GNUstep 1.31.1's text).
-		if (!facing.has_value())  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", @"weapon_facing"];
+		if (!facing.has_value())  [OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", "weapon_facing"];
 		viewData["weapon_facing"] = *facing;
 	} 
 
@@ -2141,7 +2158,7 @@ static BOOL ValidateContracts(ooscript::Context context, ooscript::CallArgs &ooj
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && oojsArgs.rawVp() != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
+	OOCParameterAssert(context != NULL && oojsArgs.rawVp() != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
 	
 	Context cx = (context);
 	unsigned		uValue, offset = isCargo ? 2 : 1;

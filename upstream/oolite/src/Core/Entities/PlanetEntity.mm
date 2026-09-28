@@ -47,6 +47,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #if !OOLITE_MAC_OS_X
@@ -348,7 +349,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	
 	if (!planet)
 	{
-		OOLogERR(@"planet.atmosphere.init.noPlanet", @"planet entity initAsAtmosphereForPlanet: no planet found.");
+		OO_LOG_ERR("planet.atmosphere.init.noPlanet", "{}", "planet entity initAsAtmosphereForPlanet: no planet found.");
 		return self;
 	}
 	
@@ -469,7 +470,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 			}
 			else
 			{
-				OOLogERR(@"planet.fromDict", @"could not interpret \"%@\" as planet seed, using default.", oo::NSStringFrom(*seedStr));
+				OO_LOG_ERR("planet.fromDict", "could not interpret \"{}\" as planet seed, using default.", *seedStr);
 			}
 		}
 	}
@@ -682,7 +683,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 {
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
-		OOLog(@"planet.collide", @"PLANET Collision!");
+		OO_LOG("planet.collide", "{}", "PLANET Collision!");
 #endif
 	
 	if (!other)
@@ -698,7 +699,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 		if ([ship reportAIMessages])
 		{
 			HPVector p1 = ship->position;
-			OOLog(@"planet.collide.shipHit", @"DEBUG: %@ %d collided with planet at (%.1f,%.1f,%.1f)",[ship name], [ship universalID], p1.x,p1.y,p1.z);
+			OO_LOG("planet.collide.shipHit", "DEBUG: {} {} collided with planet at ({:.1f},{:.1f},{:.1f})", oo::DescriptionOf([ship name]), [ship universalID], p1.x, p1.y, p1.z);
 		}
 #endif
 	}
@@ -1021,7 +1022,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 
 	OOGL(glPopAttrib());
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"PlanetEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "PlanetEntity after drawing " + oo::DescriptionOf(self); });
 
 	if (atmosphere)
 	{
@@ -1058,9 +1059,9 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 }
 
 
-- (id) textureFileName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) textureFileName
 {
-	return oo::NSStringOrNil(_textureFileName);
+	return _textureFileName;
 }
 
 
@@ -1089,11 +1090,11 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 }
 
 
-- (BOOL) setUpPlanetFromTexture:(id)fileName	// shared selector (proposed ADR-0043)
+- (BOOL) setUpPlanetFromTexture:(const std::optional<std::string> &)fileName
 {
-	if (fileName == nil)  return NO;
+	if (!fileName.has_value())  return NO;
 
-	[self loadTexture:cxx_OOTextureSpecFromObject(oo::PListFrom(fileName), std::nullopt)];
+	[self loadTexture:cxx_OOTextureSpecFromObject(oo::PList(*fileName), std::nullopt)];
 	[self deleteDisplayLists];
 	
 	unsigned i;
@@ -1382,7 +1383,7 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	else
 	{
 		unsigned vindex = next_free_vertex++;
-		NSCAssert(vindex < sizeof base_vertex_array / sizeof *base_vertex_array, @"Vertex array overflow in planet setup.");
+		OOCAssert(vindex < sizeof base_vertex_array / sizeof *base_vertex_array, "Vertex array overflow in planet setup.");
 		
 		// calculate position of new vertex
 		Vector pos = vector_add(base_vertex_array[va], base_vertex_array[vb]);
@@ -1658,10 +1659,11 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	if (_texture != nil)  return oo::NSSetFromObjects(std::vector<id>{ _texture });
-	else  return nil;
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	if (_texture != nil)  result.emplace_back(_texture);
+	return result;
 }
 #endif
 

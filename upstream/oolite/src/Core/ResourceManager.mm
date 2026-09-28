@@ -23,7 +23,6 @@ MA 02110-1301, USA.
 */
 
 #import "ResourceManager.h"
-#import "NSStringOOExtensions.h"
 #import "OOSound.h"
 #import "OOCacheManager.h"
 #import "Universe.h"
@@ -32,7 +31,6 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "OOPListView.h"
 #import "OOLogOutputHandler.h"
-#import "NSFileManagerOOExtensions.h"
 #import "OOOXZManager.h"
 #import "unzip.h"
 #import "HeadUpDisplay.h"
@@ -45,17 +43,35 @@ MA 02110-1301, USA.
 #import "OOManifestProperties.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
-#import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/PListWriting.hpp"
 #include "oofnd/Encoding.hpp"
 
 namespace {
+
+// OODictionaryFromFile / OOArrayFromFile (OOPListParsing's bridge) as property lists: the file's
+// property list when it is of that kind, a null PList otherwise (their plist.wrongType log line,
+// which named the Foundation class, is not kept).
+oo::PList PListDictionaryFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isDict() ? result : oo::PList();
+}
+
+
+oo::PList PListArrayFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isArray() ? result : oo::PList();
+}
+
 
 // OOCacheManager cache and keys for the search-path modification dates (the log classes are
 // literals at their OOLog calls).
@@ -211,7 +227,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 }
 
 
-// The dictionary category's -mergeEntriesFromDictionary: (OOExtensions): a key only in other is added;
+// What the retired dictionary category -mergeEntriesFromDictionary: (OOExtensions) did: a key only in other is added;
 // two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
 // replaced by other's value.
 void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
@@ -319,6 +335,27 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 
 
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
+
 @implementation ResourceManager
 
 + (void) reset
@@ -403,7 +440,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		for (const oo::fs::Path &path : oo::ResourcePaths::current().userRootDirectories())  paths.push_back(oo::fs::utf8String(path));
 		sUserRootPaths = std::move(paths);
 	}
-	OOLog(@"searchPaths.debug",@"%@",oo::NSStringFrom(oo::DescriptionOf(oo::NSArrayFromStrings(*sUserRootPaths))));
+	OO_LOG("searchPaths.debug", "{}", oo::DescriptionOf(oo::NSArrayFromStrings(*sUserRootPaths)));
 	return *sUserRootPaths;
 }
 
@@ -459,17 +496,15 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		// Iterate over each root path's contents.
 		if (oo::fs::isDirectory(oo::fs::pathFromUTF8(root)))
 		{
-			// NSFileManager's recursive enumerator (with -skipDescendents) has no oo::fs form yet:
-			// it lists, converted at the boundary, as it always did.
-			NSDirectoryEnumerator *dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:oo::NSStringFrom(root)];
+			oo::fs::RecursiveDirectoryEnumerator dirEnum(oo::fs::pathFromUTF8(root));
 			for (;;)
 			{
-				const std::optional<std::string> subPath = oo::OptionalString([dirEnum nextObject]);
+				const std::optional<std::string> subPath = dirEnum.next();
 				if (!subPath.has_value())  break;
 
 				// Check if it's a directory.
 				const std::string path = oo::str::appendingPathComponent(root, *subPath);
-				const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(path));
+				const oo::fs::FileType type = dirEnum.entryType();
 				if (type != oo::fs::FileType::none)
 				{
 					if (type == oo::fs::FileType::directory)
@@ -483,7 +518,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 						else
 						{
 							// If not, don't search subdirectories.
-							[dirEnum skipDescendents];
+							dirEnum.skipDescendents();
 						}
 					}
 					else
@@ -581,7 +616,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	}
 	if (uf == NULL)
 	{
-		OOLog(@"resourceManager.error",@"Could not open .oxz at %@ as zip file",oo::NSStringFrom(path));
+		OO_LOG("resourceManager.error", "Could not open .oxz at {} as zip file", path);
 		return;
 	}
 	if (unzGoToFirstFile(uf) == UNZ_OK)
@@ -636,7 +671,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// if nil, not found in another OXP already
 	if ([cache cxx_objectForKey:cacheKey inCache:"resolved paths"] == nil)
 	{
-		OOLog(@"resourceManager.foundFile.preLoad", @"Found %@/%@ at %@", oo::NSStringFrom(subFolder), oo::NSStringFrom(fileName), oo::NSStringFrom(path));
+		OO_LOG("resourceManager.foundFile.preLoad", "Found {}/{} at {}", subFolder, fileName, path);
 		[cache cxx_setObject:oo::NSStringFrom(path) forKey:cacheKey inCache:"resolved paths"];	// the cache holds Foundation objects (an unmigrated callee)
 	}
 }
@@ -750,7 +785,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 + (void) checkOXPMessagesInPath:(const std::string &)path
 {
 	// OOArrayFromFile (OOPListParsing) is an unmigrated callee: its array arrives through oo::PListFrom.
-	const oo::PList OXPMessageArray = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "OXPMessages.plist"))));
+	const oo::PList OXPMessageArray = PListArrayFromFile(oo::str::appendingPathComponent(path, "OXPMessages.plist"));
 
 	if (OXPMessageArray.count() > 0)
 	{
@@ -761,7 +796,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			const oo::PList *oxpMessage = OXPMessageArray.at(i);
 			if (oxpMessage != nullptr && (oxpMessage->isString() || oxpMessage->isNumber()))
 			{
-				OOLog(@"oxp.message", @"%@: %@", oo::NSStringFrom(path), oo::NSStringFrom(OXPMessageArray.at<std::string>(i)));
+				OO_LOG("oxp.message", "{}: {}", path, OXPMessageArray.at<std::string>(i));
 			}
 		}
 		sOXPsWithMessagesFound.push_back(oo::str::lastPathComponent(path));
@@ -781,23 +816,23 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (extension != "oxz")
 	{
 		// OXZ format ignores requires.plist
-		requirements = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "requires.plist"))));
+		requirements = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "requires.plist"));
 		requirementsMet = [self areRequirementsFulfilled:requirements forOXP:path andFile:"requires.plist"];
 	}
 	if (!requirementsMet)
 	{
-		id version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", oo::NSStringFrom(path), version);
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(version)];
+		const std::optional<std::string> version = OoliteInfoString("CFBundleVersion");
+		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, version.value_or("(null)"));
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:version.value_or("")];
 		return;
 	}
 
-	manifest = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "manifest.plist"))));
+	manifest = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "manifest.plist"));
 	if (manifest.isNull())
 	{
 		if (extension == "oxz")
 		{
-			OOLog(@"oxp.noManifest", @"OXZ %@ has no manifest.plist", oo::NSStringFrom(path));
+			OO_LOG("oxp.noManifest", "OXZ {} has no manifest.plist", path);
 			[self addErrorWithKey:"oxz-lacks-manifest" param1:oo::str::lastPathComponent(path) param2:""];
 			return;
 		}
@@ -842,25 +877,25 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (!identifier.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestIdentifier);
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestIdentifier));
 		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestIdentifier)];
 		OK = NO;
 	}
 	if (!version.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestVersion);
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestVersion));
 		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestVersion)];
 		OK = NO;
 	}
 	if (!required.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestRequiredOoliteVersion);
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestRequiredOoliteVersion));
 		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestRequiredOoliteVersion)];
 		OK = NO;
 	}
 	if (!title.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestTitle);
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestTitle));
 		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestTitle)];
 		OK = NO;
 	}
@@ -872,9 +907,9 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (!OK)
 	{
-		id ooliteVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", oo::NSStringFrom(path), ooliteVersion);
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(ooliteVersion)];
+		const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
+		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, ooliteVersion.value_or("(null)"));
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:ooliteVersion.value_or("")];
 		return NO;
 	}
 
@@ -882,7 +917,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (duplicate != sOXPManifests.end())
 	{
 		const std::optional<std::string> duplicatePath = ManifestString(duplicate->second, oo::StdString(kOOManifestFilePath));
-		OOLog(@"oxp.duplicate", @"OXP %@ has the same identifier (%@) as %@ which has already been loaded.",oo::NSStringFrom(path),oo::NSStringFrom(*identifier),oo::NSStringOrNil(duplicatePath));
+		OO_LOG("oxp.duplicate", "OXP {} has the same identifier ({}) as {} which has already been loaded.", path, *identifier, duplicatePath.value_or("(null)"));
 		[self addErrorWithKey:"oxp-manifest-duplicate" param1:path param2:duplicatePath.value_or("")];
 		return NO;
 	}
@@ -920,7 +955,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (!ooVersionComponents.has_value())
 	{
-		ooVersionComponents = oo::str::versionComponents(oo::StdString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]));
+		ooVersionComponents = oo::str::versionComponents(OoliteInfoString("CFBundleVersion").value_or(""));
 	}
 
 	// Check "version" (minimum version)
@@ -938,7 +973,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			else
 			{
 				// %@ of [requirements class]: the class of the dictionary the old code was handed, which the bridge rebuilds
-				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", oo::NSStringFrom(file), @"version", [oo::ObjectFromPList(requirements) class], oo::NSStringOrNil(LastPathComponent(path)));
+				OO_LOG("requirements.wrongType", "Expected {} entry \"{}\" to be string, but got {} in OXP {}.", file, "version", oo::DescriptionOf([oo::ObjectFromPList(requirements) class]), (LastPathComponent(path)).value_or("(null)"));
 				OK = NO;
 			}
 		}
@@ -958,7 +993,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			}
 			else
 			{
-				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", oo::NSStringFrom(file), @"max_version", [oo::ObjectFromPList(requirements) class], oo::NSStringOrNil(LastPathComponent(path)));
+				OO_LOG("requirements.wrongType", "Expected {} entry \"{}\" to be string, but got {} in OXP {}.", file, "max_version", oo::DescriptionOf([oo::ObjectFromPList(requirements) class]), (LastPathComponent(path)).value_or("(null)"));
 				OK = NO;
 			}
 		}
@@ -967,7 +1002,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (OK && conditionsHandled < requirements.count())
 	{
 		// There are unknown requirement keys - don't support. NOTE: this check was not made pre 1.69!
-		OOLog(@"requirements.unknown", @"requires.plist for OXP %@ contains unknown keys, rejecting.", oo::NSStringOrNil(LastPathComponent(path)));
+		OO_LOG("requirements.unknown", "requires.plist for OXP {} contains unknown keys, rejecting.", (LastPathComponent(path)).value_or("(null)"));
 		OK = NO;
 	}
 
@@ -995,7 +1030,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 					if (logErrors)
 					{
 						[self addErrorWithKey:"oxp-conflict" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:ManifestString(conflictManifest->second, oo::StdString(kOOManifestTitle)).value_or("")];
-						OOLog(@"oxp.conflict",@"OXP %@ conflicts with %@ and was removed from the loading list",oo::NSStringOrNil(LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))),oo::NSStringOrNil(LastPathComponent(ManifestString(conflictManifest->second, oo::StdString(kOOManifestFilePath)))));
+						OO_LOG("oxp.conflict", "OXP {} conflicts with {} and was removed from the loading list", (LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))).value_or("(null)"), (LastPathComponent(ManifestString(conflictManifest->second, oo::StdString(kOOManifestFilePath)))).value_or("(null)"));
 					}
 					return YES;
 				}
@@ -1093,7 +1128,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		{
 			const std::optional<std::string> requiredDescription = ManifestString(required, oo::StdString(kOOManifestRelationDescription));
 			[self addErrorWithKey:"oxp-required" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:requiredDescription.has_value() ? *requiredDescription : requiredID.value_or("")];
-			OOLog(@"oxp.requirementMissing",@"OXP %@ had unmet requirements and was removed from the loading list",oo::NSStringOrNil(LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))));
+			OO_LOG("oxp.requirementMissing", "OXP {} had unmet requirements and was removed from the loading list", (LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))).value_or("(null)"));
 		}
 		return YES;
 	}
@@ -1214,12 +1249,12 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// test string
 	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
 	{
-		OOLog(@"scenario.check", @"%@", @"Checked scenario allowances in all state - this is an internal error; please report this");
+		OO_LOG("scenario.check", "{}", "Checked scenario allowances in all state - this is an internal error; please report this");
 		return YES;
 	}
 	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_NONE))
 	{
-		OOLog(@"scenario.check", @"%@", @"Checked scenario allowances in none state - this is an internal error; please report this");
+		OO_LOG("scenario.check", "{}", "Checked scenario allowances in none state - this is an internal error; please report this");
 		return NO;
 	}
 #endif
@@ -1307,19 +1342,17 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		arrays are built for it at each call and compared with -isEqual:, as before.
 	*/
 	OOCacheManager		*cacheMgr = [OOCacheManager sharedCache];
-	NSFileManager		*fmgr = [NSFileManager defaultManager];
 	BOOL				upToDate = YES;
 	id					oldPaths = nil;
-	id					modDate = nil;
 
-	if (EXPECT_NOT([[NSUserDefaults standardUserDefaults] boolForKey:@"always-flush-cache"]))
+	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("always-flush-cache")))
 	{
-		OOLog(@"dataCache.rebuild.explicitFlush", @"%@", @"Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
+		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
 		upToDate = NO;
 	}
 	else if ([MyOpenGLView pollShiftKey])
 	{
-		OOLog(@"dataCache.rebuild.explicitFlush", @"%@", @"Cache explicitly flushed with shift key. Rebuilding from scratch.");
+		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with shift key. Rebuilding from scratch.");
 		upToDate = NO;
 	}
 
@@ -1327,28 +1360,27 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (upToDate && ![oldPaths isEqual:oo::NSArrayFromStrings(searchPaths)])
 	{
 		// OXPs added/removed
-		if (oldPaths != nil) OOLog(@"dataCache.rebuild.pathsChanged", @"%@", @"Cache is stale (search paths have changed). Rebuilding from scratch.");
+		if (oldPaths != nil) OO_LOG("dataCache.rebuild.pathsChanged", "{}", "Cache is stale (search paths have changed). Rebuilding from scratch.");
 		upToDate = NO;
 	}
 
 	// Build modification date list. (We need this regardless of whether the search paths matched.)
-	// The dates come from NSFileManager's attributes (oo::fs has no modification date yet).
 	oo::PList::Array modDates;
 	modDates.reserve(searchPaths.size());
 	for (const std::string &path : searchPaths)
 	{
-		modDate = [[fmgr oo_fileAttributesAtPath:oo::NSStringFrom(path) traverseLink:YES] objectForKey:NSFileModificationDate];
-		if (modDate != nil)
+		const auto modTime = oo::fs::modificationTimeSince1970(oo::fs::pathFromUTF8(path));
+		if (modTime)
 		{
-			// Converts to double because I'm not sure the cache can deal with dates under GNUstep.
-			modDates.emplace_back([modDate timeIntervalSince1970]);
+			// Double, as before: the cache stored -timeIntervalSince1970 of NSFileModificationDate.
+			modDates.emplace_back(*modTime);
 		}
 	}
 	const oo::PList modDateList(std::move(modDates));
 
 	if (upToDate && ![[cacheMgr cxx_objectForKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates] isEqual:oo::ObjectFromPList(modDateList)])
 	{
-		OOLog(@"dataCache.rebuild.datesChanged", @"%@", @"Cache is stale (modification dates have changed). Rebuilding from scratch.");
+		OO_LOG("dataCache.rebuild.datesChanged", "{}", "Cache is stale (modification dates have changed). Rebuilding from scratch.");
 		upToDate = NO;
 	}
 
@@ -1358,7 +1390,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		[cacheMgr cxx_setObject:oo::NSArrayFromStrings(searchPaths) forKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];
 		[cacheMgr cxx_setObject:oo::ObjectFromPList(modDateList) forKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates];
 	}
-	else OOLog(@"dataCache.upToDate", @"%@", @"Data cache is up to date.");
+	else OO_LOG("dataCache.upToDate", "{}", "Data cache is up to date.");
 
 	return upToDate;
 }
@@ -1430,7 +1462,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	}
 	if (mergeType == nullptr)
 	{
-		OOLog(kOOLogParameterError, @"Unknown dictionary merge mode %u for %@. (This is an internal programming error, please report it.)", mergeMode, oo::NSStringFrom(fileName));
+		OO_LOG(cxx_kOOLogParameterError, "Unknown dictionary merge mode {} for {}. (This is an internal programming error, please report it.)", static_cast<unsigned>(mergeMode), fileName);
 		return oo::PList();
 	}
 
@@ -1461,10 +1493,10 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			const std::string &path = *pathIt;
 			if (folderName.has_value())
 			{
-				result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				result = PListDictionaryFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 				if (!result.isNull())  break;
 			}
-			result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			result = PListDictionaryFromFile(oo::str::appendingPathComponent(path, fileName));
 			if (!result.isNull())  break;
 		}
 	}
@@ -1478,11 +1510,11 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			{
 				continue;
 			}
-			oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			oo::PList dict = PListDictionaryFromFile(oo::str::appendingPathComponent(path, fileName));
 			if (!dict.isNull())  results.push_back(std::move(dict));
 			if (folderName.has_value())
 			{
-				dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				dict = PListDictionaryFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 				if (!dict.isNull())  results.push_back(std::move(dict));
 			}
 		}
@@ -1540,10 +1572,10 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			const std::string &path = *pathIt;
 			if (folderName.has_value())
 			{
-				result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				result = PListArrayFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 				if (!result.isNull())  break;
 			}
-			result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			result = PListArrayFromFile(oo::str::appendingPathComponent(path, fileName));
 			if (!result.isNull())  break;
 		}
 	}
@@ -1563,7 +1595,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			if (folderName.has_value())  arrayPaths.push_back(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 			for (const std::string &arrayPath : arrayPaths)
 			{
-				oo::PList array = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(arrayPath)));
+				oo::PList array = PListArrayFromFile(arrayPath);
 				if (array.isNull())  continue;	// a nil array was not added, and counted 0 below
 				resultArrays.push_back(std::move(array));
 
@@ -1780,7 +1812,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// Load built-in copy of logcontrol.plist.
 	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
 	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "logcontrol.plist");
-	oo::PList logControl = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(builtInPath)));
+	oo::PList logControl = PListDictionaryFromFile(builtInPath);
 	if (!logControl.isDict())  logControl = oo::PList(oo::PList::Dict());
 	oo::PList::Dict &logControlEntries = *logControl.getIf<oo::PList::Dict>();
 
@@ -1796,10 +1828,10 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// The logcontrol.plist in path/Config, else in path itself.
 	auto configDictionary = [](const std::string &path) -> oo::PList
 	{
-		oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "logcontrol.plist"))));
+		oo::PList dict = PListDictionaryFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "logcontrol.plist"));
 		if (dict.isNull())
 		{
-			dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "logcontrol.plist"))));
+			dict = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "logcontrol.plist"));
 		}
 		return dict;
 	};
@@ -1836,7 +1868,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	}
 
 	// Finally, look in preferences, which can override all of the above.
-	const oo::PList preferences = oo::PListFrom([[NSUserDefaults standardUserDefaults] dictionaryForKey:@"logging-enable"]);
+	const oo::PList preferences = oo::Defaults::standard().dictionaryForKey("logging-enable");
 	if (const oo::PList::Dict *entries = preferences.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[key, value] : *entries)  logControlEntries[key] = value;
@@ -1859,7 +1891,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		}
 
 		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "role-categories.plist");
-		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		const oo::PList categories = PListDictionaryFromFile(configPath);
 		if (!categories.isNull())
 		{
 			[ResourceManager mergeRoleCategories:categories intoDictionary:roleCategories];
@@ -1895,7 +1927,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	{
 		oo::PList &contents = categoryEntries.try_emplace(key, oo::PList::Array()).first->second;
 		const oo::PList *catDataEntry = catData.get<oo::PList::Array>(key);
-		OOLog(@"shipData.load.roleCategories", @"Adding %ld entries for category %@", (unsigned long)(catDataEntry != nullptr ? catDataEntry->count() : 0), oo::NSStringFrom(key));
+		OO_LOG("shipData.load.roleCategories", "Adding {} entries for category {}", static_cast<long>((unsigned long)(catDataEntry != nullptr ? catDataEntry->count() : 0)), key);
 		if (catDataEntry == nullptr)  continue;
 		oo::PList::Array &members = *contents.getIf<oo::PList::Array>();
 		for (const oo::PList &role : *catDataEntry->getIf<oo::PList::Array>())
@@ -1917,7 +1949,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 + (OOSystemDescriptionManager *) systemDescriptionManager
 {
-	OOLog(@"resourceManager.planetinfo.load", @"%@", @"Initialising manager");
+	OO_LOG("resourceManager.planetinfo.load", "{}", "Initialising manager");
 	OOSystemDescriptionManager *manager = [[OOSystemDescriptionManager alloc] init];
 	
 	// OODictionaryFromFile (OOPListParsing) and OOSystemDescriptionManager are unmigrated callees:
@@ -1929,7 +1961,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			continue;
 		}
 		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "planetinfo.plist");
-		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		const oo::PList categories = PListDictionaryFromFile(configPath);
 		if (const oo::PList::Dict *systems = categories.getIf<oo::PList::Dict>())
 		{
 			for (const auto &[systemKey, values] : *systems)
@@ -1952,9 +1984,9 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			}
 		}
 	}
-	OOLog(@"resourceManager.planetinfo.load", @"%@", @"Caching routes");
+	OO_LOG("resourceManager.planetinfo.load", "{}", "Caching routes");
 	[manager buildRouteCache];
-	OOLog(@"resourceManager.planetinfo.load", @"%@", @"Initialised manager");
+	OO_LOG("resourceManager.planetinfo.load", "{}", "Initialised manager");
 	return [manager autorelease];
 }
 
@@ -2019,7 +2051,6 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	std::string		cacheKey;
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
 	std::string		filePath;
-	NSFileManager	*fmgr = nil;
 
 	// (The resolved-paths cache is consulted whatever useCache says: the old test was of the cache
 	// manager, which always exists.) OOCacheManager is an unmigrated callee: it holds the path as a
@@ -2032,10 +2063,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		if (result.has_value())  return result;
 	}
 
-	// Search for file
-	// (-oo_oxzFileExistsAtPath:, the NSFileManager category that also looks inside OXZs, has no
-	// oo::fs form yet: it answers through the bridged path.)
-	fmgr = [NSFileManager defaultManager];
+	// Search for file (OXZ-aware exists, same answers as -oo_oxzFileExistsAtPath:).
 	// reverse object enumerator allows OXPs to override core
 	const std::vector<std::string> paths = [ResourceManager cxx_paths];
 	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
@@ -2043,14 +2071,14 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		const std::string &path = *pathIt;
 		// appending a nil folder left the path as it was
 		filePath = oo::str::appendingPathComponent(folderName.has_value() ? oo::str::appendingPathComponent(path, *folderName) : path, fileName);
-		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
+		if (OOOxzFileExistsAtPath(filePath))
 		{
 			result = filePath;
 			break;
 		}
 
 		filePath = oo::str::appendingPathComponent(path, fileName);
-		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
+		if (OOOxzFileExistsAtPath(filePath))
 		{
 			result = filePath;
 			break;
@@ -2059,7 +2087,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (result.has_value())
 	{
-		OOLog(@"resourceManager.foundFile", @"Found %@/%@ at %@", oo::NSStringOrNil(folderName), oo::NSStringFrom(fileName), oo::NSStringFrom(filePath));
+		OO_LOG("resourceManager.foundFile", "Found {}/{} at {}", folderName.value_or("(null)"), fileName, filePath);
 		if (useCache)
 		{
 			[cache cxx_setObject:oo::NSStringFrom(*result) forKey:cacheKey inCache:"resolved paths"];
@@ -2164,7 +2192,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// name -> script, in the order each name was first loaded (a later script of the same name replaces the earlier one in place)
 	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>	loadedScripts;
 
-	OOLog(@"script.load.world.begin", @"%@", @"Loading world scripts...");
+	OO_LOG("script.load.world.begin", "{}", "Loading world scripts...");
 
 	for (const std::string &path : [ResourceManager cxx_paths])
 	{
@@ -2190,25 +2218,25 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 								if (existing != loadedScripts.end())  existing->second = script;
 								else  loadedScripts.emplace_back(*name, script);
 							}
-							else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script.get());
+							else  OO_LOG("script.load.unnamed", "Discarding anonymous script {}", oo::DescriptionOf(script.get()));
 						}
 					}
 				}
 				@catch (OOException *exception)
 				{
-					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), oo::NSStringFrom(path));
+					OO_LOG("script.load.exception", "***** {} encountered exception {} ({}) while trying to load script from {} -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], path);
 					// Ignore exception and keep loading other scripts.
 				}
 				@catch (OOFoundationException *exception)
 				{
-					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], oo::NSStringFrom(path));
+					OO_LOG("script.load.exception", "***** {} encountered exception {} ({}) while trying to load script from {} -- ignoring this location.", "+[ResourceManager loadScripts]", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]), path);
 					// Ignore exception and keep loading other scripts.
 				}
 			}
 		}
 	}
 
-	if (OOLogWillDisplayMessagesInClass(@"script.load.world.listAll"))
+	if (oo::log::willDisplay("script.load.world.listAll"))
 	{
 		std::size_t count = loadedScripts.size();
 		if (count != 0)
@@ -2218,7 +2246,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 			for (const auto &[name, script] : loadedScripts)
 			{
-				displayNames.push_back(oo::StdString([script.get() displayName]));
+				displayNames.push_back([script.get() displayName].value_or(""));
 			}
 
 			std::stable_sort(displayNames.begin(), displayNames.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });
@@ -2228,11 +2256,11 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 				if (i != 0)  displayString += "\n    ";
 				displayString += displayNames[i];
 			}
-			OOLog(@"script.load.world.listAll", @"Loaded %zu world scripts:\n    %@", count, oo::NSStringFrom(displayString));
+			OO_LOG("script.load.world.listAll", "Loaded {} world scripts:\n    {}", static_cast<size_t>(count), displayString);
 		}
 		else
 		{
-			OOLog(@"script.load.world.listAll", @"%@", @"*** No world scripts loaded.");
+			OO_LOG("script.load.world.listAll", "{}", "*** No world scripts loaded.");
 		}
 	}
 
@@ -2277,7 +2305,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 + (BOOL) cxx_writeDiagnosticPList:(id)plist toFileNamed:(const std::string &)name
 {
-	// The old-school writer (oo::writeOldStylePList, the port of OldSchoolPropertyListWriting). Its
+	// The old-school writer (oo::writeOldStylePList, the port of the retired Objective-C old-school plist writer). Its
 	// XML fallback's result was never used, so a plist it cannot write is not written.
 	const auto data = oo::writeOldStylePList(oo::PListFrom(plist));
 	if (!data.has_value())  return NO;
@@ -2300,7 +2328,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 	if (exists && !directory)
 	{
-		OOLog(@"resourceManager.write.buildPath.failed", @"Expected %@ to be a folder, but it is a file.", oo::NSStringFrom(inPath));
+		OO_LOG("resourceManager.write.buildPath.failed", "Expected {} to be a folder, but it is a file.", inPath);
 		return NO;
 	}
 	if (!exists)
@@ -2308,7 +2336,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		if (!inCreate) return NO;
 		if (!oo::fs::createDirectories(oo::fs::pathFromUTF8(inPath)))
 		{
-			OOLog(@"resourceManager.write.buildPath.failed", @"Could not create folder %@.", oo::NSStringFrom(inPath));
+			OO_LOG("resourceManager.write.buildPath.failed", "Could not create folder {}.", inPath);
 			return NO;
 		}
 	}
@@ -2319,7 +2347,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 + (std::optional<std::string>) cxx_diagnosticFileLocation
 {
-	return oo::OptionalString(OOLogHandlerGetLogBasePath());	// an unmigrated callee (OOLogOutputHandler)
+	return cxx_OOLogHandlerGetLogBasePath();
 }
 
 
@@ -2339,7 +2367,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		}
 	}
 
-	OOLog(@"searchPaths.dumpAll", @"Resource paths: %@\n    %@", oo::NSStringOrNil(sUseAddOns), oo::NSStringFrom(displayPaths));
+	OO_LOG("searchPaths.dumpAll", "Resource paths: {}\n    {}", sUseAddOns.value_or("(null)"), displayPaths);
 
 }
 

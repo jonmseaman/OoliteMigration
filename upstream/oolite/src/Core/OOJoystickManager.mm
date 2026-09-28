@@ -25,10 +25,12 @@ MA 02110-1301, USA.
 */
 
 #import "OOJoystickManager.h"
-#import "OOLogging.h"
+#include "oofnd/Log.hpp"
+#include "oofnd/Defaults.hpp"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 static Class sStickHandlerClass = Nil;
@@ -65,8 +67,8 @@ static id sSharedStickHandler = nil;
 
 + (BOOL) setStickHandlerClass:(Class)aClass
 {
-	NSAssert(sStickHandlerClass == nil, @"Can't set joystick handler class after joystick handler is initialized.");
-	NSParameterAssert(aClass == Nil || [aClass isSubclassOfClass:[OOJoystickManager class]]);
+	OOAssert(sStickHandlerClass == nil, "Can't set joystick handler class after joystick handler is initialized.");
+	OOParameterAssert(aClass == Nil || [aClass isSubclassOfClass:[OOJoystickManager class]]);
 	
 	sStickHandlerClass = aClass;
 	return YES;
@@ -209,7 +211,7 @@ static id sSharedStickHandler = nil;
 
 - (void) saveProfileForAxis: (int) axis
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 	oo::PList::Dict dict;
 	OOJoystickAxisProfile *profile;
 	OOJoystickStandardAxisProfile *standard_profile;
@@ -252,15 +254,15 @@ static id sSharedStickHandler = nil;
 	}
 	if (axis == AXIS_ROLL)
 	{
-		[defaults setObject: oo::ObjectFromPList(oo::PList(std::move(dict))) forKey: STICK_ROLL_AXIS_PROFILE_SETTING];
+		defaults.setObject(oo::StdString(STICK_ROLL_AXIS_PROFILE_SETTING), oo::PList(std::move(dict)));
 	}
 	else if (axis == AXIS_PITCH)
 	{
-		[defaults setObject: oo::ObjectFromPList(oo::PList(std::move(dict))) forKey: STICK_PITCH_AXIS_PROFILE_SETTING];
+		defaults.setObject(oo::StdString(STICK_PITCH_AXIS_PROFILE_SETTING), oo::PList(std::move(dict)));
 	}
 	else if (axis == AXIS_YAW)
 	{
-		[defaults setObject: oo::ObjectFromPList(oo::PList(std::move(dict))) forKey: STICK_YAW_AXIS_PROFILE_SETTING];
+		defaults.setObject(oo::StdString(STICK_YAW_AXIS_PROFILE_SETTING), oo::PList(std::move(dict)));
 	}
 	return;
 }
@@ -269,22 +271,22 @@ static id sSharedStickHandler = nil;
 
 - (void) loadProfileForAxis: (int) axis
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 	oo::PList dict;
 	OOJoystickStandardAxisProfile *standard_profile;
 	OOJoystickSplineAxisProfile *spline_profile;
 
 	if (axis == AXIS_ROLL)
 	{
-		dict = oo::PListFrom([defaults objectForKey: STICK_ROLL_AXIS_PROFILE_SETTING]);
+		dict = defaults.object(oo::StdString(STICK_ROLL_AXIS_PROFILE_SETTING));
 	}
 	else if (axis == AXIS_PITCH)
 	{
-		dict = oo::PListFrom([defaults objectForKey: STICK_PITCH_AXIS_PROFILE_SETTING]);
+		dict = defaults.object(oo::StdString(STICK_PITCH_AXIS_PROFILE_SETTING));
 	}
 	else if (axis == AXIS_YAW)
 	{
-		dict = oo::PListFrom([defaults objectForKey: STICK_YAW_AXIS_PROFILE_SETTING]);
+		dict = defaults.object(oo::StdString(STICK_YAW_AXIS_PROFILE_SETTING));
 	}
 	else
 	{
@@ -332,7 +334,7 @@ static id sSharedStickHandler = nil;
 	std::vector<std::string> stickList;
 	for (i = 0; i < stickCount; i++)
 	{
-		stickList.push_back(oo::StdString([self nameOfJoystick:i]));
+		stickList.push_back([self nameOfJoystick:i].value_or(std::string()));	// a nameless stick lists as "", as before
 	}
 	return stickList;
 }
@@ -411,7 +413,7 @@ static id sSharedStickHandler = nil;
                    function:(int)function
                       stick:(int)stickNum
 {
-	NSParameterAssert(axis < MAX_AXES && stickNum < MAX_STICKS);
+	OOParameterAssert(axis < MAX_AXES && stickNum < MAX_STICKS);
 	
 	int16_t axisvalue = [self getAxisWithStick:stickNum axis:axis];
 	[self unsetAxisFunction:function];
@@ -435,7 +437,7 @@ static id sSharedStickHandler = nil;
                      function:(int)function 
                         stick:(int)stickNum
 {
-	NSParameterAssert(button < MAX_BUTTONS && stickNum < MAX_STICKS);
+	OOParameterAssert(button < MAX_BUTTONS && stickNum < MAX_STICKS);
 	
 	int i, j;
 	for (i = 0; i < MAX_BUTTONS; i++)
@@ -593,7 +595,7 @@ static id sSharedStickHandler = nil;
 	}
 	else
 	{
-		OOLog(@"decodeAxisEvent", @"Stick axis out of range - axis was %d", evt->axis);
+		OO_LOG("decodeAxisEvent", "Stick axis out of range - axis was {}", evt->axis);
 		return;
 	}
 	switch (function)
@@ -648,7 +650,7 @@ static id sSharedStickHandler = nil;
 	}
 	else
 	{
-		OOLog(@"decodeButtonEvent", @"Joystick button out of range: %d", evt->button);
+		OO_LOG("decodeButtonEvent", "Joystick button out of range: {}", evt->button);
 		return;
 	}
 	if (evt->type == JOYBUTTONDOWN)
@@ -697,25 +699,23 @@ static id sSharedStickHandler = nil;
 
 - (void) saveStickSettings
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 	
-	[defaults setObject:oo::ObjectFromPList([self axisFunctions])
-				 forKey:AXIS_SETTINGS];
-	[defaults setObject:oo::ObjectFromPList([self buttonFunctions])
-				 forKey:BUTTON_SETTINGS];
+	defaults.setObject(oo::StdString(AXIS_SETTINGS), [self axisFunctions]);
+	defaults.setObject(oo::StdString(BUTTON_SETTINGS), [self buttonFunctions]);
 	[self saveProfileForAxis: AXIS_ROLL];
 	[self saveProfileForAxis: AXIS_PITCH];
 	[self saveProfileForAxis: AXIS_YAW];
-	[defaults synchronize];
+	defaults.synchronize();
 }
 
 
 - (void) loadStickSettings
 {
 	[self clearMappings];
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	const oo::PList axisSettings = oo::PListFrom([defaults objectForKey: AXIS_SETTINGS]);
-	const oo::PList buttonSettings = oo::PListFrom([defaults objectForKey: BUTTON_SETTINGS]);
+	oo::Defaults &defaults = oo::Defaults::standard();
+	const oo::PList axisSettings = defaults.object(oo::StdString(AXIS_SETTINGS));
+	const oo::PList buttonSettings = defaults.object(oo::StdString(BUTTON_SETTINGS));
 	// Keys are visited in byte order (they came in hash order): where two settings claim the
 	// same stick axis or button, the last one still wins (proposed ADR-0043).
 	if(axisSettings)
@@ -752,9 +752,9 @@ static id sSharedStickHandler = nil;
 
 // These get overidden by subclasses
 
-- (id) nameOfJoystick:(NSUInteger)stickNumber	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber
 {
-	return @"Dummy joystick";
+	return std::string("Dummy joystick");
 }
 
 - (int16_t) getAxisWithStick:(NSUInteger)stickNum axis:(NSUInteger)axisNum

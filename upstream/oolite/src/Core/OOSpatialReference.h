@@ -28,11 +28,12 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
 #import "Entity.h"
 
 
-@protocol OOSpatialReference <NSObject>
+@protocol OOSpatialReference <OOObject>
 
 - (OOMatrix) transformationMatrix;
 

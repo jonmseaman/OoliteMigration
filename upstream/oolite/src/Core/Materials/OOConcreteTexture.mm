@@ -36,13 +36,15 @@
 #import "OOMacroOpenGL.h"
 #import "OOCPUInfo.h"
 #import "OOPixMap.h"
+#import "OOFoundationBridge.h"
+#import "OOLogging.h"
+#include "oofnd/Log.hpp"
+#include "oofnd/String.hpp"
 
 #ifndef NDEBUG
 #import "OOTextureGenerator.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
-
-#include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 #endif
 
 
@@ -124,7 +126,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 		anisotropy:(float)anisotropy
 		   lodBias:(GLfloat)lodBias
 {
-	OOTextureLoader *loader = [OOTextureLoader loaderWithPath:oo::NSStringFrom(path) options:options];
+	OOTextureLoader *loader = [OOTextureLoader cxx_loaderWithPath:path options:options];
 	if (loader == nil)
 	{
 		[self release];
@@ -145,7 +147,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 - (void)dealloc
 {
 #ifndef NDEBUG
-	OOLog(_trace ? @"texture.allocTrace.dealloc" : @"texture.dealloc", @"Deallocating and uncaching texture %p", self);
+	OO_LOG(_trace ? "texture.allocTrace.dealloc" : "texture.dealloc", "Deallocating and uncaching texture {}", oo::str::pointerDescription(self));
 #endif
 	
 #if OOTEXTURE_RELOADABLE
@@ -219,8 +221,11 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 	if (!_path.has_value())  return nil;
 	std::string name = oo::StdString([oo::NSStringFrom(*_path) lastPathComponent]);
 #else
-	if ([self cacheKey] == nil)  return nil;
-	std::string name = oo::StdString([[[[self cacheKey] componentsSeparatedByString:@":"] objectAtIndex:0] lastPathComponent]);
+	const std::optional<std::string> key = [self cxx_cacheKey];
+	if (!key.has_value())  return nil;
+	const std::string::size_type colon = key->find(':');
+	const std::string head = colon == std::string::npos ? *key : key->substr(0, colon);
+	std::string name = oo::str::lastPathComponent(head);
 #endif
 
 	const char *channelSuffix = nullptr;
@@ -276,9 +281,9 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringOrNil(_key);
+	return _key;
 }
 
 
@@ -449,7 +454,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 		{
 			static unsigned dumpID = 0;
 			const std::string name = oo::str::format("tex dump %u \"", ++dumpID) + oo::DescriptionOf([self name]) + "\"";
-			OOLog(@"texture.trace.dump", @"Dumped traced texture %@ to \'%@.png\'", self, oo::NSStringFrom(name));
+			OO_LOG("texture.trace.dump", "Dumped traced texture {} to '{}.png'", oo::DescriptionOf(self), name);
 			OODumpPixMap(pm, name);
 		}
 #endif
@@ -528,13 +533,13 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 		if (texTarget == GL_TEXTURE_2D)
 		{
 			[self uploadTextureDataWithMipMap:mipMap format:_format];
-			OOLog(@"texture.upload", @"Uploaded texture %u (%ux%u pixels, %@)", _textureName, _width, _height, oo::NSStringOrNil(_key));
+			OO_LOG("texture.upload", "Uploaded texture {} ({}x{} pixels, {})", _textureName, _width, _height, _key.value_or("(null)"));
 		}
 #if OO_TEXTURE_CUBE_MAP
 		else if (texTarget == GL_TEXTURE_CUBE_MAP)
 		{
 			[self uploadTextureCubeMapDataWithMipMap:mipMap format:_format];
-			OOLog(@"texture.upload", @"Uploaded cube map texture %u (%ux%ux6 pixels, %@)", _textureName, _width, _width, oo::NSStringOrNil(_key));
+			OO_LOG("texture.upload", "Uploaded cube map texture {} ({}x{}x6 pixels, {})", _textureName, _width, _width, _key.value_or("(null)"));
 		}
 #endif
 		else
@@ -647,7 +652,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 #if OOTEXTURE_RELOADABLE
 		if ([self isReloadable])
 		{
-			OOLog(@"texture.reload", @"Reloading texture %@", self);
+			OO_LOG("texture.reload", "Reloading texture {}", oo::DescriptionOf(self));
 			
 			free(_bytes);
 			_bytes = NULL;
@@ -655,7 +660,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 			_uploaded = NO;
 			_valid = NO;
 			
-			_loader = [[OOTextureLoader loaderWithPath:oo::NSStringOrNil(_path) options:_options] retain];
+			_loader = [[OOTextureLoader cxx_loaderWithPath:_path options:_options] retain];
 		}
 #endif
 	}
@@ -676,7 +681,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 
 static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *outFormat, GLenum *outInternalFormat, GLenum *outType)
 {
-	NSCParameterAssert(outFormat != NULL && outInternalFormat != NULL && outType != NULL);
+	OOCParameterAssert(outFormat != NULL && outInternalFormat != NULL && outType != NULL);
 	
 	switch (format)
 	{
@@ -707,7 +712,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 			return YES;
 			
 		default:
-			OOLog(kOOLogParameterError, @"Unexpected texture format %u.", format);
+			OO_LOG(cxx_kOOLogParameterError, "Unexpected texture format {}.", static_cast<unsigned>(format));
 			return NO;
 	}
 }

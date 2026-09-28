@@ -99,12 +99,6 @@ OOSDRToneMapper OOSDRToneMapperFromString( NSString *string)
 }
 
 
-NSString *OOStringFromEntityStatus(OOEntityStatus value)
-{
-	return oo::NSStringFrom(cxx_OOStringFromEntityStatus(value));
-}
-
-
 NSString *OOStringFromBehaviour(OOBehaviour value)
 {
 	return oo::NSStringFrom(cxx_OOStringFromBehaviour(value));
@@ -135,12 +129,6 @@ NSString *OOStringFromGUIScreenID(OOGUIScreenID value)
 }
 
 
-NSString *OOStringFromScanClass(OOScanClass value)
-{
-	return oo::NSStringFrom(cxx_OOStringFromScanClass(value));
-}
-
-
 NSString *OOStringFromShipDamageType(OOShipDamageType value)
 {
 	return oo::NSStringFrom(cxx_OOStringFromShipDamageType(value));
@@ -150,12 +138,6 @@ NSString *OOStringFromShipDamageType(OOShipDamageType value)
 NSString *OOStringFromLegalStatusReason(OOLegalStatusReason value)
 {
 	return oo::NSStringFrom(cxx_OOStringFromLegalStatusReason(value));
-}
-
-
-OOEntityStatus OOEntityStatusFromString(NSString *string)
-{
-	return cxx_OOEntityStatusFromString(oo::StdString(string));
 }
 
 
@@ -174,12 +156,6 @@ OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *
 OOGUIScreenID OOGUIScreenIDFromString(NSString *string)
 {
 	return cxx_OOGUIScreenIDFromString(oo::StdString(string));
-}
-
-
-OOScanClass OOScanClassFromString(NSString *string)
-{
-	return cxx_OOScanClassFromString(oo::StdString(string));
 }
 
 
@@ -291,4 +267,22 @@ NSString *DisplayStringForMassUnit(OOMassUnit unit)
 NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity)
 {
 	return oo::NSStringOrNil(cxx_DisplayStringForMassUnitForCommodity(oo::StdString(commodity)));
+}
+
+
+OOShaderSetting OOShaderSettingFromString(NSString *string)
+{
+	return cxx_OOShaderSettingFromString(oo::StdString(string));
+}
+
+
+NSString *OOStringFromShaderSetting(OOShaderSetting setting)
+{
+	return oo::NSStringFrom(cxx_OOStringFromShaderSetting(setting));
+}
+
+
+NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting)
+{
+	return oo::NSStringOrNil(cxx_OODisplayStringFromShaderSetting(setting));
 }

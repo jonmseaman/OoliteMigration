@@ -27,7 +27,6 @@
 #import "PlayerEntityControls.h"
 #import "PlayerEntitySound.h"
 
-#import "NSFileManagerOOExtensions.h"
 #import "GameController.h"
 #import "ResourceManager.h"
 #import "OOStringExpander.h"
@@ -44,7 +43,6 @@
 #import "OOConstToString.h"
 #import "OOShipRegistry.h"
 #import "OOTexture.h"
-#import "NSStringOOExtensions.h"
 #import "OOJavaScriptEngine.h"
 #include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
@@ -52,6 +50,7 @@
 #include "oofnd/FileSystem.hpp"
 
 #include <algorithm>
+#include "oofnd/objc/OOAssert.h"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -162,12 +161,12 @@ unsigned char FirstUnitLowByte(const std::string &string)
 - (void) lsCommanders: (GuiDisplayGen *)gui directory: (const std::string &)directory pageNumber: (int)page highlightName: (const std::optional<std::string> &)highlightName;
 - (void) showCommanderShip: (int)cdrArrayIndex;
 - (int) findIndexOfCommander: (const std::string &)cdrName;
-- (void) nativeSavePlayer: (NSString *)cdrName;
+- (void) nativeSavePlayer: (const std::string &)cdrName;
 - (BOOL) existingNativeSave: (const std::string &)cdrName;
 
 #endif
 
-- (void) writePlayerToPath:(NSString *)path;
+- (void) writePlayerToPath:(const std::string &)path;
 
 @end
 
@@ -220,25 +219,25 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 - (void) autosavePlayer
 {
-	NSString		*tmp_path = nil;
-	NSString		*tmp_name = nil;
-	NSString		*dir = [[UNIVERSE gameController] playerFileDirectory];
-	
-	tmp_name = [self lastsaveName];
-	tmp_path = save_path;
+	std::optional<std::string>	tmp_path;
+	std::optional<std::string>	tmp_name;
+	const std::string			dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+
+	tmp_name = oo::OptionalString([self lastsaveName]);
+	tmp_path = oo::OptionalString(save_path);
 	
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
 	
-	NSString *saveName = [self lastsaveName];
-	NSString *autosaveSuffix = DESC(@"autosave-commander-suffix");
-	
-	if (![saveName hasSuffix:autosaveSuffix])
+	std::string saveName = oo::StdString([self lastsaveName]);
+	const std::string autosaveSuffix = oo::StdString(DESC(@"autosave-commander-suffix"));
+
+	if (!oo::str::hasSuffix(saveName, autosaveSuffix))
 	{
-		saveName = [saveName stringByAppendingString:autosaveSuffix];
+		saveName += autosaveSuffix;
 	}
-	NSString *savePath = [dir stringByAppendingPathComponent:[saveName stringByAppendingString:@".oolite-save"]];
-	
-	[self setLastsaveName:saveName];
+	const std::string savePath = oo::str::appendingPathComponent(dir, saveName + ".oolite-save");	// a plain append, not the path-extension rule
+
+	[self setLastsaveName:oo::NSStringFrom(saveName)];
 	
 	@try
 	{
@@ -249,22 +248,22 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		// Suppress exceptions silently. Warning the user about failed autosaves would be pretty unhelpful.
 	}
 	
-	if (tmp_path != nil)
+	if (tmp_path.has_value())
 	{
 		[save_path autorelease];
-		save_path = [tmp_path copy];
+		save_path = [oo::NSStringFrom(*tmp_path) copy];
 	}
-	[self setLastsaveName:tmp_name];
+	[self setLastsaveName:oo::NSStringOrNil(tmp_name)];
 }
 
 
 - (void) quicksavePlayer
 {
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
-	NSString		*path = nil;
-	
-	path = save_path;
-	if (!path)  path = [[gameView gameController] playerFileToLoad];
+	std::optional<std::string>	path;
+
+	path = oo::OptionalString(save_path);
+	if (!path)  path = oo::OptionalString([[gameView gameController] playerFileToLoad]);
 	if (!path)
 	{
 		OOLog(@"quickSave.failed.noName", @"%@", @"ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
@@ -273,8 +272,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
-	
-	[self writePlayerToPath:path];
+
+	[self writePlayerToPath:*path];
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	[self setGuiToStatusScreen];
 }
@@ -292,7 +291,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_NEWGAME);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"oolite-newgame-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-newgame-title"))];
 
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -620,7 +619,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			}
 			else
 			{
-				[self nativeSavePlayer: oo::NSStringFrom(commanderNameString)];
+				[self nativeSavePlayer: commanderNameString];
 				[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 				[self setGuiToStatusScreen];
 			}
@@ -655,7 +654,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (([self checkKeyPress:n_key_gui_select] && ([gui selectedRow] == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
 		pollControls=YES;
-		[self nativeSavePlayer: oo::NSStringFrom(commanderNameString)];
+		[self nativeSavePlayer: commanderNameString];
 		[self playSaveOverwriteYes];
 		[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 		[self setGuiToStatusScreen];
@@ -935,7 +934,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if ([sPanel runModal] == NSOKButton)
 	{
 		NSURL *url = sPanel.URL;
-		NSAssert(url.isFileURL, @"Save panel with default configuration should not provide non-file URLs.");
+		OOAssert(url.isFileURL, "Save panel with default configuration should not provide non-file URLs.");
 		
 		NSString *path = url.path;
 		NSString *newName = [path.lastPathComponent stringByDeletingPathExtension];
@@ -943,7 +942,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 		
 		self.lastsaveName = newName;
-		[self writePlayerToPath:path];
+		[self writePlayerToPath:oo::StdString(path)];
 	}
 	[self setGuiToStatusScreen];
 }
@@ -951,28 +950,32 @@ unsigned char FirstUnitLowByte(const std::string &string)
 #endif
 
 
-- (void) writePlayerToPath:(NSString *)path
+- (void) writePlayerToPath:(const std::string &)path
 {
-	NSString		*errDesc = nil;
-	NSDictionary	*dict = nil;
+	std::string		errDesc;
 	BOOL			didSave = NO;
 	[[UNIVERSE gameView] resetTypedString];
-	
-	if (!path)
+
+	if (path.empty())
 	{
 		OOLog(@"save.failed", @"***** SAVE ERROR: %s called with nil path.", __PRETTY_FUNCTION__);
 		return;
 	}
-	
-	dict = [self commanderDataDictionary];
-	if (dict == nil)  errDesc = @"could not construct commander data dictionary.";
-	else  didSave = [dict writeOOXMLToFile:path atomically:YES errorDescription:&errDesc];
+
+	// The save dictionary as a property list, converted once (its float values stay single reals,
+	// written %0.7g as before).
+	const oo::PList dict = oo::PListFrom([self commanderDataDictionary]);
+	if (dict.isNull())  errDesc = "could not construct commander data dictionary.";
+	else
+	{
+		didSave = OOWriteXMLPListToFile(dict, path, &errDesc);
+	}
 	if (didSave)
 	{
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
 		[UNIVERSE addMessage:DESC(@"game-saved") forCount:2];
 		[save_path autorelease];
-		save_path = [path copy];
+		save_path = [oo::NSStringFrom(path) copy];
 		[[UNIVERSE gameController] setPlayerFileToLoad:save_path];
 		[[UNIVERSE gameController] setPlayerFileDirectory:save_path];
 		// no duplicated autosave immediately after a save.
@@ -980,23 +983,23 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	else
 	{
-		OOLog(@"save.failed", @"***** SAVE ERROR: %@", errDesc);
+		OOLog(@"save.failed", @"***** SAVE ERROR: %@", oo::NSStringFrom(errDesc));
 		[OOException raise:"OoliteException"
-					format:"Attempt to save game to file '%s' failed: %s", [path UTF8String], [errDesc UTF8String]];
+					format:"Attempt to save game to file '%s' failed: %s", path.c_str(), errDesc.c_str()];
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	[self setGuiToStatusScreen];
 }
 
 
-- (void)nativeSavePlayer:(NSString *)cdrName
+- (void)nativeSavePlayer:(const std::string &)cdrName
 {
-	NSString*	dir = [[UNIVERSE gameController] playerFileDirectory];
-	NSString *savePath = [dir stringByAppendingPathComponent:[cdrName stringByAppendingPathExtension:@"oolite-save"]];
-	
+	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
+
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
-	
-	[self setLastsaveName:cdrName];
+
+	[self setLastsaveName:oo::NSStringFrom(cdrName)];
 	
 	[self writePlayerToPath:savePath];
 }
@@ -1012,7 +1015,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_LOAD;
 	
 	[gui clear];
-	[gui setTitle:DESC(@"loadscreen-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"loadscreen-title"))];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1037,7 +1040,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE;
 	
 	[gui clear];
-	[gui setTitle:DESC(@"savescreen-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"savescreen-title"))];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1069,7 +1072,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE_OVERWRITE;
 	
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName }))];
+	[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName })];
 	
 	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"overwritescreen-commander-@-already-exists-overwrite-query")), { cdrName })
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
@@ -1103,9 +1106,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	unsigned i;
 	int row=STARTROW;
 	
-	// The retiring NSFileManager (OOExtensions) commander listing, in place: the directory's entries
-	// as full paths. Its per-entry filter tested `!exists && isDirectory`, which never holds, so it
-	// only built the paths.
+	// Commander listing from the save directory's entries as full paths. The old per-entry filter
+	// tested `!exists && isDirectory`, which never holds, so it only built the paths.
 	std::vector<std::string> cdrArray;
 	const oo::fs::Path directoryPath = oo::fs::pathFromUTF8(directory);
 	if (oo::fs::fileType(directoryPath) == oo::fs::FileType::directory)
@@ -1162,10 +1164,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		return;
 	}
 
-	// sortCommanders: -localizedCompare: of saved_game_path. oofnd has no localized collation, so
-	// the comparison itself still goes through Foundation until it has one (oo-qps).
+	// sortCommanders: saved_game_path in the locale collation (oo::str::localizedCompare, ICU, as GNUstep sorted it).
 	std::stable_sort(cdrDetailArray.begin(), cdrDetailArray.end(), [](const oo::PList &cdr1, const oo::PList &cdr2) {
-		return [oo::NSStringFrom(cdr1.get<std::string>("saved_game_path")) localizedCompare:oo::NSStringFrom(cdr2.get<std::string>("saved_game_path"))] == NSOrderedAscending;
+		return oo::str::localizedCompare(cdr1.get<std::string>("saved_game_path"), cdr2.get<std::string>("saved_game_path")) < 0;
 	});
 	
 	// Do we need to highlight a name?
@@ -1427,7 +1428,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	for (i=0; i < cdrDetailArray.size(); i++)
 	{
 		const std::optional<std::string> currentName = CommanderSaveName(cdrDetailArray[i]);
-		if(currentName && cdrName == *currentName)	// -compare: == NSOrderedSame
+		if(currentName && cdrName == *currentName)	// -compare: == OOOrderedSame
 		{
 			return i;
 		}
@@ -1466,7 +1467,7 @@ uint16_t PersonalityForCommanderDict(const oo::PList &dict)
 	if (personality == ENTITY_PERSONALITY_INVALID)
 	{
 		// For pre-1.74 saved games, generate a default personality based on some hashes.
-		// (-oo_hash of a missing string was a message to nil: 0.)
+		// (ooHash of a missing string was a message to nil: 0.)
 		const std::optional<std::string> shipDesc = OptionalStringValue(dict.find("ship_desc"));
 		const std::optional<std::string> playerName = OptionalStringValue(dict.find("player_name"));
 		personality = (shipDesc ? oo::str::ooHash(*shipDesc) : 0) * (playerName ? oo::str::ooHash(*playerName) : 0);
@@ -1514,7 +1515,7 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 
 OOCreditsQuantity OODeciCreditsFromObject(id object)
 {
-	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// -oo_isFloatingPointNumber: objCType f or d
+	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// float/double NSNumber (objCType f or d)
 	{
 		return OODeciCreditsFromDouble([object doubleValue]);
 	}

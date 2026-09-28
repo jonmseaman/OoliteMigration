@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -289,9 +290,9 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"SystemInfo";
+	return std::string("SystemInfo");
 }
 
 
@@ -357,7 +358,7 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 
 /*- (Random_Seed) systemSeed
 {
-	NSAssert([PLAYER currentGalaxyID] == _galaxy, @"Attempt to use -[OOSystemInfo systemSeed] from a different galaxy.");
+	OOAssert([PLAYER currentGalaxyID] == _galaxy, "Attempt to use -[OOSystemInfo systemSeed] from a different galaxy.");
 	return [UNIVERSE systemSeedForSystemNumber:_system];
 	}*/
 

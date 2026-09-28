@@ -41,12 +41,12 @@ MA 02110-1301, USA.
 
 namespace {
 // -caseInsensitiveCompare: as the definitions used it: a nil receiver answers
-// NSOrderedSame (a message to nil); a nil argument compares as the empty string.
-static NSComparisonResult CaseInsensitiveCompare(const std::optional<std::string> &a, const std::optional<std::string> &b)
+// OOOrderedSame (a message to nil); a nil argument compares as the empty string.
+static OOComparisonResult CaseInsensitiveCompare(const std::optional<std::string> &a, const std::optional<std::string> &b)
 {
-	if (!a.has_value())  return NSOrderedSame;
+	if (!a.has_value())  return OOOrderedSame;
 	int order = oo::str::caseInsensitiveCompare(*a, b.value_or(std::string()));
-	return (order < 0) ? NSOrderedAscending : ((order > 0) ? NSOrderedDescending : NSOrderedSame);
+	return (order < 0) ? OOOrderedAscending : ((order > 0) ? OOOrderedDescending : OOOrderedSame);
 }
 } // namespace
 
@@ -92,15 +92,27 @@ static NSComparisonResult CaseInsensitiveCompare(const std::optional<std::string
 	[super dealloc];
 }
 
-- (id)title	// shared selector (proposed ADR-0043)
+- (id)title	// shared selector (Foundation declares -title too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(_title);
+	return oo::NSStringOrNil([self cxx_title]);
 }
 
 
-- (void)setTitle:(id)title	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_title
 {
-	_title = oo::OptionalString(title);
+	return _title;
+}
+
+
+- (void)setTitle:(id)title	// shared selector (Foundation declares -setTitle: too; retires with oo-qps)
+{
+	[self cxx_setTitle:oo::OptionalString(title)];
+}
+
+
+- (void)cxx_setTitle:(const std::optional<std::string> &)title
+{
+	_title = title;
 }
 
 
@@ -184,12 +196,12 @@ static NSComparisonResult CaseInsensitiveCompare(const std::optional<std::string
 }
 
 
-- (NSComparisonResult)interfaceCompare:(OOJSInterfaceDefinition *)other
+- (OOComparisonResult)interfaceCompare:(OOJSInterfaceDefinition *)other
 {
-	NSComparisonResult byCategory = CaseInsensitiveCompare(_category, [other category]);
-	if (byCategory == NSOrderedSame)
+	OOComparisonResult byCategory = CaseInsensitiveCompare(_category, [other category]);
+	if (byCategory == OOOrderedSame)
 	{
-		return CaseInsensitiveCompare(_title, oo::OptionalString([other title]));
+		return CaseInsensitiveCompare(_title, [other cxx_title]);
 	}
 	else
 	{

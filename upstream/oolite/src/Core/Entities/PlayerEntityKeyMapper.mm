@@ -32,6 +32,8 @@ MA 02110-1301, USA.
 #import "GameController.h"
 #import "OOEquipmentType.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
@@ -79,7 +81,7 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 // (MyOpenGLView+Input.mm).
 std::string KeyboardCode(void)
 {
-	const oo::PList kbdValue = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:@"keyboard-code"]);
+	const oo::PList kbdValue = oo::Defaults::standard().object("keyboard-code");
 	return oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
 }
 
@@ -143,7 +145,7 @@ const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
 // A copy of the KeyConfigOverrides default (+dictionaryWithDictionary: of nil was empty).
 oo::PList::Dict KeyConfigOverrides(void)
 {
-	const oo::PList overrides = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:KEYCONFIG_OVERRIDES]);
+	const oo::PList overrides = oo::Defaults::standard().object(oo::StdString(KEYCONFIG_OVERRIDES));
 	const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>();
 	return dict != nullptr ? *dict : oo::PList::Dict();
 }
@@ -288,7 +290,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(std::string("Configure Keyboard"))];
+	[gui cxx_setTitle:std::string("Configure Keyboard")];
 
 	// show keyboard layout
 	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-keyboard")), [self keyboardDescription:kbd] }) forRow:GUI_ROW_KC_SELECTKBD];
@@ -443,8 +445,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 				if (update) 
 				{
-					NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-					[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+					oo::Defaults &defaults = oo::Defaults::standard();
+					defaults.setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 				}
 			}
 			
@@ -564,7 +566,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	gui_screen = GUI_SCREEN_KEYBOARD_CONFIG;
 	BOOL guiChanged = (oldScreen != gui_screen);
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-update-title")))];	// @"%@"
+	[gui cxx_setTitle:oo::DescriptionOf(DESC(@"oolite-keyconfig-update-title"))];	// @"%@"
 
 	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-function")), OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_GUIDESC)) })
 					forRow: GUI_ROW_KC_UPDATE_FUNCNAME];
@@ -753,7 +755,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[gameView setStringInput:gvStringInputAll];
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-update-entry-title")))];	// @"%@"
+	[gui cxx_setTitle:oo::DescriptionOf(DESC(@"oolite-keyconfig-update-entry-title"))];	// @"%@"
 
 	NSUInteger end_row = 21;
 	if ([[self hud] allowBigGui])
@@ -890,7 +892,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	BOOL guiChanged = (oldScreen != gui_screen);
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides-title")))];	// @"%@"
+	[gui cxx_setTitle:oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides-title"))];	// @"%@"
 
 	[gui cxx_addLongText:oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides"))	// @"%@"
 								startingAtRow:GUI_ROW_KC_CONFIRMCLEAR align:GUI_ALIGN_LEFT];
@@ -1300,7 +1302,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(std::string("Select Keyboard Layout"))];
+	[gui cxx_setTitle:std::string("Select Keyboard Layout")];
 
 	[self displayKeyboardLayoutList:gui skip:skip];
 
@@ -1343,8 +1345,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		// update the keyboard code
 		NSUInteger idx =SecondFieldIntValue(key);
 		const std::optional<std::string> kbd = idx < kbdLayouts.size() ? OptionalStringForKey(kbdLayouts[idx], "key") : std::nullopt;
-		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:oo::NSStringOrNil(kbd) forKey:@"keyboard-code"];	// NSUserDefaults stays (ADR-0032 item 5)
+		oo::Defaults &defaults = oo::Defaults::standard();
+		defaults.setObject("keyboard-code", kbd ? oo::PList(*kbd) : oo::PList());
 		[self initKeyConfigSettings];
 		[self initCheckingDictionary];
 
@@ -1737,7 +1739,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		}
 	}
 
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];	// stays (ADR-0032 item 5)
+	oo::Defaults &defaults = oo::Defaults::standard();
 
 	if (![self entryIsCustomEquip:key])
 	{
@@ -1752,13 +1754,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		}
 		oo::PList::Dict keyconf = KeyConfigOverrides();
 		keyconf[key] = key_list;
-		[defaults setObject:oo::ObjectFromPList(oo::PList(std::move(keyconf))) forKey:KEYCONFIG_OVERRIDES];
+		defaults.setObject(oo::StdString(KEYCONFIG_OVERRIDES), oo::PList(std::move(keyconf)));
 	}
 	else
 	{
 		NSUInteger idx = [self getCustomEquipIndex:key];
 		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;	// in place
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		defaults.setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1768,18 +1770,18 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 // unsets the key setting in the overrides, and updates the global definition
 - (void) unsetKeySetting:(const std::string &)key
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];	// stays (ADR-0032 item 5)
+	oo::Defaults &defaults = oo::Defaults::standard();
 	if (![self entryIsCustomEquip:key])
 	{
 		oo::PList::Dict keyconf = KeyConfigOverrides();
 		keyconf[key] = oo::PList(oo::PList::Array());	// an empty override
-		[defaults setObject:oo::ObjectFromPList(oo::PList(std::move(keyconf))) forKey:KEYCONFIG_OVERRIDES];
+		defaults.setObject(oo::StdString(KEYCONFIG_OVERRIDES), oo::PList(std::move(keyconf)));
 	}
 	else
 	{
 		NSUInteger idx = [self getCustomEquipIndex:key];
 		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));	// in place
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		defaults.setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1789,12 +1791,12 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 // removes the key setting from the overrides, and updates the global definition
 - (void) deleteKeySetting:(const std::string &)key
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];	// stays (ADR-0032 item 5)
+	oo::Defaults &defaults = oo::Defaults::standard();
 	if (![self entryIsCustomEquip:key])
 	{
 		oo::PList::Dict keyconf = KeyConfigOverrides();
 		keyconf.erase(key);
-		[defaults setObject:oo::ObjectFromPList(oo::PList(std::move(keyconf))) forKey:KEYCONFIG_OVERRIDES];
+		defaults.setObject(oo::StdString(KEYCONFIG_OVERRIDES), oo::PList(std::move(keyconf)));
 	}
 	else
 	{
@@ -1802,7 +1804,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		const std::optional<std::string> keyDefType = [self getCustomEquipKeyDefType:key];
 		oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, [self getCustomEquipIndex:key]);
 		if (fields != nullptr && keyDefType.has_value())  fields->erase(*keyDefType);
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		defaults.setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1812,8 +1814,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 // removes all key settings from the overrides, and updates the global definition
 - (void) deleteAllKeySettings
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	[defaults removeObjectForKey:KEYCONFIG_OVERRIDES];
+	oo::Defaults &defaults = oo::Defaults::standard();
+	defaults.removeObject(oo::StdString(KEYCONFIG_OVERRIDES));
 	if (customEquipActivation.size() > 0)
 	{
 		NSUInteger i;
@@ -1833,7 +1835,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 			else
 				fields->erase(oo::StdString(CUSTOMEQUIP_KEYMODE));
 		}
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		defaults.setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1843,7 +1845,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 // returns all key settings from the overrides
 - (oo::PList) loadKeySettings
 {
-	return oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:KEYCONFIG_OVERRIDES]);
+	return oo::Defaults::standard().object(oo::StdString(KEYCONFIG_OVERRIDES));
 }
 
 

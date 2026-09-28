@@ -33,9 +33,33 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "OOConstToString.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+
+namespace {
+
+// Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
+std::optional<std::string> OoliteInfoString(std::string_view key)
+{
+	const oo::fs::Path plistPath = oo::ResourcePaths::current().builtInResourcesDirectory() / "Info-gnustep.plist";
+	oo::PList info;
+	if (const oo::fs::Result<oo::Data> bytes = oo::fs::readFile(plistPath); bytes && !bytes->empty())
+	{
+		if (oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyList(bytes->stringView());
+		    parsed && parsed->isDict())
+			info = std::move(*parsed);
+	}
+	if (const oo::PList *v = info.find(key); v != nullptr && v->isString())
+		return *v->getIf<std::string>();
+	return std::nullopt;
+}
+
+}  // namespace
+
 
 // Retargeted onto the ooscript facade (JSEngine.hpp), the way OOJSWormhole.mm and
 // OOJSClock.mm do it (bead oo-sdz exemplar): the class dispatch table becomes a static
@@ -371,7 +395,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 namespace {
 static std::optional<std::string> VersionString(void)
 {
-	return oo::OptionalString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+	return OoliteInfoString("CFBundleVersion");
 }
 } // namespace
 

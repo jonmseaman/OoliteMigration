@@ -125,16 +125,11 @@ static OOMaterial *sActiveMaterial = nil;
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return nil;
+	return {};
 }
 #endif
-
-@end
-
-
-@implementation OOMaterial (OOSubclassInterface)
 
 - (BOOL)doApply
 {
@@ -153,7 +148,7 @@ static OOMaterial *sActiveMaterial = nil;
 {
 	if (EXPECT_NOT(sActiveMaterial == self))
 	{
-		OOLog(@"shader.dealloc.imbalance", @"%@", @"***** Material deallocated while active, indicating a retain/release imbalance.");
+		OO_LOG("shader.dealloc.imbalance", "{}", "***** Material deallocated while active, indicating a retain/release imbalance.");
 		[self unapplyWithNext:nil];
 		sActiveMaterial = nil;
 	}

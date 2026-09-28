@@ -46,7 +46,7 @@ Four independent defences, each measuring a different stage of the pipeline:
      shipdata.plist was PARSED AND MERGED, not merely present on disk. A dead run has 0.
 
   3. `evidence.png_texture_uploads` - THE TEXTURE-DECODE EVIDENCE, and the reason this scenario
-     exists. `[texture.upload]` is emitted by OOConcreteTexture -upload (OOConcreteTexture.m:525)
+     exists. `[texture.upload]` is emitted by OOConcreteTexture -upload (OOConcreteTexture.mm)
      with the texture's PIXEL DIMENSIONS, and it is reached only AFTER OOPNGTextureLoader has
      decoded the file: the loader bails at `texture.load.png.setup.failed` /
      `texture.load.png.failed` (OOPNGTextureLoader.m:97,118) long before any upload. The channel is
@@ -188,7 +188,7 @@ SETTLE_TIMEOUT_SECONDS = 120
 CLEAR_ROUNDS = 20
 
 OXP_STANDARDS_RE = re.compile(r"\[oxp-standards\.error\]:\s*(.*)")
-# OOConcreteTexture.m:525 -- "Uploaded texture %u (%ux%u pixels, %@)". The GL texture NAME is
+# OOConcreteTexture.mm -- "Uploaded texture {} ({}x{} pixels, {})". The GL texture NAME is
 # deliberately dropped when normalising (it is an allocation artifact); the KEY and the PIXEL
 # DIMENSIONS are what carry the evidence.
 TEXTURE_UPLOAD_RE = re.compile(
@@ -770,7 +770,7 @@ def assert_ran(evidence, spec):
     if not uploads:
         raise ScenarioError(
             "evidence.png_texture_uploads is EMPTY: not one [texture.upload] line named the "
-            "expansion's image. OOConcreteTexture -upload (OOConcreteTexture.m:525) is reached "
+            "expansion's image. OOConcreteTexture -upload (OOConcreteTexture.mm) is reached "
             "only after OOPNGTextureLoader has decoded the file - the loader bails at "
             "texture.load.png.failed long before any upload - so an empty list means NO PNG FROM "
             "THIS EXPANSION WAS DECODED. This is exactly the silent failure a clean log and a "

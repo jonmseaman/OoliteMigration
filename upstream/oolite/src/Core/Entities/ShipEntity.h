@@ -218,7 +218,7 @@ typedef enum
 	
 @protected
 	//set-up
-	NSDictionary			*shipinfoDictionary;
+	oo::PList				shipinfoDictionary;	// null: not set up from a dictionary
 	
 	Quaternion				subentityRotationalVelocity;
 	
@@ -328,13 +328,13 @@ typedef enum
 	
 	AI						*shipAI;					// ship's AI system
 	
-	NSString				*name;						// descriptive name
-	NSString				*shipUniqueName;			// uniqish name e.g. "Terror of Lave"
-	NSString				*shipClassName;				// e.g. "Cobra III"
-	NSString				*displayName;				// name shown on screen
-	NSString				*scan_description;			// scan class name
+	std::optional<std::string>	name;					// descriptive name; nullopt: nil
+	std::optional<std::string>	shipUniqueName;			// uniqish name e.g. "Terror of Lave"; nullopt: nil
+	std::optional<std::string>	shipClassName;			// e.g. "Cobra III"; nullopt: nil
+	std::optional<std::string>	displayName;			// name shown on screen; nullopt: nil
+	std::optional<std::string>	scan_description;		// scan class name; nullopt: nil
 	OORoleSet				*roleSet;					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
-	NSString				*primaryRole;				// "Main" role of the ship.
+	std::optional<std::string>	primaryRole;			// "Main" role of the ship; nullopt: not chosen yet
 
 	oo::PList				explosionType;				// explosion.plist entries; null: absent
 	
@@ -432,7 +432,7 @@ typedef enum
 #endif
 	
 	uint16_t				entity_personality;			// Per-entity random number. Exposed to shaders and scripts.
-	NSDictionary			*scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts.
+	oo::PList				scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts; null: none
 	
 	std::vector<oo::ObjCRef<Entity *>>	subEntities;	// empty == none (was nil)
 	OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES];
@@ -460,7 +460,7 @@ typedef enum
 @private
 	OOWeakReference			*_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
 
-	NSString				*_shipKey;
+	std::optional<std::string>	_shipKey;				// nullopt: nil
 	
 	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation;
@@ -485,8 +485,8 @@ typedef enum
 	OOWeakReference			*_shipHitByLaser;			// entity hit by the last laser shot
 	
 	// beacons
-	NSString				*_beaconCode;
-	NSString				*_beaconLabel;
+	std::optional<std::string>	_beaconCode;			// nullopt: nil (never empty)
+	std::optional<std::string>	_beaconLabel;			// nullopt: nil (never empty)
 	OOWeakReference			*_prevBeacon;
 	OOWeakReference			*_nextBeacon;
 	id <OOHUDBeaconIcon>	_beaconDrawable;
@@ -506,7 +506,7 @@ typedef enum
 - (AI *) getAI;
 - (BOOL) hasAutoAI;
 - (BOOL) hasNewAI;
-- (void) setShipScript:(NSString *)script_name;
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
 - (void) removeScript;
 - (OOScript *) shipScript;
 - (OOScript *) shipAIScript;
@@ -529,12 +529,12 @@ typedef enum
 - (Vector) upVector;
 - (Vector) rightVector;
 
-- (id)subEntities;	// shared selector (proposed ADR-0043): an Objective-C array (a copy; nil when there are none)
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
 - (NSUInteger) subEntityCount;
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (id)subEntityEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
-- (id)flasherEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
 // The ship / exhaust subentities, a snapshot in subentity order (empty for a nil receiver).
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
 - (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
@@ -577,18 +577,18 @@ typedef enum
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (id)initWithKey:(NSString *)key definition:(NSDictionary *)dict;
-- (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;
-- (BOOL)setUpShipFromDictionary:(NSDictionary *) shipDict;
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
+- (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
 
-- (NSString *) shipDataKey;
-- (NSString *) shipDataKeyAutoRole;
-- (void)setShipDataKey:(NSString *)key;
+- (std::optional<std::string>) cxx_shipDataKey;
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
-- (NSDictionary *)shipInfoDictionary;
+- (oo::PList) cxx_shipInfoDictionary;
 
 - (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
 - (std::vector<Vector>) cxx_aftWeaponOffset;
@@ -777,29 +777,29 @@ typedef enum
 
 - (NSUInteger) turretCount;
 
-- (NSString *) name;
-- (NSString *) shipUniqueName;
-- (NSString *) shipClassName;
-- (NSString *) displayName;
-- (NSString *) scanDescription;
-- (NSString *) scanDescriptionForScripting;
-- (void) setName:(NSString *)inName;
-- (void) setShipUniqueName:(NSString *)inName;
-- (void) setShipClassName:(NSString *)inName;
-- (void) setDisplayName:(NSString *)inName;
-- (void) setScanDescription:(NSString *)inName;
-- (NSString *) identFromShip:(ShipEntity*) otherShip; // name displayed to other ships
+- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) cxx_shipUniqueName;
+- (std::optional<std::string>) cxx_shipClassName;
+- (std::optional<std::string>) displayName;	// flipped with its family (bead oo-3rb.267)
+- (std::optional<std::string>) cxx_scanDescription;
+- (std::optional<std::string>) cxx_scanDescriptionForScripting;
+- (void) setName:(id)inName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName;
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
+- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 
-- (BOOL) hasRole:(NSString *)role;
+- (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
 - (OORoleSet *)roleSet;
 
-- (void) addRole:(NSString *)role;
-- (void) addRole:(NSString *)role withProbability:(float)probability;
-- (void) removeRole:(NSString *)role;
+- (void) addRole:(const std::string &)role;
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability;
+- (void) cxx_removeRole:(const std::string &)role;
 
-- (NSString *)primaryRole;
-- (void)setPrimaryRole:(NSString *)role;
-- (BOOL)hasPrimaryRole:(NSString *)role;
+- (std::optional<std::string>) cxx_primaryRole;
+- (void)setPrimaryRole:(id)role;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role;
 
 - (BOOL)isPolice;		// Scan class is CLASS_POLICE
 - (BOOL)isThargoid;		// Scan class is CLASS_THARGOID
@@ -909,7 +909,7 @@ typedef enum
 - (int) legalStatus;
 
 - (BOOL) isTemplateCargoPod;
-- (void) setUpCargoType:(NSString *)cargoString;
+- (void) setUpCargoType:(const std::string &)cargoString;
 - (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
 - (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
 - (std::optional<std::string>) cxx_commodityType;
@@ -1240,8 +1240,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 - (OOJSScript *) script;
-- (NSDictionary *) scriptInfo;
-- (void) overrideScriptInfo:(NSDictionary *)override;	// Add items from override (if not nil) to scriptInfo, replacing in case of duplicates. Used for subentities.
+- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
+- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 - (BOOL) scriptedMisjump;
 - (void) setScriptedMisjump:(BOOL)newValue;
@@ -1309,28 +1309,9 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
-NSDictionary *OODefaultShipShaderMacros(void);
+oo::PList OODefaultShipShaderMacros(void);
 
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type);
-
-// Defined in OOConstToString.m
-NSString *OOStringFromBehaviour(OOBehaviour behaviour) CONST_FUNC;
-
-// Weapon strings prefixed with EQ_, used in shipyard.plist.
-NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon) CONST_FUNC;
-#ifdef __cplusplus
-extern "C" {
-#endif
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string) PURE_FUNC;	// Uses suffix match for backwards compatibility.
-#ifdef __cplusplus
-}
-#endif
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string) PURE_FUNC;
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
-
-
-NSString *OOStringFromWeaponType(OOWeaponType weapon) CONST_FUNC;
-OOWeaponType OOWeaponTypeFromString(NSString *string) PURE_FUNC;
 
 #ifdef __cplusplus
 extern "C" {
@@ -1340,12 +1321,8 @@ BOOL isWeaponNone(OOWeaponType weapon);
 }
 #endif
 
-NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
-
-NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
-
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
-// above forward to them from OOConstToString+FoundationBridge.mm.
+// in ShipEntity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
 std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
 std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
 

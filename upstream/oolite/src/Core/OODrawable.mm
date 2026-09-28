@@ -27,6 +27,7 @@ SOFTWARE.
 
 #import "OODrawable.h"
 #import "NSObjectOOExtensions.h"
+#import "OOFoundationBridge.h"
 
 
 @implementation OODrawable
@@ -86,9 +87,9 @@ SOFTWARE.
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return nil;
+	return {};
 }
 
 

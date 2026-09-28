@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #import "WormholeEntity.h"
 #import "ShipEntity.h"
@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
@@ -128,7 +129,7 @@ typedef enum
 #define CUSTOMEQUIP_KEYMODE @"keyMode"
 #define CUSTOMEQUIP_BUTTONACTIVATE @"buttonActivate"
 #define CUSTOMEQUIP_BUTTONMODE @"buttonMode"
-#define KEYCONFIG_CUSTOMEQUIP @"CustomEquipActivation"  // NSUserDefaults
+#define KEYCONFIG_CUSTOMEQUIP @"CustomEquipActivation"  // preferences key (oo::Defaults)
 
 enum
 {
@@ -1322,7 +1323,7 @@ OOINLINE PlayerEntity *OOGetPlayer(void)
 {
 	extern PlayerEntity *gOOPlayer;
 #if OO_DEBUG
-	NSCAssert(gOOPlayer != nil, @"PLAYER used when [PlayerEntity sharedPlayer] has not been called.");
+	OOCAssert(gOOPlayer != nil, "PLAYER used when [PlayerEntity sharedPlayer] has not been called.");
 #endif
 	return gOOPlayer;
 }
