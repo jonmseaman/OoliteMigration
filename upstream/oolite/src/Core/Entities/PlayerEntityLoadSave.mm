@@ -50,6 +50,7 @@
 #include "oofnd/FileSystem.hpp"
 
 #include <algorithm>
+#include "oofnd/objc/OOAssert.h"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -933,7 +934,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if ([sPanel runModal] == NSOKButton)
 	{
 		NSURL *url = sPanel.URL;
-		NSAssert(url.isFileURL, @"Save panel with default configuration should not provide non-file URLs.");
+		OOAssert(url.isFileURL, "Save panel with default configuration should not provide non-file URLs.");
 		
 		NSString *path = url.path;
 		NSString *newName = [path.lastPathComponent stringByDeletingPathExtension];

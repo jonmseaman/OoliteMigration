@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/PListGet.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define KEY_SHIP_KEY				"ship_key"
@@ -292,7 +293,7 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 
 - (void) simplifyShipdata:(oo::PList::Dict &)data andGetDeletes:(std::vector<std::string> *)deletes
 {
-	NSParameterAssert(deletes != NULL);
+	OOParameterAssert(deletes != NULL);
 	deletes->clear();
 
 	// Get original ship data.

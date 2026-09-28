@@ -52,6 +52,7 @@ SOFTWARE.
 #import "OOCacheManager.h"
 #import "OOTexture.h"
 #import "OODebugFlags.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 #if !USE_NEW_SHADER_SYNTHESIZER
@@ -452,7 +453,7 @@ void SetUniformFloat(OOMaterialSynthContext *context, const std::string &key, fl
 
 void AddTexture(OOMaterialSynthContext *context, const char *uniformName, const char *nonShaderKey, const char *macroName, const oo::PList &specifier)
 {
-	NSCParameterAssert(context->texturesUsed < context->maxTextures);
+	OOCParameterAssert(context->texturesUsed < context->maxTextures);
 	
 	context->texturesUsed++;
 	SetUniform(context->uniforms, uniformName, "texture", oo::PList::unsignedInteger(context->textures.size()));

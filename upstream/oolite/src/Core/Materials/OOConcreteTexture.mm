@@ -44,6 +44,7 @@
 #ifndef NDEBUG
 #import "OOTextureGenerator.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOAssert.h"
 #endif
 
 
@@ -680,7 +681,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 
 static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *outFormat, GLenum *outInternalFormat, GLenum *outType)
 {
-	NSCParameterAssert(outFormat != NULL && outInternalFormat != NULL && outType != NULL);
+	OOCParameterAssert(outFormat != NULL && outInternalFormat != NULL && outType != NULL);
 	
 	switch (format)
 	{
