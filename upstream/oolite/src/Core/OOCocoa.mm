@@ -29,11 +29,30 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #import "OOFunctionAttributes.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
+
+
+namespace {
+
+/*	<ClassName 0xnnnnnnnn>{components}, or <ClassName 0xnnnnnnnn> without components: the text the
+	former stringWithFormat:@"<%@ %p>{%@}" built (%@ of the class is its name, %p GNUstep's pointer
+	text, %@ of the components their description), as an Objective-C string.
+*/
+id DescriptionWithComponents(id object, id components)
+{
+	const std::string head = oo::str::format("<%s %s>", oo::DescriptionOf([object class]).c_str(), oo::str::pointerDescription(object).c_str());
+	if (components == nil)  return oo::NSStringFrom(head);
+	return oo::NSStringFrom(head + "{" + oo::DescriptionOf(components) + "}");
+}
+
+}	// namespace
 
 
 @implementation NSObject (OODescriptionComponents)
 
-- (NSString *)descriptionComponents
+- (id) descriptionComponents
 {
 	return nil;
 }
@@ -42,42 +61,22 @@ SOFTWARE.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-protocol-method-implementation"
 #endif
-- (NSString *)description
+- (id) description
 {
-	NSString				*components = nil;
-	
-	components = [self descriptionComponents];
-	if (components != nil)
-	{
-		return [NSString stringWithFormat:@"<%@ %p>{%@}", [self class], self, components];
-	}
-	else
-	{
-		return [NSString stringWithFormat:@"<%@ %p>", [self class], self];
-	}
+	return DescriptionWithComponents(self, [self descriptionComponents]);
 }
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
 
 
-- (NSString *) shortDescription
+- (id) shortDescription
 {
-	NSString				*components = nil;
-	
-	components = [self shortDescriptionComponents];
-	if (components != nil)
-	{
-		return [NSString stringWithFormat:@"<%@ %p>{%@}", [self class], self, components];
-	}
-	else
-	{
-		return [NSString stringWithFormat:@"<%@ %p>", [self class], self];
-	}
+	return DescriptionWithComponents(self, [self shortDescriptionComponents]);
 }
 
 
-- (NSString *) shortDescriptionComponents
+- (id) shortDescriptionComponents
 {
 	return nil;
 }
@@ -88,57 +87,27 @@ SOFTWARE.
 // NSObject (OODescriptionComponents) above, for classes rooted on OOObject (ADR-0029).
 @implementation OOObject (OODescriptionComponents)
 
-- (NSString *)descriptionComponents
+- (id) descriptionComponents
 {
 	return nil;
 }
 
 
-- (NSString *)description
+- (id) description
 {
-	NSString				*components = nil;
-
-	components = [self descriptionComponents];
-	if (components != nil)
-	{
-		return [NSString stringWithFormat:@"<%@ %p>{%@}", [self class], self, components];
-	}
-	else
-	{
-		return [NSString stringWithFormat:@"<%@ %p>", [self class], self];
-	}
+	return DescriptionWithComponents(self, [self descriptionComponents]);
 }
 
 
-- (NSString *) shortDescription
+- (id) shortDescription
 {
-	NSString				*components = nil;
-
-	components = [self shortDescriptionComponents];
-	if (components != nil)
-	{
-		return [NSString stringWithFormat:@"<%@ %p>{%@}", [self class], self, components];
-	}
-	else
-	{
-		return [NSString stringWithFormat:@"<%@ %p>", [self class], self];
-	}
+	return DescriptionWithComponents(self, [self shortDescriptionComponents]);
 }
 
 
-- (NSString *) shortDescriptionComponents
+- (id) shortDescriptionComponents
 {
 	return nil;
-}
-
-@end
-
-
-@implementation NSEnumerator (OOForEachSupport)
-
-- (NSEnumerator *) objectEnumerator
-{
-	return self;
 }
 
 @end
