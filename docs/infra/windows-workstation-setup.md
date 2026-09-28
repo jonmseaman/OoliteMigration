@@ -32,7 +32,7 @@ the provisioning script, and because `winget` could not be used (below).
 | Node.js LTS | 24.21.0 | `nodejs.org/dist` |
 | MSYS2 | 2026-06-11 | `github.com/msys2/msys2-installer` (use a **dated** tag, not `nightly-x86_64/…-latest.exe`) |
 | GitHub CLI | 2.100.0 | `github.com/cli/cli` releases |
-| beads (`bd`) | 1.2.2 | `github.com/gastownhall/beads` releases |
+| beads (`bd`) | 1.3.0 | `github.com/gastownhall/beads` releases (schema v66; an older `bd` cannot open the migrated DB — oo-drnj) |
 | dolt | 2.3.3 | `github.com/dolthub/dolt` releases — **must match the other machine** |
 | Claude Code | 2.1.268 | `npm i -g @anthropic-ai/claude-code` |
 | Hermes Agent | 0.21.1 | `iex (irm https://hermes-agent.nousresearch.com/install.ps1)` |

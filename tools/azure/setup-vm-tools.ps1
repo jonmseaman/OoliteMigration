@@ -26,16 +26,22 @@ if (Test-Path 'C:\Program Files\GitHub CLI\gh.exe') {
     Write-Output "  installed"
 }
 
-# ---- beads (bd) - same version as the Mac (1.2.2) so the Dolt DB matches ----
+# ---- beads (bd) - pinned; every clone of the Dolt DB must run the same version ----
+# 1.3.0 (oo-drnj): its schema (v66) was migrated on the fleet machine on 2026-09-28; an older bd
+# cannot open that database. An existing bd.exe of another version is replaced, not kept.
 Write-Output "=== bd ==="
+$bdVersion = '1.3.0'
 $bdDir = 'C:\tools\bd'
-if (Test-Path (Join-Path $bdDir 'bd.exe')) {
-    Write-Output "  already installed"
+$bdExe = Join-Path $bdDir 'bd.exe'
+$bdHave = if (Test-Path $bdExe) { (& $bdExe version 2>$null | Select-Object -First 1) } else { '' }
+if ($bdHave -match "bd version $([regex]::Escape($bdVersion))\b") {
+    Write-Output "  already installed ($bdVersion)"
 } else {
+    if ($bdHave) { Write-Output "  replacing: $bdHave" }
     New-Item -ItemType Directory -Path $bdDir -Force | Out-Null
-    $p = Get-Installer 'https://github.com/gastownhall/beads/releases/download/v1.2.2/beads_1.2.2_windows_amd64.zip' 'beads_1.2.2_windows_amd64.zip'
+    $p = Get-Installer "https://github.com/gastownhall/beads/releases/download/v$bdVersion/beads_${bdVersion}_windows_amd64.zip" "beads_${bdVersion}_windows_amd64.zip"
     Expand-Archive -Path $p -DestinationPath $bdDir -Force
-    Write-Output "  extracted to $bdDir"
+    Write-Output "  extracted $bdVersion to $bdDir"
 }
 
 # ---- dolt (beads' backing store; bd runs a dolt sql-server) ----
