@@ -763,7 +763,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 				ooscript::valueToBoolean(context, (value), &spinning);
 			}
 			
-		//	[player showShipModel:OOStringFromJSValue(context, value)];
+		//	[player showShipModel:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
 			demoShip = [UNIVERSE makeDemoShipWithRole:oo::NSStringOrNil(role) spinning:(bool)spinning];
 		}
 	}
