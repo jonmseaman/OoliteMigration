@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
@@ -1322,7 +1323,7 @@ OOINLINE PlayerEntity *OOGetPlayer(void)
 {
 	extern PlayerEntity *gOOPlayer;
 #if OO_DEBUG
-	NSCAssert(gOOPlayer != nil, @"PLAYER used when [PlayerEntity sharedPlayer] has not been called.");
+	OOCAssert(gOOPlayer != nil, "PLAYER used when [PlayerEntity sharedPlayer] has not been called.");
 #endif
 	return gOOPlayer;
 }

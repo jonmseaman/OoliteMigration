@@ -43,6 +43,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 @interface OOSunEntity (Private)
 
@@ -749,14 +750,14 @@ MA 02110-1301, USA.
 
 - (void) getDiffuseComponents:(GLfloat[4])components
 {
-	NSParameterAssert(components != NULL);
+	OOParameterAssert(components != NULL);
 	memcpy(components, sun_diffuse, sizeof sun_diffuse);
 }
 
 
 - (void) getSpecularComponents:(GLfloat[4])components
 {
-	NSParameterAssert(components != NULL);
+	OOParameterAssert(components != NULL);
 	memcpy(components, sun_specular, sizeof sun_specular);
 }
 

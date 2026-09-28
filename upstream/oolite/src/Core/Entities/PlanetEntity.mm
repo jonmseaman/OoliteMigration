@@ -47,6 +47,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #if !OOLITE_MAC_OS_X
@@ -1382,7 +1383,7 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	else
 	{
 		unsigned vindex = next_free_vertex++;
-		NSCAssert(vindex < sizeof base_vertex_array / sizeof *base_vertex_array, @"Vertex array overflow in planet setup.");
+		OOCAssert(vindex < sizeof base_vertex_array / sizeof *base_vertex_array, "Vertex array overflow in planet setup.");
 		
 		// calculate position of new vertex
 		Vector pos = vector_add(base_vertex_array[va], base_vertex_array[vb]);
