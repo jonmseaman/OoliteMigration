@@ -299,6 +299,12 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects
+{
+	ThrowAbstractionViolationException(self);
+}
+
+
 - (id) copyWithZone:(OOZone *)zone
 {
 	if (zone == [self zone])
@@ -331,6 +337,12 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 - (id) objectEnumerator
 {
 	return [[self allObjects] objectEnumerator];
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_objectEnumerator
+{
+	return [self cxx_allObjects];
 }
 
 
@@ -392,7 +404,13 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) allObjects
 {
-	return oo::NSArrayFromObjects(std::vector<id>());
+	return oo::NSArrayFromObjects([self cxx_allObjects]);
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects
+{
+	return std::vector<oo::ObjCRef<id>>();
 }
 
 
@@ -516,7 +534,13 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) allObjects
 {
-	return oo::NSArrayFromObjects(std::vector<id>{ _object });
+	return oo::NSArrayFromObjects([self cxx_allObjects]);
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects
+{
+	return std::vector<oo::ObjCRef<id>>{ oo::ObjCRef<id>(_object) };
 }
 
 
@@ -686,7 +710,13 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) allObjects
 {
-	return oo::NSArrayFromObjects(std::vector<id>(_objects, _objects + _count));
+	return oo::NSArrayFromObjects([self cxx_allObjects]);
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects
+{
+	return std::vector<oo::ObjCRef<id>>(_objects, _objects + _count);
 }
 
 
@@ -947,7 +977,13 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) allObjects
 {
-	return oo::NSArrayFromObjects(_objects);
+	return oo::NSArrayFromObjects([self cxx_allObjects]);
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects
+{
+	return _objects;
 }
 
 

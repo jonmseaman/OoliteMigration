@@ -392,8 +392,13 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (std::vector<std::string>) cxx_shipKeysWithRole:(const std::string &)role
 {
-	// OOProbabilitySet is an unmigrated callee: its objects (ship keys) arrive through oo::StringsFrom.
-	return oo::StringsFrom([[self cxx_probabilitySetForRole:role] allObjects]);
+	// The set's string objects (ship keys), in its order; anything else skipped, as oo::StringsFrom did.
+	std::vector<std::string> keys;
+	for (const oo::ObjCRef<id> &key : [[self cxx_probabilitySetForRole:role] cxx_allObjects])
+	{
+		if (oo::IsNSString(key.get()))  keys.push_back(oo::StdString(key.get()));
+	}
+	return keys;
 }
 
 

@@ -39,6 +39,8 @@ SOFTWARE.
 #import "oofnd/objc/OOObject.h"
 
 #include "oofnd/PList.hpp"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 
 @interface OOProbabilitySet: OOObject <OOCopying, OOMutableCopying>
@@ -60,6 +62,7 @@ SOFTWARE.
 - (float) weightForObject:(id)object;	// Returns -1 for unknown objects.
 - (float) sumOfWeights;
 - (id) allObjects;	// shared selector: an Objective-C array
+- (std::vector<oo::ObjCRef<id>>) cxx_allObjects;	// the same objects, in the same order
 
 @end
 
@@ -68,6 +71,7 @@ SOFTWARE.
 
 - (BOOL) containsObject:(id)object;
 - (id) objectEnumerator;	// shared selector: an enumerator over -allObjects
+- (std::vector<oo::ObjCRef<id>>) cxx_objectEnumerator;	// C++ iteration over -cxx_allObjects
 - (float) probabilityForObject:(id)object;	// Returns -1 for unknown objects, or a value from 0 to 1 inclusive for known objects.
 
 @end
