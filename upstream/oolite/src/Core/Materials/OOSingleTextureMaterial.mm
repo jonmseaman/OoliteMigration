@@ -123,9 +123,17 @@ SOFTWARE.
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return oo::NSSetFromObjects(std::vector<id>{ _texture });
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	result.emplace_back(_texture);
+	return result;
+}
+
+
+- (id) allTextures	// forwards to cxx_ until part 3
+{
+	return oo::NSSetFromObjects([self cxx_allTextures]);
 }
 #endif
 

@@ -219,10 +219,23 @@ SOFTWARE.
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	if (_diffuseMap == nil)  return oo::NSSetFromObjects(std::vector<id>{_emissionMap});
-	return oo::NSSetFromObjects(std::vector<id>{_diffuseMap, _emissionMap});
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	if (_diffuseMap == nil)
+	{
+		result.emplace_back(_emissionMap);
+		return result;
+	}
+	result.emplace_back(_diffuseMap);
+	result.emplace_back(_emissionMap);
+	return result;
+}
+
+
+- (id) allTextures	// forwards to cxx_ until part 3
+{
+	return oo::NSSetFromObjects([self cxx_allTextures]);
 }
 #endif
 

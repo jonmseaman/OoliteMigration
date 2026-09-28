@@ -39,6 +39,11 @@ SOFTWARE.
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 
+#include <vector>
+#include "oofnd/objc/OOObjCRef.h"
+
+@class OOTexture;
+
 @interface OOMaterial: OOObject
 
 // Called once at startup (by -[Universe init]).
@@ -76,7 +81,8 @@ SOFTWARE.
 #endif
 
 #ifndef NDEBUG
-- (id) allTextures;	// an Objective-C set of textures. Shared selector (proposed ADR-0043).
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
+- (id) allTextures;	// -> -cxx_allTextures (forwards until part 3)
 #endif
 
 @end
