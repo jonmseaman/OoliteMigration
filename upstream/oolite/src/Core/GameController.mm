@@ -636,14 +636,11 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 {
 	[self fireDueDeadlines];
 	FireOneDueDeferredCall();
-	[[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
 }
 
 
 - (void) runFrameLoop
 {
-	NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
-	
 	for (;;)
 	{
 		@autoreleasepool
@@ -667,11 +664,9 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 			if (OODebugTCPConsoleIsWaitingForInput())
 			{
 				/*	The debug console's socket is no longer on the run loop (bead oo-3rb.14,
-					proposed ADR-0041): run the run loop without waiting (its timers and ready
-					input), then wait on the socket as the run loop waited on the console's
-					streams, handling what arrives before the next deadline.
+					proposed ADR-0041): wait on the socket as the run loop waited on the
+					console's streams, handling what arrives before the next deadline.
 				*/
-				[runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
 				double timeout = -1.0;
 				if (haveWake)
 				{
@@ -683,16 +678,24 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 			else
 #endif
 			{
-				NSDate *limit = [NSDate distantFuture];
+				/*	Nothing else to wait on now that the run-loop pump is gone (bead oo-3rb.58,
+					ADR-0033): wait until the next deadline, whole milliseconds rounded up as the
+					run loop's wait was (not std::this_thread: on this toolchain it sleeps in
+					15.6 ms steps whatever the timer resolution, measured). With no deadline at
+					all the pass ends at once, as the run loop returned at once with nothing to
+					wait on.
+				*/
 				if (haveWake)
 				{
-					std::chrono::duration<double> wait = wake - std::chrono::steady_clock::now();
-					limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
-				}
-				if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && haveWake)
-				{
-					// Nothing on the run loop to wait for: wait here.
-					std::this_thread::sleep_until(wake);
+					const double remaining = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
+					if (remaining > 0.0)
+					{
+#if OOLITE_WINDOWS
+						Sleep((DWORD)ceil(remaining * 1000.0));
+#else
+						std::this_thread::sleep_for(std::chrono::milliseconds((long long)ceil(remaining * 1000.0)));
+#endif
+					}
 				}
 			}
 		}
