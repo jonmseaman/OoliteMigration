@@ -120,7 +120,7 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 
 - (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return oo::NSStringFrom(oo::str::format("position: %s scanClass: %s status: %s", cxx_HPVectorDescription([self position]).c_str(), oo::DescriptionOf(OOStringFromScanClass([self scanClass])).c_str(), oo::DescriptionOf(OOStringFromEntityStatus([self status])).c_str()));
+	return oo::NSStringFrom(oo::str::format("position: %s scanClass: %s status: %s", cxx_HPVectorDescription([self position]).c_str(), cxx_OOStringFromScanClass([self scanClass]).c_str(), cxx_OOStringFromEntityStatus([self status]).c_str()));
 }
 
 

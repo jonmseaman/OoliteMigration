@@ -2324,7 +2324,7 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithScanClass:(NSString *)scanScanClass
 {
-	NSNumber *parameter = [NSNumber numberWithInt:OOScanClassFromString(scanScanClass)];
+	NSNumber *parameter = [NSNumber numberWithInt:cxx_OOScanClassFromString(oo::StdString(scanScanClass))];
 	[self scanForNearestShipWithPredicate:HasScanClassPredicate parameter:parameter];
 }
 
@@ -2357,7 +2357,7 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithoutScanClass:(NSString *)scanScanClass
 {
-	NSNumber *parameter = [NSNumber numberWithInt:OOScanClassFromString(scanScanClass)];
+	NSNumber *parameter = [NSNumber numberWithInt:cxx_OOScanClassFromString(oo::StdString(scanScanClass))];
 	[self scanForNearestShipWithNegatedPredicate:HasScanClassPredicate parameter:parameter];
 }
 
