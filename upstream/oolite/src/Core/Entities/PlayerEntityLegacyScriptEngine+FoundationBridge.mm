@@ -33,7 +33,7 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 
 - (NSDictionary *) missionVariables
 {
-	return mission_variables;
+	return oo::ObjectFromPList([self cxx_missionVariables]);
 }
 
 
