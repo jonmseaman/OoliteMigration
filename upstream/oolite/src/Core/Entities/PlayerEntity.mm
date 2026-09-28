@@ -110,7 +110,7 @@ enum
 namespace
 {
 
-/*	What oo::PListView(dict).get<NSString *> / get<Vector> / get<Quaternion> answered, for a
+/*	What oo::PListView's string / vector / quaternion readers answered, for a
 	configuration held as an oo::PList (the Foundation sweep, proposed ADR-0043): a string is
 	nullopt when the key is absent or holds neither a string nor a number; vectors and quaternions
 	go through OOCollectionExtractors' readers (unmigrated) with their defaults for a missing key.
@@ -124,10 +124,10 @@ std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view 
 }
 
 
-Vector VectorForKey(const oo::PList &dict, std::string_view key)
+Vector VectorForKey(const oo::PList &dict, std::string_view key, Vector fallback = kZeroVector)
 {
 	const oo::PList *value = dict.find(key);
-	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroVector);
+	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, fallback);
 }
 
 
@@ -135,6 +135,41 @@ Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
 	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+}
+
+
+// -objectForKey: on a saved game: the value, or a null PList when absent.
+const oo::PList &ValueForKey(const oo::PList &dict, std::string_view key)
+{
+	static const oo::PList none;
+	const oo::PList *value = dict.find(key);
+	return (value != nullptr) ? *value : none;
+}
+
+
+// -oo_stringAtIndex: (nullopt unless the element is a string or a number).
+std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
+{
+	const oo::PList *value = array.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
+}
+
+
+// ScanTokensFromString of a system's "coordinates" property (no tokens unless it is a string).
+std::vector<std::string> CoordinateTokens(const oo::PList &coordinates)
+{
+	const std::string *text = coordinates.getIf<std::string>();
+	return (text != nullptr) ? oo::str::tokens(*text) : std::vector<std::string>();
+}
+
+
+// -oo_unsignedCharAtIndex: on those tokens (0 when missing).
+unsigned char CoordinateAt(const std::vector<std::string> &tokens, std::size_t index)
+{
+	if (index >= tokens.size())  return 0;
+	const oo::PList token(tokens[index]);
+	return oo::PListGet<unsigned char>::from(&token, 0);
 }
 
 
@@ -231,7 +266,7 @@ oo::PList SystemListPList(const std::vector<OOSystemID> &systems)
 }
 
 
-// A two-column GUI row as [NSArray arrayWithObjects:first, second, nil] built it: it ends at the first nil.
+// A two-column GUI row as -arrayWithObjects:first, second, nil built it: it ends at the first nil.
 std::vector<std::string> RowOf(const std::optional<std::string> &first, const std::optional<std::string> &second)
 {
 	std::vector<std::string> row;
@@ -1093,54 +1128,59 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (NSDictionary *) commanderDataDictionary
+- (oo::PList) cxx_commanderDataDictionary
 {
 	int i;
 
-	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	
-	[result setObject:oo::NSStringOrNil(OoliteInfoString("CFBundleVersion")) forKey:@"written_by_version"];
+	// Built as the old mutable dictionary was; each number keeps its kind (proposed ADR-0043
+	// items 11 and 15): +numberWithInt: / oo_setInteger: (+numberWithLong:) signed,
+	// +numberWithUnsigned*: / oo_setUnsignedInteger: unsigned, +numberWithFloat: a single real,
+	// +numberWithDouble: and oo_setFloat: (+numberWithDouble:) a double, +numberWithBool: a bool.
+	// A nil value (which -setObject:forKey: refused) is left out.
+	oo::PList::Dict result;
 
-	NSString	*gal_id = [NSString stringWithFormat:@"%u", galaxy_number];
-	NSString	*sys_id = [NSString stringWithFormat:@"%d", system_id];
-	NSString	*tgt_id = [NSString stringWithFormat:@"%d", target_system_id];
-	NSString	*prv_id = [NSString stringWithFormat:@"%d", previous_system_id];
+	if (const std::optional<std::string> version = OoliteInfoString("CFBundleVersion"))  result["written_by_version"] = oo::PList(*version);
+
+	const std::string gal_id = std::to_string(galaxy_number);	// "%u"
+	const std::string sys_id = std::to_string(system_id);	// "%d"
+	const std::string tgt_id = std::to_string(target_system_id);
+	const std::string prv_id = std::to_string(previous_system_id);
 
 	// Variable requiredCargoSpace not suitable for Oolite as it currently stands: it retroactively changes a savegame cargo space.
 	//unsigned 	passenger_space = [[OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"] requiredCargoSpace];
 	//if (passenger_space == 0) passenger_space = PASSENGER_BERTH_SPACE;
-	
-	[result setObject:gal_id		forKey:@"galaxy_id"];
-	[result setObject:sys_id	forKey:@"system_id"];
-	[result setObject:tgt_id	forKey:@"target_id"];
-	[result setObject:prv_id	forKey:@"previous_system_id"];
-	[result setObject:[NSNumber numberWithFloat:saved_chart_zoom] forKey:@"chart_zoom"];
-	[result setObject:[NSNumber numberWithInt:ANA_mode] forKey:@"chart_ana_mode"];
-	[result setObject:[NSNumber numberWithInt:longRangeChartMode] forKey:@"chart_colour_mode"];
+
+	result["galaxy_id"] = oo::PList(gal_id);
+	result["system_id"] = oo::PList(sys_id);
+	result["target_id"] = oo::PList(tgt_id);
+	result["previous_system_id"] = oo::PList(prv_id);
+	result["chart_zoom"] = oo::PList::singleReal(saved_chart_zoom);
+	result["chart_ana_mode"] = oo::PList::signedInteger((int)ANA_mode);
+	result["chart_colour_mode"] = oo::PList::signedInteger((int)longRangeChartMode);
 
 
 	if (found_system_id >= 0)
 	{
-		NSString *found_id = [NSString stringWithFormat:@"%d", found_system_id];
-		[result setObject:found_id	forKey:@"found_system_id"];
+		result["found_system_id"] = oo::PList(std::to_string(found_system_id));
 	}
-	
+
 	// Write the name of the current system. Useful for looking up saved game information and for overlapping systems.
 	if (![UNIVERSE inInterstellarSpace])
 	{
-		[result setObject:[UNIVERSE getSystemName:[self currentSystemID]] forKey:@"current_system_name"];
-		OOGovernmentID government = oo::PListView([UNIVERSE currentSystemData]).get<int>(KEY_GOVERNMENT);
-		OOTechLevelID techlevel = oo::PListView([UNIVERSE currentSystemData]).get<int>(KEY_TECHLEVEL);
-		OOEconomyID economy = oo::PListView([UNIVERSE currentSystemData]).get<int>(KEY_ECONOMY);
-		[result setObject:[NSNumber numberWithUnsignedShort:government] forKey:@"current_system_government"];
-		[result setObject:[NSNumber numberWithUnsignedInteger:techlevel] forKey:@"current_system_techlevel"];
-		[result setObject:[NSNumber numberWithUnsignedShort:economy] forKey:@"current_system_economy"];
+		if (const std::optional<std::string> systemName = [UNIVERSE cxx_getSystemName:[self currentSystemID]])  result["current_system_name"] = oo::PList(*systemName);
+		const oo::PList systemData = [UNIVERSE cxx_currentSystemData];
+		OOGovernmentID government = systemData.get<int>(oo::StdString(KEY_GOVERNMENT));
+		OOTechLevelID techlevel = systemData.get<int>(oo::StdString(KEY_TECHLEVEL));
+		OOEconomyID economy = systemData.get<int>(oo::StdString(KEY_ECONOMY));
+		result["current_system_government"] = oo::PList::unsignedInteger((unsigned short)government);
+		result["current_system_techlevel"] = oo::PList::unsignedInteger((NSUInteger)techlevel);
+		result["current_system_economy"] = oo::PList::unsignedInteger((unsigned short)economy);
 	}
-	
-	[result setObject:[self commanderName] forKey:@"player_name"];
-	[result setObject:[self lastsaveName] forKey:@"player_save_name"];
-	[result setObject:[self shipUniqueName] forKey:@"ship_unique_name"];
-	[result setObject:[self shipClassName] forKey:@"ship_class_name"];
+
+	if (const std::optional<std::string> value = [self cxx_commanderName])  result["player_name"] = oo::PList(*value);
+	if (const std::optional<std::string> value = [self cxx_lastsaveName])  result["player_save_name"] = oo::PList(*value);
+	if (const std::optional<std::string> value = [self cxx_shipUniqueName])  result["ship_unique_name"] = oo::PList(*value);
+	if (const std::optional<std::string> value = [self cxx_shipClassName])  result["ship_class_name"] = oo::PList(*value);
 
 	/*
 		BUG: GNUstep truncates integer values to 32 bits when loading XML plists.
@@ -1149,101 +1189,100 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		precision anyway.
 		-- Ahruman 2011-02-15
 	*/
-	[result oo_setFloat:credits				forKey:@"credits"];
-	[result oo_setUnsignedInteger:fuel		forKey:@"fuel"];
-	
-	[result oo_setInteger:galaxy_number	forKey:@"galaxy_number"];
-	
-	[result oo_setBool:[self weaponsOnline]	forKey:@"weapons_online"];
-	
+	result["credits"] = oo::PList((double)credits);	// oo_setFloat: was +numberWithDouble:
+	result["fuel"] = oo::PList::unsignedInteger((unsigned long)fuel);
+
+	result["galaxy_number"] = oo::PList::signedInteger((long)galaxy_number);
+
+	result["weapons_online"] = oo::PList((bool)[self weaponsOnline]);
+
 	if (forward_weapon_type != nil)
 	{
-		[result setObject:[forward_weapon_type identifier]	forKey:@"forward_weapon"];
+		if (const std::optional<std::string> identifier = [forward_weapon_type cxx_identifier])  result["forward_weapon"] = oo::PList(*identifier);
 	}
 	if (aft_weapon_type != nil)
 	{
-		[result setObject:[aft_weapon_type identifier]		forKey:@"aft_weapon"];
+		if (const std::optional<std::string> identifier = [aft_weapon_type cxx_identifier])  result["aft_weapon"] = oo::PList(*identifier);
 	}
 	if (port_weapon_type != nil)
 	{
-		[result setObject:[port_weapon_type identifier]		forKey:@"port_weapon"];
+		if (const std::optional<std::string> identifier = [port_weapon_type cxx_identifier])  result["port_weapon"] = oo::PList(*identifier);
 	}
 	if (starboard_weapon_type != nil)
 	{
-		[result setObject:[starboard_weapon_type identifier]	forKey:@"starboard_weapon"];
+		if (const std::optional<std::string> identifier = [starboard_weapon_type cxx_identifier])  result["starboard_weapon"] = oo::PList(*identifier);
 	}
-	[result setObject:[self serializeShipSubEntities] forKey:@"subentities_status"];
+	if (const std::optional<std::string> subentities = [self cxx_serializeShipSubEntities])  result["subentities_status"] = oo::PList(*subentities);
 	if (hud != nil && [hud nonlinearScanner])
 	{
-		[result oo_setFloat: [hud scannerZoom] forKey:@"ship_scanner_zoom"];
+		result["ship_scanner_zoom"] = oo::PList((double)[hud scannerZoom]);	// oo_setFloat:
 	}
-	
-	[result oo_setInteger:max_cargo + PASSENGER_BERTH_SPACE * max_passengers	forKey:@"max_cargo"];
-	
-	[result setObject:[shipCommodityData savePlayerAmounts]		forKey:@"shipCommodityData"];
-	
-	
-	NSMutableArray *missileRoles = [NSMutableArray arrayWithCapacity:max_missiles];
-	
+
+	result["max_cargo"] = oo::PList::signedInteger((long)(max_cargo + PASSENGER_BERTH_SPACE * max_passengers));
+
+	result["shipCommodityData"] = [shipCommodityData cxx_savePlayerAmounts];
+
+
+	oo::PList::Array missileRoles;
+	missileRoles.reserve(max_missiles);
+
 	for (i = 0; i < (int)max_missiles; i++)
 	{
 		if (missile_entity[i])
 		{
-			[missileRoles addObject:[missile_entity[i] primaryRole]];
+			missileRoles.push_back(oo::PList([missile_entity[i] cxx_primaryRole].value_or(std::string())));
 		}
 		else
 		{
-			[missileRoles addObject:@"NONE"];
+			missileRoles.push_back(oo::PList("NONE"));
 		}
 	}
-	[result setObject:missileRoles forKey:@"missile_roles"];
-	
-	[result oo_setInteger:missiles forKey:@"missiles"];
-	
-	[result oo_setInteger:legalStatus forKey:@"legal_status"];
-	[result oo_setInteger:market_rnd forKey:@"market_rnd"];
-	[result oo_setInteger:ship_kills forKey:@"ship_kills"];
+	result["missile_roles"] = oo::PList(std::move(missileRoles));
+
+	result["missiles"] = oo::PList::signedInteger((long)missiles);
+
+	result["legal_status"] = oo::PList::signedInteger((long)legalStatus);
+	result["market_rnd"] = oo::PList::signedInteger((long)market_rnd);
+	result["ship_kills"] = oo::PList::signedInteger((long)ship_kills);
 
 	// ship depreciation
-	[result oo_setInteger:ship_trade_in_factor forKey:@"ship_trade_in_factor"];
+	result["ship_trade_in_factor"] = oo::PList::signedInteger((long)ship_trade_in_factor);
 
 	// mission variables
 	if (!mission_variables.isNull())
 	{
-		[result setObject:oo::ObjectFromPList(mission_variables) forKey:@"mission_variables"];
+		result["mission_variables"] = mission_variables;
 	}
 
 	// communications log
 	const std::vector<std::string> *log = [self cxx_commLog];
-	if (log != nullptr)  [result setObject:oo::NSArrayFromStrings(*log) forKey:@"comm_log"];
-	
-	[result oo_setUnsignedInteger:entity_personality forKey:@"entity_personality"];
-	
+	if (log != nullptr)  result["comm_log"] = oo::PList(oo::PList::Array(log->begin(), log->end()));
+
+	result["entity_personality"] = oo::PList::unsignedInteger((unsigned long)entity_personality);
+
 	// extra equipment flags
-	NSMutableDictionary	*equipment = [NSMutableDictionary dictionary];
-	NSEnumerator		*eqEnum = nil;
-	NSString			*eqDesc = nil;
-	for (eqEnum = [self equipmentEnumerator]; (eqDesc = [eqEnum nextObject]); )
+	oo::PList::Dict equipment;
+	for (const std::string &eqDesc : [self cxx_equipmentKeys])
 	{
-		[equipment oo_setInteger:[self countEquipmentItem:eqDesc] forKey:eqDesc];
+		equipment[eqDesc] = oo::PList::signedInteger((long)[self cxx_countEquipmentItem:eqDesc]);
 	}
-	if ([equipment count] != 0)
+	if (!equipment.empty())
 	{
-		[result setObject:equipment forKey:@"extra_equipment"];
+		result["extra_equipment"] = oo::PList(equipment);
 	}
-	if (primedEquipment < eqScripts.size()) [result setObject:oo::NSStringFrom(eqScripts[primedEquipment].first) forKey:@"primed_equipment"];
-	
-	[result setObject:[self fastEquipmentA] forKey:@"primed_equipment_a"];
-	[result setObject:[self fastEquipmentB] forKey:@"primed_equipment_b"];
+	if (primedEquipment < eqScripts.size()) result["primed_equipment"] = oo::PList(eqScripts[primedEquipment].first);
+
+	if (const std::optional<std::string> value = [self cxx_fastEquipmentA])  result["primed_equipment_a"] = oo::PList(*value);
+	if (const std::optional<std::string> value = [self cxx_fastEquipmentB])  result["primed_equipment_b"] = oo::PList(*value);
 
 	// roles
-	[result setObject:oo::NSArrayFromStrings(roleWeights) forKey:@"role_weights"];
+	result["role_weights"] = oo::PList(oo::PList::Array(roleWeights.begin(), roleWeights.end()));
 
 	// role information
-	[result setObject:oo::ObjectFromPList(oo::PList(roleWeightFlags)) forKey:@"role_weight_flags"];
+	result["role_weight_flags"] = oo::PList(roleWeightFlags);
 
 	// role information
-	[result setObject:oo::ObjectFromPList(SystemListPList(roleSystemList)) forKey:@"role_system_memory"];
+	result["role_system_memory"] = SystemListPList(roleSystemList);
 
 	// reputation
 	// initialise parcel reputations in dictionary if not set (the saved dictionary was the live one,
@@ -1261,62 +1300,63 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		reputation[oo::StdString(PARCEL_BAD_KEY)] = oo::PList::signedInteger(0);
 		reputation[oo::StdString(PARCEL_UNKNOWN_KEY)] = oo::PList::signedInteger(MAX_CONTRACT_REP);
 	}
-	[result setObject:oo::ObjectFromPList(oo::PList(reputation)) forKey:@"reputation"];
+	result["reputation"] = oo::PList(reputation);
 
 	// passengers
-	[result oo_setInteger:max_passengers forKey:@"max_passengers"];
-	[result setObject:oo::ObjectFromPList(oo::PList(passengers)) forKey:@"passengers"];
-	[result setObject:oo::ObjectFromPList(oo::PList(passenger_record)) forKey:@"passenger_record"];
+	result["max_passengers"] = oo::PList::signedInteger((long)max_passengers);
+	result["passengers"] = oo::PList(passengers);
+	result["passenger_record"] = oo::PList(passenger_record);
 
 	// parcels
-	[result setObject:oo::ObjectFromPList(oo::PList(parcels)) forKey:@"parcels"];
-	[result setObject:oo::ObjectFromPList(oo::PList(parcel_record)) forKey:@"parcel_record"];
-	
-	//specialCargo
-	if (specialCargo)  [result setObject:oo::NSStringFrom(*specialCargo) forKey:@"special_cargo"];
-	
-	// contracts
-	[result setObject:oo::ObjectFromPList(oo::PList(contracts)) forKey:@"contracts"];
-	[result setObject:oo::ObjectFromPList(oo::PList(contract_record)) forKey:@"contract_record"];
+	result["parcels"] = oo::PList(parcels);
+	result["parcel_record"] = oo::PList(parcel_record);
 
-	[result setObject:oo::ObjectFromPList(oo::PList(missionDestinations)) forKey:@"mission_destinations"];
+	//specialCargo
+	if (specialCargo)  result["special_cargo"] = oo::PList(*specialCargo);
+
+	// contracts
+	result["contracts"] = oo::PList(contracts);
+	result["contract_record"] = oo::PList(contract_record);
+
+	result["mission_destinations"] = oo::PList(missionDestinations);
 
 	//shipyard
-	[result setObject:oo::ObjectFromPList(oo::PList(shipyard_record)) forKey:@"shipyard_record"];
+	result["shipyard_record"] = oo::PList(shipyard_record);
 
 	//ship's clock
-	[result setObject:[NSNumber numberWithDouble:ship_clock] forKey:@"ship_clock"];
+	result["ship_clock"] = oo::PList((double)ship_clock);
 
 	//speech
-	[result setObject:[NSNumber numberWithInt:isSpeechOn] forKey:@"speech_on"];
+	result["speech_on"] = oo::PList::signedInteger((int)isSpeechOn);
 #if OOLITE_ESPEAK
-	[result setObject:[UNIVERSE voiceName:voice_no] forKey:@"speech_voice"];
-	[result setObject:[NSNumber numberWithBool:voice_gender_m] forKey:@"speech_gender"];
+	if (const std::optional<std::string> voice = [UNIVERSE cxx_voiceName:voice_no])  result["speech_voice"] = oo::PList(*voice);
+	result["speech_gender"] = oo::PList((bool)voice_gender_m);
 #endif
-	
+
 	// docking clearance
-	[result setObject:[NSNumber numberWithBool:[UNIVERSE dockingClearanceProtocolActive]] forKey:@"docking_clearance_protocol"];
+	result["docking_clearance_protocol"] = oo::PList((bool)[UNIVERSE dockingClearanceProtocolActive]);
 
 	//base ship description
-	[result setObject:[self shipDataKey] forKey:@"ship_desc"];
-	[result setObject:oo::PListView([self shipInfoDictionary]).get<NSString *>(KEY_NAME) forKey:@"ship_name"];
+	if (const std::optional<std::string> value = [self cxx_shipDataKey])  result["ship_desc"] = oo::PList(*value);
+	if (const std::optional<std::string> value = StringForKey([self cxx_shipInfoDictionary], oo::StdString(KEY_NAME)))  result["ship_name"] = oo::PList(*value);
 
 	//custom view no.
-	[result oo_setUnsignedInteger:_customViewIndex forKey:@"custom_view_index"];
+	result["custom_view_index"] = oo::PList::unsignedInteger((unsigned long)_customViewIndex);
 
 	// escape pod rescue time
-	[result oo_setFloat:[self escapePodRescueTime] forKey:@"escape_pod_rescue_time"];
+	result["escape_pod_rescue_time"] = oo::PList((double)[self escapePodRescueTime]);	// oo_setFloat:
 
 	//local market for main station
-	if ([[UNIVERSE station] localMarket])  [result setObject:[[[UNIVERSE station] localMarket] saveStationAmounts] forKey:@"localMarket"];
+	if ([[UNIVERSE station] localMarket])  result["localMarket"] = [[[UNIVERSE station] localMarket] cxx_saveStationAmounts];
 
 	// Scenario restriction on OXZs
-	[result setObject:[UNIVERSE useAddOns] forKey:@"scenario_restriction"];
+	if (const std::optional<std::string> value = [UNIVERSE cxx_useAddOns])  result["scenario_restriction"] = oo::PList(*value);
 
-	[result setObject:[[UNIVERSE systemManager] exportScriptedChanges] forKey:@"scripted_planetinfo_overrides"];
+	result["scripted_planetinfo_overrides"] = [[UNIVERSE systemManager] cxx_exportScriptedChanges];
 
-	// trumble information
-	[result setObject:[self trumbleValue] forKey:@"trumbles"];
+	// trumble information (unmigrated: OOTrumble's records)
+	const oo::PList trumbles = oo::PListFrom([self trumbleValue]);
+	if (!trumbles.isNull())  result["trumbles"] = trumbles;
 
 	// wormhole information
 	oo::PList::Array wormholeDicts;
@@ -1325,30 +1365,30 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		wormholeDicts.push_back([wh.get() getDict]);
 	}
-	[result setObject:oo::ObjectFromPList(oo::PList(std::move(wormholeDicts))) forKey:@"wormholes"];
+	result["wormholes"] = oo::PList(std::move(wormholeDicts));
 
 	// docked station
 	StationEntity *dockedStation = [self dockedStation];
-	[result setObject:dockedStation != nil ? [dockedStation primaryRole]:(NSString *)@"" forKey:@"docked_station_role"];
+	result["docked_station_role"] = oo::PList(dockedStation != nil ? [dockedStation cxx_primaryRole].value_or(std::string()) : std::string());
 	if (dockedStation)
 	{
 		HPVector dpos = [dockedStation position];
 		{
 			oo::PList::Array coords;
 			for (double component : cxx_ArrayFromHPVector(dpos))  coords.push_back(oo::PList(component));
-			[result setObject:oo::ObjectFromPList(oo::PList(std::move(coords))) forKey:@"docked_station_position"];
+			result["docked_station_position"] = oo::PList(std::move(coords));
 		}
 	}
 	else
 	{
-		[result setObject:[NSArray array] forKey:@"docked_station_position"];
+		result["docked_station_position"] = oo::PList(oo::PList::Array());
 	}
-	[result setObject:[UNIVERSE getStationMarkets] forKey:@"station_markets"];
+	result["station_markets"] = [UNIVERSE cxx_getStationMarkets];
 
 	// scenario information
-	if (scenarioKey != nil)
+	if (scenarioKey.has_value())
 	{
-		[result setObject:scenarioKey forKey:@"scenario"];
+		result["scenario"] = oo::PList(*scenarioKey);
 	}
 
 	// create checksum
@@ -1360,27 +1400,25 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	munge_checksum(credits);		munge_checksum(fuel);
 	munge_checksum(max_cargo);		munge_checksum(missiles);
 	munge_checksum(legalStatus);	munge_checksum(market_rnd);		munge_checksum(ship_kills);
-	
+
 	if (!mission_variables.isNull())
 	{
 		// the length of the dictionary's -description, as before (the same GNUstep text)
 		munge_checksum(oo::str::length(oo::DescriptionOf(oo::ObjectFromPList(mission_variables))));
 	}
-	if (equipment != nil)
-	{
-		munge_checksum([[equipment description] length]);
-	}
-	
-	int final_checksum = munge_checksum([[self shipDataKey] length]);
+	// the equipment dictionary always existed: the length of its -description, as above
+	munge_checksum(oo::str::length(oo::DescriptionOf(oo::ObjectFromPList(oo::PList(equipment)))));
+
+	int final_checksum = munge_checksum(oo::str::length([self cxx_shipDataKey].value_or(std::string())));
 
 	//set checksum
-	[result oo_setInteger:final_checksum forKey:@"checksum"];
-	
-	return result;
+	result["checksum"] = oo::PList::signedInteger((long)final_checksum);
+
+	return oo::PList(std::move(result));
 }
 
 
-- (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict
+- (BOOL) cxx_setCommanderDataFromDictionary:(const oo::PList &) dict
 {
 	// multi-function displays
 	// must be reset before ship setup
@@ -1393,55 +1431,56 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[[UNIVERSE gameView] resetTypedString];
 
 	// Required keys
-	if (oo::PListView(dict).get<NSString *>(@"ship_desc") == nil)  return NO;
+	if (!StringForKey(dict, "ship_desc").has_value())  return NO;
 	// galaxy_seed is used is 1.80 or earlier
-	if (oo::PListView(dict).get<NSString *>(@"galaxy_seed") == nil && oo::PListView(dict).get<NSString *>(@"galaxy_id") == nil)  return NO;
+	if (!StringForKey(dict, "galaxy_seed").has_value() && !StringForKey(dict, "galaxy_id").has_value())  return NO;
 	// galaxy_coordinates is used is 1.80 or earlier
-	if (oo::PListView(dict).get<NSString *>(@"galaxy_coordinates") == nil && oo::PListView(dict).get<NSString *>(@"system_id") == nil)  return NO;
-	
-	NSString *scenarioRestrict = oo::PListView(dict).get<NSString *>(@"scenario_restriction", nil);
-	if (scenarioRestrict == nil)
+	if (!StringForKey(dict, "galaxy_coordinates").has_value() && !StringForKey(dict, "system_id").has_value())  return NO;
+
+	std::optional<std::string> scenarioRestrict = StringForKey(dict, "scenario_restriction");
+	if (!scenarioRestrict.has_value())
 	{
 		// older save game - use the 'strict' key instead
-		BOOL strict = oo::PListView(dict).get<BOOL>(@"strict", NO);
+		BOOL strict = dict.get<bool>("strict", NO);
 		if (strict)
 		{
-			scenarioRestrict = SCENARIO_OXP_DEFINITION_NONE;
+			scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_NONE);
 		}
 		else
 		{
-			scenarioRestrict = SCENARIO_OXP_DEFINITION_ALL;
+			scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
 		}
 	}
 
-	if (![UNIVERSE setUseAddOns:scenarioRestrict fromSaveGame:YES]) 
+	if (![UNIVERSE cxx_setUseAddOns:*scenarioRestrict fromSaveGame:YES])
 	{
 		return NO;
-	} 
+	}
 
-	
+
 	//base ship description
-	[self setShipDataKey:oo::PListView(dict).get<NSString *>(@"ship_desc")];
-	
-	NSDictionary *shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:[self shipDataKey]];
-	if (shipDict == nil)  return NO;
-	if (![self setUpShipFromDictionary:shipDict])  return NO;
+	[self cxx_setShipDataKey:StringForKey(dict, "ship_desc")];
+
+	const std::optional<std::string> shipDataKey = [self cxx_shipDataKey];
+	const oo::PList shipDict = shipDataKey.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipDataKey] : oo::PList();
+	if (shipDict.isNull())  return NO;
+	if (![self setUpShipFromDictionary:oo::ObjectFromPList(shipDict)])  return NO;
 	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", oo::DescriptionOf([self shipDataKey]), [self fuelChargeRate]);
-	
+
 	// ship depreciation
-	ship_trade_in_factor = oo::PListView(dict).get<int>(@"ship_trade_in_factor", 95);
-	
+	ship_trade_in_factor = dict.get<int>("ship_trade_in_factor", 95);
+
 	// newer savegames use galaxy_id
-	if (oo::PListView(dict).get<NSString *>(@"galaxy_id") != nil)
+	if (StringForKey(dict, "galaxy_id").has_value())
 	{
-		galaxy_number = oo::PListView(dict).get<NSUInteger>(@"galaxy_id");
+		galaxy_number = dict.get<NSUInteger>("galaxy_id");
 		if (galaxy_number >= OO_GALAXIES_AVAILABLE)
 		{
 			return NO;
 		}
 		[UNIVERSE setGalaxyTo:galaxy_number andReinit:YES];
 
-		system_id = oo::PListView(dict).get<int>(@"system_id");
+		system_id = dict.get<int>("system_id");
 		if (system_id < 0 || system_id >= OO_SYSTEMS_PER_GALAXY)
 		{
 			return NO;
@@ -1449,41 +1488,41 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 		[UNIVERSE setSystemTo:system_id];
 
-		NSArray *coord_vals = ScanTokensFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
-		galaxy_coordinates.x = oo::PListView(coord_vals).at<unsigned char>(0);
-		galaxy_coordinates.y = oo::PListView(coord_vals).at<unsigned char>(1);
+		std::vector<std::string> coord_vals = CoordinateTokens([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+		galaxy_coordinates.x = CoordinateAt(coord_vals, 0);
+		galaxy_coordinates.y = CoordinateAt(coord_vals, 1);
 		chart_centre_coordinates = galaxy_coordinates;
 		target_chart_centre = chart_centre_coordinates;
 		cursor_coordinates = galaxy_coordinates;
-		chart_zoom = oo::PListView(dict).get<float>(@"chart_zoom", 1.0);
+		chart_zoom = dict.get<float>("chart_zoom", 1.0);
 		target_chart_zoom = chart_zoom;
 		saved_chart_zoom = chart_zoom;
-		ANA_mode = (OORouteType)oo::PListView(dict).get<int>(@"chart_ana_mode", OPTIMIZED_BY_NONE);
-		longRangeChartMode = (OOLongRangeChartMode)oo::PListView(dict).get<int>(@"chart_colour_mode", OOLRC_MODE_SUNCOLOR);
+		ANA_mode = (OORouteType)dict.get<int>("chart_ana_mode", OPTIMIZED_BY_NONE);
+		longRangeChartMode = (OOLongRangeChartMode)dict.get<int>("chart_colour_mode", OOLRC_MODE_SUNCOLOR);
 		if (longRangeChartMode == OOLRC_MODE_UNKNOWN) longRangeChartMode = OOLRC_MODE_SUNCOLOR;
 
-		target_system_id = oo::PListView(dict).get<int>(@"target_id", system_id);
-		previous_system_id = oo::PListView(dict).get<int>(@"previous_system_id", system_id);
+		target_system_id = dict.get<int>("target_id", system_id);
+		previous_system_id = dict.get<int>("previous_system_id", system_id);
 		info_system_id = target_system_id;
-		coord_vals = ScanTokensFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:target_system_id inGalaxy:galaxy_number]);		
-		cursor_coordinates.x = oo::PListView(coord_vals).at<unsigned char>(0);
-		cursor_coordinates.y = oo::PListView(coord_vals).at<unsigned char>(1);
+		coord_vals = CoordinateTokens([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:target_system_id inGalaxy:galaxy_number]);
+		cursor_coordinates.x = CoordinateAt(coord_vals, 0);
+		cursor_coordinates.y = CoordinateAt(coord_vals, 1);
 
 		chart_focus_coordinates = chart_centre_coordinates;
 		target_chart_focus = chart_focus_coordinates;
 
-		found_system_id = oo::PListView(dict).get<int>(@"found_system_id", -1);
+		found_system_id = dict.get<int>("found_system_id", -1);
 	}
 	else
 		// compatibility for loading 1.80 savegames
 	{
-		galaxy_number = oo::PListView(dict).get<NSUInteger>(@"galaxy_number");
+		galaxy_number = dict.get<NSUInteger>("galaxy_number");
 
 		[UNIVERSE setGalaxyTo: galaxy_number andReinit:YES];
-	
-		NSArray *coord_vals = ScanTokensFromString(oo::PListView(dict).get<NSString *>(@"galaxy_coordinates"));
-		galaxy_coordinates.x = oo::PListView(coord_vals).at<unsigned char>(0);
-		galaxy_coordinates.y = oo::PListView(coord_vals).at<unsigned char>(1);
+
+		std::vector<std::string> coord_vals = oo::str::tokens(StringForKey(dict, "galaxy_coordinates").value_or(std::string()));
+		galaxy_coordinates.x = CoordinateAt(coord_vals, 0);
+		galaxy_coordinates.y = CoordinateAt(coord_vals, 1);
 		chart_centre_coordinates = galaxy_coordinates;
 		target_chart_centre = chart_centre_coordinates;
 		cursor_coordinates = galaxy_coordinates;
@@ -1491,22 +1530,23 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		target_chart_zoom = 1.0;
 		saved_chart_zoom = 1.0;
 		ANA_mode = OPTIMIZED_BY_NONE;
-		
-		NSString *keyStringValue = oo::PListView(dict).get<NSString *>(@"target_coordinates");
 
-		if (keyStringValue != nil)
+		const std::optional<std::string> keyStringValue = StringForKey(dict, "target_coordinates");
+
+		if (keyStringValue.has_value())
 		{
-			coord_vals = ScanTokensFromString(keyStringValue);
-			cursor_coordinates.x = oo::PListView(coord_vals).at<unsigned char>(0);
-			cursor_coordinates.y = oo::PListView(coord_vals).at<unsigned char>(1);
+			coord_vals = oo::str::tokens(*keyStringValue);
+			cursor_coordinates.x = CoordinateAt(coord_vals, 0);
+			cursor_coordinates.y = CoordinateAt(coord_vals, 1);
 		}
 		chart_focus_coordinates = chart_centre_coordinates;
 		target_chart_focus = chart_focus_coordinates;
 
 		// calculate system ID, target ID
-		if ([dict objectForKey:@"current_system_name"])
+		if (dict.find("current_system_name") != nullptr)
 		{
-			system_id = [UNIVERSE findSystemFromName:oo::PListView(dict).get<NSString *>(@"current_system_name")];
+			const std::optional<std::string> systemName = StringForKey(dict, "current_system_name");
+			system_id = systemName.has_value() ? [UNIVERSE cxx_findSystemFromName:*systemName] : -1;	// (nil matched nothing)
 			if (system_id == -1)  system_id = [UNIVERSE findSystemNumberAtCoords:galaxy_coordinates withGalaxy:galaxy_number includingHidden:YES];
 		}
 		else
@@ -1517,9 +1557,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		// and current_system_name and target_system_name
 		// were introduced at different times, too
-		if ([dict objectForKey:@"target_system_name"])
+		if (dict.find("target_system_name") != nullptr)
 		{
-			target_system_id = [UNIVERSE findSystemFromName:oo::PListView(dict).get<NSString *>(@"target_system_name")];
+			const std::optional<std::string> systemName = StringForKey(dict, "target_system_name");
+			target_system_id = systemName.has_value() ? [UNIVERSE cxx_findSystemFromName:*systemName] : -1;
 			if (target_system_id == -1)  target_system_id = [UNIVERSE findSystemNumberAtCoords:cursor_coordinates withGalaxy:galaxy_number includingHidden:YES];
 		}
 		else
@@ -1528,51 +1569,56 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		info_system_id = target_system_id;
 		found_system_id = -1;
-	}		
+	}
 
-	NSString *cname = oo::PListView(dict).get<NSString *>(@"player_name", PLAYER_DEFAULT_NAME);
-	[self setCommanderName:cname];
-	[self setLastsaveName:oo::PListView(dict).get<NSString *>(@"player_save_name", cname)];
+	const std::string cname = StringForKey(dict, "player_name").value_or(oo::StdString(PLAYER_DEFAULT_NAME));
+	[self cxx_setCommanderName:cname];
+	[self cxx_setLastsaveName:StringForKey(dict, "player_save_name").value_or(cname)];
 
-	[self setShipUniqueName:oo::PListView(dict).get<NSString *>(@"ship_unique_name", @"")];
-	[self setShipClassName:oo::PListView(dict).get<NSString *>(@"ship_class_name", oo::PListView(shipDict).get<NSString *>(@"name"))];
-	
-	[shipCommodityData loadPlayerAmounts:oo::PListView(dict).get<NSArray *>(@"shipCommodityData")];
-	
+	[self cxx_setShipUniqueName:StringForKey(dict, "ship_unique_name").value_or(std::string())];
+	std::optional<std::string> savedClassName = StringForKey(dict, "ship_class_name");
+	if (!savedClassName.has_value())  savedClassName = StringForKey(shipDict, "name");
+	[self cxx_setShipClassName:savedClassName];
+
+	const oo::PList *savedAmounts = dict.get<oo::PList::Array>("shipCommodityData");
+	[shipCommodityData cxx_loadPlayerAmounts:(savedAmounts != nullptr) ? *savedAmounts : oo::PList()];
+
 	// extra equipment flags
 	[self removeAllEquipment];
-	NSMutableDictionary *equipment = [NSMutableDictionary dictionaryWithDictionary:oo::PListView(dict).get<NSDictionary *>(@"extra_equipment")];
-	
+	const oo::PList *savedEquipment = dict.get<oo::PList::Dict>("extra_equipment");
+	oo::PList::Dict equipment = (savedEquipment != nullptr) ? *savedEquipment->getIf<oo::PList::Dict>() : oo::PList::Dict();
+	const oo::PList one = oo::PList::signedInteger(1);	// oo_setInteger:1 (+numberWithLong:)
+
 	// Equipment flags	(deprecated in favour of equipment dictionary, keep for compatibility)
-	if (oo::PListView(dict).get<BOOL>(@"has_docking_computer"))		[equipment oo_setInteger:1 forKey:@"EQ_DOCK_COMP"];
-	if (oo::PListView(dict).get<BOOL>(@"has_galactic_hyperdrive"))	[equipment oo_setInteger:1 forKey:@"EQ_GAL_DRIVE"];
-	if (oo::PListView(dict).get<BOOL>(@"has_escape_pod"))				[equipment oo_setInteger:1 forKey:@"EQ_ESCAPE_POD"];
-	if (oo::PListView(dict).get<BOOL>(@"has_ecm"))					[equipment oo_setInteger:1 forKey:@"EQ_ECM"];
-	if (oo::PListView(dict).get<BOOL>(@"has_scoop"))					[equipment oo_setInteger:1 forKey:@"EQ_FUEL_SCOOPS"];
-	if (oo::PListView(dict).get<BOOL>(@"has_energy_bomb"))			[equipment oo_setInteger:1 forKey:@"EQ_ENERGY_BOMB"];
-	if (oo::PListView(dict).get<BOOL>(@"has_fuel_injection"))		[equipment oo_setInteger:1 forKey:@"EQ_FUEL_INJECTION"];
-	
-	
+	if (dict.get<bool>("has_docking_computer"))		equipment["EQ_DOCK_COMP"] = one;
+	if (dict.get<bool>("has_galactic_hyperdrive"))	equipment["EQ_GAL_DRIVE"] = one;
+	if (dict.get<bool>("has_escape_pod"))				equipment["EQ_ESCAPE_POD"] = one;
+	if (dict.get<bool>("has_ecm"))					equipment["EQ_ECM"] = one;
+	if (dict.get<bool>("has_scoop"))					equipment["EQ_FUEL_SCOOPS"] = one;
+	if (dict.get<bool>("has_energy_bomb"))			equipment["EQ_ENERGY_BOMB"] = one;
+	if (dict.get<bool>("has_fuel_injection"))		equipment["EQ_FUEL_INJECTION"] = one;
+
+
 	// Legacy energy unit type -> energy unit equipment item
-	if (oo::PListView(dict).get<BOOL>(@"has_energy_unit") && [self installedEnergyUnitType] == ENERGY_UNIT_NONE)
+	if (dict.get<bool>("has_energy_unit") && [self installedEnergyUnitType] == ENERGY_UNIT_NONE)
 	{
-		OOEnergyUnitType eType = (OOEnergyUnitType)oo::PListView(dict).get<int>(@"energy_unit", ENERGY_UNIT_NORMAL);
+		OOEnergyUnitType eType = (OOEnergyUnitType)dict.get<int>("energy_unit", ENERGY_UNIT_NORMAL);
 		switch (eType)
 		{
 			// look for NEU first!
 			case OLD_ENERGY_UNIT_NAVAL:
-				[equipment oo_setInteger:1 forKey:@"EQ_NAVAL_ENERGY_UNIT"];
+				equipment["EQ_NAVAL_ENERGY_UNIT"] = one;
 				break;
-			
+
 			case OLD_ENERGY_UNIT_NORMAL:
-				[equipment oo_setInteger:1 forKey:@"EQ_ENERGY_UNIT"];
+				equipment["EQ_ENERGY_UNIT"] = one;
 				break;
 
 			default:
 				break;
 		}
 	}
-	
+
 	custom_chart_zoom = 1.0;
 	custom_chart_centre_coordinates = NSMakePoint(galaxy_coordinates.y, galaxy_coordinates.y);
 
@@ -1581,45 +1627,46 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		award until we've handled missiles later on, though.
 	*/
 	BOOL energyBombCompensation = NO;
-	if (oo::PListView(equipment).get<BOOL>(@"EQ_ENERGY_BOMB") && [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_ENERGY_BOMB"] == nil)
+	const auto energyBomb = equipment.find("EQ_ENERGY_BOMB");
+	if (energyBomb != equipment.end() && oo::PListGet<bool>::from(&energyBomb->second, false) && [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_ENERGY_BOMB"] == nil)
 	{
 		energyBombCompensation = YES;
-		[equipment removeObjectForKey:@"EQ_ENERGY_BOMB"];
+		equipment.erase(energyBomb);
 	}
-	
+
 	eqScripts.clear();
-	[self addEquipmentFromCollection:equipment];
-	primedEquipment = [self eqScriptIndexForKey:oo::PListView(dict).get<NSString *>(@"primed_equipment")];	// if key not found primedEquipment is set to primed-none
-	
-	[self setFastEquipmentA:oo::PListView(dict).get<NSString *>(@"primed_equipment_a", @"EQ_CLOAKING_DEVICE")];
-	[self setFastEquipmentB:oo::PListView(dict).get<NSString *>(@"primed_equipment_b", @"EQ_ENERGY_BOMB")]; // even though there isn't one, for compatibility.
+	[self addEquipmentFromCollection:oo::ObjectFromPList(oo::PList(equipment))];
+	primedEquipment = [self eqScriptIndexForKey:oo::NSStringOrNil(StringForKey(dict, "primed_equipment"))];	// if key not found primedEquipment is set to primed-none
+
+	[self cxx_setFastEquipmentA:StringForKey(dict, "primed_equipment_a").value_or("EQ_CLOAKING_DEVICE")];
+	[self cxx_setFastEquipmentB:StringForKey(dict, "primed_equipment_b").value_or("EQ_ENERGY_BOMB")]; // even though there isn't one, for compatibility.
 
 	if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])  compassMode = COMPASS_MODE_PLANET;
 	else  compassMode = COMPASS_MODE_BASIC;
 	DESTROY(compassTarget);
-	
+
 	// speech
-	isSpeechOn = (OOSpeechSettings)oo::PListView(dict).get<int>(@"speech_on");
+	isSpeechOn = (OOSpeechSettings)dict.get<int>("speech_on");
 #if OOLITE_ESPEAK
-	voice_gender_m = oo::PListView(dict).get<BOOL>(@"speech_gender", YES);
-	voice_no = [UNIVERSE setVoice:[UNIVERSE voiceNumber:oo::PListView(dict).get<NSString *>(@"speech_voice", nil)] withGenderM:voice_gender_m];
+	voice_gender_m = dict.get<bool>("speech_gender", YES);
+	voice_no = [UNIVERSE setVoice:[UNIVERSE voiceNumber:oo::NSStringOrNil(StringForKey(dict, "speech_voice"))] withGenderM:voice_gender_m];
 #endif
-	
+
 	// reputation
-	const oo::PList savedReputation = oo::PListFrom([dict objectForKey:@"reputation"]);
+	const oo::PList &savedReputation = ValueForKey(dict, "reputation");
 	reputation = savedReputation.isDict() ? *savedReputation.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	[self normaliseReputation];
 
 	// passengers and contracts
-	
-	max_passengers = oo::PListView(dict).get<int>(@"max_passengers", 0);
-	const oo::PList savedPassengers = oo::PListFrom([dict objectForKey:@"passengers"]);
+
+	max_passengers = dict.get<int>("max_passengers", 0);
+	const oo::PList &savedPassengers = ValueForKey(dict, "passengers");
 	passengers = savedPassengers.isArray() ? *savedPassengers.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
-	const oo::PList savedPassengerRecord = oo::PListFrom([dict objectForKey:@"passenger_record"]);
+	const oo::PList &savedPassengerRecord = ValueForKey(dict, "passenger_record");
 	passenger_record = savedPassengerRecord.isDict() ? *savedPassengerRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 	/* Note: contracts from older savegames will have ints in the commodity.
 	 * Need to fix this up */
-	const oo::PList savedContracts = oo::PListFrom([dict objectForKey:@"contracts"]);
+	const oo::PList &savedContracts = ValueForKey(dict, "contracts");
 	contracts = savedContracts.isArray() ? *savedContracts.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
 
 	// iterate downwards; lets us remove invalid ones as we go
@@ -1649,11 +1696,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 
-	const oo::PList savedContractRecord = oo::PListFrom([dict objectForKey:@"contract_record"]);
+	const oo::PList savedContractRecord = ValueForKey(dict, "contract_record");
 	contract_record = savedContractRecord.isDict() ? *savedContractRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
-	const oo::PList savedParcels = oo::PListFrom([dict objectForKey:@"parcels"]);
+	const oo::PList savedParcels = ValueForKey(dict, "parcels");
 	parcels = savedParcels.isArray() ? *savedParcels.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
-	const oo::PList savedParcelRecord = oo::PListFrom([dict objectForKey:@"parcel_record"]);
+	const oo::PList savedParcelRecord = ValueForKey(dict, "parcel_record");
 	parcel_record = savedParcelRecord.isDict() ? *savedParcelRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 
 	
@@ -1661,17 +1708,17 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	//specialCargo
 	// a string (or a number, as text), else none: as -oo_stringForKey: read it
-	const oo::PList savedSpecialCargo = oo::PListFrom([dict objectForKey:@"special_cargo"]);
+	const oo::PList savedSpecialCargo = ValueForKey(dict, "special_cargo");
 	specialCargo = (savedSpecialCargo.isString() || savedSpecialCargo.isNumber()) ? std::optional<std::string>(oo::PListGet<std::string>::from(&savedSpecialCargo, std::string())) : std::nullopt;
 	
 	// mission destinations
-	const oo::PList legacyDestinations = oo::PListFrom([dict objectForKey:@"missionDestinations"]);	// used only if an array
+	const oo::PList legacyDestinations = ValueForKey(dict, "missionDestinations");	// used only if an array
 
-	const oo::PList newDestinations = oo::PListFrom([dict objectForKey:@"mission_destinations"]);	// used only if a dictionary
+	const oo::PList newDestinations = ValueForKey(dict, "mission_destinations");	// used only if a dictionary
 	[self initialiseMissionDestinations:newDestinations andLegacy:legacyDestinations];
 	
 	// shipyard
-	const oo::PList savedShipyardRecord = oo::PListFrom([dict objectForKey:@"shipyard_record"]);
+	const oo::PList savedShipyardRecord = ValueForKey(dict, "shipyard_record");
 	shipyard_record = savedShipyardRecord.isDict() ? *savedShipyardRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	
 	// Normalize cargo capacity
@@ -1680,7 +1727,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	//unsigned 	passenger_space = [[OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"] requiredCargoSpace];
 	//if (passenger_space == 0) passenger_space = PASSENGER_BERTH_SPACE;
 	
-	max_cargo = oo::PListView(dict).get<unsigned int>(@"max_cargo", max_cargo);
+	max_cargo = dict.get<unsigned int>("max_cargo", max_cargo);
 	if (max_cargo > original_hold_size)  [self addEquipmentItem:@"EQ_CARGO_BAY" inContext:@"loading"];
 	max_cargo = original_hold_size + ([self hasExpandedCargoBay] ? extra_cargo : 0);
 	if (max_cargo < max_passengers * PASSENGER_BERTH_SPACE)
@@ -1710,7 +1757,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.cargo", "player ship {} had more cargo ({}) than it can hold ({}). Removing extra cargo.", oo::DescriptionOf([self name]), [self cargoQuantityOnBoard], static_cast<unsigned>([self maxAvailableCargoSpace]));
 		
-		OOCommodityType		type;
 		OOMassUnit			units;
 		OOCargoQuantity		oldAmount, toRemove;
 		
@@ -1753,31 +1799,31 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	
-	credits = OODeciCreditsFromObject([dict objectForKey:@"credits"]);
+	credits = OODeciCreditsFromObject(oo::ObjectFromPList(ValueForKey(dict, "credits")));
 	
-	fuel = oo::PListView(dict).get<unsigned int>(@"fuel", fuel);
-	galaxy_number = oo::PListView(dict).get<int>(@"galaxy_number");
+	fuel = dict.get<unsigned int>("fuel", fuel);
+	galaxy_number = dict.get<int>("galaxy_number");
 //
-	NSDictionary *shipyard_info = [[OOShipRegistry sharedRegistry] shipyardInfoForKey:[self shipDataKey]];
-	OOWeaponFacingSet available_facings = oo::PListView(shipyard_info).get<unsigned int>(KEY_WEAPON_FACINGS, [self weaponFacings]);
+	const oo::PList shipyard_info = shipDataKey.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*shipDataKey] : oo::PList();
+	OOWeaponFacingSet available_facings = shipyard_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);
 
 	if (available_facings & WEAPON_FACING_FORWARD)
-		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::PListView(dict).get<NSString *>(@"forward_weapon"));
+		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "forward_weapon")));
 	else
 		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_AFT)
-		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::PListView(dict).get<NSString *>(@"aft_weapon"));
+		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "aft_weapon")));
 	else
 		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_PORT)
-		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::PListView(dict).get<NSString *>(@"port_weapon"));
+		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "port_weapon")));
 	else
 		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_STARBOARD)
-		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::PListView(dict).get<NSString *>(@"starboard_weapon"));
+		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "starboard_weapon")));
 	else
 		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
@@ -1785,22 +1831,22 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if (hud != nil && [hud nonlinearScanner])
 	{
-		[hud setScannerZoom: oo::PListView(dict).get<float>(@"ship_scanner_zoom", 1.0)];
+		[hud setScannerZoom: dict.get<float>("ship_scanner_zoom", 1.0)];
 	}
 	
-	weapons_online = oo::PListView(dict).get<bool>(@"weapons_online", YES);
+	weapons_online = dict.get<bool>("weapons_online", YES);
 	
-	legalStatus = oo::PListView(dict).get<int>(@"legal_status");
-	market_rnd = oo::PListView(dict).get<int>(@"market_rnd");
-	ship_kills = oo::PListView(dict).get<int>(@"ship_kills");
+	legalStatus = dict.get<int>("legal_status");
+	market_rnd = dict.get<int>("market_rnd");
+	ship_kills = dict.get<int>("ship_kills");
 	
-	ship_clock = oo::PListView(dict).get<double>(@"ship_clock", PLAYER_SHIP_CLOCK_START);
+	ship_clock = dict.get<double>("ship_clock", PLAYER_SHIP_CLOCK_START);
 	fps_check_time = ship_clock;
 	
-	escape_pod_rescue_time = oo::PListView(dict).get<double>(@"escape_pod_rescue_time", 0.0);
+	escape_pod_rescue_time = dict.get<double>("escape_pod_rescue_time", 0.0);
 	
 	// role weights
-	const oo::PList savedRoles = oo::PListFrom([dict objectForKey:@"role_weights"]);
+	const oo::PList savedRoles = ValueForKey(dict, "role_weights");
 	NSUInteger rc = [self maxPlayerRoles];
 	roleWeights.clear();
 	if (!savedRoles.isArray())
@@ -1820,10 +1866,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 
-	const oo::PList savedFlags = oo::PListFrom([dict objectForKey:@"role_weight_flags"]);
+	const oo::PList savedFlags = ValueForKey(dict, "role_weight_flags");
 	roleWeightFlags = savedFlags.isDict() ? *savedFlags.getIf<oo::PList::Dict>() : oo::PList::Dict();
 
-	const oo::PList savedSystems = oo::PListFrom([dict objectForKey:@"role_system_memory"]);
+	const oo::PList savedSystems = ValueForKey(dict, "role_system_memory");
 	roleSystemList.clear();
 	for (size_t systemIndex = 0; savedSystems.isArray() && systemIndex < savedSystems.count(); systemIndex++)
 	{
@@ -1832,22 +1878,22 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 
 	// mission_variables
-	mission_variables = oo::PListFrom([dict objectForKey:@"mission_variables"]);
+	mission_variables = ValueForKey(dict, "mission_variables");
 	if (!mission_variables.isDict())  mission_variables = oo::PList(oo::PList::Dict{});	// absent or not a dictionary: empty
 	
 	// persistant UNIVERSE info
-	NSDictionary *planetInfoOverrides = oo::PListView(dict).get<NSDictionary *>(@"scripted_planetinfo_overrides");
-	if (planetInfoOverrides != nil)
+	const oo::PList *planetInfoOverrides = dict.get<oo::PList::Dict>("scripted_planetinfo_overrides");
+	if (planetInfoOverrides != nullptr)
 	{
-		[[UNIVERSE systemManager] importScriptedChanges:planetInfoOverrides];	
+		[[UNIVERSE systemManager] cxx_importScriptedChanges:*planetInfoOverrides];	
 	} 
 	else
 	{
 		// no scripted overrides? What about 1.80-style local overrides?
-		planetInfoOverrides = oo::PListView(dict).get<NSDictionary *>(@"local_planetinfo_overrides");
-		if (planetInfoOverrides != nil)
+		planetInfoOverrides = dict.get<oo::PList::Dict>("local_planetinfo_overrides");
+		if (planetInfoOverrides != nullptr)
 		{
-			[[UNIVERSE systemManager] importLegacyScriptedChanges:planetInfoOverrides];
+			[[UNIVERSE systemManager] cxx_importLegacyScriptedChanges:*planetInfoOverrides];
 		}
 	}
 	
@@ -1855,7 +1901,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	commLog.clear();
 	commLog.reserve(kCommLogTrimThreshold);
 
-	const oo::PList savedCommLog = oo::PListFrom([dict objectForKey:@"comm_log"]);
+	const oo::PList savedCommLog = ValueForKey(dict, "comm_log");
 	const std::size_t commCount = savedCommLog.isArray() ? savedCommLog.count() : 0;	// oo_arrayForKey:
 	for (std::size_t i = 0; i < commCount; i++)
 	{
@@ -1867,7 +1913,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		up in -setUp). Saving of entity_personality was added in 1.74.
 		-- Ahruman 2009-09-13
 	*/
-	entity_personality = oo::PListView(dict).get<unsigned short>(@"entity_personality", entity_personality);
+	entity_personality = dict.get<unsigned short>("entity_personality", entity_personality);
 	
 	// set up missiles
 	[self setActiveMissile:0];
@@ -1876,25 +1922,25 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[missile_entity[i] release];
 		missile_entity[i] = nil;
 	}
-	NSArray *missileRoles = oo::PListView(dict).get<NSArray *>(@"missile_roles");
-	if (missileRoles != nil)
+	const oo::PList *missileRoles = dict.get<oo::PList::Array>("missile_roles");
+	if (missileRoles != nullptr)
 	{
 		unsigned missileCount = 0;
-		for (NSUInteger roleIndex = 0; roleIndex < [missileRoles count] && missileCount < max_missiles; roleIndex++)
+		for (NSUInteger roleIndex = 0; roleIndex < missileRoles->count() && missileCount < max_missiles; roleIndex++)
 		{
-			NSString *missile_desc = oo::PListView(missileRoles).at<NSString *>(roleIndex);
-			if (missile_desc != nil && ![missile_desc isEqualToString:@"NONE"])
+			const std::optional<std::string> missile_desc = StringAt(*missileRoles, roleIndex);
+			if (missile_desc.has_value() && *missile_desc != "NONE")
 			{
-				ShipEntity *amiss = [UNIVERSE newShipWithRole:missile_desc];
+				ShipEntity *amiss = [UNIVERSE cxx_newShipWithRole:*missile_desc];
 				if (amiss)
 				{
-					missile_list[missileCount] = [OOEquipmentType equipmentTypeWithIdentifier:missile_desc];
+					missile_list[missileCount] = [OOEquipmentType cxx_equipmentTypeWithIdentifier:*missile_desc];
 					missile_entity[missileCount] = amiss;   // retain count = 1
 					missileCount++;
 				}
 				else
 				{
-					OO_LOG_WARN("load.failed.missileNotFound", "couldn't find missile with role '{}' in [PlayerEntity setCommanderDataFromDictionary:], missile entry discarded.", oo::DescriptionOf(missile_desc));
+					OO_LOG_WARN("load.failed.missileNotFound", "couldn't find missile with role '{}' in [PlayerEntity setCommanderDataFromDictionary:], missile entry discarded.", *missile_desc);
 				}
 			}
 			missiles = missileCount;
@@ -1945,10 +1991,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// but stores the ID in the save file instead
 	
 	// restore subentities status
-	[self deserializeShipSubEntitiesFrom:oo::PListView(dict).get<NSString *>(@"subentities_status")];
+	[self deserializeShipSubEntitiesFrom:oo::NSStringOrNil(StringForKey(dict, "subentities_status"))];
 	
 	// wormholes
-	const oo::PList whArray = oo::PListFrom([dict objectForKey:@"wormholes"]);
+	const oo::PList whArray = ValueForKey(dict, "wormholes");
 	scannedWormholes.clear();
 	const oo::PList::Array *whList = whArray.getIf<oo::PList::Array>();
 	if (whList != nullptr)  scannedWormholes.reserve(whList->size());
@@ -1968,15 +2014,16 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	// custom view no.
 	if (!_customViews.empty())	// (an empty custom_views array divided by zero before)
-		_customViewIndex = oo::PListView(dict).get<unsigned int>(@"custom_view_index") % _customViews.size();
+		_customViewIndex = dict.get<unsigned int>("custom_view_index") % _customViews.size();
 
 
 	// docking clearance protocol
-	[UNIVERSE setDockingClearanceProtocolActive:oo::PListView(dict).get<BOOL>(@"docking_clearance_protocol", NO)];
+	[UNIVERSE setDockingClearanceProtocolActive:dict.get<bool>("docking_clearance_protocol", NO)];
 	
 	// trumble information
 	[self setUpTrumbles];
-	[self setTrumbleValueFrom:[dict objectForKey:@"trumbles"]];	// if it doesn't exist we'll check user-defaults
+	const oo::PList *trumbles = dict.find("trumbles");
+	[self setTrumbleValueFrom:(trumbles != nullptr) ? oo::ObjectFromPList(*trumbles) : nil];	// if it doesn't exist we'll check user-defaults
 
 	return YES;
 }
@@ -2030,15 +2077,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	[self setUpAndConfirmOK:NO];
 	
-	save_path = nil;
+	save_path.reset();
 	
 	scoopsActive = NO;
 	
 	target_memory_index = 0;
 	
 	dockingReport.clear();
-	[hud resetGuis:[NSDictionary dictionaryWithObjectsAndKeys:[NSDictionary dictionary], @"message_gui",
-														[NSDictionary dictionary], @"comm_log_gui", nil]];
+	[hud cxx_resetGuis:oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) },
+											{ "comm_log_gui", oo::PList(oo::PList::Dict()) } })];
 	
 	[self initControls];
 }
@@ -2359,8 +2406,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	currentWeaponFacing		= WEAPON_FACING_FORWARD;
 	[self currentWeaponStats];
 	
-	[save_path autorelease];
-	save_path = nil;
+	save_path.reset();
 	
 	scannedWormholes.clear();
 	
@@ -2386,8 +2432,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[self setUpWeaponSounds];
 	
-	[self setGalacticHyperspaceBehaviourTo:oo::PListView([UNIVERSE globalSettings]).get<NSString *>(@"galactic_hyperspace_behaviour", @"BEHAVIOUR_STANDARD")];
-	[self setGalacticHyperspaceFixedCoordsTo:oo::PListView([UNIVERSE globalSettings]).get<NSString *>(@"galactic_hyperspace_fixed_coords", @"96 96")];
+	[self setGalacticHyperspaceBehaviourTo:oo::NSStringFrom(StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_behaviour").value_or("BEHAVIOUR_STANDARD"))];
+	[self setGalacticHyperspaceFixedCoordsTo:oo::NSStringFrom(StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_fixed_coords").value_or("96 96"))];
 	
 	cloaking_device_active = NO;
 
@@ -2433,12 +2479,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (BOOL) setUpShipFromDictionary:(NSDictionary *)shipDict
+- (BOOL) setUpShipFromDictionary:(id) inShipDict	// shared selector (proposed ADR-0043): an Objective-C dictionary
 {
+	const oo::PList shipDict = oo::PListFrom(inShipDict);
 	DESTROY(compassTarget);
 	[UNIVERSE setBlockJSPlayerShipProps:NO];	// full access to player.ship properties!
-	
-	if (![super setUpFromDictionary:shipDict]) return NO;
+
+	if (![super cxx_setUpFromDictionary:shipDict]) return NO;
 	
 	cargo.clear();
 
@@ -2458,7 +2505,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self setPrimaryRole:@"player"];
 	
 	[self removeAllEquipment];
-	[self addEquipmentFromCollection:[shipDict objectForKey:@"extra_equipment"]];
+	const oo::PList *extraEquipment = shipDict.find("extra_equipment");
+	[self addEquipmentFromCollection:(extraEquipment != nullptr) ? oo::ObjectFromPList(*extraEquipment) : nil];
 
 	[self resetHud];
 	[hud setHidden:NO];
@@ -2490,39 +2538,39 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (EXPECT(_scaleFactor == 1.0f))
 	{
-		forwardViewOffset = oo::PListView(shipDict).get<Vector>(@"view_position_forward", forwardViewOffset);
-		aftViewOffset = oo::PListView(shipDict).get<Vector>(@"view_position_aft", aftViewOffset);
-		portViewOffset = oo::PListView(shipDict).get<Vector>(@"view_position_port", portViewOffset);
-		starboardViewOffset = oo::PListView(shipDict).get<Vector>(@"view_position_starboard", starboardViewOffset);
+		forwardViewOffset = VectorForKey(shipDict, "view_position_forward", forwardViewOffset);
+		aftViewOffset = VectorForKey(shipDict, "view_position_aft", aftViewOffset);
+		portViewOffset = VectorForKey(shipDict, "view_position_port", portViewOffset);
+		starboardViewOffset = VectorForKey(shipDict, "view_position_starboard", starboardViewOffset);
 	}
 	else
 	{
-		forwardViewOffset = vector_multiply_scalar(oo::PListView(shipDict).get<Vector>(@"view_position_forward", forwardViewOffset),_scaleFactor);
-		aftViewOffset = vector_multiply_scalar(oo::PListView(shipDict).get<Vector>(@"view_position_aft", aftViewOffset),_scaleFactor);
-		portViewOffset = vector_multiply_scalar(oo::PListView(shipDict).get<Vector>(@"view_position_port", portViewOffset),_scaleFactor);
-		starboardViewOffset = vector_multiply_scalar(oo::PListView(shipDict).get<Vector>(@"view_position_starboard", starboardViewOffset),_scaleFactor);
+		forwardViewOffset = vector_multiply_scalar(VectorForKey(shipDict, "view_position_forward", forwardViewOffset),_scaleFactor);
+		aftViewOffset = vector_multiply_scalar(VectorForKey(shipDict, "view_position_aft", aftViewOffset),_scaleFactor);
+		portViewOffset = vector_multiply_scalar(VectorForKey(shipDict, "view_position_port", portViewOffset),_scaleFactor);
+		starboardViewOffset = vector_multiply_scalar(VectorForKey(shipDict, "view_position_starboard", starboardViewOffset),_scaleFactor);
 	}
 
 	[self setDefaultCustomViews];
 	
-	const oo::PList customViews = oo::PListFrom([shipDict objectForKey:@"custom_views"]);
+	const oo::PList &customViews = ValueForKey(shipDict, "custom_views");
 	if (customViews.isArray())
 	{
 		_customViews = CustomViewsFrom(customViews);
 		_customViewIndex = 0;
 	}
 	
-	massLockable = oo::PListView(shipDict).get<bool>(@"mass_lockable", YES);
+	massLockable = shipDict.get<bool>("mass_lockable", YES);
 	
 	// Load js script
 	[script autorelease];
-	NSDictionary *scriptProperties = [NSDictionary dictionaryWithObject:self forKey:@"ship"];
-	script = [OOScript jsScriptFromFileNamed:oo::PListView(shipDict).get<NSString *>(@"script") 
+	const oo::PList scriptProperties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
+	script = [OOScript cxx_jsScriptFromFileNamed:StringForKey(shipDict, "script").value_or(std::string())	// (nil loaded nothing)
 										 properties:scriptProperties];
 	if (script == nil)
 	{
 		// Do not switch to using a default value above; we want to use the default script if loading fails.
-		script = [OOScript jsScriptFromFileNamed:@"oolite-default-player-script.js"
+		script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-player-script.js"
 											 properties:scriptProperties];
 	}
 	[script retain];
@@ -2550,8 +2598,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	DESTROY(shipCommodityData);
 	
 	
-	DESTROY(save_path);
-	DESTROY(scenarioKey);
+	save_path.reset();
+	scenarioKey.reset();
 	
 
 	
@@ -7107,7 +7155,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (![[UNIVERSE gameController] playerFileToLoad])
 	{
-		[[UNIVERSE gameController] setPlayerFileToLoad: save_path];	// make sure we load the correct game
+		[[UNIVERSE gameController] setPlayerFileToLoad:oo::NSStringOrNil(save_path)];	// make sure we load the correct game
 	}
 	
 	energy = 0.0f;
@@ -7169,7 +7217,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (BOOL) cxx_endScenario:(const std::string &)key
 {
-	if (scenarioKey != nil && key == oo::StdString(scenarioKey))
+	if (scenarioKey.has_value() && key == *scenarioKey)
 	{
 		[self setStatus:STATUS_RESTART_GAME];
 		return YES;

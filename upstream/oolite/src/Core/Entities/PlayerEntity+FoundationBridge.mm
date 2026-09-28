@@ -522,4 +522,17 @@ and converts the result exactly as the old method produced it.
 	return [self cxx_commodityScriptNamed:oo::OptionalString(scriptName)];
 }
 
+
+// oo-3rb.257: save and load dictionaries
+- (NSDictionary *) commanderDataDictionary
+{
+	return oo::ObjectFromPList([self cxx_commanderDataDictionary]);	// (was a mutable dictionary; its callers only read it)
+}
+
+
+- (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict
+{
+	return [self cxx_setCommanderDataFromDictionary:oo::PListFrom(dict)];
+}
+
 @end

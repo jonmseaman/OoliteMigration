@@ -705,8 +705,8 @@ typedef enum
 	std::map<int, std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>>>	extraGuiScreenKeys;	// by GUI screen ID
 
 	// save-file
-	NSString				*save_path;
-	NSString				*scenarioKey;
+	std::optional<std::string>	save_path;
+	std::optional<std::string>	scenarioKey;
 	
 	// position of viewports
 	Vector					forwardViewOffset, aftViewOffset, portViewOffset, starboardViewOffset;
@@ -881,8 +881,8 @@ typedef enum
 - (BOOL) infoSystemOnRoute;
 
 
-- (NSDictionary *) commanderDataDictionary;
-- (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict;
+- (oo::PList) cxx_commanderDataDictionary;	// a Dict, as saved
+- (BOOL) cxx_setCommanderDataFromDictionary:(const oo::PList &) dict;
 
 - (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
 - (void) validateCustomEquipActivationArray;
@@ -1101,7 +1101,6 @@ typedef enum
 - (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
 
 - (std::vector<std::string>) cxx_cargoList;
-//- (NSArray *) cargoListForScripting; // now in ShipEntity
 - (unsigned) legalStatusOfCargoList;
 
 - (void) setGuiToSystemDataScreen;
