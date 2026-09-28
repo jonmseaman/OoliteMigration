@@ -318,8 +318,8 @@ static void LoadExplicitSettings(void)
 	if (builtInPath.has_value())
 	{
 		const std::string path = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath, "Config"), "logcontrol.plist");
-		// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: convert at the call.
-		builtInSettings = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(path)));
+		builtInSettings = cxx_OOPropertyListFromFile(path);
+		if (!builtInSettings.isDict())  builtInSettings = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 	}
 	oo::log::logger().replaceSettings(SettingsFromDictionary(builtInSettings), false);
 

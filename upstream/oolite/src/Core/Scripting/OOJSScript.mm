@@ -680,7 +680,8 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 - (oo::PList::Dict) defaultPropertiesFromPath:(const std::optional<std::string> &)path
 {
 	// remove file name, remove OXP subfolder, add manifest.plist (a nil path messaged nil: no manifest)
-	const oo::PList manifest = path.has_value() ? oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::deletingLastPathComponent(oo::str::deletingLastPathComponent(*path)), "manifest.plist")))) : oo::PList();
+	oo::PList manifest = path.has_value() ? cxx_OOPropertyListFromFile(oo::str::appendingPathComponent(oo::str::deletingLastPathComponent(oo::str::deletingLastPathComponent(*path)), "manifest.plist")) : oo::PList();
+	if (!manifest.isDict())  manifest = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 	oo::PList::Dict properties;
 	/* __oolite.tmp.* is allocated for OXPs without manifests. Its
 	 * values are meaningless and shouldn't be used here */

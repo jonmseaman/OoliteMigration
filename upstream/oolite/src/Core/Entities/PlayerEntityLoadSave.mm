@@ -696,7 +696,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Reading file");
-		fileDic = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(fileToOpen)));
+		fileDic = cxx_OOPropertyListFromFile(fileToOpen);
+		if (!fileDic.isDict())  fileDic = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 		if (!fileDic.isDict())
 		{
 			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-load-file"));
@@ -1139,7 +1140,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		{
 			if (type != oo::fs::FileType::directory && oo::str::lowercase(oo::str::pathExtension(path)) == "oolite-save")
 			{
-				oo::PList cdr = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(path)));
+				oo::PList cdr = cxx_OOPropertyListFromFile(path);
+				if (!cdr.isDict())  cdr = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 				if (oo::PList::Dict *cdr1 = cdr.getIf<oo::PList::Dict>())
 				{
 					// okay use the same dictionary but add a 'saved_game_path' attribute

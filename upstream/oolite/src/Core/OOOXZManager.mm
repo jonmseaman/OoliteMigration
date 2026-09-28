@@ -63,6 +63,28 @@ MA 02110-1301, USA.
 /* The URL for the manifest.plist array. */
 /* switching (temporarily maybe) to oolite.space - Nikos 20230507 */
 namespace {
+
+// OODictionaryFromFile / OOArrayFromFile (the retired OOPListParsing bridge) as property lists:
+// the file's property list when it is of that kind, a null PList otherwise (no path: none; their
+// plist.wrongType log line, which named the Foundation class, is not kept).
+oo::PList PListDictionaryFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isDict() ? result : oo::PList();
+}
+
+
+oo::PList PListArrayFromFile(const std::optional<std::string> &path)
+{
+	if (!path.has_value())  return oo::PList();
+	oo::PList result = cxx_OOPropertyListFromFile(*path);
+	return result.isArray() ? result : oo::PList();
+}
+
+}	// namespace
+
+
+namespace {
 /*const char *const kOOOXZDataURL = "http://addons.oolite.org/api/1.0/overview";*/
 const char *const kOOOXZDataURL = "https://addons.oolite.space/api/1.0/overview";
 /* The config parameter to use a non-default URL at runtime */
@@ -373,7 +395,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		_downloadStatus = OXZ_DOWNLOAD_NONE;
 		// if the file has not been downloaded, this will be nil
-		[self setOXZList:oo::PListFrom(OOArrayFromFile(oo::NSStringOrNil([self manifestPath])))];
+		[self setOXZList:PListArrayFromFile([self manifestPath])];
 		OO_LOG("oxz.manager.debug", "Initialised with {}", oo::DescriptionOf(oo::ObjectFromPList(_oxzList)));
 		_interfaceState = OXZ_STATE_NODATA;
 		_currentFilter = "*";
@@ -862,8 +884,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		for (const std::string &filename : filenames)
 		{
 			const std::string fullpath = oo::str::appendingPathComponent(*installPath, filename);
-			// OODictionaryFromFile is unmigrated: its dictionary arrives through oo::PListFrom.
-			const oo::PList manifest = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(fullpath, "manifest.plist"))));
+			const oo::PList manifest = PListDictionaryFromFile(oo::str::appendingPathComponent(fullpath, "manifest.plist"));
 			if (manifest)
 			{
 				oo::PList adjManifest = manifest;
@@ -917,7 +938,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		return NO;
 	}
-	[self setOXZList:oo::PListFrom(OOArrayFromFile(oo::NSStringOrNil([self downloadPath])))];
+	[self setOXZList:PListArrayFromFile([self downloadPath])];
 	if (_oxzList)
 	{
 		// GNUstep's property-list writer still writes the cache file.
@@ -938,7 +959,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		_downloadStatus = OXZ_DOWNLOAD_ERROR;
 		OO_LOG("oxz.manager.error", "Downloaded manifest was not a valid plist, has been left in {}", [self downloadPath].value_or("(null)"));
 		// revert to the old one
-		[self setOXZList:oo::PListFrom(OOArrayFromFile(oo::NSStringOrNil([self manifestPath])))];
+		[self setOXZList:PListArrayFromFile([self manifestPath])];
 		_interfaceState = OXZ_STATE_TASKDONE;
 		[self gui];
 		return NO;
@@ -2019,8 +2040,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
 		oo::PList installed = [ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
 		const std::string localPath = oo::str::appendingPathComponent(installPath.value_or(std::string()), identifier.value_or(std::string())) + ".oxz";
-		// OODictionaryFromFile is unmigrated: its dictionary arrives through oo::PListFrom.
-		const auto readLocalManifest = [&localPath] { return oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(localPath, "manifest.plist")))); };
+		const auto readLocalManifest = [&localPath] { return PListDictionaryFromFile(oo::str::appendingPathComponent(localPath, "manifest.plist")); };
 		if (!installed)
 		{
 			// check that there's not one just been downloaded
