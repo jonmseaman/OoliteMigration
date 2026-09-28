@@ -4,7 +4,7 @@ OOPListView.h
 
 oo::PListView: the bridge that lets a file drop OOCollectionExtractors' `oo_*ForKey:` shape
 while the game still holds Foundation collections (proposed ADR-0031, bead oo-u77). It is a
-zero-copy view over an NSDictionary / NSUserDefaults / NSArray (anything answering
+zero-copy view over an NSDictionary / oo::Defaults / NSArray (anything answering
 -objectForKey: or -objectAtIndex:) with oo::PList's accessor API (oofnd/PListGet.hpp):
 
 	[dict oo_floatForKey:KEY defaultValue:1.0f]      ->  oo::PListView(dict).get<float>(KEY, 1.0f)
