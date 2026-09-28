@@ -1028,7 +1028,7 @@ static BOOL sRunningScript = NO;
 
 - (id) status_string	// called by name (ADR-0043 item 21)
 {
-	return OOStringFromEntityStatus([self status]);
+	return oo::NSStringFrom(cxx_OOStringFromEntityStatus([self status]));
 }
 
 

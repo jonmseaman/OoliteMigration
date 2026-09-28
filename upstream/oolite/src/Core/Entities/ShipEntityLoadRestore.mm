@@ -104,7 +104,7 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(bounty);
 	updatedShipInfo[KEY_FORWARD_WEAPON] = oo::StdString(OOStringFromWeaponType(forward_weapon_type));
 	updatedShipInfo[KEY_AFT_WEAPON] = oo::StdString(OOStringFromWeaponType(aft_weapon_type));
-	updatedShipInfo[KEY_SCAN_CLASS] = oo::StdString(OOStringFromScanClass(scanClass));
+	updatedShipInfo[KEY_SCAN_CLASS] = cxx_OOStringFromScanClass(scanClass);
 
 	std::vector<std::string> deletes;
 	[self simplifyShipdata:updatedShipInfo andGetDeletes:&deletes];
