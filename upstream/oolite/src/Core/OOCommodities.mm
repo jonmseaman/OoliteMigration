@@ -315,14 +315,14 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 
 	if (!OK)
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - unable to call updateLocalCommodityDefinition",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityName)));
+		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - unable to call updateLocalCommodityDefinition",errorType,StringFor(good, kOOCommodityName).value_or("(null)"));
 		OOJSRelinquishContext(context);
 		return good;
 	}
 
 	if (!ooscript::isObjectOrNull(rval))
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityKey)));
+		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - return value invalid",errorType,StringFor(good, kOOCommodityKey).value_or("(null)"));
 		OOJSRelinquishContext(context);
 		return good;
 	}
@@ -331,7 +331,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 	OOJSRelinquishContext(context);
 	if (!oo::IsNSDictionary(result))
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityKey)));
+		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - return value invalid",errorType,StringFor(good, kOOCommodityKey).value_or("(null)"));
 		return good;
 	}
 
@@ -437,12 +437,12 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 }
 
 
-- (id) goods
+- (std::vector<std::string>) goods
 {
 	// key order (was -allKeys, hash order)
 	std::vector<std::string> keys;
 	for (const auto &entry : _commodityLists)  keys.push_back(entry.first);
-	return oo::NSArrayFromStrings(keys);
+	return keys;
 }
 
 
@@ -467,19 +467,19 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 
 
 
-- (id) getRandomCommodity
+- (std::string) getRandomCommodity
 {
 	// Ranrot() % count indexes the keys in key order (was -allKeys, hash order).
 	NSUInteger idx = Ranrot() % _commodityLists.size();
 	auto entry = _commodityLists.begin();
 	std::advance(entry, idx);
-	return oo::NSStringFrom(entry->first);
+	return entry->first;
 }
 
 
-- (OOMassUnit) massUnitForGood:(id)good
+- (OOMassUnit) massUnitForGood:(const std::string &)good
 {
-	const auto entry = _commodityLists.find(oo::StdString(good));
+	const auto entry = _commodityLists.find(good);
 	if (entry == _commodityLists.end() || !entry->second.isDict())
 	{
 		return UNITS_TONS;

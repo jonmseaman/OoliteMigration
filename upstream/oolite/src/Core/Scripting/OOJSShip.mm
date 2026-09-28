@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOEntityFilterPredicate.h"
 #import "OOCharacter.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 static ooscript::Object sShipPrototype;
@@ -642,7 +643,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_displayName:
-			result = [entity displayName];
+			result = oo::NSStringOrNil([entity displayName]);
 			break;
 
 		case kShip_shipUniqueName:
@@ -688,7 +689,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 		
 		case kShip_AIState:
-			result = [[entity getAI] state];
+			result = oo::NSStringOrNil([[entity getAI] cxx_state]);
 			break;
 		
 		case kShip_AIFoundTarget:
@@ -724,7 +725,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return YES;
 			
 		case kShip_subEntities:
-			result = [entity subEntitiesForScript];
+			result = oo::NSArrayFromObjects([entity subEntitiesForScript]);
 			break;
 
 		case kShip_exhausts:
@@ -732,7 +733,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 
 		case kShip_flashers:
-			result = [[entity flasherEnumerator] allObjects];
+			result = oo::NSArrayFromObjects([entity flasherEnumerator]);
 			break;
 			
 		case kShip_subEntityCapacity:
@@ -802,11 +803,11 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return YES;
 			
 		case kShip_beaconCode:
-			result = [entity beaconCode];
+			result = oo::NSStringOrNil([entity beaconCode]);
 			break;
 
 		case kShip_beaconLabel:
-			result = [entity beaconLabel];
+			result = oo::NSStringOrNil([entity beaconLabel]);
 			break;
 		
 		case kShip_isFrangible:
@@ -1061,8 +1062,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, [entity scriptedMisjumpRange], value);
 			
 		case kShip_scriptInfo:
-			result = [entity scriptInfo];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
+			result = oo::ObjectFromPList([entity scriptInfo]);	// empty dict, never null
 			break;
 			
 		case kShip_sunGlareFilter:
@@ -1254,7 +1254,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return NO;
 	if (OOIsStaleEntity(entity))  return YES;
 
-	NSCAssert(![entity isTemplateCargoPod], @"-OOJSShip: a template cargo pod has become accessible to Javascript");
+	OOCAssert(![entity isTemplateCargoPod], "-OOJSShip: a template cargo pod has become accessible to Javascript");
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -1346,11 +1346,11 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			{
 				if ([entity isBeacon])
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 					[UNIVERSE setNextBeacon:entity];
 				}
 			}
@@ -1362,7 +1362,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
 			if (sValue.has_value())
 			{
-				[entity setBeaconLabel:oo::NSStringFrom(*sValue)];
+				[entity setBeaconLabel:sValue];
 				return YES;
 			}
 			break;
@@ -2254,7 +2254,7 @@ static bool ShipHasRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		return NO;
 	}
 	
-	OOJS_RETURN_BOOL([thisEnt hasRole:oo::NSStringFrom(*role)]);
+	OOJS_RETURN_BOOL([thisEnt hasRole:*role]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2616,7 +2616,7 @@ static bool ShipFireECM(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OK = [thisEnt fireECM];
 	if (!OK)
 	{
-		OOJSReportWarning(context, @"Ship %@ was requested to fire ECM burst but does not carry ECM equipment.", [thisEnt oo_jsDescription]);
+		OOJSReportWarning(context, @"Ship %@ was requested to fire ECM burst but does not carry ECM equipment.", oo::NSStringOrNil([thisEnt cxx_oo_jsDescription]));
 	}
 	
 	OOJS_RETURN_BOOL(OK);
@@ -2851,12 +2851,12 @@ static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	NSUInteger subCount = [[thisEnt subEntitiesForScript] count];
+	NSUInteger subCount = [thisEnt subEntitiesForScript].size();
 	
 	[thisEnt clearSubEntities];
 	[thisEnt setUpSubEntities];
 	
-	if ([[thisEnt subEntitiesForScript] count] - subCount > 0)  numSubEntitiesRestored = [[thisEnt subEntitiesForScript] count] - subCount;
+	if ([thisEnt subEntitiesForScript].size() - subCount > 0)  numSubEntitiesRestored = [thisEnt subEntitiesForScript].size() - subCount;
 	
 	// for each subentity restored, slightly increase the trade-in factor
 	if ([thisEnt isPlayer])
@@ -3435,7 +3435,7 @@ static BOOL RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &o
 	
 	if (EXPECT_NOT([thisEnt isPlayer]))
 	{
-		NSCAssert(explode, @"RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
+		OOCAssert(explode, "RemoveOrExplodeShip(): shouldn't be called for player with !explode.");	// player.ship.remove() is blocked by caller.
 		PlayerEntity *player = (PlayerEntity *)thisEnt;
 		
 		if ([player isDocked])
@@ -4294,7 +4294,7 @@ static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &
 		if ([thisEnt isThargoid])
 		{
 			assessment *= 1.5;
-			if ([thisEnt hasRole:@"thargoid-mothership"])
+			if ([thisEnt hasRole:"thargoid-mothership"])
 			{
 				assessment += 5;
 			}

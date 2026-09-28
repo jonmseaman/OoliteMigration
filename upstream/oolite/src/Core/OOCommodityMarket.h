@@ -34,9 +34,9 @@ MA 02110-1301, USA.
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-rvit): goods are keyed by UTF-8 std::strings
 	(the commodity keys); each good's definition is an oo::PList dictionary (trade-goods.plist
-	data, as OOCommodities and commodity scripts build it). -goods and -massUnitForGood: are
-	shared selectors (OOCommodities) and keep Objective-C object types; -dictionaryForScripting
-	hands JavaScript an Objective-C dictionary.
+	data, as OOCommodities and commodity scripts build it). -goods returns std::vector<std::string>;
+	-massUnitForGood: takes const std::string &; -dictionaryForScripting hands JavaScript an
+	Objective-C dictionary.
 */
 @interface OOCommodityMarket: OOObject
 {
@@ -50,7 +50,7 @@ MA 02110-1301, USA.
 
 - (void) cxx_setGood:(const std::string &)key withInfo:(const oo::PList &)info;
 
-- (id) goods;	// shared selector (proposed ADR-0043): an array of the good keys, in sort_order
+- (std::vector<std::string>) goods;	// good keys, in sort_order
 - (id) dictionaryForScripting;	// an immutable dictionary of the definitions, for JavaScript
 
 - (BOOL) cxx_setPrice:(OOCreditsQuantity)price forGood:(const std::string &)good;
@@ -66,7 +66,7 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) cxx_shortCommentForGood:(const std::string &)good;
 - (OOCreditsQuantity) cxx_priceForGood:(const std::string &)good;
 - (OOCargoQuantity) cxx_quantityForGood:(const std::string &)good;
-- (OOMassUnit) massUnitForGood:(id)good;	// shared selector (proposed ADR-0043): good is an Objective-C string
+- (OOMassUnit) massUnitForGood:(const std::string &)good;
 - (NSUInteger) cxx_exportLegalityForGood:(const std::string &)good;
 - (NSUInteger) cxx_importLegalityForGood:(const std::string &)good;
 - (OOCargoQuantity) cxx_capacityForGood:(const std::string &)good;

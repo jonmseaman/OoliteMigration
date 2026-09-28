@@ -142,7 +142,7 @@ SOFTWARE.
 
 - (std::optional<std::string>) cxx_conditionScript;
 
-- (id) scriptInfo;	// shared selector (proposed ADR-0043): a dictionary, or nil
+- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284); null: none
 - (std::optional<std::string>) cxx_scriptName;
 
 - (BOOL) fastAffinityDefensive;

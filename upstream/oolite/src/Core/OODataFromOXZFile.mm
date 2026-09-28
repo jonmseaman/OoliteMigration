@@ -1,8 +1,8 @@
 /*
 
-NSDataOOExtensions.m
+OODataFromOXZFile.mm
 
-Extensions to NSData.
+OXZ-aware file reader (formerly in NSDataOOExtensions; bead oo-g358).
 
 
 Copyright (C) 2008-2013 Jens Ayton and contributors
@@ -29,23 +29,12 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #import "unzip.h"
-#import "NSDataOOExtensions.h"
 #import "OOStringBridge.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 
 #define ZIP_BUFFER_SIZE 8192
-
-@implementation NSData (OOExtensions)
-
-+ (instancetype) oo_dataWithOXZFile:(NSString *)path
-{
-	std::optional<oo::Data> d = OODataFromOXZFile(oo::StdString(path));
-	return d ? [self dataWithBytes:d->bytes() length:d->length()] : nil;
-}
-
-@end
 
 
 std::optional<oo::Data> OODataFromOXZFile(const std::string &path)
@@ -176,4 +165,52 @@ std::optional<oo::Data> OODataFromOXZFile(const std::string &path)
 	unzClose(uf);
 	return tmp;
 
+}
+
+
+bool OOOxzFileExistsAtPath(const std::string &path)
+{
+	const std::vector<std::string> components = oo::str::pathComponents(path);
+	std::size_t i, cl = components.size();
+	for (i = 0 ; i < cl ; i++)
+	{
+		if (oo::str::lowercase(oo::str::pathExtension(components[i])) == "oxz")
+		{
+			break;
+		}
+	}
+	// if i == cl then the path is entirely uncompressed
+	if (i == cl)
+	{
+		const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(path));
+		if (type == oo::fs::FileType::directory)
+		{
+			return false;
+		}
+		return type != oo::fs::FileType::none;
+	}
+
+	const std::string zipFile = oo::str::pathWithComponents(std::vector<std::string>(components.begin(), components.begin() + static_cast<std::ptrdiff_t>(i) + 1));
+	const std::string containedFile = oo::str::pathWithComponents(std::vector<std::string>(components.begin() + static_cast<std::ptrdiff_t>(i) + 1, components.end()));
+
+	unzFile uf = unzOpen64(zipFile.c_str());
+	if (uf == NULL)
+	{
+		return false;
+	}
+	BOOL result = YES;
+	if (unzLocateFile(uf, containedFile.c_str(), 1) != UNZ_OK)
+	{
+		result = NO;
+	}
+	else
+	{
+		unz_file_info64 file_info = {0};
+		if (unzGetCurrentFileInfo64(uf, &file_info, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK)
+		{
+			result = NO;
+		}
+	}
+	unzClose(uf);
+	return static_cast<bool>(result);
 }

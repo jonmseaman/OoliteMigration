@@ -552,7 +552,7 @@ static bool ConsoleSettingsDeleteProperty(ooscript::Context context, ooscript::O
 		return NO;
 	}
 	
-	[monitor setConfigurationValue:nil forKey:oo::NSStringOrNil(key)];
+	if (key.has_value())  [monitor setConfigurationValue:oo::PList() forKey:*key];
 	*value = ooscript::trueValue();
 	return YES;
 	
@@ -579,7 +579,8 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 		return NO;
 	}
 
-	settingValue = [monitor configurationValueForKey:oo::NSStringOrNil(key)];
+	const oo::PList setting = key.has_value() ? [monitor configurationValueForKey:*key] : oo::PList();
+	settingValue = oo::ObjectFromPList(setting);
 	if (settingValue != NULL)  *value = [settingValue oo_jsValueInContext:context];
 	else  *value = ooscript::undefinedValue();
 	
@@ -612,14 +613,14 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	OOJSPauseTimeLimiter();
 	if (ooscript::isNull(*value) || ooscript::isUndefined(*value))
 	{
-		[monitor setConfigurationValue:nil forKey:oo::NSStringOrNil(key)];
+		if (key.has_value())  [monitor setConfigurationValue:oo::PList() forKey:*key];
 	}
 	else
 	{
 		settingValue = OOJSNativeObjectFromJSValue(context, *value);
-		if (settingValue != nil)
+		if (settingValue != nil && key.has_value())
 		{
-			[monitor setConfigurationValue:settingValue forKey:oo::NSStringOrNil(key)];
+			[monitor setConfigurationValue:oo::PListFrom(settingValue) forKey:*key];
 		}
 		else
 		{
@@ -772,7 +773,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	
 	OOJSPauseTimeLimiter();
 	result = ooscript::undefinedValue();
-	OK = OOJSCallObjCObjectMethod(context, object, oo::StdString([object oo_jsClassName]), oojsArgs.count(), OOJS_ARGV, &result);
+	OK = OOJSCallObjCObjectMethod(context, object, [object cxx_oo_jsClassName].value_or(std::string()), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();
 	
 	OOJS_SET_RVAL(result);

@@ -35,6 +35,7 @@ SOFTWARE.
 #import "OOALSoundMixer.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 
 #define KEY_VOLUME_CONTROL @"volume_control"
 
@@ -54,7 +55,8 @@ static BOOL sIsSoundOK = NO;
 		if (controller != nil)
 		{
 			sIsSoundOK = YES;
-			float volume = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(KEY_VOLUME_CONTROL, 0.5);
+			oo::Defaults &prefs = oo::Defaults::standard();
+			float volume = prefs.object(oo::StdString(KEY_VOLUME_CONTROL)).isNull() ? 0.5f : prefs.floatForKey(oo::StdString(KEY_VOLUME_CONTROL));
 			[self setMasterVolume:volume];
 		}
 	}
@@ -74,7 +76,7 @@ static BOOL sIsSoundOK = NO;
 	if (fraction != [controller masterVolume])
 	{
 		[controller setMasterVolume:fraction];
-		[[NSUserDefaults standardUserDefaults] setFloat:[controller masterVolume] forKey:KEY_VOLUME_CONTROL];
+		oo::Defaults::standard().setFloat(oo::StdString(KEY_VOLUME_CONTROL), [controller masterVolume]);
 	}
 }
 
@@ -96,7 +98,13 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (id) initWithContentsOfFile:(id)path	// shared selector (proposed ADR-0043)
+- (id) initWithContentsOfFile:(id)path	// shared selector (Foundation declares it too)
+{
+	return [self cxx_initWithContentsOfFile:oo::OptionalString(path)];
+}
+
+
+- (id) cxx_initWithContentsOfFile:(const std::optional<std::string> &)path
 {
 	if (!sIsSoundOK)  return nil;
 	
@@ -105,7 +113,7 @@ static BOOL sIsSoundOK = NO;
 
 	OOALSoundDecoder		*decoder;
 
-	decoder = [[OOALSoundDecoder alloc] initWithPath:path];
+	decoder = [[OOALSoundDecoder alloc] cxx_initWithPath:path];
 	if (nil == decoder) return nil;
 	
 	if ([decoder sizeAsBuffer] <= kMaxBufferedSoundSize)
@@ -121,12 +129,12 @@ static BOOL sIsSoundOK = NO;
 	if (nil != self)
 	{
 		#ifndef NDEBUG
-			OO_LOG(kOOLogSoundLoadingSuccess, "Loaded sound {}", oo::DescriptionOf(path));
+			OOLog(oo::NSStringFrom(kOOLogSoundLoadingSuccess), @"Loaded sound %@", oo::NSStringOrNil(path));
 		#endif
 	}
 	else
 	{
-		OO_LOG(kOOLogSoundLoadingError, "Failed to load sound \"{}\"", oo::DescriptionOf(path));
+		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"Failed to load sound \"%@\"", oo::NSStringOrNil(path));
 	}
 	
 	return self;

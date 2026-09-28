@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/PListGet.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define KEY_SHIP_KEY				"ship_key"
@@ -103,7 +104,7 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(bounty);
 	updatedShipInfo[KEY_FORWARD_WEAPON] = oo::StdString(OOStringFromWeaponType(forward_weapon_type));
 	updatedShipInfo[KEY_AFT_WEAPON] = oo::StdString(OOStringFromWeaponType(aft_weapon_type));
-	updatedShipInfo[KEY_SCAN_CLASS] = oo::StdString(OOStringFromScanClass(scanClass));
+	updatedShipInfo[KEY_SCAN_CLASS] = cxx_OOStringFromScanClass(scanClass);
 
 	std::vector<std::string> deletes;
 	[self simplifyShipdata:updatedShipInfo andGetDeletes:&deletes];
@@ -216,10 +217,10 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 		mergedData["auto_ai"] = oo::PList(static_cast<bool>(NO));
 		mergedData["escorts"] = oo::PList::unsignedInteger(0);
 
-		// One Objective-C dictionary for both callees, as before.
-		id definition = oo::ObjectFromPList(oo::PList(std::move(mergedData)));
+		const oo::PList mergedPlist(std::move(mergedData));
+		id definition = oo::ObjectFromPList(mergedPlist);
 		Class shipClass = [UNIVERSE shipClassForShipDictionary:definition];
-		ship = [[[shipClass alloc] initWithKey:oo::NSStringFrom(shipKey) definition:definition] autorelease];
+		ship = [[[shipClass alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
 
 		// FIXME: restore AI.
 		[ship setAITo:oo::NSStringFrom(dict.get<std::string>(KEY_AI, "nullAI.plist"))];
@@ -292,7 +293,7 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 
 - (void) simplifyShipdata:(oo::PList::Dict &)data andGetDeletes:(std::vector<std::string> *)deletes
 {
-	NSParameterAssert(deletes != NULL);
+	OOParameterAssert(deletes != NULL);
 	deletes->clear();
 
 	// Get original ship data.

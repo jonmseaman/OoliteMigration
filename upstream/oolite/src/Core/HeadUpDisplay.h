@@ -369,7 +369,7 @@ enum
 	Protocol for things that can be used as HUD compass items. Really ought
 	to grow into a general protocol for HUD elements.
 */
-@protocol OOHUDBeaconIcon <NSObject>
+@protocol OOHUDBeaconIcon <OOObject>
 
 - (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z;
 

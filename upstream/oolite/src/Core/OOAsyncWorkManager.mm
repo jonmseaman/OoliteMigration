@@ -54,6 +54,7 @@ SOFTWARE.
 #include <pthread.h>
 #endif
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/Defaults.hpp"
 
 
 static OOAsyncWorkManager *sSingleton = nil;
@@ -445,7 +446,7 @@ static void InitAsyncWorkManager(void)
 
 + (BOOL) canBeUsed
 {
-	return ![[NSUserDefaults standardUserDefaults] boolForKey:@"disable-operation-queue-work-manager"];
+	return !oo::Defaults::standard().boolForKey("disable-operation-queue-work-manager");
 }
 
 

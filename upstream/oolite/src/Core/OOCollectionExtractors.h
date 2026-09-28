@@ -40,7 +40,7 @@ SOFTWARE.
 */
 
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "OOFunctionAttributes.h"
 #include <limits.h>
 
@@ -118,7 +118,7 @@ SOFTWARE.
 - (double) oo_nonNegativeDoubleAtIndex:(NSUInteger)index;
 
 // Default: nil
-- (id) oo_objectAtIndex:(NSUInteger)index;	// Differs from objectAtIndex: in that it returns nil rather than throwing NSRangeException.
+- (id) oo_objectAtIndex:(NSUInteger)index;	// Differs from objectAtIndex: in that it returns nil rather than throwing OORangeException.
 - (id) oo_objectOfClass:(Class)aClass atIndex:(NSUInteger)index;
 - (NSString *) oo_stringAtIndex:(NSUInteger)index;
 - (NSArray *) oo_arrayAtIndex:(NSUInteger)index;
@@ -149,17 +149,6 @@ SOFTWARE.
 @end
 
 
-@interface NSUserDefaults (OOExtractor)
-
-// The typed readers (oo_*ForKey:) are retired (bead oo-m5u9): read through oo::PListView or
-// oo::PList::get<T> instead (src/oofnd/README.md, "Migrating oo_*ForKey").
-
-- (id) oo_objectOfClass:(Class)aClass forKey:(id)key defaultValue:(id)value;
-
-// Default: nil
-- (id) oo_objectOfClass:(Class)aClass forKey:(id)key;
-
-@end
 
 
 @interface NSMutableArray (OOInserter)

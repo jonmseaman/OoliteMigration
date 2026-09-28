@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOPListView.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Log.hpp"
 
 
 @implementation ShipEntity (ScriptMethods)
@@ -67,7 +68,7 @@ MA 02110-1301, USA.
 
 	if (count == 0)  return result;
 
-	OOLog(@"script.debug.note.addShips", @"Spawning %zu x '%@' near %@ %d", count, oo::NSStringFrom(role), [self shortDescription], [self universalID]);
+	OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::DescriptionOf([self shortDescription]), [self universalID]);
 
 	result.reserve(count);
 

@@ -50,6 +50,7 @@
 #include "oofnd/FileSystem.hpp"
 
 #include <algorithm>
+#include "oofnd/objc/OOAssert.h"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -290,7 +291,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_NEWGAME);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui setTitle:DESC(@"oolite-newgame-title")];
+		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-newgame-title"))];
 
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -933,7 +934,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if ([sPanel runModal] == NSOKButton)
 	{
 		NSURL *url = sPanel.URL;
-		NSAssert(url.isFileURL, @"Save panel with default configuration should not provide non-file URLs.");
+		OOAssert(url.isFileURL, "Save panel with default configuration should not provide non-file URLs.");
 		
 		NSString *path = url.path;
 		NSString *newName = [path.lastPathComponent stringByDeletingPathExtension];
@@ -1014,7 +1015,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_LOAD;
 	
 	[gui clear];
-	[gui setTitle:DESC(@"loadscreen-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"loadscreen-title"))];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1039,7 +1040,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE;
 	
 	[gui clear];
-	[gui setTitle:DESC(@"savescreen-title")];
+	[gui cxx_setTitle:oo::OptionalString(DESC(@"savescreen-title"))];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1071,7 +1072,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE_OVERWRITE;
 	
 	[gui clear];
-	[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName }))];
+	[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName })];
 	
 	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"overwritescreen-commander-@-already-exists-overwrite-query")), { cdrName })
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
@@ -1105,9 +1106,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	unsigned i;
 	int row=STARTROW;
 	
-	// The retiring NSFileManager (OOExtensions) commander listing, in place: the directory's entries
-	// as full paths. Its per-entry filter tested `!exists && isDirectory`, which never holds, so it
-	// only built the paths.
+	// Commander listing from the save directory's entries as full paths. The old per-entry filter
+	// tested `!exists && isDirectory`, which never holds, so it only built the paths.
 	std::vector<std::string> cdrArray;
 	const oo::fs::Path directoryPath = oo::fs::pathFromUTF8(directory);
 	if (oo::fs::fileType(directoryPath) == oo::fs::FileType::directory)
@@ -1428,7 +1428,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	for (i=0; i < cdrDetailArray.size(); i++)
 	{
 		const std::optional<std::string> currentName = CommanderSaveName(cdrDetailArray[i]);
-		if(currentName && cdrName == *currentName)	// -compare: == NSOrderedSame
+		if(currentName && cdrName == *currentName)	// -compare: == OOOrderedSame
 		{
 			return i;
 		}
@@ -1467,7 +1467,7 @@ uint16_t PersonalityForCommanderDict(const oo::PList &dict)
 	if (personality == ENTITY_PERSONALITY_INVALID)
 	{
 		// For pre-1.74 saved games, generate a default personality based on some hashes.
-		// (-oo_hash of a missing string was a message to nil: 0.)
+		// (ooHash of a missing string was a message to nil: 0.)
 		const std::optional<std::string> shipDesc = OptionalStringValue(dict.find("ship_desc"));
 		const std::optional<std::string> playerName = OptionalStringValue(dict.find("player_name"));
 		personality = (shipDesc ? oo::str::ooHash(*shipDesc) : 0) * (playerName ? oo::str::ooHash(*playerName) : 0);
@@ -1515,7 +1515,7 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 
 OOCreditsQuantity OODeciCreditsFromObject(id object)
 {
-	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// -oo_isFloatingPointNumber: objCType f or d
+	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// float/double NSNumber (objCType f or d)
 	{
 		return OODeciCreditsFromDouble([object doubleValue]);
 	}

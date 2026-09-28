@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "OOJSSun.h"
 #import "OOJSEntity.h"
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 
 #import "OOSunEntity.h"
 
@@ -145,9 +146,9 @@ void InitOOJSSun(ooscript::Context context, ooscript::Object global)
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Sun";
+	return std::string("Sun");
 }
 
 @end

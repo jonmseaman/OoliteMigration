@@ -14,10 +14,10 @@ Oolite
 #import "OOSDLJoystickManager.h"
 #import "PlayerEntity.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
-#import "NSFileManagerOOExtensions.h" // to find savedir
-#include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/Date.hpp"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
 
@@ -42,7 +42,6 @@ std::string FormattedCharacter(unsigned code)
 
 - (void) initKeyMappingData
 {
-	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	// load in our keyboard scancode mappings
 #if OOLITE_WINDOWS	
 	const oo::PList kmap = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"keymappings_windows.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]);
@@ -50,7 +49,7 @@ std::string FormattedCharacter(unsigned code)
 	const oo::PList kmap = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"keymappings_linux.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]);
 #endif
 	// get the stored keyboard code from preferences (oo_stringForKey:defaultValue: over the value)
-	const oo::PList kbdValue = oo::PListFrom([prefs objectForKey:@"keyboard-code"]);
+	const oo::PList kbdValue = oo::Defaults::standard().object("keyboard-code");
 	const std::string kbd = oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
 	const oo::PList *subset = kmap.find(kbd);
 	const oo::PList *normal = (subset != nullptr) ? subset->find("mapping_normal") : nullptr;

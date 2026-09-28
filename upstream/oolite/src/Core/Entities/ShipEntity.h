@@ -529,12 +529,12 @@ typedef enum
 - (Vector) upVector;
 - (Vector) rightVector;
 
-- (id)subEntities;	// shared selector (proposed ADR-0043): an Objective-C array (a copy; nil when there are none)
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
 - (NSUInteger) subEntityCount;
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (id)subEntityEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
-- (id)flasherEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
 // The ship / exhaust subentities, a snapshot in subentity order (empty for a nil receiver).
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
 - (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
@@ -577,7 +577,7 @@ typedef enum
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (id)initWithKey:(id)key definition:(id)dict;	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
 - (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
 - (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 - (BOOL)setUpSubEntities;
@@ -780,7 +780,7 @@ typedef enum
 - (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 - (std::optional<std::string>) cxx_shipUniqueName;
 - (std::optional<std::string>) cxx_shipClassName;
-- (id) displayName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) displayName;	// flipped with its family (bead oo-3rb.267)
 - (std::optional<std::string>) cxx_scanDescription;
 - (std::optional<std::string>) cxx_scanDescriptionForScripting;
 - (void) setName:(id)inName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
@@ -788,9 +788,9 @@ typedef enum
 - (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
 - (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
 - (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
-- (id) identFromShip:(ShipEntity*) otherShip; // shared selector (proposed ADR-0043): an Objective-C string. Name displayed to other ships
+- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 
-- (BOOL) hasRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
 - (OORoleSet *)roleSet;
 
 - (void) addRole:(const std::string &)role;
@@ -1240,7 +1240,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 - (OOJSScript *) script;
-- (id) scriptInfo;	// shared selector (proposed ADR-0043): an Objective-C dictionary (empty when there is none)
+- (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
 - (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 - (BOOL) scriptedMisjump;

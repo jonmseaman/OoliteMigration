@@ -45,33 +45,51 @@ expect() {
 	else failn=$((failn+1)); printf 'FAIL %s (rc=%s)\n%s\n' "$label" "$rc" "$out"; fi
 }
 
+F='upstream/oolite/src/Core/Filters.mm'
+A='((Filter)filterIMP)'
+both() { printf 'filterA: %s %s\nfilterB: %s %s\n' "$F" "$1" "$F" "$1" >"$2/tools/typed-imp-selectors.txt"; }
+
 # 1. Nothing listed: both typed @selector filters are called-by-name violations.
 t="$work/none"; make_tree "$t" 'const oo::PList &'
 expect 'unlisted typed @selector fails' 1 'CALLED BY NAME -filterA:' '' "$t"
 
 # 2. Only filterA listed: filterA exempt, filterB (unlisted) still fails.
 t="$work/one"; make_tree "$t" 'const oo::PList &'
-echo 'filterA: upstream/oolite/src/Core/Filters.mm:12' >"$t/tools/typed-imp-selectors.txt"
+printf 'filterA: %s %s\n' "$F" "$A" >"$t/tools/typed-imp-selectors.txt"
 expect 'listed one passes, unlisted one still fails' 1 'CALLED BY NAME -filterB:' 'CALLED BY NAME -filterA:' "$t"
 
-# 3. Both listed with the right cast line: clean.
-t="$work/both"; make_tree "$t" 'const oo::PList &'
-printf 'filterA: upstream/oolite/src/Core/Filters.mm:12\nfilterB: upstream/oolite/src/Core/Filters.mm:12\n' >"$t/tools/typed-imp-selectors.txt"
+# 3. Both listed, anchored on the cast call: clean.
+t="$work/both"; make_tree "$t" 'const oo::PList &'; both "$A" "$t"
 expect 'listed typed @selectors pass' 0 'typed IMP -filterA:' 'CALLED BY NAME' "$t"
 
-# 4. Wrong line in the list: not verified, fails.
-t="$work/line"; make_tree "$t" 'const oo::PList &'
-printf 'filterA: upstream/oolite/src/Core/Filters.mm:3\nfilterB: upstream/oolite/src/Core/Filters.mm:12\n' >"$t/tools/typed-imp-selectors.txt"
-expect 'wrong cast line is not verified' 1 'TYPED-IMP -filterA: not verified' '' "$t"
+# 4. The call moved (lines inserted above it) but is intact: still passes (oo-x3t6).
+t="$work/moved"; make_tree "$t" 'const oo::PList &'; both "$A" "$t"
+{ printf '// moved\n// down\n// by\n// five\n// lines\n'; cat "$t/$F"; } >"$t/$F.new" && mv "$t/$F.new" "$t/$F"
+expect 'a moved but intact call still passes' 0 'typed IMP -filterA:.*Filters.mm:17' 'CALLED BY NAME|TYPED-IMP' "$t"
 
-# 5. The typedef's types do not match the declarations: not verified, fails.
-t="$work/sig"; make_tree "$t" 'const std::string &'
-printf 'filterA: upstream/oolite/src/Core/Filters.mm:12\nfilterB: upstream/oolite/src/Core/Filters.mm:12\n' >"$t/tools/typed-imp-selectors.txt"
-expect 'mismatched typedef is not verified' 1 'TYPED-IMP -filterA: not verified: .*has no .typedef BOOL' '' "$t"
+# 5. The call was removed (the anchor is gone): not verified, fails.
+t="$work/removed"; make_tree "$t" 'const oo::PList &'; both "$A" "$t"
+sed -i 's|return ((Filter)filterIMP)(self, filterSelector, manifest);|return NO;|' "$t/$F"
+expect 'a removed call is not verified' 1 'TYPED-IMP -filterA: not verified' 'typed IMP -filterA:' "$t"
 
-# 6. Also sent by name from dynamic-selectors.txt: never exempt.
-t="$work/dyn"; make_tree "$t" 'const oo::PList &'
-printf 'filterA: upstream/oolite/src/Core/Filters.mm:12\nfilterB: upstream/oolite/src/Core/Filters.mm:12\n' >"$t/tools/typed-imp-selectors.txt"
+# 5b. The listed anchor no longer matches any line (the call was rewritten): fails.
+t="$work/stale"; make_tree "$t" 'const oo::PList &'; both '((Filter)oldIMP)' "$t"
+expect 'a stale anchor is not verified' 1 'TYPED-IMP -filterA: not verified: anchor .* is on 0 lines' '' "$t"
+
+# 6. The anchor names a line that does not call through the typedef: not verified, fails.
+t="$work/wrongline"; make_tree "$t" 'const oo::PList &'; both 'IMP filterIMP =' "$t"
+expect 'an anchor off the cast call is not verified' 1 'TYPED-IMP -filterA: not verified: .*does not call through Filter' '' "$t"
+
+# 7. An anchor on two lines is ambiguous: not verified, fails.
+t="$work/twice"; make_tree "$t" 'const oo::PList &'; both 'manifest' "$t"
+expect 'an ambiguous anchor is not verified' 1 'TYPED-IMP -filterA: not verified: anchor .* is on [2-9] lines' '' "$t"
+
+# 8. The call was retyped (the typedef's types no longer match the declarations): fails.
+t="$work/sig"; make_tree "$t" 'const std::string &'; both "$A" "$t"
+expect 'a retyped call is not verified' 1 'TYPED-IMP -filterA: not verified: .*has no .typedef BOOL' '' "$t"
+
+# 9. Also sent by name from dynamic-selectors.txt: never exempt.
+t="$work/dyn"; make_tree "$t" 'const oo::PList &'; both "$A" "$t"
 echo 'filterA:' >"$t/tools/dynamic-selectors.txt"
 expect 'a by-name source defeats the exemption' 1 'TYPED-IMP -filterA: not verified: also sent by name' '' "$t"
 

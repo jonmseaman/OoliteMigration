@@ -543,7 +543,7 @@ std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit)
 std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string &commodity)
 {
 	// -massUnitForGood: is a shared selector (id): the good is given as an Objective-C string.
-	return cxx_DisplayStringForMassUnit([[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(commodity)]);
+	return cxx_DisplayStringForMassUnit([[UNIVERSE commodityMarket] massUnitForGood:commodity]);
 }
 
 

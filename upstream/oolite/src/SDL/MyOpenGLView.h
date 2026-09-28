@@ -326,7 +326,7 @@ extern int debug;
 - (void) saveWindowSize: (NSSize) windowSize;
 - (NSSize) loadWindowSize;
 - (int) loadFullscreenSettings;
-- (int) findDisplayModeForWidth: (unsigned int) d_width Height:(unsigned int) d_height
+- (int) indexOfDisplayModeForWidth: (unsigned int) d_width Height:(unsigned int) d_height
                         Refresh: (unsigned int)d_refresh;
 - (NSSize) currentScreenSize;
 - (oo::PList) currentScreenMode;	// null: no mode

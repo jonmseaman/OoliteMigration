@@ -41,8 +41,11 @@ SOFTWARE.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define DUMP_CONVERTED_CUBE_MAPS	0
@@ -97,7 +100,7 @@ static BOOL					sHaveSetUp = NO;
 	}
 	else
 	{
-		OOLog(@"texture.load.unknownType", @"Can't use %@ as a texture - extension \"%@\" does not identify a known type.", oo::NSStringFrom(*inPath), oo::NSStringFrom(extension));
+		OO_LOG("texture.load.unknownType", "Can't use {} as a texture - extension \"{}\" does not identify a known type.", *inPath, extension);
 	}
 	
 	if (result != nil)
@@ -122,7 +125,7 @@ static BOOL					sHaveSetUp = NO;
 	{
 		if (!(options & kOOTextureNoFNFMessage))
 		{
-			OOLogWARN(kOOLogFileNotFound, @"Could not find texture file \"%@\".", oo::NSStringFrom(name));
+			OO_LOG_WARN(cxx_kOOLogFileNotFound, "Could not find texture file \"{}\".", name);
 			cxx_OOStandardsError("Texture file not found");
 		}
 		return nil;
@@ -189,7 +192,7 @@ static BOOL					sHaveSetUp = NO;
 				break;
 				
 			default:
-				OOLogERR(@"texture.load.unknownExtractChannelMask", @"Unknown texture extract channel mask (0x%.4X). This is an internal error, please report it.", options & kOOTextureExtractChannelMask);
+				OO_LOG_ERR("texture.load.unknownExtractChannelMask", "Unknown texture extract channel mask (0x{:04X}). This is an internal error, please report it.", static_cast<unsigned>(options & kOOTextureExtractChannelMask));
 				_extractChannel =  NO;
 		}
 	}
@@ -251,7 +254,7 @@ static BOOL					sHaveSetUp = NO;
 	 originalWidth:(uint32_t *)outWidth
 	originalHeight:(uint32_t *)outHeight
 {
-	NSParameterAssert(result != NULL && outFormat != NULL);
+	OOParameterAssert(result != NULL && outFormat != NULL);
 	
 	BOOL		OK = YES;
 	
@@ -281,10 +284,11 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-- (id) cacheKey	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_cacheKey
 {
-	return oo::NSStringFrom(oo::str::format("%s:0x%.4X", oo::str::lastPathComponent(*[self cxx_path]).c_str(), _options));
+	return oo::str::format("%s:0x%.4X", oo::str::lastPathComponent(*[self cxx_path]).c_str(), _options);
 }
+
 
 
 - (void)loadTexture
@@ -299,11 +303,14 @@ static BOOL					sHaveSetUp = NO;
 	GLint maxSize;
 	OOGL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize));
 	sGLMaxSize = MAX(maxSize, 64);
-	OOLog(@"texture.load.rescale.maxSize", @"GL maximum texture size: %u", sGLMaxSize);
+	OO_LOG("texture.load.rescale.maxSize", "GL maximum texture size: {}", static_cast<unsigned>(sGLMaxSize));
 	
 	// Why 0x80000000? Because it's the biggest number OORoundUpToPowerOf2() can handle.
-	sUserMaxSize = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned int>(@"max-texture-size", 0x80000000);
-	if (sUserMaxSize < 0x80000000)  OOLog(@"texture.load.rescale.maxSize", @"User maximum texture size: %u", sUserMaxSize);
+	{
+		const oo::PList maxTex = oo::Defaults::standard().object("max-texture-size");
+		sUserMaxSize = oo::PListGet<unsigned int>::from(maxTex.isNull() ? nullptr : &maxTex, 0x80000000);
+	}
+	if (sUserMaxSize < 0x80000000)  OO_LOG("texture.load.rescale.maxSize", "User maximum texture size: {}", static_cast<unsigned>(sUserMaxSize));
 	sUserMaxSize = OORoundUpToPowerOf2_32(sUserMaxSize);
 	sUserMaxSize = MAX(sUserMaxSize, 64U);
 	
@@ -318,25 +325,25 @@ static BOOL					sHaveSetUp = NO;
 {
 	@try
 	{
-		OOLog(@"texture.load.asyncLoad", @"Loading texture %@", oo::NSStringFrom(oo::str::lastPathComponent(_path)));
+		OO_LOG("texture.load.asyncLoad", "Loading texture {}", oo::str::lastPathComponent(_path));
 		
 		[self loadTexture];
 		
 		// Catch an error I've seen but not diagnosed yet.
 		if (_data != NULL && OOTextureComponentsForFormat(_format) == 0)
 		{
-			OOLog(@"texture.load.failed.internalError", @"Texture loader internal error for %@: data is non-null but data format is invalid (%u).", oo::NSStringFrom(_path), _format);
+			OO_LOG("texture.load.failed.internalError", "Texture loader internal error for {}: data is non-null but data format is invalid ({}).", _path, static_cast<unsigned>(_format));
 			free(_data);
 			_data = NULL;
 		}
 		
 		if (_data != NULL)  [self applySettings];
 		
-		OOLog(@"texture.load.asyncLoad.done", @"%@", @"Loading complete.");
+		OO_LOG("texture.load.asyncLoad.done", "{}", "Loading complete.");
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", oo::NSStringFrom(_path), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG("texture.load.asyncLoad.exception", "***** Exception loading texture {}: {} ({}).", _path, [exception name], [exception reason]);
 		
 		// Be sure to signal load failure.
 		free(_data);
@@ -344,7 +351,7 @@ static BOOL					sHaveSetUp = NO;
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", oo::NSStringFrom(_path), [exception name], [exception reason]);
+		OO_LOG("texture.load.asyncLoad.exception", "***** Exception loading texture {}: {} ({}).", _path, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		
 		// Be sure to signal load failure.
 		free(_data);
@@ -356,7 +363,7 @@ static BOOL					sHaveSetUp = NO;
 - (void) generateMipMapsForCubeMap
 {
 	// Generate mip maps for each cube face.
-	NSParameterAssert(_data != NULL);
+	OOParameterAssert(_data != NULL);
 	
 	uint8_t components = OOTextureComponentsForFormat(_format);
 	size_t srcSideSize = _width * _width * components;	// Space for one side without mip-maps.
@@ -413,7 +420,7 @@ static BOOL					sHaveSetUp = NO;
 		}
 		else
 		{
-			OOLogWARN(@"texture.load.extractChannel.invalid", @"Cannot extract channel from texture \"%@\"", oo::NSStringFrom(oo::str::lastPathComponent(_path)));
+			OO_LOG_WARN("texture.load.extractChannel.invalid", "Cannot extract channel from texture \"{}\"", oo::str::lastPathComponent(_path));
 		}
 	}
 	
@@ -445,7 +452,7 @@ static BOOL					sHaveSetUp = NO;
 		if (_isCubeMap)  leaveSpaceForMipMaps = NO;
 #endif
 		
-		OOLog(@"texture.load.rescale", @"Rescaling texture \"%@\" from %u x %u to %u x %u.", oo::NSStringFrom(oo::str::lastPathComponent(_path)), pixMap.width, pixMap.height, desiredWidth, desiredHeight);
+		OO_LOG("texture.load.rescale", "Rescaling texture \"{}\" from {} x {} to {} x {}.", oo::str::lastPathComponent(_path), static_cast<unsigned>(pixMap.width), static_cast<unsigned>(pixMap.height), static_cast<unsigned>(desiredWidth), static_cast<unsigned>(desiredHeight));
 		
 		pixMap = OOScalePixMap(pixMap, desiredWidth, desiredHeight, leaveSpaceForMipMaps);
 		if (EXPECT_NOT(!OOIsValidPixMap(pixMap)))  return;

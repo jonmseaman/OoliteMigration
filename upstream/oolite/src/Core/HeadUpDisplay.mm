@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
 
@@ -819,7 +820,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 										 lodBias:kOOTextureDefaultLODBias];
 		if (texture == nil)
 		{
-			OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", oo::NSStringFrom(*imageName));
+			OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *imageName);
 			return;
 		}
 
@@ -864,13 +865,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	std::optional<std::string> selectorString = OptionalStringIn(info, SELECTOR_KEY);
 	if (!selectorString.has_value())
 	{
-		OOLogERR(@"hud.dial.noSelector", @"HUD dial in %@ is missing selector.", oo::NSStringOrNil(hudName));
+		OO_LOG_ERR("hud.dial.noSelector", "HUD dial in {} is missing selector.", hudName.value_or("(null)"));
 		return;
 	}
 
 	if (!allowedSelectors.contains(*selectorString))
 	{
-		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\" which is not in whitelist, and will be ignored.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
+		OO_LOG_ERR("hud.dial.invalidSelector", "HUD dial in {} uses selector \"{}\" which is not in whitelist, and will be ignored.", hudName.value_or("(null)"), *selectorString);
 		return;
 	}
 
@@ -881,7 +882,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	//  handle the case above with NS_BLOCK_ASSERTIONS too.
 	if (![self respondsToSelector:selector])
 	{
-		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\"  which is in whitelist, but not implemented, and will be ignored.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
+		OO_LOG_ERR("hud.dial.invalidSelector", "HUD dial in {} uses selector \"{}\"  which is in whitelist, but not implemented, and will be ignored.", hudName.value_or("(null)"), *selectorString);
 		return;
 	}
 	
@@ -953,7 +954,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	[self drawDials];
 	[self drawMFDs];
-	OOCheckOpenGLErrors(@"After drawing HUD");
+	cxx_OOCheckOpenGLErrors("After drawing HUD");
 	
 	OOVerifyOpenGLState();
 	
@@ -1241,7 +1242,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	// use the selector value stored during init; the dial is called by name with the configuration
 	// as an Objective-C object (ADR-0043 item 21), made once when the dial was added.
 	[self performSelector:sCurrentDrawItem->selector withObject:sCurrentDrawItem->infoObject.get()];
-	OOCheckOpenGLErrors(@"HeadUpDisplay after drawHUDItem %@", sCurrentDrawItem->infoObject.get());
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "HeadUpDisplay after drawHUDItem " + oo::DescriptionOf(sCurrentDrawItem->infoObject.get()); });
 	
 	OOVerifyOpenGLState();
 }
@@ -1554,7 +1555,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						cxx_OODrawString(oo::StdString([(ShipEntity *)scannedEntity displayName]), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
+						cxx_OODrawString([(ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);
@@ -2119,7 +2120,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 												lodBias:kOOTextureDefaultLODBias];
 	if (texture == nil)
 	{
-		OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", oo::NSStringFrom(*textureFile));
+		OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *textureFile);
 		return;
 	}
 		
@@ -2906,7 +2907,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 			id sec_id = [[player targetMemory] objectAtIndex:i];
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
-			// NSInvalidArgumentException when called on a weakref
+			// OOInvalidArgumentException when called on a weakref
 			// with a dropped object.
 			// TODO: fix OOWeakReference so isKindOfClass works
 			if (sec_id != nil && [sec_id isProxy])
@@ -3281,7 +3282,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
-	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), oo::DescriptionOf([UNIVERSE collisionDescription]).c_str());
+	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), [UNIVERSE collisionDescription].c_str());
 	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
 
 	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);

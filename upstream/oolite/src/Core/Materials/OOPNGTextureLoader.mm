@@ -29,7 +29,7 @@ SOFTWARE.
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
 #import "OOCPUInfo.h"
-#import "NSDataOOExtensions.h"
+#include "oofnd/FileSystem.hpp"
 #import "OOStringBridge.h"
 #include "oofnd/String.hpp"
 
@@ -95,7 +95,7 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 	if (pngInfo != NULL)  pngEndInfo = png_create_info_struct(png);
 	if (pngEndInfo == NULL)
 	{
-		OOLog(@"texture.load.png.setup.failed", @"***** Error preparing to read %@.", oo::NSStringFrom(_path));
+		OO_LOG("texture.load.png.setup.failed", "***** Error preparing to read {}.", _path);
 		goto FAIL;
 	}
 	
@@ -116,7 +116,7 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 	// Read header, get format info and check that it meets our expectations.
 	if (EXPECT_NOT(!png_get_IHDR(png, pngInfo, &pngWidth, &pngHeight, &depth, &colorType, NULL, NULL, NULL)))
 	{
-		OOLog(@"texture.load.png.failed", @"Failed to get metadata from PNG %@", oo::NSStringFrom(_path));
+		OO_LOG("texture.load.png.failed", "Failed to get metadata from PNG {}", _path);
 		goto FAIL;
 	}
 	png_set_strip_16(png);			// 16 bits per channel -> 8 bpc
@@ -171,7 +171,7 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 			free(_data);
 			_data = NULL;
 		}
-		OOLog(kOOLogAllocationFailure, @"Failed to allocate space (%zu bytes) for texture %@", _rowBytes * _height, oo::NSStringFrom(_path));
+		OO_LOG(cxx_kOOLogAllocationFailure, "Failed to allocate space ({} bytes) for texture {}", _rowBytes * _height, _path);
 		goto FAIL;
 	}
 	
@@ -223,7 +223,7 @@ FAIL:
 static void PNGError(png_structp png, png_const_charp message)
 {
 	OOPNGTextureLoader *loader = (OOPNGTextureLoader *)png_get_io_ptr(png);
-	OOLog(@"texture.load.png.error", @"***** A PNG loading error occurred for %@: %s" MSG_TERMINATOR, [loader path], message);
+	OO_LOG("texture.load.png.error", "***** A PNG loading error occurred for {}: {}" MSG_TERMINATOR, [loader cxx_path].value_or("(null)"), message);
 	
 #if PNG_LIBPNG_VER >= 10500
 	png_longjmp(png, 1);
@@ -236,7 +236,7 @@ static void PNGError(png_structp png, png_const_charp message)
 static void PNGWarning(png_structp png, png_const_charp message)
 {
 	OOPNGTextureLoader *loader = (OOPNGTextureLoader *)png_get_io_ptr(png);
-	OOLog(@"texture.load.png.warning", @"----- A PNG loading warning occurred for %@: %s" MSG_TERMINATOR, [loader path], message);
+	OO_LOG("texture.load.png.warning", "----- A PNG loading warning occurred for {}: {}" MSG_TERMINATOR, [loader cxx_path].value_or("(null)"), message);
 }
 
 

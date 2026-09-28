@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOTexture.h"
 #import "HeadUpDisplay.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
@@ -161,7 +162,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	
 	gui_screen = GUI_SCREEN_STICKMAPPER;
 	[gui clear];
-	[gui setTitle:@"Configure Joysticks"];
+	[gui cxx_setTitle:"Configure Joysticks"];
 	
 	for(i=0; i < stickCount; i++)
  	{
@@ -371,8 +372,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 		// the customEquipActivation entry is edited in place
 		if (oo::PList::Dict *custEquipDict = CustomEquipFields(customEquipActivation, function))  (*custEquipDict)[key] = hwDict;
 		[self checkCustomEquipButtons:hwDict ignore:function];
-		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	else 
 	{
@@ -471,8 +471,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	}
 	else 
 	{
-		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	
 	unsigned skip;

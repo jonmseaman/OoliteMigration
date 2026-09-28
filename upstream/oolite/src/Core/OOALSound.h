@@ -24,9 +24,11 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenALController.h"
+
+#include "oofnd/StdLib.hpp"
 
 @interface OOSound: OOObject
 
@@ -36,7 +38,8 @@ SOFTWARE.
 + (void) setMasterVolume:(float) fraction;
 + (float) masterVolume;
 
-- (id) initWithContentsOfFile:(id)path;	// path: an Objective-C string. Shared selector (proposed ADR-0043).
+- (id) initWithContentsOfFile:(id)path;	// path: an Objective-C string. Shared selector (Foundation declares it too): -cxx_initWithContentsOfFile:.
+- (id) cxx_initWithContentsOfFile:(const std::optional<std::string> &)path OO_RETURNS_RETAINED;	// nullopt: nil (bead oo-3rb.292.2)
 
 - (id)name;	// an Objective-C string. Shared selector (proposed ADR-0043).
 

@@ -158,9 +158,9 @@ static FunctionSpec sManifestMethods[] =
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Manifest";
+	return std::string("Manifest");
 }
 
 
@@ -273,7 +273,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	{
 		std::string key = oo::StdString(OOStringFromJSString(context, ooscript::idToString(propID)));
 
-		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(key)];
+		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:key];
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
 		if (unit == UNITS_TONS && [entity specialCargo])
 		{

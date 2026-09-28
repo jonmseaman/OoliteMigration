@@ -209,11 +209,11 @@ SOFTWARE.
 	OOGL(status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT));
 	if (status != GL_FRAMEBUFFER_COMPLETE_EXT)
 	{
-		OOLogERR(@"environmentCube.fbo.setup.failed", @"Failed to set up FBO for environment cube map - status is %u.", status);
+		OO_LOG_ERR("environmentCube.fbo.setup.failed", "Failed to set up FBO for environment cube map - status is {}.", static_cast<unsigned>(status));
 		DESTROY(self);
 	}
 	
-	OOCheckOpenGLErrors(@"after setting up environment cube map FBO");
+	cxx_OOCheckOpenGLErrors("after setting up environment cube map FBO");
 #endif
 	OOGL(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
 	OOGL(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0));

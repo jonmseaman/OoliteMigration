@@ -28,7 +28,7 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #import "OOFunctionAttributes.h"
 #import "OOTypes.h"
@@ -50,10 +50,10 @@ OOConstToString.mm are declared in the header with the appropriate type
 declaration, each with its C++ (cxx_) form beside it, in particular:
 
 	Entity.h:
-	OOStringFromEntityStatus()
-	OOEntityStatusFromString()
-	OOStringFromScanClass()
-	OOScanClassFromString()
+	cxx_OOStringFromEntityStatus()
+	cxx_OOEntityStatusFromString()
+	cxx_OOStringFromScanClass()
+	cxx_OOScanClassFromString()
 
 	ShipEntity.h:
 	OOStringFromBehaviour()

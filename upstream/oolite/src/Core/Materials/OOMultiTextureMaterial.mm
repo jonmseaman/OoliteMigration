@@ -32,6 +32,7 @@ SOFTWARE.
 #import "OOMacroOpenGL.h"
 #import "OOMaterialSpecifier.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 #if OO_MULTITEXTURE
 
@@ -92,24 +93,23 @@ SOFTWARE.
 			
 			if (!emissionAndIlluminationSpec.isNull())
 			{
-				id spec = oo::ObjectFromPList(emissionAndIlluminationSpec);	// one object for both arguments, as before
-				generator = [[OOCombinedEmissionMapGenerator alloc] initWithEmissionAndIlluminationMapSpec:spec
+				generator = [[OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionAndIlluminationMapSpec:emissionAndIlluminationSpec
 																							diffuseMap:_diffuseMap
 																						  diffuseColor:diffuseColor
 																						 emissionColor:emissionColor
 																					 illuminationColor:illuminationColor
-																					  optionsSpecifier:spec];
+																					  optionsSpecifier:emissionAndIlluminationSpec];
 			}
 			else
 			{
-				id emission = oo::ObjectFromPList(emissionSpec), illumination = oo::ObjectFromPList(illuminationSpec);	// one object each, as before
-				generator = [[OOCombinedEmissionMapGenerator alloc] initWithEmissionMapSpec:emission
+				const oo::PList optionsSpec = !emissionSpec.isNull() ? emissionSpec : illuminationSpec;
+				generator = [[OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionMapSpec:emissionSpec
 																			  emissionColor:emissionColor
 																				 diffuseMap:_diffuseMap
 																			   diffuseColor:diffuseColor
-																		illuminationMapSpec:illumination
+																		illuminationMapSpec:illuminationSpec
 																		  illuminationColor:illuminationColor
-																		   optionsSpecifier:emission ?: illumination];
+																		   optionsSpecifier:optionsSpec];
 			}
 			
 			_emissionMap = [[OOTexture textureWithGenerator:[generator autorelease]] retain];
@@ -192,7 +192,7 @@ SOFTWARE.
 		[_emissionMap apply];
 	}
 	
-	NSAssert2(textureUnit - GL_TEXTURE0_ARB == _unitsUsed, @"OOMultiTextureMaterial texture unit count invalid (expected %zu, actually using %u)", _unitsUsed, textureUnit - GL_TEXTURE0_ARB);
+	OOAssert(textureUnit - GL_TEXTURE0_ARB == _unitsUsed, "OOMultiTextureMaterial texture unit count invalid (expected %zu, actually using %u)", _unitsUsed, textureUnit - GL_TEXTURE0_ARB);
 	
 	if (textureUnit > GL_TEXTURE1_ARB)
 	{
@@ -220,10 +220,17 @@ SOFTWARE.
 
 
 #ifndef NDEBUG
-- (id) allTextures	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	if (_diffuseMap == nil)  return oo::NSSetFromObjects(std::vector<id>{_emissionMap});
-	return oo::NSSetFromObjects(std::vector<id>{_diffuseMap, _emissionMap});
+	std::vector<oo::ObjCRef<OOTexture *>> result;
+	if (_diffuseMap == nil)
+	{
+		result.emplace_back(_emissionMap);
+		return result;
+	}
+	result.emplace_back(_diffuseMap);
+	result.emplace_back(_emissionMap);
+	return result;
 }
 #endif
 

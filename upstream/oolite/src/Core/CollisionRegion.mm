@@ -35,6 +35,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
+
 #include "oofnd/String.hpp"
 
 
@@ -286,7 +288,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OOLog(@"collisionRegion.debug", @"DEBUG in collision region %@ testing %d out of %d entities", self, n_entities_to_test, n_entities);
+		OO_LOG("collisionRegion.debug", "DEBUG in collision region {} testing {} out of {} entities", oo::DescriptionOf(self), n_entities_to_test, n_entities);
 	}
 #endif
 	
@@ -344,8 +346,8 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 					if (gDebugFlags & DEBUG_COLLISIONS)
 					{
-						OOLog(@"collisionRegion.debug", @"DEBUG Testing collision between %@ (%@) and %@ (%@)",
-							  e1, (e1->collisionTestFilter==3)?@"YES":@"NO", e2, (e2->collisionTestFilter==3)?@"YES":@"NO");
+						OO_LOG("collisionRegion.debug", "DEBUG Testing collision between {} ({}) and {} ({})",
+							  oo::DescriptionOf(e1), (e1->collisionTestFilter==3)?"YES":"NO", oo::DescriptionOf(e2), (e2->collisionTestFilter==3)?"YES":"NO");
 					}
 #endif
 					checks_within_range++;
@@ -440,7 +442,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OOLog(@"collisionRegion.debug",@"Collision test checks %d, within range %d, for %d entities",checks_this_tick,checks_within_range,n_entities_to_test);
+		OO_LOG("collisionRegion.debug","Collision test checks {}, within range {}, for {} entities",checks_this_tick,checks_within_range,n_entities_to_test);
 	}
 #endif
 }
@@ -720,9 +722,9 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 }
 
 
-- (id) collisionDescription	// shared selector (proposed ADR-0043)
+- (std::string) collisionDescription
 {
-	return oo::NSStringFrom(oo::str::format("p%u - c%u", checks_this_tick, checks_within_range));
+	return oo::str::format("p%u - c%u", checks_this_tick, checks_within_range);
 }
 
 

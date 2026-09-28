@@ -181,7 +181,7 @@ def slugify(label: str) -> str:
 
 def daily_metrics_from_doc(doc_path: str):
     """[(slug, label, source)] for every row of the ## Daily table."""
-    with open(doc_path, encoding="utf-8") as fh:
+    with open(doc_path, encoding="utf-8", errors="replace") as fh:
         lines = fh.read().splitlines()
     out, in_daily = [], False
     for line in lines:
@@ -388,7 +388,7 @@ def c_rebless(g, root, ctx):
         r = "tools/rebless-approvals.txt missing"
         return {k: nc(r) for k in ("proposed", "accepted", "rejected", "oldest_pending_age_days")}
     approvals = 0
-    with open(path, encoding="utf-8") as fh:
+    with open(path, encoding="utf-8", errors="replace") as fh:
         for line in fh:
             if line.strip() and not line.startswith("#") and not line[0].isspace():
                 approvals += 1
@@ -409,7 +409,7 @@ def c_proposed_adrs(g, root, ctx):
     for name in sorted(os.listdir(d)):
         if not name.endswith(".md") or name == "README.md":
             continue
-        with open(os.path.join(d, name), encoding="utf-8") as fh:
+        with open(os.path.join(d, name), encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 if line.startswith("**Status:**"):
                     if re.match(r"\*\*Status:\*\*\s*Proposed\b", line):
@@ -559,7 +559,7 @@ def check_report(md_path, doc_path, root, bd_exe=None):
         ok = False
         msgs.append("FAIL: " + m)
 
-    with open(md_path, encoding="utf-8") as fh:
+    with open(md_path, encoding="utf-8", errors="replace") as fh:
         text = fh.read()
     payload = extract_payload(text)
     got = {m["id"]: m for m in payload["metrics"]}
@@ -619,7 +619,7 @@ def check_report(md_path, doc_path, root, bd_exe=None):
         d = os.path.join(root, "docs", "decisions")
         for name in sorted(os.listdir(d)):
             if name.endswith(".md") and name != "README.md":
-                with open(os.path.join(d, name), encoding="utf-8") as fh:
+                with open(os.path.join(d, name), encoding="utf-8", errors="replace") as fh:
                     if any(re.match(r"\*\*Status:\*\*\s*Proposed\b", ln) for ln in fh):
                         indep += 1
         rep = adr["values"]["awaiting_override"]["value"]

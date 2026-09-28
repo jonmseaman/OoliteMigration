@@ -94,7 +94,7 @@ long long KeyToIndex(const std::string &key, KeysToIndices &ioKeysToIndices, Use
 
 	ioKeysToIndices[key] = result;
 	ioUsedIndicies.insert(result);
-	OOLog(@"sysdesc.compile.unknownKey", @"Assigning key \"%@\" to index %lld.", oo::NSStringFrom(key), result);
+	OO_LOG("sysdesc.compile.unknownKey", "Assigning key \"{}\" to index {}.", key, result);
 
 	return result;
 }
@@ -195,7 +195,7 @@ void CompileSystemDescriptions(BOOL asXML)
 																	   andMerge:NO];
 	if (sysDescDict.isNull())
 	{
-		OOLog(@"sysdesc.compile.failed.fileNotFound", @"%@", @"Could not load a dictionary from sysdesc.plist, ignoring --compile-sysdesc option.");
+		OO_LOG("sysdesc.compile.failed.fileNotFound", "{}", "Could not load a dictionary from sysdesc.plist, ignoring --compile-sysdesc option.");
 		return;
 	}
 
@@ -212,17 +212,17 @@ void CompileSystemDescriptions(BOOL asXML)
 
 	if (!data.has_value())
 	{
-		OOLog(@"sysdesc.compile.failed.XML", @"Could not convert translated sysdesc.plist to property list: %@.", oo::NSStringFrom(data.error().message));
+		OO_LOG("sysdesc.compile.failed.XML", "Could not convert translated sysdesc.plist to property list: {}.", data.error().message);
 		return;
 	}
 
 	if ([ResourceManager cxx_writeDiagnosticData:*data toFileNamed:"sysdesc-compiled.plist"])
 	{
-		OOLog(@"sysdesc.compile.success", @"%@", @"Wrote translated sysdesc.plist to sysdesc-compiled.plist.");
+		OO_LOG("sysdesc.compile.success", "{}", "Wrote translated sysdesc.plist to sysdesc-compiled.plist.");
 	}
 	else
 	{
-		OOLog(@"sysdesc.compile.failed.writeFailure", @"%@", @"Could not write translated sysdesc.plist to sysdesc-compiled.plist.");
+		OO_LOG("sysdesc.compile.failed.writeFailure", "{}", "Could not write translated sysdesc.plist to sysdesc-compiled.plist.");
 	}
 }
 
@@ -240,7 +240,7 @@ void ExportSystemDescriptions(BOOL asXML)
 	const oo::PList sysDescDict = OOConvertSystemDescriptionsToDictionaryFormat((sysDescArray != nullptr) ? *sysDescArray : oo::PList(), keyMap);
 	if (sysDescArray == nullptr)
 	{
-		OOLog(@"sysdesc.export.failed.conversion", @"%@", @"Could not convert system_description do sysdesc.plist format for some reason.");
+		OO_LOG("sysdesc.export.failed.conversion", "{}", "Could not convert system_description do sysdesc.plist format for some reason.");
 		return;
 	}
 
@@ -248,17 +248,17 @@ void ExportSystemDescriptions(BOOL asXML)
 
 	if (!data.has_value())
 	{
-		OOLog(@"sysdesc.export.failed.XML", @"Could not convert translated system_description to XML property list: %@.", oo::NSStringFrom(data.error().message));
+		OO_LOG("sysdesc.export.failed.XML", "Could not convert translated system_description to XML property list: {}.", data.error().message);
 		return;
 	}
 
 	if ([ResourceManager cxx_writeDiagnosticData:*data toFileNamed:"sysdesc.plist"])
 	{
-		OOLog(@"sysdesc.export.success", @"%@", @"Wrote translated system_description to sysdesc.plist.");
+		OO_LOG("sysdesc.export.success", "{}", "Wrote translated system_description to sysdesc.plist.");
 	}
 	else
 	{
-		OOLog(@"sysdesc.export.failed.writeFailure", @"%@", @"Could not write translated system_description to sysdesc.plist.");
+		OO_LOG("sysdesc.export.failed.writeFailure", "{}", "Could not write translated system_description to sysdesc.plist.");
 	}
 }
 

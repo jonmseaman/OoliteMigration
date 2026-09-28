@@ -133,9 +133,9 @@ SOFTWARE.
 }
 
 
-- (BOOL)hasRole:(id)role
+- (BOOL)hasRole:(const std::string &)role
 {
-	return role != nil && _rolesAndProbabilities.contains(oo::StdString(role));
+	return !role.empty() && _rolesAndProbabilities.contains(role);
 }
 
 
@@ -209,7 +209,7 @@ SOFTWARE.
 	if (!role.has_value())
 	{
 		role = _rolesAndProbabilities.begin()->first;
-		OOLog(@"roleSet.anyRole.failed", @"Could not get a weighted-random role from role set %@, returning unweighted selection %@. TotalProb: %g, selected: %g, prob at end: %f", self, oo::NSStringOrNil(role), _totalProb, selected, prob);
+		OO_LOG("roleSet.anyRole.failed", "Could not get a weighted-random role from role set {}, returning unweighted selection {}. TotalProb: {:g}, selected: {:g}, prob at end: {:f}", oo::DescriptionOf(self), role.value_or("(null)"), _totalProb, selected, prob);
 	}
 	return role;
 }
@@ -288,7 +288,7 @@ SOFTWARE.
 	{
 		if (prob < 0)
 		{
-			OOLog(@"roleSet.badValue", @"Attempt to create a role set with negative or non-numerical probability for role %@.", oo::NSStringFrom(role));
+			OO_LOG("roleSet.badValue", "Attempt to create a role set with negative or non-numerical probability for role {}.", role);
 			[self release];
 			return nil;
 		}

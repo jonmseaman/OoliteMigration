@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #include "oofnd/Notification.hpp"
 #include <cstring>
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -196,7 +197,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	self = [super initWithNextTime:[UNIVERSE getTime] + delay interval:interval];
 	if (self != nil)
 	{
-		NSAssert(OOJSValueIsFunction(context, function), @"Attempt to init OOJSTimer with a function that isn't.");
+		OOAssert(OOJSValueIsFunction(context, function), "Attempt to init OOJSTimer with a function that isn't.");
 		
 		_jsThis = jsThis;
 		OOJSAddGCObjectRoot(context, &_jsThis, "OOJSTimer this");
@@ -279,9 +280,9 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Timer";
+	return std::string("Timer");
 }
 
 
@@ -297,7 +298,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	id object = OOJSNativeObjectFromJSObject(context, _jsThis);
 	if (object != nil)
 	{
-		described = [object oo_jsDescription] != nil;
+		described = [object cxx_oo_jsDescription].has_value();
 		if (!described)  described = [object description] != nil;
 	}
 	
@@ -433,7 +434,7 @@ static void TimerFinalize(Context cx, Object obj)
 	{
 		if ([timer isScheduled])
 		{
-			OOLogWARN(@"script.javaScript.unrootedTimer", @"Timer %@ is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", timer);
+			OO_LOG_WARN("script.javaScript.unrootedTimer", "Timer {} is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", oo::DescriptionOf(timer));
 		}
 		[timer release];
 		ooscript::setPrivate(cx, obj, NULL);

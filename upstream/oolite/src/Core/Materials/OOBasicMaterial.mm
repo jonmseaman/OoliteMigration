@@ -342,9 +342,9 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 
 
 #ifndef NDEBUG
-- (id) allTextures
+- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	return oo::NSSetFromObjects(std::vector<id>());	// an empty set; shared selector (proposed ADR-0043)
+	return {};
 }
 #endif
 

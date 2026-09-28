@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "EntityOOJavaScriptExtensions.h"
 #import "ShipEntity.h"
 #import "OOVisualEffectEntity.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -61,6 +62,21 @@ static BOOL JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool FlasherGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -191,9 +207,9 @@ static BOOL JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return @"Flasher";
+	return std::string("Flasher");
 }
 
 - (BOOL) isVisibleToScripts
@@ -228,7 +244,7 @@ static bool FlasherGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			return YES;
 
 		case kFlasher_color:
-			result = [[entity color] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity color]));
 			break;
 
 		case kFlasher_frequency:

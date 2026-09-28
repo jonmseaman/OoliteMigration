@@ -28,13 +28,16 @@ SIZING = "Sizing: reads <= ~1,500 lines, writes <= ~400 lines, <= 8 files, no ne
 
 # ---------------------------------------------------------------- bd helpers
 def bd(*args, check=True):
-    p = subprocess.run(["bd", *args], capture_output=True, text=True)
+    p = subprocess.run(["bd", *args], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
     if check and p.returncode != 0:
         raise SystemExit(f"bd {' '.join(args[:3])}... failed: {p.stderr.strip() or p.stdout.strip()}")
     return p.stdout.strip()
 
 def existing_issues():
-    out = subprocess.run(["bd", "list", "--all", "--json", "-n", "0"], capture_output=True, text=True).stdout
+    out = subprocess.run(["bd", "list", "--all", "--json", "-n", "0"],
+                         capture_output=True, text=True,
+                         encoding="utf-8", errors="replace").stdout or "[]"
     try:
         return {x["title"]: x for x in (json.loads(out) or [])}
     except json.JSONDecodeError:

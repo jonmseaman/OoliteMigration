@@ -36,6 +36,8 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #import "OOJSPropID.h"
 
+#include "oofnd/objc/OOAssert.h"
+
 #ifdef __cplusplus
 #define OOJS_EXTERN_C extern "C"
 #else
@@ -120,7 +122,7 @@ MA 02110-1301, USA.
 OOINLINE ooscript::Context OOJSAcquireContext(void)
 {
 	extern ooscript::Context gOOJSMainThreadContext;
-	NSCAssert(gOOJSMainThreadContext != NULL, @"Attempt to use JavaScript context before JavaScript engine is initialized.");
+	OOCAssert(gOOJSMainThreadContext != NULL, "Attempt to use JavaScript context before JavaScript engine is initialized.");
 	ooscript::beginRequest(gOOJSMainThreadContext);
 	return gOOJSMainThreadContext;
 }
@@ -131,7 +133,7 @@ OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 {
 #ifndef NDEBUG
 	extern ooscript::Context gOOJSMainThreadContext;
-	NSCParameterAssert(context == gOOJSMainThreadContext && ooscript::isInRequest(context));
+	OOCParameterAssert(context == gOOJSMainThreadContext && ooscript::isInRequest(context));
 #endif
 	ooscript::endRequest(context);
 }
@@ -217,12 +219,12 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 
 	Requires a request on context.
 
-	-oo_jsDescription
-	-oo_jsDescriptionWithClassName:
-	-oo_jsClassName
+	-cxx_oo_jsDescription
+	-cxx_oo_jsDescriptionWithClassName:
+	-cxx_oo_jsClassName
 
-	See comments for -descriptionComponents in OOCocoa.h. Strings, typed id: the selectors are
-	shared with the Foundation root class and every class that overrides them.
+	See comments for -descriptionComponents in OOCocoa.h. C++ string twins on OOObject;
+	Foundation NSObject/NSString/NSNumber keep the id selectors in OOJavaScriptEngine+FoundationBridge.
 
 	oo_clearJSSelf:
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
@@ -231,9 +233,9 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 @interface OOObject (OOJavaScript)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (id) oo_jsDescription;	// shared selector (proposed ADR-0043)
-- (id) oo_jsDescriptionWithClassName:(id)className;	// shared selector (proposed ADR-0043)
-- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsDescription;
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
+- (std::optional<std::string>) cxx_oo_jsClassName;
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end
@@ -483,7 +485,7 @@ oo::PList OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Val
 static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject)  GCC_ATTR((unused)); \
 static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject) \
 { \
-	NSCParameterAssert(outObject != NULL); \
+	OOCParameterAssert(outObject != NULL); \
 	static Class cls = Nil; \
 	if (EXPECT_NOT(cls == Nil))  cls = [OBJCCLASSNAME class]; \
 	return OOJSObjectGetterImplPRIVATE(context, inObject, JSCLASS, cls, #NAME, (id *)outObject); \
@@ -576,21 +578,21 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJ
 	is provided with debugging information by the OOJavaScriptEngine.
 */
 
-@protocol OOJavaScriptEngineMonitor <NSObject>
+@protocol OOJavaScriptEngineMonitor <OOObject>
 
 // Sent for JS errors or warnings.
-- (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in ooscript::Context)context
-				  error:(in ooscript::ErrorReport *)errorReport
-			  stackSkip:(in unsigned)stackSkip
-		showingLocation:(in BOOL)showLocation
-			withMessage:(in id)message;	// shared selector (proposed ADR-0043): OODebugMonitor implements it with a string
+- (void)jsEngine:(OOJavaScriptEngine *)engine
+		 context:(ooscript::Context)context
+		   error:(ooscript::ErrorReport *)errorReport
+	   stackSkip:(unsigned)stackSkip
+ showingLocation:(BOOL)showLocation
+	 withMessage:(const std::string &)message;
 
-// Sent for JS log messages. Note: messageClass will be nil if Log() is used rather than LogWithClass().
-- (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in ooscript::Context)context
-			 logMessage:(in id)message
-				ofClass:(in id)messageClass;	// shared selector (proposed ADR-0043): OODebugMonitor implements it with strings
+// Sent for JS log messages. Note: messageClass is nullopt if Log() is used rather than LogWithClass().
+- (void)jsEngine:(OOJavaScriptEngine *)engine
+		 context:(ooscript::Context)context
+	  logMessage:(const std::string &)message
+		 ofClass:(const std::optional<std::string> &)messageClass;
 
 @end
 
@@ -659,7 +661,7 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript
 	Implementation of toString() for JS classes whose private storage is an
 	Objective-C object reference (generally an OOWeakReference).
 	
-	Calls -oo_jsDescription and, if that fails, -description.
+	Calls -cxx_oo_jsDescription and, if that fails, -description.
 */
 OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 

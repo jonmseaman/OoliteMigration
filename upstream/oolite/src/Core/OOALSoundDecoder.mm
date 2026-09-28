@@ -27,7 +27,6 @@ SOFTWARE.
 */
 
 #import "OOALSoundDecoder.h"
-#import "NSDataOOExtensions.h"
 #import <vorbis/vorbisfile.h>
 #import "OOLogging.h"
 #import "unzip.h"
@@ -63,14 +62,20 @@ static int OOCloseOXZVorbis (void *datasource);
 
 @implementation OOALSoundDecoder
 
-- (id)initWithPath:(id)inPath
+- (id)initWithPath:(id)inPath	// shared selector (Foundation declares it too)
+{
+	return [self cxx_initWithPath:oo::OptionalString(inPath)];
+}
+
+
+- (id)cxx_initWithPath:(const std::optional<std::string> &)inPath
 {
 	[self release];
 	self = nil;
 	
-	if (oo::str::pathExtension(oo::StdString(inPath)) == "ogg")
+	if (oo::str::pathExtension(inPath.value_or(std::string())) == "ogg")
 	{
-		self = [[OOALSoundVorbisCodec alloc] initWithPath:inPath];
+		self = [[OOALSoundVorbisCodec alloc] cxx_initWithPath:inPath];
 	}
 	
 	return self;
@@ -81,7 +86,7 @@ static int OOCloseOXZVorbis (void *datasource);
 {
 	if (oo::str::pathExtension(inPath) == "ogg")
 	{
-		return [[[OOALSoundVorbisCodec alloc] initWithPath:oo::NSStringFrom(inPath)] autorelease];
+		return [[[OOALSoundVorbisCodec alloc] cxx_initWithPath:inPath] autorelease];
 	}
 	return nil;
 }
@@ -136,14 +141,14 @@ static int OOCloseOXZVorbis (void *datasource);
 
 @implementation OOALSoundVorbisCodec
 
-- (id)initWithPath:(id)path
+- (id)cxx_initWithPath:(const std::optional<std::string> &)path
 {
 	if ((self = [super init]))
 	{
 		BOOL				OK = NO;
 
-		const std::string pathString = oo::StdString(path);
-		if (path != nil)  _name = oo::str::lastPathComponent(pathString);
+		const std::string pathString = path.value_or(std::string());
+		if (path.has_value())  _name = oo::str::lastPathComponent(pathString);
 
 		std::size_t i, cl;
 		const std::vector<std::string> components = oo::str::pathComponents(pathString);
@@ -165,9 +170,9 @@ static int OOCloseOXZVorbis (void *datasource);
 	
 			_seekableStream = YES;
 		
-			if (nil != path)
+			if (path.has_value())
 			{
-				file = fopen([path UTF8String], "rb");
+				file = fopen(path->c_str(), "rb");
 				if (NULL != file) 
 				{
 					err = ov_open_callbacks(file, &_vf, NULL, 0, OV_CALLBACKS_DEFAULT);

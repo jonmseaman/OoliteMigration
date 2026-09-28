@@ -89,7 +89,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 - (void)verifyShipInfo:(const oo::PList &)info withName:(const std::string &)name;
 
-- (void)message:(id)format, ...;	// an Objective-C format string. Shared selector (AI; proposed ADR-0043).
+- (void)reportMessage:(id)format, ...;	// an Objective-C format string (was -message:, renamed so AI's -message: could flip; bead oo-3rb.276)
 - (void)verboseMessage:(const char *)format, ...;
 
 - (void)getRoles;
@@ -127,10 +127,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	OOFileScannerVerifierStage	*fileScanner = nil;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner fileExists:@"shipdata.plist"
-						  inFolder:@"Config"
-					referencedFrom:nil
-					  checkBuiltIn:NO];
+	return [fileScanner cxx_fileExists:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 }
 
 
@@ -142,10 +139,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	std::vector<std::string>	shipList;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	_shipdataPList = oo::PListFrom([fileScanner plistNamed:@"shipdata.plist"
-												 inFolder:@"Config"
-										   referencedFrom:nil
-											 checkBuiltIn:NO]);
+	_shipdataPList = [fileScanner cxx_plistNamed:"shipdata.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
 
 	if (_shipdataPList.isNull())  return;
 
@@ -159,13 +153,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	// Check that it's a dictionary
 	if (!_shipdataPList.isDict())
 	{
-		OOLog(@"verifyOXP.shipdataPList.notDict", @"%@", @"***** ERROR: shipdata.plist is not a dictionary.");
+		OO_LOG("verifyOXP.shipdataPList.notDict", "{}", "***** ERROR: shipdata.plist is not a dictionary.");
 		return;
 	}
 
 	// Keys that apply to all ships
 	for (const std::string &shipName : ooliteShipData)  AddString(_ooliteShipNames, shipName);
-	settings = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"shipdataPListSettings"]);
+	settings = [[self verifier] cxx_configurationDictionaryForKey:"shipdataPListSettings"];
 	_basicKeys = StringSetForKey(settings, "knownShipKeys");
 
 	// Keys that apply to stations/carriers
@@ -195,7 +189,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 			const oo::PList *shipInfo = _shipdataPList.get<oo::PList::Dict>(shipKey);
 			if (shipInfo == nullptr)
 			{
-				OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", oo::NSStringFrom(shipKey));
+				OO_LOG("verifyOXP.shipdata.badType", "***** ERROR: shipdata.plist entry for \"{}\" is not a dictionary.", shipKey);
 			}
 			else
 			{
@@ -221,7 +215,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	_name = name;
 	_info = info;
 	_havePrintedMessage = NO;
-	OOLogPushIndent();
+	oo::log::pushIndent();
 
 	[self getRoles];
 	[self checkKeys];
@@ -239,10 +233,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	// Todo: check for pirates with 0 bounty
 
-	OOLogPopIndent();
+	oo::log::popIndent();
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.verbose.shipData.OK", @"- ship \"%@\" OK.", oo::NSStringFrom(_name));
+		OO_LOG("verifyOXP.verbose.shipData.OK", "- ship \"{}\" OK.", _name);
 	}
 	_name.clear();
 	_info = oo::PList();
@@ -251,14 +245,14 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 
 // Custom log method to group messages by ship.
-- (void)message:(id)format, ...
+- (void)reportMessage:(id)format, ...
 {
 	va_list						args;
 
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", oo::NSStringFrom(_name));
-		OOLogIndent();
+		OO_LOG("verifyOXP.shipData.firstMessage", "Ship \"{}\":", _name);
+		oo::log::indent();
 		_havePrintedMessage = YES;
 	}
 
@@ -272,12 +266,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 {
 	va_list						args;
 
-	if (!OOLogWillDisplayMessagesInClass(@"verifyOXP.verbose.shipData"))  return;
+	if (!oo::log::willDisplay("verifyOXP.verbose.shipData"))  return;
 
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", oo::NSStringFrom(_name));
-		OOLogIndent();
+		OO_LOG("verifyOXP.shipData.firstMessage", "Ship \"{}\":", _name);
+		oo::log::indent();
 		_havePrintedMessage = YES;
 	}
 
@@ -308,7 +302,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	if (_isPlayer && _isStation)
 	{
-		[self message:@"***** ERROR: ship is both a player ship and a station. Treating as non-station."];
+		[self reportMessage:@"***** ERROR: ship is both a player ship and a station. Treating as non-station."];
 		_isStation = NO;
 	}
 }
@@ -332,12 +326,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 				{
 					// if it's a template, this key might apply to a descendant
 					// as happens in the core files
-					[self message:@"----- WARNING: key \"%@\" does not apply to this category of ship.", oo::NSStringFrom(key)];
+					[self reportMessage:@"----- WARNING: key \"%@\" does not apply to this category of ship.", oo::NSStringFrom(key)];
 				}
 			}
 			else
 			{
-				[self message:@"----- WARNING: unknown key \"%@\".", oo::NSStringFrom(key)];
+				[self reportMessage:@"----- WARNING: unknown key \"%@\".", oo::NSStringFrom(key)];
 			}
 		}
 	}
@@ -364,14 +358,14 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 												withMaterials:materials != nullptr ? *materials : oo::PList()
 												   andShaders:shaders != nullptr ? *shaders : oo::PList()])
 		{
-			[self message:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), [[self verifier] oxpDisplayName]];
+			[self reportMessage:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), oo::NSStringOrNil([[self verifier] cxx_oxpDisplayName])];
 		}
 	}
 	else
 	{
 		if (!OptionalStringForKey(_info, "like_ship").has_value())
 		{
-			[self message:@"***** ERROR: ship does not specify model or like_ship."];
+			[self reportMessage:@"***** ERROR: ship does not specify model or like_ship."];
 		}
 	}
 }
@@ -397,27 +391,27 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 
 - (BOOL)verifier:(OOPListSchemaVerifier *)verifier
-withPropertyList:(id)rootPList
-		   named:(id)name
-	testProperty:(id)subPList
-		  atPath:(id)keyPath
-	 againstType:(id)typeKey
-		   error:(NSError **)outError	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
+withPropertyList:(const oo::PList &)rootPList
+		   named:(const std::string &)name
+	testProperty:(const oo::PList &)subPList
+		  atPath:(const oo::PList &)keyPath
+	 againstType:(const oo::PList &)typeKey
+		   error:(NSError **)outError
 {
-	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", typeKey, oo::NSStringFrom(_name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom(keyPath)])];
+	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", oo::ObjectFromPList(typeKey), oo::NSStringFrom(_name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:keyPath])];
 	return YES;
 }
 
 
 - (BOOL)verifier:(OOPListSchemaVerifier *)verifier
-withPropertyList:(id)rootPList
-		   named:(id)name
- failedForProperty:(id)subPList
+withPropertyList:(const oo::PList &)rootPList
+		   named:(const std::string &)name
+ failedForProperty:(const oo::PList &)subPList
 	   withError:(NSError *)error
-	expectedType:(id)localSchema	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
+	expectedType:(const oo::PList &)localSchema
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	[self message:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", name, oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom([[error userInfo] objectForKey:oo::NSStringFrom(kPListKeyPathErrorKey)])]), [error localizedFailureReason]];
+	[self reportMessage:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", oo::NSStringFrom(name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom([[error userInfo] objectForKey:oo::NSStringFrom(kPListKeyPathErrorKey)])]), [error localizedFailureReason]];
 	return YES;
 }
 

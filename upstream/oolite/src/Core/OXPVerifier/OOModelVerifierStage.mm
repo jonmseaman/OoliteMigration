@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 
 static const char * const kStageName	= "Testing models";
 
@@ -49,7 +50,7 @@ static const char * const kStageName	= "Testing models";
 
 + (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	OOModelVerifierStage *stage = [verifier stageWithName:oo::NSStringFrom(kStageName)];
+	OOModelVerifierStage *stage = [verifier cxx_stageWithName:kStageName];
 	if (stage == nil)
 	{
 		stage = [[OOModelVerifierStage alloc] init];
@@ -75,7 +76,7 @@ static const char * const kStageName	= "Testing models";
 
 - (void)run
 {
-	OOLog(@"verifyOXP.models.unimplemented", @"%@", @"TODO: implement model verifier.");
+	OO_LOG("verifyOXP.models.unimplemented", "{}", "TODO: implement model verifier.");
 
 	for (const OOModelVerifierEntry &info : _modelsToCheck)
 	{
@@ -106,10 +107,7 @@ static const char * const kStageName	= "Testing models";
 	else context = fileName;
 
 	fileScanner = [[self verifier] fileScannerStage];
-	if (![fileScanner fileExists:oo::NSStringFrom(name)
-						inFolder:@"Models"
-				  referencedFrom:oo::NSStringFrom(context)
-					checkBuiltIn:YES])
+	if (![fileScanner cxx_fileExists:name inFolder:"Models" referencedFrom:context checkBuiltIn:YES])
 	{
 		return NO;
 	}
@@ -134,7 +132,7 @@ static const char * const kStageName	= "Testing models";
 			   materials:(const oo::PList &)materials
 				 shaders:(const oo::PList &)shaders
 {
-	OOLog(@"verifyOXP.verbose.model.unimp", @"- Pretending to verify model %@ referenced in %@.", oo::NSStringFrom(name), oo::NSStringFrom(context));
+	OO_LOG("verifyOXP.verbose.model.unimp", "- Pretending to verify model {} referenced in {}.", name, context);
 	// FIXME: this should check DAT files.
 }
 
@@ -145,7 +143,7 @@ static const char * const kStageName	= "Testing models";
 
 - (OOModelVerifierStage *)modelVerifierStage
 {
-	return [self stageWithName:oo::NSStringFrom(kStageName)];
+	return [self cxx_stageWithName:kStageName];
 }
 
 @end

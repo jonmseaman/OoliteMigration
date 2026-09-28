@@ -149,8 +149,8 @@ enum {
 #define AXCBTHRESH 20000
 
 // Dictionary keys - used in the defaults file
-#define AXIS_SETTINGS @"JoystickAxes"  // NSUserDefaults
-#define BUTTON_SETTINGS @"JoystickButs" // NSUserDefaults
+#define AXIS_SETTINGS @"JoystickAxes"  // oo::Defaults key
+#define BUTTON_SETTINGS @"JoystickButs" // oo::Defaults key
 #define STICK_ISAXIS @"isAxis"      // YES=axis NO=button
 #define STICK_NUMBER @"stickNum"    // Stick number 0 to 4
 #define STICK_AXBUT  @"stickAxBt"   // Axis or button number

@@ -176,13 +176,13 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 }
 
 
-- (NSComparisonResult)interfaceCompare:(OOJSGuiScreenKeyDefinition *)other
+- (OOComparisonResult)interfaceCompare:(OOJSGuiScreenKeyDefinition *)other
 {
-	// -caseInsensitiveCompare: as it was sent: a nil name answers NSOrderedSame (a message to nil); a
+	// -caseInsensitiveCompare: as it was sent: a nil name answers OOOrderedSame (a message to nil); a
 	// nil other name compares as the empty string.
-	if (!_name.has_value())  return NSOrderedSame;
+	if (!_name.has_value())  return OOOrderedSame;
 	int order = oo::str::caseInsensitiveCompare(*_name, oo::OptionalString([other name]).value_or(std::string()));
-	return (order < 0) ? NSOrderedAscending : ((order > 0) ? NSOrderedDescending : NSOrderedSame);
+	return (order < 0) ? OOOrderedAscending : ((order > 0) ? OOOrderedDescending : OOOrderedSame);
 }
 
 @end

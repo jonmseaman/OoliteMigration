@@ -219,7 +219,7 @@ static unsigned				sCacheMisses = 0;
 - (void) profileFire:(id)junk
 {
 	float ratio = (float)sCacheHits / (float)(sCacheHits + sCacheMisses);
-	OOLog(@"strings.encoding.profile", @"Cache hits: %u, misses: %u, ratio: %.2g", sCacheHits, sCacheMisses, ratio);
+	OO_LOG("strings.encoding.profile", "Cache hits: {}, misses: {}, ratio: {:.2g}", sCacheHits, sCacheMisses, ratio);
 	sCacheHits = sCacheMisses = 0;
 }
 #endif
@@ -234,15 +234,15 @@ static unsigned				sCacheMisses = 0;
 
 /*
 	There are a variety of overlapping naming schemes for text encoding.
-	We ignore them and use a fixed list:
-		"windows-latin-1"		NSWindowsCP1252StringEncoding
-		"windows-latin-2"		NSWindowsCP1250StringEncoding
-		"windows-cyrillic"		NSWindowsCP1251StringEncoding
-		"windows-greek"			NSWindowsCP1253StringEncoding
-		"windows-turkish"		NSWindowsCP1254StringEncoding
+	We ignore them and use a fixed list (oo::str::Encoding in oofnd/Encoding.hpp):
+		"windows-latin-1"		windowsCP1252 (code page 1252)
+		"windows-latin-2"		windowsCP1250 (code page 1250)
+		"windows-cyrillic"		windowsCP1251 (code page 1251)
+		"windows-greek"			windowsCP1253 (code page 1253)
+		"windows-turkish"		windowsCP1254 (code page 1254)
 */
 
-const char *StringFromEncoding(NSStringEncoding encoding)
+const char *StringFromEncoding(unsigned encoding)
 {
 	return oo::str::encodingName(static_cast<oo::str::Encoding>(encoding));
 }

@@ -39,7 +39,6 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #include "oofnd/Scanner.hpp"
-#import "OOFilteringEnumerator.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
 #import "OOWeakSet.h"
@@ -93,6 +92,7 @@ MA 02110-1301, USA.
 #import "OOJSEngineTimeManagement.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 #define USEMASC 1
 
@@ -277,8 +277,8 @@ std::set<std::string> NamesInArrayForKey(const oo::PList &dict, std::string_view
 - (void) rescaleBy:(GLfloat)factor;
 - (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
 
-- (BOOL) setUpOneSubentity:(id) subentDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
-- (BOOL) setUpOneFlasher:(id) subentDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict;
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict;
 
 - (Entity<OOStellarBody> *) lastAegisLock;
 
@@ -316,7 +316,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		no ships are ever used which are not -setUpShipFromDictionary: (which
 		is as it should be), so these different defaults were meaningless.
 	*/
-	return [self initWithKey:@"" definition:nil];
+	return [self cxx_initWithKey:std::string{} definition:oo::PList()];
 }
 
 
@@ -326,17 +326,14 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-// Designated initializer
-- (id)initWithKey:(id)key definition:(id)dict	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict
 {
 	OOJS_PROFILE_ENTER
-	
-	NSParameterAssert(dict != nil);
 	
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	_shipKey = oo::OptionalString(key);
+	_shipKey = key;
 
 	isShip = YES;
 	entity_personality = Ranrot() & ENTITY_PERSONALITY_MAX;
@@ -356,7 +353,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	_nextAegisCheck = -0.1f;
 	aiScriptWakeTime = 0;
 	
-	if (![self setUpShipFromDictionary:dict])
+	if (![self setUpShipFromDictionary:oo::ObjectFromPList(dict)])
 	{
 		[self release];
 		self = nil;
@@ -869,10 +866,10 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 	
 	// beacons
-	[self setBeaconCode:oo::NSStringOrNil(StringForKey(shipDict, "beacon"))];
+	[self setBeaconCode:StringForKey(shipDict, "beacon")];
 	std::optional<std::string> label = StringForKey(shipDict, "beacon_label");
 	if (!label.has_value())  label = StringForKey(shipDict, "beacon");	// the fallback
-	[self setBeaconLabel:oo::NSStringOrNil(label)];
+	[self setBeaconLabel:label];
 
 	
 	// contact tracking entities
@@ -999,7 +996,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
 		const oo::PList *subentDict = subs->at(i);
-		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? oo::ObjectFromPList(*subentDict) : nil];
+		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? *subentDict : oo::PList()];
 	}
 	
 	no_draw_distance = _profileRadius * _profileRadius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
@@ -1025,30 +1022,28 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (BOOL) setUpOneSubentity:(id) subentDict	// shared selector (proposed ADR-0043)
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
 {
 	OOJS_PROFILE_ENTER
 
-	const oo::PList		dict = oo::PListFrom(subentDict);
-	const std::optional<std::string> type = StringForKey(dict, "type");
+	const std::optional<std::string> type = StringForKey(subentDict, "type");
 	if (type == "flasher")
 	{
 		return [self setUpOneFlasher:subentDict];
 	}
 	else
 	{
-		return [self cxx_setUpOneStandardSubentity:dict asTurret:type == "ball_turret"];
+		return [self cxx_setUpOneStandardSubentity:subentDict asTurret:type == "ball_turret"];
 	}
 
 	OOJS_PROFILE_EXIT
 }
 
 
-- (BOOL) setUpOneFlasher:(id) subentDict	// shared selector (proposed ADR-0043)
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
 {
-	const oo::PList dict = oo::PListFrom(subentDict);
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:dict];
-	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(dict, "position"),_scaleFactor)];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor)];
 	[flasher rescaleBy:_scaleFactor];
 	[self addSubEntity:flasher];
 	return YES;
@@ -1405,10 +1400,9 @@ DESTROY(laser_color);
 }
 
 
-- (id) subEntities	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntities
 {
-	if (subEntities.empty())  return nil;
-	return oo::NSArrayFromObjects(subEntities);
+	return subEntities;
 }
 
 
@@ -1425,9 +1419,9 @@ DESTROY(laser_color);
 }
 
 
-- (id) subEntityEnumerator	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator
 {
-	return [oo::NSArrayFromObjects(subEntities) objectEnumerator];
+	return subEntities;
 }
 
 
@@ -1442,14 +1436,14 @@ DESTROY(laser_color);
 }
 
 
-- (id) flasherEnumerator	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator
 {
-	std::vector<oo::ObjCRef<Entity *>> flashers;
+	std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers;
 	for (const auto &sub : subEntities)
 	{
-		if ([sub.get() isFlasher])  flashers.push_back(sub);
+		if ([sub.get() isFlasher])  flashers.emplace_back((OOFlasherEntity *)sub.get());
 	}
-	return [oo::NSArrayFromObjects(flashers) objectEnumerator];
+	return flashers;
 }
 
 
@@ -1657,17 +1651,17 @@ DESTROY(laser_color);
 }
 
 
-- (id) beaconCode	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) beaconCode
 {
-	return oo::NSStringOrNil(_beaconCode);
+	return _beaconCode;
 }
 
 
-// bcode: an Objective-C string or nil. The Foundation version compared the new string with the
+// bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
 // old by pointer, so any new string (every string this class hands out is new) replaced it.
-- (void) setBeaconCode:(id)bcode	// shared selector (proposed ADR-0043)
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode
 {
-	std::optional<std::string> code = oo::OptionalString(bcode);
+	std::optional<std::string> code = bcode;
 	if (code.has_value() && code->empty())  code.reset();
 
 	if (code.has_value() || _beaconCode.has_value())
@@ -1679,20 +1673,21 @@ DESTROY(laser_color);
 	// if not blanking code and label is currently blank, default label to code
 	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
 	{
-		[self setBeaconLabel:oo::NSStringFrom(*code)];
+		[self setBeaconLabel:code];
 	}
+
 }
 
 
-- (id) beaconLabel	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) beaconLabel
 {
-	return oo::NSStringOrNil(_beaconLabel);
+	return _beaconLabel;
 }
 
 
-- (void) setBeaconLabel:(id)blabel	// shared selector (proposed ADR-0043): an Objective-C string or nil
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel
 {
-	std::optional<std::string> label = oo::OptionalString(blabel);
+	std::optional<std::string> label = blabel;
 	if (label.has_value() && label->empty())  label.reset();
 
 	if (label.has_value() || _beaconLabel.has_value())
@@ -1710,7 +1705,7 @@ DESTROY(laser_color);
 
 - (BOOL) isBeacon
 {
-	return [self beaconCode] != nil;
+	return [self beaconCode].has_value();
 }
 
 
@@ -1781,13 +1776,13 @@ DESTROY(laser_color);
 
 - (BOOL) isBoulder
 {
-	return [roleSet hasRole:kBoulderRole];
+	return [roleSet hasRole:oo::StdString(kBoulderRole)];
 }
 
 
 - (BOOL) isMinable
 {
-	if ([self hasRole:@"asteroid"] || [self isBoulder])
+	if ([self hasRole:"asteroid"] || [self isBoulder])
 	{
 		if (!noRocks)
 		{
@@ -2773,7 +2768,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 				{
 					energy = maxEnergy;
 					[self doScriptEvent:OOJSID("shipEnergyBecameFull")];
-					[shipAI message:@"ENERGY_FULL"];
+					[shipAI message:"ENERGY_FULL"];
 				}
 			}
 			
@@ -2830,7 +2825,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			{
 				energy = maxEnergy;
 				[self doScriptEvent:OOJSID("shipEnergyBecameFull")];
-				[shipAI message:@"ENERGY_FULL"];
+				[shipAI message:"ENERGY_FULL"];
 			}
 		}
 		
@@ -3213,7 +3208,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	else
 	{
-		NSParameterAssert(oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys));
+		OOParameterAssert(oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys));
 
 		// Any match: order-insensitive. Only string keys can match an equipment key.
 		for (const std::string &key : oo::StringsFrom(equipmentKeys))
@@ -5732,7 +5727,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	success_factor = range;
 
 	if (range > desired_range || range == 0)
-		[shipAI message:@"REACHED_SAFETY"];
+		[shipAI message:"REACHED_SAFETY"];
 	else
 		desired_speed = max_available_speed;
 
@@ -5827,7 +5822,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (confidenceFactor >= max_cos && flightPitch == 0.0)
 	{
 		// desired facing achieved and movement stabilised.
-		[shipAI message:@"FACING_DESTINATION"];
+		[shipAI message:"FACING_DESTINATION"];
 		[self doScriptEvent:OOJSID("shipNowFacingDestination")];
 		frustration = 0.0;
 		if(docking_match_rotation)  // IDLE stops rotating while docking
@@ -5878,7 +5873,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	{
 		behaviour = BEHAVIOUR_IDLE;
 		aiScriptWakeTime = 1; // reconsider JSAI
-		[shipAI message:@"NO_PLANET_NEARBY"];
+		[shipAI message:"NO_PLANET_NEARBY"];
 		return;
 	}
 		  
@@ -5971,7 +5966,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (distance < desired_range) // + collision_radius)
 	{
 		// desired range achieved
-		[shipAI message:@"DESIRED_RANGE_ACHIEVED"];
+		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
 		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
 
 		if(!docking_match_rotation) // IDLE stops rotating while docking
@@ -6075,7 +6070,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (distance > desired_range)
 	{
 		// desired range achieved
-		[shipAI message:@"DESIRED_RANGE_ACHIEVED"];
+		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
 		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
 
 		behaviour = BEHAVIOUR_IDLE;
@@ -6532,7 +6527,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			for (const auto &sub : subs)
 			{
 				Entity<OOSubEntity> *subEntity = (Entity<OOSubEntity> *)sub.get();
-				NSAssert3([subEntity owner] == self, @"Subentity ownership broke - %@ should be owned by %@ but is owned by %@.", subEntity, self, [subEntity owner]);
+				OOAssert([subEntity owner] == self, "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::DescriptionOf(subEntity).c_str(), oo::DescriptionOf(self).c_str(), oo::DescriptionOf([subEntity owner]).c_str());
 				[subEntity drawSubEntityImmediate:immediate translucent:translucent];
 			}
 		}
@@ -7238,7 +7233,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (id) displayName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) displayName
 {
 	if (!displayName.has_value() || displayName->empty())
 	{
@@ -7246,11 +7241,11 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 		{
 			if (!shipClassName.has_value())
 			{
-				return oo::NSStringOrNil(name);
+				return name;
 			}
 			else
 			{
-				return oo::NSStringFrom(*shipClassName);
+				return *shipClassName;
 			}
 		}
 		else
@@ -7258,15 +7253,15 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 			// %@ printed nil as (null)
 			if (!shipClassName.has_value())
 			{
-				return oo::NSStringFrom(oo::str::format("%s: %s", name.value_or("(null)").c_str(), shipUniqueName->c_str()));
+				return oo::str::format("%s: %s", name.value_or("(null)").c_str(), shipUniqueName->c_str());
 			}
 			else
 			{
-				return oo::NSStringFrom(oo::str::format("%s: %s", shipClassName->c_str(), shipUniqueName->c_str()));
+				return oo::str::format("%s: %s", shipClassName->c_str(), shipUniqueName->c_str());
 			}
 		}
 	}
-	return oo::NSStringFrom(*displayName);
+	return *displayName;
 }
 
 
@@ -7353,22 +7348,20 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (id) identFromShip:(ShipEntity*) otherShip	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip
 {
 	if ([self isJammingScanning] && ![otherShip hasMilitaryScannerFilter])
 	{
-		return DESC(@"unknown-target");
+		return oo::OptionalString(DESC(@"unknown-target"));
 	}
 	return [self displayName];
 }
 
 
-- (BOOL) hasRole:(id)role	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) hasRole:(const std::string &)role
 {
 	if ([roleSet hasRole:role])  return YES;
-	if (!oo::IsNSString(role))  return NO;	// -isEqual: of a non-string (or nil) with a string was NO
-	const std::string roleString = oo::StdString(role);
-	return roleString == primaryRole || roleString == [self cxx_shipDataKeyAutoRole];
+	return role == primaryRole || role == [self cxx_shipDataKeyAutoRole];
 }
 
 
@@ -7387,7 +7380,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (void) cxx_addRole:(const std::string &)role withProbability:(float)probability
 {
-	if (![self hasRole:oo::NSStringFrom(role)])
+	if (![self hasRole:role])
 	{
 		OORoleSet *newRoles = nil;
 		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:role probability:probability];
@@ -7403,7 +7396,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (void) cxx_removeRole:(const std::string &)role
 {
-	if ([self hasRole:oo::NSStringFrom(role)])
+	if ([self hasRole:role])
 	{
 		OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:role];
 		if (newRoles != nil)
@@ -7694,17 +7687,17 @@ static BOOL IsBehaviourHostile(OOBehaviour behaviour)
 			
 			if (lastAegisLock == [UNIVERSE sun])
 			{
-				[shipAI message:@"AWAY_FROM_SUN"];
+				[shipAI message:"AWAY_FROM_SUN"];
 			}
 			else
 			{
-				[shipAI message:@"AWAY_FROM_PLANET"];
+				[shipAI message:"AWAY_FROM_PLANET"];
 			}
 		}
 
 		if (aegis_status != AEGIS_CLOSE_TO_ANY_PLANET)
 		{
-			[shipAI message:@"AEGIS_NONE"];
+			[shipAI message:"AEGIS_NONE"];
 		}
 	}
 	aegis_status = AEGIS_NONE;
@@ -7728,7 +7721,7 @@ static float SurfaceDistanceSqared(Entity *reference, Entity<OOStellarBody> *ste
 }
 
 
-NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
+OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	HPVector p = [(ShipEntity*) context position];
 	OOPlanetEntity* e1 = i1;
@@ -7737,10 +7730,10 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	float p1 = SurfaceDistanceSqaredV(p, e1);
 	float p2 = SurfaceDistanceSqaredV(p, e2);
 	
-	if (p1 < p2) return NSOrderedAscending;
-	if (p1 > p2) return NSOrderedDescending;
+	if (p1 < p2) return OOOrderedAscending;
+	if (p1 > p2) return OOOrderedDescending;
 	
-	return NSOrderedSame;
+	return OOOrderedSame;
 }
 
 
@@ -7809,7 +7802,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// ComparePlanetsBySurfaceDistance's order; the nearest comes first.
 	std::stable_sort(planets.begin(), planets.end(), [self](const oo::ObjCRef<OOPlanetEntity *> &a, const oo::ObjCRef<OOPlanetEntity *> &b)
 	{
-		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == NSOrderedAscending;
+		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == OOOrderedAscending;
 	});
 	result = planets[0].get();
 
@@ -7909,13 +7902,13 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		if (EXPECT_NOT(aegis_status == AEGIS_IN_DOCKING_RANGE && result != aegis_status))
 		{
 			[self doScriptEvent:OOJSID("shipExitedStationAegis") withArgument:the_station];
-			[shipAI message:@"AEGIS_LEAVING_DOCKING_RANGE"];
+			[shipAI message:"AEGIS_LEAVING_DOCKING_RANGE"];
 		}
 		
 		if (EXPECT_NOT(result == AEGIS_IN_DOCKING_RANGE && aegis_status != result))
 		{
 			[self doScriptEvent:OOJSID("shipEnteredStationAegis") withArgument:the_station];
-			[shipAI message:@"AEGIS_IN_DOCKING_RANGE"];
+			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
 			
 			if([self lastAegisLock] == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
 			{
@@ -7937,32 +7930,32 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if(aegis_status != AEGIS_NONE && [self lastAegisLock] != nil)	// we were close to another stellar body
 			{
 				[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:[self lastAegisLock]];
-				[shipAI message:@"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
+				[shipAI message:"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
 			}
 			[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:nearest];
 			[self setLastAegisLock:nearest];
 			
 			if (EXPECT_NOT([nearest isSun]))
 			{
-				[shipAI message:@"CLOSE_TO_SUN"];
+				[shipAI message:"CLOSE_TO_SUN"];
 			}
 			else
 			{
-				[shipAI message:@"CLOSE_TO_PLANET"];
+				[shipAI message:"CLOSE_TO_PLANET"];
 				
 				if (EXPECT(result == AEGIS_CLOSE_TO_MAIN_PLANET))
 				{
 					// It's been years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
 					//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	    // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
-					[shipAI message:@"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
+					[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
 				}
 				else if (EXPECT_NOT([nearest planetType] == STELLAR_TYPE_MOON))
 				{
-					[shipAI message:@"CLOSE_TO_MOON"];
+					[shipAI message:"CLOSE_TO_MOON"];
 				}
 				else
 				{
-					[shipAI message:@"CLOSE_TO_SECONDARY_PLANET"];
+					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
 				}
 			}
 		}
@@ -8156,7 +8149,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "launch_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_launchActions"] = *actions;
@@ -8166,7 +8159,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "script_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_scriptActions"] = *actions;
@@ -8176,7 +8169,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "death_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_deathActions"] = *actions;
@@ -8186,7 +8179,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		actions = ArrayForKey(shipinfoDictionary, "setup_actions");
 		if (actions)
 		{
-			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
 			if (!OOEnforceStandards())
 			{
 				properties["legacy_setupActions"] = *actions;
@@ -8443,7 +8436,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	}
 	// pod content should never be greater than 1 ton or this will give cargo counting problems elsewhere in the code.
 	// so do first a mass check for cargo added by script/plist.
-	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(*co_type)];
+	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:*co_type];
 	if (unit == UNITS_TONS && co_amount > 1) co_amount = 1;
 	else if (unit == UNITS_KILOGRAMS && co_amount > 1000) co_amount = 1000;
 	else if (unit == UNITS_GRAMS && co_amount > 1000000) co_amount = 1000000;
@@ -8486,7 +8479,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 - (OOCargoQuantity) cargoQuantityOnBoard
 {
 	NSUInteger result = [self cxx_cargoCount];
-	NSAssert(result < UINT32_MAX, @"Cargo quantity out of bounds.");
+	OOAssert(result < UINT32_MAX, "Cargo quantity out of bounds.");
 	return (OOCargoQuantity)result;
 }
 
@@ -8517,7 +8510,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	oo::PList::Array	list;
 
-	const std::vector<std::string> goods = oo::StringsFrom([[UNIVERSE commodityMarket] goods]);
+	const std::vector<std::string> goods = [[UNIVERSE commodityMarket] goods];
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
 
@@ -9311,7 +9304,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	
 	@try
 	{
-		if ([self isThargoid] && [roleSet hasRole:@"thargoid-mothership"])  [self broadcastThargoidDestroyed];
+		if ([self isThargoid] && [roleSet hasRole:"thargoid-mothership"])  [self broadcastThargoidDestroyed];
 		
 		if (!suppressExplosion && ([self isVisible] || HPdistance2([self position], [PLAYER position]) < SCANNER_MAX_RANGE2))
 		{
@@ -9392,7 +9385,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				[self releaseCargoPodsDebris];
 				
 				//  Throw out rocks and alloys to be scooped up
-				if ([self hasRole:@"asteroid"] || [self isBoulder])
+				if ([self hasRole:"asteroid"] || [self isBoulder])
 				{
 					if (!noRocks && (being_mined || randf() < 0.20))
 					{
@@ -9797,9 +9790,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (NSComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
 {
-	return [[self beaconCode] compare:[other beaconCode] options: NSCaseInsensitiveSearch];
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
 }
 
 
@@ -10312,7 +10305,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	// always do target lost
 	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
-	if (target == nil) [shipAI message:@"TARGET_LOST"];	// stale target? no major urgency.
+	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
 	else [shipAI reactToMessage:@"TARGET_LOST" context:@"flight updates"];	// execute immediately otherwise.
 }
 
@@ -10331,12 +10324,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		[self removeTarget:target];
 		[self doScriptEvent:OOJSID("shipTargetDestroyed") withArgument:target];
-		[shipAI message:@"TARGET_DESTROYED"];
+		[shipAI message:"TARGET_DESTROYED"];
 	}
 	if ([self isDefenseTarget:target]) 
 	{
 		[self removeDefenseTarget:target];
-		[shipAI message:@"DEFENSE_TARGET_DESTROYED"];
+		[shipAI message:"DEFENSE_TARGET_DESTROYED"];
 		[self doScriptEvent:OOJSID("defenseTargetDestroyed") withArgument:target];
 	}
 }
@@ -11832,7 +11825,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	[self setWeaponDataFromType:forward_weapon_type];
 	
 	ShipEntity *parent = [self owner];
-	NSAssert([parent isShipWithSubEntityShip:self], @"-fireSubentityLaserShot: called on ship which is not a subentity.");
+	OOAssert([parent isShipWithSubEntityShip:self], "-fireSubentityLaserShot: called on ship which is not a subentity.");
 
 	// subentity lasers still draw power from the main entity
 	if ([parent energy] <= weapon_energy_use) return NO;
@@ -13063,7 +13056,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					if (isPlayer && [other showScoopMessage] && procMessages)
 					{
 						[UNIVERSE clearPreviousMessage];
-						const std::optional<std::string> shipName = oo::OptionalString([other displayName]);
+						const std::optional<std::string> shipName = [other displayName];
 						[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName)) forCount:4];
 					}
 					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
@@ -13079,7 +13072,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			break;
 	}
 	
-	/*	Bug: docking failed due to NSRangeException while looking for element
+	/*	Bug: docking failed due to OORangeException while looking for element
 		NSNotFound of cargo mainfest in -[PlayerEntity unloadCargoPods].
 		Analysis: bad cargo pods being generated due to
 		-[Universe commodityForName:] looking in wrong place for names.
@@ -13089,7 +13082,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	*/
 	if (!co_type.has_value() && co_amount > 0)
 	{
-		co_type = oo::OptionalString([UNIVERSE getRandomCommodity]);
+		co_type = std::optional<std::string>([UNIVERSE getRandomCommodity]);
 		co_amount = [UNIVERSE getRandomAmountOfCommodity:oo::NSStringOrNil(co_type)];
 	}
 
@@ -13142,8 +13135,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		cargo.insert(cargo.begin(), oo::ObjCRef<ShipEntity *>(other));	// places most recently scooped object at eject position
 		[other setStatus:STATUS_IN_HOLD];
 		[other performTumble];
-		[shipAI message:@"CARGO_SCOOPED"];
-		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:@"HOLD_FULL"];
+		[shipAI message:"CARGO_SCOOPED"];
+		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:"HOLD_FULL"];
 	}
 	if (procEvents)
 	{
@@ -13555,7 +13548,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:station];
 	[self doScriptEvent:OOJSID("shipDockedWithStation") withArgument:station];
-	[shipAI message:@"DOCKED"];
+	[shipAI message:"DOCKED"];
 	[station noteDockedShip:self];
 	[UNIVERSE removeEntity:self];
 }
@@ -13613,7 +13606,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) enterWitchspace
 {
 	[UNIVERSE addWitchspaceJumpEffectForShip:self];
-	[shipAI message:@"ENTERED_WITCHSPACE"];
+	[shipAI message:"ENTERED_WITCHSPACE"];
 	
 	if (![[UNIVERSE sun] willGoNova])
 	{
@@ -13669,7 +13662,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		return NO;
 	}
 	[self setStatus:STATUS_EXITING_WITCHSPACE];
-	[shipAI message:@"EXITED_WITCHSPACE"];
+	[shipAI message:"EXITED_WITCHSPACE"];
 	
 	[UNIVERSE addWitchspaceJumpEffectForShip:self];
 	[self setStatus:STATUS_IN_FLIGHT];
@@ -13814,7 +13807,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		
 		// check total number acceptable
 		// the system's patrols don't have escorts set inside their dictionary, but accept max escorts.
-		if (_maxEscortCount == 0 && ([self hasPrimaryRole:@"police"] || [self hasPrimaryRole:@"hunter"] || [self hasRole:@"thargoid-mothership"])) 
+		if (_maxEscortCount == 0 && ([self hasPrimaryRole:@"police"] || [self hasPrimaryRole:@"hunter"] || [self hasRole:"thargoid-mothership"])) 
 		{
 			_maxEscortCount = MAX_ESCORTS;
 		}
@@ -13840,7 +13833,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			
 			[self doScriptEvent:OOJSID("shipAcceptedEscort") withArgument:other_ship];
 			[other_ship doScriptEvent:OOJSID("escortAccepted") withArgument:self];
-			[shipAI message:@"ACCEPTED_ESCORT"];
+			[shipAI message:"ACCEPTED_ESCORT"];
 			return YES;
 		}
 		else
@@ -14057,7 +14050,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	else
 	{
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 	}
 }
 
@@ -14083,8 +14076,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if (!system_station)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 		DESTROY(_primaryTarget);
 		[self setTargetStation:nil];
 		return;
@@ -14092,8 +14085,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if (!system_station->isStation)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 		DESTROY(_primaryTarget);
 		[self setTargetStation:nil];
 		return;
@@ -14251,11 +14244,11 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	// The specials dictionary as +dictionaryWithObjectsAndKeys: built it: it ended at the first nil.
 	oo::PList::Dict specials;
-	const std::optional<std::string> selfName = oo::OptionalString([self displayName]);
+	const std::optional<std::string> selfName = [self displayName];
 	if (selfName.has_value())
 	{
 		specials["[self:name]"] = *selfName;
-		const std::optional<std::string> targetName = oo::OptionalString([other_ship identFromShip: self]);
+		const std::optional<std::string> targetName = [other_ship identFromShip: self];
 		if (targetName.has_value())  specials["[target:name]"] = *targetName;
 	}
 	const std::optional<std::string> expandedMessage = oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(message_text), oo::ObjectFromPList(oo::PList(std::move(specials))), nil, nil, kOOExpandNoOptions));
@@ -14273,7 +14266,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		ShipEntity* ship = scanned_ships[i];
-		[[ship getAI] message: oo::NSStringFrom(expandedMessage)];
+		[[ship getAI] message:expandedMessage];
 	}
 }
 
@@ -14533,7 +14526,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		{
 			scanShip = (ShipEntity *)scan;
 			
-			if ([self hasRole:@"pilot"] == YES)
+			if ([self hasRole:"pilot"] == YES)
 			{
 				if ([scanShip primaryTarget] == nil)
 				{
@@ -14580,7 +14573,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	OOLog(@"dumpState.shipEntity", @"Type: %@", [self shipDataKey]);
 	OOLog(@"dumpState.shipEntity", @"Name: %@", oo::NSStringOrNil(name));
-	OOLog(@"dumpState.shipEntity", @"Display Name: %@", [self displayName]);
+	OOLog(@"dumpState.shipEntity", @"Display Name: %@", oo::NSStringOrNil([self displayName]));
 	OOLog(@"dumpState.shipEntity", @"Roles: %@", [self roleSet]);
 	OOLog(@"dumpState.shipEntity", @"Primary role: %@", oo::NSStringOrNil(primaryRole));
 	OOLog(@"dumpState.shipEntity", @"Script: %@", script);
@@ -14589,8 +14582,8 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	id target = [self primaryTarget];
 	if (target == nil)  target = @"<none>";
 	OOLog(@"dumpState.shipEntity", @"Target: %@", target);
-	OOLog(@"dumpState.shipEntity", @"Destination: %@", HPVectorDescription(_destination));
-	OOLog(@"dumpState.shipEntity", @"Other destination: %@", HPVectorDescription(coordinates));
+	OOLog(@"dumpState.shipEntity", @"Destination: %@", oo::NSStringFrom(cxx_HPVectorDescription(_destination)));
+	OOLog(@"dumpState.shipEntity", @"Other destination: %@", oo::NSStringFrom(cxx_HPVectorDescription(coordinates)));
 	OOLog(@"dumpState.shipEntity", @"Waypoint count: %u", number_of_navpoints);
 	OOLog(@"dumpState.shipEntity", @"Desired speed: %g", desired_speed);
 	OOLog(@"dumpState.shipEntity", @"Thrust: %g", thrust);
@@ -14620,7 +14613,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	OOLog(@"dumpState.shipEntity", @"Spawn time: %g (%g seconds ago)", [self spawnTime], [self timeElapsedSinceSpawn]);
 	if ([self isBeacon])
 	{
-		OOLog(@"dumpState.shipEntity", @"Beacon code: %@", [self beaconCode]);
+		OOLog(@"dumpState.shipEntity", @"Beacon code: %@", oo::NSStringOrNil([self beaconCode]));
 	}
 	OOLog(@"dumpState.shipEntity", @"Hull temperature: %g", ship_temperature);
 	OOLog(@"dumpState.shipEntity", @"Heat insulation: %g", [self heatInsulation]);
@@ -14656,9 +14649,9 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (id)scriptInfo	// shared selector (proposed ADR-0043)
+- (oo::PList)scriptInfo
 {
-	return oo::ObjectFromPList(scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : scriptInfo);	// empty rather than nil
+	return scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : scriptInfo;	// empty rather than null
 }
 
 
@@ -14799,7 +14792,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 - (void) sendAIMessage:(id)message	// shared selector (proposed ADR-0043), called by name
 {
-	[shipAI message:message];
+	[shipAI message:oo::StdString(message)];	// nil: "", as the NSString path gave
 }
 
 
@@ -14915,14 +14908,15 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 
 #ifndef NDEBUG
-- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) descriptionForObjDump
 {
-	std::string desc = oo::str::format("%s mass %g", oo::DescriptionOf([super descriptionForObjDump]).c_str(), [self mass]);
+	// DescriptionOf(nil) was "(null)"; preserve that for a disengaged super result.
+	std::string desc = oo::str::format("%s mass %g", [super descriptionForObjDump].value_or("(null)").c_str(), [self mass]);
 	if (![self isPlayer])
 	{
 		desc = oo::str::format("%s AI: %s", desc.c_str(), oo::DescriptionOf([[self getAI] shortDescriptionComponents]).c_str());
 	}
-	return oo::NSStringFrom(desc);
+	return desc;
 }
 #endif
 

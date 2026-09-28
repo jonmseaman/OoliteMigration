@@ -71,6 +71,6 @@ MA 02110-1301, USA.
 
 - (BOOL) isValidForScheduling;
 
-- (NSComparisonResult) compareByNextFireTime:(OOScriptTimer *)other;
+- (OOComparisonResult) compareByNextFireTime:(OOScriptTimer *)other;
 
 @end

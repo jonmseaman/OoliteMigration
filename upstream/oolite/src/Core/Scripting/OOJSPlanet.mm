@@ -63,6 +63,21 @@ static ooscript::Object sPlanetPrototype;
 
 
 namespace {
+
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 namespace {
@@ -184,16 +199,16 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global)
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
 	switch ([self planetType])
 	{
 		case STELLAR_TYPE_NORMAL_PLANET:
-			return @"Planet";
+			return std::string("Planet");
 		case STELLAR_TYPE_MOON:
-			return @"Moon";
+			return std::string("Moon");
 		default:
-			return @"Unknown";
+			return std::string("Unknown");
 	}
 }
 
@@ -217,7 +232,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			*value_raw = OOJSValueFromNativeObject(context, [[planet airColor] normalizedArray]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList(NormalizedColorComponents([planet airColor])));
 			return YES;
 			
 		case kPlanet_airColorMixRatio:
@@ -227,7 +242,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [planet airDensity], value);
 			
 		case kPlanet_illuminationColor:
-			*value_raw = OOJSValueFromNativeObject(context, [[planet illuminationColor] normalizedArray]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList(NormalizedColorComponents([planet illuminationColor])));
 			return YES;
 
 		case kPlanet_isMainPlanet:

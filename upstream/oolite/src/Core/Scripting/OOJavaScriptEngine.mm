@@ -27,9 +27,11 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Defaults.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 #include <cstring>
 #include "oofnd/StdLib.hpp"
@@ -56,15 +58,12 @@ MA 02110-1301, USA.
 	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
 
-#import "OOPListView.h"
 #import "OOFoundationBridge.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
-#import "NSStringOOExtensions.h"
 #import "OOWeakReference.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "ResourceManager.h"
-#import "NSNumberOOExtensions.h"
 #import "OOConstToJSString.h"
 #import "OOVisualEffectEntity.h"
 #import "OOWaypointEntity.h"
@@ -106,6 +105,8 @@ MA 02110-1301, USA.
 #import "OOLoggingExtended.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+
+#include "oofnd/objc/OOAssert.h"
 
 #include <stdlib.h>
 
@@ -249,7 +250,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		// First line: problem description
 		// avoid windows DEP exceptions!
 		OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-		activeScript = oo::OptionalString([[thisScript weakRefUnderlyingObject] displayName]).value_or("<unidentified script>");
+		activeScript = [[thisScript weakRefUnderlyingObject] displayName].value_or("<unidentified script>");
 		[thisScript release];
 
 		OO_LOG(messageClass, "{} JavaScript {} ({}): {}", highlight, severity, activeScript, messageText);
@@ -311,7 +312,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 - (id) init
 {
-	NSAssert(sSharedEngine == nil, @"Attempt to create multiple OOJavaScriptEngines.");
+	OOAssert(sSharedEngine == nil, "Attempt to create multiple OOJavaScriptEngines.");
 	
 	self = [super init];
 	if (!self)  { return nil; }
@@ -319,27 +320,28 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
 	ooscript::setCStringsAreUTF8();
 	
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 #ifndef NDEBUG
 	/*	Set stack trace preferences from preferences. These will be overriden
 		by the debug OXP script if installed, but being able to enable traces
 		without setting up the debug console could be useful for debugging
 		users' problems.
 	*/
-	[self setDumpStackForErrors:[defaults boolForKey:@"dump-stack-for-errors"]];
-	[self setDumpStackForWarnings:[defaults boolForKey:@"dump-stack-for-warnings"]];
+	[self setDumpStackForErrors:defaults.boolForKey("dump-stack-for-errors")];
+	[self setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
 #endif
 	
 	assert(sizeof(ooscript::Char16) == sizeof(unichar));
 	
 	// initialize the JS run time, and return result in runtime.
-	uint32_t jsRuntimeInMiB = oo::PListView(defaults).get<int>(@"jsruntime-size-mib", OOJS_RUNTIME_SIZE_MiB);
+	const oo::PList jsRuntimeSize = defaults.object("jsruntime-size-mib");
+	uint32_t jsRuntimeInMiB = static_cast<uint32_t>(oo::PListGet<int>::from(jsRuntimeSize.isNull() ? nullptr : &jsRuntimeSize, OOJS_RUNTIME_SIZE_MiB));
 	_runtime = ooscript::newRuntime(jsRuntimeInMiB * 1024L * 1024L);
 	
 	// if runtime creation failed, end the program here.
 	if (_runtime == NULL)
 	{
-		OOLog(@"script.javaScript.init.error", @"***** FATAL ERROR: failed to create JavaScript runtime with size %uMiB.", jsRuntimeInMiB);
+		OO_LOG("script.javaScript.init.error", "***** FATAL ERROR: failed to create JavaScript runtime with size {}MiB.", static_cast<unsigned>(jsRuntimeInMiB));
 		exit(1);
 	}
 	
@@ -354,7 +356,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 - (void) createMainThreadContext
 {
-	NSAssert(gOOJSMainThreadContext == NULL, @"-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
+	OOAssert(gOOJSMainThreadContext == NULL, "-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
 	
 	// create a context and associate it with the JS runtime.
 	gOOJSMainThreadContext = (ooscript::newContext(_runtime, OOJS_STACK_SIZE));
@@ -362,7 +364,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	// if context creation failed, end the program here.
 	if (gOOJSMainThreadContext == NULL)
 	{
-		OOLog(@"script.javaScript.init.error", @"%@", @"***** FATAL ERROR: failed to create JavaScript context.");
+		OO_LOG("script.javaScript.init.error", "{}", "***** FATAL ERROR: failed to create JavaScript context.");
 		exit(1);
 	}
 	
@@ -373,11 +375,12 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
 	if (ooscript::gcZealSupported())
 	{
-		uint8_t gcZeal = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned char>(@"js-gc-zeal");
+		const oo::PList gcZealValue = oo::Defaults::standard().object("js-gc-zeal");
+		uint8_t gcZeal = static_cast<uint8_t>(oo::PListGet<unsigned char>::from(gcZealValue.isNull() ? nullptr : &gcZealValue, 0));
 		if (gcZeal > 0)
 		{
 			// Useful js-gc-zeal values are 0 (off), 1 and 2.
-			OOLog(@"script.javaScript.debug.gcZeal", @"Setting JavaScript garbage collector zeal to %u.", gcZeal);
+			OO_LOG("script.javaScript.debug.gcZeal", "Setting JavaScript garbage collector zeal to {}.", static_cast<unsigned>(gcZeal));
 			ooscript::setGCZeal((gOOJSMainThreadContext), gcZeal);
 		}
 	}
@@ -391,7 +394,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	ooscript::initStandardClasses((gOOJSMainThreadContext), (_globalObject));
 	if (![self lookUpStandardClassPointers])
 	{
-		OOLog(@"script.javaScript.init.error", @"%@", @"***** FATAL ERROR: failed to look up standard JavaScript classes.");
+		OO_LOG("script.javaScript.init.error", "{}", "***** FATAL ERROR: failed to look up standard JavaScript classes.");
 		exit(1);
 	}
 	[self registerStandardObjectConverters];
@@ -439,7 +442,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 	ooscript::endRequest((gOOJSMainThreadContext));
 	
-	OOLog(@"script.javaScript.init.success", @"%@", @"Set up JavaScript context.");
+	OO_LOG("script.javaScript.init.success", "{}", "Set up JavaScript context.");
 }
 
 
@@ -472,7 +475,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 
 - (BOOL) reset
 {
-	NSAssert(gOOJSMainThreadContext != NULL, @"JavaScript engine not active. Can't reset.");
+	OOAssert(gOOJSMainThreadContext != NULL, "JavaScript engine not active. Can't reset.");
 	
 	OOJSFrameCallbacksRemoveAll();
 	
@@ -481,28 +484,28 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	static int counter = 3;		// loading a savegame with different strict mode calls js reset twice
 	if (counter-- == 0) {
 	counter = 3;
-	OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
+	OO_LOG("script.javascript.init.error", "{}", "JavaScript processes still pending. Can't reset JavaScript engine.");
 		return NO;
 	}
 	else
 	{
-		OOLog(@"script.javascript.init", @"%@", @"JavaScript reset successful.");
+		OO_LOG("script.javascript.init", "{}", "JavaScript reset successful.");
 	}
 #endif
 		
 	if (ooscript::isThreadsafeBuild())
 	{
-		//NSAssert(!ooscript::isInRequest((gOOJSMainThreadContext)), @"JavaScript processes still pending. Can't reset JavaScript engine.");
+		//OOAssert(!ooscript::isInRequest((gOOJSMainThreadContext)), "JavaScript processes still pending. Can't reset JavaScript engine.");
 		
 		if (ooscript::isInRequest((gOOJSMainThreadContext)))
 		{
 			// some threads are still pending, this should mean timers are still being removed.
-			OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
+			OO_LOG("script.javascript.init.error", "{}", "JavaScript processes still pending. Can't reset JavaScript engine.");
 			return NO;
 		}
 		else
 		{
-			OOLog(@"script.javascript.init", @"%@", @"JavaScript reset successful.");
+			OO_LOG("script.javascript.init", "{}", "JavaScript reset successful.");
 		}
 	}
 	
@@ -550,7 +553,7 @@ OOJSRelinquishContext(context);
 	ooscript::Context context = NULL;
 	BOOL						result;
 	
-	NSParameterAssert(OOJSValueIsFunction(context, function));
+	OOParameterAssert(OOJSValueIsFunction(context, function));
 	
 	context = OOJSAcquireContext();
 	
@@ -691,7 +694,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
-	OOLog(@"script.javaScript.debugger", @"debugger invoked during %@:", [[OOJSScript currentlyRunningScript] displayName]);
+	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", [[OOJSScript currentlyRunningScript] displayName].value_or("(null)"));
 	OOJSDumpStack(context);
 	
 	OOJSResumeTimeLimiter();
@@ -753,7 +756,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:error:stackSkip:showingLocation:withMessage:)])
 	{
-		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:oo::NSStringFrom(message)];
+		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:message];
 	}
 }
 
@@ -764,7 +767,7 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:logMessage:ofClass:)])
 	{
-		[_monitor jsEngine:self context:theContext logMessage:oo::NSStringOrNil(message) ofClass:oo::NSStringOrNil(messageClass)];
+		[_monitor jsEngine:self context:theContext logMessage:message.value_or("") ofClass:messageClass];
 	}
 }
 
@@ -935,11 +938,11 @@ ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 		}
 		@catch (OOException *exception)
 		{
-			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", [exception name], [exception reason]);
 		}
 		@catch (OOFoundationException *exception)
 		{
-			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", [exception name], [exception reason]);
+			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		}
 	}
 }
@@ -956,7 +959,7 @@ static NSUInteger sConsoleEvalLineNo;
 namespace {
 static void GetLocationNameAndLine(ooscript::Context context, ooscript::StackFrame stackFrame, const char **name, NSUInteger *line)
 {
-	NSCParameterAssert(context != NULL && stackFrame != NULL && name != NULL && line != NULL);
+	OOCParameterAssert(context != NULL && stackFrame != NULL && name != NULL && line != NULL);
 	
 	*name = NULL;
 	*line = 0;
@@ -980,7 +983,7 @@ static void GetLocationNameAndLine(ooscript::Context context, ooscript::StackFra
 
 std::optional<std::string> OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame)
 {
-	NSCParameterAssert(context != NULL && stackFrame != NULL);
+	OOCParameterAssert(context != NULL && stackFrame != NULL);
 
 	const char	*fileName;
 	NSUInteger	lineNo;
@@ -1010,7 +1013,7 @@ void OOJSMarkConsoleEvalLocation(ooscript::Context context, ooscript::StackFrame
 
 void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 {
-	NSCParameterAssert(name != NULL && name[0] != '\0' && idCache != NULL);
+	OOCParameterAssert(name != NULL && name[0] != '\0' && idCache != NULL);
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -1105,7 +1108,7 @@ void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional
 
 void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args)
 {
-	NSCParameterAssert(ooscript::isInRequest((context)));
+	OOCParameterAssert(ooscript::isInRequest((context)));
 
 	@try
 	{
@@ -1135,7 +1138,7 @@ void OOJSReportWrappedException(ooscript::Context context, id exception)
 
 void OOJSUnreachable(const char *function, const char *file, unsigned line)
 {
-	OOLog(@"fatal.unreachable", @"Supposedly unreachable statement reached in %s (%@:%u) -- terminating.", function, OOLogAbbreviatedFileName(file), line);
+	OO_LOG("fatal.unreachable", "Supposedly unreachable statement reached in {} ({}:{}) -- terminating.", function, oo::log::abbreviatedFileName(file), static_cast<unsigned>(line));
 	abort();
 }
 
@@ -1250,7 +1253,7 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 	
 	double					value;
 	
-	NSCParameterAssert(context != NULL && (argv != NULL || argc == 0) && outNumber != NULL);
+	OOCParameterAssert(context != NULL && (argv != NULL || argc == 0) && outNumber != NULL);
 	
 	// Get value, if possible.
 	if (EXPECT_NOT(!ooscript::valueToNumber((context), (argv[0]), &value) || isnan(value)))
@@ -1278,36 +1281,37 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
-- (id) oo_jsClassName
+- (std::optional<std::string>) cxx_oo_jsClassName
 {
-	return nil;
+	return std::nullopt;
 }
 
 
-- (id) oo_jsDescription
+- (std::optional<std::string>) cxx_oo_jsDescription
 {
-	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
+	return [self cxx_oo_jsDescriptionWithClassName:[self cxx_oo_jsClassName]];
 }
 
 
-- (id) oo_jsDescriptionWithClassName:(id)className
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className
 {
 	OOJS_PROFILE_ENTER
 
 	id						components = [self descriptionComponents];
-	if (className == nil)  className = [[self class] description];
+	std::optional<std::string> name = className;
+	if (!name.has_value())  name = oo::OptionalString([[self class] description]);
 
 	// "%@" of each: oo::DescriptionOf prints the same text.
 	if (components != nil)
 	{
-		return oo::NSStringFrom(oo::str::format("[%s %s]", oo::DescriptionOf(className).c_str(), oo::DescriptionOf(components).c_str()));
+		return oo::str::format("[%s %s]", name->c_str(), oo::DescriptionOf(components).c_str());
 	}
 	else
 	{
-		return oo::NSStringFrom(oo::str::format("[object %s]", oo::DescriptionOf(className).c_str()));
+		return oo::str::format("[object %s]", name->c_str());
 	}
 
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
@@ -1420,7 +1424,7 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 
 void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited)
 {
-	NSCParameterAssert(string != NULL && strCache != NULL && inited != NULL && !*inited);
+	OOCParameterAssert(string != NULL && strCache != NULL && inited != NULL && !*inited);
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -1463,7 +1467,7 @@ std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context c
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
 	ooscript::String string = (ooscript::valueToString((context), (value)));	// Calls the value's toString method if needed.
 	return cxx_OOStringFromJSString(context, string);
@@ -1514,7 +1518,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
+	OOCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
 	if (OOJSValueIsFunction(context, value))
 	{
@@ -1807,13 +1811,13 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_NATIVE_ENTER(context)
 	
 	id						object = nil;
-	id						description = nil;	// the object's own -oo_jsDescription / -description
+	id						description = nil;	// the object's own -cxx_oo_jsDescription / -description
 	ooscript::ClassDef					*jsClass = NULL;
 
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object != nil)
 	{
-		description = [object oo_jsDescription];
+		description = oo::NSStringOrNil([object cxx_oo_jsDescription]);
 		if (description == nil)  description = [object description];
 	}
 	if (description == nil)
@@ -1841,9 +1845,9 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 	ooscript::Value							rval = ooscript::undefinedValue();
 	bool							result = NO;
 	
-	NSCParameterAssert(entity != nil && param != NULL);
-	NSCParameterAssert(param->context != NULL && ooscript::isInRequest((param->context)));
-	NSCParameterAssert(OOJSValueIsFunction(param->context, param->function));
+	OOCParameterAssert(entity != nil && param != NULL);
+	OOCParameterAssert(param->context != NULL && ooscript::isInRequest((param->context)));
+	OOCParameterAssert(OOJSValueIsFunction(param->context, param->function));
 	
 	if (EXPECT_NOT(param->errorFlag))  return NO;
 	
@@ -1933,14 +1937,14 @@ static std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *> *sRe
 
 void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass)
 {
-	NSCParameterAssert(subclass != NULL && superclass != NULL);
+	OOCParameterAssert(subclass != NULL && superclass != NULL);
 	
 	if (sRegisteredSubClasses == NULL)
 	{
 		sRegisteredSubClasses = new std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *>;
 	}
 
-	NSCAssert(sRegisteredSubClasses->count(subclass) == 0, @"A JS class cannot be registered as a subclass of multiple classes.");
+	OOCAssert(sRegisteredSubClasses->count(subclass) == 0, "A JS class cannot be registered as a subclass of multiple classes.");
 
 	sRegisteredSubClasses->emplace(subclass, superclass);
 }
@@ -1957,8 +1961,8 @@ static void UnregisterSubclasses(void)
 
 BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
 {
-	NSCParameterAssert(putativeSubclass != NULL && superclass != NULL);
-	NSCAssert(sRegisteredSubClasses != NULL, @"OOJSIsSubclass() called before any subclasses registered (disallowed for hot path efficiency).");
+	OOCParameterAssert(putativeSubclass != NULL && superclass != NULL);
+	OOCAssert(sRegisteredSubClasses != NULL, "OOJSIsSubclass() called before any subclasses registered (disallowed for hot path efficiency).");
 	
 	do
 	{
@@ -1981,8 +1985,8 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 {
 #ifndef NDEBUG
 	OOJS_PROFILE_ENTER_NAMED(name)
-	NSCParameterAssert(requiredObjCClass != Nil);
-	NSCParameterAssert(context != NULL && object != NULL && requiredJSClass != NULL && outObject != NULL);
+	OOCParameterAssert(requiredObjCClass != Nil);
+	OOCParameterAssert(context != NULL && object != NULL && requiredJSClass != NULL && outObject != NULL);
 #else
 	OOJS_PROFILE_ENTER
 #endif
@@ -2006,7 +2010,7 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, got ? got->c_str() : "(null)");
 		return NO;
 	}
-	NSCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), @"Native object accessor requires JS class with private storage.");
+	OOCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), "Native object accessor requires JS class with private storage.");
 	
 	// Get the underlying object.
 	*outObject = [(id)ooscript::getPrivate((context), (object)) weakRefUnderlyingObject];

@@ -64,7 +64,7 @@ MA 02110-1301, USA.
 - (std::optional<std::string>)scriptDescription;	// nullopt: none
 - (id)version;	// shared selector (Foundation declares -version too): -cxx_version as an Objective-C string, or nil
 - (std::optional<std::string>)cxx_version;	// nullopt: none (bead oo-3rb.291.1)
-- (id)displayName;	// shared selector (proposed ADR-0043): "name version" if version is defined, otherwise just "name".
+- (std::optional<std::string>)displayName;	// flipped with its family (bead oo-3rb.267): "name version" if version is defined, otherwise just "name".
 
 - (BOOL) requiresTickle;
 - (void)runWithTarget:(Entity *)target;

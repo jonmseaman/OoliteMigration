@@ -39,9 +39,12 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOAssert.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
+#include <map>
 
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {
@@ -100,7 +103,7 @@ std::string TrimmedForHighlight(const std::string &text)
 - (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
 - (void) drawSystemMarker:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
 
-- (void) drawEquipmentList:(NSArray *)eqptList z:(GLfloat)z;
+- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
 - (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
 
 @end
@@ -151,7 +154,6 @@ static BOOL _refreshStarChart = NO;
 		}
 		
 		title = std::string();	// an empty title, not none (-setTitle: would have made it none)
-
 		textColor = [[OOColor yellowColor] retain];
 		
 		drawPosition = make_vector(0.0f, 0.0f, 640.0f);
@@ -203,8 +205,7 @@ static BOOL _refreshStarChart = NO;
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 	}
 	
-	title = gui_title;	// as given (not through -setTitle:)
-	
+	title = gui_title;	// as given (not through -setTitle:)	
 	textColor = [[OOColor yellowColor] retain];
 
 	return self;
@@ -287,7 +288,7 @@ static BOOL _refreshStarChart = NO;
 	pixel_text_size = NSMakeSize(csize, csize);
 	pixel_title_size = NSMakeSize(csize * 1.75f, csize * 1.5f);
 	
-	OOLog(@"gui.reset", @"gui %@ reset to rows:%d columns:%d start:%d", self, n_rows, n_columns, pixel_row_start);
+	OO_LOG("gui.reset", "gui {} reset to rows:{} columns:{} start:{}", oo::DescriptionOf(self), n_rows, n_columns, pixel_row_start);
 
 	rowRange = NSMakeRange(0,n_rows);
 	[self clear];
@@ -324,15 +325,27 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (id)title	// shared selector (proposed ADR-0043)
+- (id)title	// shared selector (Foundation declares -title too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(title);
+	return oo::NSStringOrNil([self cxx_title]);
 }
 
 
-- (void) setTitle:(id)str	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_title
 {
-	title = TitleFrom(oo::OptionalString(str));
+	return title;
+}
+
+
+- (void) setTitle:(id)str	// shared selector (Foundation declares -setTitle: too; retires with oo-qps)
+{
+	[self cxx_setTitle:oo::OptionalString(str)];
+}
+
+
+- (void) cxx_setTitle:(const std::optional<std::string> &)str
+{
+	title = TitleFrom(str);
 }
 
 
@@ -715,7 +728,7 @@ static BOOL _refreshStarChart = NO;
 - (void) clearAndKeepBackground:(BOOL)keepBackground
 {
 	unsigned i;
-	[self setTitle: nil];
+	[self cxx_setTitle:std::nullopt];
 	for (i = 0; i < n_rows; i++)
 	{
 		[self setText:@"" forRow:i align:GUI_ALIGN_LEFT];
@@ -1322,9 +1335,10 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 }
 
 
-- (void) drawEquipmentList:(NSArray *)eqptList z:(GLfloat)z
+- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z
 {
-	if ([eqptList count] == 0) return;
+	const oo::PList::Array *eqptArray = eqptList.getIf<oo::PList::Array>();
+	if (eqptArray == nullptr || eqptArray->empty()) return;
 	
 	OOGUIRow		firstRow = STATUS_EQUIPMENT_FIRST_ROW;
 	NSUInteger		maxRows = STATUS_EQUIPMENT_MAX_ROWS;
@@ -1336,12 +1350,10 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 
 	NSInteger		firstY = 40;	// firstRow =10 :-> 40  - firstRow=11 -> 24 etc...
-	NSUInteger		eqptCount = [eqptList count];
+	NSUInteger		eqptCount = eqptArray->size();
 	NSUInteger		pageCount = 1;
 	NSUInteger		i;
 	NSInteger		start;
-	NSArray			*info = nil;
-	NSString		*name = nil;
 	BOOL			damaged;
 	
 	// Paging calculations. Assuming 10 lines we get - one page:20 items per page (ipp)
@@ -1385,10 +1397,10 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		if (OOMouseInteractionModeIsUIScreen([[UNIVERSE gameController] mouseInteractionMode]))
 		{
 			// clear the gui-more and gui-back key rows first
-			[self setText:@"" forRow:firstRow];
-			[self setKey:GUI_KEY_SKIP forRow:firstRow];
-			[self setText:@"" forRow:firstRow + STATUS_EQUIPMENT_MAX_ROWS];
-			[self setKey:GUI_KEY_SKIP forRow:firstRow + STATUS_EQUIPMENT_MAX_ROWS];
+			[self cxx_setText:"" forRow:firstRow];
+			[self cxx_setKey:"SKIP-ROW" forRow:firstRow];
+			[self cxx_setText:"" forRow:firstRow + STATUS_EQUIPMENT_MAX_ROWS];
+			[self cxx_setKey:"SKIP-ROW" forRow:firstRow + STATUS_EQUIPMENT_MAX_ROWS];
 			[self setSelectableRange:NSMakeRange(0,0)];
 			
 			[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
@@ -1398,8 +1410,8 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	if (statusPage > 1)
 	{
 		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow];
-		[self setArray:[NSArray arrayWithObjects:DESC(@"gui-back"),  @"", @" <-- ",nil] forRow:firstRow];
-		[self setKey:GUI_KEY_OK forRow:firstRow];
+		[self cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", " <-- " } forRow:firstRow];
+		[self cxx_setKey:"OK" forRow:firstRow];
 		firstY -= 16; // start 1 row down!
 		if (statusPage == pageCount)
 		{
@@ -1410,8 +1422,8 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	if (statusPage < pageCount)
 	{
 		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow + maxRows];
-		[self setArray:[NSArray arrayWithObjects:DESC(@"gui-more"),  @"", @" --> ",nil] forRow:firstRow + maxRows];
-		[self setKey:GUI_KEY_OK forRow:firstRow + maxRows];
+		[self cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", " --> " } forRow:firstRow + maxRows];
+		[self cxx_setKey:"OK" forRow:firstRow + maxRows];
 		if (statusPage == 1)
 		{
 			[self setSelectableRange:NSMakeRange(firstRow + maxRows, 1)];
@@ -1429,11 +1441,14 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	eqptCount = (NSInteger)OOClampInteger(eqptCount, 1, start + itemsPerColumn * 2);
 	for (i = start; i < eqptCount; i++)
 	{
-		info = oo::PListView(eqptList).at<NSArray *>(i);
-		name = oo::PListView(info).at<NSString *>(0);
-		if([name length] > 42)  name = [[name substringToIndex:40] stringByAppendingString:@"..."];
+		const oo::PList &info = (*eqptArray)[i];
+		std::string name = info.at<std::string>(0);
+		if (oo::str::length(name) > 42)
+		{
+			name = oo::utf16ToUtf8(oo::utf8ToUtf16(name).substr(0, 40)) + "...";
+		}
 		
-		damaged = !oo::PListView(info).at<BOOL>(1);
+		damaged = !info.at<bool>(1);
 		if (damaged) 
 		{
 			// Damaged items show up orange.
@@ -1441,18 +1456,22 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		} 
 		else /// add color selection here
 		{
-			OOColor				*dispCol = oo::PListView(info).at<id>(2);
+			OOColor *dispCol = nil;
+			if (const oo::PList::Array *row = info.getIf<oo::PList::Array>())
+			{
+				if (row->size() > 2)  dispCol = (OOColor *)oo::ObjectIn((*row)[2]);
+			}
 			// Normal items in default colour
 			[self cxx_setGLColorFromSetting:"status_equipment_ok_color" defaultValue:dispCol alpha:1.0];
 		}
 		
 		if (i - start < itemsPerColumn)
 		{
-			OODrawString(name, -220, firstY - 16 * (NSInteger)(i - start), z, NSMakeSize(15, 15));
+			cxx_OODrawString(name, -220, firstY - 16 * (NSInteger)(i - start), z, NSMakeSize(15, 15));
 		}
 		else
 		{
-			OODrawString(name, 50, firstY - 16 * (NSInteger)(i - itemsPerColumn - start), z, NSMakeSize(15, 15));
+			cxx_OODrawString(name, 50, firstY - 16 * (NSInteger)(i - itemsPerColumn - start), z, NSMakeSize(15, 15));
 		}
 	}
 }
@@ -1510,7 +1529,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			}
 			if ([player guiScreen] == GUI_SCREEN_STATUS)
 			{
-				[self drawEquipmentList:[player equipmentList] z:z];
+				[self cxx_drawEquipmentList:oo::PList([player cxx_equipmentList]) z:z];
 			}
 			if ([player guiScreen] == GUI_SCREEN_STICKPROFILE)
 			{
@@ -1823,22 +1842,22 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	OOGalaxyID galaxy_number = [player galaxyNumber];
 	NSInteger system_id = [UNIVERSE findSystemNumberAtCoords:[player cursor_coordinates] withGalaxy:[player galaxyNumber] includingHidden:NO];
 
-	NSString *location_key = [NSString stringWithFormat:@"long-range-chart-title-%d-%ld", galaxy_number, (long)system_id];
-	if ([[UNIVERSE descriptions] valueForKey:location_key] == nil)
+	const std::string location_key = oo::str::format("long-range-chart-title-%d-%ld", galaxy_number, (long)system_id);
+	if (![UNIVERSE cxx_descriptionForKey:location_key])
 	{
-		NSString *gal_key = [NSString stringWithFormat:@"long-range-chart-title-%d", galaxy_number];
-		if ([[UNIVERSE descriptions] valueForKey:gal_key] == nil)
+		const std::string gal_key = oo::str::format("long-range-chart-title-%d", galaxy_number);
+		if (![UNIVERSE cxx_descriptionForKey:gal_key])
 		{
-			[self setTitle:[NSString stringWithFormat:DESC(@"long-range-chart-title-d"), galaxy_number+1]];
+			[self cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-title-d")), { galaxy_number + 1 })];
 		}
 		else
 		{
-			[self setTitle:[UNIVERSE descriptionForKey:gal_key]];
+			[self cxx_setTitle:[UNIVERSE cxx_descriptionForKey:gal_key]];
 		}
 	}
 	else
 	{
-		[self setTitle:[UNIVERSE descriptionForKey:location_key]];
+		[self cxx_setTitle:[UNIVERSE cxx_descriptionForKey:location_key]];
 	}
 }
 
@@ -1897,8 +1916,8 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 	NSInteger concealment[256];
 	for (i=0;i<256;i++) {
-		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxy_id];
-		concealment[i] = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxy_id];
+		concealment[i] = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 	
 	BOOL		*systemsFound = [UNIVERSE systemsFound];
@@ -1935,7 +1954,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	double dx, dy;
 	
 	// get a list of systems marked as contract destinations
-	NSDictionary* markedDestinations = [player markedDestinations];
+	const std::optional<std::map<int, std::vector<oo::PList>>> markedDestinations = [player cxx_markedDestinations];
 	
 	// get present location
 	cu = NSMakePoint((float)(hscale*galaxy_coordinates.x+hoffset),(float)(vscale*galaxy_coordinates.y+voffset));
@@ -1952,7 +1971,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	{
 		OOSystemID sysid;
 		int tec, eco, gov;
-		NSString* p_name;
+		std::string p_name;
 		BOOL nova;
 	} nearby_systems[ 256 ];
 	static int num_nearby_systems = 0;
@@ -1961,27 +1980,25 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	{
 		// saved systems are stale; recompute
 		_refreshStarChart = NO;
-		for (i = 0; i < num_nearby_systems; i++)
-			[nearby_systems[ i ].p_name release];
 
 		num_nearby_systems = 0;
 		for (i = 0; i < 256; i++)
 		{
 
-			NSDictionary* sys_info = [UNIVERSE generateSystemData:i];
-			if (EXPECT_NOT(oo::PListView(sys_info).get<BOOL>(@"sun_gone_nova")))
+			const oo::PList sys_info = [UNIVERSE cxx_generateSystemData:i];
+			if (EXPECT_NOT(sys_info.get<bool>("sun_gone_nova")))
 			{
 				nearby_systems[ num_nearby_systems ].gov = -1;	// Flag up nova systems!
 			}
 			else
 			{
-				nearby_systems[ num_nearby_systems ].tec = oo::PListView(sys_info).get<int>(KEY_TECHLEVEL);
-				nearby_systems[ num_nearby_systems ].eco = oo::PListView(sys_info).get<int>(KEY_ECONOMY);
-				nearby_systems[ num_nearby_systems ].gov = oo::PListView(sys_info).get<int>(KEY_GOVERNMENT);
+				nearby_systems[ num_nearby_systems ].tec = sys_info.get<int>(oo::StdString(KEY_TECHLEVEL));
+				nearby_systems[ num_nearby_systems ].eco = sys_info.get<int>(oo::StdString(KEY_ECONOMY));
+				nearby_systems[ num_nearby_systems ].gov = sys_info.get<int>(oo::StdString(KEY_GOVERNMENT));
 			}
 			nearby_systems[ num_nearby_systems ].sysid = i;
-			nearby_systems[ num_nearby_systems ].p_name = [oo::PListView(sys_info).get<NSString *>(KEY_NAME) retain];
-			nearby_systems[ num_nearby_systems ].nova = oo::PListView([UNIVERSE generateSystemData:i]).get<BOOL>(@"sun_gone_nova");
+			nearby_systems[ num_nearby_systems ].p_name = sys_info.get<std::string>(oo::StdString(KEY_NAME));
+			nearby_systems[ num_nearby_systems ].nova = [UNIVERSE cxx_generateSystemData:i].get<bool>("sun_gone_nova");
 			num_nearby_systems++;
 		}
 		saved_galaxy_id = [player galaxyNumber];
@@ -1990,7 +2007,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	static OOSystemID savedPlanetNumber = 0;
 	static OOSystemID savedDestNumber = 0;
 	static OORouteType savedArrayMode = OPTIMIZED_BY_NONE;
-	static NSDictionary *routeInfo = nil;
+	static oo::PList routeInfo;	// null: no cached route
 
 	/* May override current mode for mission screens */
 	if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || 
@@ -2010,10 +2027,9 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	{
 		OOSystemID planetNumber = [PLAYER systemID];
 		OOSystemID destNumber = [PLAYER targetSystemID];
-		if (routeInfo == nil || planetNumber != savedPlanetNumber || destNumber != savedDestNumber || advancedNavArrayMode != savedArrayMode)
+		if (routeInfo.isNull() || planetNumber != savedPlanetNumber || destNumber != savedDestNumber || advancedNavArrayMode != savedArrayMode)
 		{
-			[routeInfo release];
-			routeInfo = [[UNIVERSE routeFromSystem:planetNumber toSystem:destNumber optimizedBy:advancedNavArrayMode] retain];
+			routeInfo = [UNIVERSE cxx_routeFromSystem:planetNumber toSystem:destNumber optimizedBy:advancedNavArrayMode];
 			savedPlanetNumber = planetNumber;
 			savedDestNumber = destNumber;
 			savedArrayMode = advancedNavArrayMode;
@@ -2024,15 +2040,15 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		// get out of it so that distance and time data can be displayed
 		//if ([[[UNIVERSE gameView] typedString] length] > 0)  [player clearPlanetSearchString];
 		
-		if (routeInfo)  routeExists = YES;
+		if (!routeInfo.isNull())  routeExists = YES;
 		
-		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute: oo::PListFrom(planetNumber != destNumber ? (id)routeInfo : nil) optimizedBy:advancedNavArrayMode zoom: zoom];
+		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute:(planetNumber != destNumber ? routeInfo : oo::PList()) optimizedBy:advancedNavArrayMode zoom: zoom];
 
 		if (routeExists)
 		{
-			distance = oo::PListView(routeInfo).get<double>(@"distance");
-			time = oo::PListView(routeInfo).get<double>(@"time");
-			jumps = oo::PListView(routeInfo).get<int>(@"jumps");
+			distance = routeInfo.get<double>("distance");
+			time = routeInfo.get<double>("time");
+			jumps = routeInfo.get<int>("jumps");
 
 			if (distance == 0.0 && planetNumber != destNumber)
 			{
@@ -2114,22 +2130,26 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			continue;
 		}
 
-		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxy_id];
+		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxy_id];
 		float blob_factor = guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
-		float blob_size = (1.0f + blob_factor * oo::PListView(systemInfo).get<float>(@"radius"))/zoom;
+		float blob_size = (1.0f + blob_factor * systemInfo.get<float>("radius"))/zoom;
 		if (blob_size < 0.5) blob_size = 0.5;
 
 		star.x = (float)(sys_coordinates.x * hscale + hoffset);
 		star.y = (float)(sys_coordinates.y * vscale + voffset);
 
 		noNova = !nearby_systems[i].nova;
-		NSAssert1(chart_mode <= OOLRC_MODE_TECHLEVEL, @"Long range chart mode %i out of range", (int)chart_mode);
+		OOAssert(chart_mode <= OOLRC_MODE_TECHLEVEL, "Long range chart mode %i out of range", (int)chart_mode);
 	
-		NSArray *markers = [markedDestinations objectForKey:[NSNumber numberWithInt:i]];
-		if (markers != nil)	// is marked
+		if (markedDestinations.has_value())
 		{
-			GLfloat base_size = 0.5f * blob_size + 2.5f;
-			[self drawSystemMarkers:oo::PListFrom(markers) atX:x+star.x andY:y+star.y andZ:z withAlpha:alpha andScale:base_size];
+			const auto markersIt = markedDestinations->find(i);
+			if (markersIt != markedDestinations->end())	// is marked
+			{
+				GLfloat base_size = 0.5f * blob_size + 2.5f;
+				[self drawSystemMarkers:oo::PList(oo::PList::Array(markersIt->second.begin(), markersIt->second.end()))
+									atX:x+star.x andY:y+star.y andZ:z withAlpha:alpha andScale:base_size];
+			}
 		}
 
 		if (concealment[i] >= OO_SYSTEMCONCEALMENT_NODATA) {
@@ -2322,7 +2342,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 				}
 
-				OODrawString(sys->p_name, x + star.x + 2.0, y + star.y, z, chSize);
+				cxx_OODrawString(sys->p_name, x + star.x + 2.0, y + star.y, z, chSize);
 			}
 			else if (EXPECT(sys->gov >= 0))	// Not a nova? Show the info.
 			{
@@ -2364,7 +2384,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				
 				}
 
-				OODrawHilightedString(sys->p_name, x + star.x + 2.0, y + star.y, z, chSize);
+				cxx_OODrawHilightedString(sys->p_name, x + star.x + 2.0, y + star.y, z, chSize);
 			}
 			else if (sys->gov >= 0)	// Not a nova? Show the info.
 			{
@@ -2387,40 +2407,39 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	tab_stops[2] = 288;
 	[self cxx_overrideTabs:tab_stops from:cxx_kGuiChartTraveltimeTabs length:3];
 	[self setTabStops:tab_stops];
-	NSString *targetName = [[UNIVERSE getSystemName:target] retain];
+	const std::string targetName = [UNIVERSE cxx_getSystemName:target].value_or(std::string());
 
 	// distance-f & est-travel-time-f are identical between short & long range charts in standard Oolite, however can be alterered separately via OXPs
-	NSString *travelDistLine = @"";
+	std::string travelDistLine;
 	if (distance > 0)
 	{
-		travelDistLine = OOExpandKey(@"long-range-chart-distance", distance);
+		travelDistLine = oo::StdString(OOExpandKey(@"long-range-chart-distance", distance));
 	}
-	NSString *travelTimeLine = @"";
+	std::string travelTimeLine;
 	if (time > 0)
 	{
-		travelTimeLine = OOExpandKey(@"long-range-chart-est-travel-time", time);
+		travelTimeLine = oo::StdString(OOExpandKey(@"long-range-chart-est-travel-time", time));
 	}
 	
 	if(concealment[target] < OO_SYSTEMCONCEALMENT_NONAME)
 	{
-		[self setArray:[NSArray arrayWithObjects:targetName, travelDistLine,travelTimeLine,nil] forRow:textRow];
+		[self cxx_setArray:{ targetName, travelDistLine, travelTimeLine } forRow:textRow];
 	}
 	else
 	{
-		[self setArray:[NSArray arrayWithObjects:@"", travelDistLine,travelTimeLine,nil] forRow:textRow];
+		[self cxx_setArray:{ "", travelDistLine, travelTimeLine } forRow:textRow];
 	}
 	if ([PLAYER guiScreen] == GUI_SCREEN_SHORT_RANGE_CHART)
 	{
 		if (jumps > 0)
 		{
-			[self setArray:[NSArray arrayWithObjects: @"", OOExpandKey(@"short-range-chart-jumps", jumps), nil] forRow: textRow + 1];
+			[self cxx_setArray:{ "", oo::StdString(OOExpandKey(@"short-range-chart-jumps", jumps)) } forRow: textRow + 1];
 		}
 		else
 		{
-			[self setArray:[NSArray array] forRow: textRow + 1];
+			[self cxx_setArray:{} forRow: textRow + 1];
 		}
 	}
-	[targetName release];
 
 	// draw planet info circle
 	OOGL(GLScaledLineWidth(2.0f));

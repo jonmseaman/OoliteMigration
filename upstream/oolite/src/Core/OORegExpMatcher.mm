@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Thread.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm was (bead oo-sdz):
@@ -60,7 +61,7 @@ static OORegExpMatcher *sActiveInstance;
 
 + (instancetype) regExpMatcher
 {
-	NSAssert(oo::thread::isMainThread(), @"OORegExpMatcher may only be used on the main thread.");
+	OOAssert(oo::thread::isMainThread(), "OORegExpMatcher may only be used on the main thread.");
 	
 	if (sActiveInstance == nil)
 	{
@@ -120,7 +121,7 @@ static OORegExpMatcher *sActiveInstance;
 
 - (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp flags:(NSUInteger)flags
 {
-	NSAssert(oo::thread::isMainThread(), @"OORegExpMatcher may only be used on the main thread.");
+	OOAssert(oo::thread::isMainThread(), "OORegExpMatcher may only be used on the main thread.");
 
 	const std::u16string regExpUnits = oo::utf8ToUtf16(regExp);
 	size_t expLength = regExpUnits.size();

@@ -68,6 +68,9 @@ MA 02110-1301, USA.
 #import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
+#include "oofnd/PListGet.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
@@ -314,9 +317,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 - (void) initKeyConfigSettings
 {
 	const oo::PList kdicmaster = [ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	oo::Defaults &defaults = oo::Defaults::standard();
 	// the stored keyboard code (oo_stringForKey:defaultValue: over the value)
-	const oo::PList kbdValue = oo::PListFrom([defaults objectForKey:@"keyboard-code"]);
+	const oo::PList kbdValue = defaults.object("keyboard-code");
 	const std::string kbd = oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
 	const oo::PList *kbdDefs = kdicmaster.get<oo::PList::Dict>(kbd);
 	oo::PList::Dict kdic2 = (kbdDefs != nullptr) ? *kbdDefs->getIf<oo::PList::Dict>() : oo::PList::Dict();
@@ -327,14 +330,14 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 
 	// load custom equipment keys/buttons (the live entries, edited in place)
-	const oo::PList savedCustomEquip = oo::PListFrom([defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP]);
+	const oo::PList savedCustomEquip = defaults.arrayForKey(oo::StdString(KEYCONFIG_CUSTOMEQUIP));
 	const oo::PList::Array *customEntries = savedCustomEquip.getIf<oo::PList::Array>();
 	customEquipActivation = (customEntries != nullptr) ? *customEntries : std::vector<oo::PList>();
 	customActivatePressed.assign(customEquipActivation.size(), NO);
 	customModePressed.assign(customEquipActivation.size(), NO);
 
 	// update with overrides from defaults file (unprocessed, as before)
-	const oo::PList overrides = oo::PListFrom([defaults objectForKey:KEYCONFIG_OVERRIDES]);
+	const oo::PList overrides = defaults.object(oo::StdString(KEYCONFIG_OVERRIDES));
 	if (const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>())
 	{
 		for (const auto &entry : *dict)  kdic2[entry.first] = entry.second;
@@ -555,7 +558,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			else if (iValue <= 0xFF) keychar = iValue;
 			else {
-				OOLogWARN(@"testing", @"continue hit for key %@.", nil);
+				OO_LOG_WARN("testing", "continue hit for key {}.", oo::DescriptionOf(nil));
 				defNew["key"] = *value;
 				newList.push_back(oo::PList(std::move(defNew)));
 				continue;
@@ -687,11 +690,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -1023,7 +1026,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		allowMouseControl = YES;
 	#else
 		allowMouseControl = [gameController inFullScreenMode] ||
-					[[NSUserDefaults standardUserDefaults] boolForKey:@"mouse-control-in-windowed-mode"];
+					oo::Defaults::standard().boolForKey("mouse-control-in-windowed-mode");
 	#endif
 		
 		if (allowMouseControl)
@@ -1042,7 +1045,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						 is reset */
 					#if OOLITE_GNUSTEP
 						[gameView resetMouse];
-						if ([[NSUserDefaults standardUserDefaults] boolForKey:@"grab-mouse-on-mouse-control"])
+						if (oo::Defaults::standard().boolForKey("grab-mouse-on-mouse-control"))
 						{
 							[gameView grabMouseInsideGameWindow:YES];
 						}
@@ -1111,11 +1114,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -1603,7 +1606,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							// user defaults file.
 				if (([self checkKeyPress:n_key_launch_escapepod] || joyButtonState[BUTTON_ESCAPE]) && [self hasEscapePod])
 				{
-					BOOL	goodToLaunch = [[NSUserDefaults standardUserDefaults] boolForKey:@"escape-pod-activation-immediate"];
+					BOOL	goodToLaunch = oo::Defaults::standard().boolForKey("escape-pod-activation-immediate");
 					static	OOTimeDelta 	escapePodKeyResetTime;
 					
 					if (!goodToLaunch)
@@ -2018,11 +2021,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -2596,10 +2599,10 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					}
 					@catch (OOException *exception)
 					{
-						OOLog(kOOLogException, @"\n\n***** Handling exception: %@ : %@ *****\n\n",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", [exception name], [exception reason]);
 						if (strcmp([exception name], "GameNotSavedException") == 0)	// try saving game instead
 						{
-							OOLog(kOOLogException, @"%@", @"\n\n***** Trying a normal save instead *****\n\n");
+							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ([controller inFullScreenMode])
 								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:self];
 							else
@@ -2612,10 +2615,10 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					}
 					@catch (OOFoundationException *exception)
 					{
-						OOLog(kOOLogException, @"\n\n***** Handling exception: %@ : %@ *****\n\n",[exception name], [exception reason]);
+						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 						if ([[exception name] isEqual:@"GameNotSavedException"])	// try saving game instead
 						{
-							OOLog(kOOLogException, @"%@", @"\n\n***** Trying a normal save instead *****\n\n");
+							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ([controller inFullScreenMode])
 								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:self];
 							else
@@ -3103,7 +3106,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						}
 						else
 						{
-							OOLog(@"interface.missingCallback", @"Unable to find callback definition for %@ using key %@", [definition name], oo::NSStringFrom(key));
+							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", oo::DescriptionOf([definition name]), key);
 						}
 					}
 					extra_gui_key_pressed = YES;
@@ -3165,7 +3168,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((!pageUpDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 				if (goods.size() > 0)
 				{
 					const std::optional<std::string> selected = marketSelectedCommodity;
@@ -3219,7 +3222,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 				if (goods.size() > 0)
 				{
 					const std::optional<std::string> selected = marketSelectedCommodity;
@@ -3456,7 +3459,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				
 				if (brightnessIdx == NSNotFound)
 				{
-					OOLogWARN(@"hdr.maxBrightness.notFound", @"%@", @"couldn't find current max brightness setting, switching to lowest.");
+					OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to lowest.");
 					brightnessIdx = 0;
 				}
 				
@@ -3496,11 +3499,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		GameController	*controller = [UNIVERSE gameController];
 		int				direction = ([self checkKeyPress:n_key_gui_arrow_right]) ? 1 : -1;
 		NSInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
-		const oo::PList	modes = oo::PListFrom([controller displayModes]);
+		const oo::PList	modes = [controller displayModes];
 		
 		if (displayModeIndex == (NSInteger)NSNotFound)
 		{
-			OOLogWARN(@"graphics.mode.notFound", @"%@", @"couldn't find current fullscreen setting, switching to default.");
+			OO_LOG_WARN("graphics.mode.notFound", "{}", "couldn't find current fullscreen setting, switching to default.");
 			displayModeIndex = 0;
 		}
 		
@@ -3746,7 +3749,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - fovTicks));
 			// %c 176 gave U+00B0 (probed on GNUstep base with this toolchain); written as its UTF-8 bytes
 			[gui cxx_setText:oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/)	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
-			[[NSUserDefaults standardUserDefaults] setFloat:[gameView fov:NO] forKey:@"fov-value"];
+			oo::Defaults::standard().setFloat("fov-value", [gameView fov:NO]);
 			timeLastKeyPress = script_time;
 		}
 		fovControlPressed = YES;
@@ -4406,7 +4409,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	
 	BOOL	isCtrlDown = [gameView isCtrlDown];
 	
-	double	flightArrowKeyPrecisionFactor = oo::PListView([NSUserDefaults standardUserDefaults]).get<double>(@"flight-arrow-key-precision-factor", 0.5);
+	const oo::PList arrowPrec = oo::Defaults::standard().object("flight-arrow-key-precision-factor");
+	double	flightArrowKeyPrecisionFactor = oo::PListGet<double>::from(arrowPrec.isNull() ? nullptr : &arrowPrec, 0.5);
 	if (flightArrowKeyPrecisionFactor < 0.05)  flightArrowKeyPrecisionFactor = 0.05;
 	if (flightArrowKeyPrecisionFactor > 1.0)  flightArrowKeyPrecisionFactor = 1.0; 
 	
@@ -4936,11 +4940,11 @@ static BOOL autopilot_pause;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -5512,7 +5516,7 @@ static BOOL autopilot_pause;
 		}
 		else
 		{
-			OOLogERR(kOOLogParameterError, @"%s called with processWeaponFacing=YES for non-main view %i.", __FUNCTION__, viewDirection);
+			OO_LOG_ERR(cxx_kOOLogParameterError, "{} called with processWeaponFacing=YES for non-main view {}.", static_cast<const char *>(__FUNCTION__), static_cast<unsigned>(viewDirection));
 		}
 	}
 	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![[UNIVERSE gameController] isGamePaused])
@@ -5583,9 +5587,9 @@ static BOOL autopilot_pause;
 	}
 	
 	// We found a dockable, check whether we can dock with it
-	// NSAssert([target isKindOfClass:[StationEntity class]], @"Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
+	// OOAssert([target isKindOfClass:[StationEntity class]], "Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
 	StationEntity *ts; ts = (StationEntity *)target;
-	stationName = oo::StdString([ts displayName]);	// (nil raised in the expansion)
+	stationName = [ts displayName].value_or("");	// (nil raised in the expansion)
 	
 	// If station is not transmitting docking instructions, we cannot use autopilot.
 	if (![ts allowsAutoDocking])

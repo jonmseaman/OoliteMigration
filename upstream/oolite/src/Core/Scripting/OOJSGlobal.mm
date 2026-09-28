@@ -37,10 +37,12 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "ResourceManager.h"
 #import "OOSystemDescriptionManager.h"
-#import "NSFileManagerOOExtensions.h"
 #import "OOJSGuiScreenKeyDefinition.h"
 #import "OOFoundationBridge.h"
+#import "OOStringBridge.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
+#include "oofnd/Scanner.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -419,7 +421,7 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	else
 	{
 		messageClass = oo::StdString(OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]));
-		if (!OOLogWillDisplayMessagesInClass(oo::NSStringFrom(messageClass)))
+		if (!oo::log::willDisplay(messageClass))
 		{
 			// Do nothing (and short-circuit) if message class is filtered out.
 			OOJS_RETURN_VOID;
@@ -436,7 +438,7 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	OOLog(oo::NSStringFrom(messageClass), @"%@", oo::NSStringOrNil(message));
+	OO_LOG(messageClass, "{}", message.value_or("(null)"));
 	
 #if OOJSENGINE_MONITOR_SUPPORT
 	[[OOJavaScriptEngine sharedEngine] sendMonitorLogMessage:message
@@ -983,14 +985,14 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	value;
-	NSCharacterSet			*alphanumerics = [NSCharacterSet alphanumericCharacterSet];
+	const oo::str::CharacterSet	alphanumerics = oo::str::CharacterSet::alphanumeric();
 	BOOL					result = NO;	
 	
 	// Allowed: the alphanumeric character set plus "_-", tested per UTF-16 unit as -rangeOfCharacterFromSet: did.
-	auto isAllowed = [alphanumerics](const std::string &name) {
+	auto isAllowed = [&alphanumerics](const std::string &name) {
 		for (char16_t unit : oo::utf8ToUtf16(name))
 		{
-			if (unit != u'_' && unit != u'-' && ![alphanumerics characterIsMember:unit])  return false;
+			if (unit != u'_' && unit != u'-' && !alphanumerics.contains(unit))  return false;
 		}
 		return true;
 	};
@@ -1005,7 +1007,25 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 		}
 	}
 	
-	std::string				playerFileDirectory = oo::StdString([[NSFileManager defaultManager] defaultCommanderPath]);
+	const oo::ResourcePaths resourcePaths = oo::ResourcePaths::current();
+	const oo::fs::Path savedir = resourcePaths.saveDirectory();
+	const oo::fs::FileType saveType = oo::fs::fileType(savedir);
+	std::string playerFileDirectory;
+	if (saveType == oo::fs::FileType::none)
+	{
+		if (oo::fs::createDirectories(savedir))
+			playerFileDirectory = oo::fs::utf8String(savedir);
+		else
+			playerFileDirectory = oo::fs::utf8String(resourcePaths.homeDirectory());
+	}
+	else if (saveType != oo::fs::FileType::directory)
+	{
+		playerFileDirectory = oo::fs::utf8String(resourcePaths.homeDirectory());
+	}
+	else
+	{
+		playerFileDirectory = oo::fs::utf8String(savedir);
+	}
 	const auto				freeBytes = oo::fs::freeSpace(oo::fs::pathFromUTF8(playerFileDirectory));
 	
 	if (freeBytes.has_value())
@@ -1092,7 +1112,7 @@ static bool GlobalQuitGame(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	OOJS_NATIVE_ENTER(context)
 
-	OOLog(@"script.debug.quit", @"%@", @"Quit requested via JavaScript global.quitGame()");
+	OO_LOG("script.debug.quit", "{}", "Quit requested via JavaScript global.quitGame()");
 
 	[UNIVERSE quitGame];
 

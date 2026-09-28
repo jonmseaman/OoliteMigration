@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOFullScreenController.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Defaults.hpp"
 
 
 namespace
@@ -104,7 +105,7 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 
 - (void) exitFullScreenMode
 {
-	[[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"fullscreen"];
+	oo::Defaults::standard().setBool("fullscreen", false);
 	stayInFullScreenMode = NO;
 }
 
@@ -125,14 +126,14 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 		refresh = d_refresh;
 		fullscreenDisplayMode = *d_mode;
 		
-		NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+		oo::Defaults &userDefaults = oo::Defaults::standard();
 		
-		[userDefaults setInteger:width   forKey:@"display_width"];
-		[userDefaults setInteger:height  forKey:@"display_height"];
-		[userDefaults setInteger:refresh forKey:@"display_refresh"];
+		userDefaults.setInteger("display_width", width);
+		userDefaults.setInteger("display_height", height);
+		userDefaults.setInteger("display_refresh", refresh);
 		
 		// Manual synchronization is required for SDL And doesn't hurt much for OS X.
-		[userDefaults synchronize];
+		userDefaults.synchronize();
 		
 		return YES;
 	}
@@ -140,16 +141,16 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 }
 
 
-- (id) findDisplayModeForWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh	// shared selector (proposed ADR-0043)
+- (oo::PList) findDisplayModeForWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh
 {
 	const oo::PList *mode = FindDisplayMode(displayModes, d_width, d_height, d_refresh);
-	return (mode != nullptr) ? oo::ObjectFromPList(*mode) : nil;	// a mode dictionary
+	return (mode != nullptr) ? *mode : oo::PList();	// a mode dictionary; null: none
 }
 
 
-- (id) displayModes	// shared selector (proposed ADR-0043)
+- (oo::PList) displayModes
 {
-	return oo::ObjectFromPList(oo::PList(displayModes));	// an immutable array of mode dictionaries
+	return oo::PList(displayModes);	// an array of mode dictionaries
 }
 
 
