@@ -51,6 +51,10 @@ MA 02110-1301, USA.
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
 
+// The save and snapshot directory names (from the retired NSFileManagerOOExtensions.h, bead oo-pwz0).
+#define SAVEDIR "oolite-saves"
+#define SNAPSHOTDIR "snapshots"
+
 extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, const float* rgb);
 
 
