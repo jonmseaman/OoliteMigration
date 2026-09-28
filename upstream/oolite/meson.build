@@ -78,6 +78,16 @@ endif
 # not reach a subproject (nor does a subproject() c_args default option).
 add_global_arguments('-ffp-contract=off', language: c_family)
 
+# A MESSAGE TO AN UNDECLARED METHOD IS AN ERROR (proposed ADR-0050, bead oo-tk0w).
+#
+# While Foundation bridge categories are being deleted, clang's -Wobjc-method-access ("instance
+# method '-x' not found") is not a style warning: it is the only compile-time sign that a caller
+# still sends a selector nothing implements any more, and the run-time result is an
+# "unrecognized selector" exception. Bead oo-2o5x: oo-5pae deleted OOCacheManager+FoundationBridge
+# while six sends of -objectForKey:inCache: remained; the build warned, the game died at startup
+# and golden scenario 001 went red. This makes the check stricter; it silences nothing.
+add_project_arguments('-Werror=objc-method-access', language: ['objc', 'objcpp'])
+
 if get_option('no_shaders')
     add_project_arguments('-DNO_SHADERS=1', language: c_family)
 endif
