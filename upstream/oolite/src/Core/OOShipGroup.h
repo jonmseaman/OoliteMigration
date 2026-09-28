@@ -91,10 +91,3 @@ public:
 	BOOL						_considerCleanup = YES, _cleanupNeeded = NO;
 };
 
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before its sweep (bead oo-5l4w), forwarding to the cxx_ methods above, so unmigrated
-	callers compile unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge
-	goes in its own bead.
-*/
-#import "OOShipGroup+FoundationBridge.h"

@@ -771,7 +771,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 	
 		case kShip_escorts:
-			result = [[entity escortGroup] memberArrayExcludingLeader];
+			result = ([entity escortGroup] != nil) ? oo::NSArrayFromObjects([[entity escortGroup] cxx_memberArrayExcludingLeader]) : nil;
 			break;
 			
 		case kShip_group:

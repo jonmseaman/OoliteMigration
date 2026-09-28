@@ -307,6 +307,28 @@ std::set<std::string> NamesInArrayForKey(const oo::PList &dict, std::string_view
 static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 
+namespace {
+
+/*	One batch of a for-in over a group's -objectEnumerator, now a plain OOShipGroupCursor: GNUstep's
+	-[NSEnumerator countByEnumeratingWithState:objects:count:] asked -nextObject up to 16 times
+	(clang's buffer) before the loop body ran, so dead members were compacted, and the group cleaned
+	up, a batch ahead of the body, also when the body returned early. 0 at the end.
+*/
+NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
+{
+	NSUInteger count = 0;
+	while (count < 16)
+	{
+		ShipEntity *member = cursor.next();
+		if (member == nil)  break;
+		batch[count++] = member;
+	}
+	return count;
+}
+
+}	// namespace
+
+
 @implementation ShipEntity
 
 - (id) init
@@ -7090,8 +7112,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 	std::vector<oo::ObjCRef<ShipEntity *>> escorts;
 	if (_escortGroup == nil)  return escorts;
 	// The group's members at this moment, in its order, without self (as -ooExcludingObject: skipped it).
-	for (ShipEntity *member in [_escortGroup mutationSafeEnumerator])
+	for (const oo::ObjCRef<ShipEntity *> &memberRef : [_escortGroup cxx_memberArray])
 	{
+		ShipEntity *member = memberRef.get();
 		if (member == self)  continue;
 		escorts.emplace_back(member);
 	}
@@ -12355,7 +12378,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	//We don't want real missiles in a group. Missiles could become escorts when the group is also used as escortGroup.
 	if ([missile scanClass] == CLASS_THARGOID) 
 	{
-		if([self group] == nil) [self setGroup:[OOShipGroup groupWithName:@"thargoid group"]];
+		if([self group] == nil) [self setGroup:[OOShipGroup cxx_groupWithName:"thargoid group"]];
 		
 		ShipEntity	*thisGroupLeader = [_group leader];
 		
@@ -13310,8 +13333,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 				if ([self isPirate])
 				{
-					for (ShipEntity *otherPirate in [group mutationSafeEnumerator])
+					for (const oo::ObjCRef<ShipEntity *> &otherPirateRef : [group cxx_memberArray])
 					{
+						ShipEntity *otherPirate = otherPirateRef.get();
 						if (otherPirate != self && randf() < 0.5)	// 50% chance they'll help
 						{
 							[otherPirate setFoundTarget:hunter];
@@ -13322,8 +13346,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 				else if (iAmTheLaw)
 				{
-					for (ShipEntity *otherPolice in [group mutationSafeEnumerator])
+					for (const oo::ObjCRef<ShipEntity *> &otherPoliceRef : [group cxx_memberArray])
 					{
+						ShipEntity *otherPolice = otherPoliceRef.get();
 						if (otherPolice != self)
 						{
 							[otherPolice setFoundTarget:hunter];
@@ -14869,28 +14894,38 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		}
 		if (_group)
 		{
-			for (ShipEntity *member in [_group objectEnumerator])
+			OOShipGroupCursor cursor(_group);
+			ShipEntity *batch[16];
+			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
 			{
-				ship = member;
-				if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+				for (NSUInteger i = 0; i < count; i++)
 				{
-					if (HPdistance2([ship position],position) < scanrange2)
+					ship = batch[i];
+					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
 					{
-						return ALERT_CONDITION_RED;
+						if (HPdistance2([ship position],position) < scanrange2)
+						{
+							return ALERT_CONDITION_RED;
+						}
 					}
 				}
 			}
 		}
 		if (_escortGroup && _group != _escortGroup)
 		{
-			for (ShipEntity *member in [_escortGroup objectEnumerator])
+			OOShipGroupCursor cursor(_escortGroup);
+			ShipEntity *batch[16];
+			for (NSUInteger count = ShipGroupCursorBatch(cursor, batch); count != 0; count = ShipGroupCursorBatch(cursor, batch))
 			{
-				ship = member;
-				if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
+				for (NSUInteger i = 0; i < count; i++)
 				{
-					if (HPdistance2([ship position],position) < scanrange2)
+					ship = batch[i];
+					if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
 					{
-						return ALERT_CONDITION_RED;
+						if (HPdistance2([ship position],position) < scanrange2)
+						{
+							return ALERT_CONDITION_RED;
+						}
 					}
 				}
 			}
