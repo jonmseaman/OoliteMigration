@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
@@ -1367,4 +1368,3 @@ std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
 // TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
 // sweep, forwarding to the cxx_ API above. Keep this the last line.
 #import "PlayerEntity+FoundationBridge.h"
-#include "oofnd/objc/OOAssert.h"
