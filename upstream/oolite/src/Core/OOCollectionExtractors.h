@@ -40,7 +40,7 @@ SOFTWARE.
 */
 
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "OOFunctionAttributes.h"
 #include <limits.h>
 
