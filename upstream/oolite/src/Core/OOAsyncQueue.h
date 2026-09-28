@@ -30,7 +30,7 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #include "oofnd/StdLib.hpp"
 

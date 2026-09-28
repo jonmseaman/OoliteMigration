@@ -25,7 +25,7 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
 
