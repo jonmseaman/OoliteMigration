@@ -80,7 +80,7 @@ MA 02110-1301, USA.
 	NSTimeInterval			_splashStart;	// oo::date::monotonicSeconds() at start-up
 	
 	SEL						pauseSelector;
-	NSObject				*pauseTarget;
+	OOObject				*pauseTarget;
 	
 	BOOL					gameIsPaused;
 	

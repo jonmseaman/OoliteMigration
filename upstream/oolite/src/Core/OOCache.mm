@@ -110,6 +110,7 @@ MA 02110-1301, USA.
 #import "OOCache.h"
 #import "OOStringParsing.h"
 #import "OOFoundationBridge.h"
+#import "oofnd/objc/OOObject.h"
 
 #include "oofnd/String.hpp"
 #if DEBUG_GRAPHVIZ
@@ -123,7 +124,7 @@ MA 02110-1301, USA.
 
 
 // Protocol used internally to squash idiotic warnings in gnu-gcc.
-@protocol OOCacheComparable <NSObject, NSCopying>
+@protocol OOCacheComparable <OOObject, OOCopying>
 - (NSComparisonResult) compare:(id<OOCacheComparable>)other;
 - (id) copy;
 @end

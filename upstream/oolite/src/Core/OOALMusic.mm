@@ -36,7 +36,7 @@ static OOSoundSource	*sMusicSource = nil;
 
 + (id)allocWithZone:(OOZone *)inZone
 {
-	return class_createInstance([OOMusic class], 0);	// NSAllocateObject without Foundation; zones unused (ADR-0029)
+	return class_createInstance([OOMusic class], 0);	// zones unused (ADR-0029)
 }
 
 
