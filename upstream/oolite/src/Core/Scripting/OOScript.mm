@@ -33,6 +33,9 @@ MA 02110-1301, USA.
 #import "OODebugStandards.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
+
 
 namespace {
 // The strings in an array a callee still returns as a Foundation array; nullopt for nil.
@@ -48,13 +51,10 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 
 + (std::optional<std::vector<oo::ObjCRef<OOScript *>>>)cxx_worldScriptsAtPath:(const std::string &)path
 {
-	NSFileManager		*fmgr = nil;
 	std::string			filePath;
 	std::optional<std::vector<oo::ObjCRef<OOScript *>>>	result;
 	id					script = nil;
 	BOOL				foundScript = NO;
-	
-	fmgr = [NSFileManager defaultManager];
 	
 	// First, look for world-scripts.plist.
 	filePath = oo::str::appendingPathComponent(path, "world-scripts.plist");
@@ -71,11 +71,11 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	if (!result.has_value())
 	{
 		filePath = oo::str::appendingPathComponent(path, "script.js");
-		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)]) foundScript = YES;
+		if (OOOxzFileExistsAtPath(filePath)) foundScript = YES;
 		else
 		{
 			filePath = oo::str::appendingPathComponent(path, "script.es");
-			if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)]) foundScript = YES;
+			if (OOOxzFileExistsAtPath(filePath)) foundScript = YES;
 		}
 		if (foundScript)
 		{
@@ -98,7 +98,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	if (!result.has_value())
 	{
 		filePath = oo::str::appendingPathComponent(path, "script.plist");
-		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
+		if (OOOxzFileExistsAtPath(filePath))
 		{
 			cxx_OOStandardsDeprecated(oo::str::format("Legacy script %s is deprecated", filePath.c_str()));
 			if (!OOEnforceStandards())
@@ -161,8 +161,8 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 
 + (std::optional<std::vector<oo::ObjCRef<OOScript *>>>)scriptsFromFileAtPath:(const std::string &)filePath
 {
-	// oo_oxzFile always returns false for directories
-	if (![[NSFileManager defaultManager] oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)]) return std::nullopt;
+	// OXZ-aware exists is false for directories
+	if (!OOOxzFileExistsAtPath(filePath)) return std::nullopt;
 	
 	std::string extension = oo::str::lowercase(oo::str::pathExtension(filePath));
 	

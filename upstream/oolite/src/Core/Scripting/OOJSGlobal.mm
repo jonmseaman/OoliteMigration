@@ -37,11 +37,11 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "ResourceManager.h"
 #import "OOSystemDescriptionManager.h"
-#import "NSFileManagerOOExtensions.h"
 #import "OOJSGuiScreenKeyDefinition.h"
 #import "OOFoundationBridge.h"
 #import "OOStringBridge.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/ResourcePaths.hpp"
 #include "oofnd/Scanner.hpp"
 
 #include "ooscript/JSEngine.hpp"
@@ -1007,7 +1007,25 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 		}
 	}
 	
-	std::string				playerFileDirectory = oo::StdString([[NSFileManager defaultManager] defaultCommanderPath]);
+	const oo::ResourcePaths resourcePaths = oo::ResourcePaths::current();
+	const oo::fs::Path savedir = resourcePaths.saveDirectory();
+	const oo::fs::FileType saveType = oo::fs::fileType(savedir);
+	std::string playerFileDirectory;
+	if (saveType == oo::fs::FileType::none)
+	{
+		if (oo::fs::createDirectories(savedir))
+			playerFileDirectory = oo::fs::utf8String(savedir);
+		else
+			playerFileDirectory = oo::fs::utf8String(resourcePaths.homeDirectory());
+	}
+	else if (saveType != oo::fs::FileType::directory)
+	{
+		playerFileDirectory = oo::fs::utf8String(resourcePaths.homeDirectory());
+	}
+	else
+	{
+		playerFileDirectory = oo::fs::utf8String(savedir);
+	}
 	const auto				freeBytes = oo::fs::freeSpace(oo::fs::pathFromUTF8(playerFileDirectory));
 	
 	if (freeBytes.has_value())

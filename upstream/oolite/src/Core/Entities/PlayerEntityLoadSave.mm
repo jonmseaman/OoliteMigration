@@ -1106,9 +1106,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	unsigned i;
 	int row=STARTROW;
 	
-	// The retiring NSFileManager (OOExtensions) commander listing, in place: the directory's entries
-	// as full paths. Its per-entry filter tested `!exists && isDirectory`, which never holds, so it
-	// only built the paths.
+	// Commander listing from the save directory's entries as full paths. The old per-entry filter
+	// tested `!exists && isDirectory`, which never holds, so it only built the paths.
 	std::vector<std::string> cdrArray;
 	const oo::fs::Path directoryPath = oo::fs::pathFromUTF8(directory);
 	if (oo::fs::fileType(directoryPath) == oo::fs::FileType::directory)

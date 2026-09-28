@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "OOPListView.h"
 #import "OOLogOutputHandler.h"
-#import "NSFileManagerOOExtensions.h"
 #import "OOOXZManager.h"
 #import "unzip.h"
 #import "HeadUpDisplay.h"
@@ -497,17 +496,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// Iterate over each root path's contents.
 		if (oo::fs::isDirectory(oo::fs::pathFromUTF8(root)))
 		{
-			// NSFileManager's recursive enumerator (with -skipDescendents) has no oo::fs form yet:
-			// it lists, converted at the boundary, as it always did.
-			NSDirectoryEnumerator *dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:oo::NSStringFrom(root)];
+			oo::fs::RecursiveDirectoryEnumerator dirEnum(oo::fs::pathFromUTF8(root));
 			for (;;)
 			{
-				const std::optional<std::string> subPath = oo::OptionalString([dirEnum nextObject]);
+				const std::optional<std::string> subPath = dirEnum.next();
 				if (!subPath.has_value())  break;
 
 				// Check if it's a directory.
 				const std::string path = oo::str::appendingPathComponent(root, *subPath);
-				const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(path));
+				const oo::fs::FileType type = dirEnum.entryType();
 				if (type != oo::fs::FileType::none)
 				{
 					if (type == oo::fs::FileType::directory)
@@ -521,7 +518,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 						else
 						{
 							// If not, don't search subdirectories.
-							[dirEnum skipDescendents];
+							dirEnum.skipDescendents();
 						}
 					}
 					else
@@ -1345,10 +1342,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		arrays are built for it at each call and compared with -isEqual:, as before.
 	*/
 	OOCacheManager		*cacheMgr = [OOCacheManager sharedCache];
-	NSFileManager		*fmgr = [NSFileManager defaultManager];
 	BOOL				upToDate = YES;
 	id					oldPaths = nil;
-	id					modDate = nil;
 
 	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("always-flush-cache")))
 	{
@@ -1370,16 +1365,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	// Build modification date list. (We need this regardless of whether the search paths matched.)
-	// The dates come from NSFileManager's attributes (oo::fs has no modification date yet).
 	oo::PList::Array modDates;
 	modDates.reserve(searchPaths.size());
 	for (const std::string &path : searchPaths)
 	{
-		modDate = [[fmgr oo_fileAttributesAtPath:oo::NSStringFrom(path) traverseLink:YES] objectForKey:NSFileModificationDate];
-		if (modDate != nil)
+		const auto modTime = oo::fs::modificationTimeSince1970(oo::fs::pathFromUTF8(path));
+		if (modTime)
 		{
-			// Converts to double because I'm not sure the cache can deal with dates under GNUstep.
-			modDates.emplace_back([modDate timeIntervalSince1970]);
+			// Double, as before: the cache stored -timeIntervalSince1970 of NSFileModificationDate.
+			modDates.emplace_back(*modTime);
 		}
 	}
 	const oo::PList modDateList(std::move(modDates));
@@ -2057,7 +2051,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	std::string		cacheKey;
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
 	std::string		filePath;
-	NSFileManager	*fmgr = nil;
 
 	// (The resolved-paths cache is consulted whatever useCache says: the old test was of the cache
 	// manager, which always exists.) OOCacheManager is an unmigrated callee: it holds the path as a
@@ -2070,10 +2063,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (result.has_value())  return result;
 	}
 
-	// Search for file
-	// (-oo_oxzFileExistsAtPath:, the NSFileManager category that also looks inside OXZs, has no
-	// oo::fs form yet: it answers through the bridged path.)
-	fmgr = [NSFileManager defaultManager];
+	// Search for file (OXZ-aware exists, same answers as -oo_oxzFileExistsAtPath:).
 	// reverse object enumerator allows OXPs to override core
 	const std::vector<std::string> paths = [ResourceManager cxx_paths];
 	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
@@ -2081,14 +2071,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		const std::string &path = *pathIt;
 		// appending a nil folder left the path as it was
 		filePath = oo::str::appendingPathComponent(folderName.has_value() ? oo::str::appendingPathComponent(path, *folderName) : path, fileName);
-		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
+		if (OOOxzFileExistsAtPath(filePath))
 		{
 			result = filePath;
 			break;
 		}
 
 		filePath = oo::str::appendingPathComponent(path, fileName);
-		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
+		if (OOOxzFileExistsAtPath(filePath))
 		{
 			result = filePath;
 			break;
