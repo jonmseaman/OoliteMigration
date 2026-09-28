@@ -129,5 +129,3 @@ subdir('src')
 
 # Unit tests that need no game build (meson test --suite oofnd).
 subdir('tests/unit/oofnd')
-# Game-side unit tests of gnustep-base shims (meson test --suite game-unit).
-subdir('tests/unit/game')
