@@ -268,7 +268,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	}
 	
 	context = OOJSAcquireContext();
-	funcName = oo::OptionalString(OOStringFromJSString(context, (ooscript::getFunctionId(ooscript::valueToFunction((context), (_function))))));
+	funcName = cxx_OOStringFromJSString(context, (ooscript::getFunctionId(ooscript::valueToFunction((context), (_function)))));
 	OOJSRelinquishContext(context);
 	
 	if (!funcName.has_value())
@@ -395,7 +395,7 @@ static bool TimerSetProperty(Context cx, Object obj, PropertyId propID, bool /*s
 			{
 				if (![timer setNextTime:fValue])
 				{
-					OOJSReportWarning(context, @"Ignoring attempt to change next fire time for running timer %@.", timer);
+					cxx_OOJSReportWarning(context, "Ignoring attempt to change next fire time for running timer %s.", oo::DescriptionOf(timer).c_str());
 				}
 				return YES;
 			}
@@ -460,13 +460,13 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	if (EXPECT_NOT(!oojsArgs.isConstructing()))
 	{
-		OOJSReportError(context, @"Timer() cannot be called as a function, it must be used as a constructor (as in new Timer(...)).");
+		cxx_OOJSReportError(context, "Timer() cannot be called as a function, it must be used as a constructor (as in new Timer(...)).");
 		return NO;
 	}
 	
 	if (oojsArgs.count() < 3)
 	{
-		OOJSReportBadArguments(context, nil, @"Timer", oojsArgs.count(), OOJS_ARGV, @"Invalid arguments in constructor", @"(object, function, number [, number])");
+		cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", oojsArgs.count(), OOJS_ARGV, "Invalid arguments in constructor", "(object, function, number [, number])");
 		return NO;
 	}
 	
@@ -474,7 +474,7 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 	{
 		if (!ooscript::valueToObject(context, (OOJS_ARGV[0]), &callbackThis))
 		{
-			OOJSReportBadArguments(context, nil, @"Timer", 1, OOJS_ARGV, @"Invalid argument in constructor", @"object");
+			cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", 1, OOJS_ARGV, "Invalid argument in constructor", "object");
 			return NO;
 		}
 	}
@@ -482,13 +482,13 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 	function = OOJS_ARGV[1];
 	if (ooscript::valueToFunction(context, (function)) == nullptr)
 	{
-		OOJSReportBadArguments(context, nil, @"Timer", 1, OOJS_ARGV + 1, @"Invalid argument in constructor", @"function");
+		cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", 1, OOJS_ARGV + 1, "Invalid argument in constructor", "function");
 		return NO;
 	}
 	
 	if (!ooscript::valueToNumber(context, (OOJS_ARGV[2]), &delay) || isnan(delay))
 	{
-		OOJSReportBadArguments(context, nil, @"Timer", 1, OOJS_ARGV + 2, @"Invalid argument in constructor", @"number");
+		cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", 1, OOJS_ARGV + 2, "Invalid argument in constructor", "number");
 		return NO;
 	}
 	

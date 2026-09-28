@@ -84,7 +84,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	
 	if (argc == 0)
 	{
-		OOJSReportError(context, @"%@.callObjC(): no selector specified.", oo::NSStringFrom(oo_jsClassName));
+		cxx_OOJSReportError(context, "%s.callObjC(): no selector specified.", oo_jsClassName.c_str());
 		return NO;
 	}
 	
@@ -93,7 +93,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 		[PLAYER setScriptTarget:object];
 	}
 	
-	selectorString = oo::OptionalString(OOStringFromJSValue(context, argv[0]));
+	selectorString = cxx_OOStringFromJSValue(context, argv[0]);
 	
 	// Join all parameters together with spaces.
 	if (1 < argc && selectorString.has_value() && oo::str::hasSuffix(*selectorString, ":"))
@@ -104,7 +104,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 		for (unsigned i = 1; i < argc; i++)
 		{
 			if (i > 1)  joined += " ";
-			joined += oo::StdString(OOStringFromJSValueEvenIfNull(context, argv[i]));
+			joined += cxx_OOStringFromJSValueEvenIfNull(context, argv[i]).value_or(std::string());
 		}
 		paramString = joined;
 	}
@@ -118,7 +118,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 		
 		if (MethodExpectsParameter(type) && !haveParameter)
 		{
-			OOJSReportError(context, @"%@.callObjC(): method %@ requires a parameter.", oo::NSStringFrom(oo_jsClassName), oo::NSStringOrNil(selectorString));
+			cxx_OOJSReportError(context, "%s.callObjC(): method %s requires a parameter.", oo_jsClassName.c_str(), (selectorString ? selectorString->c_str() : "(null)"));
 			error = YES;
 		}
 		else
@@ -179,7 +179,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 				case kMethodTypeMatrixVoid:
 				case kMethodTypePointVoid:
 				case kMethodTypeInvalid:
-					OOJSReportError(context, @"%@.callObjC(): method %@ cannot be called from JavaScript.", oo::NSStringFrom(oo_jsClassName), oo::NSStringOrNil(selectorString));
+					cxx_OOJSReportError(context, "%s.callObjC(): method %s cannot be called from JavaScript.", oo_jsClassName.c_str(), (selectorString ? selectorString->c_str() : "(null)"));
 					error = YES;
 					break;
 			}
@@ -191,7 +191,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	}
 	else
 	{
-		OOJSReportError(context, @"%@.callObjC(): %@ does not respond to method %@.", oo::NSStringFrom(oo_jsClassName), [object shortDescription], oo::NSStringOrNil(selectorString));
+		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), oo::DescriptionOf([object shortDescription]).c_str(), (selectorString ? selectorString->c_str() : "(null)"));
 		error = YES;
 	}
 	

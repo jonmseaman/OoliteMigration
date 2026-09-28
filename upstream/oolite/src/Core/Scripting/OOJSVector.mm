@@ -526,7 +526,7 @@ static BOOL GetThisVector(ooscript::Context context, ooscript::Object vectorObj,
 	if (EXPECT(JSObjectGetVector(context, vectorObj, outVector)))  return YES;
 	
 	ooscript::Value arg = ooscript::objectValue(vectorObj);
-	OOJSReportBadArguments(context, @"Vector3D", oo::NSStringFrom(method), 1, &arg, @"Invalid target object", @"Vector3D");
+	cxx_OOJSReportBadArguments(context, "Vector3D", method, 1, &arg, "Invalid target object", "Vector3D");
 	return NO;
 }
 } // namespace
@@ -618,9 +618,9 @@ BOOL VectorFromArgumentList(ooscript::Context context, const std::string &script
 	if (VectorFromArgumentListNoErrorInternal(context, argc, argv, outVector, outConsumed, NO))  return YES;
 	else
 	{
-		OOJSReportBadArguments(context, oo::NSStringFrom(scriptClass), oo::NSStringFrom(function), argc, argv,
-							   @"Could not construct vector from parameters",
-							   @"Vector, Entity or array of three numbers");
+		cxx_OOJSReportBadArguments(context, scriptClass, function, argc, argv,
+							   "Could not construct vector from parameters",
+							   "Vector, Entity or array of three numbers");
 		return NO;
 	}
 }
@@ -760,9 +760,9 @@ static bool VectorConstruct(ooscript::Context context, ooscript::CallArgs &oojsA
 		if (EXPECT_NOT(!VectorFromArgumentListNoErrorInternal(context, oojsArgs.count(), OOJS_ARGV, &vector, NULL, YES)))
 		{
 			free(priv);
-			OOJSReportBadArguments(context, NULL, NULL, oojsArgs.count(), OOJS_ARGV,
-								   @"Could not construct vector from parameters",
-								   @"Vector, Entity or array of three numbers");
+			cxx_OOJSReportBadArguments(context, std::nullopt, std::nullopt, oojsArgs.count(), OOJS_ARGV,
+								   "Could not construct vector from parameters",
+								   "Vector, Entity or array of three numbers");
 			return NO;
 		}
 	}
@@ -917,7 +917,7 @@ static bool VectorMultiply(ooscript::Context context, ooscript::CallArgs &oojsAr
 	double						scalar;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, "multiply"))) return NO;
-	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Vector3D", @"multiply", oojsArgs.count(), OOJS_ARGV, &scalar, NULL)))  return NO;
+	if (EXPECT_NOT(!cxx_OOJSArgumentListGetNumber(context, "Vector3D", "multiply", oojsArgs.count(), OOJS_ARGV, &scalar, NULL)))  return NO;
 	
 	result = HPvector_multiply_scalar(thisv, scalar);
 	
@@ -1110,7 +1110,7 @@ static bool VectorRotationTo(ooscript::Context context, ooscript::CallArgs &oojs
 	argv += consumed;
 	if (argc != 0)	// limit parameter is optional.
 	{
-		if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Vector3D", @"rotationTo", argc, argv, &limit, NULL)))  return NO;
+		if (EXPECT_NOT(!cxx_OOJSArgumentListGetNumber(context, "Vector3D", "rotationTo", argc, argv, &limit, NULL)))  return NO;
 		gotLimit = YES;
 	}
 	else gotLimit = NO;
@@ -1197,10 +1197,10 @@ static bool VectorToCoordinateSystem(ooscript::Context context, ooscript::CallAr
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, "toCoordinateSystem"))) return NO;
 	
-	if (oojsArgs.count() >= 1)  coordScheme = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() >= 1)  coordScheme = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(oojsArgs.count() < 1 || !coordScheme.has_value()))
 	{
-		OOJSReportBadArguments(context, @"Vector3D", @"toCoordinateSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"coordinate system");
+		cxx_OOJSReportBadArguments(context, "Vector3D", "toCoordinateSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "coordinate system");
 		return NO;
 	}
 	
@@ -1228,10 +1228,10 @@ static bool VectorFromCoordinateSystem(ooscript::Context context, ooscript::Call
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, "fromCoordinateSystem"))) return NO;
 	
-	if (oojsArgs.count() >= 1)  coordScheme = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() >= 1)  coordScheme = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(oojsArgs.count() < 1 || !coordScheme.has_value()))
 	{
-		OOJSReportBadArguments(context, @"Vector3D", @"fromCoordinateSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"coordinate system");
+		cxx_OOJSReportBadArguments(context, "Vector3D", "fromCoordinateSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "coordinate system");
 		return NO;
 	}
 	
@@ -1275,16 +1275,16 @@ static bool VectorStaticInterpolate(ooscript::Context context, ooscript::CallArg
 	argc -= consumed;
 	argv += consumed;
 	if (EXPECT_NOT(argc < 1))  goto INSUFFICIENT_ARGUMENTS;
-	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Vector3D", @"interpolate", argc, argv, &interp, NULL)))  return NO;
+	if (EXPECT_NOT(!cxx_OOJSArgumentListGetNumber(context, "Vector3D", "interpolate", argc, argv, &interp, NULL)))  return NO;
 	
 	result = OOHPVectorInterpolate(av, bv, interp);
 	
 	OOJS_RETURN_HPVECTOR(result);
 	
 INSUFFICIENT_ARGUMENTS:
-	OOJSReportBadArguments(context, @"Vector3D", @"interpolate", inArgc, inArgv, 
-								   @"Insufficient parameters",
-								   @"vector expression, vector expression and number");
+	cxx_OOJSReportBadArguments(context, "Vector3D", "interpolate", inArgc, inArgv, 
+								   "Insufficient parameters",
+								   "vector expression, vector expression and number");
 	return NO;
 	
 	OOJS_PROFILE_EXIT
