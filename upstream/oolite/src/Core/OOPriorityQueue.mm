@@ -382,7 +382,13 @@ OOINLINE NSComparisonResult PQCompare(id a, id b, SEL comparator)
 - (id) objectEnumerator
 {
 	// The objects are pulled off the heap up front (the retired enumerator pulled them as it went).
-	return [oo::NSArrayFromObjects([self sortedObjects]) objectEnumerator];
+	return [oo::NSArrayFromObjects([self cxx_objectEnumerator]) objectEnumerator];
+}
+
+
+- (std::vector<oo::ObjCRef<id>>) cxx_objectEnumerator
+{
+	return [self sortedObjects];
 }
 
 @end
