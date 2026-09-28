@@ -11235,7 +11235,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions
 {
 	// The live ones, in the weak set's order (empty when there are none).
-	return oo::ObjCRefsFrom<ShipEntity *>([_collisionExceptions allObjects]);
+	std::vector<oo::ObjCRef<ShipEntity *>> result;
+	for (const oo::ObjCRef<id> &exception : [_collisionExceptions cxx_allObjects])  result.emplace_back(static_cast<ShipEntity *>(exception.get()));
+	return result;
 }
 
 
@@ -11278,7 +11280,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets
 {
-	return oo::ObjCRefsFrom<ShipEntity *>([_defenseTargets allObjects]);
+	std::vector<oo::ObjCRef<ShipEntity *>> result;
+	for (const oo::ObjCRef<id> &target : [_defenseTargets cxx_allObjects])  result.emplace_back(static_cast<ShipEntity *>(target.get()));
+	return result;
 }
 
 
@@ -11286,7 +11290,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	// What the weak set's enumerator gave, in its order: it stops at the first zeroed reference.
 	std::vector<oo::ObjCRef<ShipEntity *>> targets;
-	for (ShipEntity *target in [_defenseTargets objectEnumerator])  targets.emplace_back(target);
+	for (const oo::ObjCRef<id> &target : [_defenseTargets cxx_objectEnumerator])  targets.emplace_back(static_cast<ShipEntity *>(target.get()));
 	return targets;
 }
 

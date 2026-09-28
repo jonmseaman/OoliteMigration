@@ -392,8 +392,9 @@ std::optional<std::string> OptionalStringValue(id object)
 	}
 	
 	[_shipsOnHold makeObjectsPerformSelector:@selector(sendAIMessage:) withObject:@"DOCKING_ABORTED"];
-	for (ShipEntity *hold in [_shipsOnHold objectEnumerator])
+	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])
 	{
+		ShipEntity *hold = static_cast<ShipEntity *>(holdRef.get());
 		[hold doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	}
 
@@ -418,8 +419,9 @@ std::optional<std::string> OptionalStringValue(id object)
 
 - (void) autoDockShipsOnHold
 {
-	for (ShipEntity *ship in [_shipsOnHold objectEnumerator])
+	for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
 	{
+		ShipEntity *ship = static_cast<ShipEntity *>(shipRef.get());
 		[self pullInShipIfPermitted:ship];
 	}
 	
@@ -2473,8 +2475,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		
 		oo::log::indent();
 		unsigned		i = 1;
-		for (ShipEntity *ship in [_shipsOnHold objectEnumerator])
+		for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
 		{
+			ShipEntity *ship = static_cast<ShipEntity *>(shipRef.get());
 			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, [ship displayName].value_or("(null)"), HPdistance([self position], [ship position]), oo::DescriptionOf([ship primaryRole]));
 		}
 		oo::log::outdent();
