@@ -29,7 +29,7 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "OOALSound.h"
 #import "OOSoundSource.h"
 
