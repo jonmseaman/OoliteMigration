@@ -37,6 +37,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Log.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 /* 
  * GNUstep 1.20.1 does not support NSIntegerHashCallBacks but uses 
@@ -278,7 +279,7 @@ std::optional<std::string> GetExtractMode(const oo::PList &textureSpecifier);
 
 BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optional<std::string> &materialKey, const std::optional<std::string> &entityName, std::string *outVertexShader, std::string *outFragmentShader, oo::PList *outTextureSpecs, oo::PList *outUniformSpecs)
 {
-	NSCParameterAssert(!configuration.isNull() && outVertexShader != NULL && outFragmentShader != NULL && outTextureSpecs != NULL && outUniformSpecs != NULL);
+	OOCParameterAssert(!configuration.isNull() && outVertexShader != NULL && outFragmentShader != NULL && outTextureSpecs != NULL && outUniformSpecs != NULL);
 	
 	@autoreleasepool
 	{
@@ -495,7 +496,7 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 - (std::optional<std::string>) defineBindingUniform:(const oo::PList &)binding ofType:(const std::string &)type
 {
 	std::string name = OptionalStringFor(binding, "binding").value_or(std::string());
-	NSParameterAssert(!name.empty());
+	OOParameterAssert(!name.empty());
 	
 	oo::PList bindingSpec = binding;
 	if (!OptionalStringFor(bindingSpec, "type").has_value())
@@ -614,7 +615,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (NSUInteger) assignIDForTexture:(const oo::PList &)textureSpec
 {
-	NSParameterAssert(!textureSpec.isNull());
+	OOParameterAssert(!textureSpec.isNull());
 	
 	// extract_channel doesn't affect uniqueness, and we don't want OOTexture to do actual extraction.
 	oo::PList spec = textureSpec;
@@ -694,7 +695,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (void) getSampleName:(std::string *)outSampleName andSwizzleOp:(std::string *)outSwizzleOp forTextureSpec:(const oo::PList &)textureSpec
 {
-	NSParameterAssert(outSampleName != NULL && outSwizzleOp != NULL && !textureSpec.isNull());
+	OOParameterAssert(outSampleName != NULL && outSwizzleOp != NULL && !textureSpec.isNull());
 	
 	[self setUpOneTexture:textureSpec];
 	NSUInteger	texID = [self textureIDForSpec:textureSpec];

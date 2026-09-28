@@ -92,6 +92,7 @@ MA 02110-1301, USA.
 #import "OOJSEngineTimeManagement.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOAssert.h"
 
 #define USEMASC 1
 
@@ -3207,7 +3208,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	else
 	{
-		NSParameterAssert(oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys));
+		OOParameterAssert(oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys));
 
 		// Any match: order-insensitive. Only string keys can match an equipment key.
 		for (const std::string &key : oo::StringsFrom(equipmentKeys))
@@ -6526,7 +6527,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			for (const auto &sub : subs)
 			{
 				Entity<OOSubEntity> *subEntity = (Entity<OOSubEntity> *)sub.get();
-				NSAssert3([subEntity owner] == self, @"Subentity ownership broke - %@ should be owned by %@ but is owned by %@.", subEntity, self, [subEntity owner]);
+				OOAssert([subEntity owner] == self, "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::DescriptionOf(subEntity).c_str(), oo::DescriptionOf(self).c_str(), oo::DescriptionOf([subEntity owner]).c_str());
 				[subEntity drawSubEntityImmediate:immediate translucent:translucent];
 			}
 		}
@@ -8478,7 +8479,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 - (OOCargoQuantity) cargoQuantityOnBoard
 {
 	NSUInteger result = [self cxx_cargoCount];
-	NSAssert(result < UINT32_MAX, @"Cargo quantity out of bounds.");
+	OOAssert(result < UINT32_MAX, "Cargo quantity out of bounds.");
 	return (OOCargoQuantity)result;
 }
 
@@ -11824,7 +11825,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	[self setWeaponDataFromType:forward_weapon_type];
 	
 	ShipEntity *parent = [self owner];
-	NSAssert([parent isShipWithSubEntityShip:self], @"-fireSubentityLaserShot: called on ship which is not a subentity.");
+	OOAssert([parent isShipWithSubEntityShip:self], "-fireSubentityLaserShot: called on ship which is not a subentity.");
 
 	// subentity lasers still draw power from the main entity
 	if ([parent energy] <= weapon_energy_use) return NO;
