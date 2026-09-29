@@ -499,7 +499,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			break;
 
 		case kVisualEffect_scannerDisplayColor1:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[entity setScannerDisplayColor1:colorForScript];
@@ -508,7 +508,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			break;
 			
 		case kVisualEffect_scannerDisplayColor2:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[entity setScannerDisplayColor2:colorForScript];

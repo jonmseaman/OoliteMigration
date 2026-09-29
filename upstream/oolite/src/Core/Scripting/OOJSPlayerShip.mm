@@ -1254,7 +1254,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_messageGuiTextColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[[UNIVERSE messageGUI] setTextColor:colorForScript];
@@ -1263,7 +1263,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[[UNIVERSE messageGUI] setTextCommsColor:colorForScript];
@@ -1272,7 +1272,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_reticleColorTarget:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				return [[player hud] setReticleColorForIndex:OO_RETICLE_COLOR_TARGET toColor:colorForScript];
@@ -1280,7 +1280,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_reticleColorTargetSensitive:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				return [[player hud] setReticleColorForIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE toColor:colorForScript];
@@ -1288,7 +1288,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			break;
 			
 		case kPlayerShip_reticleColorWormhole:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				return [[player hud] setReticleColorForIndex:OO_RETICLE_COLOR_WORMHOLE toColor:colorForScript];
@@ -2087,7 +2087,7 @@ static bool PlayerShipSetCustomHUDDial(ooscript::Context context, ooscript::Call
 	}
 	if (oojsArgs.count() > 1)
 	{
-		value = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[1]);
+		value = oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, OOJS_ARGV[1]));
 	}
 	else
 	{

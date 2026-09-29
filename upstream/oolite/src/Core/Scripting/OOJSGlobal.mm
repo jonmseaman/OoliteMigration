@@ -962,7 +962,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 
 	if (!ooscript::isNull(value))
 	{
-		col = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, value)];
+		col = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, value))];
 		if (col == nil)
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 1, OOJS_ARGV, std::nullopt, "color descriptor");

@@ -544,7 +544,7 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kEquipmentInfo_displayColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value))];
 			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[eqType setDisplayColor:colorForScript];

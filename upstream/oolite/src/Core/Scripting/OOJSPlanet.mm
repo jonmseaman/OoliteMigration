@@ -306,7 +306,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[planet setAirColor:colorForScript];
@@ -331,7 +331,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		case kPlanet_illuminationColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[planet setIlluminationColor:colorForScript];
