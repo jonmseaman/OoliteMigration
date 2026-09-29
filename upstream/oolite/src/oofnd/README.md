@@ -481,7 +481,6 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
 | `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog hook, Amendment 2 item 18(a); also the Foundation-typed functions until oo-vors removes them) | oo-vjts | oo-qps (with gnustep-base) |
 | `src/Core/Entities/ShipEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.232 made it; chunks oo-3rb.233-.242 of oo-3rb.73 move their own selectors in) | oo-3rb.232 | oo-pizp ("Delete ShipEntity+FoundationBridge") |
-| `src/Core/OOStringExpander+FoundationBridge.h/.mm` (also the OOExpand* macros and their argument-dictionary / boxing machinery; chunked: oo-3rb.145 made it) | oo-3rb.145 (chunks of oo-3il6) | oo-m2nh ("Delete OOStringExpander+FoundationBridge") |
 | `src/Core/GameController+FoundationBridge.h/.mm` (chunked: oo-3rb.88 made it; chunks oo-3rb.89-.91 move their own selectors in) | oo-3rb.88 (chunks of oo-m6ej) | oo-6abg ("Delete GameController+FoundationBridge") |
 | `src/Core/Universe+FoundationBridge.h/.mm` (chunked: oo-3rb.220 made it; chunks oo-3rb.221-.231 move their own selectors in; also the `OOLookUp*DescriptionPRIV` functions behind DESC()) | oo-3rb.220 (chunks of oo-3rb.79) | oo-mr9c ("Delete Universe+FoundationBridge") |
 
