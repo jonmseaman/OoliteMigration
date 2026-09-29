@@ -561,9 +561,9 @@ struct EntityDumpState
 
 	EntityDumpState entityDumpState;
 
-	for (id entity in [UNIVERSE entityList])
+	for (const auto &entity : [UNIVERSE cxx_entityList])
 	{
-		[self dumpEntity:entity withState:&entityDumpState parentVisible:YES];
+		[self dumpEntity:entity.get() withState:&entityDumpState parentVisible:YES];
 	}
 	for (id entity in [PLAYER scannedWormholes])
 	{
