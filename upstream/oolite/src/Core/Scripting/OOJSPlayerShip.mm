@@ -1941,7 +1941,7 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 		[player setStatus:STATUS_WITCHSPACE_COUNTDOWN];
 		[player playGalacticHyperspace];
 		// say it!
-		[UNIVERSE addMessage:oo::NSStringFrom(oo::str::format(oo::StdString(DESC(@"witch-galactic-in-f-seconds")).c_str(), witchspaceSpinUpTime)) forCount:1.0];
+		[UNIVERSE cxx_addMessage:oo::str::format(oo::StdString(DESC(@"witch-galactic-in-f-seconds")).c_str(), witchspaceSpinUpTime) forCount:1.0];
 		begun = YES;
 	}
 	OOJS_RETURN_BOOL(begun);
