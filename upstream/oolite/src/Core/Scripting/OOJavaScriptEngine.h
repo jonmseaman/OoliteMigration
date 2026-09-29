@@ -733,6 +733,27 @@ OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript
 #define OOJS_RETURN_INT(v)				OOJS_RETURN(ooscript::int32Value(v))
 #define OOJS_RETURN_OBJECT(o)			OOJS_RETURN(OOJSValueFromNativeObject(context, o))
 
+/*	PList return slots (proposed ADR-0055 item 4). A native returns C++ values as
+	oo::PList, converted by OOJSValueFromPList() (the same JS value
+	OOJSValueFromNativeObject() gave for the Foundation object it replaces):
+	
+	OOJS_RETURN_PLIST(plist)            the value of <plist> (null for a null PList)
+	OOJS_RETURN_STRING_OR_NULL(opt)     a std::optional<std::string>: the string,
+	                                    or null for nullopt (what nil gave)
+	
+	The recipe the chunks follow:
+	
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(s))           OOJS_RETURN_PLIST(oo::PList(s))
+	OOJS_RETURN_OBJECT(oo::NSStringOrNil(o))          OOJS_RETURN_STRING_OR_NULL(o)
+	OOJS_RETURN_OBJECT(oo::ObjectFromPList(p))        OOJS_RETURN_PLIST(p)
+	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(v))     OOJS_RETURN_PLIST(oo::PListFromObjects(v))  (OOObjCPList.h)
+	OOJSValueFromNativeObject(context, oo::ObjectFromPList(p))    OOJSValueFromPList(context, p)
+	
+	Exemplar: OOJSObjectWrapperToString() in OOJavaScriptEngine.mm.
+*/
+#define OOJS_RETURN_PLIST(plist)		OOJS_RETURN(OOJSValueFromPList(context, (plist)))
+#define OOJS_RETURN_STRING_OR_NULL(opt) do { 	const std::optional<std::string> &oojsOptionalString_ = (opt); 	OOJS_RETURN_PLIST(oojsOptionalString_.has_value() ? oo::PList(*oojsOptionalString_) : oo::PList()); } while (0)
+
 #define OOJS_RETURN_WITH_HELPER(helper, value) \
 do { \
 	ooscript::Value jsresult; \

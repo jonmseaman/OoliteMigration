@@ -1984,26 +1984,26 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_NATIVE_ENTER(context)
 	
 	id						object = nil;
-	id						description = nil;	// the object's own -cxx_oo_jsDescription / -description
+	std::optional<std::string>	description;	// the object's own -cxx_oo_jsDescription / -description
 	ooscript::ClassDef					*jsClass = NULL;
 
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object != nil)
 	{
-		description = oo::NSStringOrNil([object cxx_oo_jsDescription]);
-		if (description == nil)  description = [object description];
+		description = [object cxx_oo_jsDescription];
+		if (!description.has_value())  description = oo::OptionalString([object description]);
 	}
-	if (description == nil)
+	if (!description.has_value())
 	{
 		jsClass = OOJSGetClass(context, OOJS_THIS);
 		if (jsClass != NULL)
 		{
-			description = oo::NSStringFrom(oo::str::format("[object %s]", jsClass->name));
+			description = oo::str::format("[object %s]", jsClass->name);
 		}
 	}
-	if (description == nil)  description = oo::NSStringFrom("[object]");
+	if (!description.has_value())  description = std::string("[object]");
 	
-	OOJS_RETURN_OBJECT(description);
+	OOJS_RETURN_STRING_OR_NULL(description);
 	
 	OOJS_NATIVE_EXIT
 }
