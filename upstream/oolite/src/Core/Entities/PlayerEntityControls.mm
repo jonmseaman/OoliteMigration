@@ -1438,7 +1438,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						{
 							[self playNextEquipmentSelected];
 							eqKey = eqScripts[primedEquipment].first;
-							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
+							const std::string equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] cxx_name].value_or(std::string());
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
 						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
@@ -2696,7 +2696,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] name]);
+						const std::string weaponName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] cxx_name].value_or(std::string());
 						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
 						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}

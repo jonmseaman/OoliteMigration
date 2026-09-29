@@ -429,9 +429,15 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (id) name	// shared selector (proposed ADR-0043)
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringFrom(_name);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>) cxx_name
+{
+	return _name;
 }
 
 

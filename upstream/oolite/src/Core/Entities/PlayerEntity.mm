@@ -7115,7 +7115,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			return NO;
 		}
 
-		const std::optional<std::string>	system_name = oo::OptionalString([eqType name]);
+		const std::optional<std::string>	system_name = [eqType cxx_name];
 		if (![eqType canBeDamaged] || !system_name.has_value())
 		{
 			return NO;
@@ -8230,12 +8230,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 					// only one installed display normally
 					if (count == 1)
 					{
-						quip2.push_back(EquipmentRow(oo::OptionalString([eqType name]), true, [eqType displayColor]));
+						quip2.push_back(EquipmentRow([eqType cxx_name], true, [eqType displayColor]));
 					}
 					// display plural form
 					else
 					{
-						const std::string equipmentName = oo::StdString([eqType name]);	// (nil raised in the expansion)
+						const std::string equipmentName = [eqType cxx_name].value_or(std::string());	// (nil raised in the expansion)
 						alldesc = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-plural",
 							{ { "count", oo::PList::unsignedInteger(count) }, { "equipmentName", oo::PList(equipmentName) } });
 						quip2.push_back(EquipmentRow(alldesc, true, [eqType displayColor]));
@@ -8244,7 +8244,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				// all broken, only one installed
 				else if (count == 1 && okcount == 0)
 				{
-					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { oo::DescriptionOf([eqType name]) });
+					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { [eqType cxx_name].value_or("(null)") });
 					if (prioritiseDamaged)
 					{
 						quip1.push_back(EquipmentRow(desc, false, [eqType displayColor]));
@@ -8257,7 +8257,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				// some broken, multiple installed
 				else
 				{
-					const std::string equipmentName = oo::StdString([eqType name]);	// (nil raised in the expansion)
+					const std::string equipmentName = [eqType cxx_name].value_or(std::string());	// (nil raised in the expansion)
 					alldesc = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-plural-some-na",
 						{ { "okcount", oo::PList::unsignedInteger(okcount) }, { "count", oo::PList::unsignedInteger(count) }, { "equipmentName", oo::PList(equipmentName) } });
 					if (prioritiseDamaged)
@@ -8272,14 +8272,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			}
 			else if ([self hasEquipmentItem:[eqType identifier]])
 			{
-				quip2.push_back(EquipmentRow(oo::OptionalString([eqType name]), true, [eqType displayColor]));
+				quip2.push_back(EquipmentRow([eqType cxx_name], true, [eqType displayColor]));
 			}
 			else
 			{
 				// Check for damaged version
 				if ([self hasEquipmentItem:oo::NSStringFrom(oo::StdString([eqType identifier]) + "_DAMAGED")])
 				{
-					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { oo::DescriptionOf([eqType name]) });
+					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { [eqType cxx_name].value_or("(null)") });
 
 					if (prioritiseDamaged)
 					{
@@ -8303,22 +8303,22 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (!isWeaponNone(forward_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-fwd-weapon-@")), { oo::DescriptionOf([forward_weapon_type name]) });
+		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-fwd-weapon-@")), { [forward_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [forward_weapon_type displayColor]));
 	}
 	if (!isWeaponNone(aft_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-aft-weapon-@")), { oo::DescriptionOf([aft_weapon_type name]) });
+		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-aft-weapon-@")), { [aft_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [aft_weapon_type displayColor]));
 	}
 	if (!isWeaponNone(port_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-port-weapon-@")), { oo::DescriptionOf([port_weapon_type name]) });
+		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-port-weapon-@")), { [port_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [port_weapon_type displayColor]));
 	}
 	if (!isWeaponNone(starboard_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-stb-weapon-@")), { oo::DescriptionOf([starboard_weapon_type name]) });
+		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-stb-weapon-@")), { [starboard_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [starboard_weapon_type displayColor]));
 	}
 	
@@ -8344,7 +8344,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	else
 	{
-		return oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[idx].first)] name]);
+		return [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[idx].first)] cxx_name];
 	}
 }
 
@@ -8386,7 +8386,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			else
 			{
 				// (a nil name raised in the expansion)
-				const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[primedEquipment].first)] name]);
+				const std::string equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[primedEquipment].first)] cxx_name].value_or(std::string());
 				[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 			}
 		}
@@ -9641,7 +9641,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				const std::string	&eqKey = equipmentAllowed[i];
 				OOEquipmentType		*eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)];
 				OOCreditsQuantity	pricePerUnit = [eqInfo price];
-				std::string			desc = oo::str::format(" %s ", oo::DescriptionOf([eqInfo name]).c_str());
+				std::string			desc = oo::str::format(" %s ", [eqInfo cxx_name].value_or("(null)").c_str());
 				double				price;
 
 				OOColor				*dispCol = [eqInfo displayColor];
@@ -11793,7 +11793,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
 			oo::PList::Dict customKey;
 			customKey[oo::StdString(CUSTOMEQUIP_EQUIPKEY)] = equipmentKey;
-			const std::optional<std::string> equipmentName = oo::OptionalString([eq name]);
+			const std::optional<std::string> equipmentName = [eq cxx_name];
 			if (equipmentName.has_value())  customKey[oo::StdString(CUSTOMEQUIP_EQUIPNAME)] = *equipmentName;
 
 			// grab any default keys from the equipment item
