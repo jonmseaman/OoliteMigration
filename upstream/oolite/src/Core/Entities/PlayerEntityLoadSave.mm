@@ -832,7 +832,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
 	if (market != nullptr)
 	{
-		[dockedStation setLocalMarket:oo::ObjectFromPList(*market)];
+		[dockedStation cxx_setLocalMarket:*market];
 	}
 	else
 	{
@@ -1346,13 +1346,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		const oo::PList *subEntStatus = cdr.find("subentities_status");
 		// don't add it to the dictionary if there's no subentities_status key
 		if (subEntStatus != nullptr && dict.isDict())  (*dict.getIf<oo::PList::Dict>())["subentities_status"] = *subEntStatus;
-		[self showShipyardModel:oo::NSStringFrom(*shipDesc) shipData:oo::ObjectFromPList(dict) personality:personality];
+		[self cxx_showShipyardModel:*shipDesc shipData:dict personality:personality];
 		shipName = OptionalStringValue(shipDict.find("display_name"));
 		if (!shipName) shipName = OptionalStringValue(shipDict.find("name"));	// KEY_NAME
 	}
 	else
 	{
-		[self showShipyardModel:@"oolite-unknown-ship" shipData:nil personality:personality];
+		[self cxx_showShipyardModel:"oolite-unknown-ship" shipData:oo::PList() personality:personality];
 		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
 		if (![[UNIVERSE useAddOns] isEqualToString:SCENARIO_OXP_DEFINITION_ALL])
 		{
