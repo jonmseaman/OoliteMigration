@@ -333,6 +333,11 @@ enum {
 #import "oofnd/objc/OOObject.h"
 #import "OOObjectGNUstepBridge.h"
 
+/*	The C++ description family (-cxx_descriptionComponents & co., oo::DescriptionOf), Foundation-free
+	(proposed ADR-0055 item 1). The id-typed family above is its transitional legacy form.
+*/
+#import "OODescription.h"
+
 @interface OOObject (OODescriptionComponents)
 
 - (id) description; // shared selector (proposed ADR-0043): root-class description family

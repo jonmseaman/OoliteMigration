@@ -223,7 +223,7 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 	-cxx_oo_jsDescriptionWithClassName:
 	-cxx_oo_jsClassName
 
-	See comments for -descriptionComponents in OOCocoa.h. C++ string twins on OOObject.
+	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components]. C++ string twins on OOObject.
 
 	oo_clearJSSelf:
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is

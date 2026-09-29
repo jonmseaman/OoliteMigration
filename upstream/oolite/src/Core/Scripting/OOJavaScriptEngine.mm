@@ -1295,14 +1295,13 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 {
 	OOJS_PROFILE_ENTER
 
-	id						components = [self descriptionComponents];
+	const std::optional<std::string> components = [self cxx_descriptionComponents];
 	std::optional<std::string> name = className;
-	if (!name.has_value())  name = oo::OptionalString([[self class] description]);
+	if (!name.has_value())  name = oo::DescriptionOf([self class]);	// the class's name
 
-	// "%@" of each: oo::DescriptionOf prints the same text.
-	if (components != nil)
+	if (components.has_value())
 	{
-		return oo::str::format("[%s %s]", name->c_str(), oo::DescriptionOf(components).c_str());
+		return oo::str::format("[%s %s]", name->c_str(), components->c_str());
 	}
 	else
 	{
