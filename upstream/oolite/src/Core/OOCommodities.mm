@@ -287,7 +287,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 	// The JS boundary takes and gives property-list objects: the info crosses as one, and an
 	// accepted result comes back through oo::PListFrom (an exact round trip, Amendment 2 item 11).
 	ooscript::Value				args[] = {
-		OOJSValueFromNativeObject(context, oo::ObjectFromPList(good)),
+		OOJSValueFromPList(context, good),
 		OOJSValueFromNativeObject(context, station),
 		ooscript::int32Value(system)
 	};

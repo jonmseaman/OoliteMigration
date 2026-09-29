@@ -592,7 +592,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 						BOOL OK;
 						bool allow_use;
 						ooscript::Value result;
-						ooscript::Value args[] = { OOJSValueFromNativeObject(context, oo::NSStringFrom(*shipKey)) };
+						ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(*shipKey)) };
 
 						OK = [condScript callMethod:OOJSID("allowShowLibraryShip")
 										  inContext:context

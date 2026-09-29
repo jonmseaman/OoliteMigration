@@ -232,7 +232,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList(NormalizedColorComponents([planet airColor])));
+			*value_raw = OOJSValueFromPList(context, NormalizedColorComponents([planet airColor]));
 			return YES;
 			
 		case kPlanet_airColorMixRatio:
@@ -242,7 +242,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [planet airDensity], value);
 			
 		case kPlanet_illuminationColor:
-			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList(NormalizedColorComponents([planet illuminationColor])));
+			*value_raw = OOJSValueFromPList(context, NormalizedColorComponents([planet illuminationColor]));
 			return YES;
 
 		case kPlanet_isMainPlanet:
@@ -257,7 +257,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 			
 		case kPlanet_texture:
-			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([planet textureFileName]));
+			{ const std::optional<std::string> textureName = [planet textureFileName]; *value_raw = OOJSValueFromPList(context, textureName.has_value() ? oo::PList(*textureName) : oo::PList()); }
 			return YES;
 			
 		case kPlanet_name:

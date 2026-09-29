@@ -4076,7 +4076,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			BOOL OK;
 			bool allow_instantiation;
 			ooscript::Value result;
-			ooscript::Value args[] = { OOJSValueFromNativeObject(context, oo::NSStringFrom(shipKey)) };
+			ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(shipKey)) };
 			
 			OK = [condScript callMethod:OOJSID("allowSpawnShip")
 						  inContext:context
@@ -9630,7 +9630,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 					BOOL OK;
 					bool allow_purchase;
 					ooscript::Value result;
-					ooscript::Value args[] = { OOJSValueFromNativeObject(context, oo::NSStringFrom(key)) };
+					ooscript::Value args[] = { OOJSValueFromPList(context, oo::PList(key)) };
 
 					OK = [condScript callMethod:OOJSID("allowOfferShip")
 												inContext:context
@@ -9789,7 +9789,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 							BOOL OK;
 							bool allow_addition;
 							ooscript::Value result;
-							ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromNativeObject(JScontext, @"newShip")};
+							ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromPList(JScontext, oo::PList("newShip"))};
 
 							OK = [condScript callMethod:OOJSID("allowAwardEquipment")
 																inContext:JScontext
