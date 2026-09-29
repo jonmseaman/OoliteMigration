@@ -469,21 +469,6 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 
 namespace {
 
-/*	-stringByAppendingPathExtension: as gnustep-base 1.31.1 answers it on Windows (probed):
-	trailing separators ('/' and '\') are dropped, then "." and the extension are appended. A path
-	that is empty or a bare root ("/", "C:", "~") once they are dropped is returned unchanged
-	(GNUstep also logged "cannot append extension").
-*/
-std::string AppendingPathExtension(const std::string &path, const std::string &extension)
-{
-	std::string result = path;
-	while (!result.empty() && (result.back() == '/' || result.back() == '\\'))  result.pop_back();
-	const bool isDrive = result.size() == 2 && result[1] == ':' && ((result[0] >= 'A' && result[0] <= 'Z') || (result[0] >= 'a' && result[0] <= 'z'));
-	if (result.empty() || result == "~" || isDrive)  return path;
-	return result + "." + extension;
-}
-
-
 /*	Attempt to load fragment or vertex shader source from a file.
 	Returns YES if source was loaded or no shader was specified, and NO if an
 	external shader was specified but could not be found. (The prefix it took went unused.)
@@ -504,7 +489,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 		{
 			for (const std::string &extension : extensions)
 			{
-				result = [ResourceManager cxx_stringFromFilesNamed:AppendingPathExtension(*fileName, extension)
+				result = [ResourceManager cxx_stringFromFilesNamed:oo::str::appendingPathExtension(*fileName, extension)
 																		inFolder:"Shaders"];
 				if (result.has_value()) break;
 			}
