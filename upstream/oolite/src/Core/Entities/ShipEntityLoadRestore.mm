@@ -33,8 +33,8 @@ MA 02110-1301, USA.
 #import "OOEquipmentType.h"
 #import "AI.h"
 #import "ShipEntityAI.h"
-#import "OOCollectionExtractors.h"	// OOHPVectorFromObject() & co., OOPropertyListFromHPVector() & co. (unmigrated callees)
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -74,7 +74,6 @@ OOShipGroup *GroupForGroupID(NSUInteger groupID, OOShipSaveContext &context);
 oo::PList::Dict DictFrom(const oo::PList &plist);
 oo::PList ArrayFromStrings(const std::vector<std::string> &strings);
 std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::string_view key);
-id ObjectForKey(const oo::PList &dict, std::string_view key);
 }	// namespace
 
 
@@ -114,11 +113,11 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 
 	if (!HPvector_equal([self position], kZeroHPVector))
 	{
-		result[KEY_POSITION] = oo::PListFrom(OOPropertyListFromHPVector([self position]));
+		result[KEY_POSITION] = OOPListFromHPVector([self position]);
 	}
 	if (!quaternion_equal([self normalOrientation], kIdentityQuaternion))
 	{
-		result[KEY_ORIENTATION] = oo::PListFrom(OOPropertyListFromQuaternion([self normalOrientation]));
+		result[KEY_ORIENTATION] = OOPListFromQuaternion([self normalOrientation]);
 	}
 
 	// -oo_setFloat:forKey: stored a double.
@@ -239,8 +238,8 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 	}
 
 	// The following stuff is deliberately set up the same way even if using role fallback.
-	[ship setPosition:OOHPVectorFromObject(ObjectForKey(dict, KEY_POSITION), kZeroHPVector)];
-	[ship setNormalOrientation:OOQuaternionFromObject(ObjectForKey(dict, KEY_ORIENTATION), kIdentityQuaternion)];
+	[ship setPosition:OOHPVectorFromPList(dict.find(KEY_POSITION), kZeroHPVector)];
+	[ship setNormalOrientation:OOQuaternionFromPList(dict.find(KEY_ORIENTATION), kIdentityQuaternion)];
 
 	float energyLevel = dict.get<float>(KEY_ENERGY_LEVEL, 1.0f);
 	[ship setEnergy:energyLevel * [ship maxEnergy]];
@@ -410,12 +409,5 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	return dict.get<std::string>(key);
 }
 
-
-// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
-id ObjectForKey(const oo::PList &dict, std::string_view key)
-{
-	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
-}
 
 }	// namespace

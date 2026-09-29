@@ -41,7 +41,6 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOStringParsing.h"
 #import "OOSystemDescriptionManager.h"
-#import "OOCollectionExtractors.h"	// OOVectorFromObject() (unmigrated callee)
 
 #import "OOPlanetTextureGenerator.h"
 #import "OOStandaloneAtmosphereGenerator.h"
@@ -53,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOOpenGLMatrixManager.h"
 #import "OOFoundationBridge.h"
 #import "OOJavaScriptEngine.h"	// OONull
+#import "OOPListGameTypes.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
@@ -101,11 +101,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-// get<Vector>: OOVectorFromObject of the value; the zero vector for no dictionary (messaging nil).
+// get<Vector>: OOVectorFromPList of the value; the zero vector for no dictionary (messaging nil).
 Vector VectorForKey(const oo::PList &dict, std::string_view key, Vector fallback)
 {
 	if (dict.isNull())  return kZeroVector;
-	return OOVectorFromObject(ObjectForKey(dict, key), fallback);
+	return OOVectorFromPList(dict.find(key), fallback);
 }
 
 

@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 #import "OOWaypointEntity.h"
 #import "Entity.h"
-#import "OOCollectionExtractors.h"	// OOHPVectorFromObject() & co. (unmigrated callees)
 #import "OOStringExpander.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -32,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOMacroOpenGL.h"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
 
@@ -41,17 +41,6 @@ MA 02110-1301, USA.
 #define OOWAYPOINT_KEY_CODE			"beaconCode"
 #define OOWAYPOINT_KEY_LABEL		"beaconLabel"
 
-
-namespace {
-
-// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
-id ObjectForKey(const oo::PList &dict, std::string_view key)
-{
-	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
-}
-
-}	// namespace
 
 @implementation OOWaypointEntity
 
@@ -72,8 +61,8 @@ id ObjectForKey(const oo::PList &dict, std::string_view key)
 
 	// A nil dictionary read zero-filled values and nil strings (messaging nil), not the defaults.
 	oriented = YES;
-	position = info ? OOHPVectorFromObject(ObjectForKey(info, OOWAYPOINT_KEY_POSITION), kZeroHPVector) : kZeroHPVector;
-	Quaternion q = info ? OOQuaternionFromObject(ObjectForKey(info, OOWAYPOINT_KEY_ORIENTATION), kIdentityQuaternion) : (Quaternion){ 0, 0, 0, 0 };
+	position = info ? OOHPVectorFromPList(info.find(OOWAYPOINT_KEY_POSITION), kZeroHPVector) : kZeroHPVector;
+	Quaternion q = info ? OOQuaternionFromPList(info.find(OOWAYPOINT_KEY_ORIENTATION), kIdentityQuaternion) : (Quaternion){ 0, 0, 0, 0 };
 	[self setOrientation:q];
 	[self setSize:info.get<oo::NonNegative<float>>(OOWAYPOINT_KEY_SIZE, 1000.0)];
 	[self setBeaconCode:info ? std::optional<std::string>(info.get<std::string>(OOWAYPOINT_KEY_CODE, "W")) : std::nullopt];
