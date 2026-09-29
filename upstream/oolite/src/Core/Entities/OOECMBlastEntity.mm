@@ -96,7 +96,7 @@ MA 02110-1301, USA.
 			{
 				ShipEntity *target = targets[i].get();
 				ShipScriptEvent(context, target, "shipHitByECM", ecmPulsesRemaining, whomVal);
-				[target reactToAIMessage:@"ECM" context:nil];
+				[target cxx_reactToAIMessage:"ECM" context:std::nullopt];
 				[target noticeECM];
 			}
 			

@@ -454,7 +454,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 
 			// Wormholes now have a JS representation, so we could provide it
 			// but is it worth it for the exit wormhole?
-			[ship doScriptEvent:OOJSID("shipExitedWormhole") andReactToAIMessage:@"EXITED WITCHSPACE"];
+			[ship cxx_doScriptEvent:OOJSID("shipExitedWormhole") andReactToAIMessage:"EXITED WITCHSPACE"];
 		
 			// update the ships's position
 			if (!hasExitPosition)

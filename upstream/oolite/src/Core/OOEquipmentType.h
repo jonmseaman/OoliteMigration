@@ -184,9 +184,3 @@ SOFTWARE.
 
 @end
 
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-fvnu (chunks oo-3rb.156..159), forwarding to the cxx_ methods above, so
-	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads.
-*/
-#import "OOEquipmentType+FoundationBridge.h"

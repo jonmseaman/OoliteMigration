@@ -565,9 +565,9 @@ struct EntityDumpState
 	{
 		[self dumpEntity:entity.get() withState:&entityDumpState parentVisible:YES];
 	}
-	for (id entity in [PLAYER scannedWormholes])
+	for (const oo::ObjCRef<WormholeEntity *> &entityRef : [PLAYER cxx_scannedWormholes])
 	{
-		[self dumpEntity:entity withState:&entityDumpState parentVisible:YES];
+		[self dumpEntity:entityRef.get() withState:&entityDumpState parentVisible:YES];
 	}
 
 	oo::log::outdent();

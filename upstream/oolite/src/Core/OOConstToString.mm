@@ -272,8 +272,7 @@ std::optional<std::string> cxx_OOStringFromWeaponType(OOWeaponType weapon)
 	if (weapon == nil) {
 		return "EQ_WEAPON_NONE";
 	} else {
-		// OOEquipmentType is not migrated yet: its -identifier, converted at the call.
-		return oo::OptionalString([weapon identifier]);
+		return [weapon cxx_identifier];
 	}
 }
 
@@ -286,24 +285,24 @@ OOWeaponType cxx_OOWeaponTypeFromString(const std::string &string)
 
 std::optional<std::string> cxx_OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon)
 {
-	return oo::OptionalString([weapon identifier]);
+	return [weapon cxx_identifier];
 }
 
 
 OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(const std::string &string)
 {
-	OOWeaponType w = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(string)];
+	OOWeaponType w = [OOEquipmentType cxx_equipmentTypeWithIdentifier:string];
 	if (w == nil)
 	{
 		if (!oo::str::hasPrefix(string, "EQ_"))
 		{
-			w = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom("EQ_" + string)];
+			w = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_" + string];
 			if (w != nil)
 			{
 				return w;
 			}
 		}
-		return [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_WEAPON_NONE"];
+		return [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_WEAPON_NONE"];
 	}
 	return w;
 }

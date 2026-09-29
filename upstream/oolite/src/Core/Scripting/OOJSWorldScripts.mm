@@ -111,7 +111,11 @@ static bool WorldScriptsGetProperty(Context cx, Object obj, PropertyId propID, V
 	
 	if (scriptName.has_value())
 	{
-		script = [[player worldScriptsByName] objectForKey:oo::NSStringFrom(*scriptName)];
+		script = nil;
+		for (const auto &[name, scriptRef] : [player cxx_worldScriptsByName])	// the last of a name, as the dictionary kept
+		{
+			if (name == *scriptName && scriptRef.get() != nil)  script = scriptRef.get();
+		}
 		if (script != nil)
 		{
 			/*	If script is an OOJSScript, this should return a JS Script
@@ -151,7 +155,7 @@ static bool WorldScriptsEnumerate(Context cx, Object obj)
 		we define the value as null here.
 	*/
 	
-	const std::vector<std::string> names = oo::StringsFrom([OOPlayerForScripting() worldScriptNames]);
+	const std::vector<std::string> names = [OOPlayerForScripting() cxx_worldScriptNames];
 	
 	for (const std::string &name : names)
 	{
