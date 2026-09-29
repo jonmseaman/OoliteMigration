@@ -77,9 +77,12 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 }
 
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return ObjectForKey(_metadata, kMDKeyName);
+	// Always a string: -initWithName:scriptArray:metadata: sets it.
+	const oo::PList *value = _metadata.get<oo::PList>(kMDKeyName);
+	const std::string *string = (value != nullptr) ? value->getIf<std::string>() : nullptr;
+	return (string != nullptr) ? std::optional<std::string>(*string) : std::nullopt;
 }
 
 

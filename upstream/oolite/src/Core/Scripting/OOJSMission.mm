@@ -529,7 +529,7 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		missionKey = oo::OptionalString([[OOJSScript currentlyRunningScript] name]);
+		missionKey = [[OOJSScript currentlyRunningScript] cxx_name];
 	}
 	
 	if (text.has_value())
