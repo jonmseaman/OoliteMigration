@@ -156,7 +156,7 @@ bool ManifestListContains(const oo::PList &manifest, const std::string &key, std
 std::set<std::string> ManifestRequiredBy(const oo::PList &manifest)
 {
 	std::set<std::string> result;
-	const oo::PList *list = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestRequiredBy));
+	const oo::PList *list = manifest.get<oo::PList::Array>(std::string(kOOManifestRequiredBy));
 	if (list == nullptr)  return result;
 	for (const oo::PList &element : *list->getIf<oo::PList::Array>())
 	{
@@ -841,10 +841,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			}
 			// make up a basic manifest in relaxed mode or for base folders
 			oo::PList::Dict basicManifest;
-			basicManifest[oo::StdString(kOOManifestIdentifier)] = oo::PList("__oolite.tmp." + path);
-			basicManifest[oo::StdString(kOOManifestVersion)] = oo::PList("1");
-			basicManifest[oo::StdString(kOOManifestTitle)] = oo::PList("OXP without manifest");
-			basicManifest[oo::StdString(kOOManifestRequiredOoliteVersion)] = oo::PList("1");
+			basicManifest[std::string(kOOManifestIdentifier)] = oo::PList("__oolite.tmp." + path);
+			basicManifest[std::string(kOOManifestVersion)] = oo::PList("1");
+			basicManifest[std::string(kOOManifestTitle)] = oo::PList("OXP without manifest");
+			basicManifest[std::string(kOOManifestRequiredOoliteVersion)] = oo::PList("1");
 			manifest = oo::PList(std::move(basicManifest));
 		}
 	}
@@ -862,33 +862,33 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 + (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path
 {
 	BOOL 		OK = YES;
-	const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
-	const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
-	const std::optional<std::string> required = ManifestString(manifest, oo::StdString(kOOManifestRequiredOoliteVersion));
-	const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
+	const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
+	const std::optional<std::string> version = ManifestString(manifest, std::string(kOOManifestVersion));
+	const std::optional<std::string> required = ManifestString(manifest, std::string(kOOManifestRequiredOoliteVersion));
+	const std::optional<std::string> title = ManifestString(manifest, std::string(kOOManifestTitle));
 
 	if (!identifier.has_value())
 	{
-		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestIdentifier));
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestIdentifier)];
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestIdentifier);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestIdentifier)];
 		OK = NO;
 	}
 	if (!version.has_value())
 	{
-		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestVersion));
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestVersion)];
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestVersion);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestVersion)];
 		OK = NO;
 	}
 	if (!required.has_value())
 	{
-		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestRequiredOoliteVersion));
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestRequiredOoliteVersion)];
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestRequiredOoliteVersion);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestRequiredOoliteVersion)];
 		OK = NO;
 	}
 	if (!title.has_value())
 	{
-		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, oo::DescriptionOf(kOOManifestTitle));
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestTitle)];
+		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestTitle);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestTitle)];
 		OK = NO;
 	}
 	if (!OK)
@@ -908,14 +908,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	auto duplicate = sOXPManifests.find(*identifier);
 	if (duplicate != sOXPManifests.end())
 	{
-		const std::optional<std::string> duplicatePath = ManifestString(duplicate->second, oo::StdString(kOOManifestFilePath));
+		const std::optional<std::string> duplicatePath = ManifestString(duplicate->second, std::string(kOOManifestFilePath));
 		OO_LOG("oxp.duplicate", "OXP {} has the same identifier ({}) as {} which has already been loaded.", path, *identifier, duplicatePath.value_or("(null)"));
 		[self addErrorWithKey:"oxp-manifest-duplicate" param1:path param2:duplicatePath.value_or("")];
 		return NO;
 	}
 	oo::PList mData = manifest;
 	// add an extra key
-	if (oo::PList::Dict *dict = mData.getIf<oo::PList::Dict>())  (*dict)[oo::StdString(kOOManifestFilePath)] = oo::PList(path);
+	if (oo::PList::Dict *dict = mData.getIf<oo::PList::Dict>())  (*dict)[std::string(kOOManifestFilePath)] = oo::PList(path);
 	sOXPManifests[*identifier] = std::move(mData);
 	return YES;
 }
@@ -923,8 +923,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title
 {
-	const std::optional<std::string> required = ManifestString(manifest, oo::StdString(kOOManifestRequiredOoliteVersion));
-	const std::optional<std::string> maxRequired = ManifestString(manifest, oo::StdString(kOOManifestMaximumOoliteVersion));
+	const std::optional<std::string> required = ManifestString(manifest, std::string(kOOManifestRequiredOoliteVersion));
+	const std::optional<std::string> maxRequired = ManifestString(manifest, std::string(kOOManifestMaximumOoliteVersion));
 	// A nil required version ended the old key/value list at once: an empty requirements dictionary.
 	oo::PList::Dict requirements;
 	if (required.has_value())
@@ -1004,25 +1004,25 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors
 {
-	const oo::PList *conflicts = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestConflictOXPs), nullptr);
+	const oo::PList *conflicts = manifest.get<oo::PList::Array>(std::string(kOOManifestConflictOXPs), nullptr);
 	// if it has a non-empty conflict_oxps list
 	if (conflicts != nullptr && conflicts->count() > 0)
 	{
 		// iterate over that list
 		for (const oo::PList &conflicting : *conflicts->getIf<oo::PList::Array>())
 		{
-			const std::optional<std::string> conflictID = ManifestString(conflicting, oo::StdString(kOOManifestRelationIdentifier));
+			const std::optional<std::string> conflictID = ManifestString(conflicting, std::string(kOOManifestRelationIdentifier));
 			auto conflictManifest = conflictID.has_value() ? sOXPManifests.find(*conflictID) : sOXPManifests.end();
 			// if the other OXP is in the list
 			if (conflictManifest != sOXPManifests.end())
 			{
 				// then check versions
-				if ([self cxx_matchVersions:conflicting withVersion:ManifestString(conflictManifest->second, oo::StdString(kOOManifestVersion)).value_or("")])
+				if ([self cxx_matchVersions:conflicting withVersion:ManifestString(conflictManifest->second, std::string(kOOManifestVersion)).value_or("")])
 				{
 					if (logErrors)
 					{
-						[self addErrorWithKey:"oxp-conflict" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:ManifestString(conflictManifest->second, oo::StdString(kOOManifestTitle)).value_or("")];
-						OO_LOG("oxp.conflict", "OXP {} conflicts with {} and was removed from the loading list", (LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))).value_or("(null)"), (LastPathComponent(ManifestString(conflictManifest->second, oo::StdString(kOOManifestFilePath)))).value_or("(null)"));
+						[self addErrorWithKey:"oxp-conflict" param1:ManifestString(manifest, std::string(kOOManifestTitle)).value_or("") param2:ManifestString(conflictManifest->second, std::string(kOOManifestTitle)).value_or("")];
+						OO_LOG("oxp.conflict", "OXP {} conflicts with {} and was removed from the loading list", (LastPathComponent(ManifestString(manifest, std::string(kOOManifestFilePath)))).value_or("(null)"), (LastPathComponent(ManifestString(conflictManifest->second, std::string(kOOManifestFilePath)))).value_or("(null)"));
 					}
 					return YES;
 				}
@@ -1050,7 +1050,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			if ([self cxx_manifestHasConflicts:manifest logErrors:YES])
 			{
 				// then we have a conflict, so remove this path
-				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
 				sOXPManifests.erase(identifier);
 			}
 		}
@@ -1060,7 +1060,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors
 {
-	const oo::PList *requireds = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestRequiresOXPs), nullptr);
+	const oo::PList *requireds = manifest.get<oo::PList::Array>(std::string(kOOManifestRequiresOXPs), nullptr);
 	// if it has a non-empty required_oxps list
 	if (requireds != nullptr && requireds->count() > 0)
 	{
@@ -1079,14 +1079,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors
 {
-	const std::optional<std::string> requiredID = ManifestString(required, oo::StdString(kOOManifestRelationIdentifier));
+	const std::optional<std::string> requiredID = ManifestString(required, std::string(kOOManifestRelationIdentifier));
 	auto requiredManifest = requiredID.has_value() ? sOXPManifests.find(*requiredID) : sOXPManifests.end();
 	// if the other OXP is in the list
 	BOOL requirementsMet = NO;
 	if (requiredManifest != sOXPManifests.end())
 	{
 		// then check versions
-		if ([self cxx_matchVersions:required withVersion:ManifestString(requiredManifest->second, oo::StdString(kOOManifestVersion)).value_or("")])
+		if ([self cxx_matchVersions:required withVersion:ManifestString(requiredManifest->second, std::string(kOOManifestVersion)).value_or("")])
 		{
 			requirementsMet = YES;
 			/* Mark the requiredManifest as a dependency of the
@@ -1096,7 +1096,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			/* then add this manifest to its required set. This is
 			 * done without checking if it's already there, because
 			 * the list of nested requirements may have changed. */
-			if (std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier)))  reqby.insert(*identifier);
+			if (std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier)))  reqby.insert(*identifier);
 			// *and* anything that requires this OXP to be installed
 			const std::set<std::string> manifestReqby = ManifestRequiredBy(manifest);
 			reqby.insert(manifestReqby.begin(), manifestReqby.end());
@@ -1111,16 +1111,16 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			// and push back into the requiring manifest (the set as a sorted array of unique strings)
 			oo::PList::Array reqbyList;
 			for (const std::string &identifier : reqby)  reqbyList.emplace_back(identifier);
-			if (oo::PList::Dict *dict = requiredManifest->second.getIf<oo::PList::Dict>())  (*dict)[oo::StdString(kOOManifestRequiredBy)] = oo::PList(std::move(reqbyList));
+			if (oo::PList::Dict *dict = requiredManifest->second.getIf<oo::PList::Dict>())  (*dict)[std::string(kOOManifestRequiredBy)] = oo::PList(std::move(reqbyList));
 		}
 	}
 	if (!requirementsMet)
 	{
 		if (logErrors)
 		{
-			const std::optional<std::string> requiredDescription = ManifestString(required, oo::StdString(kOOManifestRelationDescription));
-			[self addErrorWithKey:"oxp-required" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:requiredDescription.has_value() ? *requiredDescription : requiredID.value_or("")];
-			OO_LOG("oxp.requirementMissing", "OXP {} had unmet requirements and was removed from the loading list", (LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))).value_or("(null)"));
+			const std::optional<std::string> requiredDescription = ManifestString(required, std::string(kOOManifestRelationDescription));
+			[self addErrorWithKey:"oxp-required" param1:ManifestString(manifest, std::string(kOOManifestTitle)).value_or("") param2:requiredDescription.has_value() ? *requiredDescription : requiredID.value_or("")];
+			OO_LOG("oxp.requirementMissing", "OXP {} had unmet requirements and was removed from the loading list", (LastPathComponent(ManifestString(manifest, std::string(kOOManifestFilePath)))).value_or("(null)"));
 		}
 		return YES;
 	}
@@ -1147,7 +1147,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			if ([self cxx_manifestHasMissingDependencies:manifest logErrors:YES])
 			{
 				// then we have a missing requirement, so remove this path
-				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
 				sOXPManifests.erase(identifier);
 				sAllMet = NO;
 			}
@@ -1160,8 +1160,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version
 {
-	const std::optional<std::string> minimum = ManifestString(rangeDict, oo::StdString(kOOManifestRelationVersion));
-	const std::optional<std::string> maximum = ManifestString(rangeDict, oo::StdString(kOOManifestRelationMaxVersion));
+	const std::optional<std::string> minimum = ManifestString(rangeDict, std::string(kOOManifestRelationVersion));
+	const std::optional<std::string> maximum = ManifestString(rangeDict, std::string(kOOManifestRelationMaxVersion));
 	const std::vector<unsigned> isVersionComponents = oo::str::versionComponents(version);	// "" (was nil) compares as the empty version
 	if (minimum.has_value())
 	{
@@ -1198,9 +1198,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (entry != sOXPManifests.end())
 		{
 			const oo::PList manifest = entry->second;
-			if (ManifestListContains(manifest, oo::StdString(kOOManifestTags), oo::StdString(kOOManifestTagScenarioOnly)))
+			if (ManifestListContains(manifest, std::string(kOOManifestTags), std::string(kOOManifestTagScenarioOnly)))
 			{
-				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
 				sOXPManifests.erase(identifier);
 			}
 		}
@@ -1226,7 +1226,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			if (![ResourceManager manifestAllowedByScenario:manifest])
 			{
 				// then we don't need this one
-				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
 				sOXPManifests.erase(identifier);
 			}
 		}
@@ -1250,7 +1250,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return NO;
 	}
 #endif
-	if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == "org.oolite.oolite")
+	if (ManifestString(manifest, std::string(kOOManifestIdentifier)) == "org.oolite.oolite")
 	{
 		// the core data is always allowed!
 		return YES;
@@ -1276,14 +1276,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier
 {
-	if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == identifier)
+	if (ManifestString(manifest, std::string(kOOManifestIdentifier)) == identifier)
 	{
 		// manifest has the identifier - easy
 		return YES;
 	}
 	// manifest is also allowed if a manifest with that identifier
 	// requires it to be installed
-	if (ManifestListContains(manifest, oo::StdString(kOOManifestRequiredBy), identifier))
+	if (ManifestListContains(manifest, std::string(kOOManifestRequiredBy), identifier))
 	{
 		return YES;
 	}
@@ -1294,7 +1294,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 + (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag
 {
-	if (ManifestListContains(manifest, oo::StdString(kOOManifestTags), tag))
+	if (ManifestListContains(manifest, std::string(kOOManifestTags), tag))
 	{
 		// manifest has the tag - easy
 		return YES;
@@ -1305,7 +1305,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		auto reqManifest = sOXPManifests.find(identifier);
 		// need to check for nil as this one may already have been ruled out
-		if (reqManifest != sOXPManifests.end() && ManifestListContains(reqManifest->second, oo::StdString(kOOManifestTags), tag))
+		if (reqManifest != sOXPManifests.end() && ManifestListContains(reqManifest->second, std::string(kOOManifestTags), tag))
 		{
 			return YES;
 		}
