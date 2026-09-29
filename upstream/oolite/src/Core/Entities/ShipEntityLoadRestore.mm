@@ -221,9 +221,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		ship = [[[shipClass alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
 
 		// FIXME: restore AI.
-		[ship setAITo:oo::NSStringFrom(dict.get<std::string>(KEY_AI, "nullAI.plist"))];
+		[ship setAITo:dict.get<std::string>(KEY_AI, "nullAI.plist")];
 
-		[ship setPrimaryRole:oo::NSStringOrNil(OptionalStringForKey(dict, KEY_PRIMARY_ROLE))];
+		const std::optional<std::string> primaryRole = OptionalStringForKey(dict, KEY_PRIMARY_ROLE);
+		if (primaryRole.has_value())  [ship setPrimaryRole:*primaryRole];
+		else  ship->primaryRole = std::nullopt;	// as -setPrimaryRole: stored nil
 
 	}
 	else

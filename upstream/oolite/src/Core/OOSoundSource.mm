@@ -219,7 +219,7 @@ std::vector<oo::ObjCRef<OOSoundSource *>> *sPlayingSoundSources = nullptr;
 }
 
 
-- (void) playSound:(OOSound *)sound
+- (void) playOOSound:(OOSound *)sound
 {
 	[self playSound:sound repeatCount:_repeatCount];
 }
@@ -236,7 +236,7 @@ std::vector<oo::ObjCRef<OOSoundSource *>> *sPlayingSoundSources = nullptr;
 
 - (void) playOrRepeatSound:(OOSound *)sound
 {
-	if (_sound != sound) [self playSound:sound];
+	if (_sound != sound) [self playOOSound:sound];
 	else [self playOrRepeat];
 }
 

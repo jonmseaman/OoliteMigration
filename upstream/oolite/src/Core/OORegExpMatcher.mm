@@ -149,9 +149,21 @@ static OORegExpMatcher *sActiveInstance;
 		free(buffer);
 	}
 	
-	BOOL result = [_tester evaluatePredicateWithContext:context
-												  scope:nil
-											  arguments:oo::ObjCRefsFrom<id>(oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(string), _cachedRegExpObject }))];
+	// The arguments converted as -evaluatePredicateWithContext:scope:arguments: converted them (a JS
+	// string, as the string's Objective-C string gave; the cached RegExp object), rooted while the
+	// function runs, and the result converted to a boolean as it did.
+	ooscript::Value argv[2];
+	argv[0] = OOJSValueFromPList(context, oo::PList(string));
+	OOJSAddGCValueRoot(context, &argv[0], "OORegExpMatcher argv");
+	argv[1] = (_cachedRegExpObject != nil) ? OOJSValueFromNativeObject(context, _cachedRegExpObject) : ooscript::Value{0};
+	OOJSAddGCValueRoot(context, &argv[1], "OORegExpMatcher argv");
+	ooscript::Value resultValue;
+	BOOL OK = [_tester evaluateWithContext:context scope:NULL argc:2 argv:argv result:&resultValue];
+	bool matched = NO;
+	if (OK)  OK = ooscript::valueToBoolean(context, resultValue, &matched);
+	ooscript::removeValueRoot(context, &argv[0]);
+	ooscript::removeValueRoot(context, &argv[1]);
+	BOOL result = OK && matched;
 	
 	OOJSRelinquishContext(context);
 	

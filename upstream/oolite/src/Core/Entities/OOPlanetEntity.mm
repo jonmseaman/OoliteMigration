@@ -893,7 +893,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		
 		[shuttle_ship setScanClass: CLASS_NEUTRAL];
 		[shuttle_ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
-		[shuttle_ship switchAITo:@"oolite-shuttleAI.js"];
+		[shuttle_ship switchAITo:"oolite-shuttleAI.js"];
 		[UNIVERSE addEntity:shuttle_ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
 		_shuttlesOnGround--;
 		_lastLaunchTime = [UNIVERSE getTime];
@@ -1129,7 +1129,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		
 		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(self), oo::DescriptionOf(atmosphere));
 		
-		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:nil];
+		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:oo::PList()];
 		[_atmosphereDrawable setMaterial:dynamicMaterial];
 
 		if (shadersOn)
@@ -1187,7 +1187,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 #endif
 	if (material == nil)
 	{
-		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:nil];
+		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:oo::PList()];
 		[material autorelease];
 	}
 	[_planetDrawable setMaterial:material];

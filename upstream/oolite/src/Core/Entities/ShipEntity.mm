@@ -753,7 +753,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	[shipAI autorelease];
 	shipAI = [[AI alloc] init];
 	[shipAI setOwner:self];
-	[self setAITo:oo::NSStringFrom(shipDict.get<std::string>("ai_type", "nullAI.plist"))];
+	[self setAITo:shipDict.get<std::string>("ai_type", "nullAI.plist")];
 	
 	likely_cargo = shipDict.get<unsigned int>("likely_cargo");
 	noRocks = (unsigned char)FuzzyBooleanForKey(shipDict, "no_boulders");
@@ -937,7 +937,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		}
 		if (!cdict.isNull())
 		{
-			OOCharacter	*pilot = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cdict)];
+			OOCharacter	*pilot = [OOCharacter characterWithDictionary:cdict];
 			[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(pilot) }];
 		}
 	}
@@ -2061,7 +2061,7 @@ static constexpr std::string_view kBoulderRole = "boulder";
 		[escorter cxx_setSingleCrewWithRole:pilotRole];
 	}
 
-	[escorter setPrimaryRole:oo::NSStringFrom(defaultRole)];	//for mothership
+	[escorter setPrimaryRole:defaultRole];	//for mothership
 	// in case this hasn't yet been set, make sure escorts get a real scan class
 	// shouldn't happen very often, but is possible
 	if (scanClass == CLASS_NOT_SET)
@@ -2088,7 +2088,7 @@ static constexpr std::string_view kBoulderRole = "boulder";
 	if ( FuzzyBooleanForKey([escorter cxx_shipInfoDictionary], "auto_ai", YES)
 		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
 	{
-		[escorter switchAITo:oo::NSStringFrom(autoAI)];
+		[escorter switchAITo:autoAI];
 	}
 
 	[escorter setGroup:escortGroup];
@@ -2449,7 +2449,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
 		[pod cxx_setCommodity:"slaves" andAmount:1];
 		[pod cxx_setCrew:podCrew];
-		[pod switchAITo:@"oolite-shuttleAI.js"];
+		[pod switchAITo:"oolite-shuttleAI.js"];
 		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
 		[pod release]; //release
 	}
@@ -7483,10 +7483,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 
 // Exposed to AI.
-- (void)setPrimaryRole:(id)role	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void)setPrimaryRole:(const std::string &)role	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
-	// -isEqual: compared a string's text; nil (or a non-string) never matched, so it was stored
-	primaryRole = oo::IsNSString(role) ? oo::OptionalString(role) : std::nullopt;
+	primaryRole = role;
 }
 
 
@@ -8154,7 +8153,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 
 
-- (void) setStateMachine:(id)smName	// shared selector (proposed ADR-0043), called by name
+- (void) setStateMachine:(const std::string &)smName	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
 	[self setAITo:smName];
 }
@@ -12616,7 +12615,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		for (i = 0; i < crew->size(); i++)
 		{
 			OOCharacter *ch = (*crew)[i].get();
-			[ch setLegalStatus: [self legalStatus] | [ch legalStatus]];
+			[ch cxx_setLegalStatus: [self legalStatus] | [ch legalStatus]];
 		}
 		mainPod = [self launchPodWithCrew:*crew];
 		if (mainPod)
@@ -13040,7 +13039,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if([self status] == STATUS_BEING_SCOOPED) return; // both cargo and ship call this. Act only once.
 	desired_speed = 0.0;
-	[self setAITo:@"nullAI.plist"];	// prevent AI from changing status or behaviour.
+	[self setAITo:"nullAI.plist"];	// prevent AI from changing status or behaviour.
 	behaviour = BEHAVIOUR_TRACTORED;
 	[self setStatus:STATUS_BEING_SCOOPED];
 	[self addTarget:other];
@@ -13485,7 +13484,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			{
 				[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"].value_or(std::string())];
 			}
-			[self setAITo:@"nullAI.plist"];
+			[self setAITo:"nullAI.plist"];
 			behaviour = BEHAVIOUR_IDLE;
 			frustration = 0.0;
 			[self setScanClass: CLASS_CARGO];			// we're unmanned now!
@@ -14029,7 +14028,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		ShipEntity *escort = escortRef.get();
 		[escort addTarget:target];
-		[escort setAITo:@"interceptAI.plist"];
+		[escort setAITo:"interceptAI.plist"];
 		[escort doScriptEvent:OOJSID("escortAttack") withArgument:target];
 		
 		if (--deployCount == 0)  break;
@@ -14061,7 +14060,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		// JSAI: handles own delay
 		if (![escort hasNewAI])
 		{
-			[escort setAITo:@"dockingAI.plist"];
+			[escort setAITo:"dockingAI.plist"];
 			[ai cxx_setState:"ABORT" afterDelay:delay + 0.25];
 		}
 		[escort cxx_doScriptEvent:OOJSID("escortDock") withPListArguments:{ oo::PList::singleReal(delay) }];
@@ -14568,10 +14567,10 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	// Get the station to launch a pilot boat to bring a pilot out to the hulk (use a viper for now)
 	StationEntity *station = (StationEntity *)[self primaryTarget];
 	OO_LOG("claimAsSalvage.requestingPilot", "{}", "claimAsSalvage asking station to launch a pilot boat");
-	[station launchShipWithRole:@"pilot"];
+	[station launchShipWithRole:"pilot"];
 	[self setReportAIMessages:YES];
 	OO_LOG("claimAsSalvage.success", "{}", "claimAsSalvage setting own state machine to capturedShipAI.plist");
-	[self setAITo:@"capturedShipAI.plist"];
+	[self setAITo:"capturedShipAI.plist"];
 }
 
 
@@ -14601,7 +14600,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 				{
 					OO_LOG("ship.pilotage", "{}", "found pilot boat with no target, will use this one");
 					pilot = scanShip;
-					[pilot setPrimaryRole:@"pilot"];
+					[pilot setPrimaryRole:"pilot"];
 					break;
 				}
 			}
@@ -14618,7 +14617,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		OO_LOG("ship.pilotage", "{}", "becoming pilot target and setting AI");
 		[pilot setReportAIMessages:YES];
 		[pilot addTarget:self];
-		[pilot setAITo:@"pilotAI.plist"];
+		[pilot setAITo:"pilotAI.plist"];
 		[self cxx_reactToAIMessage:"FOUND_PILOT" context:"flight update"];
 	}
 }

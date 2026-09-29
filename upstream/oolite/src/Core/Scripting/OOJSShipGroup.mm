@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 #import "OOShipGroup.h"
 #import "OOJSShipGroup.h"
 #import "OOJavaScriptEngine.h"
+#import "OOObjCPList.h"
 #import "OOShipGroup.h"
 #import "Universe.h"
 
@@ -212,25 +213,26 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 	OOJS_NATIVE_ENTER(context)
 
 	OOShipGroup				*group = nil;
-	id						result = nil;
+	oo::PList				result;	// null: nil
 
 	if (EXPECT_NOT(!JSShipGroupGetShipGroup(context, thisObj, &group)))  return NO;
 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShipGroup_ships:
-			result = oo::NSArrayFromObjects((group != nil) ? [group cxx_memberArray] : std::vector<oo::ObjCRef<ShipEntity *>>());	// (no C++ value from a message to nil)
-			if (result == nil)  result = oo::NSArrayFromObjects(std::vector<id>());	// an empty array
+			result = oo::PListFromObjects((group != nil) ? [group cxx_memberArray] : std::vector<oo::ObjCRef<ShipEntity *>>());	// (no C++ value from a message to nil; an empty array)
 			break;
 			
 		case kShipGroup_leader:
-			result = [group leader];
+			result = oo::PListObject([group leader]);
 			break;
 			
 		case kShipGroup_name:
-			result = oo::NSStringOrNil([group cxx_name]);
-			if (result == nil)  result = [OONull null];
+		{
+			const std::optional<std::string> name = [group cxx_name];
+			result = name.has_value() ? oo::PList(*name) : oo::PListObject([OONull null]);
 			break;
+		}
 			
 		case kShipGroup_count:
 			return ooscript::newNumberValue(cx, [group count], value);
@@ -240,7 +242,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 			return NO;
 	}
 	
-	*value = (OOJSValueFromNativeObject(context, result));
+	*value = OOJSValueFromPList(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT

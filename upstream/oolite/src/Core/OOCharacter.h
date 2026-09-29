@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 
 + (OOCharacter *) characterWithRole:(const std::string &)c_role andOriginalSystem:(OOSystemID)s;
 + (OOCharacter *) randomCharacterWithRole:(const std::string &)c_role andOriginalSystem:(OOSystemID)s;
-+ (OOCharacter *) characterWithDictionary:(id)c_dict;	// an Objective-C dictionary (JS crew definitions may hold any object)
++ (OOCharacter *) characterWithDictionary:(const oo::PList &)c_dict;	// a dictionary (JS crew definitions may hold any object, as an Object node)
 
 - (std::optional<std::string>) planetOfOrigin;
 - (OOSystemID) planetIDOfOrigin;
@@ -67,10 +67,10 @@ MA 02110-1301, USA.
 - (void) cxx_setName:(const std::optional<std::string> &)value;
 
 - (std::optional<std::string>) cxx_shortDescription;
-- (void) setShortDescription:(id)value;	// shared selector: an Objective-C string, or nil
+- (void) setShortDescription:(const std::optional<std::string> &)value;	// nullopt: none (bead oo-qps.51)
 
 - (int) legalStatus;
-- (void) setLegalStatus:(int)value;
+- (void) cxx_setLegalStatus:(int)value;
 
 - (OOCreditsQuantity) insuranceCredits;
 - (void) setInsuranceCredits:(OOCreditsQuantity)value;
