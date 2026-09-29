@@ -42,9 +42,9 @@ SOFTWARE.
 	[super dealloc];
 }
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringOrNil(_name);
+	return _name;
 }
 
 
@@ -64,7 +64,7 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		_name = oo::OptionalString([inDecoder name]);
+		_name = [inDecoder cxx_name];
 		_sampleRate = [inDecoder sampleRate];
 		OK = [inDecoder readCreatingBuffer:&_buffer withFrameCount:&_size];
 		_stereo = [inDecoder isStereo];

@@ -346,7 +346,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		[self setLegalStatus:100];
 		[self setInsuranceCredits:0];
-		[self setName:DESC(@"character-thargoid-name")];
+		[self cxx_setName:oo::OptionalString(DESC(@"character-thargoid-name"))];
 		[self setShortDescription:DESC(@"character-a-thargoid")];
 		specialSetUpDone = YES;
 	}
@@ -357,9 +357,15 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (id)name
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(_name);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
+{
+	return _name;
 }
 
 
@@ -418,9 +424,15 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (void)setName:(id)value
+- (void)setName:(id)value	// shared selector (Foundation declares -setName: too; retires with oo-qps)
 {
-	_name = oo::OptionalString(value);
+	[self cxx_setName:oo::OptionalString(value)];
+}
+
+
+- (void)cxx_setName:(const std::optional<std::string> &)value
+{
+	_name = value;
 }
 
 
