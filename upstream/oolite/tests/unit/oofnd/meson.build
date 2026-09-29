@@ -71,6 +71,7 @@ oofnd_plist_tests = [
     'test_plist_get',
     'test_plist_carrier',
     'test_plist_game_tuples',
+    'test_plist_description',
 ]
 
 foreach t : oofnd_plist_tests

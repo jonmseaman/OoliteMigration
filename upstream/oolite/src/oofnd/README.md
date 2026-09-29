@@ -28,6 +28,7 @@ Rules that hold for every component:
 | `src/oofnd/PListXML.hpp` | `oo::parseXMLPList` (GNUstep's GSXMLPListParser over GSSloppyXMLParser) and `oo::changeDTDIfApplicable` (OOPListParsing.m), ported quirk-for-quirk |
 | `src/oofnd/PListWriting.hpp` | `oo::writeOldStylePList` (OldSchoolPropertyListWriting.m) and `oo::writeXMLPList` (GNUstep's XML writer), byte-identical output |
 | `src/oofnd/PListParsing.hpp` | `oo::parsePropertyList`: OOPropertyListFromData's DTD change + format detection + dispatch to the two readers |
+| `src/oofnd/PListDescription.hpp` | `oo::describe(plist)`: gnustep-base's `-description` of the Foundation form of a `PList` (what `%@` printed for `ObjectFromPList(plist)`), byte for byte; pinned by rows captured with `tools/captures/plist-description/capture.sh` (ADR-0055 item 1). Game code calls `oo::DescriptionOf(plist)` |
 | `src/oofnd/PListGet.hpp` | `oo::PList::get<T>(key, fallback)` / `at<T>(index, fallback)`: OOCollectionExtractors' `oo_*ForKey:` / `oo_*AtIndex:` with GNUstep's exact conversions ([ADR-0031](../../../../docs/decisions/0031-plist-get-and-the-foundation-bridge.md)); included by `PList.hpp` |
 | `src/Core/OOPListView.h` (game side) | `oo::PListView`: the same `get<T>`/`at<T>` over a Foundation collection, for sweeping `oo_*ForKey` before the containers are `PList`; see below |
 | `src/oofnd/Data.hpp` | `oo::Data`: `NSData` / `NSMutableData` as a value type ([ADR-0028](../../../../docs/decisions/0028-oofnd-filesystem-paths-data.md)) |
@@ -511,6 +512,19 @@ of an object not rooted on `OOObject` asks its `-description` (oo-qps.72 deletes
 one class's override by hand before oo-qps.43: a converted superclass hides an unconverted
 subclass's override (the exemplar has no subclass). `tests/unit/oofnd/test_objc_description.mm` pins the text and the forwarding,
 linked against libobjc2 alone.
+
+### Describing a property list: `oo::DescriptionOf(const oo::PList &)` (item 1, oo-qps.32)
+
+`oo::DescriptionOf(oo::ObjectFromPList(v))` is `oo::DescriptionOf(v)`: the `OODescription.h` overload
+forwards to `oo::describe` (`oofnd/PListDescription.hpp`), which prints what gnustep-base's
+`-description` printed (`(a, "two words", 1)`, `{key = value; }`, keys by `-compare:`, strings
+quoted and escaped as GNUstep did). Exemplar: `src/Core/Entities/OOVisualEffectEntity.mm`
+(`setUpOneStandardSubentity:`). The text is pinned by `tests/unit/oofnd/test_plist_description.cpp`
+against `plist_description_captured.inc`, captured from GNUstep base 1.31.1; to add a case, add a
+line to `tools/captures/plist-description/cases.txt` and rerun
+`bash tools/captures/plist-description/capture.sh` (needs gnustep-base installed, also after
+oo-qps.18; `--check` compares without writing). Dates print in the local time zone, as NSDate did
+(`oo::date::description`); the capture runs with TZ=UTC and the test describes at offset 0.
 
 ## Testing
 
