@@ -49,8 +49,6 @@ MA 02110-1301, USA.
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #import "stb_image_write.h"
 
-#define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
-
 // The save and snapshot directory names (moved here when the NSFileManager category header retired, bead oo-pwz0).
 #define SAVEDIR "oolite-saves"
 #define SNAPSHOTDIR "snapshots"

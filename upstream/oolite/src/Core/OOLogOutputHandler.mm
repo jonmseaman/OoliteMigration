@@ -390,9 +390,9 @@ static void LoadLogCStringFunctions(void)
 
 static void OONSLogCStringFunction(const char *string, unsigned length, BOOL withSyslogBanner)
 {
-	if (OOLogWillDisplayMessagesInClass(@"system"))
+	if (oo::log::willDisplay("system"))
 	{
-		OOLogWithFunctionFileAndLine(@"system", NULL, NULL, 0, @"%s", string);
+		oo::log::logger().write("system", NULL, NULL, 0, string != NULL ? string : "(null)");
 	}
 }
 

@@ -9,6 +9,7 @@ OOLogOutputHandler.mm. Foundation-typed forwarders were removed by oo-vors.
 
 #import "OOLogOutputHandler.h"	// declares the bridge at its end
 #import "OOLogging.h"
+#import "OOFoundationBridge.h"	// oo::DescriptionOf
 
 
 #if OOLITE_GNUSTEP
@@ -17,9 +18,9 @@ namespace {
 
 void OONSLogPrintfHandler(NSString *message)
 {
-	if (OOLogWillDisplayMessagesInClass(@"gnustep"))
+	if (oo::log::willDisplay("gnustep"))
 	{
-		OOLogWithFunctionFileAndLine(@"gnustep", NULL, NULL, 0, @"%@", message);
+		oo::log::logger().write("gnustep", NULL, NULL, 0, oo::DescriptionOf(message));
 	}
 }
 

@@ -1529,7 +1529,7 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 	va_end(args);
 
 	// Logging and the JavaScript engine call sites are not migrated here: the formatted text is handed on.
-	if (OOLogWillDisplayMessagesInClass(oo::NSStringFrom(logMessageClass)))
+	if (oo::log::willDisplay(logMessageClass))
 	{
 		if (context->isJavaScript)
 		{
@@ -1543,7 +1543,7 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 		}
 		else
 		{
-			OOLogWithFunctionFileAndLine(oo::NSStringFrom(logMessageClass), function, fileName, line, @"%@", oo::NSStringFrom(std::string(prefix) + message));
+			oo::log::logger().write(logMessageClass, function, fileName, line, std::string(prefix) + message);
 		}
 	}
 }

@@ -32,8 +32,6 @@ std::string FormattedCharacter(unsigned code)
 
 } // namespace
 
-#define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
-
 @interface MyOpenGLView (InputPrivate)
 
 @end
