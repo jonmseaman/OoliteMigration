@@ -49,7 +49,8 @@ SOFTWARE.
 // Called once at startup (by -[Universe init]).
 + (void) setUp;
 
-- (id) name;	// an Objective-C string. Shared selector (proposed ADR-0043).
+- (id) name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
+- (std::optional<std::string>) cxx_name;	// nullopt: none (bead oo-3rb.289.5)
 
 // Make this the current material.
 - (void) apply;
