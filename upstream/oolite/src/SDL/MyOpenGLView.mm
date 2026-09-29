@@ -1495,7 +1495,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
 	// use the snapshots directory
-	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), SAVEDIR), SNAPSHOTDIR);
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
@@ -1513,7 +1513,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)  return;
 
 	// use the snapshots directory
-	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), SAVEDIR), SNAPSHOTDIR);
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGB24, bytes, rowBytes);
@@ -1531,7 +1531,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width)  return;
 
 	// use the snapshots directory
-	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), SAVEDIR), SNAPSHOTDIR);
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
@@ -1561,7 +1561,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)  return;
 
 	// use the snapshots directory
-	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), SAVEDIR), SNAPSHOTDIR);
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
