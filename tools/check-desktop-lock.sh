@@ -81,6 +81,7 @@ LOCKED_LAUNCHERS="
 tools/js_api_snapshot.py
 tools/check-splash-off.py
 tools/oo-qwk5-probe.py
+tools/oxp_load_check.py
 tests/golden/motion/motion_probe.py
 tests/golden/motion/value_probe.py
 upstream/oolite/tests/launch_snapshot.py
