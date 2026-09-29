@@ -187,16 +187,16 @@ std::string RepeatString(std::string_view str, NSUInteger times)
 }
 
 
-/*	OOExpandKey(key, <argument>): the expansion of a description key with the one-entry argument
-	dictionary OOExpandKey's macro builds from the variable's name (OOShipLibraryDescriptions.mm's
-	pattern). A nil argument (which the macro could not have put in a dictionary) is left out.
+/*	cxx_OOExpandKey(key, <argument>): the expansion of a description key with the one-entry argument
+	dictionary the macro builds from the variable's name (OOShipLibraryDescriptions.mm's pattern).
+	A nil argument (which the macro could not have put in a dictionary) is left out.
 */
 std::optional<std::string> ExpandKeyWithArgument(const char *key, const char *argumentName, const std::optional<std::string> &argument)
 {
 	oo::PList::Dict arguments;
 	if (argument.has_value())  arguments[argumentName] = *argument;
-	return oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
-		oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), key,
+		oo::PList(std::move(arguments)), oo::PList(), std::nullopt, kOOExpandKey);
 }
 
 
@@ -209,10 +209,10 @@ int IntValueOfKey(std::string_view key)
 }
 
 
-// OOExpand(text): the text expanded with no arguments.
+// cxx_OOExpand(text): the text expanded with no arguments; nothing expanded is "".
 std::string ExpandedText(const std::string &text)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(text), nil, nil, nil, kOOExpandNoOptions));
+	return cxx_OOExpand(text).value_or(std::string());
 }
 
 
@@ -1714,7 +1714,7 @@ DESTROY(laser_color);
 
 	if (label.has_value() || _beaconLabel.has_value())
 	{
-		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 
@@ -14280,7 +14280,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		const std::optional<std::string> targetName = [other_ship identFromShip: self];
 		if (targetName.has_value())  specials["[target:name]"] = *targetName;
 	}
-	const std::optional<std::string> expandedMessage = oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(message_text), oo::ObjectFromPList(oo::PList(std::move(specials))), nil, nil, kOOExpandNoOptions));
+	const std::optional<std::string> expandedMessage = cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), message_text, oo::PList(std::move(specials)), oo::PList(), std::nullopt, kOOExpandNoOptions);
 
 	if (expandedMessage.has_value())  [self cxx_sendMessage:*expandedMessage toShip:other_ship withUnpilotedOverride:NO];	// nil was not sent
 }
