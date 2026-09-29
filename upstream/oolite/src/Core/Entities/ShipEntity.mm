@@ -1145,7 +1145,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		}
 		
 		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
-		[subentity setDisplayName:oo::NSStringFrom(subentDict.get<std::string>("dock_label", "the docking bay"))];
+		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
 	}
 
 	[subentity release];
@@ -1156,7 +1156,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 
 - (BOOL) isTemplateCargoPod
 {
-	return [[self primaryRole] isEqualToString:@"oolite-template-cargopod"];
+	return [self cxx_primaryRole] == "oolite-template-cargopod";
 }
 
 
@@ -1849,7 +1849,7 @@ DESTROY(laser_color);
 	
 	if (_maxEscortCount < _pendingEscortCount)
 	{
-		if ([self hasPrimaryRole:@"police"] || [self hasPrimaryRole:@"hunter"])
+		if ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"])
 		{
 			_maxEscortCount = MAX_ESCORTS; // police and hunters get up to MAX_ESCORTS, overriding the 'escorts' key.
 			[self updateEscortFormation];
@@ -2502,7 +2502,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (scanClass == CLASS_NOT_SET)
 		{
 			scanClass = CLASS_NEUTRAL;
-			OOLog(@"ship.sanityCheck.failed", @"Ship %@ %@ with scanClass CLASS_NOT_SET; forced to CLASS_NEUTRAL.", self, [self primaryRole]);
+			OOLog(@"ship.sanityCheck.failed", @"Ship %@ %@ with scanClass CLASS_NOT_SET; forced to CLASS_NEUTRAL.", self, oo::NSStringOrNil([self cxx_primaryRole]));
 		}
 
 		[self updateTrackingCurve];
@@ -3605,7 +3605,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			// find options that agree with this ship. Only player ships have these options.
 			// (Membership only: the string elements of the two arrays.)
 			OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
 			std::set<std::string>	options;
 			const oo::PList		*standardEquipment = shipyardInfo.find(oo::StdString(KEY_STANDARD_EQUIPMENT));
 			for (const oo::PList *list : { ArrayForKey(shipyardInfo, oo::StdString(KEY_OPTIONAL_EQUIPMENT)),
@@ -7473,25 +7473,25 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (BOOL)isTrader
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-trader"];
+	return [UNIVERSE role:oo::NSStringOrNil([self cxx_primaryRole]) isInCategory:@"oolite-trader"];
 }
 
 
 - (BOOL)isPirate
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-pirate"];
+	return [UNIVERSE role:oo::NSStringOrNil([self cxx_primaryRole]) isInCategory:@"oolite-pirate"];
 }
 
 
 - (BOOL)isMissile
 {
-	return ([[self primaryRole] hasSuffix:@"MISSILE"] || [self hasPrimaryRole:@"missile"]);
+	return ([self cxx_primaryRole].value_or("").ends_with("MISSILE") || [self cxx_hasPrimaryRole:"missile"]);
 }
 
 
 - (BOOL)isMine
 {
-	return [[self primaryRole] hasSuffix:@"MINE"];
+	return [self cxx_primaryRole].value_or("").ends_with("MINE");
 }
 
 
@@ -7503,13 +7503,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (BOOL)isEscort
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-escort"];
+	return [UNIVERSE role:oo::NSStringOrNil([self cxx_primaryRole]) isInCategory:@"oolite-escort"];
 }
 
 
 - (BOOL)isShuttle
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-shuttle"];
+	return [UNIVERSE role:oo::NSStringOrNil([self cxx_primaryRole]) isInCategory:@"oolite-shuttle"];
 }
 
 
@@ -7521,7 +7521,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (BOOL)isPirateVictim
 {
-	return [UNIVERSE roleIsPirateVictim:[self primaryRole]];
+	return [UNIVERSE roleIsPirateVictim:oo::NSStringOrNil([self cxx_primaryRole])];
 }
 
 
@@ -8255,7 +8255,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		rate = calcFuelChargeRate(mass);
 	}
 
-	OOLog(@"fuelPrices", @"\"%@\" fuel charge rate: %.2f (mass ratio: %.2f/%.2f)", [self shipDataKey], rate, mass, [PLAYER baseMass]);
+	OOLog(@"fuelPrices", @"\"%@\" fuel charge rate: %.2f (mass ratio: %.2f/%.2f)", oo::NSStringOrNil([self cxx_shipDataKey]), rate, mass, [PLAYER baseMass]);
 #endif
 	
 	return rate;
@@ -9003,11 +9003,11 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			{
 				if ([self owner])
 				{
-					[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self primaryRole]];
+					[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:oo::NSStringOrNil([self cxx_primaryRole])];
 				} 
 				else
 				{
-					[e2 takeEnergyDamage:damage from:self becauseOf:self weaponIdentifier:[self primaryRole]];
+					[e2 takeEnergyDamage:damage from:self becauseOf:self weaponIdentifier:oo::NSStringOrNil([self cxx_primaryRole])];
 				}
 			}
 		}
@@ -9044,7 +9044,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			double ecr = [e2 collisionRadius];
 			double d = (magnitude(p2) - ecr) * 2.6; // 2.6 is a correction constant to stay in limits of the old code.
 			double damage = (d > 0) ? weapon_damage * desired_range / (d * d) : weapon_damage;
-			[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self primaryRole]];
+			[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:oo::NSStringOrNil([self cxx_primaryRole])];
 		}
 	}
 }
@@ -13641,7 +13641,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	if (![[UNIVERSE sun] willGoNova])
 	{
 		// if the sun's not going nova, add a new ship like this one leaving.
-		[UNIVERSE witchspaceShipWithPrimaryRole:[self primaryRole]];
+		[UNIVERSE witchspaceShipWithPrimaryRole:oo::NSStringOrNil([self cxx_primaryRole])];
 	}
 	
 	[UNIVERSE removeEntity:self];
@@ -13837,7 +13837,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		
 		// check total number acceptable
 		// the system's patrols don't have escorts set inside their dictionary, but accept max escorts.
-		if (_maxEscortCount == 0 && ([self hasPrimaryRole:@"police"] || [self hasPrimaryRole:@"hunter"] || [self hasRole:"thargoid-mothership"])) 
+		if (_maxEscortCount == 0 && ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"] || [self hasRole:"thargoid-mothership"])) 
 		{
 			_maxEscortCount = MAX_ESCORTS;
 		}
@@ -14601,7 +14601,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 	[super dumpSelfState];
 	
-	OOLog(@"dumpState.shipEntity", @"Type: %@", [self shipDataKey]);
+	OOLog(@"dumpState.shipEntity", @"Type: %@", oo::NSStringOrNil([self cxx_shipDataKey]));
 	OOLog(@"dumpState.shipEntity", @"Name: %@", oo::NSStringOrNil(name));
 	OOLog(@"dumpState.shipEntity", @"Display Name: %@", oo::NSStringOrNil([self displayName]));
 	OOLog(@"dumpState.shipEntity", @"Roles: %@", [self roleSet]);
