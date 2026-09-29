@@ -1135,8 +1135,8 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	
-	OOCommodityType commodity = oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]));
-	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:oo::StdString(commodity)]))
+	const std::string commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or("");
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:commodity]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
@@ -1144,13 +1144,13 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 
 	int32_t quantity;
 	BOOL gotQuantity = ooscript::valueToInt32((context), (OOJS_ARGV[1]), &quantity);
-	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] cxx_capacityForGood:oo::StdString(commodity)]))
+	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] cxx_capacityForGood:commodity]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Quantity must be between 0 and the station market capacity");
 		return NO;
 	}
 
-	[station cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:oo::StdString(commodity)];
+	[station cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:commodity];
 	
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
