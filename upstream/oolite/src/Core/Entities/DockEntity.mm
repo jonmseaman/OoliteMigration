@@ -169,7 +169,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		{
 			playerExtraTime = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 			int seconds = round(playerExtraTime);
-			[station sendExpandedMessage:OOExpandKey(@"station-docking-clearance-abort-cancelled-in-time", seconds) toShip:player];
+			[station cxx_sendExpandedMessage:cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds).value_or(std::string()) toShip:player];
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 		}
 
@@ -657,7 +657,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			else
 			{
 				int seconds = 10; // when very close to the port, give the player a few seconds to react on the abort message.
-				[[self parentEntity] sendExpandedMessage:OOExpandKey(@"station-docking-clearance-abort-cancelled-in-time", seconds) toShip:player];
+				[[self parentEntity] cxx_sendExpandedMessage:cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds).value_or(std::string()) toShip:player];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 			}
 		}
