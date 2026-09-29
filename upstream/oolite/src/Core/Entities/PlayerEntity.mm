@@ -94,6 +94,7 @@ MA 02110-1301, USA.
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOPListGameTypes.h"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -126,14 +127,14 @@ std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view 
 Vector VectorForKey(const oo::PList &dict, std::string_view key, Vector fallback = kZeroVector)
 {
 	const oo::PList *value = dict.find(key);
-	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, fallback);
+	return OOVectorFromPList(value, fallback);
 }
 
 
 Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+	return OOQuaternionFromPList(value, kIdentityQuaternion);
 }
 
 
@@ -1798,7 +1799,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	
-	credits = OODeciCreditsFromObject(oo::ObjectFromPList(ValueForKey(dict, "credits")));
+	{ const oo::PList creditsValue = ValueForKey(dict, "credits"); credits = OODeciCreditsFromPList(&creditsValue); }
 	
 	fuel = dict.get<unsigned int>("fuel", fuel);
 	galaxy_number = dict.get<int>("galaxy_number");
