@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"
+#import "OOCallByName.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
@@ -92,7 +93,6 @@ struct OOHUDWidget
 	BOOL				hasCache;			// NO only for an MFD whose info was not a dictionary (below)
 	SEL					selector;			// dials only
 	std::string			selectorString;		// dials only
-	oo::ObjCRef<id>		infoObject;			// dials only: info as the object a dial is called by name with (ADR-0043 item 21)
 };
 
 namespace {
@@ -116,9 +116,7 @@ void GetCurrentCachedInfo(struct CachedInfo *cached)
 
 void AddHUDWidget(std::vector<OOHUDWidget> &widgets, const oo::PList &info, const struct CachedInfo *cache, SEL selector, const std::string &selectorString)
 {
-	oo::ObjCRef<id> infoObject;
-	if (selector != NULL)  infoObject = oo::ObjCRef<id>(oo::ObjectFromPList(info));
-	widgets.push_back(OOHUDWidget{ info, *cache, !info.isNull(), selector, selectorString, infoObject });
+	widgets.push_back(OOHUDWidget{ info, *cache, !info.isNull(), selector, selectorString });
 }
 
 
@@ -128,14 +126,13 @@ void ReleaseHUDWidgets(std::vector<OOHUDWidget> &widgets)
 }
 
 
-/*	A dial's configuration. Dials are called by name (hud.plist, whitelist.plist) with their
-	configuration as an Objective-C object (ADR-0043 item 21); the widget being drawn holds the same
-	configuration as an oo::PList, which is used when the object is the widget's own, so a
-	configuration is converted (into *storage) only when a dial is sent one from elsewhere.
+/*	A dial's configuration. Dials are called by name (hud.plist, whitelist.plist) through
+	OOCallByName with the widget's configuration as a const oo::PList & (ADR-0055 item 5).
+	TRANSITIONAL (until oo-qps.46 retypes the dials): a dial still typed id receives that
+	configuration as an Objective-C object, converted back here (into *storage).
 */
 const oo::PList &DialInfo(id info, oo::PList *storage)
 {
-	if (sCurrentDrawItem != nullptr && info == sCurrentDrawItem->infoObject.get())  return sCurrentDrawItem->info;
 	*storage = oo::PListFrom(info);
 	return *storage;
 }
@@ -1240,10 +1237,10 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		return;
 	}
 
-	// use the selector value stored during init; the dial is called by name with the configuration
-	// as an Objective-C object (ADR-0043 item 21), made once when the dial was added.
-	[self performSelector:sCurrentDrawItem->selector withObject:sCurrentDrawItem->infoObject.get()];
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "HeadUpDisplay after drawHUDItem " + oo::DescriptionOf(sCurrentDrawItem->infoObject.get()); });
+	// use the selector value stored during init; the dial is called by name with its configuration
+	// (ADR-0055 item 5).
+	OOCallByName(self, sCurrentDrawItem->selector, sCurrentDrawItem->info);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "HeadUpDisplay after drawHUDItem " + oo::DescriptionOf(sCurrentDrawItem->info); });
 	
 	OOVerifyOpenGLState();
 }
