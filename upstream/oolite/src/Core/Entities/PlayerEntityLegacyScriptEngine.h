@@ -183,7 +183,7 @@ typedef enum
 - (void) addShipsAt:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
 - (void) addShipsAtPrecisely:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
 - (void) addShipsWithinRadius:(const std::string &)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
-- (void) spawnShip:(id)ship_key;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) spawnShip:(const std::string &)ship_key;	// called by name (ADR-0055 item 5)
 - (void) set:(const std::string &)missionvariable_value;	// called by name (ADR-0043 item 21)
 - (void) reset:(const std::string &)missionvariable;	// called by name (ADR-0043 item 21)
 /*
