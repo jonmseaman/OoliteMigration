@@ -709,7 +709,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			stringValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (stringValue.has_value())
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_NAME) value:oo::NSStringFrom(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_NAME) value:oo::PList(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -718,7 +718,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			stringValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (stringValue.has_value())
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_DESCRIPTION) value:oo::NSStringFrom(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_DESCRIPTION) value:oo::PList(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -727,7 +727,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			stringValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (stringValue.has_value())
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_INHABITANTS) value:oo::NSStringFrom(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_INHABITANTS) value:oo::PList(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -737,7 +737,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (iValue < 0)  iValue = 0;
 				if (7 < iValue)  iValue = 7;
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_GOVERNMENT) value:oo::ObjectFromPList(oo::PList::signedInteger(iValue)) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_GOVERNMENT) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -747,7 +747,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (iValue < 0)  iValue = 0;
 				if (7 < iValue)  iValue = 7;
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_ECONOMY) value:oo::ObjectFromPList(oo::PList::signedInteger(iValue)) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_ECONOMY) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -757,7 +757,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (iValue < 0)  iValue = 0;
 				if (15 < iValue)  iValue = 15;
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_TECHLEVEL) value:oo::ObjectFromPList(oo::PList::signedInteger(iValue)) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_TECHLEVEL) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -765,7 +765,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 		case kSystem_population:
 			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_POPULATION) value:oo::ObjectFromPList(oo::PList::signedInteger(iValue)) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_POPULATION) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -773,7 +773,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 		case kSystem_productivity:
 			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_PRODUCTIVITY) value:oo::ObjectFromPList(oo::PList::signedInteger(iValue)) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_PRODUCTIVITY) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -1426,7 +1426,7 @@ static bool SystemLegacySpawnShip(ooscript::Context context, ooscript::CallArgs 
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	[UNIVERSE spawnShip:oo::NSStringFrom(*key)];
+	[UNIVERSE cxx_spawnShip:*key];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;

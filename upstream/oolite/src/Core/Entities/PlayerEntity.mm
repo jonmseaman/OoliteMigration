@@ -10099,7 +10099,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (definition)
 	{
 		[[UNIVERSE gameView] clearKeys];
-		[definition runCallback:oo::NSStringOrNil(key)];
+		[definition runCallback:*key];	// a definition was found, so key has a value
 	}
 	else
 	{

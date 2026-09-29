@@ -1403,7 +1403,7 @@ static int shipsFound;
 	/* Legacy script planetinfo settings are now non-persistent over save/load
 	 * Virtually nothing uses them any more, and expecting them to have a
 	 * manifest and identifying what it is if so seems unnecessary */
-	[UNIVERSE cxx_setSystemDataKey:keyString value:oo::NSStringFrom(valueString) fromManifest:std::string()];
+	[UNIVERSE cxx_setSystemDataKey:keyString value:oo::PList(valueString) fromManifest:std::string()];
 
 }
 
@@ -1426,7 +1426,7 @@ static int shipsFound;
 	const std::string keyString = TrimWhitespace(tokens[2]);
 	const std::string valueString = TrimWhitespace(tokens[3]);
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:gnum planet:pnum key:keyString value:oo::NSStringFrom(valueString) fromManifest:std::string() forLayer:OO_LAYER_OXP_DYNAMIC];
+	[UNIVERSE cxx_setSystemDataForGalaxy:gnum planet:pnum key:keyString value:oo::PList(valueString) fromManifest:std::string() forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
@@ -1732,15 +1732,15 @@ static int shipsFound;
 }
 
 
-- (void) spawnShip:(id)ship_key	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) spawnShip:(const std::string &)ship_key	// called by name (ADR-0055 item 5)
 {
-	if ([UNIVERSE spawnShip:ship_key])
+	if ([UNIVERSE cxx_spawnShip:ship_key])
 	{
-		OO_LOG(kOOLogNoteAddShips, "DEBUG: Spawned ship with shipdata key '{}'.", oo::DescriptionOf(ship_key));
+		OO_LOG(kOOLogNoteAddShips, "DEBUG: Spawned ship with shipdata key '{}'.", ship_key);
 	}
 	else
 	{
-		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, could not spawn ship with shipdata key '{}'.", CurrentScriptDescription(), oo::DescriptionOf(ship_key));
+		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, could not spawn ship with shipdata key '{}'.", CurrentScriptDescription(), ship_key);
 	}
 }
 
@@ -2202,7 +2202,7 @@ static int shipsFound;
 - (void) setMissionMusic:(id)value	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
 	// nil and "none" still pass nil on
-	[[OOMusicController	sharedController] setMissionMusic:IsNoneValue(oo::StdString(value)) ? nil : value];
+	[[OOMusicController	sharedController] cxx_setMissionMusic:IsNoneValue(oo::StdString(value)) ? std::nullopt : std::optional<std::string>(oo::StdString(value))];
 }
 
 

@@ -875,21 +875,6 @@ std::optional<std::string> MacrosToString(const oo::PList &macros)
 */
 namespace {
 
-/*	-stringByAppendingPathExtension: as gnustep-base 1.31.1 answers it on Windows (probed):
-	trailing separators ('/' and '\') are dropped, then "." and the extension are appended. A path
-	that is empty or a bare root ("/", "C:", "~") once they are dropped is returned unchanged
-	(GNUstep also logged "cannot append extension").
-*/
-std::string AppendingPathExtension(const std::string &path, const std::string &extension)
-{
-	std::string result = path;
-	while (!result.empty() && (result.back() == '/' || result.back() == '\\'))  result.pop_back();
-	const bool isDrive = result.size() == 2 && result[1] == ':' && ((result[0] >= 'A' && result[0] <= 'Z') || (result[0] >= 'a' && result[0] <= 'z'));
-	if (result.empty() || result == "~" || isDrive)  return path;
-	return result + "." + extension;
-}
-
-
 BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> & /* prefix: unused, as before */, std::optional<std::string> *outResult)
 {
 	if (!fileName.has_value())  return YES;	// It's OK for one or the other of the shaders to be undefined.
@@ -904,7 +889,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 		{
 			for (const std::string &extension : extensions)
 			{
-				const std::string nameWithExtension = AppendingPathExtension(*fileName, extension);
+				const std::string nameWithExtension = oo::str::appendingPathExtension(*fileName, extension);
 				result = [ResourceManager cxx_stringFromFilesNamed:nameWithExtension
 														  inFolder:std::string("Shaders")];
 				if (result.has_value()) break;

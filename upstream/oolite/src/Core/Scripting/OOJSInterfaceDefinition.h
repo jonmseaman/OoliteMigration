@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 - (ooscript::Object)callbackThis;
 - (void)setCallbackThis:(ooscript::Object)callbackthis;
 
-- (void)runCallback:(id)key;	// shared selector (proposed ADR-0043): key is an Objective-C string
+- (void)runCallback:(const std::string &)key;
 
 - (OOComparisonResult)interfaceCompare:(OOJSInterfaceDefinition *)other;
 

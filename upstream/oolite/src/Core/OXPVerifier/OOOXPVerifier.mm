@@ -111,20 +111,6 @@ std::string ExpandTildeInPath(const std::string &path)
 }
 
 
-/*	-stringByAppendingPathExtension: as gnustep-base 1.31.1 answers it on Windows (probed):
-	trailing separators ('/' and '\') are dropped, then "." and the extension are appended. A path
-	that is empty or a bare root ("/", "C:", "~") once they are dropped is returned unchanged
-	(GNUstep also logged "cannot append extension").
-*/
-std::string AppendingPathExtension(const std::string &path, const std::string &extension)
-{
-	std::string result = path;
-	while (!result.empty() && IsPathSeparator(result.back()))  result.pop_back();
-	const bool isDrive = result.size() == 2 && result[1] == ':' && ((result[0] >= 'A' && result[0] <= 'Z') || (result[0] >= 'a' && result[0] <= 'z'));
-	if (result.empty() || result == "~" || isDrive)  return path;
-	return result + "." + extension;
-}
-
 }
 
 @interface OOOXPVerifier (OOPrivate)
@@ -775,7 +761,7 @@ namespace {
 void SwitchLogFile(const std::string &name)
 {
 //#ifndef OOLITE_LINUX
-	const std::string logName = AppendingPathExtension(name, "log");
+	const std::string logName = oo::str::appendingPathExtension(name, "log");
 	OO_LOG("verifyOXP.switchingLog", "Switching log files -- logging to \"{}\".", logName);
 	cxx_OOLogOutputHandlerChangeLogFile(logName);
 //#else
