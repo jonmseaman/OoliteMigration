@@ -5425,9 +5425,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return "";
 	}
 	case COMPASS_MODE_PLANET:
-		return oo::OptionalString([[UNIVERSE planet] name]);
+		return [[UNIVERSE planet] cxx_name];
 	case COMPASS_MODE_SUN:
-		return oo::OptionalString([[UNIVERSE sun] name]);
+		return [[UNIVERSE sun] cxx_name];
 	case COMPASS_MODE_STATION:
 		return [[UNIVERSE station] displayName];
 	case COMPASS_MODE_TARGET:
