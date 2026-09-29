@@ -12616,7 +12616,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		for (i = 0; i < crew->size(); i++)
 		{
 			OOCharacter *ch = (*crew)[i].get();
-			[ch setLegalStatus: [self legalStatus] | [ch legalStatus]];
+			[ch cxx_setLegalStatus: [self legalStatus] | [ch legalStatus]];
 		}
 		mainPod = [self launchPodWithCrew:*crew];
 		if (mainPod)
