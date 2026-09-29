@@ -22,7 +22,6 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCollectionExtractors.h"
 #import "OOJSPlayerShip.h"
 #import "OOJSPlayer.h"
 #import "OOJSEntity.h"

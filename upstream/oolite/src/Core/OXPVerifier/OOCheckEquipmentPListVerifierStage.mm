@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 
 #import "OOFileScannerVerifierStage.h"
 #import "Universe.h"
-#import "OOCollectionExtractors.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/PListGet.hpp"
