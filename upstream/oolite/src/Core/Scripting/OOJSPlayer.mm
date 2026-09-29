@@ -766,26 +766,27 @@ static bool PlayerSetEscapePodDestination(ooscript::Context context, ooscript::C
 	}
 	
 	BOOL			OK = NO;
-	id				destValue = nil;
+	oo::PList		destValue;
 	PlayerEntity	*player = OOPlayerForScripting();
 	
 	if (oojsArgs.count() == 1)
 	{
-		destValue = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[0]);
+		destValue = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[0]);
+		id destObject = oo::ObjectIn(destValue);
 		
-		if (destValue == nil)
+		if (destValue.isNull())
 		{
 			[player setDockTarget:NULL];
 			OK = YES;
 		}
-		else if ([destValue isKindOfClass:[ShipEntity class]] && [destValue isStation])
+		else if ([destObject isKindOfClass:[ShipEntity class]] && [destObject isStation])
 		{
-			[player setDockTarget:destValue];
+			[player setDockTarget:destObject];
 			OK = YES;
 		}
-		else if (oo::IsNSString(destValue))
+		else if (const std::string *destString = destValue.getIf<std::string>())
 		{
-			if (oo::StdString(destValue) == "NEARBY_SYSTEM")
+			if (*destString == "NEARBY_SYSTEM")
 			{
 				// find the nearest system with a main station, or die in the attempt!
 				[player setDockTarget:NULL];

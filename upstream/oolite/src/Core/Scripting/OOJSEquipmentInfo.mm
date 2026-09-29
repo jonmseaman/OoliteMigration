@@ -294,21 +294,22 @@ std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context contex
 	
 	std::optional<std::string> result;
 	BOOL exists = NO;
-	id objValue = OOJSNativeObjectFromJSValue(context, value);
+	const oo::PList plistValue = cxx_OOJSPListFromJSValue(context, value);
+	id objValue = oo::ObjectIn(plistValue);
 	
 	if ([objValue isKindOfClass:[OOEquipmentType class]])
 	{
 		result = oo::OptionalString([objValue identifier]);
 		exists = YES;
 	}
-	else if (oo::IsNSString(objValue))
+	else if (const std::string *stringValue = plistValue.getIf<std::string>())
 	{
 		/*	To enforce deliberate backwards incompatibility, reject strings
 			ending with _DAMAGED unless someone actually named an equip that
 			way.
 		 */
-		exists = [OOEquipmentType equipmentTypeWithIdentifier:objValue] != nil;
-		std::string string = oo::StdString(objValue);
+		exists = [OOEquipmentType cxx_equipmentTypeWithIdentifier:*stringValue] != nil;
+		std::string string = *stringValue;
 		if (exists || !oo::str::hasSuffix(string, "_DAMAGED"))
 		{
 			result = string;
