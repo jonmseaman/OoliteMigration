@@ -2053,7 +2053,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	
 	for (const std::string &eq_desc : [self cxx_equipmentKeys])
 	{
-		OOEquipmentType *item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_desc)];
+		OOEquipmentType *item = [OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_desc];
 		if ([item isPortableBetweenShips])  portable_equipment.insert(eq_desc);
 	}
 	

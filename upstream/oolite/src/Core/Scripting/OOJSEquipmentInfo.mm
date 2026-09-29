@@ -275,7 +275,7 @@ OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Val
 	}
 	
 	std::optional<std::string> string = cxx_OOStringFromJSValue(context, value);
-	if (string.has_value())  return [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*string)];
+	if (string.has_value())  return [OOEquipmentType cxx_equipmentTypeWithIdentifier:*string];
 	return nil;
 	
 	OOJS_PROFILE_EXIT
@@ -284,7 +284,7 @@ OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Val
 
 std::optional<std::string> JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value)
 {
-	return oo::OptionalString([JSValueToEquipmentType(context, value) identifier]);
+	return [JSValueToEquipmentType(context, value) cxx_identifier];
 }
 
 
@@ -299,7 +299,7 @@ std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context contex
 	
 	if ([objValue isKindOfClass:[OOEquipmentType class]])
 	{
-		result = oo::OptionalString([objValue identifier]);
+		result = [objValue cxx_identifier];
 		exists = YES;
 	}
 	else if (const std::string *stringValue = plistValue.getIf<std::string>())
@@ -344,7 +344,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kEquipmentInfo_equipmentKey:
-			result = [eqType identifier];
+			result = oo::NSStringOrNil([eqType cxx_identifier]);
 			break;
 			
 		case kEquipmentInfo_name:
@@ -352,17 +352,17 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			break;
 
 		case kEquipmentInfo_calculatedPrice:
-			if ([[eqType identifier] isEqual:@"EQ_FUEL"]) 
+			if ([eqType cxx_identifier] == "EQ_FUEL") 
 			{
 				return ooscript::newNumberValue(cx, (PLAYER_MAX_FUEL - [OOPlayerForScripting() fuel]) * [eqType price] * [OOPlayerForScripting() fuelChargeRate], value);
 			}
-			else if ([[eqType identifier] isEqual:@"EQ_RENOVATION"]) 
+			else if ([eqType cxx_identifier] == "EQ_RENOVATION") 
 			{
 				return ooscript::newNumberValue(cx, [OOPlayerForScripting() renovationCosts], value);
 			}
 			else 
 			{
-				return ooscript::newNumberValue(cx, [OOPlayerForScripting() adjustPriceByScriptForEqKey:[eqType identifier] withCurrent:[eqType price]], value);
+				return ooscript::newNumberValue(cx, [OOPlayerForScripting() adjustPriceByScriptForEqKey:oo::NSStringOrNil([eqType cxx_identifier]) withCurrent:[eqType price]], value);
 			}
 		case kEquipmentInfo_canCarryMultiple:
 			*value = OOJSValueFromBOOL([eqType canCarryMultiple]);
@@ -373,7 +373,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			return YES;
 			
 		case kEquipmentInfo_description:
-			result = [eqType descriptiveText];
+			result = oo::NSStringOrNil([eqType cxx_descriptiveText]);
 			break;
 			
 		case kEquipmentInfo_damageProbability:
@@ -392,11 +392,11 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			return YES;
 
 		case kEquipmentInfo_defaultActivateKey:
-			result = [eqType defaultActivateKey];
+			result = oo::ObjectFromPList([eqType cxx_defaultActivateKey]);
 			break;		
 
 		case kEquipmentInfo_defaultModeKey:
-			result = [eqType defaultModeKey];
+			result = oo::ObjectFromPList([eqType cxx_defaultModeKey]);
 			break;		
 
 		case kEquipmentInfo_techLevel:
@@ -411,7 +411,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			return ooscript::newNumberValue(cx, [eqType price], value);
 
 		case kEquipmentInfo_provides:
-			result = [eqType providesForScripting];
+			result = oo::NSArrayFromStrings([eqType cxx_providesForScripting]);
 			break;
 		
 		case kEquipmentInfo_installationTime:
@@ -484,15 +484,15 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			return YES;
 			
 		case kEquipmentInfo_requiresEquipment:
-			result = [[eqType requiresEquipment] allObjects];
+			result = [eqType cxx_requiresEquipment].has_value() ? [oo::NSSetFromStrings(*[eqType cxx_requiresEquipment]) allObjects] : nil;
 			break;
 			
 		case kEquipmentInfo_requiresAnyEquipment:
-			result = [[eqType requiresAnyEquipment] allObjects];
+			result = [eqType cxx_requiresAnyEquipment].has_value() ? [oo::NSSetFromStrings(*[eqType cxx_requiresAnyEquipment]) allObjects] : nil;
 			break;
 			
 		case kEquipmentInfo_incompatibleEquipment:
-			result = [[eqType incompatibleEquipment] allObjects];
+			result = [eqType cxx_incompatibleEquipment].has_value() ? [oo::NSSetFromStrings(*[eqType cxx_incompatibleEquipment]) allObjects] : nil;
 			break;
 			
 		case kEquipmentInfo_scriptInfo:
@@ -503,12 +503,12 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			break;
 			
 		case kEquipmentInfo_scriptName:
-			result = [eqType scriptName];
+			result = oo::NSStringOrNil([eqType cxx_scriptName]);
 			if (result == nil) result = @"";
 			break;
 			
 		case kEquipmentInfo_weaponInfo:
-			result = [eqType weaponInfo];
+			result = oo::ObjectFromPList([eqType cxx_weaponInfo]);
 			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
 			break;
 			
@@ -552,14 +552,14 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 			}
 			break;
 		case kEquipmentInfo_effectiveTechLevel:
-			cxx_OOStandardsDeprecated(oo::str::format("TL99 for variable tech level is deprecated for %s", oo::DescriptionOf([eqType identifier]).c_str()));
+			cxx_OOStandardsDeprecated(oo::str::format("TL99 for variable tech level is deprecated for %s", [eqType cxx_identifier].value_or("(null)").c_str()));
 			if (!OOEnforceStandards() && [eqType techLevel] == kOOVariableTechLevel)
 			{
 				if (ooscript::isNull(*value)) 
 				{
 					// reset mission variable
 					[OOPlayerForScripting() cxx_setMissionVariable:oo::PList()
-														  forKey:oo::StdString([@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]])];
+														  forKey:oo::StdString([@"mission_TL_FOR_" stringByAppendingString:oo::NSStringOrNil([eqType cxx_identifier])])];
 					return YES;
 				}
 				if (ooscript::valueToInt32(cx, *value, &iValue))
@@ -567,13 +567,13 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 					if (iValue < 0)  iValue = 0;
 					if (15 < iValue && iValue != kOOVariableTechLevel)  iValue = 15;
 					[OOPlayerForScripting() cxx_setMissionVariable:oo::PList(oo::str::format("%u", iValue))
-														  forKey:oo::StdString([@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]])];
+														  forKey:oo::StdString([@"mission_TL_FOR_" stringByAppendingString:oo::NSStringOrNil([eqType cxx_identifier])])];
 					return YES;
 				}
 			}
 			else
 			{
-				cxx_OOJSReportWarning(context, "Cannot modify effective tech level for %s, because its base tech level is not 99.", oo::DescriptionOf([eqType identifier]).c_str());
+				cxx_OOJSReportWarning(context, "Cannot modify effective tech level for %s, because its base tech level is not 99.", [eqType cxx_identifier].value_or("(null)").c_str());
 				return YES;
 			}
 			break;
@@ -598,7 +598,7 @@ static bool EquipmentInfoGetAllEqipment(Context cx, Object /*obj*/, PropertyId /
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	*value = OOJSValueFromNativeObject(context, [OOEquipmentType allEquipmentTypes]);
+	*value = OOJSValueFromNativeObject(context, oo::NSArrayFromObjects([OOEquipmentType cxx_allEquipmentTypes]));
 	return YES;
 	
 	OOJS_NATIVE_EXIT
@@ -654,7 +654,7 @@ static bool EquipmentInfoStaticInfoForKey(ooscript::Context context, ooscript::C
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*key)]);
+	OOJS_RETURN_OBJECT([OOEquipmentType cxx_equipmentTypeWithIdentifier:*key]);
 	
 	OOJS_NATIVE_EXIT
 }

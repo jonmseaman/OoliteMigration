@@ -1480,7 +1480,7 @@ static bool PlayerShipAwardEquipmentToCurrentPylon(ooscript::Context context, oo
 	OOEquipmentType			*eqType = nil;
 	
 	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
-	if (key.has_value())  eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(key)];
+	if (key.has_value())  eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:*key];
 	if (EXPECT_NOT(![eqType isMissileOrMine]))
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "awardEquipmentToCurrentPylon", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "equipment type (external store)");

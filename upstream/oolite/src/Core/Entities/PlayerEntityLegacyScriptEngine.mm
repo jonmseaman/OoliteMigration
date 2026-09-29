@@ -1357,7 +1357,7 @@ static int shipsFound;
 		[self setFuel:[self fuelCapacity]];
 	}
 
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipString];
+	OOEquipmentType *eqType = (equipString != nil) ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipKey] : nil;
 
 	if ([eqType isMissileOrMine])
 	{
@@ -2924,7 +2924,7 @@ static int shipsFound;
 
 - (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key
 {
-	const std::optional<std::string> scriptName = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
+	const std::optional<std::string> scriptName = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName];
 
 	OO_LOG("player.equipmentScript", "Added equipment {}, with the following script property: '{}'.", eq_key, scriptName.value_or("(null)"));
 
@@ -2964,7 +2964,7 @@ static int shipsFound;
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
 			if (count == primedEquipment)  primedEquipment--; // the array has shrunk by one!
 
-			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, oo::DescriptionOf([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]));
+			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName].value_or("(null)"));
 		}
 	}
 }

@@ -2730,7 +2730,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	
 	// Check that equipment is permitted.
-	identifier = oo::StdString([eqType identifier]);
+	identifier = [eqType cxx_identifier].value_or("");
 	berth = identifier == "EQ_PASSENGER_BERTH";
 	if (berth)
 	{
@@ -2934,7 +2934,7 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 		return NO;
 	}
 	
-	key = oo::StdString([eqType identifier]);
+	key = [eqType cxx_identifier].value_or("");
 	hasOK = [thisEnt hasEquipmentItem:oo::NSStringFrom(key)];
 	BOOL setOK = *status == "EQUIPMENT_OK";
 	BOOL setDamaged = *status == "EQUIPMENT_DAMAGED";
@@ -3062,7 +3062,7 @@ static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &
 	GET_THIS_SHIP(thisEnt);
 	
 	// if there's a badly defined missile, selectMissile may return nil
-	const std::string result = oo::OptionalString([[thisEnt selectMissile] identifier]).value_or("EQ_MISSILE");
+	const std::string result = [[thisEnt selectMissile] cxx_identifier].value_or("EQ_MISSILE");
 	
 	OOJS_RETURN_OBJECT(oo::NSStringFrom(result));
 	

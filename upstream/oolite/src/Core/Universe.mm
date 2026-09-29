@@ -9735,7 +9735,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 				chance *= chance;	//decrease the chance of a further customisation (unless it is 1, which might be a bug)
 				int				optionIndex = Ranrot() % options.size();
 				const std::optional<std::string>	equipmentKey = options[optionIndex];
-				OOEquipmentType	*item = equipmentKey.has_value() ? [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*equipmentKey)] : nil;
+				OOEquipmentType	*item = equipmentKey.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*equipmentKey] : nil;
 
 				if (item != nil)
 				{
@@ -9758,10 +9758,10 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 							break;	// Bar this upgrade.
 					}
 
-					if ([item incompatibleEquipment] != nil)
+					if ([item cxx_incompatibleEquipment].has_value())
 					{
 						BOOL						incompatible = NO;
-						const std::vector<std::string>	incompatibleKeys = oo::StringsFrom([item incompatibleEquipment]);
+						const std::vector<std::string>	incompatibleKeys = *[item cxx_incompatibleEquipment];
 
 						for (const std::string &key : incompatibleKeys)
 						{
@@ -9782,7 +9782,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 					}
 
 					/* Check condition scripts */
-					std::optional<std::string> condition_script = oo::OptionalString([item conditionScript]);
+					std::optional<std::string> condition_script = [item cxx_conditionScript];
 					if (condition_script.has_value())
 					{
 						OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
@@ -9814,11 +9814,11 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 					}
 
 
-					if ([item requiresEquipment] != nil)
+					if ([item cxx_requiresEquipment].has_value())
 					{
 						BOOL						missing = NO;
 
-						for (const std::string &key : oo::StringsFrom([item requiresEquipment]))
+						for (const std::string &key : [item cxx_requiresEquipment].value_or(std::vector<std::string>()))
 						{
 							if (!ContainsKey(extras, key))
 							{
@@ -9828,11 +9828,11 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 						if (missing) break;
 					}
 
-					if ([item requiresAnyEquipment] != nil)
+					if ([item cxx_requiresAnyEquipment].has_value())
 					{
 						BOOL						missing = YES;
 
-						for (const std::string &key : oo::StringsFrom([item requiresAnyEquipment]))
+						for (const std::string &key : [item cxx_requiresAnyEquipment].value_or(std::vector<std::string>()))
 						{
 							if (ContainsKey(extras, key))
 							{
@@ -10029,10 +10029,15 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 	OOCreditsQuantity	scrap_value = 351; // translates to 250 cr.
 
-	OOWeaponType		ship_fwd_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "forward_weapon"))];
-	OOWeaponType		ship_aft_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "aft_weapon"))];
-	OOWeaponType		ship_port_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "port_weapon"))];
-	OOWeaponType		ship_starboard_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "starboard_weapon"))];
+	auto weaponTypeForKey = [&dict](const char *key) -> OOWeaponType	// nil for a missing key
+	{
+		const std::optional<std::string> identifier = OptionalStringIn(dict, key);
+		return identifier.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil;
+	};
+	OOWeaponType		ship_fwd_weapon = weaponTypeForKey("forward_weapon");
+	OOWeaponType		ship_aft_weapon = weaponTypeForKey("aft_weapon");
+	OOWeaponType		ship_port_weapon = weaponTypeForKey("port_weapon");
+	OOWeaponType		ship_starboard_weapon = weaponTypeForKey("starboard_weapon");
 	unsigned			ship_missiles = dict.get<unsigned int>("missiles");
 	unsigned			ship_max_passengers = dict.get<unsigned int>("max_passengers");
 	std::vector<std::string>	ship_extra_equipment;
@@ -10148,7 +10153,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
 	{
-		item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(ship_extra_equipment[i])];
+		item = [OOEquipmentType cxx_equipmentTypeWithIdentifier:ship_extra_equipment[i]];
 		if ([item isPortableBetweenShips]) ship_extra_equipment.erase(ship_extra_equipment.begin() + i);
 	}
 
