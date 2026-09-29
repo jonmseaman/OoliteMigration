@@ -29,7 +29,8 @@ fact 1). Phase 3 keeps the signature as virtual std::optional<std::string>
 descriptionComponents() const.
 
 oo::DescriptionOf(x) is the text "%@" put in a formatted string for x: "(null)" for nil, the
-class name for a class object, -cxx_description for an OOObject. oo::ShortDescriptionOf(x) is
+class name for a class object, -cxx_description for an OOObject; for an oo::PList, what "%@"
+printed for its object graph (oo::describe). oo::ShortDescriptionOf(x) is
 its short twin. OOConstantString describes itself as its text.
 
 Transitional (until oo-qps.43 flips the legacy -description family and oo-qps.72 retires the
@@ -69,6 +70,7 @@ MA 02110-1301, USA.
 extern "C++" {
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PListDescription.hpp"
 
 
 @interface OOObject (OODescription)
@@ -103,6 +105,13 @@ std::string ShortDescriptionOf(id object);
 
 // <ClassName 0xnnnnnnnn>{components} for <object>; without the braces when <components> is nullopt.
 std::string DescriptionWithComponents(id object, const std::optional<std::string> &components);
+
+// The text "%@" printed for the property list's object graph (oo::ObjectFromPList of it):
+// oo::describe (oofnd/PListDescription.hpp), GNUstep's -description byte for byte.
+inline std::string DescriptionOf(const oo::PList &plist)
+{
+	return describe(plist);
+}
 
 }	// namespace oo
 

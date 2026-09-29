@@ -7,7 +7,8 @@
 	tools/captures/plist-description/cases.txt with TZ=UTC) into plist_description_captured.inc,
 	unedited. Each row's input is rebuilt here as the PList oo::PListFrom made of the same
 	Foundation value: a GNUstep-format plist text through oo::parsePropertyList, a single-precision
-	number as PList::singleReal, a non-plist object as a PList::Object node.
+	number as PList::singleReal, a non-plist object as a PList::Object node. Dates are described at
+	UTC offset 0, the capture's time zone.
 */
 
 #include "oofnd/PListDescription.hpp"
@@ -79,7 +80,7 @@ OO_TEST(everyCapturedRowMatchesGNUstep)
 	OO_CHECK(sizeof kRows / sizeof kRows[0] >= 40);
 	for (const CapturedRow& row : kRows)
 	{
-		const std::string got = oo::describe(InputOf(row));
+		const std::string got = oo::describe(InputOf(row), 0);	// captured with TZ=UTC
 		if (got != row.description) std::printf("  %s: got [%s]\n  %s: GNUstep [%s]\n", row.name, got.c_str(), row.name, row.description);
 		OO_CHECK_EQ(got, std::string(row.description));
 	}
@@ -98,6 +99,15 @@ OO_TEST(keysSortByUtf16UnitsNotUtf8Bytes)
 	// U+FF01 (UTF-8 EF BC 81) sorts after U+1F600 (F0 9F 98 80) by bytes, before it by UTF-16 units.
 	const oo::PList dict(oo::PList::Dict{{"\xef\xbc\x81", oo::PList("x")}, {"\xf0\x9f\x98\x80", oo::PList("y")}});
 	OO_CHECK_EQ(oo::describe(dict), std::string("{\"\\UD83D\\UDE00\" = y; \"\\UFF01\" = x; }"));
+}
+
+OO_TEST(aDateIsDescribedInTheLocalTimeZoneAsNSDateWas)
+{
+	const oo::PList::Date when{298297845.0};	// 2010-06-15 12:30:45 +0000
+	const auto t = oo::date::dateWithTimeIntervalSinceReferenceDate(when.sinceReferenceDate);
+	OO_CHECK_EQ(oo::describe(oo::PList(when)), oo::date::description(t));
+	OO_CHECK_EQ(oo::describe(oo::PList(when), 0), std::string("2010-06-15 12:30:45 +0000"));
+	OO_CHECK_EQ(oo::describe(oo::PList(when), -300), std::string("2010-06-15 07:30:45 -0500"));
 }
 
 OO_TEST_MAIN()

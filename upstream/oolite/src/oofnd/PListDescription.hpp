@@ -11,7 +11,7 @@
 	    bool / integer           1 / 0; %lld, or %llu when unsigned
 	    real                     %0.16g; a single-precision real (PList::singleReal) %0.7g
 	    data                     <0a0b0c0d 0e>: lower-case hex, a space after every four bytes
-	    date                     2001-01-01 00:00:00 +0000 (see below)
+	    date                     2001-01-01 00:00:00 +0000: oo::date::description, local time zone
 	    Object node              its PListForeign::description()
 	    array                    (a, b, c)                    () when empty
 	    dictionary               {key = value; other = 2; }   {} when empty; keys by -compare:
@@ -25,9 +25,8 @@
 	Null elements are left out (ObjectFromPList dropped them).
 
 	Pinned byte for byte by tests/unit/oofnd/test_plist_description.cpp against rows captured from
-	GNUstep base 1.31.1 (tools/captures/plist-description/capture.sh). One deliberate difference:
-	GNUstep printed a date in the process's default time zone; this prints UTC (+0000), which is
-	what GNUstep printed with TZ=UTC. The game describes no dates.
+	GNUstep base 1.31.1 (tools/captures/plist-description/capture.sh, with TZ=UTC: the test
+	describes dates at offset 0).
 
 	Header-only, C++20, compiles with -fno-exceptions.
 */
@@ -43,12 +42,13 @@
 #undef false
 
 #include "oofnd/PList.hpp"
-#include "oofnd/PListWriting.hpp"   // plist_detail::breakDate
+#include "oofnd/Date.hpp"
 
 #include <unicode/unorm2.h>
 
 #include <algorithm>
 #include <cstdio>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -157,37 +157,34 @@ inline std::string dataText(const Data& data)
 	return out;
 }
 
-inline std::string dateText(const PList::Date& date)
+// NSDate's -description (oo::date::description): in the local time zone, or at <utcOffsetMinutes>.
+inline std::string dateText(const PList::Date& when, std::optional<int> utcOffsetMinutes)
 {
-	long y = 0;
-	int mo = 0, d = 0, h = 0, mi = 0, s = 0;
-	plist_detail::breakDate(date.sinceReferenceDate, y, mo, d, h, mi, s);
-	char buffer[48];
-	std::snprintf(buffer, sizeof buffer, "%04ld-%02d-%02d %02d:%02d:%02d +0000", y, mo, d, h, mi, s);
-	return buffer;
+	const auto t = date::dateWithTimeIntervalSinceReferenceDate(when.sinceReferenceDate);
+	return utcOffsetMinutes.has_value() ? date::description(t, *utcOffsetMinutes) : date::description(t);
 }
 
-inline void appendValue(std::string& out, const PList& v);
+inline void appendValue(std::string& out, const PList& v, std::optional<int> utcOffsetMinutes);
 
-inline void appendElement(std::string& out, const PList& v)
+inline void appendElement(std::string& out, const PList& v, std::optional<int> utcOffsetMinutes)
 {
 	switch (v.type())
 	{
 		case PList::Type::Data:
 		case PList::Type::Array:
 		case PList::Type::Dict:
-			appendValue(out, v);
+			appendValue(out, v, utcOffsetMinutes);
 			break;
 		default:
 		{
 			std::string text;
-			appendValue(text, v);
+			appendValue(text, v, utcOffsetMinutes);
 			appendElementString(out, text);
 		}
 	}
 }
 
-inline void appendValue(std::string& out, const PList& v)
+inline void appendValue(std::string& out, const PList& v, std::optional<int> utcOffsetMinutes)
 {
 	switch (v.type())
 	{
@@ -197,7 +194,7 @@ inline void appendValue(std::string& out, const PList& v)
 		case PList::Type::Real: out += numberText(v); return;
 		case PList::Type::String: out += *v.getIf<std::string>(); return;
 		case PList::Type::Data: out += dataText(*v.getIf<PList::Data>()); return;
-		case PList::Type::Date: out += dateText(*v.getIf<PList::Date>()); return;
+		case PList::Type::Date: out += dateText(*v.getIf<PList::Date>(), utcOffsetMinutes); return;
 		case PList::Type::Object:
 		{
 			const PList::Object& object = *v.getIf<PList::Object>();
@@ -213,7 +210,7 @@ inline void appendValue(std::string& out, const PList& v)
 				if (element.isNull()) continue;
 				if (!first) out += ", ";
 				first = false;
-				appendElement(out, element);
+				appendElement(out, element, utcOffsetMinutes);
 			}
 			out += ')';
 			return;
@@ -231,7 +228,7 @@ inline void appendValue(std::string& out, const PList& v)
 			{
 				appendElementString(out, key.second->first);
 				out += " = ";
-				appendElement(out, key.second->second);
+				appendElement(out, key.second->second, utcOffsetMinutes);
 				out += "; ";
 			}
 			out += '}';
@@ -246,7 +243,15 @@ inline void appendValue(std::string& out, const PList& v)
 inline std::string describe(const PList& plist)
 {
 	std::string out;
-	plist_description_detail::appendValue(out, plist);
+	plist_description_detail::appendValue(out, plist, std::nullopt);
+	return out;
+}
+
+// The same with dates at a fixed UTC offset instead of the local time zone (the tests: 0).
+inline std::string describe(const PList& plist, int utcOffsetMinutes)
+{
+	std::string out;
+	plist_description_detail::appendValue(out, plist, utcOffsetMinutes);
 	return out;
 }
 
