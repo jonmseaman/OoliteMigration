@@ -2775,7 +2775,7 @@ static int shipsFound;
 
 		cxx_ScanVectorAndQuaternionFromString(joined(2, 7), &model_p0, &model_q);
 
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::NSStringFrom(i_info[9]));
+		Vector	model_offset = cxx_positionOffsetForShipInRotationToAlignment(ship, model_q, i_info[9]);
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
 		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(ship));
@@ -2802,13 +2802,13 @@ static int shipsFound;
 		if (i_info.size() != 9)	// must be player_x_y_z_W_X_Y_Z_align
 			return NO;				//		   0..... 1 2 3 4 5 6 7 8....
 
-		ShipEntity* doppelganger = [UNIVERSE newShipWithName:[self shipDataKey]];   // retain count = 1
+		ShipEntity* doppelganger = [UNIVERSE newShipWithName:oo::NSStringOrNil([self cxx_shipDataKey])];   // retain count = 1
 		if (!doppelganger)
 			return NO;
 
 		cxx_ScanVectorAndQuaternionFromString(joined(1, 7), &model_p0, &model_q);
 
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment( doppelganger, model_q, oo::NSStringFrom(i_info[8]));
+		Vector	model_offset = cxx_positionOffsetForShipInRotationToAlignment( doppelganger, model_q, i_info[8]);
 		model_p0.x += off.x - model_offset.x;
 		model_p0.y += off.y - model_offset.y;
 		model_p0.z += off.z - model_offset.z;
