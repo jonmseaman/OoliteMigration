@@ -295,11 +295,18 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	ooscript::Context context = OOJSAcquireContext();
 	
 	// stop and remove the timer if _jsThis (the first parameter in the constructor) dies.
-	id object = OOJSNativeObjectFromJSObject(context, _jsThis);
+	const oo::PList thisValue = cxx_OOJSPListFromJSObject(context, _jsThis);
+	id object = oo::ObjectIn(thisValue);
 	if (object != nil)
 	{
 		described = [object cxx_oo_jsDescription].has_value();
 		if (!described)  described = [object description] != nil;
+	}
+	else
+	{
+		// A plain value (object, array, String/Number/Boolean object): its Foundation form's
+		// -oo_jsDescription was never nil (ADR-0051).
+		described = !thisValue.isNull();
 	}
 	
 	if (!described)
