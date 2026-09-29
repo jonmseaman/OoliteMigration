@@ -186,9 +186,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 	const oo::PList *definition = [self definitionPointerForGood:good];
 	if (definition == nullptr)
 	{
-		return oo::OptionalString(OOExpand(@"[oolite-unknown-commodity-name]"));
+		return cxx_OOExpand("[oolite-unknown-commodity-name]");
 	}
-	return oo::OptionalString(OOExpand(oo::NSStringFrom(definition->get<std::string>(kName, "[oolite-unknown-commodity-name]"))));
+	return cxx_OOExpand(definition->get<std::string>(kName, "[oolite-unknown-commodity-name]"));
 }
 
 
@@ -197,9 +197,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 	const oo::PList *definition = [self definitionPointerForGood:good];
 	if (definition == nullptr)
 	{
-		return oo::OptionalString(OOExpand(@"[oolite-unknown-commodity-name]"));
+		return cxx_OOExpand("[oolite-unknown-commodity-name]");
 	}
-	return oo::OptionalString(OOExpand(oo::NSStringFrom(definition->get<std::string>(kComment, "[oolite-commodity-no-comment]"))));
+	return cxx_OOExpand(definition->get<std::string>(kComment, "[oolite-commodity-no-comment]"));
 }
 
 
@@ -208,9 +208,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 	const oo::PList *definition = [self definitionPointerForGood:good];
 	if (definition == nullptr)
 	{
-		return oo::OptionalString(OOExpand(@"[oolite-unknown-commodity-name]"));
+		return cxx_OOExpand("[oolite-unknown-commodity-name]");
 	}
-	return oo::OptionalString(OOExpand(oo::NSStringFrom(definition->get<std::string>(kShortComment, "[oolite-commodity-no-short-comment]"))));
+	return cxx_OOExpand(definition->get<std::string>(kShortComment, "[oolite-commodity-no-short-comment]"));
 }
 
 
