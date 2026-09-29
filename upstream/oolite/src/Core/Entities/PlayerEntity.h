@@ -922,7 +922,7 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 - (float) cxx_dialCustomFloat:(const std::string &)dialKey;
 - (std::string) cxx_dialCustomString:(const std::string &)dialKey;
 - (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
-- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given
+- (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given (live objects as Object nodes)
 
 
 - (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList;	// nullopt = inactive MFD
