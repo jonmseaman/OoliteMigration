@@ -84,7 +84,7 @@ oolite_sources += files(
     'OOTextureSprite.mm',
     'OOTrumble.mm',
     'OOVector.mm',
-    'OOVoxel.mm',
+    'OOVoxel.c',
     'OOWeakReference.mm',
     'OOWeakSet.mm',
     'OOXMLExtensions.mm',

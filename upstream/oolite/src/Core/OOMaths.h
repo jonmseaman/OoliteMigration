@@ -56,7 +56,14 @@ extern "C" {
 #include <assert.h>
 
 #if OOMATHS_OPENGL_INTEGRATION
+#ifdef __OBJC__
 #include "OOOpenGL.h"
+#else
+/*	A plain C or C++ translation unit (ADR-0012: OOVoxel.c) needs only the GL types. OOOpenGL.h
+	imports OOCocoa.h, i.e. Foundation, which does not compile outside Objective-C.
+*/
+#include "OOOpenGLOnly.h"
+#endif
 #endif
 
 
