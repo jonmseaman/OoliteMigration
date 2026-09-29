@@ -224,8 +224,8 @@ void MissionRunCallback()
 	sCallbackThis = ooscript::nullValue();
 	
 	ooscript::Value args[2];
-	argval = OOJSValueFromNativeObject(context, [player missionChoice_string]);
-	argval2 = OOJSValueFromNativeObject(context, [player missionKeyPress_string]);
+	argval = OOJSValueFromPList(context, [player missionChoice_string]);
+	argval2 = OOJSValueFromPList(context, [player missionKeyPress_string]);
 	args[0] = argval;
 	args[1] = argval2;
 
