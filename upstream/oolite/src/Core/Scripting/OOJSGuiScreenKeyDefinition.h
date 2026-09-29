@@ -38,9 +38,7 @@ MA 02110-1301, USA.
 	oo::PList			_registerKeys;	// key name -> key definitions; null until set (was nil)
 }
 
-- (id)name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
 - (std::optional<std::string>)cxx_name;	// nullopt until set (bead oo-3rb.289.7)
-- (void)setName:(id)name;	// shared selector (Foundation declares -setName: too): -cxx_setName: with an Objective-C string, or nil
 - (void)cxx_setName:(const std::optional<std::string> &)name;
 - (oo::PList)registerKeys;
 - (void)setRegisterKeys:(const oo::PList &)registerKeys;
@@ -49,7 +47,7 @@ MA 02110-1301, USA.
 - (ooscript::Object)callbackThis;
 - (void)setCallbackThis:(ooscript::Object)callbackthis;
 
-- (void)runCallback:(id)key;	// shared selector (proposed ADR-0043): key is an Objective-C string
+- (void)runCallback:(const std::string &)key;
 
 - (OOComparisonResult)interfaceCompare:(OOJSGuiScreenKeyDefinition *)other;
 

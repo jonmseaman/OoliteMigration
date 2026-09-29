@@ -175,7 +175,6 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 
 - (std::optional<std::string>) cxx_description;
 
-- (id) function;	// shared selector (Foundation declares -function too): -cxx_function as an Objective-C string, or nil
 - (std::optional<std::string>) cxx_function;	// nullopt: none (bead oo-3rb.291.3)
 - (NSUInteger) hitCount;
 - (double) totalTimeSum;

@@ -48,12 +48,6 @@ MA 02110-1301, USA.
 }
 
 
-- (id) initWithDictionary:(id)dictionary	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithDictionary:oo::PListFrom(dictionary)];
-}
-
-
 - (id) cxx_initWithDictionary:(const oo::PList &)dictionary
 {
 	float size = dictionary.get<float>("size", 1.0f);
@@ -80,7 +74,7 @@ MA 02110-1301, USA.
 	{
 		for (const oo::PList &specifier : *colorSpecifiers->getIf<oo::PList::Array>())
 		{
-			colors.emplace_back([OOColor colorWithDescription:oo::ObjectFromPList(specifier) saturationFactor:0.75f]);
+			colors.emplace_back([OOColor cxx_colorWithDescription:specifier saturationFactor:0.75f]);
 		}
 	}
 	

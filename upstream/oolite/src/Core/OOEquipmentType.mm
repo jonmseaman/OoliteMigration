@@ -135,7 +135,9 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 		}
 	}
 
-	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(conditionScripts) forKey:"equipment conditions" inCache:"condition scripts"];
+	oo::PList::Array conditionScriptList;	// an array of strings, as the Objective-C array was
+	for (const std::string &conditionScript : conditionScripts)  conditionScriptList.emplace_back(conditionScript);
+	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"equipment conditions" inCache:"condition scripts"];
 
 	sEquipmentTypes = equipmentTypes;
 	sEquipmentTypesByIdentifier = byIdentifier;
@@ -295,9 +297,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 				}
 			}
 
-			// +colorWithDescription: is not migrated: the node crosses as the object it was.
-			const oo::PList *dispColor = extraInfo.find("display_color");
-			_displayColor = [[OOColor colorWithDescription:(dispColor != nullptr) ? oo::ObjectFromPList(*dispColor) : nil] retain];
+			const oo::PList *dispColor = extraInfo.find("display_color");	// absent: a null PList, as nil was
+			_displayColor = [[OOColor cxx_colorWithDescription:(dispColor != nullptr) ? *dispColor : oo::PList()] retain];
 
 			const oo::PList *weaponInfo = extraInfo.get<oo::PList::Dict>("weapon_info");
 			_weaponInfo = (weaponInfo != nullptr) ? *weaponInfo : oo::PList(oo::PList::Dict{});
@@ -426,12 +427,6 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 - (std::optional<std::string>) cxx_damagedIdentifier
 {
 	return _identifier + "_DAMAGED";
-}
-
-
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
 }
 
 
@@ -760,9 +755,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 
 - (OOColor *) weaponColor
 {
-	// +brightColorWithDescription: is not migrated: the "color" node crosses as the object it was.
-	const oo::PList *color = _weaponInfo.find("color");
-	return [OOColor brightColorWithDescription:(color != nullptr) ? oo::ObjectFromPList(*color) : nil];
+	const oo::PList *color = _weaponInfo.find("color");	// absent: a null PList, as nil was
+	return [OOColor cxx_brightColorWithDescription:(color != nullptr) ? *color : oo::PList()];
 }
 
 

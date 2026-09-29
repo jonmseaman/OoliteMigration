@@ -433,12 +433,6 @@ const char *sGlobalTraceContext = nullptr;
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>) cxx_name
 {
 	OOLogGenericSubclassResponsibility();
@@ -767,7 +761,9 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 	else
 	{
 		// Bad type
-		if (!specifier.isNull())  OO_LOG(cxx_kOOLogParameterError, "{}: expected string or dictionary, got {}.", __PRETTY_FUNCTION__, oo::DescriptionOf([oo::ObjectFromPList(specifier) class]));
+		// "got" names an object's class, or the property-list type (it was the class of the Foundation
+		// object built for the value, such as GSInlineArray).
+		if (!specifier.isNull())  OO_LOG(cxx_kOOLogParameterError, "{}: expected string or dictionary, got {}.", __PRETTY_FUNCTION__, (specifier.type() == oo::PList::Type::Object) ? oo::DescriptionOf([oo::ObjectIn(specifier) class]) : std::string(oo::typeName(specifier.type())));
 		return NO;
 	}
 	

@@ -62,12 +62,6 @@ static int OOCloseOXZVorbis (void *datasource);
 
 @implementation OOALSoundDecoder
 
-- (id)initWithPath:(id)inPath	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithPath:oo::OptionalString(inPath)];
-}
-
-
 - (id)cxx_initWithPath:(const std::optional<std::string> &)inPath
 {
 	[self release];
@@ -128,12 +122,6 @@ static int OOCloseOXZVorbis (void *datasource);
 - (void) reset
 {
 	// nothing
-}
-
-
-- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
 }
 
 
@@ -461,7 +449,7 @@ static int OOCloseOXZVorbis (void *datasource);
 		for (const auto &[key, value] : *comments)  dict.emplace(key, oo::PList(value));
 		commentList = oo::PList(std::move(dict));
 	}
-	return oo::str::format("\"%s\", comments=%s", oo::DescriptionOf(oo::NSStringOrNil(_name)).c_str(), oo::DescriptionOf(commentList).c_str());
+	return oo::str::format("\"%s\", comments=%s", _name.value_or("(null)").c_str(), oo::DescriptionOf(commentList).c_str());
 }
 
 

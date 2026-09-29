@@ -48,7 +48,6 @@ MA 02110-1301, USA.
 		 lineNumber:(NSUInteger)lineNumber
 			context:(ooscript::Context)context;	// may be NULL. If not null, must be in a request.
 
-- (id) name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
 - (std::optional<std::string>) cxx_name;	// nullopt: anonymous (bead oo-3rb.289.7)
 - (ooscript::Function) function;
 - (ooscript::Value) functionValue;

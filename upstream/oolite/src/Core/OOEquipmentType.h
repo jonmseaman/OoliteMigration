@@ -103,7 +103,6 @@ SOFTWARE.
 
 - (std::optional<std::string>) cxx_identifier;
 - (std::optional<std::string>) cxx_damagedIdentifier;
-- (id) name;			// localized; shared selector (Foundation declares -name too): -cxx_name as an Objective-C string
 - (std::optional<std::string>) cxx_name;	// localized (bead oo-3rb.289.10)
 - (std::optional<std::string>) cxx_descriptiveText;	// localized
 - (OOTechLevelID) techLevel;

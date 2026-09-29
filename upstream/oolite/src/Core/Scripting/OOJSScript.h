@@ -70,13 +70,13 @@ inline constexpr char kLocalManifestProperty[] = "oolite_manifest_identifier";
 // The property as cxx_OOJSPListFromJSValue() converts it; null when there is no script object or it could not be read.
 - (oo::PList) cxx_propertyWithID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 // Set a property which can be modified or deleted by the script.
-- (BOOL) setProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
+- (BOOL) setProperty:(const oo::PList &)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 // Set a special property which cannot be modified or deleted by the script.
-- (BOOL) defineProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
+- (BOOL) defineProperty:(const oo::PList &)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 
 - (oo::PList) cxx_propertyNamed:(const std::string &)name;
-- (BOOL) setProperty:(id)value named:(const std::string &)name;
-- (BOOL) defineProperty:(id)value named:(const std::string &)name;
+- (BOOL) setProperty:(const oo::PList &)value named:(const std::string &)name;
+- (BOOL) defineProperty:(const oo::PList &)value named:(const std::string &)name;
 
 @end
 

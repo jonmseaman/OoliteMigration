@@ -127,8 +127,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 	
 	if (configuration.isNull())  OK = NO;
 	
-	id configurationObject = oo::ObjectFromPList(configuration);
-	self = [super initWithName:oo::NSStringOrNil(name) configuration:configurationObject];
+	self = [super initWithName:name configuration:configuration];
 	if (self == nil)  OK = NO;
 	
 	if (OK)
@@ -890,8 +889,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 		{
 			for (const std::string &extension : extensions)
 			{
-				// No oofnd form of -stringByAppendingPathExtension: yet: kept at the boundary.
-				const std::string nameWithExtension = oo::StdString([oo::NSStringFrom(*fileName) stringByAppendingPathExtension:oo::NSStringFrom(extension)]);
+				const std::string nameWithExtension = oo::str::appendingPathExtension(*fileName, extension);
 				result = [ResourceManager cxx_stringFromFilesNamed:nameWithExtension
 														  inFolder:std::string("Shaders")];
 				if (result.has_value()) break;

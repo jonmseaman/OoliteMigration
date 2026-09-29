@@ -35,7 +35,8 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-hach): the sun's system dictionary is an oo::PList
-	and its name std::optional (nil stays nil); -name and -setName: are shared and keep id.
+	and its name std::optional (nil stays nil): -cxx_name / -cxx_setName: (the id -name / -setName:
+	retired with oo-qps.44).
 */
 
 
