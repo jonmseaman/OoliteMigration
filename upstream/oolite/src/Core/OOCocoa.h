@@ -183,8 +183,6 @@ extern "C++" {
 #endif
 
 
-#import "Comparison.h"
-
 /* Define AppKit constants for events */
 enum {
   NSUpArrowFunctionKey = 0xF700,
