@@ -84,7 +84,6 @@ oolite_sources += files(
     'OOSoundSourcePool.mm',
     'OOSpatialReference.mm',
     'OOStringExpander.mm',
-    'OOStringExpander+FoundationBridge.mm',
     'OOStringParsing.mm',
     'OOStringParsing+FoundationBridge.mm',
     'OOSystemDescriptionManager.mm',
