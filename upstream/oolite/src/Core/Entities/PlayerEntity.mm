@@ -544,7 +544,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 // TODO: better feedback on the log as to why failing to create player cargo pods causes a CTD?
 - (void) createCargoPodWithType:(const std::string &)type andAmount:(OOCargoQuantity)amount
 {
-	ShipEntity *container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+	ShipEntity *container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 	if (container)
 	{
 		[container setScanClass: CLASS_CARGO];
@@ -653,7 +653,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				int smaller_quantity = 1 + ((quantity - 1) % amount_per_container);
 				if (cargo.size() < [self maxAvailableCargoSpace])
 				{
-					ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+					ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 					if (container)
 					{
 						// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
@@ -683,7 +683,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			{
 				if (cargo.size() < [self maxAvailableCargoSpace])
 				{
-					ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+					ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 					if (container)
 					{
 						// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
@@ -967,7 +967,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		return system_id; // no need to calculate
 	}
-	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList routeInfo = [UNIVERSE cxx_routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode];
 	// no route to destination
 	if (routeInfo.isNull())
 	{
@@ -1026,7 +1026,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self setInfoSystemID: target_system_id moveChart: YES];
 		return;
 	}
-	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList routeInfo = [UNIVERSE cxx_routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode];
 	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
 	NSUInteger i;
 	if (route == nullptr)
@@ -1058,7 +1058,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self setInfoSystemID: system_id moveChart: YES];
 		return;
 	}
-	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList routeInfo = [UNIVERSE cxx_routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode];
 	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
 	NSUInteger i;
 	if (route == nullptr)
@@ -1099,7 +1099,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (BOOL) infoSystemOnRoute
 {
-	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList routeInfo = [UNIVERSE cxx_routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode];
 	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
 	NSUInteger i;
 	if (route == nullptr)
@@ -1658,7 +1658,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	isSpeechOn = (OOSpeechSettings)dict.get<int>("speech_on");
 #if OOLITE_ESPEAK
 	voice_gender_m = dict.get<bool>("speech_gender", YES);
-	voice_no = [UNIVERSE setVoice:[UNIVERSE voiceNumber:oo::NSStringOrNil(StringForKey(dict, "speech_voice"))] withGenderM:voice_gender_m];
+	const std::optional<std::string> speechVoice = StringForKey(dict, "speech_voice");
+	voice_no = [UNIVERSE setVoice:(speechVoice.has_value() ? [UNIVERSE cxx_voiceNumber:*speechVoice] : UINT_MAX) withGenderM:voice_gender_m];	// (a nil voice was UINT_MAX)
 #endif
 
 	// reputation
@@ -1731,7 +1732,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	shipyard_record = savedShipyardRecord.isDict() ? *savedShipyardRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	
 	// Normalize cargo capacity
-	unsigned	original_hold_size = [UNIVERSE maxCargoForShip:[self shipDataKey]];
+	unsigned	original_hold_size = [UNIVERSE cxx_maxCargoForShip:oo::StdString([self shipDataKey])];
 	// Not Suitable For Oolite
 	//unsigned 	passenger_space = [[OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"] requiredCargoSpace];
 	//if (passenger_space == 0) passenger_space = PASSENGER_BERTH_SPACE;
@@ -1914,7 +1915,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	const std::size_t commCount = savedCommLog.isArray() ? savedCommLog.count() : 0;	// oo_arrayForKey:
 	for (std::size_t i = 0; i < commCount; i++)
 	{
-		[UNIVERSE addCommsMessage:oo::ObjectFromPList(*savedCommLog.at(i)) forCount:0 andShowComms:NO logOnly:YES];
+		[UNIVERSE cxx_addCommsMessage:oo::OptionalString(oo::ObjectFromPList(*savedCommLog.at(i))) forCount:0 andShowComms:NO logOnly:YES];
 	}
 
 	/*	entity_personality for scripts and shaders. If undefined, we fall back
@@ -1960,7 +1961,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		for (NSUInteger i = 0; i < missiles; i++)
 		{
 			missile_list[i] = [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_MISSILE"];
-			missile_entity[i] = [UNIVERSE newShipWithRole:@"EQ_MISSILE"];	// retain count = 1 - should be okay as long as we keep a missile with this role
+			missile_entity[i] = [UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"];	// retain count = 1 - should be okay as long as we keep a missile with this role
 																			// in the base package.
 		}
 	}
@@ -2468,7 +2469,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self setDockedStation:[UNIVERSE station]];
 	[self setLastAegisLock:[UNIVERSE planet]];
 	// only do this if we're not in strict mode, otherwise all previously saved OXP key/joystick defs will be wiped.
-	if (![[UNIVERSE useAddOns] isEqualToString:SCENARIO_OXP_DEFINITION_NONE]) 
+	if ([UNIVERSE cxx_useAddOns] != oo::StdString(SCENARIO_OXP_DEFINITION_NONE)) 
 	{
 		[self validateCustomEquipActivationArray];
 	}
@@ -2535,7 +2536,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	for (i = 0; i < missiles; i++)
 	{
 		missile_list[i] = [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_MISSILE"];
-		missile_entity[i] = [UNIVERSE newShipWithRole:@"EQ_MISSILE"];   // retain count = 1
+		missile_entity[i] = [UNIVERSE cxx_newShipWithRole:"EQ_MISSILE"];   // retain count = 1
 	}
 	
 	DESTROY(_primaryTarget);
@@ -2988,7 +2989,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		else
 		{
 			ecm_in_operation = NO;
-			[UNIVERSE addMessage:DESC(@"ecm-out-of-juice") forCount:3.0];
+			[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"ecm-out-of-juice")) forCount:3.0];
 		}
 		if ([UNIVERSE getTime] > ecm_start_time + ECM_DURATION)
 		{
@@ -3055,7 +3056,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if( (forward_shield > fwdMax * 0.25) && (aft_shield > aftMax * 0.25) )
 	{
 		// TODO: Can this be cached anywhere sensibly (without adding another member variable)?
-		float minEnergyBankLevel = oo::PListView([UNIVERSE globalSettings]).get<float>(@"shield_charge_energybank_threshold", 0.25);
+		float minEnergyBankLevel = [UNIVERSE cxx_globalSettings].get<float>("shield_charge_energybank_threshold", 0.25);
 		energyForShields = MAX(0.0, energy -0.1 - (maxEnergy * minEnergyBankLevel)); // NB: The - 0.1 ensures the energy value does not 'bounce' across the critical energy message and causes spurious energy-low warnings
 	}
 	
@@ -3107,7 +3108,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				fuel_accumulator -= 1.0f;
 				[self doScriptEvent:OOJSID("shipScoopedFuel")];
 			}
-			[UNIVERSE displayCountdownMessage:DESC(@"fuel-scoop-active") forCount:1.0];
+			[UNIVERSE cxx_displayCountdownMessage:oo::StdString(DESC(@"fuel-scoop-active")) forCount:1.0];
 		}
 	}
 	
@@ -3177,7 +3178,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[doppelganger becomeExplosion];	// blow up the doppelganger
 			// restore player ship
-			ShipEntity *player_ship = [UNIVERSE newShipWithName:[self shipDataKey]];	// retained
+			ShipEntity *player_ship = [UNIVERSE cxx_newShipWithName:oo::StdString([self shipDataKey])];	// retained
 			if (player_ship)
 			{
 				// FIXME: this should use OOShipType, which should exist. -- Ahruman
@@ -3193,8 +3194,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[self setStatus:STATUS_DEAD];
 			//[self playGameOver];	// no death explosion sounds for player pods
 			// no shipDied events for player pods, either
-			[UNIVERSE displayMessage:DESC(@"gameoverscreen-escape-pod") forCount:kDeadResetTime];
-			[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
+			[UNIVERSE cxx_displayMessage:oo::StdString(DESC(@"gameoverscreen-escape-pod")) forCount:kDeadResetTime];
+			[UNIVERSE cxx_displayMessage:"" forCount:kDeadResetTime];
 			[self showGameOver];
 		}
 	}
@@ -3220,7 +3221,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (hyperspeed_locked)
 		{
 			[self playJumpMassLocked];
-			[UNIVERSE addMessage:DESC(@"jump-mass-locked") forCount:4.5];
+			[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"jump-mass-locked")) forCount:4.5];
 			hyperspeed_engaged = NO;
 		}
 	}
@@ -3323,7 +3324,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	ShipEntity *primeTarget = [self primaryTarget];
 	if (primeTarget && HPdistance2([primeTarget position], [self position]) > SCANNER_MAX_RANGE2 && !autopilot_engaged)
 	{
-		[UNIVERSE addMessage:DESC(@"target-lost") forCount:3.0];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"target-lost")) forCount:3.0];
 		[self removeTarget:primeTarget];
 	}
 	// compass sanity check and update target for changed mode
@@ -4018,13 +4019,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	int seconds = round(witchspaceCountdown);
 	if (galactic_witchjump)
 	{
-		[UNIVERSE displayCountdownMessage:OOExpandKey(@"witch-galactic-in-x-seconds", seconds) forCount:1.0];
+		[UNIVERSE cxx_displayCountdownMessage:oo::OptionalString(OOExpandKey(@"witch-galactic-in-x-seconds", seconds)) forCount:1.0];
 	}
 	else
 	{
-		const std::string destination = oo::StdString([UNIVERSE getSystemName:[self nextHopTargetSystemID]]);	// (nil raised in the expansion)
-		[UNIVERSE displayCountdownMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-to-x-in-y-seconds",
-			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } })) forCount:1.0];
+		const std::string destination = [UNIVERSE cxx_getSystemName:[self nextHopTargetSystemID]].value_or(std::string());	// (nil raised in the expansion)
+		[UNIVERSE cxx_displayCountdownMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-to-x-in-y-seconds",
+			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } }) forCount:1.0];
 	}
 	
 	if (witchspaceCountdown == 0.0)
@@ -4070,7 +4071,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// announce arrival
 		if ([UNIVERSE planet])
 		{
-			[UNIVERSE addMessage:oo::NSStringFrom(oo::str::format(" %s. ", oo::DescriptionOf([UNIVERSE getSystemName:system_id]).c_str())) forCount:3.0];
+			[UNIVERSE cxx_addMessage:oo::str::format(" %s. ", [UNIVERSE cxx_getSystemName:system_id].value_or("(null)").c_str()) forCount:3.0];
 			// and reset the compass
 			if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])
 				compassMode = COMPASS_MODE_PLANET;
@@ -4079,7 +4080,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		else
 		{
-			if ([UNIVERSE inInterstellarSpace])  [UNIVERSE addMessage:DESC(@"witch-engine-malfunction") forCount:3.0]; // if sun gone nova, print nothing
+			if ([UNIVERSE inInterstellarSpace])  [UNIVERSE cxx_addMessage:oo::StdString(DESC(@"witch-engine-malfunction")) forCount:3.0]; // if sun gone nova, print nothing
 		}
 		
 		[self setStatus:STATUS_IN_FLIGHT];
@@ -4231,13 +4232,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	const std::string scoreMS = oo::str::formatRuntime(oo::StdString(OOExpandKey(@"gameoverscreen-score-@")),
 							{ cxx_KillCountToRatingAndKillString(ship_kills) });
 	
-	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-game-over") forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:oo::NSStringFrom(scoreMS) forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-press-space") forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:@" " forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:oo::OptionalString(OOExpandKey(@"gameoverscreen-game-over")) forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:"" forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:scoreMS forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:"" forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:oo::OptionalString(OOExpandKey(@"gameoverscreen-press-space")) forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:" " forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:"" forCount:kDeadResetTime];
 	[self resetShotTime];
 }
 
@@ -4302,7 +4303,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			if (!suppressTargetLost)
 			{
-				[UNIVERSE addMessage:DESC(@"target-lost") forCount:3.0];
+				[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"target-lost")) forCount:3.0];
 				[self playTargetLost];
 				[self noteLostTarget];
 			}
@@ -4325,7 +4326,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			if ([missile_entity[i] primaryTarget] != nil &&
 					![self isValidTarget:[missile_entity[i] primaryTarget]])
 			{
-				[UNIVERSE addMessage:DESC(@"target-lost") forCount:3.0];
+				[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"target-lost")) forCount:3.0];
 				[self playTargetLost];
 				[missile_entity[i] removeTarget:nil];
 				if (i == activeMissile)
@@ -4377,24 +4378,24 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				if ([self clockTimeAdjusted] > [wh scanTime] + 2)
 				{
 					[wh setScanInfo:WH_SCANINFO_COLLAPSE_TIME];
-					//[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-collapse-time-computed")),
-					//						   { oo::StdString([UNIVERSE getSystemName:[wh destination]]) })) forCount:5.0];
+					//[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-collapse-time-computed")),
+					//						   { [UNIVERSE cxx_getSystemName:[wh destination]].value_or(std::string()) }) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_COLLAPSE_TIME:
 				if([self clockTimeAdjusted] > [wh scanTime] + 4)
 				{
 					[wh setScanInfo:WH_SCANINFO_ARRIVAL_TIME];
-					[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-arrival-time-computed-@")),
-											   { cxx_ClockToString([wh estimatedArrivalTime], NO) })) forCount:5.0];
+					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-arrival-time-computed-@")),
+											   { cxx_ClockToString([wh estimatedArrivalTime], NO) }) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_ARRIVAL_TIME:
 				if ([self clockTimeAdjusted] > [wh scanTime] + 7)
 				{
 					[wh setScanInfo:WH_SCANINFO_DESTINATION];
-					[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-destination-computed-@")),
-											   { oo::DescriptionOf([UNIVERSE getSystemName:[wh destination]]) })) forCount:5.0];
+					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-destination-computed-@")),
+											   { [UNIVERSE cxx_getSystemName:[wh destination]].value_or("(null)") }) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_DESTINATION:
@@ -5203,7 +5204,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		role = "pirate";
 	}
-	else if ([UNIVERSE role:[self primaryRole] isInCategory:@"oolite-hunter"] || [victim scanClass] == CLASS_POLICE)
+	else if (([self primaryRole] != nil && [UNIVERSE cxx_role:oo::StdString([self primaryRole]) isInCategory:"oolite-hunter"]) || [victim scanClass] == CLASS_POLICE)
 	{
 		role = "pirate-interceptor";
 	}
@@ -5787,7 +5788,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([[self hud] mfdCount] == 0) return;
 	activeMFD = (activeMFD + 1) % [[self hud] mfdCount];
 	NSUInteger mfdID = activeMFD + 1;
-	[UNIVERSE addMessage:OOExpandKey(@"mfd-N-selected", mfdID) forCount:3.0 ];
+	[UNIVERSE cxx_addMessage:oo::OptionalString(OOExpandKey(@"mfd-N-selected", mfdID)) forCount:3.0 ];
 	ooscript::Context context = OOJSAcquireContext();
 	ShipScriptEvent(context, self, "selectedMFDChanged", ooscript::int32Value(activeMFD));
 	OOJSRelinquishContext(context);
@@ -5806,7 +5807,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		activeMFD = (activeMFD - 1);
 	}
 	NSUInteger mfdID = activeMFD + 1;
-	[UNIVERSE addMessage:OOExpandKey(@"mfd-N-selected", mfdID) forCount:3.0 ];
+	[UNIVERSE cxx_addMessage:oo::OptionalString(OOExpandKey(@"mfd-N-selected", mfdID)) forCount:3.0 ];
 	ooscript::Context context = OOJSAcquireContext();
 	ShipScriptEvent(context, self, "selectedMFDChanged", ooscript::int32Value(activeMFD));
 	OOJSRelinquishContext(context);
@@ -6004,7 +6005,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ((message == "HOLD_FULL"))
 	{
 		[self playHoldFull];
-		[UNIVERSE addMessage:DESC(@"hold-full") forCount:4.5];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"hold-full")) forCount:4.5];
 	}
 
 	if ((message == "INCOMING_MISSILE"))
@@ -6017,12 +6018,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[self playIncomingMissile:kZeroVector];
 		}
-		[UNIVERSE addMessage:DESC(@"incoming-missile") forCount:4.5];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"incoming-missile")) forCount:4.5];
 	}
 
 	if ((message == "ENERGY_LOW"))
 	{
-		[UNIVERSE addMessage:DESC(@"energy-low") forCount:6.0];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"energy-low")) forCount:6.0];
 	}
 
 	if ((message == "ECM") && ![self isDocked])  [self playHitByECMSound];
@@ -6030,7 +6031,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ((message == "DOCKING_REFUSED") && [self status] == STATUS_AUTOPILOT_ENGAGED)
 	{
 		[self playDockingDenied];
-		[UNIVERSE addMessage:DESC(@"autopilot-denied") forCount:4.5];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"autopilot-denied")) forCount:4.5];
 		autopilot_engaged = NO;
 		[self resetAutopilotAI];
 		DESTROY(_primaryTarget);
@@ -6084,7 +6085,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (BOOL) cxx_mountMissileWithRole:(const std::string &)role
 {
 	if ([self missileCount] >= [self missileCapacity]) return NO;
-	return [self mountMissile:[[UNIVERSE newShipWithRole:oo::NSStringFrom(role)] autorelease]];
+	return [self mountMissile:[[UNIVERSE cxx_newShipWithRole:role] autorelease]];
 }
 
 
@@ -6182,7 +6183,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return NO;
 	}
 
-	ShipEntity *amiss = [UNIVERSE newShipWithRole:oo::NSStringFrom(equipmentKey)];
+	ShipEntity *amiss = [UNIVERSE cxx_newShipWithRole:equipmentKey];
 	
 	if (!amiss) return NO;
 
@@ -6209,13 +6210,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([super activateCloakingDevice])
 	{
 		[UNIVERSE setCurrentPostFX:OO_POSTFX_CLOAK];
-		[UNIVERSE addMessage:DESC(@"cloak-on") forCount:2];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"cloak-on")) forCount:2];
 		[self playCloakingDeviceOn];
 		return YES;
 	}
 	else
 	{
-		[UNIVERSE addMessage:DESC(@"cloak-low-juice") forCount:3];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"cloak-low-juice")) forCount:3];
 		[self playCloakingDeviceInsufficientEnergy];
 		return NO;
 	}
@@ -6228,7 +6229,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[super deactivateCloakingDevice];
 	[UNIVERSE terminatePostFX:OO_POSTFX_CLOAK];
-	[UNIVERSE addMessage:DESC(@"cloak-off") forCount:2];
+	[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"cloak-off")) forCount:2];
 	[self playCloakingDeviceOff];
 }
 
@@ -6334,7 +6335,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (weapon_temp / PLAYER_MAX_WEAPON_TEMP >= WEAPON_COOLING_CUTOUT)
 	{
 		[self playWeaponOverheated:oo::PListView([self currentLaserOffset]).at<Vector>(0)];
-		[UNIVERSE addMessage:DESC(@"weapon-overheat") forCount:3.0];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"weapon-overheat")) forCount:3.0];
 		return NO;
 	}
 
@@ -6354,7 +6355,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (energy <= weapon_energy_use * multiplier)
 	{
-		[UNIVERSE addMessage:DESC(@"weapon-out-of-juice") forCount:3.0];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"weapon-out-of-juice")) forCount:3.0];
 		return NO;
 	}
 
@@ -6711,7 +6712,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (ProxyPlayerEntity *) createDoppelganger
 {
-	ProxyPlayerEntity *result = (ProxyPlayerEntity *)[[UNIVERSE newShipWithName:[self shipDataKey] usePlayerProxy:YES] autorelease];
+	ProxyPlayerEntity *result = (ProxyPlayerEntity *)[[UNIVERSE cxx_newShipWithName:oo::StdString([self shipDataKey]) usePlayerProxy:YES] autorelease];
 	
 	if (result != nil)
 	{
@@ -6785,7 +6786,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	position = HPvector_subtract(position, vectorToHPVector(vector_multiply_scalar(v_forward, sdepth/2.0)));
 
 	// set up you
-	escapePod = [UNIVERSE newShipWithName:@"escape-capsule"];	// retained
+	escapePod = [UNIVERSE cxx_newShipWithName:"escape-capsule"];	// retained
 	if (escapePod != nil)
 	{
 		// FIXME: this should use OOShipType, which should exist. -- Ahruman
@@ -6851,7 +6852,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	cargo.clear();
 	
 	energy = 25;
-	[UNIVERSE addMessage:DESC(@"escape-sequence") forCount:4.5];
+	[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"escape-sequence")) forCount:4.5];
 	[self resetShotTime];
 	
 	// need to zero out all facings shot_times too, otherwise we may end up
@@ -6871,15 +6872,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	if (flightSpeed > 4.0 * maxFlightSpeed)
 	{
-		[UNIVERSE addMessage:OOExpandKey(@"hold-locked") forCount:3.0];
+		[UNIVERSE cxx_addMessage:oo::OptionalString(OOExpandKey(@"hold-locked")) forCount:3.0];
 		return nil;
 	}
 
 	id result = [super dumpCargo];
 	if (result != nil)
 	{
-		const std::string commodity = oo::StdString([UNIVERSE displayNameForCommodity:result]);	// (nil raised in the expansion)
-		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "commodity-ejected", { { "commodity", oo::PList(commodity) } })) forCount:3.0 forceDisplay:YES];
+		const std::string commodity = [UNIVERSE cxx_displayNameForCommodity:oo::StdString(result)].value_or(std::string());	// (nil raised in the expansion)
+		[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "commodity-ejected", { { "commodity", oo::PList(commodity) } }) forCount:3.0 forceDisplay:YES];
 		[self playCargoJettisioned];
 	}
 	return result;
@@ -6909,8 +6910,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	} while (sameContents(contents)&&(rotates < n_cargo));
 	[pod release];
 	
-	const std::string commodity = oo::StdString([UNIVERSE displayNameForCommodity:oo::NSStringOrNil(contents)]);	// (nil raised in the expansion)
-	[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "ready-to-eject-commodity", { { "commodity", oo::PList(commodity) } })) forCount:3.0];
+	const std::string commodity = [UNIVERSE cxx_displayNameForCommodity:contents.value_or(std::string())].value_or(std::string());	// (nil raised in the expansion)
+	[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "ready-to-eject-commodity", { { "commodity", oo::PList(commodity) } }) forCount:3.0];
 
 	// now scan through the remaining 1..(n_cargo - rotates) places moving similar cargo to the last place
 	// this means the cargo gets to be sorted as it is rotated through
@@ -7043,7 +7044,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (score > 9)
 	{
-		[UNIVERSE addDelayedMessage:OOExpandKey(@"bounty-awarded", score, credits) forCount:6 afterDelay:0.15];
+		[UNIVERSE cxx_addDelayedMessage:oo::OptionalString(OOExpandKey(@"bounty-awarded", score, credits)) forCount:6 afterDelay:0.15];
 	}
 	
 	if (killAward)
@@ -7052,7 +7053,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if ((ship_kills % 256) == 0)
 		{
 			// congratulations method needs to be delayed a fraction of a second
-			[UNIVERSE addDelayedMessage:DESC(@"right-on-commander") forCount:4 afterDelay:0.2];
+			[UNIVERSE cxx_addDelayedMessage:oo::StdString(DESC(@"right-on-commander")) forCount:4 afterDelay:0.2];
 		}
 	}
 }
@@ -7069,11 +7070,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (damage_to < cargo.size())
 	{
 		ShipEntity* pod = (ShipEntity*)cargo[damage_to].get();
-		const std::optional<std::string> cargo_desc = oo::OptionalString([UNIVERSE displayNameForCommodity:[pod commodityType]]);
+		const std::optional<std::string> cargo_desc = [UNIVERSE cxx_displayNameForCommodity:oo::StdString([pod commodityType])];
 		if (!cargo_desc)
 			return NO;
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"@-destroyed")), { *cargo_desc })) forCount:4.5];
+		[UNIVERSE cxx_addMessage:oo::str::formatRuntime(oo::StdString(DESC(@"@-destroyed")), { *cargo_desc }) forCount:4.5];
 		std::erase(cargo, pod);
 		return YES;
 	}
@@ -7138,7 +7139,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				either of those and wants a message, it can write it
 				itself.)
 			*/
-			[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"@-damaged")), { *system_name })) forCount:4.5];
+			[UNIVERSE cxx_addMessage:oo::str::formatRuntime(oo::StdString(DESC(@"@-damaged")), { *system_name }) forCount:4.5];
 		}
 		
 		/* There used to be a check for docking computers here, but
@@ -7513,7 +7514,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "Internal Error : Player entering witchspace with no wormhole.");
 	}
-	[UNIVERSE allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:@"PLAYER WITCHSPACE"];
+	[UNIVERSE cxx_allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:"PLAYER WITCHSPACE"];
 	
 	// set the new market seed now!
 	// reseeding the RNG should be completely unnecessary here
@@ -7548,7 +7549,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[UNIVERSE clearPreviousMessage];
 			const std::string blockerName = oo::StdString([blocker name]);	// (nil raised in the expansion)
-			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-blocked", { { "blockerName", oo::PList(blockerName) } })) forCount:4.5];
+			[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-blocked", { { "blockerName", oo::PList(blockerName) } }) forCount:4.5];
 			[self playWitchjumpBlocked];
 			[self setStatus:STATUS_IN_FLIGHT];
 			ShipScriptEventNoCx(self, "playerJumpFailed", OOJSSTR("blocked"));
@@ -7568,7 +7569,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		//dont allow player to hyperspace to current location.
 		//Note interstellar space will have a system_seed place we came from
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:OOExpandKey(@"witch-no-target") forCount: 4.5];
+		[UNIVERSE cxx_addMessage:oo::OptionalString(OOExpandKey(@"witch-no-target")) forCount: 4.5];
 		if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 		{
 			[self playWitchjumpInsufficientFuel];
@@ -7584,7 +7585,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([self hyperspaceJumpDistance] > [self maxHyperspaceDistance])
 	{
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:DESC(@"witch-too-far") forCount: 4.5];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"witch-too-far")) forCount: 4.5];
 		if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 		{
 			[self playWitchjumpDistanceTooGreat];
@@ -7600,7 +7601,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (![self hasSufficientFuelForJump])
 	{
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:DESC(@"witch-no-fuel") forCount: 4.5];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"witch-no-fuel")) forCount: 4.5];
 		if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 		{
 			[self playWitchjumpInsufficientFuel];
@@ -8079,20 +8080,20 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	// Both system_seed & target_system_seed are != nil at all times when this function is called.
 	
-	systemName = oo::OptionalString([UNIVERSE inInterstellarSpace] ? DESC(@"interstellar-space") : [UNIVERSE getSystemName:system_id]);
+	systemName = [UNIVERSE inInterstellarSpace] ? oo::OptionalString(DESC(@"interstellar-space")) : [UNIVERSE cxx_getSystemName:system_id];
 	if ([self isDocked] && [self dockedStation] != [UNIVERSE station])
 	{
 		systemName = oo::str::format("%s : %s", systemName.value_or("(null)").c_str(), [[self dockedStation] displayName].value_or("(null)").c_str());
 	}
 
-	targetSystemName =	oo::OptionalString([UNIVERSE getSystemName:target_system_id]);
+	targetSystemName =	[UNIVERSE cxx_getSystemName:target_system_id];
 	oo::PList systemInfo = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystem:target_system_id inGalaxy:galaxy_number]);
 	NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) targetSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
 
 	OOSystemID nextHop = [self nextHopTargetSystemID];
 	if (nextHop != target_system_id) {
-		std::optional<std::string> nextHopSystemName = oo::OptionalString([UNIVERSE getSystemName:nextHop]);
+		std::optional<std::string> nextHopSystemName = [UNIVERSE cxx_getSystemName:nextHop];
 		systemInfo = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystem:nextHop inGalaxy:galaxy_number]);
 		concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) nextHopSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
@@ -8178,19 +8179,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		oo::PList fgDescriptor, bgDescriptor;
 		if ([self status] == STATUS_DOCKED)
 		{
-			fgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"docked_overlay"]);
-			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status_docked"]);
+			fgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"docked_overlay"];
+			bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_docked"];
 		}
 		else
 		{
-			fgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"overlay"]);
-			if (alertCondition == ALERT_CONDITION_RED) bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status_red_alert"]);
-			else bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status_in_flight"]);
+			fgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"overlay"];
+			if (alertCondition == ALERT_CONDITION_RED) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_red_alert"];
+			else bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_in_flight"];
 		}
 
 		[gui cxx_setForegroundTextureDescriptor:fgDescriptor];
 
-		if (bgDescriptor.isNull())  bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status"]);
+		if (bgDescriptor.isNull())  bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status"];
 		[gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		
 		[gui setStatusPage:0];
@@ -8381,13 +8382,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			if (unprimeEq)
 			{
-				[UNIVERSE addMessage:OOExpandKey(@"equipment-primed-none") forCount:2.0];
+				[UNIVERSE cxx_addMessage:oo::OptionalString(OOExpandKey(@"equipment-primed-none")) forCount:2.0];
 			}
 			else
 			{
 				// (a nil name raised in the expansion)
 				const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[primedEquipment].first)] name]);
-				[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
+				[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-primed", { { "equipmentName", oo::PList(equipmentName) } }) forCount:2.0];
 			}
 		}
 	}
@@ -8602,17 +8603,17 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 
 		OOSystemID 	planet = dict.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		std::optional<std::string>	planetName = oo::OptionalString([UNIVERSE getSystemName:planet]);
+		std::optional<std::string>	planetName = [UNIVERSE cxx_getSystemName:planet];
 		contract[oo::StdString(CONTRACT_KEY_DESTINATION)] = oo::PList::unsignedInteger(static_cast<unsigned int>(planet));
 		setString(contract, "destinationName", planetName);
 		planet = dict.get<int>(oo::StdString(CONTRACT_KEY_START));
-		planetName = oo::OptionalString([UNIVERSE getSystemName: planet]);
+		planetName = [UNIVERSE cxx_getSystemName:planet];
 		contract[oo::StdString(CONTRACT_KEY_START)] = oo::PList::unsignedInteger(static_cast<unsigned int>(planet));
 		setString(contract, "startName", planetName);
 
 		int 		dest_eta = dict.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
 		contract["eta"] = oo::PList::signedInteger(dest_eta);
-		setString(contract, "etaDescription", oo::OptionalString([UNIVERSE shortTimeDescription:dest_eta]));
+		setString(contract, "etaDescription", [UNIVERSE cxx_shortTimeDescription:dest_eta]);
 		contract[oo::StdString(CONTRACT_KEY_PREMIUM)] = oo::PList::signedInteger(dict.get<int>(oo::StdString(CONTRACT_KEY_PREMIUM)));
 		contract[oo::StdString(CONTRACT_KEY_FEE)] = oo::PList::signedInteger(dict.get<int>(oo::StdString(CONTRACT_KEY_FEE)));
 		result.emplace_back(std::move(contract));
@@ -8646,7 +8647,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) setGuiToSystemDataScreenRefreshBackground: (BOOL) refreshBackground
 {
-	const oo::PList	infoSystemData = oo::PListFrom([UNIVERSE generateSystemData:info_system_id]);
+	const oo::PList	infoSystemData = [UNIVERSE cxx_generateSystemData:info_system_id];
 	NSInteger concealment = infoSystemData.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	const std::string infoSystemName = StringForKey(infoSystemData, oo::StdString(KEY_NAME)).value_or(std::string());	// (a nil name raised in the expansions below)
 
@@ -8733,7 +8734,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			std::string distanceInfo = oo::str::format("%.1f ly", distance);
 			if (ANA_mode != OPTIMIZED_BY_NONE)
 			{
-				const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem: system_id toSystem: info_system_id optimizedBy: ANA_mode]);
+				const oo::PList routeInfo = [UNIVERSE cxx_routeFromSystem: system_id toSystem: info_system_id optimizedBy: ANA_mode];
 				if (!routeInfo.isNull())
 				{
 					double routeDistance = routeInfo.get<double>("distance");
@@ -8982,7 +8983,9 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		[gui setBackgroundTextureKey:@"short_range_chart"];
 		if (found_system_id >= 0)
 		{		
-			[UNIVERSE findSystemCoordinatesWithPrefix:[[UNIVERSE getSystemName:found_system_id] lowercaseString] exactMatch:YES];
+			const std::optional<std::string> foundName = [UNIVERSE cxx_getSystemName:found_system_id];
+			if (foundName.has_value())  [UNIVERSE cxx_findSystemCoordinatesWithPrefix:oo::str::lowercase(*foundName) exactMatch:YES];
+			else  for (int i = 0; i < 256; i++)  [UNIVERSE systemsFound][i] = NO;	// a nil prefix matched no system, clearing every flag
 		}
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
@@ -9080,7 +9083,8 @@ std::string SliderString(NSInteger amountIn20ths)
 #if OOLITE_WINDOWS
 		if ([gameView hdrOutput])
 		{
-			const oo::PList	brightnessesValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"hdr_maxBrightness_array"]);
+			const oo::PList	*brightnessesNode = [UNIVERSE cxx_descriptions]->find("hdr_maxBrightness_array");
+			const oo::PList	brightnessesValue = (brightnessesNode != nullptr) ? *brightnessesNode : oo::PList();
 			const oo::PList	brightnesses = brightnessesValue.isArray() ? brightnessesValue : oo::PList();
 			// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
 			const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
@@ -9145,7 +9149,8 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		// color blind mode
 		int colorblindMode = [UNIVERSE colorblindMode];
-		const oo::PList colorblindModes = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"colorblind_mode"]);
+		const oo::PList *colorblindModesNode = [UNIVERSE cxx_descriptions]->find("colorblind_mode");
+		const oo::PList colorblindModes = (colorblindModesNode != nullptr) ? *colorblindModesNode : oo::PList();
 		const std::string colorblindModeDesc = colorblindModes.isArray() ? colorblindModes.at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();	// (nil raised in the expansion)
 		const std::string colorblindModeMsg = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
 		[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
@@ -9176,7 +9181,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 #if OOLITE_ESPEAK
 		{
-			const std::string voiceName = oo::StdString([UNIVERSE voiceName:voice_no]);
+			const std::string voiceName = [UNIVERSE cxx_voiceName:voice_no].value_or(std::string());
 			std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
 			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_LANGUAGE));
@@ -9207,7 +9212,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
 
 		
-		const std::string musicMode = oo::StdString([UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]]);
+		const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:[[OOMusicController sharedController] mode]].value_or(std::string());
 		const std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
 		[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,MUSIC)];
@@ -9376,7 +9381,7 @@ std::string SliderString(NSInteger amountIn20ths)
 	{
 		[[UNIVERSE messageGUI] clear]; 
 		const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
-		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "game-paused-docked", { { "pauseKey", oo::PList(pauseKey.value_or(std::string())) } })) forCount:1.0 forceDisplay:YES];	// (nil raised in the expansion)
+		[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "game-paused-docked", { { "pauseKey", oo::PList(pauseKey.value_or(std::string())) } }) forCount:1.0 forceDisplay:YES];	// (nil raised in the expansion)
 	}
 	
 	[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
@@ -9474,7 +9479,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		skip = 0;
 
 	double priceFactor = 1.0;
-	OOTechLevelID techlevel = oo::PListView([UNIVERSE currentSystemData]).get<int>(KEY_TECHLEVEL);
+	OOTechLevelID techlevel = [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_TECHLEVEL));
 
 	StationEntity *dockedStation = [self dockedStation];
 	if (dockedStation)
@@ -9685,7 +9690,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 				}
 				
-				const std::string timeString = oo::DescriptionOf([UNIVERSE shortTimeDescription:installTime]);
+				const std::string timeString = [UNIVERSE cxx_shortTimeDescription:installTime].value_or("(null)");
 				std::string priceString = oo::str::format(" %s ", cxx_OOCredits(price).c_str());
 
 				if (eqKeyForSelectFacing == eqKey)
@@ -9817,13 +9822,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (guiChanged)
 		{
 			[gui setForegroundTextureKey:@"docked_overlay"];
-			const oo::PList background = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"equip_ship"]);
+			const oo::PList background = [UNIVERSE cxx_screenTextureDescriptorForKey:"equip_ship"];
 			[self cxx_setEquipScreenBackgroundDescriptor:background];
 			[gui cxx_setBackgroundTextureDescriptor:background];
 		}
 		else if (eqKeyForSelectFacing.has_value()) // weapon purchase
 		{
-			const oo::PList bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mount_weapon"]);
+			const oo::PList bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"mount_weapon"];
 			if (!bgDescriptor.isNull())  [gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		}
 		else // Returning from a weapon purchase. (Also called, redundantly, when paging)
@@ -10017,7 +10022,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (guiChanged)
 		{
 			[gui setForegroundTextureKey:@"docked_overlay"];
-			[gui setBackgroundTextureDescriptor:[UNIVERSE screenTextureDescriptorForKey:@"interfaces"]];
+			[gui setBackgroundTextureDescriptor:oo::ObjectFromPList([UNIVERSE cxx_screenTextureDescriptorForKey:"interfaces"])];
 		}
 	}
 	/* ends */
@@ -10482,7 +10487,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	const std::optional<std::string> condition_script = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] conditionScript]);
 	if (condition_script.has_value())
 	{
-		OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*condition_script)];
+		OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
 			ooscript::Context JScontext = OOJSAcquireContext();
@@ -10639,7 +10644,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		// Refund current_weapon
 		if (current_weapon != nil)
 		{
-			tradeIn = [UNIVERSE getEquipmentPriceForKey:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(current_weapon))] * multiplier;
+			const std::optional<std::string> weaponKey = cxx_OOEquipmentIdentifierFromWeaponType(current_weapon);
+			tradeIn = (weaponKey.has_value() ? [UNIVERSE cxx_getEquipmentPriceForKey:*weaponKey] : 0) * multiplier;	// (a nil key priced 0)
 		}
 		
 		[self doTradeIn:tradeIn forPriceFactor:priceFactor];
@@ -10689,19 +10695,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		{
 			case ENERGY_UNIT_NAVAL :
 				[self removeEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT"];
-				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_NAVAL_ENERGY_UNIT"] / 2;	// 50 % refund
+				tradeIn = [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_NAVAL_ENERGY_UNIT"] / 2;	// 50 % refund
 				break;
 			case ENERGY_UNIT_NAVAL_DAMAGED :
 				[self removeEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"];
-				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_NAVAL_ENERGY_UNIT"] / 4;	// half of the working one
+				tradeIn = [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_NAVAL_ENERGY_UNIT"] / 4;	// half of the working one
 				break;
 			case ENERGY_UNIT_NORMAL :
 				[self removeEquipmentItem:@"EQ_ENERGY_UNIT"];
-				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_ENERGY_UNIT"] * 3 / 4;		// 75 % refund
+				tradeIn = [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_ENERGY_UNIT"] * 3 / 4;		// 75 % refund
 				break;
 			case ENERGY_UNIT_NORMAL_DAMAGED :
 				[self removeEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"];
-				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_ENERGY_UNIT"] * 3 / 8;		// half of the working one
+				tradeIn = [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_ENERGY_UNIT"] * 3 / 8;		// half of the working one
 				break;
 
 			default:
@@ -10715,7 +10721,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		OOTechLevelID techLevel = NSNotFound;
 		if (dockedStation != nil)  techLevel = [dockedStation equivalentTechLevel];
-		if (techLevel == NSNotFound)  techLevel = oo::PListView([UNIVERSE currentSystemData]).get<unsigned int>(KEY_TECHLEVEL);
+		if (techLevel == NSNotFound)  techLevel = [UNIVERSE cxx_currentSystemData].get<unsigned int>(oo::StdString(KEY_TECHLEVEL));
 		
 		credits -= price;
 		ship_trade_in_factor += 5 + techLevel;	// you get better value at high-tech repair bases
@@ -10729,7 +10735,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (oo::str::hasSuffix(eqKey, "MISSILE") || oo::str::hasSuffix(eqKey, "MINE"))
 	{
-		ShipEntity* weapon = [[UNIVERSE newShipWithRole:oo::NSStringFrom(eqKey)] autorelease];
+		ShipEntity* weapon = [[UNIVERSE cxx_newShipWithRole:eqKey] autorelease];
 		if (weapon)  OO_LOG("equip.buy.mounted", "Got ship for mounted weapon role {}", eqKey);
 		else  OO_LOG("equip.buy.mounted.failed", "Could not find ship for mounted weapon role {}", eqKey);
 		
@@ -10862,7 +10868,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		const std::optional<std::string> weapon_key = oo::OptionalString([missile_list[i] identifier]);
 
 		if (weapon_key.has_value())
-			tradeIn += (int)[UNIVERSE getEquipmentPriceForKey:oo::NSStringFrom(*weapon_key)];
+			tradeIn += (int)[UNIVERSE cxx_getEquipmentPriceForKey:*weapon_key];
 	}
 	
 	for (i = 0; i < max_missiles; i++)
@@ -11208,7 +11214,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 
 	std::string system;	// (used only when there is a sun)
-	if ([UNIVERSE sun] != nil)  system = oo::StdString([UNIVERSE getSystemName:system_id]);
+	if ([UNIVERSE sun] != nil)  system = [UNIVERSE cxx_getSystemName:system_id].value_or(std::string());
 	
 	if (dockedStation == nil || dockedStation == [UNIVERSE station])
 	{
@@ -12043,7 +12049,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		// only when in flight
 		return;
 	}
-	[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::format("%s:\n %s", [other displayName].value_or("(null)").c_str(), oo::DescriptionOf(message_text).c_str())) forCount:4.5];
+	[UNIVERSE cxx_addCommsMessage:oo::str::format("%s:\n %s", [other displayName].value_or("(null)").c_str(), oo::DescriptionOf(message_text).c_str()) forCount:4.5];
 	[super receiveCommsMessage:message_text from:other];
 }
 
@@ -12052,7 +12058,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	if (legalStatus == 0)  return;				// nothing to pay for
 	
-	OOGovernmentID local_gov = oo::PListView([UNIVERSE currentSystemData]).get<int>(KEY_GOVERNMENT);
+	OOGovernmentID local_gov = [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_GOVERNMENT));
 	if ([UNIVERSE inInterstellarSpace])  local_gov = 1;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
 	OOCreditsQuantity fine = 500 + ((local_gov < 2 || local_gov > 5) ? 500 : 0);
 	fine *= legalStatus;
@@ -12093,7 +12099,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (double) renovationCosts
 {
 	// 5% of value of ships wear + correction for missing subentities.
-	OOCreditsQuantity shipValue = [UNIVERSE tradeInValueForCommanderDictionary:[self commanderDataDictionary]];
+	OOCreditsQuantity shipValue = [UNIVERSE cxx_tradeInValueForCommanderDictionary:oo::PListFrom([self commanderDataDictionary])];
 
 	double costs = 0.005 * (100 - ship_trade_in_factor) * shipValue;
 	costs += 0.01 * shipValue * [self missingSubEntitiesAdjustment];
@@ -12595,7 +12601,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	const std::string fmt = missile ? "missile-locked-onto-target" : "ident-locked-onto-target";
 	const std::string target = [[self primaryTarget] identFromShip:self].value_or("");	// (disengaged raised in the expansion; was nil)
-	[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), fmt, { { "target", oo::PList(target) } })) forCount:4.5];
+	[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), fmt, { { "target", oo::PList(target) } }) forCount:4.5];
 }
 
 
@@ -12878,11 +12884,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if ([self cxx_missionTitle].value_or("").empty())
 		{
-			result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_no_title"]);
+			result = [UNIVERSE cxx_screenTextureDescriptorForKey:"mission_overlay_no_title"];
 		}
 		else
 		{
-			result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_with_title"]);
+			result = [UNIVERSE cxx_screenTextureDescriptorForKey:"mission_overlay_with_title"];
 		}
 	}
 
@@ -12907,7 +12913,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	oo::PList result = [self cxx_missionBackgroundDescriptor];
 	if (result.isNull())
 	{
-		result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission"]);
+		result = [UNIVERSE cxx_screenTextureDescriptorForKey:"mission"];
 	}
 
 	return result;
