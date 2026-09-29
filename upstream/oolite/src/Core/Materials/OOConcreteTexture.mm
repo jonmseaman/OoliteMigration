@@ -212,17 +212,17 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 
 
 #ifndef NDEBUG
-- (id) name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_name
 {
-	if (_name.has_value())  return oo::NSStringFrom(*_name);
+	if (_name.has_value())  return _name;
 
 	// -lastPathComponent of a nil path is nil, and so is the name.
 #if OOTEXTURE_RELOADABLE
-	if (!_path.has_value())  return nil;
+	if (!_path.has_value())  return std::nullopt;
 	std::string name = oo::StdString([oo::NSStringFrom(*_path) lastPathComponent]);
 #else
 	const std::optional<std::string> key = [self cxx_cacheKey];
-	if (!key.has_value())  return nil;
+	if (!key.has_value())  return std::nullopt;
 	const std::string::size_type colon = key->find(':');
 	const std::string head = colon == std::string::npos ? *key : key->substr(0, colon);
 	std::string name = oo::str::lastPathComponent(head);
@@ -250,7 +250,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 
 	if (channelSuffix != nullptr)  name += channelSuffix;
 
-	return oo::NSStringFrom(name);
+	return name;
 }
 #endif
 
@@ -453,7 +453,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 		if (_trace)
 		{
 			static unsigned dumpID = 0;
-			const std::string name = oo::str::format("tex dump %u \"", ++dumpID) + oo::DescriptionOf([self name]) + "\"";
+			const std::string name = oo::str::format("tex dump %u \"", ++dumpID) + [self cxx_name].value_or("(null)") + "\"";
 			OO_LOG("texture.trace.dump", "Dumped traced texture {} to '{}.png'", oo::DescriptionOf(self), name);
 			OODumpPixMap(pm, name);
 		}
