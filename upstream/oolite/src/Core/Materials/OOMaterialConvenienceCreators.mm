@@ -283,10 +283,10 @@ static BOOL sDumpShaderSource = NO;
 		humanFriendlyConfig[kOOVertexShaderNameKey] = oo::PList(oo::str::format("%s.vertex", nameText));
 		humanFriendlyConfig[kOOFragmentShaderNameKey] = oo::PList(oo::str::format("%s.fragment", nameText));
 		
-		[ResourceManager cxx_writeDiagnosticPList:oo::ObjectFromPList(oo::PList(humanFriendlyConfig))
+		[ResourceManager cxx_writeDiagnosticPList:oo::PList(humanFriendlyConfig)
 									 toFileNamed:dumpPath + ".plist"];
 		
-		[ResourceManager cxx_writeDiagnosticPList:oo::ObjectFromPList(configuration)
+		[ResourceManager cxx_writeDiagnosticPList:configuration
 									 toFileNamed:dumpPath + "-original.plist"];
 	}
 #endif
