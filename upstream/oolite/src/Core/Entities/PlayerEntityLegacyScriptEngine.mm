@@ -1466,7 +1466,7 @@ static int shipsFound;
 
 	const oo::PList tokenArray = TokenArray(tokens);
 	const std::string &type = tokens[1];	// the good (Amendment 1 item 10: a std::string)
-	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])
+	if (![[UNIVERSE commodities] cxx_goodDefined:type])
 	{
 		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "unknown type");
 		return;

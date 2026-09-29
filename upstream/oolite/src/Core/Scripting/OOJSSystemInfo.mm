@@ -739,7 +739,7 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 	
 	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return NO;
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(commodity)]))
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:commodity.value_or("")]))
 	{
 		cxx_OOJSReportBadArguments(context, "SystemInfo", "samplePrice", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
@@ -752,7 +752,7 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 
-	OOCreditsQuantity price = [[UNIVERSE commodities] samplePriceForCommodity:oo::NSStringOrNil(commodity) inEconomy:[[thisInfo valueForKey:@"economy"] intValue] withScript:[thisInfo valueForKey:@"commodity_script"] inSystem:[thisInfo system]];
+	OOCreditsQuantity price = [[UNIVERSE commodities] cxx_samplePriceForCommodity:commodity.value_or("") inEconomy:[[thisInfo valueForKey:@"economy"] intValue] withScript:oo::OptionalString([thisInfo valueForKey:@"commodity_script"]) inSystem:[thisInfo system]];
 
 	return ooscript::newNumberValue(context, price, oojsArgs.rawVp());
 	

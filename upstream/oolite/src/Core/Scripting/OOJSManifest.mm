@@ -239,7 +239,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		 * compatible-ish with 1.80 and earlier except that
 		 * alienItems and similar aliases don't work */
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
-		if ([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(key)])
+		if ([[UNIVERSE commodities] cxx_goodDefined:key])
 		{
 			*value = ooscript::int32Value([entity cxx_cargoQuantityForType:key]);
 			return YES;

@@ -1678,7 +1678,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			// look it up, and replace with a string
 			NSUInteger legacy_type = contractInfo.get<NSUInteger>(oo::StdString(CARGO_KEY_TYPE));
-			(*contractInfo.getIf<oo::PList::Dict>())[oo::StdString(CARGO_KEY_TYPE)] = oo::PList(oo::StdString([OOCommodities legacyCommodityType:legacy_type]));
+			(*contractInfo.getIf<oo::PList::Dict>())[oo::StdString(CARGO_KEY_TYPE)] = oo::PList([OOCommodities cxx_legacyCommodityType:legacy_type].value_or(""));
 			contracts[i] = std::move(contractInfo);
 		}
 		else
@@ -1687,7 +1687,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			const oo::PList *typeValue = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
 			const std::optional<std::string> new_type = (typeValue != nullptr && typeValue->isString()) ? std::optional<std::string>(*typeValue->getIf<std::string>()) : std::nullopt;
 			// check that that the type still exists
-			if (![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(new_type)])
+			if (![[UNIVERSE commodities] cxx_goodDefined:new_type.value_or("")])
 			{
 				OO_LOG("setCommanderDataFromDictionary.warning.contract", "Cargo contract to deliver {} could not be loaded from the saved game, as the commodity is no longer defined", new_type.value_or("(null)"));
 				contracts.erase(contracts.begin() + i);
