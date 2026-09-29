@@ -739,7 +739,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 	}
 
 	OOJSGuiScreenKeyDefinition* definition = [[OOJSGuiScreenKeyDefinition alloc] init];
-	[definition setName:oo::NSStringOrNil(key)];
+	[definition cxx_setName:key];
 	[definition setRegisterKeys:keydefs];
 	[definition setCallback:callback];
 

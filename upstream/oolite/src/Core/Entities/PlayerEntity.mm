@@ -13591,7 +13591,7 @@ else _dockTarget = NO_TARGET;
 		{
 			OOJSGuiScreenKeyDefinition *def_existing = newarray[i].get();
 			// if we find this name already in the array, remove it
-			if (def_existing && [[def_existing name] isEqualToString:[definition name]])
+			if (def_existing && [def_existing cxx_name].has_value() && [def_existing cxx_name] == [definition cxx_name])	// (-isEqualToString: of nil was NO)
 			{
 				newarray.erase(newarray.begin() + static_cast<std::ptrdiff_t>(i));
 			}
