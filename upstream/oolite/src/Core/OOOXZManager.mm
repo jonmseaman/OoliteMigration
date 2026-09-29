@@ -1276,8 +1276,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		const std::optional<std::string> installedVersion = ManifestString(installed, oo::StdString(kOOManifestVersion));
 		OO_LOG("version.debug", "{} mv:{} mav:{}", identifier.value_or("(null)"), installedVersion.value_or("(null)"), availableVersion.value_or("(null)"));
-		// CompareVersions / ComponentsFromVersionString are unmigrated: strings at the call.
-		if (CompareVersions(ComponentsFromVersionString(oo::NSStringOrNil(installedVersion)),ComponentsFromVersionString(oo::NSStringOrNil(availableVersion))) == OOOrderedDescending)
+		// A missing version has no components (the bridge's ComponentsFromVersionString(nil)).
+		const std::vector<unsigned> installedComponents = installedVersion.has_value() ? cxx_ComponentsFromVersionString(*installedVersion) : std::vector<unsigned>();
+		const std::vector<unsigned> availableComponents = availableVersion.has_value() ? cxx_ComponentsFromVersionString(*availableVersion) : std::vector<unsigned>();
+		if (cxx_CompareVersions(installedComponents, availableComponents) == OOOrderedDescending)
 		{
 			// the installed copy is more recent than the server copy
 			return OXZ_UNINSTALLABLE_NOREMOTE;

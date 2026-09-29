@@ -207,7 +207,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	const std::optional<std::string> seedStr = OptionalStringForKey(dict, "seed");
 	if (seedStr.has_value())
 	{
-		Random_Seed overrideSeed = RandomSeedFromString(oo::NSStringFrom(*seedStr));
+		Random_Seed overrideSeed = cxx_RandomSeedFromString(seedStr);
 		if (!is_nil_seed(overrideSeed))  seed = overrideSeed;
 		else  OO_LOG_ERR("planet.fromDict", "could not interpret \"{}\" as planet seed, using default.", *seedStr);
 	}
@@ -455,18 +455,18 @@ static OOColor *ColorWithHSBColor(Vector c)
 		// planetinfo.plist overrides
 		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "land_color")];
 		if (color != nil) landHSB = HSBColorWithColor(color);
-		else ScanVectorFromString(oo::NSStringOrNil(OptionalStringForKey(sourceInfo, "land_hsb_color")), &landHSB);
+		else cxx_ScanVectorFromString(OptionalStringForKey(sourceInfo, "land_hsb_color"), &landHSB);
 		
 		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "sea_color")];
 		if (color != nil) seaHSB = HSBColorWithColor(color);
-		else ScanVectorFromString(oo::NSStringOrNil(OptionalStringForKey(sourceInfo, "sea_hsb_color")), &seaHSB);
+		else cxx_ScanVectorFromString(OptionalStringForKey(sourceInfo, "sea_hsb_color"), &seaHSB);
 		
 		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "illumination_color")];
 		if (color != nil) illumHSB = HSBColorWithColor(color);
 		else
 		{
 			const std::optional<std::string> illumHSBColorString = OptionalStringForKey(sourceInfo, "illumination_hsb_color");
-			if (illumHSBColorString.has_value())  ScanVectorFromString(oo::NSStringFrom(*illumHSBColorString), &illumHSB);
+			if (illumHSBColorString.has_value())  cxx_ScanVectorFromString(illumHSBColorString, &illumHSB);
 			else illumHSB = HSBColorWithColor([OOColor colorWithRed:0.8f green:0.8f blue:0.4f alpha:1.0f]);	
 		}
 		

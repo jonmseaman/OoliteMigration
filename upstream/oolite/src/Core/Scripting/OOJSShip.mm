@@ -685,7 +685,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 		
 		case kShip_AI:
-			result = [[entity getAI] name];
+			result = oo::NSStringOrNil([[entity getAI] cxx_name]);
 			break;
 		
 		case kShip_AIState:
@@ -896,7 +896,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return YES;
 
 	  case kShip_cargoList:
-			result = [entity cargoListForScripting];
+			result = oo::ObjectFromPList([entity cargoListForScripting]);
 			break;
 
 		case kShip_extraCargo:
@@ -1130,19 +1130,19 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, [entity laserHeatLevelStarboard], value);
 		
 		case kShip_missiles:
-			result = [entity missilesList];
+			result = oo::NSArrayFromObjects([entity missilesList]);
 			break;
 		
 		case kShip_passengers:
-			result = [entity passengerListForScripting];
+			result = oo::ObjectFromPList([entity passengerListForScripting]);
 			break;
 
 		case kShip_parcels:
-			result = [entity parcelListForScripting];
+			result = oo::ObjectFromPList([entity parcelListForScripting]);
 			break;
 		
 		case kShip_contracts:
-			result = [entity contractListForScripting];
+			result = oo::ObjectFromPList([entity contractListForScripting]);
 			break;
 			
   	case kShip_dockingInstructions:
@@ -1947,7 +1947,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else
 			{
-				[entity setWeaponMount:facing toWeapon:oo::NSStringFrom(weaponKey)];
+				[entity setWeaponMount:facing toWeapon:weaponKey];
 			}
 			return YES;
 			}
@@ -2559,9 +2559,9 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	if (target != nil)	// Not stale reference
 	{
 		[player setScriptTarget:thisEnt];
-		[player runUnsanitizedScriptActions:oo::ObjectFromPList(actions)
+		[player cxx_runUnsanitizedScriptActions:actions
 						  allowingAIMethods:YES
-							withContextName:oo::NSStringFrom(oo::str::format("<ship \"%s\" legacy actions>", oo::DescriptionOf([thisEnt name]).c_str()))
+							withContextName:oo::str::format("<ship \"%s\" legacy actions>", oo::DescriptionOf([thisEnt name]).c_str())
 								  forTarget:target];
 	}
 	
@@ -2675,7 +2675,7 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 		// can't add fuel as equipment.
 		if (*key == "EQ_FUEL")  result = NO;
 		
-		if (result)  result = [thisEnt canAddEquipment:oo::NSStringFrom(*key) inContext:oo::NSStringFrom(ctx)];
+		if (result)  result = [thisEnt canAddEquipment:*key inContext:ctx];
 	}
 	else
 	{
@@ -2751,7 +2751,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			else
 			{
 				isRepair = [thisEnt hasEquipmentItem:oo::NSStringFrom(identifier + "_DAMAGED")];
-				OK = [player addEquipmentItem:oo::NSStringFrom(identifier) withValidation:YES inContext:@"scripted"];
+				OK = [player addEquipmentItem:identifier withValidation:YES inContext:"scripted"];
 				if (OK && isRepair) 
 				{
 					[player doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(identifier)];
@@ -2767,7 +2767,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			// no passenger handling for NPCs. EQ_CARGO_BAY is dealt with inside addEquipmentItem
 			else if (!berth && identifier != "EQ_PASSENGER_BERTH_REMOVAL")
 			{
-				OK = [thisEnt addEquipmentItem:oo::NSStringFrom(identifier) withValidation:YES inContext:@"scripted"];	
+				OK = [thisEnt addEquipmentItem:identifier withValidation:YES inContext:"scripted"];	
 			}
 			else
 			{
@@ -2826,13 +2826,13 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 				// player cargo bay removal handled in script
 				if ([thisEnt isPlayer] || [thisEnt extraCargo] <= [thisEnt availableCargoSpace])
 				{
-					[thisEnt removeEquipmentItem:oo::NSStringFrom(*key)];
+					[thisEnt removeEquipmentItem:*key];
 				}
 				else OK = NO;
 			}
 		}
 		else
-			[thisEnt removeEquipmentItem:oo::NSStringFrom(*key)];
+			[thisEnt removeEquipmentItem:*key];
 	}
 	
 	OOJS_RETURN_BOOL(OK);
@@ -2927,11 +2927,11 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 		if ((setOK && hasDamaged) || (setDamaged && hasOK))
 		{
 			// the implementation is identical between player and ship.
-			[thisEnt removeEquipmentItem:oo::NSStringFrom(setDamaged ? key : damagedKey)];
+			[thisEnt removeEquipmentItem:setDamaged ? key : damagedKey];
 			if ([thisEnt isPlayer])
 			{
 				// these player methods are different to the ship ones.
-				[(PlayerEntity*)thisEnt addEquipmentItem:oo::NSStringFrom(setDamaged ? damagedKey : key) withValidation:NO inContext:@"scripted"];
+				[(PlayerEntity*)thisEnt addEquipmentItem:setDamaged ? damagedKey : key withValidation:NO inContext:"scripted"];
 				if (setDamaged)
 				{
 					[(PlayerEntity*)thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(key)];
@@ -2947,7 +2947,7 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 			}
 			else
 			{
-				[thisEnt addEquipmentItem:oo::NSStringFrom(setDamaged ? damagedKey : key) withValidation:NO  inContext:@"scripted"];
+				[thisEnt addEquipmentItem:setDamaged ? damagedKey : key withValidation:NO  inContext:"scripted"];
 				if (hasOK) [thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(key)];
 			}
 		}
@@ -3083,8 +3083,9 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	double				sdist, distance = 1E32;
 	
 	StationEntity		*se = nil;
-	foreach (se, [UNIVERSE stations])
+	for (const auto &stationRef : [UNIVERSE cxx_stations])
 	{
+		se = stationRef.get();
 		sdist = HPdistance2([thisEnt position],[se position]);
 
 		if (sdist < distance)
@@ -3120,7 +3121,7 @@ static bool ShipSetBounty(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return NO;
 	}
 	
-	[thisEnt setBounty:(OOCreditsQuantity)newbounty withReasonAsString:oo::NSStringFrom(*reason)];
+	[thisEnt setBounty:(OOCreditsQuantity)newbounty withReasonAsString:*reason];
 	
 	return YES;
 	
@@ -3466,7 +3467,7 @@ static BOOL RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &o
 	{
 		[thisEnt setSuppressExplosion:!explode];
 		[thisEnt setEnergy:1];
-		[thisEnt takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:@""];
+		[thisEnt takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];
 	}
 	
 	OOJS_RETURN_VOID;
@@ -4164,7 +4165,7 @@ static bool ShipDamageAssessment(ooscript::Context context, ooscript::CallArgs &
 	GET_THIS_SHIP(thisEnt);
 	
 	// if could have missiles but doesn't, consumables low
-	if ([thisEnt missileCapacity] > 0 && [[thisEnt missilesList] count] == 0)
+	if ([thisEnt missileCapacity] > 0 && [thisEnt missilesList].empty())
 	{
 		assessment++;
 	}

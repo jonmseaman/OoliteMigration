@@ -211,6 +211,16 @@ id ObjectForKey(const oo::PList &dict, std::string_view key)
 }
 
 
+// The string a string-typed reader got from -objectForKey:: the value if it is a string, else
+// std::nullopt (nil and non-string values; a non-string value raised when read as a string).
+std::optional<std::string> StringNodeForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !value->isString())  return std::nullopt;
+	return *value->getIf<std::string>();
+}
+
+
 // get<std::string> where the Foundation code read nil: std::nullopt when the key is absent or its
 // value is neither a string nor a number.
 std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::string_view key)
@@ -463,7 +473,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 		const std::optional<std::string> seedStr = OptionalStringForKey(dict, "seed");
 		if (seedStr.has_value())
 		{
-			Random_Seed seed = RandomSeedFromString(oo::NSStringFrom(*seedStr));
+			Random_Seed seed = cxx_RandomSeedFromString(seedStr);
 			if (!is_nil_seed(seed))
 			{
 				p_seed = seed;
@@ -535,8 +545,8 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 		}
 		
 		// assign land_hsb and sea_hsb overrides from planetinfo.plist if they're there.
-		ScanVectorFromString(ObjectForKey(dict, "land_hsb_color"), &land_hsb);
-		ScanVectorFromString(ObjectForKey(dict, "sea_hsb_color"), &sea_hsb);
+		cxx_ScanVectorFromString(StringNodeForKey(dict, "land_hsb_color"), &land_hsb);
+		cxx_ScanVectorFromString(StringNodeForKey(dict, "sea_hsb_color"), &sea_hsb);
 		
 		// polar areas are brighter but have less color (closer to white)
 		land_polar_hsb.x = land_hsb.x;  land_polar_hsb.y = (land_hsb.y / 4.0);  land_polar_hsb.z = 1.0 - (land_hsb.z / 10.0);
@@ -1073,8 +1083,8 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	// the colour override should only apply to main planets
 	if (isMain)
 	{
-		if (isLocal)  ScanVectorFromString([[UNIVERSE currentSystemData] objectForKey:@"texture_hsb_color"], &land_hsb);
-		else  ScanVectorFromString([[UNIVERSE generateSystemData:[PLAYER target_system_seed]] objectForKey:@"texture_hsb_color"], &land_hsb);
+		if (isLocal)  cxx_ScanVectorFromString(StringNodeForKey([UNIVERSE cxx_currentSystemData], "texture_hsb_color"), &land_hsb);
+		else  cxx_ScanVectorFromString(StringNodeForKey([UNIVERSE cxx_generateSystemData:[PLAYER target_system_seed]], "texture_hsb_color"), &land_hsb);
 	}
 	
 	land_polar_hsb.x = land_hsb.x;  land_polar_hsb.y = (land_hsb.y / 5.0);  land_polar_hsb.z = 1.0 - (land_hsb.z / 10.0);
