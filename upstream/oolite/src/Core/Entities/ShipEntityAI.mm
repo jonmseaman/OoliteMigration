@@ -2607,9 +2607,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])]
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player checkScript];	// react immediately to any changes this makes
 		[player setScriptTarget:oldTarget];
@@ -2627,9 +2627,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])]
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player setScriptTarget:oldTarget];
 	}
