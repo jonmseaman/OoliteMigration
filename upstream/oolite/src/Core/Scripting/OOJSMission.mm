@@ -472,7 +472,7 @@ static bool MissionAddMessageText(ooscript::Context context, ooscript::CallArgs 
 	// Found "FIXME: warning if no mission screen running.",,,
 	// However: used routinely by the Constrictor mission in F7, without mission screens.
 	text = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	[player addLiteralMissionText:oo::NSStringOrNil(text)];
+	if (text.has_value())  [player addLiteralMissionText:*text];	// (nil added nothing)
 	
 	OOJS_RETURN_VOID;
 	
@@ -553,7 +553,8 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		[player clearMissionDescriptionForMission:oo::NSStringOrNil(missionKey)];
+		if (missionKey.has_value())  [player clearMissionDescriptionForMission:*missionKey];
+		else  [player cxx_setMissionInstructions:std::string() forMission:std::nullopt];	// logs "mission key not set", as a nil key did
 	}
 	
 	OOJS_RETURN_VOID;
@@ -851,12 +852,12 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	std::optional<std::string> message = GetParameterString(context, params, "message");
 	if (message.has_value())
 	{
-		[player addLiteralMissionText:oo::NSStringFrom(*message)];
+		[player addLiteralMissionText:*message];
 	}
 	else
 	{
 		std::optional<std::string> messageKey = GetParameterString(context, params, "messageKey");
-		if (messageKey.has_value())  [player addMissionText:oo::NSStringFrom(*messageKey)];
+		if (messageKey.has_value())  [player addMissionText:*messageKey];
 	}
 	
 	if (!textEntry)
@@ -864,7 +865,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		oo::PList choices = GetParameterDictionary(context, params, "choices");
 		if (choices.isNull())
 		{
-			[player setMissionChoices:oo::NSStringOrNil(GetParameterString(context, params, "choicesKey"))];
+			[player setMissionChoices:GetParameterString(context, params, "choicesKey").value_or(std::string())];	// (nil was "")
 		}
 		else 
 		{
@@ -886,7 +887,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	[player cxx_setMissionOverlayDescriptor:oo::PList()];
 	[player cxx_setMissionBackgroundDescriptor:oo::PList()];
 	[player cxx_setMissionTitle:std::nullopt];
-	[player setMissionMusic:nil];
+	[player setMissionMusic:std::string()];	// (nil was "none")
 	
 	OOJSResumeTimeLimiter();
 	
