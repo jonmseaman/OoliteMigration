@@ -253,6 +253,74 @@ Random_Seed OOStringExpanderDefaultRandomSeed(void);
 #define OOEXPAND_MAP_IMPL_62(F, HEAD, ...) F(HEAD), OOEXPAND_MAP_IMPL_61(F, __VA_ARGS__)
 
 
+#ifdef __cplusplus
+/*
+	C++ forms of the OOExpand* macros (bead oo-3rb.294, the seam for oo-m2nh). They take the string
+	or key as a std::string and return cxx_OOExpandDescriptionString's std::optional<std::string>.
+	As with the Foundation macros, each extra argument reaches the expander under its own spelling
+	(#ITEM: OOExpandKey("x-[count]", count) makes [count] refer to the variable), boxed as
+	OO_CAST_PARAMETER boxed it: signed integers (and char, bool and unscoped enums, which promote
+	to int) as PList::signedInteger, unsigned integers as PList::unsignedInteger, float as
+	PList::singleReal, double and long double as a double, strings as strings. A std::nullopt string
+	is left out of the dictionary (the Foundation macro could not hold nil). No arguments passes
+	the null PList, as the macro passed nil.
+*/
+#define cxx_OOExpand(string, ...) cxx_OOExpandWithSeed(OOStringExpanderDefaultRandomSeed(), string, __VA_ARGS__)
+
+#define cxx_OOExpandKey(key, ...) cxx_OOExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), key, __VA_ARGS__)
+
+#define cxx_OOExpandKeyRandomized(key, ...) cxx_OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandKey | kOOExpandGoodRNG | kOOExpandReseedRNG, key, __VA_ARGS__)
+
+#define cxx_OOExpandWithSeed(seed, string, ...) cxx_OOExpandWithOptions(seed, kOOExpandNoOptions, string, __VA_ARGS__)
+
+#define cxx_OOExpandKeyWithSeed(seed, key, ...) cxx_OOExpandWithOptions(seed, kOOExpandKey, key, __VA_ARGS__)
+
+#define cxx_OOExpandWithOptions(seed, options, string, ...) \
+	cxx_OOExpandDescriptionString(seed, string, OOEXPAND_CXX_ARG_DICTIONARY(__VA_ARGS__), oo::PList(), std::nullopt, options)
+
+#define OOEXPAND_CXX_ARG_DICTIONARY(...) cxx_OOExpandArgumentDictionary({ OOEXPAND_MAP(OOEXPAND_CXX_ARG_ENTRY, __VA_ARGS__) })
+#define OOEXPAND_CXX_ARG_ENTRY(ITEM) oo::PList::Dict::value_type(#ITEM, cxx_OOCastParam(ITEM))
+
+
+// cxx_OOCastParam() is OO_CAST_PARAMETER() for the C++ macros.
+inline oo::PList cxx_OOCastParam(const std::string &value) { return oo::PList(value); }
+inline oo::PList cxx_OOCastParam(const char *value) { return oo::PList(value); }
+inline oo::PList cxx_OOCastParam(const std::optional<std::string> &value) { return value.has_value() ? oo::PList(*value) : oo::PList(); }
+inline oo::PList cxx_OOCastParam(float value) { return oo::PList::singleReal(value); }
+inline oo::PList cxx_OOCastParam(double value) { return oo::PList(value); }
+inline oo::PList cxx_OOCastParam(long double value) { return oo::PList(static_cast<double>(value)); }
+
+template <class I>
+	requires std::integral<I>
+oo::PList cxx_OOCastParam(I value)
+{
+	if constexpr (std::is_unsigned_v<I> && !std::same_as<I, bool>)  return oo::PList::unsignedInteger(value);
+	else  return oo::PList::signedInteger(value);
+}
+
+template <class E>
+	requires(std::is_enum_v<E> && std::is_convertible_v<E, std::underlying_type_t<E>>)
+oo::PList cxx_OOCastParam(E value)
+{
+	return cxx_OOCastParam(+value);	// the integral promotion OOCastParam's overload resolution made
+}
+
+
+// The argument dictionary: the null PList when there are no arguments; null values left out; a
+// repeated name keeps its last value, as +dictionaryWithObjects:forKeys:count: did.
+inline oo::PList cxx_OOExpandArgumentDictionary(std::initializer_list<oo::PList::Dict::value_type> entries)
+{
+	if (entries.size() == 0)  return oo::PList();
+	oo::PList::Dict dictionary;
+	for (const auto &entry : entries)
+	{
+		if (!entry.second.isNull())  dictionary.insert_or_assign(entry.first, entry.second);
+	}
+	return oo::PList(std::move(dictionary));
+}
+#endif
+
+
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
 	declared before bead oo-3il6 (chunks oo-3rb.145..147) -- OOExpandDescriptionString,
 	OOGenerateSystemDescription and the OOExpand* macros with their boxing machinery -- forwarding
