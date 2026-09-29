@@ -4374,7 +4374,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				if ([self clockTimeAdjusted] > [wh scanTime] + 2)
 				{
 					[wh setScanInfo:WH_SCANINFO_COLLAPSE_TIME];
-					//[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-collapse-time-computed")),
+					//[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(OO_DESC("wormhole-collapse-time-computed"),
 					//						   { [UNIVERSE cxx_getSystemName:[wh destination]].value_or(std::string()) }) forCount:5.0];
 				}
 				break;
