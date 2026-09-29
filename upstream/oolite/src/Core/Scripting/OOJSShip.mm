@@ -3168,12 +3168,12 @@ static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		return NO;
 	}
 	
-	if ([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(*commodity)])
+	if ([[UNIVERSE commodities] cxx_goodDefined:*commodity])
 	{
 		[thisEnt cxx_setCommodityForPod:*commodity andAmount:count];
 	}
 	
-	OOJS_RETURN_BOOL([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(*commodity)]);
+	OOJS_RETURN_BOOL([[UNIVERSE commodities] cxx_goodDefined:*commodity]);
 	
 	OOJS_NATIVE_EXIT
 }

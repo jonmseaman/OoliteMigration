@@ -4518,7 +4518,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
 	accumulator.reserve(how_much);
-	if (![commodities goodDefined:oo::NSStringFrom(commodity_name)])	// OOCommodities is not migrated yet
+	if (![commodities cxx_goodDefined:commodity_name])
 	{
 		return accumulator; // empty array
 	}
@@ -8228,8 +8228,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	scriptName = OptionalStringIn(systemData, "market_script");
 
 	DESTROY(commodityMarket);
-	// OOCommodities is not migrated yet: the script name goes as the string (or nil) it read before.
-	commodityMarket = [[commodities generateMarketForSystemWithEconomy:economy andScript:oo::NSStringOrNil(scriptName)] retain];
+	commodityMarket = [[commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
 }
 
 
