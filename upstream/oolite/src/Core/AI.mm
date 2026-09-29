@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
 #import "GameController.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOFoundationBridge.h"
@@ -550,10 +550,6 @@ static AIStackElement *sStack = NULL;
 		@catch (OOException *exception)
 		{
 			OO_LOG(cxx_kOOLogException, "Squashing exception {}:{} in AI handler {}:{}.{}", [exception name], [exception reason], stateMachineName, currentState.value_or("(null)"), message);
-		}
-		@catch (OOFoundationException *exception)
-		{
-			OO_LOG(cxx_kOOLogException, "Squashing exception {}:{} in AI handler {}:{}.{}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]), stateMachineName, currentState.value_or("(null)"), message);
 		}
 		
 		--recursionLimiter;
