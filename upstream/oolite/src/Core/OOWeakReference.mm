@@ -219,16 +219,6 @@ return [result autorelease];
 @end
 
 
-@implementation NSObject (OOWeakReference)
-
-- (id)weakRefUnderlyingObject
-{
-	return self;
-}
-
-@end
-
-
 @implementation OOObject (OOWeakReference)
 
 - (id)weakRefUnderlyingObject

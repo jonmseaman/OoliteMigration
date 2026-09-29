@@ -30,19 +30,7 @@ SOFTWARE.
 #import "OOCocoa.h"
 
 
-@interface NSObject (OOExtensions)
-
-#ifndef NDEBUG
-
-+ (size_t) oo_instanceSize;
-- (size_t) oo_objectSize;
-
-#endif
-
-@end
-
-
-// The same for classes rooted on OOObject (ADR-0029).
+// On OOObject, the root of every Oolite class (ADR-0029).
 @interface OOObject (OOExtensions)
 
 #ifndef NDEBUG

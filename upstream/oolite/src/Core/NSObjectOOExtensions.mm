@@ -33,26 +33,6 @@ SOFTWARE.
 #endif
 
 
-@implementation NSObject (OOExtensions)
-
-#ifndef NDEBUG
-
-+ (size_t) oo_instanceSize
-{
-	return class_getInstanceSize(self);
-}
-
-
-- (size_t) oo_objectSize
-{
-	return [[self class] oo_instanceSize];
-}
-
-#endif
-
-@end
-
-
 @implementation OOObject (OOExtensions)
 
 #ifndef NDEBUG

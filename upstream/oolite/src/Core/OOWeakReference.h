@@ -123,16 +123,9 @@ This code is hereby placed in the public domain.
 @end
 
 
-@interface NSObject (OOWeakReference)
-
-- (id)weakRefUnderlyingObject;		// Always self for non-weakrefs (and of course nil for nil).
-
-@end
-
-
 @interface OOObject (OOWeakReference)
 
-- (id)weakRefUnderlyingObject;		// As NSObject (OOWeakReference), for classes rooted on OOObject.
+- (id)weakRefUnderlyingObject;		// Always self for non-weakrefs (and of course nil for nil).
 
 @end
 
