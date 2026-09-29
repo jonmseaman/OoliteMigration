@@ -149,8 +149,8 @@ typedef enum
 - (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
 - (void) clearMissionDescriptionForMission:(id)key;	// called by name (ADR-0043 item 21)
 
-- (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
-- (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
+- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
 							   // can be used by scripts to have unpiloted ships sending
 							   // commsMessages, if we want to.
 
@@ -183,7 +183,7 @@ typedef enum
 - (void) addShipsAt:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
 - (void) addShipsAtPrecisely:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
 - (void) addShipsWithinRadius:(id)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
-- (void) spawnShip:(id)ship_key;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) spawnShip:(const std::string &)ship_key;	// called by name (ADR-0055 item 5)
 - (void) set:(id)missionvariable_value;	// called by name (ADR-0043 item 21)
 - (void) reset:(id)missionvariable;	// called by name (ADR-0043 item 21)
 /*

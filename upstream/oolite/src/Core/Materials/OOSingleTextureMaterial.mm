@@ -34,30 +34,32 @@ SOFTWARE.
 
 @implementation OOSingleTextureMaterial
 
-- (id)initWithName:(id)name configuration:(id)configuration
+- (id)initWithName:(const std::optional<std::string> &)name configuration:(const oo::PList &)configuration
 {
-	id					texSpec = nil;
-	
-	if (configuration != nil)
+	oo::PList			texSpec;
+
+	if (!configuration.isNull())
 	{
-		texSpec = oo::PListView(configuration).get<oo::TextureSpecifier>(@"diffuse_map", name);
+		// -oo_textureSpecifierForKey:@"diffuse_map" defaultName:name.
+		const oo::PList *diffuseMap = configuration.find("diffuse_map");
+		texSpec = cxx_OOTextureSpecFromObject((diffuseMap != nullptr) ? *diffuseMap : oo::PList(), name);
 	}
-	else
+	else if (name.has_value())
 	{
-		texSpec = name;
+		texSpec = oo::PList(*name);
 	}
-	
-	return [self initWithName:oo::OptionalString(name)
-					  texture:[OOTexture cxx_textureWithConfiguration:oo::PListFrom(texSpec)]
+
+	return [self initWithName:name
+					  texture:[OOTexture cxx_textureWithConfiguration:texSpec]
 				configuration:configuration];
 }
 
 
-- (id) initWithName:(const std::optional<std::string> &)name texture:(OOTexture *)texture configuration:(id)configuration
+- (id) initWithName:(const std::optional<std::string> &)name texture:(OOTexture *)texture configuration:(const oo::PList &)configuration
 {
 	if (name.has_value() && texture != nil)
 	{
-		self = [super initWithName:oo::NSStringOrNil(name) configuration:configuration];
+		self = [super initWithName:name configuration:configuration];
 		if (self != nil)
 		{
 			_texture = [texture retain];
