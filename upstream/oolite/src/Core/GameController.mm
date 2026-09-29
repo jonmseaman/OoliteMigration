@@ -50,7 +50,7 @@ MA 02110-1301, USA.
 #include "oofnd/Date.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/FileSystem.hpp"
@@ -325,11 +325,6 @@ static GameController *sSharedController = nil;
 		[self cxx_reportUnhandledStartupExceptionName:std::string([exception name]) reason:std::string([exception reason])];
 		exit(EXIT_FAILURE);
 	}
-	@catch (OOFoundationException *exception)
-	{
-		[self cxx_reportUnhandledStartupExceptionName:oo::StdString([exception name]) reason:oo::OptionalString([exception reason])];
-		exit(EXIT_FAILURE);
-	}
 	
 	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
@@ -555,12 +550,6 @@ void FireOneDueDeferredCall(void)
 			{
 				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
 				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", [exception name], [exception reason], oo::str::pointerDescription(call.target));
-				return;	// target and argument stay retained, as the performer leaked them
-			}
-			@catch (OOFoundationException *exception)
-			{
-				// Foundation exceptions: same text as before (was a direct Foundation log call).
-				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]), oo::str::pointerDescription(call.target));
 				return;	// target and argument stay retained, as the performer leaked them
 			}
 			

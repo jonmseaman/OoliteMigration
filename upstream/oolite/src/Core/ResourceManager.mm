@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 #import "OOPListScript.h"
 
 #import "OOManifestProperties.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
@@ -2217,11 +2217,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				@catch (OOException *exception)
 				{
 					OO_LOG("script.load.exception", "***** {} encountered exception {} ({}) while trying to load script from {} -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], path);
-					// Ignore exception and keep loading other scripts.
-				}
-				@catch (OOFoundationException *exception)
-				{
-					OO_LOG("script.load.exception", "***** {} encountered exception {} ({}) while trying to load script from {} -- ignoring this location.", "+[ResourceManager loadScripts]", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]), path);
 					// Ignore exception and keep loading other scripts.
 				}
 			}
