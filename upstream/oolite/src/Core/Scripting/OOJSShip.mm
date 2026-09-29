@@ -2746,7 +2746,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	else
 	{
-		OK = [eqType canCarryMultiple] || ![thisEnt hasEquipmentItem:oo::NSStringFrom(identifier)];
+		OK = [eqType canCarryMultiple] || ![thisEnt hasEquipmentItem:oo::PList(identifier)];
 	}
 	
 	if (OK)
@@ -2773,7 +2773,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			}
 			else
 			{
-				isRepair = [thisEnt hasEquipmentItem:oo::NSStringFrom(identifier + "_DAMAGED")];
+				isRepair = [thisEnt hasEquipmentItem:oo::PList(identifier + "_DAMAGED")];
 				OK = [player addEquipmentItem:identifier withValidation:YES inContext:"scripted"];
 				if (OK && isRepair) 
 				{
@@ -2939,13 +2939,13 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 	}
 	
 	key = [eqType cxx_identifier].value_or("");
-	hasOK = [thisEnt hasEquipmentItem:oo::NSStringFrom(key)];
+	hasOK = [thisEnt hasEquipmentItem:oo::PList(key)];
 	BOOL setOK = *status == "EQUIPMENT_OK";
 	BOOL setDamaged = *status == "EQUIPMENT_DAMAGED";
 	if ([eqType canBeDamaged])
 	{
 		damagedKey = key + "_DAMAGED";
-		hasDamaged = [thisEnt hasEquipmentItem:oo::NSStringFrom(damagedKey)];
+		hasDamaged = [thisEnt hasEquipmentItem:oo::PList(damagedKey)];
 		
 		if ((setOK && hasDamaged) || (setDamaged && hasOK))
 		{
@@ -3047,8 +3047,8 @@ static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &o
 	}
 	else
 	{
-		if ([thisEnt hasEquipmentItem:oo::NSStringFrom(*key) includeWeapons:YES whileLoading:NO])  OOJS_RETURN(strOK);
-		else if ([thisEnt hasEquipmentItem:oo::NSStringFrom(*key + "_DAMAGED")])  OOJS_RETURN(strDamaged);
+		if ([thisEnt hasEquipmentItem:oo::PList(*key) includeWeapons:YES whileLoading:NO])  OOJS_RETURN(strOK);
+		else if ([thisEnt hasEquipmentItem:oo::PList(*key + "_DAMAGED")])  OOJS_RETURN(strDamaged);
 	
 		OOJS_RETURN(strUnavailable);
 	}

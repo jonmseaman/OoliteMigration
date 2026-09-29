@@ -605,13 +605,13 @@ typedef enum
 
 // Equipment
 - (OOWeaponFacingSet) weaponFacings;
-- (BOOL) hasEquipmentItem:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;	// This can take a string or an set or array of strings. If a collection, returns YES if ship has _any_ of the specified equipment. If includeWeapons is NO, missiles and primary weapons are not checked.
-- (BOOL) hasEquipmentItem:(id)equipmentKeys;			// Short for hasEquipmentItem:foo includeWeapons:NO whileLoading:NO
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;	// This can take a string or an array of strings (a set's keys as an array). If a collection, returns YES if ship has _any_ of the specified equipment. If includeWeapons is NO, missiles and primary weapons are not checked.
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys;			// Short for hasEquipmentItem:foo includeWeapons:NO whileLoading:NO
 - (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey;
 - (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType;
 - (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType;
-- (BOOL) hasAllEquipment:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;		// Like hasEquipmentItem:includeWeapons:, but requires _all_ elements in collection.
-- (BOOL) hasAllEquipment:(id)equipmentKeys;				// Short for hasAllEquipment:foo includeWeapons:NO
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;		// Like hasEquipmentItem:includeWeapons:, but requires _all_ elements in collection.
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys;				// Short for hasAllEquipment:foo includeWeapons:NO
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context;		// flipped with its family (bead oo-3rb.258). Test ability to add equipment, taking equipment-specific constriants into account.
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.

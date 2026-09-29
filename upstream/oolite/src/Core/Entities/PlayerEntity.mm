@@ -388,6 +388,13 @@ static GLfloat		sBaseMass = 0.0;
 
 namespace {
 
+// An equipment key as -hasEquipmentItem: takes it: a null PList for nullopt (was nil).
+oo::PList OptionalKeyPList(const std::optional<std::string> &key)
+{
+	return key.has_value() ? oo::PList(*key) : oo::PList();
+}
+
+
 // Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
 std::optional<std::string> OoliteInfoString(std::string_view key)
 {
@@ -4004,7 +4011,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	/* TODO: this check should possibly be hasEquipmentItemProviding:,
 	 * but if it was we'd need to know which item was actually doing
 	 * the providing so it could be removed. */
-	if (EXPECT_NOT(galactic_witchjump && ![self hasEquipmentItem:@"EQ_GAL_DRIVE"]))
+	if (EXPECT_NOT(galactic_witchjump && ![self hasEquipmentItem:oo::PList("EQ_GAL_DRIVE")]))
 	{
 		galactic_witchjump = NO;
 		[self setStatus:STATUS_IN_FLIGHT];
@@ -6277,18 +6284,18 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (OOEnergyUnitType) installedEnergyUnitType
 {
-	if ([self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT"])  return ENERGY_UNIT_NAVAL;
-	if ([self hasEquipmentItem:@"EQ_ENERGY_UNIT"])  return ENERGY_UNIT_NORMAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT")])  return ENERGY_UNIT_NAVAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT")])  return ENERGY_UNIT_NORMAL;
 	return ENERGY_UNIT_NONE;
 }
 
 
 - (OOEnergyUnitType) energyUnitType
 {
-	if ([self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT"])  return ENERGY_UNIT_NAVAL;
-	if ([self hasEquipmentItem:@"EQ_ENERGY_UNIT"])  return ENERGY_UNIT_NORMAL;
-	if ([self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"])  return ENERGY_UNIT_NAVAL_DAMAGED;
-	if ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"])  return ENERGY_UNIT_NORMAL_DAMAGED;
+	if ([self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT")])  return ENERGY_UNIT_NAVAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT")])  return ENERGY_UNIT_NORMAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT_DAMAGED")])  return ENERGY_UNIT_NAVAL_DAMAGED;
+	if ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT_DAMAGED")])  return ENERGY_UNIT_NORMAL_DAMAGED;
 	return ENERGY_UNIT_NONE;
 }
 
@@ -7129,7 +7136,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self addEquipmentItem:damagedKey withValidation: NO inContext:"damage"];	// for possible future repair.
 		[self doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(*system_key)];
 
-		if (![self hasEquipmentItem:oo::NSStringFrom(*system_name)] && [self hasEquipmentItem:oo::NSStringFrom(damagedKey)])
+		if (![self hasEquipmentItem:oo::PList(*system_name)] && [self hasEquipmentItem:oo::PList(damagedKey)])
 		{
 			/*
 				Display "foo damaged" message only if no script has
@@ -8272,14 +8279,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 					}
 				}
 			}
-			else if ([self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_identifier])])
+			else if ([self hasEquipmentItem:OptionalKeyPList([eqType cxx_identifier])])
 			{
 				quip2.push_back(EquipmentRow([eqType cxx_name], true, [eqType displayColor]));
 			}
 			else
 			{
 				// Check for damaged version
-				if ([self hasEquipmentItem:oo::NSStringFrom([eqType cxx_identifier].value_or("") + "_DAMAGED")])
+				if ([self hasEquipmentItem:oo::PList([eqType cxx_identifier].value_or("") + "_DAMAGED")])
 				{
 					desc = oo::str::formatRuntime(OO_DESC("equipment-@-not-available"), { [eqType cxx_name].value_or("(null)") });
 
@@ -9536,7 +9543,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if ([eqType isAvailableToAll])  options.insert(eqKey);
 		
 		// if you have a damaged system you can get it repaired at a tech level one less than that required to buy it
-		if (minTechLevel != 0 && [self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_damagedIdentifier])])  minTechLevel--;
+		if (minTechLevel != 0 && [self hasEquipmentItem:OptionalKeyPList([eqType cxx_damagedIdentifier])])  minTechLevel--;
 		
 		// reduce the minimum techlevel occasionally as a bonus..
 		if (techlevel < minTechLevel && techlevel + 3 > minTechLevel)
@@ -9679,7 +9686,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					installTime = 600 + price;
 				}
 				// is this item damaged?
-				if ([self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])])
+				if ([self hasEquipmentItem:OptionalKeyPList([eqInfo cxx_damagedIdentifier])])
 				{
 					desc = oo::str::formatRuntime(OO_DESC("equip-repair-@"), { desc });
 					price /= 2.0;
@@ -9878,13 +9885,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			std::optional<std::string> desc = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] cxx_descriptiveText];
 			const std::string eq_key_damaged = *eqKey + "_DAMAGED";
 			int weight = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] requiredCargoSpace];
-			if ([self hasEquipmentItem:oo::NSStringFrom(eq_key_damaged)])
+			if ([self hasEquipmentItem:oo::PList(eq_key_damaged)])
 			{
 				desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-price-is-for-repairing"), { TextArg(desc) });
 			}
 			else
 			{
-				if(oo::str::hasSuffix(*eqKey, "ENERGY_UNIT") && ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"] || [self hasEquipmentItem:@"EQ_ENERGY_UNIT"] || [self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"]))
+				if(oo::str::hasSuffix(*eqKey, "ENERGY_UNIT") && ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT_DAMAGED")] || [self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT")] || [self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT_DAMAGED")]))
 					desc = oo::str::formatRuntime(OO_DESC("@-will-replace-other-energy"), { TextArg(desc) });
 				if (weight > 0) desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-weight-d-of-equipment"), { TextArg(desc), weight });
 			}
@@ -10425,7 +10432,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	OOCreditsQuantity old_credits = credits;
 	OOEquipmentType *eqInfo = (key.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*key] : nil);
-	BOOL isRepair = [self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])];
+	BOOL isRepair = [self hasEquipmentItem:OptionalKeyPList([eqInfo cxx_damagedIdentifier])];
 	if ([self tryBuyingItem:key.value_or(std::string())])	// (a nil key bought nothing, as "" does)
 	{
 		if (credits == old_credits)
@@ -10534,7 +10541,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	BOOL	isRepair = NO;
 	
 	// repairs cost 50%
-	if ([self hasEquipmentItem:oo::NSStringOrNil(eqKeyDamaged)])
+	if ([self hasEquipmentItem:OptionalKeyPList(eqKeyDamaged)])
 	{
 		price /= 2.0;
 		isRepair = YES;
