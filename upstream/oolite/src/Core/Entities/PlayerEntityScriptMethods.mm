@@ -121,7 +121,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 		return;
 	}
 	
-	OOLog(@"script.debug.note.awardCargo", @"Going to award cargo: %d x '%@'", amount, oo::NSStringFrom(type));
+	OO_LOG("script.debug.note.awardCargo", "Going to award cargo: {} x '{}'", static_cast<int>(amount), type);
 
 	unit = [shipCommodityData massUnitForGood:type];
 	

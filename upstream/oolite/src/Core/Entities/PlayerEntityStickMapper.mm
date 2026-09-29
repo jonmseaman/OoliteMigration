@@ -305,7 +305,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	// Right time and the right place?
 	if(gui_screen != GUI_SCREEN_STICKMAPPER)
 	{
-		OOLog(@"joystick.configure.error", @"%s called when not on stick mapper screen.", __PRETTY_FUNCTION__);
+		OO_LOG("joystick.configure.error", "{} called when not on stick mapper screen.", __PRETTY_FUNCTION__);
 		return;
 	}
 	// What moved?

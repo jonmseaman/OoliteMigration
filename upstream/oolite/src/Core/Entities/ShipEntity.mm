@@ -385,7 +385,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	// Problem observed in testing -- Ahruman
 	if (self != nil && !isfinite(maxFlightSpeed))
 	{
-		OOLog(@"ship.sanityCheck.failed", @"Ship %@ %@ infinite top speed, clamped to 300.", self, @"generated with");
+		OO_LOG("ship.sanityCheck.failed", "Ship {} {} infinite top speed, clamped to 300.", oo::DescriptionOf(self), "generated with");
 		maxFlightSpeed = 300;
 	}
 	return self;
@@ -437,19 +437,19 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	afterburner_speed_factor = shipDict.get<float>("injector_speed_factor", 7.0f);
 	if (afterburner_speed_factor < 1.0)
 	{
-		OOLog(@"ship.setup.injectorSpeed",@"injector_speed_factor cannot be lower than 1.0 for %@",self);
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be lower than 1.0 for {}", oo::DescriptionOf(self));
 		afterburner_speed_factor = 1.0;
 	}
 #if OO_VARIABLE_TORUS_SPEED
 	else if (afterburner_speed_factor > MIN_HYPERSPEED_FACTOR)
 	{
-		OOLog(@"ship.setup.injectorSpeed",@"injector_speed_factor cannot be higher than minimum torus speed factor (%f) for %@.",MIN_HYPERSPEED_FACTOR,self);
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than minimum torus speed factor ({:f}) for {}.", MIN_HYPERSPEED_FACTOR, oo::DescriptionOf(self));
 		afterburner_speed_factor = MIN_HYPERSPEED_FACTOR;
 	}
 #else
 	else if (afterburner_speed_factor > HYPERSPEED_FACTOR)
 	{
-		OOLog(@"ship.setup.injectorSpeed",@"injector_speed_factor cannot be higher than torus speed factor (%f) for %@.",HYPERSPEED_FACTOR,self);
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than torus speed factor ({:f}) for {}.", HYPERSPEED_FACTOR, oo::DescriptionOf(self));
 		afterburner_speed_factor = HYPERSPEED_FACTOR;
 	}
 #endif
@@ -1080,7 +1080,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 
 	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
 	if (!subentKey.has_value()) {
-		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",oo::ObjectFromPList(subentDict));
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(oo::ObjectFromPList(subentDict)));
 		return NO;
 	}
 
@@ -1093,7 +1093,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		subentity = [UNIVERSE newSubentityWithName:oo::NSStringFrom(*subentKey) andScaleFactor:_scaleFactor];
 	}
 	if (subentity == nil) {
-		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity %@",oo::NSStringFrom(*subentKey));
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity {}", *subentKey);
 		return NO;
 	}
 
@@ -1505,12 +1505,12 @@ DESTROY(laser_color);
 	{
 		if (![self hasSubEntity:sub])
 		{
-			OOLog(@"ship.subentity.sanityCheck.failed.details", @"Attempt to set subentity taking damage of %@ to %@, which is not a subentity.", [self shortDescription], sub);
+			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::DescriptionOf([self shortDescription]), oo::DescriptionOf(sub));
 			sub = nil;
 		}
 		else if (![sub isShip])
 		{
-			OOLog(@"ship.subentity.sanityCheck.failed", @"Attempt to set subentity taking damage of %@ to %@, which is not a ship.", [self shortDescription], sub);
+			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::DescriptionOf([self shortDescription]), oo::DescriptionOf(sub));
 			sub = nil;
 		}
 	}
@@ -1828,8 +1828,8 @@ DESTROY(laser_color);
 	// escorts or the case of two ships specifying eachother as escorts) - Nikos 20090510
 	if ([self isEscort])
 	{
-		OOLogWARN(@"ship.setUp.escortShipCircularReference", 
-				@"Ship %@ requested escorts, when it is an escort ship itself. Avoiding possible circular reference overflow by ignoring escort setup.", self);
+		OO_LOG_WARN("ship.setUp.escortShipCircularReference", 
+				"Ship {} requested escorts, when it is an escort ship itself. Avoiding possible circular reference overflow by ignoring escort setup.", oo::DescriptionOf(self));
 		return;
 	}
 
@@ -1926,8 +1926,8 @@ DESTROY(laser_color);
 	const oo::PList *escortRoles = ArrayForKey(info, "escort_roles");
 	if (escortRoles == nullptr)
 	{
-		OOLogWARN(@"eship.setUp.escortShipRoles",
-				  @"Ship %@ has bad escort_roles definition.", self);
+		OO_LOG_WARN("eship.setUp.escortShipRoles",
+				  "Ship {} has bad escort_roles definition.", oo::DescriptionOf(self));
 		return;
 	}
 	OOGovernmentID		government;
@@ -2415,7 +2415,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (!pod)
 		{
 			pod = [UNIVERSE newShipWithRole:@"escape-capsule"];
-			OOLog(@"shipEntity.noEscapePod", @"Ship %@ has no correct escape_pod_role defined. Now using default capsule.", self);
+			OO_LOG("shipEntity.noEscapePod", "Ship {} has no correct escape_pod_role defined. Now using default capsule.", oo::DescriptionOf(self));
 		}
 	}
 	
@@ -2438,7 +2438,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 {
 	if (shipinfoDictionary.isNull())
 	{
-		OOLog(@"shipEntity.notDict", @"Ship %@ was not set up from dictionary.", self);
+		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(self));
 		return NO;
 	}
 	return [super validForAddToUniverse];
@@ -2449,14 +2449,14 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 {
 	if (shipinfoDictionary.isNull())
 	{
-		OOLog(@"shipEntity.notDict", @"Ship %@ was not set up from dictionary.", self);
+		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(self));
 		[UNIVERSE removeEntity:self];
 		return;
 	}
 	
 	if (!isfinite(maxFlightSpeed))
 	{
-		OOLog(@"ship.sanityCheck.failed", @"Ship %@ %@ infinite top speed, clamped to 300.", self, @"had");
+		OO_LOG("ship.sanityCheck.failed", "Ship {} {} infinite top speed, clamped to 300.", oo::DescriptionOf(self), "had");
 		maxFlightSpeed = 300;
 	}
 
@@ -2501,7 +2501,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (scanClass == CLASS_NOT_SET)
 		{
 			scanClass = CLASS_NEUTRAL;
-			OOLog(@"ship.sanityCheck.failed", @"Ship %@ %@ with scanClass CLASS_NOT_SET; forced to CLASS_NEUTRAL.", self, oo::NSStringOrNil([self cxx_primaryRole]));
+			OO_LOG("ship.sanityCheck.failed", "Ship {} {} with scanClass CLASS_NOT_SET; forced to CLASS_NEUTRAL.", oo::DescriptionOf(self), [self cxx_primaryRole].value_or("(null)"));
 		}
 
 		[self updateTrackingCurve];
@@ -2594,7 +2594,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	// DEBUGGING
 	if (reportAIMessages && (debugLastBehaviour != behaviour))
 	{
-		OOLog(@"entity.behaviour.changed", @"%@ behaviour is now %@", self, oo::NSStringFrom(cxx_OOStringFromBehaviour(behaviour)));
+		OO_LOG("entity.behaviour.changed", "{} behaviour is now {}", oo::DescriptionOf(self), cxx_OOStringFromBehaviour(behaviour));
 		debugLastBehaviour = behaviour;
 	}
 #endif
@@ -2866,7 +2866,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			
 				ShipEntity *leader = [[self escortGroup] leader];
 				if (leader != nil && ([leader scanClass] != [self scanClass])) {
-					OOLog(@"ship.sanityCheck.failed", @"Ship %@ escorting %@ with wrong scanclass!", self, leader);
+					OO_LOG("ship.sanityCheck.failed", "Ship {} escorting {} with wrong scanclass!", oo::DescriptionOf(self), oo::DescriptionOf(leader));
 					[[self escortGroup] removeShip:self];
 					[self setEscortGroup:nil];
 				}
@@ -3902,7 +3902,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
 			if (!shipKey.has_value())
 			{
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringOrNil(shipKey), oo::NSStringOrNil([self cxx_name]), @"shipdata",  @"Trying another missile.");
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", shipKey.value_or("(null)"), [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
 			}
 		}
 	}
@@ -3911,7 +3911,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
 		if (!shipKey.has_value())
 		{
-			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"shipdata", @" Using defaults instead.");
+			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
 			return nil;
 		}
 	}
@@ -3924,9 +3924,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (!missile)
 		{
 			if (isRandomMissile)
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringFrom(*shipKey), oo::NSStringOrNil([self cxx_name]), @"shipdata",  @"Trying another missile.");
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", *shipKey, [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
 			else
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"shipdata", @" Using defaults instead.");
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
 
 			[OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
@@ -3953,7 +3953,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 		if (!missileType)
 		{
-			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", (isRandomMissile ? @"random missile" : @"missile_role"), oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"equipment", @" Enabling compatibility mode.");
+			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", (isRandomMissile ? "random missile" : "missile_role"), role, [self cxx_name].value_or("(null)"), "equipment", " Enabling compatibility mode.");
 			missileType = [self generateMissileEquipmentTypeFrom:role];
 		}
 
@@ -4017,7 +4017,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 	}
 
-	if (missileType == nil) OOLogERR(@"ship.setUp.missiles", @"could not resolve missile / mine type for ship \"%@\". Original missile role:\"%@\".", oo::NSStringOrNil([self cxx_name]),oo::NSStringOrNil(_missileRole));
+	if (missileType == nil) OO_LOG_ERR("ship.setUp.missiles", "could not resolve missile / mine type for ship \"{}\". Original missile role:\"{}\".", [self cxx_name].value_or("(null)"), _missileRole.value_or("(null)"));
 
 	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
 	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
@@ -4028,7 +4028,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	else
 	{
-		OOLogWARN(@"ship.setUp.missiles", @"missile_role \"%@\" is not a valid missile / mine type for ship \"%@\".%@", oo::NSStringOrNil([missileType cxx_identifier]) , oo::NSStringOrNil([self cxx_name]),@" No missile selected.");
+		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", [missileType cxx_identifier].value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
 		return nil;
 	}
 }
@@ -6308,7 +6308,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	
 	if (!OK)
 	{
-		OOLog(@"ai.error",@"Could not call scriptedAI in ship script of %@, reverting to idle",self);
+		OO_LOG("ai.error", "Could not call scriptedAI in ship script of {}, reverting to idle", oo::DescriptionOf(self));
 		behaviour = BEHAVIOUR_IDLE;
 		OOJSRelinquishContext(context);
 		return;
@@ -6316,7 +6316,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 	if (!ooscript::isObjectOrNull(rval))
 	{
-		OOLog(@"ai.error",@"Invalid return value of scriptedAI in ship script of %@, reverting to idle",self);
+		OO_LOG("ai.error", "Invalid return value of scriptedAI in ship script of {}, reverting to idle", oo::DescriptionOf(self));
 		behaviour = BEHAVIOUR_IDLE;
 		OOJSRelinquishContext(context);
 		return;
@@ -7454,7 +7454,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 	{
 		primaryRole = [roleSet anyRole];
 		if (!primaryRole.has_value())  primaryRole = "trader";
-		OOLog(@"ship.noPrimaryRole", @"%@ had no primary role, randomly selected \"%@\".", oo::NSStringOrNil([self cxx_name]), oo::NSStringOrNil(primaryRole));
+		OO_LOG("ship.noPrimaryRole", "{} had no primary role, randomly selected \"{}\".", [self cxx_name].value_or("(null)"), primaryRole.value_or("(null)"));
 	}
 
 	return primaryRole;
@@ -8272,7 +8272,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		rate = calcFuelChargeRate(mass);
 	}
 
-	OOLog(@"fuelPrices", @"\"%@\" fuel charge rate: %.2f (mass ratio: %.2f/%.2f)", oo::NSStringOrNil([self cxx_shipDataKey]), rate, mass, [PLAYER baseMass]);
+	OO_LOG("fuelPrices", "\"{}\" fuel charge rate: {:.2f} (mass ratio: {:.2f}/{:.2f})", [self cxx_shipDataKey].value_or("(null)"), rate, mass, [PLAYER baseMass]);
 #endif
 	
 	return rate;
@@ -8979,7 +8979,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// this is limited to the player's scanner range
 	GLfloat maxRange = fmin(range * sqrt(baseDamage), SCANNER_MAX_RANGE);
 	
-	OOLog(@"missile.damage.calc", @"Range: %f | Damage: %f | MaxRange: %f",range,baseDamage,maxRange);
+	OO_LOG("missile.damage.calc", "Range: {:f} | Damage: {:f} | MaxRange: {:f}", range, baseDamage, maxRange);
 
 	const std::vector<oo::ObjCRef<Entity *>> targets = oo::ObjCRefsFrom<Entity *>([UNIVERSE entitiesWithinRange:maxRange ofEntity:self]);
 	if (targets.size() > 0)
@@ -8993,7 +8993,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			double d = (magnitude(p2) - ecr) / range;
 			// base damage within defined range, inverse-square falloff outside
 			double localDamage = baseDamage;
-			OOLog(@"missile.damage.calc", @"Base damage: %f",baseDamage);
+			OO_LOG("missile.damage.calc", "Base damage: {:f}", baseDamage);
 			if (velocityBias > 0)
 			{
 				Vector v2 = vector_subtract([self velocity], [e2 velocity]);
@@ -9010,12 +9010,12 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				}
 
 				localDamage += vMag * velocityBias;
-				OOLog(@"missile.damage.calc",@"Velocity magnitude + sign: %f , %f",magnitude(v2),vSign);
-				OOLog(@"missile.damage.calc",@"Velocity magnitude factor: %f",vMag);
-				OOLog(@"missile.damage.calc",@"Velocity corrected damage: %f",localDamage);
+				OO_LOG("missile.damage.calc", "Velocity magnitude + sign: {:f} , {:f}", magnitude(v2), vSign);
+				OO_LOG("missile.damage.calc", "Velocity magnitude factor: {:f}", vMag);
+				OO_LOG("missile.damage.calc", "Velocity corrected damage: {:f}", localDamage);
 			}
 			double damage = (d > 1) ? localDamage / (d * d) : localDamage;
-			OOLog(@"missile.damage.calc",@"%f at range %f (d=%f)",damage,magnitude(p2)-ecr,d);
+			OO_LOG("missile.damage.calc", "{:f} at range {:f} (d={:f})", damage, magnitude(p2)-ecr, d);
 			if (damage > 0.0)
 			{
 				if ([self owner])
@@ -9589,7 +9589,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if (isPlayer)
 			{
 	#ifndef NDEBUG
-				OOLog(@"becomeExplosion.suspectedGhost.confirm", @"%@", @"Ship spotted with isPlayer set when not actually the player.");
+				OO_LOG("becomeExplosion.suspectedGhost.confirm", "{}", "Ship spotted with isPlayer set when not actually the player.");
 	#endif
 				isPlayer = NO;
 			}
@@ -9670,7 +9670,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	
 	if ([self hasSubEntity:sub])
 	{
-		OOLogERR(@"shipEntity.bug.subEntityRetainUnderflow", @"Subentity of %@ died while still in subentity list! This is bad. Leaking subentity list to avoid crash. %@", self, @"This is an internal error, please report it.");
+		OO_LOG_ERR("shipEntity.bug.subEntityRetainUnderflow", "Subentity of {} died while still in subentity list! This is bad. Leaking subentity list to avoid crash. {}", oo::DescriptionOf(self), "This is an internal error, please report it.");
 		
 		// Leak subentity list: one more retain each, so that emptying the list keeps them all alive,
 		// as dropping the array pointer did.
@@ -11464,7 +11464,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			{
 				// looking towards sun can seriously mess up aim (glareLevel 0..1)
 				basic_aim *= (1.0 + glareLevel*3.0);
-//				OOLog(@"aim.debug",@"Sun glare affecting aim: %f for %@",glareLevel,self);
+//				OO_LOG("aim.debug", "Sun glare affecting aim: {:f} for {}", glareLevel, oo::DescriptionOf(self));
 				if (glareLevel > 0.5f)
 				{
 					// strong glare makes precise targeting impossible
@@ -12296,7 +12296,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if (start.x == 0.0f && start.y == 0.0f && start.z <= 0.0f) // The kZeroVector as start is illegal also.
 	{
-		OOLog(@"ship.missileLaunch.invalidPosition", @"***** ERROR: The missile_launch_position defines a position %@ behind the %@. In future versions such missiles may explode on launch because they have to travel through the ship.", oo::NSStringFrom(VectorDescription(start)), self);
+		OO_LOG("ship.missileLaunch.invalidPosition", "***** ERROR: The missile_launch_position defines a position {} behind the {}. In future versions such missiles may explode on launch because they have to travel through the ship.", VectorDescription(start), oo::DescriptionOf(self));
 		start.x = 0.0f;
 		start.y = boundingBox.min.y - 4.0f;
 		start.z = boundingBox.max.z + 1.0f;
@@ -13444,13 +13444,13 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	BOOL OK = NO;
 	if ([self isPlayer] && [(PlayerEntity *)self isDocked])
 	{
-		OOLog(@"ShipEntity.abandonShip.failed", @"%@", @"Player cannot abandon ship while docked.");
+		OO_LOG("ShipEntity.abandonShip.failed", "{}", "Player cannot abandon ship while docked.");
 		return OK;
 	}
 	
 	if (![self hasEscapePod])
 	{
-		OOLog(@"ShipEntity.abandonShip.failed", @"Ship abandonment was requested for %@, but this ship does not carry escape pod(s).", self);
+		OO_LOG("ShipEntity.abandonShip.failed", "Ship abandonment was requested for {}, but this ship does not carry escape pod(s).", oo::DescriptionOf(self));
 		return OK;
 	}
 		
@@ -13504,7 +13504,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	else
 	{
 		// this shouldn't happen any more!
-		OOLog(@"ShipEntity.abandonShip.notPossible", @"Ship %@ cannot be abandoned at this time.", self);
+		OO_LOG("ShipEntity.abandonShip.notPossible", "Ship {} cannot be abandoned at this time.", oo::DescriptionOf(self));
 	}
 	return OK;
 }
@@ -13842,7 +13842,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	//doesn't seem to have any adverse effect for now. - Kaks.
 	if ([shipAI stackDepth] > 3)
 	{
-		OOLog(@"ship.escort.reject", @"%@ rejecting escort %@ because AI stack depth is %zu.",self, other_ship, [shipAI stackDepth]);
+		OO_LOG("ship.escort.reject", "{} rejecting escort {} because AI stack depth is {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship), [shipAI stackDepth]);
 		return NO;
 	}
 	
@@ -13876,7 +13876,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				cruiseSpeed = [other_ship maxFlightSpeed] * 0.99;
 			}
 			
-			OOLog(@"ship.escort.accept", @"%@ accepting escort %@.", self, other_ship);
+			OO_LOG("ship.escort.accept", "{} accepting escort {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship));
 			
 			[self doScriptEvent:OOJSID("shipAcceptedEscort") withArgument:other_ship];
 			[other_ship doScriptEvent:OOJSID("escortAccepted") withArgument:self];
@@ -13885,12 +13885,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 		else
 		{
-			OOLog(@"ship.escort.reject", @"%@ already got max escorts(%zu). Escort rejected: %@.", self, escortCount, other_ship);
+			OO_LOG("ship.escort.reject", "{} already got max escorts({}). Escort rejected: {}.", oo::DescriptionOf(self), escortCount, oo::DescriptionOf(other_ship));
 		}
 	}
 	else
 	{
-		OOLog(@"ship.escort.reject", @"%@ failed canAcceptEscort for escort %@.", self, other_ship);
+		OO_LOG("ship.escort.reject", "{} failed canAcceptEscort for escort {}.", oo::DescriptionOf(self), oo::DescriptionOf(other_ship));
 	}
 
 	
@@ -14156,7 +14156,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 #ifndef NDEBUG
 	if ([self reportAIMessages])
 	{
-		OOLog(@"planet.collide.shuttleLanded", @"DEBUG: %@ landed on planet %@", self, planet);
+		OO_LOG("planet.collide.shuttleLanded", "DEBUG: {} landed on planet {}", oo::DescriptionOf(self), oo::DescriptionOf(planet));
 	}
 #endif
 	
@@ -14448,7 +14448,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 	if (tokens.size() != 2)
 	{
-		OOLog(@"script.debug.syntax.addShips", @"***** Could not spawn: \"%@\" (must be two tokens, role and number)",roles_number);
+		OO_LOG("script.debug.syntax.addShips", "***** Could not spawn: \"{}\" (must be two tokens, role and number)", oo::DescriptionOf(roles_number));
 		return;
 	}
 
@@ -14526,12 +14526,12 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 {
 	// Create a bouy and beacon where the hulk is.
 	// Get the main GalCop station to launch a pilot boat to deliver a pilot to the hulk.
-	OOLog(@"claimAsSalvage.called", @"claimAsSalvage called on %@ %@", oo::NSStringOrNil([self cxx_name]), [self roleSet]);
+	OO_LOG("claimAsSalvage.called", "claimAsSalvage called on {} {}", [self cxx_name].value_or("(null)"), oo::DescriptionOf([self roleSet]));
 	
 	// Not an abandoned hulk, so don't allow the salvage
 	if (![self isHulk])
 	{
-		OOLog(@"claimAsSalvage.failed.notHulk", @"claimAsSalvage failed because not a hulk");
+		OO_LOG("claimAsSalvage.failed.notHulk", "{}", "claimAsSalvage failed because not a hulk");
 		return;
 	}
 
@@ -14539,16 +14539,16 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	[self setTargetToSystemStation];
 	if ([self primaryTarget] == nil)
 	{
-		OOLog(@"claimAsSalvage.failed.noStation", @"claimAsSalvage failed because did not find a station");
+		OO_LOG("claimAsSalvage.failed.noStation", "{}", "claimAsSalvage failed because did not find a station");
 		return;
 	}
 
 	// Get the station to launch a pilot boat to bring a pilot out to the hulk (use a viper for now)
 	StationEntity *station = (StationEntity *)[self primaryTarget];
-	OOLog(@"claimAsSalvage.requestingPilot", @"claimAsSalvage asking station to launch a pilot boat");
+	OO_LOG("claimAsSalvage.requestingPilot", "{}", "claimAsSalvage asking station to launch a pilot boat");
 	[station launchShipWithRole:@"pilot"];
 	[self setReportAIMessages:YES];
-	OOLog(@"claimAsSalvage.success", @"claimAsSalvage setting own state machine to capturedShipAI.plist");
+	OO_LOG("claimAsSalvage.success", "{}", "claimAsSalvage setting own state machine to capturedShipAI.plist");
 	[self setAITo:@"capturedShipAI.plist"];
 }
 
@@ -14560,7 +14560,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	n_scanned_ships = 0;
 	scan = z_previous;
-	OOLog(@"ship.pilotage", @"searching for pilot boat");
+	OO_LOG("ship.pilotage", "{}", "searching for pilot boat");
 	while (scan &&(scan->isShip == NO))
 	{
 		scan = scan->z_previous;	// skip non-ships
@@ -14577,7 +14577,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 			{
 				if ([scanShip primaryTarget] == nil)
 				{
-					OOLog(@"ship.pilotage", @"found pilot boat with no target, will use this one");
+					OO_LOG("ship.pilotage", "{}", "found pilot boat with no target, will use this one");
 					pilot = scanShip;
 					[pilot setPrimaryRole:@"pilot"];
 					break;
@@ -14593,7 +14593,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 	if (pilot != nil)
 	{
-		OOLog(@"ship.pilotage", @"becoming pilot target and setting AI");
+		OO_LOG("ship.pilotage", "{}", "becoming pilot target and setting AI");
 		[pilot setReportAIMessages:YES];
 		[pilot addTarget:self];
 		[pilot setAITo:@"pilotAI.plist"];
@@ -14618,30 +14618,30 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 	[super dumpSelfState];
 	
-	OOLog(@"dumpState.shipEntity", @"Type: %@", oo::NSStringOrNil([self cxx_shipDataKey]));
-	OOLog(@"dumpState.shipEntity", @"Name: %@", oo::NSStringOrNil(name));
-	OOLog(@"dumpState.shipEntity", @"Display Name: %@", oo::NSStringOrNil([self displayName]));
-	OOLog(@"dumpState.shipEntity", @"Roles: %@", [self roleSet]);
-	OOLog(@"dumpState.shipEntity", @"Primary role: %@", oo::NSStringOrNil(primaryRole));
-	OOLog(@"dumpState.shipEntity", @"Script: %@", script);
-	OOLog(@"dumpState.shipEntity", @"Subentity count: %zu", [self subEntityCount]);
-	OOLog(@"dumpState.shipEntity", @"Behaviour: %@", oo::NSStringFrom(cxx_OOStringFromBehaviour(behaviour)));
+	OO_LOG("dumpState.shipEntity", "Type: {}", [self cxx_shipDataKey].value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Name: {}", name.value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Display Name: {}", [self displayName].value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Roles: {}", oo::DescriptionOf([self roleSet]));
+	OO_LOG("dumpState.shipEntity", "Primary role: {}", primaryRole.value_or("(null)"));
+	OO_LOG("dumpState.shipEntity", "Script: {}", oo::DescriptionOf(script));
+	OO_LOG("dumpState.shipEntity", "Subentity count: {}", [self subEntityCount]);
+	OO_LOG("dumpState.shipEntity", "Behaviour: {}", cxx_OOStringFromBehaviour(behaviour));
 	id target = [self primaryTarget];
 	if (target == nil)  target = @"<none>";
-	OOLog(@"dumpState.shipEntity", @"Target: %@", target);
-	OOLog(@"dumpState.shipEntity", @"Destination: %@", oo::NSStringFrom(cxx_HPVectorDescription(_destination)));
-	OOLog(@"dumpState.shipEntity", @"Other destination: %@", oo::NSStringFrom(cxx_HPVectorDescription(coordinates)));
-	OOLog(@"dumpState.shipEntity", @"Waypoint count: %u", number_of_navpoints);
-	OOLog(@"dumpState.shipEntity", @"Desired speed: %g", desired_speed);
-	OOLog(@"dumpState.shipEntity", @"Thrust: %g", thrust);
-	if ([self escortCount] != 0)  OOLog(@"dumpState.shipEntity", @"Escort count: %u", [self escortCount]);
-	OOLog(@"dumpState.shipEntity", @"Fuel: %i", fuel);
-	OOLog(@"dumpState.shipEntity", @"Fuel accumulator: %g", fuel_accumulator);
-	OOLog(@"dumpState.shipEntity", @"Missile count: %u", missiles);
+	OO_LOG("dumpState.shipEntity", "Target: {}", oo::DescriptionOf(target));
+	OO_LOG("dumpState.shipEntity", "Destination: {}", cxx_HPVectorDescription(_destination));
+	OO_LOG("dumpState.shipEntity", "Other destination: {}", cxx_HPVectorDescription(coordinates));
+	OO_LOG("dumpState.shipEntity", "Waypoint count: {}", number_of_navpoints);
+	OO_LOG("dumpState.shipEntity", "Desired speed: {:g}", desired_speed);
+	OO_LOG("dumpState.shipEntity", "Thrust: {:g}", thrust);
+	if ([self escortCount] != 0)  OO_LOG("dumpState.shipEntity", "Escort count: {}", static_cast<unsigned>([self escortCount]));
+	OO_LOG("dumpState.shipEntity", "Fuel: {}", fuel);
+	OO_LOG("dumpState.shipEntity", "Fuel accumulator: {:g}", fuel_accumulator);
+	OO_LOG("dumpState.shipEntity", "Missile count: {}", missiles);
 	
 	if (shipAI != nil && OOLogWillDisplayMessagesInClass(@"dumpState.shipEntity.ai"))
 	{
-		OOLog(@"dumpState.shipEntity.ai", @"%@", @"AI:");
+		OO_LOG("dumpState.shipEntity.ai", "{}", "AI:");
 		OOLogPushIndent();
 		OOLogIndent();
 		@try
@@ -14651,19 +14651,19 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		@catch (id exception) {}
 		OOLogPopIndent();
 	}
-	OOLog(@"dumpState.shipEntity", @"Accuracy: %g", accuracy);
-	OOLog(@"dumpState.shipEntity", @"Jink position: %@", oo::NSStringFrom(VectorDescription(jink)));
-	OOLog(@"dumpState.shipEntity", @"Frustration: %g", frustration);
-	OOLog(@"dumpState.shipEntity", @"Success factor: %g", success_factor);
-	OOLog(@"dumpState.shipEntity", @"Shots fired: %u", shot_counter);
-	OOLog(@"dumpState.shipEntity", @"Time since shot: %g", [self shotTime]);
-	OOLog(@"dumpState.shipEntity", @"Spawn time: %g (%g seconds ago)", [self spawnTime], [self timeElapsedSinceSpawn]);
+	OO_LOG("dumpState.shipEntity", "Accuracy: {:g}", accuracy);
+	OO_LOG("dumpState.shipEntity", "Jink position: {}", VectorDescription(jink));
+	OO_LOG("dumpState.shipEntity", "Frustration: {:g}", frustration);
+	OO_LOG("dumpState.shipEntity", "Success factor: {:g}", success_factor);
+	OO_LOG("dumpState.shipEntity", "Shots fired: {}", static_cast<unsigned>(shot_counter));
+	OO_LOG("dumpState.shipEntity", "Time since shot: {:g}", [self shotTime]);
+	OO_LOG("dumpState.shipEntity", "Spawn time: {:g} ({:g} seconds ago)", [self spawnTime], [self timeElapsedSinceSpawn]);
 	if ([self isBeacon])
 	{
-		OOLog(@"dumpState.shipEntity", @"Beacon code: %@", oo::NSStringOrNil([self beaconCode]));
+		OO_LOG("dumpState.shipEntity", "Beacon code: {}", [self beaconCode].value_or("(null)"));
 	}
-	OOLog(@"dumpState.shipEntity", @"Hull temperature: %g", ship_temperature);
-	OOLog(@"dumpState.shipEntity", @"Heat insulation: %g", [self heatInsulation]);
+	OO_LOG("dumpState.shipEntity", "Hull temperature: {:g}", ship_temperature);
+	OO_LOG("dumpState.shipEntity", "Heat insulation: {:g}", [self heatInsulation]);
 	
 	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
 	ADD_FLAG_IF_SET(military_jammer_active);
@@ -14685,7 +14685,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		flagsString += flag;
 	}
 	if (flags.empty())  flagsString = "none";
-	OOLog(@"dumpState.shipEntity", @"Flags: %@", oo::NSStringFrom(flagsString));
+	OO_LOG("dumpState.shipEntity", "Flags: {}", flagsString);
 }
 #endif
 
@@ -15010,7 +15010,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	// Sanity check; this should always be true.
 	if (![self hasSubEntity:(ShipEntity *)other])
 	{
-		OOLogERR(@"ship.subentity.sanityCheck.failed", @"%@ thinks it's a subentity of %@, but the supposed parent does not agree. %@", [other shortDescription], [self shortDescription], @"This is an internal error, please report it.");
+		OO_LOG_ERR("ship.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::DescriptionOf([other shortDescription]), oo::DescriptionOf([self shortDescription]), "This is an internal error, please report it.");
 		[other setOwner:nil];
 		return NO;
 	}

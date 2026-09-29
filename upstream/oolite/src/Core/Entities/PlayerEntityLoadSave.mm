@@ -266,7 +266,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (!path)  path = [[gameView gameController] cxx_playerFileToLoad];
 	if (!path)
 	{
-		OOLog(@"quickSave.failed.noName", @"%@", @"ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
+		OO_LOG("quickSave.failed.noName", "{}", "ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
 		[OOException raise:"OoliteGameNotSavedException"
 					format:"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
 	}
@@ -411,13 +411,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const std::optional<std::string> file = scenario != nullptr ? OptionalStringValue(scenario->find("file")) : std::nullopt;
 	if (!file)
 	{
-		OOLog(@"scenario.init.error", @"%@", @"No file entry found for scenario");
+		OO_LOG("scenario.init.error", "{}", "No file entry found for scenario");
 		return NO;
 	}
 	const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:*file inFolder:"Scenarios"];
 	if (!path)
 	{
-		OOLog(@"scenario.init.error", @"Game file not found for scenario %@",oo::NSStringFrom(*file));
+		OO_LOG("scenario.init.error", "Game file not found for scenario {}",*file);
 		return NO;
 	}
 	BOOL result = [self loadPlayerFromFile:*path asNew:YES];
@@ -696,7 +696,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (loadedOK)
 	{
-		OOLog(@"load.progress", @"%@", @"Reading file");
+		OO_LOG("load.progress", "{}", "Reading file");
 		fileDic = cxx_OOPropertyListFromFile(fileToOpen);
 		if (!fileDic.isDict())  fileDic = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 		if (!fileDic.isDict())
@@ -708,7 +708,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	if (loadedOK)
 	{
-		OOLog(@"load.progress", @"%@", @"Restricting scenario");
+		OO_LOG("load.progress", "{}", "Restricting scenario");
 		std::string scenarioRestrict;
 		const std::optional<std::string> savedRestrict = OptionalStringValue(fileDic.find("scenario_restriction"));
 		if (savedRestrict)
@@ -739,7 +739,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	if (loadedOK)
 	{
-		OOLog(@"load.progress", @"%@", @"Creating player ship");
+		OO_LOG("load.progress", "{}", "Creating player ship");
 		// Check that player ship exists
 		const std::optional<std::string>	shipKey = OptionalStringValue(fileDic.find("ship_desc"));
 		oo::PList							shipDict;
@@ -756,7 +756,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (loadedOK)
 	{
-		OOLog(@"load.progress", @"%@", @"Initialising player entity");
+		OO_LOG("load.progress", "{}", "Initialising player entity");
 		if (![self setUpAndConfirmOK:YES saveGame:YES])
 		{
 			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-reset-javascript"));
@@ -766,7 +766,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (loadedOK)
 	{
-		OOLog(@"load.progress", @"%@", @"Loading commander data");
+		OO_LOG("load.progress", "{}", "Loading commander data");
 		if (![self cxx_setCommanderDataFromDictionary:fileDic])
 		{
 			// this could still be a reset js issue, if switching from strict / unrestricted
@@ -778,7 +778,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (loadedOK)
 	{
-		OOLog(@"load.progress", @"%@", @"Recording save path");
+		OO_LOG("load.progress", "{}", "Recording save path");
 		if (!asNew)
 		{
 			save_path = fileToOpen;
@@ -789,7 +789,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	else
 	{
-		OOLog(@"load.failed", @"***** Failed to load saved game \"%@\": %@", oo::NSStringFrom(oo::str::lastPathComponent(fileToOpen)), oo::NSStringFrom(fail_reason.value_or("unknown error")));
+		OO_LOG("load.failed", "***** Failed to load saved game \"{}\": {}", oo::str::lastPathComponent(fileToOpen), fail_reason.value_or("unknown error"));
 		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:""];
 		[UNIVERSE handleGameOver];
 		[UNIVERSE clearPreviousMessage];
@@ -798,7 +798,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		return NO;
 	}
 	
-	OOLog(@"load.progress", @"%@", @"Creating system");
+	OO_LOG("load.progress", "{}", "Creating system");
 	[UNIVERSE setTimeAccelerationFactor:TIME_ACCELERATION_FACTOR_DEFAULT];
 	[UNIVERSE setSystemTo:system_id];
 	[UNIVERSE removeAllEntitiesExceptPlayer];
@@ -806,7 +806,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	[UNIVERSE setUpSpace];
 	[UNIVERSE setAutoSaveNow:NO];
 	
-	OOLog(@"load.progress", @"%@", @"Resetting player flight variables");
+	OO_LOG("load.progress", "{}", "Resetting player flight variables");
 	[self setDockedAtMainStation];
 	StationEntity *dockedStation = [self dockedStation];
 	
@@ -828,7 +828,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	[self setEntityPersonalityInt:PersonalityForCommanderDict(fileDic)];
 	
-	OOLog(@"load.progress", @"%@", @"Loading system market");
+	OO_LOG("load.progress", "{}", "Loading system market");
 	// dockedStation is always the main station at this point;
 	// "localMarket" save key always refers to the main station (system) market
 	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
@@ -843,7 +843,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	[self calculateCurrentCargo];
 	
-	OOLog(@"load.progress", @"%@", @"Setting scenario key");
+	OO_LOG("load.progress", "{}", "Setting scenario key");
 	// set scenario key if the scenario allows saving and has one
 	const std::optional<std::string> scenario = OptionalStringValue(fileDic.find("scenario_key"));
 	scenarioKey.reset();
@@ -852,11 +852,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		scenarioKey = *scenario;
 	}
 
-	OOLog(@"load.progress", @"%@", @"Starting JS engine");
+	OO_LOG("load.progress", "{}", "Starting JS engine");
 	// Remember the savegame target, run js startUp.
 	[self completeSetUpAndSetTarget:NO];
 	// run initial system population
-	OOLog(@"load.progress", @"%@", @"Populating initial system");
+	OO_LOG("load.progress", "{}", "Populating initial system");
 	[UNIVERSE populateNormalSpace];
 
 	// might as well start off with a collected JS environment
@@ -878,7 +878,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");
 	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? oo::PListFrom(oo::ObjectFromPList(*stationMarkets)) : oo::PList()];
 
-	OOLog(@"load.progress", @"%@", @"Completing JS startup");
+	OO_LOG("load.progress", "{}", "Completing JS startup");
 	[self startUpComplete];
 
 	// if the file was specified in the command line at startup, DO NOT suppress the keys!
@@ -893,7 +893,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	[self setGuiToStatusScreen];
 	if (loadedOK) [self doWorldEventUntilMissionScreen:OOJSID("missionScreenOpportunity")];  // trigger missionScreenOpportunity immediately after loading
-	OOLog(@"load.progress", @"%@", @"Loading complete");
+	OO_LOG("load.progress", "{}", "Loading complete");
 	return loadedOK;
 }
 
@@ -959,7 +959,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	if (path.empty())
 	{
-		OOLog(@"save.failed", @"***** SAVE ERROR: %s called with nil path.", __PRETTY_FUNCTION__);
+		OO_LOG("save.failed", "***** SAVE ERROR: {} called with nil path.", __PRETTY_FUNCTION__);
 		return;
 	}
 
@@ -983,7 +983,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	else
 	{
-		OOLog(@"save.failed", @"***** SAVE ERROR: %@", oo::NSStringFrom(errDesc));
+		OO_LOG("save.failed", "***** SAVE ERROR: {}", errDesc);
 		[OOException raise:"OoliteException"
 					format:"Attempt to save game to file '%s' failed: %s", path.c_str(), errDesc.c_str()];
 	}
@@ -1120,7 +1120,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	else
 	{
-		OOLogERR(@"savedGame.read.fail.fileNotFound", @"File at path '%@' could not be found.", oo::NSStringFrom(directory));
+		OO_LOG_ERR("savedGame.read.fail.fileNotFound", "File at path '{}' could not be found.", directory);
 	}
 	
 	// get commander details so a brief rundown of the commander's details may
@@ -1178,7 +1178,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		highlightIdx=[self findIndexOfCommander: *highlightName];
 		if(highlightIdx < 0)
 		{
-			OOLog(@"save.list.commanders.commanderNotFound", @"Commander %@ doesn't exist, very bad", oo::NSStringFrom(*highlightName));
+			OO_LOG("save.list.commanders.commanderNotFound", "Commander {} doesn't exist, very bad", *highlightName);
 			highlightIdx=0;
 		}
 		
