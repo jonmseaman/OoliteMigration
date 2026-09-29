@@ -48,6 +48,7 @@
 #import "OODebugStandards.h"
 #import "OOWeakSet.h"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 #include "oofnd/Log.hpp"
 
 
@@ -2348,7 +2349,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 		else
 		{
-			return OOFuzzyBooleanFromObject(determinant, 0.0f);
+			return OOFuzzyBooleanFromPList(determinantValue, 0.0f);
 		}
 	}
 	else

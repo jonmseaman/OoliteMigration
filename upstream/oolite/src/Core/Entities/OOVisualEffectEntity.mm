@@ -51,7 +51,7 @@ MA 02110-1301, USA.
 
 #import "MyOpenGLView.h"
 #import "OOFoundationBridge.h"
-#import "OOCollectionExtractors.h"	// OOHPVectorFromObject() & co. (unmigrated callees)
+#import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
 
@@ -337,7 +337,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 - (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
 {
 	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
-	[flasher setPosition:subentDict ? OOHPVectorFromObject(ObjectForKey(subentDict, "position"), kZeroHPVector) : kZeroHPVector];
+	[flasher setPosition:subentDict ? OOHPVectorFromPList(subentDict.find("position"), kZeroHPVector) : kZeroHPVector];
 	[self addSubEntity:flasher];
 	return YES;
 }
@@ -362,8 +362,8 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		return NO;
 	}
 	
-	subPosition = OOHPVectorFromObject(ObjectForKey(subentDict, "position"), kZeroHPVector);
-	subOrientation = OOQuaternionFromObject(ObjectForKey(subentDict, "orientation"), kIdentityQuaternion);
+	subPosition = OOHPVectorFromPList(subentDict.find("position"), kZeroHPVector);
+	subOrientation = OOQuaternionFromPList(subentDict.find("orientation"), kIdentityQuaternion);
 	
 	[subentity setPosition:subPosition];
 	[subentity setOrientation:subOrientation];

@@ -92,6 +92,7 @@ MA 02110-1301, USA.
 #import "OOJSEngineTimeManagement.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
 
 #define USEMASC 1
@@ -132,8 +133,8 @@ namespace {
 /*	Readers for a subentity / ship configuration held as an oo::PList (the Foundation sweep,
 	proposed ADR-0043): what oo::PListView(dict)'s array / string / get<HPVector> /
 	get<Quaternion> answered. A string is nil (nullopt) when the key is absent or holds neither a
-	string nor a number; vectors and quaternions go through OOCollectionExtractors' readers
-	(unmigrated), with their defaults for a missing key.
+	string nor a number; vectors and quaternions go through OOPListGameTypes' readers, with their
+	defaults for a missing key.
 */
 const oo::PList *ArrayForKey(const oo::PList &dict, std::string_view key)
 {
@@ -153,21 +154,21 @@ std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view 
 HPVector HPVectorForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return OOHPVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroHPVector);
+	return OOHPVectorFromPList(value, kZeroHPVector);
 }
 
 
 Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+	return OOQuaternionFromPList(value, kIdentityQuaternion);
 }
 
 
 // get<Vector>(key, kZeroVector) / at<Vector>(i, kZeroVector): nullptr is a missing value.
 Vector VectorFromPList(const oo::PList *value)
 {
-	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroVector);
+	return OOVectorFromPList(value, kZeroVector);
 }
 
 
@@ -216,11 +217,11 @@ std::string ExpandedText(const std::string &text)
 
 
 // get<oo::FuzzyBoolean>(key, fallback): YES with the probability the value gives, through
-// OOCollectionExtractors' reader (unmigrated), which also draws the random number.
+// OOFuzzyBooleanFromPList, which also draws the random number.
 BOOL FuzzyBooleanForKey(const oo::PList &dict, std::string_view key, float fallback = 0.0f)
 {
 	const oo::PList *value = dict.find(key);
-	return OOFuzzyBooleanFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, fallback);
+	return OOFuzzyBooleanFromPList(value, fallback);
 }
 
 
@@ -228,7 +229,7 @@ BOOL FuzzyBooleanForKey(const oo::PList &dict, std::string_view key, float fallb
 Vector VectorForKey(const oo::PList &dict, std::string_view key, Vector fallback)
 {
 	const oo::PList *value = dict.find(key);
-	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, fallback);
+	return OOVectorFromPList(value, fallback);
 }
 
 
@@ -6984,7 +6985,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 		}
 		condition["desired_range"] = oo::PList::singleReal(desired_range);	// floats, as oo_setFloat: stored them
 		condition["desired_speed"] = oo::PList::singleReal(desired_speed);
-		condition["destination"] = oo::PListFrom(OOPropertyListFromHPVector(_destination));	// as oo_setHPVector: stored it
+		condition["destination"] = OOPListFromHPVector(_destination);	// as oo_setHPVector: stored it
 		previousCondition = oo::PList(std::move(condition));
 		
 		_destination = [prox_ship position];

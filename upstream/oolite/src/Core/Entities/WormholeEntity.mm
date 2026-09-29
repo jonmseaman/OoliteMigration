@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #import "OOSystemDescriptionManager.h"
 #import "OOFoundationBridge.h"
 #import "OOLogging.h"
+#import "OOPListGameTypes.h"
 #include "oofnd/Log.hpp"
 
 #define OO_WORMHOLE_COLOR_BOOST	25.0
@@ -119,7 +120,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 			// Since this is new for 1.75.1, we must give it a default values as we could be loading an old savegame
 			estimated_arrival_time = dict.get<double>("estimated_arrival_time", arrival_time);
 			const oo::PList *positionNode = dict.find("position");
-			position = OOHPVectorFromObject(positionNode != nullptr ? oo::ObjectFromPList(*positionNode) : nil, kZeroHPVector);	// what PListView's get<HPVector> called
+			position = OOHPVectorFromPList(positionNode, kZeroHPVector);	// what PListView's get<HPVector> called
 			_misjump = dict.get<bool>("misjump", NO);
 		
 		
@@ -820,7 +821,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	myDict["expiry_time"] = oo::PList(expiry_time);
 	myDict["arrival_time"] = oo::PList(arrival_time);
 	myDict["estimated_arrival_time"] = oo::PList(estimated_arrival_time);
-	myDict["position"] = oo::PListFrom(OOPropertyListFromHPVector(position));	// -oo_setHPVector:
+	myDict["position"] = OOPListFromHPVector(position);	// -oo_setHPVector:
 	myDict["misjump"] = oo::PList(static_cast<bool>(_misjump));
 	
 	oo::PList::Array shipArray;
