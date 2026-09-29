@@ -1388,10 +1388,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",override_key.c_str()));
 		if (!OOEnforceStandards())
 		{
-			// the legacy script engine is not migrated yet: it gets the array it read before
-			[player runUnsanitizedScriptActions:oo::ObjectFromPList(*script_actions)
+			[player cxx_runUnsanitizedScriptActions:*script_actions
 							  allowingAIMethods:NO
-								withContextName:@"<witchspace script_actions>"
+								withContextName:"<witchspace script_actions>"
 									  forTarget:nil];
 		}
 	}
@@ -1742,7 +1741,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[self addEntity:a_station];		// STATUS_IN_FLIGHT, AI state GLOBAL
 		[a_station setStatus:STATUS_ACTIVE];	// For backward compatibility. Might not be needed.
 		[a_station setAllowsFastDocking:true];	// Main stations always allow fast docking.
-		[a_station setAllegiance:@"galcop"]; // Main station is galcop controlled
+		[a_station cxx_setAllegiance:"galcop"]; // Main station is galcop controlled
 	}
 	OO_DEBUG_POP_PROGRESS();
 	
@@ -1815,10 +1814,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (!OOEnforceStandards())
 		{
 			OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - legacy script_actions");
-			// the legacy script engine is not migrated yet: it gets the array it read before
-			[PLAYER runUnsanitizedScriptActions:oo::ObjectFromPList(*script_actions)
+			[PLAYER cxx_runUnsanitizedScriptActions:*script_actions
 							  allowingAIMethods:NO
-								withContextName:@"<system script_actions>"
+								withContextName:"<system script_actions>"
 									  forTarget:nil];
 			OO_DEBUG_POP_PROGRESS();
 		}
@@ -4101,8 +4099,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	conditions = shipInfo.get<oo::PList::Array>("conditions");
 	if (conditions == nullptr)  return YES;
 
-	// Check conditions (the legacy script engine is not migrated yet: it gets the array it read before)
-	return [PLAYER scriptTestConditions:oo::ObjectFromPList(*conditions)];
+	// Check conditions
+	return [PLAYER cxx_scriptTestConditions:*conditions];
 }
 
 
@@ -5885,7 +5883,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		else if ([entity isShip])
 		{
 			[[se getAI] setOwner:se];
-			[[se getAI] setState:@"GLOBAL"];
+			[[se getAI] cxx_setState:"GLOBAL"];
 			if ([entity isStation])
 			{
 				AddIfAbsent(allStations, (StationEntity *)entity);
@@ -8729,8 +8727,10 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		{	
 			if([self station]){
 				[[self station] setEquivalentTechLevel:[object intValue]];
-				[[self station] setLocalShipyard:[self shipsForSaleForSystem:systemID
-								withTL:[object intValue] atTime:[PLAYER clockTime]]];
+				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
+								withTL:[object intValue] atTime:[PLAYER clockTime]];
+				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
+				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
 			}
 		}
 		else if (key == "sun_color" || key == "star_count_multiplier" ||
@@ -9618,7 +9618,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
 			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
 
-			if (![player scriptTestConditions:(conditions != nullptr) ? oo::ObjectFromPList(*conditions) : nil])
+			if (![player cxx_scriptTestConditions:(conditions != nullptr) ? *conditions : oo::PList()])
 			{
 				RemoveKeyAt(keysForShips, si--);
 			}
@@ -10434,7 +10434,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		ShipEntity* se = my_ships[i];
 		[se doScriptEvent:event];
-		if (message.has_value())  [[se getAI] reactToMessage:oo::NSStringFrom(*message) context:@"global message"];
+		if (message.has_value())  [[se getAI] cxx_reactToMessage:*message context:"global message"];
 		[se release]; //	released
 	}
 }

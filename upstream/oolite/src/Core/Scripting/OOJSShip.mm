@@ -2559,9 +2559,9 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	if (target != nil)	// Not stale reference
 	{
 		[player setScriptTarget:thisEnt];
-		[player runUnsanitizedScriptActions:oo::ObjectFromPList(actions)
+		[player cxx_runUnsanitizedScriptActions:actions
 						  allowingAIMethods:YES
-							withContextName:oo::NSStringFrom(oo::str::format("<ship \"%s\" legacy actions>", oo::DescriptionOf([thisEnt name]).c_str()))
+							withContextName:oo::str::format("<ship \"%s\" legacy actions>", oo::DescriptionOf([thisEnt name]).c_str())
 								  forTarget:target];
 	}
 	
