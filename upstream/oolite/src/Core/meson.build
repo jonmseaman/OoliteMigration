@@ -92,7 +92,6 @@ oolite_sources += files(
     'ResourceManager.mm',
     'TextureStore.mm',
     'Universe.mm',
-    'Universe+FoundationBridge.mm',
     'legacy_random.c',
 )
 

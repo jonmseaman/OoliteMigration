@@ -859,18 +859,14 @@ OOINLINE Universe *OOGetUniverse(void)
 #define UNIVERSE OOGetUniverse()
 
 
-// Only for use with string literals, and only for looking up strings.
-// DESC() is deprecated in favour of OOExpandKey() except in known performance-
-// critical contexts.
-#define DESC(key)	(OOLookUpDescriptionPRIV(key ""))
-#define DESC_PLURAL(key,count)	(OOLookUpPluralDescriptionPRIV(key "", count))
-// Their std::string forms (proposed ADR-0053), the same rule: a string literal key, and the
-// description or the key itself when there is none. Callers move here; DESC goes with its bridge.
+// Only for use with string literals, and only for looking up strings: the description, or the
+// key itself when there is none (proposed ADR-0053). OO_DESC() is deprecated in favour of
+// cxx_OOExpandKey() except in known performance-critical contexts.
 #define OO_DESC(key)	(cxx_OOLookUpDescriptionPRIV(key ""))
 #define OO_DESC_PLURAL(key,count)	(cxx_OOLookUpPluralDescriptionPRIV(key "", count))
 
 // Not for direct use.
-// The lookups behind DESC() / DESC_PLURAL(): the description, or the key itself when there is none.
+// The lookups behind OO_DESC() / OO_DESC_PLURAL(): the description, or the key itself when there is none.
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);
 
@@ -896,14 +892,7 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 #include "oofnd/StdLib.hpp"
 
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.162): nullopt where the
-// Foundation forms (Universe+FoundationBridge.h; they forward to these) gave nil.
+// old Foundation forms gave nil.
 std::optional<std::string> cxx_OODisplayStringFromGovernmentID(OOGovernmentID government);
 std::optional<std::string> cxx_OODisplayStringFromEconomyID(OOEconomyID economy);
 #endif
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-3rb.220 (the Universe sweep oo-3rb.79, chunk 1), forwarding to the
-	cxx_ API above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
-	own sweep beads; the bridge goes in its own bead.
-*/
-#import "Universe+FoundationBridge.h"
