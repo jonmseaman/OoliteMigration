@@ -70,7 +70,7 @@ SOFTWARE.
 @end
 
 
-@interface NSObject(OOSoundChannelDelegate)
+@interface OOObject(OOSoundChannelDelegate)
 
 - (void)channel:(OOSoundChannel *)inChannel didFinishPlayingSound:(OOSound *)inSound;
 
