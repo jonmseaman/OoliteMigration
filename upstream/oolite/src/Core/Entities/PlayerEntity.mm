@@ -12257,7 +12257,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) setTrumbleValueFrom:(NSObject*) trumbleValue
+- (void) setTrumbleValueFrom:(id) trumbleValue
 {
 	BOOL info_failed = NO;
 	int trumbleHash;

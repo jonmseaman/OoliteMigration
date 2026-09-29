@@ -32,13 +32,14 @@ SOFTWARE.
 
 @class OODebugMonitor;
 
+#import "oofnd/objc/OOObject.h"
 #include "oofnd/PList.hpp"
 #include <optional>
 #include <string>
 
 // Interface for debugger.
 
-@protocol OODebuggerInterface <NSObject>
+@protocol OODebuggerInterface <OOObject>
 
 // Configuration and console text use oo::PList / std::string (proposed ADR-0043).
 

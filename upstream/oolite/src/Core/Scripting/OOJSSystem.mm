@@ -539,15 +539,15 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			switch (ooscript::idToInt32(propID))
 			{
 				case kSystem_name:
-					result = systemData.get<NSObject *>(KEY_NAME);	// -objectForKey:
+					result = systemData.get<id>(KEY_NAME);	// -objectForKey:
 					break;
 					
 				case kSystem_description:
-					result = systemData.get<NSObject *>(KEY_DESCRIPTION);	// -objectForKey:
+					result = systemData.get<id>(KEY_DESCRIPTION);	// -objectForKey:
 					break;
 					
 				case kSystem_inhabitantsDescription:
-					result = systemData.get<NSObject *>(KEY_INHABITANTS);	// -objectForKey:
+					result = systemData.get<id>(KEY_INHABITANTS);	// -objectForKey:
 					break;
 					
 				case kSystem_government:
