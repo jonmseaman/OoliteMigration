@@ -2938,7 +2938,7 @@ static int shipsFound;
 	oo::PList::Dict properties;
 	properties["ship"] = oo::PListObject(self);
 	properties["equipmentKey"] = oo::PList(eq_key);
-	OOScript *s = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:oo::ObjectFromPList(oo::PList(std::move(properties)))];
+	OOScript *s = [OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList(std::move(properties))];
 	if (s == nil) return NO;
 
 	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));

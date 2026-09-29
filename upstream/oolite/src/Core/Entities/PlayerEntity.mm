@@ -2147,8 +2147,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (![gc inFullScreenMode] && stopOnError)	[gc startAnimationTimer];
 	
 	// Load locale script before any regular scripts.
-	[OOJSScript jsScriptFromFileNamed:@"oolite-locale-functions.js"
-						   properties:nil];
+	[OOJSScript cxx_jsScriptFromFileNamed:"oolite-locale-functions.js"
+						   properties:oo::PList()];
 	
 	[[GameController sharedController] logProgress:DESC(@"loading-scripts")];
 	
@@ -13061,7 +13061,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		return cscript;
 	}
-	cscript = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:nil];
+	cscript = [OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList()];
 	if (cscript != nil)
 	{
 		// storing it in here retains it
