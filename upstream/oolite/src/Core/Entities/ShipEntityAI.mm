@@ -872,7 +872,7 @@ using ooscript::Context;
 
 - (void) randomPauseAI:(NSString *)intervalString
 {
-	NSArray*	tokens = ScanTokensFromString(intervalString);
+	NSArray*	tokens = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(intervalString)));
 	double start, end;
 	
 	if ([tokens count] != 2)
@@ -2313,14 +2313,14 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithAnyPrimaryRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithPredicate:HasPrimaryRoleInSetPredicate parameter:set];
 }
 
 
 - (void) scanForNearestShipHavingAnyRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithPredicate:HasRoleInSetPredicate parameter:set];
 }
 
@@ -2346,14 +2346,14 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithoutAnyPrimaryRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRoleInSetPredicate parameter:set];
 }
 
 
 - (void) scanForNearestShipNotHavingAnyRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithNegatedPredicate:HasRoleInSetPredicate parameter:set];
 }
 
@@ -2465,7 +2465,7 @@ using ooscript::Context;
 
 - (void) setCoordinates:(NSString *)system_x_y_z
 {
-	NSArray*	tokens = ScanTokensFromString(system_x_y_z);
+	NSArray*	tokens = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(system_x_y_z)));
 	NSString*	systemString = nil;
 	NSString*	xString = nil;
 	NSString*	yString = nil;
@@ -2639,7 +2639,7 @@ using ooscript::Context;
 // Send own ship script a message.
 - (void) sendScriptMessage:(NSString *)message
 {
-	NSArray *components = ScanTokensFromString(message);
+	NSArray *components = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(message)));
 	
 	if ([components count] == 1)
 	{
