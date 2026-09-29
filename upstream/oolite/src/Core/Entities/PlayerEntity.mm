@@ -182,13 +182,13 @@ unsigned char CoordinateAt(const std::vector<std::string> &tokens, std::size_t i
 }
 
 
-// OOExpandKeyWithSeed(seed, key, ...) with its arguments as a Dict (ints as PList::signedInteger,
-// NSUIntegers as PList::unsignedInteger, strings as std::string); no arguments passes nil, as the
-// macro did. Exemplar: OOShipLibraryDescriptions.mm ExpandCategoryKey.
+// cxx_OOExpandKeyWithSeed(seed, key, ...) with its arguments as a Dict (ints as PList::signedInteger,
+// NSUIntegers as PList::unsignedInteger, strings as std::string); no arguments passes the null PList,
+// as the macro did; nothing expanded is "". Exemplar: OOShipLibraryDescriptions.mm ExpandCategoryKey.
 std::string ExpandKeyWithSeed(Random_Seed seed, const std::string &key, const oo::PList::Dict &args)
 {
-	return oo::StdString(OOExpandDescriptionString(seed, oo::NSStringFrom(key),
-		args.empty() ? nil : oo::ObjectFromPList(oo::PList(args)), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(seed, key, args.empty() ? oo::PList() : oo::PList(args),
+		oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string());
 }
 
 
@@ -2190,7 +2190,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// make sure extraGuiScreenKeys is clear
 	extraGuiScreenKeys.clear();
 
-	[[GameController sharedController] logProgress:OOExpandKeyRandomized(@"loading-miscellany")];
+	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 	
 	// if there is cargo remaining from previously (e.g. a game restart), remove it
 	if ([self cargoList] != nil)
@@ -4017,7 +4017,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	int seconds = round(witchspaceCountdown);
 	if (galactic_witchjump)
 	{
-		[UNIVERSE displayCountdownMessage:OOExpandKey(@"witch-galactic-in-x-seconds", seconds) forCount:1.0];
+		[UNIVERSE cxx_displayCountdownMessage:cxx_OOExpandKey("witch-galactic-in-x-seconds", seconds) forCount:1.0];
 	}
 	else
 	{
@@ -4227,14 +4227,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) showGameOver
 {
 	[hud cxx_resetGuis:oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) } })];
-	const std::string scoreMS = oo::str::formatRuntime(oo::StdString(OOExpandKey(@"gameoverscreen-score-@")),
+	const std::string scoreMS = oo::str::formatRuntime(cxx_OOExpandKey("gameoverscreen-score-@").value_or(std::string()),
 							{ cxx_KillCountToRatingAndKillString(ship_kills) });
 	
-	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-game-over") forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:cxx_OOExpandKey("gameoverscreen-game-over") forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:oo::NSStringFrom(scoreMS) forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-press-space") forCount:kDeadResetTime];
+	[UNIVERSE cxx_displayMessage:cxx_OOExpandKey("gameoverscreen-press-space") forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@" " forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
 	[self resetShotTime];
@@ -5786,7 +5786,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([[self hud] mfdCount] == 0) return;
 	activeMFD = (activeMFD + 1) % [[self hud] mfdCount];
 	NSUInteger mfdID = activeMFD + 1;
-	[UNIVERSE addMessage:OOExpandKey(@"mfd-N-selected", mfdID) forCount:3.0 ];
+	[UNIVERSE cxx_addMessage:cxx_OOExpandKey("mfd-N-selected", mfdID) forCount:3.0 ];
 	ooscript::Context context = OOJSAcquireContext();
 	ShipScriptEvent(context, self, "selectedMFDChanged", ooscript::int32Value(activeMFD));
 	OOJSRelinquishContext(context);
@@ -5805,7 +5805,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		activeMFD = (activeMFD - 1);
 	}
 	NSUInteger mfdID = activeMFD + 1;
-	[UNIVERSE addMessage:OOExpandKey(@"mfd-N-selected", mfdID) forCount:3.0 ];
+	[UNIVERSE cxx_addMessage:cxx_OOExpandKey("mfd-N-selected", mfdID) forCount:3.0 ];
 	ooscript::Context context = OOJSAcquireContext();
 	ShipScriptEvent(context, self, "selectedMFDChanged", ooscript::int32Value(activeMFD));
 	OOJSRelinquishContext(context);
@@ -6869,7 +6869,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	if (flightSpeed > 4.0 * maxFlightSpeed)
 	{
-		[UNIVERSE addMessage:OOExpandKey(@"hold-locked") forCount:3.0];
+		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("hold-locked") forCount:3.0];
 		return nil;
 	}
 
@@ -7041,7 +7041,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (score > 9)
 	{
-		[UNIVERSE addDelayedMessage:OOExpandKey(@"bounty-awarded", score, credits) forCount:6 afterDelay:0.15];
+		[UNIVERSE cxx_addDelayedMessage:cxx_OOExpandKey("bounty-awarded", score, credits) forCount:6 afterDelay:0.15];
 	}
 	
 	if (killAward)
@@ -7566,7 +7566,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		//dont allow player to hyperspace to current location.
 		//Note interstellar space will have a system_seed place we came from
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:OOExpandKey(@"witch-no-target") forCount: 4.5];
+		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("witch-no-target") forCount: 4.5];
 		if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 		{
 			[self playWitchjumpInsufficientFuel];
@@ -8379,7 +8379,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			if (unprimeEq)
 			{
-				[UNIVERSE addMessage:OOExpandKey(@"equipment-primed-none") forCount:2.0];
+				[UNIVERSE cxx_addMessage:cxx_OOExpandKey("equipment-primed-none") forCount:2.0];
 			}
 			else
 			{
@@ -8682,7 +8682,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		std::optional<std::string>	system_desc = StringForKey(infoSystemData, oo::StdString(KEY_DESCRIPTION));
 
 		std::string	populationDesc =	StringForKey(infoSystemData, oo::StdString(KEY_POPULATION_DESC))
-											.value_or(oo::StdString(OOExpandKeyWithSeed(kNilRandomSeed, @"sysdata-pop-value", population)));
+											.value_or(cxx_OOExpandKeyWithSeed(kNilRandomSeed, "sysdata-pop-value", population).value_or(std::string()));
 
 		if (sunGoneNova)
 		{
@@ -8691,11 +8691,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			radius = 0;
 			techLevel = 0;
 
-			government_desc = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-government"));
-			economy_desc = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-economy"));
-			inhabitants = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-inhabitants"));
+			government_desc = cxx_OOExpandKeyWithSeed(infoSystemRandomSeed, "nova-system-government").value_or(std::string());
+			economy_desc = cxx_OOExpandKeyWithSeed(infoSystemRandomSeed, "nova-system-economy").value_or(std::string());
+			inhabitants = cxx_OOExpandKeyWithSeed(infoSystemRandomSeed, "nova-system-inhabitants").value_or(std::string());
 			system_desc = ExpandKeyWithSeed(infoSystemRandomSeed, "nova-system-description", { { "system", oo::PList(infoSystemName) } });
-			populationDesc = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"sysdata-pop-value", population));
+			populationDesc = cxx_OOExpandKeyWithSeed(infoSystemRandomSeed, "sysdata-pop-value", population).value_or(std::string());
 		}
 
 		
@@ -8708,12 +8708,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		else
 		{
-			[gui cxx_setTitle:oo::OptionalString(OOExpandKey(@"sysdata-data-on-system-no-name"))];
+			[gui cxx_setTitle:cxx_OOExpandKey("sysdata-data-on-system-no-name")];
 		}
 
 		if (concealment >= OO_SYSTEMCONCEALMENT_NODATA)
 		{
-			OOGUIRow i = [gui addLongText:OOExpandKey(@"sysdata-data-on-system-no-data") startingAtRow:15 align:GUI_ALIGN_LEFT];
+			OOGUIRow i = [gui cxx_addLongText:cxx_OOExpandKey("sysdata-data-on-system-no-data") startingAtRow:15 align:GUI_ALIGN_LEFT];
 			missionTextRow = i;
 			for (i-- ; i > 14 ; --i)
 			{
@@ -8946,12 +8946,12 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		[gui refreshStarChart];
 		//[gui setText:targetSystemName forRow:19];
 		// distance-f & est-travel-time-f are identical between short & long range charts in standard Oolite, however can be alterered separately via OXPs
-		//[gui setText:OOExpandKey(@"short-range-chart-distance", distance) forRow:20];
+		//[gui cxx_setText:cxx_OOExpandKey("short-range-chart-distance", distance) forRow:20];
 		//std::string travelTimeRow;
 		//if ([self hasHyperspaceMotor] && distance > 0.0 && distance * 10.0 <= fuel)
 		//{
 		//	double time = estimatedTravelTime;
-		//	travelTimeRow = OOExpandKey(@"short-range-chart-est-travel-time", time);
+		//	travelTimeRow = cxx_OOExpandKey("short-range-chart-est-travel-time", time);
 		//}
 		//[gui setText:travelTimeRow forRow:21];
 		if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART)
@@ -9100,7 +9100,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			}
 				
 			int brightnessValue = brightnesses.at<int>(static_cast<std::size_t>(brightnessIdx));
-			const std::string maxBrightnessString = oo::StdString(OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue));
+			const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 
 			[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)];
@@ -9238,7 +9238,7 @@ std::string SliderString(NSInteger amountIn20ths)
 #endif
 
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
-		const std::string shaderEffectsOptionsString = oo::StdString(OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel));
+		const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
 		[gui cxx_setText:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), shaderEffectsOptionsString, {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
 		if (![[OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 		{
@@ -9592,7 +9592,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui cxx_setTitle:oo::OptionalString(DESC(@"equip-title"))];
 		
 		[gui setColor:[gui colorFromSetting:kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
-		[gui cxx_setText:oo::StdString(OOExpandKey(@"equip-cash-value", credits)) forRow:GUI_ROW_EQUIPMENT_CASH];
+		[gui cxx_setText:cxx_OOExpandKey("equip-cash-value", credits).value_or(std::string()) forRow:GUI_ROW_EQUIPMENT_CASH];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -10212,7 +10212,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				}
 				messageToDisplay = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oxp-containing-messages-list", { { "messageSourceList", oo::PList(messageSourceList) } });
 			} else {
-				messageToDisplay = oo::OptionalString(OOExpandKey(@"oxp-containing-messages-found"));
+				messageToDisplay = cxx_OOExpandKey("oxp-containing-messages-found");
 			}
 
 			OOGUIRow ms_start = msgLine;
@@ -11216,7 +11216,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		else
 		{
 			// Witchspace
-			return oo::OptionalString(OOExpandKey(@"commodity-market"));
+			return cxx_OOExpandKey("commodity-market");
 		}
 	}
 	else
@@ -11397,9 +11397,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 		// filter sort info
 		{
-			const std::string filterMode = oo::StdString(OOExpandKey(OOExpand(@"oolite-market-filter-[marketFilterMode]", marketFilterMode)));
+			const std::string filterMode = cxx_OOExpandKey(cxx_OOExpand("oolite-market-filter-[marketFilterMode]", marketFilterMode).value_or(std::string())).value_or(std::string());
 			const std::string filterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-filter-line", { { "filterMode", oo::PList(filterMode) } });
-			const std::string sortMode = oo::StdString(OOExpandKey(OOExpand(@"oolite-market-sorter-[marketSorterMode]", marketSorterMode)));
+			const std::string sortMode = cxx_OOExpandKey(cxx_OOExpand("oolite-market-sorter-[marketSorterMode]", marketSorterMode).value_or(std::string())).value_or(std::string());
 			const std::string sorterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-sorter-line", { { "sortMode", oo::PList(sortMode) } });
 			[gui cxx_setArray:{ filterText, "", sorterText } forRow:GUI_ROW_MARKET_END];
 		}
@@ -11534,7 +11534,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	OOCargoQuantity currentCargo = current_cargo;
 	OOCargoQuantity cargoCapacity = [self maxAvailableCargoSpace];
-	[gui cxx_setText:oo::StdString(OOExpandKey(@"market-cash-and-load", credits, currentCargo, cargoCapacity)) forRow:GUI_ROW_MARKET_CASH];
+	[gui cxx_setText:cxx_OOExpandKey("market-cash-and-load", credits, currentCargo, cargoCapacity).value_or(std::string()) forRow:GUI_ROW_MARKET_CASH];
 	[gui setColor:[gui colorFromSetting:kGuiMarketCashColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_CASH];
 }
 
@@ -12066,7 +12066,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	// one of the fined-@-credits strings includes expansion tokens
-	const std::string fined_message = oo::str::formatRuntime(oo::StdString(OOExpandKey(@"fined-@-credits")), { cxx_OOCredits(fine) });
+	const std::string fined_message = oo::str::formatRuntime(cxx_OOExpandKey("fined-@-credits").value_or(std::string()), { cxx_OOCredits(fine) });
 	[self cxx_addMessageToReport:fined_message];
 	[UNIVERSE forceWitchspaceEntries];
 	ship_clock_adjust += 24 * 3600;	// take up a day
@@ -12401,11 +12401,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	if (0.0f != refreshRate)
 	{
-		return oo::OptionalString(OOExpandKey(@"gameoptions-fullscreen-with-refresh-rate", width, height, refreshRate));
+		return cxx_OOExpandKey("gameoptions-fullscreen-with-refresh-rate", width, height, refreshRate);
 	}
 	else
 	{
-		return oo::OptionalString(OOExpandKey(@"gameoptions-fullscreen", width, height));
+		return cxx_OOExpandKey("gameoptions-fullscreen", width, height);
 	}
 }
 
