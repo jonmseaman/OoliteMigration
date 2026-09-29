@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 	(the commodity keys); each good's definition is an oo::PList dictionary (trade-goods.plist
 	data, as OOCommodities and commodity scripts build it). -goods returns std::vector<std::string>;
 	-massUnitForGood: takes const std::string &; -dictionaryForScripting hands JavaScript an
-	Objective-C dictionary.
+	oo::PList dictionary of the definitions (bead oo-qps.52).
 */
 @interface OOCommodityMarket: OOObject
 {
@@ -51,7 +51,7 @@ MA 02110-1301, USA.
 - (void) cxx_setGood:(const std::string &)key withInfo:(const oo::PList &)info;
 
 - (std::vector<std::string>) goods;	// good keys, in sort_order
-- (id) dictionaryForScripting;	// an immutable dictionary of the definitions, for JavaScript
+- (oo::PList) dictionaryForScripting;	// a dictionary of the definitions, for JavaScript
 
 - (BOOL) cxx_setPrice:(OOCreditsQuantity)price forGood:(const std::string &)good;
 - (BOOL) cxx_setQuantity:(OOCargoQuantity)quantity forGood:(const std::string &)good;

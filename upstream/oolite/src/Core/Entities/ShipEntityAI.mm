@@ -2333,15 +2333,15 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithAnyPrimaryRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	// an Objective-C set of the role strings, as the predicate reads it
-	[self scanForNearestShipWithPredicate:HasPrimaryRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
+	std::vector<std::string> roles = oo::str::tokens(oo::StdString(scanRoles));	// the predicate reads a std::vector<std::string>
+	[self scanForNearestShipWithPredicate:HasPrimaryRoleInSetPredicate parameter:&roles];
 }
 
 
 - (void) scanForNearestShipHavingAnyRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	// an Objective-C set of the role strings, as the predicate reads it
-	[self scanForNearestShipWithPredicate:HasRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
+	std::vector<std::string> roles = oo::str::tokens(oo::StdString(scanRoles));	// the predicate reads a std::vector<std::string>
+	[self scanForNearestShipWithPredicate:HasRoleInSetPredicate parameter:&roles];
 }
 
 
@@ -2368,15 +2368,15 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithoutAnyPrimaryRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	// an Objective-C set of the role strings, as the predicate reads it
-	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
+	std::vector<std::string> roles = oo::str::tokens(oo::StdString(scanRoles));	// the predicate reads a std::vector<std::string>
+	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRoleInSetPredicate parameter:&roles];
 }
 
 
 - (void) scanForNearestShipNotHavingAnyRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	// an Objective-C set of the role strings, as the predicate reads it
-	[self scanForNearestShipWithNegatedPredicate:HasRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
+	std::vector<std::string> roles = oo::str::tokens(oo::StdString(scanRoles));	// the predicate reads a std::vector<std::string>
+	[self scanForNearestShipWithNegatedPredicate:HasRoleInSetPredicate parameter:&roles];
 }
 
 

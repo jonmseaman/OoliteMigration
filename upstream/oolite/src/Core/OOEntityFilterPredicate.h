@@ -76,8 +76,8 @@ BOOL IsVisualEffectPredicate(Entity *entity, void *parameter);					// Parameter:
 // These predicates assume their parameter is a ShipEntity.
 BOOL HasRolePredicate(Entity *ship, void *parameter);					// Parameter: a std::string (null: none)
 BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter);			// Parameter: a std::string (null: none)
-BOOL HasRoleInSetPredicate(Entity *ship, void *parameter);				// Parameter: an Objective-C set of role strings
-BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter);		// Parameter: an Objective-C set of role strings
+BOOL HasRoleInSetPredicate(Entity *ship, void *parameter);				// Parameter: a std::vector<std::string> of role strings
+BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter);		// Parameter: a std::vector<std::string> of role strings
 BOOL IsHostileAgainstTargetPredicate(Entity *ship, void *parameter);	// Parameter: ShipEntity
 
 #ifdef __cplusplus

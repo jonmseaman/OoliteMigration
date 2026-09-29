@@ -219,7 +219,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 - (oo::PList) cxx_localMarketForScripting
 {
-	return oo::PListFrom([[self localMarket] dictionaryForScripting]);
+	return [[self localMarket] dictionaryForScripting];
 }
 
 

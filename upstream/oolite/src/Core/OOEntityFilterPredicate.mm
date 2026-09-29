@@ -173,17 +173,22 @@ BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter)
 
 BOOL HasRoleInSetPredicate(Entity *ship, void *parameter)
 {
-	return [[(ShipEntity *)ship roleSet] intersectsSet:(id)parameter];	// an Objective-C set of strings; -intersectsSet: is a shared selector (proposed ADR-0043)
+	// parameter: the role strings (a std::vector<std::string>), as the callers pass it. YES if the
+	// ship's role set has any of them, as -[OORoleSet intersectsSet:] of a set of them tested (the
+	// callers' roles are whitespace tokens, never empty; a nil role set has none).
+	const std::vector<std::string> &roles = *static_cast<const std::vector<std::string> *>(parameter);
+	OORoleSet *roleSet = [(ShipEntity *)ship roleSet];
+	return std::any_of(roles.begin(), roles.end(), [roleSet](const std::string &role) { return [roleSet hasRole:role]; });
 }
 
 
 BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter)
 {
-	// parameter: an Objective-C set of role strings, as the callers pass it; membership by string
-	// value, as -containsObject: tested it. A nil primary role is in no set.
+	// parameter: the role strings (a std::vector<std::string>), as the callers pass it; membership
+	// by string value, as -containsObject: tested it. A nil primary role is in no set.
 	const std::optional<std::string> primaryRole = [(ShipEntity *)ship cxx_primaryRole];
 	if (!primaryRole.has_value())  return NO;
-	const std::vector<std::string> roles = oo::StringsFrom((id)parameter);
+	const std::vector<std::string> &roles = *static_cast<const std::vector<std::string> *>(parameter);
 	return std::find(roles.begin(), roles.end(), *primaryRole) != roles.end();
 }
 
