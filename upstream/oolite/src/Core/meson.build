@@ -31,7 +31,6 @@ oolite_sources += files(
     'OOCommodities.mm',
     'OOCommodities+FoundationBridge.mm',
     'OOCommodityMarket.mm',
-    'OOCommodityMarket+FoundationBridge.mm',
     'OOConstToString.mm',
     'OOConvertCubeMapToLatLong.mm',
     'OOConvertSystemDescriptions.mm',
