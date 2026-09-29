@@ -87,55 +87,55 @@ typedef enum
 
 /*-----------------------------------------------------*/
 
-- (id) mission_string;	// called by name (ADR-0043 item 21)
-- (id) status_string;	// called by name (ADR-0043 item 21)
-- (id) gui_screen_string;	// called by name (ADR-0043 item 21)
-- (id) galaxy_number;	// called by name (ADR-0043 item 21)
-- (id) planet_number;	// called by name (ADR-0043 item 21)
-- (id) score_number;	// called by name (ADR-0043 item 21)
-- (id) credits_number;	// called by name (ADR-0043 item 21)
-- (id) scriptTimer_number;	// called by name (ADR-0043 item 21)
-- (id) shipsFound_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) mission_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) status_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) gui_screen_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) galaxy_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) planet_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) score_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) credits_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) scriptTimer_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) shipsFound_number;	// called by name (ADR-0043 item 21)
 
-- (id) d100_number;	// called by name (ADR-0043 item 21)
-- (id) pseudoFixedD100_number;	// called by name (ADR-0043 item 21)
-- (id) d256_number;	// called by name (ADR-0043 item 21)
-- (id) pseudoFixedD256_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) d100_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) pseudoFixedD100_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) d256_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) pseudoFixedD256_number;	// called by name (ADR-0043 item 21)
 
-- (id) clock_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
-- (id) clock_secs_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
-- (id) clock_mins_number;	// called by name (ADR-0043 item 21); returns the game time in minutes
-- (id) clock_hours_number;	// called by name (ADR-0043 item 21); returns the game time in hours
-- (id) clock_days_number;	// called by name (ADR-0043 item 21); returns the game time in days
+- (oo::PList) clock_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
+- (oo::PList) clock_secs_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
+- (oo::PList) clock_mins_number;	// called by name (ADR-0043 item 21); returns the game time in minutes
+- (oo::PList) clock_hours_number;	// called by name (ADR-0043 item 21); returns the game time in hours
+- (oo::PList) clock_days_number;	// called by name (ADR-0043 item 21); returns the game time in days
 
-- (id) fuelLevel_number;	// called by name (ADR-0043 item 21); returns the fuel level in LY
+- (oo::PList) fuelLevel_number;	// called by name (ADR-0043 item 21); returns the fuel level in LY
 
-- (id) dockedAtMainStation_bool;	// called by name (ADR-0043 item 21)
-- (id) foundEquipment_bool;	// called by name (ADR-0043 item 21)
+- (oo::PList) dockedAtMainStation_bool;	// called by name (ADR-0043 item 21)
+- (oo::PList) foundEquipment_bool;	// called by name (ADR-0043 item 21)
 
-- (id) sunWillGoNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
-- (id) sunGoneNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
+- (oo::PList) sunWillGoNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
+- (oo::PList) sunGoneNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
 
-- (id) missionChoice_string;	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
-- (id) missionKeyPress_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) missionChoice_string;	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
+- (oo::PList) missionKeyPress_string;	// called by name (ADR-0043 item 21)
 
-- (id) dockedTechLevel_number;	// called by name (ADR-0043 item 21)
-- (id) dockedStationName_string;	// called by name (ADR-0043 item 21); returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise
+- (oo::PList) dockedTechLevel_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) dockedStationName_string;	// called by name (ADR-0043 item 21); returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise
 
-- (id) systemGovernment_number;	// called by name (ADR-0043 item 21)
-- (id) systemGovernment_string;	// called by name (ADR-0043 item 21)
-- (id) systemEconomy_number;	// called by name (ADR-0043 item 21)
-- (id) systemEconomy_string;	// called by name (ADR-0043 item 21)
-- (id) systemTechLevel_number;	// called by name (ADR-0043 item 21)
-- (id) systemPopulation_number;	// called by name (ADR-0043 item 21)
-- (id) systemProductivity_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemGovernment_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemGovernment_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemEconomy_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemEconomy_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemTechLevel_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemPopulation_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) systemProductivity_number;	// called by name (ADR-0043 item 21)
 
-- (id) commanderName_string;	// called by name (ADR-0043 item 21)
-- (id) commanderRank_string;	// called by name (ADR-0043 item 21)
-- (id) commanderShip_string;	// called by name (ADR-0043 item 21)
-- (id) commanderShipDisplayName_string;	// called by name (ADR-0043 item 21)
-- (id) commanderLegalStatus_string;	// called by name (ADR-0043 item 21)
-- (id) commanderLegalStatus_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderName_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderRank_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderShip_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderShipDisplayName_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderLegalStatus_string;	// called by name (ADR-0043 item 21)
+- (oo::PList) commanderLegalStatus_number;	// called by name (ADR-0043 item 21)
 
 /*-----------------------------------------------------*/
 
@@ -183,7 +183,7 @@ typedef enum
 - (void) addShipsAt:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
 - (void) addShipsAtPrecisely:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
 - (void) addShipsWithinRadius:(const std::string &)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
-- (void) spawnShip:(id)ship_key;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) spawnShip:(const std::string &)ship_key;	// called by name (ADR-0055 item 5)
 - (void) set:(const std::string &)missionvariable_value;	// called by name (ADR-0043 item 21)
 - (void) reset:(const std::string &)missionvariable;	// called by name (ADR-0043 item 21)
 /*
@@ -225,13 +225,13 @@ typedef enum
 - (void) removeMissionDestination:(const std::string &)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
 
 - (void) showShipModel:(const std::string &)shipKey;	// called by name (ADR-0043 item 21)
-- (void) setMissionMusic:(id)value;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) setMissionMusic:(const std::string &)value;	// called by name (ADR-0043 item 21)
 
 - (std::optional<std::string>) cxx_missionTitle;
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
 
 - (void) setFuelLeak:(const std::string &)value;	// called by name (ADR-0043 item 21)
-- (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
+- (oo::PList) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
 - (void) setSunNovaIn:(const std::string &)time_value;	// called by name (ADR-0043 item 21)
 - (void) launchFromStation;
 - (void) blowUpStation;
