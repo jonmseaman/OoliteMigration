@@ -296,17 +296,16 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 {
 	id							result = nil;
 
-	if (klass == Nil)  klass = [NSObject class];
-
+	// No class given: any stored object will do (nil still falls through).
 	// The stored objects: an Object node gives back the same object, any other node an equal one.
 	const oo::PList *overrideValue = _configOverrides.find(key);
 	result = (overrideValue != nullptr) ? oo::ObjectFromPList(*overrideValue) : nil;
-	if (![result isKindOfClass:klass] && result != [OONull null])
+	if ((result == nil || (klass != Nil && ![result isKindOfClass:klass])) && result != [OONull null])
 	{
 		const oo::PList *oxpValue = _configFromOXPs.find(key);
 		result = (oxpValue != nullptr) ? oo::ObjectFromPList(*oxpValue) : nil;
 	}
-	if (![result isKindOfClass:klass] && result != [OONull null])  result = [[value retain] autorelease];
+	if ((result == nil || (klass != Nil && ![result isKindOfClass:klass])) && result != [OONull null])  result = [[value retain] autorelease];
 	if (result == [OONull null])  result = nil;
 
 	return result;
