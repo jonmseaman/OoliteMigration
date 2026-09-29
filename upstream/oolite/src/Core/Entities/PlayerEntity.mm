@@ -2161,7 +2161,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[OOJSScript cxx_jsScriptFromFileNamed:"oolite-locale-functions.js"
 						   properties:oo::PList()];
 	
-	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"loading-scripts"))];
+	[[GameController sharedController] cxx_logProgress:OO_DESC("loading-scripts")];
 	
 	[UNIVERSE setBlockJSPlayerShipProps:NO];	// full access to player.ship properties!
 	worldScripts.clear();
@@ -2985,7 +2985,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		else
 		{
 			ecm_in_operation = NO;
-			[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"ecm-out-of-juice")) forCount:3.0];
+			[UNIVERSE cxx_addMessage:OO_DESC("ecm-out-of-juice") forCount:3.0];
 		}
 		if ([UNIVERSE getTime] > ecm_start_time + ECM_DURATION)
 		{
@@ -3104,7 +3104,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				fuel_accumulator -= 1.0f;
 				[self doScriptEvent:OOJSID("shipScoopedFuel")];
 			}
-			[UNIVERSE cxx_displayCountdownMessage:oo::StdString(DESC(@"fuel-scoop-active")) forCount:1.0];
+			[UNIVERSE cxx_displayCountdownMessage:OO_DESC("fuel-scoop-active") forCount:1.0];
 		}
 	}
 	
@@ -3190,7 +3190,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[self setStatus:STATUS_DEAD];
 			//[self playGameOver];	// no death explosion sounds for player pods
 			// no shipDied events for player pods, either
-			[UNIVERSE cxx_displayMessage:oo::StdString(DESC(@"gameoverscreen-escape-pod")) forCount:kDeadResetTime];
+			[UNIVERSE cxx_displayMessage:OO_DESC("gameoverscreen-escape-pod") forCount:kDeadResetTime];
 			[UNIVERSE cxx_displayMessage:"" forCount:kDeadResetTime];
 			[self showGameOver];
 		}
@@ -3217,7 +3217,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (hyperspeed_locked)
 		{
 			[self playJumpMassLocked];
-			[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"jump-mass-locked")) forCount:4.5];
+			[UNIVERSE cxx_addMessage:OO_DESC("jump-mass-locked") forCount:4.5];
 			hyperspeed_engaged = NO;
 		}
 	}
@@ -3320,7 +3320,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	ShipEntity *primeTarget = [self primaryTarget];
 	if (primeTarget && HPdistance2([primeTarget position], [self position]) > SCANNER_MAX_RANGE2 && !autopilot_engaged)
 	{
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"target-lost")) forCount:3.0];
+		[UNIVERSE cxx_addMessage:OO_DESC("target-lost") forCount:3.0];
 		[self removeTarget:primeTarget];
 	}
 	// compass sanity check and update target for changed mode
@@ -4076,7 +4076,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		else
 		{
-			if ([UNIVERSE inInterstellarSpace])  [UNIVERSE cxx_addMessage:oo::StdString(DESC(@"witch-engine-malfunction")) forCount:3.0]; // if sun gone nova, print nothing
+			if ([UNIVERSE inInterstellarSpace])  [UNIVERSE cxx_addMessage:OO_DESC("witch-engine-malfunction") forCount:3.0]; // if sun gone nova, print nothing
 		}
 		
 		[self setStatus:STATUS_IN_FLIGHT];
@@ -4299,7 +4299,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			if (!suppressTargetLost)
 			{
-				[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"target-lost")) forCount:3.0];
+				[UNIVERSE cxx_addMessage:OO_DESC("target-lost") forCount:3.0];
 				[self playTargetLost];
 				[self noteLostTarget];
 			}
@@ -4322,7 +4322,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			if ([missile_entity[i] primaryTarget] != nil &&
 					![self isValidTarget:[missile_entity[i] primaryTarget]])
 			{
-				[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"target-lost")) forCount:3.0];
+				[UNIVERSE cxx_addMessage:OO_DESC("target-lost") forCount:3.0];
 				[self playTargetLost];
 				[missile_entity[i] removeTarget:nil];
 				if (i == activeMissile)
@@ -4382,7 +4382,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				if([self clockTimeAdjusted] > [wh scanTime] + 4)
 				{
 					[wh setScanInfo:WH_SCANINFO_ARRIVAL_TIME];
-					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-arrival-time-computed-@")),
+					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(OO_DESC("wormhole-arrival-time-computed-@"),
 											   { cxx_ClockToString([wh estimatedArrivalTime], NO) }) forCount:5.0];
 				}
 				break;
@@ -4390,7 +4390,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				if ([self clockTimeAdjusted] > [wh scanTime] + 7)
 				{
 					[wh setScanInfo:WH_SCANINFO_DESTINATION];
-					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-destination-computed-@")),
+					[UNIVERSE cxx_addCommsMessage:oo::str::formatRuntime(OO_DESC("wormhole-destination-computed-@"),
 											   { [UNIVERSE cxx_getSystemName:[wh destination]].value_or("(null)") }) forCount:5.0];
 				}
 				break;
@@ -5437,7 +5437,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	case COMPASS_MODE_STATION:
 		return [[UNIVERSE station] displayName];
 	case COMPASS_MODE_TARGET:
-		return oo::StdString(DESC(@"oolite-beacon-label-target"));
+		return OO_DESC("oolite-beacon-label-target");
 	}
 	return "";
 }
@@ -5629,7 +5629,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if (target_entity == nil)
 	{
-		result = oo::StdString(DESC(@"no-target-string"));
+		result = OO_DESC("no-target-string");
 	}
 
 	if ([target_entity respondsToSelector:@selector(identFromShip:)])
@@ -5637,7 +5637,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		result = [(ShipEntity*)target_entity identFromShip:self];
 	}
 
-	if (!result.has_value())  result = oo::StdString(DESC(@"unknown-target"));
+	if (!result.has_value())  result = OO_DESC("unknown-target");
 	
 	return result;
 }
@@ -6002,7 +6002,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ((message == "HOLD_FULL"))
 	{
 		[self playHoldFull];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"hold-full")) forCount:4.5];
+		[UNIVERSE cxx_addMessage:OO_DESC("hold-full") forCount:4.5];
 	}
 
 	if ((message == "INCOMING_MISSILE"))
@@ -6015,12 +6015,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[self playIncomingMissile:kZeroVector];
 		}
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"incoming-missile")) forCount:4.5];
+		[UNIVERSE cxx_addMessage:OO_DESC("incoming-missile") forCount:4.5];
 	}
 
 	if ((message == "ENERGY_LOW"))
 	{
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"energy-low")) forCount:6.0];
+		[UNIVERSE cxx_addMessage:OO_DESC("energy-low") forCount:6.0];
 	}
 
 	if ((message == "ECM") && ![self isDocked])  [self playHitByECMSound];
@@ -6028,7 +6028,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ((message == "DOCKING_REFUSED") && [self status] == STATUS_AUTOPILOT_ENGAGED)
 	{
 		[self playDockingDenied];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"autopilot-denied")) forCount:4.5];
+		[UNIVERSE cxx_addMessage:OO_DESC("autopilot-denied") forCount:4.5];
 		autopilot_engaged = NO;
 		[self resetAutopilotAI];
 		DESTROY(_primaryTarget);
@@ -6208,13 +6208,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([super activateCloakingDevice])
 	{
 		[UNIVERSE setCurrentPostFX:OO_POSTFX_CLOAK];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"cloak-on")) forCount:2];
+		[UNIVERSE cxx_addMessage:OO_DESC("cloak-on") forCount:2];
 		[self playCloakingDeviceOn];
 		return YES;
 	}
 	else
 	{
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"cloak-low-juice")) forCount:3];
+		[UNIVERSE cxx_addMessage:OO_DESC("cloak-low-juice") forCount:3];
 		[self playCloakingDeviceInsufficientEnergy];
 		return NO;
 	}
@@ -6227,7 +6227,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[super deactivateCloakingDevice];
 	[UNIVERSE terminatePostFX:OO_POSTFX_CLOAK];
-	[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"cloak-off")) forCount:2];
+	[UNIVERSE cxx_addMessage:OO_DESC("cloak-off") forCount:2];
 	[self playCloakingDeviceOff];
 }
 
@@ -6333,7 +6333,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (weapon_temp / PLAYER_MAX_WEAPON_TEMP >= WEAPON_COOLING_CUTOUT)
 	{
 		[self playWeaponOverheated:[self cxx_currentLaserOffset].at(0)];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"weapon-overheat")) forCount:3.0];
+		[UNIVERSE cxx_addMessage:OO_DESC("weapon-overheat") forCount:3.0];
 		return NO;
 	}
 
@@ -6353,7 +6353,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (energy <= weapon_energy_use * multiplier)
 	{
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"weapon-out-of-juice")) forCount:3.0];
+		[UNIVERSE cxx_addMessage:OO_DESC("weapon-out-of-juice") forCount:3.0];
 		return NO;
 	}
 
@@ -6849,7 +6849,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	cargo.clear();
 	
 	energy = 25;
-	[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"escape-sequence")) forCount:4.5];
+	[UNIVERSE cxx_addMessage:OO_DESC("escape-sequence") forCount:4.5];
 	[self resetShotTime];
 	
 	// need to zero out all facings shot_times too, otherwise we may end up
@@ -7050,7 +7050,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if ((ship_kills % 256) == 0)
 		{
 			// congratulations method needs to be delayed a fraction of a second
-			[UNIVERSE cxx_addDelayedMessage:oo::StdString(DESC(@"right-on-commander")) forCount:4 afterDelay:0.2];
+			[UNIVERSE cxx_addDelayedMessage:OO_DESC("right-on-commander") forCount:4 afterDelay:0.2];
 		}
 	}
 }
@@ -7071,7 +7071,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (!cargo_desc)
 			return NO;
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE cxx_addMessage:oo::str::formatRuntime(oo::StdString(DESC(@"@-destroyed")), { *cargo_desc }) forCount:4.5];
+		[UNIVERSE cxx_addMessage:oo::str::formatRuntime(OO_DESC("@-destroyed"), { *cargo_desc }) forCount:4.5];
 		std::erase(cargo, pod);
 		return YES;
 	}
@@ -7136,7 +7136,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				either of those and wants a message, it can write it
 				itself.)
 			*/
-			[UNIVERSE cxx_addMessage:oo::str::formatRuntime(oo::StdString(DESC(@"@-damaged")), { *system_name }) forCount:4.5];
+			[UNIVERSE cxx_addMessage:oo::str::formatRuntime(OO_DESC("@-damaged"), { *system_name }) forCount:4.5];
 		}
 		
 		/* There used to be a check for docking computers here, but
@@ -7582,7 +7582,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([self hyperspaceJumpDistance] > [self maxHyperspaceDistance])
 	{
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"witch-too-far")) forCount: 4.5];
+		[UNIVERSE cxx_addMessage:OO_DESC("witch-too-far") forCount: 4.5];
 		if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 		{
 			[self playWitchjumpDistanceTooGreat];
@@ -7598,7 +7598,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (![self hasSufficientFuelForJump])
 	{
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"witch-no-fuel")) forCount: 4.5];
+		[UNIVERSE cxx_addMessage:OO_DESC("witch-no-fuel") forCount: 4.5];
 		if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 		{
 			[self playWitchjumpInsufficientFuel];
@@ -8077,7 +8077,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	// Both system_seed & target_system_seed are != nil at all times when this function is called.
 	
-	systemName = [UNIVERSE inInterstellarSpace] ? oo::OptionalString(DESC(@"interstellar-space")) : [UNIVERSE cxx_getSystemName:system_id];
+	systemName = [UNIVERSE inInterstellarSpace] ? OO_DESC("interstellar-space") : [UNIVERSE cxx_getSystemName:system_id];
 	if ([self isDocked] && [self dockedStation] != [UNIVERSE station])
 	{
 		systemName = oo::str::format("%s : %s", systemName.value_or("(null)").c_str(), [[self dockedStation] displayName].value_or("(null)").c_str());
@@ -8086,14 +8086,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	targetSystemName =	[UNIVERSE cxx_getSystemName:target_system_id];
 	oo::PList systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:target_system_id inGalaxy:galaxy_number];
 	NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) targetSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
+	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) targetSystemName = OO_DESC("status-unknown-system");
 
 	OOSystemID nextHop = [self nextHopTargetSystemID];
 	if (nextHop != target_system_id) {
 		std::optional<std::string> nextHopSystemName = [UNIVERSE cxx_getSystemName:nextHop];
 		systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:nextHop inGalaxy:galaxy_number];
 		concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-		if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) nextHopSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
+		if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) nextHopSystemName = OO_DESC("status-unknown-system");
 		// (a nil name raised in the expansion)
 		targetSystemName = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "status-hyperspace-system-multi",
 			{ { "targetSystemName", oo::PList(targetSystemName.value_or(std::string())) }, { "nextHopSystemName", oo::PList(nextHopSystemName.value_or(std::string())) } });
@@ -8114,7 +8114,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiStatusTabs length:3];
 		[gui setTabStops:tab_stops];
 		
-		const std::string	lightYearsDesc = oo::StdString(DESC(@"status-light-years-desc"));
+		const std::string	lightYearsDesc = OO_DESC("status-light-years-desc");
 
 		legal_desc = cxx_OODisplayStringFromLegalStatus(legalStatus);
 		rating_desc = cxx_KillCountToRatingAndKillString(ship_kills);
@@ -8123,18 +8123,18 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		credits_desc = cxx_OOCredits(credits);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		text = oo::StdString(DESC(@"status-commander-@"));
+		text = OO_DESC("status-commander-@");
 		[gui cxx_setTitle:oo::str::formatRuntime(text, { [self cxx_commanderName].value_or("(null)") })];
 
 		[gui cxx_setText:shipName forRow:0 align:GUI_ALIGN_CENTER];
 
-		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-present-system")), systemName)	forRow:1];
-		if ([self hasHyperspaceMotor]) [gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-hyperspace-system")), targetSystemName) forRow:2];
-		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-condition")), alert_desc)			forRow:3];
-		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-fuel")), fuel_desc)				forRow:4];
-		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-cash")), credits_desc)			forRow:5];
-		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-legal-status")), legal_desc)		forRow:6];
-		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-rating")), rating_desc)			forRow:7];
+		[gui cxx_setArray:RowOf(OO_DESC("status-present-system"), systemName)	forRow:1];
+		if ([self hasHyperspaceMotor]) [gui cxx_setArray:RowOf(OO_DESC("status-hyperspace-system"), targetSystemName) forRow:2];
+		[gui cxx_setArray:RowOf(OO_DESC("status-condition"), alert_desc)			forRow:3];
+		[gui cxx_setArray:RowOf(OO_DESC("status-fuel"), fuel_desc)				forRow:4];
+		[gui cxx_setArray:RowOf(OO_DESC("status-cash"), credits_desc)			forRow:5];
+		[gui cxx_setArray:RowOf(OO_DESC("status-legal-status"), legal_desc)		forRow:6];
+		[gui cxx_setArray:RowOf(OO_DESC("status-rating"), rating_desc)			forRow:7];
 		
 
 		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusShipnameColor defaultValue:nil] forRow:0];
@@ -8144,7 +8144,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusDataColor defaultValue:nil] forRow:i];
 		}
 
-		[gui cxx_setText:oo::StdString(DESC(@"status-equipment")) forRow:9];
+		[gui cxx_setText:OO_DESC("status-equipment") forRow:9];
 
 		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusEquipmentHeadingColor defaultValue:nil] forRow:9];
 		
@@ -8245,7 +8245,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				// all broken, only one installed
 				else if (count == 1 && okcount == 0)
 				{
-					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { [eqType cxx_name].value_or("(null)") });
+					desc = oo::str::formatRuntime(OO_DESC("equipment-@-not-available"), { [eqType cxx_name].value_or("(null)") });
 					if (prioritiseDamaged)
 					{
 						quip1.push_back(EquipmentRow(desc, false, [eqType displayColor]));
@@ -8280,7 +8280,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				// Check for damaged version
 				if ([self hasEquipmentItem:oo::NSStringFrom([eqType cxx_identifier].value_or("") + "_DAMAGED")])
 				{
-					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { [eqType cxx_name].value_or("(null)") });
+					desc = oo::str::formatRuntime(OO_DESC("equipment-@-not-available"), { [eqType cxx_name].value_or("(null)") });
 
 					if (prioritiseDamaged)
 					{
@@ -8298,28 +8298,28 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (max_passengers > 0)
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC_PLURAL(@"equipment-pass-berth-@", max_passengers)), { static_cast<int>(max_passengers) });	// %d
+		desc = oo::str::formatRuntime(OO_DESC_PLURAL("equipment-pass-berth-@", max_passengers), { static_cast<int>(max_passengers) });	// %d
 		quip2.push_back(EquipmentRow(desc, true, [[OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_PASSENGER_BERTH"] displayColor]));
 	}
 	
 	if (!isWeaponNone(forward_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-fwd-weapon-@")), { [forward_weapon_type cxx_name].value_or("(null)") });
+		desc = oo::str::formatRuntime(OO_DESC("equipment-fwd-weapon-@"), { [forward_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [forward_weapon_type displayColor]));
 	}
 	if (!isWeaponNone(aft_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-aft-weapon-@")), { [aft_weapon_type cxx_name].value_or("(null)") });
+		desc = oo::str::formatRuntime(OO_DESC("equipment-aft-weapon-@"), { [aft_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [aft_weapon_type displayColor]));
 	}
 	if (!isWeaponNone(port_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-port-weapon-@")), { [port_weapon_type cxx_name].value_or("(null)") });
+		desc = oo::str::formatRuntime(OO_DESC("equipment-port-weapon-@"), { [port_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [port_weapon_type displayColor]));
 	}
 	if (!isWeaponNone(starboard_weapon_type))
 	{
-		desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-stb-weapon-@")), { [starboard_weapon_type cxx_name].value_or("(null)") });
+		desc = oo::str::formatRuntime(OO_DESC("equipment-stb-weapon-@"), { [starboard_weapon_type cxx_name].value_or("(null)") });
 		quip2.push_back(EquipmentRow(desc, true, [starboard_weapon_type displayColor]));
 	}
 	
@@ -8341,7 +8341,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	NSUInteger idx = (primedEquipment+(c+1)+offset)%(c+1);
 	if (idx == c)
 	{
-		return oo::OptionalString(DESC(@"equipment-primed-none-hud-label"));
+		return OO_DESC("equipment-primed-none-hud-label");
 	}
 	else
 	{
@@ -8495,7 +8495,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		const std::optional<std::string> units = StringForKey(commodity, "unit");
 		const std::optional<std::string> commodityName = StringForKey(commodity, "displayName");
 		NSInteger containers = commodity.get<int>("containers");
-		BOOL extended = !(units.has_value() && *units == oo::StdString(DESC(@"cargo-tons-symbol"))) && containers > 0;
+		BOOL extended = !(units.has_value() && *units == OO_DESC("cargo-tons-symbol")) && containers > 0;
 
 		// (a nil unit or name raised in the expansion)
 		if (extended) {
@@ -8749,9 +8749,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 							routeDistance,
 							routeTime,
 							// don't rely on DESC_PLURAL for routeTime since it is of type double
-							oo::DescriptionOf(routeTime > 1.05 || routeTime < 0.95 ? DESC(@"sysdata-route-hours%1") : DESC(@"sysdata-route-hours%0")).c_str(),
+							(routeTime > 1.05 || routeTime < 0.95 ? OO_DESC("sysdata-route-hours%1") : OO_DESC("sysdata-route-hours%0")).c_str(),
 							routeJumps,
-							oo::DescriptionOf(DESC_PLURAL(@"sysdata-route-jumps", routeJumps)).c_str());
+							OO_DESC_PLURAL("sysdata-route-jumps", routeJumps).c_str());
 				}
 			}
 
@@ -8961,7 +8961,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		{
 			const std::optional<std::string> searchString = planetSearchString;
 			const std::string displaySearchString = searchString.has_value() ? oo::str::capitalized(*searchString) : std::string();
-			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-find-planet-@")), { displaySearchString }) forRow:GUI_ROW_PLANET_FINDER];
+			[gui cxx_setText:oo::str::formatRuntime(OO_DESC("long-range-chart-find-planet-@"), { displaySearchString }) forRow:GUI_ROW_PLANET_FINDER];
 			[gui setColor:[OOColor cyanColor] forRow:GUI_ROW_PLANET_FINDER];
 			[gui setShowTextCursor:YES];
 			[gui setCurrentRow:GUI_ROW_PLANET_FINDER];
@@ -9034,7 +9034,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		int first_sel_row = GUI_FIRST_ROW(GAME)-4; // repositioned menu
 
 		[gui clear];
-		[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) })]; // Same title as status screen.
+		[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("status-commander-@"), { TextArg([self cxx_commanderName]) })]; // Same title as status screen.
 		
 #if OO_RESOLUTION_OPTION
 		GameController	*controller = [UNIVERSE gameController];
@@ -9115,9 +9115,9 @@ std::string SliderString(NSInteger amountIn20ths)
 
 
 		if ([UNIVERSE autoSave])
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-yes")) forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-autosave-yes") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
 		else
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-no")) forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-autosave-no") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,AUTOSAVE)];
 	
 		// volume control
@@ -9125,16 +9125,16 @@ std::string SliderString(NSInteger amountIn20ths)
 		{
 			double volume = 100.0 * [OOSound masterVolume];
 			int vol = (volume / 5.0 + 0.5); // avoid rounding errors
-			const std::string soundVolumeWordDesc = oo::StdString(DESC(@"gameoptions-sound-volume"));
+			const std::string soundVolumeWordDesc = OO_DESC("gameoptions-sound-volume");
 			if (vol > 0)
 				[gui cxx_setText:oo::str::format("%s%s ", soundVolumeWordDesc.c_str(), SliderString(vol).c_str()) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
 			else
-				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-sound-volume-mute")) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:OO_DESC("gameoptions-sound-volume-mute") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,VOLUME)];
 		}
 		else
 		{
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-volume-external-only")) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-volume-external-only") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(GAME,VOLUME)];
 		}
 		
@@ -9142,7 +9142,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		// field of view control
 		float fov = [gameView fov:NO];
 		int fovTicks = (int)((fov - MIN_FOV_DEG) * 20 / (MAX_FOV_DEG - MIN_FOV_DEG));
-		const std::string fovWordDesc = oo::DescriptionOf(DESC(@"gameoptions-fov-value"));
+		const std::string fovWordDesc = OO_DESC("gameoptions-fov-value");
 		// %c 176 gave U+00B0 (probed on GNUstep base, oo-3rb.218); written as its UTF-8 bytes
 		[gui cxx_setText:oo::str::format("%s%s (%d%s) ", fovWordDesc.c_str(), SliderString(fovTicks).c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/) forRow:GUI_ROW(GAME,FOV) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,FOV)];
@@ -9168,13 +9168,13 @@ std::string SliderString(NSInteger amountIn20ths)
 		switch (isSpeechOn)
 		{
 		case OOSPEECHSETTINGS_OFF:
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-spoken-messages-no")) forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-spoken-messages-no") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 			break;
 		case OOSPEECHSETTINGS_COMMS:
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-spoken-messages-comms")) forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-spoken-messages-comms") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 			break;
 		case OOSPEECHSETTINGS_ALL:
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-spoken-messages-yes")) forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-spoken-messages-yes") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 			break;
 		}
 		OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH));
@@ -9186,7 +9186,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_LANGUAGE));
 
-			message = oo::DescriptionOf(DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F"));
+			message = OO_DESC(voice_gender_m ? "gameoptions-voice-M" : "gameoptions-voice-F");
 			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_GENDER));
 		}
@@ -9196,19 +9196,19 @@ std::string SliderString(NSInteger amountIn20ths)
 		// window/fullscreen
 		if([gameView inFullScreenMode])
 		{
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-play-in-window")) forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-play-in-window") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
 		}
 		else
 		{
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-play-in-fullscreen")) forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-play-in-fullscreen") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
 		}
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAYSTYLE)];
 #endif
 		
-		[gui cxx_setText:oo::StdString(DESC(@"gameoptions-joystick-configuration")) forRow: GUI_ROW(GAME,STICKMAPPER) align: GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("gameoptions-joystick-configuration") forRow: GUI_ROW(GAME,STICKMAPPER) align: GUI_ALIGN_CENTER];
 		OO_SETACCESSCONDITIONFORROW([[OOJoystickManager sharedStickHandler] joystickCount], GUI_ROW(GAME,STICKMAPPER));
 
-		[gui cxx_setText:oo::StdString(DESC(@"gameoptions-keyboard-configuration")) forRow: GUI_ROW(GAME,KEYMAPPER) align: GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("gameoptions-keyboard-configuration") forRow: GUI_ROW(GAME,KEYMAPPER) align: GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
 
 		
@@ -9220,9 +9220,9 @@ std::string SliderString(NSInteger amountIn20ths)
 		if (![gameView hdrOutput])
 		{
 			if ([UNIVERSE wireframeGraphics])
-				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-yes")) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-yes") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
 			else
-				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-no")) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-no") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)];
 		}
 #if OOLITE_WINDOWS
@@ -9230,7 +9230,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		{
 			float paperWhite = [gameView hdrPaperWhiteBrightness];
 			int paperWhiteTicks = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
-			const std::string paperWhiteWordDesc = oo::DescriptionOf(DESC(@"gameoptions-hdr-paperwhite"));
+			const std::string paperWhiteWordDesc = OO_DESC("gameoptions-hdr-paperwhite");
 			[gui cxx_setText:oo::str::format("%s%s (%d) ", paperWhiteWordDesc.c_str(), SliderString(paperWhiteTicks).c_str(), (int)paperWhite) forRow:GUI_ROW(GAME,HDRPAPERWHITE) align:GUI_ALIGN_CENTER];
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRPAPERWHITE)];
 		}
@@ -9238,9 +9238,9 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 #if !NEW_PLANETS
 		if ([UNIVERSE doProcedurallyTexturedPlanets])
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-yes")) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-procedurally-textured-planets-yes") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
 		else
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-no")) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-procedurally-textured-planets-no") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)];
 #endif
 
@@ -9260,16 +9260,16 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		if ([UNIVERSE dockingClearanceProtocolActive])
 		{
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-yes")) forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-docking-clearance-yes") forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
 		}
 		else
 		{
-			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-no")) forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("gameoptions-docking-clearance-no") forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
 		}
 		OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,DOCKINGCLEARANCE));
 		
 		// Back menu option
-		[gui cxx_setText:oo::StdString(DESC(@"gui-back")) forRow:GUI_ROW(GAME,BACK) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("gui-back") forRow:GUI_ROW(GAME,BACK) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,BACK)];
 
 		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_GAMEOPTIONS_END_OF_LIST)];
@@ -9315,16 +9315,16 @@ std::string SliderString(NSInteger amountIn20ths)
 			first_sel_row = GUI_ROW(,QUICKSAVE);
 
 		[gui clear];
-		[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) })]; //Same title as status screen.
+		[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("status-commander-@"), { TextArg([self cxx_commanderName]) })]; //Same title as status screen.
 		
-		[gui cxx_setText:oo::StdString(DESC(@"options-quick-save")) forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("options-quick-save") forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
 		if (canQuickSave)
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,QUICKSAVE)];
 		else
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(,QUICKSAVE)];
 
-		[gui cxx_setText:oo::StdString(DESC(@"options-save-commander")) forRow:GUI_ROW(,SAVE) align:GUI_ALIGN_CENTER];
-		[gui cxx_setText:oo::StdString(DESC(@"options-load-commander")) forRow:GUI_ROW(,LOAD) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("options-save-commander") forRow:GUI_ROW(,SAVE) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("options-load-commander") forRow:GUI_ROW(,LOAD) align:GUI_ALIGN_CENTER];
 		if (canLoadOrSave)
 		{
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,SAVE)];
@@ -9336,10 +9336,10 @@ std::string SliderString(NSInteger amountIn20ths)
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(,LOAD)];
 		}
 
-		[gui cxx_setText:oo::StdString(DESC(@"options-return-to-menu")) forRow:GUI_ROW(,BEGIN_NEW) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("options-return-to-menu") forRow:GUI_ROW(,BEGIN_NEW) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,BEGIN_NEW)];
 
-		[gui cxx_setText:oo::StdString(DESC(@"options-game-options")) forRow:GUI_ROW(,GAMEOPTIONS) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("options-game-options") forRow:GUI_ROW(,GAMEOPTIONS) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,GAMEOPTIONS)];
 		
 #if OOLITE_SDL
@@ -9347,7 +9347,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		// doesn't need speech.
 		
 		// quit menu option
-		[gui cxx_setText:oo::StdString(DESC(@"options-exit-game")) forRow:GUI_ROW(,QUIT) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("options-exit-game") forRow:GUI_ROW(,QUIT) align:GUI_ALIGN_CENTER];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,QUIT)];
 #endif
 		
@@ -9597,7 +9597,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		gui_screen = GUI_SCREEN_EQUIP_SHIP;
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:oo::OptionalString(DESC(@"equip-title"))];
+		[gui cxx_setTitle:OO_DESC("equip-title")];
 		
 		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
 		[gui cxx_setText:cxx_OOExpandKey("equip-cash-value", credits).value_or(std::string()) forRow:GUI_ROW_EQUIPMENT_CASH];
@@ -9638,7 +9638,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					[gui cxx_setKey:oo::str::format("More:%d", previous) forRow:row];
 				}
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row];
-				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", " <-- " } forRow:row];
+				[gui cxx_setArray:{ OO_DESC("gui-back"), "", " <-- " } forRow:row];
 				row++;
 			}
 			
@@ -9680,7 +9680,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				// is this item damaged?
 				if ([self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])])
 				{
-					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equip-repair-@")), { desc });
+					desc = oo::str::formatRuntime(OO_DESC("equip-repair-@"), { desc });
 					price /= 2.0;
 					installTime = [eqInfo repairTime];
 					if (installTime == 0)
@@ -9788,7 +9788,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			{
 				// just overwrite the last item :-)
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row-1];
-				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", " --> " } forRow:row - 1];
+				[gui cxx_setArray:{ OO_DESC("gui-more"), "", " --> " } forRow:row - 1];
 				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
 			}
 			
@@ -9800,7 +9800,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			if (eqKeyForSelectFacing.has_value())
 			{
 				[gui setSelectedRow:start_row + 1];
-				[self cxx_showInformationForSelectedUpgradeWithFormatString:oo::StdString(DESC(@"@-select-where-to-install"))];
+				[self cxx_showInformationForSelectedUpgradeWithFormatString:OO_DESC("@-select-where-to-install")];
 			}
 			else
 			{
@@ -9809,7 +9809,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		else
 		{
-			[gui cxx_setText:oo::StdString(DESC(@"equip-no-equipment-available-for-purchase")) forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("equip-no-equipment-available-for-purchase") forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
 			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentUnavailableColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
 			
 			[gui setSelectableRange:NSMakeRange(0,0)];
@@ -9879,13 +9879,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			int weight = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] requiredCargoSpace];
 			if ([self hasEquipmentItem:oo::NSStringFrom(eq_key_damaged)])
 			{
-				desc = oo::str::formatRuntime(oo::StdString(DESC(@"upgradeinfo-@-price-is-for-repairing")), { TextArg(desc) });
+				desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-price-is-for-repairing"), { TextArg(desc) });
 			}
 			else
 			{
 				if(oo::str::hasSuffix(*eqKey, "ENERGY_UNIT") && ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"] || [self hasEquipmentItem:@"EQ_ENERGY_UNIT"] || [self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"]))
-					desc = oo::str::formatRuntime(oo::StdString(DESC(@"@-will-replace-other-energy")), { TextArg(desc) });
-				if (weight > 0) desc = oo::str::formatRuntime(oo::StdString(DESC(@"upgradeinfo-@-weight-d-of-equipment")), { TextArg(desc), weight });
+					desc = oo::str::formatRuntime(OO_DESC("@-will-replace-other-energy"), { TextArg(desc) });
+				if (weight > 0) desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-weight-d-of-equipment"), { TextArg(desc), weight });
 			}
 			if (formatString.has_value()) desc = oo::str::formatRuntime(*formatString, { TextArg(desc) });
 			[gui cxx_addLongText:desc startingAtRow:GUI_ROW_EQUIPMENT_DETAIL align:GUI_ALIGN_LEFT];
@@ -9926,7 +9926,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_INTERFACES);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:oo::OptionalString(DESC(@"interfaces-title"))];
+		[gui cxx_setTitle:OO_DESC("interfaces-title")];
 		
 		gui_screen = GUI_SCREEN_INTERFACES;
 		
@@ -9960,7 +9960,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				
 				[gui cxx_setKey:oo::str::format("More:%d", static_cast<int>(previous)) forRow:row];
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row];
-				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:row];
+				[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " } forRow:row];
 				row++;
 			}
 			
@@ -9989,7 +9989,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			{
 				// just overwrite the last item :-)
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row - 1];
-				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:row - 1];
+				[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " } forRow:row - 1];
 				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
 			}
 			
@@ -10004,7 +10004,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		else
 		{
-			[gui cxx_setText:oo::OptionalString(DESC(@"interfaces-no-interfaces-available-for-use")) forRow:GUI_ROW_NO_INTERFACES align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:OO_DESC("interfaces-no-interfaces-available-for-use") forRow:GUI_ROW_NO_INTERFACES align:GUI_ALIGN_LEFT];
 			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceNoneColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_INTERFACES];
 			
 			[gui setSelectableRange:NSMakeRange(0,0)];
@@ -10014,7 +10014,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 		[gui setShowTextCursor:NO];
 
-		const std::string desc = oo::str::formatRuntime(oo::StdString(DESC(@"interfaces-for-ship-@-and-station-@")),
+		const std::string desc = oo::str::formatRuntime(OO_DESC("interfaces-for-ship-@-and-station-@"),
 			{ [self displayName].value_or("(null)"), [[self dockedStation] displayName].value_or("(null)") });
 		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceHeadingColor defaultValue:nil] forRow:GUI_ROW_INTERFACES_HEADING];
 		[gui cxx_setText:desc forRow:GUI_ROW_INTERFACES_HEADING];
@@ -10107,53 +10107,53 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	[gui cxx_setTitle:"Oolite"];
 
-	text = oo::StdString(DESC(@"game-copyright"));
+	text = OO_DESC("game-copyright");
 	[gui cxx_setText:text forRow:15 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor whiteColor] forRow:15];
 		
-	text = oo::StdString(DESC(@"theme-music-credit"));
+	text = OO_DESC("theme-music-credit");
 	[gui cxx_setText:text forRow:17 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor grayColor] forRow:17];
 		
 	int initialRow = 22;
 	int row = initialRow;
 
-	text = oo::StdString(DESC(@"oolite-start-option-1"));
+	text = OO_DESC("oolite-start-option-1");
 	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
 	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = oo::StdString(DESC(@"oolite-start-option-2"));
+	text = OO_DESC("oolite-start-option-2");
 	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
 	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = oo::StdString(DESC(@"oolite-start-option-3"));
+	text = OO_DESC("oolite-start-option-3");
 	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
 	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = oo::StdString(DESC(@"oolite-start-option-4"));
+	text = OO_DESC("oolite-start-option-4");
 	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
 	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = oo::StdString(DESC(@"oolite-start-option-5"));
+	text = OO_DESC("oolite-start-option-5");
 	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
 	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = oo::StdString(DESC(@"oolite-start-option-6"));
+	text = OO_DESC("oolite-start-option-6");
 	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
 	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
@@ -10263,10 +10263,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		[gui clear];
 
-        text = oo::StdString(DESC(@"oolite-ship-library-title"));
+        text = OO_DESC("oolite-ship-library-title");
 		[gui cxx_setTitle:text];
 
-        text = oo::StdString(DESC(@"oolite-ship-library-exit"));
+        text = OO_DESC("oolite-ship-library-exit");
         [gui cxx_setText:text forRow:27 align:GUI_ALIGN_CENTER];
         [gui setColor:[OOColor yellowColor] forRow:27];
 	}
@@ -11134,10 +11134,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[gui setTabStops:tab_stops];
 	
 	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketHeadingColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_KEY];
-	[gui cxx_setArray:{ oo::StdString(DESC(@"commodity-column-title")), cxx_OOPadStringToEms(oo::StdString(DESC(@"price-column-title")),3.5),
-						   cxx_OOPadStringToEms(oo::StdString(DESC(@"for-sale-column-title")),3.75), cxx_OOPadStringToEms(oo::StdString(DESC(@"in-hold-column-title")),5.75), oo::StdString(DESC(@"oolite-legality-column-title")), oo::StdString(DESC(@"oolite-extras-column-title")) } forRow:GUI_ROW_MARKET_KEY];
-	[gui cxx_setArray:{ oo::StdString(DESC(@"commodity-column-title")), oo::StdString(DESC(@"oolite-extras-column-title")), cxx_OOPadStringToEms(oo::StdString(DESC(@"price-column-title")),3.5),
-						   cxx_OOPadStringToEms(oo::StdString(DESC(@"for-sale-column-title")),3.75), cxx_OOPadStringToEms(oo::StdString(DESC(@"in-hold-column-title")),5.75), oo::StdString(DESC(@"oolite-legality-column-title")) } forRow:GUI_ROW_MARKET_KEY];
+	[gui cxx_setArray:{ OO_DESC("commodity-column-title"), cxx_OOPadStringToEms(OO_DESC("price-column-title"),3.5),
+						   cxx_OOPadStringToEms(OO_DESC("for-sale-column-title"),3.75), cxx_OOPadStringToEms(OO_DESC("in-hold-column-title"),5.75), OO_DESC("oolite-legality-column-title"), OO_DESC("oolite-extras-column-title") } forRow:GUI_ROW_MARKET_KEY];
+	[gui cxx_setArray:{ OO_DESC("commodity-column-title"), OO_DESC("oolite-extras-column-title"), cxx_OOPadStringToEms(OO_DESC("price-column-title"),3.5),
+						   cxx_OOPadStringToEms(OO_DESC("for-sale-column-title"),3.75), cxx_OOPadStringToEms(OO_DESC("in-hold-column-title"),5.75), OO_DESC("oolite-legality-column-title") } forRow:GUI_ROW_MARKET_KEY];
 
 }
 
@@ -11151,14 +11151,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	OOCreditsQuantity pricePerUnit = [localMarket cxx_priceForGood:good];
 	OOMassUnit unit = [shipCommodityData massUnitForGood:good];
 
-	const std::string available = cxx_OOPadStringToEms(((available_units > 0) ? oo::str::format("%d",available_units) : oo::StdString(DESC(@"commodity-quantity-none"))), 2.5);
+	const std::string available = cxx_OOPadStringToEms(((available_units > 0) ? oo::str::format("%d",available_units) : OO_DESC("commodity-quantity-none")), 2.5);
 
 	NSUInteger priceDecimal = pricePerUnit % 10;
 	const std::string price = oo::str::format(" %s.%zu ",cxx_OOPadStringToEms(oo::str::format("%zu",(pricePerUnit/10)),2.5).c_str(),priceDecimal);
 
 	// this works with up to 9999 tons of gemstones. Any more than that, they deserve the formatting they get! :)
 
-	const std::string owned = cxx_OOPadStringToEms((units_in_hold > 0) ? oo::str::format("%d",units_in_hold) : oo::StdString(DESC(@"commodity-quantity-none")), 4.5);
+	const std::string owned = cxx_OOPadStringToEms((units_in_hold > 0) ? oo::str::format("%d",units_in_hold) : OO_DESC("commodity-quantity-none"), 4.5);
 	const std::string units = cxx_DisplayStringForMassUnit(unit).value_or("(null)");
 	const std::string units_available = oo::str::format(" %s %s ",available.c_str(), units.c_str());
 	const std::string units_owned = oo::str::format(" %s %s ",owned.c_str(), units.c_str());
@@ -11170,22 +11170,22 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if (export_legality == 0)
 		{
-			legaldesc = oo::StdString(DESC(@"oolite-legality-clear"));
+			legaldesc = OO_DESC("oolite-legality-clear");
 		}
 		else
 		{
-			legaldesc = oo::StdString(DESC(@"oolite-legality-import"));
+			legaldesc = OO_DESC("oolite-legality-import");
 		}
 	} 
 	else
 	{
 		if (export_legality == 0)
 		{
-			legaldesc = oo::StdString(DESC(@"oolite-legality-export"));
+			legaldesc = OO_DESC("oolite-legality-export");
 		}
 		else
 		{
-			legaldesc = oo::StdString(DESC(@"oolite-legality-neither"));
+			legaldesc = OO_DESC("oolite-legality-neither");
 		}
 	}
 	legaldesc = oo::str::format(" %s ",legaldesc.c_str());
@@ -11379,7 +11379,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				}
 				[gui cxx_setKey:">>>" forRow:GUI_ROW_MARKET_LAST];
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_LAST];
-				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", "", "", " --> " } forRow:GUI_ROW_MARKET_LAST];
+				[gui cxx_setArray:{ OO_DESC("gui-more"), "", "", "", " --> " } forRow:GUI_ROW_MARKET_LAST];
 			}
 			if (marketOffset > 0)
 			{
@@ -11389,14 +11389,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				}
 				[gui cxx_setKey:"<<<" forRow:GUI_ROW_MARKET_START];
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_START];
-				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", "", "", " <-- " } forRow:GUI_ROW_MARKET_START];
+				[gui cxx_setArray:{ OO_DESC("gui-back"), "", "", "", " <-- " } forRow:GUI_ROW_MARKET_START];
 			}
 		}
 		else
 		{
 			// filter is excluding everything
 			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketFilteredAllColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_START];
-			[gui cxx_setText:oo::StdString(DESC(@"oolite-market-filtered-all")) forRow:GUI_ROW_MARKET_START];
+			[gui cxx_setText:OO_DESC("oolite-market-filtered-all") forRow:GUI_ROW_MARKET_START];
 			active_row = -1;
 		}
 
@@ -11493,7 +11493,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui clearAndKeepBackground:!guiChanged];
 
 		const std::string selectedCommodity = *marketSelectedCommodity;	// (non-nil here)
-		[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-information-@")), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) })];
+		[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("oolite-commodity-information-@"), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) })];
 
 		[self showMarketScreenHeaders];
 		[self showMarketScreenDataLine:GUI_ROW_MARKET_START forGood:selectedCommodity inMarket:localMarket holdQuantity:quantityInHold[j]];
@@ -11503,14 +11503,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		{
 			OOMassUnit unit = [shipCommodityData massUnitForGood:selectedCommodity];
 			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
-			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, cxx_DisplayStringForMassUnit(unit).value_or("(null)") }) forRow:GUI_ROW_MARKET_START+1];
+			[gui cxx_setText:oo::str::formatRuntime(OO_DESC("oolite-commodity-contracted-d-@"), { contracted, cxx_DisplayStringForMassUnit(unit).value_or("(null)") }) forRow:GUI_ROW_MARKET_START+1];
 		}
 
 		const std::optional<std::string> info = [shipCommodityData cxx_commentForGood:selectedCommodity];
 		OOGUIRow i = 0;
 		if (!info.has_value() || info->empty())
 		{
-			i = [gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-commodity-no-comment")) startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
+			i = [gui cxx_addLongText:OO_DESC("oolite-commodity-no-comment") startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
 		}
 		else
 		{
@@ -13388,7 +13388,7 @@ else _dockTarget = NO_TARGET;
 		
 	amountToPay = MIN(maximumFine, calculatedFine);
 	credits -= amountToPay;
-	[self cxx_addMessageToReport:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-fined-@-cr")), { cxx_OOCredits(amountToPay) })];
+	[self cxx_addMessageToReport:oo::str::formatRuntime(OO_DESC("station-docking-clearance-fined-@-cr"), { cxx_OOCredits(amountToPay) })];
 }
 
 
