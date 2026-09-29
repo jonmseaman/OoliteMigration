@@ -10,7 +10,6 @@ oolite_sources += files(
     'GuiDisplayGen.mm',
     'GuiDisplayGen+FoundationBridge.mm',
     'HeadUpDisplay.mm',
-    'HeadUpDisplay+FoundationBridge.mm',
     'NSObjectOOExtensions.mm',
     'OOALBufferedSound.mm',
     'OOALMusic.mm',

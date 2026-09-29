@@ -753,11 +753,11 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return YES;
 			
 		case kPlayerShip_hud:
-			result = [[player hud] hudName];
+			result = oo::NSStringOrNil([[player hud] cxx_hudName]);
 			break;
 
 		case kPlayerShip_crosshairs:
-			result = [[player hud] crosshairDefinition];
+			result = oo::NSStringOrNil([[player hud] cxx_crosshairDefinition]);
 			break;
 
 		case kPlayerShip_hudAllowsBigGui:
@@ -1153,13 +1153,13 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			if (!sValue.has_value())
 			{
 				// reset HUD back to its plist settings
-				std::optional<std::string> hud = oo::OptionalString([[player hud] hudName]);	// a copy, as the retain kept it
+				std::optional<std::string> hud = [[player hud] cxx_hudName];	// a copy, as the retain kept it
 				[player switchHudTo:oo::NSStringOrNil(hud)];
 				return YES;
 			}
 			else
 			{
-				if (![[player hud] setCrosshairDefinition:oo::NSStringOrNil(sValue)])
+				if (![[player hud] cxx_setCrosshairDefinition:sValue.value_or("")])
 				{
 					cxx_OOJSReportWarning(context, "Crosshair definition file %s not found or invalid", (sValue ? sValue->c_str() : "(null)"));
 				}
@@ -2116,7 +2116,7 @@ static bool PlayerShipHideHUDSelector(ooscript::Context context, ooscript::CallA
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
 		return NO;
 	}
-	[[player hud] setHiddenSelector:oo::NSStringOrNil(key) hidden:YES];
+	[[player hud] cxx_setHiddenSelector:key.value_or("") hidden:YES];
 	
 	OOJS_RETURN_VOID;
 
@@ -2143,7 +2143,7 @@ static bool PlayerShipShowHUDSelector(ooscript::Context context, ooscript::CallA
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
 		return NO;
 	}
-	[[player hud] setHiddenSelector:oo::NSStringOrNil(key) hidden:NO];
+	[[player hud] cxx_setHiddenSelector:key.value_or("") hidden:NO];
 	
 	OOJS_RETURN_VOID;
 
