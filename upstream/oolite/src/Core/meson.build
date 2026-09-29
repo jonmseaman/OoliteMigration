@@ -40,7 +40,7 @@ oolite_sources += files(
     'OOEquipmentType.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
-    'OOIsNumberLiteral.mm',
+    'OOIsNumberLiteral.cpp',
     'OOJoystickManager.mm',
     'OOJoystickProfile.mm',
     'OOLogHeader.mm',
