@@ -5,7 +5,8 @@ OOFoundationBridge.h
 The boundary between a file the Foundation sweep has migrated to oofnd types and the code around
 it that still holds Foundation objects (proposed ADR-0043; recipe in src/oofnd/README.md,
 "Migrating Foundation usage"). Objective-C++ only; deleted with gnustep-base (oo-qps), when no
-Foundation object is left to bridge. Strings are OOStringBridge.h's (imported here).
+Foundation object is left to bridge. Strings are OOStringBridge.h's (imported here); what "%@" printed
+for an object is OODescription.h's (ADR-0055 item 1).
 
 A migrated file includes this header and never spells a Foundation class itself. It uses these
 functions only at its boundary: a shared selector that keeps an Objective-C object type (declared
@@ -26,7 +27,6 @@ commit. Everything else in the file is std / oofnd.
 	oo::PList -> property-list object graph         oo::ObjectFromPList(plist)
 	the object inside a PList::Object node          oo::ObjectIn(plist)                 (nil for any other node)
 	an object as a PList::Object node               oo::PListObject(object)
-	what "%@" printed for an object                 oo::DescriptionOf(object)         (nil -> "(null)")
 
 Exactness. Strings are unit for unit (OOStringBridge.h). PListFrom follows the table in
 oofnd/PList.hpp: an NSNumber is a bool when it is the constant true/false object (kCFBoolean*
@@ -328,15 +328,6 @@ inline id ObjectFromPList(const PList& plist)
 			return ObjectIn(plist);
 	}
 	return nil;
-}
-
-// --- descriptions -----------------------------------------------------------------------------
-
-// The text "%@" put in a formatted string for <object>: its -description, or "(null)" for nil.
-inline std::string DescriptionOf(id object)
-{
-	if (object == nil)  return "(null)";
-	return StdString([object description]);
 }
 
 }	// namespace oo
