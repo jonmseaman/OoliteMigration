@@ -33,7 +33,6 @@ MA 02110-1301, USA.
 
 #import "OOFunctionAttributes.h"
 #import "ShipEntity.h"
-#import "OOCollectionExtractors.h"
 #import "OOShaderUniformMethodType.h"
 #import "OOJSVector.h"
 #import "OOJSQuaternion.h"
