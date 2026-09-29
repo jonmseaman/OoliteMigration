@@ -4631,6 +4631,26 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 @end
 
 
+@implementation OOHUDBeaconCodeIcon
+
+- (id) initWithText:(const std::string &)text
+{
+	if ((self = [super init]))
+	{
+		_text = text;
+	}
+	return self;
+}
+
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z
+{
+	cxx_OODrawString(_text, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
+}
+
+@end
+
+
 namespace {
 
 void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat defaultColor[4], GLfloat alpha)

@@ -394,6 +394,30 @@ NSInteger IntegerValueOf(const oo::PList *value)
 }
 
 
+- (id) commanderKillsAsString	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_commanderKillsAsString]);
+}
+
+
+- (id) commanderBountyAsString	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_commanderBountyAsString]);
+}
+
+
+- (id) creditsFormattedForSubstitution	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_creditsFormattedForSubstitution]);
+}
+
+
+- (id) creditsFormattedForLegacySubstitution	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_creditsFormattedForLegacySubstitution]);
+}
+
+
 // utilising new keyconfig2.plist data
 - (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding
 {

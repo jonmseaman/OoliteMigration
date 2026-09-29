@@ -839,17 +839,16 @@ static BOOL sRunningScript = NO;
 	oo::PList::Array		result1;	// strings
 	oo::PList::Array		result2;	// arrays: a header, then entries
 
-	// The manifests (PlayerEntityContracts, not migrated) as oo::PList arrays.
-	const oo::PList	passengerManifest = oo::PListFrom([self passengerList]);
-	const oo::PList	contractManifest = oo::PListFrom([self contractList]);
-	const oo::PList	parcelManifest = oo::PListFrom([self parcelList]);
+	// The manifests (PlayerEntityContracts), their entries' strings.
+	const std::vector<std::string>	passengerManifest = [self cxx_passengerList];
+	const std::vector<std::string>	contractManifest = [self cxx_contractList];
+	const std::vector<std::string>	parcelManifest = [self cxx_parcelList];
 
-	auto addManifest = [&result2](const std::string &header, const oo::PList &manifest)
+	auto addManifest = [&result2](const std::string &header, const std::vector<std::string> &entries)
 	{
-		const oo::PList::Array *entries = manifest.getIf<oo::PList::Array>();
-		if (entries == nullptr || entries->empty())  return;
+		if (entries.empty())  return;
 		oo::PList::Array list{ oo::PList(header) };
-		list.insert(list.end(), entries->begin(), entries->end());
+		for (const std::string &entry : entries)  list.push_back(oo::PList(entry));
 		result2.push_back(oo::PList(std::move(list)));
 	};
 
@@ -1209,7 +1208,7 @@ static int shipsFound;
 {
 	if ([self status] != STATUS_DOCKED)  return @"NONE";
 
-	return oo::NSStringFrom(oo::OptionalString([self dockedStationName]).value_or("UNKNOWN"));
+	return oo::NSStringFrom([self cxx_dockedStationName].value_or("UNKNOWN"));
 }
 
 
@@ -1486,7 +1485,7 @@ static int shipsFound;
 		return;
 	}
 
-	[self awardCommodityType:oo::NSStringFrom(type) amount:amount];
+	[self cxx_awardCommodityType:type amount:amount];
 }
 
 
@@ -2162,7 +2161,7 @@ static int shipsFound;
 
 - (void) resetMissionChoice
 {
-	[self setMissionChoice:nil];
+	[self cxx_setMissionChoice:std::nullopt];
 }
 
 
@@ -2345,7 +2344,7 @@ static int shipsFound;
 				AI*	se1AI = [se1 getAI];
 				[se1 setFuel:MAX(PLAYER_MAX_FUEL, [se1 fuelCapacity])];
 				[se1 setAITo:@"exitingTraderAI.plist"];	// lets them return to their previous state after the jump
-				[se1AI setState:@"EXIT_SYSTEM"];
+				[se1AI cxx_setState:"EXIT_SYSTEM"];
 				// The following should prevent all ships leaving at once (freezes oolite on slower machines)
 				[se1AI setNextThinkTime:[UNIVERSE getTime] + 3 + (ranrot_rand() & 15)];
 				[se1 setPrimaryRole:@"oolite-none"];	// prevents new ship from appearing at witchpoint when this one leaves!
@@ -2938,7 +2937,7 @@ static int shipsFound;
 	oo::PList::Dict properties;
 	properties["ship"] = oo::PListObject(self);
 	properties["equipmentKey"] = oo::PList(eq_key);
-	OOScript *s = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:oo::ObjectFromPList(oo::PList(std::move(properties)))];
+	OOScript *s = [OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList(std::move(properties))];
 	if (s == nil) return NO;
 
 	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));

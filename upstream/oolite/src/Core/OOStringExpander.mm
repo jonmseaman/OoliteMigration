@@ -790,9 +790,8 @@ OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, c
 	OOCParameterAssert(context != NULL);
 	if (HasPrefix(key, u"oolite_key_"))
 	{
-		// PlayerEntity is not migrated yet: converted at the call.
 		const std::string binding = oo::utf16ToUtf8(key.substr(7));
-		return UnitsFromOptional(oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringFrom(binding)]));
+		return UnitsFromOptional([PLAYER cxx_keyBindingDescription2:binding]);
 	}
 	return std::nullopt;
 }
@@ -880,8 +879,7 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* contex
 {
 	if (HasPrefix(key, u"mission_"))
 	{
-		// PlayerEntity is not migrated yet: converted at the call.
-		return UnitsFromOptional(oo::OptionalString([PLAYER missionVariableForKey:oo::NSStringFrom(keyString)]));
+		return UnitsFromOptional(oo::OptionalString(oo::ObjectFromPList([PLAYER cxx_missionVariableForKey:keyString])));
 	}
 
 	return std::nullopt;

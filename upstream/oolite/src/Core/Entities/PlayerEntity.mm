@@ -94,6 +94,7 @@ MA 02110-1301, USA.
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOPListGameTypes.h"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -126,14 +127,14 @@ std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view 
 Vector VectorForKey(const oo::PList &dict, std::string_view key, Vector fallback = kZeroVector)
 {
 	const oo::PList *value = dict.find(key);
-	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, fallback);
+	return OOVectorFromPList(value, fallback);
 }
 
 
 Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+	return OOQuaternionFromPList(value, kIdentityQuaternion);
 }
 
 
@@ -1635,7 +1636,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	eqScripts.clear();
 	[self addEquipmentFromCollection:oo::ObjectFromPList(oo::PList(equipment))];
-	primedEquipment = [self eqScriptIndexForKey:oo::NSStringOrNil(StringForKey(dict, "primed_equipment"))];	// if key not found primedEquipment is set to primed-none
+	primedEquipment = [self cxx_eqScriptIndexForKey:StringForKey(dict, "primed_equipment").value_or("")];	// if key not found primedEquipment is set to primed-none
 
 	[self cxx_setFastEquipmentA:StringForKey(dict, "primed_equipment_a").value_or("EQ_CLOAKING_DEVICE")];
 	[self cxx_setFastEquipmentB:StringForKey(dict, "primed_equipment_b").value_or("EQ_ENERGY_BOMB")]; // even though there isn't one, for compatibility.
@@ -1798,7 +1799,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	
-	credits = OODeciCreditsFromObject(oo::ObjectFromPList(ValueForKey(dict, "credits")));
+	{ const oo::PList creditsValue = ValueForKey(dict, "credits"); credits = OODeciCreditsFromPList(&creditsValue); }
 	
 	fuel = dict.get<unsigned int>("fuel", fuel);
 	galaxy_number = dict.get<int>("galaxy_number");
@@ -2147,8 +2148,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (![gc inFullScreenMode] && stopOnError)	[gc startAnimationTimer];
 	
 	// Load locale script before any regular scripts.
-	[OOJSScript jsScriptFromFileNamed:@"oolite-locale-functions.js"
-						   properties:nil];
+	[OOJSScript cxx_jsScriptFromFileNamed:"oolite-locale-functions.js"
+						   properties:oo::PList()];
 	
 	[[GameController sharedController] logProgress:DESC(@"loading-scripts")];
 	
@@ -2415,7 +2416,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	dockingReport.clear();
 	
 	[shipAI release];
-	shipAI = [[AI alloc] initWithStateMachine:PLAYER_DOCKING_AI_NAME andState:@"GLOBAL"];
+	shipAI = [[AI alloc] cxx_initWithStateMachine:oo::OptionalString(PLAYER_DOCKING_AI_NAME) andState:"GLOBAL"];
 	[self resetAutopilotAI];
 	
 	lastScriptAlertCondition = [self alertCondition];
@@ -3841,7 +3842,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([self status] == STATUS_WITCHSPACE_COUNTDOWN) [self cancelWitchspaceCountdown]; // cancel witchspace countdown properly
 	[self setStatus:STATUS_AUTOPILOT_ENGAGED];
 	[self resetAutopilotAI];
-	[shipAI setState:@"BEGIN_DOCKING"];	// reboot the AI
+	[shipAI cxx_setState:"BEGIN_DOCKING"];	// reboot the AI
 	[self playAutopilotOn];
 	[[OOMusicController sharedController] playDockingMusic];
 	[self doScriptEvent:OOJSID("playerStartedAutoPilot") withArgument:stationForDocking];
@@ -3887,7 +3888,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self setAITo:PLAYER_DOCKING_AI_NAME ];
 	}
 	[myAI clearAllData];
-	[myAI setState:@"GLOBAL"];
+	[myAI cxx_setState:"GLOBAL"];
 	[myAI setNextThinkTime:[UNIVERSE getTime] + 2];
 	[myAI setOwner:self];
 }
@@ -5724,7 +5725,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
+	ooscript::Value keyVal = OOJSValueFromPList(context, key.has_value() ? oo::PList(*key) : oo::PList());
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -5763,7 +5764,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
+	ooscript::Value keyVal = OOJSValueFromPList(context, key.has_value() ? oo::PList(*key) : oo::PList());
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -8828,11 +8829,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		
 		if (info_system_id == system_id)
 		{
-			[self setBackgroundFromDescriptionsKey:@"gui-scene-show-local-planet"];
+			[self cxx_setBackgroundFromDescriptionsKey:"gui-scene-show-local-planet"];
 		}
 		else
 		{
-			[self setBackgroundFromDescriptionsKey:@"gui-scene-show-planet"];
+			[self cxx_setBackgroundFromDescriptionsKey:"gui-scene-show-planet"];
 		}
 		
 		setRandomSeed(saved_seed);
@@ -10482,7 +10483,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			BOOL OK;
 			ooscript::Value result;
 			int32_t newPrice;
-			ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(eqKey)) , ooscript::nullValue() };
+			ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(eqKey)) , ooscript::nullValue() };
 			OK = ooscript::newNumberValue(JScontext, price, &args[1]);
 				
 			if (OK)
@@ -11713,8 +11714,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (![super canAddEquipment:equipmentKey inContext:context])  return NO;
 
 	OOEquipmentType *eqType = (equipmentKey != nil) ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:oo::StdString(equipmentKey)] : nil;
-	const oo::PList conditions = [eqType cxx_conditions];
-	if (conditions && ![self cxx_scriptTestConditions:conditions])  return NO;
+	const oo::PList conditions = (eqType != nil) ? [eqType cxx_conditions] : oo::PList();
+	if (!conditions.isNull() && ![self cxx_scriptTestConditions:conditions])  return NO;
 	
 	return YES;
 }
@@ -11755,7 +11756,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			[self setCompassMode:COMPASS_MODE_PLANET];
 		}
 		
-		[self addEqScriptForKey:equipmentKey];
+		if (equipmentKey != nil)  [self cxx_addEqScriptForKey:oo::StdString(equipmentKey)];
 		[self addEquipmentWithScriptToCustomKeyArray:oo::StdString(equipmentKey)];	// (nil matched no script)
 	}
 	return OK;
@@ -11842,7 +11843,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[super removeEquipmentItem:equipmentKey];
 	if(![self hasEquipmentItem:equipmentKey]) {
 		// removed the last one
-		[self removeEqScriptForKey:equipmentKey];
+		if (equipmentKey != nil)  [self cxx_removeEqScriptForKey:oo::StdString(equipmentKey)];
 	}
 }
 
@@ -12873,7 +12874,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	oo::PList result = [self cxx_missionOverlayDescriptor];
 	if (result.isNull())
 	{
-		if ([[self missionTitle] length] == 0)
+		if ([self cxx_missionTitle].value_or("").empty())
 		{
 			result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_no_title"]);
 		}
@@ -13069,7 +13070,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		return cscript;
 	}
-	cscript = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:nil];
+	cscript = [OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList()];
 	if (cscript != nil)
 	{
 		// storing it in here retains it
