@@ -98,7 +98,7 @@ MA 02110-1301, USA.
 #import "OOJSPopulatorDefinition.h"
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 
@@ -5437,20 +5437,6 @@ static const OOMatrix	starboard_matrix =
 				@throw exception;
 			}
 		}
-		@catch (OOFoundationException *exception)
-		{
-			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
-			
-			if ([[exception name] hasPrefix:@"Oolite"])
-			{
-				[self handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];
-			}
-			else
-			{
-				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-				@throw exception;
-			}
-		}
 	}
 	
 	OO_LOG("universe.profile.draw", "{}", "End drawing");
@@ -7561,22 +7547,6 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
 #endif
 				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, [exception name], [exception reason]);
-				@throw exception;
-			}
-		}
-		@catch (OOFoundationException *exception)
-		{
-			if ([[exception name] hasPrefix:@"Oolite"])
-			{
-				[self handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];
-			}
-			else
-			{
-				std::string stage = update_stage;
-#ifndef NDEBUG
-				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
-#endif
-				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 				@throw exception;
 			}
 		}
@@ -11294,10 +11264,6 @@ static void PreloadOneSound(const std::string &soundName)
 			@catch (OOException *exception)
 			{
 				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", [exception name], [exception reason]);
-			}
-			@catch (OOFoundationException *exception)
-			{
-				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 			}
 		}
 	}

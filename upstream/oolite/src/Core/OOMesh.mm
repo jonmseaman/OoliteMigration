@@ -55,7 +55,7 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OODebugStandards.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
@@ -537,16 +537,6 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 			brokenInRender = YES;
 		}
 		if (strncmp([exception name], "Oolite", 6) == 0)  [UNIVERSE handleOoliteException:exception];	// handle these ourself
-		else  @throw exception;	// pass these on
-	}
-	@catch (OOFoundationException *exception)
-	{
-		if (!brokenInRender)
-		{
-			OO_LOG(cxx_kOOLogException, "***** {} for {} encountered exception: {} : {} *****", __PRETTY_FUNCTION__, oo::DescriptionOf(self), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-			brokenInRender = YES;
-		}
-		if ([[exception name] hasPrefix:@"Oolite"])  [UNIVERSE handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];	// handle these ourself
 		else  @throw exception;	// pass these on
 	}
 	
