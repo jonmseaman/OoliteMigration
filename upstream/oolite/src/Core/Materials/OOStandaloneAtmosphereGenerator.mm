@@ -174,9 +174,9 @@ enum
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("seed: %u,%u", _info.seed.high, _info.seed.low));
+	return oo::str::format("seed: %u,%u", _info.seed.high, _info.seed.low);
 }
 
 

@@ -211,7 +211,7 @@ SOFTWARE.
 }
 
 
-- (id)description	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_description
 {
 	std::optional<std::string>	valueDesc;
 	const char					*valueType = nullptr;
@@ -301,7 +301,7 @@ SOFTWARE.
 			<OOShaderUniform 0xf00>{1: int tex1 = 1;}
 			<OOShaderUniform 0xf00>{3: float laser_heat_level = [<ShipEntity 0xba8> laserHeatLevel];}
 	*/
-	return oo::NSStringFrom(oo::str::format("<%s %s>{%i: %s %s = %s;}", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), location, valueType != nullptr ? valueType : "(null)", name.c_str(), valueDesc->c_str()));
+	return oo::str::format("<%s %s>{%i: %s %s = %s;}", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), location, valueType != nullptr ? valueType : "(null)", name.c_str(), valueDesc->c_str());
 }
 
 

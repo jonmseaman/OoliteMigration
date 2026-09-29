@@ -74,9 +74,9 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 
 // OOObject's -description wraps this as "<Class 0x...>{"name"}", which is what this class's own
 // -description printed.
-- (id)descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom("\"" + [self cxx_name].value_or("(null)") + "\"");
+	return "\"" + [self cxx_name].value_or("(null)") + "\"";
 }
 
 

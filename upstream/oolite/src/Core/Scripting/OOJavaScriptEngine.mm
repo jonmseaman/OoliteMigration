@@ -1934,9 +1934,9 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 }
 
 
-- (id) description	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_description
 {
-	return oo::NSStringFrom("<null>");
+	return "<null>";
 }
 
 
@@ -1991,7 +1991,7 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 	if (object != nil)
 	{
 		description = [object cxx_oo_jsDescription];
-		if (!description.has_value())  description = oo::OptionalString([object description]);
+		if (!description.has_value())  description = oo::DescriptionOf(object);	// object is not nil
 	}
 	if (!description.has_value())
 	{

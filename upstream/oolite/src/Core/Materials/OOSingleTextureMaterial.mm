@@ -82,9 +82,9 @@ SOFTWARE.
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return [_texture description];
+	return [_texture cxx_description];
 }
 
 

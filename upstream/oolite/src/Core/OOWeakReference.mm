@@ -63,10 +63,10 @@ return [result autorelease];
 }
 
 
-- (id)description
+- (std::optional<std::string>) cxx_description
 {
-	if (_object != nil)  return [(id)_object description];	// -description is not in the OOObject protocol (the Logging seam)
-	else  return oo::NSStringFrom(oo::str::format("<Dead %s %s>", oo::StdString([[self class] description]).c_str(), oo::str::pointerDescription(self).c_str()));
+	if (_object != nil)  return [(id)_object cxx_description];	// -description is not in the OOObject protocol (the Logging seam)
+	else  return oo::str::format("<Dead %s %s>", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str());
 }
 
 
@@ -153,21 +153,21 @@ return [result autorelease];
 }
 
 
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return [(id)_object descriptionComponents];
+	return [(id)_object cxx_descriptionComponents];
 }
 
 
-- (id) shortDescription
+- (std::optional<std::string>) cxx_shortDescription
 {
-	return [(id)_object shortDescription];
+	return [(id)_object cxx_shortDescription];
 }
 
 
-- (id) shortDescriptionComponents
+- (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	return [(id)_object shortDescriptionComponents];
+	return [(id)_object cxx_shortDescriptionComponents];
 }
 
 

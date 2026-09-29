@@ -220,3 +220,12 @@ oo-qps.11..15 wait for their chunks (.12 and .14 also for R); oo-qps.16 waits fo
 ## History
 
 - 2026-09-29: proposed by the frontier planner after oo-qps.11..15 stopped; default in effect.
+- 2026-09-29, Amendment 1 (oo-qps.43, item 1): the codemod flipped the 60 overrides and the legacy
+  root family is gone from `OOCocoa.h/.mm`, but OODescription.mm's forwarding to a legacy override
+  stays until oo-qps.72: `tests/unit/oofnd/test_objc_description.mm` pins it, and it is dead in the
+  game (no class declares the legacy family; it is called through the IMP). Two consequences of the
+  deletion were fixed in the same commit: `oo::ShortDescriptionOf` of a Foundation value, which no
+  longer answers `-shortDescription`, prints `<ClassName 0xnnnnnnnn>` as the NSObject default did;
+  and `oo::DescriptionOf(oo::ObjectFromPList(p))` is `oo::DescriptionOf(p)` tree-wide (and
+  `NSArrayFromObjects` in a description is `PListFromObjects`), because GNUstep describing a
+  collection sends `-description` to each element, which an OOObject no longer answers.

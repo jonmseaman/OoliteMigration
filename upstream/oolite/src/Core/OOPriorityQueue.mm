@@ -171,9 +171,9 @@ OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 }
 
 
-- (id) description
+- (std::optional<std::string>) cxx_description
 {
-	return oo::NSStringFrom(oo::str::format("<%s %s>{count=%zu, capacity=%zu}", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), _count, _capacity));
+	return oo::str::format("<%s %s>{count=%zu, capacity=%zu}", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), _count, _capacity);
 }
 
 

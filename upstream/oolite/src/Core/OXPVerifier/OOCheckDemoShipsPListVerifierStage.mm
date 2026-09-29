@@ -105,7 +105,7 @@ static const char * const kStageName	= "Checking demoships.plist";
 		const std::string *name = entry.getIf<std::string>();
 		if (name == nullptr || shipdataPList.find(*name) == nullptr)
 		{
-			OO_LOG("verifyOXP.demoshipsPList.unknownShip", "----- WARNING: demoships.plist entry \"{}\" not found in shipdata.plist.", name != nullptr ? *name : oo::DescriptionOf(oo::ObjectFromPList(entry)));
+			OO_LOG("verifyOXP.demoshipsPList.unknownShip", "----- WARNING: demoships.plist entry \"{}\" not found in shipdata.plist.", name != nullptr ? *name : oo::DescriptionOf(entry));
 		}
 	}
 }

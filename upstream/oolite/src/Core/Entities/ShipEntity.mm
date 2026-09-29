@@ -1086,7 +1086,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 
 	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
 	if (!subentKey.has_value()) {
-		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(oo::ObjectFromPList(subentDict)));
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(subentDict));
 		return NO;
 	}
 
@@ -1296,11 +1296,11 @@ DESTROY(laser_color);
 }
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	if (![self isSubEntity])
 	{
-		return oo::NSStringFrom(oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
+		return oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), [super cxx_descriptionComponents].value_or("(null)").c_str());
 	}
 	else
 	{
@@ -1309,14 +1309,14 @@ DESTROY(laser_color);
 		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
 		else  subtype = "(subentity)";
 
-		return oo::NSStringFrom(oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype));
+		return oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype);
 	}
 }
 
 
-- (id) shortDescriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str()));
+	return oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str());
 }
 
 
@@ -1511,12 +1511,12 @@ DESTROY(laser_color);
 	{
 		if (![self hasSubEntity:sub])
 		{
-			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::DescriptionOf([self shortDescription]), oo::DescriptionOf(sub));
+			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
 			sub = nil;
 		}
 		else if (![sub isShip])
 		{
-			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::DescriptionOf([self shortDescription]), oo::DescriptionOf(sub));
+			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
 			sub = nil;
 		}
 	}
@@ -14980,7 +14980,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	std::string desc = oo::str::format("%s mass %g", [super descriptionForObjDump].value_or("(null)").c_str(), [self mass]);
 	if (![self isPlayer])
 	{
-		desc = oo::str::format("%s AI: %s", desc.c_str(), oo::DescriptionOf([[self getAI] shortDescriptionComponents]).c_str());
+		desc = oo::str::format("%s AI: %s", desc.c_str(), [[self getAI] cxx_shortDescriptionComponents].value_or("(null)").c_str());
 	}
 	return desc;
 }
@@ -15019,7 +15019,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	// Sanity check; this should always be true.
 	if (![self hasSubEntity:(ShipEntity *)other])
 	{
-		OO_LOG_ERR("ship.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::DescriptionOf([other shortDescription]), oo::DescriptionOf([self shortDescription]), "This is an internal error, please report it.");
+		OO_LOG_ERR("ship.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::ShortDescriptionOf(self), "This is an internal error, please report it.");
 		[other setOwner:nil];
 		return NO;
 	}

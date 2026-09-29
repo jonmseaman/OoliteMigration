@@ -180,7 +180,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::string				stateDesc;
 
@@ -200,13 +200,13 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 		stateDesc = "loading";
 	}
 
-	return oo::NSStringFrom(_key.value_or("(null)") + ", " + stateDesc);	// "%@, %@": nil printed (null)
+	return _key.value_or("(null)") + ", " + stateDesc;	// "%@, %@": nil printed (null)
 }
 
 
-- (id) shortDescriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	return oo::NSStringOrNil(_key);
+	return _key;
 }
 
 

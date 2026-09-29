@@ -278,15 +278,15 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("galaxy %u, system %i", _galaxy, _system));
+	return oo::str::format("galaxy %u, system %i", _galaxy, _system);
 }
 
 
-- (id) shortDescriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	return oo::NSStringFrom(_planetKey);
+	return _planetKey;
 }
 
 
@@ -600,7 +600,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 		
 		if (propValue != nil)
 		{
-			if (oo::IsNSNumber(propValue) || OOIsNumberLiteral(oo::StdString([propValue description]), YES))
+			if (oo::IsNSNumber(propValue) || OOIsNumberLiteral(oo::DescriptionOf(propValue), YES))
 			{
 				BOOL OK = ooscript::newNumberValue(cx, [propValue doubleValue], value);
 				if (!OK)

@@ -118,9 +118,9 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 }
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("position: %s scanClass: %s status: %s", cxx_HPVectorDescription([self position]).c_str(), cxx_OOStringFromScanClass([self scanClass]).c_str(), cxx_OOStringFromEntityStatus([self status]).c_str()));
+	return oo::str::format("position: %s scanClass: %s status: %s", cxx_HPVectorDescription([self position]).c_str(), cxx_OOStringFromScanClass([self scanClass]).c_str(), cxx_OOStringFromEntityStatus([self status]).c_str());
 }
 
 
@@ -219,7 +219,7 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 	NSUInteger currentSessionID = [UNIVERSE sessionID];
 	if (EXPECT_NOT(mySessionID != currentSessionID))
 	{
-		OO_LOG_ERR("entity.invalidSession", "Entity {} from session {} cannot be added to universe in session {}. This is an internal error, please report it.", oo::DescriptionOf([self shortDescription]), static_cast<size_t>(mySessionID), static_cast<size_t>(currentSessionID));
+		OO_LOG_ERR("entity.invalidSession", "Entity {} from session {} cannot be added to universe in session {}. This is an internal error, please report it.", oo::ShortDescriptionOf(self), static_cast<size_t>(mySessionID), static_cast<size_t>(currentSessionID));
 		return NO;
 	}
 	
@@ -1105,9 +1105,9 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 #ifndef NDEBUG
 - (std::optional<std::string>) descriptionForObjDumpBasic
 {
-	id components = [self descriptionComponents];
-	if (components != nil)  return oo::str::format("%s %s", OOClassName([self class]), oo::DescriptionOf(components).c_str());
-	return oo::OptionalString([self description]);
+	const std::optional<std::string> components = [self cxx_descriptionComponents];
+	if (components.has_value())  return oo::str::format("%s %s", OOClassName([self class]), components->c_str());
+	return [self cxx_description];
 }
 
 

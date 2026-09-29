@@ -764,7 +764,7 @@ OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const st
 #if WARNINGS
 		if (!value->isString() && !value->isNumber())
 		{
-			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::StdString([oo::ObjectFromPList(*value) shortDescription]).c_str(), key.c_str());
+			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::ShortDescriptionOf(oo::ObjectFromPList(*value)).c_str(), key.c_str());
 		}
 #endif
 		return ValueText(*value);
@@ -793,7 +793,7 @@ OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std
 		id result = [PLAYER performSelector:selector];
 		if (result != nil)
 		{
-			OOCAssert(oo::IsNSString(result), "Special string expansion [%s] expanded to %s, but expected a string.", key.c_str(), oo::DescriptionOf([result shortDescription]).c_str());
+			OOCAssert(oo::IsNSString(result), "Special string expansion [%s] expanded to %s, but expected a string.", key.c_str(), oo::ShortDescriptionOf(result).c_str());
 			return UnitsFromOptional(oo::OptionalString(result));
 		}
 	}
@@ -878,7 +878,7 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 		if (text == nullptr)
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::DescriptionOf([oo::ObjectFromPList(value) shortDescription]), key);
+			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::ShortDescriptionOf(oo::ObjectFromPList(value)), key);
 			return std::nullopt;
 		}
 
@@ -934,7 +934,7 @@ OOUnits ValueText(const oo::PList &value)
 {
 	if (const std::string *text = value.getIf<std::string>())  return oo::utf8ToUtf16(*text);
 	if (value.isNumber())  return oo::utf8ToUtf16(oo::plist_get::numberStringValue(value));
-	return oo::utf8ToUtf16(oo::DescriptionOf(oo::ObjectFromPList(value)));
+	return oo::utf8ToUtf16(oo::DescriptionOf(value));
 }
 
 
@@ -952,8 +952,9 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, co
 
 	if (selector != NULL)
 	{
-		// PlayerEntity is not migrated yet: the result's -description converts here.
-		return UnitsFromOptional(oo::OptionalString([[PLAYER performSelector:selector] description]));
+		// PlayerEntity is not migrated yet: "%@" of the result converts here (nil stays nil).
+		id result = [PLAYER performSelector:selector];
+		return UnitsFromOptional(result != nil ? std::optional<std::string>(oo::DescriptionOf(result)) : std::nullopt);
 	}
 	else
 	{

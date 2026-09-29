@@ -33,11 +33,12 @@ class name for a class object, -cxx_description for an OOObject; for an oo::PLis
 printed for its object graph (oo::describe). oo::ShortDescriptionOf(x) is
 its short twin. OOConstantString describes itself as its text.
 
-Transitional (until oo-qps.43 flips the legacy -description family and oo-qps.72 retires the
-rest): the root's defaults forward to a legacy id-typed -descriptionComponents /
--shortDescriptionComponents / -description / -shortDescription override while a class still has
-one, and oo::DescriptionOf of any other object (not rooted on OOObject) asks its -description.
-tools/codemods/description-family.py flips the legacy overrides.
+Transitional (until oo-qps.72): the root's defaults forward to a legacy id-typed
+-descriptionComponents / -shortDescriptionComponents / -description / -shortDescription override
+while a class still has one (none in the game since oo-qps.43 ran
+tools/codemods/description-family.py and deleted the legacy root family), and oo::DescriptionOf of
+any other object (not rooted on OOObject) asks its -description; oo::ShortDescriptionOf of one
+asks its -shortDescription, or gives <ClassName 0xnnnnnnnn> if it has none.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors

@@ -644,7 +644,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	const char *typeString;
 	switch (planet_type)
@@ -661,7 +661,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 		default:
 			typeString = "UNKNOWN";
 	}
-	return oo::NSStringFrom(oo::str::format("ID: %u position: %s type: %s radius: %.3fkm", [self universalID], cxx_HPVectorDescription([self position]).c_str(), typeString, 0.001 * [self radius]));
+	return oo::str::format("ID: %u position: %s type: %s radius: %.3fkm", [self universalID], cxx_HPVectorDescription([self position]).c_str(), typeString, 0.001 * [self radius]);
 }
 
 

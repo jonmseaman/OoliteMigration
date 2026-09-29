@@ -104,9 +104,9 @@ static int crid_counter = 1;
 
 // OOObject's -description wraps this as "<CollisionRegion 0x...>{ID: ...}", which is what this
 // class's own -description printed.
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("ID: %d, %zu subregions, %u ents", crid, subregions.size(), n_entities));
+	return oo::str::format("ID: %d, %zu subregions, %u ents", crid, subregions.size(), n_entities);
 }
 
 

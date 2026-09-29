@@ -228,7 +228,7 @@ MA 02110-1301, USA.
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::string result = oo::str::format("ID: %u position: %s radius: %.3fkm", [self universalID], cxx_HPVectorDescription([self position]).c_str(), 0.001 * [self radius]);
 	if ([self goneNova])
@@ -240,7 +240,7 @@ MA 02110-1301, USA.
 		result += " (will go nova)";
 	}
 
-	return oo::NSStringFrom(result);
+	return result;
 }
 
 

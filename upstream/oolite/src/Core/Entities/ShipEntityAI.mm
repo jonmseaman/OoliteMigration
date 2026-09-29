@@ -70,7 +70,7 @@ bool IsWhitespace(char16_t c)
 std::optional<std::string> DebugContext(id entity, const char *suffix)
 {
 #ifndef NDEBUG
-	return oo::str::format("%s %s", oo::DescriptionOf([entity shortDescription]).c_str(), suffix);
+	return oo::str::format("%s %s", oo::ShortDescriptionOf(entity).c_str(), suffix);
 #else
 	(void)entity;
 	(void)suffix;

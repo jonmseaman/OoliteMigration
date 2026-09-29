@@ -565,7 +565,7 @@ void OpenLogFile();
 		}
 		@catch (OOException *exception)
 		{
-			if (!stageName.has_value())  stageName = oo::StdString([[stageToRun class] description]);
+			if (!stageName.has_value())  stageName = oo::DescriptionOf([stageToRun class]);
 			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, [exception name], [exception reason]);
 		}
 		oo::log::popIndent();

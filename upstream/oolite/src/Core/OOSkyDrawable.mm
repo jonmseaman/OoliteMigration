@@ -676,9 +676,9 @@ do { \
 
 // OOObject's -description wraps this as "<OOSkyQuadSet 0x...>{...}", the text this class's own
 // -description printed. Shared selector (proposed ADR-0043).
-- (id)descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("%u quads, texture: %s", _count, oo::DescriptionOf(_texture).c_str()));
+	return oo::str::format("%u quads, texture: %s", _count, oo::DescriptionOf(_texture).c_str());
 }
 
 

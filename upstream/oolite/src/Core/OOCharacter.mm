@@ -61,10 +61,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 
 @implementation OOCharacter
 
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	// ("(null)" is what "%@" printed for a missing name or description)
-	return oo::NSStringFrom(oo::str::format("%s, %s. bounty: %i insurance: %zu", _name.value_or("(null)").c_str(), _shortDescription.value_or("(null)").c_str(), [self legalStatus], [self insuranceCredits]));
+	return oo::str::format("%s, %s. bounty: %i insurance: %zu", _name.value_or("(null)").c_str(), _shortDescription.value_or("(null)").c_str(), [self legalStatus], [self insuranceCredits]);
 }
 
 
@@ -369,9 +369,9 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (id)shortDescription
+- (std::optional<std::string>) cxx_shortDescription
 {
-	return oo::NSStringOrNil(_shortDescription);
+	return _shortDescription;
 }
 
 

@@ -201,7 +201,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	}
 	else
 	{
-		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), oo::DescriptionOf([object shortDescription]).c_str(), (selectorString ? selectorString->c_str() : "(null)"));
+		cxx_OOJSReportError(context, "%s.callObjC(): %s does not respond to method %s.", oo_jsClassName.c_str(), oo::ShortDescriptionOf(object).c_str(), (selectorString ? selectorString->c_str() : "(null)"));
 		error = YES;
 	}
 	

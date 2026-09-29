@@ -212,7 +212,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 			{
 				_diffusePx = [diffuseMap copyPixMapRepresentation];
 #ifndef NDEBUG
-				_diffuseDesc = oo::StdString([diffuseMap shortDescription]);
+				_diffuseDesc = oo::ShortDescriptionOf(diffuseMap);
 #endif
 			}
 			
@@ -228,7 +228,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 																							  folder:std::string("Textures")];
 				[emissionMapLoader getResult:&_emissionPx format:&format originalWidth:NULL originalHeight:NULL];
 #ifndef NDEBUG
-				_emissionDesc = oo::StdString([emissionMapLoader shortDescription]);
+				_emissionDesc = (emissionMapLoader != nil ? oo::ShortDescriptionOf(emissionMapLoader) : std::string());
 #endif
 			}
 			if (!_illuminationSpec.isNull())
@@ -238,7 +238,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 																								  folder:std::string("Textures")];
 				[illuminationMapLoader getResult:&_illuminationPx format:&format originalWidth:NULL originalHeight:NULL];
 #ifndef NDEBUG
-				_illuminationDesc = oo::StdString([illuminationMapLoader shortDescription]);
+				_illuminationDesc = (illuminationMapLoader != nil ? oo::ShortDescriptionOf(illuminationMapLoader) : std::string());
 #endif
 			}
 		}
@@ -312,7 +312,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 
 
 #ifndef NDEBUG
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::string result;
 	BOOL haveIllumination = NO;
@@ -357,7 +357,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 		}
 	}
 	
-	return oo::NSStringFrom(result);
+	return result;
 }
 #endif
 

@@ -68,7 +68,7 @@ MA 02110-1301, USA.
 
 	if (count == 0)  return result;
 
-	OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::DescriptionOf([self shortDescription]), [self universalID]);
+	OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::ShortDescriptionOf(self), [self universalID]);
 
 	result.reserve(count);
 

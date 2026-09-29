@@ -1022,7 +1022,7 @@ static bool ConsoleProfile(ooscript::Context context, ooscript::CallArgs &oojsAr
 		result = PerformProfiling(context, "profile", oojsArgs.count(), OOJS_ARGV, NULL, NO, &profile);
 		if (result)
 		{
-			OOJS_SET_RVAL(OOJSValueFromNativeObject(context, [profile description]));
+			OOJS_SET_RVAL(OOJSValueFromPList(context, profile != nil ? oo::PList(oo::DescriptionOf(profile)) : oo::PList()));
 		}
 	}
 	

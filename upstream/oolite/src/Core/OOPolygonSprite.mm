@@ -185,9 +185,9 @@ typedef GLvoid (*TessFuncPtr)();
 
 
 #ifndef NDEBUG
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(_name);
+	return _name;
 }
 #endif
 

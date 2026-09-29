@@ -210,7 +210,7 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	const char			*state = nullptr;
 	
@@ -227,13 +227,13 @@ static BOOL					sHaveSetUp = NO;
 #endif
 	}
 	
-	return oo::NSStringFrom(oo::str::format("{%s -- %s}", _path.c_str(), state));
+	return oo::str::format("{%s -- %s}", _path.c_str(), state);
 }
 
 
-- (id)shortDescriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	return oo::NSStringFrom(oo::str::lastPathComponent(_path));
+	return oo::str::lastPathComponent(_path);
 }
 
 

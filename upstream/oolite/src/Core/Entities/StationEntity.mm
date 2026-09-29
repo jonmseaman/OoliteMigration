@@ -2408,9 +2408,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\" %s", name.value_or("(null)").c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
+	return oo::str::format("\"%s\" %s", name.value_or("(null)").c_str(), [super cxx_descriptionComponents].value_or("(null)").c_str());
 }
 
 

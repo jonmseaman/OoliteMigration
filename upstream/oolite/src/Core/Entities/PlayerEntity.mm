@@ -535,7 +535,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #ifndef NDEBUG
 	if (cargo.size() > 0)
 	{
-		OO_LOG("player.unloadCargo", "Cargo remains in pods after unloading - {}", oo::DescriptionOf(oo::NSArrayFromObjects(cargo)));
+		OO_LOG("player.unloadCargo", "Cargo remains in pods after unloading - {}", oo::DescriptionOf(oo::PListFromObjects(cargo)));
 	}
 #endif
 
@@ -1415,10 +1415,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (!mission_variables.isNull())
 	{
 		// the length of the dictionary's -description, as before (the same GNUstep text)
-		munge_checksum(oo::str::length(oo::DescriptionOf(oo::ObjectFromPList(mission_variables))));
+		munge_checksum(oo::str::length(oo::DescriptionOf(mission_variables)));
 	}
 	// the equipment dictionary always existed: the length of its -description, as above
-	munge_checksum(oo::str::length(oo::DescriptionOf(oo::ObjectFromPList(oo::PList(equipment)))));
+	munge_checksum(oo::str::length(oo::DescriptionOf(oo::PList(equipment))));
 
 	int final_checksum = munge_checksum(oo::str::length([self cxx_shipDataKey].value_or(std::string())));
 
@@ -13619,7 +13619,7 @@ else _dockTarget = NO_TARGET;
 					while (j--)
 					{
 						// the "%@" texts of the two key-code arrays
-						if (oo::DescriptionOf(oo::ObjectFromPList(keydef)) == oo::DescriptionOf(oo::ObjectFromPList(checklist[j])))
+						if (oo::DescriptionOf(keydef) == oo::DescriptionOf(checklist[j]))
 						{
 							result = NO;
 							OO_LOG(cxx_kOOLogException, "***** Exception in setExtraGuiScreenKeys: {} : {} ({})", "invalid key settings", "key already in use", key);

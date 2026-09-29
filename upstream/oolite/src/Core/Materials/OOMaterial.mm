@@ -51,9 +51,9 @@ static OOMaterial *sActiveMaterial = nil;
 }
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom("\"" + [self cxx_name].value_or("(null)") + "\"");	// "%@" of the name, quoted
+	return "\"" + [self cxx_name].value_or("(null)") + "\"";	// "%@" of the name, quoted
 }
 
 

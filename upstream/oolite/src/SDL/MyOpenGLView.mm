@@ -1412,13 +1412,13 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 		modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
 		if ((modeWidth == d_width)&&(modeHeight == d_height)&&(modeRefresh == d_refresh))
 		{
-			OO_LOG("display.mode.found", "Found mode {}", oo::DescriptionOf(oo::ObjectFromPList(mode)));
+			OO_LOG("display.mode.found", "Found mode {}", oo::DescriptionOf(mode));
 			return i;
 		}
 	}
 
 	OO_LOG("display.mode.found.failed", "Failed to find mode: width={} height={} refresh={}", static_cast<int>(d_width), static_cast<int>(d_height), static_cast<int>(d_refresh));
-	OO_LOG("display.mode.found.failed.list", "Contents of list: {}", oo::DescriptionOf(oo::ObjectFromPList(oo::PList(oo::PList::Array(screenSizes)))));
+	OO_LOG("display.mode.found.failed.list", "Contents of list: {}", oo::DescriptionOf(oo::PList(oo::PList::Array(screenSizes))));
 	return 0;
 }
 

@@ -401,7 +401,7 @@ withPropertyList:(const oo::PList &)rootPList
 	 againstType:(const oo::PList &)typeKey
 		   error:(std::optional<OOPListSchemaVerifierError> *)outError
 {
-	[self verboseMessage:oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(oo::ObjectFromPList(typeKey)), _name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:keyPath]) })];
+	[self verboseMessage:oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(typeKey), _name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:keyPath]) })];
 	return YES;
 }
 

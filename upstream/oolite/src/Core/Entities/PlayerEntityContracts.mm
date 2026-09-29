@@ -160,7 +160,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			{
 				// claim bounty for capture, ignore insurance
 				result += oo::str::formatRuntime(OO_DESC("capture-reward-for-@@-@-credits-@-alt"),
-				 { [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits(reward, YES, NO),
+				 { [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits(reward, YES, NO),
 				 cxx_OOStringFromDeciCredits(insurance, YES, NO) });
 				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] })))];
 			}
@@ -168,7 +168,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			{
 				// claim insurance reward with reduction of bounty
 				result += oo::str::formatRuntime(OO_DESC("rescue-reward-for-@@-@-credits-@-alt"),
-				 { [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits(insurance - reward, YES, NO),
+				 { [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits(insurance - reward, YES, NO),
 				 cxx_OOStringFromDeciCredits(reward, YES, NO) });
 				reward = insurance - reward;
 				[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), [rescuee infoForScripting] })))];
@@ -180,7 +180,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		{
 			// claim insurance reward
 			result += oo::str::formatRuntime(OO_DESC("rescue-reward-for-@@-@-credits"),
-				{ [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO) });
+				{ [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO) });
 			credits += 10 * [rescuee insuranceCredits];
 			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), [rescuee infoForScripting] })))];
 
@@ -191,7 +191,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			// claim bounty for capture
 			float reward = (5.0 + government) * [rescuee legalStatus];
 			result += oo::str::formatRuntime(OO_DESC("capture-reward-for-@@-@-credits"),
-				{ [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits(reward, YES, NO) });
+				{ [rescuee cxx_name].value_or("(null)"), oo::ShortDescriptionOf(rescuee), cxx_OOStringFromDeciCredits(reward, YES, NO) });
 			credits += reward;
 			[self cxx_doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] })))];
 			added_entry = YES;

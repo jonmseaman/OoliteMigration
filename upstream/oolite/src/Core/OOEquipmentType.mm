@@ -411,9 +411,9 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("%s \"%s\"", _identifier.c_str(), _name.c_str()));
+	return oo::str::format("%s \"%s\"", _identifier.c_str(), _name.c_str());
 }
 
 
