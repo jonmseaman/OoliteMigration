@@ -832,7 +832,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
 	if (market != nullptr)
 	{
-		[dockedStation setLocalMarket:oo::ObjectFromPList(*market)];
+		[dockedStation cxx_setLocalMarket:*market];
 	}
 	else
 	{
