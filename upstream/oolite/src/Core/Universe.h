@@ -864,6 +864,10 @@ OOINLINE Universe *OOGetUniverse(void)
 // critical contexts.
 #define DESC(key)	(OOLookUpDescriptionPRIV(key ""))
 #define DESC_PLURAL(key,count)	(OOLookUpPluralDescriptionPRIV(key "", count))
+// Their std::string forms (proposed ADR-0053), the same rule: a string literal key, and the
+// description or the key itself when there is none. Callers move here; DESC goes with its bridge.
+#define OO_DESC(key)	(cxx_OOLookUpDescriptionPRIV(key ""))
+#define OO_DESC_PLURAL(key,count)	(cxx_OOLookUpPluralDescriptionPRIV(key "", count))
 
 // Not for direct use.
 // The lookups behind DESC() / DESC_PLURAL(): the description, or the key itself when there is none.
