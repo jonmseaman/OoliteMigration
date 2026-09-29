@@ -299,7 +299,6 @@ enum
 
 }
 
-- (id) initWithDictionary:(id)hudinfo;	// shared selector (proposed ADR-0043)
 - (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName OO_RETURNS_RETAINED;
 
 - (void) cxx_resetGuis:(const oo::PList &)info;

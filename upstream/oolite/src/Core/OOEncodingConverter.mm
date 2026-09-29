@@ -86,14 +86,18 @@ static unsigned				sCacheMisses = 0;
 		_cache = [[OOCache alloc] init];
 		[_cache setPruneThreshold:kCachePruneThreshold];
 		[_cache cxx_setName:std::string("Text encoding")];
-		if (substitutions.isDict())
+		if (const oo::PList::Dict *substitutionDictionary = substitutions.getIf<oo::PList::Dict>())
 		{
-			// In the order the Foundation dictionary enumerated them (two that overlap give
-			// different results in different orders), which is the order this one enumerates in.
-			id substitutionDictionary = oo::ObjectFromPList(substitutions);
-			for (id key in substitutionDictionary)
+			// In key order (bead oo-qps.51): the Foundation dictionary this was once
+			// built into enumerated in its hash order. Two substitutions give different results in
+			// different orders only when one's key occurs in another's key or replacement; the
+			// stock oolite-font.plist's keys are distinct single characters that occur in no
+			// replacement, so its result is unchanged. A value that is not a string was an
+			// -length sent to a non-string; it substitutes "" here.
+			for (const auto &[key, value] : *substitutionDictionary)
 			{
-				_substitutions.emplace_back(oo::StdString(key), oo::StdString([substitutionDictionary objectForKey:key]));
+				const std::string *replacement = value.getIf<std::string>();
+				_substitutions.emplace_back(key, (replacement != nullptr) ? *replacement : std::string());
 			}
 		}
 		_encoding = encoding;
