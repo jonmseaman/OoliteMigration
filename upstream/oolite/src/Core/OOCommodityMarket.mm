@@ -94,9 +94,9 @@ std::optional<std::string> SavedGoodKey(const oo::PList &entry)
 }
 
 
-- (id) dictionaryForScripting
+- (oo::PList) dictionaryForScripting
 {
-	return oo::ObjectFromPList(oo::PList(oo::PList::Dict(_commodityList.begin(), _commodityList.end())));
+	return oo::PList(oo::PList::Dict(_commodityList.begin(), _commodityList.end()));
 }
 
 

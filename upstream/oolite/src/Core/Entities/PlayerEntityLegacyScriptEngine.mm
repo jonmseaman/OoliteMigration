@@ -1278,16 +1278,16 @@ static int shipsFound;
 }
 
 
-- (void) commsMessage:(id)valueString	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) commsMessage:(const std::string &)valueString	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
 {
-	[UNIVERSE cxx_addCommsMessage:[self expandMessage:oo::StdString(valueString)] forCount:4.5];
+	[UNIVERSE cxx_addCommsMessage:[self expandMessage:valueString] forCount:4.5];
 }
 
 
 // Enabled on 02-May-2008 - Nikos
 // This method does the same as -commsMessage, (which in fact calls), the difference being that scripts can use this
 // method to have unpiloted ship entities sending comms messages.
-- (void) commsMessageByUnpiloted:(id)valueString	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
 {
 	[self commsMessage:valueString];
 }
@@ -2327,11 +2327,11 @@ static int shipsFound;
 			{
 				AI*	se1AI = [se1 getAI];
 				[se1 setFuel:MAX(PLAYER_MAX_FUEL, [se1 fuelCapacity])];
-				[se1 setAITo:@"exitingTraderAI.plist"];	// lets them return to their previous state after the jump
+				[se1 setAITo:"exitingTraderAI.plist"];	// lets them return to their previous state after the jump
 				[se1AI cxx_setState:"EXIT_SYSTEM"];
 				// The following should prevent all ships leaving at once (freezes oolite on slower machines)
 				[se1AI setNextThinkTime:[UNIVERSE getTime] + 3 + (ranrot_rand() & 15)];
-				[se1 setPrimaryRole:@"oolite-none"];	// prevents new ship from appearing at witchpoint when this one leaves!
+				[se1 setPrimaryRole:"oolite-none"];	// prevents new ship from appearing at witchpoint when this one leaves!
 			}
 		}
 	}
@@ -2769,7 +2769,7 @@ static int shipsFound;
 		[ship setPosition: vectorToHPVector(model_p0)];
 		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
 		[ship setScanClass: CLASS_NO_DRAW];
-		[ship switchAITo: @"nullAI.plist"];
+		[ship switchAITo: "nullAI.plist"];
 		[UNIVERSE addEntity: ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
 		[ship setStatus: STATUS_COCKPIT_DISPLAY];
 		[ship setRoll: 0.0];
@@ -2804,7 +2804,7 @@ static int shipsFound;
 		[doppelganger setPosition: vectorToHPVector(model_p0)];
 		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
 		[doppelganger setScanClass: CLASS_NO_DRAW];
-		[doppelganger switchAITo: @"nullAI.plist"];
+		[doppelganger switchAITo: "nullAI.plist"];
 		[UNIVERSE addEntity: doppelganger];
 		[doppelganger setStatus: STATUS_COCKPIT_DISPLAY];
 		[doppelganger setRoll: 0.0];
