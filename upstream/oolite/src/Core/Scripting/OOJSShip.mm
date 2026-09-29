@@ -3210,7 +3210,7 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		}
 		else
 		{
-			OOCharacter *crew = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0])))];
+			OOCharacter *crew = [OOCharacter characterWithDictionary:cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]))];
 			std::vector<oo::ObjCRef<OOCharacter *>> members;
 			if (crew != nil)  members.emplace_back(crew);	// a nil character was skipped (an NSArray cannot hold nil)
 			[thisEnt cxx_setCrew:members];

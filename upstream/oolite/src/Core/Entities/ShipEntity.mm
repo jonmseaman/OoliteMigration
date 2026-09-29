@@ -937,7 +937,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		}
 		if (!cdict.isNull())
 		{
-			OOCharacter	*pilot = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cdict)];
+			OOCharacter	*pilot = [OOCharacter characterWithDictionary:cdict];
 			[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(pilot) }];
 		}
 	}
