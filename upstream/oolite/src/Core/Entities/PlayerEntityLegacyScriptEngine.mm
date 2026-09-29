@@ -1350,11 +1350,11 @@ static int shipsFound;
 		OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award undamaged weapon:'{}'. Damaged weapons can be awarded instead.", CurrentScriptDescription(), equipKey);
 	}
 	// (the "_DAMAGED" suffix is ASCII, so its bytes are its characters)
-	else if (oo::str::hasSuffix(equipKey, "_DAMAGED") && [self hasEquipmentItem:oo::NSStringFrom(equipKey.substr(0, equipKey.size() - 8))])
+	else if (oo::str::hasSuffix(equipKey, "_DAMAGED") && [self hasEquipmentItem:oo::PList(equipKey.substr(0, equipKey.size() - 8))])
 	{
 		OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award damaged equipment:'{}'. Undamaged version already equipped.", CurrentScriptDescription(), equipKey);
 	}
-	else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:equipString])
+	else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:oo::PList(equipKey)])
 	{
 		[self addEquipmentItem:equipKey withValidation:YES inContext:"scripted"];
 	}
@@ -1372,13 +1372,13 @@ static int shipsFound;
 		return;
 	}
 
-	if (equipKey == "EQ_CARGO_BAY" && [self hasEquipmentItem:equipString]
+	if (equipKey == "EQ_CARGO_BAY" && [self hasEquipmentItem:oo::PList(equipKey)]
 			&& ([self extraCargo] > [self availableCargoSpace]))
 	{
 		OO_LOG(kOOLogSyntaxRemoveEquipment, "***** SCRIPT ERROR: in {}, CANNOT remove cargo bay. Too much cargo.", CurrentScriptDescription());
 		return;
 	}
-	if ([self hasEquipmentItem:equipString] || [self hasEquipmentItem:oo::NSStringFrom(equipKey + "_DAMAGED")])
+	if ([self hasEquipmentItem:oo::PList(equipKey)] || [self hasEquipmentItem:oo::PList(equipKey + "_DAMAGED")])
 	{
 		[self removeEquipmentItem:equipKey];
 	}
@@ -1530,7 +1530,7 @@ static int shipsFound;
 
 - (void) testForEquipment:(id)equipString	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 {
-	found_equipment = [self hasEquipmentItem:equipString];
+	found_equipment = [self hasEquipmentItem:oo::PListFrom(equipString)];
 }
 
 

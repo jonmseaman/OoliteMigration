@@ -131,6 +131,23 @@ static GLfloat calcFuelChargeRate (GLfloat myMass)
 
 namespace {
 
+// Equipment keys as the array -hasEquipmentItem: / -hasAllEquipment: take (was an NSSet of them).
+oo::PList KeysPList(const std::vector<std::string> &keys)
+{
+	oo::PList::Array result;
+	result.reserve(keys.size());
+	for (const std::string &key : keys)  result.emplace_back(key);
+	return oo::PList(std::move(result));
+}
+
+
+// An equipment key as -hasEquipmentItem: takes it: a null PList for nullopt (was nil).
+oo::PList OptionalKeyPList(const std::optional<std::string> &key)
+{
+	return key.has_value() ? oo::PList(*key) : oo::PList();
+}
+
+
 /*	Readers for a subentity / ship configuration held as an oo::PList (the Foundation sweep,
 	proposed ADR-0043): what oo::PListView(dict)'s array / string / get<HPVector> /
 	get<Quaternion> answered. A string is nil (nullopt) when the key is absent or holds neither a
@@ -3231,21 +3248,25 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) hasEquipmentItem:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
 {
 	// this method is also used internally to find out if an equipped item is undamaged.
-	if (oo::IsNSString(equipmentKeys))
+	if (const std::string *key = equipmentKeys.getIf<std::string>())
 	{
-		return [self cxx_hasOneEquipmentItem:oo::StdString(equipmentKeys) includeWeapons:includeWeapons whileLoading:loading];
+		return [self cxx_hasOneEquipmentItem:*key includeWeapons:includeWeapons whileLoading:loading];
 	}
 	else
 	{
-		OOParameterAssert(oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys));
+		OOParameterAssert(equipmentKeys.isArray());
 
 		// Any match: order-insensitive. Only string keys can match an equipment key.
-		for (const std::string &key : oo::StringsFrom(equipmentKeys))
+		if (const oo::PList::Array *keys = equipmentKeys.getIf<oo::PList::Array>())
 		{
-			if ([self cxx_hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return YES;
+			for (const oo::PList &element : *keys)
+			{
+				const std::string *elementKey = element.getIf<std::string>();
+				if (elementKey != nullptr && [self cxx_hasOneEquipmentItem:*elementKey includeWeapons:includeWeapons whileLoading:loading])  return YES;
+			}
 		}
 	}
 
@@ -3253,7 +3274,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) hasEquipmentItem:(id)equipmentKeys
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys
 {
 	return [self hasEquipmentItem:equipmentKeys includeWeapons:NO whileLoading:NO];
 }
@@ -3303,18 +3324,22 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) hasAllEquipment:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
 {
 	if (_equipment.empty())  return NO;
 
-	// Make sure it's an array or set, using a single-element list if it's a string.
+	// Make sure it's an array, using a single-element list if it's a string.
 	std::vector<std::string> keys;
-	if (oo::IsNSString(equipmentKeys))  keys.push_back(oo::StdString(equipmentKeys));
-	else if (oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys))
+	if (const std::string *key = equipmentKeys.getIf<std::string>())  keys.push_back(*key);
+	else if (const oo::PList::Array *elements = equipmentKeys.getIf<oo::PList::Array>())
 	{
-		keys = oo::StringsFrom(equipmentKeys);
-		// A key that is not a string is never held: the whole test fails, as it did.
-		if (keys.size() != [equipmentKeys count])  return NO;
+		for (const oo::PList &element : *elements)
+		{
+			const std::string *elementKey = element.getIf<std::string>();
+			// A key that is not a string is never held: the whole test fails, as it did.
+			if (elementKey == nullptr)  return NO;
+			keys.push_back(*elementKey);
+		}
 	}
 	else  return NO;
 
@@ -3328,7 +3353,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) hasAllEquipment:(id)equipmentKeys
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys
 {
 	return [self hasAllEquipment:equipmentKeys includeWeapons:NO whileLoading:NO];
 }
@@ -3554,7 +3579,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	// if the condition is not satisfied, but it doesn't make sense to deny repair when the
 	// equipment is already installed. For now, we are checking only the cargo space condition,
 	// but other conditions might need to be revised too. - Nikos, 20151115
-	if ([self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_damagedIdentifier])])
+	if ([self hasEquipmentItem:OptionalKeyPList([eqType cxx_damagedIdentifier])])
 	{
 		validationForDamagedEquipment = YES;
 	}
@@ -3567,9 +3592,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	const std::optional<std::vector<std::string>> requiresEquipment = [eqType cxx_requiresEquipment];
 	const std::optional<std::vector<std::string>> requiresAnyEquipment = [eqType cxx_requiresAnyEquipment];
 	const std::optional<std::vector<std::string>> incompatibleEquipment = [eqType cxx_incompatibleEquipment];
-	if (requiresEquipment.has_value() && ![self hasAllEquipment:oo::NSSetFromStrings(*requiresEquipment) includeWeapons:YES whileLoading:loading])  return NO;
-	if (requiresAnyEquipment.has_value() && ![self hasEquipmentItem:oo::NSSetFromStrings(*requiresAnyEquipment) includeWeapons:YES whileLoading:loading])  return NO;
-	if (incompatibleEquipment.has_value() && [self hasEquipmentItem:oo::NSSetFromStrings(*incompatibleEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (requiresEquipment.has_value() && ![self hasAllEquipment:KeysPList(*requiresEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (requiresAnyEquipment.has_value() && ![self hasEquipmentItem:KeysPList(*requiresAnyEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (incompatibleEquipment.has_value() && [self hasEquipmentItem:KeysPList(*incompatibleEquipment) includeWeapons:YES whileLoading:loading])  return NO;
 	if ([eqType requiresCleanLegalRecord] && [self legalStatus] != 0 && !loading)  return NO;
 	if ([eqType requiresNonCleanLegalRecord] && [self legalStatus] == 0 && !loading)  return NO;
 	if ([eqType requiresFreePassengerBerth] && [self passengerCount] >= [self passengerCapacity])  return NO;
@@ -4119,7 +4144,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) hasCloakingDevice
 {
 	/* TODO: Checks above stop this being 'providing'. */
-	return [self hasEquipmentItem:@"EQ_CLOAKING_DEVICE"];
+	return [self hasEquipmentItem:oo::PList("EQ_CLOAKING_DEVICE")];
 }
 
 
@@ -4146,21 +4171,21 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) hasExpandedCargoBay
 {
 	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:@"EQ_CARGO_BAY"];
+	return [self hasEquipmentItem:oo::PList("EQ_CARGO_BAY")];
 }
 
 
 - (BOOL) hasShieldBooster
 {
 	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:@"EQ_SHIELD_BOOSTER"];
+	return [self hasEquipmentItem:oo::PList("EQ_SHIELD_BOOSTER")];
 }
 
 
 - (BOOL) hasMilitaryShieldEnhancer
 {
 	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:@"EQ_NAVAL_SHIELD_BOOSTER"];
+	return [self hasEquipmentItem:oo::PList("EQ_NAVAL_SHIELD_BOOSTER")];
 }
 
 
@@ -4181,7 +4206,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	/* TODO: this could be providing since theoretically OXP
 	 * deployable mines could also do cascade effects, but there are
 	 * probably better ways to manage OXP pylon AI */
-	return [self hasEquipmentItem:@"EQ_QC_MINE" includeWeapons:YES whileLoading:NO];
+	return [self hasEquipmentItem:oo::PList("EQ_QC_MINE") includeWeapons:YES whileLoading:NO];
 }
 
 

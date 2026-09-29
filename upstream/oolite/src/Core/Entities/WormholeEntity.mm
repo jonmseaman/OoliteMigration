@@ -621,7 +621,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 
 - (std::optional<std::string>) identFromShip:(ShipEntity*)ship
 {
-	if ([ship hasEquipmentItem:@"EQ_WORMHOLE_SCANNER"])
+	if ([ship hasEquipmentItem:oo::PList("EQ_WORMHOLE_SCANNER")])
 	{
 		if ([self scanInfo] >= WH_SCANINFO_DESTINATION)
 		{
