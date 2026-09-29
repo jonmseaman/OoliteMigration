@@ -157,7 +157,7 @@ typedef enum
 - (void) consoleMessage3s:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 - (void) consoleMessage6s:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 
-- (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) setLegalStatus:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 - (void) awardCredits:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 - (void) awardShipKills:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 - (void) awardEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
@@ -248,7 +248,7 @@ typedef enum
 
 - (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
 
-- (void) playSound:(id)soundName;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) playSound:(const std::string &)soundName;	// called by name (ADR-0043 item 21)
 
 // Equipment scripts (bead oo-3rb.195): no equipment has an empty key.
 - (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key;

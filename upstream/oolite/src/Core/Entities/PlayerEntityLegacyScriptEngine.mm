@@ -1065,9 +1065,9 @@ static int shipsFound;
 }
 
 
-- (void) setLegalStatus:(id)valueString	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) setLegalStatus:(const std::string &)valueString	// called by name (ADR-0043 item 21)
 {
-	legalStatus = oo::str::intValue(oo::StdString(valueString));	// nil was 0, as "" is
+	legalStatus = oo::str::intValue(valueString);
 }
 
 
@@ -2485,9 +2485,9 @@ static int shipsFound;
 }
 
 
-- (void) playSound:(id) soundName	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) playSound:(const std::string &)soundName	// called by name (ADR-0043 item 21)
 {
-	[self playLegacyScriptSound:oo::StdString(soundName)];
+	[self playLegacyScriptSound:soundName];
 }
 
 /*-----------------------------------------------------*/
