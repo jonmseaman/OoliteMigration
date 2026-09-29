@@ -1174,7 +1174,7 @@ typedef enum
 - (NSUInteger) trumbleCount;
 // loading and saving trumbleCount
 - (id) trumbleValue;
-- (void) setTrumbleValueFrom:(NSObject *)trumbleValue;
+- (void) setTrumbleValueFrom:(id)trumbleValue;
 
 - (float) trumbleAppetiteAccumulator;
 - (void) setTrumbleAppetiteAccumulator:(float)value;

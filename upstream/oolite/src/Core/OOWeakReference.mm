@@ -65,7 +65,7 @@ return [result autorelease];
 
 - (id)description
 {
-	if (_object != nil)  return [_object description];
+	if (_object != nil)  return [(id)_object description];	// -description is not in the OOObject protocol (the Logging seam)
 	else  return oo::NSStringFrom(oo::str::format("<Dead %s %s>", oo::StdString([[self class] description]).c_str(), oo::str::pointerDescription(self).c_str()));
 }
 

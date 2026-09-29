@@ -99,7 +99,7 @@ This code is hereby placed in the public domain.
 @class OOWeakReference;
 
 
-@protocol OOWeakReferenceSupport <NSObject>
+@protocol OOWeakReferenceSupport <OOObject>
 
 - (id)weakRetain OO_RETURNS_RETAINED;		// Returns a retained OOWeakReference, which should be released when finished with.
 - (void)weakRefDied:(OOWeakReference *)weakRef;
