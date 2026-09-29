@@ -625,11 +625,11 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	{
 		if ([self scanInfo] >= WH_SCANINFO_DESTINATION)
 		{
-			return oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-to-@")), { [UNIVERSE cxx_getSystemName:destination].value_or("(null)") });
+			return oo::str::formatRuntime(OO_DESC("wormhole-to-@"), { [UNIVERSE cxx_getSystemName:destination].value_or("(null)") });
 		}
 		else
 		{
-			return oo::OptionalString(DESC(@"wormhole-desc"));
+			return OO_DESC("wormhole-desc");
 		}
 	}
 	else

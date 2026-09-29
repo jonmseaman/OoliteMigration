@@ -7340,15 +7340,15 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 			break;
 
 		case CLASS_THARGOID:
-			desc = oo::OptionalString(DESC(@"legal-desc-alien"));
+			desc = OO_DESC("legal-desc-alien");
 			break;
 
 		case CLASS_POLICE:
-			desc = oo::OptionalString(DESC(@"legal-desc-system-vessel"));
+			desc = OO_DESC("legal-desc-system-vessel");
 			break;
 
 		case CLASS_MILITARY:
-			desc = oo::OptionalString(DESC(@"legal-desc-military-vessel"));
+			desc = OO_DESC("legal-desc-military-vessel");
 			break;
 
 		default:
@@ -7399,7 +7399,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	if ([self isJammingScanning] && ![otherShip hasMilitaryScannerFilter])
 	{
-		return oo::OptionalString(DESC(@"unknown-target"));
+		return OO_DESC("unknown-target");
 	}
 	return [self displayName];
 }
@@ -13166,7 +13166,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 						}
 						else
 						{
-							[UNIVERSE cxx_addMessage:oo::OptionalString(DESC(@"scoop-got-slave")) forCount: 4.5];
+							[UNIVERSE cxx_addMessage:OO_DESC("scoop-got-slave") forCount: 4.5];
 						}
 					}
 				}

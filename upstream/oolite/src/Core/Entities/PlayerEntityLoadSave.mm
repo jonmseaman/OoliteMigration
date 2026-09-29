@@ -230,7 +230,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
 	
 	std::string saveName = [self cxx_lastsaveName].value_or("");
-	const std::string autosaveSuffix = oo::StdString(DESC(@"autosave-commander-suffix"));
+	const std::string autosaveSuffix = OO_DESC("autosave-commander-suffix");
 
 	if (!oo::str::hasSuffix(saveName, autosaveSuffix))
 	{
@@ -291,7 +291,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		BOOL			guiChanged = (gui_screen != GUI_SCREEN_NEWGAME);
 
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-newgame-title"))];
+		[gui cxx_setTitle:OO_DESC("oolite-newgame-title")];
 
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -301,14 +301,14 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		unsigned n_rows = GUI_MAX_ROWS_SCENARIOS;
 		NSUInteger i, count = scenarios.count();
 
-		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-scenario-exit")), " <----- " } forRow:start_row - 2];
+		[gui cxx_setArray:{ OO_DESC("oolite-scenario-exit"), " <----- " } forRow:start_row - 2];
 		[gui setColor:[OOColor redColor] forRow:start_row - 2];
 		[gui cxx_setKey:"exit" forRow:start_row - 2];
 		
 
 		if (page > 0)
 		{
-			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:start_row - 1];
+			[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " } forRow:start_row - 1];
 			[gui setColor:[OOColor greenColor] forRow:start_row - 1];
 			[gui cxx_setKey:oo::str::format("__page:%i",page-1) forRow:start_row - 1];
 		}
@@ -327,7 +327,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 		if ((NSUInteger)(page+1) * n_rows < count)
 		{
-			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:row];
+			[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " } forRow:row];
 			[gui setColor:[OOColor greenColor] forRow:row];
 			[gui cxx_setKey:oo::str::format("__page:%i",page+1) forRow:row];
 			++row;
@@ -569,7 +569,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	[gameView cxx_setTypedString: commanderNameString];
 	
 	[gui cxx_setText:
-		oo::str::formatRuntime(oo::StdString(DESC(@"savescreen-commander-name-@")), { commanderNameString })
+		oo::str::formatRuntime(OO_DESC("savescreen-commander-name-@"), { commanderNameString })
 		  forRow: INPUTROW];
 	[gui setColor:[OOColor cyanColor] forRow:INPUTROW];
 	
@@ -690,7 +690,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (fileToOpen.empty())	// (was a nil test: every caller passes a non-nil path)
 	{
-		fail_reason = oo::OptionalString(DESC(@"loadfailed-no-file-specified"));
+		fail_reason = OO_DESC("loadfailed-no-file-specified");
 		loadedOK = NO;
 	}
 	
@@ -701,7 +701,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		if (!fileDic.isDict())  fileDic = oo::PList();	// a dictionary or nothing, as OODictionaryFromFile answered (its plist.wrongType line, which named the Foundation class, is not kept)
 		if (!fileDic.isDict())
 		{
-			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-load-file"));
+			fail_reason = OO_DESC("loadfailed-could-not-load-file");
 			loadedOK = NO;
 		}
 	}
@@ -731,7 +731,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 		if (![UNIVERSE cxx_setUseAddOns:scenarioRestrict fromSaveGame:YES forceReinit:YES])
 		{
-			fail_reason = oo::OptionalString(DESC(@"loadfailed-saved-game-failed-to-load"));
+			fail_reason = OO_DESC("loadfailed-saved-game-failed-to-load");
 			loadedOK = NO;
 		} 
 	}
@@ -749,8 +749,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		if (shipDict.isNull())
 		{
 			loadedOK = NO;
-			if (shipKey)  fail_reason = oo::str::formatRuntime(oo::StdString(DESC(@"loadfailed-could-not-find-ship-type-@-please-reinstall-the-appropriate-OXP")), { *shipKey });
-			else  fail_reason = oo::OptionalString(DESC(@"loadfailed-invalid-saved-game-no-ship-specified"));
+			if (shipKey)  fail_reason = oo::str::formatRuntime(OO_DESC("loadfailed-could-not-find-ship-type-@-please-reinstall-the-appropriate-OXP"), { *shipKey });
+			else  fail_reason = OO_DESC("loadfailed-invalid-saved-game-no-ship-specified");
 		}
 	}
 	
@@ -759,7 +759,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		OO_LOG("load.progress", "{}", "Initialising player entity");
 		if (![self setUpAndConfirmOK:YES saveGame:YES])
 		{
-			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-reset-javascript"));
+			fail_reason = OO_DESC("loadfailed-could-not-reset-javascript");
 			loadedOK = NO;
 		}
 	}
@@ -771,7 +771,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		{
 			// this could still be a reset js issue, if switching from strict / unrestricted
 			// TODO: use "could not reset js message" if that's the case.
-			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-set-up-player-ship"));
+			fail_reason = OO_DESC("loadfailed-could-not-set-up-player-ship");
 			loadedOK = NO;
 		}
 	}
@@ -793,7 +793,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:""];
 		[UNIVERSE handleGameOver];
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"loadfailed-saved-game-failed-to-load")) forCount: 9.0];
+		[UNIVERSE cxx_addMessage:OO_DESC("loadfailed-saved-game-failed-to-load") forCount: 9.0];
 		if (fail_reason)  [UNIVERSE cxx_addMessage: *fail_reason forCount: 9.0];
 		return NO;
 	}
@@ -974,7 +974,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (didSave)
 	{
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"game-saved")) forCount:2];
+		[UNIVERSE cxx_addMessage:OO_DESC("game-saved") forCount:2];
 		save_path = path;
 		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:*save_path];
 		[[UNIVERSE gameController] cxx_setPlayerFileDirectory:*save_path];
@@ -1015,7 +1015,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_LOAD;
 	
 	[gui clear];
-	[gui cxx_setTitle:oo::OptionalString(DESC(@"loadscreen-title"))];
+	[gui cxx_setTitle:OO_DESC("loadscreen-title")];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
@@ -1040,12 +1040,12 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE;
 	
 	[gui clear];
-	[gui cxx_setTitle:oo::OptionalString(DESC(@"savescreen-title"))];
+	[gui cxx_setTitle:OO_DESC("savescreen-title")];
 	
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
-	[gui cxx_setText:oo::StdString(DESC(@"savescreen-commander-name")) forRow: INPUTROW];
+	[gui cxx_setText:OO_DESC("savescreen-commander-name") forRow: INPUTROW];
 	[gui setColor:[OOColor cyanColor] forRow:INPUTROW];
 	[gui setShowTextCursor: YES];
 	[gui setCurrentRow: INPUTROW];
@@ -1072,15 +1072,15 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	gui_screen = GUI_SCREEN_SAVE_OVERWRITE;
 	
 	[gui clear];
-	[gui cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName })];
+	[gui cxx_setTitle:oo::str::formatRuntime(OO_DESC("overwrite-save-commander-@"), { cdrName })];
 	
-	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"overwritescreen-commander-@-already-exists-overwrite-query")), { cdrName })
+	[gui cxx_setText:oo::str::formatRuntime(OO_DESC("overwritescreen-commander-@-already-exists-overwrite-query"), { cdrName })
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
 	
-	[gui cxx_setText:oo::OptionalString(DESC(@"overwritescreen-yes")) forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
+	[gui cxx_setText:OO_DESC("overwritescreen-yes") forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
 	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow: SAVE_OVERWRITE_YES_ROW];
 	
-	[gui cxx_setText:oo::OptionalString(DESC(@"overwritescreen-no")) forRow: SAVE_OVERWRITE_NO_ROW align: GUI_ALIGN_CENTER];
+	[gui cxx_setText:OO_DESC("overwritescreen-no") forRow: SAVE_OVERWRITE_NO_ROW align: GUI_ALIGN_CENTER];
 	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow: SAVE_OVERWRITE_NO_ROW];
 	
 	[gui setSelectableRange: NSMakeRange(SAVE_OVERWRITE_YES_ROW, 2)];
@@ -1161,7 +1161,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if(cdrDetailArray.empty())
 	{
 		// Empty directory; tell the user and exit immediately.
-		[gui cxx_setText:oo::OptionalString(DESC(@"loadsavescreen-no-commanders-found")) forRow:STARTROW align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:OO_DESC("loadsavescreen-no-commanders-found") forRow:STARTROW align:GUI_ALIGN_CENTER];
 		return;
 	}
 
@@ -1207,13 +1207,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 
 	[gui setColor: [OOColor greenColor] forRow: LABELROW];
-	[gui cxx_setArray: { oo::StdString(DESC(@"loadsavescreen-commander-name")), oo::StdString(DESC(@"loadsavescreen-rating")) }
+	[gui cxx_setArray: { OO_DESC("loadsavescreen-commander-name"), OO_DESC("loadsavescreen-rating") }
 		   forRow:LABELROW];
 
 	if (page)
 	{
 		[gui setColor:[OOColor greenColor] forRow:STARTROW-1];
-		[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " }
+		[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " }
 			   forRow:STARTROW-1];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:STARTROW-1];
 		rangeStart=STARTROW-1;
@@ -1221,7 +1221,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	if ([self status] == STATUS_START_GAME)
 	{
-		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-loadsave-exit")), " <----- " } forRow:EXITROW];
+		[gui cxx_setArray:{ OO_DESC("oolite-loadsave-exit"), " <----- " } forRow:EXITROW];
 		[gui setColor:[OOColor redColor] forRow:EXITROW];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:EXITROW];
 		rangeStart = EXITROW;
@@ -1237,7 +1237,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		lastIndex=(page * NUMROWS) + NUMROWS;
 		[gui setColor:[OOColor greenColor] forRow:ENDROW];
-		[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " }
+		[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " }
 			   forRow:ENDROW];
 		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:ENDROW];
 		[gui setSelectableRange: NSMakeRange(rangeStart, MOREROW)];
@@ -1315,7 +1315,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (cdr.get<bool>("isFolder"))
 	{
-		const std::string folderDesc = oo::str::formatRuntime(oo::StdString(DESC(@"loadsavescreen-hold-@-and-press-return-to-open-folder-@")), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
+		const std::string folderDesc = oo::str::formatRuntime(OO_DESC("loadsavescreen-hold-@-and-press-return-to-open-folder-@"), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
 		[gui setColor: [OOColor orangeColor] forRow: CDRDESCROW];
 		[gui cxx_addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
 		return;
@@ -1323,7 +1323,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (cdr.get<bool>("isParentFolder"))
 	{
-		const std::string folderDesc = oo::str::formatRuntime(oo::StdString(DESC(@"loadsavescreen-hold-@-and-press-return-to-open-parent-folder-@")), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
+		const std::string folderDesc = oo::str::formatRuntime(OO_DESC("loadsavescreen-hold-@-and-press-return-to-open-parent-folder-@"), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
 		[gui setColor: [OOColor orangeColor] forRow: CDRDESCROW];
 		[gui cxx_addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
 		return;
@@ -1403,7 +1403,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	//-------------------------------------------------------------------------------------------------------------------------
 	
-	const std::string cdrDesc = oo::str::formatRuntime(oo::StdString(DESC(@"loadsavescreen-commander-@-rated-@-has-@-legal-status-@-ship-@-location-@-g-@-eco-@-gov-@-tl-@-timestamp-@")),
+	const std::string cdrDesc = oo::str::formatRuntime(OO_DESC("loadsavescreen-commander-@-rated-@-has-@-legal-status-@-ship-@-location-@-g-@-eco-@-gov-@-tl-@-timestamp-@"),
 		{ TextArg(OptionalStringValue(cdr.find("player_name"))),
 		  rating,
 		  cxx_OOCredits(money),

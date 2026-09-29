@@ -931,14 +931,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
 			if ([self hasMultipleDocks]) 
 			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
 								{ [dock displayName].value_or("(null)"),
 								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 					toShip:player];
 			}
 			else
 			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
 								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 					toShip:player];
 			}
@@ -1208,12 +1208,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			// then say why
 			if ([self currentlyInDockingQueues])
 			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-holding-d-ships-approaching")),
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-approaching"),
 																						{ [self currentlyInDockingQueues]+1 }) toShip:player];
 			}
 			else if([self currentlyInLaunchingQueues])
 			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-holding-d-ships-departing")),
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-departing"),
 																						{ [self currentlyInLaunchingQueues]+1 }) toShip:player];
 			}
 		} 
@@ -2072,7 +2072,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				if (!no_docking_while_launching)
 				{
 					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-					[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-extended-until-@")),
+					[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-extended-until-@"),
 							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 						toShip:other];
 					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
@@ -2143,7 +2143,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		// the player
 		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
 		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-approaching")),
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-approaching"),
 																					{ [self currentlyInDockingQueues]+1 }) toShip:other];
 			// No need to set status to REQUESTED as we've already done that earlier.
 			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_INBOUND";
@@ -2151,7 +2151,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 		if (!result && [self currentlyInLaunchingQueues])
 		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-departing")),
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-departing"),
 																					{ [self currentlyInLaunchingQueues]+1 }) toShip:other];
 			// No need to set status to REQUESTED as we've already done that earlier.
 			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_OUTBOUND";
@@ -2215,14 +2215,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 		if ([self hasMultipleDocks] && [other isPlayer])
 		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
 					{ [player_reserved_dock displayName].value_or("(null)"),
 					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}
 		else
 		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
 					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}

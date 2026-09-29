@@ -854,9 +854,9 @@ static BOOL sRunningScript = NO;
 		result2.push_back(oo::PList(std::move(list)));
 	};
 
-	addManifest(oo::StdString(DESC(@"manifest-passengers")), passengerManifest);
-	addManifest(oo::StdString(DESC(@"manifest-parcels")), parcelManifest);
-	addManifest(oo::StdString(DESC(@"manifest-contracts")), contractManifest);
+	addManifest(OO_DESC("manifest-passengers"), passengerManifest);
+	addManifest(OO_DESC("manifest-parcels"), parcelManifest);
+	addManifest(OO_DESC("manifest-contracts"), contractManifest);
 
 	/* For proper display, array entries need to all be after string
 	 * entries, so sort them now */
@@ -2282,7 +2282,7 @@ static int shipsFound;
 	if (fuel_leak_rate > 0)
 	{
 		[self playFuelLeak];
-		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"danger-fuel-leak")) forCount:6];
+		[UNIVERSE cxx_addMessage:OO_DESC("danger-fuel-leak") forCount:6];
 		OO_LOG(kOOLogNoteFuelLeak, "{}", "FUEL LEAK activated!");
 	}
 }
@@ -2566,7 +2566,7 @@ static int shipsFound;
 
 	// The DESC entry is the format (data): ADR-0043 item 19.
 	const std::optional<std::string> typed = [gameView cxx_typedString];
-	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"mission-screen-text-prompt-@")), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }) forRow:end_row align:GUI_ALIGN_LEFT];
+	[gui cxx_setText:oo::str::formatRuntime(OO_DESC("mission-screen-text-prompt-@"), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }) forRow:end_row align:GUI_ALIGN_LEFT];
 	[gui setColor:[OOColor cyanColor] forRow:end_row];
 	
 	[gui setShowTextCursor:YES];
@@ -2588,11 +2588,11 @@ static int shipsFound;
 	// GUI stuff
 	{
 		[gui clear];
-		[gui cxx_setTitle:[self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information")))];
+		[gui cxx_setTitle:[self cxx_missionTitle].value_or(OO_DESC("mission-information"))];
 
 		if (!_missionTextEntry)
 		{
-			[gui cxx_setText:oo::OptionalString(DESC(@"press-space-commander")) forRow:end_row align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:OO_DESC("press-space-commander") forRow:end_row align:GUI_ALIGN_CENTER];
 			[gui setColor:[OOColor yellowColor] forRow:end_row];
 			[gui cxx_setKey:"spacebar" forRow:end_row];
 			[gui setShowTextCursor:NO];
