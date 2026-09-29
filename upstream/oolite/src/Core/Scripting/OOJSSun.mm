@@ -174,7 +174,7 @@ static bool SunGetProperty(Context cx, Object obj, PropertyId propID, Value *val
 			return ooscript::newNumberValue(cx, [sun radius], value);
 
 		case kSun_name:
-			*value = OOJSValueFromNativeObject(context, [sun name]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([sun cxx_name]));
 			return YES;
 			
 		case kSun_hasGoneNova:

@@ -150,7 +150,7 @@ MA 02110-1301, USA.
 	[self setSunColor:sun_color];
 
 	// A nil dictionary read nil for the name (messaging nil), not the default.
-	[self setName:OOExpand(dict ? oo::NSStringFrom(dict.get<std::string>(oo::StdString(KEY_SUNNAME), "[oolite-default-star-name]")) : nil)];
+	[self cxx_setName:oo::OptionalString(OOExpand(dict ? oo::NSStringFrom(dict.get<std::string>(oo::StdString(KEY_SUNNAME), "[oolite-default-star-name]")) : nil))];
 
 	corona_blending=OOClamp_0_1_f(dict.get<float>("corona_hues", 1.0f));
 	corona_speed_factor=dict.get<float>("corona_shimmer", -1.0);
@@ -704,7 +704,7 @@ MA 02110-1301, USA.
 	{
 		// the Foundation get<> read nil unless a string or a number's text
 		const oo::PList *name = dict.find(key);
-		[self setName:(name != nullptr && (name->isString() || name->isNumber())) ? oo::NSStringFrom(dict.get<std::string>(key)) : nil];
+		[self cxx_setName:(name != nullptr && (name->isString() || name->isNumber())) ? std::optional<std::string>(dict.get<std::string>(key)) : std::nullopt];
 	}
 	else if (key == "corona_flare")
 	{
@@ -835,15 +835,27 @@ MA 02110-1301, USA.
 }
 
 
-- (id) name	// shared selector (proposed ADR-0043)
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(_name);
+	return oo::NSStringOrNil([self cxx_name]);
 }
 
 
-- (void) setName:(id)name	// shared selector (proposed ADR-0043): an Objective-C string or nil
+- (std::optional<std::string>) cxx_name
 {
-	_name = oo::OptionalString(name);
+	return _name;
+}
+
+
+- (void) setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
+{
+	[self cxx_setName:oo::OptionalString(name)];
+}
+
+
+- (void) cxx_setName:(const std::optional<std::string> &)name
+{
+	_name = name;
 }
 
 
