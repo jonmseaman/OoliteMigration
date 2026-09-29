@@ -48,7 +48,7 @@ SOFTWARE.
 	}
 	
 	return [self initWithName:oo::OptionalString(name)
-					  texture:[OOTexture textureWithConfiguration:texSpec]
+					  texture:[OOTexture cxx_textureWithConfiguration:oo::PListFrom(texSpec)]
 				configuration:configuration];
 }
 

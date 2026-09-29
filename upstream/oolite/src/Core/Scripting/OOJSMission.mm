@@ -529,7 +529,7 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		missionKey = oo::OptionalString([[OOJSScript currentlyRunningScript] name]);
+		missionKey = [[OOJSScript currentlyRunningScript] cxx_name];
 	}
 	
 	if (text.has_value())
@@ -685,7 +685,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			std::optional<std::string> message = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*titleKey)]);
 			if (message.has_value())
 			{
-				[player cxx_setMissionTitle:oo::OptionalString(OOExpand(oo::NSStringFrom(*message)))];
+				[player cxx_setMissionTitle:cxx_OOExpand(*message)];
 			}
 			else
 			{

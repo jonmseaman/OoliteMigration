@@ -2413,12 +2413,12 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	std::string travelDistLine;
 	if (distance > 0)
 	{
-		travelDistLine = oo::StdString(OOExpandKey(@"long-range-chart-distance", distance));
+		travelDistLine = cxx_OOExpandKey("long-range-chart-distance", distance).value_or(std::string());
 	}
 	std::string travelTimeLine;
 	if (time > 0)
 	{
-		travelTimeLine = oo::StdString(OOExpandKey(@"long-range-chart-est-travel-time", time));
+		travelTimeLine = cxx_OOExpandKey("long-range-chart-est-travel-time", time).value_or(std::string());
 	}
 	
 	if(concealment[target] < OO_SYSTEMCONCEALMENT_NONAME)
@@ -2433,7 +2433,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	{
 		if (jumps > 0)
 		{
-			[self cxx_setArray:{ "", oo::StdString(OOExpandKey(@"short-range-chart-jumps", jumps)) } forRow: textRow + 1];
+			[self cxx_setArray:{ "", cxx_OOExpandKey("short-range-chart-jumps", jumps).value_or(std::string()) } forRow: textRow + 1];
 		}
 		else
 		{

@@ -32,13 +32,14 @@ MA 02110-1301, USA.
 
 namespace {
 
-/*	OOExpandKey(OOExpand(@"<pattern>[category]", category)): the category is handed to the expander
-	as the one-entry argument dictionary OOExpand's macro builds from the variable's name.
+/*	cxx_OOExpandKey(cxx_OOExpand("<pattern>[category]", category)): the category is handed to the
+	expander as the one-entry argument dictionary the macro builds from the variable's name. A key
+	that expanded to nothing expands to nothing (""), as a nil key did.
 */
 std::string ExpandCategoryKey(const char *pattern, const std::string &category)
 {
-	return oo::StdString(OOExpandKey(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(pattern),
-		oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "category", oo::PList(category) } })), nil, nil, kOOExpandNoOptions)));
+	const std::optional<std::string> key = cxx_OOExpand(pattern, category);
+	return key.has_value() ? cxx_OOExpandKey(*key).value_or(std::string()) : std::string();
 }
 
 }	// namespace

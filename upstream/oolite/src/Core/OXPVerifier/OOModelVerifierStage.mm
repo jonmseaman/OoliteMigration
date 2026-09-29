@@ -62,9 +62,9 @@ static const char * const kStageName	= "Testing models";
 }
 
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 

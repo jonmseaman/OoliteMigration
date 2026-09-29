@@ -257,14 +257,20 @@ static std::optional<std::vector<std::string>> StringsFromArrayFile(const std::s
 
 - (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\" version %s", oo::DescriptionOf([self name]).c_str(), oo::DescriptionOf([self version]).c_str()));
+	return oo::NSStringFrom(oo::str::format("\"%s\" version %s", [self cxx_name].value_or("(null)").c_str(), oo::DescriptionOf([self version]).c_str()));
 }
 
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
+{
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
 {
 	OO_LOG_ERR(cxx_kOOLogSubclassResponsibility, "{}", "OOScript should not be used directly!");
-	return nil;
+	return std::nullopt;
 }
 
 
@@ -290,12 +296,11 @@ static std::optional<std::vector<std::string>> StringsFromArrayFile(const std::s
 
 - (std::optional<std::string>)displayName
 {
-	id name = [self name];
+	const std::optional<std::string> name = [self cxx_name];
 	std::optional<std::string> version = [self cxx_version];
 	
-	if (version.has_value())  return oo::str::format("%s %s", oo::DescriptionOf(name).c_str(), version->c_str());
-	else if (name != nil)  return oo::DescriptionOf(name);
-	else  return std::nullopt;
+	if (version.has_value())  return oo::str::format("%s %s", name.value_or("(null)").c_str(), version->c_str());
+	else  return name;
 }
 
 
