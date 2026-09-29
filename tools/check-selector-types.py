@@ -56,8 +56,13 @@ called-by-name selector may have C++ types when every declaration of it is one o
 
 Any other C++ type on a called-by-name selector still fails --check. The union is accepted for
 every source (the whitelist feeds several dispatchers). The transitional id form is accepted
-too, until --strict-called-by-name (run by oo-qps.72 and oo-qps.16, not enforced yet) rejects
-it: a called-by-name selector with an object (id or ClassName *) parameter or result fails.
+too, unless --strict-called-by-name (oo-qps.72, oo-qps.16) rejects it: on a called-by-name
+selector an object parameter (id or ClassName *) fails, and so does an id, id<P> or NS* result.
+A ClassName * result passes: OOCallByName ignores an object result, and OOJSCall calls such a
+method itself (ADR-0055 Amendment 2). An @selector literal handed to an object dispatcher
+(compared with == / !=, probed with class_respondsToSelector(), OOScheduleDeferredCall(),
+-initWithComparator:, -makeObjectsPerformSelector:, OODescription.mm's SendLegacy()) passes OOObjects by design (ADR-0055
+item 4), so --strict-called-by-name does not check a selector whose only sources are those.
 
 SELECTORS DISPATCHED THROUGH A TYPED IMP (bead oo-bzjh)
 
@@ -201,6 +206,11 @@ def _read(path):
 
 
 SOURCES = {}   # selector -> every by-name source found (dynamic_selectors() fills it)
+DISPATCHED = set()   # selectors --strict-called-by-name checks (not only object-dispatched)
+# An @selector literal handed to an OBJECT dispatcher (ADR-0055 item 4: it passes OOObjects, not
+# strings or plists): compared, probed, deferred, a comparator, -makeObjectsPerformSelector:,
+# OODescription.mm's legacy-family probes.
+OBJECT_DISPATCH = re.compile(r"(?:[!=]=\s*|class_respondsToSelector\s*\(\s*[^,()]*,\s*|makeObjectsPerformSelector\s*:\s*|(?:OOScheduleDeferredCall|SendLegacy|HasLegacyOverride)\s*\(\s*[^,()]*,\s*|initWithComparator\s*:\s*)$")
 LITERAL_FILES = {}   # selector -> files holding an @selector literal of it
 
 
@@ -209,12 +219,15 @@ def dynamic_selectors():
     found = {}
     SOURCES.clear()
     LITERAL_FILES.clear()
+    DISPATCHED.clear()
 
-    def add(sel, source):
+    def add(sel, source, dispatched=True):
         sel = sel.strip()
         if re.fullmatch(r"[A-Za-z_]\w*(?::(?:[A-Za-z_]\w*:)*)?", sel):
             found.setdefault(sel, source)
             SOURCES.setdefault(sel, []).append(source)
+            if dispatched:
+                DISPATCHED.add(sel)
 
     # whitelist.plist: every string or bare word that is a selector-shaped token
     text = COMMENT.sub(" ", _read(os.path.join(RESOURCES, "Config", "whitelist.plist")))
@@ -240,12 +253,12 @@ def dynamic_selectors():
         for name in files:
             if not name.endswith((".h", ".m", ".mm")):
                 continue
-            text = _read(os.path.join(dirpath, name))
+            text = COMMENT.sub(" ", _read(os.path.join(dirpath, name)))	# a literal in a comment is not a call
             for m in SELECTOR_LITERAL.finditer(text):
                 before = text[max(0, m.start() - 60):m.start()]
                 if RESPONDS.search(before):
                     continue
-                add(m.group(1), "@selector in " + name)
+                add(m.group(1), "@selector in " + name, OBJECT_DISPATCH.search(before) is None)
                 LITERAL_FILES.setdefault(m.group(1).strip(), set()).add(os.path.join(dirpath, name))
     # the explicit list
     for line in _read(DYNAMIC_LIST).splitlines():
@@ -366,6 +379,11 @@ def is_object(t):
     return t == "id" or t.startswith("id <") or re.fullmatch(r"(const )?[A-Z]\w* \*", t) is not None
 
 
+def is_untyped_object(t):
+    """An object result a dispatcher could have read as plist data: id, id<P>, or NSFoo *."""
+    return t == "id" or t.startswith("id <") or re.fullmatch(r"(const )?NS\w* \*", t) is not None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("files", nargs="*", help="files whose selectors to classify")
@@ -400,8 +418,8 @@ def main():
                 continue
             typed = [d for d in decls if any(is_cxx(t) for t in (d[0],) + d[1])
                      and (d[0], d[1]) not in CALL_BY_NAME_SIGNATURES]
-            if args.strict_called_by_name:
-                objects = [d for d in decls if any(is_object(t) for t in (d[0],) + d[1])]
+            if args.strict_called_by_name and sel in DISPATCHED:
+                objects = [d for d in decls if is_untyped_object(d[0]) or any(is_object(t) for t in d[1])]
                 if objects:
                     bad += 1
                     print(f"CALLED BY NAME {kind}{sel} ({dynamic[sel]}) is still typed id (--strict-called-by-name):")

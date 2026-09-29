@@ -229,3 +229,30 @@ oo-qps.11..15 wait for their chunks (.12 and .14 also for R); oo-qps.16 waits fo
   and `oo::DescriptionOf(oo::ObjectFromPList(p))` is `oo::DescriptionOf(p)` tree-wide (and
   `NSArrayFromObjects` in a description is `PListFromObjects`), because GNUstep describing a
   collection sends `-description` to each element, which an OOObject no longer answers.
+- 2026-09-29, Amendment 2 (oo-qps.72, items 1, 4, 5): the retirement bead found three design
+  points that did not hold, and proceeds on these defaults.
+  (a) *Object results of called-by-name selectors.* Station launch actions (`launchEscort`,
+  `launchPatrol`, ...) and `fireMissile` are AI actions that return the ship (`ShipEntity *`);
+  deleting the id branch would have stopped them being called. `OOCallByName` now calls a method
+  with an object result and ignores the result, as it ignores a scalar (no dispatcher reads one);
+  `OOJSCall` (console `callObjC`) calls an object-returning method itself and hands JS its
+  `PList::Object` node, as before. A method with an object *parameter* is logged and not called.
+  `--strict-called-by-name` therefore rejects an object parameter and an `id` / `id<P>` / `NS*`
+  result, and accepts a `ClassName *` result. It also no longer checks a selector whose only
+  sources are `@selector` literals handed to an *object* dispatcher (compared with `==`/`!=`,
+  `class_respondsToSelector()`, `OOScheduleDeferredCall()`, `-initWithComparator:`,
+  `-makeObjectsPerformSelector:`): those pass OOObjects (item 4), and the unrefined rule failed 21
+  families that no string or PList dispatcher calls (timers, comparators, Mac menu validation,
+  proxies). `tools/check-selector-types-probe.sh` gains cases for both.
+  (b) *The JS native-value family is kept, Foundation-free.* Its 20 callers each want a native
+  object (a ship, a station, a sound, the console's monitor), so `OOJSNativeObjectFromJSValue` & co.
+  now return `oo::ObjectIn` of the PList form (nil for plist data) instead of being deleted: the
+  same result for every caller, and no call site changes before Phase 3 converts them.
+  `OOJSValueFromNativeObject` of an object not rooted on OOObject gives undefined.
+  (c) *The `oo::DescriptionOf` fallback and the legacy forwarding move to a later bead.* Until
+  oo-3rb.4, `@"..."` literals in the game are gnustep-base constant strings, which only the
+  fallback describes as their text; deleting it first would print `<NSConstantString 0x...>` in
+  logs. And the unit test `tests/unit/oofnd/test_objc_description.mm` pins both, so removing its
+  cases needs Jon's approval under ADR-0049. A new bead (after oo-3rb.4) deletes
+  them once that approval is on record. `OOProbabilitySet`'s id `-allObjects` / `-objectEnumerator`
+  (item 3's "retires with oo-qps", no sender left) are deleted here.

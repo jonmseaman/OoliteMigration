@@ -134,6 +134,20 @@ expect 'the id form passes --check' 0 '' 'CALLED BY NAME' "$t"
 expect_strict 'the id form fails --strict-called-by-name' 1 'CALLED BY NAME -legacyAction: .*still typed id' "$t"
 expect_strict 'an id result fails it too' 1 'CALLED BY NAME -legacyQuery .*still typed id' "$t"
 
+# 13. ADR-0055 Amendment 2 (oo-qps.72): an OOObject result passes --strict-called-by-name (it is
+# ignored), an NS* result does not, and a literal handed to an object dispatcher is not checked.
+t="$work/objresult"; make_dispatch_tree "$t" '- (Ship *) launchShip;
+- (NSString *) oldQuery;' '@selector(launchShip), @selector(oldQuery)'
+expect_strict 'an NS* result fails --strict-called-by-name' 1 'CALLED BY NAME -oldQuery .*still typed id' "$t"
+if python3 "$tool" --strict-called-by-name --no-foundation --root "$t" 2>&1 | grep -q 'launchShip'; then
+	failn=$((failn+1)); printf 'FAIL an OOObject result is accepted
+'
+else pass=$((pass+1)); printf 'ok   an OOObject result is accepted
+'; fi
+t="$work/objdispatch"; make_dispatch_tree "$t" '- (void) fire:(Timer *)timer;
+- (int) compareTo:(Timer *)other;' 'nil }; static BOOL k = (s == @selector(fire:)); static void f(id q) { [q initWithComparator:@selector(compareTo:)]; }'
+expect_strict 'object-dispatched literals are not checked' 0 '' "$t"
+
 echo
 echo "probes: pass=$pass fail=$failn"
 [ "$failn" -eq 0 ]
