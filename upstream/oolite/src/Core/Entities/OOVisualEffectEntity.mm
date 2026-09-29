@@ -872,7 +872,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 	if (label.has_value() || _beaconLabel.has_value())
 	{
-		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 

@@ -2135,7 +2135,7 @@ using ooscript::Context;
 			[self noteLostTarget];
 			return;
 		}
-		NSString *finalValue = OOExpand(valueString);	// expand values
+		NSString *finalValue = valueString != nil ? oo::NSStringOrNil(cxx_OOExpand(oo::StdString(valueString))) : nil;	// expand values
 		[ship markAsOffender:[finalValue intValue] withReason:kOOLegalStatusReasonSeenByPolice];
 	}
 }
