@@ -1522,6 +1522,6 @@ OOCreditsQuantity OODeciCreditsFromPList(const oo::PList *value)
 	}
 	else
 	{
-		return oo::plist_get::unsignedLongLongFrom(value, 0);	// OOUnsignedLongLongFromObject(object, 0)
+		return oo::plist_get::unsignedLongLongFrom(value, 0);	// the reader OOUnsignedLongLongFromObject forwards to
 	}
 }
