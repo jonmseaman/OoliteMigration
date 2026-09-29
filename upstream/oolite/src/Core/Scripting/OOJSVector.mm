@@ -37,7 +37,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 
 /*
 	This is the Phase 1 seam 1.1x exemplar (bead oo-sdz): the first binding file retargeted onto

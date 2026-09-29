@@ -29,18 +29,17 @@ SOFTWARE.
 #include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
+#import "OOObjCPList.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
 #include <limits.h>
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #import "OOPListGameTypes.h"
 
 

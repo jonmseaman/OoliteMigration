@@ -51,8 +51,9 @@ MA 02110-1301, USA.
 #import "OOEntityFilterPredicate.h"
 #import "OOCharacter.h"
 #import "OOCallByName.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 namespace {

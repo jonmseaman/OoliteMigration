@@ -38,7 +38,6 @@ SOFTWARE.
 #import "OODebugFlags.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PListGet.hpp"

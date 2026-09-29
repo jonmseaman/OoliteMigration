@@ -28,9 +28,9 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
 #import "OOJSScript.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
+#import "OOObjCPList.h"
 
 
 namespace {

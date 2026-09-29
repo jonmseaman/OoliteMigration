@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOFileScannerVerifierStage.h"
-#import "OOFoundationBridge.h"
 
 static const char * const kStageName	= "Checking plist well-formedness";
 

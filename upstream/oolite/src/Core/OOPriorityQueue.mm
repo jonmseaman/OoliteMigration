@@ -29,7 +29,6 @@ SOFTWARE.
 
 #import "OOPriorityQueue.h"
 #import "OOFunctionAttributes.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 #if DEBUG_GRAPHVIZ

@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOSingleTextureMaterial.h"
 #import "OOTexture.h"
 #import "OOFunctionAttributes.h"
-#import "OOFoundationBridge.h"
 
 
 @implementation OOSingleTextureMaterial

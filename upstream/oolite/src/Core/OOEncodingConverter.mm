@@ -29,7 +29,6 @@ SOFTWARE.
 #import "OOEncodingConverter.h"
 #import "OOCache.h"
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Encoding.hpp"
 

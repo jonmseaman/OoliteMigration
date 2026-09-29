@@ -37,14 +37,13 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOJSGuiScreenKeyDefinition.h"
-#import "OOFoundationBridge.h"
-#import "OOStringBridge.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/Scanner.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-8yi, the same way bead oo-sdz

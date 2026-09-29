@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOLightParticleEntity.h"
 #import "OOMacroOpenGL.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"

@@ -98,12 +98,11 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
+#import "OOObjCPList.h"
 
 
 #if OO_LOCALIZATION_TOOLS
 #import "OOConvertSystemDescriptions.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"

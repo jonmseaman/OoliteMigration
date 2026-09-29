@@ -29,8 +29,6 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 

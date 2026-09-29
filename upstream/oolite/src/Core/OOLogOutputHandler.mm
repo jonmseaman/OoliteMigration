@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOCocoa.h"
 #import "OOLogOutputHandler.h"
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "oofnd/Date.hpp"

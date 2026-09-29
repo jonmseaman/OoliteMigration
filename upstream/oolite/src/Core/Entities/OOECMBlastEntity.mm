@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 
 // NOTE: these values are documented for scripting, be careful about changing them.

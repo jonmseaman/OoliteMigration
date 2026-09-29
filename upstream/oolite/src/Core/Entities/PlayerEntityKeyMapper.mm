@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "GameController.h"
 #import "OOEquipmentType.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/StdLib.hpp"

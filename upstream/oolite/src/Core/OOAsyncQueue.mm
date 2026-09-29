@@ -31,11 +31,9 @@ SOFTWARE.
 #import "OOAsyncQueue.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
-#import "OOStringBridge.h"
 #include <stdlib.h>
 
 #include "oofnd/String.hpp"
-#import "OOFoundationBridge.h"
 
 #ifndef OO_BUGGY_PTHREADS
 #if OOLITE_WINDOWS

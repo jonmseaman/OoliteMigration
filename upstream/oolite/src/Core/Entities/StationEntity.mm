@@ -46,10 +46,10 @@
 #import "OODebugFlags.h"
 #import "OODebugStandards.h"
 #import "OOWeakSet.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #import "OOObjCPList.h"
 #include "oofnd/Log.hpp"
+#include "oofnd/String.hpp"
 
 
 // -oo_stringForKey:'s value without the Foundation type (proposed ADR-0043): a string as is, a

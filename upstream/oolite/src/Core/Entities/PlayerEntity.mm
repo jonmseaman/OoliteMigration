@@ -85,8 +85,6 @@ MA 02110-1301, USA.
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -96,6 +94,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 #import "OOPListGameTypes.h"
 #include <string_view>
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 static constexpr std::string_view PLAYER_DEFAULT_NAME				= "Jameson";

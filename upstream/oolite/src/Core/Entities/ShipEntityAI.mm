@@ -46,12 +46,11 @@
 #import "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
-#import "OOStringBridge.h"
 #include "oofnd/Log.hpp"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
+#import "OOObjCPList.h"
 
 
 namespace

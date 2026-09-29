@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #include "oofnd/objc/OORuntime.h"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 
 #include "oofnd/String.hpp"

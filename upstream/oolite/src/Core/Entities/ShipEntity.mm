@@ -89,11 +89,11 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OOJSVector.h"
 #import "OOJSEngineTimeManagement.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
 #include <string_view>
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 #define USEMASC 1
 
