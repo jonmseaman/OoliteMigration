@@ -2196,7 +2196,7 @@ static const char * const kOOCacheMeshes = "OOMesh";
 
 + (oo::PList)meshDataForName:(const std::string &)inShipName
 {
-	return oo::PListFrom([[self sharedCache] cxx_objectForKey:inShipName inCache:kOOCacheMeshes]);
+	return [[self sharedCache] cxx_pListForKey:inShipName inCache:kOOCacheMeshes];
 }
 
 
@@ -2204,7 +2204,7 @@ static const char * const kOOCacheMeshes = "OOMesh";
 {
 	if (inData)
 	{
-		[[self sharedCache] cxx_setObject:oo::ObjectFromPList(inData) forKey:inShipName inCache:kOOCacheMeshes];
+		[[self sharedCache] cxx_setPList:inData forKey:inShipName inCache:kOOCacheMeshes];
 	}
 }
 
@@ -2220,9 +2220,10 @@ static const char * const kOOCacheOctrees = "octrees";
 	Octree				*result = nil;
 	OOCacheManager		*cache = [self sharedCache];
 
-	if ([cache cxx_objectForKey:inKey inCache:kOOCacheOctrees] != nil)
+	const oo::PList data = [cache cxx_pListForKey:inKey inCache:kOOCacheOctrees];	// null: absent
+	if (data)
 	{
-		result = [[Octree alloc] cxx_initWithDictionary:oo::PListFrom([cache cxx_objectForKey:inKey inCache:kOOCacheOctrees])];
+		result = [[Octree alloc] cxx_initWithDictionary:data];
 		[result autorelease];
 	}
 
@@ -2234,7 +2235,7 @@ static const char * const kOOCacheOctrees = "octrees";
 {
 	if (inOctree != nil)
 	{
-		[[self sharedCache] cxx_setObject:oo::ObjectFromPList([inOctree cxx_dictionaryRepresentation]) forKey:inKey inCache:kOOCacheOctrees];
+		[[self sharedCache] cxx_setPList:[inOctree cxx_dictionaryRepresentation] forKey:inKey inCache:kOOCacheOctrees];
 	}
 }
 
