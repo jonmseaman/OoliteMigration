@@ -46,7 +46,6 @@ MA 02110-1301, USA.
 #import "OOPlanetEntity.h"
 #import "OOPlanetEntity.h"
 #import "StationEntity.h"
-#import "Comparison.h"
 #import "OOLegacyScriptWhitelist.h"
 #import "OOJavaScriptEngine.h"
 #import "OOEquipmentType.h"
