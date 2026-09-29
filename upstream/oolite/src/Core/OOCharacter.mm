@@ -346,8 +346,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		[self setLegalStatus:100];
 		[self setInsuranceCredits:0];
-		[self cxx_setName:oo::OptionalString(DESC(@"character-thargoid-name"))];
-		[self setShortDescription:DESC(@"character-a-thargoid")];
+		[self cxx_setName:OO_DESC("character-thargoid-name")];
+		[self setShortDescription:oo::NSStringFrom(OO_DESC("character-a-thargoid"))];
 		specialSetUpDone = YES;
 	}
 	
