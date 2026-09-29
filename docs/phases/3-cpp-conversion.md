@@ -108,3 +108,4 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §8 (Phase 3) and AI_EXECUTION_PLAN §1, §6, §15.
 - 2026-09-29 — Slice-plan format and checker landed (`tools/check-slice-plan.py`, bead oo-4plo); first plan `3-slices/OOPListSchemaVerifier.md`. Plain-C free functions go in a checked `verbatim:` group and are never read by a slice (ADR-0012).
+- 2026-09-29 — `tools/gen-stories.py` sweep `slices` (bead oo-k7u5): one fleet story per slice of every checked plan, titled `Convert to C++20: <File>.mm, slice <id>`, depending on the module's pattern seam, the pre-split bead and (after the first) the plan's first slice. Acceptance is `tools/check-slice-plan.py --slice-done <id> <plan>` (nonzero while any of the slice's units is still Objective-C) + `tools/tier-a.sh` + guardrails. `--dry-run --phase 3 --sweep slices` lists them; a landed slice is not re-filed.
