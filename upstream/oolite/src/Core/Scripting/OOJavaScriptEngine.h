@@ -243,15 +243,29 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 
 /*	OOJSValueFromNativeObject()
 	Return a JavaScript value representation of an object, or null if passed
-	nil.
+	nil. An object whose root class is not OOObject (a Foundation object) is
+	converted through oo::PListFrom() and OOJSValueFromPList(), which give what
+	its Foundation JS glue gave; one that is not property-list data gives
+	undefined, as the NSObject glue did (proposed ADR-0051).
 	
 	Requires a request on context.
 */
-OOINLINE ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	if (object != nil)  return [object oo_jsValueInContext:context];
-	return  ooscript::nullValue();
-}
+OOJS_EXTERN_C ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object);
+
+
+/*	OOJSValueFromPList()
+	Return the JavaScript value representation of a property list, exactly as
+	OOJSValueFromNativeObject(context, oo::ObjectFromPList(plist)) gave it
+	(proposed ADR-0051): null for a null PList; a bool as the number 1 or 0; an
+	integer as an int32 when it fits, else a double; a real as a double (a
+	single-precision one as the double of its float); a string as a string;
+	data and dates undefined; an array as an Array and a dictionary as an
+	Object (null elements and values dropped, empty keys skipped, key order);
+	a PList::Object node as OOJSValueFromNativeObject() of its object.
+	
+	Requires a request on context.
+*/
+ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &plist);
 
 
 /*	OOJSObjectFromNativeObject()
@@ -390,6 +404,22 @@ OOJS_EXTERN_C BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void 
 OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
+/*	cxx_OOJSPListFromJSValue(context, value) / cxx_OOJSPListFromJSObject(context, object)
+	The oo::PList form of the native-object family, exactly
+	oo::PListFrom(OOJSNativeObjectFromJSValue(...)) (proposed ADR-0051): null for
+	null, undefined or an unconvertible value; int32 -> signed integer, double
+	-> real, boolean -> bool, string -> string; a JS Array -> array (a null or
+	undefined element -> a PList::Object holding [OONull null]); a plain Object
+	-> dictionary (see cxx_OOJSDictionaryFromJSObject()); an object of a class
+	with a registered converter -> oo::PListFrom() of what the converter
+	returns (a private object -> a PList::Object node holding it). The id
+	functions below return oo::ObjectFromPList() of these.
+	
+	These require a request on context.
+*/
+oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value value);
+oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object object);
+
 // These require a request on context.
 OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value);
 OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object object);
@@ -433,18 +463,17 @@ OOINLINE BOOL OOJSValueIsArray(ooscript::Context context, ooscript::Value value)
 	cxx_OOJSDictionaryFromJSObject(context, object)
 
 	Converts a JavaScript value to a dictionary by calling
-	OOJSNativeObjectFromJSValue() on each of its values (a live object such as
-	an entity or OONull stays a PList::Object node).
+	cxx_OOJSPListFromJSValue() on each of its values (a live object such as
+	an entity or OONull stays a PList::Object node); a value that converts to
+	null is left out.
 
-	Only enumerable own (i.e., not inherited) properties with string keys are
-	included; an object with an integer-like property gives a null PList, as
-	does a value that is not an object or cannot be enumerated.
+	Only enumerable own (i.e., not inherited) properties are included; an
+	integer-like property is keyed by its decimal text, as JS itself names it
+	(proposed ADR-0051). A value that is not an object or cannot be enumerated
+	gives a null PList. This is also how the native-object family converts a
+	plain JS Object.
 
 	Requires a request on context.
-
-	The converter for plain JS Objects that OOJSNativeObjectFromJSValue() uses
-	is the Foundation OOJSDictionaryFromJSObject() in the bridge
-	(OOJavaScriptEngine+FoundationBridge.h), until bead oo-vp0y.
 */
 oo::PList OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value);
 oo::PList cxx_OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object);
