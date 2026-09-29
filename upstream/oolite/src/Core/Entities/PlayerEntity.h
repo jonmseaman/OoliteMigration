@@ -330,10 +330,10 @@ typedef enum
 
 #define ESCAPE_SEQUENCE_TIME			10.0
 
-#define FORWARD_FACING_STRING			DESC(@"forward-facing-string")
-#define AFT_FACING_STRING				DESC(@"aft-facing-string")
-#define PORT_FACING_STRING				DESC(@"port-facing-string")
-#define STARBOARD_FACING_STRING			DESC(@"starboard-facing-string")
+#define FORWARD_FACING_STRING			oo::NSStringFrom(OO_DESC("forward-facing-string"))
+#define AFT_FACING_STRING				oo::NSStringFrom(OO_DESC("aft-facing-string"))
+#define PORT_FACING_STRING				oo::NSStringFrom(OO_DESC("port-facing-string"))
+#define STARBOARD_FACING_STRING			oo::NSStringFrom(OO_DESC("starboard-facing-string"))
 
 #define KEY_REPEAT_INTERVAL				0.20
 
