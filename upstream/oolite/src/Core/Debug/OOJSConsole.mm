@@ -597,7 +597,6 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	key;
-	id					settingValue = nil;
 	id					monitor = nil;
 
 	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
@@ -617,10 +616,10 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	}
 	else
 	{
-		settingValue = OOJSNativeObjectFromJSValue(context, *value);
-		if (settingValue != nil && key.has_value())
+		const oo::PList settingValue = cxx_OOJSPListFromJSValue(context, *value);
+		if (!settingValue.isNull() && key.has_value())
 		{
-			[monitor setConfigurationValue:oo::PListFrom(settingValue) forKey:*key];
+			[monitor setConfigurationValue:settingValue forKey:*key];
 		}
 		else
 		{

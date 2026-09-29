@@ -327,15 +327,15 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 		return good;
 	}
 
-	id result = OOJSNativeObjectFromJSObject(context, ooscript::toObject(rval));
+	oo::PList result = cxx_OOJSPListFromJSObject(context, ooscript::toObject(rval));
 	OOJSRelinquishContext(context);
-	if (!oo::IsNSDictionary(result))
+	if (result.getIf<oo::PList::Dict>() == nullptr)
 	{
 		OO_LOG("script.commodityScript.error","Could not update {} commodity definition for {} - return value invalid",errorType,StringFor(good, kOOCommodityKey).value_or("(null)"));
 		return good;
 	}
 
-	return oo::PListFrom(result);
+	return result;
 }
 
 
