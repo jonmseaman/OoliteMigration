@@ -34,7 +34,7 @@ the largest fan-out phase and the least seam-bound, and it is the phase the meta
 | `Core/OXPVerifier` conversion (real class hierarchy pilot, 27 files, own test data) | `src/oxp/verifier/` | Frontier agent |
 | Per-module pattern for each of: `Materials`, `ooaudio`, `ooscript` bindings, `ooentity` base | one converted file per module | Frontier agent |
 | The six giant files (`ShipEntity` 14,945 · `PlayerEntity` 13,718 · `Universe` 11,297 · `PlayerEntityControls` 5,690 · `HeadUpDisplay` 4,497 · `OOJSShip` 4,399) | themselves | **Frontier agent, weeks each, category file by category file.** 200k+ token closures; not fleet work. |
-| Pre-splitting files > 400 lines into story-sized slices (category files already do this for `PlayerEntity`) | a slice plan per file | frontier |
+| Pre-splitting files > 400 lines into story-sized slices (category files already do this for `PlayerEntity`) | a slice plan per file: `docs/phases/3-slices/<File>.md`, checked by `python3 tools/check-slice-plan.py <plan>` (every method/function in exactly one slice or verbatim; each slice reads < 1,500 lines) | frontier |
 
 ## Sweeps
 
@@ -107,3 +107,4 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
 ## Status log
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §8 (Phase 3) and AI_EXECUTION_PLAN §1, §6, §15.
+- 2026-09-29 — Slice-plan format and checker landed (`tools/check-slice-plan.py`, bead oo-4plo); first plan `3-slices/OOPListSchemaVerifier.md`. Plain-C free functions go in a checked `verbatim:` group and are never read by a slice (ADR-0012).
