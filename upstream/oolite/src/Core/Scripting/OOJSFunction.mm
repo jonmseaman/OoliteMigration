@@ -230,21 +230,6 @@ MA 02110-1301, USA.
 }
 
 
-- (id) evaluateWithContext:(ooscript::Context)context
-					 scope:(id)jsThis
-				 arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
-{
-	ooscript::Value result;
-	BOOL OK = [self evaluateWithContext:context
-								  scope:jsThis
-							  arguments:arguments
-								 result:&result];
-	if (!OK)  return nil;
-	
-	return OOJSNativeObjectFromJSValue(context, result);
-}
-			   
-
 - (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
 								scope:(id)jsThis
 							arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
