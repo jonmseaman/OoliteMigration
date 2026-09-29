@@ -77,12 +77,6 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-std::optional<std::string> OptionalStringValue(id object)
-{
-	const oo::PList value = oo::PListFrom(object);
-	return OptionalStringValue(&value);
-}
-
 // [[key componentsSeparatedByString:@":"] oo_intAtIndex:1]: element 1's -intValue, 0 when there is
 // none (or no key).
 int SecondFieldIntValue(const std::optional<std::string> &key)
@@ -876,7 +870,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	// and initialise markets for the secondary stations
 	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");
-	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? oo::PListFrom(oo::ObjectFromPList(*stationMarkets)) : oo::PList()];
+	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? *stationMarkets : oo::PList()];
 
 	OO_LOG("load.progress", "{}", "Completing JS startup");
 	[self startUpComplete];

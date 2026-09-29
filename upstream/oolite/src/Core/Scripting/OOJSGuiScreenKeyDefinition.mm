@@ -152,13 +152,13 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 }
 
 
-- (void)runCallback:(id)key	// shared selector (proposed ADR-0043)
+- (void)runCallback:(const std::string &)key
 {
 	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();		
 	ooscript::Value					rval = ooscript::undefinedValue();
 
-	ooscript::Value         cKey = OOJSValueFromNativeObject(context, key);
+	ooscript::Value         cKey = OOJSValueFromPList(context, oo::PList(key));
 
 	OOJSScript *owner = [_owningScript retain]; // local copy needed
 	[OOJSScript pushScript:owner];
