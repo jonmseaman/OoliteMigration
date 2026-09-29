@@ -254,14 +254,14 @@ static QuaternionStatistics sQuaternionConversionStats;
 // :setM quatStats PS.callObjC("reportJSQuaternionStatistics")
 // :quatStats
 
-- (id) reportJSQuaternionStatistics	// shared selector (proposed ADR-0043): called by name from JavaScript (callObjC)
+- (oo::PList) reportJSQuaternionStatistics	// called by name from JavaScript (callObjC): the ADR-0055 item 5 signature
 {
 	QuaternionStatistics *stats = &sQuaternionConversionStats;
 	
 	NSUInteger sum = stats->quatCount + stats->entityCount + stats->arrayCount + stats->protoCount;
 	double convFac = 100.0 / sum;
 	
-	return oo::NSStringFrom(oo::str::format(
+	return oo::PList(oo::str::format(
 		   "quaternion-to-quaternion conversions: %zu (%g %%)\n"
 			"    entity-to-quaternion conversions: %zu (%g %%)\n"
 			"     array-to-quaternion conversions: %zu (%g %%)\n"
@@ -660,7 +660,7 @@ static bool QuaternionToString(ooscript::Context context, ooscript::CallArgs &oo
 	
 	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "toString"))) return NO;
 	
-	OOJS_RETURN_OBJECT(oo::NSStringFrom(QuaternionDescription(thisq)));
+	OOJS_RETURN_PLIST(oo::PList(QuaternionDescription(thisq)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -678,7 +678,7 @@ static bool QuaternionToSource(ooscript::Context context, ooscript::CallArgs &oo
 	
 	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "toSource"))) return NO;
 	
-	OOJS_RETURN_OBJECT(oo::NSStringFrom(oo::str::format("Quaternion(%g, %g, %g, %g)", thisq.w, thisq.x, thisq.y, thisq.z)));
+	OOJS_RETURN_PLIST(oo::PList(oo::str::format("Quaternion(%g, %g, %g, %g)", thisq.w, thisq.x, thisq.y, thisq.z)));
 	
 	OOJS_NATIVE_EXIT
 }

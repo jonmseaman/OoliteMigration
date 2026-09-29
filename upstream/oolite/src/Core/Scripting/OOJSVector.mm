@@ -395,7 +395,7 @@ static VectorStatistics sVectorConversionStats;
 // :setM vectorStats PS.callObjC("reportJSVectorStatistics")
 // :vectorStats
 
-- (id) reportJSVectorStatistics	// shared selector (proposed ADR-0043): called by name from JavaScript (callObjC)
+- (oo::PList) reportJSVectorStatistics	// called by name from JavaScript (callObjC): the ADR-0055 item 5 signature
 {
 	VectorStatistics *stats = &sVectorConversionStats;
 	
@@ -403,7 +403,7 @@ static VectorStatistics sVectorConversionStats;
 	double convFac = 100.0 / sum;
 	if (sum == 0)  convFac = 0;
 	
-	return oo::NSStringFrom(oo::str::format(
+	return oo::PList(oo::str::format(
 		   " vector-to-vector conversions: %zu (%g %%)\n"
 			" entity-to-vector conversions: %zu (%g %%)\n"
 			"  array-to-vector conversions: %zu (%g %%)\n"
@@ -795,7 +795,7 @@ static bool VectorToString(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, "toString"))) return NO;
 	
-	OOJS_RETURN_OBJECT(oo::NSStringFrom(cxx_HPVectorDescription(thisv)));
+	OOJS_RETURN_PLIST(oo::PList(cxx_HPVectorDescription(thisv)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -813,7 +813,7 @@ static bool VectorToSource(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, "toSource"))) return NO;
 	
-	OOJS_RETURN_OBJECT(oo::NSStringFrom(oo::str::format("Vector3D(%g, %g, %g)", thisv.x, thisv.y, thisv.z)));
+	OOJS_RETURN_PLIST(oo::PList(oo::str::format("Vector3D(%g, %g, %g)", thisv.x, thisv.y, thisv.z)));
 	
 	OOJS_NATIVE_EXIT
 }
