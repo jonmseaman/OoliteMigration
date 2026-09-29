@@ -129,12 +129,6 @@ private:
 }
 
 
-- (id) initWithName:(id)name	// shared selector (Foundation declares it too; retires with oo-qps)
-{
-	return [self cxx_initWithName:oo::OptionalString(name)];
-}
-
-
 - (id) cxx_initWithName:(const std::optional<std::string> &)name
 {
 	if ((self = [super init]))
@@ -198,21 +192,9 @@ private:
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>) cxx_name
 {
 	return _name;
-}
-
-
-- (void) setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
-{
-	[self cxx_setName:oo::OptionalString(name)];
 }
 
 

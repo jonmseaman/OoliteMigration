@@ -54,7 +54,7 @@ PIP_PKGS=(pytest-bdd pyautogui)
 
 # Shared compiler cache, outside every worktree so it survives worktree removal (I1 item 2).
 CCACHE_DIR_DEFAULT="C:/ccache"
-CCACHE_MAX_SIZE="20G"
+CCACHE_MAX_SIZE="60G"
 
 # --- Plumbing ------------------------------------------------------------------------------
 
@@ -235,7 +235,7 @@ ccache_reports() {
 }
 
 if ccache_reports cache_dir "$(cygpath -w "$CCACHE_DIR_WANTED" | sed 's/\\/\\\\/g')" \
-   && ccache_reports max_size '20\.0 GB'; then
+   && ccache_reports max_size '60\.0 GB'; then
   skip "ccache reports cache_dir $CCACHE_DIR_WANTED, max_size $CCACHE_MAX_SIZE"
 elif want "ccache config at $CCACHE_CONF"; then
   say "configuring shared ccache at $CCACHE_DIR_WANTED"

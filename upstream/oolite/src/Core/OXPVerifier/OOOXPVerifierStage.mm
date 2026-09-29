@@ -92,23 +92,10 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 }
 
 
-- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>)cxx_name
 {
 	OOLogGenericSubclassResponsibility();
 	return std::nullopt;
-}
-
-
-- (id)dependencies	// shared selector (Foundation declares -dependencies too; retires with oo-qps)
-{
-	const std::optional<std::vector<std::string>> dependencies = [self cxx_dependencies];
-	return dependencies.has_value() ? oo::NSSetFromStrings(*dependencies) : nil;
 }
 
 

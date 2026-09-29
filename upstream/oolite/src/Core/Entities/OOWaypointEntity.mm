@@ -50,11 +50,6 @@ MA 02110-1301, USA.
 	return [[[OOWaypointEntity alloc] cxx_initWithDictionary:info] autorelease];
 }
 
-- (id) initWithDictionary:(id)info	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithDictionary:oo::PListFrom(info)];
-}
-
 - (id) cxx_initWithDictionary:(const oo::PList &)info
 {
 	self = [super init];

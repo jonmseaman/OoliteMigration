@@ -489,7 +489,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 		{
 			for (const std::string &extension : extensions)
 			{
-				result = [ResourceManager cxx_stringFromFilesNamed:oo::StdString([oo::NSStringFrom(*fileName) stringByAppendingPathExtension:oo::NSStringFrom(extension)])
+				result = [ResourceManager cxx_stringFromFilesNamed:oo::str::appendingPathExtension(*fileName, extension)
 																		inFolder:"Shaders"];
 				if (result.has_value()) break;
 			}

@@ -191,7 +191,7 @@ typedef enum
 
 - (void) launchShip:(ShipEntity *)ship;
 
-- (ShipEntity *) launchIndependentShip:(id)role;	// called by name (ADR-0043 item 21): an Objective-C string
+- (oo::PList) launchIndependentShip:(const std::string &)role;	// called by name (ADR-0055 item 5): the ship launched, as an Object node (null: none)
 
 - (void) noteDockedShip:(ShipEntity *)ship;
 
@@ -207,7 +207,7 @@ typedef enum
 - (void) increaseAlertLevel;
 - (void) decreaseAlertLevel;
 
-- (id) launchPolice;	// called by name (ADR-0043 item 21): an Objective-C array of the ships launched
+- (oo::PList) launchPolice;	// called by name (ADR-0055 item 5): the ships launched, as Object nodes
 - (ShipEntity *) launchDefenseShip;
 - (ShipEntity *) launchScavenger;
 - (ShipEntity *) launchMiner;
@@ -217,7 +217,7 @@ typedef enum
 - (ShipEntity *) launchEscort;
 - (ShipEntity *) launchPatrol;
 
-- (void) launchShipWithRole:(id)role;	// called by name (ADR-0043 item 21): an Objective-C string
+- (void) launchShipWithRole:(const std::string &)role;	// called by name (ADR-0055 item 5)
 
 - (void) acceptPatrolReportFrom:(ShipEntity *)patrol_ship;
 

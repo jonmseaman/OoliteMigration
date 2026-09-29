@@ -431,7 +431,12 @@ static BOOL					sHaveSetUp = NO;
 		_isCubeMap = NO;
 		
 #if DUMP_CONVERTED_CUBE_MAPS
-		OODumpPixMap(pixMap, oo::str::format("converted cube map %s", oo::StdString([oo::NSStringFrom(oo::str::lastPathComponent(_path)) stringByDeletingPathExtension]).c_str()));
+		// -stringByDeletingPathExtension of the last path component (probed): cut at its last '.',
+		// unless that starts the name.
+		std::string dumpName = oo::str::lastPathComponent(_path);
+		const std::string::size_type dot = dumpName.rfind('.');
+		if (dot != std::string::npos && dot != 0)  dumpName.erase(dot);
+		OODumpPixMap(pixMap, oo::str::format("converted cube map %s", dumpName.c_str()));
 #endif
 	}
 	

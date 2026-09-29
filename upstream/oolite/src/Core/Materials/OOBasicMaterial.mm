@@ -41,12 +41,6 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 
 @implementation OOBasicMaterial
 
-- (id)initWithName:(id)name	// shared selector (Foundation declares it too; retires with oo-qps)
-{
-	return [self cxx_initWithName:oo::OptionalString(name)];
-}
-
-
 - (id)cxx_initWithName:(const std::optional<std::string> &)name
 {
 	self = [super init];
@@ -63,18 +57,18 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 }
 
 
-- (id)initWithName:(id)name configuration:(id)configuration
+- (id)initWithName:(const std::optional<std::string> &)name configuration:(const oo::PList &)configuration
 {
 	id					colorDesc = nil;
 	int					specularExponent;
-	
-	self = [self cxx_initWithName:oo::OptionalString(name)];
+
+	self = [self cxx_initWithName:name];
 	if (EXPECT_NOT(self == nil))  return nil;
 	
 	// An empty dictionary, not nil: the specifier defaults (a specular exponent of 10) apply. The
 	// configuration mixes plist data with live objects (colours): an oo::PList carries both
 	// exactly (proposed ADR-0043 Amendment 2).
-	const oo::PList config = (configuration != nil) ? oo::PListFrom(configuration) : oo::PList(oo::PList::Dict{});
+	const oo::PList config = !configuration.isNull() ? configuration : oo::PList(oo::PList::Dict{});
 	
 	colorDesc = cxx_OOMaterialDiffuseColor(config);
 	if (colorDesc != nil)  [self setDiffuseColor:[OOColor colorWithDescription:colorDesc]];

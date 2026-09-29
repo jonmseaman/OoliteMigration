@@ -96,21 +96,9 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 	[super dealloc];
 }
 
-- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>)cxx_name
 {
 	return _name;
-}
-
-
-- (void)setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
-{
-	[self cxx_setName:oo::OptionalString(name)];
 }
 
 
@@ -164,13 +152,13 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 }
 
 
-- (void)runCallback:(id)key	// shared selector (proposed ADR-0043)
+- (void)runCallback:(const std::string &)key
 {
 	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();		
 	ooscript::Value					rval = ooscript::undefinedValue();
 
-	ooscript::Value         cKey = OOJSValueFromNativeObject(context, key);
+	ooscript::Value         cKey = OOJSValueFromPList(context, oo::PList(key));
 
 	OOJSScript *owner = [_owningScript retain]; // local copy needed
 	[OOJSScript pushScript:owner];
@@ -193,7 +181,7 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 	// -caseInsensitiveCompare: as it was sent: a nil name answers OOOrderedSame (a message to nil); a
 	// nil other name compares as the empty string.
 	if (!_name.has_value())  return OOOrderedSame;
-	int order = oo::str::caseInsensitiveCompare(*_name, oo::OptionalString([other name]).value_or(std::string()));
+	int order = oo::str::caseInsensitiveCompare(*_name, [other cxx_name].value_or(std::string()));
 	return (order < 0) ? OOOrderedAscending : ((order > 0) ? OOOrderedDescending : OOOrderedSame);
 }
 
