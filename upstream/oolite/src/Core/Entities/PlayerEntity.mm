@@ -4777,9 +4777,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey
+- (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey
 {
-	customDialSettings[dialKey] = oo::PListFrom(value);	// non-plist values (colours...) are kept as Object nodes; nil is a null entry (it raised before)
+	customDialSettings[dialKey] = value;	// non-plist values (colours...) are Object nodes; null is a null entry (it raised before)
 }
 
 
