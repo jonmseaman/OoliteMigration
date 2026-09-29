@@ -146,9 +146,9 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		}
 		else if (![rescuee legacyScript].isNull())
 		{
-			[self runUnsanitizedScriptActions:oo::ObjectFromPList([rescuee legacyScript])
+			[self cxx_runUnsanitizedScriptActions:[rescuee legacyScript]
 							allowingAIMethods:YES
-							  withContextName:oo::NSStringFrom(oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str()))
+							  withContextName:oo::str::format("<character \"%s\" script>", [rescuee cxx_name].value_or("(null)").c_str())
 									forTarget:nil];
 		}
 		else if ([rescuee insuranceCredits] && [rescuee legalStatus])
@@ -159,16 +159,16 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			{
 				// claim bounty for capture, ignore insurance
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits-@-alt")),
-				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)),
-				 oo::DescriptionOf(OOStringFromDeciCredits(insurance, YES, NO)) });
+				 { [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits(reward, YES, NO),
+				 cxx_OOStringFromDeciCredits(insurance, YES, NO) });
 				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] }))];
 			}
 			else
 			{
 				// claim insurance reward with reduction of bounty
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"rescue-reward-for-@@-@-credits-@-alt")),
-				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(insurance - reward, YES, NO)),
-				 oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
+				 { [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits(insurance - reward, YES, NO),
+				 cxx_OOStringFromDeciCredits(reward, YES, NO) });
 				reward = insurance - reward;
 				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), [rescuee infoForScripting] }))];
 			}
@@ -179,7 +179,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		{
 			// claim insurance reward
 			result += oo::str::formatRuntime(oo::StdString(DESC(@"rescue-reward-for-@@-@-credits")),
-				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO)) });
+				{ [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO) });
 			credits += 10 * [rescuee insuranceCredits];
 			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), [rescuee infoForScripting] }))];
 
@@ -190,7 +190,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			// claim bounty for capture
 			float reward = (5.0 + government) * [rescuee legalStatus];
 			result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits")),
-				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
+				{ [rescuee cxx_name].value_or("(null)"), oo::DescriptionOf([rescuee shortDescription]), cxx_OOStringFromDeciCredits(reward, YES, NO) });
 			credits += reward;
 			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting] }))];
 			added_entry = YES;
@@ -249,7 +249,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				}
 				credits += 10 * fee;
 				
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-okay-@-@-@")), { TextArg(passenger_name), oo::DescriptionOf(OOIntCredits(fee)), TextArg(passenger_dest_name) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-okay-@-@-@")), { TextArg(passenger_name), cxx_OOIntCredits(fee), TextArg(passenger_dest_name) }) + "\n";
 				if (passenger_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
@@ -267,7 +267,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 					fee /= 2;
 				credits += 10 * fee;
 				
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-late-@-@-@")), { TextArg(passenger_name), oo::DescriptionOf(OOIntCredits(fee)), TextArg(passenger_dest_name) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-late-@-@-@")), { TextArg(passenger_name), cxx_OOIntCredits(fee), TextArg(passenger_dest_name) }) + "\n";
 				if (passenger_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
@@ -316,7 +316,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				}
 				credits += 10 * fee;
 				
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-okay-@-@")), { TextArg(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-okay-@-@")), { TextArg(parcel_name), cxx_OOIntCredits(fee) }) + "\n";
 				
 				[self increaseParcelReputation:RepForRisk(parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0))];
 
@@ -336,7 +336,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 					fee /= 2;
 				credits += 10 * fee;
 				
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-late-@-@")), { TextArg(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-late-@-@")), { TextArg(parcel_name), cxx_OOIntCredits(fee) }) + "\n";
 				if (parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
@@ -405,7 +405,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 					}
 					
 					credits += fee;
-					result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-okay-@-@")), { TextArg(contract_cargo_desc), oo::DescriptionOf(OOCredits(fee)) }) + "\n";
+					result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-okay-@-@")), { TextArg(contract_cargo_desc), cxx_OOCredits(fee) }) + "\n";
 					
 					contracts.erase(contracts.begin() + i--);
 					// repute++
@@ -440,7 +440,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 							[self addRoleToPlayer:@"trader"];
 						}
 
-						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-short-@-@-d")), { TextArg(contract_cargo_desc), oo::DescriptionOf(OOCredits(payment)), shortfall }) + "\n";
+						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-short-@-@-d")), { TextArg(contract_cargo_desc), cxx_OOCredits(payment), shortfall }) + "\n";
 						
 						contracts.erase(contracts.begin() + i--);
 						// repute unchanged
@@ -1166,16 +1166,16 @@ for (unsigned i=0;i<amount;i++)
 		const std::optional<std::string> deadline = oo::OptionalString([UNIVERSE shortTimeDescription:dest_eta]);
 
 		OOCreditsQuantity fee = contract_info.get<int>(oo::StdString(CONTRACT_KEY_FEE));
-		const std::optional<std::string> feeDesc = oo::OptionalString(OOIntCredits(fee));
+		const std::optional<std::string> feeDesc = std::optional<std::string>(cxx_OOIntCredits(fee));
 
-		// OOExpandKey(formatString, label, destination, deadline, feeDesc), spelled out: the macro names
-		// each argument after its expression, so the dictionary of named values is built here.
+		// cxx_OOExpandKey(formatString, label, destination, deadline, feeDesc), spelled out: the macro
+		// names each argument after its expression, so the dictionary of named values is built here.
 		oo::PList::Dict arguments;
 		if (label)  arguments["label"] = oo::PList(*label);
 		if (destination)  arguments["destination"] = oo::PList(*destination);
 		if (deadline)  arguments["deadline"] = oo::PList(*deadline);
 		if (feeDesc)  arguments["feeDesc"] = oo::PList(*feeDesc);
-		result.push_back(oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(std::string(formatString)), oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey)));
+		result.push_back(cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), std::string(formatString), oo::PList(std::move(arguments)), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string()));
 
 	}
 
@@ -1207,7 +1207,7 @@ for (unsigned i=0;i<amount;i++)
 		OOColor *noScrollColor = [gui colorFromSetting:kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
 
 		const std::vector<std::string>	cargoManifest = oo::StringsFrom([self cargoList]);
-		id			missionsManifest = [self missionsList];	// strings and arrays of strings
+		id			missionsManifest = oo::ObjectFromPList([self cxx_missionsList]);	// strings and arrays of strings
 
 		NSUInteger	i = 0;
 		NSUInteger	max_rows = 20;
@@ -1268,10 +1268,10 @@ for (unsigned i=0;i<amount;i++)
 		
 		current = current_cargo;
 		max = [self maxAvailableCargoSpace];
-		const std::string cargoString = oo::StdString(OOExpandKey(@"oolite-manifest-cargo", current, max));
+		const std::string cargoString = cxx_OOExpandKey("oolite-manifest-cargo", current, max).value_or(std::string());
 		current = [self cxx_passengerList].size();
 		max = max_passengers;
-		const std::string cabinString = oo::StdString(OOExpandKey(@"oolite-manifest-cabins", current, max));
+		const std::string cabinString = cxx_OOExpandKey("oolite-manifest-cabins", current, max).value_or(std::string());
 		const std::vector<std::string> manifestHeader = { cargoString, cabinString };
 
 		SET_MANIFEST_ROW( oo::NSArrayFromStrings(manifestHeader) , entryColor, cargoRow - 1);
@@ -1432,7 +1432,7 @@ for (unsigned i=0;i<amount;i++)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:oo::OptionalString(OOExpandKey(@"arrival-report-title"))];
+		[gui cxx_setTitle:cxx_OOExpandKey("arrival-report-title")];
 		
 		for (i=1;i<=18;i++) {
 			[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingReportColor) defaultValue:nil] forRow:21];
@@ -1460,7 +1460,7 @@ for (unsigned i=0;i<amount;i++)
 			}
 		}
 
-		[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC_PLURAL(@"contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers)), { oo::DescriptionOf(OOCredits(credits)), current_cargo, [self maxAvailableCargoSpace], passengers.size(), max_passengers })  forRow: GUI_ROW_MARKET_CASH];
+		[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC_PLURAL(@"contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers)), { cxx_OOCredits(credits), current_cargo, [self maxAvailableCargoSpace], passengers.size(), max_passengers })  forRow: GUI_ROW_MARKET_CASH];
 		[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingSummaryColor) defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
 
 		[gui cxx_setText:oo::OptionalString(DESC(@"press-space-commander")) forRow:21 align:GUI_ALIGN_CENTER];
@@ -1513,10 +1513,11 @@ std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t 
 }
 
 
-// OOExpandKey(key, ...) with the arguments it would have named after their variables.
+// cxx_OOExpandKey(key, ...) with the arguments it would have named after their variables; nothing
+// expanded is "".
 std::string ExpandKey(const char *key, oo::PList::Dict arguments)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(std::string(key)), oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), std::string(key), oo::PList(std::move(arguments)), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string());
 }
 
 
@@ -1639,7 +1640,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 				std::optional<std::string> shipName = ship != nullptr ? OptionalStringForKey(*ship, "display_name") : std::nullopt;
 				if (!shipName && ship != nullptr)  shipName = OptionalStringForKey(*ship, "name");	// KEY_NAME
 				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardEntryColor defaultValue:nil] forRow:startRow + i];
-				[gui cxx_setArray:{ " " + shipName.value_or("(null)") + " ", oo::StdString(OOIntCredits(ship_price)) }
+				[gui cxx_setArray:{ " " + shipName.value_or("(null)") + " ", cxx_OOIntCredits(ship_price) }
 					forRow:startRow + i];
 				[gui cxx_setKey:OptionalStringForKey(ship_info, "id").value_or("") forRow:startRow + i];	// SHIPYARD_KEY_ID
 			}
@@ -1729,8 +1730,8 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 			}
 		}
 		
-		row_info[2] = oo::StdString(OOExpandKey(@"shipyard-cargo-value", cargoRating));
-		row_info[3] = oo::StdString(OOExpandKey(@"shipyard-speed-value", speedRating));
+		row_info[2] = cxx_OOExpandKey("shipyard-cargo-value", cargoRating).value_or(std::string());
+		row_info[3] = cxx_OOExpandKey("shipyard-speed-value", speedRating).value_or(std::string());
 		
 		// Show footer first. It'll be overwritten by the sales_pitch if that text is longer than usual.
 		[self showTradeInInformationFooter];
@@ -1904,7 +1905,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		}
 		else
 		{
-			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
+			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
 		}
 	}
 
@@ -1966,7 +1967,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		}
 		else
 		{
-			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
+			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
 		}
 	}
 
@@ -2057,7 +2058,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// restore  portable equipment (in key order; the set it replaced gave hash order)
 	for (const std::string &eq_desc : portable_equipment)
 	{
-		[self addEquipmentItem:oo::NSStringFrom(eq_desc) withValidation:NO inContext:@"portable"];
+		[self addEquipmentItem:eq_desc withValidation:NO inContext:"portable"];
 	}
 
 

@@ -711,9 +711,9 @@ using ooscript::Context;
 	context = [NSString stringWithFormat:@"%@ wormholeEscorts", [self shortDescription]];
 #endif
 	
-	for (const oo::ObjCRef<ShipEntity *> &escortRef : [self cxx_escorts])	// a snapshot, as the enumerator's array was
+	for (const auto &shipRef : [self cxx_escorts])
 	{
-		ship = escortRef.get();
+		ship = shipRef.get();
 		[ship addTarget:whole];
 		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:oo::OptionalString(context)];
 		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
@@ -873,7 +873,7 @@ using ooscript::Context;
 
 - (void) randomPauseAI:(NSString *)intervalString
 {
-	NSArray*	tokens = ScanTokensFromString(intervalString);
+	NSArray*	tokens = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(intervalString)));
 	double start, end;
 	
 	if ([tokens count] != 2)
@@ -900,7 +900,7 @@ using ooscript::Context;
 	};
 	
 	messages = [messageString componentsSeparatedByString:@","];
-	foreach (message, messages)
+	for (message in messages)
 	{
 		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
 		[shipAI cxx_dropMessage:trimmed];
@@ -1272,7 +1272,7 @@ using ooscript::Context;
 			}
 			else
 			{
-				for (const oo::ObjCRef<ShipEntity *> &escortRef : [self cxx_escorts])
+				for (const auto &escortRef : [self cxx_escorts])
 				{
 					escort = escortRef.get();
 					if (target == escort)
@@ -1661,7 +1661,7 @@ using ooscript::Context;
 
 - (void) disengageAutopilot
 {
-	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", oo::DescriptionOf([shipAI name]), oo::DescriptionOf([shipAI state]));
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [shipAI cxx_name].value_or("(null)"), oo::DescriptionOf([shipAI state]));
 }
 
 
@@ -2316,14 +2316,14 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithAnyPrimaryRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithPredicate:HasPrimaryRoleInSetPredicate parameter:set];
 }
 
 
 - (void) scanForNearestShipHavingAnyRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithPredicate:HasRoleInSetPredicate parameter:set];
 }
 
@@ -2349,14 +2349,14 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithoutAnyPrimaryRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRoleInSetPredicate parameter:set];
 }
 
 
 - (void) scanForNearestShipNotHavingAnyRole:(NSString *)scanRoles
 {
-	NSSet *set = [NSSet setWithArray:ScanTokensFromString(scanRoles)];
+	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 	[self scanForNearestShipWithNegatedPredicate:HasRoleInSetPredicate parameter:set];
 }
 
@@ -2395,7 +2395,7 @@ using ooscript::Context;
 	
 	if (predicateExpression == nil)  predicateExpression = @"false";
 	
-	aiName = [[self getAI] name];
+	aiName = oo::NSStringOrNil([[self getAI] cxx_name]);
 #ifndef NDEBUG
 	/*	In debug/test release builds, scripts are cached per AI in order to be
 	 able to report errors correctly. For end-user releases, we only cache
@@ -2451,7 +2451,7 @@ using ooscript::Context;
 		
 		if (![errorCache containsObject:key])
 		{
-			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), oo::DescriptionOf([[self getAI] name]));
+			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), [[self getAI] cxx_name].value_or("(null)"));
 			if (errorCache == nil)  errorCache = [[NSMutableSet alloc] init];
 			[errorCache addObject:key];
 		}
@@ -2468,7 +2468,7 @@ using ooscript::Context;
 
 - (void) setCoordinates:(NSString *)system_x_y_z
 {
-	NSArray*	tokens = ScanTokensFromString(system_x_y_z);
+	NSArray*	tokens = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(system_x_y_z)));
 	NSString*	systemString = nil;
 	NSString*	xString = nil;
 	NSString*	yString = nil;
@@ -2610,9 +2610,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])]
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player checkScript];	// react immediately to any changes this makes
 		[player setScriptTarget:oldTarget];
@@ -2630,9 +2630,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])]
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player setScriptTarget:oldTarget];
 	}
@@ -2642,7 +2642,7 @@ using ooscript::Context;
 // Send own ship script a message.
 - (void) sendScriptMessage:(NSString *)message
 {
-	NSArray *components = ScanTokensFromString(message);
+	NSArray *components = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(message)));
 	
 	if ([components count] == 1)
 	{

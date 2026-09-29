@@ -169,7 +169,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// FIXME: AI.
 	// Eric: I think storing the AI name should be enough. On entering a wormhole, the stack is cleared so there are no preserved AI states.
 	// Also the AI restarts itself with the GLOBAL state, so no need to store any old state.
-	if (oo::StdString([[self getAI] name]) == "nullAI.plist")
+	if ([[self getAI] cxx_name].value_or(std::string()) == "nullAI.plist")
 	{
 		// might be a JS version (with none, no key: -setObject:forKey: refused nil)
 		if (const std::optional<std::string> js = [[self getAI] cxx_associatedJS])  result[KEY_AI] = *js;
@@ -177,7 +177,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else
 	{
-		result[KEY_AI] = oo::StdString([[self getAI] name]);
+		result[KEY_AI] = [[self getAI] cxx_name].value_or(std::string());
 	}
 
 	return oo::PList(std::move(result));
@@ -249,7 +249,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		for (const oo::PList &eqKey : *equipment->getIf<oo::PList::Array>())
 		{
-			[ship addEquipmentItem:oo::ObjectFromPList(eqKey) withValidation:NO inContext:@"loading"];
+			[ship addEquipmentItem:oo::StdString(oo::ObjectFromPList(eqKey)) withValidation:NO inContext:"loading"];
 		}
 	}
 
@@ -258,7 +258,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		for (const oo::PList &eqKey : *missileList->getIf<oo::PList::Array>())
 		{
-			[ship addEquipmentItem:oo::ObjectFromPList(eqKey) withValidation:NO inContext:@"loading"];
+			[ship addEquipmentItem:oo::StdString(oo::ObjectFromPList(eqKey)) withValidation:NO inContext:"loading"];
 		}
 	}
 

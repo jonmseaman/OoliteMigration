@@ -85,7 +85,7 @@ static unsigned				sCacheMisses = 0;
 	{
 		_cache = [[OOCache alloc] init];
 		[_cache setPruneThreshold:kCachePruneThreshold];
-		[_cache setName:@"Text encoding"];
+		[_cache cxx_setName:std::string("Text encoding")];
 		if (substitutions.isDict())
 		{
 			// In the order the Foundation dictionary enumerated them (two that overlap give

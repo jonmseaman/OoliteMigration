@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOAsyncWorkManager.h"
 #import "OOAsyncQueue.h"
 #import "OOCPUInfo.h"
-#import "OOCollectionExtractors.h"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOObjCRef.h"
