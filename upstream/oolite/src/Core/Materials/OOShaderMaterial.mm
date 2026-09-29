@@ -46,6 +46,7 @@ SOFTWARE.
 #import "OOStringParsing.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
@@ -451,7 +452,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 	}
 	else
 	{
-		Vector vec = OOVectorFromObject(oo::ObjectFromPList(value), kZeroVector);
+		Vector vec = OOVectorFromPList(&value, kZeroVector);
 		vecArray[0] = vec.x;
 		vecArray[1] = vec.y;
 		vecArray[2] = vec.z;
@@ -576,22 +577,22 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 		else if (type == "randomUnitVector")
 		{
 			type = "vector";
-			value = oo::PListFrom(OOPropertyListFromVector(vector_multiply_scalar(OORandomUnitVector(), scale)));
+			value = OOPListFromVector(vector_multiply_scalar(OORandomUnitVector(), scale));
 		}
 		else if (type == "randomVectorSpatial")
 		{
 			type = "vector";
-			value = oo::PListFrom(OOPropertyListFromVector(OOVectorRandomSpatial(scale)));
+			value = OOPListFromVector(OOVectorRandomSpatial(scale));
 		}
 		else if (type == "randomVectorRadial")
 		{
 			type = "vector";
-			value = oo::PListFrom(OOPropertyListFromVector(OOVectorRandomRadial(scale)));
+			value = OOPListFromVector(OOVectorRandomRadial(scale));
 		}
 		else if (type == "randomQuaternion")
 		{
 			type = "quaternion";
-			value = oo::PListFrom(OOPropertyListFromQuaternion(OORandomQuaternion()));
+			value = OOPListFromQuaternion(OORandomQuaternion());
 		}
 
 		if (type == "float" || type == "real")
@@ -640,7 +641,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 				quatAsMatrix = definition.get<bool>("asMatrix", quatAsMatrix);
 			}
 			[self setUniform:name
-			 quaternionValue:OOQuaternionFromObject(oo::ObjectFromPList(value), kIdentityQuaternion)
+			 quaternionValue:OOQuaternionFromPList(&value, kIdentityQuaternion)
 					asMatrix:quatAsMatrix];
 			gotValue = YES;
 		}

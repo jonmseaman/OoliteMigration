@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOEquipmentType.h"
 #import "Universe.h"
 #import "OOLegacyScriptWhitelist.h"
-#import "OOCollectionExtractors.h"	// OOUIntegerFromObject, for the unmigrated -missionVariableForKey:
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
 #import "PlayerEntityControls.h"
@@ -821,7 +820,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 		if (!OOEnforceStandards())
 		{
 			missionVar = [PLAYER missionVariableForKey:oo::NSStringFrom("mission_TL_FOR_" + _identifier)];
-			tl = OOUIntegerFromObject(missionVar, tl);
+			const oo::PList missionValue = oo::PListFrom(missionVar);	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
+			tl = static_cast<NSInteger>(oo::plist_get::unsignedLongLongFrom((missionVar != nil) ? &missionValue : nullptr, tl));
 		}
 	}
 	
