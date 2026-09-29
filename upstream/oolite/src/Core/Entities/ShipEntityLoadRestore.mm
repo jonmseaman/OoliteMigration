@@ -147,7 +147,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		result[KEY_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group, *context));
 		if ([_group leader] == self)  result[KEY_IS_GROUP_LEADER] = oo::PList(static_cast<bool>(YES));
-		const std::optional<std::string> groupName = oo::OptionalString([_group name]);
+		const std::optional<std::string> groupName = [_group cxx_name];
 		if (groupName.has_value())
 		{
 			result[KEY_GROUP_NAME] = *groupName;
@@ -270,7 +270,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		[ship setGroup:group];	// Handles adding to group
 		if (dict.get<bool>(KEY_IS_GROUP_LEADER))  [group setLeader:ship];
 		const std::optional<std::string> groupName = OptionalStringForKey(dict, KEY_GROUP_NAME);
-		if (groupName.has_value())  [group setName:oo::NSStringFrom(*groupName)];
+		if (groupName.has_value())  [group cxx_setName:groupName];
 		if ([ship hasPrimaryRole:@"escort"] && ship != [group leader])
 		{
 			[ship setOwner:[group leader]];
@@ -282,7 +282,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		OOShipGroup *group = GroupForGroupID(groupID, *context);
 		[group setLeader:ship];
-		[group setName:@"escort group"];
+		[group cxx_setName:std::string("escort group")];
 		[ship setEscortGroup:group];
 	}
 

@@ -867,8 +867,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		const std::string destination = oo::StdString([UNIVERSE getSystemName:[self nextHopTargetSystemID]]);
 		[UNIVERSE displayCountdownMessage:oo::NSStringFrom(ExpandKeyWithArguments("witch-to-x-in-y-seconds",
 			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } })) forCount:1.0];
-		[self doScriptEvent:OOJSID("playerStartedJumpCountdown")
-					withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }))];
+		[self cxx_doScriptEvent:OOJSID("playerStartedJumpCountdown")
+					withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) })))];
 		[UNIVERSE preloadPlanetTexturesForSystem:target_system_id];
 	}
 }
@@ -1365,7 +1365,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				//	'+' // next target
 				if ([self checkKeyPress:n_key_next_target] || joyButtonState[BUTTON_NEXTTARGET])
 				{
-					if ((!next_target_pressed)&&([self hasEquipmentItemProviding:@"EQ_TARGET_MEMORY"]))
+					if ((!next_target_pressed)&&([self cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"]))
 					{
 						[self moveTargetMemoryBy:+1];
 					}
@@ -1377,7 +1377,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				//	'-' // previous target
 				if ([self checkKeyPress:n_key_previous_target] || joyButtonState[BUTTON_PREVTARGET])
 				{
-					if ((!previous_target_pressed)&&([self hasEquipmentItemProviding:@"EQ_TARGET_MEMORY"]))
+					if ((!previous_target_pressed)&&([self cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"]))
 					{
 						[self moveTargetMemoryBy:-1];
 					}
@@ -1438,7 +1438,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						{
 							[self playNextEquipmentSelected];
 							eqKey = eqScripts[primedEquipment].first;
-							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
+							const std::string equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] cxx_name].value_or(std::string());
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
 						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
@@ -1731,7 +1731,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				exceptionContext = "galactic hyperspace";
 				// Galactic hyperspace 'g'
 				if (([self checkKeyPress:n_key_galactic_hyperspace] || joyButtonState[BUTTON_GALACTICDRIVE]) &&
-					([self hasEquipmentItemProviding:@"EQ_GAL_DRIVE"]))// look for the 'g' key
+					([self cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"]))// look for the 'g' key
 				{
 					if (!galhyperspace_pressed)
 					{
@@ -1762,8 +1762,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"witch-galactic-in-f-seconds")), { witchspaceCountdown })) forCount:1.0];
 							// FIXME: how to preload target system for hyperspace jump?
 							
-							[self doScriptEvent:OOJSID("playerStartedJumpCountdown")
-								  withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }))];
+							[self cxx_doScriptEvent:OOJSID("playerStartedJumpCountdown")
+								  withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) })))];
 						}
 					}
 					galhyperspace_pressed = YES;
@@ -2154,7 +2154,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			
 			if ([self status] != STATUS_WITCHSPACE_COUNTDOWN)
 			{
-				if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+				if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 				{
 					if ([self checkKeyPress:n_key_advanced_nav_array_next] || [self checkKeyPress:n_key_advanced_nav_array_previous])
 					{
@@ -2696,7 +2696,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] name]);
+						const std::string weaponName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] cxx_name].value_or(std::string());
 						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
 						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}
@@ -5706,14 +5706,14 @@ abort:
 				[self noteLostTarget];
 			}
 			[missile_entity[activeMissile] noteLostTarget];
-			const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+			const std::string weaponName = [missile_entity[activeMissile] cxx_name].value_or(std::string());	// (nil raised in the expansion)
 			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 			[self playMissileArmed];
 		}
 	}
 	else if ([missile_entity[activeMissile] isMine])
 	{
-		const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+		const std::string weaponName = [missile_entity[activeMissile] cxx_name].value_or(std::string());	// (nil raised in the expansion)
 		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 		[self playMineArmed];
 	}

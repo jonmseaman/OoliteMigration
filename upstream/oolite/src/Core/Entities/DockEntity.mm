@@ -169,8 +169,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		{
 			playerExtraTime = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 			int seconds = round(playerExtraTime);
-			NSString *message = OOExpandKey(@"station-docking-clearance-abort-cancelled-in-time", seconds);
-			if (message != nil)  [station cxx_sendExpandedMessage:oo::StdString(message) toShip:player];	// nil: nothing sent, as before
+			const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
+			if (message.has_value())  [station cxx_sendExpandedMessage:*message toShip:player];	// nil: nothing sent, as before
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 		}
 
@@ -658,8 +658,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			else
 			{
 				int seconds = 10; // when very close to the port, give the player a few seconds to react on the abort message.
-				NSString *message = OOExpandKey(@"station-docking-clearance-abort-cancelled-in-time", seconds);
-				if (message != nil)  [[self parentEntity] cxx_sendExpandedMessage:oo::StdString(message) toShip:player];	// nil: nothing sent, as before
+				const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
+				if (message.has_value())  [[self parentEntity] cxx_sendExpandedMessage:*message toShip:player];	// nil: nothing sent, as before
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 			}
 		}
