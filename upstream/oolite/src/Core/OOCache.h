@@ -86,8 +86,10 @@ enum
 - (BOOL)dirty;
 - (void)markClean;
 
-- (id)name;	// shared selector (proposed ADR-0043): an Objective-C string, nil if unnamed
-- (void)setName:(id)name;	// shared selector (proposed ADR-0043)
+- (id)name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, nil if unnamed
+- (std::optional<std::string>)cxx_name;	// nullopt: unnamed (bead oo-3rb.289.9)
+- (void)setName:(id)name;	// shared selector (Foundation declares -setName: too): -cxx_setName: with an Objective-C string, or nil
+- (void)cxx_setName:(const std::optional<std::string> &)name;
 
 - (std::vector<oo::ObjCRef<id>>) objectsByAge;	// youngest first; empty for an empty cache
 

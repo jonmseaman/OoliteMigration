@@ -104,9 +104,9 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 @implementation OOCheckShipDataPListVerifierStage
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 

@@ -1276,8 +1276,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		const std::optional<std::string> installedVersion = ManifestString(installed, oo::StdString(kOOManifestVersion));
 		OO_LOG("version.debug", "{} mv:{} mav:{}", identifier.value_or("(null)"), installedVersion.value_or("(null)"), availableVersion.value_or("(null)"));
-		// CompareVersions / ComponentsFromVersionString are unmigrated: strings at the call.
-		if (CompareVersions(ComponentsFromVersionString(oo::NSStringOrNil(installedVersion)),ComponentsFromVersionString(oo::NSStringOrNil(availableVersion))) == OOOrderedDescending)
+		// A missing version has no components (the bridge's ComponentsFromVersionString(nil)).
+		const std::vector<unsigned> installedComponents = installedVersion.has_value() ? cxx_ComponentsFromVersionString(*installedVersion) : std::vector<unsigned>();
+		const std::vector<unsigned> availableComponents = availableVersion.has_value() ? cxx_ComponentsFromVersionString(*availableVersion) : std::vector<unsigned>();
+		if (cxx_CompareVersions(installedComponents, availableComponents) == OOOrderedDescending)
 		{
 			// the installed copy is more recent than the server copy
 			return OXZ_UNINSTALLABLE_NOREMOTE;
@@ -1402,7 +1404,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	case OXZ_STATE_PICK_REMOVE:
 		if (_interfaceState != OXZ_STATE_MAIN)
 		{
-			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-currentfilter-is-@-@"), {oo::DescriptionOf(OOExpand(@"[oolite_key_oxzmanager_setfilter]")), _currentFilter}) forRow:OXZ_GUI_ROW_LISTFILTER align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-currentfilter-is-@-@"), {cxx_OOExpand("[oolite_key_oxzmanager_setfilter]").value_or("(null)"), _currentFilter}) forRow:OXZ_GUI_ROW_LISTFILTER align:GUI_ALIGN_LEFT];
 			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTFILTER];
 		}
 
@@ -1425,7 +1427,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 		if (_downloadStatus == OXZ_DOWNLOAD_ERROR)
 		{
-			[gui addLongText:OOExpandKey(@"oolite-oxzmanager-progress-error") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:cxx_OOExpandKey("oolite-oxzmanager-progress-error") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		}
 		else
 		{
@@ -1468,7 +1470,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		else
 		{
-			[gui addLongText:OOExpandKey(@"oolite-oxzmanager-progress-error") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:cxx_OOExpandKey("oolite-oxzmanager-progress-error") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		}
 		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+4 align:GUI_ALIGN_LEFT];
 
@@ -1852,7 +1854,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[[UNIVERSE gameView] cxx_stringToClipboard:infoURL.value_or(std::string())];	  
 				  
 // instructions
-			[gui setText:OOExpand(DESC(@"oolite-oxzmanager-infopage-return")) forRow:27 align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:cxx_OOExpand(cxx_OOLookUpDescriptionPRIV("oolite-oxzmanager-infopage-return")) forRow:27 align:GUI_ALIGN_CENTER];
 			[gui setColor:[OOColor greenColor] forRow:27];
 
 		}
@@ -2127,12 +2129,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (_interfaceState == OXZ_STATE_PICK_INSTALLED)
 		{
 			// installeD
-			[gui addLongText:OOExpand(DESC(@"oolite-oxzmanager-installed-nonepicked")) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:cxx_OOExpand(cxx_OOLookUpDescriptionPRIV("oolite-oxzmanager-installed-nonepicked")) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 		}
 		else
 		{
 			// installeR
-			[gui addLongText:OOExpand(DESC(@"oolite-oxzmanager-installer-nonepicked")) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:cxx_OOExpand(cxx_OOLookUpDescriptionPRIV("oolite-oxzmanager-installer-nonepicked")) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 		}
 		
 	}

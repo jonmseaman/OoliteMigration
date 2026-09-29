@@ -33,11 +33,11 @@ MA 02110-1301, USA.
 
 #import "OOFunctionAttributes.h"
 #import "ShipEntity.h"
-#import "OOCollectionExtractors.h"
 #import "OOShaderUniformMethodType.h"
 #import "OOJSVector.h"
 #import "OOJSQuaternion.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PListGet.hpp"
 
 
 typedef enum
@@ -136,7 +136,17 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 					
 				case kMethodTypeObjectVoid:
 					result = [object performSelector:selector];
-					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))  result = oo::ObjectFromPList(oo::PList(static_cast<bool>(OOBooleanFromObject(result, NO))));
+					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))
+					{
+						// OOBooleanFromObject(result, NO): a string or number reads as oo::plist_get::boolFrom
+						// does (bead oo-2764); any other object answers -boolValue / -intValue if it can.
+						const oo::PList resultValue = oo::PListFrom(result);
+						bool boolResult = NO;
+						if (resultValue.type() != oo::PList::Type::Object)  boolResult = oo::plist_get::boolFrom((result != nil) ? &resultValue : nullptr, NO);
+						else if ([result respondsToSelector:@selector(boolValue)])  boolResult = [result boolValue];
+						else if ([result respondsToSelector:@selector(intValue)])  boolResult = [result intValue] != 0;
+						result = oo::ObjectFromPList(oo::PList(boolResult));
+					}
 					break;
 					
 				case kMethodTypeVoidVoid:

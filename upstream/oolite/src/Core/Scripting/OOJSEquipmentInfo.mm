@@ -348,7 +348,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			break;
 			
 		case kEquipmentInfo_name:
-			result = [eqType name];
+			result = oo::NSStringOrNil([eqType cxx_name]);
 			break;
 
 		case kEquipmentInfo_calculatedPrice:
