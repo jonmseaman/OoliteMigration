@@ -1627,7 +1627,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	*/
 	BOOL energyBombCompensation = NO;
 	const auto energyBomb = equipment.find("EQ_ENERGY_BOMB");
-	if (energyBomb != equipment.end() && oo::PListGet<bool>::from(&energyBomb->second, false) && [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_ENERGY_BOMB"] == nil)
+	if (energyBomb != equipment.end() && oo::PListGet<bool>::from(&energyBomb->second, false) && [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_ENERGY_BOMB"] == nil)
 	{
 		energyBombCompensation = YES;
 		equipment.erase(energyBomb);
@@ -1949,7 +1949,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		for (NSUInteger i = 0; i < missiles; i++)
 		{
-			missile_list[i] = [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_MISSILE"];
+			missile_list[i] = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_MISSILE"];
 			missile_entity[i] = [UNIVERSE newShipWithRole:@"EQ_MISSILE"];	// retain count = 1 - should be okay as long as we keep a missile with this role
 																			// in the base package.
 		}
@@ -2524,7 +2524,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	for (i = 0; i < missiles; i++)
 	{
-		missile_list[i] = [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_MISSILE"];
+		missile_list[i] = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_MISSILE"];
 		missile_entity[i] = [UNIVERSE newShipWithRole:@"EQ_MISSILE"];   // retain count = 1
 	}
 	
@@ -5842,7 +5842,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if(missile_entity[i] != nil)
 		{
 			missile_entity[pylon] = missile_entity[i];
-			missile_list[pylon] = [OOEquipmentType equipmentTypeWithIdentifier:[missile_entity[i] primaryRole]];
+			const std::optional<std::string> missileRole = [missile_entity[i] cxx_primaryRole];
+			missile_list[pylon] = missileRole.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*missileRole] : nil;
 			pylon++;
 		}
 	}
@@ -6060,7 +6061,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (missile_entity[i] == nil)
 		{
 			missile_entity[i] = [missile retain];
-			missile_list[missiles] = [OOEquipmentType equipmentTypeWithIdentifier:[missile primaryRole]];
+			const std::optional<std::string> missileRole = [missile cxx_primaryRole];
+			missile_list[missiles] = missileRole.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*missileRole] : nil;
 			missiles++;
 			if (missiles == 1) [self setActiveMissile:0];	// auto select the first purchased missile
 			return YES;
@@ -6163,7 +6165,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	else
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 	}
 	
 	// missiles with techlevel above 99 (kOOVariableTechLevel) are never available to the player
@@ -6383,7 +6385,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		if (![weapon_to_be_fired isTurretLaser])
 		{
-			[self fireLaserShotInDirection:currentWeaponFacing weaponIdentifier:[[self currentWeapon] identifier]];
+			[self fireLaserShotInDirection:currentWeaponFacing weaponIdentifier:oo::NSStringOrNil([[self currentWeapon] cxx_identifier])];
 			weaponFired = YES;
 		}
 		else
@@ -7077,7 +7079,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	GLfloat damageableOdds = 0.0;
 	for (const std::string &key : [self cxx_equipmentKeys])	// the -equipmentEnumerator order
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
+		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
 		if ([eqType canBeDamaged])
 		{
 			damageableCounter++;
@@ -7092,7 +7094,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		std::optional<std::string>	system_key;
 		for (const std::string &key : [self cxx_equipmentKeys])
 		{
-			eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
+			eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
 			accumulator += [eqType damageProbability];
 			if (accumulator > target)
 			{
@@ -8199,13 +8201,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	BOOL prioritiseDamaged = [gui cxx_userSettings].get<bool>(cxx_kGuiStatusPrioritiseDamaged, true);
 
-	for (OOEquipmentType *eqType in [OOEquipmentType reverseEquipmentEnumerator])
+	const std::vector<oo::ObjCRef<OOEquipmentType *>> allEquipmentTypes = [OOEquipmentType cxx_allEquipmentTypes];
+	for (auto eqTypeRef = allEquipmentTypes.rbegin(); eqTypeRef != allEquipmentTypes.rend(); ++eqTypeRef)
 	{
+		OOEquipmentType *eqType = eqTypeRef->get();
 		if ([eqType isVisible])
 		{
 			if ([eqType canCarryMultiple] && ![eqType isMissileOrMine])
 			{
-				const std::string identifier = oo::StdString([eqType identifier]);
+				const std::string identifier = [eqType cxx_identifier].value_or("");
 				const std::string damagedIdentifier = identifier + "_DAMAGED";
 				NSUInteger count = 0, okcount = 0;
 				okcount = [self cxx_countEquipmentItem:identifier];
@@ -8260,14 +8264,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 					}
 				}
 			}
-			else if ([self hasEquipmentItem:[eqType identifier]])
+			else if ([self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_identifier])])
 			{
 				quip2.push_back(EquipmentRow(oo::OptionalString([eqType name]), true, [eqType displayColor]));
 			}
 			else
 			{
 				// Check for damaged version
-				if ([self hasEquipmentItem:oo::NSStringFrom(oo::StdString([eqType identifier]) + "_DAMAGED")])
+				if ([self hasEquipmentItem:oo::NSStringFrom([eqType cxx_identifier].value_or("") + "_DAMAGED")])
 				{
 					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equipment-@-not-available")), { oo::DescriptionOf([eqType name]) });
 
@@ -8288,7 +8292,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (max_passengers > 0)
 	{
 		desc = oo::str::formatRuntime(oo::StdString(DESC_PLURAL(@"equipment-pass-berth-@", max_passengers)), { static_cast<int>(max_passengers) });	// %d
-		quip2.push_back(EquipmentRow(desc, true, [[OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"] displayColor]));
+		quip2.push_back(EquipmentRow(desc, true, [[OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_PASSENGER_BERTH"] displayColor]));
 	}
 	
 	if (!isWeaponNone(forward_weapon_type))
@@ -8334,7 +8338,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	else
 	{
-		return oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[idx].first)] name]);
+		return oo::OptionalString([[OOEquipmentType cxx_equipmentTypeWithIdentifier:eqScripts[idx].first] name]);
 	}
 }
 
@@ -8376,7 +8380,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			else
 			{
 				// (a nil name raised in the expansion)
-				const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[primedEquipment].first)] name]);
+				const std::string equipmentName = oo::StdString([[OOEquipmentType cxx_equipmentTypeWithIdentifier:eqScripts[primedEquipment].first] name]);
 				[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 			}
 		}
@@ -9507,9 +9511,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		equipmentAllowed.push_back(*eqKeyForSelectFacing);
 		equipmentAllowed.push_back(*eqKeyForSelectFacing);
 	}
-	else for (OOEquipmentType *eqType in [OOEquipmentType equipmentEnumeratorOutfitting])	// (i counts at the end of the body)
+	else for (const oo::ObjCRef<OOEquipmentType *> &eqTypeRef : [OOEquipmentType cxx_allEquipmentTypesOutfitting])	// (i counts at the end of the body)
 	{
-		const std::string	eqKey = oo::StdString([eqType identifier]);
+		OOEquipmentType *eqType = eqTypeRef.get();
+		const std::string	eqKey = [eqType cxx_identifier].value_or("");
 		OOTechLevelID		minTechLevel = [eqType effectiveTechLevel];
 		
 		// set initial availability to NO
@@ -9519,7 +9524,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if ([eqType isAvailableToAll])  options.insert(eqKey);
 		
 		// if you have a damaged system you can get it repaired at a tech level one less than that required to buy it
-		if (minTechLevel != 0 && [self hasEquipmentItem:[eqType damagedIdentifier]])  minTechLevel--;
+		if (minTechLevel != 0 && [self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_damagedIdentifier])])  minTechLevel--;
 		
 		// reduce the minimum techlevel occasionally as a bonus..
 		if (techlevel < minTechLevel && techlevel + 3 > minTechLevel)
@@ -9629,7 +9634,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			for (i = skip; i < count && (row - start_row < (OOGUIRow)n_rows); i++)
 			{
 				const std::string	&eqKey = equipmentAllowed[i];
-				OOEquipmentType		*eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)];
+				OOEquipmentType		*eqInfo = [OOEquipmentType cxx_equipmentTypeWithIdentifier:eqKey];
 				OOCreditsQuantity	pricePerUnit = [eqInfo price];
 				std::string			desc = oo::str::format(" %s ", oo::DescriptionOf([eqInfo name]).c_str());
 				double				price;
@@ -9662,7 +9667,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					installTime = 600 + price;
 				}
 				// is this item damaged?
-				if ([self hasEquipmentItem:[eqInfo damagedIdentifier]])
+				if ([self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])])
 				{
 					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equip-repair-@")), { desc });
 					price /= 2.0;
@@ -9858,9 +9863,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if (!oo::str::hasPrefix(*eqKey, "More:"))
 		{
-			std::optional<std::string> desc = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*eqKey)] descriptiveText]);
+			std::optional<std::string> desc = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] cxx_descriptiveText];
 			const std::string eq_key_damaged = *eqKey + "_DAMAGED";
-			int weight = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*eqKey)] requiredCargoSpace];
+			int weight = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] requiredCargoSpace];
 			if ([self hasEquipmentItem:oo::NSStringFrom(eq_key_damaged)])
 			{
 				desc = oo::str::formatRuntime(oo::StdString(DESC(@"upgradeinfo-@-price-is-for-repairing")), { TextArg(desc) });
@@ -10407,8 +10412,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		chosen_weapon_facing = WEAPON_FACING_STARBOARD;
 
 	OOCreditsQuantity old_credits = credits;
-	OOEquipmentType *eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(key)];
-	BOOL isRepair = [self hasEquipmentItem:[eqInfo damagedIdentifier]];
+	OOEquipmentType *eqInfo = (key.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*key] : nil);
+	BOOL isRepair = [self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])];
 	if ([self tryBuyingItem:key.value_or(std::string())])	// (a nil key bought nothing, as "" does)
 	{
 		if (credits == old_credits)
@@ -10469,7 +10474,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price
 {
-	const std::optional<std::string> condition_script = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] conditionScript]);
+	const std::optional<std::string> condition_script = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eqKey] cxx_conditionScript];
 	if (condition_script.has_value())
 	{
 		OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*condition_script)];
@@ -10508,9 +10513,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (BOOL) tryBuyingItem:(const std::string &)eqKey
 {
 	// note this doesn't check the availability by tech-level
-	OOEquipmentType			*eqType			= [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)];
+	OOEquipmentType			*eqType			= [OOEquipmentType cxx_equipmentTypeWithIdentifier:eqKey];
 	OOCreditsQuantity		pricePerUnit	= [eqType price];
-	const std::optional<std::string>	eqKeyDamaged	= oo::OptionalString([eqType damagedIdentifier]);
+	const std::optional<std::string>	eqKeyDamaged	= [eqType cxx_damagedIdentifier];
 	double					price			= pricePerUnit;
 	double					priceFactor		= 1.0;
 	OOCreditsQuantity		tradeIn			= 0;
@@ -10849,7 +10854,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	unsigned i;
 	for (i = 0; i < missiles; i++)
 	{
-		const std::optional<std::string> weapon_key = oo::OptionalString([missile_list[i] identifier]);
+		const std::optional<std::string> weapon_key = [missile_list[i] cxx_identifier];
 
 		if (weapon_key.has_value())
 			tradeIn += (int)[UNIVERSE getEquipmentPriceForKey:oo::NSStringFrom(*weapon_key)];
@@ -11709,8 +11714,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (oo::OptionalString(equipmentKey) == "EQ_RENOVATION" && !(ship_trade_in_factor < 85 || [self cxx_shipSubEntities].size() < [self maxShipSubEntities]))  return NO;
 	if (![super canAddEquipment:equipmentKey inContext:context])  return NO;
 
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
-	if ([eqType conditions] != nil && ![self scriptTestConditions:[eqType conditions]])  return NO;
+	OOEquipmentType *eqType = (equipmentKey != nil) ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:oo::StdString(equipmentKey)] : nil;
+	const oo::PList conditions = [eqType cxx_conditions];
+	if (conditions && ![self cxx_scriptTestConditions:conditions])  return NO;
 	
 	return YES;
 }
@@ -11779,7 +11785,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			}
 			// if we get here, this item is new
 			// add the basic info at this point (equipkey and name only; a nil name ended the list)
-			OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+			OOEquipmentType *eq = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 			oo::PList::Dict customKey;
 			customKey[oo::StdString(CUSTOMEQUIP_EQUIPKEY)] = equipmentKey;
 			const std::optional<std::string> equipmentName = oo::OptionalString([eq name]);
@@ -11787,11 +11793,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 			// grab any default keys from the equipment item
 			// default activate
-			object = oo::PListFrom([eq defaultActivateKey]);
+			object = [eq cxx_defaultActivateKey];
 			if ((object.isArray() && object.count() > 0))
 				customKey[oo::StdString(CUSTOMEQUIP_KEYACTIVATE)] = object;
 			// default mode
-			object = oo::PListFrom([eq defaultModeKey]);
+			object = [eq cxx_defaultModeKey];
 			if ((object.isArray() && object.count() > 0))
 				customKey[oo::StdString(CUSTOMEQUIP_KEYMODE)] = object;
 
@@ -11815,7 +11821,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (customEquipActivation.size() == 0) return;
 	for (i = customEquipActivation.size() - 1; i >= 0; i--) {
 		equipmentKey = StringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY));
-		OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(equipmentKey)];
+		OOEquipmentType *eq = (equipmentKey.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*equipmentKey] : nil);
 		if (!eq) {
 			customEquipActivation.erase(customEquipActivation.begin() + i);
 			customActivatePressed.erase(customActivatePressed.begin() + i);
@@ -11939,10 +11945,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType
 {
-	if ([[forward_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
-		[[aft_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
-		[[port_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
-		[[starboard_weapon_type identifier] isEqualToString:[weaponType identifier]])
+	// -isEqualToString: of the identifiers: a nil weapon (nullopt) matches nothing.
+	const std::optional<std::string> weaponIdentifier = [weaponType cxx_identifier];
+	if (weaponIdentifier.has_value() &&
+		([forward_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [aft_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [port_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [starboard_weapon_type cxx_identifier] == weaponIdentifier))
 	{
 		return YES;
 	}
@@ -11957,7 +11966,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	unsigned i;
 	for (i = 0; i < max_missiles; i++)
 	{
-		if ([[self missileForPylon:i] hasPrimaryRole:[eqType identifier]])
+		if ([[self missileForPylon:i] hasPrimaryRole:oo::NSStringOrNil([eqType cxx_identifier])])
 		{
 			[self removeFromPylon:i];
 			
@@ -11975,7 +11984,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (missile_entity[pylon] != nil)
 	{
-		[super removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:[missile_entity[pylon] primaryRole]]];
+		const std::optional<std::string> missileRole = [missile_entity[pylon] cxx_primaryRole];
+		[super removeExternalStore:(missileRole.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*missileRole] : nil)];
 
 		// Remove the missile (must wait until we've finished with its identifier string!)
 		[missile_entity[pylon] release];

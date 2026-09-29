@@ -136,7 +136,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		unsigned i;
 		for (i = 0; i < missiles; i++)
 		{
-			const std::optional<std::string> missileType = oo::OptionalString([missile_list[i] identifier]);
+			const std::optional<std::string> missileType = [missile_list[i] cxx_identifier];
 			if (missileType.has_value())  missileArray.push_back(*missileType);
 		}
 		result[KEY_MISSILES] = ArrayFromStrings(missileArray);
