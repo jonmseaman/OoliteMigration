@@ -1582,7 +1582,7 @@ using ooscript::Context;
 - (void) scanForOffenders
 {
 	/*-- Locates all the ships in range and compares their legal status or bounty against ranrot_rand() & 255 - chooses the worst offender --*/
-	NSDictionary		*systeminfo = [UNIVERSE currentSystemData];
+	NSDictionary		*systeminfo = oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]);
 	float gov_factor =	0.4 * [(NSNumber *)[systeminfo objectForKey:KEY_GOVERNMENT] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
 	//
 	if ([UNIVERSE sun] == nil)
@@ -2491,7 +2491,7 @@ using ooscript::Context;
 	HPVector posn = make_HPvector([xString floatValue], [yString floatValue], [zString floatValue]);
 	GLfloat	scalar = 1.0;
 	
-	coordinates = [UNIVERSE coordinatesForPosition:posn withCoordinateSystem:systemString returningScalar:&scalar];
+	coordinates = [UNIVERSE cxx_coordinatesForPosition:posn withCoordinateSystem:oo::StdString(systemString) returningScalar:&scalar];
 	
 	[shipAI message:"APPROACH_COORDINATES"];
 }
@@ -2678,7 +2678,7 @@ using ooscript::Context;
 // racing code TODO
 - (void) targetFirstBeaconWithCode:(NSString*) code
 {
-	NSArray			*all_beacons = [UNIVERSE listBeaconsWithCode: code];
+	NSArray			*all_beacons = oo::NSArrayFromObjects([UNIVERSE cxx_listBeaconsWithCode:oo::StdString(code)]);
 	if ([all_beacons count])
 	{
 		[self addTarget:(ShipEntity*)[all_beacons objectAtIndex:0]];
@@ -2691,7 +2691,7 @@ using ooscript::Context;
 
 - (void) targetNextBeaconWithCode:(NSString*) code
 {
-	NSArray			*all_beacons = [UNIVERSE listBeaconsWithCode: code];
+	NSArray			*all_beacons = oo::NSArrayFromObjects([UNIVERSE cxx_listBeaconsWithCode:oo::StdString(code)]);
 	ShipEntity		*current_beacon = [self primaryTarget];
 	
 	if ((!current_beacon)||(![current_beacon isBeacon]))
@@ -2798,7 +2798,7 @@ using ooscript::Context;
 	NSUInteger		i = 0;
 	
 	// get a list of destinations within range
-	sDests = [UNIVERSE nearbyDestinationsWithinRange: 0.1f * fuel];
+	sDests = oo::ObjectFromPList([UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * fuel]);
 	NSUInteger n_dests = [sDests count];
 	
 	// if none available report to the AI and exit

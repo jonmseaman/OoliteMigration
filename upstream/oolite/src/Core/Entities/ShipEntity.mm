@@ -912,7 +912,12 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		// crew and passengers
 		// the one entry of UNIVERSE's characters (a nil key found nothing)
 		const std::optional<std::string> pilotKey = StringForKey(shipDict, "pilot");
-		const oo::PList cdict = pilotKey.has_value() ? oo::PListFrom([[UNIVERSE characters] objectForKey:oo::NSStringFrom(*pilotKey)]) : oo::PList();
+		oo::PList cdict;
+		if (pilotKey.has_value())
+		{
+			const oo::PList characters = [UNIVERSE cxx_characters];
+			if (const oo::PList *entry = characters.find(*pilotKey))  cdict = *entry;
+		}
 		if (!cdict.isNull())
 		{
 			OOCharacter	*pilot = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cdict)];
@@ -1087,11 +1092,11 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 
 	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
 	{
-		subentity = [UNIVERSE newDockWithName:oo::NSStringFrom(*subentKey) andScaleFactor:_scaleFactor];
+		subentity = [UNIVERSE cxx_newDockWithName:*subentKey andScaleFactor:_scaleFactor];
 	}
 	else
 	{
-		subentity = [UNIVERSE newSubentityWithName:oo::NSStringFrom(*subentKey) andScaleFactor:_scaleFactor];
+		subentity = [UNIVERSE cxx_newSubentityWithName:*subentKey andScaleFactor:_scaleFactor];
 	}
 	if (subentity == nil) {
 		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity %@",oo::NSStringFrom(*subentKey));
@@ -1741,7 +1746,8 @@ DESTROY(laser_color);
 
 		if (length > 1)
 		{
-			const oo::PList iconData = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(*_beaconCode)]);
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
 			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
 
@@ -1866,7 +1872,7 @@ DESTROY(laser_color);
 	escortRole = escortRoleSetting.has_value() ? *escortRoleSetting : info.get<std::string>("escort-role", defaultRole);
 	if (escortRole != defaultRole)
 	{
-		if (![[UNIVERSE newShipWithRole:oo::NSStringFrom(escortRole)] autorelease])
+		if (![[UNIVERSE cxx_newShipWithRole:escortRole] autorelease])
 		{
 			escortRole = defaultRole;
 		}
@@ -1878,7 +1884,7 @@ DESTROY(laser_color);
 
 	if (escortShipKey.has_value())
 	{
-		if (![[UNIVERSE newShipWithName:oo::NSStringFrom(*escortShipKey)] autorelease])
+		if (![[UNIVERSE cxx_newShipWithName:*escortShipKey] autorelease])
 		{
 			escortShipKey = std::nullopt;
 		}
@@ -1906,7 +1912,7 @@ DESTROY(laser_color);
 		
 		ShipEntity *escorter = nil;
 		
-		escorter = [UNIVERSE newShipWithRole:oo::NSStringFrom(escortRole)];	// retained
+		escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
 
 		if (escorter == nil)  break;
 		[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
@@ -1933,7 +1939,7 @@ DESTROY(laser_color);
 	}
 	OOGovernmentID		government;
 
-	const oo::PList systeminfo = oo::PListFrom([UNIVERSE currentSystemData]);
+	const oo::PList systeminfo = [UNIVERSE cxx_currentSystemData];
  	government = systeminfo.get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
 
 	OOShipGroup *escortGroup = [self escortGroup];
@@ -1980,7 +1986,7 @@ DESTROY(laser_color);
 			if (!escortRole.empty())
 			{
 				HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
-				ShipEntity *escorter = [UNIVERSE newShipWithRole:oo::NSStringFrom(escortRole)];	// retained
+				ShipEntity *escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
 				if (escorter == nil)
 				{
 					break;
@@ -2408,14 +2414,14 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	ShipEntity *pod = nil;
 
 	const oo::PList &info = shipinfoDictionary;
-	pod = [UNIVERSE newShipWithRole:oo::NSStringOrNil(StringForKey(info, "escape_pod_role"))];	// or nil
+	pod = [UNIVERSE cxx_newShipWithRole:StringForKey(info, "escape_pod_role").value_or("")];	// or nil
 	if (!pod)
 	{
 		//	_role not defined? it might have _model defined;
-		pod = [UNIVERSE newShipWithRole:oo::NSStringFrom(info.get<std::string>("escape_pod_model", "escape-capsule"))];
+		pod = [UNIVERSE cxx_newShipWithRole:info.get<std::string>("escape_pod_model", "escape-capsule")];
 		if (!pod)
 		{
-			pod = [UNIVERSE newShipWithRole:@"escape-capsule"];
+			pod = [UNIVERSE cxx_newShipWithRole:"escape-capsule"];
 			OOLog(@"shipEntity.noEscapePod", @"Ship %@ has no correct escape_pod_role defined. Now using default capsule.", self);
 		}
 	}
@@ -3568,7 +3574,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		const std::optional<std::string> condition_script = oo::OptionalString([eqType conditionScript]);
 		if (condition_script.has_value())
 		{
-			OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*condition_script)];
+			OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
 			if (condScript != nil) // should always be non-nil, but just in case
 			{
 				ooscript::Context JScontext = OOJSAcquireContext();
@@ -3895,7 +3901,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	{
 		while (!shipKey.has_value())
 		{
-			shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
+			shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
 			if (!shipKey.has_value())
 			{
 				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringOrNil(shipKey), [self name], @"shipdata",  @"Trying another missile.");
@@ -3904,7 +3910,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	else
 	{
-		shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
+		shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
 		if (!shipKey.has_value())
 		{
 			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), [self name], @"shipdata", @" Using defaults instead.");
@@ -3916,7 +3922,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 	if (!eqRole.has_value())
 	{
-		missile = [UNIVERSE newShipWithName:oo::NSStringFrom(*shipKey)];
+		missile = [UNIVERSE cxx_newShipWithName:*shipKey];
 		if (!missile)
 		{
 			if (isRandomMissile)
@@ -7316,7 +7322,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 					legal_i =  (legal <= 50) ? 1 : 2;
 				}
 				// the entry if it is a string (or a number's -stringValue), else nil
-				const oo::PList legalStatus = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"legal_status"]);
+				const oo::PList *legalStatusEntry = [UNIVERSE cxx_descriptions]->find("legal_status");
+				const oo::PList legalStatus = (legalStatusEntry != nullptr) ? *legalStatusEntry : oo::PList();
 				const oo::PList *entry = legalStatus.at(legal_i);
 				if (entry != nullptr && (entry->isString() || entry->isNumber()))  desc = legalStatus.at<std::string>(legal_i);
 			}
@@ -7473,13 +7480,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (BOOL)isTrader
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-trader"];
+	return [UNIVERSE cxx_role:oo::StdString([self primaryRole]) isInCategory:"oolite-trader"];
 }
 
 
 - (BOOL)isPirate
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-pirate"];
+	return [UNIVERSE cxx_role:oo::StdString([self primaryRole]) isInCategory:"oolite-pirate"];
 }
 
 
@@ -7503,13 +7510,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (BOOL)isEscort
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-escort"];
+	return [UNIVERSE cxx_role:oo::StdString([self primaryRole]) isInCategory:"oolite-escort"];
 }
 
 
 - (BOOL)isShuttle
 {
-	return [UNIVERSE role:[self primaryRole] isInCategory:@"oolite-shuttle"];
+	return [UNIVERSE cxx_role:oo::StdString([self primaryRole]) isInCategory:"oolite-shuttle"];
 }
 
 
@@ -7521,7 +7528,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (BOOL)isPirateVictim
 {
-	return [UNIVERSE roleIsPirateVictim:[self primaryRole]];
+	return [UNIVERSE cxx_roleIsPirateVictim:oo::StdString([self primaryRole])];
 }
 
 
@@ -7775,8 +7782,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// valgrind complains about this line here. Might be compiler/GNUstep bug? 
 	// should we go back to a traditional enumerator? - CIM
 	// similar complaints about the other foreach() in this file
-	foreach (planet, [UNIVERSE planets])
+	for (const auto &planetRef : [UNIVERSE cxx_planets])
 	{
+		planet = planetRef.get();
 		// Ignore miniature planets.
 		if ([planet planetType] == STELLAR_TYPE_MINIATURE)  continue;
 		
@@ -7815,7 +7823,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	OOPlanetEntity		*result = nil;
 	std::vector<oo::ObjCRef<OOPlanetEntity *>>	planets;
 
-	for (const auto &planet : oo::ObjCRefsFrom<OOPlanetEntity *>([UNIVERSE planets]))
+	for (const auto &planet : [UNIVERSE cxx_planets])
 	{
 		if([planet.get() planetType] == STELLAR_TYPE_NORMAL_PLANET)
 					planets.push_back(planet);
@@ -8666,23 +8674,23 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			case CARGO_FLAG_FULL_UNIFORM:
 				{
 					const oo::PList &info = shipinfoDictionary;
-					newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfCommodity:oo::NSStringOrNil(StringForKey(info, "cargo_carried")) :num]);
+					newCargo = [UNIVERSE cxx_getContainersOfCommodity:StringForKey(info, "cargo_carried").value_or("") :num];
 				}
 				break;
 			case CARGO_FLAG_FULL_PLENTIFUL:
-				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:num scarce:NO legal:YES]);
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:NO legal:YES];
 				break;
 			case CARGO_FLAG_FULL_SCARCE:
-				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:num scarce:YES legal:YES]);
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:YES];
 				break;
 			case CARGO_FLAG_FULL_MEDICAL:
-				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfCommodity:@"Narcotics" :num]);
+				newCargo = [UNIVERSE cxx_getContainersOfCommodity:"Narcotics" :num];
 				break;
 			case CARGO_FLAG_FULL_CONTRABAND:
-				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:num scarce:YES legal:NO]);
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:NO];
 				break;
 			case CARGO_FLAG_PIRATE:
-				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:(Ranrot() % (1+num/2)) scarce:YES legal:NO]);
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:(Ranrot() % (1+num/2)) scarce:YES legal:NO];
 				break;
 			case CARGO_FLAG_FULL_PASSENGERS:
 				// TODO: allow passengers to survive
@@ -8964,7 +8972,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	
 	OOLog(@"missile.damage.calc", @"Range: %f | Damage: %f | MaxRange: %f",range,baseDamage,maxRange);
 
-	const std::vector<oo::ObjCRef<Entity *>> targets = oo::ObjCRefsFrom<Entity *>([UNIVERSE entitiesWithinRange:maxRange ofEntity:self]);
+	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:maxRange ofEntity:self];
 	if (targets.size() > 0)
 	{
 		unsigned i;
@@ -9022,7 +9030,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	}
 	// and a visual sign of the explosion
 	// "fireball" explosion effect
-	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:oo::PListFrom([UNIVERSE explosionSetting:@"oolite-default-ship-explosion"])]];
+	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:[UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]]];
 
 }
 
@@ -9033,7 +9041,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	cxx_OOStandardsDeprecated(oo::str::format("dealEnergyDamageWithinDesiredRange is deprecated for %s", oo::DescriptionOf(self).c_str()));
 	// not over scannerRange
-	const std::vector<oo::ObjCRef<Entity *>> targets = oo::ObjCRefsFrom<Entity *>([UNIVERSE entitiesWithinRange:(desired_range < SCANNER_MAX_RANGE ? desired_range : SCANNER_MAX_RANGE) ofEntity:self]);
+	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:(desired_range < SCANNER_MAX_RANGE ? desired_range : SCANNER_MAX_RANGE) ofEntity:self];
 	if (targets.size() > 0)
 	{
 		unsigned i;
@@ -9052,7 +9060,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 - (void) dealMomentumWithinDesiredRange:(double)amount
 {
-	const std::vector<oo::ObjCRef<Entity *>> targets = oo::ObjCRefsFrom<Entity *>([UNIVERSE entitiesWithinRange:desired_range ofEntity:self]);
+	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:desired_range ofEntity:self];
 	if (targets.size() > 0)
 	{
 		unsigned i;
@@ -9367,7 +9375,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				{
 					if (explosionType.isNull())
 					{
-						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:oo::PListFrom([UNIVERSE explosionSetting:@"oolite-default-ship-explosion"])]];
+						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:[UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]]];
 						// 3. flash
 						[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					}
@@ -9393,7 +9401,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 							}
 							else
 							{
-								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:oo::PListFrom([UNIVERSE explosionSetting:oo::NSStringFrom(explosionKey)])]];
+								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:[UNIVERSE cxx_explosionSetting:explosionKey]]];
 							}
 						}
 					}
@@ -9433,7 +9441,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 						const std::string debrisRole = [self cxx_shipInfoDictionary].get<std::string>("debris_role", defaultRole);
 						for (i = 0; i < n_rocks; i++)
 						{
-							ShipEntity* rock = [UNIVERSE newShipWithRole:oo::NSStringFrom(debrisRole)];   // retain count = 1
+							ShipEntity* rock = [UNIVERSE cxx_newShipWithRole:debrisRole];   // retain count = 1
 							if (rock)
 							{
 								float  r_speed = [rock maxFlightSpeed] > 0 ? 2.0 * [rock maxFlightSpeed] : defaultSpeed;
@@ -9498,7 +9506,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 						Vector dir = quaternion_rotate_vector([self normalOrientation], r1);
 						HPVector rpos = HPvector_add(vectorToHPVector(dir), xposition);
 						GLfloat lifetime = 750.0 * randf() + 250.0 * i + 100.0;
-						ShipEntity *wreck = [UNIVERSE addWreckageFrom:self withRole:@"wreckage" at:rpos scale:1.0 lifetime:lifetime/2];
+						ShipEntity *wreck = [UNIVERSE cxx_addWreckageFrom:self withRole:"wreckage" at:rpos scale:1.0 lifetime:lifetime/2];
 
 						[wreck setVelocity:vector_add([wreck velocity],vector_multiply_scalar(vector_normal(dir),randf()*[wreck collisionRadius]))];
 
@@ -9524,7 +9532,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			//
 			for (i = 0; i < numAlloys; i++)
 			{
-				ShipEntity* plate = [UNIVERSE newShipWithRole:@"alloy"];   // retain count = 1
+				ShipEntity* plate = [UNIVERSE cxx_newShipWithRole:"alloy"];   // retain count = 1
 				if (plate)
 				{
 					HPVector  rpos = xposition;
@@ -9602,7 +9610,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 - (void) broadcastEnergyBlastImminent
 {
 	// anyone further away than typical scanner range probably doesn't need to hear
-	const std::vector<oo::ObjCRef<Entity *>> targets = oo::ObjCRefsFrom<Entity *>([UNIVERSE entitiesWithinRange:SCANNER_MAX_RANGE ofEntity:self]);
+	const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_entitiesWithinRange:SCANNER_MAX_RANGE ofEntity:self];
 	if (targets.size() > 0)
 	{
 		unsigned i;
@@ -12338,7 +12346,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		// use a random missile from the list
 		i = floor(randf()*(double)missiles);
 		identifier = oo::OptionalString([missile_list[i] identifier]);
-		missile = [UNIVERSE newShipWithRole:oo::NSStringOrNil(identifier)];
+		missile = [UNIVERSE cxx_newShipWithRole:identifier.value_or("")];
 		if (EXPECT_NOT(missile == nil))	// invalid missile role.
 		{
 			// remove that invalid missile role from the missiles list.
@@ -12347,7 +12355,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 	}
 	else
-		missile = [UNIVERSE newShipWithRole:oo::NSStringFrom(*identifier)];
+		missile = [UNIVERSE cxx_newShipWithRole:*identifier];
 	
 	if (EXPECT_NOT(missile == nil))	return nil;
 	
@@ -12506,7 +12514,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if (![self hasCascadeMine])  return NO;
 	[self setSpeed: maxFlightSpeed + 300];
-	ShipEntity*	bomb = [UNIVERSE newShipWithRole:@"energy-bomb"];
+	ShipEntity*	bomb = [UNIVERSE cxx_newShipWithRole:"energy-bomb"];
 	if (bomb == nil)  return NO;
 	
 	[self removeEquipmentItem:@"EQ_QC_MINE"];
@@ -13085,7 +13093,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					{
 						[UNIVERSE clearPreviousMessage];
 						const std::optional<std::string> shipName = [other displayName];
-						[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName)) forCount:4];
+						[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName) forCount:4];
 					}
 					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
 					co_amount = 0;
@@ -13111,7 +13119,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	if (!co_type.has_value() && co_amount > 0)
 	{
 		co_type = std::optional<std::string>([UNIVERSE getRandomCommodity]);
-		co_amount = [UNIVERSE getRandomAmountOfCommodity:oo::NSStringOrNil(co_type)];
+		co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
 	}
 
 	if (co_amount > 0)
@@ -13134,15 +13142,15 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 						const std::optional<std::string> characterName = oo::OptionalString([rescuee name]);
 						if ([rescuee legalStatus])
 						{
-							[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName)) forCount: 4.5];
+							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName) forCount: 4.5];
 						}
 						else if ([rescuee insuranceCredits])
 						{
-							[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName)) forCount: 4.5];
+							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName) forCount: 4.5];
 						}
 						else
 						{
-							[UNIVERSE addMessage: DESC(@"scoop-got-slave") forCount: 4.5];
+							[UNIVERSE cxx_addMessage:oo::OptionalString(DESC(@"scoop-got-slave")) forCount: 4.5];
 						}
 					}
 				}
@@ -13156,7 +13164,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				if ([other showScoopMessage] && procMessages)
 				{
 					[UNIVERSE clearPreviousMessage];
-					[UNIVERSE addMessage:[UNIVERSE describeCommodity:oo::NSStringOrNil(co_type) amount:co_amount] forCount:4.5];
+					[UNIVERSE cxx_addMessage:[UNIVERSE cxx_describeCommodity:co_type.value_or("") amount:co_amount] forCount:4.5];
 				}
 			}
 		}
@@ -13641,7 +13649,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	if (![[UNIVERSE sun] willGoNova])
 	{
 		// if the sun's not going nova, add a new ship like this one leaving.
-		[UNIVERSE witchspaceShipWithPrimaryRole:[self primaryRole]];
+		[UNIVERSE cxx_witchspaceShipWithPrimaryRole:oo::StdString([self primaryRole])];
 	}
 	
 	[UNIVERSE removeEntity:self];
@@ -14150,10 +14158,10 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 // Exposed to AI
 - (void) abortDocking
 {
-	[[UNIVERSE findEntitiesMatchingPredicate:IsStationPredicate
+	[oo::NSArrayFromObjects([UNIVERSE cxx_findEntitiesMatchingPredicate:IsStationPredicate
 								   parameter:nil
 									 inRange:-1
-									ofEntity:nil]
+									ofEntity:nil])
 			makeObjectsPerformSelector:@selector(abortDockingForShip:) withObject:self];
 }
 
@@ -14166,10 +14174,10 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (void) broadcastThargoidDestroyed
 {
-	[[UNIVERSE findShipsMatchingPredicate:HasRolePredicate
+	[oo::NSArrayFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:HasRolePredicate
 							   parameter:@"tharglet"
 								 inRange:SCANNER_MAX_RANGE
-								ofEntity:self]
+								ofEntity:self])
 			makeObjectsPerformSelector:@selector(sendAIMessage:) withObject:@"THARGOID_DESTROYED"];
 }
 
@@ -14210,13 +14218,13 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 			(scanClass == CLASS_MILITARY)||
 			(scanClass == CLASS_PLAYER))	// only for active ships...
 	{
-		const std::vector<oo::ObjCRef<ShipEntity *>> authorities = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE findShipsMatchingPredicate:AuthorityPredicate
+		const std::vector<oo::ObjCRef<Entity *>> authorities = [UNIVERSE cxx_findShipsMatchingPredicate:AuthorityPredicate
 												 parameter:self
 												   inRange:-1
-												  ofEntity:nil]);
+												  ofEntity:nil];
 		for (const auto &authority : authorities)
 		{
-			ShipEntity *auth = authority.get();
+			ShipEntity *auth = (ShipEntity *)authority.get();
 			[auth setFoundTarget:aggressor_ship];
 			[auth doScriptEvent:OOJSID("offenceCommittedNearby") withArgument:aggressor_ship andArgument:self];
 			[auth cxx_reactToAIMessage:"OFFENCE_COMMITTED" context:"combat update"];
