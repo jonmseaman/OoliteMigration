@@ -2153,7 +2153,7 @@ static int shipsFound;
 	[self cxx_setMissionBackgroundDescriptor:oo::PList()];
 	[self cxx_setMissionBackgroundSpecial:""];
 	[self cxx_setMissionTitle:std::nullopt];
-	[self setMissionMusic:nil];
+	[self setMissionMusic:std::string()];	// (nil was "none")
 	[self showShipModel:std::string()];
 }
 
@@ -2197,10 +2197,10 @@ static int shipsFound;
 }
 
 
-- (void) setMissionMusic:(id)value	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) setMissionMusic:(const std::string &)value	// called by name (ADR-0043 item 21)
 {
-	// nil and "none" still pass nil on
-	[[OOMusicController	sharedController] cxx_setMissionMusic:IsNoneValue(oo::StdString(value)) ? std::nullopt : std::optional<std::string>(oo::StdString(value))];
+	// "" (was nil) and "none" clear it
+	[[OOMusicController	sharedController] cxx_setMissionMusic:IsNoneValue(value) ? std::nullopt : std::optional<std::string>(value)];
 }
 
 

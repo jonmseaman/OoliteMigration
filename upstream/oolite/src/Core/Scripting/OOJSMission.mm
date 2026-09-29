@@ -878,7 +878,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	[player cxx_setMissionOverlayDescriptor:oo::PList()];
 	[player cxx_setMissionBackgroundDescriptor:oo::PList()];
 	[player cxx_setMissionTitle:std::nullopt];
-	[player setMissionMusic:nil];
+	[player setMissionMusic:std::string()];	// (nil was "none")
 	
 	OOJSResumeTimeLimiter();
 	

@@ -225,7 +225,7 @@ typedef enum
 - (void) removeMissionDestination:(const std::string &)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
 
 - (void) showShipModel:(const std::string &)shipKey;	// called by name (ADR-0043 item 21)
-- (void) setMissionMusic:(id)value;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) setMissionMusic:(const std::string &)value;	// called by name (ADR-0043 item 21)
 
 - (std::optional<std::string>) cxx_missionTitle;
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
