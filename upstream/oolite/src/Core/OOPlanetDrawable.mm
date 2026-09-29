@@ -139,7 +139,7 @@
 
 - (std::optional<std::string>) textureName
 {
-	return oo::OptionalString([_material name]);
+	return [_material cxx_name];
 }
 
 
