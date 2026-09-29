@@ -28,7 +28,7 @@ SOFTWARE.
 
 */
 
-#import "OOLogging.h"	// its bridge declares OOLogSetDisplayMessagesInClass() and OOLogGetParentMessageClass()
+#import "OOLogging.h"
 
 
 void OOLoggingInit(void);
@@ -51,5 +51,4 @@ void OOLogSetShowMessageClass(BOOL flag);
 // Change message class visibility without saving to user defaults.
 void OOLogSetShowMessageClassTemporary(BOOL flag);
 
-// Utility function to strip path components from __FILE__ strings: oo::log::abbreviatedFileName()
-// (OOLogAbbreviatedFileName() is in OOLogging+FoundationBridge.h).
+// Utility function to strip path components from __FILE__ strings: oo::log::abbreviatedFileName().
