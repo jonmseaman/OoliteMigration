@@ -1932,7 +1932,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			}
 			// location now contains a Vector coordinate, one way or another
 			pdef = ObjectForKeyIn(populator, "callbackObj");	// an Object node: the populator definition itself
-			[pdef runCallback:location];
+			[pdef runPopulatorCallback:location];
 		}
 	}
 	// nothing is deterministic once the populator is done
@@ -11587,7 +11587,7 @@ std::string StringifiedLabel(id line, id keyMap)
 - (void) cxx_playCustomSoundWithKey:(const std::string &)key
 {
 	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:key];
-	if (theSound != nil)  [self playSound:theSound];
+	if (theSound != nil)  [self playOOSound:theSound];
 }
 
 @end

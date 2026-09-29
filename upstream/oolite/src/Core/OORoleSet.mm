@@ -146,21 +146,6 @@ SOFTWARE.
 }
 
 
-- (BOOL)intersectsSet:(id)set
-{
-	std::vector<std::string> other;
-	if ([set isKindOfClass:[OORoleSet class]])  other = [(OORoleSet *)set roles];
-	else  if (oo::IsNSSet(set))  other = oo::StringsFrom(set);
-	else  return NO;
-
-	for (const std::string &role : other)
-	{
-		if (_rolesAndProbabilities.contains(role))  return YES;
-	}
-	return NO;
-}
-
-
 - (std::vector<std::string>)roles
 {
 	std::vector<std::string> result;

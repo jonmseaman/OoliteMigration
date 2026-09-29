@@ -937,7 +937,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		}
 		if (!cdict.isNull())
 		{
-			OOCharacter	*pilot = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cdict)];
+			OOCharacter	*pilot = [OOCharacter characterWithDictionary:cdict];
 			[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(pilot) }];
 		}
 	}
@@ -12615,7 +12615,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		for (i = 0; i < crew->size(); i++)
 		{
 			OOCharacter *ch = (*crew)[i].get();
-			[ch setLegalStatus: [self legalStatus] | [ch legalStatus]];
+			[ch cxx_setLegalStatus: [self legalStatus] | [ch legalStatus]];
 		}
 		mainPod = [self launchPodWithCrew:*crew];
 		if (mainPod)

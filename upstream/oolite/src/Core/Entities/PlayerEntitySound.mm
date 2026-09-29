@@ -195,7 +195,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 #if OOLITE_WINDOWS
 	if ([self status] == STATUS_START_GAME) { return; }
 #endif
-	[sInterfaceBeepSource playSound:[OOSound cxx_soundWithCustomSoundKey:beepKey]];
+	[sInterfaceBeepSource playOOSound:[OOSound cxx_soundWithCustomSoundKey:beepKey]];
 }
 
 
