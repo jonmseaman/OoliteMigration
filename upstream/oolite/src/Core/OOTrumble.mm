@@ -617,9 +617,9 @@ static void PlayTrumbleSqueal(void);
 			{
 				// eaten all of this cargo!
 				const std::string ms = oo::str::formatRuntime(oo::StdString(DESC(@"trumbles-eat-@")),
-								{ oo::DescriptionOf([UNIVERSE displayNameForCommodity:[selectedCargopod commodityType]]) });
+								{ [UNIVERSE cxx_displayNameForCommodity:oo::StdString([selectedCargopod commodityType])].value_or("(null)") });
 
-				[UNIVERSE addMessage: oo::NSStringFrom(ms) forCount: 4.5];
+				[UNIVERSE cxx_addMessage:ms forCount: 4.5];
 				if (cargopods != nullptr)  std::erase(*cargopods, selectedCargopod);
 				trumbleAppetiteAccumulator -= 10.0;
 				

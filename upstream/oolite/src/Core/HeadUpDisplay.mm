@@ -2524,7 +2524,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	siz.width = useDefined(cached.width, WITCHDEST_WIDTH);
 	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
 	alpha *= cached.alpha;
-	std::string dest = oo::StdString([UNIVERSE getSystemName:[PLAYER targetSystemID]]);	// nil drew nothing, as "" does
+	std::string dest = [UNIVERSE cxx_getSystemName:[PLAYER targetSystemID]].value_or("");	// nil drew nothing, as "" does
 	NSInteger concealment = oo::PListView([[UNIVERSE systemManager] getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = oo::StdString(DESC(@"status-unknown-system"));
 
@@ -2690,8 +2690,8 @@ namespace {
 */
 oo::PList MissileIconDefinition(const std::string &key)
 {
-	oo::PList iconDef = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(key)]);
-	return iconDef.isArray() ? iconDef : oo::PList();
+	const oo::PList *iconDef = [UNIVERSE cxx_descriptions]->find(key);
+	return (iconDef != nullptr && iconDef->isArray()) ? *iconDef : oo::PList();
 }
 
 
@@ -2936,7 +2936,13 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOWaypointEntity *waypoint = nil;
 	Entity *compass = [PLAYER compassTarget];
 	
-	foreach (waypoint, [[UNIVERSE currentWaypoints] allValues])
+	// The waypoints in the order of the immutable dictionary -currentWaypoints built (nil ones skipped).
+	NSMutableDictionary *waypoints = [NSMutableDictionary dictionary];
+	for (const auto &[key, entry] : [UNIVERSE cxx_currentWaypoints])
+	{
+		if (entry.get() != nil)  [waypoints setObject:entry.get() forKey:oo::NSStringFrom(key)];
+	}
+	foreach (waypoint, [[[waypoints copy] autorelease] allValues])
 	{
 		hudDrawWaypoint(waypoint, PLAYER, z1, alpha, waypoint==compass, scale);
 	}
@@ -3272,7 +3278,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	siz.height = useDefined(cached.height, FPSINFO_DISPLAY_HEIGHT);
 	
 	HPVector playerPos = [PLAYER position];
-	std::string positionInfo = oo::str::format("abs %.2f %.2f %.2f / %s", playerPos.x, playerPos.y, playerPos.z, oo::DescriptionOf([UNIVERSE expressPosition:playerPos inCoordinateSystem:@"pwm"]).c_str());
+	std::string positionInfo = oo::str::format("abs %.2f %.2f %.2f / %s", playerPos.x, playerPos.y, playerPos.z, [UNIVERSE cxx_expressPosition:playerPos inCoordinateSystem:"pwm"].value_or("(null)").c_str());
 	
 	// We would normally set a variable alpha value here, but in this case we don't.
 	// We prefer the FPS counter to be always visible - Nikos 20100405

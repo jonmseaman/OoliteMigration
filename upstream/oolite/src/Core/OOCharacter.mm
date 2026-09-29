@@ -149,7 +149,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 - (std::optional<std::string>) planetOfOrigin
 {
 	// determine the planet of origin
-	const oo::PList originInfo = oo::PListFrom([UNIVERSE generateSystemData:[self planetIDOfOrigin]]);
+	const oo::PList originInfo = [UNIVERSE cxx_generateSystemData:[self planetIDOfOrigin]];
 	const oo::PList *name = originInfo.find(oo::StdString(KEY_NAME));
 	if (name == nullptr || !name->isString())  return std::nullopt;	// (the value was returned as it stood; it is a string)
 	return *name->getIf<std::string>();
@@ -168,12 +168,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// determine the character's species
 	int species = [self genSeed].f & 0x03;	// 0-1 native to home system, 2 human colonial, 3 other
 	std::optional<std::string> speciesString;
-	if (species == 3)  speciesString = oo::OptionalString([UNIVERSE getSystemInhabitants:[self genSeed].e plural:NO]);
-	else  speciesString = oo::OptionalString([UNIVERSE getSystemInhabitants:[self planetIDOfOrigin] plural:NO]);
+	if (species == 3)  speciesString = [UNIVERSE cxx_getSystemInhabitants:[self genSeed].e plural:NO];
+	else  speciesString = [UNIVERSE cxx_getSystemInhabitants:[self planetIDOfOrigin] plural:NO];
 
 	if (!speciesString.has_value())  return std::nullopt;
 
-	if (!oo::PListView([UNIVERSE descriptions]).get<BOOL>(@"lowercase_ignore"))
+	if (![UNIVERSE cxx_descriptions]->get<bool>("lowercase_ignore"))
 	{
 		speciesString = oo::str::lowercase(*speciesString);
 	}
@@ -192,7 +192,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	seed_for_planet_description(genSeed);
 
 	// determine the planet of origin
-	const oo::PList originInfo = oo::PListFrom([UNIVERSE generateSystemData:[self planetIDOfOrigin]]);
+	const oo::PList originInfo = [UNIVERSE cxx_generateSystemData:[self planetIDOfOrigin]];
 	const std::optional<std::string> planet = OptionalStringForKey(originInfo, oo::StdString(KEY_NAME));
 	OOGovernmentID government = originInfo.get<int>(oo::StdString(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable)
 	int criminalTendency = government ^ 0x07;
@@ -501,7 +501,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else if (originName != nullptr)
 	{
-		OOSystemID sys = [UNIVERSE findSystemFromName:oo::NSStringFrom(*originName)];
+		OOSystemID sys = [UNIVERSE cxx_findSystemFromName:*originName];
 		if (sys < 0)
 		{
 			OO_LOG_ERR("character.load.unknownSystem", "could not find a system named '{}' in this galaxy.", *originName);
