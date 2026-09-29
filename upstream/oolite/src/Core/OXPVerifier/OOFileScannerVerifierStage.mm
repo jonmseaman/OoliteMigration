@@ -111,9 +111,9 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 @implementation OOFileScannerVerifierStage
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringFrom(kFileScannerStageName);
+	return kFileScannerStageName;
 }
 
 
@@ -698,9 +698,9 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 @implementation OOListUnusedFilesStage: OOOXPVerifierStage
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringFrom(kUnusedListerStageName);
+	return kUnusedListerStageName;
 }
 
 

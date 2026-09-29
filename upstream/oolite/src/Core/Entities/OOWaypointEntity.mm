@@ -141,7 +141,7 @@ MA 02110-1301, USA.
 		return;
 	}
 
-	if (![PLAYER hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])
+	if (![PLAYER cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"])
 	{
 		return;
 	}
@@ -253,7 +253,7 @@ MA 02110-1301, USA.
 
 	if (label.has_value() || _beaconLabel.has_value())
 	{
-		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 
@@ -273,7 +273,8 @@ MA 02110-1301, USA.
 
 		if (length > 1)
 		{
-			const oo::PList iconData = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(*_beaconCode)]);
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
 			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
 

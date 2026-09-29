@@ -376,15 +376,27 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 }
 
 
-- (id)name
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(CacheGetName(cache));
+	return oo::NSStringOrNil([self cxx_name]);
 }
 
 
-- (void)setName:(id)name
+- (std::optional<std::string>)cxx_name
 {
-	CacheSetName(cache, oo::OptionalString(name));
+	return CacheGetName(cache);
+}
+
+
+- (void)setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
+{
+	[self cxx_setName:oo::OptionalString(name)];
+}
+
+
+- (void)cxx_setName:(const std::optional<std::string> &)name
+{
+	CacheSetName(cache, name);
 }
 
 
@@ -1067,7 +1079,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 	
 	// Root node representing cache
 	result += oo::str::format("\t%s [label=\"Cache \\\"%s\\\"\" shape=box];\n"
-		"\tnode [shape=record];\n\t\n", rootName.c_str(), ([self name] != nil ? cxx_EscapedGraphVizString(oo::StdString([self name])) : std::string("(null)")).c_str());
+		"\tnode [shape=record];\n\t\n", rootName.c_str(), ([self cxx_name].has_value() ? cxx_EscapedGraphVizString(*[self cxx_name]) : std::string("(null)")).c_str());
 	
 	if (cache == NULL)  return result;
 	
@@ -1103,7 +1115,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 		"// OOCache dump\n\n"
 		"digraph cache\n"
 		"{\n"
-		"\tgraph [charset=\"UTF-8\", label=\"OOCache \"%s\" debug dump\", labelloc=t, labeljust=l];\n\t\n", oo::DescriptionOf([self name]).c_str());
+		"\tgraph [charset=\"UTF-8\", label=\"OOCache \"%s\" debug dump\", labelloc=t, labeljust=l];\n\t\n", [self cxx_name].value_or("(null)").c_str());
 	
 	result += [self generateGraphVizBodyWithRootNamed:"cache"].value_or("");
 	

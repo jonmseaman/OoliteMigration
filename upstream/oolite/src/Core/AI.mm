@@ -148,7 +148,8 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 									 jsScript:(const std::optional<std::string> &)script;
 
 - (oo::PList) stateMachine;
-- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string
+- (id) name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string
+- (std::optional<std::string>) cxx_name;	// (bead oo-3rb.289.8)
 - (std::optional<std::string>) cxx_state;
 - (std::set<std::string>) pendingMessages;
 - (std::optional<std::string>) jsScript;
@@ -168,7 +169,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 {
 	if (sCurrentlyRunningAI != nil)
 	{
-		return oo::str::format("%s in state %s", oo::DescriptionOf([sCurrentlyRunningAI name]).c_str(), [sCurrentlyRunningAI cxx_state].value_or("(null)").c_str());
+		return oo::str::format("%s in state %s", [sCurrentlyRunningAI cxx_name].value_or("(null)").c_str(), [sCurrentlyRunningAI cxx_state].value_or("(null)").c_str());
 	}
 	else
 	{
@@ -266,7 +267,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 			while (count--)
 			{
 				OOPreservedAIStateMachine *preservedMachine = aiStack[count].get();
-				OO_LOG("ai.error.stackOverflow.dump", "{}: {}: {}", count, oo::DescriptionOf([preservedMachine name]), [preservedMachine cxx_state].value_or("(null)"));
+				OO_LOG("ai.error.stackOverflow.dump", "{}: {}: {}", count, [preservedMachine cxx_name].value_or("(null)"), [preservedMachine cxx_state].value_or("(null)"));
 			}
 			
 			OOLogOutdent();
@@ -314,7 +315,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 #endif
 	
 	[self directSetStateMachine:[preservedMachine.get() stateMachine]
-						   name:oo::StdString([preservedMachine.get() name])];
+						   name:[preservedMachine.get() cxx_name].value_or(std::string())];
 
 	[self directSetState:[preservedMachine.get() cxx_state]];
 
@@ -404,9 +405,15 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 }
 
 
-- (id) name
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringFrom(stateMachineName);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>) cxx_name
+{
+	return stateMachineName;
 }
 
 
@@ -826,7 +833,7 @@ static AIStackElement *sStack = NULL;
 	}
 	else if (owner != nil)
 	{
-		ownerDesc = oo::str::format("%s %d", oo::DescriptionOf([owner name]).c_str(), [owner universalID]);
+		ownerDesc = oo::str::format("%s %d", [owner cxx_name].value_or("(null)").c_str(), [owner universalID]);
 	}
 	else
 	{
@@ -884,7 +891,7 @@ static AIStackElement *sStack = NULL;
 				const std::optional<std::string> state = [self cxx_state];
 				if (state.has_value())
 				{
-					fromString = oo::str::format(" from %s:%s", oo::DescriptionOf([self name]).c_str(), state->c_str());
+					fromString = oo::str::format(" from %s:%s", [self cxx_name].value_or("(null)").c_str(), state->c_str());
 				}
 				OO_LOG("ai.load.failed.unknownAI", "Can't switch AI for {}{} to \"{}\" - could not load file.", oo::DescriptionOf([[self owner] shortDescription]), fromString, smName);
 				return oo::PList();
@@ -1069,9 +1076,15 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (id) name
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringFrom(_name);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>) cxx_name
+{
+	return _name;
 }
 
 

@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 
 #import "OOFileScannerVerifierStage.h"
 #import "Universe.h"
-#import "OOCollectionExtractors.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/PListGet.hpp"
@@ -61,9 +60,9 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 
 @implementation OOCheckEquipmentPListVerifierStage
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 

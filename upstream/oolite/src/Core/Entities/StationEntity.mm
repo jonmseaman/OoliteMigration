@@ -65,13 +65,6 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	return std::nullopt;
 }
 
-
-std::optional<std::string> OptionalStringValue(id object)
-{
-	const oo::PList value = oo::PListFrom(object);
-	return OptionalStringValue(&value);
-}
-
 }	// namespace
 
 
@@ -405,7 +398,7 @@ std::optional<std::string> OptionalStringValue(id object)
 	{
 		// then docking clearance is requested but hasn't been cancelled
 		// yet by a DockEntity
-		[self sendExpandedMessage:@"[station-docking-clearance-abort-cancelled]" toShip:player];
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
 		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 		[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	}
@@ -608,7 +601,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![_shipsOnHold containsObject:ship])
 	{
-		[self sendExpandedMessage:@"[station-acknowledges-hold-position]" toShip:ship];
+		[self cxx_sendExpandedMessage:"[station-acknowledges-hold-position]" toShip:ship];
 		[_shipsOnHold addObject:ship];
 	}
 	
@@ -668,7 +661,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (BOOL) setUpShipFromDictionary:(id) dict	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpShipFromDictionary:(const oo::PList &) dict
 {
 	OOJS_PROFILE_ENTER
 	
@@ -676,11 +669,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	isStation = YES;
 	alertLevel = STATION_ALERT_LEVEL_GREEN;
 	
-	port_radius = oo::PListView(dict).get<oo::NonNegative<double>>(@"port_radius", 500.0);
+	port_radius = dict.get<oo::NonNegative<double>>("port_radius", 500.0);
 	
 	// port_dimensions is deprecated
 	port_dimensions = make_vector(69, 69, 250);
-	const std::optional<std::string> portDimensionsStr = OptionalStringValue([dict objectForKey:@"port_dimensions"]);	// -oo_stringForKey:
+	const std::optional<std::string> portDimensionsStr = OptionalStringValue(dict.find("port_dimensions"));	// -oo_stringForKey:
 	if (portDimensionsStr)
 	{
 		cxx_OOStandardsDeprecated("The port_dimensions key is deprecated");
@@ -699,35 +692,35 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (![super setUpShipFromDictionary:dict])  return NO;
 	
-	equivalentTechLevel = oo::PListView(dict).get<NSUInteger>(@"equivalent_tech_level", NSNotFound);
-	max_scavengers = oo::PListView(dict).get<unsigned int>(@"max_scavengers", 3);
-	max_defense_ships = oo::PListView(dict).get<unsigned int>(@"max_defense_ships", 3);
-	max_police = oo::PListView(dict).get<unsigned int>(@"max_police", STATION_MAX_POLICE);
-	equipmentPriceFactor = oo::PListView(dict).get<oo::NonNegative<float>>(@"equipment_price_factor", 1.0);
+	equivalentTechLevel = dict.get<NSUInteger>("equivalent_tech_level", NSNotFound);
+	max_scavengers = dict.get<unsigned int>("max_scavengers", 3);
+	max_defense_ships = dict.get<unsigned int>("max_defense_ships", 3);
+	max_police = dict.get<unsigned int>("max_police", STATION_MAX_POLICE);
+	equipmentPriceFactor = dict.get<oo::NonNegative<float>>("equipment_price_factor", 1.0);
 	equipmentPriceFactor = fmax(equipmentPriceFactor, 0.5f);
-	hasNPCTraffic = (unsigned char)oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_npc_traffic", (maxFlightSpeed == 0)); // carriers default to NO
-	hasPatrolShips = oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_patrol_ships", NO);
-	suppress_arrival_reports = (unsigned char)oo::PListView(dict).get<BOOL>(@"suppress_arrival_reports", NO);
-	[self cxx_setAllegiance:OptionalStringValue([dict objectForKey:@"allegiance"])];
+	hasNPCTraffic = (unsigned char)OOFuzzyBooleanFromPList(dict.find("has_npc_traffic"), (maxFlightSpeed == 0)); // carriers default to NO
+	hasPatrolShips = OOFuzzyBooleanFromPList(dict.find("has_patrol_ships"), NO);
+	suppress_arrival_reports = (unsigned char)dict.get<bool>("suppress_arrival_reports", NO);
+	[self cxx_setAllegiance:OptionalStringValue(dict.find("allegiance"))];
 
-	marketCapacity = oo::PListView(dict).get<unsigned int>(@"market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
-	oo::PList marketDefinitionValue = oo::PListFrom([dict objectForKey:@"market_definition"]);
-	marketDefinition = marketDefinitionValue.isArray() ? std::move(marketDefinitionValue) : oo::PList();	// oo_arrayForKey:
-	marketScriptName = OptionalStringValue([dict objectForKey:@"market_script"]);
-	marketMonitored = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_monitored", NO);
-	marketBroadcast = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_broadcast", YES);
+	marketCapacity = dict.get<unsigned int>("market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
+	const oo::PList *marketDefinitionValue = dict.get<oo::PList::Array>("market_definition");
+	marketDefinition = (marketDefinitionValue != nullptr) ? *marketDefinitionValue : oo::PList();	// oo_arrayForKey:
+	marketScriptName = OptionalStringValue(dict.find("market_script"));
+	marketMonitored = (unsigned char)dict.get<bool>("market_monitored", NO);
+	marketBroadcast = (unsigned char)dict.get<bool>("market_broadcast", YES);
 
 	// Non main stations may have requiresDockingClearance set to yes as a result of the code below,
 	// but this variable should be irrelevant for them, as they do not make use of it anyway.
-	requiresDockingClearance = (unsigned char)oo::PListView(dict).get<BOOL>(@"requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
+	requiresDockingClearance = (unsigned char)dict.get<bool>("requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
 	
-	allowsFastDocking = (unsigned char)oo::PListView(dict).get<BOOL>(@"allows_fast_docking", NO);
+	allowsFastDocking = (unsigned char)dict.get<bool>("allows_fast_docking", NO);
 	
-	allowsAutoDocking = (unsigned char)oo::PListView(dict).get<BOOL>(@"allows_auto_docking", YES);
+	allowsAutoDocking = (unsigned char)dict.get<bool>("allows_auto_docking", YES);
 	
 	allowsSaving = [UNIVERSE deterministicPopulation];
 
-	interstellarUndockingAllowed = (unsigned char)oo::PListView(dict).get<BOOL>(@"interstellar_undocking", NO);
+	interstellarUndockingAllowed = (unsigned char)dict.get<bool>("interstellar_undocking", NO);
 	
 	double unitime = [UNIVERSE getTime];
 
@@ -750,9 +743,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	patrol_launch_interval = 300.0;	// 5 minutes
 	last_patrol_report_time = unitime - patrol_launch_interval;
 	
-	if ([self crew] == nil)
+	if (![self cxx_crew].has_value())
 	{
-		[self setSingleCrewWithRole:@"police"];
+		[self cxx_setSingleCrewWithRole:"police"];
 	}
 	
 	if ([self group] == nil)
@@ -782,7 +775,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		ShipEntity *subEntity = (ShipEntity *)sub;
 		if ([subEntity isStation])
 		{
-			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), oo::DescriptionOf([subEntity shipDataKey]), [self displayName].value_or("(null)"));
+			OO_LOG("setup.ship.badType.subentities", "Subentity {} ({}) of station {} is itself a StationEntity. This is an internal error - please report it. ", oo::DescriptionOf(subEntity), [subEntity cxx_shipDataKey].value_or("(null)"), [self displayName].value_or("(null)"));
 		}
 	}
 #endif
@@ -811,7 +804,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	virtualDockDict["allow_launching"] = oo::PList(true);
 	virtualDockDict["_is_virtual_dock"] = oo::PList(true);
 
-	if (![self setUpOneStandardSubentity:oo::ObjectFromPList(oo::PList(std::move(virtualDockDict))) asTurret:NO])
+	if (![self cxx_setUpOneStandardSubentity:oo::PList(std::move(virtualDockDict)) asTurret:NO])
 	{
 		return NO;
 	}
@@ -901,12 +894,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		{
 			if (last_launch_time-30 < unitime && [player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
 			{
-				[self sendExpandedMessage:@"[station-docking-clearance-about-to-expire]" toShip:player];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-about-to-expire]" toShip:player];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 			}
 			else if (last_launch_time < unitime)
 			{
-				[self sendExpandedMessage:@"[station-docking-clearance-expired]" toShip:player];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-expired]" toShip:player];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];	// Docking clearance for player has expired.
 				[player doScriptEvent:OOJSID("playerDockingClearanceExpired")];
 				if ([self currentlyInDockingQueues] == 0) 
@@ -938,15 +931,15 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
 			if ([self hasMultipleDocks]) 
 			{
-				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
 								{ [dock displayName].value_or("(null)"),
-								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
+								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 					toShip:player];
 			}
 			else
 			{
-				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
-								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
+								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 					toShip:player];
 			}
 			player_reserved_dock = dock;
@@ -1144,7 +1137,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	
 	OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as the {} has too many ships in its launch queue(s) or no suitable launch docks.",
-			  [ship displayName].value_or("(null)"), oo::DescriptionOf([ship primaryRole]), [self displayName].value_or("(null)"));
+			  [ship displayName].value_or("(null)"), [ship cxx_primaryRole].value_or("(null)"), [self displayName].value_or("(null)"));
 }
 
 
@@ -1179,7 +1172,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 
 	if (logNoFit) OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as it is too large for the docking port of the {}.",
-			  [ship displayName].value_or("(null)"), oo::DescriptionOf([ship primaryRole]), oo::DescriptionOf(self));
+			  [ship displayName].value_or("(null)"), [ship cxx_primaryRole].value_or("(null)"), oo::DescriptionOf(self));
 	return NO;
 }	
 
@@ -1215,13 +1208,13 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			// then say why
 			if ([self currentlyInDockingQueues])
 			{
-				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-holding-d-ships-approaching")),
-																						{ [self currentlyInDockingQueues]+1 })) toShip:player];
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-holding-d-ships-approaching")),
+																						{ [self currentlyInDockingQueues]+1 }) toShip:player];
 			}
 			else if([self currentlyInLaunchingQueues])
 			{
-				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-holding-d-ships-departing")),
-																						{ [self currentlyInLaunchingQueues]+1 })) toShip:player];
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-holding-d-ships-departing")),
+																						{ [self currentlyInLaunchingQueues]+1 }) toShip:player];
 			}
 		} 
 	}
@@ -1237,11 +1230,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
  	if ([ship isShuttle])  docked_shuttles++;
 	else if ([ship isTrader] && ![ship isPlayer])  docked_traders++;
-	else if (([ship isPolice] && ![ship isEscort]) || [ship hasPrimaryRole:@"defense_ship"])
+	else if (([ship isPolice] && ![ship isEscort]) || [ship cxx_hasPrimaryRole:"defense_ship"])
 	{
 		if (0 < defenders_launched)  defenders_launched--;
 	}
-	else if ([ship hasPrimaryRole:@"scavenger"] || [ship hasPrimaryRole:@"miner"])	// treat miners and scavengers alike!
+	else if ([ship cxx_hasPrimaryRole:"scavenger"] || [ship cxx_hasPrimaryRole:"miner"])	// treat miners and scavengers alike!
 	{
 		if (0 < scavengers_launched)  scavengers_launched--;
 	}
@@ -1284,7 +1277,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	return [super hasHostileTarget] || ([self primaryTarget] != nil && ((alertLevel == STATION_ALERT_LEVEL_YELLOW) || (alertLevel == STATION_ALERT_LEVEL_RED)));
 }
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
 {
 	// stations must ignore friendly fire, otherwise the defenders' AI gets stuck.
 	BOOL			isFriend = NO;
@@ -1434,9 +1427,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (ship)
 	{
-		if (![ship crew])
+		if (![ship cxx_crew].has_value())
 		{
-			[ship setSingleCrewWithRole:oo::NSStringFrom(shipRole)];
+			[ship cxx_setSingleCrewWithRole:shipRole];
 		}
 		[ship setPrimaryRole:oo::NSStringFrom(shipRole)];
 
@@ -1540,9 +1533,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		
 		if (police_ship && [self fitsInDock:police_ship])
 		{
-			if (![police_ship crew])
+			if (![police_ship cxx_crew].has_value())
 			{
-				[police_ship setSingleCrewWithRole:@"police"];
+				[police_ship cxx_setSingleCrewWithRole:"police"];
 			}
 			
 			[police_ship setGroup:[self stationGroup]];	// who's your Daddy
@@ -1626,7 +1619,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return nil;
 	}
 	
-	if ([defense_ship isPolice] || [defense_ship hasPrimaryRole:@"hermit-ship"])
+	if ([defense_ship isPolice] || [defense_ship cxx_hasPrimaryRole:"hermit-ship"])
 	{
 		[defense_ship switchAITo:oo::NSStringFrom(defense_ship_ai)];
 	}
@@ -1635,15 +1628,15 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	defenders_launched++;
 	
-	if (![defense_ship crew])
+	if (![defense_ship cxx_crew].has_value())
 	{
 		if ([defense_ship isPolice])
 		{
-			[defense_ship setSingleCrewWithRole:@"police"];
+			[defense_ship cxx_setSingleCrewWithRole:"police"];
 		}
 		else
 		{
-			[defense_ship setSingleCrewWithRole:@"hunter"];
+			[defense_ship cxx_setSingleCrewWithRole:"hunter"];
 		}
 	}
 				
@@ -1705,9 +1698,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (scavenger_ship)
 	{
-		if (![scavenger_ship crew])
+		if (![scavenger_ship cxx_crew].has_value())
 		{
-			[scavenger_ship setSingleCrewWithRole:@"miner"];
+			[scavenger_ship cxx_setSingleCrewWithRole:"miner"];
 		}
 				
 		scavengers_launched++;
@@ -1753,9 +1746,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (miner_ship)
 	{
-		if (![miner_ship crew])
+		if (![miner_ship cxx_crew].has_value())
 		{
-			[miner_ship setSingleCrewWithRole:@"miner"];
+			[miner_ship cxx_setSingleCrewWithRole:"miner"];
 		}
 				
 		scavengers_launched++;
@@ -1805,9 +1798,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		
 	if (pirate_ship)
 	{
-		if (![pirate_ship crew])
+		if (![pirate_ship cxx_crew].has_value())
 		{
-			[pirate_ship setSingleCrewWithRole:@"pirate"];
+			[pirate_ship cxx_setSingleCrewWithRole:"pirate"];
 		}
 				
 		defenders_launched++;
@@ -1852,9 +1845,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (shuttle_ship)
 	{
-		if (![shuttle_ship crew])
+		if (![shuttle_ship cxx_crew].has_value())
 		{
-			[shuttle_ship setSingleCrewWithRole:@"trader"];
+			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
 		}
 		
 		docked_shuttles--;
@@ -1884,9 +1877,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (escort_ship && [self fitsInDock:escort_ship])
 	{
-		if (![escort_ship crew])
+		if (![escort_ship cxx_crew].has_value())
 		{
-			[escort_ship setSingleCrewWithRole:@"hunter"];
+			[escort_ship cxx_setSingleCrewWithRole:"hunter"];
 		}
 				
 		[escort_ship setScanClass: CLASS_NEUTRAL];
@@ -1931,9 +1924,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		
 		if (patrol_ship)
 		{
-			if (![patrol_ship crew])
+			if (![patrol_ship cxx_crew].has_value())
 			{
-				[patrol_ship setSingleCrewWithRole:@"police"];
+				[patrol_ship cxx_setSingleCrewWithRole:"police"];
 			}
 			
 			defenders_launched++;
@@ -1969,9 +1962,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	ShipEntity  *ship = [UNIVERSE newShipWithRole: oo::NSStringFrom(shipRole)];   // retain count = 1
 	if (ship && [self fitsInDock:ship])
 	{
-		if (![ship crew])
+		if (![ship cxx_crew].has_value())
 		{
-			[ship setSingleCrewWithRole:oo::NSStringFrom(shipRole)];
+			[ship cxx_setSingleCrewWithRole:shipRole];
 		}
 		if (ship->scanClass == CLASS_NOT_SET) [ship setScanClass: CLASS_NEUTRAL];
 		[ship setPrimaryRole:oo::NSStringFrom(shipRole)];
@@ -2056,7 +2049,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		// No clearance is needed, but don't send friendly messages to hostile ships!
 		if (!(([other isPlayer] && [other hasHostileTarget]) || (self == [UNIVERSE station] && [other bounty] > 50)))
 		{
-			[self sendExpandedMessage:@"[station-docking-clearance-not-required]" toShip:other];
+			[self cxx_sendExpandedMessage:"[station-docking-clearance-not-required]" toShip:other];
 		}
 		if ([other isPlayer])
 		{
@@ -2079,8 +2072,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				if (!no_docking_while_launching)
 				{
 					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-					[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-extended-until-@")),
-							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
+					[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-extended-until-@")),
+							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 						toShip:other];
 					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
 					result = "DOCKING_CLEARANCE_EXTENDED";
@@ -2090,7 +2083,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			case DOCKING_CLEARANCE_STATUS_REQUESTED:
 			case DOCKING_CLEARANCE_STATUS_GRANTED:
 				last_launch_time = timeNow;
-				[self sendExpandedMessage:@"[station-docking-clearance-cancelled]" toShip:other];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-cancelled]" toShip:other];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 				result = "DOCKING_CLEARANCE_CANCELLED";
 				player_reserved_dock = nil;
@@ -2119,7 +2112,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	//  apply to all stations?
 	if (!result && self == [UNIVERSE station] && [other bounty] > 50)	// do not grant docking clearance to fugitives
 	{
-		[self sendExpandedMessage:@"[station-docking-clearance-H-clearance-refused]" toShip:other];
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-H-clearance-refused]" toShip:other];
 		if ([other isPlayer])
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 		result = "DOCKING_CLEARANCE_DENIED_SHIP_FUGITIVE";
@@ -2127,7 +2120,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (!result && [other hasHostileTarget]) // do not grant docking clearance to hostile ships.
 	{
-		[self sendExpandedMessage:@"[station-docking-clearance-denied]" toShip:other];
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied]" toShip:other];
 		if ([other isPlayer])
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 		result = "DOCKING_CLEARANCE_DENIED_SHIP_HOSTILE";
@@ -2139,7 +2132,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		{
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 		}
-		[self sendExpandedMessage:@"[station-docking-clearance-denied-no-docks]" toShip:other];
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
 
 		result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
 	}
@@ -2150,16 +2143,16 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		// the player
 		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
 		{
-			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-approaching")),
-																					{ [self currentlyInDockingQueues]+1 })) toShip:other];
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-approaching")),
+																					{ [self currentlyInDockingQueues]+1 }) toShip:other];
 			// No need to set status to REQUESTED as we've already done that earlier.
 			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_INBOUND";
 		}
 
 		if (!result && [self currentlyInLaunchingQueues])
 		{
-			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-departing")),
-																					{ [self currentlyInLaunchingQueues]+1 })) toShip:other];
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-departing")),
+																					{ [self currentlyInLaunchingQueues]+1 }) toShip:other];
 			// No need to set status to REQUESTED as we've already done that earlier.
 			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_OUTBOUND";
 		}
@@ -2200,11 +2193,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 			if (openLater)
 			{
-				[self sendExpandedMessage:@"[station-docking-clearance-denied-no-docks-yet]" toShip:other];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks-yet]" toShip:other];
 			} 
 			else
 			{
-				[self sendExpandedMessage:@"[station-docking-clearance-denied-no-docks]" toShip:other];
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
 			}
 
 		}
@@ -2222,15 +2215,15 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 		if ([self hasMultipleDocks] && [other isPlayer])
 		{
-			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
 					{ [player_reserved_dock displayName].value_or("(null)"),
-					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
+					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}
 		else
 		{
-			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
-					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
+					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
 				toShip:other];
 		}
 
@@ -2479,7 +2472,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
 		{
 			ShipEntity *ship = static_cast<ShipEntity *>(shipRef.get());
-			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, [ship displayName].value_or("(null)"), HPdistance([self position], [ship position]), oo::DescriptionOf([ship primaryRole]));
+			OO_LOG("dumpState.stationEntity", "Nr {}: {} at distance {:g} with role: {}", i++, [ship displayName].value_or("(null)"), HPdistance([self position], [ship position]), [ship cxx_primaryRole].value_or("(null)"));
 		}
 		oo::log::outdent();
 	}

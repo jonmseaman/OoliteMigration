@@ -96,7 +96,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 - (std::optional<std::string>) cxx_dockedStationName
 {
-	return oo::OptionalString([[self dockedStation] name]);
+	return [[self dockedStation] cxx_name];
 }
 
 
@@ -116,12 +116,12 @@ NSInteger IntegerValueOf(const oo::PList *value)
 {
 	OOMassUnit				unit;
 
-	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])
+	if (![[UNIVERSE commodities] cxx_goodDefined:type])
 	{
 		return;
 	}
 	
-	OOLog(@"script.debug.note.awardCargo", @"Going to award cargo: %d x '%@'", amount, oo::NSStringFrom(type));
+	OO_LOG("script.debug.note.awardCargo", "Going to award cargo: {} x '{}'", static_cast<int>(amount), type);
 
 	unit = [shipCommodityData massUnitForGood:type];
 	
@@ -145,14 +145,14 @@ NSInteger IntegerValueOf(const oo::PList *value)
 						int smaller_quantity = 1 + ((amount - 1) % amount_per_container);
 						if (cargo.size() < [self maxAvailableCargoSpace])
 						{
-							ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+							ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 							if (container)
 							{
 								// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
 								// [container wasAddedToUniverse]; // seems to be not needed anymore for pods
 								[container setScanClass: CLASS_CARGO];
 								[container setStatus:STATUS_IN_HOLD];
-								[container setCommodity:oo::NSStringFrom(type) andAmount:smaller_quantity];
+								[container cxx_setCommodity:type andAmount:smaller_quantity];
 								cargo.emplace_back(container);
 								[container release];
 							}
@@ -169,14 +169,14 @@ NSInteger IntegerValueOf(const oo::PList *value)
 				{
 					if (cargo.size() < [self maxAvailableCargoSpace])
 					{
-						ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+						ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 						if (container)
 						{
 							// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
 							// [container wasAddedToUniverse]; // seems to be not needed anymore for pods
 							[container setScanClass: CLASS_CARGO];
 							[container setStatus:STATUS_IN_HOLD];
-							[container setCommodity:oo::NSStringFrom(type) andAmount:1];
+							[container cxx_setCommodity:type andAmount:1];
 							cargo.emplace_back(container);
 							[container release];
 						}

@@ -561,13 +561,13 @@ struct EntityDumpState
 
 	EntityDumpState entityDumpState;
 
-	for (id entity in [UNIVERSE entityList])
+	for (const auto &entity : [UNIVERSE cxx_entityList])
 	{
-		[self dumpEntity:entity withState:&entityDumpState parentVisible:YES];
+		[self dumpEntity:entity.get() withState:&entityDumpState parentVisible:YES];
 	}
-	for (id entity in [PLAYER scannedWormholes])
+	for (const oo::ObjCRef<WormholeEntity *> &entityRef : [PLAYER cxx_scannedWormholes])
 	{
-		[self dumpEntity:entity withState:&entityDumpState parentVisible:YES];
+		[self dumpEntity:entityRef.get() withState:&entityDumpState parentVisible:YES];
 	}
 
 	oo::log::outdent();
@@ -625,7 +625,7 @@ struct EntityDumpState
 		unsigned refCount = (counted != textureRefCounts.end()) ? (unsigned)counted->second : 0;
 
 		[self writeMemStat:oo::str::format("%s: [%u refs%s] %s%s",
-		 oo::DescriptionOf([tex name]).c_str(),
+		 [tex cxx_name].value_or("(null)").c_str(),
 		 refCount,
 		 usage,
 		 SizeString(objSize + dataSize).c_str(),
