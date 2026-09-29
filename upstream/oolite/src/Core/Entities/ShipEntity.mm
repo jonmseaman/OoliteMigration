@@ -2776,7 +2776,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			haveStartedJSAI = YES;
 			[self doScriptEvent:OOJSID("aiStarted")];
 			[self doScriptEvent:OOJSID("shipLaunchedFromStation") withArgument:stationLaunchedFrom];
-			[shipAI reactToMessage:@"LAUNCHED OKAY" context:@"launched"];
+			[shipAI cxx_reactToMessage:"LAUNCHED OKAY" context:"launched"];
 		}
 		else
 		{
@@ -2824,7 +2824,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			behaviour = BEHAVIOUR_IDLE;
 			frustration = 0.0;
 			[self setOwner:self];
-			[shipAI exitStateMachineWithMessage:nil];  // Escapepods and others should continue their old AI here.
+			[shipAI cxx_exitStateMachineWithMessage:std::nullopt];  // Escapepods and others should continue their old AI here.
 		}
 	}
 	
@@ -4383,7 +4383,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 				[self setThrust:[self maxThrust]]; // restore old thrust.
 				frustration = 0.0;
 				[self setOwner:self];
-				[shipAI exitStateMachineWithMessage:nil];	// exit nullAI.plist
+				[shipAI cxx_exitStateMachineWithMessage:std::nullopt];	// exit nullAI.plist
 				return;
 			}
 			else if ([hauler isPlayer])
@@ -4427,7 +4427,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		desired_speed = maxFlightSpeed;
 		if (range < desired_range)
 		{
-			[shipAI reactToMessage:@"DESIRED_RANGE_ACHIEVED" context:@"BEHAVIOUR_INTERCEPT_TARGET"];
+			[shipAI cxx_reactToMessage:"DESIRED_RANGE_ACHIEVED" context:"BEHAVIOUR_INTERCEPT_TARGET"];
 			[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
 
 		}
@@ -7866,12 +7866,12 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		if (isNearPlanetSurface)
 		{
 			[self doScriptEvent:OOJSID("shipApproachingPlanetSurface") withArgument:nearest];
-			[shipAI reactToMessage:@"APPROACHING_SURFACE" context:@"flight update"];
+			[shipAI cxx_reactToMessage:"APPROACHING_SURFACE" context:"flight update"];
 		}
 		else
 		{
 			[self doScriptEvent:OOJSID("shipLeavingPlanetSurface") withArgument:nearest];
-			[shipAI reactToMessage:@"LEAVING_SURFACE" context:@"flight update"];
+			[shipAI cxx_reactToMessage:"LEAVING_SURFACE" context:"flight update"];
 		}
 	}
 	
@@ -9262,7 +9262,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			AI *containerAI = [container getAI];
 			if ([containerAI hasSuspendedStateMachines]) // check if new or recycled cargo.
 			{
-				[containerAI exitStateMachineWithMessage:nil];
+				[containerAI cxx_exitStateMachineWithMessage:std::nullopt];
 				[container setThrust:[container maxThrust]]; // restore old value. Was set to zero on previous scooping.
 				[container setOwner:container];
 			}
@@ -10330,7 +10330,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	// always do target lost
 	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
 	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
-	else [shipAI reactToMessage:@"TARGET_LOST" context:@"flight updates"];	// execute immediately otherwise.
+	else [shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
 }
 
 
@@ -12749,7 +12749,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		[jetto setThrust:[jetto maxThrust]]; // restore old thrust.
 		[jetto setOwner:jetto];
-		[jettoAI exitStateMachineWithMessage:nil]; // exit nullAI.
+		[jettoAI cxx_exitStateMachineWithMessage:std::nullopt]; // exit nullAI.
 	}
 	[jetto doScriptEvent:OOJSID("shipWasDumped") withArgument:self];
 	[self doScriptEvent:OOJSID("shipDumpedCargo") withArgument:jetto];
@@ -13614,7 +13614,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	//                  creates the wormhole.
 	[self addTarget:w_hole];
 	[self setFoundTarget:w_hole];
-	[shipAI reactToMessage:@"WITCHSPACE OKAY" context:@"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
+	[shipAI cxx_reactToMessage:"WITCHSPACE OKAY" context:"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
 	
 	// CIM 2012.07.22 above only covers those cases where ship expected to leave
 	if ([self escortArray].size() > 1)

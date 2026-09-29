@@ -2418,7 +2418,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	dockingReport.clear();
 	
 	[shipAI release];
-	shipAI = [[AI alloc] initWithStateMachine:PLAYER_DOCKING_AI_NAME andState:@"GLOBAL"];
+	shipAI = [[AI alloc] cxx_initWithStateMachine:oo::OptionalString(PLAYER_DOCKING_AI_NAME) andState:"GLOBAL"];
 	[self resetAutopilotAI];
 	
 	lastScriptAlertCondition = [self alertCondition];
@@ -3844,7 +3844,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([self status] == STATUS_WITCHSPACE_COUNTDOWN) [self cancelWitchspaceCountdown]; // cancel witchspace countdown properly
 	[self setStatus:STATUS_AUTOPILOT_ENGAGED];
 	[self resetAutopilotAI];
-	[shipAI setState:@"BEGIN_DOCKING"];	// reboot the AI
+	[shipAI cxx_setState:"BEGIN_DOCKING"];	// reboot the AI
 	[self playAutopilotOn];
 	[[OOMusicController sharedController] playDockingMusic];
 	[self doScriptEvent:OOJSID("playerStartedAutoPilot") withArgument:stationForDocking];
@@ -3890,7 +3890,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self setAITo:PLAYER_DOCKING_AI_NAME ];
 	}
 	[myAI clearAllData];
-	[myAI setState:@"GLOBAL"];
+	[myAI cxx_setState:"GLOBAL"];
 	[myAI setNextThinkTime:[UNIVERSE getTime] + 2];
 	[myAI setOwner:self];
 }
