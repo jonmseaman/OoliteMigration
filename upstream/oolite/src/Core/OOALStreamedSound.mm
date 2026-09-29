@@ -41,9 +41,9 @@ SOFTWARE.
 	[super dealloc];
 }
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringOrNil(_name);
+	return _name;
 }
 
 

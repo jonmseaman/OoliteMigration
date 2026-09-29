@@ -205,7 +205,7 @@ static bool SoundGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 	switch (ooscript::idToInt32(propID))
 	{
 		case kSound_name:
-			*value = OOJSValueFromNativeObject(context, [sound name]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([sound cxx_name]));
 			return YES;
 		
 		default:
@@ -379,7 +379,7 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 
 - (std::optional<std::string>) cxx_oo_jsDescription
 {
-	return oo::str::format("[Sound \"%s\"]", oo::DescriptionOf([self name]).c_str());
+	return oo::str::format("[Sound \"%s\"]", [self cxx_name].value_or("(null)").c_str());
 }
 
 
