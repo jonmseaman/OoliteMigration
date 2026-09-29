@@ -654,7 +654,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShip_name:
-			result = [entity name];
+			result = oo::NSStringOrNil([entity cxx_name]);
 			break;
 			
 		case kShip_displayName:
@@ -1283,7 +1283,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			sValue = cxx_OOStringFromJSValue(context,*value);
 			if (sValue.has_value())
 			{
-				[entity setName:oo::NSStringFrom(*sValue)];
+				[entity cxx_setName:sValue];
 				return YES;
 			}
 			break;
@@ -2580,7 +2580,7 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 		[player setScriptTarget:thisEnt];
 		[player cxx_runUnsanitizedScriptActions:actions
 						  allowingAIMethods:YES
-							withContextName:oo::str::format("<ship \"%s\" legacy actions>", oo::DescriptionOf([thisEnt name]).c_str())
+							withContextName:oo::str::format("<ship \"%s\" legacy actions>", [thisEnt cxx_name].value_or("(null)").c_str())
 								  forTarget:target];
 	}
 	
