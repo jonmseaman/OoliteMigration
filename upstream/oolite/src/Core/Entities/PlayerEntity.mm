@@ -85,7 +85,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
@@ -2775,11 +2775,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 									@catch (OOException *exception) \
 									{ \
 										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), [exception name], [exception reason]); \
-										@throw exception; \
-									} \
-									@catch (OOFoundationException *exception) \
-									{ \
-										OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in {} : {} : {} *****", static_cast<const char *>(updateStage), static_cast<const char *>(__PRETTY_FUNCTION__), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason])); \
 										@throw exception; \
 									} \
 								}

@@ -64,7 +64,7 @@ MA 02110-1301, USA.
 
 #import "OODebugSupport.h"
 #import "OODebugMonitor.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
@@ -692,10 +692,6 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	{
 		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG(cxx_kOOLogException, "***** Exception checking controls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-	}
 }
 
 // DJS + aegidian: Moved from the big switch/case block in pollGuiArrowKeyControls
@@ -1115,10 +1111,6 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	@catch (OOException *exception)
 	{
 		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG(cxx_kOOLogException, "***** Exception in pollApplicationControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -2023,10 +2015,6 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	{
 		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
 	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG(cxx_kOOLogException, "***** Exception in pollFlightControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-	}
 }
 
 
@@ -2601,22 +2589,6 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", [exception name], [exception reason]);
 						if (strcmp([exception name], "GameNotSavedException") == 0)	// try saving game instead
-						{
-							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
-							if ([controller inFullScreenMode])
-								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:self];
-							else
-								[self savePlayer];
-						}
-						else
-						{
-							@throw exception;
-						}
-					}
-					@catch (OOFoundationException *exception)
-					{
-						OO_LOG(cxx_kOOLogException, "\n\n***** Handling exception: {} : {} *****\n\n", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-						if ([[exception name] isEqual:@"GameNotSavedException"])	// try saving game instead
 						{
 							OO_LOG(cxx_kOOLogException, "{}", "\n\n***** Trying a normal save instead *****\n\n");
 							if ([controller inFullScreenMode])
@@ -4941,10 +4913,6 @@ static BOOL autopilot_pause;
 	@catch (OOException *exception)
 	{
 		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG(cxx_kOOLogException, "***** Exception in pollDockedControls [{}]: {} : {}", exceptionContext, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 

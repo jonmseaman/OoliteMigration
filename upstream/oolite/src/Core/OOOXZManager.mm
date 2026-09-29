@@ -179,7 +179,7 @@ bool FoundIgnoringCase(const std::optional<std::string> &haystack, const std::st
 // -rangeOfString:options:; it is skipped.)
 bool TagFoundIgnoringCase(const oo::PList &manifest, const std::string &needle)
 {
-	const oo::PList *tags = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestTags));
+	const oo::PList *tags = manifest.get<oo::PList::Array>(std::string(kOOManifestTags));
 	if (tags == nullptr)  return false;
 	for (const oo::PList &tag : *tags->getIf<oo::PList::Array>())
 	{
@@ -212,13 +212,13 @@ oo::PList ElementAt(const oo::PList &list, NSUInteger index)
    as the old -localizedCompare did: oo::str::localizedCompare, ICU in the default locale. */
 bool OXZOrderedBefore(const oo::PList &m1, const oo::PList &m2)
 {
-	int result = oo::str::localizedCompare(ManifestString(m1, oo::StdString(kOOManifestCategory)).value_or("zz"), ManifestString(m2, oo::StdString(kOOManifestCategory)).value_or("zz"));
+	int result = oo::str::localizedCompare(ManifestString(m1, std::string(kOOManifestCategory)).value_or("zz"), ManifestString(m2, std::string(kOOManifestCategory)).value_or("zz"));
 	if (result == 0)
 	{
-		result = oo::str::localizedCompare(ManifestString(m1, oo::StdString(kOOManifestTitle)).value_or("zz"), ManifestString(m2, oo::StdString(kOOManifestTitle)).value_or("zz"));
+		result = oo::str::localizedCompare(ManifestString(m1, std::string(kOOManifestTitle)).value_or("zz"), ManifestString(m2, std::string(kOOManifestTitle)).value_or("zz"));
 		if (result == 0)
 		{
-			result = oo::str::localizedCompare(ManifestString(m2, oo::StdString(kOOManifestVersion)).value_or("0"), ManifestString(m1, oo::StdString(kOOManifestVersion)).value_or("0"));
+			result = oo::str::localizedCompare(ManifestString(m2, std::string(kOOManifestVersion)).value_or("0"), ManifestString(m1, std::string(kOOManifestVersion)).value_or("0"));
 		}
 	}
 	return result < 0;
@@ -275,7 +275,7 @@ void DependencyStackRemove(std::vector<oo::PList> &stack, const oo::PList &item)
 // The first line of a manifest's description (nullopt: no description, as the nil array gave).
 std::optional<std::string> FirstDescriptionLine(const oo::PList &manifest)
 {
-	const std::optional<std::string> description = ManifestString(manifest, oo::StdString(kOOManifestDescription));
+	const std::optional<std::string> description = ManifestString(manifest, std::string(kOOManifestDescription));
 	if (!description.has_value())  return std::nullopt;
 	return oo::str::split(*description, "\n").front();
 }
@@ -283,7 +283,7 @@ std::optional<std::string> FirstDescriptionLine(const oo::PList &manifest)
 // [tags componentsJoinedByString:@", "] (nullopt: no tags array).
 std::optional<std::string> JoinedTags(const oo::PList &manifest)
 {
-	const oo::PList *tags = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestTags));
+	const oo::PList *tags = manifest.get<oo::PList::Array>(std::string(kOOManifestTags));
 	if (tags == nullptr)  return std::nullopt;
 	std::string result;
 	bool first = true;
@@ -668,7 +668,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
   	// trim any eventual leading whitespace from input string
 	const std::string trimmed = oo::str::trimLeadingWhitespaceAndNewlines(keyword);
-	const std::string parameters[] = { oo::StdString(kOOManifestTitle), oo::StdString(kOOManifestDescription), oo::StdString(kOOManifestCategory) };
+	const std::string parameters[] = { std::string(kOOManifestTitle), std::string(kOOManifestDescription), std::string(kOOManifestCategory) };
 
 	for (const std::string &parameter : parameters)
 	{
@@ -687,7 +687,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// trim any eventual leading whitespace from input string
 	const std::string trimmed = oo::str::trimLeadingWhitespaceAndNewlines(author);
 
-	return FoundIgnoringCase(ManifestString(manifest, oo::StdString(kOOManifestAuthor)), trimmed);
+	return FoundIgnoringCase(ManifestString(manifest, std::string(kOOManifestAuthor)), trimmed);
 }
 
 
@@ -700,7 +700,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	else
 	{
-		NSUInteger updated = manifest.get<unsigned long long>(oo::StdString(kOOManifestUploadDate));
+		NSUInteger updated = manifest.get<unsigned long long>(std::string(kOOManifestUploadDate));
 		NSUInteger now = (NSUInteger)oo::date::timeIntervalSince1970();
 		return (updated + (86400 * i) > now);
 	}
@@ -719,7 +719,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// trim any eventual leading whitespace from input string
 	const std::string trimmed = oo::str::trimLeadingWhitespaceAndNewlines(category);
 
-	return FoundIgnoringCase(ManifestString(manifest, oo::StdString(kOOManifestCategory)), trimmed);
+	return FoundIgnoringCase(ManifestString(manifest, std::string(kOOManifestCategory)), trimmed);
 }
 
 
@@ -789,7 +789,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (_interfaceState != OXZ_STATE_UPDATING)
 	{
 		const oo::PList expectedManifest = ElementAt(_filteredList, _item);
-		label = ManifestStringOr(expectedManifest, oo::StdString(kOOManifestTitle),
+		label = ManifestStringOr(expectedManifest, std::string(kOOManifestTitle),
 			OO_DESC("oolite-oxzmanager-download-label-oxz")).value_or("");
 	}
 
@@ -889,9 +889,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			{
 				oo::PList adjManifest = manifest;
 				oo::PList::Dict &adjEntries = *adjManifest.getIf<oo::PList::Dict>();
-				adjEntries[oo::StdString(kOOManifestFilePath)] = oo::PList(fullpath);
+				adjEntries[std::string(kOOManifestFilePath)] = oo::PList(fullpath);
 
-				const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+				const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 				/* The list is already sorted to put the latest
 				 * versions first. This flag means that it stops
 				 * checking the list for versions once it finds one
@@ -899,19 +899,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				BOOL foundInstallable = NO;
 				for (const oo::PList &stored : Elements(_oxzList))
 				{
-					const std::optional<std::string> storedIdentifier = ManifestString(stored, oo::StdString(kOOManifestIdentifier));
+					const std::optional<std::string> storedIdentifier = ManifestString(stored, std::string(kOOManifestIdentifier));
 					if (storedIdentifier.has_value() && identifier.has_value() && *storedIdentifier == *identifier)
 					{
 						if (foundInstallable == NO)
 						{
 							// (A missing value raised on -setObject:forKey:; it is now not set.)
-							if (const std::optional<std::string> version = ManifestString(stored, oo::StdString(kOOManifestVersion)))
+							if (const std::optional<std::string> version = ManifestString(stored, std::string(kOOManifestVersion)))
 							{
-								adjEntries[oo::StdString(kOOManifestAvailableVersion)] = oo::PList(*version);
+								adjEntries[std::string(kOOManifestAvailableVersion)] = oo::PList(*version);
 							}
-							if (const std::optional<std::string> url = ManifestString(stored, oo::StdString(kOOManifestDownloadURL)))
+							if (const std::optional<std::string> url = ManifestString(stored, std::string(kOOManifestDownloadURL)))
 							{
-								adjEntries[oo::StdString(kOOManifestDownloadURL)] = oo::PList(*url);
+								adjEntries[std::string(kOOManifestDownloadURL)] = oo::PList(*url);
 							}
 							if ([ResourceManager cxx_checkVersionCompatibility:manifest forOXP:std::nullopt])
 							{
@@ -988,11 +988,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	const oo::PList expectedManifest = ElementAt(_filteredList, _item);
 
-	const std::optional<std::string> downloadedId = ManifestString(downloadedManifest, oo::StdString(kOOManifestIdentifier));
-	const std::optional<std::string> expectedId = ManifestString(expectedManifest, oo::StdString(kOOManifestIdentifier));
-	const std::optional<std::string> downloadedVer = ManifestString(downloadedManifest, oo::StdString(kOOManifestVersion));
-	const std::optional<std::string> expectedVer = ManifestStringOr(expectedManifest, oo::StdString(kOOManifestAvailableVersion),
-		ManifestString(expectedManifest, oo::StdString(kOOManifestVersion)));
+	const std::optional<std::string> downloadedId = ManifestString(downloadedManifest, std::string(kOOManifestIdentifier));
+	const std::optional<std::string> expectedId = ManifestString(expectedManifest, std::string(kOOManifestIdentifier));
+	const std::optional<std::string> downloadedVer = ManifestString(downloadedManifest, std::string(kOOManifestVersion));
+	const std::optional<std::string> expectedVer = ManifestStringOr(expectedManifest, std::string(kOOManifestAvailableVersion),
+		ManifestString(expectedManifest, std::string(kOOManifestVersion)));
 	if (!expectedManifest || !downloadedId.has_value() || !expectedId.has_value() || *downloadedId != *expectedId
 		|| !downloadedVer.has_value() || !expectedVer.has_value() || *downloadedVer != *expectedVer)
 	{
@@ -1038,10 +1038,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	_managedList = oo::PList(); // will need updating
 	[ResourceManager resetManifestKnowledgeForOXZManager];
 
-	const oo::PList *requiredNode = downloadedManifest.find(oo::StdString(kOOManifestRequiresOXPs));
+	const oo::PList *requiredNode = downloadedManifest.find(std::string(kOOManifestRequiresOXPs));
 	if (requiredNode == nullptr || !requiredNode->isArray())
 	{
-		requiredNode = expectedManifest.find(oo::StdString(kOOManifestRequiresOXPs));
+		requiredNode = expectedManifest.find(std::string(kOOManifestRequiresOXPs));
 	}
 	const oo::PList::Array &requiredOXPs = (requiredNode != nullptr && requiredNode->isArray())
 		? Elements(*requiredNode)
@@ -1056,7 +1056,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		const std::vector<oo::PList> tempStack = _dependencyStack;
 		for (const oo::PList &requirement : tempStack)
 		{
-			OO_LOG("oxz.manager.debug", "Dependency stack: checking {}", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+			OO_LOG("oxz.manager.debug", "Dependency stack: checking {}", ManifestString(requirement, std::string(kOOManifestRelationIdentifier)).value_or("(null)"));
 			bool inRequired = false;
 			for (const oo::PList &req : requiredOXPs)
 			{
@@ -1066,13 +1066,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				&& !requiredOXPs.empty() && inRequired)
 			{
 				progress += DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-progress-now-has-@")), {
-					Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
-						ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+					Arg(ManifestStringOr(requirement, std::string(kOOManifestRelationDescription),
+						ManifestString(requirement, std::string(kOOManifestRelationIdentifier))))
 				});
 				DependencyStackRemove(_dependencyStack, requirement);
 				OO_LOG("oxz.manager.debug", "{}", "Dependency stack: requirement met");
 			}
-			else if (ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)) == downloadedId)
+			else if (ManifestString(requirement, std::string(kOOManifestRelationIdentifier)) == downloadedId)
 			{
 				DependencyStackRemove(_dependencyStack, requirement);
 			}
@@ -1084,11 +1084,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			if ([ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO])
 			{
-				OO_LOG("oxz.manager.debug", "Dependency stack: adding {}", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+				OO_LOG("oxz.manager.debug", "Dependency stack: adding {}", ManifestString(requirement, std::string(kOOManifestRelationIdentifier)).value_or("(null)"));
 				DependencyStackAdd(_dependencyStack, requirement);
 				progress += DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-progress-requires-@")), {
-					Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
-						ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+					Arg(ManifestStringOr(requirement, std::string(kOOManifestRelationDescription),
+						ManifestString(requirement, std::string(kOOManifestRelationIdentifier))))
 				});
 			}
 		}
@@ -1105,21 +1105,21 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			undownloadedRequirement = YES;
 			requirement = _dependencyStack.front();	// was anyObject; order-sensitive — named in commit
-			OO_LOG("oxz.manager.debug", "Dependency stack: next is {}", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+			OO_LOG("oxz.manager.debug", "Dependency stack: next is {}", ManifestString(requirement, std::string(kOOManifestRelationIdentifier)).value_or("(null)"));
 
 			if (!_downloadAllDependencies)
 			{
 				progress += OO_DESC("oolite-oxzmanager-progress-get-required");
 			}
-			needsIdentifier = ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier));
+			needsIdentifier = ManifestString(requirement, std::string(kOOManifestRelationIdentifier));
 
 			for (NSUInteger i = 0; i < _oxzList.count(); i++)
 			{
 				const oo::PList &availableDownload = *_oxzList.at(i);
-				const std::optional<std::string> availableIdentifier = ManifestString(availableDownload, oo::StdString(kOOManifestIdentifier));
+				const std::optional<std::string> availableIdentifier = ManifestString(availableDownload, std::string(kOOManifestIdentifier));
 				if (availableIdentifier.has_value() && needsIdentifier.has_value() && *availableIdentifier == *needsIdentifier)
 				{
-					if ([ResourceManager cxx_matchVersions:requirement withVersion:ManifestString(availableDownload, oo::StdString(kOOManifestVersion)).value_or("")])
+					if ([ResourceManager cxx_matchVersions:requirement withVersion:ManifestString(availableDownload, std::string(kOOManifestVersion)).value_or("")])
 					{
 						OO_LOG("oxz.manager.debug", "{}", "Dependency stack: found download for next item");
 						foundDownload = YES;
@@ -1133,7 +1133,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			{
 				if ([self installableState:ElementAt(_oxzList, index)] == OXZ_UNINSTALLABLE_ALREADY)
 				{
-					OO_LOG("oxz.manager.debug", "Dependency stack: {} is downloaded but not yet loadable, removing from list.", ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier)).value_or("(null)"));
+					OO_LOG("oxz.manager.debug", "Dependency stack: {} is downloaded but not yet loadable, removing from list.", ManifestString(requirement, std::string(kOOManifestRelationIdentifier)).value_or("(null)"));
 					DependencyStackRemove(_dependencyStack, requirement);
 					if (!_dependencyStack.empty())
 					{
@@ -1157,8 +1157,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				OO_LOG("oxz.manager.debug", "Dependency stack: installing {} from list", index);
 				if (![self installOXZ:index]) {
 					progress += DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-progress-required-@-not-found")), {
-						Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
-							ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+						Arg(ManifestStringOr(requirement, std::string(kOOManifestRelationDescription),
+							ManifestString(requirement, std::string(kOOManifestRelationIdentifier))))
 					});
 					[self setProgressStatus:progress];
 					OO_LOG("oxz.manager.error", "OXZ dependency {} could not be found for automatic download.", needsIdentifier.value_or("(null)"));
@@ -1181,8 +1181,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		else if (!_dependencyStack.empty())
 		{
 			progress += DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-progress-required-@-not-found")), {
-				Arg(ManifestStringOr(requirement, oo::StdString(kOOManifestRelationDescription),
-					ManifestString(requirement, oo::StdString(kOOManifestRelationIdentifier))))
+				Arg(ManifestStringOr(requirement, std::string(kOOManifestRelationDescription),
+					ManifestString(requirement, std::string(kOOManifestRelationIdentifier))))
 			});
 			[self setProgressStatus:progress];
 			OO_LOG("oxz.manager.error", "OXZ dependency {} could not be found for automatic download.", needsIdentifier.value_or("(null)"));
@@ -1210,7 +1210,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		for (const oo::PList &manifest : *manifests)
 		{
-			if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == identifier)
+			if (ManifestString(manifest, std::string(kOOManifestIdentifier)) == identifier)
 			{
 				return manifest;
 			}
@@ -1222,8 +1222,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (OXZInstallableState) installableState:(const oo::PList &)manifest
 {
-	const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
-	const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> title = ManifestString(manifest, std::string(kOOManifestTitle));
+	const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 	/* Check Oolite version */
 	if (![ResourceManager cxx_checkVersionCompatibility:manifest forOXP:title])
 	{
@@ -1238,21 +1238,21 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	// available_version, else version (the fallback of the old string read)
-	std::optional<std::string> availableVersion = ManifestString(manifest, oo::StdString(kOOManifestAvailableVersion));
+	std::optional<std::string> availableVersion = ManifestString(manifest, std::string(kOOManifestAvailableVersion));
 	if (!availableVersion.has_value())
 	{
-		availableVersion = ManifestString(manifest, oo::StdString(kOOManifestVersion));
+		availableVersion = ManifestString(manifest, std::string(kOOManifestVersion));
 	}
 	if (installed)
 	{
-		const std::optional<std::string> filePath = ManifestString(installed, oo::StdString(kOOManifestFilePath));
+		const std::optional<std::string> filePath = ManifestString(installed, std::string(kOOManifestFilePath));
 		const std::optional<std::string> installPath = [self installPath];
 		if (!(filePath.has_value() && installPath.has_value() && oo::str::hasPrefix(*filePath, *installPath)))
 		{
 			// installed manually
 			return OXZ_UNINSTALLABLE_MANUAL;
 		}
-		const std::optional<std::string> installedVersion = ManifestString(installed, oo::StdString(kOOManifestVersion));
+		const std::optional<std::string> installedVersion = ManifestString(installed, std::string(kOOManifestVersion));
 		if (installedVersion.has_value() && availableVersion.has_value() && *installedVersion == *availableVersion
 			&& oo::fs::fileExists(oo::fs::pathFromUTF8(*filePath)))
 		{
@@ -1261,7 +1261,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			// still available
 			return OXZ_UNINSTALLABLE_ALREADY;
 		}
-		else if (!ManifestString(installed, oo::StdString(kOOManifestAvailableVersion)).has_value())
+		else if (!ManifestString(installed, std::string(kOOManifestAvailableVersion)).has_value())
 		{
 			// installed, but no remote copy is indexed any more
 			return OXZ_UNINSTALLABLE_NOREMOTE;
@@ -1274,7 +1274,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	if (installed)
 	{
-		const std::optional<std::string> installedVersion = ManifestString(installed, oo::StdString(kOOManifestVersion));
+		const std::optional<std::string> installedVersion = ManifestString(installed, std::string(kOOManifestVersion));
 		OO_LOG("version.debug", "{} mv:{} mav:{}", identifier.value_or("(null)"), installedVersion.value_or("(null)"), availableVersion.value_or("(null)"));
 		// A missing version has no components (the bridge's ComponentsFromVersionString(nil)).
 		const std::vector<unsigned> installedComponents = installedVersion.has_value() ? cxx_ComponentsFromVersionString(*installedVersion) : std::vector<unsigned>();
@@ -1481,9 +1481,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	case OXZ_STATE_EXTRACT:
 		{
 			const oo::PList manifest = ElementAt(_filteredList, _item);
-			const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
-			const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
-			const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+			const std::optional<std::string> title = ManifestString(manifest, std::string(kOOManifestTitle));
+			const std::optional<std::string> version = ManifestString(manifest, std::string(kOOManifestVersion));
+			const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 			[gui cxx_setTitle:OO_DESC("oolite-oxzmanager-title-extract")];
 			[gui cxx_setText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-title-@-version-@")), {Arg(title), Arg(version)})
 				  forRow:0 align:GUI_ALIGN_LEFT];
@@ -1824,29 +1824,29 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 // title, version			
 			[gui cxx_setText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-title-@-version-@")),
-								   {Arg(ManifestString(manifest, oo::StdString(kOOManifestTitle))),
-								   Arg(ManifestString(manifest, oo::StdString(kOOManifestVersion)))})
+								   {Arg(ManifestString(manifest, std::string(kOOManifestTitle))),
+								   Arg(ManifestString(manifest, std::string(kOOManifestVersion)))})
 				  forRow:0 align:GUI_ALIGN_LEFT];
 
 // author
 			[gui cxx_setText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-author-@")),
-								   {Arg(ManifestString(manifest, oo::StdString(kOOManifestAuthor)))})
+								   {Arg(ManifestString(manifest, std::string(kOOManifestAuthor)))})
 				  forRow:1 align:GUI_ALIGN_LEFT];
 
 // license
 			[gui cxx_addLongText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-license-@")),
-								   {Arg(ManifestString(manifest, oo::StdString(kOOManifestLicense)))})
+								   {Arg(ManifestString(manifest, std::string(kOOManifestLicense)))})
 				  startingAtRow:2 align:GUI_ALIGN_LEFT];
 // tags
 
 			[gui cxx_addLongText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-tags-@")), {Arg(JoinedTags(manifest))})
 				  startingAtRow:4  align:GUI_ALIGN_LEFT];
 // description
-			[gui cxx_addLongText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-description-@")), {Arg(ManifestString(manifest, oo::StdString(kOOManifestDescription)))})
+			[gui cxx_addLongText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-description-@")), {Arg(ManifestString(manifest, std::string(kOOManifestDescription)))})
 				  startingAtRow:7  align:GUI_ALIGN_LEFT];
 
 // infoURL
-			const std::optional<std::string> infoURL = ManifestString(manifest, oo::StdString(kOOManifestInformationURL));
+			const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
 			[gui cxx_setText:DescFormat(oo::NSStringFrom(OO_DESC("oolite-oxzmanager-infopage-infourl-@")),
 								   {Arg(infoURL)})
 				  forRow:25 align:GUI_ALIGN_LEFT];
@@ -1899,14 +1899,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// can't be installed on this version of Oolite, or already is installed
 		return NO;
 	}
-	const oo::PList *url = manifest.find(oo::StdString(kOOManifestDownloadURL));
+	const oo::PList *url = manifest.find(std::string(kOOManifestDownloadURL));
 	if (url == nullptr)
 	{
 		OO_LOG("oxz.manager.error", "{}", "Manifest does not have a download URL - cannot install");
 		return NO;
 	}
 	// The URL as a string; any other kind fetches nothing and fails at once (proposed ADR-0044).
-	const std::string urlString = ManifestString(manifest, oo::StdString(kOOManifestDownloadURL)).value_or("");
+	const std::string urlString = ManifestString(manifest, std::string(kOOManifestDownloadURL)).value_or("");
 	if (_downloadStatus != OXZ_DOWNLOAD_NONE)
 	{
 		return NO;
@@ -1936,11 +1936,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// First requirement is front() (was anyObject; order-sensitive — named in commit).
 	const std::optional<std::string> identifier = _dependencyStack.empty()
 		? std::nullopt
-		: ManifestString(_dependencyStack.front(), oo::StdString(kOOManifestRelationIdentifier));
+		: ManifestString(_dependencyStack.front(), std::string(kOOManifestRelationIdentifier));
 	NSUInteger item = NSUIntegerMax;
 	for (NSUInteger i = 0; i < _oxzList.count(); i++)
 	{
-		const std::optional<std::string> availableIdentifier = ManifestString(*_oxzList.at(i), oo::StdString(kOOManifestIdentifier));
+		const std::optional<std::string> availableIdentifier = ManifestString(*_oxzList.at(i), std::string(kOOManifestIdentifier));
 		if (availableIdentifier.has_value() && identifier.has_value() && *availableIdentifier == *identifier)
 		{
 			item = i;	// the first equal manifest, as -indexOfObject: found
@@ -2039,7 +2039,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	for (const oo::PList &manifest : options)
 	{
-		const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+		const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 		oo::PList installed = [ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
 		const std::string localPath = oo::str::appendingPathComponent(installPath.value_or(std::string()), identifier.value_or(std::string())) + ".oxz";
 		const auto readLocalManifest = [&localPath] { return PListDictionaryFromFile(oo::str::appendingPathComponent(localPath, "manifest.plist")); };
@@ -2059,7 +2059,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			else
 			{
 				// check if this was a managed OXZ which has been deleted
-				const std::optional<std::string> filePath = ManifestString(installed, oo::StdString(kOOManifestFilePath));
+				const std::optional<std::string> filePath = ManifestString(installed, std::string(kOOManifestFilePath));
 				if (filePath.has_value() && installPath.has_value() && oo::str::hasPrefix(*filePath, *installPath))
 				{
 					installed = oo::PList();
@@ -2070,16 +2070,16 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		std::optional<std::string> installedVersion = OO_DESC("oolite-oxzmanager-version-none");
 		if (installed)
 		{
-			installedVersion = ManifestStringOr(installed, oo::StdString(kOOManifestVersion), OO_DESC("oolite-oxzmanager-version-none"));
+			installedVersion = ManifestStringOr(installed, std::string(kOOManifestVersion), OO_DESC("oolite-oxzmanager-version-none"));
 		}
 
 		/* If the filter is in use, the available_version key will
 		 * contain the version which can be downloaded. */
 		[gui cxx_setArray:Columns({
-			 ManifestStringOr(manifest, oo::StdString(kOOManifestCategory), OO_DESC("oolite-oxzmanager-missing-field")),
-			 ManifestStringOr(manifest, oo::StdString(kOOManifestTitle), OO_DESC("oolite-oxzmanager-missing-field")),
+			 ManifestStringOr(manifest, std::string(kOOManifestCategory), OO_DESC("oolite-oxzmanager-missing-field")),
+			 ManifestStringOr(manifest, std::string(kOOManifestTitle), OO_DESC("oolite-oxzmanager-missing-field")),
 			 installedVersion,
-		 	 ManifestStringOr(manifest, oo::StdString(kOOManifestAvailableVersion), ManifestStringOr(manifest, oo::StdString(kOOManifestVersion), OO_DESC("oolite-oxzmanager-version-none")))
+		 	 ManifestStringOr(manifest, std::string(kOOManifestAvailableVersion), ManifestStringOr(manifest, std::string(kOOManifestVersion), OO_DESC("oolite-oxzmanager-version-none")))
 		  }) forRow:row];
 
 		[gui cxx_setKey:identifier.value_or(std::string()) forRow:row];
@@ -2095,14 +2095,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 
-			const std::optional<std::string> infoUrl = ManifestString(manifest, oo::StdString(kOOManifestInformationURL));
+			const std::optional<std::string> infoUrl = ManifestString(manifest, std::string(kOOManifestInformationURL));
 			if (infoUrl.has_value())
 			{
 				[gui cxx_setArray:Columns({OO_DESC("oolite-oxzmanager-infoline-url"), infoUrl}) forRow:OXZ_GUI_ROW_LISTINFO1];
 			}
-			NSUInteger size = manifest.get<unsigned int>(oo::StdString(kOOManifestFileSize), 0);
+			NSUInteger size = manifest.get<unsigned int>(std::string(kOOManifestFileSize), 0);
 
-			NSUInteger timestamp = manifest.get<unsigned long long>(oo::StdString(kOOManifestUploadDate), 0);
+			NSUInteger timestamp = manifest.get<unsigned long long>(std::string(kOOManifestUploadDate), 0);
 			if (timestamp > 0)
 			{
 				// list of installable OXZs
@@ -2151,7 +2151,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		OO_LOG("oxz.manager.debug", "Unable to remove item {} as only {} in list", item, _filteredList.count());
 		return NO;
 	}
-	const std::optional<std::string> filename = ManifestString(ElementAt(_filteredList, item), oo::StdString(kOOManifestFilePath));
+	const std::optional<std::string> filename = ManifestString(ElementAt(_filteredList, item), std::string(kOOManifestFilePath));
 	if (!filename.has_value())
 	{
 		OO_LOG("oxz.manager.debug", "Unable to remove item {} as filename not found", item);
@@ -2266,11 +2266,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 
 		[gui cxx_setArray:Columns({
-								   ManifestStringOr(manifest, oo::StdString(kOOManifestCategory), OO_DESC("oolite-oxzmanager-missing-field")),
-							   ManifestStringOr(manifest, oo::StdString(kOOManifestTitle), OO_DESC("oolite-oxzmanager-missing-field")),
-							   ManifestStringOr(manifest, oo::StdString(kOOManifestVersion), OO_DESC("oolite-oxzmanager-missing-field"))
+								   ManifestStringOr(manifest, std::string(kOOManifestCategory), OO_DESC("oolite-oxzmanager-missing-field")),
+							   ManifestStringOr(manifest, std::string(kOOManifestTitle), OO_DESC("oolite-oxzmanager-missing-field")),
+							   ManifestStringOr(manifest, std::string(kOOManifestVersion), OO_DESC("oolite-oxzmanager-missing-field"))
 									}) forRow:row];
-		const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+		const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 		[gui cxx_setKey:identifier.value_or(std::string()) forRow:row];
 
 		[gui setColor:[self colorForManifest:manifest] forRow:row];
@@ -2373,11 +2373,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	std::string extractionLog;
 	const oo::PList manifest = ElementAt(_filteredList, item);
-	const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
-	const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> version = ManifestString(manifest, std::string(kOOManifestVersion));
+	const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 	const std::optional<std::string> path = [self extractionBasePathForIdentifier:identifier.value_or("") andVersion:version.value_or("")];
 
-	const std::optional<std::string> oxzfile = ManifestString(manifest, oo::StdString(kOOManifestFilePath));
+	const std::optional<std::string> oxzfile = ManifestString(manifest, std::string(kOOManifestFilePath));
 	if (!oxzfile.has_value() || !oo::fs::fileExists(oo::fs::pathFromUTF8(*oxzfile)))
 	{
 		OO_LOG("oxz.manager.error", "OXZ {} could not be found", oxzfile.value_or("(null)"));
