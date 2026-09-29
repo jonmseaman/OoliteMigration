@@ -45,6 +45,20 @@ its declarations takes or returns a C++ type. The names come from:
     +instancesRespondToSelector: (targets, notification observers, timers, callbacks);
   * tools/dynamic-selectors.txt: anything else (NSSelectorFromString on a built string).
 
+THE DISPATCHERS' C++ SIGNATURES (ADR-0055 item 5, bead oo-qps.34)
+
+Core/OOCallByName.h calls a method by name through an IMP of one of these signatures, so a
+called-by-name selector may have C++ types when every declaration of it is one of them:
+
+    - (void) sel                                  - (oo::PList) sel
+    - (void) sel:(const std::string &)s           - (oo::PList) sel:(const std::string &)s
+    - (void) sel:(const oo::PList &)p
+
+Any other C++ type on a called-by-name selector still fails --check. The union is accepted for
+every source (the whitelist feeds several dispatchers). The transitional id form is accepted
+too, until --strict-called-by-name (run by oo-qps.72 and oo-qps.16, not enforced yet) rejects
+it: a called-by-name selector with an object (id or ClassName *) parameter or result fails.
+
 SELECTORS DISPATCHED THROUGH A TYPED IMP (bead oo-bzjh)
 
 An @selector literal is not always handed to a by-name dispatcher: code may fetch the IMP
@@ -337,13 +351,32 @@ def is_cxx(t):
     return "std::" in t or "oo::" in t or "&" in t
 
 
+# (return, params) of the signatures OOCallByName calls a method through (see the docstring).
+CALL_BY_NAME_SIGNATURES = {
+    ("void", ()),
+    ("oo::PList", ()),
+    ("void", ("const std::string &",)),
+    ("oo::PList", ("const std::string &",)),
+    ("void", ("const oo::PList &",)),
+}
+
+
+def is_object(t):
+    """An Objective-C object type: id, id<P>, or ClassName *."""
+    return t == "id" or t.startswith("id <") or re.fullmatch(r"(const )?[A-Z]\w* \*", t) is not None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("files", nargs="*", help="files whose selectors to classify")
     ap.add_argument("--check", action="store_true", help="tree-wide C++-type collision check")
+    ap.add_argument("--strict-called-by-name", action="store_true",
+                    help="with --check: also fail on a called-by-name selector still typed id (oo-qps.72)")
     ap.add_argument("--no-foundation", action="store_true", help="ignore gnustep-base's headers")
     ap.add_argument("--root", help="run against another tree (the probe)")
     args = ap.parse_args()
+    if args.strict_called_by_name:
+        args.check = True
     if not args.files and not args.check:
         ap.error("give FILE... or --check")
     if args.root:
@@ -365,7 +398,15 @@ def main():
         for (kind, sel), decls in sorted(table.items()):
             if kind != "-" or sel not in dynamic:
                 continue
-            typed = [d for d in decls if any(is_cxx(t) for t in (d[0],) + d[1])]
+            typed = [d for d in decls if any(is_cxx(t) for t in (d[0],) + d[1])
+                     and (d[0], d[1]) not in CALL_BY_NAME_SIGNATURES]
+            if args.strict_called_by_name:
+                objects = [d for d in decls if any(is_object(t) for t in (d[0],) + d[1])]
+                if objects:
+                    bad += 1
+                    print(f"CALLED BY NAME {kind}{sel} ({dynamic[sel]}) is still typed id (--strict-called-by-name):")
+                    for ret, params, c, w in objects:
+                        print(f"    {c:<32} ({ret}) {params}  {w}")
             if typed:
                 bad += 1
                 print(f"CALLED BY NAME {kind}{sel} ({dynamic[sel]}) has a C++ type:")
@@ -386,7 +427,7 @@ def main():
             print(line)
         for sel, where in sorted(typed_ok.items()):
             print(f"typed IMP -{sel}: exempt from called-by-name (verified cast at {where})")
-        print(f"check-selector-types: {bad} selector famil{'y' if bad == 1 else 'ies'} with disagreeing C++ types"
+        print(f"check-selector-types: {bad} selector famil{'y' if bad == 1 else 'ies'} with disagreeing C++ types" + (" or still typed id" if args.strict_called_by_name else "")
               + (f", {len(typed_errors)} unverified typed-IMP entr{'y' if len(typed_errors) == 1 else 'ies'}" if typed_errors else ""))
         status = 1 if bad or typed_errors else 0
 

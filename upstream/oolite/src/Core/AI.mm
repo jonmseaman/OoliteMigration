@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOWeakReference.h"
 #import "OOCacheManager.h"
+#import "OOCallByName.h"
 #import "OOPListView.h"
 #import "OOPListParsing.h"
 
@@ -57,7 +58,7 @@ typedef struct
 {
 	AI				*ai;
 	SEL				selector;
-	id				parameter;
+	std::string		parameter;	// the by-name call's string argument (OOCallByName.h)
 } OOAIDeferredCallTrampolineInfo;
 
 
@@ -105,11 +106,12 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 @interface AI (OOPrivate)
 
-// Wrapper for a deferred call (OOScheduleDeferredCall) to catch/fix bugs.
-- (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
+// Wrapper for a deferred call (OOScheduleDeferredCall) to catch/fix bugs. <selector> is called by
+// name with <argument> (OOCallByName.h).
+- (void) performDeferredCall:(SEL)selector withArgument:(const std::string &)argument afterDelay:(NSTimeInterval)delay;
 + (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
-// The target of -cxx_setState:afterDelay:'s deferred call: stateName is an Objective-C string.
-- (void) deferredSetState:(id)stateName;
+// The target of -cxx_setState:afterDelay:'s deferred call (called by name).
+- (void) deferredSetState:(const std::string &)stateName;
 
 - (void) refreshOwnerDesc;
 
@@ -358,7 +360,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 		/*	CRASH in objc_msgSend, apparently on [self reactToMessage:@"ENTER"] (1.69, OS X/x86).
 			Analysis: self corrupted. We're being called by __NSFireDelayedPerform, which doesn't go
-			through -[NSObject performSelector:withObject:], suggesting it's using IMP caching. An
+			through NSObject's -performSelector: (with an object), suggesting it's using IMP caching. An
 			invalid self is therefore possible.
 			Attempted fix: new delayed dispatch with trampoline, see -[AI setStateMachine:afterDelay:].
 			 -- Ahruman, 20070706
@@ -377,7 +379,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	{
 		/*	CRASH in objc_msgSend, apparently on [self reactToMessage:@"EXIT"] (1.69, OS X/x86).
 			Analysis: self corrupted. We're being called by __NSFireDelayedPerform, which doesn't go
-			through -[NSObject performSelector:withObject:], suggesting it's using IMP caching. An
+			through NSObject's -performSelector: (with an object), suggesting it's using IMP caching. An
 			invalid self is therefore possible.
 			Attempted fix: new delayed dispatch with trampoline, see -[AI setState:afterDelay:].
 			 -- Ahruman, 20070706
@@ -389,19 +391,15 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 }
 
 
-/*	The deferred call's parameter is retained here and released by the trampoline (which released
-	the caller's string before: harmless for the literals callers passed, and now balanced for the
-	string made here).
-*/
 - (void) cxx_setStateMachine:(const std::string &)smName afterDelay:(NSTimeInterval)delay
 {
-	[self performDeferredCall:@selector(setStateMachine:) withObject:[oo::NSStringFrom(smName) retain] afterDelay:delay];
+	[self performDeferredCall:@selector(setStateMachine:) withArgument:smName afterDelay:delay];
 }
 
 
 - (void) cxx_setState:(const std::string &)stateName afterDelay:(NSTimeInterval)delay
 {
-	[self performDeferredCall:@selector(deferredSetState:) withObject:[oo::NSStringFrom(stateName) retain] afterDelay:delay];
+	[self performDeferredCall:@selector(deferredSetState:) withArgument:stateName afterDelay:delay];
 }
 
 
@@ -560,7 +558,7 @@ static AIStackElement *sStack = NULL;
 		{
 			if ([owner respondsToSelector:@selector(interpretAIMessage:)])
 			{
-				[owner performSelector:@selector(interpretAIMessage:) withObject:oo::NSStringFrom(message)];
+				OOCallByName(owner, @selector(interpretAIMessage:), message);
 			}
 		}
 	}
@@ -615,8 +613,8 @@ static AIStackElement *sStack = NULL;
 			SEL selector = OOSelectorFromName(selectorStr);
 			if ([owner respondsToSelector:selector])
 			{
-				if (dataString.has_value())  [owner performSelector:selector withObject:oo::NSStringFrom(*dataString)];
-				else  [owner performSelector:selector];
+				if (dataString.has_value())  OOCallByName(owner, selector, *dataString);
+				else  OOCallByName(owner, selector);
 			}
 			else
 			{
@@ -778,7 +776,7 @@ static AIStackElement *sStack = NULL;
 */
 @implementation AI (OOPrivate)
 
-- (void)performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay
+- (void)performDeferredCall:(SEL)selector withArgument:(const std::string &)argument afterDelay:(NSTimeInterval)delay
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
 	OOAIDeferredCallTrampolineInfoHolder	*info = nil;
@@ -787,7 +785,7 @@ static AIStackElement *sStack = NULL;
 	{
 		infoStruct.ai = [self retain];
 		infoStruct.selector = selector;
-		infoStruct.parameter = object;
+		infoStruct.parameter = argument;
 		
 		info = [[OOAIDeferredCallTrampolineInfoHolder alloc] init];
 		info->info = infoStruct;
@@ -798,9 +796,9 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (void) deferredSetState:(id)stateName
+- (void) deferredSetState:(const std::string &)stateName
 {
-	[self cxx_setState:oo::StdString(stateName)];
+	[self cxx_setState:stateName];
 }
 
 
@@ -812,10 +810,9 @@ static AIStackElement *sStack = NULL;
 	{
 		infoStruct = info->info;
 		
-		[infoStruct.ai performSelector:infoStruct.selector withObject:infoStruct.parameter];
+		OOCallByName(infoStruct.ai, infoStruct.selector, infoStruct.parameter);
 		
 		[infoStruct.ai release];
-		[infoStruct.parameter release];
 	}
 }
 
