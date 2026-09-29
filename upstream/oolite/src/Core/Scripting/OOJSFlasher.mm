@@ -302,7 +302,7 @@ static bool FlasherSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			break;
 
 		case kFlasher_color:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[entity setColor:colorForScript];

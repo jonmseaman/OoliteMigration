@@ -1695,7 +1695,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_scannerDisplayColor1:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value))];
 			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColor1:colorForScript];
@@ -1704,7 +1704,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_scannerDisplayColor2:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value))];
 			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColor2:colorForScript];
@@ -1713,7 +1713,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_scannerHostileDisplayColor1:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value))];
 			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColorHostile1:colorForScript];
@@ -1722,7 +1722,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_scannerHostileDisplayColor2:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value))];
 			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColorHostile2:colorForScript];
@@ -1731,7 +1731,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 			
 		case kShip_exhaustEmissiveColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value))];
 			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setExhaustEmissiveColor:colorForScript];
@@ -3206,7 +3206,7 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		}
 		else
 		{
-			OOCharacter *crew = [OOCharacter characterWithDictionary:OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]))];
+			OOCharacter *crew = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0])))];
 			std::vector<oo::ObjCRef<OOCharacter *>> members;
 			if (crew != nil)  members.emplace_back(crew);	// a nil character was skipped (an NSArray cannot hold nil)
 			[thisEnt cxx_setCrew:members];
