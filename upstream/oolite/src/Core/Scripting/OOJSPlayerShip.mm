@@ -1526,7 +1526,7 @@ static bool PlayerShipAddPassenger(ooscript::Context context, ooscript::CallArgs
 	// Ensure there's space.
 	if ([player passengerCount] >= [player passengerCapacity])  OOJS_RETURN_BOOL(NO);
 	
-	BOOL OK = [player addPassenger:oo::NSStringOrNil(name) start:start destination:destination eta:eta fee:fee advance:advance risk:risk];
+	BOOL OK = [player cxx_addPassenger:name.value_or("") start:start destination:destination eta:eta fee:fee advance:advance risk:risk];
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1553,7 +1553,7 @@ static bool PlayerShipRemovePassenger(ooscript::Context context, ooscript::CallA
 	}
 	
 	OK = [player passengerCount] > 0 && !name->empty();
-	if (OK)  OK = [player removePassenger:oo::NSStringOrNil(name)];
+	if (OK)  OK = [player cxx_removePassenger:name.value_or("")];
 	
 	OOJS_RETURN_BOOL(OK);
 	
@@ -1592,7 +1592,7 @@ static bool PlayerShipAddParcel(ooscript::Context context, ooscript::CallArgs &o
 	
 	// Ensure there's space.
 	
-	BOOL OK = [player addParcel:oo::NSStringOrNil(name) start:start destination:destination eta:eta fee:fee premium:premium risk:risk];
+	BOOL OK = [player cxx_addParcel:name.value_or("") start:start destination:destination eta:eta fee:fee premium:premium risk:risk];
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1619,7 +1619,7 @@ static bool PlayerShipRemoveParcel(ooscript::Context context, ooscript::CallArgs
 	}
 	
 	OK = [player parcelCount] > 0 && !name->empty();
-	if (OK)  OK = [player removeParcel:oo::NSStringOrNil(name)];
+	if (OK)  OK = [player cxx_removeParcel:name.value_or("")];
 	
 	OOJS_RETURN_BOOL(OK);
 	
@@ -1662,7 +1662,7 @@ static bool PlayerShipAwardContract(ooscript::Context context, ooscript::CallArg
 	
 	if (!ValidateContracts(context, oojsArgs, YES, &start, &destination, &eta, &fee, &premium, "awardContract", NULL))  return NO; // always go through validate contracts (cargo)
 	
-	BOOL OK = [player awardContract:qty commodity:oo::NSStringOrNil(key) start:start destination:destination eta:eta fee:fee premium:premium];
+	BOOL OK = [player cxx_awardContract:qty commodity:key.value_or("") start:start destination:destination eta:eta fee:fee premium:premium];
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1701,7 +1701,7 @@ static bool PlayerShipRemoveContract(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	
-	BOOL OK = [player removeContract:oo::NSStringOrNil(key) destination:(unsigned)dest];	
+	BOOL OK = [player cxx_removeContract:key.value_or("") destination:(unsigned)dest];	
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
