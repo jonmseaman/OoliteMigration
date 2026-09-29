@@ -134,8 +134,8 @@ static OOTexture *sFlashTexture = nil;
 {
 	if (sFlashTexture == nil)
 	{
-		sFlashTexture = [[OOTexture textureWithName:@"oolite-particle-flash.png"
-										   inFolder:@"Textures"
+		sFlashTexture = [[OOTexture cxx_textureWithName:"oolite-particle-flash.png"
+										   inFolder:"Textures"
 											options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 										 anisotropy:kOOTextureDefaultAnisotropy
 											lodBias:0.0] retain];

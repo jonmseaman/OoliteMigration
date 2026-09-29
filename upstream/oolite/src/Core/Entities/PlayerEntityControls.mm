@@ -176,12 +176,12 @@ static NSTimeInterval	time_last_frame;
 namespace
 {
 
-// OOExpandKey(key, ...) with its arguments as a Dict: ints as PList::signedInteger, strings as
-// std::string (exemplar OOShipLibraryDescriptions.mm ExpandCategoryKey).
+// cxx_OOExpandKey(key, ...) with its arguments as a Dict: ints as PList::signedInteger, strings as
+// std::string (exemplar OOShipLibraryDescriptions.mm ExpandCategoryKey); nothing expanded is "".
 std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
-		oo::ObjectFromPList(oo::PList(args)), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), key,
+		oo::PList(args), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string());
 }
 
 }	// namespace
@@ -1438,7 +1438,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						{
 							[self playNextEquipmentSelected];
 							eqKey = eqScripts[primedEquipment].first;
-							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
+							const std::string equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] cxx_name].value_or(std::string());
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
 						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
@@ -1477,7 +1477,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if (!fastactivate_a_pressed)
 					{
-						[self activatePrimableEquipment:[self eqScriptIndexForKey:[self fastEquipmentA]] withMode:OOPRIMEDEQUIP_ACTIVATED];
+						[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:[self cxx_fastEquipmentA].value_or("")] withMode:OOPRIMEDEQUIP_ACTIVATED];
 					}
 					fastactivate_a_pressed = YES;
 				}
@@ -1488,7 +1488,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if (!fastactivate_b_pressed)
 					{
-						[self activatePrimableEquipment:[self eqScriptIndexForKey:[self fastEquipmentB]] withMode:OOPRIMEDEQUIP_ACTIVATED];
+						[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:[self cxx_fastEquipmentB].value_or("")] withMode:OOPRIMEDEQUIP_ACTIVATED];
 					}
 					fastactivate_b_pressed = YES;
 				}
@@ -1514,7 +1514,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							if (!customActivatePressed[i])
 							{
 								// initate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_ACTIVATED];
+								[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:equipKey] withMode:OOPRIMEDEQUIP_ACTIVATED];
 							}
 							customActivatePressed[i] = YES;
 						}
@@ -1526,7 +1526,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							if (!customModePressed[i])
 							{
 								// initiate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_MODE];
+								[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:equipKey] withMode:OOPRIMEDEQUIP_MODE];
 							}
 							customModePressed[i] = YES;
 						}
@@ -2696,7 +2696,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] name]);
+						const std::string weaponName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] cxx_name].value_or(std::string());
 						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
 						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}
@@ -3034,7 +3034,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					OOCreditsQuantity shipprice = 0;
 					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
-						shipprice = [self priceForShipKey:oo::NSStringOrNil(key)];
+						shipprice = [self cxx_priceForShipKey:key.value_or("")];
 					}
 
 					if ([self buySelectedShip])
@@ -3106,7 +3106,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						}
 						else
 						{
-							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", oo::DescriptionOf([definition name]), key);
+							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", [definition cxx_name].value_or("(null)"), key);
 						}
 					}
 					extra_gui_key_pressed = YES;
@@ -3478,7 +3478,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if (brightnessValue > MAX_HDR_MAXBRIGHTNESS)  brightnessValue = direction == 1 ? MIN_HDR_MAXBRIGHTNESS : MAX_HDR_MAXBRIGHTNESS;
     				
 				[gameView setHDRMaxBrightness:(float)brightnessValue];
-				const std::string maxBrightnessString = oo::StdString(OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue));
+				const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 																				
 				[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
 				
@@ -3878,7 +3878,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			[UNIVERSE setDetailLevel:detailLevel];
 			detailLevel = [UNIVERSE detailLevel];
 
-			const std::string shaderEffectsOptionsString = oo::StdString(OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel));
+			const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
 			[gui cxx_setText:ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 
@@ -5540,7 +5540,7 @@ static BOOL autopilot_pause;
 	if (fastDocking && ([self alertCondition] == ALERT_CONDITION_RED))
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = oo::OptionalString(OOExpandKey(@"autopilot-red-alert"));
+		message = cxx_OOExpandKey("autopilot-red-alert");
 		goto abort;
 	}
 	
@@ -5575,12 +5575,12 @@ static BOOL autopilot_pause;
 			if (nStations == 0)
 			{
 				[self playAutopilotOutOfRange];
-				message = oo::OptionalString(OOExpandKey(@"autopilot-out-of-range"));
+				message = cxx_OOExpandKey("autopilot-out-of-range");
 			}
 			else
 			{
 				[self playAutopilotCannotDockWithTarget];
-				message = oo::OptionalString(OOExpandKey(@"autopilot-multiple-targets"));
+				message = cxx_OOExpandKey("autopilot-multiple-targets");
 			}
 			goto abort;
 		}
@@ -5643,7 +5643,7 @@ static BOOL autopilot_pause;
 	{
 		// Standard docking - engage autopilot
 		[self engageAutopilotToStation:ts];
-		message = oo::OptionalString(OOExpandKey(@"autopilot-on"));
+		message = cxx_OOExpandKey("autopilot-on");
 	}
 	
 abort:
@@ -5663,7 +5663,7 @@ abort:
 	if ([self primaryTarget] == nil)
 	{
 		[self playIdentOn];
-		[UNIVERSE addMessage:OOExpandKey(@"ident-on") forCount:2.0];
+		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("ident-on") forCount:2.0];
 	}
 	else
 	{

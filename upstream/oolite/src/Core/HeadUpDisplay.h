@@ -376,6 +376,21 @@ enum
 @end
 
 
+/*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
+	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
+	drawables used; the drawing is the category's.
+*/
+@interface OOHUDBeaconCodeIcon: OOObject <OOHUDBeaconIcon>
+{
+@private
+	std::string				_text;
+}
+
+- (id) initWithText:(const std::string &)text;
+
+@end
+
+
 void cxx_OODrawString(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 void cxx_OODrawStringAligned(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign);
 
@@ -410,11 +425,3 @@ NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSiz
 CGFloat cxx_OOStringWidthInEm(const std::string &text);
 
 void OOHUDResetTextEngine(void);
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-3rb.209 (the HeadUpDisplay sweep oo-3rb.81, chunk 1), forwarding to the
-	cxx_ API above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their own
-	sweep beads; the bridge goes in its own bead.
-*/
-#import "HeadUpDisplay+FoundationBridge.h"

@@ -879,8 +879,7 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* contex
 {
 	if (HasPrefix(key, u"mission_"))
 	{
-		// PlayerEntity is not migrated yet: converted at the call.
-		return UnitsFromOptional(oo::OptionalString([PLAYER missionVariableForKey:oo::NSStringFrom(keyString)]));
+		return UnitsFromOptional(oo::OptionalString(oo::ObjectFromPList([PLAYER cxx_missionVariableForKey:keyString])));
 	}
 
 	return std::nullopt;

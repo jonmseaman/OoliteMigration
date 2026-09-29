@@ -625,7 +625,7 @@ struct EntityDumpState
 		unsigned refCount = (counted != textureRefCounts.end()) ? (unsigned)counted->second : 0;
 
 		[self writeMemStat:oo::str::format("%s: [%u refs%s] %s%s",
-		 oo::DescriptionOf([tex name]).c_str(),
+		 [tex cxx_name].value_or("(null)").c_str(),
 		 refCount,
 		 usage,
 		 SizeString(objSize + dataSize).c_str(),
