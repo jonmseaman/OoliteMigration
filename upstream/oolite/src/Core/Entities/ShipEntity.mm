@@ -764,14 +764,14 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 			{
 				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
 				c_commodity = scanner.remainder();
-				if ([[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(c_commodity)])
+				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
 				{
 					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 				}
 				else
 				{
-					c_commodity = oo::OptionalString([[UNIVERSE commodities] goodNamed:oo::NSStringOrNil(c_commodity)]);
-					if ([[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(c_commodity)])
+					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
+					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
 					{
 						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 					}
@@ -781,14 +781,14 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 			{
 				c_amount = 1;
 				c_commodity = StringForKey(shipDict, "cargo_carried");
-				if ([[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(c_commodity)])
+				if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
 				{
 					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 				}
 				else
 				{
-					c_commodity = oo::OptionalString([[UNIVERSE commodities] goodNamed:oo::NSStringOrNil(c_commodity)]);
-					if ([[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(c_commodity)])
+					c_commodity = [[UNIVERSE commodities] cxx_goodNamed:c_commodity.value_or("")];
+					if ([[UNIVERSE commodities] cxx_goodDefined:c_commodity.value_or("")])
 					{
 						[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
 					}

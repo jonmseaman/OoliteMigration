@@ -116,7 +116,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 {
 	OOMassUnit				unit;
 
-	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])
+	if (![[UNIVERSE commodities] cxx_goodDefined:type])
 	{
 		return;
 	}

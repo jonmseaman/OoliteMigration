@@ -1093,7 +1093,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 	}
 	
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(commodity)]))
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:commodity.value_or("")]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
@@ -1136,7 +1136,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 	}
 	
 	OOCommodityType commodity = oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]));
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:commodity]))
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:oo::StdString(commodity)]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;

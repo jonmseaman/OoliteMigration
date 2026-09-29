@@ -27,7 +27,6 @@ oolite_sources += files(
     'OOCollectionExtractors.mm',
     'OOColor.mm',
     'OOCommodities.mm',
-    'OOCommodities+FoundationBridge.mm',
     'OOCommodityMarket.mm',
     'OOConstToString.mm',
     'OOConvertCubeMapToLatLong.mm',
