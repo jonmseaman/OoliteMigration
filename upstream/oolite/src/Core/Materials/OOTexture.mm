@@ -432,10 +432,16 @@ const char *sGlobalTraceContext = nullptr;
 }
 
 
-- (id) name	// shared selector (proposed ADR-0043)
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
+{
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>) cxx_name
 {
 	OOLogGenericSubclassResponsibility();
-	return nil;
+	return std::nullopt;
 }
 #endif
 
