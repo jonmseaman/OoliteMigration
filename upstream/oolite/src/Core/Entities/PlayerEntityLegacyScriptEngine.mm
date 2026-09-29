@@ -460,11 +460,11 @@ static BOOL sRunningScript = NO;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception running world scripts: %@ : %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception running world scripts: %@ : %@", [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	
 	// Restore anti-recursion measures.
@@ -489,21 +489,21 @@ static BOOL sRunningScript = NO;
 		}
 		@catch (OOException *exception)
 		{
-			OOLog(@"script.error.exception",
-				  @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
-				  oo::NSStringFrom([exception name]),
-				  oo::NSStringFrom([exception reason]),
-				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
+			OO_LOG("script.error.exception",
+				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
+				  [exception name],
+				  [exception reason],
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::DescriptionOf([target shortDescription]) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
 		@catch (OOFoundationException *exception)
 		{
 			// (a nil context printed "(null)")
-			OOLog(@"script.error.exception",
-				  @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
-				  [exception name],
-				  [exception reason],
-				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
+			OO_LOG("script.error.exception",
+				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
+				  oo::DescriptionOf([exception name]),
+				  oo::DescriptionOf([exception reason]),
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::DescriptionOf([target shortDescription]) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
 
@@ -530,18 +530,18 @@ static BOOL sRunningScript = NO;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"script.error.exception",
-			  @"***** EXCEPTION %@: %@ while testing legacy script conditions.",
-			  oo::NSStringFrom([exception name]),
-			  oo::NSStringFrom([exception reason]));
+		OO_LOG("script.error.exception",
+			  "***** EXCEPTION {}: {} while testing legacy script conditions.",
+			  [exception name],
+			  [exception reason]);
 		// Suppress exception
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"script.error.exception",
-			  @"***** EXCEPTION %@: %@ while testing legacy script conditions.",
-			  [exception name],
-			  [exception reason]);
+		OO_LOG("script.error.exception",
+			  "***** EXCEPTION {}: {} while testing legacy script conditions.",
+			  oo::DescriptionOf([exception name]),
+			  oo::DescriptionOf([exception reason]));
 		// Suppress exception
 	}
 	
@@ -694,7 +694,7 @@ static BOOL sRunningScript = NO;
 				case COMPARISON_UNDEFINED:
 				case COMPARISON_ONEOF:
 					// "Can't happen" - undefined should have been caught by the sanitizer, oneof is handled above.
-					OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for numbers, evaluating to false.", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(cxx_OOComparisonTypeToString(comparator)));
+					OO_LOG("script.error.unexpectedOperator", "***** SCRIPT ERROR: in {}, operator {} is not valid for numbers, evaluating to false.", CurrentScriptDescription(), cxx_OOComparisonTypeToString(comparator));
 					return NO;
 			}
 		}
@@ -717,7 +717,7 @@ static BOOL sRunningScript = NO;
 			case COMPARISON_UNDEFINED:
 			case COMPARISON_ONEOF:
 				// "Can't happen" - should have been caught by the sanitizer.
-				OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for booleans, evaluating to false.", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(cxx_OOComparisonTypeToString(comparator)));
+				OO_LOG("script.error.unexpectedOperator", "***** SCRIPT ERROR: in {}, operator {} is not valid for booleans, evaluating to false.", CurrentScriptDescription(), cxx_OOComparisonTypeToString(comparator));
 				return NO;
 		}
 	}
@@ -726,7 +726,7 @@ static BOOL sRunningScript = NO;
 	const auto conditionText = oo::writeOldStylePList(scriptCondition);
 	std::string conditionDescription = conditionText.has_value() ? std::string(conditionText->stringView()) : std::string();
 	if (!conditionDescription.empty() && conditionDescription.back() == '\n')  conditionDescription.pop_back();
-	OOLog(@"script.error.fallthrough", @"***** SCRIPT ERROR: in %@, unhandled condition '%@' (%@). %@", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(scriptCondition.at<std::string>(1)), oo::NSStringFrom(conditionDescription), @"This is an internal error, please report it.");
+	OO_LOG("script.error.fallthrough", "***** SCRIPT ERROR: in {}, unhandled condition '{}' ({}). {}", CurrentScriptDescription(), scriptCondition.at<std::string>(1), conditionDescription, "This is an internal error, please report it.");
 	return NO;
 }
 
@@ -2058,7 +2058,7 @@ static int shipsFound;
 
 	NSInteger keysCount = choiceKeys.size();
 	if ((end_row + 1) < choiceKeys.size()) {
-		OOLogERR(kOOLogException, @"in mission.runScreen choices: number of choices defined (%zu) is greater than available lines (%zu). Check HUD settings for allowBigGui.",  choiceKeys.size(), (end_row + 1));
+		OO_LOG_ERR(cxx_kOOLogException, "in mission.runScreen choices: number of choices defined ({}) is greater than available lines ({}). Check HUD settings for allowBigGui.", choiceKeys.size(), (end_row + 1));
 		keysCount = end_row + 1;
 	}
 
@@ -2927,7 +2927,7 @@ static int shipsFound;
 {
 	const std::optional<std::string> scriptName = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
 
-	OOLog(@"player.equipmentScript", @"Added equipment %@, with the following script property: '%@'.", oo::NSStringFrom(eq_key), oo::NSStringOrNil(scriptName));
+	OO_LOG("player.equipmentScript", "Added equipment {}, with the following script property: '{}'.", eq_key, scriptName.value_or("(null)"));
 
 	if (!scriptName.has_value()) return NO;
 
@@ -2941,11 +2941,11 @@ static int shipsFound;
 	OOScript *s = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:oo::ObjectFromPList(oo::PList(std::move(properties)))];
 	if (s == nil) return NO;
 
-	OOLog(@"player.equipmentScript", @"Script '%@': installation %@successful.", oo::NSStringFrom(*scriptName),(s == nil ? @"un" : @""));
+	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));
 
 	eqScripts.emplace_back(eq_key, oo::ObjCRef<OOJSScript *>(static_cast<OOJSScript *>(s)));
 	if (primedEquipment == eqScripts.size() - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
-	OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", eqScripts.size());
+	OO_LOG("player.equipmentScript", "Scriptable equipment available: {}.", eqScripts.size());
 	return YES;
 }
 
@@ -2965,7 +2965,7 @@ static int shipsFound;
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
 			if (count == primedEquipment)  primedEquipment--; // the array has shrunk by one!
 
-			OOLog(@"player.equipmentScript", @"Removed equipment %@, with the following script property: '%@'.", oo::NSStringFrom(eq_key), [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
+			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, oo::DescriptionOf([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]));
 		}
 	}
 }
@@ -3015,8 +3015,8 @@ static int shipsFound;
 	OOGalacticHyperspaceBehaviour ghBehaviour = OOGalacticHyperspaceBehaviourFromString(galacticHyperspaceBehaviourString);
 	if (ghBehaviour == GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN)
 	{
-		OOLog(@"player.setGalacticHyperspaceBehaviour.invalidInput",
-			  @"setGalacticHyperspaceBehaviourTo: called with unknown behaviour %@.", galacticHyperspaceBehaviourString);
+		OO_LOG("player.setGalacticHyperspaceBehaviour.invalidInput",
+			  "setGalacticHyperspaceBehaviourTo: called with unknown behaviour {}.", oo::DescriptionOf(galacticHyperspaceBehaviourString));
 	}
 	[self setGalacticHyperspaceBehaviour:ghBehaviour];
 }
@@ -3027,8 +3027,8 @@ static int shipsFound;
 	const oo::PList coord_vals = TokenArray(oo::str::tokens(oo::StdString(galacticHyperspaceFixedCoordsString)));
 	if (coord_vals.count() < 2)	// Will be 0 if string is nil
 	{
-		OOLog(@"player.setGalacticHyperspaceFixedCoords.invalidInput", @"%@",
-			  @"setGalacticHyperspaceFixedCoords: called with bad specifier. Defaulting to Oolite standard.");
+		OO_LOG("player.setGalacticHyperspaceFixedCoords.invalidInput", "{}",
+			  "setGalacticHyperspaceFixedCoords: called with bad specifier. Defaulting to Oolite standard.");
 		galacticHyperspaceFixedCoords.x = galacticHyperspaceFixedCoords.y = 0x60;
 	}
 	
