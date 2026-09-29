@@ -70,7 +70,7 @@ SOFTWARE.
 	"Colour description" refers to anything +[OOColor colorWithDescription:]
 	will accept.
 */
-- (id)initWithName:(id)name configuration:(id)configuration;	// an Objective-C string and dictionary. Shared selector (proposed ADR-0043).
+- (id)initWithName:(const std::optional<std::string> &)name configuration:(const oo::PList &)configuration;	// a null configuration is an empty one. Shared by the material classes.
 
 - (OOColor *)diffuseColor;
 - (void)setDiffuseColor:(OOColor *)color;

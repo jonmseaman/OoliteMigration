@@ -103,7 +103,7 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 {
 	[self compact];
 	OOWeakSet *result = [[OOWeakSet allocWithZone:zone] init];
-	[result addObjectsByEnumerating:[self objectEnumerator]];
+	for (const oo::ObjCRef<id> &object : [self cxx_objectEnumerator])  [result addObject:object.get()];	// as -addObjectsByEnumerating: of the snapshot did
 	return result;
 }
 
@@ -120,17 +120,12 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 	if ([self count] != [other count])  return NO;
 	
 	BOOL result = YES;
-	@autoreleasepool
+	for (const oo::ObjCRef<id> &object : [self cxx_objectEnumerator])
 	{
-		id selfEnum = [self objectEnumerator];
-		id object = nil;
-		while ((object = [selfEnum nextObject]))
+		if (![other containsObject:object.get()])
 		{
-			if (![other containsObject:object])
-			{
-				result = NO;
-				break;
-			}
+			result = NO;
+			break;
 		}
 	}
 	
@@ -155,12 +150,6 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 	BOOL result = std::find_if(_objects.begin(), _objects.end(), [weakObj](const auto &ref) { return ref.get() == weakObj; }) != _objects.end();
 	[weakObj release];
 	return result;
-}
-
-
-- (id) objectEnumerator
-{
-	return [oo::NSArrayFromObjects([self cxx_objectEnumerator]) objectEnumerator];
 }
 
 
@@ -221,12 +210,6 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 	{
 		[[weakRef.get() weakRefUnderlyingObject] performSelector:selector withObject:argument];
 	}
-}
-
-
-- (id) allObjects
-{
-	return oo::NSArrayFromObjects([self cxx_allObjects]);
 }
 
 
