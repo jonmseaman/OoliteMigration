@@ -407,9 +407,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void) setName:(id)inName	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) cxx_setName:(const std::optional<std::string> &)inName
 {
-	// Block super method; player ship can't be renamed.
+	// Block super method; player ship can't be renamed (-setName: forwards here).
 }
 
 
@@ -1735,14 +1735,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// Something went wrong. Possibly the save file was hacked to contain more passenger cabins than the available cargo space would allow - Nikos 20110731
 		unsigned originalMaxPassengers = max_passengers;
 		max_passengers = (unsigned)(max_cargo / PASSENGER_BERTH_SPACE);
-		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.max_passengers", "player ship {} had max_passengers set to a value requiring more cargo space than currently available ({}). Setting max_passengers to maximum possible value ({}).", oo::DescriptionOf([self name]), static_cast<unsigned>(originalMaxPassengers), static_cast<unsigned>(max_passengers));
+		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.max_passengers", "player ship {} had max_passengers set to a value requiring more cargo space than currently available ({}). Setting max_passengers to maximum possible value ({}).", [self cxx_name].value_or("(null)"), static_cast<unsigned>(originalMaxPassengers), static_cast<unsigned>(max_passengers));
 	}
 	max_cargo -= max_passengers * PASSENGER_BERTH_SPACE;
 	
 	// Do we have extra passengers?
 	if (passengers.size() > max_passengers)
 	{
-		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.passengers", "player ship {} had more passengers ({}) than passenger berths ({}). Removing extra passengers.", oo::DescriptionOf([self name]), passengers.size(), static_cast<unsigned>(max_passengers));
+		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.passengers", "player ship {} had more passengers ({}) than passenger berths ({}). Removing extra passengers.", [self cxx_name].value_or("(null)"), passengers.size(), static_cast<unsigned>(max_passengers));
 		for (NSInteger i = (NSInteger)passengers.size() - 1; i >= max_passengers; i--)
 		{
 			const oo::PList *passengerName = passengers[i].find(oo::StdString(PASSENGER_KEY_NAME));
@@ -1755,7 +1755,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	NSInteger excessCargo = (NSInteger)[self cargoQuantityOnBoard] - (NSInteger)[self maxAvailableCargoSpace];
 	if (excessCargo > 0)
 	{
-		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.cargo", "player ship {} had more cargo ({}) than it can hold ({}). Removing extra cargo.", oo::DescriptionOf([self name]), [self cargoQuantityOnBoard], static_cast<unsigned>([self maxAvailableCargoSpace]));
+		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.cargo", "player ship {} had more cargo ({}) than it can hold ({}). Removing extra cargo.", [self cxx_name].value_or("(null)"), [self cargoQuantityOnBoard], static_cast<unsigned>([self maxAvailableCargoSpace]));
 		
 		OOMassUnit			units;
 		OOCargoQuantity		oldAmount, toRemove;
@@ -4252,7 +4252,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	[ship wasAddedToUniverse];
 	
-	if (context.has_value())  OO_LOG("script.debug.note.showShipModel", "::::: showShipModel:'{}' in context: {}.", oo::DescriptionOf([ship name]), *context);
+	if (context.has_value())  OO_LOG("script.debug.note.showShipModel", "::::: showShipModel:'{}' in context: {}.", [ship cxx_name].value_or("(null)"), *context);
 	
 	GLfloat cr = [ship collisionRadius];
 	[ship setOrientation: q2];
@@ -7538,7 +7538,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (blocker)
 		{
 			[UNIVERSE clearPreviousMessage];
-			const std::string blockerName = oo::StdString([blocker name]);	// (nil raised in the expansion)
+			const std::string blockerName = [blocker cxx_name].value_or(std::string());	// (nil raised in the expansion)
 			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-blocked", { { "blockerName", oo::PList(blockerName) } })) forCount:4.5];
 			[self playWitchjumpBlocked];
 			[self setStatus:STATUS_IN_FLIGHT];
