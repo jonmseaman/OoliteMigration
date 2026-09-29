@@ -65,9 +65,9 @@ static OOSoundSource	*sMusicSource = nil;
 }
 
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_name
 {
-	return [sound name];
+	return [sound cxx_name];
 }
 
 

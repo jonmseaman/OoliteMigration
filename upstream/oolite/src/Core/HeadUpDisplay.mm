@@ -2936,8 +2936,9 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOWaypointEntity *waypoint = nil;
 	Entity *compass = [PLAYER compassTarget];
 	
-	foreach (waypoint, [[UNIVERSE currentWaypoints] allValues])
+	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
 	{
+		waypoint = waypointRef.get();
 		hudDrawWaypoint(waypoint, PLAYER, z1, alpha, waypoint==compass, scale);
 	}
 
@@ -3151,7 +3152,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-		cxx_OODrawString(oo::StdString(OOExpandKey(@"equipment-primed-hud", [PLAYER primedEquipmentName:0])), x, y, z1, size);
+		const std::optional<std::string> equipmentName = [PLAYER cxx_primedEquipmentName:0];
+		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, z1, size);
 	}
 	else
 	{
@@ -3897,7 +3899,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			case WH_SCANINFO_ARRIVAL_TIME:
 			{
 				// a format read at run time (ADR-0043 item 19)
-				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { oo::DescriptionOf(ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO)) });
+				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { cxx_ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO) });
 				cxx_OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_COLLAPSE_TIME:
@@ -4625,6 +4627,26 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 	glColor4f(0.0, 0.0, 0.0, 0.5 * alpha);
 	[self drawOutline];
 	OOGLPopModelView();
+}
+
+@end
+
+
+@implementation OOHUDBeaconCodeIcon
+
+- (id) initWithText:(const std::string &)text
+{
+	if ((self = [super init]))
+	{
+		_text = text;
+	}
+	return self;
+}
+
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z
+{
+	cxx_OODrawString(_text, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
 }
 
 @end
