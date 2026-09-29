@@ -1477,7 +1477,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if (!fastactivate_a_pressed)
 					{
-						[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringOrNil([self cxx_fastEquipmentA])] withMode:OOPRIMEDEQUIP_ACTIVATED];
+						[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:[self cxx_fastEquipmentA].value_or("")] withMode:OOPRIMEDEQUIP_ACTIVATED];
 					}
 					fastactivate_a_pressed = YES;
 				}
@@ -1488,7 +1488,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if (!fastactivate_b_pressed)
 					{
-						[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringOrNil([self cxx_fastEquipmentB])] withMode:OOPRIMEDEQUIP_ACTIVATED];
+						[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:[self cxx_fastEquipmentB].value_or("")] withMode:OOPRIMEDEQUIP_ACTIVATED];
 					}
 					fastactivate_b_pressed = YES;
 				}
@@ -1514,7 +1514,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							if (!customActivatePressed[i])
 							{
 								// initate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_ACTIVATED];
+								[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:equipKey] withMode:OOPRIMEDEQUIP_ACTIVATED];
 							}
 							customActivatePressed[i] = YES;
 						}
@@ -1526,7 +1526,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							if (!customModePressed[i])
 							{
 								// initiate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_MODE];
+								[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:equipKey] withMode:OOPRIMEDEQUIP_MODE];
 							}
 							customModePressed[i] = YES;
 						}
@@ -3034,7 +3034,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					OOCreditsQuantity shipprice = 0;
 					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
-						shipprice = [self priceForShipKey:oo::NSStringOrNil(key)];
+						shipprice = [self cxx_priceForShipKey:key.value_or("")];
 					}
 
 					if ([self buySelectedShip])

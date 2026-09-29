@@ -2,14 +2,12 @@
 
 oolite_sources += files(
     'AI.mm',
-    'AI+FoundationBridge.mm',
     'AIGraphViz.mm',
     'CollisionRegion.mm',
     'GameController.mm',
     'GuiDisplayGen.mm',
     'GuiDisplayGen+FoundationBridge.mm',
     'HeadUpDisplay.mm',
-    'HeadUpDisplay+FoundationBridge.mm',
     'NSObjectOOExtensions.mm',
     'OOALBufferedSound.mm',
     'OOALMusic.mm',
@@ -29,7 +27,6 @@ oolite_sources += files(
     'OOColor.mm',
     'OOCommodities.mm',
     'OOCommodityMarket.mm',
-    'OOCommodityMarket+FoundationBridge.mm',
     'OOConstToString.mm',
     'OOConvertCubeMapToLatLong.mm',
     'OOConvertSystemDescriptions.mm',

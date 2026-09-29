@@ -230,7 +230,7 @@ void MissionRunCallback()
 	args[1] = argval2;
 
 	// now reset the mission choice silently, before calling the callback script.
-	[player setMissionChoice:nil keyPress:@"" withEvent:NO];
+	[player cxx_setMissionChoice:std::nullopt keyPress:"" withEvent:NO];
 	
 	// Call the callback.
 	@try
@@ -284,7 +284,7 @@ static bool MissionGetProperty(Context cx, Object thisObj, PropertyId propID, Va
 			break;
 
 		case kMission_screenID:
-			result = [player missionScreenID];
+			result = oo::NSStringOrNil([player cxx_missionScreenID]);
 			break;
 
 		case kMission_exitScreen:
@@ -675,7 +675,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	// Apply settings.
 	if (ooscript::getProperty(context, (params), "title", (&value)) && !ooscript::isUndefined(value))
 	{
-		[player setMissionTitle:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
+		[player cxx_setMissionTitle:cxx_OOStringFromJSValue(context, value)];
 	}
 	else
 	{
@@ -685,7 +685,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			std::optional<std::string> message = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*titleKey)]);
 			if (message.has_value())
 			{
-				[player setMissionTitle:OOExpand(oo::NSStringFrom(*message))];
+				[player cxx_setMissionTitle:oo::OptionalString(OOExpand(oo::NSStringFrom(*message)))];
 			}
 			else
 			{
@@ -808,7 +808,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 
 	if (ooscript::getProperty(context, (params), "screenID", (&value)) && !ooscript::isUndefined(value))
 	{
-		[player setMissionScreenID:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
+		[player cxx_setMissionScreenID:cxx_OOStringFromJSValue(context, value)];
 	}
 	else
 	{
@@ -864,7 +864,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		}
 		else 
 		{
-			[player setMissionChoicesDictionary:oo::ObjectFromPList(choices)];		
+			[player cxx_setMissionChoicesDictionary:choices];		
 		}
 	}
 
@@ -881,7 +881,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	// now clean up!
 	[player cxx_setMissionOverlayDescriptor:oo::PList()];
 	[player cxx_setMissionBackgroundDescriptor:oo::PList()];
-	[player setMissionTitle:nil];
+	[player cxx_setMissionTitle:std::nullopt];
 	[player setMissionMusic:nil];
 	
 	OOJSResumeTimeLimiter();

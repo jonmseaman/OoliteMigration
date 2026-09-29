@@ -3898,7 +3898,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			case WH_SCANINFO_ARRIVAL_TIME:
 			{
 				// a format read at run time (ADR-0043 item 19)
-				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { oo::DescriptionOf(ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO)) });
+				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { cxx_ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO) });
 				cxx_OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_COLLAPSE_TIME:
@@ -4626,6 +4626,26 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 	glColor4f(0.0, 0.0, 0.0, 0.5 * alpha);
 	[self drawOutline];
 	OOGLPopModelView();
+}
+
+@end
+
+
+@implementation OOHUDBeaconCodeIcon
+
+- (id) initWithText:(const std::string &)text
+{
+	if ((self = [super init]))
+	{
+		_text = text;
+	}
+	return self;
+}
+
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z
+{
+	cxx_OODrawString(_text, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
 }
 
 @end

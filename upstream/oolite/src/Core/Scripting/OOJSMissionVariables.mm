@@ -138,7 +138,7 @@ static id MissionVariablesConverter(ooscript::Context context, ooscript::Object 
 {
 	(void)context;
 	(void)object;
-	return [PLAYER missionVariables];
+	return oo::ObjectFromPList([PLAYER cxx_missionVariables]);
 }
 } // namespace
 #endif
@@ -160,7 +160,7 @@ static bool MissionVariablesDeleteProperty(Context cx, Object obj, PropertyId pr
 	if (ooscript::isStringId(jsPropID))
 	{
 		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
-		[player setMissionVariable:nil forKey:oo::NSStringOrNil(key)];
+		if (key.has_value())  [player cxx_setMissionVariable:oo::PList() forKey:*key];
 	}
 	return YES;
 	
@@ -187,7 +187,7 @@ static bool MissionVariablesGetProperty(Context cx, Object obj, PropertyId propI
 		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
 		if (!key.has_value())  return YES;
 		
-		id mvar = [player missionVariableForKey:oo::NSStringFrom(*key)];
+		id mvar = oo::ObjectFromPList([player cxx_missionVariableForKey:*key]);
 		
 		if (oo::IsNSString(mvar))	// Currently there should only be strings, but we may want to change this.
 		{
@@ -233,7 +233,7 @@ static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propI
 		// a string and is gone.)
 		std::optional<std::string> objValue = cxx_OOStringFromJSValue(context, *jsvalue);
 		
-		[player setMissionVariable:oo::NSStringOrNil(objValue) forKey:oo::NSStringFrom(*key)];
+		[player cxx_setMissionVariable:objValue.has_value() ? oo::PList(*objValue) : oo::PList() forKey:*key];
 	}
 	return YES;
 	
@@ -259,7 +259,7 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 		case EnumerateOp::InitAll:	// For ES5 Object.getOwnPropertyNames(). Since we have no non-enumerable properties, this is the same as _INIT.
 		{
 			// -allKeys implicitly makes a copy, which is good since the enumerating code might mutate.
-			enumerator = new MissionVariablesEnumerationState{ oo::StringsFrom([[PLAYER missionVariables] allKeys]) };
+			enumerator = new MissionVariablesEnumerationState{ oo::StringsFrom([oo::ObjectFromPList([PLAYER cxx_missionVariables]) allKeys]) };
 			*jsstate = ooscript::privateValue(enumerator);
 			
 			NSUInteger count = enumerator->keys.size();

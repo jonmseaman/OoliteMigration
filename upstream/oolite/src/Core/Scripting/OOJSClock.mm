@@ -293,7 +293,7 @@ static bool ClockClockStringForTime(ooscript::Context context, ooscript::CallArg
 		return NO;
 	}
 
-	OOJS_RETURN_OBJECT(ClockToString(time, NO));
+	OOJS_RETURN(OOJSValueFromPList(context, oo::PList(cxx_ClockToString(time, NO))));
 
 	OOJS_NATIVE_EXIT
 }

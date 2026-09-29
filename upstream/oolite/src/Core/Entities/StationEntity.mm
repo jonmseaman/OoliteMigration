@@ -597,7 +597,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// we made it through holding!
 	[_shipsOnHold removeObject:ship];
 	
-	[shipAI reactToMessage:@"DOCKING_REQUESTED" context:@"requestDockingCoordinates"];	// react to the request	
+	[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
 	[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:ship];
 
 	return [chosenDock dockingInstructionsForShip:ship];
@@ -940,13 +940,13 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			{
 				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
 								{ [dock displayName].value_or("(null)"),
-								  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 					toShip:player];
 			}
 			else
 			{
 				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
-								{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 					toShip:player];
 			}
 			player_reserved_dock = dock;
@@ -1384,15 +1384,15 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		switch (level)
 		{
 			case STATION_ALERT_LEVEL_GREEN:
-				[shipAI reactToMessage:@"GREEN_ALERT" context:nil];
+				[shipAI cxx_reactToMessage:"GREEN_ALERT" context:std::nullopt];
 				break;
 				
 			case STATION_ALERT_LEVEL_YELLOW:
-				[shipAI reactToMessage:@"YELLOW_ALERT" context:nil];
+				[shipAI cxx_reactToMessage:"YELLOW_ALERT" context:std::nullopt];
 				break;
 				
 			case STATION_ALERT_LEVEL_RED:
-				[shipAI reactToMessage:@"RED_ALERT" context:nil];
+				[shipAI cxx_reactToMessage:"RED_ALERT" context:std::nullopt];
 				break;
 		}
 	}
@@ -2062,7 +2062,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		{
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NOT_REQUIRED];
 		}
-		[shipAI reactToMessage:@"DOCKING_REQUESTED" context:nil];	// react to the request	
+		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
 		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
 
 		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
@@ -2080,7 +2080,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				{
 					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 					[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-extended-until-@")),
-							{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 						toShip:other];
 					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
 					result = "DOCKING_CLEARANCE_EXTENDED";
@@ -2224,18 +2224,18 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		{
 			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
 					{ [player_reserved_dock displayName].value_or("(null)"),
-					  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 				toShip:other];
 		}
 		else
 		{
 			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
-					{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 				toShip:other];
 		}
 
 		result = "DOCKING_CLEARANCE_GRANTED";
-		[shipAI reactToMessage:@"DOCKING_REQUESTED" context:nil];	// react to the request	
+		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
 		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
 	}
 	return result;
@@ -2345,7 +2345,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{		
 		if (oo::IsNSArray(determinant))
 		{
-			return [PLAYER scriptTestConditions:oo::ObjectFromPList(OOSanitizeLegacyScriptConditions(oo::PListFrom(determinant), std::nullopt))];
+			return [PLAYER cxx_scriptTestConditions:OOSanitizeLegacyScriptConditions(oo::PListFrom(determinant), std::nullopt)];
 		}
 		else
 		{
