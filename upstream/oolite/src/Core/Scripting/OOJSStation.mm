@@ -432,7 +432,8 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_allegiance:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([entity cxx_allegiance]));
+			const std::optional<std::string> allegiance = [entity cxx_allegiance];
+			*value_raw = OOJSValueFromPList(context, allegiance.has_value() ? oo::PList(*allegiance) : oo::PList());	// null for none
 			return YES;
 		}
 			
@@ -960,7 +961,7 @@ static bool StationLaunchPolice(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_BEGIN_FULL_NATIVE(context)
 	launched = oo::ObjCRefsFrom<ShipEntity *>([station launchPolice]);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(launched));
+	OOJS_RETURN_PLIST(oo::PListFromObjects(launched));
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -1192,16 +1193,20 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 
 	oo::PList::Dict result;
 	const oo::PList shipyardDefinition = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
-	id shipyardDefinitionObject = oo::ObjectFromPList(shipyardDefinition);
 	// validate each element of the dictionary
-	if (!shipyardDefinitionObject)  
+	if (shipyardDefinition.isNull())  
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "valid dictionary object");
 		return NO;
 	}
-	// This first test messages the converted object, as it did: a JavaScript array converts to an
-	// array, which raised on -objectForKey:.
-	if (![shipyardDefinitionObject objectForKey:oo::NSStringFrom(KEY_SHORT_DESCRIPTION)])
+	// This first test is -objectForKey: on the converted object, as it was: anything but a
+	// dictionary (a JavaScript array converts to an array) raised, which OOJS_NATIVE_EXIT reported.
+	if (!shipyardDefinition.isDict())
+	{
+		cxx_OOJSReportError(context, "Unidentified native exception");
+		return NO;
+	}
+	if (shipyardDefinition.find(KEY_SHORT_DESCRIPTION) == nullptr)
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'short_description' in dictionary");
 		return NO;
