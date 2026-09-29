@@ -326,7 +326,7 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 	{
 		// Method with argument; substitute [description] expressions. The action is called by
 		// name, so its argument stays a string object (ADR-0043 item 21).
-		[target performSelector:selector withObject:OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(*argumentString), nil, oo::ObjectFromPList([player localVariablesForMission:sCurrentMissionKey]), nil, kOOExpandNoOptions)];
+		[target performSelector:selector withObject:oo::NSStringOrNil(cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), *argumentString, oo::PList(), [player localVariablesForMission:sCurrentMissionKey], std::nullopt, kOOExpandNoOptions))];
 	}
 	else
 	{
@@ -933,7 +933,7 @@ static BOOL sRunningScript = NO;
 		}
 		else if (oo::str::hasPrefix(valueString, "[") && oo::str::hasSuffix(valueString, "]"))
 		{
-			replace(valueString, oo::StdString(OOExpand(oo::NSStringFrom(valueString))));
+			replace(valueString, cxx_OOExpand(valueString).value_or(std::string()));
 		}
 	}
 
@@ -974,7 +974,7 @@ static BOOL sRunningScript = NO;
 		return;
 	}
 
-	const std::string expanded = oo::StdString(OOExpand(oo::NSStringFrom(text)));
+	const std::string expanded = cxx_OOExpand(text).value_or(std::string());
 	[self cxx_setMissionVariable:oo::PList([self replaceVariablesInString:expanded].value_or(std::string())) forKey:*key];
 }
 
@@ -994,7 +994,7 @@ static BOOL sRunningScript = NO;
 		const std::optional<std::string> text = StringAtIndex(list, i);
 		if (text.has_value())
 		{
-			const std::string expanded = oo::StdString(OOExpand(oo::NSStringFrom(*text)));
+			const std::string expanded = cxx_OOExpand(*text).value_or(std::string());
 			expandedList.push_back(oo::PList([self replaceVariablesInString:expanded].value_or(std::string())));
 		}
 	}
@@ -1292,7 +1292,7 @@ static int shipsFound;
 	very_random_seed.e = rand() & 255;
 	very_random_seed.f = rand() & 255;
 	seed_RNG_only_for_planet_description(very_random_seed);
-	return [self replaceVariablesInString:oo::StdString(OOExpand(oo::NSStringFrom(valueString)))];
+	return [self replaceVariablesInString:cxx_OOExpand(valueString).value_or(std::string())];
 }
 
 
@@ -1374,7 +1374,7 @@ static int shipsFound;
 	}
 	else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:equipString])
 	{
-		[self addEquipmentItem:equipString withValidation:YES inContext:@"scripted"];
+		[self addEquipmentItem:equipKey withValidation:YES inContext:"scripted"];
 	}
 }
 
@@ -1398,7 +1398,7 @@ static int shipsFound;
 	}
 	if ([self hasEquipmentItem:equipString] || [self hasEquipmentItem:oo::NSStringFrom(equipKey + "_DAMAGED")])
 	{
-		[self removeEquipmentItem:equipString];
+		[self removeEquipmentItem:equipKey];
 	}
 
 }
@@ -1542,7 +1542,7 @@ static int shipsFound;
 	const std::string description = oo::StdString(descriptionString);
 	[self removeAllCargo:YES];
 	OO_LOG(kOOLogNoteUseSpecialCargo, "Going to useSpecialCargo:'{}'", description);
-	specialCargo = oo::OptionalString(OOExpand(oo::NSStringFrom(description)));
+	specialCargo = cxx_OOExpand(description);
 }
 
 
@@ -1985,7 +1985,7 @@ static int shipsFound;
 	// Replace literal \n in strings with line breaks and perform expansions.
 	const std::optional<std::string> text = MissionTextForKey(key.value_or(std::string()));
 	if (!key.has_value() || !text.has_value())  return;
-	const std::string expanded = oo::StdString(OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, oo::NSStringFrom(*text)));
+	const std::string expanded = cxx_OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, *text).value_or(std::string());
 
 	[self addLiteralMissionText:oo::NSStringOrNil([self replaceVariablesInString:expanded])];
 }
@@ -2115,7 +2115,7 @@ static int shipsFound;
 		{
 			continue; // invalid type
 		}
-		choiceText = oo::StdString(OOExpand(oo::NSStringFrom(choiceText)));
+		choiceText = cxx_OOExpand(choiceText).value_or(std::string());
 		choiceText = [self replaceVariablesInString:choiceText].value_or(std::string());
 		// allow blank rows
 		if (choiceText != "  ")
@@ -2314,7 +2314,7 @@ static int shipsFound;
 	if (mainStation != nil)
 	{
 		[UNIVERSE unMagicMainStation];
-		[mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:@""];	// 500 million should do it!
+		[mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];	// 500 million should do it!
 	}
 }
 
@@ -2380,7 +2380,7 @@ static int shipsFound;
 
 	Quaternion planetOrientation;
 	const oo::PList *orientation = dict.find("orientation");
-	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
+	if (cxx_ScanQuaternionFromString((orientation != nullptr && orientation->isString()) ? std::optional<std::string>(*orientation->getIf<std::string>()) : std::nullopt, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
@@ -2405,7 +2405,7 @@ static int shipsFound;
 	}
 	else
 	{
-		ScanHPVectorFromString(oo::NSStringFrom(positionString), &posn);
+		cxx_ScanHPVectorFromString(positionString, &posn);
 		OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
 	[planet setPosition: posn];
@@ -2436,7 +2436,7 @@ static int shipsFound;
 
 	Quaternion planetOrientation;
 	const oo::PList *orientation = dict.find("orientation");
-	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
+	if (cxx_ScanQuaternionFromString((orientation != nullptr && orientation->isString()) ? std::optional<std::string>(*orientation->getIf<std::string>()) : std::nullopt, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
@@ -2461,7 +2461,7 @@ static int shipsFound;
 	}
 	else
 	{
-		ScanHPVectorFromString(oo::NSStringFrom(positionString), &posn);
+		cxx_ScanHPVectorFromString(positionString, &posn);
 		OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
 	[planet setPosition: posn];
@@ -2737,7 +2737,7 @@ static int shipsFound;
 			return NO;				//		   0.... 1.. 2 3 4
 		const std::string &scene_key = i_info[1];
 		Vector	scene_offset = {0};
-		ScanVectorFromString(oo::NSStringFrom(joined(2, 3)), &scene_offset);
+		cxx_ScanVectorFromString(joined(2, 3), &scene_offset);
 		scene_offset.x += off.x;	scene_offset.y += off.y;	scene_offset.z += off.z;
 		const oo::PList scene_items = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(scene_key)]);
 		OO_LOG(kOOLogDebugProcessSceneStringAddScene, "::::: adding scene: '{}'", scene_key);
@@ -2773,7 +2773,7 @@ static int shipsFound;
 		if (!ship)
 			return NO;
 
-		ScanVectorAndQuaternionFromString(oo::NSStringFrom(joined(2, 7)), &model_p0, &model_q);
+		cxx_ScanVectorAndQuaternionFromString(joined(2, 7), &model_p0, &model_q);
 
 		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::NSStringFrom(i_info[9]));
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
@@ -2806,7 +2806,7 @@ static int shipsFound;
 		if (!doppelganger)
 			return NO;
 
-		ScanVectorAndQuaternionFromString(oo::NSStringFrom(joined(1, 7)), &model_p0, &model_q);
+		cxx_ScanVectorAndQuaternionFromString(joined(1, 7), &model_p0, &model_q);
 
 		Vector	model_offset = positionOffsetForShipInRotationToAlignment( doppelganger, model_q, oo::NSStringFrom(i_info[8]));
 		model_p0.x += off.x - model_offset.x;
@@ -2889,7 +2889,7 @@ static int shipsFound;
 		if (doppelganger == nil)  return NO;
 #endif
 
-		ScanVectorFromString(oo::NSStringFrom(joined(1, 3)), &model_p0);
+		cxx_ScanVectorFromString(joined(1, 3), &model_p0);
 
 		// miniature radii are roughly between 60 and 120. Place miniatures with a radius bigger than 60 a bit futher away.
 		model_p0 = vector_multiply_scalar(model_p0, 1 - 0.5 * ((60 - [doppelganger radius]) / 60));

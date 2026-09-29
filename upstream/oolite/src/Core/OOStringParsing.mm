@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "OOFunctionAttributes.h"
-#import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
 #import "HeadUpDisplay.h"
 

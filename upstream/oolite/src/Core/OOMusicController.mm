@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 
 #import "OOMusicController.h"
 #import "OOSound.h"
-#import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
@@ -234,7 +233,7 @@ enum
 
 - (std::optional<std::string>) playingMusic
 {
-	return oo::OptionalString([_current name]);
+	return [_current cxx_name];
 }
 
 

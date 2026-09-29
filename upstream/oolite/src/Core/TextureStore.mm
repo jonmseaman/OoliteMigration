@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #endif
 
-#import "OOCollectionExtractors.h"
 #import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
