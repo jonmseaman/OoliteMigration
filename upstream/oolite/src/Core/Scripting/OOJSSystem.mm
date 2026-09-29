@@ -830,7 +830,7 @@ static bool SystemAddPlanet(ooscript::Context context, ooscript::CallArgs &oojsA
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	planet = [player addPlanet:oo::NSStringFrom(*key)];
+	planet = [player cxx_addPlanet:*key];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(planet);
@@ -859,7 +859,7 @@ static bool SystemAddMoon(ooscript::Context context, ooscript::CallArgs &oojsArg
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	planet = [player addMoon:oo::NSStringFrom(*key)];
+	planet = [player cxx_addMoon:*key];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(planet);
@@ -1311,7 +1311,7 @@ static bool SystemLegacyAddShipsAt(ooscript::Context context, ooscript::CallArgs
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	arg = oo::str::format("%s %d %s %f %f %f", role->c_str(), count, coordScheme->c_str(), where.x, where.y, where.z);
-	[player addShipsAt:oo::NSStringFrom(arg)];
+	[player addShipsAt:arg];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1352,7 +1352,7 @@ static bool SystemLegacyAddShipsAtPrecisely(ooscript::Context context, ooscript:
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	arg = oo::str::format("%s %d %s %f %f %f", role->c_str(), count, coordScheme->c_str(), where.x, where.y, where.z);
-	[player addShipsAtPrecisely:oo::NSStringFrom(arg)];
+	[player addShipsAtPrecisely:arg];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1396,7 +1396,7 @@ static bool SystemLegacyAddShipsWithinRadius(ooscript::Context context, ooscript
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	arg = oo::str::format("%s %d %s %f %f %f %f", role->c_str(), count, coordScheme->c_str(), where.x, where.y, where.z, radius);
-	[player addShipsWithinRadius:oo::NSStringFrom(arg)];
+	[player addShipsWithinRadius:arg];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;

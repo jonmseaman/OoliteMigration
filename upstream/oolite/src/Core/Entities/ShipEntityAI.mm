@@ -203,8 +203,8 @@ using ooscript::Context;
 - (void) performHyperSpaceExitWithoutReplacing;
 - (void) wormholeGroup;
 
-- (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21)
-- (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) ejectCargo;
 
@@ -1703,15 +1703,15 @@ using ooscript::Context;
 }
 
 
-- (void) commsMessage:(id)valueString	// called by name (ADR-0043 item 21)
+- (void) commsMessage:(const std::string &)valueString	// called by name (ADR-0043 item 21)
 {
-	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:NO];
+	[self cxx_commsMessage:valueString withUnpilotedOverride:NO];
 }
 
 
-- (void) commsMessageByUnpiloted:(id)valueString	// called by name (ADR-0043 item 21)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString	// called by name (ADR-0043 item 21)
 {
-	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:YES];
+	[self cxx_commsMessage:valueString withUnpilotedOverride:YES];
 }
 
 
