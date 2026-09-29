@@ -1367,37 +1367,37 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	case OXZ_STATE_SETFILTER:
 		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-setfilter"))];
 		[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-currentfilter-is-@"), {_currentFilter}) forRow:OXZ_GUI_ROW_FILTERCURRENT align:GUI_ALIGN_LEFT];
-		[gui addLongText:DESC(@"oolite-oxzmanager-filterhelp") startingAtRow:OXZ_GUI_ROW_FILTERHELP align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-filterhelp")) startingAtRow:OXZ_GUI_ROW_FILTERHELP align:GUI_ALIGN_LEFT];
 
 		
 		return; // don't do normal row selection stuff
 	case OXZ_STATE_NODATA:
 		if (!_oxzList)
 		{
-			[gui addLongText:DESC(@"oolite-oxzmanager-firstrun") startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
-			[gui setText:DESC(@"oolite-oxzmanager-download-list") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
-			[gui setKey:@"_UPDATE" forRow:OXZ_GUI_ROW_UPDATE];
+			[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-firstrun")) startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-download-list")) forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:"_UPDATE" forRow:OXZ_GUI_ROW_UPDATE];
 
 			startRow = OXZ_GUI_ROW_UPDATE;
 		}
 		else
 		{
 			// update data	
-			[gui addLongText:DESC(@"oolite-oxzmanager-secondrun") startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
-			[gui setText:DESC(@"oolite-oxzmanager-download-noupdate") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
-			[gui setKey:@"_MAIN" forRow:OXZ_GUI_ROW_PROCEED];
+			[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-secondrun")) startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-download-noupdate")) forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:"_MAIN" forRow:OXZ_GUI_ROW_PROCEED];
 
-			[gui setText:DESC(@"oolite-oxzmanager-update-list") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
-			[gui setKey:@"_UPDATE" forRow:OXZ_GUI_ROW_UPDATE];
+			[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-update-list")) forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:"_UPDATE" forRow:OXZ_GUI_ROW_UPDATE];
 
 			startRow = OXZ_GUI_ROW_PROCEED;
 		}
 		break;
 	case OXZ_STATE_RESTARTING:
-		[gui addLongText:DESC(@"oolite-oxzmanager-restart") startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-restart")) startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
 		return; // yes, return, not break: controls are pointless here
 	case OXZ_STATE_MAIN:
-		[gui addLongText:DESC(@"oolite-oxzmanager-intro") startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-intro")) startingAtRow:OXZ_GUI_ROW_FIRSTRUN align:GUI_ALIGN_LEFT];
 		// fall through
 	case OXZ_STATE_PICK_INSTALL:
 	case OXZ_STATE_PICK_INSTALLED:
@@ -1408,16 +1408,16 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTFILTER];
 		}
 
-		[gui setText:DESC(@"oolite-oxzmanager-install") forRow:OXZ_GUI_ROW_INSTALL align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_INSTALL" forRow:OXZ_GUI_ROW_INSTALL];
-		[gui setText:DESC(@"oolite-oxzmanager-installed") forRow:OXZ_GUI_ROW_INSTALLED align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_INSTALLED" forRow:OXZ_GUI_ROW_INSTALLED];
-		[gui setText:DESC(@"oolite-oxzmanager-remove") forRow:OXZ_GUI_ROW_REMOVE align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_REMOVE" forRow:OXZ_GUI_ROW_REMOVE];
-		[gui setText:DESC(@"oolite-oxzmanager-update-list") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_UPDATE" forRow:OXZ_GUI_ROW_UPDATE];
-		[gui setText:DESC(@"oolite-oxzmanager-update-all") forRow:OXZ_GUI_ROW_UPDATE_ALL align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_UPDATE_ALL" forRow:OXZ_GUI_ROW_UPDATE_ALL];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-install")) forRow:OXZ_GUI_ROW_INSTALL align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_INSTALL" forRow:OXZ_GUI_ROW_INSTALL];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-installed")) forRow:OXZ_GUI_ROW_INSTALLED align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_INSTALLED" forRow:OXZ_GUI_ROW_INSTALLED];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-remove")) forRow:OXZ_GUI_ROW_REMOVE align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_REMOVE" forRow:OXZ_GUI_ROW_REMOVE];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-update-list")) forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_UPDATE" forRow:OXZ_GUI_ROW_UPDATE];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-update-all")) forRow:OXZ_GUI_ROW_UPDATE_ALL align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_UPDATE_ALL" forRow:OXZ_GUI_ROW_UPDATE_ALL];
 
 		startRow = OXZ_GUI_ROW_INSTALL;
 		break;
@@ -1435,32 +1435,32 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
 
-		[gui setText:DESC(@"oolite-oxzmanager-cancel") forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-cancel")) forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
 		startRow = OXZ_GUI_ROW_UPDATE;
 		break;
 	case OXZ_STATE_DEPENDENCIES:
 		[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-dependencies"))];
 
-		[gui setText:DESC(@"oolite-oxzmanager-dependencies-decision") forRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-dependencies-decision")) forRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 
 		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
 
 		startRow = OXZ_GUI_ROW_INSTALLED;
-		[gui setText:DESC(@"oolite-oxzmanager-dependencies-yes-all") forRow:OXZ_GUI_ROW_INSTALLED align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_PROCEED_ALL" forRow:OXZ_GUI_ROW_INSTALLED];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-dependencies-yes-all")) forRow:OXZ_GUI_ROW_INSTALLED align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_PROCEED_ALL" forRow:OXZ_GUI_ROW_INSTALLED];
 
-		[gui setText:DESC(@"oolite-oxzmanager-dependencies-yes") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_PROCEED" forRow:OXZ_GUI_ROW_PROCEED];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-dependencies-yes")) forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_PROCEED" forRow:OXZ_GUI_ROW_PROCEED];
 
-		[gui setText:DESC(@"oolite-oxzmanager-dependencies-no") forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-dependencies-no")) forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
 		break;
 
 	case OXZ_STATE_REMOVING:
-		[gui addLongText:DESC(@"oolite-oxzmanager-removal-done") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
-		[gui setText:DESC(@"oolite-oxzmanager-acknowledge") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
+		[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-removal-done")) startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-acknowledge")) forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
 		startRow = OXZ_GUI_ROW_UPDATE;
 		break;
 	case OXZ_STATE_TASKDONE:
@@ -1474,8 +1474,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+4 align:GUI_ALIGN_LEFT];
 
-		[gui setText:DESC(@"oolite-oxzmanager-acknowledge") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-acknowledge")) forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
 		startRow = OXZ_GUI_ROW_UPDATE;
 		break;
 	case OXZ_STATE_EXTRACT:
@@ -1487,9 +1487,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui cxx_setTitle:oo::OptionalString(DESC(@"oolite-oxzmanager-title-extract"))];
 			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-title-@-version-@"), {Arg(title), Arg(version)})
 				  forRow:0 align:GUI_ALIGN_LEFT];
-			[gui addLongText:DESC(@"oolite-oxzmanager-extract-info") startingAtRow:2 align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-extract-info")) startingAtRow:2 align:GUI_ALIGN_LEFT];
 #ifdef NDEBUG
-			[gui addLongText:DESC(@"oolite-oxzmanager-extract-releasebuild") startingAtRow:7 align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-extract-releasebuild")) startingAtRow:7 align:GUI_ALIGN_LEFT];
 			[gui setColor:[OOColor orangeColor] forRow:7];
 			[gui setColor:[OOColor orangeColor] forRow:8];
 #endif
@@ -1500,7 +1500,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-extract-@-already-exists"), {Arg(path)})
 				  startingAtRow:10 align:GUI_ALIGN_LEFT];
 				startRow = OXZ_GUI_ROW_CANCEL;
-				[gui setText:DESC(@"oolite-oxzmanager-extract-unavailable") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-extract-unavailable")) forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
 				[gui setColor:[OOColor grayColor] forRow:OXZ_GUI_ROW_PROCEED];
 			}
 			else
@@ -1508,19 +1508,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-extract-to-@"), {Arg(path)})
 				  startingAtRow:10 align:GUI_ALIGN_LEFT];
 				startRow = OXZ_GUI_ROW_PROCEED;
-				[gui setText:DESC(@"oolite-oxzmanager-extract-proceed") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
-				[gui setKey:@"_PROCEED" forRow:OXZ_GUI_ROW_PROCEED];
+				[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-extract-proceed")) forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
+				[gui cxx_setKey:"_PROCEED" forRow:OXZ_GUI_ROW_PROCEED];
 
 			}
-			[gui setText:DESC(@"oolite-oxzmanager-extract-cancel") forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
-			[gui setKey:@"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
+			[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-extract-cancel")) forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
 
 		}	
 		break;
 	case OXZ_STATE_EXTRACTDONE:
 		[gui cxx_addLongText:_progressStatus startingAtRow:1 align:GUI_ALIGN_LEFT];
-		[gui setText:DESC(@"oolite-oxzmanager-acknowledge") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
-		[gui setKey:@"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-acknowledge")) forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
 		startRow = OXZ_GUI_ROW_UPDATE;
 		break;
 
@@ -1548,13 +1548,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if (_changesMade)
 	{
-		[gui setText:DESC(@"oolite-oxzmanager-exit-restart") forRow:OXZ_GUI_ROW_EXIT align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-exit-restart")) forRow:OXZ_GUI_ROW_EXIT align:GUI_ALIGN_CENTER];
 	}
 	else
 	{
-		[gui setText:DESC(@"oolite-oxzmanager-exit") forRow:OXZ_GUI_ROW_EXIT align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-oxzmanager-exit")) forRow:OXZ_GUI_ROW_EXIT align:GUI_ALIGN_CENTER];
 	}
-	[gui setKey:@"_EXIT" forRow:OXZ_GUI_ROW_EXIT];
+	[gui cxx_setKey:"_EXIT" forRow:OXZ_GUI_ROW_EXIT];
 	[gui setSelectableRange:NSMakeRange(startRow,2+(OXZ_GUI_ROW_EXIT-startRow))];
 	if (startRow < OXZ_GUI_ROW_INSTALL)
 	{
@@ -1993,7 +1993,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-back")), "", "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
-		[gui setKey:@"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setKey:"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	else
 	{
@@ -2001,14 +2001,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
-		[gui setText:@"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	if (_offset + 10 < optCount)
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-more")), "", "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
-		[gui setKey:@"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setKey:"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 	else
 	{
@@ -2016,21 +2016,21 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
-		[gui setText:@"" forRow:OXZ_GUI_ROW_LISTNEXT align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTNEXT align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 
 	// clear any previous longtext
 	for (NSUInteger i = OXZ_GUI_ROW_LISTSTATUS; i < OXZ_GUI_ROW_INSTALL-1; i++)
 	{
-		[gui setText:@"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:i];
+		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
 	}
 	// and any previous listed entries
 	for (NSUInteger i = OXZ_GUI_ROW_LISTSTART; i < OXZ_GUI_ROW_LISTNEXT; i++)
 	{
-		[gui setText:@"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:i];
+		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
 	}
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
@@ -2201,7 +2201,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	if (options.empty())
 	{
-		[gui addLongText:DESC(@"oolite-oxzmanager-nothing-removable") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-nothing-removable")) startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		return startRow;
 	}
 
@@ -2218,7 +2218,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-back")), "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
-		[gui setKey:@"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setKey:"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	else
 	{
@@ -2226,14 +2226,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
-		[gui setText:@"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	if (_offset + OXZ_GUI_NUM_LISTROWS < [self managedOXZs].count())
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-more")), "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
-		[gui setKey:@"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setKey:"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 	else
 	{
@@ -2241,21 +2241,21 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
-		[gui setText:@"" forRow:OXZ_GUI_ROW_LISTNEXT align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTNEXT align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 
 	// clear any previous longtext
 	for (NSUInteger i = OXZ_GUI_ROW_LISTDESC; i < OXZ_GUI_ROW_INSTALL-1; i++)
 	{
-		[gui setText:@"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:i];
+		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
 	}
 	// and any previous listed entries
 	for (NSUInteger i = OXZ_GUI_ROW_LISTSTART; i < OXZ_GUI_ROW_LISTNEXT; i++)
 	{
-		[gui setText:@"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui setKey:GUI_KEY_SKIP forRow:i];
+		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
 	}
 
 
@@ -2289,7 +2289,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if (!oxzSelected)
 	{
-		[gui addLongText:DESC(@"oolite-oxzmanager-remover-nonepicked") startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-oxzmanager-remover-nonepicked")) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 	}
 
 	return startRow;	

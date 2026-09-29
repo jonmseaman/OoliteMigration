@@ -731,10 +731,10 @@ static BOOL _refreshStarChart = NO;
 	[self cxx_setTitle:std::nullopt];
 	for (i = 0; i < n_rows; i++)
 	{
-		[self setText:@"" forRow:i align:GUI_ALIGN_LEFT];
+		[self cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
 		[self setColor:textColor forRow:i];
 		//
-		[self setKey:GUI_KEY_SKIP forRow:i];
+		[self cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
 		//
 		rowFadeTime[i] = 0.0f;
 	}

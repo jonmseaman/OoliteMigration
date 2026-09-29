@@ -2023,7 +2023,7 @@ static bool PlayerShipSetMultiFunctionText(ooscript::Context context, ooscript::
 	else
 	{
 		GuiDisplayGen	*gui = [UNIVERSE gui];
-		[player cxx_setMultiFunctionText:oo::OptionalString([gui reflowTextForMFD:oo::NSStringOrNil(value)]) forKey:key];
+		[player cxx_setMultiFunctionText:[gui cxx_reflowTextForMFD:value] forKey:key];
 	}
 
 	OOJS_RETURN_VOID;
