@@ -7061,7 +7061,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	if (_escortGroup == nil)
 	{
-		_escortGroup = [[OOShipGroup alloc] initWithName:@"escort group"];
+		_escortGroup = [[OOShipGroup alloc] cxx_initWithName:std::string("escort group")];
 		[_escortGroup setLeader:self];
 	}
 	
@@ -7093,7 +7093,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	if (_group == nil)
 	{
-		_group = [[OOShipGroup alloc] initWithName:@"station group"];
+		_group = [[OOShipGroup alloc] cxx_initWithName:std::string("station group")];
 		[_group setLeader:self];
 	}
 	
