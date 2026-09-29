@@ -472,23 +472,16 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
 | `src/Core/GuiDisplayGen+FoundationBridge.h/.mm` (chunked: oo-3rb.92 made it; chunks oo-3rb.93-.96 move their own selectors in) | oo-3rb.92 (chunks of oo-ol63) | oo-q01b ("Delete GuiDisplayGen+FoundationBridge") |
-| `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
 | `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |
-| `src/Core/Scripting/OOScript+FoundationBridge.h/.mm` | oo-du83 | oo-eu4j ("Delete OOScript+FoundationBridge") |
 | `src/Core/OOStringParsing+FoundationBridge.h/.mm` (also where the NSString (OOUtilities) category retires) | oo-3rb.124 (chunks of oo-1886) | oo-0gzp ("Delete OOStringParsing+FoundationBridge") |
 | `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
-| `src/Core/Entities/PlayerEntityContracts+FoundationBridge.h/.mm` (category `PlayerEntity (ContractsFoundationBridge)`; chunked: oo-3rb.179 made it; chunks oo-3rb.180-.185 move their own selectors in) | oo-3rb.179 (chunks of oo-ldqo) | oo-t8p6 ("Delete PlayerEntityContracts+FoundationBridge") |
 | `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog hook, Amendment 2 item 18(a); also the Foundation-typed functions until oo-vors removes them) | oo-vjts | oo-qps (with gnustep-base) |
-| `src/Core/Entities/PlayerEntitySound+FoundationBridge.h/.mm` (category `PlayerEntity (SoundFoundationBridge)`) | oo-14c5 | oo-qx1l ("Delete PlayerEntitySound+FoundationBridge") |
 | `src/Core/Entities/ShipEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.232 made it; chunks oo-3rb.233-.242 of oo-3rb.73 move their own selectors in) | oo-3rb.232 | oo-pizp ("Delete ShipEntity+FoundationBridge") |
 | `src/Core/OOStringExpander+FoundationBridge.h/.mm` (also the OOExpand* macros and their argument-dictionary / boxing machinery; chunked: oo-3rb.145 made it) | oo-3rb.145 (chunks of oo-3il6) | oo-m2nh ("Delete OOStringExpander+FoundationBridge") |
 | `src/Core/GameController+FoundationBridge.h/.mm` (chunked: oo-3rb.88 made it; chunks oo-3rb.89-.91 move their own selectors in) | oo-3rb.88 (chunks of oo-m6ej) | oo-6abg ("Delete GameController+FoundationBridge") |
-| `src/Core/HeadUpDisplay+FoundationBridge.h/.mm` (chunked: oo-3rb.209 made it; chunks oo-3rb.210-.213 move their own selectors in; also carries the `NSString (OOHUDBeaconIcon)` category) | oo-3rb.209 (chunks of oo-3rb.81) | oo-f9rf ("Delete HeadUpDisplay+FoundationBridge") |
 | `src/Core/Universe+FoundationBridge.h/.mm` (chunked: oo-3rb.220 made it; chunks oo-3rb.221-.231 move their own selectors in; also the `OOLookUp*DescriptionPRIV` functions behind DESC()) | oo-3rb.220 (chunks of oo-3rb.79) | oo-mr9c ("Delete Universe+FoundationBridge") |
-| `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
-| `src/Core/Entities/PlayerEntityLegacyScriptEngine+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptingFoundationBridge)`; chunked: oo-3rb.190 made it; chunks oo-3rb.191-.197 move their own selectors in) | oo-3rb.190 (chunks of oo-j924) | oo-53in ("Delete PlayerEntityLegacyScriptEngine+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 

@@ -592,7 +592,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 			k_int = (OOKeyCode)def.get<long long>("key");	// -integerValue
 			if (k_int > 0)
 			{
-				keystring = oo::OptionalString([self keyCodeDescription:k_int]);
+				keystring = [self cxx_keyCodeDescription:k_int];
 				if (def.get<bool>("shift") == YES) keyshift = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-on"));
 				if (def.get<bool>("mod1") == YES) keymod1 = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-on"));
 				if (def.get<bool>("mod2") == YES) keymod2 = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-on"));
@@ -750,7 +750,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	//if ([key isEqualToString:@"(not set)"]) key = @"";
 	OOKeyCode k_int = (OOKeyCode)(def != nullptr ? def->get<long long>("key") : 0);	// -integerValue
 	[gameView resetTypedString];
-	[gameView cxx_setTypedString:(k_int != 0 ? oo::StdString([self keyCodeDescriptionShort:k_int]) : std::string())];
+	[gameView cxx_setTypedString:(k_int != 0 ? [self cxx_keyCodeDescriptionShort:k_int].value_or(std::string()) : std::string())];
 	[gameView setStringInput:gvStringInputAll];
 
 	[gui clear];
@@ -851,7 +851,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		NSInteger k_int = (OOKeyCode)key_def.get<long long>("key");	// -integerValue
 		if (k_int > 0)
 		{
-			const std::optional<std::string> keystring = oo::OptionalString([self keyCodeDescription:k_int]);
+			const std::optional<std::string> keystring = [self cxx_keyCodeDescription:k_int];
 			std::optional<std::string> newstring;
 			if (keystring && oo::str::length(*keystring) == 1)
 			{
@@ -1012,7 +1012,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 				if (![self entryIsDictCustomEquip:entry])
 				{
 					// Find out what's assigned for this function currently.
-					assignment = oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringOrNil(definition)]);
+					assignment = [PLAYER cxx_keyBindingDescription2:definition.value_or(std::string())];
 					override = (definition && overrides.find(*definition) != nullptr ? "Yes" : ""); // work out whether this assignment is overriding the setting in keyconfig2.plist
 					validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
 				}
@@ -1022,7 +1022,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 					NSUInteger idx = [self getCustomEquipIndex:definition.value_or("")];
 					const oo::PList &equip = CustomEquipEntry(customEquipActivation, idx);
 					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
-					assignment = oo::OptionalString([PLAYER getKeyBindingDescription:(keyArray != nullptr ? oo::ObjectFromPList(*keyArray) : nil)]);
+					assignment = [PLAYER cxx_getKeyBindingDescription:(keyArray != nullptr ? *keyArray : oo::PList())];
 					const std::optional<std::string> itemKey = OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY));
 					OOEquipmentType	*item = itemKey.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*itemKey] : nil;
 					bool result = true;

@@ -343,8 +343,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			if (const oo::PList *scriptInfo = extraInfo.get<oo::PList::Dict>("script_info"))  _scriptInfo = *scriptInfo;
 
 			_script = StringFor(extraInfo, "script");
-			// +jsScriptFromFileNamed:properties: is not migrated: the name crosses at the call.
-			if (_script.has_value() && ![OOScript jsScriptFromFileNamed:oo::NSStringFrom(*_script) properties:nil])  _script.reset();
+			if (_script.has_value() && ![OOScript cxx_jsScriptFromFileNamed:*_script properties:oo::PList()])  _script.reset();
 			if (_script.has_value())
 			{
 				_fastAffinityA = !!extraInfo.get<bool>("fast_affinity_defensive");
@@ -811,7 +810,6 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 - (OOTechLevelID) effectiveTechLevel
 {
 	OOTechLevelID			tl;
-	id						missionVar = nil;
 	
 	tl = [self techLevel];
 	if (tl == kOOVariableTechLevel)
@@ -819,9 +817,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 		cxx_OOStandardsDeprecated(oo::str::format("TL99 is deprecated for %s", _identifier.c_str()));
 		if (!OOEnforceStandards())
 		{
-			missionVar = [PLAYER missionVariableForKey:oo::NSStringFrom("mission_TL_FOR_" + _identifier)];
-			const oo::PList missionValue = oo::PListFrom(missionVar);	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
-			tl = static_cast<NSInteger>(oo::plist_get::unsignedLongLongFrom((missionVar != nil) ? &missionValue : nullptr, tl));
+			const oo::PList missionValue = [PLAYER cxx_missionVariableForKey:"mission_TL_FOR_" + _identifier];	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
+			tl = static_cast<NSInteger>(oo::plist_get::unsignedLongLongFrom(!missionValue.isNull() ? &missionValue : nullptr, tl));
 		}
 	}
 	
