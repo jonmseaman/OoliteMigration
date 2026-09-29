@@ -455,7 +455,29 @@ stage_mesa() {
   done
   [ -f "$APP_DIR/libgallium_wgl.dll" ] \
     || fail build "no libgallium_wgl.dll in $(native "$APP_DIR") and none at $prefix/bin; the preflight tests in stage 2 need it staged and would fail for a reason unrelated to the commit"
-  detail "mesa      $staged DLL(s) staged from $prefix/bin (llvmpipe beside the binary)"
+  # Mesa's own runtime closure (libLLVM-22.dll and what it imports: libffi, libxml2, libzstd,
+  # libintl...), as post_build.sh stages the binary's. opengl32.dll loads libgallium_wgl.dll at
+  # run time, so no walk from oolite.exe reaches these; until oo-qps.18 four of them were beside
+  # the binary only because gnustep-base imported them too, which is what kept
+  # test_launch_preflight's "deps staged beside the binary" arm true. Same concurrency rule as
+  # above.
+  local unix_prefix dep name pending next extra=0
+  unix_prefix="$(cygpath -u "$prefix")"
+  pending="$APP_DIR/libgallium_wgl.dll"
+  while [ -n "$pending" ]; do
+    next=""
+    for dll in $pending; do
+      while IFS= read -r dep; do
+        [ -n "$dep" ] || continue
+        name="${dep##*/}"
+        [ -f "$APP_DIR/$name" ] && continue
+        cp -f "$dep" "$APP_DIR/" 2>/dev/null && { extra=$(( extra + 1 )); next="$next $APP_DIR/$name"; } \
+          || printf 'tier-b: could not stage %s beside the binary\n' "$name" >&2
+      done < <(ldd "$dll" 2>/dev/null | awk -v p="$unix_prefix/" 'index($3, p) == 1 {print $3}')
+    done
+    pending="$next"
+  done
+  detail "mesa      $staged DLL(s) staged from $prefix/bin (llvmpipe beside the binary), $extra of its runtime deps"
 }
 
 # ================================================================================================
