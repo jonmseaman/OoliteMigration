@@ -3106,7 +3106,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						}
 						else
 						{
-							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", oo::DescriptionOf([definition name]), key);
+							OO_LOG("interface.missingCallback", "Unable to find callback definition for {} using key {}", [definition cxx_name].value_or("(null)"), key);
 						}
 					}
 					extra_gui_key_pressed = YES;
