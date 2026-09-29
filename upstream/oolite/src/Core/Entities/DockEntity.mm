@@ -798,7 +798,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			{
 				// player is in docking corridor and facing dock
 				// and within 3km
-				[UNIVERSE cxx_addMessage:oo::OptionalString(DESC(@"oolite-station-docking-requires-clearance")) forCount:3];
+				[UNIVERSE cxx_addMessage:OO_DESC("oolite-station-docking-requires-clearance") forCount:3];
 			}
 		}
 	}
