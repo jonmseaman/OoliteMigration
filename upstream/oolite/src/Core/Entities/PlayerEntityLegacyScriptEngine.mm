@@ -2200,7 +2200,7 @@ static int shipsFound;
 - (void) setMissionMusic:(id)value	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
 	// nil and "none" still pass nil on
-	[[OOMusicController	sharedController] setMissionMusic:IsNoneValue(oo::StdString(value)) ? nil : value];
+	[[OOMusicController	sharedController] cxx_setMissionMusic:IsNoneValue(oo::StdString(value)) ? std::nullopt : std::optional<std::string>(oo::StdString(value))];
 }
 
 

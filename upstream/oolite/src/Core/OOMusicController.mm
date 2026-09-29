@@ -151,9 +151,9 @@ enum
 }
 
 
-- (void) setMissionMusic:(id)missionMusicName
+- (void) cxx_setMissionMusic:(const std::optional<std::string> &)missionMusicName
 {
-	_missionMusic = oo::OptionalString(missionMusicName);
+	_missionMusic = missionMusicName;
 }
 
 
