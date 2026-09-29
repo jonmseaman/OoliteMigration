@@ -1393,7 +1393,7 @@ for (unsigned i=0;i<amount;i++)
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
 		[gui cxx_setBackgroundTextureKey:"manifest"];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
