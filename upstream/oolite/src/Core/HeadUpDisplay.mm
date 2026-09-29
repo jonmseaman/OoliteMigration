@@ -995,7 +995,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], oo::NSStringFrom(cxx_OOStringFromCompassMode([PLAYER compassMode])) })];
+		[PLAYER cxx_doScriptEvent:OOJSID("compassTargetChanged") withArguments:std::vector<oo::ObjCRef<id>>{ oo::ObjCRef<id>([OONull null]), oo::ObjCRef<id>(oo::NSStringFrom(cxx_OOStringFromCompassMode([PLAYER compassMode]))) }];
 	}
 	
 }
@@ -1134,7 +1134,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 {
 	// check if equipment is required
 	std::optional<std::string> equipmentRequired = OptionalStringIn(info, EQUIPMENT_REQUIRED_KEY);
-	if (equipmentRequired.has_value() && ![PLAYER hasEquipmentItemProviding:oo::NSStringFrom(*equipmentRequired)])
+	if (equipmentRequired.has_value() && ![PLAYER cxx_hasEquipmentItemProviding:*equipmentRequired])
 	{
 		return;
 	}
@@ -1210,7 +1210,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 {
 	std::optional<std::string>	equipment = OptionalStringIn(info, EQUIPMENT_REQUIRED_KEY);
 
-	if (equipment.has_value() && ![PLAYER hasEquipmentItemProviding:oo::NSStringFrom(*equipment)])
+	if (equipment.has_value() && ![PLAYER cxx_hasEquipmentItemProviding:*equipment])
 	{
 		return;
 	}
@@ -2741,7 +2741,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 						  x:(int)x y:(int)y
 					  width:(GLfloat)width height:(GLfloat)height alpha:(GLfloat)alpha
 {
-	OOPolygonSprite *sprite = IconForMissileRole(oo::StdString([missile primaryRole]));
+	OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
 	
 	if (selected)
 	{
@@ -2885,7 +2885,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		[self drawDirectionCue:info];
 	}
 	// extra feature if extra equipment installed
-	if ([PLAYER hasEquipmentItemProviding:@"EQ_INTEGRATED_TARGETING_SYSTEM"])
+	if ([PLAYER cxx_hasEquipmentItemProviding:"EQ_INTEGRATED_TARGETING_SYSTEM"])
 	{
 		[self drawSecondaryTargetReticle:info];
 	}
@@ -2897,7 +2897,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha * 0.4;
 	
 	PlayerEntity *player = PLAYER;
-	if ([player hasEquipmentItemProviding:@"EQ_TARGET_MEMORY"])
+	if ([player cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"])
 	{
 		// needs target memory to be working in addition to any other equipment
 		// this item may be bound to
@@ -3729,7 +3729,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 	if ([target isShip])
 	{
 		target_ship = (ShipEntity *)target;
-		legal_desc = oo::OptionalString([target_ship scanDescription]);
+		legal_desc = [target_ship cxx_scanDescription];
 	}
 
 	if ([target_ship isCloaked])  return;
