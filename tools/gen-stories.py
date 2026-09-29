@@ -7,12 +7,14 @@ seam and the previous phase's gate are closed.
   tools/gen-stories.py --dry-run      # counts, no writes; plan written to build/gen-stories-plan.json
   tools/gen-stories.py --apply        # bd create --graph <plan> (one call), then wire deps to pre-existing beads
   tools/gen-stories.py --apply --phase 3
+  tools/gen-stories.py --dry-run --phase 3 --sweep slices   # one conversion story per slice of docs/phases/3-slices/*.md
+  tools/gen-stories.py --selftest     # fixture tests of the slice sweep; no bd
 
 Acceptance commands live in the bead body under "## Acceptance" (graph plans cannot set the
 acceptance field); the beads-worker scripts read them from there.
 """
-import argparse, json, os, re, subprocess, sys
-from pathlib import Path
+import argparse, importlib.util, json, os, re, subprocess, sys
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "upstream/oolite/src"
@@ -80,7 +82,9 @@ def refresh():
     for key, n, title, desc, acc, dk, pri in SEAMS:
         wanted[title] = (seam_body(key, n, title, desc, acc), None)
     for skey, n, gen in SWEEPS:
-        items, presplit = (sweep_convert() if skey == "convert" else (gen(), []))
+        if skey == "convert": items, presplit = sweep_convert()
+        elif skey == "slices": items, presplit = sweep_slices({t: x["id"] for t, x in issues.items()}), []
+        else: items, presplit = gen(), []
         for title, desc, acc, dk, exemplar, pri in items: wanted[title] = (body(desc, acc, exemplar, skey, n), exemplar)
         for title, desc, acc, dk, exemplar, pri in presplit:
             wanted[title] = (body(desc, [], exemplar, "presplit", n, prose="Slice plan in the bead notes; each slice reads under 1,500 lines."), None)
@@ -563,9 +567,106 @@ def sweep_convert():
                     [f"! grep -nE '@implementation|@interface|@selector|@protocol' {rel}" + (f" {hrel}" if hrel else ""), f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], [seam], f"seam:{seam}", MODULE_ORDER[mod]))
     return out, presplit
 
+# ---------------------------------------------------------------- Phase 3 slices (bead oo-k7u5)
+# A pre-split bead lands a checked slice plan, docs/phases/3-slices/<File>.md (format and checker:
+# tools/check-slice-plan.py). Every non-verbatim slice of every plan that passes the checker becomes
+# one conversion story. The plan is read through the checker's own analyse(), so there is one parser.
+SLICE_PLANS = "docs/phases/3-slices"
+SLICE_ROOT = None   # the tree the plans and sources are read from; None is ROOT (the selftest points it at a fixture)
+
+def _slice_checker():
+    spec = importlib.util.spec_from_file_location("check_slice_plan", Path(__file__).resolve().parent / "check-slice-plan.py")
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); return mod
+
+def slice_title(source, sid):
+    """The generator's identity key for a slice story: the file and the slice id only. The slice's
+    prose title, its unit list and its line counts may all change without re-filing the bead."""
+    return f"Convert to C++20: {PurePosixPath(source).name}, slice {sid}"
+
+def presplit_bead(titles, source):
+    """The id of the pre-split bead that owns this file's plan, matched by the file's stem: its title
+    carries the .m name and line count of the day it was filed, both of which have since drifted."""
+    stem = re.escape(PurePosixPath(source).stem)
+    pat = re.compile(rf"^Pre-split {stem}\.mm? \(\d+ lines\) into story-sized slices$")
+    hits = sorted(i for t, i in titles.items() if pat.match(t))
+    return hits[0] if hits else None
+
+def sweep_slices(titles=None, base=None, report=None):
+    """One conversion story per slice of every checked plan: (title, desc, acc, deps, exemplar, pri).
+
+    Skipped, with a line in `report`: a plan that fails tools/check-slice-plan.py (fix the plan, it
+    is the presplit bead's output), a plan whose source is retired, and a slice with nothing left to
+    convert (already done, so re-running after a slice lands files nothing). Every slice after the
+    plan's first depends on the first, the class shell (the plans' stated order). Deps name the
+    module's pattern seam and the presplit bead; the presplit bead is looked up by title in `titles`."""
+    base = Path(base or SLICE_ROOT or ROOT)
+    titles = existing_titles() if titles is None else titles
+    report = [] if report is None else report
+    csp = _slice_checker(); out = []
+    for plan_path in sorted((base / SLICE_PLANS).glob("*.md")):
+        prel = plan_path.relative_to(base).as_posix()
+        try:
+            a = csp.analyse(str(plan_path), base=str(base))
+        except SystemExit as e:  # read_plan reports a malformed plan by SystemExit
+            report.append(f"  skipped {prel}: {e}"); continue
+        plan = a["plan"]; source = plan["source"]; header = plan["header"]
+        if a["retired"] or a["missing"]:
+            report.append(f"  skipped {prel}: source absent" + (f", retired by {plan['retired_by']}" if a["retired"] else "")); continue
+        # Two checker errors are what a LANDED slice looks like, not a bad plan: its -[X sel]/@X
+        # entries match nothing once the methods are C++ member functions ("slice N is empty"), and
+        # those member functions are new units no entry names ("unassigned", with no Objective-C in
+        # them). Any other error means the plan is wrong: skip it until its presplit bead fixes it.
+        landed = [e for e in a["errors"] if any(e == f"slice {sid} is empty" for sid in a["empty"])]
+        landed += [e for i in a["unassigned"] for e in a["errors"] if e.startswith(f"unassigned: {a['units'][i]['name']} (line {a['units'][i]['start']+1}-")
+                   and a["units"][i]["kind"] == "function" and not csp.objc_sites(a["code_lines"][a["units"][i]["start"]:a["units"][i]["end"]+1])]
+        blocking = [e for e in a["errors"] if e not in landed]
+        if blocking:
+            report.append(f"  skipped {prel}: fails tools/check-slice-plan.py ({len(blocking)} problem(s)): {blocking[0]}"); continue
+        try:
+            mod = module_of(SRC / PurePosixPath(source).relative_to("upstream/oolite/src"))
+        except ValueError:
+            mod = "leaf"
+        seam = MODULE_SEAM[mod]; exemplar = f"seam:{seam}"
+        presplit = presplit_bead(titles, source)
+        if not presplit: report.append(f"  warning {prel}: no pre-split bead found for {PurePosixPath(source).name}")
+        slices = [r for r in a["slices"] if not r["verbatim"]]
+        first = slices[0]["id"] if slices else None
+        verbatim = sum(r["units"] for r in a["slices"] if r["verbatim"])
+        has_class = any(u["kind"] == "method" for u in a["units"])   # the class-shell wording needs a class
+        for r in slices:
+            sid = r["id"]; title = slice_title(source, sid)
+            left = csp.unconverted(a, sid)
+            if not left:
+                report.append(f"  {title}  [nothing left to convert; not filed]"); continue
+            acc = [f"python3 tools/check-slice-plan.py --slice-done {sid} {prel}",
+                   f"tools/tier-a.sh {source}", "bash tools/guardrails.sh"]
+            if not has_class:
+                order = "The file has no Objective-C class: only the Objective-C inside these functions changes."
+            elif sid == first:
+                order = "This is the plan's first slice: it carries the class shell (the @interface and ivars become the C++ class declaration), and every other slice of this file waits for it."
+            else:
+                order = f"Slice {first} (the class shell) has landed before this story starts; add only this slice's member functions to that class."
+            what = (f"Convert slice {sid} of {source} (\"{r['title']}\") from Objective-C to conservative C++20 per the recipe in "
+                    f"docs/phases/3-cpp-conversion.md, following the checked slice plan {prel}. Convert only the units listed below; "
+                    f"every other method stays Objective-C for its own slice's story. {order} Plain-C method bodies stay verbatim, and the "
+                    f"plan's {verbatim} `verbatim:` unit(s) are plain C that no slice reads or touches (ADR-0012, CLAUDE.md rule 9). "
+                    "Do not edit the plan: once this slice's methods are C++ member functions its entries stop matching, which is how "
+                    f"`python3 tools/check-slice-plan.py --slice-done {sid} {prel}` sees the slice is done. "
+                    "If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under "
+                    "upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one.")
+            files = f"- {source} ({a['total']} lines; read the preamble and this slice's units only)" + (f"\n- {header} ({a['header_lines']} lines)" if header else "") + f"\n- {prel} (the slice plan)"
+            budget = (f"Reads ~{r['read']} lines: header {a['header_lines']} + preamble {a['preamble']} + this slice's units {r['own']} "
+                      "(tools/check-slice-plan.py; under 1,500).")
+            units = "\n".join(f"- `{m}`" for m in r["members"])
+            desc = f"{what}\n\n## Files\n{files}\n\n## Read budget\n{budget}\n\n## Units ({r['units']})\n{units}"
+            deps = [seam] + ([presplit] if presplit else []) + ([f"title:{slice_title(source, first)}"] if sid != first else [])
+            out.append((title, desc, acc, deps, exemplar, MODULE_ORDER[mod]))
+    return out
+
 SWEEPS = [  # key, phase, label, generator
     ("scenarios", 0, sweep_scenarios), ("gui", 0, sweep_gui), ("component", 0, sweep_component), ("js-retarget", 1, sweep_js_retarget),
     ("extractors", 2, sweep_extractors), ("foundation", 2, sweep_foundation), ("renames", 3, sweep_renames), ("convert", 3, None),
+    ("slices", 3, None),
 ]
 
 REVIEW_MODEL = "claude-fable-5-1"
@@ -678,13 +779,141 @@ def check_classification():
     print(f"checked {checked} rename/convert bead(s); {bad} misclassified")
     return 0
 
-def main():
+# ---------------------------------------------------------------- selftest (bead oo-k7u5)
+_ST_FOO = """#import "Foo.h"
+static int helper(int x)
+{
+	return [Foo twice:x];
+}
+@implementation Foo
+- (id) init
+{
+	if ((self = [super init])) { _x = helper(1); }
+	return self;
+}
+- (void) setA:(int)a { _x = a; }
+@end
+@implementation Foo (Private)
+- (void) hidden
+{
+	NSLog(@"hidden");
+}
+@end
+static int plainC(int y) { return y * 2; }
+"""
+_ST_FOO_PRIVATE_DONE = _ST_FOO.replace('@implementation Foo (Private)\n- (void) hidden\n{\n\tNSLog(@"hidden");\n}\n@end\n',
+                                       'void Foo::hidden()\n{\n\too::log("hidden");\n}\n')
+_ST_BAR = "@implementation Bar\n- (void) draw\n{\n\t[self flush];\n}\n@end\n"
+_ST_PLANS = {
+    "Foo.md": "Plan.\n```slice-plan\nsource: upstream/oolite/src/Core/Foo.mm\nheader: upstream/oolite/src/Core/Foo.h\n\n"
+              "slice 1: class shell\n  @Foo\n  helper()\nslice 2: private category\n  @Foo(Private)\nverbatim: plain C\n  *\n```\n",
+    "Bar.md": "```slice-plan\nsource: upstream/oolite/src/Core/Materials/Bar.mm\nslice a: all\n  @Bar\n```\n",
+    "Bad.md": "```slice-plan\nsource: upstream/oolite/src/Core/Foo.mm\nslice 1: leaves units out\n  -[Foo init]\n```\n",
+    "Gone.md": "```slice-plan\nsource: upstream/oolite/src/Core/Gone.mm\nretired-by: oo-gone\nslice 1: all\n  *\n```\n",
+}
+
+def selftest():
+    """Fixture tests for the slice sweep: one story per checked slice, stable titles, deps on the
+    presplit bead, the module seam and the first slice, an executable acceptance that is nonzero
+    before and zero after, and a re-run that files nothing new. No bd calls; nothing written to bd."""
+    import contextlib, io, shutil, tempfile
+    g = globals(); fails = []
+    def expect(cond, msg):
+        if not cond: fails.append(msg)
+    scratch = ROOT / ".agent-tmp"
+    d = Path(tempfile.mkdtemp(prefix="gen-stories-selftest-", dir=str(scratch) if scratch.is_dir() else None))
+    saved = {k: g[k] for k in ("SLICE_ROOT", "PLAN_OUT", "existing_titles")}
+    try:
+        core = d / "upstream/oolite/src/Core"; (core / "Materials").mkdir(parents=True)
+        (core / "Foo.mm").write_text(_ST_FOO); (core / "Foo.h").write_text("@interface Foo\n@end\n")
+        (core / "Materials/Bar.mm").write_text(_ST_BAR)
+        plans = d / SLICE_PLANS; plans.mkdir(parents=True)
+        for name, text in _ST_PLANS.items(): (plans / name).write_text(text)
+        pre = {"Pre-split Foo.m (21 lines) into story-sized slices": "oo-pre1"}
+        t1, t2, tb = (slice_title("upstream/oolite/src/Core/Foo.mm", "1"), slice_title("upstream/oolite/src/Core/Foo.mm", "2"),
+                      slice_title("upstream/oolite/src/Core/Materials/Bar.mm", "a"))
+
+        # 1. one story per slice of every plan that passes the checker, and nothing else
+        report = []; items = sweep_slices(pre, base=d, report=report)
+        by = {it[0]: it for it in items}
+        expect([it[0] for it in items] == [tb, t1, t2], f"titles {[it[0] for it in items]}")
+        expect(t1 == "Convert to C++20: Foo.mm, slice 1", f"title shape changed: {t1}")
+        expect(any("Bad.md" in r and "fails tools/check-slice-plan.py" in r for r in report), "a plan failing the checker was not skipped")
+        expect(any("Gone.md" in r and "retired by oo-gone" in r for r in report), "a retired plan was not skipped")
+        expect(any("Bar.md" in r and "no pre-split bead" in r for r in report), "a missing pre-split bead was not reported")
+
+        # 2. the story: units, read budget, exemplar = module pattern seam, acceptance, deps, priority
+        title, desc, acc, deps, exemplar, pri = by[t2]
+        expect("- `-[Foo hidden]`" in desc and "-[Foo init]" not in desc, "slice 2's unit list is wrong")
+        expect("## Read budget\nReads ~" in desc and "header 2 + preamble" in desc, "read budget missing")
+        expect(exemplar == "seam:3.exemplar-oocolor" and by[tb][4] == "seam:3.pattern-materials", "exemplar is not the module's pattern seam")
+        expect(acc == ["python3 tools/check-slice-plan.py --slice-done 2 docs/phases/3-slices/Foo.md",
+                       "tools/tier-a.sh upstream/oolite/src/Core/Foo.mm", "bash tools/guardrails.sh"], f"acceptance {acc}")
+        expect(deps == ["3.exemplar-oocolor", "oo-pre1", "title:" + t1], f"slice 2 deps {deps}")
+        expect(by[t1][3] == ["3.exemplar-oocolor", "oo-pre1"], f"slice 1 deps {by[t1][3]}")
+        expect(pri == MODULE_ORDER["leaf"], "priority is not the module order")
+        text = body(desc, acc, exemplar, "slices", 3)
+        expect("**Do it the way `seam:3.exemplar-oocolor` does it.**" in text and PROHIBITIONS in text and SIZING in text,
+               "story body lacks the exemplar line, the prohibitions or the sizing check")
+        expect("exit 1  # no executable acceptance yet" not in text, "acceptance is not executable")
+
+        # 3. the acceptance's first line: nonzero before the story, zero after it
+        csp = _slice_checker(); plan = str(plans / "Foo.md")
+        with contextlib.redirect_stdout(io.StringIO()):
+            before = csp.slice_done(plan, "2", base=str(d))
+            (core / "Foo.mm").write_text(_ST_FOO_PRIVATE_DONE)
+            after, other = csp.slice_done(plan, "2", base=str(d)), csp.slice_done(plan, "1", base=str(d))
+        expect((before, after, other) == (1, 0, 1), f"--slice-done before/after/other = {before}/{after}/{other}")
+        # a landed slice is not filed again; its bead (already in bd) keeps its title
+        report = []; titles_now = [it[0] for it in sweep_slices(pre, base=d, report=report)]
+        expect(titles_now == [tb, t1] and any(t2 in r and "nothing left" in r for r in report), f"after slice 2 landed: {titles_now}")
+        (core / "Foo.mm").write_text(_ST_FOO)
+
+        # 4. through main(): graph edges and late deps, then a re-run files nothing new
+        g["SLICE_ROOT"] = d; g["PLAN_OUT"] = d / "plan.json"
+        g["existing_titles"] = lambda: dict(pre)
+        run = lambda *extra: main(["--dry-run", "--phase", "3", "--sweep", "slices", *extra])
+        with contextlib.redirect_stdout(io.StringIO()) as out1: run()
+        first = LAST_RUN.copy()
+        key = {n["title"]: n["key"] for n in first["nodes"]}
+        expect({t1, t2, tb} <= set(key), "main() did not file the slice stories")
+        expect(not any(n["title"].startswith(("Convert to C++20: ", "Rename ", "Pre-split ")) and n["title"] not in (t1, t2, tb)
+                       for n in first["nodes"]), "--sweep slices filed beads of another sweep")
+        expect({"from_key": key.get(t2), "to_key": key.get(t1), "type": "blocks"} in first["edges"], "slice 2 does not wait on slice 1")
+        expect({"from_key": key.get(t1), "to_key": key.get("Convert OOColor to C++20 as the house-style exemplar"), "type": "blocks"} in first["edges"],
+               "slice 1 does not wait on the module seam")
+        expect((key.get(t1), "existing:oo-pre1") in first["late"], "slice 1 does not wait on the pre-split bead")
+        expect("[would file]" in out1.getvalue() and t2 in out1.getvalue(), "dry run does not list the slice stories")
+        with contextlib.redirect_stdout(io.StringIO()): run()
+        expect([(n["title"], n["description"]) for n in LAST_RUN["nodes"]] == [(n["title"], n["description"]) for n in first["nodes"]],
+               "two runs over the same tree differ")
+        filed = dict(pre, **{t1: "oo-s1", t2: "oo-s2", tb: "oo-sb"})
+        filed.update({n["title"]: "oo-x%d" % i for i, n in enumerate(first["nodes"]) if n["title"] not in (t1, t2, tb)})
+        g["existing_titles"] = lambda: dict(filed)
+        with contextlib.redirect_stdout(io.StringIO()) as out2: run()
+        expect(LAST_RUN["nodes"] == [], f"re-run filed {[n['title'] for n in LAST_RUN['nodes']]}")
+        expect(f"{t2}  [oo-s2]" in out2.getvalue(), "re-run does not name the existing slice bead")
+        with contextlib.redirect_stdout(io.StringIO()): run("--rewire")
+        expect(("existing:oo-s2", "existing:oo-s1") in LAST_RUN["late"], "--rewire does not re-add slice 2 -> slice 1")
+    finally:
+        g.update(saved); shutil.rmtree(d, ignore_errors=True)
+    for f in fails: print("SELFTEST FAIL:", f)
+    print("selftest OK" if not fails else f"selftest FAILED ({len(fails)})")
+    return 1 if fails else 0
+
+PLAN_OUT = ROOT / "build" / "gen-stories-plan.json"
+LAST_RUN = {}
+
+def main(argv=None):
     ap = argparse.ArgumentParser(); ap.add_argument("--apply", action="store_true"); ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--phase", type=int)
+    ap.add_argument("--sweep", help="only this sweep's beads (e.g. slices); epics and seams are still resolved by title, never re-filed")
+    ap.add_argument("--selftest", action="store_true", help="run the fixture tests of the slice sweep (no bd, no writes outside .agent-tmp/)")
     ap.add_argument("--reclassify", nargs=2, metavar=("BEAD", "SWEEP"), help="rewrite one existing bead under another sweep")
     ap.add_argument("--check-classification", action="store_true", help="list rename/convert beads that disagree with the classifier")
     ap.add_argument("--rewire", action="store_true", help="also re-add deps between beads that already existed (slow; default skips them)")
     ap.add_argument("--refresh", action="store_true", help="rename/delete per RENAMED and rewrite existing beads whose generated text changed")
-    a = ap.parse_args(); apply = a.apply and not a.dry_run
+    a = ap.parse_args(argv); apply = a.apply and not a.dry_run
+    if a.selftest: return selftest()
     if a.refresh: refresh()
     if a.reclassify: return reclassify(*a.reclassify)
     if a.check_classification: return check_classification()
@@ -692,13 +921,13 @@ def main():
     nodes = []; edges = []; ids = {}; node_title = {}
     def create(title, kind, phase, labels, desc, priority, parent=None, meta=None):
         if title in titles:  # already in bd: reference by id, do not recreate
-            ids_key = "existing:" + titles[title]; ids[ids_key] = ids_key; return ids_key
+            ids_key = "existing:" + titles[title]; ids[ids_key] = ids_key; ids["title:" + title] = ids_key; return ids_key
         key = f"n{len(nodes)}"
         node = {"key": key, "title": title, "type": kind, "labels": labels, "description": desc, "priority": priority}
         if parent and parent.startswith("existing:"): late_parents.append((key, parent.split(":", 1)[1]))
         elif parent: node["parent_key"] = parent
         if meta: node["metadata"] = meta
-        nodes.append(node); node_title[key] = title; return key
+        nodes.append(node); node_title[key] = title; ids["title:" + title] = key; return key
     deps = []; late_parents = []  # (node key, existing epic id): the graph schema cannot reference pre-existing parents
     for n, (name, doc) in PHASES.items():
         if a.phase is not None and n != a.phase: continue
@@ -711,11 +940,14 @@ def main():
         if key.endswith(".review"): dk = gate_deps.get(f"{n}.gate", [])   # the review checks everything the gate used to wait on
         if key.endswith(".gate"): dk = list(dk) + [f"{n}.review"]           # and the gate waits on the review
         for d in dk: deps.append((key, d))
-    counts = {}; file_to_extractor = {}; file_to_foundation = {}; scenario_lines = []
+    counts = {}; file_to_extractor = {}; file_to_foundation = {}; scenario_lines = []; slice_lines = []
     for skey, n, gen in SWEEPS:
         if a.phase is not None and n != a.phase: continue
+        if a.sweep is not None and skey != a.sweep: continue
         presplit = []
-        items, presplit = (sweep_convert() if skey == "convert" else (gen(), []))
+        if skey == "convert": items, presplit = sweep_convert()
+        elif skey == "slices": items = sweep_slices(titles, report=slice_lines)
+        else: items = gen()
         for i, (title, desc, acc, dk, exemplar, pri) in enumerate(items):
             k = f"{skey}:{i}"
             ids[k] = create(title, "task", n, [f"phase:{n}", "fleet", f"sweep:{skey}"], body(desc, acc, exemplar, skey, n), pri, parent=ids.get(f"epic{n}"), meta={"exemplar": exemplar})
@@ -724,6 +956,8 @@ def main():
             # gained an entry and the generator emits it" checkable without touching bd. Every
             # entry is listed, including the ones create() resolved to an existing bead (marked
             # with its id) — a dry run reports what the sweep COVERS, not only what it would file.
+            if skey == "slices":
+                slice_lines.append("  %s  [%s]" % (title, ids[k].split(":", 1)[1] if ids[k].startswith("existing:") else "would file"))
             if skey == "scenarios":
                 scenario_lines.append("  %s  [%s]" % (title, ids[k].split(":", 1)[1] if ids[k].startswith("existing:") else "would file"))
             for d in dk: deps.append((k, d))
@@ -745,7 +979,7 @@ def main():
             if k.startswith(("scenarios:", "gui:", "component:")): deps.append(("0.review", k))
             elif k.startswith("js-retarget:"): deps.append(("1.7", k)); deps.append(("1.review", k))
             elif k.startswith(("foundation:", "extractors:")): deps.append(("2.12", k)); deps.append(("2.review", k))
-            elif k.startswith(("renames:", "convert:", "presplit:")): deps.append(("3.giant-Universe", k)); deps.append(("3.review", k))
+            elif k.startswith(("renames:", "convert:", "presplit:", "slices:")): deps.append(("3.giant-Universe", k)); deps.append(("3.review", k))
     late = []  # deps involving pre-existing beads: wired with bd dep add after the graph
     _bd_id_re = re.compile(r"^oo-[a-zA-Z0-9]+$")
     for blocked, blocker in deps:
@@ -764,12 +998,16 @@ def main():
         elif b1.startswith("existing:") or b2.startswith("existing:"): late.append((b1, b2))
         else: edges.append({"from_key": b1, "to_key": b2, "type": "blocks"})
     plan = {"nodes": nodes, "edges": edges}
-    out = ROOT / "build" / "gen-stories-plan.json"; out.parent.mkdir(exist_ok=True); out.write_text(json.dumps(plan, indent=1))
+    LAST_RUN.clear(); LAST_RUN.update(nodes=nodes, edges=edges, late=late, ids=dict(ids))  # for --selftest
+    out = PLAN_OUT; out.parent.mkdir(exist_ok=True); out.write_text(json.dumps(plan, indent=1))
     print(f"plan: {len(nodes)} nodes, {len(edges)} edges, {len(late)} late deps -> {out}")
     for k, v in counts.items(): print(f"  sweep {k}: {v}")
     if scenario_lines:
         print(f"scenario catalogue ({SCENARIO_CATALOGUE.relative_to(ROOT).as_posix()}), non-landed entries:")
         for line in scenario_lines: print(line)
+    if a.phase in (None, 3) and a.sweep in (None, "slices"):
+        print(f"slice plans ({SLICE_PLANS}/*.md), one story per slice:")
+        for line in slice_lines: print(line)
     if not apply:
         print("dry run; nothing written to bd"); return
     if nodes:
@@ -792,4 +1030,4 @@ def main():
     print(f"created {len(created)} beads; wired {len(late)} late deps; parented {len(late_parents)}")
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
