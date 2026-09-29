@@ -839,17 +839,16 @@ static BOOL sRunningScript = NO;
 	oo::PList::Array		result1;	// strings
 	oo::PList::Array		result2;	// arrays: a header, then entries
 
-	// The manifests (PlayerEntityContracts, not migrated) as oo::PList arrays.
-	const oo::PList	passengerManifest = oo::PListFrom([self passengerList]);
-	const oo::PList	contractManifest = oo::PListFrom([self contractList]);
-	const oo::PList	parcelManifest = oo::PListFrom([self parcelList]);
+	// The manifests (PlayerEntityContracts), their entries' strings.
+	const std::vector<std::string>	passengerManifest = [self cxx_passengerList];
+	const std::vector<std::string>	contractManifest = [self cxx_contractList];
+	const std::vector<std::string>	parcelManifest = [self cxx_parcelList];
 
-	auto addManifest = [&result2](const std::string &header, const oo::PList &manifest)
+	auto addManifest = [&result2](const std::string &header, const std::vector<std::string> &entries)
 	{
-		const oo::PList::Array *entries = manifest.getIf<oo::PList::Array>();
-		if (entries == nullptr || entries->empty())  return;
+		if (entries.empty())  return;
 		oo::PList::Array list{ oo::PList(header) };
-		list.insert(list.end(), entries->begin(), entries->end());
+		for (const std::string &entry : entries)  list.push_back(oo::PList(entry));
 		result2.push_back(oo::PList(std::move(list)));
 	};
 

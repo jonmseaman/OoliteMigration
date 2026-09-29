@@ -484,7 +484,6 @@ it. oo-qps cannot compile any of them.
 | `src/Core/Scripting/OOScript+FoundationBridge.h/.mm` | oo-du83 | oo-eu4j ("Delete OOScript+FoundationBridge") |
 | `src/Core/OOStringParsing+FoundationBridge.h/.mm` (also where the NSString (OOUtilities) category retires) | oo-3rb.124 (chunks of oo-1886) | oo-0gzp ("Delete OOStringParsing+FoundationBridge") |
 | `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
-| `src/Core/Entities/PlayerEntityContracts+FoundationBridge.h/.mm` (category `PlayerEntity (ContractsFoundationBridge)`; chunked: oo-3rb.179 made it; chunks oo-3rb.180-.185 move their own selectors in) | oo-3rb.179 (chunks of oo-ldqo) | oo-t8p6 ("Delete PlayerEntityContracts+FoundationBridge") |
 | `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog hook, Amendment 2 item 18(a); also the Foundation-typed functions until oo-vors removes them) | oo-vjts | oo-qps (with gnustep-base) |
 | `src/Core/Entities/PlayerEntitySound+FoundationBridge.h/.mm` (category `PlayerEntity (SoundFoundationBridge)`) | oo-14c5 | oo-qx1l ("Delete PlayerEntitySound+FoundationBridge") |
 | `src/Core/Entities/ShipEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.232 made it; chunks oo-3rb.233-.242 of oo-3rb.73 move their own selectors in) | oo-3rb.232 | oo-pizp ("Delete ShipEntity+FoundationBridge") |
