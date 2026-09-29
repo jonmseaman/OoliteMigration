@@ -74,7 +74,7 @@ MA 02110-1301, USA.
 	{
 		for (const oo::PList &specifier : *colorSpecifiers->getIf<oo::PList::Array>())
 		{
-			colors.emplace_back([OOColor colorWithDescription:oo::ObjectFromPList(specifier) saturationFactor:0.75f]);
+			colors.emplace_back([OOColor cxx_colorWithDescription:specifier saturationFactor:0.75f]);
 		}
 	}
 	

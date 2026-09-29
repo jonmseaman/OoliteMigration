@@ -259,11 +259,11 @@ oo::PList DictionaryForKey(const oo::PList &dict, std::string_view key)
 }
 
 
-// A value handed on to code that still takes Objective-C objects: the object, or nil when absent.
-id ObjectForKey(const oo::PList &dict, std::string_view key)
+// -objectForKey: as plist data (a null PList when absent), for +cxx_colorWithDescription: & co.
+oo::PList ValueForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? *value : oo::PList();
 }
 
 
@@ -593,7 +593,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
 	
 	DESTROY(default_laser_color);
-	default_laser_color = [[OOColor brightColorWithDescription:ObjectForKey(shipDict, "laser_color")] retain];
+	default_laser_color = [[OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
 	
 	if (default_laser_color == nil) 
 	{
@@ -609,7 +609,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	defaultExhaustEmissiveColorComponents.g = 0.9f;
 	defaultExhaustEmissiveColorComponents.b = 1.0f;
 	defaultExhaustEmissiveColorComponents.a = 0.9f;
-	OOColor *color = [OOColor brightColorWithDescription:ObjectForKey(shipDict, "exhaust_emissive_color")];
+	OOColor *color = [OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "exhaust_emissive_color")];
 	if (color == nil)  color = [OOColor colorWithRGBAComponents:defaultExhaustEmissiveColorComponents];
 	[self setExhaustEmissiveColor:color];
 	
@@ -937,7 +937,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		}
 		if (!cdict.isNull())
 		{
-			OOCharacter	*pilot = [OOCharacter characterWithDictionary:oo::ObjectFromPList(cdict)];
+			OOCharacter	*pilot = [OOCharacter characterWithDictionary:cdict];
 			[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(pilot) }];
 		}
 	}
@@ -6782,7 +6782,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	DESTROY(scanner_display_color1);
 	
-	if (color == nil)  color = [OOColor colorWithDescription:ObjectForKey(shipinfoDictionary, "scanner_display_color1")];
+	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_display_color1")];
 	scanner_display_color1 = [color retain];
 }
 
@@ -6791,7 +6791,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	DESTROY(scanner_display_color2);
 	
-	if (color == nil)  color = [OOColor colorWithDescription:ObjectForKey(shipinfoDictionary, "scanner_display_color2")];
+	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_display_color2")];
 	scanner_display_color2 = [color retain];
 }
 
@@ -6812,7 +6812,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	DESTROY(scanner_display_color_hostile1);
 	
-	if (color == nil)  color = [OOColor colorWithDescription:ObjectForKey(shipinfoDictionary, "scanner_hostile_display_color1")];
+	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_hostile_display_color1")];
 	scanner_display_color_hostile1 = [color retain];
 }
 
@@ -6821,7 +6821,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	DESTROY(scanner_display_color_hostile2);
 	
-	if (color == nil)  color = [OOColor colorWithDescription:ObjectForKey(shipinfoDictionary, "scanner_hostile_display_color2")];
+	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_hostile_display_color2")];
 	scanner_display_color_hostile2 = [color retain];
 }
 
@@ -8443,7 +8443,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 		bounty = amount; // can't set the new bounty until the size of the change is known
 
-		ooscript::Value reasonVal = OOJSValueFromNativeObject(context, oo::NSStringFrom(reason));
+		ooscript::Value reasonVal = OOJSValueFromPList(context, oo::PList(reason));
 		
 		ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
 		
@@ -12634,24 +12634,18 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		if (passengers.has_value())  passengers->emplace_back(passenger);
 	}
 
-	if (mainPod) [self doScriptEvent:OOJSID("shipLaunchedEscapePod") withArgument:mainPod andArgument:(passengers.has_value() ? oo::NSArrayFromObjects(*passengers) : nil)];
+	// the passengers' pods as an array, or null (nil) with a single pod
+	if (mainPod) [self cxx_doScriptEvent:OOJSID("shipLaunchedEscapePod") withPListArguments:{ oo::PListObject(mainPod), passengers.has_value() ? oo::PListFromObjects(*passengers) : oo::PList() }];
 	
 	return result;
 }
 
 
-// This is a documented AI method; do not change semantics. (Note: AIs don't have access to the return value.)
-- (id) dumpCargo	// shared selector (proposed ADR-0043), called by name
+// This is a documented AI method; do not change semantics. (Note: AIs don't have access to the return value,
+// and no caller read it: PlayerEntity reads the commodity from -cxx_dumpCargoItem: itself.)
+- (void) dumpCargo	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
-	ShipEntity *jetto = [self cxx_dumpCargoItem:std::nullopt];
-	if (jetto != nil)
-	{
-		return oo::NSStringOrNil([jetto cxx_commodityType]);
-	}
-	else
-	{
-		return nil;
-	}
+	[self cxx_dumpCargoItem:std::nullopt];
 }
 
 
@@ -14187,11 +14181,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 // Exposed to AI
 - (void) abortDocking
 {
-	[oo::NSArrayFromObjects([UNIVERSE cxx_findEntitiesMatchingPredicate:IsStationPredicate
+	// -makeObjectsPerformSelector:withObject: of the stations, in order
+	for (const oo::ObjCRef<Entity *> &station : [UNIVERSE cxx_findEntitiesMatchingPredicate:IsStationPredicate
 								   parameter:nil
 									 inRange:-1
 									ofEntity:nil])
-			makeObjectsPerformSelector:@selector(abortDockingForShip:) withObject:self];
+	{
+		[(StationEntity *)station.get() abortDockingForShip:self];
+	}
 }
 
 
@@ -14204,11 +14201,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) broadcastThargoidDestroyed
 {
 	std::string role = "tharglet";
-	[oo::NSArrayFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:HasRolePredicate
+	// -makeObjectsPerformSelector:withObject: of the ships, in order
+	for (const oo::ObjCRef<Entity *> &ship : [UNIVERSE cxx_findShipsMatchingPredicate:HasRolePredicate
 							   parameter:&role
 								 inRange:SCANNER_MAX_RANGE
 								ofEntity:self])
-			makeObjectsPerformSelector:@selector(sendAIMessage:) withObject:@"THARGOID_DESTROYED"];
+	{
+		[(ShipEntity *)ship.get() sendAIMessage:"THARGOID_DESTROYED"];
+	}
 }
 
 
@@ -14422,9 +14422,8 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) interpretAIMessage:(id)messageObject	// shared selector (proposed ADR-0043), called by name
+- (void) interpretAIMessage:(const std::string &)ms	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
-	const std::string ms = oo::StdString(messageObject);
 	if (oo::str::hasPrefix(ms, std::string(AIMS_AGGRESSOR_SWITCHED_TARGET)))
 	{
 		// if I'm under attack send a thank-you message to the rescuer
@@ -14462,14 +14461,14 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 
 // Exposed to AI and legacy scripts.
-- (void) spawn:(id)roles_number	// shared selector (proposed ADR-0043), called by name
+- (void) spawn:(const std::string &)roles_number	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
-	const std::vector<std::string> tokens = oo::str::tokens(oo::StdString(roles_number));
+	const std::vector<std::string> tokens = oo::str::tokens(roles_number);
 	NSUInteger	number;
 
 	if (tokens.size() != 2)
 	{
-		OO_LOG("script.debug.syntax.addShips", "***** Could not spawn: \"{}\" (must be two tokens, role and number)", oo::DescriptionOf(roles_number));
+		OO_LOG("script.debug.syntax.addShips", "***** Could not spawn: \"{}\" (must be two tokens, role and number)", roles_number);
 		return;
 	}
 
@@ -14798,16 +14797,6 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments
-{
-	// OOJSValueFromPList of an object's PList form is what OOJSValueFromNativeObject gave for it.
-	std::vector<oo::PList> plists;
-	plists.reserve(arguments.size());
-	for (const oo::ObjCRef<id> &argument : arguments)  plists.push_back(oo::PListFrom(argument.get()));
-	[self cxx_doScriptEvent:message withPListArguments:plists];
-}
-
-
 - (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
 {
 	ooscript::Context context = OOJSAcquireContext();
@@ -14868,9 +14857,9 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) sendAIMessage:(id)message	// shared selector (proposed ADR-0043), called by name
+- (void) sendAIMessage:(const std::string &)message
 {
-	[shipAI message:oo::StdString(message)];	// nil: "", as the NSString path gave
+	[shipAI message:message];
 }
 
 

@@ -83,11 +83,20 @@ void SetInfo(oo::PList &info, const std::string &key, oo::PList value)
 }
 
 
-// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
+// The live object an Object node for <key> holds (nil when absent, or for any other value, which
+// the callers never store there: the colours this class puts in the planet info).
 id ObjectForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? oo::ObjectIn(*value) : nil;
+}
+
+
+// -objectForKey: as plist data (a null PList when absent), for +cxx_colorWithDescription:.
+oo::PList ValueForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return value != nullptr ? *value : oo::PList();
 }
 
 
@@ -143,11 +152,11 @@ oo::PList CubeMapTextureSpec(const std::string &name)
 }
 
 
-// A mutable copy of a material configuration with _oo_texture_objects set to the textures up to
-// the first nil (+arrayWithObjects: stopped there); nil where there was no configuration.
-id MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_list<OOTexture *> textures)
+// A copy of a material configuration with _oo_texture_objects set to the textures up to the first
+// nil (+arrayWithObjects: stopped there); null where there was no configuration.
+oo::PList MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_list<OOTexture *> textures)
 {
-	if (configuration.isNull())  return nil;
+	if (configuration.isNull())  return oo::PList();
 	oo::PList result = configuration;
 	oo::PList::Array textureObjects;
 	for (OOTexture *texture : textures)
@@ -156,7 +165,7 @@ id MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_l
 		textureObjects.push_back(oo::PListObject(texture));
 	}
 	(*result.getIf<oo::PList::Dict>())["_oo_texture_objects"] = oo::PList(std::move(textureObjects));
-	return oo::ObjectFromPList(result);
+	return result;
 }
 
 }	// namespace
@@ -453,15 +462,15 @@ static OOColor *ColorWithHSBColor(Vector c)
 		if (landHSB.z > 0.66f) landHSB.z = 0.66f;
 		
 		// planetinfo.plist overrides
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "land_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "land_color")];
 		if (color != nil) landHSB = HSBColorWithColor(color);
 		else cxx_ScanVectorFromString(OptionalStringForKey(sourceInfo, "land_hsb_color"), &landHSB);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "sea_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "sea_color")];
 		if (color != nil) seaHSB = HSBColorWithColor(color);
 		else cxx_ScanVectorFromString(OptionalStringForKey(sourceInfo, "sea_hsb_color"), &seaHSB);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "illumination_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "illumination_color")];
 		if (color != nil) illumHSB = HSBColorWithColor(color);
 		else
 		{
@@ -471,7 +480,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		}
 		
 		// polar areas are brighter but have less colour (closer to white)
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "polar_land_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "polar_land_color")];
 		if (color != nil)
 		{
 			landPolarHSB = HSBColorWithColor(color);
@@ -481,7 +490,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 			landPolarHSB = LighterHSBColor(landHSB);
 		}
 
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "polar_sea_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "polar_sea_color")];
 		if (color != nil)
 		{
 			seaPolarHSB = HSBColorWithColor(color);
@@ -509,17 +518,17 @@ static OOColor *ColorWithHSBColor(Vector c)
 		SetInfo(targetInfo, "cloud_alpha", oo::PList::singleReal(cloudAlpha));	// +numberWithFloat:
 		
 		// planetinfo overrides
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "air_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "air_color")];
 		if (color != nil) seaHSB = HSBColorWithColor(color);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "cloud_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "cloud_color")];
 		if (color != nil) landHSB = HSBColorWithColor(color);
 		
 		// polar areas: brighter, less saturation
 		landPolarHSB = vector_add(landHSB,LighterHSBColor(landHSB));
 		scale_vector(&landPolarHSB, 0.5);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "polar_cloud_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "polar_cloud_color")];
 		if (color != nil) landPolarHSB = HSBColorWithColor(color);
 		
 		SetInfo(targetInfo, "air_color", oo::PListObject(ColorWithHSBColor(seaHSB)));
@@ -1134,13 +1143,13 @@ static OOColor *ColorWithHSBColor(Vector c)
 
 		if (shadersOn)
 		{
-			id aConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "atmosphere-material"), { diffuseMap, normalMap });
+			const oo::PList aConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "atmosphere-material"), { diffuseMap, normalMap });
 
-			id amacros = oo::ObjectFromPList(DictionaryForKey(materialDefaults, "atmosphere-dynamic-macros"));
+			const oo::PList amacros = DictionaryForKey(materialDefaults, "atmosphere-dynamic-macros");
 
 			OOMaterial *dynamicShaderMaterial = [OOShaderMaterial shaderMaterialWithName:"dynamic"
-																	configuration:oo::PListFrom(aConfig)
-																	macros:oo::PListFrom(amacros)
+																	configuration:aConfig
+																	macros:amacros
 																	bindingTarget:self];
 																	
 			if (dynamicShaderMaterial == nil)
@@ -1152,12 +1161,12 @@ static OOColor *ColorWithHSBColor(Vector c)
 				[_atmosphereShaderDrawable setMaterial:dynamicShaderMaterial];
 			}
 
-			id cloudConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "clouds-dynamic-material"), { atmosphere });
-			id cloudMacros = oo::ObjectFromPList(DictionaryForKey(materialDefaults, "clouds-dynamic-macros"));
+			const oo::PList cloudConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "clouds-dynamic-material"), { atmosphere });
+			const oo::PList cloudMacros = DictionaryForKey(materialDefaults, "clouds-dynamic-macros");
 
 			OOMaterial *cloudsMaterial = [OOShaderMaterial shaderMaterialWithName:"dynamic"
-										configuration: oo::PListFrom(cloudConfig)
-										macros: oo::PListFrom(cloudMacros)
+										configuration: cloudConfig
+										macros: cloudMacros
 										bindingTarget: self];
 			if (cloudsMaterial == nil)
 			{
@@ -1177,10 +1186,10 @@ static OOColor *ColorWithHSBColor(Vector c)
 #if OO_SHADERS
 	if (shadersOn)
 	{
-		id config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap, normalMap });
+		const oo::PList config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap, normalMap });
 
 		material = [OOShaderMaterial shaderMaterialWithName:textureName
-											  configuration:oo::PListFrom(config)
+											  configuration:config
 													 macros:macros
 											  bindingTarget:self];
 	}
