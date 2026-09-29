@@ -1037,7 +1037,7 @@ static BOOL sRunningScript = NO;
 
 - (id) gui_screen_string	// called by name (ADR-0043 item 21)
 {
-	return OOStringFromGUIScreenID(gui_screen);
+	return oo::NSStringFrom(cxx_OOStringFromGUIScreenID(gui_screen));
 }
 
 
@@ -1092,7 +1092,7 @@ static int shipsFound;
 
 - (id) commanderLegalStatus_string	// called by name (ADR-0043 item 21)
 {
-	return OODisplayStringFromLegalStatus(legalStatus);
+	return oo::NSStringOrNil(cxx_OODisplayStringFromLegalStatus(legalStatus));
 }
 
 
@@ -1216,7 +1216,7 @@ static int shipsFound;
 - (id) systemGovernment_string	// called by name (ADR-0043 item 21)
 {
 	int government = [[self systemGovernment_number] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable)
-	return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromGovernmentID(government)).value_or("UNKNOWN"));
+	return oo::NSStringFrom(cxx_OODisplayStringFromGovernmentID(government).value_or("UNKNOWN"));
 }
 
 
@@ -1229,7 +1229,7 @@ static int shipsFound;
 - (id) systemEconomy_string	// called by name (ADR-0043 item 21)
 {
 	int economy = [[self systemEconomy_number] intValue]; // 0 .. 7 (0 rich industrial .. 7 poor agricultural)
-	return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromEconomyID(economy)).value_or("UNKNOWN"));
+	return oo::NSStringFrom(cxx_OODisplayStringFromEconomyID(economy).value_or("UNKNOWN"));
 }
 
 
@@ -1265,7 +1265,7 @@ static int shipsFound;
 
 - (id) commanderRank_string	// called by name (ADR-0043 item 21)
 {
-	return OODisplayRatingStringFromKillCount([self score]);
+	return oo::NSStringOrNil(cxx_OODisplayRatingStringFromKillCount([self score]));
 }
 
 
@@ -2345,7 +2345,7 @@ static int shipsFound;
 				AI*	se1AI = [se1 getAI];
 				[se1 setFuel:MAX(PLAYER_MAX_FUEL, [se1 fuelCapacity])];
 				[se1 setAITo:@"exitingTraderAI.plist"];	// lets them return to their previous state after the jump
-				[se1AI setState:@"EXIT_SYSTEM"];
+				[se1AI cxx_setState:"EXIT_SYSTEM"];
 				// The following should prevent all ships leaving at once (freezes oolite on slower machines)
 				[se1AI setNextThinkTime:[UNIVERSE getTime] + 3 + (ranrot_rand() & 15)];
 				[se1 setPrimaryRole:@"oolite-none"];	// prevents new ship from appearing at witchpoint when this one leaves!
@@ -2938,7 +2938,7 @@ static int shipsFound;
 	oo::PList::Dict properties;
 	properties["ship"] = oo::PListObject(self);
 	properties["equipmentKey"] = oo::PList(eq_key);
-	OOScript *s = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:oo::ObjectFromPList(oo::PList(std::move(properties)))];
+	OOScript *s = [OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList(std::move(properties))];
 	if (s == nil) return NO;
 
 	OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));
@@ -3012,7 +3012,7 @@ static int shipsFound;
 
 - (void) setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString	// called by name (ADR-0043 item 21)
 {
-	OOGalacticHyperspaceBehaviour ghBehaviour = OOGalacticHyperspaceBehaviourFromString(galacticHyperspaceBehaviourString);
+	OOGalacticHyperspaceBehaviour ghBehaviour = cxx_OOGalacticHyperspaceBehaviourFromString(oo::StdString(galacticHyperspaceBehaviourString));
 	if (ghBehaviour == GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN)
 	{
 		OO_LOG("player.setGalacticHyperspaceBehaviour.invalidInput",

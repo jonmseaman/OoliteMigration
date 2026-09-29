@@ -70,10 +70,3 @@ MA 02110-1301, USA.
 - (void)runWithTarget:(Entity *)target;
 
 @end
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-du83, forwarding to the cxx_ methods above, so unmigrated callers compile
-	unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "OOScript+FoundationBridge.h"

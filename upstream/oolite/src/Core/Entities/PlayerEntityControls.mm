@@ -2130,7 +2130,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 						[self setLongRangeChartMode:OOLRC_MODE_SUNCOLOR];
 					}
-					[self doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:OOStringFromLongRangeChartMode([self longRangeChartMode])];
+					[self doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([self longRangeChartMode]))];
 				}
 				queryPressed = YES;
 			}
@@ -2691,12 +2691,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				if (weaponType != nil)
 				{
-					BOOL		sameAs = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil([gui cxx_selectedRowKey])) == weaponType;
+					BOOL		sameAs = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy([gui cxx_selectedRowKey].value_or("")) == weaponType;
 					// override showInformation _completely_ with itemText
 					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)] name]);
+						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] name]);
 						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
 						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}

@@ -343,8 +343,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			if (const oo::PList *scriptInfo = extraInfo.get<oo::PList::Dict>("script_info"))  _scriptInfo = *scriptInfo;
 
 			_script = StringFor(extraInfo, "script");
-			// +jsScriptFromFileNamed:properties: is not migrated: the name crosses at the call.
-			if (_script.has_value() && ![OOScript jsScriptFromFileNamed:oo::NSStringFrom(*_script) properties:nil])  _script.reset();
+			if (_script.has_value() && ![OOScript cxx_jsScriptFromFileNamed:*_script properties:oo::PList()])  _script.reset();
 			if (_script.has_value())
 			{
 				_fastAffinityA = !!extraInfo.get<bool>("fast_affinity_defensive");

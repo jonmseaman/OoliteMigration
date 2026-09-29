@@ -714,7 +714,7 @@ static bool SystemInfoRouteToSystem(ooscript::Context context, ooscript::CallArg
 	
 	if (oojsArgs.count() >= 2)
 	{
-		routeType = StringToRouteType(oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[1])));
+		routeType = cxx_StringToRouteType(cxx_OOStringFromJSValue(context, OOJS_ARGV[1]).value_or(""));
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
