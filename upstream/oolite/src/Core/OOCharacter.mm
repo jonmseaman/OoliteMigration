@@ -47,6 +47,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }	// namespace
 
 
+// -intValue as Foundation's number and string classes declared it (an Object node's object may answer
+// it; no Foundation header declares it since oo-qps.17).
+@protocol OOCharacterIntValue
+- (int) intValue;
+@end
+
+
 @interface OOCharacter (Private)
 
 - (id) initWithGenSeed:(Random_Seed)characterSeed andOriginalSystem:(OOSystemID)systemSeed;
@@ -491,7 +498,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// (a string, a number, or another object that answers -intValue: an Object node)
 	const std::string	*originName = (origin != nullptr) ? origin->getIf<std::string>() : nullptr;
 	id					originObject = (origin != nullptr) ? oo::ObjectIn(*origin) : nil;
-	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:@selector(intValue)] ? [originObject intValue] : 0) : dict.get<int>("origin");
+	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:@selector(intValue)] ? [(id<OOCharacterIntValue>)originObject intValue] : 0) : dict.get<int>("origin");
 	if ((origin != nullptr && origin->isNumber()) ||
 		(((originName != nullptr) || [originObject respondsToSelector:@selector(intValue)]) && (originValue != 0 || (originName != nullptr && *originName == "0"))))
 	{

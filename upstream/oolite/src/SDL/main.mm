@@ -31,6 +31,13 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #import "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOObject.h"
+
+// gnustep-base's GSConfig.h gave these (used by the -help text below).
+#ifndef STRINGIFY
+#define XSTRINGIFY(s) #s
+#define STRINGIFY(s) XSTRINGIFY(s)
+#endif
 
 #if OOLITE_WINDOWS
 #include <locale.h>
@@ -69,6 +76,10 @@ uint32_t gDebugFlags = 0;
  */
 int main(int argc, char *argv[])
 {
+	// The Objective-C floor (ADR-0029): OOConstantString's short-literal tag and the forwarding
+	// hooks, before the first message to a literal.
+	OOObjCInstallFloor();
+
 	// Foundation's process-info -arguments, now captured here: argv as SDL_main built it (UTF-8 on Windows).
 	oo::process::setArguments(argc, argv);
 

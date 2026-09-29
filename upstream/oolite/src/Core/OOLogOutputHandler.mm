@@ -27,8 +27,6 @@ SOFTWARE.
 */
 
 
-#define OOLOG_POISON_NSLOG 0
-
 #import "OOCocoa.h"
 #import "OOLogOutputHandler.h"
 #import "OOLogging.h"

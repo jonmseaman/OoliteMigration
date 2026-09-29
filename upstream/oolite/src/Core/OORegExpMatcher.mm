@@ -135,8 +135,8 @@ static OORegExpMatcher *sActiveInstance;
 		_cachedRegExpString.reset();
 		DESTROY(_cachedRegExpObject);
 		
-		unichar *buffer;
-		buffer = static_cast<unichar *>(malloc(expLength * sizeof *buffer));
+		uint16_t *buffer;
+		buffer = static_cast<uint16_t *>(malloc(expLength * sizeof *buffer));
 		if (EXPECT_NOT(buffer == NULL))  return NO;
 		std::copy(regExpUnits.begin(), regExpUnits.end(), buffer);
 		

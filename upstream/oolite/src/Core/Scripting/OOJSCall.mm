@@ -70,6 +70,13 @@ typedef enum
 
 
 static MethodType GetMethodType(id object, SEL selector);
+
+// -boolValue / -intValue as Foundation's number and string classes declared them (no Foundation
+// header declares them since oo-qps.17).
+@protocol OOJSCallScalarValues
+- (BOOL) boolValue;
+- (int) intValue;
+@end
 OOINLINE BOOL MethodExpectsParameter(MethodType type)	{ return type == kMethodTypeVoidObject || type == kMethodTypeObjectObject; }
 
 
@@ -148,8 +155,8 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 						id resultObject = oo::ObjectIn(result);
 						bool boolResult = NO;
 						if (result.type() != oo::PList::Type::Object)  boolResult = oo::plist_get::boolFrom(!result.isNull() ? &result : nullptr, NO);
-						else if ([resultObject respondsToSelector:@selector(boolValue)])  boolResult = [resultObject boolValue];
-						else if ([resultObject respondsToSelector:@selector(intValue)])  boolResult = [resultObject intValue] != 0;
+						else if ([resultObject respondsToSelector:@selector(boolValue)])  boolResult = [(id<OOJSCallScalarValues>)resultObject boolValue];
+						else if ([resultObject respondsToSelector:@selector(intValue)])  boolResult = [(id<OOJSCallScalarValues>)resultObject intValue] != 0;
 						result = oo::PList(boolResult);
 					}
 					break;

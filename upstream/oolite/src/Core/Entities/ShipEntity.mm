@@ -9706,40 +9706,40 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	Vector result = kZeroVector;
 	switch (padAlign[0])
 	{
-		case (unichar)'c':
-		case (unichar)'C':
+		case (uint16_t)'c':
+		case (uint16_t)'C':
 			result.x = 0.5 * (boundingBox.min.x + boundingBox.max.x);
 			break;
-		case (unichar)'M':
+		case (uint16_t)'M':
 			result.x = boundingBox.max.x;
 			break;
-		case (unichar)'m':
+		case (uint16_t)'m':
 			result.x = boundingBox.min.x;
 			break;
 	}
 	switch (padAlign[1])
 	{
-		case (unichar)'c':
-		case (unichar)'C':
+		case (uint16_t)'c':
+		case (uint16_t)'C':
 			result.y = 0.5 * (boundingBox.min.y + boundingBox.max.y);
 			break;
-		case (unichar)'M':
+		case (uint16_t)'M':
 			result.y = boundingBox.max.y;
 			break;
-		case (unichar)'m':
+		case (uint16_t)'m':
 			result.y = boundingBox.min.y;
 			break;
 	}
 	switch (padAlign[2])
 	{
-		case (unichar)'c':
-		case (unichar)'C':
+		case (uint16_t)'c':
+		case (uint16_t)'C':
 			result.z = 0.5 * (boundingBox.min.z + boundingBox.max.z);
 			break;
-		case (unichar)'M':
+		case (uint16_t)'M':
 			result.z = boundingBox.max.z;
 			break;
-		case (unichar)'m':
+		case (uint16_t)'m':
 			result.z = boundingBox.min.z;
 			break;
 	}
@@ -9758,40 +9758,40 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	Vector result = kZeroVector;
 	switch (padAlign[0])
 	{
-		case (unichar)'c':
-		case (unichar)'C':
+		case (uint16_t)'c':
+		case (uint16_t)'C':
 			result.x = 0.5 * (arbb.min.x + arbb.max.x);
 			break;
-		case (unichar)'M':
+		case (uint16_t)'M':
 			result.x = arbb.max.x;
 			break;
-		case (unichar)'m':
+		case (uint16_t)'m':
 			result.x = arbb.min.x;
 			break;
 	}
 	switch (padAlign[1])
 	{
-		case (unichar)'c':
-		case (unichar)'C':
+		case (uint16_t)'c':
+		case (uint16_t)'C':
 			result.y = 0.5 * (arbb.min.y + arbb.max.y);
 			break;
-		case (unichar)'M':
+		case (uint16_t)'M':
 			result.y = arbb.max.y;
 			break;
-		case (unichar)'m':
+		case (uint16_t)'m':
 			result.y = arbb.min.y;
 			break;
 	}
 	switch (padAlign[2])
 	{
-		case (unichar)'c':
-		case (unichar)'C':
+		case (uint16_t)'c':
+		case (uint16_t)'C':
 			result.z = 0.5 * (arbb.min.z + arbb.max.z);
 			break;
-		case (unichar)'M':
+		case (uint16_t)'M':
 			result.z = arbb.max.z;
 			break;
-		case (unichar)'m':
+		case (uint16_t)'m':
 			result.z = arbb.min.z;
 			break;
 	}

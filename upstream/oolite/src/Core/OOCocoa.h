@@ -56,20 +56,30 @@ MA 02110-1301, USA.
 
 #include <math.h>
 #include <stdbool.h>
-#import <Foundation/Foundation.h>
 
 #ifdef GNUSTEP_BASE_LIBRARY
+	/*	No Foundation (oo-qps.17, ADR-0055): the C types it gave (NSInteger, NSRange, NSPoint...)
+		come from the floor's header, which #errors beside any Foundation header, so nothing on
+		this path can reach one. GNUSTEP_BASE_LIBRARY is the build's own define (src/meson).
+	*/
+	#if defined(_WIN32)
+		/*	What gnustep-base's GSConfig.h gave every file through Foundation: the Windows API
+			and Winsock, with the Windows BOOL renamed so Objective-C's stays BOOL.
+		*/
+		#define BOOL WinBOOL
+		#define __OBJC_BOOL 1
+		#include <winsock2.h>
+		#include <windows.h>
+		#undef __OBJC_BOOL
+		#undef BOOL
+	#endif
+	#include <assert.h>
+	#import "oofnd/objc/OOFoundationTypes.h"
 	#define OOLITE_GNUSTEP			1
 	
-	#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && GNUSTEP_BASE_MINOR_VERSION < 28)
-		#error Oolite cannot be built using GNUstep earlier than 1.28.
-	#endif
-
-	#ifndef NSIntegerMax
-		// Missing in GNUstep-base prior to 1.23.
-		#define NSIntegerMax	INTPTR_MAX
-		#define NSIntegerMin	INTPTR_MIN
-		#define NSUIntegerMax	UINTPTR_MAX
+	// gnustep-base's macro; the Mac OS X path below defines the same one.
+	#ifndef DESTROY
+		#define DESTROY(x) do { id x_ = x; x = nil; [x_ release]; } while (0)
 	#endif
 	
 #else
@@ -96,7 +106,7 @@ MA 02110-1301, USA.
 		#define OOLITE_MAC_OS_X_10_8	1
 	#endif
 
-	#ifndef MAC_OS_X_VERSION_10_12
+	#if OOLITE_MAC_OS_X && !defined(MAC_OS_X_VERSION_10_12)
 		typedef NSUInteger NSWindowStyleMask;
 	#endif
 #endif
@@ -183,81 +193,6 @@ extern "C++" {
 #endif
 
 
-/* Define AppKit constants for events */
-enum {
-  NSUpArrowFunctionKey = 0xF700,
-  NSDownArrowFunctionKey = 0xF701,
-  NSLeftArrowFunctionKey = 0xF702,
-  NSRightArrowFunctionKey = 0xF703,
-  NSF1FunctionKey  = 0xF704,
-  NSF2FunctionKey  = 0xF705,
-  NSF3FunctionKey  = 0xF706,
-  NSF4FunctionKey  = 0xF707,
-  NSF5FunctionKey  = 0xF708,
-  NSF6FunctionKey  = 0xF709,
-  NSF7FunctionKey  = 0xF70A,
-  NSF8FunctionKey  = 0xF70B,
-  NSF9FunctionKey  = 0xF70C,
-  NSF10FunctionKey = 0xF70D,
-  NSF11FunctionKey = 0xF70E,
-  NSF12FunctionKey = 0xF70F,
-  NSF13FunctionKey = 0xF710,
-  NSF14FunctionKey = 0xF711,
-  NSF15FunctionKey = 0xF712,
-  NSF16FunctionKey = 0xF713,
-  NSF17FunctionKey = 0xF714,
-  NSF18FunctionKey = 0xF715,
-  NSF19FunctionKey = 0xF716,
-  NSF20FunctionKey = 0xF717,
-  NSF21FunctionKey = 0xF718,
-  NSF22FunctionKey = 0xF719,
-  NSF23FunctionKey = 0xF71A,
-  NSF24FunctionKey = 0xF71B,
-  NSF25FunctionKey = 0xF71C,
-  NSF26FunctionKey = 0xF71D,
-  NSF27FunctionKey = 0xF71E,
-  NSF28FunctionKey = 0xF71F,
-  NSF29FunctionKey = 0xF720,
-  NSF30FunctionKey = 0xF721,
-  NSF31FunctionKey = 0xF722,
-  NSF32FunctionKey = 0xF723,
-  NSF33FunctionKey = 0xF724,
-  NSF34FunctionKey = 0xF725,
-  NSF35FunctionKey = 0xF726,
-  NSInsertFunctionKey = 0xF727,
-  NSDeleteFunctionKey = 0xF728,
-  NSHomeFunctionKey = 0xF729,
-  NSBeginFunctionKey = 0xF72A,
-  NSEndFunctionKey = 0xF72B,
-  NSPageUpFunctionKey = 0xF72C,
-  NSPageDownFunctionKey = 0xF72D,
-  NSPrintScreenFunctionKey = 0xF72E,
-  NSScrollLockFunctionKey = 0xF72F,
-  NSPauseFunctionKey = 0xF730,
-  NSSysReqFunctionKey = 0xF731,
-  NSBreakFunctionKey = 0xF732,
-  NSResetFunctionKey = 0xF733,
-  NSStopFunctionKey = 0xF734,
-  NSMenuFunctionKey = 0xF735,
-  NSUserFunctionKey = 0xF736,
-  NSSystemFunctionKey = 0xF737,
-  NSPrintFunctionKey = 0xF738,
-  NSClearLineFunctionKey = 0xF739,
-  NSClearDisplayFunctionKey = 0xF73A,
-  NSInsertLineFunctionKey = 0xF73B,
-  NSDeleteLineFunctionKey = 0xF73C,
-  NSInsertCharFunctionKey = 0xF73D,
-  NSDeleteCharFunctionKey = 0xF73E,
-  NSPrevFunctionKey = 0xF73F,
-  NSNextFunctionKey = 0xF740,
-  NSSelectFunctionKey = 0xF741,
-  NSExecuteFunctionKey = 0xF742,
-  NSUndoFunctionKey = 0xF743,
-  NSRedoFunctionKey = 0xF744,
-  NSFindFunctionKey = 0xF745,
-  NSHelpFunctionKey = 0xF746,
-  NSModeSwitchFunctionKey = 0xF747
-};
 
 #endif
 
@@ -302,7 +237,6 @@ enum {
 
 
 #import "oofnd/objc/OOObject.h"
-#import "OOObjectGNUstepBridge.h"
 
 /*	The description family (-cxx_descriptionComponents & co., oo::DescriptionOf), Foundation-free
 	(proposed ADR-0055 item 1).
@@ -316,26 +250,25 @@ enum {
 #endif
 
 
-/*	For some reason, return types for some comparison callbacks are typed
-	NSInteger/int under OS X but (more sensibly) NSComparisonResult under
-	GNUstep.
+/*	The ordering type and values under Oolite's own names (bead oo-3yh0): game code spells
+	OOComparisonResult / OOOrdered*, never the NS names. Since oo-qps.17 it is Oolite's own
+	NSInteger enum with Foundation's values; the Mac OS X path (Phase 5) keeps AppKit's NSInteger
+	callbacks and Foundation's constants.
 */
 #if OOLITE_MAC_OS_X
 	typedef NSInteger OOComparisonResult;
-#else
-	typedef NSComparisonResult OOComparisonResult;
-#endif
-
-/*	The ordering values under Oolite's own names (bead oo-3yh0, the NSComparisonResult seam of the
-	oo-qps gap sweep): game code spells OOComparisonResult / OOOrdered*, never the NS names. They
-	are the same type and values as Foundation's, so a -compare: method a Foundation sort calls
-	keeps its ABI. oo-qps makes OOComparisonResult its own NSInteger enum when Foundation goes.
-*/
-#ifdef __cplusplus
-inline constexpr OOComparisonResult OOOrderedAscending = NSOrderedAscending;
-inline constexpr OOComparisonResult OOOrderedSame = NSOrderedSame;
-inline constexpr OOComparisonResult OOOrderedDescending = NSOrderedDescending;
-static_assert(OOOrderedAscending == -1 && OOOrderedSame == 0 && OOOrderedDescending == 1, "Foundation's ordering values");
+	#ifdef __cplusplus
+	inline constexpr OOComparisonResult OOOrderedAscending = NSOrderedAscending;
+	inline constexpr OOComparisonResult OOOrderedSame = NSOrderedSame;
+	inline constexpr OOComparisonResult OOOrderedDescending = NSOrderedDescending;
+	#endif
+#elif defined(__cplusplus)
+	enum OOComparisonResult: NSInteger
+	{
+		OOOrderedAscending = -1,
+		OOOrderedSame = 0,
+		OOOrderedDescending = 1
+	};
 #endif
 
 
@@ -344,7 +277,7 @@ static_assert(OOOrderedAscending == -1 && OOOrderedSame == 0 && OOOrderedDescend
 	As a nasty, nasty hack, the OOLITE_OPTIONAL(foo) macro allows an optional
 	section with or without @optional. If @optional is not available, it
 	actually ends the protocol and starts an appropriately-named informal
-	protocol, i.e. a category on NSObject. Since it ends the protocol, there
+	protocol, i.e. a category on the root class. Since it ends the protocol, there
 	can only be one and there's no way to switch back to @required.
 */
 #ifndef OOLITE_HAVE_PROTOCOL_OPTIONAL
@@ -354,7 +287,7 @@ static_assert(OOOrderedAscending == -1 && OOOrderedSame == 0 && OOOrderedDescend
 #if OOLITE_HAVE_PROTOCOL_OPTIONAL
 #define OOLITE_OPTIONAL(protocolName) @optional
 #else
-#define OOLITE_OPTIONAL(protocolName) @end @interface NSObject (protocolName ## Optional)
+#define OOLITE_OPTIONAL(protocolName) @end @interface OOObject (protocolName ## Optional)
 #endif
 
 

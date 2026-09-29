@@ -333,7 +333,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	[self setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
 #endif
 	
-	assert(sizeof(ooscript::Char16) == sizeof(unichar));
+	assert(sizeof(ooscript::Char16) == sizeof(uint16_t));
 	
 	// initialize the JS run time, and return result in runtime.
 	const oo::PList jsRuntimeSize = defaults.object("jsruntime-size-mib");

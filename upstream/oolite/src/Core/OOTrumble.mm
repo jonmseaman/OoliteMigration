@@ -223,10 +223,10 @@ static void PlayTrumbleSqueal(void);
 	if (parentTrumble)
 	{
 		// mutate..
-		unichar mutation1 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
-		unichar mutation2 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
-		unichar* parentdigram = [parentTrumble digram];
-		unichar newdigram[2];
+		uint16_t mutation1 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
+		uint16_t mutation2 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
+		uint16_t* parentdigram = [parentTrumble digram];
+		uint16_t newdigram[2];
 		newdigram[0] = parentdigram[0] ^ mutation1;
 		newdigram[1] = parentdigram[1] ^ mutation2;
 		//
@@ -263,7 +263,7 @@ static void PlayTrumbleSqueal(void);
 }
 
 
-- (unichar *)	digram
+- (uint16_t *)	digram
 {
 	return digram;
 }
