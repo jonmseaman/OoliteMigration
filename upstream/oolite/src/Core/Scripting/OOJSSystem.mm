@@ -555,7 +555,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					return YES;
 					
 				case kSystem_governmentDescription:
-					result = OODisplayStringFromGovernmentID(systemData.get<int>(KEY_GOVERNMENT));
+					result = oo::NSStringOrNil(cxx_OODisplayStringFromGovernmentID(systemData.get<int>(KEY_GOVERNMENT)));
 					if (result == nil)  result = DESC(@"not-applicable");
 					break;
 					
@@ -564,7 +564,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					return YES;
 					
 				case kSystem_economyDescription:
-					result = OODisplayStringFromEconomyID(systemData.get<int>(KEY_ECONOMY));
+					result = oo::NSStringOrNil(cxx_OODisplayStringFromEconomyID(systemData.get<int>(KEY_ECONOMY)));
 					if (result == nil)  result = DESC(@"not-applicable");
 					break;
 				

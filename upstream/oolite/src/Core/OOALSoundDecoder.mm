@@ -131,9 +131,15 @@ static int OOCloseOXZVorbis (void *datasource);
 }
 
 
-- (id)name
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return @"";
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
+{
+	return std::string();
 }
 
 @end
@@ -492,9 +498,9 @@ static int OOCloseOXZVorbis (void *datasource);
 }
 
 
-- (id)name
+- (std::optional<std::string>)cxx_name
 {
-	return oo::NSStringOrNil(_name);
+	return _name;
 }
 
 @end

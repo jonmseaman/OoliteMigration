@@ -865,7 +865,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	entities.reserve(MAX_NUMBER_OF_ENTITIES);
 	
-	[[GameController sharedController] logProgress:OOExpandKeyRandomized(@"loading-miscellany")];
+	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 	
 	// this MUST have the default no. of rows else the GUI_ROW macros in PlayerEntity.h need modification
 	gui = [[GuiDisplayGen alloc] init]; // alloc retains
@@ -911,7 +911,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[[GameController sharedController] logProgress:DESC(@"populating-space")];
 	[self populateNormalSpace];
 	
-	[[GameController sharedController] logProgress:OOExpandKeyRandomized(@"loading-miscellany")];
+	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 	
 #if OO_LOCALIZATION_TOOLS
 	[self runLocalizationTools];
@@ -1387,10 +1387,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",override_key.c_str()));
 		if (!OOEnforceStandards())
 		{
-			// the legacy script engine is not migrated yet: it gets the array it read before
-			[player runUnsanitizedScriptActions:oo::ObjectFromPList(*script_actions)
+			[player cxx_runUnsanitizedScriptActions:*script_actions
 							  allowingAIMethods:NO
-								withContextName:@"<witchspace script_actions>"
+								withContextName:"<witchspace script_actions>"
 									  forTarget:nil];
 		}
 	}
@@ -1703,7 +1702,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", oo::DescriptionOf([a_station name]), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
+			OO_LOG("universe.setup.badStation", "***** ERROR: Attempt to use non-station ship of type \"{}\" for role \"{}\" as system station, trying again with \"{}\".", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"), defaultStationDesc.value_or("(null)"));
 		}
 		[a_station release];
 		stationDesc = defaultStationDesc;
@@ -1717,7 +1716,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			}
 			else
 			{
-				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", oo::DescriptionOf([a_station name]), stationDesc.value_or("(null)"));
+				OO_LOG("universe.setup.badStation", "***** ERROR: On retry, rolled non-station ship of type \"{}\" for role \"{}\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station cxx_name].value_or("(null)"), stationDesc.value_or("(null)"));
 			}
 			[a_station release];
 
@@ -1741,7 +1740,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[self addEntity:a_station];		// STATUS_IN_FLIGHT, AI state GLOBAL
 		[a_station setStatus:STATUS_ACTIVE];	// For backward compatibility. Might not be needed.
 		[a_station setAllowsFastDocking:true];	// Main stations always allow fast docking.
-		[a_station setAllegiance:@"galcop"]; // Main station is galcop controlled
+		[a_station cxx_setAllegiance:"galcop"]; // Main station is galcop controlled
 	}
 	OO_DEBUG_POP_PROGRESS();
 	
@@ -1814,10 +1813,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (!OOEnforceStandards())
 		{
 			OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - legacy script_actions");
-			// the legacy script engine is not migrated yet: it gets the array it read before
-			[PLAYER runUnsanitizedScriptActions:oo::ObjectFromPList(*script_actions)
+			[PLAYER cxx_runUnsanitizedScriptActions:*script_actions
 							  allowingAIMethods:NO
-								withContextName:@"<system script_actions>"
+								withContextName:"<system script_actions>"
 									  forTarget:nil];
 			OO_DEBUG_POP_PROGRESS();
 		}
@@ -3321,14 +3319,14 @@ std::optional<std::string> LibrarySetting(const oo::PList &settings, std::string
 }
 
 
-// OOExpand(text), the unmigrated expander.
+// cxx_OOExpand(text).
 std::optional<std::string> ExpandText(const std::string &text)
 {
-	return oo::OptionalString(OOExpand(oo::NSStringFrom(text)));
+	return cxx_OOExpand(text);
 }
 
 
-// The DESC(descKey) format given OOExpand(override): a nil expansion printed "(null)".
+// The DESC(descKey) format given cxx_OOExpand(override): a nil expansion printed "(null)".
 std::string CustomLibraryText(const char *descKey, const std::string &override)
 {
 	const std::optional<std::string> expanded = ExpandText(override);
@@ -3411,8 +3409,8 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 
 		if (!demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
 		// stop consistency problems on the ship library screen
-		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
-		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 	}
 
 	if (ship)
@@ -4100,8 +4098,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	conditions = shipInfo.get<oo::PList::Array>("conditions");
 	if (conditions == nullptr)  return YES;
 
-	// Check conditions (the legacy script engine is not migrated yet: it gets the array it read before)
-	return [PLAYER scriptTestConditions:oo::ObjectFromPList(*conditions)];
+	// Check conditions
+	return [PLAYER cxx_scriptTestConditions:*conditions];
 }
 
 
@@ -5884,7 +5882,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		else if ([entity isShip])
 		{
 			[[se getAI] setOwner:se];
-			[[se getAI] setState:@"GLOBAL"];
+			[[se getAI] cxx_setState:"GLOBAL"];
 			if ([entity isStation])
 			{
 				AddIfAbsent(allStations, (StationEntity *)entity);
@@ -6032,8 +6030,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		[ship setStatus:STATUS_COCKPIT_DISPLAY];
 		// stop problems on the ship library screen
 		// demo ships shouldn't have this equipment
-		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
-		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 	}
 	
 	return [ship autorelease];
@@ -7262,7 +7260,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 {
 	if ([PLAYER showDemoShips]) return;
 
-	const std::optional<std::string> expandedMessage = oo::OptionalString(OOExpand(oo::NSStringOrNil(text)));
+	const std::optional<std::string> expandedMessage = text.has_value() ? cxx_OOExpand(*text) : std::nullopt;
 
 	if (!SameMessage(currentMessage, expandedMessage) || universal_time >= messageRepeatTime)
 	{
@@ -7404,8 +7402,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 								
 								if (demo_ship != nil)
 								{
-									[demo_ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
-									[demo_ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
+									[demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+									[demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 
 									[demo_ship switchAITo:@"nullAI.plist"];
 									[demo_ship setOrientation:q2];
@@ -8727,8 +8725,10 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		{	
 			if([self station]){
 				[[self station] setEquivalentTechLevel:[object intValue]];
-				[[self station] setLocalShipyard:[self shipsForSaleForSystem:systemID
-								withTL:[object intValue] atTime:[PLAYER clockTime]]];
+				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
+								withTL:[object intValue] atTime:[PLAYER clockTime]];
+				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
+				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
 			}
 		}
 		else if (key == "sun_color" || key == "star_count_multiplier" ||
@@ -9536,20 +9536,21 @@ void SetInDict(oo::PList &dict, std::string_view key, const std::string &value)
 }
 
 
-/*	OOExpandKey(key, <name>): OOExpand's macro hands the expander a one-entry argument dictionary
-	keyed by the variable's name; a number keeps the number type OO_CAST_PARAMETER boxed it as.
+/*	cxx_OOExpandKey(key, <name>): the macro hands the expander a one-entry argument dictionary
+	keyed by the variable's name; a number keeps the number type cxx_OOCastParam boxed it as.
+	Nothing expanded is "".
 */
 std::string ExpandKeyWith(const std::string &key, const char *name, const oo::PList &value)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
-		oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { name, value } })), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), key,
+		cxx_OOExpandArgumentDictionary({ { name, value } }), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string());
 }
 
 
-// OOExpandKey(key) with no arguments: no argument dictionary.
+// cxx_OOExpandKey(key) with no arguments: no argument dictionary; nothing expanded is "".
 std::string ExpandKey(const std::string &key)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key), nil, nil, nil, kOOExpandKey));
+	return cxx_OOExpandKey(key).value_or(std::string());
 }
 
 
@@ -9616,7 +9617,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
 			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
 
-			if (![player scriptTestConditions:(conditions != nullptr) ? oo::ObjectFromPList(*conditions) : nil])
+			if (![player cxx_scriptTestConditions:(conditions != nullptr) ? *conditions : oo::PList()])
 			{
 				RemoveKeyAt(keysForShips, si--);
 			}
@@ -9709,8 +9710,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
-			OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(fwdWeaponString));
-			OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(aftWeaponString));
+			OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
+			OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
 			//port and starboard weapons are not modified in the shipyard
 			// apply fwd and aft weapons to the ship
 			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
@@ -9852,7 +9853,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 					if (oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
 					{
-						OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringFrom(*equipmentKey));
+						OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(*equipmentKey);
 						//fit best weapon forward
 						if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
 						{
@@ -10086,12 +10087,12 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// work out weapon values
 	if (ship_fwd_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon).value_or("");
 		ship_main_weapons_value = [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 	if (ship_aft_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_aft_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_aft_weapon).value_or("");
 		if (base_weapon_key.has_value()) // aft weapon was defined as a base weapon
 		{
 			ship_main_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;	//take weapon downgrades into account
@@ -10103,12 +10104,12 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	}
 	if (ship_port_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_port_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_port_weapon).value_or("");
 		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 	if (ship_starboard_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon).value_or("");
 		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 
@@ -10427,7 +10428,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		ShipEntity* se = my_ships[i];
 		[se doScriptEvent:event];
-		if (message.has_value())  [[se getAI] reactToMessage:oo::NSStringFrom(*message) context:@"global message"];
+		if (message.has_value())  [[se getAI] cxx_reactToMessage:*message context:"global message"];
 		[se release]; //	released
 	}
 }
@@ -10564,7 +10565,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// (some items now require this even if shader on/off mode unchanged)
 	if (old != detailLevel)
 	{
-		OO_LOG("rendering.detail-level", "Detail level set to {}.", oo::DescriptionOf(OOStringFromGraphicsDetail(detailLevel)));
+		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(detailLevel));
 		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
 	}
 
@@ -11057,7 +11058,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Player init: setUpShipFromDictionary");
-	[player setUpShipFromDictionary:oo::ObjectFromPList([[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())])];	// the standard cobra at this point
+	[player setUpShipFromDictionary:[[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())]];	// the standard cobra at this point
 	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
 	OO_DEBUG_POP_PROGRESS();
 	

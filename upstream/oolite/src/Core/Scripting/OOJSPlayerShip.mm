@@ -22,7 +22,6 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCollectionExtractors.h"
 #import "OOJSPlayerShip.h"
 #import "OOJSPlayer.h"
 #import "OOJSEntity.h"
@@ -662,7 +661,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return YES;
 
 		case kPlayerShip_chartHightlightMode:
-			result = OOStringFromLongRangeChartMode([player longRangeChartMode]);
+			result = oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([player longRangeChartMode]));
 			break;
 
 		case kPlayerShip_galaxyCoordinates:
@@ -744,7 +743,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 			
 		case kPlayerShip_compassType:
-			result = [OOStringFromCompassMode([player compassMode]) isEqualToString:@"COMPASS_MODE_BASIC"] ?
+			result = (cxx_OOStringFromCompassMode([player compassMode]) == "COMPASS_MODE_BASIC") ?
 										@"OO_COMPASSTYPE_BASIC" : @"OO_COMPASSTYPE_ADVANCED";
 			break;
 			
@@ -753,11 +752,11 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return YES;
 			
 		case kPlayerShip_hud:
-			result = [[player hud] hudName];
+			result = oo::NSStringOrNil([[player hud] cxx_hudName]);
 			break;
 
 		case kPlayerShip_crosshairs:
-			result = [[player hud] crosshairDefinition];
+			result = oo::NSStringOrNil([[player hud] cxx_crosshairDefinition]);
 			break;
 
 		case kPlayerShip_hudAllowsBigGui:
@@ -889,11 +888,11 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			sValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (sValue.has_value()) 
 			{
-				OOLongRangeChartMode chartMode = OOLongRangeChartModeFromString(oo::NSStringOrNil(sValue));
+				OOLongRangeChartMode chartMode = cxx_OOLongRangeChartModeFromString(sValue.value_or(""));
 				if (chartMode > OOLRC_MODE_UNKNOWN)
 				{
 					[player setLongRangeChartMode:chartMode];
-					[player doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:OOStringFromLongRangeChartMode([player longRangeChartMode])];
+					[player doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([player longRangeChartMode]))];
 					return YES;
 				}
 				else
@@ -925,7 +924,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 				}
 				else  if(*sValue == "OO_COMPASSTYPE_ADVANCED")
 				{
-					if (![player hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])
+					if (![player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"])
 					{
 						cxx_OOJSReportWarning(context, "Advanced Compass type requested and set but player ship does not carry the EQ_ADVANCED_COMPASS equipment or has it damaged.");
 					}
@@ -942,7 +941,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		
 		case kPlayerShip_compassTarget:
 			// can't change compass target in basic mode
-			if (![player hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"]) 
+			if (![player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"]) 
 			{
 				cxx_OOJSReportError(context, "Compass target cannot be set with a basic compass.");
 				return NO;
@@ -1153,13 +1152,13 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			if (!sValue.has_value())
 			{
 				// reset HUD back to its plist settings
-				std::optional<std::string> hud = oo::OptionalString([[player hud] hudName]);	// a copy, as the retain kept it
+				std::optional<std::string> hud = [[player hud] cxx_hudName];	// a copy, as the retain kept it
 				[player switchHudTo:oo::NSStringOrNil(hud)];
 				return YES;
 			}
 			else
 			{
-				if (![[player hud] setCrosshairDefinition:oo::NSStringOrNil(sValue)])
+				if (![[player hud] cxx_setCrosshairDefinition:sValue.value_or("")])
 				{
 					cxx_OOJSReportWarning(context, "Crosshair definition file %s not found or invalid", (sValue ? sValue->c_str() : "(null)"));
 				}
@@ -1526,7 +1525,7 @@ static bool PlayerShipAddPassenger(ooscript::Context context, ooscript::CallArgs
 	// Ensure there's space.
 	if ([player passengerCount] >= [player passengerCapacity])  OOJS_RETURN_BOOL(NO);
 	
-	BOOL OK = [player addPassenger:oo::NSStringOrNil(name) start:start destination:destination eta:eta fee:fee advance:advance risk:risk];
+	BOOL OK = [player cxx_addPassenger:name.value_or("") start:start destination:destination eta:eta fee:fee advance:advance risk:risk];
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1553,7 +1552,7 @@ static bool PlayerShipRemovePassenger(ooscript::Context context, ooscript::CallA
 	}
 	
 	OK = [player passengerCount] > 0 && !name->empty();
-	if (OK)  OK = [player removePassenger:oo::NSStringOrNil(name)];
+	if (OK)  OK = [player cxx_removePassenger:name.value_or("")];
 	
 	OOJS_RETURN_BOOL(OK);
 	
@@ -1592,7 +1591,7 @@ static bool PlayerShipAddParcel(ooscript::Context context, ooscript::CallArgs &o
 	
 	// Ensure there's space.
 	
-	BOOL OK = [player addParcel:oo::NSStringOrNil(name) start:start destination:destination eta:eta fee:fee premium:premium risk:risk];
+	BOOL OK = [player cxx_addParcel:name.value_or("") start:start destination:destination eta:eta fee:fee premium:premium risk:risk];
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1619,7 +1618,7 @@ static bool PlayerShipRemoveParcel(ooscript::Context context, ooscript::CallArgs
 	}
 	
 	OK = [player parcelCount] > 0 && !name->empty();
-	if (OK)  OK = [player removeParcel:oo::NSStringOrNil(name)];
+	if (OK)  OK = [player cxx_removeParcel:name.value_or("")];
 	
 	OOJS_RETURN_BOOL(OK);
 	
@@ -1662,7 +1661,7 @@ static bool PlayerShipAwardContract(ooscript::Context context, ooscript::CallArg
 	
 	if (!ValidateContracts(context, oojsArgs, YES, &start, &destination, &eta, &fee, &premium, "awardContract", NULL))  return NO; // always go through validate contracts (cargo)
 	
-	BOOL OK = [player awardContract:qty commodity:oo::NSStringOrNil(key) start:start destination:destination eta:eta fee:fee premium:premium];
+	BOOL OK = [player cxx_awardContract:qty commodity:key.value_or("") start:start destination:destination eta:eta fee:fee premium:premium];
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1701,7 +1700,7 @@ static bool PlayerShipRemoveContract(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	
-	BOOL OK = [player removeContract:oo::NSStringOrNil(key) destination:(unsigned)dest];	
+	BOOL OK = [player cxx_removeContract:key.value_or("") destination:(unsigned)dest];	
 	OOJS_RETURN_BOOL(OK);
 	
 	OOJS_NATIVE_EXIT
@@ -1928,7 +1927,7 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 			witchspaceSpinUpTime = spin_time;
 		}
 	}
-	if ([player hasEquipmentItemProviding:@"EQ_GAL_DRIVE"] && [player status] == STATUS_IN_FLIGHT && [player witchJumpChecklist:true])
+	if ([player cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"] && [player status] == STATUS_IN_FLIGHT && [player witchJumpChecklist:true])
 	{
 		[player setJumpType:YES];
 		[player setWitchspaceCountdown:witchspaceSpinUpTime];
@@ -2116,7 +2115,7 @@ static bool PlayerShipHideHUDSelector(ooscript::Context context, ooscript::CallA
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
 		return NO;
 	}
-	[[player hud] setHiddenSelector:oo::NSStringOrNil(key) hidden:YES];
+	[[player hud] cxx_setHiddenSelector:key.value_or("") hidden:YES];
 	
 	OOJS_RETURN_VOID;
 
@@ -2143,7 +2142,7 @@ static bool PlayerShipShowHUDSelector(ooscript::Context context, ooscript::CallA
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
 		return NO;
 	}
-	[[player hud] setHiddenSelector:oo::NSStringOrNil(key) hidden:NO];
+	[[player hud] cxx_setHiddenSelector:key.value_or("") hidden:NO];
 	
 	OOJS_RETURN_VOID;
 

@@ -96,7 +96,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 - (std::optional<std::string>) cxx_dockedStationName
 {
-	return oo::OptionalString([[self dockedStation] name]);
+	return [[self dockedStation] cxx_name];
 }
 
 
@@ -360,7 +360,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 // Implements string expansion code [credits_number].
 - (std::optional<std::string>) cxx_creditsFormattedForSubstitution
 {
-	return oo::OptionalString(OOStringFromDeciCredits([self deciCredits], YES, NO));
+	return std::optional<std::string>(cxx_OOStringFromDeciCredits([self deciCredits], YES, NO));
 }
 
 
@@ -391,6 +391,30 @@ NSInteger IntegerValueOf(const oo::PList *value)
 - (std::optional<std::string>) cxx_commanderKillsAsString
 {
 	return oo::str::format("%i", [self score]);
+}
+
+
+- (id) commanderKillsAsString	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_commanderKillsAsString]);
+}
+
+
+- (id) commanderBountyAsString	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_commanderBountyAsString]);
+}
+
+
+- (id) creditsFormattedForSubstitution	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_creditsFormattedForSubstitution]);
+}
+
+
+- (id) creditsFormattedForLegacySubstitution	// called by name (ADR-0043 item 21)
+{
+	return oo::NSStringOrNil([self cxx_creditsFormattedForLegacySubstitution]);
 }
 
 

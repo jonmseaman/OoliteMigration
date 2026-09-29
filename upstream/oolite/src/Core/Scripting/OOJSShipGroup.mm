@@ -228,7 +228,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 			break;
 			
 		case kShipGroup_name:
-			result = [group name];
+			result = oo::NSStringOrNil([group cxx_name]);
 			if (result == nil)  result = [OONull null];
 			break;
 			
@@ -275,7 +275,7 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 			break;
 			
 		case kShipGroup_name:
-			[group setName:oo::NSStringOrNil(cxx_OOStringFromJSValueEvenIfNull(context, *(value)))];
+			[group cxx_setName:cxx_OOStringFromJSValueEvenIfNull(context, *(value))];
 			return YES;
 			break;
 			
@@ -418,7 +418,7 @@ static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojs
 				if ([thisGroupLeader escortGroup] == [thisGroupLeader group])
 				{
 					// Default unescorted, unescortable, ship. Create new group and use that instead.
-					[thisGroupLeader setGroup:[[OOShipGroup alloc] initWithName:@"ship group"]];
+					[thisGroupLeader setGroup:[[OOShipGroup alloc] cxx_initWithName:std::string("ship group")]];
 					thisGroup = [thisGroupLeader group];
 				}
 				else

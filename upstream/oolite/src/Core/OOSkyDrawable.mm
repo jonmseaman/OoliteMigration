@@ -35,7 +35,6 @@ SOFTWARE.
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
 #import "NSObjectOOExtensions.h"
-#import "OOCollectionExtractors.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/Defaults.hpp"

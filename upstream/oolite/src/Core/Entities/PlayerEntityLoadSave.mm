@@ -51,6 +51,7 @@
 
 #include <algorithm>
 #include "oofnd/objc/OOAssert.h"
+#import "OOPListGameTypes.h"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -319,7 +320,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			const oo::PList *scenario = scenarios.at(i);
 			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
 			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
-			[gui setText:OOExpand(oo::NSStringFrom(scenarioName)) forRow:row];
+			[gui cxx_setText:cxx_OOExpand(scenarioName).value_or(std::string()) forRow:row];
 			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
 			++row;
 		}
@@ -372,7 +373,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		}
 		if (scenario)
 		{
-			[gui cxx_addLongText:oo::OptionalString(OOExpand(oo::NSStringOrNil(OptionalStringValue(scenario->find("description"))))) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
+			const std::optional<std::string> scenarioDescription = OptionalStringValue(scenario->find("description"));
+			const std::optional<std::string> expandedDescription = scenarioDescription.has_value() ? cxx_OOExpand(*scenarioDescription) : std::nullopt;
+			[gui cxx_addLongText:expandedDescription startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
 			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
 			if (shipKey)
 			{
@@ -831,7 +834,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
 	if (market != nullptr)
 	{
-		[dockedStation setLocalMarket:oo::ObjectFromPList(*market)];
+		[dockedStation cxx_setLocalMarket:*market];
 	}
 	else
 	{
@@ -863,7 +866,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	// appropriate station at those coordinates, if found, switch
 	// docked station to that one.
 	const oo::PList *dockedPosNode = fileDic.find("docked_station_position");
-	HPVector dockedPos = OOHPVectorFromObject(dockedPosNode != nullptr ? oo::ObjectFromPList(*dockedPosNode) : nil, kZeroHPVector);
+	HPVector dockedPos = OOHPVectorFromPList(dockedPosNode, kZeroHPVector);
 	const std::string dockedRole = OptionalStringValue(fileDic.find("docked_station_role")).value_or("");
 	StationEntity *saveStation = [UNIVERSE stationWithRole:oo::NSStringFrom(dockedRole) andPosition:dockedPos];
 	if (saveStation != nil && [saveStation allowsSaving])
@@ -1246,7 +1249,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		const oo::PList &cdr = cdrDetailArray[i];
 		if (cdr.get<bool>("isSavedGame"))
 		{
-			const std::string ratingDesc = oo::DescriptionOf(OODisplayRatingStringFromKillCount(cdr.get<unsigned int>("ship_kills")));
+			const std::string ratingDesc = cxx_OODisplayRatingStringFromKillCount(cdr.get<unsigned int>("ship_kills")).value_or("(null)");
 			const std::optional<std::string> saveName = CommanderSaveName(cdr);
 			[gui cxx_setArray:{
 				" " + saveName.value_or("(null)") + " ",	// @" %@ "
@@ -1345,13 +1348,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		const oo::PList *subEntStatus = cdr.find("subentities_status");
 		// don't add it to the dictionary if there's no subentities_status key
 		if (subEntStatus != nullptr && dict.isDict())  (*dict.getIf<oo::PList::Dict>())["subentities_status"] = *subEntStatus;
-		[self showShipyardModel:oo::NSStringFrom(*shipDesc) shipData:oo::ObjectFromPList(dict) personality:personality];
+		[self cxx_showShipyardModel:*shipDesc shipData:dict personality:personality];
 		shipName = OptionalStringValue(shipDict.find("display_name"));
 		if (!shipName) shipName = OptionalStringValue(shipDict.find("name"));	// KEY_NAME
 	}
 	else
 	{
-		[self showShipyardModel:@"oolite-unknown-ship" shipData:nil personality:personality];
+		[self cxx_showShipyardModel:"oolite-unknown-ship" shipData:oo::PList() personality:personality];
 		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
 		if (![[UNIVERSE useAddOns] isEqualToString:SCENARIO_OXP_DEFINITION_ALL])
 		{
@@ -1364,11 +1367,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	
 	// Make a short description of the commander
-	const std::string legalDesc = oo::DescriptionOf(OODisplayStringFromLegalStatus(cdr.get<int>("legal_status")));
+	const std::string legalDesc = cxx_OODisplayStringFromLegalStatus(cdr.get<int>("legal_status")).value_or("(null)");
 	
-	rating = oo::DescriptionOf(KillCountToRatingAndKillString(cdr.get<unsigned int>("ship_kills")));
+	rating = cxx_KillCountToRatingAndKillString(cdr.get<unsigned int>("ship_kills"));
 	const oo::PList *creditsNode = cdr.find("credits");
-	OOCreditsQuantity money = OODeciCreditsFromObject(creditsNode != nullptr ? oo::ObjectFromPList(*creditsNode) : nil);
+	OOCreditsQuantity money = OODeciCreditsFromPList(creditsNode);
 	
 	// Nikos - Add some more information in the load game screen (current location, galaxy number and timestamp).
 	//-------------------------------------------------------------------------------------------------------------------------
@@ -1511,14 +1514,16 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 }
 
 
-OOCreditsQuantity OODeciCreditsFromObject(id object)
+OOCreditsQuantity OODeciCreditsFromPList(const oo::PList *value)
 {
-	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// float/double NSNumber (objCType f or d)
+	if (value != nullptr && value->isReal())	// a real (was a float/double NSNumber, objCType f or d)
 	{
-		return OODeciCreditsFromDouble([object doubleValue]);
+		double d = value->doubleValue();
+		if (value->isSinglePrecision())  d = static_cast<double>(static_cast<float>(d));	// +numberWithFloat: -doubleValue
+		return OODeciCreditsFromDouble(d);
 	}
 	else
 	{
-		return OOUnsignedLongLongFromObject(object, 0);
+		return oo::plist_get::unsignedLongLongFrom(value, 0);	// the reader OOUnsignedLongLongFromObject forwards to
 	}
 }
