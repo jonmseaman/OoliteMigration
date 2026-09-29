@@ -11057,7 +11057,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Player init: setUpShipFromDictionary");
-	[player setUpShipFromDictionary:oo::ObjectFromPList([[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())])];	// the standard cobra at this point
+	[player setUpShipFromDictionary:[[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())]];	// the standard cobra at this point
 	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
 	OO_DEBUG_POP_PROGRESS();
 	

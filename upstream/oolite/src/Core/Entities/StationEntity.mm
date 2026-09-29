@@ -65,13 +65,6 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	return std::nullopt;
 }
 
-
-std::optional<std::string> OptionalStringValue(id object)
-{
-	const oo::PList value = oo::PListFrom(object);
-	return OptionalStringValue(&value);
-}
-
 }	// namespace
 
 
@@ -668,7 +661,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (BOOL) setUpShipFromDictionary:(id) dict	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpShipFromDictionary:(const oo::PList &) dict
 {
 	OOJS_PROFILE_ENTER
 	
@@ -676,11 +669,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	isStation = YES;
 	alertLevel = STATION_ALERT_LEVEL_GREEN;
 	
-	port_radius = oo::PListView(dict).get<oo::NonNegative<double>>(@"port_radius", 500.0);
+	port_radius = dict.get<oo::NonNegative<double>>("port_radius", 500.0);
 	
 	// port_dimensions is deprecated
 	port_dimensions = make_vector(69, 69, 250);
-	const std::optional<std::string> portDimensionsStr = OptionalStringValue([dict objectForKey:@"port_dimensions"]);	// -oo_stringForKey:
+	const std::optional<std::string> portDimensionsStr = OptionalStringValue(dict.find("port_dimensions"));	// -oo_stringForKey:
 	if (portDimensionsStr)
 	{
 		cxx_OOStandardsDeprecated("The port_dimensions key is deprecated");
@@ -699,35 +692,35 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	if (![super setUpShipFromDictionary:dict])  return NO;
 	
-	equivalentTechLevel = oo::PListView(dict).get<NSUInteger>(@"equivalent_tech_level", NSNotFound);
-	max_scavengers = oo::PListView(dict).get<unsigned int>(@"max_scavengers", 3);
-	max_defense_ships = oo::PListView(dict).get<unsigned int>(@"max_defense_ships", 3);
-	max_police = oo::PListView(dict).get<unsigned int>(@"max_police", STATION_MAX_POLICE);
-	equipmentPriceFactor = oo::PListView(dict).get<oo::NonNegative<float>>(@"equipment_price_factor", 1.0);
+	equivalentTechLevel = dict.get<NSUInteger>("equivalent_tech_level", NSNotFound);
+	max_scavengers = dict.get<unsigned int>("max_scavengers", 3);
+	max_defense_ships = dict.get<unsigned int>("max_defense_ships", 3);
+	max_police = dict.get<unsigned int>("max_police", STATION_MAX_POLICE);
+	equipmentPriceFactor = dict.get<oo::NonNegative<float>>("equipment_price_factor", 1.0);
 	equipmentPriceFactor = fmax(equipmentPriceFactor, 0.5f);
-	hasNPCTraffic = (unsigned char)oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_npc_traffic", (maxFlightSpeed == 0)); // carriers default to NO
-	hasPatrolShips = oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_patrol_ships", NO);
-	suppress_arrival_reports = (unsigned char)oo::PListView(dict).get<BOOL>(@"suppress_arrival_reports", NO);
-	[self cxx_setAllegiance:OptionalStringValue([dict objectForKey:@"allegiance"])];
+	hasNPCTraffic = (unsigned char)OOFuzzyBooleanFromPList(dict.find("has_npc_traffic"), (maxFlightSpeed == 0)); // carriers default to NO
+	hasPatrolShips = OOFuzzyBooleanFromPList(dict.find("has_patrol_ships"), NO);
+	suppress_arrival_reports = (unsigned char)dict.get<bool>("suppress_arrival_reports", NO);
+	[self cxx_setAllegiance:OptionalStringValue(dict.find("allegiance"))];
 
-	marketCapacity = oo::PListView(dict).get<unsigned int>(@"market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
-	oo::PList marketDefinitionValue = oo::PListFrom([dict objectForKey:@"market_definition"]);
-	marketDefinition = marketDefinitionValue.isArray() ? std::move(marketDefinitionValue) : oo::PList();	// oo_arrayForKey:
-	marketScriptName = OptionalStringValue([dict objectForKey:@"market_script"]);
-	marketMonitored = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_monitored", NO);
-	marketBroadcast = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_broadcast", YES);
+	marketCapacity = dict.get<unsigned int>("market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
+	const oo::PList *marketDefinitionValue = dict.get<oo::PList::Array>("market_definition");
+	marketDefinition = (marketDefinitionValue != nullptr) ? *marketDefinitionValue : oo::PList();	// oo_arrayForKey:
+	marketScriptName = OptionalStringValue(dict.find("market_script"));
+	marketMonitored = (unsigned char)dict.get<bool>("market_monitored", NO);
+	marketBroadcast = (unsigned char)dict.get<bool>("market_broadcast", YES);
 
 	// Non main stations may have requiresDockingClearance set to yes as a result of the code below,
 	// but this variable should be irrelevant for them, as they do not make use of it anyway.
-	requiresDockingClearance = (unsigned char)oo::PListView(dict).get<BOOL>(@"requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
+	requiresDockingClearance = (unsigned char)dict.get<bool>("requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
 	
-	allowsFastDocking = (unsigned char)oo::PListView(dict).get<BOOL>(@"allows_fast_docking", NO);
+	allowsFastDocking = (unsigned char)dict.get<bool>("allows_fast_docking", NO);
 	
-	allowsAutoDocking = (unsigned char)oo::PListView(dict).get<BOOL>(@"allows_auto_docking", YES);
+	allowsAutoDocking = (unsigned char)dict.get<bool>("allows_auto_docking", YES);
 	
 	allowsSaving = [UNIVERSE deterministicPopulation];
 
-	interstellarUndockingAllowed = (unsigned char)oo::PListView(dict).get<BOOL>(@"interstellar_undocking", NO);
+	interstellarUndockingAllowed = (unsigned char)dict.get<bool>("interstellar_undocking", NO);
 	
 	double unitime = [UNIVERSE getTime];
 
