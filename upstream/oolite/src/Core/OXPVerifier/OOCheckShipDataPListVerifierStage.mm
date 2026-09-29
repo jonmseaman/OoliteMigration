@@ -259,7 +259,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	}
 
 	va_start(args, format);
-	OOLogWithFunctionFileAndLineAndArguments(@"verifyOXP.shipData", NULL, NULL, 0, format, args);
+	if (format != nil && oo::log::willDisplay("verifyOXP.shipData"))
+	{
+		oo::log::logger().write("verifyOXP.shipData", NULL, NULL, 0, oo::StdString([[[NSString alloc] initWithFormat:format arguments:args] autorelease]));
+	}
 	va_end(args);
 }
 
@@ -278,7 +281,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	}
 
 	va_start(args, format);
-	OOLogWithFunctionFileAndLineAndArguments(@"verifyOXP.verbose.shipData", NULL, NULL, 0, oo::NSStringFrom(format), args);
+	oo::log::logger().write("verifyOXP.verbose.shipData", NULL, NULL, 0, oo::StdString([[[NSString alloc] initWithFormat:oo::NSStringFrom(format) arguments:args] autorelease]));
 	va_end(args);
 }
 

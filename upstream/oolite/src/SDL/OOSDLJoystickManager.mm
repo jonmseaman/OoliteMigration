@@ -27,8 +27,6 @@ MA 02110-1301, USA.
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 
-#define kOOLogUnconvertedNSLog @"unclassified.OOSDLJoystickManager"
-
 
 @implementation OOSDLJoystickManager
 
