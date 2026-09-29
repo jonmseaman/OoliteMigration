@@ -99,12 +99,6 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (id) initWithContentsOfFile:(id)path	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithContentsOfFile:oo::OptionalString(path)];
-}
-
-
 - (id) cxx_initWithContentsOfFile:(const std::optional<std::string> &)path
 {
 	if (!sIsSoundOK)  return nil;
@@ -147,12 +141,6 @@ static BOOL sIsSoundOK = NO;
 {
 	[self release];
 	return nil;
-}
-
-
-- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
 }
 
 

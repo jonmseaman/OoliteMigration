@@ -483,7 +483,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	NSSize		siz =	[gui	size];
 	int			rht =	[gui	rowHeight];
-	std::optional<std::string>	title =	oo::OptionalString([gui	title]);
+	std::optional<std::string>	title =	[gui cxx_title];
 	if (gui_info.find(WIDTH_KEY) != nullptr)
 		siz.width = gui_info.get<float>(WIDTH_KEY);
 	if (gui_info.find(HEIGHT_KEY) != nullptr)

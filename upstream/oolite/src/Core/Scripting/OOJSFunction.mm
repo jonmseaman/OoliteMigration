@@ -149,12 +149,6 @@ MA 02110-1301, USA.
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>) cxx_name
 {
 	return _name;

@@ -2109,7 +2109,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:useCache];
-	if (path.has_value())  result = [[[klass alloc] initWithContentsOfFile:oo::NSStringFrom(*path)] autorelease];
+	if (path.has_value())  result = [[[klass alloc] cxx_initWithContentsOfFile:path] autorelease];	// klass: OOSound or OOMusic
 
 	if (result != nil && ioCache != NULL)
 	{
@@ -2203,7 +2203,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 					{
 						for (const oo::ObjCRef<OOScript *> &script : *results)
 						{
-							const std::optional<std::string> name = oo::OptionalString([script.get() name]);
+							const std::optional<std::string> name = [script.get() cxx_name];
 							if (name.has_value())
 							{
 								auto existing = std::find_if(loadedScripts.begin(), loadedScripts.end(), [&](const auto &entry) { return entry.first == *name; });

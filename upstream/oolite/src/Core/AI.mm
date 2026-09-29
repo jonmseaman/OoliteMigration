@@ -150,7 +150,6 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 									 jsScript:(const std::optional<std::string> &)script;
 
 - (oo::PList) stateMachine;
-- (id) name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string
 - (std::optional<std::string>) cxx_name;	// (bead oo-3rb.289.8)
 - (std::optional<std::string>) cxx_state;
 - (std::set<std::string>) pendingMessages;
@@ -403,12 +402,6 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>) cxx_name
 {
 	return stateMachineName;
@@ -418,12 +411,6 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 - (std::optional<std::string>) cxx_associatedJS
 {
 	return oo::OptionalString(JSScriptObjectOf(stateMachine));
-}
-
-
-- (id) state	// shared selector (Foundation declares -state too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_state]);
 }
 
 
@@ -1066,12 +1053,6 @@ static AIStackElement *sStack = NULL;
 - (oo::PList) stateMachine
 {
 	return _stateMachine;
-}
-
-
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
 }
 
 

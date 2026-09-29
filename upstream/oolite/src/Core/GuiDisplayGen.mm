@@ -325,21 +325,9 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (id)title	// shared selector (Foundation declares -title too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_title]);
-}
-
-
 - (std::optional<std::string>)cxx_title
 {
 	return title;
-}
-
-
-- (void) setTitle:(id)str	// shared selector (Foundation declares -setTitle: too; retires with oo-qps)
-{
-	[self cxx_setTitle:oo::OptionalString(str)];
 }
 
 

@@ -250,9 +250,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (unsigned)rowHeight;
 - (int)rowStart;
 
-- (id)title;	// shared selector (Foundation declares -title too): -cxx_title as an Objective-C string, or nil
 - (std::optional<std::string>)cxx_title;	// nullopt: no title (bead oo-3rb.290)
-- (void) setTitle:(id)str;	// shared selector (Foundation declares -setTitle: too); an empty string means no title
 - (void) cxx_setTitle:(const std::optional<std::string> &)str;	// empty string means no title (bead oo-3rb.290)
 
 - (void) dealloc;

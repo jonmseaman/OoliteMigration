@@ -80,7 +80,6 @@ void OpenLogFile();
 
 @interface OOOXPVerifier (OOPrivate)
 
-- (id)initWithPath:(id)path;	// path: an Objective-C string. Shared selector (Foundation declares it too): -cxx_initWithPath:.
 - (id)cxx_initWithPath:(const std::optional<std::string> &)path OO_RETURNS_RETAINED;	// nullopt: nil (bead oo-3rb.292.2)
 - (void)run;
 
@@ -288,12 +287,6 @@ void OpenLogFile();
 
 
 @implementation OOOXPVerifier (OOPrivate)
-
-- (id)initWithPath:(id)path	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithPath:oo::OptionalString(path)];
-}
-
 
 - (id)cxx_initWithPath:(const std::optional<std::string> &)path
 {

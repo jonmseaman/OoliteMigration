@@ -59,7 +59,6 @@ SOFTWARE.
 	unique. The name should be a phrase describing what will be done, like
 	"Scanning files" or "Verifying plist scripts".
 */
-- (id)name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
 - (std::optional<std::string>)cxx_name;	// nullopt: none (bead oo-3rb.289.1)
 
 /*	Dependencies and dependents:
@@ -69,7 +68,6 @@ SOFTWARE.
 	-dependents returns a set of names of stages that should not be run before
 	this one. Unlike -dependencies, these are considered non-critical.
 */
-- (id)dependencies;	// shared selector (Foundation declares -dependencies too): -cxx_dependencies as an Objective-C set of strings, or nil
 - (std::optional<std::vector<std::string>>)cxx_dependencies;	// nullopt: none (nil); override this (bead oo-3rb.291.3)
 - (std::optional<std::vector<std::string>>)dependents;	// stage names; nullopt: none (nil)
 
