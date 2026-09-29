@@ -883,9 +883,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 	ShipEntity *shuttle_ship = [UNIVERSE newShipWithRole:@"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
-		if ([[shuttle_ship crew] count] == 0)
+		if ([shuttle_ship cxx_crew].value_or(std::vector<oo::ObjCRef<OOCharacter *>>()).empty())
 		{
-			[shuttle_ship setSingleCrewWithRole:@"trader"];
+			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
 		}
 		
 		[shuttle_ship setPosition:launch_pos];
