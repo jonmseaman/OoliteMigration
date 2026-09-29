@@ -54,7 +54,7 @@ typedef enum
 #define MAX_SUBDIVIDE			6
 
 
-@protocol OOStellarBody <NSObject, OOWeakReferenceSupport>
+@protocol OOStellarBody <OOObject, OOWeakReferenceSupport>
 
 - (double) radius;
 - (OOStellarBodyType) planetType;

@@ -51,7 +51,7 @@ static id LoadDebugPlugIn(void);
 static id sDebugPlugInController;
 
 
-@interface NSObject (OODebugPlugInController)
+@interface OOObject (OODebugPlugInController)
 
 - (id<OODebuggerInterface>) setUpDebugger;
 
