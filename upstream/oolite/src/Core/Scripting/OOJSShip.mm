@@ -3083,8 +3083,9 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	double				sdist, distance = 1E32;
 	
 	StationEntity		*se = nil;
-	foreach (se, [UNIVERSE stations])
+	for (const auto &stationRef : [UNIVERSE cxx_stations])
 	{
+		se = stationRef.get();
 		sdist = HPdistance2([thisEnt position],[se position]);
 
 		if (sdist < distance)
