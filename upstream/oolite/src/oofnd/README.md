@@ -492,7 +492,6 @@ it. oo-qps cannot compile any of them.
 | `src/Core/GameController+FoundationBridge.h/.mm` (chunked: oo-3rb.88 made it; chunks oo-3rb.89-.91 move their own selectors in) | oo-3rb.88 (chunks of oo-m6ej) | oo-6abg ("Delete GameController+FoundationBridge") |
 | `src/Core/HeadUpDisplay+FoundationBridge.h/.mm` (chunked: oo-3rb.209 made it; chunks oo-3rb.210-.213 move their own selectors in; also carries the `NSString (OOHUDBeaconIcon)` category) | oo-3rb.209 (chunks of oo-3rb.81) | oo-f9rf ("Delete HeadUpDisplay+FoundationBridge") |
 | `src/Core/Universe+FoundationBridge.h/.mm` (chunked: oo-3rb.220 made it; chunks oo-3rb.221-.231 move their own selectors in; also the `OOLookUp*DescriptionPRIV` functions behind DESC()) | oo-3rb.220 (chunks of oo-3rb.79) | oo-mr9c ("Delete Universe+FoundationBridge") |
-| `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
