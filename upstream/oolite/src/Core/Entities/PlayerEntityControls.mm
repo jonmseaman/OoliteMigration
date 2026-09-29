@@ -176,12 +176,12 @@ static NSTimeInterval	time_last_frame;
 namespace
 {
 
-// OOExpandKey(key, ...) with its arguments as a Dict: ints as PList::signedInteger, strings as
-// std::string (exemplar OOShipLibraryDescriptions.mm ExpandCategoryKey).
+// cxx_OOExpandKey(key, ...) with its arguments as a Dict: ints as PList::signedInteger, strings as
+// std::string (exemplar OOShipLibraryDescriptions.mm ExpandCategoryKey); nothing expanded is "".
 std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
-		oo::ObjectFromPList(oo::PList(args)), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), key,
+		oo::PList(args), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string());
 }
 
 }	// namespace
@@ -3478,7 +3478,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if (brightnessValue > MAX_HDR_MAXBRIGHTNESS)  brightnessValue = direction == 1 ? MIN_HDR_MAXBRIGHTNESS : MAX_HDR_MAXBRIGHTNESS;
     				
 				[gameView setHDRMaxBrightness:(float)brightnessValue];
-				const std::string maxBrightnessString = oo::StdString(OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue));
+				const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 																				
 				[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
 				
@@ -3878,7 +3878,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			[UNIVERSE setDetailLevel:detailLevel];
 			detailLevel = [UNIVERSE detailLevel];
 
-			const std::string shaderEffectsOptionsString = oo::StdString(OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel));
+			const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
 			[gui cxx_setText:ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
 			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 
@@ -5540,7 +5540,7 @@ static BOOL autopilot_pause;
 	if (fastDocking && ([self alertCondition] == ALERT_CONDITION_RED))
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = oo::OptionalString(OOExpandKey(@"autopilot-red-alert"));
+		message = cxx_OOExpandKey("autopilot-red-alert");
 		goto abort;
 	}
 	
@@ -5575,12 +5575,12 @@ static BOOL autopilot_pause;
 			if (nStations == 0)
 			{
 				[self playAutopilotOutOfRange];
-				message = oo::OptionalString(OOExpandKey(@"autopilot-out-of-range"));
+				message = cxx_OOExpandKey("autopilot-out-of-range");
 			}
 			else
 			{
 				[self playAutopilotCannotDockWithTarget];
-				message = oo::OptionalString(OOExpandKey(@"autopilot-multiple-targets"));
+				message = cxx_OOExpandKey("autopilot-multiple-targets");
 			}
 			goto abort;
 		}
@@ -5643,7 +5643,7 @@ static BOOL autopilot_pause;
 	{
 		// Standard docking - engage autopilot
 		[self engageAutopilotToStation:ts];
-		message = oo::OptionalString(OOExpandKey(@"autopilot-on"));
+		message = cxx_OOExpandKey("autopilot-on");
 	}
 	
 abort:
@@ -5663,7 +5663,7 @@ abort:
 	if ([self primaryTarget] == nil)
 	{
 		[self playIdentOn];
-		[UNIVERSE addMessage:OOExpandKey(@"ident-on") forCount:2.0];
+		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("ident-on") forCount:2.0];
 	}
 	else
 	{

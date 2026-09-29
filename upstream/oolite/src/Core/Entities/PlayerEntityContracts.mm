@@ -1168,14 +1168,14 @@ for (unsigned i=0;i<amount;i++)
 		OOCreditsQuantity fee = contract_info.get<int>(oo::StdString(CONTRACT_KEY_FEE));
 		const std::optional<std::string> feeDesc = std::optional<std::string>(cxx_OOIntCredits(fee));
 
-		// OOExpandKey(formatString, label, destination, deadline, feeDesc), spelled out: the macro names
-		// each argument after its expression, so the dictionary of named values is built here.
+		// cxx_OOExpandKey(formatString, label, destination, deadline, feeDesc), spelled out: the macro
+		// names each argument after its expression, so the dictionary of named values is built here.
 		oo::PList::Dict arguments;
 		if (label)  arguments["label"] = oo::PList(*label);
 		if (destination)  arguments["destination"] = oo::PList(*destination);
 		if (deadline)  arguments["deadline"] = oo::PList(*deadline);
 		if (feeDesc)  arguments["feeDesc"] = oo::PList(*feeDesc);
-		result.push_back(oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(std::string(formatString)), oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey)));
+		result.push_back(cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), std::string(formatString), oo::PList(std::move(arguments)), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string()));
 
 	}
 
@@ -1268,10 +1268,10 @@ for (unsigned i=0;i<amount;i++)
 		
 		current = current_cargo;
 		max = [self maxAvailableCargoSpace];
-		const std::string cargoString = oo::StdString(OOExpandKey(@"oolite-manifest-cargo", current, max));
+		const std::string cargoString = cxx_OOExpandKey("oolite-manifest-cargo", current, max).value_or(std::string());
 		current = [self cxx_passengerList].size();
 		max = max_passengers;
-		const std::string cabinString = oo::StdString(OOExpandKey(@"oolite-manifest-cabins", current, max));
+		const std::string cabinString = cxx_OOExpandKey("oolite-manifest-cabins", current, max).value_or(std::string());
 		const std::vector<std::string> manifestHeader = { cargoString, cabinString };
 
 		SET_MANIFEST_ROW( oo::NSArrayFromStrings(manifestHeader) , entryColor, cargoRow - 1);
@@ -1432,7 +1432,7 @@ for (unsigned i=0;i<amount;i++)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:oo::OptionalString(OOExpandKey(@"arrival-report-title"))];
+		[gui cxx_setTitle:cxx_OOExpandKey("arrival-report-title")];
 		
 		for (i=1;i<=18;i++) {
 			[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingReportColor) defaultValue:nil] forRow:21];
@@ -1513,10 +1513,11 @@ std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t 
 }
 
 
-// OOExpandKey(key, ...) with the arguments it would have named after their variables.
+// cxx_OOExpandKey(key, ...) with the arguments it would have named after their variables; nothing
+// expanded is "".
 std::string ExpandKey(const char *key, oo::PList::Dict arguments)
 {
-	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(std::string(key)), oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey));
+	return cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), std::string(key), oo::PList(std::move(arguments)), oo::PList(), std::nullopt, kOOExpandKey).value_or(std::string());
 }
 
 
@@ -1729,8 +1730,8 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 			}
 		}
 		
-		row_info[2] = oo::StdString(OOExpandKey(@"shipyard-cargo-value", cargoRating));
-		row_info[3] = oo::StdString(OOExpandKey(@"shipyard-speed-value", speedRating));
+		row_info[2] = cxx_OOExpandKey("shipyard-cargo-value", cargoRating).value_or(std::string());
+		row_info[3] = cxx_OOExpandKey("shipyard-speed-value", speedRating).value_or(std::string());
 		
 		// Show footer first. It'll be overwritten by the sales_pitch if that text is longer than usual.
 		[self showTradeInInformationFooter];
