@@ -29,7 +29,6 @@
 
 #import "OOTextureLoader.h"
 
-#import "OOCollectionExtractors.h"
 #import "Universe.h"
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"

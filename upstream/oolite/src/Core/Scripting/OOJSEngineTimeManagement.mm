@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOJSEngineTimeManagement.h"
 #import "OOProfilingStopwatch.h"
 #import "OOJSScript.h"
-#import "OOCollectionExtractors.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"

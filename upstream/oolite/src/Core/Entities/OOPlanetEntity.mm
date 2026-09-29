@@ -219,7 +219,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	// A nil planet info read nil for the name, which then falls back to nothing.
 	const std::optional<std::string> infoName = planetInfo ? std::optional<std::string>(planetInfo.get<std::string>(oo::StdString(KEY_PLANETNAME), "%H")) : std::nullopt;
 	const std::optional<std::string> planetName = infoName.has_value() ? std::optional<std::string>(dict.get<std::string>(oo::StdString(KEY_PLANETNAME), *infoName)) : OptionalStringForKey(dict, oo::StdString(KEY_PLANETNAME));
-	[self cxx_setName:oo::OptionalString(OOExpand(oo::NSStringOrNil(planetName)))];
+	[self cxx_setName:planetName.has_value() ? cxx_OOExpand(*planetName) : std::nullopt];
 
 	int radius_km = dict.get<int>(oo::StdString(KEY_RADIUS), planetInfo.get<int>(oo::StdString(KEY_RADIUS)));
 	collision_radius = radius_km * 10.0;	// Scale down by a factor of 100

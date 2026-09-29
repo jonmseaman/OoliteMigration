@@ -711,8 +711,9 @@ using ooscript::Context;
 	context = [NSString stringWithFormat:@"%@ wormholeEscorts", [self shortDescription]];
 #endif
 	
-	foreach (ship, [self escortEnumerator])
+	for (const auto &shipRef : [self cxx_escorts])
 	{
+		ship = shipRef.get();
 		[ship addTarget:whole];
 		[ship reactToAIMessage:@"ENTER WORMHOLE" context:context];
 		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
@@ -899,7 +900,7 @@ using ooscript::Context;
 	};
 	
 	messages = [messageString componentsSeparatedByString:@","];
-	foreach (message, messages)
+	for (message in messages)
 	{
 		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
 		[shipAI cxx_dropMessage:trimmed];
@@ -1271,8 +1272,9 @@ using ooscript::Context;
 			}
 			else
 			{
-				foreach (escort, [self escortEnumerator])
+				for (const auto &escortRef : [self cxx_escorts])
 				{
+					escort = escortRef.get();
 					if (target == escort)
 					{
 						missile = thing;
@@ -2135,7 +2137,7 @@ using ooscript::Context;
 			[self noteLostTarget];
 			return;
 		}
-		NSString *finalValue = OOExpand(valueString);	// expand values
+		NSString *finalValue = valueString != nil ? oo::NSStringOrNil(cxx_OOExpand(oo::StdString(valueString))) : nil;	// expand values
 		[ship markAsOffender:[finalValue intValue] withReason:kOOLegalStatusReasonSeenByPolice];
 	}
 }

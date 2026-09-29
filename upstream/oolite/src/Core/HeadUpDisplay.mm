@@ -2936,8 +2936,9 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOWaypointEntity *waypoint = nil;
 	Entity *compass = [PLAYER compassTarget];
 	
-	foreach (waypoint, [[UNIVERSE currentWaypoints] allValues])
+	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
 	{
+		waypoint = waypointRef.get();
 		hudDrawWaypoint(waypoint, PLAYER, z1, alpha, waypoint==compass, scale);
 	}
 
@@ -3151,7 +3152,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-		cxx_OODrawString(oo::StdString(OOExpandKey(@"equipment-primed-hud", [PLAYER primedEquipmentName:0])), x, y, z1, size);
+		const std::optional<std::string> equipmentName = [PLAYER cxx_primedEquipmentName:0];
+		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, z1, size);
 	}
 	else
 	{

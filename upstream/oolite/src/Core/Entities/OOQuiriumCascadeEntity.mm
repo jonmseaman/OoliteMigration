@@ -112,7 +112,7 @@ MA 02110-1301, USA.
 		Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
-		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:@"EQ_QC_MINE"];
+		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:"EQ_QC_MINE"];
 	}
 	
 	// expire after ttl

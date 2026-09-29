@@ -481,7 +481,7 @@ static bool GlobalExpandDescription(ooscript::Context context, ooscript::CallArg
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	string = oo::OptionalString(OOExpandDescriptionString(kNilRandomSeed, oo::NSStringFrom(*string), oo::ObjectFromPList(overrides), nil, nil, kOOExpandForJavaScript | kOOExpandGoodRNG));
+	string = cxx_OOExpandDescriptionString(kNilRandomSeed, *string, overrides, oo::PList(), std::nullopt, kOOExpandForJavaScript | kOOExpandGoodRNG);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
@@ -539,7 +539,7 @@ static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArg
 	}
 	
 	string = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*string)]);
-	string = oo::OptionalString(OOExpandDescriptionString(kNilRandomSeed, oo::NSStringOrNil(string), oo::ObjectFromPList(overrides), nil, nil, kOOExpandForJavaScript | kOOExpandBackslashN | kOOExpandGoodRNG));
+	if (string.has_value())  string = cxx_OOExpandDescriptionString(kNilRandomSeed, *string, overrides, oo::PList(), std::nullopt, kOOExpandForJavaScript | kOOExpandBackslashN | kOOExpandGoodRNG);	// nil expanded to nil
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
 	
@@ -583,7 +583,7 @@ static bool GlobalRandomName(ooscript::Context context, ooscript::CallArgs &oojs
 	RNG_Seed savedSeed = currentRandomSeed();
 	setRandomSeed((RNG_Seed){ (int32_t)Ranrot(), (int32_t)Ranrot(), (int32_t)Ranrot(), (int32_t)Ranrot() });
 	
-	std::optional<std::string> result = oo::OptionalString(OOExpand(@"%N"));
+	std::optional<std::string> result = cxx_OOExpand("%N");
 	
 	// Restore seed.
 	setRandomSeed(savedSeed);
