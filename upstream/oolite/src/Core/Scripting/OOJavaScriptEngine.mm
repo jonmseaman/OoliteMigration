@@ -59,6 +59,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOFoundationBridge.h"
+#import "OOObjCPList.h"		// Object nodes (OOJSValueFromPList)
 #import "Universe.h"
 #import "OOPlanetEntity.h"
 #import "OOWeakReference.h"

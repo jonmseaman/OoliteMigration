@@ -25,8 +25,8 @@ commit. Everything else in the file is std / oofnd.
 	refs (or raw pointers) -> NSArray / NSSet       oo::NSArrayFromObjects(r) / NSSetFromObjects(r)
 	property-list object graph -> oo::PList         oo::PListFrom(object)
 	oo::PList -> property-list object graph         oo::ObjectFromPList(plist)
-	the object inside a PList::Object node          oo::ObjectIn(plist)                 (nil for any other node)
-	an object as a PList::Object node               oo::PListObject(object)
+	the object inside a PList::Object node          oo::ObjectIn(plist)                 (OOObjCPList.h, imported)
+	an object as a PList::Object node               oo::PListObject(object)             (OOObjCPList.h, imported)
 
 Exactness. Strings are unit for unit (OOStringBridge.h). PListFrom follows the table in
 oofnd/PList.hpp: an NSNumber is a bool when it is the constant true/false object (kCFBoolean*
@@ -70,6 +70,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #import "OOStringBridge.h"
+#import "OOObjCPList.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -176,35 +177,6 @@ NSSet *NSSetFromObjects(const Range& objects)
 }
 
 // --- property lists ---------------------------------------------------------------------------
-
-// A PList::Object node's payload: an Objective-C object, retained (Amendment 2 carrier).
-class ObjCPListForeign final : public PListForeign
-{
-public:
-	explicit ObjCPListForeign(id object) : object_(object) {}
-	id object() const noexcept { return object_.get(); }
-	std::string className() const override { return class_getName(object_getClass(object_.get())); }
-	std::string description() const override { return StdString([object_.get() description]); }
-
-private:
-	ObjCRef<id> object_;
-};
-
-inline PList PListObject(id object)
-{
-	if (object == nil)  return PList();
-	return PList(PList::Object(makeRef<ObjCPListForeign>(object)));
-}
-
-// The object a PList::Object node holds; nil for any other node.
-inline id ObjectIn(const PList& plist)
-{
-	if (const PList::Object *node = plist.getIf<PList::Object>())
-	{
-		if (const auto *foreign = dynamic_cast<const ObjCPListForeign *>(node->get()))  return foreign->object();
-	}
-	return nil;
-}
 
 inline PList PListFrom(id object)
 {

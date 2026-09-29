@@ -95,6 +95,7 @@ oofnd_objc_tests = [
     'test_objc_assert',
     'test_objc_ref',
     'test_objc_description',
+    'test_objc_plist',
 ]
 
 foreach t : oofnd_objc_tests

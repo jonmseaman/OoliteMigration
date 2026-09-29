@@ -392,6 +392,47 @@ def _launch_env(logs: Path, addons: Path | None):
     return env
 
 
+def _launch_game(app_dir: Path, exe: Path, logs: Path, addons: Path | None,
+                 timeout: float, result: dict) -> bool:
+    """Run one load launch to completion, holding the desktop lock; fill rc and wall_s.
+
+    The launch opens a REAL window on the interactive desktop (SDL_VIDEODRIVER=offscreen
+    is unset on Windows - see _launch_env and tests/component/console.py::_env), so it
+    takes tools/gui-lock through tools/desktop_lock.py like every other desktop launcher
+    (CLAUDE.md; tools/check-desktop-lock.sh, bug oo-f83g). The lock is held per launch,
+    not per sweep, so a GUI test can take the desktop between two expansions. A lock that
+    cannot be taken is reported as LAUNCH - the game is never launched without it - and
+    returns False.
+    """
+    if str(Path(__file__).resolve().parent) not in sys.path:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from desktop_lock import DesktopLockError, desktop_lock  # tools/desktop_lock.py
+
+    try:
+        with desktop_lock("oxpload", start=__file__):
+            t0 = time.time()
+            proc = subprocess.Popen(
+                [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
+                cwd=str(app_dir), env=_launch_env(logs, addons),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            try:
+                result["rc"] = proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                try:
+                    proc.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    pass
+                result["rc"] = "timeout"
+            result["wall_s"] = round(time.time() - t0, 2)
+    except DesktopLockError as exc:
+        result["detail"] = ("the desktop lock (tools/gui-lock) could not be held, so the game "
+                            "was NOT launched and NO conclusion is possible: %s" % exc)
+        return False
+    return True
+
+
 def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
           require_sentinel: bool = True, scan_errors: bool = True) -> tuple:
     """Apply P2-P5 then the ERROR scan to a log's TEXT. Returns (verdict, detail, errors).
@@ -749,22 +790,8 @@ def run_group(app_dir: Path, group: dict, work: Path, timeout: float,
         result["detail"] = "no oolite.exe at %s" % str(exe).replace("\\", "/")
         return result
 
-    t0 = time.time()
-    proc = subprocess.Popen(
-        [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
-        cwd=str(app_dir), env=_launch_env(logs, addons),
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    try:
-        result["rc"] = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        try:
-            proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            pass
-        result["rc"] = "timeout"
-    result["wall_s"] = round(time.time() - t0, 2)
+    if not _launch_game(app_dir, exe, logs, addons, timeout, result):
+        return result
 
     if not log_path.exists():
         hint = ""
@@ -837,22 +864,8 @@ def run_one(app_dir: Path, oxp: Path, work: Path, timeout: float) -> dict:
         result["detail"] = "no oolite.exe at %s" % str(exe).replace("\\", "/")
         return result
 
-    t0 = time.time()
-    proc = subprocess.Popen(
-        [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
-        cwd=str(app_dir), env=_launch_env(logs, addons),
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    try:
-        result["rc"] = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        try:
-            proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            pass
-        result["rc"] = "timeout"
-    result["wall_s"] = round(time.time() - t0, 2)
+    if not _launch_game(app_dir, exe, logs, addons, timeout, result):
+        return result
 
     # ---- P1 LAUNCH -------------------------------------------------------
     if not log_path.exists():
