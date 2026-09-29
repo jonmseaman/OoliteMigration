@@ -174,8 +174,11 @@ static bool SunGetProperty(Context cx, Object obj, PropertyId propID, Value *val
 			return ooscript::newNumberValue(cx, [sun radius], value);
 
 		case kSun_name:
-			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([sun cxx_name]));
+		{
+			const std::optional<std::string> name = [sun cxx_name];
+			*value = OOJSValueFromPList(context, name.has_value() ? oo::PList(*name) : oo::PList());
 			return YES;
+		}
 			
 		case kSun_hasGoneNova:
 			*value = OOJSValueFromBOOL([sun goneNova]);

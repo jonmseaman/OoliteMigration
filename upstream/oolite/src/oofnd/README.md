@@ -289,6 +289,7 @@ valid empty `std::vector`, a disengaged `std::optional`, a null `oo::ObjCRef` or
 | `ScanTokensFromString(s)` | `oo::str::tokens(s)` |
 | `NSScanner -scanFloat:` / `-scanDouble:` on a string you hold | `oo::plist_get::scanDouble(oo::utf8ToUtf16(s), &d)` (the NSScanner port; narrow for float) |
 | `-pathComponents`, `+pathWithComponents:`, `-lastPathComponent`, `-stringByDeletingLastPathComponent`, `-stringByAppendingPathComponent:c` | `oo::str::pathComponents(s)`, `pathWithComponents(v)`, `lastPathComponent(s)`, `deletingLastPathComponent(s)`, `appendingPathComponent(s, c)` (GNUstep's Windows rules; `c` is one component) |
+| `-stringByAppendingPathExtension:e` | `oo::str::appendingPathExtension(s, e)` (GNUstep's Windows rules: trailing `/` and `\` dropped; an empty or bare-root path — `/`, `C:`, `~` — comes back unchanged, without GNUstep's "cannot append extension" log line; pinned by `tests/unit/oofnd/test_string_path_extension.cpp`, bead oo-3rb.327). Never write a file-local copy |
 | `%p` in a format string | `%s` with `oo::str::pointerDescription(p).c_str()` (GNUstep's text: low 32 bits, `(null)`) |
 | `[s UTF8String]` to hand a path to a C API | `s.c_str()` |
 | `OOCommodityType` (a typedef of `NSString *`) | `std::string`; never name the typedef in a migrated file (also `OOALStringRef` & co.) |

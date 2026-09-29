@@ -996,7 +996,7 @@ static void PlayTrumbleIdle(void)
 	{
 		// trumble sound from random direction - where's it gone now?
 		[sTrumbleSoundSource setPosition:OORandomUnitVector()];
-		[sTrumbleSoundSource playSound:sTrumbleIdleSound];
+		[sTrumbleSoundSource playOOSound:sTrumbleIdleSound];
 	}
 }
 
@@ -1008,6 +1008,6 @@ static void PlayTrumbleSqueal(void)
 	{
 		// trumble sound from random direction - where's it gone now?
 		[sTrumbleSoundSource setPosition:OORandomUnitVector()];
-		[sTrumbleSoundSource playSound:sTrumbleSqealSound];
+		[sTrumbleSoundSource playOOSound:sTrumbleSqealSound];
 	}
 }

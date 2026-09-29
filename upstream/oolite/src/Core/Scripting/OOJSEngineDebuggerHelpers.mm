@@ -125,7 +125,8 @@ static const char *DebuggerCString(std::string text)
 const char *JSValueToStrDbg(ooscript::Value val)  // NOLINT(misc-use-internal-linkage): called by name from gdb, see file header.
 {
 	ooscript::Context context = OOJSAcquireContext();
-	const char *result = [oo::NSStringOrNil(cxx_OOStringFromJSValueEvenIfNull(context, val)) UTF8String];
+	const std::optional<std::string> text = cxx_OOStringFromJSValueEvenIfNull(context, val);
+	const char *result = text.has_value() ? DebuggerCString(*text) : NULL;
 	OOJSRelinquishContext(context);
 	
 	return result;

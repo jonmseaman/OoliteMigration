@@ -1247,7 +1247,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 
 		[shuttle_ship setScanClass: CLASS_NEUTRAL];
 		[shuttle_ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
-		[shuttle_ship switchAITo:@"oolite-shuttleAI.js"];
+		[shuttle_ship switchAITo:"oolite-shuttleAI.js"];
 		[UNIVERSE addEntity:shuttle_ship];
 
 		[shuttle_ship release];
@@ -1618,7 +1618,7 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	GLuint width, height;
 	
 	fillRanNoiseBuffer();
-	if (![TextureStore getPlanetTextureNameFor:oo::ObjectFromPList(info)
+	if (![TextureStore getPlanetTextureNameFor:info
 									  intoData:&data
 										 width:&width
 										height:&height])

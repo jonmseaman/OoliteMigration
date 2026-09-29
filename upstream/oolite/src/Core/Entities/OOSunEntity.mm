@@ -303,9 +303,9 @@ MA 02110-1301, USA.
 				if (sky_bri == 1.0)
 				{	
 					// This sun has now gone nova!
-					[UNIVERSE cxx_setSystemDataKey:"sun_gone_nova" value:oo::ObjectFromPList(oo::PList(static_cast<bool>(YES))) fromManifest:"org.oolite.oolite"];	// +numberWithBool:
-					[UNIVERSE cxx_setSystemDataKey:"corona_flare" value:oo::ObjectFromPList(oo::PList::singleReal(0.3)) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
-					[UNIVERSE cxx_setSystemDataKey:"corona_hues" value:oo::ObjectFromPList(oo::PList::singleReal(0.05)) fromManifest:"org.oolite.oolite"];
+					[UNIVERSE cxx_setSystemDataKey:"sun_gone_nova" value:oo::PList(static_cast<bool>(YES)) fromManifest:"org.oolite.oolite"];	// +numberWithBool:
+					[UNIVERSE cxx_setSystemDataKey:"corona_flare" value:oo::PList::singleReal(0.3) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+					[UNIVERSE cxx_setSystemDataKey:"corona_hues" value:oo::PList::singleReal(0.05) fromManifest:"org.oolite.oolite"];
 					// Novas are stored under the core manifest if the
 					// player was there at the time. Default layer 2
 					// is fine.
@@ -313,7 +313,7 @@ MA 02110-1301, USA.
 				}
 				discColor[0] = 1.0 * _sunBrightnessFactor;	discColor[1] = 1.0 * _sunBrightnessFactor;	discColor[2] = 1.0 * _sunBrightnessFactor;
 				_novaExpansionTimer += delta_t;
-				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::ObjectFromPList(oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate)) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
 			}
 			else
 			{
