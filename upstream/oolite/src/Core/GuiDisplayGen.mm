@@ -2206,7 +2206,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				if (EXPECT(noNova))
 				{
 					r = g = b = 1.0;
-					OOColor *sunColor = [OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:i inGalaxy:galaxy_id]];
+					OOColor *sunColor = [OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:i inGalaxy:galaxy_id])];
 					if (sunColor != nil) {
 						[sunColor getRed:&r green:&g blue:&b alpha:&alpha];
 						alpha = 1.0; // reset
@@ -2609,7 +2609,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
-		concealment[i] = oo::PListView([systemManager getPropertiesForSystem:i inGalaxy:g]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+		concealment[i] = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 
 	
@@ -2675,7 +2675,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 				else
 				{
-					thisConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j))]];
+					thisConnectionColor = [OOColor colorWithDescription:oo::ObjectFromPList([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)])];
 				
 					if (thisConnectionColor == nil)
 					{
@@ -2687,7 +2687,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					glVertex3f(x+star.x, y+star.y, z);
 
 					// and the other colour for the other end
-					thatConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i))]];
+					thatConnectionColor = [OOColor colorWithDescription:oo::ObjectFromPList([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)])];
 				
 					if (thatConnectionColor == nil)
 					{

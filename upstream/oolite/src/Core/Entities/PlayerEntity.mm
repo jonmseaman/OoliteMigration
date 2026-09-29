@@ -8084,14 +8084,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	targetSystemName =	oo::OptionalString([UNIVERSE getSystemName:target_system_id]);
-	oo::PList systemInfo = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystem:target_system_id inGalaxy:galaxy_number]);
+	oo::PList systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:target_system_id inGalaxy:galaxy_number];
 	NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) targetSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
 
 	OOSystemID nextHop = [self nextHopTargetSystemID];
 	if (nextHop != target_system_id) {
 		std::optional<std::string> nextHopSystemName = oo::OptionalString([UNIVERSE getSystemName:nextHop]);
-		systemInfo = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystem:nextHop inGalaxy:galaxy_number]);
+		systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:nextHop inGalaxy:galaxy_number];
 		concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) nextHopSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
 		// (a nil name raised in the expansion)
@@ -10349,12 +10349,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (toScreen == GUI_SCREEN_SYSTEM_DATA)
 		{
 			// system data screen: ensure correct sun light color is used on miniature planet
-			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]]]];
+			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]])]];
 		}
 		else
 		{
 			// any other screen: reset local sun light color
-			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]]]];
+			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]])]];
 		}
 		
 		if (![[UNIVERSE gameController] isGamePaused])
