@@ -6573,11 +6573,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-// The role predicates read an Objective-C string (-hasRole: takes std::string; -hasPrimaryRole: is still unmigrated).
+// The role predicates read a std::string, held here for the call.
 - (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
 {
+	std::string roleParameter = role;
 	return [self countShipsMatchingPredicate:HasRolePredicate
-							   parameter:oo::NSStringFrom(role)
+							   parameter:&roleParameter
 								 inRange:range
 								ofEntity:entity];
 }
@@ -6591,8 +6592,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 
 - (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
 {
+	std::string roleParameter = role;
 	return [self countShipsMatchingPredicate:HasPrimaryRolePredicate
-							   parameter:oo::NSStringFrom(role)
+							   parameter:&roleParameter
 								 inRange:range
 								ofEntity:entity];
 }

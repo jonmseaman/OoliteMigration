@@ -2319,13 +2319,15 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithPrimaryRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
-	[self scanForNearestShipWithPredicate:HasPrimaryRolePredicate parameter:scanRole];
+	std::optional<std::string> role = oo::OptionalString(scanRole);	// the predicate reads a std::string; nil: none
+	[self scanForNearestShipWithPredicate:HasPrimaryRolePredicate parameter:role.has_value() ? &*role : nullptr];
 }
 
 
 - (void) scanForNearestShipHavingRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
-	[self scanForNearestShipWithPredicate:HasRolePredicate parameter:scanRole];
+	std::optional<std::string> role = oo::OptionalString(scanRole);	// the predicate reads a std::string; nil: none
+	[self scanForNearestShipWithPredicate:HasRolePredicate parameter:role.has_value() ? &*role : nullptr];
 }
 
 
@@ -2352,13 +2354,15 @@ using ooscript::Context;
 
 - (void) scanForNearestShipWithoutPrimaryRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
-	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRolePredicate parameter:scanRole];
+	std::optional<std::string> role = oo::OptionalString(scanRole);	// the predicate reads a std::string; nil: none
+	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRolePredicate parameter:role.has_value() ? &*role : nullptr];
 }
 
 
 - (void) scanForNearestShipNotHavingRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
-	[self scanForNearestShipWithNegatedPredicate:HasRolePredicate parameter:scanRole];
+	std::optional<std::string> role = oo::OptionalString(scanRole);	// the predicate reads a std::string; nil: none
+	[self scanForNearestShipWithNegatedPredicate:HasRolePredicate parameter:role.has_value() ? &*role : nullptr];
 }
 
 

@@ -1577,11 +1577,11 @@ static int shipsFound;
 		return;
 	}
 
-	const std::string &roleString = tokens[0];
+	std::string roleString = tokens[0];
 	const std::string messageString = JoinedFrom(tokens, 1);
 
 	for (const auto &target : [UNIVERSE cxx_findShipsMatchingPredicate:HasPrimaryRolePredicate
-															  parameter:oo::NSStringFrom(roleString)
+															  parameter:&roleString
 																inRange:-1
 															   ofEntity:nil])
 	{

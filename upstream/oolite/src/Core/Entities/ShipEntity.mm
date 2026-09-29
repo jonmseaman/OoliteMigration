@@ -14190,8 +14190,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (void) broadcastThargoidDestroyed
 {
+	std::string role = "tharglet";
 	[oo::NSArrayFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:HasRolePredicate
-							   parameter:@"tharglet"
+							   parameter:&role
 								 inRange:SCANNER_MAX_RANGE
 								ofEntity:self])
 			makeObjectsPerformSelector:@selector(sendAIMessage:) withObject:@"THARGOID_DESTROYED"];

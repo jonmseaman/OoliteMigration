@@ -154,19 +154,20 @@ BOOL IsVisualEffectPredicate(Entity *entity, void *parameter)
 
 BOOL HasRolePredicate(Entity *ship, void *parameter)
 {
-	return parameter != nullptr && [(ShipEntity *)ship hasRole:oo::StdString((NSString *)parameter)];
+	const std::string *role = static_cast<const std::string *>(parameter);	// a role, as the callers pass it; null for none
+	return role != nullptr && [(ShipEntity *)ship hasRole:*role];
 }
 
 
 BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter)
 {
-	NSString *role = (NSString *)parameter;	// an Objective-C string, as the callers pass it
-	if (role == nil)
+	const std::string *role = static_cast<const std::string *>(parameter);	// a role, as the callers pass it; null for none
+	if (role == nullptr)
 	{
 		(void)[(ShipEntity *)ship cxx_primaryRole];	// still chooses a primary role if there is none, as before
 		return NO;	// -isEqual: nil was NO
 	}
-	return [(ShipEntity *)ship cxx_hasPrimaryRole:oo::StdString(role)];
+	return [(ShipEntity *)ship cxx_hasPrimaryRole:*role];
 }
 
 
