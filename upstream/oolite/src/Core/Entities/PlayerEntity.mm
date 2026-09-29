@@ -5415,7 +5415,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (EXPECT_NOT(new_target != [self compassTarget]))
 		{
 			[self setCompassTarget:new_target];
-			[self cxx_doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PList(cxx_OOStringFromCompassMode([self compassMode])) })))];
+			// a nil target was left out of the Objective-C argument array, as before
+			std::vector<oo::PList> compassArguments;
+			if (new_target != nil)  compassArguments.push_back(oo::PListObject(new_target));
+			compassArguments.emplace_back(cxx_OOStringFromCompassMode([self compassMode]));
+			[self cxx_doScriptEvent:OOJSID("compassTargetChanged") withPListArguments:compassArguments];
 		}
 	}
 }
@@ -6003,9 +6007,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 /////////////////////////////////////////////////////////////////////
 
 
-- (void) interpretAIMessage:(id)ms	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) interpretAIMessage:(const std::string &)message	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
-	const std::optional<std::string> message = oo::OptionalString(ms);
 
 	if ((message == "HOLD_FULL"))
 	{
@@ -6873,22 +6876,23 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id) dumpCargo	// shared selector (proposed ADR-0043), called by name: an Objective-C string (the commodity), or nil
+- (void) dumpCargo	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
 	if (flightSpeed > 4.0 * maxFlightSpeed)
 	{
 		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("hold-locked") forCount:3.0];
-		return nil;
+		return;
 	}
 
-	id result = [super dumpCargo];
-	if (result != nil)
+	// what -[ShipEntity dumpCargo] did, keeping the commodity it returned (nil for no pod or no type)
+	ShipEntity *jetto = [self cxx_dumpCargoItem:std::nullopt];
+	const std::optional<std::string> result = jetto != nil ? [jetto cxx_commodityType] : std::nullopt;
+	if (result.has_value())
 	{
-		const std::string commodity = [UNIVERSE cxx_displayNameForCommodity:oo::StdString(result)].value_or(std::string());	// (nil raised in the expansion)
+		const std::string commodity = [UNIVERSE cxx_displayNameForCommodity:*result].value_or(std::string());
 		[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "commodity-ejected", { { "commodity", oo::PList(commodity) } }) forCount:3.0 forceDisplay:YES];
 		[self playCargoJettisioned];
 	}
-	return result;
 }
 
 
@@ -10472,7 +10476,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			// [key, price paid as a long long]; a nil key ended the list
 			oo::PList::Array boughtArguments;
 			if (key.has_value())  boughtArguments = { oo::PList(*key), oo::PList::signedInteger(static_cast<long long>(old_credits - credits)) };
-			[self cxx_doScriptEvent:OOJSID("playerBoughtEquipment") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(std::move(boughtArguments))))];
+			[self cxx_doScriptEvent:OOJSID("playerBoughtEquipment") withPListArguments:boughtArguments];
 			if (gui_screen == GUI_SCREEN_EQUIP_SHIP) //if we haven't changed gui screen inside playerBoughtEquipment
 			{ 
 				// show any change due to playerBoughtEquipment
@@ -11647,7 +11651,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([UNIVERSE autoSave])  [UNIVERSE setAutoSaveNow:YES];
 	
-	[self cxx_doScriptEvent:OOJSID("playerBoughtCargo") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) })))];	// the same number kinds (signed, unsigned long long)
+	[self cxx_doScriptEvent:OOJSID("playerBoughtCargo") withPListArguments:{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) }];	// the same number kinds (signed, unsigned long long)
 	if ([localMarket cxx_exportLegalityForGood:index] > 0)
 	{
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));	// +numberWithInt:
@@ -11710,7 +11714,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
 	
-	[self cxx_doScriptEvent:OOJSID("playerSoldCargo") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) })))];	// the same number kinds (signed, unsigned long long)
+	[self cxx_doScriptEvent:OOJSID("playerSoldCargo") withPListArguments:{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) }];	// the same number kinds (signed, unsigned long long)
 	
 	return YES;
 }

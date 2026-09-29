@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 
 + (OOCharacter *) characterWithRole:(const std::string &)c_role andOriginalSystem:(OOSystemID)s;
 + (OOCharacter *) randomCharacterWithRole:(const std::string &)c_role andOriginalSystem:(OOSystemID)s;
-+ (OOCharacter *) characterWithDictionary:(id)c_dict;	// an Objective-C dictionary (JS crew definitions may hold any object)
++ (OOCharacter *) characterWithDictionary:(const oo::PList &)c_dict;	// JS crew definitions may hold any object (Object nodes)
 
 - (std::optional<std::string>) planetOfOrigin;
 - (OOSystemID) planetIDOfOrigin;

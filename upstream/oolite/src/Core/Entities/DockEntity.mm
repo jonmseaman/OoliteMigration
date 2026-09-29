@@ -118,7 +118,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 			shipsOnApproach.erase(idObj);
 			if (ship != nil) {
 				// notify ship if it's alive
-				[ship sendAIMessage:@"DOCKING_ABORTED"];
+				[ship sendAIMessage:"DOCKING_ABORTED"];
 				[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 			}
 		}
@@ -147,7 +147,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
 		if ([ship isShip])
 		{
-			[ship sendAIMessage:@"DOCKING_ABORTED"];
+			[ship sendAIMessage:"DOCKING_ABORTED"];
 			[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 		}
 	}
