@@ -287,7 +287,7 @@ static void fillSquareImageDataWithCloudTexture(unsigned char * imageBuffer, int
 	const std::string name = oo::str::format("atmosphere-%u-%u-old", sNoiseSeed.high, sNoiseSeed.low);
 	OO_LOG("planetTex.dump", "Saving generated texture to file {}.", name);
 	
-	[[UNIVERSE gameView] dumpRGBAToFileNamed:oo::NSStringFrom(name)
+	[[UNIVERSE gameView] cxx_dumpRGBAToFileNamed:name
 									   bytes:imageBuffer
 									   width:width
 									  height:width
@@ -345,7 +345,7 @@ static void fillSquareImageWithPlanetTex(unsigned char * imageBuffer, int width,
 #if DEBUG_DUMP
 	OO_LOG("planetTex.dump", "Saving generated texture to file planet-{}-{}-old.", static_cast<unsigned>(sNoiseSeed.high), static_cast<unsigned>(sNoiseSeed.low));
 	
-	[[UNIVERSE gameView] dumpRGBAToFileNamed:oo::NSStringFrom(oo::str::format("planet-%u-%u-old", sNoiseSeed.high, sNoiseSeed.low))
+	[[UNIVERSE gameView] cxx_dumpRGBAToFileNamed:oo::str::format("planet-%u-%u-old", sNoiseSeed.high, sNoiseSeed.low)
 									   bytes:imageBuffer
 									   width:width
 									  height:width

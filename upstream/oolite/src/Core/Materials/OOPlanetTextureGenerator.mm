@@ -580,8 +580,8 @@ END:
 		const std::string diffuseName = oo::str::format("planet-%u-%u-diffuse-new", _info.seed.high, _info.seed.low);
 		const std::string lightsName = oo::str::format("planet-%u-%u-lights-new", _info.seed.high, _info.seed.low);
 		
-		[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(diffuseName)
-								   andGrayFileNamed:oo::NSStringFrom(lightsName)
+		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
+								   andGrayFileNamed:lightsName
 											  bytes:buffer
 											  width:_width
 											 height:_height
@@ -607,7 +607,7 @@ END:
 		}
 	}
 	
-	[[UNIVERSE gameView] dumpGrayToFileNamed:oo::NSStringFrom(noiseName)
+	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
 									   width:_width
 									  height:_height
@@ -1277,8 +1277,8 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	const std::string normalName = oo::str::format("planet-%u-%u-normal-new", _seed.high, _seed.low);
 	const std::string specularName = oo::str::format("planet-%u-%u-specular-new", _seed.high, _seed.low);
 	
-	[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(normalName)
-							   andGrayFileNamed:oo::NSStringFrom(specularName)
+	[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:normalName
+							   andGrayFileNamed:specularName
 										  bytes:_data
 										  width:_width
 										 height:_height
@@ -1388,8 +1388,8 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	const std::string rgbName = oo::str::format("planet-%u-%u-atmosphere-rgb-new", _seed.high, _seed.low);
 	const std::string alphaName = oo::str::format("planet-%u-%u-atmosphere-alpha-new", _seed.high, _seed.low);
 	
-	[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(rgbName)
-							   andGrayFileNamed:oo::NSStringFrom(alphaName)
+	[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:rgbName
+							   andGrayFileNamed:alphaName
 										  bytes:_data
 										  width:_width
 										 height:_height
