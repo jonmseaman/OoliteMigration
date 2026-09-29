@@ -3897,7 +3897,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			case WH_SCANINFO_ARRIVAL_TIME:
 			{
 				// a format read at run time (ADR-0043 item 19)
-				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { oo::DescriptionOf(ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO)) });
+				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { cxx_ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO) });
 				cxx_OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_COLLAPSE_TIME:
