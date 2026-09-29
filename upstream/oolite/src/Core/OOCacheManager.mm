@@ -338,7 +338,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		~/Library/Caches has the particular advantage of not being indexed by
 		Spotlight or backed up by Time Machine.
 	*/
-	std::string cachePath = oo::StdString([NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0]);
+	std::string cachePath = oo::fs::utf8String(oo::ResourcePaths::current().cachesDirectory());
 	if (![self directoryExists:cachePath create:create]) return std::nullopt;
 
 #if !OOLITE_MAC_OS_X
