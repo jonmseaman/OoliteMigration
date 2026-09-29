@@ -118,8 +118,8 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 	OO_LOG("script.legacy.run", "Running script {}", [self displayName].value_or("(null)"));
 	oo::log::indentIf("script.legacy.run");
 
-	[PLAYER runScriptActions:oo::ObjectFromPList(_script)
-			 withContextName:[self name]
+	[PLAYER cxx_runScriptActions:_script
+			 withContextName:oo::OptionalString([self name])
 				   forTarget:(ShipEntity *)target];
 
 	oo::log::outdentIf("script.legacy.run");
