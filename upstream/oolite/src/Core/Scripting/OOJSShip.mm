@@ -1947,7 +1947,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else
 			{
-				[entity setWeaponMount:facing toWeapon:oo::NSStringFrom(weaponKey)];
+				[entity setWeaponMount:facing toWeapon:weaponKey];
 			}
 			return YES;
 			}
@@ -2675,7 +2675,7 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 		// can't add fuel as equipment.
 		if (*key == "EQ_FUEL")  result = NO;
 		
-		if (result)  result = [thisEnt canAddEquipment:oo::NSStringFrom(*key) inContext:oo::NSStringFrom(ctx)];
+		if (result)  result = [thisEnt canAddEquipment:*key inContext:ctx];
 	}
 	else
 	{
@@ -2751,7 +2751,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			else
 			{
 				isRepair = [thisEnt hasEquipmentItem:oo::NSStringFrom(identifier + "_DAMAGED")];
-				OK = [player addEquipmentItem:oo::NSStringFrom(identifier) withValidation:YES inContext:@"scripted"];
+				OK = [player addEquipmentItem:identifier withValidation:YES inContext:"scripted"];
 				if (OK && isRepair) 
 				{
 					[player doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(identifier)];
@@ -2767,7 +2767,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			// no passenger handling for NPCs. EQ_CARGO_BAY is dealt with inside addEquipmentItem
 			else if (!berth && identifier != "EQ_PASSENGER_BERTH_REMOVAL")
 			{
-				OK = [thisEnt addEquipmentItem:oo::NSStringFrom(identifier) withValidation:YES inContext:@"scripted"];	
+				OK = [thisEnt addEquipmentItem:identifier withValidation:YES inContext:"scripted"];	
 			}
 			else
 			{
@@ -2826,13 +2826,13 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 				// player cargo bay removal handled in script
 				if ([thisEnt isPlayer] || [thisEnt extraCargo] <= [thisEnt availableCargoSpace])
 				{
-					[thisEnt removeEquipmentItem:oo::NSStringFrom(*key)];
+					[thisEnt removeEquipmentItem:*key];
 				}
 				else OK = NO;
 			}
 		}
 		else
-			[thisEnt removeEquipmentItem:oo::NSStringFrom(*key)];
+			[thisEnt removeEquipmentItem:*key];
 	}
 	
 	OOJS_RETURN_BOOL(OK);
@@ -2927,11 +2927,11 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 		if ((setOK && hasDamaged) || (setDamaged && hasOK))
 		{
 			// the implementation is identical between player and ship.
-			[thisEnt removeEquipmentItem:oo::NSStringFrom(setDamaged ? key : damagedKey)];
+			[thisEnt removeEquipmentItem:setDamaged ? key : damagedKey];
 			if ([thisEnt isPlayer])
 			{
 				// these player methods are different to the ship ones.
-				[(PlayerEntity*)thisEnt addEquipmentItem:oo::NSStringFrom(setDamaged ? damagedKey : key) withValidation:NO inContext:@"scripted"];
+				[(PlayerEntity*)thisEnt addEquipmentItem:setDamaged ? damagedKey : key withValidation:NO inContext:"scripted"];
 				if (setDamaged)
 				{
 					[(PlayerEntity*)thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(key)];
@@ -2947,7 +2947,7 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 			}
 			else
 			{
-				[thisEnt addEquipmentItem:oo::NSStringFrom(setDamaged ? damagedKey : key) withValidation:NO  inContext:@"scripted"];
+				[thisEnt addEquipmentItem:setDamaged ? damagedKey : key withValidation:NO  inContext:"scripted"];
 				if (hasOK) [thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(key)];
 			}
 		}

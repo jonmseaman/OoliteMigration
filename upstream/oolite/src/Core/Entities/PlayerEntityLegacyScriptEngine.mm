@@ -1375,7 +1375,7 @@ static int shipsFound;
 	}
 	else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:equipString])
 	{
-		[self addEquipmentItem:equipString withValidation:YES inContext:@"scripted"];
+		[self addEquipmentItem:equipKey withValidation:YES inContext:"scripted"];
 	}
 }
 
@@ -1399,7 +1399,7 @@ static int shipsFound;
 	}
 	if ([self hasEquipmentItem:equipString] || [self hasEquipmentItem:oo::NSStringFrom(equipKey + "_DAMAGED")])
 	{
-		[self removeEquipmentItem:equipString];
+		[self removeEquipmentItem:equipKey];
 	}
 
 }
