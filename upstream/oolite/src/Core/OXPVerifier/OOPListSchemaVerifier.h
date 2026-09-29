@@ -82,7 +82,7 @@ struct OOPListSchemaVerifierError
 };
 
 
-@interface NSObject (OOPListSchemaVerifierDelegate)
+@interface OOObject (OOPListSchemaVerifierDelegate)
 
 // Handle "delegated types". Return YES for valid, NO for invalid.
 // name: a string; keyPath: an array of strings and numbers; typeKey: a string.
