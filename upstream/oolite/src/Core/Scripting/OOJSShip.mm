@@ -685,7 +685,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 		
 		case kShip_AI:
-			result = [[entity getAI] name];
+			result = oo::NSStringOrNil([[entity getAI] cxx_name]);
 			break;
 		
 		case kShip_AIState:
