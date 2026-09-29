@@ -1295,7 +1295,7 @@ DESTROY(laser_color);
 {
 	if (![self isSubEntity])
 	{
-		return oo::NSStringFrom(oo::str::format("\"%s\" %s", oo::DescriptionOf([self name]).c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
+		return oo::NSStringFrom(oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
 	}
 	else
 	{
@@ -1304,14 +1304,14 @@ DESTROY(laser_color);
 		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
 		else  subtype = "(subentity)";
 
-		return oo::NSStringFrom(oo::str::format("\"%s\" position: %s %s", oo::DescriptionOf([self name]).c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype));
+		return oo::NSStringFrom(oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype));
 	}
 }
 
 
 - (id) shortDescriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\"", oo::DescriptionOf([self name]).c_str()));
+	return oo::NSStringFrom(oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str()));
 }
 
 
@@ -3898,7 +3898,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
 			if (!shipKey.has_value())
 			{
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringOrNil(shipKey), [self name], @"shipdata",  @"Trying another missile.");
+				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringOrNil(shipKey), oo::NSStringOrNil([self cxx_name]), @"shipdata",  @"Trying another missile.");
 			}
 		}
 	}
@@ -3907,7 +3907,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
 		if (!shipKey.has_value())
 		{
-			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), [self name], @"shipdata", @" Using defaults instead.");
+			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"shipdata", @" Using defaults instead.");
 			return nil;
 		}
 	}
@@ -3920,9 +3920,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (!missile)
 		{
 			if (isRandomMissile)
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringFrom(*shipKey), [self name], @"shipdata",  @"Trying another missile.");
+				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringFrom(*shipKey), oo::NSStringOrNil([self cxx_name]), @"shipdata",  @"Trying another missile.");
 			else
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), [self name], @"shipdata", @" Using defaults instead.");
+				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"shipdata", @" Using defaults instead.");
 
 			[OOEquipmentType setMissileRegistryRole:@"" forShip:oo::NSStringFrom(*shipKey)];	// no valid role for this shipKey
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
@@ -3949,7 +3949,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 		if (!missileType)
 		{
-			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", (isRandomMissile ? @"random missile" : @"missile_role"), oo::NSStringFrom(role), [self name], @"equipment", @" Enabling compatibility mode.");
+			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", (isRandomMissile ? @"random missile" : @"missile_role"), oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"equipment", @" Enabling compatibility mode.");
 			missileType = [self generateMissileEquipmentTypeFrom:role];
 		}
 
@@ -4013,7 +4013,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 	}
 
-	if (missileType == nil) OOLogERR(@"ship.setUp.missiles", @"could not resolve missile / mine type for ship \"%@\". Original missile role:\"%@\".", [self name],oo::NSStringOrNil(_missileRole));
+	if (missileType == nil) OOLogERR(@"ship.setUp.missiles", @"could not resolve missile / mine type for ship \"%@\". Original missile role:\"%@\".", oo::NSStringOrNil([self cxx_name]),oo::NSStringOrNil(_missileRole));
 
 	role = oo::str::lowercase(oo::StdString([missileType identifier]));
 	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
@@ -4024,7 +4024,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	else
 	{
-		OOLogWARN(@"ship.setUp.missiles", @"missile_role \"%@\" is not a valid missile / mine type for ship \"%@\".%@", [missileType identifier] , [self name],@" No missile selected.");
+		OOLogWARN(@"ship.setUp.missiles", @"missile_role \"%@\" is not a valid missile / mine type for ship \"%@\".%@", [missileType identifier] , oo::NSStringOrNil([self cxx_name]),@" No missile selected.");
 		return nil;
 	}
 }
@@ -7239,9 +7239,15 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (id) name	// shared selector (proposed ADR-0043)
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(name);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>) cxx_name
+{
+	return name;
 }
 
 
@@ -7342,9 +7348,15 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (void) setName:(id)inName	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (void) setName:(id)inName	// shared selector (Foundation declares -setName: too; retires with oo-qps)
 {
-	name = oo::OptionalString(inName);
+	[self cxx_setName:oo::OptionalString(inName)];
+}
+
+
+- (void) cxx_setName:(const std::optional<std::string> &)inName
+{
+	name = inName;
 }
 
 
@@ -7438,7 +7450,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 	{
 		primaryRole = [roleSet anyRole];
 		if (!primaryRole.has_value())  primaryRole = "trader";
-		OOLog(@"ship.noPrimaryRole", @"%@ had no primary role, randomly selected \"%@\".", [self name], oo::NSStringOrNil(primaryRole));
+		OOLog(@"ship.noPrimaryRole", @"%@ had no primary role, randomly selected \"%@\".", oo::NSStringOrNil([self cxx_name]), oo::NSStringOrNil(primaryRole));
 	}
 
 	return primaryRole;
@@ -14509,7 +14521,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 {
 	// Create a bouy and beacon where the hulk is.
 	// Get the main GalCop station to launch a pilot boat to deliver a pilot to the hulk.
-	OOLog(@"claimAsSalvage.called", @"claimAsSalvage called on %@ %@", [self name], [self roleSet]);
+	OOLog(@"claimAsSalvage.called", @"claimAsSalvage called on %@ %@", oo::NSStringOrNil([self cxx_name]), [self roleSet]);
 	
 	// Not an abandoned hulk, so don't allow the salvage
 	if (![self isHulk])

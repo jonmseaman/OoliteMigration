@@ -777,13 +777,15 @@ typedef enum
 
 - (NSUInteger) turretCount;
 
-- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (id) name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
+- (std::optional<std::string>) cxx_name;	// nullopt: none (bead oo-3rb.289.13)
 - (std::optional<std::string>) cxx_shipUniqueName;
 - (std::optional<std::string>) cxx_shipClassName;
 - (std::optional<std::string>) displayName;	// flipped with its family (bead oo-3rb.267)
 - (std::optional<std::string>) cxx_scanDescription;
 - (std::optional<std::string>) cxx_scanDescriptionForScripting;
-- (void) setName:(id)inName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (void) setName:(id)inName;	// shared selector (Foundation declares -setName: too): -cxx_setName: with an Objective-C string, or nil
+- (void) cxx_setName:(const std::optional<std::string> &)inName;	// PlayerEntity blocks it
 - (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName;
 - (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
 - (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
