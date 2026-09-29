@@ -51,6 +51,7 @@
 
 #include <algorithm>
 #include "oofnd/objc/OOAssert.h"
+#import "OOPListGameTypes.h"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -863,7 +864,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	// appropriate station at those coordinates, if found, switch
 	// docked station to that one.
 	const oo::PList *dockedPosNode = fileDic.find("docked_station_position");
-	HPVector dockedPos = OOHPVectorFromObject(dockedPosNode != nullptr ? oo::ObjectFromPList(*dockedPosNode) : nil, kZeroHPVector);
+	HPVector dockedPos = OOHPVectorFromPList(dockedPosNode, kZeroHPVector);
 	const std::string dockedRole = OptionalStringValue(fileDic.find("docked_station_role")).value_or("");
 	StationEntity *saveStation = [UNIVERSE stationWithRole:oo::NSStringFrom(dockedRole) andPosition:dockedPos];
 	if (saveStation != nil && [saveStation allowsSaving])
@@ -1368,7 +1369,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	rating = oo::DescriptionOf(KillCountToRatingAndKillString(cdr.get<unsigned int>("ship_kills")));
 	const oo::PList *creditsNode = cdr.find("credits");
-	OOCreditsQuantity money = OODeciCreditsFromObject(creditsNode != nullptr ? oo::ObjectFromPList(*creditsNode) : nil);
+	OOCreditsQuantity money = OODeciCreditsFromPList(creditsNode);
 	
 	// Nikos - Add some more information in the load game screen (current location, galaxy number and timestamp).
 	//-------------------------------------------------------------------------------------------------------------------------
@@ -1511,14 +1512,16 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 }
 
 
-OOCreditsQuantity OODeciCreditsFromObject(id object)
+OOCreditsQuantity OODeciCreditsFromPList(const oo::PList *value)
 {
-	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// float/double NSNumber (objCType f or d)
+	if (value != nullptr && value->isReal())	// a real (was a float/double NSNumber, objCType f or d)
 	{
-		return OODeciCreditsFromDouble([object doubleValue]);
+		double d = value->doubleValue();
+		if (value->isSinglePrecision())  d = static_cast<double>(static_cast<float>(d));	// +numberWithFloat: -doubleValue
+		return OODeciCreditsFromDouble(d);
 	}
 	else
 	{
-		return OOUnsignedLongLongFromObject(object, 0);
+		return oo::plist_get::unsignedLongLongFrom(value, 0);	// the reader OOUnsignedLongLongFromObject forwards to
 	}
 }
