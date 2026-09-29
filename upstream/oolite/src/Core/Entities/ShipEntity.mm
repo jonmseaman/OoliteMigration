@@ -1747,8 +1747,8 @@ DESTROY(laser_color);
 
 		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [oo::NSStringFrom(oo::utf16ToUtf8(beaconCode.substr(0, 1))) retain];	// -substringToIndex:1
-			else  _beaconDrawable = @"";
+			if (length > 0)  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
 		}
 }
 	
