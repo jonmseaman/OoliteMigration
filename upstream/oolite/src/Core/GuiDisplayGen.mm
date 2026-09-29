@@ -1184,38 +1184,38 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		case GUI_BACKGROUND_SPECIAL_CUSTOM:
 		case GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST:
 		case GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST:
-			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"custom_chart_mission"]);
+			bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"custom_chart_mission"];
 			if (bgDescriptor.isNull()) 
 			{
-				bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart_mission"]);
+				bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"short_range_chart_mission"];
 				if (bgDescriptor.isNull()) 
 				{
-					bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart"]);
+					bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"short_range_chart"];
 				}
 			}
 			break;
 		case GUI_BACKGROUND_SPECIAL_SHORT:
 		case GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST:
 		case GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST:
-			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart_mission"]);
+			bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"short_range_chart_mission"];
 			if (bgDescriptor.isNull()) 
 			{
-				bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart"]);
+				bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"short_range_chart"];
 			}
 			break;
 		case GUI_BACKGROUND_SPECIAL_LONG:
 		case GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST:
 		case GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST:
-			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringFrom(oo::str::format("long_range_chart%d_mission", galaxy_number+1))]);
+			bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:oo::str::format("long_range_chart%d_mission", galaxy_number+1)];
 			if (bgDescriptor.isNull()) 
 			{
-				bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"long_range_chart_mission"]);
+				bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"long_range_chart_mission"];
 				if (bgDescriptor.isNull()) 
 				{
-					bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringFrom(oo::str::format("long_range_chart%d", galaxy_number+1))]);
+					bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:oo::str::format("long_range_chart%d", galaxy_number+1)];
 					if (bgDescriptor.isNull()) 
 					{
-						bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"long_range_chart"]);
+						bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"long_range_chart"];
 						
 					}
 				}
@@ -1255,13 +1255,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 - (BOOL) cxx_setBackgroundTextureKey:(const std::optional<std::string> &)key
 {
-	return [self cxx_setBackgroundTextureDescriptor:oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringOrNil(key)])];
+	return [self cxx_setBackgroundTextureDescriptor:[UNIVERSE cxx_screenTextureDescriptorForKey:key.value_or("")]];
 }
 
 
 - (BOOL) cxx_setForegroundTextureKey:(const std::optional<std::string> &)key
 {
-	return [self cxx_setForegroundTextureDescriptor:oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringOrNil(key)])];
+	return [self cxx_setForegroundTextureDescriptor:[UNIVERSE cxx_screenTextureDescriptorForKey:key.value_or("")]];
 }
 
 

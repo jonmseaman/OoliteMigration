@@ -172,7 +172,7 @@ id MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_l
 // this is exclusively called to initialise the main planet.
 - (id) initAsMainPlanetForSystem:(OOSystemID)s
 {
-	oo::PList planetInfo = oo::PListFrom([UNIVERSE generateSystemData:s]);
+	oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:s];
 
 	SetInfo(planetInfo, "mainForLocalSystem", oo::PList(static_cast<bool>(YES)));
 	if (s != [PLAYER systemID])
@@ -196,7 +196,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	
 	scanClass = CLASS_NO_DRAW;
 	
-	oo::PList planetInfo = oo::PListFrom([UNIVERSE generateSystemData:systemID]);	// null where it was nil
+	oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:systemID];	// null where it was nil
 
 	[self setUpTypeParametersWithSourceInfo:dict targetInfo:planetInfo];
 
@@ -880,7 +880,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 	float start_distance = collision_radius + 125.0f;
 	HPVector launch_pos = HPvector_add(position, vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(q1), start_distance)));
 	
-	ShipEntity *shuttle_ship = [UNIVERSE newShipWithRole:@"shuttle"];   // retain count = 1
+	ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
 		if ([shuttle_ship cxx_crew].value_or(std::vector<oo::ObjCRef<OOCharacter *>>()).empty())
