@@ -3089,7 +3089,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (void)noteFrustration:(const std::string &)context
 {
 	[shipAI cxx_reactToMessage:"FRUSTRATED" context:context];
-	[self doScriptEvent:OOJSID("shipAIFrustrated") withArgument:oo::NSStringFrom(context)];
+	[self cxx_doScriptEvent:OOJSID("shipAIFrustrated") withPListArguments:{ oo::PList(context) }];
 }
 
 
@@ -3773,7 +3773,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	// add the equipment
 	_equipment.push_back(equipmentKey);
-	[self doScriptEvent:OOJSID("equipmentAdded") withArgument:oo::NSStringFrom(equipmentKey)];
+	[self cxx_doScriptEvent:OOJSID("equipmentAdded") withPListArguments:{ oo::PList(equipmentKey) }];
 	return YES;
 }
 
@@ -3858,7 +3858,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			_equipment.erase(equipped);
 		}
 		// this event must come after the item is actually removed
-		[self doScriptEvent:OOJSID("equipmentRemoved") withArgument:oo::NSStringFrom(equipmentKey)];
+		[self cxx_doScriptEvent:OOJSID("equipmentRemoved") withPListArguments:{ oo::PList(equipmentKey) }];
 		
 		// if all docking computers are damaged while active
 		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
@@ -14051,7 +14051,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			[escort setAITo:@"dockingAI.plist"];
 			[ai cxx_setState:"ABORT" afterDelay:delay + 0.25];
 		}
-		[escort doScriptEvent:OOJSID("escortDock") withArgument:oo::ObjectFromPList(oo::PList::singleReal(delay))];
+		[escort cxx_doScriptEvent:OOJSID("escortDock") withPListArguments:{ oo::PList::singleReal(delay) }];
 	}
 	
 	// We now have no escorts.
@@ -14370,7 +14370,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 - (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other
 {
 	// Too complex for AI scripts to handle, JS event only.
-	[self doScriptEvent:OOJSID("commsMessageReceived") withArgument:oo::NSStringFrom(message_text) andArgument:other];
+	[self cxx_doScriptEvent:OOJSID("commsMessageReceived") withPListArguments:{ oo::PList(message_text), oo::PListObject(other) }];
 }
 
 
@@ -14788,6 +14788,16 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 - (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments
 {
+	// OOJSValueFromPList of an object's PList form is what OOJSValueFromNativeObject gave for it.
+	std::vector<oo::PList> plists;
+	plists.reserve(arguments.size());
+	for (const oo::ObjCRef<id> &argument : arguments)  plists.push_back(oo::PListFrom(argument.get()));
+	[self cxx_doScriptEvent:message withPListArguments:plists];
+}
+
+
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
+{
 	ooscript::Context context = OOJSAcquireContext();
 	unsigned					i, argc;
 	ooscript::Value					*argv = NULL;
@@ -14801,7 +14811,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		{
 			for (i = 0; i != argc; ++i)
 			{
-				argv[i] = arguments[i].get() != nil ? OOJSValueFromNativeObject(context, arguments[i].get()) : ooscript::Value{0};	// (a message to nil gave the zero value)
+				argv[i] = OOJSValueFromPList(context, arguments[i]);
 				OOJSAddGCValueRoot(context, &argv[i], "event parameter");
 			}
 		}
