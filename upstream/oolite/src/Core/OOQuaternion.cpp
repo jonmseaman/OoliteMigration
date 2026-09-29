@@ -364,7 +364,7 @@ void quaternion_rotate_about_axis(Quaternion *quat, Vector axis, OOScalar angle)
 }
 
 
-#if __OBJC__
+#ifdef __cplusplus
 std::string QuaternionDescription(Quaternion quaternion)
 {
 	float			x, y, z;
