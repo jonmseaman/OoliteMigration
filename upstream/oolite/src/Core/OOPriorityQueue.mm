@@ -178,7 +178,7 @@ OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 
 
 #if OO_DEBUG
-- (id) debugDescription
+- (std::string) cxx_debugDescription	// (was -debugDescription, an Objective-C string)
 {
 	std::string					result;
 
@@ -194,7 +194,7 @@ OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 	{
 		result += " {}";
 	}
-	return oo::NSStringFrom(result);
+	return result;
 }
 #endif
 
@@ -378,13 +378,6 @@ OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 	result.reserve(_count);
 	while ((value = [self nextObject]))  result.emplace_back(value);
 	return result;
-}
-
-
-- (id) objectEnumerator
-{
-	// The objects are pulled off the heap up front (the retired enumerator pulled them as it went).
-	return [oo::NSArrayFromObjects([self cxx_objectEnumerator]) objectEnumerator];
 }
 
 

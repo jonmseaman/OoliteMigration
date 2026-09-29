@@ -238,7 +238,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 			return YES;
 
 		case kClock_clockString:
-			*value = OOJSValueFromNativeObject(context, oo::NSStringFrom([player cxx_dial_clock]));
+			*value = OOJSValueFromPList(context, oo::PList([player cxx_dial_clock]));
 			return YES;
 
 		case kClock_isAdjusting:
@@ -270,7 +270,7 @@ static bool JSClockToString(ooscript::Context context, ooscript::CallArgs &oojsA
 {
 	OOJS_NATIVE_ENTER(context)
 
-	OOJS_RETURN_OBJECT(oo::NSStringFrom([OOPlayerForScripting() cxx_dial_clock]));
+	OOJS_RETURN_PLIST(oo::PList([OOPlayerForScripting() cxx_dial_clock]));
 
 	OOJS_NATIVE_EXIT
 }

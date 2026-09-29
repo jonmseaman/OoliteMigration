@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
+#include "oofnd/PList.hpp"
 
 
 @class OOColor;
@@ -43,7 +44,8 @@ MA 02110-1301, USA.
 @interface TextureStore: OOObject
 
 // routines to create textures...
-// planetInfo: a dictionary whose colours are Object nodes holding OOColor objects (ADR-0055 item 2).
+// planetInfo: a dictionary whose colours are Object nodes holding OOColors (OOObjCPList.h) and
+// whose land_fraction is a number (bead oo-qps.52).
 + (BOOL) getPlanetTextureNameFor:(const oo::PList &)planetInfo
 						intoData:(unsigned char **)textureData
 						   width:(GLuint *)textureWidth

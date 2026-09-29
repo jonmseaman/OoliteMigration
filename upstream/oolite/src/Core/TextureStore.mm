@@ -48,12 +48,13 @@ static const char * const kOOLogPlanetTextureGen			= "texture.planet.generate";	
 
 #import "OOTextureGenerator.h"	// For FloatRGB
 #import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
 
 
 static FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const char *key)	// dictionary: see getPlanetTextureNameFor:
 {
-	const oo::PList *value = dictionary.find(key);
-	OOColor *color = value != nullptr ? oo::ObjectIn(*value) : nil;	// an Object node holding an OOColor
+	const oo::PList *node = dictionary.find(key);
+	OOColor *color = (node != nullptr) ? oo::ObjectIn(*node) : nil;
 	if (color == nil)
 	{
 		// could not get a color from the dicitionary, return white color instead of hitting the assert below
@@ -132,7 +133,7 @@ static void fillSquareImageWithPlanetTex(unsigned char * imageBuffer, int width,
 	*textureWidth = texture_w;
 	*textureHeight = texture_h;
 	
-	float land_fraction = planetInfo.get<float>("land_fraction", 0.0f);	// -floatValue of the number (0 when absent)
+	float land_fraction = planetInfo.get<float>("land_fraction", 0.0f);	// a number (-floatValue of it); absent: 0
 	float sea_bias = land_fraction - 1.0;
 	
 	OO_LOG(kOOLogPlanetTextureGen, "genning texture for land_fraction {:.5f}", land_fraction);
