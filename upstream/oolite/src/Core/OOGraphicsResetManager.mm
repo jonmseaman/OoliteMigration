@@ -28,7 +28,7 @@ SOFTWARE.
 #import "OOGraphicsResetManager.h"
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
@@ -93,10 +93,6 @@ static OOGraphicsResetManager *sSingleton = nil;
 		@catch (OOException *exception)
 		{
 			OO_LOG(cxx_kOOLogException, "***** EXCEPTION -- {} : {} -- ignored during graphics reset.", [exception name], [exception reason]);
-		}
-		@catch (OOFoundationException *exception)
-		{
-			OO_LOG(cxx_kOOLogException, "***** EXCEPTION -- {} : {} -- ignored during graphics reset.", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		}
 	}
 	

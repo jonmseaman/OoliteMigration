@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 #include "oofnd/Process.hpp"
 #include "oofnd/String.hpp"
 #import "OOLoggingExtended.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
@@ -234,11 +234,6 @@ int main(int argc, char *argv[])
 	@catch (OOException *exception)
 	{
 		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", [exception name], [exception reason]);
-		return EXIT_FAILURE;
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		return EXIT_FAILURE;
 	}
 #endif
