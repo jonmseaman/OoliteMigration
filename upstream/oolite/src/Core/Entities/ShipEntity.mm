@@ -3188,7 +3188,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		const std::string key = (itemKey == "thargon") ? std::string("EQ_THARGON") : itemKey;
 		for (i = 0; i < missiles; i++)
 		{
-			if (missile_list[i] != nil && oo::StdString([missile_list[i] identifier]) == key)  return YES;
+			if (missile_list[i] != nil && [missile_list[i] cxx_identifier].value_or("") == key)  return YES;
 		}
 	}
 	
@@ -3198,10 +3198,13 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 - (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType
 {
-	if ([[forward_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
-		[[aft_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
-		[[port_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
-		[[starboard_weapon_type identifier] isEqualToString:[weaponType identifier]])
+	// -isEqualToString: of the identifiers: a nil weapon (nullopt) matches nothing.
+	const std::optional<std::string> weaponIdentifier = [weaponType cxx_identifier];
+	if (weaponIdentifier.has_value() &&
+		([forward_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [aft_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [port_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [starboard_weapon_type cxx_identifier] == weaponIdentifier))
 	{
 		return YES;
 	}
@@ -3261,8 +3264,8 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 		else
 		{
-			OOEquipmentType *et = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
-			if (et != nil && [et provides:oo::NSStringFrom(equipmentType)])
+			OOEquipmentType *et = [OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
+			if (et != nil && [et cxx_provides:equipmentType])
 			{
 				return YES;
 			}
@@ -3282,8 +3285,8 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 		else
 		{
-			OOEquipmentType *et = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
-			if (et != nil && [et provides:oo::NSStringFrom(equipmentType)])
+			OOEquipmentType *et = [OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
+			if (et != nil && [et cxx_provides:equipmentType])
 			{
 				return key;
 			}
@@ -3356,7 +3359,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (missiles >= max_missiles) return NO;
 	}
 
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+	OOEquipmentType *eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 
 	// -hasEquipmentItem: with one string key.
 	if (![eqType canCarryMultiple] && [self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO])  return NO;
@@ -3469,8 +3472,8 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	const oo::PList itemInfo(oo::PList::Array{ "100", "100000", "Missile", role, "Unidentified missile type.",
 							oo::PList(oo::PList::Dict{ { "is_external_store", oo::PList("true") } }) });
 
-	[OOEquipmentType addEquipmentWithInfo:oo::ObjectFromPList(itemInfo)];
-	return [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(role)];
+	[OOEquipmentType cxx_addEquipmentWithInfo:itemInfo];
+	return [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
 }
 
 
@@ -3483,7 +3486,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	for (const auto &eqTypeRef : [OOEquipmentType cxx_allEquipmentTypes])
 	{
 		eqType = eqTypeRef.get();
-		const std::string identifier = oo::StdString([eqType identifier]);
+		const std::string identifier = [eqType cxx_identifier].value_or("");
 		// Equipment list,  consistent with the rest of the API - Kaks
 		if ([eqType canCarryMultiple])
 		{
@@ -3510,7 +3513,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	// Passengers - not supported yet for NPCs, but it's here for genericity.
 	if ([self passengerCapacity] > 0)
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"];
+		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_PASSENGER_BERTH"];
 		//[quip addObject:[self eqDictionaryWithType:eqType isDamaged:NO]];
 		quip.emplace_back(eqType);
 	}
@@ -3536,7 +3539,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
 
-	eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+	eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 	if (eqType == nil)  return NO;
 	
 	// need to know if we are trying to add a Repair version of the equipment. In some cases
@@ -3544,7 +3547,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	// if the condition is not satisfied, but it doesn't make sense to deny repair when the
 	// equipment is already installed. For now, we are checking only the cargo space condition,
 	// but other conditions might need to be revised too. - Nikos, 20151115
-	if ([self hasEquipmentItem:[eqType damagedIdentifier]])
+	if ([self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_damagedIdentifier])])
 	{
 		validationForDamagedEquipment = YES;
 	}
@@ -3554,9 +3557,12 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if ([eqType requiresEmptyPylon] && [self missileCount] >= [self missileCapacity] && !loading)  return NO;
 	if ([eqType  requiresMountedPylon] && [self missileCount] == 0 && !loading)  return NO;
 	if ([self availableCargoSpace] < [eqType requiredCargoSpace] && !validationForDamagedEquipment && !loading)  return NO;
-	if ([eqType requiresEquipment] != nil && ![self hasAllEquipment:[eqType requiresEquipment] includeWeapons:YES whileLoading:loading])  return NO;
-	if ([eqType requiresAnyEquipment] != nil && ![self hasEquipmentItem:[eqType requiresAnyEquipment] includeWeapons:YES whileLoading:loading])  return NO;
-	if ([eqType incompatibleEquipment] != nil && [self hasEquipmentItem:[eqType incompatibleEquipment] includeWeapons:YES whileLoading:loading])  return NO;
+	const std::optional<std::vector<std::string>> requiresEquipment = [eqType cxx_requiresEquipment];
+	const std::optional<std::vector<std::string>> requiresAnyEquipment = [eqType cxx_requiresAnyEquipment];
+	const std::optional<std::vector<std::string>> incompatibleEquipment = [eqType cxx_incompatibleEquipment];
+	if (requiresEquipment.has_value() && ![self hasAllEquipment:oo::NSSetFromStrings(*requiresEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (requiresAnyEquipment.has_value() && ![self hasEquipmentItem:oo::NSSetFromStrings(*requiresAnyEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (incompatibleEquipment.has_value() && [self hasEquipmentItem:oo::NSSetFromStrings(*incompatibleEquipment) includeWeapons:YES whileLoading:loading])  return NO;
 	if ([eqType requiresCleanLegalRecord] && [self legalStatus] != 0 && !loading)  return NO;
 	if ([eqType requiresNonCleanLegalRecord] && [self legalStatus] == 0 && !loading)  return NO;
 	if ([eqType requiresFreePassengerBerth] && [self passengerCount] >= [self passengerCapacity])  return NO;
@@ -3565,7 +3571,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 	if (!loading)
 	{
-		const std::optional<std::string> condition_script = oo::OptionalString([eqType conditionScript]);
+		const std::optional<std::string> condition_script = [eqType cxx_conditionScript];
 		if (condition_script.has_value())
 		{
 			OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*condition_script)];
@@ -3689,11 +3695,11 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size()))];
+		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size())];
 	}
 	else
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 		// in case we have the damaged version!
 		if (![eqType canCarryMultiple])
 		{
@@ -3787,7 +3793,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	{
 		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentTypeCheckKey)];
+	OOEquipmentType *eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentTypeCheckKey];
 	if (eqType == nil)  return;
 
 	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
@@ -3862,12 +3868,12 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) removeExternalStore:(OOEquipmentType *)eqType
 {
 	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
-	const std::optional<std::string>	identifier = oo::OptionalString([eqType identifier]);
+	const std::optional<std::string>	identifier = [eqType cxx_identifier];
 	unsigned	i;
 
 	for (i = 0; i < missiles; i++)
 	{
-		if (identifier.has_value() && oo::OptionalString([missile_list[i] identifier]) == identifier)
+		if (identifier.has_value() && [missile_list[i] cxx_identifier] == identifier)
 		{
 			// now 'delete' [i] by compacting the array
 			while ( ++i < missiles ) missile_list[i - 1] = missile_list[i];
@@ -3910,7 +3916,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 	}
 
-	eqRole = oo::OptionalString([OOEquipmentType getMissileRegistryRoleForShip:oo::NSStringFrom(*shipKey)]);	// eqRole != role for generic missiles.
+	eqRole = [OOEquipmentType cxx_getMissileRegistryRoleForShip:*shipKey];	// eqRole != role for generic missiles.
 
 	if (!eqRole.has_value())
 	{
@@ -3922,7 +3928,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			else
 				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), oo::NSStringOrNil([self cxx_name]), @"shipdata", @" Using defaults instead.");
 
-			[OOEquipmentType setMissileRegistryRole:@"" forShip:oo::NSStringFrom(*shipKey)];	// no valid role for this shipKey
+			[OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
 			else return nil;
 		}
@@ -3932,7 +3938,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			for (const std::string &value : [[missile roleSet] roles])
 			{
 				role = value;
-				missileType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(role)];
+				missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
 				// ensure that we have a missile or mine
 				if ([missileType isMissileOrMine]) break;
 			}
@@ -3943,7 +3949,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			}
 		}
 
-		missileType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(role)];
+		missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
 
 		if (!missileType)
 		{
@@ -3951,7 +3957,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			missileType = [self generateMissileEquipmentTypeFrom:role];
 		}
 
-		[OOEquipmentType setMissileRegistryRole:oo::NSStringFrom(role) forShip:oo::NSStringFrom(*shipKey)];
+		[OOEquipmentType cxx_setMissileRegistryRole:role forShip:*shipKey];
 		[missile release];
 	}
 	else
@@ -3962,7 +3968,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
 			return nil;
 		}
-		missileType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*eqRole)];
+		missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqRole];
 	}
 
 	return missileType;
@@ -4013,7 +4019,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 	if (missileType == nil) OOLogERR(@"ship.setUp.missiles", @"could not resolve missile / mine type for ship \"%@\". Original missile role:\"%@\".", oo::NSStringOrNil([self cxx_name]),oo::NSStringOrNil(_missileRole));
 
-	role = oo::str::lowercase(oo::StdString([missileType identifier]));
+	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
 	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
 
 	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
@@ -4022,7 +4028,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	else
 	{
-		OOLogWARN(@"ship.setUp.missiles", @"missile_role \"%@\" is not a valid missile / mine type for ship \"%@\".%@", [missileType identifier] , oo::NSStringOrNil([self cxx_name]),@" No missile selected.");
+		OOLogWARN(@"ship.setUp.missiles", @"missile_role \"%@\" is not a valid missile / mine type for ship \"%@\".%@", oo::NSStringOrNil([missileType cxx_identifier]) , oo::NSStringOrNil([self cxx_name]),@" No missile selected.");
 		return nil;
 	}
 }
@@ -11631,7 +11637,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 		else
 		{
-			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:oo::StdString([weapon_type identifier])];
+			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:[weapon_type cxx_identifier].value_or("")];
 			fired = YES;
 		}
 	}
@@ -12186,7 +12192,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if ([self isPlayer])
 	{
-		[(PlayerEntity *)self setLastShot:oo::NSArrayFromObjects(shotEntities)];
+		[(PlayerEntity *)self cxx_setLastShot:shotEntities];
 	}
 	
 	[self resetShotTime];
@@ -12348,7 +12354,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		// use a random missile from the list
 		i = floor(randf()*(double)missiles);
-		identifier = oo::OptionalString([missile_list[i] identifier]);
+		identifier = [missile_list[i] cxx_identifier];
 		missile = [UNIVERSE newShipWithRole:oo::NSStringOrNil(identifier)];
 		if (EXPECT_NOT(missile == nil))	// invalid missile role.
 		{
@@ -12364,7 +12370,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	// By definition, the player will always have the specified missile.
 	// What if the NPC didn't actually have the specified missile to begin with?
-	if (!isPlayer && ![self removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(identifier)]])
+	if (!isPlayer && ![self removeExternalStore:(identifier.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil)])
 	{
 		[missile release];
 		return nil;
@@ -12472,7 +12478,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 // reactions to ECM that are not dependent on current AI state here
 - (void) noticeECM
 {
-	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missiles > 0 && [[missile_list[0] identifier] isEqualTo:@"EQ_MISSILE"])
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missiles > 0 && ([missile_list[0] cxx_identifier] == "EQ_MISSILE"))
 	{
 // if we're being ECMd, and our missiles appear to be standard, and we
 // have some combat sense, wait a bit before firing the next one!
@@ -15068,5 +15074,5 @@ GLfloat getWeaponRangeFromType(OOWeaponType weapon_type)
 
 BOOL isWeaponNone(OOWeaponType weapon)
 {
-	return weapon == nil || [[weapon identifier] isEqualToString:@"EQ_WEAPON_NONE"];
+	return weapon == nil || ([weapon cxx_identifier] == "EQ_WEAPON_NONE");
 }

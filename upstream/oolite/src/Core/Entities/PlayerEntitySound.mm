@@ -138,24 +138,24 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 	// grab a local copy of the sound identifiers for weapons to make the process of looking up a sound ref as fast as possible
 	// a missing sound identifier is stored as an empty key
 	auto assignSound = [](OOWeaponSoundMap &sounds, OOEquipmentType *eqType, std::string soundName) {
-		sounds[oo::StdString([eqType identifier])] = std::move(soundName);
+		sounds[[eqType cxx_identifier].value_or("")] = std::move(soundName);
 	};
 
-	for (const oo::ObjCRef<OOEquipmentType *> &eqTypeRef : oo::ObjCRefsFrom<OOEquipmentType *>([OOEquipmentType allEquipmentTypes]))
+	for (const oo::ObjCRef<OOEquipmentType *> &eqTypeRef : [OOEquipmentType cxx_allEquipmentTypes])
 	{
 		OOEquipmentType *eqType = eqTypeRef.get();
-		if (oo::str::hasPrefix(oo::StdString([eqType identifier]), "EQ_WEAPON"))
+		if (oo::str::hasPrefix([eqType cxx_identifier].value_or(""), "EQ_WEAPON"))
 		{
-			assignSound(shotMissSounds, eqType, oo::StdString([eqType fxShotMissName]));
-			assignSound(shotHitSounds, eqType, oo::StdString([eqType fxShotHitName]));
-			assignSound(shieldHitSounds, eqType, oo::StdString([eqType fxShieldHitName]));
-			assignSound(unshieldedHitSounds, eqType, oo::StdString([eqType fxUnshieldedHitName]));
+			assignSound(shotMissSounds, eqType, [eqType cxx_fxShotMissName].value_or(""));
+			assignSound(shotHitSounds, eqType, [eqType cxx_fxShotHitName].value_or(""));
+			assignSound(shieldHitSounds, eqType, [eqType cxx_fxShieldHitName].value_or(""));
+			assignSound(unshieldedHitSounds, eqType, [eqType cxx_fxUnshieldedHitName].value_or(""));
 		}
 		if ([eqType isMissileOrMine])
 		{
-			assignSound(weaponLaunchedSounds, eqType, oo::StdString([eqType fxWeaponLaunchedName]));
-			assignSound(shieldHitSounds, eqType, oo::StdString([eqType fxShieldHitName]));
-			assignSound(unshieldedHitSounds, eqType, oo::StdString([eqType fxUnshieldedHitName]));
+			assignSound(weaponLaunchedSounds, eqType, [eqType cxx_fxWeaponLaunchedName].value_or(""));
+			assignSound(shieldHitSounds, eqType, [eqType cxx_fxShieldHitName].value_or(""));
+			assignSound(unshieldedHitSounds, eqType, [eqType cxx_fxUnshieldedHitName].value_or(""));
 		}
 	}
 

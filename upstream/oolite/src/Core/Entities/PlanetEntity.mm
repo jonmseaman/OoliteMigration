@@ -1243,9 +1243,9 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
-		if (![shuttle_ship crew])
+		if (![shuttle_ship cxx_crew].has_value())
 		{
-			[shuttle_ship setSingleCrewWithRole:@"trader"];
+			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
 		}
 				
 		[shuttle_ship setPosition:launch_pos];
