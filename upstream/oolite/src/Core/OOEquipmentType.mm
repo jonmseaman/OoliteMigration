@@ -65,11 +65,11 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 }
 
 
-// -[UNIVERSE equipmentData] & co. are not migrated: each item arrives through oo::PListFrom.
-std::vector<oo::PList> EquipmentItems(id equipmentData)
+// The items of -[UNIVERSE cxx_equipmentData] & co. (enumerating a non-array found none, as nil did).
+std::vector<oo::PList> EquipmentItems(const oo::PList &equipmentData)
 {
 	std::vector<oo::PList> items;
-	for (id itemInfo in equipmentData)  items.push_back(oo::PListFrom(itemInfo));
+	if (const oo::PList::Array *elements = equipmentData.getIf<oo::PList::Array>())  items.assign(elements->begin(), elements->end());
 	return items;
 }
 
@@ -117,7 +117,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 	std::vector<std::string> conditionScripts;	// first-seen order
 	std::map<std::string, oo::ObjCRef<OOEquipmentType *>, std::less<>> byIdentifier;
 
-	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE equipmentData]))
+	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE cxx_equipmentData]))
 	{
 		OOEquipmentType *item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
 		if (item != nil)
@@ -142,7 +142,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 
 	// same for the outfitting dataset
 	equipmentTypes.clear();
-	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE equipmentDataOutfitting]))
+	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE cxx_equipmentDataOutfitting]))
 	{
 		OOEquipmentType *item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
 		if (item != nil)
@@ -429,9 +429,15 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (id) name	// shared selector (proposed ADR-0043)
+- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringFrom(_name);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>) cxx_name
+{
+	return _name;
 }
 
 

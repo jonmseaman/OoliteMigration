@@ -224,7 +224,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		switch (ooscript::idToInt32(propID))
 		{
 			case kManifest_list:
-				result = [entity cargoListForScripting];
+				result = oo::ObjectFromPList([entity cargoListForScripting]);
 				break;
 				
 			default:

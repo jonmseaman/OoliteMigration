@@ -76,7 +76,7 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 // -description printed.
 - (id)descriptionComponents
 {
-	return oo::NSStringFrom("\"" + oo::DescriptionOf([self name]) + "\"");
+	return oo::NSStringFrom("\"" + [self cxx_name].value_or("(null)") + "\"");
 }
 
 
@@ -92,10 +92,16 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 }
 
 
-- (id)name
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
+{
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
 {
 	OOLogGenericSubclassResponsibility();
-	return nil;
+	return std::nullopt;
 }
 
 
@@ -185,11 +191,11 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 	{
 		// %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
 		// OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
-		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", oo::DescriptionOf([self name]), oo::str::pointerDescription(exception), [exception name], [exception reason]);
+		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", [self cxx_name].value_or("(null)"), oo::str::pointerDescription(exception), [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": {}", oo::DescriptionOf([self name]), oo::DescriptionOf(exception));
+		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": {}", [self cxx_name].value_or("(null)"), oo::DescriptionOf(exception));
 	}
 	oo::log::popIndent();
 	
