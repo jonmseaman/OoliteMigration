@@ -267,19 +267,28 @@ static bool MissionGetProperty(Context cx, Object thisObj, PropertyId propID, Va
 	
 	OOJS_NATIVE_ENTER(context)
 
-	id result = nil;
+	oo::PList result;	// null maps to null
 	PlayerEntity		*player = OOPlayerForScripting();
 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kMission_markedSystems:
-			result = [[oo::ObjectFromPList([player cxx_getMissionDestinations]) mutableCopy] autorelease];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
-			result = [result allValues];
+			{
+				// The destinations' values, in key order (-allValues gave hash order).
+				oo::PList::Array values;
+				if (const oo::PList::Dict *destinations = [player cxx_getMissionDestinations].getIf<oo::PList::Dict>())
+				{
+					for (const auto &entry : *destinations)
+					{
+						if (!entry.second.isNull())  values.push_back(entry.second);
+					}
+				}
+				result = oo::PList(std::move(values));
+			}
 			break;
 
 		case kMission_screenID:
-			result = oo::NSStringOrNil([player cxx_missionScreenID]);
+			if (const std::optional<std::string> screenID = [player cxx_missionScreenID])  result = oo::PList(*screenID);
 			break;
 
 		case kMission_exitScreen:
@@ -291,7 +300,7 @@ static bool MissionGetProperty(Context cx, Object thisObj, PropertyId propID, Va
 			return NO;
 	}
 
-	*value = OOJSValueFromNativeObject(context, result);
+	*value = OOJSValueFromPList(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
@@ -585,11 +594,10 @@ static std::optional<std::string> GetParameterString(ooscript::Context context, 
 
 // What -oo_stringForKey: made of the value it found: a string, or a number's text; nullopt (was
 // nil) for no value or any other kind of value.
-static std::optional<std::string> StringFromObject(id object)
+static std::optional<std::string> StringFromPList(const oo::PList *value)
 {
-	const oo::PList value = oo::PListFrom(object);
-	if (!(value.isString() || value.isNumber()))  return std::nullopt;
-	return oo::PListGet<std::string>::from(&value, std::string());
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
 }
 } // namespace
 
@@ -678,7 +686,8 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		std::optional<std::string> titleKey = GetParameterString(context, params, "titleKey");
 		if (titleKey.has_value())
 		{
-			std::optional<std::string> message = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*titleKey)]);
+			const oo::PList missionText = [UNIVERSE cxx_missiontext];
+			std::optional<std::string> message = StringFromPList(missionText.find(*titleKey));	// -objectForKey:
 			if (message.has_value())
 			{
 				[player cxx_setMissionTitle:cxx_OOExpand(*message)];
