@@ -61,7 +61,7 @@ selector an object parameter (id or ClassName *) fails, and so does an id, id<P>
 A ClassName * result passes: OOCallByName ignores an object result, and OOJSCall calls such a
 method itself (ADR-0055 Amendment 2). An @selector literal handed to an object dispatcher
 (compared with == / !=, probed with class_respondsToSelector(), OOScheduleDeferredCall(),
--initWithComparator:, -makeObjectsPerformSelector:) passes OOObjects by design (ADR-0055
+-initWithComparator:, -makeObjectsPerformSelector:, OODescription.mm's SendLegacy()) passes OOObjects by design (ADR-0055
 item 4), so --strict-called-by-name does not check a selector whose only sources are those.
 
 SELECTORS DISPATCHED THROUGH A TYPED IMP (bead oo-bzjh)
@@ -208,8 +208,9 @@ def _read(path):
 SOURCES = {}   # selector -> every by-name source found (dynamic_selectors() fills it)
 DISPATCHED = set()   # selectors --strict-called-by-name checks (not only object-dispatched)
 # An @selector literal handed to an OBJECT dispatcher (ADR-0055 item 4: it passes OOObjects, not
-# strings or plists): compared, probed, deferred, a comparator, -makeObjectsPerformSelector:.
-OBJECT_DISPATCH = re.compile(r"(?:[!=]=\s*|class_respondsToSelector\s*\(\s*[^,()]*,\s*|makeObjectsPerformSelector\s*:\s*|OOScheduleDeferredCall\s*\(\s*[^,()]*,\s*|initWithComparator\s*:\s*)$")
+# strings or plists): compared, probed, deferred, a comparator, -makeObjectsPerformSelector:,
+# OODescription.mm's legacy-family probes.
+OBJECT_DISPATCH = re.compile(r"(?:[!=]=\s*|class_respondsToSelector\s*\(\s*[^,()]*,\s*|makeObjectsPerformSelector\s*:\s*|(?:OOScheduleDeferredCall|SendLegacy|HasLegacyOverride)\s*\(\s*[^,()]*,\s*|initWithComparator\s*:\s*)$")
 LITERAL_FILES = {}   # selector -> files holding an @selector literal of it
 
 
@@ -252,7 +253,7 @@ def dynamic_selectors():
         for name in files:
             if not name.endswith((".h", ".m", ".mm")):
                 continue
-            text = _read(os.path.join(dirpath, name))
+            text = COMMENT.sub(" ", _read(os.path.join(dirpath, name)))	# a literal in a comment is not a call
             for m in SELECTOR_LITERAL.finditer(text):
                 before = text[max(0, m.start() - 60):m.start()]
                 if RESPONDS.search(before):
