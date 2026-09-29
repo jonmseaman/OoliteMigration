@@ -277,7 +277,9 @@ std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, con
 	proposed ADR-0052). Moved unchanged from the deleted transitional bridge: the overrides and
 	legacy locals once per call with oo::PListFrom (mixed values, Object nodes for anything else),
 	strings with oo::StdString / oo::OptionalString in and oo::NSStringOrNil out (nil for nullopt).
+	Compiled only by tools/check-string-expander.sh (OO_EXPANDER_TEST_SURFACE; bead oo-qps.29).
 */
+#if OO_EXPANDER_TEST_SURFACE
 NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options)
 {
 	if (string == nil)  return nil;
@@ -289,6 +291,7 @@ NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name)
 {
 	return oo::NSStringOrNil(cxx_OOGenerateSystemDescription(seed, oo::OptionalString(name)));
 }
+#endif
 
 
 Random_Seed OOStringExpanderDefaultRandomSeed(void)
