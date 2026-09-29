@@ -896,7 +896,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return YES;
 
 	  case kShip_cargoList:
-			result = [entity cargoListForScripting];
+			result = oo::ObjectFromPList([entity cargoListForScripting]);
 			break;
 
 		case kShip_extraCargo:
@@ -1130,19 +1130,19 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, [entity laserHeatLevelStarboard], value);
 		
 		case kShip_missiles:
-			result = [entity missilesList];
+			result = oo::NSArrayFromObjects([entity missilesList]);
 			break;
 		
 		case kShip_passengers:
-			result = [entity passengerListForScripting];
+			result = oo::ObjectFromPList([entity passengerListForScripting]);
 			break;
 
 		case kShip_parcels:
-			result = [entity parcelListForScripting];
+			result = oo::ObjectFromPList([entity parcelListForScripting]);
 			break;
 		
 		case kShip_contracts:
-			result = [entity contractListForScripting];
+			result = oo::ObjectFromPList([entity contractListForScripting]);
 			break;
 			
   	case kShip_dockingInstructions:
@@ -3120,7 +3120,7 @@ static bool ShipSetBounty(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return NO;
 	}
 	
-	[thisEnt setBounty:(OOCreditsQuantity)newbounty withReasonAsString:oo::NSStringFrom(*reason)];
+	[thisEnt setBounty:(OOCreditsQuantity)newbounty withReasonAsString:*reason];
 	
 	return YES;
 	
@@ -4164,7 +4164,7 @@ static bool ShipDamageAssessment(ooscript::Context context, ooscript::CallArgs &
 	GET_THIS_SHIP(thisEnt);
 	
 	// if could have missiles but doesn't, consumables low
-	if ([thisEnt missileCapacity] > 0 && [[thisEnt missilesList] count] == 0)
+	if ([thisEnt missileCapacity] > 0 && [thisEnt missilesList].empty())
 	{
 		assessment++;
 	}

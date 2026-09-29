@@ -6927,11 +6927,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason
 {
-	[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
+	[self setBounty:amount withReasonAsString:cxx_OOStringFromLegalStatusReason(reason)];
 }
 
 
-- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(id)reason	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason
 {
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -6941,7 +6941,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	legalStatus = (int)amount; // can't set the new bounty until the size of the change is known
 
-	ooscript::Value reasonVal = OOJSValueFromNativeObject(context,reason);
+	ooscript::Value reasonVal = OOJSValueFromNativeObject(context, oo::NSStringFrom(reason));
 		
 	ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
 		
@@ -8463,7 +8463,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id) missilesList	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList
 {
 	[self tidyMissilePylons];	// just in case.
 	return [super missilesList];
@@ -8473,7 +8473,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (std::vector<std::string>) cxx_cargoList
 {
 	std::vector<std::string>	manifest;
-	const oo::PList			list = oo::PListFrom([self cargoListForScripting]);
+	const oo::PList			list = [self cargoListForScripting];
 
 	if (specialCargo) manifest.push_back(*specialCargo);
 
@@ -8502,7 +8502,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id) cargoListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) cargoListForScripting
 {
 	oo::PList::Array	list;
 
@@ -8544,7 +8544,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 
-	return oo::ObjectFromPList(oo::PList(std::move(list)));	// an immutable array
+	return oo::PList(std::move(list));
 }
 
 
@@ -8612,21 +8612,21 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id) passengerListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) passengerListForScripting
 {
-	return oo::ObjectFromPList(oo::PList([self contractsListForScriptingFromArray:passengers forCargo:NO]));	// an immutable array
+	return oo::PList([self contractsListForScriptingFromArray:passengers forCargo:NO]);
 }
 
 
-- (id) parcelListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) parcelListForScripting
 {
-	return oo::ObjectFromPList(oo::PList([self contractsListForScriptingFromArray:parcels forCargo:NO]));	// an immutable array
+	return oo::PList([self contractsListForScriptingFromArray:parcels forCargo:NO]);
 }
 
 
-- (id) contractListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) contractListForScripting
 {
-	return oo::ObjectFromPList(oo::PList([self contractsListForScriptingFromArray:contracts forCargo:YES]));	// an immutable array
+	return oo::PList([self contractsListForScriptingFromArray:contracts forCargo:YES]);
 }
 
 - (void) setGuiToSystemDataScreen
@@ -12025,14 +12025,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other
 {
 	if ([self status] == STATUS_DEAD || [self status] == STATUS_DOCKED)
 	{
 		// only when in flight
 		return;
 	}
-	[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::format("%s:\n %s", [other displayName].value_or("(null)").c_str(), oo::DescriptionOf(message_text).c_str())) forCount:4.5];
+	[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::format("%s:\n %s", [other displayName].value_or("(null)").c_str(), message_text.c_str())) forCount:4.5];
 	[super receiveCommsMessage:message_text from:other];
 }
 

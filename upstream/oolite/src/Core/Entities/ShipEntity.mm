@@ -3421,7 +3421,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (id) missilesList	// shared selector (proposed ADR-0043)
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList
 {
 	// if missile_list is empty, avoid exception and return an empty array instead
 	std::vector<oo::ObjCRef<OOEquipmentType *>> list;
@@ -3430,25 +3430,25 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		list.reserve(missiles);
 		for (unsigned i = 0; i < missiles; i++)  list.emplace_back(missile_list[i]);
 	}
-	return oo::NSArrayFromObjects(list);
+	return list;
 }
 
 
-- (id) passengerListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) passengerListForScripting
 {
-	return oo::ObjectFromPList(oo::PList(oo::PList::Array{}));	// an empty array
+	return oo::PList(oo::PList::Array{});	// an empty array
 }
 
 
-- (id) parcelListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) parcelListForScripting
 {
-	return oo::ObjectFromPList(oo::PList(oo::PList::Array{}));	// an empty array
+	return oo::PList(oo::PList::Array{});	// an empty array
 }
 
 
-- (id) contractListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) contractListForScripting
 {
-	return oo::ObjectFromPList(oo::PList(oo::PList::Array{}));	// an empty array
+	return oo::PList(oo::PList::Array{});	// an empty array
 }
 
 
@@ -8387,11 +8387,11 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		{
 			return; // police never have bounties
 		}
-		[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
+		[self setBounty:amount withReasonAsString:cxx_OOStringFromLegalStatusReason(reason)];
 	}
 }
 
-- (void) setBounty:(OOCreditsQuantity) amount withReasonAsString:(id)reason	// shared selector (proposed ADR-0043)
+- (void) setBounty:(OOCreditsQuantity) amount withReasonAsString:(const std::string &)reason
 {
 	if ([self isSubEntity]) 
 	{
@@ -8406,7 +8406,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 		bounty = amount; // can't set the new bounty until the size of the change is known
 
-		ooscript::Value reasonVal = OOJSValueFromNativeObject(context,reason);
+		ooscript::Value reasonVal = OOJSValueFromNativeObject(context, oo::NSStringFrom(reason));
 		
 		ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
 		
@@ -8530,7 +8530,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (id) cargoListForScripting	// shared selector (proposed ADR-0043)
+- (oo::PList) cargoListForScripting
 {
 	oo::PList::Array	list;
 
@@ -8563,7 +8563,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		}
 	}
 
-	return oo::ObjectFromPList(oo::PList(std::move(list)));	// an immutable array
+	return oo::PList(std::move(list));
 }
 
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
@@ -14239,12 +14239,12 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	if (other_ship->isPlayer)
 	{
 		[self setCommsMessageColor];
-		[(PlayerEntity *)other_ship receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
+		[(PlayerEntity *)other_ship receiveCommsMessage:expandedMessage from:self];
 		messageTime = 6.0;
 		[UNIVERSE resetCommsLogColor];
 	}
 	else
-		[other_ship receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
+		[other_ship receiveCommsMessage:expandedMessage from:self];
 }
 
 
@@ -14314,7 +14314,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		ShipEntity* ship = scanned_ships[i];
-		if (![ship isPlayer]) [ship receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
+		if (![ship isPlayer]) [ship receiveCommsMessage:expandedMessage from:self];
 	}
 	
 	PlayerEntity *player = PLAYER; // make sure that the player always receives a message when in range
@@ -14323,7 +14323,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	if (HPdistance2(position, [player position]) < SCANNER_MAX_RANGE2)
 	{
 		[self setCommsMessageColor];
-		[player receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
+		[player receiveCommsMessage:expandedMessage from:self];
 		messageTime = 6.0;
 		[UNIVERSE resetCommsLogColor];
 	}
@@ -14341,10 +14341,10 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other	// shared selector (proposed ADR-0043)
+- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other
 {
 	// Too complex for AI scripts to handle, JS event only.
-	[self doScriptEvent:OOJSID("commsMessageReceived") withArgument:message_text andArgument:other];
+	[self doScriptEvent:OOJSID("commsMessageReceived") withArgument:oo::NSStringFrom(message_text) andArgument:other];
 }
 
 

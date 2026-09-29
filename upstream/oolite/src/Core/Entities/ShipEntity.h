@@ -903,7 +903,7 @@ typedef enum
  */
 - (void) setBounty:(OOCreditsQuantity)amount;
 - (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason;
-- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(id)reason;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason;	// flipped with its family (bead oo-3rb.259)
 - (OOCreditsQuantity) bounty;
 
 - (int) legalStatus;
@@ -920,7 +920,7 @@ typedef enum
 - (OOCargoQuantity) availableCargoSpace;
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;
-- (id) cargoListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array of dictionaries
+- (oo::PList) cargoListForScripting;	// flipped with its family (bead oo-3rb.259): an array of dictionaries
 - (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;	// the live cargo pods (nullptr for a nil receiver)
 - (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
@@ -928,13 +928,13 @@ typedef enum
 - (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount;
 - (BOOL) showScoopMessage;
 
-- (id) passengerListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array
-- (id) parcelListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array
-- (id) contractListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array
+- (oo::PList) passengerListForScripting;	// flipped with its family (bead oo-3rb.259): an array
+- (oo::PList) parcelListForScripting;	// flipped with its family (bead oo-3rb.259): an array
+- (oo::PList) contractListForScripting;	// flipped with its family (bead oo-3rb.259): an array
 - (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
 - (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 - (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
-- (id) missilesList;	// shared selector (proposed ADR-0043): an Objective-C array of OOEquipmentType
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList;	// flipped with its family (bead oo-3rb.259)
 
 - (OOCargoFlag) cargoFlag;
 - (void) setCargoFlag:(OOCargoFlag)flag;
@@ -1210,7 +1210,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) broadcastAIMessage:(const std::string &) ai_message;
 - (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
 - (void) setCommsMessageColor;
-- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other;	// flipped with its family (bead oo-3rb.259)
 - (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
 
 - (BOOL) markedForFines;
