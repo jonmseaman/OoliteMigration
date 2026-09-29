@@ -146,9 +146,9 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		}
 		else if (![rescuee legacyScript].isNull())
 		{
-			[self runUnsanitizedScriptActions:oo::ObjectFromPList([rescuee legacyScript])
+			[self cxx_runUnsanitizedScriptActions:[rescuee legacyScript]
 							allowingAIMethods:YES
-							  withContextName:oo::NSStringFrom(oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str()))
+							  withContextName:oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str())
 									forTarget:nil];
 		}
 		else if ([rescuee insuranceCredits] && [rescuee legalStatus])
@@ -1207,7 +1207,7 @@ for (unsigned i=0;i<amount;i++)
 		OOColor *noScrollColor = [gui colorFromSetting:kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
 
 		const std::vector<std::string>	cargoManifest = oo::StringsFrom([self cargoList]);
-		id			missionsManifest = [self missionsList];	// strings and arrays of strings
+		id			missionsManifest = oo::ObjectFromPList([self cxx_missionsList]);	// strings and arrays of strings
 
 		NSUInteger	i = 0;
 		NSUInteger	max_rows = 20;

@@ -558,16 +558,16 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 				if (ooscript::isNull(*value)) 
 				{
 					// reset mission variable
-					[OOPlayerForScripting() setMissionVariable:nil
-														  forKey:[@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]]];
+					[OOPlayerForScripting() cxx_setMissionVariable:oo::PList()
+														  forKey:oo::StdString([@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]])];
 					return YES;
 				}
 				if (ooscript::valueToInt32(cx, *value, &iValue))
 				{
 					if (iValue < 0)  iValue = 0;
 					if (15 < iValue && iValue != kOOVariableTechLevel)  iValue = 15;
-					[OOPlayerForScripting() setMissionVariable:oo::NSStringFrom(oo::str::format("%u", iValue))
-														  forKey:[@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]]];
+					[OOPlayerForScripting() cxx_setMissionVariable:oo::PList(oo::str::format("%u", iValue))
+														  forKey:oo::StdString([@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]])];
 					return YES;
 				}
 			}
