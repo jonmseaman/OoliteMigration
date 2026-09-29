@@ -690,7 +690,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		}
 	}
 	
-	[[OOMusicController	sharedController] setMissionMusic:oo::NSStringOrNil(GetParameterString(context, params, "music"))];
+	[[OOMusicController	sharedController] cxx_setMissionMusic:GetParameterString(context, params, "music")];
 	[player cxx_setMissionOverlayDescriptor:GetParameterImageDescriptor(context, params, "overlay")];
 	[player cxx_setMissionBackgroundDescriptor:GetParameterImageDescriptor(context, params, "background")];
 	[player cxx_setMissionBackgroundSpecial:GetParameterString(context, params, "backgroundSpecial").value_or("")];
@@ -878,7 +878,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	[player cxx_setMissionOverlayDescriptor:oo::PList()];
 	[player cxx_setMissionBackgroundDescriptor:oo::PList()];
 	[player cxx_setMissionTitle:std::nullopt];
-	[player setMissionMusic:nil];
+	[player setMissionMusic:std::string()];	// (nil was "none")
 	
 	OOJSResumeTimeLimiter();
 	

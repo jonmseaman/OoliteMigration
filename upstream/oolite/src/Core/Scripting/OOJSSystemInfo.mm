@@ -321,7 +321,7 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 	{
 		return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:key];
 	}
-	return [UNIVERSE cxx_systemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key)];
+	return oo::ObjectFromPList([UNIVERSE cxx_systemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key)]);	// until this -valueForKey: flips
 }
 
 
@@ -330,7 +330,7 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 	// The running script's manifest identifier, handed on as it was read.
 	const oo::PList manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key) value:value  fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key) value:oo::PListFrom(value)  fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
@@ -808,7 +808,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 		manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 	}
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:oo::ObjectFromPList(value) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
+	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:value fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
 
 	OOJS_RETURN_VOID;
 	

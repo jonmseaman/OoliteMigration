@@ -564,17 +564,18 @@ OOINLINE BOOL OOJSIsMemberOfSubclass(ooscript::Context context, ooscript::Object
 /*	Support for OOJSNativeObjectFromJSValue() family
 	
 	OOJSClassConverterCallback specifies the prototype for a callback function
-	which converts a JavaScript object to an Objective-C object.
+	which converts a JavaScript object to its property-list form: plist data,
+	or a PList::Object node holding a native object (proposed ADR-0055 item 4).
 	
 	OOJSBasicPrivateObjectConverter() is a OOJSClassConverterCallback which
-	returns the JS object's private storage value. It automatically unpacks
-	OOWeakReferences if relevant.
+	returns the JS object's private storage value as an Object node (a null
+	PList for nil). It automatically unpacks OOWeakReferences if relevant.
 	
 	OOJSRegisterObjectConverter() registers a callback for a specific JS class.
 	It is not automatically propagated to subclasses.
 */
-typedef id (*OOJSClassConverterCallback)(ooscript::Context context, ooscript::Object object);
-OOJS_EXTERN_C id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object);
+typedef oo::PList (*OOJSClassConverterCallback)(ooscript::Context context, ooscript::Object object);
+oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object);
 
 OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverterCallback converter);
 
