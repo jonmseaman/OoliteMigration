@@ -205,8 +205,11 @@ static bool SoundGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 	switch (ooscript::idToInt32(propID))
 	{
 		case kSound_name:
-			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([sound cxx_name]));
+		{
+			const std::optional<std::string> name = [sound cxx_name];
+			*value = OOJSValueFromPList(context, name.has_value() ? oo::PList(*name) : oo::PList());
 			return YES;
+		}
 		
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sSoundProperties);

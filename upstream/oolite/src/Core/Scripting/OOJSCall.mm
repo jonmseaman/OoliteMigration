@@ -211,12 +211,15 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 }
 
 
-// Template class providing method type encodings for the three signatures matched here.
+// Template class providing method type encodings for the signatures matched here.
 @interface OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod;
 - (void)voidObjectMethod:(id)object;
 - (id)objectObjectMethod:(id)object;
+- (void)voidStringMethod:(const std::string &)string;
+- (oo::PList)pListStringMethod:(const std::string &)string;
+- (oo::PList)pListVoidMethod;
 
 @end
 
@@ -258,6 +261,11 @@ static MethodType GetMethodType(id object, SEL selector)
 	if (SignatureMatch(method, @selector(voidVoidMethod)))  return kMethodTypeVoidVoid;
 	if (SignatureMatch(method, @selector(voidObjectMethod:)))  return kMethodTypeVoidObject;
 	if (SignatureMatch(method, @selector(objectObjectMethod:)))  return kMethodTypeObjectObject;
+	// The C++ signatures of a selector called by name (ADR-0055 item 5), which OOCallByName calls
+	// as it called the id forms above: the joined string argument, a PList result.
+	if (SignatureMatch(method, @selector(voidStringMethod:)))  return kMethodTypeVoidObject;
+	if (SignatureMatch(method, @selector(pListStringMethod:)))  return kMethodTypeObjectObject;
+	if (SignatureMatch(method, @selector(pListVoidMethod)))  return kMethodTypeObjectVoid;
 
 	MethodType type = (MethodType)OOShaderUniformTypeFromMethod(method);
 	if (type != kMethodTypeInvalid)  return type;
@@ -275,6 +283,15 @@ static MethodType GetMethodType(id object, SEL selector)
 
 
 - (id)objectObjectMethod:(id)object { return nil; }
+
+
+- (void)voidStringMethod:(const std::string &)string {}
+
+
+- (oo::PList)pListStringMethod:(const std::string &)string { return oo::PList(); }
+
+
+- (oo::PList)pListVoidMethod { return oo::PList(); }
 
 @end
 
