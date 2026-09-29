@@ -33,7 +33,7 @@ SOFTWARE.
 
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Log.hpp"
@@ -362,11 +362,6 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 		[self composeFragmentShader];
 	}
 	@catch (OOException *exception)
-	{
-		// Error should have been reported already.
-		return NO;
-	}
-	@catch (OOFoundationException *exception)
 	{
 		// Error should have been reported already.
 		return NO;
