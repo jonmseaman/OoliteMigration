@@ -504,7 +504,7 @@ static bool PlayerCommsMessage(ooscript::Context context, ooscript::CallArgs &oo
 		return NO;
 	}
 	
-	[UNIVERSE addCommsMessage:oo::NSStringFrom(*message) forCount:time];
+	[UNIVERSE cxx_addCommsMessage:*message forCount:time];
 	[PLAYER doScriptEvent:OOJSID("commsMessageReceived") withArgument:oo::NSStringFrom(*message) andArgument:nil];
 	OOJS_RETURN_VOID;
 	
@@ -532,7 +532,7 @@ static bool PlayerConsoleMessage(ooscript::Context context, ooscript::CallArgs &
 		return NO;
 	}
 	
-	[UNIVERSE addMessage:oo::NSStringFrom(*message) forCount:time];
+	[UNIVERSE cxx_addMessage:*message forCount:time];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -693,7 +693,7 @@ static bool PlayerAudioMessage(ooscript::Context context, ooscript::CallArgs &oo
 		return NO;
 	}
 	
-	if ([player isSpeechOn] >= OOSPEECHSETTINGS_COMMS)  [UNIVERSE startSpeakingString:oo::NSStringFrom(*audioMessage)];
+	if ([player isSpeechOn] >= OOSPEECHSETTINGS_COMMS)  [UNIVERSE cxx_startSpeakingString:*audioMessage];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -797,7 +797,7 @@ static bool PlayerSetEscapePodDestination(ooscript::Context context, ooscript::C
 					// Set 3.5 ly as the limit, enough to reach at least 2 systems!
 					rescueRange = MAX_JUMP_RANGE / 2.0;
 				}
-				oo::PList		destinations = oo::PListFrom([UNIVERSE nearbyDestinationsWithinRange:rescueRange]);
+				oo::PList		destinations = [UNIVERSE cxx_nearbyDestinationsWithinRange:rescueRange];
 				oo::PList::Array	sDests;
 				if (const oo::PList::Array *array = destinations.getIf<oo::PList::Array>())  sDests = *array;
 				NSUInteger		i = 0, nDests = sDests.size();
