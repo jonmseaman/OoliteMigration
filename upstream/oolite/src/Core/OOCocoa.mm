@@ -36,15 +36,21 @@ SOFTWARE.
 
 namespace {
 
-/*	<ClassName 0xnnnnnnnn>{components}, or <ClassName 0xnnnnnnnn> without components: the text the
-	former stringWithFormat:@"<%@ %p>{%@}" built (%@ of the class is its name, %p GNUstep's pointer
-	text, %@ of the components their description), as an Objective-C string.
+/*	TRANSITIONAL (ADR-0055 item 1; oo-qps.43 deletes the legacy family below): the legacy -description
+	text, built by OODescription.h's oo::DescriptionWithComponents, as an Objective-C string.
+	<components> is "%@" of the legacy components (nil for none).
 */
-id DescriptionWithComponents(id object, id components)
+id LegacyDescriptionWithComponents(id object, id components)
 {
-	const std::string head = oo::str::format("<%s %s>", oo::DescriptionOf([object class]).c_str(), oo::str::pointerDescription(object).c_str());
-	if (components == nil)  return oo::NSStringFrom(head);
-	return oo::NSStringFrom(head + "{" + oo::DescriptionOf(components) + "}");
+	if (components == nil)  return oo::NSStringFrom(oo::DescriptionWithComponents(object, std::nullopt));
+	return oo::NSStringFrom(oo::DescriptionWithComponents(object, oo::DescriptionOf(components)));
+}
+
+
+// The same from the C++ family's components.
+id LegacyDescriptionWithComponents(id object, const std::optional<std::string> &components)
+{
+	return oo::NSStringFrom(oo::DescriptionWithComponents(object, components));
 }
 
 }	// namespace
@@ -63,7 +69,7 @@ id DescriptionWithComponents(id object, id components)
 #endif
 - (id) description
 {
-	return DescriptionWithComponents(self, [self descriptionComponents]);
+	return LegacyDescriptionWithComponents(self, [self descriptionComponents]);
 }
 #ifdef __clang__
 #pragma clang diagnostic pop
@@ -72,7 +78,7 @@ id DescriptionWithComponents(id object, id components)
 
 - (id) shortDescription
 {
-	return DescriptionWithComponents(self, [self shortDescriptionComponents]);
+	return LegacyDescriptionWithComponents(self, [self shortDescriptionComponents]);
 }
 
 
@@ -84,7 +90,11 @@ id DescriptionWithComponents(id object, id components)
 @end
 
 
-// NSObject (OODescriptionComponents) above, for classes rooted on OOObject (ADR-0029).
+// NSObject (OODescriptionComponents) above, for classes rooted on OOObject (ADR-0029). TRANSITIONAL:
+// built on OODescription.h's C++ family, whose root defaults forward to a legacy override of
+// -descriptionComponents / -shortDescriptionComponents. These build from the components directly,
+// never through -cxx_description, so a legacy -description override that calls [super description]
+// cannot recurse. oo-qps.43 deletes this category.
 @implementation OOObject (OODescriptionComponents)
 
 - (id) descriptionComponents
@@ -95,13 +105,13 @@ id DescriptionWithComponents(id object, id components)
 
 - (id) description
 {
-	return DescriptionWithComponents(self, [self descriptionComponents]);
+	return LegacyDescriptionWithComponents(self, [self cxx_descriptionComponents]);
 }
 
 
 - (id) shortDescription
 {
-	return DescriptionWithComponents(self, [self shortDescriptionComponents]);
+	return LegacyDescriptionWithComponents(self, [self cxx_shortDescriptionComponents]);
 }
 
 

@@ -224,7 +224,7 @@ module; open the one nearest your file and do what it does:
 | Exemplar | Bead | Shows |
 |---|---|---|
 | `src/Core/OOVector.mm` / `.h` | oo-g7k5 | a C function returning a string; a header reached inside `extern "C"`; callers wrapped at the call |
-| `src/Core/OORoleSet.mm` / `.h` | oo-hi38 | collections as std containers, `std::optional` results, unique and shared selectors, `-description` -> `-descriptionComponents`, sorting, four callers adapted |
+| `src/Core/OORoleSet.mm` / `.h` | oo-hi38 | collections as std containers, `std::optional` results, unique and shared selectors, `-description` -> `-cxx_descriptionComponents` (OODescription.h), sorting, four callers adapted |
 | `src/Core/Materials/OOBasicMaterial.mm` / `.h` | oo-ro7q | a class whose every NS-typed selector is shared: `id` at the boundary, a nil-able string ivar |
 | `src/Core/Materials/OOMultiTextureMaterial.mm` / `.h` | oo-vpbt | a mixed configuration as `oo::PList`: read, copied minus two keys, handed on exactly |
 | `src/Core/OOALSoundDecoder.mm` / `.h` | oo-oz2y | path components (`oo::str::pathComponents` & co.), a private dictionary as `std::optional<std::map>`, `-description` with a dictionary |
@@ -480,6 +480,37 @@ itself NSLogs goes to stderr instead of Latest.log until oo-qps.18 unlinks it.
 
 When a family's last member has been swept, its **family bead** changes every `id` of that selector
 to the C++ type in all declarations and callers at once; the bridges go with gnustep-base (oo-qps).
+
+## The last Foundation boundaries (ADR-0055)
+
+What replaces each bridge helper once gnustep-base leaves the link line. Each seam below is
+Foundation-free and is what Phase 3 keeps (it drops the `cxx_` prefix as it converts each call).
+
+### Describing an object: `Core/OODescription.h` (item 1, oo-qps.31)
+
+Imported by `OOCocoa.h`, so no file includes it. A class describes itself by overriding **one**
+method on the `OOObject` root; the printers wrap it:
+
+| Override | Printed by | As |
+|---|---|---|
+| `- (std::optional<std::string>) cxx_descriptionComponents` | `-cxx_description`, `oo::DescriptionOf(x)`, `-cxx_oo_jsDescription` | `<ClassName 0xnnnnnnnn>{components}`; JS `[jsClassName components]` |
+| `- (std::optional<std::string>) cxx_shortDescriptionComponents` | `-cxx_shortDescription`, `oo::ShortDescriptionOf(x)` | `<ClassName 0xnnnnnnnn>{components}` |
+| `- (std::optional<std::string>) cxx_description` (rare: the whole text) | `oo::DescriptionOf(x)` | whatever it returns |
+
+nullopt means no components (`<ClassName 0xnnnnnnnn>`). A subclass extends its superclass's text with
+`[super cxx_descriptionComponents].value_or("(null)")`. Exemplar: `src/Core/OORoleSet.mm`
+(`-cxx_descriptionComponents`); the idiom table's `%@ of an object` row is unchanged:
+`oo::DescriptionOf(obj)` (`(null)` for nil, a class's name for a class object, the text of a string
+literal). `oo::DescriptionOf([x shortDescription])` is `oo::ShortDescriptionOf(x)`.
+
+Transitional, until oo-qps.43 flips the legacy family tree-wide in one codemod commit
+(`python3 tools/codemods/description-family.py --fix upstream/oolite/src`, then `--check` for the
+hand residue) and deletes the legacy root in `OOCocoa.h/.mm`: the root's `cxx_` defaults forward to a
+legacy `- (id) descriptionComponents` (& co.) override while a class has one, and `oo::DescriptionOf`
+of an object not rooted on `OOObject` asks its `-description` (oo-qps.72 deletes both). Do not flip
+one class's override by hand before oo-qps.43: a converted superclass hides an unconverted
+subclass's override (the exemplar has no subclass). `tests/unit/oofnd/test_objc_description.mm` pins the text and the forwarding,
+linked against libobjc2 alone.
 
 ## Testing
 
