@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOMaterialSpecifier.h"
 #import "OOTexture.h"
 #import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
 
 
 static OOBasicMaterial *sDefaultMaterial = nil;
@@ -71,21 +72,21 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 	const oo::PList config = !configuration.isNull() ? configuration : oo::PList(oo::PList::Dict{});
 	
 	colorDesc = cxx_OOMaterialDiffuseColor(config);
-	if (colorDesc != nil)  [self setDiffuseColor:[OOColor colorWithDescription:colorDesc]];
+	if (colorDesc != nil)  [self setDiffuseColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
 	
 	colorDesc = cxx_OOMaterialAmbientColor(config);
-	if (colorDesc != nil)  [self setAmbientColor:[OOColor colorWithDescription:colorDesc]];
+	if (colorDesc != nil)  [self setAmbientColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
 	else  [self setAmbientColor:[self diffuseColor]];
 	
 	colorDesc = cxx_OOMaterialEmissionColor(config);
-	if (colorDesc != nil)  [self setEmissionColor:[OOColor colorWithDescription:colorDesc]];
+	if (colorDesc != nil)  [self setEmissionColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
 	
 	specularExponent = cxx_OOMaterialSpecularExponent(config);
 	if (specularExponent != 0 && [self permitSpecular])
 	{
 		colorDesc = cxx_OOMaterialSpecularColor(config);
 		[self setShininess:specularExponent];
-		if (colorDesc != nil)  [self setSpecularColor:[OOColor colorWithDescription:colorDesc]];
+		if (colorDesc != nil)  [self setSpecularColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
 	}
 	
 	return self;

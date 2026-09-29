@@ -226,24 +226,6 @@ MA 02110-1301, USA.
 }
 
 
-+ (OOColor *) colorWithDescription:(id)description
-{
-	return [self cxx_colorWithDescription:oo::PListFrom(description)];
-}
-
-
-+ (OOColor *) colorWithDescription:(id)description saturationFactor:(float)factor
-{
-	return [self cxx_colorWithDescription:oo::PListFrom(description) saturationFactor:factor];
-}
-
-
-+ (OOColor *) brightColorWithDescription:(id)description
-{
-	return [self cxx_brightColorWithDescription:oo::PListFrom(description)];
-}
-
-
 + (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString
 {
 	float			rgbaValue[4] = { 0.0f, 0.0f, 0.0f, 1.0f };

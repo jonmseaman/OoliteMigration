@@ -64,7 +64,6 @@ SOFTWARE.
 
 - (float) weightForObject:(const oo::PList &)object;	// Returns -1 for unknown objects.
 - (float) sumOfWeights;
-- (id) allObjects;	// shared selector: an Objective-C array (strings as NSStrings, Object nodes as their objects)
 - (std::vector<oo::PList>) cxx_allElements;	// the elements, in the same order (-cxx_allObjects is OOWeakSet's family)
 
 @end
@@ -73,7 +72,6 @@ SOFTWARE.
 @interface OOProbabilitySet (OOExtendedProbabilitySet)
 
 - (BOOL) cxx_containsObject:(const oo::PList &)object;
-- (id) objectEnumerator;	// shared selector: an enumerator over -allObjects
 - (float) probabilityForObject:(const oo::PList &)object;	// Returns -1 for unknown objects, or a value from 0 to 1 inclusive for known objects.
 
 @end

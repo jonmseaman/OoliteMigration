@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #import "OOMaterial.h"
 #import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
@@ -91,8 +92,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	OOColor *col3 = [OOColor colorWithDescription:col1];
-	OOColor *col4 = [OOColor colorWithDescription:col2];
+	OOColor *col3 = [OOColor cxx_colorWithDescription:oo::PListObject(col1)];	// a copy, as the id form made of a colour
+	OOColor *col4 = [OOColor cxx_colorWithDescription:oo::PListObject(col2)];
 
 	// Load colours
 	BOOL nebulaColorSet = [self readColor1:&col1 andColor2:&col2 andColor3:&col3 andColor4:&col4 fromDictionary:systemInfo];

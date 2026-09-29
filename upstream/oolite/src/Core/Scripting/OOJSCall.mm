@@ -64,7 +64,8 @@ typedef enum
 	kMethodTypeObjectVoid			= kOOShaderUniformTypeObject,
 	kMethodTypeObjectObject,
 	kMethodTypeVoidVoid,
-	kMethodTypeVoidObject
+	kMethodTypeVoidObject,
+	kMethodTypePListVoid
 } MethodType;
 
 
@@ -135,7 +136,11 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 					break;
 					
 				case kMethodTypeObjectVoid:
-					result = OOCallByName(object, selector);
+				case kMethodTypePListVoid:
+					if (type == kMethodTypePListVoid)  result = OOCallByName(object, selector);
+					// An object result (a ship, a colour) is its PList::Object node, as oo::PListFrom()
+					// made of it; OOCallByName ignores an object result (ADR-0055 Amendment 2).
+					else  result = oo::PListObject(((id (*)(id, SEL))method)(object, selector));
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))
 					{
 						// OOBooleanFromObject(result, NO): a string or number reads as oo::plist_get::boolFrom
@@ -215,8 +220,6 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 @interface OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod;
-- (void)voidObjectMethod:(id)object;
-- (id)objectObjectMethod:(id)object;
 - (void)voidStringMethod:(const std::string &)string;
 - (oo::PList)pListStringMethod:(const std::string &)string;
 - (oo::PList)pListVoidMethod;
@@ -259,13 +262,12 @@ static MethodType GetMethodType(id object, SEL selector)
 	Method method = class_getInstanceMethod(object_getClass(object), selector);
 
 	if (SignatureMatch(method, @selector(voidVoidMethod)))  return kMethodTypeVoidVoid;
-	if (SignatureMatch(method, @selector(voidObjectMethod:)))  return kMethodTypeVoidObject;
-	if (SignatureMatch(method, @selector(objectObjectMethod:)))  return kMethodTypeObjectObject;
-	// The C++ signatures of a selector called by name (ADR-0055 item 5), which OOCallByName calls
-	// as it called the id forms above: the joined string argument, a PList result.
+	// The C++ signatures of a selector called by name (ADR-0055 item 5), which OOCallByName calls:
+	// the joined string argument, a PList result. oo-qps.72 deleted the id-parameter forms
+	// (-voidObjectMethod:, -objectObjectMethod:): OOCallByName no longer passes an object.
 	if (SignatureMatch(method, @selector(voidStringMethod:)))  return kMethodTypeVoidObject;
 	if (SignatureMatch(method, @selector(pListStringMethod:)))  return kMethodTypeObjectObject;
-	if (SignatureMatch(method, @selector(pListVoidMethod)))  return kMethodTypeObjectVoid;
+	if (SignatureMatch(method, @selector(pListVoidMethod)))  return kMethodTypePListVoid;
 
 	MethodType type = (MethodType)OOShaderUniformTypeFromMethod(method);
 	if (type != kMethodTypeInvalid)  return type;
@@ -277,12 +279,6 @@ static MethodType GetMethodType(id object, SEL selector)
 @implementation OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod {}
-
-
-- (void)voidObjectMethod:(id)object {}
-
-
-- (id)objectObjectMethod:(id)object { return nil; }
 
 
 - (void)voidStringMethod:(const std::string &)string {}
