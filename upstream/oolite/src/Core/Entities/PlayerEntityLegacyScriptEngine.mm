@@ -1209,7 +1209,7 @@ static int shipsFound;
 {
 	if ([self status] != STATUS_DOCKED)  return @"NONE";
 
-	return oo::NSStringFrom(oo::OptionalString([self dockedStationName]).value_or("UNKNOWN"));
+	return oo::NSStringFrom([self cxx_dockedStationName].value_or("UNKNOWN"));
 }
 
 
@@ -1486,7 +1486,7 @@ static int shipsFound;
 		return;
 	}
 
-	[self awardCommodityType:oo::NSStringFrom(type) amount:amount];
+	[self cxx_awardCommodityType:type amount:amount];
 }
 
 
@@ -2162,7 +2162,7 @@ static int shipsFound;
 
 - (void) resetMissionChoice
 {
-	[self setMissionChoice:nil];
+	[self cxx_setMissionChoice:std::nullopt];
 }
 
 
@@ -2185,7 +2185,7 @@ static int shipsFound;
 		if (dest < 0 || dest > 255)
 			continue;
 
-		[self addMissionDestinationMarker:[self defaultMarker:dest]];
+		[self cxx_addMissionDestinationMarker:[self cxx_defaultMarker:dest]];
 	}
 }
 
@@ -2197,7 +2197,7 @@ static int shipsFound;
 		const int dest = oo::str::intValue(token);
 		if (dest < 0 || dest > 255)  continue;
 
-		[self removeMissionDestinationMarker:[self defaultMarker:dest]];
+		[self cxx_removeMissionDestinationMarker:[self cxx_defaultMarker:dest]];
 	}
 }
 
