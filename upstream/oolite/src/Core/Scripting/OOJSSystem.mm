@@ -564,7 +564,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					
 				case kSystem_governmentDescription:
 					result = oo::NSStringOrNil(cxx_OODisplayStringFromGovernmentID(systemData.get<int>(KEY_GOVERNMENT)));
-					if (result == nil)  result = DESC(@"not-applicable");
+					if (result == nil)  result = oo::NSStringFrom(OO_DESC("not-applicable"));
 					break;
 					
 				case kSystem_economy:
@@ -573,7 +573,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					
 				case kSystem_economyDescription:
 					result = oo::NSStringOrNil(cxx_OODisplayStringFromEconomyID(systemData.get<int>(KEY_ECONOMY)));
-					if (result == nil)  result = DESC(@"not-applicable");
+					if (result == nil)  result = oo::NSStringFrom(OO_DESC("not-applicable"));
 					break;
 				
 				case kSystem_techLevel:
@@ -599,7 +599,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			switch (ooscript::idToInt32(propID))
 			{
 				case kSystem_name:
-					result = DESC(@"interstellar-space");
+					result = oo::NSStringFrom(OO_DESC("interstellar-space"));
 					break;
 					
 				case kSystem_description:
@@ -607,7 +607,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 					
 				case kSystem_inhabitantsDescription:
-					result = DESC(@"not-applicable");
+					result = oo::NSStringFrom(OO_DESC("not-applicable"));
 					break;
 					
 				case kSystem_government:
@@ -615,7 +615,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					return YES;
 					
 				case kSystem_governmentDescription:
-					result = DESC(@"not-applicable");
+					result = oo::NSStringFrom(OO_DESC("not-applicable"));
 					break;
 					
 				case kSystem_economy:
@@ -623,7 +623,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					return YES;
 					
 				case kSystem_economyDescription:
-					result = DESC(@"not-applicable");
+					result = oo::NSStringFrom(OO_DESC("not-applicable"));
 					break;
 				
 				case kSystem_techLevel:
@@ -1454,7 +1454,7 @@ static bool SystemStaticSystemNameForID(ooscript::Context context, ooscript::Cal
 	}
 	
 	if (systemID == -1)
-		OOJS_RETURN_OBJECT(DESC(@"interstellar-space"));
+		OOJS_RETURN_OBJECT(oo::NSStringFrom(OO_DESC("interstellar-space")));
 	else
 		OOJS_RETURN_OBJECT(oo::NSStringOrNil([UNIVERSE cxx_getSystemName:systemID]));
 	

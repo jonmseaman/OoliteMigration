@@ -358,7 +358,7 @@ static GameController *sSharedController = nil;
 {
 	if (playerFileToLoad.has_value())
 	{
-		[self cxx_logProgress:oo::StdString(DESC(@"loading-player"))];
+		[self cxx_logProgress:OO_DESC("loading-player")];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
@@ -754,7 +754,7 @@ static void RemovePreference(const std::string &key)
 	// A JAPersistentFileReference dictionary (not migrated): passed between its functions as is.
 	id				snapshotDirDict = GetPreference(kSnapshotsDirRefKey);
 	NSURL			*url = nil;
-	const std::string	name = oo::StdString(DESC(@"snapshots-directory-name-mac"));
+	const std::string	name = OO_DESC("snapshots-directory-name-mac");
 
 	if (!oo::IsNSDictionary(snapshotDirDict))  snapshotDirDict = nil;
 	if (snapshotDirDict != nil)

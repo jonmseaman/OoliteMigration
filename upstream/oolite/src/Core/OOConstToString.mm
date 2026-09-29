@@ -480,10 +480,10 @@ std::optional<std::string> cxx_OODisplayStringFromShaderSetting(OOShaderSetting 
 	// DESC() is Universe's description lookup (not migrated yet), converted at the call.
 	switch (setting)
 	{
-		case SHADERS_NOT_SUPPORTED:	return oo::OptionalString(DESC(@"shaderfx-not-available"));
-		case SHADERS_OFF:			return oo::OptionalString(DESC(@"shaderfx-off"));
-		case SHADERS_SIMPLE:		return oo::OptionalString(DESC(@"shaderfx-simple"));
-		case SHADERS_FULL:			return oo::OptionalString(DESC(@"shaderfx-full"));
+		case SHADERS_NOT_SUPPORTED:	return OO_DESC("shaderfx-not-available");
+		case SHADERS_OFF:			return OO_DESC("shaderfx-off");
+		case SHADERS_SIMPLE:		return OO_DESC("shaderfx-simple");
+		case SHADERS_FULL:			return OO_DESC("shaderfx-full");
 	}
 
 	return "??";
@@ -534,9 +534,9 @@ std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit)
 	// DESC() is Universe's description lookup (not migrated yet), converted at the call.
 	switch (unit)
 	{
-		case UNITS_TONS:  return oo::OptionalString(DESC(@"cargo-tons-symbol"));
-		case UNITS_KILOGRAMS:  return oo::OptionalString(DESC(@"cargo-kilograms-symbol"));
-		case UNITS_GRAMS:  return oo::OptionalString(DESC(@"cargo-grams-symbol"));
+		case UNITS_TONS:  return OO_DESC("cargo-tons-symbol");
+		case UNITS_KILOGRAMS:  return OO_DESC("cargo-kilograms-symbol");
+		case UNITS_GRAMS:  return OO_DESC("cargo-grams-symbol");
 		case UNITS_UNKNOWN:  break;
 	}
 

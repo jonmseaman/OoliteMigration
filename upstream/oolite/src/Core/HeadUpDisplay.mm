@@ -631,7 +631,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		[gui cxx_resizeTo:NSMakeSize(360, 120) characterHeight:12 title:std::nullopt];
 		[gui setBackgroundColor:[OOColor colorWithRed:0.0 green:0.05 blue:0.45 alpha:0.5]];
 		[gui setTextColor:[OOColor whiteColor]];
-		[gui cxx_printLongText:oo::OptionalString(DESC(@"communications-log-string")) align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
+		[gui cxx_printLongText:OO_DESC("communications-log-string") align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
 	}
 	
 	if ([UNIVERSE permanentCommLog])
@@ -2527,7 +2527,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	alpha *= cached.alpha;
 	std::string dest = [UNIVERSE cxx_getSystemName:[PLAYER targetSystemID]].value_or("");	// nil drew nothing, as "" does
 	NSInteger concealment = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = oo::StdString(DESC(@"status-unknown-system"));
+	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = OO_DESC("status-unknown-system");
 
 	SET_COLOR(green_color);
 	
@@ -3251,7 +3251,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		
 		OOGL(glColor4f(textColor[0], textColor[1], textColor[2], textColor[3]));
 		// TODO: some caching required...
-		cxx_OODrawString(oo::StdString(DESC(@"weapons-systems-offline")), x, y, z1, siz);
+		cxx_OODrawString(OO_DESC("weapons-systems-offline"), x, y, z1, siz);
 	}
 }
 
@@ -3290,7 +3290,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 
 	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
 
-	std::string timeAccelerationFactorInfo = oo::str::format("TAF: %s%.2f", oo::DescriptionOf(DESC(@"multiplication-sign")).c_str(), [UNIVERSE timeAccelerationFactor]);
+	std::string timeAccelerationFactorInfo = oo::str::format("TAF: %s%.2f", OO_DESC("multiplication-sign").c_str(), [UNIVERSE timeAccelerationFactor]);
 	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
 #endif
 }
@@ -3900,7 +3900,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			case WH_SCANINFO_ARRIVAL_TIME:
 			{
 				// a format read at run time (ADR-0043 item 19)
-				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { cxx_ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO) });
+				std::string wormholeETA = oo::str::formatRuntime(OO_DESC("wormhole-ETA-@"), { cxx_ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO) });
 				cxx_OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_COLLAPSE_TIME:
@@ -3909,7 +3909,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 				int minutesToCollapse = floor (timeForCollapsing / 60.0);
 				int secondsToCollapse = (int)timeForCollapsing % 60;
 				
-				std::string wormholeExpiringIn = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-collapsing-in-mm:ss")), { minutesToCollapse, secondsToCollapse });
+				std::string wormholeExpiringIn = oo::str::formatRuntime(OO_DESC("wormhole-collapsing-in-mm:ss"), { minutesToCollapse, secondsToCollapse });
 				cxx_OODrawString(wormholeExpiringIn, rs0, 0.5 * rs2 - 2 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_SCANNED:
