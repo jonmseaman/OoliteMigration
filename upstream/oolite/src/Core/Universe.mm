@@ -1042,7 +1042,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	int				i;
 	int				show_count = n_entities;
 	
-	if (!OOLogWillDisplayMessagesInClass(@"universe.objectDump"))  return;
+	if (!oo::log::willDisplay("universe.objectDump"))  return;
 	
 	OO_LOG("universe.objectDump", "DEBUG: Entity Dump - [entities count] = {},\tn_entities = {}", static_cast<size_t>(entities.size()), static_cast<unsigned>(n_entities));
 	
@@ -5750,7 +5750,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			// throw an exception here...
 			OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Universe is full ({} entities out of {})", oo::DescriptionOf(entity), static_cast<int>(n_entities), static_cast<int>(UNIVERSE_MAX_ENTITIES));
 #ifndef NDEBUG
-			if (OOLogWillDisplayMessagesInClass(@"universe.maxEntitiesDump")) [self debugDumpEntities];
+			if (oo::log::willDisplay("universe.maxEntitiesDump")) [self debugDumpEntities];
 #endif
 			return NO;
 		}

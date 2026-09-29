@@ -1925,7 +1925,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			
 			if ([self checkKeyPress:n_key_debug_shaders] && ![gameView allowingStringInput])// look for the 's' key
 			{
-				OOLogSetDisplayMessagesInClass(@"$shaderDebugOn", YES);
+				oo::log::logger().setDisplay("$shaderDebugOn", true);
 				[UNIVERSE cxx_addMessage:"Shader debug ON" forCount:3];
 			}
 
@@ -1948,7 +1948,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				gDebugFlags = 0;
 				[UNIVERSE cxx_addMessage:"All debug flags OFF" forCount:3];
-				OOLogSetDisplayMessagesInClass(@"$shaderDebugOn", NO);
+				oo::log::logger().setDisplay("$shaderDebugOn", false);
 			}
 	#endif
 		}

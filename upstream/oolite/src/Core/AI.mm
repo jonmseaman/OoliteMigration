@@ -252,9 +252,9 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 - (void) reportStackOverflow
 {
-	if (OOLogWillDisplayMessagesInClass(@"ai.error.stackOverflow"))
+	if (oo::log::willDisplay("ai.error.stackOverflow"))
 	{
-		BOOL stackDump = OOLogWillDisplayMessagesInClass(@"ai.error.stackOverflow.dump");
+		BOOL stackDump = oo::log::willDisplay("ai.error.stackOverflow.dump");
 		
 		const char *trailer = stackDump ? " -- stack:" : ".";
 		OO_LOG_ERR("ai.error.stackOverflow", "AI stack overflow for {} in {}: {}{}\n", oo::DescriptionOf([_owner shortDescription]), stateMachineName, currentState.value_or("(null)"), trailer);

@@ -974,7 +974,7 @@ static void RemovePreference(const std::string &key)
 #else
 - (BOOL) debugMessageTrackingIsOn
 {
-	return OOLogWillDisplayMessagesInClass(@"startup.progress");
+	return oo::log::willDisplay("startup.progress");
 }
 
 
@@ -1024,7 +1024,7 @@ std::vector<std::string> sMessageStack;
 
 - (void) endSplashScreen
 {
-	OOLogSetDisplayMessagesInClass(@"startup.progress", NO);
+	oo::log::logger().setDisplay("startup.progress", false);
 	
 #if OOLITE_MAC_OS_X
 	// These views will be released when we replace the content view.

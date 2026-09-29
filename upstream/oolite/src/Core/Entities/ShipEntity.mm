@@ -14646,7 +14646,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	OO_LOG("dumpState.shipEntity", "Fuel accumulator: {:g}", fuel_accumulator);
 	OO_LOG("dumpState.shipEntity", "Missile count: {}", missiles);
 	
-	if (shipAI != nil && OOLogWillDisplayMessagesInClass(@"dumpState.shipEntity.ai"))
+	if (shipAI != nil && oo::log::willDisplay("dumpState.shipEntity.ai"))
 	{
 		OO_LOG("dumpState.shipEntity.ai", "{}", "AI:");
 		OOLogPushIndent();
