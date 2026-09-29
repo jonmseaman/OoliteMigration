@@ -360,7 +360,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 // Implements string expansion code [credits_number].
 - (std::optional<std::string>) cxx_creditsFormattedForSubstitution
 {
-	return oo::OptionalString(OOStringFromDeciCredits([self deciCredits], YES, NO));
+	return std::optional<std::string>(cxx_OOStringFromDeciCredits([self deciCredits], YES, NO));
 }
 
 
