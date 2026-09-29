@@ -39,6 +39,7 @@
 #import "OOMacroOpenGL.h"
 #import "OOCPUInfo.h"
 #import "OOCache.h"
+#import "OOObjCPList.h"
 #import "OOPixMap.h"
 
 #include "oofnd/StdLib.hpp"
@@ -397,9 +398,9 @@ const char *sGlobalTraceContext = nullptr;
 + (std::vector<oo::ObjCRef<OOTexture *>>) cxx_cachedTexturesByAge
 {
 	std::vector<oo::ObjCRef<OOTexture *>> result;
-	for (const oo::ObjCRef<id> &texture : [sRecentTextures objectsByAge])
+	for (const oo::PList &texture : [sRecentTextures pListsByAge])
 	{
-		result.emplace_back((OOTexture *)texture.get());
+		result.emplace_back((OOTexture *)oo::ObjectIn(texture));
 	}
 	return result;
 }
@@ -475,7 +476,7 @@ const char *sGlobalTraceContext = nullptr;
 	}
 	
 	SET_TRACE_CONTEXT("adding to recent textures cache");
-	[sRecentTextures setObject:self forKey:oo::NSStringFrom(*cacheKey)];
+	[sRecentTextures cxx_setPList:oo::PListObject(self) forKey:*cacheKey];
 	CLEAR_TRACE_CONTEXT();
 #endif
 }
@@ -488,7 +489,7 @@ const char *sGlobalTraceContext = nullptr;
 	if (!cacheKey.has_value())  return;
 	
 	if (sLiveTextureCache != NULL)  sLiveTextureCache->erase(*cacheKey);
-	if (EXPECT_NOT([sRecentTextures objectForKey:oo::NSStringFrom(*cacheKey)] == self))
+	if (EXPECT_NOT(oo::ObjectIn([sRecentTextures cxx_pListForKey:*cacheKey]) == self))
 	{
 		/* Experimental for now: I think the recent crash problems may
 		 * be because if the last reference to a texture is in
@@ -504,7 +505,7 @@ const char *sGlobalTraceContext = nullptr;
 		 */
 		OOAssert(0, "Texture retain count error for %s; cacheKey is %s.", oo::DescriptionOf(self).c_str(), cacheKey->c_str()); //miscount in autorelease
 		// The following line is needed in order to avoid crashes when there's a 'texture retain count error'. Please do not delete. -- Kaks 20091221
-		[sRecentTextures removeObjectForKey:oo::NSStringFrom(*cacheKey)]; // make sure there's no reference left inside sRecentTexture ( was a show stopper for 1.73)
+		[sRecentTextures cxx_removePListForKey:*cacheKey]; // make sure there's no reference left inside sRecentTexture ( was a show stopper for 1.73)
 	}
 #endif
 }
