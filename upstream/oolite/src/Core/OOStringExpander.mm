@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OOException.h"
 
 /*	The expansion engine works on UTF-16 code units, as it did on the Objective-C string's
 	characters, held in std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed
@@ -765,7 +766,7 @@ OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const st
 #if WARNINGS
 		if (!value->isString() && !value->isNumber())
 		{
-			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::ShortDescriptionOf(oo::ObjectFromPList(*value)).c_str(), key.c_str());
+			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::DescriptionOf(*value).c_str(), key.c_str());	// the value (was <ClassName 0x...> of its Foundation object, bead oo-qps.50)
 		}
 #endif
 		return ValueText(*value);
@@ -880,7 +881,7 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 		if (text == nullptr)
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::ShortDescriptionOf(oo::ObjectFromPList(value)), key);
+			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::DescriptionOf(value), key);	// the value (was <ClassName 0x...> of its Foundation object, bead oo-qps.50)
 			return std::nullopt;
 		}
 
@@ -900,7 +901,12 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* contex
 {
 	if (HasPrefix(key, u"mission_"))
 	{
-		return UnitsFromOptional(oo::OptionalString(oo::ObjectFromPList([PLAYER cxx_missionVariableForKey:keyString])));
+		// A string variable expands to its text; an unset one to nothing. A variable that is not a
+		// string (an array, from the legacy set-list action) expands as unset: its Objective-C
+		// object was sent -length, which it did not answer (bead oo-qps.50).
+		const oo::PList value = [PLAYER cxx_missionVariableForKey:keyString];
+		const std::string *text = value.getIf<std::string>();
+		return UnitsFromOptional((text != nullptr) ? std::optional<std::string>(*text) : std::nullopt);
 	}
 
 	return std::nullopt;
@@ -1398,9 +1404,12 @@ OOUnits Digram(const std::optional<std::string> &digrams, const OOUnits &units, 
 {
 	if (location + 2 > units.size())
 	{
-		// Raises OORangeException, as it did (by messaging the string itself); answers nothing
-		// (nothing appended) for no <digrams>.
-		[oo::NSStringOrNil(digrams) substringWithRange:NSMakeRange(location, 2)];
+		// Raises OORangeException with GNUstep's -substringWithRange: text, as messaging the string
+		// did; answers nothing (nothing appended) for no <digrams> (a message to nil).
+		if (digrams.has_value())
+		{
+			[OOException raise:OORangeException format:"in substringWithRange:, range { %lu, 2 } extends beyond size (%lu)", (unsigned long)location, (unsigned long)units.size()];
+		}
 		return OOUnits();
 	}
 	return units.substr(location, 2);
