@@ -28,7 +28,7 @@ SOFTWARE.
 #include <assert.h>
 
 #import "OOOXPVerifierStageInternal.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 #if OO_OXP_VERIFIER_ENABLED
@@ -192,10 +192,6 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 		// %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
 		// OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
 		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", [self cxx_name].value_or("(null)"), oo::str::pointerDescription(exception), [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": {}", [self cxx_name].value_or("(null)"), oo::DescriptionOf(exception));
 	}
 	oo::log::popIndent();
 	

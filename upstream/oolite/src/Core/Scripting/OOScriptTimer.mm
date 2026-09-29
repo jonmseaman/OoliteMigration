@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOLogging.h"
 #import "OOPriorityQueue.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
@@ -250,10 +250,6 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 	@catch (OOException *exception)
 	{
 		OO_LOG(cxx_kOOLogException, "\n\n***** Ignoring Timer Exception: {} : {} *****\n\n", [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG(cxx_kOOLogException, "\n\n***** Ignoring Timer Exception: {} : {} *****\n\n", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	
 	if (_nextTime < otherTime) return OOOrderedAscending;

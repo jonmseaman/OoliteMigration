@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 #import "OOMusicController.h"
 #import "GuiDisplayGen.h"
 #import "OODebugStandards.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
@@ -246,11 +246,6 @@ void MissionRunCallback()
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
 		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		// Squash any exception, allow cleanup to happen and so forth.
-		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	[OOJSScript popScript:cbScript];
 	
