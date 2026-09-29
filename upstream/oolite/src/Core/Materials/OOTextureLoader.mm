@@ -38,7 +38,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODebugStandards.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
@@ -344,14 +344,6 @@ static BOOL					sHaveSetUp = NO;
 	@catch (OOException *exception)
 	{
 		OO_LOG("texture.load.asyncLoad.exception", "***** Exception loading texture {}: {} ({}).", _path, [exception name], [exception reason]);
-		
-		// Be sure to signal load failure.
-		free(_data);
-		_data = NULL;
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("texture.load.asyncLoad.exception", "***** Exception loading texture {}: {} ({}).", _path, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		
 		// Be sure to signal load failure.
 		free(_data);

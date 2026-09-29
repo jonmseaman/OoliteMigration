@@ -52,7 +52,7 @@ MA 02110-1301, USA.
 #import "HeadUpDisplay.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOEntityFilterPredicate.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #import "MyOpenGLView+Input.h"
@@ -463,10 +463,6 @@ static BOOL sRunningScript = NO;
 	{
 		OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", [exception name], [exception reason]);
 	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-	}
 	
 	// Restore anti-recursion measures.
 	sRunningScript = wasRunningScript;
@@ -494,16 +490,6 @@ static BOOL sRunningScript = NO;
 				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
 				  [exception name],
 				  [exception reason],
-				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::DescriptionOf([target shortDescription]) : contextName.value_or("(null)"));
-			// Suppress exception
-		}
-		@catch (OOFoundationException *exception)
-		{
-			// (a nil context printed "(null)")
-			OO_LOG("script.error.exception",
-				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
-				  oo::DescriptionOf([exception name]),
-				  oo::DescriptionOf([exception reason]),
 				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::DescriptionOf([target shortDescription]) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
@@ -535,14 +521,6 @@ static BOOL sRunningScript = NO;
 			  "***** EXCEPTION {}: {} while testing legacy script conditions.",
 			  [exception name],
 			  [exception reason]);
-		// Suppress exception
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("script.error.exception",
-			  "***** EXCEPTION {}: {} while testing legacy script conditions.",
-			  oo::DescriptionOf([exception name]),
-			  oo::DescriptionOf([exception reason]));
 		// Suppress exception
 	}
 	

@@ -51,7 +51,7 @@ SOFTWARE.
 #include "oofnd/FileSystem.hpp"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #include "oofnd/Notification.hpp"
 
@@ -192,10 +192,6 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 			{
 				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", oo::DescriptionOf(newDebugger), [exception name], [exception reason]);
 			}
-			@catch (OOFoundationException *exception)
-			{
-				OO_LOG("debugMonitor.setDebugger.failed", "Could not connect to debugger {}, because an exception occurred: {} -- {}", oo::DescriptionOf(newDebugger), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-			}
 		}
 	}
 	
@@ -231,10 +227,6 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	{
 		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send JavaScript console text to debugger: {} -- {}", [exception name], [exception reason]);
 	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send JavaScript console text to debugger: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-	}
 	OOJSResumeTimeLimiter();
 }
 
@@ -259,10 +251,6 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	{
 		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to clear JavaScript console: {} -- {}", [exception name], [exception reason]);
 	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to clear JavaScript console: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-	}
 	OOJSResumeTimeLimiter();
 }
 
@@ -277,10 +265,6 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	@catch (OOException *exception)
 	{
 		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to show JavaScript console: {} -- {}", [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to show JavaScript console: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	OOJSResumeTimeLimiter();
 }
@@ -364,10 +348,6 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	@catch (OOException *exception)
 	{
 		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send configuration update to debugger: {} -- {}", [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to send configuration update to debugger: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 }
 
@@ -811,10 +791,6 @@ struct EntityDumpState
 	@catch (OOException *exception)
 	{
 		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to disconnect debugger: {} -- {}", [exception name], [exception reason]);
-	}
-	@catch (OOFoundationException *exception)
-	{
-		OO_LOG("debugMonitor.debuggerConnection.exception", "Exception while attempting to disconnect debugger: {} -- {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	
 	id debugger = _debugger;
