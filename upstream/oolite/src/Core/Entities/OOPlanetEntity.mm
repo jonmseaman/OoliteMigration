@@ -1129,7 +1129,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		
 		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(self), oo::DescriptionOf(atmosphere));
 		
-		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:nil];
+		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:oo::PList()];
 		[_atmosphereDrawable setMaterial:dynamicMaterial];
 
 		if (shadersOn)
@@ -1187,7 +1187,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 #endif
 	if (material == nil)
 	{
-		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:nil];
+		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:oo::PList()];
 		[material autorelease];
 	}
 	[_planetDrawable setMaterial:material];

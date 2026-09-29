@@ -1618,7 +1618,7 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	GLuint width, height;
 	
 	fillRanNoiseBuffer();
-	if (![TextureStore getPlanetTextureNameFor:oo::ObjectFromPList(info)
+	if (![TextureStore getPlanetTextureNameFor:info
 									  intoData:&data
 										 width:&width
 										height:&height])

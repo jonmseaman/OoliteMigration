@@ -70,7 +70,7 @@ MA 02110-1301, USA.
 - (void) setShortDescription:(id)value;	// shared selector: an Objective-C string, or nil
 
 - (int) legalStatus;
-- (void) setLegalStatus:(int)value;
+- (void) cxx_setLegalStatus:(int)value;
 
 - (OOCreditsQuantity) insuranceCredits;
 - (void) setInsuranceCredits:(OOCreditsQuantity)value;

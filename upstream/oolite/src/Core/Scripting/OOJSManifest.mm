@@ -216,7 +216,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	id							result = nil;
+	oo::PList					result;	// null: nil
 	PlayerEntity				*entity = OOPlayerForScripting();
 	
 	if (ooscript::isInt32Id(propID))
@@ -224,7 +224,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		switch (ooscript::idToInt32(propID))
 		{
 			case kManifest_list:
-				result = oo::ObjectFromPList([entity cargoListForScripting]);
+				result = [entity cargoListForScripting];
 				break;
 				
 			default:
@@ -250,7 +250,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		}
 	}
 	
-	*value = OOJSValueFromNativeObject(context, result);
+	*value = OOJSValueFromPList(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
@@ -322,7 +322,7 @@ static bool ManifestComment(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	information = [[PLAYER shipCommodityData] cxx_commentForGood:*good];
 
-	OOJS_RETURN_OBJECT(oo::NSStringOrNil(information));
+	OOJS_RETURN_STRING_OR_NULL(information);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -382,7 +382,7 @@ static bool ManifestShortComment(ooscript::Context context, ooscript::CallArgs &
 
 	information = [[PLAYER shipCommodityData] cxx_shortCommentForGood:*good];
 
-	OOJS_RETURN_OBJECT(oo::NSStringOrNil(information));
+	OOJS_RETURN_STRING_OR_NULL(information);
 	
 	OOJS_NATIVE_EXIT
 }

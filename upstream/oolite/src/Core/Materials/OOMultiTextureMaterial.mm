@@ -39,7 +39,7 @@ SOFTWARE.
 
 @implementation OOMultiTextureMaterial
 
-- (id)initWithName:(id)name configuration:(id)configuration
+- (id)initWithName:(const std::optional<std::string> &)name configuration:(const oo::PList &)configuration
 {
 	if (![[OOOpenGLExtensionManager sharedManager] textureCombinersSupported])
 	{
@@ -49,8 +49,8 @@ SOFTWARE.
 	
 	// The configuration mixes plist data with live objects (colours): an oo::PList carries both
 	// exactly (proposed ADR-0043 Amendment 2).
-	const oo::PList config = oo::PListFrom(configuration);
-	const oo::PList diffuseSpec = cxx_OOMaterialDiffuseMapSpecifier(config, oo::OptionalString(name));
+	const oo::PList &config = configuration;
+	const oo::PList diffuseSpec = cxx_OOMaterialDiffuseMapSpecifier(config, name);
 	const oo::PList emissionSpec = cxx_OOMaterialEmissionMapSpecifier(config);
 	const oo::PList illuminationSpec = cxx_OOMaterialIlluminationMapSpecifier(config);
 	const oo::PList emissionAndIlluminationSpec = cxx_OOMaterialEmissionAndIlluminationMapSpecifier(config);
@@ -72,7 +72,7 @@ SOFTWARE.
 		mutableConfiguration.getIf<oo::PList::Dict>()->erase(cxx_kOOMaterialEmissionColorLegacyName);
 	}
 	
-	self = [super initWithName:name configuration:oo::ObjectFromPList(mutableConfiguration)];
+	self = [super initWithName:name configuration:mutableConfiguration];
 	if (self != nil)
 	{
 		if (!diffuseSpec.isNull())

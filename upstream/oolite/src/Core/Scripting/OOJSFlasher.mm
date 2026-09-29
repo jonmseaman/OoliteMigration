@@ -232,7 +232,7 @@ static bool FlasherGetProperty(Context cx, Object obj, PropertyId propID, Value 
 	OOJS_NATIVE_ENTER(context)
 	
 	OOFlasherEntity				*entity = nil;
-	id result = nil;
+	oo::PList result;	// null: nil
 	
 	if (!JSFlasherGetFlasherEntity(context, thisObj, &entity))  return NO;
 	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return YES; }
@@ -244,7 +244,7 @@ static bool FlasherGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			return YES;
 
 		case kFlasher_color:
-			result = oo::ObjectFromPList(NormalizedColorComponents([entity color]));
+			result = NormalizedColorComponents([entity color]);
 			break;
 
 		case kFlasher_frequency:
@@ -264,7 +264,7 @@ static bool FlasherGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			return NO;
 	}
 
-	*value_raw = OOJSValueFromNativeObject(context, result);
+	*value_raw = OOJSValueFromPList(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
@@ -302,7 +302,7 @@ static bool FlasherSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			break;
 
 		case kFlasher_color:
-			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
+			colorForScript = [OOColor cxx_colorWithDescription:cxx_OOJSPListFromJSValue(context, *value_raw)];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[entity setColor:colorForScript];
