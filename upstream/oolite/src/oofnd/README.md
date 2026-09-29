@@ -461,12 +461,9 @@ After it, `worktree.sh --remove <id>` run from MSYS2 no longer finds the worktre
 
 ### Transitional bridges
 
-Every `X+FoundationBridge` file in the tree, with the bead that made it and the bead that deletes
-it. oo-qps cannot compile any of them.
-
-| Bridge | Made by | Deleted by |
-|---|---|---|
-| `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog hook, Amendment 2 item 18(a); also the Foundation-typed functions until oo-vors removes them) | oo-vjts | oo-qps (with gnustep-base) |
+None remain. The last, `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog
+hook, Amendment 2 item 18(a); made by oo-vjts), was deleted by oo-qps.28: whatever gnustep-base
+itself NSLogs goes to stderr instead of Latest.log until oo-qps.18 unlinks it.
 
 ### Stop and report (do not stretch)
 

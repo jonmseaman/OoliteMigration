@@ -103,7 +103,6 @@ enum
 };
 typedef NSInteger OOCommodityType;
 */
-typedef NSString* OOCommodityType;
 
 typedef enum
 {
