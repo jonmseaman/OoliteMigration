@@ -109,7 +109,6 @@ MA 02110-1301, USA.
 
 #import "OOCache.h"
 #import "OOStringParsing.h"
-#import "OOFoundationBridge.h"
 #import "oofnd/objc/OOObject.h"
 
 #include "oofnd/String.hpp"
@@ -121,13 +120,6 @@ MA 02110-1301, USA.
 #ifndef OOCACHE_PERFORM_INTEGRITY_CHECKS
 #define OOCACHE_PERFORM_INTEGRITY_CHECKS	0
 #endif
-
-
-// Protocol used internally to squash idiotic warnings in gnu-gcc.
-@protocol OOCacheComparable <OOObject, OOCopying>
-- (OOComparisonResult) compare:(id<OOCacheComparable>)other;
-- (id) copy;
-@end
 
 
 typedef struct OOCacheImpl OOCacheImpl;
@@ -148,9 +140,9 @@ struct OOCacheImpl
 
 struct OOCacheNode
 {
-	// Payload
-	id<OOCacheComparable>	key;
-	id						value;
+	// Payload (the key orders the tree by std::string::compare)
+	std::string				key;
+	oo::PList				value;
 
 	// Splay tree
 	OOCacheNode				*leftChild, *rightChild;
@@ -171,13 +163,13 @@ constexpr const char *kSerializedEntryKeyValue	= "value";
 static OOCacheImpl *CacheAllocate(void);
 static void CacheFree(OOCacheImpl *cache);
 
-static BOOL CacheInsert(OOCacheImpl *cache, id key, id value);
-static BOOL CacheRemove(OOCacheImpl *cache, id key);
-static id CacheRetrieve(OOCacheImpl *cache, id key);
+static BOOL CacheInsert(OOCacheImpl *cache, const std::string &key, const oo::PList &value);
+static BOOL CacheRemove(OOCacheImpl *cache, const std::string &key);
+static const oo::PList *CacheRetrieve(OOCacheImpl *cache, const std::string &key);
 static unsigned CacheGetCount(OOCacheImpl *cache);
 namespace {
 BOOL CacheRemoveOldest(OOCacheImpl *cache, const std::string &logKey);
-std::vector<oo::ObjCRef<id>> CacheArrayOfContentsByAge(OOCacheImpl *cache);
+std::vector<oo::PList> CacheArrayOfContentsByAge(OOCacheImpl *cache);
 oo::PList CacheArrayOfNodesByAge(OOCacheImpl *cache);
 const std::optional<std::string> &CacheGetName(OOCacheImpl *cache);
 void CacheSetName(OOCacheImpl *cache, std::optional<std::string> name);
@@ -213,19 +205,19 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 
 // OOObject's -description wraps this as "<OOCache 0x...>{...}", which is what this class's own
 // -description printed.
-- (id)descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\", %u elements, prune threshold=%u, auto-prune=%s dirty=%s", CacheGetName(cache).value_or("(null)").c_str(), CacheGetCount(cache), pruneThreshold, autoPrune ? "yes" : "no", dirty ? "yes" : "no"));
+	return oo::str::format("\"%s\", %u elements, prune threshold=%u, auto-prune=%s dirty=%s", CacheGetName(cache).value_or("(null)").c_str(), CacheGetCount(cache), pruneThreshold, autoPrune ? "yes" : "no", dirty ? "yes" : "no");
 }
 
 
 - (id)init
 {
-	return [self initWithPList:nil];
+	return [self cxx_initWithPList:oo::PList()];
 }
 
 
-- (id)initWithPList:(id)pList
+- (id)cxx_initWithPList:(const oo::PList &)pList
 {
 	BOOL					OK = YES;
 	
@@ -238,10 +230,10 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 		if (cache == NULL) OK = NO;
 	}
 	
-	if (pList != nil)
+	if (!pList.isNull())
 	{
-		if (OK) OK = oo::IsNSArray(pList);
-		if (OK) [self loadFromArray:oo::PListFrom(pList)];
+		if (OK) OK = pList.isArray();
+		if (OK) [self loadFromArray:pList];
 	}
 	if (OK)
 	{
@@ -259,50 +251,48 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 }
 
 
-- (id)pListRepresentation
+- (oo::PList)cxx_pListRepresentation
 {
-	return oo::ObjectFromPList(CacheArrayOfNodesByAge(cache));
-	
-	return nil;
+	return CacheArrayOfNodesByAge(cache);
 }
 
 
-- (id)objectForKey:(id)key
+- (oo::PList)cxx_pListForKey:(const std::string &)key
 {
-	id						result = nil;
+	oo::PList				result;
 	
-	CHECK_INTEGRITY("objectForKey: before");
+	CHECK_INTEGRITY("cxx_pListForKey: before");
 	
-	result = CacheRetrieve(cache, key);
-	// Note: while reordering the age list technically makes the cache dirty, it's not worth rewriting it just for that, so we don't flag it.
+	if (const oo::PList *value = CacheRetrieve(cache, key))  result = *value;
+// Note: while reordering the age list technically makes the cache dirty, it's not worth rewriting it just for that, so we don't flag it.
 	
-	CHECK_INTEGRITY("objectForKey: after");
+	CHECK_INTEGRITY("cxx_pListForKey: after");
 	
-	return [[result retain] autorelease];
+	return result;
 }
 
 
-- (void)setObject:inObject forKey:(id)key
+- (void)cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key
 {
-	CHECK_INTEGRITY("setObject:forKey: before");
+	CHECK_INTEGRITY("cxx_setPList:forKey: before");
 	
-	if (CacheInsert(cache, key, inObject))
+	if (CacheInsert(cache, key, value))
 	{
 		dirty = YES;
 		if (autoPrune)  [self prune];
 	}
 	
-	CHECK_INTEGRITY("setObject:forKey: after");
+	CHECK_INTEGRITY("cxx_setPList:forKey: after");
 }
 
 
-- (void)removeObjectForKey:(id)key
+- (void)cxx_removePListForKey:(const std::string &)key
 {
-	CHECK_INTEGRITY("removeObjectForKey: before");
+	CHECK_INTEGRITY("cxx_removePListForKey: before");
 	
 	if (CacheRemove(cache, key)) dirty = YES;
 	
-	CHECK_INTEGRITY("removeObjectForKey: after");
+	CHECK_INTEGRITY("cxx_removePListForKey: after");
 }
 
 
@@ -376,21 +366,9 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 }
 
 
-- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>)cxx_name
 {
 	return CacheGetName(cache);
-}
-
-
-- (void)setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
-{
-	[self cxx_setName:oo::OptionalString(name)];
 }
 
 
@@ -400,7 +378,7 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 }
 
 
-- (std::vector<oo::ObjCRef<id>>) objectsByAge
+- (std::vector<oo::PList>) pListsByAge
 {
 	return CacheArrayOfContentsByAge(cache);
 }
@@ -423,7 +401,7 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 			const oo::PList *value = entry.find(kSerializedEntryKeyValue);
 			if (key != nullptr && key->isString() && value != nullptr)
 			{
-				[self setObject:oo::ObjectFromPList(*value) forKey:oo::ObjectFromPList(*key)];
+				[self cxx_setPList:*value forKey:*key->getIf<std::string>()];
 			}
 		}
 	}
@@ -434,17 +412,17 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 
 /***** Most of the implementation. In C. Because I'm inconsistent and slightly m. *****/
 
-static OOCacheNode *CacheNodeAllocate(id<OOCacheComparable> key, id value);
+static OOCacheNode *CacheNodeAllocate(const std::string &key, const oo::PList &value);
 static void CacheNodeFree(OOCacheImpl *cache, OOCacheNode *node);
-static id CacheNodeGetValue(OOCacheNode *node);
-static void CacheNodeSetValue(OOCacheNode *node, id value);
+static const oo::PList *CacheNodeGetValue(OOCacheNode *node);
+static void CacheNodeSetValue(OOCacheNode *node, const oo::PList &value);
 
 #if OOCACHE_PERFORM_INTEGRITY_CHECKS
 static std::string CacheNodeGetDescription(OOCacheNode *node);
 #endif
 
-static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key);
-static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id value);
+static OOCacheNode *TreeSplay(OOCacheNode **root, const std::string &key);
+static OOCacheNode *TreeInsert(OOCacheImpl *cache, const std::string &key, const oo::PList &value);
 
 #if OOCACHE_PERFORM_INTEGRITY_CHECKS
 static unsigned TreeCountNodes(OOCacheNode *node);
@@ -476,11 +454,11 @@ static void CacheFree(OOCacheImpl *cache)
 }
 
 
-static BOOL CacheInsert(OOCacheImpl *cache, id key, id value)
+static BOOL CacheInsert(OOCacheImpl *cache, const std::string &key, const oo::PList &value)
 {
 	OOCacheNode				*node = NULL;
 	
-	if (cache == NULL || key == nil || value == nil) return NO;
+	if (cache == NULL || value.isNull()) return NO;
 	
 	node = TreeInsert(cache, key, value);
 	if (node != NULL)
@@ -492,7 +470,7 @@ static BOOL CacheInsert(OOCacheImpl *cache, id key, id value)
 }
 
 
-static BOOL CacheRemove(OOCacheImpl *cache, id key)
+static BOOL CacheRemove(OOCacheImpl *cache, const std::string &key)
 {
 	OOCacheNode				*node = NULL, *newRoot = NULL;
 	
@@ -527,18 +505,19 @@ BOOL CacheRemoveOldest(OOCacheImpl *cache, const std::string &logKey)
 	// This could be more efficient, but does it need to be?
 	if (cache == NULL || cache->oldest == NULL) return NO;
 	
-	OO_LOG(logKey, "Pruning cache \"{}\": removing {}", cache->name.value_or("(null)"), oo::DescriptionOf(cache->oldest->key));
-	return CacheRemove(cache, cache->oldest->key);
+	OO_LOG(logKey, "Pruning cache \"{}\": removing {}", cache->name.value_or("(null)"), cache->oldest->key);
+	const std::string key = cache->oldest->key;	// a copy: the node goes
+	return CacheRemove(cache, key);
 }
 } // namespace
 
 
-static id CacheRetrieve(OOCacheImpl *cache, id key)
+static const oo::PList *CacheRetrieve(OOCacheImpl *cache, const std::string &key)
 {
 	OOCacheNode			*node = NULL;
-	id					result = nil;
+	const oo::PList		*result = nullptr;
 	
-	if (cache == NULL || key == NULL) return nil;
+	if (cache == NULL) return nullptr;
 	
 	node = TreeSplay(&cache->root, key);
 	if (node != NULL)
@@ -553,10 +532,10 @@ static id CacheRetrieve(OOCacheImpl *cache, id key)
 namespace {
 
 // Empty for an empty cache (the Foundation version returned nil).
-std::vector<oo::ObjCRef<id>> CacheArrayOfContentsByAge(OOCacheImpl *cache)
+std::vector<oo::PList> CacheArrayOfContentsByAge(OOCacheImpl *cache)
 {
 	OOCacheNode			*node = NULL;
-	std::vector<oo::ObjCRef<id>>	result;
+	std::vector<oo::PList>	result;
 	
 	if (cache == NULL || cache->count == 0) return result;
 	
@@ -583,8 +562,8 @@ oo::PList CacheArrayOfNodesByAge(OOCacheImpl *cache)
 	for (node = cache->oldest; node != NULL; node = node->younger)
 	{
 		oo::PList::Dict entry;
-		entry.emplace(kSerializedEntryKeyKey, oo::PListFrom(node->key));
-		entry.emplace(kSerializedEntryKeyValue, oo::PListFrom(node->value));
+		entry.emplace(kSerializedEntryKeyKey, oo::PList(node->key));
+		entry.emplace(kSerializedEntryKeyValue, node->value);
 		result.push_back(oo::PList(std::move(entry)));
 	}
 	return oo::PList(std::move(result));
@@ -635,64 +614,44 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context)
 /***** CacheNode functions *****/
 
 // CacheNodeAllocate(): create a cache node for a key, value pair, without inserting it in the structures.
-static OOCacheNode *CacheNodeAllocate(id<OOCacheComparable> key, id value)
+static OOCacheNode *CacheNodeAllocate(const std::string &key, const oo::PList &value)
 {
-	OOCacheNode			*result = NULL;
+	if (value.isNull()) return NULL;
 	
-	if (key == nil || value == nil) return NULL;
-	
-	result = (OOCacheNode *)calloc(sizeof *result, 1);
-	if (result != NULL)
-	{
-		result->key = [key copy];
-		result->value = [value retain];
-	}
-	
-	return result;
+	// Null links, as calloc gave; the key and value are C++ members.
+	return new OOCacheNode{ .key = key, .value = value };
 }
 
 
 // CacheNodeFree(): recursively delete a cache node and its children in the splay tree. To delete an individual node, first clear its child pointers.
 static void CacheNodeFree(OOCacheImpl *cache, OOCacheNode *node)
 {
-	id key, value;
-	
 	if (node == NULL) return;
 	
 	AgeListRemove(cache, node);
 	
-	key = node->key;
-	node->key = nil;
-	[key release];
-	
-	value = node->value;
-	node->value = nil;
-	[value release];
-	
 	CacheNodeFree(cache, node->leftChild);
 	CacheNodeFree(cache, node->rightChild);
 	
-	free(node);
+	delete node;	// releases the key and the value
 }
 
 
 // CacheNodeGetValue(): retrieve the value of a cache node
-static id CacheNodeGetValue(OOCacheNode *node)
+static const oo::PList *CacheNodeGetValue(OOCacheNode *node)
 {
-	if (node == NULL) return nil;
+	if (node == NULL) return nullptr;
 	
-	return node->value;
+	return &node->value;
 }
 
 
 // CacheNodeSetValue(): change the value of a cache node (as when setObject:forKey: is called for an existing key).
-static void CacheNodeSetValue(OOCacheNode *node, id value)
+static void CacheNodeSetValue(OOCacheNode *node, const oo::PList &value)
 {
 	if (node == NULL) return;
 
-	id tmp = node->value;
-	node->value = [value retain];
-	[tmp release];
+	node->value = value;
 }
 
 
@@ -702,7 +661,7 @@ static std::string CacheNodeGetDescription(OOCacheNode *node)
 {
 	if (node == NULL) return "0[null]";
 	
-	return oo::str::format("%s[\"%s\"]", oo::str::pointerDescription(node).c_str(), oo::DescriptionOf(node->key).c_str());
+	return oo::str::format("%s[\"%s\"]", oo::str::pointerDescription(node).c_str(), node->key.c_str());
 }
 #endif	// OOCACHE_PERFORM_INTEGRITY_CHECKS
 
@@ -716,14 +675,14 @@ static std::string CacheNodeGetDescription(OOCacheNode *node)
 	would have been found before the target, and will thus be a neighbour of
 	the target if the key is subsequently inserted.
 */
-static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
+static OOCacheNode *TreeSplay(OOCacheNode **root, const std::string &key)
 {
-	OOComparisonResult		order;
+	int						order;
 	OOCacheNode				N = { .leftChild = NULL, .rightChild = NULL };
 	OOCacheNode				*node = NULL, *temp = NULL, *l = &N, *r = &N;
 	BOOL					exact = NO;
 	
-	if (root == NULL || *root == NULL || key == nil) return NULL;
+	if (root == NULL || *root == NULL) return NULL;
 	
 	node = *root;
 	
@@ -734,17 +693,13 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 		{
 			OO_LOG("node.error", "{}", "node is NULL");
 		}
-		else if (node->key == NULL)
-		{
-			OO_LOG("node.error", "{}", "node->key is NULL");
-		}
 #endif
-		order = [key compare:node->key];
-		if (order == OOOrderedAscending)
+		order = key.compare(node->key);
+		if (order < 0)
 		{
 			// Closest match is in left subtree
 			if (node->leftChild == NULL) break;
-			if ([key compare:node->leftChild->key] == OOOrderedAscending)
+			if (key.compare(node->leftChild->key) < 0)
 			{
 				// Rotate right
 				temp = node->leftChild;
@@ -758,11 +713,11 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 			r = node;
 			node = node->leftChild;
 		}
-		else if (order == OOOrderedDescending)
+		else if (order > 0)
 		{
 			// Closest match is in right subtree
 			if (node->rightChild == NULL) break;
-			if ([key compare:node->rightChild->key] == OOOrderedDescending)
+			if (key.compare(node->rightChild->key) > 0)
 			{
 				// Rotate left
 				temp = node->rightChild;
@@ -795,13 +750,13 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 }
 
 
-static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id value)
+static OOCacheNode *TreeInsert(OOCacheImpl *cache, const std::string &key, const oo::PList &value)
 {
 	OOCacheNode				*closest = NULL,
 							*node = NULL;
-	OOComparisonResult		order;
+	int						order;
 	
-	if (cache == NULL || key == nil || value == nil) return NULL;
+	if (cache == NULL || value.isNull()) return NULL;
 	
 	if (cache->root == NULL)
 	{
@@ -823,9 +778,9 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 			node = CacheNodeAllocate(key, value);
 			if (EXPECT_NOT(node == NULL))  return NULL;
 			
-			order = [key compare:closest->key];
+			order = key.compare(closest->key);
 			
-			if (order == OOOrderedAscending)
+			if (order < 0)
 			{
 				// Insert to left
 				node->leftChild = closest->leftChild;
@@ -834,7 +789,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 				cache->root = node;
 				++cache->count;
 			}
-			else if (order == OOOrderedDescending)
+			else if (order > 0)
 			{
 				// Insert to right
 				node->rightChild = closest->rightChild;
@@ -868,26 +823,20 @@ static unsigned TreeCountNodes(OOCacheNode *node)
 // TreeCheckIntegrity(): verify the links and contents of a (sub-)tree. If successful, returns the root of the subtree (which could theoretically be changed), otherwise returns NULL.
 static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OOCacheNode *expectedParent, const std::string &context)
 {
-	OOComparisonResult		order;
+	int						order;
 	BOOL					OK = YES;
 	
 	if (node == NULL) return NULL;
 	
-	if (OK && node->key == nil)
-	{
-		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\" has nil key; deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node));
-		OK = NO;
-	}
-	
-	if (OK && node->value == nil)
+	if (OK && node->value.isNull())
 	{
 		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\" has nil value, deleting.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node));
 		OK = NO;
 	}	
 	if (OK && node->leftChild != NULL)
 	{
-		order = [node->key compare:node->leftChild->key];
-		if (order != OOOrderedDescending)
+		order = node->key.compare(node->leftChild->key);
+		if (!(order > 0))
 		{
 			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node {}'s left child {} is not correctly ordered. Deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(node->leftChild));
 			CacheNodeFree(cache, node->leftChild);
@@ -901,8 +850,8 @@ static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OO
 	}
 	if (node->rightChild != NULL)
 	{
-		order = [node->key compare:node->rightChild->key];
-		if (order != OOOrderedAscending)
+		order = node->key.compare(node->rightChild->key);
+		if (!(order < 0))
 		{
 			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\"'s right child \"{}\" is not correctly ordered. Deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(node->rightChild));
 			CacheNodeFree(cache, node->rightChild);
@@ -1004,16 +953,9 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 				++seenCount;
 				if (next == NULL) break;
 				
-				if (node->key != NULL)
-				{
-					OO_LOG("dataCache.integrityCheck", "Key is: {}", oo::DescriptionOf(node->key));
-				}
-				else
-				{
-					OO_LOG("dataCache.integrityCheck", "{}", "Key is: NULL");
-				}
+				OO_LOG("dataCache.integrityCheck", "Key is: {}", node->key);
 
-				if (node->value != NULL)
+				if (!node->value.isNull())
 				{
 					OO_LOG("dataCache.integrityCheck", "Value is: {}", oo::DescriptionOf(node->value));
 				}
@@ -1058,7 +1000,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 
 - (void) appendNodesFromSubTree:(OOCacheNode *)subTree toString:(std::string &)ioString
 {
-	ioString += oo::str::format("\tn%s [label=\"<f0> | <f1> %s | <f2>\"];\n", oo::str::pointerDescription(subTree).c_str(), ([(id)subTree->key description] != nil ? cxx_EscapedGraphVizString(oo::StdString([(id)subTree->key description])) : std::string("(null)")).c_str());
+	ioString += oo::str::format("\tn%s [label=\"<f0> | <f1> %s | <f2>\"];\n", oo::str::pointerDescription(subTree).c_str(), cxx_EscapedGraphVizString(subTree->key).c_str());
 	
 	if (subTree->leftChild != NULL)
 	{

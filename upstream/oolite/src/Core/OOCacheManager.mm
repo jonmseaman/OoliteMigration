@@ -78,7 +78,7 @@ enum
 namespace {
 static OOCacheManager *sSingleton = nil;
 
-using CacheEntries = std::map<std::string, oo::ObjCRef<id>, std::less<>>;
+using CacheEntries = std::map<std::string, oo::PList, std::less<>>;
 
 // The cache named <name>, or nullptr (no such cache, or no caches at all), as -objectForKey: on
 // the dictionary of caches (or on nil) answered.
@@ -193,16 +193,16 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id)cxx_objectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+- (oo::PList)cxx_pListForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
 {
-	id						result = nil;
+	oo::PList				result;
 	
 	CacheEntries *cache = FindCache(_caches, inCacheKey);
 	if (cache != nullptr)
 	{
 		const auto entry = cache->find(inKey);
-		if (entry != cache->end())  result = entry->second.get();
-		if (result != nil)
+		if (entry != cache->end())  result = entry->second;
+		if (!result.isNull())
 		{
 #if OO_DEBUG
 			OO_LOG("dataCache.retrieve.success", "Retrieved \"{}\" cache object {}.", inCacheKey, inKey);
@@ -226,15 +226,29 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
+- (id)cxx_objectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+{
+	return oo::ObjectFromPList([self cxx_pListForKey:inKey inCache:inCacheKey]);
+}
+
+
 
 - (void)cxx_setObject:(id)inObject forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
 {
 	OOParameterAssert(inObject != nil);
 	
+	[self cxx_setPList:oo::PListFrom(inObject) forKey:inKey inCache:inCacheKey];
+}
+
+
+- (void)cxx_setPList:(const oo::PList &)inValue forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+{
+	OOParameterAssert(!inValue.isNull());
+
 	if (EXPECT_NOT(!_caches.has_value()))  return;
 	
 	// A missing cache is created, empty, as before.
-	(*_caches)[inCacheKey][inKey] = oo::ObjCRef<id>(inObject);
+	(*_caches)[inCacheKey][inKey] = inValue;
 	_dirty = YES;
 #if OO_DEBUG
 	OO_LOG("dataCache.set.success", "Updated entry {} in cache \"{}\".", inKey, inCacheKey);
@@ -579,8 +593,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			CacheEntries &entries = (*_caches)[key];
 			for (const auto &[entryKey, entryValue] : *cache)
 			{
-				id object = oo::ObjectFromPList(entryValue);
-				if (object != nil)  entries.emplace(entryKey, oo::ObjCRef<id>(object));
+				if (!entryValue.isNull())  entries.emplace(entryKey, entryValue);
 			}
 		}
 	}
@@ -594,7 +607,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	for (const auto &[cacheKey, cache] : *_caches)
 	{
 		oo::PList::Dict entries;
-		for (const auto &[key, object] : cache)  entries.emplace(key, oo::PListFrom(object.get()));
+		for (const auto &[key, value] : cache)  entries.emplace(key, value);
 		result.emplace(cacheKey, oo::PList(std::move(entries)));
 	}
 	return oo::PList(std::move(result));
