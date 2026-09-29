@@ -142,50 +142,50 @@ typedef enum
 // The F5 manifest (bead oo-3rb.193): strings first, then arrays of a header and its entries.
 - (oo::PList) cxx_missionsList;
 
-- (void) setMissionDescription:(id)textKey;	// called by name (ADR-0043 item 21)
+- (void) setMissionDescription:(const std::string &)textKey;	// called by name (ADR-0043 item 21)
 - (void) clearMissionDescription;
 - (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key;	// nullopt key: logged, ignored
 - (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key;
 - (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
-- (void) clearMissionDescriptionForMission:(id)key;	// called by name (ADR-0043 item 21)
+- (void) clearMissionDescriptionForMission:(const std::string &)key;	// called by name (ADR-0043 item 21)
 
 - (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
 - (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
 							   // can be used by scripts to have unpiloted ships sending
 							   // commsMessages, if we want to.
 
-- (void) consoleMessage3s:(id)valueString;	// called by name (ADR-0043 item 21)
-- (void) consoleMessage6s:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) consoleMessage3s:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) consoleMessage6s:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
 
-- (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
-- (void) awardCredits:(id)valueString;	// called by name (ADR-0043 item 21)
-- (void) awardShipKills:(id)valueString;	// called by name (ADR-0043 item 21)
-- (void) awardEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
-- (void) removeEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+- (void) setLegalStatus:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardCredits:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardShipKills:(const std::string &)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+- (void) removeEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 
-- (void) setPlanetinfo:(id)key_valueString;	// called by name (ADR-0043 item 21); uses key=value format
-- (void) setSpecificPlanetInfo:(id)key_valueString;	// called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
+- (void) setPlanetinfo:(const std::string &)key_valueString;	// called by name (ADR-0043 item 21); uses key=value format
+- (void) setSpecificPlanetInfo:(const std::string &)key_valueString;	// called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
 
-- (void) awardCargo:(id)amount_typeString;	// called by name (ADR-0043 item 21)
+- (void) awardCargo:(const std::string &)amount_typeString;	// called by name (ADR-0043 item 21)
 - (void) removeAllCargo;
 - (void) removeAllCargo:(BOOL)forceRemoval;
 
-- (void) useSpecialCargo:(id)descriptionString;	// called by name (ADR-0043 item 21)
+- (void) useSpecialCargo:(const std::string &)descriptionString;	// called by name (ADR-0043 item 21)
 
-- (void) testForEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+- (void) testForEquipment:(const std::string &)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 
-- (void) awardFuel:(id)valueString;	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
+- (void) awardFuel:(const std::string &)valueString;	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
 
-- (void) messageShipAIs:(id)roles_message;	// called by name (ADR-0043 item 21)
-- (void) ejectItem:(id)item_key;	// called by name (ADR-0043 item 21)
-- (void) addShips:(id)roles_number;	// called by name (ADR-0043 item 21)
-- (void) addSystemShips:(id)roles_number_position;	// called by name (ADR-0043 item 21)
-- (void) addShipsAt:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
-- (void) addShipsAtPrecisely:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
-- (void) addShipsWithinRadius:(id)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
+- (void) messageShipAIs:(const std::string &)roles_message;	// called by name (ADR-0043 item 21)
+- (void) ejectItem:(const std::string &)item_key;	// called by name (ADR-0043 item 21)
+- (void) addShips:(const std::string &)roles_number;	// called by name (ADR-0043 item 21)
+- (void) addSystemShips:(const std::string &)roles_number_position;	// called by name (ADR-0043 item 21)
+- (void) addShipsAt:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsAtPrecisely:(const std::string &)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsWithinRadius:(const std::string &)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
 - (void) spawnShip:(id)ship_key;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
-- (void) set:(id)missionvariable_value;	// called by name (ADR-0043 item 21)
-- (void) reset:(id)missionvariable;	// called by name (ADR-0043 item 21)
+- (void) set:(const std::string &)missionvariable_value;	// called by name (ADR-0043 item 21)
+- (void) reset:(const std::string &)missionvariable;	// called by name (ADR-0043 item 21)
 /*
 	set:missionvariable_value
 	add:missionvariable_value
@@ -202,51 +202,53 @@ typedef enum
 		subtract: mission_my_mission_clock d100_number
 */
 
-- (void) increment:(id)missionVariableString;	// called by name (ADR-0043 item 21)
-- (void) decrement:(id)missionVariableString;	// called by name (ADR-0043 item 21)
+- (void) increment:(const std::string &)missionVariableString;	// called by name (ADR-0043 item 21)
+- (void) decrement:(const std::string &)missionVariableString;	// called by name (ADR-0043 item 21)
 
-- (void) add:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
-- (void) subtract:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
+- (void) add:(const std::string &)missionVariableString_value;	// called by name (ADR-0043 item 21)
+- (void) subtract:(const std::string &)missionVariableString_value;	// called by name (ADR-0043 item 21)
 
-- (void) checkForShips:(id)roleString;	// called by name (ADR-0043 item 21)
+- (void) checkForShips:(const std::string &)roleString;	// called by name (ADR-0043 item 21)
 - (void) resetScriptTimer;
-- (void) addMissionText:(id)textKey;	// called by name (ADR-0043 item 21)
-- (void) addLiteralMissionText:(id)text;	// called by name (ADR-0043 item 21)
+- (void) addMissionText:(const std::string &)textKey;	// called by name (ADR-0043 item 21)
+- (void) addLiteralMissionText:(const std::string &)text;	// called by name (ADR-0043 item 21)
 
 - (void) setMissionChoiceByTextEntry:(BOOL)enable;
-- (void) setMissionChoices:(id)choicesKey;	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
+- (void) setMissionChoices:(const std::string &)choicesKey;	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
 													// choices/choice phrases in missiontext.plist and also..
 - (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict;	// keys are strings (bead oo-3rb.194)
 - (void) resetMissionChoice;						// resets MissionChoice to nil
 
 - (void) clearMissionScreen;
 
-- (void) addMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); mark a system on the star charts
-- (void) removeMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
+- (void) addMissionDestination:(const std::string &)destinations;	// called by name (ADR-0043 item 21); mark a system on the star charts
+- (void) removeMissionDestination:(const std::string &)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
 
-- (void) showShipModel:(id)shipKey;	// called by name (ADR-0043 item 21)
+- (void) showShipModel:(const std::string &)shipKey;	// called by name (ADR-0043 item 21)
 - (void) setMissionMusic:(id)value;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 
 - (std::optional<std::string>) cxx_missionTitle;
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
 
-- (void) setFuelLeak:(id)value;	// called by name (ADR-0043 item 21)
+- (void) setFuelLeak:(const std::string &)value;	// called by name (ADR-0043 item 21)
 - (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
-- (void) setSunNovaIn:(id)time_value;	// called by name (ADR-0043 item 21)
+- (void) setSunNovaIn:(const std::string &)time_value;	// called by name (ADR-0043 item 21)
 - (void) launchFromStation;
 - (void) blowUpStation;
 - (void) sendAllShipsAway;
 
-- (OOPlanetEntity *) addPlanet:(id)planetKey;	// called by name (ADR-0043 item 21)
-- (OOPlanetEntity *) addMoon:(id)moonKey;	// called by name (ADR-0043 item 21)
+- (void) addPlanet:(const std::string &)planetKey;	// called by name (ADR-0043 item 21)
+- (void) addMoon:(const std::string &)moonKey;	// called by name (ADR-0043 item 21)
+- (OOPlanetEntity *) cxx_addPlanet:(const std::string &)planetKey;	// system.addPlanet(): the planet added, or nil
+- (OOPlanetEntity *) cxx_addMoon:(const std::string &)moonKey;	// system.addMoon(): the moon added, or nil
 
 - (void) debugOn;
 - (void) debugOff;
-- (void) debugMessage:(id)args;	// called by name (ADR-0043 item 21)
+- (void) debugMessage:(const std::string &)args;	// called by name (ADR-0043 item 21)
 
 - (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
 
-- (void) playSound:(id)soundName;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) playSound:(const std::string &)soundName;	// called by name (ADR-0043 item 21)
 
 // Equipment scripts (bead oo-3rb.195): no equipment has an empty key.
 - (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key;
@@ -256,8 +258,8 @@ typedef enum
 - (void) targetNearestHostile;
 - (void) targetNearestIncomingMissile;
 
-- (void) setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString;	// called by name (ADR-0043 item 21)
-- (void) setGalacticHyperspaceFixedCoordsTo:(id)galacticHyperspaceFixedCoordsString;	// called by name (ADR-0043 item 21)
+- (void) setGalacticHyperspaceBehaviourTo:(const std::string &)galacticHyperspaceBehaviourString;	// called by name (ADR-0043 item 21)
+- (void) setGalacticHyperspaceFixedCoordsTo:(const std::string &)galacticHyperspaceFixedCoordsString;	// called by name (ADR-0043 item 21)
 
 /*-----------------------------------------------------*/
 

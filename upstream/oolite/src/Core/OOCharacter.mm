@@ -223,7 +223,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	_shortDescription = cxx_OOExpandKeyWithSeed(genSeed, "character-generic-description", species, planet);
 	
 	// determine _legalStatus for a completely random character
-	[self setLegalStatus:0];	// clean
+	[self cxx_setLegalStatus:0];	// clean
 	int legalIndex = gen_rnd_number() & gen_rnd_number() & 0x03;
 	while (((gen_rnd_number() & 0xf) < criminalTendency) && (legalIndex < 3))
 	{
@@ -232,7 +232,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	if (legalIndex == 3)
 	{
 		// criminal
-		[self setLegalStatus:criminalTendency + criminalTendency * (gen_rnd_number() & 0x03) + (gen_rnd_number() & gen_rnd_number() & 0x7f)];
+		[self cxx_setLegalStatus:criminalTendency + criminalTendency * (gen_rnd_number() & 0x03) + (gen_rnd_number() & gen_rnd_number() & 0x7f)];
 	}
 	legalIndex = 0;
 	if (_legalStatus > 0)  legalIndex = (_legalStatus <= 50) ? 1 : 2;
@@ -271,13 +271,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		// determine _legalStatus for a completely random character
 		Random_Seed genSeed = [self genSeed];
 		int sins = 0x08 | (genSeed.a & genSeed.b);
-		[self setLegalStatus:sins & 0x7f];
+		[self cxx_setLegalStatus:sins & 0x7f];
 		
 		specialSetUpDone = YES;
 	}
 	else if (oo::str::hasPrefix(role, "trader"))
 	{
-		[self setLegalStatus:0];	// clean
+		[self cxx_setLegalStatus:0];	// clean
 
 		int insuranceIndex = gen_rnd_number() & 0x03;
 		switch (insuranceIndex)
@@ -298,7 +298,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else if (oo::str::hasPrefix(role, "hunter"))
 	{
-		[self setLegalStatus:0];	// clean
+		[self cxx_setLegalStatus:0];	// clean
 		int insuranceIndex = gen_rnd_number() & 0x03;
 		if (insuranceIndex == 3)
 			[self setInsuranceCredits:500];
@@ -306,19 +306,19 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else if (oo::str::hasPrefix(role, "police"))
 	{
-		[self setLegalStatus:0];	// clean
+		[self cxx_setLegalStatus:0];	// clean
 		[self setInsuranceCredits:125];
 		specialSetUpDone = YES;
 	}
 	else if (role == "miner")
 	{
-		[self setLegalStatus:0];	// clean
+		[self cxx_setLegalStatus:0];	// clean
 		[self setInsuranceCredits:25];
 		specialSetUpDone = YES;
 	}
 	else if (role == "passenger")
 	{
-		[self setLegalStatus:0];	// clean
+		[self cxx_setLegalStatus:0];	// clean
 		int insuranceIndex = gen_rnd_number() & 0x03;
 		switch (insuranceIndex)
 		{
@@ -338,13 +338,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else if (role == "slave")
 	{
-		[self setLegalStatus:0];	// clean
+		[self cxx_setLegalStatus:0];	// clean
 		[self setInsuranceCredits:0];
 		specialSetUpDone = YES;
 	}
 	else if (role == "thargoid")
 	{
-		[self setLegalStatus:100];
+		[self cxx_setLegalStatus:100];
 		[self setInsuranceCredits:0];
 		[self cxx_setName:OO_DESC("character-thargoid-name")];
 		[self setShortDescription:oo::NSStringFrom(OO_DESC("character-a-thargoid"))];
@@ -442,7 +442,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (void)setLegalStatus:(int)value
+- (void)cxx_setLegalStatus:(int)value
 {
 	_legalStatus = value;
 }
@@ -537,8 +537,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	if (const std::optional<std::string> role = OptionalStringForKey(dict, "role"))  [self castInRole:*role];
 	if (const std::optional<std::string> name = OptionalStringForKey(dict, "name"))  _name = name;
 	if (const std::optional<std::string> shortDescription = OptionalStringForKey(dict, "short_description"))  _shortDescription = shortDescription;
-	if (dict.find("legal_status") != nullptr)  [self setLegalStatus:dict.get<int>("legal_status")];
-	if (dict.find("bounty") != nullptr)  [self setLegalStatus:dict.get<int>("bounty")];
+	if (dict.find("legal_status") != nullptr)  [self cxx_setLegalStatus:dict.get<int>("legal_status")];
+	if (dict.find("bounty") != nullptr)  [self cxx_setLegalStatus:dict.get<int>("bounty")];
 	if (dict.find("insurance") != nullptr)  [self setInsuranceCredits:dict.get<unsigned long long>("insurance")];
 	if (const std::optional<std::string> script = OptionalStringForKey(dict, "script")) [self setCharacterScript:*script];
 	if (const oo::PList *scriptActions = dict.get<oo::PList::Array>("script_actions"))  [self setLegacyScript:*scriptActions];
