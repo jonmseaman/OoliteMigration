@@ -309,7 +309,7 @@ using ooscript::Context;
 	aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:oo::PList(properties)];
 	if (aiScript == nil)
 	{
-		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), oo::DescriptionOf([self shipDataKey]), oo::DescriptionOf([self primaryRole]));
+		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), [self cxx_shipDataKey].value_or("(null)"), [self cxx_primaryRole].value_or("(null)"));
 		aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:oo::PList(properties)];
 	}
 	else
@@ -373,7 +373,7 @@ using ooscript::Context;
 	{
 		ship = member.get();
 		[ship setFoundTarget:target];
-		[ship reactToAIMessage:@"GROUP_ATTACK_TARGET" context:@"groupAttackTarget"];
+		[ship cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
 		[ship doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
 
 		if ([ship escortGroup] != [ship group] && [[ship escortGroup] count] > 1) // Ship has a seperate escort group.
@@ -382,7 +382,7 @@ using ooscript::Context;
 			{
 				ShipEntity		*escort = escortRef.get();
 				[escort setFoundTarget:target];
-				[escort reactToAIMessage:@"GROUP_ATTACK_TARGET" context:@"groupAttackTarget"];
+				[escort cxx_reactToAIMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
 				[escort doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
 			}
 		}
@@ -597,7 +597,7 @@ using ooscript::Context;
 			if (message != nil)  [shipAI message:oo::StdString(message)];
 			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
 			message = commsMessage != nullptr ? oo::ObjectFromPList(*commsMessage) : nil;
-			if (message != nil)  [station sendExpandedMessage:message toShip:self];
+			if (message != nil)  [station cxx_sendExpandedMessage:oo::StdString(message) toShip:self];
 		}
 	}
 	else
@@ -715,7 +715,7 @@ using ooscript::Context;
 	{
 		ship = shipRef.get();
 		[ship addTarget:whole];
-		[ship reactToAIMessage:@"ENTER WORMHOLE" context:context];
+		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:oo::OptionalString(context)];
 		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
 	}
 	
@@ -819,19 +819,19 @@ using ooscript::Context;
 
 			if (!is_buoy && [self primaryAggressor] == ship && energy < 0.375 * maxEnergy)
 			{
-				[self sendExpandedMessage:@"[beg-for-mercy]" toShip:ship];
+				[self cxx_sendExpandedMessage:"[beg-for-mercy]" toShip:ship];
 			}
 			else if ([self bounty] == 0)
 			{
 				// only send distress message to player if plausibly sending
 				// one more generally
-				[self sendExpandedMessage:distress_message toShip:ship];
+				[self cxx_sendExpandedMessage:oo::StdString(distress_message) toShip:ship];
 			}
 			
 			// reset the thanked_ship_id
 			DESTROY(_thankedShip);
 		}
-		else if ([self bounty] == 0 && [ship crew]) // Only clean ships can have their distress calls accepted
+		else if ([self bounty] == 0 && [ship cxx_crew].has_value()) // Only clean ships can have their distress calls accepted
 		{
 			[ship doScriptEvent:OOJSID("distressMessageReceived") withArgument:aggressor_ship andArgument:self];
 			
@@ -844,7 +844,7 @@ using ooscript::Context;
 			if (![self hasNewAI])
 			{
 				// FIXME: this test only works with core AIs
-				if (ship->isStation || [ship hasPrimaryRole:@"police"] || [ship hasPrimaryRole:@"hunter"])
+				if (ship->isStation || [ship cxx_hasPrimaryRole:"police"] || [ship cxx_hasPrimaryRole:"hunter"])
 				{
 					[ship acceptDistressMessageFrom:self];
 				}
@@ -1111,7 +1111,7 @@ using ooscript::Context;
 		ShipEntity *other = (ShipEntity *)scanned_ships[i];
 		if ([other scanClass] == CLASS_CARGO && [other cargoType] != CARGO_NOT_CARGO && [other status] != STATUS_BEING_SCOOPED)
 		{
-			if ((![self isPolice]) || ([[other commodityType] isEqualToString:@"slaves"])) // police only rescue lifepods and slaves
+			if ((![self isPolice]) || ([other cxx_commodityType] == "slaves")) // police only rescue lifepods and slaves
 			{
 				GLfloat d2 = distance2_scanned_ships[i];
 				if (d2 < found_d2)
@@ -1677,7 +1677,7 @@ using ooscript::Context;
 	{
 		ship = member.get();
 		[ship addTarget:whole];
-		[ship reactToAIMessage:@"ENTER WORMHOLE" context:@"wormholeGroup"];
+		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:"wormholeGroup"];
 		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
 	}
 }
@@ -1685,13 +1685,13 @@ using ooscript::Context;
 
 - (void) commsMessage:(NSString *)valueString
 {
-	[self commsMessage:valueString withUnpilotedOverride:NO];
+	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:NO];
 }
 
 
 - (void) commsMessageByUnpiloted:(NSString *)valueString
 {
-	[self commsMessage:valueString withUnpilotedOverride:YES];
+	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:YES];
 }
 
 
@@ -1924,7 +1924,7 @@ using ooscript::Context;
 	else
 	{
 		[shipAI message:"NOTHING_FOUND"];
-		if ([self hasPrimaryRole:@"wingman"])
+		if ([self cxx_hasPrimaryRole:"wingman"])
 		{
 			// become free-lance police :)
 			[self setAITo:@"route1patrolAI.plist"];	// use this to avoid referencing a released AI
@@ -1944,7 +1944,7 @@ using ooscript::Context;
 #ifndef NDEBUG
 		context = [NSString stringWithFormat:@"%@ messageMother", [self shortDescription]];
 #endif
-		[mother reactToAIMessage:msgString context:context];
+		[mother cxx_reactToAIMessage:oo::StdString(msgString) context:oo::OptionalString(context)];
 	}
 }
 
@@ -2111,7 +2111,8 @@ using ooscript::Context;
 		[self noteLostTarget];
 		return;
 	}
-	[self sendExpandedMessage:message toShip:[self primaryTarget]];
+	if (message == nil)  return;	// nothing to send, as -sendExpandedMessage:toShip: returned for nil
+	[self cxx_sendExpandedMessage:oo::StdString(message) toShip:[self primaryTarget]];
 }
 
 

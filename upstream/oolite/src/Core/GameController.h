@@ -159,8 +159,7 @@ MA 02110-1301, USA.
 - (void) beginSplashScreen;
 - (void) cxx_logProgress:(const std::string &)message;
 #if OO_DEBUG
-// These take the formatted message; the %@ format forms (GameController+FoundationBridge.h, and
-// OO_DEBUG_PROGRESS / OO_DEBUG_PUSH_PROGRESS below) format it as they always did.
+// These take the formatted message, as do OO_DEBUG_PROGRESS / OO_DEBUG_PUSH_PROGRESS below.
 - (void) cxx_debugLogProgress:(const std::string &)message;
 - (void) cxx_debugPushProgressMessage:(const std::string &)message;
 - (void) debugPopProgressMessage;
@@ -226,19 +225,12 @@ void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval
 
 
 #if OO_DEBUG
-#define OO_DEBUG_PROGRESS(...)		[[GameController sharedController] debugLogProgress:__VA_ARGS__]
-#define OO_DEBUG_PUSH_PROGRESS(...)	[[GameController sharedController] debugPushProgressMessage:__VA_ARGS__]
+#define OO_DEBUG_PROGRESS(message)		[[GameController sharedController] cxx_debugLogProgress:message]
+#define OO_DEBUG_PUSH_PROGRESS(message)	[[GameController sharedController] cxx_debugPushProgressMessage:message]
 #define OO_DEBUG_POP_PROGRESS()		[[GameController sharedController] debugPopProgressMessage]
 #else
-#define OO_DEBUG_PROGRESS(...)		do {} while (0)
-#define OO_DEBUG_PUSH_PROGRESS(...)	do {} while (0)
+#define OO_DEBUG_PROGRESS(message)		do {} while (0)
+#define OO_DEBUG_PUSH_PROGRESS(message)	do {} while (0)
 #define OO_DEBUG_POP_PROGRESS()		do {} while (0)
 #endif
 
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-m6ej (chunks oo-3rb.88..91), forwarding to the cxx_ methods above, so
-	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads;
-	the bridge goes in its own bead.
-*/
-#import "GameController+FoundationBridge.h"

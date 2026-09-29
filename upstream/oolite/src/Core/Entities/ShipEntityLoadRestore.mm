@@ -123,10 +123,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// -oo_setFloat:forKey: stored a double.
 	if (energy != maxEnergy)  result[KEY_ENERGY_LEVEL] = oo::PList(static_cast<double>(energy / maxEnergy));
 
-	result[KEY_PRIMARY_ROLE] = oo::StdString([self primaryRole]);
+	result[KEY_PRIMARY_ROLE] = [self cxx_primaryRole].value_or("");
 
 	// Add equipment.
-	const std::vector<std::string> equipment = oo::StringsFrom([self equipmentEnumerator]);
+	const std::vector<std::string> equipment = [self cxx_equipmentKeys];
 	if (equipment.size() != 0)  result[KEY_EQUIPMENT] = ArrayFromStrings(equipment);
 
 	// Add missiles.
@@ -271,7 +271,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		if (dict.get<bool>(KEY_IS_GROUP_LEADER))  [group setLeader:ship];
 		const std::optional<std::string> groupName = OptionalStringForKey(dict, KEY_GROUP_NAME);
 		if (groupName.has_value())  [group cxx_setName:groupName];
-		if ([ship hasPrimaryRole:@"escort"] && ship != [group leader])
+		if ([ship cxx_hasPrimaryRole:"escort"] && ship != [group leader])
 		{
 			[ship setOwner:[group leader]];
 		}

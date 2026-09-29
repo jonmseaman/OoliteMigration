@@ -145,7 +145,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 						int smaller_quantity = 1 + ((amount - 1) % amount_per_container);
 						if (cargo.size() < [self maxAvailableCargoSpace])
 						{
-							ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+							ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 							if (container)
 							{
 								// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
@@ -169,7 +169,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 				{
 					if (cargo.size() < [self maxAvailableCargoSpace])
 					{
-						ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
+						ShipEntity* container = [UNIVERSE cxx_newShipWithRole:"1t-cargopod"];
 						if (container)
 						{
 							// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
