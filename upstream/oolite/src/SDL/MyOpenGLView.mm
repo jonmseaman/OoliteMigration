@@ -626,7 +626,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 	viewSize = v_size;
 
-	OO_LOG("display.initGL", "Requested a new surface of {} x {}, {}.", static_cast<int>((int)viewSize.width), static_cast<int>((int)viewSize.height), oo::DescriptionOf((fullScreen ? @"fullscreen" : @"windowed")));
+	OO_LOG("display.initGL", "Requested a new surface of {} x {}, {}.", static_cast<int>((int)viewSize.width), static_cast<int>((int)viewSize.height), std::string((fullScreen ? "fullscreen" : "windowed")));
 
 	SDL_GL_SwapWindow(window);	// clear the buffer before resize
 
@@ -651,7 +651,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 	[self updateGLSize:NSMakeSize(pixelWidth, pixelHeight)];
 
-	OO_LOG("display.initGL", "Created a new surface of {} x {}, {}.", static_cast<int>((int)viewSize.width), static_cast<int>((int)viewSize.height), oo::DescriptionOf((fullScreen ? @"fullscreen" : @"windowed")));
+	OO_LOG("display.initGL", "Created a new surface of {} x {}, {}.", static_cast<int>((int)viewSize.width), static_cast<int>((int)viewSize.height), std::string((fullScreen ? "fullscreen" : "windowed")));
 
 	[self autoShowMouse];
 

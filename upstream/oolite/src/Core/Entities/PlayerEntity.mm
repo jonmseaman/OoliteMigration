@@ -8855,8 +8855,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (refreshBackground || guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
-		[gui cxx_setBackgroundTextureKey:oo::OptionalString(sunGoneNova ? @"system_data_nova" : @"system_data")];
+		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
+		[gui cxx_setBackgroundTextureKey:std::optional<std::string>(sunGoneNova ? "system_data_nova" : "system_data")];
 		
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen refresh: refreshBackground];
 		[self checkScript];	// Still needed by some OXPs?
@@ -8983,7 +8983,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
 		
 		[gui cxx_setBackgroundTextureKey:"short_range_chart"];
 		if (found_system_id >= 0)
@@ -9281,7 +9281,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui setSelectedRow: first_sel_row];
 
 		[gui setShowTextCursor:NO];
-		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay")];
+		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
 		[gui cxx_setBackgroundTextureKey:"settings"];
 	}
 	/* ends */
@@ -9369,7 +9369,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		[gui setShowTextCursor:NO];
 		
-		if ([gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay")] && [UNIVERSE pauseMessageVisible])
+		if ([gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")] && [UNIVERSE pauseMessageVisible])
 					[[UNIVERSE messageGUI] clear];
 		// Graphically, this screen is analogous to the various settings screens
 		[gui cxx_setBackgroundTextureKey:"settings"];
@@ -11435,7 +11435,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
 		[gui cxx_setBackgroundTextureKey:"market"];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
@@ -11537,7 +11537,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (guiChanged)
 	{
-		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setForegroundTextureKey:std::optional<std::string>([self status] == STATUS_DOCKED ? "docked_overlay" : "overlay")];
 		[gui cxx_setBackgroundTextureKey:"marketinfo"];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
