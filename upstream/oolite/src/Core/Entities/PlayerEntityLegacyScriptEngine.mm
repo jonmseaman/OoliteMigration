@@ -241,7 +241,7 @@ std::optional<std::string> ConditionString(const oo::PList &value)
 {
 	if (value.isNull())  return std::nullopt;
 	if (const std::string *string = value.getIf<std::string>())  return *string;
-	return oo::DescriptionOf(oo::ObjectFromPList(value));
+	return oo::DescriptionOf(value);
 }
 
 
@@ -490,7 +490,7 @@ static BOOL sRunningScript = NO;
 				  "***** EXCEPTION {}: {} while handling legacy script actions for {}",
 				  [exception name],
 				  [exception reason],
-				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::DescriptionOf([target shortDescription]) : contextName.value_or("(null)"));
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::ShortDescriptionOf(target) : contextName.value_or("(null)"));
 			// Suppress exception
 		}
 
@@ -936,7 +936,7 @@ static BOOL sRunningScript = NO;
 
 	if (!text.has_value())
 	{
-		OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf(oo::ObjectFromPList([UNIVERSE cxx_missiontext])));
+		OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf([UNIVERSE cxx_missiontext]));
 		return;
 	}
 
@@ -2356,7 +2356,7 @@ static int shipsFound;
 
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
-	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
+	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(dict));
 	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
@@ -2412,7 +2412,7 @@ static int shipsFound;
 
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
-	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
+	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(dict));
 	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
@@ -2659,13 +2659,13 @@ static int shipsFound;
 	// ("%@" of the dictionaries: their round-tripped descriptions, the same text)
 	if (conditions == nullptr)
 	{
-		OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(oo::ObjectFromPList(couplet)), " found","YES and performing 'do' actions");
+		OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(couplet), " found","YES and performing 'do' actions");
 	}
 	else
 	{
 		if (!conditions->isArray())
 		{
-			OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(oo::ObjectFromPList(*conditions)), "an array","NO");
+			OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(*conditions), "an array","NO");
 			return NO;
 		}
 	}

@@ -471,7 +471,7 @@ struct EntityDumpState
 		extra += ", drawable: " + SizeString(drawableSize);
 	}
 
-	[self writeMemStat:oo::str::format("%s: %s%s", oo::DescriptionOf([entity shortDescription]).c_str(), SizeString(entitySize).c_str(), extra.c_str())];
+	[self writeMemStat:oo::str::format("%s: %s%s", oo::ShortDescriptionOf(entity).c_str(), SizeString(entitySize).c_str(), extra.c_str())];
 
 	state->totalEntityObjSize += entitySize;
 	state->totalDrawableSize += drawableSize;

@@ -137,9 +137,9 @@ static OOTexture *sShotTexture2 = nil;
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, oo::DescriptionOf([super descriptionComponents]).c_str(), QuaternionDescription([self orientation]).c_str()));
+	return oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, [super cxx_descriptionComponents].value_or("(null)").c_str(), QuaternionDescription([self orientation]).c_str());
 }
 
 

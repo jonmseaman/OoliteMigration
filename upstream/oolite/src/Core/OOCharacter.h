@@ -68,7 +68,7 @@ MA 02110-1301, USA.
 - (void) setName:(id)value;	// shared selector (Foundation declares -setName: too): -cxx_setName: with an Objective-C string, or nil
 - (void) cxx_setName:(const std::optional<std::string> &)value;
 
-- (id) shortDescription;	// shared selector: an Objective-C string, or nil
+- (std::optional<std::string>) cxx_shortDescription;
 - (void) setShortDescription:(id)value;	// shared selector: an Objective-C string, or nil
 
 - (int) legalStatus;

@@ -248,7 +248,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 		}
 		else
 		{
-			OO_LOG("shader.load.noShader", "***** Error: no vertex or fragment shader specified in shader dictionary:\n{}", oo::DescriptionOf(oo::ObjectFromPList(configuration)));
+			OO_LOG("shader.load.noShader", "***** Error: no vertex or fragment shader specified in shader dictionary:\n{}", oo::DescriptionOf(configuration));
 		}
 		
 		OK = (shaderProgram != nil);
@@ -668,7 +668,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 
 		if (!gotValue)
 		{
-			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, oo::DescriptionOf(target), oo::DescriptionOf(oo::ObjectFromPList(definition)));
+			OO_LOG("shader.uniform.badDescription", "----- Warning: could not bind uniform \"{}\" for target {} -- could not interpret definition:\n{}", name, oo::DescriptionOf(target), oo::DescriptionOf(definition));
 		}
 	}
 
@@ -855,7 +855,7 @@ std::optional<std::string> MacrosToString(const oo::PList &macros)
 		std::string text;
 		if (const std::string *string = value.getIf<std::string>())  text = *string;
 		else if (value.isNumber())  text = oo::plist_get::numberStringValue(value);
-		else  text = oo::DescriptionOf(oo::ObjectFromPList(value));
+		else  text = oo::DescriptionOf(value);
 
 		result += "#define " + entry.first + "  " + text + "\n";
 	}

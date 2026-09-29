@@ -80,7 +80,7 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 }
 
 
-- (id) description
+- (std::optional<std::string>) cxx_description
 {
 	std::string result = oo::str::format("<%s %s>{", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str());
 	BOOL first = YES;
@@ -89,12 +89,11 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 		if (!first)  result += ", ";
 		else  first = NO;
 
-		if ([object.get() respondsToSelector:@selector(shortDescription)])  result += oo::DescriptionOf([object.get() shortDescription]);
-		else  result += oo::DescriptionOf(object.get());
+		result += oo::ShortDescriptionOf(object.get());	// every object answered -shortDescription
 	}
 
 	result += "}";
-	return oo::NSStringFrom(result);
+	return result;
 }
 
 

@@ -716,7 +716,7 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 		const oo::PList *nameValue = specifier.find(cxx_kOOTextureSpecifierNameKey);
 		if (nameValue == nullptr || !(nameValue->isString() || nameValue->isNumber()))
 		{
-			OO_LOG("texture.load.noName", "Invalid texture configuration dictionary (must specify name):\n{}", oo::DescriptionOf(oo::ObjectFromPList(specifier)));
+			OO_LOG("texture.load.noName", "Invalid texture configuration dictionary (must specify name):\n{}", oo::DescriptionOf(specifier));
 			return NO;
 		}
 		name = specifier.get<std::string>(cxx_kOOTextureSpecifierNameKey);
@@ -756,7 +756,7 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 					else if (extractChannel == "a")  options |= kOOTextureExtractChannelA;
 					else
 					{
-						OO_LOG_WARN("texture.load.extractChannel.invalid", "Unknown value \"{}\" for extract_channel in specifier \"{}\" (should be \"r\", \"g\", \"b\" or \"a\").", extractChannel, oo::DescriptionOf(oo::ObjectFromPList(specifier)));
+						OO_LOG_WARN("texture.load.extractChannel.invalid", "Unknown value \"{}\" for extract_channel in specifier \"{}\" (should be \"r\", \"g\", \"b\" or \"a\").", extractChannel, oo::DescriptionOf(specifier));
 					}
 				}
 			}

@@ -195,9 +195,9 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 
 // OOObject's -description wraps this as "<OOProbabilisticTextureManager 0x...>{...}", the text
 // this class's own -description printed. Shared selector (proposed ADR-0043).
-- (id)descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("%u textures, cumulative probability=%g", _count, _probMax));
+	return oo::str::format("%u textures, cumulative probability=%g", _count, _probMax);
 }
 
 

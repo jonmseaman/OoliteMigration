@@ -257,14 +257,14 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::optional<std::string>	funcName;
 	ooscript::Context context = NULL;
 	
 	if (ooscript::isUndefined(_function) || ooscript::isNull(_function))
 	{
-		return @"invalid";
+		return "invalid";
 	}
 	
 	context = OOJSAcquireContext();
@@ -276,7 +276,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 		funcName = "anonymous";
 	}
 	
-	return oo::NSStringFrom(oo::str::format("%s, function: %s", oo::DescriptionOf([super descriptionComponents]).c_str(), funcName->c_str()));
+	return oo::str::format("%s, function: %s", [super cxx_descriptionComponents].value_or("(null)").c_str(), funcName->c_str());
 }
 
 
@@ -300,7 +300,7 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 	if (object != nil)
 	{
 		described = [object cxx_oo_jsDescription].has_value();
-		if (!described)  described = [object description] != nil;
+		if (!described)  described = oo::DescriptionOf(object) != "(null)";	// -description was nil
 	}
 	else
 	{

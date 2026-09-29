@@ -1606,7 +1606,7 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 	}
 	
 	oo::PList canonical(std::move(result));
-	OO_LOG("material.canonicalForm", "Canonicalized material {}:\nORIGINAL:\n{}\n\n@CANONICAL:\n{}", materialKey.value_or("(null)"), oo::DescriptionOf(oo::ObjectFromPList(spec)), oo::DescriptionOf(oo::ObjectFromPList(canonical)));
+	OO_LOG("material.canonicalForm", "Canonicalized material {}:\nORIGINAL:\n{}\n\n@CANONICAL:\n{}", materialKey.value_or("(null)"), oo::DescriptionOf(spec), oo::DescriptionOf(canonical));
 	
 	return canonical;
 }

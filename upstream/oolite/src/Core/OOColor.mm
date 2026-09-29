@@ -373,9 +373,9 @@ MA 02110-1301, USA.
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]));
+	return oo::str::format("%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]);
 }
 
 

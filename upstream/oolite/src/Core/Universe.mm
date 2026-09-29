@@ -1055,7 +1055,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (entities.size() != n_entities)
 	{
-		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf([oo::NSArrayFromObjects(entities) description]));
+		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::PListFromObjects(entities)));
 	}
 }
 
@@ -1644,7 +1644,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #ifdef OO_DUMP_PLANETINFO
 	OO_LOG("planetinfo.record", "corona_flare = {:f}", sun_dict.get<float>("corona_flare"));
 	OO_LOG("planetinfo.record", "corona_hues = {:f}", sun_dict.get<float>("corona_hues"));
-	OO_LOG("planetinfo.record", "sun_color = {}", oo::DescriptionOf([bgcolor descriptionComponents]));
+	OO_LOG("planetinfo.record", "sun_color = {}", [bgcolor cxx_descriptionComponents].value_or("(null)"));
 #endif
 	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
 	
@@ -10896,7 +10896,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		entity = sortedEntities[i];
 		if ([entity sessionID] != _sessionID)
 		{
-			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::DescriptionOf([entity shortDescription]), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_sessionID));
+			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::ShortDescriptionOf(entity), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_sessionID));
 			badEntities.emplace_back(entity);
 		}
 	}
@@ -11378,7 +11378,7 @@ std::string StringifiedLabel(id line, id keyMap)
 		// Build label, using sysdesc_key_table.plist if available
 		const oo::PList *keyLabel = keyMap.find(oo::str::format("%zu", i));
 		if (keyLabel == nullptr)  label = oo::str::format("[%zu]", i);
-		else  label = oo::str::format("[%zu] (%s)", i, oo::DescriptionOf(oo::ObjectFromPList(*keyLabel)).c_str());
+		else  label = oo::str::format("[%zu] (%s)", i, oo::DescriptionOf(*keyLabel).c_str());
 
 		graphViz += oo::str::format("\tsubgraph cluster_%zu\n\t{\n\t\tlabel=\"%s\"\n", i, cxx_EscapedGraphVizString(label).c_str());
 

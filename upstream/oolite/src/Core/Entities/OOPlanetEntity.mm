@@ -331,7 +331,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	
 	
 #ifdef OO_DUMP_PLANETINFO
-#define CPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", oo::DescriptionOf([(OOColor *)ObjectForKey(planetInfo, #PROP) descriptionComponents]));
+#define CPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {};", [(OOColor *)ObjectForKey(planetInfo, #PROP) cxx_descriptionComponents].value_or("(null)"));
 #define FPROP(PROP)	OO_LOG("planetinfo.record", #PROP " = {:f};", planetInfo.get<float>(#PROP));
 	CPROP(air_color);
 	CPROP(illumination_color);
@@ -593,9 +593,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("position: %s radius: %g m", cxx_HPVectorDescription([self position]).c_str(), [self radius]));
+	return oo::str::format("position: %s radius: %g m", cxx_HPVectorDescription([self position]).c_str(), [self radius]);
 }
 
 

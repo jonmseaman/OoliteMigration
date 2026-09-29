@@ -609,13 +609,13 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	double now = [PLAYER clockTime];
-	return oo::NSStringFrom(oo::str::format("destination: %s ttl: %.2fs arrival: %s",
+	return oo::str::format("destination: %s ttl: %.2fs arrival: %s",
 		_misjump ? "Interstellar Space" : [UNIVERSE cxx_getSystemName:destination].value_or("(null)").c_str(),
 		expiry_time - now,
-		cxx_ClockToString(arrival_time, false).c_str()));
+		cxx_ClockToString(arrival_time, false).c_str());
 }
 
 

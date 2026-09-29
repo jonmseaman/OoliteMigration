@@ -184,7 +184,7 @@ void SynthSpecular(OOMaterialSynthContext *context);
 		cacheKeyStr = oo::str::format("%s/%s/%s",
 									  cacheKey->c_str(),
 									  name.value_or("").c_str(),
-									  oo::DescriptionOf(oo::ObjectFromPList(configuration)).c_str());
+									  oo::DescriptionOf(configuration).c_str());
 		id cached = [cache cxx_objectForKey:cacheKeyStr inCache:"synthesized shader materials"];
 		if (cached != nil)
 		{

@@ -301,52 +301,13 @@ enum {
 #import "OOLogging.h"
 
 
-@interface NSObject (OODescriptionComponents)
-
-/*	In order to allow implementations of -description to inherit description
-	components from superclasses, and to allow implementations of -description
-	and -oo_jsDescription to share code, both are implemented as wrappers
-	around -descriptionComponents. -descriptionComponents should provide
-	information about an object without a class name or surrounding
-	punctuation. -description will wrap the components like this:
-		<ClassName 0xnnnnnnnn>{descriptionComponents}
-	and -oo_jsDescription will wrap them like this:
-		[oo_jsClassName descriptionComponents]
-*/
-- (id)descriptionComponents; // shared selector (proposed ADR-0043): root-class description family
-
-
-/*	A lot of Oolite's -description implementations are rather long, and many
-	embed other descriptions. -shortDescription provides a truncated
-	alternative, while -shortDescriptionComponents provides a
-	-descriptionComponents-like mechanism to simplify implementation.
-*/
-- (id) shortDescription; // shared selector (proposed ADR-0043): root-class description family
-- (id) shortDescriptionComponents; // shared selector (proposed ADR-0043): root-class description family
-
-@end
-
-
-/*	The same for classes rooted on the Foundation-free OOObject (proposed ADR-0029), so a class
-	rerooted from NSObject describes itself exactly as before.
-*/
 #import "oofnd/objc/OOObject.h"
 #import "OOObjectGNUstepBridge.h"
 
-/*	The C++ description family (-cxx_descriptionComponents & co., oo::DescriptionOf), Foundation-free
-	(proposed ADR-0055 item 1). The id-typed family above is its transitional legacy form.
+/*	The description family (-cxx_descriptionComponents & co., oo::DescriptionOf), Foundation-free
+	(proposed ADR-0055 item 1).
 */
 #import "OODescription.h"
-
-@interface OOObject (OODescriptionComponents)
-
-- (id) description; // shared selector (proposed ADR-0043): root-class description family
-- (id) descriptionComponents; // shared selector (proposed ADR-0043): root-class description family
-- (id) shortDescription; // shared selector (proposed ADR-0043): root-class description family
-- (id) shortDescriptionComponents; // shared selector (proposed ADR-0043): root-class description family
-
-@end
-
 
 #if OOLITE_MAC_OS_X
 	#define OOLITE_RELEASE_PLIST_ERROR_STRINGS 1

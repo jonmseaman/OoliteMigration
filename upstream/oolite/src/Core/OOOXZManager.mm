@@ -292,7 +292,7 @@ std::optional<std::string> JoinedTags(const oo::PList &manifest)
 		if (!first)  result += ", ";
 		first = false;
 		const std::string *string = tag.getIf<std::string>();
-		result += (string != nullptr) ? *string : oo::DescriptionOf(oo::ObjectFromPList(tag));
+		result += (string != nullptr) ? *string : oo::DescriptionOf(tag);
 	}
 	return result;
 }
@@ -396,7 +396,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		_downloadStatus = OXZ_DOWNLOAD_NONE;
 		// if the file has not been downloaded, this will be nil
 		[self setOXZList:PListArrayFromFile([self manifestPath])];
-		OO_LOG("oxz.manager.debug", "Initialised with {}", oo::DescriptionOf(oo::ObjectFromPList(_oxzList)));
+		OO_LOG("oxz.manager.debug", "Initialised with {}", oo::DescriptionOf(_oxzList));
 		_interfaceState = OXZ_STATE_NODATA;
 		_currentFilter = "*";
 		
@@ -1895,7 +1895,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if ([self installableState:manifest] >= OXZ_UNINSTALLABLE_ALREADY)
 	{
-		OO_LOG("oxz.manager.debug", "Cannot install {}", oo::DescriptionOf(oo::ObjectFromPList(manifest)));
+		OO_LOG("oxz.manager.debug", "Cannot install {}", oo::DescriptionOf(manifest));
 		// can't be installed on this version of Oolite, or already is installed
 		return NO;
 	}
@@ -1929,7 +1929,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		if ([self installableState:entry] == OXZ_INSTALLABLE_UPDATE)
 		{
-			OO_LOG("oxz.manager.debug", "Queuing in for update: {}", oo::DescriptionOf(oo::ObjectFromPList(entry)));
+			OO_LOG("oxz.manager.debug", "Queuing in for update: {}", oo::DescriptionOf(entry));
 			DependencyStackAdd(_dependencyStack, entry);
 		}
 	}

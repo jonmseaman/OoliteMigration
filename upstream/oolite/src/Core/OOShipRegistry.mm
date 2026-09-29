@@ -1487,7 +1487,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 	std::vector<std::string> tokenStrings;
 	for (std::size_t i = 0; i != tokens.count(); ++i)  tokenStrings.push_back(tokens.at<std::string>(i));
-	OO_LOG("shipData.translateSubentity.flasher", "Translated flasher declaration \"{}\" to {}", JoinTokens(tokenStrings), oo::DescriptionOf(oo::ObjectFromPList(resultPList)));
+	OO_LOG("shipData.translateSubentity.flasher", "Translated flasher declaration \"{}\" to {}", JoinTokens(tokenStrings), oo::DescriptionOf(resultPList));
 
 	return resultPList;
 }
@@ -1539,7 +1539,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 	std::vector<std::string> tokenStrings;
 	for (std::size_t i = 0; i != tokens.count(); ++i)  tokenStrings.push_back(tokens.at<std::string>(i));
-	OO_LOG("shipData.translateSubentity.standard", "Translated subentity declaration \"{}\" to {}", JoinTokens(tokenStrings), oo::DescriptionOf(oo::ObjectFromPList(resultPList)));
+	OO_LOG("shipData.translateSubentity.standard", "Translated subentity declaration \"{}\" to {}", JoinTokens(tokenStrings), oo::DescriptionOf(resultPList));
 
 	return resultPList;
 }

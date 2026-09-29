@@ -90,7 +90,7 @@ std::vector<std::pair<std::string, oo::log::RawSetting>> SettingsFromDictionary(
 		else
 		{
 			// the text %@ printed
-			entries.emplace_back(name, oo::log::RawSetting::other(oo::DescriptionOf(oo::ObjectFromPList(value))));
+			entries.emplace_back(name, oo::log::RawSetting::other(oo::DescriptionOf(value)));
 		}
 	}
 	return entries;

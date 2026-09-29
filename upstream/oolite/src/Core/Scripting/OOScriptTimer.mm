@@ -86,14 +86,14 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::string					intervalDesc;
 	
 	if (_interval <= 0.0)  intervalDesc = "one-shot";
 	else  intervalDesc = oo::str::format("interval: %g", _interval);
 		
-	return oo::NSStringFrom(oo::str::format("nextTime: %g, %s, %srunning", _nextTime, intervalDesc.c_str(), _isScheduled ? "" : "not "));
+	return oo::str::format("nextTime: %g, %s, %srunning", _nextTime, intervalDesc.c_str(), _isScheduled ? "" : "not ");
 }
 
 

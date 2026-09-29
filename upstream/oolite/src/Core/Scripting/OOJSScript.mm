@@ -378,10 +378,10 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	if (_jsSelf != NULL)  return [super descriptionComponents];
-	else  return @"invalid script";
+	if (_jsSelf != NULL)  return [super cxx_descriptionComponents];
+	else  return "invalid script";
 }
 
 
@@ -885,7 +885,7 @@ static std::optional<std::string> DescriptionOrNil(const oo::PList &value)
 	if (value.isNull())  return std::nullopt;
 	if (const std::string *string = value.getIf<std::string>())  return *string;	// a string's -description is itself
 	// Anything else prints as the object form did (cxx_OOJSPListFromJSValue() is oo::PListFrom() of it).
-	return oo::DescriptionOf(oo::ObjectFromPList(value));
+	return oo::DescriptionOf(value);
 }
 
 

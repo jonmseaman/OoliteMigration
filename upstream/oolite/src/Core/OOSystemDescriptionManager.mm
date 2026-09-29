@@ -748,12 +748,12 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 		// TODO: convert two element arrays
 		if (!value.isString())
 		{
-			OO_LOG("system.description.error", "'{}' is not a valid format for coordinates", oo::DescriptionOf(oo::ObjectFromPList(value)));
+			OO_LOG("system.description.error", "'{}' is not a valid format for coordinates", oo::DescriptionOf(value));
 			return oo::PList();
 		}
 		if (oo::str::tokens(*value.getIf<std::string>()).size() != 2)
 		{
-			OO_LOG("system.description.error", "'{}' is not a valid format for coordinates (must have exactly two numbers)", oo::DescriptionOf(oo::ObjectFromPList(value)));
+			OO_LOG("system.description.error", "'{}' is not a valid format for coordinates (must have exactly two numbers)", oo::DescriptionOf(value));
 			return oo::PList();
 		}
 	}
@@ -769,7 +769,7 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 			}
 			else
 			{
-				OO_LOG("system.description.error", "'{}' is not a valid value for '{}' (string required)", oo::DescriptionOf(oo::ObjectFromPList(value)), property);
+				OO_LOG("system.description.error", "'{}' is not a valid value for '{}' (string required)", oo::DescriptionOf(value), property);
 				return oo::PList();
 			}
 		}
@@ -779,7 +779,7 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 		// read in a context which expects a string
 		if (!value.isString())
 		{
-			OO_LOG("system.description.error", "'{}' is not a valid value for '{}' (string required)", oo::DescriptionOf(oo::ObjectFromPList(value)), property);
+			OO_LOG("system.description.error", "'{}' is not a valid value for '{}' (string required)", oo::DescriptionOf(value), property);
 			return oo::PList();
 		}
 	}

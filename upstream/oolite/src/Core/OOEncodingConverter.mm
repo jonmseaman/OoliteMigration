@@ -133,10 +133,10 @@ static unsigned				sCacheMisses = 0;
 }
 
 
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	// (an unknown encoding printed as NSNotFound's low 32 bits, 4294967295)
-	return oo::NSStringFrom(oo::str::format("encoding: %u", _encoding.has_value() ? static_cast<unsigned>(*_encoding) : static_cast<unsigned>(NSNotFound)));
+	return oo::str::format("encoding: %u", _encoding.has_value() ? static_cast<unsigned>(*_encoding) : static_cast<unsigned>(NSNotFound));
 }
 
 

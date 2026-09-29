@@ -255,9 +255,9 @@ static std::optional<std::vector<std::string>> StringsFromArrayFile(const std::s
 }
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\" version %s", [self cxx_name].value_or("(null)").c_str(), oo::DescriptionOf([self version]).c_str()));
+	return oo::str::format("\"%s\" version %s", [self cxx_name].value_or("(null)").c_str(), oo::DescriptionOf([self version]).c_str());
 }
 
 

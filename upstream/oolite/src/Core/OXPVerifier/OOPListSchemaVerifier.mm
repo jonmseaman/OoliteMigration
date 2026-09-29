@@ -393,7 +393,7 @@ VERIFY_PROTO(DelegatedType);
 		}
 		@catch (OOException *exception)
 		{
-			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"{}\" at {} in {} -- treating as failure.", [exception name], oo::DescriptionOf(oo::ObjectFromPList(typeKey)), KeyPathToString(keyPath), name);
+			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"{}\" at {} in {} -- treating as failure.", [exception name], oo::DescriptionOf(typeKey), KeyPathToString(keyPath), name);
 			result = NO;
 			error = std::nullopt;
 		}
@@ -403,7 +403,7 @@ VERIFY_PROTO(DelegatedType);
 			if (!result || error.has_value())
 			{
 				// Note: Generates an error if delegate returned NO (meaning stop) or if delegate produced an error but did not request a stop.
-				*outError = ErrorWithProperty(kPListDelegatedTypeError, &keyPath, kUnderlyingErrorErrorKey, error.has_value() ? PListFromError(*error) : oo::PList(), "Value at %s does not match delegated type \"%s\".", KeyPathToString(keyPath).c_str(), oo::DescriptionOf(oo::ObjectFromPList(typeKey)).c_str());
+				*outError = ErrorWithProperty(kPListDelegatedTypeError, &keyPath, kUnderlyingErrorErrorKey, error.has_value() ? PListFromError(*error) : oo::PList(), "Value at %s does not match delegated type \"%s\".", KeyPathToString(keyPath).c_str(), oo::DescriptionOf(typeKey).c_str());
 			}
 			else *outError = std::nullopt;
 		}
@@ -871,7 +871,7 @@ std::string ElementDescription(const oo::PList &element)
 {
 	if (const std::string *string = element.getIf<std::string>())  return *string;
 	if (element.isNumber())  return oo::plist_get::numberStringValue(element);
-	return oo::DescriptionOf(oo::ObjectFromPList(element));
+	return oo::DescriptionOf(element);
 }
 
 
@@ -1380,7 +1380,7 @@ static std::optional<OOPListSchemaVerifierError> Verify_OneOf(OOPListSchemaVerif
 			break;
 		}
 		// Keyed by the option's %@ text (the option itself, a string or a dictionary, was the key).
-		errors[oo::DescriptionOf(oo::ObjectFromPList(option))] = error.has_value() ? PListFromError(*error) : oo::PList();
+		errors[oo::DescriptionOf(option)] = error.has_value() ? PListFromError(*error) : oo::PList();
 	}
 
 	if (!OK)
@@ -1437,7 +1437,7 @@ namespace {
 
 static std::optional<OOPListSchemaVerifierError> Verify_Boolean(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
-	DebugDump("* boolean: {}", oo::DescriptionOf(oo::ObjectFromPList(value)));
+	DebugDump("* boolean: {}", oo::DescriptionOf(value));
 
 	// Check basic parseability. If there's inequality here, the default value is being returned.
 	if (oo::plist_get::boolFrom(&value, false) == oo::plist_get::boolFrom(&value, true))  return std::nullopt;
@@ -1451,7 +1451,7 @@ namespace {
 
 static std::optional<OOPListSchemaVerifierError> Verify_FuzzyBoolean(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
-	DebugDump("* fuzzy boolean: {}", oo::DescriptionOf(oo::ObjectFromPList(value)));
+	DebugDump("* fuzzy boolean: {}", oo::DescriptionOf(value));
 
 	// Check basic parseability. If there's inequality here, the default value is being returned.
 	if (oo::plist_get::realFrom<double>(&value, 0) == oo::plist_get::realFrom<double>(&value, 1) ||
@@ -1466,7 +1466,7 @@ namespace {
 
 static std::optional<OOPListSchemaVerifierError> Verify_Vector(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
-	DebugDump("* vector: {}", oo::DescriptionOf(oo::ObjectFromPList(value)));
+	DebugDump("* vector: {}", oo::DescriptionOf(value));
 
 	// Check basic parseability. If there's inequality here, the default value is being returned.
 	// OOVectorFromObject is not migrated: it reads the same object.
@@ -1481,7 +1481,7 @@ namespace {
 
 static std::optional<OOPListSchemaVerifierError> Verify_Quaternion(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
-	DebugDump("* quaternion: {}", oo::DescriptionOf(oo::ObjectFromPList(value)));
+	DebugDump("* quaternion: {}", oo::DescriptionOf(value));
 
 	// Check basic parseability. If there's inequality here, the default value is being returned.
 	// OOQuaternionFromObject is not migrated: it reads the same object.
@@ -1503,7 +1503,7 @@ static std::optional<OOPListSchemaVerifierError> Verify_DelegatedType(OOPListSch
 	const oo::PList			*keyValue = params.find("key");
 	const oo::PList			key = (keyValue != nullptr) ? *keyValue : oo::PList();
 
-	DebugDump("* delegated type: {}", oo::DescriptionOf(oo::ObjectFromPList(key)));
+	DebugDump("* delegated type: {}", oo::DescriptionOf(key));
 
 	baseType = params.find("baseType");
 	if (baseType != nullptr)
@@ -1614,7 +1614,7 @@ OOPListSchemaVerifierError ErrorTypeMismatch(const char *expectedClassName, cons
 		case oo::PList::Type::Dict:		className = "dictionary";  break;
 		case oo::PList::Type::Data:		className = "data";  break;
 		case oo::PList::Type::Date:		className = "date";  break;
-		case oo::PList::Type::Object:	className = oo::StdString([[oo::ObjectIn(actual) class] description]);  break;	// any other object: its class's name
+		case oo::PList::Type::Object:	className = oo::DescriptionOf([oo::ObjectIn(actual) class]);  break;	// any other object: its class's name
 	}
 
 	return ErrorWithDictionary(kPListErrorTypeMismatch, &keyPath, oo::PList(std::move(dict)), "Expected %s, found %s.", expectedClassName, className.c_str());

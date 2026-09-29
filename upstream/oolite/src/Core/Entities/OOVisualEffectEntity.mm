@@ -1051,7 +1051,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	// Sanity check; this should always be true.
 	if (![self hasSubEntity:(OOVisualEffectEntity *)other])
 	{
-		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::DescriptionOf([other shortDescription]), oo::DescriptionOf([self shortDescription]), "This is an internal error, please report it.");
+		OO_LOG_ERR("visualeffect.subentity.sanityCheck.failed", "{} thinks it's a subentity of {}, but the supposed parent does not agree. {}", oo::ShortDescriptionOf(other), oo::ShortDescriptionOf(self), "This is an internal error, please report it.");
 		[other setOwner:nil];
 		return NO;
 	}

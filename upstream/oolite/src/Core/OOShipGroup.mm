@@ -183,7 +183,7 @@ private:
 }
 
 
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::string desc = oo::str::format("%zu ships", _count);
 	if (_name.has_value())
@@ -192,9 +192,9 @@ private:
 	}
 	if ([self leader] != nil)
 	{
-		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::DescriptionOf([[self leader] shortDescription]).c_str());
+		desc = oo::str::format("%s, leader: %s", desc.c_str(), oo::ShortDescriptionOf([self leader]).c_str());
 	}
-	return oo::NSStringFrom(desc);
+	return desc;
 }
 
 

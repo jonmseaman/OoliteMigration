@@ -33,22 +33,26 @@ MA 02110-1301, USA.
 #include <objc/runtime.h>
 
 
-/*	TRANSITIONAL (ADR-0055 item 1): the legacy id-typed family, as the forwarding below sends it
-	to a class that still overrides it and to an object not rooted on OOObject. The text object
-	those return answers -UTF8String. oo-qps.43 flips the overrides; oo-qps.72 deletes this.
+/*	TRANSITIONAL (ADR-0055 item 1): the legacy id-typed family (-descriptionComponents,
+	-shortDescriptionComponents, -description, -shortDescription), as the forwarding below sends it
+	to a class that still overrides it and to an object not rooted on OOObject. oo-qps.43 flipped
+	the game's overrides and deleted the legacy root family, so nothing declares those selectors any
+	more: SendLegacy calls them through the IMP. The text object they return answers -UTF8String.
+	oo-qps.72 deletes this.
 */
-@protocol OOLegacyDescription
-- (id) description;
-- (id) descriptionComponents;
-- (id) shortDescription;
-- (id) shortDescriptionComponents;
+@protocol OOLegacyText
 - (const char *) UTF8String;
 @end
 
 
 namespace {
 
-using LegacyObject = id<OOLegacyDescription>;
+// The legacy id-typed <selector> of <object>, which must answer it.
+id SendLegacy(id object, SEL selector)
+{
+	using LegacyMethod = id (*)(id, SEL);
+	return reinterpret_cast<LegacyMethod>(class_getMethodImplementation(object_getClass(object), selector))(object, selector);
+}
 
 
 // Whether <object>'s class implements the legacy <selector> other than as the root's own default.
@@ -76,7 +80,7 @@ bool IsOOObject(id object)
 std::string ForeignDescription(id description)
 {
 	if (description == nil)  return "(null)";
-	const char *text = [(LegacyObject)description UTF8String];
+	const char *text = [(id<OOLegacyText>)description UTF8String];
 	return text != nullptr ? std::string(text) : std::string();
 }
 
@@ -95,28 +99,28 @@ std::optional<std::string> LegacyText(id text)
 
 - (std::optional<std::string>) cxx_descriptionComponents
 {
-	if (HasLegacyOverride(self, @selector(descriptionComponents)))  return LegacyText([(LegacyObject)self descriptionComponents]);
+	if (HasLegacyOverride(self, @selector(descriptionComponents)))  return LegacyText(SendLegacy(self, @selector(descriptionComponents)));
 	return std::nullopt;
 }
 
 
 - (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	if (HasLegacyOverride(self, @selector(shortDescriptionComponents)))  return LegacyText([(LegacyObject)self shortDescriptionComponents]);
+	if (HasLegacyOverride(self, @selector(shortDescriptionComponents)))  return LegacyText(SendLegacy(self, @selector(shortDescriptionComponents)));
 	return std::nullopt;
 }
 
 
 - (std::optional<std::string>) cxx_description
 {
-	if (HasLegacyOverride(self, @selector(description)))  return LegacyText([(LegacyObject)self description]);
+	if (HasLegacyOverride(self, @selector(description)))  return LegacyText(SendLegacy(self, @selector(description)));
 	return oo::DescriptionWithComponents(self, [self cxx_descriptionComponents]);
 }
 
 
 - (std::optional<std::string>) cxx_shortDescription
 {
-	if (HasLegacyOverride(self, @selector(shortDescription)))  return LegacyText([(LegacyObject)self shortDescription]);
+	if (HasLegacyOverride(self, @selector(shortDescription)))  return LegacyText(SendLegacy(self, @selector(shortDescription)));
 	return oo::DescriptionWithComponents(self, [self cxx_shortDescriptionComponents]);
 }
 
@@ -149,7 +153,7 @@ std::string DescriptionOf(id object)
 	{
 		return [(OOObject *)object cxx_description].value_or("(null)");
 	}
-	return ForeignDescription([(LegacyObject)object description]);
+	return ForeignDescription(SendLegacy(object, @selector(description)));
 }
 
 
@@ -161,7 +165,10 @@ std::string ShortDescriptionOf(id object)
 	{
 		return [(OOObject *)object cxx_shortDescription].value_or("(null)");
 	}
-	return ForeignDescription([(LegacyObject)object shortDescription]);
+	// A Foundation value has no -shortDescription since oo-qps.43 deleted the legacy root family,
+	// whose NSObject default printed <ClassName 0xnnnnnnnn>.
+	if (!class_respondsToSelector(object_getClass(object), @selector(shortDescription)))  return DescriptionWithComponents(object, std::nullopt);
+	return ForeignDescription(SendLegacy(object, @selector(shortDescription)));
 }
 
 

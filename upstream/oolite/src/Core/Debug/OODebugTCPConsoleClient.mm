@@ -772,7 +772,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	
 	if (!sentOK)
 	{
-		OO_LOG("debugTCP.send.error", "The following packet could not be sent: {}", oo::DescriptionOf(oo::ObjectFromPList(dictionary)));
+		OO_LOG("debugTCP.send.error", "The following packet could not be sent: {}", oo::DescriptionOf(dictionary));
 		if(![[OODebugMonitor sharedDebugMonitor] TCPIgnoresDroppedPackets])
 		{
 			[self breakConnectionWithStreamError:(_socket != kNoSocket ? _outError : 0)];

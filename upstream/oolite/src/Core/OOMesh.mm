@@ -368,10 +368,10 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 } // namespace
 
 
-- (id)descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	const std::optional<std::string> modelName = [self modelName];
-	return oo::NSStringFrom(oo::str::format("\"%s\", %zu vertices, %zu faces, radius: %g m normals: %s", modelName ? modelName->c_str() : "(null)", [self vertexCount], [self faceCount], [self collisionRadius], NormalModeDescription((OOMeshNormalMode)_normalMode)));
+	return oo::str::format("\"%s\", %zu vertices, %zu faces, radius: %g m normals: %s", modelName ? modelName->c_str() : "(null)", [self vertexCount], [self faceCount], [self collisionRadius], NormalModeDescription((OOMeshNormalMode)_normalMode));
 }
 
 
@@ -459,7 +459,7 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 		/*	It should not be possible to have multiple texture units if
 			texture combiners are not available.
 		*/
-		OOAssert([[OOOpenGLExtensionManager sharedManager] textureCombinersSupported], "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::DescriptionOf([self shortDescription]).c_str(), _textureUnitCount);
+		OOAssert([[OOOpenGLExtensionManager sharedManager] textureCombinersSupported], "Mesh %s uses %zu texture units, but multitexturing is not available.", oo::ShortDescriptionOf(self).c_str(), _textureUnitCount);
 		
 		for (unit = 0; unit < _textureUnitCount; unit++)
 		{

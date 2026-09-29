@@ -132,18 +132,18 @@ SOFTWARE.
 }
 
 
-- (id) descriptionComponents	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_descriptionComponents
 {
 	std::vector<std::string> bits;
-	if (_diffuseMap)  bits.push_back("diffuse map: " + oo::DescriptionOf([_diffuseMap shortDescription]));
-	if (_emissionMap)  bits.push_back("emission map: " + oo::DescriptionOf([_emissionMap shortDescription]));
+	if (_diffuseMap)  bits.push_back("diffuse map: " + oo::ShortDescriptionOf(_diffuseMap));
+	if (_emissionMap)  bits.push_back("emission map: " + oo::ShortDescriptionOf(_emissionMap));
 	
-	id result = [super descriptionComponents];
+	std::optional<std::string> result = [super cxx_descriptionComponents];
 	if (!bits.empty())
 	{
 		std::string joined;
 		for (const std::string &bit : bits)  joined += (joined.empty() ? "" : ",") + bit;
-		result = oo::NSStringFrom(oo::StdString(result) + " - " + joined);
+		result = result.value_or("") + " - " + joined;	// StdString(nil) was ""
 	}
 	return result;
 }

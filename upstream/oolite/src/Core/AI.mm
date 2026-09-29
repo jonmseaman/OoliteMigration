@@ -219,15 +219,15 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 }
 
 
-- (id) descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("\"%s\" in state: \"%s\" for %s", stateMachineName.c_str(), currentState.value_or("(null)").c_str(), ownerDesc.value_or("(null)").c_str()));
+	return oo::str::format("\"%s\" in state: \"%s\" for %s", stateMachineName.c_str(), currentState.value_or("(null)").c_str(), ownerDesc.value_or("(null)").c_str());
 }
 
 
-- (id) shortDescriptionComponents
+- (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("%s:%s / %s", stateMachineName.c_str(), currentState.value_or("(null)").c_str(), oo::DescriptionOf(JSScriptObjectOf(stateMachine)).c_str()));
+	return oo::str::format("%s:%s / %s", stateMachineName.c_str(), currentState.value_or("(null)").c_str(), oo::DescriptionOf(JSScriptObjectOf(stateMachine)).c_str());
 }
 
 
@@ -259,7 +259,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 		BOOL stackDump = oo::log::willDisplay("ai.error.stackOverflow.dump");
 		
 		const char *trailer = stackDump ? " -- stack:" : ".";
-		OO_LOG_ERR("ai.error.stackOverflow", "AI stack overflow for {} in {}: {}{}\n", oo::DescriptionOf([_owner shortDescription]), stateMachineName, currentState.value_or("(null)"), trailer);
+		OO_LOG_ERR("ai.error.stackOverflow", "AI stack overflow for {} in {}: {}{}\n", oo::ShortDescriptionOf(_owner), stateMachineName, currentState.value_or("(null)"), trailer);
 
 		if (stackDump)
 		{
@@ -287,7 +287,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 		[self reportStackOverflow];
 		
 		[OOException raise:"OoliteException"
-					format:"AI stack overflow for %s", [[_owner description] UTF8String]];
+					format:"AI stack overflow for %s", oo::DescriptionOf(_owner).c_str()];
 	}
 	
 	const oo::PList *script = stateMachine.find("jsScript");
@@ -502,7 +502,7 @@ static AIStackElement *sStack = NULL;
 		unsigned depth = 0;
 		while (stack != NULL)
 		{
-			OO_LOG("ai.error.recursion.stackTrace", "{}  {} - {}:{}.{} ({})", depth++, oo::DescriptionOf([stack->owner shortDescription]), stack->aiName, stack->state.value_or("(null)"), *stack->message, *stack->context);
+			OO_LOG("ai.error.recursion.stackTrace", "{}  {} - {}:{}.{} ({})", depth++, oo::ShortDescriptionOf(stack->owner), stack->aiName, stack->state.value_or("(null)"), *stack->message, *stack->context);
 			stack = stack->back;
 		}
 		
@@ -711,7 +711,7 @@ static AIStackElement *sStack = NULL;
 		displayMessages = "none";
 	}
 
-	OO_LOG("ai.debug.pendingMessages", "Pending messages for AI {}: {}", oo::DescriptionOf([self descriptionComponents]), displayMessages);
+	OO_LOG("ai.debug.pendingMessages", "Pending messages for AI {}: {}", [self cxx_descriptionComponents].value_or("(null)"), displayMessages);
 }
 
 
@@ -886,7 +886,7 @@ static AIStackElement *sStack = NULL;
 				{
 					fromString = oo::str::format(" from %s:%s", [self cxx_name].value_or("(null)").c_str(), state->c_str());
 				}
-				OO_LOG("ai.load.failed.unknownAI", "Can't switch AI for {}{} to \"{}\" - could not load file.", oo::DescriptionOf([[self owner] shortDescription]), fromString, smName);
+				OO_LOG("ai.load.failed.unknownAI", "Can't switch AI for {}{} to \"{}\" - could not load file.", oo::ShortDescriptionOf([self owner]), fromString, smName);
 				return oo::PList();
 			}
 
@@ -1019,10 +1019,10 @@ static AIStackElement *sStack = NULL;
 				{
 					if (!first)  joined += " ";
 					first = false;
-					joined += oo::DescriptionOf(oo::ObjectFromPList(token));
+					joined += oo::DescriptionOf(token);
 				}
 				action = std::move(joined);
-				selector = oo::DescriptionOf(oo::ObjectFromPList(aliasedSelector->getIf<oo::PList::Array>()->front()));
+				selector = oo::DescriptionOf(aliasedSelector->getIf<oo::PList::Array>()->front());
 			}
 		}
 

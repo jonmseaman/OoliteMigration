@@ -175,9 +175,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 // OOObject's -description wraps this as "<OOCacheManager 0x...>{dirty=...}", which is what this
 // class's own -description printed.
-- (id)descriptionComponents
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("dirty=%s", [self dirty] ? "yes" : "no"));
+	return oo::str::format("dirty=%s", [self dirty] ? "yes" : "no");
 }
 
 
@@ -391,14 +391,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// -isEqual: between the two; a missing version on either side never matched.
 		if (cacheVersionString == nullptr || !ooliteVersion.has_value() || *cacheVersionString != *ooliteVersion)
 		{
-			OO_LOG("dataCache.rebuild", "Data cache version ({}) does not match Oolite version ({}), rebuilding cache.", oo::DescriptionOf(oo::ObjectFromPList(cacheVersion != nullptr ? *cacheVersion : oo::PList())), ooliteVersion.value_or("(null)"));
+			OO_LOG("dataCache.rebuild", "Data cache version ({}) does not match Oolite version ({}), rebuilding cache.", oo::DescriptionOf(cacheVersion != nullptr ? *cacheVersion : oo::PList()), ooliteVersion.value_or("(null)"));
 			accept = NO;
 		}
 		
 		const oo::PList *formatVersion = cache.find(kCacheKeyFormatVersion);
 		if (accept && (formatVersion != nullptr ? static_cast<unsigned>(formatVersion->uint64Value()) : 0U) != kFormatVersionValue)
 		{
-			OO_LOG("dataCache.rebuild", "Data cache format ({}) is not supported format ({}), rebuilding cache.", oo::DescriptionOf(oo::ObjectFromPList(formatVersion != nullptr ? *formatVersion : oo::PList())), static_cast<std::size_t>(kFormatVersionValue));
+			OO_LOG("dataCache.rebuild", "Data cache format ({}) is not supported format ({}), rebuilding cache.", oo::DescriptionOf(formatVersion != nullptr ? *formatVersion : oo::PList()), static_cast<std::size_t>(kFormatVersionValue));
 			accept = NO;
 		}
 		
