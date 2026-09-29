@@ -77,14 +77,14 @@ SOFTWARE.
 	{
 		if (!diffuseSpec.isNull())
 		{
-			_diffuseMap = [[OOTexture textureWithConfiguration:oo::ObjectFromPList(diffuseSpec)] retain];
+			_diffuseMap = [[OOTexture cxx_textureWithConfiguration:diffuseSpec] retain];
 			if (_diffuseMap != nil)  _unitsUsed++;
 		}
 		
 		// Check for simplest cases, where we don't need to bake a derived emission map.
 		if (!emissionSpec.isNull() && illuminationSpec.isNull() && emissionAndIlluminationSpec.isNull() && emissionColor == nil)
 		{
-			_emissionMap = [[OOTexture textureWithConfiguration:oo::ObjectFromPList(emissionSpec) extraOptions:kOOTextureExtraShrink] retain];
+			_emissionMap = [[OOTexture cxx_textureWithConfiguration:emissionSpec extraOptions:kOOTextureExtraShrink] retain];
 			if (_emissionMap != nil)  _unitsUsed++;
 		}
 		else

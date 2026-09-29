@@ -252,7 +252,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 		
 		case kOolite_gameSettings:
-			result = [UNIVERSE gameSettings];
+			result = oo::ObjectFromPList([UNIVERSE cxx_gameSettings]);
 			break;
 			
 		case kOolite_resourcePaths:

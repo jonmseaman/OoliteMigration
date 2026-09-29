@@ -285,15 +285,15 @@ static const GLfloat kLaserVertices[] =
 {
 	if (sShotTexture == nil)
 	{
-		sShotTexture = [[OOTexture textureWithName:@"oolite-laser-blur.png"
-										  inFolder:@"Textures"
+		sShotTexture = [[OOTexture cxx_textureWithName:"oolite-laser-blur.png"
+										  inFolder:"Textures"
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];
 		[[OOGraphicsResetManager sharedManager] registerClient:(id<OOGraphicsResetClient>)[OOLaserShotEntity class]];
 
-		sShotTexture2 = [[OOTexture textureWithName:@"oolite-laser-blur2.png"
-										  inFolder:@"Textures"
+		sShotTexture2 = [[OOTexture cxx_textureWithName:"oolite-laser-blur2.png"
+										  inFolder:"Textures"
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];

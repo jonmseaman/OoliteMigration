@@ -150,7 +150,7 @@ MA 02110-1301, USA.
 	[self setSunColor:sun_color];
 
 	// A nil dictionary read nil for the name (messaging nil), not the default.
-	[self setName:OOExpand(dict ? oo::NSStringFrom(dict.get<std::string>(oo::StdString(KEY_SUNNAME), "[oolite-default-star-name]")) : nil)];
+	[self setName:oo::NSStringOrNil(dict ? cxx_OOExpand(dict.get<std::string>(oo::StdString(KEY_SUNNAME), "[oolite-default-star-name]")) : std::nullopt)];
 
 	corona_blending=OOClamp_0_1_f(dict.get<float>("corona_hues", 1.0f));
 	corona_speed_factor=dict.get<float>("corona_shimmer", -1.0);

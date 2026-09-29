@@ -134,8 +134,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 			
 			if (name.has_value() && 0.0f < probability)
 			{
-				texture = [OOTexture textureWithName:oo::NSStringFrom(*name)
-											inFolder:@"Textures"
+				texture = [OOTexture cxx_textureWithName:*name
+											inFolder:"Textures"
 											 options:options
 										  anisotropy:anisotropy
 											 lodBias:lodBias];

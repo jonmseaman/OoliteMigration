@@ -42,7 +42,6 @@ SOFTWARE.
 #import "OOPolygonSprite.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
-#import "OOCollectionExtractors.h"
 #import "OOMacroOpenGL.h"
 #import "OOMaths.h"
 #import "OOPointMaths.h"

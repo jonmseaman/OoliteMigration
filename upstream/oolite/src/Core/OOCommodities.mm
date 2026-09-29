@@ -455,8 +455,8 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 {
 	for (const auto &[key, info] : _commodityLists)	// key order (was hash order): the first match wins
 	{
-		// OOExpand (OOStringExpander) is not migrated: the name crosses at the call.
-		const std::optional<std::string> expanded = oo::OptionalString(OOExpand(oo::NSStringOrNil(StringFor(info, kOOCommodityName))));
+		const std::optional<std::string> commodityName = StringFor(info, kOOCommodityName);
+		const std::optional<std::string> expanded = commodityName.has_value() ? cxx_OOExpand(*commodityName) : std::nullopt;
 		if (expanded == name) {
 			return key;
 		}

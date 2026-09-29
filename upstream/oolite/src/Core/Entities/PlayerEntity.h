@@ -1122,7 +1122,7 @@ typedef enum
 - (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
 - (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
-- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;

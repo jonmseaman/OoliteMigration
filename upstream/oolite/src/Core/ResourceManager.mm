@@ -382,7 +382,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	result.reserve(sErrors.size());
 	for (const ResourceManagerError &error : sErrors)
 	{
-		std::optional<std::string> errStr = oo::OptionalString([UNIVERSE descriptionForKey:oo::NSStringFrom(error.key)]);
+		std::optional<std::string> errStr = [UNIVERSE cxx_descriptionForKey:error.key];
 		if (errStr.has_value())
 		{
 			// The descriptions.plist entry is the format (data, not a literal): ADR-0043 item 19.
