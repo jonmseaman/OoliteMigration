@@ -325,10 +325,10 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	_hdrMaxBrightness = oo::PListGet<float>::from(hdrMaxBrightness.isNull() ? nullptr : &hdrMaxBrightness, 1000.0f);
 	const oo::PList hdrPaperWhiteBrightness = prefs.object("hdr-paperwhite-brightness");
 	_hdrPaperWhiteBrightness = oo::PListGet<float>::from(hdrPaperWhiteBrightness.isNull() ? nullptr : &hdrPaperWhiteBrightness, 200.0f);
-	_hdrToneMapper = OOHDRToneMapperFromString(oo::NSStringFrom(DefaultsString("hdr-tone-mapper", "OOHDR_TONEMAPPER_ACES_APPROX")));
+	_hdrToneMapper = cxx_OOHDRToneMapperFromString(DefaultsString("hdr-tone-mapper", "OOHDR_TONEMAPPER_ACES_APPROX"));
 #endif
 
-	_sdrToneMapper = OOSDRToneMapperFromString(oo::NSStringFrom(DefaultsString("sdr-tone-mapper", "OOSDR_TONEMAPPER_ACES")));
+	_sdrToneMapper = cxx_OOSDRToneMapperFromString(DefaultsString("sdr-tone-mapper", "OOSDR_TONEMAPPER_ACES"));
 
 	SDL_SetWindowSurfaceVSync(window, vSyncPreference);
 	OO_LOG("display.initGL", "V-Sync {}requested.", vSyncPreference ? "" : "not ");

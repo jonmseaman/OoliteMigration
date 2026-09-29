@@ -582,8 +582,8 @@ std::string Bars(char mark, int count)
 		}
 	}
 	OOGL(glColor4f(0.9,0.9,0.0,alpha));
-	OODrawStringAligned(DESC(@"oolite-stickprofile-movement"), at.x + size.width - 5, at.y, at.z, NSMakeSize(8,10), YES);
-	OODrawString(DESC(@"oolite-stickprofile-response"), at.x, at.y + size.height - 10, at.z, NSMakeSize(8,10));
+	cxx_OODrawStringAligned(oo::StdString(DESC(@"oolite-stickprofile-movement")), at.x + size.width - 5, at.y, at.z, NSMakeSize(8,10), YES);
+	cxx_OODrawString(oo::StdString(DESC(@"oolite-stickprofile-response")), at.x, at.y + size.height - 10, at.z, NSMakeSize(8,10));
 	return;
 }
 

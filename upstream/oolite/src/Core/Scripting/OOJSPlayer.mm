@@ -319,11 +319,11 @@ static bool PlayerGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [player creditBalance], value);
 			
 		case kPlayer_rank:
-			*(value) = OOJSValueFromNativeObject(context, OODisplayRatingStringFromKillCount([player score]));
+			*(value) = OOJSValueFromNativeObject(context, oo::NSStringOrNil(cxx_OODisplayRatingStringFromKillCount([player score])));
 			return YES;
 			
 		case kPlayer_legalStatus:
-			*(value) = OOJSValueFromNativeObject(context, OODisplayStringFromLegalStatus([player legalStatus]));
+			*(value) = OOJSValueFromNativeObject(context, oo::NSStringOrNil(cxx_OODisplayStringFromLegalStatus([player legalStatus])));
 			return YES;
 			
 		case kPlayer_alertCondition:
@@ -379,7 +379,7 @@ static bool PlayerGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		case kPlayer_dockingClearanceStatus:
 			// EMMSTRAN: OOConstToJSString-ify this.
-			*(value) = OOJSValueFromNativeObject(context, DockingClearanceStatusToString([player getDockingClearanceStatus]));
+			*(value) = OOJSValueFromNativeObject(context, oo::NSStringFrom(cxx_DockingClearanceStatusToString([player getDockingClearanceStatus])));
 			return YES;
 			
 		case kPlayer_bounty:
@@ -669,7 +669,7 @@ static bool PlayerAddMessageToArrivalReport(ooscript::Context context, ooscript:
 		return NO;
 	}
 	
-	[player addMessageToReport:oo::NSStringFrom(*report)];
+	[player cxx_addMessageToReport:*report];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -726,7 +726,7 @@ static bool PlayerReplaceShip(ooscript::Context context, ooscript::CallArgs &ooj
 		return NO;
 	}
 	
-	success = [player replaceShipWithNamedShip:oo::NSStringFrom(*shipKey)];
+	success = [player cxx_replaceShipWithNamedShip:*shipKey];
 	if (oojsArgs.count() > 1)
 	{
 		std::int32_t personality32 = 0;
