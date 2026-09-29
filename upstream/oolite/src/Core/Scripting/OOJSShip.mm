@@ -1334,7 +1334,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			sValue = cxx_OOStringFromJSValue(context,*value);
 			if (sValue.has_value())
 			{
-				[entity setPrimaryRole:oo::NSStringFrom(*sValue)];
+				[entity setPrimaryRole:*sValue];
 				return YES;
 			}
 			break;
@@ -2077,7 +2077,7 @@ static bool ShipSetAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		return NO;
 	}
 	
-	[thisEnt setAITo:oo::NSStringFrom(*name)];
+	[thisEnt setAITo:*name];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -2105,7 +2105,7 @@ static bool ShipSwitchAI(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		return NO;
 	}
 	
-	[thisEnt switchAITo:oo::NSStringFrom(*name)];
+	[thisEnt switchAITo:*name];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
