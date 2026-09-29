@@ -47,10 +47,46 @@
 #import "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
+#import "OOStringBridge.h"
+#include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
+
+
+namespace
+{
+
+// Whitespace without newlines: whiteSpaceAndNewline without U+000A-U+000D, U+0085, U+2028, U+2029
+// (matches GNUstep's whitespaceCharacterSet table).
+bool IsWhitespace(char16_t c)
+{
+	return oo::str::isWhitespaceOrNewline(c) && !((c >= 0x000A && c <= 0x000D) || c == 0x0085 || c == 0x2028 || c == 0x2029);
+}
+
+
+// A debug context "<description> suffix" in debug builds, nil (nullopt) otherwise.
+std::optional<std::string> DebugContext(id entity, const char *suffix)
+{
+#ifndef NDEBUG
+	return oo::str::format("%s %s", oo::DescriptionOf([entity shortDescription]).c_str(), suffix);
+#else
+	(void)entity;
+	(void)suffix;
+	return std::nullopt;
+#endif
+}
+
+
+// [[s componentsSeparatedByString:@":"] objectAtIndex:1] -intValue, for a "rand:N" coordinate.
+int RandArgument(const std::string &token)
+{
+	const std::vector<std::string> parts = oo::str::split(token, ":");
+	return parts.size() > 1 ? oo::str::intValue(parts[1]) : 0;
+}
+
+}	// namespace
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -92,29 +128,29 @@ using ooscript::Context;
 
 // Methods used only by AI.
 
-- (void) setStateTo:(NSString *)state;
+- (void) setStateTo:(id)state;	// called by name (ADR-0043 item 21)
 
-- (void) pauseAI:(NSString *)intervalString;
+- (void) pauseAI:(id)intervalString;	// called by name (ADR-0043 item 21)
 
-- (void) randomPauseAI:(NSString *)intervalString;
+- (void) randomPauseAI:(id)intervalString;	// called by name (ADR-0043 item 21)
 
-- (void) dropMessages:(NSString *)messageString;
+- (void) dropMessages:(id)messageString;	// called by name (ADR-0043 item 21)
 
 - (void) debugDumpPendingMessages;
 
 - (void) setDestinationToCurrentLocation;
 
-- (void) setDesiredRangeTo:(NSString *)rangeString;
+- (void) setDesiredRangeTo:(id)rangeString;	// called by name (ADR-0043 item 21)
 
 - (void) setDesiredRangeForWaypoint;
 
-- (void) setSpeedTo:(NSString *)speedString;
+- (void) setSpeedTo:(id)speedString;	// called by name (ADR-0043 item 21)
 
-- (void) setSpeedFactorTo:(NSString *)speedString;
+- (void) setSpeedFactorTo:(id)speedString;	// called by name (ADR-0043 item 21)
 
 - (void) setSpeedToCruiseSpeed;
 
-- (void) setThrustFactorTo:(NSString *)thrustFactorString;
+- (void) setThrustFactorTo:(id)thrustFactorString;	// called by name (ADR-0043 item 21)
 
 
 - (void) setTargetToPrimaryAggressor;
@@ -144,7 +180,7 @@ using ooscript::Context;
 - (void) checkTargetLegalStatus;
 - (void) checkOwnLegalStatus;
 
-- (void) exitAIWithMessage:(NSString *)message;
+- (void) exitAIWithMessage:(id)message;	// called by name (ADR-0043 item 21)
 
 - (void) setDestinationToTarget;
 - (void) setDestinationWithinTarget;
@@ -167,8 +203,8 @@ using ooscript::Context;
 - (void) performHyperSpaceExitWithoutReplacing;
 - (void) wormholeGroup;
 
-- (void) commsMessage:(NSString *)valueString;
-- (void) commsMessageByUnpiloted:(NSString *)valueString;
+- (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) ejectCargo;
 
@@ -189,7 +225,7 @@ using ooscript::Context;
 
 - (void) scanForFormationLeader;
 
-- (void) messageMother:(NSString *)msgString;
+- (void) messageMother:(id)msgString;	// called by name (ADR-0043 item 21)
 
 - (void) setPlanetPatrolCoordinates;
 
@@ -203,11 +239,11 @@ using ooscript::Context;
 
 - (void) checkForMotherStation;
 
-- (void) sendTargetCommsMessage:(NSString *)message;
+- (void) sendTargetCommsMessage:(id)message;	// called by name (ADR-0043 item 21)
 
 - (void) markTargetForFines;
 
-- (void) markTargetForOffence:(NSString *)valueString;
+- (void) markTargetForOffence:(id)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) storeTarget;
 - (void) recallStoredTarget;
@@ -218,42 +254,42 @@ using ooscript::Context;
 
 - (void) requestNewTarget;
 
-- (void) rollD:(NSString *)die_number;
+- (void) rollD:(id)die_number;	// called by name (ADR-0043 item 21)
 
-- (void) scanForNearestShipWithPrimaryRole:(NSString *)scanRole;
-- (void) scanForNearestShipHavingRole:(NSString *)scanRole;
-- (void) scanForNearestShipWithAnyPrimaryRole:(NSString *)scanRoles;
-- (void) scanForNearestShipHavingAnyRole:(NSString *)scanRoles;
-- (void) scanForNearestShipWithScanClass:(NSString *)scanScanClass;
+- (void) scanForNearestShipWithPrimaryRole:(id)scanRole;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipHavingRole:(id)scanRole;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipWithAnyPrimaryRole:(id)scanRoles;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipHavingAnyRole:(id)scanRoles;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipWithScanClass:(id)scanScanClass;	// called by name (ADR-0043 item 21)
 
-- (void) scanForNearestShipWithoutPrimaryRole:(NSString *)scanRole;
-- (void) scanForNearestShipNotHavingRole:(NSString *)scanRole;
-- (void) scanForNearestShipWithoutAnyPrimaryRole:(NSString *)scanRoles;
-- (void) scanForNearestShipNotHavingAnyRole:(NSString *)scanRoles;
-- (void) scanForNearestShipWithoutScanClass:(NSString *)scanScanClass;
+- (void) scanForNearestShipWithoutPrimaryRole:(id)scanRole;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipNotHavingRole:(id)scanRole;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipWithoutAnyPrimaryRole:(id)scanRoles;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipNotHavingAnyRole:(id)scanRoles;	// called by name (ADR-0043 item 21)
+- (void) scanForNearestShipWithoutScanClass:(id)scanScanClass;	// called by name (ADR-0043 item 21)
 
-- (void) setCoordinates:(NSString *)system_x_y_z;
+- (void) setCoordinates:(id)system_x_y_z;	// called by name (ADR-0043 item 21)
 
 - (void) checkForNormalSpace;
 
 - (void) setTargetToRandomStation;
 - (void) setTargetToLastStation;
 
-- (void) addFuel:(NSString *) fuel_number;
+- (void) addFuel:(id)fuel_number;	// called by name (ADR-0043 item 21)
 
-- (void) scriptActionOnTarget:(NSString *) action;
+- (void) scriptActionOnTarget:(id)action;	// called by name (ADR-0043 item 21)
 
-- (void) sendScriptMessage:(NSString *)message;
+- (void) sendScriptMessage:(id)message;	// called by name (ADR-0043 item 21)
 
 - (void) ai_throwSparks;
 
 - (void) explodeSelf;
 
-- (void) ai_debugMessage:(NSString *)message;
+- (void) ai_debugMessage:(id)message;	// called by name (ADR-0043 item 21)
 
 // racing code.
-- (void) targetFirstBeaconWithCode:(NSString *) code;
-- (void) targetNextBeaconWithCode:(NSString *) code;
+- (void) targetFirstBeaconWithCode:(id)code;	// called by name (ADR-0043 item 21)
+- (void) targetNextBeaconWithCode:(id)code;	// called by name (ADR-0043 item 21)
 - (void) setRacepointsFromTarget;
 - (void) performFlyRacepoints;
 
@@ -268,33 +304,34 @@ using ooscript::Context;
 @implementation ShipEntity (AI)
 
 
-- (void) setAITo:(NSString *)aiString
+- (void) setAITo:(id)aiString	// called by name (ADR-0043 item 21)
 {
+	std::string ai = oo::StdString(aiString);
 	// don't try to load real AIs if the game hasn't started yet
 	if (![PLAYER scriptsLoaded])
 	{
-		aiString = @"oolite-nullAI.js";
+		ai = "oolite-nullAI.js";
 	}
-	if ([aiString hasSuffix:@".plist"])
+	if (oo::str::hasSuffix(ai, ".plist"))
 	{
-		[[self getAI] cxx_setStateMachine:oo::StdString(aiString) withJSScript:"oolite-nullAI.js"];
+		[[self getAI] cxx_setStateMachine:ai withJSScript:"oolite-nullAI.js"];
 		[self setAIScript:"oolite-nullAI.js"];
 	}
-	else if ([aiString hasSuffix:@".js"])
+	else if (oo::str::hasSuffix(ai, ".js"))
 	{
-		[[self getAI] cxx_setStateMachine:"nullAI.plist" withJSScript:oo::StdString(aiString)];
-		[self setAIScript:oo::StdString(aiString)];
+		[[self getAI] cxx_setStateMachine:"nullAI.plist" withJSScript:ai];
+		[self setAIScript:ai];
 	}
 	else
 	{
-		const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:oo::StdString(aiString) + ".js" inFolder:"AIs"];
-		if (!path.has_value()) // no js, use plist
+		const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:ai + ".js" inFolder:std::string("AIs")];
+		if (!path) // no js, use plist
 		{
-			[self setAITo:[aiString stringByAppendingString:@".plist"]];
+			[self setAITo:oo::NSStringFrom(ai + ".plist")];
 		}
 		else
 		{
-			[self setAITo:[aiString stringByAppendingString:@".js"]];
+			[self setAITo:oo::NSStringFrom(ai + ".js")];
 		}
 	}
 }
@@ -302,15 +339,14 @@ using ooscript::Context;
 
 - (void) setAIScript:(const std::string &)aiString
 {
-	oo::PList::Dict properties;
-	properties["ship"] = oo::PListObject(self);
+	const oo::PList properties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
 	
 	[aiScript autorelease];
-	aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:oo::PList(properties)];
+	aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:properties];
 	if (aiScript == nil)
 	{
 		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), [self cxx_shipDataKey].value_or("(null)"), [self cxx_primaryRole].value_or("(null)"));
-		aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:oo::PList(properties)];
+		aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:properties];
 	}
 	else
 	{
@@ -321,7 +357,7 @@ using ooscript::Context;
 }
 
 
-- (void) switchAITo:(NSString *)aiString
+- (void) switchAITo:(id)aiString	// called by name (ADR-0043 item 21)
 {
 	[self setAITo:aiString];
 	[[self getAI] clearStack];
@@ -562,7 +598,6 @@ using ooscript::Context;
 	
 	StationEntity	*station =  nil;
 	Entity			*targStation = nil;
-	NSString		*message = nil;
 	double		distanceToStation2 = 0.0;
 	
 	targStation = [self targetStation];
@@ -592,12 +627,11 @@ using ooscript::Context;
 		{
 			[self recallDockingInstructions];
 			
+			// the objects the instructions hold, sent as before (absent: nothing)
 			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
-			message = aiMessage != nullptr ? oo::ObjectFromPList(*aiMessage) : nil;
-			if (message != nil)  [shipAI message:oo::StdString(message)];
+			if (aiMessage != nullptr)  [shipAI message:oo::StdString(oo::ObjectFromPList(*aiMessage))];
 			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
-			message = commsMessage != nullptr ? oo::ObjectFromPList(*commsMessage) : nil;
-			if (message != nil)  [station cxx_sendExpandedMessage:oo::StdString(message) toShip:self];
+			if (commsMessage != nullptr)  [station cxx_sendExpandedMessage:oo::StdString(oo::ObjectFromPList(*commsMessage)) toShip:self];
 		}
 	}
 	else
@@ -642,7 +676,7 @@ using ooscript::Context;
 {
 	BinaryOperationPredicateParameter param =
 	{
-		HasScanClassPredicate, [NSNumber numberWithInt:CLASS_MISSILE],
+		HasScanClassPredicate, oo::ObjectFromPList(oo::PList::signedInteger(CLASS_MISSILE)),	// an Objective-C number; the predicate reads its -intValue
 		IsHostileAgainstTargetPredicate, self
 	};
 	[self scanForNearestShipWithPredicate:ANDPredicate parameter:&param];
@@ -672,7 +706,7 @@ using ooscript::Context;
 		// locate nearest wormhole
 		int				ent_count =		UNIVERSE->n_entities;
 		Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-		WormholeEntity*	wormholes[ent_count];
+		std::vector<WormholeEntity *>	wormholes(ent_count);
 		int i;
 		int wh_count = 0;
 		for (i = 0; i < ent_count; i++)
@@ -701,21 +735,18 @@ using ooscript::Context;
 - (void) wormholeEscorts
 {
 	ShipEntity			*ship = nil;
-	NSString			*context = nil;
 	WormholeEntity		*whole = nil;
 	
 	whole = [self primaryTarget];
 	if (![whole isWormhole])  return;
 	
-#ifndef NDEBUG
-	context = [NSString stringWithFormat:@"%@ wormholeEscorts", [self shortDescription]];
-#endif
+	const std::optional<std::string> context = DebugContext(self, "wormholeEscorts");
 	
 	for (const auto &shipRef : [self cxx_escorts])
 	{
 		ship = shipRef.get();
 		[ship addTarget:whole];
-		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:oo::OptionalString(context)];
+		[ship cxx_reactToAIMessage:"ENTER WORMHOLE" context:context];
 		[ship doScriptEvent:OOJSID("wormholeSuggested") withArgument:whole];
 	}
 	
@@ -794,10 +825,8 @@ using ooscript::Context;
 	// don't send too many distress messages at once, space them out semi-randomly
 	if (messageTime > 2.0 * randf())  return;
 	
-	NSString	*distress_message = nil;
 	BOOL		is_buoy = (scanClass == CLASS_BUOY);
-	if (is_buoy)  distress_message = @"[buoy-distress-call]";
-	else  distress_message = @"[distress-call]";
+	const char	*distress_message = is_buoy ? "[buoy-distress-call]" : "[distress-call]";
 	
 	unsigned i;
 	for (i = 0; i < n_scanned_ships; i++)
@@ -825,7 +854,7 @@ using ooscript::Context;
 			{
 				// only send distress message to player if plausibly sending
 				// one more generally
-				[self cxx_sendExpandedMessage:oo::StdString(distress_message) toShip:ship];
+				[self cxx_sendExpandedMessage:distress_message toShip:ship];
 			}
 			
 			// reset the thanked_ship_id
@@ -859,51 +888,43 @@ using ooscript::Context;
 
 @implementation ShipEntity (PureAI)
 
-- (void) setStateTo:(NSString *)state
+- (void) setStateTo:(id)state	// called by name (ADR-0043 item 21)
 {
 	[[self getAI] cxx_setState:oo::StdString(state)];
 }
 
 
-- (void) pauseAI:(NSString *)intervalString
+- (void) pauseAI:(id)intervalString	// called by name (ADR-0043 item 21)
 {
 	[shipAI setNextThinkTime:[UNIVERSE getTime] + [intervalString doubleValue]];
 }
 
 
-- (void) randomPauseAI:(NSString *)intervalString
+- (void) randomPauseAI:(id)intervalString	// called by name (ADR-0043 item 21)
 {
-	NSArray*	tokens = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(intervalString)));
+	const std::vector<std::string>	tokens = oo::str::tokens(oo::StdString(intervalString));
 	double start, end;
 	
-	if ([tokens count] != 2)
+	if (tokens.size() != 2)
 	{
 		OO_LOG("ai.syntax.randomPauseAI", "***** ERROR: cannot read min and max value for randomPauseAI:, needs 2 values: '{}'.", oo::DescriptionOf(intervalString));
 		return;
 	}
 	
-	start = oo::PListView(tokens).at<double>(0);
-	end   = oo::PListView(tokens).at<double>(1);
+	start = oo::str::doubleValue(tokens[0]);	// -oo_doubleAtIndex:
+	end   = oo::str::doubleValue(tokens[1]);
 	
 	[shipAI setNextThinkTime:[UNIVERSE getTime] + (start + (end - start)*randf())];
 }
 
 
-- (void) dropMessages:(NSString *)messageString
+- (void) dropMessages:(id)messageString	// called by name (ADR-0043 item 21)
 {
-	NSArray				*messages = nil;
-	NSString			*message = nil;
-	// GNUstep whitespaceCharacterSet: whitespace-and-newline without newlines (see IsWhitespaceNotNewline).
-	auto isWhitespaceNotNewline = [](char16_t c) {
-		return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
-			|| c == 0x202F || c == 0x205F || c == 0x3000;
-	};
+	if (messageString == nil)  return;	// (a message to nil split into nothing)
 	
-	messages = [messageString componentsSeparatedByString:@","];
-	for (message in messages)
+	for (const std::string &message : oo::str::split(oo::StdString(messageString), ","))
 	{
-		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
-		[shipAI cxx_dropMessage:trimmed];
+		[shipAI cxx_dropMessage:oo::str::trimTrailing(oo::str::trimLeading(message, IsWhitespace), IsWhitespace)];
 	}
 }
 
@@ -929,7 +950,7 @@ using ooscript::Context;
 }
 
 
-- (void) setDesiredRangeTo:(NSString *)rangeString
+- (void) setDesiredRangeTo:(id)rangeString	// called by name (ADR-0043 item 21)
 {
 	desired_range = [rangeString doubleValue];
 }
@@ -939,13 +960,13 @@ using ooscript::Context;
 	desired_range = fmax(maxFlightSpeed / max_flight_pitch / 6, 50.0); // some ships need a longer range to reach a waypoint.
 }
 
-- (void) setSpeedTo:(NSString *)speedString
+- (void) setSpeedTo:(id)speedString	// called by name (ADR-0043 item 21)
 {
 	desired_speed = [speedString doubleValue];
 }
 
 
-- (void) setSpeedFactorTo:(NSString *)speedString
+- (void) setSpeedFactorTo:(id)speedString	// called by name (ADR-0043 item 21)
 {
 	desired_speed = maxFlightSpeed * [speedString doubleValue];
 }
@@ -955,7 +976,7 @@ using ooscript::Context;
 	desired_speed = cruiseSpeed;
 }
 
-- (void) setThrustFactorTo:(NSString *)thrustFactorString
+- (void) setThrustFactorTo:(id)thrustFactorString	// called by name (ADR-0043 item 21)
 {
 	thrust = OOClamp_0_1_f([thrustFactorString doubleValue]) * max_thrust;
 }
@@ -987,7 +1008,7 @@ using ooscript::Context;
 		if ((primeTarget)&&(primeTarget->isShip))
 		{
 			ShipEntity *currentShip = [self primaryTarget];
-			[[currentShip getAI] message:oo::StdString([NSString stringWithFormat:@"%@ %d %d", AIMS_AGGRESSOR_SWITCHED_TARGET, universalID, [[self primaryAggressor] universalID]])];
+			[[currentShip getAI] message:oo::str::format("%s %d %d", oo::DescriptionOf(AIMS_AGGRESSOR_SWITCHED_TARGET).c_str(), universalID, [[self primaryAggressor] universalID])];
 			[currentShip doScriptEvent:OOJSID("shipAttackerDistracted") withArgument:[self primaryAggressor]];
 		}
 		
@@ -1052,7 +1073,7 @@ using ooscript::Context;
 	
 	//-- Locates one of the merchantman in range.
 	[self checkScannerIgnoringUnpowered];
-	ShipEntity*		ids_found[n_scanned_ships];
+	std::vector<ShipEntity *>	ids_found(n_scanned_ships);
 	
 	n_found = 0;
 	DESTROY(_foundTarget);
@@ -1436,7 +1457,7 @@ using ooscript::Context;
 }
 
 
-- (void) exitAIWithMessage:(NSString *)message
+- (void) exitAIWithMessage:(id)message	// called by name (ADR-0043 item 21)
 {
 	if ([message length] == 0)  message = @"RESTARTED";
 	[shipAI cxx_exitStateMachineWithMessage:oo::OptionalString(message)];
@@ -1584,8 +1605,7 @@ using ooscript::Context;
 - (void) scanForOffenders
 {
 	/*-- Locates all the ships in range and compares their legal status or bounty against ranrot_rand() & 255 - chooses the worst offender --*/
-	NSDictionary		*systeminfo = oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]);
-	float gov_factor =	0.4 * [(NSNumber *)[systeminfo objectForKey:KEY_GOVERNMENT] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
+	float gov_factor =	0.4 * [[oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_GOVERNMENT] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable) --> [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8]
 	//
 	if ([UNIVERSE sun] == nil)
 		gov_factor = 1.0;
@@ -1683,13 +1703,13 @@ using ooscript::Context;
 }
 
 
-- (void) commsMessage:(NSString *)valueString
+- (void) commsMessage:(id)valueString	// called by name (ADR-0043 item 21)
 {
 	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:NO];
 }
 
 
-- (void) commsMessageByUnpiloted:(NSString *)valueString
+- (void) commsMessageByUnpiloted:(id)valueString	// called by name (ADR-0043 item 21)
 {
 	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:YES];
 }
@@ -1935,21 +1955,17 @@ using ooscript::Context;
 }
 
 
-- (void) messageMother:(NSString *)msgString
+- (void) messageMother:(id)msgString	// called by name (ADR-0043 item 21)
 {
 	ShipEntity *mother = [self owner];
 	if (mother != nil && mother != self)
 	{
-		NSString *context = nil;
-#ifndef NDEBUG
-		context = [NSString stringWithFormat:@"%@ messageMother", [self shortDescription]];
-#endif
-		[mother cxx_reactToAIMessage:oo::StdString(msgString) context:oo::OptionalString(context)];
+		[mother cxx_reactToAIMessage:oo::StdString(msgString) context:DebugContext(self, "messageMother")];
 	}
 }
 
 
-- (void) messageSelf:(NSString *)msgString
+- (void) messageSelf:(id)msgString	// called by name (ADR-0043 item 21)
 {
 	[self sendAIMessage:msgString];
 }
@@ -2103,7 +2119,7 @@ using ooscript::Context;
 }
 
 
-- (void) sendTargetCommsMessage:(NSString*) message
+- (void) sendTargetCommsMessage:(id)message	// called by name (ADR-0043 item 21)
 {
 	ShipEntity *ship = [self primaryTarget];
 	if ((ship == nil) || ([ship status] == STATUS_DEAD) || ([ship status] == STATUS_DOCKED))
@@ -2128,7 +2144,7 @@ using ooscript::Context;
 }
 
 
-- (void) markTargetForOffence:(NSString *)valueString
+- (void) markTargetForOffence:(id)valueString	// called by name (ADR-0043 item 21)
 {
 	if ((isStation)||(scanClass == CLASS_POLICE))
 	{
@@ -2138,8 +2154,8 @@ using ooscript::Context;
 			[self noteLostTarget];
 			return;
 		}
-		NSString *finalValue = valueString != nil ? oo::NSStringOrNil(cxx_OOExpand(oo::StdString(valueString))) : nil;	// expand values
-		[ship markAsOffender:[finalValue intValue] withReason:kOOLegalStatusReasonSeenByPolice];
+		const std::string finalValue = valueString != nil ? cxx_OOExpand(oo::StdString(valueString)).value_or(std::string()) : std::string();	// expand values
+		[ship markAsOffender:oo::str::intValue(finalValue) withReason:kOOLegalStatusReasonSeenByPolice];
 	}
 }
 
@@ -2286,14 +2302,13 @@ using ooscript::Context;
 }
 
 
-- (void) rollD:(NSString *)die_number
+- (void) rollD:(id)die_number	// called by name (ADR-0043 item 21)
 {
 	int die_sides = [die_number intValue];
 	if (die_sides > 0)
 	{
 		int die_roll = 1 + (ranrot_rand() % die_sides);
-		NSString* result = [NSString stringWithFormat:@"ROLL_%d", die_roll];
-		[shipAI cxx_reactToMessage:oo::StdString(result) context:"rollD:"];
+		[shipAI cxx_reactToMessage:oo::str::format("ROLL_%d", die_roll) context:"rollD:"];
 	}
 	else
 	{
@@ -2302,73 +2317,73 @@ using ooscript::Context;
 }
 
 
-- (void) scanForNearestShipWithPrimaryRole:(NSString *)scanRole
+- (void) scanForNearestShipWithPrimaryRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
 	[self scanForNearestShipWithPredicate:HasPrimaryRolePredicate parameter:scanRole];
 }
 
 
-- (void) scanForNearestShipHavingRole:(NSString *)scanRole
+- (void) scanForNearestShipHavingRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
 	[self scanForNearestShipWithPredicate:HasRolePredicate parameter:scanRole];
 }
 
 
-- (void) scanForNearestShipWithAnyPrimaryRole:(NSString *)scanRoles
+- (void) scanForNearestShipWithAnyPrimaryRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
-	[self scanForNearestShipWithPredicate:HasPrimaryRoleInSetPredicate parameter:set];
+	// an Objective-C set of the role strings, as the predicate reads it
+	[self scanForNearestShipWithPredicate:HasPrimaryRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 }
 
 
-- (void) scanForNearestShipHavingAnyRole:(NSString *)scanRoles
+- (void) scanForNearestShipHavingAnyRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
-	[self scanForNearestShipWithPredicate:HasRoleInSetPredicate parameter:set];
+	// an Objective-C set of the role strings, as the predicate reads it
+	[self scanForNearestShipWithPredicate:HasRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 }
 
 
-- (void) scanForNearestShipWithScanClass:(NSString *)scanScanClass
+- (void) scanForNearestShipWithScanClass:(id)scanScanClass	// called by name (ADR-0043 item 21)
 {
-	NSNumber *parameter = [NSNumber numberWithInt:cxx_OOScanClassFromString(oo::StdString(scanScanClass))];
-	[self scanForNearestShipWithPredicate:HasScanClassPredicate parameter:parameter];
+	// an Objective-C number, as the predicate reads its -intValue
+	[self scanForNearestShipWithPredicate:HasScanClassPredicate parameter:oo::ObjectFromPList(oo::PList::signedInteger(cxx_OOScanClassFromString(oo::StdString(scanScanClass))))];
 }
 
 
-- (void) scanForNearestShipWithoutPrimaryRole:(NSString *)scanRole
+- (void) scanForNearestShipWithoutPrimaryRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
 	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRolePredicate parameter:scanRole];
 }
 
 
-- (void) scanForNearestShipNotHavingRole:(NSString *)scanRole
+- (void) scanForNearestShipNotHavingRole:(id)scanRole	// called by name (ADR-0043 item 21)
 {
 	[self scanForNearestShipWithNegatedPredicate:HasRolePredicate parameter:scanRole];
 }
 
 
-- (void) scanForNearestShipWithoutAnyPrimaryRole:(NSString *)scanRoles
+- (void) scanForNearestShipWithoutAnyPrimaryRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
-	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRoleInSetPredicate parameter:set];
+	// an Objective-C set of the role strings, as the predicate reads it
+	[self scanForNearestShipWithNegatedPredicate:HasPrimaryRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 }
 
 
-- (void) scanForNearestShipNotHavingAnyRole:(NSString *)scanRoles
+- (void) scanForNearestShipNotHavingAnyRole:(id)scanRoles	// called by name (ADR-0043 item 21)
 {
-	NSSet *set = [NSSet setWithArray:oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
-	[self scanForNearestShipWithNegatedPredicate:HasRoleInSetPredicate parameter:set];
+	// an Objective-C set of the role strings, as the predicate reads it
+	[self scanForNearestShipWithNegatedPredicate:HasRoleInSetPredicate parameter:oo::NSSetFromStrings(oo::str::tokens(oo::StdString(scanRoles)))];
 }
 
 
-- (void) scanForNearestShipWithoutScanClass:(NSString *)scanScanClass
+- (void) scanForNearestShipWithoutScanClass:(id)scanScanClass	// called by name (ADR-0043 item 21)
 {
-	NSNumber *parameter = [NSNumber numberWithInt:cxx_OOScanClassFromString(oo::StdString(scanScanClass))];
-	[self scanForNearestShipWithNegatedPredicate:HasScanClassPredicate parameter:parameter];
+	// an Objective-C number, as the predicate reads its -intValue
+	[self scanForNearestShipWithNegatedPredicate:HasScanClassPredicate parameter:oo::ObjectFromPList(oo::PList::signedInteger(cxx_OOScanClassFromString(oo::StdString(scanScanClass))))];
 }
 
 
-- (void) scanForNearestShipMatchingPredicate:(NSString *)predicateExpression
+- (void) scanForNearestShipMatchingPredicate:(id)predicateExpression	// called by name (ADR-0043 item 21)
 {
 	/*	Takes a boolean-valued JS expression where "ship" is the ship being
 	 evaluated and "this" is our ship's ship script. the expression is
@@ -2385,43 +2400,46 @@ using ooscript::Context;
 	 function (ship) { ...do something complicated... } ()
 	 */
 	
-	static NSMutableDictionary	*scriptCache = nil;
-	NSString					*aiName = nil;
-	NSString					*key = nil;
+	// Created on first use and never destroyed, as the dictionary it replaces (it holds JS functions).
+	static std::map<std::string, oo::ObjCRef<OOJSFunction *>, std::less<>> *scriptCache = nullptr;
+	std::string					key;
 	OOJSFunction				*function = nil;
 	ooscript::Context context = NULL;
 	
 	context = OOJSAcquireContext();
 	
-	if (predicateExpression == nil)  predicateExpression = @"false";
+	const std::string expression = predicateExpression != nil ? oo::DescriptionOf(predicateExpression) : std::string("false");	// %@ of it
 	
-	aiName = oo::NSStringOrNil([[self getAI] cxx_name]);
+	const std::optional<std::string> aiName = [[self getAI] cxx_name];
 #ifndef NDEBUG
 	/*	In debug/test release builds, scripts are cached per AI in order to be
 	 able to report errors correctly. For end-user releases, we only cache
 	 one copy of each predicate, potentially leading to error messages for
 	 the wrong AI.
 	 */
-	key = [NSString stringWithFormat:@"%@\n%@", aiName, predicateExpression];
+	key = aiName.value_or("(null)") + "\n" + expression;
 #else
-	key = predicateExpression;
+	key = expression;
 #endif
 	
 	// Look for cached function
-	function = [scriptCache objectForKey:key];
+	if (scriptCache != nullptr)
+	{
+		const auto cached = scriptCache->find(key);
+		if (cached != scriptCache->end())  function = cached->second.get();
+	}
 	if (function == nil)
 	{
-		NSString					*predicateCode = nil;
 		const char					*argNames[] = { "ship" };
 		
 		// Stuff expression in a function.
-		predicateCode = [NSString stringWithFormat:@"return %@;", predicateExpression];
+		const std::string predicateCode = "return " + expression + ";";
 		function = [[OOJSFunction alloc] initWithName:std::string("_oo_AIScanPredicate")
 												scope:NULL
-												 code:oo::OptionalString(predicateCode)
+												 code:predicateCode
 										argumentCount:1
 										argumentNames:argNames
-											 fileName:oo::OptionalString(aiName)
+											 fileName:aiName
 										   lineNumber:0
 											  context:context];
 		[function autorelease];
@@ -2429,8 +2447,8 @@ using ooscript::Context;
 		// Cache function.
 		if (function != nil)
 		{
-			if (scriptCache == nil)  scriptCache = [[NSMutableDictionary alloc] init];
-			[scriptCache setObject:function forKey:key];
+			if (scriptCache == nullptr)  scriptCache = new std::map<std::string, oo::ObjCRef<OOJSFunction *>, std::less<>>();
+			(*scriptCache)[key] = oo::ObjCRef<OOJSFunction *>(function);
 		}
 	}
 	
@@ -2447,13 +2465,12 @@ using ooscript::Context;
 	else
 	{
 		// Report error (once per occurrence)
-		static NSMutableSet			*errorCache = nil;
+		static std::set<std::string>	errorCache;
 		
-		if (![errorCache containsObject:key])
+		if (!errorCache.contains(key))
 		{
 			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), [[self getAI] cxx_name].value_or("(null)"));
-			if (errorCache == nil)  errorCache = [[NSMutableSet alloc] init];
-			[errorCache addObject:key];
+			errorCache.insert(key);
 		}
 		
 		// Select nothing
@@ -2466,35 +2483,32 @@ using ooscript::Context;
 }
 
 
-- (void) setCoordinates:(NSString *)system_x_y_z
+- (void) setCoordinates:(id)system_x_y_z	// called by name (ADR-0043 item 21)
 {
-	NSArray*	tokens = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(system_x_y_z)));
-	NSString*	systemString = nil;
-	NSString*	xString = nil;
-	NSString*	yString = nil;
-	NSString*	zString = nil;
+	const std::vector<std::string>	tokens = oo::str::tokens(oo::StdString(system_x_y_z));
 	
-	if ([tokens count] != 4)
+	if (tokens.size() != 4)
 	{
 		OO_LOG("ai.syntax.setCoordinates", "***** ERROR: cannot setCoordinates: '{}'.", oo::DescriptionOf(system_x_y_z));
 		return;
 	}
 	
-	systemString = (NSString *)[tokens objectAtIndex:0];
-	xString = (NSString *)[tokens objectAtIndex:1];
-	if ([xString hasPrefix:@"rand:"])
-		xString = [NSString stringWithFormat:@"%.3f", bellf([(NSString*)[[xString componentsSeparatedByString:@":"] objectAtIndex:1] intValue])];
-	yString = (NSString *)[tokens objectAtIndex:2];
-	if ([yString hasPrefix:@"rand:"])
-		yString = [NSString stringWithFormat:@"%.3f", bellf([(NSString*)[[yString componentsSeparatedByString:@":"] objectAtIndex:1] intValue])];
-	zString = (NSString *)[tokens objectAtIndex:3];
-	if ([zString hasPrefix:@"rand:"])
-		zString = [NSString stringWithFormat:@"%.3f", bellf([(NSString*)[[zString componentsSeparatedByString:@":"] objectAtIndex:1] intValue])];
+	const std::string &systemString = tokens[0];
+	std::string xString = tokens[1];
+	if (oo::str::hasPrefix(xString, "rand:"))
+		xString = oo::str::format("%.3f", bellf(RandArgument(xString)));
+	std::string yString = tokens[2];
+	if (oo::str::hasPrefix(yString, "rand:"))
+		yString = oo::str::format("%.3f", bellf(RandArgument(yString)));
+	std::string zString = tokens[3];
+	if (oo::str::hasPrefix(zString, "rand:"))
+		zString = oo::str::format("%.3f", bellf(RandArgument(zString)));
 	
-	HPVector posn = make_HPvector([xString floatValue], [yString floatValue], [zString floatValue]);
+	// -floatValue
+	HPVector posn = make_HPvector((float)oo::str::doubleValue(xString), (float)oo::str::doubleValue(yString), (float)oo::str::doubleValue(zString));
 	GLfloat	scalar = 1.0;
 	
-	coordinates = [UNIVERSE cxx_coordinatesForPosition:posn withCoordinateSystem:oo::StdString(systemString) returningScalar:&scalar];
+	coordinates = [UNIVERSE cxx_coordinatesForPosition:posn withCoordinateSystem:systemString returningScalar:&scalar];
 	
 	[shipAI message:"APPROACH_COORDINATES"];
 }
@@ -2514,7 +2528,7 @@ using ooscript::Context;
 	/*- selects the nearest station it can find -*/
 	int				ent_count = UNIVERSE->n_entities;
 	Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;
 	int				i;
@@ -2579,14 +2593,14 @@ using ooscript::Context;
 }
 
 
-- (void) addFuel:(NSString*) fuel_number
+- (void) addFuel:(id)fuel_number	// called by name (ADR-0043 item 21)
 {
 	[self setFuel:[self fuel] + [fuel_number intValue] * 10];
 }
 
 
 
-- (void) scriptActionOnTarget:(NSString *)action
+- (void) scriptActionOnTarget:(id)action	// called by name (ADR-0043 item 21)
 {
 	PlayerEntity	*player = PLAYER;
 	ShipEntity		*targEnt = [self primaryTarget];
@@ -2610,9 +2624,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom(oo::NSArrayFromObjects(std::vector<id>{ action }))
 						  allowingAIMethods:YES
-							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
+							withContextName:oo::str::format("<AI \"%s\" state %s - scriptActionOnTarget:>", [[self getAI] cxx_name].value_or("(null)").c_str(), [[self getAI] cxx_state].value_or("(null)").c_str())
 								  forTarget:targEnt];
 		[player checkScript];	// react immediately to any changes this makes
 		[player setScriptTarget:oldTarget];
@@ -2620,7 +2634,7 @@ using ooscript::Context;
 }
 
 
-- (void) safeScriptActionOnTarget:(NSString *)action
+- (void) safeScriptActionOnTarget:(id)action	// called by name (ADR-0043 item 21)
 {
 	PlayerEntity	*player = PLAYER;
 	ShipEntity		*targEnt = [self primaryTarget];
@@ -2630,9 +2644,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom(oo::NSArrayFromObjects(std::vector<id>{ action }))
 						  allowingAIMethods:YES
-							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
+							withContextName:oo::str::format("<AI \"%s\" state %s - safeScriptActionOnTarget:>", [[self getAI] cxx_name].value_or("(null)").c_str(), [[self getAI] cxx_state].value_or("(null)").c_str())
 								  forTarget:targEnt];
 		[player setScriptTarget:oldTarget];
 	}
@@ -2640,19 +2654,18 @@ using ooscript::Context;
 
 
 // Send own ship script a message.
-- (void) sendScriptMessage:(NSString *)message
+- (void) sendScriptMessage:(id)message	// called by name (ADR-0043 item 21)
 {
-	NSArray *components = oo::NSArrayFromStrings(oo::str::tokens(oo::StdString(message)));
+	const std::vector<std::string> components = oo::str::tokens(oo::StdString(message));
 	
-	if ([components count] == 1)
+	if (components.size() == 1)
 	{
 		[self doScriptEvent:cxx_OOJSIDFromString(oo::StdString(message))];	// one component: message is not nil
 	}
-	else
+	else if (!components.empty())	// (an empty message raised at -objectAtIndex:0)
 	{
-		NSString *function = [components objectAtIndex:0];
-		components = [components subarrayWithRange:NSMakeRange(1, [components count] - 1)];
-		[self doScriptEvent:cxx_OOJSIDFromString(oo::StdString(function)) withArgument:components];
+		const std::string &function = components[0];
+		[self doScriptEvent:cxx_OOJSIDFromString(function) withArgument:oo::NSArrayFromStrings(std::vector<std::string>(components.begin() + 1, components.end()))];
 	}
 }
 
@@ -2669,22 +2682,22 @@ using ooscript::Context;
 }
 
 
-- (void) ai_debugMessage:(NSString *)message
+- (void) ai_debugMessage:(id)message	// called by name (ADR-0043 item 21)
 {
-	NSString *desc = [NSString stringWithFormat:@"%@ %d", oo::NSStringOrNil([self cxx_name]), [self universalID]];
-	if ([self isPlayer])  desc = @"player autopilot";
-	OO_LOG("ai.takeAction.debugMessage", "DEBUG: AI MESSAGE from {}: {}", oo::DescriptionOf(desc), oo::DescriptionOf(message));
+	std::string desc = oo::str::format("%s %d", [self cxx_name].value_or("(null)").c_str(), [self universalID]);
+	if ([self isPlayer])  desc = "player autopilot";
+	OO_LOG("ai.takeAction.debugMessage", "DEBUG: AI MESSAGE from {}: {}", desc, oo::DescriptionOf(message));
 }
 
 
 
 // racing code TODO
-- (void) targetFirstBeaconWithCode:(NSString*) code
+- (void) targetFirstBeaconWithCode:(id)code	// called by name (ADR-0043 item 21)
 {
-	NSArray			*all_beacons = oo::NSArrayFromObjects([UNIVERSE cxx_listBeaconsWithCode:oo::StdString(code)]);
-	if ([all_beacons count])
+	const std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>> all_beacons = [UNIVERSE cxx_listBeaconsWithCode:oo::StdString(code)];
+	if (!all_beacons.empty())
 	{
-		[self addTarget:(ShipEntity*)[all_beacons objectAtIndex:0]];
+		[self addTarget:(ShipEntity*)all_beacons[0].get()];
 		[shipAI message:"TARGET_FOUND"];
 	}
 	else
@@ -2692,9 +2705,9 @@ using ooscript::Context;
 }
 
 
-- (void) targetNextBeaconWithCode:(NSString*) code
+- (void) targetNextBeaconWithCode:(id)code	// called by name (ADR-0043 item 21)
 {
-	NSArray			*all_beacons = oo::NSArrayFromObjects([UNIVERSE cxx_listBeaconsWithCode:oo::StdString(code)]);
+	const std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>> all_beacons = [UNIVERSE cxx_listBeaconsWithCode:oo::StdString(code)];
 	ShipEntity		*current_beacon = [self primaryTarget];
 	
 	if ((!current_beacon)||(![current_beacon isBeacon]))
@@ -2705,7 +2718,9 @@ using ooscript::Context;
 	}
 	
 	// find the current beacon in the list..
-	NSUInteger i = [all_beacons indexOfObject:current_beacon];
+	// -indexOfObject: (identity for entities)
+	const auto found = std::find_if(all_beacons.begin(), all_beacons.end(), [current_beacon](const oo::ObjCRef<Entity *> &beacon) { return beacon.get() == current_beacon; });
+	NSUInteger i = found != all_beacons.end() ? (NSUInteger)(found - all_beacons.begin()) : NSNotFound;
 	
 	if (i == NSNotFound)
 	{
@@ -2715,10 +2730,10 @@ using ooscript::Context;
 	
 	i++;	// next index
 	
-	if (i < [all_beacons count])
+	if (i < all_beacons.size())
 	{
 		// locate current target in list
-		[self addTarget:(ShipEntity*)[all_beacons objectAtIndex:i]];
+		[self addTarget:(ShipEntity*)all_beacons[i].get()];
 		[shipAI message:"TARGET_FOUND"];
 	}
 	else
@@ -2796,13 +2811,12 @@ using ooscript::Context;
 		return NO;
 	}
 	
-	NSArray			*sDests = nil;
 	OOSystemID		targetSystem;
 	NSUInteger		i = 0;
 	
 	// get a list of destinations within range
-	sDests = oo::ObjectFromPList([UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * fuel]);
-	NSUInteger n_dests = [sDests count];
+	const oo::PList sDests = [UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * fuel];
+	NSUInteger n_dests = sDests.count();
 	
 	// if none available report to the AI and exit
 	if (n_dests == 0)
@@ -2834,7 +2848,7 @@ using ooscript::Context;
 		}
 		
 		
-		targetSystem = oo::PListView(oo::PListView(sDests).at<NSDictionary *>(i)).get<int>(@"sysID");
+		targetSystem = sDests.at(i)->get<int>("sysID");
 	}
 	else
 	{
@@ -2842,7 +2856,7 @@ using ooscript::Context;
 		
 		for (i = 0; i < n_dests; i++)
 		{
-			if (systemID == oo::PListView(oo::PListView(sDests).at<NSDictionary *>(i)).get<int>(@"sysID")) break;
+			if (systemID == sDests.at(i)->get<int>("sysID")) break;
 		}
 		
 		if (i == n_dests)	// no match found
@@ -2850,7 +2864,7 @@ using ooscript::Context;
 			return NO;
 		}
 	}
-	float dist = oo::PListView(oo::PListView(sDests).at<NSDictionary *>(i)).get<float>(@"distance");
+	float dist = sDests.at(i)->get<float>("distance");
 	if (dist > [self maxHyperspaceDistance] || dist > fuel/10.0f) 
 	{
 		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, fuel);
@@ -2911,11 +2925,7 @@ using ooscript::Context;
 		[(ShipEntity*)[self foundTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];  // you have been warned!!
 	}
 	
-	NSString *context = nil;
-#ifndef NDEBUG
-	context = [NSString stringWithFormat:@"%@ broadcastDistressMessage", [other shortDescription]];
-#endif
-	[shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:oo::OptionalString(context)];
+	[shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:DebugContext(other, "broadcastDistressMessage")];
 	
 }
 
@@ -2948,7 +2958,7 @@ using ooscript::Context;
 
 #define STATION_STUB_BASE(PROTO, NAME)  PROTO { OO_LOG("ai.invalid.notAStation", "Attempt to use station AI method \"{}\" on non-station {}.", NAME, oo::DescriptionOf(self)); }
 #define STATION_STUB_NOARG(NAME)	STATION_STUB_BASE(- (void) NAME, #NAME)  // NOLINT(bugprone-macro-parentheses): Objective-C method-name macro arg, pre-existing; behaviour unchanged by this retarget.
-#define STATION_STUB_ARG(NAME)		STATION_STUB_BASE(- (void) NAME (NSString *)param, #NAME)
+#define STATION_STUB_ARG(NAME)		STATION_STUB_BASE(- (void) NAME (id)param, #NAME)	// called by name (ADR-0043 item 21)
 
 STATION_STUB_NOARG(increaseAlertLevel)
 STATION_STUB_NOARG(decreaseAlertLevel)
