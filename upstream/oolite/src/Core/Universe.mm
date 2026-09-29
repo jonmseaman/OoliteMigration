@@ -105,6 +105,7 @@ MA 02110-1301, USA.
 #if OO_LOCALIZATION_TOOLS
 #import "OOConvertSystemDescriptions.h"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
@@ -5792,7 +5793,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 						
 						if (definedRoll != nil)
 						{
-							stationRoll = OODoubleFromObject(definedRoll, stationRoll);
+							const oo::PList rollValue = oo::PListFrom(definedRoll);	// OODoubleFromObject
+							stationRoll = oo::plist_get::realFrom<double>(&rollValue, stationRoll);
 						}
 						else
 						{
@@ -8285,19 +8287,19 @@ id ObjectForKeyIn(const oo::PList &dict, std::string_view key)
 }
 
 
-// get<Vector> / get<HPVector>: OOVectorFromObject / OOHPVectorFromObject (not migrated yet) of the
+// get<Vector> / get<HPVector>: OOVectorFromPList / OOHPVectorFromPList of the
 // value; the zero vector for a null configuration (messaging nil).
 Vector VectorIn(const oo::PList &dict, std::string_view key, Vector fallback)
 {
 	if (dict.isNull())  return kZeroVector;
-	return OOVectorFromObject(ObjectForKeyIn(dict, key), fallback);
+	return OOVectorFromPList(dict.find(key), fallback);
 }
 
 
 HPVector HPVectorIn(const oo::PList &dict, std::string_view key, HPVector fallback)
 {
 	if (dict.isNull())  return kZeroHPVector;
-	return OOHPVectorFromObject(ObjectForKeyIn(dict, key), fallback);
+	return OOHPVectorFromPList(dict.find(key), fallback);
 }
 
 
@@ -8383,7 +8385,7 @@ BOOL FuzzyBooleanIn(const oo::PList &dict, std::string_view key, float fallback)
 {
 	if (dict.isNull())  return NO;
 	const oo::PList *value = dict.find(key);
-	return OOFuzzyBooleanFromObject((value != nullptr) ? oo::ObjectFromPList(*value) : nil, fallback);
+	return OOFuzzyBooleanFromPList(value, fallback);
 }
 
 
