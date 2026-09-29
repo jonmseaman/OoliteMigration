@@ -3034,7 +3034,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					OOCreditsQuantity shipprice = 0;
 					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
-						shipprice = [self priceForShipKey:oo::NSStringOrNil(key)];
+						shipprice = [self cxx_priceForShipKey:key.value_or("")];
 					}
 
 					if ([self buySelectedShip])
