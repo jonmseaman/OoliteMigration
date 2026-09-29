@@ -283,7 +283,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 
 - (void) setColor:(OOColor *)color forRow:(OOGUIRow)row;
 
-- (id) objectForRow:(OOGUIRow)row;
+- (oo::PList) objectForRow:(OOGUIRow)row;	// a string, or an array of column strings; null out of range
 - (std::optional<std::string>) cxx_keyForRow:(OOGUIRow)row;
 - (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key;
 - (OOGUIRow) selectedRow;

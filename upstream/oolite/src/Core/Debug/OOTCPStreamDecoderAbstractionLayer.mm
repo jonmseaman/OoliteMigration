@@ -95,11 +95,14 @@ void OOALRelease(OOALObjectRef object)
 
 OOALStringRef OOTypeDescription(OOALObjectRef object)
 {
-	// The class name of the object the handle stood for ([[object class] description]).
+	// What the handle holds: "(null)" for nothing, else the property-list type's name ("string",
+	// "array", ...). It was the class name of the Foundation object built for the value
+	// ([[object class] description], GNUstep's private classes such as GSCInlineString).
 	auto *mutableObject = const_cast<OOALObject *>(object);
 	if (mutableObject->typeDescription == nullptr)
 	{
-		mutableObject->typeDescription.reset(NewObject(oo::PList(oo::DescriptionOf([oo::ObjectFromPList(object->value) class]))));
+		const std::string name = object->value.isNull() ? std::string("(null)") : std::string(oo::typeName(object->value.type()));
+		mutableObject->typeDescription.reset(NewObject(oo::PList(name)));
 	}
 	return mutableObject->typeDescription.get();
 }
