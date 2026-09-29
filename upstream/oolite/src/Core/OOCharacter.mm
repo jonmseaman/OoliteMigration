@@ -136,11 +136,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-+ (OOCharacter *) characterWithDictionary:(id)dict
++ (OOCharacter *) characterWithDictionary:(const oo::PList &)dict
 {
 	OOCharacter	*character = [[[OOCharacter alloc] init] autorelease];
-	// (read as an oo::PList, which carries any non-plist values exactly: proposed ADR-0043 Amendment 2)
-	[character setCharacterFromDictionary:oo::PListFrom(dict)];
+	// (an oo::PList, which carries any non-plist values exactly: proposed ADR-0043 Amendment 2)
+	[character setCharacterFromDictionary:dict];
 	
 	return character;
 }
@@ -347,7 +347,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		[self cxx_setLegalStatus:100];
 		[self setInsuranceCredits:0];
 		[self cxx_setName:OO_DESC("character-thargoid-name")];
-		[self setShortDescription:oo::NSStringFrom(OO_DESC("character-a-thargoid"))];
+		[self setShortDescription:OO_DESC("character-a-thargoid")];
 		specialSetUpDone = YES;
 	}
 	
@@ -424,9 +424,9 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (void)setShortDescription:(id)value
+- (void)setShortDescription:(const std::optional<std::string> &)value
 {
-	_shortDescription = oo::OptionalString(value);
+	_shortDescription = value;
 }
 
 
