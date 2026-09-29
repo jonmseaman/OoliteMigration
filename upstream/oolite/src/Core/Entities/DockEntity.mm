@@ -1265,7 +1265,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (BOOL) setUpShipFromDictionary:(id) dict	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpShipFromDictionary:(const oo::PList &) dict
 {
 	OOJS_PROFILE_ENTER
 	

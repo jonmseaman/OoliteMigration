@@ -579,7 +579,7 @@ typedef enum
 
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
 - (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
-- (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;

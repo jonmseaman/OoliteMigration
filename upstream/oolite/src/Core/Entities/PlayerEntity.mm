@@ -1463,7 +1463,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	const std::optional<std::string> shipDataKey = [self cxx_shipDataKey];
 	const oo::PList shipDict = shipDataKey.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipDataKey] : oo::PList();
 	if (shipDict.isNull())  return NO;
-	if (![self setUpShipFromDictionary:oo::ObjectFromPList(shipDict)])  return NO;
+	if (![self setUpShipFromDictionary:shipDict])  return NO;
 	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", oo::DescriptionOf([self shipDataKey]), [self fuelChargeRate]);
 
 	// ship depreciation
@@ -2478,9 +2478,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (BOOL) setUpShipFromDictionary:(id) inShipDict	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpShipFromDictionary:(const oo::PList &) shipDict
 {
-	const oo::PList shipDict = oo::PListFrom(inShipDict);
 	DESTROY(compassTarget);
 	[UNIVERSE setBlockJSPlayerShipProps:NO];	// full access to player.ship properties!
 

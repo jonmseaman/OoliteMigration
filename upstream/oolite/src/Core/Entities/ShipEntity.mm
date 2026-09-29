@@ -376,7 +376,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 	_nextAegisCheck = -0.1f;
 	aiScriptWakeTime = 0;
 	
-	if (![self setUpShipFromDictionary:oo::ObjectFromPList(dict)])
+	if (![self setUpShipFromDictionary:dict])
 	{
 		[self release];
 		self = nil;
@@ -671,11 +671,10 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 
 
 
-- (BOOL) setUpShipFromDictionary:(id) inShipDict	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpShipFromDictionary:(const oo::PList &) shipDict
 {
 	OOJS_PROFILE_ENTER
 
-	const oo::PList shipDict = oo::PListFrom(inShipDict);
 	if (![self cxx_setUpFromDictionary:shipDict]) return NO;
 
 	// NPC-only settings.
