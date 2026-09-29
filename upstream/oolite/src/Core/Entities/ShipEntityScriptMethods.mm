@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 
 	if (shipKey.has_value())
 	{
-		item = [[UNIVERSE newShipWithName:oo::NSStringFrom(*shipKey)] autorelease];
+		item = [[UNIVERSE cxx_newShipWithName:*shipKey] autorelease];
 		if (item != nil)  [self dumpItem:item];
 	}
 	
@@ -52,7 +52,7 @@ MA 02110-1301, USA.
 
 	if (role.has_value())
 	{
-		item = [[UNIVERSE newShipWithRole:oo::NSStringFrom(*role)] autorelease];
+		item = [[UNIVERSE cxx_newShipWithRole:*role] autorelease];
 		if (item != nil)  [self dumpItem:item];
 	}
 	
@@ -74,7 +74,7 @@ MA 02110-1301, USA.
 
 	do
 	{
-		spawned = [UNIVERSE spawnShipWithRole:oo::NSStringFrom(role) near:ship];
+		spawned = [UNIVERSE cxx_spawnShipWithRole:role near:ship];
 		if (spawned != nil)
 		{
 			[spawned setTemperature:[self randomEjectaTemperature]];
