@@ -908,7 +908,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) setSystemID:(OOSystemID) sid
 {
 	system_id = sid;
-	galaxy_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:sid inGalaxy:galaxy_number]);
+	galaxy_coordinates = PointFromString(oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:sid inGalaxy:galaxy_number]));
 	chart_centre_coordinates = galaxy_coordinates;
 	target_chart_centre = chart_centre_coordinates;
 }
@@ -935,7 +935,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) setTargetSystemID:(OOSystemID) sid
 {
 	target_system_id = sid;
-	cursor_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystemKey:[UNIVERSE keyForPlanetOverridesForSystem:sid inGalaxy:galaxy_number]]);
+	cursor_coordinates = PointFromString(oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystemKey:[UNIVERSE cxx_keyForPlanetOverridesForSystem:sid inGalaxy:galaxy_number].value_or("")]));
 }
 
 
@@ -3145,7 +3145,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			system_id = target_system_id;
 			info_system_id = target_system_id;
 			[UNIVERSE setSystemTo:system_id];
-			galaxy_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+			galaxy_coordinates = PointFromString(oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]));
 			
 			[UNIVERSE setUpSpace];
 			// run initial system population
@@ -7622,7 +7622,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (double) hyperspaceJumpDistance
 {
-	NSPoint targetCoordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:[self nextHopTargetSystemID] inGalaxy:galaxy_number]);
+	NSPoint targetCoordinates = PointFromString(oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:[self nextHopTargetSystemID] inGalaxy:galaxy_number]));
 	return distanceBetweenPlanetPositions(targetCoordinates.x,targetCoordinates.y,galaxy_coordinates.x,galaxy_coordinates.y);
 }
 
@@ -7746,7 +7746,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	info_system_id = system_id;
 	
 	[self setBounty:0 withReason:kOOLegalStatusReasonNewGalaxy];	// let's make a fresh start!
-	cursor_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+	cursor_coordinates = PointFromString(oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]));
 
 	[self witchEnd]; // sets coordinates, calls exiting witchspace JS events
 }
@@ -7905,7 +7905,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	
 	// set clock after "playerWillEnterWitchspace" and before  removeAllEntitiesExceptPlayer, to allow escorts time to follow their mother. 
-	NSPoint destCoords = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:sTo inGalaxy:galaxy_number]);
+	NSPoint destCoords = PointFromString(oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:sTo inGalaxy:galaxy_number]));
 	double distance = distanceBetweenPlanetPositions(destCoords.x,destCoords.y,galaxy_coordinates.x,galaxy_coordinates.y);
 	
 	// if we just escaped a system gone nova, make sure all nova parameters are reset
@@ -8076,14 +8076,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	targetSystemName =	oo::OptionalString([UNIVERSE getSystemName:target_system_id]);
-	oo::PList systemInfo = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystem:target_system_id inGalaxy:galaxy_number]);
+	oo::PList systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:target_system_id inGalaxy:galaxy_number];
 	NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) targetSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
 
 	OOSystemID nextHop = [self nextHopTargetSystemID];
 	if (nextHop != target_system_id) {
 		std::optional<std::string> nextHopSystemName = oo::OptionalString([UNIVERSE getSystemName:nextHop]);
-		systemInfo = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystem:nextHop inGalaxy:galaxy_number]);
+		systemInfo = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:nextHop inGalaxy:galaxy_number];
 		concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) nextHopSystemName = oo::OptionalString(DESC(@"status-unknown-system"));
 		// (a nil name raised in the expansion)
@@ -10341,12 +10341,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (toScreen == GUI_SCREEN_SYSTEM_DATA)
 		{
 			// system data screen: ensure correct sun light color is used on miniature planet
-			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]]]];
+			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]])]];
 		}
 		else
 		{
 			// any other screen: reset local sun light color
-			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]]]];
+			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]])]];
 		}
 		
 		if (![[UNIVERSE gameController] isGamePaused])

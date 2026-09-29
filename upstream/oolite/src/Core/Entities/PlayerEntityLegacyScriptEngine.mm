@@ -2367,7 +2367,7 @@ static int shipsFound;
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:planetKey]);
+	const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:oo::StdString(planetKey)];
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(planetKey));
@@ -2423,7 +2423,7 @@ static int shipsFound;
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:moonKey]);
+	const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:oo::StdString(moonKey)];
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(moonKey));

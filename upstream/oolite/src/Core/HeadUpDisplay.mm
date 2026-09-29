@@ -2525,7 +2525,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
 	alpha *= cached.alpha;
 	std::string dest = oo::StdString([UNIVERSE getSystemName:[PLAYER targetSystemID]]);	// nil drew nothing, as "" does
-	NSInteger concealment = oo::PListView([[UNIVERSE systemManager] getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+	NSInteger concealment = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = oo::StdString(DESC(@"status-unknown-system"));
 
 	SET_COLOR(green_color);

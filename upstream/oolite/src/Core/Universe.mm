@@ -8835,7 +8835,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (OOGovernmentID) getSystemGovernment:(OOSystemID) sys
 {
-	return [[systemManager getProperty:@"government" forSystem:sys inGalaxy:galaxyID] unsignedCharValue];
+	return [oo::ObjectFromPList([systemManager cxx_getProperty:"government" forSystem:sys inGalaxy:galaxyID]) unsignedCharValue];
 }
 
 

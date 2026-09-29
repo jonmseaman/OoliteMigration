@@ -1970,15 +1970,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				{
 					if (systemKey == oo::StdString(PLANETINFO_UNIVERSAL_KEY))
 					{
-						[manager setUniversalProperties:oo::ObjectFromPList(values)];
+						[manager cxx_setUniversalProperties:values];
 					}
 					else if (systemKey == oo::StdString(PLANETINFO_INTERSTELLAR_KEY))
 					{
-						[manager setInterstellarProperties:oo::ObjectFromPList(values)];
+						[manager cxx_setInterstellarProperties:values];
 					}
 					else
 					{
-						[manager setProperties:oo::ObjectFromPList(values) forSystemKey:oo::NSStringFrom(systemKey)];
+						[manager cxx_setProperties:values forSystemKey:systemKey];
 					}
 				}
 			}
