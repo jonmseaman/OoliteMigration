@@ -2452,8 +2452,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[self setUpWeaponSounds];
 	
-	[self setGalacticHyperspaceBehaviourTo:oo::NSStringFrom(StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_behaviour").value_or("BEHAVIOUR_STANDARD"))];
-	[self setGalacticHyperspaceFixedCoordsTo:oo::NSStringFrom(StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_fixed_coords").value_or("96 96"))];
+	[self setGalacticHyperspaceBehaviourTo:StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_behaviour").value_or("BEHAVIOUR_STANDARD")];
+	[self setGalacticHyperspaceFixedCoordsTo:StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_fixed_coords").value_or("96 96")];
 	
 	cloaking_device_active = NO;
 
@@ -7841,7 +7841,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		else
 		{
-			[self setFuelLeak:oo::NSStringFrom(oo::str::format("%f", (randf() + randf()) * 5.0))];
+			[self setFuelLeak:oo::str::format("%f", (randf() + randf()) * 5.0)];
 		}
 	}
 #endif	
