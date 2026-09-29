@@ -50,9 +50,10 @@ static const char * const kOOLogPlanetTextureGen			= "texture.planet.generate";	
 #import "OOFoundationBridge.h"
 
 
-static FloatRGB FloatRGBFromDictColor(id dictionary, const char *key)	// dictionary: see getPlanetTextureNameFor:
+static FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const char *key)	// dictionary: see getPlanetTextureNameFor:
 {
-	OOColor *color = [dictionary objectForKey:oo::NSStringFrom(key)];
+	const oo::PList *value = dictionary.find(key);
+	OOColor *color = value != nullptr ? oo::ObjectIn(*value) : nil;	// an Object node holding an OOColor
 	if (color == nil)
 	{
 		// could not get a color from the dicitionary, return white color instead of hitting the assert below
@@ -115,7 +116,7 @@ static void fillSquareImageWithPlanetTex(unsigned char * imageBuffer, int width,
 
 #define PROC_TEXTURE_SIZE	512
 
-+ (BOOL) getPlanetTextureNameFor:(id)planetInfo intoData:(unsigned char **)textureData width:(GLuint *)textureWidth height:(GLuint *)textureHeight
++ (BOOL) getPlanetTextureNameFor:(const oo::PList &)planetInfo intoData:(unsigned char **)textureData width:(GLuint *)textureWidth height:(GLuint *)textureHeight
 {
 	int					texture_h = PROC_TEXTURE_SIZE;
 	int					texture_w = PROC_TEXTURE_SIZE;
@@ -131,7 +132,7 @@ static void fillSquareImageWithPlanetTex(unsigned char * imageBuffer, int width,
 	*textureWidth = texture_w;
 	*textureHeight = texture_h;
 	
-	float land_fraction = [[planetInfo objectForKey:@"land_fraction"] floatValue];
+	float land_fraction = planetInfo.get<float>("land_fraction", 0.0f);	// -floatValue of the number (0 when absent)
 	float sea_bias = land_fraction - 1.0;
 	
 	OO_LOG(kOOLogPlanetTextureGen, "genning texture for land_fraction {:.5f}", land_fraction);

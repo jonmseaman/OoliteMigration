@@ -197,11 +197,11 @@ oo::PList DictionaryOrEmpty(const oo::PList &dictionary)
 }
 
 
-// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
-id ObjectForKey(const oo::PList &dict, std::string_view key)
+// -objectForKey: as plist data (a null PList when absent), for +cxx_colorWithDescription:.
+oo::PList ValueForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? *value : oo::PList();
 }
 
 
@@ -289,10 +289,10 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	float		cloudAlpha;
 	
 	
-	clearSkyColor = [OOColor colorWithDescription:ObjectForKey(dict, "atmosphere_color")];
-	cloudColor = [OOColor colorWithDescription:ObjectForKey(dict, "cloud_color")];
-	polarClearSkyColor = [OOColor colorWithDescription:ObjectForKey(dict, "polar_atmosphere_color")];
-	polarCloudColor = [OOColor colorWithDescription:ObjectForKey(dict, "polar_cloud_color")];
+	clearSkyColor = [OOColor cxx_colorWithDescription:ValueForKey(dict, "atmosphere_color")];
+	cloudColor = [OOColor cxx_colorWithDescription:ValueForKey(dict, "cloud_color")];
+	polarClearSkyColor = [OOColor cxx_colorWithDescription:ValueForKey(dict, "polar_atmosphere_color")];
+	polarCloudColor = [OOColor cxx_colorWithDescription:ValueForKey(dict, "polar_cloud_color")];
 	cloudAlpha = OOClamp_0_1_f(dict.get<float>("cloud_alpha", 1.0));
 	
 	if (clearSkyColor != nil)
@@ -441,7 +441,8 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	else
 		planet_seed = p_seed.a * 7 + p_seed.c * 11 + p_seed.e * 13;	// pseudo-random set-up for vertex colours
 	
-	id textureObject = ObjectForKey(dict, "_oo_textureObject");
+	const oo::PList *textureValue = dict.find("_oo_textureObject");	// an Object node
+	id textureObject = textureValue != nullptr ? oo::ObjectIn(*textureValue) : nil;
 	OOTexture *texture = [textureObject isKindOfClass:[OOTexture class]] ? (OOTexture *)textureObject : nil;
 	if (texture != nil)
 	{
@@ -1618,7 +1619,7 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	GLuint width, height;
 	
 	fillRanNoiseBuffer();
-	if (![TextureStore getPlanetTextureNameFor:oo::ObjectFromPList(info)
+	if (![TextureStore getPlanetTextureNameFor:info
 									  intoData:&data
 										 width:&width
 										height:&height])

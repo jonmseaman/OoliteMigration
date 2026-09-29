@@ -702,7 +702,7 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 - (BOOL) inInterstellarSpace;
 
 // value: a script value (an Objective-C object, nil to remove); manifest nullopt where nil was passed.
-- (void) cxx_setSystemDataKey:(const std::string &) key value:(id) object fromManifest:(const std::optional<std::string> &)manifest;
+- (void) cxx_setSystemDataKey:(const std::string &) key value:(const oo::PList &) value fromManifest:(const std::optional<std::string> &)manifest;
 - (void) cxx_setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key value:(id)object fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
 - (id) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value
 - (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// byte order of the key

@@ -8621,9 +8621,9 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 // layer 2
 // used by legacy script engine and sun going nova
-- (void) cxx_setSystemDataKey:(const std::string &)key value:(id)object fromManifest:(const std::optional<std::string> &)manifest
+- (void) cxx_setSystemDataKey:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest
 {
-	[self cxx_setSystemDataForGalaxy:galaxyID planet:systemID key:key value:object fromManifest:manifest forLayer:OO_LAYER_OXP_DYNAMIC];
+	[self cxx_setSystemDataForGalaxy:galaxyID planet:systemID key:key value:oo::ObjectFromPList(value) fromManifest:manifest forLayer:OO_LAYER_OXP_DYNAMIC];	// TRANSITIONAL: until -cxx_setSystemDataForGalaxy:... takes a PList
 }
 
 
