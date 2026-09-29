@@ -487,7 +487,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	
 	seed_for_planet_description(p_seed);
 	
-	oo::PList	planetInfo = DictionaryOrEmpty(oo::PListFrom([UNIVERSE generateSystemData:p_seed]));
+	oo::PList	planetInfo = DictionaryOrEmpty([UNIVERSE cxx_generateSystemData:p_seed]);
 	int	radius_km = dict.get<int>(oo::StdString(KEY_RADIUS),
 						planetInfo.get<int>(oo::StdString(KEY_RADIUS)));
 	int techlevel = dict.get<int>(oo::StdString(KEY_TECHLEVEL),
@@ -1240,7 +1240,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	launch_pos.y += start_distance * vf.y;
 	launch_pos.z += start_distance * vf.z;
 
-	shuttle_ship = [UNIVERSE newShipWithRole:@"shuttle"];   // retain count = 1
+	shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
 		if (![shuttle_ship crew])
