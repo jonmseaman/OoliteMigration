@@ -206,7 +206,7 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 - (void)performJSConsoleCommand:(const std::string &)command
 {
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value commandVal = OOJSValueFromNativeObject(context, oo::NSStringFrom(command));
+	ooscript::Value commandVal = OOJSValueFromPList(context, oo::PList(command));
 	OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
 	[_script callMethod:OOJSID("consolePerformJSCommand") inContext:context withArguments:&commandVal count:1 result:NULL];
 	OOJSStopTimeLimiter();

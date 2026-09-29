@@ -490,7 +490,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			{
 				if ([entity cxx_localShipyard] == nullptr) [entity generateShipyard];
 				std::vector<oo::PList> *shipyard = [entity cxx_localShipyard];
-				*value_raw = OOJSValueFromNativeObject(context, shipyard != nullptr ? oo::ObjectFromPList(oo::PList(*shipyard)) : nil);
+				*value_raw = OOJSValueFromPList(context, shipyard != nullptr ? oo::PList(*shipyard) : oo::PList());
 			}
 			return YES;
 		}
