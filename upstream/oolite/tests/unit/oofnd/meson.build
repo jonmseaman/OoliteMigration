@@ -71,6 +71,7 @@ oofnd_plist_tests = [
     'test_plist_get',
     'test_plist_carrier',
     'test_plist_game_tuples',
+    'test_plist_description',
 ]
 
 foreach t : oofnd_plist_tests
@@ -95,6 +96,7 @@ oofnd_objc_tests = [
     'test_objc_ref',
     'test_objc_call_by_name',
     'test_objc_description',
+    'test_objc_plist',
 ]
 
 foreach t : oofnd_objc_tests
