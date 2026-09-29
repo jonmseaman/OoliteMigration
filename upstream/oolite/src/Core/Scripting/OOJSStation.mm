@@ -432,7 +432,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_allegiance:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, [entity allegiance]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([entity cxx_allegiance]));
 			return YES;
 		}
 			
@@ -497,7 +497,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_market:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, [entity localMarketForScripting]);
+			*value_raw = OOJSValueFromPList(context, [entity cxx_localMarketForScripting]);
 			return YES;
 		}
 
@@ -553,7 +553,7 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
-				[entity setAllegiance:oo::NSStringOrNil(sValue)];
+				[entity cxx_setAllegiance:sValue];
 				return YES;
 			}
 			break;
@@ -1107,7 +1107,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 
-	[station setPrice:(NSUInteger)price forCommodity:oo::NSStringOrNil(commodity)];
+	[station cxx_setPrice:(NSUInteger)price forCommodity:commodity.value_or("")];
 
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
@@ -1150,7 +1150,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 
-	[station setQuantity:(OOCargoQuantity)quantity forCommodity:commodity];
+	[station cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:oo::StdString(commodity)];
 	
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
