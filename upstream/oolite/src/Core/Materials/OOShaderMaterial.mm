@@ -34,7 +34,6 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOShaderUniform.h"
 #import "OOFunctionAttributes.h"
-#import "OOCollectionExtractors.h"
 #import "OOShaderProgram.h"
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
