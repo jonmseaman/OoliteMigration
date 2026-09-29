@@ -3083,7 +3083,7 @@ static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs
 	double				sdist, distance = 1E32;
 	
 	StationEntity		*se = nil;
-	foreach (se, [UNIVERSE stations])
+	foreach (se, oo::NSArrayFromObjects([UNIVERSE cxx_stations]))
 	{
 		sdist = HPdistance2([thisEnt position],[se position]);
 
@@ -4138,7 +4138,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (adjustment > 0)
 	{
-		ok = [thisEnt addCargo:[UNIVERSE getContainersOfCommodity:oo::NSStringOrNil(commodity) :adjustment]]; // non-reified templates
+		ok = [thisEnt addCargo:oo::NSArrayFromObjects([UNIVERSE cxx_getContainersOfCommodity:commodity.value_or("") :adjustment])]; // non-reified templates
 	}
 	else if (adjustment < 0)
 	{
@@ -4388,7 +4388,7 @@ static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::Call
 		const std::optional<std::string> role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 		const std::optional<std::string> category = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 
-		OOJS_RETURN_BOOL([UNIVERSE role:oo::NSStringOrNil(role) isInCategory:oo::NSStringOrNil(category)]);
+		OOJS_RETURN_BOOL(role.has_value() && category.has_value() && [UNIVERSE cxx_role:*role isInCategory:*category]);	// a nil role or category matched nothing
 	}
 	else
 	{

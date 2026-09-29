@@ -682,7 +682,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		std::optional<std::string> titleKey = GetParameterString(context, params, "titleKey");
 		if (titleKey.has_value())
 		{
-			std::optional<std::string> message = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*titleKey)]);
+			std::optional<std::string> message = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*titleKey)]);
 			if (message.has_value())
 			{
 				[player cxx_setMissionTitle:oo::OptionalString(OOExpand(oo::NSStringFrom(*message)))];
@@ -764,7 +764,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			}
 			
 		//	[player showShipModel:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
-			demoShip = [UNIVERSE makeDemoShipWithRole:oo::NSStringOrNil(role) spinning:(bool)spinning];
+			demoShip = [UNIVERSE cxx_makeDemoShipWithRole:role.value_or("") spinning:(bool)spinning];
 		}
 	}
 	if (demoShip != nil)
