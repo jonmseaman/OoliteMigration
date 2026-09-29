@@ -319,9 +319,9 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 {
 	if ([UNIVERSE inInterstellarSpace] && _system == -1) 
 	{
-		return [[UNIVERSE currentSystemData] objectForKey:key];
+		return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:key];
 	}
-	return [UNIVERSE systemDataForGalaxy:_galaxy planet:_system key:key];
+	return [UNIVERSE cxx_systemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key)];
 }
 
 
@@ -330,7 +330,7 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 	// The running script's manifest identifier, handed on as it was read.
 	const oo::PList manifest = oo::PListFrom([[OOJSScript currentlyRunningScript] propertyNamed:kLocalManifestProperty]);
 
-	[UNIVERSE setSystemDataForGalaxy:_galaxy planet:_system key:key value:value  fromManifest:oo::ObjectFromPList(manifest) forLayer:OO_LAYER_OXP_DYNAMIC];
+	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key) value:value  fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
@@ -338,9 +338,9 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 {
 	if ([UNIVERSE inInterstellarSpace] && _system == -1) 
 	{
-		return [[UNIVERSE currentSystemData] allKeys];
+		return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) allKeys];
 	}
-	return [UNIVERSE systemDataKeysForGalaxy:_galaxy planet:_system];
+	return oo::NSArrayFromStrings([UNIVERSE cxx_systemDataKeysForGalaxy:_galaxy planet:_system]);
 }
 
 
@@ -718,7 +718,7 @@ static bool SystemInfoRouteToSystem(ooscript::Context context, ooscript::CallArg
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = oo::PListFrom([UNIVERSE routeFromSystem:[thisInfo system] toSystem:[otherInfo system] optimizedBy:routeType]);
+	result = [UNIVERSE cxx_routeFromSystem:[thisInfo system] toSystem:[otherInfo system] optimizedBy:routeType];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::ObjectFromPList(result));
@@ -808,7 +808,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 		manifest = oo::PListFrom([[OOJSScript currentlyRunningScript] propertyNamed:kLocalManifestProperty]);
 	}
 
-	[UNIVERSE setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:oo::NSStringOrNil(property) value:value fromManifest:oo::ObjectFromPList(manifest) forLayer:layer];
+	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:value fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
 
 	OOJS_RETURN_VOID;
 	

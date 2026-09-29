@@ -792,7 +792,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 		
 	  case kPlayerShip_price:
-			return ooscript::newNumberValue(cx, [UNIVERSE tradeInValueForCommanderDictionary:[player commanderDataDictionary]], value);
+			return ooscript::newNumberValue(cx, [UNIVERSE cxx_tradeInValueForCommanderDictionary:oo::PListFrom([player commanderDataDictionary])], value);
 
 	  case kPlayerShip_serviceLevel:
 			return ooscript::newNumberValue(cx, [player tradeInFactor], value);
@@ -1934,7 +1934,7 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 		[player setStatus:STATUS_WITCHSPACE_COUNTDOWN];
 		[player playGalacticHyperspace];
 		// say it!
-		[UNIVERSE addMessage:oo::NSStringFrom(oo::str::format(oo::StdString(DESC(@"witch-galactic-in-f-seconds")).c_str(), witchspaceSpinUpTime)) forCount:1.0];
+		[UNIVERSE cxx_addMessage:oo::str::format(oo::StdString(DESC(@"witch-galactic-in-f-seconds")).c_str(), witchspaceSpinUpTime) forCount:1.0];
 		begun = YES;
 	}
 	OOJS_RETURN_BOOL(begun);
