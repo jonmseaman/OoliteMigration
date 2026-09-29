@@ -421,7 +421,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 
 	OOJS_NATIVE_ENTER(context)
 	
-	id							result = nil;
+	oo::PList					result;	// null maps to null
 	PlayerEntity				*player = nil;
 	BOOL						handled = NO;
 	
@@ -439,17 +439,17 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 			
 		case kSystem_mainStation:
-			result = [UNIVERSE station];
+			result = oo::PListObject([UNIVERSE station]);
 			handled = YES;
 			break;
 			
 		case kSystem_mainPlanet:
-			result = [UNIVERSE planet];
+			result = oo::PListObject([UNIVERSE planet]);
 			handled = YES;
 			break;
 			
 		case kSystem_sun:
-			result = [UNIVERSE sun];
+			result = oo::PListObject([UNIVERSE sun]);
 			handled = YES;
 			break;
 			
@@ -460,13 +460,13 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 				if (![r.get() isVisibleToScripts])  continue;
 				visible.push_back(r);
 			}
-			result = oo::NSArrayFromObjects(visible);
+			result = oo::PListFromObjects(visible);
 			handled = YES;
 			break;
 		}
 			
 		case kSystem_stations:
-			result = oo::NSArrayFromObjects([UNIVERSE cxx_stations]);
+			result = oo::PListFromObjects([UNIVERSE cxx_stations]);
 			handled = YES;
 			break;
 
@@ -478,26 +478,26 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			{
 				if (waypoint.get() != nil)  waypoints[key] = oo::PListObject(waypoint.get());
 			}
-			result = oo::ObjectFromPList(oo::PList(std::move(waypoints)));
+			result = oo::PList(std::move(waypoints));
 			handled = YES;
 			break;
 		}
 
 		case kSystem_wormholes:
-			result = oo::NSArrayFromObjects([UNIVERSE cxx_wormholes]);
+			result = oo::PListFromObjects([UNIVERSE cxx_wormholes]);
 			handled = YES;
 			break;
 
 		case kSystem_allShips:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = [[oo::NSArrayFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]) mutableCopy] autorelease];
+			result = oo::PListFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]);
 			OOJS_END_FULL_NATIVE
 			handled = YES;
 			break;
 
 		case kSystem_allDemoShips:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = [[oo::NSArrayFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsDemoShipPredicate parameter:NULL inRange:-1 ofEntity:nil]) mutableCopy] autorelease];
+			result = oo::PListFromObjects([UNIVERSE cxx_findShipsMatchingPredicate:JSEntityIsDemoShipPredicate parameter:NULL inRange:-1 ofEntity:nil]);
 			OOJS_END_FULL_NATIVE
 			handled = YES;
 			break;
@@ -505,7 +505,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 
 		case kSystem_allVisualEffects:
 			OOJS_BEGIN_FULL_NATIVE(context)
-			result = [[oo::NSArrayFromObjects([UNIVERSE cxx_findVisualEffectsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]) mutableCopy] autorelease];
+			result = oo::PListFromObjects([UNIVERSE cxx_findVisualEffectsMatchingPredicate:JSEntityIsJavaScriptSearchablePredicate parameter:NULL inRange:-1 ofEntity:nil]);
 			OOJS_END_FULL_NATIVE
 			handled = YES;
 			break;
@@ -533,7 +533,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 
 		case kSystem_populatorSettings:
-			*value_raw = OOJSValueFromNativeObject(context, oo::ObjectFromPList([UNIVERSE cxx_getPopulatorSettings]));
+			*value_raw = OOJSValueFromPList(context, [UNIVERSE cxx_getPopulatorSettings]);
 			return YES;
 	}
 	
@@ -542,50 +542,48 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		// Handle cases which do require systemData.
 		if (EXPECT (![UNIVERSE inInterstellarSpace]))
 		{
-			const oo::PListView systemData(oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]));
+			const oo::PList systemData = [UNIVERSE cxx_currentSystemData];
 			
 			switch (ooscript::idToInt32(propID))
 			{
 				case kSystem_name:
-					result = systemData.get<id>(oo::NSStringFrom(KEY_NAME));	// -objectForKey:
+					if (const oo::PList *entry = systemData.find(KEY_NAME))  result = *entry;	// -objectForKey:
 					break;
 					
 				case kSystem_description:
-					result = systemData.get<id>(oo::NSStringFrom(KEY_DESCRIPTION));	// -objectForKey:
+					if (const oo::PList *entry = systemData.find(KEY_DESCRIPTION))  result = *entry;	// -objectForKey:
 					break;
 					
 				case kSystem_inhabitantsDescription:
-					result = systemData.get<id>(oo::NSStringFrom(KEY_INHABITANTS));	// -objectForKey:
+					if (const oo::PList *entry = systemData.find(KEY_INHABITANTS))  result = *entry;	// -objectForKey:
 					break;
 					
 				case kSystem_government:
-					*value_raw = ooscript::int32Value(systemData.get<int>(oo::NSStringFrom(KEY_GOVERNMENT)));
+					*value_raw = ooscript::int32Value(systemData.get<int>(std::string(KEY_GOVERNMENT)));
 					return YES;
 					
 				case kSystem_governmentDescription:
-					result = oo::NSStringOrNil(cxx_OODisplayStringFromGovernmentID(systemData.get<int>(oo::NSStringFrom(KEY_GOVERNMENT))));
-					if (result == nil)  result = oo::NSStringFrom(OO_DESC("not-applicable"));
+					result = oo::PList(cxx_OODisplayStringFromGovernmentID(systemData.get<int>(std::string(KEY_GOVERNMENT))).value_or(std::string(OO_DESC("not-applicable"))));
 					break;
 					
 				case kSystem_economy:
-					*value_raw = ooscript::int32Value(systemData.get<int>(oo::NSStringFrom(KEY_ECONOMY)));
+					*value_raw = ooscript::int32Value(systemData.get<int>(std::string(KEY_ECONOMY)));
 					return YES;
 					
 				case kSystem_economyDescription:
-					result = oo::NSStringOrNil(cxx_OODisplayStringFromEconomyID(systemData.get<int>(oo::NSStringFrom(KEY_ECONOMY))));
-					if (result == nil)  result = oo::NSStringFrom(OO_DESC("not-applicable"));
+					result = oo::PList(cxx_OODisplayStringFromEconomyID(systemData.get<int>(std::string(KEY_ECONOMY))).value_or(std::string(OO_DESC("not-applicable"))));
 					break;
 				
 				case kSystem_techLevel:
-					*value_raw = ooscript::int32Value(systemData.get<int>(oo::NSStringFrom(KEY_TECHLEVEL)));
+					*value_raw = ooscript::int32Value(systemData.get<int>(std::string(KEY_TECHLEVEL)));
 					return YES;
 					
 				case kSystem_population:
-					*value_raw = ooscript::int32Value(systemData.get<int>(oo::NSStringFrom(KEY_POPULATION)));
+					*value_raw = ooscript::int32Value(systemData.get<int>(std::string(KEY_POPULATION)));
 					return YES;
 					
 				case kSystem_productivity:
-					*value_raw = ooscript::int32Value(systemData.get<int>(oo::NSStringFrom(KEY_PRODUCTIVITY)));
+					*value_raw = ooscript::int32Value(systemData.get<int>(std::string(KEY_PRODUCTIVITY)));
 					return YES;
 					
 				default:
@@ -599,15 +597,15 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			switch (ooscript::idToInt32(propID))
 			{
 				case kSystem_name:
-					result = oo::NSStringFrom(OO_DESC("interstellar-space"));
+					result = oo::PList(std::string(OO_DESC("interstellar-space")));
 					break;
 					
 				case kSystem_description:
-					result = @"";
+					result = oo::PList(std::string());
 					break;
 					
 				case kSystem_inhabitantsDescription:
-					result = oo::NSStringFrom(OO_DESC("not-applicable"));
+					result = oo::PList(std::string(OO_DESC("not-applicable")));
 					break;
 					
 				case kSystem_government:
@@ -615,7 +613,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					return YES;
 					
 				case kSystem_governmentDescription:
-					result = oo::NSStringFrom(OO_DESC("not-applicable"));
+					result = oo::PList(std::string(OO_DESC("not-applicable")));
 					break;
 					
 				case kSystem_economy:
@@ -623,7 +621,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					return YES;
 					
 				case kSystem_economyDescription:
-					result = oo::NSStringFrom(OO_DESC("not-applicable"));
+					result = oo::PList(std::string(OO_DESC("not-applicable")));
 					break;
 				
 				case kSystem_techLevel:
@@ -642,7 +640,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		}
 	}
 	
-	*value_raw = OOJSValueFromNativeObject(context, result);
+	*value_raw = OOJSValueFromPList(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
@@ -702,6 +700,8 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	if (system == -1)  return YES;	// Can't change anything else in interstellar space.
 
 	manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+	// the identifier as -fromManifest: read it: a string, else none
+	const std::optional<std::string> manifestID = manifest.isString() ? std::optional<std::string>(*manifest.getIf<std::string>()) : std::nullopt;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -709,7 +709,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			stringValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (stringValue.has_value())
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_NAME) value:oo::PList(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_NAME) value:oo::PList(*stringValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -718,7 +718,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			stringValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (stringValue.has_value())
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_DESCRIPTION) value:oo::PList(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_DESCRIPTION) value:oo::PList(*stringValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -727,7 +727,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			stringValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (stringValue.has_value())
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_INHABITANTS) value:oo::PList(*stringValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_INHABITANTS) value:oo::PList(*stringValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -737,7 +737,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (iValue < 0)  iValue = 0;
 				if (7 < iValue)  iValue = 7;
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_GOVERNMENT) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_GOVERNMENT) value:oo::PList::signedInteger(iValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -747,7 +747,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (iValue < 0)  iValue = 0;
 				if (7 < iValue)  iValue = 7;
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_ECONOMY) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_ECONOMY) value:oo::PList::signedInteger(iValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -757,7 +757,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (iValue < 0)  iValue = 0;
 				if (15 < iValue)  iValue = 15;
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_TECHLEVEL) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_TECHLEVEL) value:oo::PList::signedInteger(iValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -765,7 +765,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 		case kSystem_population:
 			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_POPULATION) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_POPULATION) value:oo::PList::signedInteger(iValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -773,7 +773,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 		case kSystem_productivity:
 			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
-				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_PRODUCTIVITY) value:oo::PList::signedInteger(iValue) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+				[UNIVERSE cxx_setSystemDataForGalaxy:galaxy planet:system key:std::string(KEY_PRODUCTIVITY) value:oo::PList::signedInteger(iValue) fromManifest:manifestID forLayer:OO_LAYER_OXP_DYNAMIC];
 				return YES;
 			}
 			break;
@@ -803,8 +803,10 @@ static bool SystemToString(ooscript::Context context, ooscript::CallArgs &oojsAr
 	PlayerEntity		*player = OOPlayerForScripting();
 	std::string			systemDesc;
 	
-	systemDesc = oo::str::format("[System %u:%u \"%s\"]", [player currentGalaxyID], [player currentSystemID], oo::DescriptionOf([oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_NAME)]).c_str());
-	OOJS_RETURN_OBJECT(oo::NSStringFrom(systemDesc));
+	const oo::PList		systemData = [UNIVERSE cxx_currentSystemData];
+	const oo::PList		*systemName = systemData.find(KEY_NAME);	// -objectForKey:; "(null)" for none
+	systemDesc = oo::str::format("[System %u:%u \"%s\"]", [player currentGalaxyID], [player currentSystemID], oo::DescriptionOf(systemName != nullptr ? *systemName : oo::PList()).c_str());
+	OOJS_RETURN_PLIST(oo::PList(systemDesc));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -985,7 +987,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	result = FindShips(HasPrimaryRolePredicate, &*role, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
+	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1021,7 +1023,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	result = FindShips(HasRolePredicate, &*role, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
+	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1092,7 +1094,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	result = FindJSVisibleEntities(HasScanClassPredicate, &scanClass, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
+	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1133,7 +1135,7 @@ static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs
 	
 	if (EXPECT_NOT(param.errorFlag))  return NO;
 	
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
+	OOJS_RETURN_PLIST(oo::PListFromObjects(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1454,9 +1456,9 @@ static bool SystemStaticSystemNameForID(ooscript::Context context, ooscript::Cal
 	}
 	
 	if (systemID == -1)
-		OOJS_RETURN_OBJECT(oo::NSStringFrom(OO_DESC("interstellar-space")));
+		OOJS_RETURN_PLIST(oo::PList(std::string(OO_DESC("interstellar-space"))));
 	else
-		OOJS_RETURN_OBJECT(oo::NSStringOrNil([UNIVERSE cxx_getSystemName:systemID]));
+		OOJS_RETURN_STRING_OR_NULL([UNIVERSE cxx_getSystemName:systemID]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1627,7 +1629,7 @@ static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oo
 
 		[populator release];
 
-		[UNIVERSE cxx_setPopulatorSetting:*key to:oo::PListFrom(oo::ObjectFromPList(settings))];
+		[UNIVERSE cxx_setPopulatorSetting:*key to:settings];
 	}	
 
 	OOJS_RETURN_VOID;
@@ -1690,7 +1692,7 @@ static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &ooj
 			(*settingsDict)["orientation"] = oo::PList(oo::PList::Array{ oo::PList(orientation.w), oo::PList(orientation.x), oo::PList(orientation.y), oo::PList(orientation.z) });
 		}
 
-		[UNIVERSE cxx_defineWaypoint:oo::PListFrom(oo::ObjectFromPList(settings)) forKey:*key];
+		[UNIVERSE cxx_defineWaypoint:settings forKey:*key];
 	}	
 
 	OOJS_RETURN_VOID;
@@ -1715,7 +1717,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 	unsigned				consumed = 0;
 	HPVector				where;
 	double				radius = NSNotFound;	// a negative value means 
-	id					result = nil;
+	oo::PList			result;
 	
 	std::string			func = isGroup ? "addGroup" : "addShips";
 	
@@ -1757,17 +1759,17 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.
 	const std::vector<oo::ObjCRef<ShipEntity *>> added = [UNIVERSE cxx_addShipsAt:where withRole:*role quantity:count withinRadius:radius asGroup:isGroup];
-	result = added.empty() ? nil : oo::NSArrayFromObjects(added);	// nil where no ship was added, as before
+	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
-		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsFrom<ShipEntity *>(result);
-		if (ships.size() > 0)  result = [ships[0].get() group];
-		else  result = nil;
+		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
+		if (ships.size() > 0)  result = oo::PListObject([ships[0].get() group]);
+		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN_PLIST(result);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1787,7 +1789,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 	static const std::set<std::string>	validRoutes = { "wp", "pw", "ws", "sw", "sp", "ps" };
 	int32_t				count = 0;
 	double				where = NSNotFound;		// a negative value means random positioning!
-	id					result = nil;
+	oo::PList			result;
 	
 	std::string			func = isGroup ? "addGroup" : "addShips";
 	
@@ -1827,17 +1829,17 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.	
 	const std::vector<oo::ObjCRef<ShipEntity *>> added = [UNIVERSE cxx_addShipsToRoute:*route withRole:*role quantity:count routeFraction:where asGroup:isGroup];
-	result = added.empty() ? nil : oo::NSArrayFromObjects(added);	// nil where no ship was added, as before
+	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
-		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsFrom<ShipEntity *>(result);
-		if (ships.size() > 0)  result = [ships[0].get() group];
-		else  result = nil;
+		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
+		if (ships.size() > 0)  result = oo::PListObject([ships[0].get() group]);
+		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
 	
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN_PLIST(result);
 	
 	OOJS_NATIVE_EXIT
 }
