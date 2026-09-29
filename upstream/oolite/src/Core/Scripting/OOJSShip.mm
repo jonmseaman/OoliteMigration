@@ -3466,7 +3466,7 @@ static BOOL RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &o
 	{
 		[thisEnt setSuppressExplosion:!explode];
 		[thisEnt setEnergy:1];
-		[thisEnt takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:@""];
+		[thisEnt takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];
 	}
 	
 	OOJS_RETURN_VOID;

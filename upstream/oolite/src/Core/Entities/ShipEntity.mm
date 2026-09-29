@@ -986,7 +986,7 @@ NSUInteger ShipGroupCursorBatch(OOShipGroupCursor &cursor, ShipEntity **batch)
 		{
 			[se setSuppressExplosion:NO];
 			[se setEnergy:1];
-			[se takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:@""];
+			[se takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];
 		}
 	}
 }
@@ -9002,11 +9002,11 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			{
 				if ([self owner])
 				{
-					[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self primaryRole]];
+					[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
 				} 
 				else
 				{
-					[e2 takeEnergyDamage:damage from:self becauseOf:self weaponIdentifier:[self primaryRole]];
+					[e2 takeEnergyDamage:damage from:self becauseOf:self weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
 				}
 			}
 		}
@@ -9043,7 +9043,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			double ecr = [e2 collisionRadius];
 			double d = (magnitude(p2) - ecr) * 2.6; // 2.6 is a correction constant to stay in limits of the old code.
 			double damage = (d > 0) ? weapon_damage * desired_range / (d * d) : weapon_damage;
-			[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self primaryRole]];
+			[e2 takeEnergyDamage:damage from:self becauseOf:[self owner] weaponIdentifier:[self cxx_primaryRole].value_or(std::string())];
 		}
 	}
 }
@@ -11885,13 +11885,13 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		if (subent != nil && [victim isFrangible])
 		{
 			// do 1% bleed-through damage...
-			[victim takeEnergyDamage:0.01 * weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] identifier]];
+			[victim takeEnergyDamage:0.01 * weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
 			victim = subent;
 		}
 		
 		if (hitAtRange < weaponRange)
 		{
-			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] identifier]];  // a very palpable hit
+			[victim takeEnergyDamage:weapon_damage from:self becauseOf:parent weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];  // a very palpable hit
 			
 			[shot setRange:hitAtRange];
 			Vector vd = vector_forward_from_quaternion([shot orientation]);
@@ -12009,13 +12009,13 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		if (subent != nil && [victim isFrangible])
 		{
 			// do 1% bleed-through damage...
-			[victim takeEnergyDamage: 0.01 * weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] identifier]];
+			[victim takeEnergyDamage: 0.01 * weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];
 			victim = subent;
 		}
 
 		if (hit_at_range * hit_at_range < range_limit2)
 		{
-			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] identifier]];	// a very palpable hit
+			[victim takeEnergyDamage:weapon_damage from:self becauseOf:self weaponIdentifier:[[self weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES] cxx_identifier].value_or(std::string())];	// a very palpable hit
 
 			[shot setRange:hit_at_range];
 			Vector vd = vector_forward_from_quaternion([shot orientation]);
@@ -12118,13 +12118,13 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if (subent != nil && [victim isFrangible])
 			{
 				// do 1% bleed-through damage...
-				[victim takeEnergyDamage: 0.01 * effective_damage from:self becauseOf:self weaponIdentifier:oo::NSStringFrom(weaponIdentifier)];
+				[victim takeEnergyDamage: 0.01 * effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];
 				victim = subent;
 			}
 		
 			if (hit_at_range * hit_at_range < range_limit2)
 			{
-				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:oo::NSStringFrom(weaponIdentifier)];	// a very palpable hit
+				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];	// a very palpable hit
 
 				[shot setRange:hit_at_range];
 				Vector vd = vector_forward_from_quaternion([shot orientation]);
@@ -13243,7 +13243,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
 {
 	if ([self status] == STATUS_DEAD)  return;
 	if (amount <= 0.0)  return;
