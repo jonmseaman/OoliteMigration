@@ -1258,7 +1258,7 @@ static int shipsFound;
 
 - (id) commanderName_string	// called by name (ADR-0043 item 21)
 {
-	return [self commanderName];
+	return oo::NSStringOrNil([self cxx_commanderName]);
 }
 
 
@@ -1357,11 +1357,11 @@ static int shipsFound;
 		[self setFuel:[self fuelCapacity]];
 	}
 
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipString];
+	OOEquipmentType *eqType = (equipString != nil) ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipKey] : nil;
 
 	if ([eqType isMissileOrMine])
 	{
-		[self mountMissileWithRole:equipString];
+		[self cxx_mountMissileWithRole:equipKey];
 	}
 	else if(oo::str::hasPrefix(equipKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipKey, "_DAMAGED"))
 	{
@@ -2167,9 +2167,9 @@ static int shipsFound;
 
 - (void) clearMissionScreen
 {
-	[self setMissionOverlayDescriptor:nil];
-	[self setMissionBackgroundDescriptor:nil];
-	[self setMissionBackgroundSpecial:nil];
+	[self cxx_setMissionOverlayDescriptor:oo::PList()];
+	[self cxx_setMissionBackgroundDescriptor:oo::PList()];
+	[self cxx_setMissionBackgroundSpecial:""];
 	[self cxx_setMissionTitle:std::nullopt];
 	[self setMissionMusic:nil];
 	[self showShipModel:nil];
@@ -2241,11 +2241,11 @@ static int shipsFound;
 	const std::string name = oo::StdString(value);
 	if (!IsNoneValue(name))
  	{
-		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
+		[self cxx_setMissionOverlayDescriptor:oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } })];
 	}
 	else
 	{
-		[self setMissionOverlayDescriptor:nil];
+		[self cxx_setMissionOverlayDescriptor:oo::PList()];
 	}
 
 }
@@ -2257,11 +2257,11 @@ static int shipsFound;
 	const std::string name = oo::StdString(value);
 	if (!IsNoneValue(name))
  	{
-		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
+		[self cxx_setMissionBackgroundDescriptor:oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } })];
 	}
 	else
 	{
-		[self setMissionBackgroundDescriptor:nil];
+		[self cxx_setMissionBackgroundDescriptor:oo::PList()];
 	}
 }
 
@@ -2366,7 +2366,7 @@ static int shipsFound;
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:planetKey]);
+	const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:oo::StdString(planetKey)];
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(planetKey));
@@ -2422,7 +2422,7 @@ static int shipsFound;
 	if (!UNIVERSE)
 		return nil;
 	// The system properties, once, as an oo::PList (null when there are none).
-	const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:moonKey]);
+	const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:oo::StdString(moonKey)];
 	if (dict.isNull())
 	{
 		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(moonKey));
@@ -2542,7 +2542,7 @@ static int shipsFound;
 {
 	// reset special background as legacy scripts can't use it, and this
 	// is only called by legacy scripts
-	[self setMissionBackgroundSpecial:nil];
+	[self cxx_setMissionBackgroundSpecial:""];
 	// likewise exit screen target
 	[self setMissionExitScreen:GUI_SCREEN_STATUS];
 
@@ -2599,10 +2599,10 @@ static int shipsFound;
 		}
 		[gui setSelectableRange:NSMakeRange(0,0)];
 		
-		[gui cxx_setForegroundTextureDescriptor:oo::PListFrom([self missionOverlayDescriptorOrDefault])];
-		[gui cxx_setBackgroundTextureDescriptor:oo::PListFrom([self missionBackgroundDescriptorOrDefault])];
+		[gui cxx_setForegroundTextureDescriptor:[self cxx_missionOverlayDescriptorOrDefault]];
+		[gui cxx_setBackgroundTextureDescriptor:[self cxx_missionBackgroundDescriptorOrDefault]];
 		// must set special second as setting the descriptor resets it
-		BOOL overridden = ([self missionBackgroundDescriptor] != nil);
+		BOOL overridden = [self cxx_missionBackgroundDescriptor] ? YES : NO;
 		[gui setBackgroundTextureSpecial:[self missionBackgroundSpecial] withBackground:!overridden];
 		
 
@@ -2775,7 +2775,7 @@ static int shipsFound;
 
 		cxx_ScanVectorAndQuaternionFromString(joined(2, 7), &model_p0, &model_q);
 
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::NSStringFrom(i_info[9]));
+		Vector	model_offset = cxx_positionOffsetForShipInRotationToAlignment(ship, model_q, i_info[9]);
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
 		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(ship));
@@ -2802,13 +2802,13 @@ static int shipsFound;
 		if (i_info.size() != 9)	// must be player_x_y_z_W_X_Y_Z_align
 			return NO;				//		   0..... 1 2 3 4 5 6 7 8....
 
-		ShipEntity* doppelganger = [UNIVERSE newShipWithName:[self shipDataKey]];   // retain count = 1
+		ShipEntity* doppelganger = [UNIVERSE newShipWithName:oo::NSStringOrNil([self cxx_shipDataKey])];   // retain count = 1
 		if (!doppelganger)
 			return NO;
 
 		cxx_ScanVectorAndQuaternionFromString(joined(1, 7), &model_p0, &model_q);
 
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment( doppelganger, model_q, oo::NSStringFrom(i_info[8]));
+		Vector	model_offset = cxx_positionOffsetForShipInRotationToAlignment( doppelganger, model_q, i_info[8]);
 		model_p0.x += off.x - model_offset.x;
 		model_p0.y += off.y - model_offset.y;
 		model_p0.z += off.z - model_offset.z;
@@ -2924,7 +2924,7 @@ static int shipsFound;
 
 - (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key
 {
-	const std::optional<std::string> scriptName = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
+	const std::optional<std::string> scriptName = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName];
 
 	OO_LOG("player.equipmentScript", "Added equipment {}, with the following script property: '{}'.", eq_key, scriptName.value_or("(null)"));
 
@@ -2964,7 +2964,7 @@ static int shipsFound;
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
 			if (count == primedEquipment)  primedEquipment--; // the array has shrunk by one!
 
-			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, oo::DescriptionOf([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]));
+			OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName].value_or("(null)"));
 		}
 	}
 }

@@ -1962,7 +1962,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			if ([entity isPlayer])
 			{
 				PlayerEntity *pent = (PlayerEntity*)entity;
-				[pent setWeaponMount:facing toWeapon:oo::NSStringFrom(weaponKey) inContext:@"scripted"];
+				[pent cxx_setWeaponMount:facing toWeapon:weaponKey inContext:"scripted"];
 			}
 			else
 			{
@@ -2730,7 +2730,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	
 	// Check that equipment is permitted.
-	identifier = oo::StdString([eqType identifier]);
+	identifier = [eqType cxx_identifier].value_or("");
 	berth = identifier == "EQ_PASSENGER_BERTH";
 	if (berth)
 	{
@@ -2757,7 +2757,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			}
 			else if ([eqType isMissileOrMine])
 			{
-				OK = [player mountMissileWithRole:oo::NSStringFrom(identifier)];
+				OK = [player cxx_mountMissileWithRole:identifier];
 			}
 			else if (berth)
 			{
@@ -2934,7 +2934,7 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 		return NO;
 	}
 	
-	key = oo::StdString([eqType identifier]);
+	key = [eqType cxx_identifier].value_or("");
 	hasOK = [thisEnt hasEquipmentItem:oo::NSStringFrom(key)];
 	BOOL setOK = *status == "EQUIPMENT_OK";
 	BOOL setDamaged = *status == "EQUIPMENT_DAMAGED";
@@ -3062,7 +3062,7 @@ static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &
 	GET_THIS_SHIP(thisEnt);
 	
 	// if there's a badly defined missile, selectMissile may return nil
-	const std::string result = oo::OptionalString([[thisEnt selectMissile] identifier]).value_or("EQ_MISSILE");
+	const std::string result = [[thisEnt selectMissile] cxx_identifier].value_or("EQ_MISSILE");
 	
 	OOJS_RETURN_OBJECT(oo::NSStringFrom(result));
 	
@@ -4160,7 +4160,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (adjustment > 0)
 	{
-		ok = [thisEnt cxx_addCargo:oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfCommodity:oo::NSStringOrNil(commodity) :adjustment])]; // non-reified templates
+		ok = [thisEnt cxx_addCargo:[UNIVERSE cxx_getContainersOfCommodity:commodity.value_or("") :adjustment]]; // non-reified templates
 	}
 	else if (adjustment < 0)
 	{
@@ -4410,7 +4410,7 @@ static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::Call
 		const std::optional<std::string> role = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 		const std::optional<std::string> category = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 
-		OOJS_RETURN_BOOL([UNIVERSE role:oo::NSStringOrNil(role) isInCategory:oo::NSStringOrNil(category)]);
+		OOJS_RETURN_BOOL(role.has_value() && category.has_value() && [UNIVERSE cxx_role:*role isInCategory:*category]);	// a nil role or category matched nothing
 	}
 	else
 	{

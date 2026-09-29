@@ -278,7 +278,7 @@ static bool MissionGetProperty(Context cx, Object thisObj, PropertyId propID, Va
 	switch (ooscript::idToInt32(propID))
 	{
 		case kMission_markedSystems:
-			result = [player getMissionDestinations];
+			result = [[oo::ObjectFromPList([player cxx_getMissionDestinations]) mutableCopy] autorelease];
 			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
 			result = [result allValues];
 			break;
@@ -380,7 +380,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 			OOSystemID system = marker.get<int>("system", -1);
 			if (system >= 0)
 			{
-				[player addMissionDestinationMarker:oo::ObjectFromPList(marker)];
+				[player cxx_addMissionDestinationMarker:marker];
 			}
 		}
 	}
@@ -436,7 +436,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 			OOSystemID system = marker.get<int>("system", -1);
 			if (system >= 0)
 			{
-				if (![player removeMissionDestinationMarker:oo::ObjectFromPList(marker)]) {
+				if (![player cxx_removeMissionDestinationMarker:marker]) {
 					result = NO;
 				}
 			}
@@ -682,7 +682,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		std::optional<std::string> titleKey = GetParameterString(context, params, "titleKey");
 		if (titleKey.has_value())
 		{
-			std::optional<std::string> message = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*titleKey)]);
+			std::optional<std::string> message = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*titleKey)]);
 			if (message.has_value())
 			{
 				[player cxx_setMissionTitle:cxx_OOExpand(*message)];
@@ -695,9 +695,9 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	}
 	
 	[[OOMusicController	sharedController] setMissionMusic:oo::NSStringOrNil(GetParameterString(context, params, "music"))];
-	[player setMissionOverlayDescriptor:oo::ObjectFromPList(GetParameterImageDescriptor(context, params, "overlay"))];
-	[player setMissionBackgroundDescriptor:oo::ObjectFromPList(GetParameterImageDescriptor(context, params, "background"))];
-	[player setMissionBackgroundSpecial:oo::NSStringOrNil(GetParameterString(context, params, "backgroundSpecial"))];
+	[player cxx_setMissionOverlayDescriptor:GetParameterImageDescriptor(context, params, "overlay")];
+	[player cxx_setMissionBackgroundDescriptor:GetParameterImageDescriptor(context, params, "background")];
+	[player cxx_setMissionBackgroundSpecial:GetParameterString(context, params, "backgroundSpecial").value_or("")];
 
 	if (ooscript::getProperty(context, (params), "customChartZoom", (&value)) && !ooscript::isUndefined(value))
 	{
@@ -764,7 +764,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			}
 			
 		//	[player showShipModel:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value))];
-			demoShip = [UNIVERSE makeDemoShipWithRole:oo::NSStringOrNil(role) spinning:(bool)spinning];
+			demoShip = [UNIVERSE cxx_makeDemoShipWithRole:role.value_or("") spinning:(bool)spinning];
 		}
 	}
 	if (demoShip != nil)
@@ -818,7 +818,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	[player clearExtraMissionKeys];
 	if (ooscript::getProperty(context, (params), "registerKeys", (&value)) && !ooscript::isUndefined(value))
 	{
-		[player setExtraMissionKeys:oo::ObjectFromPList(GetParameterDictionary(context, params, "registerKeys"))];
+		[player cxx_setExtraMissionKeys:GetParameterDictionary(context, params, "registerKeys")];
 	}
 
 	bool textEntry = false;
@@ -879,8 +879,8 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	}
 	
 	// now clean up!
-	[player setMissionOverlayDescriptor:nil];
-	[player setMissionBackgroundDescriptor:nil];
+	[player cxx_setMissionOverlayDescriptor:oo::PList()];
+	[player cxx_setMissionBackgroundDescriptor:oo::PList()];
 	[player cxx_setMissionTitle:std::nullopt];
 	[player setMissionMusic:nil];
 	
