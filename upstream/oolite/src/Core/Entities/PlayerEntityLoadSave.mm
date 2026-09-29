@@ -320,7 +320,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			const oo::PList *scenario = scenarios.at(i);
 			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
 			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
-			[gui cxx_setText:oo::StdString(OOExpand(oo::NSStringFrom(scenarioName))) forRow:row];
+			[gui cxx_setText:cxx_OOExpand(scenarioName).value_or(std::string()) forRow:row];
 			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
 			++row;
 		}
@@ -373,7 +373,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		}
 		if (scenario)
 		{
-			[gui cxx_addLongText:oo::OptionalString(OOExpand(oo::NSStringOrNil(OptionalStringValue(scenario->find("description"))))) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
+			const std::optional<std::string> scenarioDescription = OptionalStringValue(scenario->find("description"));
+			const std::optional<std::string> expandedDescription = scenarioDescription.has_value() ? cxx_OOExpand(*scenarioDescription) : std::nullopt;
+			[gui cxx_addLongText:expandedDescription startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
 			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
 			if (shipKey)
 			{
@@ -832,7 +834,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
 	if (market != nullptr)
 	{
-		[dockedStation setLocalMarket:oo::ObjectFromPList(*market)];
+		[dockedStation cxx_setLocalMarket:*market];
 	}
 	else
 	{
@@ -1346,13 +1348,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		const oo::PList *subEntStatus = cdr.find("subentities_status");
 		// don't add it to the dictionary if there's no subentities_status key
 		if (subEntStatus != nullptr && dict.isDict())  (*dict.getIf<oo::PList::Dict>())["subentities_status"] = *subEntStatus;
-		[self showShipyardModel:oo::NSStringFrom(*shipDesc) shipData:oo::ObjectFromPList(dict) personality:personality];
+		[self cxx_showShipyardModel:*shipDesc shipData:dict personality:personality];
 		shipName = OptionalStringValue(shipDict.find("display_name"));
 		if (!shipName) shipName = OptionalStringValue(shipDict.find("name"));	// KEY_NAME
 	}
 	else
 	{
-		[self showShipyardModel:@"oolite-unknown-ship" shipData:nil personality:personality];
+		[self cxx_showShipyardModel:"oolite-unknown-ship" shipData:oo::PList() personality:personality];
 		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
 		if (![[UNIVERSE useAddOns] isEqualToString:SCENARIO_OXP_DEFINITION_ALL])
 		{

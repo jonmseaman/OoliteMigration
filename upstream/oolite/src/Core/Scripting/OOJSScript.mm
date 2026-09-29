@@ -427,12 +427,12 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id) name	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_name
 {
 	// (the property as text: a string is itself, anything else its -description)
 	if (!name.has_value())  name = DescriptionOrNil([self propertyNamed:"name"]);
-	if (!name.has_value())  return oo::NSStringFrom([self scriptNameFromPath:filePath]);	// Special case for parse errors during load.
-	return oo::NSStringFrom(*name);
+	if (!name.has_value())  return [self scriptNameFromPath:filePath];	// Special case for parse errors during load.
+	return name;
 }
 
 
@@ -479,7 +479,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 			ooscript::clearPendingException((context));
 		}
 		
-		OO_LOG("script.javaScript.call", "Calling [{}].{}()", oo::DescriptionOf([self name]), (cxx_OOStringFromJSID(methodID)).value_or("(null)"));
+		OO_LOG("script.javaScript.call", "Calling [{}].{}()", [self cxx_name].value_or("(null)"), (cxx_OOStringFromJSID(methodID)).value_or("(null)"));
 		oo::log::indentIf("script.javaScript.call");
 #endif
 		
@@ -746,7 +746,7 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 		if (ooscript::stringEqualsAscii(cx, propNameStr, "tickle", &match) && match)
 		{
 			OOJSScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOJSScript class]);
-			cxx_OOJSReportWarning(context, "Script %s appears to use the tickle() event handler, which is no longer supported.", oo::DescriptionOf([thisScript name]).c_str());
+			cxx_OOJSReportWarning(context, "Script %s appears to use the tickle() event handler, which is no longer supported.", [thisScript cxx_name].value_or("(null)").c_str());
 		}
 	}
 	

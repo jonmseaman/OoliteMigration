@@ -787,7 +787,7 @@ static BOOL _refreshStarChart = NO;
 	}
 	
 	NSSize chSize = pixel_text_size;
-	NSSize strsize = OORectFromString(oo::NSStringFrom(*str), 0.0f, 0.0f, chSize).size;
+	NSSize strsize = cxx_OORectFromString(*str, 0.0f, 0.0f, chSize).size;
 	if (strsize.width < size_in_pixels.width)
 	{
 		[self cxx_setText:str forRow:row align:alignment];
@@ -804,9 +804,9 @@ static BOOL _refreshStarChart = NO;
 			string1 += words[next];
 			string1 += " ";
 			next++;
-			strsize = OORectFromString(oo::NSStringFrom(string1), 0.0f, 0.0f, chSize).size;
+			strsize = cxx_OORectFromString(string1, 0.0f, 0.0f, chSize).size;
 			if (next < words.size())
-				strsize.width += OORectFromString(oo::NSStringFrom(words[next]), 0.0f, 0.0f, chSize).size.width;
+				strsize.width += cxx_OORectFromString(words[next], 0.0f, 0.0f, chSize).size.width;
 		}
 		const std::string string2 = WordsJoinedBySpace(words, next);
 		[self cxx_setText:string1		forRow:row			align:alignment];
@@ -833,7 +833,7 @@ static BOOL _refreshStarChart = NO;
 			{
 				accum += words[first];
 				accum += " ";
-				if (OORectFromString(oo::NSStringFrom(accum), 0.0f, 0.0f,chSize).size.width + OORectFromString(oo::NSStringFrom(words[first + 1]), 0.0f, 0.0f,chSize).size.width > limit)
+				if (cxx_OORectFromString(accum, 0.0f, 0.0f,chSize).size.width + cxx_OORectFromString(words[first + 1], 0.0f, 0.0f,chSize).size.width > limit)
 				{
 					// can't fit next word on this line
 					// (-whitespaceCharacterSet trimming: accum holds tokens and spaces, no newlines)
@@ -928,7 +928,7 @@ static BOOL _refreshStarChart = NO;
 	if (row == (OOGUIRow)n_rows - 1)
 		[self scrollUp:1];
 	NSSize chSize = pixel_text_size;
-	NSSize strsize = OORectFromString(oo::NSStringFrom(*str), 0.0f, 0.0f, chSize).size;
+	NSSize strsize = cxx_OORectFromString(*str, 0.0f, 0.0f, chSize).size;
 	if (strsize.width < size_in_pixels.width)
 	{
 		[self cxx_setText:str forRow:row align:alignment];
@@ -953,9 +953,9 @@ static BOOL _refreshStarChart = NO;
 			string1 += words[next];
 			string1 += " ";
 			next++;
-			strsize = OORectFromString(oo::NSStringFrom(string1), 0.0f, 0.0f, chSize).size;
+			strsize = cxx_OORectFromString(string1, 0.0f, 0.0f, chSize).size;
 			if (next < words.size())
-				strsize.width += OORectFromString(oo::NSStringFrom(words[next]), 0.0f, 0.0f, chSize).size.width;
+				strsize.width += cxx_OORectFromString(words[next], 0.0f, 0.0f, chSize).size.width;
 		}
 
 		[self cxx_setText:string1		forRow:row			align:alignment];
@@ -1666,10 +1666,10 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		//
 		// draw the title
 		//
-		strsize = OORectFromString(oo::NSStringFrom(*title), 0.0f, 0.0f, titleCharacterSize).size;
+		strsize = cxx_OORectFromString(*title, 0.0f, 0.0f, titleCharacterSize).size;
 		[self cxx_setGLColorFromSetting:cxx_kGuiScreenTitleColor defaultValue:[OOColor redColor] alpha:alpha];
 
-		OODrawString(oo::NSStringFrom(*title), x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
+		cxx_OODrawString(*title, x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
 		
 		// draw a horizontal divider
 		//
@@ -1696,7 +1696,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			const std::string &text = *rowString;
 			if (!text.empty())
 			{
-				strsize = OORectFromString(oo::NSStringFrom(text), 0.0f, 0.0f, characterSize).size;
+				strsize = cxx_OORectFromString(text, 0.0f, 0.0f, characterSize).size;
 				switch (rowAlignment[i])
 				{
 					case GUI_ALIGN_LEFT :
@@ -1711,7 +1711,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 				if (i == (unsigned)selectedRow)
 				{
-					NSRect		block = OORectFromString(oo::NSStringFrom(text), x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
+					NSRect		block = cxx_OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
 					OOStopDrawingStrings();
 					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
 					OOGLBEGIN(GL_QUADS);
@@ -1723,13 +1723,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 					OOStartDrawingStrings();
 				}
-				OODrawStringQuadsAligned(oo::NSStringFrom(text), x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
+				cxx_OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
 
 				// draw cursor at end of current Row
 				//
 				if ((showTextCursor)&&(i == (unsigned)currentRow))
 				{
-					NSRect	tr = OORectFromString(oo::NSStringFrom(text), 0.0f, 0.0f, characterSize);
+					NSRect	tr = cxx_OORectFromString(text, 0.0f, 0.0f, characterSize);
 					NSPoint cu = NSMakePoint(x + rowPosition[i].x + tr.size.width + 0.2f * characterSize.width, y + rowPosition[i].y);
 					tr.origin = cu;
 					tr.size.width = 0.5f * characterSize.width;
@@ -1774,7 +1774,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					else if (txtLocation > 0)
 					{
 						// padded string! (the padding is ASCII, so its bytes are its characters)
-						NSRect charBlock = OORectFromString(oo::NSStringFrom(text.substr(0, txtLocation)), 0, 0, characterSize);
+						NSRect charBlock = cxx_OORectFromString(text.substr(0, txtLocation), 0, 0, characterSize);
 						leadingSpaces = (unsigned)charBlock.size.width;
 
 /*						// if we're displaying commodity-quantity-none, let's try and be pixel perfect!
@@ -1788,13 +1788,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					}
 					
 					// baseline text rect, needed for correct highlight positioning.
-					NSRect		block = OORectFromString(oo::NSStringFrom(text), x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
+					NSRect		block = cxx_OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
 
 					if(!isLeftAligned)
 					{
 						rowPosition[i].x -= block.size.width + 3;
 					}
-					block = OORectFromString(oo::NSStringFrom(hilitedText), x + rowPosition[i].x + 1 + leadingSpaces, y + rowPosition[i].y + 2, characterSize);
+					block = cxx_OORectFromString(hilitedText, x + rowPosition[i].x + 1 + leadingSpaces, y + rowPosition[i].y + 2, characterSize);
 					block.size.width += 3;
 						
 					
@@ -1811,7 +1811,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 						OOStartDrawingStrings();
 					}
-					OODrawStringQuadsAligned(oo::NSStringFrom(text), x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
+					cxx_OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
 				}
 			}
 		}
@@ -2206,7 +2206,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				if (EXPECT(noNova))
 				{
 					r = g = b = 1.0;
-					OOColor *sunColor = [OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:i inGalaxy:galaxy_id]];
+					OOColor *sunColor = [OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:i inGalaxy:galaxy_id])];
 					if (sunColor != nil) {
 						[sunColor getRed:&r green:&g blue:&b alpha:&alpha];
 						alpha = 1.0; // reset
@@ -2281,13 +2281,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					if (zoom > CHART_ZOOM_SHOW_LABELS && advancedNavArrayMode == OPTIMIZED_BY_NONE)
 					{
 						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchLabelColor defaultValue:[OOColor cyanColor] alpha:alpha];
-						OODrawString([UNIVERSE systemNameIndex:i] , x + star.x + 2.0, y + star.y - 10.0f, z, NSMakeSize(10*systemNameScale,10*systemNameScale));
+						cxx_OODrawString([UNIVERSE cxx_systemNameIndex:i].value_or("") , x + star.x + 2.0, y + star.y - 10.0f, z, NSMakeSize(10*systemNameScale,10*systemNameScale));
 						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
 					}
 				}
 				else if (zoom > CHART_ZOOM_SHOW_LABELS)
 				{
-					OODrawString([UNIVERSE systemNameIndex:i] , x + star.x + 2.0, y + star.y - 10.0f, z, NSMakeSize(10*systemNameScale,10*systemNameScale));
+					cxx_OODrawString([UNIVERSE cxx_systemNameIndex:i].value_or("") , x + star.x + 2.0, y + star.y - 10.0f, z, NSMakeSize(10*systemNameScale,10*systemNameScale));
 				}
 			}
 		}
@@ -2349,7 +2349,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				if (concealment[i] >= OO_SYSTEMCONCEALMENT_NODATA)
 				{
 					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
-					OODrawHilightedString(@"???", x + star.x + 2.0, y + star.y, z, chSize);
+					cxx_OODrawHilightedString("???", x + star.x + 2.0, y + star.y, z, chSize);
 				}
 				else
 				{
@@ -2391,7 +2391,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				if (concealment[targetIdx] >= OO_SYSTEMCONCEALMENT_NODATA)
 				{
 					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
-					OODrawHilightedString(@"???", x + star.x + 2.0, y + star.y, z, chSize);
+					cxx_OODrawHilightedString("???", x + star.x + 2.0, y + star.y, z, chSize);
 				}
 				else
 				{
@@ -2413,12 +2413,12 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	std::string travelDistLine;
 	if (distance > 0)
 	{
-		travelDistLine = oo::StdString(OOExpandKey(@"long-range-chart-distance", distance));
+		travelDistLine = cxx_OOExpandKey("long-range-chart-distance", distance).value_or(std::string());
 	}
 	std::string travelTimeLine;
 	if (time > 0)
 	{
-		travelTimeLine = oo::StdString(OOExpandKey(@"long-range-chart-est-travel-time", time));
+		travelTimeLine = cxx_OOExpandKey("long-range-chart-est-travel-time", time).value_or(std::string());
 	}
 	
 	if(concealment[target] < OO_SYSTEMCONCEALMENT_NONAME)
@@ -2433,7 +2433,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	{
 		if (jumps > 0)
 		{
-			[self cxx_setArray:{ "", oo::StdString(OOExpandKey(@"short-range-chart-jumps", jumps)) } forRow: textRow + 1];
+			[self cxx_setArray:{ "", cxx_OOExpandKey("short-range-chart-jumps", jumps).value_or(std::string()) } forRow: textRow + 1];
 		}
 		else
 		{
@@ -2609,7 +2609,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
-		concealment[i] = oo::PListView([systemManager getPropertiesForSystem:i inGalaxy:g]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+		concealment[i] = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 
 	
@@ -2675,7 +2675,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 				else
 				{
-					thisConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j))]];
+					thisConnectionColor = [OOColor colorWithDescription:oo::ObjectFromPList([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)])];
 				
 					if (thisConnectionColor == nil)
 					{
@@ -2687,7 +2687,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					glVertex3f(x+star.x, y+star.y, z);
 
 					// and the other colour for the other end
-					thatConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i))]];
+					thatConnectionColor = [OOColor colorWithDescription:oo::ObjectFromPList([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)])];
 				
 					if (thatConnectionColor == nil)
 					{
@@ -2748,7 +2748,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			// Label the route, if not already labelled
 			if (zoom > CHART_ZOOM_SHOW_LABELS && concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
 			{
-				OODrawString([UNIVERSE systemNameIndex:loc], x + star.x + 2.0, y + star.y, z, NSMakeSize(8,8));
+				cxx_OODrawString([UNIVERSE cxx_systemNameIndex:loc].value_or(""), x + star.x + 2.0, y + star.y, z, NSMakeSize(8,8));
 			}
 		}
 		// Label the destination, which was not included in the above loop.
@@ -2757,7 +2757,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			loc = route.at<int>(i);
 			if(concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
 			{
-				OODrawString([UNIVERSE systemNameIndex:loc], x + star2.x + 2.0, y + star2.y, z, NSMakeSize(10,10));
+				cxx_OODrawString([UNIVERSE cxx_systemNameIndex:loc].value_or(""), x + star2.x + 2.0, y + star2.y, z, NSMakeSize(10,10));
 			}
 		}
 	}
