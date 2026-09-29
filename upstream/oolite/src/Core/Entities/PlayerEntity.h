@@ -1155,7 +1155,7 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 
 - (OOSpeechSettings) isSpeechOn;
 
-- (void) addEquipmentFromCollection:(id)equipment;	// equipment may be an array, a set, a dictionary whose values are all YES, or a string.
+- (void) addEquipmentFromCollection:(const oo::PList &)equipment;	// equipment may be an array, a dictionary whose values are all YES, or a string.
  
 - (void) getFined;
 - (void) adjustTradeInFactorBy:(int)value;
@@ -1174,8 +1174,8 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 - (OOTrumble **) trumbleArray;
 - (NSUInteger) trumbleCount;
 // loading and saving trumbleCount
-- (id) trumbleValue;
-- (void) setTrumbleValueFrom:(id)trumbleValue;
+- (oo::PList) trumbleValue;	// [count, hash, trumble records]
+- (void) setTrumbleValueFrom:(const oo::PList &)trumbleValue;	// null: none saved
 
 - (float) trumbleAppetiteAccumulator;
 - (void) setTrumbleAppetiteAccumulator:(float)value;
