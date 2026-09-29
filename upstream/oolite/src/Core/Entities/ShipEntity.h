@@ -502,7 +502,7 @@ typedef enum
 }
 
 // ship brains
-- (void) setStateMachine:(id)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void) setStateMachine:(const std::string &)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 - (void) setAI:(AI *)ai;
 - (AI *) getAI;
 - (BOOL) hasAutoAI;
@@ -799,7 +799,7 @@ typedef enum
 - (void) cxx_removeRole:(const std::string &)role;
 
 - (std::optional<std::string>) cxx_primaryRole;
-- (void)setPrimaryRole:(id)role;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void)setPrimaryRole:(const std::string &)role;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 - (BOOL) cxx_hasPrimaryRole:(const std::string &)role;
 
 - (BOOL)isPolice;		// Scan class is CLASS_POLICE
