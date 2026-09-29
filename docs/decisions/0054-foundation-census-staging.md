@@ -91,3 +91,6 @@ that position, each with a documented owner that runs after the gate:
 ## History
 
 - 2026-09-29: proposed by the oo-qps.3 gate planner; default in effect.
+- 2026-09-29: item 4 implemented (oo-qps.29): the two functions are under `#if OO_EXPANDER_TEST_SURFACE`
+  in OOStringExpander.h/.mm, `tools/check-string-expander.sh` defines it, and it joins the census
+  FENCE list (the amendment item 1 asks for), with selftest cases.

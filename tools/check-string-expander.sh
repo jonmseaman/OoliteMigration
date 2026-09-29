@@ -59,6 +59,9 @@ done
 flags=(-x objective-c++ -std=gnu++20 -O2 -Wall -DOOLITE_DEBUG=1 -D_FILE_OFFSET_BITS=64 -DWIN32 -DXP_WIN
        -DWINVER=0x0A00 -DGNUSTEP_BASE_LIBRARY=1 -fexceptions -fobjc-exceptions -DGNUSTEP_RUNTIME=1
        -D_NONFRAGILE_ABI=1 -fobjc-runtime=gnustep-2.2 -fblocks -ffp-contract=off -pthread)
+# The test's Foundation-typed surface (OOExpandDescriptionString / OOGenerateSystemDescription) is
+# fenced out of the game build; only this harness compiles it (bead oo-qps.29, ADR-0054 item 4).
+flags+=(-DOO_EXPANDER_TEST_SURFACE=1)
 
 w="$(native "$WORK")"
 clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"

@@ -11,6 +11,8 @@
 #     bash tools/check-foundation-free.sh --link <exe>     # PE import table names no gnustep-base
 #     bash tools/check-foundation-free.sh --selftest       # proof each check fails and passes
 #     ... --root <dir>                                     # scan <dir> instead of upstream/oolite/src
+#     ... --paths <file-or-dir>...                         # report (and exit) on those paths only
+#     ... --kind <kind>[,<kind>]                           # report (and exit) on those kinds only
 #
 # --stage sweeps reports, per file under upstream/oolite/src minus src/oofnd (comment lines ignored;
 # the ns and oolog scans read the line with /* ... */, a trailing // and the contents of "...", '...'
@@ -29,8 +31,17 @@
 # deferred to Phase 5 (ADR-0043 item 18(b), ADR-0054 item 1): not findings, but counted for
 # information as "mac-fenced (Phase 5)". #ifdef, || and other negations are not fences.
 # --stage source drops every other exemption and adds:
-#   boundary  a boundary header still present, or an include of one, or a helper call
+#   boundary  a boundary header still present, or an include of one (or another transitional
+#             spelling: an unqualified NSStringFrom..., an oo::NS... name that is not a helper)
+#   helper    a use of a helper the three bridge headers declare, spelled oo:: (HELPERS below;
+#             not DescriptionOf, PListObject or ObjectIn, which survive: ADR-0055 items 1-2), read
+#             from the comment- and literal-stripped line; on a fenced line it is counted with the
+#             mac-fenced total, not as a finding (ADR-0055 items 7 and 9)
 #   build     gnustep-base named in the meson build files or tools/setup-windows.sh
+# --paths (files or directories, relative to the current directory, under the scanned root) and
+# --kind (ns, import, bridge, oolog, boundary, helper, build) restrict the report and the exit
+# status; with --paths the build files are not read. A chunk bead's acceptance is
+# `--stage source --kind helper --paths <its files>` (ADR-0055 item 9).
 # Exit 0 iff nothing is reported. Output: one line per file ("path: N  kind:token xK ..."), then a
 # per-kind and per-token summary. @"..." literals are counted for information only: ADR-0029 keeps
 # them (they become OOConstantString), so they are never a finding.
@@ -58,12 +69,21 @@ POSTGATE_BRIDGE='OOLogOutputHandler+FoundationBridge.h OOLogOutputHandler+Founda
 # In these files only the declaration/definition lines of the two ADR-0052 functions (oo-qps.29):
 POSTGATE_EXPANDER='OOStringExpander.h OOStringExpander.mm'
 POSTGATE_EXPANDER_LINE='^NSString [*](OOExpandDescriptionString|OOGenerateSystemDescription)[(]'
-# The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054.
-FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE'
+# The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054. Plus the
+# expander test's fence, OO_EXPANDER_TEST_SURFACE (ADR-0054 item 4, oo-qps.29): only
+# tools/check-string-expander.sh defines it, so its lines are not in the game build (they are
+# counted in the same information-only "mac-fenced" total).
+FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE OO_EXPANDER_TEST_SURFACE'
 BUILD_FILES=(upstream/oolite/src/meson upstream/oolite/src/meson.build upstream/oolite/meson.build
 	tools/setup-windows.sh)
+# The helpers OOStringBridge.h, OOFoundationBridge.h and OOPListView.h declare that the source stage
+# counts as "helper" (ADR-0055 item 9), as an ERE alternation; IsNS... is the IsNSString family.
+HELPERS='StdString|NSStringFrom|NSStringOrNil|OptionalString|StringsFrom|ObjCRefsFrom|NSArrayFromObjects|NSArrayFromStrings|NSSetFromStrings|NSSetFromObjects|StringMap|IsNS[A-Za-z0-9_]*|PListFrom|ObjectFromPList|PListView'
+KINDS='ns import bridge oolog boundary helper build'
+# Set by --paths (root-relative, one per line; "." is the whole root) and --kind (comma-separated).
+scan_paths="" scan_kinds=""
 
-usage() { sed -n '9,14p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+usage() { sed -n '9,16p' "$self" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
 # scan <root> <stage> [build files...]: prints the report, returns 1 if anything was found.
 scan() {
@@ -73,8 +93,14 @@ scan() {
 	list="$(cd "$root" && find . -type f \( -name '*.m' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \
 		-o -name '*.c' -o -name '*.cpp' -o -name '*.inc' \) -not -path './oofnd/*' | sed 's|^\./||' | LC_ALL=C sort)"
 	[ -n "$list" ] || { echo "FAIL: no sources under $root (anti-vacuity)" >&2; return 2; }
+	if [ -n "$scan_paths" ]; then
+		list="$(printf '%s\n' "$list" | awk -v paths="$scan_paths" '
+			BEGIN { n = split(paths, p, "\n") }
+			{ for (i = 1; i <= n; i++) if (p[i] == "." || $0 == p[i] || index($0, p[i] "/") == 1) { print; next } }')"
+		[ -n "$list" ] || { echo "FAIL: no sources under the --paths given (anti-vacuity)" >&2; return 2; }
+	fi
 	local build_hits=""
-	if [ "$stage" = source ] && [ $# -gt 0 ]; then
+	if [ "$stage" = source ] && [ $# -gt 0 ] && [ -z "$scan_paths" ]; then
 		build_hits="$(grep -rnE 'gnustep[-]base' "$@" 2>/dev/null || true)"
 	fi
 	# The file list goes in through a file, not argv: one awk process whatever the tree's size
@@ -84,8 +110,10 @@ scan() {
 	(cd "$root" && awk -v listfile="$lf" \
 		-v stage="$stage" -v allow="$ALLOW" -v boundary="$BOUNDARY" \
 		-v pgbridge="$POSTGATE_BRIDGE" -v pgexp="$POSTGATE_EXPANDER" -v pgexpline="$POSTGATE_EXPANDER_LINE" \
-		-v fence="$FENCE" -v build_hits="$build_hits" '
+		-v fence="$FENCE" -v build_hits="$build_hits" -v helpers="$HELPERS" -v kinds="$scan_kinds" '
 	BEGIN {
+		hcall = "(^|[^A-Za-z0-9_])oo::(" helpers ")([^A-Za-z0-9_]|$)"; hname = "^oo::(" helpers ")$"
+		n = split(kinds, b, /,/); for (i = 1; i <= n; i++) if (b[i] != "") want[b[i]] = 1
 		n = split(allow, a, /[ \n]+/); for (i = 1; i <= n; i++) ok[a[i]] = 1
 		n = split(boundary, b, /[ \n]+/); for (i = 1; i <= n; i++) bnd[b[i]] = 1
 		n = split(pgbridge, b, /[ \n]+/); for (i = 1; i <= n; i++) pgb[b[i]] = 1
@@ -97,7 +125,8 @@ scan() {
 	}
 	function base(p,   q) { q = p; sub(/.*\//, "", q); return q }
 	function hit(kind, tok) {
-		if (fenced && (kind == "ns" || kind == "oolog")) { macfenced += 1; return }
+		if (kinds != "" && !(kind in want)) return
+		if (fenced && (kind == "ns" || kind == "oolog" || kind == "helper")) { macfenced += 1; return }
 		if (pgfile && (kind == "ns" || kind == "bridge")) return
 		cnt[FILENAME] += 1; what[FILENAME, kind ":" tok] += 1
 		if (!((FILENAME, kind ":" tok) in seen)) { seen[FILENAME, kind ":" tok] = 1; order[FILENAME] = order[FILENAME] " " kind ":" tok }
@@ -158,8 +187,12 @@ scan() {
 		if (line ~ /#[ \t]*(import|include)[ \t]*"[^"]*\+(FoundationBridge|OODefaultsBridge)\.h"/ &&
 			!(stage == "sweeps" && line ~ /^[ \t]*#[ \t]*import[ \t]*"OOLogOutputHandler\+FoundationBridge\.h"/)) hit("bridge", "include")
 		if (stage == "source" && line ~ /#[ \t]*(import|include)[ \t]*"(OOStringBridge|OOFoundationBridge|OOPListView|OOFoundationException|OOObjectGNUstepBridge|OOEnumerationShuffle)\.h"/) hit("boundary", "include")
-		if (stage == "source" && line ~ /OOFoundationException|oo::PListView|(^|[^A-Za-z0-9_])StdString\(/) hit("boundary", "helper")
+		if (stage == "source" && line ~ /OOFoundationException/) hit("boundary", "OOFoundationException")
 		if (pgexpfile && line ~ pgexpline) next
+		s = code
+		while (stage == "source" && match(s, hcall)) {
+			t = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
+			sub(/^.*oo::/, "", t); sub(/[^A-Za-z0-9_]$/, "", t); hit("helper", t) }
 		s = code
 		while (match(s, /(^|[^A-Za-z0-9_])OOLog(ERR|WARN|WithArguments|IndentIf|OutdentIf)?[ \t]*\(|(^|[^A-Za-z0-9_])OO(Debug|Extra)Log[ \t]*\(/)) {
 			t = substr(s, RSTART, RLENGTH); gsub(/^[^A-Za-z]|[ \t(]+$/, "", t); hit("oolog", t); s = substr(s, RSTART + RLENGTH) }
@@ -168,6 +201,7 @@ scan() {
 			t = substr(s, RSTART, RLENGTH); pre = (RSTART > 1) ? substr(s, RSTART - 1, 1) : ""
 			s = substr(s, RSTART + RLENGTH)
 			if (pre ~ /[A-Za-z0-9_]/) continue          # inside a longer identifier (cxx_NS..., OONS...)
+			if (t ~ hname) continue                       # a helper: the helper scan above counts it
 			if (t ~ /^oo::/ || t ~ /^NSStringFrom/) { if (stage == "source") hit("boundary", t); continue }
 			if (!(t in ok)) hit("ns", t)
 		}
@@ -176,6 +210,7 @@ scan() {
 		for (f in cnt) { printf "%s: %d %s\n", f, cnt[f], order[f] | "LC_ALL=C sort" }
 		close("LC_ALL=C sort")
 		nb = split(build_hits, bl, "\n")
+		if (kinds != "" && !("build" in want)) nb = 0
 		for (i = 1; i <= nb; i++) if (bl[i] != "") { print "build: " bl[i]; bykind["build"] += 1; found += 1 }
 		printf "== %s stage: %d finding(s) in %d file(s) scanned; @\"...\" literals (information only): %d; mac-fenced (Phase 5, information only): %d\n", stage, found, files, literals, macfenced
 		for (k in bykind) printf "   %-9s %6d\n", k, bykind[k] | "LC_ALL=C sort"
@@ -230,6 +265,10 @@ selftest() {
 	# Forbidden spellings are assembled so this file never contains them (the deny-list scans it).
 	local imp="#im""port <Found""ation/Found""ation.h>" gs="gnustep""-base"
 	mk() { mkdir -p "$t/$1/Core"; printf '%s\n' "${@:2}" > "$t/$1/Core/X.mm"; }
+	scank() { local scan_kinds="$1"; shift; scan "$@"; }   # scan with --kind <kinds>
+	fenced_total() {   # fenced_total <n> <root>: the source stage, --kind helper, reports n mac-fenced
+		scank helper "$2" source | grep -q "mac-fenced (Phase 5, information only): $1\$"
+	}
 	mk clean '#import "OOCocoa.h"' 'static NSInteger a; NSRange r = NSMakeRange(0, 1); NSPoint p;' \
 		'// an NSString in a comment is not a use' 'id s = @"literal"; OO_LOG("x", "{}", 1); cxx_NSStringy();' \
 		'static const char *const kOOLogThing = "thing"; OO_LOG(kOOLogThing, "{}", 2);'
@@ -290,14 +329,70 @@ selftest() {
 		> "$t/pg/Core/OOStringExpander.h"
 	expect 0 "post-gate owners are exempt in the sweeps stage" scan "$t/pg" sweeps
 	expect 1 "post-gate owners fail in the source stage" scan "$t/pg" source
+	# ADR-0054 item 4 (oo-qps.29): the expander test's fence passes the source stage too; #ifdef does not.
+	mkdir -p "$t/pgf/Core"
+	printf '#if OO_EXPANDER_TEST_SURFACE\nextern "C" {\nNSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides);\n}\n#endif\n#if OO_EXPANDER_TEST_SURFACE\nNSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);\n#endif\n' \
+		> "$t/pgf/Core/OOStringExpander.h"
+	expect 0 "the OO_EXPANDER_TEST_SURFACE fence passes the source stage" scan "$t/pgf" source
+	mkdir -p "$t/pgd/Core"
+	printf '#ifdef OO_EXPANDER_TEST_SURFACE\nNSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);\n#endif\n' > "$t/pgd/Core/OOStringExpander.h"
+	expect 1 "an #ifdef OO_EXPANDER_TEST_SURFACE block is counted at the source stage (not a fence)" scan "$t/pgd" source
 	mkdir -p "$t/pgx/Core"; printf 'NSString *OOOtherFunction(void);\n' > "$t/pgx/Core/OOStringExpander.h"
 	expect 1 "another NSString line in OOStringExpander.h still fails the sweeps stage" scan "$t/pgx" sweeps
 	mkdir -p "$t/pgi/Core"; printf '#import "OOOther+FoundationBridge.h"\n' > "$t/pgi/Core/OOLogOutputHandler.h"
 	expect 1 "another bridge include still fails the sweeps stage" scan "$t/pgi" sweeps
+	# ADR-0055 item 9 (oo-qps.45): the source stage counts each bridge helper spelled oo:: as "helper".
+	local h
+	for h in StdString NSStringFrom NSStringOrNil OptionalString StringsFrom ObjCRefsFrom NSArrayFromObjects \
+		NSArrayFromStrings NSSetFromStrings NSSetFromObjects StringMap IsNSString IsNSDictionary PListFrom \
+		ObjectFromPList PListView; do
+		mk "h$h" "auto v = oo::$h(x);"
+		expect 1 "oo::$h is a helper finding at the source stage" scank helper "$t/h$h" source
+		expect 0 "oo::$h is exempt at the sweeps stage" scan "$t/h$h" sweeps
+	done
+	mk htpl 'auto refs = oo::ObjCRefsFrom<ShipEntity>(ships); oo::PListView v(d);'
+	expect 1 "a templated or declared helper use is a helper finding" scank helper "$t/htpl" source
+	mk hkeep 'std::string d = oo::DescriptionOf(x); oo::PList o = oo::PListObject(s); id y = oo::ObjectIn(o);' \
+		'oo::PList a = oo::PListFromObjects(v); auto r = oo::ObjCRefsIn<Entity>(a); std::string e = oo::ShortDescriptionOf(x);' \
+		'std::string s = StdStringy(x); auto q = foo::StdString(x); auto w = myoo::PListFrom(x);'
+	expect 0 "DescriptionOf, PListObject, ObjectIn and look-alikes are not helper findings" scan "$t/hkeep" source
+	mk hlit '// oo::StdString(x) in a comment' 'x = 1; /* oo::NSStringFrom(s) */ const char *m = "oo::PListFrom(x)";'
+	expect 0 "helper spellings in comments and literals are not findings" scan "$t/hlit" source
+	mk hmac '#if OOLITE_MAC_OS_X' 'NSString *s = oo::NSStringFrom(x); auto v = oo::StdString(s);' '#endif' \
+		'#if OO_EXPANDER_TEST_SURFACE' 'return oo::NSStringOrNil(r);' '#endif'
+	expect 0 "helper calls on fenced lines are not findings" scank helper "$t/hmac" source
+	expect 0 "fenced helper calls are counted in the mac-fenced total" fenced_total 3 "$t/hmac"
+	mk hifdef '#ifdef OOLITE_MAC_OS_X' 'auto v = oo::StdString(s);' '#endif'
+	expect 1 "a helper call in an #ifdef OOLITE_MAC_OS_X block is a finding (not a fence)" scank helper "$t/hifdef" source
+	mk hinc '#import "OOStringBridge.h"'
+	expect 0 "--kind helper does not report a boundary include" scank helper "$t/hinc" source
+	expect 1 "--kind boundary reports a boundary include" scank boundary "$t/hinc" source
+	expect 1 "--kind with two kinds reports either" scank ns,boundary "$t/hinc" source
+	expect 0 "--kind ns does not report an import" scank ns "$t/imp" sweeps
+	expect 1 "--kind import reports an import" scank import "$t/imp" sweeps
+	# --paths and --kind through the command line (argument parsing and path resolution).
+	mkdir -p "$t/pth/Core/Sub" "$t/pth/SDL"
+	printf 'int x;\n' > "$t/pth/Core/Clean.mm"; printf 'auto s = oo::StdString(x);\n' > "$t/pth/Core/Sub/Dirty.mm"
+	printf 'NSString *s;\n' > "$t/pth/SDL/Ns.m"
+	expect 0 "--paths on a clean file passes" bash "$self" --root "$t/pth" --stage source --paths "$t/pth/Core/Clean.mm"
+	expect 1 "--paths on a directory holding a finding fails" bash "$self" --root "$t/pth" --stage source --paths "$t/pth/Core"
+	expect 1 "--paths with several paths reports any of them" bash "$self" --root "$t/pth" --stage source --paths "$t/pth/Core/Clean.mm" "$t/pth/SDL"
+	expect 0 "--paths leaves out findings in other files" bash "$self" --root "$t/pth" --stage sweeps --paths "$t/pth/Core"
+	expect 0 "--kind helper --paths passes where only ns findings are" bash "$self" --root "$t/pth" --stage source --kind helper --paths "$t/pth/SDL"
+	expect 1 "--kind helper --paths fails on a helper call" bash "$self" --root "$t/pth" --stage source --kind helper --paths "$t/pth/Core/Sub/Dirty.mm"
+	expect 1 "--kind before --paths is honoured too" bash "$self" --root "$t/pth" --kind ns --stage source --paths "$t/pth/SDL/Ns.m"
+	expect 2 "--paths naming a missing file is an error" bash "$self" --root "$t/pth" --paths "$t/pth/Core/Missing.mm"
+	expect 2 "--paths outside the scanned root is an error" bash "$self" --root "$t/pth" --paths "$t/imp"
+	printf 'notes\n' > "$t/pth/Core/README.txt"
+	expect 2 "--paths holding no sources is an error" bash "$self" --root "$t/pth" --paths "$t/pth/Core/README.txt"
+	expect 2 "--paths with no path is an error" bash "$self" --root "$t/pth" --paths
+	expect 2 "an unknown --kind is an error" bash "$self" --root "$t/pth" --kind helpers
 	mkdir -p "$t/empty"
 	expect 2 "an empty tree is an error, not a pass" scan "$t/empty" sweeps
 	printf "dependencies = ['objc', '%s']\n" "$gs" > "$t/meson.build"
 	expect 1 "'$gs' in a build file fails the source stage" scan "$t/clean" source "$t/meson.build"
+	expect 0 "--kind helper does not report a build file" scank helper "$t/clean" source "$t/meson.build"
+	expect 1 "--kind build reports a build file" scank build "$t/clean" source "$t/meson.build"
 	printf "dependencies = ['objc']\n" > "$t/meson.build"
 	expect 0 "a clean build file passes the source stage" scan "$t/clean" source "$t/meson.build"
 	# --link: a real PE (objdump itself) passes; a stub import table naming the DLL fails.
@@ -321,18 +416,41 @@ selftest() {
 	return $fail
 }
 
-stage=sweeps root="" mode=scan exe=""
+stage=sweeps root="" mode=scan exe="" paths=() kinds=""
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--stage) stage="${2:-}"; shift 2 ;;
 		--root) root="${2:-}"; shift 2 ;;
 		--link) mode=link; exe="${2:-}"; shift 2 ;;
 		--selftest) mode=selftest; shift ;;
+		--paths) shift; [ $# -gt 0 ] && [ "${1#--}" = "$1" ] || { echo "--paths needs at least one path" >&2; exit 2; }
+			while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do paths+=("$1"); shift; done ;;
+		--kind) [ -n "${2:-}" ] || { echo "--kind needs a kind ($KINDS)" >&2; exit 2; }
+			kinds="$kinds${kinds:+,}$2"; shift 2 ;;
 		-h|--help) usage ;;
 		*) echo "unknown argument: $1" >&2; usage ;;
 	esac
 done
 case "$stage" in sweeps|source) ;; *) echo "--stage must be sweeps or source" >&2; exit 2 ;; esac
+if [ "$mode" = scan ] && [ -n "$kinds" ]; then
+	IFS=, read -ra kind_list <<<"$kinds"
+	[ ${#kind_list[@]} -gt 0 ] || { echo "--kind needs a kind ($KINDS)" >&2; exit 2; }
+	for k in "${kind_list[@]}"; do
+		case " $KINDS " in *" $k "*) ;; *) echo "unknown --kind '$k' (one of: $KINDS)" >&2; exit 2 ;; esac
+	done
+	scan_kinds="$kinds"
+fi
+# --paths: resolved against the current directory, then made relative to the scanned root.
+if [ "$mode" = scan ] && [ ${#paths[@]} -gt 0 ]; then
+	root_abs="$(realpath -e -- "${root:-$repo/upstream/oolite/src}")" || { echo "no source tree at ${root:-upstream/oolite/src}" >&2; exit 2; }
+	for p in "${paths[@]}"; do
+		pa="$(realpath -e -- "$p")" || { echo "--paths: no such file or directory: $p" >&2; exit 2; }
+		if [ "$pa" = "$root_abs" ]; then rel=.
+		elif [ "${pa#"$root_abs"/}" != "$pa" ]; then rel="${pa#"$root_abs"/}"
+		else echo "--paths: $p is not under the scanned root ${root:-upstream/oolite/src}" >&2; exit 2; fi
+		scan_paths="$scan_paths${scan_paths:+$'\n'}$rel"
+	done
+fi
 
 case "$mode" in
 	selftest) selftest ;;
