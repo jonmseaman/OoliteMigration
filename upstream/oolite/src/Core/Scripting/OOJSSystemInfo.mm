@@ -772,7 +772,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return NO;
 
 	std::optional<std::string> property;
-	id value = nil;
+	oo::PList value;	// null for a JavaScript null
 	oo::PList manifest;	// a string from JavaScript, or the running script's manifest identifier as read
 
 	int32_t iValue;
@@ -797,7 +797,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 	property = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 	if (!ooscript::isNull(OOJS_ARGV[2]))
 	{
-		value = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[2]);
+		value = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[2]);
 	}
 	if (oojsArgs.count() >= 4)
 	{
@@ -808,7 +808,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 		manifest = oo::PListFrom([[OOJSScript currentlyRunningScript] propertyNamed:kLocalManifestProperty]);
 	}
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:value fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
+	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:oo::ObjectFromPList(value) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
 
 	OOJS_RETURN_VOID;
 	
@@ -907,7 +907,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string> property;
-	id value = nil;
+	oo::PList value;	// null for a JavaScript null
 	oo::PList manifest;	// a string from JavaScript, or the running script's manifest identifier as read
 
 	int32_t iValue;
@@ -979,7 +979,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 	property = cxx_OOStringFromJSValue(context, OOJS_ARGV[4]);
 	if (!ooscript::isNull(OOJS_ARGV[5]))
 	{
-		value = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[5]);
+		value = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[5]);
 	}
 	if (oojsArgs.count() >= 7)
 	{
@@ -992,7 +992,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 
 	std::string key = oo::str::format("interstellar: %u %u %u",g,s1,s2);
 	
-	[[UNIVERSE systemManager] cxx_setProperty:property.value_or("") forSystemKey:key andLayer:layer toValue:oo::PListFrom(value) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest))];
+	[[UNIVERSE systemManager] cxx_setProperty:property.value_or("") forSystemKey:key andLayer:layer toValue:value fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest))];
 
 	OOJS_RETURN_VOID;
 	
