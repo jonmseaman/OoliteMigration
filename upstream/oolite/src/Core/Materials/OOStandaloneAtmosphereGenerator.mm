@@ -304,8 +304,8 @@ END:
 		const std::string diffuseName = oo::str::format("atmosphere-%u-%u-diffuse-new", _info.seed.high, _info.seed.low);
 		const std::string lightsName = oo::str::format("atmosphere-%u-%u-alpha-new", _info.seed.high, _info.seed.low);
 		
-		[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(diffuseName)
-								   andGrayFileNamed:oo::NSStringFrom(lightsName)
+		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
+								   andGrayFileNamed:lightsName
 											  bytes:aBuffer
 											  width:_width
 											 height:_height
@@ -331,7 +331,7 @@ END:
 		}
 	}
 	
-	[[UNIVERSE gameView] dumpGrayToFileNamed:oo::NSStringFrom(noiseName)
+	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
 									   width:_width
 									  height:_height
