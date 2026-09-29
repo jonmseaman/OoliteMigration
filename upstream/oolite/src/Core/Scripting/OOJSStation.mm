@@ -432,7 +432,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_allegiance:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, [entity allegiance]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([entity cxx_allegiance]));
 			return YES;
 		}
 			
@@ -497,7 +497,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_market:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, [entity localMarketForScripting]);
+			*value_raw = OOJSValueFromPList(context, [entity cxx_localMarketForScripting]);
 			return YES;
 		}
 
@@ -553,7 +553,7 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
-				[entity setAllegiance:oo::NSStringOrNil(sValue)];
+				[entity cxx_setAllegiance:sValue];
 				return YES;
 			}
 			break;
@@ -1107,7 +1107,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 
-	[station setPrice:(NSUInteger)price forCommodity:oo::NSStringOrNil(commodity)];
+	[station cxx_setPrice:(NSUInteger)price forCommodity:commodity.value_or("")];
 
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
@@ -1144,13 +1144,13 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 
 	int32_t quantity;
 	BOOL gotQuantity = ooscript::valueToInt32((context), (OOJS_ARGV[1]), &quantity);
-	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] capacityForGood:commodity]))
+	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] cxx_capacityForGood:oo::StdString(commodity)]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Quantity must be between 0 and the station market capacity");
 		return NO;
 	}
 
-	[station setQuantity:(OOCargoQuantity)quantity forCommodity:commodity];
+	[station cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:oo::StdString(commodity)];
 	
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{

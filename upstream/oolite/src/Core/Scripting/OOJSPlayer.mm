@@ -669,7 +669,7 @@ static bool PlayerAddMessageToArrivalReport(ooscript::Context context, ooscript:
 		return NO;
 	}
 	
-	[player addMessageToReport:oo::NSStringFrom(*report)];
+	[player cxx_addMessageToReport:*report];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -726,7 +726,7 @@ static bool PlayerReplaceShip(ooscript::Context context, ooscript::CallArgs &ooj
 		return NO;
 	}
 	
-	success = [player replaceShipWithNamedShip:oo::NSStringFrom(*shipKey)];
+	success = [player cxx_replaceShipWithNamedShip:*shipKey];
 	if (oojsArgs.count() > 1)
 	{
 		std::int32_t personality32 = 0;
