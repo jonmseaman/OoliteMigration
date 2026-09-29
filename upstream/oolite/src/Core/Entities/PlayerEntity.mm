@@ -1737,7 +1737,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	//if (passenger_space == 0) passenger_space = PASSENGER_BERTH_SPACE;
 	
 	max_cargo = dict.get<unsigned int>("max_cargo", max_cargo);
-	if (max_cargo > original_hold_size)  [self addEquipmentItem:@"EQ_CARGO_BAY" inContext:@"loading"];
+	if (max_cargo > original_hold_size)  [self addEquipmentItem:"EQ_CARGO_BAY" inContext:"loading"];
 	max_cargo = original_hold_size + ([self hasExpandedCargoBay] ? extra_cargo : 0);
 	if (max_cargo < max_passengers * PASSENGER_BERTH_SPACE)
 	{
@@ -6814,7 +6814,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 
 	// if multiple items providing escape pod, remove the first one
-	[self removeEquipmentItem:[self equipmentItemProviding:@"EQ_ESCAPE_POD"]];
+	[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"].value_or(std::string())];	// none: "", as nil was
 
 	
 	// set up the standard location where the escape pod will dock.
@@ -7122,10 +7122,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// set the following so removeEquipment works on the right entity
 		[self setScriptTarget:self];
 		[UNIVERSE clearPreviousMessage];
-		[self removeEquipmentItem:oo::NSStringFrom(*system_key)];
+		[self removeEquipmentItem:*system_key];
 
 		const std::string damagedKey = oo::str::format("%s_DAMAGED", system_key->c_str());
-		[self addEquipmentItem:oo::NSStringFrom(damagedKey) withValidation: NO inContext:@"damage"];	// for possible future repair.
+		[self addEquipmentItem:damagedKey withValidation: NO inContext:"damage"];	// for possible future repair.
 		[self doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(*system_key)];
 
 		if (![self hasEquipmentItem:oo::NSStringFrom(*system_name)] && [self hasEquipmentItem:oo::NSStringFrom(damagedKey)])
@@ -7725,7 +7725,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	roleSystemList.clear();
 	
 	// may be more than one item providing this
-	[self removeEquipmentItem:[self equipmentItemProviding:@"EQ_GAL_DRIVE"]];
+	[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_GAL_DRIVE"].value_or(std::string())];	// none: "", as nil was
 	
 	galaxy_number = destGalaxy;
 
@@ -9553,7 +9553,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (isOK)
 		{
 			if (techlevel < minTechLevel) isOK = NO;
-			if (![self canAddEquipment:oo::NSStringFrom(eqKey) inContext:@"purchase"]) isOK = NO;
+			if (![self canAddEquipment:eqKey inContext:"purchase"]) isOK = NO;
 			if (available_facings == 0 && [eqType isPrimaryWeapon]) isOK = NO;
 			if (isOK)  equipmentAllowed.push_back(eqKey);
 		}
@@ -10642,7 +10642,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 		[self doTradeIn:tradeIn forPriceFactor:priceFactor];
 		// If equipped, remove damaged weapon after repairs. -- But there's no way we should get a damaged weapon. Ever.
-		[self removeEquipmentItem:oo::NSStringOrNil(eqKeyDamaged)];
+		[self removeEquipmentItem:eqKeyDamaged.value_or(std::string())];	// none: "", as nil was
 		return YES;
 	}
 	
@@ -10686,19 +10686,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		switch ([self energyUnitType])
 		{
 			case ENERGY_UNIT_NAVAL :
-				[self removeEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT"];
+				[self removeEquipmentItem:"EQ_NAVAL_ENERGY_UNIT"];
 				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_NAVAL_ENERGY_UNIT"] / 2;	// 50 % refund
 				break;
 			case ENERGY_UNIT_NAVAL_DAMAGED :
-				[self removeEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"];
+				[self removeEquipmentItem:"EQ_NAVAL_ENERGY_UNIT_DAMAGED"];
 				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_NAVAL_ENERGY_UNIT"] / 4;	// half of the working one
 				break;
 			case ENERGY_UNIT_NORMAL :
-				[self removeEquipmentItem:@"EQ_ENERGY_UNIT"];
+				[self removeEquipmentItem:"EQ_ENERGY_UNIT"];
 				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_ENERGY_UNIT"] * 3 / 4;		// 75 % refund
 				break;
 			case ENERGY_UNIT_NORMAL_DAMAGED :
-				[self removeEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"];
+				[self removeEquipmentItem:"EQ_ENERGY_UNIT_DAMAGED"];
 				tradeIn = [UNIVERSE getEquipmentPriceForKey:@"EQ_ENERGY_UNIT"] * 3 / 8;		// half of the working one
 				break;
 
@@ -10764,10 +10764,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return YES;
 	}
 	
-	if ([self canAddEquipment:oo::NSStringFrom(eqKey) inContext:@"purchase"])
+	if ([self canAddEquipment:eqKey inContext:"purchase"])
 	{
 		credits -= price;
-		[self addEquipmentItem:oo::NSStringFrom(eqKey) withValidation:NO inContext:@"purchase"]; // no need to validate twice.
+		[self addEquipmentItem:eqKey withValidation:NO inContext:"purchase"]; // no need to validate twice.
 		if (isRepair)
 		{
 			[self doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(eqKey)];
@@ -10779,10 +10779,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(id)eqKey	// shared selector (proposed ADR-0043)
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey
 {
-	// canAddEquipment: read a nil key as "", as cxx_ does
-	return [self cxx_setWeaponMount:facing toWeapon:oo::StdString(eqKey) inContext:std::string("purchase")];
+	return [self cxx_setWeaponMount:facing toWeapon:eqKey inContext:std::string("purchase")];
 }
 
 
@@ -10801,7 +10800,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	// weapon allowed (or NONE)?
 	if (eqKey != "EQ_WEAPON_NONE")
 	{
-		if (![self canAddEquipment:oo::NSStringFrom(eqKey) inContext:oo::NSStringOrNil(context)])  
+		if (![self canAddEquipment:eqKey inContext:context.value_or(std::string())])	// nil context read as "", as now  
 		{
 			return NO;
 		}
@@ -11712,12 +11711,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) canAddEquipment:(id)equipmentKey inContext:(id)context	// shared selector (proposed ADR-0043): Objective-C strings
+- (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context
 {
-	if (oo::OptionalString(equipmentKey) == "EQ_RENOVATION" && !(ship_trade_in_factor < 85 || [self cxx_shipSubEntities].size() < [self maxShipSubEntities]))  return NO;
+	if (equipmentKey == "EQ_RENOVATION" && !(ship_trade_in_factor < 85 || [self cxx_shipSubEntities].size() < [self maxShipSubEntities]))  return NO;
 	if (![super canAddEquipment:equipmentKey inContext:context])  return NO;
 
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
+	OOEquipmentType *eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 	const oo::PList conditions = (eqType != nil) ? [eqType cxx_conditions] : oo::PList();
 	if (!conditions.isNull() && ![self cxx_scriptTestConditions:conditions])  return NO;
 	
@@ -11725,16 +11724,16 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) addEquipmentItem:(id)equipmentKey inContext:(id)context	// shared selector (proposed ADR-0043): Objective-C strings
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context
 {
 	return [self addEquipmentItem:equipmentKey withValidation:YES inContext:context];
 }
 
 
-- (BOOL) addEquipmentItem:(id)equipmentKey withValidation:(BOOL)validateAddition inContext:(id)context	// shared selector (proposed ADR-0043): Objective-C strings
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context
 {
 	// deal with trumbles..
-	if (oo::OptionalString(equipmentKey) == "EQ_TRUMBLE")
+	if (equipmentKey == "EQ_TRUMBLE")
 	{
 		/*	Bug fix: must return here if eqKey == @"EQ_TRUMBLE", even if
 			trumbleCount >= 1. Otherwise, the player becomes immune to
@@ -11760,8 +11759,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			[self setCompassMode:COMPASS_MODE_PLANET];
 		}
 		
-		if (equipmentKey != nil)  [self cxx_addEqScriptForKey:oo::StdString(equipmentKey)];
-		[self addEquipmentWithScriptToCustomKeyArray:oo::StdString(equipmentKey)];	// (nil matched no script)
+		if (!equipmentKey.empty())  [self cxx_addEqScriptForKey:equipmentKey];	// ("" stands for the former nil key)
+		[self addEquipmentWithScriptToCustomKeyArray:equipmentKey];
 	}
 	return OK;
 }
@@ -11838,16 +11837,16 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) removeEquipmentItem:(id)equipmentKey	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) removeEquipmentItem:(const std::string &)equipmentKey
 {
 	if(![self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"] && [self compassMode] != COMPASS_MODE_BASIC)
 	{
 		[self setCompassMode:COMPASS_MODE_BASIC];
 	}
 	[super removeEquipmentItem:equipmentKey];
-	if(![self hasEquipmentItem:equipmentKey]) {
+	if(![self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO]) {	// -hasEquipmentItem: with one string key
 		// removed the last one
-		if (equipmentKey != nil)  [self cxx_removeEqScriptForKey:oo::StdString(equipmentKey)];
+		if (!equipmentKey.empty())  [self cxx_removeEqScriptForKey:equipmentKey];	// ("" stands for the former nil key)
 	}
 }
 
@@ -11905,7 +11904,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		count = dict.get<NSUInteger>(eqDesc);	// (0 for a list: nothing is added from one here, as before)
 		for (i=0;i<count;i++)
 		{
-			[self addEquipmentItem:oo::NSStringFrom(eqDesc) withValidation:NO inContext:@"loading"];
+			[self addEquipmentItem:eqDesc withValidation:NO inContext:"loading"];
 		}
 	}
 	
@@ -11916,7 +11915,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if (![self cxx_equipmentValidToAdd:eqDesc whileLoading:YES inContext:"loading"])
 		{
-			[self removeEquipmentItem:oo::NSStringFrom(eqDesc)];
+			[self removeEquipmentItem:eqDesc];
 		}
 	}
 }

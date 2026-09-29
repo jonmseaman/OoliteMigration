@@ -249,7 +249,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		for (const oo::PList &eqKey : *equipment->getIf<oo::PList::Array>())
 		{
-			[ship addEquipmentItem:oo::ObjectFromPList(eqKey) withValidation:NO inContext:@"loading"];
+			[ship addEquipmentItem:oo::StdString(oo::ObjectFromPList(eqKey)) withValidation:NO inContext:"loading"];
 		}
 	}
 
@@ -258,7 +258,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		for (const oo::PList &eqKey : *missileList->getIf<oo::PList::Array>())
 		{
-			[ship addEquipmentItem:oo::ObjectFromPList(eqKey) withValidation:NO inContext:@"loading"];
+			[ship addEquipmentItem:oo::StdString(oo::ObjectFromPList(eqKey)) withValidation:NO inContext:"loading"];
 		}
 	}
 

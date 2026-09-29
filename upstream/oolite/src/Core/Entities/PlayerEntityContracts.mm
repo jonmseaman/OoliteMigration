@@ -1904,7 +1904,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		}
 		else
 		{
-			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
+			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
 		}
 	}
 
@@ -1966,7 +1966,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		}
 		else
 		{
-			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
+			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
 		}
 	}
 
@@ -2057,7 +2057,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// restore  portable equipment (in key order; the set it replaced gave hash order)
 	for (const std::string &eq_desc : portable_equipment)
 	{
-		[self addEquipmentItem:oo::NSStringFrom(eq_desc) withValidation:NO inContext:@"portable"];
+		[self addEquipmentItem:eq_desc withValidation:NO inContext:"portable"];
 	}
 
 

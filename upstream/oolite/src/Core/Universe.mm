@@ -3409,8 +3409,8 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 
 		if (!demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
 		// stop consistency problems on the ship library screen
-		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
-		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 	}
 
 	if (ship)
@@ -6030,8 +6030,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		[ship setStatus:STATUS_COCKPIT_DISPLAY];
 		// stop problems on the ship library screen
 		// demo ships shouldn't have this equipment
-		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
-		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 	}
 	
 	return [ship autorelease];
@@ -7402,8 +7402,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 								
 								if (demo_ship != nil)
 								{
-									[demo_ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
-									[demo_ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
+									[demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+									[demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 
 									[demo_ship switchAITo:@"nullAI.plist"];
 									[demo_ship setOrientation:q2];
