@@ -50,12 +50,6 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 
-#if !OOLITE_MAC_OS_X
-#define NSIntegerMapKeyCallBacks	NSIntMapKeyCallBacks
-#define NSIntegerMapValueCallBacks	NSIntMapValueCallBacks
-#endif
-
-
 // straight C
 static Vector base_vertex_array[MAX_PLANET_VERTICES];
 static int base_terrain_array[MAX_PLANET_VERTICES];

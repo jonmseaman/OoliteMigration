@@ -39,18 +39,6 @@ SOFTWARE.
 #include "oofnd/Log.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-/* 
- * GNUstep 1.20.1 does not support NSIntegerHashCallBacks but uses 
- * NSIntHashCallBacks instead. NSIntHashCallBacks was deprecated in favor of
- * NSIntegerHashCallBacks in GNUstep versions later than 1.20.1. If we move to
- * a newer GNUstep version for Oolite the #define below may not be necessary
- * anymore but for now we need it to be able to build. - Nikos 20120208.
-*/
-#if OOLITE_GNUSTEP
-#define NSIntegerHashCallBacks	NSIntHashCallBacks
-#endif
-
-
 namespace {
 
 oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::optional<std::string> &materialKey);
