@@ -267,9 +267,11 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
-- (id) descriptionComponents
+// -cxx_description (OODescription.h) wraps this as "<Class 0x...>{count=N}", as the legacy
+// -descriptionComponents did.
+- (std::optional<std::string>) cxx_descriptionComponents
 {
-	return oo::NSStringFrom(oo::str::format("count=%zu", [self count]));
+	return oo::str::format("count=%zu", [self count]);
 }
 
 
@@ -563,7 +565,14 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 	float					cuWeight = 0.0f;
 	
 	assert(count > 1 && objects != NULL && weights != NULL);
-	
+	if (objects == NULL || weights == NULL)
+	{
+		// Unreachable (-[OOProbabilitySet initWithObjects:...] raises first); copying an element
+		// forms a reference, where the old -retain of an id element was a message to nil.
+		[self release];
+		return nil;
+	}
+
 	if ((self = [super initPriv]))
 	{
 		// Allocate arrays

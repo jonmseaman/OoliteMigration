@@ -4144,7 +4144,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		// Select a ship, check conditions and return it if possible.
 		const oo::PList shipKeyObject = [pset randomObject];	// a ship key (a string); null when no weight is positive
 		const std::string *shipKeyString = shipKeyObject.getIf<std::string>();
-		const std::string candidate = (shipKeyString != nullptr) ? *shipKeyString : std::string();	// "" as StdString(nil) gave
+		std::string candidate = (shipKeyString != nullptr) ? *shipKeyString : std::string();	// "" as StdString(nil) gave
 		if ([self canInstantiateShip:candidate])  return candidate;
 
 		// Condition failed -> remove ship from consideration.
