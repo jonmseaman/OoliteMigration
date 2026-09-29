@@ -101,8 +101,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	if (const std::optional<std::string> roleString = [[self roleSet] roleString])  updatedShipInfo[KEY_ROLES] = *roleString;
 	updatedShipInfo[KEY_FUEL] = oo::PList::unsignedInteger(fuel);
 	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(bounty);
-	updatedShipInfo[KEY_FORWARD_WEAPON] = oo::StdString(OOStringFromWeaponType(forward_weapon_type));
-	updatedShipInfo[KEY_AFT_WEAPON] = oo::StdString(OOStringFromWeaponType(aft_weapon_type));
+	updatedShipInfo[KEY_FORWARD_WEAPON] = cxx_OOStringFromWeaponType(forward_weapon_type).value_or("");
+	updatedShipInfo[KEY_AFT_WEAPON] = cxx_OOStringFromWeaponType(aft_weapon_type).value_or("");
 	updatedShipInfo[KEY_SCAN_CLASS] = cxx_OOStringFromScanClass(scanClass);
 
 	std::vector<std::string> deletes;

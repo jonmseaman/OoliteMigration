@@ -784,13 +784,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 {
 	oo::PList::Dict propertyList;
 	propertyList["visualEffect"] = oo::PListObject(self);
-	id properties = oo::ObjectFromPList(oo::PList(std::move(propertyList)));
+	const oo::PList properties(std::move(propertyList));
 
 	[script autorelease];
-	script = [OOScript jsScriptFromFileNamed:oo::NSStringOrNil(script_name) properties:properties];
+	script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:properties];
 	// does not support legacy scripting
 	if (script == nil) {
-		script = [OOScript jsScriptFromFileNamed:@"oolite-default-effect-script.js" properties:properties];
+		script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-effect-script.js" properties:properties];
 	}
 	[script retain];
 }

@@ -230,7 +230,7 @@ void MissionRunCallback()
 	args[1] = argval2;
 
 	// now reset the mission choice silently, before calling the callback script.
-	[player setMissionChoice:nil keyPress:@"" withEvent:NO];
+	[player cxx_setMissionChoice:std::nullopt keyPress:"" withEvent:NO];
 	
 	// Call the callback.
 	@try
@@ -370,7 +370,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 			cxx_OOStandardsDeprecated("Use of numbers for mission.markSystem is deprecated");
 			if (!OOEnforceStandards())
 			{
-				[player addMissionDestinationMarker:[player defaultMarker:dest]];
+				[player cxx_addMissionDestinationMarker:[player cxx_defaultMarker:dest]];
 			}
 		}
 		else // must be object, from above
@@ -424,7 +424,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 			cxx_OOStandardsDeprecated("Use of numbers for mission.unmarkSystem is deprecated");
 			if (!OOEnforceStandards())
 			{
-				if (![player removeMissionDestinationMarker:[player defaultMarker:dest]]) {
+				if (![player cxx_removeMissionDestinationMarker:[player cxx_defaultMarker:dest]]) {
 					result = NO;
 				}
 			}

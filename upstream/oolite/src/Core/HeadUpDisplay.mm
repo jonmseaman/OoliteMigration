@@ -995,7 +995,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], OOStringFromCompassMode([PLAYER compassMode]) })];
+		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], oo::NSStringFrom(cxx_OOStringFromCompassMode([PLAYER compassMode])) })];
 	}
 	
 }
@@ -1101,7 +1101,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	 (crosshairs.plist).OTHER
 	 */
 	
-	weaponName = oo::StdString(OOStringFromWeaponType(weapon));
+	weaponName = cxx_OOStringFromWeaponType(weapon).value_or("");
 	weaponName2 = weaponName.substr(3); // strip "EQ_"
 	result = _crosshairOverrides.get<oo::PList::Array>(weaponName);
 	if (result == nullptr)

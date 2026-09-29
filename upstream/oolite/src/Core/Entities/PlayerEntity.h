@@ -1334,25 +1334,8 @@ OOINLINE PlayerEntity *OOGetPlayer(void)
 #define MAX_GRAMS_IN_SAFE		((GRAMS_PER_POD / 2) - 1)
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-NSString *OODisplayRatingStringFromKillCount(unsigned kills);
-NSString *KillCountToRatingAndKillString(unsigned kills);
-NSString *OODisplayStringFromLegalStatus(int legalStatus);
-#ifdef __cplusplus
-}
-#endif
-
-NSString *OOStringFromGUIScreenID(OOGUIScreenID screen) CONST_FUNC;
-OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
-
-OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
-NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
-
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
 // (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
-// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
 std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID screen);
 OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
 

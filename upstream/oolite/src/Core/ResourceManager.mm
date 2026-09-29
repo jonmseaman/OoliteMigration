@@ -302,14 +302,6 @@ std::string LogClassKeyRoot(const std::string &key)
 }
 
 
-// OOScript's world-script array (OOScript is an unmigrated callee) as references; nullopt for nil.
-std::optional<std::vector<oo::ObjCRef<OOScript *>>> ScriptRefsOrNil(id scripts)
-{
-	if (scripts == nil)  return std::nullopt;
-	return oo::ObjCRefsFrom<OOScript *>(scripts);
-}
-
-
 // [path lastPathComponent] of a nil-able path, as %@ printed it.
 std::optional<std::string> LastPathComponent(const std::optional<std::string> &path)
 {
@@ -2205,8 +2197,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			{
 				@try
 				{
-					std::optional<std::vector<oo::ObjCRef<OOScript *>>> results = ScriptRefsOrNil([OOScript worldScriptsAtPath:oo::NSStringFrom(oo::str::appendingPathComponent(path, "Config"))]);
-					if (!results.has_value()) results = ScriptRefsOrNil([OOScript worldScriptsAtPath:oo::NSStringFrom(path)]);
+					std::optional<std::vector<oo::ObjCRef<OOScript *>>> results = [OOScript cxx_worldScriptsAtPath:oo::str::appendingPathComponent(path, "Config")];
+					if (!results.has_value()) results = [OOScript cxx_worldScriptsAtPath:path];
 					if (results.has_value())
 					{
 						for (const oo::ObjCRef<OOScript *> &script : *results)
