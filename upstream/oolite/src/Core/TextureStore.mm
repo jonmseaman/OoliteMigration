@@ -58,7 +58,7 @@ static FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const char *k
 	if (color == nil)
 	{
 		// could not get a color from the dicitionary, return white color instead of hitting the assert below
-		color = [OOColor colorWithDescription:@"whiteColor"];
+		color = [OOColor cxx_colorWithDescription:oo::PList("whiteColor")];
 		OO_LOG("textureStore.FloatRGBFromDictColor.nilColor", "Expected color for key \"{}\" in dictionary {}, got nil. Setting color to {}", key, oo::DescriptionOf(dictionary), [color cxx_rgbaDescription].value_or("(null)"));
 	}
 	OOCAssert([color isKindOfClass:[OOColor class]], "Expected OOColor, got %s", oo::DescriptionOf([color class]).c_str());

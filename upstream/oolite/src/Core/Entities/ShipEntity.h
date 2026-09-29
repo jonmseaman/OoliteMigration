@@ -516,7 +516,7 @@ typedef enum
 - (double) frustration;
 - (void) setLaunchDelay:(double)delay;
 
-- (void) interpretAIMessage:(id)message;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
 - (GLfloat)accuracy;
 - (void)setAccuracy:(GLfloat) new_accuracy;
@@ -1141,7 +1141,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) deactivateCloakingDevice;
 - (BOOL) launchCascadeMine;
 - (ShipEntity *) launchEscapeCapsule;
-- (id) dumpCargo;	// shared selector (proposed ADR-0043), called by name: an Objective-C string (the commodity), or nil
+- (void) dumpCargo;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 - (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
 - (OOCargoType) dumpItem: (ShipEntity*) jetto;
 
@@ -1219,7 +1219,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (BOOL) isMining;
 
-- (void) spawn:(id)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void) spawn:(const std::string &)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
 - (int) checkShipsInVicinityForWitchJumpExit;
 
@@ -1269,8 +1269,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	is passed as oo::PListObject(entity). The id forms above stay for OOObject arguments.
 */
 - (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
-// TRANSITIONAL (oo-qps.72): Foundation-boxed arguments, each through its PList form.
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 - (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 
@@ -1290,7 +1288,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 } while (0)
 
 - (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
-- (void) sendAIMessage:(id)message;		// Queued message. Shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void) sendAIMessage:(const std::string &)message;		// Queued message.
 - (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
 - (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
 

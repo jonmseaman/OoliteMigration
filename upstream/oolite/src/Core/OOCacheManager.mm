@@ -226,21 +226,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id)cxx_objectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
-{
-	return oo::ObjectFromPList([self cxx_pListForKey:inKey inCache:inCacheKey]);
-}
-
-
-
-- (void)cxx_setObject:(id)inObject forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
-{
-	OOParameterAssert(inObject != nil);
-	
-	[self cxx_setPList:oo::PListFrom(inObject) forKey:inKey inCache:inCacheKey];
-}
-
-
 - (void)cxx_setPList:(const oo::PList &)inValue forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
 {
 	OOParameterAssert(!inValue.isNull());

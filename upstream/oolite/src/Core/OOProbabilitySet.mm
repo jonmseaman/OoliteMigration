@@ -97,20 +97,6 @@ NSUInteger IndexOfObject(const std::vector<oo::PList> &objects, const oo::PList 
 	return NSNotFound;
 }
 
-
-// The shared -allObjects (an id form, until oo-qps.44): the elements as the Objective-C objects the
-// id element API held, a string as an NSString and an Object node as its object.
-id ObjectiveCArray(const std::vector<oo::PList> &elements)
-{
-	std::vector<oo::ObjCRef<id>> objects;
-	for (const oo::PList &element : elements)
-	{
-		const std::string *string = element.getIf<std::string>();
-		objects.emplace_back(string != nullptr ? oo::NSStringOrNil(*string) : oo::ObjectIn(element));
-	}
-	return oo::NSArrayFromObjects(objects);
-}
-
 }	// namespace
 
 
@@ -304,12 +290,6 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
-- (id) allObjects
-{
-	ThrowAbstractionViolationException(self);
-}
-
-
 - (std::vector<oo::PList>) cxx_allElements
 {
 	ThrowAbstractionViolationException(self);
@@ -342,12 +322,6 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 - (BOOL) cxx_containsObject:(const oo::PList &)object
 {
 	return [self weightForObject:object] >= 0.0f;
-}
-
-
-- (id) objectEnumerator
-{
-	return [[self allObjects] objectEnumerator];
 }
 
 
@@ -404,12 +378,6 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 - (NSUInteger) count
 {
 	return 0;
-}
-
-
-- (id) allObjects
-{
-	return ObjectiveCArray([self cxx_allElements]);
 }
 
 
@@ -534,12 +502,6 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 - (NSUInteger) count
 {
 	return 1;
-}
-
-
-- (id) allObjects
-{
-	return ObjectiveCArray([self cxx_allElements]);
 }
 
 
@@ -710,21 +672,9 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) allObjects
-{
-	return ObjectiveCArray([self cxx_allElements]);
-}
-
-
 - (std::vector<oo::PList>) cxx_allElements
 {
 	return std::vector<oo::PList>(_objects, _objects + _count);
-}
-
-
-- (id) objectEnumerator
-{
-	return [[self allObjects] objectEnumerator];
 }
 
 
@@ -975,21 +925,9 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) allObjects
-{
-	return ObjectiveCArray([self cxx_allElements]);
-}
-
-
 - (std::vector<oo::PList>) cxx_allElements
 {
 	return _objects;
-}
-
-
-- (id) objectEnumerator
-{
-	return [[self allObjects] objectEnumerator];
 }
 
 

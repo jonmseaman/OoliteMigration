@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #import "OOMaterial.h"
 #import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
@@ -55,11 +56,11 @@ MA 02110-1301, USA.
 
 namespace {
 
-// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
-id ObjectForKey(const oo::PList &dict, std::string_view key)
+// -objectForKey: as plist data (a null PList when absent), for +cxx_colorWithDescription:.
+oo::PList ValueForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? *value : oo::PList();
 }
 
 
@@ -91,13 +92,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	OOColor *col3 = [OOColor colorWithDescription:col1];
-	OOColor *col4 = [OOColor colorWithDescription:col2];
+	OOColor *col3 = [OOColor cxx_colorWithDescription:oo::PListObject(col1)];	// a copy, as the id form made of a colour
+	OOColor *col4 = [OOColor cxx_colorWithDescription:oo::PListObject(col2)];
 
 	// Load colours
 	BOOL nebulaColorSet = [self readColor1:&col1 andColor2:&col2 andColor3:&col3 andColor4:&col4 fromDictionary:systemInfo];
 	
-	skyColor = [[OOColor colorWithDescription:ObjectForKey(systemInfo, "sun_color")] retain];
+	skyColor = [[OOColor cxx_colorWithDescription:ValueForKey(systemInfo, "sun_color")] retain];
 	if (skyColor == nil)
 	{
 		skyColor = [[col2 blendedColorWithFraction:0.5 ofColor:col1] retain];
@@ -188,12 +189,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 
 - (BOOL) changeProperty:(const std::string &)key withDictionary:(const oo::PList &)dict
 {
-	id	object = ObjectForKey(dict, key);
 	
 	// TODO: properties requiring reInit?
 	if (key == "sun_color")
 	{
-		OOColor 	*col=[[OOColor colorWithDescription:object] retain];
+		OOColor 	*col=[[OOColor cxx_colorWithDescription:ValueForKey(dict, key)] retain];
 		if (col != nil)
 		{
 			[skyColor release];
@@ -282,7 +282,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 
 - (BOOL)readColor1:(OOColor **)ioColor1 andColor2:(OOColor **)ioColor2 andColor3:(OOColor **)ioColor3 andColor4:(OOColor **)ioColor4 fromDictionary:(const oo::PList &)dictionary
 {
-	id					colorDesc = nil;
+	oo::PList			colorDesc;
 	OOColor				*color = nil;
 	BOOL				nebulaSet = NO;
 
@@ -311,25 +311,25 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 			OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as two RGB colours (must be six numbers).", *string);
 		}
 	}
-	colorDesc = ObjectForKey(dictionary, "sky_color_1");
-	if (colorDesc != nil)
+	colorDesc = ValueForKey(dictionary, "sky_color_1");
+	if (!colorDesc.isNull())
 	{
-		color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
+		color = [[OOColor cxx_colorWithDescription:colorDesc] premultipliedColor];
 		if (color != nil)  *ioColor1 = color;
 		else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
-	colorDesc = ObjectForKey(dictionary, "sky_color_2");
-	if (colorDesc != nil)
+	colorDesc = ValueForKey(dictionary, "sky_color_2");
+	if (!colorDesc.isNull())
 	{
-		color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
+		color = [[OOColor cxx_colorWithDescription:colorDesc] premultipliedColor];
 		if (color != nil)  *ioColor2 = color;
 		else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 
-	colorDesc = ObjectForKey(dictionary, "nebula_color_1");
-	if (colorDesc != nil)
+	colorDesc = ValueForKey(dictionary, "nebula_color_1");
+	if (!colorDesc.isNull())
 	{
-		color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
+		color = [[OOColor cxx_colorWithDescription:colorDesc] premultipliedColor];
 		if (color != nil)  
 		{
 			*ioColor3 = color;
@@ -339,19 +339,19 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else
 	{
-		colorDesc = ObjectForKey(dictionary, "sky_color_1");
-		if (colorDesc != nil)
+		colorDesc = ValueForKey(dictionary, "sky_color_1");
+		if (!colorDesc.isNull())
 		{
-			color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
+			color = [[OOColor cxx_colorWithDescription:colorDesc] premultipliedColor];
 			if (color != nil)  *ioColor3 = color;
 			else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 		}
 	}
 	
-	colorDesc = ObjectForKey(dictionary, "nebula_color_2");
-	if (colorDesc != nil)
+	colorDesc = ValueForKey(dictionary, "nebula_color_2");
+	if (!colorDesc.isNull())
 	{
-		color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
+		color = [[OOColor cxx_colorWithDescription:colorDesc] premultipliedColor];
 		if (color != nil) 
 		{
 			*ioColor4 = color;
@@ -361,10 +361,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else
 	{
-		colorDesc = ObjectForKey(dictionary, "sky_color_2");
-		if (colorDesc != nil)
+		colorDesc = ValueForKey(dictionary, "sky_color_2");
+		if (!colorDesc.isNull())
 		{
-			color = [[OOColor colorWithDescription:colorDesc] premultipliedColor];
+			color = [[OOColor cxx_colorWithDescription:colorDesc] premultipliedColor];
 			if (color != nil)  *ioColor4 = color;
 			else  OO_LOG_WARN("sky.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 		}

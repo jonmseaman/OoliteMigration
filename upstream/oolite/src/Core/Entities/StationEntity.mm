@@ -386,7 +386,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		[sub abortAllDockings];
 	}
 	
-	[_shipsOnHold makeObjectsPerformSelector:@selector(sendAIMessage:) withObject:@"DOCKING_ABORTED"];
+	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
+	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])  [static_cast<ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
 	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])
 	{
 		ShipEntity *hold = static_cast<ShipEntity *>(holdRef.get());
@@ -612,7 +613,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (void) abortDockingForShip:(ShipEntity *) ship
 {
-	[ship sendAIMessage:@"DOCKING_ABORTED"];
+	[ship sendAIMessage:"DOCKING_ABORTED"];
 	[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	
 	[_shipsOnHold removeObject:ship];

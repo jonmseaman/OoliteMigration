@@ -303,9 +303,9 @@ MA 02110-1301, USA.
 				if (sky_bri == 1.0)
 				{	
 					// This sun has now gone nova!
-					[UNIVERSE cxx_setSystemDataKey:"sun_gone_nova" value:oo::ObjectFromPList(oo::PList(static_cast<bool>(YES))) fromManifest:"org.oolite.oolite"];	// +numberWithBool:
-					[UNIVERSE cxx_setSystemDataKey:"corona_flare" value:oo::ObjectFromPList(oo::PList::singleReal(0.3)) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
-					[UNIVERSE cxx_setSystemDataKey:"corona_hues" value:oo::ObjectFromPList(oo::PList::singleReal(0.05)) fromManifest:"org.oolite.oolite"];
+					[UNIVERSE cxx_setSystemDataKey:"sun_gone_nova" value:oo::PList(static_cast<bool>(YES)) fromManifest:"org.oolite.oolite"];	// +numberWithBool:
+					[UNIVERSE cxx_setSystemDataKey:"corona_flare" value:oo::PList::singleReal(0.3) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+					[UNIVERSE cxx_setSystemDataKey:"corona_hues" value:oo::PList::singleReal(0.05) fromManifest:"org.oolite.oolite"];
 					// Novas are stored under the core manifest if the
 					// player was there at the time. Default layer 2
 					// is fine.
@@ -313,7 +313,7 @@ MA 02110-1301, USA.
 				}
 				discColor[0] = 1.0 * _sunBrightnessFactor;	discColor[1] = 1.0 * _sunBrightnessFactor;	discColor[2] = 1.0 * _sunBrightnessFactor;
 				_novaExpansionTimer += delta_t;
-				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::ObjectFromPList(oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate)) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
 			}
 			else
 			{
@@ -692,12 +692,12 @@ MA 02110-1301, USA.
 
 - (BOOL) changeSunProperty:(const std::string &)key withDictionary:(const oo::PList &) dict
 {
-	const oo::PList *value = dict.find(key);
-	id	object = value != nullptr ? oo::ObjectFromPList(*value) : nil;	// -doubleValue / -floatValue as before
+	// the value's -doubleValue / -floatValue (0 when absent, as nil answered): get<> with fallback 0 is
+	// the same for a string or a number
 	static GLfloat oldRadius = 0.0;
 	if (key == "sun_radius")
 	{
-		oldRadius =	[object doubleValue];	// clamp corona_flare in case planetinfo.plist / savegame contains the wrong value
+		oldRadius =	dict.get<double>(key, 0.0);	// clamp corona_flare in case planetinfo.plist / savegame contains the wrong value
 		[self setRadius:oldRadius andCorona:dict.get<float>("corona_flare", 0.0f)];
 	}
 	else if (key == std::string(KEY_SUNNAME))
@@ -708,15 +708,15 @@ MA 02110-1301, USA.
 	}
 	else if (key == "corona_flare")
 	{
-		[self setRadius:collision_radius andCorona:[object floatValue]];
+		[self setRadius:collision_radius andCorona:dict.get<float>(key, 0.0f)];
 	}
 	else if (key == "corona_shimmer")
 	{
-		corona_speed_factor=OOClamp_0_1_f([object floatValue]) * 2.0 + randf() * randf();
+		corona_speed_factor=OOClamp_0_1_f(dict.get<float>(key, 0.0f)) * 2.0 + randf() * randf();
 	}
 	else if (key == "corona_hues")
 	{
-		corona_blending=OOClamp_0_1_f([object floatValue]);
+		corona_blending=OOClamp_0_1_f(dict.get<float>(key, 0.0f));
 	}
 	else if (key == "sun_gone_nova")
 	{

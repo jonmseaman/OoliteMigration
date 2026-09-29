@@ -77,12 +77,6 @@ typedef struct
 */
 + (OOColor *) cxx_colorWithDescription:(const oo::PList &)description saturationFactor:(float)factor;
 
-// The id forms of the three above: <description> through oo::PListFrom. Deleted by oo-qps.72
-// once their callers have moved to the PList forms.
-+ (OOColor *) colorWithDescription:(id)description;
-+ (OOColor *) brightColorWithDescription:(id)description;
-+ (OOColor *) colorWithDescription:(id)description saturationFactor:(float)factor;
-
 // Creates a colour given a string with components.
 + (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString;
 
