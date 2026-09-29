@@ -281,7 +281,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 - (void) setGuiToScenarioScreen:(int)page
 {
-	const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+	const oo::PList scenarios = [UNIVERSE cxx_scenarios];
 	[UNIVERSE removeDemoShips];
 	// GUI stuff
 	{
@@ -364,7 +364,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (key && oo::str::hasPrefix(*key, "Scenario"))
 	{
 		int item = SecondFieldIntValue(key);
-		const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+		const oo::PList scenarios = [UNIVERSE cxx_scenarios];
 		const oo::PList *scenario = scenarios.at(item);
 		[self setShowDemoShips:NO];
 		for (NSUInteger i=GUI_ROW_SCENARIOS_DETAIL;i<=27;i++)
@@ -406,7 +406,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	int selection = SecondFieldIntValue(key);
 
-	const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+	const oo::PList scenarios = [UNIVERSE cxx_scenarios];
 	const oo::PList *scenario = scenarios.at(selection);
 	const std::optional<std::string> file = scenario != nullptr ? OptionalStringValue(scenario->find("file")) : std::nullopt;
 	if (!file)
@@ -645,8 +645,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	[self handleGUIUpDownArrowKeys];
 	
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
-	const std::string valueYes = oo::str::lowercase(OptionalStringValue([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-yes"]).value_or("y"));
-	const std::string valueNo = oo::str::lowercase(OptionalStringValue([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-no"]).value_or("n"));
+	const std::string valueYes = oo::str::lowercase(OptionalStringValue([UNIVERSE cxx_descriptions]->find("load-previous-commander-yes")).value_or("y"));
+	const std::string valueNo = oo::str::lowercase(OptionalStringValue([UNIVERSE cxx_descriptions]->find("load-previous-commander-no")).value_or("n"));
 	unsigned char cYes, cNo;
 	
 	cYes = FirstUnitLowByte(valueYes);	// Use lower byte of unichar.
@@ -729,7 +729,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			}
 		}
 
-		if (![UNIVERSE setUseAddOns:oo::NSStringFrom(scenarioRestrict) fromSaveGame:YES forceReinit:YES])
+		if (![UNIVERSE cxx_setUseAddOns:scenarioRestrict fromSaveGame:YES forceReinit:YES])
 		{
 			fail_reason = oo::OptionalString(DESC(@"loadfailed-saved-game-failed-to-load"));
 			loadedOK = NO;
@@ -793,8 +793,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:""];
 		[UNIVERSE handleGameOver];
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:DESC(@"loadfailed-saved-game-failed-to-load") forCount: 9.0];
-		if (fail_reason)  [UNIVERSE addMessage: oo::NSStringFrom(*fail_reason) forCount: 9.0];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"loadfailed-saved-game-failed-to-load")) forCount: 9.0];
+		if (fail_reason)  [UNIVERSE cxx_addMessage: *fail_reason forCount: 9.0];
 		return NO;
 	}
 	
@@ -868,7 +868,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	const oo::PList *dockedPosNode = fileDic.find("docked_station_position");
 	HPVector dockedPos = OOHPVectorFromPList(dockedPosNode, kZeroHPVector);
 	const std::string dockedRole = OptionalStringValue(fileDic.find("docked_station_role")).value_or("");
-	StationEntity *saveStation = [UNIVERSE stationWithRole:oo::NSStringFrom(dockedRole) andPosition:dockedPos];
+	StationEntity *saveStation = [UNIVERSE cxx_stationWithRole:dockedRole andPosition:dockedPos];
 	if (saveStation != nil && [saveStation allowsSaving])
 	{
 		[self setDockedStation:saveStation];
@@ -876,7 +876,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	// and initialise markets for the secondary stations
 	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");
-	[UNIVERSE loadStationMarkets:stationMarkets != nullptr ? oo::ObjectFromPList(*stationMarkets) : nil];
+	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? oo::PListFrom(oo::ObjectFromPList(*stationMarkets)) : oo::PList()];
 
 	OOLog(@"load.progress", @"%@", @"Completing JS startup");
 	[self startUpComplete];
@@ -974,7 +974,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (didSave)
 	{
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
-		[UNIVERSE addMessage:DESC(@"game-saved") forCount:2];
+		[UNIVERSE cxx_addMessage:oo::StdString(DESC(@"game-saved")) forCount:2];
 		save_path = path;
 		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:*save_path];
 		[[UNIVERSE gameController] cxx_setPlayerFileDirectory:*save_path];
@@ -1356,7 +1356,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[self cxx_showShipyardModel:"oolite-unknown-ship" shipData:oo::PList() personality:personality];
 		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
-		if (![[UNIVERSE useAddOns] isEqualToString:SCENARIO_OXP_DEFINITION_ALL])
+		if ([UNIVERSE cxx_useAddOns] != oo::StdString(SCENARIO_OXP_DEFINITION_ALL))	// nil was not equal either
 		{
 			*shipName += " - OXPs disabled or not installed";
 		}

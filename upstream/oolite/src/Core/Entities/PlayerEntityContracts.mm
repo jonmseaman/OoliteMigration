@@ -116,7 +116,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 	BOOL added_entry = NO; // to prevent empty lines for slaves and the rare empty report.
 	std::string		result;
 	std::vector<oo::ObjCRef<OOCharacter *>>	rescuees;
-	OOGovernmentID	government = [[[UNIVERSE currentSystemData] objectForKey:KEY_GOVERNMENT] intValue];
+	OOGovernmentID	government = [[oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_GOVERNMENT] intValue];
 	if ([UNIVERSE inInterstellarSpace])  government = 1;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
 
 	// step through the cargo removing crew from any escape pods
@@ -232,7 +232,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		const std::optional<std::string> passenger_name = OptionalStringForKey(passenger_info, oo::StdString(PASSENGER_KEY_NAME));
 		int dest = passenger_info.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION));
 		// the system name can change via script
-		const std::optional<std::string> passenger_dest_name = oo::OptionalString([UNIVERSE getSystemName: dest]);
+		const std::optional<std::string> passenger_dest_name = [UNIVERSE cxx_getSystemName: dest];
 		int dest_eta = passenger_info.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
 		
 		if (system_id == dest)
@@ -1060,7 +1060,7 @@ for (unsigned i=0;i<amount;i++)
 		{ oo::StdString(CARGO_KEY_ID),						oo::PList(cargo_ID) },
 		{ oo::StdString(CARGO_KEY_TYPE),					oo::PList(type) },
 		{ oo::StdString(CARGO_KEY_AMOUNT),					oo::PList::signedInteger(static_cast<int>(qty)) },
-		{ oo::StdString(CARGO_KEY_DESCRIPTION),				oo::PList(oo::StdString([UNIVERSE describeCommodity:oo::NSStringFrom(type) amount:qty])) },
+		{ oo::StdString(CARGO_KEY_DESCRIPTION),				oo::PList([UNIVERSE cxx_describeCommodity:type amount:qty].value_or(std::string())) },
 		{ oo::StdString(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
 		{ oo::StdString(CONTRACT_KEY_DESTINATION),			oo::PList::signedInteger(static_cast<int>(Destination)) },
 		{ oo::StdString(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList([PLAYER clockTime]) },
@@ -1162,9 +1162,9 @@ for (unsigned i=0;i<amount;i++)
 		const oo::PList &contract_info = contracts_array[i];
 		const std::optional<std::string> label = OptionalStringForKey(contract_info, forCargo ? oo::StdString(CARGO_KEY_DESCRIPTION) : oo::StdString(PASSENGER_KEY_NAME));
 		// the system name can change via script. The following PASSENGER_KEYs are identical to the corresponding CONTRACT_KEYs
-		const std::optional<std::string> destination = oo::OptionalString([UNIVERSE getSystemName: contract_info.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION))]);
+		const std::optional<std::string> destination = [UNIVERSE cxx_getSystemName: contract_info.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION))];
 		int dest_eta = contract_info.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
-		const std::optional<std::string> deadline = oo::OptionalString([UNIVERSE shortTimeDescription:dest_eta]);
+		const std::optional<std::string> deadline = [UNIVERSE cxx_shortTimeDescription:dest_eta];
 
 		OOCreditsQuantity fee = contract_info.get<int>(oo::StdString(CONTRACT_KEY_FEE));
 		const std::optional<std::string> feeDesc = std::optional<std::string>(cxx_OOIntCredits(fee));
@@ -1479,9 +1479,9 @@ for (unsigned i=0;i<amount;i++)
 	{
 		[gui cxx_setForegroundTextureKey:std::string("docked_overlay")];	// has to be docked!
 
-		oo::PList bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"report"]);
-		if (bgDescriptor.isNull()) bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status_docked"]);
-		if (bgDescriptor.isNull()) bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status"]);
+		oo::PList bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"report"];
+		if (bgDescriptor.isNull()) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status_docked"];
+		if (bgDescriptor.isNull()) bgDescriptor = [UNIVERSE cxx_screenTextureDescriptorForKey:"status"];
 		[gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
@@ -1590,7 +1590,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		[gui cxx_setTitle:ExpandKey("shipyard-title", { { "system", oo::PListFrom([UNIVERSE getSystemName:system_id]) } })];
+		[gui cxx_setTitle:ExpandKey("shipyard-title", { { "system", oo::PListFrom(oo::NSStringOrNil([UNIVERSE cxx_getSystemName:system_id])) } })];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -2034,7 +2034,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	weapons_online = 1;
 
 	// get basic max_cargo
-	max_cargo = [UNIVERSE maxCargoForShip:oo::NSStringOrNil([self cxx_shipDataKey])];
+	max_cargo = [UNIVERSE cxx_maxCargoForShip:[self cxx_shipDataKey].value_or(std::string())];
 
 	// ensure all missiles are tidied up and start at pylon 0
 	[self tidyMissilePylons];
