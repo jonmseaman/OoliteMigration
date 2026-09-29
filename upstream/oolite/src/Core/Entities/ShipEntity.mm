@@ -3480,8 +3480,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	OOEquipmentType		*eqType = nil;
 	BOOL				isDamaged;
 
-	foreach (eqType, [OOEquipmentType allEquipmentTypes])
+	for (const auto &eqTypeRef : [OOEquipmentType cxx_allEquipmentTypes])
 	{
+		eqType = eqTypeRef.get();
 		const std::string identifier = oo::StdString([eqType identifier]);
 		// Equipment list,  consistent with the rest of the API - Kaks
 		if ([eqType canCarryMultiple])
@@ -7772,8 +7773,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// valgrind complains about this line here. Might be compiler/GNUstep bug? 
 	// should we go back to a traditional enumerator? - CIM
 	// similar complaints about the other foreach() in this file
-	foreach (planet, [UNIVERSE planets])
+	for (const auto &planetRef : [UNIVERSE cxx_planets])
 	{
+		planet = planetRef.get();
 		// Ignore miniature planets.
 		if ([planet planetType] == STELLAR_TYPE_MINIATURE)  continue;
 		

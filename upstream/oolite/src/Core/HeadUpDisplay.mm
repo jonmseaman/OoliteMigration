@@ -2936,8 +2936,9 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOWaypointEntity *waypoint = nil;
 	Entity *compass = [PLAYER compassTarget];
 	
-	foreach (waypoint, [[UNIVERSE currentWaypoints] allValues])
+	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
 	{
+		waypoint = waypointRef.get();
 		hudDrawWaypoint(waypoint, PLAYER, z1, alpha, waypoint==compass, scale);
 	}
 
