@@ -346,8 +346,8 @@ std::string cxx_ClockToString(double clock, BOOL adjusting)
 	secs %= 60;
 
 	// DESC() (Universe) is unmigrated: convert at the call. The format is read at run time.
-	if (adjusting)  format = oo::StdString(DESC(@"clock-format-adjusting"));
-	else  format = oo::StdString(DESC(@"clock-format"));
+	if (adjusting)  format = OO_DESC("clock-format-adjusting");
+	else  format = OO_DESC("clock-format");
 
 	return oo::str::formatRuntime(format, {days, hrs, mins, secs});
 }

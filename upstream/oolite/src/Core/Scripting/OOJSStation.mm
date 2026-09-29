@@ -1018,13 +1018,13 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	// get category with default
 	if (!ooscript::getProperty(context, (params), "category", (&value)) || ooscript::isUndefined(value))
 	{
-		category = oo::StdString(DESC(@"interfaces-category-uncategorised"));
+		category = OO_DESC("interfaces-category-uncategorised");
 	}
 	else
 	{
 		category = cxx_OOStringFromJSValue(context, value);
 		if (!category.has_value() || category->empty()) {
-			category = oo::StdString(DESC(@"interfaces-category-uncategorised"));
+			category = OO_DESC("interfaces-category-uncategorised");
 		}
 	}
 

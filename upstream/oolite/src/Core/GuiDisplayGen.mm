@@ -1410,7 +1410,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	if (statusPage > 1)
 	{
 		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow];
-		[self cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", " <-- " } forRow:firstRow];
+		[self cxx_setArray:{ OO_DESC("gui-back"), "", " <-- " } forRow:firstRow];
 		[self cxx_setKey:"OK" forRow:firstRow];
 		firstY -= 16; // start 1 row down!
 		if (statusPage == pageCount)
@@ -1422,7 +1422,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	if (statusPage < pageCount)
 	{
 		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow + maxRows];
-		[self cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", " --> " } forRow:firstRow + maxRows];
+		[self cxx_setArray:{ OO_DESC("gui-more"), "", " --> " } forRow:firstRow + maxRows];
 		[self cxx_setKey:"OK" forRow:firstRow + maxRows];
 		if (statusPage == 1)
 		{
@@ -1778,7 +1778,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 						leadingSpaces = (unsigned)charBlock.size.width;
 
 /*						// if we're displaying commodity-quantity-none, let's try and be pixel perfect!
-						std::string qtyNone = DESC(@"commodity-quantity-none");
+						std::string qtyNone = OO_DESC("commodity-quantity-none");
 						txtRange = [hilitedText rangeOfString:qtyNone];
 						
 						if (txtRange.location == 0) // bingo!
@@ -1848,7 +1848,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		const std::string gal_key = oo::str::format("long-range-chart-title-%d", galaxy_number);
 		if (![UNIVERSE cxx_descriptionForKey:gal_key])
 		{
-			[self cxx_setTitle:oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-title-d")), { galaxy_number + 1 })];
+			[self cxx_setTitle:oo::str::formatRuntime(OO_DESC("long-range-chart-title-d"), { galaxy_number + 1 })];
 		}
 		else
 		{

@@ -858,7 +858,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #endif
 #endif
 	
-	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"loading-ships"))];
+	[[GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
 	// Load ship data
 	
 	[OOShipRegistry sharedRegistry];
@@ -902,13 +902,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	framesDoneThisUpdate = 0;
 	drawCounter = 0;
 	
-	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"initializing-debug-support"))];
+	[[GameController sharedController] cxx_logProgress:OO_DESC("initializing-debug-support")];
 	OOInitDebugSupport();
 	
-	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"running-scripts"))];
+	[[GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
 	[player completeSetUp];
 	
-	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"populating-space"))];
+	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	[self populateNormalSpace];
 	
 	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
@@ -1463,7 +1463,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
 
-	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"populating-space"))];
+	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	
 	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
 
@@ -10466,7 +10466,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[gui clear];
 	[message_gui clear];
 	[comm_log_gui clear];
-	[comm_log_gui cxx_printLongText:oo::OptionalString(DESC(@"communications-log-string"))
+	[comm_log_gui cxx_printLongText:OO_DESC("communications-log-string")
 						  align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
 }
 
