@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "OOTexture.h"
 #import "OOColor.h"
-#import "OOCollectionExtractors.h"
 #import "OOFunctionAttributes.h"
 #import "OOMacroOpenGL.h"
 #import "OOGraphicsResetManager.h"

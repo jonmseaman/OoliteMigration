@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 
 
 #import "OOExhaustPlumeEntity.h"
-#import "OOCollectionExtractors.h"
 
 #include "oofnd/PListGet.hpp"
 #import "ShipEntity.h"
