@@ -222,7 +222,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 {
 	std::optional<std::string>	tmp_path;
 	std::optional<std::string>	tmp_name;
-	const std::string			dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	const std::string			dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 
 	tmp_name = [self cxx_lastsaveName];
 	tmp_path = save_path;
@@ -263,7 +263,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	std::optional<std::string>	path;
 
 	path = save_path;
-	if (!path)  path = oo::OptionalString([[gameView gameController] playerFileToLoad]);
+	if (!path)  path = [[gameView gameController] cxx_playerFileToLoad];
 	if (!path)
 	{
 		OOLog(@"quickSave.failed.noName", @"%@", @"ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
@@ -440,7 +440,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 {
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	std::string		dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	std::string		dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
 	int idx;
 	if([self handleGUIUpDownArrowKeys])
@@ -516,7 +516,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 					{
 						// change directory to the selected path
 						const std::string newDir = cdr.get<std::string>("saved_game_path");
-						[[UNIVERSE gameController] setPlayerFileDirectory: oo::NSStringFrom(newDir)];
+						[[UNIVERSE gameController] cxx_setPlayerFileDirectory:newDir];
 						dir = newDir;
 						currentPage = 0;
 						[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -539,7 +539,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 {
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	std::string		dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	std::string		dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
 	if ([self handleGUIUpDownArrowKeys])
 	{
@@ -603,7 +603,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			{
 				// change directory to the selected path
 				const std::string newDir = cdr.get<std::string>("saved_game_path");
-				[[UNIVERSE gameController] setPlayerFileDirectory: oo::NSStringFrom(newDir)];
+				[[UNIVERSE gameController] cxx_setPlayerFileDirectory:newDir];
 				dir = newDir;
 				currentPage = 0;
 				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -783,14 +783,14 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		{
 			save_path = fileToOpen;
 		
-			[[[UNIVERSE gameView] gameController] setPlayerFileToLoad:oo::NSStringFrom(fileToOpen)];
-			[[[UNIVERSE gameView] gameController] setPlayerFileDirectory:oo::NSStringFrom(fileToOpen)];
+			[[[UNIVERSE gameView] gameController] cxx_setPlayerFileToLoad:fileToOpen];
+			[[[UNIVERSE gameView] gameController] cxx_setPlayerFileDirectory:fileToOpen];
 		}
 	}
 	else
 	{
 		OOLog(@"load.failed", @"***** Failed to load saved game \"%@\": %@", oo::NSStringFrom(oo::str::lastPathComponent(fileToOpen)), oo::NSStringFrom(fail_reason.value_or("unknown error")));
-		[[UNIVERSE gameController] setPlayerFileToLoad:nil];
+		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:""];
 		[UNIVERSE handleGameOver];
 		[UNIVERSE clearPreviousMessage];
 		[UNIVERSE addMessage:DESC(@"loadfailed-saved-game-failed-to-load") forCount: 9.0];
@@ -976,8 +976,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
 		[UNIVERSE addMessage:DESC(@"game-saved") forCount:2];
 		save_path = path;
-		[[UNIVERSE gameController] setPlayerFileToLoad:oo::NSStringFrom(*save_path)];
-		[[UNIVERSE gameController] setPlayerFileDirectory:oo::NSStringFrom(*save_path)];
+		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:*save_path];
+		[[UNIVERSE gameController] cxx_setPlayerFileDirectory:*save_path];
 		// no duplicated autosave immediately after a save.
 		[UNIVERSE setAutoSaveNow:NO];
 	}
@@ -994,7 +994,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 - (void)nativeSavePlayer:(const std::string &)cdrName
 {
-	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
 
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
@@ -1010,7 +1010,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 - (void) setGuiToLoadCommanderScreen
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
-	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
 	gui_screen = GUI_SCREEN_LOAD;
 	
@@ -1034,7 +1034,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
 	MyOpenGLView *gameView = [UNIVERSE gameView];
-	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
 	pollControls = NO;
 	gui_screen = GUI_SCREEN_SAVE;
@@ -1294,7 +1294,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 // check for an existing saved game...
 - (BOOL) existingNativeSave: (const std::string &)cdrName
 {
-	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
+	const std::string dir = [[UNIVERSE gameController] cxx_playerFileDirectory].value_or("");
 	
 	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
 	return oo::fs::fileExists(oo::fs::pathFromUTF8(savePath));
