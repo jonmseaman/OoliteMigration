@@ -808,7 +808,7 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean((context), (OOJS_ARGV[1]), &abortAllDockings);
 
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [station launchIndependentShip:oo::NSStringOrNil(shipRole)];
+	result = oo::ObjectIn([station launchIndependentShip:*shipRole]);
 	if (abortAllDockings) [station abortAllDockings];
 	OOJS_END_FULL_NATIVE
 
@@ -958,7 +958,7 @@ static bool StationLaunchPolice(ooscript::Context context, ooscript::CallArgs &o
 	
 	std::vector<oo::ObjCRef<ShipEntity *>> launched;
 	OOJS_BEGIN_FULL_NATIVE(context)
-	launched = oo::ObjCRefsFrom<ShipEntity *>([station launchPolice]);
+	launched = oo::ObjCRefsIn<ShipEntity *>([station launchPolice]);
 	OOJS_END_FULL_NATIVE
 	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(launched));
 	OOJS_NATIVE_EXIT

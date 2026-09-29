@@ -2840,7 +2840,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			}
 			else
 			{
-				[ship switchAITo:@"oolite-traderAI.js"];
+				[ship switchAITo:"oolite-traderAI.js"];
 			}
 			
 			if (([ship pendingEscortCount] > 0)&&((Ranrot() % 7) < government))	// remove escorts if we feel safe
@@ -2993,7 +2993,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				}
 				else
 				{
-					[ship switchAITo:@"oolite-traderAI.js"];
+					[ship switchAITo:"oolite-traderAI.js"];
 				}
 			}
 			else if (role == "pirate")
@@ -3477,7 +3477,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		[ship setDemoShip: 1.0f];
 		[ship setDemoStartTime: universal_time];
 		[ship setScanClass: CLASS_NO_DRAW];
-		[ship switchAITo:@"nullAI.plist"];
+		[ship switchAITo:"nullAI.plist"];
 		if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
 		[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
 		// now override status
@@ -4220,7 +4220,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		ship = [self cxx_newShipWithName:*shipKey];
 		if (ship != nil)
 		{
-			[ship setPrimaryRole:oo::NSStringFrom(role)];
+			[ship setPrimaryRole:role];
 
 			shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
 			if (FuzzyBooleanIn(shipInfo, "auto_ai", YES))
@@ -4229,7 +4229,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 				autoAI = [self defaultAIForRole:role];
 				if (autoAI.has_value())
 				{
-					[ship setAITo:oo::NSStringFrom(*autoAI)];
+					[ship setAITo:*autoAI];
 					// Nikos 20090604
 					// Pirate, trader or police with auto_ai? Follow populator rules for them.
 					if (role == "pirate") [ship setBounty:20 + randf() * 50 withReason:kOOLegalStatusReasonSetup];
@@ -4238,7 +4238,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 					if (role == "interceptor")
 					{
 						[ship setScanClass: CLASS_POLICE];
-						[ship setPrimaryRole:@"police"]; // to make sure interceptors get the correct pilot later on.
+						[ship setPrimaryRole:"police"]; // to make sure interceptors get the correct pilot later on.
 					}
 				}
 				if (role == "thargoid") [ship setScanClass: CLASS_THARGOID]; // thargoids are not on the autoAIMap
@@ -4341,7 +4341,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	// Set primary role to same as ship name, if ship name is also a role.
 	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([ship hasRole:shipKey])  [ship setPrimaryRole:oo::NSStringFrom(shipKey)];
+	if ([ship hasRole:shipKey])  [ship setPrimaryRole:shipKey];
 	
 	return ship;
 	
@@ -4379,7 +4379,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	// Set primary role to same as name, if ship name is also a role.
 	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([dock hasRole:shipDataKey])  [dock setPrimaryRole:oo::NSStringFrom(shipDataKey)];
+	if ([dock hasRole:shipDataKey])  [dock setPrimaryRole:shipDataKey];
 	
 	return dock;
 	
@@ -6050,7 +6050,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		[ship setOrientation:q2];
 		[ship setPositionX:0.0f y:0.0f z:3.6f * cr];
 		[ship setScanClass:CLASS_NO_DRAW];
-		[ship switchAITo:@"nullAI.plist"];
+		[ship switchAITo:"nullAI.plist"];
 		[ship setPendingEscortCount:0];
 		
 		[UNIVERSE addEntity:ship];		// STATUS_IN_FLIGHT, AI state GLOBAL
@@ -6635,18 +6635,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-// HasScanClassPredicate as it read a number object's -intValue: the scan class compared as an int.
-static BOOL HasScanClassValuePredicate(Entity *entity, void *parameter)
-{
-	return *static_cast<const int *>(parameter) == [entity scanClass];
-}
-
-
+// HasScanClassPredicate reads the scan class as an OOScanClass.
 - (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity
 {
-	int scanClassValue = scanClass;
-	return [self countShipsMatchingPredicate:HasScanClassValuePredicate
-							   parameter:&scanClassValue
+	return [self countShipsMatchingPredicate:HasScanClassPredicate
+							   parameter:&scanClass
 								 inRange:range
 								ofEntity:entity];
 }
@@ -7458,7 +7451,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 									[demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
 									[demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 
-									[demo_ship switchAITo:@"nullAI.plist"];
+									[demo_ship switchAITo:"nullAI.plist"];
 									[demo_ship setOrientation:q2];
 									[demo_ship setScanClass: CLASS_NO_DRAW];
 									[demo_ship setStatus: STATUS_COCKPIT_DISPLAY]; // prevents it getting escorts on addition
@@ -9455,7 +9448,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI
 {
-	if (setAI) [ship switchAITo:@"oolite-traderAI.js"];	// perfectly acceptable for both route 2 & 3
+	if (setAI) [ship switchAITo:"oolite-traderAI.js"];	// perfectly acceptable for both route 2 & 3
 	[ship setFuel:(Ranrot()&31)];
 	// slow ships need extra insulation or they will burn up when sunskimming. (Tested at biggest sun in G3: Aenqute)
 	float minInsulation = 1000 / [ship maxFlightSpeed] + 1;
