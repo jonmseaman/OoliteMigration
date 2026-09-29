@@ -463,7 +463,7 @@ const char *sGlobalTraceContext = nullptr;
 	if (EXPECT_NOT(sRecentTextures == nil))
 	{
 		sRecentTextures = [[OOCache alloc] init];
-		[sRecentTextures setName:@"recent textures"];
+		[sRecentTextures cxx_setName:std::string("recent textures")];
 		[sRecentTextures setAutoPrune:YES];
 		[sRecentTextures setPruneThreshold:kRecentTexturesCount];
 	}
