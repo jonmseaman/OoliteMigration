@@ -261,7 +261,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 			
 		case kPlanet_name:
-			*value_raw = OOJSValueFromNativeObject(context, [planet name]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([planet cxx_name]));
 			return YES;
 
 		case kPlanet_orientation:
@@ -306,7 +306,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlanet_airColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[planet setAirColor:colorForScript];
@@ -331,7 +331,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		case kPlanet_illuminationColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			colorForScript = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, *value_raw))];
 			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[planet setIlluminationColor:colorForScript];
@@ -341,7 +341,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 
 		case kPlanet_name:
 			sValue = cxx_OOStringFromJSValue(context, *value_raw);
-			[planet setName:oo::NSStringOrNil(sValue)];
+			[planet cxx_setName:sValue];
 			return YES;
 
 		case kPlanet_texture:

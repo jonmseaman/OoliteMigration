@@ -129,12 +129,12 @@ static BOOL sIsSoundOK = NO;
 	if (nil != self)
 	{
 		#ifndef NDEBUG
-			OOLog(oo::NSStringFrom(kOOLogSoundLoadingSuccess), @"Loaded sound %@", oo::NSStringOrNil(path));
+			OO_LOG(kOOLogSoundLoadingSuccess, "Loaded sound {}", path.value_or("(null)"));
 		#endif
 	}
 	else
 	{
-		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"Failed to load sound \"%@\"", oo::NSStringOrNil(path));
+		OO_LOG(kOOLogSoundLoadingError, "Failed to load sound \"{}\"", path.value_or("(null)"));
 	}
 	
 	return self;
@@ -149,10 +149,16 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
+{
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
 {
 	OOLogGenericSubclassResponsibility();
-	return @"";
+	return std::string();
 }
 
 

@@ -488,7 +488,7 @@ std::string FormattedCharacter(unsigned code)
 						if (shift)
 						{
 							SDL_DestroyWindow(window);
-							[gameController exitAppWithContext:@"Shift-escape pressed"];
+							[gameController cxx_exitAppWithContext:"Shift-escape pressed"];
 						}
 						else
 						{
@@ -672,7 +672,7 @@ std::string FormattedCharacter(unsigned code)
 			case SDL_EVENT_QUIT:
 			{
 				SDL_DestroyWindow(window);
-				[gameController exitAppWithContext:@"SDL_QUIT event received"];
+				[gameController cxx_exitAppWithContext:"SDL_QUIT event received"];
 			}
 		}
 	}

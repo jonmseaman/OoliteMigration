@@ -53,14 +53,20 @@ static OOMaterial *sActiveMaterial = nil;
 
 - (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return oo::NSStringFrom("\"" + oo::DescriptionOf([self name]) + "\"");	// "%@" of the name, quoted
+	return oo::NSStringFrom("\"" + [self cxx_name].value_or("(null)") + "\"");	// "%@" of the name, quoted
 }
 
 
-- (id)name	// shared selector (proposed ADR-0043)
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
+{
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
 {
 	OOLogGenericParameterError();
-	return nil;
+	return std::nullopt;
 }
 
 

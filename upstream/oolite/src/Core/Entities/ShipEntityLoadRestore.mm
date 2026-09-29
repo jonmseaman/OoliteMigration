@@ -101,8 +101,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	if (const std::optional<std::string> roleString = [[self roleSet] roleString])  updatedShipInfo[KEY_ROLES] = *roleString;
 	updatedShipInfo[KEY_FUEL] = oo::PList::unsignedInteger(fuel);
 	updatedShipInfo[KEY_BOUNTY] = oo::PList::unsignedInteger(bounty);
-	updatedShipInfo[KEY_FORWARD_WEAPON] = oo::StdString(OOStringFromWeaponType(forward_weapon_type));
-	updatedShipInfo[KEY_AFT_WEAPON] = oo::StdString(OOStringFromWeaponType(aft_weapon_type));
+	updatedShipInfo[KEY_FORWARD_WEAPON] = cxx_OOStringFromWeaponType(forward_weapon_type).value_or("");
+	updatedShipInfo[KEY_AFT_WEAPON] = cxx_OOStringFromWeaponType(aft_weapon_type).value_or("");
 	updatedShipInfo[KEY_SCAN_CLASS] = cxx_OOStringFromScanClass(scanClass);
 
 	std::vector<std::string> deletes;
@@ -123,10 +123,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// -oo_setFloat:forKey: stored a double.
 	if (energy != maxEnergy)  result[KEY_ENERGY_LEVEL] = oo::PList(static_cast<double>(energy / maxEnergy));
 
-	result[KEY_PRIMARY_ROLE] = oo::StdString([self primaryRole]);
+	result[KEY_PRIMARY_ROLE] = [self cxx_primaryRole].value_or("");
 
 	// Add equipment.
-	const std::vector<std::string> equipment = oo::StringsFrom([self equipmentEnumerator]);
+	const std::vector<std::string> equipment = [self cxx_equipmentKeys];
 	if (equipment.size() != 0)  result[KEY_EQUIPMENT] = ArrayFromStrings(equipment);
 
 	// Add missiles.
@@ -136,7 +136,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		unsigned i;
 		for (i = 0; i < missiles; i++)
 		{
-			const std::optional<std::string> missileType = oo::OptionalString([missile_list[i] identifier]);
+			const std::optional<std::string> missileType = [missile_list[i] cxx_identifier];
 			if (missileType.has_value())  missileArray.push_back(*missileType);
 		}
 		result[KEY_MISSILES] = ArrayFromStrings(missileArray);
@@ -147,7 +147,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		result[KEY_GROUP_ID] = oo::PList::unsignedInteger(GroupIDForGroup(_group, *context));
 		if ([_group leader] == self)  result[KEY_IS_GROUP_LEADER] = oo::PList(static_cast<bool>(YES));
-		const std::optional<std::string> groupName = oo::OptionalString([_group name]);
+		const std::optional<std::string> groupName = [_group cxx_name];
 		if (groupName.has_value())
 		{
 			result[KEY_GROUP_NAME] = *groupName;
@@ -169,7 +169,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// FIXME: AI.
 	// Eric: I think storing the AI name should be enough. On entering a wormhole, the stack is cleared so there are no preserved AI states.
 	// Also the AI restarts itself with the GLOBAL state, so no need to store any old state.
-	if (oo::StdString([[self getAI] name]) == "nullAI.plist")
+	if ([[self getAI] cxx_name].value_or(std::string()) == "nullAI.plist")
 	{
 		// might be a JS version (with none, no key: -setObject:forKey: refused nil)
 		if (const std::optional<std::string> js = [[self getAI] cxx_associatedJS])  result[KEY_AI] = *js;
@@ -177,7 +177,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else
 	{
-		result[KEY_AI] = oo::StdString([[self getAI] name]);
+		result[KEY_AI] = [[self getAI] cxx_name].value_or(std::string());
 	}
 
 	return oo::PList(std::move(result));
@@ -217,8 +217,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		mergedData["escorts"] = oo::PList::unsignedInteger(0);
 
 		const oo::PList mergedPlist(std::move(mergedData));
-		id definition = oo::ObjectFromPList(mergedPlist);
-		Class shipClass = [UNIVERSE shipClassForShipDictionary:definition];
+		Class shipClass = [UNIVERSE cxx_shipClassForShipDictionary:mergedPlist];
 		ship = [[[shipClass alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
 
 		// FIXME: restore AI.
@@ -233,7 +232,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		const std::optional<std::string> shipPrimaryRole = OptionalStringForKey(dict, KEY_PRIMARY_ROLE);
 		if (!fallback || !shipPrimaryRole.has_value())  return nil;
 
-		ship = [[UNIVERSE newShipWithRole:oo::NSStringFrom(*shipPrimaryRole)] autorelease];
+		ship = [[UNIVERSE cxx_newShipWithRole:*shipPrimaryRole] autorelease];
 		if (ship == nil)  return nil;
 	}
 
@@ -249,7 +248,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		for (const oo::PList &eqKey : *equipment->getIf<oo::PList::Array>())
 		{
-			[ship addEquipmentItem:oo::ObjectFromPList(eqKey) withValidation:NO inContext:@"loading"];
+			[ship addEquipmentItem:oo::StdString(oo::ObjectFromPList(eqKey)) withValidation:NO inContext:"loading"];
 		}
 	}
 
@@ -258,7 +257,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		for (const oo::PList &eqKey : *missileList->getIf<oo::PList::Array>())
 		{
-			[ship addEquipmentItem:oo::ObjectFromPList(eqKey) withValidation:NO inContext:@"loading"];
+			[ship addEquipmentItem:oo::StdString(oo::ObjectFromPList(eqKey)) withValidation:NO inContext:"loading"];
 		}
 	}
 
@@ -270,8 +269,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		[ship setGroup:group];	// Handles adding to group
 		if (dict.get<bool>(KEY_IS_GROUP_LEADER))  [group setLeader:ship];
 		const std::optional<std::string> groupName = OptionalStringForKey(dict, KEY_GROUP_NAME);
-		if (groupName.has_value())  [group setName:oo::NSStringFrom(*groupName)];
-		if ([ship hasPrimaryRole:@"escort"] && ship != [group leader])
+		if (groupName.has_value())  [group cxx_setName:groupName];
+		if ([ship cxx_hasPrimaryRole:"escort"] && ship != [group leader])
 		{
 			[ship setOwner:[group leader]];
 		}
@@ -282,7 +281,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		OOShipGroup *group = GroupForGroupID(groupID, *context);
 		[group setLeader:ship];
-		[group setName:@"escort group"];
+		[group cxx_setName:std::string("escort group")];
 		[ship setEscortGroup:group];
 	}
 

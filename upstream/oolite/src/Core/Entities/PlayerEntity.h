@@ -1122,7 +1122,7 @@ typedef enum
 - (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
 - (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
-- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;
@@ -1334,25 +1334,8 @@ OOINLINE PlayerEntity *OOGetPlayer(void)
 #define MAX_GRAMS_IN_SAFE		((GRAMS_PER_POD / 2) - 1)
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-NSString *OODisplayRatingStringFromKillCount(unsigned kills);
-NSString *KillCountToRatingAndKillString(unsigned kills);
-NSString *OODisplayStringFromLegalStatus(int legalStatus);
-#ifdef __cplusplus
-}
-#endif
-
-NSString *OOStringFromGUIScreenID(OOGUIScreenID screen) CONST_FUNC;
-OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
-
-OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
-NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
-
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
 // (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
-// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
 std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID screen);
 OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
 
@@ -1363,7 +1346,3 @@ std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBeha
 std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
 std::string cxx_KillCountToRatingAndKillString(unsigned kills);
 std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
-
-// TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
-// sweep, forwarding to the cxx_ API above. Keep this the last line.
-#import "PlayerEntity+FoundationBridge.h"

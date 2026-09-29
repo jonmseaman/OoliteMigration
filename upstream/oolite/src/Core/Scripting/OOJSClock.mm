@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityScriptMethods.h"
 #import "OOStringParsing.h"
 #import "OODebugStandards.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -237,7 +238,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 			return YES;
 
 		case kClock_clockString:
-			*value = OOJSValueFromNativeObject(context, [player dial_clock]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringFrom([player cxx_dial_clock]));
 			return YES;
 
 		case kClock_isAdjusting:
@@ -269,7 +270,7 @@ static bool JSClockToString(ooscript::Context context, ooscript::CallArgs &oojsA
 {
 	OOJS_NATIVE_ENTER(context)
 
-	OOJS_RETURN_OBJECT([OOPlayerForScripting() dial_clock]);
+	OOJS_RETURN_OBJECT(oo::NSStringFrom([OOPlayerForScripting() cxx_dial_clock]));
 
 	OOJS_NATIVE_EXIT
 }
@@ -292,7 +293,7 @@ static bool ClockClockStringForTime(ooscript::Context context, ooscript::CallArg
 		return NO;
 	}
 
-	OOJS_RETURN_OBJECT(ClockToString(time, NO));
+	OOJS_RETURN(OOJSValueFromPList(context, oo::PList(cxx_ClockToString(time, NO))));
 
 	OOJS_NATIVE_EXIT
 }

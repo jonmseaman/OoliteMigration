@@ -432,7 +432,7 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 		case kConsole_detailLevel:
 			sValue = cxx_OOStringFromJSValue(context, *value);
 			OOJS_BEGIN_FULL_NATIVE(context)
-			[UNIVERSE setDetailLevel:OOGraphicsDetailFromString(oo::NSStringOrNil(sValue))];
+			[UNIVERSE setDetailLevel:cxx_OOGraphicsDetailFromString(sValue.value_or(""))];
 			OOJS_END_FULL_NATIVE
 			break;
 			
@@ -838,7 +838,7 @@ static bool ConsoleDisplayMessagesInClass(ooscript::Context context, ooscript::C
 	std::optional<std::string>	messageClass;
 
 	messageClass = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	OOJS_RETURN_BOOL(messageClass.has_value() && OOLogWillDisplayMessagesInClass(oo::NSStringFrom(*messageClass)));
+	OOJS_RETURN_BOOL(messageClass.has_value() && oo::log::willDisplay(*messageClass));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -855,7 +855,7 @@ static bool ConsoleSetDisplayMessagesInClass(ooscript::Context context, ooscript
 	messageClass = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (messageClass.has_value() && ooscript::valueToBoolean(context, OOJS_ARGV[1], &flag))
 	{
-		OOLogSetDisplayMessagesInClass(oo::NSStringFrom(*messageClass), flag);
+		oo::log::logger().setDisplay(*messageClass, flag);
 	}
 	OOJS_RETURN_VOID;
 	

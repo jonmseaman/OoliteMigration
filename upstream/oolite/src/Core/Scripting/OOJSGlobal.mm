@@ -481,7 +481,7 @@ static bool GlobalExpandDescription(ooscript::Context context, ooscript::CallArg
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	string = oo::OptionalString(OOExpandDescriptionString(kNilRandomSeed, oo::NSStringFrom(*string), oo::ObjectFromPList(overrides), nil, nil, kOOExpandForJavaScript | kOOExpandGoodRNG));
+	string = cxx_OOExpandDescriptionString(kNilRandomSeed, *string, overrides, oo::PList(), std::nullopt, kOOExpandForJavaScript | kOOExpandGoodRNG);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
@@ -538,8 +538,8 @@ static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArg
 		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
 	
-	string = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*string)]);
-	string = oo::OptionalString(OOExpandDescriptionString(kNilRandomSeed, oo::NSStringOrNil(string), oo::ObjectFromPList(overrides), nil, nil, kOOExpandForJavaScript | kOOExpandBackslashN | kOOExpandGoodRNG));
+	string = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*string)]);
+	if (string.has_value())  string = cxx_OOExpandDescriptionString(kNilRandomSeed, *string, overrides, oo::PList(), std::nullopt, kOOExpandForJavaScript | kOOExpandBackslashN | kOOExpandGoodRNG);	// nil expanded to nil
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
 	
@@ -563,7 +563,7 @@ static bool GlobalDisplayNameForCommodity(ooscript::Context context, ooscript::C
 		cxx_OOJSReportBadArguments(context, std::nullopt, "displayNameForCommodity", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
 		return NO;
 	}
-	OOJS_RETURN_OBJECT(CommodityDisplayNameForSymbolicName(oo::NSStringFrom(*string)));
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(cxx_CommodityDisplayNameForSymbolicName(*string)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -583,7 +583,7 @@ static bool GlobalRandomName(ooscript::Context context, ooscript::CallArgs &oojs
 	RNG_Seed savedSeed = currentRandomSeed();
 	setRandomSeed((RNG_Seed){ (int32_t)Ranrot(), (int32_t)Ranrot(), (int32_t)Ranrot(), (int32_t)Ranrot() });
 	
-	std::optional<std::string> result = oo::OptionalString(OOExpand(@"%N"));
+	std::optional<std::string> result = cxx_OOExpand("%N");
 	
 	// Restore seed.
 	setRandomSeed(savedSeed);
@@ -613,7 +613,7 @@ static bool GlobalRandomInhabitantsDescription(ooscript::Context context, ooscri
 	}
 	
 	make_pseudo_random_seed(&aSeed);
-	string = oo::OptionalString([UNIVERSE getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? YES : NO)]);
+	string = [UNIVERSE cxx_getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? YES : NO)];
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
 	
 	OOJS_NATIVE_EXIT
@@ -650,7 +650,7 @@ static bool GlobalClearExtraGuiScreenKeys(ooscript::Context context, ooscript::C
 		return NO;
 	}
 
-	[player clearExtraGuiScreenKeys:gui key:oo::NSStringFrom(*key)];
+	[player cxx_clearExtraGuiScreenKeys:gui key:*key];
 
 	result = YES;
 	OOJS_RETURN_BOOL(result);
@@ -739,7 +739,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 	}
 
 	OOJSGuiScreenKeyDefinition* definition = [[OOJSGuiScreenKeyDefinition alloc] init];
-	[definition setName:oo::NSStringOrNil(key)];
+	[definition cxx_setName:key];
 	[definition setRegisterKeys:keydefs];
 	[definition setCallback:callback];
 
@@ -786,12 +786,12 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 	if ([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)
 	{
 		GuiDisplayGen	*gui = [UNIVERSE gui];
-		oo::PList		descriptor = oo::PListFrom([gui textureDescriptorFromJSValue:value inContext:context callerDescription:@"setScreenBackground()"]);
+		oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenBackground()"];
 		
-		result = [gui setBackgroundTextureDescriptor:oo::ObjectFromPList(descriptor)];
+		result = [gui cxx_setBackgroundTextureDescriptor:descriptor];
 		
 		// add some permanence to the override if we're in the equip ship screen
-		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER setEquipScreenBackgroundDescriptor:oo::ObjectFromPList(descriptor)];
+		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER cxx_setEquipScreenBackgroundDescriptor:descriptor];
 	}
 	
 	OOJS_RETURN_BOOL(result);
@@ -818,7 +818,7 @@ static bool GlobalGetScreenBackgroundForKey(ooscript::Context context, ooscript:
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getScreenBackgroundDefault", 0, OOJS_ARGV, std::nullopt, "key");
 		return NO;
 	}
-	OOJS_RETURN_OBJECT([UNIVERSE screenTextureDescriptorForKey:oo::NSStringFrom(*key)]);
+	OOJS_RETURN_OBJECT(oo::ObjectFromPList([UNIVERSE cxx_screenTextureDescriptorForKey:*key]));
 	
 	OOJS_NATIVE_EXIT
 } 
@@ -848,9 +848,9 @@ static bool GlobalSetScreenBackgroundForKey(ooscript::Context context, ooscript:
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	oo::PList		descriptor = oo::PListFrom([gui textureDescriptorFromJSValue:value inContext:context callerDescription:@"setScreenBackgroundDefault()"]);
+	oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenBackgroundDefault()"];
 	
-	[UNIVERSE setScreenTextureDescriptorForKey:oo::NSStringFrom(*key) descriptor:oo::ObjectFromPList(descriptor)];
+	[UNIVERSE cxx_setScreenTextureDescriptorForKey:*key descriptor:oo::PListFrom(oo::ObjectFromPList(descriptor))];
 	result = YES;
 	
 	OOJS_RETURN_BOOL(result);
@@ -883,9 +883,9 @@ static bool GlobalSetScreenOverlay(ooscript::Context context, ooscript::CallArgs
 	if ([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)
 	{
 		GuiDisplayGen	*gui = [UNIVERSE gui];
-		oo::PList		descriptor = oo::PListFrom([gui textureDescriptorFromJSValue:value inContext:context callerDescription:@"setScreenOverlay()"]);
+		oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenOverlay()"];
 		
-		result = [gui setForegroundTextureDescriptor:oo::ObjectFromPList(descriptor)];
+		result = [gui cxx_setForegroundTextureDescriptor:descriptor];
 	}
 	
 	OOJS_RETURN_BOOL(result);
@@ -919,7 +919,7 @@ static bool GlobalGetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	OOColor *col = [gui colorFromSetting:oo::NSStringFrom(*key) defaultValue:nil];
+	OOColor *col = [gui cxx_colorFromSetting:*key defaultValue:nil];
 
 	// The components as the colour's -normalizedArray gave them: floats, nil for no colour.
 	oo::PList::Array components;
@@ -962,7 +962,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 
 	if (!ooscript::isNull(value))
 	{
-		col = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, value)];
+		col = [OOColor colorWithDescription:oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, value))];
 		if (col == nil)
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 1, OOJS_ARGV, std::nullopt, "color descriptor");
@@ -971,7 +971,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	[gui setGuiColorSettingFromKey:oo::NSStringFrom(*key) color:col];
+	[gui cxx_setGuiColorSettingFromKey:*key color:col];
 	result = YES;
 	
 	OOJS_RETURN_BOOL(result);

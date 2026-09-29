@@ -149,7 +149,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 - (std::optional<std::string>) planetOfOrigin
 {
 	// determine the planet of origin
-	const oo::PList originInfo = oo::PListFrom([UNIVERSE generateSystemData:[self planetIDOfOrigin]]);
+	const oo::PList originInfo = [UNIVERSE cxx_generateSystemData:[self planetIDOfOrigin]];
 	const oo::PList *name = originInfo.find(oo::StdString(KEY_NAME));
 	if (name == nullptr || !name->isString())  return std::nullopt;	// (the value was returned as it stood; it is a string)
 	return *name->getIf<std::string>();
@@ -168,12 +168,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	// determine the character's species
 	int species = [self genSeed].f & 0x03;	// 0-1 native to home system, 2 human colonial, 3 other
 	std::optional<std::string> speciesString;
-	if (species == 3)  speciesString = oo::OptionalString([UNIVERSE getSystemInhabitants:[self genSeed].e plural:NO]);
-	else  speciesString = oo::OptionalString([UNIVERSE getSystemInhabitants:[self planetIDOfOrigin] plural:NO]);
+	if (species == 3)  speciesString = [UNIVERSE cxx_getSystemInhabitants:[self genSeed].e plural:NO];
+	else  speciesString = [UNIVERSE cxx_getSystemInhabitants:[self planetIDOfOrigin] plural:NO];
 
 	if (!speciesString.has_value())  return std::nullopt;
 
-	if (!oo::PListView([UNIVERSE descriptions]).get<BOOL>(@"lowercase_ignore"))
+	if (![UNIVERSE cxx_descriptions]->get<bool>("lowercase_ignore"))
 	{
 		speciesString = oo::str::lowercase(*speciesString);
 	}
@@ -192,7 +192,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	seed_for_planet_description(genSeed);
 
 	// determine the planet of origin
-	const oo::PList originInfo = oo::PListFrom([UNIVERSE generateSystemData:[self planetIDOfOrigin]]);
+	const oo::PList originInfo = [UNIVERSE cxx_generateSystemData:[self planetIDOfOrigin]];
 	const std::optional<std::string> planet = OptionalStringForKey(originInfo, oo::StdString(KEY_NAME));
 	OOGovernmentID government = originInfo.get<int>(oo::StdString(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable)
 	int criminalTendency = government ^ 0x07;
@@ -205,8 +205,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	std::string genName;
 	if (species.has_value() && oo::str::hasPrefix(*species, "human"))
 	{
-		const std::string givenName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
-		const std::string familyName = oo::DescriptionOf(OOExpandKeyWithSeed(genSeed, @"nom"));
+		const std::string givenName = cxx_OOExpandWithSeed(genSeed, "%R").value_or("(null)");
+		const std::string familyName = cxx_OOExpandKeyWithSeed(genSeed, "nom").value_or("(null)");
 		genName = givenName + " " + familyName;
 	} else {
 		/*	NOTE: we can't use "%R %R" because that will produce the same string
@@ -214,13 +214,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 			here? Is there some context where we rely on being able to get the
 			same name for a given genSeed?
 		 */
-		const std::string givenName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
-		const std::string familyName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
+		const std::string givenName = cxx_OOExpandWithSeed(genSeed, "%R").value_or("(null)");
+		const std::string familyName = cxx_OOExpandWithSeed(genSeed, "%R").value_or("(null)");
 		genName = givenName + " " + familyName;
 	}
 	_name = genName;
 
-	_shortDescription = oo::OptionalString(OOExpandKeyWithSeed(genSeed, @"character-generic-description", oo::NSStringOrNil(species), oo::NSStringOrNil(planet)));
+	_shortDescription = cxx_OOExpandKeyWithSeed(genSeed, "character-generic-description", species, planet);
 	
 	// determine _legalStatus for a completely random character
 	[self setLegalStatus:0];	// clean
@@ -346,7 +346,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	{
 		[self setLegalStatus:100];
 		[self setInsuranceCredits:0];
-		[self setName:DESC(@"character-thargoid-name")];
+		[self cxx_setName:oo::OptionalString(DESC(@"character-thargoid-name"))];
 		[self setShortDescription:DESC(@"character-a-thargoid")];
 		specialSetUpDone = YES;
 	}
@@ -357,9 +357,15 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (id)name
+- (id)name	// shared selector (Foundation declares -name too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(_name);
+	return oo::NSStringOrNil([self cxx_name]);
+}
+
+
+- (std::optional<std::string>)cxx_name
+{
+	return _name;
 }
 
 
@@ -418,9 +424,15 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-- (void)setName:(id)value
+- (void)setName:(id)value	// shared selector (Foundation declares -setName: too; retires with oo-qps)
 {
-	_name = oo::OptionalString(value);
+	[self cxx_setName:oo::OptionalString(value)];
+}
+
+
+- (void)cxx_setName:(const std::optional<std::string> &)value
+{
+	_name = value;
 }
 
 
@@ -501,7 +513,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	}
 	else if (originName != nullptr)
 	{
-		OOSystemID sys = [UNIVERSE findSystemFromName:oo::NSStringFrom(*originName)];
+		OOSystemID sys = [UNIVERSE cxx_findSystemFromName:*originName];
 		if (sys < 0)
 		{
 			OO_LOG_ERR("character.load.unknownSystem", "could not find a system named '{}' in this galaxy.", *originName);

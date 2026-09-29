@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 
 #import "OOColor.h"
 #import "OOPolygonSprite.h"
+#import "HeadUpDisplay.h"
 
 #import "OOFlasherEntity.h"
 
@@ -356,7 +357,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		return NO;
 	}
 	
-	subentity = [UNIVERSE newVisualEffectWithName:oo::NSStringFrom(*subentKey)];
+	subentity = [UNIVERSE cxx_newVisualEffectWithName:*subentKey];
 	if (subentity == nil) {
 		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity {}", *subentKey);
 		return NO;
@@ -784,13 +785,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 {
 	oo::PList::Dict propertyList;
 	propertyList["visualEffect"] = oo::PListObject(self);
-	id properties = oo::ObjectFromPList(oo::PList(std::move(propertyList)));
+	const oo::PList properties(std::move(propertyList));
 
 	[script autorelease];
-	script = [OOScript jsScriptFromFileNamed:oo::NSStringOrNil(script_name) properties:properties];
+	script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:properties];
 	// does not support legacy scripting
 	if (script == nil) {
-		script = [OOScript jsScriptFromFileNamed:@"oolite-default-effect-script.js" properties:properties];
+		script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-effect-script.js" properties:properties];
 	}
 	[script retain];
 }
@@ -872,7 +873,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 	if (label.has_value() || _beaconLabel.has_value())
 	{
-		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 
@@ -892,14 +893,15 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 		if (length > 1)
 		{
-			const oo::PList iconData = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(*_beaconCode)]);
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
 			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
 
 		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [oo::NSStringFrom(oo::utf16ToUtf8(beaconCode.substr(0, 1))) retain];	// -substringToIndex:1
-			else  _beaconDrawable = @"";
+			if (length > 0)  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
 		}
 	}
 	

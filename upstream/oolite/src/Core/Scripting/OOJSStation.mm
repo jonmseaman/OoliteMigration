@@ -432,7 +432,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_allegiance:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, [entity allegiance]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([entity cxx_allegiance]));
 			return YES;
 		}
 			
@@ -497,7 +497,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_market:
 		{
-			*value_raw = OOJSValueFromNativeObject(context, [entity localMarketForScripting]);
+			*value_raw = OOJSValueFromPList(context, [entity cxx_localMarketForScripting]);
 			return YES;
 		}
 
@@ -553,7 +553,7 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
-				[entity setAllegiance:oo::NSStringOrNil(sValue)];
+				[entity cxx_setAllegiance:sValue];
 				return YES;
 			}
 			break;
@@ -1093,7 +1093,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 	}
 	
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(commodity)]))
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:commodity.value_or("")]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
@@ -1107,7 +1107,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 
-	[station setPrice:(NSUInteger)price forCommodity:oo::NSStringOrNil(commodity)];
+	[station cxx_setPrice:(NSUInteger)price forCommodity:commodity.value_or("")];
 
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
@@ -1136,7 +1136,7 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 	}
 	
 	OOCommodityType commodity = oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]));
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:commodity]))
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:oo::StdString(commodity)]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
@@ -1144,13 +1144,13 @@ static bool StationSetMarketQuantity(ooscript::Context context, ooscript::CallAr
 
 	int32_t quantity;
 	BOOL gotQuantity = ooscript::valueToInt32((context), (OOJS_ARGV[1]), &quantity);
-	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] capacityForGood:commodity]))
+	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] cxx_capacityForGood:oo::StdString(commodity)]))
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "setMarketQuantity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "Quantity must be between 0 and the station market capacity");
 		return NO;
 	}
 
-	[station setQuantity:(OOCargoQuantity)quantity forCommodity:commodity];
+	[station cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:oo::StdString(commodity)];
 	
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
@@ -1191,7 +1191,8 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	if (ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 
 	oo::PList::Dict result;
-	id shipyardDefinitionObject = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
+	const oo::PList shipyardDefinition = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
+	id shipyardDefinitionObject = oo::ObjectFromPList(shipyardDefinition);
 	// validate each element of the dictionary
 	if (!shipyardDefinitionObject)  
 	{
@@ -1205,7 +1206,6 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'short_description' in dictionary");
 		return NO;
 	}
-	const oo::PList shipyardDefinition = oo::PListFrom(shipyardDefinitionObject);
 	result[oo::StdString(KEY_SHORT_DESCRIPTION)] = ValueForKey(StringForKey(shipyardDefinition, "short_description"), KEY_SHORT_DESCRIPTION);
 	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)))  
 	{
@@ -1289,8 +1289,8 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
 		OOWeaponFacingSet availableFacings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
-		OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(fwdWeaponString));
-		OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(aftWeaponString));
+		OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
+		OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
 
 		unsigned int i;
 		std::optional<std::string> equipmentKey;
@@ -1298,7 +1298,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 			equipmentKey = StringAtIndex(extras, i);
 			if (equipmentKey.has_value() && oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
 			{
-				OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(equipmentKey));
+				OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(equipmentKey.value_or(""));
 				//fit best weapon forward
 				if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
 				{

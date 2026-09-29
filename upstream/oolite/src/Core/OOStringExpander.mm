@@ -273,6 +273,24 @@ std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, con
 }
 
 
+/*	The Foundation forms, kept as the expander test's surface (OOStringExpander.h; bead oo-m2nh,
+	proposed ADR-0052). Moved unchanged from the deleted transitional bridge: the overrides and
+	legacy locals once per call with oo::PListFrom (mixed values, Object nodes for anything else),
+	strings with oo::StdString / oo::OptionalString in and oo::NSStringOrNil out (nil for nullopt).
+*/
+NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options)
+{
+	if (string == nil)  return nil;
+	return oo::NSStringOrNil(cxx_OOExpandDescriptionString(seed, oo::StdString(string), oo::PListFrom(overrides), oo::PListFrom(legacyLocals), oo::OptionalString(systemName), options));
+}
+
+
+NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name)
+{
+	return oo::NSStringOrNil(cxx_OOGenerateSystemDescription(seed, oo::OptionalString(name)));
+}
+
+
 Random_Seed OOStringExpanderDefaultRandomSeed(void)
 {
 	return [[UNIVERSE systemManager] getRandomSeedForCurrentSystem];
@@ -790,9 +808,8 @@ OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, c
 	OOCParameterAssert(context != NULL);
 	if (HasPrefix(key, u"oolite_key_"))
 	{
-		// PlayerEntity is not migrated yet: converted at the call.
 		const std::string binding = oo::utf16ToUtf8(key.substr(7));
-		return UnitsFromOptional(oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringFrom(binding)]));
+		return UnitsFromOptional([PLAYER cxx_keyBindingDescription2:binding]);
 	}
 	return std::nullopt;
 }
@@ -880,8 +897,7 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* contex
 {
 	if (HasPrefix(key, u"mission_"))
 	{
-		// PlayerEntity is not migrated yet: converted at the call.
-		return UnitsFromOptional(oo::OptionalString([PLAYER missionVariableForKey:oo::NSStringFrom(keyString)]));
+		return UnitsFromOptional(oo::OptionalString(oo::ObjectFromPList([PLAYER cxx_missionVariableForKey:keyString])));
 	}
 
 	return std::nullopt;

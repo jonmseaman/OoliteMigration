@@ -440,8 +440,8 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	InitOOJSFont(gOOJSMainThreadContext, _globalObject);
 	
 	// Run prefix scripts.
-	[OOJSScript jsScriptFromFileNamed:@"oolite-global-prefix.js"
-						   properties:oo::ObjectFromPList(oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}}))];
+	[OOJSScript cxx_jsScriptFromFileNamed:"oolite-global-prefix.js"
+						   properties:oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})];
 
 	ooscript::endRequest((gOOJSMainThreadContext));
 	

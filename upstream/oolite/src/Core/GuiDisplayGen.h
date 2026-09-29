@@ -71,8 +71,7 @@ typedef enum
 #define GUI_KEY_OK				@"OK"
 #define GUI_KEY_SKIP			@"SKIP-ROW"
 
-// globals: the gui-settings.plist keys (Foundation sweep chunk 3, oo-3rb.94). The string-object
-// kGui* constants callers use live in GuiDisplayGen+FoundationBridge.h until they move to these.
+// globals: the gui-settings.plist keys (Foundation sweep chunk 3, oo-3rb.94).
 inline constexpr const char *cxx_kGuiDefaultTextColor		= "default_text_color";
 inline constexpr const char *cxx_kGuiScreenTitleColor		= "screen_title_color";
 inline constexpr const char *cxx_kGuiScreenDividerColor		= "screen_divider_color";
@@ -227,8 +226,6 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (id) init;
 /*	Foundation sweep (proposed ADR-0043, chunk 1 of oo-ol63: bead oo-3rb.92): titles, row texts and
 	row keys are UTF-8 std::strings, std::optional where the old code accepted or returned nil.
-	The Foundation-typed selectors moved to GuiDisplayGen+FoundationBridge.h (transitional),
-	forwarding to these cxx_ ones.
 */
 - (id) cxx_initWithPixelSize:(NSSize)gui_size
 					 columns:(int)gui_cols
@@ -393,11 +390,3 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (OOSystemID) targetNextFoundSystem:(int)direction;
 
 @end
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before the GuiDisplayGen sweep (chunks oo-3rb.92 to .96 of oo-ol63), forwarding to the
-	cxx_ API above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
-	own sweep beads; the bridge goes in its own bead.
-*/
-#import "GuiDisplayGen+FoundationBridge.h"

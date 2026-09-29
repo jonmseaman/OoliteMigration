@@ -81,10 +81,10 @@ MA 02110-1301, USA.
 		radius *= SCANNER_MAX_RANGE;
 		_blastsRemaining--;
 		
-		const std::vector<oo::ObjCRef<ShipEntity *>> targets = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE findEntitiesMatchingPredicate:IsShipPredicate
+		const std::vector<oo::ObjCRef<Entity *>> targets = [UNIVERSE cxx_findEntitiesMatchingPredicate:IsShipPredicate
 														 parameter:NULL
 														   inRange:radius
-														  ofEntity:self]);
+														  ofEntity:self];
 		NSUInteger i, count = targets.size();
 		if (count > 0)
 		{
@@ -94,9 +94,9 @@ MA 02110-1301, USA.
 			
 			for (i = 0; i < count; i++)
 			{
-				ShipEntity *target = targets[i].get();
+				ShipEntity *target = (ShipEntity *)targets[i].get();
 				ShipScriptEvent(context, target, "shipHitByECM", ecmPulsesRemaining, whomVal);
-				[target reactToAIMessage:@"ECM" context:nil];
+				[target cxx_reactToAIMessage:"ECM" context:std::nullopt];
 				[target noticeECM];
 			}
 			

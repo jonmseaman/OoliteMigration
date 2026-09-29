@@ -169,23 +169,23 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 		std::string stickNameForThisRow = oo::str::format("Stick %d %s", i+1, stickList[i].c_str());
 		// for more than 2 sticks, the stick name rows are populated by more than one name if needed
 		std::optional<std::string> stickNameAdditional;
-		if (stickCount > 2 && OOStringWidthInEm(oo::NSStringFrom(stickNameForThisRow)) > 18.0)
+		if (stickCount > 2 && cxx_OOStringWidthInEm(stickNameForThisRow) > 18.0)
 		{
 			// string is too long, truncate it until its length gets below threshold
 			do {
 				stickNameForThisRow = TruncatedByFive(stickNameForThisRow);
-			} while (OOStringWidthInEm(oo::NSStringFrom(stickNameForThisRow)) > 18.0);
+			} while (cxx_OOStringWidthInEm(stickNameForThisRow) > 18.0);
 		}
 		unsigned j = i + 2;
 		if (j < stickCount)
 		{
 			stickNameAdditional = oo::str::format("Stick %d %s", j+1, stickList[j].c_str());
-			if (OOStringWidthInEm(oo::NSStringFrom(*stickNameAdditional)) > 11.0)
+			if (cxx_OOStringWidthInEm(*stickNameAdditional) > 11.0)
 			{
 				// string is too long, truncate it until its length gets below threshold
 				do {
 				stickNameAdditional = TruncatedByFive(*stickNameAdditional);
-				} while (OOStringWidthInEm(oo::NSStringFrom(*stickNameAdditional)) > 11.0);
+				} while (cxx_OOStringWidthInEm(*stickNameAdditional) > 11.0);
 			}
 		}
 		[gui cxx_setArray:ColumnsUpToNil({
@@ -305,7 +305,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	// Right time and the right place?
 	if(gui_screen != GUI_SCREEN_STICKMAPPER)
 	{
-		OOLog(@"joystick.configure.error", @"%s called when not on stick mapper screen.", __PRETTY_FUNCTION__);
+		OO_LOG("joystick.configure.error", "{} called when not on stick mapper screen.", __PRETTY_FUNCTION__);
 		return;
 	}
 	// What moved?
