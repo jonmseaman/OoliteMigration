@@ -509,7 +509,7 @@ VERIFY_PROTO(DelegatedType);
 	}
 	@catch (OOException *exception)
 	{
-		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf(oo::NSStringFrom([exception name])).c_str(), oo::DescriptionOf(oo::NSStringFrom([exception reason])).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
+		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", [exception name], [exception reason], name.c_str(), KeyPathToString(keyPath).c_str());
 	}
 	
 	DebugDumpPopIndent();
@@ -1182,7 +1182,7 @@ static std::optional<OOPListSchemaVerifierError> Verify_Dictionary(OOPListSchema
 	if (!prematureExit && !requiredKeys.empty())
 	{
 		const std::vector<std::string> missing(requiredKeys.begin(), requiredKeys.end());
-		return ErrorWithProperty(kPListErrorDictionaryMissingRequiredKeys, &keyPath, kMissingRequiredKeysErrorKey, oo::PListObject(oo::NSSetFromStrings(missing)), "Required keys %s missing from dictionary.", SetForErrorReport(missing).c_str());
+		return ErrorWithProperty(kPListErrorDictionaryMissingRequiredKeys, &keyPath, kMissingRequiredKeysErrorKey, oo::PList(oo::PList::Array(missing.begin(), missing.end())), "Required keys %s missing from dictionary.", SetForErrorReport(missing).c_str());
 	}
 
 	*outStop = stop && !tentative;
