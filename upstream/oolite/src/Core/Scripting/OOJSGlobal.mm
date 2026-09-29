@@ -718,7 +718,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 	{
 		if (ooscript::isObjectOrNull(value))
 		{
-			keydefs = oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(value)));
+			keydefs = cxx_OOJSPListFromJSObject(context, ooscript::toObject(value));
 		}
 		else 
 		{

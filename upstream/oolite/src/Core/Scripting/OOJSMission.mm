@@ -376,7 +376,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 		else // must be object, from above
 		{
 			ooscript::clearPendingException(context); // or valueToInt32 exception crashes JS engine
-			oo::PList marker = oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[i])));
+			oo::PList marker = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[i]));
 			OOSystemID system = marker.get<int>("system", -1);
 			if (system >= 0)
 			{
@@ -432,7 +432,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 		else // must be object, from above
 		{
 			ooscript::clearPendingException(context); // or valueToInt32 exception crashes JS engine
-			oo::PList marker = oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[i])));
+			oo::PList marker = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[i]));
 			OOSystemID system = marker.get<int>("system", -1);
 			if (system >= 0)
 			{
@@ -516,7 +516,7 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else if (!ooscript::isNull(OOJS_ARGV[0]) && ooscript::isObjectOrNull(OOJS_ARGV[0]))
 	{
-		texts = oo::PListFrom(OOJSNativeObjectFromJSValue(context, OOJS_ARGV[0]));
+		texts = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[0]);
 	}
 	else
 	{
@@ -567,7 +567,7 @@ static oo::PList GetParameterDictionary(ooscript::Context context, ooscript::Obj
 	{
 		if (ooscript::isObjectOrNull(value))
 		{
-			return oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(value)));
+			return cxx_OOJSPListFromJSObject(context, ooscript::toObject(value));
 		}
 	}
 	return oo::PList();	// was nil

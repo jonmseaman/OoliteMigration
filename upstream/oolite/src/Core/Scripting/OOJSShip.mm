@@ -2546,7 +2546,7 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	player = OOPlayerForScripting();
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 1)  actions = oo::PListFrom(OOJSNativeObjectFromJSValue(context, OOJS_ARGV[1]));
+	if (oojsArgs.count() > 1)  actions = cxx_OOJSPListFromJSValue(context, OOJS_ARGV[1]);
 	if (EXPECT_NOT(oojsArgs.count() != 2 ||
 				   !ooscript::isObjectOrNull(OOJS_ARGV[0]) ||
 				   !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target) ||
@@ -3334,16 +3334,16 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	{
 		materials = [[thisEnt mesh] materials];
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+		shaders = cxx_OOJSPListFromJSObject(context, params);
 	}
 	else
 	{
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		materials = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+		materials = cxx_OOJSPListFromJSObject(context, params);
 		if (withShaders)
 		{
 			params = ooscript::toObject(OOJS_ARGV[1]);
-			shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+			shaders = cxx_OOJSPListFromJSObject(context, params);
 		}
 		else
 		{
@@ -4438,7 +4438,7 @@ static bool ShipStaticSetShipDataForKey(ooscript::Context context, ooscript::Cal
 
 	if (oojsArgs.count() >= 2)
 	{
-		[registry cxx_setShipInfoForKey:cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or(std::string()) with:oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[1])))];
+		[registry cxx_setShipInfoForKey:cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or(std::string()) with:cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]))];
 		OOJS_RETURN_BOOL(YES);
 	}
 	else

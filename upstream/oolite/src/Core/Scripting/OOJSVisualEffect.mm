@@ -791,16 +791,16 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	{
 		materials = [[thisEnt mesh] materials];
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+		shaders = cxx_OOJSPListFromJSObject(context, params);
 	}
 	else
 	{
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		materials = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+		materials = cxx_OOJSPListFromJSObject(context, params);
 		if (withShaders)
 		{
 			params = ooscript::toObject(OOJS_ARGV[1]);
-			shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+			shaders = cxx_OOJSPListFromJSObject(context, params);
 		}
 		else
 		{

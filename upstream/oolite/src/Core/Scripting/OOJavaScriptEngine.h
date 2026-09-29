@@ -405,8 +405,8 @@ OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 /*	cxx_OOJSPListFromJSValue(context, value) / cxx_OOJSPListFromJSObject(context, object)
-	The oo::PList form of the native-object family, exactly
-	oo::PListFrom(OOJSNativeObjectFromJSValue(...)) (proposed ADR-0051): null for
+	The oo::PList form of the native-object family: exactly what oo::PListFrom()
+	made of OOJSNativeObjectFromJSValue()'s result (proposed ADR-0051): null for
 	null, undefined or an unconvertible value; int32 -> signed integer, double
 	-> real, boolean -> bool, string -> string; a JS Array -> array (a null or
 	undefined element -> a PList::Object holding [OONull null]); a plain Object
