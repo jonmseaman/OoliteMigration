@@ -95,7 +95,7 @@ OOINLINE double OOClamp_0_max_d(double value, double max)
 	return fmax(0.0, fmin(value, max));
 }
 
-// Moved verbatim from the OOCollectionExtractors header (retired by oo-snzn).
+// Moved verbatim from the collection extractors oo-snzn retired.
 OOINLINE long long OOClampInteger(long long value, long long minValue, long long maxValue) ALWAYS_INLINE_FUNC;
 OOINLINE long long OOClampInteger(long long value, long long minValue, long long maxValue)
 {
