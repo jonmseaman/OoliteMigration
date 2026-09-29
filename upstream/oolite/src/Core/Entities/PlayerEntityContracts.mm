@@ -1525,7 +1525,16 @@ std::string ExpandKey(const char *key, oo::PList::Dict arguments)
 // The labels row as the GUI holds it, padded to four columns.
 std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 {
-	std::vector<std::string> row_info = oo::StringsFrom([gui objectForRow:GUI_ROW_SHIPYARD_LABELS]);
+	// its string columns, as oo::StringsFrom of the row's array kept them
+	std::vector<std::string> row_info;
+	const oo::PList row = [gui objectForRow:GUI_ROW_SHIPYARD_LABELS];
+	if (const oo::PList::Array *columns = row.getIf<oo::PList::Array>())
+	{
+		for (const oo::PList &column : *columns)
+		{
+			if (const std::string *text = column.getIf<std::string>())  row_info.push_back(*text);
+		}
+	}
 	while (row_info.size() < 4)
 	{
 		row_info.emplace_back();
