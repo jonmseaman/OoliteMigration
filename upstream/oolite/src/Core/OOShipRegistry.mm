@@ -393,11 +393,11 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (std::vector<std::string>) cxx_shipKeysWithRole:(const std::string &)role
 {
-	// The set's string objects (ship keys), in its order; anything else skipped, as oo::StringsFrom did.
+	// The set's string elements (ship keys), in its order; anything else skipped, as oo::StringsFrom did.
 	std::vector<std::string> keys;
-	for (const oo::ObjCRef<id> &key : [[self cxx_probabilitySetForRole:role] cxx_allObjects])
+	for (const oo::PList &key : [[self cxx_probabilitySetForRole:role] cxx_allElements])
 	{
-		if (oo::IsNSString(key.get()))  keys.push_back(oo::StdString(key.get()));
+		if (const std::string *string = key.getIf<std::string>())  keys.push_back(*string);
 	}
 	return keys;
 }
@@ -405,7 +405,12 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (std::optional<std::string>) cxx_randomShipKeyForRole:(const std::string &)role
 {
-	return oo::OptionalString([[self cxx_probabilitySetForRole:role] randomObject]);
+	// nullopt for no set, or no pick (every weight zero), as nil was.
+	OOProbabilitySet *set = [self cxx_probabilitySetForRole:role];
+	if (set == nil)  return std::nullopt;
+	const oo::PList key = [set randomObject];
+	if (const std::string *string = key.getIf<std::string>())  return *string;
+	return std::nullopt;
 }
 
 @end
@@ -1346,7 +1351,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 			probSet = oo::ObjCRef<OOMutableProbabilitySet *>([OOMutableProbabilitySet probabilitySet]);
 		}
 
-		[probSet.get() setWeight:weight forObject:oo::NSStringFrom(shipKey)];
+		[probSet.get() setWeight:weight forObject:oo::PList(shipKey)];
 	}
 }
 
