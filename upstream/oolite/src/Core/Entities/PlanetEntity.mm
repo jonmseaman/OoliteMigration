@@ -487,7 +487,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	
 	seed_for_planet_description(p_seed);
 	
-	oo::PList	planetInfo = DictionaryOrEmpty(oo::PListFrom([UNIVERSE generateSystemData:p_seed]));
+	oo::PList	planetInfo = DictionaryOrEmpty([UNIVERSE cxx_generateSystemData:p_seed]);
 	int	radius_km = dict.get<int>(oo::StdString(KEY_RADIUS),
 						planetInfo.get<int>(oo::StdString(KEY_RADIUS)));
 	int techlevel = dict.get<int>(oo::StdString(KEY_TECHLEVEL),
@@ -709,7 +709,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 		if ([ship reportAIMessages])
 		{
 			HPVector p1 = ship->position;
-			OO_LOG("planet.collide.shipHit", "DEBUG: {} {} collided with planet at ({:.1f},{:.1f},{:.1f})", oo::DescriptionOf([ship name]), [ship universalID], p1.x, p1.y, p1.z);
+			OO_LOG("planet.collide.shipHit", "DEBUG: {} {} collided with planet at ({:.1f},{:.1f},{:.1f})", [ship cxx_name].value_or("(null)"), [ship universalID], p1.x, p1.y, p1.z);
 		}
 #endif
 	}
@@ -1240,12 +1240,12 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	launch_pos.y += start_distance * vf.y;
 	launch_pos.z += start_distance * vf.z;
 
-	shuttle_ship = [UNIVERSE newShipWithRole:@"shuttle"];   // retain count = 1
+	shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
-		if (![shuttle_ship crew])
+		if (![shuttle_ship cxx_crew].has_value())
 		{
-			[shuttle_ship setSingleCrewWithRole:@"trader"];
+			[shuttle_ship cxx_setSingleCrewWithRole:"trader"];
 		}
 				
 		[shuttle_ship setPosition:launch_pos];

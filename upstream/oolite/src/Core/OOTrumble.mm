@@ -200,8 +200,8 @@ static void PlayTrumbleSqueal(void);
 	animationTime = 0.0;
 	animationDuration = 1.5 + randf() * 3.0;	// time until next animation
 	//
-	texture = [OOTexture textureWithName:@"trumblekit.png"
-								inFolder:@"Textures"
+	texture = [OOTexture cxx_textureWithName:"trumblekit.png"
+								inFolder:"Textures"
 								 options:kOOTextureDefaultOptions | kOOTextureNoShrink
 							  anisotropy:0.0f
 								 lodBias:kOOTextureDefaultLODBias];
@@ -595,8 +595,8 @@ static void PlayTrumbleSqueal(void);
 		for (i = 0 ; i < n_pods; i++)
 		{
 			ShipEntity *cargopod = (*cargopods)[i].get();
-			OOCommodityType cargo_type = [cargopod commodityType];
-			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] cxx_trumbleOpinionForGood:oo::StdString(cargo_type)];
+			const std::string cargo_type = [cargopod cxx_commodityType].value_or("");	// nil arrived as ""
+			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] cxx_trumbleOpinionForGood:cargo_type];
 			if (yumminess > mostYummy)
 			{
 				selectedCargopod = cargopod;
@@ -617,7 +617,7 @@ static void PlayTrumbleSqueal(void);
 			{
 				// eaten all of this cargo!
 				const std::string ms = oo::str::formatRuntime(oo::StdString(DESC(@"trumbles-eat-@")),
-								{ [UNIVERSE cxx_displayNameForCommodity:oo::StdString([selectedCargopod commodityType])].value_or("(null)") });
+								{ [UNIVERSE cxx_displayNameForCommodity:[selectedCargopod cxx_commodityType].value_or("")].value_or("(null)") });
 
 				[UNIVERSE cxx_addMessage:ms forCount: 4.5];
 				if (cargopods != nullptr)  std::erase(*cargopods, selectedCargopod);

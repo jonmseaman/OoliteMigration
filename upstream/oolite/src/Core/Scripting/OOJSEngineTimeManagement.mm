@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOJSEngineTimeManagement.h"
 #import "OOProfilingStopwatch.h"
 #import "OOJSScript.h"
-#import "OOCollectionExtractors.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"
@@ -233,7 +232,7 @@ static bool OperationCallback(ooscript::Context context)
 	
 	if (elapsed <= sLimiterTimeLimit)  return YES;
 	
-	OO_LOG_ERR("script.javaScript.timeLimit", "Script \"{}\" ran for {:g} seconds and has been terminated.", oo::DescriptionOf([[OOJSScript currentlyRunningScript] name]), elapsed);
+	OO_LOG_ERR("script.javaScript.timeLimit", "Script \"{}\" ran for {:g} seconds and has been terminated.", [[OOJSScript currentlyRunningScript] cxx_name].value_or("(null)"), elapsed);
 #ifndef NDEBUG
 	OOJSDumpStack(context);
 #endif

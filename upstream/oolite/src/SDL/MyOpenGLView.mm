@@ -506,7 +506,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 							"Click OK to launch anyway, or Cancel to exit.", "oolite.exe - HDR requested",
 							MB_OKCANCEL | MB_ICONWARNING) == IDCANCEL)
 		{
-			[gameController exitAppWithContext:@"Cancel selected on no-HDR confirmation dialog"];
+			[gameController cxx_exitAppWithContext:"Cancel selected on no-HDR confirmation dialog"];
 		}
 	}
 

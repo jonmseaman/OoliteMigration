@@ -103,7 +103,8 @@ SOFTWARE.
 
 - (std::optional<std::string>) cxx_identifier;
 - (std::optional<std::string>) cxx_damagedIdentifier;
-- (id) name;			// localized; shared selector (proposed ADR-0043): a string
+- (id) name;			// localized; shared selector (Foundation declares -name too): -cxx_name as an Objective-C string
+- (std::optional<std::string>) cxx_name;	// localized (bead oo-3rb.289.10)
 - (std::optional<std::string>) cxx_descriptiveText;	// localized
 - (OOTechLevelID) techLevel;
 - (OOCreditsQuantity) price;	// Tenths of credits
@@ -183,9 +184,3 @@ SOFTWARE.
 
 @end
 
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-fvnu (chunks oo-3rb.156..159), forwarding to the cxx_ methods above, so
-	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads.
-*/
-#import "OOEquipmentType+FoundationBridge.h"

@@ -243,8 +243,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	{
 		if (value.isArray())
 		{
-			// -processKeyCode: returns a +1 array
-			value = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(value)]).get());
+			value = [self cxx_processKeyCode:value];
 		}
 	}
 	kdic_check = oo::PList(std::move(kdic));
@@ -428,18 +427,18 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 					lookupKey = oo::StdString(CUSTOMEQUIP_KEYMODE);
 				}
 
-				OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(eq)];
+				OOEquipmentType	*item = (eq.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eq] : nil);
 
 				// the customEquipActivation entry is edited in place, as before
 				oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx);
-				if ([item defaultActivateKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYACTIVATE) && fields != nullptr)
+				if ([item cxx_defaultActivateKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYACTIVATE) && fields != nullptr)
 				{
-					fields->insert_or_assign(*lookupKey, oo::PListFrom([item defaultActivateKey]));
+					fields->insert_or_assign(*lookupKey, [item cxx_defaultActivateKey]);
 					update = true;
 				}
-				if ([item defaultModeKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYMODE) && fields != nullptr)
+				if ([item cxx_defaultModeKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYMODE) && fields != nullptr)
 				{
-					fields->insert_or_assign(*lookupKey, oo::PListFrom([item defaultModeKey]));
+					fields->insert_or_assign(*lookupKey, [item cxx_defaultModeKey]);
 					update = true;
 				}
 
@@ -832,8 +831,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	}
 	last_shift = NO;
 	StoreKeyDefinition(index, oo::PList(std::move(key_def)));
-	// -processKeyCode: returns a +1 array
-	key_list = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(key_list)]).get());
+	key_list = [self cxx_processKeyCode:key_list];
 }
 
 
@@ -877,8 +875,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	StoreKeyDefinition(index, std::move(key_def));
 	if (keycode_changed)
 	{
-		// -processKeyCode: returns a +1 array
-		key_list = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(key_list)]).get());
+		key_list = [self cxx_processKeyCode:key_list];
 	}
 }
 
@@ -923,10 +920,10 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
-	const oo::PList yesValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-yes"]);
-	const oo::PList noValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-no"]);
-	const std::u16string valueYes = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(yesValue.isNull() ? nullptr : &yesValue, "y")));
-	const std::u16string valueNo = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(noValue.isNull() ? nullptr : &noValue, "n")));
+	const oo::PList *yesValue = [UNIVERSE cxx_descriptions]->find("load-previous-commander-yes");
+	const oo::PList *noValue = [UNIVERSE cxx_descriptions]->find("load-previous-commander-no");
+	const std::u16string valueYes = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(yesValue, "y")));
+	const std::u16string valueNo = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(noValue, "n")));
 	unsigned char cYes, cNo;
 
 	cYes = (valueYes.empty() ? 0 : valueYes[0]) & 0x00ff;	// Use lower byte of unichar.
@@ -1026,7 +1023,8 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 					const oo::PList &equip = CustomEquipEntry(customEquipActivation, idx);
 					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
 					assignment = [PLAYER cxx_getKeyBindingDescription:(keyArray != nullptr ? *keyArray : oo::PList())];
-					OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY)))];
+					const std::optional<std::string> itemKey = OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+					OOEquipmentType	*item = itemKey.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*itemKey] : nil;
 					bool result = true;
 					int j, k;
 					oo::PList defArray;
@@ -1034,12 +1032,12 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 					if (custom_keytype == oo::StdString(CUSTOMEQUIP_KEYACTIVATE))
 					{
-						defArray = oo::PListFrom([item defaultActivateKey]);
+						defArray = [item cxx_defaultActivateKey];
 						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
 					if (custom_keytype == oo::StdString(CUSTOMEQUIP_KEYMODE))
 					{
-						defArray = oo::PListFrom([item defaultModeKey]);
+						defArray = [item cxx_defaultModeKey];
 						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
 					for (j = 0; j < defArray.count(); j++)
@@ -1822,16 +1820,16 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		for (i = 0; i < customEquipActivation.size(); i++)
 		{
 			const std::optional<std::string> eq = OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY));
-			OOEquipmentType *item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(eq)];
+			OOEquipmentType *item = (eq.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eq] : nil);
 			oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, i);	// edited in place
 			if (fields == nullptr)  continue;
-			if ([item defaultActivateKey])
-				fields->insert_or_assign(oo::StdString(CUSTOMEQUIP_KEYACTIVATE), oo::PListFrom([item defaultActivateKey]));
+			if ([item cxx_defaultActivateKey])
+				fields->insert_or_assign(oo::StdString(CUSTOMEQUIP_KEYACTIVATE), [item cxx_defaultActivateKey]);
 			else
 				fields->erase(oo::StdString(CUSTOMEQUIP_KEYACTIVATE));
 
-			if ([item defaultModeKey])
-				fields->insert_or_assign(oo::StdString(CUSTOMEQUIP_KEYMODE), oo::PListFrom([item defaultModeKey]));
+			if ([item cxx_defaultModeKey])
+				fields->insert_or_assign(oo::StdString(CUSTOMEQUIP_KEYMODE), [item cxx_defaultModeKey]);
 			else
 				fields->erase(oo::StdString(CUSTOMEQUIP_KEYMODE));
 		}

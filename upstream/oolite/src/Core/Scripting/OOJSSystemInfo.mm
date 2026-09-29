@@ -319,9 +319,9 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 {
 	if ([UNIVERSE inInterstellarSpace] && _system == -1) 
 	{
-		return [[UNIVERSE currentSystemData] objectForKey:key];
+		return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:key];
 	}
-	return [UNIVERSE systemDataForGalaxy:_galaxy planet:_system key:key];
+	return [UNIVERSE cxx_systemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key)];
 }
 
 
@@ -330,7 +330,7 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 	// The running script's manifest identifier, handed on as it was read.
 	const oo::PList manifest = oo::PListFrom([[OOJSScript currentlyRunningScript] propertyNamed:kLocalManifestProperty]);
 
-	[UNIVERSE setSystemDataForGalaxy:_galaxy planet:_system key:key value:value  fromManifest:oo::ObjectFromPList(manifest) forLayer:OO_LAYER_OXP_DYNAMIC];
+	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key) value:value  fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
@@ -338,9 +338,9 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 {
 	if ([UNIVERSE inInterstellarSpace] && _system == -1) 
 	{
-		return [[UNIVERSE currentSystemData] allKeys];
+		return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) allKeys];
 	}
-	return [UNIVERSE systemDataKeysForGalaxy:_galaxy planet:_system];
+	return oo::NSArrayFromStrings([UNIVERSE cxx_systemDataKeysForGalaxy:_galaxy planet:_system]);
 }
 
 
@@ -593,7 +593,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 		// interstellar space needs more work at this stage
 		if ([info system] != -1)
 		{
-			propValue = [systemManager getProperty:oo::NSStringOrNil(key) forSystem:[info system] inGalaxy:[info galaxy]];
+			propValue = oo::ObjectFromPList([systemManager cxx_getProperty:key.value_or("") forSystem:[info system] inGalaxy:[info galaxy]]);
 		} else {
 			propValue = [info valueForKey:oo::NSStringOrNil(key)];
 		}
@@ -718,7 +718,7 @@ static bool SystemInfoRouteToSystem(ooscript::Context context, ooscript::CallArg
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = oo::PListFrom([UNIVERSE routeFromSystem:[thisInfo system] toSystem:[otherInfo system] optimizedBy:routeType]);
+	result = [UNIVERSE cxx_routeFromSystem:[thisInfo system] toSystem:[otherInfo system] optimizedBy:routeType];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::ObjectFromPList(result));
@@ -739,7 +739,7 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 	
 	if (!JSSystemInfoGetSystemInfo(context, OOJS_THIS, &thisInfo))  return NO;
 	std::optional<std::string> commodity = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(commodity)]))
+	if (EXPECT_NOT(![[UNIVERSE commodities] cxx_goodDefined:commodity.value_or("")]))
 	{
 		cxx_OOJSReportBadArguments(context, "SystemInfo", "samplePrice", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "Unrecognised commodity type");
 		return NO;
@@ -752,7 +752,7 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 
-	OOCreditsQuantity price = [[UNIVERSE commodities] samplePriceForCommodity:oo::NSStringOrNil(commodity) inEconomy:[[thisInfo valueForKey:@"economy"] intValue] withScript:[thisInfo valueForKey:@"commodity_script"] inSystem:[thisInfo system]];
+	OOCreditsQuantity price = [[UNIVERSE commodities] cxx_samplePriceForCommodity:commodity.value_or("") inEconomy:[[thisInfo valueForKey:@"economy"] intValue] withScript:oo::OptionalString([thisInfo valueForKey:@"commodity_script"]) inSystem:[thisInfo system]];
 
 	return ooscript::newNumberValue(context, price, oojsArgs.rawVp());
 	
@@ -808,7 +808,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 		manifest = oo::PListFrom([[OOJSScript currentlyRunningScript] propertyNamed:kLocalManifestProperty]);
 	}
 
-	[UNIVERSE setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:oo::NSStringOrNil(property) value:value fromManifest:oo::ObjectFromPList(manifest) forLayer:layer];
+	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:value fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
 
 	OOJS_RETURN_VOID;
 	
@@ -992,7 +992,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 
 	std::string key = oo::str::format("interstellar: %u %u %u",g,s1,s2);
 	
-	[[UNIVERSE systemManager] setProperty:oo::NSStringOrNil(property) forSystemKey:oo::NSStringFrom(key) andLayer:layer toValue:value fromManifest:oo::ObjectFromPList(manifest)];
+	[[UNIVERSE systemManager] cxx_setProperty:property.value_or("") forSystemKey:key andLayer:layer toValue:oo::PListFrom(value) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest))];
 
 	OOJS_RETURN_VOID;
 	

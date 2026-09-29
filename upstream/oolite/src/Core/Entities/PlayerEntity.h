@@ -1122,7 +1122,7 @@ typedef enum
 - (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
 - (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
-- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;
@@ -1346,7 +1346,3 @@ std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBeha
 std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
 std::string cxx_KillCountToRatingAndKillString(unsigned kills);
 std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
-
-// TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
-// sweep, forwarding to the cxx_ API above. Keep this the last line.
-#import "PlayerEntity+FoundationBridge.h"
