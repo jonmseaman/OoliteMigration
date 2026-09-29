@@ -468,7 +468,6 @@ it. oo-qps cannot compile any of them.
 |---|---|---|
 | `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
 | `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog hook, Amendment 2 item 18(a); also the Foundation-typed functions until oo-vors removes them) | oo-vjts | oo-qps (with gnustep-base) |
-| `src/Core/Entities/ShipEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.232 made it; chunks oo-3rb.233-.242 of oo-3rb.73 move their own selectors in) | oo-3rb.232 | oo-pizp ("Delete ShipEntity+FoundationBridge") |
 | `src/Core/Universe+FoundationBridge.h/.mm` (chunked: oo-3rb.220 made it; chunks oo-3rb.221-.231 move their own selectors in; also the `OOLookUp*DescriptionPRIV` functions behind DESC()) | oo-3rb.220 (chunks of oo-3rb.79) | oo-mr9c ("Delete Universe+FoundationBridge") |
 
 ### Stop and report (do not stretch)
