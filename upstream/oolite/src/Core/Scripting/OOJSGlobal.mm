@@ -563,7 +563,7 @@ static bool GlobalDisplayNameForCommodity(ooscript::Context context, ooscript::C
 		cxx_OOJSReportBadArguments(context, std::nullopt, "displayNameForCommodity", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
 		return NO;
 	}
-	OOJS_RETURN_OBJECT(CommodityDisplayNameForSymbolicName(oo::NSStringFrom(*string)));
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(cxx_CommodityDisplayNameForSymbolicName(*string)));
 	
 	OOJS_NATIVE_EXIT
 }

@@ -469,14 +469,11 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
 | `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
 | `src/Core/Materials/OOTexture+FoundationBridge.h/.mm` (also the NSString `kOOTextureSpecifier*Key` constants) | oo-japz | oo-x3ni ("Delete OOTexture+FoundationBridge") |
-| `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
 | `src/Core/Entities/PlayerEntity+FoundationBridge.h/.mm` (category `PlayerEntity (FoundationBridge)`; PlayerEntity.mm chunks of oo-3rb.75 move their own selectors in) | oo-3rb.164 | oo-c8xj ("Delete PlayerEntity+FoundationBridge") |
 | `src/Core/Entities/PlayerEntityControls+FoundationBridge.h/.mm` (category `PlayerEntity (ControlsFoundationBridge)`; chunked: oo-3rb.214 made it; chunks oo-3rb.215-.219 move their own selectors in) | oo-3rb.214 (chunks of oo-3rb.77) | oo-kaap ("Delete PlayerEntityControls+FoundationBridge") |
-| `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
 | `src/Core/OOEquipmentType+FoundationBridge.h/.mm` (chunked: oo-3rb.156 made it; chunks oo-3rb.157-.159 move their own selectors in) | oo-3rb.156 (chunks of oo-fvnu) | oo-6nbt ("Delete OOEquipmentType+FoundationBridge") |
 | `src/Core/OOCommodities+FoundationBridge.h/.mm` | oo-3rb.154 (chunk 1 of oo-19d2) | oo-o92r ("Delete OOCommodities+FoundationBridge") |
-| `src/Core/OOConstToString+FoundationBridge.h/.mm` (chunked: oo-3rb.160 made it; chunks oo-3rb.161-.163 move their own functions in; some old prototypes stay in Entity.h / ShipEntity.h / PlayerEntity.h / Universe.h) | oo-3rb.160 (chunks of oo-nts1) | oo-jx3u ("Delete OOConstToString+FoundationBridge") |
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
 | `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |

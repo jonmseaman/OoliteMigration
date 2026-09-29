@@ -273,7 +273,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 #if OOLITE_WINDOWS
 			if ([gameView hdrOutput])
 			{
-				toneMapperStr = oo::OptionalString(OOStringFromHDRToneMapper([gameView hdrToneMapper]));
+				toneMapperStr = cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]);
 			}
 #endif
 			result = oo::NSStringOrNil(toneMapperStr);
@@ -285,7 +285,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			std::optional<std::string> toneMapperStr = "OOSDR_TONEMAPPER_UNDEFINED";
 			if (![gameView hdrOutput])
 			{
-				toneMapperStr = oo::OptionalString(OOStringFromSDRToneMapper([gameView sdrToneMapper]));
+				toneMapperStr = cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]);
 			}
 			result = oo::NSStringOrNil(toneMapperStr);
 			break;
@@ -351,7 +351,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (sValue.has_value())
 			{
 #if OOLITE_WINDOWS
-				if ([gameView hdrOutput])  [gameView setHDRToneMapper:OOHDRToneMapperFromString(oo::NSStringFrom(*sValue))];
+				if ([gameView hdrOutput])  [gameView setHDRToneMapper:cxx_OOHDRToneMapperFromString(*sValue)];
 				else  cxx_OOJSReportWarning(context, "hdrToneMapper cannot be set if not running in HDR mode");
 #endif
 				return YES;
@@ -363,7 +363,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			sValue = cxx_OOStringFromJSValue(context,*value_raw);
 			if (sValue.has_value())
 			{
-				if (![gameView hdrOutput])  [gameView setSDRToneMapper:OOSDRToneMapperFromString(oo::NSStringFrom(*sValue))];
+				if (![gameView hdrOutput])  [gameView setSDRToneMapper:cxx_OOSDRToneMapperFromString(*sValue)];
 				else  cxx_OOJSReportWarning(context, "sdrToneMapper cannot be set if not running in SDR mode");
 				return YES;
 			}
