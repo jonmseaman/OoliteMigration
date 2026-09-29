@@ -833,7 +833,7 @@ static AIStackElement *sStack = NULL;
 	}
 	else if (owner != nil)
 	{
-		ownerDesc = oo::str::format("%s %d", oo::DescriptionOf([owner name]).c_str(), [owner universalID]);
+		ownerDesc = oo::str::format("%s %d", [owner cxx_name].value_or("(null)").c_str(), [owner universalID]);
 	}
 	else
 	{
