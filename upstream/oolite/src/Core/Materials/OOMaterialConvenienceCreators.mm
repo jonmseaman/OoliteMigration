@@ -280,16 +280,11 @@ static BOOL sDumpShaderSource = NO;
 		humanFriendlyConfig[kOOVertexShaderNameKey] = oo::PList(oo::str::format("%s.vertex", nameText));
 		humanFriendlyConfig[kOOFragmentShaderNameKey] = oo::PList(oo::str::format("%s.fragment", nameText));
 		
-		// +cxx_writeDiagnosticPList:toFileNamed: of each: the old-school writer; a plist it cannot
-		// write is not written.
-		if (const auto data = oo::writeOldStylePList(oo::PList(humanFriendlyConfig)); data.has_value())
-		{
-			[ResourceManager cxx_writeDiagnosticData:*data toFileNamed:dumpPath + ".plist"];
-		}
-		if (const auto data = oo::writeOldStylePList(configuration); data.has_value())
-		{
-			[ResourceManager cxx_writeDiagnosticData:*data toFileNamed:dumpPath + "-original.plist"];
-		}
+		[ResourceManager cxx_writeDiagnosticPList:oo::PList(humanFriendlyConfig)
+									 toFileNamed:dumpPath + ".plist"];
+		
+		[ResourceManager cxx_writeDiagnosticPList:configuration
+									 toFileNamed:dumpPath + "-original.plist"];
 	}
 #endif
 	
