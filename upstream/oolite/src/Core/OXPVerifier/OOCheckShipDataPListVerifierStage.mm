@@ -82,6 +82,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	return dictionary.get<std::string>(key);
 }
 
+// A %@ argument that was oo::NSStringOrNil(text): "(null)" for nullopt (bead oo-qps.24).
+oo::str::FormatArg TextOrNull(const std::optional<std::string> &text)
+{
+	return text.has_value() ? oo::str::FormatArg(*text) : oo::str::FormatArg::null();
+}
+
 }	// namespace
 
 
@@ -89,8 +95,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 - (void)verifyShipInfo:(const oo::PList &)info withName:(const std::string &)name;
 
-- (void)reportMessage:(id)format, ...;	// an Objective-C format string (was -message:, renamed so AI's -message: could flip; bead oo-3rb.276)
-- (void)verboseMessage:(const char *)format, ...;
+- (void)reportMessage:(const std::string &)message;	// formatted by the caller, oo::str::formatRuntime (was -message:, renamed so AI's -message: could flip; bead oo-3rb.276; bead oo-qps.24)
+- (void)verboseMessage:(const std::string &)message;
 
 - (void)getRoles;
 - (void)checkKeys;
@@ -247,10 +253,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 
 // Custom log method to group messages by ship.
-- (void)reportMessage:(id)format, ...
+- (void)reportMessage:(const std::string &)message
 {
-	va_list						args;
-
 	if (!_havePrintedMessage)
 	{
 		OO_LOG("verifyOXP.shipData.firstMessage", "Ship \"{}\":", _name);
@@ -258,19 +262,15 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 		_havePrintedMessage = YES;
 	}
 
-	va_start(args, format);
-	if (format != nil && oo::log::willDisplay("verifyOXP.shipData"))
+	if (oo::log::willDisplay("verifyOXP.shipData"))
 	{
-		oo::log::logger().write("verifyOXP.shipData", NULL, NULL, 0, oo::StdString([[[NSString alloc] initWithFormat:format arguments:args] autorelease]));
+		oo::log::logger().write("verifyOXP.shipData", NULL, NULL, 0, message);
 	}
-	va_end(args);
 }
 
 
-- (void)verboseMessage:(const char *)format, ...
+- (void)verboseMessage:(const std::string &)message
 {
-	va_list						args;
-
 	if (!oo::log::willDisplay("verifyOXP.verbose.shipData"))  return;
 
 	if (!_havePrintedMessage)
@@ -280,9 +280,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 		_havePrintedMessage = YES;
 	}
 
-	va_start(args, format);
-	oo::log::logger().write("verifyOXP.verbose.shipData", NULL, NULL, 0, oo::StdString([[[NSString alloc] initWithFormat:oo::NSStringFrom(format) arguments:args] autorelease]));
-	va_end(args);
+	oo::log::logger().write("verifyOXP.verbose.shipData", NULL, NULL, 0, message);
 }
 
 
@@ -307,7 +305,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	if (_isPlayer && _isStation)
 	{
-		[self reportMessage:@"***** ERROR: ship is both a player ship and a station. Treating as non-station."];
+		[self reportMessage:"***** ERROR: ship is both a player ship and a station. Treating as non-station."];
 		_isStation = NO;
 	}
 }
@@ -331,12 +329,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 				{
 					// if it's a template, this key might apply to a descendant
 					// as happens in the core files
-					[self reportMessage:@"----- WARNING: key \"%@\" does not apply to this category of ship.", oo::NSStringFrom(key)];
+					[self reportMessage:oo::str::formatRuntime("----- WARNING: key \"%@\" does not apply to this category of ship.", { key })];
 				}
 			}
 			else
 			{
-				[self reportMessage:@"----- WARNING: unknown key \"%@\".", oo::NSStringFrom(key)];
+				[self reportMessage:oo::str::formatRuntime("----- WARNING: unknown key \"%@\".", { key })];
 			}
 		}
 	}
@@ -363,14 +361,14 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 												withMaterials:materials != nullptr ? *materials : oo::PList()
 												   andShaders:shaders != nullptr ? *shaders : oo::PList()])
 		{
-			[self reportMessage:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), oo::NSStringOrNil([[self verifier] cxx_oxpDisplayName])];
+			[self reportMessage:oo::str::formatRuntime("----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", { *model, TextOrNull([[self verifier] cxx_oxpDisplayName]) })];
 		}
 	}
 	else
 	{
 		if (!OptionalStringForKey(_info, "like_ship").has_value())
 		{
-			[self reportMessage:@"***** ERROR: ship does not specify model or like_ship."];
+			[self reportMessage:"***** ERROR: ship does not specify model or like_ship."];
 		}
 	}
 }
@@ -403,7 +401,7 @@ withPropertyList:(const oo::PList &)rootPList
 	 againstType:(const oo::PList &)typeKey
 		   error:(std::optional<OOPListSchemaVerifierError> *)outError
 {
-	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", oo::ObjectFromPList(typeKey), oo::NSStringFrom(_name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:keyPath])];
+	[self verboseMessage:oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(oo::ObjectFromPList(typeKey)), _name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:keyPath]) })];
 	return YES;
 }
 
@@ -416,7 +414,7 @@ withPropertyList:(const oo::PList &)rootPList
 	expectedType:(const oo::PList &)localSchema
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	[self reportMessage:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", oo::NSStringFrom(name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:(error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList()]), oo::NSStringOrNil(error.failureReason)];
+	[self reportMessage:oo::str::formatRuntime("***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", { name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:(error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList()]), TextOrNull(error.failureReason) })];
 	return YES;
 }
 

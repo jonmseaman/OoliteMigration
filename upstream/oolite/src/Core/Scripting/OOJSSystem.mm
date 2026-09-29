@@ -473,12 +473,12 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		case kSystem_waypoints:
 		{
 			// An immutable dictionary of the waypoints by key, as -currentWaypoints built it.
-			NSMutableDictionary *waypoints = [NSMutableDictionary dictionary];
+			oo::PList::Dict waypoints;
 			for (const auto &[key, waypoint] : [UNIVERSE cxx_currentWaypoints])
 			{
-				if (waypoint.get() != nil)  [waypoints setObject:waypoint.get() forKey:oo::NSStringFrom(key)];
+				if (waypoint.get() != nil)  waypoints[key] = oo::PListObject(waypoint.get());
 			}
-			result = [[waypoints copy] autorelease];
+			result = oo::ObjectFromPList(oo::PList(std::move(waypoints)));
 			handled = YES;
 			break;
 		}

@@ -59,12 +59,16 @@ namespace {
 
 // The weapon offsets as the old accessors handed them to JavaScript: an array of OONativeVector
 // (as ShipEntity+FoundationBridge.mm built it).
-NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
+oo::PList NativeVectorArray(const std::vector<Vector> &vectors)
 {
-	std::vector<oo::ObjCRef<OONativeVector *>> result;
+	oo::PList::Array result;
 	result.reserve(vectors.size());
-	for (Vector v : vectors)  result.push_back(oo::adoptObjC([[OONativeVector alloc] initWithVector:v]));
-	return oo::NSArrayFromObjects(result);
+	for (Vector v : vectors)
+	{
+		const oo::ObjCRef<OONativeVector *> vector = oo::adoptObjC([[OONativeVector alloc] initWithVector:v]);
+		result.push_back(oo::PListObject(vector.get()));
+	}
+	return oo::PList(std::move(result));
 }
 
 }	// namespace
@@ -872,20 +876,20 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			return ooscript::newNumberValue(context, [entity weaponFacings], value);
 		
 		case kShip_weaponPositionAft:
-			result = NativeVectorArray([entity cxx_aftWeaponOffset]);
+			result = oo::ObjectFromPList(NativeVectorArray([entity cxx_aftWeaponOffset]));
 			break;
 		
 		case kShip_weaponPositionForward:
-			result = NativeVectorArray([entity cxx_forwardWeaponOffset]);
+			result = oo::ObjectFromPList(NativeVectorArray([entity cxx_forwardWeaponOffset]));
 			break;
 //			return VectorToJSValue(context, [entity forwardWeaponOffset], value);
 		
 		case kShip_weaponPositionPort:
-			result = NativeVectorArray([entity cxx_portWeaponOffset]);
+			result = oo::ObjectFromPList(NativeVectorArray([entity cxx_portWeaponOffset]));
 			break;
 		
 		case kShip_weaponPositionStarboard:
-			result = NativeVectorArray([entity cxx_starboardWeaponOffset]);
+			result = oo::ObjectFromPList(NativeVectorArray([entity cxx_starboardWeaponOffset]));
 			break;
 		
 		case kShip_scannerRange:
