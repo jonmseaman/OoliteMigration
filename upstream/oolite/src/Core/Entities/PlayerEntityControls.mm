@@ -3074,7 +3074,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						if (definition)
 						{
 							[[UNIVERSE gameView] clearKeys];
-							[definition runCallback:oo::NSStringFrom(key)];
+							[definition runCallback:key];
 						}
 						else
 						{
