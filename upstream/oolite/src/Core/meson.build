@@ -44,7 +44,6 @@ oolite_sources += files(
     'OOJoystickProfile.mm',
     'OOLogHeader.mm',
     'OOLogOutputHandler.mm',
-    'OOLogOutputHandler+FoundationBridge.mm',
     'OOLogging.mm',
     'OOMatrix.mm',
     'OOMesh.mm',
