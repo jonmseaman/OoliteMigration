@@ -982,7 +982,7 @@ static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::Call
 	
 	// Search for entities
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = FindShips(HasPrimaryRolePredicate, oo::NSStringFrom(*role), relativeTo, range);
+	result = FindShips(HasPrimaryRolePredicate, &*role, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
@@ -1018,7 +1018,7 @@ static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &o
 	
 	// Search for entities
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = FindShips(HasRolePredicate, oo::NSStringFrom(*role), relativeTo, range);
+	result = FindShips(HasRolePredicate, &*role, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
