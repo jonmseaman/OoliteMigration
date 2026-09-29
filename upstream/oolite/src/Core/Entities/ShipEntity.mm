@@ -2063,7 +2063,7 @@ DESTROY(laser_color);
 	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
 	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
 	if ( FuzzyBooleanForKey([escorter cxx_shipInfoDictionary], "auto_ai", YES)
-		 || (oo::StdString([escortAI name]) == "nullAI.plist" && autoAI != "nullAI.plist") )
+		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
 	{
 		[escorter switchAITo:oo::NSStringFrom(autoAI)];
 	}
@@ -8148,7 +8148,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 - (BOOL) hasNewAI
 {
-	return [[[self getAI] name] isEqualToString:@"nullAI.plist"];
+	return [[self getAI] cxx_name] == "nullAI.plist";	// (no AI never matched)
 }
 
 
@@ -13969,7 +13969,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	for (const auto &escortRef : [self cxx_escorts])
 	{
 		ShipEntity *escort = escortRef.get();
-		if (oo::StdString([[escort getAI] name]) != "interceptAI.plist" && ![escort hasNewAI])
+		if ([[escort getAI] cxx_name].value_or(std::string()) != "interceptAI.plist" && ![escort hasNewAI])
 		{
 			idleEscorts.push_back(escortRef);
 		}

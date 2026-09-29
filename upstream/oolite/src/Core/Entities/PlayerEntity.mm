@@ -3895,7 +3895,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	AI *myAI = [self getAI];
 	// JSAI: will need changing if oolite-dockingAI.js written
-	if (![[myAI name] isEqualToString:PLAYER_DOCKING_AI_NAME])
+	if ([myAI cxx_name] != oo::StdString(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
 	{
 		[self setAITo:PLAYER_DOCKING_AI_NAME ];
 	}
