@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Probe tools/check-selector-types.py on synthetic trees (--root): the called-by-name rule and
-# its typed-IMP exemption (bead oo-bzjh). Runs the REAL tool; nothing here re-implements it.
+# its typed-IMP exemption (bead oo-bzjh), and the dispatchers' C++ signatures and
+# --strict-called-by-name (bead oo-qps.34). Runs the REAL tool; nothing here re-implements it.
 #
 #     bash tools/check-selector-types-probe.sh
 set -u
@@ -92,6 +93,46 @@ expect 'a retyped call is not verified' 1 'TYPED-IMP -filterA: not verified: .*h
 t="$work/dyn"; make_tree "$t" 'const oo::PList &'; both "$A" "$t"
 echo 'filterA:' >"$t/tools/dynamic-selectors.txt"
 expect 'a by-name source defeats the exemption' 1 'TYPED-IMP -filterA: not verified: also sent by name' '' "$t"
+
+# make_dispatch_tree <dir> <declarations> <@selector literals> — a class whose methods a
+# dispatcher calls by name (OOCallByName, ADR-0055 item 5).
+make_dispatch_tree() {
+	local root="$1" decls="$2" sels="$3"
+	mkdir -p "$root/upstream/oolite/src/Core" "$root/tools"
+	: >"$root/tools/dynamic-selectors.txt"
+	printf '@interface Actions: OOObject\n%s\n@end\n\nstatic SEL kActions[] = { %s };\n' "$decls" "$sels" >"$root/upstream/oolite/src/Core/Actions.mm"
+}
+
+# expect_strict: as expect, with --strict-called-by-name.
+expect_strict() {
+	local label="$1" want="$2" has="$3" root="$4" out rc
+	out=$(python3 "$tool" --strict-called-by-name --no-foundation --root "$root" 2>&1); rc=$?
+	if [ "$rc" = "$want" ] && { [ -z "$has" ] || printf '%s\n' "$out" | grep -qE "$has"; }; then
+		pass=$((pass+1)); printf 'ok   %s\n' "$label"
+	else failn=$((failn+1)); printf 'FAIL %s (rc=%s)\n%s\n' "$label" "$rc" "$out"; fi
+}
+
+# 10. The dispatchers' C++ signatures pass --check (bead oo-qps.34).
+t="$work/dispatch"; make_dispatch_tree "$t" '- (void) act;
+- (oo::PList) query;
+- (void) actWith:(const std::string &)argument;
+- (oo::PList) queryWith:(const std::string &)argument;
+- (void) dial:(const oo::PList &)argument;' '@selector(act), @selector(query), @selector(actWith:), @selector(queryWith:), @selector(dial:)'
+expect 'the dispatcher signatures pass' 0 '' 'CALLED BY NAME' "$t"
+expect_strict 'and pass --strict-called-by-name' 0 '' "$t"
+
+# 11. Any other C++ type on a called-by-name selector still fails.
+t="$work/otherc"; make_dispatch_tree "$t" '- (int) countWith:(const std::string &)argument;
+- (oo::PList) dialResult:(const oo::PList &)argument;' '@selector(countWith:), @selector(dialResult:)'
+expect 'a scalar result with a C++ argument fails' 1 'CALLED BY NAME -countWith:' '' "$t"
+expect 'a PList argument with a PList result fails' 1 'CALLED BY NAME -dialResult:' '' "$t"
+
+# 12. The transitional id form passes --check and fails --strict-called-by-name.
+t="$work/legacy"; make_dispatch_tree "$t" '- (void) legacyAction:(id)argument;
+- (id) legacyQuery;' '@selector(legacyAction:), @selector(legacyQuery)'
+expect 'the id form passes --check' 0 '' 'CALLED BY NAME' "$t"
+expect_strict 'the id form fails --strict-called-by-name' 1 'CALLED BY NAME -legacyAction: .*still typed id' "$t"
+expect_strict 'an id result fails it too' 1 'CALLED BY NAME -legacyQuery .*still typed id' "$t"
 
 echo
 echo "probes: pass=$pass fail=$failn"

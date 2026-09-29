@@ -93,6 +93,7 @@ oofnd_objc_tests = [
     'test_objc_exception',
     'test_objc_assert',
     'test_objc_ref',
+    'test_objc_call_by_name',
     'test_objc_description',
 ]
 

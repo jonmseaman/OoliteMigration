@@ -20,6 +20,7 @@ oolite_sources += files(
     'OOCPUInfo.mm',
     'OOCache.mm',
     'OOCacheManager.mm',
+    'OOCallByName.mm',
       'OOCharacter.mm',
     'OOCocoa.mm',
     'OOCollectionExtractors.mm',

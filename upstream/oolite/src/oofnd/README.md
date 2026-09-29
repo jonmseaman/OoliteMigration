@@ -512,6 +512,21 @@ one class's override by hand before oo-qps.43: a converted superclass hides an u
 subclass's override (the exemplar has no subclass). `tests/unit/oofnd/test_objc_description.mm` pins the text and the forwarding,
 linked against libobjc2 alone.
 
+### Calling a method by name: `Core/OOCallByName.h` (item 5, oo-qps.34)
+
+A dispatcher that runs a method named in data (an AI action, a legacy-script action or query, a
+HUD dial, a deferred call) calls `OOCallByName(target, selector [, argument])` instead of
+`-performSelector:withObject:`, and the method it names has one of the dispatcher's C++ signatures:
+`- (void|oo::PList) sel`, `- (void|oo::PList) sel:(const std::string &)s`, or
+`- (void) sel:(const oo::PList &)p` (the table is in the header). Exemplar: `src/Core/AI.mm`
+(`-cxx_takeAction:`, the `interpretAIMessage:` message, the deferred-call trampoline and its
+`-deferredSetState:(const std::string &)`). To flip a called-by-name method, give it one of those
+signatures in every declaring class at once (the family rule); `python3 tools/check-selector-types.py --check`
+accepts exactly those and the transitional `id` form, and `--strict-called-by-name` (oo-qps.72)
+rejects the `id` form. Until then OOCallByName bridges an `id`-typed method's argument and result,
+so selectors flip file by file. `tests/unit/oofnd/test_objc_call_by_name.mm` pins the signatures'
+type encodings on this toolchain and the dispatch, linked against libobjc2 alone.
+
 ## Testing
 
 From the repo root, in the MSYS2 UCRT64 shell:
