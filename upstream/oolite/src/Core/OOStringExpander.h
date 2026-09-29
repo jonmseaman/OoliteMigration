@@ -121,12 +121,14 @@ std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const
 	it. It forwards to cxx_OOExpandDescriptionString, converting the overrides and legacy locals
 	with oo::PListFrom (nil for none) and the strings unit for unit; nil in, nil out. It goes with
 	the test's Foundation adapter when that leaves Foundation (oo-qps).
+	Fenced out of the game build (bead oo-qps.29, ADR-0054 item 4): only
+	tools/check-string-expander.sh defines OO_EXPANDER_TEST_SURFACE, and it compiles the test as
+	Objective-C++, so the fenced block needs no __cplusplus guard. OOGenerateSystemDescription()
+	below is fenced the same way.
 */
-#ifdef __cplusplus
+#if OO_EXPANDER_TEST_SURFACE
 extern "C" {
-#endif
 NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options);
-#ifdef __cplusplus
 }
 #endif
 
@@ -145,8 +147,10 @@ NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictio
 std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, const std::optional<std::string> &name);
 #endif
 
-// The Foundation form, kept as the expander test's surface as OOExpandDescriptionString() is.
+// The Foundation form, kept (and fenced) as the expander test's surface as OOExpandDescriptionString() is.
+#if OO_EXPANDER_TEST_SURFACE
 NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);
+#endif
 
 
 // Equivalent to [[UNIVERSE systemManager] getRandomSeedForCurrentSystem], without pulling in Universe.h.

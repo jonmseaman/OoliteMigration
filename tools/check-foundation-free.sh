@@ -58,8 +58,11 @@ POSTGATE_BRIDGE='OOLogOutputHandler+FoundationBridge.h OOLogOutputHandler+Founda
 # In these files only the declaration/definition lines of the two ADR-0052 functions (oo-qps.29):
 POSTGATE_EXPANDER='OOStringExpander.h OOStringExpander.mm'
 POSTGATE_EXPANDER_LINE='^NSString [*](OOExpandDescriptionString|OOGenerateSystemDescription)[(]'
-# The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054.
-FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE'
+# The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054. Plus the
+# expander test's fence, OO_EXPANDER_TEST_SURFACE (ADR-0054 item 4, oo-qps.29): only
+# tools/check-string-expander.sh defines it, so its lines are not in the game build (they are
+# counted in the same information-only "mac-fenced" total).
+FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE OO_EXPANDER_TEST_SURFACE'
 BUILD_FILES=(upstream/oolite/src/meson upstream/oolite/src/meson.build upstream/oolite/meson.build
 	tools/setup-windows.sh)
 
@@ -290,6 +293,14 @@ selftest() {
 		> "$t/pg/Core/OOStringExpander.h"
 	expect 0 "post-gate owners are exempt in the sweeps stage" scan "$t/pg" sweeps
 	expect 1 "post-gate owners fail in the source stage" scan "$t/pg" source
+	# ADR-0054 item 4 (oo-qps.29): the expander test's fence passes the source stage too; #ifdef does not.
+	mkdir -p "$t/pgf/Core"
+	printf '#if OO_EXPANDER_TEST_SURFACE\nextern "C" {\nNSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides);\n}\n#endif\n#if OO_EXPANDER_TEST_SURFACE\nNSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);\n#endif\n' \
+		> "$t/pgf/Core/OOStringExpander.h"
+	expect 0 "the OO_EXPANDER_TEST_SURFACE fence passes the source stage" scan "$t/pgf" source
+	mkdir -p "$t/pgd/Core"
+	printf '#ifdef OO_EXPANDER_TEST_SURFACE\nNSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);\n#endif\n' > "$t/pgd/Core/OOStringExpander.h"
+	expect 1 "an #ifdef OO_EXPANDER_TEST_SURFACE block is counted at the source stage (not a fence)" scan "$t/pgd" source
 	mkdir -p "$t/pgx/Core"; printf 'NSString *OOOtherFunction(void);\n' > "$t/pgx/Core/OOStringExpander.h"
 	expect 1 "another NSString line in OOStringExpander.h still fails the sweeps stage" scan "$t/pgx" sweeps
 	mkdir -p "$t/pgi/Core"; printf '#import "OOOther+FoundationBridge.h"\n' > "$t/pgi/Core/OOLogOutputHandler.h"
