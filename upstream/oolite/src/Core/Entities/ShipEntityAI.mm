@@ -2138,7 +2138,7 @@ using ooscript::Context;
 			[self noteLostTarget];
 			return;
 		}
-		NSString *finalValue = OOExpand(valueString);	// expand values
+		NSString *finalValue = valueString != nil ? oo::NSStringOrNil(cxx_OOExpand(oo::StdString(valueString))) : nil;	// expand values
 		[ship markAsOffender:[finalValue intValue] withReason:kOOLegalStatusReasonSeenByPolice];
 	}
 }
@@ -2671,7 +2671,7 @@ using ooscript::Context;
 
 - (void) ai_debugMessage:(NSString *)message
 {
-	NSString *desc = [NSString stringWithFormat:@"%@ %d", [self name], [self universalID]];
+	NSString *desc = [NSString stringWithFormat:@"%@ %d", oo::NSStringOrNil([self cxx_name]), [self universalID]];
 	if ([self isPlayer])  desc = @"player autopilot";
 	OO_LOG("ai.takeAction.debugMessage", "DEBUG: AI MESSAGE from {}: {}", oo::DescriptionOf(desc), oo::DescriptionOf(message));
 }

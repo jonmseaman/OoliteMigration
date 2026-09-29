@@ -124,7 +124,7 @@ typedef struct OOSoundSourcePoolElement
 	element = &_sources[slot];
 	
 	// Load sound
-	sound = [OOSound soundWithCustomSoundKey:oo::NSStringFrom(key)];
+	sound = [OOSound cxx_soundWithCustomSoundKey:key];
 	if (sound == nil)  return;
 	
 	// Stop playing sound or set up sound source as appropriate

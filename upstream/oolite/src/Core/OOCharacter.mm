@@ -205,8 +205,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 	std::string genName;
 	if (species.has_value() && oo::str::hasPrefix(*species, "human"))
 	{
-		const std::string givenName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
-		const std::string familyName = oo::DescriptionOf(OOExpandKeyWithSeed(genSeed, @"nom"));
+		const std::string givenName = cxx_OOExpandWithSeed(genSeed, "%R").value_or("(null)");
+		const std::string familyName = cxx_OOExpandKeyWithSeed(genSeed, "nom").value_or("(null)");
 		genName = givenName + " " + familyName;
 	} else {
 		/*	NOTE: we can't use "%R %R" because that will produce the same string
@@ -214,13 +214,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 			here? Is there some context where we rely on being able to get the
 			same name for a given genSeed?
 		 */
-		const std::string givenName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
-		const std::string familyName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
+		const std::string givenName = cxx_OOExpandWithSeed(genSeed, "%R").value_or("(null)");
+		const std::string familyName = cxx_OOExpandWithSeed(genSeed, "%R").value_or("(null)");
 		genName = givenName + " " + familyName;
 	}
 	_name = genName;
 
-	_shortDescription = oo::OptionalString(OOExpandKeyWithSeed(genSeed, @"character-generic-description", oo::NSStringOrNil(species), oo::NSStringOrNil(planet)));
+	_shortDescription = cxx_OOExpandKeyWithSeed(genSeed, "character-generic-description", species, planet);
 	
 	// determine _legalStatus for a completely random character
 	[self setLegalStatus:0];	// clean

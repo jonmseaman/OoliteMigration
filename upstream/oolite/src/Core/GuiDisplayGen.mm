@@ -621,16 +621,16 @@ static BOOL _refreshStarChart = NO;
 - (void) reportSelectedRow:(int) row
 {
 	// key, row, text - stopping at the first missing one, as +arrayWithObjects: stopped at nil.
-	oo::PList::Array arguments;
+	std::vector<oo::ObjCRef<id>> arguments;
 	const std::optional<std::string> key = [self cxx_keyForRow:row];
 	if (key.has_value())
 	{
-		arguments.push_back(oo::PList(*key));
-		arguments.push_back(oo::PList(row));	// +numberWithInt: (the same JS number)
+		arguments.emplace_back(oo::NSStringFrom(*key));
+		arguments.emplace_back(oo::ObjectFromPList(oo::PList(row)));	// +numberWithInt: (the same JS number)
 		const std::optional<std::string> text = [self cxx_selectedRowText];
-		if (text.has_value())  arguments.push_back(oo::PList(*text));
+		if (text.has_value())  arguments.emplace_back(oo::NSStringFrom(*text));
 	}
-	[PLAYER doScriptEvent:OOJSID("guiSelectedRowChanged") withArguments:oo::ObjectFromPList(oo::PList(std::move(arguments)))];
+	[PLAYER cxx_doScriptEvent:OOJSID("guiSelectedRowChanged") withArguments:arguments];
 }
 
 
@@ -2023,7 +2023,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		advancedNavArrayMode = OPTIMIZED_BY_TIME;
 	}
 	
-	if (advancedNavArrayMode != OPTIMIZED_BY_NONE && [player hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+	if (advancedNavArrayMode != OPTIMIZED_BY_NONE && [player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 	{
 		OOSystemID planetNumber = [PLAYER systemID];
 		OOSystemID destNumber = [PLAYER targetSystemID];
@@ -2206,7 +2206,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				if (EXPECT(noNova))
 				{
 					r = g = b = 1.0;
-					OOColor *sunColor = [OOColor colorWithDescription:[[UNIVERSE systemManager] getProperty:@"sun_color" forSystem:i inGalaxy:galaxy_id]];
+					OOColor *sunColor = [OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:i inGalaxy:galaxy_id])];
 					if (sunColor != nil) {
 						[sunColor getRed:&r green:&g blue:&b alpha:&alpha];
 						alpha = 1.0; // reset
@@ -2413,12 +2413,12 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	std::string travelDistLine;
 	if (distance > 0)
 	{
-		travelDistLine = oo::StdString(OOExpandKey(@"long-range-chart-distance", distance));
+		travelDistLine = cxx_OOExpandKey("long-range-chart-distance", distance).value_or(std::string());
 	}
 	std::string travelTimeLine;
 	if (time > 0)
 	{
-		travelTimeLine = oo::StdString(OOExpandKey(@"long-range-chart-est-travel-time", time));
+		travelTimeLine = cxx_OOExpandKey("long-range-chart-est-travel-time", time).value_or(std::string());
 	}
 	
 	if(concealment[target] < OO_SYSTEMCONCEALMENT_NONAME)
@@ -2433,7 +2433,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	{
 		if (jumps > 0)
 		{
-			[self cxx_setArray:{ "", oo::StdString(OOExpandKey(@"short-range-chart-jumps", jumps)) } forRow: textRow + 1];
+			[self cxx_setArray:{ "", cxx_OOExpandKey("short-range-chart-jumps", jumps).value_or(std::string()) } forRow: textRow + 1];
 		}
 		else
 		{
@@ -2609,7 +2609,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
-		concealment[i] = oo::PListView([systemManager getPropertiesForSystem:i inGalaxy:g]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+		concealment[i] = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 
 	
@@ -2675,7 +2675,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 				else
 				{
-					thisConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j))]];
+					thisConnectionColor = [OOColor colorWithDescription:oo::ObjectFromPList([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j)])];
 				
 					if (thisConnectionColor == nil)
 					{
@@ -2687,7 +2687,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					glVertex3f(x+star.x, y+star.y, z);
 
 					// and the other colour for the other end
-					thatConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i))]];
+					thatConnectionColor = [OOColor colorWithDescription:oo::ObjectFromPList([systemManager cxx_getProperty:"link_color" forSystemKey:oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i)])];
 				
 					if (thatConnectionColor == nil)
 					{
