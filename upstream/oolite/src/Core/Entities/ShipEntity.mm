@@ -12182,7 +12182,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if ([self isPlayer])
 	{
-		[(PlayerEntity *)self setLastShot:oo::NSArrayFromObjects(shotEntities)];
+		[(PlayerEntity *)self cxx_setLastShot:shotEntities];
 	}
 	
 	[self resetShotTime];

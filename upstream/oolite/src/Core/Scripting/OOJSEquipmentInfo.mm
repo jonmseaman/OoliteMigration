@@ -362,7 +362,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			}
 			else 
 			{
-				return ooscript::newNumberValue(cx, [OOPlayerForScripting() adjustPriceByScriptForEqKey:oo::NSStringOrNil([eqType cxx_identifier]) withCurrent:[eqType price]], value);
+				return ooscript::newNumberValue(cx, ([eqType cxx_identifier].has_value() ? [OOPlayerForScripting() cxx_adjustPriceByScriptForEqKey:*[eqType cxx_identifier] withCurrent:[eqType price]] : [eqType price]), value);
 			}
 		case kEquipmentInfo_canCarryMultiple:
 			*value = OOJSValueFromBOOL([eqType canCarryMultiple]);

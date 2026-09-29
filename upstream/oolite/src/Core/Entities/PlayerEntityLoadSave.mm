@@ -213,7 +213,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 #else
 	// Other platforms: use custom interface all the time.
-	[self setGuiToSaveCommanderScreen:oo::StdString([self lastsaveName])];
+	[self setGuiToSaveCommanderScreen:[self cxx_lastsaveName].value_or("")];
 #endif
 }
 
@@ -223,12 +223,12 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	std::optional<std::string>	tmp_name;
 	const std::string			dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 
-	tmp_name = oo::OptionalString([self lastsaveName]);
+	tmp_name = [self cxx_lastsaveName];
 	tmp_path = save_path;
 	
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("AUTO_SAVE"));
 	
-	std::string saveName = oo::StdString([self lastsaveName]);
+	std::string saveName = [self cxx_lastsaveName].value_or("");
 	const std::string autosaveSuffix = oo::StdString(DESC(@"autosave-commander-suffix"));
 
 	if (!oo::str::hasSuffix(saveName, autosaveSuffix))
@@ -237,7 +237,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	const std::string savePath = oo::str::appendingPathComponent(dir, saveName + ".oolite-save");	// a plain append, not the path-extension rule
 
-	[self setLastsaveName:oo::NSStringFrom(saveName)];
+	[self cxx_setLastsaveName:saveName];
 	
 	@try
 	{
@@ -252,7 +252,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		save_path = *tmp_path;
 	}
-	[self setLastsaveName:oo::NSStringOrNil(tmp_name)];
+	[self cxx_setLastsaveName:tmp_name];
 }
 
 
@@ -350,7 +350,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 - (void) addScenarioModel:(const std::string &)shipKey
 {
-	[self showShipModelWithKey:oo::NSStringFrom(shipKey) shipData:nil personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"scenario"];
+	[self cxx_showShipModelWithKey:shipKey shipData:oo::PList() personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:"scenario"];
 }
 
 
@@ -764,7 +764,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Loading commander data");
-		if (![self setCommanderDataFromDictionary:oo::ObjectFromPList(fileDic)])
+		if (![self cxx_setCommanderDataFromDictionary:fileDic])
 		{
 			// this could still be a reset js issue, if switching from strict / unrestricted
 			// TODO: use "could not reset js message" if that's the case.
@@ -962,7 +962,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	// The save dictionary as a property list, converted once (its float values stay single reals,
 	// written %0.7g as before).
-	const oo::PList dict = oo::PListFrom([self commanderDataDictionary]);
+	const oo::PList dict = [self cxx_commanderDataDictionary];
 	if (dict.isNull())  errDesc = "could not construct commander data dictionary.";
 	else
 	{
@@ -996,7 +996,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
 
-	[self setLastsaveName:oo::NSStringFrom(cdrName)];
+	[self cxx_setLastsaveName:cdrName];
 	
 	[self writePlayerToPath:savePath];
 }
@@ -1240,7 +1240,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[gui setSelectableRange: NSMakeRange(rangeStart, MOREROW)];
 	}
 	
-	const std::optional<std::string> lastsaveName = oo::OptionalString([self lastsaveName]);
+	const std::optional<std::string> lastsaveName = [self cxx_lastsaveName];
 	for (i=firstIndex; i < lastIndex; i++)
 	{
 		const oo::PList &cdr = cdrDetailArray[i];

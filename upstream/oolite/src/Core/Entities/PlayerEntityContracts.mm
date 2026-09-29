@@ -252,7 +252,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-okay-@-@-@")), { TextArg(passenger_name), oo::DescriptionOf(OOIntCredits(fee)), TextArg(passenger_dest_name) }) + "\n";
 				if (passenger_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self addRoleToPlayer:@"trader-courier+"];
+					[self cxx_addRoleToPlayer:"trader-courier+"];
 				}
 
 				[self increasePassengerReputation:RepForRisk(passenger_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0))];
@@ -270,7 +270,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-late-@-@-@")), { TextArg(passenger_name), oo::DescriptionOf(OOIntCredits(fee)), TextArg(passenger_dest_name) }) + "\n";
 				if (passenger_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self addRoleToPlayer:@"trader-courier+"];
+					[self cxx_addRoleToPlayer:"trader-courier+"];
 				}
 
 				passengers.erase(passengers.begin() + i--);
@@ -323,7 +323,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				parcels.erase(parcels.begin() + i--);
 				if (parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self addRoleToPlayer:@"trader-courier+"];
+					[self cxx_addRoleToPlayer:"trader-courier+"];
 				}
 				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("parcel"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info }))];
 
@@ -339,7 +339,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-late-@-@")), { TextArg(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
 				if (parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
-					[self addRoleToPlayer:@"trader-courier+"];
+					[self cxx_addRoleToPlayer:"trader-courier+"];
 				}
 				parcels.erase(parcels.begin() + i--);
 				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("parcel"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info }))];
@@ -397,11 +397,11 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 
 					if ([shipCommodityData cxx_exportLegalityForGood:contract_cargo_type] > 0)
 					{
-						[self addRoleToPlayer:@"trader-smuggler"];
+						[self cxx_addRoleToPlayer:"trader-smuggler"];
 					}
 					else
 					{
-						[self addRoleToPlayer:@"trader"];
+						[self cxx_addRoleToPlayer:"trader"];
 					}
 					
 					credits += fee;
@@ -433,11 +433,11 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 						
 						if ([shipCommodityData cxx_exportLegalityForGood:contract_cargo_type] > 0)
 						{
-							[self addRoleToPlayer:@"trader-smuggler"];
+							[self cxx_addRoleToPlayer:"trader-smuggler"];
 						}
 						else
 						{
-							[self addRoleToPlayer:@"trader"];
+							[self cxx_addRoleToPlayer:"trader"];
 						}
 
 						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-short-@-@-d")), { TextArg(contract_cargo_desc), oo::DescriptionOf(OOCredits(payment)), shortfall }) + "\n";
@@ -943,7 +943,7 @@ for (unsigned i=0;i<amount;i++)
 
 	if (risk > 1)
 	{
-		[self addRoleToPlayer:@"trader-courier+"];
+		[self cxx_addRoleToPlayer:"trader-courier+"];
 	}
 
 	passengers.push_back(passenger_info);
@@ -1000,7 +1000,7 @@ for (unsigned i=0;i<amount;i++)
 
 	if (risk > 1)
 	{
-		[self addRoleToPlayer:@"trader-courier+"];
+		[self cxx_addRoleToPlayer:"trader-courier+"];
 	}
 
 	parcels.push_back(parcel_info);
@@ -1085,12 +1085,12 @@ for (unsigned i=0;i<amount;i++)
 	// roleWeightFlags entries are signed integers, as +numberWithInt: was
 	if ([shipCommodityData cxx_exportLegalityForGood:type] > 0)
 	{
-		[self addRoleToPlayer:@"trader-smuggler"];
+		[self cxx_addRoleToPlayer:"trader-smuggler"];
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));
 	}
 	else
 	{
-		[self addRoleToPlayer:@"trader"];
+		[self cxx_addRoleToPlayer:"trader"];
 		roleWeightFlags.insert_or_assign("bought-legal", oo::PList::signedInteger(1));
 	}
 
@@ -1206,7 +1206,7 @@ for (unsigned i=0;i<amount;i++)
 		OOColor *scrollColor = [gui colorFromSetting:kGuiManifestScrollColor defaultValue:[OOColor greenColor]];
 		OOColor *noScrollColor = [gui colorFromSetting:kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
 
-		const std::vector<std::string>	cargoManifest = oo::StringsFrom([self cargoList]);
+		const std::vector<std::string>	cargoManifest = [self cxx_cargoList];
 		id			missionsManifest = [self missionsList];	// strings and arrays of strings
 
 		NSUInteger	i = 0;
@@ -1778,7 +1778,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 - (void) cxx_showShipyardModel:(const std::string &)shipKey shipData:(const oo::PList &)shipData personality:(uint16_t)personality
 {
 	if ([self dockedStation] == nil)  return;
-	[self showShipModelWithKey:oo::NSStringFrom(shipKey) shipData:oo::ObjectFromPList(shipData) personality:personality factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"shipyard"];
+	[self cxx_showShipModelWithKey:shipKey shipData:shipData personality:personality factorX:1.2 factorY:0.8 factorZ:6.4 inContext:"shipyard"];
 }
 
 
@@ -1804,7 +1804,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		for-sale ships.
 		-- Ahruman 20070707, fix applied 20070708
 	*/
-	unsigned long long value = [UNIVERSE tradeInValueForCommanderDictionary:[self commanderDataDictionary]];
+	unsigned long long value = [UNIVERSE cxx_tradeInValueForCommanderDictionary:[self cxx_commanderDataDictionary]];
 	value -= value * 0.006 * [self missingSubEntitiesAdjustment];	// TODO: 0.006 might need rethinking.
 	value = cunningFee(((value * 75 * ship_trade_in_factor) + 5000) / 10000, 0.005);	// Multiply by two percentages, divide by 100*100. The +5000 is to get normal rounding.
 	return value * 10;
@@ -1878,7 +1878,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// sell all the commodities carried
 	for (const std::string &good : [shipCommodityData goods])
 	{
-		[self trySellingCommodity:oo::NSStringFrom(good) all:YES];
+		[self cxx_trySellingCommodity:good all:YES];
 	}
 	// We tried to sell everything. If there are still items present in our inventory, it
 	// means that the market got saturated (quantity in station > 127 t) before we could sell
@@ -1917,7 +1917,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	if (dockedShipyard != nullptr)  dockedShipyard->erase(dockedShipyard->begin() + (selectedRow - GUI_ROW_SHIPYARD_START));
 	
 	// perform the transformation
-	if (![self setCommanderDataFromDictionary:[self commanderDataDictionary]])  return NO;	// gather up all the info
+	if (![self cxx_setCommanderDataFromDictionary:[self cxx_commanderDataDictionary]])  return NO;	// gather up all the info
 
 	[self setStatus:STATUS_DOCKED];
 	[self setEntityPersonalityInt:shipInfo.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
@@ -1950,7 +1950,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	[self newShipCommonSetup:shipKey yardInfo:ship_info baseInfo:ship_base_dict];
 
 	// perform the transformation
-	if (![self setCommanderDataFromDictionary:[self commanderDataDictionary]])  return NO;	// gather up all the info
+	if (![self cxx_setCommanderDataFromDictionary:[self cxx_commanderDataDictionary]])  return NO;	// gather up all the info
 
 	// refill from ship_info
 	const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>("standard_equipment");	// KEY_STANDARD_EQUIPMENT

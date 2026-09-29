@@ -608,7 +608,8 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			TODO: a more usable GUI code! - Kaks 2011.11.05
 		*/
 		
-		const std::vector<std::string> cLog = oo::StringsFrom([PLAYER commLog]);
+		const std::vector<std::string> *liveLog = [PLAYER cxx_commLog];
+		const std::vector<std::string> cLog = (liveLog != nullptr) ? *liveLog : std::vector<std::string>();
 		NSUInteger i, commCount = cLog.size();
 
 		[self resetGui:gui withInfo:*gui_info];
@@ -1007,7 +1008,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	std::optional<std::string> text;
 	for (i = 0; i < nMFDs; i++)
 	{
-		text = oo::OptionalString([PLAYER multiFunctionText:i]);
+		text = [PLAYER cxx_multiFunctionText:i];
 		if (text.has_value())
 		{
 			sCurrentDrawItem = &mfdArray[i];
@@ -1953,7 +1954,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				ds = OOClamp_0_1_f([PLAYER dialCustomFloat:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);
+	GLfloat				ds = OOClamp_0_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -1997,7 +1998,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				size;
 	GLfloat				alpha = overallAlpha;
-	std::string			text = oo::StdString([PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);	// nil drew nothing, as "" does
+	std::string			text = [PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];	// nil drew nothing, as "" does
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2031,7 +2032,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alpha = overallAlpha;
-	GLfloat				iv = OOClamp_n1_1_f([PLAYER dialCustomFloat:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);
+	GLfloat				iv = OOClamp_n1_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
 
 	struct CachedInfo	cached;
 	
@@ -2076,7 +2077,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	
 	GLfloat light_color[4] = { 0.25, 0.25, 0.25, 0.0};
 	
-	OOColor *color = [PLAYER dialCustomColor:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))];
+	OOColor *color = [PLAYER cxx_dialCustomColor:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];
 	[color getRed:&light_color[0]
 			green:&light_color[1]
 			 blue:&light_color[2]
@@ -2108,7 +2109,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
 	alpha *= cached.alpha;
 
-	std::optional<std::string> textureFile = oo::OptionalString([PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);
+	std::optional<std::string> textureFile = std::optional<std::string>([PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
 	if (!textureFile.has_value() || textureFile->empty()) {
 		return;
 	}
@@ -2867,7 +2868,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 			glVertex3i(x , y + siz.height, z1);
 		OOGLEND();
 		GLColorWithOverallAlpha(green_color, alpha);
-		cxx_OODrawString(oo::StdString([PLAYER dialTargetName]), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
+		cxx_OODrawString([PLAYER cxx_dialTargetName].value_or(""), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
 	}
 	
 }
@@ -2904,7 +2905,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		ShipEntity *primary = [player primaryTarget];
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
-			id sec_id = [[player targetMemory] objectAtIndex:i];
+			id sec_id = [player cxx_targetMemory].at(i).get();	// an empty slot (was OONull) is nil: neither is a proxy
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
 			// OOInvalidArgumentException when called on a weakref
@@ -3108,7 +3109,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	itemColor[3] *= overallAlpha;
 	
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-	cxx_OODrawString(oo::StdString([PLAYER dial_clock]), x, y, z1, siz);
+	cxx_OODrawString([PLAYER cxx_dial_clock], x, y, z1, siz);
 }
 
 
@@ -3151,7 +3152,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-		cxx_OODrawString(oo::StdString(OOExpandKey(@"equipment-primed-hud", [PLAYER primedEquipmentName:0])), x, y, z1, size);
+		cxx_OODrawString(oo::StdString(OOExpandKey(@"equipment-primed-hud", oo::NSStringOrNil([PLAYER cxx_primedEquipmentName:0]))), x, y, z1, size);
 	}
 	else
 	{
@@ -3165,7 +3166,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 				// instead compact the display towards its centre
 				GLfloat alphaScale = 1.0/((i<0)?(1.0-i):(1.0+i));
 				OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]*alphaScale));
-				cxx_OODrawString(oo::StdString([PLAYER primedEquipmentName:i]), x, y, z1, size);
+				cxx_OODrawString([PLAYER cxx_primedEquipmentName:i].value_or(""), x, y, z1, size);
 			}
 			y -= size.height;
 		}	
@@ -3203,11 +3204,11 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 	if (info.get<int>("align") == 1)
 	{
-		cxx_OODrawStringAligned(oo::StdString([PLAYER compassTargetLabel]), x, y, z1, size,YES);
+		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,YES);
 	}
 	else
 	{
-		cxx_OODrawStringAligned(oo::StdString([PLAYER compassTargetLabel]), x, y, z1, size,NO);
+		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,NO);
 	}
 	
 }
@@ -3278,11 +3279,11 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	// We prefer the FPS counter to be always visible - Nikos 20100405
 	GetRGBAArrayFromInfo(info, textColor);
 	OOGL(glColor4f(textColor[0], textColor[1], textColor[2], 1.0f));
-	cxx_OODrawString(oo::StdString([PLAYER dial_fpsinfo]), x, y, z1, siz);
+	cxx_OODrawString([PLAYER cxx_dial_fpsinfo], x, y, z1, siz);
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
-	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), [UNIVERSE collisionDescription].c_str());
+	std::string collDebugInfo = oo::str::format("%s - %s", [PLAYER cxx_dial_objinfo].c_str(), [UNIVERSE collisionDescription].c_str());
 	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
 
 	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
@@ -3880,7 +3881,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 		std::string	infoline = oo::str::format("%0.3f km", range);
 		if (legal_desc.has_value()) infoline = oo::str::format("%s (%s)", infoline.c_str(), legal_desc->c_str());
 		// no need to set colour here
-		cxx_OODrawString(oo::StdString([player1 dialTargetName]), rs0, 0.5 * rs2, 0, textsize);
+		cxx_OODrawString([player1 cxx_dialTargetName].value_or(""), rs0, 0.5 * rs2, 0, textsize);
 		cxx_OODrawString(infoline, rs0, 0.5 * rs2 - line_height, 0, textsize);
 	
 		if ([target isWormhole])

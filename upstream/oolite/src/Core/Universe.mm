@@ -1117,9 +1117,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[player setWormhole:wormhole];
 		[player addScannedWormhole:wormhole];
 		ooscript::Context context = OOJSAcquireContext();
-		[player setJumpCause:@"carried"];
+		[player cxx_setJumpCause:"carried"];
 		[player setPreviousSystemID:[player systemID]];
-		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[player jumpCause] UTF8String])), ooscript::int32Value(dest));
+		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [player cxx_jumpCause].value_or("").c_str())), ooscript::int32Value(dest));
 		OOJSRelinquishContext(context);
 	
 		[self allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:@"PLAYER WITCHSPACE"];
@@ -1163,8 +1163,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 											 alpha:0.0f];
 
 		[self setWitchspaceBreakPattern:YES];
-		[player doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:[player jumpCause]];
-		[player doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:[player jumpCause]];
+		[player doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:oo::NSStringOrNil([player cxx_jumpCause])];
+		[player doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:oo::NSStringOrNil([player cxx_jumpCause])];
 		[player setWormhole:nil];
 
 }
@@ -1236,9 +1236,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 					[dockedStation setPosition: pos];
 				}
 				[self setWitchspaceBreakPattern:YES];
-				[player setJumpCause:@"carried"];
-				[player doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:[player jumpCause]];
-				[player doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:[player jumpCause]];
+				[player cxx_setJumpCause:"carried"];
+				[player doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:oo::NSStringOrNil([player cxx_jumpCause])];
+				[player doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:oo::NSStringOrNil([player cxx_jumpCause])];
 			}
 		}
 	}
@@ -1283,11 +1283,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[self setViewDirection:VIEW_FORWARD];
 	
-	// the printed lines go to the player's (unmigrated) comm log as they went before
+	// the printed lines go to the player's comm log
 	std::vector<std::string> printedLines;
-	[comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), oo::DescriptionOf([player dial_clock_adjusted]).c_str())
+	[comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str())
 		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:&printedLines];
-	for (const std::string &line : printedLines)  [[player commLog] addObject:oo::NSStringFrom(line)];
+	std::vector<std::string> *commLog = [player cxx_commLog];
+	if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 	
 	displayGUI = NO;
 }
@@ -4706,7 +4707,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		{ "fullScreen", oo::PList(static_cast<bool>([[self gameController] inFullScreenMode])) },
 	});
 
-	result["keyConfig"] = oo::PListFrom([PLAYER keyConfig]);	// the unmigrated PlayerEntity's
+	result["keyConfig"] = [PLAYER cxx_keyConfig];
 
 	return oo::PList(std::move(result));
 }
@@ -5365,7 +5366,7 @@ static const OOMatrix	starboard_matrix =
 			if ([theHUD cxx_deferredHudName].has_value())
 			{
 				const std::string deferredName = *[theHUD cxx_deferredHudName];	// a copy: the switch releases the HUD
-				[player switchHudTo:oo::NSStringFrom(deferredName)];
+				[player cxx_switchHudTo:deferredName];
 				theHUD = [player hud];	// HUD has been changed, so point to its new address
 			}
 			
@@ -6941,7 +6942,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			break;
 			
 		case VIEW_CUSTOM:
-			ms = oo::OptionalString([PLAYER customViewDescription]);
+			ms = [PLAYER cxx_customViewDescription];
 			break;
 			
 		case VIEW_GUI_DISPLAY:
@@ -7283,10 +7284,11 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			messageRepeatTime=universal_time + 6.0;
 		}
 
-		// the printed lines go to the player's (unmigrated) comm log as they went before
+		// the printed lines go to the player's comm log
 		std::vector<std::string> printedLines;
 		[comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
-		for (const std::string &line : printedLines)  [[player commLog] addObject:oo::NSStringFrom(line)];
+		std::vector<std::string> *commLog = [player cxx_commLog];
+		if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 
 		if (showComms)  [self showCommsLog:6.0];
 	}

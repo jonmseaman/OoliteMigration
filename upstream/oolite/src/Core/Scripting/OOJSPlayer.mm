@@ -308,7 +308,7 @@ static bool PlayerGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kPlayer_name:
-			result = [player commanderName];
+			result = oo::NSStringOrNil([player cxx_commanderName]);
 			break;
 			
 		case kPlayer_score:
@@ -387,7 +387,7 @@ static bool PlayerGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 
 		case kPlayer_roleWeights:
-			result = [player roleWeights];
+			result = oo::NSArrayFromStrings([player cxx_roleWeights]);
 			break;
 		
 		default:
@@ -423,7 +423,7 @@ static bool PlayerSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			sValue = cxx_OOStringFromJSValue(context, *(value));
 			if (sValue.has_value())
 			{
-				[player setCommanderName:oo::NSStringFrom(*sValue)];
+				[player cxx_setCommanderName:*sValue];
 				return YES;
 			}
 			break;
@@ -556,7 +556,7 @@ static bool PlayerEndScenario(ooscript::Context context, ooscript::CallArgs &ooj
 		return NO;
 	}
 	
-	OOJS_RETURN_BOOL([PLAYER endScenario:oo::NSStringFrom(*scenario)]);
+	OOJS_RETURN_BOOL([PLAYER cxx_endScenario:*scenario]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -873,11 +873,11 @@ static bool PlayerSetPlayerRole(ooscript::Context context, ooscript::CallArgs &o
 		if (ooscript::valueToECMAUint32((context), (OOJS_ARGV[1]), &index32))
 		{
 			index = index32;
-			[player addRoleToPlayer:oo::NSStringFrom(*role) inSlot:index];
+			[player cxx_addRoleToPlayer:*role inSlot:index];
 			return YES;
 		}
 	}
-	[player addRoleToPlayer:oo::NSStringFrom(*role)];
+	[player cxx_addRoleToPlayer:*role];
 	return YES;
 
 	OOJS_NATIVE_EXIT
