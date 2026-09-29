@@ -2150,7 +2150,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[OOJSScript jsScriptFromFileNamed:@"oolite-locale-functions.js"
 						   properties:nil];
 	
-	[[GameController sharedController] logProgress:DESC(@"loading-scripts")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"loading-scripts"))];
 	
 	[UNIVERSE setBlockJSPlayerShipProps:NO];	// full access to player.ship properties!
 	worldScripts.clear();
@@ -2180,7 +2180,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// make sure extraGuiScreenKeys is clear
 	extraGuiScreenKeys.clear();
 
-	[[GameController sharedController] logProgress:OOExpandKeyRandomized(@"loading-miscellany")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(OOExpandKeyRandomized(@"loading-miscellany"))];
 	
 	// if there is cargo remaining from previously (e.g. a game restart), remove it (-cargoList was never nil)
 	[self removeAllCargo:YES];		// force removal of cargo
@@ -7151,9 +7151,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	OO_LOG("player.ship.damage", "Player destroyed by {} due to {}", oo::DescriptionOf(whom), cxx_OOStringFromShipDamageType(type));
 	
-	if (![[UNIVERSE gameController] playerFileToLoad])
+	if (![[UNIVERSE gameController] cxx_playerFileToLoad].has_value())
 	{
-		[[UNIVERSE gameController] setPlayerFileToLoad:oo::NSStringOrNil(save_path)];	// make sure we load the correct game
+		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:save_path.value_or("")];	// make sure we load the correct game
 	}
 	
 	energy = 0.0f;
@@ -9290,7 +9290,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		canLoadOrSave = (([self dockedStation] == [UNIVERSE station] || [[self dockedStation] allowsSaving]) && !([[UNIVERSE sun] goneNova] || [[UNIVERSE sun] willGoNova]));
 	}
 	
-	BOOL canQuickSave = (canLoadOrSave && ([[gameView gameController] playerFileToLoad] != nil));
+	BOOL canQuickSave = (canLoadOrSave && [[gameView gameController] cxx_playerFileToLoad].has_value());
 	
 	// GUI stuff
 	{

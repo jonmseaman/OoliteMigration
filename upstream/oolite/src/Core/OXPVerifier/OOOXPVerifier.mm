@@ -752,7 +752,7 @@ void SwitchLogFile(const std::string &name)
 
 void NoteVerificationStage(const std::string &displayName, const std::string &stage)
 {
-	[[GameController sharedController] logProgress:oo::NSStringFrom(oo::str::format("Verifying %s\n%s", displayName.c_str(), stage.c_str()))];
+	[[GameController sharedController] cxx_logProgress:oo::str::format("Verifying %s\n%s", displayName.c_str(), stage.c_str())];
 }
 
 

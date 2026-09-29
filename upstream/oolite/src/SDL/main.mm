@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 			const std::string argument = (i < argc) ? argv[i] : "";
 			if (i < argc && oo::str::hasSuffix(oo::str::lowercase(argument), ".oolite-save"))
 			{
-				[controller setPlayerFileToLoad:oo::NSStringFrom(argument)];
+				[controller cxx_setPlayerFileToLoad:argument];
 			}
 
    			if (!strcmp("-help", argv[i]) || !strcmp("--help", argv[i]))
