@@ -399,7 +399,7 @@ static_assert(OOOrderedAscending == -1 && OOOrderedSame == 0 && OOOrderedDescend
 		id element = nil;
 		foreach (element, array)
 		{
-			OOLog(@"element", @"%@", element);
+			OO_LOG("element", "{}", oo::DescriptionOf(element));
 		}
 	
     These are based on macros by Jens Alfke.

@@ -13,11 +13,11 @@ two clauses, the converted one first:
 
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"... %@ : %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "... {} : {}", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"... %@ : %@", [exception name], [exception reason]);	// as before
+		OO_LOG(cxx_kOOLogException, "... {} : {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));	// as before
 	}
 
 The second clause keeps the handler's original text, so what gnustep-base raises is
