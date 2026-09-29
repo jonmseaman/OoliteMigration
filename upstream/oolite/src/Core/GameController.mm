@@ -308,7 +308,7 @@ static GameController *sSharedController = nil;
 		[OOOXZManager sharedManager];
 
 		// moved here to try to avoid initialising this before having an Open GL context
-		//[self logProgress:DESC(@"Initialising universe")]; // DESC expansions only possible after Universe init
+		//[self cxx_logProgress:OO_DESC("Initialising universe")]; // DESC expansions only possible after Universe init
 		[[Universe alloc] initWithGameView:gameView];
 		
 		[self loadPlayerIfRequired];
