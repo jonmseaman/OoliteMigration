@@ -1741,7 +1741,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[self addEntity:a_station];		// STATUS_IN_FLIGHT, AI state GLOBAL
 		[a_station setStatus:STATUS_ACTIVE];	// For backward compatibility. Might not be needed.
 		[a_station setAllowsFastDocking:true];	// Main stations always allow fast docking.
-		[a_station setAllegiance:@"galcop"]; // Main station is galcop controlled
+		[a_station cxx_setAllegiance:"galcop"]; // Main station is galcop controlled
 	}
 	OO_DEBUG_POP_PROGRESS();
 	
@@ -8727,8 +8727,10 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		{	
 			if([self station]){
 				[[self station] setEquivalentTechLevel:[object intValue]];
-				[[self station] setLocalShipyard:[self shipsForSaleForSystem:systemID
-								withTL:[object intValue] atTime:[PLAYER clockTime]]];
+				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
+								withTL:[object intValue] atTime:[PLAYER clockTime]];
+				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
+				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
 			}
 		}
 		else if (key == "sun_color" || key == "star_count_multiplier" ||
