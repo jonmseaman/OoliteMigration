@@ -94,6 +94,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
+#include <string_view>
 
 #define USEMASC 1
 
@@ -1793,18 +1794,18 @@ DESTROY(laser_color);
 }
 
 
-#define kBoulderRole (@"boulder")
+static constexpr std::string_view kBoulderRole = "boulder";
 
 - (void) setIsBoulder:(BOOL)flag
 {
-	if (flag)  [self addRole:oo::StdString(kBoulderRole)];
-	else  [self cxx_removeRole:oo::StdString(kBoulderRole)];
+	if (flag)  [self addRole:std::string(kBoulderRole)];
+	else  [self cxx_removeRole:std::string(kBoulderRole)];
 }
 
 
 - (BOOL) isBoulder
 {
-	return [roleSet hasRole:oo::StdString(kBoulderRole)];
+	return [roleSet hasRole:std::string(kBoulderRole)];
 }
 
 
@@ -1939,7 +1940,7 @@ DESTROY(laser_color);
 	OOGovernmentID		government;
 
 	const oo::PList systeminfo = [UNIVERSE cxx_currentSystemData];
- 	government = systeminfo.get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
+ 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
 
 	OOShipGroup *escortGroup = [self escortGroup];
 	if ([self group] == nil)
@@ -3619,9 +3620,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
 			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
 			std::set<std::string>	options;
-			const oo::PList		*standardEquipment = shipyardInfo.find(oo::StdString(KEY_STANDARD_EQUIPMENT));
-			for (const oo::PList *list : { ArrayForKey(shipyardInfo, oo::StdString(KEY_OPTIONAL_EQUIPMENT)),
-										   standardEquipment != nullptr ? ArrayForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr })
+			const oo::PList		*standardEquipment = shipyardInfo.find(std::string(KEY_STANDARD_EQUIPMENT));
+			for (const oo::PList *list : { ArrayForKey(shipyardInfo, std::string(KEY_OPTIONAL_EQUIPMENT)),
+										   standardEquipment != nullptr ? ArrayForKey(*standardEquipment, std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr })
 			{
 				for (std::size_t i = 0; list != nullptr && i < list->count(); i++)
 				{
@@ -14412,7 +14413,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 - (void) interpretAIMessage:(id)messageObject	// shared selector (proposed ADR-0043), called by name
 {
 	const std::string ms = oo::StdString(messageObject);
-	if (oo::str::hasPrefix(ms, oo::StdString(AIMS_AGGRESSOR_SWITCHED_TARGET)))
+	if (oo::str::hasPrefix(ms, std::string(AIMS_AGGRESSOR_SWITCHED_TARGET)))
 	{
 		// if I'm under attack send a thank-you message to the rescuer
 		//

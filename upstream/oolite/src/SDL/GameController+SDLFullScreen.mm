@@ -46,9 +46,9 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 
 	for (const oo::PList &mode : modes)
 	{
-		modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
-		modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
-		modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
+		modeWidth = mode.get<int>(std::string(kOODisplayWidth));
+		modeHeight = mode.get<int>(std::string(kOODisplayHeight));
+		modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
 		if ((modeWidth == d_width)&&(modeHeight == d_height)&&(modeRefresh == d_refresh))
 		{
 			return &mode;
@@ -70,8 +70,8 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 	displayModes.clear();
 	for (const oo::PList &mode : modes)
 	{
-		modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
-		modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
+		modeWidth = mode.get<int>(std::string(kOODisplayWidth));
+		modeHeight = mode.get<int>(std::string(kOODisplayHeight));
 
 		if (modeWidth < DISPLAY_MIN_WIDTH ||
 			modeWidth > DISPLAY_MAX_WIDTH ||
@@ -84,9 +84,9 @@ const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_w
 	const oo::PList currentMode = [gameView currentScreenMode];
 	if (currentMode)
 	{
-		width = currentMode.get<int>(oo::StdString(kOODisplayWidth));
-		height = currentMode.get<int>(oo::StdString(kOODisplayHeight));
-		refresh = currentMode.get<int>(oo::StdString(kOODisplayRefreshRate));
+		width = currentMode.get<int>(std::string(kOODisplayWidth));
+		height = currentMode.get<int>(std::string(kOODisplayHeight));
+		refresh = currentMode.get<int>(std::string(kOODisplayRefreshRate));
 	}
 	else
 	{

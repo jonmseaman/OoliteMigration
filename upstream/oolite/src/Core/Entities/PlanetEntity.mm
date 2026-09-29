@@ -482,10 +482,10 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 	seed_for_planet_description(p_seed);
 	
 	oo::PList	planetInfo = DictionaryOrEmpty([UNIVERSE cxx_generateSystemData:p_seed]);
-	int	radius_km = dict.get<int>(oo::StdString(KEY_RADIUS),
-						planetInfo.get<int>(oo::StdString(KEY_RADIUS)));
-	int techlevel = dict.get<int>(oo::StdString(KEY_TECHLEVEL),
-						planetInfo.get<int>(oo::StdString(KEY_TECHLEVEL)));
+	int	radius_km = dict.get<int>(std::string(KEY_RADIUS),
+						planetInfo.get<int>(std::string(KEY_RADIUS)));
+	int techlevel = dict.get<int>(std::string(KEY_TECHLEVEL),
+						planetInfo.get<int>(std::string(KEY_TECHLEVEL)));
 	
 	shuttles_on_ground = 1 + floor(techlevel * 0.5);
 	last_launch_time = 0.0;

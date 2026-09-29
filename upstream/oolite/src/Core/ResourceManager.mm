@@ -449,13 +449,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	if (!sUseAddOns.has_value())
 	{
-		sUseAddOns = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
+		sUseAddOns = std::string(SCENARIO_OXP_DEFINITION_ALL);
 		sUseAddOnsParts = oo::str::split(*sUseAddOns, ";");
 	}
 
 	/* Handle special case of 'strict mode' efficiently */
 	// testing actual string
-	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_NONE))
+	if (sUseAddOns == std::string(SCENARIO_OXP_DEFINITION_NONE))
 	{
 		return { *[self cxx_builtInPath] };
 	}
@@ -536,7 +536,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	/* If a scenario restriction is *not* in place, remove
 	 * scenario-only OXPs. */
 	// test string
-	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
+	if (sUseAddOns == std::string(SCENARIO_OXP_DEFINITION_ALL))
 	{
 		[self filterSearchPathsToExcludeScenarioOnlyPaths:searchPaths];
 	}
@@ -564,7 +564,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	/* If a scenario restriction is in place, restrict OXPs to the
 	 * ones valid for the scenario only. */
 	// test string
-	if (sUseAddOns != oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
+	if (sUseAddOns != std::string(SCENARIO_OXP_DEFINITION_ALL))
 	{
 		[self filterSearchPathsByScenario:searchPaths];
 	}
@@ -727,7 +727,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		 *
 		 * cache should be less necessary for restricted sets anyway */
 		// testing the actual string here
-		if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
+		if (sUseAddOns == std::string(SCENARIO_OXP_DEFINITION_ALL))
 		{
 			[cmgr reloadAllCaches];
 			[cmgr setAllowCacheWrites:YES];
@@ -1239,12 +1239,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	/* Checks for a couple of "never happens" cases */
 #ifndef NDEBUG
 	// test string
-	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
+	if (sUseAddOns == std::string(SCENARIO_OXP_DEFINITION_ALL))
 	{
 		OO_LOG("scenario.check", "{}", "Checked scenario allowances in all state - this is an internal error; please report this");
 		return YES;
 	}
-	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_NONE))
+	if (sUseAddOns == std::string(SCENARIO_OXP_DEFINITION_NONE))
 	{
 		OO_LOG("scenario.check", "{}", "Checked scenario allowances in none state - this is an internal error; please report this");
 		return NO;
@@ -1256,8 +1256,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return YES;
 	}
 
-	const std::string byID = oo::StdString(SCENARIO_OXP_DEFINITION_BYID);
-	const std::string byTag = oo::StdString(SCENARIO_OXP_DEFINITION_BYTAG);
+	const std::string byID = std::string(SCENARIO_OXP_DEFINITION_BYID);
+	const std::string byTag = std::string(SCENARIO_OXP_DEFINITION_BYTAG);
 	BOOL result = NO;
 	for (const std::string &uaoBit : sUseAddOnsParts)
 	{
@@ -1403,7 +1403,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// non-core paths always okay
 		return NO;
 	}
-	const std::string noPList = oo::StdString(SCENARIO_OXP_DEFINITION_NOPLIST);
+	const std::string noPList = std::string(SCENARIO_OXP_DEFINITION_NOPLIST);
 	for (const std::string &uaoBit : sUseAddOnsParts)
 	{
 		if (oo::str::hasPrefix(uaoBit, noPList))
@@ -1960,11 +1960,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			{
 				if (values.isDict())
 				{
-					if (systemKey == oo::StdString(PLANETINFO_UNIVERSAL_KEY))
+					if (systemKey == std::string(PLANETINFO_UNIVERSAL_KEY))
 					{
 						[manager cxx_setUniversalProperties:values];
 					}
-					else if (systemKey == oo::StdString(PLANETINFO_INTERSTELLAR_KEY))
+					else if (systemKey == std::string(PLANETINFO_INTERSTELLAR_KEY))
 					{
 						[manager cxx_setInterstellarProperties:values];
 					}

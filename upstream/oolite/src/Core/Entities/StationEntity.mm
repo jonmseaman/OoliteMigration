@@ -94,7 +94,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 {
 	if (equivalentTechLevel == NSNotFound)
 	{
-		return [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_TECHLEVEL));
+		return [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_TECHLEVEL));
 	}
 	else
 	{

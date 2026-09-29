@@ -1200,7 +1200,7 @@ static int shipsFound;
 
 - (id) systemGovernment_number	// called by name (ADR-0043 item 21)
 {
-	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_GOVERNMENT];
+	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_GOVERNMENT)];
 }
 
 
@@ -1213,25 +1213,25 @@ static int shipsFound;
 
 - (id) systemEconomy_number	// called by name (ADR-0043 item 21)
 {
-	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_ECONOMY];
+	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_ECONOMY)];
 }
 
 
 - (id) systemTechLevel_number	// called by name (ADR-0043 item 21)
 {
-	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_TECHLEVEL];
+	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_TECHLEVEL)];
 }
 
 
 - (id) systemPopulation_number	// called by name (ADR-0043 item 21)
 {
-	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_POPULATION];
+	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_POPULATION)];
 }
 
 
 - (id) systemProductivity_number	// called by name (ADR-0043 item 21)
 {
-	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:KEY_PRODUCTIVITY];
+	return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_PRODUCTIVITY)];
 }
 
 
@@ -2108,7 +2108,7 @@ static int shipsFound;
 			}
 			else
 			{
-				[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:choicesRow];
+				[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:choicesRow];
 			}
 			[gui setColor:rowColor forRow:choicesRow];
 			if (selectable && !selectableRowExists)
@@ -2119,7 +2119,7 @@ static int shipsFound;
 		}
 		else
 		{
-			[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:choicesRow];
+			[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:choicesRow];
 		}
 		choicesRow++;
 		if (choicesRow > (end_row + 1)) break;

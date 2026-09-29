@@ -834,7 +834,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	if (packet.isNull())  return;
 
 	// The packet type names are OODebugTCPConsoleProtocol.h's constants, read as C++ strings.
-#define PACKET_CASE(x) else if (packetType == oo::StdString(kOOTCPPacket_##x))  { [self handle##x##Packet:packet]; }
+#define PACKET_CASE(x) else if (packetType == ProtocolName(kOOTCPPacket_##x))  { [self handle##x##Packet:packet]; }
 	
 	if (0) {}
 	PACKET_CASE(ApproveConnection)
@@ -911,7 +911,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 {
 	if (_monitor == nil)  return;
 
-	const oo::PList *configuration = packet.find(oo::StdString(kOOTCPConfiguration));
+	const oo::PList *configuration = packet.find(ProtocolName(kOOTCPConfiguration));
 	if (configuration != nullptr && !configuration->isDict())  configuration = nullptr;
 	if (configuration != nullptr)
 	{
@@ -922,7 +922,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	}
 
 	// The removed keys are read from the configuration, as the old code read them.
-	const oo::PList *removed = (configuration != nullptr) ? configuration->find(oo::StdString(kOOTCPRemovedConfigurationKeys)) : nullptr;
+	const oo::PList *removed = (configuration != nullptr) ? configuration->find(ProtocolName(kOOTCPRemovedConfigurationKeys)) : nullptr;
 	if (removed != nullptr && removed->isArray())
 	{
 		for (const oo::PList &key : *removed->getIf<oo::PList::Array>())

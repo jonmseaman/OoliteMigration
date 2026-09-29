@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include <string_view>
 #define GUI_DEFAULT_COLUMNS			6
 #define GUI_DEFAULT_ROWS			30
 
@@ -68,8 +69,8 @@ typedef enum
 	GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST
 } OOGUIBackgroundSpecial;
 
-#define GUI_KEY_OK				@"OK"
-#define GUI_KEY_SKIP			@"SKIP-ROW"
+inline constexpr std::string_view GUI_KEY_OK				= "OK";
+inline constexpr std::string_view GUI_KEY_SKIP			= "SKIP-ROW";
 
 // globals: the gui-settings.plist keys (Foundation sweep chunk 3, oo-3rb.94).
 inline constexpr const char *cxx_kGuiDefaultTextColor		= "default_text_color";

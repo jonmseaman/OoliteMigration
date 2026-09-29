@@ -162,9 +162,9 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 		OO_LOG("display.mode.list.native.failed", "{}", "SDL_GetWMInfo failed, defaulting to 1024x768 for native size");
 	}
 
-	mode[oo::StdString(kOODisplayWidth)] = oo::PList(std::int64_t(nativeDisplayWidth));
-	mode[oo::StdString(kOODisplayHeight)] = oo::PList(std::int64_t(nativeDisplayHeight));
-	mode[oo::StdString(kOODisplayRefreshRate)] = oo::PList(std::int64_t(0));
+	mode[std::string(kOODisplayWidth)] = oo::PList(std::int64_t(nativeDisplayWidth));
+	mode[std::string(kOODisplayHeight)] = oo::PList(std::int64_t(nativeDisplayHeight));
+	mode[std::string(kOODisplayRefreshRate)] = oo::PList(std::int64_t(0));
 
 	return oo::PList(std::move(mode));
 }
@@ -794,8 +794,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 - (NSSize) modeAsSize:(int)sizeIndex
 {
 	const oo::PList &mode = screenSizes.at(sizeIndex);
-	return NSMakeSize(mode.get<int>(oo::StdString(kOODisplayWidth)),
-        		mode.get<int>(oo::StdString(kOODisplayHeight)));
+	return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
+        		mode.get<int>(std::string(kOODisplayHeight)));
 }
 
 #endif
@@ -1258,15 +1258,15 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	// if outputting HDR signal, save also either an .exr or a Radiance .hdr snapshot
 	if ([self hdrOutput])
 	{
-		std::string fileExtension = DefaultsString("hdr-snapshot-format", oo::StdString(SNAPSHOTHDR_EXTENSION_DEFAULT));
+		std::string fileExtension = DefaultsString("hdr-snapshot-format", std::string(SNAPSHOTHDR_EXTENSION_DEFAULT));
 
 		// we accept file extension with or without a leading dot; if it is without, insert it at the beginning now
 		if (!oo::str::hasPrefix(fileExtension, "."))  fileExtension = "." + fileExtension;
 
-		if (fileExtension != oo::StdString(SNAPSHOTHDR_EXTENSION_EXR) && fileExtension != oo::StdString(SNAPSHOTHDR_EXTENSION_HDR))
+		if (fileExtension != std::string(SNAPSHOTHDR_EXTENSION_EXR) && fileExtension != std::string(SNAPSHOTHDR_EXTENSION_HDR))
 		{
-			OO_LOG("screenshotHDR", "Unrecognized HDR file format requested, defaulting to {}", oo::DescriptionOf(SNAPSHOTHDR_EXTENSION_DEFAULT));
-			fileExtension = oo::StdString(SNAPSHOTHDR_EXTENSION_DEFAULT);
+			OO_LOG("screenshotHDR", "Unrecognized HDR file format requested, defaulting to {}", SNAPSHOTHDR_EXTENSION_DEFAULT);
+			fileExtension = std::string(SNAPSHOTHDR_EXTENSION_DEFAULT);
 		}
 
 		const std::string pathToPicHDR = oo::str::replaceOccurrences(*pathToPic, ".png", fileExtension);
@@ -1277,8 +1277,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 			glReadPixels(0, y, surface->w, 1, GL_RGB, GL_FLOAT, pixlsf + off);
 		}
 
-		if ((fileExtension == oo::StdString(SNAPSHOTHDR_EXTENSION_EXR) && SaveEXRSnapshot(pathToPicHDR.c_str(), surface->w, surface->h, pixlsf) != 0) //TINYEXR_SUCCESS
-			|| (fileExtension == oo::StdString(SNAPSHOTHDR_EXTENSION_HDR) && !stbi_write_hdr(pathToPicHDR.c_str(), surface->w, surface->h, 3, pixlsf)))
+		if ((fileExtension == std::string(SNAPSHOTHDR_EXTENSION_EXR) && SaveEXRSnapshot(pathToPicHDR.c_str(), surface->w, surface->h, pixlsf) != 0) //TINYEXR_SUCCESS
+			|| (fileExtension == std::string(SNAPSHOTHDR_EXTENSION_HDR) && !stbi_write_hdr(pathToPicHDR.c_str(), surface->w, surface->h, 3, pixlsf)))
 		{
 			OO_LOG("screenshotHDR", "Failed to save {}", pathToPicHDR);
 			snapShotOK = NO;
@@ -1319,9 +1319,9 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	for(i=0; i < displayModeCount; i++)
 	{
 		oo::PList::Dict modeDict;
-		modeDict[oo::StdString(kOODisplayWidth)] = oo::PList(std::int64_t((int)modes[i]->w));
-		modeDict[oo::StdString(kOODisplayHeight)] = oo::PList(std::int64_t((int)modes[i]->h));
-		modeDict[oo::StdString(kOODisplayRefreshRate)] = oo::PList::singleReal((float)(int)modes[i]->refresh_rate);	// +numberWithFloat:
+		modeDict[std::string(kOODisplayWidth)] = oo::PList(std::int64_t((int)modes[i]->w));
+		modeDict[std::string(kOODisplayHeight)] = oo::PList(std::int64_t((int)modes[i]->h));
+		modeDict[std::string(kOODisplayRefreshRate)] = oo::PList::singleReal((float)(int)modes[i]->refresh_rate);	// +numberWithFloat:
 		const oo::PList mode(std::move(modeDict));
 		if (std::find_if(screenSizes.begin(), screenSizes.end(), [&](const oo::PList &m) { return SameMode(m, mode); }) == screenSizes.end())
 		{
@@ -1407,9 +1407,9 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	for (i = 0; i < modeCount; i++)
 	{
 		const oo::PList &mode = screenSizes[i];
-		modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
-		modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
-		modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
+		modeWidth = mode.get<int>(std::string(kOODisplayWidth));
+		modeHeight = mode.get<int>(std::string(kOODisplayHeight));
+		modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
 		if ((modeWidth == d_width)&&(modeHeight == d_height)&&(modeRefresh == d_refresh))
 		{
 			OO_LOG("display.mode.found", "Found mode {}", oo::DescriptionOf(oo::ObjectFromPList(mode)));
@@ -1429,8 +1429,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 	if(mode)
 	{
-		return NSMakeSize(mode.get<int>(oo::StdString(kOODisplayWidth)),
-				mode.get<int>(oo::StdString(kOODisplayHeight)));
+		return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
+				mode.get<int>(std::string(kOODisplayHeight)));
 	}
 	OO_LOG("display.mode.unknown", "{}", "Screen size unknown!");
 	return NSMakeSize(WINDOW_SIZE_DEFAULT_WIDTH, WINDOW_SIZE_DEFAULT_HEIGHT);

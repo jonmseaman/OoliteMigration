@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOMouseInteractionMode.h"
 
 #include "oofnd/PList.hpp"
+#include <string_view>
 
 @class MyOpenGLView;
 
@@ -38,9 +39,9 @@ MA 02110-1301, USA.
 /*	Display-mode dictionary keys. On Mac OS X they were CoreGraphics' kCGDisplay* constants, whose
 	values are these same strings (CFSTR("Width") and so on), so a mode dictionary answers to either.
 */
-#define kOODisplayWidth			(@"Width")
-#define kOODisplayHeight		(@"Height")
-#define kOODisplayRefreshRate	(@"RefreshRate")
+inline constexpr std::string_view kOODisplayWidth			= "Width";
+inline constexpr std::string_view kOODisplayHeight		= "Height";
+inline constexpr std::string_view kOODisplayRefreshRate	= "RefreshRate";
 #if OOLITE_MAC_OS_X
 #define kOODisplayBitsPerPixel	(@"BitsPerPixel")
 #define kOODisplayIOFlags		(@"IOFlags")

@@ -46,7 +46,7 @@ oo::PList MarkerFor(OOSystemID system, const char *color, const char *shape)
 {
 	oo::PList::Dict marker;
 	marker["system"] = oo::PList::signedInteger(system);
-	marker["name"] = oo::StdString(MISSION_DEST_LEGACY);
+	marker["name"] = std::string(MISSION_DEST_LEGACY);
 	marker["markerColor"] = color;
 	marker["markerShape"] = shape;
 	return oo::PList(std::move(marker));
@@ -344,7 +344,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 	{
 		return oo::PList();
 	}
-	std::string group = marker.get<std::string>("name", oo::StdString(MISSION_DEST_LEGACY));
+	std::string group = marker.get<std::string>("name", std::string(MISSION_DEST_LEGACY));
 
 	oo::PList::Dict result;
 	result["system"] = oo::PList::signedInteger(dest);
