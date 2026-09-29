@@ -329,11 +329,11 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 #endif		
 			
 		case kConsole_detailLevel:
-			*value = [OOStringFromGraphicsDetail([UNIVERSE detailLevel]) oo_jsValueInContext:context];
+			*value = OOJSValueFromPList(context, oo::PList(cxx_OOStringFromGraphicsDetail([UNIVERSE detailLevel])));
 			break;
 			
 		case kConsole_maximumDetailLevel:
-			*value = [OOStringFromGraphicsDetail([[OOOpenGLExtensionManager sharedManager] maximumDetailLevel]) oo_jsValueInContext:context];
+			*value = OOJSValueFromPList(context, oo::PList(cxx_OOStringFromGraphicsDetail([[OOOpenGLExtensionManager sharedManager] maximumDetailLevel])));
 			break;
 			
 		case kConsole_displayFPS:
@@ -341,7 +341,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_platformDescription:
-			*value = OOJSValueFromNativeObject(context, oo::NSStringFrom(OOPlatformDescription()));
+			*value = OOJSValueFromPList(context, oo::PList(OOPlatformDescription()));
 			break;
 			
 		case kConsole_pedanticMode:
@@ -368,11 +368,11 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_glVendorString:
-			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([[OOOpenGLExtensionManager sharedManager] vendorString]));
+			{ const std::optional<std::string> vendor = [[OOOpenGLExtensionManager sharedManager] vendorString]; *value = OOJSValueFromPList(context, vendor.has_value() ? oo::PList(*vendor) : oo::PList()); }
 			break;
 			
 		case kConsole_glRendererString:
-			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([[OOOpenGLExtensionManager sharedManager] rendererString]));
+			{ const std::optional<std::string> renderer = [[OOOpenGLExtensionManager sharedManager] rendererString]; *value = OOJSValueFromPList(context, renderer.has_value() ? oo::PList(*renderer) : oo::PList()); }
 			break;
 			
 		case kConsole_glFixedFunctionTextureUnitCount:
@@ -581,7 +581,7 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 
 	const oo::PList setting = key.has_value() ? [monitor configurationValueForKey:*key] : oo::PList();
 	settingValue = oo::ObjectFromPList(setting);
-	if (settingValue != NULL)  *value = [settingValue oo_jsValueInContext:context];
+	if (settingValue != NULL)  *value = OOJSValueFromPList(context, setting);
 	else  *value = ooscript::undefinedValue();
 	
 	return YES;

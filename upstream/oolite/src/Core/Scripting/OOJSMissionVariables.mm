@@ -278,7 +278,7 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 				
 				next = next.substr(8);		// Cut off "mission_".
 				
-				ooscript::Value val = [oo::NSStringFrom(next) oo_jsValueInContext:context];
+				ooscript::Value val = OOJSValueFromPList(context, oo::PList(next));
 				return ooscript::valueToId(cx, (val), jsidp);
 			}
 			

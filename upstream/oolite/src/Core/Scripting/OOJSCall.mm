@@ -185,7 +185,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 			}
 			if (result != nil)
 			{
-				*outResult = [result oo_jsValueInContext:context];
+				*outResult = OOJSValueFromNativeObject(context, result);	// non-nil: a Foundation result through its PList form (ADR-0051)
 			}
 		}
 	}

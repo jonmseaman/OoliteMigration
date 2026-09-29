@@ -202,13 +202,13 @@ MA 02110-1301, USA.
 	
 	for (i = 0; i < argc; i++)
 	{
-		argv[i] = [arguments[i].get() oo_jsValueInContext:context];
+		argv[i] = arguments[i].get() != nil ? OOJSValueFromNativeObject(context, arguments[i].get()) : ooscript::Value{0};	// (a message to nil gave the zero value)
 		OOJSAddGCValueRoot(context, &argv[i], "OOJSFunction argv");
 	}
 	
 	ooscript::Object scopeObj = NULL;
 	BOOL OK = YES;
-	if (jsThis != nil)  OK = ooscript::valueToObject(context, [jsThis oo_jsValueInContext:context], &scopeObj);
+	if (jsThis != nil)  OK = ooscript::valueToObject(context, OOJSValueFromNativeObject(context, jsThis), &scopeObj);
 	if (OK)  OK = [self evaluateWithContext:context
 									  scope:scopeObj
 									   argc:(uint32_t)argc
