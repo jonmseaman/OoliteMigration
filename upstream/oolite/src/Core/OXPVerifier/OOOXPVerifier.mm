@@ -181,7 +181,7 @@ void OpenLogFile();
 
 - (void)registerStage:(OOOXPVerifierStage *)stage
 {
-	id						name = nil;
+	std::optional<std::string>	name;
 	OOOXPVerifierStage		*existing = nil;
 	
 	// Sanity checking
@@ -199,15 +199,15 @@ void OpenLogFile();
 		return;
 	}
 	
-	name = [stage name];
-	if (name == nil)
+	name = [stage cxx_name];
+	if (!name.has_value())
 	{
 		OO_LOG("verifyOXP.registration.failed", "Attempt to register verifier stage {} with nil name, ignoring.", oo::DescriptionOf(stage));
 		return;
 	}
 		
 	// We can only have one stage with a given name. Registering the same stage twice is OK, though.
-	const auto found = _stagesByName.find(oo::StdString(name));
+	const auto found = _stagesByName.find(*name);
 	existing = found != _stagesByName.end() ? found->second.get() : nil;
 	if (existing == stage)  return;
 	if (existing != nil)
@@ -218,7 +218,7 @@ void OpenLogFile();
 	
 	// Checks passed, store state.
 	[stage setVerifier:self];
-	_stagesByName[oo::StdString(name)] = oo::ObjCRef<OOOXPVerifierStage *>(stage);
+	_stagesByName[*name] = oo::ObjCRef<OOOXPVerifierStage *>(stage);
 	_waitingStages.push_back(oo::ObjCRef<OOOXPVerifierStage *>(stage));
 }
 
@@ -418,7 +418,7 @@ void OpenLogFile();
 - (void)buildDependencyGraph
 {
 	OOOXPVerifierStage		*stage = nil;
-	id						name = nil;
+	std::optional<std::string>	name;
 	std::map<OOOXPVerifierStage *, std::vector<std::string>>	dependenciesByStage,
 															dependentsByStage;
 
@@ -467,10 +467,10 @@ void OpenLogFile();
 			stage = found->second.get();
 
 			// Sanity check
-			name = [stage name];
-			if (!oo::IsNSString(name) || oo::StdString(name) != stageKey)
+			name = [stage cxx_name];
+			if (!name.has_value() || *name != stageKey)
 			{
-				OO_LOG("verifyOXP.buildDependencyGraph.badName", "***** Stage name appears to have changed from \"{}\" to \"{}\" for verifier stage {}, removing.", stageKey, oo::DescriptionOf(name), oo::DescriptionOf(stage));
+				OO_LOG("verifyOXP.buildDependencyGraph.badName", "***** Stage name appears to have changed from \"{}\" to \"{}\" for verifier stage {}, removing.", stageKey, name.value_or("(null)"), oo::DescriptionOf(stage));
 				_stagesByName.erase(stageKey);
 				continue;
 			}
@@ -521,7 +521,7 @@ void OpenLogFile();
 {
 	void					*pool = NULL;
 	OOOXPVerifierStage		*stageToRun = nil;
-	id						stageName = nil;
+	std::optional<std::string>	stageName;
 	
 	// Loop while there are still stages to run.
 	for (;;)
@@ -545,33 +545,33 @@ void OpenLogFile();
 			break;
 		}
 		
-		stageName = nil;
+		stageName.reset();
 		oo::log::pushIndent();
 		@try
 		{
-			stageName = [stageToRun name];
+			stageName = [stageToRun cxx_name];
 			if ([stageToRun shouldRun])
 			{
-				NoteVerificationStage(_displayName, oo::DescriptionOf(stageName));	// "%@" text, as the old format printed it
-				OO_LOG("verifyOXP.runStage", "{}", oo::DescriptionOf(stageName));
+				NoteVerificationStage(_displayName, stageName.value_or("(null)"));	// "%@" text, as the old format printed it
+				OO_LOG("verifyOXP.runStage", "{}", stageName.value_or("(null)"));
 				oo::log::indent();
 				[stageToRun performRun];
 			}
 			else
 			{
-				OO_LOG("verifyOXP.verbose.skipStage", "- Skipping stage: {} (nothing to do).", oo::DescriptionOf(stageName));
+				OO_LOG("verifyOXP.verbose.skipStage", "- Skipping stage: {} (nothing to do).", stageName.value_or("(null)"));
 				[stageToRun noteSkipped];
 			}
 		}
 		@catch (OOException *exception)
 		{
-			if (stageName == nil)  stageName = [[stageToRun class] description];
-			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", oo::DescriptionOf(stageName), [exception name], [exception reason]);
+			if (!stageName.has_value())  stageName = oo::StdString([[stageToRun class] description]);
+			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, [exception name], [exception reason]);
 		}
 		@catch (OOFoundationException *exception)
 		{
-			if (stageName == nil)  stageName = [[stageToRun class] description];
-			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", oo::DescriptionOf(stageName), oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
+			if (!stageName.has_value())  stageName = oo::StdString([[stageToRun class] description]);
+			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		}
 		oo::log::popIndent();
 		
@@ -667,7 +667,7 @@ void OpenLogFile();
 	for (const auto &entry : _stagesByName)
 	{
 		OOOXPVerifierStage *stage = entry.second.get();
-		graphViz += oo::str::formatRuntime(arcTemplate, {FormatArg::pointer(stage), oo::DescriptionOf([stage class]), oo::DescriptionOf([stage name])});
+		graphViz += oo::str::formatRuntime(arcTemplate, {FormatArg::pointer(stage), oo::DescriptionOf([stage class]), [stage cxx_name].value_or("(null)")});
 	}
 
 	graphViz += graphVizTemplate.get<std::string>("forwardPreamble");
@@ -752,7 +752,7 @@ void SwitchLogFile(const std::string &name)
 
 void NoteVerificationStage(const std::string &displayName, const std::string &stage)
 {
-	[[GameController sharedController] logProgress:oo::NSStringFrom(oo::str::format("Verifying %s\n%s", displayName.c_str(), stage.c_str()))];
+	[[GameController sharedController] cxx_logProgress:oo::str::format("Verifying %s\n%s", displayName.c_str(), stage.c_str())];
 }
 
 
