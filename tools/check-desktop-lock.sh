@@ -60,10 +60,6 @@
 #   upstream/oolite/tests/run_test_fn.sh    launches nothing itself; it shells out to
 #                                           launch_snapshot.py, which now takes the lock, so the
 #                                           build's smoke step inherits it.
-#   tools/check-enumeration-shuffle.sh      never launches the game at all - it compiles a unit
-#                                           test, preprocesses a header and reads nm output. Its
-#                                           own comments say the full-launch evidence comes from
-#                                           launch_snapshot.py, which is the locked path.
 #   tools/gui-tier.sh                       runs the GUI tier through pytest, which takes the
 #                                           lock in its desktop_lock fixture.
 #
