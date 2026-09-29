@@ -320,7 +320,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			const oo::PList *scenario = scenarios.at(i);
 			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
 			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
-			[gui setText:OOExpand(oo::NSStringFrom(scenarioName)) forRow:row];
+			[gui cxx_setText:cxx_OOExpand(scenarioName).value_or(std::string()) forRow:row];
 			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
 			++row;
 		}
@@ -373,7 +373,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		}
 		if (scenario)
 		{
-			[gui cxx_addLongText:oo::OptionalString(OOExpand(oo::NSStringOrNil(OptionalStringValue(scenario->find("description"))))) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
+			const std::optional<std::string> scenarioDescription = OptionalStringValue(scenario->find("description"));
+			const std::optional<std::string> expandedDescription = scenarioDescription.has_value() ? cxx_OOExpand(*scenarioDescription) : std::nullopt;
+			[gui cxx_addLongText:expandedDescription startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
 			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
 			if (shipKey)
 			{

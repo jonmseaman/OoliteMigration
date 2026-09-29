@@ -253,7 +253,7 @@ MA 02110-1301, USA.
 
 	if (label.has_value() || _beaconLabel.has_value())
 	{
-		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 
