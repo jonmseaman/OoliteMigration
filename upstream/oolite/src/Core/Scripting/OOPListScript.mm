@@ -122,7 +122,7 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 	oo::log::indentIf("script.legacy.run");
 
 	[PLAYER cxx_runScriptActions:_script
-			 withContextName:oo::OptionalString([self name])
+			 withContextName:[self cxx_name]
 				   forTarget:(ShipEntity *)target];
 
 	oo::log::outdentIf("script.legacy.run");

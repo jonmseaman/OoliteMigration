@@ -7275,12 +7275,6 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>) cxx_name
 {
 	return name;
@@ -7382,12 +7376,6 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 		}
 		return desc;
 	}
-}
-
-
-- (void) setName:(id)inName	// shared selector (Foundation declares -setName: too; retires with oo-qps)
-{
-	[self cxx_setName:oo::OptionalString(inName)];
 }
 
 
@@ -13181,7 +13169,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					for (i = 0; i < otherCrew->size(); i++)
 					{
 						OOCharacter *rescuee = (*otherCrew)[i].get();
-						const std::optional<std::string> characterName = oo::OptionalString([rescuee name]);
+						const std::optional<std::string> characterName = [rescuee cxx_name];
 						if ([rescuee legalStatus])
 						{
 							[UNIVERSE cxx_addMessage:ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName) forCount: 4.5];

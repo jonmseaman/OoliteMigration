@@ -41,12 +41,6 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 
 @implementation OOBasicMaterial
 
-- (id)initWithName:(id)name	// shared selector (Foundation declares it too; retires with oo-qps)
-{
-	return [self cxx_initWithName:oo::OptionalString(name)];
-}
-
-
 - (id)cxx_initWithName:(const std::optional<std::string> &)name
 {
 	self = [super init];

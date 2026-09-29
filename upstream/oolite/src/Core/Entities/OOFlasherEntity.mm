@@ -48,12 +48,6 @@ MA 02110-1301, USA.
 }
 
 
-- (id) initWithDictionary:(id)dictionary	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithDictionary:oo::PListFrom(dictionary)];
-}
-
-
 - (id) cxx_initWithDictionary:(const oo::PList &)dictionary
 {
 	float size = dictionary.get<float>("size", 1.0f);

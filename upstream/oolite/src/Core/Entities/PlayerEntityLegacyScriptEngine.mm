@@ -1252,7 +1252,7 @@ static int shipsFound;
 
 - (id) commanderShip_string	// called by name (ADR-0043 item 21)
 {
-	return [self name];
+	return oo::NSStringOrNil([self cxx_name]);	// called by name: an Objective-C string until its chunk
 }
 
 

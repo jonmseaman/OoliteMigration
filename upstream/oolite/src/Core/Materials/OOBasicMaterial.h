@@ -58,7 +58,6 @@ SOFTWARE.
 		emission	{ 0.0, 0.0, 0.0, 1.0 }
 		shininess	0
 */
-- (id)initWithName:(id)name;	// shared selector (Foundation declares -initWithName: too): -cxx_initWithName: with an Objective-C string, or nil
 - (id)cxx_initWithName:(const std::optional<std::string> &)name OO_RETURNS_RETAINED;	// (bead oo-3rb.289.5)
 
 /*	Initialize with dictionary. Accepted keys:

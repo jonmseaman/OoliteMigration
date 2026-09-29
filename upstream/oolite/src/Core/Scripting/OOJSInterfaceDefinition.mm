@@ -92,21 +92,9 @@ static OOComparisonResult CaseInsensitiveCompare(const std::optional<std::string
 	[super dealloc];
 }
 
-- (id)title	// shared selector (Foundation declares -title too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_title]);
-}
-
-
 - (std::optional<std::string>)cxx_title
 {
 	return _title;
-}
-
-
-- (void)setTitle:(id)title	// shared selector (Foundation declares -setTitle: too; retires with oo-qps)
-{
-	[self cxx_setTitle:oo::OptionalString(title)];
 }
 
 

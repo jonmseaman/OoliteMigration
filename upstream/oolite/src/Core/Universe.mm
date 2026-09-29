@@ -9716,7 +9716,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 				{
 					OOTechLevelID		eqTechLevel = [item techLevel];
 					OOCreditsQuantity	eqPrice = [item price] / 10;	// all amounts are x/10 due to being represented in tenths of credits.
-					std::optional<std::string>	eqShortDesc = oo::OptionalString([item name]);
+					std::optional<std::string>	eqShortDesc = [item cxx_name];
 
 					if ([item techLevel] > techlevel)
 					{
