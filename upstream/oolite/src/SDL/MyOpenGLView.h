@@ -383,9 +383,3 @@ extern int debug;
 
 #include <SDL3/SDL_events.h>
 #import "MyOpenGLView+Input.h"
-
-/*	TRANSITIONAL (proposed ADR-0043 Amendment 1): MyOpenGLView's Foundation-typed API as it was
-	declared before bead oo-3rb.110, forwarding to the cxx_ methods above, so unmigrated callers compile
-	unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "MyOpenGLView+FoundationBridge.h"
