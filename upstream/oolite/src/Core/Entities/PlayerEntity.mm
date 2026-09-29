@@ -6480,9 +6480,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
 {
-	const std::string weaponId = oo::StdString(weaponIdentifier);
 	HPVector		rel_pos;
 	OOScalar		d_forward, d_right, d_up;
 	BOOL		internal_damage = NO;	// base chance
@@ -6517,7 +6516,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	d_up = dot_product(HPVectorToVector(rel_pos), v_up);
 	Vector relative = make_vector(d_right,d_up,d_forward);
 
-	[self cxx_playShieldHit:relative weaponIdentifier:weaponId];
+	[self cxx_playShieldHit:relative weaponIdentifier:weaponIdentifier];
 
 	// firing on an innocent ship is an offence
 	if ([other isShip])
@@ -6557,7 +6556,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (amount > 0.0)
 	{
 		energy -= amount;
-		[self cxx_playDirectHit:relative weaponIdentifier:weaponId];
+		[self cxx_playDirectHit:relative weaponIdentifier:weaponIdentifier];
 		if (ship_temperature < SHIP_MAX_CABIN_TEMP)
 		{
 			/* Heat increase from energy impacts will never directly cause

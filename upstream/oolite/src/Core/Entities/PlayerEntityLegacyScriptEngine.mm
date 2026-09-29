@@ -2315,7 +2315,7 @@ static int shipsFound;
 	if (mainStation != nil)
 	{
 		[UNIVERSE unMagicMainStation];
-		[mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:@""];	// 500 million should do it!
+		[mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()];	// 500 million should do it!
 	}
 }
 
