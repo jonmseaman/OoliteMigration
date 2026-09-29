@@ -14797,16 +14797,6 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments
-{
-	// OOJSValueFromPList of an object's PList form is what OOJSValueFromNativeObject gave for it.
-	std::vector<oo::PList> plists;
-	plists.reserve(arguments.size());
-	for (const oo::ObjCRef<id> &argument : arguments)  plists.push_back(oo::PListFrom(argument.get()));
-	[self cxx_doScriptEvent:message withPListArguments:plists];
-}
-
-
 - (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
 {
 	ooscript::Context context = OOJSAcquireContext();
