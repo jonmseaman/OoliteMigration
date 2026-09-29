@@ -3575,7 +3575,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 				BOOL OK;
 				bool allow_addition = false;
 				ooscript::Value result;
-				ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(equipmentKey)) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(context))};
+				ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(equipmentKey)) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromPList(JScontext, oo::PList(context))};
 				
 				OK = [condScript callMethod:OOJSID("allowAwardEquipment")
 											inContext:JScontext
@@ -14775,7 +14775,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		{
 			for (i = 0; i != argc; ++i)
 			{
-				argv[i] = [arguments[i].get() oo_jsValueInContext:context];
+				argv[i] = arguments[i].get() != nil ? OOJSValueFromNativeObject(context, arguments[i].get()) : ooscript::Value{0};	// (a message to nil gave the zero value)
 				OOJSAddGCValueRoot(context, &argv[i], "event parameter");
 			}
 		}

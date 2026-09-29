@@ -484,7 +484,7 @@ static bool SystemInfoEnumerate(Context cx, Object obj, EnumerateOp enumOp, Valu
 			enumerator = static_cast<SystemInfoEnumerationState *>(ooscript::toPrivate(*state));
 			if (enumerator->next < enumerator->keys.size())
 			{
-				ooscript::Value val = [oo::NSStringFrom(enumerator->keys[enumerator->next++]) oo_jsValueInContext:context];
+				ooscript::Value val = OOJSValueFromPList(context, oo::PList(enumerator->keys[enumerator->next++]));
 				return ooscript::valueToId(cx, (val), idp);
 			}
 			// else:
@@ -611,7 +611,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 			}
 			else
 			{
-				*value = ([propValue oo_jsValueInContext:context]);
+				*value = OOJSValueFromNativeObject(context, propValue);	// non-nil: as its own glue gave
 			}
 		}
 	}
@@ -881,7 +881,10 @@ static bool SystemInfoStaticFilteredSystems(ooscript::Context context, ooscript:
 		
 		if (OK)
 		{
-			OOJS_SET_RVAL([oo::NSArrayFromObjects(result) oo_jsValueInContext:context]);
+			oo::PList::Array infos;
+			infos.reserve(result.size());
+			for (const auto &info : result)  infos.push_back(oo::PListObject(info.get()));
+			OOJS_SET_RVAL(OOJSValueFromPList(context, oo::PList(std::move(infos))));
 		}
 		else
 		{
