@@ -5884,7 +5884,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		else if ([entity isShip])
 		{
 			[[se getAI] setOwner:se];
-			[[se getAI] setState:@"GLOBAL"];
+			[[se getAI] cxx_setState:"GLOBAL"];
 			if ([entity isStation])
 			{
 				AddIfAbsent(allStations, (StationEntity *)entity);
@@ -10427,7 +10427,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		ShipEntity* se = my_ships[i];
 		[se doScriptEvent:event];
-		if (message.has_value())  [[se getAI] reactToMessage:oo::NSStringFrom(*message) context:@"global message"];
+		if (message.has_value())  [[se getAI] cxx_reactToMessage:*message context:"global message"];
 		[se release]; //	released
 	}
 }
