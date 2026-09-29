@@ -160,7 +160,13 @@ BOOL HasRolePredicate(Entity *ship, void *parameter)
 
 BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter)
 {
-	return [(ShipEntity *)ship hasPrimaryRole:(id)parameter];	// an Objective-C string, as the callers pass it
+	NSString *role = (NSString *)parameter;	// an Objective-C string, as the callers pass it
+	if (role == nil)
+	{
+		(void)[(ShipEntity *)ship cxx_primaryRole];	// still chooses a primary role if there is none, as before
+		return NO;	// -isEqual: nil was NO
+	}
+	return [(ShipEntity *)ship cxx_hasPrimaryRole:oo::StdString(role)];
 }
 
 
@@ -174,7 +180,7 @@ BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter)
 {
 	// parameter: an Objective-C set of role strings, as the callers pass it; membership by string
 	// value, as -containsObject: tested it. A nil primary role is in no set.
-	const std::optional<std::string> primaryRole = oo::OptionalString([(ShipEntity *)ship primaryRole]);
+	const std::optional<std::string> primaryRole = [(ShipEntity *)ship cxx_primaryRole];
 	if (!primaryRole.has_value())  return NO;
 	const std::vector<std::string> roles = oo::StringsFrom((id)parameter);
 	return std::find(roles.begin(), roles.end(), *primaryRole) != roles.end();

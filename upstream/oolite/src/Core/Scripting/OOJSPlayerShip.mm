@@ -925,7 +925,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 				}
 				else  if(*sValue == "OO_COMPASSTYPE_ADVANCED")
 				{
-					if (![player hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])
+					if (![player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"])
 					{
 						cxx_OOJSReportWarning(context, "Advanced Compass type requested and set but player ship does not carry the EQ_ADVANCED_COMPASS equipment or has it damaged.");
 					}
@@ -942,7 +942,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		
 		case kPlayerShip_compassTarget:
 			// can't change compass target in basic mode
-			if (![player hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"]) 
+			if (![player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"]) 
 			{
 				cxx_OOJSReportError(context, "Compass target cannot be set with a basic compass.");
 				return NO;
@@ -1928,7 +1928,7 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 			witchspaceSpinUpTime = spin_time;
 		}
 	}
-	if ([player hasEquipmentItemProviding:@"EQ_GAL_DRIVE"] && [player status] == STATUS_IN_FLIGHT && [player witchJumpChecklist:true])
+	if ([player cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"] && [player status] == STATUS_IN_FLIGHT && [player witchJumpChecklist:true])
 	{
 		[player setJumpType:YES];
 		[player setWitchspaceCountdown:witchspaceSpinUpTime];
