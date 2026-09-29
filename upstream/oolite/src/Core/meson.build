@@ -36,7 +36,6 @@ oolite_sources += files(
     'OODrawable.mm',
     'OOEncodingConverter.mm',
     'OOEntityFilterPredicate.mm',
-    'OOEnumerationShuffle.mm',
     'OOEquipmentType.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
