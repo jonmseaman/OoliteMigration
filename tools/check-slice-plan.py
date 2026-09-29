@@ -151,6 +151,8 @@ def parse_units(path):
                     cur["end"] = ln; units.append(cur); cur = None
                 if eff() == 0: buf = []; buf_line = None
             elif ch == ";" and eff() == 0 and cur is None:
+                if impl and "".join(buf).strip()[:1] in ("-", "+"):
+                    continue   # '- (void) foo:(int)x;' then '{' is a legal method definition: keep the head
                 buf = []; buf_line = None
             elif eff() == 0 and cur is None:
                 if buf_line is None and not ch.isspace(): buf_line = ln
@@ -319,6 +321,10 @@ def selftest():
     want = ["helper()", "-[Foo init]", "-[Foo setA:b:]", "-[Foo hidden]", "plainC()"]
     fails = []
     if got != want: fails.append(f"units {got} != {want}")
+    # a method defined with a stray ';' before its body (legal Objective-C; SDL/MyOpenGLView.mm has one)
+    open(os.path.join(d, "Semi.mm"), "w").write("@implementation Foo\n- (void) adjust:(float)x;\n{\n\t_x += x;\n}\nstatic int n;\n- (int) n { return n; }\n@end\n")
+    got = [u["name"] for u in parse_units(os.path.join(d, "Semi.mm"))[0]]
+    if got != ["-[Foo adjust:]", "-[Foo n]"]: fails.append(f"stray-semicolon method: units {got}")
     def run(body, expect):
         p = os.path.join(d, "plan.md")
         open(p, "w").write("x\n```slice-plan\nsource: Foo.mm\nheader: Foo.h\n" + body + "```\n")
