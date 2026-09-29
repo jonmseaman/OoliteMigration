@@ -125,7 +125,7 @@ MA 02110-1301, USA.
 
 // Protocol used internally to squash idiotic warnings in gnu-gcc.
 @protocol OOCacheComparable <OOObject, OOCopying>
-- (NSComparisonResult) compare:(id<OOCacheComparable>)other;
+- (OOComparisonResult) compare:(id<OOCacheComparable>)other;
 - (id) copy;
 @end
 
@@ -718,7 +718,7 @@ static std::string CacheNodeGetDescription(OOCacheNode *node)
 */
 static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 {
-	NSComparisonResult		order;
+	OOComparisonResult		order;
 	OOCacheNode				N = { .leftChild = NULL, .rightChild = NULL };
 	OOCacheNode				*node = NULL, *temp = NULL, *l = &N, *r = &N;
 	BOOL					exact = NO;
@@ -740,11 +740,11 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 		}
 #endif
 		order = [key compare:node->key];
-		if (order == NSOrderedAscending)
+		if (order == OOOrderedAscending)
 		{
 			// Closest match is in left subtree
 			if (node->leftChild == NULL) break;
-			if ([key compare:node->leftChild->key] == NSOrderedAscending)
+			if ([key compare:node->leftChild->key] == OOOrderedAscending)
 			{
 				// Rotate right
 				temp = node->leftChild;
@@ -758,11 +758,11 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 			r = node;
 			node = node->leftChild;
 		}
-		else if (order == NSOrderedDescending)
+		else if (order == OOOrderedDescending)
 		{
 			// Closest match is in right subtree
 			if (node->rightChild == NULL) break;
-			if ([key compare:node->rightChild->key] == NSOrderedDescending)
+			if ([key compare:node->rightChild->key] == OOOrderedDescending)
 			{
 				// Rotate left
 				temp = node->rightChild;
@@ -799,7 +799,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 {
 	OOCacheNode				*closest = NULL,
 							*node = NULL;
-	NSComparisonResult		order;
+	OOComparisonResult		order;
 	
 	if (cache == NULL || key == nil || value == nil) return NULL;
 	
@@ -825,7 +825,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 			
 			order = [key compare:closest->key];
 			
-			if (order == NSOrderedAscending)
+			if (order == OOOrderedAscending)
 			{
 				// Insert to left
 				node->leftChild = closest->leftChild;
@@ -834,7 +834,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 				cache->root = node;
 				++cache->count;
 			}
-			else if (order == NSOrderedDescending)
+			else if (order == OOOrderedDescending)
 			{
 				// Insert to right
 				node->rightChild = closest->rightChild;
@@ -868,7 +868,7 @@ static unsigned TreeCountNodes(OOCacheNode *node)
 // TreeCheckIntegrity(): verify the links and contents of a (sub-)tree. If successful, returns the root of the subtree (which could theoretically be changed), otherwise returns NULL.
 static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OOCacheNode *expectedParent, const std::string &context)
 {
-	NSComparisonResult		order;
+	OOComparisonResult		order;
 	BOOL					OK = YES;
 	
 	if (node == NULL) return NULL;
@@ -887,7 +887,7 @@ static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OO
 	if (OK && node->leftChild != NULL)
 	{
 		order = [node->key compare:node->leftChild->key];
-		if (order != NSOrderedDescending)
+		if (order != OOOrderedDescending)
 		{
 			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node {}'s left child {} is not correctly ordered. Deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(node->leftChild));
 			CacheNodeFree(cache, node->leftChild);
@@ -902,7 +902,7 @@ static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OO
 	if (node->rightChild != NULL)
 	{
 		order = [node->key compare:node->rightChild->key];
-		if (order != NSOrderedAscending)
+		if (order != OOOrderedAscending)
 		{
 			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\"'s right child \"{}\" is not correctly ordered. Deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(node->rightChild));
 			CacheNodeFree(cache, node->rightChild);
@@ -1129,7 +1129,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 - (void) writeGraphVizToPath:(const std::string &)path
 {
 	const std::string graphViz = [self generateGraphViz];
-	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(path), oo::Data(graphViz.data(), graphViz.size()));	// atomically, as before
+	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(path), oo::Data(graphViz.data(), graphViz.size()), oo::fs::WriteMode::atomic);
 }
 
 @end
