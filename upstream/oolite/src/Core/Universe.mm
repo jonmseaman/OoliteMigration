@@ -9709,8 +9709,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
-			OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(fwdWeaponString));
-			OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(aftWeaponString));
+			OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
+			OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
 			//port and starboard weapons are not modified in the shipyard
 			// apply fwd and aft weapons to the ship
 			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
@@ -9852,7 +9852,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 					if (oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
 					{
-						OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringFrom(*equipmentKey));
+						OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(*equipmentKey);
 						//fit best weapon forward
 						if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
 						{
@@ -10086,12 +10086,12 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// work out weapon values
 	if (ship_fwd_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon).value_or("");
 		ship_main_weapons_value = [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 	if (ship_aft_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_aft_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_aft_weapon).value_or("");
 		if (base_weapon_key.has_value()) // aft weapon was defined as a base weapon
 		{
 			ship_main_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;	//take weapon downgrades into account
@@ -10103,12 +10103,12 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	}
 	if (ship_port_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_port_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_port_weapon).value_or("");
 		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 	if (ship_starboard_weapon)
 	{
-		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon));
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon).value_or("");
 		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 
@@ -10564,7 +10564,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// (some items now require this even if shader on/off mode unchanged)
 	if (old != detailLevel)
 	{
-		OO_LOG("rendering.detail-level", "Detail level set to {}.", oo::DescriptionOf(OOStringFromGraphicsDetail(detailLevel)));
+		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(detailLevel));
 		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
 	}
 

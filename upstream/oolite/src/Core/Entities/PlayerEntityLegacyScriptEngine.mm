@@ -1037,7 +1037,7 @@ static BOOL sRunningScript = NO;
 
 - (id) gui_screen_string	// called by name (ADR-0043 item 21)
 {
-	return OOStringFromGUIScreenID(gui_screen);
+	return oo::NSStringFrom(cxx_OOStringFromGUIScreenID(gui_screen));
 }
 
 
@@ -1092,7 +1092,7 @@ static int shipsFound;
 
 - (id) commanderLegalStatus_string	// called by name (ADR-0043 item 21)
 {
-	return OODisplayStringFromLegalStatus(legalStatus);
+	return oo::NSStringOrNil(cxx_OODisplayStringFromLegalStatus(legalStatus));
 }
 
 
@@ -1216,7 +1216,7 @@ static int shipsFound;
 - (id) systemGovernment_string	// called by name (ADR-0043 item 21)
 {
 	int government = [[self systemGovernment_number] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable)
-	return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromGovernmentID(government)).value_or("UNKNOWN"));
+	return oo::NSStringFrom(cxx_OODisplayStringFromGovernmentID(government).value_or("UNKNOWN"));
 }
 
 
@@ -1229,7 +1229,7 @@ static int shipsFound;
 - (id) systemEconomy_string	// called by name (ADR-0043 item 21)
 {
 	int economy = [[self systemEconomy_number] intValue]; // 0 .. 7 (0 rich industrial .. 7 poor agricultural)
-	return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromEconomyID(economy)).value_or("UNKNOWN"));
+	return oo::NSStringFrom(cxx_OODisplayStringFromEconomyID(economy).value_or("UNKNOWN"));
 }
 
 
@@ -1265,7 +1265,7 @@ static int shipsFound;
 
 - (id) commanderRank_string	// called by name (ADR-0043 item 21)
 {
-	return OODisplayRatingStringFromKillCount([self score]);
+	return oo::NSStringOrNil(cxx_OODisplayRatingStringFromKillCount([self score]));
 }
 
 
@@ -3012,7 +3012,7 @@ static int shipsFound;
 
 - (void) setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString	// called by name (ADR-0043 item 21)
 {
-	OOGalacticHyperspaceBehaviour ghBehaviour = OOGalacticHyperspaceBehaviourFromString(galacticHyperspaceBehaviourString);
+	OOGalacticHyperspaceBehaviour ghBehaviour = cxx_OOGalacticHyperspaceBehaviourFromString(oo::StdString(galacticHyperspaceBehaviourString));
 	if (ghBehaviour == GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN)
 	{
 		OO_LOG("player.setGalacticHyperspaceBehaviour.invalidInput",

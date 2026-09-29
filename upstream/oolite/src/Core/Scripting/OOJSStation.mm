@@ -1289,8 +1289,8 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
 		OOWeaponFacingSet availableFacings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
-		OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(fwdWeaponString));
-		OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(aftWeaponString));
+		OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
+		OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
 
 		unsigned int i;
 		std::optional<std::string> equipmentKey;
@@ -1298,7 +1298,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 			equipmentKey = StringAtIndex(extras, i);
 			if (equipmentKey.has_value() && oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
 			{
-				OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(equipmentKey));
+				OOWeaponType new_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(equipmentKey.value_or(""));
 				//fit best weapon forward
 				if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
 				{

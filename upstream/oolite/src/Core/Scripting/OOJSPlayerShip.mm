@@ -661,7 +661,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			return YES;
 
 		case kPlayerShip_chartHightlightMode:
-			result = OOStringFromLongRangeChartMode([player longRangeChartMode]);
+			result = oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([player longRangeChartMode]));
 			break;
 
 		case kPlayerShip_galaxyCoordinates:
@@ -743,7 +743,7 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 			break;
 			
 		case kPlayerShip_compassType:
-			result = [OOStringFromCompassMode([player compassMode]) isEqualToString:@"COMPASS_MODE_BASIC"] ?
+			result = (cxx_OOStringFromCompassMode([player compassMode]) == "COMPASS_MODE_BASIC") ?
 										@"OO_COMPASSTYPE_BASIC" : @"OO_COMPASSTYPE_ADVANCED";
 			break;
 			
@@ -888,11 +888,11 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 			sValue = cxx_OOStringFromJSValue(context, *value_raw);
 			if (sValue.has_value()) 
 			{
-				OOLongRangeChartMode chartMode = OOLongRangeChartModeFromString(oo::NSStringOrNil(sValue));
+				OOLongRangeChartMode chartMode = cxx_OOLongRangeChartModeFromString(sValue.value_or(""));
 				if (chartMode > OOLRC_MODE_UNKNOWN)
 				{
 					[player setLongRangeChartMode:chartMode];
-					[player doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:OOStringFromLongRangeChartMode([player longRangeChartMode])];
+					[player doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([player longRangeChartMode]))];
 					return YES;
 				}
 				else
