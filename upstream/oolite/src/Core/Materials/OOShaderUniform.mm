@@ -557,12 +557,9 @@ SOFTWARE.
 		
 		case kOOShaderUniformTypeObject:
 			objVal = ((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
-			if (oo::IsNSNumber(objVal))
-			{
-				fVal = [objVal floatValue];
-				isFloat = YES;
-			}
-			else if ([objVal isKindOfClass:[OOColor class]])
+			// A colour. (The number-object case went with Foundation: no bindable method returns
+			// one - the whitelisted object-valued bindings, laserColor and fogUniform, are OOColors.)
+			if ([objVal isKindOfClass:[OOColor class]])
 			{
 				OOColor *color = objVal;
 				expVVal[0] = [color redComponent];
