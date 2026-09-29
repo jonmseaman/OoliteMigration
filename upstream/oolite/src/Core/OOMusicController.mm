@@ -234,7 +234,7 @@ enum
 
 - (std::optional<std::string>) playingMusic
 {
-	return oo::OptionalString([_current name]);
+	return [_current cxx_name];
 }
 
 
