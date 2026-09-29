@@ -124,6 +124,15 @@ std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view 
 }
 
 
+// PointFromString() of a system's "coordinates" property: a string scans; nil (and a non-string
+// value, which raised when read as a string) reads as the empty string, the zero point.
+NSPoint PointFromCoordinates(const oo::PList &coordinates)
+{
+	const std::string *string = coordinates.getIf<std::string>();
+	return cxx_PointFromString(string != nullptr ? *string : std::string());
+}
+
+
 Vector VectorForKey(const oo::PList &dict, std::string_view key, Vector fallback = kZeroVector)
 {
 	const oo::PList *value = dict.find(key);
@@ -909,7 +918,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) setSystemID:(OOSystemID) sid
 {
 	system_id = sid;
-	galaxy_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:sid inGalaxy:galaxy_number]);
+	galaxy_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:sid inGalaxy:galaxy_number]);
 	chart_centre_coordinates = galaxy_coordinates;
 	target_chart_centre = chart_centre_coordinates;
 }
@@ -936,7 +945,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) setTargetSystemID:(OOSystemID) sid
 {
 	target_system_id = sid;
-	cursor_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystemKey:[UNIVERSE keyForPlanetOverridesForSystem:sid inGalaxy:galaxy_number]]);
+	cursor_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystemKey:[UNIVERSE cxx_keyForPlanetOverridesForSystem:sid inGalaxy:galaxy_number].value_or(std::string())]);
 }
 
 
@@ -3143,7 +3152,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			system_id = target_system_id;
 			info_system_id = target_system_id;
 			[UNIVERSE setSystemTo:system_id];
-			galaxy_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+			galaxy_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
 			
 			[UNIVERSE setUpSpace];
 			// run initial system population
@@ -7622,7 +7631,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (double) hyperspaceJumpDistance
 {
-	NSPoint targetCoordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:[self nextHopTargetSystemID] inGalaxy:galaxy_number]);
+	NSPoint targetCoordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:[self nextHopTargetSystemID] inGalaxy:galaxy_number]);
 	return distanceBetweenPlanetPositions(targetCoordinates.x,targetCoordinates.y,galaxy_coordinates.x,galaxy_coordinates.y);
 }
 
@@ -7746,7 +7755,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	info_system_id = system_id;
 	
 	[self setBounty:0 withReason:kOOLegalStatusReasonNewGalaxy];	// let's make a fresh start!
-	cursor_coordinates = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
+	cursor_coordinates = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:system_id inGalaxy:galaxy_number]);
 
 	[self witchEnd]; // sets coordinates, calls exiting witchspace JS events
 }
@@ -7905,7 +7914,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	
 	// set clock after "playerWillEnterWitchspace" and before  removeAllEntitiesExceptPlayer, to allow escorts time to follow their mother. 
-	NSPoint destCoords = PointFromString([[UNIVERSE systemManager] getProperty:@"coordinates" forSystem:sTo inGalaxy:galaxy_number]);
+	NSPoint destCoords = PointFromCoordinates([[UNIVERSE systemManager] cxx_getProperty:"coordinates" forSystem:sTo inGalaxy:galaxy_number]);
 	double distance = distanceBetweenPlanetPositions(destCoords.x,destCoords.y,galaxy_coordinates.x,galaxy_coordinates.y);
 	
 	// if we just escaped a system gone nova, make sure all nova parameters are reset
