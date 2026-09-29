@@ -200,8 +200,8 @@ static void PlayTrumbleSqueal(void);
 	animationTime = 0.0;
 	animationDuration = 1.5 + randf() * 3.0;	// time until next animation
 	//
-	texture = [OOTexture textureWithName:@"trumblekit.png"
-								inFolder:@"Textures"
+	texture = [OOTexture cxx_textureWithName:"trumblekit.png"
+								inFolder:"Textures"
 								 options:kOOTextureDefaultOptions | kOOTextureNoShrink
 							  anisotropy:0.0f
 								 lodBias:kOOTextureDefaultLODBias];
@@ -596,7 +596,7 @@ static void PlayTrumbleSqueal(void);
 		{
 			ShipEntity *cargopod = (*cargopods)[i].get();
 			OOCommodityType cargo_type = [cargopod commodityType];
-			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] trumbleOpinionForGood:cargo_type];
+			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] cxx_trumbleOpinionForGood:oo::StdString(cargo_type)];
 			if (yumminess > mostYummy)
 			{
 				selectedCargopod = cargopod;

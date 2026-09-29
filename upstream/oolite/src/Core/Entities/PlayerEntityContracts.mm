@@ -146,9 +146,9 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		}
 		else if (![rescuee legacyScript].isNull())
 		{
-			[self runUnsanitizedScriptActions:oo::ObjectFromPList([rescuee legacyScript])
+			[self cxx_runUnsanitizedScriptActions:[rescuee legacyScript]
 							allowingAIMethods:YES
-							  withContextName:oo::NSStringFrom(oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str()))
+							  withContextName:oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str())
 									forTarget:nil];
 		}
 		else if ([rescuee insuranceCredits] && [rescuee legalStatus])
@@ -1207,7 +1207,7 @@ for (unsigned i=0;i<amount;i++)
 		OOColor *noScrollColor = [gui colorFromSetting:kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
 
 		const std::vector<std::string>	cargoManifest = oo::StringsFrom([self cargoList]);
-		id			missionsManifest = [self missionsList];	// strings and arrays of strings
+		id			missionsManifest = oo::ObjectFromPList([self cxx_missionsList]);	// strings and arrays of strings
 
 		NSUInteger	i = 0;
 		NSUInteger	max_rows = 20;
@@ -1904,7 +1904,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		}
 		else
 		{
-			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
+			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
 		}
 	}
 
@@ -1966,7 +1966,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 		}
 		else
 		{
-			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
+			[self addEquipmentItem:eq_key.value_or(std::string()) withValidation:YES inContext:"newShip"];	// none: "", as nil was
 		}
 	}
 
@@ -2005,24 +2005,24 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 
 	// not retained - weapon types are references to the objects in OOEquipmentType's cache
 	if (available_facings & WEAPON_FACING_AFT)
-		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "aft_weapon_type")));
+		aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "aft_weapon_type").value_or(""));
 	else
-		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_PORT)
-		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "port_weapon_type")));
+		port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "port_weapon_type").value_or(""));
 	else
-		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_STARBOARD)
-		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "starboard_weapon_type")));
+		starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "starboard_weapon_type").value_or(""));
 	else
-		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_FORWARD)
-		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "forward_weapon_type")));
+		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(OptionalStringForKey(shipDict, "forward_weapon_type").value_or(""));
 	else
-		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 	
 	// new ships start with weapons online
 	weapons_online = 1;
@@ -2057,7 +2057,7 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	// restore  portable equipment (in key order; the set it replaced gave hash order)
 	for (const std::string &eq_desc : portable_equipment)
 	{
-		[self addEquipmentItem:oo::NSStringFrom(eq_desc) withValidation:NO inContext:@"portable"];
+		[self addEquipmentItem:eq_desc withValidation:NO inContext:"portable"];
 	}
 
 

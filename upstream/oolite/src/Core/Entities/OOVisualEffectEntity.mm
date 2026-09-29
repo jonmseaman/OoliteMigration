@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 
 #import "OOColor.h"
 #import "OOPolygonSprite.h"
+#import "HeadUpDisplay.h"
 
 #import "OOFlasherEntity.h"
 
@@ -784,13 +785,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 {
 	oo::PList::Dict propertyList;
 	propertyList["visualEffect"] = oo::PListObject(self);
-	id properties = oo::ObjectFromPList(oo::PList(std::move(propertyList)));
+	const oo::PList properties(std::move(propertyList));
 
 	[script autorelease];
-	script = [OOScript jsScriptFromFileNamed:oo::NSStringOrNil(script_name) properties:properties];
+	script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:properties];
 	// does not support legacy scripting
 	if (script == nil) {
-		script = [OOScript jsScriptFromFileNamed:@"oolite-default-effect-script.js" properties:properties];
+		script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-effect-script.js" properties:properties];
 	}
 	[script retain];
 }
@@ -898,8 +899,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [oo::NSStringFrom(oo::utf16ToUtf8(beaconCode.substr(0, 1))) retain];	// -substringToIndex:1
-			else  _beaconDrawable = @"";
+			if (length > 0)  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
 		}
 	}
 	

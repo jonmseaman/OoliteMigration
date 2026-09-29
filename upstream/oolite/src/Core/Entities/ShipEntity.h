@@ -579,7 +579,7 @@ typedef enum
 
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
 - (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
-- (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
@@ -611,12 +611,12 @@ typedef enum
 - (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType;
 - (BOOL) hasAllEquipment:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;		// Like hasEquipmentItem:includeWeapons:, but requires _all_ elements in collection.
 - (BOOL) hasAllEquipment:(id)equipmentKeys;				// Short for hasAllEquipment:foo includeWeapons:NO
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
-- (BOOL) canAddEquipment:(id)equipmentKey inContext:(id)context;		// shared selector (proposed ADR-0043): Objective-C strings. Test ability to add equipment, taking equipment-specific constriants into account.
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context;		// flipped with its family (bead oo-3rb.258). Test ability to add equipment, taking equipment-specific constriants into account.
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context;
-- (BOOL) addEquipmentItem:(id)equipmentKey inContext:(id)context;	// shared selector (proposed ADR-0043): Objective-C strings
-- (BOOL) addEquipmentItem:(id)equipmentKey withValidation:(BOOL)validateAddition inContext:(id)context;	// shared selector (proposed ADR-0043): Objective-C strings
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) hasHyperspaceMotor;
 - (float) hyperspaceSpinTime;
 - (void) setHyperspaceSpinTime:(float)newValue;
@@ -624,7 +624,7 @@ typedef enum
 
 - (std::vector<std::string>) cxx_equipmentKeys;	// a snapshot, in order added
 - (NSUInteger) equipmentCount;
-- (void) removeEquipmentItem:(id)equipmentKey;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) removeEquipmentItem:(const std::string &)equipmentKey;	// flipped with its family (bead oo-3rb.258)
 - (void) removeAllEquipment;
 - (OOEquipmentType *) selectMissile;
 - (OOCreditsQuantity) removeMissiles;
@@ -1321,8 +1321,7 @@ BOOL isWeaponNone(OOWeaponType weapon);
 }
 #endif
 
-// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
-// in ShipEntity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161).
 std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
 std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
 

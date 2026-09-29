@@ -989,7 +989,7 @@ constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify
 }
 
 
-- (void) takeEnergyDamage:(double) amount from:(Entity *) ent becauseOf:(Entity *) other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043)
+- (void) takeEnergyDamage:(double) amount from:(Entity *) ent becauseOf:(Entity *) other weaponIdentifier:(const std::string &)weaponIdentifier
 {
 	
 }

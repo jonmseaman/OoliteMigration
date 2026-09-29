@@ -202,7 +202,7 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 		
 		_cacheKey = [self constructCacheKey];
 		
-		if ([OOTexture existingTextureForKey:oo::NSStringFrom(_cacheKey)] == nil)
+		if ([OOTexture cxx_existingTextureForKey:_cacheKey] == nil)
 		{
 			/*	Extract pixmap from diffuse map. This must be done in the main
 				thread even if scheduling is fixed, because it might involve

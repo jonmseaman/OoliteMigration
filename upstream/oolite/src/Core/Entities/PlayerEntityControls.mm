@@ -1477,7 +1477,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if (!fastactivate_a_pressed)
 					{
-						[self activatePrimableEquipment:[self eqScriptIndexForKey:[self fastEquipmentA]] withMode:OOPRIMEDEQUIP_ACTIVATED];
+						[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:[self cxx_fastEquipmentA].value_or("")] withMode:OOPRIMEDEQUIP_ACTIVATED];
 					}
 					fastactivate_a_pressed = YES;
 				}
@@ -1488,7 +1488,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if (!fastactivate_b_pressed)
 					{
-						[self activatePrimableEquipment:[self eqScriptIndexForKey:[self fastEquipmentB]] withMode:OOPRIMEDEQUIP_ACTIVATED];
+						[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:[self cxx_fastEquipmentB].value_or("")] withMode:OOPRIMEDEQUIP_ACTIVATED];
 					}
 					fastactivate_b_pressed = YES;
 				}
@@ -1514,7 +1514,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							if (!customActivatePressed[i])
 							{
 								// initate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_ACTIVATED];
+								[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:equipKey] withMode:OOPRIMEDEQUIP_ACTIVATED];
 							}
 							customActivatePressed[i] = YES;
 						}
@@ -1526,7 +1526,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							if (!customModePressed[i])
 							{
 								// initiate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_MODE];
+								[self activatePrimableEquipment:[self cxx_eqScriptIndexForKey:equipKey] withMode:OOPRIMEDEQUIP_MODE];
 							}
 							customModePressed[i] = YES;
 						}
@@ -2130,7 +2130,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 						[self setLongRangeChartMode:OOLRC_MODE_SUNCOLOR];
 					}
-					[self doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:OOStringFromLongRangeChartMode([self longRangeChartMode])];
+					[self doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([self longRangeChartMode]))];
 				}
 				queryPressed = YES;
 			}
@@ -2691,12 +2691,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				if (weaponType != nil)
 				{
-					BOOL		sameAs = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil([gui cxx_selectedRowKey])) == weaponType;
+					BOOL		sameAs = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy([gui cxx_selectedRowKey].value_or("")) == weaponType;
 					// override showInformation _completely_ with itemText
 					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)] name]);
+						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] name]);
 						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
 						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}
@@ -3034,7 +3034,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					OOCreditsQuantity shipprice = 0;
 					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
-						shipprice = [self priceForShipKey:oo::NSStringOrNil(key)];
+						shipprice = [self cxx_priceForShipKey:key.value_or("")];
 					}
 
 					if ([self buySelectedShip])

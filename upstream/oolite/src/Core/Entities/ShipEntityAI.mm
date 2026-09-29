@@ -277,12 +277,12 @@ using ooscript::Context;
 	}
 	if ([aiString hasSuffix:@".plist"])
 	{
-		[[self getAI] setStateMachine:aiString withJSScript:@"oolite-nullAI.js"];
+		[[self getAI] cxx_setStateMachine:oo::StdString(aiString) withJSScript:"oolite-nullAI.js"];
 		[self setAIScript:"oolite-nullAI.js"];
 	}
 	else if ([aiString hasSuffix:@".js"])
 	{
-		[[self getAI] setStateMachine:@"nullAI.plist" withJSScript:aiString];
+		[[self getAI] cxx_setStateMachine:"nullAI.plist" withJSScript:oo::StdString(aiString)];
 		[self setAIScript:oo::StdString(aiString)];
 	}
 	else
@@ -364,7 +364,7 @@ using ooscript::Context;
 	if ([self group] == nil)		// ship is alone!
 	{
 		[self setFoundTarget:target];
-		[shipAI reactToMessage:@"GROUP_ATTACK_TARGET" context:@"groupAttackTarget"];
+		[shipAI cxx_reactToMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
 		[self doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
 		return;
 	}
@@ -860,7 +860,7 @@ using ooscript::Context;
 
 - (void) setStateTo:(NSString *)state
 {
-	[[self getAI] setState:state];
+	[[self getAI] cxx_setState:oo::StdString(state)];
 }
 
 
@@ -902,7 +902,7 @@ using ooscript::Context;
 	foreach (message, messages)
 	{
 		const std::string trimmed = oo::str::trimTrailing(oo::str::trimLeading(oo::StdString(message), isWhitespaceNotNewline), isWhitespaceNotNewline);
-		[shipAI dropMessage:oo::NSStringFrom(trimmed)];
+		[shipAI cxx_dropMessage:trimmed];
 	}
 }
 
@@ -1437,7 +1437,7 @@ using ooscript::Context;
 - (void) exitAIWithMessage:(NSString *)message
 {
 	if ([message length] == 0)  message = @"RESTARTED";
-	[shipAI exitStateMachineWithMessage:message];
+	[shipAI cxx_exitStateMachineWithMessage:oo::OptionalString(message)];
 }
 
 
@@ -1473,7 +1473,7 @@ using ooscript::Context;
 	{
 		if ([hazard isShip] && (weapon_damage * 24.0 > [hazard energy]))
 		{
-			[shipAI reactToMessage:@"HAZARD_CAN_BE_DESTROYED" context:@"checkCourseToDestination"];
+			[shipAI cxx_reactToMessage:"HAZARD_CAN_BE_DESTROYED" context:"checkCourseToDestination"];
 		}
 		
 		_destination = [UNIVERSE getSafeVectorFromEntity:self toDistance:desired_range fromPoint:_destination];
@@ -2290,7 +2290,7 @@ using ooscript::Context;
 	{
 		int die_roll = 1 + (ranrot_rand() % die_sides);
 		NSString* result = [NSString stringWithFormat:@"ROLL_%d", die_roll];
-		[shipAI reactToMessage:result context:@"rollD:"];
+		[shipAI cxx_reactToMessage:oo::StdString(result) context:"rollD:"];
 	}
 	else
 	{
@@ -2595,11 +2595,11 @@ using ooscript::Context;
 	if (!deprecationWarning)
 	{
 		deprecationWarning = YES;
-		OO_LOG("script.deprecated.scriptActionOnTarget", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", oo::DescriptionOf([AI currentlyRunningAIDescription]));
+		OO_LOG("script.deprecated.scriptActionOnTarget", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used. It is slow and has unpredictable side effects. The recommended alternative is to use sendScriptMessage: to call a function in a ship's JavaScript ship script instead. scriptActionOnTarget: should not be used at all from scripts. An alternative is safeScriptActionOnTarget:, which is similar to scriptActionOnTarget: but has less side effects.", [AI cxx_currentlyRunningAIDescription].value_or("(null)"));
 	}
 	else
 	{
-		OO_LOG("script.deprecated.scriptActionOnTarget.repeat", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used.", oo::DescriptionOf([AI currentlyRunningAIDescription]));
+		OO_LOG("script.deprecated.scriptActionOnTarget.repeat", "----- WARNING in AI {}: the AI method scriptActionOnTarget: is deprecated and should not be used.", [AI cxx_currentlyRunningAIDescription].value_or("(null)"));
 	}
 #endif
 	
@@ -2607,9 +2607,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])]
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player checkScript];	// react immediately to any changes this makes
 		[player setScriptTarget:oldTarget];
@@ -2627,9 +2627,9 @@ using ooscript::Context;
 	{
 		oldTarget = [player scriptTarget];
 		[player setScriptTarget:(ShipEntity*)targEnt];
-		[player runUnsanitizedScriptActions:[NSArray arrayWithObject:action]
+		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])]
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player setScriptTarget:oldTarget];
 	}
@@ -2784,7 +2784,7 @@ using ooscript::Context;
 {
 	if(![self hasHyperspaceMotor])
 	{
-		[shipAI reactToMessage:@"WITCHSPACE UNAVAILABLE" context:@"performHyperSpaceExit"];
+		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
 		return NO;
 	}
 	if([self status] == STATUS_ENTERING_WITCHSPACE)
@@ -2804,7 +2804,7 @@ using ooscript::Context;
 	// if none available report to the AI and exit
 	if (n_dests == 0)
 	{
-		[shipAI reactToMessage:@"WITCHSPACE UNAVAILABLE" context:@"performHyperSpaceExit"];
+		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
 		
 		// If no systems exist near us, the AI is switched to a different state, so we do not need
 		// the nearby destinations array anymore.
@@ -2816,7 +2816,7 @@ using ooscript::Context;
 	if (blocker)
 	{
 		[self setFoundTarget:blocker];
-		[shipAI reactToMessage:@"WITCHSPACE BLOCKED" context:@"performHyperSpaceExit"];
+		[shipAI cxx_reactToMessage:"WITCHSPACE BLOCKED" context:"performHyperSpaceExit"];
 		[self doScriptEvent:OOJSID("shipWitchspaceBlocked") withArgument:blocker];
 
 		return NO;
@@ -2912,7 +2912,7 @@ using ooscript::Context;
 #ifndef NDEBUG
 	context = [NSString stringWithFormat:@"%@ broadcastDistressMessage", [other shortDescription]];
 #endif
-	[shipAI reactToMessage:@"ACCEPT_DISTRESS_CALL" context:context];
+	[shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:oo::OptionalString(context)];
 	
 }
 

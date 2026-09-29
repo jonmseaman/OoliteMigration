@@ -432,7 +432,7 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 		case kConsole_detailLevel:
 			sValue = cxx_OOStringFromJSValue(context, *value);
 			OOJS_BEGIN_FULL_NATIVE(context)
-			[UNIVERSE setDetailLevel:OOGraphicsDetailFromString(oo::NSStringOrNil(sValue))];
+			[UNIVERSE setDetailLevel:cxx_OOGraphicsDetailFromString(sValue.value_or(""))];
 			OOJS_END_FULL_NATIVE
 			break;
 			

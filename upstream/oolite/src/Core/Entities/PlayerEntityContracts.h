@@ -121,11 +121,3 @@ MA 02110-1301, USA.
 - (void) newShipCommonSetup:(const std::string &)shipKey yardInfo:(const oo::PList &)ship_info baseInfo:(const oo::PList &)ship_base_dict;
 
 @end
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-3rb.179 (chunks of oo-ldqo), forwarding to the cxx_ methods above, so
-	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads; the
-	bridge goes in its own bead.
-*/
-#import "PlayerEntityContracts+FoundationBridge.h"
