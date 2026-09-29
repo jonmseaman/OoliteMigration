@@ -150,7 +150,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 {
 	// determine the planet of origin
 	const oo::PList originInfo = [UNIVERSE cxx_generateSystemData:[self planetIDOfOrigin]];
-	const oo::PList *name = originInfo.find(oo::StdString(KEY_NAME));
+	const oo::PList *name = originInfo.find(std::string(KEY_NAME));
 	if (name == nullptr || !name->isString())  return std::nullopt;	// (the value was returned as it stood; it is a string)
 	return *name->getIf<std::string>();
 }
@@ -193,8 +193,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 
 	// determine the planet of origin
 	const oo::PList originInfo = [UNIVERSE cxx_generateSystemData:[self planetIDOfOrigin]];
-	const std::optional<std::string> planet = OptionalStringForKey(originInfo, oo::StdString(KEY_NAME));
-	OOGovernmentID government = originInfo.get<int>(oo::StdString(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable)
+	const std::optional<std::string> planet = OptionalStringForKey(originInfo, std::string(KEY_NAME));
+	OOGovernmentID government = originInfo.get<int>(std::string(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable)
 	int criminalTendency = government ^ 0x07;
 
 	// determine the character's species

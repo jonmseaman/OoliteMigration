@@ -625,7 +625,7 @@ std::string Bars(char mark, int count)
 	tabStop[1] = 140;
 	[gui setTabStops:tabStop];
 	[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("oolite-stickprofile-axis"), [self currentAxis] }) forRow: GUI_ROW_STICKPROFILE_AXIS];
-	[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_AXIS];
+	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_AXIS];
 	value = [profile deadzone];
 	bars = (int)(20 * value / STICK_MAX_DEADZONE + 0.5);
 	if (bars < 0) bars = 0;
@@ -636,9 +636,9 @@ std::string Bars(char mark, int count)
 			Bars('|', bars).c_str(),
 			Bars('.', 20 - bars).c_str(),
 			value) }) forRow: GUI_ROW_STICKPROFILE_DEADZONE];
-	[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_DEADZONE];
+	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_DEADZONE];
 	[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("oolite-stickprofile-profile-type"), [self profileType] }) forRow: GUI_ROW_STICKPROFILE_PROFILE_TYPE];
-	[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_PROFILE_TYPE];
+	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_PROFILE_TYPE];
 	if ([profile isKindOfClass:[OOJoystickStandardAxisProfile class]])
 	{
 		standard_profile = (OOJoystickStandardAxisProfile*) profile;
@@ -648,26 +648,26 @@ std::string Bars(char mark, int count)
 		if (bars > 20) bars = 20;
 		[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("oolite-stickprofile-range"),
 			oo::str::format("%s%s (%.1f) ", Bars('|', bars).c_str(), Bars('.', 20 - bars).c_str(), power) }) forRow: GUI_ROW_STICKPROFILE_POWER];
-		[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_POWER];
+		[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_POWER];
 		value = [standard_profile parameter];
 		bars = 20*value;
 		if (bars < 0) bars = 0;
 		if (bars > 20) bars = 20;
 		[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("oolite-stickprofile-sensitivity"),
 			oo::str::format("%s%s (%0.2f) ", Bars('|', bars).c_str(), Bars('.', 20 - bars).c_str(), value) }) forRow: GUI_ROW_STICKPROFILE_PARAM];
-		[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_PARAM];
+		[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_PARAM];
 		[gui setColor:[OOColor yellowColor] forRow: GUI_ROW_STICKPROFILE_PARAM];
 	}
 	else
 	{
 		[gui cxx_setText: std::string() forRow: GUI_ROW_STICKPROFILE_POWER];
-		[gui cxx_setKey: oo::StdString(GUI_KEY_SKIP) forRow: GUI_ROW_STICKPROFILE_POWER];
+		[gui cxx_setKey: std::string(GUI_KEY_SKIP) forRow: GUI_ROW_STICKPROFILE_POWER];
 		[gui cxx_setText: OO_DESC("oolite-stickprofile-spline-instructions") forRow: GUI_ROW_STICKPROFILE_PARAM];
-		[gui cxx_setKey: oo::StdString(GUI_KEY_SKIP) forRow: GUI_ROW_STICKPROFILE_PARAM];
+		[gui cxx_setKey: std::string(GUI_KEY_SKIP) forRow: GUI_ROW_STICKPROFILE_PARAM];
 		[gui setColor:[OOColor magentaColor] forRow: GUI_ROW_STICKPROFILE_PARAM];
 	}
 	[gui cxx_setText: OO_DESC("gui-back") forRow: GUI_ROW_STICKPROFILE_BACK];
-	[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_BACK];
+	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_BACK];
 	[gui setSelectableRange: NSMakeRange(1, GUI_ROW_STICKPROFILE_BACK)];
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	[gui cxx_setForegroundTextureKey:std::string([PLAYER status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];

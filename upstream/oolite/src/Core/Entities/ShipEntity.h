@@ -33,6 +33,7 @@
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include <string_view>
 
 @class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript, OOCharacter,
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
@@ -96,7 +97,7 @@
 
 #define TRACTOR_FORCE					2500.0f
 
-#define AIMS_AGGRESSOR_SWITCHED_TARGET	@"AGGRESSOR_SWITCHED_TARGET"
+inline constexpr std::string_view AIMS_AGGRESSOR_SWITCHED_TARGET	= "AGGRESSOR_SWITCHED_TARGET";
 
 // number of vessels considered when scanning around
 #define MAX_SCAN_NUMBER					32

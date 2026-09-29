@@ -330,14 +330,14 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 
 	// load custom equipment keys/buttons (the live entries, edited in place)
-	const oo::PList savedCustomEquip = defaults.arrayForKey(oo::StdString(KEYCONFIG_CUSTOMEQUIP));
+	const oo::PList savedCustomEquip = defaults.arrayForKey(std::string(KEYCONFIG_CUSTOMEQUIP));
 	const oo::PList::Array *customEntries = savedCustomEquip.getIf<oo::PList::Array>();
 	customEquipActivation = (customEntries != nullptr) ? *customEntries : std::vector<oo::PList>();
 	customActivatePressed.assign(customEquipActivation.size(), NO);
 	customModePressed.assign(customEquipActivation.size(), NO);
 
 	// update with overrides from defaults file (unprocessed, as before)
-	const oo::PList overrides = defaults.object(oo::StdString(KEYCONFIG_OVERRIDES));
+	const oo::PList overrides = defaults.object(std::string(KEYCONFIG_OVERRIDES));
 	if (const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>())
 	{
 		for (const auto &entry : *dict)  kdic2[entry.first] = entry.second;
@@ -1491,17 +1491,17 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				for (std::size_t i = 0; i < customEquipActivation.size(); i++)
 				{
 					const oo::PList &item = customEquipActivation[i];
-					const std::string equipKey = item.get<std::string>(oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+					const std::string equipKey = item.get<std::string>(std::string(CUSTOMEQUIP_EQUIPKEY));
 					// check if the player has the equip item installed
 					if ([self cxx_hasOneEquipmentItem:equipKey includeWeapons:NO whileLoading:NO])
 					{
-						const oo::PList *key_act = item.get<oo::PList::Array>(oo::StdString(CUSTOMEQUIP_KEYACTIVATE));
-						const oo::PList *key_mod = item.get<oo::PList::Array>(oo::StdString(CUSTOMEQUIP_KEYMODE));
-						const oo::PList *but_act = item.get<oo::PList::Dict>(oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE));
-						const oo::PList *but_mod = item.get<oo::PList::Dict>(oo::StdString(CUSTOMEQUIP_BUTTONMODE));
+						const oo::PList *key_act = item.get<oo::PList::Array>(std::string(CUSTOMEQUIP_KEYACTIVATE));
+						const oo::PList *key_mod = item.get<oo::PList::Array>(std::string(CUSTOMEQUIP_KEYMODE));
+						const oo::PList *but_act = item.get<oo::PList::Dict>(std::string(CUSTOMEQUIP_BUTTONACTIVATE));
+						const oo::PList *but_mod = item.get<oo::PList::Dict>(std::string(CUSTOMEQUIP_BUTTONMODE));
 						// if so,
 						// check to see if the key or button was pressed for activate
-						if ((key_act != nullptr && [self checkKeyPress:*key_act]) || (but_act != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_act->get<int>(oo::StdString(STICK_AXBUT)) stick:but_act->get<int>(oo::StdString(STICK_NUMBER))]))
+						if ((key_act != nullptr && [self checkKeyPress:*key_act]) || (but_act != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_act->get<int>(std::string(STICK_AXBUT)) stick:but_act->get<int>(std::string(STICK_NUMBER))]))
 						{
 							if (!customActivatePressed[i])
 							{
@@ -1513,7 +1513,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						else customActivatePressed[i] = NO;
 
 						// check to see if the key or button was pressed for mode
-						if ((key_mod != nullptr && [self checkKeyPress:*key_mod]) || (but_mod != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_mod->get<int>(oo::StdString(STICK_AXBUT)) stick:but_mod->get<int>(oo::StdString(STICK_NUMBER))]))
+						if ((key_mod != nullptr && [self checkKeyPress:*key_mod]) || (but_mod != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_mod->get<int>(std::string(STICK_AXBUT)) stick:but_mod->get<int>(std::string(STICK_NUMBER))]))
 						{
 							if (!customModePressed[i])
 							{
@@ -2621,7 +2621,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if ((guiSelectedRow == GUI_ROW(,BEGIN_NEW))&&(!disc_operation_in_progress))
 				{
 					disc_operation_in_progress = YES;
-					[UNIVERSE cxx_setUseAddOns:oo::StdString(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
+					[UNIVERSE cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
 				}
 				
 				if ([gameView isDown:gvMouseDoubleClick])
@@ -2656,10 +2656,10 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				std::optional<std::string>	itemText = [gui cxx_selectedRowText];	// nil compares unequal, as -isEqual: on nil
 				OOWeaponType		weaponType = nil;
 
-				if (itemText == oo::StdString(FORWARD_FACING_STRING)) weaponType = forward_weapon_type;
-				if (itemText == oo::StdString(AFT_FACING_STRING)) weaponType = aft_weapon_type;
-				if (itemText == oo::StdString(PORT_FACING_STRING)) weaponType = port_weapon_type;
-				if (itemText == oo::StdString(STARBOARD_FACING_STRING)) weaponType = starboard_weapon_type;
+				if (itemText == FORWARD_FACING_STRING) weaponType = forward_weapon_type;
+				if (itemText == AFT_FACING_STRING) weaponType = aft_weapon_type;
+				if (itemText == PORT_FACING_STRING) weaponType = port_weapon_type;
+				if (itemText == STARBOARD_FACING_STRING) weaponType = starboard_weapon_type;
 
 				if (weaponType != nil)
 				{
@@ -2854,7 +2854,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW] == oo::StdString(GUI_KEY_OK)))
+					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW] == std::string(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW];
 						[self playMenuPagePrevious];
@@ -2870,7 +2870,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
 					NSUInteger maxRows = [[self hud] allowBigGui] ? STATUS_EQUIPMENT_MAX_ROWS + STATUS_EQUIPMENT_BIGGUI_EXTRA_ROWS : STATUS_EQUIPMENT_MAX_ROWS;
-					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] == oo::StdString(GUI_KEY_OK)))
+					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] == std::string(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows];
 						[self playMenuPageNext];
@@ -2910,7 +2910,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (([gui cxx_keyForRow:MANIFEST_SCREEN_ROW_BACK] == oo::StdString(GUI_KEY_OK)))
+					if (([gui cxx_keyForRow:MANIFEST_SCREEN_ROW_BACK] == std::string(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:MANIFEST_SCREEN_ROW_BACK];
 						[self playMenuPagePrevious];
@@ -2929,7 +2929,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				}
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if (([gui cxx_keyForRow:nextRow] == oo::StdString(GUI_KEY_OK)))
+					if (([gui cxx_keyForRow:nextRow] == std::string(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:nextRow];
 						[self playMenuPageNext];
@@ -3488,9 +3488,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		
 		const oo::PList	*modeEntry = modes.at(static_cast<std::size_t>(displayModeIndex));
 		const oo::PList	mode = (modeEntry != nullptr) ? *modeEntry : oo::PList();
-		int modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
-		int modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
-		int modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
+		int modeWidth = mode.get<int>(std::string(kOODisplayWidth));
+		int modeHeight = mode.get<int>(std::string(kOODisplayHeight));
+		int modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
 		[controller setDisplayWidth:modeWidth Height:modeHeight Refresh:modeRefresh];
 
 		const std::string displayModeString = [self cxx_screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh].value_or("");
@@ -3852,7 +3852,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 			const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
 			[gui cxx_setText:ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 
 			timeLastKeyPress = script_time;
 			
@@ -5589,7 +5589,7 @@ static BOOL autopilot_pause;
 		{
 			// there's a slight chance you'll be fined for your past offences when autodocking
 			int fine_chance = ranrot_rand() & 0x03ff;	//	0..1023
-			int government = 1 + [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_GOVERNMENT));	// 1..8
+			int government = 1 + [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_GOVERNMENT));	// 1..8
 			if ([UNIVERSE inInterstellarSpace])  government = 2;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
 			fine_chance /= government;
 			if (fine_chance < legalStatus)

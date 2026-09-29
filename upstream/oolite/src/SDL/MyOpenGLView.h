@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 
 
 #include <SDL3/SDL_video.h>
+#include <string_view>
 
 #define WINDOW_SIZE_DEFAULT_WIDTH	1280
 #define WINDOW_SIZE_DEFAULT_HEIGHT	720
@@ -65,8 +66,8 @@ MA 02110-1301, USA.
 #define OOMOUSEWHEEL_DELTA	120 // Same as Windows WHEEL_DELTA
 
 #define SNAPSHOTS_PNG_FORMAT		1
-#define SNAPSHOTHDR_EXTENSION_EXR	@".exr"
-#define SNAPSHOTHDR_EXTENSION_HDR	@".hdr"
+inline constexpr std::string_view SNAPSHOTHDR_EXTENSION_EXR	= ".exr";
+inline constexpr std::string_view SNAPSHOTHDR_EXTENSION_HDR	= ".hdr";
 #define SNAPSHOTHDR_EXTENSION_DEFAULT	SNAPSHOTHDR_EXTENSION_EXR
 
 @class Entity, GameController, OpenGLSprite;

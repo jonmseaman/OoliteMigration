@@ -68,9 +68,9 @@ MA 02110-1301, USA.
 	
 	// Load preferred display mode, falling back to current mode if no preferences set.
 	const oo::PList currentMode = [fullScreenController currentDisplayMode];
-	NSUInteger width = currentMode.get<NSUInteger>(oo::StdString(kOODisplayWidth));
-	NSUInteger height = currentMode.get<NSUInteger>(oo::StdString(kOODisplayHeight));
-	NSUInteger refresh = currentMode.get<NSUInteger>(oo::StdString(kOODisplayRefreshRate));
+	NSUInteger width = currentMode.get<NSUInteger>(std::string(kOODisplayWidth));
+	NSUInteger height = currentMode.get<NSUInteger>(std::string(kOODisplayHeight));
+	NSUInteger refresh = currentMode.get<NSUInteger>(std::string(kOODisplayRefreshRate));
 	
 	oo::Defaults &userDefaults = oo::Defaults::standard();
 	width = userDefaults.object("display_width").isNull() ? width : static_cast<NSUInteger>(userDefaults.integerForKey("display_width"));

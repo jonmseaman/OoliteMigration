@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include <string_view>
 
 
 // Enums are used here rather than a more complex ObjC object because
@@ -149,15 +150,15 @@ enum {
 #define AXCBTHRESH 20000
 
 // Dictionary keys - used in the defaults file
-#define AXIS_SETTINGS @"JoystickAxes"  // oo::Defaults key
-#define BUTTON_SETTINGS @"JoystickButs" // oo::Defaults key
-#define STICK_ISAXIS @"isAxis"      // YES=axis NO=button
-#define STICK_NUMBER @"stickNum"    // Stick number 0 to 4
-#define STICK_AXBUT  @"stickAxBt"   // Axis or button number
+inline constexpr std::string_view AXIS_SETTINGS = "JoystickAxes";  // oo::Defaults key
+inline constexpr std::string_view BUTTON_SETTINGS = "JoystickButs"; // oo::Defaults key
+inline constexpr std::string_view STICK_ISAXIS = "isAxis";      // YES=axis NO=button
+inline constexpr std::string_view STICK_NUMBER = "stickNum";    // Stick number 0 to 4
+inline constexpr std::string_view STICK_AXBUT  = "stickAxBt";   // Axis or button number
 #define STICK_FUNCTION @"stickFunc" // Function of axis/button
-#define STICK_ROLL_AXIS_PROFILE_SETTING @"RollAxisProfile" // Joystick Profiles
-#define STICK_PITCH_AXIS_PROFILE_SETTING @"PitchAxisProfile" // Joystick Profiles
-#define STICK_YAW_AXIS_PROFILE_SETTING @"YawAxisProfile" // Joystick Profiles
+inline constexpr std::string_view STICK_ROLL_AXIS_PROFILE_SETTING = "RollAxisProfile"; // Joystick Profiles
+inline constexpr std::string_view STICK_PITCH_AXIS_PROFILE_SETTING = "PitchAxisProfile"; // Joystick Profiles
+inline constexpr std::string_view STICK_YAW_AXIS_PROFILE_SETTING = "YawAxisProfile"; // Joystick Profiles
 // shortcut to make code more readable when using enum as key for
 // a dictionary: a std::string (oofnd/String.hpp)
 #define ENUMKEY(x) oo::str::format("%d", x)

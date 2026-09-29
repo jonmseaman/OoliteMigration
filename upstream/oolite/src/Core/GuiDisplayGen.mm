@@ -734,7 +734,7 @@ static BOOL _refreshStarChart = NO;
 		[self cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
 		[self setColor:textColor forRow:i];
 		//
-		[self cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
+		[self cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
 		//
 		rowFadeTime[i] = 0.0f;
 	}
@@ -1992,12 +1992,12 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			}
 			else
 			{
-				nearby_systems[ num_nearby_systems ].tec = sys_info.get<int>(oo::StdString(KEY_TECHLEVEL));
-				nearby_systems[ num_nearby_systems ].eco = sys_info.get<int>(oo::StdString(KEY_ECONOMY));
-				nearby_systems[ num_nearby_systems ].gov = sys_info.get<int>(oo::StdString(KEY_GOVERNMENT));
+				nearby_systems[ num_nearby_systems ].tec = sys_info.get<int>(std::string(KEY_TECHLEVEL));
+				nearby_systems[ num_nearby_systems ].eco = sys_info.get<int>(std::string(KEY_ECONOMY));
+				nearby_systems[ num_nearby_systems ].gov = sys_info.get<int>(std::string(KEY_GOVERNMENT));
 			}
 			nearby_systems[ num_nearby_systems ].sysid = i;
-			nearby_systems[ num_nearby_systems ].p_name = sys_info.get<std::string>(oo::StdString(KEY_NAME));
+			nearby_systems[ num_nearby_systems ].p_name = sys_info.get<std::string>(std::string(KEY_NAME));
 			nearby_systems[ num_nearby_systems ].nova = [UNIVERSE cxx_generateSystemData:i].get<bool>("sun_gone_nova");
 			num_nearby_systems++;
 		}

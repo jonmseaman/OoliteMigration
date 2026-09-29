@@ -782,7 +782,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// prefs value no longer used - per save game but startup needs to
 	// be non-strict
-	useAddOns = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
+	useAddOns = std::string(SCENARIO_OXP_DEFINITION_ALL);
 	
 	[self setGameView:inGameView];
 	gSharedUniverse = self;
@@ -1455,7 +1455,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	id			dict_object;
 
 	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
-	unsigned			techlevel = systeminfo.get<unsigned int>(oo::StdString(KEY_TECHLEVEL));
+	unsigned			techlevel = systeminfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
 	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
 	OOColor				*bgcolor;
 	OOColor				*pale_bgcolor;
@@ -1636,9 +1636,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		sunSettings["corona_flare"] = oo::PList::singleReal(defaultSunFlare);
 	}
-	if (const oo::PList *value = systeminfo.find(oo::StdString(KEY_SUNNAME)))
+	if (const oo::PList *value = systeminfo.find(std::string(KEY_SUNNAME)))
 	{
-		sunSettings[oo::StdString(KEY_SUNNAME)] = *value;
+		sunSettings[std::string(KEY_SUNNAME)] = *value;
 	}
 	const oo::PList sun_dict(std::move(sunSettings));
 #ifdef OO_DUMP_PLANETINFO
@@ -2769,7 +2769,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGovernmentID		government;
 
 	systeminfo = [self cxx_currentSystemData];
- 	government = systeminfo.get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
+ 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
 
 	ship = [self cxx_newShipWithRole:role];   // retain count = 1
 	
@@ -2920,7 +2920,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			uint8_t pendingEscortCount = [ship pendingEscortCount];
 			if (pendingEscortCount > 0)
 			{
-				OOGovernmentID government = [self cxx_currentSystemData].get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
+				OOGovernmentID government = [self cxx_currentSystemData].get<unsigned char>(std::string(KEY_GOVERNMENT));
 				if ((Ranrot() % 7) < government)	// remove escorts if we feel safe
 				{
 					int nx = pendingEscortCount - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
@@ -3275,7 +3275,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	else
 	{
-		[self cxx_setUseAddOns:oo::StdString(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
+		[self cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
 	} 
 }
 
@@ -3373,7 +3373,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	if (justCobra)
 	{
 		/*- cobra - intro1 -*/
-		ship = [self cxx_newShipWithName:oo::StdString(PLAYER_SHIP_DESC) usePlayerProxy:YES];
+		ship = [self cxx_newShipWithName:std::string(PLAYER_SHIP_DESC) usePlayerProxy:YES];
 	}
 	else
 	{
@@ -8198,7 +8198,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	targetSystemID = s;
 
 	systemData = [self cxx_generateSystemData:targetSystemID];
-	economy = systemData.get<unsigned char>(oo::StdString(KEY_ECONOMY));
+	economy = systemData.get<unsigned char>(std::string(KEY_ECONOMY));
 	scriptName = OptionalStringIn(systemData, "market_script");
 
 	DESTROY(commodityMarket);
@@ -8593,15 +8593,15 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 			const oo::PList minusOne = oo::PList::signedInteger(-1);
 			const oo::PList zero = oo::PList::signedInteger(0);
 			interstellarDict = oo::PList(oo::PList::Dict{
-								{ oo::StdString(KEY_NAME), oo::PList(interstellarName) },
-								{ oo::StdString(KEY_GOVERNMENT), minusOne },
-								{ oo::StdString(KEY_ECONOMY), minusOne },
-								{ oo::StdString(KEY_TECHLEVEL), minusOne },
-								{ oo::StdString(KEY_POPULATION), zero },
-								{ oo::StdString(KEY_PRODUCTIVITY), zero },
-								{ oo::StdString(KEY_RADIUS), zero },
-								{ oo::StdString(KEY_INHABITANTS), oo::PList(notApplicable) },
-								{ oo::StdString(KEY_DESCRIPTION), oo::PList(notApplicable) } });
+								{ std::string(KEY_NAME), oo::PList(interstellarName) },
+								{ std::string(KEY_GOVERNMENT), minusOne },
+								{ std::string(KEY_ECONOMY), minusOne },
+								{ std::string(KEY_TECHLEVEL), minusOne },
+								{ std::string(KEY_POPULATION), zero },
+								{ std::string(KEY_PRODUCTIVITY), zero },
+								{ std::string(KEY_RADIUS), zero },
+								{ std::string(KEY_INHABITANTS), oo::PList(notApplicable) },
+								{ std::string(KEY_DESCRIPTION), oo::PList(notApplicable) } });
 		}
 
 		return interstellarDict;
@@ -8640,7 +8640,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	BOOL sameSystem = (sameGalaxy && pnum == [self currentSystemID]);
 
 	// trying to set  unsettable properties?  
-	if (key == oo::StdString(KEY_RADIUS) && sameGalaxy && sameSystem) // buggy if we allow this key to be set while in the system
+	if (key == std::string(KEY_RADIUS) && sameGalaxy && sameSystem) // buggy if we allow this key to be set while in the system
 	{
 		OO_LOG_ERR("script.error", "System property '{}' cannot be set while in the system.", key);
 		return;
@@ -8661,7 +8661,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 	if (object != nil) {
 		// long range map fixes
-		if (key == oo::StdString(KEY_NAME))
+		if (key == std::string(KEY_NAME))
 		{
 			// -lowercaseString / -capitalizedString of the name (a script string)
 			const std::string name = oo::str::capitalized(oo::str::lowercase(oo::StdString(object)));
@@ -8698,7 +8698,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		 * market while the player is in the system is likely to cause
 		 * more trouble than it's worth. Let them leave and come back
 		 * - CIM */
-		if (key == oo::StdString(KEY_TECHLEVEL))
+		if (key == std::string(KEY_TECHLEVEL))
 		{	
 			if([self station]){
 				[[self station] setEquivalentTechLevel:[object intValue]];
@@ -8827,7 +8827,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	std::optional<std::string> ret;
 	if (!plural)
 	{
-		ret = SystemPropertyString([systemManager cxx_getProperty:oo::StdString(KEY_INHABITANT) forSystem:sys inGalaxy:galaxyID]);
+		ret = SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANT) forSystem:sys inGalaxy:galaxyID]);
 	}
 	if (ret.has_value()) // the singular form might be absent.
 	{
@@ -8835,7 +8835,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	}
 	else
 	{
-		return SystemPropertyString([systemManager cxx_getProperty:oo::StdString(KEY_INHABITANTS) forSystem:sys inGalaxy:galaxyID]);
+		return SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANTS) forSystem:sys inGalaxy:galaxyID]);
 	}
 }
 
@@ -9534,8 +9534,8 @@ std::string ExpandKey(const std::string &key)
 // -compare: of the two offers' price numbers (unsigned long long).
 int comparePrice(const oo::PList &offer1, const oo::PList &offer2)
 {
-	const unsigned long long price1 = offer1.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE));
-	const unsigned long long price2 = offer2.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE));
+	const unsigned long long price1 = offer1.get<unsigned long long>(std::string(SHIPYARD_KEY_PRICE));
+	const unsigned long long price2 = offer2.get<unsigned long long>(std::string(SHIPYARD_KEY_PRICE));
 	return (price1 < price2) ? -1 : (price1 > price2) ? 1 : 0;
 }
 
@@ -9545,10 +9545,10 @@ int comparePrice(const oo::PList &offer1, const oo::PList &offer2)
 */
 int compareName(const oo::PList &offer1, const oo::PList &offer2)
 {
-	const oo::PList *ship1 = offer1.get<oo::PList::Dict>(oo::StdString(SHIPYARD_KEY_SHIP));
-	const oo::PList *ship2 = offer2.get<oo::PList::Dict>(oo::StdString(SHIPYARD_KEY_SHIP));
-	const std::optional<std::string> name1 = (ship1 != nullptr) ? OptionalStringIn(*ship1, oo::StdString(KEY_NAME)) : std::nullopt;
-	const std::optional<std::string> name2 = (ship2 != nullptr) ? OptionalStringIn(*ship2, oo::StdString(KEY_NAME)) : std::nullopt;
+	const oo::PList *ship1 = offer1.get<oo::PList::Dict>(std::string(SHIPYARD_KEY_SHIP));
+	const oo::PList *ship2 = offer2.get<oo::PList::Dict>(std::string(SHIPYARD_KEY_SHIP));
+	const std::optional<std::string> name1 = (ship1 != nullptr) ? OptionalStringIn(*ship1, std::string(KEY_NAME)) : std::nullopt;
+	const std::optional<std::string> name2 = (ship2 != nullptr) ? OptionalStringIn(*ship2, std::string(KEY_NAME)) : std::nullopt;
 
 	const int result = (name1.has_value() && name2.has_value()) ? oo::str::compare(oo::str::lowercase(*name1), oo::str::lowercase(*name2)) : 0;
 	if (result != 0)
@@ -9641,14 +9641,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		else
 		{
 			//otherwise use default for system
-			techlevel = systemInfo.get<unsigned int>(oo::StdString(KEY_TECHLEVEL));
+			techlevel = systemInfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
 		}
 		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % keysForShips.size();
 		const std::string	ship_key = keysForShips[ship_index];
 		const oo::PList	ship_info = [registry cxx_shipyardInfoForKey:ship_key];
-		OOTechLevelID	ship_techlevel = ship_info.get<int>(oo::StdString(KEY_TECHLEVEL));
+		OOTechLevelID	ship_techlevel = ship_info.get<int>(std::string(KEY_TECHLEVEL));
 
-		double chance = 1.0 - pow(1.0 - ship_info.get<double>(oo::StdString(KEY_CHANCE)), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
+		double chance = 1.0 - pow(1.0 - ship_info.get<double>(std::string(KEY_CHANCE)), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
 
 		// seed random number generator
 		int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
@@ -9662,16 +9662,16 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			oo::PList shipDict = shipBaseDict;
 			std::string shortShipDescription;
 			std::optional<std::string> shipName = OptionalStringIn(shipDict, "display_name");
-			if (!shipName.has_value())  shipName = OptionalStringIn(shipDict, oo::StdString(KEY_NAME));
-			OOCreditsQuantity price = ship_info.get<unsigned int>(oo::StdString(KEY_PRICE));
+			if (!shipName.has_value())  shipName = OptionalStringIn(shipDict, std::string(KEY_NAME));
+			OOCreditsQuantity price = ship_info.get<unsigned int>(std::string(KEY_PRICE));
 			OOCreditsQuantity base_price = price;
-			const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
-			const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr;
+			const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
+			const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr;
 			oo::PList::Array extras = (standardExtras != nullptr) ? *standardExtras->getIf<oo::PList::Array>() : oo::PList::Array();
-			std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
-			std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
+			std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, std::string(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
+			std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, std::string(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
 
-			const oo::PList *optionalEquipment = ship_info.get<oo::PList::Array>(oo::StdString(KEY_OPTIONAL_EQUIPMENT));
+			const oo::PList *optionalEquipment = ship_info.get<oo::PList::Array>(std::string(KEY_OPTIONAL_EQUIPMENT));
 			std::vector<std::optional<std::string>> options;
 			if (optionalEquipment != nullptr)
 			{
@@ -9685,14 +9685,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 			shortShipDescription += TextOrNull(shipName) + ":";
 
-			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
 			OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
 			OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
 			//port and starboard weapons are not modified in the shipyard
 			// apply fwd and aft weapons to the ship
-			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
-			if (aftWeapon && aftWeaponString) SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
+			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, std::string(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
+			if (aftWeapon && aftWeaponString) SetInDict(shipDict, std::string(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
 
 			int passengerBerthCount = 0;
 			BOOL customised = NO;
@@ -9839,7 +9839,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 							price += eqPrice;
 							fwdWeaponString = equipmentKey;
 							fwdWeapon = new_weapon;
-							SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
+							SetInDict(shipDict, std::string(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
 							weaponCustomized = YES;
 							fwdWeaponDesc = eqShortDesc;
 						}
@@ -9852,7 +9852,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 								price += eqPrice;
 								aftWeaponString = equipmentKey;
 								aftWeapon = new_weapon;
-								SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
+								SetInDict(shipDict, std::string(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
 							}
 							else
 							{
@@ -9934,13 +9934,13 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			uint16_t personality = RanrotWithSeed(&personalitySeed) & ENTITY_PERSONALITY_MAX;
 
 			oo::PList::Dict ship_info_dictionary;
-			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_ID)] = oo::PList(shipID);
-			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)] = oo::PList(ship_key);
-			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_SHIP)] = shipDict;
-			ship_info_dictionary[oo::StdString(KEY_SHORT_DESCRIPTION)] = oo::PList(shortShipDescription);
-			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_PRICE)] = oo::PList(price);
-			ship_info_dictionary[oo::StdString(KEY_EQUIPMENT_EXTRAS)] = oo::PList(extras);
-			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_PERSONALITY)] = oo::PList(personality);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_ID)] = oo::PList(shipID);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_SHIPDATA_KEY)] = oo::PList(ship_key);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_SHIP)] = shipDict;
+			ship_info_dictionary[std::string(KEY_SHORT_DESCRIPTION)] = oo::PList(shortShipDescription);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_PRICE)] = oo::PList(price);
+			ship_info_dictionary[std::string(KEY_EQUIPMENT_EXTRAS)] = oo::PList(extras);
+			ship_info_dictionary[std::string(SHIPYARD_KEY_PERSONALITY)] = oo::PList(personality);
 
 			resultDictionary[shipID] = oo::PList(std::move(ship_info_dictionary));	// should order them fairly randomly
 		}
@@ -9991,7 +9991,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	}
 	else
 	{
-		base_price = shipyard_info.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE), 0ULL);
+		base_price = shipyard_info.get<unsigned long long>(std::string(SHIPYARD_KEY_PRICE), 0ULL);
 	}
 
 	if(base_price == 0ULL) return base_price;
@@ -10021,21 +10021,21 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		for (const auto &entry : *extraEquipment->getIf<oo::PList::Dict>())  ship_extra_equipment.push_back(entry.first);
 	}
 
-	const oo::PList		*basicInfoEntry = shipyard_info.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
+	const oo::PList		*basicInfoEntry = shipyard_info.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
 	const oo::PList		basic_info = (basicInfoEntry != nullptr) ? *basicInfoEntry : oo::PList();
-	unsigned			base_missiles = basic_info.get<unsigned int>(oo::StdString(KEY_EQUIPMENT_MISSILES));
+	unsigned			base_missiles = basic_info.get<unsigned int>(std::string(KEY_EQUIPMENT_MISSILES));
 	OOCreditsQuantity	base_missiles_value = base_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
-	std::optional<std::string>	base_weapon_key = OptionalStringIn(basic_info, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON));
+	std::optional<std::string>	base_weapon_key = OptionalStringIn(basic_info, std::string(KEY_EQUIPMENT_FORWARD_WEAPON));
 	OOCreditsQuantity	base_weapons_value = priceOf(base_weapon_key) / 10;
 	std::vector<std::optional<std::string>>	base_extra_equipment;
-	if (const oo::PList *baseExtras = basic_info.get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)))
+	if (const oo::PList *baseExtras = basic_info.get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)))
 	{
 		for (std::size_t k = 0; k < baseExtras->count(); k++)  base_extra_equipment.push_back(OptionalStringAt(*baseExtras, k));
 	}
 	std::string			weapon_key;
 
 	// was aft_weapon defined as standard equipment ?
-	base_weapon_key = OptionalStringIn(basic_info, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON));
+	base_weapon_key = OptionalStringIn(basic_info, std::string(KEY_EQUIPMENT_AFT_WEAPON));
 	if (base_weapon_key.has_value())
 		base_weapons_value += priceOf(base_weapon_key) / 10;
 
@@ -10157,7 +10157,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		allOptions += options[k];
 	}
 
-	std::string		desc = "The " + TextOrNull(OptionalStringIn(dict, oo::StdString(KEY_NAME))) + ".";
+	std::string		desc = "The " + TextOrNull(OptionalStringIn(dict, std::string(KEY_NAME))) + ".";
 
 	// cargo capacity and expansion
 	OOCargoQuantity	max_cargo = dict.get<unsigned int>("max_cargo");

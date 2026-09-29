@@ -96,9 +96,10 @@ MA 02110-1301, USA.
 #include "oofnd/Date.hpp"
 #include "oofnd/objc/OOAssert.h"
 #import "OOPListGameTypes.h"
+#include <string_view>
 
 
-#define PLAYER_DEFAULT_NAME				@"Jameson"
+static constexpr std::string_view PLAYER_DEFAULT_NAME				= "Jameson";
 
 enum
 {
@@ -1179,9 +1180,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		if (const std::optional<std::string> systemName = [UNIVERSE cxx_getSystemName:[self currentSystemID]])  result["current_system_name"] = oo::PList(*systemName);
 		const oo::PList systemData = [UNIVERSE cxx_currentSystemData];
-		OOGovernmentID government = systemData.get<int>(oo::StdString(KEY_GOVERNMENT));
-		OOTechLevelID techlevel = systemData.get<int>(oo::StdString(KEY_TECHLEVEL));
-		OOEconomyID economy = systemData.get<int>(oo::StdString(KEY_ECONOMY));
+		OOGovernmentID government = systemData.get<int>(std::string(KEY_GOVERNMENT));
+		OOTechLevelID techlevel = systemData.get<int>(std::string(KEY_TECHLEVEL));
+		OOEconomyID economy = systemData.get<int>(std::string(KEY_ECONOMY));
 		result["current_system_government"] = oo::PList::unsignedInteger((unsigned short)government);
 		result["current_system_techlevel"] = oo::PList::unsignedInteger((NSUInteger)techlevel);
 		result["current_system_economy"] = oo::PList::unsignedInteger((unsigned short)economy);
@@ -1301,14 +1302,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		const auto it = reputation.find(key);
 		return it != reputation.end() ? oo::PListGet<int>::from(&it->second, 0) : 0;	// -oo_intForKey:
 	};
-	int pGood = reputationValue(oo::StdString(PARCEL_GOOD_KEY));
-	int pBad = reputationValue(oo::StdString(PARCEL_BAD_KEY));
-	int pUnknown = reputationValue(oo::StdString(PARCEL_UNKNOWN_KEY));
+	int pGood = reputationValue(std::string(PARCEL_GOOD_KEY));
+	int pBad = reputationValue(std::string(PARCEL_BAD_KEY));
+	int pUnknown = reputationValue(std::string(PARCEL_UNKNOWN_KEY));
 	if (pGood+pBad+pUnknown != MAX_CONTRACT_REP)
 	{
-		reputation[oo::StdString(PARCEL_GOOD_KEY)] = oo::PList::signedInteger(0);
-		reputation[oo::StdString(PARCEL_BAD_KEY)] = oo::PList::signedInteger(0);
-		reputation[oo::StdString(PARCEL_UNKNOWN_KEY)] = oo::PList::signedInteger(MAX_CONTRACT_REP);
+		reputation[std::string(PARCEL_GOOD_KEY)] = oo::PList::signedInteger(0);
+		reputation[std::string(PARCEL_BAD_KEY)] = oo::PList::signedInteger(0);
+		reputation[std::string(PARCEL_UNKNOWN_KEY)] = oo::PList::signedInteger(MAX_CONTRACT_REP);
 	}
 	result["reputation"] = oo::PList(reputation);
 
@@ -1348,7 +1349,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	//base ship description
 	if (const std::optional<std::string> value = [self cxx_shipDataKey])  result["ship_desc"] = oo::PList(*value);
-	if (const std::optional<std::string> value = StringForKey([self cxx_shipInfoDictionary], oo::StdString(KEY_NAME)))  result["ship_name"] = oo::PList(*value);
+	if (const std::optional<std::string> value = StringForKey([self cxx_shipInfoDictionary], std::string(KEY_NAME)))  result["ship_name"] = oo::PList(*value);
 
 	//custom view no.
 	result["custom_view_index"] = oo::PList::unsignedInteger((unsigned long)_customViewIndex);
@@ -1454,11 +1455,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		BOOL strict = dict.get<bool>("strict", NO);
 		if (strict)
 		{
-			scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_NONE);
+			scenarioRestrict = std::string(SCENARIO_OXP_DEFINITION_NONE);
 		}
 		else
 		{
-			scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
+			scenarioRestrict = std::string(SCENARIO_OXP_DEFINITION_ALL);
 		}
 	}
 
@@ -1581,7 +1582,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		found_system_id = -1;
 	}
 
-	const std::string cname = StringForKey(dict, "player_name").value_or(oo::StdString(PLAYER_DEFAULT_NAME));
+	const std::string cname = StringForKey(dict, "player_name").value_or(std::string(PLAYER_DEFAULT_NAME));
 	[self cxx_setCommanderName:cname];
 	[self cxx_setLastsaveName:StringForKey(dict, "player_save_name").value_or(cname)];
 
@@ -1684,19 +1685,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	for (NSInteger i = (NSInteger)contracts.size() - 1; i >= 0; i--)
 	{
 		oo::PList contractInfo = contracts[i].isDict() ? contracts[i] : oo::PList(oo::PList::Dict());
-		const oo::PList *cargoType = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
+		const oo::PList *cargoType = contractInfo.find(std::string(CARGO_KEY_TYPE));
 		// if the trade good ID is an int
 		if (cargoType != nullptr && cargoType->isNumber())
 		{
 			// look it up, and replace with a string
-			NSUInteger legacy_type = contractInfo.get<NSUInteger>(oo::StdString(CARGO_KEY_TYPE));
-			(*contractInfo.getIf<oo::PList::Dict>())[oo::StdString(CARGO_KEY_TYPE)] = oo::PList([OOCommodities cxx_legacyCommodityType:legacy_type].value_or(""));
+			NSUInteger legacy_type = contractInfo.get<NSUInteger>(std::string(CARGO_KEY_TYPE));
+			(*contractInfo.getIf<oo::PList::Dict>())[std::string(CARGO_KEY_TYPE)] = oo::PList([OOCommodities cxx_legacyCommodityType:legacy_type].value_or(""));
 			contracts[i] = std::move(contractInfo);
 		}
 		else
 		{
 			// -oo_stringForKey: (nil when absent)
-			const oo::PList *typeValue = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
+			const oo::PList *typeValue = contractInfo.find(std::string(CARGO_KEY_TYPE));
 			const std::optional<std::string> new_type = (typeValue != nullptr && typeValue->isString()) ? std::optional<std::string>(*typeValue->getIf<std::string>()) : std::nullopt;
 			// check that that the type still exists
 			if (![[UNIVERSE commodities] cxx_goodDefined:new_type.value_or("")])
@@ -1756,8 +1757,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		OO_LOG_WARN("setCommanderDataFromDictionary.inconsistency.passengers", "player ship {} had more passengers ({}) than passenger berths ({}). Removing extra passengers.", [self cxx_name].value_or("(null)"), passengers.size(), static_cast<unsigned>(max_passengers));
 		for (NSInteger i = (NSInteger)passengers.size() - 1; i >= max_passengers; i--)
 		{
-			const oo::PList *passengerName = passengers[i].find(oo::StdString(PASSENGER_KEY_NAME));
-			if (passengerName != nullptr && (passengerName->isString() || passengerName->isNumber()))  passenger_record.erase(passengers[i].get<std::string>(oo::StdString(PASSENGER_KEY_NAME)));	// -oo_stringForKey:
+			const oo::PList *passengerName = passengers[i].find(std::string(PASSENGER_KEY_NAME));
+			if (passengerName != nullptr && (passengerName->isString() || passengerName->isNumber()))  passenger_record.erase(passengers[i].get<std::string>(std::string(PASSENGER_KEY_NAME)));	// -oo_stringForKey:
 			passengers.erase(passengers.begin() + i);
 		}
 	}
@@ -1816,7 +1817,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	galaxy_number = dict.get<int>("galaxy_number");
 //
 	const oo::PList shipyard_info = shipDataKey.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*shipDataKey] : oo::PList();
-	OOWeaponFacingSet available_facings = shipyard_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);
+	OOWeaponFacingSet available_facings = shipyard_info.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), [self weaponFacings]);
 
 	if (available_facings & WEAPON_FACING_FORWARD)
 		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(StringForKey(dict, "forward_weapon").value_or(""));
@@ -2066,7 +2067,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) deferredInit
 {
 	OOAssert(gOOPlayer == self, "Expected only one PlayerEntity to exist at a time.");
-	OOAssert([super cxx_initWithKey:oo::StdString(PLAYER_SHIP_DESC) definition:oo::PList(oo::PList::Dict{})] == self, "PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
+	OOAssert([super cxx_initWithKey:std::string(PLAYER_SHIP_DESC) definition:oo::PList(oo::PList::Dict{})] == self, "PlayerEntity requires -[ShipEntity cxx_initWithKey:definition:] to return unmodified self.");
 
 	maxFieldOfView = MAX_FOV;
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
@@ -2197,7 +2198,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// if there is cargo remaining from previously (e.g. a game restart), remove it (-cargoList was never nil)
 	[self removeAllCargo:YES];		// force removal of cargo
 	
-	[self cxx_setShipDataKey:oo::OptionalString(PLAYER_SHIP_DESC)];
+	[self cxx_setShipDataKey:std::string(PLAYER_SHIP_DESC)];
 	ship_trade_in_factor = 95;
 	
 	// reset HUD & default commlog behaviour
@@ -2224,15 +2225,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	found_system_id = -1;
 	
 	reputation = oo::PList::Dict{
-		{ oo::StdString(CONTRACTS_GOOD_KEY), oo::PList::signedInteger(0) },
-		{ oo::StdString(CONTRACTS_BAD_KEY), oo::PList::signedInteger(0) },
-		{ oo::StdString(CONTRACTS_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
-		{ oo::StdString(PASSAGE_GOOD_KEY), oo::PList::signedInteger(0) },
-		{ oo::StdString(PASSAGE_BAD_KEY), oo::PList::signedInteger(0) },
-		{ oo::StdString(PASSAGE_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
-		{ oo::StdString(PARCEL_GOOD_KEY), oo::PList::signedInteger(0) },
-		{ oo::StdString(PARCEL_BAD_KEY), oo::PList::signedInteger(0) },
-		{ oo::StdString(PARCEL_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ std::string(CONTRACTS_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ std::string(CONTRACTS_BAD_KEY), oo::PList::signedInteger(0) },
+		{ std::string(CONTRACTS_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ std::string(PASSAGE_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ std::string(PASSAGE_BAD_KEY), oo::PList::signedInteger(0) },
+		{ std::string(PASSAGE_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ std::string(PARCEL_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ std::string(PARCEL_BAD_KEY), oo::PList::signedInteger(0) },
+		{ std::string(PARCEL_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
 	};
 	
 	roleWeights.assign(8, "player-unknown");
@@ -2317,8 +2318,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// player commander data
 	// Most of this is probably also set more than once
 	
-	[self cxx_setCommanderName:oo::OptionalString(PLAYER_DEFAULT_NAME)];
-	[self cxx_setLastsaveName:oo::OptionalString(PLAYER_DEFAULT_NAME)];
+	[self cxx_setCommanderName:std::string(PLAYER_DEFAULT_NAME)];
+	[self cxx_setLastsaveName:std::string(PLAYER_DEFAULT_NAME)];
 	
 	galaxy_coordinates		= NSMakePoint(0x14,0xAD);	// 20,173
 
@@ -2431,7 +2432,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	dockingReport.clear();
 	
 	[shipAI release];
-	shipAI = [[AI alloc] cxx_initWithStateMachine:oo::OptionalString(PLAYER_DOCKING_AI_NAME) andState:"GLOBAL"];
+	shipAI = [[AI alloc] cxx_initWithStateMachine:std::string(PLAYER_DOCKING_AI_NAME) andState:"GLOBAL"];
 	[self resetAutopilotAI];
 	
 	lastScriptAlertCondition = [self alertCondition];
@@ -2471,7 +2472,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self setDockedStation:[UNIVERSE station]];
 	[self setLastAegisLock:[UNIVERSE planet]];
 	// only do this if we're not in strict mode, otherwise all previously saved OXP key/joystick defs will be wiped.
-	if ([UNIVERSE cxx_useAddOns] != oo::StdString(SCENARIO_OXP_DEFINITION_NONE)) 
+	if ([UNIVERSE cxx_useAddOns] != std::string(SCENARIO_OXP_DEFINITION_NONE)) 
 	{
 		[self validateCustomEquipActivationArray];
 	}
@@ -3892,9 +3893,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	AI *myAI = [self getAI];
 	// JSAI: will need changing if oolite-dockingAI.js written
-	if ([myAI cxx_name] != oo::StdString(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
+	if ([myAI cxx_name] != std::string(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
 	{
-		[self setAITo:PLAYER_DOCKING_AI_NAME ];
+		[self setAITo:oo::NSStringFrom(PLAYER_DOCKING_AI_NAME)];
 	}
 	[myAI clearAllData];
 	[myAI cxx_setState:"GLOBAL"];
@@ -7703,7 +7704,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			// set the expected arrival time to now, so they storm off the ship at the first port
 			oo::PList::Dict passenger_info = passengers[i].isDict() ? *passengers[i].getIf<oo::PList::Dict>() : oo::PList::Dict();
-			passenger_info[oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)] = oo::PList(ship_clock);	// +numberWithDouble:
+			passenger_info[std::string(CONTRACT_KEY_ARRIVAL_TIME)] = oo::PList(ship_clock);	// +numberWithDouble:
 			passengers[i] = oo::PList(std::move(passenger_info));
 		}
 	}
@@ -8592,30 +8593,30 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (forCargo)
 		{
 			// commodity, quantity - keep consistency between .manifest and .contracts
-			setString(contract, "commodity", StringForKey(dict, oo::StdString(CARGO_KEY_TYPE)));
-			contract["quantity"] = oo::PList::unsignedInteger(static_cast<unsigned int>(dict.get<int>(oo::StdString(CARGO_KEY_AMOUNT))));	// +numberWithUnsignedInt:
-			setString(contract, "description", StringForKey(dict, oo::StdString(CARGO_KEY_DESCRIPTION)));
+			setString(contract, "commodity", StringForKey(dict, std::string(CARGO_KEY_TYPE)));
+			contract["quantity"] = oo::PList::unsignedInteger(static_cast<unsigned int>(dict.get<int>(std::string(CARGO_KEY_AMOUNT))));	// +numberWithUnsignedInt:
+			setString(contract, "description", StringForKey(dict, std::string(CARGO_KEY_DESCRIPTION)));
 		}
 		else
 		{
-			setString(contract, oo::StdString(PASSENGER_KEY_NAME), StringForKey(dict, oo::StdString(PASSENGER_KEY_NAME)));
-			contract[oo::StdString(CONTRACT_KEY_RISK)] = oo::PList::unsignedInteger(dict.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK)));
+			setString(contract, std::string(PASSENGER_KEY_NAME), StringForKey(dict, std::string(PASSENGER_KEY_NAME)));
+			contract[std::string(CONTRACT_KEY_RISK)] = oo::PList::unsignedInteger(dict.get<unsigned int>(std::string(CONTRACT_KEY_RISK)));
 		}
 
-		OOSystemID 	planet = dict.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		OOSystemID 	planet = dict.get<int>(std::string(CONTRACT_KEY_DESTINATION));
 		std::optional<std::string>	planetName = [UNIVERSE cxx_getSystemName:planet];
-		contract[oo::StdString(CONTRACT_KEY_DESTINATION)] = oo::PList::unsignedInteger(static_cast<unsigned int>(planet));
+		contract[std::string(CONTRACT_KEY_DESTINATION)] = oo::PList::unsignedInteger(static_cast<unsigned int>(planet));
 		setString(contract, "destinationName", planetName);
-		planet = dict.get<int>(oo::StdString(CONTRACT_KEY_START));
+		planet = dict.get<int>(std::string(CONTRACT_KEY_START));
 		planetName = [UNIVERSE cxx_getSystemName:planet];
-		contract[oo::StdString(CONTRACT_KEY_START)] = oo::PList::unsignedInteger(static_cast<unsigned int>(planet));
+		contract[std::string(CONTRACT_KEY_START)] = oo::PList::unsignedInteger(static_cast<unsigned int>(planet));
 		setString(contract, "startName", planetName);
 
-		int 		dest_eta = dict.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
+		int 		dest_eta = dict.get<double>(std::string(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
 		contract["eta"] = oo::PList::signedInteger(dest_eta);
 		setString(contract, "etaDescription", [UNIVERSE cxx_shortTimeDescription:dest_eta]);
-		contract[oo::StdString(CONTRACT_KEY_PREMIUM)] = oo::PList::signedInteger(dict.get<int>(oo::StdString(CONTRACT_KEY_PREMIUM)));
-		contract[oo::StdString(CONTRACT_KEY_FEE)] = oo::PList::signedInteger(dict.get<int>(oo::StdString(CONTRACT_KEY_FEE)));
+		contract[std::string(CONTRACT_KEY_PREMIUM)] = oo::PList::signedInteger(dict.get<int>(std::string(CONTRACT_KEY_PREMIUM)));
+		contract[std::string(CONTRACT_KEY_FEE)] = oo::PList::signedInteger(dict.get<int>(std::string(CONTRACT_KEY_FEE)));
 		result.emplace_back(std::move(contract));
 	}
 
@@ -8649,7 +8650,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	const oo::PList	infoSystemData = [UNIVERSE cxx_generateSystemData:info_system_id];
 	NSInteger concealment = infoSystemData.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-	const std::string infoSystemName = StringForKey(infoSystemData, oo::StdString(KEY_NAME)).value_or(std::string());	// (a nil name raised in the expansions below)
+	const std::string infoSystemName = StringForKey(infoSystemData, std::string(KEY_NAME)).value_or(std::string());	// (a nil name raised in the expansions below)
 
 	BOOL			sunGoneNova = (infoSystemData.get<bool>("sun_gone_nova"));
 	OOGUIScreenID	oldScreen = gui_screen;
@@ -8672,19 +8673,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiSystemdataTabs length:3];
 		[gui setTabStops:tab_stops];
 		
-		NSUInteger techLevel = infoSystemData.get<int>(oo::StdString(KEY_TECHLEVEL)) + 1;
-		int population = infoSystemData.get<int>(oo::StdString(KEY_POPULATION));
-		int productivity = infoSystemData.get<int>(oo::StdString(KEY_PRODUCTIVITY));
-		int radius = infoSystemData.get<int>(oo::StdString(KEY_RADIUS));
+		NSUInteger techLevel = infoSystemData.get<int>(std::string(KEY_TECHLEVEL)) + 1;
+		int population = infoSystemData.get<int>(std::string(KEY_POPULATION));
+		int productivity = infoSystemData.get<int>(std::string(KEY_PRODUCTIVITY));
+		int radius = infoSystemData.get<int>(std::string(KEY_RADIUS));
 
-		std::string	government_desc =	StringForKey(infoSystemData, oo::StdString(KEY_GOVERNMENT_DESC))
-											.value_or(cxx_OODisplayStringFromGovernmentID(infoSystemData.get<int>(oo::StdString(KEY_GOVERNMENT))).value_or(""));
-		std::string	economy_desc =		StringForKey(infoSystemData, oo::StdString(KEY_ECONOMY_DESC))
-											.value_or(cxx_OODisplayStringFromEconomyID(infoSystemData.get<int>(oo::StdString(KEY_ECONOMY))).value_or(""));
-		std::string	inhabitants =		StringForKey(infoSystemData, oo::StdString(KEY_INHABITANTS)).value_or(std::string());	// (nil raised in the expansion)
-		std::optional<std::string>	system_desc = StringForKey(infoSystemData, oo::StdString(KEY_DESCRIPTION));
+		std::string	government_desc =	StringForKey(infoSystemData, std::string(KEY_GOVERNMENT_DESC))
+											.value_or(cxx_OODisplayStringFromGovernmentID(infoSystemData.get<int>(std::string(KEY_GOVERNMENT))).value_or(""));
+		std::string	economy_desc =		StringForKey(infoSystemData, std::string(KEY_ECONOMY_DESC))
+											.value_or(cxx_OODisplayStringFromEconomyID(infoSystemData.get<int>(std::string(KEY_ECONOMY))).value_or(""));
+		std::string	inhabitants =		StringForKey(infoSystemData, std::string(KEY_INHABITANTS)).value_or(std::string());	// (nil raised in the expansion)
+		std::optional<std::string>	system_desc = StringForKey(infoSystemData, std::string(KEY_DESCRIPTION));
 
-		std::string	populationDesc =	StringForKey(infoSystemData, oo::StdString(KEY_POPULATION_DESC))
+		std::string	populationDesc =	StringForKey(infoSystemData, std::string(KEY_POPULATION_DESC))
 											.value_or(cxx_OOExpandKeyWithSeed(kNilRandomSeed, "sysdata-pop-value", population).value_or(std::string()));
 
 		if (sunGoneNova)
@@ -8882,17 +8883,17 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 
 	for (i = 0; i < passengers.size(); i++)
 	{
-		sysid = passengers[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		sysid = passengers[i].get<unsigned char>(std::string(CONTRACT_KEY_DESTINATION));
 		PrepareMarkedDestination(destinations, [self cxx_passengerContractMarker:sysid]);
 	}
 	for (i = 0; i < parcels.size(); i++)
 	{
-		sysid = parcels[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		sysid = parcels[i].get<unsigned char>(std::string(CONTRACT_KEY_DESTINATION));
 		PrepareMarkedDestination(destinations, [self cxx_parcelContractMarker:sysid]);
 	}
 	for (i = 0; i < contracts.size(); i++)
 	{
-		sysid = contracts[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		sysid = contracts[i].get<unsigned char>(std::string(CONTRACT_KEY_DESTINATION));
 		PrepareMarkedDestination(destinations, [self cxx_cargoContractMarker:sysid]);
 	}
 
@@ -9020,7 +9021,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		do {													\
 			if ((condition))									\
 			{												\
-				[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:(row)];			\
+				[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:(row)];			\
 			}												\
 			else												\
 			{												\
@@ -9054,9 +9055,9 @@ std::string SliderString(NSInteger amountIn20ths)
 		}
 		if (mode == nullptr)  return;	// Got a better idea?
 
-		unsigned modeWidth = mode->get<unsigned int>(oo::StdString(kOODisplayWidth));
-		unsigned modeHeight = mode->get<unsigned int>(oo::StdString(kOODisplayHeight));
-		float modeRefresh = mode->get<float>(oo::StdString(kOODisplayRefreshRate));
+		unsigned modeWidth = mode->get<unsigned int>(std::string(kOODisplayWidth));
+		unsigned modeHeight = mode->get<unsigned int>(std::string(kOODisplayHeight));
+		float modeRefresh = mode->get<float>(std::string(kOODisplayRefreshRate));
 
 		BOOL runningOnPrimaryDisplayDevice = [gameView isRunningOnPrimaryDisplayDevice];
 #if OOLITE_WINDOWS
@@ -9071,7 +9072,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui cxx_setText:displayModeString forRow:GUI_ROW(GAME,DISPLAY) align:GUI_ALIGN_CENTER];
 		if (runningOnPrimaryDisplayDevice)
 		{
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAY)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAY)];
 		}
 		else
 		{
@@ -9109,7 +9110,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			const std::string maxBrightnessString = cxx_OOExpandKey("gameoptions-hdr-maxbrightness", brightnessValue).value_or(std::string());
 
 			[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)];
 		}
 #endif
 
@@ -9118,7 +9119,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			[gui cxx_setText:OO_DESC("gameoptions-autosave-yes") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
 		else
 			[gui cxx_setText:OO_DESC("gameoptions-autosave-no") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,AUTOSAVE)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,AUTOSAVE)];
 	
 		// volume control
 		if ([OOSound respondsToSelector:@selector(masterVolume)] && [OOSound isSoundOK])
@@ -9130,7 +9131,7 @@ std::string SliderString(NSInteger amountIn20ths)
 				[gui cxx_setText:oo::str::format("%s%s ", soundVolumeWordDesc.c_str(), SliderString(vol).c_str()) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
 			else
 				[gui cxx_setText:OO_DESC("gameoptions-sound-volume-mute") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,VOLUME)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,VOLUME)];
 		}
 		else
 		{
@@ -9145,7 +9146,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		const std::string fovWordDesc = OO_DESC("gameoptions-fov-value");
 		// %c 176 gave U+00B0 (probed on GNUstep base, oo-3rb.218); written as its UTF-8 bytes
 		[gui cxx_setText:oo::str::format("%s%s (%d%s) ", fovWordDesc.c_str(), SliderString(fovTicks).c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/) forRow:GUI_ROW(GAME,FOV) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,FOV)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,FOV)];
 		
 		// color blind mode
 		int colorblindMode = [UNIVERSE colorblindMode];
@@ -9156,7 +9157,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
 		if ([UNIVERSE useShaders])
 		{
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,COLORBLINDMODE)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,COLORBLINDMODE)];
 		}
 		else
 		{
@@ -9202,20 +9203,20 @@ std::string SliderString(NSInteger amountIn20ths)
 		{
 			[gui cxx_setText:OO_DESC("gameoptions-play-in-fullscreen") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
 		}
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAYSTYLE)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAYSTYLE)];
 #endif
 		
 		[gui cxx_setText:OO_DESC("gameoptions-joystick-configuration") forRow: GUI_ROW(GAME,STICKMAPPER) align: GUI_ALIGN_CENTER];
 		OO_SETACCESSCONDITIONFORROW([[OOJoystickManager sharedStickHandler] joystickCount], GUI_ROW(GAME,STICKMAPPER));
 
 		[gui cxx_setText:OO_DESC("gameoptions-keyboard-configuration") forRow: GUI_ROW(GAME,KEYMAPPER) align: GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
 
 		
 		const std::string musicMode = [UNIVERSE cxx_descriptionForArrayKey:"music-mode" index:[[OOMusicController sharedController] mode]].value_or(std::string());
 		const std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
 		[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,MUSIC)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,MUSIC)];
 
 		if (![gameView hdrOutput])
 		{
@@ -9223,7 +9224,7 @@ std::string SliderString(NSInteger amountIn20ths)
 				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-yes") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
 			else
 				[gui cxx_setText:OO_DESC("gameoptions-wireframe-graphics-no") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)];
 		}
 #if OOLITE_WINDOWS
 		else
@@ -9232,7 +9233,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			int paperWhiteTicks = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
 			const std::string paperWhiteWordDesc = OO_DESC("gameoptions-hdr-paperwhite");
 			[gui cxx_setText:oo::str::format("%s%s (%d) ", paperWhiteWordDesc.c_str(), SliderString(paperWhiteTicks).c_str(), (int)paperWhite) forRow:GUI_ROW(GAME,HDRPAPERWHITE) align:GUI_ALIGN_CENTER];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRPAPERWHITE)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRPAPERWHITE)];
 		}
 #endif
 		
@@ -9241,7 +9242,7 @@ std::string SliderString(NSInteger amountIn20ths)
 			[gui cxx_setText:OO_DESC("gameoptions-procedurally-textured-planets-yes") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
 		else
 			[gui cxx_setText:OO_DESC("gameoptions-procedurally-textured-planets-no") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)];
 #endif
 
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
@@ -9249,7 +9250,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui cxx_setText:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), shaderEffectsOptionsString, {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
 		if (![[OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 		{
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 		}
 		else
 		{
@@ -9270,7 +9271,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		// Back menu option
 		[gui cxx_setText:OO_DESC("gui-back") forRow:GUI_ROW(GAME,BACK) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,BACK)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,BACK)];
 
 		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_GAMEOPTIONS_END_OF_LIST)];
 		[gui setSelectedRow: first_sel_row];
@@ -9319,7 +9320,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		[gui cxx_setText:OO_DESC("options-quick-save") forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
 		if (canQuickSave)
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,QUICKSAVE)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,QUICKSAVE)];
 		else
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(,QUICKSAVE)];
 
@@ -9327,8 +9328,8 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui cxx_setText:OO_DESC("options-load-commander") forRow:GUI_ROW(,LOAD) align:GUI_ALIGN_CENTER];
 		if (canLoadOrSave)
 		{
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,SAVE)];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,LOAD)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,SAVE)];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,LOAD)];
 		}
 		else
 		{
@@ -9337,10 +9338,10 @@ std::string SliderString(NSInteger amountIn20ths)
 		}
 
 		[gui cxx_setText:OO_DESC("options-return-to-menu") forRow:GUI_ROW(,BEGIN_NEW) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,BEGIN_NEW)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,BEGIN_NEW)];
 
 		[gui cxx_setText:OO_DESC("options-game-options") forRow:GUI_ROW(,GAMEOPTIONS) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,GAMEOPTIONS)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,GAMEOPTIONS)];
 		
 #if OOLITE_SDL
 		// GNUstep needs a quit option at present (no Cmd-Q) but
@@ -9348,7 +9349,7 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		// quit menu option
 		[gui cxx_setText:OO_DESC("options-exit-game") forRow:GUI_ROW(,QUIT) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,QUIT)];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(,QUIT)];
 #endif
 		
 		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_OPTIONS_END_OF_LIST)];
@@ -9448,7 +9449,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
 	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
-	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
+	unsigned			available_facings = shipyardInfo.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 	
 	return available_facings & VALID_WEAPON_FACINGS;
 }
@@ -9479,7 +9480,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		skip = 0;
 
 	double priceFactor = 1.0;
-	OOTechLevelID techlevel = [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_TECHLEVEL));
+	OOTechLevelID techlevel = [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_TECHLEVEL));
 
 	StationEntity *dockedStation = [self dockedStation];
 	if (dockedStation)
@@ -9504,14 +9505,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			if (item->isString())  options.insert(*item->getIf<std::string>());
 		}
 	};
-	addOptions(shipyardInfo.get<oo::PList::Array>(oo::StdString(KEY_OPTIONAL_EQUIPMENT)));
+	addOptions(shipyardInfo.get<oo::PList::Array>(std::string(KEY_OPTIONAL_EQUIPMENT)));
 
 	// add standard items too!
-	const oo::PList		*standardEquipment = shipyardInfo.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
-	addOptions(standardEquipment != nullptr ? standardEquipment->get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr);
+	const oo::PList		*standardEquipment = shipyardInfo.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
+	addOptions(standardEquipment != nullptr ? standardEquipment->get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr);
 
 	unsigned			i = 0;
-	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
+	unsigned			available_facings = shipyardInfo.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 
 	
 	if (eqKeyForSelectFacing.has_value()) // Weapons purchase subscreen.
@@ -9707,7 +9708,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 								
 							case 1:
 								displayRow = available_facings & WEAPON_FACING_FORWARD;
-								desc = oo::StdString(FORWARD_FACING_STRING);
+								desc = FORWARD_FACING_STRING;
 								weaponMounted = !isWeaponNone(forward_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9717,7 +9718,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 								
 							case 2:
 								displayRow = available_facings & WEAPON_FACING_AFT;
-								desc = oo::StdString(AFT_FACING_STRING);
+								desc = AFT_FACING_STRING;
 								weaponMounted = !isWeaponNone(aft_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9727,7 +9728,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 								
 							case 3:
 								displayRow = available_facings & WEAPON_FACING_PORT;
-								desc = oo::StdString(PORT_FACING_STRING);
+								desc = PORT_FACING_STRING;
 								weaponMounted = !isWeaponNone(port_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9737,7 +9738,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 								
 							case 4:
 								displayRow = available_facings & WEAPON_FACING_STARBOARD;
-								desc = oo::StdString(STARBOARD_FACING_STRING);
+								desc = STARBOARD_FACING_STRING;
 								weaponMounted = !isWeaponNone(starboard_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -10411,7 +10412,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	const std::optional<std::string> itemText = [gui cxx_selectedRowText];
 
 	// isEqual: of the row text (nil matched nothing)
-	const auto itemTextIs = [&itemText](id facingString) { return itemText.has_value() && facingString != nil && *itemText == oo::StdString(facingString); };
+	const auto itemTextIs = [&itemText](const std::string &facingString) { return itemText.has_value() && *itemText == facingString; };
 	// FIXME: this is nuts, should be associating lines with keys in some sensible way. --Ahruman 20080311
 	if (itemTextIs(FORWARD_FACING_STRING))
 		chosen_weapon_facing = WEAPON_FACING_FORWARD;
@@ -10722,7 +10723,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		OOTechLevelID techLevel = NSNotFound;
 		if (dockedStation != nil)  techLevel = [dockedStation equivalentTechLevel];
-		if (techLevel == NSNotFound)  techLevel = [UNIVERSE cxx_currentSystemData].get<unsigned int>(oo::StdString(KEY_TECHLEVEL));
+		if (techLevel == NSNotFound)  techLevel = [UNIVERSE cxx_currentSystemData].get<unsigned int>(std::string(KEY_TECHLEVEL));
 		
 		credits -= price;
 		ship_trade_in_factor += 5 + techLevel;	// you get better value at high-tech repair bases
@@ -10798,7 +10799,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 
 	const oo::PList		shipyardInfo = [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
-	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
+	unsigned			available_facings = shipyardInfo.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 	
 	// facing exists?
 	if (!(available_facings & facing)) 
@@ -11792,32 +11793,32 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		{
 			//check if this equipment item is already in the array
 			for (j = 0; j < customEquipActivation.size(); j++) {
-				if (StringForKey(customEquipActivation[j], oo::StdString(CUSTOMEQUIP_EQUIPKEY)) == equipmentKey) return;
+				if (StringForKey(customEquipActivation[j], std::string(CUSTOMEQUIP_EQUIPKEY)) == equipmentKey) return;
 			}
 			// if we get here, this item is new
 			// add the basic info at this point (equipkey and name only; a nil name ended the list)
 			OOEquipmentType *eq = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
 			oo::PList::Dict customKey;
-			customKey[oo::StdString(CUSTOMEQUIP_EQUIPKEY)] = equipmentKey;
+			customKey[std::string(CUSTOMEQUIP_EQUIPKEY)] = equipmentKey;
 			const std::optional<std::string> equipmentName = [eq cxx_name];
-			if (equipmentName.has_value())  customKey[oo::StdString(CUSTOMEQUIP_EQUIPNAME)] = *equipmentName;
+			if (equipmentName.has_value())  customKey[std::string(CUSTOMEQUIP_EQUIPNAME)] = *equipmentName;
 
 			// grab any default keys from the equipment item
 			// default activate
 			object = [eq cxx_defaultActivateKey];
 			if ((object.isArray() && object.count() > 0))
-				customKey[oo::StdString(CUSTOMEQUIP_KEYACTIVATE)] = object;
+				customKey[std::string(CUSTOMEQUIP_KEYACTIVATE)] = object;
 			// default mode
 			object = [eq cxx_defaultModeKey];
 			if ((object.isArray() && object.count() > 0))
-				customKey[oo::StdString(CUSTOMEQUIP_KEYMODE)] = object;
+				customKey[std::string(CUSTOMEQUIP_KEYMODE)] = object;
 
 			customEquipActivation.push_back(oo::PList(std::move(customKey)));
 			// keep the keypress arrays in sync
 			customActivatePressed.push_back(NO);
 			customModePressed.push_back(NO);			
 
-			oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+			oo::Defaults::standard().setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 			return;
 		}
 	}
@@ -11831,7 +11832,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	std::optional<std::string> equipmentKey;
 	if (customEquipActivation.size() == 0) return;
 	for (i = customEquipActivation.size() - 1; i >= 0; i--) {
-		equipmentKey = StringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+		equipmentKey = StringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPKEY));
 		OOEquipmentType *eq = (equipmentKey.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*equipmentKey] : nil);
 		if (!eq) {
 			customEquipActivation.erase(customEquipActivation.begin() + i);
@@ -11841,7 +11842,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 	}
 	if (update) {
-		oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		oo::Defaults::standard().setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 }
 
@@ -12063,7 +12064,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	if (legalStatus == 0)  return;				// nothing to pay for
 	
-	OOGovernmentID local_gov = [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_GOVERNMENT));
+	OOGovernmentID local_gov = [UNIVERSE cxx_currentSystemData].get<int>(std::string(KEY_GOVERNMENT));
 	if ([UNIVERSE inInterstellarSpace])  local_gov = 1;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
 	OOCreditsQuantity fine = 500 + ((local_gov < 2 || local_gov > 5) ? 500 : 0);
 	fine *= legalStatus;
@@ -12117,7 +12118,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
 	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
-	return shipyardInfo.get<double>(oo::StdString(KEY_RENOVATION_MULTIPLIER), 1.0);
+	return shipyardInfo.get<double>(std::string(KEY_RENOVATION_MULTIPLIER), 1.0);
 }
 
 
@@ -12136,7 +12137,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (void) setDefaultCustomViews
 {
-	const oo::PList shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:oo::StdString(PLAYER_SHIP_DESC)];
+	const oo::PList shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:std::string(PLAYER_SHIP_DESC)];
 	const oo::PList *customViews = shipInfo.find("custom_views");
 
 	_customViews.clear();

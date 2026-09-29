@@ -2002,7 +2002,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
 		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	if (_offset + 10 < optCount)
 	{
@@ -2017,20 +2017,20 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
 		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTNEXT align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 
 	// clear any previous longtext
 	for (NSUInteger i = OXZ_GUI_ROW_LISTSTATUS; i < OXZ_GUI_ROW_INSTALL-1; i++)
 	{
 		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
 	}
 	// and any previous listed entries
 	for (NSUInteger i = OXZ_GUI_ROW_LISTSTART; i < OXZ_GUI_ROW_LISTNEXT; i++)
 	{
 		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
 	}
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
@@ -2227,7 +2227,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
 		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	if (_offset + OXZ_GUI_NUM_LISTROWS < [self managedOXZs].count())
 	{
@@ -2242,20 +2242,20 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			[gui setSelectedRow:OXZ_GUI_ROW_LISTSTART];
 		}
 		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTNEXT align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 
 	// clear any previous longtext
 	for (NSUInteger i = OXZ_GUI_ROW_LISTDESC; i < OXZ_GUI_ROW_INSTALL-1; i++)
 	{
 		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
 	}
 	// and any previous listed entries
 	for (NSUInteger i = OXZ_GUI_ROW_LISTSTART; i < OXZ_GUI_ROW_LISTNEXT; i++)
 	{
 		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
 	}
 
 

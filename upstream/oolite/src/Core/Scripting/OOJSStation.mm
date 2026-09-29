@@ -168,14 +168,14 @@ std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t ind
 
 // A mutable dictionary's -setObject:forKey: given a nil value raised this (GNUstep 1.31.1's text),
 // and the calling script saw it as "Native exception: <reason>". (Exceptions have their own beads.)
-void RaiseNilValueForKey(id key)
+void RaiseNilValueForKey(std::string_view key)
 {
-	[OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", oo::DescriptionOf(key).c_str()];
+	[OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", std::string(key).c_str()];
 }
 
 
 // A string value for -setObject:forKey:, which raised on nil.
-std::string ValueForKey(const std::optional<std::string> &value, id key)
+std::string ValueForKey(const std::optional<std::string> &value, std::string_view key)
 {
 	if (!value.has_value())  RaiseNilValueForKey(key);
 	return *value;
@@ -1201,19 +1201,19 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	}
 	// This first test messages the converted object, as it did: a JavaScript array converts to an
 	// array, which raised on -objectForKey:.
-	if (![shipyardDefinitionObject objectForKey:KEY_SHORT_DESCRIPTION])
+	if (![shipyardDefinitionObject objectForKey:oo::NSStringFrom(KEY_SHORT_DESCRIPTION)])
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'short_description' in dictionary");
 		return NO;
 	}
-	result[oo::StdString(KEY_SHORT_DESCRIPTION)] = ValueForKey(StringForKey(shipyardDefinition, "short_description"), KEY_SHORT_DESCRIPTION);
-	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)))  
+	result[std::string(KEY_SHORT_DESCRIPTION)] = ValueForKey(StringForKey(shipyardDefinition, "short_description"), KEY_SHORT_DESCRIPTION);
+	if (!shipyardDefinition.get<oo::PList>(std::string(SHIPYARD_KEY_SHIPDATA_KEY)))  
 	{
 		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'shipdata_key' in dictionary");
 		return NO;
 	}
 	// get the shipInfo and shipyardInfo for this key
-	const std::optional<std::string>	shipKey = StringForKey(shipyardDefinition, oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY));
+	const std::optional<std::string>	shipKey = StringForKey(shipyardDefinition, std::string(SHIPYARD_KEY_SHIPDATA_KEY));
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
 	// A copy of the registry's entry: -dictionaryWithDictionary: made an empty one for an unknown
 	// key, never nil, so an unknown key goes on to the tests below (its "Invalid shipdata_key" test
@@ -1234,7 +1234,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	// ok, feel pretty safe to include this ship now
-	result[oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)] = *shipKey;	// non-nil: a nil key found no shipyard information above
+	result[std::string(SHIPYARD_KEY_SHIPDATA_KEY)] = *shipKey;	// non-nil: a nil key found no shipyard information above
 
 	// add an ID
 	Random_Seed ship_seed = [UNIVERSE marketSeed];
@@ -1242,20 +1242,20 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
 	superRand2 &= Ranrot();
 	std::string shipID = oo::str::format("%06x-%06x", superRand1, superRand2);
-	result[oo::StdString(SHIPYARD_KEY_ID)] = shipID;
+	result[std::string(SHIPYARD_KEY_ID)] = shipID;
 
-	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_PRICE)))
+	if (!shipyardDefinition.get<oo::PList>(std::string(SHIPYARD_KEY_PRICE)))
 	{
 		// if not provided, get the price from the registry
-		OOCreditsQuantity price = shipyardInfo.get<unsigned int>(oo::StdString(KEY_PRICE));
-		result[oo::StdString(SHIPYARD_KEY_PRICE)] = oo::PList::unsignedInteger(price);
+		OOCreditsQuantity price = shipyardInfo.get<unsigned int>(std::string(KEY_PRICE));
+		result[std::string(SHIPYARD_KEY_PRICE)] = oo::PList::unsignedInteger(price);
 	}
 	else
 	{
-		OOCreditsQuantity price = shipyardDefinition.get<unsigned int>(oo::StdString(SHIPYARD_KEY_PRICE));
+		OOCreditsQuantity price = shipyardDefinition.get<unsigned int>(std::string(SHIPYARD_KEY_PRICE));
 		if (price > 0)
 		{
-			result[oo::StdString(SHIPYARD_KEY_PRICE)] = oo::PList::unsignedInteger(price);
+			result[std::string(SHIPYARD_KEY_PRICE)] = oo::PList::unsignedInteger(price);
 		}
 		else
 		{
@@ -1264,30 +1264,30 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		}
 	}
 
-	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_PERSONALITY)))
+	if (!shipyardDefinition.get<oo::PList>(std::string(SHIPYARD_KEY_PERSONALITY)))
 	{
 		// default to 0 if not supplied -- this set a nil value, which raised; the script still sees that
 		RaiseNilValueForKey(SHIPYARD_KEY_PERSONALITY);
 	}
 	else
 	{
-		result[oo::StdString(SHIPYARD_KEY_PERSONALITY)] = oo::PList::unsignedInteger(shipyardDefinition.get<unsigned int>(oo::StdString(SHIPYARD_KEY_PERSONALITY)));
+		result[std::string(SHIPYARD_KEY_PERSONALITY)] = oo::PList::unsignedInteger(shipyardDefinition.get<unsigned int>(std::string(SHIPYARD_KEY_PERSONALITY)));
 	}
 
-	const oo::PList *standardEquipment = shipyardInfo.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
+	const oo::PList *standardEquipment = shipyardInfo.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
 	oo::PList extras;
-	if (const oo::PList *definedExtras = shipyardDefinition.get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)))  extras = *definedExtras;
+	if (const oo::PList *definedExtras = shipyardDefinition.get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)))  extras = *definedExtras;
 	else
 	{
 		// pick up defaults if extras not supplied (-arrayWithArray: made an empty array of a missing one)
-		const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr;
+		const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr;
 		extras = (standardExtras != nullptr) ? *standardExtras : oo::PList(oo::PList::Array());
 	}
 	if (extras.count() > 0) {
 		// go looking for lasers and add them directly to our shipInfo
-		std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
-		std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
-		OOWeaponFacingSet availableFacings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+		std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, std::string(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
+		std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, std::string(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
+		OOWeaponFacingSet availableFacings = shipyardInfo.get<unsigned int>(std::string(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
 		OOWeaponType fwdWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString.value_or(""));
 		OOWeaponType aftWeapon = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString.value_or(""));
@@ -1305,7 +1305,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 					//again remember to divide price by 10 to get credits from tenths of credit
 					fwdWeaponString = equipmentKey;
 					fwdWeapon = new_weapon;
-					(*shipInfo.getIf<oo::PList::Dict>())[oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON)] = *fwdWeaponString;
+					(*shipInfo.getIf<oo::PList::Dict>())[std::string(KEY_EQUIPMENT_FORWARD_WEAPON)] = *fwdWeaponString;
 				}
 				else 
 				{
@@ -1314,16 +1314,16 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 					{
 						aftWeaponString = equipmentKey;
 						aftWeapon = new_weapon;
-						(*shipInfo.getIf<oo::PList::Dict>())[oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)] = *aftWeaponString;
+						(*shipInfo.getIf<oo::PList::Dict>())[std::string(KEY_EQUIPMENT_AFT_WEAPON)] = *aftWeaponString;
 					}
 				}
 			}
 		}
 	}
 	// add the extras
-	result[oo::StdString(KEY_EQUIPMENT_EXTRAS)] = extras;
+	result[std::string(KEY_EQUIPMENT_EXTRAS)] = extras;
 	// add the ship spec
-	result[oo::StdString(SHIPYARD_KEY_SHIP)] = shipInfo;
+	result[std::string(SHIPYARD_KEY_SHIP)] = shipInfo;
 	// add it to the station's shipyard
 	if (shipyard != nullptr)  shipyard->push_back(oo::PList(std::move(result)));
 

@@ -48,6 +48,7 @@ MA 02110-1301, USA.
 
 #if OOLITE_ESPEAK
 #include <espeak-ng/speak_lib.h>
+#include <string_view>
 #endif
 
 @class	GameController, CollisionRegion, MyOpenGLView, GuiDisplayGen,
@@ -123,46 +124,46 @@ enum
 #define SUN_SKIM_RADIUS_FACTOR				1.15470053838	// 2 sqrt(3) / 3. Why? I have no idea. -- Ahruman 2009-10-04
 #define SUN_SPARKS_RADIUS_FACTOR			2.0
 
-#define KEY_TECHLEVEL						@"techlevel"
-#define KEY_ECONOMY							@"economy"
-#define KEY_ECONOMY_DESC					@"economy_description"
-#define KEY_GOVERNMENT						@"government"
-#define KEY_GOVERNMENT_DESC					@"government_description"
-#define KEY_POPULATION						@"population"
-#define KEY_POPULATION_DESC					@"population_description"
-#define KEY_PRODUCTIVITY					@"productivity"
-#define KEY_RADIUS							@"radius"
-#define KEY_NAME							@"name"
-#define KEY_INHABITANT						@"inhabitant"
-#define KEY_INHABITANTS						@"inhabitants"
-#define KEY_DESCRIPTION						@"description"
-#define KEY_SHORT_DESCRIPTION				@"short_description"
-#define KEY_PLANETNAME						@"planet_name"
-#define KEY_SUNNAME							@"sun_name"
+inline constexpr std::string_view KEY_TECHLEVEL						= "techlevel";
+inline constexpr std::string_view KEY_ECONOMY							= "economy";
+inline constexpr std::string_view KEY_ECONOMY_DESC					= "economy_description";
+inline constexpr std::string_view KEY_GOVERNMENT						= "government";
+inline constexpr std::string_view KEY_GOVERNMENT_DESC					= "government_description";
+inline constexpr std::string_view KEY_POPULATION						= "population";
+inline constexpr std::string_view KEY_POPULATION_DESC					= "population_description";
+inline constexpr std::string_view KEY_PRODUCTIVITY					= "productivity";
+inline constexpr std::string_view KEY_RADIUS							= "radius";
+inline constexpr std::string_view KEY_NAME							= "name";
+inline constexpr std::string_view KEY_INHABITANT						= "inhabitant";
+inline constexpr std::string_view KEY_INHABITANTS						= "inhabitants";
+inline constexpr std::string_view KEY_DESCRIPTION						= "description";
+inline constexpr std::string_view KEY_SHORT_DESCRIPTION				= "short_description";
+inline constexpr std::string_view KEY_PLANETNAME						= "planet_name";
+inline constexpr std::string_view KEY_SUNNAME							= "sun_name";
 
-#define KEY_CHANCE							@"chance"
-#define KEY_PRICE							@"price"
-#define KEY_OPTIONAL_EQUIPMENT				@"optional_equipment"
-#define KEY_STANDARD_EQUIPMENT				@"standard_equipment"
-#define KEY_EQUIPMENT_MISSILES				@"missiles"
-#define KEY_EQUIPMENT_FORWARD_WEAPON		@"forward_weapon_type"
-#define KEY_EQUIPMENT_AFT_WEAPON			@"aft_weapon_type"
+inline constexpr std::string_view KEY_CHANCE							= "chance";
+inline constexpr std::string_view KEY_PRICE							= "price";
+inline constexpr std::string_view KEY_OPTIONAL_EQUIPMENT				= "optional_equipment";
+inline constexpr std::string_view KEY_STANDARD_EQUIPMENT				= "standard_equipment";
+inline constexpr std::string_view KEY_EQUIPMENT_MISSILES				= "missiles";
+inline constexpr std::string_view KEY_EQUIPMENT_FORWARD_WEAPON		= "forward_weapon_type";
+inline constexpr std::string_view KEY_EQUIPMENT_AFT_WEAPON			= "aft_weapon_type";
 #define KEY_EQUIPMENT_PORT_WEAPON			@"port_weapon_type"
 #define KEY_EQUIPMENT_STARBOARD_WEAPON		@"starboard_weapon_type"
-#define KEY_EQUIPMENT_EXTRAS				@"extras"
-#define KEY_WEAPON_FACINGS					@"weapon_facings"
-#define KEY_RENOVATION_MULTIPLIER					@"renovation_multiplier"
+inline constexpr std::string_view KEY_EQUIPMENT_EXTRAS				= "extras";
+inline constexpr std::string_view KEY_WEAPON_FACINGS					= "weapon_facings";
+inline constexpr std::string_view KEY_RENOVATION_MULTIPLIER					= "renovation_multiplier";
 
-#define SHIPYARD_KEY_ID						@"id"
-#define SHIPYARD_KEY_SHIPDATA_KEY			@"shipdata_key"
-#define SHIPYARD_KEY_SHIP					@"ship"
-#define SHIPYARD_KEY_PRICE					@"price"
-#define SHIPYARD_KEY_PERSONALITY			@"personality"
+inline constexpr std::string_view SHIPYARD_KEY_ID						= "id";
+inline constexpr std::string_view SHIPYARD_KEY_SHIPDATA_KEY			= "shipdata_key";
+inline constexpr std::string_view SHIPYARD_KEY_SHIP					= "ship";
+inline constexpr std::string_view SHIPYARD_KEY_PRICE					= "price";
+inline constexpr std::string_view SHIPYARD_KEY_PERSONALITY			= "personality";
 // default passenger berth required space
 #define PASSENGER_BERTH_SPACE				5
 
-#define PLANETINFO_UNIVERSAL_KEY			@"universal"
-#define PLANETINFO_INTERSTELLAR_KEY			@"interstellar space"
+inline constexpr std::string_view PLANETINFO_UNIVERSAL_KEY			= "universal";
+inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar space";
 
 #define OOLITE_EXCEPTION_LOOPING			"OoliteLoopingException"
 #define OOLITE_EXCEPTION_DATA_NOT_FOUND		"OoliteDataNotFoundException"

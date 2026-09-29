@@ -150,7 +150,7 @@ MA 02110-1301, USA.
 	[self setSunColor:sun_color];
 
 	// A nil dictionary read nil for the name (messaging nil), not the default.
-	[self cxx_setName:dict ? cxx_OOExpand(dict.get<std::string>(oo::StdString(KEY_SUNNAME), "[oolite-default-star-name]")) : std::nullopt];
+	[self cxx_setName:dict ? cxx_OOExpand(dict.get<std::string>(std::string(KEY_SUNNAME), "[oolite-default-star-name]")) : std::nullopt];
 
 	corona_blending=OOClamp_0_1_f(dict.get<float>("corona_hues", 1.0f));
 	corona_speed_factor=dict.get<float>("corona_shimmer", -1.0);
@@ -700,7 +700,7 @@ MA 02110-1301, USA.
 		oldRadius =	[object doubleValue];	// clamp corona_flare in case planetinfo.plist / savegame contains the wrong value
 		[self setRadius:oldRadius andCorona:dict.get<float>("corona_flare", 0.0f)];
 	}
-	else if (key == oo::StdString(KEY_SUNNAME))
+	else if (key == std::string(KEY_SUNNAME))
 	{
 		// the Foundation get<> read nil unless a string or a number's text
 		const oo::PList *name = dict.find(key);
