@@ -35,8 +35,8 @@ MA 02110-1301, USA.
 /*	Foundation sweep (proposed ADR-0043, bead oo-rvit): goods are keyed by UTF-8 std::strings
 	(the commodity keys); each good's definition is an oo::PList dictionary (trade-goods.plist
 	data, as OOCommodities and commodity scripts build it). -goods returns std::vector<std::string>;
-	-massUnitForGood: takes const std::string &; -dictionaryForScripting hands JavaScript an
-	oo::PList dictionary of the definitions (bead oo-qps.52).
+	-massUnitForGood: takes const std::string &; -dictionaryForScripting hands JavaScript a
+	PList dictionary.
 */
 @interface OOCommodityMarket: OOObject
 {

@@ -266,10 +266,17 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		{
 			OOCacheManager			*cache = [OOCacheManager sharedCache];
 
-			// OOCacheManager holds Foundation objects (an unmigrated callee): they arrive through oo::PListFrom.
-			_shipData = oo::PListFrom([cache cxx_objectForKey:kShipDataCacheKey inCache:kShipRegistryCacheName]);
-			_playerShips = oo::StringsFrom([cache cxx_objectForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName]);
-			_effectData = oo::PListFrom([cache cxx_objectForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName]);
+			_shipData = [cache cxx_pListForKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
+			_playerShips.clear();	// the cached array's string elements, in order (anything else skipped, as oo::StringsFrom did)
+			const oo::PList cachedPlayerShips = [cache cxx_pListForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
+			if (const oo::PList::Array *playerShips = cachedPlayerShips.getIf<oo::PList::Array>())
+			{
+				for (const oo::PList &element : *playerShips)
+				{
+					if (const std::string *playerShip = element.getIf<std::string>())  _playerShips.push_back(*playerShip);
+				}
+			}
+			_effectData = [cache cxx_pListForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
 			if (_shipData.count() == 0)	// Don't accept nil or empty
 			{
 				[self loadShipData];
@@ -480,9 +487,8 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	OO_LOG("shipData.load.progress", "{}", "Finished loading meshes...");
 #endif
 
-	// The cache (an unmigrated callee) gets the data back as Foundation objects.
 	_shipData = std::move(result);
-	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(_shipData) forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
+	[[OOCacheManager sharedCache] cxx_setPList:_shipData forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
 
 	OO_LOG("shipData.load.done", "{}", "Ship data loaded.");
 
@@ -515,7 +521,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	OO_LOG("effectData.load.progress", "{}", "Finished removing invalid entries...");
 
 	_effectData = std::move(result);
-	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(_effectData) forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
+	[[OOCacheManager sharedCache] cxx_setPList:_effectData forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
 
 	OO_LOG("effectData.load.done", "{}", "Effect data loaded.");
 }
@@ -543,7 +549,9 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		}
 	}
 
-	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(conditionScripts) forKey:"demoship conditions" inCache:"condition scripts"];
+	oo::PList::Array conditionScriptList;	// an array of strings, as the Objective-C array was
+	for (const std::string &conditionScript : conditionScripts)  conditionScriptList.emplace_back(conditionScript);
+	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"demoship conditions" inCache:"condition scripts"];
 }
 
 
@@ -687,8 +695,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (void) loadCachedRoleProbabilitySets
 {
-	// OOCacheManager is an unmigrated callee: convert at the call.
-	const oo::PList cachedSets = oo::PListFrom([[OOCacheManager sharedCache] cxx_objectForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName]);
+	const oo::PList cachedSets = [[OOCacheManager sharedCache] cxx_pListForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
 	if (cachedSets.isNull())  return;
 
 	std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>> restoredSets;
@@ -729,7 +736,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	}
 
 	_probabilitySets = std::move(sets);
-	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(oo::PList(std::move(cacheEntry))) forKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
+	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(cacheEntry)) forKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
 }
 
 
@@ -1000,7 +1007,9 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	}
 
 	_playerShips = std::move(playerShips);
-	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(_playerShips) forKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
+	oo::PList::Array playerShipList;	// an array of strings, as the Objective-C array was
+	for (const std::string &playerShip : _playerShips)  playerShipList.emplace_back(playerShip);
+	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(playerShipList)) forKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
 
 	return YES;
 }
@@ -1261,8 +1270,9 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		}
 	}
 
-	// OOCacheManager is an unmigrated callee: the list goes in as Foundation objects.
-	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(conditionScripts) forKey:"ship conditions" inCache:"condition scripts"];
+	oo::PList::Array conditionScriptList;	// an array of strings, as the Objective-C array was
+	for (const std::string &conditionScript : conditionScripts)  conditionScriptList.emplace_back(conditionScript);
+	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"ship conditions" inCache:"condition scripts"];
 
 	return YES;
 }
@@ -1286,12 +1296,12 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		{
 			[[GameController sharedController] setProgressBarValue:(float)i++ / (float)count];
 
-			// OOMesh is an unmigrated callee: convert at the call.
+			// (PRELOAD is 0: this names a -meshWithName: form OOMesh no longer has.)
 			const oo::PList *materials = shipEntry.get<oo::PList::Dict>("materials");
 			const oo::PList *shaders = shipEntry.get<oo::PList::Dict>("shaders");
-			mesh = [OOMesh meshWithName:oo::NSStringOrNil(modelName)
-					 materialDictionary:(materials != nullptr ? oo::ObjectFromPList(*materials) : nil)
-					  shadersDictionary:(shaders != nullptr ? oo::ObjectFromPList(*shaders) : nil)
+			mesh = [OOMesh meshWithName:modelName
+					 materialDictionary:(materials != nullptr ? *materials : oo::PList())
+					  shadersDictionary:(shaders != nullptr ? *shaders : oo::PList())
 								 smooth:shipEntry.get<bool>("smooth")
 						   shaderMacros:nil
 					shaderBindingTarget:nil];
@@ -1394,8 +1404,9 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	}
 	else
 	{
-		// (%@ of the declaration's class: the class of the object the property list gives back)
-		OO_LOG_ERR("shipData.load.error.badSubentity", "subentity declaration for ship {} should be string or dictionary, found {}.", shipKey, oo::DescriptionOf([oo::ObjectFromPList(declaration) class]));
+		// The declaration's property-list type ("array", "integer", ...; was the class name of the
+		// Foundation object it converted to, bead oo-qps.50).
+		OO_LOG_ERR("shipData.load.error.badSubentity", "subentity declaration for ship {} should be string or dictionary, found {}.", shipKey, oo::typeName(declaration.type()));
 		*outFatalError = YES;
 	}
 
@@ -1597,11 +1608,11 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		}
 	}
 
-	// Validate colours. (OOColor is converted at the call; its components are single reals.)
+	// Validate colours. (Their components are single reals.)
 	oo::PList::Array validColors;
 	for (std::size_t i = 0; i != colors.count(); ++i)
 	{
-		OOColor *color = [OOColor colorWithDescription:oo::ObjectFromPList(*colors.at(i))];
+		OOColor *color = [OOColor cxx_colorWithDescription:*colors.at(i)];
 		if (color != nil)
 		{
 			oo::PList::Array components;

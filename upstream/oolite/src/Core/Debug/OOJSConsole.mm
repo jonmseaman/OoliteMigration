@@ -45,6 +45,7 @@ SOFTWARE.
 #import "OOProfilingStopwatch.h"
 #import "ResourceManager.h"
 #import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
 #import "OOLogHeader.h"	// OOPlatformDescription()
 
 #include "oofnd/String.hpp"
@@ -567,7 +568,6 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 	OOJS_NATIVE_ENTER(context)
 	
 	std::optional<std::string>	key;
-	id					settingValue = nil;
 	id					monitor = nil;
 
 	key = cxx_OOStringFromJSString(context, ooscript::idToString(propID));
@@ -580,8 +580,7 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 	}
 
 	const oo::PList setting = key.has_value() ? [monitor configurationValueForKey:*key] : oo::PList();
-	settingValue = oo::ObjectFromPList(setting);
-	if (settingValue != NULL)  *value = OOJSValueFromPList(context, setting);
+	if (!setting.isNull())  *value = OOJSValueFromPList(context, setting);
 	else  *value = ooscript::undefinedValue();
 	
 	return YES;
@@ -686,7 +685,7 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 	
 	if (message.has_value())
 	{
-		[monitor appendJSConsoleLine:oo::NSStringFrom(*message)
+		[monitor appendJSConsoleLine:*message
 							colorKey:colorKey
 					   emphasisRange:emphasisRange];
 	}
@@ -724,7 +723,7 @@ static bool ConsoleScriptStack(ooscript::Context context, ooscript::CallArgs &oo
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects([OOJSScript scriptStack]));
+	OOJS_RETURN_PLIST(oo::PListFromObjects([OOJSScript scriptStack]));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -914,7 +913,7 @@ static bool ConsoleGarbageCollect(ooscript::Context context, ooscript::CallArgs 
 	ooscript::gc(context);
 	uint32_t bytesAfter = ooscript::getGCParameter(ooscript::getRuntime(context), ooscript::GCParam::Bytes);
 	
-	OOJS_RETURN_OBJECT((oo::NSStringFrom(oo::str::format("Bytes before: %u Bytes after: %u", bytesBefore, bytesAfter))));
+	OOJS_RETURN_PLIST(oo::PList(oo::str::format("Bytes before: %u Bytes after: %u", bytesBefore, bytesAfter)));
 	
 	OOJS_NATIVE_EXIT
 }
