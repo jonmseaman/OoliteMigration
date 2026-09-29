@@ -367,8 +367,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 
 					if (keydef != nullptr)
 					{
-						// do processing for key (-processKeyCode: is not migrated: converted once at the call)
-						defaultKey = oo::PListFrom([PLAYER processKeyCode:oo::ObjectFromPList(*keydef)]);
+						// do processing for key
+						defaultKey = [PLAYER cxx_processKeyCode:*keydef];
 						const std::optional<std::string> checking = [PLAYER validateKey:(activate ? "activate_" : "mode_") + _identifier checkKeys:defaultKey];
 
 						if (checking.has_value()) {
