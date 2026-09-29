@@ -1661,7 +1661,7 @@ using ooscript::Context;
 
 - (void) disengageAutopilot
 {
-	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", oo::DescriptionOf([shipAI name]), oo::DescriptionOf([shipAI state]));
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [shipAI cxx_name].value_or("(null)"), oo::DescriptionOf([shipAI state]));
 }
 
 
@@ -2394,7 +2394,7 @@ using ooscript::Context;
 	
 	if (predicateExpression == nil)  predicateExpression = @"false";
 	
-	aiName = [[self getAI] name];
+	aiName = oo::NSStringOrNil([[self getAI] cxx_name]);
 #ifndef NDEBUG
 	/*	In debug/test release builds, scripts are cached per AI in order to be
 	 able to report errors correctly. For end-user releases, we only cache
@@ -2450,7 +2450,7 @@ using ooscript::Context;
 		
 		if (![errorCache containsObject:key])
 		{
-			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), oo::DescriptionOf([[self getAI] name]));
+			OO_LOG("ai.scanForNearestShipMatchingPredicate.compile.failed", "Could not compile JavaScript predicate \"{}\" for AI {}.", oo::DescriptionOf(predicateExpression), [[self getAI] cxx_name].value_or("(null)"));
 			if (errorCache == nil)  errorCache = [[NSMutableSet alloc] init];
 			[errorCache addObject:key];
 		}
@@ -2611,7 +2611,7 @@ using ooscript::Context;
 		[player setScriptTarget:(ShipEntity*)targEnt];
 		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])])
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - scriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player checkScript];	// react immediately to any changes this makes
 		[player setScriptTarget:oldTarget];
@@ -2631,7 +2631,7 @@ using ooscript::Context;
 		[player setScriptTarget:(ShipEntity*)targEnt];
 		[player cxx_runUnsanitizedScriptActions:oo::PListFrom([NSArray arrayWithObject:action])
 						  allowingAIMethods:YES
-							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", [[self getAI] name], oo::NSStringOrNil([[self getAI] cxx_state])])
+							withContextName:oo::OptionalString([NSString stringWithFormat:@"<AI \"%@\" state %@ - safeScriptActionOnTarget:>", oo::NSStringOrNil([[self getAI] cxx_name]), oo::NSStringOrNil([[self getAI] cxx_state])])
 								  forTarget:targEnt];
 		[player setScriptTarget:oldTarget];
 	}
