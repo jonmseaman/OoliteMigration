@@ -1191,7 +1191,8 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	if (ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 
 	oo::PList::Dict result;
-	id shipyardDefinitionObject = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
+	const oo::PList shipyardDefinition = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
+	id shipyardDefinitionObject = oo::ObjectFromPList(shipyardDefinition);
 	// validate each element of the dictionary
 	if (!shipyardDefinitionObject)  
 	{
@@ -1205,7 +1206,6 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		cxx_OOJSReportBadArguments(context, "Station", "addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "'short_description' in dictionary");
 		return NO;
 	}
-	const oo::PList shipyardDefinition = oo::PListFrom(shipyardDefinitionObject);
 	result[oo::StdString(KEY_SHORT_DESCRIPTION)] = ValueForKey(StringForKey(shipyardDefinition, "short_description"), KEY_SHORT_DESCRIPTION);
 	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)))  
 	{

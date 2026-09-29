@@ -1122,7 +1122,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [player cxx_jumpCause].value_or("").c_str())), ooscript::int32Value(dest));
 		OOJSRelinquishContext(context);
 	
-		[self allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:@"PLAYER WITCHSPACE"];
+		[self cxx_allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:"PLAYER WITCHSPACE"];
 
 		[player setRandom_factor:(ranrot_rand() & 255)];						// random factor for market values is reset
 
@@ -3373,7 +3373,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	if (justCobra)
 	{
 		/*- cobra - intro1 -*/
-		ship = [self newShipWithName:PLAYER_SHIP_DESC usePlayerProxy:YES];
+		ship = [self cxx_newShipWithName:oo::StdString(PLAYER_SHIP_DESC) usePlayerProxy:YES];
 	}
 	else
 	{
@@ -5797,7 +5797,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 						}
 						else
 						{
-							stationRoll = oo::PListView([self currentSystemData]).get<double>(@"station_roll", STANDARD_STATION_ROLL);
+							stationRoll = [self cxx_currentSystemData].get<double>("station_roll", STANDARD_STATION_ROLL);
 						}
 						
 						[se setRoll: stationRoll];
@@ -6314,7 +6314,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		[self addEntity: burst];
 		if ([target energy] * randf() < damage)
 		{
-			ShipEntity *wreck = [self addWreckageFrom:target withRole:@"oolite-wreckage-chunk" at:pos scale:0.05 lifetime:(125.0+(randf()*200.0))];
+			ShipEntity *wreck = [self cxx_addWreckageFrom:target withRole:"oolite-wreckage-chunk" at:pos scale:0.05 lifetime:(125.0+(randf()*200.0))];
 			if (wreck)
 			{
 				Vector direction = HPVectorToVector(HPvector_normal(HPvector_subtract(pos,[target position])));
@@ -11076,7 +11076,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[self setUpSpace];
 	
 	[self setDockingClearanceProtocolActive:
-			  oo::PListView([self currentSystemData]).get<BOOL>(@"stations_require_docking_clearance", YES)];
+			  [self cxx_currentSystemData].get<bool>("stations_require_docking_clearance", YES)];
 
 	[self enterGUIViewModeWithMouseInteraction:NO];
 	[player setPosition:[[self station] position]];

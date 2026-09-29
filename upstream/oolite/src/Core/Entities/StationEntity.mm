@@ -94,7 +94,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 {
 	if (equivalentTechLevel == NSNotFound)
 	{
-		return oo::PListView([UNIVERSE currentSystemData]).get<int>(KEY_TECHLEVEL);
+		return [UNIVERSE cxx_currentSystemData].get<int>(oo::StdString(KEY_TECHLEVEL));
 	}
 	else
 	{
@@ -1409,14 +1409,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	if((trader && (randf() < 0.1)) || sunskimmer)
 	{
-		ship = [UNIVERSE newShipWithRole:@"sunskim-trader"];
+		ship = [UNIVERSE cxx_newShipWithRole:"sunskim-trader"];
 		sunskimmer = true;
 		trader = true;
 		shipRole = "trader"; // make sure also sunskimmers get trader role.
 	}
 	else
 	{
-		ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(shipRole)];
+		ship = [UNIVERSE cxx_newShipWithRole:shipRole];
 	}
 
 	if (![self fitsInDock:ship])
@@ -1524,11 +1524,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		 * ships */
 		if ((Ranrot() & 3) + 9 < techlevel)
 		{
-			police_ship = [UNIVERSE newShipWithRole:@"interceptor"];   // retain count = 1
+			police_ship = [UNIVERSE cxx_newShipWithRole:"interceptor"];   // retain count = 1
 		}
 		else
 		{
-			police_ship = [UNIVERSE newShipWithRole:@"police"];   // retain count = 1
+			police_ship = [UNIVERSE cxx_newShipWithRole:"police"];   // retain count = 1
 		}
 		
 		if (police_ship && [self fitsInDock:police_ship])
@@ -1597,7 +1597,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	const std::optional<std::string> defense_ship_key = OptionalStringValue(shipinfoDictionary.find("defense_ship"));	// -oo_stringForKey:
 	if (defense_ship_key)
 	{
-		defense_ship = [UNIVERSE newShipWithName:oo::NSStringFrom(*defense_ship_key)];
+		defense_ship = [UNIVERSE cxx_newShipWithName:*defense_ship_key];
 	}
 	// The retry below was a pointer comparison of the role with the default role string: it ran
 	// exactly when shipdata supplied defense_ship_role (-oo_stringForKey:defaultValue: returned the
@@ -1607,11 +1607,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{
 		const std::optional<std::string> defense_ship_role = OptionalStringValue(shipinfoDictionary.find("defense_ship_role"));
 		shipdataSuppliedRole = defense_ship_role.has_value();
-		defense_ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(defense_ship_role.value_or(default_defense_ship_role))];
+		defense_ship = [UNIVERSE cxx_newShipWithRole:defense_ship_role.value_or(default_defense_ship_role)];
 	}
 
 	if (!defense_ship && shipdataSuppliedRole)
-		defense_ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(default_defense_ship_role)];
+		defense_ship = [UNIVERSE cxx_newShipWithRole:default_defense_ship_role];
 
 	if (!defense_ship || ![self fitsInDock:defense_ship])
 	{
@@ -1683,12 +1683,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	ShipEntity  *scavenger_ship;
 	
-	unsigned scavs = [UNIVERSE countShipsWithPrimaryRole:@"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"scavenger"];
+	unsigned scavs = [UNIVERSE cxx_countShipsWithPrimaryRole:"scavenger" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"scavenger"];
 	
 	if (scavs >= max_scavengers)  return nil;
 	if (scavengers_launched >= max_scavengers)  return nil;
 			
-	scavenger_ship = [UNIVERSE newShipWithRole:@"scavenger"];   // retain count = 1
+	scavenger_ship = [UNIVERSE cxx_newShipWithRole:"scavenger"];   // retain count = 1
 	
 	if (![self fitsInDock:scavenger_ship])
 	{
@@ -1728,7 +1728,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	ShipEntity  *miner_ship;
 	
-	int		n_miners = [UNIVERSE countShipsWithPrimaryRole:@"miner" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"miner"];
+	int		n_miners = [UNIVERSE cxx_countShipsWithPrimaryRole:"miner" inRange:SCANNER_MAX_RANGE ofEntity:self] + [self countOfShipsInLaunchQueueWithPrimaryRole:"miner"];
 	
 	if (n_miners >= 1)	// just the one
 		return nil;
@@ -1736,7 +1736,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// count miners as scavengers...
 	if (scavengers_launched >= max_scavengers)  return nil;
 	
-	miner_ship = [UNIVERSE newShipWithRole:@"miner"];   // retain count = 1
+	miner_ship = [UNIVERSE cxx_newShipWithRole:"miner"];   // retain count = 1
 
 	if (![self fitsInDock:miner_ship])
 	{
@@ -1787,7 +1787,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	
 	// Yep! The standard hermit defence ships, even if they're the aggressor.
-	pirate_ship = [UNIVERSE newShipWithRole:@"pirate"];   // retain count = 1
+	pirate_ship = [UNIVERSE cxx_newShipWithRole:"pirate"];   // retain count = 1
 	// Nope, use standard pirates in a generic method.
 	
 	if (![self fitsInDock:pirate_ship])
@@ -1835,7 +1835,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	ShipEntity  *shuttle_ship;
 		
-	shuttle_ship = [UNIVERSE newShipWithRole:@"shuttle"];   // retain count = 1
+	shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	
 	if (![self fitsInDock:shuttle_ship])
 	{
@@ -1873,7 +1873,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	ShipEntity  *escort_ship;
 		
-	escort_ship = [UNIVERSE newShipWithRole:@"escort"];   // retain count = 1
+	escort_ship = [UNIVERSE cxx_newShipWithRole:"escort"];   // retain count = 1
 	
 	if (escort_ship && [self fitsInDock:escort_ship])
 	{
@@ -1912,9 +1912,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			techlevel = 6;
 			
 		if ((Ranrot() & 7) + 6 <= techlevel)
-			patrol_ship = [UNIVERSE newShipWithRole:@"interceptor"];   // retain count = 1
+			patrol_ship = [UNIVERSE cxx_newShipWithRole:"interceptor"];   // retain count = 1
 		else
-			patrol_ship = [UNIVERSE newShipWithRole:@"police"];   // retain count = 1
+			patrol_ship = [UNIVERSE cxx_newShipWithRole:"police"];   // retain count = 1
 
 		if (![self fitsInDock:patrol_ship])
 		{
@@ -1959,7 +1959,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return;
 	}
 	const std::string shipRole = oo::StdString(role);
-	ShipEntity  *ship = [UNIVERSE newShipWithRole: oo::NSStringFrom(shipRole)];   // retain count = 1
+	ShipEntity  *ship = [UNIVERSE cxx_newShipWithRole:shipRole];   // retain count = 1
 	if (ship && [self fitsInDock:ship])
 	{
 		if (![ship cxx_crew].has_value())
@@ -2364,7 +2364,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	if ([self cxx_localShipyard] == nullptr)
 	{
-		const oo::PList forSale = oo::PListFrom([UNIVERSE shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]]);
+		const oo::PList forSale = [UNIVERSE cxx_shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]];
 		const oo::PList::Array *entries = forSale.getIf<oo::PList::Array>();
 		[self cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];	// nil gave an empty shipyard
 	}

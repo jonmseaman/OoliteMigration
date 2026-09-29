@@ -466,14 +466,7 @@ it. oo-qps cannot compile any of them.
 
 | Bridge | Made by | Deleted by |
 |---|---|---|
-| `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
-| `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
-| `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
-| `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
-| `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
-| `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |
-| `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
 | `src/Core/OOLogOutputHandler+FoundationBridge.h/.mm` (gnustep-base's NSLog hook, Amendment 2 item 18(a); also the Foundation-typed functions until oo-vors removes them) | oo-vjts | oo-qps (with gnustep-base) |
 | `src/Core/Entities/ShipEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.232 made it; chunks oo-3rb.233-.242 of oo-3rb.73 move their own selectors in) | oo-3rb.232 | oo-pizp ("Delete ShipEntity+FoundationBridge") |
 | `src/Core/Universe+FoundationBridge.h/.mm` (chunked: oo-3rb.220 made it; chunks oo-3rb.221-.231 move their own selectors in; also the `OOLookUp*DescriptionPRIV` functions behind DESC()) | oo-3rb.220 (chunks of oo-3rb.79) | oo-mr9c ("Delete Universe+FoundationBridge") |

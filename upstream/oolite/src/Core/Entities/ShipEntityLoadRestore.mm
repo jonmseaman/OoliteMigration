@@ -217,8 +217,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		mergedData["escorts"] = oo::PList::unsignedInteger(0);
 
 		const oo::PList mergedPlist(std::move(mergedData));
-		id definition = oo::ObjectFromPList(mergedPlist);
-		Class shipClass = [UNIVERSE shipClassForShipDictionary:definition];
+		Class shipClass = [UNIVERSE cxx_shipClassForShipDictionary:mergedPlist];
 		ship = [[[shipClass alloc] cxx_initWithKey:shipKey definition:mergedPlist] autorelease];
 
 		// FIXME: restore AI.
@@ -233,7 +232,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		const std::optional<std::string> shipPrimaryRole = OptionalStringForKey(dict, KEY_PRIMARY_ROLE);
 		if (!fallback || !shipPrimaryRole.has_value())  return nil;
 
-		ship = [[UNIVERSE newShipWithRole:oo::NSStringFrom(*shipPrimaryRole)] autorelease];
+		ship = [[UNIVERSE cxx_newShipWithRole:*shipPrimaryRole] autorelease];
 		if (ship == nil)  return nil;
 	}
 
