@@ -60,6 +60,7 @@ SOFTWARE.
 // For streaming
 - (void) reset;
 
-- (id)name;	// shared selector (proposed ADR-0043)
+- (id)name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
+- (std::optional<std::string>)cxx_name;	// (bead oo-3rb.289.2)
 
 @end

@@ -63,7 +63,7 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		_name = oo::OptionalString([inDecoder name]);
+		_name = [inDecoder cxx_name];
 		_sampleRate = [inDecoder sampleRate];
 		_stereo = [inDecoder isStereo];
 		_reachedEnd = NO;

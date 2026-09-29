@@ -64,7 +64,7 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		_name = oo::OptionalString([inDecoder name]);
+		_name = [inDecoder cxx_name];
 		_sampleRate = [inDecoder sampleRate];
 		OK = [inDecoder readCreatingBuffer:&_buffer withFrameCount:&_size];
 		_stereo = [inDecoder isStereo];
