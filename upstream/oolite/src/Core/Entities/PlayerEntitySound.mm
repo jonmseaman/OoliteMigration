@@ -195,7 +195,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 #if OOLITE_WINDOWS
 	if ([self status] == STATUS_START_GAME) { return; }
 #endif
-	[sInterfaceBeepSource playSound:[OOSound soundWithCustomSoundKey:oo::NSStringFrom(beepKey)]];
+	[sInterfaceBeepSource playSound:[OOSound cxx_soundWithCustomSoundKey:beepKey]];
 }
 
 
@@ -539,49 +539,49 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 
 - (void) playStandardHyperspace
 {
-	[sHyperspaceSoundSource playCustomSoundWithKey:@"[hyperspace-countdown-begun]"];
+	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[hyperspace-countdown-begun]"];
 }
 
 
 - (void) playGalacticHyperspace
 {
-	[sHyperspaceSoundSource playCustomSoundWithKey:@"[galactic-hyperspace-countdown-begun]"];
+	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[galactic-hyperspace-countdown-begun]"];
 }
 
 
 - (void) playHyperspaceAborted
 {
-	[sHyperspaceSoundSource playCustomSoundWithKey:@"[hyperspace-countdown-aborted]"];
+	[sHyperspaceSoundSource cxx_playCustomSoundWithKey:"[hyperspace-countdown-aborted]"];
 }
 
 
 - (void) playHitByECMSound
 {
-	if (![sEcmSource isPlaying]) [sEcmSource playCustomSoundWithKey:@"[player-hit-by-ecm]"];
+	if (![sEcmSource isPlaying]) [sEcmSource cxx_playCustomSoundWithKey:"[player-hit-by-ecm]"];
 }
 
 
 - (void) playFiredECMSound
 {
-	if (![sEcmSource isPlaying]) [sEcmSource playCustomSoundWithKey:@"[player-fired-ecm]"];
+	if (![sEcmSource isPlaying]) [sEcmSource cxx_playCustomSoundWithKey:"[player-fired-ecm]"];
 }
 
 
 - (void) playLaunchFromStation
 {
-	[sBreakPatternSource playCustomSoundWithKey:@"[player-launch-from-station]"];
+	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-launch-from-station]"];
 }
 
 
 - (void) playDockWithStation
 {
-	[sBreakPatternSource playCustomSoundWithKey:@"[player-dock-with-station]"];
+	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-dock-with-station]"];
 }
 
 
 - (void) playExitWitchspace
 {
-	[sBreakPatternSource playCustomSoundWithKey:@"[player-exit-witchspace]"];
+	[sBreakPatternSource cxx_playCustomSoundWithKey:"[player-exit-witchspace]"];
 }
 
 
