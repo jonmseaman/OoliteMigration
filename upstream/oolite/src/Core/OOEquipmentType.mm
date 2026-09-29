@@ -810,7 +810,6 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 - (OOTechLevelID) effectiveTechLevel
 {
 	OOTechLevelID			tl;
-	id						missionVar = nil;
 	
 	tl = [self techLevel];
 	if (tl == kOOVariableTechLevel)
@@ -818,9 +817,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 		cxx_OOStandardsDeprecated(oo::str::format("TL99 is deprecated for %s", _identifier.c_str()));
 		if (!OOEnforceStandards())
 		{
-			missionVar = [PLAYER missionVariableForKey:oo::NSStringFrom("mission_TL_FOR_" + _identifier)];
-			const oo::PList missionValue = oo::PListFrom(missionVar);	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
-			tl = static_cast<NSInteger>(oo::plist_get::unsignedLongLongFrom((missionVar != nil) ? &missionValue : nullptr, tl));
+			const oo::PList missionValue = [PLAYER cxx_missionVariableForKey:"mission_TL_FOR_" + _identifier];	// OOUIntegerFromObject: OOUnsignedLongLongFromObject on this 64-bit build
+			tl = static_cast<NSInteger>(oo::plist_get::unsignedLongLongFrom(!missionValue.isNull() ? &missionValue : nullptr, tl));
 		}
 	}
 	
