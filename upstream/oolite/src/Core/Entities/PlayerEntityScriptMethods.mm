@@ -96,7 +96,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 - (std::optional<std::string>) cxx_dockedStationName
 {
-	return oo::OptionalString([[self dockedStation] name]);
+	return [[self dockedStation] cxx_name];
 }
 
 
@@ -152,7 +152,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 								// [container wasAddedToUniverse]; // seems to be not needed anymore for pods
 								[container setScanClass: CLASS_CARGO];
 								[container setStatus:STATUS_IN_HOLD];
-								[container setCommodity:oo::NSStringFrom(type) andAmount:smaller_quantity];
+								[container cxx_setCommodity:type andAmount:smaller_quantity];
 								cargo.emplace_back(container);
 								[container release];
 							}
@@ -176,7 +176,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 							// [container wasAddedToUniverse]; // seems to be not needed anymore for pods
 							[container setScanClass: CLASS_CARGO];
 							[container setStatus:STATUS_IN_HOLD];
-							[container setCommodity:oo::NSStringFrom(type) andAmount:1];
+							[container cxx_setCommodity:type andAmount:1];
 							cargo.emplace_back(container);
 							[container release];
 						}

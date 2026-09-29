@@ -709,7 +709,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 		if ([ship reportAIMessages])
 		{
 			HPVector p1 = ship->position;
-			OO_LOG("planet.collide.shipHit", "DEBUG: {} {} collided with planet at ({:.1f},{:.1f},{:.1f})", oo::DescriptionOf([ship name]), [ship universalID], p1.x, p1.y, p1.z);
+			OO_LOG("planet.collide.shipHit", "DEBUG: {} {} collided with planet at ({:.1f},{:.1f},{:.1f})", [ship cxx_name].value_or("(null)"), [ship universalID], p1.x, p1.y, p1.z);
 		}
 #endif
 	}

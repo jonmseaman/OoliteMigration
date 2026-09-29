@@ -107,8 +107,8 @@ enum
 	
 	if (hasPointSprites)
 	{
-		texture = [[OOTexture textureWithName:@"oolite-particle-dust.png"
-																 inFolder:@"Textures"
+		texture = [[OOTexture cxx_textureWithName:"oolite-particle-dust.png"
+																 inFolder:"Textures"
 																	options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 															 anisotropy:kOOTextureDefaultAnisotropy / 2.0
 																	lodBias:0.0] retain];

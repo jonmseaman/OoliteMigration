@@ -382,7 +382,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	result.reserve(sErrors.size());
 	for (const ResourceManagerError &error : sErrors)
 	{
-		std::optional<std::string> errStr = oo::OptionalString([UNIVERSE descriptionForKey:oo::NSStringFrom(error.key)]);
+		std::optional<std::string> errStr = [UNIVERSE cxx_descriptionForKey:error.key];
 		if (errStr.has_value())
 		{
 			// The descriptions.plist entry is the format (data, not a literal): ADR-0043 item 19.
@@ -1962,15 +1962,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				{
 					if (systemKey == oo::StdString(PLANETINFO_UNIVERSAL_KEY))
 					{
-						[manager setUniversalProperties:oo::ObjectFromPList(values)];
+						[manager cxx_setUniversalProperties:values];
 					}
 					else if (systemKey == oo::StdString(PLANETINFO_INTERSTELLAR_KEY))
 					{
-						[manager setInterstellarProperties:oo::ObjectFromPList(values)];
+						[manager cxx_setInterstellarProperties:values];
 					}
 					else
 					{
-						[manager setProperties:oo::ObjectFromPList(values) forSystemKey:oo::NSStringFrom(systemKey)];
+						[manager cxx_setProperties:values forSystemKey:systemKey];
 					}
 				}
 			}

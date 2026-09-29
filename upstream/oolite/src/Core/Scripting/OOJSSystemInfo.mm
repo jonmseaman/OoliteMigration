@@ -593,7 +593,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 		// interstellar space needs more work at this stage
 		if ([info system] != -1)
 		{
-			propValue = [systemManager getProperty:oo::NSStringOrNil(key) forSystem:[info system] inGalaxy:[info galaxy]];
+			propValue = oo::ObjectFromPList([systemManager cxx_getProperty:key.value_or("") forSystem:[info system] inGalaxy:[info galaxy]]);
 		} else {
 			propValue = [info valueForKey:oo::NSStringOrNil(key)];
 		}
@@ -992,7 +992,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 
 	std::string key = oo::str::format("interstellar: %u %u %u",g,s1,s2);
 	
-	[[UNIVERSE systemManager] setProperty:oo::NSStringOrNil(property) forSystemKey:oo::NSStringFrom(key) andLayer:layer toValue:value fromManifest:oo::ObjectFromPList(manifest)];
+	[[UNIVERSE systemManager] cxx_setProperty:property.value_or("") forSystemKey:key andLayer:layer toValue:oo::PListFrom(value) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest))];
 
 	OOJS_RETURN_VOID;
 	
