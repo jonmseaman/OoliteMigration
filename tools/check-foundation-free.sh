@@ -70,8 +70,8 @@ POSTGATE_BRIDGE='OOLogOutputHandler+FoundationBridge.h OOLogOutputHandler+Founda
 POSTGATE_EXPANDER='OOStringExpander.h OOStringExpander.mm'
 POSTGATE_EXPANDER_LINE='^NSString [*](OOExpandDescriptionString|OOGenerateSystemDescription)[(]'
 # The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054. Plus the
-# expander test's fence, OO_EXPANDER_TEST_SURFACE (ADR-0054 item 4, oo-qps.29): only
-# tools/check-string-expander.sh defines it, so its lines are not in the game build (they are
+# expander test fence, OO_EXPANDER_TEST_SURFACE (ADR-0054 item 4, oo-qps.29): only
+# the harness tools/check-string-expander.sh defines it, so its lines are not in the game build (they are
 # counted in the same information-only "mac-fenced" total).
 FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE OO_EXPANDER_TEST_SURFACE'
 BUILD_FILES=(upstream/oolite/src/meson upstream/oolite/src/meson.build upstream/oolite/meson.build
