@@ -48,6 +48,7 @@
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
 
@@ -616,7 +617,7 @@ using ooscript::Context;
 	if (!dockingInstructions.isNull())
 	{
 		const oo::PList *destination = dockingInstructions.find("destination");
-		_destination = OOHPVectorFromObject(destination != nullptr ? oo::ObjectFromPList(*destination) : nil, kZeroHPVector);
+		_destination = OOHPVectorFromPList(destination, kZeroHPVector);
 		desired_speed = fmin(dockingInstructions.get<float>("speed"), maxFlightSpeed);
 		desired_range = dockingInstructions.get<float>("range");
 		if (const oo::PList *stationRef = dockingInstructions.find("station"))
