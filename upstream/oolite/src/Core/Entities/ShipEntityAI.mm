@@ -2670,7 +2670,7 @@ using ooscript::Context;
 
 - (void) ai_debugMessage:(NSString *)message
 {
-	NSString *desc = [NSString stringWithFormat:@"%@ %d", [self name], [self universalID]];
+	NSString *desc = [NSString stringWithFormat:@"%@ %d", oo::NSStringOrNil([self cxx_name]), [self universalID]];
 	if ([self isPlayer])  desc = @"player autopilot";
 	OO_LOG("ai.takeAction.debugMessage", "DEBUG: AI MESSAGE from {}: {}", oo::DescriptionOf(desc), oo::DescriptionOf(message));
 }

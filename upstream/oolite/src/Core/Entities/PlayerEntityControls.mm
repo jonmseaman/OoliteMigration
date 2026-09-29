@@ -5706,14 +5706,14 @@ abort:
 				[self noteLostTarget];
 			}
 			[missile_entity[activeMissile] noteLostTarget];
-			const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+			const std::string weaponName = [missile_entity[activeMissile] cxx_name].value_or(std::string());	// (nil raised in the expansion)
 			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 			[self playMissileArmed];
 		}
 	}
 	else if ([missile_entity[activeMissile] isMine])
 	{
-		const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+		const std::string weaponName = [missile_entity[activeMissile] cxx_name].value_or(std::string());	// (nil raised in the expansion)
 		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 		[self playMineArmed];
 	}
