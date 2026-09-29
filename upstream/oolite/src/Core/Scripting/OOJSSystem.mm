@@ -701,7 +701,7 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	
 	if (system == -1)  return YES;	// Can't change anything else in interstellar space.
 
-	manifest = oo::PListFrom([[OOJSScript currentlyRunningScript] propertyNamed:kLocalManifestProperty]);
+	manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 	
 	switch (ooscript::idToInt32(propID))
 	{

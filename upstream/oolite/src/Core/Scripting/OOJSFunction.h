@@ -60,12 +60,7 @@ MA 02110-1301, USA.
 						argv:(ooscript::Value *)argv
 					  result:(ooscript::Value *)result;
 
-// Object-wrapper evaluation.
-- (id) evaluateWithContext:(ooscript::Context)context
-					 scope:(id)jsThis
-				 arguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
-
-// As above, but converts result to a boolean.
+// Object-wrapper evaluation, converting the result to a boolean.
 - (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
 								scope:(id)jsThis
 							arguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
