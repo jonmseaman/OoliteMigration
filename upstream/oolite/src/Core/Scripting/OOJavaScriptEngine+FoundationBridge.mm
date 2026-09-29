@@ -183,7 +183,7 @@ static ooscript::Object JSObjectFromNSDictionary(ooscript::Context context, NSDi
 #endif
 					if (!ooscript::isUndefined(value))
 					{
-						OK = ooscript::setPropertyById((context), (result), (OOJSIDFromString(key)), (&value));
+						OK = ooscript::setPropertyById((context), (result), (key != nil ? cxx_OOJSIDFromString(oo::StdString(key)) : ooscript::voidId()), (&value));
 						if (EXPECT_NOT(!OK))  break;
 					}
 				}
@@ -408,7 +408,7 @@ NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Ob
 		
 		if (ooscript::isStringId(thisID))
 		{
-			objKey = OOStringFromJSString(context, ooscript::idToString(thisID));
+			objKey = oo::NSStringOrNil(cxx_OOStringFromJSString(context, ooscript::idToString(thisID)));
 		}
 		else if (ooscript::isInt32Id(thisID))
 		{
