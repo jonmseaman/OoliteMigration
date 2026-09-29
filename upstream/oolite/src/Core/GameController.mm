@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "PlayerEntityLoadSave.h"
 #include <stdlib.h>
-#import "OOPListView.h"
 #import "OOOXPVerifier.h"
 #import "OOLoggingExtended.h"
 #import "OOLogOutputHandler.h"

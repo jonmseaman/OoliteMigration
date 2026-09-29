@@ -95,6 +95,13 @@ OOINLINE double OOClamp_0_max_d(double value, double max)
 	return fmax(0.0, fmin(value, max));
 }
 
+// Moved verbatim from the OOCollectionExtractors header (retired by oo-snzn).
+OOINLINE long long OOClampInteger(long long value, long long minValue, long long maxValue) ALWAYS_INLINE_FUNC;
+OOINLINE long long OOClampInteger(long long value, long long minValue, long long maxValue)
+{
+	return (minValue < value) ? ((value < maxValue) ? value : maxValue) : minValue;
+}
+
 
 OOINLINE float OOLerp(float v0, float v1, float fraction)
 {

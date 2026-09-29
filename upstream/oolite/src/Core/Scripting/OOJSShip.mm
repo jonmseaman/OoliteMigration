@@ -46,7 +46,6 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOMesh.h"
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"

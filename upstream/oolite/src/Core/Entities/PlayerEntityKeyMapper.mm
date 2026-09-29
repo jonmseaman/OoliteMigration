@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 #import "PlayerEntityControls.h"
 #import "PlayerEntityScriptMethods.h"
 #import "OOTexture.h"
-#import "OOPListView.h"
 #import "HeadUpDisplay.h"
 #import "ResourceManager.h"
 #import "GameController.h"

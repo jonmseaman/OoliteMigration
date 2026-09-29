@@ -42,7 +42,6 @@ MA 02110-1301, USA.
 #import "OOTexture.h"
 #import "OOTextureSprite.h"
 #import "OOPolygonSprite.h"
-#import "OOPListView.h"
 #import "OOEncodingConverter.h"
 #import "OOCrosshairs.h"
 #import "OOConstToString.h"

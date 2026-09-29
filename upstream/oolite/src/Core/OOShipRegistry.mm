@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOShipRegistry.h"
 #import "OOCacheManager.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOProbabilitySet.h"
 #import "OORoleSet.h"
 #import "OOStringParsing.h"

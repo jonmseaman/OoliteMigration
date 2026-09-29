@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOJSScript.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"

@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 */
 
 #import "OOCheckPListSyntaxVerifierStage.h"
-#import "OOPListView.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
