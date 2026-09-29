@@ -2211,7 +2211,7 @@ static int shipsFound;
 	}
 
 	ShipEntity *ship = [UNIVERSE makeDemoShipWithRole:role spinning:YES];
-	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(ship), oo::DescriptionOf([ship name]));
+	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(ship), [ship cxx_name].value_or("(null)"));
 }
 
 
