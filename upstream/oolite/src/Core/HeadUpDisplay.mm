@@ -993,7 +993,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER cxx_doScriptEvent:OOJSID("compassTargetChanged") withArguments:std::vector<oo::ObjCRef<id>>{ oo::ObjCRef<id>([OONull null]), oo::ObjCRef<id>(oo::NSStringFrom(cxx_OOStringFromCompassMode([PLAYER compassMode]))) }];
+		[PLAYER cxx_doScriptEvent:OOJSID("compassTargetChanged") withPListArguments:{ oo::PList(), oo::PList(cxx_OOStringFromCompassMode([PLAYER compassMode])) }];	// null, as OONull gave
 	}
 	
 }
