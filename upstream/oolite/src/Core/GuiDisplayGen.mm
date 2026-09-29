@@ -621,16 +621,16 @@ static BOOL _refreshStarChart = NO;
 - (void) reportSelectedRow:(int) row
 {
 	// key, row, text - stopping at the first missing one, as +arrayWithObjects: stopped at nil.
-	oo::PList::Array arguments;
+	std::vector<oo::ObjCRef<id>> arguments;
 	const std::optional<std::string> key = [self cxx_keyForRow:row];
 	if (key.has_value())
 	{
-		arguments.push_back(oo::PList(*key));
-		arguments.push_back(oo::PList(row));	// +numberWithInt: (the same JS number)
+		arguments.emplace_back(oo::NSStringFrom(*key));
+		arguments.emplace_back(oo::ObjectFromPList(oo::PList(row)));	// +numberWithInt: (the same JS number)
 		const std::optional<std::string> text = [self cxx_selectedRowText];
-		if (text.has_value())  arguments.push_back(oo::PList(*text));
+		if (text.has_value())  arguments.emplace_back(oo::NSStringFrom(*text));
 	}
-	[PLAYER doScriptEvent:OOJSID("guiSelectedRowChanged") withArguments:oo::ObjectFromPList(oo::PList(std::move(arguments)))];
+	[PLAYER cxx_doScriptEvent:OOJSID("guiSelectedRowChanged") withArguments:arguments];
 }
 
 
@@ -2023,7 +2023,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		advancedNavArrayMode = OPTIMIZED_BY_TIME;
 	}
 	
-	if (advancedNavArrayMode != OPTIMIZED_BY_NONE && [player hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+	if (advancedNavArrayMode != OPTIMIZED_BY_NONE && [player cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 	{
 		OOSystemID planetNumber = [PLAYER systemID];
 		OOSystemID destNumber = [PLAYER targetSystemID];

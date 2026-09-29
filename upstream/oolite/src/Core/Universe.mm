@@ -2208,10 +2208,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if ([ship hasRole:"cargopod"])  [self fillCargopodWithRandomCargo:ship];
 
 		// Ensure piloted ships have pilots.
-		if (![ship crew] && ![ship isUnpiloted])
-			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
+		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
+			[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(
 						   [OOCharacter randomCharacterWithRole:desc
-											  andOriginalSystem:Ranrot() & 255] })];
+											  andOriginalSystem:Ranrot() & 255]) }];
 		
 		if ([ship scanClass] == CLASS_NOT_SET)
 		{
@@ -2808,10 +2808,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			[ship setCargoFlag: CARGO_FLAG_PIRATE];
 			[ship setBounty: (Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
 		}
-		if ([ship crew] == nil && ![ship isUnpiloted])
-			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
+		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
+			[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(
 				[OOCharacter randomCharacterWithRole:role
-				andOriginalSystem: Ranrot() & 255] })];
+				andOriginalSystem: Ranrot() & 255]) }];
 		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
 		[ship leaveWitchspace];
 		[ship release];
@@ -2900,11 +2900,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			[ship setScanClass:scanClass];
 		}
 		
-		if ([ship crew] == nil && ![ship isUnpiloted])
+		if (![ship cxx_crew].has_value() && ![ship isUnpiloted])
 		{
-			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
+			[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(
 				[OOCharacter randomCharacterWithRole:role
-				andOriginalSystem:Ranrot() & 255] })];
+				andOriginalSystem:Ranrot() & 255]) }];
 		}
 		
 		[ship setOrientation:OORandomQuaternion()];
@@ -3139,7 +3139,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	for (unsigned i = 0; i < n_entities; i++)
 	{
 		Entity *e2 = sortedEntities[i];
-		if ([e2 isShip] && [(ShipEntity*)e2 hasPrimaryRole:@"buoy-witchpoint"])
+		if ([e2 isShip] && [(ShipEntity*)e2 cxx_hasPrimaryRole:"buoy-witchpoint"])
 		{
 			return [(ShipEntity*)e2 collisionRadius] + MIN_DISTANCE_TO_BUOY;
 		}
@@ -3189,7 +3189,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (forDocking)
 	{
-		const oo::PList info = oo::PListFrom([[PLAYER dockedStation] shipInfoDictionary]);	// the unmigrated ShipEntity's
+		const oo::PList info = [[PLAYER dockedStation] cxx_shipInfoDictionary];
 		sides = info.get<unsigned int>("tunnel_corners", 4);
 		startAngle = info.get<float>("tunnel_start_angle", 45.0f);
 		aspectRatio = info.get<float>("tunnel_aspect_ratio", 2.67f);
@@ -3256,7 +3256,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	for (const oo::ObjCRef<StationEntity *> &entry : allStations)
 	{
 		station = entry.get();
-		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:oo::StdString([station primaryRole])];
+		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:[station cxx_primaryRole].value_or("")];
 		const oo::PList	stationInfo = stationKey.has_value() ? [registry cxx_shipInfoForKey:*stationKey] : oo::PList();
 		if (stationInfo.find("requires_docking_clearance") == nullptr)
 		{
@@ -3493,7 +3493,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	field1 = OOShipLibraryCategorySingular(override.value_or(std::string()));
 
 
-	field2 = oo::OptionalString([demo_ship shipClassName]);
+	field2 = [demo_ship cxx_shipClassName];
 
 
 	override = LibrarySetting(librarySettings, kOODemoShipSummary, nullptr);
@@ -3817,7 +3817,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		station = entry.get();
 		if (HPdistance2(position,[station position]) < range)
 		{
-			if (oo::StdString([station primaryRole]) == role)	// the unmigrated ShipEntity's role string
+			if ([station cxx_primaryRole].value_or("") == role)
 			{
 				return station;
 			}
@@ -4427,7 +4427,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	ShipEntity *container = nil;
 	// this is a template container, so we need to make a real one
-	const std::optional<std::string> co_type = oo::OptionalString([cargoObj commodityType]);
+	const std::optional<std::string> co_type = [cargoObj cxx_commodityType];
 	OOCargoQuantity co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
 	if (randf() < 0.5) // stops OXP monopolising pods for commodities
 	{
@@ -4437,7 +4437,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		container = [UNIVERSE cxx_newShipWithRole:"cargopod"];
 	}
-	[container setCommodity:oo::NSStringOrNil(co_type) andAmount:co_amount];
+	if (co_type.has_value())  [container cxx_setCommodity:*co_type andAmount:co_amount];	// nil: no change, as before
 	return [container autorelease];
 }
 
@@ -4548,11 +4548,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	if (cargopod == nil || ![cargopod hasRole:"cargopod"] || [cargopod cargoType] == CARGO_SCRIPTED_ITEM)  return;
 
-	if ([cargopod commodityType] == nil || ![cargopod commodityAmount])
+	if (![cargopod cxx_commodityType].has_value() || ![cargopod commodityAmount])
 	{
 		const std::string aCommodity = [self getRandomCommodity];
 		OOCargoQuantity aQuantity = [self cxx_getRandomAmountOfCommodity:aCommodity];
-		[cargopod setCommodity:oo::NSStringFrom(aCommodity) andAmount:aQuantity];
+		[cargopod cxx_setCommodity:aCommodity andAmount:aQuantity];
 	}
 }
 
@@ -5789,12 +5789,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 					{
 						double stationRoll = 0.0;
 						// check for station_roll override
-						id definedRoll = [[se shipInfoDictionary] objectForKey:@"station_roll"];
+						const oo::PList shipInfo = [se cxx_shipInfoDictionary];
+						const oo::PList *definedRoll = shipInfo.find("station_roll");
 						
-						if (definedRoll != nil)
+						if (definedRoll != nullptr)
 						{
-							const oo::PList rollValue = oo::PListFrom(definedRoll);	// OODoubleFromObject
-							stationRoll = oo::plist_get::realFrom<double>(&rollValue, stationRoll);
+							stationRoll = oo::plist_get::realFrom<double>(definedRoll, stationRoll);	// OODoubleFromObject
 						}
 						else
 						{
@@ -6528,33 +6528,35 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	OOWeaponFacing targetFacing;
 	Vector laserPortOffset = kZeroVector;
 	PlayerEntity *player = PLAYER;
+	// The first weapon offset, or the zero vector for none (as -oo_vectorAtIndex:0 of the old array).
+	const auto firstWeaponOffset = [](const std::vector<Vector> &offsets) { return offsets.empty() ? kZeroVector : offsets.front(); };
 
 	switch (viewDirection)
 	{
 		case VIEW_FORWARD:
 			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = oo::PListView([player forwardWeaponOffset]).at<Vector>(0);
+			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
 			break;
 			
 		case VIEW_AFT:
 			targetFacing = WEAPON_FACING_AFT;
-			laserPortOffset = oo::PListView([player aftWeaponOffset]).at<Vector>(0);
+			laserPortOffset = firstWeaponOffset([player cxx_aftWeaponOffset]);
 			break;
 			
 		case VIEW_PORT:
 			targetFacing = WEAPON_FACING_PORT;
-			laserPortOffset = oo::PListView([player portWeaponOffset]).at<Vector>(0);
+			laserPortOffset = firstWeaponOffset([player cxx_portWeaponOffset]);
 			break;
 			
 		case VIEW_STARBOARD:
 			targetFacing = WEAPON_FACING_STARBOARD;
-			laserPortOffset = oo::PListView([player starboardWeaponOffset]).at<Vector>(0);
+			laserPortOffset = firstWeaponOffset([player cxx_starboardWeaponOffset]);
 			break;
 			
 		default:
 			// Match behaviour of -firstEntityTargetedByPlayer.
 			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = oo::PListView([player forwardWeaponOffset]).at<Vector>(0);
+			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
 	}
 	
 	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
@@ -8788,7 +8790,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	
 	sysdataLocked = YES;
 	// the same arguments (a nil value ends the list, as it did)
-	[PLAYER doScriptEvent:OOJSID("systemInformationChanged") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::signedInteger(gnum), oo::PList::signedInteger(pnum), oo::PList(key), oo::PListObject(object) }))];
+	[PLAYER cxx_doScriptEvent:OOJSID("systemInformationChanged") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::signedInteger(gnum), oo::PList::signedInteger(pnum), oo::PList(key), oo::PListObject(object) })))];
 	sysdataLocked = NO;
 
 }
@@ -10893,7 +10895,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
 		[container setScanClass:CLASS_CARGO];
-		[container setCommodity:oo::NSStringFrom(type) andAmount:1];
+		[container cxx_setCommodity:type andAmount:1];
 		if (container != nil)  tmp[type] = oo::adoptObjC(container);	// a nil container was an exception before
 	}
 	cargoPods = std::move(tmp);
