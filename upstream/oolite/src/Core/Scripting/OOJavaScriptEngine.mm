@@ -173,19 +173,19 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 } // namespace
 
 namespace {
-static id JSArrayConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSArrayConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSStringConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSStringConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSNumberConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSNumberConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSBooleanConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSBooleanConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSPlainObjectConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSPlainObjectConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 
 
@@ -2394,15 +2394,8 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object 
 	}
 	if (converter == NULL)  return oo::PList();
 
-	// The engine's own converters build the PList directly; the id converters are their ObjectFromPList.
-	if (converter == JSArrayConverter)  return PListFromJSArray(context, tableObject);
-	if (converter == JSStringConverter)  return PListFromJSStringObject(context, tableObject);
-	if (converter == JSNumberConverter)  return PListFromJSNumberObject(context, tableObject);
-	if (converter == JSBooleanConverter)  return PListFromJSBooleanObject(context, tableObject);
-	if (converter == JSPlainObjectConverter)  return cxx_OOJSDictionaryFromJSObject(context, tableObject);
-
-	// A registered private-object converter: a PList::Object node holding what it returns.
-	return oo::PListFrom(converter(context, tableObject));
+	// The engine's own converters build the PList; a private-object converter gives an Object node.
+	return converter(context, tableObject);
 
 	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
@@ -2430,7 +2423,7 @@ id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Obje
 }
 
 
-id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object)
+oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object)
 {
 	id						result;
 	
@@ -2439,7 +2432,7 @@ id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object o
 		it returns nil.
 	*/
 	result = (id)ooscript::getPrivate((context), (object));
-	return [result weakRefUnderlyingObject];
+	return oo::PListObject([result weakRefUnderlyingObject]);	// nil: a null PList
 }
 
 
@@ -2494,9 +2487,9 @@ static oo::PList PListFromJSArray(ooscript::Context context, ooscript::Object ar
 }
 
 
-static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
+static oo::PList JSArrayConverter(ooscript::Context context, ooscript::Object array)
 {
-	return oo::ObjectFromPList(PListFromJSArray(context, array));
+	return PListFromJSArray(context, array);
 }
 } // namespace
 
@@ -2509,9 +2502,9 @@ static oo::PList PListFromJSStringObject(ooscript::Context context, ooscript::Ob
 }
 
 
-static id JSStringConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSStringConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(PListFromJSStringObject(context, object));
+	return PListFromJSStringObject(context, object);
 }
 } // namespace
 
@@ -2528,9 +2521,9 @@ static oo::PList PListFromJSNumberObject(ooscript::Context context, ooscript::Ob
 }
 
 
-static id JSNumberConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSNumberConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(PListFromJSNumberObject(context, object));
+	return PListFromJSNumberObject(context, object);
 }
 } // namespace
 
@@ -2552,16 +2545,16 @@ static oo::PList PListFromJSBooleanObject(ooscript::Context context, ooscript::O
 }
 
 
-static id JSBooleanConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSBooleanConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(PListFromJSBooleanObject(context, object));
+	return PListFromJSBooleanObject(context, object);
 }
 
 
 // A plain JS Object: cxx_OOJSDictionaryFromJSObject() (proposed ADR-0051; was the bridge's
 // Foundation converter, which kept an integer-like key as a number).
-static id JSPlainObjectConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSPlainObjectConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(cxx_OOJSDictionaryFromJSObject(context, object));
+	return cxx_OOJSDictionaryFromJSObject(context, object);
 }
 } // namespace
