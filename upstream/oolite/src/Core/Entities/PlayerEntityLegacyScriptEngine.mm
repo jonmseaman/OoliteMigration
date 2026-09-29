@@ -1258,7 +1258,7 @@ static int shipsFound;
 
 - (id) commanderName_string	// called by name (ADR-0043 item 21)
 {
-	return [self commanderName];
+	return oo::NSStringOrNil([self cxx_commanderName]);
 }
 
 
@@ -1361,7 +1361,7 @@ static int shipsFound;
 
 	if ([eqType isMissileOrMine])
 	{
-		[self mountMissileWithRole:equipString];
+		[self cxx_mountMissileWithRole:equipKey];
 	}
 	else if(oo::str::hasPrefix(equipKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipKey, "_DAMAGED"))
 	{
@@ -2167,9 +2167,9 @@ static int shipsFound;
 
 - (void) clearMissionScreen
 {
-	[self setMissionOverlayDescriptor:nil];
-	[self setMissionBackgroundDescriptor:nil];
-	[self setMissionBackgroundSpecial:nil];
+	[self cxx_setMissionOverlayDescriptor:oo::PList()];
+	[self cxx_setMissionBackgroundDescriptor:oo::PList()];
+	[self cxx_setMissionBackgroundSpecial:""];
 	[self cxx_setMissionTitle:std::nullopt];
 	[self setMissionMusic:nil];
 	[self showShipModel:nil];
@@ -2241,11 +2241,11 @@ static int shipsFound;
 	const std::string name = oo::StdString(value);
 	if (!IsNoneValue(name))
  	{
-		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
+		[self cxx_setMissionOverlayDescriptor:oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } })];
 	}
 	else
 	{
-		[self setMissionOverlayDescriptor:nil];
+		[self cxx_setMissionOverlayDescriptor:oo::PList()];
 	}
 
 }
@@ -2257,11 +2257,11 @@ static int shipsFound;
 	const std::string name = oo::StdString(value);
 	if (!IsNoneValue(name))
  	{
-		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
+		[self cxx_setMissionBackgroundDescriptor:oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } })];
 	}
 	else
 	{
-		[self setMissionBackgroundDescriptor:nil];
+		[self cxx_setMissionBackgroundDescriptor:oo::PList()];
 	}
 }
 
@@ -2542,7 +2542,7 @@ static int shipsFound;
 {
 	// reset special background as legacy scripts can't use it, and this
 	// is only called by legacy scripts
-	[self setMissionBackgroundSpecial:nil];
+	[self cxx_setMissionBackgroundSpecial:""];
 	// likewise exit screen target
 	[self setMissionExitScreen:GUI_SCREEN_STATUS];
 
@@ -2599,10 +2599,10 @@ static int shipsFound;
 		}
 		[gui setSelectableRange:NSMakeRange(0,0)];
 		
-		[gui cxx_setForegroundTextureDescriptor:oo::PListFrom([self missionOverlayDescriptorOrDefault])];
-		[gui cxx_setBackgroundTextureDescriptor:oo::PListFrom([self missionBackgroundDescriptorOrDefault])];
+		[gui cxx_setForegroundTextureDescriptor:[self cxx_missionOverlayDescriptorOrDefault]];
+		[gui cxx_setBackgroundTextureDescriptor:[self cxx_missionBackgroundDescriptorOrDefault]];
 		// must set special second as setting the descriptor resets it
-		BOOL overridden = ([self missionBackgroundDescriptor] != nil);
+		BOOL overridden = [self cxx_missionBackgroundDescriptor] ? YES : NO;
 		[gui setBackgroundTextureSpecial:[self missionBackgroundSpecial] withBackground:!overridden];
 		
 

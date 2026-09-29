@@ -1346,7 +1346,3 @@ std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBeha
 std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
 std::string cxx_KillCountToRatingAndKillString(unsigned kills);
 std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
-
-// TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
-// sweep, forwarding to the cxx_ API above. Keep this the last line.
-#import "PlayerEntity+FoundationBridge.h"

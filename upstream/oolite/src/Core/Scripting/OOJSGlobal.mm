@@ -650,7 +650,7 @@ static bool GlobalClearExtraGuiScreenKeys(ooscript::Context context, ooscript::C
 		return NO;
 	}
 
-	[player clearExtraGuiScreenKeys:gui key:oo::NSStringFrom(*key)];
+	[player cxx_clearExtraGuiScreenKeys:gui key:*key];
 
 	result = YES;
 	OOJS_RETURN_BOOL(result);
@@ -791,7 +791,7 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 		result = [gui setBackgroundTextureDescriptor:oo::ObjectFromPList(descriptor)];
 		
 		// add some permanence to the override if we're in the equip ship screen
-		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER setEquipScreenBackgroundDescriptor:oo::ObjectFromPList(descriptor)];
+		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER cxx_setEquipScreenBackgroundDescriptor:descriptor];
 	}
 	
 	OOJS_RETURN_BOOL(result);

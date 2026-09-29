@@ -1962,7 +1962,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			if ([entity isPlayer])
 			{
 				PlayerEntity *pent = (PlayerEntity*)entity;
-				[pent setWeaponMount:facing toWeapon:oo::NSStringFrom(weaponKey) inContext:@"scripted"];
+				[pent cxx_setWeaponMount:facing toWeapon:weaponKey inContext:"scripted"];
 			}
 			else
 			{
@@ -2757,7 +2757,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 			}
 			else if ([eqType isMissileOrMine])
 			{
-				OK = [player mountMissileWithRole:oo::NSStringFrom(identifier)];
+				OK = [player cxx_mountMissileWithRole:identifier];
 			}
 			else if (berth)
 			{

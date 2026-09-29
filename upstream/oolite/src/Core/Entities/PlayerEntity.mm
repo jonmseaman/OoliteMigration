@@ -1972,7 +1972,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			energy bomb (900 credits). This must be done after missiles are
 			set up.
 		*/
-		if ([self mountMissileWithRole:@"EQ_QC_MINE"])
+		if ([self cxx_mountMissileWithRole:"EQ_QC_MINE"])
 		{
 			OO_LOG("load.upgrade.replacedEnergyBomb", "{}", "Replaced legacy energy bomb with Quirium cascade mine.");
 		}
@@ -2192,11 +2192,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 	
-	// if there is cargo remaining from previously (e.g. a game restart), remove it
-	if ([self cargoList] != nil)
-	{
-		[self removeAllCargo:YES];		// force removal of cargo
-	}
+	// if there is cargo remaining from previously (e.g. a game restart), remove it (-cargoList was never nil)
+	[self removeAllCargo:YES];		// force removal of cargo
 	
 	[self cxx_setShipDataKey:oo::OptionalString(PLAYER_SHIP_DESC)];
 	ship_trade_in_factor = 95;
@@ -2280,10 +2277,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	target_memory.reserve(PLAYER_TARGET_MEMORY_SIZE);
 	[self clearTargetMemory]; // also does first-time initialisation
 
-	[self setMissionOverlayDescriptor:nil];
-	[self setMissionBackgroundDescriptor:nil];
-	[self setMissionBackgroundSpecial:nil];
-	[self setEquipScreenBackgroundDescriptor:nil];
+	[self cxx_setMissionOverlayDescriptor:oo::PList()];
+	[self cxx_setMissionBackgroundDescriptor:oo::PList()];
+	[self cxx_setMissionBackgroundSpecial:""];
+	[self cxx_setEquipScreenBackgroundDescriptor:oo::PList()];
 	marketOffset = 0;
 	marketSelectedCommodity.reset();
 
@@ -2314,8 +2311,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// player commander data
 	// Most of this is probably also set more than once
 	
-	[self setCommanderName:PLAYER_DEFAULT_NAME];
-	[self setLastsaveName:PLAYER_DEFAULT_NAME];
+	[self cxx_setCommanderName:oo::OptionalString(PLAYER_DEFAULT_NAME)];
+	[self cxx_setLastsaveName:oo::OptionalString(PLAYER_DEFAULT_NAME)];
 	
 	galaxy_coordinates		= NSMakePoint(0x14,0xAD);	// 20,173
 
@@ -2351,8 +2348,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	eqScripts.clear();
 	primedEquipment = 0;
-	[self setFastEquipmentA:@"EQ_CLOAKING_DEVICE"];
-	[self setFastEquipmentB:@"EQ_ENERGY_BOMB"]; // for compatibility purposes
+	[self cxx_setFastEquipmentA:"EQ_CLOAKING_DEVICE"];
+	[self cxx_setFastEquipmentB:"EQ_ENERGY_BOMB"]; // for compatibility purposes
 
 	[self setActiveMissile:0];
 	for (i = 0; i < missiles; i++)
@@ -4090,7 +4087,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// similarly reset the misjump range to the traditional 0.5
 		[self setScriptedMisjumpRange:0.5];
 
-		[self doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:[self jumpCause]];
+		[self doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:oo::NSStringOrNil([self cxx_jumpCause])];
 
 		[self doBookkeeping:delta_t]; // arrival frame updates
 
@@ -6334,7 +6331,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (weapon_temp / PLAYER_MAX_WEAPON_TEMP >= WEAPON_COOLING_CUTOUT)
 	{
-		[self playWeaponOverheated:oo::PListView([self currentLaserOffset]).at<Vector>(0)];
+		[self playWeaponOverheated:[self cxx_currentLaserOffset].at(0)];
 		[UNIVERSE addMessage:DESC(@"weapon-overheat") forCount:3.0];
 		return NO;
 	}
@@ -7776,9 +7773,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self addScannedWormhole:wormhole];
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
 	ooscript::Context context = OOJSAcquireContext();
-	[self setJumpCause:@"wormhole"];
+	[self cxx_setJumpCause:"wormhole"];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[self jumpCause] UTF8String])), ooscript::int32Value([w_hole destination]));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [self cxx_jumpCause].value_or("").c_str())), ooscript::int32Value([w_hole destination]));
 	OOJSRelinquishContext(context);
 	if ([self scriptedMisjump]) 
 	{
@@ -8052,7 +8049,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self doScriptEvent:OOJSID("playerEnteredNewGalaxy") withArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(galaxy_number))];
 	}
 	
-	[self doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:[self jumpCause]];
+	[self doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:oo::NSStringOrNil([self cxx_jumpCause])];
 	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:orientation forDocking:NO];
 }
 
@@ -8162,8 +8159,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("show-ship-model-in-status-screen")))
 	{
 		[UNIVERSE removeDemoShips];
-		[self showShipModelWithKey:oo::NSStringOrNil([self cxx_shipDataKey]) shipData:nil personality:[self entityPersonalityInt]
-									factorX:2.5 factorY:1.7 factorZ:8.0 inContext:@"GUI_SCREEN_STATUS"];
+		const std::optional<std::string> demoShipKey = [self cxx_shipDataKey];
+		if (demoShipKey.has_value())  [self cxx_showShipModelWithKey:*demoShipKey shipData:oo::PList() personality:[self entityPersonalityInt]
+									factorX:2.5 factorY:1.7 factorZ:8.0 inContext:"GUI_SCREEN_STATUS"];
 		[self setShowDemoShips:YES];
 	}
 	else
@@ -8913,7 +8911,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	[gui clearAndKeepBackground:NO];
 	[gui setBackgroundTextureKey:@"short_range_chart"];
-	[self setMissionBackgroundSpecial: nil];
+	[self cxx_setMissionBackgroundSpecial:""];
 	gui_screen = GUI_SCREEN_LONG_RANGE_CHART;
 	target_chart_zoom = CHART_MAX_ZOOM;
 	[self setGuiToChartScreenFrom: oldScreen];
@@ -8925,7 +8923,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	[gui clearAndKeepBackground:NO];
 	[gui setBackgroundTextureKey:@"short_range_chart"];
-	[self setMissionBackgroundSpecial: nil];
+	[self cxx_setMissionBackgroundSpecial:""];
 	gui_screen = GUI_SCREEN_SHORT_RANGE_CHART;
 	[self setGuiToChartScreenFrom: oldScreen];
 }
@@ -12100,7 +12098,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (double) renovationCosts
 {
 	// 5% of value of ships wear + correction for missing subentities.
-	OOCreditsQuantity shipValue = [UNIVERSE tradeInValueForCommanderDictionary:[self commanderDataDictionary]];
+	OOCreditsQuantity shipValue = [UNIVERSE cxx_tradeInValueForCommanderDictionary:[self cxx_commanderDataDictionary]];
 
 	double costs = 0.005 * (100 - ship_trade_in_factor) * shipValue;
 	costs += 0.01 * shipValue * [self missingSubEntitiesAdjustment];
