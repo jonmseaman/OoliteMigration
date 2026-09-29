@@ -940,13 +940,13 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			{
 				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
 								{ [dock displayName].value_or("(null)"),
-								  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 					toShip:player];
 			}
 			else
 			{
 				[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
-								{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 					toShip:player];
 			}
 			player_reserved_dock = dock;
@@ -2080,7 +2080,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				{
 					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 					[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-extended-until-@")),
-							{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 						toShip:other];
 					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
 					result = "DOCKING_CLEARANCE_EXTENDED";
@@ -2224,13 +2224,13 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		{
 			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
 					{ [player_reserved_dock displayName].value_or("(null)"),
-					  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 				toShip:other];
 		}
 		else
 		{
 			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
-					{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
+					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) }))
 				toShip:other];
 		}
 
