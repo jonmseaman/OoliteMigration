@@ -8387,7 +8387,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		{
 			return; // police never have bounties
 		}
-		[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
+		[self setBounty:amount withReasonAsString:oo::NSStringFrom(cxx_OOStringFromLegalStatusReason(reason))];
 	}
 }
 
@@ -8558,7 +8558,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			commodity["quantity"] = oo::PList(quantityInHold[i]);	// an unsigned integer
 			const std::optional<std::string> goodName = [[UNIVERSE commodityMarket] cxx_nameForGood:good];
 			if (goodName.has_value())  commodity["displayName"] = *goodName;
-			commodity["unit"] = oo::StdString(DisplayStringForMassUnitForCommodity(oo::NSStringFrom(good)));
+			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(good).value_or("");
 			list.emplace_back(std::move(commodity));
 		}
 	}

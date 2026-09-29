@@ -1247,7 +1247,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		const oo::PList &cdr = cdrDetailArray[i];
 		if (cdr.get<bool>("isSavedGame"))
 		{
-			const std::string ratingDesc = oo::DescriptionOf(OODisplayRatingStringFromKillCount(cdr.get<unsigned int>("ship_kills")));
+			const std::string ratingDesc = cxx_OODisplayRatingStringFromKillCount(cdr.get<unsigned int>("ship_kills")).value_or("(null)");
 			const std::optional<std::string> saveName = CommanderSaveName(cdr);
 			[gui cxx_setArray:{
 				" " + saveName.value_or("(null)") + " ",	// @" %@ "
@@ -1365,9 +1365,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	
 	// Make a short description of the commander
-	const std::string legalDesc = oo::DescriptionOf(OODisplayStringFromLegalStatus(cdr.get<int>("legal_status")));
+	const std::string legalDesc = cxx_OODisplayStringFromLegalStatus(cdr.get<int>("legal_status")).value_or("(null)");
 	
-	rating = oo::DescriptionOf(KillCountToRatingAndKillString(cdr.get<unsigned int>("ship_kills")));
+	rating = cxx_KillCountToRatingAndKillString(cdr.get<unsigned int>("ship_kills"));
 	const oo::PList *creditsNode = cdr.find("credits");
 	OOCreditsQuantity money = OODeciCreditsFromPList(creditsNode);
 	

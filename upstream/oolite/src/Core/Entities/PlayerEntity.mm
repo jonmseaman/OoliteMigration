@@ -1808,24 +1808,24 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	OOWeaponFacingSet available_facings = shipyard_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);
 
 	if (available_facings & WEAPON_FACING_FORWARD)
-		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "forward_weapon")));
+		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(StringForKey(dict, "forward_weapon").value_or(""));
 	else
-		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		forward_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_AFT)
-		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "aft_weapon")));
+		aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(StringForKey(dict, "aft_weapon").value_or(""));
 	else
-		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		aft_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_PORT)
-		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "port_weapon")));
+		port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(StringForKey(dict, "port_weapon").value_or(""));
 	else
-		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		port_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_STARBOARD)
-		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierLegacy(oo::NSStringOrNil(StringForKey(dict, "starboard_weapon")));
+		starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(StringForKey(dict, "starboard_weapon").value_or(""));
 	else
-		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
+		starboard_weapon_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_NONE");
 
 	[self setWeaponDataFromType:forward_weapon_type];
 
@@ -4220,7 +4220,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	[hud cxx_resetGuis:oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) } })];
 	const std::string scoreMS = oo::str::formatRuntime(oo::StdString(OOExpandKey(@"gameoverscreen-score-@")),
-							{ oo::DescriptionOf(KillCountToRatingAndKillString(ship_kills)) });
+							{ cxx_KillCountToRatingAndKillString(ship_kills) });
 	
 	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-game-over") forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
@@ -5401,7 +5401,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (EXPECT_NOT(new_target != [self compassTarget]))
 		{
 			[self setCompassTarget:new_target];
-			[self doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PListFrom(OOStringFromCompassMode([self compassMode])) }))];
+			[self doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PList(cxx_OOStringFromCompassMode([self compassMode])) }))];
 		}
 	}
 }
@@ -6928,7 +6928,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason
 {
-	[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
+	[self setBounty:amount withReasonAsString:oo::NSStringFrom(cxx_OOStringFromLegalStatusReason(reason))];
 }
 
 
@@ -8540,7 +8540,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			commodity["containers"] = oo::PList::unsignedInteger(containersInHold[i]);
 			const std::optional<std::string> goodName = [shipCommodityData cxx_nameForGood:symName];
 			if (goodName.has_value())  commodity["displayName"] = *goodName;	// (nil raised before)
-			commodity["unit"] = oo::StdString(DisplayStringForMassUnitForCommodity(oo::NSStringFrom(symName)));
+			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(symName).value_or("");
 			list.emplace_back(std::move(commodity));
 		}
 	}
@@ -8668,9 +8668,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		int radius = infoSystemData.get<int>(oo::StdString(KEY_RADIUS));
 
 		std::string	government_desc =	StringForKey(infoSystemData, oo::StdString(KEY_GOVERNMENT_DESC))
-											.value_or(oo::StdString(OODisplayStringFromGovernmentID(infoSystemData.get<int>(oo::StdString(KEY_GOVERNMENT)))));
+											.value_or(cxx_OODisplayStringFromGovernmentID(infoSystemData.get<int>(oo::StdString(KEY_GOVERNMENT))).value_or(""));
 		std::string	economy_desc =		StringForKey(infoSystemData, oo::StdString(KEY_ECONOMY_DESC))
-											.value_or(oo::StdString(OODisplayStringFromEconomyID(infoSystemData.get<int>(oo::StdString(KEY_ECONOMY)))));
+											.value_or(cxx_OODisplayStringFromEconomyID(infoSystemData.get<int>(oo::StdString(KEY_ECONOMY))).value_or(""));
 		std::string	inhabitants =		StringForKey(infoSystemData, oo::StdString(KEY_INHABITANTS)).value_or(std::string());	// (nil raised in the expansion)
 		std::optional<std::string>	system_desc = StringForKey(infoSystemData, oo::StdString(KEY_DESCRIPTION));
 
@@ -10630,7 +10630,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		// Refund current_weapon
 		if (current_weapon != nil)
 		{
-			tradeIn = [UNIVERSE getEquipmentPriceForKey:OOEquipmentIdentifierFromWeaponType(current_weapon)] * multiplier;
+			tradeIn = [UNIVERSE getEquipmentPriceForKey:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(current_weapon))] * multiplier;
 		}
 		
 		[self doTradeIn:tradeIn forPriceFactor:priceFactor];
@@ -11144,7 +11144,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	// this works with up to 9999 tons of gemstones. Any more than that, they deserve the formatting they get! :)
 
 	const std::string owned = cxx_OOPadStringToEms((units_in_hold > 0) ? oo::str::format("%d",units_in_hold) : oo::StdString(DESC(@"commodity-quantity-none")), 4.5);
-	const std::string units = oo::DescriptionOf(DisplayStringForMassUnit(unit));
+	const std::string units = cxx_DisplayStringForMassUnit(unit).value_or("(null)");
 	const std::string units_available = oo::str::format(" %s %s ",available.c_str(), units.c_str());
 	const std::string units_owned = oo::str::format(" %s %s ",owned.c_str(), units.c_str());
 
@@ -11488,7 +11488,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		{
 			OOMassUnit unit = [shipCommodityData massUnitForGood:selectedCommodity];
 			[gui setColor:[gui colorFromSetting:kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
-			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, oo::DescriptionOf(DisplayStringForMassUnit(unit)) }) forRow:GUI_ROW_MARKET_START+1];
+			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, cxx_DisplayStringForMassUnit(unit).value_or("(null)") }) forRow:GUI_ROW_MARKET_START+1];
 		}
 
 		const std::optional<std::string> info = [shipCommodityData cxx_commentForGood:selectedCommodity];

@@ -289,10 +289,10 @@ std::optional<std::string> OptionalGLString(const GLubyte *string)
 	
 	if (shadersAvailable)
 	{
-		defaultShaderSetting = OOShaderSettingFromString(oo::NSStringFrom(gpuConfig.get<std::string>("default_shader_level",
-																   "SHADERS_FULL")));
-		maximumShaderSetting = OOShaderSettingFromString(oo::NSStringFrom(gpuConfig.get<std::string>("maximum_shader_level",
-																   "SHADERS_FULL")));
+		defaultShaderSetting = cxx_OOShaderSettingFromString(gpuConfig.get<std::string>("default_shader_level",
+																   "SHADERS_FULL"));
+		maximumShaderSetting = cxx_OOShaderSettingFromString(gpuConfig.get<std::string>("maximum_shader_level",
+																   "SHADERS_FULL"));
 		if (maximumShaderSetting <= SHADERS_OFF)
 		{
 			shadersAvailable = NO;
