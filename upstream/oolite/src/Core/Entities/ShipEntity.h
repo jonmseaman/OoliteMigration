@@ -1335,11 +1335,3 @@ OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(const std::string &st
 std::optional<std::string> cxx_OOStringFromWeaponType(OOWeaponType weapon);
 OOWeaponType cxx_OOWeaponTypeFromString(const std::string &string);
 std::optional<std::string> cxx_OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before the ShipEntity.mm sweep (chunk beads oo-3rb.232-.242 of oo-3rb.73), forwarding
-	to the cxx_ methods above, so unmigrated callers compile unchanged. Callers move to the cxx_ API
-	in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "ShipEntity+FoundationBridge.h"
