@@ -67,7 +67,7 @@ oolite_sources += files(
     'OOProbabilisticTextureManager.mm',
     'OOProbabilitySet.mm',
     'OOProfilingStopwatch.mm',
-    'OOQuaternion.mm',
+    'OOQuaternion.cpp',
     'OORegExpMatcher.mm',
     'OORoleSet.mm',
     'OOShipGroup.mm',
