@@ -5727,7 +5727,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
+	ooscript::Value keyVal = OOJSValueFromPList(context, key.has_value() ? oo::PList(*key) : oo::PList());
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -5766,7 +5766,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
+	ooscript::Value keyVal = OOJSValueFromPList(context, key.has_value() ? oo::PList(*key) : oo::PList());
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -10479,7 +10479,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			BOOL OK;
 			ooscript::Value result;
 			int32_t newPrice;
-			ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(eqKey)) , ooscript::nullValue() };
+			ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(eqKey)) , ooscript::nullValue() };
 			OK = ooscript::newNumberValue(JScontext, price, &args[1]);
 				
 			if (OK)
