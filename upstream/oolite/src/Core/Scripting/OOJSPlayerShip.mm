@@ -1379,7 +1379,7 @@ static bool PlayerShipUseSpecialCargo(ooscript::Context context, ooscript::CallA
 		return NO;
 	}
 	
-	[player useSpecialCargo:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]))];
+	[player useSpecialCargo:cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or(std::string())];	// (nil was "")
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
