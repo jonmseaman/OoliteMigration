@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 - (ooscript::Object)callbackThis;
 - (void)setCallbackThis:(ooscript::Object)callbackthis;
 
-- (void)runCallback:(HPVector)location;
+- (void)runPopulatorCallback:(HPVector)location;
 
 @end
 

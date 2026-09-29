@@ -39,13 +39,6 @@ constexpr const char *kKeyScript			= "script";
 
 constexpr const char *kCacheName				= "sanitized legacy scripts";
 
-
-// -objectForKey: of a dictionary held as a PList: the value as an Objective-C object, or nil.
-id ObjectForKey(const oo::PList &dictionary, const char *key)
-{
-	const oo::PList *value = dictionary.get<oo::PList>(key);
-	return (value != nullptr) ? oo::ObjectFromPList(*value) : nil;
-}
 } // namespace
 
 
@@ -62,7 +55,7 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 
 + (std::optional<std::vector<oo::ObjCRef<OOScript *>>>)scriptsInPListFile:(const std::string &)filePath
 {
-	const oo::PList cachedScripts = oo::PListFrom([[OOCacheManager sharedCache] cxx_objectForKey:filePath inCache:kCacheName]);
+	const oo::PList cachedScripts = [[OOCacheManager sharedCache] cxx_pListForKey:filePath inCache:kCacheName];
 	if (cachedScripts)
 	{
 		return [self loadCachedScripts:cachedScripts];
@@ -99,8 +92,11 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 
 - (std::optional<std::string>)cxx_version
 {
-	// As -displayName read the id-typed -version: the metadata value through oo::OptionalString.
-	return oo::OptionalString(ObjectForKey(_metadata, kMDKeyVersion));
+	// The metadata's "version" string, as -displayName read the id-typed -version. A non-string
+	// value (which -length could not read: an exception) is nullopt here.
+	const oo::PList *value = _metadata.get<oo::PList>(kMDKeyVersion);
+	if (value == nullptr || !value->isString())  return std::nullopt;
+	return *value->getIf<std::string>();
 }
 
 
@@ -169,7 +165,7 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 		}
 	}
 
-	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(oo::PList(std::move(cachedScripts))) forKey:filePath inCache:kCacheName];
+	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(cachedScripts)) forKey:filePath inCache:kCacheName];
 
 	return result;
 }

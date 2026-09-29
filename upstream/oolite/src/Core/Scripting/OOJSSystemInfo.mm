@@ -259,7 +259,7 @@ int PropertyIntValue(const oo::PList &value)
 - (id) initWithGalaxy:(OOGalaxyID)galaxy system:(OOSystemID)system;
 
 - (oo::PList) cxx_valueForKey:(const std::optional<std::string> &)key;	// null for none
-- (void) setValue:(id)value forKey:(id)key;	// shared selector (proposed ADR-0043): key is an Objective-C string
+- (void) cxx_setValue:(const oo::PList &)value forKey:(const std::string &)key;	// a null value removes
 
 - (std::vector<std::string>) cxx_allKeys;
 
@@ -349,17 +349,16 @@ DEFINE_JS_OBJECT_GETTER(JSSystemInfoGetSystemInfo, &sSystemInfoClass, sSystemInf
 		const oo::PList *value = key.has_value() ? systemData.find(*key) : nullptr;
 		return (value != nullptr) ? *value : oo::PList();
 	}
-	// what -cxx_systemDataForGalaxy:planet:key: reads (a nil key as "")
-	return [[UNIVERSE systemManager] cxx_getProperty:key.value_or("") forSystem:_system inGalaxy:_galaxy];
+	return [UNIVERSE cxx_systemDataForGalaxy:_galaxy planet:_system key:key.value_or("")];	// (a nil key as "")
 }
 
 
-- (void) setValue:(id)value forKey:(id)key	// shared selector (proposed ADR-0043)
+- (void) cxx_setValue:(const oo::PList &)value forKey:(const std::string &)key
 {
 	// The running script's manifest identifier, handed on as it was read.
 	const oo::PList manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:oo::StdString(key) value:value  fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:OO_LAYER_OXP_DYNAMIC];
+	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:key value:value fromManifest:ManifestString(manifest) forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
@@ -679,7 +678,7 @@ static bool SystemInfoSetProperty(Context cx, Object obj, PropertyId propID, boo
 		std::optional<std::string>	key = cxx_OOStringFromJSString(context, (ooscript::idToString(propID)));
 		OOSystemInfo	*info = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOSystemInfo class]);
 		
-		[info setValue:oo::NSStringOrNil(cxx_OOStringFromJSValue(context, *(value))) forKey:oo::NSStringOrNil(key)];
+		[info cxx_setValue:StringOrNull(cxx_OOStringFromJSValue(context, *(value))) forKey:key.value_or("")];	// (a nil key as "")
 	}
 	return YES;
 	
@@ -846,7 +845,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 		manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 	}
 
-	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:oo::ObjectFromPList(value) fromManifest:oo::OptionalString(oo::ObjectFromPList(manifest)) forLayer:layer];
+	[UNIVERSE cxx_setSystemDataForGalaxy:[thisInfo galaxy] planet:[thisInfo system] key:property.value_or("") value:value fromManifest:ManifestString(manifest) forLayer:layer];
 
 	OOJS_RETURN_VOID;
 	

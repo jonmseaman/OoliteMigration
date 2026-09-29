@@ -107,7 +107,7 @@ static oo::PList OOSanitizeLegacyScriptInternal(const oo::PList &script, SanStac
 				}
 				else
 				{
-					OO_LOG("script.syntax.statement.invalidType", "***** SCRIPT ERROR: in {}, statement is of invalid type - expected string or dictionary, got {}.", StringFromStack(stack), oo::DescriptionOf([oo::ObjectFromPList(statement) class]));
+					OO_LOG("script.syntax.statement.invalidType", "***** SCRIPT ERROR: in {}, statement is of invalid type - expected string or dictionary, got {}.", StringFromStack(stack), oo::typeName(statement.type()));
 				}
 
 				if (!sanitized.isNull())
@@ -153,7 +153,7 @@ static oo::PList OOSanitizeLegacyScriptConditionsInternal(const oo::PList &condi
 			const std::string *conditionString = condition.getIf<std::string>();
 			if (conditionString == nullptr)
 			{
-				OO_LOG("script.syntax.condition.notString", "***** SCRIPT ERROR: in {}, bad condition - expected string, got {}; ignoring.", StringFromStack(stack), oo::DescriptionOf([oo::ObjectFromPList(condition) class]));
+				OO_LOG("script.syntax.condition.notString", "***** SCRIPT ERROR: in {}, bad condition - expected string, got {}; ignoring.", StringFromStack(stack), oo::typeName(condition.type()));
 				OK = NO;
 				break;
 			}

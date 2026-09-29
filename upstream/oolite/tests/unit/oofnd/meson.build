@@ -22,6 +22,7 @@ oofnd_tests = [
     'test_string_compare',
     'test_localized_compare',
     'test_string_sweep',
+    'test_string_path_extension',
     'test_string_format_runtime',
     'test_encoding',
     'test_scanner',

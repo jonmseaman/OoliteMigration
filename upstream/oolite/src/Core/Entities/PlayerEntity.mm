@@ -2521,7 +2521,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	[roleSet release];
 	roleSet = nil;
-	[self setPrimaryRole:@"player"];
+	[self setPrimaryRole:"player"];
 	
 	[self removeAllEquipment];
 	const oo::PList *extraEquipment = shipDict.find("extra_equipment");
@@ -3902,7 +3902,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// JSAI: will need changing if oolite-dockingAI.js written
 	if ([myAI cxx_name] != std::string(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
 	{
-		[self setAITo:oo::NSStringFrom(PLAYER_DOCKING_AI_NAME)];
+		[self setAITo:std::string(PLAYER_DOCKING_AI_NAME)];
 	}
 	[myAI clearAllData];
 	[myAI cxx_setState:"GLOBAL"];
@@ -4275,7 +4275,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[ship setDemoShip: 0.6];
 	[ship setDemoStartTime: [UNIVERSE getTime]];
 	if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
-	[ship setAITo: @"nullAI.plist"];
+	[ship setAITo: "nullAI.plist"];
 	const oo::PList *subEntStatus = shipData.find("subentities_status");
 	// show missing subentities if there's a subentities_status key
 	if (subEntStatus != nullptr) [ship cxx_deserializeShipSubEntitiesFrom:oo::PListGet<std::string>::from(subEntStatus, std::string())];
@@ -6729,7 +6729,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[result setDesiredSpeed:[self flightSpeed]];
 		[result setRoll:flightRoll];
 		[result setBehaviour:BEHAVIOUR_IDLE];
-		[result switchAITo:@"nullAI.plist"];  // fly straight on
+		[result switchAITo:"nullAI.plist"];  // fly straight on
 		[result setTemperature:[self temperature]];
 		[result copyValuesFromPlayer:self];
 	}

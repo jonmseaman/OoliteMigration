@@ -218,7 +218,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 	// -lastPathComponent of a nil path is nil, and so is the name.
 #if OOTEXTURE_RELOADABLE
 	if (!_path.has_value())  return std::nullopt;
-	std::string name = oo::StdString([oo::NSStringFrom(*_path) lastPathComponent]);
+	std::string name = oo::str::lastPathComponent(*_path);
 #else
 	const std::optional<std::string> key = [self cxx_cacheKey];
 	if (!key.has_value())  return std::nullopt;
