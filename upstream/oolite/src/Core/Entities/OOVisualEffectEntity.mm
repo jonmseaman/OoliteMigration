@@ -357,7 +357,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		return NO;
 	}
 	
-	subentity = [UNIVERSE newVisualEffectWithName:oo::NSStringFrom(*subentKey)];
+	subentity = [UNIVERSE cxx_newVisualEffectWithName:*subentKey];
 	if (subentity == nil) {
 		OO_LOG("setup.visualeffect.badEntry.subentities", "Failed to set up entity {}", *subentKey);
 		return NO;
@@ -893,7 +893,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 		if (length > 1)
 		{
-			const oo::PList iconData = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(*_beaconCode)]);
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
 			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
 

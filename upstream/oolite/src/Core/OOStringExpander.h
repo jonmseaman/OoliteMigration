@@ -111,8 +111,23 @@ typedef NSUInteger OOExpandOptions;
 
 // C++ form (bead oo-3il6, chunk oo-3rb.145): overrides and legacyLocals are dictionaries of
 // mixed values (oo::PList with Object nodes; null: none); nullopt where the string expanded to
-// nothing. The Foundation form and the OOExpand* macros are in OOStringExpander+FoundationBridge.h.
+// nothing. Game code calls this or the cxx_OOExpand* macros below.
 std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const std::string &string, const oo::PList &overrides, const oo::PList &legacyLocals, const std::optional<std::string> &systemName, OOExpandOptions options);
+#endif
+
+/*	The Foundation form, kept (bead oo-m2nh, proposed ADR-0052): it is the tested surface of the
+	differential expander test (tests/unit/expander/test_string_expander.mm, run by
+	tools/check-string-expander.sh), whose digests were taken through it. Game code does not call
+	it. It forwards to cxx_OOExpandDescriptionString, converting the overrides and legacy locals
+	with oo::PListFrom (nil for none) and the strings unit for unit; nil in, nil out. It goes with
+	the test's Foundation adapter when that leaves Foundation (oo-qps).
+*/
+#ifdef __cplusplus
+extern "C" {
+#endif
+NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options);
+#ifdef __cplusplus
+}
 #endif
 
 
@@ -129,6 +144,9 @@ std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const
 #ifdef __cplusplus
 std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, const std::optional<std::string> &name);
 #endif
+
+// The Foundation form, kept as the expander test's surface as OOExpandDescriptionString() is.
+NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);
 
 
 // Equivalent to [[UNIVERSE systemManager] getRandomSeedForCurrentSystem], without pulling in Universe.h.
@@ -319,12 +337,3 @@ inline oo::PList cxx_OOExpandArgumentDictionary(std::initializer_list<oo::PList:
 	return oo::PList(std::move(dictionary));
 }
 #endif
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-3il6 (chunks oo-3rb.145..147) -- OOExpandDescriptionString,
-	OOGenerateSystemDescription and the OOExpand* macros with their boxing machinery -- forwarding
-	to the cxx_ functions above, so unmigrated callers compile unchanged. Callers move to the
-	cxx_ forms in their own sweep beads; the bridge goes in its own bead.
-*/
-#import "OOStringExpander+FoundationBridge.h"

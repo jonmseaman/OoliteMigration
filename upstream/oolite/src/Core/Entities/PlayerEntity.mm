@@ -953,7 +953,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (OOSystemID) nextHopTargetSystemID
 {
 	// not available if no ANA
-	if (![self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+	if (![self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 	{
 		return target_system_id;
 	}
@@ -1474,7 +1474,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	const oo::PList shipDict = shipDataKey.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipDataKey] : oo::PList();
 	if (shipDict.isNull())  return NO;
 	if (![self setUpShipFromDictionary:shipDict])  return NO;
-	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", oo::DescriptionOf([self shipDataKey]), [self fuelChargeRate]);
+	OO_LOG("fuelPrices", "Got \"{}\", fuel charge rate: {:.2f}", [self cxx_shipDataKey].value_or("(null)"), [self fuelChargeRate]);
 
 	// ship depreciation
 	ship_trade_in_factor = dict.get<int>("ship_trade_in_factor", 95);
@@ -1650,7 +1650,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self cxx_setFastEquipmentA:StringForKey(dict, "primed_equipment_a").value_or("EQ_CLOAKING_DEVICE")];
 	[self cxx_setFastEquipmentB:StringForKey(dict, "primed_equipment_b").value_or("EQ_ENERGY_BOMB")]; // even though there isn't one, for compatibility.
 
-	if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])  compassMode = COMPASS_MODE_PLANET;
+	if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"])  compassMode = COMPASS_MODE_PLANET;
 	else  compassMode = COMPASS_MODE_BASIC;
 	DESTROY(compassTarget);
 
@@ -1731,7 +1731,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	shipyard_record = savedShipyardRecord.isDict() ? *savedShipyardRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	
 	// Normalize cargo capacity
-	unsigned	original_hold_size = [UNIVERSE maxCargoForShip:[self shipDataKey]];
+	unsigned	original_hold_size = [UNIVERSE maxCargoForShip:oo::NSStringOrNil([self cxx_shipDataKey])];
 	// Not Suitable For Oolite
 	//unsigned 	passenger_space = [[OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"] requiredCargoSpace];
 	//if (passenger_space == 0) passenger_space = PASSENGER_BERTH_SPACE;
@@ -2000,7 +2000,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// but stores the ID in the save file instead
 	
 	// restore subentities status
-	[self deserializeShipSubEntitiesFrom:oo::NSStringOrNil(StringForKey(dict, "subentities_status"))];
+	[self cxx_deserializeShipSubEntitiesFrom:StringForKey(dict, "subentities_status").value_or("")];
 	
 	// wormholes
 	const oo::PList whArray = ValueForKey(dict, "wormholes");
@@ -2198,7 +2198,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[self removeAllCargo:YES];		// force removal of cargo
 	}
 	
-	[self setShipDataKey:PLAYER_SHIP_DESC];
+	[self cxx_setShipDataKey:oo::OptionalString(PLAYER_SHIP_DESC)];
 	ship_trade_in_factor = 95;
 	
 	// reset HUD & default commlog behaviour
@@ -3176,7 +3176,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[doppelganger becomeExplosion];	// blow up the doppelganger
 			// restore player ship
-			ShipEntity *player_ship = [UNIVERSE newShipWithName:[self shipDataKey]];	// retained
+			ShipEntity *player_ship = [UNIVERSE newShipWithName:oo::NSStringOrNil([self cxx_shipDataKey])];	// retained
 			if (player_ship)
 			{
 				// FIXME: this should use OOShipType, which should exist. -- Ahruman
@@ -4071,7 +4071,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		{
 			[UNIVERSE addMessage:oo::NSStringFrom(oo::str::format(" %s. ", oo::DescriptionOf([UNIVERSE getSystemName:system_id]).c_str())) forCount:3.0];
 			// and reset the compass
-			if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])
+			if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"])
 				compassMode = COMPASS_MODE_PLANET;
 			else
 				compassMode = COMPASS_MODE_BASIC;
@@ -4214,7 +4214,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	// If target is an unexpired wormhole and the player has bought the Wormhole Scanner and we're in ID mode
 	if ([target isWormhole] && [target scanClass] != CLASS_NO_DRAW && 
-		[self hasEquipmentItemProviding:@"EQ_WORMHOLE_SCANNER"] && ident_engaged)
+		[self cxx_hasEquipmentItemProviding:"EQ_WORMHOLE_SCANNER"] && ident_engaged)
 	{
 		return YES;
 	}
@@ -4679,7 +4679,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (void) resetHud
 {
 	// set up defauld HUD for the ship
-	const oo::PList shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:oo::StdString([self shipDataKey])];
+	const oo::PList shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[self cxx_shipDataKey].value_or("")];
 	const std::string hud_desc = shipDict.get<std::string>("hud", "hud.plist");
 	if (![self cxx_switchHudTo:hud_desc])  [self cxx_switchHudTo:"hud.plist"];	// ensure we have a HUD to fall back to
 }
@@ -5190,7 +5190,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return;
 	}
 	std::optional<std::string> role;
-	if (oo::OptionalString([victim primaryRole]) == "escape-capsule")
+	if ([victim cxx_primaryRole] == "escape-capsule")
 	{
 		role = "assassin-player";
 	}
@@ -5202,7 +5202,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		role = "pirate";
 	}
-	else if ([UNIVERSE role:[self primaryRole] isInCategory:@"oolite-hunter"] || [victim scanClass] == CLASS_POLICE)
+	else if ([UNIVERSE role:oo::NSStringOrNil([self cxx_primaryRole]) isInCategory:@"oolite-hunter"] || [victim scanClass] == CLASS_POLICE)
 	{
 		role = "pirate-interceptor";
 	}
@@ -5409,7 +5409,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (EXPECT_NOT(new_target != [self compassTarget]))
 		{
 			[self setCompassTarget:new_target];
-			[self doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PList(cxx_OOStringFromCompassMode([self compassMode])) }))];
+			[self cxx_doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PList(cxx_OOStringFromCompassMode([self compassMode])) })))];
 		}
 	}
 }
@@ -5851,7 +5851,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if(missile_entity[i] != nil)
 		{
 			missile_entity[pylon] = missile_entity[i];
-			missile_list[pylon] = [OOEquipmentType equipmentTypeWithIdentifier:[missile_entity[i] primaryRole]];
+			missile_list[pylon] = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil([missile_entity[i] cxx_primaryRole])];
 			pylon++;
 		}
 	}
@@ -5877,7 +5877,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (missile_entity[next_missile])
 		{
 			// If we don't have the multi-targeting module installed, clear the active missiles' target
-			if( ![self hasEquipmentItemProviding:@"EQ_MULTI_TARGET"] && [missile_entity[activeMissile] isMissile] )
+			if( ![self cxx_hasEquipmentItemProviding:"EQ_MULTI_TARGET"] && [missile_entity[activeMissile] isMissile] )
 			{
 				[missile_entity[activeMissile] removeTarget:nil];
 			}
@@ -5892,7 +5892,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				// If the newly active pylon contains a missile then work out its target, if any
 				if( [missile_entity[activeMissile] isMissile] )
 				{
-					if( [self hasEquipmentItemProviding:@"EQ_MULTI_TARGET"] &&
+					if( [self cxx_hasEquipmentItemProviding:"EQ_MULTI_TARGET"] &&
 							([missile_entity[next_missile] primaryTarget] != nil))
 					{
 						// copy the missile's target
@@ -5905,7 +5905,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 						/* CIM: seems okay to do this when launching a
 						 * missile to stop multi-target being a bit
 						 * irritating in a fight - 20/8/2014 */
-						if([self hasEquipmentItemProviding:@"EQ_MULTI_TARGET"] && !launchingMissile)
+						if([self cxx_hasEquipmentItemProviding:"EQ_MULTI_TARGET"] && !launchingMissile)
 						{
 							[self noteLostTarget];
 							DESTROY(_primaryTarget);
@@ -6069,7 +6069,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (missile_entity[i] == nil)
 		{
 			missile_entity[i] = [missile retain];
-			missile_list[missiles] = [OOEquipmentType equipmentTypeWithIdentifier:[missile primaryRole]];
+			missile_list[missiles] = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil([missile cxx_primaryRole])];
 			missiles++;
 			if (missiles == 1) [self setActiveMissile:0];	// auto select the first purchased missile
 			return YES;
@@ -6090,7 +6090,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (ShipEntity *) fireMissile
 {
 	ShipEntity	*missile = missile_entity[activeMissile];	// retain count is 1
-	const std::optional<std::string>	identifier = oo::OptionalString([missile primaryRole]);	// a copy: the missile goes below
+	const std::optional<std::string>	identifier = [missile cxx_primaryRole];	// a copy: the missile goes below
 	ShipEntity	*firedMissile = nil;
 
 	if (missile == nil) return nil;
@@ -6348,7 +6348,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (_multiplyWeapons)
 	{
 		// multiple fitted
-		multiplier = [[self laserPortOffset:currentWeaponFacing] count];
+		multiplier = [self cxx_laserPortOffset:currentWeaponFacing].size();
 	}
 	
 	if (energy <= weapon_energy_use * multiplier)
@@ -6392,7 +6392,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		if (![weapon_to_be_fired isTurretLaser])
 		{
-			[self fireLaserShotInDirection:currentWeaponFacing weaponIdentifier:[[self currentWeapon] identifier]];
+			[self cxx_fireLaserShotInDirection:currentWeaponFacing weaponIdentifier:oo::StdString([[self currentWeapon] identifier])];
 			weaponFired = YES;
 		}
 		else
@@ -6709,7 +6709,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (ProxyPlayerEntity *) createDoppelganger
 {
-	ProxyPlayerEntity *result = (ProxyPlayerEntity *)[[UNIVERSE newShipWithName:[self shipDataKey] usePlayerProxy:YES] autorelease];
+	ProxyPlayerEntity *result = (ProxyPlayerEntity *)[[UNIVERSE newShipWithName:oo::NSStringOrNil([self cxx_shipDataKey]) usePlayerProxy:YES] autorelease];
 	
 	if (result != nil)
 	{
@@ -7067,7 +7067,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (damage_to < cargo.size())
 	{
 		ShipEntity* pod = (ShipEntity*)cargo[damage_to].get();
-		const std::optional<std::string> cargo_desc = oo::OptionalString([UNIVERSE displayNameForCommodity:[pod commodityType]]);
+		const std::optional<std::string> cargo_desc = oo::OptionalString([UNIVERSE displayNameForCommodity:oo::NSStringOrNil([pod cxx_commodityType])]);
 		if (!cargo_desc)
 			return NO;
 		[UNIVERSE clearPreviousMessage];
@@ -8160,7 +8160,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("show-ship-model-in-status-screen")))
 	{
 		[UNIVERSE removeDemoShips];
-		[self showShipModelWithKey:[self shipDataKey] shipData:nil personality:[self entityPersonalityInt]
+		[self showShipModelWithKey:oo::NSStringOrNil([self cxx_shipDataKey]) shipData:nil personality:[self entityPersonalityInt]
 									factorX:2.5 factorY:1.7 factorZ:8.0 inContext:@"GUI_SCREEN_STATUS"];
 		[self setShowDemoShips:YES];
 	}
@@ -9440,7 +9440,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (OOWeaponFacingSet) availableFacings
 {
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
 	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 	
 	return available_facings & VALID_WEAPON_FACINGS;
@@ -9487,7 +9487,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	// find options that agree with this ship (a set of keys: only the string elements could ever match)
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
 	std::set<std::string>	options;
 	const auto addOptions = [&options](const oo::PList *list)
 	{
@@ -10456,7 +10456,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			// [key, price paid as a long long]; a nil key ended the list
 			oo::PList::Array boughtArguments;
 			if (key.has_value())  boughtArguments = { oo::PList(*key), oo::PList::signedInteger(static_cast<long long>(old_credits - credits)) };
-			[self doScriptEvent:OOJSID("playerBoughtEquipment") withArguments:oo::ObjectFromPList(oo::PList(std::move(boughtArguments)))];
+			[self cxx_doScriptEvent:OOJSID("playerBoughtEquipment") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(std::move(boughtArguments))))];
 			if (gui_screen == GUI_SCREEN_EQUIP_SHIP) //if we haven't changed gui screen inside playerBoughtEquipment
 			{ 
 				// show any change due to playerBoughtEquipment
@@ -10788,7 +10788,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context
 {
 
-	const oo::PList		shipyardInfo = [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	const oo::PList		shipyardInfo = [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
 	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 	
 	// facing exists?
@@ -11630,7 +11630,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([UNIVERSE autoSave])  [UNIVERSE setAutoSaveNow:YES];
 	
-	[self doScriptEvent:OOJSID("playerBoughtCargo") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) }))];	// the same number kinds (signed, unsigned long long)
+	[self cxx_doScriptEvent:OOJSID("playerBoughtCargo") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) })))];	// the same number kinds (signed, unsigned long long)
 	if ([localMarket cxx_exportLegalityForGood:index] > 0)
 	{
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));	// +numberWithInt:
@@ -11693,7 +11693,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
 	
-	[self doScriptEvent:OOJSID("playerSoldCargo") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) }))];	// the same number kinds (signed, unsigned long long)
+	[self cxx_doScriptEvent:OOJSID("playerSoldCargo") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) })))];	// the same number kinds (signed, unsigned long long)
 	
 	return YES;
 }
@@ -11754,7 +11754,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (OK)
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"] && [self compassMode] == COMPASS_MODE_BASIC)
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"] && [self compassMode] == COMPASS_MODE_BASIC)
 		{
 			[self setCompassMode:COMPASS_MODE_PLANET];
 		}
@@ -11839,7 +11839,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (void) removeEquipmentItem:(const std::string &)equipmentKey
 {
-	if(![self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"] && [self compassMode] != COMPASS_MODE_BASIC)
+	if(![self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_COMPASS"] && [self compassMode] != COMPASS_MODE_BASIC)
 	{
 		[self setCompassMode:COMPASS_MODE_BASIC];
 	}
@@ -11932,7 +11932,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		unsigned i;
 		for (i = 0; i < max_missiles; i++)
 		{
-			if ([[self missileForPylon:i] hasPrimaryRole:oo::NSStringFrom(itemKey)])  return YES;
+			if ([[self missileForPylon:i] cxx_hasPrimaryRole:itemKey])  return YES;
 		}
 	}
 	
@@ -11965,7 +11965,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	unsigned i;
 	for (i = 0; i < max_missiles; i++)
 	{
-		if ([[self missileForPylon:i] hasPrimaryRole:[eqType identifier]])
+		NSString *identifier = [eqType identifier];
+		if (identifier != nil ? [[self missileForPylon:i] cxx_hasPrimaryRole:oo::StdString(identifier)] : ((void)[[self missileForPylon:i] cxx_primaryRole], NO))	// nil: NO, after still choosing a primary role, as -hasPrimaryRole: did
 		{
 			[self removeFromPylon:i];
 			
@@ -11983,7 +11984,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (missile_entity[pylon] != nil)
 	{
-		[super removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:[missile_entity[pylon] primaryRole]]];
+		[super removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil([missile_entity[pylon] cxx_primaryRole])]];
 
 		// Remove the missile (must wait until we've finished with its identifier string!)
 		[missile_entity[pylon] release];
@@ -12102,7 +12103,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (double) renovationFactor
 {
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
 	return shipyardInfo.get<double>(oo::StdString(KEY_RENOVATION_MULTIPLIER), 1.0);
 }
 
@@ -12446,11 +12447,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([targetEntity isWormhole])
 	{
-		assert ([self hasEquipmentItemProviding:@"EQ_WORMHOLE_SCANNER"]);
+		assert ([self cxx_hasEquipmentItemProviding:"EQ_WORMHOLE_SCANNER"]);
 		[self addScannedWormhole:(WormholeEntity*)targetEntity];
 	}
 	// wormholes don't go in target memory
-	else if ([self hasEquipmentItemProviding:@"EQ_TARGET_MEMORY"] && targetEntity != nil)
+	else if ([self cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"] && targetEntity != nil)
 	{
 		OOWeakReference *targetRef = [targetEntity weakSelf];
 		// -indexOfObject: compared the weak references (proxies) by identity
@@ -12934,7 +12935,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else if (special == "SHORT_RANGE_CHART_SHORTEST")
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST;
 		}
@@ -12945,7 +12946,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else if (special == "SHORT_RANGE_CHART_QUICKEST")
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST;
 		}
@@ -12960,7 +12961,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else if (special == "CUSTOM_CHART_SHORTEST")
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST;
 		}
@@ -12971,7 +12972,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else if (special == "CUSTOM_CHART_QUICKEST")
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST;
 		}
@@ -12986,7 +12987,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else if (special == "LONG_RANGE_CHART_SHORTEST")
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST;
 		}
@@ -12997,7 +12998,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	else if (special == "LONG_RANGE_CHART_QUICKEST")
 	{
-		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
+		if ([self cxx_hasEquipmentItemProviding:"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST;
 		}

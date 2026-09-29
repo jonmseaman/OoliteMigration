@@ -585,7 +585,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 				}
 				else
 				{
-					OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*conditions)];
+					OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*conditions];
 					if (condScript != nil) // should always be non-nil, but just in case
 					{
 						ooscript::Context context = OOJSAcquireContext();
