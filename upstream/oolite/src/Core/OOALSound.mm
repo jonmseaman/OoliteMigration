@@ -36,8 +36,9 @@ SOFTWARE.
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
+#include <string_view>
 
-#define KEY_VOLUME_CONTROL @"volume_control"
+static constexpr std::string_view KEY_VOLUME_CONTROL = "volume_control";
 
 static const size_t kMaxBufferedSoundSize = 1 << 20;	// 1 MB
 
@@ -56,7 +57,7 @@ static BOOL sIsSoundOK = NO;
 		{
 			sIsSoundOK = YES;
 			oo::Defaults &prefs = oo::Defaults::standard();
-			float volume = prefs.object(oo::StdString(KEY_VOLUME_CONTROL)).isNull() ? 0.5f : prefs.floatForKey(oo::StdString(KEY_VOLUME_CONTROL));
+			float volume = prefs.object(std::string(KEY_VOLUME_CONTROL)).isNull() ? 0.5f : prefs.floatForKey(std::string(KEY_VOLUME_CONTROL));
 			[self setMasterVolume:volume];
 		}
 	}
@@ -76,7 +77,7 @@ static BOOL sIsSoundOK = NO;
 	if (fraction != [controller masterVolume])
 	{
 		[controller setMasterVolume:fraction];
-		oo::Defaults::standard().setFloat(oo::StdString(KEY_VOLUME_CONTROL), [controller masterVolume]);
+		oo::Defaults::standard().setFloat(std::string(KEY_VOLUME_CONTROL), [controller masterVolume]);
 	}
 }
 

@@ -203,8 +203,8 @@ remaining `OOLog` calls, so a converted line reads exactly as it did.
 
 1. **Include** `"oofnd/Log.hpp"` (replacing `#import "OOLogging.h"` if the file imports it).
 2. **Rewrite each call:** `OOLog(@"cls", @"fmt", args)` -> `OO_LOG("cls", "fmt'", args')`, and
-   `OOLogERR`/`OOLogWARN` -> `OO_LOG_ERR`/`OO_LOG_WARN`. The class is a string literal (an
-   `NSString *` constant becomes `oo::StdString(kConstant)`, from `OOStringBridge.h`).
+   `OOLogERR`/`OOLogWARN` -> `OO_LOG_ERR`/`OO_LOG_WARN`. The class is a string literal (a key
+   constant is a `std::string_view` since ADR-0055 item 6, and passes as `std::string(kConstant)`).
    Conversions: `%d %i %ld %lld` -> `{}`; `%u %lu %llu %zu` -> `{}` and `%x` -> `{:x}`, **with the
    argument cast to the unsigned type the conversion read** if it is signed (`printf` reinterprets
    `-1` as `4294967295` / `ffffffff`; std::format prints the argument's own value); `%c` -> `{:c}`

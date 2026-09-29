@@ -466,14 +466,14 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	
 	// handle page <-- and page --> keys
-	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && [oo::NSStringOrNil([gui cxx_keyForRow:BACKROW]) isEqual: GUI_KEY_OK])
+	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && ([gui cxx_keyForRow:BACKROW] == GUI_KEY_OK))
 	{
 		currentPage--;
 		[self playMenuPagePrevious];
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
-	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && [oo::NSStringOrNil([gui cxx_keyForRow:MOREROW]) isEqual: GUI_KEY_OK])
+	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && ([gui cxx_keyForRow:MOREROW] == GUI_KEY_OK))
 	{
 		currentPage++;
 		[self playMenuPageNext];
@@ -575,7 +575,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	// handle page <-- and page --> keys, and on-screen buttons
 	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == BACKROW) || ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]))
-					&& [oo::NSStringOrNil([gui cxx_keyForRow:BACKROW]) isEqual: GUI_KEY_OK])
+					&& ([gui cxx_keyForRow:BACKROW] == GUI_KEY_OK))
 	{
 		currentPage--;
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -583,7 +583,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	//
 	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == MOREROW) || ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]))
-					&& [oo::NSStringOrNil([gui cxx_keyForRow:MOREROW]) isEqual: GUI_KEY_OK])
+					&& ([gui cxx_keyForRow:MOREROW] == GUI_KEY_OK))
 	{
 		currentPage++;
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -721,11 +721,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			BOOL strict = fileDic.get<bool>("strict", NO);
 			if (strict)
 			{
-				scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_NONE);
+				scenarioRestrict = std::string(SCENARIO_OXP_DEFINITION_NONE);
 			}
 			else
 			{
-				scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
+				scenarioRestrict = std::string(SCENARIO_OXP_DEFINITION_ALL);
 			}
 		}
 
@@ -1078,10 +1078,10 @@ unsigned char FirstUnitLowByte(const std::string &string)
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
 	
 	[gui cxx_setText:OO_DESC("overwritescreen-yes") forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
-	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow: SAVE_OVERWRITE_YES_ROW];
+	[gui cxx_setKey:std::string(GUI_KEY_OK) forRow: SAVE_OVERWRITE_YES_ROW];
 	
 	[gui cxx_setText:OO_DESC("overwritescreen-no") forRow: SAVE_OVERWRITE_NO_ROW align: GUI_ALIGN_CENTER];
-	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow: SAVE_OVERWRITE_NO_ROW];
+	[gui cxx_setKey:std::string(GUI_KEY_OK) forRow: SAVE_OVERWRITE_NO_ROW];
 	
 	[gui setSelectableRange: NSMakeRange(SAVE_OVERWRITE_YES_ROW, 2)];
 	[gui setSelectedRow: SAVE_OVERWRITE_NO_ROW];
@@ -1203,7 +1203,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
 		[gui setColor: [OOColor yellowColor] forRow: i];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:i];
 	}
 
 	[gui setColor: [OOColor greenColor] forRow: LABELROW];
@@ -1215,7 +1215,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[gui setColor:[OOColor greenColor] forRow:STARTROW-1];
 		[gui cxx_setArray:{ OO_DESC("gui-back"), " <-- " }
 			   forRow:STARTROW-1];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:STARTROW-1];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:STARTROW-1];
 		rangeStart=STARTROW-1;
 	}
 
@@ -1223,7 +1223,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[gui cxx_setArray:{ OO_DESC("oolite-loadsave-exit"), " <----- " } forRow:EXITROW];
 		[gui setColor:[OOColor redColor] forRow:EXITROW];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:EXITROW];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:EXITROW];
 		rangeStart = EXITROW;
 	}
 
@@ -1239,7 +1239,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[gui setColor:[OOColor greenColor] forRow:ENDROW];
 		[gui cxx_setArray:{ OO_DESC("gui-more"), " --> " }
 			   forRow:ENDROW];
-		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:ENDROW];
+		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:ENDROW];
 		[gui setSelectableRange: NSMakeRange(rangeStart, MOREROW)];
 	}
 	
@@ -1260,7 +1260,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				highlightRowOnPage = row;
 			}
 			
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:row];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:row];
 			row++;
 		}
 		if (cdr.get<bool>("isParentFolder"))
@@ -1270,7 +1270,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				"" }
 				   forRow:row];
 			[gui setColor: [OOColor orangeColor] forRow: row];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:row];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:row];
 			row++;
 		}
 		if (cdr.get<bool>("isFolder"))
@@ -1280,7 +1280,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				"" }
 				   forRow:row];
 			[gui setColor: [OOColor orangeColor] forRow: row];
-			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:row];
+			[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:row];
 			row++;
 		}
 	}
@@ -1356,7 +1356,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[self cxx_showShipyardModel:"oolite-unknown-ship" shipData:oo::PList() personality:personality];
 		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
-		if ([UNIVERSE cxx_useAddOns] != oo::StdString(SCENARIO_OXP_DEFINITION_ALL))	// nil was not equal either
+		if ([UNIVERSE cxx_useAddOns] != std::string(SCENARIO_OXP_DEFINITION_ALL))	// nil was not equal either
 		{
 			*shipName += " - OXPs disabled or not installed";
 		}

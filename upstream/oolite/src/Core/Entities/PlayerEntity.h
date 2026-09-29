@@ -71,6 +71,7 @@ typedef enum
 typedef enum
 {
 	#include "OOGalacticHyperspaceBehaviour.tbl"
+#include <string_view>
 	
 	GALACTIC_HYPERSPACE_MAX					= GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES
 } OOGalacticHyperspaceBehaviour;
@@ -123,13 +124,13 @@ typedef enum
 #endif
 
 // dictionary keys - used in the custom key config for oxp equipment
-#define CUSTOMEQUIP_EQUIPKEY @"equipmentKey"
-#define CUSTOMEQUIP_EQUIPNAME @"equipmentName"
-#define CUSTOMEQUIP_KEYACTIVATE @"keyActivate"
-#define CUSTOMEQUIP_KEYMODE @"keyMode"
-#define CUSTOMEQUIP_BUTTONACTIVATE @"buttonActivate"
-#define CUSTOMEQUIP_BUTTONMODE @"buttonMode"
-#define KEYCONFIG_CUSTOMEQUIP @"CustomEquipActivation"  // preferences key (oo::Defaults)
+inline constexpr std::string_view CUSTOMEQUIP_EQUIPKEY = "equipmentKey";
+inline constexpr std::string_view CUSTOMEQUIP_EQUIPNAME = "equipmentName";
+inline constexpr std::string_view CUSTOMEQUIP_KEYACTIVATE = "keyActivate";
+inline constexpr std::string_view CUSTOMEQUIP_KEYMODE = "keyMode";
+inline constexpr std::string_view CUSTOMEQUIP_BUTTONACTIVATE = "buttonActivate";
+inline constexpr std::string_view CUSTOMEQUIP_BUTTONMODE = "buttonMode";
+inline constexpr std::string_view KEYCONFIG_CUSTOMEQUIP = "CustomEquipActivation";  // preferences key (oo::Defaults)
 
 enum
 {
@@ -326,14 +327,14 @@ typedef enum
 #define HYPERSPEED_FACTOR				32.0
 #endif
 
-#define PLAYER_SHIP_DESC				@"cobra3-player"
+inline constexpr std::string_view PLAYER_SHIP_DESC				= "cobra3-player";
 
 #define ESCAPE_SEQUENCE_TIME			10.0
 
-#define FORWARD_FACING_STRING			oo::NSStringFrom(OO_DESC("forward-facing-string"))
-#define AFT_FACING_STRING				oo::NSStringFrom(OO_DESC("aft-facing-string"))
-#define PORT_FACING_STRING				oo::NSStringFrom(OO_DESC("port-facing-string"))
-#define STARBOARD_FACING_STRING			oo::NSStringFrom(OO_DESC("starboard-facing-string"))
+#define FORWARD_FACING_STRING			OO_DESC("forward-facing-string")
+#define AFT_FACING_STRING				OO_DESC("aft-facing-string")
+#define PORT_FACING_STRING				OO_DESC("port-facing-string")
+#define STARBOARD_FACING_STRING			OO_DESC("starboard-facing-string")
 
 #define KEY_REPEAT_INTERVAL				0.20
 
@@ -341,15 +342,15 @@ typedef enum
 // adding or removing a player ship subentity increases or decreases the ship's trade-in factor respectively by this amount
 #define PLAYER_SHIP_SUBENTITY_TRADE_IN_VALUE	3
 
-#define CONTRACTS_GOOD_KEY				@"contracts_fulfilled"
-#define CONTRACTS_BAD_KEY				@"contracts_expired"
-#define CONTRACTS_UNKNOWN_KEY			@"contracts_unknown"
-#define PASSAGE_GOOD_KEY				@"passage_fulfilled"
-#define PASSAGE_BAD_KEY					@"passage_expired"
-#define PASSAGE_UNKNOWN_KEY				@"passage_unknown"
-#define PARCEL_GOOD_KEY					@"parcels_fulfilled"
-#define PARCEL_BAD_KEY					@"parcels_expired"
-#define PARCEL_UNKNOWN_KEY				@"parcels_unknown"
+inline constexpr std::string_view CONTRACTS_GOOD_KEY				= "contracts_fulfilled";
+inline constexpr std::string_view CONTRACTS_BAD_KEY				= "contracts_expired";
+inline constexpr std::string_view CONTRACTS_UNKNOWN_KEY			= "contracts_unknown";
+inline constexpr std::string_view PASSAGE_GOOD_KEY				= "passage_fulfilled";
+inline constexpr std::string_view PASSAGE_BAD_KEY					= "passage_expired";
+inline constexpr std::string_view PASSAGE_UNKNOWN_KEY				= "passage_unknown";
+inline constexpr std::string_view PARCEL_GOOD_KEY					= "parcels_fulfilled";
+inline constexpr std::string_view PARCEL_BAD_KEY					= "parcels_expired";
+inline constexpr std::string_view PARCEL_UNKNOWN_KEY				= "parcels_unknown";
 
 
 #define SCANNER_ZOOM_RATE_UP			2.0
@@ -358,12 +359,12 @@ typedef enum
 
 #define PLAYER_INTERNAL_DAMAGE_FACTOR	31
 
-#define PLAYER_DOCKING_AI_NAME			@"oolite-player-AI.plist"
+inline constexpr std::string_view PLAYER_DOCKING_AI_NAME			= "oolite-player-AI.plist";
 
 #define	MANIFEST_SCREEN_ROW_BACK		1
 #define	MANIFEST_SCREEN_ROW_NEXT		([[PLAYER hud] isHidden]?27:20)
 
-#define MISSION_DEST_LEGACY				@"__oolite_legacy_destinations"
+inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_destinations";
 
 
 @interface PlayerEntity: ShipEntity

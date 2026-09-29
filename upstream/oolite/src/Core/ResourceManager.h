@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/Data.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include <string_view>
 
 @class OOSound, OOMusic, OOSystemDescriptionManager, OOScript;
 
@@ -51,11 +52,11 @@ typedef enum
  * different OXP, or it'll never be loaded when on the start-game
  * screen.
  */
-#define SCENARIO_OXP_DEFINITION_ALL    @""
-#define SCENARIO_OXP_DEFINITION_NONE   @"strict"
-#define SCENARIO_OXP_DEFINITION_BYID   @"id:"
-#define SCENARIO_OXP_DEFINITION_BYTAG  @"tag:"
-#define SCENARIO_OXP_DEFINITION_NOPLIST  @"exc:"
+inline constexpr std::string_view SCENARIO_OXP_DEFINITION_ALL    = "";
+inline constexpr std::string_view SCENARIO_OXP_DEFINITION_NONE   = "strict";
+inline constexpr std::string_view SCENARIO_OXP_DEFINITION_BYID   = "id:";
+inline constexpr std::string_view SCENARIO_OXP_DEFINITION_BYTAG  = "tag:";
+inline constexpr std::string_view SCENARIO_OXP_DEFINITION_NOPLIST  = "exc:";
 
 @interface ResourceManager: OOObject
 

@@ -196,7 +196,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	}
 
 	[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("stickmapper-profile") }) forRow: GUI_ROW_STICKPROFILE];
-	[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE];
+	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE];
 	[self displayFunctionList:gui skip:skip];
 	
 	[gui cxx_setArray:std::vector<std::string>{ "Select a function and press Enter to modify or 'u' to unset." }
@@ -311,7 +311,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	// What moved?
 	int function;
 	const oo::PList &entry = StickFunctionAt(stickFunctions, selFunctionIdx);
-	if(hwDict.get<bool>(oo::StdString(STICK_ISAXIS)))
+	if(hwDict.get<bool>(std::string(STICK_ISAXIS)))
 	{
 		function=entry.get<int>(KEY_AXISFN);
 		if (function == AXIS_THRUST)
@@ -362,17 +362,17 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	// special case for OXP equipment buttons
 	if (function >= 10000) 
 	{
-		std::string key = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
+		std::string key = std::string(CUSTOMEQUIP_BUTTONACTIVATE);
 		function -= 10000;
 		if (function >= 10000)
 		{
 			function -= 10000;
-			key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
+			key = std::string(CUSTOMEQUIP_BUTTONMODE);
 		}
 		// the customEquipActivation entry is edited in place
 		if (oo::PList::Dict *custEquipDict = CustomEquipFields(customEquipActivation, function))  (*custEquipDict)[key] = hwDict;
 		[self checkCustomEquipButtons:hwDict ignore:function];
-		oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		oo::Defaults::standard().setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	else 
 	{
@@ -398,10 +398,10 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 
 - (void) checkCustomEquipButtons:(const oo::PList &)stickFn ignore:(int)idx
 {
-	const std::string stickNumberKey = oo::StdString(STICK_NUMBER);
-	const std::string stickAxBtKey = oo::StdString(STICK_AXBUT);
-	const std::string activateKey = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
-	const std::string modeKey = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
+	const std::string stickNumberKey = std::string(STICK_NUMBER);
+	const std::string stickAxBtKey = std::string(STICK_AXBUT);
+	const std::string activateKey = std::string(CUSTOMEQUIP_BUTTONACTIVATE);
+	const std::string modeKey = std::string(CUSTOMEQUIP_BUTTONMODE);
 	int i;
 	for (i = 0; i < customEquipActivation.size(); i++)
 	{
@@ -446,12 +446,12 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 		{
 			int bf = [butfunc intValue];
 			custom = YES;
-			std::string key = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
+			std::string key = std::string(CUSTOMEQUIP_BUTTONACTIVATE);
 			bf -= 10000;
 			if (bf >= 10000)
 			{
 				bf -= 10000;
-				key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
+				key = std::string(CUSTOMEQUIP_BUTTONMODE);
 			}
 			// edited in place; both tests reduce to "remove key if present"
 			if (oo::PList::Dict *custEquipDict = CustomEquipFields(customEquipActivation, bf))  custEquipDict->erase(key);
@@ -471,7 +471,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	}
 	else 
 	{
-		oo::Defaults::standard().setObject(oo::StdString(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
+		oo::Defaults::standard().setObject(std::string(KEYCONFIG_CUSTOMEQUIP), oo::PList(customEquipActivation));
 	}
 	
 	unsigned skip;
@@ -569,12 +569,12 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 						}
 						else
 						{
-							std::string key = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
+							std::string key = std::string(CUSTOMEQUIP_BUTTONACTIVATE);
 							bf -= 10000;
 							if (bf >= 10000)
 							{
 								bf -= 10000;
-								key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
+								key = std::string(CUSTOMEQUIP_BUTTONMODE);
 							}
 							const oo::PList &custom = CustomEquipEntry(customEquipActivation, bf);
 							assignment=[self describeStickDict:custom.find(key)];
@@ -622,12 +622,12 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	if(stickDict != nullptr)
 	{
 		// -intValue / -boolValue of the objects the dictionary held, as before
-		int thingNumber=[ObjectForKey(*stickDict, oo::StdString(STICK_AXBUT))
+		int thingNumber=[ObjectForKey(*stickDict, std::string(STICK_AXBUT))
 						 intValue];
-		int stickNumber=[ObjectForKey(*stickDict, oo::StdString(STICK_NUMBER))
+		int stickNumber=[ObjectForKey(*stickDict, std::string(STICK_NUMBER))
 						 intValue];
 		// Button or axis?
-		if([ObjectForKey(*stickDict, oo::StdString(STICK_ISAXIS)) boolValue])
+		if([ObjectForKey(*stickDict, std::string(STICK_ISAXIS)) boolValue])
 		{
 			desc=oo::str::format("Stick %d axis %d",
 				  stickNumber+1, thingNumber+1);
@@ -964,12 +964,12 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 		for (i = 0; i < customEquipActivation.size(); i++)
 		{
 			funcList.push_back(
-			[self makeStickGuiDict:oo::str::format("Activate '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
+			[self makeStickGuiDict:oo::str::format("Activate '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)))).c_str())
 						allowable:HW_BUTTON
 							axisfn:STICK_NOFUNCTION
 							butfn:(i+10000)]);
 			funcList.push_back(
-			[self makeStickGuiDict:oo::str::format("Mode '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
+			[self makeStickGuiDict:oo::str::format("Mode '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(customEquipActivation[i], std::string(CUSTOMEQUIP_EQUIPNAME)))).c_str())
 						allowable:HW_BUTTON
 							axisfn:STICK_NOFUNCTION
 							butfn:(i+20000)]);

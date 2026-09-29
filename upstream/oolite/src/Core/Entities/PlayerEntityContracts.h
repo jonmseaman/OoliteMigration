@@ -27,23 +27,24 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "GuiDisplayGen.h"
+#include <string_view>
 
-#define PASSENGER_KEY_NAME				@"name"
+inline constexpr std::string_view PASSENGER_KEY_NAME				= "name";
 
-#define CARGO_KEY_ID					@"id"
-#define CARGO_KEY_TYPE					@"co_type"
-#define CARGO_KEY_AMOUNT				@"co_amount"
-#define CARGO_KEY_DESCRIPTION			@"cargo_description"
+inline constexpr std::string_view CARGO_KEY_ID					= "id";
+inline constexpr std::string_view CARGO_KEY_TYPE					= "co_type";
+inline constexpr std::string_view CARGO_KEY_AMOUNT				= "co_amount";
+inline constexpr std::string_view CARGO_KEY_DESCRIPTION			= "cargo_description";
 
-#define CONTRACT_KEY_START				@"start"
-#define CONTRACT_KEY_DESTINATION		@"destination"
+inline constexpr std::string_view CONTRACT_KEY_START				= "start";
+inline constexpr std::string_view CONTRACT_KEY_DESTINATION		= "destination";
 #define CONTRACT_KEY_DESTINATION_NAME	@"destination_name"
 #define CONTRACT_KEY_LONG_DESCRIPTION	@"long_description"
-#define CONTRACT_KEY_DEPARTURE_TIME		@"departure_time"
-#define CONTRACT_KEY_ARRIVAL_TIME		@"arrival_time"
-#define CONTRACT_KEY_FEE				@"fee"
-#define CONTRACT_KEY_PREMIUM			@"premium"
-#define CONTRACT_KEY_RISK				@"risk"
+inline constexpr std::string_view CONTRACT_KEY_DEPARTURE_TIME		= "departure_time";
+inline constexpr std::string_view CONTRACT_KEY_ARRIVAL_TIME		= "arrival_time";
+inline constexpr std::string_view CONTRACT_KEY_FEE				= "fee";
+inline constexpr std::string_view CONTRACT_KEY_PREMIUM			= "premium";
+inline constexpr std::string_view CONTRACT_KEY_RISK				= "risk";
 
 #define MAX_CONTRACT_REP			70
 

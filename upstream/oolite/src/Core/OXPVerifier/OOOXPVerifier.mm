@@ -345,7 +345,7 @@ void OpenLogFile();
 	 * been explicitly listed as required_oxps in the
 	 * manifest. Reading the manifest from the OXP being verified and
 	 * setting 'id:<its identifier>' below will do this. */
-	[ResourceManager cxx_setUseAddOns:oo::StdString(SCENARIO_OXP_DEFINITION_NONE)];
+	[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];
 	
 	SwitchLogFile(_displayName);
 	OO_LOG("verifyOXP.start", "Running OXP verifier for {}", _basePath);//_displayName);
