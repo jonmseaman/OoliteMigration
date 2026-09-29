@@ -1089,7 +1089,7 @@ static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::Cal
 	
 	// Search for entities
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = FindJSVisibleEntities(HasScanClassPredicate, oo::ObjectFromPList(oo::PList::signedInteger(scanClass)), relativeTo, range);
+	result = FindJSVisibleEntities(HasScanClassPredicate, &scanClass, relativeTo, range);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));

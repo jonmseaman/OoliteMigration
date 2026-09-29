@@ -149,8 +149,8 @@ typedef enum
 - (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
 - (void) clearMissionDescriptionForMission:(const std::string &)key;	// called by name (ADR-0043 item 21)
 
-- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
-- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
+- (void) commsMessage:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(const std::string &)valueString;	// called by name (ADR-0055 item 5); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
 							   // can be used by scripts to have unpiloted ships sending
 							   // commsMessages, if we want to.
 
