@@ -613,7 +613,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 {
 	double now = [PLAYER clockTime];
 	return oo::NSStringFrom(oo::str::format("destination: %s ttl: %.2fs arrival: %s",
-		_misjump ? "Interstellar Space" : oo::DescriptionOf([UNIVERSE getSystemName:destination]).c_str(),
+		_misjump ? "Interstellar Space" : [UNIVERSE cxx_getSystemName:destination].value_or("(null)").c_str(),
 		expiry_time - now,
 		cxx_ClockToString(arrival_time, false).c_str()));
 }
@@ -625,7 +625,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	{
 		if ([self scanInfo] >= WH_SCANINFO_DESTINATION)
 		{
-			return oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-to-@")), { oo::DescriptionOf([UNIVERSE getSystemName:destination]) });
+			return oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-to-@")), { [UNIVERSE cxx_getSystemName:destination].value_or("(null)") });
 		}
 		else
 		{
@@ -857,8 +857,8 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 - (void)dumpSelfState
 {
 	[super dumpSelfState];
-	OO_LOG("dumpState.wormholeEntity", "Origin                 : {}", oo::DescriptionOf([UNIVERSE getSystemName:origin]));
-	OO_LOG("dumpState.wormholeEntity", "Destination            : {}", oo::DescriptionOf([UNIVERSE getSystemName:destination]));
+	OO_LOG("dumpState.wormholeEntity", "Origin                 : {}", [UNIVERSE cxx_getSystemName:origin].value_or("(null)"));
+	OO_LOG("dumpState.wormholeEntity", "Destination            : {}", [UNIVERSE cxx_getSystemName:destination].value_or("(null)"));
 	OO_LOG("dumpState.wormholeEntity", "Expiry Time            : {}", cxx_ClockToString(expiry_time, false));
 	OO_LOG("dumpState.wormholeEntity", "Arrival Time           : {}", cxx_ClockToString(arrival_time, false));
 	OO_LOG("dumpState.wormholeEntity", "Projected Arrival Time : {}", cxx_ClockToString(estimated_arrival_time, false));

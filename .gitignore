@@ -25,3 +25,6 @@ tests/golden/artifacts/
 .ctx/
 .beadinfo.json
 tierb*.log
+
+# bd run inside a worktree leaves this empty lock; never commit it (harvest would, and accept then cannot fast-forward)
+.beads.gate.lock
