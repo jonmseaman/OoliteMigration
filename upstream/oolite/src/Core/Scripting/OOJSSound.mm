@@ -225,7 +225,7 @@ static OOSound *GetNamedSound(const std::string &name)
 	
 	if (oo::str::hasPrefix(name, "[") && oo::str::hasSuffix(name, "]"))
 	{
-		sound = [OOSound soundWithCustomSoundKey:oo::NSStringFrom(name)];
+		sound = [OOSound cxx_soundWithCustomSoundKey:name];
 	}
 	else
 	{
