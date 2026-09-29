@@ -1636,7 +1636,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	eqScripts.clear();
 	[self addEquipmentFromCollection:oo::ObjectFromPList(oo::PList(equipment))];
-	primedEquipment = [self eqScriptIndexForKey:oo::NSStringOrNil(StringForKey(dict, "primed_equipment"))];	// if key not found primedEquipment is set to primed-none
+	primedEquipment = [self cxx_eqScriptIndexForKey:StringForKey(dict, "primed_equipment").value_or("")];	// if key not found primedEquipment is set to primed-none
 
 	[self cxx_setFastEquipmentA:StringForKey(dict, "primed_equipment_a").value_or("EQ_CLOAKING_DEVICE")];
 	[self cxx_setFastEquipmentB:StringForKey(dict, "primed_equipment_b").value_or("EQ_ENERGY_BOMB")]; // even though there isn't one, for compatibility.
@@ -8827,11 +8827,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		
 		if (info_system_id == system_id)
 		{
-			[self setBackgroundFromDescriptionsKey:@"gui-scene-show-local-planet"];
+			[self cxx_setBackgroundFromDescriptionsKey:"gui-scene-show-local-planet"];
 		}
 		else
 		{
-			[self setBackgroundFromDescriptionsKey:@"gui-scene-show-planet"];
+			[self cxx_setBackgroundFromDescriptionsKey:"gui-scene-show-planet"];
 		}
 		
 		setRandomSeed(saved_seed);
@@ -11711,7 +11711,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (![super canAddEquipment:equipmentKey inContext:context])  return NO;
 
 	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
-	if ([eqType conditions] != nil && ![self scriptTestConditions:[eqType conditions]])  return NO;
+	const oo::PList conditions = (eqType != nil) ? [eqType cxx_conditions] : oo::PList();
+	if (!conditions.isNull() && ![self cxx_scriptTestConditions:conditions])  return NO;
 	
 	return YES;
 }
@@ -11752,7 +11753,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			[self setCompassMode:COMPASS_MODE_PLANET];
 		}
 		
-		[self addEqScriptForKey:equipmentKey];
+		if (equipmentKey != nil)  [self cxx_addEqScriptForKey:oo::StdString(equipmentKey)];
 		[self addEquipmentWithScriptToCustomKeyArray:oo::StdString(equipmentKey)];	// (nil matched no script)
 	}
 	return OK;
@@ -11839,7 +11840,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[super removeEquipmentItem:equipmentKey];
 	if(![self hasEquipmentItem:equipmentKey]) {
 		// removed the last one
-		[self removeEqScriptForKey:equipmentKey];
+		if (equipmentKey != nil)  [self cxx_removeEqScriptForKey:oo::StdString(equipmentKey)];
 	}
 }
 
@@ -12866,7 +12867,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	oo::PList result = [self cxx_missionOverlayDescriptor];
 	if (result.isNull())
 	{
-		if ([[self missionTitle] length] == 0)
+		if ([self cxx_missionTitle].value_or("").empty())
 		{
 			result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_no_title"]);
 		}
