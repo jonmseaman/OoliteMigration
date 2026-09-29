@@ -685,25 +685,25 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	oo::PList::Dict properties;
 	/* __oolite.tmp.* is allocated for OXPs without manifests. Its
 	 * values are meaningless and shouldn't be used here */
-	const std::optional<std::string> identifier = StringForKey(manifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> identifier = StringForKey(manifest, std::string(kOOManifestIdentifier));
 	if (manifest && !(identifier.has_value() && oo::str::hasPrefix(*identifier, "__oolite.tmp.")))
 	{
-		if (manifest.get<oo::PList>(oo::StdString(kOOManifestVersion)) != nullptr)
+		if (manifest.get<oo::PList>(std::string(kOOManifestVersion)) != nullptr)
 		{
-			properties["version"] = ValueForKey(StringForKey(manifest, oo::StdString(kOOManifestVersion)), @"version");
+			properties["version"] = ValueForKey(StringForKey(manifest, std::string(kOOManifestVersion)), @"version");
 		}
-		if (manifest.get<oo::PList>(oo::StdString(kOOManifestIdentifier)) != nullptr)
+		if (manifest.get<oo::PList>(std::string(kOOManifestIdentifier)) != nullptr)
 		{
 			// used for system info
 			properties[kLocalManifestProperty] = ValueForKey(identifier, oo::NSStringFrom(kLocalManifestProperty));
 		}
-		if (manifest.get<oo::PList>(oo::StdString(kOOManifestAuthor)) != nullptr)
+		if (manifest.get<oo::PList>(std::string(kOOManifestAuthor)) != nullptr)
 		{
-			properties["author"] = ValueForKey(StringForKey(manifest, oo::StdString(kOOManifestAuthor)), @"author");
+			properties["author"] = ValueForKey(StringForKey(manifest, std::string(kOOManifestAuthor)), @"author");
 		}
-		if (manifest.get<oo::PList>(oo::StdString(kOOManifestLicense)) != nullptr)
+		if (manifest.get<oo::PList>(std::string(kOOManifestLicense)) != nullptr)
 		{
-			properties["license"] = ValueForKey(StringForKey(manifest, oo::StdString(kOOManifestLicense)), @"license");
+			properties["license"] = ValueForKey(StringForKey(manifest, std::string(kOOManifestLicense)), @"license");
 		}
 	}
 	return properties;
