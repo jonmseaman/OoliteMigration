@@ -239,9 +239,9 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		 * compatible-ish with 1.80 and earlier except that
 		 * alienItems and similar aliases don't work */
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
-		if ([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(key)])
+		if ([[UNIVERSE commodities] cxx_goodDefined:key])
 		{
-			*value = ooscript::int32Value([entity cargoQuantityForType:oo::NSStringFrom(key)]);
+			*value = ooscript::int32Value([entity cxx_cargoQuantityForType:key]);
 			return YES;
 		}
 		else
@@ -275,7 +275,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 
 		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:key];
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
-		if (unit == UNITS_TONS && [entity specialCargo])
+		if (unit == UNITS_TONS && [entity cxx_specialCargo].has_value())
 		{
 			cxx_OOJSReportWarning(context, "PlayerShip.manifest['foo'] - cannot modify cargo tonnage when Special Cargo is in use.");
 			return YES;
@@ -286,7 +286,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 		{
 			iValue = (int32_t)iValue32;
 			if (iValue < 0)  iValue = 0;
-			[entity setCargoQuantityForType:oo::NSStringFrom(key) amount:iValue];
+			[entity cxx_setCargoQuantityForType:key amount:iValue];
 		}
 		else
 		{

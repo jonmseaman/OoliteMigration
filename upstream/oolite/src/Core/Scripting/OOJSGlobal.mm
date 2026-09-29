@@ -538,7 +538,7 @@ static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArg
 		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
 	
-	string = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*string)]);
+	string = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*string)]);
 	if (string.has_value())  string = cxx_OOExpandDescriptionString(kNilRandomSeed, *string, overrides, oo::PList(), std::nullopt, kOOExpandForJavaScript | kOOExpandBackslashN | kOOExpandGoodRNG);	// nil expanded to nil
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
@@ -613,7 +613,7 @@ static bool GlobalRandomInhabitantsDescription(ooscript::Context context, ooscri
 	}
 	
 	make_pseudo_random_seed(&aSeed);
-	string = oo::OptionalString([UNIVERSE getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? YES : NO)]);
+	string = [UNIVERSE cxx_getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? YES : NO)];
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
 	
 	OOJS_NATIVE_EXIT
@@ -650,7 +650,7 @@ static bool GlobalClearExtraGuiScreenKeys(ooscript::Context context, ooscript::C
 		return NO;
 	}
 
-	[player clearExtraGuiScreenKeys:gui key:oo::NSStringFrom(*key)];
+	[player cxx_clearExtraGuiScreenKeys:gui key:*key];
 
 	result = YES;
 	OOJS_RETURN_BOOL(result);
@@ -791,7 +791,7 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 		result = [gui cxx_setBackgroundTextureDescriptor:descriptor];
 		
 		// add some permanence to the override if we're in the equip ship screen
-		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER setEquipScreenBackgroundDescriptor:oo::ObjectFromPList(descriptor)];
+		if (result && [PLAYER guiScreen] == GUI_SCREEN_EQUIP_SHIP)  [PLAYER cxx_setEquipScreenBackgroundDescriptor:descriptor];
 	}
 	
 	OOJS_RETURN_BOOL(result);
@@ -818,7 +818,7 @@ static bool GlobalGetScreenBackgroundForKey(ooscript::Context context, ooscript:
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getScreenBackgroundDefault", 0, OOJS_ARGV, std::nullopt, "key");
 		return NO;
 	}
-	OOJS_RETURN_OBJECT([UNIVERSE screenTextureDescriptorForKey:oo::NSStringFrom(*key)]);
+	OOJS_RETURN_OBJECT(oo::ObjectFromPList([UNIVERSE cxx_screenTextureDescriptorForKey:*key]));
 	
 	OOJS_NATIVE_EXIT
 } 
@@ -850,7 +850,7 @@ static bool GlobalSetScreenBackgroundForKey(ooscript::Context context, ooscript:
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenBackgroundDefault()"];
 	
-	[UNIVERSE setScreenTextureDescriptorForKey:oo::NSStringFrom(*key) descriptor:oo::ObjectFromPList(descriptor)];
+	[UNIVERSE cxx_setScreenTextureDescriptorForKey:*key descriptor:oo::PListFrom(oo::ObjectFromPList(descriptor))];
 	result = YES;
 	
 	OOJS_RETURN_BOOL(result);

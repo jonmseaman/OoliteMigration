@@ -161,7 +161,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	{
 		if (HPmagnitude2(HPvector_subtract([player position], [self absolutePositionForSubentity])) > 2250000) // within 1500m of the dock
 		{
-			[station sendExpandedMessage:@"[station-docking-clearance-abort-cancelled]" toShip:player];
+			[station cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 			[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 		}
@@ -169,7 +169,8 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		{
 			playerExtraTime = 10; // when very close to the port, give the player a few seconds to react on the abort message.
 			int seconds = round(playerExtraTime);
-			[station cxx_sendExpandedMessage:cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds).value_or(std::string()) toShip:player];
+			const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
+			if (message.has_value())  [station cxx_sendExpandedMessage:*message toShip:player];	// nil: nothing sent, as before
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 		}
 
@@ -435,7 +436,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	
 	if (comms_message)
 	{
-		[station sendExpandedMessage:oo::NSStringFrom(*comms_message) toShip:ship];
+		[station cxx_sendExpandedMessage:*comms_message toShip:ship];
 	}
 			
 	// calculate world coordinates from relative coordinates
@@ -478,7 +479,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	{
 		// COMM-CHATTER
 		[UNIVERSE clearPreviousMessage];
-		[self sendExpandedMessage: @"[station-hold-position]" toShip: ship];
+		[self cxx_sendExpandedMessage: "[station-hold-position]" toShip: ship];
 		auto stack = shipsOnApproach.find(shipID);
 		if (stack != shipsOnApproach.end() && stack->second.size() > 1)
 		{
@@ -617,11 +618,11 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	// COMM-CHATTER
 	if (station == [UNIVERSE station])
 	{
-		[station sendExpandedMessage:@"[station-welcome]" toShip:ship];
+		[station cxx_sendExpandedMessage:"[station-welcome]" toShip:ship];
 	}
 	else
 	{
-		[station sendExpandedMessage:@"[docking-welcome]" toShip:ship];
+		[station cxx_sendExpandedMessage:"[docking-welcome]" toShip:ship];
 	}
 }
 
@@ -651,13 +652,14 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 		{
 			if (HPmagnitude2(HPvector_subtract([player position], [self absolutePositionForSubentity])) > 2250000) // within 1500m of the dock
 			{
-				[[self parentEntity] sendExpandedMessage:@"[station-docking-clearance-abort-cancelled]" toShip:player];
+				[[self parentEntity] cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 			}
 			else
 			{
 				int seconds = 10; // when very close to the port, give the player a few seconds to react on the abort message.
-				[[self parentEntity] cxx_sendExpandedMessage:cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds).value_or(std::string()) toShip:player];
+				const std::optional<std::string> message = cxx_OOExpandKey("station-docking-clearance-abort-cancelled-in-time", seconds);
+				if (message.has_value())  [[self parentEntity] cxx_sendExpandedMessage:*message toShip:player];	// nil: nothing sent, as before
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
 			}
 		}
@@ -975,7 +977,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	[ship resetExhaustPlumes];	// resets stuff for tracking/exhausts
 	
 	[ship doScriptEvent:OOJSID("shipWillLaunchFromStation") withArgument:station];
-	[station doScriptEvent:OOJSID("stationLaunchedShip") withArgument:ship andReactToAIMessage: @"STATION_LAUNCHED_SHIP"];
+	[station cxx_doScriptEvent:OOJSID("stationLaunchedShip") withArgument:ship andReactToAIMessage: "STATION_LAUNCHED_SHIP"];
 }
 
 
@@ -984,7 +986,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	NSUInteger count = 0;
 	for (const oo::ObjCRef<ShipEntity *> &ship : launchQueue)
 	{
-		if ([ship.get() hasPrimaryRole:oo::NSStringFrom(role)])  count++;
+		if ([ship.get() cxx_hasPrimaryRole:role])  count++;
 	}
 	return count;
 }

@@ -1306,7 +1306,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					if ([self fireMainWeapon])
 					{
-						[self cxx_playLaserHit:([self shipHitByLaser] != nil) offset:oo::PListView([self currentLaserOffset]).at<Vector>(0) weaponIdentifier:oo::StdString([[self currentWeapon] identifier])];
+						[self cxx_playLaserHit:([self shipHitByLaser] != nil) offset:[self cxx_currentLaserOffset].at(0) weaponIdentifier:[[self currentWeapon] cxx_identifier].value_or("")];
 					}
 				}
 				
@@ -1438,7 +1438,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						{
 							[self playNextEquipmentSelected];
 							eqKey = eqScripts[primedEquipment].first;
-							const std::string equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] cxx_name].value_or(std::string());
+							const std::string equipmentName = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eqKey] cxx_name].value_or(std::string());
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
 						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
@@ -2693,15 +2693,15 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					BOOL		sameAs = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy([gui cxx_selectedRowKey].value_or("")) == weaponType;
 					// override showInformation _completely_ with itemText
-					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
+					if ([weaponType cxx_identifier] == "EQ_WEAPON_NONE")  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						const std::string weaponName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(cxx_OOEquipmentIdentifierFromWeaponType(weaponType))] cxx_name].value_or(std::string());
+						const std::string weaponName = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:cxx_OOEquipmentIdentifierFromWeaponType(weaponType).value_or("")] cxx_name].value_or(std::string());
 						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
 						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}
 
-					[self showInformationForSelectedUpgradeWithFormatString:oo::NSStringOrNil(itemText)];
+					[self cxx_showInformationForSelectedUpgradeWithFormatString:itemText];
 				}
 				else
 					[self showInformationForSelectedUpgrade];
@@ -3347,15 +3347,15 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				OOCargoQuantity yours =	[shipCommodityData cxx_quantityForGood:item.value_or("")];
 				if (item == ">>>")
 				{
-					[self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES];
+					[self cxx_tryBuyingCommodity:item.value_or("") all:YES];
 					[self setGuiToMarketScreen];
 				}
 				else if (item == "<<<")
 				{
-					[self trySellingCommodity:oo::NSStringOrNil(item) all:YES];
+					[self cxx_trySellingCommodity:item.value_or("") all:YES];
 					[self setGuiToMarketScreen];
 				}
-				else if (isdocked && [gameView isShiftDown] && [self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES])	// buy as much as possible (with Shift)
+				else if (isdocked && [gameView isShiftDown] && [self cxx_tryBuyingCommodity:item.value_or("") all:YES])	// buy as much as possible (with Shift)
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3367,7 +3367,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						[self setGuiToMarketInfoScreen];
 					}
 				}
-				else if (isdocked && (yours > 0) && [self trySellingCommodity:oo::NSStringOrNil(item) all:YES])	// sell all you can
+				else if (isdocked && (yours > 0) && [self cxx_trySellingCommodity:item.value_or("") all:YES])	// sell all you can
 				{
 					[self playSellCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3379,7 +3379,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						[self setGuiToMarketInfoScreen];
 					}
 				}
-				else if (isdocked && [self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES])			// buy as much as possible
+				else if (isdocked && [self cxx_tryBuyingCommodity:item.value_or("") all:YES])			// buy as much as possible
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3521,7 +3521,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		int modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
 		[controller setDisplayWidth:modeWidth Height:modeHeight Refresh:modeRefresh];
 
-		const std::string displayModeString = oo::StdString([self screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh]);
+		const std::string displayModeString = [self cxx_screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh].value_or("");
 		
 		[self playChangedOption];
 		[gui cxx_setText:displayModeString	forRow:GUI_ROW(GAME,DISPLAY)  align:GUI_ALIGN_CENTER];

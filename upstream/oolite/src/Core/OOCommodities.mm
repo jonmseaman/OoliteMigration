@@ -270,8 +270,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 	{
 		return definition;
 	}
-	// -[PlayerEntity commodityScriptNamed:] is not migrated: the name crosses at the call.
-	OOScript *goodScript = [PLAYER commodityScriptNamed:oo::NSStringFrom(*goodScriptName)];
+	OOScript *goodScript = [PLAYER cxx_commodityScriptNamed:*goodScriptName];
 	if (goodScript == nil)
 	{
 		return definition;
@@ -341,7 +340,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 
 - (OOCommodityMarket *) cxx_generateMarketForSystemWithEconomy:(OOEconomyID)economy andScript:(const std::optional<std::string> &)scriptName
 {
-	OOScript *script = [PLAYER commodityScriptNamed:oo::NSStringOrNil(scriptName)];
+	OOScript *script = [PLAYER cxx_commodityScriptNamed:scriptName];
 
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
@@ -371,7 +370,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 - (OOCommodityMarket *) generateMarketForStation:(StationEntity *)station
 {
 	const oo::PList marketDefinition = [station cxx_marketDefinition];
-	OOScript *marketScript = [PLAYER commodityScriptNamed:oo::NSStringOrNil([station cxx_marketScriptName])];
+	OOScript *marketScript = [PLAYER cxx_commodityScriptNamed:[station cxx_marketScriptName]];
 	if (!marketDefinition && marketScript == nil)
 	{
 		OOCommodityMarket *market = [self generateBlankMarket];
@@ -547,7 +546,7 @@ bool ContainsString(const oo::PList &array, const std::string &string)
 	good = [self createDefinitionFrom:good price:p andQuantity:0 forKey:commodity atStation:nil inSystem:system];
 	if (scriptName.has_value())
 	{
-		OOScript *script = [PLAYER commodityScriptNamed:oo::NSStringFrom(*scriptName)];
+		OOScript *script = [PLAYER cxx_commodityScriptNamed:*scriptName];
 		if (script != nil)
 		{
 			good = [self modifyGood:good withScript:script atStation:nil inSystem:system localMode:YES];
