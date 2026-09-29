@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
 #import "OOFoundationBridge.h"
+#import "OOCallByName.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -573,7 +574,7 @@ static id sSharedStickHandler = nil;
 			fnDict[std::string(STICK_NUMBER)] = oo::PList(static_cast<int>(evt->which));
 			fnDict[std::string(STICK_AXBUT)] = oo::PList(static_cast<int>(evt->axis));
 			cbHardware = 0;
-			[cbObject performSelector:cbSelector withObject:oo::ObjectFromPList(oo::PList(std::move(fnDict)))];
+			OOCallByName(cbObject, cbSelector, oo::PList(std::move(fnDict)));	// called by name (ADR-0055 item 5)
 			cbObject = nil;
 		}
 		
@@ -635,7 +636,7 @@ static id sSharedStickHandler = nil;
 		fnDict[std::string(STICK_NUMBER)] = oo::PList(static_cast<int>(evt->which));
 		fnDict[std::string(STICK_AXBUT)] = oo::PList(static_cast<int>(evt->button));
 		cbHardware = 0;
-		[cbObject performSelector:cbSelector withObject:oo::ObjectFromPList(oo::PList(std::move(fnDict)))];
+		OOCallByName(cbObject, cbSelector, oo::PList(std::move(fnDict)));	// called by name (ADR-0055 item 5)
 		cbObject = nil;
 		
 		// we are done.

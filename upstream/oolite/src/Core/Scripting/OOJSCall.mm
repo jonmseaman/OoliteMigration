@@ -30,6 +30,8 @@ MA 02110-1301, USA.
 #import "OOJSCall.h"
 #include "oofnd/objc/OORuntime.h"
 #import "OOJavaScriptEngine.h"
+#import "OOCallByName.h"
+#import "OOObjCPList.h"
 
 #import "OOFunctionAttributes.h"
 #import "ShipEntity.h"
@@ -80,7 +82,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 	MethodType				type;
 	BOOL					haveParameter = NO,
 							error = NO;
-	id						result = nil;
+	oo::PList				result;		// null for none
 	
 	if (argc == 0)
 	{
@@ -127,30 +129,28 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 			switch (type)
 			{
 				case kMethodTypeVoidObject:
-					[object performSelector:selector withObject:oo::NSStringOrNil(paramString)];
-					break;
-					
 				case kMethodTypeObjectObject:
-					result = [object performSelector:selector withObject:oo::NSStringOrNil(paramString)];
+					// Called by name with the joined string (ADR-0055 item 5); a void method gives null.
+					result = OOCallByName(object, selector, *paramString);
 					break;
 					
 				case kMethodTypeObjectVoid:
-					result = [object performSelector:selector];
+					result = OOCallByName(object, selector);
 					if (selectorString.has_value() && oo::str::hasSuffix(*selectorString, "_bool"))
 					{
 						// OOBooleanFromObject(result, NO): a string or number reads as oo::plist_get::boolFrom
 						// does (bead oo-2764); any other object answers -boolValue / -intValue if it can.
-						const oo::PList resultValue = oo::PListFrom(result);
+						id resultObject = oo::ObjectIn(result);
 						bool boolResult = NO;
-						if (resultValue.type() != oo::PList::Type::Object)  boolResult = oo::plist_get::boolFrom((result != nil) ? &resultValue : nullptr, NO);
-						else if ([result respondsToSelector:@selector(boolValue)])  boolResult = [result boolValue];
-						else if ([result respondsToSelector:@selector(intValue)])  boolResult = [result intValue] != 0;
-						result = oo::ObjectFromPList(oo::PList(boolResult));
+						if (result.type() != oo::PList::Type::Object)  boolResult = oo::plist_get::boolFrom(!result.isNull() ? &result : nullptr, NO);
+						else if ([resultObject respondsToSelector:@selector(boolValue)])  boolResult = [resultObject boolValue];
+						else if ([resultObject respondsToSelector:@selector(intValue)])  boolResult = [resultObject intValue] != 0;
+						result = oo::PList(boolResult);
 					}
 					break;
 					
 				case kMethodTypeVoidVoid:
-					[object performSelector:selector];
+					OOCallByName(object, selector);
 					break;
 					
 				case kMethodTypeCharVoid:
@@ -160,16 +160,16 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 				case kMethodTypeIntVoid:
 				case kMethodTypeUnsignedIntVoid:
 				case kMethodTypeLongVoid:
-					result = oo::ObjectFromPList(oo::PList::signedInteger(OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type)));
+					result = oo::PList::signedInteger(OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type));
 					break;
 					
 				case kMethodTypeUnsignedLongVoid:
-					result = oo::ObjectFromPList(oo::PList::unsignedInteger(OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type)));
+					result = oo::PList::unsignedInteger(OOCallIntegerMethod(object, selector, method, (OOShaderUniformType)type));
 					break;
 					
 				case kMethodTypeFloatVoid:
 				case kMethodTypeDoubleVoid:
-					result = oo::ObjectFromPList(oo::PList(static_cast<double>(OOCallFloatMethod(object, selector, method, (OOShaderUniformType)type))));
+					result = oo::PList(static_cast<double>(OOCallFloatMethod(object, selector, method, (OOShaderUniformType)type)));
 					break;
 					
 				case kMethodTypeVectorVoid:
@@ -193,9 +193,9 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 					error = YES;
 					break;
 			}
-			if (result != nil)
+			if (!result.isNull())
 			{
-				*outResult = OOJSValueFromNativeObject(context, result);	// non-nil: a Foundation result through its PList form (ADR-0051)
+				*outResult = OOJSValueFromPList(context, result);	// a Foundation result's PList form, as OOJSValueFromNativeObject gave it (ADR-0051)
 			}
 		}
 	}

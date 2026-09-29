@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#import "OOCallByName.h"
 
 #include <map>
 #include <optional>
@@ -789,12 +790,13 @@ OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std
 	{
 		OOCAssert([PLAYER respondsToSelector:selector], "Special string expansion selector %s for [%s] is not implemented.", OOSelectorName(selector), key.c_str());
 
-		// PlayerEntity is not migrated yet: its string result converts here.
-		id result = [PLAYER performSelector:selector];
-		if (result != nil)
+		// Called by name (ADR-0055 item 5): a string result, as a PList.
+		const oo::PList result = OOCallByName(PLAYER, selector);
+		if (!result.isNull())
 		{
-			OOCAssert(oo::IsNSString(result), "Special string expansion [%s] expanded to %s, but expected a string.", key.c_str(), oo::ShortDescriptionOf(result).c_str());
-			return UnitsFromOptional(oo::OptionalString(result));
+			const std::string *string = result.getIf<std::string>();
+			OOCAssert(string != nullptr, "Special string expansion [%s] expanded to %s, but expected a string.", key.c_str(), oo::DescriptionOf(result).c_str());
+			if (string != nullptr)  return UnitsFromOptional(std::optional<std::string>(*string));
 		}
 	}
 
@@ -952,9 +954,10 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, co
 
 	if (selector != NULL)
 	{
-		// PlayerEntity is not migrated yet: "%@" of the result converts here (nil stays nil).
-		id result = [PLAYER performSelector:selector];
-		return UnitsFromOptional(result != nil ? std::optional<std::string>(oo::DescriptionOf(result)) : std::nullopt);
+		// Called by name (ADR-0055 item 5): "%@" of the result, as [[result description]] gave it
+		// (nil stays nil).
+		const oo::PList result = OOCallByName(PLAYER, selector);
+		return UnitsFromOptional(!result.isNull() ? std::optional<std::string>(oo::DescriptionOf(result)) : std::nullopt);
 	}
 	else
 	{

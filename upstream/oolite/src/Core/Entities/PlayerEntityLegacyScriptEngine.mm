@@ -55,6 +55,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#import "OOCallByName.h"
 #import "MyOpenGLView+Input.h"
 
 #include "oofnd/StdLib.hpp"
@@ -229,19 +230,19 @@ std::string TrimWhitespace(std::string_view s)
 	nullopt. Anything else (a variable holding an array, say) compares as its description; the old
 	code sent it -isEqualToString: and raised.
 */
-std::optional<std::string> ConditionString(id value)
-{
-	if (value == nil)  return std::nullopt;
-	if (oo::IsNSString(value))  return oo::OptionalString(value);
-	return oo::DescriptionOf(value);
-}
-
-
 std::optional<std::string> ConditionString(const oo::PList &value)
 {
 	if (value.isNull())  return std::nullopt;
 	if (const std::string *string = value.getIf<std::string>())  return *string;
 	return oo::DescriptionOf(value);
+}
+
+
+// A *_number query's result as -doubleValue read it: a number's value, a string parsed, 0 for nil.
+double QueryDoubleValue(const oo::PList &value)
+{
+	if (const std::string *string = value.getIf<std::string>())  return oo::str::doubleValue(*string);
+	return value.doubleValue();
 }
 
 
@@ -326,13 +327,15 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 	if (argumentString.has_value())
 	{
 		// Method with argument; substitute [description] expressions. The action is called by
-		// name, so its argument stays a string object (ADR-0043 item 21).
-		[target performSelector:selector withObject:oo::NSStringOrNil(cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), *argumentString, oo::PList(), [player localVariablesForMission:sCurrentMissionKey], std::nullopt, kOOExpandNoOptions))];
+		// name with the expanded string (ADR-0055 item 5); a failed expansion passes nil, as before.
+		const std::optional<std::string> expanded = cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), *argumentString, oo::PList(), [player localVariablesForMission:sCurrentMissionKey], std::nullopt, kOOExpandNoOptions);
+		if (expanded.has_value())  OOCallByName(target, selector, *expanded);
+		else  OOCallByName(target, selector, oo::PList());
 	}
 	else
 	{
 		// Method without argument.
-		[target performSelector:selector];
+		OOCallByName(target, selector);
 	}
 }
 
@@ -596,8 +599,8 @@ static BOOL sRunningScript = NO;
 
 	if (opType == OP_STRING)
 	{
-		// The query is called by name and answers an object (ADR-0043 item 21).
-		lhsString = ConditionString([self performSelector:selector]);
+		// The query is called by name and answers a PList (ADR-0055 item 5).
+		lhsString = ConditionString(OOCallByName(self, selector));
 
 	#define DOUBLEVAL(x) ((x).has_value() ? oo::str::doubleValue(*(x)) : 0.0)
 
@@ -636,7 +639,7 @@ static BOOL sRunningScript = NO;
 	}
 	else if (opType == OP_NUMBER)
 	{
-		lhsValue = [[self performSelector:selector] doubleValue];
+		lhsValue = QueryDoubleValue(OOCallByName(self, selector));
 
 		if (comparator == COMPARISON_ONEOF)
 		{
@@ -680,7 +683,7 @@ static BOOL sRunningScript = NO;
 	}
 	else if (opType == OP_BOOL)
 	{
-		lhsFlag = ConditionString([self performSelector:selector]) == std::optional<std::string>("YES");
+		lhsFlag = ConditionString(OOCallByName(self, selector)) == std::optional<std::string>("YES");
 		rhsFlag = expandedRHS == "YES";
 
 		switch (comparator)
@@ -733,7 +736,7 @@ static BOOL sRunningScript = NO;
 			if (ElementAt(component, 0).boolValue())
 			{
 				// (nil prints "(null)", for backwards compatibility)
-				value = oo::DescriptionOf([self performSelector:OOSelectorFromName(value.c_str())]);
+				value = oo::DescriptionOf(OOCallByName(self, OOSelectorFromName(value.c_str())));
 			}
 
 			if (!first)  result += " ";
@@ -907,7 +910,7 @@ static BOOL sRunningScript = NO;
 			if ([self respondsToSelector:valueselector])
 			{
 				// called by name; "%@" of the result, as +stringWithFormat: printed it
-				replace(valueString, oo::DescriptionOf([self performSelector:valueselector]));
+				replace(valueString, oo::DescriptionOf(OOCallByName(self, valueselector)));
 			}
 		}
 		else if (oo::str::hasPrefix(valueString, "[") && oo::str::hasSuffix(valueString, "]"))
