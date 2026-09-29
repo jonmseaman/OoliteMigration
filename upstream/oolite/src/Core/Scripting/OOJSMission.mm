@@ -685,7 +685,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 			std::optional<std::string> message = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*titleKey)]);
 			if (message.has_value())
 			{
-				[player setMissionTitle:OOExpand(oo::NSStringFrom(*message))];
+				[player cxx_setMissionTitle:cxx_OOExpand(*message)];
 			}
 			else
 			{
