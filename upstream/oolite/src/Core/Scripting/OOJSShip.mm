@@ -2211,7 +2211,7 @@ static bool ShipSendAIMessage(ooscript::Context context, ooscript::CallArgs &ooj
 		return NO;
 	}
 	
-	OOCallByName(thisEnt, @selector(sendAIMessage:), *message);	// id-typed until its declaring file flips it (ADR-0055 item 5)
+	[thisEnt sendAIMessage:*message];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT

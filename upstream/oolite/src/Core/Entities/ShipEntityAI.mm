@@ -1963,7 +1963,7 @@ using ooscript::Context;
 }
 
 
-- (void) messageSelf:(id)msgString	// called by name (ADR-0043 item 21)
+- (void) messageSelf:(const std::string &)msgString	// called by name (ADR-0055 item 5)
 {
 	[self sendAIMessage:msgString];
 }
