@@ -1077,7 +1077,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if ([player status] == STATUS_DOCKED)
 	{
-		if ([gui setForegroundTextureKey:@"paused_docked_overlay"])
+		if ([gui cxx_setForegroundTextureKey:"paused_docked_overlay"])
 		{
 			[gui drawGUI:1.0 drawCursor:NO];
 		}
@@ -1089,7 +1089,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	else
 	{
-		if ([player guiScreen] != GUI_SCREEN_MAIN && [gui setForegroundTextureKey:@"paused_overlay"])
+		if ([player guiScreen] != GUI_SCREEN_MAIN && [gui cxx_setForegroundTextureKey:"paused_overlay"])
 		{
 			[gui drawGUI:1.0 drawCursor:NO];
 		}
@@ -3485,7 +3485,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	// clear rows
 	for (NSUInteger i=1;i<=26;i++)
 	{
-		[gui setText:@"" forRow:i];
+		[gui cxx_setText:"" forRow:i];
 	}
 
 	/* Row 1: ScanClass, Name, Summary */
@@ -10457,8 +10457,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[gui clear];
 	[message_gui clear];
 	[comm_log_gui clear];
-	[comm_log_gui printLongText:DESC(@"communications-log-string")
-						  align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:nil addToArray:nil];
+	[comm_log_gui cxx_printLongText:oo::OptionalString(DESC(@"communications-log-string"))
+						  align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
 }
 
 
@@ -10811,26 +10811,28 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 	[gui autorelease];
 	gui = [[GuiDisplayGen alloc] init];
-	[gui setTextColor:[OOColor colorWithDescription:[[gui userSettings] objectForKey:kGuiDefaultTextColor]]];
+	const oo::PList guiSettings = [gui cxx_userSettings];
+	const oo::PList *defaultTextColor = guiSettings.find(cxx_kGuiDefaultTextColor);
+	[gui setTextColor:[OOColor colorWithDescription:(defaultTextColor != nullptr) ? oo::ObjectFromPList(*defaultTextColor) : nil]];
 
 	// message_gui and comm_log_gui defaults are set up inside [hud resetGuis:] ( via [player deferredInit], called from the code that calls this method). 
 	[message_gui autorelease];
 	message_gui = [[GuiDisplayGen alloc]
-					initWithPixelSize:NSMakeSize(480, 160)
+					cxx_initWithPixelSize:NSMakeSize(480, 160)
 							  columns:1
 								 rows:9
 							rowHeight:19
 							 rowStart:20
-								title:nil];
+								title:std::nullopt];
 	
 	[comm_log_gui autorelease];
 	comm_log_gui = [[GuiDisplayGen alloc]
-					initWithPixelSize:NSMakeSize(360, 120)
+					cxx_initWithPixelSize:NSMakeSize(360, 120)
 							  columns:1
 								 rows:10
 							rowHeight:12
 							 rowStart:12
-								title:nil];
+								title:std::nullopt];
 	
 	//
 	

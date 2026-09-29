@@ -1201,10 +1201,10 @@ for (unsigned i=0;i<amount;i++)
 	// GUI stuff
 	{
 		NSInteger current, max;
-		OOColor *subheadColor = [gui colorFromSetting:kGuiManifestSubheadColor defaultValue:[OOColor greenColor]];
-		OOColor *entryColor = [gui colorFromSetting:kGuiManifestEntryColor defaultValue:nil];
-		OOColor *scrollColor = [gui colorFromSetting:kGuiManifestScrollColor defaultValue:[OOColor greenColor]];
-		OOColor *noScrollColor = [gui colorFromSetting:kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
+		OOColor *subheadColor = [gui cxx_colorFromSetting:cxx_kGuiManifestSubheadColor defaultValue:[OOColor greenColor]];
+		OOColor *entryColor = [gui cxx_colorFromSetting:cxx_kGuiManifestEntryColor defaultValue:nil];
+		OOColor *scrollColor = [gui cxx_colorFromSetting:cxx_kGuiManifestScrollColor defaultValue:[OOColor greenColor]];
+		OOColor *noScrollColor = [gui cxx_colorFromSetting:cxx_kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
 
 		const std::vector<std::string>	cargoManifest = oo::StringsFrom([self cargoList]);
 		id			missionsManifest = [self missionsList];	// strings and arrays of strings
@@ -1257,7 +1257,7 @@ for (unsigned i=0;i<amount;i++)
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = 256;
-		[gui overrideTabs:tab_stops from:kGuiManifestTabs length:3];
+		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiManifestTabs length:3];
 		[gui setTabStops:tab_stops];
 		
 		// Cargo Manifest
@@ -1355,7 +1355,7 @@ for (unsigned i=0;i<amount;i++)
 			if (page_offset > 0)
 			{
 				[gui setColor:scrollColor forRow:MANIFEST_SCREEN_ROW_BACK];
-				[gui setKey:GUI_KEY_OK forRow:MANIFEST_SCREEN_ROW_BACK];
+				[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:MANIFEST_SCREEN_ROW_BACK];
 			}
 			else
 			{
@@ -1367,7 +1367,7 @@ for (unsigned i=0;i<amount;i++)
 			if (total_rows > max_rows + page_offset)
 			{
 				[gui setColor:scrollColor forRow:nextPageRow];
-				[gui setKey:GUI_KEY_OK forRow:nextPageRow];
+				[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:nextPageRow];
 			}
 			else
 			{
@@ -1392,8 +1392,8 @@ for (unsigned i=0;i<amount;i++)
 	
 	if (guiChanged)
 	{
-		[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay"];
-		[gui setBackgroundTextureKey:@"manifest"];
+		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setBackgroundTextureKey:"manifest"];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -1676,8 +1676,8 @@ std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
 	
 	if (guiChanged)
 	{
-		[gui setForegroundTextureKey:@"docked_overlay"];
-		[gui setBackgroundTextureKey:@"shipyard"];
+		[gui cxx_setForegroundTextureKey:"docked_overlay"];
+		[gui cxx_setBackgroundTextureKey:"shipyard"];
 	}
 }
 

@@ -604,7 +604,7 @@ static oo::PList GetParameterImageDescriptor(ooscript::Context context, ooscript
 	ooscript::Value value = ooscript::nullValue();
 	if (ooscript::getProperty((context), (object), key, (&value)))
 	{
-		return oo::PListFrom([[UNIVERSE gui] textureDescriptorFromJSValue:value inContext:context callerDescription:@"mission.runScreen()"]);
+		return [[UNIVERSE gui] cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"mission.runScreen()"];
 	}
 	else
 	{

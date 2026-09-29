@@ -8,7 +8,6 @@ oolite_sources += files(
     'GameController.mm',
     'GameController+FoundationBridge.mm',
     'GuiDisplayGen.mm',
-    'GuiDisplayGen+FoundationBridge.mm',
     'HeadUpDisplay.mm',
     'HeadUpDisplay+FoundationBridge.mm',
     'NSObjectOOExtensions.mm',

@@ -8103,7 +8103,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		tab_stops[0] = 20;
 		tab_stops[1] = 160;
 		tab_stops[2] = 290;
-		[gui overrideTabs:tab_stops from:kGuiStatusTabs length:3];
+		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiStatusTabs length:3];
 		[gui setTabStops:tab_stops];
 		
 		const std::string	lightYearsDesc = oo::StdString(DESC(@"status-light-years-desc"));
@@ -8129,16 +8129,16 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[gui cxx_setArray:RowOf(oo::OptionalString(DESC(@"status-rating")), rating_desc)			forRow:7];
 		
 
-		[gui setColor:[gui colorFromSetting:kGuiStatusShipnameColor defaultValue:nil] forRow:0];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusShipnameColor defaultValue:nil] forRow:0];
 		for (i = 1 ; i <= 7 ; ++i)
 		{
 			// nil default = fall back to global default colour
-			[gui setColor:[gui colorFromSetting:kGuiStatusDataColor defaultValue:nil] forRow:i];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusDataColor defaultValue:nil] forRow:i];
 		}
 
-		[gui setText:DESC(@"status-equipment") forRow:9];
+		[gui cxx_setText:oo::StdString(DESC(@"status-equipment")) forRow:9];
 
-		[gui setColor:[gui colorFromSetting:kGuiStatusEquipmentHeadingColor defaultValue:nil] forRow:9];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiStatusEquipmentHeadingColor defaultValue:nil] forRow:9];
 		
 		[gui setShowTextCursor:NO];
 	}
@@ -8658,7 +8658,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		tab_stops[0] = 0;
 		tab_stops[1] = 96;
 		tab_stops[2] = 144;
-		[gui overrideTabs:tab_stops from:kGuiSystemdataTabs length:3];
+		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiSystemdataTabs length:3];
 		[gui setTabStops:tab_stops];
 		
 		NSUInteger techLevel = infoSystemData.get<int>(oo::StdString(KEY_TECHLEVEL)) + 1;
@@ -8705,11 +8705,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 		if (concealment >= OO_SYSTEMCONCEALMENT_NODATA)
 		{
-			OOGUIRow i = [gui addLongText:OOExpandKey(@"sysdata-data-on-system-no-data") startingAtRow:15 align:GUI_ALIGN_LEFT];
+			OOGUIRow i = [gui cxx_addLongText:oo::OptionalString(OOExpandKey(@"sysdata-data-on-system-no-data")) startingAtRow:15 align:GUI_ALIGN_LEFT];
 			missionTextRow = i;
 			for (i-- ; i > 14 ; --i)
 			{
-				[gui setColor:[gui colorFromSetting:kGuiSystemdataDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiSystemdataDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
 			}
 		}
 		else
@@ -8796,12 +8796,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			missionTextRow = i;
 			for (i-- ; i > 16 ; --i)
 			{
-				[gui setColor:[gui colorFromSetting:kGuiSystemdataDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiSystemdataDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
 			}
 			for (i = 1 ; i <= 14 ; ++i)
 			{
 				// nil default = fall back to global default colour
-				[gui setColor:[gui colorFromSetting:kGuiSystemdataFactsColor defaultValue:nil] forRow:i];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiSystemdataFactsColor defaultValue:nil] forRow:i];
 			}
 		}
 
@@ -8839,8 +8839,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (refreshBackground || guiChanged)
 	{
-		[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay"];
-		[gui setBackgroundTextureKey:sunGoneNova ? @"system_data_nova" : @"system_data"];
+		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setBackgroundTextureKey:oo::OptionalString(sunGoneNova ? @"system_data_nova" : @"system_data")];
 		
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen refresh: refreshBackground];
 		[self checkScript];	// Still needed by some OXPs?
@@ -8900,7 +8900,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 	OOGUIScreenID	oldScreen = gui_screen;
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	[gui clearAndKeepBackground:NO];
-	[gui setBackgroundTextureKey:@"short_range_chart"];
+	[gui cxx_setBackgroundTextureKey:"short_range_chart"];
 	[self setMissionBackgroundSpecial: nil];
 	gui_screen = GUI_SCREEN_LONG_RANGE_CHART;
 	target_chart_zoom = CHART_MAX_ZOOM;
@@ -8912,7 +8912,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 	OOGUIScreenID	oldScreen = gui_screen;
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	[gui clearAndKeepBackground:NO];
-	[gui setBackgroundTextureKey:@"short_range_chart"];
+	[gui cxx_setBackgroundTextureKey:"short_range_chart"];
 	[self setMissionBackgroundSpecial: nil];
 	gui_screen = GUI_SCREEN_SHORT_RANGE_CHART;
 	[self setGuiToChartScreenFrom: oldScreen];
@@ -8967,9 +8967,9 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 	
 	if (guiChanged)
 	{
-		[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay"];
+		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
 		
-		[gui setBackgroundTextureKey:@"short_range_chart"];
+		[gui cxx_setBackgroundTextureKey:"short_range_chart"];
 		if (found_system_id >= 0)
 		{		
 			[UNIVERSE findSystemCoordinatesWithPrefix:[[UNIVERSE getSystemName:found_system_id] lowercaseString] exactMatch:YES];
@@ -9261,8 +9261,8 @@ std::string SliderString(NSInteger amountIn20ths)
 		[gui setSelectedRow: first_sel_row];
 
 		[gui setShowTextCursor:NO];
-		[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-		[gui setBackgroundTextureKey:@"settings"];
+		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay")];
+		[gui cxx_setBackgroundTextureKey:"settings"];
 	}
 	/* ends */
 
@@ -9349,10 +9349,10 @@ std::string SliderString(NSInteger amountIn20ths)
 		
 		[gui setShowTextCursor:NO];
 		
-		if ([gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"] && [UNIVERSE pauseMessageVisible])
+		if ([gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay")] && [UNIVERSE pauseMessageVisible])
 					[[UNIVERSE messageGUI] clear];
 		// Graphically, this screen is analogous to the various settings screens
-		[gui setBackgroundTextureKey:@"settings"];
+		[gui cxx_setBackgroundTextureKey:"settings"];
 	}
 	/* ends */
 	
@@ -9583,14 +9583,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui clearAndKeepBackground:!guiChanged];
 		[gui cxx_setTitle:oo::OptionalString(DESC(@"equip-title"))];
 		
-		[gui setColor:[gui colorFromSetting:kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
 		[gui cxx_setText:oo::StdString(OOExpandKey(@"equip-cash-value", credits)) forRow:GUI_ROW_EQUIPMENT_CASH];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = -360;
 		tab_stops[2] = -480;
-		[gui overrideTabs:tab_stops from:kGuiEquipmentTabs length:3];
+		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiEquipmentTabs length:3];
 		[gui setTabStops:tab_stops];
 		
 		unsigned n_rows = GUI_MAX_ROWS_EQUIPMENT;
@@ -9621,7 +9621,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				{
 					[gui cxx_setKey:oo::str::format("More:%d", previous) forRow:row];
 				}
-				[gui setColor:[gui colorFromSetting:kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row];
 				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", " <-- " } forRow:row];
 				row++;
 			}
@@ -9635,7 +9635,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				double				price;
 
 				OOColor				*dispCol = [eqInfo displayColor];
-				if (dispCol == nil) dispCol = [gui colorFromSetting:kGuiEquipmentOptionColor defaultValue:nil];
+				if (dispCol == nil) dispCol = [gui cxx_colorFromSetting:cxx_kGuiEquipmentOptionColor defaultValue:nil];
 				[gui setColor:dispCol forRow:row]; 
 
 				if (eqKey == "EQ_FUEL")
@@ -9645,7 +9645,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				else if (eqKey == "EQ_RENOVATION")
 				{
 					price = [self renovationCosts];
-					[gui setColor:[gui colorFromSetting:kGuiEquipmentRepairColor defaultValue:[OOColor orangeColor]] forRow:row];
+					[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentRepairColor defaultValue:[OOColor orangeColor]] forRow:row];
 				}
 				else
 				{
@@ -9671,7 +9671,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					{
 						installTime = 600 + price;
 					}
-					[gui setColor:[gui colorFromSetting:kGuiEquipmentRepairColor defaultValue:[OOColor orangeColor]] forRow:row];
+					[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentRepairColor defaultValue:[OOColor orangeColor]] forRow:row];
 
 				}
 				
@@ -9732,11 +9732,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 						
 						if(weaponMounted)
 						{
-							[gui setColor:[gui colorFromSetting:kGuiEquipmentLaserFittedColor defaultValue:[OOColor colorWithRed:0.0f green:0.6f blue:0.0f alpha:1.0f]] forRow:row];
+							[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentLaserFittedColor defaultValue:[OOColor colorWithRed:0.0f green:0.6f blue:0.0f alpha:1.0f]] forRow:row];
 						}
 						else
 						{
-							[gui setColor:[gui colorFromSetting:kGuiEquipmentLaserColor defaultValue:[OOColor greenColor]] forRow:row];
+							[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentLaserColor defaultValue:[OOColor greenColor]] forRow:row];
 						}
 						if (displayRow)	// Always true for the first pass. The first pass is used to display the name of the weapon being purchased.
 						{
@@ -9771,7 +9771,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			if (i < count)
 			{
 				// just overwrite the last item :-)
-				[gui setColor:[gui colorFromSetting:kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row-1];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row-1];
 				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", " --> " } forRow:row - 1];
 				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
 			}
@@ -9794,7 +9794,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		else
 		{
 			[gui cxx_setText:oo::StdString(DESC(@"equip-no-equipment-available-for-purchase")) forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
-			[gui setColor:[gui colorFromSetting:kGuiEquipmentUnavailableColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiEquipmentUnavailableColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
 			
 			[gui setSelectableRange:NSMakeRange(0,0)];
 			[gui setNoSelectedRow];
@@ -9806,7 +9806,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		// TODO: split the mount_weapon sub-screen into a separate screen, and use it for pylon mounted wepons as well?
 		if (guiChanged)
 		{
-			[gui setForegroundTextureKey:@"docked_overlay"];
+			[gui cxx_setForegroundTextureKey:"docked_overlay"];
 			const oo::PList background = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"equip_ship"]);
 			[self cxx_setEquipScreenBackgroundDescriptor:background];
 			[gui cxx_setBackgroundTextureDescriptor:background];
@@ -9848,7 +9848,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	const std::optional<std::string> eqKey = [gui cxx_selectedRowKey];
 	int i;
 
-	OOColor *descColor = [gui colorFromSetting:kGuiEquipmentDescriptionColor defaultValue:[OOColor greenColor]];
+	OOColor *descColor = [gui cxx_colorFromSetting:cxx_kGuiEquipmentDescriptionColor defaultValue:[OOColor greenColor]];
 	for (i = GUI_ROW_EQUIPMENT_DETAIL; i < GUI_MAX_ROWS; i++)
 	{
 		[gui cxx_setText:std::string() forRow:i];
@@ -9917,7 +9917,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
 		tab_stops[1] = -480;
-		[gui overrideTabs:tab_stops from:kGuiInterfaceTabs length:2];
+		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiInterfaceTabs length:2];
 		[gui setTabStops:tab_stops];
 		
 		unsigned n_rows = GUI_MAX_ROWS_INTERFACES;
@@ -9943,7 +9943,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				}
 				
 				[gui cxx_setKey:oo::str::format("More:%d", static_cast<int>(previous)) forRow:row];
-				[gui setColor:[gui colorFromSetting:kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row];
 				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:row];
 				row++;
 			}
@@ -9953,7 +9953,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				const std::string &interfaceKey = interfaceKeys[i];
 				OOJSInterfaceDefinition *definition = interfaces->find(interfaceKey)->second.get();
 
-				[gui setColor:[gui colorFromSetting:kGuiInterfaceEntryColor defaultValue:nil] forRow:row];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceEntryColor defaultValue:nil] forRow:row];
 				[gui cxx_setKey:interfaceKey forRow:row];
 				// title, category: the list ends at the first nil, as arrayWithObjects: did
 				std::vector<std::string> columns;
@@ -9972,7 +9972,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			if (i < (NSInteger)count)
 			{
 				// just overwrite the last item :-)
-				[gui setColor:[gui colorFromSetting:kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row - 1];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row - 1];
 				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:row - 1];
 				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
 			}
@@ -9988,8 +9988,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		else
 		{
-			[gui setText:DESC(@"interfaces-no-interfaces-available-for-use") forRow:GUI_ROW_NO_INTERFACES align:GUI_ALIGN_LEFT];
-			[gui setColor:[gui colorFromSetting:kGuiInterfaceNoneColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_INTERFACES];
+			[gui cxx_setText:oo::OptionalString(DESC(@"interfaces-no-interfaces-available-for-use")) forRow:GUI_ROW_NO_INTERFACES align:GUI_ALIGN_LEFT];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceNoneColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_INTERFACES];
 			
 			[gui setSelectableRange:NSMakeRange(0,0)];
 			[gui setNoSelectedRow];
@@ -10000,14 +10000,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 		const std::string desc = oo::str::formatRuntime(oo::StdString(DESC(@"interfaces-for-ship-@-and-station-@")),
 			{ [self displayName].value_or("(null)"), [[self dockedStation] displayName].value_or("(null)") });
-		[gui setColor:[gui colorFromSetting:kGuiInterfaceHeadingColor defaultValue:nil] forRow:GUI_ROW_INTERFACES_HEADING];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceHeadingColor defaultValue:nil] forRow:GUI_ROW_INTERFACES_HEADING];
 		[gui cxx_setText:desc forRow:GUI_ROW_INTERFACES_HEADING];
 
 		
 		if (guiChanged)
 		{
-			[gui setForegroundTextureKey:@"docked_overlay"];
-			[gui setBackgroundTextureDescriptor:[UNIVERSE screenTextureDescriptorForKey:@"interfaces"]];
+			[gui cxx_setForegroundTextureKey:"docked_overlay"];
+			[gui cxx_setBackgroundTextureDescriptor:oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"interfaces"])];
 		}
 	}
 	/* ends */
@@ -10031,8 +10031,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	for (i = GUI_ROW_EQUIPMENT_DETAIL; i < GUI_MAX_ROWS; i++)
 	{
-		[gui setText:@"" forRow:i];
-		[gui setColor:[gui colorFromSetting:kGuiInterfaceDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
+		[gui cxx_setText:"" forRow:i];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiInterfaceDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
 	}
 	
 	if (interfaceKey.has_value() && !oo::str::hasPrefix(*interfaceKey, "More:"))
@@ -10146,7 +10146,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[gui setSelectableRange:NSMakeRange(initialRow, row - initialRow + 1)];
 	[gui setSelectedRow:initialRow];
 
-	[gui setBackgroundTextureKey:@"intro"];
+	[gui cxx_setBackgroundTextureKey:"intro"];
 
 }
 
@@ -10271,11 +10271,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[self setShowDemoShips:YES];
 	if (justCobra)
 	{
-		[gui setBackgroundTextureKey:@"intro"];
+		[gui cxx_setBackgroundTextureKey:"intro"];
 	}
 	else
 	{
-		[gui setBackgroundTextureKey:@"shiplibrary"];
+		[gui cxx_setBackgroundTextureKey:"shiplibrary"];
 	}
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
@@ -10296,7 +10296,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[[OOOXZManager sharedManager] gui];
 	
 	[[OOMusicController sharedController] playThemeMusic];
-	[[UNIVERSE gui] setBackgroundTextureKey:@"oxz-manager"];
+	[[UNIVERSE gui] cxx_setBackgroundTextureKey:"oxz-manager"];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
@@ -11114,10 +11114,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	tab_stops[3] = 267;
 	tab_stops[4] = 321;
 	tab_stops[5] = 431;
-	[gui overrideTabs:tab_stops from:kGuiMarketTabs length:6];
+	[gui cxx_overrideTabs:tab_stops from:cxx_kGuiMarketTabs length:6];
 	[gui setTabStops:tab_stops];
 	
-	[gui setColor:[gui colorFromSetting:kGuiMarketHeadingColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_KEY];
+	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketHeadingColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_KEY];
 	[gui cxx_setArray:{ oo::StdString(DESC(@"commodity-column-title")), cxx_OOPadStringToEms(oo::StdString(DESC(@"price-column-title")),3.5),
 						   cxx_OOPadStringToEms(oo::StdString(DESC(@"for-sale-column-title")),3.75), cxx_OOPadStringToEms(oo::StdString(DESC(@"in-hold-column-title")),5.75), oo::StdString(DESC(@"oolite-legality-column-title")), oo::StdString(DESC(@"oolite-extras-column-title")) } forRow:GUI_ROW_MARKET_KEY];
 	[gui cxx_setArray:{ oo::StdString(DESC(@"commodity-column-title")), oo::StdString(DESC(@"oolite-extras-column-title")), cxx_OOPadStringToEms(oo::StdString(DESC(@"price-column-title")),3.5),
@@ -11177,7 +11177,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	const std::optional<std::string> extradesc = [shipCommodityData cxx_shortCommentForGood:good];
 
 	[gui cxx_setKey:good forRow:row];
-	[gui setColor:[gui colorFromSetting:kGuiMarketCommodityColor defaultValue:nil] forRow:row];
+	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketCommodityColor defaultValue:nil] forRow:row];
 	if (extradesc.has_value())  [gui cxx_setArray:{ desc, *extradesc, price, units_available, units_owned, legaldesc } forRow:row++];
 	else  [gui cxx_setArray:{ desc } forRow:row++];	// a nil comment ended the -arrayWithObjects: list
 
@@ -11362,7 +11362,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					active_row = GUI_ROW_MARKET_LAST;
 				}
 				[gui cxx_setKey:">>>" forRow:GUI_ROW_MARKET_LAST];
-				[gui setColor:[gui colorFromSetting:kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_LAST];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_LAST];
 				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", "", "", " --> " } forRow:GUI_ROW_MARKET_LAST];
 			}
 			if (marketOffset > 0)
@@ -11372,14 +11372,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					active_row = GUI_ROW_MARKET_START;
 				}
 				[gui cxx_setKey:"<<<" forRow:GUI_ROW_MARKET_START];
-				[gui setColor:[gui colorFromSetting:kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_START];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_START];
 				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", "", "", " <-- " } forRow:GUI_ROW_MARKET_START];
 			}
 		}
 		else
 		{
 			// filter is excluding everything
-			[gui setColor:[gui colorFromSetting:kGuiMarketFilteredAllColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_START];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketFilteredAllColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_START];
 			[gui cxx_setText:oo::StdString(DESC(@"oolite-market-filtered-all")) forRow:GUI_ROW_MARKET_START];
 			active_row = -1;
 		}
@@ -11396,7 +11396,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			const std::string sorterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-sorter-line", { { "sortMode", oo::PList(sortMode) } });
 			[gui cxx_setArray:{ filterText, "", sorterText } forRow:GUI_ROW_MARKET_END];
 		}
-		[gui setColor:[gui colorFromSetting:kGuiMarketFilterInfoColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_END];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketFilterInfoColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_END];
 
 		[self showMarketCashAndLoadLine];
 		
@@ -11414,8 +11414,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (guiChanged)
 	{
-		[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay"];
-		[gui setBackgroundTextureKey:@"market"];
+		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setBackgroundTextureKey:"market"];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -11486,7 +11486,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (contracted > 0)
 		{
 			OOMassUnit unit = [shipCommodityData massUnitForGood:selectedCommodity];
-			[gui setColor:[gui colorFromSetting:kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
 			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, oo::DescriptionOf(DisplayStringForMassUnit(unit)) }) forRow:GUI_ROW_MARKET_START+1];
 		}
 
@@ -11494,7 +11494,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		OOGUIRow i = 0;
 		if (!info.has_value() || info->empty())
 		{
-			i = [gui addLongText:DESC(@"oolite-commodity-no-comment") startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
+			i = [gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-commodity-no-comment")) startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
 		}
 		else
 		{
@@ -11502,7 +11502,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		for (i-- ; i > GUI_ROW_MARKET_START+2 ; --i)
 		{
-			[gui setColor:[gui colorFromSetting:kGuiMarketDescriptionColor defaultValue:nil] forRow:i];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketDescriptionColor defaultValue:nil] forRow:i];
 		}
 
 		[self showMarketCashAndLoadLine];
@@ -11516,8 +11516,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (guiChanged)
 	{
-		[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay"];
-		[gui setBackgroundTextureKey:@"marketinfo"];
+		[gui cxx_setForegroundTextureKey:oo::OptionalString([self status] == STATUS_DOCKED ? @"docked_overlay" : @"overlay")];
+		[gui cxx_setBackgroundTextureKey:"marketinfo"];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }
@@ -11528,7 +11528,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	OOCargoQuantity currentCargo = current_cargo;
 	OOCargoQuantity cargoCapacity = [self maxAvailableCargoSpace];
 	[gui cxx_setText:oo::StdString(OOExpandKey(@"market-cash-and-load", credits, currentCargo, cargoCapacity)) forRow:GUI_ROW_MARKET_CASH];
-	[gui setColor:[gui colorFromSetting:kGuiMarketCashColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_CASH];
+	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiMarketCashColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_CASH];
 }
 
 - (OOGUIScreenID) guiScreen

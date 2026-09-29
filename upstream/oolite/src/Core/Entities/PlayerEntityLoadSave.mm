@@ -302,7 +302,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-scenario-exit")), " <----- " } forRow:start_row - 2];
 		[gui setColor:[OOColor redColor] forRow:start_row - 2];
-		[gui setKey:@"exit" forRow:start_row - 2];
+		[gui cxx_setKey:"exit" forRow:start_row - 2];
 		
 
 		if (page > 0)
@@ -319,7 +319,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 			const oo::PList *scenario = scenarios.at(i);
 			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
 			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
-			[gui setText:OOExpand(oo::NSStringFrom(scenarioName)) forRow:row];
+			[gui cxx_setText:oo::StdString(OOExpand(oo::NSStringFrom(scenarioName))) forRow:row];
 			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
 			++row;
 		}
@@ -340,8 +340,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 		if (guiChanged)
 		{
-			[gui setBackgroundTextureKey:@"newgame"];
-			[gui setForegroundTextureKey:@"newgame_overlay"];
+			[gui cxx_setBackgroundTextureKey:"newgame"];
+			[gui cxx_setForegroundTextureKey:"newgame_overlay"];
 		}
 	}
 	
@@ -368,7 +368,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[self setShowDemoShips:NO];
 		for (NSUInteger i=GUI_ROW_SCENARIOS_DETAIL;i<=27;i++)
 		{
-			[gui setText:@"" forRow:i];
+			[gui cxx_setText:"" forRow:i];
 		}
 		if (scenario)
 		{
@@ -451,9 +451,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		else
 		{
 			[UNIVERSE removeDemoShips];
-			[gui setText:@"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
-			[gui setText:@"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
-			[gui setText:@"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
 		}
 
 	}
@@ -463,14 +463,14 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	
 	// handle page <-- and page --> keys
-	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && [[gui keyForRow:BACKROW] isEqual: GUI_KEY_OK])
+	if (([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]) && [oo::NSStringOrNil([gui cxx_keyForRow:BACKROW]) isEqual: GUI_KEY_OK])
 	{
 		currentPage--;
 		[self playMenuPagePrevious];
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
-	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && [[gui keyForRow:MOREROW] isEqual: GUI_KEY_OK])
+	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && [oo::NSStringOrNil([gui cxx_keyForRow:MOREROW]) isEqual: GUI_KEY_OK])
 	{
 		currentPage++;
 		[self playMenuPageNext];
@@ -553,9 +553,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		else
 		{
 			[UNIVERSE removeDemoShips];
-			[gui setText:@"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
-			[gui setText:@"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
-			[gui setText:@"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
 		}
 	}
 	else
@@ -572,7 +572,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	// handle page <-- and page --> keys, and on-screen buttons
 	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == BACKROW) || ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up]))
-					&& [[gui keyForRow:BACKROW] isEqual: GUI_KEY_OK])
+					&& [oo::NSStringOrNil([gui cxx_keyForRow:BACKROW]) isEqual: GUI_KEY_OK])
 	{
 		currentPage--;
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -580,7 +580,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	}
 	//
 	if (((([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == MOREROW) || ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]))
-					&& [[gui keyForRow:MOREROW] isEqual: GUI_KEY_OK])
+					&& [oo::NSStringOrNil([gui cxx_keyForRow:MOREROW]) isEqual: GUI_KEY_OK])
 	{
 		currentPage++;
 		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
@@ -1017,8 +1017,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
-	[gui setForegroundTextureKey:@"docked_overlay"];
-	[gui setBackgroundTextureKey:@"load_save"];
+	[gui cxx_setForegroundTextureKey:"docked_overlay"];
+	[gui cxx_setBackgroundTextureKey:"load_save"];
 	
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	
@@ -1042,13 +1042,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	currentPage = 0;
 	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
-	[gui setText:DESC(@"savescreen-commander-name") forRow: INPUTROW];
+	[gui cxx_setText:oo::StdString(DESC(@"savescreen-commander-name")) forRow: INPUTROW];
 	[gui setColor:[OOColor cyanColor] forRow:INPUTROW];
 	[gui setShowTextCursor: YES];
 	[gui setCurrentRow: INPUTROW];
 	
-	[gui setForegroundTextureKey:@"docked_overlay"];
-	[gui setBackgroundTextureKey:@"load_save"];
+	[gui cxx_setForegroundTextureKey:"docked_overlay"];
+	[gui cxx_setBackgroundTextureKey:"load_save"];
 	
 	[gameView cxx_setTypedString:cdrName];
 	[gameView suppressKeysUntilKeyUp];
@@ -1074,19 +1074,19 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"overwritescreen-commander-@-already-exists-overwrite-query")), { cdrName })
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
 	
-	[gui setText:DESC(@"overwritescreen-yes") forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
-	[gui setKey:GUI_KEY_OK forRow: SAVE_OVERWRITE_YES_ROW];
+	[gui cxx_setText:oo::OptionalString(DESC(@"overwritescreen-yes")) forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow: SAVE_OVERWRITE_YES_ROW];
 	
-	[gui setText:DESC(@"overwritescreen-no") forRow: SAVE_OVERWRITE_NO_ROW align: GUI_ALIGN_CENTER];
-	[gui setKey:GUI_KEY_OK forRow: SAVE_OVERWRITE_NO_ROW];
+	[gui cxx_setText:oo::OptionalString(DESC(@"overwritescreen-no")) forRow: SAVE_OVERWRITE_NO_ROW align: GUI_ALIGN_CENTER];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow: SAVE_OVERWRITE_NO_ROW];
 	
 	[gui setSelectableRange: NSMakeRange(SAVE_OVERWRITE_YES_ROW, 2)];
 	[gui setSelectedRow: SAVE_OVERWRITE_NO_ROW];
 	
 	// We can only leave this screen by answering yes or no, or esc. Therefore
 	// use a specific overlay, to allow visual reminders of the available options.
-	[gui setForegroundTextureKey:@"overwrite_overlay"];
-	[gui setBackgroundTextureKey:@"load_save"];
+	[gui cxx_setForegroundTextureKey:"overwrite_overlay"];
+	[gui cxx_setBackgroundTextureKey:"load_save"];
 	
 	[self setShowDemoShips:NO];
 	[gameView setStringInput:gvStringInputNo];
@@ -1158,7 +1158,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if(cdrDetailArray.empty())
 	{
 		// Empty directory; tell the user and exit immediately.
-		[gui setText:DESC(@"loadsavescreen-no-commanders-found") forRow:STARTROW align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::OptionalString(DESC(@"loadsavescreen-no-commanders-found")) forRow:STARTROW align:GUI_ALIGN_CENTER];
 		return;
 	}
 
@@ -1198,9 +1198,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	// clear text lines here
 	for (i = EXITROW ; i < ENDROW + 1; i++)
 	{
-		[gui setText:@"" forRow:i align:GUI_ALIGN_LEFT];
+		[gui cxx_setText:"" forRow:i align:GUI_ALIGN_LEFT];
 		[gui setColor: [OOColor yellowColor] forRow: i];
-		[gui setKey:GUI_KEY_SKIP forRow:i];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:i];
 	}
 
 	[gui setColor: [OOColor greenColor] forRow: LABELROW];
@@ -1212,7 +1212,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[gui setColor:[OOColor greenColor] forRow:STARTROW-1];
 		[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " }
 			   forRow:STARTROW-1];
-		[gui setKey:GUI_KEY_OK forRow:STARTROW-1];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:STARTROW-1];
 		rangeStart=STARTROW-1;
 	}
 
@@ -1220,7 +1220,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-loadsave-exit")), " <----- " } forRow:EXITROW];
 		[gui setColor:[OOColor redColor] forRow:EXITROW];
-		[gui setKey:GUI_KEY_OK forRow:EXITROW];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:EXITROW];
 		rangeStart = EXITROW;
 	}
 
@@ -1236,7 +1236,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[gui setColor:[OOColor greenColor] forRow:ENDROW];
 		[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " }
 			   forRow:ENDROW];
-		[gui setKey:GUI_KEY_OK forRow:ENDROW];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:ENDROW];
 		[gui setSelectableRange: NSMakeRange(rangeStart, MOREROW)];
 	}
 	
@@ -1257,7 +1257,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				highlightRowOnPage = row;
 			}
 			
-			[gui setKey:GUI_KEY_OK forRow:row];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:row];
 			row++;
 		}
 		if (cdr.get<bool>("isParentFolder"))
@@ -1267,7 +1267,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				"" }
 				   forRow:row];
 			[gui setColor: [OOColor orangeColor] forRow: row];
-			[gui setKey:GUI_KEY_OK forRow:row];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:row];
 			row++;
 		}
 		if (cdr.get<bool>("isFolder"))
@@ -1277,7 +1277,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				"" }
 				   forRow:row];
 			[gui setColor: [OOColor orangeColor] forRow: row];
-			[gui setKey:GUI_KEY_OK forRow:row];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:row];
 			row++;
 		}
 	}
@@ -1306,9 +1306,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (cdrArrayIndex < 0 || (std::size_t)cdrArrayIndex >= cdrDetailArray.size())  return;	// (-objectAtIndex: raised)
 	const oo::PList cdr = cdrDetailArray[cdrArrayIndex];
 	
-	[gui setText:@"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
-	[gui setText:@"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
-	[gui setText:@"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
+	[gui cxx_setText:"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
+	[gui cxx_setText:"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
+	[gui cxx_setText:"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
 	
 	if (cdr.get<bool>("isFolder"))
 	{
