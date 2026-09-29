@@ -243,8 +243,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	{
 		if (value.isArray())
 		{
-			// -processKeyCode: returns a +1 array
-			value = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(value)]).get());
+			value = [self cxx_processKeyCode:value];
 		}
 	}
 	kdic_check = oo::PList(std::move(kdic));
@@ -832,8 +831,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	}
 	last_shift = NO;
 	StoreKeyDefinition(index, oo::PList(std::move(key_def)));
-	// -processKeyCode: returns a +1 array
-	key_list = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(key_list)]).get());
+	key_list = [self cxx_processKeyCode:key_list];
 }
 
 
@@ -877,8 +875,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	StoreKeyDefinition(index, std::move(key_def));
 	if (keycode_changed)
 	{
-		// -processKeyCode: returns a +1 array
-		key_list = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(key_list)]).get());
+		key_list = [self cxx_processKeyCode:key_list];
 	}
 }
 

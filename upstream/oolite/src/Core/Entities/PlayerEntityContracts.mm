@@ -1045,7 +1045,7 @@ for (unsigned i=0;i<amount;i++)
 
 	std::string		cargo_ID = oo::str::format("%06x-%06x", sr1, sr2);
 
-	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])  return NO;
+	if (![[UNIVERSE commodities] cxx_goodDefined:type])  return NO;
 	if (qty < 1)  return NO;
 
 	// avoid duplicate cargo_IDs
@@ -1108,7 +1108,7 @@ for (unsigned i=0;i<amount;i++)
 {
 	if (contracts.empty() || dest > 255)  return NO;
 
-	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])  return NO;
+	if (![[UNIVERSE commodities] cxx_goodDefined:type])  return NO;
 
 	unsigned			i;
 

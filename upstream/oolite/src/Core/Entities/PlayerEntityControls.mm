@@ -942,7 +942,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			exceptionContext = "error handling mode";
 			if ([gameView isDown:113]||[gameView isDown:81]||[gameView isDown:27])   // 'q' | 'Q' | esc
 			{
-				[gameController exitAppWithContext:@"Q or escape pressed in error handling mode"];
+				[gameController cxx_exitAppWithContext:"Q or escape pressed in error handling mode"];
 			}
 		}
 		
@@ -2666,7 +2666,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			// vs fullscreen.
 			if ((guiSelectedRow == GUI_ROW(,QUIT)) && selectKeyPress)
 			{
-				[[UNIVERSE gameController] exitAppWithContext:@"Exit Game selected on options screen"];
+				[[UNIVERSE gameController] cxx_exitAppWithContext:"Exit Game selected on options screen"];
 			}
 #endif
 			
@@ -5012,7 +5012,7 @@ static BOOL autopilot_pause;
 				}
 				else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select]) && [gui selectedRow] == 6+row_zero)
 				{
-					[[UNIVERSE gameController] exitAppWithContext:@"Exit Game selected on start screen"];
+					[[UNIVERSE gameController] cxx_exitAppWithContext:"Exit Game selected on start screen"];
 				}
 				else
 				{

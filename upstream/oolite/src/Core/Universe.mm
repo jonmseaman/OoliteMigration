@@ -769,7 +769,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one Universe to exist at a time.", __PRETTY_FUNCTION__];
 	}
 	
-	OO_DEBUG_PROGRESS(@"%@", @"Universe initWithGameView:");
+	OO_DEBUG_PROGRESS("Universe initWithGameView:");
 	
 	self = [super init];
 	if (self == nil)  return nil;
@@ -858,7 +858,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #endif
 #endif
 	
-	[[GameController sharedController] logProgress:DESC(@"loading-ships")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"loading-ships"))];
 	// Load ship data
 	
 	[OOShipRegistry sharedRegistry];
@@ -902,13 +902,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	framesDoneThisUpdate = 0;
 	drawCounter = 0;
 	
-	[[GameController sharedController] logProgress:DESC(@"initializing-debug-support")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"initializing-debug-support"))];
 	OOInitDebugSupport();
 	
-	[[GameController sharedController] logProgress:DESC(@"running-scripts")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"running-scripts"))];
 	[player completeSetUp];
 	
-	[[GameController sharedController] logProgress:DESC(@"populating-space")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"populating-space"))];
 	[self populateNormalSpace];
 	
 	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
@@ -1106,7 +1106,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) quitGame
 {
 	OO_LOG("universe.quit", "{}", "Quit command received by Universe.");
-	[[self gameController] exitAppWithContext:@"Universe Request"];
+	[[self gameController] cxx_exitAppWithContext:"Universe Request"];
 }
 
 - (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole
@@ -1463,11 +1463,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
 
-	[[GameController sharedController] logProgress:DESC(@"populating-space")];
+	[[GameController sharedController] cxx_logProgress:oo::StdString(DESC(@"populating-space"))];
 	
 	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
 
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - clearSubRegions, sky, dust");
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - clearSubRegions, sky, dust");
 	[universeRegion clearSubregions];
 	
 	// fixed entities (part of the graphics system really) come first...
@@ -1550,7 +1550,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// actual entities next...
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - planet");
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - planet");
 	a_planet=[self setUpPlanet]; // resets RNG when called
 	double planet_radius = [a_planet radius];
 	OO_DEBUG_POP_PROGRESS();
@@ -1558,7 +1558,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// set the system seed for random number generation
 	seed_for_planet_description(systemSeed);
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - sun");
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - sun");
 	/*- space sun -*/
 	double		sun_radius;
 	double		sun_distance;
@@ -1664,7 +1664,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[self setLighting];
 	OO_DEBUG_POP_PROGRESS();
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - main station");
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - main station");
 	/*- space station -*/
 	stationPos = [a_planet position];
 
@@ -1752,7 +1752,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OO_DEBUG_POP_PROGRESS();
 	
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - populate from wormholes");
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from wormholes");
 	[self populateSpaceFromActiveWormholes];
 	OO_DEBUG_POP_PROGRESS();
 
@@ -1769,7 +1769,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// check for nova
 	if (sunGoneNova)
 	{
-	 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - post-nova");
+	 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - post-nova");
 		
 	 	HPVector v0 = make_HPvector(0,0,34567.89);
 	 	double min_safe_dist2 = 6000000.0 * 6000000.0;
@@ -1789,7 +1789,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	 	cachedStation = nil;	
 	}
 
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - populate from hyperpoint");
+	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from hyperpoint");
 //	[self populateSpaceFromHyperPoint:witchPos toPlanetPosition: a_planet->position andSunPosition: a_sun->position];
 	[self clearSystemPopulator];
 
@@ -1813,7 +1813,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",TextOrNull([self cxx_getSystemName:systemID]).c_str()));
 		if (!OOEnforceStandards())
 		{
-			OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - legacy script_actions");
+			OO_DEBUG_PUSH_PROGRESS("setUpSpace - legacy script_actions");
 			[PLAYER cxx_runUnsanitizedScriptActions:*script_actions
 							  allowingAIMethods:NO
 								withContextName:"<system script_actions>"
@@ -3269,7 +3269,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) handleGameOver
 {
-	if ([[self gameController] playerFileToLoad])
+	if ([[self gameController] cxx_playerFileToLoad].has_value())
 	{
 		[[self gameController] loadPlayerIfRequired];
 	}
@@ -4518,7 +4518,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
 	accumulator.reserve(how_much);
-	if (![commodities goodDefined:oo::NSStringFrom(commodity_name)])	// OOCommodities is not migrated yet
+	if (![commodities cxx_goodDefined:commodity_name])
 	{
 		return accumulator; // empty array
 	}
@@ -8228,8 +8228,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	scriptName = OptionalStringIn(systemData, "market_script");
 
 	DESTROY(commodityMarket);
-	// OOCommodities is not migrated yet: the script name goes as the string (or nil) it read before.
-	commodityMarket = [[commodities generateMarketForSystemWithEconomy:economy andScript:oo::NSStringOrNil(scriptName)] retain];
+	commodityMarket = [[commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
 }
 
 
@@ -11004,7 +11003,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	[self addEntity:player];
 	demo_ship = nil;
-	[[self gameController] setPlayerFileToLoad:nil];		// reset Quicksave
+	[[self gameController] cxx_setPlayerFileToLoad:""];		// reset Quicksave
 	
 	[self setUpInitialUniverse];
 	autoSaveNow = NO;	// don't autosave immediately after restarting a game
@@ -11054,19 +11053,19 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 {
 	PlayerEntity* player = PLAYER;
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Wormhole and character reset");
+	OO_DEBUG_PUSH_PROGRESS("Wormhole and character reset");
 	AutoreleaseAll(activeWormholes);	// the old list was autoreleased
 	activeWormholes.reserve(16);
 	AutoreleaseAll(characterPool);	// the old pool was autoreleased
 	characterPool.reserve(256);
 	OO_DEBUG_POP_PROGRESS();
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Galaxy reset");
+	OO_DEBUG_PUSH_PROGRESS("Galaxy reset");
 	[self setGalaxyTo: [player galaxyNumber] andReinit:YES];
 	systemID = [player systemID];
 	OO_DEBUG_POP_PROGRESS();
 	
-	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Player init: setUpShipFromDictionary");
+	OO_DEBUG_PUSH_PROGRESS("Player init: setUpShipFromDictionary");
 	[player setUpShipFromDictionary:[[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())]];	// the standard cobra at this point
 	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
 	OO_DEBUG_POP_PROGRESS();
