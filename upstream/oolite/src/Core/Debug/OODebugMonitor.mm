@@ -888,7 +888,7 @@ FIXME: this works with CRLF and LF, but not CR.
 		}
 		else if (oo::str::hasPrefix(key, "show-console"))
 		{
-			boolValue = OOBooleanFromObject(oo::ObjectFromPList(value), NO);
+			boolValue = oo::plist_get::boolFrom(&value, NO);	// OOBooleanFromObject (a null value: NO)
 			return oo::PList(static_cast<bool>(boolValue));
 		}
 	}
@@ -972,7 +972,8 @@ FIXME: this works with CRLF and LF, but not CR.
 
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = "show-console-on-warning";
 	else  showKey = "show-console-on-error";	// if not a warning, it's a proper error.
-	if (OOBooleanFromObject(oo::ObjectFromPList([self configurationValueForKey:showKey]), NO))
+	const oo::PList showValue = [self configurationValueForKey:showKey];
+	if (oo::plist_get::boolFrom(&showValue, NO))	// OOBooleanFromObject
 	{
 		[self showJSConsole];
 	}
@@ -985,7 +986,8 @@ FIXME: this works with CRLF and LF, but not CR.
 		 ofClass:(const std::optional<std::string> &)messageClass
 {
 	[self appendJSConsoleLine:oo::NSStringFrom(message) colorKey:"log"];
-	if (OOBooleanFromObject(oo::ObjectFromPList([self configurationValueForKey:"show-console-on-log"]), NO))
+	const oo::PList showValue = [self configurationValueForKey:"show-console-on-log"];
+	if (oo::plist_get::boolFrom(&showValue, NO))	// OOBooleanFromObject
 	{
 		[self showJSConsole];
 	}

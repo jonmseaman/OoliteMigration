@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
+#import "OOPListGameTypes.h"
 
 #define PRELOAD 0
 
@@ -80,14 +81,14 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 Vector VectorForKey(const oo::PList &dict, const char *key)
 {
 	const oo::PList *value = dict.find(key);
-	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroVector);
+	return OOVectorFromPList(value, kZeroVector);
 }
 
 
 Quaternion QuaternionForKey(const oo::PList &dict, const char *key)
 {
 	const oo::PList *value = dict.find(key);
-	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+	return OOQuaternionFromPList(value, kIdentityQuaternion);
 }
 
 
@@ -95,13 +96,13 @@ Quaternion QuaternionForKey(const oo::PList &dict, const char *key)
 // dictionaries (float components), as property lists.
 oo::PList VectorPList(Vector value)
 {
-	return oo::PListFrom(OOPropertyListFromVector(value));
+	return OOPListFromVector(value);
 }
 
 
 oo::PList QuaternionPList(Quaternion value)
 {
-	return oo::PListFrom(OOPropertyListFromQuaternion(value));
+	return OOPListFromQuaternion(value);
 }
 
 
