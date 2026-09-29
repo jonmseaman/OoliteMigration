@@ -269,7 +269,8 @@ typedef OOPixMapFormat OOTextureDataFormat;
 
 - (size_t) dataSize;
 
-- (id) name;	// an Objective-C string. Shared selector (proposed ADR-0043).
+- (id) name;	// shared selector (Foundation declares -name too): -cxx_name as an Objective-C string, or nil
+- (std::optional<std::string>) cxx_name;	// nullopt: none (bead oo-3rb.289.4)
 #endif
 
 @end
