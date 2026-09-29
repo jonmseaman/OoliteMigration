@@ -859,10 +859,9 @@ const OOSelectorTable *SpecialSubstitutionSelectors(void)
 */
 OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, const std::string &key, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
-	// Universe is not migrated yet: only this key's value of -descriptions is converted. The
-	// object itself is kept for the error log, whose text names its class.
-	id object = [[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(key)];
-	oo::PList value = oo::PListFrom(object);
+	// The error log names the value's class as the Foundation object built from it did.
+	const oo::PList *found = [UNIVERSE cxx_descriptions]->find(key);
+	oo::PList value = (found != nullptr) ? *found : oo::PList();
 	if (!value.isNull())
 	{
 		if (value.isArray() && value.count() > 0)
@@ -870,14 +869,13 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 			NSUInteger rnd = OO_EXPANDER_RANDOM % value.count();
 			const oo::PList chosen = *value.at(rnd);
 			value = chosen;
-			object = [object objectAtIndex:rnd];
 		}
 
 		const std::string *text = value.getIf<std::string>();
 		if (text == nullptr)
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::DescriptionOf([object shortDescription]), key);
+			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::DescriptionOf([oo::ObjectFromPList(value) shortDescription]), key);
 			return std::nullopt;
 		}
 
@@ -1254,8 +1252,7 @@ OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, 
 		return std::nullopt;
 	}
 	
-	// Universe is not migrated yet: converted at the call.
-	return UnitsFromOptional(oo::OptionalString([UNIVERSE getSystemName:sysID forGalaxy:galID]));
+	return UnitsFromOptional([UNIVERSE cxx_getSystemName:sysID forGalaxy:galID]);
 }
 
 
@@ -1297,7 +1294,7 @@ OOMaybeUnits ExpandSystemNameEscape(OOStringExpansionContext *context, const cha
 		return std::nullopt;
 	}
 	
-	return UnitsFromOptional(oo::OptionalString([UNIVERSE getSystemName:sysID]));
+	return UnitsFromOptional([UNIVERSE cxx_getSystemName:sysID]);
 }
 
 
@@ -1323,7 +1320,7 @@ OOMaybeUnits GetSystemName(OOStringExpansionContext *context)
 {
 	OOCParameterAssert(context != NULL);
 	if (!context->systemName.has_value()) {
-		context->systemName = UnitsFromOptional(oo::OptionalString([UNIVERSE getSystemName:[PLAYER systemID]]));
+		context->systemName = UnitsFromOptional([UNIVERSE cxx_getSystemName:[PLAYER systemID]]);
 	}
 
 	return context->systemName;
@@ -1376,9 +1373,9 @@ const oo::PList &GetSystemDescriptions(OOStringExpansionContext *context)
 
 	if (context->systemDescriptions.isNull())
 	{
-		// Universe is not migrated yet: only this one value of -descriptions is converted, once
-		// per context (PListView's rule: an array, else none).
-		const oo::PList value = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"system_description"]);
+		// Looked up once per context (PListView's rule: an array, else none).
+		const oo::PList *found = [UNIVERSE cxx_descriptions]->find("system_description");
+		const oo::PList value = (found != nullptr) ? *found : oo::PList();
 		if (value.isArray())  context->systemDescriptions = value;
 		context->sysDescCount = context->systemDescriptions.count();
 	}
@@ -1419,7 +1416,9 @@ OOUnits OldRandomDigrams(void)
 	/* The only point of using %R is for world generation, so there's
 	 * no point in checking the context */
 	unsigned len = gen_rnd_number() & 3;
-	const std::optional<std::string> digrams = oo::OptionalString([[UNIVERSE descriptions] objectForKey:@"digrams"]);
+	const oo::PList *digramsEntry = [UNIVERSE cxx_descriptions]->find("digrams");
+	const std::string *digramsText = (digramsEntry != nullptr) ? digramsEntry->getIf<std::string>() : nullptr;
+	const std::optional<std::string> digrams = (digramsText != nullptr) ? std::optional<std::string>(*digramsText) : std::nullopt;
 	const OOUnits digramUnits = UnitsFromOptional(digrams).value_or(OOUnits());
 	OOUnits name;
 
@@ -1439,7 +1438,9 @@ OOUnits NewRandomDigrams(OOStringExpansionContext *context)
 {
 	unsigned length = (OO_EXPANDER_RANDOM % 4) + 1;
 	if ((OO_EXPANDER_RANDOM % 5) < ((length == 1) ? 3 : 1))  ++length;	// Make two-letter names rarer and 10-letter names happen sometimes
-	const std::optional<std::string> digrams = oo::OptionalString([[UNIVERSE descriptions] objectForKey:@"digrams"]);
+	const oo::PList *digramsEntry = [UNIVERSE cxx_descriptions]->find("digrams");
+	const std::string *digramsText = (digramsEntry != nullptr) ? digramsEntry->getIf<std::string>() : nullptr;
+	const std::optional<std::string> digrams = (digramsText != nullptr) ? std::optional<std::string>(*digramsText) : std::nullopt;
 	const OOUnits digramUnits = UnitsFromOptional(digrams).value_or(OOUnits());
 	NSUInteger count = digramUnits.size() / 2;
 	OOUnits name;
