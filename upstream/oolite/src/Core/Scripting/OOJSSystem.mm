@@ -1602,7 +1602,7 @@ static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oo
 		OOJSPopulatorDefinition *populator = [[OOJSPopulatorDefinition alloc] init];
 		[populator setCallback:callback];
 
-		settings = oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[1])));
+		settings = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]));
 		oo::PList::Dict *settingsDict = settings.getIf<oo::PList::Dict>();	// messages to a nil dictionary did nothing
 		if (settingsDict != nullptr)  (*settingsDict)["callbackObj"] = oo::PListObject(populator);
 
@@ -1675,7 +1675,7 @@ static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &ooj
 			return NO;
 		}
 		
-		settings = oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[3])));	// a copy, as -mutableCopy was
+		settings = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[3]));	// a copy, as -mutableCopy was
 		if (oo::PList::Dict *settingsDict = settings.getIf<oo::PList::Dict>())	// messages to a nil copy did nothing
 		{
 			(*settingsDict)["position"] = oo::PList(oo::PList::Array{ oo::PList(position.x), oo::PList(position.y), oo::PList(position.z) });

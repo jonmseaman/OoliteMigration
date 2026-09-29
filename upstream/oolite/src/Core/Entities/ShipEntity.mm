@@ -6318,7 +6318,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		return;
 	}
 
-	result = oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(rval)));
+	result = cxx_OOJSPListFromJSObject(context, ooscript::toObject(rval));
 	OOJSRelinquishContext(context);
 
 	// roll or roll factor
