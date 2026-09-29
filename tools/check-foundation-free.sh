@@ -12,15 +12,23 @@
 #     bash tools/check-foundation-free.sh --selftest       # proof each check fails and passes
 #     ... --root <dir>                                     # scan <dir> instead of upstream/oolite/src
 #
-# --stage sweeps reports, per file under upstream/oolite/src minus src/oofnd (comment lines ignored):
+# --stage sweeps reports, per file under upstream/oolite/src minus src/oofnd (comment lines ignored;
+# the ns and oolog scans read the line with /* ... */, a trailing // and the contents of "...", '...'
+# and @"..." removed, ADR-0054 item 2):
 #   ns        every NS[A-Z]... identifier not on the OOFoundationTypes.h allow-list below
 #   import    a Foundation header import or include
 #   bridge    an X+FoundationBridge / X+OODefaultsBridge file, or an include of one
 #   oolog     a call of the NSString OOLog API (OOLog, OOLogERR/WARN, OODebugLog, ...); a kOOLog*
 #             constant is not one by itself (a const char * class is OO_LOG's own form)
-# and exempts the boundary headers oo-qps's own children delete (BOUNDARY below) and, everywhere,
-# the transitional helper spellings (oo::NS*, NSStringFrom). --stage source drops every exemption
-# and adds:
+# and exempts the boundary headers oo-qps's own children delete (BOUNDARY below), the post-gate
+# owners (ADR-0054 item 3: OOCollectionExtractors in BOUNDARY; the NSLog-hook bridge files and their
+# #import, POSTGATE_BRIDGE; the two ADR-0052 NSString declarations/definitions in OOStringExpander,
+# POSTGATE_EXPANDER) and, everywhere, the transitional helper spellings (oo::NS*, NSStringFrom).
+# In both stages, ns and oolog tokens on a line in an active #if/#elif group whose condition is a
+# FENCE macro (alone or as an && conjunct), or in the #else of #if !<FENCE macro>, are Mac-only code
+# deferred to Phase 5 (ADR-0043 item 18(b), ADR-0054 item 1): not findings, but counted for
+# information as "mac-fenced (Phase 5)". #ifdef, || and other negations are not fences.
+# --stage source drops every other exemption and adds:
 #   boundary  a boundary header still present, or an include of one, or a helper call
 #   build     gnustep-base named in the meson build files or tools/setup-windows.sh
 # Exit 0 iff nothing is reported. Output: one line per file ("path: N  kind:token xK ..."), then a
@@ -42,7 +50,16 @@ NSEqualRects NSPointToVectorJSValue'
 BOUNDARY='OOCocoa.h OOCocoa.mm OOFoundationException.h OOStringBridge.h OOFoundationBridge.h
 OOPListView.h OOObjectGNUstepBridge.h OOObjectGNUstepBridge.mm OOEnumerationShuffle.h
 OOEnumerationShuffle.mm OOManifestProperties.h OOTypes.h OOFunctionAttributes.h OOLogging.h
-OOLogging.mm'
+OOLogging.mm OOCollectionExtractors.h OOCollectionExtractors.mm'
+# Post-gate owners (ADR-0054 item 3), exempt at the sweeps stage only. OOCollectionExtractors (oo-snzn)
+# is in BOUNDARY above. The NSLog-hook bridge (oo-qps.28) is exempt from bridge and ns findings, and
+# so is its one #import in OOLogOutputHandler.h:
+POSTGATE_BRIDGE='OOLogOutputHandler+FoundationBridge.h OOLogOutputHandler+FoundationBridge.mm'
+# In these files only the declaration/definition lines of the two ADR-0052 functions (oo-qps.29):
+POSTGATE_EXPANDER='OOStringExpander.h OOStringExpander.mm'
+POSTGATE_EXPANDER_LINE='^NSString [*](OOExpandDescriptionString|OOGenerateSystemDescription)[(]'
+# The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054.
+FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE'
 BUILD_FILES=(upstream/oolite/src/meson upstream/oolite/src/meson.build upstream/oolite/meson.build
 	tools/setup-windows.sh)
 
@@ -65,37 +82,88 @@ scan() {
 	local lf; lf="$(mktemp "${TMPDIR:-${TEMP:-/tmp}}/oo-ff-list.XXXXXX")" || return 2
 	printf '%s\n' "$list" > "$lf"
 	(cd "$root" && awk -v listfile="$lf" \
-		-v stage="$stage" -v allow="$ALLOW" -v boundary="$BOUNDARY" -v build_hits="$build_hits" '
+		-v stage="$stage" -v allow="$ALLOW" -v boundary="$BOUNDARY" \
+		-v pgbridge="$POSTGATE_BRIDGE" -v pgexp="$POSTGATE_EXPANDER" -v pgexpline="$POSTGATE_EXPANDER_LINE" \
+		-v fence="$FENCE" -v build_hits="$build_hits" '
 	BEGIN {
 		n = split(allow, a, /[ \n]+/); for (i = 1; i <= n; i++) ok[a[i]] = 1
 		n = split(boundary, b, /[ \n]+/); for (i = 1; i <= n; i++) bnd[b[i]] = 1
-		files = 0; found = 0; literals = 0
+		n = split(pgbridge, b, /[ \n]+/); for (i = 1; i <= n; i++) pgb[b[i]] = 1
+		n = split(pgexp, b, /[ \n]+/); for (i = 1; i <= n; i++) pge[b[i]] = 1
+		n = split(fence, b, /[ \n]+/); for (i = 1; i <= n; i++) fmac[b[i]] = 1
+		files = 0; found = 0; literals = 0; macfenced = 0
 		while ((getline f < listfile) > 0) if (f != "") ARGV[ARGC++] = f
 		close(listfile)
 	}
 	function base(p,   q) { q = p; sub(/.*\//, "", q); return q }
-	function hit(kind, tok) { cnt[FILENAME] += 1; what[FILENAME, kind ":" tok] += 1
+	function hit(kind, tok) {
+		if (fenced && (kind == "ns" || kind == "oolog")) { macfenced += 1; return }
+		if (pgfile && (kind == "ns" || kind == "bridge")) return
+		cnt[FILENAME] += 1; what[FILENAME, kind ":" tok] += 1
 		if (!((FILENAME, kind ":" tok) in seen)) { seen[FILENAME, kind ":" tok] = 1; order[FILENAME] = order[FILENAME] " " kind ":" tok }
 		bykind[kind] += 1; bytok[kind ":" tok] += 1; found += 1 }
+	# strip(l): l with comments removed and literal contents emptied; inblk carries /* across lines.
+	function strip(l,   out, q, m) {
+		out = ""
+		while (l != "") {
+			if (inblk) { m = index(l, "*/"); if (!m) return out; inblk = 0; l = substr(l, m + 2); out = out " "; continue }
+			if (!match(l, /\/\*|\/\/|["\047]/)) return out l
+			out = out substr(l, 1, RSTART - 1); q = substr(l, RSTART, RLENGTH); l = substr(l, RSTART + RLENGTH)
+			if (q == "//") return out
+			if (q == "/*") { inblk = 1; continue }
+			if (q == "\"" && match(l, /^([^"\\]|\\.)*"/)) { out = out q q; l = substr(l, RLENGTH + 1) }
+			else if (q == "\"") return out q q          # unterminated: the rest is literal
+			else if (match(l, /^([^\047\\]|\\.)*\047/)) { out = out q q; l = substr(l, RLENGTH + 1) }
+			else out = out q                            # a lone quote (digit separator): keep scanning
+		}
+		return out
+	}
+	# isfence(c): the #if/#elif condition c is a FENCE macro alone or as an && conjunct (no ||).
+	function isfence(c,   k, p, i) {
+		if (c ~ /\|\|/) return 0
+		k = split(c, p, /&&/)
+		for (i = 1; i <= k; i++) { gsub(/^[ \t(]+|[ \t)]+$/, "", p[i]); if (p[i] in fmac) return 1 }
+		return 0
+	}
+	# negfence(c): c is exactly !<FENCE macro>, so its #else is fenced.
+	function negfence(c) { gsub(/^[ \t(]+|[ \t)]+$/, "", c); if (c !~ /^![ \t]*[A-Za-z_]/) return 0
+		sub(/^![ \t]*/, "", c); return (c in fmac) }
+	# directive(c): track the #if stack from a comment-stripped line; fenced = any open group fenced.
+	function directive(c,   d, rest, i) {
+		if (c !~ /^[ \t]*#[ \t]*(if|ifdef|ifndef|elif|else|endif)([^A-Za-z0-9_]|$)/) return
+		d = c; sub(/^[ \t]*#[ \t]*/, "", d); rest = d; sub(/^[a-z]+/, "", rest); sub(/[^a-z].*$/, "", d)
+		if (d == "if") { depth++; fr[depth] = isfence(rest); neg[depth] = negfence(rest) }
+		else if (d == "ifdef" || d == "ifndef") { depth++; fr[depth] = 0; neg[depth] = 0 }
+		else if (depth == 0) return
+		else if (d == "elif") fr[depth] = isfence(rest)
+		else if (d == "else") fr[depth] = neg[depth]
+		else depth--
+		fenced = 0; for (i = 1; i <= depth; i++) if (fr[i]) fenced = 1
+	}
 	FNR == 1 {
 		files++
 		exempt = (stage == "sweeps" && (base(FILENAME) in bnd))
+		pgfile = (stage == "sweeps" && (base(FILENAME) in pgb))
+		pgexpfile = (stage == "sweeps" && (base(FILENAME) in pge))
+		inblk = 0; depth = 0; fenced = 0
 		if (FILENAME ~ /\+(FoundationBridge|OODefaultsBridge)\./) hit("bridge", "file")
-		else if (stage == "source" && (base(FILENAME) in bnd) && base(FILENAME) !~ /^OO(Cocoa|Logging|Types|FunctionAttributes)\./) hit("boundary", "file")
+		else if (stage == "source" && (base(FILENAME) in bnd) && base(FILENAME) !~ /^OO(Cocoa|Logging|Types|FunctionAttributes|CollectionExtractors)\./) hit("boundary", "file")
 	}
-	{ line = $0; literals += gsub(/@"/, "@\"", line) }
+	{ line = $0; literals += gsub(/@"/, "@\"", line); code = strip($0); directive(code) }
 	exempt { next }
 	/^[ \t]*(\/\/|\/\*|\*)/ { next }
 	{
 		line = $0
 		if (line ~ /#[ \t]*(import|include)[ \t]*<Foundation\//) hit("import", "Foundation")
-		if (line ~ /#[ \t]*(import|include)[ \t]*"[^"]*\+(FoundationBridge|OODefaultsBridge)\.h"/) hit("bridge", "include")
+		if (line ~ /#[ \t]*(import|include)[ \t]*"[^"]*\+(FoundationBridge|OODefaultsBridge)\.h"/ &&
+			!(stage == "sweeps" && line ~ /^[ \t]*#[ \t]*import[ \t]*"OOLogOutputHandler\+FoundationBridge\.h"/)) hit("bridge", "include")
 		if (stage == "source" && line ~ /#[ \t]*(import|include)[ \t]*"(OOStringBridge|OOFoundationBridge|OOPListView|OOFoundationException|OOObjectGNUstepBridge|OOEnumerationShuffle)\.h"/) hit("boundary", "include")
 		if (stage == "source" && line ~ /OOFoundationException|oo::PListView|(^|[^A-Za-z0-9_])StdString\(/) hit("boundary", "helper")
-		s = line
+		if (pgexpfile && line ~ pgexpline) next
+		s = code
 		while (match(s, /(^|[^A-Za-z0-9_])OOLog(ERR|WARN|WithArguments|IndentIf|OutdentIf)?[ \t]*\(|(^|[^A-Za-z0-9_])OO(Debug|Extra)Log[ \t]*\(/)) {
 			t = substr(s, RSTART, RLENGTH); gsub(/^[^A-Za-z]|[ \t(]+$/, "", t); hit("oolog", t); s = substr(s, RSTART + RLENGTH) }
-		s = line
+		s = code
 		while (match(s, /(oo::)?NS[A-Z][A-Za-z0-9_]*/)) {
 			t = substr(s, RSTART, RLENGTH); pre = (RSTART > 1) ? substr(s, RSTART - 1, 1) : ""
 			s = substr(s, RSTART + RLENGTH)
@@ -109,7 +177,7 @@ scan() {
 		close("LC_ALL=C sort")
 		nb = split(build_hits, bl, "\n")
 		for (i = 1; i <= nb; i++) if (bl[i] != "") { print "build: " bl[i]; bykind["build"] += 1; found += 1 }
-		printf "== %s stage: %d finding(s) in %d file(s) scanned; @\"...\" literals (information only): %d\n", stage, found, files, literals
+		printf "== %s stage: %d finding(s) in %d file(s) scanned; @\"...\" literals (information only): %d; mac-fenced (Phase 5, information only): %d\n", stage, found, files, literals, macfenced
 		for (k in bykind) printf "   %-9s %6d\n", k, bykind[k] | "LC_ALL=C sort"
 		close("LC_ALL=C sort")
 		for (k in bytok) printf "%6d  %s\n", bytok[k], k | "LC_ALL=C sort -rn | head -25"
@@ -188,6 +256,44 @@ selftest() {
 	expect 1 "a boundary header fails in the source stage" scan "$t/bnd" source
 	mkdir -p "$t/oofnd/oofnd" "$t/oofnd/Core"; printf 'NSString *s;\n' > "$t/oofnd/oofnd/X.mm"; printf 'int x;\n' > "$t/oofnd/Core/Y.mm"
 	expect 0 "src/oofnd is out of scope" scan "$t/oofnd" sweeps
+	# ADR-0054 item 1: the Mac fence skips ns/oolog tokens; the same names outside a fence still fail.
+	mk mac '#if OOLITE_MAC_OS_X' 'NSString *s; OOLog(@"a", @"b");' '#elif OOLITE_USE_APPKIT_LOAD_SAVE' 'NSSavePanel *p;' \
+		'#endif' '#if OOLITE_SPEECH_SYNTH && (OOLITE_MAC_OS_X)' 'NSSpeechSynthesizer *v;' '#endif' \
+		'#if !OOLITE_MAC_OS_X' 'int x;' '#else' 'NSApplication *a;' '#endif'
+	expect 0 "an OOLITE_MAC_OS_X block is skipped" scan "$t/mac" sweeps
+	expect 0 "the source stage skips the Mac fence too" scan "$t/mac" source
+	mk macelse '#if OOLITE_MAC_OS_X' 'int x;' '#else' 'NSString *s;' '#endif'
+	expect 1 "the #else of an OOLITE_MAC_OS_X block is counted" scan "$t/macelse" sweeps
+	mk macneg '#if !OOLITE_MAC_OS_X' 'NSString *s;' '#endif'
+	expect 1 "an #if !OOLITE_MAC_OS_X block is counted" scan "$t/macneg" sweeps
+	mk macifdef '#ifdef OOLITE_MAC_OS_X' 'NSString *s;' '#endif'
+	expect 1 "an #ifdef OOLITE_MAC_OS_X block is counted (not a fence)" scan "$t/macifdef" sweeps
+	mk macor '#if OOLITE_MAC_OS_X || OOLITE_WINDOWS' 'NSString *s;' '#endif'
+	expect 1 "an OOLITE_MAC_OS_X || ... block is counted (not a fence)" scan "$t/macor" sweeps
+	mk macend '#if OOLITE_MAC_OS_X' '#if X' '#endif' '#endif' 'NSString *s;'
+	expect 1 "a name after the #endif of an OOLITE_MAC_OS_X block is counted" scan "$t/macend" sweeps
+	# ADR-0054 item 2: comments and literals are stripped before the ns and oolog scans.
+	mk lit '#import "NSObjectOOExtensions.h"' 'x = 1; /* an NSString here,' 'the NSArray here */ y = 2;' \
+		'z = 3; // a trailing NSDictionary' 'const char *m = "NSTimer ignoring"; char c = '"'"'N'"'"';' \
+		'id k = @"NSUnderlyingError"; const char *e = "a \"NSString\" in escapes"; w = "OOLog(x)";'
+	expect 0 "NS words in comments and string literals are not findings" scan "$t/lit" sweeps
+	mk trail 'NSString *s = nil; // a trailing comment'
+	expect 1 "code before a trailing comment still fails" scan "$t/trail" sweeps
+	mk blkend 'x = 1; /* a comment' 'ends here */ NSString *s;'
+	expect 1 "code after the end of a block comment still fails" scan "$t/blkend" sweeps
+	# ADR-0054 item 3: post-gate owners move from the sweeps stage to the source stage.
+	mkdir -p "$t/pg/Core"
+	printf 'NSString *OOStringFromThing(NSNumber *n);\n' > "$t/pg/Core/OOCollectionExtractors.h"
+	printf 'void OONSLogPrintfHandler(NSString *message);\n' > "$t/pg/Core/OOLogOutputHandler+FoundationBridge.mm"
+	printf '#import "OOLogOutputHandler+FoundationBridge.h"\n' > "$t/pg/Core/OOLogOutputHandler.h"
+	printf 'NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string);\nNSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);\n' \
+		> "$t/pg/Core/OOStringExpander.h"
+	expect 0 "post-gate owners are exempt in the sweeps stage" scan "$t/pg" sweeps
+	expect 1 "post-gate owners fail in the source stage" scan "$t/pg" source
+	mkdir -p "$t/pgx/Core"; printf 'NSString *OOOtherFunction(void);\n' > "$t/pgx/Core/OOStringExpander.h"
+	expect 1 "another NSString line in OOStringExpander.h still fails the sweeps stage" scan "$t/pgx" sweeps
+	mkdir -p "$t/pgi/Core"; printf '#import "OOOther+FoundationBridge.h"\n' > "$t/pgi/Core/OOLogOutputHandler.h"
+	expect 1 "another bridge include still fails the sweeps stage" scan "$t/pgi" sweeps
 	mkdir -p "$t/empty"
 	expect 2 "an empty tree is an error, not a pass" scan "$t/empty" sweeps
 	printf "dependencies = ['objc', '%s']\n" "$gs" > "$t/meson.build"
