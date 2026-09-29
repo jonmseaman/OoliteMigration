@@ -46,7 +46,7 @@ MA 02110-1301, USA.
 	DumpVariable, and the `debugger` statement hook -- uses the façade's "Debugging and
 	profiling" section (frameIterator / frameScript / frameScopeChain / getScopeVariables /
 	setDebuggerHandler, bead oo-1gc.3). The engine's local root scopes around
-	the array and dictionary value converters (now in OOJavaScriptEngine+FoundationBridge.mm)
+	the array and dictionary value converters (now OOJSValueFromPList's helpers)
 	are superseded by explicit roots, as
 	ooscript/README.md describes: ooscript::RootedValue roots the value about to be handed to
 	the caller.
@@ -1274,8 +1274,8 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
-// The root-class JS glue for classes rooted on OOObject (ADR-0029); the same methods on the
-// Foundation root class live in OOJavaScriptEngine+FoundationBridge.mm until gnustep-base goes.
+// The root-class JS glue for classes rooted on OOObject (ADR-0029). Foundation objects have none:
+// OOJSValueFromNativeObject() converts them through their property-list form (proposed ADR-0051).
 @implementation OOObject (OOJavaScriptConversion)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context

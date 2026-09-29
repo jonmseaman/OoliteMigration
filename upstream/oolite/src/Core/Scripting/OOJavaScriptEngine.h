@@ -204,9 +204,9 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 }
 
 
-/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). The same methods on the
-	Foundation root class are declared in OOJavaScriptEngine+FoundationBridge.h until
-	gnustep-base goes.
+/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). A Foundation object has
+	none: OOJSValueFromNativeObject() converts it through its property-list form (proposed
+	ADR-0051).
 
 	-oo_jsValueInContext:
 
@@ -223,8 +223,7 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 	-cxx_oo_jsDescriptionWithClassName:
 	-cxx_oo_jsClassName
 
-	See comments for -descriptionComponents in OOCocoa.h. C++ string twins on OOObject;
-	Foundation NSObject/NSString/NSNumber keep the id selectors in OOJavaScriptEngine+FoundationBridge.
+	See comments for -descriptionComponents in OOCocoa.h. C++ string twins on OOObject.
 
 	oo_clearJSSelf:
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
@@ -745,11 +744,3 @@ do { \
 #define OOJS_RETURN_HPVECTOR(value)		OOJS_RETURN_WITH_HELPER(HPVectorToJSValue, value)
 #define OOJS_RETURN_QUATERNION(value)	OOJS_RETURN_WITH_HELPER(QuaternionToJSValue, value)
 #define OOJS_RETURN_DOUBLE(value)		OOJS_RETURN_WITH_HELPER(ooscript::newNumberValue, value)
-
-
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before its sweep (beads oo-3rb.198 onwards, chunks of oo-rbqc), forwarding to the cxx_
-	functions above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
-	own sweep beads; the bridge goes in its own bead.
-*/
-#import "OOJavaScriptEngine+FoundationBridge.h"
