@@ -103,7 +103,7 @@ MA 02110-1301, USA.
 
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 #include "oofnd/objc/OOAssert.h"
@@ -943,10 +943,6 @@ ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 		{
 			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", [exception name], [exception reason]);
 		}
-		@catch (OOFoundationException *exception)
-		{
-			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
-		}
 	}
 }
 
@@ -1130,7 +1126,6 @@ void OOJSReportWrappedException(ooscript::Context context, id exception)
 	if (!ooscript::isExceptionPending((context)))
 	{
 		if ([exception isKindOfClass:[OOException class]])  cxx_OOJSReportError(context, "Native exception: %s", [(OOException *)exception reason]);
-		else if ([exception isKindOfClass:[OOFoundationException class]])  cxx_OOJSReportError(context, "Native exception: %s", oo::DescriptionOf([(OOFoundationException *)exception reason]).c_str());
 		else  cxx_OOJSReportError(context, "Unidentified native exception");
 	}
 	// Else, let the pending exception propagate.

@@ -40,7 +40,7 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
 #include <limits.h>
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #import "OOPListGameTypes.h"
 
@@ -397,12 +397,6 @@ VERIFY_PROTO(DelegatedType);
 			result = NO;
 			error = std::nullopt;
 		}
-		@catch (OOFoundationException *exception)
-		{
-			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"{}\" at {} in {} -- treating as failure.", oo::DescriptionOf([exception name]), oo::DescriptionOf(oo::ObjectFromPList(typeKey)), KeyPathToString(keyPath), name);
-			result = NO;
-			error = std::nullopt;
-		}
 
 		if (outError != NULL)
 		{
@@ -450,11 +444,6 @@ VERIFY_PROTO(DelegatedType);
 		@catch (OOException *exception)
 		{
 			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at {} in {} -- stopping.", [exception name], KeyPathDescriptionOfError(error).value_or("(null)"), name);
-			result = NO;
-		}
-		@catch (OOFoundationException *exception)
-		{
-			OO_LOG("plistVerifier.delegateException", "Property list schema verifier: delegate threw exception ({}) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at {} in {} -- stopping.", oo::DescriptionOf([exception name]), KeyPathDescriptionOfError(error).value_or("(null)"), name);
 			result = NO;
 		}
 	}
@@ -521,10 +510,6 @@ VERIFY_PROTO(DelegatedType);
 	@catch (OOException *exception)
 	{
 		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf(oo::NSStringFrom([exception name])).c_str(), oo::DescriptionOf(oo::NSStringFrom([exception reason])).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
-	}
-	@catch (OOFoundationException *exception)
-	{
-		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf([exception name]).c_str(), oo::DescriptionOf([exception reason]).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
 	}
 	
 	DebugDumpPopIndent();
