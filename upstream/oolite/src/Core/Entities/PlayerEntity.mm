@@ -93,6 +93,7 @@ MA 02110-1301, USA.
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
+#include "oofnd/Date.hpp"
 #include "oofnd/objc/OOAssert.h"
 #import "OOPListGameTypes.h"
 
@@ -2289,11 +2290,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	script_time_check = SCRIPT_TIMER_INTERVAL;
 	script_time_interval = SCRIPT_TIMER_INTERVAL;
 	
-	NSCalendarDate *nowDate = [NSCalendarDate calendarDate];
+	// The local hour, minute and second of now, as the calendar date gave them (oofnd/Date.hpp; bead oo-qps.24).
+	const oo::date::Clock::time_point now = oo::date::Clock::now();
+	long long secondOfDay = (static_cast<long long>(std::chrono::floor<std::chrono::seconds>(now.time_since_epoch()).count()) +
+							 static_cast<long long>(oo::date::localUTCOffsetMinutes(now)) * 60) % 86400;
+	if (secondOfDay < 0)  secondOfDay += 86400;
 	ship_clock = PLAYER_SHIP_CLOCK_START;
-	ship_clock += [nowDate hourOfDay] * 3600.0;
-	ship_clock += [nowDate minuteOfHour] * 60.0;
-	ship_clock += [nowDate secondOfMinute];
+	ship_clock += static_cast<int>(secondOfDay / 3600) * 3600.0;
+	ship_clock += static_cast<int>(secondOfDay / 60 % 60) * 60.0;
+	ship_clock += static_cast<int>(secondOfDay % 60);
 	fps_check_time = ship_clock;
 	ship_clock_adjust = 0.0;
 	escape_pod_rescue_time = 0.0;

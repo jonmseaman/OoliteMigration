@@ -654,12 +654,12 @@ static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Val
 
 		case kPlayerShip_multiFunctionDisplayList:
 			{
-				NSMutableArray *list = [NSMutableArray array];	// [OONull null] for an inactive MFD
+				oo::PList::Array list;	// [OONull null] for an inactive MFD
 				for (const std::optional<std::string> &key : [player cxx_multiFunctionDisplayList])
 				{
-					[list addObject:(key.has_value() ? (id)oo::NSStringFrom(*key) : (id)[OONull null])];
+					list.push_back(key.has_value() ? oo::PList(*key) : oo::PListObject([OONull null]));
 				}
-				result = list;
+				result = oo::ObjectFromPList(oo::PList(std::move(list)));
 			}
 			break;
 
