@@ -1321,8 +1321,7 @@ BOOL isWeaponNone(OOWeaponType weapon);
 }
 #endif
 
-// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
-// in ShipEntity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161).
 std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
 std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
 

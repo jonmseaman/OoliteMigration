@@ -995,7 +995,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], OOStringFromCompassMode([PLAYER compassMode]) })];
+		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], oo::NSStringFrom(cxx_OOStringFromCompassMode([PLAYER compassMode])) })];
 	}
 	
 }
@@ -1101,7 +1101,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	 (crosshairs.plist).OTHER
 	 */
 	
-	weaponName = oo::StdString(OOStringFromWeaponType(weapon));
+	weaponName = cxx_OOStringFromWeaponType(weapon).value_or("");
 	weaponName2 = weaponName.substr(3); // strip "EQ_"
 	result = _crosshairOverrides.get<oo::PList::Array>(weaponName);
 	if (result == nullptr)
@@ -4625,6 +4625,26 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 	glColor4f(0.0, 0.0, 0.0, 0.5 * alpha);
 	[self drawOutline];
 	OOGLPopModelView();
+}
+
+@end
+
+
+@implementation OOHUDBeaconCodeIcon
+
+- (id) initWithText:(const std::string &)text
+{
+	if ((self = [super init]))
+	{
+		_text = text;
+	}
+	return self;
+}
+
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z
+{
+	cxx_OODrawString(_text, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
 }
 
 @end

@@ -1747,8 +1747,8 @@ DESTROY(laser_color);
 
 		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [oo::NSStringFrom(oo::utf16ToUtf8(beaconCode.substr(0, 1))) retain];	// -substringToIndex:1
-			else  _beaconDrawable = @"";
+			if (length > 0)  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
 		}
 }
 	
@@ -2776,7 +2776,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			haveStartedJSAI = YES;
 			[self doScriptEvent:OOJSID("aiStarted")];
 			[self doScriptEvent:OOJSID("shipLaunchedFromStation") withArgument:stationLaunchedFrom];
-			[shipAI reactToMessage:@"LAUNCHED OKAY" context:@"launched"];
+			[shipAI cxx_reactToMessage:"LAUNCHED OKAY" context:"launched"];
 		}
 		else
 		{
@@ -2824,7 +2824,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			behaviour = BEHAVIOUR_IDLE;
 			frustration = 0.0;
 			[self setOwner:self];
-			[shipAI exitStateMachineWithMessage:nil];  // Escapepods and others should continue their old AI here.
+			[shipAI cxx_exitStateMachineWithMessage:std::nullopt];  // Escapepods and others should continue their old AI here.
 		}
 	}
 	
@@ -4381,7 +4381,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 				[self setThrust:[self maxThrust]]; // restore old thrust.
 				frustration = 0.0;
 				[self setOwner:self];
-				[shipAI exitStateMachineWithMessage:nil];	// exit nullAI.plist
+				[shipAI cxx_exitStateMachineWithMessage:std::nullopt];	// exit nullAI.plist
 				return;
 			}
 			else if ([hauler isPlayer])
@@ -4425,7 +4425,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		desired_speed = maxFlightSpeed;
 		if (range < desired_range)
 		{
-			[shipAI reactToMessage:@"DESIRED_RANGE_ACHIEVED" context:@"BEHAVIOUR_INTERCEPT_TARGET"];
+			[shipAI cxx_reactToMessage:"DESIRED_RANGE_ACHIEVED" context:"BEHAVIOUR_INTERCEPT_TARGET"];
 			[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
 
 		}
@@ -7864,12 +7864,12 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		if (isNearPlanetSurface)
 		{
 			[self doScriptEvent:OOJSID("shipApproachingPlanetSurface") withArgument:nearest];
-			[shipAI reactToMessage:@"APPROACHING_SURFACE" context:@"flight update"];
+			[shipAI cxx_reactToMessage:"APPROACHING_SURFACE" context:"flight update"];
 		}
 		else
 		{
 			[self doScriptEvent:OOJSID("shipLeavingPlanetSurface") withArgument:nearest];
-			[shipAI reactToMessage:@"LEAVING_SURFACE" context:@"flight update"];
+			[shipAI cxx_reactToMessage:"LEAVING_SURFACE" context:"flight update"];
 		}
 	}
 	
@@ -8385,7 +8385,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		{
 			return; // police never have bounties
 		}
-		[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
+		[self setBounty:amount withReasonAsString:oo::NSStringFrom(cxx_OOStringFromLegalStatusReason(reason))];
 	}
 }
 
@@ -8556,7 +8556,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			commodity["quantity"] = oo::PList(quantityInHold[i]);	// an unsigned integer
 			const std::optional<std::string> goodName = [[UNIVERSE commodityMarket] cxx_nameForGood:good];
 			if (goodName.has_value())  commodity["displayName"] = *goodName;
-			commodity["unit"] = oo::StdString(DisplayStringForMassUnitForCommodity(oo::NSStringFrom(good)));
+			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(good).value_or("");
 			list.emplace_back(std::move(commodity));
 		}
 	}
@@ -9260,7 +9260,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			AI *containerAI = [container getAI];
 			if ([containerAI hasSuspendedStateMachines]) // check if new or recycled cargo.
 			{
-				[containerAI exitStateMachineWithMessage:nil];
+				[containerAI cxx_exitStateMachineWithMessage:std::nullopt];
 				[container setThrust:[container maxThrust]]; // restore old value. Was set to zero on previous scooping.
 				[container setOwner:container];
 			}
@@ -10328,7 +10328,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	// always do target lost
 	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
 	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
-	else [shipAI reactToMessage:@"TARGET_LOST" context:@"flight updates"];	// execute immediately otherwise.
+	else [shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
 }
 
 
@@ -12747,7 +12747,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		[jetto setThrust:[jetto maxThrust]]; // restore old thrust.
 		[jetto setOwner:jetto];
-		[jettoAI exitStateMachineWithMessage:nil]; // exit nullAI.
+		[jettoAI cxx_exitStateMachineWithMessage:std::nullopt]; // exit nullAI.
 	}
 	[jetto doScriptEvent:OOJSID("shipWasDumped") withArgument:self];
 	[self doScriptEvent:OOJSID("shipDumpedCargo") withArgument:jetto];
@@ -13612,7 +13612,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	//                  creates the wormhole.
 	[self addTarget:w_hole];
 	[self setFoundTarget:w_hole];
-	[shipAI reactToMessage:@"WITCHSPACE OKAY" context:@"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
+	[shipAI cxx_reactToMessage:"WITCHSPACE OKAY" context:"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
 	
 	// CIM 2012.07.22 above only covers those cases where ship expected to leave
 	if ([self escortArray].size() > 1)
