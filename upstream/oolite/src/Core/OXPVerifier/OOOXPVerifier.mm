@@ -62,7 +62,7 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
-#import "OOFoundationException.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -567,11 +567,6 @@ void OpenLogFile();
 		{
 			if (!stageName.has_value())  stageName = oo::StdString([[stageToRun class] description]);
 			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, [exception name], [exception reason]);
-		}
-		@catch (OOFoundationException *exception)
-		{
-			if (!stageName.has_value())  stageName = oo::StdString([[stageToRun class] description]);
-			OO_LOG("verifyOXP.exception", "***** Exception occurred when running OXP verifier stage \"{}\": {}: {}", *stageName, oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		}
 		oo::log::popIndent();
 		
