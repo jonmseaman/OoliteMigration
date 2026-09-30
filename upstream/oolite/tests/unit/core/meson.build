@@ -29,6 +29,7 @@ core_tests = {
     'test_OOCheckShipDataPListVerifierStage': ['Core/OXPVerifier/OOCheckShipDataPListVerifierStage.mm', 'Core/OXPVerifier/OOCheckShipDataPListVerifierStage+ObjCBridge.mm', 'Core/OXPVerifier/OOModelVerifierStage.mm', 'Core/OXPVerifier/OOAIStateMachineVerifierStage.mm', 'Core/OXPVerifier/OOTextureVerifierStage.mm', 'Core/OXPVerifier/OOTextureVerifierStage+ObjCBridge.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage+ObjCBridge.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OODrawable': ['Core/OODrawable.mm', 'Core/OODrawable+ObjCBridge.mm', 'Core/NSObjectOOExtensions.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOMaterial': ['Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOBasicMaterial': ['Core/Materials/OOBasicMaterial.mm', 'Core/Materials/OOBasicMaterial+ObjCBridge.mm', 'Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/Materials/OOMaterialSpecifier.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOOpenGL.mm', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOpenALController': ['Core/OOOpenALController.mm'],
     'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
@@ -57,6 +58,9 @@ core_tests = {
     'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOAsyncWorkManager+ObjCBridge.mm', 'Core/OOAsyncQueue.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
     'test_OOWeakReference': ['Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOWeakSet': ['Core/OOWeakSet.mm', 'Core/OOWeakSet+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOJSFunction': ['Core/Scripting/OOJSFunction.mm', 'Core/Scripting/OOJSFunction+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
+    'test_OOJSTimer': ['Core/Scripting/OOJSTimer.mm', 'Core/Scripting/OOJSTimer+ObjCBridge.mm', 'Core/Scripting/OOScriptTimer.mm', 'Core/Scripting/OOScriptTimer+ObjCBridge.mm', 'Core/OOPriorityQueue.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
+    'test_OOScriptTimer': ['Core/Scripting/OOScriptTimer.mm', 'Core/Scripting/OOScriptTimer+ObjCBridge.mm', 'Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
 }
 

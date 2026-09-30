@@ -84,7 +84,7 @@ bool OORegExpMatcher::init()
 	[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 	
 	ooscript::Context context = OOJSAcquireContext();
-	_tester = [[OOJSFunction alloc] initWithName:std::string("matchesRegExp")
+	_tester = [[::OOJSFunction alloc] initWithName:std::string("matchesRegExp")
 										   scope:NULL
 											code:std::string(code)
 								   argumentCount:2
