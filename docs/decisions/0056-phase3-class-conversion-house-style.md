@@ -434,19 +434,36 @@ supplies, and its bodies spell selectors with `@selector`, which the gate's grep
    (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
    and the commit message says so.
 
-## Amendment (bead oo-bhb9): initialisers, alloc/init from Objective-C, and -isEqual:/-hash
+## Amendment (bead oo-rdfh): an ivar named like its getter, and `-init` with no factory
 
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCache.h/.mm` (callers
+  `Materials/OOTexture.mm` and `OOEncodingConverter.h/.mm`, adapted in the bead; no façade).
+## Amendment (bead oo-bhb9): initialisers, alloc/init from Objective-C, and -isEqual:/-hash
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OORoleSet.h/.mm`,
   `OORoleSet+ObjCBridge.h/.mm`, `tests/unit/core/test_OORoleSet.mm`.
 
+**Decision (recommended defaults).**
+
+1. **An ivar that shares its name with a method** (`pruneThreshold`, `autoPrune`, `dirty` next to
+   `-pruneThreshold`, `-autoPrune`, `-dirty`) cannot keep it: a C++ class cannot have a data
+   member and a member function of one name. The data member takes a leading underscore
+   (`_pruneThreshold`), and the rest of item 2 holds. Other ivars keep their names.
+2. **`[[X alloc] init]` whose `-init` only forwards to another initialiser**
+   (`-init` = `[self cxx_initWithPList:oo::PList()]`) becomes that initialiser's factory with the
+   same argument (`OOCache::cacheWithPList(oo::PList())`), not a second factory.
+3. **A setter's local that shadows a method** (`BOOL prune` in `-setAutoPrune:`, which then sent
+   `[self prune]`) stays; the call becomes `this->prune()`.
+4. **An Objective-C forward declaration of the class** (`@class X;` in another header) becomes
+   `class X;`, and a caller's `X *` ivar stays a raw pointer holding the same +1:
+   `X::factory(…).leakRef()` to fill it, `oo::release(p)` where it sent `-release`,
+   `oo::autorelease(p)` where it sent `-autorelease`. `DESTROY(p)` becomes the same three steps
+   it expanded to (copy, clear, `oo::release`), because a release can reach code that reads `p`.
+## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
 **Context.** `OOColor` has only factories. Many leaves also have public `-initWith…:` methods that
 unconverted callers send after `+alloc` (`[[OORoleSet alloc] initWithRoleString:…]` in
 `ShipEntity`), and those initialisers can fail: they release `self` and return nil (no roles, a
 negative probability). A C++ constructor cannot return null. Such classes also override
 `-isEqual:` and `-hash`, which Foundation-free containers and `==` checks in callers rely on.
-
-**Decision (recommended defaults).**
-
 1. **An initialiser becomes a private member `bool initWithX(...)`** whose body is the old one
    verbatim, with `return self` → `return true`, `return nil` → `return false`, `[self release]`
    dropped, and `[super init]` dropped (the object is already constructed). `[self initWithY:…]`
@@ -471,7 +488,6 @@ negative probability). A C++ constructor cannot return null. Such classes also o
    cache `mutable`.
 6. **A log line that printed `self` with `%@`** prints `oo::DescriptionOf(oo::ToObjC(this))`
    while the façade exists (the address is the façade's, not the C++ object's).
-
 **Consequences.** Callers that alloc/init keep compiling unchanged and keep identity (the façade
 they made is the one `ToObjC` returns). A failed init still hands back nil.
 ## Amendment (bead oo-489v): a class cluster converted whole
@@ -498,7 +514,6 @@ amendment, where subclasses live in other files).
 5. **Behaviour is kept, bugs included**: the mutable set's `weightForObject()` still subtracts the
    previous entry's weight, and its `mutableCopy()` still asserts the sum is known. The test pins
    both. `__PRETTY_FUNCTION__` in a log line now prints the C++ name.
-## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
   `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
 **Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
