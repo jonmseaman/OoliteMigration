@@ -59,6 +59,7 @@ oolite_sources += files(
     'OOOpenGLExtensionManager.mm',
     'OOOpenGLExtensionManager+ObjCBridge.mm',
     'OOOpenGLMatrixManager.mm',
+    'OOOpenGLMatrixManager+ObjCBridge.mm',
     'OOOpenGLStateManager.mm',
     'OOPListParsing.mm',
     'OOPListGameTypes.mm',
