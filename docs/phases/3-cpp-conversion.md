@@ -161,6 +161,9 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      `src/Core/OOVector.*`, `OONativeVector`): the initialiser becomes a constructor; the façade's
      `-initWithX:` makes the C++ object and records itself as its peer. A header included inside
      `extern "C"` declares the class, and imports the bridge, inside `extern "C++"`.
+   - **Mac-only, never compiled here** (ADR-0056 amendment oo-bgmb; exemplar
+     `src/Core/OOFullScreenController.*`): add the `.mm` to the build so the test can link it; leave
+     the callers only the Mac compiles as they are (Phase 5 writes the Mac layer again).
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
