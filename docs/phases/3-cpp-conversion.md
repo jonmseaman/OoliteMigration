@@ -125,12 +125,28 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      `bd create "Delete X+ObjCBridge" -l fleet,phase:3,sweep:objc-bridge`. It removes the bridge
      files and moves `cxx::X` to the global namespace.
    - With no outside caller, there is no façade and the class is global.
+   - **Object needs the game graph** (ADR-0056 amendment oo-44gg; exemplar
+     `src/Core/CollisionRegion.*`): the test's meson entry is `['*']` (every game object but
+     `main.mm`'s) and the test defines `gDebugFlags`. A second argumentless initialiser takes a
+     tag struct (`CollisionRegion(AsUniverse)`); an initialiser that returned nil on failure
+     raises; a file-static function reading private ivars becomes a private static member.
+   - **An initialiser that answers nil for bad input** (ADR-0056 amendment oo-novu; exemplar
+     `src/Core/Octree.*`) becomes a static factory of the same name returning null
+     (`Octree::initWithDictionary`); a second class whose few callers are adapted in the bead
+     (`OOOctreeBuilder`) has no façade.
+   - **Client of an Objective-C registry that holds `id`s unretained** (ADR-0056 amendment
+     oo-4111; exemplar `src/Core/OOPolygonSprite.*`): the façade registers while it lives and
+     forwards the callback; the deletion bead waits for the registry's conversion.
    - **Superclass still Objective-C** (ADR-0056 amendment oo-o89; exemplar
      `src/SDL/OOSDLJoystickManager.*`): the façade keeps the old superclass, makes and owns the
      C++ object in `-init`, and forwards the overrides too. The C++ class reaches superclass
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **Made with `alloc`/`-initWithX:`** (ADR-0056 amendment oo-86ek; exemplar
+     `src/Core/OOVector.*`, `OONativeVector`): the initialiser becomes a constructor; the façade's
+     `-initWithX:` makes the C++ object and records itself as its peer. A header included inside
+     `extern "C"` declares the class, and imports the bridge, inside `extern "C++"`.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
