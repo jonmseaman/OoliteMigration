@@ -276,6 +276,72 @@ deleted before the superclass converts. Converting the superclass first needs no
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
 
+## Amendment (bead oo-smy): a module's roots, global state, keeping objects, bitwise copies
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMaterial.h/.mm`
+  and `OOMaterial+ObjCBridge.h/.mm`, `src/Core/OODrawable.h/.mm` and `OODrawable+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOMaterial.mm`, `tests/unit/core/test_OODrawable.mm`.
+
+**Context.** Materials is a module of hierarchies: `OOMaterial` → `OOBasicMaterial` →
+`OOSingleTextureMaterial`/`OOMultiTextureMaterial`/`OOShaderMaterial`, and `OODrawable` →
+`OOMesh`/`OOPlanetDrawable`/`OOSkyDrawable`, about 22 beads. Both roots are abstract and compute
+little, so each converts as Amendment 1 says: public virtual members, and a façade that is also the
+base of the Objective-C subclasses, with an adapter as their C++ part. Three things Amendment 1 did
+not meet: `OOMaterial` keeps global state (the current material, retained, and class methods over
+it); some code *keeps* materials and drawables rather than calling them, and an adapter does not
+retain its Objective-C owner, so a C++ reference alone lets the owner be deallocated; and `OOMesh`
+copies itself bitwise, which copies the façade's reference to its C++ part.
+
+**Decision (recommended defaults).**
+
+1. **A module converts root first, one bead for its roots,** then each class after its
+   superclass (Amendment 1 item 1). The subclass beads depend on the roots' bead, and on the bead
+   of their direct superclass when that is not the root (`OOSingleTextureMaterial`,
+   `OOMultiTextureMaterial` and `OOShaderMaterial` on `OOBasicMaterial`'s). A root's own
+   per-file conversion bead is superseded by the module bead.
+2. **Every method a subclass overrides is virtual, `-cxx_descriptionComponents` included:**
+   `virtual std::optional<std::string> descriptionComponents() const`. A root that had no
+   components answers `std::nullopt`, as `OOObject` did. The adapter forwards it to
+   `-cxx_descriptionComponents`, and a C++ object's façade prints the C++ class's name with the
+   components (Amendment 1 item 5). A default body whose parameter is unused leaves the name in a
+   comment, `setBindingTarget(id<OOWeakReferenceSupport> /*target*/)`: that is the fix
+   `misc-unused-parameters` offers, not a suppression.
+3. **Class methods and file statics.** A class method is a `static` member, and the façade's class
+   method forwards to it. A file-static object reference becomes a function returning a
+   never-destroyed static (`ActiveMaterial()`, as `Peers()` is), because the old static was
+   never released at exit. A root's `-dealloc` body (`[self willDealloc]`) stays in the façade's
+   `-dealloc` for an Objective-C subclass instance, whose `-dealloc` it is. It has no C++
+   destructor: it guards against being deallocated while current, which cannot happen to a C++
+   object that the current-material slot retains. The analyser also rejects its virtual call
+   (`unapplyWithNext`) during destruction, which would not reach the subclass anyway.
+4. **Converted code that keeps an object of a hierarchy with Objective-C subclasses keeps the
+   Objective-C object:** `oo::ObjCRef<::X *>(oo::ToObjC(p))`, and calls through
+   `oo::ToCxx(ref.get())`. That object owns the whole of either kind: an Objective-C subclass
+   instance owns its adapter, and a façade owns its C++ object. An `oo::Ref<cxx::X>` to an adapter
+   keeps only the adapter, which answers as nil once its owner is gone. A borrowed `cxx::X *` for
+   the length of a call is fine. The keeping code changes to `oo::Ref<X>` in the façade's deletion
+   bead. Exemplar: the current material, which `test_OOMaterial.mm` checks stays alive whichever
+   side made it current. This is an exception to step 7 of the phase checklist while the
+   hierarchy has Objective-C subclasses. For the same reason a class that keeps materials or
+   drawables (`OOMesh`, `OOEntityWithDrawable`) is better converted after the subclasses it keeps;
+   when it converts first, it follows this item.
+5. **A subclass that copies itself bitwise** (`OOMesh`'s `-mutableCopyWithZone:`, the
+   `NSCopyObject` replacement) calls `oo::ConstructCxxPartOfCopy(copy)`, declared in the root's
+   bridge, where it constructs its own C++ ivars afresh. The copy gets its own adapter, and the
+   copied reference is dropped, not released. That one line is the only edit to a subclass's file.
+6. **A body that messages `self` with a method of an unconverted category** (`-oo_objectSize`
+   from `NSObjectOOExtensions`) sends it to `oo::ToObjC(this)` (amendment oo-o89, item 2). For an
+   Objective-C subclass instance that is the instance itself, so the answer is unchanged.
+7. **The test** follows Amendment 1 item 8 for each root. It also checks the global state across
+   the crossing (a C++ material told an Objective-C one comes next, and the other way round),
+   that the kept object stays alive, and the bitwise copy. A root's test links what the root's
+   file needs (`OOVector.mm` and `legacy_random.c` for `kZeroBoundingBox`).
+
+**Consequences.** Each root has one façade and one deletion bead. The deletion bead depends on
+every subclass bead and on the beads of the classes that message or keep the root's objects. Until
+then `ActiveMaterial()` holds an Objective-C object, and item 4's `ObjCRef` appears in converted
+code that keeps materials or drawables. `OOMesh.mm` gained one line.
+
 ## Amendment (bead oo-r7m0): singletons, and an `-init` that can fail
 
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenALController.h/.mm`
