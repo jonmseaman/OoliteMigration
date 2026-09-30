@@ -9,6 +9,9 @@
 	component accessors, the clamped shininess, -permitSpecular, the GL state -doApply sets (read
 	back from a real context), -unapplyWithNext: falling back to the default material, and the
 	description; and an Objective-C subclass overriding -permitSpecular and calling [super ...].
+	Those checks ran on the Objective-C class first and now run through the facade. After them:
+	the C++ API, and the crossing both ways (an Objective-C subclass behind a cxx::OOBasicMaterial
+	pointer, a C++ subclass behind the facade), identity, nil and the facade class.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -20,6 +23,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <typeinfo>
 
 
 /*	The game's OOLogging.mm reaches the resource manager, so it is not linked; what the material
@@ -400,6 +404,148 @@ OO_TEST(description)
 		const std::string sub = oo::DescriptionOf([[[TestSubMaterial alloc] cxx_initWithName:std::string("Sub")] autorelease]);
 		OO_CHECK(sub.starts_with("<TestSubMaterial 0x") && sub.ends_with(">{\"Sub\"}"));
 	}
+}
+
+
+// --- The C++ class and the crossing (after the conversion) ---------------------------------------
+
+// A converted subclass, global as a game class with no outside caller would be: it denies specular.
+class TestCxxBasicMaterial : public cxx::OOBasicMaterial
+{
+public:
+	bool permitSpecular() override	{ return false; }
+	bool doApply() override			{ doApplies++; return cxx::OOBasicMaterial::doApply(); }
+
+	int doApplies = 0;
+};
+
+
+OO_TEST(cxxAPI)
+{
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOBasicMaterial> m = cxx::OOBasicMaterial::materialWithName(std::string("Cxx"));
+		OO_CHECK(m->name() == std::optional<std::string>("Cxx") && m->shininess() == 0);
+		GLfloat c[4] = {};
+		m->getDiffuseComponents(c);
+		OO_CHECK(Same(c, { 1, 1, 1, 1 }));
+		m->getSpecularComponents(c);
+		OO_CHECK(Same(c, { 0, 0, 0, 1 }));
+		m->setShininess(200);
+		OO_CHECK(m->shininess() == 128);
+		m->setAmbientAndDiffuseColor(cxx::OOColor::redColor().get());
+		m->setDiffuseColor(nullptr);
+		OO_CHECK(m->diffuseColor()->redComponent() == 1 && m->ambientColor()->greenComponent() == 0);
+		OO_CHECK(m->descriptionComponents() == std::optional<std::string>("\"Cxx\""));
+		OO_CHECK(m->permitSpecular() && m->isFinishedLoading());
+
+		const oo::Ref<cxx::OOBasicMaterial> configured = cxx::OOBasicMaterial::materialWithName(std::nullopt, Config({
+			{ "diffuse_color", oo::PList("blueColor") },
+			{ "specular_exponent", oo::PList(std::int64_t(20)) },
+		}));
+		OO_CHECK(!configured->name().has_value());
+		configured->getAmbientComponents(c);
+		OO_CHECK(Same(c, { 0, 0, 1, 1 }) && configured->shininess() == 20);
+		configured->getSpecularComponents(c);
+		OO_CHECK(Same(c, { 0.2f, 0.2f, 0.2f, 1 }));
+
+		// The C++ subclass's override is asked by the initialiser.
+		const oo::Ref<TestCxxBasicMaterial> denying = oo::makeRef<TestCxxBasicMaterial>();
+		denying->initWithName(std::string("Denying"), Config({ { "specular_exponent", oo::PList(std::int64_t(20)) } }));
+		OO_CHECK(denying->shininess() == 0 && denying->name() == std::optional<std::string>("Denying"));
+	}
+}
+
+
+OO_TEST(facadeOfACxxMaterial)
+{
+	@autoreleasepool
+	{
+		// [[OOBasicMaterial alloc] init...]: a C++ basic material, whose facade is the object made.
+		OOBasicMaterial *made = Named("Made");
+		cxx::OOBasicMaterial *part = oo::ToCxx(made);
+		OO_CHECK(part != nullptr && typeid(*part) == typeid(cxx::OOBasicMaterial));
+		OO_CHECK(oo::ToObjC(part) == made && oo::AsObjCMaterial(part) == nullptr);
+		OO_CHECK(oo::ToCxx(static_cast<OOMaterial *>(made)) == part);
+		cxx::OOBasicMaterial *plain = oo::ToCxx(static_cast<OOBasicMaterial *>([[[OOBasicMaterial alloc] init] autorelease]));
+		OO_CHECK(typeid(*plain) == typeid(cxx::OOBasicMaterial));
+
+		// A C++ basic material's facade is an OOBasicMaterial, one live one, however the pointer is typed.
+		const oo::Ref<cxx::OOBasicMaterial> m = cxx::OOBasicMaterial::materialWithName(std::string("Cxx"));
+		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
+		OO_CHECK([facade isMemberOfClass:[OOBasicMaterial class]]);
+		OO_CHECK(oo::ToObjC(m.get()) == facade && oo::ToCxx(oo::ToObjC(m)) == m.get());
+		OO_CHECK([oo::ToObjC(m) cxx_name] == std::optional<std::string>("Cxx"));
+		[oo::ToObjC(m) setShininess:7];
+		OO_CHECK(m->shininess() == 7);
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOBasicMaterial 0x") && oo::DescriptionOf(facade).ends_with(">{\"Cxx\"}"));
+
+		// A global C++ subclass is seen as its nearest converted class, the basic material.
+		const oo::Ref<TestCxxBasicMaterial> sub = oo::makeRef<TestCxxBasicMaterial>();
+		sub->initWithName(std::string("CxxSub"));
+		OOBasicMaterial *subFacade = oo::ToObjC(sub.get());
+		OO_CHECK([subFacade isMemberOfClass:[OOBasicMaterial class]]);
+		OO_CHECK(![subFacade permitSpecular]);	// its override
+		OO_CHECK(oo::DescriptionOf(subFacade).starts_with("<TestCxxBasicMaterial 0x"));
+		if (OOTestGLContext())
+		{
+			const int applyNones = gTextureApplyNones;
+			OO_CHECK([subFacade doApply] && sub->doApplies == 1);
+			OO_CHECK(gTextureApplyNones == applyNones);	// not exactly a basic material
+		}
+	}
+}
+
+
+OO_TEST(objCSubclassBehindACxxPointer)
+{
+	@autoreleasepool
+	{
+		TestSubMaterial *sub = [[[TestSubMaterial alloc] cxx_initWithName:std::string("ObjC")] autorelease];
+		cxx::OOBasicMaterial *part = oo::ToCxx(sub);
+		OO_CHECK(part != nullptr && oo::AsObjCMaterial(part) != nullptr);
+		OO_CHECK(oo::ToObjC(part) == sub);	// the object itself
+
+		// Virtual calls from C++ reach the Objective-C overrides, or this class's own answers.
+		OO_CHECK(!part->permitSpecular());
+		OO_CHECK(part->name() == std::optional<std::string>("ObjC"));
+		part->setShininess(9);
+		OO_CHECK([sub shininess] == 9);
+		part->initWithName(std::string("Again"), Config({ { "specular_exponent", oo::PList(std::int64_t(20)) } }));
+		OO_CHECK([sub shininess] == 9 && [sub cxx_name] == std::optional<std::string>("Again"));
+		if (OOTestGLContext())
+		{
+			OO_CHECK(part->doApply() && sub->_doApplies == 1);
+		}
+
+		// An Objective-C subclass counts as a basic material to one that is unapplied: no default.
+		if (OOTestGLContext())
+		{
+			const int applyNones = gTextureApplyNones;
+			cxx::OOBasicMaterial::materialWithName(std::nullopt)->unapplyWithNext(part);
+			OO_CHECK(gTextureApplyNones == applyNones);
+		}
+	}
+}
+
+
+OO_TEST(nilAndLifetime)
+{
+	OOBasicMaterial *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOBasicMaterial *>(nullptr)) == nil);
+	OO_CHECK([none shininess] == 0 && ![none permitSpecular]);
+
+	// An Objective-C subclass's C++ part outlives it only as a reference C++ holds; it then answers
+	// as a message to nil would.
+	oo::Ref<cxx::OOBasicMaterial> part;
+	@autoreleasepool
+	{
+		TestSubMaterial *gone = [[[TestSubMaterial alloc] cxx_initWithName:std::string("Gone")] autorelease];
+		part = oo::Ref<cxx::OOBasicMaterial>(oo::ToCxx(gone));
+	}
+	OO_CHECK(!part->permitSpecular() && !part->name().has_value());
+	OO_CHECK(oo::ToObjC(part) == nil);
 }
 
 OO_TEST_MAIN()
