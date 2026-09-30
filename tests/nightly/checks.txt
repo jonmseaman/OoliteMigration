@@ -85,3 +85,4 @@
 [oo-rmd7] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCacheManager test_OOEquipmentType && bash tools/tier-c.sh --only goldens
 [oo-0sr1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSystemDescriptionManager && bash tools/tier-c.sh --only goldens
 [oo-m7aj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOProfilingStopwatch && bash tools/tier-c.sh --only goldens
+[oo-fo17] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAsyncQueue && bash tools/tier-c.sh --only goldens
