@@ -74,6 +74,7 @@ SOFTWARE.
 #import "OOCheckPListSyntaxVerifierStage.h"
 #import "OOCheckDemoShipsPListVerifierStage.h"
 #import "OOCheckRequiresPListVerifierStage.h"
+#import "OOCheckEquipmentPListVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -131,6 +132,7 @@ constexpr CxxStage kCxxStages[] =
 	{ "OOCheckPListSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckPListSyntaxVerifierStage>()); } },
 	{ "OOCheckDemoShipsPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckDemoShipsPListVerifierStage>()); } },
 	{ "OOCheckRequiresPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckRequiresPListVerifierStage>()); } },
+	{ "OOCheckEquipmentPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckEquipmentPListVerifierStage>()); } },
 };
 
 
