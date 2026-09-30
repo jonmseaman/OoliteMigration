@@ -228,3 +228,28 @@ ask `UNIVERSE`, the string expander and JavaScript.
    functions the tested paths call (the string expander, `OO_DESC`) are replaced by definitions that
    return text recording their arguments; those it never calls are amendment oo-zffj's aborting
    link stubs.
+## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
+  (and its one caller, `src/Core/Scripting/OOScriptTimer.mm`), `tests/unit/core/test_OOPriorityQueue.mm`.
+**Context.** `OOPriorityQueue` has one caller (`OOScriptTimer`, six sends), so item 5's last rule
+applies: adapt the caller in the bead, no façade, and the class is global. But its elements are
+Objective-C objects that it retains, releases and orders by a comparator *selector* the caller
+supplies, and its bodies spell selectors with `@selector`, which the gate's grep forbids.
+1. **The elements stay Objective-C.** The C++ class keeps `id` elements and the `SEL`
+   comparator, and messages the elements (`retain`, `autorelease`, `isEqual:`, `hash`) exactly as
+   before. It changes when its callers' elements convert, not before.
+2. **A constant selector inside the class becomes `OOSelectorFromName("name:")`**
+   (`oofnd/objc/OORuntime.h`, `sel_registerName`), so the body stays verbatim. The caller keeps its
+   own `@selector(...)` while it is Objective-C.
+3. **An unconverted caller of a class with no façade** holds a raw `X *` or an `oo::Ref<X>` and
+   calls with `->`. A message that could reach nil becomes a null-guarded call (item 4). A static
+   that was `[[X alloc] init…]` and never released stays a raw pointer, filled with
+   `X::factory(…).leakRef()`, so no static destructor runs at exit.
+4. **`-cxx_description` (the whole text, not components) becomes
+   `std::optional<std::string> description()`.** `DescriptionOf([self class])` of a class with no
+   subclass is the class name as a literal.
+5. **With no façade, the test is ported, not kept.** Its expectations are written against the
+   Objective-C API and run on the unconverted class (a commit of its own), then the same
+   expectations are rewritten as C++ calls. Checks that only the Objective-C API could express
+   (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
+   and the commit message says so.
