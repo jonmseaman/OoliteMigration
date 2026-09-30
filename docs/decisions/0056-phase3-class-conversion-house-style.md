@@ -188,3 +188,25 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-rdfh): an ivar named like its getter, and `-init` with no factory
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCache.h/.mm` (callers
+  `Materials/OOTexture.mm` and `OOEncodingConverter.h/.mm`, adapted in the bead; no façade).
+
+**Decision (recommended defaults).**
+
+1. **An ivar that shares its name with a method** (`pruneThreshold`, `autoPrune`, `dirty` next to
+   `-pruneThreshold`, `-autoPrune`, `-dirty`) cannot keep it: a C++ class cannot have a data
+   member and a member function of one name. The data member takes a leading underscore
+   (`_pruneThreshold`), and the rest of item 2 holds. Other ivars keep their names.
+2. **`[[X alloc] init]` whose `-init` only forwards to another initialiser**
+   (`-init` = `[self cxx_initWithPList:oo::PList()]`) becomes that initialiser's factory with the
+   same argument (`OOCache::cacheWithPList(oo::PList())`), not a second factory.
+3. **A setter's local that shadows a method** (`BOOL prune` in `-setAutoPrune:`, which then sent
+   `[self prune]`) stays; the call becomes `this->prune()`.
+4. **An Objective-C forward declaration of the class** (`@class X;` in another header) becomes
+   `class X;`, and a caller's `X *` ivar stays a raw pointer holding the same +1:
+   `X::factory(…).leakRef()` to fill it, `oo::release(p)` where it sent `-release`,
+   `oo::autorelease(p)` where it sent `-autorelease`. `DESTROY(p)` becomes the same three steps
+   it expanded to (copy, clear, `oo::release`), because a release can reach code that reads `p`.
