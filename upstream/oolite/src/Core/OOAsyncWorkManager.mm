@@ -65,7 +65,7 @@ static OOAsyncWorkManager *sSingleton = nil;
 @interface OOAsyncWorkManagerInternal: OOAsyncWorkManager
 {
 @private
-	OOAsyncQueue			*_readyQueue;
+	oo::Ref<OOAsyncQueue>	_readyQueue;
 	
 	// Tasks awaiting completion, a set by identity (the task classes do not override -isEqual:).
 	std::vector<oo::ObjCRef<id>>	_pendingCompletableOperations;
@@ -82,7 +82,7 @@ static OOAsyncWorkManager *sSingleton = nil;
 @interface OOManualDispatchAsyncWorkManager: OOAsyncWorkManagerInternal
 {
 @private
-	OOAsyncQueue			*_taskQueue;
+	oo::Ref<OOAsyncQueue>	_taskQueue;
 }
 
 - (void) queueTask:(unsigned)threadNumber;
@@ -293,9 +293,9 @@ static void InitAsyncWorkManager(void)
 {
 	if ((self = [super init]))
 	{
-		_readyQueue = [[OOAsyncQueue alloc] init];
+		_readyQueue = oo::makeRef<OOAsyncQueue>();
 		
-		if (_readyQueue == nil)
+		if (_readyQueue == nullptr)
 		{
 			[self release];
 			return nil;
@@ -314,7 +314,7 @@ static void InitAsyncWorkManager(void)
 	_pendingOpsLock.lock();
 	for (;;)
 	{
-		next = [_readyQueue tryDequeue];
+		next = _readyQueue->tryDequeue();
 		if (next == nil)  break;
 		
 		PendingRemove(_pendingCompletableOperations, next);
@@ -344,7 +344,7 @@ static void InitAsyncWorkManager(void)
 	do
 	{
 		// Dequeue a task and complete it.
-		next = [_readyQueue dequeue];
+		next = _readyQueue->dequeue();
 		_pendingOpsLock.lock();
 		PendingRemove(_pendingCompletableOperations, next);
 		_pendingOpsLock.unlock();
@@ -359,7 +359,7 @@ static void InitAsyncWorkManager(void)
 {
 	if ([task respondsToSelector:@selector(completeAsyncTask)])
 	{
-		[_readyQueue enqueue:task];
+		_readyQueue->enqueue(task);
 	}
 }
 
@@ -384,8 +384,8 @@ static void InitAsyncWorkManager(void)
 	if ((self = [super init]))
 	{
 		// Set up work queue.
-		_taskQueue = [[OOAsyncQueue alloc] init];
-		if (_taskQueue == nil)
+		_taskQueue = oo::makeRef<OOAsyncQueue>();
+		if (_taskQueue == nullptr)
 		{
 			[self release];
 			return nil;
@@ -406,7 +406,7 @@ static void InitAsyncWorkManager(void)
 	[super noteTaskQueued:task];
 	
 	// Priority is ignored.
-	return [_taskQueue enqueue:task];
+	return _taskQueue->enqueue(task);
 }
 
 
@@ -420,7 +420,7 @@ static void InitAsyncWorkManager(void)
 		{
 			@autoreleasepool
 			{
-				id<OOAsyncWorkTask> task = [_taskQueue dequeue];
+				id<OOAsyncWorkTask> task = _taskQueue->dequeue();
 				@try
 				{
 					[task performAsyncTask];

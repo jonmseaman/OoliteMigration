@@ -31,7 +31,7 @@ SOFTWARE.
 #import "oofnd/objc/OOObject.h"
 
 
-@class OOAsyncQueue;
+class OOAsyncQueue;
 
 @protocol OOAsyncWorkTask;
 
