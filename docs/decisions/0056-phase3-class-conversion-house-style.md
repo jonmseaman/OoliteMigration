@@ -188,3 +188,28 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-ct7c): a pseudo-singleton that lives until the autorelease pool drains
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OORegExpMatcher.h/.mm`,
+  `OORegExpMatcher+ObjCBridge.h/.mm`, `tests/unit/core/test_OORegExpMatcher.mm`.
+
+**Context.** `+regExpMatcher` kept an unretained `sActiveInstance` and made it
+`[[[self alloc] init] autorelease]` when it was nil; `-dealloc` cleared it. So every call inside
+one autorelease pool got the same matcher (and its compiled JavaScript tester), and the pool's
+drain freed it. That is neither amendment oo-r7m0's process-lifetime singleton nor a plain
+autoreleased factory: C++ has no pool, so a `Ref` returned by value dies at the end of the
+caller's expression.
+
+**Decision (recommended defaults).**
+
+1. **The static stays a borrowed pointer** (`static X *sActiveInstance`), set by the factory and
+   cleared by the destructor, as before. The factory returns `oo::Ref<X>`: the live one while
+   anything holds it, else a new one (`makeRef`, then the failing `-init` as `bool init()`,
+   oo-r7m0 item 2).
+2. **The façade keeps the pool lifetime.** `+x` is `oo::ToObjC(X::x())`: the autoreleased façade
+   retains the C++ object until the pool drains, and `oo::ObjCPeers` hands the same façade to
+   every call meanwhile. Unconverted callers see exactly the old behaviour.
+3. **Converted callers hold the `Ref` for as long as they want one instance** (for example across
+   a loop). The façade's deletion bead must say so, and its test counts instances made, because
+   that is where the lifetime would silently shrink to one expression.
