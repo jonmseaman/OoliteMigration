@@ -20,6 +20,9 @@
 
 # Engine sources resolved by stem (oo-7j3t): the whole GUI tier, live, under its own gui-lock.
 [oo-7j3t] tools/gui-tier.sh
+# Double-clicks timed by their SDL events (oo-3rb.333, G5/G8/G1 flake): three full GUI-tier sessions
+# in a row, the stability sweep that failed ~1 in 10 while a stalled poll split a double-click.
+[oo-3rb.333] for i in 1 2 3; do OO_GUI_REQUIRE=1 bash tools/gui-tier.sh || exit 1; done
 
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
 # (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
