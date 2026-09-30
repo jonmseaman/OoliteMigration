@@ -358,17 +358,6 @@ OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 }
 
 
-- (void) addObjects:(id)collection
-{
-	id					value = nil;
-	
-	if ([collection respondsToSelector:@selector(objectEnumerator)])  collection = [collection objectEnumerator];
-	if (![collection respondsToSelector:@selector(nextObject)])  return;
-	
-	while ((value = [collection nextObject]))  [self addObject:value];
-}
-
-
 - (std::vector<oo::ObjCRef<id>>) sortedObjects
 {
 	std::vector<oo::ObjCRef<id>>	result;

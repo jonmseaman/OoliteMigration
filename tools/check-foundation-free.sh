@@ -176,7 +176,7 @@ scan() {
 		pgexpfile = (stage == "sweeps" && (base(FILENAME) in pge))
 		inblk = 0; depth = 0; fenced = 0
 		if (FILENAME ~ /\+(FoundationBridge|OODefaultsBridge)\./) hit("bridge", "file")
-		else if (stage == "source" && (base(FILENAME) in bnd) && base(FILENAME) !~ /^OO(Cocoa|Logging|Types|FunctionAttributes|CollectionExtractors)\./) hit("boundary", "file")
+		else if (stage == "source" && (base(FILENAME) in bnd) && base(FILENAME) !~ /^OO(Cocoa|Logging|Types|FunctionAttributes|CollectionExtractors|ManifestProperties)\./) hit("boundary", "file")
 	}
 	{ line = $0; literals += gsub(/@"/, "@\"", line); code = strip($0); directive(code) }
 	exempt { next }

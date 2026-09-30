@@ -12189,8 +12189,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (void) setUpTrumbles
 {
 	std::u16string trumbleDigrams;	// UTF-16 units, as the old mutable string held them
-	unichar	xchar = (unichar)0;
-	unichar digramchars[2];
+	uint16_t	xchar = (uint16_t)0;
+	uint16_t digramchars[2];
 
 	while (trumbleDigrams.size() < PLAYER_MAX_TRUMBLES + 2)
 	{

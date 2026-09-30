@@ -448,7 +448,7 @@ OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInte
 		*/
 		OOMaybeUnits replacement;
 		NSUInteger replaceLength = 0;
-		unichar thisChar = characters[idx];
+		uint16_t thisChar = characters[idx];
 		
 		if (thisChar == '[')
 		{
@@ -1190,7 +1190,7 @@ OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16
 	
 	// All %-escapes except %J and %G are 2 characters.
 	*replaceLength = 2;
-	unichar selector = characters[idx + 1];
+	uint16_t selector = characters[idx + 1];
 	
 	switch (selector)
 	{

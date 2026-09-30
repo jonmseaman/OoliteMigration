@@ -180,17 +180,6 @@ std::vector<oo::ObjCRef<id>> LiveObjects(const std::vector<oo::ObjCRef<OOWeakRef
 }
 
 
-- (void) addObjectsByEnumerating:(id)enumerator
-{
-	id object = nil;
-	[self compact];
-	while ((object = [enumerator nextObject]))
-	{
-		[self addObject:object];
-	}
-}
-
-
 - (void) makeObjectsPerformSelector:(SEL)selector
 {
 	// (over a copy of the references: a selector may change the set)

@@ -75,7 +75,7 @@ enum trumble_mouth
 @private
 	PlayerEntity			*player;	// owning entity (not retained)
 	//
-	unichar					digram[2];	// seed for pseudo-randomly setting up Trumble (pair of characters)
+	uint16_t					digram[2];	// seed for pseudo-randomly setting up Trumble (pair of characters)
 	//
 	GLfloat					colorBase[4];	// color of Trumble
 	GLfloat					colorPoint1[4];	// color of Trumble (variation 1)
@@ -126,7 +126,7 @@ enum trumble_mouth
 
 - (void) calcGrowthRate;
 
-- (unichar *)	digram;
+- (uint16_t *)	digram;
 - (NSPoint)		position;
 - (NSPoint)		movement;
 - (GLfloat)		rotation;

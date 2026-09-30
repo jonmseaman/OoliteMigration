@@ -256,3 +256,18 @@ oo-qps.11..15 wait for their chunks (.12 and .14 also for R); oo-qps.16 waits fo
   cases needs Jon's approval under ADR-0049. A new bead (after oo-3rb.4) deletes
   them once that approval is on record. `OOProbabilitySet`'s id `-allObjects` / `-objectEnumerator`
   (item 3's "retires with oo-qps", no sender left) are deleted here.
+- 2026-09-29, Amendment 3 (oo-3rb.4, oo-qps.17): the constant-string flip and "OOCocoa.h stops
+  importing Foundation" land as one change. Measured: with the flip alone, `OOObjCInstallFloor()`
+  aborts at start-up ("small-object tag 4 already belongs to GSTinyString"): gnustep-base is loaded
+  because the game still imports four of its symbols (`NSObject`/`NSString` class refs from
+  `OOObjectGNUstepBridge.mm`, `NSEqualPoints` and `_NSRangeExceptionRaise` from Foundation's
+  inline headers). And with oo-qps.17 alone nothing imports gnustep-base any more, so it is not
+  loaded and `@"..."` literals typed `NSConstantString` would have no class. Together they work:
+  the game's import table names no gnustep-base symbol (it stays on the link line until
+  oo-qps.18), literals are `OOConstantString`, goldens verify. So oo-3rb.4's commit carries
+  oo-qps.17's scope (Foundation import replaced by `oofnd/objc/OOFoundationTypes.h`, with the
+  Windows API and `DESTROY` that gnustep-base's `GSConfig.h` gave every file; `OOComparisonResult`
+  its own `NSInteger` enum; `OOObjectGNUstepBridge` deleted; the last sends of Foundation-only
+  selectors given local declarations or deleted with their dead callers), and oo-qps.17 closes
+  with a proof-only commit. oo-qps.17's census acceptance excludes the `build` kind, which is
+  oo-qps.18's.

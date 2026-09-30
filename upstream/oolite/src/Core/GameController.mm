@@ -425,7 +425,7 @@ static GameController *sSharedController = nil;
 		}
 		else
 		{
-			OO_LOG("exception.backtrace","{}",oo::DescriptionOf([exception callStackSymbols]));
+			OO_LOG("exception.backtrace","{}",oo::DescriptionOf(exception));	// no Foundation exception has -callStackSymbols any more (oo-qps.17)
 		}
 	}
 	

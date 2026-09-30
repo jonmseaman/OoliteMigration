@@ -48,7 +48,6 @@ This code is hereby placed in the public domain.
 - (void) addObject:(id<OOWeakReferenceSupport>)object;		// Unlike a Foundation set, adding nil fails silently.
 - (void) removeObject:(id<OOWeakReferenceSupport>)object;	// Like a Foundation set, does not complain if object is not already a member.
 
-- (void) addObjectsByEnumerating:(id)enumerator;	// anything answering -nextObject
 
 - (void) makeObjectsPerformSelector:(SEL)selector;
 - (void) makeObjectsPerformSelector:(SEL)selector withObject:(id)argument;
