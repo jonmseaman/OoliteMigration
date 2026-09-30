@@ -138,6 +138,93 @@ oo-11m):
 - **Tests under `tests/unit/oofnd`.** Game classes are not oofnd, and on phase-3 their headers still
   reach Foundation, which the oofnd objc tests forbid.
 
+## Amendment 1 (2026-09-30, bead oo-cwz): class hierarchies
+
+- Status: Proposed. The default is in effect until Jon decides (CLAUDE.md rule 10).
+- Exemplar: `src/Core/OXPVerifier/OOOXPVerifierStage.h/.mm` (the base, `cxx::OOOXPVerifierStage`),
+  `OOOXPVerifierStage+ObjCBridge.h/.mm` (its façade and the adapter), `OOListUnusedFilesStage` in
+  `OOFileScannerVerifierStage.h/.mm` (a converted subclass), `tests/unit/core/test_OOOXPVerifierStage.mm`.
+
+**Context.** The decision above covers a class whose callers message it. A base class is also
+*subclassed*, in other files, by Objective-C classes that other beads convert. A C++ class cannot
+derive from an Objective-C class, and an Objective-C class cannot derive from a C++ class. So a
+hierarchy converts root first, and both kinds of subclass live under one root until the last
+subclass converts. `OOOXPVerifierStage` has 12 Objective-C subclasses in 8 files, including 2
+Objective-C intermediate classes (`OOFileHandlingVerifierStage`, `OOTextureHandlingStage`). It also
+has an Objective-C driver (`OOOXPVerifier`) that holds and messages stages, and creates them from
+class names.
+
+**Decision (recommended defaults).**
+
+1. **A class converts after its superclass.** Its bead depends on the bead that converts
+   its superclass's file. In OXPVerifier the leaf stages depend on `oo-up4b`, which holds
+   `OOFileHandlingVerifierStage`. `OOCheckShipDataPListVerifierStage` and `OOModelVerifierStage`
+   also depend on `oo-tuq8`, which holds `OOTextureHandlingStage`. One class of a file with
+   several classes may convert before the rest of the file, when that class is the smallest step
+   that exercises the pattern. The rest of the file stays Objective-C until its own bead.
+2. **Overriding becomes virtual dispatch.** The methods that subclasses override (the "subclass
+   responsibilities") are public `virtual` members of the C++ base. `RefCounted`'s destructor is
+   already virtual. A C++ subclass declares its overrides with `override` and does not repeat
+   `virtual`. A method that no subclass overrides stays non-virtual. An internal category shared
+   by two classes (`OOInternal`) becomes public members under an "Internal" comment. Its
+   Objective-C header stays until the façade is deleted, as the façade's category.
+3. **The root's façade is also the base of the Objective-C subclasses.** The one Objective-C class
+   has two kinds of instance, and what `_cxxX` holds tells them apart:
+   - **An Objective-C subclass instance** (`[[Sub alloc] init]`). The façade's `-init` makes its
+     C++ part, an *adapter*: `ObjCStage final : public cxx::X`, private to the bridge `.mm`. The
+     adapter's virtual members message the Objective-C object, so when C++ calls them the
+     subclass's overrides run. The Objective-C object owns the adapter (`oo::Ref`). The adapter's
+     back pointer is not retained, and `-dealloc` clears it; after that, a call answers what a
+     message to nil answered. `oo::ToObjC(adapter)` returns the Objective-C object itself, and
+     there is no peer-table entry.
+   - **The façade of a C++ subclass** (`oo::ToObjC(cxxObject)`). Each C++ object has at most one
+     live façade, through `oo::ObjCPeers`, as in item 5.
+   - A façade method for a virtual member behaves differently for the two kinds. On an
+     Objective-C subclass instance it calls the base's own member, qualified
+     (`_cxxStage->cxx::X::run()`). That is what `[super run]`, or a subclass that did not
+     override, reached before. Calling the virtual member here would loop back into the
+     subclass. On a C++ object's façade it calls the virtual member.
+4. **A converted subclass with no outside callers has no façade and is global** (the last rule of
+   item 5). Unconverted code sees it as the root's façade. `[[Sub alloc] init]` followed by
+   registration becomes `oo::makeRef<Sub>()` and `oo::ToObjC(sub.get())`. Inside a member of a
+   class derived from `cxx::X`, the unqualified name `X` is the injected C++ base; write the
+   Objective-C façade as `::X`.
+5. **Class names.** `[obj class]` on a C++ object's façade returns the façade class. So the façade
+   overrides `-cxx_description` to print the C++ class's name: the demangled `typeid` name, with
+   `cxx::` dropped. Two debug-only texts in the Objective-C verifier still print
+   `OOOXPVerifierStage` for a C++ stage until `oo-tsa4` converts the verifier:
+   `DescriptionOf([stage class])` in the Graphviz dump, and the exception fallback.
+6. **A class created by name from data** (the `verifyOXP.plist` `stages` list, read through
+   `OOClassFromName`) needs an explicit table once it converts. The code that creates it looks in
+   the table before calling `OOClassFromName`. An entry is `{ "OOCheckDemoShipsPListVerifierStage",
+   [] { return oo::makeRef<OOCheckDemoShipsPListVerifierStage>(); } }`, following item 4's
+   `kNamedColors` rule. The first bead that converts such a stage adds the table to
+   `OOOXPVerifier.mm`, and each later bead adds its line.
+7. **An intermediate class that converts while Objective-C classes still derive from it** gets
+   its own façade: `@interface Mid : Root`, with the old interface. Its Objective-C subclasses
+   need an adapter derived from `cxx::Mid`. So the adapter becomes a class template over its C++
+   base, in the root's bridge. The root façade gets an initialiser that takes the C++ part, and
+   the intermediate façade's `-init` calls it. The first bead that needs this (`oo-up4b`) makes
+   it.
+8. **The test** subclasses the root on both sides, with an Objective-C test subclass and a C++
+   one. It pins the pre-conversion answers through the Objective-C API. Then it checks the
+   crossing in both directions:
+   - C++ virtual calls reach the Objective-C overrides;
+   - the façade reaches the C++ overrides;
+   - `[super ...]` reaches the base;
+   - a dependency graph that mixes both kinds;
+   - identity and nil;
+   - the adapter outliving its owner.
+
+   The root may need link-time dependencies that the test cannot link. Here that is
+   `OOLogging.mm`, which reaches the resource manager. The test replaces such a function with its
+   own definition, which counts calls.
+
+**Consequences.** Each hierarchy root has one façade and one deletion bead. So does each
+converted intermediate class that still has Objective-C subclasses. An Objective-C subclass costs
+one adapter object, and each façade call costs one `dynamic_cast`. The Phase 3 bead graph gains
+edges that order each superclass before its subclasses.
+
 ## Amendment (bead oo-o89): platform (SDL/) code, and a subclass of an Objective-C class
 
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/SDL/OOSDLJoystickManager.h/.mm`,
