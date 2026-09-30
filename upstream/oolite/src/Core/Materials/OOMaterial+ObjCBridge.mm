@@ -200,12 +200,18 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 
 
 + (void)setUp						{ cxx::OOMaterial::setUp(); }
-- (void)apply						{ _cxxMaterial->apply(); }
 + (void)applyNone					{ cxx::OOMaterial::applyNone(); }
 + (OOMaterial *)current				{ return oo::ToObjC(cxx::OOMaterial::current()); }
 
 
 // The overridable methods: the same two cases as -cxx_descriptionComponents.
+
+- (void)apply
+{
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  objCMaterial->superApply();
+	else  _cxxMaterial->apply();
+}
+
 
 - (std::optional<std::string>)cxx_name
 {
