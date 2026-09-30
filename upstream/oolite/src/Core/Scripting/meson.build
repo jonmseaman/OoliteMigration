@@ -37,6 +37,7 @@ oolite_sources += files(
     'OOJSSpecialFunctions.mm',
     'OOJSStation.mm',
     'OOJSSun.mm',
+    'OOJSSun+ObjCBridge.mm',
     'OOJSSystem.mm',
     'OOJSSystemInfo.mm',
     'OOJSTimer.mm',
