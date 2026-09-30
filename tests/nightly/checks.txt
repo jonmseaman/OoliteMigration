@@ -39,6 +39,7 @@
 [oo-3rb.75] OOLITE_TIER_A_BUDGET=1500 tools/tier-a.sh upstream/oolite/src/Core/Entities/PlayerEntity.mm
 # PlayerEntityLegacyScriptEngine.mm: ~180 s on a cold clang-tidy cache, over accept.sh's 300 s with the build (ADR-0021).
 [oo-3rb.256] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Entities/PlayerEntityLegacyScriptEngine.mm
+[oo-rsk8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMeshToOctreeConverter
 [oo-3rb.79] OOLITE_TIER_A_BUDGET=1500 tools/tier-a.sh upstream/oolite/src/Core/Universe.mm
 [oo-3rb.81] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/HeadUpDisplay.mm
 [oo-3rb.83] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSShip.mm

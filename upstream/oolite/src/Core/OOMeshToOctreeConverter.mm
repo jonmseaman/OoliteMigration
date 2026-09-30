@@ -233,43 +233,38 @@ OOINLINE void AddTriangle(GeometryData *data, Triangle tri)
 }
 
 
-@implementation OOMeshToOctreeConverter
+namespace cxx {
 
-- (id) initWithCapacity:(NSUInteger)capacity
+OOMeshToOctreeConverter::OOMeshToOctreeConverter(NSUInteger capacity)
 {
-	OOParameterAssert(capacity < UINT32_MAX);
+	OOCParameterAssert(capacity < UINT32_MAX);
 	if (capacity == 0)  capacity = 1;	// Happens for models with no faces.
-	
-	if ((self = [super init]))
+
 	{
 		InitGeometryData(&_data, capacity);
 	}
-	
-	return self;
 }
 
 
-- (void) dealloc
+OOMeshToOctreeConverter::~OOMeshToOctreeConverter()
 {
 	DestroyGeometryData(&_data);
-	
-	[super dealloc];
 }
 
 
-+ (instancetype) converterWithCapacity:(NSUInteger)capacity
+oo::Ref<OOMeshToOctreeConverter> OOMeshToOctreeConverter::converterWithCapacity(NSUInteger capacity)
 {
-	return [[[self alloc] initWithCapacity:capacity] autorelease];
+	return oo::makeRef<OOMeshToOctreeConverter>(capacity);
 }
 
 
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> OOMeshToOctreeConverter::descriptionComponents() const
 {
 	return oo::str::format("%u triangles", _data.count);
 }
 
 
-- (void) addTriangle:(Triangle)tri
+void OOMeshToOctreeConverter::addTriangle(Triangle tri)
 {
 	if (!OOTriangleIsDegenerate(tri))
 	{
@@ -278,17 +273,17 @@ OOINLINE void AddTriangle(GeometryData *data, Triangle tri)
 }
 
 
-- (Octree *) findOctreeToDepth:(NSUInteger)depth
+oo::Ref<Octree> OOMeshToOctreeConverter::findOctreeToDepth(NSUInteger depth)
 {
 	oo::Ref<OOOctreeBuilder> builder = oo::makeRef<OOOctreeBuilder>();
 	OOScalar halfWidth = 0.5f + MaxDimensionFromOrigin(&_data);	// pad out from geometry by a half meter
 	
 	BuildSubOctree(&_data, builder.get(), halfWidth, depth);
 	
-	return oo::ToObjC(builder->buildOctreeWithRadius(halfWidth));
+	return builder->buildOctreeWithRadius(halfWidth);
 }
 
-@end
+}	// namespace cxx
 
 
 static OOScalar MaxDimensionFromOrigin(GeometryData *data)
