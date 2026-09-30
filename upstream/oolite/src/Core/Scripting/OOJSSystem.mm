@@ -35,7 +35,6 @@
 #import "PlayerEntityScriptMethods.h"
 #import "OOJSSystemInfo.h"
 
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #import "OOEntityFilterPredicate.h"

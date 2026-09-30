@@ -23,7 +23,6 @@ oolite_sources += files(
     'OOCallByName.mm',
       'OOCharacter.mm',
     'OOCocoa.mm',
-    'OOCollectionExtractors.mm',
     'OOColor.mm',
     'OOCommodities.mm',
     'OOCommodityMarket.mm',

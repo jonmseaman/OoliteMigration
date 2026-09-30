@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "GuiDisplayGen.h"
 #import "PlayerEntity.h"
 #import "PlayerEntitySound.h"
-#import "OOPListView.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #import "OOColor.h"
