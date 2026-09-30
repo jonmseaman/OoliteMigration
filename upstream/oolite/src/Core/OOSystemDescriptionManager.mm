@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 
 #import "OOSystemDescriptionManager.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOTypes.h"
 #import "PlayerEntity.h"
 #import "Universe.h"

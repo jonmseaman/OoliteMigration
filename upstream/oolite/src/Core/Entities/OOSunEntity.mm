@@ -34,7 +34,6 @@ MA 02110-1301, USA.
 #import "OOCharacter.h"
 #import "OOStringParsing.h"
 #import "PlayerEntity.h"
-#import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"

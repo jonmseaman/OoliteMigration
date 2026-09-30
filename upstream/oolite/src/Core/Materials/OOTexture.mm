@@ -32,7 +32,6 @@
 #import "OOTextureLoader.h"
 #import "OOTextureGenerator.h"
 
-#import "OOPListView.h"
 #import "Universe.h"
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"

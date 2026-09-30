@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOPListParsing.h"
 #import "OOFunctionAttributes.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
 #import "OOStringBridge.h"
