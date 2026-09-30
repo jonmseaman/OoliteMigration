@@ -218,6 +218,32 @@ reached first.
    test, declaring only the selectors used, and a C++ free function a definition. The test must
    not import the real header. The stub is the place to pin inputs (`gpu-settings.plist` comes
    from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
+
+## Amendment (bead oo-vt0o): a façade that callers allocate, and free functions in the file
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLMatrixManager.h/.mm`,
+  `OOOpenGLMatrixManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOpenGLMatrixManager.mm`.
+
+**Decision (recommended defaults).**
+
+1. **When unconverted code makes the object (`[[X alloc] init]`),** the façade's `-init` makes
+   the C++ object (`oo::makeRef<cxx::X>()`) and records itself as its peer, as amendment oo-o89's
+   façade does (`Peers().peerFor(cxx, [self] { return [self retain]; })` in an
+   `@autoreleasepool`). `-initWithCxxX:` stays for `oo::ToObjC`. With no Objective-C superclass
+   state, `oo::ToObjC` may make a new façade once the old one is gone (item 5).
+2. **A second class in the file with no caller outside it** (`OOOpenGLMatrixStack`) converts in
+   the same bead, global, with no façade. An `-init`/`-dealloc` that only called `super` becomes
+   the implicit constructor and destructor; a `-dealloc` that released ivars now held as
+   `oo::Ref` disappears.
+3. **Free functions in the converted file that reach the object through unconverted code**
+   (`[[UNIVERSE gameView] getOpenGLMatrixManager]`) take the C++ object with one `oo::ToCxx`
+   and null-guard every call. A struct-returning message to nil answered a zeroed struct (clang
+   zeroes it for this runtime; the test pins it), so the guard answers the zero value
+   (`kZeroMatrix`).
+4. **A test that needs unconverted game state reached through a global** (`UNIVERSE`) defines the
+   global itself (`Universe *gSharedUniverse`) and points it at stub objects that answer only the
+   selectors used (amendment oo-z1s4 item 4).
+
 ## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
