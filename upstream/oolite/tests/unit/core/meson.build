@@ -5,13 +5,25 @@
 # class, its Objective-C bridge and whatever else they reference (extracted from the oolite
 # target, so compiled exactly as the game compiles them), with the game's include directories and
 # dependencies but not its link arguments (-mwindows would hide the test's output). Add a converted
-# class as one entry: its test name and the game sources whose objects it needs.
+# class as one entry: its test name and the game sources whose objects it needs (['*']: all but main).
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
 core_tests = {
+    'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJoystickProfile': ['Core/OOJoystickProfile.mm', 'Core/OOJoystickProfile+ObjCBridge.mm'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOJoystickProfile+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
+    'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
+    'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
+    'test_OOOpenGLMatrixManager': ['Core/OOOpenGLMatrixManager.mm', 'Core/OOOpenGLMatrixManager+ObjCBridge.mm', 'Core/OOMatrix.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
+    'test_OOCharacter': ['Core/OOCharacter.mm', 'Core/OOCharacter+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OOTrumble': ['Core/OOTrumble.mm', 'Core/OOTrumble+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
+    'test_OOCommodityMarket': ['Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm'],
+    'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
+    'test_OOProbabilitySet': ['Core/OOProbabilitySet.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
+    'test_CollisionRegion': ['*'],
+    'test_Octree': ['*'],
 }
 
 fs = import('fs')
@@ -23,13 +35,17 @@ foreach name, game_sources : core_tests
     foreach s : game_sources
         wanted += ['src/' + s]
     endforeach
+    # ['*'] is every game object but main's, for a class whose object needs the game graph
+    # (Universe, Entity ivars): proposed ADR-0056 amendment oo-44gg.
+    whole_game = game_sources == ['*']
     sources = []
     foreach f : oolite_sources
-        if fs.relative_to(f, meson.project_source_root()).replace('\\', '/') in wanted
+        rel = fs.relative_to(f, meson.project_source_root()).replace('\\', '/')
+        if rel in wanted or (whole_game and rel != 'src/SDL/main.mm')
             sources += [f]
         endif
     endforeach
-    assert(sources.length() == game_sources.length(), name + ': a game source in core_tests is not in the oolite target')
+    assert(whole_game or sources.length() == game_sources.length(), name + ': a game source in core_tests is not in the oolite target')
     exe = executable(
         'core_' + name,
         name + '.mm',
