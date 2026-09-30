@@ -6,6 +6,7 @@ oolite_sources += files(
     'OOJSCall.mm',
     'OOJSClock.mm',
     'OOJSDock.mm',
+    'OOJSDock+ObjCBridge.mm',
     'OOJSEngineDebuggerHelpers.mm',
     'OOJSEngineNativeWrappers.mm',
     'OOJSEngineTimeManagement.mm',
