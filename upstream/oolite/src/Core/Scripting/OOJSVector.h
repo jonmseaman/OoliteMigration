@@ -40,22 +40,22 @@ void InitOOJSVector(ooscript::Context context, ooscript::Object global);
 ooscript::Object JSVectorWithVector(ooscript::Context context, Vector vector)  NONNULL_FUNC;
 ooscript::Object JSVectorWithHPVector(ooscript::Context context, HPVector vector)  NONNULL_FUNC;
 
-BOOL VectorToJSValue(ooscript::Context context, Vector vector, ooscript::Value *outValue)  NONNULL_FUNC;
-BOOL HPVectorToJSValue(ooscript::Context context, HPVector vector, ooscript::Value *outValue)  NONNULL_FUNC;
-BOOL NSPointToVectorJSValue(ooscript::Context context, NSPoint point, ooscript::Value *outValue)  NONNULL_FUNC;
-BOOL JSValueToVector(ooscript::Context context, ooscript::Value value, Vector *outVector)  NONNULL_FUNC;
-BOOL JSValueToHPVector(ooscript::Context context, ooscript::Value value, HPVector *outVector)  NONNULL_FUNC;
+bool VectorToJSValue(ooscript::Context context, Vector vector, ooscript::Value *outValue)  NONNULL_FUNC;
+bool HPVectorToJSValue(ooscript::Context context, HPVector vector, ooscript::Value *outValue)  NONNULL_FUNC;
+bool NSPointToVectorJSValue(ooscript::Context context, NSPoint point, ooscript::Value *outValue)  NONNULL_FUNC;
+bool JSValueToVector(ooscript::Context context, ooscript::Value value, Vector *outVector)  NONNULL_FUNC;
+bool JSValueToHPVector(ooscript::Context context, ooscript::Value value, HPVector *outVector)  NONNULL_FUNC;
 
 /*	Given a JS Vector object, get the corresponding Vector struct. Given a JS
 	Entity, get its position. Given a JS Array with exactly three elements,
 	all of them numbers, treat them as [x, y, z]  components. For anything
 	else, return NO. (Other implicit conversions may be added in future.)
 */
-BOOL JSObjectGetVector(ooscript::Context context, ooscript::Object vectorObj, HPVector *outVector)  GCC_ATTR((nonnull (1, 3)));
+bool JSObjectGetVector(ooscript::Context context, ooscript::Object vectorObj, HPVector *outVector)  GCC_ATTR((nonnull (1, 3)));
 
 //	Set the value of a JS vector object.
-BOOL JSVectorSetVector(ooscript::Context context, ooscript::Object vectorObj, Vector vector)  GCC_ATTR((nonnull (1)));
-BOOL JSVectorSetHPVector(ooscript::Context context, ooscript::Object vectorObj, HPVector vector)  GCC_ATTR((nonnull (1)));
+bool JSVectorSetVector(ooscript::Context context, ooscript::Object vectorObj, Vector vector)  GCC_ATTR((nonnull (1)));
+bool JSVectorSetHPVector(ooscript::Context context, ooscript::Object vectorObj, HPVector vector)  GCC_ATTR((nonnull (1)));
 
 
 /*	VectorFromArgumentList()
@@ -72,18 +72,30 @@ BOOL JSVectorSetHPVector(ooscript::Context context, ooscript::Object vectorObj, 
 	is no longer used.
 */
 extern "C++" {	// C++ parameters (proposed ADR-0043, bead oo-yhle)
-BOOL VectorFromArgumentList(ooscript::Context context, const std::string &scriptClass, const std::string &function, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 5, 6)));
+bool VectorFromArgumentList(ooscript::Context context, const std::string &scriptClass, const std::string &function, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 5, 6)));
 }
 
 /*	VectorFromArgumentListNoError()
 	
 	Like VectorFromArgumentList(), but does not report an error on failure.
 */
-BOOL VectorFromArgumentListNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 3, 4)));
+bool VectorFromArgumentListNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 3, 4)));
 
 
 #ifdef __cplusplus
 }
+#endif
+
+
+#if OO_DEBUG
+#include "oofnd/PList.hpp"
+
+/*	The vector-conversion statistics the debug console reads with
+	PS.callObjC("reportJSVectorStatistics"). PlayerEntity (JSVectorStatistics), in
+	OOJSVector+ObjCBridge.mm, forwards its two methods here until PlayerEntity converts.
+*/
+oo::PList reportJSVectorStatistics(void);
+void clearJSVectorStatistics(void);
 #endif
 
 
