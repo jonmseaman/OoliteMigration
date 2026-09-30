@@ -12,6 +12,7 @@ oolite_sources += files(
     'OOJSEntity.mm',
     'OOJSEquipmentInfo.mm',
     'OOJSExhaustPlume.mm',
+    'OOJSExhaustPlume+ObjCBridge.mm',
     'OOJSFlasher.mm',
     'OOJSFont.mm',
     'OOJSFrameCallbacks.mm',
