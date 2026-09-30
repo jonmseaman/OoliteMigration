@@ -73,6 +73,7 @@ oolite_sources += files(
     'OOPlanetData.c',
     'OOPlanetDrawable.mm',
     'OOPolygonSprite.mm',
+    'OOPolygonSprite+ObjCBridge.mm',
     'OOPriorityQueue.mm',
     'OOProbabilisticTextureManager.mm',
     'OOProbabilitySet.mm',

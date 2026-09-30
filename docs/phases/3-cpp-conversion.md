@@ -134,6 +134,9 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      `src/Core/Octree.*`) becomes a static factory of the same name returning null
      (`Octree::initWithDictionary`); a second class whose few callers are adapted in the bead
      (`OOOctreeBuilder`) has no façade.
+   - **Client of an Objective-C registry that holds `id`s unretained** (ADR-0056 amendment
+     oo-4111; exemplar `src/Core/OOPolygonSprite.*`): the façade registers while it lives and
+     forwards the callback; the deletion bead waits for the registry's conversion.
    - **Superclass still Objective-C** (ADR-0056 amendment oo-o89; exemplar
      `src/SDL/OOSDLJoystickManager.*`): the façade keeps the old superclass, makes and owns the
      C++ object in `-init`, and forwards the overrides too. The C++ class reaches superclass

@@ -550,18 +550,37 @@ entry into an exception. `Octree.h` also declares `OOOctreeBuilder`, whose only 
    first. File-static functions stay outside `namespace cxx`.
 5. **`[self oo_objectSize]`** (a memory statistic) becomes `sizeof *this`.
 
-## Amendment (bead oo-86ek): initialisers with arguments, a class in a C-linkage header, and a category that reads an ivar
+## Amendment (bead oo-4111): an Objective-C registry that holds its clients unretained
 
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPolygonSprite.h/.mm`,
+  `OOPolygonSprite+ObjCBridge.h/.mm`, `tests/unit/core/test_OOPolygonSprite.mm`.
+
+**Context.** `OOPolygonSprite` registered itself with `OOGraphicsResetManager` (an
+`std::unordered_set<id>` of unretained `<OOGraphicsResetClient>` objects) in its initialiser and
+unregistered in `-dealloc`, so the manager could tell it to drop its VBOs. The manager is still
+Objective-C and takes only an `id`. The HUD adds a category to the class (`OOHUDBeaconIcon`), and the
+header declared that category's protocol conformance.
+
+**Decision (recommended defaults).**
+
+1. **The façade is the registry's client.** Every façade (made by the initialiser or by
+   `oo::ToObjC`) registers itself when it is made, unregisters in `-dealloc`, and forwards the
+   protocol method (`-resetGraphicsState`) to the C++ member of the same name. The C++ class keeps
+   the method public and does not register.
+2. **Converted code that makes the object keeps its façade alive while the object needs the
+   registry** (`oo::ObjCRef<X *>(oo::ToObjC(x))`), until the registry is C++. The façade's deletion
+   bead depends on the registry's conversion bead, which gives C++ clients a way to register.
+3. **A category's protocol-conformance declaration in the header moves to the bridge header**,
+   with the import it needs (`HeadUpDisplay.h`), since it names the Objective-C class.
+4. A failable initialiser follows amendment oo-novu (`OOPolygonSprite::initWithDataArray` returns
+   null where the initialiser answered nil).
+## Amendment (bead oo-86ek): initialisers with arguments, a class in a C-linkage header, and a category that reads an ivar
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOVector.h/.mm` (`OONativeVector`),
   `OOVector+ObjCBridge.h/.mm`, `tests/unit/core/test_OOVector.mm`.
-
 **Context.** `OONativeVector` boxes a `Vector` for Objective-C collections. Its callers make it with
 `[[OONativeVector alloc] initWithVector:v]`, which item 5's façade (made only by `oo::ToObjC`) does not
 cover. It is declared in `OOVector.h`, which `OOMaths.h` includes inside `extern "C"`. A category in
 another file (`OONativeVector (OOJavaScriptConversion)` in `OOJavaScriptEngine.mm`) read its ivar `v`.
-
-**Decision (recommended defaults).**
-
 1. **`-initWithX:` becomes a constructor with the same parameters** (`explicit` for one), its body the
    old one after `[super init]`. Converted code writes `oo::makeRef<X>(args)`.
 2. **The façade keeps the initialiser, and its `-initWithX:` makes and owns the C++ object** with
