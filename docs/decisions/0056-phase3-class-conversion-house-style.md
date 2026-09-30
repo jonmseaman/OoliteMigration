@@ -1280,3 +1280,26 @@ for that one caller.
 3. **The test captures the log** (`oo::log::logger().setInitialized(true)` and `setSink`), because
    a verifier stage reports only there, and pins the lines the unconverted stage wrote,
    indentation included.
+
+## Amendment (bead oo-41vj): an Objective-C class that exists only to be introspected
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderUniformMethodType.mm`,
+  `tests/unit/core/test_OOShaderUniformMethodType.mm`.
+
+**Context.** `OOShaderUniformMethodType.mm` is C functions (item 9 of CLAUDE.md: they stay C) plus a
+private Objective-C class, `OOShaderUniformTypeMethodSignatureTemplateClass`, with one method per
+return type and no state and no caller. It exists so that the runtime reports each method's
+return-type encoding, which `OOShaderUniformTypeFromMethod()` compares with the encoding of a bound
+method. There is nothing to convert into a C++ class, and the gate's grep forbids its
+`@interface`/`@implementation` and the `@selector`s that looked its methods up.
+
+**Decision (recommended defaults).**
+
+1. **The class goes, and the table is filled with `@encode(T)` of each type,** which is the encoding
+   the compiler records for a method returning `T`, so the table holds the same strings. The macro
+   and the table stay; only its argument changes from a selector to a type. `@encode` is kept while
+   the file is Objective-C++ (it is not in the gate's grep); Phase 4 replaces it with the literal
+   strings when the file becomes C++.
+2. **The test pins the answers against a class of the test's own** with one method per return type
+   (including those the table has not: `long long`, `void`, another struct, `BOOL`), run on the file
+   with its template class first. No façade, no deletion bead.
