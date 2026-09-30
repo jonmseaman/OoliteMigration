@@ -167,6 +167,13 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
    - **Mac-only, never compiled here** (ADR-0056 amendment oo-bgmb; exemplar
      `src/Core/OOFullScreenController.*`): add the `.mm` to the build so the test can link it; leave
      the callers only the Mac compiles as they are (Phase 5 writes the Mac layer again).
+   - **A root whose ivars subclasses and callers read directly** (ADR-0056 amendment oo-bj8;
+     exemplar `src/Core/Entities/Entity.*`, `OOEntityWithDrawable.*`): the state moves to the C++
+     class (public members, same names, all `= {}`); unconverted code reads it through the façade's
+     `@public` `_cxxEntity` (`ent->_cxxEntity->position`, inserted where the compiler reports a
+     removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
+     subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
+     `cxx::Entity` and keeps its bodies verbatim.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
