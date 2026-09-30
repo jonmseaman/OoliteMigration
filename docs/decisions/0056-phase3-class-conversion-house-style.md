@@ -266,14 +266,20 @@ about fifteen Objective-C classes in other files adopt; the manager holds them a
    the façade's deletion bead once no Objective-C client is left. Until then nothing about the
    clients changes.
 
+=======
 ## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
   `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
+
 **Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
 `-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
 `@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
 (`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
 ask `UNIVERSE`, the string expander and JavaScript.
+
+**Decision (recommended defaults).**
+
 1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
    own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
    that called another is a delegating constructor; statements it ran before the call move into a
@@ -301,13 +307,38 @@ ask `UNIVERSE`, the string expander and JavaScript.
    return text recording their arguments; those it never calls are amendment oo-zffj's aborting
    link stubs.
 
+## Amendment (bead oo-862e): a getter with its ivar's name, and a test friend of a `cxx::` class
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOTrumble.h/.mm`,
+  `OOTrumble+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTrumble.mm`.
+**Context.** `OOTrumble`'s getters are named after their ivars (`-size` returns `size`), which
+Objective-C allows and C++ does not: a data member and a member function cannot share a name. Its
+bodies use the ivars on nearly every line.
+**Decision (recommended defaults).**
+1. **The ivar keeps its name and the getter becomes `get` + the name** (`-size` is `getSize()`,
+   `-digram` is `getDigram()`), so the bodies stay verbatim (item 4). The façade keeps the old
+   selectors and forwards `-size` to `getSize()`. Phase 6 may rename both.
+2. **A test friend of a class in `namespace cxx`** is declared at global scope before the
+   namespace (`struct XTestAccess;`) and befriended as `friend struct ::XTestAccess;`; an
+   unqualified friend declaration would name `cxx::XTestAccess` (amendment oo-zffj item 3).
+3. **Several public initialisers** share one private façade initialiser,
+   `-initWithNewCxxX:(const oo::Ref<cxx::X> &)`, which stores the new C++ object and registers the
+   façade as its peer (amendment oo-8kx7 item 2); each public one is one line.
+4. **An Objective-C object the class retained by hand** (`texture = [... retain]` with a
+   `[texture release]` in `-dealloc`) is an `oo::ObjCRef`. Where the Objective-C code overwrote the
+   ivar without releasing the old object (a leak), the `oo::ObjCRef` assignment releases it; that
+   is the only behaviour it changes.
 ## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
   (and its one caller, `src/Core/Scripting/OOScriptTimer.mm`), `tests/unit/core/test_OOPriorityQueue.mm`.
+
 **Context.** `OOPriorityQueue` has one caller (`OOScriptTimer`, six sends), so item 5's last rule
 applies: adapt the caller in the bead, no façade, and the class is global. But its elements are
 Objective-C objects that it retains, releases and orders by a comparator *selector* the caller
 supplies, and its bodies spell selectors with `@selector`, which the gate's grep forbids.
+
+**Decision (recommended defaults).**
+
 1. **The elements stay Objective-C.** The C++ class keeps `id` elements and the `SEL`
    comparator, and messages the elements (`retain`, `autorelease`, `isEqual:`, `hash`) exactly as
    before. It changes when its callers' elements convert, not before.
@@ -326,3 +357,34 @@ supplies, and its bodies spell selectors with `@selector`, which the gate's grep
    expectations are rewritten as C++ calls. Checks that only the Objective-C API could express
    (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
    and the commit message says so.
+
+## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
+  `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
+
+**Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
+`UNIVERSE->sortedEntities`), so its object cannot link without theirs, and theirs pull in the whole
+game. Its designated `-init` could fail (`malloc`) and return nil; it has two initialisers with no
+arguments (`-init`, `-initAsUniverse`); and three file-static C functions read its private ivars.
+
+**Decision (recommended defaults).**
+
+1. **Its unit test links every game object but `SDL/main.mm`**: the entry in
+   `tests/unit/core/meson.build` is `'test_X': ['*']`. The test defines the globals `main.mm`
+   defined that the game references (today `gDebugFlags`, under `#ifndef NDEBUG`). The test drives
+   the class with plain objects of the classes it reads (`[[Entity alloc] init]`, `UNIVERSE` nil)
+   and pins what they make observable. The cost is one more whole-game link per build (about 30 s).
+2. **An argumentless initialiser other than `-init` becomes a constructor taking an empty tag
+   struct named after the selector** (`-initAsUniverse` becomes `CollisionRegion(AsUniverse)`),
+   because two argumentless constructors cannot coexist. `[self init]` inside an initialiser
+   becomes a delegating constructor (`: CollisionRegion()`), and the designated `-init`, when no
+   caller outside the class used it, becomes a private constructor.
+3. **An initialiser's failure return (nil after `[self release]`) becomes a raise of the class's
+   existing exception for that failure** (`OOMallocException`, as `-addEntity:` raises when the
+   list cannot grow), because a constructor cannot return null. Only out-of-memory paths are
+   affected.
+4. **A file-static function that reads the class's private ivars becomes a private static
+   member**, body verbatim, so no `friend` and no public accessor is added.
+5. **The façade's initialisers make and own the C++ object** as in amendment oo-86ek, through one
+   private `-adoptCxxX:` that stores the new object and records the façade as its peer.
