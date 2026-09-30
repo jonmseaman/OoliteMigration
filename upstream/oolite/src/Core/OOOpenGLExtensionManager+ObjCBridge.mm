@@ -87,7 +87,8 @@ cxx::OOOpenGLExtensionManager *oo::ToCxx(OOOpenGLExtensionManager *manager)
 + (OOOpenGLExtensionManager *) sharedManager
 {
 	// One facade for the life of the process, as there was one object (amendment oo-r7m0, item 5).
-	static OOOpenGLExtensionManager *facade = [oo::ToObjC(cxx::OOOpenGLExtensionManager::sharedManager()) retain];
+	static OOOpenGLExtensionManager *facade = nil;
+	if (facade == nil)  facade = [oo::ToObjC(cxx::OOOpenGLExtensionManager::sharedManager()) retain];
 	return facade;
 }
 
