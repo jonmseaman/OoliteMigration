@@ -14,7 +14,7 @@ core_tests = {
     'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
     'test_OOProfilingStopwatch': ['Core/OOProfilingStopwatch.mm'],
     'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOAsyncWorkManager+ObjCBridge.mm', 'Core/OOAsyncQueue.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
-    'test_OOWeakReference': ['Core/OOWeakReference.mm', 'Core/OODescription.mm'],
+    'test_OOWeakReference': ['Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
 }
 
 fs = import('fs')
