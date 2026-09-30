@@ -216,11 +216,16 @@ the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, too
    with the façade.
 3. **Code that read the ivars from inside the `@implementation`** (the cursor's `next()`, the
    range-for's batch fill) becomes a `friend` of the C++ class. No accessor is added.
+
 ## Amendment (bead oo-z1s4): name clashes, GL tests, and stubbed collaborators
+
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLExtensionManager.h/.mm`,
   `OOOpenGLExtensionManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOpenGLExtensionManager.mm`,
   `tests/unit/core/oo_gl_test_context.hpp`. The singleton rules it follows are amendment oo-r7m0's
   (written in bead oo-r7m0; until that merges, this bead's files are their example too).
+
+**Decision (recommended defaults).**
+
 1. **An ivar that shares its name with a member function gets the suffix `_`.** Objective-C
    kept ivars and methods apart (`usePointSmoothing` was both); C++ does not. The same goes for a
    member of `oo::RefCounted` (`release`, `retain`, `retainCount`): an ivar `release` hides
@@ -241,9 +246,42 @@ the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, too
    test, declaring only the selectors used, and a C++ free function a definition. The test must
    not import the real header. The stub is the place to pin inputs (`gpu-settings.plist` comes
    from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
+
+## Amendment (bead oo-zffj): a class with one caller, a test that cannot link the game, private state
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCrosshairs.h/.mm`, its caller
+  `HeadUpDisplay.h/.mm`, `tests/unit/core/test_OOCrosshairs.mm`.
+
+**Context.** `OOCrosshairs` has one caller, `HeadUpDisplay`, which keeps it in an ivar. Its only
+output is what `render()` hands to OpenGL, and `render()` reaches `UNIVERSE`, the GL state and matrix
+managers and the GL error checker, whose objects link the whole game. So the test cannot link what
+the class references, and what the class computes is in private members.
+
+**Decision (recommended defaults).**
+
+1. **A class whose callers all fit in the bead has no façade** (item 5's last rule). The caller's
+   ivar `X *` becomes `oo::Ref<X>`, with `class X;` in place of `@class X`. `[[X alloc] init…]`
+   becomes `oo::makeRef<X>(…)`, `DESTROY(x)` and `[x release]; x = nil;` become `x = nullptr;`.
+   An Objective-C argument crosses with `oo::ToCxx` (`oo::ToCxx(_crosshairColor)`). A `-init…`
+   with arguments is the constructor, and `-dealloc`'s body is the destructor.
+2. **Link stubs.** When the class's objects reference code whose objects would link the game, and
+   the test never runs that code, the test defines those functions (and variables) itself, in one
+   block headed as link stubs. Each stub function calls `std::abort()`, so a test that reached one
+   fails instead of passing on a fake. The `meson.build` entry then lists only the class and what
+   the tested paths need. (oo-cwz's amendment replaces a function with one that counts calls; that
+   is for code the test does run.)
+3. **Private state the test pins** is read through `friend struct XTestAccess;`, declared in the
+   class and defined only in the test. Before the conversion the test reads the same ivars through
+   the runtime (`ivar_getOffset(class_getInstanceVariable(...))`), so the expectations run on the
+   unconverted class first. No accessor is added for this.
+
 ## Amendment (bead oo-vt0o): a façade that callers allocate, and free functions in the file
+
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLMatrixManager.h/.mm`,
   `OOOpenGLMatrixManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOpenGLMatrixManager.mm`.
+
+**Decision (recommended defaults).**
+
 1. **When unconverted code makes the object (`[[X alloc] init]`),** the façade's `-init` makes
    the C++ object (`oo::makeRef<cxx::X>()`) and records itself as its peer, as amendment oo-o89's
    façade does (`Peers().peerFor(cxx, [self] { return [self retain]; })` in an
@@ -261,13 +299,19 @@ the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, too
 4. **A test that needs unconverted game state reached through a global** (`UNIVERSE`) defines the
    global itself (`Universe *gSharedUniverse`) and points it at stub objects that answer only the
    selectors used (amendment oo-z1s4 item 4).
+
 ## Amendment (bead oo-jpd8): a protocol declared with the class
+
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOGraphicsResetManager.h/.mm`,
   `OOGraphicsResetManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOGraphicsResetManager.mm`.
+
 **Context.** `OOGraphicsResetManager.h` also declared `@protocol OOGraphicsResetClient`, which
 about fifteen Objective-C classes in other files adopt; the manager holds them as
 `id<OOGraphicsResetClient>` and sends them `-resetGraphicsState`. The item 8 grep forbids
 `@protocol` in the converted header, and no client is C++ yet.
+
+**Decision (recommended defaults).**
+
 1. **The protocol moves, verbatim, to `X+ObjCBridge.h`,** before the façade's `@interface`.
    `X.h` still imports the bridge last, so every adopter sees it unchanged.
 2. **The C++ class takes and holds the clients as `id`** (the protocol is not visible above the
@@ -277,15 +321,20 @@ about fifteen Objective-C classes in other files adopt; the manager holds them a
    protocol's methods as pure virtuals) and a second registration path; the protocol goes with
    the façade's deletion bead once no Objective-C client is left. Until then nothing about the
    clients changes.
-=======
+
 ## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
   `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
+
 **Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
 `-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
 `@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
 (`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
 ask `UNIVERSE`, the string expander and JavaScript.
+
+**Decision (recommended defaults).**
+
 1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
    own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
    that called another is a delegating constructor; statements it ran before the call move into a
@@ -312,12 +361,18 @@ ask `UNIVERSE`, the string expander and JavaScript.
    functions the tested paths call (the string expander, `OO_DESC`) are replaced by definitions that
    return text recording their arguments; those it never calls are amendment oo-zffj's aborting
    link stubs.
+
 ## Amendment (bead oo-862e): a getter with its ivar's name, and a test friend of a `cxx::` class
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOTrumble.h/.mm`,
   `OOTrumble+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTrumble.mm`.
+
 **Context.** `OOTrumble`'s getters are named after their ivars (`-size` returns `size`), which
 Objective-C allows and C++ does not: a data member and a member function cannot share a name. Its
 bodies use the ivars on nearly every line.
+
+**Decision (recommended defaults).**
+
 1. **The ivar keeps its name and the getter becomes `get` + the name** (`-size` is `getSize()`,
    `-digram` is `getDigram()`), so the bodies stay verbatim (item 4). The façade keeps the old
    selectors and forwards `-size` to `getSize()`. Phase 6 may rename both.
@@ -331,13 +386,19 @@ bodies use the ivars on nearly every line.
    `[texture release]` in `-dealloc`) is an `oo::ObjCRef`. Where the Objective-C code overwrote the
    ivar without releasing the old object (a leak), the `oo::ObjCRef` assignment releases it; that
    is the only behaviour it changes.
+
 ## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
   (and its one caller, `src/Core/Scripting/OOScriptTimer.mm`), `tests/unit/core/test_OOPriorityQueue.mm`.
+
 **Context.** `OOPriorityQueue` has one caller (`OOScriptTimer`, six sends), so item 5's last rule
 applies: adapt the caller in the bead, no façade, and the class is global. But its elements are
 Objective-C objects that it retains, releases and orders by a comparator *selector* the caller
 supplies, and its bodies spell selectors with `@selector`, which the gate's grep forbids.
+
+**Decision (recommended defaults).**
+
 1. **The elements stay Objective-C.** The C++ class keeps `id` elements and the `SEL`
    comparator, and messages the elements (`retain`, `autorelease`, `isEqual:`, `hash`) exactly as
    before. It changes when its callers' elements convert, not before.
@@ -386,13 +447,19 @@ amendment, where subclasses live in other files).
 5. **Behaviour is kept, bugs included**: the mutable set's `weightForObject()` still subtracts the
    previous entry's weight, and its `mutableCopy()` still asserts the sum is known. The test pins
    both. `__PRETTY_FUNCTION__` in a log line now prints the C++ name.
+
 ## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
+
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
   `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
+
 **Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
 `UNIVERSE->sortedEntities`), so its object cannot link without theirs, and theirs pull in the whole
 game. Its designated `-init` could fail (`malloc`) and return nil; it has two initialisers with no
 arguments (`-init`, `-initAsUniverse`); and three file-static C functions read its private ivars.
+
+**Decision (recommended defaults).**
+
 1. **Its unit test links every game object but `SDL/main.mm`**: the entry in
    `tests/unit/core/meson.build` is `'test_X': ['*']`. The test defines the globals `main.mm`
    defined that the game references (today `gDebugFlags`, under `#ifndef NDEBUG`). The test drives
