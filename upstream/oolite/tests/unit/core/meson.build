@@ -11,6 +11,8 @@
 core_tests = {
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
+    'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
+    'test_OOProfilingStopwatch': ['Core/OOProfilingStopwatch.mm'],
 }
 
 fs = import('fs')
