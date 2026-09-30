@@ -38,7 +38,7 @@ SOFTWARE.
 #include "oofnd/PList.hpp"
 #include "oofnd/Encoding.hpp"
 
-@class OOCache;
+class OOCache;	// C++ since bead oo-rdfh
 
 
 @interface OOEncodingConverter: OOObject

@@ -189,20 +189,56 @@ deleted before the superclass converts. Converting the superclass first needs no
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
 
-## Amendment (bead oo-bwrq): a façade ivar that a category in another file owns, and a C++ helper that took the Objective-C class
+## Amendment (bead oo-r7m0): singletons, and an `-init` that can fail
 
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenALController.h/.mm`
+  and `tests/unit/core/test_OOOpenALController.mm`.
+
+**Context.** The GL/AL managers (`OOOpenALController`, `OOOpenGLExtensionManager`,
+`OOGraphicsResetManager`) are singletons: `+sharedX` makes the one instance on first use and keeps
+it for the life of the process, often with the "canonical singleton boilerplate" category
+(`+allocWithZone:` answers nil after the first, `-retain`/`-release`/`-autorelease` do nothing).
+`OOOpenALController`'s `-init` can also fail (`[self release]; return nil;`), and `+sharedController`
+then asks again on the next call. Item 3 maps an autoreleased `X *` result to `oo::Ref<X>`; a
+singleton's result was neither autoreleased nor owned by the caller.
+
+**Decision (recommended defaults).**
+
+1. **`+sharedX` becomes `static X *sharedX()`, a borrowed pointer.** The instance is held in a
+   file-static `X *sSingleton`, made with `oo::makeRef<X>().leakRef()`: the one +1 is never
+   released, as the retained `sSingleton` never was. The singleton category is not translated:
+   with no other creator and no release there is nothing for it to do. `-dealloc`'s
+   `if (sSingleton == self) sSingleton = nil;` stays, in the destructor.
+2. **An `-init` that can fail becomes `bool init()`,** called by the factory right after
+   `oo::makeRef<X>()`: `[self release]; return nil;` is `return false;` and the factory drops the
+   `Ref`, which frees the object as the release did. The constructor stays trivial (the zeroed
+   ivars). Nothing that the failing `-init` left open is closed, because the release did not close
+   it either.
+3. **A class whose few callers are adapted in the bead** has no façade (item 5). Adapting a caller
+   is the null-guarded translation of its sends and nothing more: `[[X sharedX] foo]` becomes
+   `if (X *x = X::sharedX()) x->foo();`, and a nil receiver's 0 is written out
+   (`x != nullptr ? x->volume() : 0.0f`).
+4. **A send that resolved only through the converted class's own declaration** (the receiver
+   typed `id`, the selector declared on no other interface) gets its declaration added to the
+   receiver's `@interface`. `OOOpenALController.h` had declared the `-shutdown` that
+   `[[OOSoundMixer sharedMixer] shutdown]` resolved to; `OOALSoundMixer.h` now declares it.
+5. **A singleton's façade** (when it has one) keeps one façade for the life of the process:
+   `+sharedX` returns `oo::ToObjC(X::sharedX())` retained once and cached, so
+   `[X sharedX] == [X sharedX]` still holds.
+
+**Consequences.** Converted code calls `X::sharedX()->...` (or `cxx::X::` while a façade
+exists) with no crossing. The failing-init factory keeps the "ask again next time" behaviour
+exactly, including the log line each failed attempt writes.
+
+## Amendment (bead oo-bwrq): a façade ivar that a category in another file owns, and a C++ helper that took the Objective-C class
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOShipGroup.h/.mm`,
   `OOShipGroup+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShipGroup.mm`.
-
 **Context.** `OOShipGroup`'s ivar `_jsSelf` is its JavaScript wrapper. The class itself never
 uses it; the category `OOShipGroup (OOJavaScriptExtensions)` in `OOJSShipGroup.mm` makes it, stores
 it, clears it, and gives the wrapper a retain of `self`. That is state of the Objective-C object,
 not of the group, and the category writes it, so amendment oo-86ek item 4 (a getter in place of
 the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, took an
 `OOShipGroup *` and read the group's ivars from a function defined inside the `@implementation`.
-
-**Decision (recommended defaults).**
-
 1. **An ivar that only a category in another file uses, and that belongs to the Objective-C
    object** (a JavaScript wrapper that retains that object) **stays an ivar of the façade,**
    next to the `oo::Ref`. The category compiles unchanged, and the one-façade-per-object rule
@@ -216,7 +252,6 @@ the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, too
    with the façade.
 3. **Code that read the ivars from inside the `@implementation`** (the cursor's `next()`, the
    range-for's batch fill) becomes a `friend` of the C++ class. No accessor is added.
-
 ## Amendment (bead oo-z1s4): name clashes, GL tests, and stubbed collaborators
 
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLExtensionManager.h/.mm`,
@@ -248,17 +283,13 @@ the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, too
    from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
 
 ## Amendment (bead oo-zffj): a class with one caller, a test that cannot link the game, private state
-
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCrosshairs.h/.mm`, its caller
   `HeadUpDisplay.h/.mm`, `tests/unit/core/test_OOCrosshairs.mm`.
-
 **Context.** `OOCrosshairs` has one caller, `HeadUpDisplay`, which keeps it in an ivar. Its only
 output is what `render()` hands to OpenGL, and `render()` reaches `UNIVERSE`, the GL state and matrix
 managers and the GL error checker, whose objects link the whole game. So the test cannot link what
 the class references, and what the class computes is in private members.
-
 **Decision (recommended defaults).**
-
 1. **A class whose callers all fit in the bead has no façade** (item 5's last rule). The caller's
    ivar `X *` becomes `oo::Ref<X>`, with `class X;` in place of `@class X`. `[[X alloc] init…]`
    becomes `oo::makeRef<X>(…)`, `DESTROY(x)` and `[x release]; x = nil;` become `x = nullptr;`.
@@ -274,14 +305,10 @@ the class references, and what the class computes is in private members.
    class and defined only in the test. Before the conversion the test reads the same ivars through
    the runtime (`ivar_getOffset(class_getInstanceVariable(...))`), so the expectations run on the
    unconverted class first. No accessor is added for this.
-
 ## Amendment (bead oo-vt0o): a façade that callers allocate, and free functions in the file
-
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLMatrixManager.h/.mm`,
   `OOOpenGLMatrixManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOpenGLMatrixManager.mm`.
-
 **Decision (recommended defaults).**
-
 1. **When unconverted code makes the object (`[[X alloc] init]`),** the façade's `-init` makes
    the C++ object (`oo::makeRef<cxx::X>()`) and records itself as its peer, as amendment oo-o89's
    façade does (`Peers().peerFor(cxx, [self] { return [self retain]; })` in an
@@ -299,19 +326,14 @@ the class references, and what the class computes is in private members.
 4. **A test that needs unconverted game state reached through a global** (`UNIVERSE`) defines the
    global itself (`Universe *gSharedUniverse`) and points it at stub objects that answer only the
    selectors used (amendment oo-z1s4 item 4).
-
 ## Amendment (bead oo-jpd8): a protocol declared with the class
-
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOGraphicsResetManager.h/.mm`,
   `OOGraphicsResetManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOGraphicsResetManager.mm`.
-
 **Context.** `OOGraphicsResetManager.h` also declared `@protocol OOGraphicsResetClient`, which
 about fifteen Objective-C classes in other files adopt; the manager holds them as
 `id<OOGraphicsResetClient>` and sends them `-resetGraphicsState`. The item 8 grep forbids
 `@protocol` in the converted header, and no client is C++ yet.
-
 **Decision (recommended defaults).**
-
 1. **The protocol moves, verbatim, to `X+ObjCBridge.h`,** before the façade's `@interface`.
    `X.h` still imports the bridge last, so every adopter sees it unchanged.
 2. **The C++ class takes and holds the clients as `id`** (the protocol is not visible above the
@@ -321,7 +343,6 @@ about fifteen Objective-C classes in other files adopt; the manager holds them a
    protocol's methods as pure virtuals) and a second registration path; the protocol goes with
    the façade's deletion bead once no Objective-C client is left. Until then nothing about the
    clients changes.
-
 ## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
@@ -363,16 +384,12 @@ ask `UNIVERSE`, the string expander and JavaScript.
    link stubs.
 
 ## Amendment (bead oo-862e): a getter with its ivar's name, and a test friend of a `cxx::` class
-
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOTrumble.h/.mm`,
   `OOTrumble+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTrumble.mm`.
-
 **Context.** `OOTrumble`'s getters are named after their ivars (`-size` returns `size`), which
 Objective-C allows and C++ does not: a data member and a member function cannot share a name. Its
 bodies use the ivars on nearly every line.
-
 **Decision (recommended defaults).**
-
 1. **The ivar keeps its name and the getter becomes `get` + the name** (`-size` is `getSize()`,
    `-digram` is `getDigram()`), so the bodies stay verbatim (item 4). The façade keeps the old
    selectors and forwards `-size` to `getSize()`. Phase 6 may rename both.
@@ -386,19 +403,14 @@ bodies use the ivars on nearly every line.
    `[texture release]` in `-dealloc`) is an `oo::ObjCRef`. Where the Objective-C code overwrote the
    ivar without releasing the old object (a leak), the `oo::ObjCRef` assignment releases it; that
    is the only behaviour it changes.
-
 ## Amendment (bead oo-fg7i): a failable initialiser, a registry of objects, a category's ivar
-
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOEquipmentType.h/.mm`,
   `OOEquipmentType+ObjCBridge.h/.mm`, `tests/unit/core/test_OOEquipmentType.mm`.
-
 **Context.** `OOEquipmentType` is made by a failable `-initWithInfo:` (it releases `self` and
 returns nil for a bad entry), and it keeps class-level registries that own every type. Callers keep
 types unretained (`ShipEntity`'s weapon types and missile list), relying on the registries to keep
 them alive. A category in another file (`OOJSEquipmentInfo.mm`) reads and writes the ivar `_jsSelf`.
-
 **Decision (recommended defaults).**
-
 1. **A failable initialiser** becomes a private `bool initWithInfo(...)` whose body is the old
    one, ending `return OK;` where it released `self`. A private static `createWithInfo(...)` runs
    it on a new object (`oo::adopt(new X)`) and returns null when it fails. The constructor is
@@ -418,7 +430,6 @@ them alive. A category in another file (`OOJSEquipmentInfo.mm`) reads and writes
 5. **Header imports.** `X.h` imports only what the C++ declaration needs; what the bodies need
    (`Universe.h`, `OOScript.h`) moves to `X.mm`. That also lets the test define its own fake
    `Universe` (amendment oo-8kx7 item 7).
-
 ## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
@@ -450,19 +461,70 @@ supplies, and its bodies spell selectors with `@selector`, which the gate's grep
    (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
    and the commit message says so.
 
-## Amendment (bead oo-489v): a class cluster converted whole
+## Amendment (bead oo-rdfh): an ivar named like its getter, and `-init` with no factory
 
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCache.h/.mm` (callers
+  `Materials/OOTexture.mm` and `OOEncodingConverter.h/.mm`, adapted in the bead; no façade).
+## Amendment (bead oo-bhb9): initialisers, alloc/init from Objective-C, and -isEqual:/-hash
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OORoleSet.h/.mm`,
+  `OORoleSet+ObjCBridge.h/.mm`, `tests/unit/core/test_OORoleSet.mm`.
+
+**Decision (recommended defaults).**
+
+1. **An ivar that shares its name with a method** (`pruneThreshold`, `autoPrune`, `dirty` next to
+   `-pruneThreshold`, `-autoPrune`, `-dirty`) cannot keep it: a C++ class cannot have a data
+   member and a member function of one name. The data member takes a leading underscore
+   (`_pruneThreshold`), and the rest of item 2 holds. Other ivars keep their names.
+2. **`[[X alloc] init]` whose `-init` only forwards to another initialiser**
+   (`-init` = `[self cxx_initWithPList:oo::PList()]`) becomes that initialiser's factory with the
+   same argument (`OOCache::cacheWithPList(oo::PList())`), not a second factory.
+3. **A setter's local that shadows a method** (`BOOL prune` in `-setAutoPrune:`, which then sent
+   `[self prune]`) stays; the call becomes `this->prune()`.
+4. **An Objective-C forward declaration of the class** (`@class X;` in another header) becomes
+   `class X;`, and a caller's `X *` ivar stays a raw pointer holding the same +1:
+   `X::factory(…).leakRef()` to fill it, `oo::release(p)` where it sent `-release`,
+   `oo::autorelease(p)` where it sent `-autorelease`. `DESTROY(p)` becomes the same three steps
+   it expanded to (copy, clear, `oo::release`), because a release can reach code that reads `p`.
+## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
+**Context.** `OOColor` has only factories. Many leaves also have public `-initWith…:` methods that
+unconverted callers send after `+alloc` (`[[OORoleSet alloc] initWithRoleString:…]` in
+`ShipEntity`), and those initialisers can fail: they release `self` and return nil (no roles, a
+negative probability). A C++ constructor cannot return null. Such classes also override
+`-isEqual:` and `-hash`, which Foundation-free containers and `==` checks in callers rely on.
+1. **An initialiser becomes a private member `bool initWithX(...)`** whose body is the old one
+   verbatim, with `return self` → `return true`, `return nil` → `return false`, `[self release]`
+   dropped, and `[super init]` dropped (the object is already constructed). `[self initWithY:…]`
+   inside it is a plain call.
+2. **`[[X alloc] initWithX:…]` becomes a static factory** that `makeRef`s the object, calls the
+   initialiser, and returns null when it returned false. Where the class already had the
+   factory (`+roleSetWithString:` is alloc + `-initWithRoleString:`), that is the one; a private
+   initialiser with no factory (`[[[self class] alloc] initWithRolesAndProbabilities:]`) gets a
+   private one named `xWithY` after it.
+3. **The façade keeps the public initialisers.** Each calls the factory and then a private
+   `-initWithNewCxxX:` that adopts the result: it releases `self` and returns nil for null (as
+   before), else stores the ivar and records itself as the peer
+   (`Peers().peerFor(cxx, [self] { return [self retain]; })` inside an `@autoreleasepool`, as the
+   oo-o89 amendment does). This is separate from `ToObjC`'s `-initWithCxxX:`, which runs under the
+   peer table's lock and only stores the ivar.
+4. **`-isEqual:` and `-hash` become `bool isEqual(X *other)` and `NSUInteger hash()`** with the
+   same bodies. The `isKindOfClass:` test moves to the façade's `-isEqual:`, which converts the
+   argument with `oo::ToCxx`; the C++ member treats null as "not equal".
+5. **`-cxx_descriptionComponents` that reads a lazily built cache** keeps its fixed `const`
+   signature (ADR-0055 item 1) and reaches the non-const getter through `const_cast`. The object
+   is never const-constructed, and the cache only ever holds the same text; Phase 6 may make the
+   cache `mutable`.
+6. **A log line that printed `self` with `%@`** prints `oo::DescriptionOf(oo::ToObjC(this))`
+   while the façade exists (the address is the façade's, not the C++ object's).
+**Consequences.** Callers that alloc/init keep compiling unchanged and keep identity (the façade
+they made is the one `ToObjC` returns). A failed init still hands back nil.
+## Amendment (bead oo-489v): a class cluster converted whole
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOProbabilitySet.h/.mm`
   (callers `OOShipRegistry.h/.mm` and `Universe.mm`, adapted in the bead; no façade).
-
 **Context.** `OOProbabilitySet` is a class cluster: two abstract public classes (immutable and
 mutable) whose `+alloc`/`-init…` hand back one of four private concrete classes, an immortal
 empty-set singleton (retain/release overridden), and "subclass responsibility" methods that raise.
 Every class lives in the one file, so the hierarchy converts in one bead (unlike the oo-cwz
 amendment, where subclasses live in other files).
-
-**Decision (recommended defaults).**
-
 1. **The public abstract classes stay public; the concrete ones become `final` classes in an
    anonymous namespace in `X.mm`.** A method that raised "abstract class" becomes pure virtual
    (`= 0`); the raising helper goes, since nothing can instantiate the abstract class any more.
@@ -479,19 +541,12 @@ amendment, where subclasses live in other files).
 5. **Behaviour is kept, bugs included**: the mutable set's `weightForObject()` still subtracts the
    previous entry's weight, and its `mutableCopy()` still asserts the sum is known. The test pins
    both. `__PRETTY_FUNCTION__` in a log line now prints the C++ name.
-
-## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
-
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
   `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
-
 **Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
 `UNIVERSE->sortedEntities`), so its object cannot link without theirs, and theirs pull in the whole
 game. Its designated `-init` could fail (`malloc`) and return nil; it has two initialisers with no
 arguments (`-init`, `-initAsUniverse`); and three file-static C functions read its private ivars.
-
-**Decision (recommended defaults).**
-
 1. **Its unit test links every game object but `SDL/main.mm`**: the entry in
    `tests/unit/core/meson.build` is `'test_X': ['*']`. The test defines the globals `main.mm`
    defined that the game references (today `gDebugFlags`, under `#ifndef NDEBUG`). The test drives
@@ -510,20 +565,14 @@ arguments (`-init`, `-initAsUniverse`); and three file-static C functions read i
    member**, body verbatim, so no `friend` and no public accessor is added.
 5. **The façade's initialisers make and own the C++ object** as in amendment oo-86ek, through one
    private `-adoptCxxX:` that stores the new object and records the façade as its peer.
-
 ## Amendment (bead oo-novu): initialisers that fail on their input, and a second class with one caller
-
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/Octree.h/.mm` (`Octree`,
   `OOOctreeBuilder`), `Octree+ObjCBridge.h/.mm`, `tests/unit/core/test_Octree.mm`.
-
 **Context.** `Octree`'s initialisers answer nil for bad input, not only for lack of memory:
 `-cxx_initWithDictionary:` for a cache entry with no or ragged data, `-initWithData:radius:` for
 empty data. A constructor cannot answer null, and amendment oo-44gg's raise would turn a bad cache
 entry into an exception. `Octree.h` also declares `OOOctreeBuilder`, whose only user is
 `OOMeshToOctreeConverter.mm` (a few message sends in one method and one C function).
-
-**Decision (recommended defaults).**
-
 1. **An initialiser that can answer nil for its input becomes a static factory with the
    initialiser's name** (first keyword, `cxx_` dropped: `-cxx_initWithDictionary:` becomes
    `static oo::Ref<Octree> initWithDictionary(const oo::PList &)`), returning null where it
@@ -542,3 +591,49 @@ entry into an exception. `Octree.h` also declares `OOOctreeBuilder`, whose only 
    `isHitByOctree`) calls the C function as `::name(...)`, since member lookup finds the member
    first. File-static functions stay outside `namespace cxx`.
 5. **`[self oo_objectSize]`** (a memory statistic) becomes `sizeof *this`.
+
+## Amendment (bead oo-4111): an Objective-C registry that holds its clients unretained
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPolygonSprite.h/.mm`,
+  `OOPolygonSprite+ObjCBridge.h/.mm`, `tests/unit/core/test_OOPolygonSprite.mm`.
+
+**Context.** `OOPolygonSprite` registered itself with `OOGraphicsResetManager` (an
+`std::unordered_set<id>` of unretained `<OOGraphicsResetClient>` objects) in its initialiser and
+unregistered in `-dealloc`, so the manager could tell it to drop its VBOs. The manager is still
+Objective-C and takes only an `id`. The HUD adds a category to the class (`OOHUDBeaconIcon`), and the
+header declared that category's protocol conformance.
+
+**Decision (recommended defaults).**
+
+1. **The façade is the registry's client.** Every façade (made by the initialiser or by
+   `oo::ToObjC`) registers itself when it is made, unregisters in `-dealloc`, and forwards the
+   protocol method (`-resetGraphicsState`) to the C++ member of the same name. The C++ class keeps
+   the method public and does not register.
+2. **Converted code that makes the object keeps its façade alive while the object needs the
+   registry** (`oo::ObjCRef<X *>(oo::ToObjC(x))`), until the registry is C++. The façade's deletion
+   bead depends on the registry's conversion bead, which gives C++ clients a way to register.
+3. **A category's protocol-conformance declaration in the header moves to the bridge header**,
+   with the import it needs (`HeadUpDisplay.h`), since it names the Objective-C class.
+4. A failable initialiser follows amendment oo-novu (`OOPolygonSprite::initWithDataArray` returns
+   null where the initialiser answered nil).
+## Amendment (bead oo-86ek): initialisers with arguments, a class in a C-linkage header, and a category that reads an ivar
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOVector.h/.mm` (`OONativeVector`),
+  `OOVector+ObjCBridge.h/.mm`, `tests/unit/core/test_OOVector.mm`.
+**Context.** `OONativeVector` boxes a `Vector` for Objective-C collections. Its callers make it with
+`[[OONativeVector alloc] initWithVector:v]`, which item 5's façade (made only by `oo::ToObjC`) does not
+cover. It is declared in `OOVector.h`, which `OOMaths.h` includes inside `extern "C"`. A category in
+another file (`OONativeVector (OOJavaScriptConversion)` in `OOJavaScriptEngine.mm`) read its ivar `v`.
+1. **`-initWithX:` becomes a constructor with the same parameters** (`explicit` for one), its body the
+   old one after `[super init]`. Converted code writes `oo::makeRef<X>(args)`.
+2. **The façade keeps the initialiser, and its `-initWithX:` makes and owns the C++ object** with
+   `oo::makeRef`, then records itself as the peer, as the oo-o89 amendment's `-init` does:
+   `Peers().peerFor(cxx, [self] { return [self retain]; })` inside an `@autoreleasepool`. Unlike that
+   amendment, `oo::ToObjC` still makes a new façade (a private `-initWithCxxX:`) for a C++ object
+   that has none, because the class has no Objective-C superclass state.
+3. **A class declared in a header that is included inside `extern "C"`** is declared inside the
+   header's existing `extern "C++" { }` block, and the bridge import at the end of the header is
+   wrapped the same way (`#if __OBJC__` / `extern "C++" { #import "X+ObjCBridge.h" }`), so
+   `oo::ToObjC`/`oo::ToCxx` keep C++ linkage and overload with the other classes'.
+4. **A category of the converted class in another file** stays a category of the façade. If it read
+   an ivar, the read becomes the matching getter (`v` becomes `[self getVector]`): one line in the
+   caller, and the category converts with its own file.

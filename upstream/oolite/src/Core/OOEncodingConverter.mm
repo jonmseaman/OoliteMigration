@@ -83,9 +83,9 @@ static unsigned				sCacheMisses = 0;
 	self = [super init];
 	if (self != nil)
 	{
-		_cache = [[OOCache alloc] init];
-		[_cache setPruneThreshold:kCachePruneThreshold];
-		[_cache cxx_setName:std::string("Text encoding")];
+		_cache = OOCache::cacheWithPList(oo::PList()).leakRef();
+		_cache->setPruneThreshold(kCachePruneThreshold);
+		_cache->setName(std::string("Text encoding"));
 		if (const oo::PList::Dict *substitutionDictionary = substitutions.getIf<oo::PList::Dict>())
 		{
 			// In key order (bead oo-qps.51): the Foundation dictionary this was once
@@ -124,7 +124,7 @@ static unsigned				sCacheMisses = 0;
 
 - (void) dealloc
 {
-	[_cache release];
+	oo::release(_cache);
 	_substitutions.clear();
 	
 #if PROFILE_ENCODING_CONVERTER
@@ -153,14 +153,14 @@ static unsigned				sCacheMisses = 0;
 #endif
 	
 	// The string is the cache key, the bytes its value (PList data).
-	const oo::PList cached = [_cache cxx_pListForKey:string];
+	const oo::PList cached = _cache->pListForKey(string);
 	if (cached.isNull())
 	{
 		const std::optional<oo::Data> converted = [self performConversionForString:string];
 		if (converted.has_value())
 		{
 			data = *converted;
-			[_cache cxx_setPList:oo::PList(data) forKey:string];
+			_cache->setPList(oo::PList(data), string);
 		}
 		
 #if PROFILE_ENCODING_CONVERTER
