@@ -37,10 +37,10 @@
 
 #import "OOStandaloneAtmosphereGenerator.h"
 #import "OOColor.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"

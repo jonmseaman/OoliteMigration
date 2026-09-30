@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOSound.h"
 #import "OOStringParsing.h"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #import "MyOpenGLView.h"
 
@@ -204,10 +203,10 @@ void OOTrumble::spawnFrom(OOTrumble* parentTrumble)
 	if (parentTrumble)
 	{
 		// mutate..
-		unichar mutation1 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
-		unichar mutation2 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
-		unichar* parentdigram = parentTrumble->getDigram();
-		unichar newdigram[2];
+		uint16_t mutation1 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
+		uint16_t mutation2 = ranrot_rand() & ranrot_rand() & ranrot_rand() & 0xff;	// each bit has a 1/8 chance of being set
+		uint16_t* parentdigram = parentTrumble->getDigram();
+		uint16_t newdigram[2];
 		newdigram[0] = parentdigram[0] ^ mutation1;
 		newdigram[1] = parentdigram[1] ^ mutation2;
 		//
@@ -244,7 +243,7 @@ void OOTrumble::calcGrowthRate()
 }
 
 
-unichar * OOTrumble::getDigram()
+uint16_t * OOTrumble::getDigram()
 {
 	return digram;
 }

@@ -67,27 +67,6 @@ ooscript::Value ooscript::undefinedValue()
 @end
 
 
-// Anything answering -nextObject, as -addObjectsByEnumerating: requires.
-@interface TestEnumerator: OOObject
-{
-@public
-	std::vector<id>	objects;
-	size_t			next;
-}
-- (id) nextObject;
-@end
-
-
-@implementation TestEnumerator
-
-- (id) nextObject
-{
-	return (next < objects.size()) ? objects[next++] : nil;
-}
-
-@end
-
-
 namespace {
 
 TestMember *NewMember(int tag)
@@ -193,23 +172,6 @@ OO_TEST(makeObjectsPerformSelector)
 	[a release];
 	[b release];
 	[argument release];
-}
-
-
-OO_TEST(addObjectsByEnumerating)
-{
-	TestMember *a = NewMember(1), *b = NewMember(2);
-	@autoreleasepool
-	{
-		OOWeakSet *set = [OOWeakSet set];
-		[set addObject:b];
-		TestEnumerator *enumerator = [[[TestEnumerator alloc] init] autorelease];
-		enumerator->objects = { a, b, a };
-		[set addObjectsByEnumerating:enumerator];
-		OO_CHECK(Members([set cxx_allObjects]) == std::vector<id>({ b, a }));
-	}
-	[a release];
-	[b release];
 }
 
 

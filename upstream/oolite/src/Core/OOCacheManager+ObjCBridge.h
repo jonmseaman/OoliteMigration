@@ -62,10 +62,6 @@ MA 02110-1301, USA.
 - (oo::PList)cxx_pListForKey:(const std::string &)key inCache:(const std::string &)cache;	// null PList: absent
 - (void)cxx_setPList:(const oo::PList &)value forKey:(const std::string &)key inCache:(const std::string &)cache;	// value: not null
 
-// The id forms of the two above (oo::ObjectFromPList / oo::PListFrom of the value), until
-// oo-qps.72 deletes them once their callers have moved.
-- (id)cxx_objectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey;
-- (void)cxx_setObject:(id)inElement forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey;
 - (void)cxx_removeObjectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey;
 - (void)cxx_clearCache:(const std::string &)inCacheKey;
 - (void)clearAllCaches;

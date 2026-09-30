@@ -11,7 +11,6 @@ This code is hereby placed in the public domain.
 #import "OOCocoa.h"	// OOObject's -description components
 #import "NSObjectOOExtensions.h"
 #import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
-#import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"
@@ -40,6 +39,13 @@ This code is hereby placed in the public domain.
 	the proxy root's value (the address shifted right by 3, measured against gnustep-base 1.31.1), so
 	a set of weak references (OOWeakSet) keeps its iteration order.
 */
+
+
+// -className as the GNUstep bridge declared it (the object may answer it; nothing declares it since
+// oo-3rb.4 deleted OOObjectGNUstepBridge). The Objective-C -className forwarded it unchanged.
+@protocol OOWeakReferenceClassName
+- (id) className;
+@end
 
 
 namespace cxx {
@@ -163,7 +169,7 @@ std::optional<std::string> OOWeakReference::shortDescriptionComponents()
 
 id OOWeakReference::className()
 {
-	return [(id)_object className];
+	return [(id<OOWeakReferenceClassName>)_object className];
 }
 
 

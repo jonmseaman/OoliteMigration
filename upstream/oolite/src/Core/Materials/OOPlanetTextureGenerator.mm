@@ -37,14 +37,13 @@
 
 
 #import "OOPlanetTextureGenerator.h"
-#import "OOPListView.h"
 #import "OOColor.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"
