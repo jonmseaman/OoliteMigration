@@ -11,6 +11,13 @@ inited will cause the timer to fire after the specified interval. A persistent
 timer will remain if the player dies and respawns; non-persistent timers will
 be removed.
 
+C++20 since bead oo-kdyh (proposed ADR-0056, the OOColor house style), converted with its one
+subclass, OOJSTimer (OOJSTimer.h). The class is cxx::OOScriptTimer while
+OOScriptTimer+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
+OOScriptTimer that PlayerEntity messages (+updateTimers, +noteGameReset) and that the timer
+queue holds: OOPriorityQueue (bead oo-3lj8) keeps Objective-C elements ordered by a selector, so
+a scheduled timer is queued as its facade, which keeps it alive while it is scheduled.
+
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -32,45 +39,76 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef OOSCRIPTTIMER_H
+#define OOSCRIPTTIMER_H
+
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #import "OOTypes.h"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
+
+#include <optional>
+#include <string>
 
 
-@interface OOScriptTimer: OOObject
+namespace cxx {
+
+class OOScriptTimer : public oo::RefCounted
 {
-@private
-	OOTimeAbsolute				_nextTime;
-	OOTimeDelta					_interval;
-	BOOL						_isScheduled;
-	BOOL						_hasBeenRun;	// Needed for one-shot timers.
-}
+public:
+	// [[OOScriptTimer alloc] initWithNextTime:interval:]: null where the initialiser answered nil
+	// (a next time in the past, or negative, with no interval).
+	static oo::Ref<OOScriptTimer> timerWithNextTime(OOTimeAbsolute nextTime, OOTimeDelta interval);
 
-- (id) initWithNextTime:(OOTimeAbsolute)nextTime
-			   interval:(OOTimeDelta)interval;
+	// [[OOScriptTimer alloc] initOneShotTimerWithDelay:]: sets nextTime to current time + delay.
+	static oo::Ref<OOScriptTimer> oneShotTimerWithDelay(OOTimeDelta delay);
 
-// Sets nextTime to current time + delay.
-- (id) initOneShotTimerWithDelay:(OOTimeDelta)delay;
+	~OOScriptTimer() override;
 
-- (OOTimeAbsolute)nextTime;
-- (BOOL)setNextTime:(OOTimeAbsolute)nextTime;	// Only works when timer is not scheduled.
-- (OOTimeDelta)interval;
-- (void)setInterval:(OOTimeDelta)interval;
+	virtual std::optional<std::string> descriptionComponents() const;
 
-// Subclass responsibility:
-- (void) timerFired;
+	OOTimeAbsolute nextTime();
+	bool setNextTime(OOTimeAbsolute nextTime);	// Only works when timer is not scheduled.
+	OOTimeDelta interval();
+	void setInterval(OOTimeDelta interval);
 
-- (BOOL) scheduleTimer;
-- (void) unscheduleTimer;
-- (BOOL) isScheduled;
+	// Subclass responsibility:
+	virtual void timerFired();
 
-
-+ (void) updateTimers;
-+ (void) noteGameReset;
+	bool scheduleTimer();
+	void unscheduleTimer();
+	bool isScheduled();
 
 
-- (BOOL) isValidForScheduling;
+	static void updateTimers();
+	static void noteGameReset();
 
-- (OOComparisonResult) compareByNextFireTime:(OOScriptTimer *)other;
 
-@end
+	bool isValidForScheduling();
+
+	OOComparisonResult compareByNextFireTime(OOScriptTimer *other);
+
+protected:
+	OOScriptTimer() = default;
+
+	// The initialisers (-initWithNextTime:interval:, -initOneShotTimerWithDelay:), for the
+	// factories above and a subclass's: false where they answered nil (proposed ADR-0056
+	// amendment oo-bhb9).
+	bool initWithNextTime(OOTimeAbsolute nextTime, OOTimeDelta interval);
+	bool initOneShotTimerWithDelay(OOTimeDelta delay);
+
+private:
+	OOTimeAbsolute				_nextTime = {};
+	OOTimeDelta					_interval = {};
+	bool						_isScheduled = {};
+	bool						_hasBeenRun = {};	// Needed for one-shot timers.
+};
+
+}	// namespace cxx
+
+
+// Transitional: the Objective-C OOScriptTimer, for callers not yet converted and for the timer
+// queue. Deleted, with namespace cxx above, by the bridge's deletion bead.
+#import "OOScriptTimer+ObjCBridge.h"
+
+#endif	// OOSCRIPTTIMER_H

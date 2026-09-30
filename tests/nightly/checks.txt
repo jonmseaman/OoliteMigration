@@ -100,6 +100,8 @@
 # overrun accept.sh's 300 s budget, so the bead's acceptance is the source census and the night reruns these.
 [oo-qvprm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-94qk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAIStateMachineVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-3smy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSFunction test_OORegExpMatcher && bash tools/tier-c.sh --only goldens
+[oo-kdyh] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOScriptTimer test_OOJSTimer && bash tools/tier-c.sh --only goldens
 [oo-xy5r] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSClock && bash tools/tier-c.sh --only goldens
 [oo-kdnm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckJSSyntaxVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-li7k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckPListSyntaxVerifierStage && bash tools/tier-c.sh --only goldens
