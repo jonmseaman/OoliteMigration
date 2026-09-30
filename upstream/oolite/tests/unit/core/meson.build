@@ -10,6 +10,8 @@
 
 core_tests = {
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OODrawable': ['Core/OODrawable.mm', 'Core/OODrawable+ObjCBridge.mm', 'Core/NSObjectOOExtensions.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OOMaterial': ['Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
 }
 

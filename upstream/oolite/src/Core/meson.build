@@ -36,6 +36,7 @@ oolite_sources += files(
     'OODebugGLDrawing.mm',
     'OODescription.mm',
     'OODrawable.mm',
+    'OODrawable+ObjCBridge.mm',
     'OOEncodingConverter.mm',
     'OOEntityFilterPredicate.mm',
     'OOEquipmentType.mm',
