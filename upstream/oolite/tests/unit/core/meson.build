@@ -11,10 +11,17 @@
 core_tests = {
     'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
+    'test_OOOpenGLMatrixManager': ['Core/OOOpenGLMatrixManager.mm', 'Core/OOOpenGLMatrixManager+ObjCBridge.mm', 'Core/OOMatrix.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOCharacter': ['Core/OOCharacter.mm', 'Core/OOCharacter+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OOTrumble': ['Core/OOTrumble.mm', 'Core/OOTrumble+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
+    'test_OOCommodityMarket': ['Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm'],
     'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
+    'test_OOProbabilitySet': ['Core/OOProbabilitySet.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_CollisionRegion': ['*'],
+    'test_Octree': ['*'],
     'test_OOJSVector': ['Core/Scripting/OOJSVector.mm', 'Core/Scripting/OOJSVector+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOHPVector.mm', 'Core/OOVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
 }
