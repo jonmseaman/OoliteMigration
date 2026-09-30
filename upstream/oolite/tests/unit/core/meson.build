@@ -21,7 +21,7 @@ core_tests = {
     'test_OOMaterial': ['Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOpenALController': ['Core/OOOpenALController.mm'],
-    'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLStateManager': ['Core/OOOpenGLStateManager.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
@@ -42,7 +42,10 @@ core_tests = {
     'test_OOPolygonSprite': ['*'],
     'test_OOVector': ['Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
+    'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
     'test_OOProfilingStopwatch': ['Core/OOProfilingStopwatch.mm'],
+    'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOAsyncWorkManager+ObjCBridge.mm', 'Core/OOAsyncQueue.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
+    'test_OOWeakReference': ['Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
 }
 

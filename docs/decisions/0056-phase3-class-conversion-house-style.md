@@ -353,6 +353,94 @@ deleted before the superclass converts. Converting the superclass first needs no
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
 
+## Amendment (bead oo-x2wy): a protocol declared with the class, and subclasses private to its file
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOAsyncWorkManager.h/.mm`,
+  `OOAsyncWorkManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOAsyncWorkManager.mm`. Its
+  singleton follows amendment oo-r7m0, and its selector constant amendment oo-3lj8 item 2.
+
+**Context.** `OOAsyncWorkManager.h` declares, besides the class, the `OOAsyncWorkTask` protocol
+that Objective-C classes in other files adopt (`OOTextureLoader`, `OOTextureGenerator`,
+`OOAsyncCacheWriter`), and the manager takes, queues and messages those task objects. The public
+class is abstract: `OOAsyncWorkManager.mm` defines three subclasses that no other file names (an
+internal base and two concrete managers, one of which `+sharedAsyncWorkManager` picks). The gate's
+grep forbids `@protocol` in `X.h`, forward declarations included.
+
+**Decision (recommended defaults).**
+
+1. **A protocol that Objective-C classes adopt moves, unchanged, into `X+ObjCBridge.h`,** after
+   the façade's `@interface`. The C++ class takes and stores the conforming objects as `id`
+   (its declaration comes before the bridge's `@protocol`), and its bodies message them as before;
+   a local may stay `id<P>`. The header comment on the C++ class names the protocol.
+2. **The protocol becomes a C++ interface in the façade's deletion bead,** which therefore also
+   depends on the conversion beads of the protocol's adopters, not only of the class's callers.
+3. **Subclasses that no other file names convert with the class, in the same bead.** They become
+   C++ classes in an anonymous namespace in `X.mm`, derived from `cxx::X`. The class definitions
+   stand where the `@interface` blocks stood, and the member definitions where the
+   `@implementation` bodies stood, so the bodies do not move. The methods they override are
+   `virtual` in the base (amendment oo-cwz item 2). `[super m]` to a method the subclass does not
+   override becomes a plain call. Only the root has a façade: no caller can tell the subclasses
+   apart.
+4. **An `-init` failure branch that `oo::makeRef` cannot take** (`if (_queue == nil) { [self
+   release]; return nil; }` right after the ivar was made) is dropped, with a comment saying so.
+   An `-init` that can fail for another reason follows amendment oo-r7m0 item 2.
+5. **A logged `[self class]` of an object whose concrete class is private** becomes the class
+   name as a literal, chosen where the object is made.
+
+**Consequences.** The manager and its three subclasses converted in one bead (the class's two
+files, the two bridge files and the test), and none of its five caller files changed. The protocol and the façade remain until the texture
+loaders and the cache writer are C++.
+
+## Amendment (bead oo-3kqi): a class whose façade is the object's identity (weak references)
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOWeakReference.h/.mm`,
+  `OOWeakReference+ObjCBridge.h/.mm`, `tests/unit/core/test_OOWeakReference.mm`.
+
+**Context.** `OOWeakReference` is a proxy: an Objective-C object that forwards every message to
+the object it refers to, and answers like nil once that object has gone. Its identity is what its
+callers use. The referred object keeps an unretained pointer to its one reference (`weakSelf`,
+compared in `-weakRefDied:`), 37 files hold references in ivars and `ObjCRef` vectors and compare
+them by pointer, and `-hash` is the reference's address. Item 5's façade has no state of its own,
+so a C++ object may outlive its façade and later get a new one. Here that would be a second
+reference to the same object. The referred object would not know about it, and its `weakSelf`
+would dangle. The forwarding itself (`-forwardingTargetForSelector:`, `-class`,
+`-respondsToSelector:`, the nil target) is Objective-C runtime behaviour. `oo::WeakRef`
+(`oofnd/Ref.hpp`) already replaces all of this for objects that are C++.
+
+**Decision (recommended defaults).**
+
+1. **The façade is the reference, so it makes and owns its C++ object** (as amendment oo-o89 item
+   2 does for another reason). Its `-init` makes the C++ object and records itself as the one
+   peer. `oo::ToObjC` answers the live façade or nil and never makes one. Converted code that
+   holds an Objective-C object weakly keeps the façade (`oo::ObjCRef<OOWeakReference *>`) and
+   calls through `oo::ToCxx(ref)->…`. It never keeps the C++ object alone: the reference dies
+   for the object when the façade does.
+2. **The C++ class holds the state and every forwarding decision.** The methods the runtime
+   calls on the façade (`-class`, `-respondsToSelector:`, `-forwardingTargetForSelector:`,
+   `-hash`, `-isKindOfClass:` and the rest) forward in one line to members whose bodies are the
+   old ones. A selector that is a C++ keyword takes a trailing underscore (`-class` is
+   `class_()`). A message to `self` that must reach the façade (`-retain`, the address in `-hash`
+   and in the description) is `[oo::ToObjC(this) …]`, as in amendment oo-o89.
+3. **What needs the façade as `self` stays in the façade:** `-dealloc`'s `-weakRefDied:self` (the
+   peer table already reads the façade as dead there), and `+weakRefWithObject:`'s nil check and
+   allocation. The constructor takes the object.
+4. **`@selector` comparisons become `OOSelectorsEqual(sel, OOSelectorFromName("name"))`.**
+   libobjc2 selectors are typed (`oofnd/objc/OORuntime.h`), so `==` against an untyped selector
+   would be wrong.
+5. **Helpers that must stay Objective-C move into the bridge unchanged:** the protocol, a
+   category on an Objective-C root, a base class whose subclasses are Objective-C
+   (`OOWeakRefObject`: `Entity`, `Universe`, `AI`, `OOTexture` and others), and a private helper
+   class (`OOWeakReferenceNilTarget`, now declared in the bridge header because both `.mm` files
+   use it). So do the header's usage notes, which quote Objective-C code.
+6. **The deletion bead deletes the class.** A converted class that is held weakly derives from
+   `oo::RefCounted` and is held with `oo::WeakRef`, so no C++ code needs `cxx::OOWeakReference`
+   once the last Objective-C holder and the last `OOWeakRefObject` subclass have converted.
+
+**Consequences.** No caller changed, and the reference keeps its identity, its hash and its
+lifetime. Every façade creation takes the peer table's mutex, and `-weakRetain` and `-hash` on a
+reference take it again. The bridge lasts until the entity classes are C++, which is the end of
+Phase 3.
+
 ## Amendment (bead oo-smy): a module's roots, global state, keeping objects, bitwise copies
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMaterial.h/.mm`
