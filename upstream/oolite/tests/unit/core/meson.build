@@ -15,6 +15,7 @@ core_tests = {
     'test_OOFullScreenController': ['Core/OOFullScreenController.mm'],
     'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OORegExpMatcher': ['Core/OORegExpMatcher.mm', 'Core/OORegExpMatcher+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOFileScannerVerifierStage': ['Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage+ObjCBridge.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OODrawable': ['Core/OODrawable.mm', 'Core/OODrawable+ObjCBridge.mm', 'Core/NSObjectOOExtensions.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOMaterial': ['Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/OODescription.mm'],
