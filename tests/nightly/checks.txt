@@ -102,6 +102,7 @@
 [oo-qvprm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-94qk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAIStateMachineVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-zxzb] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSingleTextureMaterial test_OOBasicMaterial && bash tools/tier-c.sh --only goldens
+[oo-lh0x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMultiTextureMaterial test_OOMaterial && bash tools/tier-c.sh --only goldens
 [oo-3smy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSFunction test_OORegExpMatcher && bash tools/tier-c.sh --only goldens
 [oo-kdyh] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOScriptTimer test_OOJSTimer && bash tools/tier-c.sh --only goldens
 [oo-xy5r] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSClock && bash tools/tier-c.sh --only goldens
