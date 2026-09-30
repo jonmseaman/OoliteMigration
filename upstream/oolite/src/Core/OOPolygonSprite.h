@@ -29,6 +29,9 @@ SOFTWARE.
 */
 
 
+#ifndef OOPOLYGONSPRITE_H
+#define OOPOLYGONSPRITE_H
+
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
@@ -36,41 +39,62 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 
 
-@interface OOPolygonSprite: OOObject
+namespace cxx {
+
+class OOPolygonSprite : public oo::RefCounted
 {
-@private
-	GLfloat					*_solidData;
-	size_t					_solidCount;
-	GLfloat					*_outlineData;
-	size_t					_outlineCount;
-	
-#if OO_USE_VBO
-	GLuint					_solidVBO;
-	GLuint					_outlineVBO;
+public:
+	/*	DataArray is either an array of pairs of numbers, or an array of such
+		arrays (representing one or more contours), as property-list data.
+		OutlineWidth is the width of the tesselated outline, in the same scale as
+		the vertices.
+		Name is used for debugging only.
+		Null where the data cannot be tesselated (-initWithDataArray:... answered nil).
+	*/
+	static oo::Ref<OOPolygonSprite> initWithDataArray(const oo::PList &dataArray, GLfloat outlineWidth, const std::string &name);
+
+	void drawFilled();
+	void drawOutline();
+
+	// OOGraphicsResetClient: the Objective-C facade is the manager's client and forwards this.
+	void resetGraphicsState();
+
+#ifndef NDEBUG
+	// What "%@" prints between the braces of <OOPolygonSprite 0x...>{...} (OODescription.h).
+	std::optional<std::string> descriptionComponents() const;
 #endif
-	
+
+	~OOPolygonSprite() override;
+
+private:
+	OOPolygonSprite() = default;	// initWithDataArray() does -initWithDataArray:...'s work
+
+	void drawWithData(GLfloat *data, size_t count, GLuint *vbo);
+	bool loadPolygons(const oo::PList &dataArray, float outlineWidth);
+
+	GLfloat					*_solidData = {};
+	size_t					_solidCount = {};
+	GLfloat					*_outlineData = {};
+	size_t					_outlineCount = {};
+
+#if OO_USE_VBO
+	GLuint					_solidVBO = {};
+	GLuint					_outlineVBO = {};
+#endif
+
 #ifndef NDEBUG
 	std::string				_name;	// for debugging (Foundation sweep, proposed ADR-0043)
 #endif
-}
+};
 
-/*	DataArray is either an array of pairs of numbers, or an array of such
-	arrays (representing one or more contours), as property-list data.
-	OutlineWidth is the width of the tesselated outline, in the same scale as
-	the vertices.
-	Name is used for debugging only.
-*/
-- (id) initWithDataArray:(const oo::PList &)dataArray outlineWidth:(GLfloat)outlineWidth name:(const std::string &)name;
-
-- (void) drawFilled;
-- (void) drawOutline;
-
-@end
+}	// namespace cxx
 
 
-#import "HeadUpDisplay.h"
+// Transitional: the Objective-C OOPolygonSprite, for callers not yet converted. Deleted, with
+// namespace cxx above, by the bridge's deletion bead.
+#import "OOPolygonSprite+ObjCBridge.h"
 
-@interface OOPolygonSprite (OOHUDBeaconIcon) <OOHUDBeaconIcon>
-@end
+#endif	// OOPOLYGONSPRITE_H
