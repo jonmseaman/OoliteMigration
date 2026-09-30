@@ -971,8 +971,10 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	{
 		/*	The C++ ivars were copied bitwise too, so the copy's aliases self's storage: construct
 			each afresh over the copy (never assign, which would free self's buffers), where the
-			Objective-C ivars get their -retain.
+			Objective-C ivars get their -retain. The superclass's C++ part too (proposed ADR-0056,
+			amendment oo-smy).
 		*/
+		oo::ConstructCxxPartOfCopy(result);
 		new (&result->baseFile) std::optional<std::string>(baseFile);
 		new (&result->baseFileOctreeCacheRef) std::optional<std::string>(baseFileOctreeCacheRef);
 		[result->octree retain];
