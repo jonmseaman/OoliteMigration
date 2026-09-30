@@ -188,3 +188,38 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-fn2f): a whole hierarchy in one file, copies, and a private helper class
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOJoystickProfile.h/.mm`,
+  `OOJoystickProfile+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJoystickProfile.mm`.
+
+**Context.** `OOJoystickAxisProfile` and both its subclasses are in one file, with no Objective-C
+subclass anywhere else, so the adapter of amendment 1 (oo-cwz) is not needed. The unconverted
+callers (the joystick manager, the stick-profile screen) `alloc`/`init` the subclasses, test them
+with `isKindOfClass:`, and `copy` them. The file also has a private class
+(`OOJoystickSplineSegment`) that nothing outside it names, and two initialisers of that class
+whose selectors differ only after the first keyword but take the same argument types.
+
+**Decision (recommended defaults).**
+
+1. **The hierarchy converts in one bead,** root first in the file. Overridden methods are virtual
+   (amendment 1 item 2). Each Objective-C class keeps a façade with its old superclass: the root's
+   holds the `oo::Ref`, a subclass façade has no ivars and forwards through `oo::ToCxx(self)`
+   (amendment oo-up4b item 3). `oo::ToObjC` picks the façade class from the C++ object's dynamic
+   type; for a closed set in one file that is a `dynamic_cast` chain, most derived first.
+2. **`-init` on each façade class makes that class's C++ object** through one shared private
+   root initialiser that stores it and records the façade as its peer (amendment oo-bhb9 item 3).
+   A subclass façade's `-init` does not call the root's `-init`.
+3. **`-copyWithZone:` becomes `virtual oo::Ref<Root> copy()`;** an override returns the root's
+   `Ref` (a `Ref` result cannot be covariant). The façade's `-copyWithZone:` returns
+   `[oo::ToObjC(cxx->copy()) retain]`, a +1 façade of the copy's own class. The bodies stay
+   verbatim, including what they did not copy.
+4. **A class private to the `.mm` with no outside user** is a global C++ class defined in the
+   `.mm`; the header forward-declares it (`class X;`) at global scope for the members that hold it.
+5. **Two selectors with the same first keyword and the same argument types** cannot be overloads.
+   The first keeps the plain name; the other appends its distinguishing keyword in camel case
+   (`+segmentWithData:right:gradientright:` is `segmentWithDataGradientRight(...)`).
+
+**Consequences.** One façade pair of files and one deletion bead per hierarchy. The façade's
+deletion bead depends on every caller's conversion bead.
