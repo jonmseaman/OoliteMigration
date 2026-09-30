@@ -41,6 +41,15 @@ oo::ObjCPeers &Peers()
 	return *peers;
 }
 
+
+// The facade class matching the C++ class, so isKindOfClass: answers as before. Most derived first.
+Class FacadeClassFor(cxx::OOJoystickAxisProfile *profile)
+{
+	if (dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile) != nullptr)  return [OOJoystickStandardAxisProfile class];
+	if (dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile) != nullptr)  return [OOJoystickSplineAxisProfile class];
+	return [OOJoystickAxisProfile class];
+}
+
 }	// namespace
 
 
@@ -60,13 +69,7 @@ oo::ObjCPeers &Peers()
 // Inside the @implementation for the private ivar.
 OOJoystickAxisProfile *oo::ToObjC(cxx::OOJoystickAxisProfile *profile)
 {
-	return Peers().peerFor(profile, [profile] {
-		// The facade class matching the C++ class, so isKindOfClass: answers as before.
-		Class facadeClass = [OOJoystickAxisProfile class];
-		if (dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile) != nullptr)  facadeClass = [OOJoystickStandardAxisProfile class];
-		else if (dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile) != nullptr)  facadeClass = [OOJoystickSplineAxisProfile class];
-		return [[facadeClass alloc] initWithCxxProfile:profile];
-	});
+	return Peers().peerFor(profile, [profile] { return [[FacadeClassFor(profile) alloc] initWithCxxProfile:profile]; });
 }
 
 
