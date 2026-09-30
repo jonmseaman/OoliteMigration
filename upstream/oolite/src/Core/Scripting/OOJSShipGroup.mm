@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
 
 /*

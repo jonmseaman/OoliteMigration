@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOPlanetEntity.h"
+#import "OOObjCPList.h"
 
 #if NEW_PLANETS
 
@@ -50,7 +51,6 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 #import "OOStringExpander.h"
 #import "OOOpenGLMatrixManager.h"
-#import "OOFoundationBridge.h"
 #import "OOJavaScriptEngine.h"	// OONull
 #import "OOPListGameTypes.h"
 

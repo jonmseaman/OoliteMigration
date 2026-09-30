@@ -41,11 +41,6 @@ extern "C++" {
 #endif
 
 
-#ifndef OOLOG_POISON_NSLOG
-	#define OOLOG_POISON_NSLOG	0
-#endif
-
-
 #ifndef OOLOG_FUNCTION_NAME
 	#if defined (__GNUC__) && __GNUC__ >= 2
 		#define OOLOG_FUNCTION_NAME	__FUNCTION__
@@ -104,11 +99,6 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction);
 
 #ifdef __cplusplus
 }
-#endif
-
-
-#if OOLOG_POISON_NSLOG
-	#pragma GCC poison NSLog	// Use OO_LOG instead
 #endif
 
 

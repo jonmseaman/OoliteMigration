@@ -114,7 +114,6 @@ cxx::OOWeakSet *oo::ToCxx(OOWeakSet *set)
 - (std::vector<oo::ObjCRef<id>>) cxx_objectEnumerator	{ return _cxxWeakSet->objectEnumerator(); }
 - (void) addObject:(id<OOWeakReferenceSupport>)object		{ _cxxWeakSet->addObject(object); }
 - (void) removeObject:(id<OOWeakReferenceSupport>)object	{ _cxxWeakSet->removeObject(object); }
-- (void) addObjectsByEnumerating:(id)enumerator		{ _cxxWeakSet->addObjectsByEnumerating(enumerator); }
 - (void) makeObjectsPerformSelector:(SEL)selector	{ _cxxWeakSet->makeObjectsPerformSelector(selector); }
 
 

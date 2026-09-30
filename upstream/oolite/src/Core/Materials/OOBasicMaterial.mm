@@ -30,7 +30,7 @@ SOFTWARE.
 #import "Universe.h"
 #import "OOMaterialSpecifier.h"
 #import "OOTexture.h"
-#import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
 
 #include <typeinfo>
 
@@ -87,24 +87,24 @@ void OOBasicMaterial::initWithName(const std::optional<std::string> &name, const
 	// exactly (proposed ADR-0043 Amendment 2).
 	const oo::PList config = !configuration.isNull() ? configuration : oo::PList(oo::PList::Dict{});
 
-	// The specifier answers an Objective-C colour; OOColor::colorWithDescription() of it is what
-	// +[OOColor colorWithDescription:] answered.
+	// The specifier answers an Objective-C colour; OOColor::colorWithDescription() of its Object node
+	// is what +[OOColor cxx_colorWithDescription:] answered.
 	colorDesc = cxx_OOMaterialDiffuseColor(config);
-	if (colorDesc != nil)  setDiffuseColor(OOColor::colorWithDescription(oo::PListFrom(colorDesc)).get());
+	if (colorDesc != nil)  setDiffuseColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
 
 	colorDesc = cxx_OOMaterialAmbientColor(config);
-	if (colorDesc != nil)  setAmbientColor(OOColor::colorWithDescription(oo::PListFrom(colorDesc)).get());
+	if (colorDesc != nil)  setAmbientColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
 	else  setAmbientColor(diffuseColor().get());
 
 	colorDesc = cxx_OOMaterialEmissionColor(config);
-	if (colorDesc != nil)  setEmissionColor(OOColor::colorWithDescription(oo::PListFrom(colorDesc)).get());
+	if (colorDesc != nil)  setEmissionColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
 
 	specularExponent = cxx_OOMaterialSpecularExponent(config);
 	if (specularExponent != 0 && permitSpecular())
 	{
 		colorDesc = cxx_OOMaterialSpecularColor(config);
 		setShininess(specularExponent);
-		if (colorDesc != nil)  setSpecularColor(OOColor::colorWithDescription(oo::PListFrom(colorDesc)).get());
+		if (colorDesc != nil)  setSpecularColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
 	}
 }
 

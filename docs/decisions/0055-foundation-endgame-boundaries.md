@@ -229,3 +229,45 @@ oo-qps.11..15 wait for their chunks (.12 and .14 also for R); oo-qps.16 waits fo
   and `oo::DescriptionOf(oo::ObjectFromPList(p))` is `oo::DescriptionOf(p)` tree-wide (and
   `NSArrayFromObjects` in a description is `PListFromObjects`), because GNUstep describing a
   collection sends `-description` to each element, which an OOObject no longer answers.
+- 2026-09-29, Amendment 2 (oo-qps.72, items 1, 4, 5): the retirement bead found three design
+  points that did not hold, and proceeds on these defaults.
+  (a) *Object results of called-by-name selectors.* Station launch actions (`launchEscort`,
+  `launchPatrol`, ...) and `fireMissile` are AI actions that return the ship (`ShipEntity *`);
+  deleting the id branch would have stopped them being called. `OOCallByName` now calls a method
+  with an object result and ignores the result, as it ignores a scalar (no dispatcher reads one);
+  `OOJSCall` (console `callObjC`) calls an object-returning method itself and hands JS its
+  `PList::Object` node, as before. A method with an object *parameter* is logged and not called.
+  `--strict-called-by-name` therefore rejects an object parameter and an `id` / `id<P>` / `NS*`
+  result, and accepts a `ClassName *` result. It also no longer checks a selector whose only
+  sources are `@selector` literals handed to an *object* dispatcher (compared with `==`/`!=`,
+  `class_respondsToSelector()`, `OOScheduleDeferredCall()`, `-initWithComparator:`,
+  `-makeObjectsPerformSelector:`): those pass OOObjects (item 4), and the unrefined rule failed 21
+  families that no string or PList dispatcher calls (timers, comparators, Mac menu validation,
+  proxies). `tools/check-selector-types-probe.sh` gains cases for both.
+  (b) *The JS native-value family is kept, Foundation-free.* Its 20 callers each want a native
+  object (a ship, a station, a sound, the console's monitor), so `OOJSNativeObjectFromJSValue` & co.
+  now return `oo::ObjectIn` of the PList form (nil for plist data) instead of being deleted: the
+  same result for every caller, and no call site changes before Phase 3 converts them.
+  `OOJSValueFromNativeObject` of an object not rooted on OOObject gives undefined.
+  (c) *The `oo::DescriptionOf` fallback and the legacy forwarding move to a later bead.* Until
+  oo-3rb.4, `@"..."` literals in the game are gnustep-base constant strings, which only the
+  fallback describes as their text; deleting it first would print `<NSConstantString 0x...>` in
+  logs. And the unit test `tests/unit/oofnd/test_objc_description.mm` pins both, so removing its
+  cases needs Jon's approval under ADR-0049. A new bead (after oo-3rb.4) deletes
+  them once that approval is on record. `OOProbabilitySet`'s id `-allObjects` / `-objectEnumerator`
+  (item 3's "retires with oo-qps", no sender left) are deleted here.
+- 2026-09-29, Amendment 3 (oo-3rb.4, oo-qps.17): the constant-string flip and "OOCocoa.h stops
+  importing Foundation" land as one change. Measured: with the flip alone, `OOObjCInstallFloor()`
+  aborts at start-up ("small-object tag 4 already belongs to GSTinyString"): gnustep-base is loaded
+  because the game still imports four of its symbols (`NSObject`/`NSString` class refs from
+  `OOObjectGNUstepBridge.mm`, `NSEqualPoints` and `_NSRangeExceptionRaise` from Foundation's
+  inline headers). And with oo-qps.17 alone nothing imports gnustep-base any more, so it is not
+  loaded and `@"..."` literals typed `NSConstantString` would have no class. Together they work:
+  the game's import table names no gnustep-base symbol (it stays on the link line until
+  oo-qps.18), literals are `OOConstantString`, goldens verify. So oo-3rb.4's commit carries
+  oo-qps.17's scope (Foundation import replaced by `oofnd/objc/OOFoundationTypes.h`, with the
+  Windows API and `DESTROY` that gnustep-base's `GSConfig.h` gave every file; `OOComparisonResult`
+  its own `NSInteger` enum; `OOObjectGNUstepBridge` deleted; the last sends of Foundation-only
+  selectors given local declarations or deleted with their dead callers), and oo-qps.17 closes
+  with a proof-only commit. oo-qps.17's census acceptance excludes the `build` kind, which is
+  oo-qps.18's.

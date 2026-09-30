@@ -73,12 +73,10 @@ public:
 
 	virtual float weightForObject(const oo::PList &object) = 0;	// Returns -1 for unknown objects.
 	virtual float sumOfWeights() = 0;
-	virtual id allObjects() = 0;	// shared selector: an Objective-C array (strings as NSStrings, Object nodes as their objects)
 	virtual std::vector<oo::PList> allElements() = 0;	// the elements, in the same order (-cxx_allObjects is OOWeakSet's family)
 
 	// (OOExtendedProbabilitySet)
 	bool containsObject(const oo::PList &object);
-	virtual id objectEnumerator();	// shared selector: an enumerator over -allObjects
 	float probabilityForObject(const oo::PList &object);	// Returns -1 for unknown objects, or a value from 0 to 1 inclusive for known objects.
 
 	// -copy (an immutable set) and -mutableCopy.

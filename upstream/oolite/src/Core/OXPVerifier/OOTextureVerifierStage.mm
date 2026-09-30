@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOTextureLoader.h"
 #import "OOFileScannerVerifierStage.h"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 static const char * const kStageName	= "Testing textures and images";

@@ -30,7 +30,6 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OOCPUInfo.h"
 #include "oofnd/FileSystem.hpp"
-#import "OOStringBridge.h"
 #include "oofnd/String.hpp"
 
 //void png_error(png_structp, png_const_charp) NO_RETURN_FUNC;

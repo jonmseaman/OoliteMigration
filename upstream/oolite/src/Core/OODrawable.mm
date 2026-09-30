@@ -27,7 +27,6 @@ SOFTWARE.
 
 #import "OODrawable.h"
 #import "NSObjectOOExtensions.h"
-#import "OOFoundationBridge.h"
 
 
 namespace cxx {

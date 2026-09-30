@@ -30,12 +30,11 @@ MA 02110-1301, USA.
 #import "OOIsNumberLiteral.h"
 
 #import "OOJSPlayer.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead

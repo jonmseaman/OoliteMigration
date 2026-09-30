@@ -30,8 +30,9 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include <cstring>
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead

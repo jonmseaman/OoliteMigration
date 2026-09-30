@@ -31,7 +31,6 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOMacroOpenGL.h"
 #import "OOMaterialSpecifier.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
 
 #if OO_MULTITEXTURE

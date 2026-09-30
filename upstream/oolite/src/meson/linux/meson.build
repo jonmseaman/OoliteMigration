@@ -18,7 +18,8 @@ shared_roots = [
 ]
 
 # =====================================================================
-# GNUSTEP BLOCK (Scan & Resolve)
+# LIBOBJC2 BLOCK (Scan & Resolve). The Objective-C runtime is all that is left of the GNUstep
+# stack: the Foundation library left the build with oo-qps.18 (ADR-0055).
 # =====================================================================
 gs_search_roots = [project_root / 'build/gnustep'] + shared_roots
 found_gs_dir = ''
@@ -28,7 +29,7 @@ foreach root : gs_search_roots
     if found_gs_dir == ''
         foreach sub_dir : ['lib', 'lib64']
             current_dir = root / sub_dir
-            if fs.is_file(current_dir / 'libgnustep-base.so') or fs.is_file(current_dir / 'libgnustep-base.a')
+            if fs.is_file(current_dir / 'libobjc.so') or fs.is_file(current_dir / 'libobjc.a')
                 gnustep_folder = root
                 found_gs_dir = current_dir
                 found_gs_inc = root / 'include'
@@ -39,15 +40,14 @@ foreach root : gs_search_roots
 endforeach
 
 if found_gs_dir != ''
-    gs_lib = cc.find_library('gnustep-base', dirs: [found_gs_dir], required: true)
     objc_lib = cc.find_library('objc', dirs: [found_gs_dir], required: true)
 else
-    error('Required dependency "gnustep-base" was not found in SEARCH_ROOTS.')
+    error('Required dependency "libobjc2" was not found in SEARCH_ROOTS.')
 endif
 
-# GNUstep only: the JavaScript engine is the vendored QuickJS-ng subproject (bead oo-7wx).
+# The JavaScript engine is the vendored QuickJS-ng subproject (bead oo-7wx).
 gs_inc_dirs = [found_gs_inc]
-gs_libs = [gs_lib, objc_lib]
+gs_libs = [objc_lib]
 
 inc_dir = include_directories(gs_inc_dirs, is_system: true)
 oolite_dependencies += declare_dependency(

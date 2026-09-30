@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOSoundSourcePool.h"
 #import "OOSound.h"
 #import "Universe.h"
-#import "OOStringBridge.h"
 
 
 enum
