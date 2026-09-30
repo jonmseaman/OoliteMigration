@@ -10,7 +10,12 @@ This is an abstract class; actual materials should be subclasses.
 Currently, only shader materials are supported. Direct use of textures should
 also be replaced with an OOMaterial subclass.
 
- 
+C++20 since bead oo-smy, the Materials module exemplar (proposed ADR-0056, amendment oo-smy).
+The class is cxx::OOMaterial while OOMaterial+ObjCBridge.h, imported at the end of this header,
+keeps the Objective-C OOMaterial that its callers message and its unconverted subclasses derive
+from; the bridge's deletion bead moves it out of namespace cxx.
+
+
 Copyright (C) 2007-2013 Jens Ayton and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,6 +38,9 @@ SOFTWARE.
 
 */
 
+#ifndef OOMATERIAL_H
+#define OOMATERIAL_H
+
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
@@ -41,58 +49,76 @@ SOFTWARE.
 
 #include <vector>
 #include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
 
 @class OOTexture;
 
-@interface OOMaterial: OOObject
 
-// Called once at startup (by -[Universe init]).
-+ (void) setUp;
+namespace cxx {
 
-- (std::optional<std::string>) cxx_name;	// nullopt: none (bead oo-3rb.289.5)
+class OOMaterial : public oo::RefCounted
+{
+public:
+	// Called once at startup (by -[Universe init]).
+	static void setUp();
 
-// Make this the current material.
-- (void) apply;
+	virtual std::optional<std::string> name();	// nullopt: none (bead oo-3rb.289.5)
 
-/*	Make no material the current material, tearing down anything set up by the
-	current material.
-*/
-+ (void) applyNone;
+	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h): the quoted name.
+	virtual std::optional<std::string> descriptionComponents() const;
 
-/*	Get current material.
-*/
-+ (OOMaterial *) current;
+	// Make this the current material.
+	void apply();
 
-/*	Ensure material is ready to be used in a display list. This is not
-	required before using a material directly.
-*/
-- (void) ensureFinishedLoading;
-- (BOOL) isFinishedLoading;
+	/*	Make no material the current material, tearing down anything set up by the
+		current material.
+	*/
+	static void applyNone();
 
-// Only used by shader material, but defined for all materials for convenience.
-- (void) setBindingTarget:(id<OOWeakReferenceSupport>)target;
+	/*	Get current material.
+	*/
+	static oo::Ref<OOMaterial> current();
 
-// True if material wants three-component cube map texture coordinates.
-- (BOOL) wantsNormalsAsTextureCoordinates;
+	/*	Ensure material is ready to be used in a display list. This is not
+		required before using a material directly.
+	*/
+	virtual void ensureFinishedLoading();
+	virtual bool isFinishedLoading();
+
+	// Only used by shader material, but defined for all materials for convenience.
+	virtual void setBindingTarget(id<OOWeakReferenceSupport> target);
+
+	// True if material wants three-component cube map texture coordinates.
+	virtual bool wantsNormalsAsTextureCoordinates();
 
 #if OO_MULTITEXTURE
-// Nasty hack: number of texture units for which the drawable should set its basic texture coordinates.
-- (NSUInteger) countOfTextureUnitsWithBaseCoordinates;
+	// Nasty hack: number of texture units for which the drawable should set its basic texture coordinates.
+	virtual NSUInteger countOfTextureUnitsWithBaseCoordinates();
 #endif
 
 #ifndef NDEBUG
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
+	virtual std::vector<oo::ObjCRef<OOTexture *>> allTextures();
 #endif
 
-@end
+	// Subclass interface (was the OOSubclassInterface category).
 
-@interface OOMaterial (OOSubclassInterface)
+	// Subclass responsibilities - don't call directly.
+	virtual bool doApply();	// Override instead of apply()
+	virtual void unapplyWithNext(OOMaterial *next);
 
-// Subclass responsibilities - don't call directly.
-- (BOOL) doApply;	// Override instead of -apply
-- (void) unapplyWithNext:(OOMaterial *)next;
+	/*	Call at top of an Objective-C subclass's -dealloc. A C++ material is not destroyed while it
+		is current (the current-material slot retains it), so no destructor calls this; the root's -dealloc body
+		that did is the facade's (proposed ADR-0056, amendment oo-smy).
+	*/
+	void willDealloc();
+};
 
-// Call at top of dealloc
-- (void) willDealloc;
+}	// namespace cxx
 
-@end
+
+// Transitional: the Objective-C OOMaterial, for callers and subclasses not yet converted.
+// Deleted, with namespace cxx above, by the bridge's deletion bead.
+#import "OOMaterial+ObjCBridge.h"
+
+#endif	// OOMATERIAL_H

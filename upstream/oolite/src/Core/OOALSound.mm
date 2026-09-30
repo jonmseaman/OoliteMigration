@@ -52,8 +52,8 @@ static BOOL sIsSoundOK = NO;
 	if (!sIsSetUp)
 	{
 		sIsSetUp = YES;
-		OOOpenALController* controller = [OOOpenALController sharedController];
-		if (controller != nil)
+		OOOpenALController* controller = OOOpenALController::sharedController();
+		if (controller != nullptr)
 		{
 			sIsSoundOK = YES;
 			oo::Defaults &prefs = oo::Defaults::standard();
@@ -73,11 +73,12 @@ static BOOL sIsSoundOK = NO;
 	
 	fraction = OOClamp_0_1_f(fraction);
 
-	OOOpenALController *controller = [OOOpenALController sharedController];
-	if (fraction != [controller masterVolume])
+	// A null controller answers 0, as a message to nil did (sound set up but refused).
+	OOOpenALController *controller = OOOpenALController::sharedController();
+	if (fraction != (controller != nullptr ? controller->masterVolume() : 0.0f))
 	{
-		[controller setMasterVolume:fraction];
-		oo::Defaults::standard().setFloat(std::string(KEY_VOLUME_CONTROL), [controller masterVolume]);
+		if (controller != nullptr)  controller->setMasterVolume(fraction);
+		oo::Defaults::standard().setFloat(std::string(KEY_VOLUME_CONTROL), controller != nullptr ? controller->masterVolume() : 0.0f);
 	}
 }
 
@@ -87,8 +88,8 @@ static BOOL sIsSoundOK = NO;
 	if (!sIsSetUp && ![self setUp] )
 		return 0.0;
 
-	OOOpenALController *controller = [OOOpenALController sharedController];
-	return [controller masterVolume];
+	OOOpenALController *controller = OOOpenALController::sharedController();
+	return controller != nullptr ? controller->masterVolume() : 0.0f;
 }
 
 

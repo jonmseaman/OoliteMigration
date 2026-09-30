@@ -46,7 +46,8 @@ MA 02110-1301, USA.
 // 1.0 / (desired framerate cap)
 
 
-@class MyOpenGLView, OOFullScreenController;
+@class MyOpenGLView;
+class OOFullScreenController;	// C++ since bead oo-bgmb
 
 
 // TEMP: whether to use separate OOFullScreenController object, will hopefully be used for all builds soon.
