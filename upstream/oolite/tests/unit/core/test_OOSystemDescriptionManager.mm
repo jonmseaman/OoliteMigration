@@ -13,7 +13,10 @@
 	invalid-system answers. The game around it is replaced (ADR-0056 amendments oo-zffj and oo-8kx7):
 	UNIVERSE, PLAYER and ResourceManager are fakes that answer the one question each is asked, and
 	the two string parsers it calls are given here. The expectations were written against the
-	Objective-C API and run on the unconverted class first.
+	Objective-C API and run on the unconverted class first (commit 465174df9); they now run
+	through the facade, which is its forwarding test (amendment oo-8kx7 item 6). The C++ API, the
+	entry on its own, and the facade's contract (identity both ways, nil and null, a facade made by
+	alloc/init) follow.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -412,6 +415,83 @@ OO_TEST(routeCacheAndSeeds)
 		gCurrentSystem = 0;
 		OO_CHECK(SameSeed([manager getRandomSeedForCurrentSystem], Random_Seed{ 1, 2, 3, 4, 5, 6 }));
 		gCurrentSystem = 7;
+	}
+}
+
+
+// --- The C++ classes, and the facade's contract --------------------------------------------
+
+OO_TEST(cxxApi)
+{
+	Fake();
+	@autoreleasepool
+	{
+		oo::Ref<cxx::OOSystemDescriptionManager> manager = oo::makeRef<cxx::OOSystemDescriptionManager>();
+		manager->setUniversalProperties(Dict({ { "economy", oo::PList(3) } }));
+		manager->setProperties(Dict({ { "name", Str("Lave") }, { "coordinates", Str("100 100") } }), "0 7");
+		manager->setProperties(Dict({ { "coordinates", Str("105 100") } }), "0 8");
+		OO_CHECK(manager->getPropertiesForSystem(7, 0) == Dict({ { "coordinates", Str("100 100") }, { "economy", oo::PList(3) }, { "name", Str("Lave") } }));
+		OO_CHECK(manager->getProperty("name", "0 7") == Str("Lave"));
+		OO_CHECK(manager->getProperty("name", 7, 0) == Str("Lave"));
+		OO_CHECK(manager->getPropertiesForCurrentSystem() == manager->getPropertiesForSystemKey("0 7"));
+		manager->setProperty("name", "0 7", OO_LAYER_OXP_PRIORITY, Str("Leesti"), std::string("org.test.installed"));
+		OO_CHECK(manager->getProperty("name", 7, 0) == Str("Leesti"));
+		OO_CHECK(manager->exportScriptedChanges() == Dict({ { "org.test.installed~|~0 7~|~name~|~3", Str("Leesti") } }));
+		manager->buildRouteCache();
+		OO_CHECK((manager->getNeighbourIDsForSystem(7, 0) == std::vector<OOSystemID>{ 8 }));
+		const NSPoint p = manager->getCoordinatesForSystem(8, 0);
+		OO_CHECK(p.x == 105 && p.y == 100);
+		OO_CHECK(SameSeed(manager->getRandomSeedForSystem(7, 0), kNilRandomSeed));
+		OO_CHECK(SameSeed(manager->getRandomSeedForCurrentSystem(), kNilRandomSeed));
+	}
+}
+
+
+OO_TEST(entry)
+{
+	oo::Ref<OOSystemDescriptionEntry> entry = oo::makeRef<OOSystemDescriptionEntry>();
+	OO_CHECK(entry->getProperty("name", OO_LAYER_CORE).isNull());
+	entry->setProperty("name", OO_LAYER_CORE, Str("Lave"));
+	entry->setProperty("name", OO_LAYER_OXP_STATIC, Str("Diso"));
+	OO_CHECK(entry->getProperty("name", OO_LAYER_CORE) == Str("Lave"));
+	OO_CHECK(entry->getProperty("name", OO_LAYER_OXP_STATIC) == Str("Diso"));
+	OO_CHECK(entry->getProperty("name", OO_LAYER_OXP_DYNAMIC).isNull());
+	// Validated as the manager's setters validate; null removes.
+	entry->setProperty("radius", OO_LAYER_CORE, oo::PList(4000));
+	OO_CHECK(entry->getProperty("radius", OO_LAYER_CORE) == Str("4000"));
+	entry->setProperty("name", OO_LAYER_CORE, oo::PList(1));
+	OO_CHECK(entry->getProperty("name", OO_LAYER_CORE) == Str("Lave"));
+	entry->setProperty("name", OO_LAYER_CORE, oo::PList());
+	OO_CHECK(entry->getProperty("name", OO_LAYER_CORE).isNull());
+}
+
+
+OO_TEST(facadeContract)
+{
+	Fake();
+	@autoreleasepool
+	{
+		// A facade made by alloc/init is the C++ manager's peer.
+		OOSystemDescriptionManager *facade = NewManager();
+		cxx::OOSystemDescriptionManager *manager = oo::ToCxx(facade);
+		OO_CHECK(manager != nullptr);
+		OO_CHECK(oo::ToObjC(manager) == facade);
+		OO_CHECK(oo::ToObjC(nullptr) == nil);
+		OO_CHECK(oo::ToCxx(nil) == nullptr);
+
+		// One store: what either side writes, the other reads.
+		manager->setProperties(Dict({ { "name", Str("Lave") } }), "0 7");
+		OO_CHECK([facade cxx_getProperty:"name" forSystem:7 inGalaxy:0] == Str("Lave"));
+		[facade cxx_setProperties:Dict({ { "name", Str("Zaonce") } }) forSystemKey:"0 8"];
+		OO_CHECK(manager->getProperty("name", 8, 0) == Str("Zaonce"));
+
+		// A C++ manager crossing for the first time gets one facade, the same each time.
+		oo::Ref<cxx::OOSystemDescriptionManager> other = oo::makeRef<cxx::OOSystemDescriptionManager>();
+		OOSystemDescriptionManager *otherFacade = oo::ToObjC(other.get());
+		OO_CHECK(otherFacade != nil);
+		OO_CHECK(otherFacade != facade);
+		OO_CHECK(oo::ToObjC(other.get()) == otherFacade);
+		OO_CHECK(oo::ToCxx(otherFacade) == other.get());
 	}
 }
 

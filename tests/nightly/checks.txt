@@ -82,3 +82,4 @@
 [oo-smy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMaterial test_OODrawable && bash tools/tier-c.sh --only goldens
 [oo-demz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOEncodingConverter && bash tools/tier-c.sh --only goldens
 [oo-bgmb] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFullScreenController && bash tools/tier-c.sh --only goldens
+[oo-0sr1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSystemDescriptionManager && bash tools/tier-c.sh --only goldens
