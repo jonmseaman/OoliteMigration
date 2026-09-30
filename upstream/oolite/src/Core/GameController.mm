@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "PlayerEntityLoadSave.h"
 #include <stdlib.h>
-#import "OOPListView.h"
 #import "OOOXPVerifier.h"
 #import "OOLoggingExtended.h"
 #import "OOLogOutputHandler.h"
@@ -50,8 +49,6 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"

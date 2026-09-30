@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #endif
 
-#import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -47,7 +46,6 @@ static const char * const kOOLogPlanetTextureGen			= "texture.planet.generate";	
 
 
 #import "OOTextureGenerator.h"	// For FloatRGB
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 
 

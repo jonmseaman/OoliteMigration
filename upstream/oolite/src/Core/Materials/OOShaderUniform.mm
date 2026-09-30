@@ -37,8 +37,6 @@ SOFTWARE.
 #import "OOMaths.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOShaderUniformMethodType.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

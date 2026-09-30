@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #import "OOTexture.h"
 #import "OOGraphicsResetManager.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/PListGet.hpp"
 

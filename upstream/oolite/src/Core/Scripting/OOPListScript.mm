@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "OOLegacyScriptWhitelist.h"
 #import "OOCacheManager.h"
-#import "OOFoundationBridge.h"
 
 
 namespace {

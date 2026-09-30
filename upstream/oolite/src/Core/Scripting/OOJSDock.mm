@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 #import "OOJSShip.h"
 #import "OOJSPlayer.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #import "DockEntity.h"
 #import "GameController.h"

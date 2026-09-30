@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "OOJoystickManager.h"
 #import "OOTexture.h"
 #import "HeadUpDisplay.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 
 #include "oofnd/PListGet.hpp"

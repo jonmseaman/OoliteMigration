@@ -38,10 +38,8 @@ MA 02110-1301, USA.
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOConstToJSString.h"
 #import "OOManifestProperties.h"
-#import "OOPListView.h"
 #import "OOPListParsing.h"
 #import "OODebugStandards.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Encoding.hpp"
@@ -49,6 +47,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 #if OO_CACHE_JS_SCRIPTS
 #import "OOCacheManager.h"

@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOShipRegistry.h"
 #import "OOCacheManager.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOProbabilitySet.h"
 #import "OORoleSet.h"
 #import "OOStringParsing.h"
@@ -43,8 +42,8 @@ SOFTWARE.
 
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
+#include "oofnd/String.hpp"
 
 #define PRELOAD 0
 

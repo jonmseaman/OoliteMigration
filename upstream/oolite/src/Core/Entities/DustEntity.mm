@@ -40,7 +40,6 @@ MA 02110-1301, USA.
 #endif
 
 #import "PlayerEntity.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

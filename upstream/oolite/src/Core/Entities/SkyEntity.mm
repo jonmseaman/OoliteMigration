@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "OOColor.h"
 #import "OOMaterial.h"
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 
 #include "oofnd/Log.hpp"

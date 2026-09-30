@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 #import "OOMusicController.h"
 #import "OOSound.h"
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
 
