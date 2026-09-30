@@ -32,13 +32,13 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "MyOpenGLView.h"
 #import "OOConstToString.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 namespace {
 

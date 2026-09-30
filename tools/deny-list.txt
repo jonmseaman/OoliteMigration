@@ -37,6 +37,15 @@
 ['"][g]nustep-base['"]
 =\([^)]*\b[g]nustep-base\b
 
+# Foundation's classes, protocols and functions by name (bead oo-qps.19, ADR-0055): the counts
+# reached zero with oo-qps.18, so baseline-relative now means none. Enumerated, because ERE
+# cannot say "NS* except the C types oofnd/objc/OOFoundationTypes.h keeps" (NSInteger, NSRange,
+# NSPoint ... stay legal). Mac-fenced files keep theirs (a baseline, not an addition). The
+# bridge headers deleted by oo-qps.16 / oo-snzn, and OOFoundationException.h, may not come back.
+\b[N]S(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable[A-Za-z]+|Object|Log|C?(Parameter)?Assert[0-9]?|[A-Za-z]*Exception|UserDefaults|Bundle|FileManager|Date|Value|Null|CharacterSet|Scanner|Error|URL[A-Za-z]*|Task|Pipe|FileHandle|Thread|Lock|Condition|Timer|RunLoop|Notification[A-Za-z]*|Invocation|MethodSignature|Proxy|ProcessInfo|Zone|Copying|ComparisonResult|Ordered(Ascending|Same|Descending)|AllocateObject|ClassFromString|StringFromClass|SelectorFromString|StringFromSelector|MapTable|HashTable|SortDescriptor|AutoreleasePool)\b
+[+]FoundationBridge\.h
+"(OOStringBridge|OOFoundationBridge|OOPListView|OOFoundationException)\.h"
+
 # --- SpiderMonkey build dependencies (Phase 1 item 1.7: deleted with the backend) ---
 # NSPR ships with mozjs and only ever arrives as its transitive dependency; a PR_* call or an
 # -lnspr on a link line means the old engine came back in through the build system.

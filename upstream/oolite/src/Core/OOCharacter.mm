@@ -27,12 +27,11 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOJSScript.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/objc/OORuntime.h"
+#import "OOObjCPList.h"
 
 
 namespace {
@@ -47,6 +46,13 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 }	// namespace
+
+
+// -intValue as Foundation's number and string classes declared it (an Object node's object may answer
+// it; no Foundation header declares it since oo-qps.17).
+@protocol OOCharacterIntValue
+- (int) intValue;
+@end
 
 
 namespace cxx {
@@ -482,7 +488,7 @@ void OOCharacter::setCharacterFromDictionary(const oo::PList &dict)
 	const std::string	*originName = (origin != nullptr) ? origin->getIf<std::string>() : nullptr;
 	id					originObject = (origin != nullptr) ? oo::ObjectIn(*origin) : nil;
 	const SEL			intValue = OOSelectorFromName("intValue");
-	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? [originObject intValue] : 0) : dict.get<int>("origin");
+	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? [(id<OOCharacterIntValue>)originObject intValue] : 0) : dict.get<int>("origin");
 	if ((origin != nullptr && origin->isNumber()) ||
 		(((originName != nullptr) || [originObject respondsToSelector:intValue]) && (originValue != 0 || (originName != nullptr && *originName == "0"))))
 	{

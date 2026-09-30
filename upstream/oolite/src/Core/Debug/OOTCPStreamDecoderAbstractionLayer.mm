@@ -11,7 +11,6 @@
 
 #import "OOTCPStreamDecoderAbstractionLayer.h"
 #import "OOCocoa.h"
-#import "OOFoundationBridge.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 

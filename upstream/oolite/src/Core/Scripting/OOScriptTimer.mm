@@ -28,8 +28,7 @@ MA 02110-1301, USA.
 #import "OOLogging.h"
 #import "OOPriorityQueue.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 
 
 static OOPriorityQueue	*sTimers;

@@ -54,7 +54,6 @@ public:
 	void addObject(id object);		// Unlike a Foundation set, adding nil fails silently.
 	void removeObject(id object);	// Like a Foundation set, does not complain if object is not already a member.
 
-	void addObjectsByEnumerating(id enumerator);	// anything answering -nextObject
 
 	void makeObjectsPerformSelector(SEL selector);
 	void makeObjectsPerformSelector(SEL selector, id argument);

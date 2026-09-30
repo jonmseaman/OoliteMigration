@@ -6,3 +6,4 @@ upstream/oolite/tests/unit/game/test_defaults_bridge.mm	oo-iobt: subject NSUserD
 upstream/oolite/tests/unit/game/meson.build	oo-iobt: game-unit suite emptied with the bridge test
 upstream/oolite/tests/unit/test_enumeration_shuffle.c	oo-qps.7: subject OOEnumerationShufflePRNG.h deleted with the debug-only enumeration shuffle (Jon approved 2026-09-29)
 tools/check-enumeration-shuffle.sh	oo-qps.7: checks the OOEnumerationShuffle code and OOCocoa.h foreach sentinels oo-qps.7 deletes (Jon approved 2026-09-29)
+upstream/oolite/tests/unit/oofnd/test_objc_description.mm	oo-qps.73: ONLY the cases whose sole subject is the deleted legacy-override forwarding / foreign-root fallback of OODescription.mm - the_root_forwards_to_a_legacy_override; OOTestLegacy, OOTestLegacyWhole, OOTestFlippedOverLegacy, OOTestForeignRoot, OOTestForeignString; the foreign-object checks of nil_classes_literals_and_foreign_objects. Every other case stays (Jon approved 2026-09-30)

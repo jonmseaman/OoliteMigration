@@ -34,10 +34,10 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOJSEntity.h"
 #import "OOJSVector.h"
-#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-45g, the same way bead oo-sdz

@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOPNGTextureLoader.h"
 #import "OOTextureLoader.h"
 #import "OOFunctionAttributes.h"
-#import "OOPListView.h"
 #import "OOMaths.h"
 #import "Universe.h"
 #import "OOTextureScaling.h"
@@ -39,8 +38,6 @@ SOFTWARE.
 #import "OOOpenGLExtensionManager.h"
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 

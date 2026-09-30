@@ -998,6 +998,52 @@ fixture neg_gs_prose || exit 1
 printf '/* gnustep''-base (deleted by oo-qps) still raises these */\n' >> upstream/oolite/src/Core/OOColor.m
 expect_pass "(control) a comment naming gnustep-base in prose passes"
 
+# oo-qps.19: Foundation's names and the deleted bridge headers, each with a negative control.
+fixture deny_ns_class || exit 1
+printf 'static NS''String *sName = nil;\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "a Foundation class name refused" "reintroduces deny-listed symbols"
+
+fixture deny_ns_function || exit 1
+printf 'static Class F(void) { return NS''ClassFromString(@"OOColor"); }\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "a Foundation function name refused" "reintroduces deny-listed symbols"
+
+fixture deny_ns_protocol || exit 1
+printf '@interface OOTint: OOObject <NS''Copying>\n@end\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "a Foundation protocol name refused" "reintroduces deny-listed symbols"
+
+fixture deny_bridge_header || exit 1
+printf '#import "OOFoundation''Bridge.h"\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "a deleted bridge header's import refused" "reintroduces deny-listed symbols"
+
+fixture deny_plus_bridge || exit 1
+printf '#import "OOLogOutputHandler+Foundation''Bridge.h"\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "a +FoundationBridge category header refused" "reintroduces deny-listed symbols"
+
+fixture neg_ns_c_types || exit 1
+printf 'static NSInteger sCount; static NSRange sRange; static NSPoint sPoint;\n' >> upstream/oolite/src/Core/OOColor.m
+expect_pass "(control) the C types OOFoundationTypes.h keeps pass"
+
+# oo-qps.19: the link half of the gate, which no per-file pattern can see. tier-b runs
+# tools/check-foundation-free.sh --link on the binary it built; a stub import table naming
+# gnustep-base must fail it, and one without must pass (OO_FF_OBJDUMP stands in for objdump).
+echo "--- link: an import table naming gnustep-base fails tools/check-foundation-free.sh --link"
+link_dir="$SCRATCH/link"
+mkdir -p "$link_dir"
+printf 'MZ' > "$link_dir/oolite.exe"
+printf '#!/bin/sh\nprintf "\\tDLL Name: libobjc-4.6.dll\\n\\tDLL Name: gnustep''-base-1_31.dll\\n"\n' > "$link_dir/od-bad"
+printf '#!/bin/sh\nprintf "\\tDLL Name: libobjc-4.6.dll\\n\\tDLL Name: KERNEL32.dll\\n"\n' > "$link_dir/od-good"
+chmod +x "$link_dir/od-bad" "$link_dir/od-good"
+if OO_FF_OBJDUMP="$link_dir/od-bad" bash "$REPO/tools/check-foundation-free.sh" --link "$link_dir/oolite.exe" >/dev/null 2>&1; then
+  no "a gnustep-base import table is refused (the link check exited 0)"
+else
+  ok "a gnustep-base import table is refused"
+fi
+if OO_FF_OBJDUMP="$link_dir/od-good" bash "$REPO/tools/check-foundation-free.sh" --link "$link_dir/oolite.exe" >/dev/null 2>&1; then
+  ok "(control) an import table without gnustep-base passes"
+else
+  no "(control) an import table without gnustep-base passes (the link check failed)"
+fi
+
 echo
 echo "=== 4b. FINDING 1 (deny-list half): a PURE RENAME of a file full of JS_* passes ==="
 # `git mv OOJSEngine.m OOScriptEngine.m` with NO content change reported 0 -> 3 hits, because
