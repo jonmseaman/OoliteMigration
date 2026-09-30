@@ -286,7 +286,7 @@ void OOCacheManager::flush()
 void OOCacheManager::finishOngoingFlush()
 {
 #if WRITE_ASYNC
-	[[OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_scheduledWrite];
+	[[::OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_scheduledWrite];
 #endif
 }
 
@@ -437,7 +437,7 @@ void OOCacheManager::write()
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", endT);
 #endif
 	
-	[[OOAsyncWorkManager sharedAsyncWorkManager] addTask:_scheduledWrite priority:kOOAsyncPriorityLow];
+	[[::OOAsyncWorkManager sharedAsyncWorkManager] addTask:_scheduledWrite priority:kOOAsyncPriorityLow];
 #else
 #if PROFILE_WRITES
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", prepareT);
