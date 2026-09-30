@@ -730,7 +730,7 @@ namespace {
 BOOL MatchesRegExp(const std::optional<std::string> &string, const std::string &regexp)
 {
 	if (!string.has_value())  return NO;
-	return [[OORegExpMatcher regExpMatcher] string:*string matchesExpression:regexp];
+	return [[::OORegExpMatcher regExpMatcher] string:*string matchesExpression:regexp];
 }
 
 
