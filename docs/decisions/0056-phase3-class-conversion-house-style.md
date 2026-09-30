@@ -188,3 +188,33 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-489v): a class cluster converted whole
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOProbabilitySet.h/.mm`
+  (callers `OOShipRegistry.h/.mm` and `Universe.mm`, adapted in the bead; no façade).
+
+**Context.** `OOProbabilitySet` is a class cluster: two abstract public classes (immutable and
+mutable) whose `+alloc`/`-init…` hand back one of four private concrete classes, an immortal
+empty-set singleton (retain/release overridden), and "subclass responsibility" methods that raise.
+Every class lives in the one file, so the hierarchy converts in one bead (unlike the oo-cwz
+amendment, where subclasses live in other files).
+
+**Decision (recommended defaults).**
+
+1. **The public abstract classes stay public; the concrete ones become `final` classes in an
+   anonymous namespace in `X.mm`.** A method that raised "abstract class" becomes pure virtual
+   (`= 0`); the raising helper goes, since nothing can instantiate the abstract class any more.
+2. **The cluster's `[[X alloc] initWith…]` becomes static factories on each public class**, with
+   the dispatching body of the abstract `-initWith…` (count 0 → the singleton, 1 → the one-object
+   class, else the general one). A subclass's factory of the same name hides the base's, as
+   `+probabilitySet` on the mutable class did via `self`. A concrete `-initWith…` is a `bool`
+   member (the oo-bhb9 amendment) or `void` where it cannot fail.
+3. **An immortal singleton** (overridden `-retain`/`-release`/`+allocWithZone:`) becomes a static
+   raw pointer made with `new` and never released: its count never reaches zero, so the
+   boilerplate category goes. The factory returns `oo::Ref<X>(singleton)`.
+4. **`-copyWithZone:`/`-mutableCopyWithZone:`** become `virtual oo::Ref<X> copy()` and
+   `virtual oo::Ref<MutableX> mutableCopy()`; the zone test (always the same zone) goes.
+5. **Behaviour is kept, bugs included**: the mutable set's `weightForObject()` still subtracts the
+   previous entry's weight, and its `mutableCopy()` still asserts the sum is known. The test pins
+   both. `__PRETTY_FUNCTION__` in a log line now prints the C++ name.
