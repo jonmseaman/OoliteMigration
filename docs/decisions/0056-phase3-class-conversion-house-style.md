@@ -188,3 +188,31 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-bwrq): a façade ivar that a category in another file owns, and a C++ helper that took the Objective-C class
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOShipGroup.h/.mm`,
+  `OOShipGroup+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShipGroup.mm`.
+
+**Context.** `OOShipGroup`'s ivar `_jsSelf` is its JavaScript wrapper. The class itself never
+uses it; the category `OOShipGroup (OOJavaScriptExtensions)` in `OOJSShipGroup.mm` makes it, stores
+it, clears it, and gives the wrapper a retain of `self`. That is state of the Objective-C object,
+not of the group, and the category writes it, so amendment oo-86ek item 4 (a getter in place of
+the read) does not fit. `OOShipGroupCursor`, a C++ class in the same header, took an
+`OOShipGroup *` and read the group's ivars from a function defined inside the `@implementation`.
+
+**Decision (recommended defaults).**
+
+1. **An ivar that only a category in another file uses, and that belongs to the Objective-C
+   object** (a JavaScript wrapper that retains that object) **stays an ivar of the façade,**
+   next to the `oo::Ref`. The category compiles unchanged, and the one-façade-per-object rule
+   keeps one wrapper per C++ object while the wrapper keeps its façade alive. It moves when the
+   category's file converts, and the façade's deletion bead depends on that file's bead.
+2. **A C++ helper in the header that took the Objective-C class** takes the C++ class
+   (`explicit OOShipGroupCursor(cxx::OOShipGroup *)`, holding `oo::Ref<cxx::X>`). A second,
+   transitional constructor from the façade (`explicit OOShipGroupCursor(OOShipGroup *)`, with
+   `@class OOShipGroup;` in the header) is defined in the bridge `.mm` as
+   `: OOShipGroupCursor(oo::ToCxx(group)) {}`, so unconverted callers compile unchanged; it goes
+   with the façade.
+3. **Code that read the ivars from inside the `@implementation`** (the cursor's `next()`, the
+   range-for's batch fill) becomes a `friend` of the C++ class. No accessor is added.

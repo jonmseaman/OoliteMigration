@@ -72,6 +72,7 @@ oolite_sources += files(
     'OORegExpMatcher.mm',
     'OORoleSet.mm',
     'OOShipGroup.mm',
+    'OOShipGroup+ObjCBridge.mm',
     'OOShipLibraryDescriptions.mm',
     'OOShipRegistry.mm',
     'OOSkyDrawable.mm',
