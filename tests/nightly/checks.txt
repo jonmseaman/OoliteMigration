@@ -23,6 +23,9 @@
 # Double-clicks timed by their SDL events (oo-3rb.333, G5/G8/G1 flake): three full GUI-tier sessions
 # in a row, the stability sweep that failed ~1 in 10 while a stalled poll split a double-click.
 [oo-3rb.333] for i in 1 2 3; do OO_GUI_REQUIRE=1 bash tools/gui-tier.sh || exit 1; done
+# G8's first confirm lands seconds after launch, when frame hitches are longest (oo-3rb.336 failed on the
+# first launch after a rebuild): G8 alone, five fresh launches, each one's row-22 confirm must arrive.
+[oo-3rb.336] for i in 1 2 3 4 5; do OO_GUI_REQUIRE=1 bash tools/gui-tier.sh upstream/oolite/tests/gui/test_g8_scenario_screen_back_out.py || exit 1; done
 
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
 # (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
