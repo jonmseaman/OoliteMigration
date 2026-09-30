@@ -225,6 +225,83 @@ converted intermediate class that still has Objective-C subclasses. An Objective
 one adapter object, and each façade call costs one `dynamic_cast`. The Phase 3 bead graph gains
 edges that order each superclass before its subclasses.
 
+## Amendment (bead oo-up4b): intermediate classes, subclass façades, and categories left in a file
+
+- Date: 2026-09-30. Status: Proposed, as above.
+- Exemplar: `src/Core/OXPVerifier/OOFileScannerVerifierStage.h/.mm` (`cxx::OOFileScannerVerifierStage`,
+  the intermediate `cxx::OOFileHandlingVerifierStage`), `OOFileScannerVerifierStage+ObjCBridge.h/.mm`
+  (their façades), `oo::ObjCStage<Base>` in `OOOXPVerifierStage+ObjCBridge.h`,
+  `tests/unit/core/test_OOFileScannerVerifierStage.mm`.
+
+**Context.** Amendment 1 left two defaults to this bead: the adapter template with the root
+façade's initialiser (its item 7), and the factory table for stages created by name (its item 6).
+The file also holds a class that the unconverted stages message by its own selectors
+(`OOFileScannerVerifierStage`, through the verifier's `-fileScannerStage`), and that category of
+the Objective-C verifier.
+
+**Decision (recommended defaults).**
+
+1. **The adapter is `oo::ObjCStage<Base>`,** in the root's bridge header. It derives from `Base`,
+   the C++ class of its Objective-C stage's nearest converted superclass, and from a non-template
+   `oo::ObjCStageLink`, which holds the owner and pure virtual `super…()` members. `ObjCStage`
+   implements each `superM()` as `Base::m()`. On an Objective-C stage, the root façade's method for
+   a virtual member calls `superM()` through the link, not the root's qualified `cxx::Root::m()`.
+   So a subclass that does not override a method, or calls `[super m]`, reaches the nearest C++
+   superclass's own member at any depth. This refines Amendment 1 item 3.
+   `oo::AsObjCStage(stage)` is the `dynamic_cast` to the link.
+2. **An intermediate class's façade** is `@interface Mid : Root`, with the old interface. Here that
+   interface is empty. It has no ivars, because the root's `_cxxStage` holds its C++ part. It
+   implements `-init` as
+   `[super initWithCxxStage:oo::makeRef<oo::ObjCStage<cxx::Mid>>(self).get()]`. The root façade's
+   `-initWithCxxStage:` becomes public for this, in the category `OOObjCBridge` of the root bridge
+   header. The Objective-C subclasses of `Mid` compile unchanged.
+3. **A converted class that callers message by its own selectors** is `cxx::X`. Its façade is
+   `@interface X : Root`, with the old interface, and it has no ivars. Each method forwards through
+   `oo::ToCxx(self)`. Typed `oo::ToObjC`/`oo::ToCxx` overloads `static_cast` to and from the root's.
+   The root's `oo::ToObjC` picks the façade class from the C++ class's name. For `cxx::X` it is the
+   Objective-C class `X`, if that class is a subclass of the root, and otherwise the root. Item 5
+   gives the two classes the same name, so a crossing gets the right façade however the pointer
+   is typed. A global C++ class has no façade, and Objective-C sees it as the root. On such a
+   façade, `[[X alloc] init]` makes a new C++ `X` and returns its façade, as a class cluster does.
+4. **A category of a class that is still Objective-C** moves from `X.mm` to `X+ObjCBridge.mm` if it
+   was in `X.mm`, and its declaration moves to `X+ObjCBridge.h`. The ObjC-syntax gate covers
+   `X.h/.mm`. Here that is `-[OOOXPVerifier fileScannerStage]`. A constant it needs becomes a
+   static member (`cxx::OOFileScannerVerifierStage::kName`). It is deleted with the bridge. If the
+   verifier converts first (oo-tsa4), it moves into the verifier instead.
+5. **The factory table** (Amendment 1 item 6) is not made here. No stage in this file is created by
+   name, because `verifyOXP.plist` lists only leaf stages. The first leaf bead adds the table to
+   `OOOXPVerifier.mm`, with the exact shape
+   `{ "OOCheckDemoShipsPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckDemoShipsPListVerifierStage>()); } }`.
+   The verifier looks up the table before `OOClassFromName` and registers
+   `oo::ToObjC(stage.get())`. The table is needed because a converted leaf is global and has no
+   Objective-C class, so `OOClassFromName` finds nothing.
+6. **Converting a leaf of `OOFileHandlingVerifierStage`** (oo-94qk, oo-kdnm, oo-uw42, oo-tuq8,
+   oo-z2wr, oo-si5w, oo-li7k) needs no bridge change, so each bead converts on its own.
+   - The leaf is a global class `: public cxx::OOFileHandlingVerifierStage` and declares its
+     overrides with `override`.
+   - It reaches the scanner as
+     `cxx::OOFileScannerVerifierStage *fileScanner = oo::ToCxx([verifier() fileScannerStage]);`
+     and calls its members (`fileExists`, `pathForFile`, `plistNamed`, …).
+   - It adds its line to the factory table (item 5).
+   - `OOTextureHandlingStage` (oo-tuq8) is itself an intermediate class with Objective-C
+     subclasses. It follows item 2 with `oo::ObjCStage<cxx::OOTextureHandlingStage>`.
+7. **The test replaces the Objective-C classes that it cannot link.** Here those are the verifier
+   and the resource manager, which reach the whole game. The test defines each class itself. The
+   verifier implements its full interface against the ivars in its header, so the scanner runs on
+   a real directory that the test writes. The test pins the answers through the Objective-C API
+   (44 checks, run on the unconverted classes first) and then checks the crossing:
+   - an Objective-C subclass of the intermediate class behind a C++ pointer;
+   - `[super dependents]`;
+   - a C++ subclass of it behind the façade;
+   - the scanner's own façade class, from either pointer type;
+   - identity, nil, and the adapter outliving its owner.
+
+**Consequences.** `OOFileScannerVerifierStage+ObjCBridge.*` is one more façade, with its own
+deletion bead. The root bridge's adapter is a template in a header, so every file that includes
+the stage headers sees it. Its method bodies are one message send each. Looking up the façade
+class costs one demangle and one class lookup when a façade is created, and nothing on later
+crossings while that façade lives.
+
 ## Amendment (bead oo-o89): platform (SDL/) code, and a subclass of an Objective-C class
 
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/SDL/OOSDLJoystickManager.h/.mm`,
