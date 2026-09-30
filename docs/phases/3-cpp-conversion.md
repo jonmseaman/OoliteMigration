@@ -130,7 +130,19 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
    (the game objects it links). Pin the pre-conversion answers: write them against the
    Objective-C API first, and run them on the unconverted class.
-9. **Check.**
+9. **Hierarchies** ([ADR-0056 Amendment 1](../decisions/0056-phase3-class-conversion-house-style.md#amendment-1-2026-09-30-bead-oo-cwz-class-hierarchies);
+   exemplar `src/Core/OXPVerifier/OOOXPVerifierStage.*` and `OOListUnusedFilesStage`).
+   - Superclass first: a subclass's bead depends on the bead that converts its superclass.
+   - Overridden methods become public `virtual` members; C++ overrides say `override`.
+   - The root's façade is also the base of the remaining Objective-C subclasses. Its `-init`
+     makes an adapter (`ObjCStage`) whose virtual members message the subclass;
+     `ToObjC(adapter)` is the subclass instance. A façade method for a virtual member calls the
+     base's member qualified (`_cxx->cxx::X::m()`) on an Objective-C subclass, and the virtual
+     member on a C++ object.
+   - A converted subclass with no outside caller is global and has no façade. Objective-C code
+     reaches it as the root's façade (`oo::ToObjC(sub.get())`). A class created by name from data
+     gets an explicit factory table.
+10. **Check.**
    - `! grep -nE '@implementation|@interface|@selector|@protocol' X.mm X.h`
    - `tools/build-windows.sh test`, with no new warning
    - `OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh` on `X.mm` and `X+ObjCBridge.mm`
@@ -156,4 +168,10 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   C++ `cxx::OOColor` in `OOColor.h/.mm`, Objective-C façade `OOColor+ObjCBridge.h/.mm` with
   identity kept by `oo::ObjCPeers`, unit test `tests/unit/core/test_OOColor.mm`
   (`tools/check-core-tests.sh`). No caller changed. Goldens: 2 blessed verified.
+- 2026-09-30 — Class hierarchies (bead oo-cwz, proposed ADR-0056 Amendment 1). The OXPVerifier
+  stage base is `cxx::OOOXPVerifierStage`, with virtual subclass responsibilities. Its façade
+  `OOOXPVerifierStage+ObjCBridge.*` is also the base of the Objective-C stages, through an
+  adapter. `OOListUnusedFilesStage` is the first C++ stage (global, no façade). Unit test:
+  `tests/unit/core/test_OOOXPVerifierStage.mm`. Stage beads now depend superclass-first: the
+  leaves on oo-up4b, ship data and model on oo-tuq8.
 - 2026-09-29 — `tools/gen-stories.py` sweep `slices` (bead oo-k7u5): one fleet story per slice of every checked plan, titled `Convert to C++20: <File>.mm, slice <id>`, depending on the module's pattern seam, the pre-split bead and (after the first) the plan's first slice. Acceptance is `tools/check-slice-plan.py --slice-done <id> <plan>` (nonzero while any of the slice's units is still Objective-C) + `tools/tier-a.sh` + guardrails. `--dry-run --phase 3 --sweep slices` lists them; a landed slice is not re-filed.
