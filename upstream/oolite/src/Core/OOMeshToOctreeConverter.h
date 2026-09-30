@@ -25,12 +25,19 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef OOMESHTOOCTREECONVERTER_H
+#define OOMESHTOOCTREECONVERTER_H
+
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
+#import "Octree.h"
+
+#include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
 
 
-@class ShipEntity, Octree;
+@class ShipEntity;
 
 
 enum
@@ -39,24 +46,42 @@ enum
 };
 
 
-@interface OOMeshToOctreeConverter: OOObject
+// (declared inside the Objective-C class's ivar block before bead oo-rsk8, which put it at file scope)
+struct OOMeshToOctreeConverterInternalData
 {
-@private
-	struct OOMeshToOctreeConverterInternalData
-	{
-		Triangle			*triangles;
-		uint32_t		count;
-		uint32_t		capacity;
-		uint32_t		pendingCapacity;
-		Triangle			smallData[kOOMeshToOctreeConverterSmallDataCapacity];
-	}					_data;
-}
+	Triangle			*triangles;
+	uint32_t		count;
+	uint32_t		capacity;
+	uint32_t		pendingCapacity;
+	Triangle			smallData[kOOMeshToOctreeConverterSmallDataCapacity];
+};
 
-- (id) initWithCapacity:(NSUInteger)capacity;
-+ (instancetype) converterWithCapacity:(NSUInteger)capacity;
 
-- (void) addTriangle:(Triangle)tri;
+namespace cxx {
 
-- (Octree *) findOctreeToDepth:(NSUInteger)depth;
+class OOMeshToOctreeConverter : public oo::RefCounted
+{
+public:
+	explicit OOMeshToOctreeConverter(NSUInteger capacity);	// -initWithCapacity:
+	static oo::Ref<OOMeshToOctreeConverter> converterWithCapacity(NSUInteger capacity);
+	~OOMeshToOctreeConverter() override;
 
-@end
+	void addTriangle(Triangle tri);
+
+	oo::Ref<Octree> findOctreeToDepth(NSUInteger depth);
+
+	// What "%@" prints between the braces of <OOMeshToOctreeConverter 0x...>{...} (OODescription.h).
+	std::optional<std::string> descriptionComponents() const;
+
+private:
+	struct OOMeshToOctreeConverterInternalData	_data = {};
+};
+
+}	// namespace cxx
+
+
+// Transitional: the Objective-C OOMeshToOctreeConverter, for callers not yet converted. Deleted,
+// with namespace cxx above, by the bridge's deletion bead.
+#import "OOMeshToOctreeConverter+ObjCBridge.h"
+
+#endif	// OOMESHTOOCTREECONVERTER_H
