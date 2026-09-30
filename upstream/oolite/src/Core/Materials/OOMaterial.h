@@ -108,7 +108,7 @@ public:
 	virtual void unapplyWithNext(OOMaterial *next);
 
 	/*	Call at top of an Objective-C subclass's -dealloc. A C++ material is not destroyed while it
-		is current (current() retains it), so no destructor calls this; the root's -dealloc body
+		is current (the current-material slot retains it), so no destructor calls this; the root's -dealloc body
 		that did is the facade's (proposed ADR-0056, amendment oo-smy).
 	*/
 	void willDealloc();
