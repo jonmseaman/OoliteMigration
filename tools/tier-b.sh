@@ -13,6 +13,7 @@
 #
 #   0 guardrails  9-16 s     tools/guardrails.sh -- CLAUDE.md rules 1, 2, 3, 8, offline
 #   1 build       13-22 s warm/incremental, ~142 s genuinely cold  (tools/build-windows.sh test)
+#   1b foundation ~13 s      tools/check-foundation-free.sh --stage source and --link (oo-qps.19)
 #   2 tests       ~12 s      offline module tests, 3 suites (2026-09-18). By 2026-09-29 they had
 #                            grown to tests/golden ~218 s + tools ~135 s + fleet ~25 s serial,
 #                            uncontended (bead oo-3rb.331); the suites and 8+6+1 shards now run
@@ -419,6 +420,29 @@ stage_build() {
   detail "stage build ok in $(( SECONDS - t0 ))s"
 }
 
+# ================================================================================================
+# STAGE 1b -- FOUNDATION-FREE (bead oo-qps.19, ADR-0055)
+# ================================================================================================
+# The absolute gate the deny-list cannot give (it is baseline-relative per changed file): no
+# Foundation name, bridge helper, Foundation import or gnustep-base build reference in unfenced
+# source, and the binary this run tests imports no gnustep-base DLL. Runs in --fast too, against
+# the shared build's binary.
+stage_foundation_free() {
+  local t0=$SECONDS log="$RUN_ROOT/foundation-free.log"
+  step foundation "tools/check-foundation-free.sh --stage source; --link $(native "$APP_DIR/oolite.exe")"
+  bash "$HERE/check-foundation-free.sh" --stage source > "$log" 2>&1 \
+    || { tail -30 "$log" >&2; fail foundation "Foundation left in unfenced source (the census above); full log $(native "$log")"; }
+  # POSITIVE EVIDENCE: the census scanned the tree and counted zero, rather than exiting 0 silently.
+  local census
+  census="$(grep -m1 '^== source stage: 0 finding(s) in [1-9]' "$log" || true)"
+  [ -n "$census" ] || fail foundation "the census printed no '0 finding(s) in N file(s)' line; $(native "$log")"
+  detail "${census#== }"
+  bash "$HERE/check-foundation-free.sh" --link "$APP_DIR/oolite.exe" >> "$log" 2>&1 \
+    || { tail -10 "$log" >&2; fail foundation "$(native "$APP_DIR/oolite.exe") imports gnustep-base; full log $(native "$log")"; }
+  detail "$(tail -1 "$log")"
+  detail "stage foundation ok in $(( SECONDS - t0 ))s"
+}
+
 # stage_mesa -- put MSYS2's Mesa llvmpipe beside the binary, as tests/golden/run.sh:130-139 and
 # upstream/oolite/tests/run_test_fn.sh:28-33 do.
 #
@@ -807,6 +831,7 @@ stage_corpus() {
 
 stage_guardrails
 stage_build
+stage_foundation_free
 stage_tests
 stage_environment_parity
 stage_goldens
