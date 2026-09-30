@@ -83,7 +83,6 @@ MA 02110-1301, USA.
 #ifndef NDEBUG
 
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"

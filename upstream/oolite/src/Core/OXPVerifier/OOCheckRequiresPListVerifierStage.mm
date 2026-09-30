@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 
 #import "OOFileScannerVerifierStage.h"
 #import "OOStringParsing.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/PListParsing.hpp"

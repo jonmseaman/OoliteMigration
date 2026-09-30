@@ -28,9 +28,9 @@ SOFTWARE.
 #import "OOSoundInternal.h"
 #import "OOLogging.h"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 namespace {
 // The sources that are playing, each once, retained (a Foundation mutable set before; sources

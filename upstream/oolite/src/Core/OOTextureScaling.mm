@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOMaths.h"
 #import "OOCPUInfo.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"

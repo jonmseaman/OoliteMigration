@@ -35,7 +35,6 @@ SOFTWARE.
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "SkyEntity.h"
-#import "OOFoundationBridge.h"
 #import "OOSunEntity.h"
 #import "OOPlanetEntity.h"
 #import "OODrawable.h"

@@ -11,7 +11,6 @@ This code is hereby placed in the public domain.
 
 
 
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -155,19 +154,6 @@ void OOWeakSet::removeObject(id object)
 	::OOWeakReference *weakObj = [object weakRetain];
 	std::erase_if(_objects, [weakObj](const auto &ref) { return ref.get() == weakObj; });
 	[weakObj release];
-}
-
-
-void OOWeakSet::addObjectsByEnumerating(id enumerator)
-{
-	id object = nil;
-	
-	compact();
-	
-	while ((object = [enumerator nextObject]))
-	{
-		addObject(object);
-	}
 }
 
 

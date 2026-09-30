@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 #import "OOJSSun.h"
 #import "OOJSEntity.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #import "OOSunEntity.h"
 
