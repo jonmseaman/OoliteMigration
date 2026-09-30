@@ -1335,3 +1335,33 @@ on the three subclass beads and on `OOMesh` and `OOMaterialConvenienceCreators`.
 changed shape (template adapter, façade-class walk) without any caller or test changing. Each
 subclass bead now converts on its own: it derives from `cxx::OOBasicMaterial`, calls
 `OOBasicMaterial::initWithName(…)` from its own initialiser, and gets its façade by name.
+
+## Amendment (bead oo-lh0x): a subclass that overrides a method the root made non-virtual
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMultiTextureMaterial.h/.mm`,
+  `apply()` in `OOMaterial.h` and the adapter in `OOMaterial+ObjCBridge.h`,
+  `tests/unit/core/test_OOMultiTextureMaterial.mm`.
+
+**Context.** Amendment 1 (oo-cwz) item 2 makes virtual only what a subclass overrides, and the
+Materials root (oo-smy) left `apply()` non-virtual because no converted class overrode it. The
+Objective-C `OOMultiTextureMaterial` did override `-apply`, which reached it by dynamic dispatch;
+once the subclass is C++ that override is only reached if the member is virtual.
+
+**Decision (recommended defaults).**
+
+1. **The subclass bead makes the root's member virtual** (a one-word edit to the root's header),
+   and adds it to the adapter like every other virtual member: the adapter's override messages the
+   Objective-C object, its `super…()` member calls `Base::m()`, and the root façade's method takes
+   the link's `super…()` for an Objective-C subclass instance and the virtual call otherwise. The
+   root's tests pass unchanged: an Objective-C material that does not override it reaches the base
+   member through the façade, as before.
+2. **A converted class's `[super m]`** is `Base::m()`, qualified, as for any other overridden member.
+3. **An initialiser whose `[super init…]` could not fail** keeps the statements that were guarded by
+   `if (self != nil)` in a plain block with a comment, so the body does not move.
+4. **A `cxx_init…` initialiser of an Objective-C class that converted code sends** is declared
+   `OO_RETURNS_RETAINED` in its header if it is not already (as `-[AI cxx_initWithStateMachine:…]`
+   is): the analyser, which follows the body once it is out of an `@implementation`, otherwise takes
+   the selector for a +0 getter and reports the `autorelease` that balances it.
+
+**Consequences.** The root gains one virtual member and one adapter pair per such override. The
+root's façade deletion bead is unaffected.
