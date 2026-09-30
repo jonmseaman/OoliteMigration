@@ -30,7 +30,11 @@ MA 02110-1301, USA.
 #import "OOALSoundMixer.h"
 #import "OOStringBridge.h"
 
-static OOOpenALController *sSingleton = nullptr;	// +1, never released (the retained singleton)
+namespace {
+
+OOOpenALController *sSingleton = nullptr;	// +1, never released (the retained singleton)
+
+}	// namespace
 
 
 OOOpenALController *OOOpenALController::sharedController()
@@ -53,7 +57,7 @@ bool OOOpenALController::init()
 		return false;
 	}
 
-	ALuint error;
+	ALuint error = AL_NO_ERROR;
 	device = alcOpenDevice(NULL); // default device
 	if (!device)
 	{
@@ -66,7 +70,8 @@ bool OOOpenALController::init()
 		OO_LOG(kOOLogSoundInitError, "{}", "Failed to create default sound context");
 		return false;
 	}
-	if ((error = alGetError()) != AL_NO_ERROR)
+	error = alGetError();	// out of the condition (clang-tidy bugprone-assignment-in-if-condition)
+	if (error != AL_NO_ERROR)
 	{
 		OO_LOG(kOOLogSoundInitError, "Error {} creating sound context", error);
 	}
