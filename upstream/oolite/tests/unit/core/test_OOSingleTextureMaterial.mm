@@ -8,7 +8,9 @@
 	conversion: which texture specifier each initialiser asks for and when it fails (no name, no
 	texture), the configuration reaching the basic material, the texture kept for the material's
 	life, what -doApply / -unapplyWithNext: do to the texture and the GL material, the loading and
-	cube-map questions it passes to the texture, and the description.
+	cube-map questions it passes to the texture, and the description. Those checks ran on the
+	Objective-C class first and now run through the facade. After them: the C++ API (null where an
+	initialiser answered nil), the facade's class and identity, and nil.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -285,6 +287,75 @@ OO_TEST(description)
 		OO_CHECK(text.starts_with("<OOSingleTextureMaterial 0x"));
 		OO_CHECK(text.ends_with(">{<TestTexture>}"));
 	}
+}
+
+
+// --- The C++ class and the facade (after the conversion) -----------------------------------------
+
+OO_TEST(cxxAPI)
+{
+	@autoreleasepool
+	{
+		OOTexture *texture = MakeTexture();
+		const oo::Ref<cxx::OOSingleTextureMaterial> m = cxx::OOSingleTextureMaterial::materialWithName(std::string("Cxx"), texture, oo::PList());
+		OO_CHECK(m != nullptr && m->name() == std::optional<std::string>("Cxx") && m->shininess() == 10);
+		OO_CHECK(m->descriptionComponents() == std::optional<std::string>("<TestTexture>"));
+		OO_CHECK(!m->isFinishedLoading() && !m->wantsNormalsAsTextureCoordinates());
+		texture->_cubeMap = YES;
+		OO_CHECK(m->wantsNormalsAsTextureCoordinates());
+#ifndef NDEBUG
+		OO_CHECK(m->allTextures().size() == 1 && m->allTextures()[0].get() == texture);
+#endif
+
+		OO_CHECK(cxx::OOSingleTextureMaterial::materialWithName(std::nullopt, texture, oo::PList()) == nullptr);
+		OO_CHECK(cxx::OOSingleTextureMaterial::materialWithName(std::string("Bare"), nil, oo::PList()) == nullptr);
+		OO_CHECK(cxx::OOSingleTextureMaterial::materialWithName(std::string("named.png"), oo::PList()) != nullptr);
+		OO_CHECK(cxx::OOSingleTextureMaterial::materialWithName(std::string("missing"), oo::PList()) == nullptr);
+
+		if (OOTestGLContext())
+		{
+			const int applies = texture->_applies, applyNones = gTextureApplyNones;
+			m->apply();
+			OO_CHECK(texture->_applies == applies + 1 && cxx::OOMaterial::current().get() == m.get());
+			cxx::OOMaterial::applyNone();	// told nothing comes next: no texture, then the default material
+			OO_CHECK(gTextureApplyNones == applyNones + 2);
+		}
+	}
+}
+
+
+OO_TEST(facade)
+{
+	@autoreleasepool
+	{
+		// [[OOSingleTextureMaterial alloc] initWith...] is a C++ material's facade.
+		OOSingleTextureMaterial *made = Make(std::string("Made"), MakeTexture());
+		cxx::OOSingleTextureMaterial *part = oo::ToCxx(made);
+		OO_CHECK(part != nullptr && oo::AsObjCMaterial(part) == nullptr);
+		OO_CHECK(oo::ToObjC(part) == made);
+		OO_CHECK(oo::ToCxx(static_cast<OOBasicMaterial *>(made)) == part && oo::ToCxx(static_cast<OOMaterial *>(made)) == part);
+
+		// A C++ material's facade is an OOSingleTextureMaterial, however the pointer is typed.
+		const oo::Ref<cxx::OOSingleTextureMaterial> m = cxx::OOSingleTextureMaterial::materialWithName(std::string("Cxx"), MakeTexture(), oo::PList());
+		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
+		OO_CHECK([facade isMemberOfClass:[OOSingleTextureMaterial class]]);
+		OO_CHECK(oo::ToObjC(m.get()) == facade && oo::ToObjC(static_cast<cxx::OOBasicMaterial *>(m.get())) == facade);
+		OO_CHECK([oo::ToObjC(m) shininess] == 10 && [facade cxx_name] == std::optional<std::string>("Cxx"));
+		const std::string text = oo::DescriptionOf(facade);
+		OO_CHECK(text.starts_with("<OOSingleTextureMaterial 0x") && text.ends_with(">{<TestTexture>}"));
+
+		// Plain -init: every field zero, as before.
+		OOSingleTextureMaterial *plain = [[[OOSingleTextureMaterial alloc] init] autorelease];
+		OO_CHECK(plain != nil && ![plain cxx_name].has_value() && ![plain isFinishedLoading]);
+	}
+}
+
+
+OO_TEST(nilCrossesAsNull)
+{
+	OOSingleTextureMaterial *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSingleTextureMaterial *>(nullptr)) == nil);
 }
 
 OO_TEST_MAIN()
