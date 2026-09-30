@@ -30,7 +30,7 @@ the largest fan-out phase and the least seam-bound, and it is the phase the meta
 
 | Seam | Produces (exemplar path) | Owner |
 |---|---|---|
-| `OOColor` conversion: the first class, establishes house style | `src/Core/OOColor.hpp/.cpp` | Frontier agent, days |
+| `OOColor` conversion: the first class, establishes house style | `src/Core/OOColor.h/.mm` + `OOColor+ObjCBridge.h/.mm`, `tests/unit/core/test_OOColor.mm` ([ADR-0056](../decisions/0056-phase3-class-conversion-house-style.md); done, oo-11m) | Frontier agent, days |
 | `Core/OXPVerifier` conversion (real class hierarchy pilot, 27 files, own test data) | `src/oxp/verifier/` | Frontier agent |
 | Per-module pattern for each of: `Materials`, `ooaudio`, `ooscript` bindings, `ooentity` base | one converted file per module | Frontier agent |
 | The six giant files (`ShipEntity` 14,945 · `PlayerEntity` 13,718 · `Universe` 11,297 · `PlayerEntityControls` 5,690 · `HeadUpDisplay` 4,497 · `OOJSShip` 4,399) | themselves | **Frontier agent, weeks each, category file by category file.** 200k+ token closures; not fleet work. |
@@ -94,6 +94,50 @@ Suggested order (dependency-driven, and it front-loads the pattern-setting work)
 
 Files are `.mm` throughout this phase; `.mm` → `.cpp` is Phase 4.
 
+### Converting a class: the house style ([ADR-0056](../decisions/0056-phase3-class-conversion-house-style.md))
+
+Exemplar: `src/Core/OOColor.h` / `OOColor.mm` (the class), `OOColor+ObjCBridge.h` / `.mm` (its
+façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what they do.
+
+1. **Files.** Keep `X.h` / `X.mm`: the C++ class is declared in `X.h`, defined in `X.mm`.
+2. **Shell.** `class X : public oo::RefCounted` (or the converted superclass). Ivars become
+   private members with the same names, `= {}`. Private-category methods become private members.
+3. **Names.** Member = the selector's first keyword (`colorWithRed:green:blue:alpha:` →
+   `colorWithRed(r, g, b, a)`); a shared first keyword → overloads; drop `cxx_`. Class methods →
+   `static`.
+4. **Types.** `X *` result → `oo::Ref<X>`; `X *` parameter → `X *`; `BOOL` → `bool`; Phase 2's
+   C++ types stay exactly (`std::optional<std::string>` included). No `const` except
+   `descriptionComponents() const`.
+5. **Bodies verbatim** but for message syntax. `[[X alloc] init]` → `oo::makeRef<X>()`;
+   `[[self retain] autorelease]` → `oo::Ref<X>(this)`. A message to something that may be nil →
+   a null-guarded call doing what nil did. An out-parameter nil left unwritten → zero-initialised.
+   `OOAssert`/`OOParameterAssert` → `OOCAssert`/`OOCParameterAssert`. A selector called by name →
+   an explicit table (`kNamedColors`). `-cxx_descriptionComponents` →
+   `descriptionComponents() const`.
+6. **Façade, while any file outside the bead still messages `X`.** The class is `cxx::X`.
+   - `X+ObjCBridge.h` holds the old `@interface` copied exactly, with one ivar
+     `oo::Ref<cxx::X>`. Each method forwards in one line.
+   - Crossings go through `oo::ToObjC(cxx::X *)` / `oo::ToCxx(X *)`. They keep one façade per
+     object through `oo::ObjCPeers`, and the façade's `-dealloc` forgets it.
+   - Import the bridge as the last line of `X.h`. Add `'X+ObjCBridge.mm'` after `'X.mm'` in
+     `meson.build`.
+   - File the deletion bead:
+     `bd create "Delete X+ObjCBridge" -l fleet,phase:3,sweep:objc-bridge`. It removes the bridge
+     files and moves `cxx::X` to the global namespace.
+   - With no outside caller, there is no façade and the class is global.
+7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
+   with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
+8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
+   (the game objects it links). Pin the pre-conversion answers: write them against the
+   Objective-C API first, and run them on the unconverted class.
+9. **Check.**
+   - `! grep -nE '@implementation|@interface|@selector|@protocol' X.mm X.h`
+   - `tools/build-windows.sh test`, with no new warning
+   - `OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh` on `X.mm` and `X+ObjCBridge.mm`
+   - `bash tools/check-core-tests.sh`
+   - `bash tools/tier-c.sh --only goldens` (`2 blessed verified`)
+   - `bash tools/guardrails.sh`
+
 ## Commands
 
 From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wrapper runs Tier B.
@@ -108,4 +152,8 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §8 (Phase 3) and AI_EXECUTION_PLAN §1, §6, §15.
 - 2026-09-29 — Slice-plan format and checker landed (`tools/check-slice-plan.py`, bead oo-4plo); first plan `3-slices/OOPListSchemaVerifier.md`. Plain-C free functions go in a checked `verbatim:` group and are never read by a slice (ADR-0012).
+- 2026-09-29 — `OOColor` converted as the house-style exemplar (bead oo-11m, proposed ADR-0056):
+  C++ `cxx::OOColor` in `OOColor.h/.mm`, Objective-C façade `OOColor+ObjCBridge.h/.mm` with
+  identity kept by `oo::ObjCPeers`, unit test `tests/unit/core/test_OOColor.mm`
+  (`tools/check-core-tests.sh`). No caller changed. Goldens: 2 blessed verified.
 - 2026-09-29 — `tools/gen-stories.py` sweep `slices` (bead oo-k7u5): one fleet story per slice of every checked plan, titled `Convert to C++20: <File>.mm, slice <id>`, depending on the module's pattern seam, the pre-split bead and (after the first) the plan's first slice. Acceptance is `tools/check-slice-plan.py --slice-done <id> <plan>` (nonzero while any of the slice's units is still Objective-C) + `tools/tier-a.sh` + guardrails. `--dry-run --phase 3 --sweep slices` lists them; a landed slice is not re-filed.

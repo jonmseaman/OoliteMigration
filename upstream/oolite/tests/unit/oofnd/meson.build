@@ -98,6 +98,7 @@ oofnd_objc_tests = [
     'test_objc_call_by_name',
     'test_objc_description',
     'test_objc_plist',
+    'test_objc_peer',
 ]
 
 foreach t : oofnd_objc_tests
