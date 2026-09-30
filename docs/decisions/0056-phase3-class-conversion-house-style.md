@@ -1027,6 +1027,32 @@ another file (`OONativeVector (OOJavaScriptConversion)` in `OOJavaScriptEngine.m
    an ivar, the read becomes the matching getter (`v` becomes `[self getVector]`): one line in the
    caller, and the category converts with its own file.
 
+## Amendment (bead oo-bgmb): a Mac-only class the fleet never compiled
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOFullScreenController.h/.mm`,
+  `tests/unit/core/test_OOFullScreenController.mm`.
+
+**Context.** `OOFullScreenController` is the abstract base of the Mac full-screen controllers. Its
+subclasses are Mac-only and are not in this tree; its only callers (`GameController`, under
+`OO_USE_FULLSCREEN_CONTROLLER`, which is `OOLITE_MAC_OS_X`) are never compiled here, and its `.mm`
+was not in the build at all. Only its header was compiled, for the display-mode key constants.
+ADR-0009 moves the macOS port after the runtime is gone, so the Mac platform layer is written again
+in C++ in Phase 5; nothing Objective-C has to keep working on the Mac.
+
+**Decision (recommended defaults).**
+
+1. **A platform-neutral class whose `.mm` the fleet did not compile joins the build** (one line in
+   its `meson.build`), so that its test can link the game's own object and the conversion is
+   checked like any other. Its first commit adds it with the test on the Objective-C class.
+2. **Callers that only the Mac compiles are not adapted.** They are Mac code that the fleet never
+   compiles (ADR-0043 item 18(b)); Phase 5 writes that layer again. Only what this build compiles
+   changes: a forward `@class X` in a compiled header becomes `class X;` (amendment oo-rdfh item 4).
+   The class has no façade (no compiled caller) and is global.
+3. **"Subclass responsibility" methods** (a body that logs `OOLogGenericSubclassResponsibility()`
+   and answers a default) become `virtual` with the same body, so the default still logs; they are
+   not pure virtual, because the base can still be made and asked. The test overrides them with a
+   C++ subclass where it had an Objective-C one.
+
 ## Amendment (bead oo-rmd7): a helper that adopts an Objective-C protocol, and a converted caller inside `namespace cxx`
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCacheManager.h/.mm`,
