@@ -403,6 +403,33 @@ bodies use the ivars on nearly every line.
    `[texture release]` in `-dealloc`) is an `oo::ObjCRef`. Where the Objective-C code overwrote the
    ivar without releasing the old object (a leak), the `oo::ObjCRef` assignment releases it; that
    is the only behaviour it changes.
+## Amendment (bead oo-fg7i): a failable initialiser, a registry of objects, a category's ivar
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOEquipmentType.h/.mm`,
+  `OOEquipmentType+ObjCBridge.h/.mm`, `tests/unit/core/test_OOEquipmentType.mm`.
+**Context.** `OOEquipmentType` is made by a failable `-initWithInfo:` (it releases `self` and
+returns nil for a bad entry), and it keeps class-level registries that own every type. Callers keep
+types unretained (`ShipEntity`'s weapon types and missile list), relying on the registries to keep
+them alive. A category in another file (`OOJSEquipmentInfo.mm`) reads and writes the ivar `_jsSelf`.
+**Decision (recommended defaults).**
+1. **A failable initialiser** becomes a private `bool initWithInfo(...)` whose body is the old
+   one, ending `return OK;` where it released `self`. A private static `createWithInfo(...)` runs
+   it on a new object (`oo::adopt(new X)`) and returns null when it fails. The constructor is
+   private and defaulted.
+2. **Registries become C++:** `std::vector<oo::Ref<X>>` and friends, in an anonymous namespace
+   inside `namespace cxx`, and the class methods that read them become `static` members.
+3. **The façade pins what the registries own.** A façade is otherwise held weakly, so a
+   registered type's façade would die with the autorelease pool and the callers' unretained
+   pointers would dangle. The bridge keeps `oo::ObjCRef`s to the façades of every registered
+   object, and the façade's class methods that change a registry (`+loadEquipment`,
+   `+cxx_addEquipmentWithInfo:`) re-pin after forwarding, dropping the old pins as the old
+   registry dropped its objects. Converted code that changes a registry directly leaves the new
+   objects unpinned until the next re-pin; the façade's deletion bead removes the pins.
+4. **An ivar a category in another file uses** (a JavaScript wrapper, `_jsSelf`) is the
+   Objective-C object's state, not the class's: it stays in the façade's ivar block, with the
+   method that exists to keep it from being reported unused.
+5. **Header imports.** `X.h` imports only what the C++ declaration needs; what the bodies need
+   (`Universe.h`, `OOScript.h`) moves to `X.mm`. That also lets the test define its own fake
+   `Universe` (amendment oo-8kx7 item 7).
 ## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
