@@ -238,6 +238,7 @@ oo::Ref<OOProbabilitySet> OOProbabilitySet::probabilitySetWithObjects(const oo::
 	if (objects == NULL || weights == NULL)
 	{
 		[OOException raise:OOInvalidArgumentException format:"Attempt to create %s with non-zero count but nil objects or weights.", "OOProbabilitySet"];
+		abort();	// unreachable: +raise:format: does not return (the analyser cannot see that through a message)
 	}
 
 	// Single object: simple one-object set. Expected to be quite common.
@@ -368,7 +369,7 @@ oo::PList OOEmptyProbabilitySet::randomObject()
 }
 
 
-float OOEmptyProbabilitySet::weightForObject(const oo::PList &object)
+float OOEmptyProbabilitySet::weightForObject(const oo::PList & /*object*/)
 {
 	return -1.0f;
 }
@@ -704,6 +705,7 @@ void OOConcreteMutableProbabilitySet::initWithObjects(const oo::PList *objects, 
 	if (count != 0 && (objects == NULL || weights == NULL))
 	{
 		[OOException raise:OOInvalidArgumentException format:"Attempt to create %s with non-zero count but nil objects or weights.", "OOMutableProbabilitySet"];
+		abort();	// unreachable: +raise:format: does not return (the analyser cannot see that through a message)
 	}
 
 	// Set up & go.
