@@ -280,12 +280,12 @@ OOINLINE void AddTriangle(GeometryData *data, Triangle tri)
 
 - (Octree *) findOctreeToDepth:(NSUInteger)depth
 {
-	OOOctreeBuilder *builder = [[[OOOctreeBuilder alloc] init] autorelease];
+	oo::Ref<OOOctreeBuilder> builder = oo::makeRef<OOOctreeBuilder>();
 	OOScalar halfWidth = 0.5f + MaxDimensionFromOrigin(&_data);	// pad out from geometry by a half meter
 	
-	BuildSubOctree(&_data, builder, halfWidth, depth);
+	BuildSubOctree(&_data, builder.get(), halfWidth, depth);
 	
-	return [builder buildOctreeWithRadius:halfWidth];
+	return oo::ToObjC(builder->buildOctreeWithRadius(halfWidth));
 }
 
 @end
@@ -318,14 +318,14 @@ void BuildSubOctree(GeometryData *data, OOOctreeBuilder *builder, OOScalar halfW
 	if (data->count == 0)
 	{
 		// No geometry here.
-		[builder writeEmpty];
+		builder->writeEmpty();
 		return;
 	}
 	
 	if (halfWidth <= OCTREE_MIN_HALF_WIDTH || depth <= 0)
 	{
 		// Maximum resolution reached and not full.
-		[builder writeSolid];
+		builder->writeSolid();
 		return;
 	}
 
@@ -419,7 +419,7 @@ void BuildSubOctree(GeometryData *data, OOOctreeBuilder *builder, OOScalar halfW
 	DestroyGeometryData(&g_xx0);
 	DestroyGeometryData(&g_xx1);
 	
-	[builder beginInnerNode];
+	builder->beginInnerNode();
 	depth--;
 	BuildSubOctree(&g_000, builder, subHalfWidth, depth);
 	BuildSubOctree(&g_001, builder, subHalfWidth, depth);
@@ -429,7 +429,7 @@ void BuildSubOctree(GeometryData *data, OOOctreeBuilder *builder, OOScalar halfW
 	BuildSubOctree(&g_101, builder, subHalfWidth, depth);
 	BuildSubOctree(&g_110, builder, subHalfWidth, depth);
 	BuildSubOctree(&g_111, builder, subHalfWidth, depth);
-	[builder endInnerNode];
+	builder->endInnerNode();
 	
 	DestroyGeometryData(&g_000);
 	DestroyGeometryData(&g_001);
