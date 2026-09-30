@@ -12,7 +12,9 @@
 	the material fails; which uniform each entry of the uniforms dictionary becomes (every type,
 	bindings and the whitelist, random values under the target's seed, gloss and gamma
 	defaults); the textures loaded or passed in; and -doApply, -unapplyWithNext:, the loading
-	questions, -setBindingTarget:, -permitSpecular and the description.
+	questions, -setBindingTarget:, -permitSpecular and the description. Those checks ran on the
+	Objective-C class first and now run through the facade. After them: the C++ API (null where the
+	initialiser answered nil), and the facade's class and identity.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -591,6 +593,69 @@ OO_TEST(lifetimeAndDescription)
 		// Specular is always permitted: the exponent applies.
 		OOShaderMaterial *shiny = Make(With(kSources, { { "specular_exponent", oo::PList(std::int64_t(20)) } }));
 		OO_CHECK([shiny shininess] == 20);
+	}
+}
+
+
+// --- The C++ class and the facade (after the conversion) -----------------------------------------
+
+OO_TEST(cxxAPI)
+{
+	if (!OOTestGLContext())  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(kSources));
+		OO_CHECK(!cxx::OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(oo::PList()));
+		OO_CHECK(cxx::OOShaderMaterial::shaderMaterialWithName(std::string("S"), oo::PList(), oo::PList(), nil) == nullptr);
+
+		gUniforms.clear();
+		const oo::Ref<cxx::OOShaderMaterial> m = cxx::OOShaderMaterial::shaderMaterialWithName(std::string("Cxx"), kSources, oo::PList(), nil);
+		OO_CHECK(m != nullptr && m->name() == std::optional<std::string>("Cxx") && m->permitSpecular());
+		OO_CHECK(gUniforms == (std::vector<std::string>{ "uGloss float 0.5", "uGammaCorrect float 1" }));
+
+		// The overloads each make the uniform the selector of their second keyword made.
+		gUniforms.clear();
+		m->setUniform("i", 7);
+		m->setUniform("f", 0.5f);
+		GLfloat v[4] = { 1, 2, 3, 4 };
+		m->setUniform("v", v);
+		m->setUniform("o", oo::PList(oo::PList::Array{ oo::PList(5.0), oo::PList(6.0), oo::PList(7.0), oo::PList(8.0) }));
+		m->setUniform("q", kIdentityQuaternion, false);
+		OO_CHECK(gUniforms == (std::vector<std::string>{ "i int 7", "f float 0.5", "v vector 1 2 3 4", "o vector 5 6 7 8", "q quaternion 1 0 0 0 vector" }));
+
+		const int programApplies = gProgramApplies;
+		m->apply();
+		OO_CHECK(gProgramApplies == programApplies + 1 && cxx::OOMaterial::current().get() == m.get());
+		const int programApplyNones = gProgramApplyNones;
+		cxx::OOMaterial::applyNone();
+		OO_CHECK(gProgramApplyNones == programApplyNones + 1);
+	}
+}
+
+
+OO_TEST(facade)
+{
+	if (!OOTestGLContext())  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OOShaderMaterial *made = Make(kSources);
+		cxx::OOShaderMaterial *part = oo::ToCxx(made);
+		OO_CHECK(part != nullptr && oo::AsObjCMaterial(part) == nullptr && oo::ToObjC(part) == made);
+		OO_CHECK(oo::ToCxx(static_cast<OOBasicMaterial *>(made)) == part);
+
+		OOShaderMaterial *factoryMade = [OOShaderMaterial shaderMaterialWithName:std::string("F") configuration:kSources macros:oo::PList() bindingTarget:nil];
+		OO_CHECK([factoryMade isMemberOfClass:[OOShaderMaterial class]] && oo::ToObjC(oo::ToCxx(factoryMade)) == factoryMade);
+
+		const oo::Ref<cxx::OOShaderMaterial> m = cxx::OOShaderMaterial::shaderMaterialWithName(std::string("Cxx"), kSources, oo::PList(), nil);
+		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
+		OO_CHECK([facade isMemberOfClass:[OOShaderMaterial class]] && oo::ToObjC(m) == facade);
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOShaderMaterial 0x"));
+
+		OOShaderMaterial *plain = [[[OOShaderMaterial alloc] init] autorelease];
+		OO_CHECK(plain != nil && [plain isFinishedLoading]);
+
+		OOShaderMaterial *none = nil;
+		OO_CHECK(oo::ToCxx(none) == nullptr && oo::ToObjC(static_cast<cxx::OOShaderMaterial *>(nullptr)) == nil);
 	}
 }
 

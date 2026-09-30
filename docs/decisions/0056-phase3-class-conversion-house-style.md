@@ -1365,3 +1365,28 @@ once the subclass is C++ that override is only reached if the member is virtual.
 
 **Consequences.** The root gains one virtual member and one adapter pair per such override. The
 root's façade deletion bead is unaffected.
+
+## Amendment (bead oo-ja7y): categories on the root that a class's header declares, and `self` as a value
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderMaterial.h/.mm`,
+  `OOShaderMaterial+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderMaterial.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Informal protocols declared in the class's header as categories of `OOObject`**
+   (`ShaderBindingHierarchy`, `OOShaderMaterialTargetOptional`), which other classes implement and
+   the class only asks about, move unchanged to the bridge header, as amendment oo-3kqi item 5
+   moves a category on an Objective-C root. The C declarations and constants of the header stay.
+   The body asks with `OOSelectorFromName("…")` (amendment oo-3lj8 item 2).
+2. **`self`'s address used as a value** (the random seed `(uint32_t)(uintptr_t)self` when the
+   binding target has none) becomes `this`'s. Either is an arbitrary heap address, so no answer
+   that could be pinned changes; the façade's address is not used, because a C++ object made by
+   its factory has no façade until something crosses.
+3. **A class's C++ uniform setters whose selectors share the first keyword** (`setUniform:intValue:`,
+   `…floatValue:`, `…vectorValue:`, `…vectorObjectValue:`, `…quaternionValue:asMatrix:`) are
+   overloads, each commented with its second keyword; the test checks that each makes what its
+   selector made.
+4. **`@try { … } @catch (id) {}` around messages** is `try { … } catch (...)` (amendment oo-ppc:
+   a C++ `catch (...)` catches an Objective-C exception). The handler is not left empty
+   (`bugprone-empty-catch`): it does in so many words what falling out of the empty `@catch` did,
+   here `return true;`, with a comment.

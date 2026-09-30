@@ -4,6 +4,11 @@ OOShaderMaterial.h
 
 Managers a combination of a shader program, textures and uniforms.
 
+C++20 since bead oo-ja7y (proposed ADR-0056, amendments oo-smy and oo-vl43). The class is
+cxx::OOShaderMaterial while OOShaderMaterial+ObjCBridge.h, imported at the end of this header,
+keeps the Objective-C OOShaderMaterial that its callers make and message, and the two informal
+protocols on OOObject; the bridge's deletion bead moves the class out of namespace cxx.
+
 
 Copyright (C) 2007-2013 Jens Ayton
 
@@ -27,6 +32,9 @@ SOFTWARE.
 
 */
 
+#ifndef OOSHADERMATERIAL_H
+#define OOSHADERMATERIAL_H
+
 #import "OOBasicMaterial.h"
 #import "OOWeakReference.h"
 #import "OOMaths.h"
@@ -36,6 +44,7 @@ SOFTWARE.
 #include <map>
 #include <optional>
 #include <string>
+#include <vector>
 
 
 #if OO_SHADERS
@@ -51,127 +60,143 @@ enum
 	kOOUniformConvertNormalize		= 0x0002U,
 	kOOUniformConvertToMatrix		= 0x0004U,
 	kOOUniformBindToSuperTarget		= 0x0008U,
-	
+
 	kOOUniformConvertDefaults		= kOOUniformConvertToMatrix | kOOUniformBindToSuperTarget
 };
 typedef uint16_t OOUniformConvertOptions;
 
 
-@interface OOShaderMaterial: OOBasicMaterial
+namespace cxx {
+
+class OOShaderMaterial : public OOBasicMaterial
 {
-@private
-	OOShaderProgram					*shaderProgram;
-	std::map<std::string, oo::ObjCRef<OOShaderUniform *>, std::less<>>	uniforms;	// by uniform name
-	
-	uint32_t						texCount;
-	OOTexture						**textures;
-	
-	OOWeakReference					*bindingTarget;
-}
+public:
+	~OOShaderMaterial() override;
 
-+ (BOOL)configurationDictionarySpecifiesShaderMaterial:(const oo::PList &)configuration;	// null -> NO
+	static bool configurationDictionarySpecifiesShaderMaterial(const oo::PList &configuration);	// null -> false
 
-/*	Set up an OOShaderMaterial.
-	
-	Configuration should be a dictionary equivalent to an entry in a
-	shipdata.plist "shaders" dictionary. Specifically, keys OOShaderMaterial
-	will look for are currently:
-		textures			array of texture file names.
-		vertex_shader		name of vertex shader file.
-		fragment_shader		name of fragment shader file.
-		uniforms			dictionary of uniforms. Values are either reals or
-							dictionaries containing:
-			type			"int", "texture" or "float"
-			value			number
-		gloss			gloss value of material, float between 0.0 and 1.0, defaults to 0.5
-	
-	Macros is a dictionary which is converted to macro definitions and
-	prepended to shader source code. It should be used to specify the
-	availability if uniforms you tend to register, and other macros such as
-	bug fix identifiers. For example, the
-	dictionary:
-		{ "OO_ENGINE_LEVEL" = 1; }
-	
-	will be transformed into:
-		#define OO_ENGINE_LEVEL 1
-*/
-+ (instancetype) shaderMaterialWithName:(const std::optional<std::string> &)name
-						  configuration:(const oo::PList &)configuration	// null = nil
-								 macros:(const oo::PList &)macros	// null = nil
-						  bindingTarget:(id<OOWeakReferenceSupport>)target;
+	/*	Set up an OOShaderMaterial.
 
-- (id) initWithName:(const std::optional<std::string> &)name
-	  configuration:(const oo::PList &)configuration	// null = nil
-			 macros:(const oo::PList &)macros	// null = nil
-	  bindingTarget:(id<OOWeakReferenceSupport>)target;
+		Configuration should be a dictionary equivalent to an entry in a
+		shipdata.plist "shaders" dictionary. Specifically, keys OOShaderMaterial
+		will look for are currently:
+			textures			array of texture file names.
+			vertex_shader		name of vertex shader file.
+			fragment_shader		name of fragment shader file.
+			uniforms			dictionary of uniforms. Values are either reals or
+								dictionaries containing:
+				type			"int", "texture" or "float"
+				value			number
+			gloss			gloss value of material, float between 0.0 and 1.0, defaults to 0.5
 
-/*	Bind a uniform to a property of an object.
-	
-	SelectorName should specify a method of source which returns the desired
-	value; it will be called every time -apply is, assuming uniformName is
-	used in the shader. (If not, OOShaderMaterial will not track the binding.)
-	
-	A bound method must not take any parameters, and must return one of the
-	following types:
-		* Any integer or float type.
-		* A number object.
-		* Vector.
-		* Quaternion.
-		* OOMatrix.
-		* OOColor.
-	
-	The "convert" flag has different meanings for different types:
-		* For int, float or a number object, it clamps to the range [0..1].
-		* For Vector, it normalizes.
-		* For Quaternion, it converts to a rotation matrix (instead of a vector).
-	
-	NOTE: this method *does not* check against the whitelist. See
-	-bindSafeUniform:toObject:propertyNamed:convertOptions: below.
-*/
-- (BOOL) bindUniform:(const std::string &)uniformName
-			toObject:(id<OOWeakReferenceSupport>)target
-			property:(SEL)selector
-	  convertOptions:(OOUniformConvertOptions)options;
+		Macros is a dictionary which is converted to macro definitions and
+		prepended to shader source code. It should be used to specify the
+		availability if uniforms you tend to register, and other macros such as
+		bug fix identifiers. For example, the
+		dictionary:
+			{ "OO_ENGINE_LEVEL" = 1; }
 
-/*	Bind a uniform to a property of an object.
-	
-	This is similar to -bindUniform:toObject:property:convertOptions:, except
-	that it checks against OOUniformBindingPermitted().
-*/
-- (BOOL) bindSafeUniform:(const std::string &)uniformName
-				toObject:(id<OOWeakReferenceSupport>)target
-		   propertyNamed:(const std::optional<std::string> &)property	// nullopt: no property (not bound)
-		  convertOptions:(OOUniformConvertOptions)options;
+		will be transformed into:
+			#define OO_ENGINE_LEVEL 1
 
-/*	Set a uniform value.
-*/
-- (void) setUniform:(const std::string &)uniformName intValue:(int)value;
-- (void) setUniform:(const std::string &)uniformName floatValue:(float)value;
-- (void) setUniform:(const std::string &)uniformName vectorValue:(GLfloat[4])value;
-- (void) setUniform:(const std::string &)uniformName vectorObjectValue:(const oo::PList &)value;	// Array of four numbers, or something that can be OOVectorFromObject()ed.
-- (void) setUniform:(const std::string &)uniformName quaternionValue:(Quaternion)value asMatrix:(BOOL)asMatrix;
+		Null where the initialiser failed (it answered nil).
+	*/
+	static oo::Ref<OOShaderMaterial> shaderMaterialWithName(const std::optional<std::string> &name,
+															const oo::PList &configuration,	// null = nil
+															const oo::PList &macros,	// null = nil
+															id<OOWeakReferenceSupport> target);
 
-/*	Add constant uniforms. Same format as uniforms dictionary of configuration
-	parameter to -initWithConfiguration:macros:. The target parameter is used
-	for bindings.
-	
-	Additionally, the target may implement the following method, used to seed
-	any random bindings:
-		- (uint32_t) randomSeedForShaders;
-*/
--(void) addUniformsFromDictionary:(const oo::PList &)uniformDefs withBindingTarget:(id<OOWeakReferenceSupport>)target;
+	// Runs once, right after construction (proposed ADR-0056, amendment oo-vl43); false where the
+	// Objective-C initialiser answered nil.
+	bool initWithName(const std::optional<std::string> &name,
+					  const oo::PList &configuration,	// null = nil
+					  const oo::PList &macros,	// null = nil
+					  id<OOWeakReferenceSupport> target);
 
-@end
+	/*	Bind a uniform to a property of an object.
 
+		SelectorName should specify a method of source which returns the desired
+		value; it will be called every time -apply is, assuming uniformName is
+		used in the shader. (If not, OOShaderMaterial will not track the binding.)
 
-@interface OOObject (ShaderBindingHierarchy)
+		A bound method must not take any parameters, and must return one of the
+		following types:
+			* Any integer or float type.
+			* A number object.
+			* Vector.
+			* Quaternion.
+			* OOMatrix.
+			* OOColor.
 
-/*	Informal protocol for objects to "forward" their shader bindings up a
-	hierarchy (for instance, subentities to parent entities).
-*/
-- (id<OOWeakReferenceSupport>) superShaderBindingTarget;
+		The "convert" flag has different meanings for different types:
+			* For int, float or a number object, it clamps to the range [0..1].
+			* For Vector, it normalizes.
+			* For Quaternion, it converts to a rotation matrix (instead of a vector).
 
-@end
+		NOTE: this method *does not* check against the whitelist. See
+		bindSafeUniform() below.
+	*/
+	bool bindUniform(const std::string &uniformName,
+					 id<OOWeakReferenceSupport> target,
+					 SEL selector,
+					 OOUniformConvertOptions options);
+
+	/*	Bind a uniform to a property of an object.
+
+		This is similar to bindUniform(), except
+		that it checks against OOUniformBindingPermitted().
+	*/
+	bool bindSafeUniform(const std::string &uniformName,
+						 id<OOWeakReferenceSupport> target,
+						 const std::optional<std::string> &property,	// nullopt: no property (not bound)
+						 OOUniformConvertOptions options);
+
+	/*	Set a uniform value. The five selectors share their first keyword, so they are overloads
+		(ADR-0056 item 3); the comment names each one's second keyword.
+	*/
+	void setUniform(const std::string &uniformName, int value);	// intValue:
+	void setUniform(const std::string &uniformName, float value);	// floatValue:
+	void setUniform(const std::string &uniformName, GLfloat value[4]);	// vectorValue:
+	void setUniform(const std::string &uniformName, const oo::PList &value);	// vectorObjectValue: Array of four numbers, or something that can be OOVectorFromObject()ed.
+	void setUniform(const std::string &uniformName, Quaternion value, bool asMatrix);	// quaternionValue:asMatrix:
+
+	/*	Add constant uniforms. Same format as uniforms dictionary of configuration
+		parameter to initWithName(). The target parameter is used
+		for bindings.
+
+		Additionally, the target may implement the following method, used to seed
+		any random bindings:
+			- (uint32_t) randomSeedForShaders;
+	*/
+	void addUniformsFromDictionary(const oo::PList &uniformDefs, id<OOWeakReferenceSupport> target);
+
+	bool doApply() override;
+	void ensureFinishedLoading() override;
+	bool isFinishedLoading() override;
+	void unapplyWithNext(OOMaterial *next) override;
+	void setBindingTarget(id<OOWeakReferenceSupport> target) override;
+	bool permitSpecular() override;
+#ifndef NDEBUG
+	std::vector<oo::ObjCRef<OOTexture *>> allTextures() override;
+#endif
+
+private:
+	// Convert a "textures" array (texture specifiers) to texture objects.
+	std::vector<oo::ObjCRef<OOTexture *>> loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max);
+
+	// Load up an array of texture objects.
+	void addTexturesFromArray(const std::vector<oo::ObjCRef<OOTexture *>> &textureObjects, GLuint max);
+
+	oo::ObjCRef<OOShaderProgram *>	shaderProgram = {};
+	std::map<std::string, oo::ObjCRef<OOShaderUniform *>, std::less<>>	uniforms = {};	// by uniform name
+
+	uint32_t						texCount = {};
+	OOTexture						**textures = {};
+
+	oo::ObjCRef<::OOWeakReference *>	bindingTarget = {};
+};
+
+}	// namespace cxx
 
 
 enum
@@ -186,18 +211,11 @@ enum
 
 
 /*	OOUniformBindingPermitted()
-	
+
 	Predicate determining whether a given property may be used as a binding.
 	Client code is responsible for implementing this.
 */
 BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget);
-
-
-@interface OOObject (OOShaderMaterialTargetOptional)
-
-- (uint32_t) randomSeedForShaders;
-
-@end
 
 
 // Material specifier dictionary keys.
@@ -211,4 +229,12 @@ inline constexpr const char *kOOUniformsKey					= "uniforms";
 inline constexpr const char *kOOIsSynthesizedMaterialConfigurationKey = "_oo_is_synthesized_config";
 inline constexpr const char *kOOIsSynthesizedMaterialMacrosKey = "_oo_synthesized_material_macros";
 
+
+// Transitional: the Objective-C OOShaderMaterial, and the informal protocols on OOObject that
+// shader binding targets implement, for callers not yet converted. Deleted, with namespace cxx
+// above, by the bridge's deletion bead.
+#import "OOShaderMaterial+ObjCBridge.h"
+
 #endif // OO_SHADERS
+
+#endif	// OOSHADERMATERIAL_H
