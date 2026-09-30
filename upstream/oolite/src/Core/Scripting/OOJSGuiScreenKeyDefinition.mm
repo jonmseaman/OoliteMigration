@@ -28,7 +28,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
-#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-6u8, the same way bead oo-sdz

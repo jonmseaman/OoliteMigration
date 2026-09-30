@@ -29,7 +29,6 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #import "unzip.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"

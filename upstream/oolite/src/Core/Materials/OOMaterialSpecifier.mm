@@ -29,7 +29,6 @@ SOFTWARE.
 #import "OOColor.h"
 #import "OOTexture.h"
 #import "Universe.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 
 

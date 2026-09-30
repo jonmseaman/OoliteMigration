@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OOGraphicsResetManager.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 
 
 #define PARTICLE_DISTANCE_SCALE_LOW		12.0

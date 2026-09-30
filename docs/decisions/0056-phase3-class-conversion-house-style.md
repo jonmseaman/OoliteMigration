@@ -1252,6 +1252,35 @@ whose selectors differ only after the first keyword but take the same argument t
 **Consequences.** One façade pair of files and one deletion bead per hierarchy. The façade's
 deletion bead depends on every caller's conversion bead.
 
+## Amendment (bead oo-94qk): a leaf stage that one Objective-C stage messages, and the stage table
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar:
+  `src/Core/OXPVerifier/OOAIStateMachineVerifierStage.h/.mm`, `kCxxStages` in `OOOXPVerifier.mm`,
+  `tests/unit/core/test_OOAIStateMachineVerifierStage.mm`.
+
+**Context.** `OOAIStateMachineVerifierStage` is a leaf of `OOFileHandlingVerifierStage` (amendment
+oo-up4b item 6), but one Objective-C stage, `OOCheckShipDataPListVerifierStage`, messages it by its
+own selectors: `+nameForReverseDependencyForVerifier:` and `-stateMachineNamed:usedByShip:`, on a
+stage it looks up by name and keeps unretained. Amendment oo-up4b item 3 would give it a façade
+for that one caller.
+
+**Decision (recommended defaults).**
+
+1. **A leaf with one Objective-C caller has no façade; the bead adapts the caller** (as amendment
+   oo-novu adapts `OOOctreeBuilder`'s few callers). The leaf is global. The caller calls its
+   `static` members directly, and holds the stage as a borrowed C++ pointer where it held the
+   Objective-C one: `static_cast<Leaf *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier
+   cxx_stageWithName:…])))`, since the verifier registered that name for that class only. A
+   message to it that could go to nil becomes a null-guarded call. The caller's own bead
+   (oo-1v2w) then holds it the same way.
+2. **The stage table is `constexpr`** (`constexpr CxxStage kCxxStages[]`, `{ name, make }`, with
+   `make` a captureless lambda), so clang-tidy's `bugprone-throwing-static-initialization` holds.
+   The verifier's `-registerBaseStages` looks it up before `OOClassFromName` and registers
+   `oo::ToObjC(entry.make().get())`. Each later leaf bead adds one line and includes its header.
+3. **The test captures the log** (`oo::log::logger().setInitialized(true)` and `setSink`), because
+   a verifier stage reports only there, and pins the lines the unconverted stage wrote,
+   indentation included.
+
 ## Amendment (bead oo-vl43): an intermediate class that adds virtual members, and initialisers that dispatch
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOBasicMaterial.h/.mm`,
