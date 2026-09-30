@@ -38,3 +38,11 @@ void InitOOJSSoundSource(ooscript::Context context, ooscript::Object global);
 #ifdef __cplusplus
 }
 #endif
+
+
+/*	The bodies of OOSoundSource (OOJavaScriptExtentions), which the engine reaches by selector.
+	Its methods are one-line forwarders to these in OOJSSoundSource+ObjCBridge.mm until
+	OOSoundSource converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+*/
+ooscript::Value OOJSSoundSourceJSValueInContext(OOSoundSource *source, ooscript::Context context);
+std::optional<std::string> OOJSSoundSourceJSClassName(void);
