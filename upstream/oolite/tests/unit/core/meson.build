@@ -19,6 +19,7 @@ core_tests = {
     'test_OOOpenGLMatrixManager': ['Core/OOOpenGLMatrixManager.mm', 'Core/OOOpenGLMatrixManager+ObjCBridge.mm', 'Core/OOMatrix.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOCharacter': ['Core/OOCharacter.mm', 'Core/OOCharacter+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOTrumble': ['Core/OOTrumble.mm', 'Core/OOTrumble+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
+    'test_OOCommodities': ['Core/OOCommodities.mm', 'Core/OOCommodities+ObjCBridge.mm', 'Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm', 'Core/legacy_random.c'],
     'test_OOCommodityMarket': ['Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm'],
     'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OORoleSet': ['Core/OORoleSet.mm', 'Core/OORoleSet+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
