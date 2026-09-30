@@ -73,6 +73,7 @@ SOFTWARE.
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
 #import "OOAIStateMachineVerifierStage.h"
+#import "OOCheckJSSyntaxVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -126,6 +127,7 @@ struct CxxStage
 constexpr CxxStage kCxxStages[] =
 {
 	{ "OOAIStateMachineVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOAIStateMachineVerifierStage>()); } },
+	{ "OOCheckJSSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckJSSyntaxVerifierStage>()); } },
 };
 
 
