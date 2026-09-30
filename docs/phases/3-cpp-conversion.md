@@ -125,6 +125,9 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      `bd create "Delete X+ObjCBridge" -l fleet,phase:3,sweep:objc-bridge`. It removes the bridge
      files and moves `cxx::X` to the global namespace.
    - With no outside caller, there is no façade and the class is global.
+   - **Client of an Objective-C registry that holds `id`s unretained** (ADR-0056 amendment
+     oo-4111; exemplar `src/Core/OOPolygonSprite.*`): the façade registers while it lives and
+     forwards the callback; the deletion bead waits for the registry's conversion.
    - **Superclass still Objective-C** (ADR-0056 amendment oo-o89; exemplar
      `src/SDL/OOSDLJoystickManager.*`): the façade keeps the old superclass, makes and owns the
      C++ object in `-init`, and forwards the overrides too. The C++ class reaches superclass
