@@ -58,8 +58,11 @@ flags=(-x objective-c++ -std=gnu++20 -O2 -Wall -DOOLITE_DEBUG=1 -D_FILE_OFFSET_B
        -D_NONFRAGILE_ABI=1 -fobjc-runtime=gnustep-2.2 -fblocks -ffp-contract=off -pthread)
 
 w="$(native "$WORK")"
-clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOConvertSystemDescriptions.mm" -o "$w/tools.o" || die "OOConvertSystemDescriptions.mm does not compile against the stubs"
-clang++ "${flags[@]}" "${inc[@]}" -c "$w/test_sysdesc_tools.mm" -o "$w/test.o" || die "the test does not compile"
+# Foundation's C types from Foundation, not from the game's Foundation-free floor header
+# (tests/unit/sysdesc/OOHarnessFoundation.h, bead oo-3rb.335).
+harness=(-include "$w/OOHarnessFoundation.h")
+clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/OOConvertSystemDescriptions.mm" -o "$w/tools.o" || die "OOConvertSystemDescriptions.mm does not compile against the stubs"
+clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/test_sysdesc_tools.mm" -o "$w/test.o" || die "the test does not compile"
 read -r -a libs <<< "$(gnustep-config --base-libs)"
 clang++ -fuse-ld=lld -o "$w/test_sysdesc_tools.exe" "$w/tools.o" "$w/test.o" "${libs[@]}"   || die "link failed"
 

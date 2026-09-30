@@ -64,8 +64,11 @@ flags=(-x objective-c++ -std=gnu++20 -O2 -Wall -DOOLITE_DEBUG=1 -D_FILE_OFFSET_B
 flags+=(-DOO_EXPANDER_TEST_SURFACE=1)
 
 w="$(native "$WORK")"
-clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
-clang++ "${flags[@]}" "${inc[@]}" -c "$w/test_string_expander.mm" -o "$w/test.o" || die "the test does not compile"
+# The two Foundation-using units get Foundation's C types from Foundation, not from the game's
+# Foundation-free floor header (tests/unit/expander/OOHarnessFoundation.h, bead oo-3rb.335).
+harness=(-include "$w/OOHarnessFoundation.h")
+clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
+clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/test_string_expander.mm" -o "$w/test.o" || die "the test does not compile"
 # The expander calls legacy queries and special keys by name (OOCallByName, ADR-0055 item 5) and raises
 # OOException, so those (with OODescription, for oo::DescriptionOf; and ICU, as oofnd's
 # meson dependency, for oo::str's normalisation) and the oofnd Objective-C runtime they stand on are compiled in (build plumbing,
