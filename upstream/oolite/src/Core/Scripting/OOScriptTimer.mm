@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 
-static OOPriorityQueue	*sTimers;	// +1, never released (a C++ queue since bead oo-3lj8)
+static OOPriorityQueue	*sTimers;
 
 // During an update, new timers must be deferred to avoid an infinite loop.
 static BOOL				sUpdating;
