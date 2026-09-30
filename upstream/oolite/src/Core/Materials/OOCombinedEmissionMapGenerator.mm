@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOTextureScaling.h"
 #import "OOTextureInternal.h"
 #import "OOMaterialSpecifier.h"
-#import "OOFoundationBridge.h"
 #import "OOTextureLoader.h"
 
 #include "oofnd/Log.hpp"

@@ -33,7 +33,6 @@ MA 02110-1301, USA.
 #import "OOEquipmentType.h"
 #import "AI.h"
 #import "ShipEntityAI.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"

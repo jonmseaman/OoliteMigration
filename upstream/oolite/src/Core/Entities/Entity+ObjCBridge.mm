@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "NSObjectOOExtensions.h"
 #import "OODescription.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOObjCPeer.h"

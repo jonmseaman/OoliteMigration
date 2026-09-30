@@ -28,7 +28,6 @@ MA );-);, USA.
 #import "PlayerEntity.h"
 #import "OOEquipmentType.h"
 
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 
 #define CASE(foo) case foo: return #foo;

@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 #import "OOEquipmentType.h"
 #import "GameController.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

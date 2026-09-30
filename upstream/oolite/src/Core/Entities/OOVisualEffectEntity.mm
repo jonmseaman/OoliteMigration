@@ -51,10 +51,11 @@ MA 02110-1301, USA.
 
 
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 @interface OOVisualEffectEntity (Private)
 

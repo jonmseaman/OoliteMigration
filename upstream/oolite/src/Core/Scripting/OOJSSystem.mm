@@ -35,7 +35,6 @@
 #import "PlayerEntityScriptMethods.h"
 #import "OOJSSystemInfo.h"
 
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #import "OOEntityFilterPredicate.h"
@@ -45,7 +44,8 @@
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOFoundationBridge.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead

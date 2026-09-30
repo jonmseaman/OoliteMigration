@@ -178,7 +178,7 @@ OO_TEST(facadeForwards)
 		OO_CHECK([red cxx_rgbaDescription] == std::optional<std::string>("{1, 0, 0, 1}"));
 		OO_CHECK(HasRGBA(oo::ToCxx([OOColor cxx_colorWithDescription:oo::PList(std::string("0 1 0"))]), 0, 1, 0, 1));
 		OO_CHECK([OOColor cxx_colorWithDescription:oo::PList(std::string("nonsense"))] == nil);
-		OO_CHECK([OOColor colorWithDescription:nil] == nil);
+		OO_CHECK([OOColor cxx_colorWithDescription:oo::PList()] == nil);
 		OO_CHECK(HasRGBA(oo::ToCxx([red blendedColorWithFraction:0.5f ofColor:[OOColor blueColor]]), 0.5f, 0, 0.5f, 1));
 
 		std::string text = oo::DescriptionOf(red);

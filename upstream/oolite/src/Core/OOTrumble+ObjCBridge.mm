@@ -126,7 +126,7 @@ cxx::OOTrumble *oo::ToCxx(OOTrumble *trumble)
 
 - (void) calcGrowthRate			{ _cxxTrumble->calcGrowthRate(); }
 
-- (unichar *)	digram			{ return _cxxTrumble->getDigram(); }
+- (uint16_t *)	digram			{ return _cxxTrumble->getDigram(); }
 - (NSPoint)		position		{ return _cxxTrumble->getPosition(); }
 - (NSPoint)		movement		{ return _cxxTrumble->getMovement(); }
 - (GLfloat)		rotation		{ return _cxxTrumble->getRotation(); }

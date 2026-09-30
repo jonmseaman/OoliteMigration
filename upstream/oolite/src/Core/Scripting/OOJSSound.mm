@@ -28,10 +28,10 @@ MA 02110-1301, USA.
 #import "OOMusicController.h"
 #import "ResourceManager.h"
 #import "Universe.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead

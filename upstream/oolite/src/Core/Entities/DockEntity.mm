@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 #import "DockEntity.h"
 #import "StationEntity.h"
 #import "ShipEntityAI.h"
-#import "OOPListView.h"
 #import "OOStringParsing.h"
 #import "OOStringExpander.h"
 
@@ -44,9 +43,9 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/PListWriting.hpp"
+#include "oofnd/String.hpp"
 
 
 namespace

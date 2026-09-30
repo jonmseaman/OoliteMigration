@@ -35,7 +35,6 @@ SOFTWARE.
 #import "OORegExpMatcher.h"
 #import "OOConstToString.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"

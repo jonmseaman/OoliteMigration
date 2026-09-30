@@ -31,10 +31,10 @@ MA 02110-1301, USA.
 #import "HeadUpDisplay.h"
 #import "OOOpenGL.h"
 #import "OOMacroOpenGL.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
+#include "oofnd/String.hpp"
 
 #define OOWAYPOINT_KEY_POSITION		"position"
 #define OOWAYPOINT_KEY_ORIENTATION	"orientation"

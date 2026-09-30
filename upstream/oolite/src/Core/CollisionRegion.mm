@@ -33,7 +33,6 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "OODebugFlags.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 

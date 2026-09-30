@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "OOJSVisualEffect.h"
 #import "WormholeEntity.h"
 #import "OOJSWormhole.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Notification.hpp"
 
 
