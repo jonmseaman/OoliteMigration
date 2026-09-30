@@ -224,9 +224,12 @@ def exit_row_dispatch():
     """
     body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
     row_zero = _start_screen_row_zero(body)
+    # Either spelling of the exit call: the ObjC -exitAppWithContext:@"..." or the C++
+    # -cxx_exitAppWithContext:"..." it became in Phase 2 (oo-6abg). Jon approved accepting
+    # both, 2026-09-29 (bead oo-3rb.332).
     branch = re.search(
         r"\[gui selectedRow\]\s*==\s*(\d+)\s*\+\s*row_zero\s*\)\s*\{\s*"
-        r"\[\[UNIVERSE gameController\] exitAppWithContext:@\"([^\"]+)\"\]",
+        r"\[\[UNIVERSE gameController\] (?:exitAppWithContext:@|cxx_exitAppWithContext:)\"([^\"]+)\"\]",
         body,
     )
     assert branch, (

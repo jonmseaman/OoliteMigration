@@ -1038,11 +1038,17 @@ def test_the_surface_log_line_spells_the_mode():
     assert os.path.isfile(view), f"no MyOpenGLView.m at {view}"
     with open(view, "r", encoding="utf-8", errors="replace") as handle:
         source = handle.read()
-    assert "Requested a new surface of %d x %d, %@." in source, (
+    # Either spelling of the same log line: the ObjC OOLog format "...%d x %d, %@." with
+    # @"fullscreen" : @"windowed", or the C++ OO_LOG format "...{} x {}, {}." with
+    # "fullscreen" : "windowed" it became in Phase 2 (oo-je2b). Jon approved accepting both,
+    # 2026-09-29 (bead oo-3rb.332).
+    assert ("Requested a new surface of %d x %d, %@." in source
+            or "Requested a new surface of {} x {}, {}." in source), (
         "the surface log line has been reworded; both this file's fullscreen witness and "
         "conftest.assert_splash_screen_is_off match on it"
     )
-    assert '@"fullscreen" : @"windowed"' in source.replace("? ", "").replace(" :", " :"), (
+    assert ('@"fullscreen" : @"windowed"' in source.replace("? ", "").replace(" :", " :")
+            or '"fullscreen" : "windowed"' in source.replace("? ", "").replace(" :", " :")), (
         "the mode in the surface line is no longer spelled 'fullscreen'/'windowed'; the "
         "fullscreen witness would match nothing"
     )
