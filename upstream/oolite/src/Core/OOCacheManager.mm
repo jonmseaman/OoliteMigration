@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 #import "OOCacheManager.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -178,21 +177,6 @@ oo::PList OOCacheManager::pListForKey(const std::string &inKey, const std::strin
 	}
 	
 	return result;
-}
-
-
-id OOCacheManager::objectForKey(const std::string &inKey, const std::string &inCacheKey)
-{
-	return oo::ObjectFromPList(pListForKey(inKey, inCacheKey));
-}
-
-
-
-void OOCacheManager::setObject(id inObject, const std::string &inKey, const std::string &inCacheKey)
-{
-	OOCParameterAssert(inObject != nil);
-	
-	setPList(oo::PListFrom(inObject), inKey, inCacheKey);
 }
 
 

@@ -53,8 +53,6 @@ MA 02110-1301, USA.
 #import "OOSystemDescriptionManager.h"
 #import "OOEntityFilterPredicate.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #import "OOCallByName.h"
 #import "MyOpenGLView+Input.h"
 
@@ -63,6 +61,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/PListWriting.hpp"
+#import "OOObjCPList.h"
 
 
 static const char *const kOOLogScriptAddShipsFailed			= "script.addShips.failed";
