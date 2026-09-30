@@ -36,8 +36,10 @@
 #     tier-b 165-295 + jsapi 1 + asan 135 + goldens 90-300 + corpus 660-790 + gui 120 + fleet 5
 #     =  1176 s (19.6 min) best case  ..  1646 s (27.4 min) worst case.
 #
-# Budget is 2400 s (40 min). That is deliberate: Tier C runs on a MERGE, not on a commit, so the
-# thing it must not do is miss a defect, and the thing Tier B must not do is be slow.
+# Budget is 3000 s (50 min). That is deliberate: Tier C runs on a MERGE, not on a commit, so the
+# thing it must not do is miss a defect, and the thing Tier B must not do is be slow. It was 2400 s
+# until the measured stages outgrew the projection above (ADR-0057, 2026-09-30: tier-b ~1360 +
+# asan 566 + corpus 436 + gui ~125 + goldens 34 + jsapi 5 + fleetdata 2 = ~2530 s, all green).
 #
 # ------------------------------------------------------------------------------------------------
 # WHY THE STORED ACCEPTANCE BLOCK DOES NOT RUN THIS, AND WHY THAT IS CORRECT
@@ -107,7 +109,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/.." && pwd)"
 OOLITE="$REPO_ROOT/upstream/oolite"
 PLATFORM="${OOLITE_TIER_C_PLATFORM:-windows-x64}"
-BUDGET_SECONDS="${OOLITE_TIER_C_BUDGET:-2400}"
+BUDGET_SECONDS="${OOLITE_TIER_C_BUDGET:-3000}"   # ADR-0057 (was 2400 s)
 
 native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
 REPO_NATIVE="$(native "$REPO_ROOT")"
@@ -467,7 +469,7 @@ stage_jsapi() {
 #   sanitized binary            31,074,304 bytes vs 10,079,232 unsanitized, and it IMPORTS
 #                               libclang_rt.asan_dynamic-x86_64.dll
 #   sanitized Oolite run        reaches [startup.complete] in 38.96-40.07 s, against ~4-14 s
-#                               unsanitized: a 3-10x slowdown, which is why the budget is 2400 s
+#                               unsanitized: a 3-10x slowdown, which is why the budget is 3000 s (ADR-0057)
 #
 # THE TWO REPORTS SEEN ON THE FIRST RUN WERE NOT OOLITE DEFECTS, and reporting them as such would
 # have been a serious false positive:

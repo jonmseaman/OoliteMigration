@@ -168,7 +168,10 @@ def test_the_refusal_is_loud_not_a_silent_clamp(source, witness):
     assert "fmax(" not in body, (
         "the kShip_speed setter clamps with fmax() in CODE; this seam refuses out-of-range values "
         "instead of silently rewriting them - see the comment above the case for why")
-    assert 'OOJSReportError(context, @"ship.speed must be a number >= 0.")' in body, (
+    # Either spelling of the same refusal: the ObjC call, or the C++ call it became in Phase 2
+    # (oo-vp0y.1). Jon approved accepting both, 2026-09-29 (bead oo-ttngu).
+    assert ('OOJSReportError(context, @"ship.speed must be a number >= 0.")' in body
+            or 'cxx_OOJSReportError(context, "ship.speed must be a number >= 0.")' in body), (
         "the refusal is not raised from the setter's own code; only its comment mentions it")
 
 
