@@ -74,7 +74,7 @@ MA 02110-1301, USA.
 		[self setStatus:STATUS_EFFECT];
 		[self setScanClass:CLASS_NO_DRAW];
 		
-		isImmuneToBreakPatternHide = YES;
+		_cxxEntity->isImmuneToBreakPatternHide = YES;
 	}
 	
 	return self;
@@ -129,7 +129,7 @@ MA 02110-1301, USA.
 - (void) drawImmediate:(bool)immediate translucent:(bool)translucent
 {
 	// check if has been hidden.
-	if (!isImmuneToBreakPatternHide) return;
+	if (!_cxxEntity->isImmuneToBreakPatternHide) return;
 	
 	if (translucent || immediate)
 	{

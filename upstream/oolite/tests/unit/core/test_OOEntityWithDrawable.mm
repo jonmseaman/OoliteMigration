@@ -81,10 +81,10 @@ namespace {
 
 // --- Ivars the game reads directly (ent->no_draw_distance), and nothing else ----------------------
 
-GLfloat NoDrawDistance(Entity *e)					{ return e->no_draw_distance; }
+GLfloat NoDrawDistance(Entity *e)					{ return e->_cxxEntity->no_draw_distance; }
 BoundingBox EntityBoundingBox(Entity *e)			{ return [e boundingBox]; }
-void SetSubEntity(Entity *e, bool value)			{ e->isSubEntity = value; }
-void SetCamZeroDistance(Entity *e, GLfloat value)	{ e->cam_zero_distance = value; }
+void SetSubEntity(Entity *e, bool value)			{ e->_cxxEntity->isSubEntity = value; }
+void SetCamZeroDistance(Entity *e, GLfloat value)	{ e->_cxxEntity->cam_zero_distance = value; }
 
 // --------------------------------------------------------------------------------------------------
 

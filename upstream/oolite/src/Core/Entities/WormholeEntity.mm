@@ -65,10 +65,10 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	{
 		witch_mass = 0.0;
 		shipsInTransit.reserve(4);
-		collision_radius = 0.0;
+		_cxxEntity->collision_radius = 0.0;
 		[self setStatus:STATUS_EFFECT];
-		scanClass = CLASS_WORMHOLE;
-		isWormhole = YES;
+		_cxxEntity->scanClass = CLASS_WORMHOLE;
+		_cxxEntity->isWormhole = YES;
 		scan_info = WH_SCANINFO_NONE;
 		scan_time = 0;
 		hasExitPosition = NO;
@@ -120,7 +120,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 			// Since this is new for 1.75.1, we must give it a default values as we could be loading an old savegame
 			estimated_arrival_time = dict.get<double>("estimated_arrival_time", arrival_time);
 			const oo::PList *positionNode = dict.find("position");
-			position = OOHPVectorFromPList(positionNode, kZeroHPVector);	// what PListView's get<HPVector> called
+			_cxxEntity->position = OOHPVectorFromPList(positionNode, kZeroHPVector);	// what PListView's get<HPVector> called
 			_misjump = dict.get<bool>("misjump", NO);
 		
 		
@@ -181,7 +181,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 		else
 			shrink_factor = 1;
 			
-		collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
+		_cxxEntity->collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
 		expiry_time = now + (witch_mass / WORMHOLE_SHRINK_RATE / shrink_factor);
 		travel_time = (distance * distance * 3600); // Taken from PlayerEntity.h
 		arrival_time = now + travel_time;
@@ -196,8 +196,8 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 		{
 			expiry_time = arrival_time - 1.0; 
 		}
-		position = [ship position];
-		zero_distance = HPdistance2([PLAYER position], position);
+		_cxxEntity->position = [ship position];
+		_cxxEntity->zero_distance = HPdistance2([PLAYER position], _cxxEntity->position);
 	}	
 	return self;
 }
@@ -283,7 +283,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	// MKW 2010.11.18 - calculate time it takes for ship to reach wormhole
 	// This is for AI ships which get told to enter the wormhole even though they
 	// may still be some distance from it when the player exits the system
-	float d = HPdistance(position, [ship position]);
+	float d = HPdistance(_cxxEntity->position, [ship position]);
 	d -= [ship collisionRadius] + [self collisionRadius];
 	if (d > 0.0f)
 	{
@@ -317,7 +317,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 		expiry_time = arrival_time - 1.0; 
 	}
 
-	collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
+	_cxxEntity->collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
 	
 	[UNIVERSE addWitchspaceJumpEffectForShip:ship];
 	
@@ -371,7 +371,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 			// Only calculate exit position once so that all ships arrive from the same point
 			if (!hasExitPosition)
 			{
-				position = [UNIVERSE getWitchspaceExitPosition];	// no need to reset PRNG.
+				_cxxEntity->position = [UNIVERSE getWitchspaceExitPosition];	// no need to reset PRNG.
 				GLfloat min_d1 = [UNIVERSE safeWitchspaceExitDistance];
 				Quaternion	q1;
 				quaternion_set_random(&q1);
@@ -387,9 +387,9 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 				{
 					d1 += ((d1 > 0.0)? min_d1: -min_d1);
 				}
-				position.x += v1.x * d1; // randomise exit position
-				position.y += v1.y * d1;
-				position.z += v1.z * d1;
+				_cxxEntity->position.x += v1.x * d1; // randomise exit position
+				_cxxEntity->position.y += v1.y * d1;
+				_cxxEntity->position.z += v1.z * d1;
 			}
 			
 			if (hasExitPosition && (!containsPlayer || useExitXYScatter))
@@ -402,9 +402,9 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 // helps avoid collisions when two ships enter wormhole at same time
 				double offset_x = randf()*150.0-75.0;
 				double offset_y = randf()*150.0-75.0;
-				shippos.x = position.x + (offset_x*exit_vector_x.x)+(offset_y*exit_vector_y.x);
-				shippos.y = position.y + (offset_x*exit_vector_x.y)+(offset_y*exit_vector_y.y);
-				shippos.z = position.z + (offset_x*exit_vector_x.z)+(offset_y*exit_vector_y.z);
+				shippos.x = _cxxEntity->position.x + (offset_x*exit_vector_x.x)+(offset_y*exit_vector_y.x);
+				shippos.y = _cxxEntity->position.y + (offset_x*exit_vector_x.y)+(offset_y*exit_vector_y.y);
+				shippos.z = _cxxEntity->position.z + (offset_x*exit_vector_x.z)+(offset_y*exit_vector_y.z);
 				[ship setPosition:shippos];
 			}
 			else
@@ -416,7 +416,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 					[PLAYER setSpeed:exit_speed];
 				}
 				useExitXYScatter = YES;
-				[ship setPosition:position];
+				[ship setPosition:_cxxEntity->position];
 			}
 
 			if (shipBeacon)
@@ -462,7 +462,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 				hasExitPosition = YES;
 				hasShiftedExitPosition = YES; // exitPosition is shifted towards the lead ship update position.
 				[ship update: time_passed]; // do this only for one ship or the next ships might appear at very different locations.
-				position = [ship position]; // e.g. when the player docks first before following, time_passed is already > 10 minutes.
+				_cxxEntity->position = [ship position]; // e.g. when the player docks first before following, time_passed is already > 10 minutes.
 			}
 			else if (time_passed > 1) // Only update the ship position if it was some time ago, otherwise we're in 'real time'.
 			{
@@ -486,7 +486,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	{
 		// ships exiting the wormhole after now are following the player
 		// so appear behind them
-		position = HPvector_add([PLAYER position], vectorToHPVector(vector_multiply_scalar([PLAYER forwardVector], -500.0f)));
+		_cxxEntity->position = HPvector_add([PLAYER position], vectorToHPVector(vector_multiply_scalar([PLAYER forwardVector], -500.0f)));
 		containsPlayer = NO;
 	}
 // else, the wormhole doesn't now (or never) contained the player, so
@@ -676,7 +676,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	
 	PlayerEntity	*player = PLAYER;
 	assert(player != nil);
-	rotMatrix = OOMatrixForBillboard(position, [player viewpointPosition]);
+	_cxxEntity->rotMatrix = OOMatrixForBillboard(_cxxEntity->position, [player viewpointPosition]);
 	double now = [player clockTimeAdjusted];
 	
 	if (witch_mass > 0.0)
@@ -684,15 +684,15 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 
 		witch_mass -= WORMHOLE_SHRINK_RATE * delta_t * shrink_factor;
 		witch_mass = fmax(witch_mass, 0.0);
-		collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
-		no_draw_distance = collision_radius * collision_radius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;
+		_cxxEntity->collision_radius = 0.5 * M_PI * pow(witch_mass, 1.0/3.0);
+		_cxxEntity->no_draw_distance = _cxxEntity->collision_radius * _cxxEntity->collision_radius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;
 	}
 
-	scanClass = (witch_mass > 0.0)? CLASS_WORMHOLE : CLASS_NO_DRAW;
+	_cxxEntity->scanClass = (witch_mass > 0.0)? CLASS_WORMHOLE : CLASS_NO_DRAW;
 	
 	if (now > expiry_time)
 	{
-		scanClass = CLASS_NO_DRAW; // witch_mass not certain to be limiting factor on extremely short jumps, so make sure now
+		_cxxEntity->scanClass = CLASS_NO_DRAW; // witch_mass not certain to be limiting factor on extremely short jumps, so make sure now
 
 		// If we're a saved wormhole waiting to disgorge more ships, it's safe
 		// to remove self from UNIVERSE, but we need the current position!
@@ -706,13 +706,13 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	if ([UNIVERSE breakPatternHide])
 		return;		// DON'T DRAW DURING BREAK PATTERN
 	
-	if (cam_zero_distance > no_draw_distance)
+	if (_cxxEntity->cam_zero_distance > _cxxEntity->no_draw_distance)
 		return;	// TOO FAR AWAY TO SEE
 		
 	if (witch_mass <= 0.0)
 		return;
 	
-	if (collision_radius <= 0.0)
+	if (_cxxEntity->collision_radius <= 0.0)
 		return;
 	
 	if ([self scanClass] == CLASS_NO_DRAW)
@@ -721,7 +721,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	if (translucent)
 	{
 		// for now, a simple copy of the energy bomb draw routine
-		float srzd = sqrt(cam_zero_distance);
+		float srzd = sqrt(_cxxEntity->cam_zero_distance);
 		
 		GLfloat	color_fv[4] = OO_WORMHOLE_COLOR_FVEC4;
 		
@@ -731,11 +731,11 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 		
 		OOGL(glColor4fv(color_fv));
 		OOGLBEGIN(GL_TRIANGLE_FAN);
-			GLDrawBallBillboard(0.45 * collision_radius, 4, srzd);
+			GLDrawBallBillboard(0.45 * _cxxEntity->collision_radius, 4, srzd);
 		OOGLEND();
 				
 		color_fv[3] = fmin(color_fv[3] * 2.0, 1.0);
-		DrawWormholeCorona(0.45 * collision_radius, collision_radius, 4, srzd, color_fv);
+		DrawWormholeCorona(0.45 * _cxxEntity->collision_radius, _cxxEntity->collision_radius, 4, srzd, color_fv);
 					
 		OOGL(glEnable(GL_CULL_FACE));
 		OOGL(glDisable(GL_BLEND));
@@ -821,7 +821,7 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	myDict["expiry_time"] = oo::PList(expiry_time);
 	myDict["arrival_time"] = oo::PList(arrival_time);
 	myDict["estimated_arrival_time"] = oo::PList(estimated_arrival_time);
-	myDict["position"] = OOPListFromHPVector(position);	// -oo_setHPVector:
+	myDict["position"] = OOPListFromHPVector(_cxxEntity->position);	// -oo_setHPVector:
 	myDict["misjump"] = oo::PList(static_cast<bool>(_misjump));
 	
 	oo::PList::Array shipArray;

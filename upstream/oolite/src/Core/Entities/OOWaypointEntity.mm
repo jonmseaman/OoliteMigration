@@ -57,7 +57,7 @@ MA 02110-1301, USA.
 
 	// A nil dictionary read zero-filled values and nil strings (messaging nil), not the defaults.
 	oriented = YES;
-	position = info ? OOHPVectorFromPList(info.find(OOWAYPOINT_KEY_POSITION), kZeroHPVector) : kZeroHPVector;
+	_cxxEntity->position = info ? OOHPVectorFromPList(info.find(OOWAYPOINT_KEY_POSITION), kZeroHPVector) : kZeroHPVector;
 	Quaternion q = info ? OOQuaternionFromPList(info.find(OOWAYPOINT_KEY_ORIENTATION), kIdentityQuaternion) : (Quaternion){ 0, 0, 0, 0 };
 	[self setOrientation:q];
 	[self setSize:info.get<oo::NonNegative<float>>(OOWAYPOINT_KEY_SIZE, 1000.0)];
@@ -111,7 +111,7 @@ MA 02110-1301, USA.
 	if (newSize > 0)
 	{
 		_size = newSize;
-		no_draw_distance = newSize * newSize * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2;
+		_cxxEntity->no_draw_distance = newSize * newSize * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2;
 	}
 }
 
@@ -131,7 +131,7 @@ MA 02110-1301, USA.
 
 - (void) drawImmediate:(bool)immediate translucent:(bool)translucent
 {
-	if (!translucent || no_draw_distance < cam_zero_distance)
+	if (!translucent || _cxxEntity->no_draw_distance < _cxxEntity->cam_zero_distance)
 	{
 		return;
 	}
@@ -148,11 +148,11 @@ MA 02110-1301, USA.
 	{
 		a *= 0.25;
 	}
-	if (cam_zero_distance > _size * _size)
+	if (_cxxEntity->cam_zero_distance > _size * _size)
 	{
 		// dim out as gets further away; 2-D HUD display more
 		// important at long range
-		a -=  0.004f*(sqrtf(cam_zero_distance) / _size);
+		a -=  0.004f*(sqrtf(_cxxEntity->cam_zero_distance) / _size);
 	}
 	if (a < 0.01f)
 	{

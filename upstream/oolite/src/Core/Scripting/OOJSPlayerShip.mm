@@ -534,8 +534,8 @@ ooscript::Object JSPlayerShipObject(void)
 
 - (void) setJSSelf:(ooscript::Object)val context:(ooscript::Context)context
 {
-	_jsSelf = val;
-	OOJSAddGCObjectRoot(context, &_jsSelf, "Player jsSelf");
+	_cxxEntity->_jsSelf = val;
+	OOJSAddGCObjectRoot(context, &_cxxEntity->_jsSelf, "Player jsSelf");
 	
 	oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
 														[OOJavaScriptEngine sharedEngine],
@@ -548,12 +548,12 @@ ooscript::Object JSPlayerShipObject(void)
 	oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
 															[OOJavaScriptEngine sharedEngine]);
 	
-	if (_jsSelf != NULL)
+	if (_cxxEntity->_jsSelf != NULL)
 	{
 		
 		ooscript::Context context = OOJSAcquireContext();
-		ooscript::removeObjectRoot((context), OOJSFOBJP(&_jsSelf));
-		_jsSelf = NULL;
+		ooscript::removeObjectRoot((context), OOJSFOBJP(&_cxxEntity->_jsSelf));
+		_cxxEntity->_jsSelf = NULL;
 		OOJSRelinquishContext(context);
 	}
 }

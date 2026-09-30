@@ -59,27 +59,27 @@ MA 02110-1301, USA.
 	ooscript::Object prototype = NULL;
 	ooscript::Value					result = ooscript::nullValue();
 	
-	if (_jsSelf == NULL && [self isVisibleToScripts])
+	if (_cxxEntity->_jsSelf == NULL && [self isVisibleToScripts])
 	{
 		// Create JS object
 		[self getJSClass:&jsClass andPrototype:&prototype];
 		
-		_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
-		if (_jsSelf != NULL)
+		_cxxEntity->_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
+		if (_cxxEntity->_jsSelf != NULL)
 		{
-			if (!ooscript::setPrivate(context, _jsSelf, OOConsumeReference([self weakRetain])))  _jsSelf = NULL;
+			if (!ooscript::setPrivate(context, _cxxEntity->_jsSelf, OOConsumeReference([self weakRetain])))  _cxxEntity->_jsSelf = NULL;
 		}
 		
-		if (_jsSelf != NULL)
+		if (_cxxEntity->_jsSelf != NULL)
 		{
-			OOJSAddGCObjectRoot(context, &_jsSelf, "Entity jsSelf");
+			OOJSAddGCObjectRoot(context, &_cxxEntity->_jsSelf, "Entity jsSelf");
 			oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine],
 																[self](const oo::Notification &) { [self deleteJSSelf]; });
 		}
 	}
 	
-	if (_jsSelf != NULL)  result = ooscript::objectValue(_jsSelf);
+	if (_cxxEntity->_jsSelf != NULL)  result = ooscript::objectValue(_cxxEntity->_jsSelf);
 	
 	return result;
 	// Analyzer: object leaked. [Expected, object is retained by JS object.]
@@ -95,11 +95,11 @@ MA 02110-1301, USA.
 
 - (void) deleteJSSelf
 {
-	if (_jsSelf != NULL)
+	if (_cxxEntity->_jsSelf != NULL)
 	{
-		_jsSelf = NULL;
+		_cxxEntity->_jsSelf = NULL;
 		ooscript::Context context = OOJSAcquireContext();
-		ooscript::removeObjectRoot(context, &_jsSelf);
+		ooscript::removeObjectRoot(context, &_cxxEntity->_jsSelf);
 		OOJSRelinquishContext(context);
 		
 		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,

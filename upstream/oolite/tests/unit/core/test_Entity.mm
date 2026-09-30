@@ -100,16 +100,16 @@ namespace {
 
 // --- Ivars the game reads directly (ent->x_next, ent->hasMoved), and nothing else -----------------
 
-Entity *XPrevious(Entity *e)	{ return e->x_previous; }
-Entity *XNext(Entity *e)		{ return e->x_next; }
-Entity *YNext(Entity *e)		{ return e->y_next; }
-Entity *ZNext(Entity *e)		{ return e->z_next; }
-bool HasMoved(Entity *e)		{ return e->hasMoved; }
-bool HasRotated(Entity *e)		{ return e->hasRotated; }
-void SetSubEntity(Entity *e, bool value)	{ e->isSubEntity = value; }
-void SetIsShip(Entity *e, bool value)		{ e->isShip = value; }
-GLfloat NoDrawDistance(Entity *e)			{ return e->no_draw_distance; }
-Vector CameraRelativePosition(Entity *e)	{ return e->cameraRelativePosition; }
+Entity *XPrevious(Entity *e)	{ return e->_cxxEntity->x_previous; }
+Entity *XNext(Entity *e)		{ return e->_cxxEntity->x_next; }
+Entity *YNext(Entity *e)		{ return e->_cxxEntity->y_next; }
+Entity *ZNext(Entity *e)		{ return e->_cxxEntity->z_next; }
+bool HasMoved(Entity *e)		{ return e->_cxxEntity->hasMoved; }
+bool HasRotated(Entity *e)		{ return e->_cxxEntity->hasRotated; }
+void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
+void SetIsShip(Entity *e, bool value)		{ e->_cxxEntity->isShip = value; }
+GLfloat NoDrawDistance(Entity *e)			{ return e->_cxxEntity->no_draw_distance; }
+Vector CameraRelativePosition(Entity *e)	{ return e->_cxxEntity->cameraRelativePosition; }
 
 // --------------------------------------------------------------------------------------------------
 

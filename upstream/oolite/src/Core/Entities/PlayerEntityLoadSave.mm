@@ -808,11 +808,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (dockedStation)
 	{
-		position = [dockedStation position];
+		_cxxEntity->position = [dockedStation position];
 		[self setOrientation: kIdentityQuaternion];
-		v_forward = vector_forward_from_quaternion(orientation);
-		v_right = vector_right_from_quaternion(orientation);
-		v_up = vector_up_from_quaternion(orientation);
+		v_forward = vector_forward_from_quaternion(_cxxEntity->orientation);
+		v_right = vector_right_from_quaternion(_cxxEntity->orientation);
+		v_up = vector_up_from_quaternion(_cxxEntity->orientation);
 	}
 	
 	flightRoll = 0.0;
@@ -866,7 +866,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (saveStation != nil && [saveStation allowsSaving])
 	{
 		[self setDockedStation:saveStation];
-		position = [saveStation position];
+		_cxxEntity->position = [saveStation position];
 	}
 	// and initialise markets for the secondary stations
 	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");

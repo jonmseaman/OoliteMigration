@@ -135,9 +135,9 @@ MA 02110-1301, USA.
 	
 	self = [super init];
 	
-	collision_radius = 100000.0; //  100km across
+	_cxxEntity->collision_radius = 100000.0; //  100km across
 	
-	scanClass = CLASS_NO_DRAW;
+	_cxxEntity->scanClass = CLASS_NO_DRAW;
 	
 	{
 		oo::Defaults &prefs = oo::Defaults::standard();
@@ -269,9 +269,9 @@ MA 02110-1301, USA.
 	
 	PlayerEntity	*player = PLAYER;
 	assert(player != nil);
-	rotMatrix = OOMatrixForBillboard(position, [player viewpointPosition]);
+	_cxxEntity->rotMatrix = OOMatrixForBillboard(_cxxEntity->position, [player viewpointPosition]);
 	
-	if (throw_sparks && _novaExpansionRate > 0.0f)	// going NOVA!
+	if (_cxxEntity->throw_sparks && _novaExpansionRate > 0.0f)	// going NOVA!
 	{
 		if (_novaCountdown >= 0.0)	// countdown
 		{
@@ -309,19 +309,19 @@ MA 02110-1301, USA.
 					// Novas are stored under the core manifest if the
 					// player was there at the time. Default layer 2
 					// is fine.
-					OO_LOG("sun.nova.start", "DEBUG: NOVA original radius {:.1f}", collision_radius);
+					OO_LOG("sun.nova.start", "DEBUG: NOVA original radius {:.1f}", _cxxEntity->collision_radius);
 				}
 				discColor[0] = 1.0 * _sunBrightnessFactor;	discColor[1] = 1.0 * _sunBrightnessFactor;	discColor[2] = 1.0 * _sunBrightnessFactor;
 				_novaExpansionTimer += delta_t;
-				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::PList::singleReal(_cxxEntity->collision_radius + delta_t * _novaExpansionRate) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
 			}
 			else
 			{
-				OO_LOG("sun.nova.end", "DEBUG: NOVA final radius {:.1f}", collision_radius);
+				OO_LOG("sun.nova.end", "DEBUG: NOVA final radius {:.1f}", _cxxEntity->collision_radius);
 				
 				// reset at the new size
 				[self resetNova];
-				throw_sparks = YES;	// keep throw_sparks at YES to indicate the higher temperature
+				_cxxEntity->throw_sparks = YES;	// keep throw_sparks at YES to indicate the higher temperature
 			}
 		}
 	}
@@ -381,14 +381,14 @@ MA 02110-1301, USA.
 	{
 		cr_temp = HPvector_multiply_scalar(cr_temp,1E9/HPmagnitude(cr_temp));
 	}
-	cameraRelativePosition = HPVectorToVector(cr_temp);
+	_cxxEntity->cameraRelativePosition = HPVectorToVector(cr_temp);
 }
 
 
 - (void) drawOpaqueParts
 {
-	float sqrt_zero_distance = sqrt(cam_zero_distance);
-	float effective_radius = collision_radius;
+	float sqrt_zero_distance = sqrt(_cxxEntity->cam_zero_distance);
+	float effective_radius = _cxxEntity->collision_radius;
 	float effective_cor16k = cor16k;
 
 	/* At very long ranges the floating point inaccuracies make a
@@ -413,7 +413,7 @@ MA 02110-1301, USA.
 		float drawFactor = [[UNIVERSE gameView] viewSize].width / 100.0;
 		float drawRatio2 = drawFactor * effective_radius / sqrt_zero_distance; // equivalent to size on screen in pixels
 	
-		if (cam_zero_distance > 0.0f)
+		if (_cxxEntity->cam_zero_distance > 0.0f)
 		{
 			subdivideLevel = 2 + floorf(drawRatio2);
 			if (subdivideLevel > 4)
@@ -429,7 +429,7 @@ MA 02110-1301, USA.
 	distances.
 	 
 	*/
-		BOOL ignoreDepthBuffer = cam_zero_distance > effective_radius * effective_radius * 25;
+		BOOL ignoreDepthBuffer = _cxxEntity->cam_zero_distance > effective_radius * effective_radius * 25;
 	
 		int steps = 2 * (MAX_SUBDIVIDE - subdivideLevel);
 
@@ -659,8 +659,8 @@ MA 02110-1301, USA.
 
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
 	
-	float sqrt_zero_distance = sqrtf(cam_zero_distance);
-	float alt = sqrt_zero_distance - collision_radius;
+	float sqrt_zero_distance = sqrtf(_cxxEntity->cam_zero_distance);
+	float alt = sqrt_zero_distance - _cxxEntity->collision_radius;
 	if (EXPECT_NOT(alt < 0))
 	{
 		return;
@@ -708,7 +708,7 @@ MA 02110-1301, USA.
 	}
 	else if (key == "corona_flare")
 	{
-		[self setRadius:collision_radius andCorona:dict.get<float>(key, 0.0f)];
+		[self setRadius:_cxxEntity->collision_radius andCorona:dict.get<float>(key, 0.0f)];
 	}
 	else if (key == "corona_shimmer")
 	{
@@ -764,13 +764,13 @@ MA 02110-1301, USA.
 
 - (double) radius
 {
-	return collision_radius;
+	return _cxxEntity->collision_radius;
 }
 
 
 - (void) setRadius:(GLfloat) rad andCorona:(GLfloat)corona
 {
-	collision_radius = rad;
+	_cxxEntity->collision_radius = rad;
 	if (corona < 0.01f) {
 		corona = 0.01f;
 	}
@@ -791,20 +791,20 @@ MA 02110-1301, USA.
 
 - (BOOL) willGoNova
 {
-	return throw_sparks;
+	return _cxxEntity->throw_sparks;
 }
 
 
 - (BOOL) goneNova
 {
-	return throw_sparks && _novaCountdown <= 0;
+	return _cxxEntity->throw_sparks && _novaCountdown <= 0;
 }
 
 
 - (void) setGoingNova:(BOOL) yesno inTime:(double)interval
 {
-	throw_sparks = yesno;
-	if (throw_sparks)
+	_cxxEntity->throw_sparks = yesno;
+	if (_cxxEntity->throw_sparks)
 	{
 		_novaCountdown = fmax(interval, 0.0);
 		OO_LOG("script.debug.setSunNovaIn", "NOVA activated! time until Nova : {:.1f} s", _novaCountdown);
