@@ -188,3 +188,28 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-862e): a getter with its ivar's name, and a test friend of a `cxx::` class
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOTrumble.h/.mm`,
+  `OOTrumble+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTrumble.mm`.
+
+**Context.** `OOTrumble`'s getters are named after their ivars (`-size` returns `size`), which
+Objective-C allows and C++ does not: a data member and a member function cannot share a name. Its
+bodies use the ivars on nearly every line.
+
+**Decision (recommended defaults).**
+
+1. **The ivar keeps its name and the getter becomes `get` + the name** (`-size` is `getSize()`,
+   `-digram` is `getDigram()`), so the bodies stay verbatim (item 4). The façade keeps the old
+   selectors and forwards `-size` to `getSize()`. Phase 6 may rename both.
+2. **A test friend of a class in `namespace cxx`** is declared at global scope before the
+   namespace (`struct XTestAccess;`) and befriended as `friend struct ::XTestAccess;`; an
+   unqualified friend declaration would name `cxx::XTestAccess` (amendment oo-zffj item 3).
+3. **Several public initialisers** share one private façade initialiser,
+   `-initWithNewCxxX:(const oo::Ref<cxx::X> &)`, which stores the new C++ object and registers the
+   façade as its peer (amendment oo-8kx7 item 2); each public one is one line.
+4. **An Objective-C object the class retained by hand** (`texture = [... retain]` with a
+   `[texture release]` in `-dealloc`) is an `oo::ObjCRef`. Where the Objective-C code overwrote the
+   ivar without releasing the old object (a leak), the `oo::ObjCRef` assignment releases it; that
+   is the only behaviour it changes.
