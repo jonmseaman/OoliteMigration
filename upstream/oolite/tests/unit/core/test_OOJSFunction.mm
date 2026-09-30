@@ -14,7 +14,9 @@
 	Objective-C class and run on it first; they pin: both initialisers (and when they answer nil),
 	the name and the description, the function value, raw and object-wrapper evaluation (the
 	script stack and the time limiter balanced around each call, the arguments converted), the
-	predicate's truthiness, and what an engine reset does.
+	predicate's truthiness, and what an engine reset does (commit 34d0592d1). They now run through
+	the facade, which is its forwarding test; the C++ API and the facade's contract (identity, nil)
+	are checked after them.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -314,6 +316,37 @@ OO_TEST(engineReset)
 		OO_CHECK([function function] == NULL);
 		OO_CHECK(ooscript::isNull([function functionValue]));
 		OO_CHECK_EQ([function cxx_name].value_or("<none>"), "resettable");	// the name stays
+	}
+}
+
+
+OO_TEST(cxxAndFacade)
+{
+	@autoreleasepool
+	{
+		oo::Ref<cxx::OOJSFunction> function = cxx::OOJSFunction::initWithName(std::string("triple"), NULL, std::string("return 3 * x;"), 1, (const char *[]){ "x" }, std::nullopt, 0, Context());
+		OO_CHECK(function != nullptr);
+		OO_CHECK(cxx::OOJSFunction::initWithFunction(NULL, Context()) == nullptr);
+		OO_CHECK(cxx::OOJSFunction::initWithName(std::string("bad"), NULL, std::string("return (;"), 0, NULL, std::nullopt, 0, Context()) == nullptr);
+		ooscript::clearPendingException(Context());
+		ooscript::Value argv[1] = { ooscript::int32Value(4) };
+		ooscript::Value result = ooscript::undefinedValue();
+		OO_CHECK(function->evaluateWithContext(Context(), NULL, 1, argv, &result));
+		OO_CHECK_EQ(String(result), "12");
+		OO_CHECK(function->evaluatePredicateWithContext(Context(), nil, { oo::ObjCRef<id>(Number(1)) }));
+		OO_CHECK_EQ(function->descriptionComponents().value_or("<none>"), "triple()");
+
+		// One facade per C++ object while it lives, and back; nil stays nil.
+		OOJSFunction *facade = oo::ToObjC(function.get());
+		OO_CHECK(facade != nil && facade == oo::ToObjC(function.get()));
+		OO_CHECK(oo::ToCxx(facade) == function.get());
+		OO_CHECK_EQ([facade cxx_name].value_or("<none>"), "triple");
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOJSFunction *>(nullptr)) == nil);
+		OO_CHECK(oo::ToCxx(static_cast<OOJSFunction *>(nil)) == nullptr);
+
+		// A facade made by alloc/init is its object's facade.
+		OOJSFunction *made = Compile("made", "return 1;", {});
+		OO_CHECK(oo::ToObjC(oo::ToCxx(made)) == made);
 	}
 }
 
