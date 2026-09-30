@@ -37,7 +37,8 @@ OUT OF OR
 #define OO_DEFAULT_SOUNDSOURCE_GAIN	1.0f
 #endif
 
-@class OOSound, OOSoundChannel, OOSoundReferencePoint;
+@class OOSound, OOSoundChannel;
+class OOSoundReferencePoint;	// C++ (OOBasicSoundReferencePoint.h, bead oo-odlx)
 
 
 @interface OOSoundSource: OOObject
