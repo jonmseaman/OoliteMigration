@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "OOLogging.h"
 #include "oofnd/Log.hpp"
 #import "OOALSoundMixer.h"
-#import "OOStringBridge.h"
 
 static id sSingleton = nil;
 

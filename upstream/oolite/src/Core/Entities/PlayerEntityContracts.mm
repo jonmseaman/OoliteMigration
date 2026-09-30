@@ -44,7 +44,6 @@ MA 02110-1301, USA.
 #import "OOEquipmentType.h"
 #import "OOTexture.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOObjCRef.h"

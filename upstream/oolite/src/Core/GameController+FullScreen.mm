@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 
 #import "GameController.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 
 
 #if OOLITE_MAC_OS_X	// TEMP, should be used for SDL too

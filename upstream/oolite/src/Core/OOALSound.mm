@@ -32,8 +32,6 @@ SOFTWARE.
 #import "OOALBufferedSound.h"
 #import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include <string_view>
 

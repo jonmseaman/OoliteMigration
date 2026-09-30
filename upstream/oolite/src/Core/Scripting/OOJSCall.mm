@@ -38,8 +38,8 @@ MA 02110-1301, USA.
 #import "OOShaderUniformMethodType.h"
 #import "OOJSVector.h"
 #import "OOJSQuaternion.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PListGet.hpp"
+#include "oofnd/String.hpp"
 
 
 typedef enum

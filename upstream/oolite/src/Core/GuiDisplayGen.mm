@@ -39,11 +39,11 @@ MA 02110-1301, USA.
 #import "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 #include <map>
+#import "OOObjCPList.h"
 
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {

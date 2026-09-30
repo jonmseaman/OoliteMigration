@@ -34,8 +34,6 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
@@ -43,6 +41,7 @@ SOFTWARE.
 #include <string>
 #include <utility>
 #include <vector>
+#include "oofnd/String.hpp"
 
 #undef NSLog		// We need to be able to call the real NSLog.
 

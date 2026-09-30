@@ -58,7 +58,6 @@ MA 02110-1301, USA.
 	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
 
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"		// Object nodes (OOJSValueFromPList)
 #import "Universe.h"
 #import "OOPlanetEntity.h"
@@ -105,7 +104,6 @@ MA 02110-1301, USA.
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/objc/OOAssert.h"
 

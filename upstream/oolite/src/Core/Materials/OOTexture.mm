@@ -42,7 +42,6 @@
 #import "OOPixMap.h"
 
 #include "oofnd/StdLib.hpp"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 

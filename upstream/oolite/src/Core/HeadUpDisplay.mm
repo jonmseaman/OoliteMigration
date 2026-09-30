@@ -49,12 +49,13 @@ MA 02110-1301, USA.
 #import "OOJoystickManager.h"
 #import "OOJavaScriptEngine.h"
 #import "OOStringExpander.h"
-#import "OOFoundationBridge.h"
 #import "OOCallByName.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 #define ONE_SIXTEENTH				0.0625

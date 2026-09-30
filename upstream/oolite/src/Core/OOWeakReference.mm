@@ -11,7 +11,6 @@ This code is hereby placed in the public domain.
 #import "OOCocoa.h"	// OOObject's -description components
 #import "NSObjectOOExtensions.h"
 #import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
-#import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
 

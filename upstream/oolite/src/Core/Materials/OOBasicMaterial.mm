@@ -30,7 +30,6 @@ SOFTWARE.
 #import "Universe.h"
 #import "OOMaterialSpecifier.h"
 #import "OOTexture.h"
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 
 

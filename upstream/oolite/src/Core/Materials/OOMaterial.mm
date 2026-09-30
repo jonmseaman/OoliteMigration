@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOMaterial.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 
 
 static OOMaterial *sActiveMaterial = nil;

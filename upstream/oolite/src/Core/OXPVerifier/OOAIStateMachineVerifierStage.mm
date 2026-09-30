@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"

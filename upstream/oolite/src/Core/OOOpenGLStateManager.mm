@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OOFunctionAttributes.h"
 #import "OOOpenGLExtensionManager.h"
-#import "OOStringBridge.h"
 #include "oofnd/objc/OOAssert.h"
 
 /*	DESIGN NOTES

@@ -27,8 +27,6 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

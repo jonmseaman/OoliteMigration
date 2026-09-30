@@ -30,7 +30,6 @@ SOFTWARE.
 #import "OOJSScript.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
-#import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -43,6 +42,8 @@ SOFTWARE.
 #define __block __glibc_block
 #endif
 #include <unistd.h>
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 #if OOLITE_LINUX
 #undef __block

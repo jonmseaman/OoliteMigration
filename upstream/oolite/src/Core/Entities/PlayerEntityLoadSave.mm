@@ -44,13 +44,12 @@
 #import "OOTexture.h"
 #import "OOJavaScriptEngine.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/FileSystem.hpp"
 
 #include <algorithm>
 #include "oofnd/objc/OOAssert.h"
 #import "OOPListGameTypes.h"
+#include "oofnd/String.hpp"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.

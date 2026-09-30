@@ -28,6 +28,7 @@ SOFTWARE.
 
 #import "OOShaderMaterial.h"
 #include "oofnd/objc/OORuntime.h"
+#import "OOObjCPList.h"
 
 #if OO_SHADERS
 
@@ -43,8 +44,6 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OODebugFlags.h"
 #import "OOStringParsing.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/Defaults.hpp"

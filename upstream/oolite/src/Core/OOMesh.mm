@@ -56,8 +56,6 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/Log.hpp"

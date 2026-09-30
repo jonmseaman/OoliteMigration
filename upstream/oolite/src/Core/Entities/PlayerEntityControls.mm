@@ -64,12 +64,12 @@ MA 02110-1301, USA.
 #import "OODebugSupport.h"
 #import "OODebugMonitor.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
