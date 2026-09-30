@@ -560,7 +560,7 @@ oo::PList OOSystemDescriptionManager::calculatePropertiesForSystemKey(const std:
 
 void OOSystemDescriptionManager::updateCacheEntry(NSUInteger i)
 {
-	OOCAssert(i < OO_SYSTEM_CACHE_LENGTH,"Invalid cache entry number");
+	OOCAssert(i < static_cast<NSUInteger>(OO_SYSTEM_CACHE_LENGTH),"Invalid cache entry number");	// (the cast: tier-a re-keyed a pre-existing widening finding when OOAssert became OOCAssert)
 	const std::string key = oo::str::format("%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY);
 	propertyCache[i] = calculatePropertiesForSystemKey(key);
 }
@@ -568,7 +568,7 @@ void OOSystemDescriptionManager::updateCacheEntry(NSUInteger i)
 
 void OOSystemDescriptionManager::updateCacheEntry(NSUInteger i, const std::string &property)
 {
-	OOCAssert(i < OO_SYSTEM_CACHE_LENGTH,"Invalid cache entry number");
+	OOCAssert(i < static_cast<NSUInteger>(OO_SYSTEM_CACHE_LENGTH),"Invalid cache entry number");	// (the cast: tier-a re-keyed a pre-existing widening finding when OOAssert became OOCAssert)
 	const std::string key = oo::str::format("%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY);
 	oo::PList current = getProperty(property, key);
 	oo::PList::Dict &cache = *propertyCache[i].getIf<oo::PList::Dict>();
