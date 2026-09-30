@@ -9,8 +9,10 @@
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
 core_tests = {
+    'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
 }
 
