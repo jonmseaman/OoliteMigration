@@ -31,7 +31,6 @@ SOFTWARE.
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOObjCRef.h"
-#import "OOFoundationBridge.h"
 
 // OOCocoa.h defines true/false as macros; the standard headers want the keywords (oofnd/Data.hpp).
 #pragma push_macro("true")

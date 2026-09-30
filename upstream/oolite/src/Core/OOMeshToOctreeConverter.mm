@@ -23,7 +23,6 @@ MA 02110-1301, USA.
 */
 
 #import "OOMeshToOctreeConverter.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"

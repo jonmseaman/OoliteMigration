@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOPlanetEntity.h"
 #import "OORoleSet.h"
-#import "OOFoundationBridge.h"
 
 
 BOOL YESPredicate(Entity *entity, void *parameter)

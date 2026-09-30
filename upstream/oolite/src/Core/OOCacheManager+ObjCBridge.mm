@@ -109,18 +109,6 @@ cxx::OOCacheManager *oo::ToCxx(OOCacheManager *cache)
 }
 
 
-- (id)cxx_objectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
-{
-	return _cxxCache->objectForKey(inKey, inCacheKey);
-}
-
-
-- (void)cxx_setObject:(id)inElement forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
-{
-	_cxxCache->setObject(inElement, inKey, inCacheKey);
-}
-
-
 - (void)cxx_removeObjectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
 {
 	_cxxCache->removeObjectForKey(inKey, inCacheKey);

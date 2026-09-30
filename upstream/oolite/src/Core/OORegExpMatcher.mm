@@ -28,11 +28,11 @@ SOFTWARE.
 #import "OORegExpMatcher.h"
 #import "OOJSFunction.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm was (bead oo-sdz):
@@ -84,7 +84,7 @@ bool OORegExpMatcher::init()
 	[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 	
 	ooscript::Context context = OOJSAcquireContext();
-	_tester = [[OOJSFunction alloc] initWithName:std::string("matchesRegExp")
+	_tester = [[::OOJSFunction alloc] initWithName:std::string("matchesRegExp")
 										   scope:NULL
 											code:std::string(code)
 								   argumentCount:2
@@ -132,8 +132,8 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 		_cachedRegExpString.reset();
 		DESTROY(_cachedRegExpObject);
 		
-		unichar *buffer;
-		buffer = static_cast<unichar *>(malloc(expLength * sizeof *buffer));
+		uint16_t *buffer;
+		buffer = static_cast<uint16_t *>(malloc(expLength * sizeof *buffer));
 		if (EXPECT_NOT(buffer == NULL))  return false;
 		std::copy(regExpUnits.begin(), regExpUnits.end(), buffer);
 		

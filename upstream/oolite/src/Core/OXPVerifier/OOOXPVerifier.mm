@@ -56,23 +56,23 @@ SOFTWARE.
 #import "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "GameController.h"
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
 #import "OOAIStateMachineVerifierStage.h"
+#import "OOCheckJSSyntaxVerifierStage.h"
+#import "OOCheckPListSyntaxVerifierStage.h"
+#import "OOCheckDemoShipsPListVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -126,6 +126,9 @@ struct CxxStage
 constexpr CxxStage kCxxStages[] =
 {
 	{ "OOAIStateMachineVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOAIStateMachineVerifierStage>()); } },
+	{ "OOCheckJSSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckJSSyntaxVerifierStage>()); } },
+	{ "OOCheckPListSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckPListSyntaxVerifierStage>()); } },
+	{ "OOCheckDemoShipsPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckDemoShipsPListVerifierStage>()); } },
 };
 
 

@@ -46,7 +46,6 @@ SOFTWARE.
 #import "OOMaths.h"
 #import "OOPointMaths.h"
 #import "OOGraphicsResetManager.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Defaults.hpp"

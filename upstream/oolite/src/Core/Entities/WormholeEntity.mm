@@ -36,12 +36,12 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOShipGroup.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOSystemDescriptionManager.h"
-#import "OOFoundationBridge.h"
 #import "OOLogging.h"
 #import "OOPListGameTypes.h"
 #include "oofnd/Log.hpp"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 #define OO_WORMHOLE_COLOR_BOOST	25.0
 #define OO_WORMHOLE_COLOR_FVEC4	{ 0.067, 0.067, 1.0, 0.25 }

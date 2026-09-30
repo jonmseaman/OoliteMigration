@@ -38,7 +38,6 @@ MA 02110-1301, USA.
 
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 

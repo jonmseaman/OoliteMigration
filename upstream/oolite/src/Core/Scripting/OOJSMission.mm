@@ -32,16 +32,13 @@ MA 02110-1301, USA.
 #import "OOJSPlayer.h"
 #import "PlayerEntityScriptMethods.h"
 #import "OOStringExpander.h"
-#import "OOPListView.h"
 #import "OOMusicController.h"
 #import "GuiDisplayGen.h"
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead

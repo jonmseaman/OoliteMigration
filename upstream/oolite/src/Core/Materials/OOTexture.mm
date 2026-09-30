@@ -32,7 +32,6 @@
 #import "OOTextureLoader.h"
 #import "OOTextureGenerator.h"
 
-#import "OOPListView.h"
 #import "Universe.h"
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
@@ -43,7 +42,6 @@
 #import "OOPixMap.h"
 
 #include "oofnd/StdLib.hpp"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 

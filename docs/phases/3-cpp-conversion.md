@@ -152,6 +152,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      Messages to unconverted classes and the JS private slot stay as they are. The test runs the JS
      class in a real context (`tests/unit/core/test_OOJSVector.mm`). Also gate on
      `bash tools/js-api-contract.sh`.
+   - **A binding with a class of its own, and its base** (ADR-0056 amendment oo-kdyh; exemplar
+     `src/Core/Scripting/OOScriptTimer.*`, `OOJSTimer.*`): convert a root with its only subclass in
+     the root's bead. A class the engine messages by selector keeps a no-ivar façade subclass that
+     forwards the glue selectors; the JS private slot holds that façade. A container of
+     Objective-C objects holds the façade, and removal uses `oo::LiveObjC`.
    - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
      roots first, in one bead. Class methods become `static` members, and file statics become
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
@@ -232,3 +237,17 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `tests/unit/core/test_OOOXPVerifierStage.mm`. Stage beads now depend superclass-first: the
   leaves on oo-up4b, ship data and model on oo-tuq8.
 - 2026-09-29 — `tools/gen-stories.py` sweep `slices` (bead oo-k7u5): one fleet story per slice of every checked plan, titled `Convert to C++20: <File>.mm, slice <id>`, depending on the module's pattern seam, the pre-split bead and (after the first) the plan's first slice. Acceptance is `tools/check-slice-plan.py --slice-done <id> <plan>` (nonzero while any of the slice's units is still Objective-C) + `tools/tier-a.sh` + guardrails. `--dry-run --phase 3 --sweep slices` lists them; a landed slice is not re-filed.
+- 2026-09-30 — Phase 2's endgame is in phase-3 (sync bead oo-qvprm). Foundation is gone:
+  gnustep-base is unlinked, `OOCocoa.h` no longer imports Foundation, `@"..."` is
+  `OOConstantString`, and `OOComparisonResult` is Oolite's own enum. The bridge headers are
+  deleted: `OOStringBridge.h`, `OOFoundationBridge.h`, `OOPListView.h`, `OOCollectionExtractors`
+  and `OOObjectGNUstepBridge`. Use the oofnd/ADR-0055 forms instead: `oo::PList`, `OOObjCPList.h`,
+  `OODescription.h`, `oofnd/String.hpp` and `std::string`. The transitional id forms are gone too
+  (oo-qps.72): OOColor `colorWithDescription:(id)`, the cache's `objectForKey`/`setObject`,
+  OOProbabilitySet `allObjects`/`objectEnumerator`, OOPriorityQueue `addObjects`, and
+  OOWeakSet `addObjectsByEnumerating`. `unichar` is `uint16_t`. The deny-list now names
+  Foundation classes and functions, including in comments and string literals: `NSString`,
+  `NSLog`, `NSSelectorFromString` and so on (oo-qps.19). New conversion code must pass
+  `bash tools/check-foundation-free.sh --stage source` with 0 findings. A selector that no
+  header declares any more is sent through a local protocol cast; see `OOCharacterIntValue`
+  and `OOWeakReferenceClassName`. Merge phase-3 into your bead branch before you queue.
