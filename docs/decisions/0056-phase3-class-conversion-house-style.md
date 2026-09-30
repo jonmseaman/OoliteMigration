@@ -353,6 +353,44 @@ deleted before the superclass converts. Converting the superclass first needs no
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
 
+## Amendment (bead oo-x2wy): a protocol declared with the class, and subclasses private to its file
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOAsyncWorkManager.h/.mm`,
+  `OOAsyncWorkManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOAsyncWorkManager.mm`. Its
+  singleton follows amendment oo-r7m0, and its selector constant amendment oo-3lj8 item 2.
+
+**Context.** `OOAsyncWorkManager.h` declares, besides the class, the `OOAsyncWorkTask` protocol
+that Objective-C classes in other files adopt (`OOTextureLoader`, `OOTextureGenerator`,
+`OOAsyncCacheWriter`), and the manager takes, queues and messages those task objects. The public
+class is abstract: `OOAsyncWorkManager.mm` defines three subclasses that no other file names (an
+internal base and two concrete managers, one of which `+sharedAsyncWorkManager` picks). The gate's
+grep forbids `@protocol` in `X.h`, forward declarations included.
+
+**Decision (recommended defaults).**
+
+1. **A protocol that Objective-C classes adopt moves, unchanged, into `X+ObjCBridge.h`,** after
+   the façade's `@interface`. The C++ class takes and stores the conforming objects as `id`
+   (its declaration comes before the bridge's `@protocol`), and its bodies message them as before;
+   a local may stay `id<P>`. The header comment on the C++ class names the protocol.
+2. **The protocol becomes a C++ interface in the façade's deletion bead,** which therefore also
+   depends on the conversion beads of the protocol's adopters, not only of the class's callers.
+3. **Subclasses that no other file names convert with the class, in the same bead.** They become
+   C++ classes in an anonymous namespace in `X.mm`, derived from `cxx::X`. The class definitions
+   stand where the `@interface` blocks stood, and the member definitions where the
+   `@implementation` bodies stood, so the bodies do not move. The methods they override are
+   `virtual` in the base (amendment oo-cwz item 2). `[super m]` to a method the subclass does not
+   override becomes a plain call. Only the root has a façade: no caller can tell the subclasses
+   apart.
+4. **An `-init` failure branch that `oo::makeRef` cannot take** (`if (_queue == nil) { [self
+   release]; return nil; }` right after the ivar was made) is dropped, with a comment saying so.
+   An `-init` that can fail for another reason follows amendment oo-r7m0 item 2.
+5. **A logged `[self class]` of an object whose concrete class is private** becomes the class
+   name as a literal, chosen where the object is made.
+
+**Consequences.** The manager and its three subclasses converted in one bead (the class's two
+files, the two bridge files and the test), and none of its five caller files changed. The protocol and the façade remain until the texture
+loaders and the cache writer are C++.
+
 ## Amendment (bead oo-smy): a module's roots, global state, keeping objects, bitwise copies
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMaterial.h/.mm`
