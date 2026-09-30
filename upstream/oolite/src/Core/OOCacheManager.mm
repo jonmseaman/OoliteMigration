@@ -76,7 +76,7 @@ enum
 
 
 namespace {
-static OOCacheManager *sSingleton = nil;
+cxx::OOCacheManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
 
 using CacheEntries = std::map<std::string, oo::PList, std::less<>>;
 
@@ -89,46 +89,6 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 	return it != caches->end() ? &it->second : nullptr;
 }
 } // namespace
-
-
-@interface OOCacheManager (Private)
-
-- (void)loadCache;
-- (void)write;
-- (void)clear;
-- (BOOL)dirty;
-- (void)markClean;
-
-- (oo::PList)loadDict;	// null: no cache
-- (BOOL)writeDict:(const oo::PList &)inDict;
-
-- (void)buildCachesFromDictionary:(const oo::PList *)inDict;	// nullptr: none
-- (oo::PList)dictionaryOfCaches;
-
-- (BOOL)directoryExists:(const std::string &)inPath create:(BOOL)inCreate;
-
-@end
-
-
-@interface OOCacheManager (PlatformSpecific)
-
-- (std::optional<std::string>)cachePathCreatingIfNecessary:(BOOL)inCreate;
-
-@end
-
-
-#if WRITE_ASYNC
-@interface OOAsyncCacheWriter: OOObject <OOAsyncWorkTask>
-{
-@private
-	oo::PList				_cacheContents;
-}
-
-- (id) initWithCacheContents:(const oo::PList &)cacheContents;
-
-@end
-#endif
-
 
 
 namespace {
@@ -151,49 +111,44 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 }  // namespace
 
-@implementation OOCacheManager
+namespace cxx {
 
-- (id)init
+void OOCacheManager::init()
 {
-	self = [super init];
-	if (self != nil)
-	{
-		_permitWrites = YES;
-		[self loadCache];
-	}
-	return self;
+	_permitWrites = YES;
+	loadCache();
 }
 
 
-- (void)dealloc
+OOCacheManager::~OOCacheManager()
 {
-	[self clear];
-	
-	[super dealloc];
+	clear();
 }
 
 
-// OOObject's -description wraps this as "<OOCacheManager 0x...>{dirty=...}", which is what this
-// class's own -description printed.
-- (std::optional<std::string>) cxx_descriptionComponents
+// oo::DescriptionOf wraps this as "<OOCacheManager 0x...>{dirty=...}", which is what this
+// class's own -description printed. (It reads _dirty, which -dirty returned.)
+std::optional<std::string> OOCacheManager::descriptionComponents() const
 {
-	return oo::str::format("dirty=%s", [self dirty] ? "yes" : "no");
+	return oo::str::format("dirty=%s", _dirty ? "yes" : "no");
 }
 
 
-+ (OOCacheManager *) sharedCache
+OOCacheManager *OOCacheManager::sharedCache()
 {
 	// NOTE: assumes single-threaded access.
-	if (sSingleton == nil)
+	if (sSingleton == nullptr)
 	{
-		sSingleton = [[self alloc] init];
+		// Recorded before -init's work ran, as +allocWithZone: recorded it (amendment oo-z1s4 item 2).
+		sSingleton = oo::makeRef<OOCacheManager>().leakRef();
+		sSingleton->init();
 	}
 	
 	return sSingleton;
 }
 
 
-- (oo::PList)cxx_pListForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+oo::PList OOCacheManager::pListForKey(const std::string &inKey, const std::string &inCacheKey)
 {
 	oo::PList				result;
 	
@@ -226,24 +181,24 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id)cxx_objectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+id OOCacheManager::objectForKey(const std::string &inKey, const std::string &inCacheKey)
 {
-	return oo::ObjectFromPList([self cxx_pListForKey:inKey inCache:inCacheKey]);
+	return oo::ObjectFromPList(pListForKey(inKey, inCacheKey));
 }
 
 
 
-- (void)cxx_setObject:(id)inObject forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+void OOCacheManager::setObject(id inObject, const std::string &inKey, const std::string &inCacheKey)
 {
-	OOParameterAssert(inObject != nil);
+	OOCParameterAssert(inObject != nil);
 	
-	[self cxx_setPList:oo::PListFrom(inObject) forKey:inKey inCache:inCacheKey];
+	setPList(oo::PListFrom(inObject), inKey, inCacheKey);
 }
 
 
-- (void)cxx_setPList:(const oo::PList &)inValue forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+void OOCacheManager::setPList(const oo::PList &inValue, const std::string &inKey, const std::string &inCacheKey)
 {
-	OOParameterAssert(!inValue.isNull());
+	OOCParameterAssert(!inValue.isNull());
 
 	if (EXPECT_NOT(!_caches.has_value()))  return;
 	
@@ -256,7 +211,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void)cxx_removeObjectForKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
+void OOCacheManager::removeObjectForKey(const std::string &inKey, const std::string &inCacheKey)
 {
 	CacheEntries *cache = FindCache(_caches, inCacheKey);
 	if (cache != nullptr)
@@ -284,7 +239,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void)cxx_clearCache:(const std::string &)inCacheKey
+void OOCacheManager::clearCache(const std::string &inCacheKey)
 {
 	if (FindCache(_caches, inCacheKey) != nullptr)
 	{
@@ -303,32 +258,32 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void)clearAllCaches
+void OOCacheManager::clearAllCaches()
 {
-	[self clear];
+	clear();
 	_caches.emplace();
 	_dirty = YES;
 }
 
 
-- (void) reloadAllCaches
+void OOCacheManager::reloadAllCaches()
 {
-	[self clear];
-	[self loadCache];
+	clear();
+	loadCache();
 }
 
 
-- (void)flush
+void OOCacheManager::flush()
 {
-	if (_permitWrites && [self dirty] && _scheduledWrite == nil)
+	if (_permitWrites && dirty() && _scheduledWrite == nil)
 	{
-		[self write];
-		[self markClean];
+		write();
+		markClean();
 	}
 }
 
 
-- (void)finishOngoingFlush
+void OOCacheManager::finishOngoingFlush()
 {
 #if WRITE_ASYNC
 	[[OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_scheduledWrite];
@@ -336,13 +291,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void)setAllowCacheWrites:(BOOL)flag
+void OOCacheManager::setAllowCacheWrites(bool flag)
 {
 	_permitWrites = (flag != NO);
 }
 
 
-- (std::optional<std::string>)cxx_cacheDirectoryPathCreatingIfNecessary:(BOOL)create
+std::optional<std::string> OOCacheManager::cacheDirectoryPathCreatingIfNecessary(bool create)
 {
 	/*	Construct the path to the directory for cache files, which is:
 			~/Library/Caches/org.aegidian.oolite/
@@ -353,7 +308,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		Spotlight or backed up by Time Machine.
 	*/
 	std::string cachePath = oo::fs::utf8String(oo::ResourcePaths::current().cachesDirectory());
-	if (![self directoryExists:cachePath create:create]) return std::nullopt;
+	if (!directoryExists(cachePath, create)) return std::nullopt;
 
 #if !OOLITE_MAC_OS_X
 	// the old cache file on GNUstep was one level up, so remove it if it exists
@@ -361,25 +316,21 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 #endif
 
 	cachePath = oo::str::appendingPathComponent(cachePath, "org.aegidian.oolite");
-	if (![self directoryExists:cachePath create:create]) return std::nullopt;
+	if (!directoryExists(cachePath, create)) return std::nullopt;
 	return cachePath;
 }
 
-@end
 
-
-@implementation OOCacheManager (Private)
-
-- (void)loadCache
+void OOCacheManager::loadCache()
 {
 	BOOL					accept = YES;
 	uint64_t				endianTagValue = 0;
 	
 	const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
 	
-	[self clear];
+	clear();
 	
-	const oo::PList cache = [self loadDict];
+	const oo::PList cache = loadDict();
 	if (!cache.isNull())
 	{
 		// We have a cache
@@ -425,7 +376,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (accept)
 		{
 			// We have a cache, and it's the right format.
-			[self buildCachesFromDictionary:cache.find(kCacheKeyCaches)];
+			buildCachesFromDictionary(cache.find(kCacheKeyCaches));
 		}
 		
 		oo::log::outdentIf("dataCache.found");
@@ -438,11 +389,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	// If loading failed, or there was a version or endianness conflict
 	if (!_caches.has_value())  _caches.emplace();
-	[self markClean];
+	markClean();
 }
 
 
-- (void)write
+void OOCacheManager::write()
 {
 	uint64_t				endianTagValue = kEndianTagValue;
 	
@@ -461,7 +412,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
 	
-	oo::PList pListRep = [self dictionaryOfCaches];
+	oo::PList pListRep = dictionaryOfCaches();
 	if (!ooliteVersion.has_value() || pListRep.isNull())
 	{
 		OO_LOG("dataCache.cantWrite", "{}", "Failed to write data cache -- prerequisites not fulfilled. This is an internal error, please report it.");
@@ -492,9 +443,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", prepareT);
 #endif
 	
-	if ([self writeDict:oo::PList(std::move(newCache))])
+	if (writeDict(oo::PList(std::move(newCache))))
 	{
-		[self markClean];
+		markClean();
 		OO_LOG("dataCache.write.success", "{}", "Wrote data cache.");
 	}
 	else
@@ -505,27 +456,27 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void)clear
+void OOCacheManager::clear()
 {
 	_caches.reset();
 }
 
 
-- (BOOL)dirty
+bool OOCacheManager::dirty()
 {
 	return _dirty;
 }
 
 
-- (void)markClean
+void OOCacheManager::markClean()
 {
 	_dirty = NO;
 }
 
 
-- (oo::PList)loadDict
+oo::PList OOCacheManager::loadDict()
 {
-	const std::optional<std::string> path = [self cachePathCreatingIfNecessary:NO];
+	const std::optional<std::string> path = cachePathCreatingIfNecessary(NO);
 	if (!path.has_value()) return oo::PList();
 	
 	const auto data = oo::fs::readFile(oo::fs::pathFromUTF8(*path));
@@ -543,9 +494,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (BOOL)writeDict:(const oo::PList &)inDict
+bool OOCacheManager::writeDict(const oo::PList &inDict)
 {
-	const std::optional<std::string> path = [self cachePathCreatingIfNecessary:YES];
+	const std::optional<std::string> path = cachePathCreatingIfNecessary(YES);
 	if (!path.has_value()) return NO;
 	
 #if PROFILE_WRITES
@@ -578,7 +529,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (void)buildCachesFromDictionary:(const oo::PList *)inDict
+void OOCacheManager::buildCachesFromDictionary(const oo::PList *inDict)
 {
 	const oo::PList::Dict *caches = inDict != nullptr ? inDict->getIf<oo::PList::Dict>() : nullptr;
 	if (caches == nullptr) return;
@@ -601,7 +552,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 
 // A deep copy of the caches as property-list data (was a deep-copy of the dictionary of caches).
-- (oo::PList)dictionaryOfCaches
+oo::PList OOCacheManager::dictionaryOfCaches()
 {
 	oo::PList::Dict result;
 	for (const auto &[cacheKey, cache] : *_caches)
@@ -614,7 +565,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (BOOL)directoryExists:(const std::string &)inPath create:(BOOL)inCreate
+bool OOCacheManager::directoryExists(const std::string &inPath, bool inCreate)
 {
 	const oo::fs::Path path = oo::fs::pathFromUTF8(inPath);
 	const oo::fs::FileType type = oo::fs::fileType(path);
@@ -641,115 +592,22 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 #if OOLITE_MAC_OS_X
 
-- (std::optional<std::string>)cachePathCreatingIfNecessary:(BOOL)create
+std::optional<std::string> OOCacheManager::cachePathCreatingIfNecessary(bool create)
 {
-	const std::optional<std::string> cachePath = [self cxx_cacheDirectoryPathCreatingIfNecessary:create];
+	const std::optional<std::string> cachePath = cacheDirectoryPathCreatingIfNecessary(create);
 	if (!cachePath.has_value())  return std::nullopt;
 	return oo::str::appendingPathComponent(*cachePath, "Data Cache.plist");
 }
 
 #else
 
-- (std::optional<std::string>)cachePathCreatingIfNecessary:(BOOL)create
+std::optional<std::string> OOCacheManager::cachePathCreatingIfNecessary(bool create)
 {
-	const std::optional<std::string> cachePath = [self cxx_cacheDirectoryPathCreatingIfNecessary:create];
+	const std::optional<std::string> cachePath = cacheDirectoryPathCreatingIfNecessary(create);
 	if (!cachePath.has_value())  return std::nullopt;
 	return oo::str::appendingPathComponent(*cachePath, "Oolite-cache.plist");
 }
 
 #endif
 
-@end
-
-
-@implementation OOCacheManager (Singleton)
-
-/*	Canonical singleton boilerplate.
-	See Cocoa Fundamentals Guide: Creating a Singleton Instance.
-	See also +sharedCache above.
-	
-	NOTE: assumes single-threaded access.
-*/
-
-+ (id)allocWithZone:(OOZone *)inZone
-{
-	if (sSingleton == nil)
-	{
-		sSingleton = [super allocWithZone:inZone];
-		return sSingleton;
-	}
-	return nil;
-}
-
-
-- (id)copyWithZone:(OOZone *)inZone
-{
-	return self;
-}
-
-
-- (id)retain
-{
-	return self;
-}
-
-
-- (NSUInteger)retainCount
-{
-	return UINT_MAX;
-}
-
-
-- (void)release
-{}
-
-
-- (id)autorelease
-{
-	return self;
-}
-
-@end
-
-
-#if WRITE_ASYNC
-@implementation OOAsyncCacheWriter
-
-- (id) initWithCacheContents:(const oo::PList &)cacheContents
-{
-	self = [super init];
-	if (self)
-	{
-		_cacheContents = cacheContents;
-		if (_cacheContents.isNull())
-		{
-			[self release];
-			self = nil;
-		}
-	}
-	
-	return self;
-}
-
-
-- (void) performAsyncTask
-{
-	if ([[OOCacheManager sharedCache] writeDict:_cacheContents])
-	{
-		OO_LOG("dataCache.write.success", "{}", "Wrote data cache.");
-	}
-	else
-	{
-		OO_LOG("dataCache.write.failed", "{}", "Failed to write data cache.");
-	}
-	_cacheContents = oo::PList();
-}
-
-
-- (void) completeAsyncTask
-{
-	// Don't need to do anything, but this needs to be here so we can wait on it.
-}
-
-@end
-#endif	// WRITE_ASYNC
+}	// namespace cxx

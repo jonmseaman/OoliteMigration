@@ -6,6 +6,7 @@ oolite_sources += files(
     'OOConcreteTexture.mm',
     'OODefaultShaderSynthesizer.mm',
     'OOMaterial.mm',
+    'OOMaterial+ObjCBridge.mm',
     'OOMaterialConvenienceCreators.mm',
     'OOMaterialSpecifier.mm',
     'OOMultiTextureMaterial.mm',
