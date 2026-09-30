@@ -93,10 +93,10 @@ static const char * const kOOLogMeshTooManyMaterials		= "mesh.load.failed.tooMan
 
 
 #if OOMESH_PROFILE
-#define PROFILE(tag)  do { _stopwatchLastTime = Profile(tag, _stopwatch, _stopwatchLastTime); } while (0)
+#define PROFILE(tag)  do { _stopwatchLastTime = Profile(tag, _stopwatch.get(), _stopwatchLastTime); } while (0)
 static OOTimeDelta Profile(const char *tag, OOProfilingStopwatch *stopwatch, OOTimeDelta lastTime)
 {
-	OOTimeDelta now = [stopwatch currentTime];
+	OOTimeDelta now = stopwatch->currentTime();
 	OO_LOG("mesh.profile", "Mesh profile: stage {}, {:g} seconds (delta {:g})", tag, now, now - lastTime);
 	return now;
 }
@@ -344,7 +344,7 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	DESTROY(_shaderBindingTarget);
 	
 #if OOMESH_PROFILE
-	DESTROY(_stopwatch);
+	_stopwatch = nullptr;
 #endif
 	
 	[super dealloc];
@@ -909,7 +909,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		_cacheWriteable = cacheWriteable;
 		
 #if OOMESH_PROFILE
-		_stopwatch = [[OOProfilingStopwatch alloc] init];
+		_stopwatch = oo::makeRef<OOProfilingStopwatch>();
 #endif
 		
 		if ([self loadData:name scaleFactor:scale])
@@ -941,7 +941,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			self = nil;
 		}
 #if OOMESH_PROFILE
-		DESTROY(_stopwatch);
+		_stopwatch = nullptr;
 #endif
 #if OO_MULTITEXTURE
 		if (EXPECT(self != nil))
