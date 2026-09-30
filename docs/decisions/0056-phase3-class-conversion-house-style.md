@@ -188,3 +188,96 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-zffj): a class with one caller, a test that cannot link the game, private state
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCrosshairs.h/.mm`, its caller
+  `HeadUpDisplay.h/.mm`, `tests/unit/core/test_OOCrosshairs.mm`.
+
+**Context.** `OOCrosshairs` has one caller, `HeadUpDisplay`, which keeps it in an ivar. Its only
+output is what `render()` hands to OpenGL, and `render()` reaches `UNIVERSE`, the GL state and matrix
+managers and the GL error checker, whose objects link the whole game. So the test cannot link what
+the class references, and what the class computes is in private members.
+
+**Decision (recommended defaults).**
+
+1. **A class whose callers all fit in the bead has no façade** (item 5's last rule). The caller's
+   ivar `X *` becomes `oo::Ref<X>`, with `class X;` in place of `@class X`. `[[X alloc] init…]`
+   becomes `oo::makeRef<X>(…)`, `DESTROY(x)` and `[x release]; x = nil;` become `x = nullptr;`.
+   An Objective-C argument crosses with `oo::ToCxx` (`oo::ToCxx(_crosshairColor)`). A `-init…`
+   with arguments is the constructor, and `-dealloc`'s body is the destructor.
+2. **Link stubs.** When the class's objects reference code whose objects would link the game, and
+   the test never runs that code, the test defines those functions (and variables) itself, in one
+   block headed as link stubs. Each stub function calls `std::abort()`, so a test that reached one
+   fails instead of passing on a fake. The `meson.build` entry then lists only the class and what
+   the tested paths need. (oo-cwz's amendment replaces a function with one that counts calls; that
+   is for code the test does run.)
+3. **Private state the test pins** is read through `friend struct XTestAccess;`, declared in the
+   class and defined only in the test. Before the conversion the test reads the same ivars through
+   the runtime (`ivar_getOffset(class_getInstanceVariable(...))`), so the expectations run on the
+   unconverted class first. No accessor is added for this.
+
+## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
+  `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
+
+**Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
+`-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
+`@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
+(`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
+ask `UNIVERSE`, the string expander and JavaScript.
+
+**Decision (recommended defaults).**
+
+1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
+   own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
+   that called another is a delegating constructor; statements it ran before the call move into a
+   helper that computes the argument (`PseudoRandomSeed()`). Plain `-init` is `X() = default`.
+2. **A public initialiser stays on the façade.** The façade's `-init…` makes the C++ object, stores
+   it, and registers itself as the peer, `Peers().peerFor(cxx, [self] { return [self retain]; })`
+   inside an `@autoreleasepool` (as amendment oo-o89 does). Plain `-init` gets the same override,
+   so `[[X alloc] init]` still gives a working object.
+3. **`self` handed to Objective-C** (a script property, a PList Object node) becomes
+   `oo::ToObjC(this)`, so the Objective-C side sees the same façade the callers hold.
+4. **An Objective-C ivar** is `oo::ObjCRef<T *>`; `[x autorelease]; x = [… retain];` becomes one
+   assignment. **`@selector(sel)`** asked of an arbitrary `id` becomes
+   `OOSelectorFromName("sel")` (`oofnd/objc/OORuntime.h`); the message to that `id` stays.
+5. **Overrides of `OOObject` category methods** become C++ members named by item 3 of the decision
+   (`oo_jsClassName()`), and the façade forwards its selector to them, as it does
+   `descriptionComponents() const`. A `const` member reads the ivars its getters returned.
+6. **The test keeps its Objective-C half.** The expectations written against the Objective-C API
+   before the conversion stay as they are and now run through the façade, which is its forwarding
+   test. The C++ API and the façade's contract are added after them.
+7. **A fake `UNIVERSE`.** A class that messages `UNIVERSE` is tested against a class named
+   `Universe` defined in the test, answering the selectors the class sends from a table, with
+   `Universe *gSharedUniverse` defined beside it. The test must then not import `Universe.h`, or
+   anything that does (`OOJavaScriptEngine.h`); it declares what it needs from them itself. Game
+   functions the tested paths call (the string expander, `OO_DESC`) are replaced by definitions that
+   return text recording their arguments; those it never calls are amendment oo-zffj's aborting
+   link stubs.
+
+## Amendment (bead oo-862e): a getter with its ivar's name, and a test friend of a `cxx::` class
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOTrumble.h/.mm`,
+  `OOTrumble+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTrumble.mm`.
+
+**Context.** `OOTrumble`'s getters are named after their ivars (`-size` returns `size`), which
+Objective-C allows and C++ does not: a data member and a member function cannot share a name. Its
+bodies use the ivars on nearly every line.
+
+**Decision (recommended defaults).**
+
+1. **The ivar keeps its name and the getter becomes `get` + the name** (`-size` is `getSize()`,
+   `-digram` is `getDigram()`), so the bodies stay verbatim (item 4). The façade keeps the old
+   selectors and forwards `-size` to `getSize()`. Phase 6 may rename both.
+2. **A test friend of a class in `namespace cxx`** is declared at global scope before the
+   namespace (`struct XTestAccess;`) and befriended as `friend struct ::XTestAccess;`; an
+   unqualified friend declaration would name `cxx::XTestAccess` (amendment oo-zffj item 3).
+3. **Several public initialisers** share one private façade initialiser,
+   `-initWithNewCxxX:(const oo::Ref<cxx::X> &)`, which stores the new C++ object and registers the
+   façade as its peer (amendment oo-8kx7 item 2); each public one is one line.
+4. **An Objective-C object the class retained by hand** (`texture = [... retain]` with a
+   `[texture release]` in `-dealloc`) is an `oo::ObjCRef`. Where the Objective-C code overwrote the
+   ivar without releasing the old object (a leak), the `oo::ObjCRef` assignment releases it; that
+   is the only behaviour it changes.
