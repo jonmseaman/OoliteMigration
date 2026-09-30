@@ -1,6 +1,6 @@
 /*	test_OOFileScannerVerifierStage.mm
 	Unit tests for OOFileScannerVerifierStage.h/.mm (bead oo-up4b; proposed ADR-0056 Amendment 1
-	and Amendment 2): cxx::OOFileScannerVerifierStage, the intermediate class
+	and amendment oo-up4b): cxx::OOFileScannerVerifierStage, the intermediate class
 	cxx::OOFileHandlingVerifierStage that seven Objective-C stages still subclass, and their
 	Objective-C facades (OOFileScannerVerifierStage+ObjCBridge.h).
 
@@ -9,7 +9,8 @@
 	dependents] from a subclass, and the scanner's answers over a real directory: case-insensitive
 	look-up with folder fallback, junk, skipped and Read Me files, listings, data and property
 	lists. Then the crossing: an Objective-C subclass of the intermediate class behind a C++
-	pointer, a C++ subclass of it behind the facade, the scanner's own facade class and identity.
+	pointer, a C++ subclass of it behind the facade, the scanner's own facade class and identity,
+	and the adapter outliving its owner.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -182,6 +183,18 @@ static int gRegistrations = 0;
 @end
 
 
+// A converted file-handling stage: a C++ subclass of the intermediate class. Global, as a leaf
+// stage is once converted, so Objective-C sees it as an OOOXPVerifierStage.
+class TestCxxFileStage : public cxx::OOFileHandlingVerifierStage
+{
+public:
+	std::optional<std::string> name() override	{ return "Testing files in C++"; }
+	void run() override							{ runs++; }
+
+	int runs = 0;
+};
+
+
 namespace {
 
 const char * const kConfiguration =
@@ -337,6 +350,107 @@ OO_TEST(scannerMadeByAllocInit)
 		OO_CHECK([scanner cxx_name] == std::optional<std::string>("Scanning files"));
 		OO_CHECK(![scanner cxx_filesInFolder:""].has_value());	// nothing scanned yet
 	}
+}
+
+OO_TEST(objCFileStageBehindACxxPointer)
+{
+	@autoreleasepool
+	{
+		OOOXPVerifier *verifier = MakeVerifier("");
+		TestFileStage *stage = [[[TestFileStage alloc] init] autorelease];
+		[stage setVerifier:verifier];
+		cxx::OOOXPVerifierStage *part = oo::ToCxx(stage);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == stage);	// the object itself
+
+		// Its C++ part derives from the intermediate class, and virtual calls reach the subclass,
+		// or, where it does not override, the intermediate class.
+		OO_CHECK(dynamic_cast<cxx::OOFileHandlingVerifierStage *>(part) != nullptr);
+		OO_CHECK(part->name() == std::optional<std::string>("Testing files"));
+		OO_CHECK(part->dependencies() == kScannerName);
+		OO_CHECK(part->dependents() == kUnusedName);
+		OO_CHECK(part->shouldRun());
+
+		// [super dependents] still reaches the intermediate class, not back to the subclass.
+		TestSuperCallingFileStage *superCalling = [[[TestSuperCallingFileStage alloc] init] autorelease];
+		[superCalling setVerifier:verifier];
+		OO_CHECK(oo::ToCxx(superCalling)->dependents() == (std::vector<std::string>{ "Checking for unused files", "Extra dependent" }));
+	}
+}
+
+
+OO_TEST(cxxFileStageBehindTheFacade)
+{
+	@autoreleasepool
+	{
+		OOOXPVerifier *verifier = MakeVerifier("");
+		const oo::Ref<TestCxxFileStage> stage = oo::makeRef<TestCxxFileStage>();
+		stage->setVerifier(verifier);
+		OO_CHECK(stage->dependencies() == kScannerName);
+		OO_CHECK(stage->dependents() == kUnusedName);
+		OO_CHECK([[verifier fileScannerStage] isKindOfClass:[OOFileScannerVerifierStage class]]);
+
+		OOOXPVerifierStage *facade = oo::ToObjC(stage.get());
+		OO_CHECK(facade != nil && facade == oo::ToObjC(stage.get()) && oo::ToCxx(facade) == stage.get());
+		OO_CHECK([facade cxx_name] == std::optional<std::string>("Testing files in C++"));
+		OO_CHECK([facade cxx_dependencies] == kScannerName);
+		OO_CHECK([facade dependents] == kUnusedName);
+		[facade dependencyRegistrationComplete];
+		[facade performRun];
+		OO_CHECK(stage->runs == 1);
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<TestCxxFileStage 0x"));
+	}
+}
+
+
+OO_TEST(scannerFacade)
+{
+	@autoreleasepool
+	{
+		const std::string base = MakeOXP();
+		OOOXPVerifier *verifier = MakeVerifier(base);
+		[OOFileScannerVerifierStage nameForDependencyForVerifier:verifier];
+		OOFileScannerVerifierStage *scanner = [verifier fileScannerStage];
+		cxx::OOFileScannerVerifierStage *cxxScanner = oo::ToCxx(scanner);
+		OO_CHECK(cxxScanner != nullptr);
+		OO_CHECK(oo::ToObjC(cxxScanner) == scanner);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOOXPVerifierStage *>(cxxScanner)) == scanner);
+
+		// The C++ members answer as the facade's methods do.
+		cxxScanner->run();
+		OO_CHECK(cxxScanner->name() == std::optional<std::string>(cxx::OOFileScannerVerifierStage::kName));
+		OO_CHECK(cxxScanner->pathForFile("foo.png", "Textures", std::nullopt, false) == [scanner cxx_pathForFile:"foo.png" inFolder:"Textures" referencedFrom:std::nullopt checkBuiltIn:NO]);
+		OO_CHECK(cxxScanner->fileExists("A.PNG", "images", "a test", false));
+		OO_CHECK(cxxScanner->filesInFolder("Images") == (std::vector<std::string>{ "A.png", "b.png" }));
+		OO_CHECK(cxxScanner->dataForFile("Root.png", std::nullopt, std::nullopt, false).stringView() == "root");
+		OO_CHECK(cxxScanner->plistNamed("shipdata.plist", "Config", std::nullopt, false).get<std::string>("a") == "1");
+		OO_CHECK(cxxScanner->displayNameForFile("f", "d") == std::optional<std::string>("d/f"));
+		std::filesystem::remove_all(base);
+
+		// A scanner made in C++ crosses as its own facade class, however it is typed.
+		const oo::Ref<cxx::OOFileScannerVerifierStage> made = oo::makeRef<cxx::OOFileScannerVerifierStage>();
+		OOOXPVerifierStage *facade = oo::ToObjC(static_cast<cxx::OOOXPVerifierStage *>(made.get()));
+		OO_CHECK([facade isKindOfClass:[OOFileScannerVerifierStage class]]);
+		OO_CHECK(facade == oo::ToObjC(made.get()));
+		OO_CHECK(oo::ToCxx(oo::ToObjC(made.get())) == made.get());
+	}
+}
+
+
+OO_TEST(nilAndLifetime)
+{
+	OOFileScannerVerifierStage *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOFileScannerVerifierStage *>(nullptr)) == nil);
+
+	// An Objective-C file-handling stage's C++ part, outliving it, answers as a message to nil did.
+	oo::Ref<cxx::OOOXPVerifierStage> part;
+	@autoreleasepool
+	{
+		part = oo::Ref<cxx::OOOXPVerifierStage>(oo::ToCxx([[[TestFileStage alloc] init] autorelease]));
+	}
+	OO_CHECK(!part->name().has_value());
+	OO_CHECK(!part->dependencies().has_value());
+	OO_CHECK(oo::ToObjC(part) == nil);
 }
 
 OO_TEST_MAIN()

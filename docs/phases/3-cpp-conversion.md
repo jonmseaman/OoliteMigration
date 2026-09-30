@@ -148,6 +148,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
    - A converted subclass with no outside caller is global and has no façade. Objective-C code
      reaches it as the root's façade (`oo::ToObjC(sub.get())`). A class created by name from data
      gets an explicit factory table.
+   - An intermediate class with Objective-C subclasses keeps a façade whose `-init` gives the
+     root's `-initWithCxxStage:` an `oo::ObjCStage<cxx::Mid>`. A converted class that is still
+     messaged by its own selectors is `cxx::X` with a façade `X : Root`, which `oo::ToObjC` picks
+     by name. Categories of Objective-C classes move to the bridge
+     ([amendment oo-up4b](../decisions/0056-phase3-class-conversion-house-style.md#amendment-bead-oo-up4b-intermediate-classes-subclass-façades-and-categories-left-in-a-file)).
 10. **Check.**
    - `! grep -nE '@implementation|@interface|@selector|@protocol' X.mm X.h`
    - `tools/build-windows.sh test`, with no new warning
@@ -174,6 +179,13 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   C++ `cxx::OOColor` in `OOColor.h/.mm`, Objective-C façade `OOColor+ObjCBridge.h/.mm` with
   identity kept by `oo::ObjCPeers`, unit test `tests/unit/core/test_OOColor.mm`
   (`tools/check-core-tests.sh`). No caller changed. Goldens: 2 blessed verified.
+- 2026-09-30 — Intermediate classes (bead oo-up4b, proposed ADR-0056 amendment oo-up4b).
+  `OOFileScannerVerifierStage.h/.mm` is C++. `cxx::OOFileHandlingVerifierStage` is the
+  intermediate class, and its seven Objective-C leaf stages reach it through
+  `oo::ObjCStage<cxx::OOFileHandlingVerifierStage>`. `cxx::OOFileScannerVerifierStage` keeps a
+  façade for the stages that message it. Both façades and `-fileScannerStage` are in
+  `OOFileScannerVerifierStage+ObjCBridge.*`. Unit test: `tests/unit/core/test_OOFileScannerVerifierStage.mm`.
+  The leaf beads can now convert independently.
 - 2026-09-30 — Class hierarchies (bead oo-cwz, proposed ADR-0056 Amendment 1). The OXPVerifier
   stage base is `cxx::OOOXPVerifierStage`, with virtual subclass responsibilities. Its façade
   `OOOXPVerifierStage+ObjCBridge.*` is also the base of the Objective-C stages, through an
