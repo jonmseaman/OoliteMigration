@@ -97,6 +97,7 @@ oolite_sources += files(
     'OOStringExpander.mm',
     'OOStringParsing.mm',
     'OOSystemDescriptionManager.mm',
+    'OOSystemDescriptionManager+ObjCBridge.mm',
     'OOTextureScaling.mm',
     'OOTextureSprite.mm',
     'OOTrumble.mm',
