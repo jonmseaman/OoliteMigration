@@ -272,8 +272,10 @@ def scenario_exit_row():
         "-setGuiToScenarioScreen: no longer builds its rows from GUI_ROW_SCENARIOS_START; G8's "
         "back-out row derivation no longer describes the screen"
     )
+    # Either spelling (Jon approved accepting both, 2026-09-30, bead oo-3rb.332): the ObjC
+    # form or the C++ form it became in Phase 2 (DESC(@"...") -> OO_DESC("..."), oo-3rb.321; setKey:@"exit" -> cxx_setKey:"exit", oo-q01b).
     label = re.search(
-        r'DESC\(@"' + re.escape(SCENARIO_EXIT_DESC_KEY) + r'"\).*?forRow:start_row\s*-\s*(\d+)\]',
+        r'(?:DESC\(@"|OO_DESC\(")' + re.escape(SCENARIO_EXIT_DESC_KEY) + r'"\).*?forRow:start_row\s*-\s*(\d+)\]',
         body,
         re.S,
     )
@@ -282,7 +284,7 @@ def scenario_exit_row():
         "at a start_row-relative offset, so G8 cannot find the ` Return to Menu ` row"
     )
     key = re.search(
-        r'setKey:@"' + re.escape(SCENARIO_EXIT_GUI_KEY) + r'"\s+forRow:start_row\s*-\s*(\d+)\]',
+        r'(?:setKey:@"|cxx_setKey:")' + re.escape(SCENARIO_EXIT_GUI_KEY) + r'"\s+forRow:start_row\s*-\s*(\d+)\]',
         body,
     )
     assert key, (
@@ -628,9 +630,21 @@ def test_the_arrival_observable_has_exactly_two_assignment_sites_and_only_one_is
         "-setGuiToScenarioScreen: no longer assigns gui_screen = " + SCENARIO_SCREEN
     )
 
-    loader = _method_body(
-        _read(PLAYER_LOADSAVE), "- (BOOL) loadPlayerFromFile:(NSString *)fileToOpen asNew:"
+    # Either spelling (Jon approved accepting both, 2026-09-30, bead oo-3rb.332): the ObjC
+    # form or the C++ form it became in Phase 2 (loadPlayerFromFile:(NSString *) -> (const std::string &), oo-3rb.177).
+    loadsave = _read(PLAYER_LOADSAVE)
+    loader_signature = next(
+        (
+            sig
+            for sig in (
+                "- (BOOL) loadPlayerFromFile:(NSString *)fileToOpen asNew:",
+                "- (BOOL) loadPlayerFromFile:(const std::string &)fileToOpen asNew:",
+            )
+            if sig in loadsave
+        ),
+        "- (BOOL) loadPlayerFromFile:(NSString *)fileToOpen asNew:",
     )
+    loader = _method_body(loadsave, loader_signature)
     assign = re.search(r"gui_screen\s*=\s*" + SCENARIO_SCREEN, loader)
     assert assign, (
         "the second assignment site is no longer inside -loadPlayerFromFile:asNew:; the argument "
@@ -735,10 +749,14 @@ def test_the_back_out_chain_is_the_only_way_off_the_scenario_screen_by_that_row(
     account of.
     """
     start_scenario = _method_body(_read(PLAYER_LOADSAVE), "- (BOOL) startScenario")
+    # Either spelling (Jon approved accepting both, 2026-09-30, bead oo-3rb.332): the ObjC
+    # form or the C++ form it became in Phase 2 ([key isEqualToString:@"exit"] -> key == "exit", oo-3rb.177).
     exit_branch = re.search(
-        r'if\s*\(\s*\[key isEqualToString:@"'
+        r'if\s*\(\s*(?:\[key isEqualToString:@"'
         + re.escape(SCENARIO_EXIT_GUI_KEY)
-        + r'"\]\s*\)\s*\{(.*?)\}',
+        + r'"\]|key\s*==\s*"'
+        + re.escape(SCENARIO_EXIT_GUI_KEY)
+        + r'")\s*\)\s*\{(.*?)\}',
         start_scenario,
         re.S,
     )
