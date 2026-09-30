@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 
-static OOPriorityQueue	*sTimers;
+static OOPriorityQueue	*sTimers;	// +1, never released (a C++ queue since bead oo-3lj8)
 
 // During an update, new timers must be deferred to avoid an infinite loop.
 static BOOL				sUpdating;
@@ -138,8 +138,8 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 	
 	if (EXPECT(!sUpdating))
 	{
-		if (EXPECT_NOT(sTimers == nil))  sTimers = [[OOPriorityQueue alloc] initWithComparator:@selector(compareByNextFireTime:)];
-		[sTimers addObject:self];
+		if (EXPECT_NOT(sTimers == nullptr))  sTimers = OOPriorityQueue::queueWithComparator(@selector(compareByNextFireTime:)).leakRef();
+		sTimers->addObject(self);
 	}
 	else
 	{
@@ -154,7 +154,7 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 
 - (void) unscheduleTimer
 {
-	[sTimers removeExactObject:self];
+	if (sTimers != nullptr)  sTimers->removeExactObject(self);
 	_isScheduled = NO;
 	_hasBeenRun = NO;
 }
@@ -176,10 +176,10 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 	now = [UNIVERSE getTime];
 	for (;;)
 	{
-		timer = [sTimers peekAtNextObject];
+		timer = (sTimers != nullptr) ? sTimers->peekAtNextObject() : nil;
 		if (timer == nil || now < [timer nextTime])  break;
 		
-		[sTimers removeNextObject];
+		sTimers->removeNextObject();
 		
 		// Must fire before rescheduling so that the timer callback can stop itself. -- Ahruman 2011-01-01
 		[timer timerFired];
@@ -195,7 +195,7 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 	
 	if (sDeferredTimers != NULL)
 	{
-		for (const auto &deferred : *sDeferredTimers)  [sTimers addObject:deferred.get()];	// as -addObjects: did, in order
+		for (const auto &deferred : *sDeferredTimers)  if (sTimers != nullptr)  sTimers->addObject(deferred.get());	// as -addObjects: did, in order
 		delete sDeferredTimers;
 		sDeferredTimers = NULL;
 	}
@@ -207,7 +207,7 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 + (void) noteGameReset
 {
 	// Intermediate array is required so we don't get stuck in an endless loop over reinserted timers. Note that -sortedObjects also clears the queue!
-	const std::vector<oo::ObjCRef<id>> timers = (sTimers != nil) ? [sTimers sortedObjects] : std::vector<oo::ObjCRef<id>>();	// (no C++ value from a message to nil)
+	const std::vector<oo::ObjCRef<id>> timers = (sTimers != nullptr) ? sTimers->sortedObjects() : std::vector<oo::ObjCRef<id>>();	// (no C++ value from a message to nil)
 	for (const auto &timer : timers)
 	{
 		static_cast<OOScriptTimer *>(timer.get())->_isScheduled = NO;
