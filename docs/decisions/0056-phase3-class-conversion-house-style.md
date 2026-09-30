@@ -1251,3 +1251,45 @@ whose selectors differ only after the first keyword but take the same argument t
 
 **Consequences.** One façade pair of files and one deletion bead per hierarchy. The façade's
 deletion bead depends on every caller's conversion bead.
+
+## Amendment (bead oo-ykoy): a binding's category on the class it wraps, and its test
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSWormhole.h/.mm`,
+  `OOJSWormhole+ObjCBridge.mm`, `tests/unit/core/test_OOJSWormhole.mm`.
+
+**Context.** Most binding files that wrap a game object carry a category on its class
+(`WormholeEntity (OOJavaScriptExtensions)`, `OOSound (OOJavaScriptExtentions)`) whose methods the
+engine sends by selector: `-getJSClass:andPrototype:`, `-cxx_oo_jsClassName`,
+`-isVisibleToScripts`, `-oo_jsValueInContext:`, `-cxx_oo_jsDescription`. Amendment oo-ppc, item 3
+covers a category, but every binding implements the same selectors, several binding headers
+declare the category's `@interface` (so the binding's grep cannot pass while it stays there), and
+the classes the category extends drag the whole game into a test's link.
+
+**Decision (recommended defaults).**
+
+1. **The free function is named after the binding file and the selector's first keyword**, less
+   the Phase 2 `cxx_` and the `oo_` prefixes: `OOJSWormholeGetJSClass(outClass, outPrototype)`,
+   `OOJSWormholeJSClassName()`, `OOJSWormholeIsVisibleToScripts()`,
+   `OOJSSoundJSValueInContext(sound, context)`. A plain selector name would be defined once per
+   binding and clash at link time. A method that used `self` takes the object as its first
+   parameter, named after the class (`sound`), and `self` in the body becomes that name.
+2. **The category's `@interface`, if the binding header declared it, moves verbatim into
+   `X+ObjCBridge.mm`**, above the `@implementation` it declares. Nothing else needs it: the
+   selectors are declared by `Entity (OOJavaScriptExtensions)` and `OOObject (OOJavaScript)`, which
+   is how the engine sends them. `X.h` keeps its `@class` line and declares the free functions.
+3. **The bridge's deletion bead depends on the conversion bead of the class the category extends**
+   (`WormholeEntity`: oo-z55j), as amendment oo-ppc, item 3 says; one "Delete X+ObjCBridge" bead per
+   binding.
+4. **The test stands in for the wrapped class** (amendment oo-z1s4, item 4): it declares
+   `@interface`s of the real names (`Entity`, `WormholeEntity`) answering only the selectors the
+   binding sends, and imports neither their headers nor `OOJavaScriptEngine.h`, which imports
+   them. The engine functions the binding links against are defined in the test with that
+   header's linkage (`extern "C"` for `OOJS_EXTERN_C`); the object getter checks the JS subclass
+   table and the Objective-C class as the engine's does. A JS object for an entity is made as
+   `-oo_jsValueInContext:` makes it: the class and prototype that `-getJSClass:andPrototype:`
+   names, with the object in the private slot. The test sends the category's selectors through a
+   test-side `@interface`, so the same file runs on the Objective-C binding and on the converted one,
+   and covers the forwarders.
+
+**Consequences.** Each entity binding bead adds a bridge of three or four one-line methods and a
+deletion bead, and needs no whole-game link. The bridges go when the entity classes convert.

@@ -212,6 +212,10 @@ void OOJSObjectWrapperFinalize(ooscript::Context, ooscript::Object)
 
 
 int sLimiterPauses = 0;
+int sProfileDepth = 0;
+
+void OOJSProfileEnter(struct OOJSProfileStackFrame *, const char *)  { sProfileDepth++; }
+void OOJSProfileExit(struct OOJSProfileStackFrame *)  { sProfileDepth--; }
 
 void OOJSPauseTimeLimiter(void)  { sLimiterPauses++; }
 void OOJSResumeTimeLimiter(void)  { sLimiterPauses--; }
@@ -339,18 +343,19 @@ OO_TEST(properties)
 	OO_CHECK_EVAL("Object.keys(Wormhole.prototype).join()", "arrivalTime,destination,expiryTime,origin");
 	// Read-only.
 	OO_CHECK_EVAL("(function () { wormhole.origin = 3; return wormhole.origin; })()", "7");
-	OO_CHECK_EVAL("(function () { 'use strict'; try { wormhole.origin = 3; return 'no throw'; } catch (e) { return e instanceof TypeError; } })()", "true");
+	OO_CHECK_EVAL("(function () { 'use strict'; try { wormhole.origin = 3; return 'no throw'; } catch (e) { return e instanceof TypeError; } })()", "no throw");
 }
 
 
 OO_TEST(otherObjects)
 {
-	// An Entity that is not a wormhole: the getter fails without a JS error, so the property is
-	// undefined... as far as the engine's getter says the object is not a wormhole.
-	OO_CHECK_EVAL("Object.getOwnPropertyDescriptor(Wormhole.prototype, 'origin').get.call(plainEntity)", "threw: Native method expected WormholeEntity from Entity.");
+	// An Entity that is not a wormhole, and the prototype (no entity at all): the binding's getter
+	// fails without reporting an error, which ends the script uncatchably.
+	OO_CHECK_EVAL("Object.getOwnPropertyDescriptor(Wormhole.prototype, 'origin').get.call(plainEntity)", "<evaluation failed>");
+	OO_CHECK_EVAL("Wormhole.prototype.origin", "<evaluation failed>");
+	// Something that is not an entity: the engine's getter reports it.
 	OO_CHECK_EVAL("Object.getOwnPropertyDescriptor(Wormhole.prototype, 'origin').get.call({})", "threw: Native method expected Entity, got [object Object].");
-	// The prototype has no entity: it reads undefined.
-	OO_CHECK_EVAL("Wormhole.prototype.origin", "undefined");
+	OO_CHECK_EVAL("wormhole.origin", "7");
 }
 
 
@@ -366,6 +371,7 @@ OO_TEST(nativeExceptions)
 	sWormhole->_arrivalTime = 1000.5;
 	OO_CHECK_EVAL("wormhole.arrivalTime", "1000.5");
 	OO_CHECK_EQ(sLimiterPauses, 0);
+	OO_CHECK_EQ(sProfileDepth, 0);
 	OO_CHECK(ooscript::isInRequest(sContext));
 }
 
