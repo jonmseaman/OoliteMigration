@@ -188,3 +188,30 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-86ek): initialisers with arguments, a class in a C-linkage header, and a category that reads an ivar
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOVector.h/.mm` (`OONativeVector`),
+  `OOVector+ObjCBridge.h/.mm`, `tests/unit/core/test_OOVector.mm`.
+
+**Context.** `OONativeVector` boxes a `Vector` for Objective-C collections. Its callers make it with
+`[[OONativeVector alloc] initWithVector:v]`, which item 5's façade (made only by `oo::ToObjC`) does not
+cover. It is declared in `OOVector.h`, which `OOMaths.h` includes inside `extern "C"`. A category in
+another file (`OONativeVector (OOJavaScriptConversion)` in `OOJavaScriptEngine.mm`) read its ivar `v`.
+
+**Decision (recommended defaults).**
+
+1. **`-initWithX:` becomes a constructor with the same parameters** (`explicit` for one), its body the
+   old one after `[super init]`. Converted code writes `oo::makeRef<X>(args)`.
+2. **The façade keeps the initialiser, and its `-initWithX:` makes and owns the C++ object** with
+   `oo::makeRef`, then records itself as the peer, as the oo-o89 amendment's `-init` does:
+   `Peers().peerFor(cxx, [self] { return [self retain]; })` inside an `@autoreleasepool`. Unlike that
+   amendment, `oo::ToObjC` still makes a new façade (a private `-initWithCxxX:`) for a C++ object
+   that has none, because the class has no Objective-C superclass state.
+3. **A class declared in a header that is included inside `extern "C"`** is declared inside the
+   header's existing `extern "C++" { }` block, and the bridge import at the end of the header is
+   wrapped the same way (`#if __OBJC__` / `extern "C++" { #import "X+ObjCBridge.h" }`), so
+   `oo::ToObjC`/`oo::ToCxx` keep C++ linkage and overload with the other classes'.
+4. **A category of the converted class in another file** stays a category of the façade. If it read
+   an ivar, the read becomes the matching getter (`v` becomes `[self getVector]`): one line in the
+   caller, and the category converts with its own file.
