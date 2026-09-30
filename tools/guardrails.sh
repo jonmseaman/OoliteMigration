@@ -440,7 +440,24 @@ is_code() {         # is_code <path> - does this path's extension/name make it C
   # Deliberately NOT `printf ... | grep -qE "$CODE_RE"`: see the pipefail note in is_exempt.
   # grep reads one short line here so it would probably never fire, but the shape is the bug
   # and the shape is what a later reader copies. A single non-pipelined grep is immune.
+  # Paths of the change were classified up front by prime_is_code (one grep for all of them,
+  # bead oo-3rb.334); anything else still gets the per-path grep.
+  if [ -n "${IS_CODE_KNOWN[$1]+x}" ]; then [ "${IS_CODE_KNOWN[$1]}" = 1 ]; return; fi
   grep -qE "$CODE_RE" <<< "$1"
+}
+
+# prime_is_code: classify EVERY path of the change with ONE grep instead of one fork per path
+# (bead oo-3rb.334). On Windows/MSYS2 a fork costs ~45 ms of kernel time (see the basename note
+# at is_test_path); the suppression and deny-list checks each called is_code once per changed
+# file, which on a ~190-file change was hundreds of forks per check. grep -E over the paths one
+# per line applies the same $CODE_RE to each path as `grep -qE "$CODE_RE" <<< "$path"` does, so
+# the verdict per path is identical. Paths are git's, one per line (git quotes any path holding
+# a newline), so a line is a path.
+declare -A IS_CODE_KNOWN=()
+prime_is_code() {
+  local p
+  while IFS= read -r p; do [ -n "$p" ] && IS_CODE_KNOWN["$p"]=0; done < <(all_paths)
+  while IFS= read -r p; do [ -n "$p" ] && IS_CODE_KNOWN["$p"]=1; done < <(all_paths | grep -E "$CODE_RE")
 }
 
 is_exempt() {       # is_exempt <path>
@@ -637,9 +654,28 @@ check_suppression() {
   n=$(printf '%s\n%s\n%s\n%s\n' "$canary1" "$canary2" "$canary3" "$canary4" | sup_match | wc -l)
   [ "$n" -eq 4 ] || { bad "suppression: matcher recognised $n/4 canary lines - the pattern set is broken and this check cannot fire"; return; }
 
-  local p base out
+  # Prefilter (bead oo-3rb.334): ONE grep -l over every changed file that exists, with the same
+  # pattern sup_match uses. added_lines prints only lines OF the file (never of the baseline),
+  # so a file in which no line matches anywhere cannot add a matching line: skipping it cannot
+  # change a verdict. Only files that match somewhere pay for added_lines + sup_match (~8 forks
+  # each, which on a ~190-file change was ~150 s of this check on Windows).
+  local p base out f
+  local -a sup_files=()
+  local -A sup_cand=()
+  while IFS="$US" read -r p base; do
+    [ -n "${p:-}" ] && [ -e "$p" ] && sup_files+=("$p")
+  done <<EOF
+$(scan_targets)
+EOF
+  if [ "${#sup_files[@]}" -gt 0 ]; then
+    while IFS= read -r f; do
+      [ -n "$f" ] && sup_cand["$f"]=1
+    done < <(printf '%s\0' "${sup_files[@]}" | xargs -0 grep -lE -- "$(sup_patterns | paste -sd'|' -)" 2>/dev/null)
+  fi
+
   while IFS="$US" read -r p base; do
     [ -n "${p:-}" ] || continue
+    [ -n "${sup_cand[$p]+x}" ] || continue   # no line of the file matches, so no added line can
     is_code "$p" || continue
     is_exempt "$p" && continue
     [ -n "${base:-}" ] && is_exempt "$base" && continue
@@ -1028,7 +1064,7 @@ check_denylist() {
   # is the same as deny_count's: the lines matching each pattern, summed over the patterns. On the
   # ~200-file .m -> .mm rename (oo-x7o) the per-file form spawned ~7,000 greps and took 16 minutes.
   local p base i k n=0 pattern line f c
-  local -a now_paths=() base_paths=() now_count=() before_count=()
+  local -a now_paths=() base_paths=() now_count=() before_count=() want_n=() want_spec=()
   local tmpd
   tmpd=$(mktemp -d) || { bad "deny-list: cannot create a scratch directory - this check cannot run"; return; }
   while IFS="$US" read -r p base; do
@@ -1041,13 +1077,59 @@ check_denylist() {
     base_paths[n]=""
     now_count[n]=0
     before_count[n]=0
-    if [ -n "${base:-}" ] && git cat-file -e "$BASE:$base" 2>/dev/null; then
-      git show "$BASE:$base" > "$tmpd/$n" && base_paths[n]="$tmpd/$n"
-    fi
+    if [ -n "${base:-}" ]; then want_n+=("$n"); want_spec+=("$BASE:$base"); fi
     n=$(( n + 1 ))
   done <<EOF
 $(scan_targets)
 EOF
+
+  # The baseline copies, extracted by ONE `git cat-file --batch` (bead oo-3rb.334) instead of a
+  # `git cat-file -e` + `git show` pair per file: ~380 git processes on a ~190-file change, ~70 s
+  # on Windows. Same bytes: `git show <rev>:<path>` of a blob streams the raw blob (no textconv
+  # unless asked on the command line), exactly what --batch emits; a spec that does not resolve
+  # ("<spec> missing", where -e failed) leaves the file without a baseline, as before. The stream
+  # is split by SIZE, as in tools/check-file-modes.sh. A non-blob (never a changed file's
+  # baseline in practice) is reported and extracted the old way, so nothing changes for it either.
+  if [ "${#want_n[@]}" -gt 0 ]; then
+    if ! printf '%s\n' "${want_spec[@]}" | git cat-file --batch 2>/dev/null | python3 -c '
+import os, sys
+buf = sys.stdin.buffer
+tmpd, idxs = sys.argv[1], sys.argv[2:]
+for idx in idxs:
+    header = buf.readline()
+    if not header:
+        sys.exit("git cat-file --batch ended early")
+    fields = header.rstrip(b"\n").split(b" ")
+    if len(fields) != 3 or not fields[2].isdigit():
+        continue                                  # "<spec> missing" (or ambiguous): no baseline
+    size = int(fields[2])
+    data = buf.read(size)
+    buf.read(1)                                   # the newline --batch puts after the content
+    if len(data) != size:
+        sys.exit("git cat-file --batch: short read")
+    if fields[1] == b"blob":
+        with open(os.path.join(tmpd, idx), "wb") as out:
+            out.write(data)
+        print(idx)
+    else:
+        print("nonblob " + idx)
+' "$tmpd" "${want_n[@]}" > "$tmpd/extracted"; then
+      bad "deny-list: could not extract the baseline copies at $BASE_SHA - this check cannot run"
+      rm -rf "$tmpd"; return
+    fi
+    while IFS= read -r line; do
+      line=${line%$'\r'}   # a Windows-native python3 prints CRLF
+      case "$line" in
+        nonblob\ *) k=${line#nonblob }
+          for (( i = 0; i < ${#want_n[@]}; i++ )); do
+            [ "${want_n[i]}" = "$k" ] || continue
+            git show "${want_spec[i]}" > "$tmpd/$k" && base_paths[k]="$tmpd/$k"
+          done ;;
+        '') ;;
+        *) base_paths[line]="$tmpd/$line" ;;
+      esac
+    done < "$tmpd/extracted"
+  fi
 
   # grep -cH prints "<file>:<count>" per file; the file name is matched back to its index. Repo
   # paths and the scratch names contain no ':' before the count, so the LAST ':' splits the line.
@@ -1087,6 +1169,7 @@ EOF
   done
 }
 
+prime_is_code
 check_goldens
 check_suppression
 check_tests
