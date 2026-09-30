@@ -411,3 +411,35 @@ arguments (`-init`, `-initAsUniverse`); and three file-static C functions read i
    member**, body verbatim, so no `friend` and no public accessor is added.
 5. **The façade's initialisers make and own the C++ object** as in amendment oo-86ek, through one
    private `-adoptCxxX:` that stores the new object and records the façade as its peer.
+
+## Amendment (bead oo-novu): initialisers that fail on their input, and a second class with one caller
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/Octree.h/.mm` (`Octree`,
+  `OOOctreeBuilder`), `Octree+ObjCBridge.h/.mm`, `tests/unit/core/test_Octree.mm`.
+
+**Context.** `Octree`'s initialisers answer nil for bad input, not only for lack of memory:
+`-cxx_initWithDictionary:` for a cache entry with no or ragged data, `-initWithData:radius:` for
+empty data. A constructor cannot answer null, and amendment oo-44gg's raise would turn a bad cache
+entry into an exception. `Octree.h` also declares `OOOctreeBuilder`, whose only user is
+`OOMeshToOctreeConverter.mm` (a few message sends in one method and one C function).
+
+**Decision (recommended defaults).**
+
+1. **An initialiser that can answer nil for its input becomes a static factory with the
+   initialiser's name** (first keyword, `cxx_` dropped: `-cxx_initWithDictionary:` becomes
+   `static oo::Ref<Octree> initWithDictionary(const oo::PList &)`), returning null where it
+   answered nil. The part of the body that cannot fail becomes a private constructor, and the
+   factory makes the object with `oo::adopt(new X(...))`, then applies the old failure test.
+   Amendment oo-44gg item 3 (raise) stays the rule for out-of-memory-only failures.
+2. **The façade keeps the initialiser.** It calls the factory, answers nil after
+   `[self release]` when it gives null, and otherwise owns the object and records itself as its
+   peer (amendment oo-86ek). An `-init` that raised stays in the façade and still raises.
+3. **A second class in the file whose callers all fit in the bead has no façade and is global**
+   (item 5's "no outside caller" case): its callers are adapted in the bead
+   (`OOMeshToOctreeConverter.mm`: `oo::makeRef<OOOctreeBuilder>()`, `builder->writeSolid()`, and
+   `oo::ToObjC(...)` where it hands the result to Objective-C). A C function that took the
+   class's pointer keeps the same parameter, now a C++ pointer.
+4. **A member function whose name matches a file-static C function** (`isHitByLine`,
+   `isHitByOctree`) calls the C function as `::name(...)`, since member lookup finds the member
+   first. File-static functions stay outside `namespace cxx`.
+5. **`[self oo_objectSize]`** (a memory statistic) becomes `sizeof *this`.

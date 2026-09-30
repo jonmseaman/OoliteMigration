@@ -99,6 +99,7 @@ oolite_sources += files(
     'OOWeakSet.mm',
     'OOXMLExtensions.mm',
     'Octree.mm',
+    'Octree+ObjCBridge.mm',
     'ResourceManager.mm',
     'TextureStore.mm',
     'Universe.mm',
