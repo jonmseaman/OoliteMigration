@@ -1390,3 +1390,25 @@ root's façade deletion bead is unaffected.
    a C++ `catch (...)` catches an Objective-C exception). The handler is not left empty
    (`bugprone-empty-catch`): it does in so many words what falling out of the empty `@catch` did,
    here `return true;`, with a comment.
+
+## Amendment (bead oo-n99o): failable initialisers that share a first keyword, and a union of ivars
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderUniform.h/.mm`,
+  `OOShaderUniform+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderUniform.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Seven failable initialisers that share `initWithName:shaderProgram:`** become seven overloads of
+   one static factory named after them (amendment oo-novu item 1), told apart by the third
+   argument's type and each commented with its keyword. Each body is the old one with `self` as the
+   new object (`result->`), and the shared private designated initialiser is a `bool` member.
+   A factory that fails before making the object (a nil colour) answers null without making one.
+2. **A union of ivars, bit-fields included, stays as it is** (its members are C), with `= {}`; the
+   factories make the object with `new X()`, which zero-initialises the whole of it first, as
+   `class_createInstance` did.
+3. **A converted class in `namespace cxx` that makes the converted class's Objective-C objects**
+   (`cxx::OOShaderMaterial` makes `OOShaderUniform`s) names the façade `::X` and keeps its
+   messages (amendment oo-rmd7 item 3), so the stub its test defines is still what it makes. The
+   façade's deletion bead turns them into C++ calls.
+4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
+   and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).

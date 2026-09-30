@@ -9,7 +9,9 @@
 	it (int, float, vector, colour, quaternion as vector or matrix, matrix); a binding to each
 	supported return type with its conversions (clamp, normalise, quaternion to matrix), the
 	methods it refuses (arguments, unsupported types, not implemented), the super-target chain,
-	and a target that has gone; and the description.
+	and a target that has gone; and the description. Those checks ran on the Objective-C class
+	first and now run through the facade. After them: the C++ factories (null where the
+	initialiser answered nil) and the facade's identity.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -20,6 +22,7 @@
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
 #include "oofnd/objc/OORuntime.h"
+#include "oofnd/String.hpp"
 
 #include <cmath>
 #include <string>
@@ -414,6 +417,61 @@ OO_TEST(description)
 		const std::string bound = oo::DescriptionOf(Bound("uFloat", target, "floatValue"));
 		OO_CHECK(bound.find(": float uFloat = [<TestTarget 0x") != std::string::npos && bound.ends_with("> floatValue];}"));
 		OO_CHECK(oo::DescriptionOf(Bound("uFloat", target, "nothing")).ends_with(": (null) uFloat = INVALID;}"));
+	}
+}
+
+
+// --- The C++ class and the facade (after the conversion) -----------------------------------------
+
+OO_TEST(cxxAPI)
+{
+	if (!SetUpProgram())  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::OOShaderUniform::initWithName("uFloat", nil, 1.0f) == nullptr);
+		OO_CHECK(cxx::OOShaderUniform::initWithName("uMissing", gShaderProgram, 1.0f) == nullptr);
+		OO_CHECK(cxx::OOShaderUniform::initWithName("uVector", gShaderProgram, static_cast<cxx::OOColor *>(nullptr)) == nullptr);
+
+		Reset();
+		cxx::OOShaderUniform::initWithName("uInt", gShaderProgram, GLint(4))->apply();
+		cxx::OOShaderUniform::initWithName("uFloat", gShaderProgram, 0.5f)->apply();
+		OO_CHECK(Int("uInt") == 4 && Near(Floats("uFloat", 1), { 0.5f }));
+		cxx::OOShaderUniform::initWithName("uVector", gShaderProgram, cxx::OOColor::colorWithRed(0.1f, 0.2f, 0.3f, 0.4f).get())->apply();
+		OO_CHECK(Near(Floats("uVector", 4), { 0.1f, 0.2f, 0.3f, 0.4f }));
+		const Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f };
+		cxx::OOShaderUniform::initWithName("uVector", gShaderProgram, q, false)->apply();
+		OO_CHECK(Near(Floats("uVector", 4), { 0.5f, 0.5f, 0.5f, 0.5f }));
+		cxx::OOShaderUniform::initWithName("uMatrix", gShaderProgram, OOMatrixForScale(2, 3, 4))->apply();
+		OO_CHECK(Near(Floats("uMatrix", 16), { 2, 0, 0, 0,  0, 3, 0, 0,  0, 0, 4, 0,  0, 0, 0, 1 }));
+
+		TestTarget *target = [[[TestTarget alloc] init] autorelease];
+		target->_float = 0.375f;
+		const oo::Ref<cxx::OOShaderUniform> bound = cxx::OOShaderUniform::initWithName("uFloat", gShaderProgram, target, OOSelectorFromName("floatValue"), 0);
+		OO_CHECK(bound != nullptr);
+		bound->apply();
+		OO_CHECK(Near(Floats("uFloat", 1), { 0.375f }));
+		OO_CHECK(cxx::OOShaderUniform::initWithName("uFloat", gShaderProgram, target, nullptr, 0) == nullptr);
+		OO_CHECK(bound->description()->find(": float uFloat = [<TestTarget 0x") != std::string::npos);
+	}
+}
+
+
+OO_TEST(facade)
+{
+	if (!SetUpProgram())  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OOShaderUniform *made = [[[OOShaderUniform alloc] initWithName:"uFloat" shaderProgram:gShaderProgram floatValue:0.5f] autorelease];
+		cxx::OOShaderUniform *part = oo::ToCxx(made);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == made);
+
+		const oo::Ref<cxx::OOShaderUniform> u = cxx::OOShaderUniform::initWithName("uInt", gShaderProgram, GLint(2));
+		OOShaderUniform *facade = oo::ToObjC(u);
+		OO_CHECK(facade != nil && oo::ToObjC(u.get()) == facade && oo::ToCxx(facade) == u.get());
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOShaderUniform " + oo::str::pointerDescription(facade) + ">{"));
+
+		OOShaderUniform *none = nil;
+		OO_CHECK(oo::ToCxx(none) == nullptr && oo::ToObjC(static_cast<cxx::OOShaderUniform *>(nullptr)) == nil);
 	}
 }
 

@@ -188,7 +188,7 @@ private:
 	void addTexturesFromArray(const std::vector<oo::ObjCRef<OOTexture *>> &textureObjects, GLuint max);
 
 	oo::ObjCRef<OOShaderProgram *>	shaderProgram = {};
-	std::map<std::string, oo::ObjCRef<OOShaderUniform *>, std::less<>>	uniforms = {};	// by uniform name
+	std::map<std::string, oo::ObjCRef<::OOShaderUniform *>, std::less<>>	uniforms = {};	// by uniform name: the Objective-C uniforms while OOShaderUniform has a facade (bead oo-n99o; ADR-0056 amendment oo-rmd7 item 3)
 
 	uint32_t						texCount = {};
 	OOTexture						**textures = {};
