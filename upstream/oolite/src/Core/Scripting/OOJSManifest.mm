@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "OOJSPlayer.h"
 #import "OOJSPlayerShip.h"
 #import "OOIsNumberLiteral.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

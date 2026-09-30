@@ -25,10 +25,10 @@ MA 02110-1301, USA.
 
 #import "OOJSInterfaceDefinition.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted (bead oo-mqb) onto the ooscript façade (JSEngine.hpp), same pattern as the

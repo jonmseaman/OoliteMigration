@@ -55,7 +55,7 @@ MA 02110-1301, USA.
 
 - (void) calcGrowthRate;
 
-- (unichar *)	digram;
+- (uint16_t *)	digram;
 - (NSPoint)		position;
 - (NSPoint)		movement;
 - (GLfloat)		rotation;

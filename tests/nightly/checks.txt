@@ -91,6 +91,14 @@
 [oo-x2wy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAsyncWorkManager && bash tools/tier-c.sh --only goldens
 [oo-3kqi] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakReference && bash tools/tier-c.sh --only goldens
 [oo-cc8a] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakSet && bash tools/tier-c.sh --only goldens
+
+# The Foundation census's own selftest (100 cases, ~6 min under MSYS2 awk): over accept.sh's 300 s
+# budget, so oo-lfd28 keeps a one-probe fast proof in its acceptance and the full proof runs here.
+[oo-lfd28] bash tools/check-foundation-free.sh --selftest
+
+# Phase-2 endgame sync into phase-3 (oo-qvprm): a full build, the core unit tests and the goldens
+# overrun accept.sh's 300 s budget, so the bead's acceptance is the source census and the night reruns these.
+[oo-qvprm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-94qk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAIStateMachineVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-kdnm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckJSSyntaxVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-li7k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckPListSyntaxVerifierStage && bash tools/tier-c.sh --only goldens

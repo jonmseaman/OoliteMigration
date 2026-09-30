@@ -26,7 +26,6 @@
 
 
 #if 0
-#import "OOStringBridge.h"
 #include "oofnd/Log.hpp"
 #define FAIL(s)		do { OO_LOG("unclassified", "OOIsNumberLiteral failed for \"{}\": {}.", string, s);  return NO; } while (0)
 #else

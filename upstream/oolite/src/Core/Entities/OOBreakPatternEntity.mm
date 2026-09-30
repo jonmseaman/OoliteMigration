@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
-#import "OOFoundationBridge.h"
 
 
 @interface OOBreakPatternEntity (Private)

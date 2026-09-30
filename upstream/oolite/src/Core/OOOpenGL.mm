@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OOFunctionAttributes.h"
 #import "OOOpenGLExtensionManager.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

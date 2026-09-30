@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "OOScript.h"
 #import "OOJSScript.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

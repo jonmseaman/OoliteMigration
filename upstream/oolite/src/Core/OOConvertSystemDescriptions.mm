@@ -32,7 +32,6 @@ SOFTWARE.
 #if OO_LOCALIZATION_TOOLS
 
 #import "OOConvertSystemDescriptions.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PListWriting.hpp"
 #include "oofnd/String.hpp"
 #import "ResourceManager.h"

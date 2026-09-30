@@ -13,7 +13,12 @@
 #
 #   0 guardrails  9-16 s     tools/guardrails.sh -- CLAUDE.md rules 1, 2, 3, 8, offline
 #   1 build       13-22 s warm/incremental, ~142 s genuinely cold  (tools/build-windows.sh test)
-#   2 tests       ~12 s      offline module tests, 3 suites
+#   1b foundation ~13 s      tools/check-foundation-free.sh --stage source and --link (oo-qps.19)
+#   2 tests       ~12 s      offline module tests, 3 suites (2026-09-18). By 2026-09-29 they had
+#                            grown to tests/golden ~218 s + tools ~135 s + fleet ~25 s serial,
+#                            uncontended (bead oo-3rb.331); the suites and 8+6+1 shards now run
+#                            concurrently. Measured under heavy fleet load (CPU 51-91%): serial
+#                            golden 494 s + tools 530 s vs 216 s for the concurrent stage.
 #   2b parity     ~3 s       tier-b's environment must agree with a bare shell's verdict
 #   3 goldens     ~43 s      every blessed golden under goldens/<platform>/
 #   4 component   769-957 s  upstream/oolite/tests/component (ADR-0018) -- see BUDGET HISTORY
@@ -195,6 +200,26 @@ tests/fleet	23	"
 # actionable. Recorded here rather than silently dropped, and the suite's floor (23) is the count
 # with this one already excluded, so nothing else can vanish unnoticed behind it.
 TESTS_DESELECT="tests/fleet/test_fleet_reporter.py::test_the_committed_report_exists_and_passes_its_own_check"
+
+# How many concurrent pytest processes each suite is split into (bead oo-3rb.331). The offline
+# suites grew ~30x after this gate was sized (tests/golden 1068 tests / ~218 s, tools ~135 s,
+# 2026-09-29), almost all of it per-test subprocess start-up, which is wall time on Windows, not
+# CPU. So the three suites run AT THE SAME TIME, each split round-robin into this many shards by
+# tools/pytest_plugins/oo_shard.py; the shards partition the suite exactly and the floors below are
+# checked against the SUM of their pass counts, so nothing runs less than before. The fleet box has
+# 24 threads; 8+6+1 leaves room for sibling agents. OOLITE_TIER_B_TEST_SHARDS=1 forces the old
+# serial-per-suite shape (still concurrent across suites) for comparison.
+test_shards_for() {
+  if [ -n "${OOLITE_TIER_B_TEST_SHARDS:-}" ]; then
+    case "$OOLITE_TIER_B_TEST_SHARDS" in ''|*[!0-9]*|0) echo 1 ;; *) echo "$OOLITE_TIER_B_TEST_SHARDS" ;; esac
+    return
+  fi
+  case "$1" in
+    tests/golden) echo 8 ;;
+    tools)        echo 6 ;;
+    *)            echo 1 ;;
+  esac
+}
 
 # --- Output ------------------------------------------------------------------------------------
 
@@ -395,6 +420,29 @@ stage_build() {
   detail "stage build ok in $(( SECONDS - t0 ))s"
 }
 
+# ================================================================================================
+# STAGE 1b -- FOUNDATION-FREE (bead oo-qps.19, ADR-0055)
+# ================================================================================================
+# The absolute gate the deny-list cannot give (it is baseline-relative per changed file): no
+# Foundation name, bridge helper, Foundation import or gnustep-base build reference in unfenced
+# source, and the binary this run tests imports no gnustep-base DLL. Runs in --fast too, against
+# the shared build's binary.
+stage_foundation_free() {
+  local t0=$SECONDS log="$RUN_ROOT/foundation-free.log"
+  step foundation "tools/check-foundation-free.sh --stage source; --link $(native "$APP_DIR/oolite.exe")"
+  bash "$HERE/check-foundation-free.sh" --stage source > "$log" 2>&1 \
+    || { tail -30 "$log" >&2; fail foundation "Foundation left in unfenced source (the census above); full log $(native "$log")"; }
+  # POSITIVE EVIDENCE: the census scanned the tree and counted zero, rather than exiting 0 silently.
+  local census
+  census="$(grep -m1 '^== source stage: 0 finding(s) in [1-9]' "$log" || true)"
+  [ -n "$census" ] || fail foundation "the census printed no '0 finding(s) in N file(s)' line; $(native "$log")"
+  detail "${census#== }"
+  bash "$HERE/check-foundation-free.sh" --link "$APP_DIR/oolite.exe" >> "$log" 2>&1 \
+    || { tail -10 "$log" >&2; fail foundation "$(native "$APP_DIR/oolite.exe") imports gnustep-base; full log $(native "$log")"; }
+  detail "$(tail -1 "$log")"
+  detail "stage foundation ok in $(( SECONDS - t0 ))s"
+}
+
 # stage_mesa -- put MSYS2's Mesa llvmpipe beside the binary, as tests/golden/run.sh:130-139 and
 # upstream/oolite/tests/run_test_fn.sh:28-33 do.
 #
@@ -431,7 +479,29 @@ stage_mesa() {
   done
   [ -f "$APP_DIR/libgallium_wgl.dll" ] \
     || fail build "no libgallium_wgl.dll in $(native "$APP_DIR") and none at $prefix/bin; the preflight tests in stage 2 need it staged and would fail for a reason unrelated to the commit"
-  detail "mesa      $staged DLL(s) staged from $prefix/bin (llvmpipe beside the binary)"
+  # Mesa's own runtime closure (libLLVM-22.dll and what it imports: libffi, libxml2, libzstd,
+  # libintl...), as post_build.sh stages the binary's. opengl32.dll loads libgallium_wgl.dll at
+  # run time, so no walk from oolite.exe reaches these; until oo-qps.18 four of them were beside
+  # the binary only because gnustep-base imported them too, which is what kept
+  # test_launch_preflight's "deps staged beside the binary" arm true. Same concurrency rule as
+  # above.
+  local unix_prefix dep name pending next extra=0
+  unix_prefix="$(cygpath -u "$prefix")"
+  pending="$APP_DIR/libgallium_wgl.dll"
+  while [ -n "$pending" ]; do
+    next=""
+    for dll in $pending; do
+      while IFS= read -r dep; do
+        [ -n "$dep" ] || continue
+        name="${dep##*/}"
+        [ -f "$APP_DIR/$name" ] && continue
+        cp -f "$dep" "$APP_DIR/" 2>/dev/null && { extra=$(( extra + 1 )); next="$next $APP_DIR/$name"; } \
+          || printf 'tier-b: could not stage %s beside the binary\n' "$name" >&2
+      done < <(ldd "$dll" 2>/dev/null | awk -v p="$unix_prefix/" 'index($3, p) == 1 {print $3}')
+    done
+    pending="$next"
+  done
+  detail "mesa      $staged DLL(s) staged from $prefix/bin (llvmpipe beside the binary), $extra of its runtime deps"
 }
 
 # ================================================================================================
@@ -441,31 +511,73 @@ stage_mesa() {
 # A pytest run that collects nothing exits 5, but a run that collects a SHRINKING number exits 0.
 # So the count is parsed and compared against a floor, and the floor is a committed constant.
 
+#
+# The suites and their shards run CONCURRENTLY (bead oo-3rb.331, see test_shards_for): every
+# shard is launched first, then every one is waited for, and only then is anything judged, so a
+# red shard never leaves siblings running behind the verdict. One log per shard,
+# pytest-<suite>.shard<K>of<N>.log. A shard exits 5 when the round-robin left it nothing to run
+# (e.g. more shards than tests); that alone is not a failure, because the floor below is checked
+# against the suite's SUMMED pass count, which is the same number a single process would report.
+
 stage_tests() {
-  local t0=$SECONDS total=0 suite floor extra log passed
-  step tests "offline module tests (3 suites, floors enforced)"
+  local t0=$SECONDS total=0 suite floor extra log passed n k
+  step tests "offline module tests (3 suites, floors enforced; suites and shards run concurrently)"
+  local plugin_dir sep
+  plugin_dir="$(native "$HERE/pytest_plugins")"
+  [ -f "$HERE/pytest_plugins/oo_shard.py" ] \
+    || fail tests "tools/pytest_plugins/oo_shard.py is missing; the sharded test stage cannot partition the suites"
+  sep="$("$PY" -c 'import os; print(os.pathsep)' 2>/dev/null)" || sep=":"
+  local -a job_pid=() job_suite=() job_log=()
+  local -a suite_names=() suite_floors=()
   while IFS="	" read -r suite floor extra; do
     [ -n "$suite" ] || continue
-    floor=$(( floor + TEST_FLOOR_BUMP ))
-    log="$RUN_ROOT/pytest-$(echo "$suite" | tr '/' '_').log"
+    suite_names+=("$suite"); suite_floors+=("$(( floor + TEST_FLOOR_BUMP ))")
     local args=()
     [ -n "$extra" ] && IFS='|' read -r -a args <<< "$extra"
     [ "$suite" = "tests/fleet" ] && args+=(--deselect "$TESTS_DESELECT")
-    ( cd "$REPO_ROOT" && "$PY" -m pytest "$suite" -q -p no:cacheprovider "${args[@]+"${args[@]}"}" ) \
-      > "$log" 2>&1
-    local rc=$?
-    passed="$(grep -oE '[0-9]+ passed' "$log" | tail -1 | grep -oE '[0-9]+' || true)"
-    passed="${passed:-0}"
-    if [ "$rc" -ne 0 ]; then
-      tail -25 "$log" >&2
-      fail tests "$suite failed (pytest rc=$rc, $passed passed); full log $(native "$log")"
-    fi
-    if [ "$passed" -lt "$floor" ]; then
-      fail tests "$suite collected only $passed passing test(s), fewer than the committed floor of $floor -- a test was deleted, renamed or silently skipped"
-    fi
-    detail "$(printf '%-14s %3d passed (floor %s)' "$suite" "$passed" "$floor")"
-    total=$(( total + passed ))
+    n="$(test_shards_for "$suite")"
+    for (( k = 0; k < n; k++ )); do
+      log="$RUN_ROOT/pytest-$(echo "$suite" | tr '/' '_').shard${k}of${n}.log"
+      ( cd "$REPO_ROOT" && PYTHONPATH="$plugin_dir${PYTHONPATH:+$sep$PYTHONPATH}" \
+          "$PY" -m pytest "$suite" -q -p no:cacheprovider -p oo_shard --oo-shard "$k/$n" \
+          "${args[@]+"${args[@]}"}" ) > "$log" 2>&1 &
+      job_pid+=("$!"); job_suite+=("$suite"); job_log+=("$log")
+    done
   done <<< "$TEST_SUITES"
+
+  local -a job_rc=()
+  local j
+  for j in "${!job_pid[@]}"; do
+    local rc=0
+    wait "${job_pid[$j]}" || rc=$?
+    job_rc[$j]=$rc
+  done
+
+  local i
+  for i in "${!suite_names[@]}"; do
+    suite="${suite_names[$i]}"; floor="${suite_floors[$i]}"
+    local suite_passed=0 shards=0 nonempty=0
+    for j in "${!job_pid[@]}"; do
+      [ "${job_suite[$j]}" = "$suite" ] || continue
+      log="${job_log[$j]}"; shards=$(( shards + 1 ))
+      passed="$(grep -oE '[0-9]+ passed' "$log" | tail -1 | grep -oE '[0-9]+' || true)"
+      passed="${passed:-0}"
+      if [ "${job_rc[$j]}" -eq 5 ] && [ "$passed" -eq 0 ]; then
+        continue    # round-robin gave this shard nothing; the summed floor below still binds
+      fi
+      if [ "${job_rc[$j]}" -ne 0 ]; then
+        tail -25 "$log" >&2
+        fail tests "$suite failed in $(basename "$log") (pytest rc=${job_rc[$j]}, $passed passed); full log $(native "$log")"
+      fi
+      nonempty=$(( nonempty + 1 ))
+      suite_passed=$(( suite_passed + passed ))
+    done
+    if [ "$suite_passed" -lt "$floor" ]; then
+      fail tests "$suite collected only $suite_passed passing test(s) over $shards shard(s), fewer than the committed floor of $floor -- a test was deleted, renamed or silently skipped"
+    fi
+    detail "$(printf '%-14s %4d passed (floor %s; %d shard(s), %d non-empty)' "$suite" "$suite_passed" "$floor" "$shards" "$nonempty")"
+    total=$(( total + suite_passed ))
+  done
   [ "$total" -gt 0 ] || fail tests "0 tests ran in total; the gate would pass vacuously"
   detail "stage tests ok: $total tests in $(( SECONDS - t0 ))s"
 }
@@ -719,6 +831,7 @@ stage_corpus() {
 
 stage_guardrails
 stage_build
+stage_foundation_free
 stage_tests
 stage_environment_parity
 stage_goldens

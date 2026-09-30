@@ -59,10 +59,6 @@ public:
 	oo::PList pListForKey(const std::string &key, const std::string &cache);	// null PList: absent
 	void setPList(const oo::PList &value, const std::string &key, const std::string &cache);	// value: not null
 
-	// The id forms of the two above (oo::ObjectFromPList / oo::PListFrom of the value), until
-	// oo-qps.72 deletes them once their callers have moved.
-	id objectForKey(const std::string &inKey, const std::string &inCacheKey);
-	void setObject(id inElement, const std::string &inKey, const std::string &inCacheKey);
 	void removeObjectForKey(const std::string &inKey, const std::string &inCacheKey);
 	void clearCache(const std::string &inCacheKey);
 	void clearAllCaches();
