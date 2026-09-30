@@ -189,19 +189,43 @@ deleted before the superclass converts. Converting the superclass first needs no
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
 
-## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+## Amendment (bead oo-z1s4): name clashes, GL tests, and stubbed collaborators
 
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLExtensionManager.h/.mm`,
+  `OOOpenGLExtensionManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOpenGLExtensionManager.mm`,
+  `tests/unit/core/oo_gl_test_context.hpp`. The singleton rules it follows are amendment oo-r7m0's
+  (written in bead oo-r7m0; until that merges, this bead's files are their example too).
+
+**Decision (recommended defaults).**
+
+1. **An ivar that shares its name with a member function gets the suffix `_`.** Objective-C
+   kept ivars and methods apart (`usePointSmoothing` was both); C++ does not. The same goes for a
+   member of `oo::RefCounted` (`release`, `retain`, `retainCount`): an ivar `release` hides
+   `RefCounted::release()` and `oo::Ref` stops compiling. Only the clashing ivars are renamed,
+   and every use of them in the bodies with them; the suffix is oofnd's own (`mutex_`).
+2. **A singleton made before `-init` ran** (the singleton category's `+allocWithZone:` recorded
+   the instance, then `-init` did the work) is recorded first and initialised after:
+   `sSingleton = oo::makeRef<X>().leakRef(); sSingleton->reset();`. A re-entrant `sharedX()` and
+   an exception out of the initialisation leave the same `sSingleton` as before.
+3. **A GL class's test runs on a real context.** `tests/unit/core/oo_gl_test_context.hpp` makes
+   one hidden 16x16 SDL window with a compatibility context and keeps it current; the window is
+   never shown, so the test does not take the foreground and needs no gui-lock. Answers that
+   depend on the driver are checked against what the test reads from OpenGL itself
+   (`glGetString`, `glGetIntegerv`), never against constants.
+4. **A collaborator that would drag the game into the test's link is stubbed in the test file**
+   (the cwz amendment's rule for functions, extended to classes): an Objective-C class the class
+   under test messages is given a minimal `@interface`/`@implementation` of the same name in the
+   test, declaring only the selectors used, and a C++ free function a definition. The test must
+   not import the real header. The stub is the place to pin inputs (`gpu-settings.plist` comes
+   from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
+## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
   `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
-
 **Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
 `-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
 `@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
 (`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
 ask `UNIVERSE`, the string expander and JavaScript.
-
-**Decision (recommended defaults).**
-
 1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
    own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
    that called another is a delegating constructor; statements it ran before the call move into a
@@ -279,3 +303,34 @@ supplies, and its bodies spell selectors with `@selector`, which the gate's grep
    expectations are rewritten as C++ calls. Checks that only the Objective-C API could express
    (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
    and the commit message says so.
+
+## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
+  `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
+
+**Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
+`UNIVERSE->sortedEntities`), so its object cannot link without theirs, and theirs pull in the whole
+game. Its designated `-init` could fail (`malloc`) and return nil; it has two initialisers with no
+arguments (`-init`, `-initAsUniverse`); and three file-static C functions read its private ivars.
+
+**Decision (recommended defaults).**
+
+1. **Its unit test links every game object but `SDL/main.mm`**: the entry in
+   `tests/unit/core/meson.build` is `'test_X': ['*']`. The test defines the globals `main.mm`
+   defined that the game references (today `gDebugFlags`, under `#ifndef NDEBUG`). The test drives
+   the class with plain objects of the classes it reads (`[[Entity alloc] init]`, `UNIVERSE` nil)
+   and pins what they make observable. The cost is one more whole-game link per build (about 30 s).
+2. **An argumentless initialiser other than `-init` becomes a constructor taking an empty tag
+   struct named after the selector** (`-initAsUniverse` becomes `CollisionRegion(AsUniverse)`),
+   because two argumentless constructors cannot coexist. `[self init]` inside an initialiser
+   becomes a delegating constructor (`: CollisionRegion()`), and the designated `-init`, when no
+   caller outside the class used it, becomes a private constructor.
+3. **An initialiser's failure return (nil after `[self release]`) becomes a raise of the class's
+   existing exception for that failure** (`OOMallocException`, as `-addEntity:` raises when the
+   list cannot grow), because a constructor cannot return null. Only out-of-memory paths are
+   affected.
+4. **A file-static function that reads the class's private ivars becomes a private static
+   member**, body verbatim, so no `friend` and no public accessor is added.
+5. **The façade's initialisers make and own the C++ object** as in amendment oo-86ek, through one
+   private `-adoptCxxX:` that stores the new object and records the façade as its peer.
