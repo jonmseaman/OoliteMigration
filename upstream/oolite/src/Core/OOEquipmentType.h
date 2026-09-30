@@ -5,7 +5,7 @@ OOEquipmentType.h
 C++20 since bead oo-fg7i (Phase 3, proposed ADR-0056). The class is cxx::OOEquipmentType while
 OOEquipmentType+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
 OOEquipmentType its unconverted callers message (ships, the player, the JS bindings); the bridge's
-deletion bead moves it out of namespace cxx. The registries of types are the class's; the façade
+deletion bead moves it out of namespace cxx. The registries of types are the class's; the facade
 keeps each registered type's Objective-C object alive while it is registered.
 
 Class representing a type of ship equipment. Exposed to JavaScript as
