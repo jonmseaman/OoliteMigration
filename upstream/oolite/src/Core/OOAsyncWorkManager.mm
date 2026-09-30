@@ -57,10 +57,10 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 
 
-static cxx::OOAsyncWorkManager *sSingleton = nullptr;
-
-
 namespace {
+
+cxx::OOAsyncWorkManager *sSingleton = nullptr;
+
 
 /*	OOAsyncWorkManagerInternal: shared superclass of our two implementations,
 	which implements shared functionality but is not itself concrete.
@@ -258,7 +258,7 @@ OOAsyncWorkManager::~OOAsyncWorkManager()
 }
 
 
-bool OOAsyncWorkManager::addTask(id task, OOAsyncWorkPriority priority)
+bool OOAsyncWorkManager::addTask(id /*task*/, OOAsyncWorkPriority /*priority*/)
 {
 	OOLogGenericSubclassResponsibility();
 	return false;
@@ -271,7 +271,7 @@ void OOAsyncWorkManager::completePendingTasks()
 }
 
 
-void OOAsyncWorkManager::waitForTaskToComplete(id task)
+void OOAsyncWorkManager::waitForTaskToComplete(id /*task*/)
 {
 	OOLogGenericSubclassResponsibility();
 	[OOException raise:OOInternalInconsistencyException format:"%s called.", __PRETTY_FUNCTION__];
@@ -367,7 +367,7 @@ OOManualDispatchAsyncWorkManager::OOManualDispatchAsyncWorkManager()
 }
 
 
-bool OOManualDispatchAsyncWorkManager::addTask(id task, OOAsyncWorkPriority priority)
+bool OOManualDispatchAsyncWorkManager::addTask(id task, OOAsyncWorkPriority /*priority*/)
 {
 	if (EXPECT_NOT(task == nil))  return false;
 

@@ -86,9 +86,11 @@ cxx::OOAsyncWorkManager *oo::ToCxx(OOAsyncWorkManager *manager)
 
 + (OOAsyncWorkManager *) sharedAsyncWorkManager
 {
-	// The singleton's facade is kept for the life of the process, as the singleton was.
-	static OOAsyncWorkManager *sFacade = [oo::ToObjC(cxx::OOAsyncWorkManager::sharedAsyncWorkManager()) retain];
-	return sFacade;
+	// One facade for the life of the process, as there was one object (amendment oo-r7m0, item 5).
+	// Two threads racing here get the same facade from the peer table, and retain it twice.
+	static OOAsyncWorkManager *facade = nil;
+	if (facade == nil)  facade = [oo::ToObjC(cxx::OOAsyncWorkManager::sharedAsyncWorkManager()) retain];
+	return facade;
 }
 
 
