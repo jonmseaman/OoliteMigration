@@ -1026,3 +1026,36 @@ another file (`OONativeVector (OOJavaScriptConversion)` in `OOJavaScriptEngine.m
 4. **A category of the converted class in another file** stays a category of the façade. If it read
    an ivar, the read becomes the matching getter (`v` becomes `[self getVector]`): one line in the
    caller, and the category converts with its own file.
+
+## Amendment (bead oo-rmd7): a helper that adopts an Objective-C protocol, and a converted caller inside `namespace cxx`
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCacheManager.h/.mm`,
+  `OOCacheManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCacheManager.mm`.
+
+**Context.** `OOCacheManager` (a singleton, amendments oo-r7m0 and oo-z1s4) writes its file through
+a helper class private to its file, `OOAsyncCacheWriter`, an Objective-C object that adopts
+`OOAsyncWorkTask` so that `OOAsyncWorkManager` (Objective-C, or a façade over C++ after oo-x2wy)
+can queue and message it. The helper cannot become C++ while the protocol is Objective-C
+(amendment oo-x2wy item 2), and the gate's grep forbids its `@interface`/`@implementation` in `X.mm`.
+The helper calls a private method of the class (`-writeDict:`). Separately, `OOEquipmentType.mm`,
+converted earlier into `namespace cxx`, sent `[OOCacheManager sharedCache]`; once `cxx::OOCacheManager`
+exists that name finds the C++ class.
+
+**Decision (recommended defaults).**
+
+1. **A helper that must stay Objective-C because it adopts an Objective-C protocol moves, body
+   unchanged, into `X+ObjCBridge.mm`.** Its `@interface` goes in `X+ObjCBridge.h` without the
+   protocol, so that `X.mm` can make it; the conformance is a class extension in the bridge `.mm`
+   (`@interface Helper () <P> @end`), so the bridge header does not import the protocol's header.
+   `X.mm` still makes it and hands it to the Objective-C API as before. It becomes C++ in the bead
+   that turns the protocol into a C++ interface (oo-9ht.14 here), and moves back into `X.mm` then.
+2. **A private method that such a helper calls** becomes a public member with a comment naming the
+   caller. The helper calls the C++ class directly (`cxx::X::sharedX()->m()`), not the façade.
+3. **A caller already converted into `namespace cxx` that messages the class being converted**
+   names the façade `::X` (`[[::OOCacheManager sharedCache] …]`), as `OOColor.mm` names
+   `[::OOColor class]`. Its message is kept, not turned into a C++ call, so a test that stubs the
+   Objective-C class for that caller (`test_OOEquipmentType.mm`) keeps its link and its
+   expectations. It becomes a C++ call in the façade's deletion bead.
+4. **A test of a class that reads and writes files under the user's directories** points them at a
+   scratch folder before the first use (`HOMEPATH` and the current directory, which
+   `oo::ResourcePaths` reads at call time), and removes it at the end.

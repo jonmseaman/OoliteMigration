@@ -11,7 +11,9 @@
 	writing through the asynchronous work manager and a reload reading it back; writes refused
 	while disallowed; a cache from another game version, or one that does not parse, discarded;
 	clearing everything. The expectations were written against the Objective-C API and run on the
-	unconverted class first.
+	unconverted class first (commit 079054e79); they now run through the facade, which is its
+	forwarding test (amendment oo-8kx7 item 6). The C++ API and the facade's contract (one facade,
+	identity both ways, nil and null) follow.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -300,6 +302,56 @@ OO_TEST(staleOrBadCacheDiscarded)
 		OO_CHECK([cache cxx_pListForKey:"f" inCache:"new"].isNull());
 		[cache cxx_setPList:Str("again") forKey:"g" inCache:"new"];
 		OO_CHECK([cache cxx_pListForKey:"g" inCache:"new"] == Str("again"));
+	}
+}
+
+
+OO_TEST(cxxApi)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		cxx::OOCacheManager *cache = cxx::OOCacheManager::sharedCache();
+		OO_CHECK(cache != nullptr);
+		OO_CHECK(cxx::OOCacheManager::sharedCache() == cache);
+		cache->setPList(Str("c"), "k", "cxx");
+		OO_CHECK(cache->pListForKey("k", "cxx") == Str("c"));
+		OO_CHECK(cache->descriptionComponents() == std::optional<std::string>("dirty=yes"));
+		cache->removeObjectForKey("k", "cxx");
+		OO_CHECK(cache->pListForKey("k", "cxx").isNull());
+		cache->setPList(Str("d"), "k", "cxx");
+		cache->clearCache("cxx");
+		OO_CHECK(cache->pListForKey("k", "cxx").isNull());
+
+		gTasksAdded = gTasksPerformed = 0;
+		cache->flush();
+		OO_CHECK(gTasksAdded == 1);
+		OO_CHECK(cache->descriptionComponents() == std::optional<std::string>("dirty=no"));
+		cache->finishOngoingFlush();
+		OO_CHECK(gTasksPerformed == 1);
+		OO_CHECK(cache->cacheDirectoryPathCreatingIfNecessary(false).has_value());
+	}
+}
+
+
+OO_TEST(facadeContract)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOCacheManager *facade = [OOCacheManager sharedCache];
+		cxx::OOCacheManager *cache = cxx::OOCacheManager::sharedCache();
+		OO_CHECK(oo::ToCxx(facade) == cache);
+		OO_CHECK(oo::ToObjC(cache) == facade);
+		OO_CHECK(oo::ToObjC(nullptr) == nil);
+		OO_CHECK(oo::ToCxx(nil) == nullptr);
+
+		// One store: what either side writes, the other reads.
+		cache->setPList(Str("from C++"), "x", "shared");
+		OO_CHECK([facade cxx_pListForKey:"x" inCache:"shared"] == Str("from C++"));
+		[facade cxx_setPList:Str("from Objective-C") forKey:"y" inCache:"shared"];
+		OO_CHECK(cache->pListForKey("y", "shared") == Str("from Objective-C"));
+		OO_CHECK([facade cxx_descriptionComponents] == cache->descriptionComponents());
 	}
 }
 

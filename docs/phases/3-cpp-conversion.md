@@ -157,6 +157,9 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
      has Objective-C subclasses holds `oo::ObjCRef<::X *>(oo::ToObjC(p))`, because an adapter does
      not retain its owner. A subclass's bitwise copy calls `oo::ConstructCxxPartOfCopy`.
+   - **A helper that adopts an Objective-C protocol** (ADR-0056 amendment oo-rmd7; exemplar
+     `OOCacheManager`'s `OOAsyncCacheWriter`): it moves into the bridge files until the protocol is
+     C++. A converted caller in `namespace cxx` names the façade `::X`.
    - **Made with `alloc`/`-initWithX:`** (ADR-0056 amendment oo-86ek; exemplar
      `src/Core/OOVector.*`, `OONativeVector`): the initialiser becomes a constructor; the façade's
      `-initWithX:` makes the C++ object and records itself as its peer. A header included inside
