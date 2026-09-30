@@ -36,10 +36,12 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/Ref.hpp"
 
 struct OOHUDWidget;	// HeadUpDisplay.mm
 
-@class OOCrosshairs, OOColor;
+@class OOColor;
+class OOCrosshairs;
 
 @protocol OOHUDBeaconIcon;
 
@@ -277,7 +279,7 @@ enum
 	std::set<std::string>	_hiddenSelectors;
 	
 	// Crosshairs
-	OOCrosshairs		*_crosshairs;
+	oo::Ref<OOCrosshairs>	_crosshairs;
 	OOWeaponType		_lastWeaponType;
 	GLfloat				_lastOverallAlpha;
 	BOOL				_lastWeaponsOnline;
