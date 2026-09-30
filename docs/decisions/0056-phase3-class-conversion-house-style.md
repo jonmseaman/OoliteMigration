@@ -235,7 +235,10 @@ a C++ exception. An Objective-C `@catch (id)` does not catch a C++ exception: th
 2. **A binding file converts in place.** `X.h`/`X.mm` keep their names. The JS tables, hooks and
    natives stay as they are. `BOOL`/`YES`/`NO` become `bool`/`true`/`false` in the file's code and
    in its C API in `X.h` (callers compile unchanged). Bodies stay verbatim otherwise (item 4), and
-   the Objective-C header imports go only where nothing uses them.
+   the Objective-C header imports go only where nothing uses them. The analyser follows paths it
+   did not follow inside an Objective-C `@try`, so `tier-a` can report a defect that was always
+   there. Fix it in the smallest way, with a comment, as item 4 does for unwritten out-parameters.
+   The exemplar's case: `VectorConstruct` leaked its private data when `newObject` failed.
 3. **A category on a game class that lives in the binding file** is that class's code
    (amendment oo-o89, item 4), but it moves out of the binding file:
    - each method's body becomes a free C++ function in `X.mm`, named after the selector's first

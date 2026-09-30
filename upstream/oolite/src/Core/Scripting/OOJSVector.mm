@@ -754,8 +754,12 @@ static bool VectorConstruct(ooscript::Context context, ooscript::CallArgs &oojsA
 	if (EXPECT_NOT(priv == NULL))  return false;
 	
 	thisObj = (ooscript::newObject(context, &sVectorClass, nullptr, nullptr));
-	if (EXPECT_NOT(thisObj == NULL))  return false;
-	
+	if (EXPECT_NOT(thisObj == NULL))
+	{
+		free(priv);	// leaked before bead oo-ppc; the analyser sees this path now that it is not in an Objective-C try
+		return false;
+	}
+
 	if (oojsArgs.count() != 0)
 	{
 		if (EXPECT_NOT(!VectorFromArgumentListNoErrorInternal(context, oojsArgs.count(), OOJS_ARGV, &vector, NULL, true)))
