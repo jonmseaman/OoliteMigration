@@ -189,6 +189,9 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      messaged by its own selectors is `cxx::X` with a façade `X : Root`, which `oo::ToObjC` picks
      by name. Categories of Objective-C classes move to the bridge
      ([amendment oo-up4b](../decisions/0056-phase3-class-conversion-house-style.md#amendment-bead-oo-up4b-intermediate-classes-subclass-façades-and-categories-left-in-a-file)).
+   - A leaf that one Objective-C class messages has no façade: the bead adapts that caller to
+     the global C++ class. A leaf created by name gets a line in `OOOXPVerifier.mm`'s `constexpr`
+     `kCxxStages` (amendment oo-94qk; exemplar `OOAIStateMachineVerifierStage`).
 10. **Check.**
    - `! grep -nE '@implementation|@interface|@selector|@protocol' X.mm X.h`
    - `tools/build-windows.sh test`, with no new warning

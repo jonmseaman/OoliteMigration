@@ -120,7 +120,7 @@ oo::str::FormatArg TextOrNull(const std::optional<std::string> &text)
 {
 	std::vector<std::string> result = [super dependents].value_or(std::vector<std::string>());
 	for (const std::string &name : { [OOModelVerifierStage nameForReverseDependencyForVerifier:[self verifier]],
-									 [OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]] })
+									 OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier([self verifier]) })
 	{
 		if (std::find(result.begin(), result.end(), name) == result.end())  result.push_back(name);
 	}
@@ -149,8 +149,8 @@ oo::str::FormatArg TextOrNull(const std::optional<std::string> &text)
 
 	if (_shipdataPList.isNull())  return;
 
-	// Get AI verifier stage (may be nil).
-	_aiVerifierStage = [[self verifier] cxx_stageWithName:[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
+	// Get AI verifier stage (may be null). C++ since bead oo-94qk; the verifier holds it as its facade.
+	_aiVerifierStage = static_cast<OOAIStateMachineVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([[self verifier] cxx_stageWithName:OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier([self verifier])])));
 	
 	const oo::PList ooliteShipDataPList = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist" inFolder:"Config" andMerge:YES];
 	if (const oo::PList::Dict *shipDataDict = ooliteShipDataPList.getIf<oo::PList::Dict>())
@@ -235,7 +235,7 @@ oo::str::FormatArg TextOrNull(const std::optional<std::string> &text)
 	{
 		if (!oo::str::hasSuffix(*aiName, ".js"))
 		{
-			[_aiVerifierStage stateMachineNamed:*aiName usedByShip:name];
+			if (_aiVerifierStage != nullptr)  _aiVerifierStage->stateMachineNamed(*aiName, name);
 		}
 	}
 
