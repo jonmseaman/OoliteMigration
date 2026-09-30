@@ -75,4 +75,5 @@
 # Phase 3 class conversions (ADR-0056 gate): the goldens after a build do not fit accept.sh's 300 s, so each
 # conversion bead runs them before queueing (its notes say so) and the night reruns them here.
 [oo-zffj] bash tools/tier-c.sh --only goldens
+[oo-65999] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCharacter && bash tools/tier-c.sh --only goldens
 [oo-cwz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXPVerifierStage && bash tools/tier-c.sh --only goldens
