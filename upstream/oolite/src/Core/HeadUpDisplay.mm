@@ -1019,26 +1019,23 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	if (weapon != _lastWeaponType || overallAlpha != _lastOverallAlpha || weaponsOnline != _lastWeaponsOnline)
 	{
-		DESTROY(_crosshairs);
+		_crosshairs = nullptr;
 	}
 	
-	if (_crosshairs == nil)
+	if (_crosshairs == nullptr)
 	{
 		GLfloat useAlpha = weaponsOnline ? overallAlpha : overallAlpha * 0.5f;
 		
 		// Make new crosshairs object
 		points = [self crosshairDefinitionForWeaponType:weapon];
 		
-		_crosshairs = [[OOCrosshairs alloc] initWithPoints:points
-													 scale:_crosshairScale
-													 color:_crosshairColor
-											  overallAlpha:useAlpha];
+		_crosshairs = oo::makeRef<OOCrosshairs>(points, _crosshairScale, oo::ToCxx(_crosshairColor), useAlpha);
 		_lastWeaponType = weapon;
 		_lastOverallAlpha = useAlpha;
 		_lastWeaponsOnline = weaponsOnline;
 	}
 	
-	[_crosshairs render];
+	_crosshairs->render();
 }
 
 
@@ -1051,8 +1048,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 - (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition
 {
 	// force crosshair redraw
-	[_crosshairs release];
-	_crosshairs = nil;
+	_crosshairs = nullptr;
 
 	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
 															   inFolder:std::string("Config")
