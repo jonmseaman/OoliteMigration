@@ -241,7 +241,7 @@ oo::PList OOCommodities::createDefinitionFrom(const oo::PList & good, OOCreditsQ
 	{
 		return definition;
 	}
-	OOScript *goodScript = [PLAYER cxx_commodityScriptNamed:*goodScriptName];
+	OOScript *goodScript = [PLAYER cxx_commodityScriptNamed:goodScriptName];	// (has a value: checked above)
 	if (goodScript == nil)
 	{
 		return definition;
@@ -517,7 +517,7 @@ OOCreditsQuantity OOCommodities::samplePriceForCommodity(const std::string &comm
 	good = createDefinitionFrom(good, p, 0, commodity, nullptr, system);
 	if (scriptName.has_value())
 	{
-		OOScript *script = [PLAYER cxx_commodityScriptNamed:*scriptName];
+		OOScript *script = [PLAYER cxx_commodityScriptNamed:scriptName];	// (has a value: checked above)
 		if (script != nil)
 		{
 			good = modifyGood(good, script, nullptr, system, true);
