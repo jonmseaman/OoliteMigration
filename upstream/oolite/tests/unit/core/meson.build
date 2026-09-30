@@ -10,6 +10,7 @@
 
 core_tests = {
     'test_OOCache': ['Core/OOCache.mm', 'Core/OODescription.mm'],
+    'test_OOCacheManager': ['Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOEncodingConverter': ['Core/OOEncodingConverter.mm', 'Core/OOCache.mm', 'Core/OODescription.mm'],
     'test_OOFullScreenController': ['Core/OOFullScreenController.mm'],
     'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
