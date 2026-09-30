@@ -71,7 +71,9 @@ typedef enum
 
 static MethodType GetMethodType(id object, SEL selector);
 
+namespace {
 OOINLINE bool MethodExpectsParameter(MethodType type)	{ return type == kMethodTypeVoidObject || type == kMethodTypeObjectObject; }
+} // namespace
 
 
 bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
@@ -219,6 +221,7 @@ bool OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::s
 
 
 
+namespace {
 static bool SameTypeEncoding(char *a, char *b)
 {
 	bool result = (a != NULL && b != NULL && strcmp(a, b) == 0);
@@ -226,12 +229,14 @@ static bool SameTypeEncoding(char *a, char *b)
 	free(b);
 	return result;
 }
+} // namespace
 
 
 /*	Whether method has the same signature as the template's method for selector: the same
 	return type and the same argument types, as the method signature objects' -isEqual:
 	compared them (bead oo-3rb.15; offsets and frame size are not compared).
 */
+namespace {
 static bool SignatureMatch(Method method, SEL selector)
 {
 	Method methodTemplate = class_getInstanceMethod([OOJSCallMethodSignatureTemplateClass class], selector);
@@ -247,6 +252,7 @@ static bool SignatureMatch(Method method, SEL selector)
 	}
 	return true;
 }
+} // namespace
 
 
 static MethodType GetMethodType(id object, SEL selector)
