@@ -4,3 +4,5 @@ namespace ooscript { struct Context { void *p; }; }
 ooscript::Context OOJSAcquireContext(void);
 void OOJSRelinquishContext(ooscript::Context context);
 void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args);
+// The C++ form the expander calls since bead oo-vp0y.10 (printf format; bead oo-qqz6: stub-API tracking).
+void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args);
