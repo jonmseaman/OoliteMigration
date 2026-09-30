@@ -39,6 +39,7 @@ oolite_sources += files(
     'OOEncodingConverter.mm',
     'OOEntityFilterPredicate.mm',
     'OOEquipmentType.mm',
+    'OOEquipmentType+ObjCBridge.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
     'OOIsNumberLiteral.cpp',
