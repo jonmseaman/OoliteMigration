@@ -97,6 +97,7 @@ oolite_sources += files(
     'OOTrumble.mm',
     'OOTrumble+ObjCBridge.mm',
     'OOVector.mm',
+    'OOVector+ObjCBridge.mm',
     'OOVoxel.c',
     'OOWeakReference.mm',
     'OOWeakSet.mm',
