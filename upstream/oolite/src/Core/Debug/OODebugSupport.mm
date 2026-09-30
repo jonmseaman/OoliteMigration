@@ -30,7 +30,6 @@ SOFTWARE.
 
 #import "OODebugSupport.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OODebugMonitor.h"
 #import "OODebugTCPConsoleClient.h"
 #import "GameController.h"

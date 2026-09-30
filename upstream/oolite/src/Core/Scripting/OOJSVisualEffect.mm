@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 #import "OOJSVector.h"
 #import "OOJavaScriptEngine.h"
 #import "OOMesh.h"
-#import "OOPListView.h"
 #import "ResourceManager.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOFoundationBridge.h"

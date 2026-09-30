@@ -38,7 +38,6 @@ MA 02110-1301, USA.
 #import "GuiDisplayGen.h"
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "MyOpenGLView.h"
 #import "OOShipRegistry.h"

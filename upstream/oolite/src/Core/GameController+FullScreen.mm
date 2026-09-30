@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 
 #import "GameController.h"
 #import "MyOpenGLView.h"
-#import "OOPListView.h"
 #import "OOFoundationBridge.h"
 
 

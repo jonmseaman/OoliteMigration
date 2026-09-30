@@ -36,7 +36,6 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOShipGroup.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOFoundationBridge.h"
 #import "OOLogging.h"

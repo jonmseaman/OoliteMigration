@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "OOFileScannerVerifierStage.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOStringParsing.h"
 #import "OOPListSchemaVerifier.h"
 #import "OOAIStateMachineVerifierStage.h"

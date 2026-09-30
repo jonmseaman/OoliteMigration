@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #include "oofnd/Scanner.hpp"

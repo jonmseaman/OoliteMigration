@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "OOJSInterfaceDefinition.h"
 
-#import "OOPListView.h"
 #import "OOEquipmentType.h"
 #import "OOShipRegistry.h"
 #import "OOConstToString.h"

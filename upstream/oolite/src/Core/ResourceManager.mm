@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOPListParsing.h"
 #import "MyOpenGLView.h"
-#import "OOPListView.h"
 #import "OOLogOutputHandler.h"
 #import "OOOXZManager.h"
 #import "unzip.h"
