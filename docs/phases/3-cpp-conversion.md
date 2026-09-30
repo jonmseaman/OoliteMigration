@@ -125,6 +125,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      `bd create "Delete X+ObjCBridge" -l fleet,phase:3,sweep:objc-bridge`. It removes the bridge
      files and moves `cxx::X` to the global namespace.
    - With no outside caller, there is no façade and the class is global.
+   - **Object needs the game graph** (ADR-0056 amendment oo-44gg; exemplar
+     `src/Core/CollisionRegion.*`): the test's meson entry is `['*']` (every game object but
+     `main.mm`'s) and the test defines `gDebugFlags`. A second argumentless initialiser takes a
+     tag struct (`CollisionRegion(AsUniverse)`); an initialiser that returned nil on failure
+     raises; a file-static function reading private ivars becomes a private static member.
    - **Client of an Objective-C registry that holds `id`s unretained** (ADR-0056 amendment
      oo-4111; exemplar `src/Core/OOPolygonSprite.*`): the façade registers while it lives and
      forwards the callback; the deletion bead waits for the registry's conversion.
