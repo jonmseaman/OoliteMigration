@@ -419,13 +419,59 @@ int main(int argc, char **argv)
 	}
 	const uint64_t stringsHash = sHash;
 
+	// Regression (bead oo-3rb.69): a replacement of "\x7F" eats the character after it. At the end
+	// of the (sub-)string there is none; the upstream engine then asserted in AppendCharacters
+	// (start > end) and raised out of OOExpandDescriptionString. It now eats nothing there.
+	int regressionFailures = 0;
+	{
+		void *inner = objc_autoreleasePoolPush();
+		Random_Seed seed = { 1, 2, 3, 4, 5, 6 };
+		NSDictionary *del = @{ @"del": @"\x7F" };
+		NSString *const cases[][2] =
+		{
+			{ @"a[del]", @"a" },		// at the end: eats nothing (asserted before)
+			{ @"ab[del]", @"ab" },		// at the end: eats nothing (asserted before)
+			{ @"a[del]bc", @"ac" },		// in the middle: eats "b", as always
+			{ @"[del]x", @"" },			// the whole string, as always
+		};
+		for (const auto &c : cases)
+		{
+			NSString *r = nil;
+			@try
+			{
+				r = OOExpandDescriptionString(seed, c[0], del, nil, nil, kOOExpandNoOptions);
+			}
+			@catch (OOException *e)
+			{
+				fprintf(stderr, "test_string_expander: %s raised %s\n", [Units(c[0]) UTF8String], [e name]);
+				regressionFailures++;
+				continue;
+			}
+			@catch (NSException *e)
+			{
+				fprintf(stderr, "test_string_expander: %s raised %s\n", [Units(c[0]) UTF8String], [[e name] UTF8String]);
+				regressionFailures++;
+				continue;
+			}
+			if (![r isEqualToString:c[1]])
+			{
+				fprintf(stderr, "test_string_expander: %s gave %s, expected %s\n", [Units(c[0]) UTF8String], [Units(r) UTF8String], [Units(c[1]) UTF8String]);
+				regressionFailures++;
+			}
+		}
+		[sLog removeAllObjects];
+		objc_autoreleasePoolPop(inner);
+	}
+
 	// Captured from the original OOStringExpander.mm (see the banner). Re-captured with Jon's
 	// approval, 2026-09-29 (bead oo-qqz6; were 0xdaec14b5265fca36 / 0x07a1e83ff98956eb): every
 	// expansion result and RNG draw is unchanged; only log text differs - 7845 lines name a
 	// non-string value by its contents instead of its class (oo-qps.50), and 22 JS warnings end at
 	// an embedded NUL, as the C string the JS engine receives always did (oo-kpxgo).
-	const uint64_t kKeysDigest = 0x6349f869900cf779ULL, kStringsDigest = 0xdc8ef7032bfb6797ULL;
-	int failures = 0;
+	// kStringsDigest re-captured with Jon's approval, 2026-09-29 (bead oo-3rb.69; was
+	// 0xdc8ef7032bfb6797): the \x7F fix changes exactly the 12 records that raised before.
+	const uint64_t kKeysDigest = 0x6349f869900cf779ULL, kStringsDigest = 0xef7448c0016ba2edULL;
+	int failures = regressionFailures;
 	if (keysHash != kKeysDigest)
 	{
 		fprintf(stderr, "test_string_expander: descriptions.plist keys digest 0x%016llx, expected 0x%016llx (%u lines)\n", (unsigned long long)keysHash, (unsigned long long)kKeysDigest, keysLines);
