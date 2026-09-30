@@ -29,6 +29,7 @@ oolite_sources += files(
     'OOJSPlayerShip.mm',
     'OOJSPopulatorDefinition.mm',
     'OOJSQuaternion.mm',
+    'OOJSQuaternion+ObjCBridge.mm',
     'OOJSScript.mm',
     'OOJSShip.mm',
     'OOJSShipGroup.mm',
