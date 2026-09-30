@@ -80,6 +80,10 @@ public:
 	std::optional<std::string> descriptionComponents() const;
 
 private:
+	// The ivars hold the Objective-C facade, ::OOWeakReference; inside namespace cxx the bare name
+	// is cxx::OOWeakReference since bead oo-3kqi (ADR-0056 amendment oo-rmd7 item 3).
+	using OOWeakReference = ::OOWeakReference;
+
 	// The cursor and the range-for read the ivars, as they did from inside the Objective-C class.
 	friend class ::OOShipGroupCursor;
 	friend class ::OOShipGroupMembers;
