@@ -43,6 +43,7 @@
 # RunDetachedAndWait waits unbounded now (oo-3rb.68); three consecutive green oofnd runs is the
 # stability proof its bead asked for, too slow (3 x 90-220 s) for the five-minute accept budget.
 [oo-3rb.68] for i in 1 2 3; do bash tools/check-oofnd.sh || exit 1; done
+[oo-4111] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPolygonSprite
 
 # Component scenarios S1 and S5 spawn a pinned cast now (oo-sjvz: ROLE_SHIP_KEY/PIRATE_BOUNTY in
 # upstream/oolite/tests/component/steps/world_steps.py). The proof that pinning removed their flake
