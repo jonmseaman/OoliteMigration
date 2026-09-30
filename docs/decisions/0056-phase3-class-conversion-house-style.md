@@ -276,3 +276,21 @@ would dangle. The forwarding itself (`-forwardingTargetForSelector:`, `-class`,
 lifetime. Every façade creation takes the peer table's mutex, and `-weakRetain` and `-hash` on a
 reference take it again. The bridge lasts until the entity classes are C++, which is the end of
 Phase 3.
+
+## Amendment (bead oo-cc8a): `@protocol(...)` in a body, and holding another class's façade
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOWeakSet.h/.mm`,
+  `OOWeakSet+ObjCBridge.h/.mm`, `tests/unit/core/test_OOWeakSet.mm`.
+
+**Decision (recommended defaults).**
+
+1. **`@protocol(P)` in a converted body becomes `objc_getProtocol("P")`,** as `@selector` becomes
+   `OOSelectorFromName` (amendment oo-3lj8 item 2); the gate's grep forbids both spellings. The
+   protocol is registered by the Objective-C classes that adopt it, which the body's callers are.
+2. **A converted class that holds weak references to Objective-C objects** holds the
+   `OOWeakReference` façades (`oo::ObjCRef<::OOWeakReference *>`) and reaches them with
+   `oo::ToCxx(ref)->…` (amendment oo-3kqi item 1). Inside `namespace cxx` the unqualified name is
+   the C++ class, so the façade is written `::X` (as amendment oo-cwz item 4 says for a base).
+3. **`oo::ToCxx` is overloaded once per façade, so an `id` argument is ambiguous.** A façade method
+   that took `id` (`-isEqual:`) converts it with `oo::ToCxx(static_cast<X *>(other))` after its
+   `-isKindOfClass:` test.
