@@ -34,11 +34,10 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OOJSEngineTimeManagement.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Scanner.hpp"
+#include "oofnd/String.hpp"
 
 /*
 	OOStringFromDeciCredits below is retargeted onto the ooscript façade (JSEngine.hpp), the

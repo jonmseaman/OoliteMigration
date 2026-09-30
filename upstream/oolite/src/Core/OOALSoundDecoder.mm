@@ -30,7 +30,6 @@ SOFTWARE.
 #import <vorbis/vorbisfile.h>
 #import "OOLogging.h"
 #import "unzip.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

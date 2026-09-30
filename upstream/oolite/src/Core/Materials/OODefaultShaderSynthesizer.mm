@@ -34,10 +34,10 @@ SOFTWARE.
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/String.hpp"
 
 namespace {
 

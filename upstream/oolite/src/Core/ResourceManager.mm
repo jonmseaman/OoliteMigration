@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOPListParsing.h"
 #import "MyOpenGLView.h"
-#import "OOPListView.h"
 #import "OOLogOutputHandler.h"
 #import "OOOXZManager.h"
 #import "unzip.h"
@@ -42,8 +41,6 @@ MA 02110-1301, USA.
 
 #import "OOManifestProperties.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 
 #include "oofnd/StdLib.hpp"

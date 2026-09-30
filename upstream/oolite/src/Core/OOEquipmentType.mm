@@ -35,7 +35,6 @@ SOFTWARE.
 #import "PlayerEntityControls.h"
 #import "PlayerEntityKeyMapper.h"
 #import "PlayerEntityLegacyScriptEngine.h"	// (was imported before the Conveniences category)
-#import "OOFoundationBridge.h"
 #import "OODebugStandards.h"
 #include "oofnd/String.hpp"
 

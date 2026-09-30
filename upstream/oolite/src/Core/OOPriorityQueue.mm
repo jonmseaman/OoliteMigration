@@ -33,7 +33,6 @@ SOFTWARE.
 
 #import "OOPriorityQueue.h"
 #import "OOFunctionAttributes.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 #if DEBUG_GRAPHVIZ
@@ -325,17 +324,6 @@ id OOPriorityQueue::peekAtNextObject()
 void OOPriorityQueue::removeNextObject()
 {
 	removeObjectAtIndex(0);
-}
-
-
-void OOPriorityQueue::addObjects(id collection)
-{
-	id					value = nil;
-
-	if ([collection respondsToSelector:OOSelectorFromName("objectEnumerator")])  collection = [collection objectEnumerator];
-	if (![collection respondsToSelector:OOSelectorFromName("nextObject")])  return;
-
-	while ((value = [collection nextObject]))  addObject(value);
 }
 
 

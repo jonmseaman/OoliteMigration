@@ -27,8 +27,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOLogging.h"
 #import "OOPriorityQueue.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"
 
 

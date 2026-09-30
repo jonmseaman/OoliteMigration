@@ -46,14 +46,14 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOMesh.h"
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOCharacter.h"
 #import "OOCallByName.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 namespace {
