@@ -10,7 +10,10 @@
 	API and run on the unconverted class first: -setDrawable: takes the drawable's radius, draw
 	distance and bounding box and makes the entity its binding target; -findCollisionRadius and the
 	debug texture list ask the drawable; -drawImmediate:translucent: skips an entity beyond its draw
-	distance and draws the right parts otherwise. Run: bash tools/check-core-tests.sh
+	distance and draws the right parts otherwise. The tests after those pin the intermediate
+	class's crossing (amendment oo-up4b item 2): an Objective-C subclass's C++ part is over
+	cxx::OOEntityWithDrawable and its [super ...] reaches that class's members; a C++ subclass's
+	facade is an OOEntityWithDrawable. Run: bash tools/check-core-tests.sh
 */
 
 #import "OOEntityWithDrawable.h"
@@ -75,6 +78,32 @@ extern Universe *gSharedUniverse;
 
 @implementation TestObjCEntityWithDrawable
 @end
+
+
+// An unconverted subclass that overrides a member of the intermediate class and calls super.
+@interface TestOverridingEntity: OOEntityWithDrawable
+{
+@public
+	int		_draws;
+}
+@end
+
+
+@implementation TestOverridingEntity
+
+- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
+{
+	_draws++;
+	[super drawImmediate:immediate translucent:translucent];
+}
+
+@end
+
+
+// A converted subclass.
+class TestCxxEntityWithDrawable : public cxx::OOEntityWithDrawable
+{
+};
 
 
 namespace {
@@ -180,6 +209,55 @@ OO_TEST(description)
 		OOEntityWithDrawable *entity = [[[OOEntityWithDrawable alloc] init] autorelease];
 		OO_CHECK(oo::DescriptionOf(entity).starts_with("<OOEntityWithDrawable 0x"));
 		OO_CHECK(oo::DescriptionOf(entity).ends_with("{position: (0, 0, 0) scanClass: CLASS_NOT_SET status: STATUS_COCKPIT_DISPLAY}"));
+	}
+}
+
+
+// --- The crossing (after the conversion) ---------------------------------------------------------
+
+OO_TEST(objCSubclassPartIsTheIntermediateClass)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestOverridingEntity *entity = [[[TestOverridingEntity alloc] init] autorelease];
+		TestDrawable *drawable = [[[TestDrawable alloc] init] autorelease];
+		drawable->_maxDrawDistance = 1.0e9f;
+		[entity setDrawable:drawable];
+
+		cxx::OOEntityWithDrawable *part = oo::ToCxx(entity);
+		OO_CHECK(part != nullptr && dynamic_cast<cxx::OOEntityWithDrawable *>(oo::ToCxx(static_cast<Entity *>(entity))) == part);
+		OO_CHECK(part->getDrawable() == drawable && oo::ToObjC(part) == entity);
+
+		// From C++, the Objective-C override runs, and its [super ...] reaches the C++ member.
+		part->drawImmediate(false, false);
+		OO_CHECK(entity->_draws == 1 && drawable->_opaqueRenders == 1);
+		[entity drawImmediate:false translucent:true];
+		OO_CHECK(entity->_draws == 2 && drawable->_translucentRenders == 1);
+		OO_CHECK(part->findCollisionRadius() == 5.0);
+	}
+}
+
+
+OO_TEST(cxxSubclassFacade)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		const oo::Ref<TestCxxEntityWithDrawable> entity = oo::makeRef<TestCxxEntityWithDrawable>();
+		Entity *facade = oo::NewEntityFacade(entity);
+		OO_CHECK(facade != nil && [facade class] == [OOEntityWithDrawable class]);
+		OOEntityWithDrawable *withDrawable = (OOEntityWithDrawable *)facade;
+		OO_CHECK(oo::ToCxx(withDrawable) == entity.get() && oo::ToObjC(entity.get()) == withDrawable);
+
+		TestDrawable *drawable = [[[TestDrawable alloc] init] autorelease];
+		drawable->_maxDrawDistance = 1.0e9f;
+		[withDrawable setDrawable:drawable];
+		OO_CHECK([withDrawable drawable] == drawable && drawable->_bindingTarget == facade);
+		OO_CHECK([facade findCollisionRadius] == 5.0 && [facade collisionRadius] == 5.0f);
+		[facade drawImmediate:false translucent:false];
+		OO_CHECK(drawable->_opaqueRenders == 1);
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<TestCxxEntityWithDrawable 0x"));
 	}
 }
 

@@ -13,7 +13,11 @@
 	position-sorted linked lists, the session check, the shader bindings, the description, and
 	which methods reach an Objective-C subclass's overrides. Ivars the game reads directly (the
 	lists, the motion flags) are read through the small block of helpers below, the one place that
-	knows where they live. Run: bash tools/check-core-tests.sh
+	knows where they live: since the conversion, through the facade's _cxxEntity (amendment
+	oo-bj8). The tests after the Objective-C ones pin the crossing, as test_OODrawable.mm does: a
+	C++ entity behind its facade, an Objective-C entity behind a C++ pointer, the adapter outliving
+	its object, nil, and the dump-state lines the Objective-C body could not print.
+	Run: bash tools/check-core-tests.sh
 */
 
 #import "Entity.h"
@@ -86,6 +90,20 @@ extern Universe *gSharedUniverse;
 - (void) drawImmediate:(bool)immediate translucent:(bool)translucent	{ _draws++; }
 
 @end
+
+
+// A converted entity: a C++ subclass. Global, as a game class is, so that its description names
+// it as the game's would.
+class TestCxxEntity : public cxx::Entity
+{
+public:
+	bool isPlanet() override										{ return true; }
+	GLfloat frustumRadius() override								{ return 2.0f; }
+	void updateCameraRelativePosition() override					{ cameraUpdates++; cxx::Entity::updateCameraRelativePosition(); }
+	std::optional<std::string> descriptionComponents() const override	{ return "test"; }
+
+	int cameraUpdates = 0;
+};
 
 
 // Declared by nothing public: the shader bindings and the subentity callback find them by selector.
@@ -611,6 +629,160 @@ OO_TEST(liveEntityCount)
 	}
 }
 #endif
+
+
+// --- The crossing (after the conversion) ---------------------------------------------------------
+
+OO_TEST(cxxEntityBehindItsFacade)
+{
+#ifndef NDEBUG
+	const uint32_t count = gLiveEntityCount;
+#endif
+	const oo::Ref<TestCxxEntity> entity = oo::makeRef<TestCxxEntity>();
+	@autoreleasepool
+	{
+		SetUpUniverse();
+		SetUpPlayer(kZeroHPVector, kZeroHPVector);
+
+		Entity *facade = oo::NewEntityFacade(entity);
+		OO_CHECK(facade != nil && [facade class] == [Entity class]);
+		OO_CHECK(oo::ToCxx(facade) == entity.get() && oo::ToObjC(entity.get()) == facade);
+		OO_CHECK(oo::AsObjCEntity(entity.get()) == nullptr);
+#ifndef NDEBUG
+		OO_CHECK(gLiveEntityCount == count + 1);
+#endif
+
+		// Messages reach the C++ overrides, and the root's members call them.
+		OO_CHECK([facade isPlanet] && [facade isStellarObject] && ![facade isSun]);
+		[facade setPosition:make_HPvector(0, 0, 10)];
+		OO_CHECK(entity->cameraUpdates == 1);
+		OO_CHECK([facade cameraRangeFront] == 8.0f && [facade cameraRangeBack] == 12.0f);
+		OO_CHECK(HPvector_equal(entity->getPosition(), make_HPvector(0, 0, 10)));
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<TestCxxEntity 0x") && oo::DescriptionOf(facade).ends_with(">{test}"));
+#ifndef NDEBUG
+		OO_CHECK([facade descriptionForObjDumpBasic] == std::optional<std::string>("TestCxxEntity test"));
+#endif
+
+		// The lists link its facade, among Objective-C entities.
+		Entity *other = MakeEntity(make_HPvector(20, 0, 0), 1.0f);
+		[facade addToLinkedLists];
+		[other addToLinkedLists];
+		sUniverse->n_entities = 2;
+		OO_CHECK(sUniverse->x_list_start == facade && XNext(facade) == other && XPrevious(other) == facade);
+		[facade removeFromLinkedLists];
+		[other removeFromLinkedLists];
+		sUniverse->n_entities = 0;
+	}
+	// The facade was the entity's identity and owner: gone with the pool, and never made again.
+	OO_CHECK(oo::ToObjC(entity.get()) == nil);
+#ifndef NDEBUG
+	OO_CHECK(gLiveEntityCount == count);
+#endif
+}
+
+
+OO_TEST(objCEntityBehindACxxPointer)
+{
+	@autoreleasepool
+	{
+		SetUpUniverse();
+		SetUpPlayer(kZeroHPVector, kZeroHPVector);
+
+		TestObjCEntity *objCEntity = [[[TestObjCEntity alloc] init] autorelease];
+		objCEntity->_frustumRadius = 1.5f;
+		cxx::Entity *part = oo::ToCxx(objCEntity);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == objCEntity && oo::AsObjCEntity(part) != nullptr);
+
+		// Virtual calls from C++ reach the Objective-C overrides, or the root's own answers.
+		OO_CHECK(part->isPlanet() && part->isStellarObject() && !part->canCollide() && !part->isSun());
+		part->setPosition(make_HPvector(0, 0, 10));
+		OO_CHECK(objCEntity->_cameraUpdates == 1);
+		OO_CHECK(part->cameraRangeFront() == 8.5f);
+		OO_CHECK(part->descriptionComponents() == std::optional<std::string>("position: (0, 0, 10) scanClass: CLASS_NOT_SET status: STATUS_COCKPIT_DISPLAY"));
+
+		// The state is the C++ part's, whichever side reads it.
+		part->energy = 12.0f;
+		OO_CHECK([objCEntity energy] == 12.0f);
+		[objCEntity setMaxEnergy:20.0f];
+		OO_CHECK(part->maxEnergy == 20.0f);
+	}
+}
+
+
+OO_TEST(adapterOutlivesItsObject)
+{
+	oo::Ref<cxx::Entity> part;
+	@autoreleasepool
+	{
+		SetUpUniverse();
+		SetUpPlayer(kZeroHPVector, kZeroHPVector);
+		TestObjCEntity *objCEntity = [[[TestObjCEntity alloc] init] autorelease];
+		objCEntity->_frustumRadius = 1.5f;
+		part = oo::Ref<cxx::Entity>(oo::ToCxx(objCEntity));
+	}
+	// Its virtual members answer as a message to nil did.
+	OO_CHECK(!part->isPlanet() && part->frustumRadius() == 0.0f && !part->canCollide());
+	OO_CHECK(oo::ToObjC(part) == nil);
+}
+
+
+OO_TEST(facadeNilStaysNil)
+{
+	Entity *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::Entity *>(nullptr)) == nil);
+	OO_CHECK(oo::NewEntityFacade(oo::Ref<cxx::Entity>()) == nil);
+	OO_CHECK(![none isShip] && [none owner] == nil);
+}
+
+
+// PlayerEntity's -deferredInit sends -init again (through -[ShipEntity cxx_initWithKey:...]) to an
+// entity that is already initialised and has a script object: the body runs again over the same
+// state, and what it does not set stays.
+OO_TEST(initSentAgain)
+{
+	@autoreleasepool
+	{
+		SetUpUniverse();
+		SetUpPlayer(kZeroHPVector, kZeroHPVector);
+		TestObjCEntity *entity = [[[TestObjCEntity alloc] init] autorelease];
+		cxx::Entity *part = oo::ToCxx(entity);
+		[entity setPosition:make_HPvector(1, 2, 3)];
+		[entity setStatus:STATUS_IN_FLIGHT];
+		[entity setEnergy:42];
+		[entity setUniversalID:9];
+		OO_CHECK([entity init] == entity);
+		OO_CHECK(oo::ToCxx(entity) == part);
+		OO_CHECK(HPvector_equal([entity position], kZeroHPVector) && [entity status] == STATUS_COCKPIT_DISPLAY);
+		OO_CHECK([entity energy] == 42 && [entity universalID] == 9);
+		[entity setUniversalID:NO_TARGET];
+#ifndef NDEBUG
+		gLiveEntityCount--;		// -init counted it again, as it did
+		gTotalEntityMemory -= class_getInstanceSize([TestObjCEntity class]);
+#endif
+	}
+}
+
+
+// The Objective-C body described the literals @"self" and @"none", which could raise and end the
+// dump; the C++ body prints them.
+OO_TEST(dumpStateOwnerLines)
+{
+	@autoreleasepool
+	{
+		SetUpUniverse();
+		SetUpPlayer(kZeroHPVector, kZeroHPVector);
+		Entity *entity = MakeEntity(kZeroHPVector, 1.0f);
+		CaptureLog();
+		[entity dumpState];
+		OO_CHECK(Logged("Owner: none") && Logged("Flags: isSunlit") && Logged("Collision Test Filter: 0"));
+		[entity setOwner:entity];
+		sLog.clear();
+		[entity dumpState];
+		OO_CHECK(Logged("Owner: self") && Logged("Flags: isSunlit"));
+		[entity setOwner:nil];
+	}
+}
 
 
 OO_TEST_MAIN()
