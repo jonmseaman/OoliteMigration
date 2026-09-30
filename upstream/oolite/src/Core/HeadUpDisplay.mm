@@ -201,7 +201,7 @@ static GLfloat nonlinearScannerFunc(GLfloat distance, GLfloat zoom, GLfloat scal
 static void GLDrawNonlinearCascadeWeapon( GLfloat x, GLfloat y, GLfloat z, NSSize siz, Vector centre, GLfloat radius, GLfloat zoom, GLfloat alpha );
 
 static OOTexture			*sFontTexture = nil;
-static OOEncodingConverter	*sEncodingCoverter = nil;
+static OOEncodingConverter	*sEncodingCoverter = nullptr;	// C++ since bead oo-demz; holds a +1
 
 
 enum
@@ -3986,7 +3986,7 @@ static void InitTextEngine(void)
 	sF6KernGovt = fontSpec.get<float>("f6KernGovernment", 1.0);
 	sF6KernTL = fontSpec.get<float>("f6KernTechLevel", 2.0);
 
-	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:fontSpec];
+	sEncodingCoverter = oo::makeRef<OOEncodingConverter>(fontSpec).leakRef();
 	widths = fontSpec.find("widths");	// used only if it is an array, as before
 	count = (widths != nullptr && widths->isArray()) ? widths->count() : 0;
 	if (count > 256)  count = 256;
@@ -4004,8 +4004,8 @@ namespace {
 */
 oo::Data ConvertedString(const std::string &text)
 {
-	if (sEncodingCoverter == nil)  return oo::Data();
-	return [sEncodingCoverter convertString:text];
+	if (sEncodingCoverter == nullptr)  return oo::Data();
+	return sEncodingCoverter->convertString(text);
 }
 
 }	// namespace
@@ -4014,7 +4014,9 @@ oo::Data ConvertedString(const std::string &text)
 void OOHUDResetTextEngine(void)
 {
 	DESTROY(sFontTexture);
-	DESTROY(sEncodingCoverter);
+	OOEncodingConverter *encodingConverter = sEncodingCoverter;	// DESTROY(): cleared before the release
+	sEncodingCoverter = nullptr;
+	oo::release(encodingConverter);
 }
 
 
