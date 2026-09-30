@@ -143,6 +143,20 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **A JS binding file (`OOJS*`)** (ADR-0056 amendment oo-ppc; exemplar
+     `src/Core/Scripting/OOJSVector.*`): it has no class, and its JS class is already C++. Do not
+     touch `OOJS_NATIVE_*`/`OOJS_PROFILE_*`: they are C++ already, and an exception under a native
+     reaches JS through `OOJSReportCurrentException`. Change `BOOL`/`YES`/`NO` to `bool`/`true`/`false`.
+     Turn a category on a game class into free functions in `X.mm` and leave its `@implementation`, with
+     one-line forwarders, in `X+ObjCBridge.mm`. Its deletion bead depends on that class's conversion.
+     Messages to unconverted classes and the JS private slot stay as they are. The test runs the JS
+     class in a real context (`tests/unit/core/test_OOJSVector.mm`). Also gate on
+     `bash tools/js-api-contract.sh`.
+   - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
+     roots first, in one bead. Class methods become `static` members, and file statics become
+     never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
+     has Objective-C subclasses holds `oo::ObjCRef<::X *>(oo::ToObjC(p))`, because an adapter does
+     not retain its owner. A subclass's bitwise copy calls `oo::ConstructCxxPartOfCopy`.
    - **Made with `alloc`/`-initWithX:`** (ADR-0056 amendment oo-86ek; exemplar
      `src/Core/OOVector.*`, `OONativeVector`): the initialiser becomes a constructor; the façade's
      `-initWithX:` makes the C++ object and records itself as its peer. A header included inside
@@ -164,6 +178,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
    - A converted subclass with no outside caller is global and has no façade. Objective-C code
      reaches it as the root's façade (`oo::ToObjC(sub.get())`). A class created by name from data
      gets an explicit factory table.
+   - An intermediate class with Objective-C subclasses keeps a façade whose `-init` gives the
+     root's `-initWithCxxStage:` an `oo::ObjCStage<cxx::Mid>`. A converted class that is still
+     messaged by its own selectors is `cxx::X` with a façade `X : Root`, which `oo::ToObjC` picks
+     by name. Categories of Objective-C classes move to the bridge
+     ([amendment oo-up4b](../decisions/0056-phase3-class-conversion-house-style.md#amendment-bead-oo-up4b-intermediate-classes-subclass-façades-and-categories-left-in-a-file)).
 10. **Check.**
    - `! grep -nE '@implementation|@interface|@selector|@protocol' X.mm X.h`
    - `tools/build-windows.sh test`, with no new warning
@@ -190,6 +209,13 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   C++ `cxx::OOColor` in `OOColor.h/.mm`, Objective-C façade `OOColor+ObjCBridge.h/.mm` with
   identity kept by `oo::ObjCPeers`, unit test `tests/unit/core/test_OOColor.mm`
   (`tools/check-core-tests.sh`). No caller changed. Goldens: 2 blessed verified.
+- 2026-09-30 — Intermediate classes (bead oo-up4b, proposed ADR-0056 amendment oo-up4b).
+  `OOFileScannerVerifierStage.h/.mm` is C++. `cxx::OOFileHandlingVerifierStage` is the
+  intermediate class, and its seven Objective-C leaf stages reach it through
+  `oo::ObjCStage<cxx::OOFileHandlingVerifierStage>`. `cxx::OOFileScannerVerifierStage` keeps a
+  façade for the stages that message it. Both façades and `-fileScannerStage` are in
+  `OOFileScannerVerifierStage+ObjCBridge.*`. Unit test: `tests/unit/core/test_OOFileScannerVerifierStage.mm`.
+  The leaf beads can now convert independently.
 - 2026-09-30 — Class hierarchies (bead oo-cwz, proposed ADR-0056 Amendment 1). The OXPVerifier
   stage base is `cxx::OOOXPVerifierStage`, with virtual subclass responsibilities. Its façade
   `OOOXPVerifierStage+ObjCBridge.*` is also the base of the Objective-C stages, through an
