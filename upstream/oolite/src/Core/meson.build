@@ -23,6 +23,7 @@ oolite_sources += files(
     'OOCacheManager.mm',
     'OOCallByName.mm',
       'OOCharacter.mm',
+      'OOCharacter+ObjCBridge.mm',
     'OOCocoa.mm',
     'OOCollectionExtractors.mm',
     'OOColor.mm',
