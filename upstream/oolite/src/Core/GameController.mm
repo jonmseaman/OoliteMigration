@@ -1097,7 +1097,7 @@ std::vector<std::string> sMessageStack;
 	OO_LOG("gameController.exitApp", "{}", ".GNUstepDefaults synchronized.");
 	OOLoggingTerminate();
 	SDL_Quit();
-	[[OOOpenALController sharedController] shutdown];
+	if (OOOpenALController *controller = OOOpenALController::sharedController())  controller->shutdown();
 	exit(0);
 }
 
