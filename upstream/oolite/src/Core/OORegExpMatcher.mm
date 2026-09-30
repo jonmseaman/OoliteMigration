@@ -28,11 +28,11 @@ SOFTWARE.
 #import "OORegExpMatcher.h"
 #import "OOJSFunction.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm was (bead oo-sdz):

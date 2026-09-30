@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "PlayerEntityScriptMethods.h"
 #import "OOStringParsing.h"
 #import "OODebugStandards.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

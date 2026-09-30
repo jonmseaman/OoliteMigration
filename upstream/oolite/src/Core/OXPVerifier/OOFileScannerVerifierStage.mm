@@ -50,7 +50,6 @@ SOFTWARE.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"

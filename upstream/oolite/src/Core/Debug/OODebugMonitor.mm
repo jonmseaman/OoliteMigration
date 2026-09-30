@@ -35,14 +35,12 @@ SOFTWARE.
 
 #import "OOJSConsole.h"
 #import "OOJSScript.h"
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSSpecialFunctions.h"
 
 #import "NSObjectOOExtensions.h"
 #import "OOTexture.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
@@ -52,7 +50,6 @@ SOFTWARE.
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #include "oofnd/Notification.hpp"
 
 

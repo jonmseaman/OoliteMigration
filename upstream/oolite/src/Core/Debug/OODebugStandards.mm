@@ -32,7 +32,6 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #import "GameController.h"
-#import "OOStringBridge.h"
 
 #ifdef NDEBUG
 // in release mode, stubs

@@ -31,8 +31,6 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #import "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 
 #if OOLITE_WINDOWS
 #include <locale.h>

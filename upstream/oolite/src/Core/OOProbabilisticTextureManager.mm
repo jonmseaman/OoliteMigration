@@ -29,7 +29,6 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOTexture.h"
 #import "PlayerEntityScriptMethods.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

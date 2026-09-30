@@ -270,7 +270,10 @@ selftest() {
 	mk() { mkdir -p "$t/$1/Core"; printf '%s\n' "${@:2}" > "$t/$1/Core/X.mm"; }
 	scank() { local scan_kinds="$1"; shift; scan "$@"; }   # scan with --kind <kinds>
 	fenced_total() {   # fenced_total <n> <root>: the source stage, --kind helper, reports n mac-fenced
-		scank helper "$2" source | grep -q "mac-fenced (Phase 5, information only): $1\$"
+		# captured, not `scank ... | grep -q`: under pipefail a successful grep -q can
+		# SIGPIPE the producer and report 141 (oo-kw6r, oo-3rb.330 / test_guardrails_pipefail).
+		local out; out="$(scank helper "$2" source)" || return
+		grep -q "mac-fenced (Phase 5, information only): $1\$" <<<"$out"
 	}
 	mk clean '#import "OOCocoa.h"' 'static NSInteger a; NSRange r = NSMakeRange(0, 1); NSPoint p;' \
 		'// an NSString in a comment is not a use' 'id s = @"literal"; OO_LOG("x", "{}", 1); cxx_NSStringy();' \

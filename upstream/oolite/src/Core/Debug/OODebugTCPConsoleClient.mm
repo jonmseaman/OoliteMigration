@@ -60,8 +60,8 @@ SOFTWARE.
 #include <thread>
 
 #import "OOTCPStreamDecoder.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PListWriting.hpp"
+#include "oofnd/String.hpp"
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS

@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 
 #import "OOFullScreenController.h"
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 
 
 @implementation OOFullScreenController

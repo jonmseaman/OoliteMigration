@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOSound.h"
 #import "OOStringParsing.h"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #import "MyOpenGLView.h"
 

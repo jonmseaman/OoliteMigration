@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "PlayerEntity.h"
 #import "OOStringExpander.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PListGet.hpp"
 
 #include <string_view>

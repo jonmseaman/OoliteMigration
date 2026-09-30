@@ -44,7 +44,6 @@ SOFTWARE.
 #import "OODebugMonitor.h"
 #import "OOProfilingStopwatch.h"
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"
 #import "OOLogHeader.h"	// OOPlatformDescription()
 

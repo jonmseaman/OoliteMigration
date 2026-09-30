@@ -37,9 +37,7 @@ MA 02110-1301, USA.
 #import "ShipEntityAI.h"
 #import "GameController.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #import "oofnd/objc/OOObject.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

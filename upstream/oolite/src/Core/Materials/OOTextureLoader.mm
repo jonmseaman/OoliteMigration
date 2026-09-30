@@ -38,8 +38,6 @@ SOFTWARE.
 #import "OOOpenGLExtensionManager.h"
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 

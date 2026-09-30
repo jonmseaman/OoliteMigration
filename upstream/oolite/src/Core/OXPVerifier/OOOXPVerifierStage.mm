@@ -29,11 +29,10 @@ SOFTWARE.
 
 #import "OOOXPVerifierStageInternal.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
+#include "oofnd/String.hpp"
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 @interface OOOXPVerifierStage (OOPrivate)
