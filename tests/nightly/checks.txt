@@ -20,6 +20,7 @@
 
 # Engine sources resolved by stem (oo-7j3t): the whole GUI tier, live, under its own gui-lock.
 [oo-7j3t] tools/gui-tier.sh
+[oo-44gg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_CollisionRegion
 
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
 # (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
@@ -28,6 +29,7 @@
 # Red while any Tier-2 expansion fails; the known ones are triaged in docs/phases/1-corpus-tier23-report.md.
 [oo-1gc.11] export PATH="/ucrt64/bin:$PATH" OO_GUI_LOCK_OWNER="nightly-corpus-tier2-$$"; s="build/nightly/corpus-tier2-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$s" || exit 1; tools/gui-lock acquire --timeout 900 || exit 1; p=$$; (while sleep 120 && kill -0 $p 2>/dev/null; do tools/gui-lock refresh >/dev/null || exit 0; done) & hb=$!; bash tools/corpus.sh tier2 --shard 0/2 --state "$s/0" > "$s/0.log" 2>&1 & a=$!; bash tools/corpus.sh tier2 --shard 1/2 --state "$s/1"; b=$?; wait $a; a=$?; cat "$s/0.log"; kill $hb; tools/gui-lock release; echo "corpus tier2 shards rc=$a,$b state=$s"; [ $a -eq 0 ] && [ $b -eq 0 ]
 [oo-3rb.76] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Entities/PlayerEntityControls.mm
+[oo-novu] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Octree
 
 # Tier A on the other five giant files (oo-0bkc): their Foundation-sweep chunk beads drop the
 # tier-a line from acceptance because clang-tidy on the whole file overruns accept.sh's 300 s
@@ -62,3 +64,7 @@
 # as written in the gates (retried per the flake policy); this line tracks its pass rate and fails the
 # night below 3 of 5 runs, so a regression or crash still turns the night red.
 [oo-9aq4] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && p=0; for i in 1 2 3 4 5; do python3 -m pytest test_s6_damaged_ship_flees.py -q -p no:cacheprovider && p=$((p+1)); done; echo "oo-9aq4: S6 passed $p/5"; [ "$p" -ge 3 ]
+
+# Phase 3 class conversions (ADR-0056 gate): the goldens after a build do not fit accept.sh's 300 s, so each
+# conversion bead runs them before queueing (its notes say so) and the night reruns them here.
+[oo-zffj] bash tools/tier-c.sh --only goldens
