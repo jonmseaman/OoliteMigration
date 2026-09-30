@@ -418,19 +418,54 @@ supplies, and its bodies spell selectors with `@selector`, which the gate's grep
    (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
    and the commit message says so.
 
-## Amendment (bead oo-489v): a class cluster converted whole
+## Amendment (bead oo-bhb9): initialisers, alloc/init from Objective-C, and -isEqual:/-hash
 
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OORoleSet.h/.mm`,
+  `OORoleSet+ObjCBridge.h/.mm`, `tests/unit/core/test_OORoleSet.mm`.
+
+**Context.** `OOColor` has only factories. Many leaves also have public `-initWith…:` methods that
+unconverted callers send after `+alloc` (`[[OORoleSet alloc] initWithRoleString:…]` in
+`ShipEntity`), and those initialisers can fail: they release `self` and return nil (no roles, a
+negative probability). A C++ constructor cannot return null. Such classes also override
+`-isEqual:` and `-hash`, which Foundation-free containers and `==` checks in callers rely on.
+
+**Decision (recommended defaults).**
+
+1. **An initialiser becomes a private member `bool initWithX(...)`** whose body is the old one
+   verbatim, with `return self` → `return true`, `return nil` → `return false`, `[self release]`
+   dropped, and `[super init]` dropped (the object is already constructed). `[self initWithY:…]`
+   inside it is a plain call.
+2. **`[[X alloc] initWithX:…]` becomes a static factory** that `makeRef`s the object, calls the
+   initialiser, and returns null when it returned false. Where the class already had the
+   factory (`+roleSetWithString:` is alloc + `-initWithRoleString:`), that is the one; a private
+   initialiser with no factory (`[[[self class] alloc] initWithRolesAndProbabilities:]`) gets a
+   private one named `xWithY` after it.
+3. **The façade keeps the public initialisers.** Each calls the factory and then a private
+   `-initWithNewCxxX:` that adopts the result: it releases `self` and returns nil for null (as
+   before), else stores the ivar and records itself as the peer
+   (`Peers().peerFor(cxx, [self] { return [self retain]; })` inside an `@autoreleasepool`, as the
+   oo-o89 amendment does). This is separate from `ToObjC`'s `-initWithCxxX:`, which runs under the
+   peer table's lock and only stores the ivar.
+4. **`-isEqual:` and `-hash` become `bool isEqual(X *other)` and `NSUInteger hash()`** with the
+   same bodies. The `isKindOfClass:` test moves to the façade's `-isEqual:`, which converts the
+   argument with `oo::ToCxx`; the C++ member treats null as "not equal".
+5. **`-cxx_descriptionComponents` that reads a lazily built cache** keeps its fixed `const`
+   signature (ADR-0055 item 1) and reaches the non-const getter through `const_cast`. The object
+   is never const-constructed, and the cache only ever holds the same text; Phase 6 may make the
+   cache `mutable`.
+6. **A log line that printed `self` with `%@`** prints `oo::DescriptionOf(oo::ToObjC(this))`
+   while the façade exists (the address is the façade's, not the C++ object's).
+
+**Consequences.** Callers that alloc/init keep compiling unchanged and keep identity (the façade
+they made is the one `ToObjC` returns). A failed init still hands back nil.
+## Amendment (bead oo-489v): a class cluster converted whole
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOProbabilitySet.h/.mm`
   (callers `OOShipRegistry.h/.mm` and `Universe.mm`, adapted in the bead; no façade).
-
 **Context.** `OOProbabilitySet` is a class cluster: two abstract public classes (immutable and
 mutable) whose `+alloc`/`-init…` hand back one of four private concrete classes, an immortal
 empty-set singleton (retain/release overridden), and "subclass responsibility" methods that raise.
 Every class lives in the one file, so the hierarchy converts in one bead (unlike the oo-cwz
 amendment, where subclasses live in other files).
-
-**Decision (recommended defaults).**
-
 1. **The public abstract classes stay public; the concrete ones become `final` classes in an
    anonymous namespace in `X.mm`.** A method that raised "abstract class" becomes pure virtual
    (`= 0`); the raising helper goes, since nothing can instantiate the abstract class any more.
@@ -447,19 +482,13 @@ amendment, where subclasses live in other files).
 5. **Behaviour is kept, bugs included**: the mutable set's `weightForObject()` still subtracts the
    previous entry's weight, and its `mutableCopy()` still asserts the sum is known. The test pins
    both. `__PRETTY_FUNCTION__` in a log line now prints the C++ name.
-
 ## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
-
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
   `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
-
 **Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
 `UNIVERSE->sortedEntities`), so its object cannot link without theirs, and theirs pull in the whole
 game. Its designated `-init` could fail (`malloc`) and return nil; it has two initialisers with no
 arguments (`-init`, `-initAsUniverse`); and three file-static C functions read its private ivars.
-
-**Decision (recommended defaults).**
-
 1. **Its unit test links every game object but `SDL/main.mm`**: the entry in
    `tests/unit/core/meson.build` is `'test_X': ['*']`. The test defines the globals `main.mm`
    defined that the game references (today `gDebugFlags`, under `#ifndef NDEBUG`). The test drives
@@ -478,20 +507,14 @@ arguments (`-init`, `-initAsUniverse`); and three file-static C functions read i
    member**, body verbatim, so no `friend` and no public accessor is added.
 5. **The façade's initialisers make and own the C++ object** as in amendment oo-86ek, through one
    private `-adoptCxxX:` that stores the new object and records the façade as its peer.
-
 ## Amendment (bead oo-novu): initialisers that fail on their input, and a second class with one caller
-
 - Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/Octree.h/.mm` (`Octree`,
   `OOOctreeBuilder`), `Octree+ObjCBridge.h/.mm`, `tests/unit/core/test_Octree.mm`.
-
 **Context.** `Octree`'s initialisers answer nil for bad input, not only for lack of memory:
 `-cxx_initWithDictionary:` for a cache entry with no or ragged data, `-initWithData:radius:` for
 empty data. A constructor cannot answer null, and amendment oo-44gg's raise would turn a bad cache
 entry into an exception. `Octree.h` also declares `OOOctreeBuilder`, whose only user is
 `OOMeshToOctreeConverter.mm` (a few message sends in one method and one C function).
-
-**Decision (recommended defaults).**
-
 1. **An initialiser that can answer nil for its input becomes a static factory with the
    initialiser's name** (first keyword, `cxx_` dropped: `-cxx_initWithDictionary:` becomes
    `static oo::Ref<Octree> initWithDictionary(const oo::PList &)`), returning null where it
