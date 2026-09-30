@@ -1,6 +1,6 @@
 /*
 
-OOOpenALController.m
+OOOpenALController.mm
 
 
 Oolite
@@ -30,63 +30,57 @@ MA 02110-1301, USA.
 #import "OOALSoundMixer.h"
 #import "OOStringBridge.h"
 
-static id sSingleton = nil;
+static OOOpenALController *sSingleton = nullptr;	// +1, never released (the retained singleton)
 
-@implementation OOOpenALController
 
-+ (OOOpenALController *) sharedController
+OOOpenALController *OOOpenALController::sharedController()
 {
-	if (sSingleton == nil)
+	if (sSingleton == nullptr)
 	{
-		sSingleton = [[self alloc] init];
+		// -init's [self release]; return nil; is init() answering false: the controller is freed.
+		oo::Ref<OOOpenALController> controller = oo::makeRef<OOOpenALController>();
+		if (controller->init())  sSingleton = controller.leakRef();
 	}
 	
 	return sSingleton;
 }
 
 
-- (id) init
+bool OOOpenALController::init()
 {
-	self = [super init];
-	if (self != nil)
+	if (oo::process::hasArgument("-nosound") || oo::process::hasArgument("--nosound"))
 	{
-		if (oo::process::hasArgument("-nosound") || oo::process::hasArgument("--nosound"))
-		{
-			[self release];
-			return nil;
-		}
-
-		ALuint error;
-		device = alcOpenDevice(NULL); // default device
-		if (!device)
-		{
-			OO_LOG(kOOLogSoundInitError, "{}", "Failed to open default sound device");
-			[self release];
-			return nil;
-		}
-		context = alcCreateContext(device,NULL); // default context
-		if (!alcMakeContextCurrent(context))
-		{
-			OO_LOG(kOOLogSoundInitError, "{}", "Failed to create default sound context");
-			[self release];
-			return nil;
-		}
-		if ((error = alGetError()) != AL_NO_ERROR)
-		{
-			OO_LOG(kOOLogSoundInitError, "Error {} creating sound context", error);
-		}
-		OOAL(alDistanceModel(AL_NONE)); 
+		return false;
 	}
-	return self;
+
+	ALuint error;
+	device = alcOpenDevice(NULL); // default device
+	if (!device)
+	{
+		OO_LOG(kOOLogSoundInitError, "{}", "Failed to open default sound device");
+		return false;
+	}
+	context = alcCreateContext(device,NULL); // default context
+	if (!alcMakeContextCurrent(context))
+	{
+		OO_LOG(kOOLogSoundInitError, "{}", "Failed to create default sound context");
+		return false;
+	}
+	if ((error = alGetError()) != AL_NO_ERROR)
+	{
+		OO_LOG(kOOLogSoundInitError, "Error {} creating sound context", error);
+	}
+	OOAL(alDistanceModel(AL_NONE)); 
+	return true;
 }
 
 
-- (void) setMasterVolume:(ALfloat) fraction
+void OOOpenALController::setMasterVolume(ALfloat fraction)
 {
 	OOAL(alListenerf(AL_GAIN,fraction));
 }
 
-- (ALfloat) masterVolume
+ALfloat OOOpenALController::masterVolume()
 {
 	ALfloat fraction = 0.0;
 	OOAL(alGetListenerf(AL_GAIN,&fraction));
@@ -95,12 +89,10 @@ static id sSingleton = nil;
 
 // only to be called at app shutdown
 // is there a better way to handle this?
-- (void) shutdown
+void OOOpenALController::shutdown()
 {
 	[[OOSoundMixer sharedMixer] shutdown];
 	OOAL(alcMakeContextCurrent(NULL));
 	OOAL(alcDestroyContext(context));
 	OOAL(alcCloseDevice(device));
 }
-
-@end

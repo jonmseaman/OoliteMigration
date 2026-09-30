@@ -188,3 +188,44 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-r7m0): singletons, and an `-init` that can fail
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenALController.h/.mm`
+  and `tests/unit/core/test_OOOpenALController.mm`.
+
+**Context.** The GL/AL managers (`OOOpenALController`, `OOOpenGLExtensionManager`,
+`OOGraphicsResetManager`) are singletons: `+sharedX` makes the one instance on first use and keeps
+it for the life of the process, often with the "canonical singleton boilerplate" category
+(`+allocWithZone:` answers nil after the first, `-retain`/`-release`/`-autorelease` do nothing).
+`OOOpenALController`'s `-init` can also fail (`[self release]; return nil;`), and `+sharedController`
+then asks again on the next call. Item 3 maps an autoreleased `X *` result to `oo::Ref<X>`; a
+singleton's result was neither autoreleased nor owned by the caller.
+
+**Decision (recommended defaults).**
+
+1. **`+sharedX` becomes `static X *sharedX()`, a borrowed pointer.** The instance is held in a
+   file-static `X *sSingleton`, made with `oo::makeRef<X>().leakRef()`: the one +1 is never
+   released, as the retained `sSingleton` never was. The singleton category is not translated:
+   with no other creator and no release there is nothing for it to do. `-dealloc`'s
+   `if (sSingleton == self) sSingleton = nil;` stays, in the destructor.
+2. **An `-init` that can fail becomes `bool init()`,** called by the factory right after
+   `oo::makeRef<X>()`: `[self release]; return nil;` is `return false;` and the factory drops the
+   `Ref`, which frees the object as the release did. The constructor stays trivial (the zeroed
+   ivars). Nothing that the failing `-init` left open is closed, because the release did not close
+   it either.
+3. **A class whose few callers are adapted in the bead** has no façade (item 5). Adapting a caller
+   is the null-guarded translation of its sends and nothing more: `[[X sharedX] foo]` becomes
+   `if (X *x = X::sharedX()) x->foo();`, and a nil receiver's 0 is written out
+   (`x != nullptr ? x->volume() : 0.0f`).
+4. **A send that resolved only through the converted class's own declaration** (the receiver
+   typed `id`, the selector declared on no other interface) gets its declaration added to the
+   receiver's `@interface`. `OOOpenALController.h` had declared the `-shutdown` that
+   `[[OOSoundMixer sharedMixer] shutdown]` resolved to; `OOALSoundMixer.h` now declares it.
+5. **A singleton's façade** (when it has one) keeps one façade for the life of the process:
+   `+sharedX` returns `oo::ToObjC(X::sharedX())` retained once and cached, so
+   `[X sharedX] == [X sharedX]` still holds.
+
+**Consequences.** Converted code calls `X::sharedX()->...` (or `cxx::X::` while a façade
+exists) with no crossing. The failing-init factory keeps the "ask again next time" behaviour
+exactly, including the log line each failed attempt writes.
