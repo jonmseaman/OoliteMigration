@@ -4,6 +4,7 @@ oolite_sources += files(
     'AI.mm',
     'AIGraphViz.mm',
     'CollisionRegion.mm',
+    'CollisionRegion+ObjCBridge.mm',
     'GameController.mm',
     'GuiDisplayGen.mm',
     'HeadUpDisplay.mm',
