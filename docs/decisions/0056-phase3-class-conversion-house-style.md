@@ -1281,6 +1281,61 @@ for that one caller.
    a verifier stage reports only there, and pins the lines the unconverted stage wrote,
    indentation included.
 
+## Amendment (bead oo-vl43): an intermediate class that adds virtual members, and initialisers that dispatch
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOBasicMaterial.h/.mm`,
+  `OOBasicMaterial+ObjCBridge.h/.mm`, the adapter in `OOMaterial+ObjCBridge.h`,
+  `tests/unit/core/test_OOBasicMaterial.mm`.
+
+**Context.** `OOBasicMaterial` is the first class under the Materials root (amendment oo-smy) to
+convert while Objective-C classes still derive from it (`OOSingleTextureMaterial`,
+`OOMultiTextureMaterial`, `OOShaderMaterial`). Unlike the verifier's intermediate class (amendment
+oo-up4b), it has callers that make it (`[[OOBasicMaterial alloc] initWithName:configuration:]` in
+`OOMesh` and the convenience creators), selectors of its own, and a method its subclasses override
+that its own initialiser calls (`-permitSpecular`, which `OOShaderMaterial` overrides). It also
+tests `-isMemberOfClass:` and `-isKindOfClass:` on itself.
+
+**Decision (recommended defaults).**
+
+1. **The root's adapter becomes `oo::ObjCMaterial<Base>` with `oo::ObjCMaterialLink`,** in the
+   root's bridge header, as amendment oo-up4b item 1 made `oo::ObjCStage<Base>`. The root façade's
+   overridable methods answer an Objective-C material with the link's `super…()` members. The
+   template is not `final`: an intermediate class that adds a virtual member derives its own
+   adapter from it in its bridge `.mm` (`ObjCBasicMaterial`, which forwards `permitSpecular()`),
+   and its façade's method for that member calls the class's own member, qualified, on an
+   Objective-C subclass instance.
+2. **Initialisers that call a virtual member are not constructors.** They are public members with
+   the initialiser's name (`initWithName(name)`, `initWithName(name, configuration)`), run once
+   right after construction, so the call reaches a subclass's override (in the constructor it
+   would reach the base's). The class's static factories (`materialWithName`) are `makeRef` plus
+   the initialiser; a converted subclass's initialiser calls the base's; the façade runs it on the
+   C++ part it made. The façade's `-init…` makes that part itself: a new C++ object with the
+   façade as its peer (`-initWithNewCxxMaterial:`, public on the root façade) when `[self class]`
+   is exactly the façade class, else the subclass's adapter (`-initWithCxxMaterial:`). Plain
+   `-init` does the same without an initialiser, as before.
+3. **`-isMemberOfClass:[X class]` on `self` is `typeid(*this) == typeid(X)`,** and
+   `-isKindOfClass:` of an argument is `dynamic_cast<X *>(p) != nullptr`. An Objective-C
+   subclass's C++ part is its adapter, which is not exactly `X` and does derive from it, so both
+   answer as before for every kind of object, nil included.
+4. **A C++ object's façade class is found by walking its C++ base classes** (the Itanium ABI's
+   type information) to the nearest `cxx::` class that has an Objective-C class of its name, then
+   the root. A global C++ subclass of `cxx::OOBasicMaterial` is therefore an `OOBasicMaterial` to
+   Objective-C, and the typed `oo::ToObjC(cxx::OOBasicMaterial *)` can `static_cast`. This
+   refines amendment oo-up4b item 3 ("a global class is the root") for hierarchies with more than
+   one façade.
+5. **A file-static object the class made and never released** (`sDefaultMaterial`) is a raw
+   pointer in an anonymous namespace filled with `factory(…).leakRef()` (amendment oo-3lj8 item 3).
+   It holds the C++ object, not its façade: it is exactly the converted class, so a C++ reference
+   owns all of it (amendment oo-smy item 4 does not apply).
+6. **An `id` argument to `oo::ToCxx`** is ambiguous once a hierarchy has two façades (amendment
+   oo-cc8a item 3): an initialiser's result (`id`) is assigned to a typed local first.
+
+**Consequences.** One more façade and deletion bead (`OOBasicMaterial+ObjCBridge`), which depends
+on the three subclass beads and on `OOMesh` and `OOMaterialConvenienceCreators`. The root's bridge
+changed shape (template adapter, façade-class walk) without any caller or test changing. Each
+subclass bead now converts on its own: it derives from `cxx::OOBasicMaterial`, calls
+`OOBasicMaterial::initWithName(…)` from its own initialiser, and gets its façade by name.
+
 ## Amendment (bead oo-kdyh): a root and its one subclass, a container of façades, and a binding's own class
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOScriptTimer.h/.mm`,
