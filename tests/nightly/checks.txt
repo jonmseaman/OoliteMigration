@@ -89,3 +89,4 @@
 [oo-fo17] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAsyncQueue && bash tools/tier-c.sh --only goldens
 [oo-x2wy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAsyncWorkManager && bash tools/tier-c.sh --only goldens
 [oo-3kqi] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakReference && bash tools/tier-c.sh --only goldens
+[oo-cc8a] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakSet && bash tools/tier-c.sh --only goldens
