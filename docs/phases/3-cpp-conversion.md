@@ -131,6 +131,15 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **A JS binding file (`OOJS*`)** (ADR-0056 amendment oo-ppc; exemplar
+     `src/Core/Scripting/OOJSVector.*`): it has no class, and its JS class is already C++. Do not
+     touch `OOJS_NATIVE_*`/`OOJS_PROFILE_*`: they are C++ already, and an exception under a native
+     reaches JS through `OOJSReportCurrentException`. Change `BOOL`/`YES`/`NO` to `bool`/`true`/`false`.
+     Turn a category on a game class into free functions in `X.mm` and leave its `@implementation`, with
+     one-line forwarders, in `X+ObjCBridge.mm`. Its deletion bead depends on that class's conversion.
+     Messages to unconverted classes and the JS private slot stay as they are. The test runs the JS
+     class in a real context (`tests/unit/core/test_OOJSVector.mm`). Also gate on
+     `bash tools/js-api-contract.sh`.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`

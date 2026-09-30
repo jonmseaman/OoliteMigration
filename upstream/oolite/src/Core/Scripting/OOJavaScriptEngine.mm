@@ -1122,15 +1122,7 @@ void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *for
 }
 
 
-void OOJSReportWrappedException(ooscript::Context context, id exception)
-{
-	if (!ooscript::isExceptionPending((context)))
-	{
-		if ([exception isKindOfClass:[OOException class]])  cxx_OOJSReportError(context, "Native exception: %s", [(OOException *)exception reason]);
-		else  cxx_OOJSReportError(context, "Unidentified native exception");
-	}
-	// Else, let the pending exception propagate.
-}
+// OOJSReportWrappedException() and OOJSReportCurrentException() are in OOJSEngineNativeWrappers.mm.
 
 
 #ifndef NDEBUG

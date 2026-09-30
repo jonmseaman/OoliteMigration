@@ -188,3 +188,94 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-ppc): the scripting bindings (`OOJS*` files)
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSVector.h/.mm`,
+  `OOJSVector+ObjCBridge.mm`, `OOJSEngineNativeWrappers.h/.mm`,
+  `tests/unit/core/test_OOJSVector.mm`.
+
+**Context.** About 42 beads convert the `OOJS*` binding files. A binding file has no class of its
+own: its JS class (the `ooscript::ClassDef`, the `PropertySpec`/`FunctionSpec` tables, the
+get/set/finalize hooks, the natives and the prototype from `initClass`) has been C++ on the
+`ooscript` façade since Phase 1 (bead oo-sdz). What is left of Objective-C is:
+
+- `OOJS_NATIVE_ENTER`/`EXIT` (295 natives in 35 files), `OOJS_PROFILE_ENTER`/`EXIT` and
+  `OOJS_BEGIN`/`END_FULL_NATIVE`, which expand to `@try`/`@catch (id)`/`@finally`;
+- a category on the game class the file wraps (`ShipEntity (OOJavaScriptExtensions)`, with
+  `-oo_jsValueInContext:` and `-oo_clearJSSelf:`, which the engine sends by selector) or a
+  debug-only one (`PlayerEntity (JSVectorStatistics)`, reached by `PS.callObjC("…")`);
+- messages to game classes that are still Objective-C (`[entity position]`, `[UNIVERSE …]`);
+- `BOOL`/`YES`/`NO`, and a JS private slot that holds a retained Objective-C object (usually an
+  `OOWeakReference`).
+
+Measured on this toolchain (clang 22, libobjc2, `-fobjc-runtime=gnustep-2.2`, probe in bead oo-ppc):
+a C++ `catch (...)`, even in a TU that is plain C++, catches an Objective-C `@throw`; inside it an
+Objective-C++ `try { throw; } catch (id e)` gets the object back, and `catch (id)` does not match
+a C++ exception. An Objective-C `@catch (id)` does not catch a C++ exception: the process ends in
+`std::terminate` (ADR-0029 measurement 10).
+
+**Decision (recommended defaults).**
+
+1. **The exception mapping is made once, in `OOJSEngineNativeWrappers.h`, for every binding.**
+   `OOJS_NATIVE_ENTER`/`EXIT` are a C++ `try` and a `catch (...)` that calls
+   `OOJSReportCurrentException(cx)` and returns `false`. `OOJS_PROFILE_*` and
+   `OOJS_BEGIN`/`END_FULL_NATIVE` are scope guards (`OOJSProfileScope`, `OOJSFullNativeScope`)
+   that do what `@finally` did, in the same order. `OOJSReportCurrentException` lives in
+   `OOJSEngineNativeWrappers.mm`, the one Objective-C++ file that tells the two kinds apart:
+   - an Objective-C exception is reported exactly as before: `Native exception: <reason>` for an
+     `OOException`, `Unidentified native exception` for anything else;
+   - a C++ exception, which used to terminate the game, is now reported too:
+     `Native exception: <what()>` for a `std::exception`, `Unidentified native exception`
+     otherwise;
+   - a pending JS exception is left to propagate, as before.
+   So a binding bead does not touch its natives for exceptions. When Phase 3 turns a raise site
+   into a C++ `throw` (ADR-0029 item 4), it throws a type derived from `std::exception` whose
+   `what()` is the old reason, and JS reads the same text.
+2. **A binding file converts in place.** `X.h`/`X.mm` keep their names. The JS tables, hooks and
+   natives stay as they are. `BOOL`/`YES`/`NO` become `bool`/`true`/`false` in the file's code and
+   in its C API in `X.h` (callers compile unchanged). Bodies stay verbatim otherwise (item 4), and
+   the Objective-C header imports go only where nothing uses them.
+3. **A category on a game class that lives in the binding file** is that class's code
+   (amendment oo-o89, item 4), but it moves out of the binding file:
+   - each method's body becomes a free C++ function in `X.mm`, named after the selector's first
+     keyword (`reportJSVectorStatistics()`), declared in `X.h`. A method that used `self` takes the
+     object as its first parameter;
+   - the `@implementation` stays, with one-line forwarders, in `X+ObjCBridge.mm`, listed after
+     `X.mm` in `meson.build`. It has no header of its own: the category's `@interface`, if any,
+     stays where it is;
+   - its deletion bead ("Delete X+ObjCBridge", `sweep:objc-bridge`) depends on the conversion bead
+     of the class the category extends. That bead turns the forwarders into members of the C++
+     class, which call the same functions.
+4. **Messages to game classes that are still Objective-C stay messages.** A class that has
+   converted is reached as `cxx::C` through `oo::ToCxx`/`oo::ToObjC` (item 5). The binding stays
+   `.mm` until Phase 4.
+5. **The JS private slot does not change while the wrapped class has an Objective-C face.**
+   It keeps holding what it holds now: a retained Objective-C object, usually an `OOWeakReference`
+   to it. A converted binding reads it with `OOJSNativeObjectFromJSObject` (or `getPrivate`) and
+   crosses with `oo::ToCxx`. It wraps a `cxx::C` with `oo::ToObjC(c)`, so the peer table
+   (`oo::ObjCPeers`) keeps one façade, and so one JS object, per game object. When `C`'s façade is
+   deleted, the slot holds a heap `oo::WeakRef<cxx::C>` (what an `OOWeakReference` wrapper
+   becomes) or a `cxx::C *` with one retain, released by the class's own finalize hook instead of
+   `OOJSObjectWrapperFinalize`. `getInstancePrivate` with the class check replaces
+   `-isKindOfClass:`. That change is in the engine's generic wrapper code, so it lands with the
+   first façade deletion of a wrapped class, not in a binding bead.
+6. **The test runs the JS class in a real context.** `tests/unit/core/test_X.mm` links `X.mm`,
+   its bridge, `OOJSEngineNativeWrappers.mm`, the façade backend (`ooscript/JSEngine_quickjs.cpp`)
+   and the maths it calls. What the rest of the engine provides (the error reporters, argument and
+   string helpers, other bindings' converters, the universe) is defined in the test as the smallest
+   stand-in that does the same thing. The test evaluates JS and pins the JS-visible results,
+   including the error text and what a native's exception becomes. Write it against the
+   Objective-C file and run it there first, as item 7 says.
+7. **Gates for a binding bead:** item 8's gates, with the grep over `X.mm` and `X.h`, `tier-a` on
+   `X.mm` and on `X+ObjCBridge.mm` if there is one, and `bash tools/js-api-contract.sh`.
+
+**Consequences.** A binding bead is `BOOL`s, a category moved behind forwarders, and a test; it
+never edits its natives for exceptions. Every binding with a category on an entity gets a bridge
+whose deletion waits for that entity's conversion. A binding with no category
+(`OOJSFont`, `OOJSWorldScripts`, `OOJSSpecialFunctions`) needs no bridge, but it cannot become
+`.cpp` until its includes are free of Objective-C: `OOJavaScriptEngine.h` declares
+`@interface`s and imports `Universe.h`/`PlayerEntity.h`, and `OOCocoa.h` is Objective-C. That
+header split belongs to the `OOJavaScriptEngine.mm` slices, not to the bindings. The one change in
+behaviour: a C++ exception thrown under a native becomes a JS error instead of ending the game.
+No golden reaches that path.
