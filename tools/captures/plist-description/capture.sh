@@ -31,7 +31,7 @@ clang++ "$(native "$work/probe.o")" "${libs[@]}" -o "$(native "$work/probe.exe")
 
 {
 	echo "// Captured from GNUstep base 1.31.1 by tools/captures/plist-description/capture.sh (bead oo-qps.32):"
-	echo "// -[NSObject description] of each case in tools/captures/plist-description/cases.txt, TZ=UTC."
+	echo "// the root class's -description of each case in tools/captures/plist-description/cases.txt, TZ=UTC."
 	echo "// Test data: do not edit; rerun the script. Rows: { kind, name, input text, captured description }."
 	TZ=UTC "$work/probe.exe" "$(native "$here/cases.txt")" | sed 's/\r$//'	# text-mode stdout's CRLF; a CR inside a row stays
 } > "$work/captured.inc"

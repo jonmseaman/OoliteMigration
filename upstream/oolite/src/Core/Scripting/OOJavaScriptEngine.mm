@@ -1330,7 +1330,7 @@ static bool IsOOObjectRooted(id object)
 }
 
 
-// NSArray's glue (JSArrayFromNSArray + JSNewNSArrayValue) over ObjectFromPList's array: null elements dropped.
+// The Foundation array's glue (JSArrayFromNSArray + JSNewNSArrayValue) over ObjectFromPList's array: null elements dropped.
 static ooscript::Value JSArrayValueFromPList(ooscript::Context context, const oo::PList::Array &array)
 {
 	OOJS_PROFILE_ENTER
@@ -1372,7 +1372,7 @@ static ooscript::Value JSArrayValueFromPList(ooscript::Context context, const oo
 }
 
 
-// NSDictionary's glue (JSObjectFromNSDictionary + JSNewNSDictionaryValue) over ObjectFromPList's
+// The Foundation dictionary's glue (JSObjectFromNSDictionary + JSNewNSDictionaryValue) over ObjectFromPList's
 // dictionary: null values dropped, empty keys skipped, key order.
 static ooscript::Value JSObjectValueFromPList(ooscript::Context context, const oo::PList::Dict &dict)
 {
@@ -1411,7 +1411,7 @@ static ooscript::Value JSObjectValueFromPList(ooscript::Context context, const o
 }
 
 
-// NSNumber's glue: an integer outside int32 range, or a real, as a double.
+// The Foundation number's glue: an integer outside int32 range, or a real, as a double.
 static ooscript::Value JSNumberValue(ooscript::Context context, double number)
 {
 	ooscript::Value result;
@@ -1426,7 +1426,7 @@ ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 	if (object == nil)  return ooscript::nullValue();
 	if (EXPECT(IsOOObjectRooted(object)))  return [object oo_jsValueInContext:context];
 
-	// An object on another root has no JS glue: undefined, as NSObject's gave. oo-qps.72 deleted
+	// An object on another root has no JS glue: undefined, as the root class's gave. oo-qps.72 deleted
 	// the Foundation branch (its property-list form, proposed ADR-0051): plist data is
 	// OOJSValueFromPList's.
 	return ooscript::undefinedValue();
@@ -1477,7 +1477,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 
 		case oo::PList::Type::Data:
 		case oo::PList::Type::Date:
-			return ooscript::undefinedValue();	// NSData, NSDate: NSObject's glue
+			return ooscript::undefinedValue();	// Foundation data and dates: the root class's glue
 
 		case oo::PList::Type::Array:
 			return JSArrayValueFromPList(context, *plist.getIf<oo::PList::Array>());
