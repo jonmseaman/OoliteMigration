@@ -44,6 +44,7 @@ core_tests = {
     'test_CollisionRegion': ['*'],
     'test_Octree': ['*'],
     'test_OOJSVector': ['Core/Scripting/OOJSVector.mm', 'Core/Scripting/OOJSVector+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOHPVector.mm', 'Core/OOVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c'],
+    'test_OOJSClock': ['Core/Scripting/OOJSClock.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOMeshToOctreeConverter': ['*'],
     'test_OOPolygonSprite': ['*'],
     'test_OOVector': ['Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
