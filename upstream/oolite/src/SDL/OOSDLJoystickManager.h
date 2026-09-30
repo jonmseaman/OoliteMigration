@@ -13,6 +13,15 @@ representation and a property-list dictionary (for loading/saving user defaults
 and for use in areas where portability/ease of coding are more important
 than performance such as the GUI)
 
+C++20 since bead oo-o89, the Phase 3 platform (SDL/) pattern (proposed ADR-0056, amendment oo-o89).
+The SDL half of the joystick manager is cxx::OOSDLJoystickManager. Its superclass,
+OOJoystickManager, is still Objective-C, so the Objective-C OOSDLJoystickManager in
+OOSDLJoystickManager+ObjCBridge.h (imported at the end of this header) stays the subclass that
+superclass creates and messages; it owns the C++ object and forwards its overrides to it. Until
+OOJoystickManager converts, the C++ object is made only by that facade's -init: the superclass's
+state (and its decoders, which handleSDLEvent() reaches through oo::ToObjC(this)) lives in the
+facade.
+
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
 
@@ -33,33 +42,47 @@ MA 02110-1301, USA.
 
 */
 
-
+#ifndef OOSDLJOYSTICKMANAGER_H
+#define OOSDLJOYSTICKMANAGER_H
 
 #import "OOCocoa.h"
 #import <SDL3/SDL_events.h>
 #import "OOJoystickManager.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
 
 
+namespace cxx {
 
-
-@interface OOSDLJoystickManager: OOJoystickManager
+class OOSDLJoystickManager : public oo::RefCounted
 {
-@private
-	std::map<std::string, int, std::less<>>	joystickIdMap;	// "%d" of an SDL joystick id -> stick index (proposed ADR-0043)
-	SDL_Joystick		*stick[MAX_STICKS];
-	int			stickCount;
-}
+public:
+	OOSDLJoystickManager();		// opens the sticks SDL reports (at most MAX_STICKS)
 
-- (id) init;
-- (void) dealloc;
-- (BOOL) handleSDLEvent: (SDL_Event *)evt;
-- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber;	// nullopt: the device has no name
-- (int16_t) getAxisWithStick:(NSUInteger) stickNum axis:(NSUInteger) axisNum ;
-- (JoyAxisEvent) makeJoyAxisEvent: (SDL_JoyAxisEvent*) sdlevt;
-- (JoyButtonEvent) makeJoyButtonEvent: (SDL_JoyButtonEvent*) sdlevt;
-- (JoyHatEvent) makeJoyHatEvent: (SDL_JoyHatEvent*) sdlevt;
-- (NSInteger) getJoystickIndexFromId: (SDL_JoystickID) joystickId;
+	bool handleSDLEvent(SDL_Event *evt);
+	std::optional<std::string> nameOfJoystick(NSUInteger stickNumber);	// nullopt: the device has no name
+	int16_t getAxisWithStick(NSUInteger stickNum, NSUInteger axisNum);
+	JoyAxisEvent makeJoyAxisEvent(SDL_JoyAxisEvent *sdlevt);
+	JoyButtonEvent makeJoyButtonEvent(SDL_JoyButtonEvent *sdlevt);
+	JoyHatEvent makeJoyHatEvent(SDL_JoyHatEvent *sdlevt);
+	NSInteger getJoystickIndexFromId(SDL_JoystickID joystickId);
 
-@end
+	// Overrides of OOJoystickManager (its facade subclass forwards them here).
+	NSUInteger joystickCount();
+
+private:
+	std::map<std::string, int, std::less<>>	joystickIdMap = {};	// "%d" of an SDL joystick id -> stick index (proposed ADR-0043)
+	SDL_Joystick		*stick[MAX_STICKS] = {};
+	int			stickCount = {};
+};
+
+}	// namespace cxx
+
+
+// Transitional: the Objective-C OOSDLJoystickManager, the OOJoystickManager subclass the
+// superclass creates. Deleted, with namespace cxx above, by the bridge's deletion bead once
+// OOJoystickManager is C++.
+#import "OOSDLJoystickManager+ObjCBridge.h"
+
+#endif	// OOSDLJOYSTICKMANAGER_H
