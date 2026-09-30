@@ -219,13 +219,18 @@ reached first.
    not import the real header. The stub is the place to pin inputs (`gpu-settings.plist` comes
    from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
 ## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
   `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
+
 **Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
 `-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
 `@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
 (`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
 ask `UNIVERSE`, the string expander and JavaScript.
+
+**Decision (recommended defaults).**
+
 1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
    own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
    that called another is a delegating constructor; statements it ran before the call move into a
@@ -279,12 +284,17 @@ bodies use the ivars on nearly every line.
    is the only behaviour it changes.
 
 ## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
+
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
   (and its one caller, `src/Core/Scripting/OOScriptTimer.mm`), `tests/unit/core/test_OOPriorityQueue.mm`.
+
 **Context.** `OOPriorityQueue` has one caller (`OOScriptTimer`, six sends), so item 5's last rule
 applies: adapt the caller in the bead, no façade, and the class is global. But its elements are
 Objective-C objects that it retains, releases and orders by a comparator *selector* the caller
 supplies, and its bodies spell selectors with `@selector`, which the gate's grep forbids.
+
+**Decision (recommended defaults).**
+
 1. **The elements stay Objective-C.** The C++ class keeps `id` elements and the `SEL`
    comparator, and messages the elements (`retain`, `autorelease`, `isEqual:`, `hash`) exactly as
    before. It changes when its callers' elements convert, not before.
