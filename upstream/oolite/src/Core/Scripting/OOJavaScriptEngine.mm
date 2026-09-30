@@ -1903,7 +1903,7 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
 	ooscript::Value value = ooscript::undefinedValue();
-	VectorToJSValue(context, v, &value);
+	VectorToJSValue(context, [self getVector], &value);
 	return value;
 }
 

@@ -105,12 +105,21 @@ SOFTWARE.
 @end
 
 
-@interface OOListUnusedFilesStage: OOOXPVerifierStage
+/*	C++20 since bead oo-cwz, the converted stage of the Phase 3 class-hierarchy exemplar (proposed
+	ADR-0056 Amendment 1). A C++ subclass of cxx::OOOXPVerifierStage that overrides its virtual
+	members. It has no facade of its own: nothing outside this file names it, and the Objective-C
+	verifier holds it as an OOOXPVerifierStage (oo::ToObjC).
+*/
+class OOListUnusedFilesStage : public cxx::OOOXPVerifierStage
+{
+public:
+	// Returns name to be used in dependents() by other stages; also registers stage.
+	static std::string nameForReverseDependencyForVerifier(OOOXPVerifier *verifier);	// flipped with its family (bead oo-3rb.274.2)
 
-// Returns name to be used in -dependents by other stages; also registers stage.
-+ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier;	// flipped with its family (bead oo-3rb.274.2)
-
-@end
+	std::optional<std::string> name() override;
+	std::optional<std::vector<std::string>> dependencies() override;
+	void run() override;
+};
 
 
 @interface OOOXPVerifier(OOFileScannerVerifierStage)
