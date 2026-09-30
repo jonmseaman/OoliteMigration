@@ -152,6 +152,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      Messages to unconverted classes and the JS private slot stay as they are. The test runs the JS
      class in a real context (`tests/unit/core/test_OOJSVector.mm`). Also gate on
      `bash tools/js-api-contract.sh`.
+   - **A binding with a class of its own, and its base** (ADR-0056 amendment oo-kdyh; exemplar
+     `src/Core/Scripting/OOScriptTimer.*`, `OOJSTimer.*`): convert a root with its only subclass in
+     the root's bead. A class the engine messages by selector keeps a no-ivar façade subclass that
+     forwards the glue selectors; the JS private slot holds that façade. A container of
+     Objective-C objects holds the façade, and removal uses `oo::LiveObjC`.
    - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
      roots first, in one bead. Class methods become `static` members, and file statics become
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy

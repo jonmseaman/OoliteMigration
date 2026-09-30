@@ -39,6 +39,7 @@ oolite_sources += files(
     'OOJSSystem.mm',
     'OOJSSystemInfo.mm',
     'OOJSTimer.mm',
+    'OOJSTimer+ObjCBridge.mm',
     'OOJSVector.mm',
     'OOJSVector+ObjCBridge.mm',
     'OOJSVisualEffect.mm',
@@ -50,6 +51,7 @@ oolite_sources += files(
     'OOPListScript.mm',
     'OOScript.mm',
     'OOScriptTimer.mm',
+    'OOScriptTimer+ObjCBridge.mm',
 )
 
 # The façade's backend (bead oo-7wx: QuickJS-ng is the only engine).
