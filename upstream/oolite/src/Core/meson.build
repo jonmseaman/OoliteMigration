@@ -43,6 +43,7 @@ oolite_sources += files(
     'OOEntityFilterPredicate.mm',
     'OOEquipmentType.mm',
     'OOGraphicsResetManager.mm',
+    'OOGraphicsResetManager+ObjCBridge.mm',
     'OOHPVector.mm',
     'OOIsNumberLiteral.cpp',
     'OOJoystickManager.mm',
