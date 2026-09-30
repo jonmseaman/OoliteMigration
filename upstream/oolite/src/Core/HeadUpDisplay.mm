@@ -201,7 +201,7 @@ static GLfloat nonlinearScannerFunc(GLfloat distance, GLfloat zoom, GLfloat scal
 static void GLDrawNonlinearCascadeWeapon( GLfloat x, GLfloat y, GLfloat z, NSSize siz, Vector centre, GLfloat radius, GLfloat zoom, GLfloat alpha );
 
 static OOTexture			*sFontTexture = nil;
-static OOEncodingConverter	*sEncodingCoverter = nullptr;	// C++ since bead oo-demz; holds a +1
+static OOEncodingConverter	*sEncodingCoverter = nil;
 
 
 enum
