@@ -21,6 +21,7 @@
 
 # Engine sources resolved by stem (oo-7j3t): the whole GUI tier, live, under its own gui-lock.
 [oo-7j3t] tools/gui-tier.sh
+[oo-44gg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_CollisionRegion
 
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
 # (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
