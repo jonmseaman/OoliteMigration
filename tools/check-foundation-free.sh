@@ -180,14 +180,17 @@ scan() {
 	}
 	{ line = $0; literals += gsub(/@"/, "@\"", line); code = strip($0); directive(code) }
 	exempt { next }
-	/^[ \t]*(\/\/|\/\*|\*)/ { next }
+	# No line-start comment heuristic (oo-lfd28): strip() already removes real comments across
+	# lines, and a line starting with * may be code (*value = ...). The include checks need the
+	# raw line (strip() empties the quoted path), so they apply only when the stripped line is a
+	# real preprocessor directive, never to comment text.
 	{
-		line = $0
-		if (line ~ /#[ \t]*(import|include)[ \t]*<Foundation\//) hit("import", "Foundation")
-		if (line ~ /#[ \t]*(import|include)[ \t]*"[^"]*\+(FoundationBridge|OODefaultsBridge)\.h"/ &&
+		line = $0; isdir = (code ~ /^[ \t]*#/)
+		if (isdir && line ~ /#[ \t]*(import|include)[ \t]*<Foundation\//) hit("import", "Foundation")
+		if (isdir && line ~ /#[ \t]*(import|include)[ \t]*"[^"]*\+(FoundationBridge|OODefaultsBridge)\.h"/ &&
 			!(stage == "sweeps" && line ~ /^[ \t]*#[ \t]*import[ \t]*"OOLogOutputHandler\+FoundationBridge\.h"/)) hit("bridge", "include")
-		if (stage == "source" && line ~ /#[ \t]*(import|include)[ \t]*"(OOStringBridge|OOFoundationBridge|OOPListView|OOFoundationException|OOObjectGNUstepBridge|OOEnumerationShuffle)\.h"/) hit("boundary", "include")
-		if (stage == "source" && line ~ /OOFoundationException/) hit("boundary", "OOFoundationException")
+		if (isdir && stage == "source" && line ~ /#[ \t]*(import|include)[ \t]*"(OOStringBridge|OOFoundationBridge|OOPListView|OOFoundationException|OOObjectGNUstepBridge|OOEnumerationShuffle)\.h"/) hit("boundary", "include")
+		if (stage == "source" && (isdir ? line : code) ~ /OOFoundationException/) hit("boundary", "OOFoundationException")
 		if (pgexpfile && line ~ pgexpline) next
 		s = code
 		while (stage == "source" && match(s, hcall)) {
@@ -358,6 +361,20 @@ selftest() {
 	expect 0 "DescriptionOf, PListObject, ObjectIn and look-alikes are not helper findings" scan "$t/hkeep" source
 	mk hlit '// oo::StdString(x) in a comment' 'x = 1; /* oo::NSStringFrom(s) */ const char *m = "oo::PListFrom(x)";'
 	expect 0 "helper spellings in comments and literals are not findings" scan "$t/hlit" source
+	# oo-lfd28: a line starting with * is code unless strip() finds it inside a real block comment.
+	mk hderef 'if (value) {' '	*value = oo::NSStringFrom(s);' '}'
+	expect 1 "a *value = helper(...) line is a helper finding" scank helper "$t/hderef" source
+	mk hderefns '*outError = [NSError errorWithDomain:d code:1 userInfo:nil];'
+	expect 1 "an NS name on a line starting with * is an ns finding" scan "$t/hderefns" sweeps
+	mk hblk '/* a block comment naming oo::StdString(x)' ' * continuation: oo::NSStringFrom(s), NSString, OOLog(x)' \
+		' * #import "OOStringBridge.h" and OOFoundationException' ' */' '// oo::PListFrom(x) and NSArray in a line comment' \
+		'	// #import "X+FoundationBridge.h"'
+	expect 0 "a genuine block comment and its * continuation lines are not findings" scan "$t/hblk" source
+	expect 0 "... nor at the sweeps stage" scan "$t/hblk" sweeps
+	mk hblkend '/* opening' ' * continuation' ' */ auto v = oo::StdString(s);'
+	expect 1 "code after */ on a * line is still a finding" scank helper "$t/hblkend" source
+	mk hcode2 '/* lead */ auto v = oo::StdString(s);'
+	expect 1 "code after a leading /* ... */ on the same line is a finding" scank helper "$t/hcode2" source
 	mk hmac '#if OOLITE_MAC_OS_X' 'NSString *s = oo::NSStringFrom(x); auto v = oo::StdString(s);' '#endif' \
 		'#if OO_EXPANDER_TEST_SURFACE' 'return oo::NSStringOrNil(r);' '#endif'
 	expect 0 "helper calls on fenced lines are not findings" scank helper "$t/hmac" source
