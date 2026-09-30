@@ -130,6 +130,10 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      `main.mm`'s) and the test defines `gDebugFlags`. A second argumentless initialiser takes a
      tag struct (`CollisionRegion(AsUniverse)`); an initialiser that returned nil on failure
      raises; a file-static function reading private ivars becomes a private static member.
+   - **An initialiser that answers nil for bad input** (ADR-0056 amendment oo-novu; exemplar
+     `src/Core/Octree.*`) becomes a static factory of the same name returning null
+     (`Octree::initWithDictionary`); a second class whose few callers are adapted in the bead
+     (`OOOctreeBuilder`) has no façade.
    - **Superclass still Objective-C** (ADR-0056 amendment oo-o89; exemplar
      `src/SDL/OOSDLJoystickManager.*`): the façade keeps the old superclass, makes and owns the
      C++ object in `-init`, and forwards the overrides too. The C++ class reaches superclass

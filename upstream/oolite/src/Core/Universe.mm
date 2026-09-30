@@ -4157,7 +4157,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
 	std::optional<std::string>	shipKey;
-	OOMutableProbabilitySet	*pset = nil;
+	oo::Ref<OOMutableProbabilitySet>	pset;
 	
 #if PROFILE_SHIP_SELECTION
 	static unsigned long	profTotal = 0, profSlowPath = 0;
@@ -4184,18 +4184,18 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 #endif
 	
-	pset = [[[registry cxx_probabilitySetForRole:role] mutableCopy] autorelease];
+	if (OOProbabilitySet *set = [registry cxx_probabilitySetForRole:role])  pset = set->mutableCopy();
 
-	while ([pset count] > 0)
+	while (pset != nullptr && pset->count() > 0)
 	{
 		// Select a ship, check conditions and return it if possible.
-		const oo::PList shipKeyObject = [pset randomObject];	// a ship key (a string); null when no weight is positive
+		const oo::PList shipKeyObject = pset->randomObject();	// a ship key (a string); null when no weight is positive
 		const std::string *shipKeyString = shipKeyObject.getIf<std::string>();
 		std::string candidate = (shipKeyString != nullptr) ? *shipKeyString : std::string();	// "" as StdString(nil) gave
 		if ([self canInstantiateShip:candidate])  return candidate;
 
 		// Condition failed -> remove ship from consideration.
-		[pset cxx_removeObject:shipKeyObject];
+		pset->removeObject(shipKeyObject);
 	}
 
 	// If we got here, some ships existed but all failed conditions test.
