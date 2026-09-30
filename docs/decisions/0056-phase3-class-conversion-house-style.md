@@ -188,3 +188,31 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-zffj): a class with one caller, a test that cannot link the game, private state
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCrosshairs.h/.mm`, its caller
+  `HeadUpDisplay.h/.mm`, `tests/unit/core/test_OOCrosshairs.mm`.
+
+**Context.** `OOCrosshairs` has one caller, `HeadUpDisplay`, which keeps it in an ivar. Its only
+output is what `render()` hands to OpenGL, and `render()` reaches `UNIVERSE`, the GL state and matrix
+managers and the GL error checker, whose objects link the whole game. So the test cannot link what
+the class references, and what the class computes is in private members.
+
+**Decision (recommended defaults).**
+
+1. **A class whose callers all fit in the bead has no façade** (item 5's last rule). The caller's
+   ivar `X *` becomes `oo::Ref<X>`, with `class X;` in place of `@class X`. `[[X alloc] init…]`
+   becomes `oo::makeRef<X>(…)`, `DESTROY(x)` and `[x release]; x = nil;` become `x = nullptr;`.
+   An Objective-C argument crosses with `oo::ToCxx` (`oo::ToCxx(_crosshairColor)`). A `-init…`
+   with arguments is the constructor, and `-dealloc`'s body is the destructor.
+2. **Link stubs.** When the class's objects reference code whose objects would link the game, and
+   the test never runs that code, the test defines those functions (and variables) itself, in one
+   block headed as link stubs. Each stub function calls `std::abort()`, so a test that reached one
+   fails instead of passing on a fake. The `meson.build` entry then lists only the class and what
+   the tested paths need. (oo-cwz's amendment replaces a function with one that counts calls; that
+   is for code the test does run.)
+3. **Private state the test pins** is read through `friend struct XTestAccess;`, declared in the
+   class and defined only in the test. Before the conversion the test reads the same ivars through
+   the runtime (`ivar_getOffset(class_getInstanceVariable(...))`), so the expectations run on the
+   unconverted class first. No accessor is added for this.
