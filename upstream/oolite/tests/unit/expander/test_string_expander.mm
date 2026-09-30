@@ -419,8 +419,12 @@ int main(int argc, char **argv)
 	}
 	const uint64_t stringsHash = sHash;
 
-	// Captured from the original OOStringExpander.mm (see the banner).
-	const uint64_t kKeysDigest = 0xdaec14b5265fca36ULL, kStringsDigest = 0x07a1e83ff98956ebULL;
+	// Captured from the original OOStringExpander.mm (see the banner). Re-captured with Jon's
+	// approval, 2026-09-29 (bead oo-qqz6; were 0xdaec14b5265fca36 / 0x07a1e83ff98956eb): every
+	// expansion result and RNG draw is unchanged; only log text differs - 7845 lines name a
+	// non-string value by its contents instead of its class (oo-qps.50), and 22 JS warnings end at
+	// an embedded NUL, as the C string the JS engine receives always did (oo-kpxgo).
+	const uint64_t kKeysDigest = 0x6349f869900cf779ULL, kStringsDigest = 0xdc8ef7032bfb6797ULL;
 	int failures = 0;
 	if (keysHash != kKeysDigest)
 	{
