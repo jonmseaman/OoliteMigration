@@ -696,40 +696,39 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 @end
 
 
-@implementation OOListUnusedFilesStage: OOOXPVerifierStage
+// OOListUnusedFilesStage: C++ since bead oo-cwz (proposed ADR-0056 Amendment 1).
 
-- (std::optional<std::string>)cxx_name
+std::optional<std::string> OOListUnusedFilesStage::name()
 {
 	return kUnusedListerStageName;
 }
 
 
-- (std::optional<std::vector<std::string>>)cxx_dependencies
+std::optional<std::vector<std::string>> OOListUnusedFilesStage::dependencies()
 {
 	return std::vector<std::string>{ kFileScannerStageName };
 }
 
 
-- (void)run
+void OOListUnusedFilesStage::run()
 {
 	OO_LOG("verifyOXP.unusedFiles.unimplemented", "{}", "TODO: implement unused files check.");
 }
 
 
-+ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
+// The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
+// registered through its facade, oo::ToObjC.
+std::string OOListUnusedFilesStage::nameForReverseDependencyForVerifier(OOOXPVerifier *verifier)
 {
-	OOListUnusedFilesStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
+	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
 	if (stage == nil)
 	{
-		stage = [[OOListUnusedFilesStage alloc] init];
-		[verifier registerStage:stage];
-		[stage release];
+		const oo::Ref<OOListUnusedFilesStage> newStage = oo::makeRef<OOListUnusedFilesStage>();
+		[verifier registerStage:oo::ToObjC(newStage.get())];
 	}
 	
 	return kUnusedListerStageName;
 }
-
-@end
 
 
 @implementation OOOXPVerifier(OOFileScannerVerifierStage)
@@ -752,7 +751,7 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 - (std::optional<std::vector<std::string>>)dependents
 {
-	return std::vector<std::string>{ [OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]] };
+	return std::vector<std::string>{ OOListUnusedFilesStage::nameForReverseDependencyForVerifier([self verifier]) };
 }
 
 @end
