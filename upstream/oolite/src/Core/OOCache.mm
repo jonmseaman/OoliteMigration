@@ -323,7 +323,9 @@ void OOCache::prune()
 	if (_autoPrune)  desiredCount = (_pruneThreshold * 4) / 5;
 	else  desiredCount = _pruneThreshold;
 
-	if (_pruneThreshold == kOOCacheNoPrune || (count = CacheGetCount(cache)) <= _pruneThreshold)  return;
+	if (_pruneThreshold == kOOCacheNoPrune)  return;
+	count = CacheGetCount(cache);
+	if (count <= _pruneThreshold)  return;
 
 	pruneCount = count - desiredCount;
 
