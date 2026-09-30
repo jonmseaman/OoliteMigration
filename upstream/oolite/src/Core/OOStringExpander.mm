@@ -385,11 +385,14 @@ OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInte
 		{
 			/*	If replacement string is "\x7F", eat the following character.
 				This is used in system_description for the one empty string
-				in [22].
+				in [22]. At the end of the string there is no following
+				character, and nothing is eaten (bead oo-3rb.69, approved by
+				Jon 2026-09-29: upstream tested replaceLength < size, which let
+				idx + replaceLength pass size there and assert below).
 			*/
 			if (*replacement == u"\x7F" && replaceLength < size)
 			{
-				replaceLength++;
+				if (idx + replaceLength < size)  replaceLength++;
 				replacement = OOUnits();
 			}
 
