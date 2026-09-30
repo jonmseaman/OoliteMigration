@@ -188,3 +188,43 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
+  `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
+
+**Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
+`-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
+`@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
+(`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
+ask `UNIVERSE`, the string expander and JavaScript.
+
+**Decision (recommended defaults).**
+
+1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
+   own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
+   that called another is a delegating constructor; statements it ran before the call move into a
+   helper that computes the argument (`PseudoRandomSeed()`). Plain `-init` is `X() = default`.
+2. **A public initialiser stays on the façade.** The façade's `-init…` makes the C++ object, stores
+   it, and registers itself as the peer, `Peers().peerFor(cxx, [self] { return [self retain]; })`
+   inside an `@autoreleasepool` (as amendment oo-o89 does). Plain `-init` gets the same override,
+   so `[[X alloc] init]` still gives a working object.
+3. **`self` handed to Objective-C** (a script property, a PList Object node) becomes
+   `oo::ToObjC(this)`, so the Objective-C side sees the same façade the callers hold.
+4. **An Objective-C ivar** is `oo::ObjCRef<T *>`; `[x autorelease]; x = [… retain];` becomes one
+   assignment. **`@selector(sel)`** asked of an arbitrary `id` becomes
+   `OOSelectorFromName("sel")` (`oofnd/objc/OORuntime.h`); the message to that `id` stays.
+5. **Overrides of `OOObject` category methods** become C++ members named by item 3 of the decision
+   (`oo_jsClassName()`), and the façade forwards its selector to them, as it does
+   `descriptionComponents() const`. A `const` member reads the ivars its getters returned.
+6. **The test keeps its Objective-C half.** The expectations written against the Objective-C API
+   before the conversion stay as they are and now run through the façade, which is its forwarding
+   test. The C++ API and the façade's contract are added after them.
+7. **A fake `UNIVERSE`.** A class that messages `UNIVERSE` is tested against a class named
+   `Universe` defined in the test, answering the selectors the class sends from a table, with
+   `Universe *gSharedUniverse` defined beside it. The test must then not import `Universe.h`, or
+   anything that does (`OOJavaScriptEngine.h`); it declares what it needs from them itself. Game
+   functions the tested paths call (the string expander, `OO_DESC`) are replaced by definitions that
+   return text recording their arguments; those it never calls are amendment oo-zffj's aborting
+   link stubs.
