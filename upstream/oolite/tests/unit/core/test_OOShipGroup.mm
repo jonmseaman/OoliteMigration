@@ -255,7 +255,7 @@ OO_TEST(cxxGroup)
 
 OO_TEST(facadeContract)
 {
-	OO_CHECK(oo::ToCxx(nil) == nullptr);
+	OO_CHECK(oo::ToCxx(static_cast<OOShipGroup *>(nil)) == nullptr);
 	OO_CHECK(oo::ToObjC(static_cast<cxx::OOShipGroup *>(nullptr)) == nil);
 	@autoreleasepool
 	{
