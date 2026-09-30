@@ -139,7 +139,7 @@ void OOEquipmentType::loadEquipment()
 
 	oo::PList::Array conditionScriptList;	// an array of strings, as the Objective-C array was
 	for (const std::string &conditionScript : conditionScripts)  conditionScriptList.emplace_back(conditionScript);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"equipment conditions" inCache:"condition scripts"];
+	[[::OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"equipment conditions" inCache:"condition scripts"];
 
 	sEquipmentTypes = equipmentTypes;
 	sEquipmentTypesByIdentifier = byIdentifier;
