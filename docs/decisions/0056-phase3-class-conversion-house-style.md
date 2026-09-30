@@ -224,3 +224,53 @@ class names.
 converted intermediate class that still has Objective-C subclasses. An Objective-C subclass costs
 one adapter object, and each façade call costs one `dynamic_cast`. The Phase 3 bead graph gains
 edges that order each superclass before its subclasses.
+## Amendment (bead oo-o89): platform (SDL/) code, and a subclass of an Objective-C class
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/SDL/OOSDLJoystickManager.h/.mm`,
+  `OOSDLJoystickManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOSDLJoystickManager.mm`.
+
+**Context.** Of the `SDL/` files, `MyOpenGLView.mm` is being pre-split, `MyOpenGLView+Input.mm`
+and `GameController+SDLFullScreen.mm` are categories of classes defined elsewhere, and `main.mm`
+has no `@implementation` (rule 9: not a class conversion). The representative leaf is
+`OOSDLJoystickManager`. Its superclass, `Core/OOJoystickManager`, is still Objective-C: it creates
+its subclass by `Class` (`+setStickHandlerClass:`, `+sharedStickHandler`), messages its overrides
+(`joystickCount`, `nameOfJoystick:`, `getAxisWithStick:axis:`), and keeps its own state (button,
+axis and hat tables), which the subclass fills by calling the superclass's decoders. A C++ class
+cannot derive from an Objective-C one, so item 5's thin façade does not fit as is.
+
+**Decision (recommended defaults).**
+
+1. **Platform code converts like Core code.** SDL and GL calls are C and stay verbatim (ADR-0012).
+   SDL types (`SDL_Event *`, `SDL_Joystick *`, `SDL_JoystickID`) and the typedefs over them
+   (`JoyAxisEvent`) are kept, as are `NSInteger`/`NSUInteger` in signatures (item 3: translated,
+   not redesigned). The test is `tests/unit/core/test_X.mm` like any other. It initialises only the
+   SDL subsystem it needs, with no window, and simulates the device (`SDL_AttachVirtualJoystick`)
+   with the hardware drivers hinted off, so the machine's own devices cannot change the answers.
+2. **A class whose superclass is still Objective-C** becomes `cxx::X : public oo::RefCounted`,
+   holding only its own ivars and methods. `X+ObjCBridge.h` keeps the old `@interface` with the
+   old superclass, and differs from item 5 in four ways:
+   - **The façade makes and owns the C++ object** in its `-init`. The C++ constructor is the old
+     `-init` body up to `[super init]`, and the façade calls `[super init]` after it. `-init`
+     then records itself as the peer: `Peers().peerFor(cxx, [self] { return [self retain]; })`
+     inside an `@autoreleasepool`.
+   - **Overrides of superclass methods** are forwarded like any other method. The superclass's
+     dynamic dispatch reaches the façade, and the façade reaches the C++ class.
+   - **A message to `self` (or `super`) that the superclass implements** becomes
+     `[oo::ToObjC(this) selector]`, because the superclass's state lives in the façade.
+   - **`oo::ToObjC` gives the live façade or nil. It never makes a new one**, because a new
+     façade would have fresh superclass state. Until the superclass converts, the C++ object is
+     made only by its façade, and converted code does not `makeRef` it.
+3. **The façade's deletion bead depends on the superclass's conversion bead.** When the
+   superclass is C++, `cxx::X` derives from it (item 2), the forwarded overrides become `override`,
+   `[oo::ToObjC(this) …]` becomes a plain call, and the bridge files go.
+4. **A category file on a class that is not converted** (`GameController+SDLFullScreen.mm`,
+   `MyOpenGLView+Input.mm`) is not a separate conversion. Its methods become members of `cxx::X`
+   in the bead that converts `X` (or a slice of it). The members stay defined in the category's
+   file, so no body moves. Until then, its bead is blocked on `X`'s.
+
+**Consequences.** The subclass converts before its superclass, and its callers
+(`MyOpenGLView.mm` registers the class, `MyOpenGLView+Input.mm` sends it `handleSDLEvent:`) stay
+unchanged. The bead touched no caller. The cost is a façade that carries state, and so cannot be
+deleted before the superclass converts. Converting the superclass first needs none of this and
+is the better order when both are in reach. This amendment is the default when the leaf is
+reached first.
