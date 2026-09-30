@@ -69,6 +69,7 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
+#import "OOAIStateMachineVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -106,6 +107,23 @@ std::string ExpandTildeInPath(const std::string &path)
 	}
 	return result;
 }
+
+
+/*	The stages verifyOXP.plist names ("stages") that are C++ (proposed ADR-0056 amendment oo-up4b
+	item 5). A converted leaf stage is global and has no Objective-C class, so OOClassFromName finds
+	nothing; -registerBaseStages looks here first and registers the stage's facade. Each bead that
+	converts such a stage adds its line; the table moves into the verifier when it converts (oo-tsa4).
+*/
+struct CxxStage
+{
+	std::string_view						name;
+	oo::Ref<cxx::OOOXPVerifierStage>		(*make)();
+};
+
+constexpr CxxStage kCxxStages[] =
+{
+	{ "OOAIStateMachineVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOAIStateMachineVerifierStage>()); } },
+};
 
 
 }
@@ -426,6 +444,13 @@ std::string ExpandTildeInPath(const std::string &path)
 		}
 		for (const std::string &stageName : stages)
 		{
+			const auto cxxStage = std::find_if(std::begin(kCxxStages), std::end(kCxxStages), [&stageName](const CxxStage &entry) { return entry.name == stageName; });
+			if (cxxStage != std::end(kCxxStages))
+			{
+				[self registerStage:oo::ToObjC(cxxStage->make().get())];
+				continue;
+			}
+
 			stageClass = OOClassFromName(stageName);
 			if (stageClass == Nil)
 			{
