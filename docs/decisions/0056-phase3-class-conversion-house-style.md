@@ -188,3 +188,44 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-bhb9): initialisers, alloc/init from Objective-C, and -isEqual:/-hash
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OORoleSet.h/.mm`,
+  `OORoleSet+ObjCBridge.h/.mm`, `tests/unit/core/test_OORoleSet.mm`.
+
+**Context.** `OOColor` has only factories. Many leaves also have public `-initWith…:` methods that
+unconverted callers send after `+alloc` (`[[OORoleSet alloc] initWithRoleString:…]` in
+`ShipEntity`), and those initialisers can fail: they release `self` and return nil (no roles, a
+negative probability). A C++ constructor cannot return null. Such classes also override
+`-isEqual:` and `-hash`, which Foundation-free containers and `==` checks in callers rely on.
+
+**Decision (recommended defaults).**
+
+1. **An initialiser becomes a private member `bool initWithX(...)`** whose body is the old one
+   verbatim, with `return self` → `return true`, `return nil` → `return false`, `[self release]`
+   dropped, and `[super init]` dropped (the object is already constructed). `[self initWithY:…]`
+   inside it is a plain call.
+2. **`[[X alloc] initWithX:…]` becomes a static factory** that `makeRef`s the object, calls the
+   initialiser, and returns null when it returned false. Where the class already had the
+   factory (`+roleSetWithString:` is alloc + `-initWithRoleString:`), that is the one; a private
+   initialiser with no factory (`[[[self class] alloc] initWithRolesAndProbabilities:]`) gets a
+   private one named `xWithY` after it.
+3. **The façade keeps the public initialisers.** Each calls the factory and then a private
+   `-initWithNewCxxX:` that adopts the result: it releases `self` and returns nil for null (as
+   before), else stores the ivar and records itself as the peer
+   (`Peers().peerFor(cxx, [self] { return [self retain]; })` inside an `@autoreleasepool`, as the
+   oo-o89 amendment does). This is separate from `ToObjC`'s `-initWithCxxX:`, which runs under the
+   peer table's lock and only stores the ivar.
+4. **`-isEqual:` and `-hash` become `bool isEqual(X *other)` and `NSUInteger hash()`** with the
+   same bodies. The `isKindOfClass:` test moves to the façade's `-isEqual:`, which converts the
+   argument with `oo::ToCxx`; the C++ member treats null as "not equal".
+5. **`-cxx_descriptionComponents` that reads a lazily built cache** keeps its fixed `const`
+   signature (ADR-0055 item 1) and reaches the non-const getter through `const_cast`. The object
+   is never const-constructed, and the cache only ever holds the same text; Phase 6 may make the
+   cache `mutable`.
+6. **A log line that printed `self` with `%@`** prints `oo::DescriptionOf(oo::ToObjC(this))`
+   while the façade exists (the address is the façade's, not the C++ object's).
+
+**Consequences.** Callers that alloc/init keep compiling unchanged and keep identity (the façade
+they made is the one `ToObjC` returns). A failed init still hands back nil.

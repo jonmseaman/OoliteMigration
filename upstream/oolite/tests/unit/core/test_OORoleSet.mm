@@ -1,12 +1,15 @@
 /*	test_OORoleSet.mm
-	Unit tests for OORoleSet (src/Core/OORoleSet.h): bead oo-bhb9, a Phase 3 conversion in the
-	house style of the OOColor exemplar (proposed ADR-0056).
+	Unit tests for cxx::OORoleSet (src/Core/OORoleSet.h) and its Objective-C facade
+	(OORoleSet+ObjCBridge.h): bead oo-bhb9, a Phase 3 conversion in the house style of the OOColor
+	exemplar (proposed ADR-0056).
 
 	It pins what the class computed before the conversion, written against the Objective-C API
 	and run on the unconverted class first: parsing a role string (probabilities, shipKey roles,
 	the thargon rewrite), the normalised role string, lookups, the two role orders, the weighted
 	pick, the modified copies (and which of them return the receiver itself), equality, and the
-	description. Run: bash tools/check-core-tests.sh
+	description. Those checks now run through the facade; the cxx* tests below repeat the answers
+	on the C++ class, and the facade* tests pin its contract (nil stays nil, one facade per C++
+	set, alloc/init records its facade). Run: bash tools/check-core-tests.sh
 */
 
 #import "OORoleSet.h"
@@ -176,6 +179,74 @@ OO_TEST(nilRoleSet)
 	OO_CHECK([none roles].empty());
 	OO_CHECK(![none anyRole].has_value());
 	OO_CHECK([none roleSetWithAddedRole:"trader" probability:1.0f] == nil);
+}
+
+
+OO_TEST(cxxRoleSet)
+{
+	OO_CHECK(cxx::OORoleSet::roleSetWithString("") == nullptr);
+	OO_CHECK(cxx::OORoleSet::roleSetWithString("[shipKey]") == nullptr);
+	OO_CHECK(cxx::OORoleSet::roleSetWithRole("pirate", -1.0f) == nullptr);
+
+	oo::Ref<cxx::OORoleSet> set = cxx::OORoleSet::roleSetWithString("trader pirate(0.5) thargon(0.25)");
+	OO_CHECK(set != nullptr);
+	OO_CHECK(set->roleString() == std::optional<std::string>("EQ_THARGON(0.25) pirate(0.5) trader"));
+	OO_CHECK(set->descriptionComponents() == set->roleString());
+	OO_CHECK(set->hasRole("pirate") && !set->hasRole("thargon") && !set->hasRole(""));
+	OO_CHECK(set->probabilityForRole("pirate") == 0.5f && set->probabilityForRole("police") == 0.0f);
+	OO_CHECK(set->roles() == Roles({ "EQ_THARGON", "pirate", "trader" }));
+	OO_CHECK(set->sortedRoles() == Roles({ "EQ_THARGON", "pirate", "trader" }));
+	OO_CHECK(set->rolesAndProbabilities() == std::optional<Probabilities>(Probabilities({ { "EQ_THARGON", 0.25f }, { "pirate", 0.5f }, { "trader", 1.0f } })));
+	OO_CHECK(cxx::OORoleSet::roleSetWithRole("police", 1.0f)->anyRole() == std::optional<std::string>("police"));
+
+	// Nothing to change: the receiver itself.
+	OO_CHECK(set->roleSetWithAddedRole("trader", 2.0f) == set);
+	OO_CHECK(set->roleSetWithAddedRoleIfNotSet("pirate", 0.5f) == set);
+	OO_CHECK(set->roleSetWithRemovedRole("police") == set);
+
+	oo::Ref<cxx::OORoleSet> added = set->roleSetWithAddedRole("hunter", 0.75f);
+	OO_CHECK(added != set && added->probabilityForRole("hunter") == 0.75f);
+	OO_CHECK(set->roleSetWithAddedRoleIfNotSet("pirate", 2.0f)->probabilityForRole("pirate") == 2.0f);
+	oo::Ref<cxx::OORoleSet> empty = cxx::OORoleSet::roleSetWithRole("trader", 1.0f)->roleSetWithRemovedRole("trader");
+	OO_CHECK(empty != nullptr && empty->roles().empty() && !empty->anyRole().has_value());
+
+	oo::Ref<cxx::OORoleSet> same = cxx::OORoleSet::roleSetWithString("pirate(0.5) trader EQ_THARGON(0.25)");
+	OO_CHECK(set->isEqual(same.get()) && set->hash() == 3 && same->hash() == 3);
+	OO_CHECK(!set->isEqual(added.get()) && !set->isEqual(nullptr));
+}
+
+
+OO_TEST(facadeIdentity)
+{
+	@autoreleasepool
+	{
+		OORoleSet *set = [OORoleSet roleSetWithString:"trader"];
+		OO_CHECK([set isKindOfClass:[OORoleSet class]]);
+		OO_CHECK(oo::ToObjC(oo::ToCxx(set)) == set);
+		OO_CHECK([set isEqual:oo::ToObjC(cxx::OORoleSet::roleSetWithString("trader"))]);
+
+		// A C++ set crosses to one facade, and back to itself.
+		oo::Ref<cxx::OORoleSet> cxxSet = cxx::OORoleSet::roleSetWithString("pirate");
+		OORoleSet *facade = oo::ToObjC(cxxSet);
+		OO_CHECK(facade != nil && facade == oo::ToObjC(cxxSet.get()));
+		OO_CHECK(oo::ToCxx(facade) == cxxSet.get());
+		OO_CHECK([facade roleSetWithRemovedRole:"trader"] == facade);
+
+		// alloc/init records the new facade as its set's peer.
+		OORoleSet *made = [[OORoleSet alloc] initWithRole:"escort" probability:0.5f];
+		OO_CHECK(made != nil && oo::ToObjC(oo::ToCxx(made)) == made);
+		OO_CHECK([made roleSetWithAddedRole:"escort" probability:1.0f] == made);
+		[made release];
+	}
+}
+
+
+OO_TEST(facadeNilStaysNil)
+{
+	OORoleSet *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OORoleSet *>(nullptr)) == nil);
+	OO_CHECK(oo::ToObjC(cxx::OORoleSet::roleSetWithString("")) == nil);
 }
 
 
