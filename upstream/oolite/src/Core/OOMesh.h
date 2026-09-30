@@ -49,7 +49,7 @@ class OOMeshBuffer;	// OOMesh.mm: one refcounted buffer (an oo::Data), shared by
 
 #define OOMESH_PROFILE	0
 #if OOMESH_PROFILE
-@class OOProfilingStopwatch;
+#import "OOProfilingStopwatch.h"
 #endif
 
 
@@ -142,7 +142,7 @@ typedef struct
 #endif
 	
 #if OOMESH_PROFILE
-	OOProfilingStopwatch	*_stopwatch;
+	oo::Ref<OOProfilingStopwatch>	_stopwatch;
 	double					_stopwatchLastTime;
 #endif
 }
