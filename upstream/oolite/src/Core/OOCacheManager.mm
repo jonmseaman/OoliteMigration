@@ -401,7 +401,7 @@ void OOCacheManager::write()
 	if (_scheduledWrite != nil)  return;
 	
 #if PROFILE_WRITES
-	OOProfilingStopwatch *stopwatch = [OOProfilingStopwatch stopwatch];
+	oo::Ref<OOProfilingStopwatch> stopwatch = OOProfilingStopwatch::stopwatch();
 #endif
 	
 #if WRITE_ASYNC
@@ -426,14 +426,14 @@ void OOCacheManager::write()
 	newCache.emplace(kCacheKeyCaches, std::move(pListRep));
 	
 #if PROFILE_WRITES && !WRITE_ASYNC
-	OOTimeDelta prepareT = [stopwatch reset];
+	OOTimeDelta prepareT = stopwatch->reset();
 #endif
 	
 #if WRITE_ASYNC
 	_scheduledWrite = [[OOAsyncCacheWriter alloc] initWithCacheContents:oo::PList(std::move(newCache))];
 	
 #if PROFILE_WRITES
-	OOTimeDelta endT = [stopwatch reset];
+	OOTimeDelta endT = stopwatch->reset();
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", endT);
 #endif
 	
@@ -500,7 +500,7 @@ bool OOCacheManager::writeDict(const oo::PList &inDict)
 	if (!path.has_value()) return NO;
 	
 #if PROFILE_WRITES
-	OOProfilingStopwatch *stopwatch = [OOProfilingStopwatch stopwatch];
+	oo::Ref<OOProfilingStopwatch> stopwatch = OOProfilingStopwatch::stopwatch();
 #endif
 	
 	const auto plist = oo::writeXMLPList(inDict);
@@ -511,13 +511,13 @@ bool OOCacheManager::writeDict(const oo::PList &inDict)
 	}
 	
 #if PROFILE_WRITES
-	OOTimeDelta serializeT = [stopwatch reset];
+	OOTimeDelta serializeT = stopwatch->reset();
 #endif
 	
 	BOOL result = oo::fs::writeFile(oo::fs::pathFromUTF8(*path), *plist, oo::fs::WriteMode::direct).has_value();
 	
 #if PROFILE_WRITES
-	OOTimeDelta writeT = [stopwatch reset];
+	OOTimeDelta writeT = stopwatch->reset();
 	
 	OO_LOG("dataCache.profile", "Time to serialize cache: {:g} seconds. Time to write data: {:g} seconds.", serializeT, writeT);
 #endif
