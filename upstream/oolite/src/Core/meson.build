@@ -78,6 +78,7 @@ oolite_sources += files(
     'OOQuaternion.cpp',
     'OORegExpMatcher.mm',
     'OORoleSet.mm',
+    'OORoleSet+ObjCBridge.mm',
     'OOShipGroup.mm',
     'OOShipGroup+ObjCBridge.mm',
     'OOShipLibraryDescriptions.mm',
