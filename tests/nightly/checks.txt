@@ -14,6 +14,7 @@
 # proof here; tools/run-nightly-checks.sh --list shows what would run.
 
 [oo-1gc.5] tools/guardrails-selftest
+[oo-86ek] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOVector
 # The desktop-lock guard's anti-vacuity proof (oo-hub0, ADR-0046): ~45 full runs of the guard, 1-7 min.
 [oo-hub0] tools/desktop-lock-rogue-proof
 [oo-g2k] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; python3 tools/plist_fuzz.py corpus && python3 tools/plist_fuzz.py fuzz --seed "$(date +%Y%m%d)" --count 100000
@@ -67,6 +68,10 @@
 # night below 3 of 5 runs, so a regression or crash still turns the night red.
 [oo-9aq4] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && p=0; for i in 1 2 3 4 5; do python3 -m pytest test_s6_damaged_ship_flees.py -q -p no:cacheprovider && p=$((p+1)); done; echo "oo-9aq4: S6 passed $p/5"; [ "$p" -ge 3 ]
 
+# Phase 3 converted classes (oo-r7m0 and after): the whole build and every core unit test
+# (tests/unit/core, ADR-0056). A conversion bead's acceptance compiles and runs only its own test
+# (a full build in accept.sh's clean checkout overruns the 300 s budget, ADR-0021); this runs them all.
+[oo-r7m0] tools/build-windows.sh test && bash tools/check-core-tests.sh
 # Phase 3 class conversions (ADR-0056 gate): the goldens after a build do not fit accept.sh's 300 s, so each
 # conversion bead runs them before queueing (its notes say so) and the night reruns them here.
 [oo-zffj] bash tools/tier-c.sh --only goldens

@@ -11,6 +11,7 @@
 core_tests = {
     'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOOpenALController': ['Core/OOOpenALController.mm'],
     'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
@@ -28,6 +29,7 @@ core_tests = {
     'test_Octree': ['*'],
     'test_OOMeshToOctreeConverter': ['*'],
     'test_OOPolygonSprite': ['*'],
+    'test_OOVector': ['Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
 }
 
