@@ -188,3 +188,33 @@ unchanged. The bead touched no caller. The cost is a façade that carries state,
 deleted before the superclass converts. Converting the superclass first needs none of this and
 is the better order when both are in reach. This amendment is the default when the leaf is
 reached first.
+
+## Amendment (bead oo-z1s4): name clashes, GL tests, and stubbed collaborators
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOOpenGLExtensionManager.h/.mm`,
+  `OOOpenGLExtensionManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOpenGLExtensionManager.mm`,
+  `tests/unit/core/oo_gl_test_context.hpp`. The singleton rules it follows are amendment oo-r7m0's
+  (written in bead oo-r7m0; until that merges, this bead's files are their example too).
+
+**Decision (recommended defaults).**
+
+1. **An ivar that shares its name with a member function gets the suffix `_`.** Objective-C
+   kept ivars and methods apart (`usePointSmoothing` was both); C++ does not. The same goes for a
+   member of `oo::RefCounted` (`release`, `retain`, `retainCount`): an ivar `release` hides
+   `RefCounted::release()` and `oo::Ref` stops compiling. Only the clashing ivars are renamed,
+   and every use of them in the bodies with them; the suffix is oofnd's own (`mutex_`).
+2. **A singleton made before `-init` ran** (the singleton category's `+allocWithZone:` recorded
+   the instance, then `-init` did the work) is recorded first and initialised after:
+   `sSingleton = oo::makeRef<X>().leakRef(); sSingleton->reset();`. A re-entrant `sharedX()` and
+   an exception out of the initialisation leave the same `sSingleton` as before.
+3. **A GL class's test runs on a real context.** `tests/unit/core/oo_gl_test_context.hpp` makes
+   one hidden 16x16 SDL window with a compatibility context and keeps it current; the window is
+   never shown, so the test does not take the foreground and needs no gui-lock. Answers that
+   depend on the driver are checked against what the test reads from OpenGL itself
+   (`glGetString`, `glGetIntegerv`), never against constants.
+4. **A collaborator that would drag the game into the test's link is stubbed in the test file**
+   (the cwz amendment's rule for functions, extended to classes): an Objective-C class the class
+   under test messages is given a minimal `@interface`/`@implementation` of the same name in the
+   test, declaring only the selectors used, and a C++ free function a definition. The test must
+   not import the real header. The stub is the place to pin inputs (`gpu-settings.plist` comes
+   from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
