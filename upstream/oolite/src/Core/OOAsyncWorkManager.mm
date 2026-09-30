@@ -53,41 +53,52 @@ SOFTWARE.
 #include <pthread.h>
 #endif
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OORuntime.h"
 #include "oofnd/Defaults.hpp"
 
 
-static OOAsyncWorkManager *sSingleton = nil;
+static cxx::OOAsyncWorkManager *sSingleton = nullptr;
 
+
+namespace {
 
 /*	OOAsyncWorkManagerInternal: shared superclass of our two implementations,
 	which implements shared functionality but is not itself concrete.
 */
-@interface OOAsyncWorkManagerInternal: OOAsyncWorkManager
+class OOAsyncWorkManagerInternal : public cxx::OOAsyncWorkManager
 {
-@private
-	oo::Ref<OOAsyncQueue>	_readyQueue;
-	
+public:
+	void completePendingTasks() override;
+	void waitForTaskToComplete(id task) override;
+
+protected:
+	OOAsyncWorkManagerInternal();
+
+	void queueResult(id task);
+
+	void noteTaskQueued(id task);
+
+private:
+	oo::Ref<OOAsyncQueue>	_readyQueue = {};
+
 	// Tasks awaiting completion, a set by identity (the task classes do not override -isEqual:).
-	std::vector<oo::ObjCRef<id>>	_pendingCompletableOperations;
+	std::vector<oo::ObjCRef<id>>	_pendingCompletableOperations = {};
 	std::mutex				_pendingOpsLock;
-}
-
-- (void) queueResult:(id<OOAsyncWorkTask>)task;
-
-- (void) noteTaskQueued:(id<OOAsyncWorkTask>)task;
-
-@end
+};
 
 
-@interface OOManualDispatchAsyncWorkManager: OOAsyncWorkManagerInternal
+class OOManualDispatchAsyncWorkManager : public OOAsyncWorkManagerInternal
 {
-@private
-	oo::Ref<OOAsyncQueue>	_taskQueue;
-}
+public:
+	OOManualDispatchAsyncWorkManager();
 
-- (void) queueTask:(unsigned)threadNumber;
+	bool addTask(id task, OOAsyncWorkPriority priority) override;
 
-@end
+private:
+	void queueTask(unsigned threadNumber);
+
+	oo::Ref<OOAsyncQueue>	_taskQueue = {};
+};
 
 
 /*	The prioritised task queue Foundation's operation queue was (bead oo-3rb.6): highest priority
@@ -95,28 +106,31 @@ static OOAsyncWorkManager *sSingleton = nil;
 	queuePriority. A queued task is retained until a work thread has dispatched it, as the
 	invocation operation retained its argument.
 */
-namespace {
 struct OOPrioritizedTaskQueue
 {
 	std::mutex				mutex;
 	std::condition_variable	available;
 	std::deque<id>			tasks[3];	// indexed by OOAsyncWorkPriority: low, medium, high
 };
-}	// namespace
 
 
-@interface OOOperationQueueAsyncWorkManager: OOAsyncWorkManagerInternal
+class OOOperationQueueAsyncWorkManager : public OOAsyncWorkManagerInternal
 {
-@private
-	OOPrioritizedTaskQueue	*_operationQueue;
-}
+public:
+	OOOperationQueueAsyncWorkManager();
 
-+ (BOOL) canBeUsed;
+	static bool canBeUsed();
 
-- (void) workThread:(unsigned)threadNumber;
-- (void) dispatchTask:(id<OOAsyncWorkTask>)task;
+	bool addTask(id task, OOAsyncWorkPriority priority) override;
 
-@end
+private:
+	void workThread(unsigned threadNumber);
+	void dispatchTask(id task);
+
+	OOPrioritizedTaskQueue	*_operationQueue = {};
+};
+
+}	// namespace
 
 
 enum
@@ -185,138 +199,106 @@ std::mutex sInitLock;
 }	// namespace
 
 
+/*	The manager is made once, here, and its +1 is never released (ADR-0056 amendment oo-r7m0):
+	the Objective-C class's +allocWithZone: refused a second instance and its -retain/-release/
+	-retainCount made the one immortal, so that boilerplate is not translated. The class name is
+	logged as oo::DescriptionOf([sSingleton class]) logged it.
+*/
 static void InitAsyncWorkManager(void)
 {
-	OOCAssert(sSingleton == nil, "Async Work Manager singleton not nil in one-time init");
-	
-	if ([OOOperationQueueAsyncWorkManager canBeUsed])
+	OOCAssert(sSingleton == nullptr, "Async Work Manager singleton not nil in one-time init");
+
+	const char *className = nullptr;
+	if (OOOperationQueueAsyncWorkManager::canBeUsed())
 	{
-		sSingleton = [[OOOperationQueueAsyncWorkManager alloc] init];
+		sSingleton = oo::makeRef<OOOperationQueueAsyncWorkManager>().leakRef();
+		className = "OOOperationQueueAsyncWorkManager";
 	}
-	if (sSingleton == nil)
+	if (sSingleton == nullptr)
 	{
-		sSingleton = [[OOManualDispatchAsyncWorkManager alloc] init];
+		sSingleton = oo::makeRef<OOManualDispatchAsyncWorkManager>().leakRef();
+		className = "OOManualDispatchAsyncWorkManager";
 	}
-	
-	if (sSingleton == nil)
+
+	if (sSingleton == nullptr)
 	{
 		OO_LOG("asyncWorkManager.setUpDispatcher.failed", "{}", "***** FATAL ERROR: could not set up async work manager!");
 		exit(EXIT_FAILURE);
 	}
-	
-	OO_LOG("asyncWorkManager.dispatchMethod", "Selected async work manager: {}", oo::DescriptionOf([sSingleton class]));
+
+	OO_LOG("asyncWorkManager.dispatchMethod", "Selected async work manager: {}", className);
 }
 
 
-@implementation OOAsyncWorkManager
+namespace cxx {
 
-+ (OOAsyncWorkManager *) sharedAsyncWorkManager
+OOAsyncWorkManager *OOAsyncWorkManager::sharedAsyncWorkManager()
 {
 #if USE_PTHREAD_ONCE
 	static pthread_once_t once = PTHREAD_ONCE_INIT;
 	pthread_once(&once, InitAsyncWorkManager);
-	OOAssert(sSingleton != nil, "Async Work Manager init failed");
+	OOCAssert(sSingleton != nullptr, "Async Work Manager init failed");
 #else
 	sInitLock.lock();
-	if (sSingleton == nil)
+	if (sSingleton == nullptr)
 	{
 		InitAsyncWorkManager();
-		OOAssert(sSingleton != nil, "Async Work Manager init failed");
+		OOCAssert(sSingleton != nullptr, "Async Work Manager init failed");
 	}
 	sInitLock.unlock();
 #endif
-	
+
 	return sSingleton;
 }
 
 
-+ (id) allocWithZone:(OOZone *)inZone
-{
-	if (sSingleton == nil)
-	{
-		sSingleton = [super allocWithZone:inZone];
-		return sSingleton;
-	}
-	return nil;
-}
-
-
-- (void) dealloc
+OOAsyncWorkManager::~OOAsyncWorkManager()
 {
 	abort();
-	[super dealloc];
 }
 
 
-- (oneway void) release
-{}
-
-
-- (id) retain
-{
-	return self;
-}
-
-
-- (NSUInteger) retainCount
-{
-	return UINT_MAX;
-}
-
-
-- (BOOL) addTask:(id<OOAsyncWorkTask>)task priority:(OOAsyncWorkPriority)priority
+bool OOAsyncWorkManager::addTask(id task, OOAsyncWorkPriority priority)
 {
 	OOLogGenericSubclassResponsibility();
-	return NO;
+	return false;
 }
 
 
-- (void) completePendingTasks
+void OOAsyncWorkManager::completePendingTasks()
 {
 	OOLogGenericSubclassResponsibility();
 }
 
 
-- (void) waitForTaskToComplete:(id<OOAsyncWorkTask>)task
+void OOAsyncWorkManager::waitForTaskToComplete(id task)
 {
 	OOLogGenericSubclassResponsibility();
 	[OOException raise:OOInternalInconsistencyException format:"%s called.", __PRETTY_FUNCTION__];
 }
 
-@end
+}	// namespace cxx
 
 
-@implementation OOAsyncWorkManagerInternal
+namespace {
 
-
-- (id) init
+OOAsyncWorkManagerInternal::OOAsyncWorkManagerInternal()
 {
-	if ((self = [super init]))
-	{
-		_readyQueue = oo::makeRef<OOAsyncQueue>();
-		
-		if (_readyQueue == nullptr)
-		{
-			[self release];
-			return nil;
-		}
-		
-	}
-	
-	return self;
+	// (oo::makeRef cannot answer null, so -init's release-and-return-nil branch is gone.)
+	_readyQueue = oo::makeRef<OOAsyncQueue>();
 }
 
 
-- (void) completePendingTasks
+void OOAsyncWorkManagerInternal::completePendingTasks()
 {
 	id next = nil;
-	
+
 	_pendingOpsLock.lock();
 	for (;;)
 	{
 		next = _readyQueue->tryDequeue();
 		if (next == nil)  break;
-		
+
 		PendingRemove(_pendingCompletableOperations, next);
 		[next completeAsyncTask];
 	}
@@ -324,22 +306,22 @@ static void InitAsyncWorkManager(void)
 }
 
 
-- (void) waitForTaskToComplete:(id<OOAsyncWorkTask>)task
+void OOAsyncWorkManagerInternal::waitForTaskToComplete(id task)
 {
 	if (task == nil)  return;
-	
+
 #if OO_DEBUG
-	OOParameterAssert([(id)task respondsToSelector:@selector(completeAsyncTask)]);
-	OOAssert(oo::thread::isMainThread(), "%s can only be called from the main thread.", __PRETTY_FUNCTION__);
+	OOCParameterAssert([(id)task respondsToSelector:OOSelectorFromName("completeAsyncTask")]);
+	OOCAssert(oo::thread::isMainThread(), "%s can only be called from the main thread.", __PRETTY_FUNCTION__);
 #endif
-	
+
 	_pendingOpsLock.lock();
-	BOOL exists = PendingContains(_pendingCompletableOperations, task);
+	bool exists = PendingContains(_pendingCompletableOperations, task);
 	if (exists)  PendingRemove(_pendingCompletableOperations, task);
 	_pendingOpsLock.unlock();
-	
+
 	if (!exists)  return;
-	
+
 	id next = nil;
 	do
 	{
@@ -348,74 +330,60 @@ static void InitAsyncWorkManager(void)
 		_pendingOpsLock.lock();
 		PendingRemove(_pendingCompletableOperations, next);
 		_pendingOpsLock.unlock();
-	
+
 		[next completeAsyncTask];
-		
+
 	}  while (next != task);	// We don't control order, so keep looking until we get the one we care about.
 }
 
 
-- (void) queueResult:(id<OOAsyncWorkTask>)task
+void OOAsyncWorkManagerInternal::queueResult(id task)
 {
-	if ([task respondsToSelector:@selector(completeAsyncTask)])
+	if ([task respondsToSelector:OOSelectorFromName("completeAsyncTask")])
 	{
 		_readyQueue->enqueue(task);
 	}
 }
 
 
-- (void) noteTaskQueued:(id<OOAsyncWorkTask>)task
+void OOAsyncWorkManagerInternal::noteTaskQueued(id task)
 {
 	_pendingOpsLock.lock();
 	if (!PendingContains(_pendingCompletableOperations, task))  _pendingCompletableOperations.emplace_back(task);	// a set: added once
 	_pendingOpsLock.unlock();
 }
 
-@end
-
 
 
 /******* OOManualDispatchAsyncWorkManager - manual thread management *******/
 
-@implementation OOManualDispatchAsyncWorkManager
-
-- (id) init
+OOManualDispatchAsyncWorkManager::OOManualDispatchAsyncWorkManager()
 {
-	if ((self = [super init]))
-	{
-		// Set up work queue.
-		_taskQueue = oo::makeRef<OOAsyncQueue>();
-		if (_taskQueue == nullptr)
-		{
-			[self release];
-			return nil;
-		}
-		
-		// Set up loading threads.
-		StartWorkThreads([self](unsigned threadNumber) { [self queueTask:threadNumber]; }, WorkThreadCount());
-	}
-	
-	return self;
+	// Set up work queue. (oo::makeRef cannot answer null, so -init's failure branch is gone.)
+	_taskQueue = oo::makeRef<OOAsyncQueue>();
+
+	// Set up loading threads.
+	StartWorkThreads([this](unsigned threadNumber) { queueTask(threadNumber); }, WorkThreadCount());
 }
 
 
-- (BOOL) addTask:(id<OOAsyncWorkTask>)task priority:(OOAsyncWorkPriority)priority
+bool OOManualDispatchAsyncWorkManager::addTask(id task, OOAsyncWorkPriority priority)
 {
-	if (EXPECT_NOT(task == nil))  return NO;
-	
-	[super noteTaskQueued:task];
-	
+	if (EXPECT_NOT(task == nil))  return false;
+
+	noteTaskQueued(task);
+
 	// Priority is ignored.
 	return _taskQueue->enqueue(task);
 }
 
 
-- (void) queueTask:(unsigned)threadNumber
+void OOManualDispatchAsyncWorkManager::queueTask(unsigned threadNumber)
 {
 	@autoreleasepool
 	{
 		SetUpWorkThread(threadNumber);
-		
+
 		for (;;)
 		{
 			@autoreleasepool
@@ -426,13 +394,11 @@ static void InitAsyncWorkManager(void)
 					[task performAsyncTask];
 				}
 				@catch (id exception) {}
-				[self queueResult:task];
+				queueResult(task);
 			}
 		}
 	}
 }
-
-@end
 
 
 /******* OOOperationQueueAsyncWorkManager - a prioritised queue on its own work threads *******/
@@ -441,29 +407,22 @@ static void InitAsyncWorkManager(void)
 	asyncWorkManager.dispatchMethod log line prints.
 */
 
-@implementation OOOperationQueueAsyncWorkManager
-
-+ (BOOL) canBeUsed
+bool OOOperationQueueAsyncWorkManager::canBeUsed()
 {
 	return !oo::Defaults::standard().boolForKey("disable-operation-queue-work-manager");
 }
 
 
-- (id) init
+OOOperationQueueAsyncWorkManager::OOOperationQueueAsyncWorkManager()
 {
-	if ((self = [super init]))
-	{
-		_operationQueue = new OOPrioritizedTaskQueue;
-		StartWorkThreads([self](unsigned threadNumber) { [self workThread:threadNumber]; }, WorkThreadCount());
-	}
-
-	return self;
+	_operationQueue = new OOPrioritizedTaskQueue;
+	StartWorkThreads([this](unsigned threadNumber) { workThread(threadNumber); }, WorkThreadCount());
 }
 
 
-- (BOOL) addTask:(id<OOAsyncWorkTask>)task priority:(OOAsyncWorkPriority)priority
+bool OOOperationQueueAsyncWorkManager::addTask(id task, OOAsyncWorkPriority priority)
 {
-	if (EXPECT_NOT(task == nil))  return NO;
+	if (EXPECT_NOT(task == nil))  return false;
 
 	unsigned index = kOOAsyncPriorityMedium;
 	if (priority == kOOAsyncPriorityLow)  index = kOOAsyncPriorityLow;
@@ -475,12 +434,12 @@ static void InitAsyncWorkManager(void)
 	}
 	_operationQueue->available.notify_one();
 
-	[super noteTaskQueued:task];
-	return YES;
+	noteTaskQueued(task);
+	return true;
 }
 
 
-- (void) workThread:(unsigned)threadNumber
+void OOOperationQueueAsyncWorkManager::workThread(unsigned threadNumber)
 {
 	SetUpWorkThread(threadNumber);
 
@@ -506,21 +465,21 @@ static void InitAsyncWorkManager(void)
 
 		@autoreleasepool
 		{
-			[self dispatchTask:task];
+			dispatchTask(task);
 		}
 		[task release];
 	}
 }
 
 
-- (void) dispatchTask:(id<OOAsyncWorkTask>)task
+void OOOperationQueueAsyncWorkManager::dispatchTask(id task)
 {
 	@try
 	{
 		[task performAsyncTask];
 	}
 	@catch (id exception) {}
-	[self queueResult:task];
+	queueResult(task);
 }
 
-@end
+}	// namespace

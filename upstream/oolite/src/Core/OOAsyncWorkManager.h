@@ -27,13 +27,14 @@ SOFTWARE.
 
 */
 
+#ifndef OOASYNCWORKMANAGER_H
+#define OOASYNCWORKMANAGER_H
+
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "oofnd/Ref.hpp"
 
 
 class OOAsyncQueue;
-
-@protocol OOAsyncWorkTask;
 
 
 typedef enum
@@ -44,38 +45,44 @@ typedef enum
 } OOAsyncWorkPriority;
 
 
-@interface OOAsyncWorkManager: OOObject
+namespace cxx {
 
-+ (OOAsyncWorkManager *) sharedAsyncWorkManager;
-
-- (BOOL) addTask:(id<OOAsyncWorkTask>)task priority:(OOAsyncWorkPriority)priority;
-
-/*	Complete any tasks whose asynchronous portion is ready, but without waiting.
+/*	A task is an Objective-C object conforming to OOAsyncWorkTask (declared, with the Objective-C
+	OOAsyncWorkManager, in OOAsyncWorkManager+ObjCBridge.h): it is performed on a work thread by
+	-performAsyncTask, then completed on the main thread by its optional -completeAsyncTask.
+	The concrete managers are private to OOAsyncWorkManager.mm.
 */
-- (void) completePendingTasks;
+class OOAsyncWorkManager : public oo::RefCounted
+{
+public:
+	// The one manager, made on first use and never destroyed (borrowed).
+	static OOAsyncWorkManager *sharedAsyncWorkManager();
 
-/*	Wait for a task to complete.
-	
-	WARNING: if task is not an existing task, or does not implement
-	-completeAsyncTask, this will never return.
-	
-	IMPORTANT: May only be called on the main thread.
-*/
-- (void) waitForTaskToComplete:(id<OOAsyncWorkTask>)task;
+	virtual bool addTask(id task, OOAsyncWorkPriority priority);
 
-@end
+	/*	Complete any tasks whose asynchronous portion is ready, but without waiting.
+	*/
+	virtual void completePendingTasks();
+
+	/*	Wait for a task to complete.
+		
+		WARNING: if task is not an existing task, or does not implement
+		-completeAsyncTask, this will never return.
+		
+		IMPORTANT: May only be called on the main thread.
+	*/
+	virtual void waitForTaskToComplete(id task);
+
+protected:
+	OOAsyncWorkManager() = default;
+	~OOAsyncWorkManager() override;
+};
+
+}	// namespace cxx
 
 
-@protocol OOAsyncWorkTask <OOObject>
+// Transitional: the Objective-C OOAsyncWorkManager and the OOAsyncWorkTask protocol, for callers
+// not yet converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
+#import "OOAsyncWorkManager+ObjCBridge.h"
 
-// Called on a worker thread. There may be multiple worker threads.
-- (void) performAsyncTask;
-
-// @optional
-OOLITE_OPTIONAL(OOAsyncWorkTask)
-
-/*	Called on main thread some time after -performAsyncTask completes.
-*/
-- (void) completeAsyncTask;
-
-@end
+#endif	// OOASYNCWORKMANAGER_H
