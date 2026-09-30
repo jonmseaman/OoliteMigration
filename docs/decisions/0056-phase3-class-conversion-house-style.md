@@ -277,3 +277,34 @@ supplies, and its bodies spell selectors with `@selector`, which the gate's grep
    expectations are rewritten as C++ calls. Checks that only the Objective-C API could express
    (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
    and the commit message says so.
+
+## Amendment (bead oo-44gg): a class whose object needs the game graph, and initialisers a constructor cannot mirror
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/CollisionRegion.h/.mm`,
+  `CollisionRegion+ObjCBridge.h/.mm`, `tests/unit/core/test_CollisionRegion.mm`.
+
+**Context.** `CollisionRegion` reads `Entity` and `Universe` ivars directly (`ent->position`,
+`UNIVERSE->sortedEntities`), so its object cannot link without theirs, and theirs pull in the whole
+game. Its designated `-init` could fail (`malloc`) and return nil; it has two initialisers with no
+arguments (`-init`, `-initAsUniverse`); and three file-static C functions read its private ivars.
+
+**Decision (recommended defaults).**
+
+1. **Its unit test links every game object but `SDL/main.mm`**: the entry in
+   `tests/unit/core/meson.build` is `'test_X': ['*']`. The test defines the globals `main.mm`
+   defined that the game references (today `gDebugFlags`, under `#ifndef NDEBUG`). The test drives
+   the class with plain objects of the classes it reads (`[[Entity alloc] init]`, `UNIVERSE` nil)
+   and pins what they make observable. The cost is one more whole-game link per build (about 30 s).
+2. **An argumentless initialiser other than `-init` becomes a constructor taking an empty tag
+   struct named after the selector** (`-initAsUniverse` becomes `CollisionRegion(AsUniverse)`),
+   because two argumentless constructors cannot coexist. `[self init]` inside an initialiser
+   becomes a delegating constructor (`: CollisionRegion()`), and the designated `-init`, when no
+   caller outside the class used it, becomes a private constructor.
+3. **An initialiser's failure return (nil after `[self release]`) becomes a raise of the class's
+   existing exception for that failure** (`OOMallocException`, as `-addEntity:` raises when the
+   list cannot grow), because a constructor cannot return null. Only out-of-memory paths are
+   affected.
+4. **A file-static function that reads the class's private ivars becomes a private static
+   member**, body verbatim, so no `friend` and no public accessor is added.
+5. **The façade's initialisers make and own the C++ object** as in amendment oo-86ek, through one
+   private `-adoptCxxX:` that stores the new object and records the façade as its peer.
