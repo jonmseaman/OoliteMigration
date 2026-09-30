@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
-@class OOSound, OOSoundSource, OOSoundReferencePoint;
+@class OOSound, OOSoundSource;
 @class OOJoystickManager, OOTexture, OOLaserShotEntity;
 @class StickProfileScreen, OOJSGuiScreenKeyDefinition, OOJSScript;
 

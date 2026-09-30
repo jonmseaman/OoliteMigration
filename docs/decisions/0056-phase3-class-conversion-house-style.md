@@ -218,3 +218,62 @@ reached first.
    test, declaring only the selectors used, and a C++ free function a definition. The test must
    not import the real header. The stub is the place to pin inputs (`gpu-settings.plist` comes
    from a `ResourceManager` stub) and to count calls (`+cxx_paths`, `-[OOSoundMixer shutdown]`).
+## Amendment (bead oo-8kx7): initialisers, `self` handed to Objective-C, and a fake `UNIVERSE`
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOCharacter.h/.mm`,
+  `OOCharacter+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCharacter.mm`.
+**Context.** `OOCharacter` has public and private initialisers that chain (`-initWithRole:…` calls
+`-initWithGenSeed:…`), a caller-visible `+alloc`/`-init`, an Objective-C ivar (`OOJSScript *`), a
+`@selector` it asks an arbitrary object about, overrides of `OOObject` category methods
+(`-cxx_descriptionComponents`, `-cxx_oo_jsClassName`), and it passes `self` to a script. Its bodies
+ask `UNIVERSE`, the string expander and JavaScript.
+1. **Initialisers are constructors.** A private `-init…` is a private constructor, and the class's
+   own factories reach it with `oo::adopt(new X(…))`, because `oo::makeRef` cannot. An `-init…`
+   that called another is a delegating constructor; statements it ran before the call move into a
+   helper that computes the argument (`PseudoRandomSeed()`). Plain `-init` is `X() = default`.
+2. **A public initialiser stays on the façade.** The façade's `-init…` makes the C++ object, stores
+   it, and registers itself as the peer, `Peers().peerFor(cxx, [self] { return [self retain]; })`
+   inside an `@autoreleasepool` (as amendment oo-o89 does). Plain `-init` gets the same override,
+   so `[[X alloc] init]` still gives a working object.
+3. **`self` handed to Objective-C** (a script property, a PList Object node) becomes
+   `oo::ToObjC(this)`, so the Objective-C side sees the same façade the callers hold.
+4. **An Objective-C ivar** is `oo::ObjCRef<T *>`; `[x autorelease]; x = [… retain];` becomes one
+   assignment. **`@selector(sel)`** asked of an arbitrary `id` becomes
+   `OOSelectorFromName("sel")` (`oofnd/objc/OORuntime.h`); the message to that `id` stays.
+5. **Overrides of `OOObject` category methods** become C++ members named by item 3 of the decision
+   (`oo_jsClassName()`), and the façade forwards its selector to them, as it does
+   `descriptionComponents() const`. A `const` member reads the ivars its getters returned.
+6. **The test keeps its Objective-C half.** The expectations written against the Objective-C API
+   before the conversion stay as they are and now run through the façade, which is its forwarding
+   test. The C++ API and the façade's contract are added after them.
+7. **A fake `UNIVERSE`.** A class that messages `UNIVERSE` is tested against a class named
+   `Universe` defined in the test, answering the selectors the class sends from a table, with
+   `Universe *gSharedUniverse` defined beside it. The test must then not import `Universe.h`, or
+   anything that does (`OOJavaScriptEngine.h`); it declares what it needs from them itself. Game
+   functions the tested paths call (the string expander, `OO_DESC`) are replaced by definitions that
+   return text recording their arguments; those it never calls are amendment oo-zffj's aborting
+   link stubs.
+## Amendment (bead oo-3lj8): a container of Objective-C objects, with no façade
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOPriorityQueue.h/.mm`
+  (and its one caller, `src/Core/Scripting/OOScriptTimer.mm`), `tests/unit/core/test_OOPriorityQueue.mm`.
+**Context.** `OOPriorityQueue` has one caller (`OOScriptTimer`, six sends), so item 5's last rule
+applies: adapt the caller in the bead, no façade, and the class is global. But its elements are
+Objective-C objects that it retains, releases and orders by a comparator *selector* the caller
+supplies, and its bodies spell selectors with `@selector`, which the gate's grep forbids.
+1. **The elements stay Objective-C.** The C++ class keeps `id` elements and the `SEL`
+   comparator, and messages the elements (`retain`, `autorelease`, `isEqual:`, `hash`) exactly as
+   before. It changes when its callers' elements convert, not before.
+2. **A constant selector inside the class becomes `OOSelectorFromName("name:")`**
+   (`oofnd/objc/OORuntime.h`, `sel_registerName`), so the body stays verbatim. The caller keeps its
+   own `@selector(...)` while it is Objective-C.
+3. **An unconverted caller of a class with no façade** holds a raw `X *` or an `oo::Ref<X>` and
+   calls with `->`. A message that could reach nil becomes a null-guarded call (item 4). A static
+   that was `[[X alloc] init…]` and never released stays a raw pointer, filled with
+   `X::factory(…).leakRef()`, so no static destructor runs at exit.
+4. **`-cxx_description` (the whole text, not components) becomes
+   `std::optional<std::string> description()`.** `DescriptionOf([self class])` of a class with no
+   subclass is the class name as a literal.
+5. **With no façade, the test is ported, not kept.** Its expectations are written against the
+   Objective-C API and run on the unconverted class (a commit of its own), then the same
+   expectations are rewritten as C++ calls. Checks that only the Objective-C API could express
+   (`[[X alloc] initWith…:NULL]`, `-isEqual:` with an object of another class) go with that API,
+   and the commit message says so.
