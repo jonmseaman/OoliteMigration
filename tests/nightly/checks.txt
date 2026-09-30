@@ -76,3 +76,4 @@
 # conversion bead runs them before queueing (its notes say so) and the night reruns them here.
 [oo-zffj] bash tools/tier-c.sh --only goldens
 [oo-cwz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXPVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-up4b] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFileScannerVerifierStage && bash tools/tier-c.sh --only goldens
