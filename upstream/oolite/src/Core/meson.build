@@ -18,6 +18,7 @@ oolite_sources += files(
     'OOALStreamedSound.mm',
     'OOAsyncQueue.mm',
     'OOAsyncWorkManager.mm',
+    'OOBasicSoundReferencePoint.mm',
     'OOCPUInfo.mm',
     'OOCache.mm',
     'OOCacheManager.mm',
