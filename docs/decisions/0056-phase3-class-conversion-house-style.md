@@ -243,3 +243,25 @@ reached first.
 4. **A test that needs unconverted game state reached through a global** (`UNIVERSE`) defines the
    global itself (`Universe *gSharedUniverse`) and points it at stub objects that answer only the
    selectors used (amendment oo-z1s4 item 4).
+
+## Amendment (bead oo-jpd8): a protocol declared with the class
+
+- Date: 2026-09-29. Status: Proposed, as above. Exemplar: `src/Core/OOGraphicsResetManager.h/.mm`,
+  `OOGraphicsResetManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOGraphicsResetManager.mm`.
+
+**Context.** `OOGraphicsResetManager.h` also declared `@protocol OOGraphicsResetClient`, which
+about fifteen Objective-C classes in other files adopt; the manager holds them as
+`id<OOGraphicsResetClient>` and sends them `-resetGraphicsState`. The item 8 grep forbids
+`@protocol` in the converted header, and no client is C++ yet.
+
+**Decision (recommended defaults).**
+
+1. **The protocol moves, verbatim, to `X+ObjCBridge.h`,** before the façade's `@interface`.
+   `X.h` still imports the bridge last, so every adopter sees it unchanged.
+2. **The C++ class takes and holds the clients as `id`** (the protocol is not visible above the
+   class, and a forward `@protocol` would fail the grep). Its body sends the protocol's selector
+   to them as before; the façade keeps `id<P>` in its signatures.
+3. **When the first client converts,** its bead adds a C++ interface (an abstract class with the
+   protocol's methods as pure virtuals) and a second registration path; the protocol goes with
+   the façade's deletion bead once no Objective-C client is left. Until then nothing about the
+   clients changes.
