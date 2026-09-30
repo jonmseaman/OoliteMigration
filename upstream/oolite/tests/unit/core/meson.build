@@ -49,6 +49,8 @@ core_tests = {
     'test_OOWeakReference': ['Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOWeakSet': ['Core/OOWeakSet.mm', 'Core/OOWeakSet+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
+    'test_Entity': ['*'],
+    'test_OOEntityWithDrawable': ['*'],
 }
 
 fs = import('fs')
