@@ -2,6 +2,7 @@
 
 oolite_sources += files(
     'OOBasicMaterial.mm',
+    'OOBasicMaterial+ObjCBridge.mm',
     'OOCombinedEmissionMapGenerator.mm',
     'OOConcreteTexture.mm',
     'OODefaultShaderSynthesizer.mm',
@@ -10,6 +11,7 @@ oolite_sources += files(
     'OOMaterialConvenienceCreators.mm',
     'OOMaterialSpecifier.mm',
     'OOMultiTextureMaterial.mm',
+    'OOMultiTextureMaterial+ObjCBridge.mm',
     'OONullTexture.mm',
     'OOPNGTextureLoader.mm',
     'OOPixMap.mm',
@@ -21,6 +23,7 @@ oolite_sources += files(
     'OOShaderUniform.mm',
     'OOShaderUniformMethodType.mm',
     'OOSingleTextureMaterial.mm',
+    'OOSingleTextureMaterial+ObjCBridge.mm',
     'OOStandaloneAtmosphereGenerator.mm',
     'OOTexture.mm',
     'OOTextureGenerator.mm',

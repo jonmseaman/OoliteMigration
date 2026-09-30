@@ -32,253 +32,264 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOObjCPList.h"
 
-
-static OOBasicMaterial *sDefaultMaterial = nil;
+#include <typeinfo>
 
 
 #define FACE		GL_FRONT_AND_BACK
 
 
-@implementation OOBasicMaterial
+namespace cxx {
 
-- (id)cxx_initWithName:(const std::optional<std::string> &)name
+namespace {
+
+// Made on first use and never released, as the static Objective-C material was not.
+OOBasicMaterial *sDefaultMaterial = nullptr;
+
+}	// namespace
+
+
+oo::Ref<OOBasicMaterial> OOBasicMaterial::materialWithName(const std::optional<std::string> &name)
 {
-	self = [super init];
-	if (EXPECT_NOT(self == nil))  return nil;
-	
-	materialName = name;
-	
-	[self setDiffuseRed:1.0f green:1.0f blue:1.0f alpha:1.0f];
-	[self setAmbientRed:1.0f green:1.0f blue:1.0f alpha:1.0f];
-	specular[3] = 1.0;
-	emission[3] = 1.0;
-	
-	return self;
+	oo::Ref<OOBasicMaterial> result = oo::makeRef<OOBasicMaterial>();
+	result->initWithName(name);
+	return result;
 }
 
 
-- (id)initWithName:(const std::optional<std::string> &)name configuration:(const oo::PList &)configuration
+oo::Ref<OOBasicMaterial> OOBasicMaterial::materialWithName(const std::optional<std::string> &name, const oo::PList &configuration)
+{
+	oo::Ref<OOBasicMaterial> result = oo::makeRef<OOBasicMaterial>();
+	result->initWithName(name, configuration);
+	return result;
+}
+
+
+void OOBasicMaterial::initWithName(const std::optional<std::string> &name)
+{
+	materialName = name;
+
+	setDiffuseRed(1.0f, 1.0f, 1.0f, 1.0f);
+	setAmbientRed(1.0f, 1.0f, 1.0f, 1.0f);
+	specular[3] = 1.0;
+	emission[3] = 1.0;
+}
+
+
+void OOBasicMaterial::initWithName(const std::optional<std::string> &name, const oo::PList &configuration)
 {
 	id					colorDesc = nil;
 	int					specularExponent;
 
-	self = [self cxx_initWithName:name];
-	if (EXPECT_NOT(self == nil))  return nil;
-	
+	initWithName(name);
+
 	// An empty dictionary, not nil: the specifier defaults (a specular exponent of 10) apply. The
 	// configuration mixes plist data with live objects (colours): an oo::PList carries both
 	// exactly (proposed ADR-0043 Amendment 2).
 	const oo::PList config = !configuration.isNull() ? configuration : oo::PList(oo::PList::Dict{});
-	
+
+	// The specifier answers an Objective-C colour; OOColor::colorWithDescription() of its Object node
+	// is what +[OOColor cxx_colorWithDescription:] answered.
 	colorDesc = cxx_OOMaterialDiffuseColor(config);
-	if (colorDesc != nil)  [self setDiffuseColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
-	
+	if (colorDesc != nil)  setDiffuseColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
+
 	colorDesc = cxx_OOMaterialAmbientColor(config);
-	if (colorDesc != nil)  [self setAmbientColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
-	else  [self setAmbientColor:[self diffuseColor]];
-	
+	if (colorDesc != nil)  setAmbientColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
+	else  setAmbientColor(diffuseColor().get());
+
 	colorDesc = cxx_OOMaterialEmissionColor(config);
-	if (colorDesc != nil)  [self setEmissionColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
-	
+	if (colorDesc != nil)  setEmissionColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
+
 	specularExponent = cxx_OOMaterialSpecularExponent(config);
-	if (specularExponent != 0 && [self permitSpecular])
+	if (specularExponent != 0 && permitSpecular())
 	{
 		colorDesc = cxx_OOMaterialSpecularColor(config);
-		[self setShininess:specularExponent];
-		if (colorDesc != nil)  [self setSpecularColor:[OOColor cxx_colorWithDescription:oo::PListObject(colorDesc)]];
+		setShininess(specularExponent);
+		if (colorDesc != nil)  setSpecularColor(OOColor::colorWithDescription(oo::PListObject(colorDesc)).get());
 	}
-	
-	return self;
 }
 
 
-- (void)dealloc
-{
-	[super willDealloc];
-	
-	[super dealloc];
-}
-
-
-- (std::optional<std::string>)cxx_name
+std::optional<std::string> OOBasicMaterial::name()
 {
 	return materialName;
 }
 
 
-- (BOOL)doApply
+bool OOBasicMaterial::doApply()
 {
 	OOGL(glMaterialfv(FACE, GL_DIFFUSE, diffuse));
 	OOGL(glMaterialfv(FACE, GL_SPECULAR, specular));
 	OOGL(glMaterialfv(FACE, GL_AMBIENT, ambient));
 	OOGL(glMaterialfv(FACE, GL_EMISSION, emission));
-	OOGL(glMateriali(FACE, GL_SHININESS, shininess));
-	if ([self isMemberOfClass:[OOBasicMaterial class]])
+	OOGL(glMateriali(FACE, GL_SHININESS, _shininess));
+	// -isMemberOfClass: (an Objective-C subclass's C++ part is its adapter, another class)
+	if (typeid(*this) == typeid(OOBasicMaterial))
 	{
-		[OOTexture applyNone];
+		[::OOTexture applyNone];
 	}
-	
-	return YES;
+
+	return true;
 }
 
 
-- (void)unapplyWithNext:(OOMaterial *)next
+void OOBasicMaterial::unapplyWithNext(OOMaterial *next)
 {
-	if (![next isKindOfClass:[OOBasicMaterial class]])
+	// -isKindOfClass: (an Objective-C subclass's adapter derives from this class; nil is not one)
+	if (dynamic_cast<OOBasicMaterial *>(next) == nullptr)
 	{
-		if (EXPECT_NOT(sDefaultMaterial == nil))  sDefaultMaterial = [[OOBasicMaterial alloc] cxx_initWithName:std::string("<default material>")];
-		[sDefaultMaterial doApply];
-	}
-}
-
-
-- (OOColor *)diffuseColor
-{
-	return [OOColor colorWithRed:diffuse[0]
-						   green:diffuse[1]
-							blue:diffuse[2]
-						   alpha:diffuse[3]];
-}
-
-
-- (void)setDiffuseColor:(OOColor *)color
-{
-	if (color != nil)
-	{
-		[self setDiffuseRed:[color redComponent] 
-					  green:[color greenComponent]
-					   blue:[color blueComponent]
-					  alpha:[color alphaComponent]];
+		if (EXPECT_NOT(sDefaultMaterial == nullptr))  sDefaultMaterial = materialWithName(std::string("<default material>")).leakRef();
+		sDefaultMaterial->doApply();
 	}
 }
 
 
-- (void)setAmbientAndDiffuseColor:(OOColor *)color
+oo::Ref<OOColor> OOBasicMaterial::diffuseColor()
 {
-	[self setAmbientColor:color];
-	[self setDiffuseColor:color];
+	return OOColor::colorWithRed(diffuse[0],
+								 diffuse[1],
+								 diffuse[2],
+								 diffuse[3]);
 }
 
 
-- (OOColor *)specularColor
+void OOBasicMaterial::setDiffuseColor(OOColor *color)
 {
-	return [OOColor colorWithRed:specular[0]
-						   green:specular[1]
-							blue:specular[2]
-						   alpha:specular[3]];
-}
-
-
-- (void)setSpecularColor:(OOColor *)color
-{
-	if (color != nil)
+	if (color != nullptr)
 	{
-		[self setSpecularRed:[color redComponent] 
-					   green:[color greenComponent]
-						blue:[color blueComponent]
-					   alpha:[color alphaComponent]];
+		setDiffuseRed(color->redComponent(),
+					  color->greenComponent(),
+					  color->blueComponent(),
+					  color->alphaComponent());
 	}
 }
 
 
-- (OOColor *)ambientColor
+void OOBasicMaterial::setAmbientAndDiffuseColor(OOColor *color)
 {
-	return [OOColor colorWithRed:ambient[0]
-						   green:ambient[1]
-							blue:ambient[2]
-						   alpha:ambient[3]];
+	setAmbientColor(color);
+	setDiffuseColor(color);
 }
 
 
-- (void)setAmbientColor:(OOColor *)color
+oo::Ref<OOColor> OOBasicMaterial::specularColor()
 {
-	if (color != nil)
+	return OOColor::colorWithRed(specular[0],
+								 specular[1],
+								 specular[2],
+								 specular[3]);
+}
+
+
+void OOBasicMaterial::setSpecularColor(OOColor *color)
+{
+	if (color != nullptr)
 	{
-		[self setAmbientRed:[color redComponent] 
-					  green:[color greenComponent]
-					   blue:[color blueComponent]
-					  alpha:[color alphaComponent]];
+		setSpecularRed(color->redComponent(),
+					   color->greenComponent(),
+					   color->blueComponent(),
+					   color->alphaComponent());
 	}
 }
 
 
-- (OOColor *)emmisionColor
+oo::Ref<OOColor> OOBasicMaterial::ambientColor()
 {
-	return [OOColor colorWithRed:emission[0]
-						   green:emission[1]
-							blue:emission[2]
-						   alpha:emission[3]];
+	return OOColor::colorWithRed(ambient[0],
+								 ambient[1],
+								 ambient[2],
+								 ambient[3]);
 }
 
 
-- (void)setEmissionColor:(OOColor *)color
+void OOBasicMaterial::setAmbientColor(OOColor *color)
 {
-	if (color != nil)
+	if (color != nullptr)
 	{
-		[self setEmissionRed:[color redComponent] 
-					   green:[color greenComponent]
-						blue:[color blueComponent]
-					   alpha:[color alphaComponent]];
+		setAmbientRed(color->redComponent(),
+					  color->greenComponent(),
+					  color->blueComponent(),
+					  color->alphaComponent());
 	}
 }
 
 
-- (void)getDiffuseComponents:(GLfloat[4])outComponents
+oo::Ref<OOColor> OOBasicMaterial::emmisionColor()
+{
+	return OOColor::colorWithRed(emission[0],
+								 emission[1],
+								 emission[2],
+								 emission[3]);
+}
+
+
+void OOBasicMaterial::setEmissionColor(OOColor *color)
+{
+	if (color != nullptr)
+	{
+		setEmissionRed(color->redComponent(),
+					   color->greenComponent(),
+					   color->blueComponent(),
+					   color->alphaComponent());
+	}
+}
+
+
+void OOBasicMaterial::getDiffuseComponents(GLfloat outComponents[4])
 {
 	memcpy(outComponents, diffuse, 4 * sizeof *outComponents);
 }
 
 
-- (void)setDiffuseComponents:(const GLfloat[4])components
+void OOBasicMaterial::setDiffuseComponents(const GLfloat components[4])
 {
 	memcpy(diffuse, components, 4 * sizeof *components);
 }
 
 
-- (void)setAmbientAndDiffuseComponents:(const GLfloat[4])components
+void OOBasicMaterial::setAmbientAndDiffuseComponents(const GLfloat components[4])
 {
-	[self setAmbientComponents:components];
-	[self setDiffuseComponents:components];
+	setAmbientComponents(components);
+	setDiffuseComponents(components);
 }
 
 
-- (void)getSpecularComponents:(GLfloat[4])outComponents
+void OOBasicMaterial::getSpecularComponents(GLfloat outComponents[4])
 {
 	memcpy(outComponents, specular, 4 * sizeof *outComponents);
 }
 
 
-- (void)setSpecularComponents:(const GLfloat[4])components
+void OOBasicMaterial::setSpecularComponents(const GLfloat components[4])
 {
 	memcpy(specular, components, 4 * sizeof *components);
 }
 
 
-- (void)getAmbientComponents:(GLfloat[4])outComponents
+void OOBasicMaterial::getAmbientComponents(GLfloat outComponents[4])
 {
 	memcpy(outComponents, ambient, 4 * sizeof *outComponents);
 }
 
 
-- (void)setAmbientComponents:(const GLfloat[4])components
+void OOBasicMaterial::setAmbientComponents(const GLfloat components[4])
 {
 	memcpy(ambient, components, 4 * sizeof *components);
 }
 
 
-- (void)getEmissionComponents:(GLfloat[4])outComponents
+void OOBasicMaterial::getEmissionComponents(GLfloat outComponents[4])
 {
 	memcpy(outComponents, emission, 4 * sizeof *outComponents);
 }
 
 
-- (void)setEmissionComponents:(const GLfloat[4])components
+void OOBasicMaterial::setEmissionComponents(const GLfloat components[4])
 {
 	memcpy(emission, components, 4 * sizeof *components);
 }
 
 
-- (void)setDiffuseRed:(GLfloat)r green:(GLfloat)g blue:(GLfloat)b alpha:(GLfloat)a
+void OOBasicMaterial::setDiffuseRed(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	diffuse[0] = r;
 	diffuse[1] = g;
@@ -287,14 +298,14 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 }
 
 
-- (void)setAmbientAndDiffuseRed:(GLfloat)r green:(GLfloat)g blue:(GLfloat)b alpha:(GLfloat)a
+void OOBasicMaterial::setAmbientAndDiffuseRed(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
-	[self setAmbientRed:r green:g blue:b alpha:a];
-	[self setDiffuseRed:r green:g blue:b alpha:a];
+	setAmbientRed(r, g, b, a);
+	setDiffuseRed(r, g, b, a);
 }
 
 
-- (void)setSpecularRed:(GLfloat)r green:(GLfloat)g blue:(GLfloat)b alpha:(GLfloat)a
+void OOBasicMaterial::setSpecularRed(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	specular[0] = r;
 	specular[1] = g;
@@ -303,7 +314,7 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 }
 
 
-- (void)setAmbientRed:(GLfloat)r green:(GLfloat)g blue:(GLfloat)b alpha:(GLfloat)a
+void OOBasicMaterial::setAmbientRed(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	ambient[0] = r;
 	ambient[1] = g;
@@ -312,7 +323,7 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 }
 
 
-- (void)setEmissionRed:(GLfloat)r green:(GLfloat)g blue:(GLfloat)b alpha:(GLfloat)a
+void OOBasicMaterial::setEmissionRed(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
 	emission[0] = r;
 	emission[1] = g;
@@ -322,29 +333,29 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 
 
 
-- (uint8_t)shininess
+uint8_t OOBasicMaterial::shininess()
 {
-	return shininess;
+	return _shininess;
 }
 
 
-- (void)setShininess:(uint8_t)value
+void OOBasicMaterial::setShininess(uint8_t value)
 {
-	shininess = MIN(value, 128);
+	_shininess = MIN(value, 128);
 }
 
 
-- (BOOL) permitSpecular
+bool OOBasicMaterial::permitSpecular()
 {
 	return ![UNIVERSE reducedDetail];
 }
 
 
 #ifndef NDEBUG
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
+std::vector<oo::ObjCRef<OOTexture *>> OOBasicMaterial::allTextures()
 {
 	return {};
 }
 #endif
 
-@end
+}	// namespace cxx
