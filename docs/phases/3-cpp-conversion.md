@@ -143,6 +143,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
+     roots first, in one bead. Class methods become `static` members, and file statics become
+     never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
+     has Objective-C subclasses holds `oo::ObjCRef<::X *>(oo::ToObjC(p))`, because an adapter does
+     not retain its owner. A subclass's bitwise copy calls `oo::ConstructCxxPartOfCopy`.
    - **Made with `alloc`/`-initWithX:`** (ADR-0056 amendment oo-86ek; exemplar
      `src/Core/OOVector.*`, `OONativeVector`): the initialiser becomes a constructor; the façade's
      `-initWithX:` makes the C++ object and records itself as its peer. A header included inside

@@ -206,7 +206,10 @@ void OOCharacter::basicSetUp()
 
 	// determine _legalStatus for a completely random character
 	setLegalStatus(0);	// clean
-	int legalIndex = gen_rnd_number() & gen_rnd_number() & 0x03;
+	// Two draws, named so the order is explicit (left operand first, as clang evaluated it).
+	const int legalDraw1 = gen_rnd_number();
+	const int legalDraw2 = gen_rnd_number();
+	int legalIndex = legalDraw1 & legalDraw2 & 0x03;
 	while (((gen_rnd_number() & 0xf) < criminalTendency) && (legalIndex < 3))
 	{
 		legalIndex++;
@@ -214,7 +217,10 @@ void OOCharacter::basicSetUp()
 	if (legalIndex == 3)
 	{
 		// criminal
-		setLegalStatus(criminalTendency + criminalTendency * (gen_rnd_number() & 0x03) + (gen_rnd_number() & gen_rnd_number() & 0x7f));
+		const int bountyDraw1 = gen_rnd_number();
+		const int bountyDraw2 = gen_rnd_number();
+		const int bountyDraw3 = gen_rnd_number();
+		setLegalStatus(criminalTendency + criminalTendency * (bountyDraw1 & 0x03) + (bountyDraw2 & bountyDraw3 & 0x7f));
 	}
 	legalIndex = 0;
 	if (_legalStatus > 0)  legalIndex = (_legalStatus <= 50) ? 1 : 2;
@@ -223,7 +229,9 @@ void OOCharacter::basicSetUp()
 	setInsuranceCredits(0);
 	if (legalIndex == 0)
 	{
-		int insuranceIndex = gen_rnd_number() & gen_rnd_number() & 0x03;
+		const int insuranceDraw1 = gen_rnd_number();
+		const int insuranceDraw2 = gen_rnd_number();
+		int insuranceIndex = insuranceDraw1 & insuranceDraw2 & 0x03;
 		switch (insuranceIndex)
 		{
 			case 1:
