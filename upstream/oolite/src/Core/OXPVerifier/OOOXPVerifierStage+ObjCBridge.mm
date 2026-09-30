@@ -5,7 +5,8 @@ OOOXPVerifierStage+ObjCBridge.mm
 TRANSITIONAL (proposed ADR-0056 Amendment 1, bead oo-cwz): the Objective-C OOOXPVerifierStage
 facade (see OOOXPVerifierStage+ObjCBridge.h). Every method forwards to its C++ member: arguments
 that were OOOXPVerifierStage * go through oo::ToCxx, results come back through oo::ToObjC. An
-Objective-C subclass's C++ part is an ObjCStage, whose virtual members message the subclass.
+Objective-C subclass's C++ part is an oo::ObjCStage (OOOXPVerifierStage+ObjCBridge.h), whose
+virtual members message the subclass.
 Deleted with OOOXPVerifierStage+ObjCBridge.h.
 
 
@@ -38,6 +39,7 @@ SOFTWARE.
 #import "OODescription.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOObjCPeer.h"
+#include "oofnd/objc/OORuntime.h"
 
 #include <cstdlib>
 #include <cxxabi.h>
@@ -54,55 +56,43 @@ oo::ObjCPeers &Peers()
 }
 
 
-/*	The C++ part of an Objective-C stage: each virtual member messages the Objective-C object,
-	so the subclass's override runs, as it did when the base class was Objective-C. The
-	Objective-C object owns this (its _cxxStage) and is not retained by it; its -dealloc clears
-	the pointer, after which the members answer as a message to nil did.
-*/
-class ObjCStage final : public cxx::OOOXPVerifierStage
+std::string DemangledName(cxx::OOOXPVerifierStage &stage)
 {
-public:
-	explicit ObjCStage(::OOOXPVerifierStage *owner) : _owner(owner) {}
-
-	::OOOXPVerifierStage *owner()	{ return _owner; }
-	void ownerDeallocated()			{ _owner = nil; }
-
-	std::optional<std::string> name() override							{ return [_owner cxx_name]; }
-	std::optional<std::vector<std::string>> dependencies() override		{ return [_owner cxx_dependencies]; }
-	std::optional<std::vector<std::string>> dependents() override		{ return [_owner dependents]; }
-	bool shouldRun() override											{ return [_owner shouldRun]; }
-	void run() override													{ [_owner run]; }
-
-private:
-	::OOOXPVerifierStage *_owner = {};	// Not retained.
-};
-
-
-ObjCStage *AsObjCStage(cxx::OOOXPVerifierStage *stage)
-{
-	return dynamic_cast<ObjCStage *>(stage);
+	int status = 0;
+	char *demangled = abi::__cxa_demangle(typeid(stage).name(), nullptr, nullptr, &status);
+	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(stage).name();
+	std::free(demangled);
+	return result;
 }
 
 
 // The C++ class's name, as [self class] named an Objective-C stage's class ("cxx::" dropped).
 std::string ClassName(cxx::OOOXPVerifierStage &stage)
 {
-	int status = 0;
-	char *demangled = abi::__cxa_demangle(typeid(stage).name(), nullptr, nullptr, &status);
-	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(stage).name();
-	std::free(demangled);
+	std::string result = DemangledName(stage);
 	if (result.starts_with("cxx::"))  result.erase(0, 5);
 	return result;
 }
 
+
+/*	The class of a C++ stage's facade. A C++ class in namespace cxx has a facade of its own
+	(ADR-0056 item 5): the Objective-C class of the same name, a subclass of this one, which its
+	callers message by its own selectors (cxx::OOFileScannerVerifierStage's is
+	OOFileScannerVerifierStage). A global C++ class has none, and Objective-C sees it as an
+	OOOXPVerifierStage.
+*/
+Class FacadeClass(cxx::OOOXPVerifierStage &stage)
+{
+	const std::string name = DemangledName(stage);
+	if (name.starts_with("cxx::"))
+	{
+		Class facade = OOClassFromName(std::string_view(name).substr(5));
+		if (facade != Nil && [facade isSubclassOfClass:[OOOXPVerifierStage class]])  return facade;
+	}
+	return [OOOXPVerifierStage class];
+}
+
 }	// namespace
-
-
-@interface OOOXPVerifierStage (OOObjCBridgePrivate)
-
-- (id) initWithCxxStage:(cxx::OOOXPVerifierStage *)stage;
-
-@end
 
 
 @implementation OOOXPVerifierStage
@@ -110,8 +100,16 @@ std::string ClassName(cxx::OOOXPVerifierStage &stage)
 // Inside the @implementation for the private ivar.
 OOOXPVerifierStage *oo::ToObjC(cxx::OOOXPVerifierStage *stage)
 {
-	if (ObjCStage *objCStage = AsObjCStage(stage))  return [[objCStage->owner() retain] autorelease];
-	return Peers().peerFor(stage, [stage] { return [[OOOXPVerifierStage alloc] initWithCxxStage:stage]; });
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(stage))  return [[objCStage->owner() retain] autorelease];
+	if (stage == nullptr)  return nil;
+	Class facadeClass = FacadeClass(*stage);
+	return Peers().peerFor(stage, [stage, facadeClass] { return [[facadeClass alloc] initWithCxxStage:stage]; });
+}
+
+
+oo::ObjCStageLink *oo::AsObjCStage(cxx::OOOXPVerifierStage *stage)
+{
+	return dynamic_cast<ObjCStageLink *>(stage);
 }
 
 
@@ -126,12 +124,12 @@ cxx::OOOXPVerifierStage *oo::ToCxx(OOOXPVerifierStage *stage)
 - (id)init
 {
 	self = [super init];
-	if (self != nil)  _cxxStage = oo::makeRef<ObjCStage>(self);
+	if (self != nil)  _cxxStage = oo::makeRef<oo::ObjCStage<cxx::OOOXPVerifierStage>>(self);
 	return self;
 }
 
 
-// A C++ stage's facade (oo::ToObjC).
+// A C++ stage's facade (oo::ToObjC), or an intermediate class's Objective-C stage (its -init).
 - (id) initWithCxxStage:(cxx::OOOXPVerifierStage *)stage
 {
 	self = [super init];
@@ -142,7 +140,7 @@ cxx::OOOXPVerifierStage *oo::ToCxx(OOOXPVerifierStage *stage)
 
 - (void) dealloc
 {
-	if (ObjCStage *objCStage = AsObjCStage(_cxxStage.get()))  objCStage->ownerDeallocated();
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(_cxxStage.get()))  objCStage->ownerDeallocated();
 	else  Peers().forget(_cxxStage.get());
 	[super dealloc];
 }
@@ -157,7 +155,7 @@ cxx::OOOXPVerifierStage *oo::ToCxx(OOOXPVerifierStage *stage)
 // A C++ stage's facade describes itself with the C++ class's name.
 - (std::optional<std::string>) cxx_description
 {
-	if (AsObjCStage(_cxxStage.get()) != nullptr)  return [super cxx_description];
+	if (oo::AsObjCStage(_cxxStage.get()) != nullptr)  return [super cxx_description];
 	return oo::str::format("<%s %s>{", ClassName(*_cxxStage).c_str(), oo::str::pointerDescription(self).c_str()) + _cxxStage->descriptionComponents().value_or("") + "}";
 }
 
@@ -167,40 +165,41 @@ cxx::OOOXPVerifierStage *oo::ToCxx(OOOXPVerifierStage *stage)
 
 
 // The subclass responsibilities. On an Objective-C stage these are reached only when the subclass
-// does not override them, or by [super ...]: the base class's own member answers. On a C++
+// does not override them, or by [super ...]: the own member of its nearest C++ superclass answers
+// (cxx::OOOXPVerifierStage's, or an intermediate class's). On a C++
 // stage's facade the C++ override answers.
 
 - (std::optional<std::string>)cxx_name
 {
-	if (AsObjCStage(_cxxStage.get()) != nullptr)  return _cxxStage->cxx::OOOXPVerifierStage::name();
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(_cxxStage.get()))  return objCStage->superName();
 	return _cxxStage->name();
 }
 
 
 - (std::optional<std::vector<std::string>>)cxx_dependencies
 {
-	if (AsObjCStage(_cxxStage.get()) != nullptr)  return _cxxStage->cxx::OOOXPVerifierStage::dependencies();
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(_cxxStage.get()))  return objCStage->superDependencies();
 	return _cxxStage->dependencies();
 }
 
 
 - (std::optional<std::vector<std::string>>)dependents
 {
-	if (AsObjCStage(_cxxStage.get()) != nullptr)  return _cxxStage->cxx::OOOXPVerifierStage::dependents();
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(_cxxStage.get()))  return objCStage->superDependents();
 	return _cxxStage->dependents();
 }
 
 
 - (BOOL)shouldRun
 {
-	if (AsObjCStage(_cxxStage.get()) != nullptr)  return _cxxStage->cxx::OOOXPVerifierStage::shouldRun();
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(_cxxStage.get()))  return objCStage->superShouldRun();
 	return _cxxStage->shouldRun();
 }
 
 
 - (void)run
 {
-	if (AsObjCStage(_cxxStage.get()) != nullptr)  _cxxStage->cxx::OOOXPVerifierStage::run();
+	if (oo::ObjCStageLink *objCStage = oo::AsObjCStage(_cxxStage.get()))  objCStage->superRun();
 	else  _cxxStage->run();
 }
 
