@@ -1,6 +1,6 @@
 # ADR-0033 — The frame loop runs on steady-clock deadlines; the run loop is pumped until its last clients go
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.8, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-3rb.8, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Refines** [ADR-0029](0029-objc-floor-without-foundation.md) Decision 5 ("the frame loop's timer +
