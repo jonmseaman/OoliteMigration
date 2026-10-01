@@ -90,7 +90,7 @@ MA 02110-1301, USA.
 	const float attenuation = 1.0f;
 #endif
 	
-	const std::vector<oo::ObjCRef<Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	const std::vector<oo::ObjCRef<Entity *>> colliding = _cxxEntity->collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
 	NSUInteger i, count = colliding.size();
 	for (i = 0; i < count; i++)
 	{

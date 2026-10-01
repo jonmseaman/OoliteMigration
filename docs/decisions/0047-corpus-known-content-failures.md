@@ -1,6 +1,6 @@
 # ADR-0047 — The Tier-1 corpus reports a reviewed, byte-pinned content failure as KNOWN
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-1gc.7, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-1gc.7, 2026-09-23;
 ADR-0013, CLAUDE.md rule 10). Made under Jon's 2026-09-23 authorisation to resolve `human` beads
 by best judgement. Jon may override.
 **Date:** 2026-09-23
