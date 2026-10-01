@@ -1588,3 +1588,65 @@ objects. No caller changed.
    façade's deletion bead turns them into C++ calls.
 4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
    and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).
+
+## Amendment (bead oo-peql): the effect leaves (entities that nothing messages by their own selectors)
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OORingEffectEntity.h/.mm`
+  (factories over a failable initialiser), `OOECMBlastEntity.h/.mm` with `OOECMBlastEntity+ObjCBridge.h/.mm`
+  (an initialiser-named factory, a category of `Entity` the class overrode), `OOParticleSystem.h/.mm` and
+  `OOExplosionCloudEntity.h/.mm` (beads oo-cenx and oo-ui7h: a hierarchy converted whole),
+  `tests/unit/core/test_OORingEffectEntity.mm`, `test_OOECMBlastEntity.mm`, `test_OOParticleSystem.mm`.
+
+**Context.** These are the first leaves of amendment oo-bj8 item 12. The effects are made in two or
+three places (`ShipEntity`'s explosion and `-fireECM`, `Universe`'s witchspace and laser-hit effects),
+handed to `-[Universe addEntity:]`, and after that reached only through `Entity`'s selectors. Their
+initialisers can answer nil (no source, no texture), one class sets up a table in `+initialize`, one
+file declares a category of `Entity` that its class overrode (`-isECMBlast`), and `OOParticleSystem`
+has three subclasses, all of which are in reach.
+
+**Decision (recommended defaults).**
+
+1. **No façade.** The class is global, `X : public cxx::Entity` (item 12). Its factories keep the
+   Objective-C names and arguments (`explosionCloudFromEntity(entity, size, settings)`), and the other
+   entity they take stays the Objective-C object, `::Entity *` (item 4), so the bodies' messages to it
+   (`[entity position]`, `[sourceEntity collisionRadius]`, nil-safe as before) are verbatim. A caller
+   writes `[UNIVERSE addEntity:oo::NewEntityFacade(X::factory(self))]`; one that set something first
+   keeps the `oo::Ref<X>`, null-guards the call (it was a message to nil), and passes the reference.
+   `NewEntityFacade(nullptr)` is nil, which `-addEntity:` already refused.
+2. **Failable initialisers** follow amendments oo-bhb9 and oo-novu: where the class had factories
+   (`+ringFromEntity:`) the initialiser is a private `bool initX(…)` they call after `makeRef`; where
+   callers sent `[[X alloc] initX:]` (`-initFromShip:`) it becomes the static factory of that name over
+   a private constructor, whose virtual calls are the base's own, qualified (amendment oo-bj8 item 6).
+   An initialiser that cannot fail is `void`, and a subclass keeps the statements its
+   `if ((self = [super init…]))` guarded in a plain block.
+3. **`+initialize`** becomes a private static member with a run-once guard, called by the factory
+   before the first object is made (the first message to the class was what ran it).
+4. **A category of `Entity` that the class overrode** moves to `X+ObjCBridge.h/.mm` (item 12), and its
+   method answers for both kinds of entity from the C++ part:
+   `dynamic_cast<X *>(_cxxEntity.get())`, then the member. Its deletion bead makes it a member of
+   `cxx::Entity` once its callers (none today) are C++.
+5. **A class whose subclasses are all in reach converts with them** (amendment oo-kdyh item 1), so no
+   intermediate façade or adapter is written to be deleted: `OOParticleSystem`, its two fragment
+   bursts and `OOExplosionCloudEntity` are one bead (oo-cenx); the subclass's bead (oo-ui7h) carries
+   an honest acceptance over the same files and an empty proof commit. Its `-init` that answered nil
+   (only the subclasses' initialisers made one) is a protected constructor, and its protected ivars
+   are protected members.
+6. **`OOColor` at file scope is the Objective-C façade** (entity headers `@class` it), so a global
+   class names the C++ colour `cxx::OOColor`. Retained Objective-C objects the class owned are
+   `oo::ObjCRef` (the texture; `-dealloc` goes); one the class never released (`OOECMBlastEntity`'s
+   weak reference to its ship) stays a raw pointer, still never released.
+7. **The tests** link the whole game (amendment oo-44gg) and make the entity through one block of
+   helpers, the only lines the conversion ported (`[X factory:…]` became
+   `oo::NewEntityFacade(X::factory(…))`); the rest reads the entity through `Entity`'s selectors.
+   `UNIVERSE` is a subclass of `Universe` made with `class_createInstance` that records
+   `-removeEntity:` (and the range searches); the RNG is seeded with `ranrot_srand`, as the game seeds
+   it (unseeded, `OORandomUnitVector()` never returns); a texture loader is replaced with
+   `method_setImplementation` so a test can say "found" or "not found". The cases where an
+   initialiser answers nil could not run on the Objective-C classes: `-[Entity dealloc]` of an entity
+   whose `-init` never ran crashes since oo-bj8 (bead oo-s6ic6); they ran after the conversion,
+   where no façade is made.
+
+**Consequences.** One façade-less class per effect, no deletion bead except the category's
+(`OOECMBlastEntity+ObjCBridge`, oo-9ht.75). `ShipEntity.mm` and `Universe.mm` change only at the lines that make
+the effects. A failed initialiser no longer reaches `-[Entity dealloc]`, so the crash of oo-s6ic6 is
+gone for these classes (the explosion cloud without its texture was a game path).
