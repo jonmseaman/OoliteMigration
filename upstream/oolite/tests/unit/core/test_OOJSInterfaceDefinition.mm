@@ -13,7 +13,8 @@
 	engine's and OOJSScript's headers are not imported, because the test defines those classes
 	(amendment oo-z1s4 item 4); the class's header names OOJSScript with @class for that (amendment
 	oo-fg7i item 5). The expectations were written against the Objective-C class and run on it
-	first; they pin the initial state and the text properties, the callback and its `this` (kept
+	first (they now run through the facade, its forwarding test; the facade's own contract is
+	checked last); they pin the initial state and the text properties, the callback and its `this` (kept
 	alive across a garbage collection), the run, the sort order (-interfaceCompare:, with its nil
 	cases), an engine reset, and the weak reference to a definition.
 	Run: bash tools/check-core-tests.sh
@@ -263,6 +264,31 @@ OO_TEST(weakReference)
 	}
 	OO_CHECK([reference weakRefUnderlyingObject] == nil);
 	[reference release];
+}
+
+
+OO_TEST(facade)
+{
+	@autoreleasepool
+	{
+		OOJSInterfaceDefinition *facade = Interface("cat", "title");
+		cxx::OOJSInterfaceDefinition *definition = oo::ToCxx(facade);
+		OO_CHECK(definition != nullptr);
+		OO_CHECK(oo::ToObjC(definition) == facade);
+		OO_CHECK(oo::ToCxx(static_cast<OOJSInterfaceDefinition *>(nil)) == nullptr);
+
+		// The facade forwards: what the C++ object holds is what the facade answers.
+		OO_CHECK_EQ(definition->category().value_or("<none>"), "cat");
+		definition->setSummary("summary");
+		OO_CHECK_EQ([facade summary].value_or("<none>"), "summary");
+		OO_CHECK_EQ(definition->interfaceCompare(oo::ToCxx(Interface("cat", "Title"))), OOOrderedSame);
+		OO_CHECK_EQ(definition->interfaceCompare(nullptr), OOOrderedDescending);
+
+		// ToObjC never makes a facade: a C++ definition with none answers nil.
+		const oo::Ref<cxx::OOJSInterfaceDefinition> bare = oo::makeRef<cxx::OOJSInterfaceDefinition>();
+		OO_CHECK(oo::ToObjC(bare.get()) == nil);
+		OO_CHECK(!bare->title().has_value());
+	}
 }
 
 
