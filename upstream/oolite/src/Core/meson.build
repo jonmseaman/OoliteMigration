@@ -102,6 +102,7 @@ oolite_sources += files(
     'OOShipRegistry.mm',
     'OOSkyDrawable.mm',
     'OOSoundSource.mm',
+    'OOSoundSource+ObjCBridge.mm',
     'OOSoundSourcePool.mm',
     'OOSpatialReference.mm',
     'OOStringExpander.mm',
