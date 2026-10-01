@@ -2,6 +2,7 @@
 
 oolite_sources += files(
     'AI.mm',
+    'AI+ObjCBridge.mm',
     'AIGraphViz.mm',
     'CollisionRegion.mm',
     'CollisionRegion+ObjCBridge.mm',
@@ -12,6 +13,7 @@ oolite_sources += files(
     'OOALBufferedSound.mm',
     'OOALMusic.mm',
     'OOALSound.mm',
+    'OOALSound+ObjCBridge.mm',
     'OOALSoundChannel.mm',
     'OOALSoundDecoder.mm',
     'OOALSoundMixer.mm',
@@ -53,6 +55,7 @@ oolite_sources += files(
     'OOHPVector.mm',
     'OOIsNumberLiteral.cpp',
     'OOJoystickManager.mm',
+    'OOJoystickManager+ObjCBridge.mm',
     'OOJoystickProfile.mm',
     'OOJoystickProfile+ObjCBridge.mm',
     'OOLogHeader.mm',
@@ -101,6 +104,7 @@ oolite_sources += files(
     'OOSystemDescriptionManager+ObjCBridge.mm',
     'OOTextureScaling.mm',
     'OOTextureSprite.mm',
+    'OOTextureSprite+ObjCBridge.mm',
     'OOTrumble.mm',
     'OOTrumble+ObjCBridge.mm',
     'OOVector.mm',
