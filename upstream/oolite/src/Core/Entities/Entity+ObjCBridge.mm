@@ -31,6 +31,8 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 #import "OOEntityWithDrawable.h"
+#import "OOBreakPatternEntity.h"
+#import "OOLaserShotEntity.h"
 #import "DustEntity.h"
 #import "OOLightParticleEntity.h"
 #import "EntityOOJavaScriptExtensions.h"
@@ -74,6 +76,8 @@ oo::ObjCPeers &Peers()
 	OOCParameterAssert(AsObjCEntity(entity.get()) == nullptr);
 	Class facadeClass = [::Entity class];
 	if (dynamic_cast<cxx::OOEntityWithDrawable *>(entity.get()) != nullptr)  facadeClass = [::OOEntityWithDrawable class];
+	if (dynamic_cast<cxx::OOBreakPatternEntity *>(entity.get()) != nullptr)  facadeClass = [::OOBreakPatternEntity class];
+	if (dynamic_cast<cxx::OOLaserShotEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLaserShotEntity class];
 	if (dynamic_cast<cxx::DustEntity *>(entity.get()) != nullptr)  facadeClass = [::DustEntity class];
 	if (dynamic_cast<cxx::OOLightParticleEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLightParticleEntity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
