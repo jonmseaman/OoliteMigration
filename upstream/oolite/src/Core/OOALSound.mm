@@ -123,7 +123,7 @@ oo::ObjCRef<::OOSound *> OOSound::initWithContentsOfFile(const std::optional<std
 	}
 	else
 	{
-		self = [[OOALStreamedSound alloc] initWithDecoder:decoder];
+		self = [[::OOALStreamedSound alloc] initWithDecoder:decoder];
 	}
 	[decoder release];
 

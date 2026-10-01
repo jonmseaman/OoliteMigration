@@ -47,6 +47,7 @@ core_tests = {
     'test_OOSound': ['Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOALSoundDecoder': ['Core/OOALSoundDecoder.mm', 'Core/OOALSoundDecoder+ObjCBridge.mm', 'Core/MiniZip/unzip.c', 'Core/MiniZip/ioapi.c', 'Core/OODescription.mm'],
     'test_OOALBufferedSound': ['Core/OOALBufferedSound.mm', 'Core/OOALBufferedSound+ObjCBridge.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOALSoundDecoder.mm', 'Core/OOALSoundDecoder+ObjCBridge.mm', 'Core/MiniZip/unzip.c', 'Core/MiniZip/ioapi.c', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
+    'test_OOALStreamedSound': ['Core/OOALStreamedSound.mm', 'Core/OOALStreamedSound+ObjCBridge.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOALSoundDecoder.mm', 'Core/OOALSoundDecoder+ObjCBridge.mm', 'Core/MiniZip/unzip.c', 'Core/MiniZip/ioapi.c', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
