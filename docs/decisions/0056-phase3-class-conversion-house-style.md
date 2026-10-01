@@ -2161,3 +2161,88 @@ get the client as `void *`, call its private methods. One private method takes `
 
 **Consequences.** One façade and one deletion bead, which waits for the debug support's conversion
 (its only maker) and for the debugger interface's. The goldens are the end-to-end check.
+
+## Amendment (bead oo-y0gz): the rest of the Audio module (the decoder, the sounds, the channels, the mixer, the sources, the pool, the music controller)
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: amendment oo-2en's root, and its
+  batch: `src/Core/OOALSoundDecoder.*` (a cluster with a private concrete class),
+  `OOALBufferedSound.*`/`OOALStreamedSound.*`/`OOALMusic.*` (subclasses of the root with façades of
+  their own), `OOALSoundChannel.*` (a delegate told of `self` from `-dealloc`), `OOALSoundMixer.*`
+  and `OOMusicController.*` (singletons), `OOSoundSource.*` (an object that keeps itself alive while
+  it plays), `OOSoundSourcePool.*` (overloads told apart by `bool` and `float`), each with
+  `X+ObjCBridge.h/.mm` and `tests/unit/core/test_X.mm`. Beads oo-y0gz, oo-2wpb, oo-03g7, oo-nwbw,
+  oo-5vp8, oo-6g4z, oo-zoj3, oo-d2y9 and oo-lfkq, one class each, in that order.
+
+**Context.** After the root (`OOSound`, oo-2en) the module has nine classes that all talk to each
+other, and every one of them is made or messaged by unconverted code (the resource manager, the
+player, the universe, the JS bindings) or stubbed by name in a test that links a converted one
+(`test_OOSound.mm` stubs the decoder, the two concrete sounds and the mixer). They convert in nine
+beads that must each build on their own, in any order of merging after the root.
+
+**Decision (recommended defaults).**
+
+1. **Every class of the module keeps a façade while anything outside its bead messages it, and
+   is `cxx::X`.** No caller file changes, so each bead is the class's files, its bridge, its test
+   and the registrations.
+2. **Converted code keeps its messages to the module's other classes, written `::X`** (amendment
+   oo-rmd7 item 3), whether or not that class has converted, because the tests stub them by name:
+   the root's cluster still sends `[[::OOALSoundDecoder alloc] cxx_initWithPath:]` and
+   `[[::OOALBufferedSound alloc] initWithDecoder:]`, the mixer `[[::OOSoundChannel alloc] init]`,
+   the sources `[::OOSoundMixer sharedMixer]`. The one exception is the root, converted before the
+   batch: a class that keeps or plays sounds holds `oo::ObjCRef<::OOSound *>` (amendment oo-smy
+   item 4) and calls them through `oo::ToCxx`. Each façade's deletion bead turns the sends to its
+   class into C++ calls. A converted class names the others `::X` even before they convert, so the
+   nine beads merge in any order.
+3. **A converted subclass of the root that its callers make by alloc/init** (the buffered and the
+   streamed sound, which the cluster makes; the music, which the resource manager makes) has a
+   façade of its own, `@interface X : OOSound` with the old interface and no ivars (amendment
+   oo-up4b item 3). Its failable initialiser is a static factory with the initialiser's name
+   (amendment oo-novu item 1; the music's hides the root's, amendment oo-2en item 3), and the
+   façade's initialiser adopts the result through the root façade's `-initWithNewCxxSound:`, public
+   in the category `OOSound (OOObjCBridge)` (as amendment oo-vl43 item 2's material). The root's
+   `oo::ToObjC` picks the façade class by the C++ class's name (`cxx::OOMusic` is an `OOMusic`), and
+   a global C++ sound is an `OOSound`. The first such bead (oo-2wpb) adds both to the root's bridge.
+4. **A cluster whose one concrete class is private to its file** (the Vorbis codec) converts with
+   it, in an anonymous namespace (amendment oo-x2wy item 3); its failable `-cxx_initWithPath:` is
+   a private `bool initWithPath()` behind a private static `createWithPath()` (amendment oo-fg7i
+   item 1). Its `@public` ivar, which the file's C read callback used, is private and the callback
+   is a `friend` (amendment oo-bwrq item 3). The façade's `-cxx_description` prints the C++
+   class's name without its namespace, so the codec still describes itself as
+   `<OOALSoundVorbisCodec 0x…>{…}`.
+5. **A `-dealloc` that tells a delegate about `self`** (the channel's `[self hasStopped]`, whose
+   delegate may be the source class, which pushes the channel back to the mixer) stays in the
+   façade's `-dealloc` (amendment oo-smy item 3), because no peer lookup answers a façade that is
+   being deallocated. The C++ member takes the Objective-C channel to report:
+   `hasStopped(oo::ToObjC(this))` elsewhere, `hasStopped(self)` from the façade. The C++ destructor
+   keeps the rest of `-dealloc` (deleting the OpenAL source).
+6. **An object that retains itself while it works** (a playing sound source's `[self retain]`)
+   retains its façade, `objc_retain(oo::ToObjC(this))`, and the façade is also what it hands the
+   channel as delegate and keeps in the playing set (amendment oo-kdyh item 2). While it plays its
+   façade is alive, so `stop()` gets the same one back; the destructor never reaches that branch.
+   `[_sound autorelease]` of an Objective-C ivar is `objc_autorelease(_sound.leakRef())`, so the
+   old sound still lives until the pool drains.
+7. **An ivar that no method read or wrote is not kept** (`OOALStreamedSound`'s `_size`,
+   `OOSoundChannel`'s `_playing`, `OOSoundMixer`'s `_maxChannels` and `_playMask`): a private data
+   member nothing uses is a `-Wunused-private-field` warning, which the gate forbids silencing. A
+   comment in the class says so.
+8. **Overloads told apart only by `float` and `bool`** (the pool's `playSoundWithKey:priority:`
+   and `playSoundWithKey:overlap:`) are called with arguments of exactly those types: `1.0f` for
+   a priority, and a `bool` value for an overlap, because game code sees `OOCocoa.h`'s `true` and
+   `false`, which are the integers 1 and 0, and an integer or a double literal is ambiguous. The
+   façade casts `BOOL` with `static_cast<bool>`.
+9. **A singleton whose failed `-init` left the static pointing at a freed object** (the mixer's
+   `[super release]`) leaves it null instead, and the next call asks again (amendment oo-r7m0
+   item 2); the old dangling pointer was undefined behaviour, not a behaviour to keep.
+10. **A class method whose first keyword an instance method already has** (`+channel:
+    didFinishPlayingSound:`, the stopped source's delegate) is a static member named for its role
+    (`channelOfStoppedSource`): a static and an instance member cannot overload.
+11. **The tests** decode the game's own `Resources/Sounds/boop.ogg` and `Resources/Music/OoliteTheme.ogg`,
+    found from the test file's `__FILE__`, so the decoder and the sounds are tested on real data;
+    OpenAL runs on the null backend with a scratch `HOMEPATH` (amendment oo-2en item 7). The
+    channel test waits, at most two seconds, for a short sound to end. A test that links a class
+    stubs the module classes it does not link (amendment oo-z1s4 item 4).
+
+**Consequences.** Nine façades and nine deletion beads. The deletion beads of the decoder, the
+concrete sounds, the channel and the mixer also turn the module's own sends to them into C++ calls;
+the music's, the source's, the pool's and the controller's wait for the resource manager, the
+player, the universe and the JS bindings. No caller file changed.

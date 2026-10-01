@@ -302,3 +302,9 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `tools/gen-stories.py` files no story for it. A pre-split gathers a class's whole Mac-only
   methods into one fenced category at the end of the *same* file (a new file would read as new
   deny-list hits: the guardrails' file-split limitation).
+- 2026-10-01 — The rest of the Audio module (beads oo-y0gz, oo-2wpb, oo-03g7, oo-nwbw, oo-5vp8,
+  oo-6g4z, oo-zoj3, oo-d2y9, oo-lfkq; ADR-0056 amendment oo-y0gz): each class is `cxx::X` behind
+  `X+ObjCBridge.h/.mm`; converted code keeps its sends to the module's other classes as `::X`
+  (their tests stub them), the concrete sounds and the music have façades of their own under the
+  root's, and the channel tells its delegate of itself from the façade's `-dealloc`. Tests:
+  `tests/unit/core/test_<Class>.mm`, on the game's own `.ogg` resources. No caller changed.
