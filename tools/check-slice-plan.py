@@ -362,7 +362,7 @@ static int helper(int x)
 @implementation Foo (Private)
 - (void) hidden
 {
-	NSLog(@"}");
+	[self log:@"}"];
 }
 @end
 namespace {
@@ -414,7 +414,7 @@ def selftest():
     if done("1") != 1 or done("2") != 1: fails.append("slice-done passed before conversion")
     if done("9") != 1: fails.append("slice-done accepted an unknown slice id")
     if done("verbatim") != 1: fails.append("slice-done accepted the verbatim group as a slice")
-    private = '@implementation Foo (Private)\n- (void) hidden\n{\n\tNSLog(@"}");\n}\n@end\n'
+    private = '@implementation Foo (Private)\n- (void) hidden\n{\n\t[self log:@"}"];\n}\n@end\n'
     converted = SELFTEST_SRC.replace(private, 'void Foo::hidden()\n{\n\too::log("}");\n}\n')
     if converted == SELFTEST_SRC: fails.append("selftest fixture edit did not apply")
     open(os.path.join(d, "Foo.mm"), "w").write(converted)
