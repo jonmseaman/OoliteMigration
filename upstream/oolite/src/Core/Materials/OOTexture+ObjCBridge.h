@@ -23,9 +23,8 @@ It is a hierarchy root's facade, as OOALSound+ObjCBridge.h is; the table there a
 The factories answer the Objective-C texture (an OOConcreteTexture or the OONullTexture), which
 cxx::OOTexture's static factories make. A converted caller that keeps a texture while any
 subclass is Objective-C holds oo::ObjCRef<OOTexture *>: an Objective-C texture's C++ part does
-not retain it. The debug retain tracing (-setTrace: and the _trace ivar OOConcreteTexture reads)
-is about this Objective-C object's reference count, so it stays here (amendment oo-3kqi item 3);
-its traced -retain/-release/-autorelease overrides are gone (amendment oo-whzh item 4).
+not retain it. The debug retain tracing flag is cxx::OOTexture's (the subclasses read it); its
+traced -retain/-release/-autorelease overrides are gone (amendment oo-whzh item 4).
 
 A converted subclass that its callers message by its own selectors has a facade of its own, a
 subclass of this one with no ivars (amendment oo-up4b item 3): oo::ToObjC picks the Objective-C
@@ -65,10 +64,6 @@ SOFTWARE.
 {
 @private
 	oo::Ref<cxx::OOTexture>		_cxxTexture;
-#ifndef NDEBUG
-@protected
-	BOOL						_trace;
-#endif
 }
 
 /*	Load a texture, looking in Textures directories.
