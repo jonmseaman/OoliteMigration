@@ -1,6 +1,6 @@
 # ADR-0055: The last Foundation boundary: what replaces each bridge helper, and what is left at Phase 2 exit
 
-- Status: Proposed. The default is in effect until Jon decides (CLAUDE.md rule 10).
+- Status: Accepted (Jon, 2026-09-30, in chat). Recorded from the in-effect default (CLAUDE.md rule 10).
 - Date: 2026-09-29
 - Beads: oo-qps.30 (this ADR); seams oo-qps.31..45; chunks oo-qps.46..71; oo-qps.72 (retire the
   transitional forms); roll-ups oo-qps.11..15; then oo-qps.16 (delete the three bridge headers),
