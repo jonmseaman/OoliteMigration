@@ -18,6 +18,7 @@
 
 #import "OOPListSchemaVerifier.h"
 #import "OODescription.h"
+#import "OOStringParsing.h"
 
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/objc/OOException.h"
@@ -25,8 +26,17 @@
 #include "oo_test.hpp"
 
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <vector>
+
+
+// Link stubs (ADR-0056 amendment oo-zffj item 2): OOPListGameTypes.mm reaches OOStringParsing.mm's
+// scanners for vector and quaternion values, whose object links the game. No schema here uses those
+// types, so each stub aborts.
+BOOL cxx_ScanVectorFromString(const std::optional<std::string> &, Vector *)  { std::abort(); }
+BOOL cxx_ScanHPVectorFromString(const std::optional<std::string> &, HPVector *)  { std::abort(); }
+BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &, Quaternion *)  { std::abort(); }
 
 
 namespace {
@@ -191,10 +201,15 @@ OO_TEST(reportsEachFailureToTheDelegate)
 		ship["colour"] = oo::PList("red");
 		OO_CHECK(![verifier verifyPropertyList:oo::PList(ship) named:"bad"]);
 
+		// As found before the conversion: count = -2 is not reported as a positiveInteger failure
+		// (pinned, not judged).
+
 		const std::vector<std::string> expected = {
+			"bad: 9 root | Unpermitted key \"colour\" in dictionary. | {\"$definitions\" = {\"$role\" = {type = string; }; }; allowOthers = NO; requiredKeys = (name); schema = {count = positiveInteger; name = string; roles = {type = array; valueType = \"$role\"; }; scale = {maximum = 2; minimum = \"0.5\"; type = float; }; }; type = dictionary; }",
+			"bad: 2 roles[1] | Expected string, found number. | $role",
+			"bad: 4 scale | Number is too large (3, maximum is 2). | {maximum = 2; minimum = \"0.5\"; type = float; }",
 		};
 		OO_CHECK(delegate->failures == expected);
-		for (const std::string &failure : delegate->failures)  std::fprintf(stderr, "  failure: %s\n", failure.c_str());
 		for (id seen : delegate->verifiers)  OO_CHECK(seen == verifier);
 	}
 }
@@ -214,7 +229,7 @@ OO_TEST(stopsWhenTheDelegateSaysSo)
 		ship["count"] = oo::PList(-2);
 		OO_CHECK(![verifier verifyPropertyList:oo::PList(ship) named:"stop"]);
 		OO_CHECK_EQ(delegate->failures.size(), 1u);
-		for (const std::string &failure : delegate->failures)  std::fprintf(stderr, "  failure: %s\n", failure.c_str());
+		OO_CHECK(!delegate->failures.empty() && delegate->failures[0] == "stop: 10 root | Required keys (name) missing from dictionary. | {\"$definitions\" = {\"$role\" = {type = string; }; }; allowOthers = NO; requiredKeys = (name); schema = {count = positiveInteger; name = string; roles = {type = array; valueType = \"$role\"; }; scale = {maximum = 2; minimum = \"0.5\"; type = float; }; }; type = dictionary; }");
 	}
 }
 
@@ -239,9 +254,11 @@ OO_TEST(reportsABadSchema)
 		OO_CHECK(![noType verifyPropertyList:oo::PList("x") named:"untyped"]);
 
 		const std::vector<std::string> expected = {
+			"macro: 102 root | Bad schema: reference to undefined macro \"$nothing\". | {type = \"$nothing\"; }",
+			"unknown: 103 root | Bad schema: unknown type \"gizmo\". | {type = gizmo; }",
+			"untyped: 101 root | Bad schema: invalid type specifier for path root (no type specified). | {minimum = 1; }",
 		};
 		OO_CHECK(delegate->failures == expected);
-		for (const std::string &failure : delegate->failures)  std::fprintf(stderr, "  failure: %s\n", failure.c_str());
 	}
 }
 
@@ -271,13 +288,25 @@ OO_TEST(asksTheDelegateAboutDelegatedTypes)
 		OO_CHECK(![verifier verifyPropertyList:list named:"raises"]);
 
 		const std::vector<std::string> expectedDelegated = {
+			"yes shipKey [0] adder",
+			"yes shipKey [1] viper",
+			"no shipKey [0] adder",
+			"no shipKey [1] viper",
+			"error shipKey [0] adder",
+			"error shipKey [1] viper",
+			"raises shipKey [0] adder",
+			"raises shipKey [1] viper",
 		};
 		const std::vector<std::string> expectedFailures = {
+			"no: 13 [0] | Value at [0] does not match delegated type \"shipKey\". | {baseType = string; key = shipKey; type = delegatedType; }",
+			"no: 13 [1] | Value at [1] does not match delegated type \"shipKey\". | {baseType = string; key = shipKey; type = delegatedType; }",
+			"error: 13 [0] | Value at [0] does not match delegated type \"shipKey\". | {baseType = string; key = shipKey; type = delegatedType; }",
+			"error: 13 [1] | Value at [1] does not match delegated type \"shipKey\". | {baseType = string; key = shipKey; type = delegatedType; }",
+			"raises: 13 [0] | Value at [0] does not match delegated type \"shipKey\". | {baseType = string; key = shipKey; type = delegatedType; }",
+			"raises: 13 [1] | Value at [1] does not match delegated type \"shipKey\". | {baseType = string; key = shipKey; type = delegatedType; }",
 		};
 		OO_CHECK(delegate->delegated == expectedDelegated);
 		OO_CHECK(delegate->failures == expectedFailures);
-		for (const std::string &call : delegate->delegated)  std::fprintf(stderr, "  delegated: %s\n", call.c_str());
-		for (const std::string &failure : delegate->failures)  std::fprintf(stderr, "  failure: %s\n", failure.c_str());
 		for (id seen : delegate->verifiers)  OO_CHECK(seen == verifier);
 	}
 }
