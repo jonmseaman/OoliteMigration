@@ -1,6 +1,6 @@
 # ADR-0045 — `oo::AutoreleaseScope` drains last-in-first-out, as the game's pool does
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.22,
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-3rb.22,
 2026-09-23; ADR-0013, CLAUDE.md rule 10). Jon may override. The test-assertion change it entails
 was made under Jon's 2026-09-23 authorisation to resolve `human` beads by best judgement.
 **Date:** 2026-09-23
