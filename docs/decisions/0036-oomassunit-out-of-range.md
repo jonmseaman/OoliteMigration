@@ -1,6 +1,6 @@
 # ADR-0036 — An out-of-range `quantity_unit` is `UNITS_UNKNOWN`
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, beads oo-8j9q and oo-cpv4,
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, beads oo-8j9q and oo-cpv4,
 2026-09-23; ADR-0013, CLAUDE.md rule 10). Jon may override.
 **Date:** 2026-09-23
 
