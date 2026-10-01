@@ -2660,6 +2660,40 @@ binding whose objects are entities, whose root (`Entity`) is converted but whose
 whose superclass is still Objective-C with a category on that superclass, did not fit the sizing
 checks in this batch and is left for a bead of its own.
 
+## Amendment (bead oo-dqxj): slice beads, and `+[OOException raise:format:]` in a converted unit
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OOTextureScaling.mm` (slice 1 of
+  `docs/phases/3-slices/OOTextureScaling.md`), `OORaiseException()` in `oofnd/objc/OOException.h/.mm`,
+  `tests/unit/core/test_OOTextureScaling.mm`.
+
+**Context.** A slice bead (`sweep:slices`, `tools/gen-stories.py`) converts the units one slice of a
+pre-split plan assigns, and its gate is `tools/check-slice-plan.py --slice-done <id> <plan>`. That
+check counts *any* message send or `@`-keyword in a unit as Objective-C, not only the four
+`@`-keywords of item 8's grep. Converted members have so far kept `[OOException raise:… format:…]`
+verbatim (`OOProbabilitySet`, `Octree`), which item 8's grep does not see and the slice check does.
+Slice 1 of `OOTextureScaling.mm` is three plain-C dispatch functions whose only Objective-C is that
+raise, in an arm no valid pixmap reaches.
+
+**Decision (recommended defaults).**
+
+1. **A raise in a converted unit becomes `OORaiseException(name, format, ...)`,** the function form
+   of `+[OOException raise:format:]`: same arguments in the same order, printf format, never
+   returns. It throws the same `OOException` object with the same name and reason, so every
+   `@catch (OOException *)` and `@catch (id)` that caught the message send catches it unchanged.
+   A slice bead must use it (the slice check fails on the message send); a whole-class bead may.
+   `[e raise]`, `@throw e` and `@try`/`@catch` are not covered here; they stay as earlier amendments
+   say (oo-puw9 item 4), and a slice unit that holds them is reported by its bead.
+2. **A slice bead converts only its plan's units.** The plan file is not edited; the slice is done
+   when `--slice-done` says so. Its unit test is `tests/unit/core/test_<File>.mm` like a class's,
+   added by the file's first slice bead that has observable behaviour to pin, and extended by later
+   slices. File-static units are tested through the file's public functions.
+3. **Acceptance of a slice bead** is the fast proof (`--slice-done`, the ObjC-syntax grep over any
+   file the slice made fully C++, the checks.txt line) plus guardrails; the build, the file's core
+   test, Tier A and the goldens run by hand before queueing and nightly from `tests/nightly/checks.txt`.
+
+**Consequences.** One new oofnd function, with no Objective-C type in its signature (its header is
+still Objective-C++). Phase 4 replaces it with a C++ exception together with the `@catch` sites.
+
 ## Amendment (bead oo-zl36): a root that is a work-manager task, whose state its subclasses read
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOTextureLoader.h/.mm`,
