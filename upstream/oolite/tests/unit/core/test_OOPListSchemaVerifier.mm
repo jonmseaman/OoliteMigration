@@ -341,4 +341,34 @@ OO_TEST(describesKeyPaths)
 }
 
 
+// The facade (after the conversion): one live facade per C++ verifier, nil for null, and a C++-made
+// verifier hands its delegate that facade.
+OO_TEST(facadeContract)
+{
+	@autoreleasepool
+	{
+		OOPListSchemaVerifier *verifier = [OOPListSchemaVerifier verifierWithSchema:Parse("string")];
+		cxx::OOPListSchemaVerifier *cxxVerifier = oo::ToCxx(verifier);
+		OO_CHECK(cxxVerifier != nullptr);
+		OO_CHECK(oo::ToObjC(cxxVerifier) == verifier);
+		OO_CHECK(oo::ToCxx(nil) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOPListSchemaVerifier *>(nullptr)) == nil);
+		OO_CHECK(cxx::OOPListSchemaVerifier::verifierWithSchema(oo::PList()).get() == nullptr);
+
+		oo::Ref<cxx::OOPListSchemaVerifier> made = cxx::OOPListSchemaVerifier::verifierWithSchema(Parse("string"));
+		TestSchemaDelegate *delegate = [[[TestSchemaDelegate alloc] init] autorelease];
+		made->setDelegate(delegate);
+		OO_CHECK(made->delegate() == delegate);
+		OO_CHECK(!made->verifyPropertyList(oo::PList(4), "made"));
+		OO_CHECK(made->verifyPropertyList(oo::PList("four"), "made"));
+		OO_CHECK_EQ(delegate->verifiers.size(), 1u);
+		OOPListSchemaVerifier *facade = oo::ToObjC(made.get());
+		OO_CHECK(!delegate->verifiers.empty() && delegate->verifiers[0] == facade);
+		OO_CHECK(oo::ToCxx(facade) == made.get());
+		OO_CHECK([facade verifyPropertyList:oo::PList("four") named:"facade"]);
+		OO_CHECK_EQ(cxx::OOPListSchemaVerifier::descriptionForKeyPath(oo::PList(oo::PList::Array { oo::PList("a"), oo::PList(3) })).value_or(""), "a[3]");
+	}
+}
+
+
 OO_TEST_MAIN()

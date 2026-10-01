@@ -221,3 +221,4 @@
 [oo-ubjo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSunEntity && bash tools/tier-c.sh --only goldens
 [oo-z55j] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_WormholeEntity && bash tools/tier-c.sh --only goldens
 [oo-zffj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCrosshairs
+[oo-pni4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListSchemaVerifier && bash tools/tier-c.sh --only goldens
