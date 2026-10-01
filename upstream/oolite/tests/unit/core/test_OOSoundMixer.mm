@@ -9,7 +9,9 @@
 	they are told (the real ones would make OpenAL sources); so are the decoder and the two
 	concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4). The root's +update is the
 	game's, so it reaches this mixer. These expectations were written against the Objective-C API
-	and ran on the unconverted class first. Run: bash tools/check-core-tests.sh test_OOSoundMixer
+	and ran on the unconverted class first; they now run through the facade, which is its forwarding
+	test. Before the shutdown, which is last, come the C++ API (cxx::OOSoundMixer) and the facade's
+	contract. Run: bash tools/check-core-tests.sh test_OOSoundMixer
 */
 
 #import "OOALSoundMixer.h"
@@ -186,6 +188,44 @@ OO_TEST(updateUpdatesEveryChannel)
 	OOSoundChannel *channel = [mixer popChannel];
 	OO_CHECK(channel->_updates == 2);
 	[mixer pushChannel:channel];
+}
+
+
+// The C++ API: the one mixer, the same free list and the same channels as the facade's.
+OO_TEST(cxxApi)
+{
+	SetUp();
+	cxx::OOSoundMixer *mixer = cxx::OOSoundMixer::sharedMixer();
+	OO_CHECK(mixer != nullptr && mixer == cxx::OOSoundMixer::sharedMixer());
+	OOSoundMixer *facade = [OOSoundMixer sharedMixer];	// +sharedMixer answers id
+	OO_CHECK(oo::ToCxx(facade) == mixer);
+
+	OOSoundChannel *channel = mixer->popChannel();
+	OO_CHECK(channel != nil && [channel next] == nil);
+	mixer->pushChannel(channel);
+	OO_CHECK([[OOSoundMixer sharedMixer] popChannel] == channel);
+	[[OOSoundMixer sharedMixer] pushChannel:channel];
+
+	const int before = gChannelUpdates;
+	mixer->update();
+	OO_CHECK(gChannelUpdates == before + kMixerGeneralChannels);
+}
+
+
+// The facade's contract: one facade for the life of the process.
+OO_TEST(facade)
+{
+	SetUp();
+	OOSoundMixer *facade = nil;
+	@autoreleasepool
+	{
+		facade = [OOSoundMixer sharedMixer];
+	}
+	OO_CHECK(facade == [OOSoundMixer sharedMixer]);
+	OO_CHECK(oo::ToObjC(cxx::OOSoundMixer::sharedMixer()) == facade);
+	OOSoundMixer *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSoundMixer *>(nullptr)) == nil);
 }
 
 
