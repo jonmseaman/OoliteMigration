@@ -189,5 +189,36 @@ OO_TEST(refusesAnInvalidPixMap)
 }
 
 
+// The wrappers' unreachable default arm now raises with OORaiseException(), the function form of
+// +[OOException raise:format:]: the same OOException class, name and formatted reason, so a
+// @catch (OOException *) that caught the message send catches it.
+OO_TEST(raiseExceptionThrowsTheSameException)
+{
+	const char *name = nullptr;
+	std::string reason;
+	@try
+	{
+		OORaiseException(OOInternalInconsistencyException, "Unsupported pixmap format in scaler: %s", OOPixMapFormatName(kOOPixMapInvalidFormat).c_str());
+	}
+	@catch (OOException *e)
+	{
+		name = [e name];
+		reason = [e reason];
+	}
+	OO_CHECK(name != nullptr && std::strcmp(name, OOInternalInconsistencyException) == 0);
+	OO_CHECK_EQ(reason, std::string("Unsupported pixmap format in scaler: ") + OOPixMapFormatName(kOOPixMapInvalidFormat));
+
+	std::string messageReason;
+	@try
+	{
+		[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(kOOPixMapInvalidFormat).c_str()];
+	}
+	@catch (OOException *e)
+	{
+		messageReason = [e reason];
+	}
+	OO_CHECK_EQ(messageReason, reason);
+}
+
 
 OO_TEST_MAIN()
