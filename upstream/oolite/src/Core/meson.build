@@ -17,6 +17,7 @@ oolite_sources += files(
     'OOALSound.mm',
     'OOALSound+ObjCBridge.mm',
     'OOALSoundChannel.mm',
+    'OOALSoundChannel+ObjCBridge.mm',
     'OOALSoundDecoder.mm',
     'OOALSoundDecoder+ObjCBridge.mm',
     'OOALSoundMixer.mm',
