@@ -44,8 +44,23 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#ifndef INCLUDED_OOJSENGINENATIVEWRAPPERS_h
+#define INCLUDED_OOJSENGINENATIVEWRAPPERS_h
+
+/*	Plain includes (bead oo-9ht.72): this header is reached from C++ binding translation units
+	through OOJSEngineCore.h. OOCocoa.h gave it OOLITE_DEBUG and the function attributes.
+*/
+#include "OOFunctionAttributes.h"
 #include "ooscript/JSEngine.hpp"
+
+#ifndef OOLITE_DEBUG
+// As OOCocoa.h defines it (an identical redefinition there is harmless).
+#ifdef NDEBUG
+#define OOLITE_DEBUG 0
+#else
+#define OOLITE_DEBUG 1
+#endif
+#endif
 
 
 #ifdef __cplusplus
@@ -194,7 +209,7 @@ private:
 
 #if OOJS_PROFILE
 
-#import "OOProfilingStopwatch.h"
+#include "OOProfilingStopwatch.h"
 
 /*
 	Profiler implementation details. This should be internal to
@@ -240,3 +255,5 @@ private:
 #define OOJSProfileExit(frame) do {} while (0)
 
 #endif
+
+#endif	// INCLUDED_OOJSENGINENATIVEWRAPPERS_h
