@@ -409,26 +409,26 @@ enum
 	uint8_t		*aBuffer = NULL, *apx = NULL;
 	float		*randomBuffer = NULL;
 	
-	_height = _info.height = 1 << (_planetScale + _info.planetScaleOffset);
-	_width = _info.width = _height * _info.planetAspectRatio;
+	_cxxLoader->_height = _info.height = 1 << (_planetScale + _info.planetScaleOffset);
+	_cxxLoader->_width = _info.width = _cxxLoader->_height * _info.planetAspectRatio;
 	
 #define FAIL_IF(cond)  do { if (EXPECT_NOT(cond))  goto END; } while (0)
 #define FAIL_IF_NULL(x)  FAIL_IF((x) == NULL)
 	
-	buffer = (uint8_t *)malloc(4 * _width * _height);
+	buffer = (uint8_t *)malloc(4 * static_cast<size_t>(_cxxLoader->_width) * _cxxLoader->_height);
 	FAIL_IF_NULL(buffer);
 	px = buffer;
 	
 	if (generateNormalMap)
 	{
-		nBuffer = (uint8_t *)malloc(4 * _width * _height);
+		nBuffer = (uint8_t *)malloc(4 * static_cast<size_t>(_cxxLoader->_width) * _cxxLoader->_height);
 		FAIL_IF_NULL(nBuffer);
 		npx = nBuffer;
 	}
 	
 	if (generateAtmosphere)
 	{
-		aBuffer = (uint8_t *)malloc(4 * _width * _height);
+		aBuffer = (uint8_t *)malloc(4 * static_cast<size_t>(_cxxLoader->_width) * _cxxLoader->_height);
 		FAIL_IF_NULL(aBuffer);
 		apx = aBuffer;
 	}
@@ -462,43 +462,43 @@ enum
 	Vector norm;
 	float q, yN, yS, yW, yE, nearPole;
 	GLfloat shade;
-	float rHeight = 1.0f / _height;
-	float fy, fHeight = _height;
+	float rHeight = 1.0f / _cxxLoader->_height;
+	float fy, fHeight = _cxxLoader->_height;
 	// The second parameter is the temperature fraction. Most favourable: 1.0f,  little ice. Most unfavourable: 0.0f, frozen planet. TODO: make it dependent on ranrot / planetinfo key...
 	SetMixConstants(&_info, 1.0f-_info.polarFraction);	// no need to recalculate them inside each loop!
 	
 	// first pass, calculate q.
-	_info.qBuffer = (float *)malloc(_width * _height * sizeof (float));
+	_info.qBuffer = (float *)malloc(static_cast<size_t>(_cxxLoader->_width * _cxxLoader->_height) * sizeof (float));
 	FAIL_IF_NULL(_info.qBuffer);
 	
-	for (y = (int)_height - 1, fy = (float)y; y >=0; y--, fy--)
+	for (y = (int)_cxxLoader->_height - 1, fy = (float)y; y >=0; y--, fy--)
 	{
 		nearPole = (2.0f * fy - fHeight) * rHeight;
 		nearPole *= nearPole;
 		
-		for (x = (int)_width - 1; x >=0; x--)
+		for (x = (int)_cxxLoader->_width - 1; x >=0; x--)
 		{
-			_info.qBuffer[y * _width + x] = QFactor(_info.fbmBuffer, x, y, _width, poleValue, seaBias, nearPole);
+			_info.qBuffer[y * _cxxLoader->_width + x] = QFactor(_info.fbmBuffer, x, y, _cxxLoader->_width, poleValue, seaBias, nearPole);
 		}
 	}
 	
 	// second pass, use q.
 	float cloudFraction = _info.cloudFraction;
-	unsigned widthMask = _width - 1;
-	unsigned heightMask = _height - 1;
+	unsigned widthMask = _cxxLoader->_width - 1;
+	unsigned heightMask = _cxxLoader->_height - 1;
 	
-	for (y = (int)_height - 1, fy = (float)y; y >= 0; y--, fy--)
+	for (y = (int)_cxxLoader->_height - 1, fy = (float)y; y >= 0; y--, fy--)
 	{
 		nearPole = (2.0f * fy - fHeight) * rHeight;
 		nearPole *= nearPole;
 		
-		for (x = (int)_width - 1; x >= 0; x--)
+		for (x = (int)_cxxLoader->_width - 1; x >= 0; x--)
 		{
-			q = _info.qBuffer[y * _width + x];	// no need to use GetQ, x and y are always within bounds.
-			yN = GetQ(_info.qBuffer, x, y - 1, _width, _height, widthMask, heightMask);	// recalculates x & y if they go out of bounds.
-			yS = GetQ(_info.qBuffer, x, y + 1, _width, _height, widthMask, heightMask);
-			yW = GetQ(_info.qBuffer, x - 1, y, _width, _height, widthMask, heightMask);
-			yE = GetQ(_info.qBuffer, x + 1, y, _width, _height, widthMask, heightMask);
+			q = _info.qBuffer[y * _cxxLoader->_width + x];	// no need to use GetQ, x and y are always within bounds.
+			yN = GetQ(_info.qBuffer, x, y - 1, _cxxLoader->_width, _cxxLoader->_height, widthMask, heightMask);	// recalculates x & y if they go out of bounds.
+			yS = GetQ(_info.qBuffer, x, y + 1, _cxxLoader->_width, _cxxLoader->_height, widthMask, heightMask);
+			yW = GetQ(_info.qBuffer, x - 1, y, _cxxLoader->_width, _cxxLoader->_height, widthMask, heightMask);
+			yE = GetQ(_info.qBuffer, x + 1, y, _cxxLoader->_width, _cxxLoader->_height, widthMask, heightMask);
 			
 			color = PlanetMix(&_info, q, nearPole);
 			
@@ -538,7 +538,7 @@ enum
 			
 			if (generateAtmosphere)
 			{
-				q = QFactor(_info.fbmBuffer, x, y, _width, paleClouds, cloudFraction, nearPole);
+				q = QFactor(_info.fbmBuffer, x, y, _cxxLoader->_width, paleClouds, cloudFraction, nearPole);
 				color = CloudMix(&_info, q, nearPole);
 				*apx++ = 255.0f * color.r;
 				*apx++ = 255.0f * color.g;
@@ -549,7 +549,7 @@ enum
 	}
 	
 	success = YES;
-	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
+	_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 	}
 	
 END:
@@ -558,9 +558,9 @@ END:
 	FREE(randomBuffer);
 	if (success)
 	{
-		_data = buffer;
-		if (generateNormalMap) [_nMapGenerator completeWithData:nBuffer width:_width height:_height];
-		if (generateAtmosphere) [_atmoGenerator completeWithData:aBuffer width:_width height:_height];
+		_cxxLoader->_data = buffer;
+		if (generateNormalMap) [_nMapGenerator completeWithData:nBuffer width:_cxxLoader->_width height:_cxxLoader->_height];
+		if (generateAtmosphere) [_atmoGenerator completeWithData:aBuffer width:_cxxLoader->_width height:_cxxLoader->_height];
 	}
 	else
 	{
@@ -582,9 +582,9 @@ END:
 		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
 								   andGrayFileNamed:lightsName
 											  bytes:buffer
-											  width:_width
-											 height:_height
-										   rowBytes:_width * 4];
+											  width:_cxxLoader->_width
+											 height:_cxxLoader->_height
+										   rowBytes:_cxxLoader->_width * 4];
 	}
 #endif
 }
@@ -596,21 +596,21 @@ END:
 {
 	const std::string noiseName = oo::str::format("planet-%u-%u-noise-new", _info.seed.high, _info.seed.low);
 	
-	uint8_t *noisePx = malloc(_width * _height);
+	uint8_t *noisePx = malloc(_cxxLoader->_width * _cxxLoader->_height);
 	unsigned x, y;
-	for (y = 0; y < _height; y++)
+	for (y = 0; y < _cxxLoader->_height; y++)
 	{
-		for (x = 0; x < _width; x++)
+		for (x = 0; x < _cxxLoader->_width; x++)
 		{
-			noisePx[y * _width + x] = 255.0f * noise[y * _width + x];
+			noisePx[y * _cxxLoader->_width + x] = 255.0f * noise[y * _cxxLoader->_width + x];
 		}
 	}
 	
 	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
-									   width:_width
-									  height:_height
-									rowBytes:_width];
+									   width:_cxxLoader->_width
+									  height:_cxxLoader->_height
+									rowBytes:_cxxLoader->_width];
 	FREE(noisePx);
 }
 
@@ -1264,10 +1264,10 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 - (void) completeWithData:(void *)data_ width:(unsigned)width_ height:(unsigned)height_
 {
-	_data = data_;
-	_width = width_;
-	_height = height_;
-	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
+	_cxxLoader->_data = data_;
+	_cxxLoader->_width = width_;
+	_cxxLoader->_height = height_;
+	_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 	
 	// Enqueue so superclass can apply texture options and so forth.
 	[super enqueue];
@@ -1278,10 +1278,10 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	
 	[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:normalName
 							   andGrayFileNamed:specularName
-										  bytes:_data
-										  width:_width
-										 height:_height
-									   rowBytes:_width * 4];
+										  bytes:_cxxLoader->_data
+										  width:_cxxLoader->_width
+										 height:_cxxLoader->_height
+									   rowBytes:_cxxLoader->_width * 4];
 #endif
 }
 
@@ -1359,7 +1359,7 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	 originalWidth:(uint32_t *)outWidth
 	originalHeight:(uint32_t *)outHeight
 {
-	if (!_ready)
+	if (!_cxxLoader->_ready)
 	{
 		[[OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_parent];
 	}
@@ -1375,10 +1375,10 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 {
 	OO_LOG("texture.planet.generate", "{}", "Completing atmosphere generator");
 
-	_data = data_;
-	_width = width_;
-	_height = height_;
-	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
+	_cxxLoader->_data = data_;
+	_cxxLoader->_width = width_;
+	_cxxLoader->_height = height_;
+	_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 	
 	// Enqueue so superclass can apply texture options and so forth.
 	[super enqueue];
@@ -1389,10 +1389,10 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	
 	[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:rgbName
 							   andGrayFileNamed:alphaName
-										  bytes:_data
-										  width:_width
-										 height:_height
-									   rowBytes:_width * 4];
+										  bytes:_cxxLoader->_data
+										  width:_cxxLoader->_width
+										 height:_cxxLoader->_height
+									   rowBytes:_cxxLoader->_width * 4];
 #endif
 }
 

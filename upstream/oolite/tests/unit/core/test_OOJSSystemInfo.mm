@@ -709,6 +709,32 @@ OO_TEST(interstellar)
 }
 
 
+// bead oo-f4241: -cxx_currentSystemData answers a PList by value, so a pointer into it taken in an
+// if-init dangled while the keys were read. Long keys (no small-string optimisation) make the copies
+// pushed while iterating allocate, so freed dictionary nodes are reused under the loop.
+OO_TEST(interstellar_keys_of_a_fresh_snapshot)
+{
+	SetUpContext();
+	oo::PList::Dict data;
+	std::string expected;
+	for (int i = 0; i < 40; i++)
+	{
+		char key[64];
+		std::snprintf(key, sizeof key, "interstellar_property_with_a_long_name_%02d", i);
+		data[key] = oo::PList(static_cast<double>(i));
+		expected += key;
+		expected += ",";
+	}
+	expected += "coordinates,internalCoordinates,galaxyID,systemID";
+	sUniverse->_interstellar = YES;
+	sUniverse->_currentSystemData = oo::PList(std::move(data));
+	OO_CHECK_EVAL("Object.keys(info(0, -1)).join()", expected.c_str());
+	OO_CHECK_EVAL("Object.keys(info(0, -1)).length", "44");
+	sUniverse->_interstellar = NO;
+	sUniverse->_currentSystemData = oo::PList();
+}
+
+
 OO_TEST(methods)
 {
 	SetUpContext();

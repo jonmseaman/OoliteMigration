@@ -35,6 +35,7 @@ oolite_sources += files(
     'OOTexture+ObjCBridge.mm',
     'OOTextureGenerator.mm',
     'OOTextureLoader.mm',
+    'OOTextureLoader+ObjCBridge.mm',
 )
 
 oolite_includes += include_directories('.')
