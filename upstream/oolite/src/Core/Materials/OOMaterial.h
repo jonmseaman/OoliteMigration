@@ -99,7 +99,7 @@ public:
 #endif
 
 #ifndef NDEBUG
-	virtual std::vector<oo::ObjCRef<OOTexture *>> allTextures();
+	virtual std::vector<oo::ObjCRef<::OOTexture *>> allTextures();
 #endif
 
 	// Subclass interface (was the OOSubclassInterface category).

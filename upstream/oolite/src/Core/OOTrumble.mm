@@ -187,7 +187,7 @@ void OOTrumble::setupForPlayer(PlayerEntity* p1, const std::string & digramStrin
 	animationTime = 0.0;
 	animationDuration = 1.5 + randf() * 3.0;	// time until next animation
 	//
-	texture = oo::ObjCRef<OOTexture *>([OOTexture cxx_textureWithName:"trumblekit.png"
+	texture = oo::ObjCRef<::OOTexture *>([::OOTexture cxx_textureWithName:"trumblekit.png"
 								inFolder:"Textures"
 								 options:kOOTextureDefaultOptions | kOOTextureNoShrink
 							  anisotropy:0.0f

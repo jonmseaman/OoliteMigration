@@ -85,7 +85,7 @@ public:
 	bool doApply() override;
 	void unapplyWithNext(OOMaterial *next) override;
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<OOTexture *>> allTextures() override;
+	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 #endif
 
 	oo::Ref<OOColor> diffuseColor();

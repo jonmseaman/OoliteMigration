@@ -282,14 +282,14 @@ void OOLaserShotEntity::setUpTexture()
 {
 	if (sShotTexture == nil)
 	{
-		sShotTexture = [[OOTexture cxx_textureWithName:"oolite-laser-blur.png"
+		sShotTexture = [[::OOTexture cxx_textureWithName:"oolite-laser-blur.png"
 										  inFolder:"Textures"
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0
 										   lodBias:0.0] retain];
 		OOGraphicsResetManager::sharedManager()->registerClient([::OOLaserShotEntity class]);	// the facade class answers +resetGraphicsState
 
-		sShotTexture2 = [[OOTexture cxx_textureWithName:"oolite-laser-blur2.png"
+		sShotTexture2 = [[::OOTexture cxx_textureWithName:"oolite-laser-blur2.png"
 										  inFolder:"Textures"
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask | kOOTextureRepeatT
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0

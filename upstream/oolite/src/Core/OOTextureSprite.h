@@ -51,8 +51,8 @@ class OOTextureSprite : public oo::RefCounted
 public:
 	// Null for a nil texture (-initWithTexture:... answered nil). The first is the texture's
 	// original dimensions.
-	static oo::Ref<OOTextureSprite> initWithTexture(OOTexture *texture);
-	static oo::Ref<OOTextureSprite> initWithTexture(OOTexture *texture, NSSize spriteSize);
+	static oo::Ref<OOTextureSprite> initWithTexture(::OOTexture *texture);
+	static oo::Ref<OOTextureSprite> initWithTexture(::OOTexture *texture, NSSize spriteSize);
 
 	NSSize getSize();	// -size (the ivar keeps its name: amendment oo-862e item 1)
 
@@ -61,9 +61,9 @@ public:
 	void blitBackgroundCentredToX(float x, float y, float z, float a);
 
 private:
-	OOTextureSprite(OOTexture *inTexture, NSSize spriteSize);	// initWithTexture() checks the texture
+	OOTextureSprite(::OOTexture *inTexture, NSSize spriteSize);	// initWithTexture() checks the texture
 
-	oo::ObjCRef<OOTexture *>	texture;
+	oo::ObjCRef<::OOTexture *>	texture;
 	NSSize					size = {};
 };
 

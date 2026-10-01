@@ -2380,3 +2380,54 @@ which only the Mac debug OXP's inspector adds.
 **Consequences.** One bridge (no façade) and its deletion bead. The binding keeps two kinds of
 Objective-C, both on the façade's superclass and slot, until the monitor's façade is deleted:
 `-weakRetain` and the class check.
+
+## Amendment (bead oo-whzh): a root façade whose superclass is `OOWeakRefObject`, caches of a hierarchy, and retain tracing
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOTexture.h/.mm`,
+  `OOTexture+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTexture.mm`. Follows amendments oo-smy
+  and oo-2en (the root of a module, a class cluster's factories).
+
+**Context.** `OOTexture` is the root of the textures (`OOConcreteTexture`, `OONullTexture`,
+`OOEnvironmentCubeMap`, Objective-C, in their own files). Its superclass is `OOWeakRefObject`,
+which stays Objective-C (amendment oo-3kqi item 5). It keeps three caches: the live textures by
+key and every live texture (unretained), and the recent textures (retained, an `OOCache` of
+objects). Its subclasses reach the caches from their `-init` and `-dealloc` through
+`OOTextureInternal.h`'s categories, and `OOConcreteTexture` reads the root's `@protected` debug
+ivar `_trace`, which switches on logging of the Objective-C object's own retains and releases.
+
+**Decision (recommended defaults).**
+
+1. **The root façade keeps its Objective-C superclass** (`@interface OOTexture: OOWeakRefObject`)
+   and is otherwise amendment oo-2en's: an adapter (`ObjCTexture`) for an Objective-C subclass
+   instance, `oo::ObjCPeers` for a C++ texture's façade. Nothing weakly references a texture, so a
+   C++ texture's façade being made again after the old one died changes nothing. A converted
+   subclass whose objects are weakly referenced would follow amendment oo-puw9 instead.
+2. **Caches keep what they kept, through the crossing.** An unretained cache holds the C++ part
+   (`cxx::OOTexture *`; an Objective-C texture's is its adapter, which lives as long as it does).
+   A retaining cache holds the Objective-C object, `oo::ToObjC(this)` (amendment oo-smy item 4).
+   A lookup that answered the unretained object answers the borrowed C++ pointer (amendment
+   oo-6bux item 5). The façade's method answers an Objective-C texture unretained, as before (a
+   caller may have no autorelease pool), and a C++ texture's façade through `oo::ToObjC`.
+3. **A member that an Objective-C subclass reaches from its `-dealloc`** (`removeFromCaches`) does
+   not call `oo::ToObjC(this)`, which would retain and autorelease an object being deallocated. It
+   compares a cached object with `oo::ToCxx(object) == this`.
+4. **Retain tracing stays in the façade, but not its `-retain`/`-release`/`-autorelease`
+   overrides.** `-setTrace:` and the `@protected` ivar the Objective-C subclass reads are about the
+   Objective-C object's reference count (amendment oo-3kqi item 3), and stay. The traced overrides
+   (debug builds only; nothing calls `-setTrace:`) are dropped: libobjc2 cannot weakly reference an
+   object whose class overrides `-retain`/`-release` (its weak store falls back to a raw pointer,
+   and the next `objc_loadWeakRetained` crashes), and `oo::ObjCPeers` holds a C++ object's façade
+   weakly. A root façade that overrides them for any other reason has the same conflict; the
+   default is to drop the override and say so in the bead. The cache code's trace-context
+   assignments stay verbatim, now unread.
+5. **Categories that an internal header declares on the root** (`OOTextureInternal.h`:
+   `SubclassInterface`, `SubclassResponsibilities`, `SubclassOptional`) stay in that header as the
+   façade's categories (amendment 1 item 2); the bridge `.mm` implements the one with methods of
+   its own. Their methods are public members of the C++ class under an "Internal" comment.
+6. **The test** links the whole game (`['*']`) on the GL test context, stands in for the concrete
+   textures with Objective-C subclasses, and keeps the resource manager out of reach (a named
+   texture is found by its cache key; the generator's `-enqueue` is the test's). `+clearCache`
+   autoreleases a C++ cache, so the test clears inside an `oo::AutoreleaseScope`.
+
+**Consequences.** One façade and one deletion bead (`OOTexture+ObjCBridge`), which depends on the
+three subclass beads and on the beads of the files that message textures. No caller changed.

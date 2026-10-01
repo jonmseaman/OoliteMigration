@@ -78,7 +78,7 @@ public:
 	bool isFinishedLoading() override;
 	bool wantsNormalsAsTextureCoordinates() override;
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<OOTexture *>> allTextures() override;
+	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 #endif
 
 private:

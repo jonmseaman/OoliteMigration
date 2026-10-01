@@ -30,6 +30,7 @@ oolite_sources += files(
     'OOSingleTextureMaterial+ObjCBridge.mm',
     'OOStandaloneAtmosphereGenerator.mm',
     'OOTexture.mm',
+    'OOTexture+ObjCBridge.mm',
     'OOTextureGenerator.mm',
     'OOTextureLoader.mm',
 )
