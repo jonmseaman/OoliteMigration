@@ -12511,9 +12511,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if (![self hasECM])  return NO;
 	
-	OOECMBlastEntity *ecmDevice = [[OOECMBlastEntity alloc] initFromShip:self];
-	[UNIVERSE addEntity:ecmDevice];
-	[ecmDevice release];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOECMBlastEntity::initFromShip(self))];
 	return YES;
 }
 

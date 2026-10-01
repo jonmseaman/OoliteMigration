@@ -7,6 +7,7 @@ oolite_sources += files(
     'Entity+ObjCBridge.mm',
     'OOBreakPatternEntity.mm',
     'OOECMBlastEntity.mm',
+    'OOECMBlastEntity+ObjCBridge.mm',
     'OOEntityWithDrawable.mm',
     'OOEntityWithDrawable+ObjCBridge.mm',
     'OOExhaustPlumeEntity.mm',
