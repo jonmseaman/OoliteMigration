@@ -8,7 +8,9 @@
 	the failures (no source, a source that does not compile, a file that is not there), the cache
 	(one program per key while it lives, none without a key, a new one once it has gone), the
 	files asked for, and -apply / +applyNone (the program in use, kept while it is). There is no
-	game view here, so no standard matrix uniforms are bound.
+	game view here, so no standard matrix uniforms are bound. Those checks ran on the Objective-C
+	class first and now run through the facade. After them: the C++ API (null where it answered
+	nil, the cache shared with the facade's class methods) and the facade's identity.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -238,6 +240,53 @@ OO_TEST(applyAndApplyNone)
 		OO_CHECK(glGetError() == GL_NO_ERROR);
 	}
 	[p release];
+}
+
+
+// --- The C++ class and the facade (after the conversion) -----------------------------------------
+
+OO_TEST(cxxAPI)
+{
+	if (!SetUp())  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::OOShaderProgram::shaderProgramWithVertexShader(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, kBindings, std::nullopt) == nullptr);
+		const oo::Ref<cxx::OOShaderProgram> p = cxx::OOShaderProgram::shaderProgramWithVertexShader(kVertex, kFragment, std::string("v"), std::string("f"), std::nullopt, kBindings, std::string("cxx-key"));
+		OO_CHECK(p != nullptr && p->program() != 0 && gGetAttribLocation(p->program(), "tangent") == 15);
+
+		// One cache for both APIs.
+		OO_CHECK(cxx::OOShaderProgram::shaderProgramWithVertexShader(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, kBindings, std::string("cxx-key")).get() == p.get());
+		OO_CHECK(oo::ToCxx(Make(kVertex, kFragment, std::nullopt, std::string("cxx-key"))) == p.get());
+
+		gShaderFiles = { { "c.vert", kVertex }, { "c.frag", kFragment } };
+		const oo::Ref<cxx::OOShaderProgram> fromFiles = cxx::OOShaderProgram::shaderProgramWithVertexShaderName("c.vert", "c.frag", std::nullopt, kBindings);
+		OO_CHECK(fromFiles != nullptr && fromFiles.get() == cxx::OOShaderProgram::shaderProgramWithVertexShaderName("c.vert", "c.frag", std::nullopt, kBindings).get());
+		OO_CHECK(cxx::OOShaderProgram::shaderProgramWithVertexShaderName("none.vert", "c.frag", std::nullopt, kBindings) == nullptr);
+		gShaderFiles.clear();
+
+		p->apply();
+		OO_CHECK(CurrentProgram() == (GLint)p->program());
+		cxx::OOShaderProgram::applyNone();
+		OO_CHECK(CurrentProgram() == 0);
+	}
+}
+
+
+OO_TEST(facade)
+{
+	if (!SetUp())  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OOShaderProgram *made = Make(kVertex, kFragment);
+		cxx::OOShaderProgram *part = oo::ToCxx(made);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == made && [made program] == part->program());
+
+		const oo::Ref<cxx::OOShaderProgram> p = cxx::OOShaderProgram::shaderProgramWithVertexShader(kVertex, kFragment, std::nullopt, std::nullopt, std::nullopt, kBindings, std::nullopt);
+		OO_CHECK(oo::ToObjC(p) == oo::ToObjC(p.get()) && oo::ToCxx(oo::ToObjC(p)) == p.get());
+
+		OOShaderProgram *none = nil;
+		OO_CHECK(oo::ToCxx(none) == nullptr && oo::ToObjC(static_cast<cxx::OOShaderProgram *>(nullptr)) == nil);
+	}
 }
 
 OO_TEST_MAIN()

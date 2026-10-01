@@ -1461,3 +1461,37 @@ objects. No caller changed.
    façade's deletion bead turns them into C++ calls.
 4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
    and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).
+
+## Amendment (bead oo-f9zg): a cache of unretained objects that remove themselves
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderProgram.h/.mm`,
+  `OOShaderProgram+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderProgram.mm`.
+
+**Context.** `OOShaderProgram` keeps a cache of programs by key that does not retain them; a program
+erases itself in `-dealloc`, and the class methods return an autoreleased program (cached or new).
+It also keeps the program in use retained in a file static.
+
+**Decision (recommended defaults).**
+
+1. **The cache holds raw C++ pointers** in an anonymous namespace inside `namespace cxx`, and the
+   destructor erases the entry, as `-dealloc` did. The factories return `oo::Ref<X>` (a cache hit
+   is retained into the `Ref`); a failed initialiser is a `bool` member and the factory answers
+   null. The façade's class methods answer `oo::ToObjC(factory(...))`, whose autorelease keeps the
+   program until the pool drains, as the autoreleased program was kept (amendment oo-ct7c item 2);
+   a cache hit whose façade is alive answers that façade.
+2. **The retained file static** (`sActiveProgram`) is a never-destroyed holder (`ActiveProgram()`,
+   amendment oo-smy item 3) that keeps **the façade**, `oo::ObjCRef<::X *>(oo::ToObjC(this))`, as
+   the current material does (amendment oo-smy item 4), not an `oo::Ref<X>`: the façade owns the
+   C++ program and is the object `sActiveProgram` retained, so a façade in use stays alive and
+   stays the program's one façade (`test_OOShaderProgram` pins the retain on the façade). The
+   assignment sits in an `@autoreleasepool` so that `oo::ToObjC`'s autorelease drains at once and
+   the program in use carries only the slot's retain, as `[program retain]` did. The destructor's
+   imbalance check stays under `#ifndef NDEBUG` for fidelity (it cannot fire while the slot owns
+   the façade), and drops the reference without releasing it. The slot changes to `oo::Ref<X>`
+   in the façade's deletion bead.
+3. **An ivar that shares its name with its getter** (`program`) takes the leading underscore
+   (amendment oo-rdfh item 1).
+4. **A converted C++ class that messages a converted façade's collaborator** (`[[UNIVERSE gameView]
+   getOpenGLMatrixManager]`, a façade over the C++ matrix manager) crosses once with `oo::ToCxx`
+   and null-guards each call with what the message to nil answered (`kZeroMatrix`, a null list;
+   amendment oo-vt0o item 3).
