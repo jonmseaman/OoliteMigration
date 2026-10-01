@@ -37,6 +37,7 @@ oolite_sources += files(
     'OOJSShip.mm',
     'OOJSShipGroup.mm',
     'OOJSSound.mm',
+    'OOJSSound+ObjCBridge.mm',
     'OOJSSoundSource.mm',
     'OOJSSpecialFunctions.mm',
     'OOJSStation.mm',
