@@ -37,10 +37,11 @@ SOFTWARE.
 #else
 /*	A plain C++ translation unit (bead oo-9ht.72: the JS bindings, through
 	OOJSEngineNativeWrappers.h) cannot parse OOCocoa.h's @interfaces. The one platform switch
-	below that differs from its default on this build is set exactly as OOCocoa.h sets it, so
+	below that differs from its default on this build is set as OOCocoa.h sets it (WIN32 is only
+	defined on the GNUstep build), so
 	OOHighResTimeValue is the same type in both kinds of translation unit.
 */
-#if defined(GNUSTEP_BASE_LIBRARY) && defined(WIN32) && !defined(OOLITE_WINDOWS)
+#if defined(WIN32) && !defined(OOLITE_WINDOWS)
 #define OOLITE_WINDOWS 1
 #endif
 #endif

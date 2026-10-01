@@ -141,7 +141,7 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 /*	OOJSValueFromNativeObject()
 	Return a JavaScript value representation of an object, or null if passed
 	nil. An object whose root class is not OOObject gives undefined, as the
-	NSObject glue did; oo-qps.72 deleted the Foundation branch that converted
+	Foundation root-class glue did; oo-qps.72 deleted the Foundation branch that converted
 	one through its property-list form (proposed ADR-0051). Plist data is
 	OOJSValueFromPList()'s.
 	
