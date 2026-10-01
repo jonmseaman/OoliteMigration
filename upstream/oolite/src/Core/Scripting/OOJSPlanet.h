@@ -39,3 +39,12 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global);
 #ifdef __cplusplus
 }
 #endif
+
+
+/*	The bodies of OOPlanetEntity (OOJavaScriptExtensions), which the engine reaches by selector.
+	Its methods are one-line forwarders to these in OOJSPlanet+ObjCBridge.mm until
+	OOPlanetEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+*/
+bool OOJSPlanetIsVisibleToScripts(OOPlanetEntity *planet);
+void OOJSPlanetGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSPlanetJSClassName(OOPlanetEntity *planet);
