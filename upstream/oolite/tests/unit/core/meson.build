@@ -57,6 +57,7 @@ core_tests = {
     'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OORoleSet': ['Core/OORoleSet.mm', 'Core/OORoleSet+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_OOProbabilitySet': ['Core/OOProbabilitySet.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
+    'test_OOProbabilisticTextureManager': ['Core/OOProbabilisticTextureManager.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_CollisionRegion': ['*'],
     'test_Octree': ['*'],
     'test_OOJSVector': ['Core/Scripting/OOJSVector.mm', 'Core/Scripting/OOJSVector+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOHPVector.mm', 'Core/OOVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c'],
