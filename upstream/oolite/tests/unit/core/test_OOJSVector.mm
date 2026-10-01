@@ -122,18 +122,19 @@ ooscript::ClassDef *JSEntityClass(void)
 }
 
 
-// A quaternion is the array [w, x, y, z] here: enough to see what OOJSVector hands over.
-BOOL QuaternionToJSValue(ooscript::Context context, Quaternion quaternion, ooscript::Value *outValue)
+// A quaternion is the array [w, x, y, z] here: enough to see what OOJSVector hands over. (bool since
+// OOJSQuaternion.h is, bead oo-hwae: a stand-in has the signature of what it stands in for.)
+bool QuaternionToJSValue(ooscript::Context context, Quaternion quaternion, ooscript::Value *outValue)
 {
 	ooscript::Value parts[4] = { ooscript::numberValue(quaternion.w), ooscript::numberValue(quaternion.x), ooscript::numberValue(quaternion.y), ooscript::numberValue(quaternion.z) };
 	ooscript::Object array = ooscript::newArrayObject(context, 4, parts);
-	if (array == nullptr)  return NO;
+	if (array == nullptr)  return false;
 	*outValue = ooscript::objectValue(array);
-	return YES;
+	return true;
 }
 
 
-BOOL QuaternionFromArgumentList(ooscript::Context context, const std::string &scriptClass, const std::string &function, unsigned argc, ooscript::Value *argv, Quaternion *outQuaternion, unsigned *outConsumed)
+bool QuaternionFromArgumentList(ooscript::Context context, const std::string &scriptClass, const std::string &function, unsigned argc, ooscript::Value *argv, Quaternion *outQuaternion, unsigned *outConsumed)
 {
 	double q[4] = {};
 	ooscript::Value element;
@@ -145,11 +146,11 @@ BOOL QuaternionFromArgumentList(ooscript::Context context, const std::string &sc
 		{
 			*outQuaternion = make_quaternion(q[0], q[1], q[2], q[3]);
 			if (outConsumed != NULL)  *outConsumed = 1;
-			return YES;
+			return true;
 		}
 	}
 	cxx_OOJSReportBadArguments(context, scriptClass, function, argc, argv, "Could not construct quaternion from parameters", "Quaternion");
-	return NO;
+	return false;
 }
 
 
