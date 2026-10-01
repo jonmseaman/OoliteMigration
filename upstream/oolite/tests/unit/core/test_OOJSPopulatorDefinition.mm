@@ -12,7 +12,8 @@
 	(OOJSScript) and Vector3D (a plain array here). The engine's and OOJSScript's headers are not
 	imported, because the test defines those classes (amendment oo-z1s4 item 4); the class's header
 	names OOJSScript with @class for that (amendment oo-fg7i item 5). The expectations were written
-	against the Objective-C class and run on it first; they pin the initial state, the callback
+	against the Objective-C class and run on it first (they now run through the facade, its
+	forwarding test; the facade's own contract is checked last); they pin the initial state, the callback
 	and its `this` (kept alive across a garbage collection), the run (its `this`, its location, the
 	owning script pushed and popped), an engine reset, and the weak reference to a definition.
 	Run: bash tools/check-core-tests.sh
@@ -227,6 +228,30 @@ OO_TEST(weakReference)
 	}
 	OO_CHECK([reference weakRefUnderlyingObject] == nil);
 	[reference release];
+}
+
+
+OO_TEST(facade)
+{
+	@autoreleasepool
+	{
+		OOJSPopulatorDefinition *facade = [[[OOJSPopulatorDefinition alloc] init] autorelease];
+		cxx::OOJSPopulatorDefinition *definition = oo::ToCxx(facade);
+		OO_CHECK(definition != nullptr);
+		OO_CHECK(oo::ToObjC(definition) == facade);
+		OO_CHECK(oo::ToCxx(static_cast<OOJSPopulatorDefinition *>(nil)) == nullptr);
+
+		// The facade forwards: what the C++ object holds is what the facade answers.
+		definition->setCallback(Evaluate("(function () {})"));
+		OO_CHECK(ooscript::isObject([facade callback]));
+		definition->setCallback(ooscript::undefinedValue());
+		OO_CHECK(ooscript::isUndefined([facade callback]));
+
+		// ToObjC never makes a facade: a C++ definition with none answers nil.
+		const oo::Ref<cxx::OOJSPopulatorDefinition> bare = oo::makeRef<cxx::OOJSPopulatorDefinition>();
+		OO_CHECK(oo::ToObjC(bare.get()) == nil);
+		OO_CHECK(ooscript::isUndefined(bare->callback()));
+	}
 }
 
 
