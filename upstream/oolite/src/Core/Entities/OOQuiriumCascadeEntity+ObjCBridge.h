@@ -1,7 +1,11 @@
 /*
 
-OOPlasmaBurstEntity.h
+OOQuiriumCascadeEntity+ObjCBridge.h
 
+TRANSITIONAL (proposed ADR-0056, amendments oo-bj8 and oo-2c6g): the category of the Objective-C
+Entity that OOQuiriumCascadeEntity.h declared, unchanged; OOQuiriumCascadeEntity itself is C++
+with no facade. Imported as the last line of OOQuiriumCascadeEntity.h; do not import it directly.
+Never add to this file. Deleted with the Entity facade.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -23,21 +27,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOLightParticleEntity.h"
+#ifndef OOQUIRIUMCASCADEENTITY_OBJCBRIDGE_H
+#define OOQUIRIUMCASCADEENTITY_OBJCBRIDGE_H
 
 
-/*	A converted leaf (amendment oo-bj8 item 12): global, over cxx::OOLightParticleEntity, with no
-	facade of its own. Unconverted code makes one with burstWithPosition() and hands it to
-	Objective-C with oo::NewEntityFacade, whose object is an OOLightParticleEntity.
-*/
-class OOPlasmaBurstEntity : public cxx::OOLightParticleEntity
-{
-public:
-	// [[OOPlasmaBurstEntity alloc] initWithPosition:]: a new burst, initialised.
-	static oo::Ref<OOPlasmaBurstEntity> burstWithPosition(HPVector position);
+@interface Entity (OOQuiriumCascadeExtensions)
 
-	// -initWithPosition:'s body, run once right after construction (amendment oo-vl43 item 2).
-	void initWithPosition(HPVector position);
+- (BOOL) isCascadeWeapon;
 
-	void update(OOTimeDelta delta_t) override;
-};
+@end
+
+#endif	// OOQUIRIUMCASCADEENTITY_OBJCBRIDGE_H

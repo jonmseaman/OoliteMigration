@@ -9627,7 +9627,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 // Exposed to AI
 - (void) becomeEnergyBlast
 {
-	[UNIVERSE addEntity:[OOQuiriumCascadeEntity quiriumCascadeFromShip:self]];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
 	[self broadcastEnergyBlastImminent];
 	[self noteKilledBy:nil damageType:kOODamageTypeCascadeWeapon];
 	[UNIVERSE removeEntity:self];
@@ -12270,15 +12270,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	OOColor *color = [OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
 	
-	OOSparkEntity *spark = [[OOSparkEntity alloc] initWithPosition:origin
-														  velocity:vel
-														  duration:2.0 + 3.0 * randf()
-															  size:sz
-															 color:color];
+	Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
+																		 vel,
+																		 2.0 + 3.0 * randf(),
+																		 sz,
+																		 oo::ToCxx(color)));
 	
 	[spark setOwner:self];
 	[UNIVERSE addEntity:spark];
-	[spark release];
 
 	next_spark_time = randf();
 }
@@ -13263,7 +13262,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if (_cxxEntity->energy < amount && _cxxEntity->energy > 10 && [self countsAsKill])
 			{
 				cascade = YES;	// confirm we're cascading, then try to add our cascade to UNIVERSE.
-				[UNIVERSE addEntity:[OOQuiriumCascadeEntity quiriumCascadeFromShip:self]];
+				[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
 			}
 			break;
 			//no default thanks, we want the compiler to tell us if we missed a case.
