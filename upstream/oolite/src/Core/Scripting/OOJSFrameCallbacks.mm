@@ -32,6 +32,13 @@ SOFTWARE.
 #include "oofnd/objc/OOAssert.h"
 
 
+/*	Converted in bead oo-n041 (proposed ADR-0056 amendment oo-ppc): a binding with no class of its
+	own. BOOL/YES/NO are bool/true/false; the file statics and functions whose lines that touched
+	are in an anonymous namespace, as the others already were. A deferred add still keeps its
+	callback in an Objective-C OOJSValue, and the universe's time acceleration is still a message.
+*/
+
+
 /*
 	By default, tracking IDs are scrambled to discourage people from trying to
 	be clever or making assumptions about them. If DEBUG_FCB_SIMPLE_TRACKING_IDS
@@ -102,7 +109,9 @@ namespace {
 static std::vector<DeferredOperation>	*sDeferredOps;	// Deferred adds/removes while running.
 } // namespace
 static uint32_t			sNextID;
-static BOOL				sRunning;
+namespace {
+static bool				sRunning;
+} // namespace
 
 
 // Methods
@@ -113,13 +122,17 @@ static bool GlobalIsValidFrameCallback(ooscript::Context context, ooscript::Call
 
 // Internals
 namespace {
-static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString);
-static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString);
+static bool AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString);
+static bool GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString);
 } // namespace
 
-static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex);
+namespace {
+static bool GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex);
+} // namespace
 
-static BOOL RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t trackingID);
+namespace {
+static bool RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t trackingID);
+} // namespace
 static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index);
 
 namespace {
@@ -159,7 +172,7 @@ void OOJSFrameCallbacksInvoke(OOTimeDelta inDeltaT)
 		if (EXPECT(ooscript::newNumberValue(context, delta, &deltaVal)))
 		{
 			// Block mutations.
-			sRunning = YES;
+			sRunning = true;
 			
 			/*
 				The watchdog timer only fires once per second in deployment builds,
@@ -175,7 +188,7 @@ void OOJSFrameCallbacksInvoke(OOTimeDelta inDeltaT)
 			}
 			
 			OOJSStopTimeLimiter();
-			sRunning = NO;
+			sRunning = false;
 			
 			if (EXPECT_NOT(sDeferredOps != NULL))
 			{
@@ -214,7 +227,7 @@ static bool GlobalAddFrameCallback(ooscript::Context context, ooscript::CallArgs
 	if (EXPECT_NOT(oojsArgs.count() < 1 || !OOJSValueIsFunction(context, callback)))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "addFrameCallback", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "function");
-		return NO;
+		return false;
 	}
 	
 	// Assign a tracking ID.
@@ -228,7 +241,7 @@ static bool GlobalAddFrameCallback(ooscript::Context context, ooscript::CallArgs
 		if (EXPECT_NOT(!AddCallback(context, callback, trackingID, &errorString)))
 		{
 			cxx_OOJSReportError(context, "%s", (errorString ? errorString->c_str() : "(null)"));
-			return NO;
+			return false;
 		}
 	}
 	else
@@ -254,7 +267,7 @@ static bool GlobalRemoveFrameCallback(ooscript::Context context, ooscript::CallA
 	if (EXPECT_NOT(oojsArgs.count() < 1 || !ooscript::valueToECMAUint32(context, OOJS_ARGV[0], &trackingID)))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "removeFrameCallback", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "frame callback tracking ID");
-		return NO;
+		return false;
 	}
 	
 	if (EXPECT(!sRunning))
@@ -286,14 +299,14 @@ static bool GlobalIsValidFrameCallback(ooscript::Context context, ooscript::Call
 	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "isValidFrameCallback", 0, OOJS_ARGV, std::nullopt, "frame callback tracking ID");
-		return NO;
+		return false;
 	}
 	
 	// Get tracking ID argument.
 	uint32_t trackingID;
 	if (EXPECT_NOT(!ooscript::valueToECMAUint32(context, OOJS_ARGV[0], &trackingID)))
 	{
-		OOJS_RETURN_BOOL(NO);
+		OOJS_RETURN_BOOL(false);
 	}
 	
 	NSUInteger index;
@@ -306,7 +319,7 @@ static bool GlobalIsValidFrameCallback(ooscript::Context context, ooscript::Call
 // MARK: Internals
 
 namespace {
-static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString)
+static bool AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString)
 {
 	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	OOCParameterAssert(errorString != NULL);
@@ -314,7 +327,7 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 	
 	if (EXPECT_NOT(sCount == sSpace))
 	{
-		if (!GrowCallbackList(context, errorString))  return NO;
+		if (!GrowCallbackList(context, errorString))  return false;
 	}
 	
 	FCBLog("script.frameCallback.debug.add", "Adding frame callback with tracking ID {}.", trackingID);
@@ -327,7 +340,7 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 		if (EXPECT_NOT(!OOJSAddGCValueRoot(context, &sCallbacks[sCount].callback, "frame callback")))
 		{
 			*errorString = "Failed to add GC root for frame callback.";
-			return NO;
+			return false;
 		}
 		
 		sHighWaterMark = sCount + 1;
@@ -336,13 +349,13 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 	sCallbacks[sCount].trackingID = trackingID;
 	sCount++;
 	
-	return YES;
+	return true;
 }
 } // namespace
 
 
 namespace {
-static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString)
+static bool GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString)
 {
 	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	OOCParameterAssert(errorString != NULL);
@@ -350,7 +363,7 @@ static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::strin
 	NSUInteger newSpace = MAX(sSpace * 2, (NSUInteger)kMinCount);
 	
 	CallbackEntry *newCallbacks = (CallbackEntry *)calloc(sizeof (CallbackEntry), newSpace);
-	if (newCallbacks == NULL)  return NO;
+	if (newCallbacks == NULL)  return false;
 	
 	CallbackEntry *oldCallbacks = sCallbacks;
 	
@@ -361,7 +374,7 @@ static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::strin
 	{
 		if (EXPECT_NOT(!OOJSAddGCValueRoot(context, &newCallbacks[i].callback, "frame callback")))
 		{
-			// If we can't root them all, we fail; unroot all entries to date, free the buffer and return NO.
+			// If we can't root them all, we fail; unroot all entries to date, free the buffer and return false.
 			NSUInteger j;
 			for (j = 0; j < i; j++)
 			{
@@ -370,7 +383,7 @@ static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::strin
 			free(newCallbacks);
 			
 			*errorString = "Failed to add GC root for frame callback.";
-			return NO;
+			return false;
 		}
 		newCallbacks[i] = oldCallbacks[i];
 	}
@@ -389,12 +402,13 @@ static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::strin
 	free(oldCallbacks);
 	sSpace = newSpace;
 	
-	return YES;
+	return true;
 }
 } // namespace
 
 
-static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex)
+namespace {
+static bool GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex)
 {
 	OOCParameterAssert(outIndex != NULL);
 	
@@ -409,15 +423,17 @@ static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex)
 		if (sCallbacks[i].trackingID == trackingID)
 		{
 			*outIndex = i;
-			return YES;
+			return true;
 		}
 	}
 	
-	return NO;
+	return false;
 }
+} // namespace
 
 
-static BOOL RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t trackingID)
+namespace {
+static bool RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t trackingID)
 {
 	OOCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	OOCAssert(!sRunning, "%s cannot be called while frame callbacks are running.", __PRETTY_FUNCTION__);
@@ -426,11 +442,12 @@ static BOOL RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t tra
 	if (GetIndexForTrackingID(trackingID, &index))
 	{
 		RemoveCallbackAtIndex(context, index);
-		return YES;
+		return true;
 	}
 	
-	return NO;
+	return false;
 }
+} // namespace
 
 
 static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index)
