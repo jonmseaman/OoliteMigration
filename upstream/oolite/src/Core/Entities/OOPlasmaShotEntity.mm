@@ -106,9 +106,8 @@ MA 02110-1301, USA.
 			[UNIVERSE removeEntity:self];
 			
 			// Spawn a plasma burst.
-			OOPlasmaBurstEntity *burst = [[OOPlasmaBurstEntity alloc] initWithPosition:[self position]];
+			Entity *burst = oo::NewEntityFacade(OOPlasmaBurstEntity::burstWithPosition([self position]));
 			[UNIVERSE addEntity:burst];
-			[burst release];
 		}
 	}
 	
