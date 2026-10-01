@@ -1,6 +1,6 @@
 # ADR-0037 — The NSException sweep: handlers catch both until oo-qps, through one alias
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.27, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-3rb.27, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Refines** [ADR-0029](0029-objc-floor-without-foundation.md) Decision 4 for the sweep beads
