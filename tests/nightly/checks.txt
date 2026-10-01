@@ -188,3 +188,9 @@
 [oo-y0gz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALSoundDecoder test_OOSound && bash tools/tier-c.sh --only goldens
 [oo-2wpb] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALBufferedSound test_OOSound && bash tools/tier-c.sh --only goldens
 [oo-03g7] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALStreamedSound test_OOSound && bash tools/tier-c.sh --only goldens
+[oo-vnts] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugSupport && bash tools/tier-c.sh --only goldens
+[oo-7ixd] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPlanet && bash tools/tier-c.sh --only goldens
+[oo-7nfv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSManifest && bash tools/tier-c.sh --only goldens
+[oo-6ia4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
+[oo-n64m] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSShipGroup && bash tools/tier-c.sh --only goldens
+[oo-s1wq] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSVisualEffect && bash tools/tier-c.sh --only goldens
