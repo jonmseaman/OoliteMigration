@@ -920,12 +920,12 @@ static bool GlobalGetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	cxx::OOColor *col = oo::ToCxx([gui cxx_colorFromSetting:*key defaultValue:nil]);
+	cxx::OOColor *col = oo::ToCxx([gui cxx_colorFromSetting:key defaultValue:nil]);
 
 	// The components as the colour's -normalizedArray gave them: floats, nil for no colour.
 	oo::PList::Array components;
 	if (col != nullptr)  for (float component : col->normalizedArray())  components.push_back(oo::PList::singleReal(component));
-	OOJS_RETURN_PLIST(col != nullptr ? oo::PList(std::move(components)) : oo::PList());
+	OOJS_RETURN_PLIST(col != nullptr ? oo::PList(components) : oo::PList());
 	
 	OOJS_NATIVE_EXIT
 }
