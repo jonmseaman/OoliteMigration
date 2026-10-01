@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 #import "OOJSSun.h"
 #import "OOJSEntity.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #import "OOSunEntity.h"
 
@@ -37,6 +36,17 @@ MA 02110-1301, USA.
 // Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
 // oo-sdz, exemplar): a static ClassDef is the class table (stub hooks nullptr), initClass replaces
 // InitClass, natives take the façade's Context/Object/PropertyId/Value/CallArgs signature.
+
+/*
+	C++20 since bead oo-hgfh, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on OOSunEntity
+	became three free functions, and its methods moved to OOJSSun+ObjCBridge.mm (amendment oo-
+	ykoy). Messages to classes that are still Objective-C (OOSunEntity, Entity) stay as they
+	are, which is why the file is still .mm until Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -131,33 +141,29 @@ void InitOOJSSun(ooscript::Context context, ooscript::Object global)
 }
 
 
-@implementation OOSunEntity (OOJavaScriptExtensions)
-
-- (BOOL) isVisibleToScripts
+// The bodies of OOSunEntity (OOJavaScriptExtensions), whose methods are in OOJSSun+ObjCBridge.mm
+// until OOSunEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+bool OOJSSunIsVisibleToScripts(void)
 {
-	return YES;
+	return true;
 }
 
-
-- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+void OOJSSunGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = &sSunClass;
 	*outPrototype = sSunPrototype;
 }
 
-
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> OOJSSunJSClassName(void)
 {
 	return std::string("Sun");
 }
-
-@end
 
 
 namespace {
 static bool SunGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -166,7 +172,7 @@ static bool SunGetProperty(Context cx, Object obj, PropertyId propID, Value *val
 	
 	OOSunEntity					*sun = nil;
 	
-	if (EXPECT_NOT(!JSSunGetSunEntity(context, thisObj, &sun)))  return NO;
+	if (EXPECT_NOT(!JSSunGetSunEntity(context, thisObj, &sun)))  return false;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -177,20 +183,20 @@ static bool SunGetProperty(Context cx, Object obj, PropertyId propID, Value *val
 		{
 			const std::optional<std::string> name = [sun cxx_name];
 			*value = OOJSValueFromPList(context, name.has_value() ? oo::PList(*name) : oo::PList());
-			return YES;
+			return true;
 		}
 			
 		case kSun_hasGoneNova:
 			*value = OOJSValueFromBOOL([sun goneNova]);
-			return YES;
+			return true;
 			
 		case kSun_isGoingNova:
 			*value = OOJSValueFromBOOL([sun willGoNova] && ![sun goneNova]);
-			return YES;
+			return true;
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sSunProperties);
-			return NO;
+			return false;
 	}
 	
 	OOJS_NATIVE_EXIT
@@ -210,10 +216,10 @@ static bool SunGoNova(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOSunEntity					*sun = nil;
 	double					delay = 0;
 	
-	if (EXPECT_NOT(!JSSunGetSunEntity(context, OOJS_THIS, &sun)))  return NO;
-	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToNumber(context, (OOJS_ARGV[0]), &delay)))  return NO;
+	if (EXPECT_NOT(!JSSunGetSunEntity(context, OOJS_THIS, &sun)))  return false;
+	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToNumber(context, (OOJS_ARGV[0]), &delay)))  return false;
 	
-	[sun setGoingNova:YES inTime:delay];
+	[sun setGoingNova:true inTime:delay];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -230,11 +236,11 @@ static bool SunCancelNova(ooscript::Context context, ooscript::CallArgs &oojsArg
 	
 	OOSunEntity					*sun = nil;
 	
-	if (EXPECT_NOT(!JSSunGetSunEntity(context, OOJS_THIS, &sun)))  return NO;
+	if (EXPECT_NOT(!JSSunGetSunEntity(context, OOJS_THIS, &sun)))  return false;
 	
 	if ([sun willGoNova] && ![sun goneNova])
 	{
-		[sun setGoingNova:NO inTime:0];
+		[sun setGoingNova:false inTime:0];
 	}
 	OOJS_RETURN_VOID;
 	

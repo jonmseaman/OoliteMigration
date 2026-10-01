@@ -29,7 +29,6 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import	"ResourceManager.h"
 #import "PlayerEntityLegacyScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

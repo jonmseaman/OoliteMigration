@@ -33,7 +33,6 @@
 #import "OOMacroOpenGL.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 #ifndef NDEBUG

@@ -97,7 +97,7 @@ public:
 
 	// The getters of the ivars of the same name (a data member and a member function cannot share
 	// a name; ADR-0056 amendment oo-862e).
-	unichar *	getDigram();
+	uint16_t *	getDigram();
 	NSPoint		getPosition();
 	NSPoint		getMovement();
 	GLfloat		getRotation();
@@ -140,7 +140,7 @@ private:
 
 	PlayerEntity			*player = {};	// owning entity (not retained)
 	//
-	unichar					digram[2] = {};	// seed for pseudo-randomly setting up Trumble (pair of characters)
+	uint16_t					digram[2] = {};	// seed for pseudo-randomly setting up Trumble (pair of characters)
 	//
 	GLfloat					colorBase[4] = {};	// color of Trumble
 	GLfloat					colorPoint1[4] = {};	// color of Trumble (variation 1)
@@ -175,7 +175,7 @@ private:
 	enum trumble_mouth		mouthFrame = {};	// which mouth position - determines what part of the texture to display
 	enum trumble_eyes		eyeFrame = {};	// which eye position - determines what part of the texture to display
 	//
-	oo::ObjCRef<OOTexture *>	texture;
+	oo::ObjCRef<::OOTexture *>	texture;
 	//
 	GLfloat					saved_float1 = {}, saved_float2 = {};
 	//

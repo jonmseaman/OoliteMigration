@@ -26,13 +26,12 @@ MA 02110-1301, USA.
 
 #import "OOSystemDescriptionManager.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOTypes.h"
 #import "PlayerEntity.h"
 #import "Universe.h"
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/String.hpp"
 
 namespace {
 

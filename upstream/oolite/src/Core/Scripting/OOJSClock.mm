@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #import "PlayerEntityScriptMethods.h"
 #import "OOStringParsing.h"
 #import "OODebugStandards.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -45,6 +44,15 @@ MA 02110-1301, USA.
 	this file compiles as Objective-C++ (ADR-0001). Natives take the façade signature
 	(Context, CallArgs reference) directly, and the OOJS_* argument-marshalling macros
 	(OOJS_NATIVE_ENTER, OOJS_ARGV, OOJS_RETURN_*) expand to the CallArgs accessors.
+*/
+
+/*
+	C++20 since bead oo-xy5r, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT are a C++ try/catch (OOJSEngineNativeWrappers.h) and BOOL/YES/NO are
+	bool/true/false. The file has no category, so there is no bridge. Messages to classes that are
+	still Objective-C (PlayerEntity, Universe) stay as they are, which is why the file is still
+	.mm until Phase 4.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -194,7 +202,7 @@ void InitOOJSClock(ooscript::Context context, ooscript::Object global)
 namespace {
 static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -222,28 +230,28 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 
 		case kClock_secondsComponent:
 			*value = ooscript::int32Value(fmod(clockTime, 60.0));
-			return YES;
+			return true;
 
 		case kClock_minutesComponent:
 			*value = ooscript::int32Value(fmod(floor(clockTime / 60.0), 60.0));
-			return YES;
+			return true;
 
 		case kClock_hoursComponent:
 			*value = ooscript::int32Value(fmod(floor(clockTime / 3600.0), 24.0));
-			return YES;
+			return true;
 
 		case kClock_days:
 		case kClock_daysComponent:
 			*value = ooscript::int32Value(floor(clockTime / 86400.0));
-			return YES;
+			return true;
 
 		case kClock_clockString:
 			*value = OOJSValueFromPList(context, oo::PList([player cxx_dial_clock]));
-			return YES;
+			return true;
 
 		case kClock_isAdjusting:
 			*value = OOJSValueFromBOOL([player clockAdjusting]);
-			return YES;
+			return true;
 
 		case kClock_adjustedSeconds:
 			return ooscript::newNumberValue(cx, [player clockTimeAdjusted], value);
@@ -254,7 +262,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sClockProperties);
-			return NO;
+			return false;
 	}
 
 	OOJS_NATIVE_EXIT
@@ -290,10 +298,10 @@ static bool ClockClockStringForTime(ooscript::Context context, ooscript::CallArg
 		ooscript::Value arg = ooscript::undefinedValue();
 		if (oojsArgs.count() > 0)  arg = OOJS_ARGV[0];
 		cxx_OOJSReportBadArguments(context, "Clock", "clockStringForTime", 1, &arg, std::nullopt, "number");
-		return NO;
+		return false;
 	}
 
-	OOJS_RETURN(OOJSValueFromPList(context, oo::PList(cxx_ClockToString(time, NO))));
+	OOJS_RETURN(OOJSValueFromPList(context, oo::PList(cxx_ClockToString(time, false))));
 
 	OOJS_NATIVE_EXIT
 }
@@ -314,17 +322,17 @@ static bool ClockAddSeconds(ooscript::Context context, ooscript::CallArgs &oojsA
 		ooscript::Value arg = ooscript::undefinedValue();
 		if (oojsArgs.count() > 0)  arg = OOJS_ARGV[0];
 		cxx_OOJSReportBadArguments(context, "Clock", "addSeconds", 1, &arg, std::nullopt, "number");
-		return NO;
+		return false;
 	}
 
 	if (time > kMaxTime || time < 1.0 || !isfinite(time))
 	{
-		OOJS_RETURN_BOOL(NO);
+		OOJS_RETURN_BOOL(false);
 	}
 
 	[OOPlayerForScripting() addToAdjustTime:time];
 
-	OOJS_RETURN_BOOL(YES);
+	OOJS_RETURN_BOOL(true);
 
 	OOJS_NATIVE_EXIT
 }

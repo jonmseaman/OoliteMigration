@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
 

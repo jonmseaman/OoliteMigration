@@ -26,7 +26,9 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class OOVisualEffectEntity;
+#include "oofnd/objc/OOObjCRef.h"
+#include <vector>
+@class Entity, OOVisualEffectEntity;
 
 
 #ifdef __cplusplus
@@ -39,11 +41,12 @@ void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-@interface OOVisualEffectEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript;	// empty before the first subentity; JS nil via visualEffectSubEntityEnumerator
-
-@end
+/*	The bodies of OOVisualEffectEntity (OOJavaScriptExtensions), which the engine reaches by
+	selector. Its methods are one-line forwarders to these in OOJSVisualEffect+ObjCBridge.mm
+	until OOVisualEffectEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+*/
+void OOJSVisualEffectGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSVisualEffectJSClassName(void);
+bool OOJSVisualEffectIsVisibleToScripts(void);
+std::vector<oo::ObjCRef<Entity *>> OOJSVisualEffectSubEntitiesForScript(OOVisualEffectEntity *effect);

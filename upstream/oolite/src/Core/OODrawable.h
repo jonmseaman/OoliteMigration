@@ -75,7 +75,7 @@ public:
 	virtual std::optional<std::string> descriptionComponents() const;
 
 #ifndef NDEBUG
-	virtual std::vector<oo::ObjCRef<OOTexture *>> allTextures();
+	virtual std::vector<oo::ObjCRef<::OOTexture *>> allTextures();
 	virtual size_t totalSize();	// Size including dynamic data, not counting textures.
 #endif
 };

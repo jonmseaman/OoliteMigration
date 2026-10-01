@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 #import "OOCacheManager.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -181,21 +180,6 @@ oo::PList OOCacheManager::pListForKey(const std::string &inKey, const std::strin
 }
 
 
-id OOCacheManager::objectForKey(const std::string &inKey, const std::string &inCacheKey)
-{
-	return oo::ObjectFromPList(pListForKey(inKey, inCacheKey));
-}
-
-
-
-void OOCacheManager::setObject(id inObject, const std::string &inKey, const std::string &inCacheKey)
-{
-	OOCParameterAssert(inObject != nil);
-	
-	setPList(oo::PListFrom(inObject), inKey, inCacheKey);
-}
-
-
 void OOCacheManager::setPList(const oo::PList &inValue, const std::string &inKey, const std::string &inCacheKey)
 {
 	OOCParameterAssert(!inValue.isNull());
@@ -286,7 +270,7 @@ void OOCacheManager::flush()
 void OOCacheManager::finishOngoingFlush()
 {
 #if WRITE_ASYNC
-	[[OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_scheduledWrite];
+	[[::OOAsyncWorkManager sharedAsyncWorkManager] waitForTaskToComplete:_scheduledWrite];
 #endif
 }
 
@@ -437,7 +421,7 @@ void OOCacheManager::write()
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", endT);
 #endif
 	
-	[[OOAsyncWorkManager sharedAsyncWorkManager] addTask:_scheduledWrite priority:kOOAsyncPriorityLow];
+	[[::OOAsyncWorkManager sharedAsyncWorkManager] addTask:_scheduledWrite priority:kOOAsyncPriorityLow];
 #else
 #if PROFILE_WRITES
 	OO_LOG("dataCache.profile", "Time to prepare cache data: {:g} seconds.", prepareT);

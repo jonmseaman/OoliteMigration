@@ -27,7 +27,6 @@ SOFTWARE.
 
 #import "OODrawable.h"
 #import "NSObjectOOExtensions.h"
-#import "OOFoundationBridge.h"
 
 
 namespace cxx {
@@ -93,7 +92,7 @@ std::optional<std::string> OODrawable::descriptionComponents() const
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OODrawable::allTextures()
+std::vector<oo::ObjCRef<::OOTexture *>> OODrawable::allTextures()
 {
 	return {};
 }

@@ -28,11 +28,11 @@ SOFTWARE.
 #import "OORegExpMatcher.h"
 #import "OOJSFunction.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm was (bead oo-sdz):
@@ -51,81 +51,78 @@ using ooscript::Object;
 
 
 
+namespace cxx {
+
 // Pseudo-singleton: a single instance exists at a given time, but can be released.
 namespace {
 static OORegExpMatcher *sActiveInstance;
 } // namespace
 
 
-@implementation OORegExpMatcher
-
-+ (instancetype) regExpMatcher
+oo::Ref<OORegExpMatcher> OORegExpMatcher::regExpMatcher()
 {
-	OOAssert(oo::thread::isMainThread(), "OORegExpMatcher may only be used on the main thread.");
+	OOCAssert(oo::thread::isMainThread(), "OORegExpMatcher may only be used on the main thread.");
 	
-	if (sActiveInstance == nil)
+	if (sActiveInstance == nullptr)
 	{
-		sActiveInstance = [[[self alloc] init] autorelease];
+		oo::Ref<OORegExpMatcher> matcher = oo::makeRef<OORegExpMatcher>();
+		if (!matcher->init())  return nullptr;	// [[[self alloc] init] autorelease] was nil
+		sActiveInstance = matcher.get();
+		return matcher;
 	}
 	
-	return sActiveInstance;
+	return oo::Ref<OORegExpMatcher>(sActiveInstance);
 }
 
 
-- (id) init
+bool OORegExpMatcher::init()
 {
-	self = [super init];
-	if (self != nil)
-	{	
-		const char *argumentNames[2] = { "string", "regexp" };
-		unsigned codeLine = __LINE__ + 1;	// NB: should remain line before code.
-		const char *code = "return regexp.test(string);";
-		
-		[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
-		
-		ooscript::Context context = OOJSAcquireContext();
-		_tester = [[OOJSFunction alloc] initWithName:std::string("matchesRegExp")
-											   scope:NULL
-												code:std::string(code)
-									   argumentCount:2
-									   argumentNames:argumentNames
-											fileName:oo::str::lastPathComponent(__FILE__)
-										  lineNumber:codeLine
-											 context:context];
-		
-		OOJSRelinquishContext(context);
-		
-		if (_tester == nil)  DESTROY(self);
-	}
+	const char *argumentNames[2] = { "string", "regexp" };
+	unsigned codeLine = __LINE__ + 1;	// NB: should remain line before code.
+	const char *code = "return regexp.test(string);";
 	
-	return self;
+	[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
+	
+	ooscript::Context context = OOJSAcquireContext();
+	_tester = [[::OOJSFunction alloc] initWithName:std::string("matchesRegExp")
+										   scope:NULL
+											code:std::string(code)
+								   argumentCount:2
+								   argumentNames:argumentNames
+										fileName:oo::str::lastPathComponent(__FILE__)
+									  lineNumber:codeLine
+										 context:context];
+	
+	OOJSRelinquishContext(context);
+	
+	if (_tester == nil)  return false;	// was DESTROY(self)
+	
+	return true;
 }
 
 
-- (void) dealloc
+OORegExpMatcher::~OORegExpMatcher()
 {
-	if (sActiveInstance == self)  sActiveInstance = nil;
+	if (sActiveInstance == this)  sActiveInstance = nullptr;
 	
 	DESTROY(_tester);
 	DESTROY(_cachedRegExpObject);
-	
-	[super dealloc];
 }
 
 
-- (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp
+bool OORegExpMatcher::string(const std::string &string, const std::string &regExp)
 {
-	return [self string:string matchesExpression:regExp flags:0];
+	return this->string(string, regExp, 0);
 }
 
 
-- (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp flags:(NSUInteger)flags
+bool OORegExpMatcher::string(const std::string &string, const std::string &regExp, NSUInteger flags)
 {
-	OOAssert(oo::thread::isMainThread(), "OORegExpMatcher may only be used on the main thread.");
+	OOCAssert(oo::thread::isMainThread(), "OORegExpMatcher may only be used on the main thread.");
 
 	const std::u16string regExpUnits = oo::utf8ToUtf16(regExp);
 	size_t expLength = regExpUnits.size();
-	if (EXPECT_NOT(expLength == 0))  return NO;
+	if (EXPECT_NOT(expLength == 0))  return false;
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -135,9 +132,9 @@ static OORegExpMatcher *sActiveInstance;
 		_cachedRegExpString.reset();
 		DESTROY(_cachedRegExpObject);
 		
-		unichar *buffer;
-		buffer = static_cast<unichar *>(malloc(expLength * sizeof *buffer));
-		if (EXPECT_NOT(buffer == NULL))  return NO;
+		uint16_t *buffer;
+		buffer = static_cast<uint16_t *>(malloc(expLength * sizeof *buffer));
+		if (EXPECT_NOT(buffer == NULL))  return false;
 		std::copy(regExpUnits.begin(), regExpUnits.end(), buffer);
 		
 		_cachedRegExpString = regExp;
@@ -158,16 +155,16 @@ static OORegExpMatcher *sActiveInstance;
 	argv[1] = (_cachedRegExpObject != nil) ? OOJSValueFromNativeObject(context, _cachedRegExpObject) : ooscript::Value{0};
 	OOJSAddGCValueRoot(context, &argv[1], "OORegExpMatcher argv");
 	ooscript::Value resultValue;
-	BOOL OK = [_tester evaluateWithContext:context scope:NULL argc:2 argv:argv result:&resultValue];
-	bool matched = NO;
+	bool OK = [_tester evaluateWithContext:context scope:NULL argc:2 argv:argv result:&resultValue];
+	bool matched = false;
 	if (OK)  OK = ooscript::valueToBoolean(context, resultValue, &matched);
 	ooscript::removeValueRoot(context, &argv[0]);
 	ooscript::removeValueRoot(context, &argv[1]);
-	BOOL result = OK && matched;
+	bool result = OK && matched;
 	
 	OOJSRelinquishContext(context);
 	
 	return result;
 }
 
-@end
+}	// namespace cxx

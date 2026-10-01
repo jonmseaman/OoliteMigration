@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 */
 
 #import "OOColor.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 
@@ -134,24 +133,6 @@ cxx::OOColor *oo::ToCxx(OOColor *color)
 + (OOColor *) cxx_brightColorWithDescription:(const oo::PList &)description
 {
 	return oo::ToObjC(cxx::OOColor::brightColorWithDescription(description));
-}
-
-
-+ (OOColor *) colorWithDescription:(id)description
-{
-	return oo::ToObjC(cxx::OOColor::colorWithDescription(oo::PListFrom(description)));
-}
-
-
-+ (OOColor *) colorWithDescription:(id)description saturationFactor:(float)factor
-{
-	return oo::ToObjC(cxx::OOColor::colorWithDescription(oo::PListFrom(description), factor));
-}
-
-
-+ (OOColor *) brightColorWithDescription:(id)description
-{
-	return oo::ToObjC(cxx::OOColor::brightColorWithDescription(oo::PListFrom(description)));
 }
 
 

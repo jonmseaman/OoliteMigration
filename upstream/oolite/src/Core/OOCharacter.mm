@@ -27,12 +27,11 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOJSScript.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/objc/OORuntime.h"
+#import "OOObjCPList.h"
 
 
 namespace {
@@ -482,7 +481,7 @@ void OOCharacter::setCharacterFromDictionary(const oo::PList &dict)
 	const std::string	*originName = (origin != nullptr) ? origin->getIf<std::string>() : nullptr;
 	id					originObject = (origin != nullptr) ? oo::ObjectIn(*origin) : nil;
 	const SEL			intValue = OOSelectorFromName("intValue");
-	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? [originObject intValue] : 0) : dict.get<int>("origin");
+	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:intValue] ? oo::SendIntValue(originObject) : 0) : dict.get<int>("origin");
 	if ((origin != nullptr && origin->isNumber()) ||
 		(((originName != nullptr) || [originObject respondsToSelector:intValue]) && (originValue != 0 || (originName != nullptr && *originName == "0"))))
 	{

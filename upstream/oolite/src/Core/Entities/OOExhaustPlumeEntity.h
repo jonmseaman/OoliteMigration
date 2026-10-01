@@ -43,38 +43,58 @@ enum
 };
 
 
-@interface OOExhaustPlumeEntity: Entity <OOSubEntity>
+namespace cxx {
+
+class OOExhaustPlumeEntity : public Entity
 {
-@private
-	Vector			_exhaustScale;
-	OOHPScalar			_vertices[34 * 3];
-	GLfloat			_glVertices[34 * 3];
-	GLfloat			_exhaustBaseColors[34 * 4];
-	Frame			_track[kExhaustFrameCount];
-	OOTimeAbsolute	_trackTime;
-	uint8_t			_nextFrame;
-}
+public:
+	// definition: the exhaust's tokens (x y z scale_x scale_y scale_z), read as -oo_floatAtIndex: read them.
+	// +exhaustForShip:withDefinition:andScale:: a new plume, initialised; null for no tokens. The
+	// facade's class method hands it to Objective-C (oo::NewEntityFacade).
+	static oo::Ref<OOExhaustPlumeEntity> exhaustForShip(ShipEntity *ship, const std::vector<std::string> &definition, float scale);
+	// -initForShip:withDefinition:andScale:'s body, run once right after construction (amendment
+	// oo-vl43 item 2): false where the initialiser answered nil.
+	bool initForShip(ShipEntity *ship, const std::vector<std::string> &definition, float scale);
 
-// definition: the exhaust's tokens (x y z scale_x scale_y scale_z), read as -oo_floatAtIndex: read them.
-+ (id) exhaustForShip:(ShipEntity *)ship withDefinition:(const std::vector<std::string> &)definition andScale:(float)scale;
-- (id) initForShip:(ShipEntity *)ship withDefinition:(const std::vector<std::string> &)definition andScale:(float)scale;
+	void resetPlume();
 
-- (void) resetPlume;
+	Vector scale();
+	void setScale(Vector scale);
 
-- (Vector) scale;
-- (void) setScale:(Vector)scale;
+	::OOTexture *texture();
 
-- (OOTexture *) texture;
+	static void setUpTexture();
+	static ::OOTexture *plumeTexture();
+	// The graphics reset client is the facade class, which forwards here.
+	static void resetGraphicsState();
 
-+ (void) setUpTexture;
-+ (OOTexture *) plumeTexture;
-+ (void) resetGraphicsState;
+	// OOSubEntity, answered by the facade.
+	void rescaleBy(GLfloat factor);
+	void rescaleBy(GLfloat factor, bool writeToCache);
+	void drawSubEntityImmediate(bool immediate, bool translucent);
 
-@end
+	// Entity (OOExhaustPlume), which the facade's category answers from here.
+	bool isExhaust();
+
+	double findCollisionRadius() override;
+	void update(OOTimeDelta delta_t) override;
+
+private:
+	void saveToLastFrame();
+	Frame frameAtTime(double t_frame, Frame frame_zero);	// t_frame is relative to now ie. -0.5 = half a second ago.
+
+	Vector			_exhaustScale = {};
+	OOHPScalar			_vertices[34 * 3] = {};
+	GLfloat			_glVertices[34 * 3] = {};
+	GLfloat			_exhaustBaseColors[34 * 4] = {};
+	Frame			_track[kExhaustFrameCount] = {};
+	OOTimeAbsolute	_trackTime = {};
+	uint8_t			_nextFrame = {};
+};
+
+}	// namespace cxx
 
 
-@interface Entity (OOExhaustPlume)
-
-- (BOOL)isExhaust;
-
-@end
+// Transitional: the Objective-C OOExhaustPlumeEntity, for the ships, which make it and message it,
+// and the scripting binding. Deleted, with namespace cxx above, by the bridge's deletion bead.
+#import "OOExhaustPlumeEntity+ObjCBridge.h"

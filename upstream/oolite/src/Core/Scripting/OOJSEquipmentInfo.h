@@ -57,9 +57,21 @@ OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Val
 extern "C++" {	// C++ results (proposed ADR-0043, bead oo-xcqk); nullopt where these returned nil
 std::optional<std::string> JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value);
 
+// outExists stays BOOL *: its callers pass the address of a BOOL of their own (bead oo-supk).
 std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists);
 }
 
 #ifdef __cplusplus
 }
 #endif
+
+
+/*	The bodies of OOEquipmentType (OOJavaScriptExtensions), the category on the converted class's
+	façade that the engine reaches by selector. Its methods are one-line forwarders to these in
+	OOJSEquipmentInfo+ObjCBridge.mm, which pass the façade's _jsSelf ivar by reference, until the
+	engine's object wrappers hold C++ objects (proposed ADR-0056 amendments oo-ppc, oo-ykoy and
+	oo-6ia4 item 3; deletion bead oo-9ht.102).
+*/
+ooscript::Value OOJSEquipmentInfoJSValueInContext(OOEquipmentType *equipmentType, ooscript::Object &jsSelf, ooscript::Context context);
+std::optional<std::string> OOJSEquipmentInfoJSClassName(void);
+void OOJSEquipmentInfoClearJSSelf(ooscript::Object &jsSelf, ooscript::Object selfVal);

@@ -36,7 +36,6 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOShipGroup.h"
 #import "OOMaths.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
@@ -151,6 +150,7 @@ OOShipGroup::~OOShipGroup()
 		[_members[i] release];
 	}
 	free(_members);
+	[_leader release];	// setLeader() weak-retained it (bead oo-9ht.24)
 	_name.reset();
 }
 

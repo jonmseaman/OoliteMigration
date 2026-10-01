@@ -51,10 +51,11 @@ MA 02110-1301, USA.
 
 
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
 
 #include "oofnd/PListGet.hpp"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 @interface OOVisualEffectEntity (Private)
 
@@ -155,10 +156,10 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	effectinfoDictionary = effectDict;
 	if (effectinfoDictionary.isNull())  effectinfoDictionary = oo::PList(oo::PList::Dict{});
 
-	orientation = kIdentityQuaternion;
-	rotMatrix	= kIdentityMatrix;
+	_cxxEntity->orientation = kIdentityQuaternion;
+	_cxxEntity->rotMatrix	= kIdentityMatrix;
 
-	collision_radius = 0.0;
+	_cxxEntity->collision_radius = 0.0;
 
 	const std::optional<std::string> modelName = OptionalStringForKey(effectDict, "model");
 	if (modelName.has_value())
@@ -174,7 +175,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		[self setMesh:mesh];
 	}
 
-	isImmuneToBreakPatternHide = effectDict.get<bool>("is_break_pattern");
+	_cxxEntity->isImmuneToBreakPatternHide = effectDict.get<bool>("is_break_pattern");
 	scaleX = 1.0;
 	scaleY = 1.0;
 	scaleZ = 1.0;
@@ -185,7 +186,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	[self setScannerDisplayColor1:nil];
 	[self setScannerDisplayColor2:nil];
 
-	scanClass = CLASS_VISUAL_EFFECT;
+	_cxxEntity->scanClass = CLASS_VISUAL_EFFECT;
 
 	[self setStatus:STATUS_EFFECT];
 
@@ -276,20 +277,20 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	// reset size & mass!
 	if ([self mesh])
 	{
-		collision_radius = [self findCollisionRadius];
+		_cxxEntity->collision_radius = [self findCollisionRadius];
 	}
 	else
 	{
-		collision_radius = 0.0;
+		_cxxEntity->collision_radius = 0.0;
 	}
-	_profileRadius = collision_radius;
+	_profileRadius = _cxxEntity->collision_radius;
 }
 
 
 - (BOOL)setUpSubEntities 
 {
 	unsigned int	i;
-	_profileRadius = collision_radius;
+	_profileRadius = _cxxEntity->collision_radius;
 	const oo::PList *subs = effectinfoDictionary.get<oo::PList::Array>("subentities");
 
 	for (i = 0; subs != nullptr && i < subs->count(); i++)
@@ -314,7 +315,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 - (void) setNoDrawDistance
 {
 	GLfloat r = _profileRadius * [self scaleMax];
-	no_draw_distance = r * r * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
+	_cxxEntity->no_draw_distance = r * r * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
 
 }
 
@@ -382,7 +383,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	if (sub == nil)  return;
 	
 	if (!subEntities.has_value())  subEntities.emplace();
-	sub->isSubEntity = YES;
+	sub->_cxxEntity->isSubEntity = YES;
 	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
 	subEntities->emplace_back(sub);
 	[sub setOwner:self];
@@ -455,14 +456,14 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent
 {
-	if (cam_zero_distance > no_draw_distance) // this test provides an opportunity to do simple LoD culling
+	if (_cxxEntity->cam_zero_distance > _cxxEntity->no_draw_distance) // this test provides an opportunity to do simple LoD culling
 	{
 		return; // TOO FAR AWAY
 	}
 	OOGLPushModelView();
 	// HPVect: camera position
-	OOGLTranslateModelView(HPVectorToVector(position));
-	OOGLMultModelView(rotMatrix);
+	OOGLTranslateModelView(HPVectorToVector(_cxxEntity->position));
+	OOGLMultModelView(_cxxEntity->rotMatrix);
 	[self drawImmediate:immediate translucent:translucent];
 
 	OOGLPopModelView();
@@ -484,7 +485,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 		[se rescaleBy:factor];
 	}
 
-	collision_radius *= factor;
+	_cxxEntity->collision_radius *= factor;
 	_profileRadius *= factor;
 }
 
@@ -619,7 +620,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 
 - (GLfloat) collisionRadius
 {
-	return [self scaleMax] * collision_radius;
+	return [self scaleMax] * _cxxEntity->collision_radius;
 }
 
 
@@ -627,9 +628,9 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 {
 	[super orientationChanged];
 	
-	_v_forward   = vector_forward_from_quaternion(orientation);
-	_v_up		= vector_up_from_quaternion(orientation);
-	_v_right		= vector_right_from_quaternion(orientation);
+	_v_forward   = vector_forward_from_quaternion(_cxxEntity->orientation);
+	_v_up		= vector_up_from_quaternion(_cxxEntity->orientation);
+	_v_right		= vector_right_from_quaternion(_cxxEntity->orientation);
 }
 
 
@@ -717,7 +718,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 - (void) drawImmediate:(bool)immediate translucent:(bool)translucent 
 {
-	if (no_draw_distance < cam_zero_distance)
+	if (_cxxEntity->no_draw_distance < _cxxEntity->cam_zero_distance)
 	{
 		return; // too far away to draw
 	}
@@ -763,13 +764,13 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 - (BOOL) isBreakPattern
 {
-	return isImmuneToBreakPatternHide;
+	return _cxxEntity->isImmuneToBreakPatternHide;
 }
 
 
 - (void) setIsBreakPattern:(BOOL)bp
 {
-	isImmuneToBreakPatternHide = bp;
+	_cxxEntity->isImmuneToBreakPatternHide = bp;
 }
 
 

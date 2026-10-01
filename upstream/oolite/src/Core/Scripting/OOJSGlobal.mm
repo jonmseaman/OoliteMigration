@@ -31,21 +31,19 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
-#import "OOPListView.h"
 #import "OOTexture.h"
 #import "GuiDisplayGen.h"
 #import "MyOpenGLView.h"
 #import "ResourceManager.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOJSGuiScreenKeyDefinition.h"
-#import "OOFoundationBridge.h"
-#import "OOStringBridge.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/Scanner.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-8yi, the same way bead oo-sdz
@@ -76,6 +74,22 @@ MA 02110-1301, USA.
 	once this file compiles as Objective-C++ (ADR-0001).
 */
 
+/*
+	C++20 since bead oo-3dj2, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category interface
+	OOJavaScriptEngine (OOMonitorSupportInternal), which this file declared to type its one send of
+	-sendMonitorLogMessage:withMessageClass:inContext:, moved with that send to
+	OOJSGlobal+ObjCBridge.mm as OOJSGlobalSendMonitorLogMessage() (amendments oo-9ht.66 and oo-6ia4
+	item 6). OOColor and OOJSGuiScreenKeyDefinition, which are C++ since beads oo-11m and oo-xg7g,
+	are reached as cxx:: classes through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4); the key
+	definition is still made as its façade, which the player keeps (amendment oo-q9q4 item 1).
+	Messages to classes that are still Objective-C (PlayerEntity, Universe, GuiDisplayGen,
+	MyOpenGLView, ResourceManager) stay as they are, which is why the file is still .mm until Phase
+	4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -93,18 +107,9 @@ using ooscript::FunctionSpec;
 // non-exported, pattern).
 
 
-#if OOJSENGINE_MONITOR_SUPPORT
-
-@interface OOJavaScriptEngine (OOMonitorSupportInternal)
-
-// Implemented in OOJavaScriptEngine.mm (types from bead oo-3rb.203).
-- (void)sendMonitorLogMessage:(const std::optional<std::string> &)message
-			 withMessageClass:(const std::optional<std::string> &)messageClass
-					inContext:(ooscript::Context)context;
-
-@end
-
-#endif
+// OOJavaScriptEngine (OOMonitorSupportInternal), declared here to type the one send of
+// -sendMonitorLogMessage:withMessageClass:inContext:, is in OOJSGlobal+ObjCBridge.mm with that send,
+// as OOJSGlobalSendMonitorLogMessage() (proposed ADR-0056 amendments oo-9ht.66 and oo-6ia4 item 6).
 
 
 static const char * const kOOLogDebugMessage = "script.debug.message";
@@ -326,7 +331,7 @@ void SetUpOOJSGlobal(ooscript::Context context, ooscript::Object global)
 namespace {
 static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -339,11 +344,11 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	{
 		case kGlobal_galaxyNumber:
 			*value = ooscript::int32Value([player currentGalaxyID]);
-			return YES;
+			return true;
 			
 		case kGlobal_guiScreen:
 			*value = (OOJSValueFromGUIScreenID(context, [player guiScreen]));
-			return YES;
+			return true;
 			
 #ifndef NDEBUG
 		case kGlobal_timeAccelerationFactor:
@@ -352,7 +357,7 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sGlobalPropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJS_NATIVE_EXIT
@@ -364,7 +369,7 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 namespace {
 static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -379,7 +384,7 @@ static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[UNIVERSE setTimeAccelerationFactor:fValue];
-				return YES;
+				return true;
 			}
 			break;
 	
@@ -388,7 +393,7 @@ static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	}
 	
 	OOJSReportBadPropertyValue(context, thisObj, (propID), sGlobalPropertiesRaw, *(value));
-	return NO;
+	return false;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -440,9 +445,7 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OO_LOG(messageClass, "{}", message.value_or("(null)"));
 	
 #if OOJSENGINE_MONITOR_SUPPORT
-	[[OOJavaScriptEngine sharedEngine] sendMonitorLogMessage:message
-											withMessageClass:std::nullopt
-inContext:context];
+	OOJSGlobalSendMonitorLogMessage(message, std::nullopt, context);
 #endif
 	OOJS_END_FULL_NATIVE
 	
@@ -467,7 +470,7 @@ static bool GlobalExpandDescription(ooscript::Context context, ooscript::CallArg
 	if (!string.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "expandDescription", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() > 1)
 	{
@@ -497,7 +500,7 @@ static bool GlobalKeyBindingDescription(ooscript::Context context, ooscript::Cal
 	if (!string.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "keyBindingDescription", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -525,7 +528,7 @@ static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArg
 	if (!string.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "expandMissionText", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() > 1)
 	{
@@ -556,7 +559,7 @@ static bool GlobalDisplayNameForCommodity(ooscript::Context context, ooscript::C
 	if (!string.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "displayNameForCommodity", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	OOJS_RETURN_PLIST(oo::PList(cxx_CommodityDisplayNameForSymbolicName(*string)));
 	
@@ -604,11 +607,11 @@ static bool GlobalRandomInhabitantsDescription(ooscript::Context context, ooscri
 	if (oojsArgs.count() > 0 && !ooscript::valueToBoolean(context, (OOJS_ARGV[0]), &isPlural))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "randomInhabitantsDescription", 1, OOJS_ARGV, std::nullopt, "boolean");
-		return NO;
+		return false;
 	}
 	
 	make_pseudo_random_seed(&aSeed);
-	string = [UNIVERSE cxx_getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? YES : NO)];
+	string = [UNIVERSE cxx_getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? true : false)];
 	OOJS_RETURN_STRING_OR_NULL(string);
 	
 	OOJS_NATIVE_EXIT
@@ -622,32 +625,32 @@ static bool GlobalClearExtraGuiScreenKeys(ooscript::Context context, ooscript::C
 	
 	OOJS_NATIVE_ENTER(context)
 
-	BOOL				result = NO;
+	bool				result = false;
 	PlayerEntity		*player = OOPlayerForScripting();
 
 	if (EXPECT_NOT(oojsArgs.count() < 2))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setExtraGuiScreenKeys", 0, OOJS_ARGV, std::nullopt, "missing arguments");
-		return NO;
+		return false;
 	}
 
 	std::optional<std::string> key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!key.has_value() || key->empty()))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "clearExtraGuiScreenKeys", 1, OOJS_ARGV, std::nullopt, "key");
-		return NO;
+		return false;
 	}
 
 	OOGUIScreenID gui = OOGUIScreenIDFromJSValue(context, OOJS_ARGV[1]);
 	if (!gui)
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "clearExtraGuiScreenKeys", 0, OOJS_ARGV, std::nullopt, "guiScreen invalid entry");
-		return NO;
+		return false;
 	}
 
 	[player cxx_clearExtraGuiScreenKeys:gui key:*key];
 
-	result = YES;
+	result = true;
 	OOJS_RETURN_BOOL(result);
 	
 	OOJS_NATIVE_EXIT
@@ -660,7 +663,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 	
 	OOJS_NATIVE_ENTER(context)
 
-	BOOL				result = NO;
+	bool				result = false;
 	ooscript::Value				callback = ooscript::nullValue();
 	ooscript::Object callbackThis = NULL;
 	ooscript::Value				value = ooscript::nullValue();
@@ -673,7 +676,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setExtraGuiScreenKeys", 0, OOJS_ARGV, std::nullopt, "key, definition");
-		return NO;
+		return false;
 	}
 	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 
@@ -683,7 +686,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		if (oojsArgs.count() < 2 || !ooscript::valueToObject(context, (OOJS_ARGV[1]), &paramsObj))
 		{
 			cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition: definition is not a valid dictionary.");
-			return NO;
+			return false;
 		}
 		params = (paramsObj);
 	}
@@ -691,7 +694,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 	if (!ooscript::getProperty(context, (params), "guiScreen", (&value)) || ooscript::isUndefined(value))
 	{
 		cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition: must have a 'guiScreen' property.");
-		return NO;
+		return false;
 	}
 
 	gui = OOGUIScreenIDFromJSValue(context, value);
@@ -701,13 +704,13 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		gui == GUI_SCREEN_KEYBOARD_CONFIG || gui == GUI_SCREEN_KEYBOARD_ENTRY || gui == GUI_SCREEN_KEYBOARD_LAYOUT)
 	{
 		cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition: 'guiScreen' property must be a permitted and valid GUI_SCREEN idenfifier.");
-		return NO;
+		return false;
 	}
 
 	if (!ooscript::getProperty(context, (params), "registerKeys", (&value)) || ooscript::isUndefined(value))
 	{
 		cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition: must have a 'registerKeys' property.");
-		return NO;
+		return false;
 	}
 	if (!ooscript::isNull(value))
 	{
@@ -718,25 +721,28 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		else 
 		{
 			cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition: registerKeys is not a valid dictionary.");
-			return NO;
+			return false;
 		}
 	}
 
 	if (!ooscript::getProperty(context, (params), "callback", (&callback)) || ooscript::isUndefined(callback))
 	{
 		cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition; must have a 'callback' property.");
-		return NO;
+		return false;
 	}
 	if (!OOJSValueIsFunction(context,callback))
 	{
 		cxx_OOJSReportBadArguments(context, "global", "setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], std::nullopt, "key, definition; 'callback' property must be a function.");
-		return NO;
+		return false;
 	}
 
+	// The definition is still made as its façade (its superclass, OOWeakRefObject, is Objective-C:
+	// amendment oo-q9q4 item 1), which the player keeps; its members are reached as C++.
 	OOJSGuiScreenKeyDefinition* definition = [[OOJSGuiScreenKeyDefinition alloc] init];
-	[definition cxx_setName:key];
-	[definition setRegisterKeys:keydefs];
-	[definition setCallback:callback];
+	cxx::OOJSGuiScreenKeyDefinition *cxxDefinition = oo::ToCxx(definition);
+	cxxDefinition->setName(key);
+	cxxDefinition->setRegisterKeys(keydefs);
+	cxxDefinition->setCallback(callback);
 
 	// get callback 'this'
 	if (ooscript::getProperty(context, (params), "cbThis", (&value)) && !ooscript::isUndefined(value))
@@ -744,7 +750,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 		Object callbackThisObj = nullptr;
 		ooscript::valueToObject(context, (value), &callbackThisObj);
 		callbackThis = (callbackThisObj);
-		[definition setCallbackThis:callbackThis];
+		cxxDefinition->setCallbackThis(callbackThis);
 		// can do .bind(this) for callback instead
 	}
 
@@ -765,7 +771,7 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	BOOL			result = NO;
+	bool			result = false;
 	ooscript::Value			value = (oojsArgs.count() > 0) ? OOJS_ARGV[0] : ooscript::nullValue();
 	
 	if (EXPECT_NOT(oojsArgs.count() == 0))
@@ -775,7 +781,7 @@ static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallA
 	else if (EXPECT_NOT(ooscript::isUndefined(value)))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setScreenBackground", 1, &value, std::nullopt, "GUI texture descriptor");
-		return NO;
+		return false;
 	}
 	
 	if ([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)
@@ -805,13 +811,13 @@ static bool GlobalGetScreenBackgroundForKey(ooscript::Context context, ooscript:
 	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getScreenBackgroundDefault", 0, OOJS_ARGV, std::nullopt, "missing arguments");
-		return NO;
+		return false;
 	}
 	std::optional<std::string>	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!key.has_value() || key->empty()))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getScreenBackgroundDefault", 0, OOJS_ARGV, std::nullopt, "key");
-		return NO;
+		return false;
 	}
 	OOJS_RETURN_PLIST([UNIVERSE cxx_screenTextureDescriptorForKey:*key]);
 	
@@ -826,12 +832,12 @@ static bool GlobalSetScreenBackgroundForKey(ooscript::Context context, ooscript:
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	BOOL			result = NO;
+	bool			result = false;
 	
 	if (EXPECT_NOT(oojsArgs.count() < 2))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setScreenBackgroundDefault", 0, OOJS_ARGV, std::nullopt, "missing arguments");
-		return NO;
+		return false;
 	}
 
 	std::optional<std::string>	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
@@ -839,14 +845,14 @@ static bool GlobalSetScreenBackgroundForKey(ooscript::Context context, ooscript:
 	if (EXPECT_NOT(!key.has_value() || key->empty()))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setScreenBackgroundDefault", 0, OOJS_ARGV, std::nullopt, "key");
-		return NO;
+		return false;
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	oo::PList		descriptor = [gui cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:"setScreenBackgroundDefault()"];
 	
 	[UNIVERSE cxx_setScreenTextureDescriptorForKey:*key descriptor:descriptor];	// (its Foundation round trip was the identity for this JavaScript-derived dictionary)
-	result = YES;
+	result = true;
 	
 	OOJS_RETURN_BOOL(result);
 	
@@ -862,7 +868,7 @@ static bool GlobalSetScreenOverlay(ooscript::Context context, ooscript::CallArgs
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	BOOL			result = NO;
+	bool			result = false;
 	ooscript::Value			value = (oojsArgs.count() > 0) ? OOJS_ARGV[0] : ooscript::nullValue();
 	
 	if (EXPECT_NOT(oojsArgs.count() == 0))
@@ -872,7 +878,7 @@ static bool GlobalSetScreenOverlay(ooscript::Context context, ooscript::CallArgs
 	else if (EXPECT_NOT(ooscript::isUndefined(value)))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setScreenOverlay", 1, &value, std::nullopt, "GUI texture descriptor");
-		return NO;
+		return false;
 	}
 	
 	if ([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)
@@ -899,27 +905,27 @@ static bool GlobalGetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getGuiColorForKey", 0, OOJS_ARGV, std::nullopt, "missing arguments");
-		return NO;
+		return false;
 	}
 	std::optional<std::string>	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(!key.has_value() || key->empty()))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getGuiColorForKey", 0, OOJS_ARGV, std::nullopt, "key");
-		return NO;
+		return false;
 	}
 	if (key->find("color") == std::string::npos)
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "getGuiColorForKey", 0, OOJS_ARGV, std::nullopt, "valid color key setting");
-		return NO;
+		return false;
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	OOColor *col = [gui cxx_colorFromSetting:*key defaultValue:nil];
+	cxx::OOColor *col = oo::ToCxx([gui cxx_colorFromSetting:key defaultValue:nil]);
 
 	// The components as the colour's -normalizedArray gave them: floats, nil for no colour.
 	oo::PList::Array components;
-	for (float component : [col cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
-	OOJS_RETURN_PLIST(col != nil ? oo::PList(std::move(components)) : oo::PList());
+	if (col != nullptr)  for (float component : col->normalizedArray())  components.push_back(oo::PList::singleReal(component));
+	OOJS_RETURN_PLIST(col != nullptr ? oo::PList(components) : oo::PList());
 	
 	OOJS_NATIVE_EXIT
 }
@@ -933,13 +939,13 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	BOOL			result = NO;
-	OOColor			*col = nil;
+	bool			result = false;
+	oo::Ref<cxx::OOColor>	col;
 	
 	if (EXPECT_NOT(oojsArgs.count() != 2))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 0, OOJS_ARGV, std::nullopt, "missing arguments");
-		return NO;
+		return false;
 	}
 
 	std::optional<std::string>	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
@@ -947,27 +953,27 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 	if (EXPECT_NOT(!key.has_value() || key->empty()))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 0, OOJS_ARGV, std::nullopt, "key");
-		return NO;
+		return false;
 	}
 	if (key->find("color") == std::string::npos)
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 0, OOJS_ARGV, std::nullopt, "valid color key setting");
-		return NO;
+		return false;
 	}
 
 	if (!ooscript::isNull(value))
 	{
-		col = [OOColor cxx_colorWithDescription:cxx_OOJSPListFromJSValue(context, value)];
-		if (col == nil)
+		col = cxx::OOColor::colorWithDescription(cxx_OOJSPListFromJSValue(context, value));
+		if (col == nullptr)
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "setGuiColorForKey", 1, OOJS_ARGV, std::nullopt, "color descriptor");
-			return NO;
+			return false;
 		}
 	}
 
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	[gui cxx_setGuiColorSettingFromKey:*key color:col];
-	result = YES;
+	[gui cxx_setGuiColorSettingFromKey:*key color:oo::ToObjC(col.get())];
+	result = true;
 	
 	OOJS_RETURN_BOOL(result);
 	
@@ -986,7 +992,7 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 	
 	std::optional<std::string>	value;
 	const oo::str::CharacterSet	alphanumerics = oo::str::CharacterSet::alphanumeric();
-	BOOL					result = NO;	
+	bool					result = false;	
 	
 	// Allowed: the alphanumeric character set plus "_-", tested per UTF-16 unit as -rangeOfCharacterFromSet: did.
 	auto isAllowed = [&alphanumerics](const std::string &name) {
@@ -1003,7 +1009,7 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 		if (EXPECT_NOT(!value.has_value() || !isAllowed(*value)))
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "takeSnapShot", oojsArgs.count(), OOJS_ARGV, std::nullopt, "alphanumeric string");
-			return NO;
+			return false;
 		}
 	}
 	
@@ -1034,7 +1040,7 @@ static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oo
 		if (freeSpace < 1073741824) // less than 1 GB free on disk?
 		{
 			cxx_OOJSReportWarning(context, "takeSnapShot: function disabled when free disk space is less than 1GB.");
-			OOJS_RETURN_BOOL(NO);
+			OOJS_RETURN_BOOL(false);
 		}
 	}
 	
@@ -1063,10 +1069,10 @@ static bool GlobalAutoAIForRole(ooscript::Context context, ooscript::CallArgs &o
 	if (!string.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "autoAIForRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 
-	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
+	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:true];
 	std::optional<std::string> autoAI = StringFromPList(autoAIMap.find(*string));
 
 	OOJS_RETURN_STRING_OR_NULL(autoAI);
@@ -1082,7 +1088,7 @@ static bool GlobalPauseGame(ooscript::Context context, ooscript::CallArgs &oojsA
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	BOOL			result = NO;
+	bool			result = false;
 	PlayerEntity	*player = PLAYER;
 	
 	if (player)
@@ -1096,7 +1102,7 @@ static bool GlobalPauseGame(ooscript::Context context, ooscript::CallArgs &oojsA
 			 guiScreen != GUI_SCREEN_SAVE)
 		{
 			[UNIVERSE pauseGame];
-			result = YES;
+			result = true;
 		}
 	}
 	
@@ -1117,7 +1123,7 @@ static bool GlobalQuitGame(ooscript::Context context, ooscript::CallArgs &oojsAr
 
 	[UNIVERSE quitGame];
 
-	OOJS_RETURN_BOOL(YES);
+	OOJS_RETURN_BOOL(true);
 
 	OOJS_NATIVE_EXIT
 }

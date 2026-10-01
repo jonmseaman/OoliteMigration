@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "PlanetEntity.h"
+#import "OOObjCPList.h"
 
 #if !NEW_PLANETS
 
@@ -43,7 +44,6 @@ MA 02110-1301, USA.
 #import "OODebugFlags.h"
 #import "OOGraphicsResetManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"

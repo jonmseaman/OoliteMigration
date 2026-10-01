@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOMaterial.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 
 
 namespace cxx {
@@ -128,7 +127,7 @@ NSUInteger OOMaterial::countOfTextureUnitsWithBaseCoordinates()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OOMaterial::allTextures()
+std::vector<oo::ObjCRef<::OOTexture *>> OOMaterial::allTextures()
 {
 	return {};
 }

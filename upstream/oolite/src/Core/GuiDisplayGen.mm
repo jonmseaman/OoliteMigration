@@ -33,18 +33,17 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
 #import "HeadUpDisplay.h"
-#import "OOPListView.h"
 #import "OOTexture.h"
 #import "OOJavaScriptEngine.h"
 #import "PlayerEntityStickProfile.h"
 #import "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 #include <map>
+#import "OOObjCPList.h"
 
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {
@@ -1485,6 +1484,18 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 }
 
 
+- (int) rowAtVirtualJoystickPosition:(NSPoint) vjpos
+{
+	// The cursor maths of -drawGUI:drawCursor: (which calls this), y only: the row does not depend
+	// on x. Bead oo-3rb.348.
+	double cursor_y = -size_in_pixels.height * vjpos.y;
+	if (cursor_y < -size_in_pixels.height * 0.5)  cursor_y = -size_in_pixels.height * 0.5f;
+	if (cursor_y > size_in_pixels.height * 0.5)   cursor_y = size_in_pixels.height * 0.5f;
+
+	return 1 + (float)floor((0.5f * size_in_pixels.height - pixel_row_start - cursor_y) / pixel_row_height);
+}
+
+
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor
 {
 	GLfloat x = drawPosition.x;
@@ -1552,9 +1563,9 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		double cursor_y = -size_in_pixels.height * vjpos.y;
 		if (cursor_y < -size_in_pixels.height * 0.5)  cursor_y = -size_in_pixels.height * 0.5f;
 		if (cursor_y > size_in_pixels.height * 0.5)   cursor_y = size_in_pixels.height * 0.5f;
-		
-		cursor_row = 1 + (float)floor((0.5f * size_in_pixels.height - pixel_row_start - cursor_y) / pixel_row_height);
-		
+
+		cursor_row = [self rowAtVirtualJoystickPosition:vjpos];
+
 		GLfloat h1 = 3.0f;
 		GLfloat h3 = 9.0f;
 		OOGL(glColor4f(0.6f, 0.6f, 1.0f, 1.0f)); // original value of (0.2f, 0.2f, 1.0f, 0.5f) too dark - Nikos 20130616
