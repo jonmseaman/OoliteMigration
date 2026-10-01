@@ -9371,9 +9371,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if (!isWreckage && _cxxEntity->mass > 500000.0f && randf() < 0.25f) // big!
 			{
 				// draw an expanding ring
-				OORingEffectEntity *ring = [OORingEffectEntity ringFromEntity:self];
-				[ring setVelocity:vector_multiply_scalar([self velocity], 0.25f)];
-				[UNIVERSE addEntity:ring];
+				oo::Ref<OORingEffectEntity> ring = OORingEffectEntity::ringFromEntity(self);
+				if (ring != nullptr)  ring->setVelocity(vector_multiply_scalar([self velocity], 0.25f));
+				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
 			}
 			
 			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
@@ -12270,15 +12270,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	OOColor *color = [OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
 	
-	OOSparkEntity *spark = [[OOSparkEntity alloc] initWithPosition:origin
-														  velocity:vel
-														  duration:2.0 + 3.0 * randf()
-															  size:sz
-															 color:color];
+	Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
+																		 vel,
+																		 2.0 + 3.0 * randf(),
+																		 sz,
+																		 oo::ToCxx(color)));
 	
 	[spark setOwner:self];
 	[UNIVERSE addEntity:spark];
-	[spark release];
 
 	next_spark_time = randf();
 }

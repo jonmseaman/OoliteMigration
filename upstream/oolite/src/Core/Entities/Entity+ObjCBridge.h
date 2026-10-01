@@ -259,7 +259,7 @@ inline cxx::Entity *ToCxx(::Entity *entity)  { return entity != nil ? entity->_c
 // The Objective-C object of an entity made in C++ (a converted subclass): a new facade that owns
 // it and is its identity from then on, autoreleased. Call it once, where the entity is made. Its
 // class is the facade of the entity's nearest converted class that has one (OOEntityWithDrawable,
-// else Entity).
+// OOLightParticleEntity, and the leaves with a facade; else Entity).
 ::Entity *NewEntityFacade(const Ref<cxx::Entity> &entity);
 
 // The class name "%@" and the debug dumps print: the Objective-C class of an Objective-C entity,
@@ -275,7 +275,9 @@ std::string EntityClassName(cxx::Entity *entity);
 	virtual member that is Base's own, which is what [super ...] (or a subclass that does not
 	override) reached. The facade's methods call those on an Objective-C entity. The Objective-C
 	object owns the adapter (its _cxxEntity) and is not retained by it; its -dealloc clears the
-	pointer, after which the members answer as a message to nil did.
+	pointer, after which the members answer as a message to nil did. The template is not final: a
+	converted intermediate class that adds virtual members derives its own adapter from it
+	(OOLightParticleEntity+ObjCBridge.mm, amendment oo-0otc).
 */
 class ObjCEntityLink
 {
@@ -342,7 +344,7 @@ protected:
 
 
 template <class Base>
-class ObjCEntity final : public Base, public ObjCEntityLink
+class ObjCEntity : public Base, public ObjCEntityLink
 {
 public:
 	explicit ObjCEntity(::Entity *objcOwner) : ObjCEntityLink(objcOwner) {}

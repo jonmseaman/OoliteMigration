@@ -35,6 +35,7 @@
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "OOJavaScriptEngine.h"
 #import "OOJSFunction.h"
+#import "OOJSScript.h"
 #import "OOShipGroup.h"
 
 #import "OOStringExpander.h"
