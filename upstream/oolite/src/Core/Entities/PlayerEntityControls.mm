@@ -5522,8 +5522,8 @@ static BOOL autopilot_pause;
 		
 		for (i = 0; i < uni->n_entities && nStations < 2; i++)
 		{
-			if (entities[i]->isStation && [entities[i] isKindOfClass:[StationEntity class]] &&
-				entities[i]->zero_distance <= SCANNER_MAX_RANGE2)
+			if (entities[i]->_cxxEntity->isStation && [entities[i] isKindOfClass:[StationEntity class]] &&
+				entities[i]->_cxxEntity->zero_distance <= SCANNER_MAX_RANGE2)
 			{
 				nStations++;
 				target = entities[i];

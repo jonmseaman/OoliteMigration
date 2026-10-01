@@ -50,7 +50,7 @@ MA 02110-1301, USA.
 		[self setPosition:[ship position]];
 		
 		[self setStatus:STATUS_EFFECT];
-		scanClass = CLASS_MINE;
+		_cxxEntity->scanClass = CLASS_MINE;
 		
 		[self setOwner:[ship owner]];
 		
@@ -80,7 +80,7 @@ MA 02110-1301, USA.
 	[super update:delta_t];
 	_timePassed += delta_t;
 	
-	rotMatrix = OOMatrixForBillboard(position, [PLAYER position]);
+	_cxxEntity->rotMatrix = OOMatrixForBillboard(_cxxEntity->position, [PLAYER position]);
 	
 	GLfloat tf = _timePassed / kQuiriumCascadeDuration;
 	GLfloat stf = tf * tf;
@@ -90,8 +90,8 @@ MA 02110-1301, USA.
 		expansionSpeed = fmin(240.0f + 10.0f / (tf * tf), 1000.0f);
 	}
 	
-	collision_radius += delta_t * expansionSpeed;		// expand
-	energy = delta_t * (100000 - 90000 * tf);	// adjusted to take into account delta_t
+	_cxxEntity->collision_radius += delta_t * expansionSpeed;		// expand
+	_cxxEntity->energy = delta_t * (100000 - 90000 * tf);	// adjusted to take into account delta_t
 	
 	_color[3] = OOClamp_0_1_f(0.5f * ((0.025f / tf) + 1.0f - stf));
 	
@@ -104,13 +104,13 @@ MA 02110-1301, USA.
 
 	// manage collisions
 	Entity *owner = [self owner];
-	const std::vector<oo::ObjCRef<Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	const std::vector<oo::ObjCRef<Entity *>> colliding = _cxxEntity->collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
 	for (const oo::ObjCRef<Entity *> &collidingEntity : colliding)
 	{
 		Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
-		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:"EQ_QC_MINE"];
+		[e takeEnergyDamage:_cxxEntity->energy from:self becauseOf:owner weaponIdentifier:"EQ_QC_MINE"];
 	}
 	
 	// expire after ttl
@@ -137,7 +137,7 @@ MA 02110-1301, USA.
 	
 	OOGL(glColor4fv(_color));
 	OOGLBEGIN(GL_TRIANGLE_FAN);
-		GLDrawBallBillboard(collision_radius, 4, sqrt(cam_zero_distance));
+		GLDrawBallBillboard(_cxxEntity->collision_radius, 4, sqrt(_cxxEntity->cam_zero_distance));
 	OOGLEND();
 	
 	OOGL(glPopAttrib());

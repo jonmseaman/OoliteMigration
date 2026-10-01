@@ -68,8 +68,8 @@ public:
 	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h): the quoted name.
 	virtual std::optional<std::string> descriptionComponents() const;
 
-	// Make this the current material.
-	void apply();
+	// Make this the current material. Virtual since bead oo-lh0x: OOMultiTextureMaterial overrides it.
+	virtual void apply();
 
 	/*	Make no material the current material, tearing down anything set up by the
 		current material.
