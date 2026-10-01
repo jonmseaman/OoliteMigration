@@ -2,6 +2,11 @@
 
 OOTextureSprite.h
 
+C++20 since bead oo-ljhc (Phase 3, proposed ADR-0056). The class is cxx::OOTextureSprite while
+OOTextureSprite+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
+OOTextureSprite its unconverted callers make and message; the bridge's deletion bead moves it out
+of namespace cxx.
+
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
 
@@ -22,9 +27,15 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef OOTEXTURESPRITE_H
+#define OOTEXTURESPRITE_H
+
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
+
+#include "oofnd/Ref.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 @class OOTexture;
 
@@ -33,21 +44,35 @@ MA 02110-1301, USA.
 #define	OPEN_GL_SPRITE_MIN_HEIGHT	64.0
 
 
-@interface OOTextureSprite: OOObject
+namespace cxx {
+
+class OOTextureSprite : public oo::RefCounted
 {
-@private
-	OOTexture	*texture;
-	NSSize		size;
-}
+public:
+	// Null for a nil texture (-initWithTexture:... answered nil). The first is the texture's
+	// original dimensions.
+	static oo::Ref<OOTextureSprite> initWithTexture(OOTexture *texture);
+	static oo::Ref<OOTextureSprite> initWithTexture(OOTexture *texture, NSSize spriteSize);
+
+	NSSize getSize();	// -size (the ivar keeps its name: amendment oo-862e item 1)
+
+	void blitToX(float x, float y, float z, float a);
+	void blitCentredToX(float x, float y, float z, float a);
+	void blitBackgroundCentredToX(float x, float y, float z, float a);
+
+private:
+	OOTextureSprite(OOTexture *inTexture, NSSize spriteSize);	// initWithTexture() checks the texture
+
+	oo::ObjCRef<OOTexture *>	texture;
+	NSSize					size = {};
+};
+
+}	// namespace cxx
 
 
-- (id) initWithTexture:(OOTexture *)texture;
-- (id) initWithTexture:(OOTexture *)texture size:(NSSize)spriteSize;
+// Transitional: the Objective-C OOTextureSprite, for callers not yet converted (GuiDisplayGen and
+// HeadUpDisplay make and blit sprites). Deleted, with namespace cxx above, by the bridge's
+// deletion bead.
+#import "OOTextureSprite+ObjCBridge.h"
 
-- (NSSize) size;
-
-- (void) blitToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
-- (void) blitCentredToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
-- (void) blitBackgroundCentredToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
-
-@end
+#endif	// OOTEXTURESPRITE_H

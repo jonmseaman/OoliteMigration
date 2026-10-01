@@ -9371,9 +9371,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if (!isWreckage && _cxxEntity->mass > 500000.0f && randf() < 0.25f) // big!
 			{
 				// draw an expanding ring
-				OORingEffectEntity *ring = [OORingEffectEntity ringFromEntity:self];
-				[ring setVelocity:vector_multiply_scalar([self velocity], 0.25f)];
-				[UNIVERSE addEntity:ring];
+				oo::Ref<OORingEffectEntity> ring = OORingEffectEntity::ringFromEntity(self);
+				if (ring != nullptr)  ring->setVelocity(vector_multiply_scalar([self velocity], 0.25f));
+				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
 			}
 			
 			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
