@@ -115,3 +115,4 @@
 [oo-bj8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity test_OOEntityWithDrawable test_CollisionRegion && bash tools/tier-c.sh --only goldens
 [oo-uw42] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckRequiresPListVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-z2wr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckEquipmentPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-tuq8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureVerifierStage && bash tools/tier-c.sh --only goldens
