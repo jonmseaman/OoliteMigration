@@ -18,7 +18,8 @@ Upstream changes to modules Phase 3 has frozen, ported by hand. The policy is
   sync commit, under the same gates as any bead.
 - A module is frozen the moment it holds Phase 3 work (a `cxx::` class or an `+ObjCBridge`
   facade). `--check` fails when such a module is still open, and when a new source directory is
-  not in the table, so a conversion that starts a module cannot forget to freeze it. Freezing is
+  not in the table, so a conversion that starts a module cannot forget to freeze it:
+  `tools/guardrails.sh` runs `--check` on every change (bead oo-9ht.70). Freezing is
   one-way until Phase 6.
 - Migration-owned directories (no upstream counterpart: `oofnd`, `Core/Scripting/ooscript`) are
   listed frozen; upstream never touches them, so they cost nothing.
@@ -35,7 +36,7 @@ Frozen since Phase 3 began (2026-09-29, the OOColor exemplar, bead oo-11m) unles
 | Module | Status | Why |
 |---|---|---|
 | `src/Core` | frozen | Phase 3 classes (OOColor and successors) |
-| `src/Core/Debug` | open | no Phase 3 work yet |
+| `src/Core/Debug` | frozen | Phase 3 classes (OODebugMonitor, bead oo-kq7; frozen 2026-10-01 by oo-9ht.70) |
 | `src/Core/Entities` | frozen | Phase 3 classes (Entity) |
 | `src/Core/Materials` | frozen | Phase 3 classes |
 | `src/Core/MiniZip` | open | vendored C, never converted (ADR-0012) |
