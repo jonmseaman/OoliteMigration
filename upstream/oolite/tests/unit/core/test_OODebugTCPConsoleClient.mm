@@ -15,11 +15,16 @@
 
 	The debug monitor would bring the JavaScript engine and the game into the link, so it is this
 	file's stand-in (proposed ADR-0056, amendment oo-z1s4 item 4): it records the commands and
-	configuration values it is given and answers configuration values from a table.
+	configuration values it is given and answers configuration values from a table. Since the
+	conversion (commit 3dc0fde89 ran these tests on the Objective-C class, against an Objective-C
+	monitor) the stand-in is the C++ monitor's members that the client calls, and the tests drive
+	the client through its facade, which is its forwarding test; cxxClientAndItsFacade adds the C++
+	API and the facade's contract (one facade per client, nil for null).
 	Run: bash tools/check-core-tests.sh test_OODebugTCPConsoleClient
 */
 
 #import "OODebugTCPConsoleClient.h"
+#import "OODebugMonitor.h"
 // The protocol's names as UTF-8 literals, as the client reads them.
 #define OOALSTR(x) "" x
 #import "OODebugTCPConsoleProtocol.h"
@@ -53,65 +58,57 @@ MonitorRecord sMonitor;
 }	// namespace
 
 
-@interface OODebugMonitor: OOObject
-+ (OODebugMonitor *) sharedDebugMonitor;
-- (BOOL) TCPIgnoresDroppedPackets;
-- (void) performJSConsoleCommand:(const std::string &)command;
-- (oo::PList) configurationValueForKey:(const std::string &)key;
-- (void) setConfigurationValue:(const oo::PList &)value forKey:(const std::string &)key;
-- (void) disconnectDebugger:(id<OODebuggerInterface>)debugger message:(const std::optional<std::string> &)message;
-@end
-
-@implementation OODebugMonitor
-
-+ (OODebugMonitor *) sharedDebugMonitor
+// The C++ monitor's members that the client calls, and the facade crossing its forwarders make.
+cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
 {
-	static OODebugMonitor *monitor = nil;
-	if (monitor == nil)  monitor = [[OODebugMonitor alloc] init];
+	static cxx::OODebugMonitor *monitor = nullptr;
+	if (monitor == nullptr)  monitor = oo::makeRef<cxx::OODebugMonitor>().leakRef();
 	return monitor;
 }
 
 
-- (BOOL) TCPIgnoresDroppedPackets
+bool cxx::OODebugMonitor::TCPIgnoresDroppedPackets()
 {
-	return NO;
+	return false;
 }
 
 
-- (void) performJSConsoleCommand:(const std::string &)command
+void cxx::OODebugMonitor::performJSConsoleCommand(const std::string &command)
 {
 	sMonitor.commands.push_back(command);
 }
 
 
-- (oo::PList) configurationValueForKey:(const std::string &)key
+oo::PList cxx::OODebugMonitor::configurationValueForKey(const std::string &key)
 {
 	auto found = sMonitor.configuration.find(key);
 	return (found != sMonitor.configuration.end()) ? found->second : oo::PList();
 }
 
 
-- (void) setConfigurationValue:(const oo::PList &)value forKey:(const std::string &)key
+void cxx::OODebugMonitor::setConfigurationValue(const oo::PList &value, const std::string &key)
 {
 	sMonitor.configurationSets.emplace_back(key, value);
 }
 
 
-- (void) disconnectDebugger:(id<OODebuggerInterface>)debugger message:(const std::optional<std::string> &)message
-{
-}
-
-@end
-
-
 namespace {
 
+// What the debug monitor hands its debugger: here, an object that stands for its facade.
 OODebugMonitor *Monitor()
 {
-	return [OODebugMonitor sharedDebugMonitor];
+	static OOObject *facade = nil;
+	if (facade == nil)  facade = [[OOObject alloc] init];
+	return (OODebugMonitor *)facade;
 }
 
 }	// namespace
+
+
+cxx::OODebugMonitor *oo::ToCxx(OODebugMonitor *monitor)
+{
+	return (monitor == Monitor()) ? cxx::OODebugMonitor::sharedDebugMonitor() : nullptr;
+}
 
 
 // MARK: The console's end ------------------------------------------------------------------------
@@ -497,6 +494,52 @@ OO_TEST(nobodyAnswers)
 		OO_CHECK(client == nil);
 		OO_CHECK(!OODebugTCPConsoleIsWaitingForInput());
 	}
+}
+
+
+// The C++ client and its facade: a client made by the facade's initialiser is that facade's, the
+// crossing keeps one facade per client, and null and nil cross as each other.
+OO_TEST(cxxClientAndItsFacade)
+{
+	@autoreleasepool
+	{
+		Session session;
+		cxx::OODebugTCPConsoleClient *client = oo::ToCxx(session.client);
+		OO_CHECK(client != nullptr);
+		OO_CHECK(oo::ToObjC(client) == session.client);
+		OO_CHECK(oo::ToCxx((OODebugTCPConsoleClient *)nil) == nullptr);
+		OO_CHECK(oo::ToObjC((cxx::OODebugTCPConsoleClient *)nullptr) == nil);
+
+		OO_CHECK(client->connectDebugMonitor(cxx::OODebugMonitor::sharedDebugMonitor(), nullptr));
+		client->debugMonitorShowConsole(cxx::OODebugMonitor::sharedDebugMonitor());
+		OO_CHECK(TypeOf(ReadPacket(session.console)) == "Show Console");
+	}
+
+	@autoreleasepool
+	{
+		uint16_t port = 0;
+		SOCKET listener = Listen(&port);
+		oo::Ref<cxx::OODebugTCPConsoleClient> client = cxx::OODebugTCPConsoleClient::clientWithAddress(std::string("127.0.0.1"), port);
+		OO_CHECK(client.get() != nullptr);
+		SOCKET console = Accept(listener);
+		OO_CHECK(TypeOf(ReadPacket(console)) == "Request Connection");
+
+		OODebugTCPConsoleClient *facade = oo::ToObjC(client.get());
+		OO_CHECK(facade != nil && oo::ToObjC(client.get()) == facade && oo::ToCxx(facade) == client.get());
+		[facade debugMonitorClearConsole:Monitor()];
+		OO_CHECK(TypeOf(ReadPacket(console)) == "Clear Console");
+
+		client = oo::Ref<cxx::OODebugTCPConsoleClient>();	// the facade still holds it
+		[facade debugMonitorShowConsole:Monitor()];
+		OO_CHECK(TypeOf(ReadPacket(console)) == "Show Console");
+		closesocket(console);
+		closesocket(listener);
+	}
+
+	uint16_t port = 0;
+	SOCKET listener = Listen(&port);
+	closesocket(listener);
+	OO_CHECK(cxx::OODebugTCPConsoleClient::clientWithAddress(std::string("127.0.0.1"), port).get() == nullptr);
 }
 
 
