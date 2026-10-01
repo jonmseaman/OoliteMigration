@@ -38,38 +38,45 @@ SOFTWARE.
 class OOProbabilitySet;	// C++ since bead oo-489v
 
 
-@interface OOShipRegistry: OOObject
+namespace cxx {
+
+class OOShipRegistry : public oo::RefCounted
 {
-@private
+public:
+	static OOShipRegistry *sharedRegistry();	// the one instance, made on first use and never released; borrowed
+
+	static void reload();
+
+	// A null PList where there is no such entry (was nil).
+	oo::PList shipInfoForKey(const std::string &key);
+	void setShipInfoForKey(const std::string &key, const oo::PList &newShipData);
+	oo::PList effectInfoForKey(const std::string &key);
+	oo::PList shipyardInfoForKey(const std::string &key);
+	OOProbabilitySet *probabilitySetForRole(const std::string &role);
+
+	oo::PList demoShipKeys();	// arrays (one per class) of demo ship dictionaries
+	std::vector<std::string> playerShipKeys();
+
+	// (OOConveniences)
+	std::vector<std::string> shipKeys();		// in key order
+	std::vector<std::string> shipRoles();		// in role order
+	std::vector<std::string> shipKeysWithRole(const std::string &role);
+	std::optional<std::string> randomShipKeyForRole(const std::string &role);	// nullopt: no ship has the role
+
+	// Internal: the registry's state. The OODataLoader category (slices 2 and 3 of
+	// docs/phases/3-slices/OOShipRegistry.md), still Objective-C on the facade, reads and writes it
+	// through oo::ToCxx(self); it becomes private when those slices convert.
 	oo::PList				_shipData;		// ship key -> ship dictionary (null until loaded)
 	oo::PList				_effectData;	// effect key -> effect dictionary (null until loaded)
 	oo::PList				_demoShips;		// demo ship entries (dictionaries) grouped in arrays by class
 	std::vector<std::string>	_playerShips;	// shipyard keys, in shipyard.plist key order
 	std::optional<std::map<std::string, oo::Ref<OOProbabilitySet>, std::less<>>>	_probabilitySets;	// role -> ship keys; nullopt: none cached yet
-}
 
-+ (OOShipRegistry *) sharedRegistry;
+private:
+	void init();	// -init's body: run by sharedRegistry() on the new object, since it messages the facade's loaders
+};
 
-+ (void) reload;
-
-// A null PList where there is no such entry (was nil).
-- (oo::PList) cxx_shipInfoForKey:(const std::string &)key;
-- (void) cxx_setShipInfoForKey:(const std::string &)key with:(const oo::PList &)newShipData;
-- (oo::PList) cxx_effectInfoForKey:(const std::string &)key;
-- (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key;
-- (OOProbabilitySet *) cxx_probabilitySetForRole:(const std::string &)role;
-
-- (oo::PList) cxx_demoShipKeys;	// arrays (one per class) of demo ship dictionaries
-- (std::vector<std::string>) cxx_playerShipKeys;
-
-@end
+}	// namespace cxx
 
 
-@interface OOShipRegistry (OOConveniences)
-
-- (std::vector<std::string>) cxx_shipKeys;		// in key order
-- (std::vector<std::string>) cxx_shipRoles;		// in role order
-- (std::vector<std::string>) cxx_shipKeysWithRole:(const std::string &)role;
-- (std::optional<std::string>) cxx_randomShipKeyForRole:(const std::string &)role;	// nullopt: no ship has the role
-
-@end
+#import "OOShipRegistry+ObjCBridge.h"

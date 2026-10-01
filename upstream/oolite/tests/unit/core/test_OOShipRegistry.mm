@@ -234,4 +234,25 @@ OO_TEST(reloadMakesANewRegistryFromTheCache)
 }
 
 
+// The facade (after the conversion): one cached facade for the current registry, and the C++
+// registry answers what the facade does.
+OO_TEST(facadeContract)
+{
+	@autoreleasepool
+	{
+		OOShipRegistry *facade = [OOShipRegistry sharedRegistry];
+		cxx::OOShipRegistry *registry = cxx::OOShipRegistry::sharedRegistry();
+		OO_CHECK(oo::ToCxx(facade) == registry);
+		OO_CHECK(oo::ToObjC(registry) == facade);
+		OO_CHECK(oo::ToCxx(static_cast<OOShipRegistry *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOShipRegistry *>(nullptr)) == nil);
+		OO_CHECK(registry->shipKeys() == [facade cxx_shipKeys]);
+		OO_CHECK(registry->playerShipKeys() == [facade cxx_playerShipKeys]);
+		OO_CHECK(registry->probabilitySetForRole("trader") == [facade cxx_probabilitySetForRole:"trader"]);
+		OO_CHECK(registry->shipInfoForKey("adder") == [facade cxx_shipInfoForKey:"adder"]);
+	}
+	OO_CHECK([OOShipRegistry sharedRegistry] == [OOShipRegistry sharedRegistry]);
+}
+
+
 OO_TEST_MAIN()
