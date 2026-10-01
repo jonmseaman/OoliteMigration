@@ -1541,3 +1541,17 @@ subclass's calls the superclass's.
 **Consequences.** Two façades with two deletion beads: the root's waits for `PlayerEntity` and for
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
+
+## Amendment (bead oo-9ht.66): a message whose selector no header declares
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `oo::SendClassName` in
+  `src/Core/OOWeakReference+ObjCBridge.h/.mm`, `oo::SendIntValue` in `OOCharacter+ObjCBridge.h/.mm`.
+
+**Context.** A converted body sends a selector (`-className`, `-intValue`) to an `id` that may
+answer it, but no visible header declares the method any more, so the send needs a local
+`@protocol` to type it. The item 8 grep forbids `@protocol` in `X.mm`.
+
+**Decision (recommended default).** The protocol and the one send move, verbatim, into a free
+function in `X+ObjCBridge.mm` (`id oo::SendClassName(id object)`), declared in `X+ObjCBridge.h`
+beside `oo::ToObjC`/`oo::ToCxx`; the C++ body calls the function where it sent the message. The
+function goes with the façade's deletion bead, or earlier once a header declares the method again.
