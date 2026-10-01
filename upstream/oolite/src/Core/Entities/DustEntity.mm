@@ -197,7 +197,7 @@ void DustEntity::update(OOTimeDelta /*delta_t*/)
 		oo::PList::Dict attributes;
 		attributes["aWarpiness"] = oo::PList::signedInteger(kTangentAttributeIndex);	// +numberWithInt:
 		
-		shader = oo::ObjCRef<::OOShaderProgram *>([OOShaderProgram shaderProgramWithVertexShaderName:"oolite-dust.vertex"
+		shader = oo::ObjCRef<::OOShaderProgram *>([::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-dust.vertex"
 												  fragmentShaderName:"oolite-dust.fragment"
 															  prefix:std::optional<std::string>(std::move(prefix))
 												   attributeBindings:oo::PList(std::move(attributes))]);
@@ -391,7 +391,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 #if OO_SHADERS
 		if (useShader)
 		{
-			[OOShaderProgram applyNone];
+			[::OOShaderProgram applyNone];
 		}
 		else
 #endif
