@@ -36,3 +36,12 @@ void InitOOJSSun(ooscript::Context context, ooscript::Object global);
 #ifdef __cplusplus
 }
 #endif
+
+
+/*	The bodies of OOSunEntity (OOJavaScriptExtensions), which the engine reaches by selector.
+	Its methods are one-line forwarders to these in OOJSSun+ObjCBridge.mm until OOSunEntity
+	converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+*/
+bool OOJSSunIsVisibleToScripts(void);
+void OOJSSunGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSSunJSClassName(void);
