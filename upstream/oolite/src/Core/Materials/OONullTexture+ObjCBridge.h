@@ -1,6 +1,13 @@
 /*
 
-OONullTexture.m
+OONullTexture+ObjCBridge.h
+
+TRANSITIONAL (proposed ADR-0056, amendments oo-up4b item 3 and oo-whzh): the Objective-C
+OONullTexture, the facade of the C++ cxx::OONullTexture (OONullTexture.h), a subclass of the
+OOTexture facade with no ivars. Its interface is the one OONullTexture.h declared before the
+conversion. OOTexture's +nullTexture answers it, and code that tests a texture's class still finds
+it. Imported as the last line of OONullTexture.h; do not import it directly. Deleted, with
+OOTexture+ObjCBridge.h, once every texture and caller is C++.
 
 
 Copyright (C) 2008-2013 Jens Ayton
@@ -25,68 +32,25 @@ SOFTWARE.
 
 */
 
-#import "OONullTexture.h"
-#import "OOCocoa.h"
-#import "OOTextureInternal.h"
+#ifndef OONULLTEXTURE_OBJCBRIDGE_H
+#define OONULLTEXTURE_OBJCBRIDGE_H
 
 
-namespace {
+@interface OONullTexture: OOTexture
 
-cxx::OONullTexture *sSingleton = nullptr;
++ (OONullTexture *) sharedNullTexture;
 
-}	// namespace
-
-
-namespace cxx {
-
-OONullTexture *OONullTexture::sharedNullTexture()
-{
-	// NOTE: assumes single-threaded access.
-	if (sSingleton == nullptr)
-	{
-		sSingleton = oo::makeRef<OONullTexture>().leakRef();
-	}
-
-	return sSingleton;
-}
+@end
 
 
-void OONullTexture::apply()
-{
-	OOTexture::applyNone();
-}
+namespace oo {
 
+// The null texture's facade (the one +sharedNullTexture keeps), or nil for null.
+OONullTexture *ToObjC(cxx::OONullTexture *texture);
 
-NSSize OONullTexture::dimensions()
-{
-	return NSZeroSize;
-}
+// The C++ null texture behind the facade, borrowed; null for nil.
+cxx::OONullTexture *ToCxx(OONullTexture *texture);
 
+}	// namespace oo
 
-bool OONullTexture::isMipMapped()
-{
-	return false;
-}
-
-
-void OONullTexture::forceRebind()
-{
-
-}
-
-
-#ifndef NDEBUG
-std::optional<std::string> OONullTexture::name()
-{
-	return std::string("<null texture>");
-}
-#endif
-
-
-/*	The (Singleton) category's canonical singleton boilerplate (+allocWithZone: answering nil after
-	the first, -copyWithZone: answering self, and -retain/-release/-autorelease doing nothing) is
-	not translated: nothing but sharedNullTexture() makes the object, and the one reference it
-	keeps is never released (amendment oo-r7m0 item 1).
-*/
-
-}	// namespace cxx
+#endif	// OONULLTEXTURE_OBJCBRIDGE_H
