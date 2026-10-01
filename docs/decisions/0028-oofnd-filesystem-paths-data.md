@@ -1,6 +1,6 @@
 # ADR-0028 — `oofnd` FileSystem, ResourcePaths and Data; Objective-C++ builds as C++20
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-i9q, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-i9q, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Implements** seam 2.6 of [Phase 2](../phases/2-oofnd.md) in

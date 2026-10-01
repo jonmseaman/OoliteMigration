@@ -58,8 +58,8 @@ public:
 
 	// collision checking
 	void clearEntityList();
-	void addEntity(Entity *ent);
-	bool checkEntity(Entity *ent);
+	void addEntity(::Entity *ent);
+	bool checkEntity(::Entity *ent);
 
 	void findCollisions();
 	void findShadowedEntities();
@@ -94,7 +94,7 @@ private:
 	
 	bool				isPlayerInRegion = {};
 	
-	Entity				**entity_array = {};	// entities within the region
+	::Entity				**entity_array = {};	// entities within the region
 	unsigned			n_entities = {};		// number of entities
 	unsigned			max_entities = {};	// so storage can be expanded
 	
@@ -106,7 +106,7 @@ private:
 /* Given a region centred at e1pos with a radius of e1rad, the depth
  * of shadowing cast by e2 from the_sun is recorded in outValue, with
  * >1 = no shadow, <1 = shadow */
-BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, Entity *e2, OOSunEntity *the_sun, float *outValue);
+BOOL shadowAtPointOcclusionToValue(HPVector e1pos, GLfloat e1rad, ::Entity *e2, OOSunEntity *the_sun, float *outValue);
 
 
 // Transitional: the Objective-C CollisionRegion, for callers not yet converted. Deleted, with
