@@ -32,14 +32,12 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 
 #if OO_SHADERS
+#import "OOShaderProgram.h"
 #import "OOShaderUniform.h"
 #endif
 
 #define DUST_SCALE			2000
 #define DUST_N_PARTICLES	600
-
-@class OOShaderProgram;
-
 
 namespace cxx {
 
@@ -60,7 +58,7 @@ public:
 	void update(OOTimeDelta delta_t) override;
 
 #if OO_SHADERS
-	::OOShaderProgram *getShader();
+	OOShaderProgram *getShader();
 	Vector offsetPlayerPosition();	// bound to the dust shader by selector, through the facade
 #endif
 	Vector warpVector();			// bound to the dust shader by selector, through the facade
@@ -89,7 +87,7 @@ private:
 	
 #if OO_SHADERS
 	GLfloat				warpinessAttr[DUST_N_PARTICLES * 2] = {};
-	oo::ObjCRef<::OOShaderProgram *>	shader;
+	oo::Ref<OOShaderProgram>	shader;
 	std::vector<oo::Ref<OOShaderUniform>>	uniforms;
 	uint8_t				shaderMode = {};
 #endif

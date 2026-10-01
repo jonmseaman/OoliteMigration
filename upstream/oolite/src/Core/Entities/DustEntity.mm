@@ -180,9 +180,9 @@ void DustEntity::update(OOTimeDelta /*delta_t*/)
 
 
 #if OO_SHADERS
-::OOShaderProgram *DustEntity::getShader()
+OOShaderProgram *DustEntity::getShader()
 {
-	if (shader == nil)
+	if (shader == nullptr)
 	{
 		::DustEntity *self = oo::ToObjC(this);	// what the uniforms are bound to
 		std::string prefix = oo::str::format(
@@ -197,19 +197,19 @@ void DustEntity::update(OOTimeDelta /*delta_t*/)
 		oo::PList::Dict attributes;
 		attributes["aWarpiness"] = oo::PList::signedInteger(kTangentAttributeIndex);	// +numberWithInt:
 		
-		shader = oo::ObjCRef<::OOShaderProgram *>([OOShaderProgram shaderProgramWithVertexShaderName:"oolite-dust.vertex"
-												  fragmentShaderName:"oolite-dust.fragment"
-															  prefix:std::optional<std::string>(std::move(prefix))
-												   attributeBindings:oo::PList(std::move(attributes))]);
+		shader = OOShaderProgram::shaderProgramWithVertexShaderName("oolite-dust.vertex",
+																	 "oolite-dust.fragment",
+																	 std::optional<std::string>(std::move(prefix)),
+																	 oo::PList(std::move(attributes)));
 		
 		uniforms.clear();
 		oo::Ref<OOShaderUniform> uWarp = OOShaderUniform::initWithName("uWarp",
-																		shader.get(),
+																		oo::ToObjC(shader),
 																		self,
 																		OOSelectorFromName("warpVector"),
 																		0);
 		oo::Ref<OOShaderUniform> uOffsetPlayerPosition = OOShaderUniform::initWithName("uOffsetPlayerPosition",
-																						shader.get(),
+																						oo::ToObjC(shader),
 																						self,
 																						OOSelectorFromName("offsetPlayerPosition"),
 																						0);
@@ -312,7 +312,9 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 #if OO_SHADERS
 		if (useShader)
 		{
-			[getShader() apply];
+			// A message to a nil program did nothing.
+			OOShaderProgram *program = getShader();
+			if (program != nullptr)  program->apply();
 			// A message to a nil uniform (the initialiser answered nil) did nothing.
 			for (const oo::Ref<OOShaderUniform> &uniform : uniforms)  if (uniform != nullptr)  uniform->apply();
 		}
@@ -391,7 +393,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 #if OO_SHADERS
 		if (useShader)
 		{
-			[OOShaderProgram applyNone];
+			OOShaderProgram::applyNone();
 		}
 		else
 #endif
