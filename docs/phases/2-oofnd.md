@@ -1,6 +1,6 @@
 # Phase 2 — `oofnd` (Foundation replacement)
 
-**Status:** in progress on `phase-2`; reviewed 2026-09-30 ([Review (oo-eipg)](#review-oo-eipg)); exit gate oo-ndo pending · **Est.:** 6–10 eng-months · **Depends on:** [Phase 0](0-safety-net.md) exit
+**Status:** in progress on `phase-2`; reviewed 2026-09-30 ([Review (oo-eipg)](#review-oo-eipg)); exit gate oo-ndo run green on 5d19dbbe0 2026-09-30 ([Exit gate (oo-ndo)](#exit-gate-oo-ndo)) · **Est.:** 6–10 eng-months · **Depends on:** [Phase 0](0-safety-net.md) exit
 **Runs in parallel with:** [Phase 1](1-js-engine.md). **This is where GNUstep dies.**
 
 ## Goal
@@ -179,3 +179,43 @@ Sampled 20 of 933 closed beads (alphabetical from 43 selected across seams, swee
 ### Verdict
 
 Every work item and exit-gate box has passing evidence on the tree. Phase 2 is ready for oo-ndo once oo-qps (now acceptable), oo-3rb.345 (Jon), oo-3rb.333/336, oo-3rb.329 (last) and this review close.
+
+## Exit gate (oo-ndo)
+
+**Date:** 2026-09-30. **Tested commit C:** `5d19dbbe02c2cdd10a68fbb6b05f2603b864af25` (phase-2 tip
+0f6d10e2a after oo-3rb.329 merged, plus one docs-only commit refreshing `docs/fleet/REPORT-2026-09-30.md`
+because phase-3 planning filed beads during the first run). Every line of oo-ndo's acceptance block was
+run in a detached worktree of C (`.worktrees/p2-gate`) from the MSYS2 UCRT64 login shell with
+`BEADS_WORKER_BASE_BRANCH=phase-2`, as accept.sh runs it. Logs: `.agent-tmp/p2gate/r3-NN.log` (line NN),
+`r3t2-01.log` (the green Tier C); results tables `r3-results.tsv`, `r3t2-results.tsv`.
+
+| # | Line | Result | Wall |
+|---|---|---|---|
+| 1-3 | oo-eipg, oo-qps, oo-snzn status = closed | PASS | 9 s, 3 s, 2 s |
+| 4 | `bash tools/guardrails.sh` | PASS | 13 s |
+| 5 | `tools/guardrails-selftest` (119 cases) | PASS | 3073 s |
+| 6 | `bash tools/check-file-modes.sh` | PASS | 26 s |
+| 7 | `bash tools/check-desktop-lock.sh` | PASS | 20 s |
+| 8 | `tools/build-windows.sh test` | PASS | 27 s |
+| 9 | `check-foundation-free.sh --link .../oolite.exe` | PASS | 21 s |
+| 10 | no `gnustep` DLL import in `objdump -p oolite.exe` | PASS | 3 s |
+| 11 | no `gnustep-base` in meson files / setup scripts | PASS | 4 s |
+| 12 | `check-foundation-free.sh --selftest` | PASS | 123 s |
+| 13 | `check-foundation-free.sh --stage source` | PASS | 9 s |
+| 14 | tier-b wires `--stage source` and `--link` | PASS | 1 s |
+| 15 | deny-list carries `[-]lgnustep-base` | PASS | 2 s |
+| 16 | `OOCollectionExtractors.{h,mm}` absent | PASS | 1 s |
+| 17 | zero `oo_*ForKey:` call sites outside `src/oofnd` | PASS | 4 s |
+| 18 | `bash tools/check-oofnd.sh` | PASS | 5 s |
+| 19 | fuzz report: `Unexplained divergences on the Tier-3 corpus: 0` | PASS | 1 s |
+| 20 | `python3 tools/plist_fuzz.py selftest` | PASS | 1 s |
+| 21 | `bash tools/tier-c.sh` | PASS on attempt 2: GREEN in 1823 s (tier-b 966 s, jsapi 2 s, asan 359 s, goldens 25 s with 2 blessed verified, corpus 36/36 in 296 s, gui 179 passed in 173 s, fleetdata 1 passed) | 1824 s |
+
+Flake record: Tier C attempt 1 on C (and the earlier run on 0f6d10e2a) went RED in its tier-b stage on a
+60 s `TimeoutExpired` in `tools/test_tier_c_diff.py` (`tier-c-diff.sh --report-only` under tier-b shard
+load; 24 s for the whole file standalone). It recurred, so it is filed as oo-3rb.349; it does not block the
+gate. Not counted: a first run whose harness leaked `OO_GUARDRAILS_BASE=phase-2` into
+`guardrails-selftest`'s scratch repositories (`.agent-tmp/p2gate/r1-aborted/`), which accept.sh never sets.
+
+Since C, only `docs/` changes (this record and a fleet-report refresh); oo-ndo's stored acceptance is the
+fast proof of that (`git diff --quiet 5d19dbbe0 HEAD -- upstream tools`) plus the static checks.
