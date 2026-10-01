@@ -238,13 +238,13 @@ enum
 	uint8_t		*aBuffer = NULL, *apx = NULL;
 	float		*randomBuffer = NULL;
 	
-	_height = _info.height = 1 << (_planetScale + _info.planetScaleOffset);
-	_width = _info.width = _height * _info.planetAspectRatio;
+	_cxxLoader->_height = _info.height = 1 << (_planetScale + _info.planetScaleOffset);
+	_cxxLoader->_width = _info.width = _cxxLoader->_height * _info.planetAspectRatio;
 	
 #define FAIL_IF(cond)  do { if (EXPECT_NOT(cond))  goto END; } while (0)
 #define FAIL_IF_NULL(x)  FAIL_IF((x) == NULL)
 	
-	aBuffer = (uint8_t *)malloc(4 * _width * _height);
+	aBuffer = (uint8_t *)malloc(4 * static_cast<size_t>(_cxxLoader->_width) * _cxxLoader->_height);
 	FAIL_IF_NULL(aBuffer);
 	apx = aBuffer;
 	
@@ -259,19 +259,19 @@ enum
 	int x, y;
 	FloatRGBA color;
 	float q, nearPole;
-	float rHeight = 1.0f / _height;
-	float fy, fHeight = _height;
+	float rHeight = 1.0f / _cxxLoader->_height;
+	float fy, fHeight = _cxxLoader->_height;
 	
 	float cloudFraction = _info.cloudFraction;
 	
-	for (y = (int)_height - 1, fy = (float)y; y >= 0; y--, fy--)
+	for (y = (int)_cxxLoader->_height - 1, fy = (float)y; y >= 0; y--, fy--)
 	{
 		nearPole = (2.0f * fy - fHeight) * rHeight;
 		nearPole *= nearPole;
 		
-		for (x = (int)_width - 1; x >= 0; x--)
+		for (x = (int)_cxxLoader->_width - 1; x >= 0; x--)
 		{
-			q = QFactor(_info.fbmBuffer, x, y, _width, paleClouds, cloudFraction, nearPole);
+			q = QFactor(_info.fbmBuffer, x, y, _cxxLoader->_width, paleClouds, cloudFraction, nearPole);
 			color = CloudMix(&_info, q, nearPole);
 			*apx++ = 255.0f * color.r;
 			*apx++ = 255.0f * color.g;
@@ -281,7 +281,7 @@ enum
 	}
 	
 	success = YES;
-	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
+	_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 	}
 	
 END:
@@ -289,7 +289,7 @@ END:
 	FREE(randomBuffer);
 	if (success)
 	{
-		_data = aBuffer;
+		_cxxLoader->_data = aBuffer;
 	}
 	else
 	{
@@ -307,9 +307,9 @@ END:
 		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
 								   andGrayFileNamed:lightsName
 											  bytes:aBuffer
-											  width:_width
-											 height:_height
-										   rowBytes:_width * 4];
+											  width:_cxxLoader->_width
+											 height:_cxxLoader->_height
+										   rowBytes:_cxxLoader->_width * 4];
 	}
 #endif
 }
@@ -321,21 +321,21 @@ END:
 {
 	const std::string noiseName = oo::str::format("atmosphere-%u-%u-noise-new", _info.seed.high, _info.seed.low);
 	
-	uint8_t *noisePx = malloc(_width * _height);
+	uint8_t *noisePx = malloc(_cxxLoader->_width * _cxxLoader->_height);
 	unsigned x, y;
-	for (y = 0; y < _height; y++)
+	for (y = 0; y < _cxxLoader->_height; y++)
 	{
-		for (x = 0; x < _width; x++)
+		for (x = 0; x < _cxxLoader->_width; x++)
 		{
-			noisePx[y * _width + x] = 255.0f * noise[y * _width + x];
+			noisePx[y * _cxxLoader->_width + x] = 255.0f * noise[y * _cxxLoader->_width + x];
 		}
 	}
 	
 	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
-									   width:_width
-									  height:_height
-									rowBytes:_width];
+									   width:_cxxLoader->_width
+									  height:_cxxLoader->_height
+									rowBytes:_cxxLoader->_width];
 	FREE(noisePx);
 }
 

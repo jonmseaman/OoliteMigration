@@ -11,8 +11,10 @@
 	is asked only for paths it refuses. It links the whole game but main (tests/unit/core/meson.build
 	entry ['*']), on the hidden GL context of oo_gl_test_context.hpp (the loaders' one-time set-up
 	reads the GL texture size limit). The expectations were written against the Objective-C API and
-	run on the unconverted class first. The test subclass reads the root's state in one block of
-	helpers (amendment oo-bj8 item 11).
+	run on the unconverted class first (commit c5a02306c); that API is now the facade, so they run
+	through it. The test subclass reads the root's state in one block of helpers (amendment oo-bj8
+	item 11), the only lines the conversion ported (to _cxxLoader->). The last tests pin the C++ API
+	(cxx::OOTextureLoader) and the crossing both ways.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -57,24 +59,24 @@ static int gLoads = 0;
 	const size_t size = (size_t)_testWidth * _testHeight * OOTextureComponentsForFormat(_testFormat);
 	uint8_t *bytes = (uint8_t *)malloc(size);
 	for (size_t i = 0; i < size; i++)  bytes[i] = (uint8_t)(i + 1);
-	_data = bytes;
-	_width = _testWidth;
-	_height = _testHeight;
-	_format = _testFormat;
+	_cxxLoader->_data = bytes;
+	_cxxLoader->_width = _testWidth;
+	_cxxLoader->_height = _testHeight;
+	_cxxLoader->_format = _testFormat;
 }
 
 
 // The root's state, as the subclasses read it (the one block the conversion ports).
-- (uint32_t) testOptions			{ return _options; }
-- (uint32_t) testMaxSize			{ return _maxSize; }
-- (uint32_t) testShrinkThreshold	{ return _shrinkThreshold; }
-- (BOOL) testGenerateMipMaps		{ return _generateMipMaps; }
-- (BOOL) testAvoidShrinking			{ return _avoidShrinking; }
-- (BOOL) testNoScaling				{ return _noScalingWhatsoever; }
-- (BOOL) testExtractChannel			{ return _extractChannel; }
-- (uint8_t) testExtractChannelIndex	{ return _extractChannelIndex; }
-- (BOOL) testAllowCubeMap			{ return _allowCubeMap; }
-- (std::string) testPath			{ return _path; }
+- (uint32_t) testOptions			{ return _cxxLoader->_options; }
+- (uint32_t) testMaxSize			{ return _cxxLoader->_maxSize; }
+- (uint32_t) testShrinkThreshold	{ return _cxxLoader->_shrinkThreshold; }
+- (BOOL) testGenerateMipMaps		{ return _cxxLoader->_generateMipMaps; }
+- (BOOL) testAvoidShrinking			{ return _cxxLoader->_avoidShrinking; }
+- (BOOL) testNoScaling				{ return _cxxLoader->_noScalingWhatsoever; }
+- (BOOL) testExtractChannel			{ return _cxxLoader->_extractChannel; }
+- (uint8_t) testExtractChannelIndex	{ return _cxxLoader->_extractChannelIndex; }
+- (BOOL) testAllowCubeMap			{ return _cxxLoader->_allowCubeMap; }
+- (std::string) testPath			{ return _cxxLoader->_path; }
 
 @end
 
@@ -286,6 +288,109 @@ OO_TEST(failures)
 		Result raised = GetResult(raising);	// the exception is caught on the work thread
 		OO_CHECK(!raised.ok && [raising isReady]);
 	}
+}
+
+
+// --- The C++ API and the crossing (after the conversion) -------------------------------------
+
+// A converted loader, as OOPNGTextureLoader will be one: a C++ subclass that fills the pixels.
+class TestCxxLoader final : public cxx::OOTextureLoader
+{
+public:
+	void loadTexture() override
+	{
+		loads++;
+		uint8_t *bytes = (uint8_t *)malloc(8 * 8 * 4);
+		for (unsigned i = 0; i < 8 * 8 * 4; i++)  bytes[i] = (uint8_t)(i + 1);
+		_data = bytes;
+		_width = 8;
+		_height = 8;
+		_format = kOOPixMapRGBA;
+	}
+
+	std::optional<std::string> descriptionComponents() const override	{ return std::string("cxx"); }
+
+	int loads = 0;
+};
+
+
+OO_TEST(cxxApi)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		OO_CHECK(!cxx::OOTextureLoader::loaderWithPath(std::nullopt, 0));
+		OO_CHECK(!cxx::OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0));
+		OO_CHECK(!cxx::OOTextureLoader::loaderWithTextureSpecifier(oo::PList(3.0), 0, std::string("Textures")));
+
+		const oo::Ref<TestCxxLoader> loader = oo::makeRef<TestCxxLoader>();
+		OO_CHECK(!loader->initWithPath(std::nullopt, 0));
+		OO_CHECK(loader->initWithPath(std::string("dir/cxx.png"), kOOTextureMinFilterLinear));
+		OO_CHECK(loader->path() == std::optional<std::string>("dir/cxx.png") && loader->_shrinkThreshold == 512);
+		OO_CHECK(loader->cacheKey() == std::optional<std::string>("cxx.png:0x0002"));
+		OO_CHECK(loader->shortDescriptionComponents() == std::optional<std::string>("cxx.png"));
+
+		// Queued as its facade, loaded on a work thread, handed over on this one.
+		OOTextureLoader *facade = oo::ToObjC(loader.get());
+		OO_CHECK(facade != nil && facade == oo::ToObjC(loader.get()) && oo::ToCxx(facade) == loader.get());
+		OO_CHECK(Queue(facade));
+		OOPixMap pixMap = kOONullPixMap;
+		OOTextureDataFormat format = kOOPixMapInvalidFormat;
+		uint32_t width = 0, height = 0;
+		OO_CHECK(loader->getResult(&pixMap, &format, &width, &height));
+		OO_CHECK(loader->loads == 1 && loader->isReady() && format == kOOPixMapRGBA);
+		OO_CHECK(pixMap.width == 8 && pixMap.height == 8 && width == 8 && height == 8);
+		OO_CHECK(((uint8_t *)pixMap.pixels)[0] == 1);
+		OOFreePixMap(&pixMap);
+
+		// The facade answers the C++ loader's overrides and the root's defaults.
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<TestCxxLoader 0x") && oo::DescriptionOf(facade).ends_with(">{cxx}"));
+		OO_CHECK([facade cxx_cacheKey] == std::optional<std::string>("cxx.png:0x0002") && [facade isReady]);
+	}
+}
+
+
+OO_TEST(objCLoaderBehindACxxPointer)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		TestLoader *objCLoader = Loader("dir/objc.png", kOOTextureMinFilterLinear, 8, 8, kOOPixMapRGBA);
+		cxx::OOTextureLoader *part = oo::ToCxx(objCLoader);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == objCLoader);	// the object itself
+		OO_CHECK(part->cacheKey() == std::optional<std::string>("objc.png:0x0002"));
+		OO_CHECK(part->descriptionComponents() == std::optional<std::string>("{dir/objc.png -- loading}"));
+
+		// The C++ part's virtual loadTexture reaches the Objective-C override.
+		const int loads = gLoads;
+		OO_CHECK(Queue(objCLoader));
+		OOPixMap pixMap = kOONullPixMap;
+		OOTextureDataFormat format = kOOPixMapInvalidFormat;
+		OO_CHECK(part->getResult(&pixMap, &format, nullptr, nullptr) && gLoads == loads + 1);
+		OO_CHECK(pixMap.width == 8 && ((uint8_t *)pixMap.pixels)[0] == 1);
+		OOFreePixMap(&pixMap);
+	}
+}
+
+
+OO_TEST(nilAndLifetime)
+{
+	OOTextureLoader *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOTextureLoader *>(nullptr)) == nil);
+	OO_CHECK(![none isReady] && ![none cxx_cacheKey].has_value());
+
+	// An Objective-C loader's C++ part outlives it, and then answers as nil did.
+	oo::Ref<cxx::OOTextureLoader> part;
+	@autoreleasepool
+	{
+		part = oo::Ref<cxx::OOTextureLoader>(oo::ToCxx(Loader("gone.png", 0, 8, 8, kOOPixMapRGBA)));
+	}
+	OO_CHECK(!part->cacheKey().has_value() && !part->descriptionComponents().has_value());
+	OO_CHECK(oo::ToObjC(part) == nil);
+	part->loadTexture();	// nothing: its object has gone
 }
 
 
