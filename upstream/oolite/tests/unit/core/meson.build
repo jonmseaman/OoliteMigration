@@ -77,6 +77,7 @@ core_tests = {
     'test_OOJSFrameCallbacks': ['Core/Scripting/OOJSFrameCallbacks.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSCall': ['Core/Scripting/OOJSCall.mm', 'Core/Scripting/OOJSCall+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/Materials/OOShaderUniformMethodType.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
+    'test_GuiDisplayGen': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
 }
