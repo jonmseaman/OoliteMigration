@@ -350,6 +350,32 @@ OO_TEST(deleting)
 }
 
 
+// bead oo-f1yi3: a variable the object already reports (here, after an enumeration listed it) is
+// still written through the class's setter, as SpiderMonkey's assignment did, and is not shadowed
+// by a read-only property; delete on it then clears it.
+OO_TEST(overwritingAReportedVariable)
+{
+	SetUpContext();
+	ResetVariables();
+	sPlayer->_sets = 0;
+	OO_CHECK_EVAL("Object.keys(missionVariables).join()", "alpha,count,fraction,name,spaced");
+	OO_CHECK_EVAL("(function () { missionVariables.count = 5; return missionVariables.count; })()", "5");
+	OO_CHECK(sPlayer->_missionVariables["mission_count"] == oo::PList("5"));
+	OO_CHECK_EQ(sPlayer->_sets, 1);
+	OO_CHECK_EVAL("(function () { var d = Object.getOwnPropertyDescriptor(missionVariables, 'count'); return d.writable + ',' + d.configurable; })()", "true,true");
+	// The player's variable is what reads give, not a value frozen on the object.
+	sPlayer->_missionVariables["mission_count"] = oo::PList("6");
+	OO_CHECK_EVAL("missionVariables.count", "6");
+	OO_CHECK_EVAL("(function () { missionVariables.name = 'Plans'; return missionVariables.name; })()", "Plans");
+	OO_CHECK(sPlayer->_missionVariables["mission_name"] == oo::PList("Plans"));
+	OO_CHECK_EQ(sPlayer->_sets, 2);
+	OO_CHECK_EVAL("delete missionVariables.count", "true");
+	OO_CHECK(sPlayer->_missionVariables.count("mission_count") == 0);
+	OO_CHECK_EVAL("missionVariables.count", "null");
+	OO_CHECK_EQ(sPlayer->_sets, 3);
+}
+
+
 OO_TEST(nativeExceptions)
 {
 	SetUpContext();
