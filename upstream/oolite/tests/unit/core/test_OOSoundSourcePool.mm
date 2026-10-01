@@ -10,7 +10,9 @@
 	(amendment oo-8kx7 item 7); the sound (with its custom-sound category) and the sound source
 	are this file's stubs, which record what the pool asks of them (amendment oo-z1s4 item 4).
 	These expectations were written against the Objective-C API and ran on the unconverted class
-	first. Run: bash tools/check-core-tests.sh test_OOSoundSourcePool
+	first; they now run through the facade, which is its forwarding test. After them come the C++
+	API (cxx::OOSoundSourcePool, whose selectors are overloads) and the facade's contract.
+	Run: bash tools/check-core-tests.sh test_OOSoundSourcePool
 */
 
 #import "OOSoundSourcePool.h"
@@ -292,6 +294,50 @@ OO_TEST(noOverlap)
 		[pool playSoundWithKey:"[overheat]" overlap:NO];
 		OO_CHECK(Playing().size() == 3 && Playing()[2] == "[overheat]");
 	}
+}
+
+
+// The C++ API: each overload is the selector it was. An overlap is passed as a bool, since game
+// code sees OOCocoa.h's integer true and false.
+OO_TEST(cxxApi)
+{
+	const bool overlap = static_cast<bool>(1), noOverlap = static_cast<bool>(0);
+	@autoreleasepool
+	{
+		Reset(100.0);
+		const oo::Ref<cxx::OOSoundSourcePool> pool = cxx::OOSoundSourcePool::poolWithCount(3, 0.0);
+		OO_CHECK(pool);
+		pool->playSoundWithKey("[a]", overlap);	// overlapping, priority 1
+		pool->playSoundWithKey("[b]", noOverlap, make_vector(1, 2, 3));	// reserves its source
+		pool->playSoundWithKey("[c]", noOverlap);	// refused: the reserved source plays
+		OO_CHECK((Playing() == std::vector<std::string>{ "[a]", "[b]" }));
+		OO_CHECK(vector_equal(Source(1)->_position, make_vector(1, 2, 3)));
+		pool->playSoundWithKey("[d]", 2.0f);	// a float priority, not an overlap
+		OO_CHECK((Playing() == std::vector<std::string>{ "[a]", "[b]", "[d]" }));
+		pool->playSoundWithKey("[e]", 3.0f, make_vector(4, 5, 6));
+		OO_CHECK(PlayingCount("[e]") == 1);
+		pool->playSoundWithKey("[f]", make_vector(7, 8, 9));
+		pool->playSoundWithKey("[g]", 0.5f, 1.0);
+		pool->playSoundWithKey("[h]", 9.0f, 1.0, overlap, kZeroVector);
+		OO_CHECK(PlayingCount("[h]") == 1);
+		OO_CHECK(PlayingCount("[g]") == 0);
+	}
+}
+
+
+// The facade's contract: one live facade per pool; alloc/init makes the pool's peer.
+OO_TEST(facade)
+{
+	@autoreleasepool
+	{
+		OOSoundSourcePool *made = [[[OOSoundSourcePool alloc] initWithCount:2 minRepeatTime:0.0] autorelease];
+		OO_CHECK(made != nil && oo::ToObjC(oo::ToCxx(made)) == made);
+		OOSoundSourcePool *pool = [OOSoundSourcePool poolWithCount:2 minRepeatTime:0.0];
+		OO_CHECK(pool != made && oo::ToObjC(oo::ToCxx(pool)) == pool);
+	}
+	OOSoundSourcePool *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSoundSourcePool *>(nullptr)) == nil);
 }
 
 
