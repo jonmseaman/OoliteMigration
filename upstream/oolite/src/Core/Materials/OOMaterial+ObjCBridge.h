@@ -168,6 +168,7 @@ public:
 	::OOMaterial *owner()		{ return _owner; }
 	void ownerDeallocated()		{ _owner = nil; }
 
+	virtual void superApply() = 0;
 	virtual std::optional<std::string> superName() = 0;
 	virtual std::optional<std::string> superDescriptionComponents() const = 0;
 	virtual void superEnsureFinishedLoading() = 0;
@@ -199,6 +200,7 @@ class ObjCMaterial : public Base, public ObjCMaterialLink
 public:
 	explicit ObjCMaterial(::OOMaterial *owner) : ObjCMaterialLink(owner) {}
 
+	void apply() override													{ [_owner apply]; }
 	std::optional<std::string> name() override								{ return [_owner cxx_name]; }
 	std::optional<std::string> descriptionComponents() const override		{ return [_owner cxx_descriptionComponents]; }
 	void ensureFinishedLoading() override									{ [_owner ensureFinishedLoading]; }
@@ -214,6 +216,7 @@ public:
 	bool doApply() override													{ return [_owner doApply]; }
 	void unapplyWithNext(cxx::OOMaterial *next) override					{ [_owner unapplyWithNext:oo::ToObjC(next)]; }
 
+	void superApply() override												{ Base::apply(); }
 	std::optional<std::string> superName() override							{ return Base::name(); }
 	std::optional<std::string> superDescriptionComponents() const override	{ return Base::descriptionComponents(); }
 	void superEnsureFinishedLoading() override								{ Base::ensureFinishedLoading(); }

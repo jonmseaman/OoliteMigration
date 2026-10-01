@@ -1,6 +1,6 @@
 # ADR-0026 — `oo::Ref` details ADR-0003 leaves open
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-qpa, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-qpa, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Point 4's drain order superseded by [ADR-0045](0045-autorelease-scope-drains-lifo.md)**
