@@ -351,7 +351,7 @@ OO_TEST(facadeContract)
 		cxx::OOPListSchemaVerifier *cxxVerifier = oo::ToCxx(verifier);
 		OO_CHECK(cxxVerifier != nullptr);
 		OO_CHECK(oo::ToObjC(cxxVerifier) == verifier);
-		OO_CHECK(oo::ToCxx(nil) == nullptr);
+		OO_CHECK(oo::ToCxx(static_cast<OOPListSchemaVerifier *>(nil)) == nullptr);
 		OO_CHECK(oo::ToObjC(static_cast<cxx::OOPListSchemaVerifier *>(nullptr)) == nil);
 		OO_CHECK(cxx::OOPListSchemaVerifier::verifierWithSchema(oo::PList()).get() == nullptr);
 
