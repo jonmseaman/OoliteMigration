@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOJSGuiScreenKeyDefinition.h"
+#import "OOJSScript.h"
 //#import "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
