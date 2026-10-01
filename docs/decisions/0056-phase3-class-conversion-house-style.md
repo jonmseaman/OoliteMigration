@@ -2114,3 +2114,50 @@ has three subclasses, all of which are in reach.
 (`OOECMBlastEntity+ObjCBridge`, oo-9ht.75). `ShipEntity.mm` and `Universe.mm` change only at the lines that make
 the effects. A failed initialiser no longer reaches `-[Entity dealloc]`, so the crash of oo-s6ic6 is
 gone for these classes (the explosion cloud without its texture was a game path).
+
+## Amendment (bead oo-4nhg): a class that implements a protocol another class holds it by, and the C functions that drive it
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Debug/OODebugTCPConsoleClient.h/.mm`
+  (`cxx::OODebugTCPConsoleClient`), `OODebugTCPConsoleClient+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OODebugTCPConsoleClient.mm`. Follows amendment oo-kq7 (the Debug module).
+
+**Context.** The TCP console client is the debugger the golden harness drives the game through. The
+debug monitor (already `cxx::OODebugMonitor`) holds it as `id<OODebuggerInterface>`, a protocol
+that Mac plug-in debuggers also implement, and sends it the protocol's messages with the monitor's
+façade as their first argument. The debug support makes it with a failable
+`-initWithAddress:port:`. C functions in the same file (the frame loop's
+`OODebugTCPConsoleIsWaitingForInput`/`ServiceInput`) and the stream decoder's C callbacks, which
+get the client as `void *`, call its private methods. One private method takes `fd_set *`.
+
+**Decision (recommended defaults).**
+
+1. **The façade adopts the protocol; the C++ class has the protocol's members** (first keyword,
+   overloads for the shared `debugMonitor:` keyword), taking the converted class where the protocol
+   passes its façade (`cxx::OODebugMonitor *`). The façade's forwarders cross with `oo::ToCxx`. The
+   protocol stays Objective-C until the debugger interface converts with its other implementers.
+   A protocol parameter a member does not use keeps its name as a comment
+   (`OODebugMonitor * /*debugMonitor*/`).
+2. **A failable public initialiser** is amendment oo-bhb9's: a private `bool initWithX(...)`, body
+   verbatim, behind a public static factory named after the class (`clientWithAddress`), which the
+   façade's initialiser calls.
+3. **C functions in the file that call private members are friends** of the class
+   (`friend bool ::OODebugTCPConsoleIsWaitingForInput(void);`, declared before the class);
+   **C callbacks that get the object as `void *`** become private static members (amendment oo-44gg
+   item 4), so `this` is the callback's info, as `self` was.
+4. **A platform type in a private member's signature** (`fd_set`) is forward-declared where the
+   platform's header tags it (`struct fd_set;` on Windows) and included where it does not
+   (`<sys/select.h>`); the `.mm` still includes the socket headers. A member whose name is a C
+   library function (`socket()`) makes the body call the C function as `::socket(...)` (amendment
+   oo-novu item 4).
+5. **A `-dealloc` message that could never act is not translated** (amendment oo-kq7 item 3): the
+   client told its monitor to disconnect it, but the monitor retains its debugger while connected,
+   so the client was never released then. A comment stands where it was.
+6. **The test plays the other end for real** (a loopback socket) and stands in for the converted
+   class the code calls by defining that class's members it uses, in the test
+   (`cxx::OODebugMonitor::sharedDebugMonitor()` and four more), plus the `oo::ToCxx` the forwarders
+   make, mapping a token object that stands for the monitor's façade. It was written against an
+   Objective-C stand-in of the monitor and run on the Objective-C client first; at conversion only
+   that stand-in block changed.
+
+**Consequences.** One façade and one deletion bead, which waits for the debug support's conversion
+(its only maker) and for the debugger interface's. The goldens are the end-to-end check.
