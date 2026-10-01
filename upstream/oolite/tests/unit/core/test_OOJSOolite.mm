@@ -490,7 +490,7 @@ OO_TEST(compareVersion)
 	OO_CHECK_EVAL("oolite.compareVersion([1, 90])", "-1");
 	OO_CHECK_EVAL("oolite.compareVersion([1, 91, 0, 7, 1])", "1");
 	OO_CHECK_EVAL("oolite.compareVersion([1.9, 91.2, 0, 7])", "0");	// each element as an unsigned integer
-	OO_CHECK_EVAL("oolite.compareVersion([true, 91, 0, 7])", "0");	// a boolean is a number (1), as an NSNumber was
+	OO_CHECK_EVAL("oolite.compareVersion([true, 91, 0, 7])", "0");	// a boolean counts as the number 1, as it did before
 	OO_CHECK_EVAL("oolite.compareVersion([1, '91'])", "undefined");
 	OO_CHECK_EVAL("oolite.compareVersion(1.5)", "undefined");	// neither array nor string
 	OO_CHECK_EVAL("oolite.compareVersion()", "undefined");	// lenient
