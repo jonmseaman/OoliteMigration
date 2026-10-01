@@ -9,6 +9,7 @@ oolite_sources += files(
     'OODebugTCPConsoleClient.mm',
     'OODebugTCPConsoleClient+ObjCBridge.mm',
     'OOJSConsole.mm',
+    'OOJSConsole+ObjCBridge.mm',
     'OOTCPStreamDecoder.c',
     'OOTCPStreamDecoderAbstractionLayer.mm',
 )

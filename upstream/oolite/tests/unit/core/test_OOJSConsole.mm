@@ -13,14 +13,17 @@
 	detail level and FPS display, the OpenGL extension manager's answers, an entity that can be
 	inspected, the script stack, the error reporters and the string and property-list converters.
 	It imports neither OOJavaScriptEngine.h nor Universe.h, which would bring in the game classes.
-	The expectations were written against the Objective-C file and run on it first; they pin the
-	JS-visible behaviour of every property and method that compiles in the test flavour.
+	The expectations were written against the Objective-C file and run on it first (commit
+	ea566a254, with an Objective-C stand-in of the extension manager's facade; since the
+	conversion the stand-in is the C++ manager's members); they pin the JS-visible behaviour of
+	every property and method that compiles in the test flavour.
 	Run: bash tools/check-core-tests.sh test_OOJSConsole
 */
 
 #import "OOCocoa.h"
 #import "OOJSConsole.h"
 #import "OODebugMonitor.h"
+#import "OOOpenGLExtensionManager.h"
 #import "OOJSEngineCore.h"
 #import "OODebugFlags.h"
 #include "oofnd/Log.hpp"
@@ -314,27 +317,20 @@ OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 @end
 
 
-// The OpenGL extension manager's answers.
-@interface OOOpenGLExtensionManager: OOObject
-+ (OOOpenGLExtensionManager *) sharedManager;
-@end
-
-@implementation OOOpenGLExtensionManager
-
-+ (OOOpenGLExtensionManager *) sharedManager
+// The OpenGL extension manager's answers: the C++ manager's members the console reads.
+cxx::OOOpenGLExtensionManager *cxx::OOOpenGLExtensionManager::sharedManager()
 {
-	static OOOpenGLExtensionManager *manager = nil;
-	if (manager == nil)  manager = [[OOOpenGLExtensionManager alloc] init];
+	static cxx::OOOpenGLExtensionManager *manager = nullptr;
+	if (manager == nullptr)  manager = new cxx::OOOpenGLExtensionManager;	// never released, as the game's
 	return manager;
 }
 
-- (OOGraphicsDetail) maximumDetailLevel  { return DETAIL_LEVEL_MAXIMUM; }
-- (std::optional<std::string>) vendorString  { return std::string("Test Vendor"); }
-- (std::optional<std::string>) rendererString  { return std::nullopt; }
-- (int) textureUnitCount  { return 4; }
-- (int) textureImageUnitCount  { return 16; }
-
-@end
+cxx::OOOpenGLExtensionManager::~OOOpenGLExtensionManager()  {}
+OOGraphicsDetail cxx::OOOpenGLExtensionManager::maximumDetailLevel()  { return DETAIL_LEVEL_MAXIMUM; }
+std::optional<std::string> cxx::OOOpenGLExtensionManager::vendorString()  { return std::string("Test Vendor"); }
+std::optional<std::string> cxx::OOOpenGLExtensionManager::rendererString()  { return std::nullopt; }
+GLint cxx::OOOpenGLExtensionManager::textureUnitCount()  { return 4; }
+GLint cxx::OOOpenGLExtensionManager::textureImageUnitCount()  { return 16; }
 
 
 @interface FakeUniverse: OOObject

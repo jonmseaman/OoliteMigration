@@ -2335,3 +2335,48 @@ an `OOVisualEffectEntity`); and a helper class that nothing makes (`OOManifest`)
 waits for the engine's object wrappers (oo-k4nu, the last `OOJavaScriptEngine.mm` slice);
 `OOJSShipGroup+ObjCBridge.mm` goes with the `OOShipGroup` façade (oo-9ht.19). No caller outside
 the binding files changed.
+
+## Amendment (bead oo-jy98): a binding whose JS objects hold a converted class's façade
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Debug/OOJSConsole.mm`,
+  `OOJSConsole+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSConsole.mm`. Follows amendments
+  oo-ppc (bindings), oo-kq7 (the Debug module) and oo-vnts.
+
+**Context.** The debug console's JS objects (`Console`, `ConsoleSettings`) hold the debug
+monitor, which is `cxx::OODebugMonitor` behind a façade whose superclass, `OOWeakRefObject`, is
+still Objective-C: the private slot holds the façade's weak reference (`-weakRetain`). The natives
+read the slot as `id`, check it with `isKindOfClass:[OODebugMonitor class]`, and message it. The
+binding also reads the converted OpenGL extension manager, and asks an entity for `-inspect`,
+which only the Mac debug OXP's inspector adds.
+
+**Decision (recommended defaults).**
+
+1. **The private slot keeps the façade's weak reference** (amendment oo-ppc item 5): the console
+   object is still made with `[monitor weakRetain]` (the façade's Objective-C superclass, whose
+   state the weak reference is), and the natives keep their `isKindOfClass:` checks and error
+   text. What they do with the monitor is `oo::ToCxx(monitor)->member(...)`; the local that holds
+   the slot's object is typed as the façade (`OODebugMonitor *monitor`) instead of `id`, so the
+   crossing's overload resolves. The singleton is `cxx::OODebugMonitor::sharedDebugMonitor()`, and
+   `oo::ToObjC(...)` of it where an Objective-C object is wanted (`OOJSValueFromNativeObject`).
+2. **An Objective-C-only selector an object of a game class may answer** (`-inspect`) moves with
+   its category and `respondsToSelector:` test to `X+ObjCBridge.mm` behind a C++ function
+   (`OOJSConsoleInspect(entity)`, in `X+ObjCBridge.h`), as amendment oo-vnts item 2 does. Its
+   deletion bead waits for the class's façade deletion.
+3. **The test links the real façade of a converted class the binding holds** (here
+   `OODebugMonitor+ObjCBridge.mm`, with `OOWeakReference`) over stand-ins of all of that class's
+   C++ members, so the same expectations run before and after the conversion: before, the binding
+   messages the façade, which forwards to the stand-ins; after, it calls them. A converted class
+   the binding only calls (the extension manager) has an Objective-C stand-in before and C++
+   member stand-ins after (amendment oo-4nhg item 6); a stand-in of a class with a virtual
+   destructor defines that destructor, which carries the vtable.
+4. **Natives that compile only in other flavours** (`#if OO_DEBUG`, `#if DEBUG`) are converted too
+   and checked with `-fsyntax-only` and those defines from the test flavour's compile command, as
+   bead oo-5q8h did for `DEBUG_GRAPHVIZ`. The profiler (`#if OOJS_PROFILE`) does compile in the test
+   flavour, so the test links the real `OOJSEngineTimeManagement`.
+5. A `static` function whose line the conversion touches (`DoWeDefineAllDebugFlags`, `BOOL` to
+   `bool`) moves into an anonymous namespace with its attribute unchanged (amendment oo-q9q4
+   item 4).
+
+**Consequences.** One bridge (no façade) and its deletion bead. The binding keeps two kinds of
+Objective-C, both on the façade's superclass and slot, until the monitor's façade is deleted:
+`-weakRetain` and the class check.
