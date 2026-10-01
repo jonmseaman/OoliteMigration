@@ -70,6 +70,7 @@ core_tests = {
     'test_OOCommodities': ['Core/OOCommodities.mm', 'Core/OOCommodities+ObjCBridge.mm', 'Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm', 'Core/legacy_random.c'],
     'test_OOCommodityMarket': ['Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm'],
     'test_OOEquipmentType': ['Core/OOEquipmentType.mm', 'Core/OOEquipmentType+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOConstToString': ['Core/OOConstToString.mm', 'Core/OOEquipmentType.mm', 'Core/OOEquipmentType+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OORoleSet': ['Core/OORoleSet.mm', 'Core/OORoleSet+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_OOProbabilitySet': ['Core/OOProbabilitySet.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
