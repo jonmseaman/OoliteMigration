@@ -8,8 +8,11 @@
 	back. +stopAll stops every source that is playing. The mixer and its channels are this file's
 	stubs, which record what they are told (the real ones would make OpenAL sources); the sound is
 	an opaque object to a source, so it is a stub too, with only a name (amendment oo-z1s4 item 4).
-	These expectations were written against the Objective-C API and ran on the unconverted class
-	first. Run: bash tools/check-core-tests.sh test_OOSoundSource
+	The playing channel is private, so the test reads it as a friend (amendment oo-zffj item 3;
+	through the runtime before the conversion). These expectations were written against the
+	Objective-C API and ran on the unconverted class first; they now run through the facade, which
+	is its forwarding test. After them come the C++ API (cxx::OOSoundSource) and the facade's
+	contract. Run: bash tools/check-core-tests.sh test_OOSoundSource
 */
 
 #import "OOSoundSource.h"
@@ -181,11 +184,21 @@ std::vector<std::string> TakeLog()
 }
 
 
+}	// namespace
+
+
+struct OOSoundSourceTestAccess
+{
+	static OOSoundChannel *Channel(cxx::OOSoundSource *source)  { return source->_channel; }
+};
+
+
+namespace {
+
 // The channel a playing source has (its private _channel).
 OOSoundChannel *ChannelOf(OOSoundSource *source)
 {
-	const ptrdiff_t offset = ivar_getOffset(class_getInstanceVariable([OOSoundSource class], "_channel"));
-	return *reinterpret_cast<OOSoundChannel **>(reinterpret_cast<char *>(source) + offset);
+	return OOSoundSourceTestAccess::Channel(oo::ToCxx(source));
 }
 
 }	// namespace
@@ -391,6 +404,56 @@ OO_TEST(stopAllAndNoChannel)
 		[OOSoundSource stopAll];
 		OO_CHECK(TakeLog().empty());
 	}
+	OO_CHECK(gLiveSounds == 0);
+}
+
+
+// The C++ API, and a playing C++ source: its facade is the channel's delegate and keeps it alive.
+OO_TEST(cxxApi)
+{
+	TakeLog();
+	cxx::OOSoundSource *weak = nullptr;
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOSoundSource> source = cxx::OOSoundSource::sourceWithSound(MakeSound("beep"));
+		OO_CHECK(source->sound() != nil && source->repeatCount() == 1 && source->gain() == OO_DEFAULT_SOUNDSOURCE_GAIN);
+		OO_CHECK(source->descriptionComponents() == std::optional<std::string>("sound=" + oo::DescriptionOf(source->sound()) + ", loop=NO, repeatCount=1, not playing"));
+		source->setGain(0.5f);
+		source->play();
+		OO_CHECK(source->isPlaying());
+		OOSoundChannel *channel = OOSoundSourceTestAccess::Channel(source.get());
+		OO_CHECK(channel->_delegate == oo::ToObjC(source.get()) && channel->_gain == 0.5f);
+		weak = source.get();
+	}
+	// The Ref and the pool are gone; the playing source keeps itself.
+	OO_CHECK(weak->isPlaying());
+	@autoreleasepool
+	{
+		[OOSoundSourceTestAccess::Channel(weak) finish];
+	}
+	OO_CHECK((TakeLog() == std::vector<std::string>{ "play beep", "push" }));
+	@autoreleasepool
+	{
+		cxx::OOSoundSource::stopAll();	// lets it go
+	}
+}
+
+
+// The facade's contract: one live facade per source; alloc/init makes the source's peer.
+OO_TEST(facade)
+{
+	@autoreleasepool
+	{
+		OOSoundSource *made = [[[OOSoundSource alloc] initWithSound:MakeSound("beep")] autorelease];
+		OO_CHECK(oo::ToObjC(oo::ToCxx(made)) == made);
+		const oo::Ref<cxx::OOSoundSource> source = oo::makeRef<cxx::OOSoundSource>();
+		OOSoundSource *facade = oo::ToObjC(source.get());
+		OO_CHECK(facade == oo::ToObjC(source) && oo::ToCxx(facade) == source.get());
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOSoundSource 0x"));
+	}
+	OOSoundSource *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSoundSource *>(nullptr)) == nil);
 	OO_CHECK(gLiveSounds == 0);
 }
 
