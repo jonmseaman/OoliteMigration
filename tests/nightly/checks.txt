@@ -212,3 +212,4 @@
 [oo-zsid] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWaypointEntity && bash tools/tier-c.sh --only goldens
 [oo-sxgm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_SkyEntity && bash tools/tier-c.sh --only goldens
 [oo-y86f] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOExhaustPlumeEntity && bash tools/tier-c.sh --only goldens
+[oo-ubjo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSunEntity && bash tools/tier-c.sh --only goldens

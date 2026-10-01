@@ -589,7 +589,7 @@ void CollisionRegion::findShadowedEntities()
 	
 	if ([UNIVERSE reducedDetail])  return;	// don't do this in reduced detail mode
 	
-	OOSunEntity* the_sun = [UNIVERSE sun];
+	::OOSunEntity* the_sun = [UNIVERSE sun];
 	
 	if (the_sun == nil)
 	{

@@ -2492,6 +2492,42 @@ its colour arguments through out-parameters.
 **Consequences.** One façade and deletion bead per class (five), each waiting for the callers that
 make and message it; the bindings' category bridges (oo-9ht.48, .49 and .50) move their forwarders
 onto the façade before it goes. No caller changed.
+
+## Amendment (bead oo-ubjo): the sun and the wormhole (leaves with a façade that many callers message)
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOSunEntity.h/.mm` and
+  `WormholeEntity.h/.mm` with their `+ObjCBridge.h/.mm` (beads oo-ubjo and oo-z55j),
+  `tests/unit/core/test_OOSunEntity.mm`, `test_WormholeEntity.mm`. Follows amendment oo-wue8.
+
+**Context.** The sun and the wormholes are made by the universe, the player and the ships with
+`alloc`/`-init…`, kept in typed containers (`oo::ObjCRef<WormholeEntity *>`) and messaged by about
+fifteen unconverted files, two of them converted classes inside `namespace cxx` that named the
+class. The sun's `-init` only asserted; the wormhole's private `-init` was the body both public
+initialisers ran first; three getters had their ivars' names; and the wormhole reached the
+converted system description manager through the universe.
+
+**Decision (recommended defaults).**
+
+1. **The façade keeps every selector the header declared,** each a one-line forwarder, and its
+   initialisers make the C++ part and run the C++ body (amendment oo-0mxi item 2). An Objective-C
+   `-init` that only asserted stays in the façade, under the same `#ifndef NDEBUG`.
+2. **A private `-init` that the public initialisers sent first** is `void init()` (as
+   `DustEntity`'s), which they call first, as they sent `[self init]`.
+3. **A converted class inside `namespace cxx` that named the class** names its façade `::X`
+   (`CollisionRegion`'s `::OOSunEntity *the_sun`, `OODebugMonitor`'s `oo::ObjCRef<::WormholeEntity *>`),
+   as amendment oo-bj8 item 9 says for `Entity`: those are the only caller lines that changed.
+4. **A converted collaborator the body reached through the universe** (`[[UNIVERSE systemManager]
+   getCoordinatesForSystem:inGalaxy:]`) is crossed once with `oo::ToCxx` in a file-local helper that
+   carries the null guard (amendment oo-6ia4 item 2); the universe stays Objective-C. The test makes
+   a real C++ manager (its coordinates set and cached) and hands the universe its façade, so the
+   same expectations run on the Objective-C class, which messaged the façade, and on the converted
+   one, which calls the member.
+5. **`descriptionComponents() const`** reads the members its getters read, and calls the
+   non-const members it must through one `const_cast` local, as `Entity`'s does.
+
+**Consequences.** Two façades and deletion beads; the scripting bindings' category bridges
+(oo-9ht.51 for the sun, the wormhole's own binding oo-ykoy) stay on the façades until they go.
+
 ## Amendment (bead oo-nge8): bindings of the player, the mission and the engine's helpers
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSMission.h/.mm`,

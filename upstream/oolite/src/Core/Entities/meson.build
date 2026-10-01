@@ -32,6 +32,7 @@ oolite_sources += files(
     'OORingEffectEntity.mm',
     'OOSparkEntity.mm',
     'OOSunEntity.mm',
+    'OOSunEntity+ObjCBridge.mm',
     'OOVisualEffectEntity.mm',
     'OOWaypointEntity.mm',
     'OOWaypointEntity+ObjCBridge.mm',
