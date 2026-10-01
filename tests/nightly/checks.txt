@@ -215,5 +215,6 @@
 [oo-supk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSEquipmentInfo && bash tools/tier-c.sh --only goldens
 [oo-5rva] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPlayer && bash tools/tier-c.sh --only goldens
 [oo-y86f] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOExhaustPlumeEntity && bash tools/tier-c.sh --only goldens
+[oo-whvg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSOolite && bash tools/tier-c.sh --only goldens
 [oo-ubjo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSunEntity && bash tools/tier-c.sh --only goldens
 [oo-z55j] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_WormholeEntity && bash tools/tier-c.sh --only goldens
