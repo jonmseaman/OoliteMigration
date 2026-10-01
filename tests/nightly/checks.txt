@@ -185,3 +185,4 @@
 [oo-izk8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugStandards && bash tools/tier-c.sh --only goldens
 [oo-s6ic6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity
 [oo-4nhg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugTCPConsoleClient && bash tools/tier-c.sh --only goldens
+[oo-n64m] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSShipGroup && bash tools/tier-c.sh --only goldens
