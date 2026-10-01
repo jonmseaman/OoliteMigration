@@ -56,7 +56,7 @@ MA 02110-1301, USA.
 		[self setCollisionRadius:2.0];
 		
 		[self setColor:color alpha:1.0];
-		_colorComponents[3] = 1.0f;
+		oo::ToCxx(self)->_colorComponents[3] = 1.0f;
 		
 		[self setEnergy:inEnergy];
 		_duration = duration;
@@ -113,7 +113,7 @@ MA 02110-1301, USA.
 	}
 	
 #if PLASMA_ATTENUATION
-	_colorComponents[3] = attenuation;
+	oo::ToCxx(self)->_colorComponents[3] = attenuation;
 #endif
 	
 	if (lifeTime > _duration)  [UNIVERSE removeEntity:self];

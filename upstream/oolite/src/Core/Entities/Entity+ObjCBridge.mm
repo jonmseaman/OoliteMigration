@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 #import "OOEntityWithDrawable.h"
+#import "OOLightParticleEntity.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "Universe.h"
 #import "NSObjectOOExtensions.h"
@@ -72,6 +73,7 @@ oo::ObjCPeers &Peers()
 	OOCParameterAssert(AsObjCEntity(entity.get()) == nullptr);
 	Class facadeClass = [::Entity class];
 	if (dynamic_cast<cxx::OOEntityWithDrawable *>(entity.get()) != nullptr)  facadeClass = [::OOEntityWithDrawable class];
+	if (dynamic_cast<cxx::OOLightParticleEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLightParticleEntity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
 }
 
