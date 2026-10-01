@@ -1,6 +1,6 @@
 # ADR-0029 — The Objective-C floor without Foundation
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.1, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-3rb.1, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Refines** [architecture §1 "load-bearing insight", §2.4, §3.4](../architecture.md) and
