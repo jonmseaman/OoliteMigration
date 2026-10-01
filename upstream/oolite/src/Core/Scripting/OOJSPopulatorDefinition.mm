@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOJSPopulatorDefinition.h"
+#import "OOJSScript.h"
 #import "OOJavaScriptEngine.h"
 #import "OOMaths.h"
 #import "OOJSVector.h"
