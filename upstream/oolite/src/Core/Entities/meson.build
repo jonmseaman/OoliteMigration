@@ -56,6 +56,7 @@ oolite_sources += files(
     'SkyEntity+ObjCBridge.mm',
     'StationEntity.mm',
     'WormholeEntity.mm',
+    'WormholeEntity+ObjCBridge.mm',
 )
 
 oolite_includes += include_directories('.')
