@@ -2161,3 +2161,33 @@ get the client as `void *`, call its private methods. One private method takes `
 
 **Consequences.** One façade and one deletion bead, which waits for the debug support's conversion
 (its only maker) and for the debugger interface's. The goldens are the end-to-end check.
+
+## Amendment (bead oo-vnts): a file of free functions that makes converted objects, and a selector only an unknown object may answer
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Debug/OODebugSupport.mm`,
+  `OODebugSupport+ObjCBridge.h/.mm`, `tests/unit/core/test_OODebugSupport.mm`.
+
+**Context.** `OOInitDebugSupport()` has no class. It makes the TCP console client
+(`[[X alloc] initWith…]`, then `autorelease`) and hands it to the monitor, both converted
+(amendments oo-kq7, oo-4nhg), and it asks the Mac debug plug-in's controller, an object of no
+known class, whether it answers `-setUpDebugger`, a selector declared by a category on `OOObject`
+in the file.
+
+**Decision (recommended defaults).**
+
+1. **Converted classes are reached as `cxx::`**: `[[X alloc] initWith…]` plus `autorelease` is
+   `oo::ToObjC(cxx::X::factory(...).get())` where the result goes on to Objective-C (here
+   `id<OODebuggerInterface>`): the peer table makes the façade, autoreleased, and it owns the
+   object; nil for null, as before. Messages to classes that are not converted stay messages,
+   their `BOOL` arguments included.
+2. **A selector that only an object of unknown class may answer** (a plug-in's) moves, with the
+   category that declares it and the `respondsToSelector:` test, to `X+ObjCBridge.mm`, behind C++
+   functions declared in `X+ObjCBridge.h` (`OODebugPlugInControllerCanSetUpDebugger`,
+   `…SetUpDebugger`), which `X.mm` imports; `X.h` does not change. This is amendment oo-rmd7
+   item 1 (Objective-C that exists for the runtime moves to the bridge) for a file with no class.
+   Its deletion bead waits for the debugger interface's conversion.
+3. **The test stands in for converted classes by defining the members the file calls**
+   (amendment oo-4nhg item 6), including the static factory, the destructor and `oo::ToObjC` of a
+   class whose private constructor a stand-in factory can still call, being a member.
+
+**Consequences.** One bridge with no façade, and its deletion bead.
