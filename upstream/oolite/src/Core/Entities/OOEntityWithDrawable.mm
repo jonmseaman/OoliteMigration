@@ -22,74 +22,70 @@ MA 02110-1301, USA.
 
 */
 
-
 #import "OOEntityWithDrawable.h"
 #import "OODrawable.h"
 #import "Universe.h"
 #import "ShipEntity.h"
 #import "OOVisualEffectEntity.h"
 
-@implementation OOEntityWithDrawable
 
-- (void)dealloc
+namespace cxx {
+
+// -dealloc released the drawable; the member does, when the Objective-C object releases its C++
+// part at the end of its -dealloc.
+
+
+::OODrawable *OOEntityWithDrawable::getDrawable()
 {
-	[drawable release];
-	drawable = nil;
-	
-	[super dealloc];
+	return drawable.get();
 }
 
 
-- (OODrawable *)drawable
+void OOEntityWithDrawable::setDrawable(::OODrawable *inDrawable)
 {
-	return drawable;
-}
-
-
-- (void)setDrawable:(OODrawable *)inDrawable
-{
-	if (inDrawable != drawable)
+	if (inDrawable != drawable.get())
 	{
-		[drawable autorelease];
-		drawable = [inDrawable retain];
-		[drawable setBindingTarget:self];
-		
-		collision_radius = [drawable collisionRadius];
-		no_draw_distance = [drawable maxDrawDistance];
-		boundingBox = [drawable boundingBox];
+		[[drawable.get() retain] autorelease];	// [drawable autorelease]: the old one lives until the pool drains
+		drawable = oo::ObjCRef<::OODrawable *>(inDrawable);
+		// Messages to a nil drawable did nothing and answered 0.
+		cxx::OODrawable *cxxDrawable = oo::ToCxx(drawable.get());
+		if (cxxDrawable != nullptr)  cxxDrawable->setBindingTarget(oo::ToObjC(this));
+
+		collision_radius = cxxDrawable != nullptr ? cxxDrawable->collisionRadius() : 0.0f;
+		no_draw_distance = cxxDrawable != nullptr ? cxxDrawable->maxDrawDistance() : 0.0f;
+		boundingBox = cxxDrawable != nullptr ? cxxDrawable->boundingBox() : kZeroBoundingBox;
 	}
 }
 
 
-- (double)findCollisionRadius
+double OOEntityWithDrawable::findCollisionRadius()
 {
-	return [drawable collisionRadius];
+	cxx::OODrawable *cxxDrawable = oo::ToCxx(drawable.get());
+	return cxxDrawable != nullptr ? cxxDrawable->collisionRadius() : 0.0f;
 }
 
 
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
+void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 {
 	if (no_draw_distance < cam_zero_distance)
 	{
 		// Don't draw.
 		return;
 	}
-	
-	if (no_draw_distance != INFINITY && ![self isImmuneToBreakPatternHide])
-	{ 
+
+	if (no_draw_distance != INFINITY && !getIsImmuneToBreakPatternHide())
+	{
 		// (always draw sky, always draw break patterns)
-		if (![self isSubEntity]) 
+		if (!getIsSubEntity())
 		{
 			GLfloat clipradius = collision_radius;
-			if ([self isShip])
+			if (getIsShip())
 			{
-				ShipEntity* shipself = (ShipEntity*)self;
-				clipradius = [shipself frustumRadius];
+				clipradius = frustumRadius();	// [(ShipEntity *)self frustumRadius]
 			}
-			else if ([self isVisualEffect])
+			else if (getIsVisualEffect())
 			{
-				OOVisualEffectEntity* veself = (OOVisualEffectEntity*)self;
-				clipradius = [veself frustumRadius];
+				clipradius = frustumRadius();	// [(OOVisualEffectEntity *)self frustumRadius]
 			}
 			// don't bother with frustum culling within/near collision radius, as
 			// potential for problems with floating point inaccuracy causing
@@ -102,35 +98,40 @@ MA 02110-1301, USA.
 					return;
 				}
 			}
-		} 
+		}
 		else // is subentity
 		{
 			// don't bother with frustum culling within 1km, as above - CIM
 			if (cam_zero_distance > (collision_radius+1000)*(collision_radius+1000))
 			{
 				// check correct sub-entity position
-				if (![UNIVERSE viewFrustumIntersectsSphereAt:cameraRelativePosition withRadius:[self collisionRadius]])
+				if (![UNIVERSE viewFrustumIntersectsSphereAt:cameraRelativePosition withRadius:collisionRadius()])
 				{
 					return;
 				}
 			}
 		}
-	}	
+	}
 
 	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOn();
-		
-	if (translucent)  [drawable renderTranslucentParts];
-	else  [drawable renderOpaqueParts];
-	
+
+	cxx::OODrawable *cxxDrawable = oo::ToCxx(drawable.get());
+	if (cxxDrawable != nullptr)
+	{
+		if (translucent)  cxxDrawable->renderTranslucentParts();
+		else  cxxDrawable->renderOpaqueParts();
+	}
+
 	if ([UNIVERSE wireframeGraphics])  OOGLWireframeModeOff();
 }
 
 
 #ifndef NDEBUG
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
+std::vector<oo::ObjCRef<OOTexture *>> OOEntityWithDrawable::allTextures()
 {
-	return [[self drawable] cxx_allTextures];
+	cxx::OODrawable *cxxDrawable = oo::ToCxx(getDrawable());
+	return cxxDrawable != nullptr ? cxxDrawable->allTextures() : std::vector<oo::ObjCRef<OOTexture *>>();
 }
 #endif
 
-@end
+}	// namespace cxx
