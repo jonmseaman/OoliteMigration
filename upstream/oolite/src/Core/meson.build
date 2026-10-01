@@ -13,6 +13,7 @@ oolite_sources += files(
     'OOALBufferedSound.mm',
     'OOALBufferedSound+ObjCBridge.mm',
     'OOALMusic.mm',
+    'OOALMusic+ObjCBridge.mm',
     'OOALSound.mm',
     'OOALSound+ObjCBridge.mm',
     'OOALSoundChannel.mm',
