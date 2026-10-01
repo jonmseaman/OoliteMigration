@@ -70,6 +70,10 @@ SOFTWARE.
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
 #import "OOAIStateMachineVerifierStage.h"
+#import "OOCheckJSSyntaxVerifierStage.h"
+#import "OOCheckPListSyntaxVerifierStage.h"
+#import "OOCheckDemoShipsPListVerifierStage.h"
+#import "OOCheckRequiresPListVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
@@ -123,6 +127,10 @@ struct CxxStage
 constexpr CxxStage kCxxStages[] =
 {
 	{ "OOAIStateMachineVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOAIStateMachineVerifierStage>()); } },
+	{ "OOCheckJSSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckJSSyntaxVerifierStage>()); } },
+	{ "OOCheckPListSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckPListSyntaxVerifierStage>()); } },
+	{ "OOCheckDemoShipsPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckDemoShipsPListVerifierStage>()); } },
+	{ "OOCheckRequiresPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckRequiresPListVerifierStage>()); } },
 };
 
 
