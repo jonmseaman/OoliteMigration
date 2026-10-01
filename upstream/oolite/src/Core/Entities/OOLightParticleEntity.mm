@@ -283,7 +283,7 @@ void OOLightParticleEntity::setUpTexture()
 {
 	if (sBlobTexture == nil)
 	{
-		sBlobTexture = [[OOTexture cxx_textureWithName:"oolite-particle-blur.png"
+		sBlobTexture = [[::OOTexture cxx_textureWithName:"oolite-particle-blur.png"
 										  inFolder:"Textures"
 										   options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 										anisotropy:kOOTextureDefaultAnisotropy / 2.0

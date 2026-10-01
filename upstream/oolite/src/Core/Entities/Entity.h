@@ -238,7 +238,7 @@ public:
 	std::optional<std::string> descriptionForObjDumpBasic();
 	virtual std::optional<std::string> descriptionForObjDump();
 
-	virtual std::vector<oo::ObjCRef<OOTexture *>> allTextures();
+	virtual std::vector<oo::ObjCRef<::OOTexture *>> allTextures();
 #endif
 
 	// the base object for ships/stations/anything actually

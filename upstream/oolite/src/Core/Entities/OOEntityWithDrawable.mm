@@ -127,10 +127,10 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OOEntityWithDrawable::allTextures()
+std::vector<oo::ObjCRef<::OOTexture *>> OOEntityWithDrawable::allTextures()
 {
 	cxx::OODrawable *cxxDrawable = oo::ToCxx(getDrawable());
-	return cxxDrawable != nullptr ? cxxDrawable->allTextures() : std::vector<oo::ObjCRef<OOTexture *>>();
+	return cxxDrawable != nullptr ? cxxDrawable->allTextures() : std::vector<oo::ObjCRef<::OOTexture *>>();
 }
 #endif
 

@@ -421,7 +421,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 
 	bool visible = parentVisible && [entity isVisible];
 
-	for (const oo::ObjCRef<OOTexture *> &texture : [entity cxx_allTextures])
+	for (const oo::ObjCRef<::OOTexture *> &texture : [entity cxx_allTextures])
 	{
 		state->entityTextures.insert(oo::ObjCRef<id>(texture.get()));
 		if (visible)  state->visibleEntityTextures.insert(oo::ObjCRef<id>(texture.get()));
@@ -496,10 +496,10 @@ void OODebugMonitor::dumpMemoryStatistics()
 	oo::log::indent();
 
 	//	Get texture retain counts before the entity dumper starts messing with them.
-	const std::vector<oo::ObjCRef<OOTexture *>> allTextures = [OOTexture cxx_allTextures];
-	std::map<OOTexture *, NSUInteger> textureRefCounts;
+	const std::vector<oo::ObjCRef<::OOTexture *>> allTextures = [::OOTexture cxx_allTextures];
+	std::map<::OOTexture *, NSUInteger> textureRefCounts;
 
-	for (const oo::ObjCRef<OOTexture *> &tex : allTextures)
+	for (const oo::ObjCRef<::OOTexture *> &tex : allTextures)
 	{
 		// We subtract one because allTextures retains the textures.
 		textureRefCounts[tex.get()] = [tex.get() retainCount] - 1;
@@ -532,9 +532,9 @@ void OODebugMonitor::dumpMemoryStatistics()
 	/*	Sort textures so that textures in the "recent cache" come first by age,
 		followed by others.
 	*/
-	std::vector<oo::ObjCRef<OOTexture *>> textures = [OOTexture cxx_cachedTexturesByAge];
+	std::vector<oo::ObjCRef<::OOTexture *>> textures = [::OOTexture cxx_cachedTexturesByAge];
 
-	for (const oo::ObjCRef<OOTexture *> &tex : allTextures)
+	for (const oo::ObjCRef<::OOTexture *> &tex : allTextures)
 	{
 		if (std::find(textures.begin(), textures.end(), tex) == textures.end())
 		{
@@ -549,9 +549,9 @@ void OODebugMonitor::dumpMemoryStatistics()
 	writeMemStat("Textures:");
 	oo::log::indent();
 
-	for (const oo::ObjCRef<OOTexture *> &texRef : textures)
+	for (const oo::ObjCRef<::OOTexture *> &texRef : textures)
 	{
-		OOTexture *tex = texRef.get();
+		::OOTexture *tex = texRef.get();
 		size_t objSize = [tex oo_objectSize];
 		size_t dataSize = [tex dataSize];
 

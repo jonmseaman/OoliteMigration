@@ -250,12 +250,12 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 		const oo::PList *uniformDefs = configuration.find(kOOUniformsKey);
 
 		// Texture objects from the configuration (Object nodes), else texture specifiers loaded.
-		std::vector<oo::ObjCRef<OOTexture *>> textureObjects;
+		std::vector<oo::ObjCRef<::OOTexture *>> textureObjects;
 		if (const oo::PList *textureArray = configuration.get<oo::PList::Array>(kOOTextureObjectsKey))
 		{
 			for (const oo::PList &entry : *textureArray->getIf<oo::PList::Array>())
 			{
-				textureObjects.push_back(oo::ObjCRef<OOTexture *>(oo::ObjectIn(entry)));
+				textureObjects.push_back(oo::ObjCRef<::OOTexture *>(oo::ObjectIn(entry)));
 			}
 		}
 		else if (const oo::PList *textureSpecs = configuration.get<oo::PList::Array>(kOOTexturesKey))
@@ -766,9 +766,9 @@ bool OOShaderMaterial::permitSpecular()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OOShaderMaterial::allTextures()
+std::vector<oo::ObjCRef<::OOTexture *>> OOShaderMaterial::allTextures()
 {
-	std::vector<oo::ObjCRef<OOTexture *>> result;
+	std::vector<oo::ObjCRef<::OOTexture *>> result;
 	result.reserve(texCount);
 	for (uint32_t i = 0; i < texCount; i++)
 	{
@@ -779,30 +779,30 @@ std::vector<oo::ObjCRef<OOTexture *>> OOShaderMaterial::allTextures()
 #endif
 
 
-std::vector<oo::ObjCRef<OOTexture *>> OOShaderMaterial::loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max)
+std::vector<oo::ObjCRef<::OOTexture *>> OOShaderMaterial::loadTexturesFromArray(const oo::PList &textureSpecs, GLuint max)
 {
 	GLuint i, count = (GLuint)MIN(textureSpecs.count(), (size_t)max);
-	std::vector<oo::ObjCRef<OOTexture *>> result;
+	std::vector<oo::ObjCRef<::OOTexture *>> result;
 	result.reserve(count);
 
 	for (i = 0; i < count; i++)
 	{
 		::OOTexture *texture = [::OOTexture cxx_textureWithConfiguration:*textureSpecs.at(i)];
 		if (texture == nil)  texture = [::OOTexture nullTexture];
-		result.push_back(oo::ObjCRef<OOTexture *>(texture));
+		result.push_back(oo::ObjCRef<::OOTexture *>(texture));
 	}
 
 	return result;
 }
 
 
-void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::ObjCRef<OOTexture *>> &textureObjects, GLuint max)
+void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTexture *>> &textureObjects, GLuint max)
 {
 	// Allocate space for texture object name array
 	texCount = (uint32_t)MIN(textureObjects.size(), (size_t)max);
 	if (texCount == 0)  return;
 
-	textures = (OOTexture **)malloc(texCount * sizeof *textures);
+	textures = (::OOTexture **)malloc(texCount * sizeof *textures);
 	if (textures == NULL)
 	{
 		texCount = 0;

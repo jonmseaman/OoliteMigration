@@ -220,9 +220,9 @@ void OOMultiTextureMaterial::unapplyWithNext(OOMaterial *next)
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OOMultiTextureMaterial::allTextures()
+std::vector<oo::ObjCRef<::OOTexture *>> OOMultiTextureMaterial::allTextures()
 {
-	std::vector<oo::ObjCRef<OOTexture *>> result;
+	std::vector<oo::ObjCRef<::OOTexture *>> result;
 	if (_diffuseMap.get() == nil)
 	{
 		result.emplace_back(_emissionMap.get());

@@ -13,9 +13,11 @@
 	generator's -enqueue is the test's, so no file is read and no worker thread runs.
 
 	The expectations were written against the Objective-C API and run on the unconverted class
-	first. Two Objective-C subclasses stand for the concrete textures: TestTexture overrides what
-	OOConcreteTexture does and caches itself under a key, BareTexture overrides nothing, so it
-	answers the root's defaults.
+	first (commit 84b1acfc6); that API is now the facade (OOTexture+ObjCBridge.h), so they run
+	through it, which is its forwarding test. Two Objective-C subclasses stand for the concrete
+	textures: TestTexture overrides what OOConcreteTexture does and caches itself under a key,
+	BareTexture overrides nothing, so it answers the root's defaults. After them come the C++ API
+	and the hierarchy's crossing both ways, as test_OOSound.mm does.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -386,6 +388,163 @@ OO_TEST(applyNone)
 	glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
 	OO_CHECK(bound == 0);
 	glDeleteTextures(1, &name);
+}
+
+
+// --- The C++ API and the crossing (after the conversion) -------------------------------------
+
+// A converted texture, as OOConcreteTexture will be one: a C++ subclass, cached under its key.
+// Global, so its facade prints its name as a global class's.
+class TestCxxTexture final : public cxx::OOTexture
+{
+public:
+	explicit TestCxxTexture(std::optional<std::string> key) : _key(std::move(key))  { addToCaches(); }
+	~TestCxxTexture() override  { removeFromCaches(); }
+
+	void apply() override												{ applies++; }
+	NSSize dimensions() override										{ return NSMakeSize(16, 2); }
+	bool isMipMapped() override											{ return false; }
+	void forceRebind() override											{ rebinds++; }
+	std::optional<std::string> cacheKey() override						{ return _key; }
+	GLint glTextureName() override										{ return 9; }
+	std::optional<std::string> descriptionComponents() const override	{ return std::string("cxx"); }
+
+	int applies = 0;
+	int rebinds = 0;
+
+private:
+	std::optional<std::string> _key;
+};
+
+
+OO_TEST(cxxApi)
+{
+	ClearCache();
+	@autoreleasepool
+	{
+		// The factories answer the Objective-C texture, retained.
+		OO_CHECK(!cxx::OOTexture::textureWithName(std::nullopt, std::string("Textures")));
+		const oo::ObjCRef<OOTexture *> none = cxx::OOTexture::nullTexture();
+		OO_CHECK([none.get() isKindOfClass:[OONullTexture class]] && none.get() == [OOTexture nullTexture]);
+		TestGenerator *generator = MakeGenerator(std::string("test:cxxgen"), YES);
+		const oo::ObjCRef<OOTexture *> generated = cxx::OOTexture::textureWithGenerator(generator);
+		OO_CHECK([generated.get() isKindOfClass:[OOConcreteTexture class]]);
+		OO_CHECK(cxx::OOTexture::existingTextureForKey(std::string("test:cxxgen")) == oo::ToCxx(generated.get()));
+		OO_CHECK(cxx::OOTexture::textureWithGenerator(generator, false) == generated && generator->_enqueues == 1);
+		OO_CHECK(!cxx::OOTexture::textureWithConfiguration(oo::PList(3.0)));
+		OO_CHECK(cxx::OOTexture::existingTextureForKey(std::nullopt) == nullptr);
+		ClearCache();
+	}
+
+	// The root's own answers.
+	const oo::Ref<cxx::OOTexture> root = oo::makeRef<cxx::OOTexture>();
+	OO_CHECK(root->isFinishedLoading() && !root->cacheKey().has_value());
+	OO_CHECK(SameSize(root->dimensions(), 0, 0) && SameSize(root->originalDimensions(), 0, 0));
+	OO_CHECK(SameSize(root->texCoordsScale(), 1, 1) && !root->isMipMapped() && root->glTextureName() == 0);
+	OO_CHECK(!root->isRectangleTexture() && !root->isCubeMap() && OOIsNullPixMap(root->copyPixMapRepresentation()));
+	OO_CHECK(!root->descriptionComponents().has_value());
+	root->apply();
+	root->ensureFinishedLoading();
+	root->forceRebind();
+#ifndef NDEBUG
+	OO_CHECK(!root->name().has_value() && root->dataSize() == 0);
+#endif
+}
+
+
+OO_TEST(cxxTextureBehindTheFacade)
+{
+	const int deallocs = gTestDeallocs;
+	@autoreleasepool
+	{
+		const oo::Ref<TestCxxTexture> texture = oo::makeRef<TestCxxTexture>(std::string("test:cxx"));
+		OOTexture *facade = oo::ToObjC(texture.get());
+		OO_CHECK(facade != nil && facade == oo::ToObjC(texture.get()));	// one live facade
+		OO_CHECK(oo::ToCxx(facade) == texture.get());
+
+		// The callers' messages reach the C++ overrides, and the root's defaults.
+		OO_CHECK(SameSize([facade dimensions], 16, 2) && SameSize([facade originalDimensions], 16, 2));
+		OO_CHECK([facade glTextureName] == 9 && ![facade isMipMapped] && [facade isFinishedLoading]);
+		OO_CHECK([facade cxx_cacheKey] == std::optional<std::string>("test:cxx"));
+		[facade apply];
+		OO_CHECK(texture->applies == 1);
+#ifndef NDEBUG
+		OO_CHECK([facade dataSize] == 32);
+#endif
+		const std::string text = oo::DescriptionOf(facade);
+		OO_CHECK(text.starts_with("<TestCxxTexture 0x") && text.ends_with(">{cxx}"));
+
+		// The caches hold it: by key, its facade; a graphics reset reaches it.
+		OO_CHECK([OOTexture cxx_existingTextureForKey:std::string("test:cxx")] == facade);
+		[OOTexture rebindAllTextures];
+		OO_CHECK(texture->rebinds == 1);
+#ifndef NDEBUG
+		@autoreleasepool
+		{
+			OO_CHECK(Contains([OOTexture cxx_allTextures], facade));
+		}
+#endif
+	}
+	ClearCache();
+	OO_CHECK([OOTexture cxx_existingTextureForKey:std::string("test:cxx")] == nil);	// destroyed: uncached
+	OO_CHECK(gTestDeallocs == deallocs);
+}
+
+
+OO_TEST(objCTextureBehindACxxPointer)
+{
+	@autoreleasepool
+	{
+		TestTexture *objCTexture = MakeTexture(std::string("test:objc"));
+		cxx::OOTexture *part = oo::ToCxx(objCTexture);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == objCTexture);	// the object itself
+		OO_CHECK(cxx::OOTexture::existingTextureForKey(std::string("test:objc")) == part);
+
+		// Virtual calls from C++ reach the Objective-C overrides; the root answers the rest.
+		OO_CHECK(SameSize(part->dimensions(), 8, 4) && SameSize(part->originalDimensions(), 8, 4));
+		OO_CHECK(part->isMipMapped() && part->glTextureName() == 7);
+		OO_CHECK(part->cacheKey() == std::optional<std::string>("test:objc"));
+		OO_CHECK(part->descriptionComponents() == std::optional<std::string>("test"));
+		part->apply();
+		part->forceRebind();
+		OO_CHECK(objCTexture->_applies == 1 && objCTexture->_rebinds == 1);
+		OO_CHECK(part->isFinishedLoading() && !part->isCubeMap() && SameSize(part->texCoordsScale(), 1, 1));
+#ifndef NDEBUG
+		OO_CHECK(part->name() == std::optional<std::string>("test texture") && part->dataSize() == 42);
+#endif
+
+		cxx::OOTexture *bare = oo::ToCxx([[[BareTexture alloc] init] autorelease]);
+		OO_CHECK(SameSize(bare->dimensions(), 0, 0) && bare->glTextureName() == 0 && !bare->cacheKey().has_value());
+		ClearCache();
+	}
+}
+
+
+OO_TEST(nilAndLifetime)
+{
+	OOTexture *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOTexture *>(nullptr)) == nil);
+	OO_CHECK([OOTexture cxx_existingTextureForKey:std::string("test:nothing")] == nil);
+	OO_CHECK(SameSize([none dimensions], 0, 0) && [none glTextureName] == 0);
+
+	// An Objective-C texture's C++ part outlives it, and then answers as nil did.
+	oo::Ref<cxx::OOTexture> part;
+	@autoreleasepool
+	{
+		part = oo::Ref<cxx::OOTexture>(oo::ToCxx([[[TestTexture alloc] initWithKey:std::nullopt] autorelease]));
+	}
+	OO_CHECK(SameSize(part->dimensions(), 0, 0) && part->glTextureName() == 0 && !part->isMipMapped());
+	OO_CHECK(!part->cacheKey().has_value() && !part->isFinishedLoading());
+	OO_CHECK(oo::ToObjC(part) == nil);
+#ifndef NDEBUG
+	@autoreleasepool
+	{
+		const std::vector<oo::ObjCRef<OOTexture *>> all = [OOTexture cxx_allTextures];
+		OO_CHECK(std::none_of(all.begin(), all.end(), [](const oo::ObjCRef<OOTexture *> &t) { return t.get() == nil; }));
+	}
+#endif
+	part->forceRebind();	// nothing: its object has gone
 }
 
 

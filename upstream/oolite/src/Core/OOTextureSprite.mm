@@ -30,14 +30,14 @@ MA 02110-1301, USA.
 
 namespace cxx {
 
-oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(OOTexture *inTexture)
+oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(::OOTexture *inTexture)
 {
 	return initWithTexture(inTexture, [inTexture originalDimensions]);
 }
 
 
 // -initWithTexture:size:'s failure test, then the object (amendment oo-novu item 1).
-oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(OOTexture *inTexture, NSSize spriteSize)
+oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(::OOTexture *inTexture, NSSize spriteSize)
 {
 	if (inTexture == nil)
 	{
@@ -48,9 +48,9 @@ oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(OOTexture *inTexture, 
 }
 
 
-OOTextureSprite::OOTextureSprite(OOTexture *inTexture, NSSize spriteSize)
+OOTextureSprite::OOTextureSprite(::OOTexture *inTexture, NSSize spriteSize)
 {
-	texture = oo::ObjCRef<OOTexture *>(inTexture);
+	texture = oo::ObjCRef<::OOTexture *>(inTexture);
 	size = spriteSize;
 }
 
