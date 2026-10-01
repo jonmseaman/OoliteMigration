@@ -35,6 +35,10 @@ MA 02110-1301, USA.
 #import "OOLaserShotEntity.h"
 #import "DustEntity.h"
 #import "OOLightParticleEntity.h"
+#import "WormholeEntity.h"
+#import "OOSunEntity.h"
+#import "OOExhaustPlumeEntity.h"
+#import "SkyEntity.h"
 #import "OOWaypointEntity.h"
 #import "OOFlasherEntity.h"
 #import "OOFlashEffectEntity.h"
@@ -83,6 +87,10 @@ oo::ObjCPeers &Peers()
 	if (dynamic_cast<cxx::OOLaserShotEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLaserShotEntity class];
 	if (dynamic_cast<cxx::DustEntity *>(entity.get()) != nullptr)  facadeClass = [::DustEntity class];
 	if (dynamic_cast<cxx::OOLightParticleEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLightParticleEntity class];
+	if (dynamic_cast<cxx::WormholeEntity *>(entity.get()) != nullptr)  facadeClass = [::WormholeEntity class];
+	if (dynamic_cast<cxx::OOSunEntity *>(entity.get()) != nullptr)  facadeClass = [::OOSunEntity class];
+	if (dynamic_cast<cxx::OOExhaustPlumeEntity *>(entity.get()) != nullptr)  facadeClass = [::OOExhaustPlumeEntity class];
+	if (dynamic_cast<cxx::SkyEntity *>(entity.get()) != nullptr)  facadeClass = [::SkyEntity class];
 	if (dynamic_cast<cxx::OOWaypointEntity *>(entity.get()) != nullptr)  facadeClass = [::OOWaypointEntity class];
 	if (dynamic_cast<cxx::OOFlasherEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlasherEntity class];
 	if (dynamic_cast<cxx::OOFlashEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlashEffectEntity class];

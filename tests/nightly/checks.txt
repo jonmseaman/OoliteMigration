@@ -206,6 +206,12 @@
 [oo-3oxq] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSStation && bash tools/tier-c.sh --only goldens
 [oo-jvm6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OONullTexture test_OOTexture && bash tools/tier-c.sh --only goldens
 [oo-wue8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFlashEffectEntity && bash tools/tier-c.sh --only goldens
+[oo-nge8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSMission && bash tools/tier-c.sh --only goldens
 [oo-bn5j] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFlasherEntity && bash tools/tier-c.sh --only goldens
+[oo-s4ns] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSMissionVariables && bash tools/tier-c.sh --only goldens
 [oo-zsid] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWaypointEntity && bash tools/tier-c.sh --only goldens
 [oo-tq53] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSEntity && bash tools/tier-c.sh --only goldens
+[oo-sxgm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_SkyEntity && bash tools/tier-c.sh --only goldens
+[oo-y86f] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOExhaustPlumeEntity && bash tools/tier-c.sh --only goldens
+[oo-ubjo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSunEntity && bash tools/tier-c.sh --only goldens
+[oo-z55j] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_WormholeEntity && bash tools/tier-c.sh --only goldens

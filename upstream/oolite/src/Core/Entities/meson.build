@@ -13,6 +13,7 @@ oolite_sources += files(
     'OOEntityWithDrawable.mm',
     'OOEntityWithDrawable+ObjCBridge.mm',
     'OOExhaustPlumeEntity.mm',
+    'OOExhaustPlumeEntity+ObjCBridge.mm',
     'OOExplosionCloudEntity.mm',
     'OOFlashEffectEntity.mm',
     'OOFlashEffectEntity+ObjCBridge.mm',
@@ -31,6 +32,7 @@ oolite_sources += files(
     'OORingEffectEntity.mm',
     'OOSparkEntity.mm',
     'OOSunEntity.mm',
+    'OOSunEntity+ObjCBridge.mm',
     'OOVisualEffectEntity.mm',
     'OOWaypointEntity.mm',
     'OOWaypointEntity+ObjCBridge.mm',
@@ -51,8 +53,10 @@ oolite_sources += files(
     'ShipEntityLoadRestore.mm',
     'ShipEntityScriptMethods.mm',
     'SkyEntity.mm',
+    'SkyEntity+ObjCBridge.mm',
     'StationEntity.mm',
     'WormholeEntity.mm',
+    'WormholeEntity+ObjCBridge.mm',
 )
 
 oolite_includes += include_directories('.')

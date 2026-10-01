@@ -516,7 +516,7 @@ void OODebugMonitor::dumpMemoryStatistics()
 	{
 		dumpEntity(entity.get(), &entityDumpState, true);
 	}
-	for (const oo::ObjCRef<WormholeEntity *> &entityRef : [PLAYER cxx_scannedWormholes])
+	for (const oo::ObjCRef<::WormholeEntity *> &entityRef : [PLAYER cxx_scannedWormholes])
 	{
 		dumpEntity(entityRef.get(), &entityDumpState, true);
 	}
