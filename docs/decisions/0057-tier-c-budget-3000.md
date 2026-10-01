@@ -1,7 +1,7 @@
 # ADR-0057: Tier C's budget is 3000 s (Tier B stays 1200 s)
 
-- Status: Proposed. Jon approved the change in chat on 2026-09-30 (relayed by the orchestrator);
-  recorded here as a proposed ADR with that default in effect (CLAUDE.md rule 10).
+- Status: Accepted (Jon, 2026-09-30, in chat). Jon approved the change in chat on 2026-09-30 (relayed by the orchestrator);
+  this line records that approval (CLAUDE.md rule 10).
 - Date: 2026-09-30
 - Beads: oo-3rb.331 (this ADR, the tier-c.sh constant, and tier-b's concurrent test stage);
   oo-ndo (the Phase 2 exit gate, which runs Tier C)

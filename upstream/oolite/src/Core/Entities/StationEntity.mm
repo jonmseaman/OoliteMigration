@@ -497,7 +497,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1);
 	}
 	
-	if	(magnitude2(velocity) > 1.0 ||
+	if	(magnitude2(_cxxEntity->velocity) > 1.0 ||
 			 fabs(flightPitch) > 0.01 ||
 			 fabs(flightYaw) > 0.01)
 	{
@@ -641,7 +641,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		self = [super cxx_initWithKey:key definition:dict];
 	if (self != nil)
 	{
-		isStation = YES;
+		_cxxEntity->isStation = YES;
 		_shipsOnHold = [[OOWeakSet alloc] init];
 		hasBreakPattern = YES;
 	}
@@ -666,8 +666,8 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	OOJS_PROFILE_ENTER
 	
-		isShip = YES;
-	isStation = YES;
+		_cxxEntity->isShip = YES;
+	_cxxEntity->isStation = YES;
 	alertLevel = STATION_ALERT_LEVEL_GREEN;
 	
 	port_radius = dict.get<oo::NonNegative<double>>("port_radius", 500.0);
@@ -874,7 +874,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (void) update:(OOTimeDelta) delta_t
 {
-	BOOL isRockHermit = (scanClass == CLASS_ROCK);
+	BOOL isRockHermit = (_cxxEntity->scanClass == CLASS_ROCK);
 	BOOL isMainStation = (self == [UNIVERSE station]);
 	
 	double unitime = [UNIVERSE getTime];
@@ -1318,7 +1318,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 	}
 	// Stop damage if main station & close to death!
-	if (!isFriend && (self != [UNIVERSE station] || amount < energy) )
+	if (!isFriend && (self != [UNIVERSE station] || amount < _cxxEntity->energy) )
 	{
 		// Handle damage like a ship.
 		[super takeEnergyDamage:amount from:ent becauseOf:other weaponIdentifier:weaponIdentifier];
@@ -1434,7 +1434,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 		[ship setPrimaryRole:shipRole];
 
-		if(trader || ship->scanClass == CLASS_NOT_SET)  [ship setScanClass: CLASS_NEUTRAL]; // keep defined scanclasses for non-traders.
+		if(trader || ship->_cxxEntity->scanClass == CLASS_NOT_SET)  [ship setScanClass: CLASS_NEUTRAL]; // keep defined scanclasses for non-traders.
 		
 		if (trader)
 		{
@@ -1583,7 +1583,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	else
 		default_defense_ship_role	= "police";
 
-	if (scanClass == CLASS_ROCK)
+	if (_cxxEntity->scanClass == CLASS_ROCK)
 		default_defense_ship_role	= "hermit-ship";
 	
 	if (defenders_launched >= max_defense_ships)   // shuttles are to rockhermits what police ships are to stations
@@ -1650,9 +1650,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	[defense_ship addTarget:[UNIVERSE entityForUniversalID:defense_target]];
 
-	if ((scanClass != CLASS_ROCK)&&(scanClass != CLASS_STATION))
+	if ((_cxxEntity->scanClass != CLASS_ROCK)&&(_cxxEntity->scanClass != CLASS_STATION))
 	{
-		[defense_ship setScanClass: scanClass];	// same as self
+		[defense_ship setScanClass: _cxxEntity->scanClass];	// same as self
 	}
 	else if ([defense_ship scanClass] == CLASS_NOT_SET)
 	{
@@ -1967,7 +1967,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		{
 			[ship cxx_setSingleCrewWithRole:shipRole];
 		}
-		if (ship->scanClass == CLASS_NOT_SET) [ship setScanClass: CLASS_NEUTRAL];
+		if (ship->_cxxEntity->scanClass == CLASS_NOT_SET) [ship setScanClass: CLASS_NEUTRAL];
 		[ship setPrimaryRole:shipRole];
 		[ship setGroup:[self stationGroup]];	// who's your Daddy
 		[self addShipToLaunchQueue:ship withPriority:NO];
@@ -1992,7 +1992,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[player warnAboutHostiles];	// sound a klaxon
 	}
 	
-	if (scanClass == CLASS_ROCK)	// ie we're a rock hermit or similar
+	if (_cxxEntity->scanClass == CLASS_ROCK)	// ie we're a rock hermit or similar
 	{
 		// set the role so that we break up into rocks!
 		[self setPrimaryRole:"asteroid"];

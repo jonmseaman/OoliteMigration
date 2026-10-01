@@ -1,6 +1,6 @@
 # ADR-0032 â€” `oofnd` Defaults reproduce GNUstep's `NSUserDefaults` as the game runs it
 
-**Status:** Proposed â€” default in effect (Claude Code, frontier agent, bead oo-32f, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) â€” default in effect (Claude Code, frontier agent, bead oo-32f, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Implements** the `Defaults` component of seam 2.7 of [Phase 2](../phases/2-oofnd.md) in
@@ -79,7 +79,7 @@ expectations in `tests/unit/oofnd/test_defaults.cpp`.
 
 ## Amendment 1 — one store (bead oo-mwo0, 2026-09-24)
 
-**Status:** Proposed — default in effect (Claude Code, fleet sweep worker; ADR-0013). Jon may
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, fleet sweep worker; ADR-0013). Jon may
 override.
 
 GameController's `save-directory` (oo-3rb.91) showed the cost of point 5 as first written: a key
@@ -123,7 +123,7 @@ automatic save is kept (this sentence corrected by bead oo-xeve; see Amendment 2
 
 ## Amendment 2 — the automatic save (bead oo-xeve, 2026-09-24)
 
-**Status:** Proposed — default in effect (Claude Code, fleet sweep worker; ADR-0013). Jon may
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, fleet sweep worker; ADR-0013). Jon may
 override.
 
 **Measured** (gnustep-base 1.31.1, throwaway probes): the standard defaults object runs a
