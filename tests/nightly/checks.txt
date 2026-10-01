@@ -186,3 +186,4 @@
 [oo-s6ic6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity
 [oo-4nhg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugTCPConsoleClient && bash tools/tier-c.sh --only goldens
 [oo-y0gz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALSoundDecoder test_OOSound && bash tools/tier-c.sh --only goldens
+[oo-2wpb] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALBufferedSound test_OOSound && bash tools/tier-c.sh --only goldens

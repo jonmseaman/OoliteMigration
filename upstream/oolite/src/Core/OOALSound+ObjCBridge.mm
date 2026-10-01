@@ -33,6 +33,7 @@ SOFTWARE.
 #import "OODescription.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOObjCPeer.h"
+#include "oofnd/objc/OORuntime.h"
 
 #include <cstdlib>
 #include <cxxabi.h>
@@ -79,15 +80,39 @@ ObjCSound *AsObjCSound(cxx::OOSound *sound)
 }
 
 
-// The C++ class's name, as [self class] named an Objective-C sound's class ("cxx::" dropped).
-std::string ClassName(cxx::OOSound &sound)
+std::string DemangledName(cxx::OOSound &sound)
 {
 	int status = 0;
 	char *demangled = abi::__cxa_demangle(typeid(sound).name(), nullptr, nullptr, &status);
 	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(sound).name();
 	std::free(demangled);
+	return result;
+}
+
+
+// The C++ class's name, as [self class] named an Objective-C sound's class ("cxx::" dropped).
+std::string ClassName(cxx::OOSound &sound)
+{
+	std::string result = DemangledName(sound);
 	if (result.starts_with("cxx::"))  result.erase(0, 5);
 	return result;
+}
+
+
+/*	The class of a C++ sound's facade: a converted subclass in namespace cxx that its callers make
+	by alloc/init has a facade of its own, the Objective-C class of the same name, a subclass of
+	this one (cxx::OOALBufferedSound's is OOALBufferedSound; amendment oo-up4b item 3). Any other
+	C++ sound (a global class) is an OOSound.
+*/
+Class FacadeClass(cxx::OOSound &sound)
+{
+	const std::string name = DemangledName(sound);
+	if (name.starts_with("cxx::"))
+	{
+		Class facade = OOClassFromName(std::string_view(name).substr(5));
+		if (facade != Nil && [facade isSubclassOfClass:[OOSound class]])  return facade;
+	}
+	return [OOSound class];
 }
 
 }	// namespace
@@ -106,7 +131,9 @@ std::string ClassName(cxx::OOSound &sound)
 OOSound *oo::ToObjC(cxx::OOSound *sound)
 {
 	if (ObjCSound *objCSound = AsObjCSound(sound))  return [[objCSound->owner() retain] autorelease];
-	return Peers().peerFor(sound, [sound] { return [[OOSound alloc] initWithCxxSound:sound]; });
+	if (sound == nullptr)  return nil;
+	Class facadeClass = FacadeClass(*sound);
+	return Peers().peerFor(sound, [sound, facadeClass] { return [[facadeClass alloc] initWithCxxSound:sound]; });
 }
 
 
@@ -150,6 +177,22 @@ cxx::OOSound *oo::ToCxx(OOSound *sound)
 {
 	self = [super init];
 	if (self != nil)  _cxxSound = oo::Ref<cxx::OOSound>(sound);
+	return self;
+}
+
+
+// A converted subclass's facade, made by its initialiser: the new C++ sound, and this is its peer.
+- (id) initWithNewCxxSound:(const oo::Ref<cxx::OOSound> &)sound
+{
+	self = [super init];
+	if (self != nil)
+	{
+		_cxxSound = sound;
+		@autoreleasepool
+		{
+			Peers().peerFor(_cxxSound.get(), [self] { return [self retain]; });
+		}
+	}
 	return self;
 }
 

@@ -8,7 +8,9 @@
 	test_OOSound.mm. The decoder is the game's own, on the game's Resources/Sounds/boop.ogg; the
 	streamed sound and the mixer, which OOALSound.mm also names, are this file's stubs (amendment
 	oo-z1s4 item 4). These expectations were written against the Objective-C API and ran on the
-	unconverted class first. Run: bash tools/check-core-tests.sh test_OOALBufferedSound
+	unconverted class first; they now run through the facade, which is its forwarding test. After
+	them come the C++ API (cxx::OOALBufferedSound, a subclass of cxx::OOSound) and the facade's
+	contract. Run: bash tools/check-core-tests.sh test_OOALBufferedSound
 */
 
 #import "OOALBufferedSound.h"
@@ -176,6 +178,48 @@ OO_TEST(theClusterAnswersOne)
 		OO_CHECK(BufferInt(buffer, AL_SIZE) == kBoopBytes);
 		alDeleteBuffers(1, &buffer);
 	}
+}
+
+
+// The C++ API: the factory answers null where the initialiser answered nil.
+OO_TEST(cxxApi)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OO_CHECK(!cxx::OOALBufferedSound::initWithDecoder(nil));
+		const oo::Ref<cxx::OOALBufferedSound> sound = cxx::OOALBufferedSound::initWithDecoder([OOALSoundDecoder codecWithPath:BoopPath()]);
+		OO_CHECK(sound && sound->name() == std::optional<std::string>("boop.ogg"));
+		OO_CHECK(!sound->soundIncomplete());
+		ALuint buffer = sound->soundBuffer();
+		OO_CHECK(BufferInt(buffer, AL_SIZE) == kBoopBytes && BufferInt(buffer, AL_FREQUENCY) == kBoopRate);
+		alDeleteBuffers(1, &buffer);
+	}
+}
+
+
+// The facade's contract: the sound's facade is an OOALBufferedSound, one per sound, and the
+// cluster's answer is the C++ sound's peer.
+OO_TEST(facade)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOALBufferedSound> sound = cxx::OOALBufferedSound::initWithDecoder([OOALSoundDecoder codecWithPath:BoopPath()]);
+		OOALBufferedSound *facade = oo::ToObjC(sound.get());
+		OO_CHECK([facade isKindOfClass:[OOALBufferedSound class]]);
+		OO_CHECK(facade == oo::ToObjC(static_cast<cxx::OOSound *>(sound.get())));
+		OO_CHECK(oo::ToCxx(facade) == sound.get());
+		OO_CHECK([facade cxx_name] == std::optional<std::string>("boop.ogg"));
+
+		OOSound *made = [[[OOSound alloc] cxx_initWithContentsOfFile:BoopPath()] autorelease];
+		cxx::OOSound *part = oo::ToCxx(made);
+		OO_CHECK(dynamic_cast<cxx::OOALBufferedSound *>(part) != nullptr);
+		OO_CHECK(oo::ToObjC(part) == made);
+	}
+	OOALBufferedSound *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOALBufferedSound *>(nullptr)) == nil);
 }
 
 
