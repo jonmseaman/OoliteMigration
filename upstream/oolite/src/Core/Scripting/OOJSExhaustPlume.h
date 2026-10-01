@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOExhaustPlumeEntity.h"
+@class OOExhaustPlumeEntity;
 
 
 #ifdef __cplusplus
@@ -39,10 +39,11 @@ void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-@interface OOExhaustPlumeEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-
-@end
+/*	The bodies of OOExhaustPlumeEntity (OOJavaScriptExtensions), which the engine reaches by
+	selector. Its methods are one-line forwarders to these in OOJSExhaustPlume+ObjCBridge.mm
+	until OOExhaustPlumeEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+*/
+void OOJSExhaustPlumeGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSExhaustPlumeJSClassName(void);
+bool OOJSExhaustPlumeIsVisibleToScripts(void);
