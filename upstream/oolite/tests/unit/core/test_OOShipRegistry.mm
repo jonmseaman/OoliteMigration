@@ -21,6 +21,12 @@
 #import "OODescription.h"
 
 #include "oofnd/PListParsing.hpp"
+#import "OOMaths.h"
+#import "OOJSEngineCore.h"
+#import "OOJSPropID.h"
+#import "OODebugStandards.h"
+#import "OOStringParsing.h"
+#import "OOLegacyScriptWhitelist.h"
 
 #include "oo_test.hpp"
 
@@ -28,6 +34,41 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+
+
+// Link stubs (ADR-0056 amendment oo-zffj item 2): what OOShipRegistry.mm and OOCacheManager.mm
+// reference whose objects would link the game. The paths the test runs never reach the aborting
+// ones: no ship has a condition script, a subentity, a vector or quaternion string, and nothing
+// flushes the cache.
+@class PlayerEntity, Universe;
+PlayerEntity *gOOPlayer = nil;
+Universe *gSharedUniverse = nil;
+ooscript::Context gOOJSMainThreadContext = nullptr;
+void OOJSInitJSIDCachePRIVATE(const char *, ooscript::PropertyId *)  { std::abort(); }
+ooscript::Value OOJSValueFromPList(ooscript::Context, const oo::PList &)  { std::abort(); }
+oo::PList OOSanitizeLegacyScriptConditions(const oo::PList &, const std::optional<std::string> &)  { std::abort(); }
+BOOL cxx_ScanVectorFromString(const std::optional<std::string> &, Vector *)  { std::abort(); }
+BOOL cxx_ScanHPVectorFromString(const std::optional<std::string> &, HPVector *)  { std::abort(); }
+BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &, Quaternion *)  { std::abort(); }
+void cxx_OOStandardsDeprecated(const std::string &)  { std::abort(); }
+void cxx_OOStandardsError(const std::string &)  { std::abort(); }
+
+// Fakes the registry does call: standards are not enforced (the default), and the ship library's
+// category names are a fixed table (the real one expands descriptions.plist through Universe).
+bool OOEnforceStandards(void)  { return false; }
+std::string OOShipLibraryCategoryPlural(const std::string &category)
+{
+	if (category == "ship")  return "Ships";
+	if (category == "station")  return "Stations";
+	return "";
+}
+
+// OOCacheManager.mm names the asynchronous work manager for its flush, which the test never does.
+@interface OOAsyncWorkManager: OOObject
+@end
+
+@implementation OOAsyncWorkManager
+@end
 
 
 // The stand-in ResourceManager: the files the registry reads, by name; everything else absent.
@@ -127,32 +168,32 @@ OO_TEST(sharedRegistryLoadsOnce)
 	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
 	OO_CHECK(registry != nil);
 	OO_CHECK([OOShipRegistry sharedRegistry] == registry);
-	Pinned("files", Join(sFilesRead), "");
+	Pinned("files", Join(sFilesRead), "shipdata.plist shipdata-overrides.plist shipyard.plist shipyard-overrides.plist effectdata.plist shiplibrary.plist shiplibrary.plist");
 }
 
 
 OO_TEST(looksUpShipsEffectsAndShipyards)
 {
 	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
-	Pinned("ship keys", Join([registry cxx_shipKeys]), "");
-	Pinned("adder", Text([registry cxx_shipInfoForKey:"adder"]), "");
-	Pinned("cobra", Text([registry cxx_shipInfoForKey:"cobra3-player"]), "");
-	Pinned("unknown", Text([registry cxx_shipInfoForKey:"viper"]), "");
-	Pinned("effect", Text([registry cxx_effectInfoForKey:"puff"]), "");
-	Pinned("no effect", Text([registry cxx_effectInfoForKey:"adder"]), "");
-	Pinned("shipyard", Text([registry cxx_shipyardInfoForKey:"cobra3-player"]), "");
-	Pinned("no shipyard", Text([registry cxx_shipyardInfoForKey:"adder"]), "");
-	Pinned("player ships", Join([registry cxx_playerShipKeys]), "");
-	Pinned("demo ships", Text([registry cxx_demoShipKeys]), "");
+	Pinned("ship keys", Join([registry cxx_shipKeys]), "adder cobra3-player coriolis-station");
+	Pinned("adder", Text([registry cxx_shipInfoForKey:"adder"]), "{\"max_flight_speed\" = 240; model = \"adder.dat\"; name = Adder; roles = \"trader hunter(0.5)\"; }");
+	Pinned("cobra", Text([registry cxx_shipInfoForKey:"cobra3-player"]), "{\"_oo_shipyard\" = {chance = 1; \"optional_equipment\" = (); price = 150000; \"standard_equipment\" = {extras = (); \"forward_weapon_type\" = \"EQ_WEAPON_PULSE_LASER\"; }; techlevel = 1; \"weapon_facings\" = 15; }; \"max_flight_speed\" = 240; model = \"adder.dat\"; name = \"Cobra Mark III\"; roles = \"player trader(2)\"; }");
+	Pinned("unknown", Text([registry cxx_shipInfoForKey:"viper"]), "(null)");
+	Pinned("effect", Text([registry cxx_effectInfoForKey:"puff"]), "{model = \"puff.dat\"; scale = 2; }");
+	Pinned("no effect", Text([registry cxx_effectInfoForKey:"adder"]), "(null)");
+	Pinned("shipyard", Text([registry cxx_shipyardInfoForKey:"cobra3-player"]), "{chance = 1; \"optional_equipment\" = (); price = 150000; \"standard_equipment\" = {extras = (); \"forward_weapon_type\" = \"EQ_WEAPON_PULSE_LASER\"; }; techlevel = 1; \"weapon_facings\" = 15; }");
+	Pinned("no shipyard", Text([registry cxx_shipyardInfoForKey:"adder"]), "(null)");
+	Pinned("player ships", Join([registry cxx_playerShipKeys]), "cobra3-player");
+	Pinned("demo ships", Text([registry cxx_demoShipKeys]), "(({class = ship; name = Adder; ship = adder; }), ({class = station; name = \"Coriolis Station\"; ship = \"coriolis-station\"; }))");
 }
 
 
 OO_TEST(answersRoles)
 {
 	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
-	Pinned("roles", Join([registry cxx_shipRoles]), "");
-	Pinned("traders", Join([registry cxx_shipKeysWithRole:"trader"]), "");
-	Pinned("hunters", Join([registry cxx_shipKeysWithRole:"hunter"]), "");
+	Pinned("roles", Join([registry cxx_shipRoles]), "[adder] [cobra3-player] [coriolis-station] coriolis hunter player station trader");
+	Pinned("traders", Join([registry cxx_shipKeysWithRole:"trader"]), "adder cobra3-player");
+	Pinned("hunters", Join([registry cxx_shipKeysWithRole:"hunter"]), "adder");
 	Pinned("none", Join([registry cxx_shipKeysWithRole:"pirate"]), "");
 	OO_CHECK([registry cxx_probabilitySetForRole:"pirate"] == nullptr);
 	OOProbabilitySet *traders = [registry cxx_probabilitySetForRole:"trader"];
@@ -160,10 +201,10 @@ OO_TEST(answersRoles)
 	if (traders != nullptr)
 	{
 		OO_CHECK_EQ(traders->count(), 2u);
-		Pinned("trader weights", std::to_string(traders->weightForObject(oo::PList("adder"))) + " " + std::to_string(traders->weightForObject(oo::PList("cobra3-player"))), "");
+		Pinned("trader weights", std::to_string(traders->weightForObject(oo::PList("adder"))) + " " + std::to_string(traders->weightForObject(oo::PList("cobra3-player"))), "1.000000 2.000000");
 	}
-	Pinned("random hunter", [registry cxx_randomShipKeyForRole:"hunter"].value_or("(nullopt)"), "");
-	Pinned("random pirate", [registry cxx_randomShipKeyForRole:"pirate"].value_or("(nullopt)"), "");
+	Pinned("random hunter", [registry cxx_randomShipKeyForRole:"hunter"].value_or("(nullopt)"), "adder");
+	Pinned("random pirate", [registry cxx_randomShipKeyForRole:"pirate"].value_or("(nullopt)"), "(nullopt)");
 }
 
 
@@ -172,7 +213,7 @@ OO_TEST(replacesAnEntry)
 	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
 	[registry cxx_setShipInfoForKey:"viper" with:Parse("{ name = Viper; }")];
 	Pinned("viper", Text([registry cxx_shipInfoForKey:"viper"]), "{name = Viper; }");
-	Pinned("ship keys", Join([registry cxx_shipKeys]), "");
+	Pinned("ship keys", Join([registry cxx_shipKeys]), "adder cobra3-player coriolis-station viper");
 }
 
 
@@ -184,12 +225,12 @@ OO_TEST(reloadMakesANewRegistryFromTheCache)
 	OOShipRegistry *after = [OOShipRegistry sharedRegistry];
 	OO_CHECK(after != nil);
 	OO_CHECK(after != before);
-	Pinned("files", Join(sFilesRead), "");
-	Pinned("ship keys", Join([after cxx_shipKeys]), "");
-	Pinned("player ships", Join([after cxx_playerShipKeys]), "");
-	Pinned("roles", Join([after cxx_shipRoles]), "");
+	Pinned("files", Join(sFilesRead), "shiplibrary.plist shiplibrary.plist");
+	Pinned("ship keys", Join([after cxx_shipKeys]), "adder cobra3-player coriolis-station");
+	Pinned("player ships", Join([after cxx_playerShipKeys]), "cobra3-player");
+	Pinned("roles", Join([after cxx_shipRoles]), "[adder] [cobra3-player] [coriolis-station] coriolis hunter player station trader");
 	// The old registry was never released (its -release did nothing): it still answers.
-	Pinned("old ship keys", Join([before cxx_shipKeys]), "");
+	Pinned("old ship keys", Join([before cxx_shipKeys]), "adder cobra3-player coriolis-station viper");
 }
 
 

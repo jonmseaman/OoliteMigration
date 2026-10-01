@@ -74,7 +74,7 @@ core_tests = {
     'test_OOPriorityQueue': ['Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OORoleSet': ['Core/OORoleSet.mm', 'Core/OORoleSet+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_OOProbabilitySet': ['Core/OOProbabilitySet.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
-    'test_OOShipRegistry': ['Core/OOShipRegistry.mm', 'Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OOProbabilitySet.mm', 'Core/OOPListGameTypes.mm', 'Core/OOIsNumberLiteral.cpp', 'Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OOShipRegistry': ['Core/OOShipRegistry.mm', 'Core/OORoleSet.mm', 'Core/OORoleSet+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OOProbabilitySet.mm', 'Core/OOPListGameTypes.mm', 'Core/OOIsNumberLiteral.cpp', 'Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOProbabilisticTextureManager': ['Core/OOProbabilisticTextureManager.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_CollisionRegion': ['*'],
     'test_Octree': ['*'],
