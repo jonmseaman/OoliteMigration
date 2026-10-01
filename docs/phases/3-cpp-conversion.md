@@ -295,3 +295,10 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   Objective-C sounds; its class-cluster initialiser is the static factory
   `cxx::OOSound::initWithContentsOfFile`, which answers the Objective-C sound it makes. Test:
   `tests/unit/core/test_OOSound.mm`. No caller changed.
+- 2026-10-01 — Slice plans gain a `mac-only:` group (bead oo-q9l2w, first plan
+  `3-slices/GameController.md`): units wholly inside an `OOLITE_MAC_OS_X` arm, which the fleet never
+  compiles and does not convert (ADR-0056 amendment oo-bgmb item 2; Phase 5 writes the Mac layer
+  again). `tools/check-slice-plan.py` proves each is fenced, no slice reads it, and
+  `tools/gen-stories.py` files no story for it. A pre-split gathers a class's whole Mac-only
+  methods into one fenced category at the end of the *same* file (a new file would read as new
+  deny-list hits: the guardrails' file-split limitation).
