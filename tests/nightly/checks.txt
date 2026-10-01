@@ -158,6 +158,7 @@
 [oo-9hdp] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOProbabilisticTextureManager && bash tools/tier-c.sh --only goldens
 [oo-ljhc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureSprite && bash tools/tier-c.sh --only goldens
 [oo-9ht.64] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+[oo-9ht.72] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/tier-c.sh --only goldens
 [oo-bnjc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/tier-c.sh --only goldens
 [oo-9ht.65] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFileScannerVerifierStage test_OOAIStateMachineVerifierStage test_OOCheckDemoShipsPListVerifierStage test_OOCheckJSSyntaxVerifierStage test_OOCheckPListSyntaxVerifierStage test_OOCheckRequiresPListVerifierStage test_OOCheckEquipmentPListVerifierStage test_OOTextureVerifierStage
 # The upstream freeze policy check proves it fails on each defect (oo-kih, ADR-0059).
