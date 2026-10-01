@@ -56,6 +56,7 @@ oolite_sources += files(
     'OOJSVector.mm',
     'OOJSVector+ObjCBridge.mm',
     'OOJSVisualEffect.mm',
+    'OOJSVisualEffect+ObjCBridge.mm',
     'OOJSWaypoint.mm',
     'OOJSWaypoint+ObjCBridge.mm',
     'OOJSWorldScripts.mm',
