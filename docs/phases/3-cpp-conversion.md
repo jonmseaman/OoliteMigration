@@ -143,6 +143,10 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **The superclass of such a façade** (ADR-0056 amendment oo-6bux; exemplar
+     `src/Core/OOJoystickManager.*`): convert it as a root (Amendment 1); the subclass's façade is
+     unchanged and gets an adapter as its C++ part. An `-init` that calls overridden members is
+     `init()`, run after the C++ part exists. A factory by registered `Class` stays in the façade.
    - **A JS binding file (`OOJS*`)** (ADR-0056 amendment oo-ppc; exemplar
      `src/Core/Scripting/OOJSVector.*`): it has no class, and its JS class is already C++. Do not
      touch `OOJS_NATIVE_*`/`OOJS_PROFILE_*`: they are C++ already, and an exception under a native
@@ -157,6 +161,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      the root's bead. A class the engine messages by selector keeps a no-ivar façade subclass that
      forwards the glue selectors; the JS private slot holds that façade. A container of
      Objective-C objects holds the façade, and removal uses `oo::LiveObjC`.
+   - **A category only its own file sends** (ADR-0056 amendment oo-cn4o; exemplar
+     `src/Core/Scripting/OOJSEngineTimeManagement.*`): it becomes a file-local free function that
+     takes what it read from `self` as arguments, with no forwarder. Result classes that only C++
+     makes are plain `cxx::` classes with default façades. A C function that returned one +1 keeps
+     its signature and returns `[oo::ToObjC(p) retain]`.
    - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
      roots first, in one bead. Class methods become `static` members, and file statics become
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
@@ -179,6 +188,12 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
      subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
      `cxx::Entity` and keeps its bodies verbatim.
+   - **The Audio module: a root that is a class cluster** (ADR-0056 amendment oo-2en; exemplar
+     `src/Core/OOALSound.*`, `cxx::OOSound`): the root converts first with an `OODrawable`-style
+     façade and adapter. Its cluster initialiser is a static factory returning the Objective-C
+     subclass instance as `oo::ObjCRef<::X *>`; the façade's initialiser releases the receiver and
+     returns `factory(…).leakRef()`. `-init`'s side effect is the constructor. The test runs OpenAL
+     on the null backend with a scratch `HOMEPATH`.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
@@ -258,3 +273,8 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `bash tools/check-foundation-free.sh --stage source` with 0 findings. A selector that no
   header declares any more is sent through a local protocol cast; see `OOCharacterIntValue`
   and `OOWeakReferenceClassName`. Merge phase-3 into your bead branch before you queue.
+- 2026-09-30 — Audio module pattern seam (bead oo-2en, ADR-0056 amendment oo-2en): `OOSound`
+  (`OOALSound.h/.mm`) is `cxx::OOSound` behind `OOALSound+ObjCBridge.h/.mm`, the root of the three
+  Objective-C sounds; its class-cluster initialiser is the static factory
+  `cxx::OOSound::initWithContentsOfFile`, which answers the Objective-C sound it makes. Test:
+  `tests/unit/core/test_OOSound.mm`. No caller changed.
