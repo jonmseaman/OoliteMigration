@@ -185,14 +185,8 @@ typedef enum
 } OOAlertCondition;
 
 
-typedef enum
-{
-#define DIFF_STRING_ENTRY(label, string) label,
-#include "OOShipDamageType.tbl"
-#undef DIFF_STRING_ENTRY
-	
-	kOOShipDamageTypeDefault = kOODamageTypeEnergy
-} OOShipDamageType;
+// OOShipDamageType (bead oo-9ht.64: plain header).
+#include "OOEntityEnums.h"
 
 
 @interface ShipEntity: OOEntityWithDrawable <OOSubEntity, OOBeaconEntity>
