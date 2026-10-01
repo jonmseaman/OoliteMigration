@@ -105,7 +105,7 @@ bool OOPListScript::requiresTickle()
 }
 
 
-void OOPListScript::runWithTarget(Entity *target)
+void OOPListScript::runWithTarget(::Entity *target)
 {
 	if (target != nil && ![target isKindOfClass:[ShipEntity class]])
 	{

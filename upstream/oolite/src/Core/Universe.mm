@@ -3172,8 +3172,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// don't add rings when system is being populated
 	if ([PLAYER status] != STATUS_ENTERING_WITCHSPACE && [PLAYER status] != STATUS_EXITING_WITCHSPACE)
 	{
-		[self addEntity:[OORingEffectEntity ringFromEntity:ship]];
-		[self addEntity:[OORingEffectEntity shrinkingRingFromEntity:ship]];
+		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(ship))];
+		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(ship))];
 	}
 }
 
@@ -6342,9 +6342,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	{
 		const char *key = (randf() < 0.5) ? "oolite-hull-spark" : "oolite-hull-spark-b";
 		const oo::PList settings = [UNIVERSE cxx_explosionSetting:key];
-		OOExplosionCloudEntity* burst = [OOExplosionCloudEntity explosionCloudFromEntity:target withSettings:settings];
-		[burst setPosition:pos];
-		[self addEntity: burst];
+		oo::Ref<OOExplosionCloudEntity> burst = OOExplosionCloudEntity::explosionCloudFromEntity(target, settings);
+		if (burst != nullptr)  burst->setPosition(pos);
+		[self addEntity:oo::NewEntityFacade(burst)];
 		if ([target energy] * randf() < damage)
 		{
 			ShipEntity *wreck = [self cxx_addWreckageFrom:target withRole:"oolite-wreckage-chunk" at:pos scale:0.05 lifetime:(125.0+(randf()*200.0))];
