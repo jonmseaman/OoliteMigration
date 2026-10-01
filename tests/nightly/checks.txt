@@ -161,3 +161,4 @@
 [oo-9ht.65] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFileScannerVerifierStage test_OOAIStateMachineVerifierStage test_OOCheckDemoShipsPListVerifierStage test_OOCheckJSSyntaxVerifierStage test_OOCheckPListSyntaxVerifierStage test_OOCheckRequiresPListVerifierStage test_OOCheckEquipmentPListVerifierStage test_OOTextureVerifierStage
 # The upstream freeze policy check proves it fails on each defect (oo-kih, ADR-0059).
 [oo-kih] bash tools/upstream-delta-probe.sh
+[oo-9y91e] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
