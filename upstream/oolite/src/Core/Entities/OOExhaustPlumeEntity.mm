@@ -113,7 +113,7 @@ static OOTexture *sPlumeTexture = nil;
 
 - (double)findCollisionRadius
 {
-	return collision_radius;
+	return _cxxEntity->collision_radius;
 }
 
 
@@ -134,7 +134,7 @@ static OOTexture *sPlumeTexture = nil;
 	}
 
 	//GLfloat ex_emissive[4]	= {0.7f, 0.9, 1.0f, 0.9f * kOverallAlpha};   // pale blue - old definition
-	collision_radius = 0;
+	_cxxEntity->collision_radius = 0;
 	GLfloat length;
 	HPVector vertex;
 	GLfloat ex_emissive[4];
@@ -174,7 +174,7 @@ static OOTexture *sPlumeTexture = nil;
 	if ((int)(ranrot_rand() % 25) < dam - 75)
 		flare_factor = 0.0;
 	
-	HPVector currentPos = ship->position;
+	HPVector currentPos = ship->_cxxEntity->position;
 	Vector vfwd = [ship forwardVector];
 	GLfloat	spd = 0.5f * [ship flightSpeed];
 	vfwd = vector_multiply_scalar(vfwd, spd);
@@ -183,9 +183,9 @@ static OOTexture *sPlumeTexture = nil;
 	vi = master_i;
 	vj = [ship upVector];
 	vk = [ship forwardVector];
-	zero.position = make_HPvector(currentPos.x + vi.x * position.x + vj.x * position.y + vk.x * position.z,
-								currentPos.y + vi.y * position.x + vj.y * position.y + vk.y * position.z,
-								currentPos.z + vi.z * position.x + vj.z * position.y + vk.z * position.z);
+	zero.position = make_HPvector(currentPos.x + vi.x * _cxxEntity->position.x + vj.x * _cxxEntity->position.y + vk.x * _cxxEntity->position.z,
+								currentPos.y + vi.y * _cxxEntity->position.x + vj.y * _cxxEntity->position.y + vk.y * _cxxEntity->position.z,
+								currentPos.z + vi.z * _cxxEntity->position.x + vj.z * _cxxEntity->position.y + vk.z * _cxxEntity->position.z);
 	
 	GLfloat speedScale = fminf(1.0f,speed * 5.0f);
 
@@ -225,7 +225,7 @@ static OOTexture *sPlumeTexture = nil;
 	ex_emissive[1] = green_factor;	// diminish green part towards rear of exhaust
 	ex_emissive[0] = red_factor;		// diminish red part towards rear of exhaust
 	vertex = HPvector_add(f01.position, vectorToHPVector(b01));
-	collision_radius = HPmagnitude(HPvector_subtract(vertex, currentPos));
+	_cxxEntity->collision_radius = HPmagnitude(HPvector_subtract(vertex, currentPos));
 	_vertices[iv++] = vertex.x;// + zero.k.x * flare_factor * 4.0;
 	_vertices[iv++] = vertex.y;// + zero.k.y * flare_factor * 4.0;
 	_vertices[iv++] = vertex.z;// + zero.k.z * flare_factor * 4.0;
@@ -247,9 +247,9 @@ static OOTexture *sPlumeTexture = nil;
 														  vector_add(vector_multiply_scalar(i1,s1[i]),
 																	 vector_multiply_scalar(j1,c1[i])))));
 		length = HPmagnitude(HPvector_subtract(vertex, currentPos));
-		if (length > collision_radius)
+		if (length > _cxxEntity->collision_radius)
 		{
-			collision_radius = length;
+			_cxxEntity->collision_radius = length;
 		}
 		_vertices[iv++] = vertex.x;
 		_vertices[iv++] = vertex.y;
@@ -276,9 +276,9 @@ static OOTexture *sPlumeTexture = nil;
 												  vector_add(vector_multiply_scalar(j1,c1[i]),
 															 vector_multiply_scalar(k1,r1))))));
 		length = HPmagnitude(HPvector_subtract(vertex, currentPos));
-		if (length > collision_radius)
+		if (length > _cxxEntity->collision_radius)
 		{
-			collision_radius = length;
+			_cxxEntity->collision_radius = length;
 		}
 		_vertices[iv++] = vertex.x;
 		_vertices[iv++] = vertex.y;
@@ -305,9 +305,9 @@ static OOTexture *sPlumeTexture = nil;
 												  vector_add(vector_multiply_scalar(j1,c1[i]),
 															 vector_multiply_scalar(k1,r1))))));
 		length = HPmagnitude(HPvector_subtract(vertex, currentPos));
-		if (length > collision_radius)
+		if (length > _cxxEntity->collision_radius)
 		{
-			collision_radius = length;
+			_cxxEntity->collision_radius = length;
 		}
 		_vertices[iv++] = vertex.x;
 		_vertices[iv++] = vertex.y;
@@ -333,9 +333,9 @@ static OOTexture *sPlumeTexture = nil;
 												  vector_add(vector_multiply_scalar(j1,c1[i]),
 															 vector_multiply_scalar(k1,r1))))));
 		length = HPmagnitude(HPvector_subtract(vertex, currentPos));
-		if (length > collision_radius)
+		if (length > _cxxEntity->collision_radius)
 		{
-			collision_radius = length;
+			_cxxEntity->collision_radius = length;
 		}
 		_vertices[iv++] = vertex.x;
 		_vertices[iv++] = vertex.y;
@@ -350,9 +350,9 @@ static OOTexture *sPlumeTexture = nil;
 	ex_emissive[1] = 0.0;	// diminish green part towards rear of exhaust
 	ex_emissive[0] = 0.0;	// diminish red part towards rear of exhaust
 	length = HPmagnitude(HPvector_subtract(vertex, currentPos));
-	if (length > collision_radius)
+	if (length > _cxxEntity->collision_radius)
 	{
-		collision_radius = length;
+		_cxxEntity->collision_radius = length;
 	}
 	_vertices[iv++] = f10.position.x;
 	_vertices[iv++] = f10.position.y;
