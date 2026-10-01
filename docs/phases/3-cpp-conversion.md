@@ -188,6 +188,13 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
      subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
      `cxx::Entity` and keeps its bodies verbatim.
+   - **An entity class with Objective-C subclasses, and the entity leaves** (ADR-0056 amendments
+     oo-0otc, oo-0mxi and oo-2c6g; exemplars `src/Core/Entities/OOLightParticleEntity.*`,
+     `DustEntity.*`, `OOQuiriumCascadeEntity.*`): an intermediate class derives its own adapter from
+     `oo::ObjCEntity<cxx::X>` for the members it adds, and its Objective-C subclasses read its ivars
+     as `oo::ToCxx(self)->x`. A leaf that callers make or message keeps a façade with no ivars,
+     whose `-init` or class method makes the C++ object; a leaf with none is made by its factory
+     and `oo::NewEntityFacade`, and a category method it overrode asks it with `dynamic_cast`.
    - **The Debug module: a singleton whose superclass is Objective-C** (ADR-0056 amendment
      oo-kq7; exemplar `src/Core/Debug/OODebugMonitor.*`): the C++ class owns the singleton, and
      its façade, made once by `oo::ToObjC`, keeps the singleton boilerplate and so lives as long

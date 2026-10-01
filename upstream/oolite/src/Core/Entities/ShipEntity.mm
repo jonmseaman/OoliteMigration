@@ -9627,7 +9627,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 // Exposed to AI
 - (void) becomeEnergyBlast
 {
-	[UNIVERSE addEntity:[OOQuiriumCascadeEntity quiriumCascadeFromShip:self]];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
 	[self broadcastEnergyBlastImminent];
 	[self noteKilledBy:nil damageType:kOODamageTypeCascadeWeapon];
 	[UNIVERSE removeEntity:self];
@@ -13264,7 +13264,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if (_cxxEntity->energy < amount && _cxxEntity->energy > 10 && [self countsAsKill])
 			{
 				cascade = YES;	// confirm we're cascading, then try to add our cascade to UNIVERSE.
-				[UNIVERSE addEntity:[OOQuiriumCascadeEntity quiriumCascadeFromShip:self]];
+				[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
 			}
 			break;
 			//no default thanks, we want the compiler to tell us if we missed a case.

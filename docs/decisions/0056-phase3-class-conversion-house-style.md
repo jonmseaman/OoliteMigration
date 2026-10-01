@@ -1958,6 +1958,39 @@ that callers send, and the test reads their private vertex and colour arrays.
 `OOBreakPatternEntity`), each waiting for the callers that make and message it (the universe,
 `ShipEntity`, `PlayerEntity`). No caller changed.
 
+## Amendment (bead oo-2c6g): a façade-less leaf that overrode a category method, and `Entity` in a global leaf
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOQuiriumCascadeEntity.h/.mm`,
+  `OOQuiriumCascadeEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_OOQuiriumCascadeEntity.mm`;
+  `OOSparkEntity` (oo-c2dk), `OOPlasmaBurstEntity` (oo-l2s5).
+
+**Context.** `OOQuiriumCascadeEntity` converts with no façade (amendment oo-bj8 item 12): its one
+selector, `+quiriumCascadeFromShip:`, is sent from two lines of `ShipEntity`. But its header also
+declared a category of `Entity`, `-isCascadeWeapon`, which answered NO and which the class
+overrode to answer YES; with no façade there is no Objective-C class left to override it. Its
+initialiser answered nil for a nil ship. And in the body of a global class derived from
+`cxx::Entity`, the name `Entity` is the base's injected class name, so a local `Entity *e` that
+meant the Objective-C object now names the C++ class.
+
+**Decision (recommended defaults).**
+
+1. **The category moves to `X+ObjCBridge.h/.mm`** (amendment oo-ppc item 3), and its method answers
+   for a C++ object of the class by asking it: `dynamic_cast<X *>(oo::ToCxx(self))`, then the
+   class's member, else the old answer. Objective-C classes that override the method still do.
+2. **The leaf's factory replaces `alloc`/`init…` at the call sites**, which hand the result to
+   `oo::NewEntityFacade` (whose object is the nearest façade's: `Entity`, or
+   `OOLightParticleEntity` for the sparks); an `alloc`/`release` pair becomes that autoreleased
+   object. An initialiser that answered nil for its input is a `bool` member and the factory
+   answers null (amendment oo-novu); `oo::NewEntityFacade` of null is nil, as before.
+3. **In a global leaf's bodies, an `Entity *` that held an Objective-C object is written
+   `::Entity *`**, and `[super m]` is the base's member (`cxx::Entity::update(delta_t)`). A local
+   that shadows a member function it is initialised from calls it as `this->owner()`.
+
+**Consequences.** One bridge file pair with no façade class; it goes with the `Entity` façade's
+deletion bead (oo-9ht.39), which also removes the category. The test's nil case could not run on
+the class before its conversion: releasing an entity whose `-init` never ran crashes in the
+`Entity` façade's `-dealloc` (filed as its own bead).
+
 ## Amendment (bead oo-f9zg): a cache of unretained objects that remove themselves
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderProgram.h/.mm`,
