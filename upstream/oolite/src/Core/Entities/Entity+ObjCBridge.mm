@@ -151,6 +151,16 @@ std::string oo::EntityClassName(cxx::Entity *entity)
 
 - (void) dealloc
 {
+	/*	Released before -init ran (a failing initialiser's [self release]; return nil;): there is no
+		C++ part, and nothing was counted or registered. The Objective-C body's messages went to nil
+		ivars here.
+	*/
+	if (_cxxEntity == nullptr)
+	{
+		[super dealloc];
+		return;
+	}
+
 	[UNIVERSE ensureEntityReallyRemoved:self];
 	[self setCollisionRegion:nil];		// DESTROY(collisionRegion)
 	[self deleteJSSelf];
