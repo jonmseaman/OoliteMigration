@@ -3172,8 +3172,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// don't add rings when system is being populated
 	if ([PLAYER status] != STATUS_ENTERING_WITCHSPACE && [PLAYER status] != STATUS_EXITING_WITCHSPACE)
 	{
-		[self addEntity:[OORingEffectEntity ringFromEntity:ship]];
-		[self addEntity:[OORingEffectEntity shrinkingRingFromEntity:ship]];
+		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::ringFromEntity(ship))];
+		[self addEntity:oo::NewEntityFacade(OORingEffectEntity::shrinkingRingFromEntity(ship))];
 	}
 }
 
