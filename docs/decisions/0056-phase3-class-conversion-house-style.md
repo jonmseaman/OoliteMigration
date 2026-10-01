@@ -2191,3 +2191,62 @@ in the file.
    class whose private constructor a stand-in factory can still call, being a member.
 
 **Consequences.** One bridge with no façade, and its deletion bead.
+
+## Amendment (bead oo-6ia4): a binding's own helper class, a category on a converted class's façade, and the rest of the batch
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSSystemInfo.h/.mm`,
+  `OOJSSystemInfo+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSSystemInfo.mm`; the same batch
+  converted `OOJSPlanet`, `OOJSVisualEffect`, `OOJSShipGroup`, `OOJSManifest` (oo-7ixd, oo-s1wq,
+  oo-n64m, oo-7nfv), and `OOJSGlobal` and `OOJSStation` (oo-3dj2, oo-3oxq) if they land.
+
+**Context.** Amendments oo-ppc and oo-ykoy cover a binding whose only Objective-C class is a
+category on the game class it wraps. This batch met four other shapes: a helper class private to
+the binding (`OOSystemInfo`) that the JS object's private slot holds and the engine messages; a
+category on a class that has already converted (`OOShipGroup (OOJavaScriptExtensions)`, which
+owns the façade's `_jsSelf`, amendment oo-bwrq item 1); a binding whose natives send a selector
+that only the category's `@interface` in the binding header declared (`-subEntitiesForScript` to
+an `OOVisualEffectEntity`); and a helper class that nothing makes (`OOManifest`).
+
+**Decision (recommended defaults).**
+
+1. **A binding's own helper class is a `cxx::` class declared in the binding header** (its members
+   defined in `X.mm`, where the JS class tables are), **with the default façade** in
+   `X+ObjCBridge.h/.mm` imported at the end of `X.h` (amendment oo-kdyh item 3: the engine
+   messages it by selector, so it keeps one even with no outside caller). The private slot keeps
+   holding the façade, retained (amendment oo-ppc item 5): `oo_jsValueInContext` sets
+   `[oo::ToObjC(this) retain]`. A failable initialiser that only the binding sent is a factory with
+   its name (amendment oo-novu item 1), and the binding makes the object as
+   `oo::ToObjC(cxx::X::initWithY(...).get())`, autoreleased and nil for null, as
+   alloc/init/autorelease was. `-isEqual:`/`-hash` follow amendment oo-bhb9 item 4.
+2. **The natives reach a converted class as `cxx::`** (amendment oo-ppc item 4, as `OOJSFlasher`
+   does for `OOColor`): the object getter still yields the façade, which the native crosses with
+   one `oo::ToCxx`, and every use is null-guarded to answer what a message to nil answered (0, the
+   zero point, `nullopt`, an empty vector). Where one native has many such uses, file-local helpers
+   (`GalaxyOf(info)`, `SystemOf(info)`) carry the guard.
+3. **A category on a converted class's façade** becomes free functions (amendment oo-ykoy) that
+   take the façade and, where the category read a façade ivar, **that ivar by reference**
+   (`OOJSShipGroupJSValueInContext(group, jsSelf, context)`); the forwarders in `X+ObjCBridge.mm`
+   pass `_jsSelf`. The ivar stays on the façade while the private slot holds the façade (amendment
+   oo-bwrq item 1, oo-ppc item 5); it moves into the C++ class with the façade's deletion, which
+   then also deletes `X+ObjCBridge.mm` (the façade's deletion bead depends on the binding bridge's).
+4. **A native that sent a category selector whose only declaration moved to the bridge** calls the
+   free function that holds the body (`OOJSVisualEffectSubEntitiesForScript(thisEnt)`), with a
+   comment; the method stays, for the engine and other senders.
+5. **A helper class that nothing makes goes, with a comment where it stood** (amendment oo-kdyh
+   item 5): `OOManifest` was never allocated; both Manifest objects are defined with no private
+   object, and no other file names the class.
+6. **A category `@interface` on another class that a binding declared only to type one send**
+   (`OOJavaScriptEngine (OOMonitorSupportInternal)` in `OOJSGlobal.mm`) moves verbatim into
+   `X+ObjCBridge.mm` with the one send, as a free function declared in `X.h` (amendment
+   oo-9ht.66); it goes when the class it extends declares the method again or converts.
+7. **The test stands in for what the converted classes reach**, as their own tests do, and links
+   those classes for real (`OOCommodities`, `OOCommodityMarket`, `OOSystemDescriptionManager`,
+   `OOShipGroup`, `OOColor`), so that the same file runs on the Objective-C binding (which
+   messaged their façades) and on the converted one (which calls their C++ members). The engine's
+   native-object conversion in the test asks the object for `-oo_jsValueInContext:`, as the
+   engine does, so the category's or class's own JS object is what the script sees.
+
+**Consequences.** Each binding with a helper class adds a façade pair and a deletion bead that
+waits for the engine's object wrappers (oo-k4nu, the last `OOJavaScriptEngine.mm` slice);
+`OOJSShipGroup+ObjCBridge.mm` goes with the `OOShipGroup` façade (oo-9ht.19). No caller outside
+the binding files changed.
