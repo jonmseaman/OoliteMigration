@@ -28,10 +28,24 @@ SOFTWARE.
 
 */
 
+#ifndef INCLUDED_OOPROFILINGSTOPWATCH_h
+#define INCLUDED_OOPROFILINGSTOPWATCH_h
+
 #ifndef OOSTOPWATCH_STANDALONE
+#ifdef __OBJC__
 #import "OOCocoa.h"
-#import "OOFunctionAttributes.h"
-#import "OOTypes.h"
+#else
+/*	A plain C++ translation unit (bead oo-9ht.72: the JS bindings, through
+	OOJSEngineNativeWrappers.h) cannot parse OOCocoa.h's @interfaces. The one platform switch
+	below that differs from its default on this build is set exactly as OOCocoa.h sets it, so
+	OOHighResTimeValue is the same type in both kinds of translation unit.
+*/
+#if defined(GNUSTEP_BASE_LIBRARY) && defined(WIN32) && !defined(OOLITE_WINDOWS)
+#define OOLITE_WINDOWS 1
+#endif
+#endif
+#include "OOFunctionAttributes.h"
+#include "OOTypes.h"
 #endif
 
 #include "oofnd/Ref.hpp"
@@ -142,3 +156,5 @@ private:
 	OOHighResTimeValue	_end = {};
 	bool				_running = {};
 };
+
+#endif	// INCLUDED_OOPROFILINGSTOPWATCH_h
