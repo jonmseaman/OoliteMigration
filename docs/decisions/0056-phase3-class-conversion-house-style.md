@@ -2698,3 +2698,39 @@ Objective-C object (`-performAsyncTask`, `-completeAsyncTask`, `waitForTaskToCom
 **Consequences.** One façade and one deletion bead (`OOTextureLoader+ObjCBridge`), which depends on
 every loader bead (PNG, pixmap, generator, planet, atmosphere, emission map) and on the textures and
 the verifier that call the factories. Five subclass files changed only by item 1 (105 lines).
+
+## Amendment (bead oo-rr2x): an intermediate class whose subclasses initialise through a designated initialiser with arguments
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOTextureGenerator.h/.mm`,
+  `OOTextureGenerator+ObjCBridge.h/.mm`, `oo::ObjCTextureLoader<Base>` in
+  `OOTextureLoader+ObjCBridge.h`, `tests/unit/core/test_OOTextureGenerator.mm`. Follows amendments
+  oo-up4b items 1-2, oo-vl43 items 1 and 4, and oo-zl36.
+
+**Context.** `OOTextureGenerator` sits between the loaders' root and Objective-C classes in other
+files (`OOPixMapTextureLoader`, the planet, atmosphere and emission-map generators), which override
+the members it adds (`-textureOptions`, `-anisotropy`, `-lodBias`, `-enqueue`) and the root's. They
+are made with the root's designated initialiser `-cxx_initWithPath:options:`, not `-init`.
+
+**Decision (recommended defaults).**
+
+1. **The root's adapter becomes the template `oo::ObjCTextureLoader<Base>` with the link
+   `oo::ObjCTextureLoaderLink`** in the root's bridge header (amendment oo-up4b item 1); the root
+   façade's methods answer an Objective-C loader through the link's `super…()`. The intermediate
+   class derives its own adapter from `oo::ObjCTextureLoader<cxx::Mid>` in its bridge `.mm` for
+   the members it adds (amendment oo-vl43 item 1); its façade's methods for them call
+   `cxx::Mid::m()`, qualified, on an Objective-C subclass instance.
+2. **The C++ part is chosen by the designated initialiser.** The root façade gains
+   `-cxx_initWithCxxLoader:path:options:` (the old body on a given C++ part), its own
+   `-cxx_initWithPath:options:` passes the root's adapter, and the intermediate façade overrides
+   `-cxx_initWithPath:options:` to pass its adapter. A subclass's `[super cxx_initWithPath:…]`
+   reaches the nearest façade's override, so it gets the right adapter whatever its depth.
+3. **A C++ object's façade class walks its C++ bases** to the nearest `cxx::` class with an
+   Objective-C class of its name (amendment oo-vl43 item 4), so a global C++ generator is an
+   `OOTextureGenerator` to Objective-C, which the texture factory takes.
+4. **A converted caller calls the intermediate class's C++ members** (`OOTexture.mm`'s
+   `textureWithGenerator`, through `oo::ToCxx(generator)`); the parameter stays the Objective-C
+   type while Objective-C callers pass one.
+
+**Consequences.** One more façade and deletion bead (`OOTextureGenerator+ObjCBridge`), done before
+the loaders' root bridge's (oo-9ht.114), which depends on it. The root's bridge changed shape
+(template adapter, initialiser, base walk) without any caller or test changing.

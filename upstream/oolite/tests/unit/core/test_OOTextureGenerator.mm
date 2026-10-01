@@ -9,7 +9,8 @@
 	Objective-C subclasses: a bare one that answers the class's defaults, and one that overrides
 	them. It links the whole game but main (tests/unit/core/meson.build entry ['*']), on the hidden
 	GL context of oo_gl_test_context.hpp. The expectations were written against the Objective-C API
-	and run on the unconverted class first.
+	and run on the unconverted class first (commit 221196e7a); that API is now the facade, so they
+	run through it, and the last tests pin the C++ API (cxx::OOTextureGenerator) and the crossing.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -159,6 +160,95 @@ OO_TEST(aTextureTakesTheGeneratorsSettings)
 #endif
 	}
 	ClearCache();
+}
+
+
+// --- The C++ API and the crossing (after the conversion) -------------------------------------
+
+// A converted generator, as OOPixMapTextureLoader will be one: a global C++ subclass.
+class TestCxxGenerator final : public cxx::OOTextureGenerator
+{
+public:
+	void loadTexture() override
+	{
+		loads++;
+		uint8_t *bytes = (uint8_t *)malloc(8 * 8 * 4);
+		for (unsigned i = 0; i < 8 * 8 * 4; i++)  bytes[i] = (uint8_t)(i + 1);
+		_data = bytes;
+		_width = 8;
+		_height = 8;
+		_format = kOOPixMapRGBA;
+	}
+
+	uint32_t textureOptions() override						{ return kOOTextureMinFilterLinear | kOOTextureMagFilterLinear; }
+	std::optional<std::string> cacheKey() override			{ return std::string("test:cxxgen"); }
+
+	int loads = 0;
+};
+
+
+OO_TEST(cxxApi)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		const oo::Ref<TestCxxGenerator> generator = oo::makeRef<TestCxxGenerator>();
+		OO_CHECK(generator->initWithPath(std::string("cxx generator"), 0));
+		OO_CHECK(generator->anisotropy() == (GLfloat)kOOTextureDefaultAnisotropy && generator->lodBias() == (GLfloat)kOOTextureDefaultLODBias);
+
+		// Its facade is an OOTextureGenerator (the nearest class with one), so a texture takes it.
+		OOTextureGenerator *facade = oo::ToObjC(generator.get());
+		OO_CHECK([facade isKindOfClass:[OOTextureGenerator class]] && oo::ToCxx(facade) == generator.get());
+		OO_CHECK([facade textureOptions] == (kOOTextureMinFilterLinear | kOOTextureMagFilterLinear));
+		OO_CHECK([facade cxx_cacheKey] == std::optional<std::string>("test:cxxgen"));
+		OOTexture *texture = [OOTexture textureWithGenerator:facade];
+		OO_CHECK([texture cxx_cacheKey] == std::optional<std::string>("test:cxxgen"));
+		[texture ensureFinishedLoading];
+		OO_CHECK(generator->loads == 1 && [texture dimensions].width == 8);
+
+		// The bare class's own answers.
+		const oo::Ref<cxx::OOTextureGenerator> bare = oo::makeRef<cxx::OOTextureGenerator>();
+		OO_CHECK(bare->textureOptions() == kOOTextureDefaultOptions && !bare->cacheKey().has_value());
+	}
+	ClearCache();
+}
+
+
+OO_TEST(objCGeneratorBehindACxxPointer)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		ChoosyGenerator *choosy = Generator<ChoosyGenerator>("choosy behind", 0);
+		cxx::OOTextureGenerator *part = oo::ToCxx(choosy);
+		OO_CHECK(part != nullptr && oo::ToObjC(part) == choosy);
+		// The C++ part's virtual members reach the Objective-C overrides.
+		OO_CHECK(part->textureOptions() == (kOOTextureMinFilterNearest | kOOTextureMagFilterNearest));
+		OO_CHECK(part->anisotropy() == 0.25f && part->lodBias() == 0.5f);
+		OO_CHECK(part->cacheKey() == std::optional<std::string>("test:choosy"));
+
+		// A subclass that overrides none of them: the generator's own answers, not the loader's.
+		BareGenerator *bare = Generator<BareGenerator>("bare behind", 0);
+		cxx::OOTextureGenerator *barePart = oo::ToCxx(bare);
+		OO_CHECK(barePart->textureOptions() == kOOTextureDefaultOptions && !barePart->cacheKey().has_value());
+		const int loads = gLoads;
+		OO_CHECK(barePart->enqueue());
+		OOPixMap pixMap = kOONullPixMap;
+		OOTextureDataFormat format = kOOPixMapInvalidFormat;
+		OO_CHECK(barePart->getResult(&pixMap, &format, nullptr, nullptr) && gLoads == loads + 1);
+		OOFreePixMap(&pixMap);
+	}
+}
+
+
+OO_TEST(nilStaysNil)
+{
+	OOTextureGenerator *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOTextureGenerator *>(nullptr)) == nil);
+	OO_CHECK([none textureOptions] == 0 && ![none enqueue]);
 }
 
 

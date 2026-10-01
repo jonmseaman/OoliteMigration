@@ -51,45 +51,11 @@ oo::ObjCPeers &Peers()
 }
 
 
-/*	The C++ part of an Objective-C loader: each virtual member messages the Objective-C object, so
-	the subclass's override runs, as it did when the base class was Objective-C. The Objective-C
-	object owns this (its _cxxLoader) and is not retained by it; its -dealloc clears the pointer,
-	after which the members answer as a message to nil did. -loadTexture is sent on a work thread,
-	as it was.
-*/
-class ObjCTextureLoader final : public cxx::OOTextureLoader
-{
-public:
-	explicit ObjCTextureLoader(::OOTextureLoader *owner) : _owner(owner) {}
-
-	::OOTextureLoader *owner()		{ return _owner; }
-	void ownerDeallocated()			{ _owner = nil; }
-
-	bool getResult(OOPixMap *result, OOTextureDataFormat *outFormat, uint32_t *outWidth, uint32_t *outHeight) override
-	{
-		return [_owner getResult:result format:outFormat originalWidth:outWidth originalHeight:outHeight];
-	}
-	std::optional<std::string> cacheKey() override						{ return [_owner cxx_cacheKey]; }
-	void loadTexture() override											{ [_owner loadTexture]; }
-	std::optional<std::string> descriptionComponents() const override		{ return [_owner cxx_descriptionComponents]; }
-	std::optional<std::string> shortDescriptionComponents() const override	{ return [_owner cxx_shortDescriptionComponents]; }
-
-private:
-	::OOTextureLoader *_owner = {};	// Not retained.
-};
-
-
-ObjCTextureLoader *AsObjCTextureLoader(cxx::OOTextureLoader *loader)
-{
-	return dynamic_cast<ObjCTextureLoader *>(loader);
-}
-
-
-std::string DemangledName(cxx::OOTextureLoader &loader)
+std::string DemangledName(const std::type_info &type)
 {
 	int status = 0;
-	char *demangled = abi::__cxa_demangle(typeid(loader).name(), nullptr, nullptr, &status);
-	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(loader).name();
+	char *demangled = abi::__cxa_demangle(type.name(), nullptr, nullptr, &status);
+	std::string result = (status == 0 && demangled != nullptr) ? demangled : type.name();
 	std::free(demangled);
 	return result;
 }
@@ -98,21 +64,36 @@ std::string DemangledName(cxx::OOTextureLoader &loader)
 // The C++ class's name, as [self class] named an Objective-C loader's class ("cxx::" dropped).
 std::string ClassName(cxx::OOTextureLoader &loader)
 {
-	std::string result = DemangledName(loader);
+	std::string result = DemangledName(typeid(loader));
 	if (result.starts_with("cxx::"))  result.erase(0, 5);
 	return result;
 }
 
 
-/*	The class of a C++ loader's facade: a converted subclass in namespace cxx that its callers
-	message by its own selectors has a facade of its own, the Objective-C class of the same name,
-	a subclass of this one (amendment oo-up4b item 3). Any other C++ loader is an OOTextureLoader.
+// A class's (first) base class, from the Itanium C++ ABI's type information; null for none.
+const std::type_info *BaseOf(const std::type_info &type)
+{
+	if (const auto *single = dynamic_cast<const abi::__si_class_type_info *>(&type))  return single->__base_type;
+	if (const auto *multiple = dynamic_cast<const abi::__vmi_class_type_info *>(&type))
+	{
+		return multiple->__base_count > 0 ? multiple->__base_info[0].__base_type : nullptr;
+	}
+	return nullptr;
+}
+
+
+/*	The class of a C++ loader's facade. A C++ class in namespace cxx that has a facade of its own
+	is that Objective-C class, a subclass of this one (cxx::OOTextureGenerator's is
+	OOTextureGenerator; amendment oo-up4b item 3). A class without one (a global C++ class) is seen
+	as its nearest base class that has one, so a global subclass of cxx::OOTextureGenerator is an
+	OOTextureGenerator to Objective-C (amendment oo-vl43 item 4); failing that, an OOTextureLoader.
 */
 Class FacadeClass(cxx::OOTextureLoader &loader)
 {
-	const std::string name = DemangledName(loader);
-	if (name.starts_with("cxx::"))
+	for (const std::type_info *type = &typeid(loader); type != nullptr; type = BaseOf(*type))
 	{
+		const std::string name = DemangledName(*type);
+		if (!name.starts_with("cxx::"))  continue;
 		Class facade = OOClassFromName(std::string_view(name).substr(5));
 		if (facade != Nil && [facade isSubclassOfClass:[OOTextureLoader class]])  return facade;
 	}
@@ -134,7 +115,7 @@ Class FacadeClass(cxx::OOTextureLoader &loader)
 // Inside the @implementation for the protected ivar.
 OOTextureLoader *oo::ToObjC(cxx::OOTextureLoader *loader)
 {
-	if (ObjCTextureLoader *objCLoader = AsObjCTextureLoader(loader))  return [[objCLoader->owner() retain] autorelease];
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(loader))  return [[objCLoader->owner() retain] autorelease];
 	if (loader == nullptr)  return nil;
 	Class facadeClass = FacadeClass(*loader);
 	return Peers().peerFor(loader, [loader, facadeClass] { return [[facadeClass alloc] initWithCxxLoader:loader]; });
@@ -164,7 +145,7 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 - (id) init
 {
 	self = [super init];
-	if (self != nil)  _cxxLoader = oo::makeRef<ObjCTextureLoader>(self);
+	if (self != nil)  _cxxLoader = oo::makeRef<oo::ObjCTextureLoader<cxx::OOTextureLoader>>(self);
 	return self;
 }
 
@@ -172,9 +153,15 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 // An Objective-C loader's designated initialiser: its C++ part, then the old body on it.
 - (id)cxx_initWithPath:(const std::optional<std::string> &)inPath options:(uint32_t)options
 {
+	return [self cxx_initWithCxxLoader:oo::makeRef<oo::ObjCTextureLoader<cxx::OOTextureLoader>>(self) path:inPath options:options];
+}
+
+
+- (id) cxx_initWithCxxLoader:(const oo::Ref<cxx::OOTextureLoader> &)loader path:(const std::optional<std::string> &)inPath options:(uint32_t)options
+{
 	self = [super init];
 	if (self == nil)  return nil;
-	_cxxLoader = oo::makeRef<ObjCTextureLoader>(self);
+	_cxxLoader = loader;
 
 	if (!_cxxLoader->initWithPath(inPath, options))
 	{
@@ -214,7 +201,7 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 // The pixels not handed over are freed with the C++ part, after this.
 - (void) dealloc
 {
-	if (ObjCTextureLoader *objCLoader = AsObjCTextureLoader(_cxxLoader.get()))  objCLoader->ownerDeallocated();
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(_cxxLoader.get()))  objCLoader->ownerDeallocated();
 	else  Peers().forget(_cxxLoader.get());
 	[super dealloc];
 }
@@ -223,26 +210,26 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 // A C++ loader's facade describes itself with the C++ class's name and components.
 - (std::optional<std::string>) cxx_description
 {
-	if (AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  return [super cxx_description];
+	if (oo::AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  return [super cxx_description];
 	std::string result = oo::str::format("<%s %s>", ClassName(*_cxxLoader).c_str(), oo::str::pointerDescription(self).c_str());
 	if (const std::optional<std::string> components = _cxxLoader->descriptionComponents())  result += "{" + *components + "}";
 	return result;
 }
 
 
-/*	The descriptions. On an Objective-C loader that does not override them, the base class's own
-	member answers; on a C++ loader's facade, the C++ override.
+/*	The descriptions. On an Objective-C loader that does not override them, its nearest converted
+	class's own member answers; on a C++ loader's facade, the C++ override.
 */
 - (std::optional<std::string>) cxx_descriptionComponents
 {
-	if (AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  return _cxxLoader->cxx::OOTextureLoader::descriptionComponents();
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(_cxxLoader.get()))  return objCLoader->superDescriptionComponents();
 	return _cxxLoader->descriptionComponents();
 }
 
 
 - (std::optional<std::string>) cxx_shortDescriptionComponents
 {
-	if (AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  return _cxxLoader->cxx::OOTextureLoader::shortDescriptionComponents();
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(_cxxLoader.get()))  return objCLoader->superShortDescriptionComponents();
 	return _cxxLoader->shortDescriptionComponents();
 }
 
@@ -260,8 +247,8 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 
 
 /*	The overridable methods. On an Objective-C loader these are reached only when the subclass
-	does not override them, or by [super ...]: the base class's own member answers. On a C++
-	loader's facade the C++ override answers.
+	does not override them, or by [super ...]: its nearest converted class's own member answers
+	(the adapter's super...()). On a C++ loader's facade the C++ override answers.
 */
 
 - (BOOL) getResult:(OOPixMap *)result
@@ -269,21 +256,21 @@ cxx::OOTextureLoader *oo::ToCxx(OOTextureLoader *loader)
 	 originalWidth:(uint32_t *)outWidth
 	originalHeight:(uint32_t *)outHeight
 {
-	if (AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  return _cxxLoader->cxx::OOTextureLoader::getResult(result, outFormat, outWidth, outHeight);
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(_cxxLoader.get()))  return objCLoader->superGetResult(result, outFormat, outWidth, outHeight);
 	return _cxxLoader->getResult(result, outFormat, outWidth, outHeight);
 }
 
 
 - (std::optional<std::string>) cxx_cacheKey
 {
-	if (AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  return _cxxLoader->cxx::OOTextureLoader::cacheKey();
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(_cxxLoader.get()))  return objCLoader->superCacheKey();
 	return _cxxLoader->cacheKey();
 }
 
 
 - (void)loadTexture
 {
-	if (AsObjCTextureLoader(_cxxLoader.get()) != nullptr)  _cxxLoader->cxx::OOTextureLoader::loadTexture();
+	if (oo::ObjCTextureLoaderLink *objCLoader = oo::AsObjCTextureLoader(_cxxLoader.get()))  objCLoader->superLoadTexture();
 	else  _cxxLoader->loadTexture();
 }
 
