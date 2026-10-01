@@ -1542,6 +1542,118 @@ subclass's calls the superclass's.
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
 
+## Amendment (bead oo-6bux): a root whose one subclass is already a façade, a factory by `Class`, and a state array handed out by pointer
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOJoystickManager.h/.mm`,
+  `OOJoystickManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJoystickManager.mm`.
+
+**Context.** `OOJoystickManager` is the root of a hierarchy whose one subclass,
+`OOSDLJoystickManager`, converted first (amendment oo-o89): its Objective-C façade still subclasses
+the Objective-C root, keeps the root's state in it, and reaches the root's decoders with
+`[oo::ToObjC(this) decodeAxisEvent:…]`. The root makes its shared instance from a registered
+`Class` (`+setStickHandlerClass:`, `+sharedStickHandler`), its `-init` calls the methods the
+subclass overrides, and it hands its callers a pointer into a `BOOL` array (`-getAllButtonStates`).
+
+**Decision (recommended defaults).**
+
+1. **The root converts as Amendment 1 says, and the subclass's façade does not change.** Its
+   `-init` still makes its own C++ object and then calls `[super init]`, which is now the root
+   façade's: that makes the adapter (`ObjCJoystickManager final : public cxx::OOJoystickManager`,
+   private to the bridge `.mm`, overriding the three members the subclass overrides) and runs the
+   old `-init` body on it. Its `[oo::ToObjC(this) decode…]` reaches the root façade's forwarders,
+   which reach the adapter, which holds the state. With one Objective-C subclass and no
+   intermediate class, the adapter is not a template; the root façade's methods for the virtual
+   members call the base's member, qualified, on a subclass instance (Amendment 1 item 3).
+2. **An `-init` body that calls overridden members is `void init()`, run by whoever made the
+   object, once, right after construction** (amendments oo-vl43 item 2 and oo-bj8 item 6): the
+   root façade's `-init` after it made the C++ part (so the subclass's overrides run during it, as
+   before), converted code after `oo::makeRef`. The façade's `-init` makes a C++ object with
+   itself as peer when `[self class]` is exactly the root, else the adapter.
+3. **A factory that makes an instance of a registered `Class`** (`+sharedStickHandler`,
+   `+setStickHandlerClass:` and their two file statics) stays in the façade, verbatim: the class it
+   makes is an Objective-C class. It becomes C++ in the façade's deletion bead, when the subclass is
+   C++ and the registration is a factory function.
+4. **A member array whose address the class hands to unconverted code** keeps its element type
+   (`BOOL butstate[BUTTON_end]`, returned as `const BOOL *`), with a comment; the other `BOOL` ivars
+   become `bool`. Changing it would change every caller's pointer type.
+5. **A getter that returned an ivar unretained** (`-getProfileForAxis:`) returns a borrowed raw
+   pointer to the C++ object (`cxx::X *`), not an `oo::Ref`; the façade answers `oo::ToObjC(...)`
+   of it, which keeps identity through the peer table.
+6. **The test** pins the root through its Objective-C API with an Objective-C test subclass that
+   overrides the hardware methods (also reached from `-init`, through saved settings), and points
+   the user defaults at a scratch home (`HOMEPATH`) before they are first read (amendment oo-rmd7
+   item 4). After the conversion it checks the crossing both ways, the subclass's C++ part
+   reaching its overrides, and that part outliving its owner as nil. The subclass's own test
+   (`test_OOSDLJoystickManager`) passes unchanged.
+
+**Consequences.** One façade and one deletion bead, which depends on this bead's callers
+(`PlayerEntity*`, `GameController`, `HeadUpDisplay`, `Universe`, `MyOpenGLView*`) and is done
+together with `oo-9ht.2`, which re-parents `cxx::OOSDLJoystickManager` onto `cxx::OOJoystickManager`.
+
+## Amendment (bead oo-2en): the Audio module, and a hierarchy root that is a class cluster
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOALSound.h/.mm`
+  (`cxx::OOSound`), `OOALSound+ObjCBridge.h/.mm`, `tests/unit/core/test_OOSound.mm`. This is the
+  Audio module's pattern seam: the other `OOAL*`/`OOSound*`/`OOMusic*` beads copy it.
+
+**Context.** `OOSound` is the root of the sounds: `OOALBufferedSound`, `OOALStreamedSound` and
+`OOMusic` derive from it in their own files. It keeps the sound system's global state (set up,
+sound OK, the master volume) in class methods, and its designated initialiser
+`-cxx_initWithContentsOfFile:` is a class cluster's: it releases the receiver and answers a
+buffered or a streamed sound, which are Objective-C subclasses. `OOMusic` overrides that
+initialiser. The other audio classes (the sources, the pool, the mixer, the channels, the decoder,
+the music controller) are not sounds.
+
+**Decision (recommended defaults).**
+
+1. **The module converts root first** (amendment oo-smy item 1): `OOSound` in this bead, with
+   amendment oo-smy's root façade and an adapter (`ObjCSound`, as `OODrawable`'s, since no
+   intermediate class exists). The per-file bead of `OOALSound.mm` is superseded by this one. The
+   three subclass beads depend on it; each derives from `cxx::OOSound`. The classes that are not
+   sounds follow the decision above, and amendment oo-r7m0 for the singletons (the mixer, the
+   music controller).
+2. **A class-cluster initialiser whose answers are Objective-C subclass instances** becomes a
+   static factory with the initialiser's name (amendment oo-novu item 1) that returns the
+   Objective-C object retained, `oo::ObjCRef<::X *>`, because an Objective-C object's C++ part does
+   not keep it alive (amendment oo-smy item 4). Null where it answered nil. The body stays in
+   `X.mm`; its `[[Sub alloc] init…]` sends are messages to unconverted classes. The façade's
+   initialiser keeps what concerns the receiver (`[self release]`, and the early `return nil`
+   that leaked it) and returns `factory(…).leakRef()`. The factory becomes `oo::Ref<X>` in the
+   façade's deletion bead.
+3. **A subclass that overrides the cluster's initialiser** (`OOMusic`) keeps overriding the
+   façade's method while it is Objective-C. When it converts it gets a static factory of the same
+   name, which hides the root's (amendment oo-489v item 2).
+4. **A root's `-init` side effect** (`[OOSound setUp]`) is the C++ constructor. The façade's
+   `-init` makes the adapter, which runs it, so `[[Sub alloc] init]` still sets sound up.
+5. **An initialiser that only the subclasses declare** (`-initWithDecoder:`, which answered nil on
+   the root) stays in the façade unchanged. It is not part of the C++ class.
+6. **A file-static of plain type whose line changes** (`static BOOL sIsSetUp` becoming `bool`)
+   moves into an anonymous namespace, which is what clang-tidy's `misc-use-anonymous-namespace`
+   asks of a changed line. Unchanged statics stay as they are.
+7. **The test** runs OpenAL on OpenAL Soft's null backend (`ALSOFT_DRIVERS=null`) and points
+   `HOMEPATH` at a scratch folder before the first use, so neither the machine's sound hardware
+   nor the user's saved volume changes the answers. The global state is per process, so the test
+   that sets sound up runs first. The decoder, the mixer and the two concrete sounds are stubs
+   in the test (amendment oo-z1s4 item 4); the concrete sounds are Objective-C subclasses, so the
+   class cluster's answers also exercise the adapter.
+
+**Consequences.** One façade and one deletion bead (`OOALSound+ObjCBridge`), which depends on the
+three subclass beads and on the beads of the files that message sounds. No caller changed.
+
+## Amendment (bead oo-9ht.66): a message whose selector no header declares
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `oo::SendClassName` in
+  `src/Core/OOWeakReference+ObjCBridge.h/.mm`, `oo::SendIntValue` in `OOCharacter+ObjCBridge.h/.mm`.
+
+**Context.** A converted body sends a selector (`-className`, `-intValue`) to an `id` that may
+answer it, but no visible header declares the method any more, so the send needs a local
+`@protocol` to type it. The item 8 grep forbids `@protocol` in `X.mm`.
+
+**Decision (recommended default).** The protocol and the one send move, verbatim, into a free
+function in `X+ObjCBridge.mm` (`id oo::SendClassName(id object)`), declared in `X+ObjCBridge.h`
+beside `oo::ToObjC`/`oo::ToCxx`; the C++ body calls the function where it sent the message. The
+function goes with the façade's deletion bead, or earlier once a header declares the method again.
+
 ## Amendment (bead oo-q9q4): scripting classes whose superclass is still Objective-C, and the rest of the batch
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOPListScript.h/.mm`,

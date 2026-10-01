@@ -2,7 +2,7 @@
 
 oolite_sources += files(
     'EntityOOJavaScriptExtensions.mm',
-    'OOConstToJSString.mm',
+    'OOConstToJSString.cpp',
     'OOJSCall.mm',
     'OOJSCall+ObjCBridge.mm',
     'OOJSClock.mm',
@@ -22,7 +22,9 @@ oolite_sources += files(
     'OOJSFunction+ObjCBridge.mm',
     'OOJSGlobal.mm',
     'OOJSGuiScreenKeyDefinition.mm',
+    'OOJSGuiScreenKeyDefinition+ObjCBridge.mm',
     'OOJSInterfaceDefinition.mm',
+    'OOJSInterfaceDefinition+ObjCBridge.mm',
     'OOJSManifest.mm',
     'OOJSMission.mm',
     'OOJSMissionVariables.mm',
@@ -31,6 +33,7 @@ oolite_sources += files(
     'OOJSPlayer.mm',
     'OOJSPlayerShip.mm',
     'OOJSPopulatorDefinition.mm',
+    'OOJSPopulatorDefinition+ObjCBridge.mm',
     'OOJSQuaternion.mm',
     'OOJSQuaternion+ObjCBridge.mm',
     'OOJSScript.mm',
