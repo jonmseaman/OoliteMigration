@@ -96,6 +96,7 @@ core_tests = {
     'test_OOPlasmaBurstEntity': ['*'],
     'test_DustEntity': ['*'],
     'test_OOQuiriumCascadeEntity': ['*'],
+    'test_OOLaserShotEntity': ['*'],
     'test_OOParticleSystem': ['*'],
     'test_OORingEffectEntity': ['*'],
     'test_OODebugMonitor': ['Core/Debug/OODebugMonitor.mm', 'Core/Debug/OODebugMonitor+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
