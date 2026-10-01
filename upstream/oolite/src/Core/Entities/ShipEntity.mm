@@ -9058,7 +9058,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	}
 	// and a visual sign of the explosion
 	// "fireball" explosion effect
-	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:[UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]]];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, range*3.0, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
 
 }
 
@@ -9371,9 +9371,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if (!isWreckage && _cxxEntity->mass > 500000.0f && randf() < 0.25f) // big!
 			{
 				// draw an expanding ring
-				OORingEffectEntity *ring = [OORingEffectEntity ringFromEntity:self];
-				[ring setVelocity:vector_multiply_scalar([self velocity], 0.25f)];
-				[UNIVERSE addEntity:ring];
+				oo::Ref<OORingEffectEntity> ring = OORingEffectEntity::ringFromEntity(self);
+				if (ring != nullptr)  ring->setVelocity(vector_multiply_scalar([self velocity], 0.25f));
+				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
 			}
 			
 			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
@@ -9390,9 +9390,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 					// Quick explosion effects for reduced detail mode
 					
 					// 1. fast sparks
-					[UNIVERSE addEntity:[OOSmallFragmentBurstEntity fragmentBurstFromEntity:self]];
+					[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
 					// 2. slow clouds
-					[UNIVERSE addEntity:[OOBigFragmentBurstEntity fragmentBurstFromEntity:self]];
+					[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 					// 3. flash
 					[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					/* This mode used to be the default for
@@ -9403,7 +9403,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				{
 					if (explosionType.isNull())
 					{
-						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:[UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]]];
+						[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
 						// 3. flash
 						[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					}
@@ -9421,15 +9421,15 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 							}
 							else if (explosionKey == "oolite-builtin-slowcloud")
 							{
-								[UNIVERSE addEntity:[OOBigFragmentBurstEntity fragmentBurstFromEntity:self]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 							}
 							else if (explosionKey == "oolite-builtin-fastspark")
 							{
-								[UNIVERSE addEntity:[OOSmallFragmentBurstEntity fragmentBurstFromEntity:self]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
 							}
 							else
 							{
-								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:[UNIVERSE cxx_explosionSetting:explosionKey]]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:explosionKey]))];
 							}
 						}
 					}
@@ -9812,14 +9812,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		float how_many = factor;
 		while (how_many > 0.5f)
 		{
-			[UNIVERSE addEntity:[OOSmallFragmentBurstEntity fragmentBurstFromEntity:self]];
+			[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
 			how_many -= 1.0f;
 		}
 		// 2. slow clouds
 		how_many = factor;
 		while (how_many > 0.5f)
 		{
-			[UNIVERSE addEntity:[OOBigFragmentBurstEntity fragmentBurstFromEntity:self]];
+			[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 			how_many -= 1.0f;
 		}
 
