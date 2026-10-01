@@ -110,6 +110,8 @@ core_tests = {
     'test_GuiDisplayGen': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
+    'test_OOExhaustPlumeEntity': ['*'],
+    'test_SkyEntity': ['*'],
     'test_OOWaypointEntity': ['*'],
     'test_OOFlasherEntity': ['*'],
     'test_OOFlashEffectEntity': ['*'],
