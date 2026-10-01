@@ -62,6 +62,7 @@ core_tests = {
     'test_OOTexture': ['*'],
     'test_OONullTexture': ['*'],
     'test_OOConcreteTexture': ['*'],
+    'test_OOTextureScaling': ['Core/OOTextureScaling.mm', 'Core/Materials/OOPixMap.mm'],
     'test_OOTextureLoader': ['*'],
     'test_OOTextureGenerator': ['*'],
     'test_OOCrosshairs': ['Core/OOCrosshairs.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
