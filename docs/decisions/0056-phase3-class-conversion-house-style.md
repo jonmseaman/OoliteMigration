@@ -2659,3 +2659,42 @@ binding whose objects are entities, whose root (`Entity`) is converted but whose
 `OOEquipmentType` façade's deletion, now waits for); two bug beads. `OOJSScript` (oo-u61e), a class
 whose superclass is still Objective-C with a category on that superclass, did not fit the sizing
 checks in this batch and is left for a bead of its own.
+
+## Amendment (bead oo-zl36): a root that is a work-manager task, whose state its subclasses read
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOTextureLoader.h/.mm`,
+  `OOTextureLoader+ObjCBridge.h/.mm`, `tests/unit/core/test_OOTextureLoader.mm`. Follows amendments
+  oo-bj8 (the state), oo-whzh (the adapter) and oo-2en (factories that answer Objective-C objects).
+
+**Context.** `OOTextureLoader` is the root of the texture loaders: `OOPNGTextureLoader`,
+`OOPixMapTextureLoader` and `OOTextureGenerator` (with the planet, atmosphere and emission-map
+generators under it), Objective-C, in their own files and beads. They write the root's
+`@protected` ivars (`_data`, `_width`, `_format`, …) from their `-loadTexture`, on a work thread.
+A loader is also a task of the converted work manager, which holds and messages it as an
+Objective-C object (`-performAsyncTask`, `-completeAsyncTask`, `waitForTaskToComplete`).
+
+**Decision (recommended defaults).**
+
+1. **The state moves to the C++ root as public members** (amendment oo-bj8 item 1), bit fields
+   with `= 0`, and the Objective-C subclasses read and write it through the façade's `@protected`
+   `_cxxLoader` (item 2): `_cxxLoader->_width`. The edit is mechanical and touches the subclasses'
+   files, whatever bead owns them; a check that no bare name is left proves it. A test subclass's
+   lines that read the state are ported the same way (item 11).
+2. **The façade keeps the task protocol.** It conforms to `OOAsyncWorkTask` and forwards
+   `-performAsyncTask`/`-completeAsyncTask` to the C++ members, whose bodies (`@try`/`@catch`
+   included, amendment oo-puw9 item 4) are the old ones; the virtual `loadTexture()` reaches an
+   Objective-C subclass's override through the adapter, on the work thread as before. C++ code
+   hands the work manager the Objective-C object: `addTask(result.get(), …)` for a loader the
+   factory made, `waitForTaskToComplete(oo::ToObjC(this))` from a member.
+3. **The designated initialiser `-cxx_initWithPath:options:`** is `bool initWithPath(path,
+   options)`, the body after `[super init]`, run by the façade's initialiser on the adapter it
+   made; `false` makes the façade release itself and answer nil, as before.
+4. **A clang-tidy finding on a line the mechanical edit touched** is fixed with the check's own
+   fix, not left: `bugprone-implicit-widening-of-multiplication-result` on
+   `malloc(4 * _cxxLoader->_width * _cxxLoader->_height)` widens an operand
+   (`4 * static_cast<size_t>(_cxxLoader->_width) * …`); the sizes are a texture's, far from 32-bit
+   overflow, so the value is the same.
+
+**Consequences.** One façade and one deletion bead (`OOTextureLoader+ObjCBridge`), which depends on
+every loader bead (PNG, pixmap, generator, planet, atmosphere, emission map) and on the textures and
+the verifier that call the factories. Five subclass files changed only by item 1 (105 lines).
