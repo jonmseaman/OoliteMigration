@@ -23,9 +23,11 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSScript.h"
+#import "OOWeakReference.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
+@class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+
 @interface OOJSInterfaceDefinition: OOWeakRefObject
 {
 @private
