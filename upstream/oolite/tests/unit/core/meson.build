@@ -82,6 +82,7 @@ core_tests = {
     'test_OOSparkEntity': ['*'],
     'test_OOPlasmaBurstEntity': ['*'],
     'test_DustEntity': ['*'],
+    'test_OOQuiriumCascadeEntity': ['*'],
 }
 
 fs = import('fs')
