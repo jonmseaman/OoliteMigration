@@ -2492,3 +2492,51 @@ its colour arguments through out-parameters.
 **Consequences.** One façade and deletion bead per class (five), each waiting for the callers that
 make and message it; the bindings' category bridges (oo-9ht.48, .49 and .50) move their forwarders
 onto the façade before it goes. No caller changed.
+## Amendment (bead oo-nge8): bindings of the player, the mission and the engine's helpers
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSMission.h/.mm`,
+  `tests/unit/core/test_OOJSMission.mm`; the same batch converted `OOJSPlayer`,
+  `OOJSMissionVariables`, `OOJSOolite`, `OOJSEntity` and `OOJSEquipmentInfo` (oo-5rva, oo-s4ns,
+  oo-whvg, oo-tq53, oo-supk) if they land.
+
+**Context.** Amendments oo-ppc and oo-6ia4 cover these bindings, which are `BOOL`s, a few crossings
+to converted classes and, for `OOJSEquipmentInfo`, a category on a converted class's façade. The
+batch met five smaller questions: a `BOOL *` out-parameter in a binding's C API; an `@try`/`@catch
+(OOException *)` in a binding's C function that is not a native; a test that, run on the
+Objective-C file first, found a defect; natives that succeed without setting a result; and a
+binding whose objects are entities, whose root (`Entity`) is converted but whose subclasses are not.
+
+**Decision (recommended defaults).**
+
+1. **A `BOOL *` out-parameter in a binding's C API stays `BOOL *`** (`JSValueToEquipmentKeyRelaxed`):
+   its callers pass the address of a `BOOL` of their own, so changing it would edit callers outside
+   the bead. The body's local is `bool`, assigned through the pointer. Return types and by-value
+   parameters become `bool` as amendment oo-ppc item 2 says (callers compile unchanged).
+2. **`@try`/`@catch (OOException *)` in a binding's C function that is not a native**
+   (`MissionRunCallback()`, which squashes and logs an exception from the mission screen's callback)
+   **stays verbatim**, as amendment oo-puw9 item 4 keeps it in converted members; Phase 4 replaces it
+   with the rest of the Objective-C exception sites. That bead's acceptance greps for
+   `@implementation|@interface|@selector|@protocol` only.
+3. **A test that finds a defect in the Objective-C file pins the correct behaviour**, and the
+   conversion fixes the defect the smallest way with a comment (amendment oo-ppc item 2). Here
+   `mission.markedSystems` read the player's destinations through a pointer into a temporary
+   `oo::PList` that died at the end of an `if`'s initialiser; the same defect in a landed file
+   (`OOJSSystemInfo.mm`) is a bead of its own (oo-f4241). A fault of the façade backend, not of the
+   binding, is a bead too (oo-f1yi3: assigning to a mission variable the object already reports
+   bypasses the class's setter), and the test leaves that path alone rather than pin it.
+4. **A native that succeeds without setting a result** (`setPlayerRole()`,
+   `setEscapePodDestination()`) is tested by what it did, not by what the call gives: the backend's
+   result slot then holds whatever was there, and nothing in the game reads it.
+5. **A binding whose objects are entities messages the Objective-C `Entity`**, the façade every
+   entity is while its subclasses are Objective-C (amendment oo-bj8 item 3), as `OOJSSun.mm` and
+   `OOJSStation.mm` do; its test stands in for `Entity` and its subclasses by name. The crossing to
+   `cxx::Entity` comes with the leaves' conversions, not with the binding's.
+6. **Many crossings in one hook** (the 37 EquipmentInfo properties) cross once
+   (`cxx::OOEquipmentType *type = oo::ToCxx(eqType)`), and a file-local `Ask(type, &C::member)`
+   answers the member's value-initialised result where a message to nil answered zero (amendment
+   oo-6ia4 item 2): 0, false, nullopt, a null `oo::PList`, an empty vector or a null `oo::Ref`.
+
+**Consequences.** One bridge with a deletion bead (oo-9ht.102, which oo-9ht.28, the
+`OOEquipmentType` façade's deletion, now waits for); two bug beads. `OOJSScript` (oo-u61e), a class
+whose superclass is still Objective-C with a category on that superclass, did not fit the sizing
+checks in this batch and is left for a bead of its own.
