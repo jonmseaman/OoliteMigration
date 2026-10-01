@@ -182,5 +182,6 @@
 [oo-q9l2w] export PATH="/ucrt64/bin:$PATH"; OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/GameController.mm
 [oo-ryhi] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOECMBlastEntity && bash tools/tier-c.sh --only goldens
 [oo-ui7h] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOParticleSystem && bash tools/tier-c.sh --only goldens
+[oo-izk8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugStandards && bash tools/tier-c.sh --only goldens
 [oo-s6ic6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity
 [oo-4nhg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugTCPConsoleClient && bash tools/tier-c.sh --only goldens
