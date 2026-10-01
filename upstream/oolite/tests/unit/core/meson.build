@@ -110,6 +110,7 @@ core_tests = {
     'test_GuiDisplayGen': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
+    'test_OOFlashEffectEntity': ['*'],
     'test_OOPlasmaShotEntity': ['*'],
     'test_OOECMBlastEntity': ['*'],
     'test_OOLightParticleEntity': ['*'],

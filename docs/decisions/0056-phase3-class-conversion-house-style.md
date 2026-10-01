@@ -2432,6 +2432,66 @@ ivar `_trace`, which switches on logging of the Objective-C object's own retains
 **Consequences.** One façade and one deletion bead (`OOTexture+ObjCBridge`), which depends on the
 three subclass beads and on the beads of the files that message textures. No caller changed.
 
+## Amendment (bead oo-wue8): entity leaves with a façade under a converted intermediate class, and the rest of the batch
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOFlashEffectEntity.h/.mm`
+  and `OOFlasherEntity.h/.mm` with their `+ObjCBridge.h/.mm` (leaves under `OOLightParticleEntity`),
+  `OOWaypointEntity.h/.mm`, `SkyEntity.h/.mm` and `OOExhaustPlumeEntity.h/.mm` with theirs (beads
+  oo-bn5j, oo-zsid, oo-sxgm and oo-y86f), and `tests/unit/core/test_X.mm` for each.
+
+**Context.** Amendment oo-0mxi keeps a façade for a leaf that unconverted code makes or messages
+by its own selectors. This batch met that for every class: the ships make the flashers and plumes
+and message them as subentities, the universe makes the sky and the waypoints and messages them,
+and the scripting bindings find them by class. Two of them are leaves of
+`OOLightParticleEntity`, which is converted with a façade of its own (amendment oo-0otc); two
+headers declared a category of `Entity` that the class overrode (`-isFlasher`, `-isExhaust`); the
+waypoint holds other beacons as `Entity <OOBeaconEntity> *`; and the sky's initialiser reassigns
+its colour arguments through out-parameters.
+
+**Decision (recommended defaults).**
+
+1. **A leaf under a converted intermediate class with a façade** is `cxx::X : public
+   cxx::OOLightParticleEntity`, and its façade is `@interface X : OOLightParticleEntity` (the
+   intermediate façade, not `Entity`), with no ivars. `oo::NewEntityFacade`'s chain gains its line
+   after the intermediate class's, so the most derived façade wins. The intermediate façade's
+   methods for the members the leaf overrides (`-texture`, `-drawSubEntityImmediate:translucent:`)
+   already call the virtual member on a C++ object, so the leaf's façade does not repeat them. Its
+   `[super m]` is the intermediate class's member, qualified; its reads of the intermediate class's
+   ivars lose `oo::ToCxx(self)->` (amendment oo-0otc item 2).
+2. **A category of `Entity` that the header declared and the class overrode** moves to
+   `X+ObjCBridge.h/.mm` and answers from the C++ part, as amendment oo-2c6g item 1 says; with a
+   façade the method is still the category's, not an override on the façade, so it answers the same
+   for an entity made either way.
+3. **An initialiser the header declared, sent by no caller today** (`-cxx_initWithDictionary:`,
+   `-initForShip:withDefinition:andScale:`), stays on the façade as amendment oo-0mxi item 2 makes
+   it: the façade makes the C++ part (or keeps it on a second `-init…`) and runs the C++ body; one
+   that failed releases the façade and answers nil. The class method callers send is
+   `oo::NewEntityFacade(cxx::X::factory(…))` (amendment oo-0mxi item 4), nil where the factory
+   answered null.
+4. **An Objective-C type with a protocol list** (`Entity <OOBeaconEntity> *`) cannot be written
+   after the qualified name `::Entity` inside `namespace cxx`. The header names it once at file
+   scope, before the namespace (`typedef Entity <OOBeaconEntity> OOBeaconEntityObject;`), and the
+   class's members use the name. The other beacons stay Objective-C objects (amendment oo-bj8
+   item 4), held weakly as the façade's `OOWeakReference` (amendment oo-cc8a item 2); the beacon
+   icon, another converted class's façade or an Objective-C icon, is `oo::ObjCRef<id <P>>`.
+5. **Autoreleased objects a body reassigned** (the sky's colours, which `-readColor1:…` replaced
+   through `OOColor **`) are owned by the body: a borrowed parameter the body reassigns is copied
+   into a local `oo::Ref<T>` of the old name (`col1In`, then `oo::Ref<OOColor> col1(col1In)`), an
+   out-parameter is `oo::Ref<T> *`, and a chained message to a result that could be nil is a
+   file-local helper that carries the null guard (`PremultipliedColorWithDescription`, amendment
+   oo-6ia4 item 2). `-copy` of an immutable colour is the colour.
+6. **The tests** stand in for what the entity reaches as the effect leaves' do (amendment oo-peql
+   item 7): `UNIVERSE` a subclass of `Universe` made with `class_createInstance` that records what
+   the entity sets, `PLAYER` an entity that answers the viewpoint, the owner ship an entity that
+   answers the `ShipEntity` selectors the plume sends, the texture loader replaced with
+   `method_setImplementation`, and a private method of an unconverted collaborator replaced the same
+   way (`-[OOSkyDrawable setUpStarsWithColor1:color2:]`, which needs the game's star textures),
+   so that the sky's colours are observed where they are passed. A value that depends on the RNG
+   (the plume's measured size) is pinned with the RNG seeded, as the Objective-C class computed it.
+
+**Consequences.** One façade and deletion bead per class (five), each waiting for the callers that
+make and message it; the bindings' category bridges (oo-9ht.48, .49 and .50) move their forwarders
+onto the façade before it goes. No caller changed.
 ## Amendment (bead oo-nge8): bindings of the player, the mission and the engine's helpers
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSMission.h/.mm`,
