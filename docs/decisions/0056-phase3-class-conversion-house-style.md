@@ -1437,3 +1437,84 @@ subclass's calls the superclass's.
 **Consequences.** Two façades with two deletion beads: the root's waits for `PlayerEntity` and for
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
+
+## Amendment (bead oo-ja7y): categories on the root that a class's header declares, and `self` as a value
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderMaterial.h/.mm`,
+  `OOShaderMaterial+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderMaterial.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Informal protocols declared in the class's header as categories of `OOObject`**
+   (`ShaderBindingHierarchy`, `OOShaderMaterialTargetOptional`), which other classes implement and
+   the class only asks about, move unchanged to the bridge header, as amendment oo-3kqi item 5
+   moves a category on an Objective-C root. The C declarations and constants of the header stay.
+   The body asks with `OOSelectorFromName("…")` (amendment oo-3lj8 item 2).
+2. **`self`'s address used as a value** (the random seed `(uint32_t)(uintptr_t)self` when the
+   binding target has none) becomes `this`'s. Either is an arbitrary heap address, so no answer
+   that could be pinned changes; the façade's address is not used, because a C++ object made by
+   its factory has no façade until something crosses.
+3. **A class's C++ uniform setters whose selectors share the first keyword** (`setUniform:intValue:`,
+   `…floatValue:`, `…vectorValue:`, `…vectorObjectValue:`, `…quaternionValue:asMatrix:`) are
+   overloads, each commented with its second keyword; the test checks that each makes what its
+   selector made.
+4. **`@try { … } @catch (id) {}` around messages** is `try { … } catch (...)` (amendment oo-ppc:
+   a C++ `catch (...)` catches an Objective-C exception). The handler is not left empty
+   (`bugprone-empty-catch`): it does in so many words what falling out of the empty `@catch` did,
+   here `return true;`, with a comment.
+
+## Amendment (bead oo-n99o): failable initialisers that share a first keyword, and a union of ivars
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderUniform.h/.mm`,
+  `OOShaderUniform+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderUniform.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Seven failable initialisers that share `initWithName:shaderProgram:`** become seven overloads of
+   one static factory named after them (amendment oo-novu item 1), told apart by the third
+   argument's type and each commented with its keyword. Each body is the old one with `self` as the
+   new object (`result->`), and the shared private designated initialiser is a `bool` member.
+   A factory that fails before making the object (a nil colour) answers null without making one.
+2. **A union of ivars, bit-fields included, stays as it is** (its members are C), with `= {}`; the
+   factories make the object with `new X()`, which zero-initialises the whole of it first, as
+   `class_createInstance` did.
+3. **A converted class in `namespace cxx` that makes the converted class's Objective-C objects**
+   (`cxx::OOShaderMaterial` makes `OOShaderUniform`s) names the façade `::X` and keeps its
+   messages (amendment oo-rmd7 item 3), so the stub its test defines is still what it makes. The
+   façade's deletion bead turns them into C++ calls.
+4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
+   and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).
+
+## Amendment (bead oo-f9zg): a cache of unretained objects that remove themselves
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderProgram.h/.mm`,
+  `OOShaderProgram+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderProgram.mm`.
+
+**Context.** `OOShaderProgram` keeps a cache of programs by key that does not retain them; a program
+erases itself in `-dealloc`, and the class methods return an autoreleased program (cached or new).
+It also keeps the program in use retained in a file static.
+
+**Decision (recommended defaults).**
+
+1. **The cache holds raw C++ pointers** in an anonymous namespace inside `namespace cxx`, and the
+   destructor erases the entry, as `-dealloc` did. The factories return `oo::Ref<X>` (a cache hit
+   is retained into the `Ref`); a failed initialiser is a `bool` member and the factory answers
+   null. The façade's class methods answer `oo::ToObjC(factory(...))`, whose autorelease keeps the
+   program until the pool drains, as the autoreleased program was kept (amendment oo-ct7c item 2);
+   a cache hit whose façade is alive answers that façade.
+2. **The retained file static** (`sActiveProgram`) is a never-destroyed holder (`ActiveProgram()`,
+   amendment oo-smy item 3) that keeps **the façade**, `oo::ObjCRef<::X *>(oo::ToObjC(this))`, as
+   the current material does (amendment oo-smy item 4), not an `oo::Ref<X>`: the façade owns the
+   C++ program and is the object `sActiveProgram` retained, so a façade in use stays alive and
+   stays the program's one façade (`test_OOShaderProgram` pins the retain on the façade). The
+   assignment sits in an `@autoreleasepool` so that `oo::ToObjC`'s autorelease drains at once and
+   the program in use carries only the slot's retain, as `[program retain]` did. The destructor's
+   imbalance check stays under `#ifndef NDEBUG` for fidelity (it cannot fire while the slot owns
+   the façade), and drops the reference without releasing it. The slot changes to `oo::Ref<X>`
+   in the façade's deletion bead.
+3. **An ivar that shares its name with its getter** (`program`) takes the leading underscore
+   (amendment oo-rdfh item 1).
+4. **A converted C++ class that messages a converted façade's collaborator** (`[[UNIVERSE gameView]
+   getOpenGLMatrixManager]`, a façade over the C++ matrix manager) crosses once with `oo::ToCxx`
+   and null-guards each call with what the message to nil answered (`kZeroMatrix`, a null list;
+   amendment oo-vt0o item 3).

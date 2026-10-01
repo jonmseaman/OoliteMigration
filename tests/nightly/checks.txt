@@ -112,3 +112,6 @@
 [oo-li7k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckPListSyntaxVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-si5w] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckDemoShipsPListVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-uw42] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckRequiresPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-ja7y] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderMaterial test_OOBasicMaterial && bash tools/tier-c.sh --only goldens
+[oo-n99o] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderUniform test_OOShaderMaterial && bash tools/tier-c.sh --only goldens
+[oo-f9zg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderProgram test_OOShaderMaterial test_OOShaderUniform && bash tools/tier-c.sh --only goldens
