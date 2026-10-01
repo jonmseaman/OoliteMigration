@@ -1542,6 +1542,92 @@ subclass's calls the superclass's.
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
 
+## Amendment (bead oo-kq7): the Debug module, and a singleton whose superclass is Objective-C
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Debug/OODebugMonitor.h/.mm`
+  (`cxx::OODebugMonitor`), `OODebugMonitor+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OODebugMonitor.mm`. This is the Debug module's pattern seam: the other
+  `Core/Debug` beads copy it.
+
+**Context.** `OODebugMonitor` is the singleton that connects a debugger (the TCP console client,
+which the golden harness drives the game through) to the game. Its superclass, `OOWeakRefObject`,
+is Objective-C and keeps state (the object's weak reference, which the console's JavaScript object
+holds). It has the canonical singleton boilerplate (`+allocWithZone:` answers nil after the first;
+`-retain`/`-release` do nothing), so its `-dealloc` never ran. `OODebugMonitor.h` declares the
+`OODebugMonitorInterface` protocol that the class adopts, and the class also adopts the JavaScript
+engine's `OOJavaScriptEngineMonitor` in a private category. The whole file is `#ifndef NDEBUG`.
+
+**Decision (recommended defaults).**
+
+1. **The C++ class owns the singleton** (amendment oo-r7m0 item 1): `static X *sharedX()`,
+   recorded before its `init()` runs (amendment oo-z1s4 item 2). The façade is not the owner, as
+   amendment oo-o89 would make it, because converted code must reach the monitor without messaging
+   Objective-C.
+2. **Its façade is made once and lives as long as the process.** The façade keeps the singleton
+   boilerplate (it is the Objective-C object's retain and release), so once `oo::ToObjC` makes it
+   it is never deallocated. `oo::ToObjC` answers that one façade (`sSingleton`, recorded by
+   `+allocWithZone:`) with no peer table, and so never makes a second object with fresh
+   superclass state, which is the point of amendment oo-o89 item 2. `+sharedX` is
+   `oo::ToObjC(X::sharedX())`. The façade's superclass stays the Objective-C one, and the façade's
+   deletion bead depends on that superclass's conversion as well as on the callers'.
+3. **A `-dealloc` that never ran** (because `-release` did nothing) is not translated. A comment
+   stands where it was.
+4. **A protocol that the class adopts and that `X.h` declares** moves to `X+ObjCBridge.h`, before
+   the façade (amendment oo-jpd8 item 1). **A protocol from another module's header**
+   (`OOJavaScriptEngineMonitor`) is adopted by a category declared in `X+ObjCBridge.mm`, which
+   imports that header. `X+ObjCBridge.h` does not import it, so a test can stand in for that
+   module. The C++ class hands its façade to an API typed `id<P>` through a typed local
+   (`id monitor = oo::ToObjC(this);`, as amendment oo-vl43 item 6 does).
+5. **A struct private to the file that a private method takes** (`EntityDumpState`) becomes a
+   private nested `struct X::EntityDumpState;`, declared in the class and defined in `X.mm` where
+   it stood. That keeps the method a member and its body verbatim.
+6. **An observer registration that captured `self`** observes as `this` and captures `this`.
+   **`id x = _ivar; _ivar = nil; [x release];`** on an `oo::ObjCRef` (amendment oo-862e item 4) is
+   `_ivar = nullptr;`, which clears the ivar before it releases the object, as before.
+7. **A file that is `#ifndef NDEBUG`** keeps the guard in `X.mm`, and its bridge `.mm` has the same
+   guard.
+8. **The test** stands in for everything the monitor reaches (the resource manager, the JavaScript
+   engine, the console script and its JS wrapper, the time limiter, the textures and the universe),
+   with a real QuickJS context for the heap statistics. It drives a test debugger through the
+   façade. Because `OOCocoa.h` defines `true` and `false` as `1` and `0`, a test that builds a Bool
+   `oo::PList` node uses a `bool` constant (`kTrue`), not the literal. The golden gate is this
+   module's end-to-end proof, because the harness talks to the game through the debug console.
+
+**Consequences.** One façade and one deletion bead (`OODebugMonitor+ObjCBridge`). The deletion
+bead waits for the TCP console client, the JavaScript console, the debug support,
+`PlayerEntityControls` and `GameController`, and for `OOWeakRefObject`'s replacement. No caller
+changed.
+
+## Amendment (bead oo-cn4o): a category only its own file sends, result classes behind a C function, and the definitions' deletion order
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSEngineTimeManagement.h/.mm`,
+  `OOJSEngineTimeManagement+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSEngineTimeManagement.mm`.
+
+**Context.** `OOJSEngineTimeManagement` is a binding file (amendment oo-ppc) that also held a
+category on the engine (`-watchdogTimerThread`, sent only by `OOJSTimeManagementInit()` in the same
+file) and two small classes, `OOTimeProfile` and `OOTimeProfileEntry`, that the profiler makes and
+hands out through a C function (`OOJSEndProfiling()`, +1) to the debug console, which is still
+Objective-C.
+
+**Decision (recommended defaults).**
+
+1. **A category method that only its own file sends becomes a file-local free function** (in an
+   anonymous namespace) taking what it read from `self` as arguments (here the runtime, which the
+   caller already had). It gets no forwarder: nothing else sends it. A category sent from other
+   files keeps the oo-ppc rule (free functions plus `X+ObjCBridge` forwarders).
+2. **Result classes made only by C++ code** are plain `cxx::` classes (`oo::RefCounted`) held by
+   `oo::Ref`; their façades follow the default ADR-0056 shape (`oo::ToObjC` makes one when asked,
+   through `oo::ObjCPeers`), not amendment oo-o89, because their superclass is `OOObject`. A C
+   function that returned one +1 to Objective-C keeps its signature and returns
+   `[oo::ToObjC(result.get()) retain]`.
+3. **A test that stands in for a class whose ivar the code under test reads** declares that ivar
+   in its stand-in with the game's name and type, so the Objective-C-first run links.
+
+**Consequences.** One bridge with a deletion bead (oo-9ht.63) that waits for the debug console and
+the engine's object conversion. The three definition classes of amendment oo-q9q4 are deleted
+when their holders are C++ and hold them with `oo::WeakRef` (oo-9ht.60, .61, .62); the retirement
+of `OOWeakRefObject` (oo-9ht.22) comes after them, not before. No caller changed.
+
 ## Amendment (bead oo-6bux): a root whose one subclass is already a façade, a factory by `Class`, and a state array handed out by pointer
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOJoystickManager.h/.mm`,

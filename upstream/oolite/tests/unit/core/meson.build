@@ -9,6 +9,7 @@
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
 core_tests = {
+    'test_OOJSEngineTimeManagement': ['Core/Scripting/OOJSEngineTimeManagement.mm', 'Core/Scripting/OOJSEngineTimeManagement+ObjCBridge.mm', 'Core/OOProfilingStopwatch.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSGuiScreenKeyDefinition': ['Core/Scripting/OOJSGuiScreenKeyDefinition.mm', 'Core/Scripting/OOJSGuiScreenKeyDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSInterfaceDefinition': ['Core/Scripting/OOJSInterfaceDefinition.mm', 'Core/Scripting/OOJSInterfaceDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOJSPopulatorDefinition': ['Core/Scripting/OOJSPopulatorDefinition.mm', 'Core/Scripting/OOJSPopulatorDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
@@ -86,6 +87,7 @@ core_tests = {
     'test_GuiDisplayGen': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
+    'test_OODebugMonitor': ['Core/Debug/OODebugMonitor.mm', 'Core/Debug/OODebugMonitor+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
 }
 
 fs = import('fs')

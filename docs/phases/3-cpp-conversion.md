@@ -161,6 +161,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      the root's bead. A class the engine messages by selector keeps a no-ivar façade subclass that
      forwards the glue selectors; the JS private slot holds that façade. A container of
      Objective-C objects holds the façade, and removal uses `oo::LiveObjC`.
+   - **A category only its own file sends** (ADR-0056 amendment oo-cn4o; exemplar
+     `src/Core/Scripting/OOJSEngineTimeManagement.*`): it becomes a file-local free function that
+     takes what it read from `self` as arguments, with no forwarder. Result classes that only C++
+     makes are plain `cxx::` classes with default façades. A C function that returned one +1 keeps
+     its signature and returns `[oo::ToObjC(p) retain]`.
    - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
      roots first, in one bead. Class methods become `static` members, and file statics become
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
@@ -183,6 +188,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
      subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
      `cxx::Entity` and keeps its bodies verbatim.
+   - **The Debug module: a singleton whose superclass is Objective-C** (ADR-0056 amendment
+     oo-kq7; exemplar `src/Core/Debug/OODebugMonitor.*`): the C++ class owns the singleton, and
+     its façade, made once by `oo::ToObjC`, keeps the singleton boilerplate and so lives as long
+     as the process. A protocol from another module that the class adopts is declared in the
+     bridge `.mm`. The golden gate proves the debug console still works end to end.
    - **The Audio module: a root that is a class cluster** (ADR-0056 amendment oo-2en; exemplar
      `src/Core/OOALSound.*`, `cxx::OOSound`): the root converts first with an `OODrawable`-style
      façade and adapter. Its cluster initialiser is a static factory returning the Objective-C
@@ -268,6 +278,11 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `bash tools/check-foundation-free.sh --stage source` with 0 findings. A selector that no
   header declares any more is sent through a local protocol cast; see `OOCharacterIntValue`
   and `OOWeakReferenceClassName`. Merge phase-3 into your bead branch before you queue.
+- 2026-10-01 — Debug module pattern seam (bead oo-kq7, ADR-0056 amendment oo-kq7):
+  `OODebugMonitor` is `cxx::OODebugMonitor` behind `OODebugMonitor+ObjCBridge.h/.mm`, a singleton
+  whose immortal façade keeps the `OOWeakRefObject` superclass and the engine-monitor protocol.
+  Test: `tests/unit/core/test_OODebugMonitor.mm`. No caller changed; the goldens (driven through
+  the debug console) are green.
 - 2026-09-30 — Audio module pattern seam (bead oo-2en, ADR-0056 amendment oo-2en): `OOSound`
   (`OOALSound.h/.mm`) is `cxx::OOSound` behind `OOALSound+ObjCBridge.h/.mm`, the root of the three
   Objective-C sounds; its class-cluster initialiser is the static factory

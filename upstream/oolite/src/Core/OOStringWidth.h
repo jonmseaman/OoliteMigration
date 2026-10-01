@@ -1,9 +1,10 @@
 /*
 
-OOJSWorldScripts.h
+OOStringWidth.h
 
-JavaScript world scripts object. This is a global object that allows scripts
-to look up and iterate over world scripts.
+cxx_OOStringWidthInEm(), moved verbatim out of HeadUpDisplay.h (bead oo-9ht.72) so a plain C++
+translation unit (OOJSFont) can call it without parsing an @interface. HeadUpDisplay.h includes it
+back; the definition stays in HeadUpDisplay.mm. CGFloat is the floor's C type.
 
 
 Oolite
@@ -26,13 +27,15 @@ MA 02110-1301, USA.
 
 */
 
-#include "ooscript/JSEngine.hpp"
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef INCLUDED_OOSTRINGWIDTH_h
+#define INCLUDED_OOSTRINGWIDTH_h
 
-void InitOOJSWorldScripts(ooscript::Context context, ooscript::Object global);
+#include "oofnd/objc/OOFoundationTypes.h"
 
-#ifdef __cplusplus
-}
-#endif
+#include <string>
+
+
+CGFloat cxx_OOStringWidthInEm(const std::string &text);
+
+
+#endif	// INCLUDED_OOSTRINGWIDTH_h
