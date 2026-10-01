@@ -1414,3 +1414,33 @@ subclass's calls the superclass's.
 **Consequences.** Two façades with two deletion beads: the root's waits for `PlayerEntity` and for
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
+
+## Amendment (bead oo-cn4o): a category only its own file sends, result classes behind a C function, and the definitions' deletion order
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSEngineTimeManagement.h/.mm`,
+  `OOJSEngineTimeManagement+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSEngineTimeManagement.mm`.
+
+**Context.** `OOJSEngineTimeManagement` is a binding file (amendment oo-ppc) that also held a
+category on the engine (`-watchdogTimerThread`, sent only by `OOJSTimeManagementInit()` in the same
+file) and two small classes, `OOTimeProfile` and `OOTimeProfileEntry`, that the profiler makes and
+hands out through a C function (`OOJSEndProfiling()`, +1) to the debug console, which is still
+Objective-C.
+
+**Decision (recommended defaults).**
+
+1. **A category method that only its own file sends becomes a file-local free function** (in an
+   anonymous namespace) taking what it read from `self` as arguments (here the runtime, which the
+   caller already had). It gets no forwarder: nothing else sends it. A category sent from other
+   files keeps the oo-ppc rule (free functions plus `X+ObjCBridge` forwarders).
+2. **Result classes made only by C++ code** are plain `cxx::` classes (`oo::RefCounted`) held by
+   `oo::Ref`; their façades follow the default ADR-0056 shape (`oo::ToObjC` makes one when asked,
+   through `oo::ObjCPeers`), not amendment oo-o89, because their superclass is `OOObject`. A C
+   function that returned one +1 to Objective-C keeps its signature and returns
+   `[oo::ToObjC(result.get()) retain]`.
+3. **A test that stands in for a class whose ivar the code under test reads** declares that ivar
+   in its stand-in with the game's name and type, so the Objective-C-first run links.
+
+**Consequences.** One bridge with a deletion bead (oo-9ht.63) that waits for the debug console and
+the engine's object conversion. The three definition classes of amendment oo-q9q4 are deleted
+when their holders are C++ and hold them with `oo::WeakRef` (oo-9ht.60, .61, .62); the retirement
+of `OOWeakRefObject` (oo-9ht.22) comes after them, not before. No caller changed.

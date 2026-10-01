@@ -157,6 +157,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      the root's bead. A class the engine messages by selector keeps a no-ivar façade subclass that
      forwards the glue selectors; the JS private slot holds that façade. A container of
      Objective-C objects holds the façade, and removal uses `oo::LiveObjC`.
+   - **A category only its own file sends** (ADR-0056 amendment oo-cn4o; exemplar
+     `src/Core/Scripting/OOJSEngineTimeManagement.*`): it becomes a file-local free function that
+     takes what it read from `self` as arguments, with no forwarder. Result classes that only C++
+     makes are plain `cxx::` classes with default façades. A C function that returned one +1 keeps
+     its signature and returns `[oo::ToObjC(p) retain]`.
    - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
      roots first, in one bead. Class methods become `static` members, and file statics become
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
