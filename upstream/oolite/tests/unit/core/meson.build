@@ -53,6 +53,7 @@ core_tests = {
     'test_OOSoundMixer': ['Core/OOALSoundMixer.mm', 'Core/OOALSoundMixer+ObjCBridge.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOSoundSource': ['Core/OOSoundSource.mm', 'Core/OOSoundSource+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOSoundSourcePool': ['Core/OOSoundSourcePool.mm', 'Core/OOSoundSourcePool+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
+    'test_OOMusicController': ['Core/OOMusicController.mm'],
     'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
