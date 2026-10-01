@@ -111,10 +111,10 @@ oo::ObjCRef<::OOSound *> OOSound::initWithContentsOfFile(const std::optional<std
 
 	if (!sIsSetUp && !setUp())  return nullptr;
 
-	OOALSoundDecoder		*decoder;
+	::OOALSoundDecoder	*decoder;
 	::OOSound				*self;
 
-	decoder = [[OOALSoundDecoder alloc] cxx_initWithPath:path];
+	decoder = [[::OOALSoundDecoder alloc] cxx_initWithPath:path];
 	if (nil == decoder) return nullptr;
 
 	if ([decoder sizeAsBuffer] <= kMaxBufferedSoundSize)
