@@ -73,6 +73,7 @@ oolite_sources += files(
     'OOMeshToOctreeConverter+ObjCBridge.mm',
     'OOMouseInteractionMode.cpp',
     'OOMusicController.mm',
+    'OOMusicController+ObjCBridge.mm',
     'OOOXZManager.mm',
     'OOOpenALController.mm',
     'OOOpenGL.mm',

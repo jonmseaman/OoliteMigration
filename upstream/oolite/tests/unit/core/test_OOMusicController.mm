@@ -9,7 +9,9 @@
 	folder's (HOMEPATH). The resource manager and the music are this file's stubs, which record
 	what they are asked (the real ones would bring the sound system into the link; amendment oo-z1s4
 	item 4): "missing.ogg" has no music. These expectations were written against the Objective-C API
-	and ran on the unconverted class first. Run: bash tools/check-core-tests.sh test_OOMusicController
+	and ran on the unconverted class first; they now run through the facade, which is its forwarding
+	test. After them come the C++ API (cxx::OOMusicController) and the facade's contract.
+	Run: bash tools/check-core-tests.sh test_OOMusicController
 */
 
 #import "OOMusicController.h"
@@ -278,6 +280,48 @@ OO_TEST(specialMusic)
 		OO_CHECK(TakeLog().empty());
 	}
 	OO_CHECK(gLiveMusics == 0);
+}
+
+
+// The C++ API: the one controller, the same state as the facade's.
+OO_TEST(cxxApi)
+{
+	SetUp();
+	cxx::OOMusicController *controller = cxx::OOMusicController::sharedController();
+	OO_CHECK(controller != nullptr && controller == cxx::OOMusicController::sharedController());
+	OO_CHECK(oo::ToCxx([OOMusicController sharedController]) == controller);
+	@autoreleasepool
+	{
+		OO_CHECK(controller->mode() == kOOMusicOn);
+		controller->setMissionMusic(std::string("c.ogg"));
+		controller->playMissionMusic();
+		OO_CHECK((TakeLog() == std::vector<std::string>{ "play c.ogg" }));
+		OO_CHECK(controller->isPlaying() && controller->playingMusic() == std::optional<std::string>("c.ogg"));
+		OO_CHECK([[OOMusicController sharedController] isPlaying]);
+		controller->playMusicNamed("d.ogg", true, 0.5f);
+		OO_CHECK((TakeLog() == std::vector<std::string>{ "stop c.ogg", "play d.ogg looped" }));
+		OO_CHECK(Current([OOMusicController sharedController])->_gain == 0.5f);
+		controller->stop();
+		OO_CHECK((TakeLog() == std::vector<std::string>{ "stop d.ogg" }) && !controller->isPlaying());
+	}
+	OO_CHECK(gLiveMusics == 0);
+}
+
+
+// The facade's contract: one facade for the life of the process.
+OO_TEST(facade)
+{
+	SetUp();
+	OOMusicController *facade = nil;
+	@autoreleasepool
+	{
+		facade = [OOMusicController sharedController];
+	}
+	OO_CHECK(facade == [OOMusicController sharedController]);
+	OO_CHECK(oo::ToObjC(cxx::OOMusicController::sharedController()) == facade);
+	OOMusicController *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOMusicController *>(nullptr)) == nil);
 }
 
 
