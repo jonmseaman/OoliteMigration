@@ -9058,7 +9058,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	}
 	// and a visual sign of the explosion
 	// "fireball" explosion effect
-	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:[UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]]];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, range*3.0, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
 
 }
 
@@ -9371,9 +9371,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if (!isWreckage && _cxxEntity->mass > 500000.0f && randf() < 0.25f) // big!
 			{
 				// draw an expanding ring
-				OORingEffectEntity *ring = [OORingEffectEntity ringFromEntity:self];
-				[ring setVelocity:vector_multiply_scalar([self velocity], 0.25f)];
-				[UNIVERSE addEntity:ring];
+				oo::Ref<OORingEffectEntity> ring = OORingEffectEntity::ringFromEntity(self);
+				if (ring != nullptr)  ring->setVelocity(vector_multiply_scalar([self velocity], 0.25f));
+				[UNIVERSE addEntity:oo::NewEntityFacade(ring)];
 			}
 			
 			BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) &&
@@ -9390,9 +9390,9 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 					// Quick explosion effects for reduced detail mode
 					
 					// 1. fast sparks
-					[UNIVERSE addEntity:[OOSmallFragmentBurstEntity fragmentBurstFromEntity:self]];
+					[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
 					// 2. slow clouds
-					[UNIVERSE addEntity:[OOBigFragmentBurstEntity fragmentBurstFromEntity:self]];
+					[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 					// 3. flash
 					[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					/* This mode used to be the default for
@@ -9403,7 +9403,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				{
 					if (explosionType.isNull())
 					{
-						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:[UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]]];
+						[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:"oolite-default-ship-explosion"]))];
 						// 3. flash
 						[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					}
@@ -9421,15 +9421,15 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 							}
 							else if (explosionKey == "oolite-builtin-slowcloud")
 							{
-								[UNIVERSE addEntity:[OOBigFragmentBurstEntity fragmentBurstFromEntity:self]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 							}
 							else if (explosionKey == "oolite-builtin-fastspark")
 							{
-								[UNIVERSE addEntity:[OOSmallFragmentBurstEntity fragmentBurstFromEntity:self]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
 							}
 							else
 							{
-								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:[UNIVERSE cxx_explosionSetting:explosionKey]]];
+								[UNIVERSE addEntity:oo::NewEntityFacade(OOExplosionCloudEntity::explosionCloudFromEntity(self, [UNIVERSE cxx_explosionSetting:explosionKey]))];
 							}
 						}
 					}
@@ -9627,7 +9627,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 // Exposed to AI
 - (void) becomeEnergyBlast
 {
-	[UNIVERSE addEntity:[OOQuiriumCascadeEntity quiriumCascadeFromShip:self]];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
 	[self broadcastEnergyBlastImminent];
 	[self noteKilledBy:nil damageType:kOODamageTypeCascadeWeapon];
 	[UNIVERSE removeEntity:self];
@@ -9812,14 +9812,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		float how_many = factor;
 		while (how_many > 0.5f)
 		{
-			[UNIVERSE addEntity:[OOSmallFragmentBurstEntity fragmentBurstFromEntity:self]];
+			[UNIVERSE addEntity:oo::NewEntityFacade(OOSmallFragmentBurstEntity::fragmentBurstFromEntity(self))];
 			how_many -= 1.0f;
 		}
 		// 2. slow clouds
 		how_many = factor;
 		while (how_many > 0.5f)
 		{
-			[UNIVERSE addEntity:[OOBigFragmentBurstEntity fragmentBurstFromEntity:self]];
+			[UNIVERSE addEntity:oo::NewEntityFacade(OOBigFragmentBurstEntity::fragmentBurstFromEntity(self))];
 			how_many -= 1.0f;
 		}
 
@@ -11834,13 +11834,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	origin = HPvector_add(origin, vectorToHPVector(vector_multiply_scalar(vel, _cxxEntity->collision_radius + 0.5)));	// Start just outside collision sphere
 	vel = vector_multiply_scalar(vel, TURRET_SHOT_SPEED);	// Shot velocity
 	
-	OOPlasmaShotEntity *shot = [[OOPlasmaShotEntity alloc] initWithPosition:origin
-																   velocity:vel
-																	 energy:weapon_damage
-																   duration:weaponRange/TURRET_SHOT_SPEED
-																	  color:laser_color];
+	Entity *shot = oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(origin,
+																			vel,
+																			weapon_damage,
+																			weaponRange/TURRET_SHOT_SPEED,
+																			oo::ToCxx(laser_color)));
 	
-	[shot autorelease];
 	[UNIVERSE addEntity:shot];
 	[shot setOwner:[self rootShipEntity]];	// has to be done AFTER adding shot to the UNIVERSE
 	
@@ -12270,15 +12269,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	OOColor *color = [OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
 	
-	OOSparkEntity *spark = [[OOSparkEntity alloc] initWithPosition:origin
-														  velocity:vel
-														  duration:2.0 + 3.0 * randf()
-															  size:sz
-															 color:color];
+	Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
+																		 vel,
+																		 2.0 + 3.0 * randf(),
+																		 sz,
+																		 oo::ToCxx(color)));
 	
 	[spark setOwner:self];
 	[UNIVERSE addEntity:spark];
-	[spark release];
 
 	next_spark_time = randf();
 }
@@ -12511,9 +12509,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if (![self hasECM])  return NO;
 	
-	OOECMBlastEntity *ecmDevice = [[OOECMBlastEntity alloc] initFromShip:self];
-	[UNIVERSE addEntity:ecmDevice];
-	[ecmDevice release];
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOECMBlastEntity::initFromShip(self))];
 	return YES;
 }
 
@@ -13265,7 +13261,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if (_cxxEntity->energy < amount && _cxxEntity->energy > 10 && [self countsAsKill])
 			{
 				cascade = YES;	// confirm we're cascading, then try to add our cascade to UNIVERSE.
-				[UNIVERSE addEntity:[OOQuiriumCascadeEntity quiriumCascadeFromShip:self]];
+				[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
 			}
 			break;
 			//no default thanks, we want the compiler to tell us if we missed a case.

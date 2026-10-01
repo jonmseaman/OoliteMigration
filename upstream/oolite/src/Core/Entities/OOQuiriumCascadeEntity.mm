@@ -35,52 +35,53 @@ MA 02110-1301, USA.
 #define kQuiriumCollisionDelay			(0.05)	// seconds before we start colliding with and damaging things.
 
 
-@implementation OOQuiriumCascadeEntity
-
-- (id) initQuiriumCascadeFromShip:(ShipEntity *)ship
+bool OOQuiriumCascadeEntity::initQuiriumCascadeFromShip(ShipEntity *ship)
 {
 	if (ship == nil)
 	{
-		[self release];
-		return nil;
+		return false;	// [self release]; return nil
 	}
 	
-	if ((self = [super init]))
+	// [super init] could not fail: the constructor ran Entity's -init body.
 	{
-		[self setPosition:[ship position]];
+		setPosition([ship position]);
 		
-		[self setStatus:STATUS_EFFECT];
-		_cxxEntity->scanClass = CLASS_MINE;
+		setStatus(STATUS_EFFECT);
+		scanClass = CLASS_MINE;
 		
-		[self setOwner:[ship owner]];
+		setOwner(oo::ToCxx((::Entity *)[ship owner]));
 		
 		// Red and green channels are animated.
 		_color[2] = 1.0f;
 		_color[3] = 0.5f;
 	}
 	
-	return self;
+	return true;
 }
 
 
-+ (instancetype) quiriumCascadeFromShip:(ShipEntity *)ship
+oo::Ref<OOQuiriumCascadeEntity> OOQuiriumCascadeEntity::quiriumCascadeFromShip(ShipEntity *ship)
 {
-	return [[[self alloc] initQuiriumCascadeFromShip:ship] autorelease];
+	oo::Ref<OOQuiriumCascadeEntity> cascade = oo::makeRef<OOQuiriumCascadeEntity>();
+	if (!cascade->initQuiriumCascadeFromShip(ship))  return nullptr;
+	return cascade;
 }
 
 
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> OOQuiriumCascadeEntity::descriptionComponents() const
 {
 	return oo::str::format("%f seconds passed of %f", _timePassed, kQuiriumCascadeDuration);
 }
 
 
-- (void) update:(OOTimeDelta) delta_t
+void OOQuiriumCascadeEntity::update(OOTimeDelta delta_t)
 {
-	[super update:delta_t];
+	::Entity *self = oo::ToObjC(this);
+	
+	cxx::Entity::update(delta_t);
 	_timePassed += delta_t;
 	
-	_cxxEntity->rotMatrix = OOMatrixForBillboard(_cxxEntity->position, [PLAYER position]);
+	rotMatrix = OOMatrixForBillboard(position, [PLAYER position]);
 	
 	GLfloat tf = _timePassed / kQuiriumCascadeDuration;
 	GLfloat stf = tf * tf;
@@ -90,8 +91,8 @@ MA 02110-1301, USA.
 		expansionSpeed = fmin(240.0f + 10.0f / (tf * tf), 1000.0f);
 	}
 	
-	_cxxEntity->collision_radius += delta_t * expansionSpeed;		// expand
-	_cxxEntity->energy = delta_t * (100000 - 90000 * tf);	// adjusted to take into account delta_t
+	collision_radius += delta_t * expansionSpeed;		// expand
+	energy = delta_t * (100000 - 90000 * tf);	// adjusted to take into account delta_t
 	
 	_color[3] = OOClamp_0_1_f(0.5f * ((0.025f / tf) + 1.0f - stf));
 	
@@ -103,14 +104,14 @@ MA 02110-1301, USA.
 	}
 
 	// manage collisions
-	Entity *owner = [self owner];
-	const std::vector<oo::ObjCRef<Entity *>> colliding = _cxxEntity->collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
-	for (const oo::ObjCRef<Entity *> &collidingEntity : colliding)
+	::Entity *owner = this->owner();
+	const std::vector<oo::ObjCRef<::Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	for (const oo::ObjCRef<::Entity *> &collidingEntity : colliding)
 	{
-		Entity *e = collidingEntity.get();
+		::Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
-		[e takeEnergyDamage:_cxxEntity->energy from:self becauseOf:owner weaponIdentifier:"EQ_QC_MINE"];
+		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:"EQ_QC_MINE"];
 	}
 	
 	// expire after ttl
@@ -121,7 +122,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
+void OOQuiriumCascadeEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
 	if (!translucent || [UNIVERSE breakPatternHide])  return;
 	
@@ -137,47 +138,35 @@ MA 02110-1301, USA.
 	
 	OOGL(glColor4fv(_color));
 	OOGLBEGIN(GL_TRIANGLE_FAN);
-		GLDrawBallBillboard(_cxxEntity->collision_radius, 4, sqrt(_cxxEntity->cam_zero_distance));
+		GLDrawBallBillboard(collision_radius, 4, sqrt(cam_zero_distance));
 	OOGLEND();
 	
 	OOGL(glPopAttrib());
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOQuiriumCascadeEntity after drawing " + oo::DescriptionOf(self); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOQuiriumCascadeEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
 }
 
 
-- (BOOL) isEffect
+bool OOQuiriumCascadeEntity::isEffect()
 {
 	return YES;
 }
 
 
-- (BOOL) isCascadeWeapon
+bool OOQuiriumCascadeEntity::isCascadeWeapon()
 {
 	return YES;
 }
 
 
-- (BOOL) canCollide
+bool OOQuiriumCascadeEntity::canCollide()
 {
 	return _timePassed > kQuiriumCollisionDelay;
 }
 
 
-- (BOOL) checkCloseCollisionWith:(Entity *)other
+bool OOQuiriumCascadeEntity::checkCloseCollisionWith(cxx::Entity * /*other*/)
 {
 	return YES;
 }
-
-@end
-
-
-@implementation Entity (OOQuiriumCascadeExtensions)
-
-- (BOOL) isCascadeWeapon
-{
-	return NO;
-}
-
-@end

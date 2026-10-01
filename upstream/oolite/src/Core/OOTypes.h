@@ -25,8 +25,19 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef INCLUDED_OOTYPES_h
+#define INCLUDED_OOTYPES_h
+
 #include "OOFunctionAttributes.h"
+#ifdef __OBJC__
 #include "OOCocoa.h"
+#else
+/*	A plain C or C++ translation unit (bead oo-9ht.64: OOConstToJSString) needs only the C types
+	OOCocoa.h's floor gives (NSInteger, NSUInteger). OOCocoa.h itself declares @interfaces.
+*/
+#include <limits.h>
+#include "oofnd/objc/OOFoundationTypes.h"
+#endif
 
 
 typedef enum
@@ -250,3 +261,6 @@ typedef enum
 
 	DETAIL_LEVEL_MAXIMUM		= 3
 } OOGraphicsDetail;
+
+
+#endif	// INCLUDED_OOTYPES_h

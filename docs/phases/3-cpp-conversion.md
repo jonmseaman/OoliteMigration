@@ -143,6 +143,10 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **The superclass of such a façade** (ADR-0056 amendment oo-6bux; exemplar
+     `src/Core/OOJoystickManager.*`): convert it as a root (Amendment 1); the subclass's façade is
+     unchanged and gets an adapter as its C++ part. An `-init` that calls overridden members is
+     `init()`, run after the C++ part exists. A factory by registered `Class` stays in the façade.
    - **A JS binding file (`OOJS*`)** (ADR-0056 amendment oo-ppc; exemplar
      `src/Core/Scripting/OOJSVector.*`): it has no class, and its JS class is already C++. Do not
      touch `OOJS_NATIVE_*`/`OOJS_PROFILE_*`: they are C++ already, and an exception under a native
@@ -157,6 +161,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      the root's bead. A class the engine messages by selector keeps a no-ivar façade subclass that
      forwards the glue selectors; the JS private slot holds that façade. A container of
      Objective-C objects holds the façade, and removal uses `oo::LiveObjC`.
+   - **A category only its own file sends** (ADR-0056 amendment oo-cn4o; exemplar
+     `src/Core/Scripting/OOJSEngineTimeManagement.*`): it becomes a file-local free function that
+     takes what it read from `self` as arguments, with no forwarder. Result classes that only C++
+     makes are plain `cxx::` classes with default façades. A C function that returned one +1 keeps
+     its signature and returns `[oo::ToObjC(p) retain]`.
    - **A module of hierarchies** (ADR-0056 amendment oo-smy; exemplar `OOMaterial`, `OODrawable`):
      roots first, in one bead. Class methods become `static` members, and file statics become
      never-destroyed function statics. Converted code that *keeps* an object while the hierarchy
@@ -179,6 +188,24 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
      subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
      `cxx::Entity` and keeps its bodies verbatim.
+   - **An entity class with Objective-C subclasses, and the entity leaves** (ADR-0056 amendments
+     oo-0otc, oo-0mxi and oo-2c6g; exemplars `src/Core/Entities/OOLightParticleEntity.*`,
+     `DustEntity.*`, `OOQuiriumCascadeEntity.*`): an intermediate class derives its own adapter from
+     `oo::ObjCEntity<cxx::X>` for the members it adds, and its Objective-C subclasses read its ivars
+     as `oo::ToCxx(self)->x`. A leaf that callers make or message keeps a façade with no ivars,
+     whose `-init` or class method makes the C++ object; a leaf with none is made by its factory
+     and `oo::NewEntityFacade`, and a category method it overrode asks it with `dynamic_cast`.
+   - **The Debug module: a singleton whose superclass is Objective-C** (ADR-0056 amendment
+     oo-kq7; exemplar `src/Core/Debug/OODebugMonitor.*`): the C++ class owns the singleton, and
+     its façade, made once by `oo::ToObjC`, keeps the singleton boilerplate and so lives as long
+     as the process. A protocol from another module that the class adopts is declared in the
+     bridge `.mm`. The golden gate proves the debug console still works end to end.
+   - **The Audio module: a root that is a class cluster** (ADR-0056 amendment oo-2en; exemplar
+     `src/Core/OOALSound.*`, `cxx::OOSound`): the root converts first with an `OODrawable`-style
+     façade and adapter. Its cluster initialiser is a static factory returning the Objective-C
+     subclass instance as `oo::ObjCRef<::X *>`; the façade's initialiser releases the receiver and
+     returns `factory(…).leakRef()`. `-init`'s side effect is the constructor. The test runs OpenAL
+     on the null backend with a scratch `HOMEPATH`.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
@@ -258,3 +285,26 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `bash tools/check-foundation-free.sh --stage source` with 0 findings. A selector that no
   header declares any more is sent through a local protocol cast; see `OOCharacterIntValue`
   and `OOWeakReferenceClassName`. Merge phase-3 into your bead branch before you queue.
+- 2026-10-01 — Debug module pattern seam (bead oo-kq7, ADR-0056 amendment oo-kq7):
+  `OODebugMonitor` is `cxx::OODebugMonitor` behind `OODebugMonitor+ObjCBridge.h/.mm`, a singleton
+  whose immortal façade keeps the `OOWeakRefObject` superclass and the engine-monitor protocol.
+  Test: `tests/unit/core/test_OODebugMonitor.mm`. No caller changed; the goldens (driven through
+  the debug console) are green.
+- 2026-09-30 — Audio module pattern seam (bead oo-2en, ADR-0056 amendment oo-2en): `OOSound`
+  (`OOALSound.h/.mm`) is `cxx::OOSound` behind `OOALSound+ObjCBridge.h/.mm`, the root of the three
+  Objective-C sounds; its class-cluster initialiser is the static factory
+  `cxx::OOSound::initWithContentsOfFile`, which answers the Objective-C sound it makes. Test:
+  `tests/unit/core/test_OOSound.mm`. No caller changed.
+- 2026-10-01 — Slice plans gain a `mac-only:` group (bead oo-q9l2w, first plan
+  `3-slices/GameController.md`): units wholly inside an `OOLITE_MAC_OS_X` arm, which the fleet never
+  compiles and does not convert (ADR-0056 amendment oo-bgmb item 2; Phase 5 writes the Mac layer
+  again). `tools/check-slice-plan.py` proves each is fenced, no slice reads it, and
+  `tools/gen-stories.py` files no story for it. A pre-split gathers a class's whole Mac-only
+  methods into one fenced category at the end of the *same* file (a new file would read as new
+  deny-list hits: the guardrails' file-split limitation).
+- 2026-10-01 — The rest of the Audio module (beads oo-y0gz, oo-2wpb, oo-03g7, oo-nwbw, oo-5vp8,
+  oo-6g4z, oo-zoj3, oo-d2y9, oo-lfkq; ADR-0056 amendment oo-y0gz): each class is `cxx::X` behind
+  `X+ObjCBridge.h/.mm`; converted code keeps its sends to the module's other classes as `::X`
+  (their tests stub them), the concrete sounds and the music have façades of their own under the
+  root's, and the channel tells its delegate of itself from the façade's `-dealloc`. Tests:
+  `tests/unit/core/test_<Class>.mm`, on the game's own `.ogg` resources. No caller changed.

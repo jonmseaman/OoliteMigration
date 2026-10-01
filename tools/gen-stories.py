@@ -629,7 +629,7 @@ def sweep_slices(titles=None, base=None, report=None):
         seam = MODULE_SEAM[mod]; exemplar = f"seam:{seam}"
         presplit = presplit_bead(titles, source)
         if not presplit: report.append(f"  warning {prel}: no pre-split bead found for {PurePosixPath(source).name}")
-        slices = [r for r in a["slices"] if not r["verbatim"]]
+        slices = [r for r in a["slices"] if not r["verbatim"] and not r.get("mac_only")]   # mac-only: fenced Mac code, no story (oo-q9l2w)
         first = slices[0]["id"] if slices else None
         verbatim = sum(r["units"] for r in a["slices"] if r["verbatim"])
         has_class = any(u["kind"] == "method" for u in a["units"])   # the class-shell wording needs a class
@@ -804,10 +804,12 @@ static int plainC(int y) { return y * 2; }
 _ST_FOO_PRIVATE_DONE = _ST_FOO.replace('@implementation Foo (Private)\n- (void) hidden\n{\n\tNSLog(@"hidden");\n}\n@end\n',
                                        'void Foo::hidden()\n{\n\too::log("hidden");\n}\n')
 _ST_BAR = "@implementation Bar\n- (void) draw\n{\n\t[self flush];\n}\n@end\n"
+# a mac-only group (fenced Mac code, bead oo-q9l2w) is checked but never becomes a story
+_ST_BAR += "#if OOLITE_MAC_OS_X\n@implementation Bar (Mac)\n- (void) dock\n{\n\t[self flush];\n}\n@end\n#endif\n"
 _ST_PLANS = {
     "Foo.md": "Plan.\n```slice-plan\nsource: upstream/oolite/src/Core/Foo.mm\nheader: upstream/oolite/src/Core/Foo.h\n\n"
               "slice 1: class shell\n  @Foo\n  helper()\nslice 2: private category\n  @Foo(Private)\nverbatim: plain C\n  *\n```\n",
-    "Bar.md": "```slice-plan\nsource: upstream/oolite/src/Core/Materials/Bar.mm\nslice a: all\n  @Bar\n```\n",
+    "Bar.md": "```slice-plan\nsource: upstream/oolite/src/Core/Materials/Bar.mm\nslice a: all\n  @Bar\nmac-only: Mac\n  @Bar(Mac)\n```\n",
     "Bad.md": "```slice-plan\nsource: upstream/oolite/src/Core/Foo.mm\nslice 1: leaves units out\n  -[Foo init]\n```\n",
     "Gone.md": "```slice-plan\nsource: upstream/oolite/src/Core/Gone.mm\nretired-by: oo-gone\nslice 1: all\n  *\n```\n",
 }
