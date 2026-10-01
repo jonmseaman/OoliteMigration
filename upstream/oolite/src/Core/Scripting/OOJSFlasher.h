@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOFlasherEntity.h"
+@class OOFlasherEntity;
 
 
 #ifdef __cplusplus
@@ -39,10 +39,11 @@ void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-@interface OOFlasherEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-
-@end
+/*	The bodies of OOFlasherEntity (OOJavaScriptExtensions), which the engine reaches by
+	selector. Its methods are one-line forwarders to these in OOJSFlasher+ObjCBridge.mm until
+	OOFlasherEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+*/
+void OOJSFlasherGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSFlasherJSClassName(void);
+bool OOJSFlasherIsVisibleToScripts(void);

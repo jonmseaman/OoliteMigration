@@ -150,6 +150,7 @@ OOShipGroup::~OOShipGroup()
 		[_members[i] release];
 	}
 	free(_members);
+	[_leader release];	// setLeader() weak-retained it (bead oo-9ht.24)
 	_name.reset();
 }
 

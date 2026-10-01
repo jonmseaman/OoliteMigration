@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #ifdef __cplusplus
 extern "C" {
