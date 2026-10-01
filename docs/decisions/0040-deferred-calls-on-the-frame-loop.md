@@ -1,6 +1,6 @@
 # ADR-0040 — Deferred calls (`performSelector:withObject:afterDelay:`) become a frame-loop queue with the run loop's firing order
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.57, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-3rb.57, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Refines** [ADR-0033](0033-frame-loop-deadlines-and-the-run-loop-pump.md) Decision 5 (the

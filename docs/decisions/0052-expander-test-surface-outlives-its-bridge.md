@@ -1,6 +1,6 @@
 # ADR-0052: A bridged function a unit test calls outlives its bridge
 
-- Status: Proposed. The default is in effect until Jon decides (CLAUDE.md rule 10).
+- Status: Accepted (Jon, 2026-09-30, in chat). Recorded from the in-effect default (CLAUDE.md rule 10).
 - Date: 2026-09-28
 - Beads: oo-m2nh (delete OOStringExpander+FoundationBridge), seam oo-3rb.294, chunks oo-3rb.295..298
 

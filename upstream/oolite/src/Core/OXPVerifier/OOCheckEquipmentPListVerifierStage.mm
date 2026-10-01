@@ -49,39 +49,29 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 }	// namespace
 
 
-@interface OOCheckEquipmentPListVerifierStage (OOPrivate)
-
-// equipmentPList is an Array.
-- (void)runCheckWithEquipment:(const oo::PList &)equipmentPList;
-
-@end
-
-
-@implementation OOCheckEquipmentPListVerifierStage
-
-- (std::optional<std::string>)cxx_name
+std::optional<std::string> OOCheckEquipmentPListVerifierStage::name()
 {
 	return kStageName;
 }
 
 
-- (BOOL)shouldRun
+bool OOCheckEquipmentPListVerifierStage::shouldRun()
 {
-	OOFileScannerVerifierStage	*fileScanner = nil;
+	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
 	
-	fileScanner = [[self verifier] fileScannerStage];
-	return [fileScanner cxx_fileExists:"equipment.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
+	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	return fileScanner != nullptr && fileScanner->fileExists("equipment.plist", "Config", std::nullopt, false);
 }
 
 
-- (void)run
+void OOCheckEquipmentPListVerifierStage::run()
 {
-	OOFileScannerVerifierStage	*fileScanner = nil;
+	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
 	oo::PList					equipmentPList;
 
-	fileScanner = [[self verifier] fileScannerStage];
+	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
 
-	equipmentPList = [fileScanner cxx_plistNamed:"equipment.plist" inFolder:"Config" referencedFrom:std::nullopt checkBuiltIn:NO];
+	if (fileScanner != nullptr)  equipmentPList = fileScanner->plistNamed("equipment.plist", "Config", std::nullopt, false);
 
 	if (equipmentPList.isNull())  return;
 
@@ -93,15 +83,10 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 	}
 	
 	
-	[self runCheckWithEquipment:equipmentPList];
+	runCheckWithEquipment(equipmentPList);
 }
 
-@end
-
-
-@implementation OOCheckEquipmentPListVerifierStage (OOPrivate)
-
-- (void)runCheckWithEquipment:(const oo::PList &)equipmentPList
+void OOCheckEquipmentPListVerifierStage::runCheckWithEquipment(const oo::PList &equipmentPList)
 {
 	unsigned					entryIndex = 0;
 	NSUInteger					elemCount;
@@ -174,7 +159,5 @@ std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
 		}
 	}
 }
-
-@end
 
 #endif
