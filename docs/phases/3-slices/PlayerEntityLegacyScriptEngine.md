@@ -4,7 +4,7 @@ Pre-split for [Phase 3](../3-cpp-conversion.md) (bead oo-hqj4). Checked by
 `python3 tools/check-slice-plan.py docs/phases/3-slices/PlayerEntityLegacyScriptEngine.md`, which
 recounts the file every time, so the numbers below are only a snapshot.
 
-- **File:** `Core/Entities/PlayerEntityLegacyScriptEngine.mm` (3,039 lines) + header (280 lines).
+- **File:** `Core/Entities/PlayerEntityLegacyScriptEngine.mm` (3,072 lines) + header (282 lines).
   One category, `PlayerEntity (Scripting)`: the legacy plist script interpreter (conditions,
   actions, mission variables), ~50 `*_number` / `*_string` / `*_bool` query methods and ~60
   action methods that plist scripts call by name (ADR-0043 item 21), the mission screen, and the
@@ -21,13 +21,15 @@ recounts the file every time, so the numbers below are only a snapshot.
   C++ (frontier, oo-a70). The slices only define `PlayerEntity` members declared in the header,
   so they are independent; slice 1 first is the natural order, since the others' called-by-name
   actions run through its interpreter.
+- **Refreshed** (bead oo-9ht.80, 2026-10-01): Phase 2's endgame grew slice 2 past the 800-line
+  limit, so the five `addShips*` actions moved to slice 3, beside `spawnShip:`.
 
 | Slice | Content | Own lines | Reads (header + preamble + own) |
 |---|---|---:|---:|
 | 1 | interpreter: `checkScript`, run actions, test conditions, `scriptTestCondition:`; mission and local variables; missions list; mission descriptions and instructions | ~700 | ~1,135 |
-| 2 | query methods (`*_number`, `*_string`, `*_bool`); messages; awards, equipment, planet info, cargo, fuel; ship AIs; `addShips*` | ~725 | ~1,160 |
-| 3 | `spawnShip:`; mission-variable arithmetic (`set:`, `increment:`, …); mission text, choices, destinations, title / image / background; fuel leak, nova, station launch / blow-up, `sendAllShipsAway` | ~610 | ~1,045 |
-| 4 | `addPlanet:` / `addMoon:`, debug, sounds, the mission screen and callback, scenes, equipment scripts, target helpers, galactic hyperspace behaviour | ~680 | ~1,115 |
+| 2 | query methods (`*_number`, `*_string`, `*_bool`); messages; awards, equipment, planet info, cargo, fuel; ship AIs | ~710 | ~1,140 |
+| 3 | `addShips*`, `spawnShip:`; mission-variable arithmetic (`set:`, `increment:`, …); mission text, choices, destinations, title / image / background; fuel leak, nova, station launch / blow-up, `sendAllShipsAway` | ~765 | ~1,200 |
+| 4 | `addPlanet:` / `addMoon:`, debug, sounds, the mission screen and callback, scenes, equipment scripts, target helpers, galactic hyperspace behaviour | ~580 | ~1,015 |
 | verbatim | helpers with no Objective-C | — | not read |
 
 ```slice-plan
@@ -62,10 +64,15 @@ slice 1: interpreter, mission variables, missions list and descriptions
   -[PlayerEntity clearMissionDescription]
   -[PlayerEntity clearMissionDescriptionForMission:]
 
-slice 2: query methods, messages, awards, cargo and ship adding
+slice 2: query methods, messages, awards, cargo
   @PlayerEntity(Scripting)
 
-slice 3: variable arithmetic, mission text and choices, system events
+slice 3: ship adding, variable arithmetic, mission text and choices, system events
+  -[PlayerEntity addShips:]
+  -[PlayerEntity addSystemShips:]
+  -[PlayerEntity addShipsAt:]
+  -[PlayerEntity addShipsAtPrecisely:]
+  -[PlayerEntity addShipsWithinRadius:]
   -[PlayerEntity spawnShip:]
   -[PlayerEntity set:]
   -[PlayerEntity reset:]
