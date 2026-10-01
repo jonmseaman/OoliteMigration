@@ -111,7 +111,82 @@ SOFTWARE.
 */
 - (id) initWithNewCxxLoader:(const oo::Ref<cxx::OOTextureLoader> &)loader;
 
+/*	For the facades of converted intermediate classes (OOTextureGenerator+ObjCBridge.mm): the
+	designated initialiser with the C++ part already made, the subclass's adapter
+	(oo::ObjCTextureLoader<cxx::Mid> or one derived from it); the old -cxx_initWithPath:options:
+	body runs on it, and the receiver is released for nil where it fails.
+*/
+- (id) cxx_initWithCxxLoader:(const oo::Ref<cxx::OOTextureLoader> &)loader path:(const std::optional<std::string> &)path options:(uint32_t)options OO_RETURNS_RETAINED;
+
 @end
+
+
+namespace oo {
+
+/*	The C++ part of an Objective-C loader (amendment oo-up4b item 1, as oo::ObjCStage): Base is the
+	C++ class of its nearest converted superclass (cxx::OOTextureLoader, cxx::OOTextureGenerator).
+	Each virtual member messages the Objective-C object, so the subclass's override runs; the
+	super...() members are Base's own, which is what a subclass that does not override a method,
+	or [super ...], reached. The Objective-C object owns this (its _cxxLoader) and is not retained
+	by it; its -dealloc clears the pointer, after which the members answer as a message to nil did.
+	An intermediate class that adds virtual members derives its own adapter from this (amendment
+	oo-vl43 item 1).
+*/
+class ObjCTextureLoaderLink
+{
+public:
+	virtual ~ObjCTextureLoaderLink() = default;
+
+	virtual ::OOTextureLoader *owner() = 0;
+	virtual void ownerDeallocated() = 0;
+
+	virtual bool superGetResult(OOPixMap *result, OOTextureDataFormat *outFormat, uint32_t *outWidth, uint32_t *outHeight) = 0;
+	virtual std::optional<std::string> superCacheKey() = 0;
+	virtual void superLoadTexture() = 0;
+	virtual std::optional<std::string> superDescriptionComponents() const = 0;
+	virtual std::optional<std::string> superShortDescriptionComponents() const = 0;
+};
+
+
+template <class Base>
+class ObjCTextureLoader : public Base, public ObjCTextureLoaderLink
+{
+public:
+	explicit ObjCTextureLoader(::OOTextureLoader *owner) : _owner(owner) {}
+
+	::OOTextureLoader *owner() override		{ return _owner; }
+	void ownerDeallocated() override		{ _owner = nil; }
+
+	bool getResult(OOPixMap *result, OOTextureDataFormat *outFormat, uint32_t *outWidth, uint32_t *outHeight) override
+	{
+		return [_owner getResult:result format:outFormat originalWidth:outWidth originalHeight:outHeight];
+	}
+	std::optional<std::string> cacheKey() override							{ return [_owner cxx_cacheKey]; }
+	void loadTexture() override												{ [_owner loadTexture]; }
+	std::optional<std::string> descriptionComponents() const override		{ return [_owner cxx_descriptionComponents]; }
+	std::optional<std::string> shortDescriptionComponents() const override	{ return [_owner cxx_shortDescriptionComponents]; }
+
+	bool superGetResult(OOPixMap *result, OOTextureDataFormat *outFormat, uint32_t *outWidth, uint32_t *outHeight) override
+	{
+		return Base::getResult(result, outFormat, outWidth, outHeight);
+	}
+	std::optional<std::string> superCacheKey() override							{ return Base::cacheKey(); }
+	void superLoadTexture() override											{ Base::loadTexture(); }
+	std::optional<std::string> superDescriptionComponents() const override		{ return Base::descriptionComponents(); }
+	std::optional<std::string> superShortDescriptionComponents() const override	{ return Base::shortDescriptionComponents(); }
+
+protected:
+	::OOTextureLoader *_owner = {};	// Not retained.
+};
+
+
+// The adapter's link when the loader is an Objective-C loader's C++ part; null otherwise.
+inline ObjCTextureLoaderLink *AsObjCTextureLoader(cxx::OOTextureLoader *loader)
+{
+	return dynamic_cast<ObjCTextureLoaderLink *>(loader);
+}
+
+}	// namespace oo
 
 
 namespace oo {
