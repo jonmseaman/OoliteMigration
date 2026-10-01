@@ -49,6 +49,7 @@ oolite_sources += files(
     'OOJavaScriptEngine.mm',
     'OOLegacyScriptWhitelist.mm',
     'OOPListScript.mm',
+    'OOPListScript+ObjCBridge.mm',
     'OOScript.mm',
     'OOScriptTimer.mm',
     'OOScriptTimer+ObjCBridge.mm',

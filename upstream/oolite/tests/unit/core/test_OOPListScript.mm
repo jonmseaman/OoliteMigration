@@ -15,7 +15,8 @@
 	(names in key order, metadata, a missing or ill-typed script array), the file path (no file, a
 	file that is not a dictionary, a dictionary with nothing to sanitize and what it caches), the
 	description and version, the display name, -requiresTickle, and a run with a target that is
-	not a ship.
+	not a ship (commit 60996db56). They now run through the facade, which is its forwarding test;
+	the facade's contract (the C++ object behind it, ToObjC never making a facade) is checked last.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -180,6 +181,33 @@ OO_TEST(files)
 		stdfs::remove(sRoot / "empty.plist");
 		const auto again = [OOPListScript scriptsInPListFile:path];
 		OO_CHECK(again.has_value() && again->empty());
+	}
+}
+
+
+OO_TEST(facade)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		[[OOCacheManager sharedCache] cxx_setPList:Dict({ { "one", Dict({ { "script", oo::PList(oo::PList::Array{}) }, { "!metadata!", Dict({ { "version", Str("3") } }) } }) } })
+											forKey:"facade.plist" inCache:kCacheName];
+		const auto scripts = cxx::OOPListScript::scriptsInPListFile("facade.plist");
+		OO_CHECK(scripts.has_value() && scripts->size() == 1);
+		if (!scripts.has_value() || scripts->size() != 1)  return;
+		OOPListScript *facade = static_cast<OOPListScript *>((*scripts)[0].get());
+		cxx::OOPListScript *script = oo::ToCxx(facade);
+		OO_CHECK(script != nullptr);
+		OO_CHECK(oo::ToObjC(script) == facade);
+		OO_CHECK_EQ(script->name().value_or("<none>"), "one");
+		OO_CHECK_EQ(script->version().value_or("<none>"), "3");
+		OO_CHECK(script->requiresTickle());
+		OO_CHECK(oo::ToCxx(static_cast<OOPListScript *>(nil)) == nullptr);
+
+		// ToObjC never makes a facade: a C++ script with none answers nil.
+		const oo::Ref<cxx::OOPListScript> bare = oo::makeRef<cxx::OOPListScript>("bare", oo::PList(oo::PList::Array{}), nullptr);
+		OO_CHECK(oo::ToObjC(bare.get()) == nil);
+		OO_CHECK_EQ(bare->name().value_or("<none>"), "bare");
 	}
 }
 
