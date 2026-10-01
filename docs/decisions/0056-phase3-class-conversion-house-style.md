@@ -2431,3 +2431,44 @@ ivar `_trace`, which switches on logging of the Objective-C object's own retains
 
 **Consequences.** One façade and one deletion bead (`OOTexture+ObjCBridge`), which depends on the
 three subclass beads and on the beads of the files that message textures. No caller changed.
+
+## Amendment (bead oo-qa7c): a leaf whose factory makes its façade, and lookups that answered +0
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOConcreteTexture.h/.mm`,
+  `OOConcreteTexture+ObjCBridge.h/.mm`, `oo::ObjCPeers::livePeer` (`oofnd/objc/OOObjCPeer.h`),
+  `tests/unit/core/test_OOConcreteTexture.mm`. Follows amendment oo-whzh.
+
+**Context.** `OOConcreteTexture` is the textures' working leaf. Its initialisers fail for want of a
+loader, and the texture caches itself under its key on the way out, which (amendment oo-whzh item
+2) makes its façade before the initialiser returns. It read the root's `@protected` `_trace`, and
+it answered a short description of its own. The root's `+cxx_existingTextureForKey:` answered its
+texture unretained, and a caller that keeps no autorelease pool (a test, a worker thread) relied on
+that. The test also found that an Objective-C texture released by its own initialiser before it
+reached `-[OOTexture init]` ran the façade's `-removeFromCaches` with no C++ part.
+
+**Decision (recommended defaults).**
+
+1. **The leaf is `cxx::X : public cxx::Root` with a façade `@interface X : Root` of no ivars**
+   (amendment oo-up4b item 3) while code tests for the class (`isKindOfClass:[X class]`). Its
+   failable initialisers are static factories (amendment oo-novu item 1); a step of the old body
+   that calls a virtual member (`addToCaches`, which reads `cacheKey()`) runs in the factory after
+   construction, not in the constructor (amendment oo-vl43 item 2). The façade's initialisers
+   release the receiver and answer `[oo::ToObjC(made) retain]`: the factory already made the
+   façade the peer table answers, and the receiver would be a second one. The root's factories
+   call the leaf's factories, not `alloc`/`init`.
+2. **Root state that a converted subclass reads moves into the C++ root** as a `protected` member
+   (`_trace`), and the root façade's method for it forwards; the façade's ivar goes when no
+   Objective-C subclass reads it any more.
+3. **A description the leaf answered on the Objective-C side** (`-cxx_shortDescriptionComponents`)
+   becomes a virtual member of the root, which the adapter forwards and the root façade answers
+   for a C++ object, as `descriptionComponents()` is (amendment oo-smy item 2).
+4. **A façade method that answered an object it did not own answers it +0:** an Objective-C
+   object as it is, a C++ object's live façade through `oo::ObjCPeers::livePeer` (no retain, no
+   autorelease), and only a C++ object with no live façade gets a new, autoreleased one. Plain
+   `oo::ToObjC` would autorelease, which leaks where no pool is.
+5. **A root façade method that a subclass's `-dealloc` sends** checks for a C++ part: an
+   Objective-C subclass instance released by its own initialiser before it reached the root's
+   `-init` has none, and the old method did nothing for it.
+
+**Consequences.** One more façade and deletion bead (`OOConcreteTexture+ObjCBridge`), done with the
+root's. `OOObjCPeer.h` gained one member, with its test in `test_objc_peer.mm`.

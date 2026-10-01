@@ -8,7 +8,9 @@
 	uploads the pixels to OpenGL (with mip-maps when asked) and answers their size. It links the
 	whole game but main (tests/unit/core/meson.build entry ['*']), on the hidden GL context of
 	oo_gl_test_context.hpp; the generator runs on the game's own work manager. The expectations
-	were written against the Objective-C API and run on the unconverted class first.
+	were written against the Objective-C API and run on the unconverted class first (commit
+	4477d13b5); that API is now the facade (OOConcreteTexture+ObjCBridge.h), so they run through
+	it, and the last tests pin the C++ API (cxx::OOConcreteTexture) and the facade's contract.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -252,6 +254,71 @@ OO_TEST(deallocUncaches)
 		}
 	}
 #endif
+}
+
+
+// --- The C++ API and the facade (after the conversion) ---------------------------------------
+
+OO_TEST(cxxApi)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::OOConcreteTexture::initWithLoader(nil, std::string("test:cxx"), kOOTextureDefaultOptions, 0.5f, 0.0f) == nullptr);
+		OO_CHECK(cxx::OOConcreteTexture::initWithPath("no-such-loader.type", std::string("test:cxx"), kOOTextureDefaultOptions, 0.5f, 0.0f) == nullptr);
+
+		const uint32_t options = kOOTextureMinFilterLinear | kOOTextureMagFilterLinear;
+		const oo::Ref<cxx::OOConcreteTexture> texture = cxx::OOConcreteTexture::initWithLoader(QueuedGenerator(options, NO), std::string("test:cxx"), options, 0.5f, 0.0f);
+		OO_CHECK(texture != nullptr && texture->cacheKey() == std::optional<std::string>("test:cxx"));
+		OO_CHECK(cxx::OOTexture::existingTextureForKey(std::string("test:cxx")) == texture.get());
+		OO_CHECK(texture->descriptionComponents() == std::optional<std::string>("test:cxx, loading"));
+		OO_CHECK(texture->shortDescriptionComponents() == std::optional<std::string>("test:cxx"));
+
+		texture->ensureFinishedLoading();
+		OO_CHECK(texture->isFinishedLoading());
+		OO_CHECK(SameSize(texture->dimensions(), 2, 2) && SameSize(texture->originalDimensions(), 4, 2));
+		OO_CHECK(texture->glTextureName() != 0 && !texture->isMipMapped());
+		OO_CHECK(texture->descriptionComponents() == std::optional<std::string>("test:cxx, 2 x 2"));
+		glBindTexture(GL_TEXTURE_2D, 0);
+		texture->apply();
+		OO_CHECK(BoundTexture() == texture->glTextureName());
+#ifndef NDEBUG
+		OO_CHECK(texture->name() == std::optional<std::string>("<TestGenerator>") && texture->dataSize() == 4);
+		texture->setTrace(true);
+		texture->setTrace(false);
+#endif
+	}
+	ClearCache();
+}
+
+
+OO_TEST(facade)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		const uint32_t options = kOOTextureMinFilterLinear | kOOTextureMagFilterLinear;
+
+		// What the Objective-C initialiser answers is the C++ texture's one facade, cached.
+		OOConcreteTexture *made = Texture(QueuedGenerator(options, NO), std::string("test:facade"), options);
+		cxx::OOConcreteTexture *texture = oo::ToCxx(made);
+		OO_CHECK(texture != nullptr && oo::ToObjC(texture) == made);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOTexture *>(texture)) == made);
+		OO_CHECK([OOTexture cxx_existingTextureForKey:std::string("test:facade")] == made);
+		OO_CHECK([made class] == [OOConcreteTexture class]);
+
+		// The factory's textures are concrete C++ textures behind that facade.
+		TestGenerator *generator = [[[TestGenerator alloc] cxx_initWithPath:std::string("test generator") options:options] autorelease];	// the factory queues it
+		OOTexture *generated = [OOTexture textureWithGenerator:generator];
+		OO_CHECK([generated isKindOfClass:[OOConcreteTexture class]]);
+		OO_CHECK(dynamic_cast<cxx::OOConcreteTexture *>(oo::ToCxx(generated)) != nullptr);
+	}
+	ClearCache();
+	OOConcreteTexture *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOConcreteTexture *>(nullptr)) == nil);
 }
 
 

@@ -80,6 +80,7 @@ public:
 	std::optional<std::string> name() override					{ return [_owner cxx_name]; }
 #endif
 	std::optional<std::string> descriptionComponents() const override	{ return [_owner cxx_descriptionComponents]; }
+	std::optional<std::string> shortDescriptionComponents() const override	{ return [_owner cxx_shortDescriptionComponents]; }
 	void forceRebind() override									{ [_owner forceRebind]; }
 
 private:
@@ -261,6 +262,14 @@ cxx::OOTexture *oo::ToCxx(OOTexture *texture)
 }
 
 
+// The short form (OOObject's, with the C++ texture's components; bead oo-qa7c).
+- (std::optional<std::string>) cxx_shortDescriptionComponents
+{
+	if (AsObjCTexture(_cxxTexture.get()) != nullptr)  return [super cxx_shortDescriptionComponents];
+	return _cxxTexture->shortDescriptionComponents();
+}
+
+
 + (void) applyNone
 {
 	cxx::OOTexture::applyNone();
@@ -402,19 +411,9 @@ cxx::OOTexture *oo::ToCxx(OOTexture *texture)
 }
 
 
-/*	The texture's retain tracing. The traced -retain, -release and -autorelease overrides (and their
-	-retainInContext: helpers) are not kept: libobjc2 cannot weakly reference an object whose class
-	overrides -retain/-release, and the peer table (oo::ObjCPeers) holds a C++ texture's facade
-	weakly. -setTrace: still logs the start, and OOConcreteTexture still logs its traced dealloc
-	(proposed ADR-0056, amendment oo-whzh item 4).
-*/
 - (void) setTrace:(BOOL)trace
 {
-	if (trace && !_trace)
-	{
-		OO_LOG("texture.allocTrace.begin", "Started tracing texture {} with retain count {}.", oo::str::pointerDescription(self), [self retainCount]);
-	}
-	_trace = trace;
+	_cxxTexture->setTrace(trace);
 }
 #endif
 
@@ -440,12 +439,14 @@ cxx::OOTexture *oo::ToCxx(OOTexture *texture)
 }
 
 
-// An Objective-C texture unretained, as the live-textures cache answered it (a caller may have no
-// autorelease pool); a C++ texture's facade, which may be new, autoreleased.
+// The texture unretained, as the live-textures cache answered it (a caller may have no autorelease
+// pool): an Objective-C texture, or a C++ texture's live facade. A C++ texture with no live facade
+// gets a new one, autoreleased.
 + (OOTexture *) cxx_existingTextureForKey:(const std::optional<std::string> &)key
 {
 	cxx::OOTexture *texture = cxx::OOTexture::existingTextureForKey(key);
 	if (ObjCTexture *objCTexture = AsObjCTexture(texture))  return objCTexture->owner();
+	if (id facade = Peers().livePeer(texture))  return facade;
 	return oo::ToObjC(texture);
 }
 
