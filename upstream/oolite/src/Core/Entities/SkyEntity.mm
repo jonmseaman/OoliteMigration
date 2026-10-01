@@ -213,11 +213,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 - (void) update:(OOTimeDelta) delta_t
 {
 	PlayerEntity *player = PLAYER;
-	zero_distance = MAX_CLEAR_DEPTH * MAX_CLEAR_DEPTH;
-	cam_zero_distance = zero_distance;
+	_cxxEntity->zero_distance = MAX_CLEAR_DEPTH * MAX_CLEAR_DEPTH;
+	_cxxEntity->cam_zero_distance = _cxxEntity->zero_distance;
 	if (player != nil) 
 	{
-		position = [player viewpointPosition];
+		_cxxEntity->position = [player viewpointPosition];
 	}
 	else
 	{
