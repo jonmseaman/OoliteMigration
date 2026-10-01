@@ -39,6 +39,7 @@
 #import "OOConstToJSString.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOJSPopulatorDefinition.h"
+#import "OOJSScript.h"
 #import "OODebugStandards.h"
 #import "EntityOOJavaScriptExtensions.h"
 
@@ -1942,8 +1943,8 @@ static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo
 	*r = (id)relativeTo;
 	float				d1, d2;
 	
-	d1 = HPdistance2(ea->position, r->position);
-	d2 = HPdistance2(eb->position, r->position);
+	d1 = HPdistance2(ea->_cxxEntity->position, r->_cxxEntity->position);
+	d2 = HPdistance2(eb->_cxxEntity->position, r->_cxxEntity->position);
 	
 	if (d1 < d2)  return OOOrderedAscending;
 	else if (d1 > d2)  return OOOrderedDescending;
