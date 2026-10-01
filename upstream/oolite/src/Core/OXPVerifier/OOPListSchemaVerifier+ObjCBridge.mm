@@ -71,7 +71,7 @@ cxx::OOPListSchemaVerifier *oo::ToCxx(OOPListSchemaVerifier *verifier)
 
 + (instancetype)verifierWithSchema:(const oo::PList &)schema
 {
-	return [[[self alloc] initWithSchema:schema] autorelease];
+	return oo::ToObjC(cxx::OOPListSchemaVerifier::verifierWithSchema(schema));
 }
 
 

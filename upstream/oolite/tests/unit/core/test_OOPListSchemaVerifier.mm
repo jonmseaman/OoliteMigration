@@ -342,7 +342,8 @@ OO_TEST(describesKeyPaths)
 
 
 // The facade (after the conversion): one live facade per C++ verifier, nil for null, and a C++-made
-// verifier hands its delegate that facade.
+// verifier hands its delegate its live facade (a facade lives while someone holds it; the verifier
+// does not keep one).
 OO_TEST(facadeContract)
 {
 	@autoreleasepool
@@ -359,10 +360,10 @@ OO_TEST(facadeContract)
 		TestSchemaDelegate *delegate = [[[TestSchemaDelegate alloc] init] autorelease];
 		made->setDelegate(delegate);
 		OO_CHECK(made->delegate() == delegate);
+		OOPListSchemaVerifier *facade = oo::ToObjC(made.get());	// live while the pool is: the delegate is handed it
 		OO_CHECK(!made->verifyPropertyList(oo::PList(4), "made"));
 		OO_CHECK(made->verifyPropertyList(oo::PList("four"), "made"));
 		OO_CHECK_EQ(delegate->verifiers.size(), 1u);
-		OOPListSchemaVerifier *facade = oo::ToObjC(made.get());
 		OO_CHECK(!delegate->verifiers.empty() && delegate->verifiers[0] == facade);
 		OO_CHECK(oo::ToCxx(facade) == made.get());
 		OO_CHECK([facade verifyPropertyList:oo::PList("four") named:"facade"]);
