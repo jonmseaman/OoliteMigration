@@ -119,7 +119,7 @@ oo::ObjCRef<::OOSound *> OOSound::initWithContentsOfFile(const std::optional<std
 
 	if ([decoder sizeAsBuffer] <= kMaxBufferedSoundSize)
 	{
-		self = [[OOALBufferedSound alloc] initWithDecoder:decoder];
+		self = [[::OOALBufferedSound alloc] initWithDecoder:decoder];
 	}
 	else
 	{

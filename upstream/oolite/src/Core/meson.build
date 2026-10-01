@@ -11,6 +11,7 @@ oolite_sources += files(
     'HeadUpDisplay.mm',
     'NSObjectOOExtensions.mm',
     'OOALBufferedSound.mm',
+    'OOALBufferedSound+ObjCBridge.mm',
     'OOALMusic.mm',
     'OOALSound.mm',
     'OOALSound+ObjCBridge.mm',
