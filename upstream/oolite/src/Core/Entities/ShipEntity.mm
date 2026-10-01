@@ -11834,13 +11834,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	origin = HPvector_add(origin, vectorToHPVector(vector_multiply_scalar(vel, _cxxEntity->collision_radius + 0.5)));	// Start just outside collision sphere
 	vel = vector_multiply_scalar(vel, TURRET_SHOT_SPEED);	// Shot velocity
 	
-	OOPlasmaShotEntity *shot = [[OOPlasmaShotEntity alloc] initWithPosition:origin
-																   velocity:vel
-																	 energy:weapon_damage
-																   duration:weaponRange/TURRET_SHOT_SPEED
-																	  color:laser_color];
+	Entity *shot = oo::NewEntityFacade(OOPlasmaShotEntity::shotWithPosition(origin,
+																			vel,
+																			weapon_damage,
+																			weaponRange/TURRET_SHOT_SPEED,
+																			oo::ToCxx(laser_color)));
 	
-	[shot autorelease];
 	[UNIVERSE addEntity:shot];
 	[shot setOwner:[self rootShipEntity]];	// has to be done AFTER adding shot to the UNIVERSE
 	
