@@ -1,8 +1,10 @@
 /*
 
-OOJSWaypoint.h
+OOJSCall+ObjCBridge.mm
 
-JavaScript proxy for OOWaypointEntities.
+TRANSITIONAL (proposed ADR-0056, bead oo-81hy): the template class of OOJSCall+ObjCBridge.h,
+moved unchanged from OOJSCall.mm.
+
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -24,26 +26,24 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
-#include "ooscript/JSEngine.hpp"
-@class OOWaypointEntity;
+#ifndef NDEBUG
+
+#import "OOJSCall.h"
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+@implementation OOJSCallMethodSignatureTemplateClass: OOObject
 
-void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global);
-
-#ifdef __cplusplus
-}
-#endif
+- (void)voidVoidMethod {}
 
 
-/*	The bodies of OOWaypointEntity (OOJavaScriptExtensions), which the engine reaches by
-	selector. Its methods are one-line forwarders to these in OOJSWaypoint+ObjCBridge.mm until
-	OOWaypointEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
-*/
-void OOJSWaypointGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
-std::optional<std::string> OOJSWaypointJSClassName(void);
-bool OOJSWaypointIsVisibleToScripts(void);
+- (void)voidStringMethod:(const std::string &)string {}
+
+
+- (oo::PList)pListStringMethod:(const std::string &)string { return oo::PList(); }
+
+
+- (oo::PList)pListVoidMethod { return oo::PList(); }
+
+@end
+
+#endif	// NDEBUG
