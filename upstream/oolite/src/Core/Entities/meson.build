@@ -3,6 +3,7 @@
 oolite_sources += files(
     'DockEntity.mm',
     'DustEntity.mm',
+    'DustEntity+ObjCBridge.mm',
     'Entity.mm',
     'Entity+ObjCBridge.mm',
     'OOBreakPatternEntity.mm',

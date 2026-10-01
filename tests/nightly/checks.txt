@@ -157,6 +157,7 @@
 [oo-0otc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity test_OOEntityWithDrawable test_OOLightParticleEntity && bash tools/tier-c.sh --only goldens
 [oo-c2dk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOLightParticleEntity test_OOSparkEntity && bash tools/tier-c.sh --only goldens
 [oo-l2s5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOLightParticleEntity test_OOPlasmaBurstEntity && bash tools/tier-c.sh --only goldens
+[oo-0mxi] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_DustEntity && bash tools/tier-c.sh --only goldens
 [oo-cenx] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOParticleSystem && bash tools/tier-c.sh --only goldens
 [oo-peql] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OORingEffectEntity && bash tools/tier-c.sh --only goldens
 
