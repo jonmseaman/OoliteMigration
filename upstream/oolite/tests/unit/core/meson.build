@@ -63,6 +63,7 @@ core_tests = {
     'test_OOJSTimer': ['Core/Scripting/OOJSTimer.mm', 'Core/Scripting/OOJSTimer+ObjCBridge.mm', 'Core/Scripting/OOScriptTimer.mm', 'Core/Scripting/OOScriptTimer+ObjCBridge.mm', 'Core/OOPriorityQueue.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOScriptTimer': ['Core/Scripting/OOScriptTimer.mm', 'Core/Scripting/OOScriptTimer+ObjCBridge.mm', 'Core/OOPriorityQueue.mm', 'Core/OODescription.mm'],
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
+    'test_GuiDisplayGen': ['*'],
 }
 
 fs = import('fs')
