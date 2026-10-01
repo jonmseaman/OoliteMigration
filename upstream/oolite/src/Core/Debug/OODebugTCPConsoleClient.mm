@@ -271,7 +271,7 @@ bool OODebugTCPConsoleClient::initWithAddress(const std::optional<std::string> &
 		if (!OK)
 		{
 			OO_LOG("debugTCP.connect.failed", "Failed to connect to debug console at address {}:{}.", address, port);
-			return OK;	// was [self release], self = nil: the factory drops the object
+			return OK;	// self was released and nil answered: the factory drops the object
 		}
 	}
 
