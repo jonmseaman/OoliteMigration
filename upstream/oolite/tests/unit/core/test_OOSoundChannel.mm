@@ -9,10 +9,11 @@
 	(ALSOFT_DRIVERS=null), which plays in real time, so the tests wait for a short sound to end.
 	The sounds are this file's Objective-C subclasses of the root OOSound, which make real OpenAL
 	buffers of silence; the decoder, the two concrete sounds and the mixer that OOALSound.mm names
-	are stubs (amendment oo-z1s4 item 4). The channel's source is private, so the test reads it
-	through the runtime (amendment oo-zffj item 3). These expectations were written against the
-	Objective-C API and ran on the unconverted class first.
-	Run: bash tools/check-core-tests.sh test_OOSoundChannel
+	are stubs (amendment oo-z1s4 item 4). The channel's source is private, so the test reads it as
+	a friend (amendment oo-zffj item 3; through the runtime before the conversion). These
+	expectations were written against the Objective-C API and ran on the unconverted class first;
+	they now run through the facade, which is its forwarding test. After them come the C++ API
+	(cxx::OOSoundChannel) and the facade's contract. Run: bash tools/check-core-tests.sh test_OOSoundChannel
 */
 
 #import "OOALSoundChannel.h"
@@ -175,11 +176,21 @@ void SetUp()
 }
 
 
+}	// namespace
+
+
+struct OOSoundChannelTestAccess
+{
+	static ALuint Source(cxx::OOSoundChannel *channel)  { return channel->_source; }
+};
+
+
+namespace {
+
 // The channel's OpenAL source (its private _source).
 ALuint SourceOf(OOSoundChannel *channel)
 {
-	const ptrdiff_t offset = ivar_getOffset(class_getInstanceVariable([OOSoundChannel class], "_source"));
-	return *reinterpret_cast<ALuint *>(reinterpret_cast<char *>(channel) + offset);
+	return OOSoundChannelTestAccess::Source(oo::ToCxx(channel));
 }
 
 
@@ -352,6 +363,70 @@ OO_TEST(loopsASound)
 		[channel stop];
 		OO_CHECK([channel sound] == nil);
 	}
+}
+
+
+// The C++ API: -init's failure is init()'s false; the free list holds C++ channels.
+OO_TEST(cxxApi)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOSoundChannel> channel = oo::makeRef<cxx::OOSoundChannel>();
+		OO_CHECK(channel->init());
+		const ALuint source = OOSoundChannelTestAccess::Source(channel.get());
+		OO_CHECK(source != 0 && alIsSource(source) && SourceInt(source, AL_SOURCE_RELATIVE) == AL_TRUE);
+
+		const oo::Ref<cxx::OOSoundChannel> other = oo::makeRef<cxx::OOSoundChannel>();
+		OO_CHECK(other->init());
+		channel->setNext(other.get());
+		OO_CHECK(channel->next() == other.get() && other->next() == nullptr);
+
+		TestDelegate *delegate = [[[TestDelegate alloc] init] autorelease];
+		channel->setDelegate(delegate);
+		OO_CHECK(!channel->playSound(nil, false));
+		TestSound *sound = [[[TestSound alloc] init] autorelease];
+		sound->_frames = 22050;
+		OO_CHECK(channel->playSound(sound, false) && channel->sound() == sound);
+		channel->stop();
+		OO_CHECK(channel->sound() == nil);
+		// The delegate is told of the channel's facade.
+		OO_CHECK(delegate->_finished.size() == 1 && delegate->_lastChannel == oo::ToObjC(channel.get()));
+		channel->setDelegate(nil);
+	}
+}
+
+
+// The facade's contract: one live facade per channel; the free list's channels cross both ways; a
+// facade that is released while its channel plays tells the delegate of itself, as -dealloc did.
+OO_TEST(facade)
+{
+	SetUp();
+	TestDelegate *delegate = [[TestDelegate alloc] init];
+	OOSoundChannel *channel = nil;
+	TestSound *sound = nil;
+	@autoreleasepool
+	{
+		channel = [[OOSoundChannel alloc] init];
+		OOSoundChannel *other = [[[OOSoundChannel alloc] init] autorelease];
+		OO_CHECK(oo::ToObjC(oo::ToCxx(channel)) == channel);
+		[channel setNext:other];
+		OO_CHECK(oo::ToCxx(channel)->next() == oo::ToCxx(other));
+		OO_CHECK([channel next] == other);
+
+		sound = [[[TestSound alloc] init] autorelease];
+		sound->_frames = 22050;
+		[channel setDelegate:delegate];
+		OO_CHECK([channel playSound:sound looped:NO]);
+		[channel release];	// the last reference once the pool has drained
+	}
+	OO_CHECK(delegate->_finished.size() == 1 && delegate->_finished[0] == sound);
+	OO_CHECK(delegate->_lastChannel == channel);	// the facade itself, while it was deallocated
+	[delegate release];
+	OOSoundChannel *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSoundChannel *>(nullptr)) == nil);
+	OO_CHECK(gLiveSounds == 0);
 }
 
 
