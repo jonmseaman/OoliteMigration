@@ -15,6 +15,7 @@ oolite_sources += files(
     'OOExhaustPlumeEntity.mm',
     'OOExplosionCloudEntity.mm',
     'OOFlashEffectEntity.mm',
+    'OOFlashEffectEntity+ObjCBridge.mm',
     'OOFlasherEntity.mm',
     'OOLaserShotEntity.mm',
     'OOLaserShotEntity+ObjCBridge.mm',

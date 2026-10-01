@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "OOLaserShotEntity.h"
 #import "DustEntity.h"
 #import "OOLightParticleEntity.h"
+#import "OOFlashEffectEntity.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "Universe.h"
 #import "NSObjectOOExtensions.h"
@@ -80,6 +81,7 @@ oo::ObjCPeers &Peers()
 	if (dynamic_cast<cxx::OOLaserShotEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLaserShotEntity class];
 	if (dynamic_cast<cxx::DustEntity *>(entity.get()) != nullptr)  facadeClass = [::DustEntity class];
 	if (dynamic_cast<cxx::OOLightParticleEntity *>(entity.get()) != nullptr)  facadeClass = [::OOLightParticleEntity class];
+	if (dynamic_cast<cxx::OOFlashEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlashEffectEntity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
 }
 
