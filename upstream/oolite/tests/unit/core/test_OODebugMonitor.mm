@@ -1,6 +1,7 @@
 /*	test_OODebugMonitor.mm
-	Unit tests for OODebugMonitor (src/Core/Debug/OODebugMonitor.h): bead oo-kq7, the Debug
-	module's pattern seam (proposed ADR-0056).
+	Unit tests for cxx::OODebugMonitor (src/Core/Debug/OODebugMonitor.h) and its Objective-C facade
+	(OODebugMonitor+ObjCBridge.h): bead oo-kq7, the Debug module's pattern seam (proposed ADR-0056,
+	amendment oo-kq7).
 
 	OODebugMonitor is the singleton that connects a debugger (the TCP console client the golden
 	harness drives the game through) to the game: it keeps the debug configuration (the OXPs'
@@ -17,7 +18,9 @@
 	universe and the player (no entities), the texture registry (none). The JS context is a real
 	one (ooscript on QuickJS), for the heap statistics and the wrapper object. The user's defaults
 	are a scratch folder's (HOMEPATH). The monitor is a singleton, so the tests run in order on one
-	monitor. Run: bash tools/check-core-tests.sh
+	monitor. Since the conversion (commit b86b2b897 ran them on the Objective-C class) they run
+	through the facade, which is its forwarding test; cxxMonitorAndItsFacade adds the C++ API and
+	the facade's contract (one facade, its weak reference, nil). Run: bash tools/check-core-tests.sh
 */
 
 #import "OODebugMonitor.h"
@@ -789,6 +792,40 @@ OO_TEST(javaScriptValueAndEngineReset)
 		oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, engine);
 		OO_CHECK(sConsoleScriptsMade == scripts + 2);	// the path was remembered from the first time
 		sConsoleScriptPath = path;
+	}
+}
+
+
+// The C++ monitor is the one behind the facade, and the facade is one object for the life of the
+// process, whose weak reference (OOWeakRefObject's state, which the console's JS object holds)
+// stays its own.
+OO_TEST(cxxMonitorAndItsFacade)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OODebugMonitor *facade = [OODebugMonitor sharedDebugMonitor];
+		cxx::OODebugMonitor *monitor = cxx::OODebugMonitor::sharedDebugMonitor();
+		OO_CHECK(monitor != nullptr && cxx::OODebugMonitor::sharedDebugMonitor() == monitor);
+		OO_CHECK(oo::ToCxx(facade) == monitor && oo::ToObjC(monitor) == facade);
+		OO_CHECK(oo::ToCxx(static_cast<OODebugMonitor *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OODebugMonitor *>(nullptr)) == nil);
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OODebugMonitor 0x"));
+
+		// Either side sees the other's changes.
+		monitor->setUsingPlugInController(true);
+		OO_CHECK([facade usingPlugInController]);
+		[facade setUsingPlugInController:NO];
+		OO_CHECK(!monitor->usingPlugInController());
+		OO_CHECK(monitor->configurationValueForKey("console-host") == [facade configurationValueForKey:"console-host"]);
+		OO_CHECK(monitor->configurationKeys() == [facade configurationKeys]);
+
+		OOWeakReference *ref = [facade weakRetain];
+		OO_CHECK([ref weakRefUnderlyingObject] == facade);
+		OOWeakReference *again = [facade weakRetain];
+		OO_CHECK(again == ref);
+		[again release];
+		[ref release];
 	}
 }
 

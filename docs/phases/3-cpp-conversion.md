@@ -179,6 +179,11 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
      subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
      `cxx::Entity` and keeps its bodies verbatim.
+   - **The Debug module: a singleton whose superclass is Objective-C** (ADR-0056 amendment
+     oo-kq7; exemplar `src/Core/Debug/OODebugMonitor.*`): the C++ class owns the singleton, and
+     its façade, made once by `oo::ToObjC`, keeps the singleton boilerplate and so lives as long
+     as the process. A protocol from another module that the class adopts is declared in the
+     bridge `.mm`. The golden gate proves the debug console still works end to end.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
@@ -258,3 +263,8 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `bash tools/check-foundation-free.sh --stage source` with 0 findings. A selector that no
   header declares any more is sent through a local protocol cast; see `OOCharacterIntValue`
   and `OOWeakReferenceClassName`. Merge phase-3 into your bead branch before you queue.
+- 2026-10-01 — Debug module pattern seam (bead oo-kq7, ADR-0056 amendment oo-kq7):
+  `OODebugMonitor` is `cxx::OODebugMonitor` behind `OODebugMonitor+ObjCBridge.h/.mm`, a singleton
+  whose immortal façade keeps the `OOWeakRefObject` superclass and the engine-monitor protocol.
+  Test: `tests/unit/core/test_OODebugMonitor.mm`. No caller changed; the goldens (driven through
+  the debug console) are green.
