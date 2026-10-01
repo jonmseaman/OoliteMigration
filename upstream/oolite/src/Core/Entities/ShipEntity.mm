@@ -12270,15 +12270,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	OOColor *color = [OOColor colorWithHue:0.08 + 0.17 * randf() saturation:1.0 brightness:1.0 alpha:1.0];
 	
-	OOSparkEntity *spark = [[OOSparkEntity alloc] initWithPosition:origin
-														  velocity:vel
-														  duration:2.0 + 3.0 * randf()
-															  size:sz
-															 color:color];
+	Entity *spark = oo::NewEntityFacade(OOSparkEntity::sparkWithPosition(origin,
+																		 vel,
+																		 2.0 + 3.0 * randf(),
+																		 sz,
+																		 oo::ToCxx(color)));
 	
 	[spark setOwner:self];
 	[UNIVERSE addEntity:spark];
-	[spark release];
 
 	next_spark_time = randf();
 }

@@ -79,6 +79,7 @@ core_tests = {
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOLightParticleEntity': ['*'],
+    'test_OOSparkEntity': ['*'],
 }
 
 fs = import('fs')
