@@ -39,6 +39,7 @@
 #import "OOConstToJSString.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOJSPopulatorDefinition.h"
+#import "OOJSScript.h"
 #import "OODebugStandards.h"
 #import "EntityOOJavaScriptExtensions.h"
 
