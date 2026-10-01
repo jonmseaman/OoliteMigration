@@ -53,6 +53,7 @@ oolite_sources += files(
     'OOHPVector.mm',
     'OOIsNumberLiteral.cpp',
     'OOJoystickManager.mm',
+    'OOJoystickManager+ObjCBridge.mm',
     'OOJoystickProfile.mm',
     'OOJoystickProfile+ObjCBridge.mm',
     'OOLogHeader.mm',

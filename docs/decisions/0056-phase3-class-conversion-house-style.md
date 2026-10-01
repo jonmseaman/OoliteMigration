@@ -1541,3 +1541,51 @@ subclass's calls the superclass's.
 **Consequences.** Two façades with two deletion beads: the root's waits for `PlayerEntity` and for
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
+
+## Amendment (bead oo-6bux): a root whose one subclass is already a façade, a factory by `Class`, and a state array handed out by pointer
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOJoystickManager.h/.mm`,
+  `OOJoystickManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJoystickManager.mm`.
+
+**Context.** `OOJoystickManager` is the root of a hierarchy whose one subclass,
+`OOSDLJoystickManager`, converted first (amendment oo-o89): its Objective-C façade still subclasses
+the Objective-C root, keeps the root's state in it, and reaches the root's decoders with
+`[oo::ToObjC(this) decodeAxisEvent:…]`. The root makes its shared instance from a registered
+`Class` (`+setStickHandlerClass:`, `+sharedStickHandler`), its `-init` calls the methods the
+subclass overrides, and it hands its callers a pointer into a `BOOL` array (`-getAllButtonStates`).
+
+**Decision (recommended defaults).**
+
+1. **The root converts as Amendment 1 says, and the subclass's façade does not change.** Its
+   `-init` still makes its own C++ object and then calls `[super init]`, which is now the root
+   façade's: that makes the adapter (`ObjCJoystickManager final : public cxx::OOJoystickManager`,
+   private to the bridge `.mm`, overriding the three members the subclass overrides) and runs the
+   old `-init` body on it. Its `[oo::ToObjC(this) decode…]` reaches the root façade's forwarders,
+   which reach the adapter, which holds the state. With one Objective-C subclass and no
+   intermediate class, the adapter is not a template; the root façade's methods for the virtual
+   members call the base's member, qualified, on a subclass instance (Amendment 1 item 3).
+2. **An `-init` body that calls overridden members is `void init()`, run by whoever made the
+   object, once, right after construction** (amendments oo-vl43 item 2 and oo-bj8 item 6): the
+   root façade's `-init` after it made the C++ part (so the subclass's overrides run during it, as
+   before), converted code after `oo::makeRef`. The façade's `-init` makes a C++ object with
+   itself as peer when `[self class]` is exactly the root, else the adapter.
+3. **A factory that makes an instance of a registered `Class`** (`+sharedStickHandler`,
+   `+setStickHandlerClass:` and their two file statics) stays in the façade, verbatim: the class it
+   makes is an Objective-C class. It becomes C++ in the façade's deletion bead, when the subclass is
+   C++ and the registration is a factory function.
+4. **A member array whose address the class hands to unconverted code** keeps its element type
+   (`BOOL butstate[BUTTON_end]`, returned as `const BOOL *`), with a comment; the other `BOOL` ivars
+   become `bool`. Changing it would change every caller's pointer type.
+5. **A getter that returned an ivar unretained** (`-getProfileForAxis:`) returns a borrowed raw
+   pointer to the C++ object (`cxx::X *`), not an `oo::Ref`; the façade answers `oo::ToObjC(...)`
+   of it, which keeps identity through the peer table.
+6. **The test** pins the root through its Objective-C API with an Objective-C test subclass that
+   overrides the hardware methods (also reached from `-init`, through saved settings), and points
+   the user defaults at a scratch home (`HOMEPATH`) before they are first read (amendment oo-rmd7
+   item 4). After the conversion it checks the crossing both ways, the subclass's C++ part
+   reaching its overrides, and that part outliving its owner as nil. The subclass's own test
+   (`test_OOSDLJoystickManager`) passes unchanged.
+
+**Consequences.** One façade and one deletion bead, which depends on this bead's callers
+(`PlayerEntity*`, `GameController`, `HeadUpDisplay`, `Universe`, `MyOpenGLView*`) and is done
+together with `oo-9ht.2`, which re-parents `cxx::OOSDLJoystickManager` onto `cxx::OOJoystickManager`.

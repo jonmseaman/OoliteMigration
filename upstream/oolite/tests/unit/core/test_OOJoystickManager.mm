@@ -510,6 +510,70 @@ OO_TEST(sharedHandlerOfTheRegisteredClass)
 }
 
 
+// After the conversion: the C++ manager answers as the facade did, the facade and the C++ object
+// cross both ways with one facade per manager, an Objective-C subclass's C++ part reaches its
+// overrides, and that part outlives its owner as nil (ADR-0056, Amendment 1 item 8).
+OO_TEST(facadeContract)
+{
+	ClearStickDefaults();
+	oo::Ref<cxx::OOJoystickManager> orphan;
+	@autoreleasepool
+	{
+		OOJoystickManager *manager = NewManager();
+		cxx::OOJoystickManager *cxxManager = oo::ToCxx(manager);
+		OO_CHECK(cxxManager != nullptr);
+		OO_CHECK(oo::ToObjC(cxxManager) == manager);
+		OO_CHECK(cxxManager->joystickCount() == 0);
+		OO_CHECK(cxxManager->axisFunctions() == [manager axisFunctions]);
+		JoyButtonEvent press = Button(0, 0, true);
+		cxxManager->decodeButtonEvent(&press);
+		OO_CHECK([manager getButtonState:BUTTON_FIRE]);
+
+		// Profiles cross with their own facades.
+		OO_CHECK([manager getProfileForAxis:AXIS_ROLL] == oo::ToObjC(cxxManager->getProfileForAxis(AXIS_ROLL)));
+		oo::Ref<cxx::OOJoystickAxisProfile> spline = oo::makeRef<cxx::OOJoystickSplineAxisProfile>();
+		cxxManager->setProfile(spline.get(), AXIS_YAW);
+		OO_CHECK([[manager getProfileForAxis:AXIS_YAW] isKindOfClass:[OOJoystickSplineAxisProfile class]]);
+		OO_CHECK(oo::ToCxx([manager getProfileForAxis:AXIS_YAW]) == spline.get());
+
+		// A C++ manager made by converted code gets one facade, which answers for it.
+		oo::Ref<cxx::OOJoystickManager> bare = oo::makeRef<cxx::OOJoystickManager>();
+		bare->init();
+		OOJoystickManager *facade = oo::ToObjC(bare.get());
+		OO_CHECK(facade != nil && oo::ToObjC(bare.get()) == facade);
+		OO_CHECK(oo::ToCxx(facade) == bare.get());
+		OO_CHECK([facade buttonFunctions] == bare->buttonFunctions());
+		OO_CHECK([facade nameOfJoystick:0] == std::optional<std::string>("Dummy joystick"));
+
+		// An Objective-C subclass: its C++ part is not itself, crosses back to it, and its virtual
+		// members reach the subclass's overrides.
+		TestStickManager *sub = [[TestStickManager alloc] init];
+		cxx::OOJoystickManager *part = oo::ToCxx(sub);
+		OO_CHECK(part != nullptr);
+		OO_CHECK(oo::ToObjC(part) == sub);
+		OO_CHECK(part->joystickCount() == 2);
+		OO_CHECK(part->nameOfJoystick(0) == std::optional<std::string>("stick 0"));
+		OO_CHECK(part->getAxisWithStick(0, 1) == 16384);
+		OO_CHECK(part->listSticks() == std::vector<std::string>({ "stick 0", "" }));
+		orphan = oo::Ref<cxx::OOJoystickManager>(part);
+		[sub release];
+	}
+	// Its owner gone, the adapter answers as nil did, and crosses as nil.
+	OO_CHECK(orphan->joystickCount() == 0);
+	OO_CHECK(orphan->nameOfJoystick(0) == std::nullopt);
+	OO_CHECK(orphan->getAxisWithStick(0, 1) == 0);
+	@autoreleasepool
+	{
+		OO_CHECK(oo::ToObjC(orphan.get()) == nil);
+	}
+
+	OOJoystickManager *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOJoystickManager *>(nullptr)) == nil);
+	OO_CHECK([none joystickCount] == 0);
+}
+
+
 OO_TEST(cleanUp)
 {
 	std::error_code ignored;
