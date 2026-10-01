@@ -640,4 +640,62 @@ OO_TEST(initialiserWithStateMachine)
 }
 
 
+// After the conversion: the C++ AI answers as the facade did, the facade is its one Objective-C
+// object both ways, and a C++ AI whose facade is gone is never given another (ADR-0056,
+// amendment oo-o89 item 2).
+OO_TEST(facadeContract)
+{
+	SetUp();
+	oo::Ref<cxx::AI> kept;
+	@autoreleasepool
+	{
+		TestShip *ship = NewShip(10);
+		AI *ai = [[AI alloc] init];
+		ship->_ai = ai;
+		[ai setOwner:(ShipEntity *)ship];
+		cxx::AI *cxxAI = oo::ToCxx(ai);
+		OO_CHECK(cxxAI != nullptr);
+		OO_CHECK(oo::ToObjC(cxxAI) == ai);
+		OO_CHECK(oo::ToObjC(cxxAI) == oo::ToObjC(cxxAI));
+		OO_CHECK(cxxAI->owner() == (ShipEntity *)ship);
+
+		// The C++ calls run the machine the facade reports; the actions see the facade running.
+		cxxAI->setStateMachine("test.plist", "test.js");
+		OO_CHECK([ai cxx_state] == std::optional<std::string>("ATTACK"));
+		OO_CHECK(cxxAI->state() == std::optional<std::string>("ATTACK"));
+		OO_CHECK(ship->_runningAIs.size() == 2);
+		cxxAI->message("FOO");
+		OO_CHECK([ai pendingMessages] == std::set<std::string>({ "FOO" }));
+		OO_CHECK(cxxAI->getPendingMessages() == [ai pendingMessages]);
+		OO_CHECK(cxxAI->getNextThinkTime() == [ai nextThinkTime]);
+		OO_CHECK(cxxAI->getThinkTimeInterval() == [ai thinkTimeInterval]);
+		OO_CHECK(cxxAI->descriptionComponents() == [ai cxx_descriptionComponents]);
+		OO_CHECK(cxx::AI::currentlyRunningAI() == nullptr);
+
+		// A deferred call holds the facade, so the C++ AI behind it too.
+		cxxAI->setState("GLOBAL", 1.0);
+		OO_CHECK(gDeferred.size() == 1);
+		FireDeferredCalls();
+		OO_CHECK(cxxAI->state() == std::optional<std::string>("ATTACK"));
+
+		kept = oo::Ref<cxx::AI>(cxxAI);
+		[ai release];
+	}
+	// Its facade gone, the C++ object has none, and is not given a new one.
+	OO_CHECK(kept->name() == std::optional<std::string>("test.plist"));
+	@autoreleasepool
+	{
+		OO_CHECK(oo::ToObjC(kept.get()) == nil);
+		oo::Ref<cxx::AI> bare = oo::makeRef<cxx::AI>();
+		OO_CHECK(oo::ToObjC(bare.get()) == nil);
+		OO_CHECK(bare->name() == std::optional<std::string>("<no AI>"));
+	}
+
+	AI *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::AI *>(nullptr)) == nil);
+	OO_CHECK(![none hasSuspendedStateMachines]);
+}
+
+
 OO_TEST_MAIN()

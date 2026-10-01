@@ -1541,3 +1541,49 @@ subclass's calls the superclass's.
 **Consequences.** Two façades with two deletion beads: the root's waits for `PlayerEntity` and for
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
+
+## Amendment (bead oo-puw9): a subclass of `OOWeakRefObject`, a deferred call to a class method, and an initialiser that hands `self` out
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/AI.h/.mm`,
+  `AI+ObjCBridge.h/.mm`, `tests/unit/core/test_AI.mm`.
+
+**Context.** `AI` derives from `OOWeakRefObject`, which stays Objective-C until its subclasses
+(`Entity`'s facade, `Universe`, `OOTexture` and others) are C++ (amendment oo-3kqi item 5). Ships
+keep it and weak references to it. It schedules deferred calls with `OOScheduleDeferredCall` on a
+class method of its own (`+deferredCallTrampolineWithInfo:`), passing an Objective-C holder object
+and naming the target selector with `@selector`. `-cxx_initWithStateMachine:andState:` loads a
+state machine and logs `self` while doing it. Its bodies `@try`/`@catch (OOException *)` and
+`@try`/`@finally`.
+
+**Decision (recommended defaults).**
+
+1. **A subclass of `OOWeakRefObject` converts as a subclass of an Objective-C class** (amendment
+   oo-o89 item 2): the facade keeps the superclass, makes and owns the C++ object in `-init`, and
+   `oo::ToObjC` answers the live facade or nil. The weak references callers hold are to the facade,
+   so the identity they rely on does not move.
+2. **A deferred call stays a deferred call to the facade.** The holder class and the class method it
+   targets move, bodies unchanged, into the bridge files (amendment oo-rmd7 item 1); the holder's
+   `@interface` and its struct go in the bridge header so `X.mm` can fill one. `X.mm` schedules
+   `[::X class]` with `OOSelectorFromName("…")`, and retains `oo::ToObjC(this)` where it retained
+   `self`, so a pending call still keeps the object alive. A private method that a deferred call
+   reaches by name (`-deferredSetState:`) stays on the facade as a one-line forwarder in a private
+   category.
+3. **An initialiser with arguments whose body hands `self` to Objective-C** (logs it, or reaches
+   code that calls `oo::ToObjC(this)`) is a member run by the facade after it is the object's peer
+   (`initWithStateMachine(…)`), not a constructor, where `oo::ToObjC(this)` would answer nil
+   (amendment oo-vl43 item 2 for the same reason with virtual calls).
+4. **`@try`/`@catch (OOException *)` and `@try`/`@finally` stay verbatim** in the converted members
+   (amendment oo-bj8 item 8); the gate's grep does not cover them, and Phase 4 replaces them with the
+   rest of the Objective-C exception sites.
+5. **A selector the class compared or asked about by a literal** (`respondsToSelector:@selector(interpretAIMessage:)`)
+   becomes `OOSelectorFromName("interpretAIMessage:")` (amendment oo-3lj8 item 2); the message to the
+   Objective-C owner stays.
+6. **The test** defines the classes and functions the AI reaches that would link the game
+   (`ResourceManager`, `OOCacheManager`, `cxx_OOPropertyListFromFile`, `OOScheduleDeferredCall`, the
+   `OOLog*Indent` functions), each answering from a table, and an owner of its own derived from
+   `OOWeakRefObject` that records the actions it is sent. It pins whitelisting and aliases, the
+   state-machine stack and its limit, message queueing and its limit, recursion, deferred calls and
+   their retain of the AI, and the logged lines.
+
+**Consequences.** No caller changed. One facade and one deletion bead, which depends on the
+callers (`ShipEntity*`, `PlayerEntity`) and on `OOWeakRefObject`'s retirement.
