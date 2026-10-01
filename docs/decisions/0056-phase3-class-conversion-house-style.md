@@ -1591,3 +1591,106 @@ the music controller) are not sounds.
 
 **Consequences.** One façade and one deletion bead (`OOALSound+ObjCBridge`), which depends on the
 three subclass beads and on the beads of the files that message sounds. No caller changed.
+
+## Amendment (bead oo-9ht.66): a message whose selector no header declares
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `oo::SendClassName` in
+  `src/Core/OOWeakReference+ObjCBridge.h/.mm`, `oo::SendIntValue` in `OOCharacter+ObjCBridge.h/.mm`.
+
+**Context.** A converted body sends a selector (`-className`, `-intValue`) to an `id` that may
+answer it, but no visible header declares the method any more, so the send needs a local
+`@protocol` to type it. The item 8 grep forbids `@protocol` in `X.mm`.
+
+**Decision (recommended default).** The protocol and the one send move, verbatim, into a free
+function in `X+ObjCBridge.mm` (`id oo::SendClassName(id object)`), declared in `X+ObjCBridge.h`
+beside `oo::ToObjC`/`oo::ToCxx`; the C++ body calls the function where it sent the message. The
+function goes with the façade's deletion bead, or earlier once a header declares the method again.
+
+## Amendment (bead oo-q9q4): scripting classes whose superclass is still Objective-C, and the rest of the batch
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOPListScript.h/.mm`,
+  `OOPListScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOPListScript.mm`; the same shape in
+  `OOJSPopulatorDefinition`, `OOJSInterfaceDefinition` and `OOJSGuiScreenKeyDefinition` (oo-1h0h,
+  oo-8fpc, oo-xg7g, superclass `OOWeakRefObject`).
+
+**Context.** Several scripting classes derive from classes that are still Objective-C: `OOPListScript`
+from `OOScript`, the three JS definition classes from `OOWeakRefObject` (whose instances are weakly
+referenced). Their callers `alloc`/`init` them, and `OOPListScript`'s own class methods make its
+instances. The rest of the batch (oo-3smy, oo-81hy, oo-n041, oo-lzsb) met smaller questions.
+
+**Decision (recommended defaults).**
+
+1. **They follow amendment oo-o89.** The façade keeps the old superclass, makes and owns the C++
+   object in its initialiser, forwards every method, and `oo::ToObjC` answers the live façade or nil.
+   A class method that makes instances becomes a static member that makes them through the façade
+   (`[[::OOPListScript alloc] initWithName:…]`, as `[[self alloc] …]` did): until the superclass
+   converts, an instance is its façade. The initialiser that only those factories used is declared
+   in the bridge header's category `OOObjCBridge`.
+2. **A header that imports another class's header only for an ivar type** names it with `@class`
+   and the `.mm` imports it (amendment oo-fg7i item 5), in the commit that adds the test, so that the
+   test can stand in for that class (`OOJSScript`) without importing its header.
+3. **A class whose only other link is the engine's by-selector glue gets the stand-ins of amendment
+   oo-ppc item 6 in its test,** including the engine object and `OOJSScript`, which the test defines
+   itself; a test that needs the cache manager, the sanitizer and the player links the whole game
+   (amendment oo-44gg) and reads its scripts from the cache.
+4. **A scripting file with no class** (`OOJSFrameCallbacks`) converts as a binding (amendment oo-ppc
+   item 2); a static whose line that touches moves into an anonymous namespace, as the others were,
+   because tier-a counts an edited line's old finding as new. **One with no Objective-C left**
+   (`OOJSEngineDebuggerHelpers`) gets an honest acceptance and an empty proof commit (CLAUDE.md rule 9).
+   **Objective-C that exists to be read by the runtime** (the method-signature template class of
+   `OOJSCall`) moves unchanged to the bridge (amendment oo-rmd7 item 1) until nothing is called by
+   name.
+5. **A converted class in `namespace cxx` that messages the class being converted** names its façade
+   `::X`, in its header's ivar too (`OORegExpMatcher`'s `::OOJSFunction *_tester`), as amendment
+   oo-rmd7 item 3 says.
+
+**Consequences.** Each of these classes has a façade with a deletion bead that waits for its
+superclass (oo-604l for `OOScript`; the retirement of `OOWeakRefObject`). No caller changed but the
+two `::OOJSFunction` lines.
+
+## Amendment (bead oo-ja7y): categories on the root that a class's header declares, and `self` as a value
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderMaterial.h/.mm`,
+  `OOShaderMaterial+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderMaterial.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Informal protocols declared in the class's header as categories of `OOObject`**
+   (`ShaderBindingHierarchy`, `OOShaderMaterialTargetOptional`), which other classes implement and
+   the class only asks about, move unchanged to the bridge header, as amendment oo-3kqi item 5
+   moves a category on an Objective-C root. The C declarations and constants of the header stay.
+   The body asks with `OOSelectorFromName("…")` (amendment oo-3lj8 item 2).
+2. **`self`'s address used as a value** (the random seed `(uint32_t)(uintptr_t)self` when the
+   binding target has none) becomes `this`'s. Either is an arbitrary heap address, so no answer
+   that could be pinned changes; the façade's address is not used, because a C++ object made by
+   its factory has no façade until something crosses.
+3. **A class's C++ uniform setters whose selectors share the first keyword** (`setUniform:intValue:`,
+   `…floatValue:`, `…vectorValue:`, `…vectorObjectValue:`, `…quaternionValue:asMatrix:`) are
+   overloads, each commented with its second keyword; the test checks that each makes what its
+   selector made.
+4. **`@try { … } @catch (id) {}` around messages** is `try { … } catch (...)` (amendment oo-ppc:
+   a C++ `catch (...)` catches an Objective-C exception). The handler is not left empty
+   (`bugprone-empty-catch`): it does in so many words what falling out of the empty `@catch` did,
+   here `return true;`, with a comment.
+
+## Amendment (bead oo-n99o): failable initialisers that share a first keyword, and a union of ivars
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderUniform.h/.mm`,
+  `OOShaderUniform+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderUniform.mm`.
+
+**Decision (recommended defaults).**
+
+1. **Seven failable initialisers that share `initWithName:shaderProgram:`** become seven overloads of
+   one static factory named after them (amendment oo-novu item 1), told apart by the third
+   argument's type and each commented with its keyword. Each body is the old one with `self` as the
+   new object (`result->`), and the shared private designated initialiser is a `bool` member.
+   A factory that fails before making the object (a nil colour) answers null without making one.
+2. **A union of ivars, bit-fields included, stays as it is** (its members are C), with `= {}`; the
+   factories make the object with `new X()`, which zero-initialises the whole of it first, as
+   `class_createInstance` did.
+3. **A converted class in `namespace cxx` that makes the converted class's Objective-C objects**
+   (`cxx::OOShaderMaterial` makes `OOShaderUniform`s) names the façade `::X` and keeps its
+   messages (amendment oo-rmd7 item 3), so the stub its test defines is still what it makes. The
+   façade's deletion bead turns them into C++ calls.
+4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
+   and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).
