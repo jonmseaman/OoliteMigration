@@ -66,7 +66,7 @@ MA 02110-1301, USA.
 		_count = count;
 		[self setPosition:pos];
 		
-		velocity = vel;
+		_cxxEntity->velocity = vel;
 		_duration = duration;
 		_maxSpeed = maxSpeed;
 		
@@ -86,7 +86,7 @@ MA 02110-1301, USA.
 		}
 		
 		[self setStatus:STATUS_EFFECT];
-		scanClass = CLASS_NO_DRAW;
+		_cxxEntity->scanClass = CLASS_NO_DRAW;
 	}
 	
 	return self;
@@ -117,7 +117,7 @@ MA 02110-1301, USA.
 	[super update:delta_t];
 	
 	_timePassed += delta_t;
-	collision_radius += delta_t * _maxSpeed;
+	_cxxEntity->collision_radius += delta_t * _maxSpeed;
 	
 	unsigned	i, count = _count;
 	Vector		*particlePosition = _particlePosition;
@@ -182,9 +182,9 @@ do { \
 	}
 	else
 	{
-		float distanceThreshold = collision_radius * 2.0f;	// Distance between player and middle of effect where we start to transition to "non-fast rendering."
+		float distanceThreshold = _cxxEntity->collision_radius * 2.0f;	// Distance between player and middle of effect where we start to transition to "non-fast rendering."
 		float thresholdSq = distanceThreshold * distanceThreshold;
-		float distanceSq = cam_zero_distance;
+		float distanceSq = _cxxEntity->cam_zero_distance;
 		
 		if (distanceSq > thresholdSq)
 		{

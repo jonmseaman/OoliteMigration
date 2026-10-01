@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "OOJSTimer.h"
 #import "OOJavaScriptEngine.h"
+#import "OOJSScript.h"
 #import "Universe.h"
 
 #include "ooscript/JSEngine.hpp"
@@ -58,6 +59,11 @@ MA 02110-1301, USA.
 	toString() is the shared native OOJSObjectWrapperToString (OOJavaScriptEngine.mm), which
 	takes the façade's NativeFn signature, and DEFINE_JS_OBJECT_GETTER() and
 	OOJSRegisterObjectConverter() are given &sTimerClass itself.
+
+	C++20 since bead oo-kdyh (proposed ADR-0056, amendment oo-ppc): the class is cxx::OOJSTimer,
+	a C++ subclass of cxx::OOScriptTimer. The JS private slot keeps holding the Objective-C
+	object, now the OOJSTimer facade (OOJSTimer+ObjCBridge.h), retained; the natives read it with
+	the getter and cross with oo::ToCxx. BOOL/YES/NO are bool/true/false.
 */
 
 namespace ooscript { }
@@ -176,125 +182,115 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 } // namespace
 
 
-@interface OOJSTimer (Private)
+namespace cxx {
 
-- (id) initWithDelay:(OOTimeAbsolute)delay
-			interval:(OOTimeDelta)interval
-			 context:(ooscript::Context)context
-			function:(ooscript::Value)function
-				this:(ooscript::Object)jsThis;
-
-@end
-
-
-@implementation OOJSTimer
-
-- (id) initWithDelay:(OOTimeAbsolute)delay
-			interval:(OOTimeDelta)interval
-			 context:(ooscript::Context)context
-			function:(ooscript::Value)function
-				this:(ooscript::Object)jsThis
+oo::Ref<OOJSTimer> OOJSTimer::timerWithDelay(OOTimeAbsolute delay, OOTimeDelta interval, ooscript::Context context, ooscript::Value function, ooscript::Object jsThis)
 {
-	self = [super initWithNextTime:[UNIVERSE getTime] + delay interval:interval];
-	if (self != nil)
-	{
-		OOAssert(OOJSValueIsFunction(context, function), "Attempt to init OOJSTimer with a function that isn't.");
-		
-		_jsThis = jsThis;
-		OOJSAddGCObjectRoot(context, &_jsThis, "OOJSTimer this");
-		
-		_function = function;
-		OOJSAddGCValueRoot(context, &_function, "OOJSTimer function");
-		
-		_jsSelf = (ooscript::newObject((context), &sTimerClass, (sTimerPrototype), nullptr));
-		if (_jsSelf != NULL)
-		{
-			if (!ooscript::setPrivate((context), (_jsSelf), [self retain]))  _jsSelf = NULL;
-		}
-		if (_jsSelf == NULL)
-		{
-			[self release];
-			return nil;
-		}
-		
-		_owningScript = [[OOJSScript currentlyRunningScript] weakRetain];
-		
-		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
-															[OOJavaScriptEngine sharedEngine],
-															[self](const oo::Notification &) { [self deleteJSPointers]; });
-	}
-	
-	return self;
+	oo::Ref<OOJSTimer> timer = oo::adopt(new OOJSTimer);
+	if (!timer->initWithDelay(delay, interval, context, function, jsThis))  return nullptr;
+	return timer;
 }
 
 
-- (void) deleteJSPointers
+bool OOJSTimer::initWithDelay(OOTimeAbsolute delay, OOTimeDelta interval, ooscript::Context context, ooscript::Value function, ooscript::Object jsThis)
 {
-	[self unscheduleTimer];
-	
+	if (!initWithNextTime([UNIVERSE getTime] + delay, interval))  return false;
+	{
+		OOCAssert(OOJSValueIsFunction(context, function), "Attempt to init OOJSTimer with a function that isn't.");
+
+		_jsThis = jsThis;
+		OOJSAddGCObjectRoot(context, &_jsThis, "OOJSTimer this");
+
+		_function = function;
+		OOJSAddGCValueRoot(context, &_function, "OOJSTimer function");
+
+		_jsSelf = (ooscript::newObject((context), &sTimerClass, (sTimerPrototype), nullptr));
+		if (_jsSelf != NULL)
+		{
+			// The private slot keeps the facade, retained, as it kept self (ADR-0056 amendment oo-ppc item 5).
+			if (!ooscript::setPrivate((context), (_jsSelf), oo::ObjCRef<::OOJSTimer *>(oo::ToObjC(this)).leakRef()))  _jsSelf = NULL;
+		}
+		if (_jsSelf == NULL)
+		{
+			return false;
+		}
+
+		_owningScript = oo::adoptObjC(static_cast<OOJSScript *>([[OOJSScript currentlyRunningScript] weakRetain]));
+
+		oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine],
+															[this](const oo::Notification &) { deleteJSPointers(); });
+	}
+
+	return true;
+}
+
+
+void OOJSTimer::deleteJSPointers()
+{
+	unscheduleTimer();
+
 	if (_jsThis != NULL)
 	{
 		_jsThis = NULL;
 		_function = ooscript::undefinedValue();
-		
+
 		ooscript::Context context = OOJSAcquireContext();
 		ooscript::removeObjectRoot((context), &_jsThis);
 		ooscript::removeValueRoot((context), (&_function));
 		OOJSRelinquishContext(context);
-		
-		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+
+		oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine]);
 	}
 }
 
 
-- (void) dealloc
+OOJSTimer::~OOJSTimer()
 {
-	[_owningScript release];
-	
-	[self deleteJSPointers];
-	
-	[super dealloc];
+	_owningScript = nullptr;
+
+	deleteJSPointers();
 }
 
 
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> OOJSTimer::descriptionComponents() const
 {
 	std::optional<std::string>	funcName;
 	ooscript::Context context = NULL;
-	
+
 	if (ooscript::isUndefined(_function) || ooscript::isNull(_function))
 	{
 		return "invalid";
 	}
-	
+
 	context = OOJSAcquireContext();
 	funcName = cxx_OOStringFromJSString(context, (ooscript::getFunctionId(ooscript::valueToFunction((context), (_function)))));
 	OOJSRelinquishContext(context);
-	
+
 	if (!funcName.has_value())
 	{
 		funcName = "anonymous";
 	}
-	
-	return oo::str::format("%s, function: %s", [super cxx_descriptionComponents].value_or("(null)").c_str(), funcName->c_str());
+
+	return oo::str::format("%s, function: %s", OOScriptTimer::descriptionComponents().value_or("(null)").c_str(), funcName->c_str());
 }
 
 
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> OOJSTimer::oo_jsClassName()
 {
 	return std::string("Timer");
 }
 
 
-- (void) timerFired
+void OOJSTimer::timerFired()
 {
 	ooscript::Value					rval = ooscript::undefinedValue();
 	bool					described = false;	// was the description itself, used only to test for nil
-	
+
 	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();
-	
+
 	// stop and remove the timer if _jsThis (the first parameter in the constructor) dies.
 	const oo::PList thisValue = cxx_OOJSPListFromJSObject(context, _jsThis);
 	id object = oo::ObjectIn(thisValue);
@@ -309,32 +305,32 @@ DEFINE_JS_OBJECT_GETTER(JSTimerGetTimer, &sTimerClass, sTimerPrototype, OOJSTime
 		// -oo_jsDescription was never nil (ADR-0051).
 		described = !thisValue.isNull();
 	}
-	
+
 	if (!described)
 	{
-		[self unscheduleTimer];
+		unscheduleTimer();
 		OOJSRelinquishContext(context);
 		return;
 	}
-	
-	[OOJSScript pushScript:_owningScript];
+
+	[OOJSScript pushScript:_owningScript.get()];
 	[engine callJSFunction:_function
 				 forObject:_jsThis
 					  argc:0
 					  argv:NULL
 					result:&rval];
-	[OOJSScript popScript:_owningScript];
-	
+	[OOJSScript popScript:_owningScript.get()];
+
 	OOJSRelinquishContext(context);
 }
 
 
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+ooscript::Value OOJSTimer::oo_jsValueInContext(ooscript::Context /*context*/)
 {
 	return ooscript::objectValue(_jsSelf);
 }
 
-@end
+}	// namespace cxx
 
 
 void InitOOJSTimer(ooscript::Context context, ooscript::Object global)
@@ -348,32 +344,33 @@ void InitOOJSTimer(ooscript::Context context, ooscript::Object global)
 namespace {
 static bool TimerGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJSTimer				*timer = nil;
+	::OOJSTimer				*timerObject = nil;
 	
-	if (EXPECT_NOT(!JSTimerGetTimer(context, thisObj, &timer))) return NO;
+	if (EXPECT_NOT(!JSTimerGetTimer(context, thisObj, &timerObject))) return false;
+	cxx::OOJSTimer			*timer = oo::ToCxx(timerObject);	// null for Timer.prototype, which has none
 	
 	switch (ooscript::idToInt32(propID))
 	{
 		case kTimer_nextTime:
-			return ooscript::newNumberValue(cx, [timer nextTime], value);
+			return ooscript::newNumberValue(cx, timer != nullptr ? timer->nextTime() : 0.0, value);
 			
 		case kTimer_interval:
-			return ooscript::newNumberValue(cx, [timer interval], value);
+			return ooscript::newNumberValue(cx, timer != nullptr ? timer->interval() : 0.0, value);
 			
 		case kTimer_isRunning:
-			*value = (OOJSValueFromBOOL([timer isScheduled]));
-			return YES;
+			*value = (OOJSValueFromBOOL(timer != nullptr && timer->isScheduled()));
+			return true;
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sTimerPropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJS_NATIVE_EXIT
@@ -384,46 +381,47 @@ static bool TimerGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 namespace {
 static bool TimerSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJSTimer				*timer = nil;
+	::OOJSTimer				*timerObject = nil;
 	double					fValue;
 	
-	if (EXPECT_NOT(!JSTimerGetTimer(context, thisObj, &timer))) return NO;
+	if (EXPECT_NOT(!JSTimerGetTimer(context, thisObj, &timerObject))) return false;
+	cxx::OOJSTimer			*timer = oo::ToCxx(timerObject);	// null for Timer.prototype, which has none
 	
 	switch (ooscript::idToInt32(propID))
 	{
 		case kTimer_nextTime:
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
-				if (![timer setNextTime:fValue])
+				if (!(timer != nullptr && timer->setNextTime(fValue)))
 				{
-					cxx_OOJSReportWarning(context, "Ignoring attempt to change next fire time for running timer %s.", oo::DescriptionOf(timer).c_str());
+					cxx_OOJSReportWarning(context, "Ignoring attempt to change next fire time for running timer %s.", oo::DescriptionOf(timerObject).c_str());
 				}
-				return YES;
+				return true;
 			}
 			break;
 			
 		case kTimer_interval:
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
-				[timer setInterval:fValue];
-				return YES;
+				if (timer != nullptr)  timer->setInterval(fValue);
+				return true;
 			}
 			break;
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sTimerPropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJSReportBadPropertyValue(context, thisObj, (propID), sTimerPropertiesRaw, *(value));
-	return NO;
+	return false;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -436,15 +434,17 @@ static void TimerFinalize(Context cx, Object obj)
 	OOJS_PROFILE_ENTER
 	
 	// Can't use JSTimerGetTimer() here - potential chicken-and-egg problem manifesting as a crash.
-	OOJSTimer *timer = (OOJSTimer *)ooscript::getPrivate(cx, obj);
+	::OOJSTimer *timer = (::OOJSTimer *)ooscript::getPrivate(cx, obj);
 	
 	if (timer != nil)
 	{
-		if ([timer isScheduled])
+		if (oo::ToCxx(timer)->isScheduled())
 		{
-			OO_LOG_WARN("script.javaScript.unrootedTimer", "Timer {} is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", oo::DescriptionOf(timer));
+			// Described from the timer's own state: its full description reads the function's
+			// name, which runs script inside the collection and corrupts the heap (bead oo-r1ci7).
+			OO_LOG_WARN("script.javaScript.unrootedTimer", "Timer {} is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", oo::DescriptionWithComponents(timer, oo::ToCxx(timer)->OOScriptTimer::descriptionComponents()));
 		}
-		[timer release];
+		objc_release(timer);	// the private slot's retain
 		ooscript::setPrivate(cx, obj, NULL);
 	}
 	
@@ -463,19 +463,19 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 	ooscript::Value					function = ooscript::undefinedValue();
 	double					delay;
 	double					interval = -1.0;
-	OOJSTimer				*timer = nil;
+	oo::Ref<cxx::OOJSTimer>	timer;
 	ooscript::Object callbackThis = NULL;
 	
 	if (EXPECT_NOT(!oojsArgs.isConstructing()))
 	{
 		cxx_OOJSReportError(context, "Timer() cannot be called as a function, it must be used as a constructor (as in new Timer(...)).");
-		return NO;
+		return false;
 	}
 	
 	if (oojsArgs.count() < 3)
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", oojsArgs.count(), OOJS_ARGV, "Invalid arguments in constructor", "(object, function, number [, number])");
-		return NO;
+		return false;
 	}
 	
 	if (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::isUndefined(OOJS_ARGV[0]))
@@ -483,7 +483,7 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 		if (!ooscript::valueToObject(context, (OOJS_ARGV[0]), &callbackThis))
 		{
 			cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", 1, OOJS_ARGV, "Invalid argument in constructor", "object");
-			return NO;
+			return false;
 		}
 	}
 	
@@ -491,13 +491,13 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 	if (ooscript::valueToFunction(context, (function)) == nullptr)
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", 1, OOJS_ARGV + 1, "Invalid argument in constructor", "function");
-		return NO;
+		return false;
 	}
 	
 	if (!ooscript::valueToNumber(context, (OOJS_ARGV[2]), &delay) || isnan(delay))
 	{
 		cxx_OOJSReportBadArguments(context, std::nullopt, "Timer", 1, OOJS_ARGV + 2, "Invalid argument in constructor", "number");
-		return NO;
+		return false;
 	}
 	
 	// Fourth argument is optional.
@@ -506,19 +506,14 @@ static bool TimerConstruct(ooscript::Context context, ooscript::CallArgs &oojsAr
 	// Ensure interval is not too small.
 	if (0.0 < interval && interval < kMinInterval)  interval = kMinInterval;
 	
-	timer = [[OOJSTimer alloc] initWithDelay:delay
-									interval:interval
-									 context:context
-									function:function
-										this:callbackThis];
-	if (EXPECT_NOT(!timer))  return NO;
+	timer = cxx::OOJSTimer::timerWithDelay(delay, interval, context, function, callbackThis);
+	if (EXPECT_NOT(!timer))  return false;
 	
 	if (delay >= 0)	// Leave in stopped state if delay is negative
 	{
-		[timer scheduleTimer];
+		timer->scheduleTimer();
 	}
-	[timer autorelease];
-	OOJS_RETURN_OBJECT(timer);
+	OOJS_RETURN_OBJECT(oo::ToObjC(timer.get()));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -534,11 +529,11 @@ static bool TimerStart(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJSTimer					*thisTimer = nil;
+	::OOJSTimer					*thisTimer = nil;
 	
-	if (EXPECT_NOT(!JSTimerGetTimer(context, OOJS_THIS, &thisTimer)))  return NO;
+	if (EXPECT_NOT(!JSTimerGetTimer(context, OOJS_THIS, &thisTimer)))  return false;
 	
-	OOJS_RETURN_BOOL([thisTimer scheduleTimer]);
+	OOJS_RETURN_BOOL(thisTimer != nil && oo::ToCxx(thisTimer)->scheduleTimer());
 	
 	OOJS_NATIVE_EXIT
 }
@@ -552,11 +547,11 @@ static bool TimerStop(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJSTimer					*thisTimer = nil;
+	::OOJSTimer					*thisTimer = nil;
 	
-	if (EXPECT_NOT(!JSTimerGetTimer(context, OOJS_THIS, &thisTimer)))  return NO;
+	if (EXPECT_NOT(!JSTimerGetTimer(context, OOJS_THIS, &thisTimer)))  return false;
 	
-	[thisTimer unscheduleTimer];
+	if (thisTimer != nil)  oo::ToCxx(thisTimer)->unscheduleTimer();
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
