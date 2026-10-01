@@ -1112,6 +1112,45 @@ sed -i 's|^    tests/\*\|\*/tests/\*) return 0 ;;|    __no_such_path__) return 0
 sed -i 's|^    test_\*\.py\|\*_test\.py\|test_\*\.c\|test_\*\.m\|\*\.feature\|conftest\.py) return 0 ;;|    __no_such_file__) return 0 ;;|' tools/guardrails.sh
 expect_fail "a test classifier that matches nothing fails the run" "cannot fire"
 
+echo
+echo "=== upstream-delta: a conversion that starts an OPEN module must freeze it (bead oo-9ht.70) ==="
+# The guard runs tools/upstream-delta.sh --check (the shipping checker, copied in) on the tree.
+# install_delta <status of src/Core> : the checker plus a minimal docs/UPSTREAM_DELTA.md, committed
+# as the base, so the change under test is only what the case adds after it.
+install_delta() {
+  mkdir -p docs
+  cp "$REPO/tools/upstream-delta.sh" tools/upstream-delta.sh
+  { printf 'Baseline: `dc55e3e05cd283ff3a0c5e04d5d6a6d001a92c20`\n\n'
+    printf '<!-- modules:begin -->\n| Module | Status | Why |\n|---|---|---|\n'
+    printf '| `src/Core` | %s | fixture |\n<!-- modules:end -->\n\n' "$1"
+    printf '<!-- delta:begin -->\n| Upstream commit | Date | Module | Subject | Status | Bead |\n|---|---|---|---|---|---|\n<!-- delta:end -->\n'
+  } > docs/UPSTREAM_DELTA.md
+  git_c add -A >/dev/null; git_c commit -qm "freeze policy" >/dev/null
+}
+CXX_CLASS='namespace cxx {
+class OOColor {};
+}'
+
+fixture delta_open || exit 1
+install_delta open
+printf '%s\n' "$CXX_CLASS" > upstream/oolite/src/Core/OOColor.h
+expect_fail "a cxx:: class in an open module fails the run" "holds Phase 3 work"
+
+fixture delta_frozen || exit 1
+install_delta frozen
+printf '%s\n' "$CXX_CLASS" > upstream/oolite/src/Core/OOColor.h
+expect_pass "the same class in a frozen module passes"
+
+fixture delta_new_dir || exit 1
+install_delta frozen
+mkdir -p upstream/oolite/src/Core/NewModule && printf 'int x;\n' > upstream/oolite/src/Core/NewModule/x.c
+expect_fail "an unclassified source directory fails the run" "is not in the module table"
+
+fixture delta_no_checker || exit 1
+install_delta frozen
+git rm -q tools/upstream-delta.sh
+expect_fail "the policy file without its checker fails the run" "freeze policy cannot be checked"
+
 echo "=== base branch: a stacked phase branch is the base when BEADS_WORKER_BASE_BRANCH names it ==="
 # accept.sh merges a bead into BEADS_WORKER_BASE_BRANCH (a phase branch stacked on main). A change
 # the phase branch already carries (here a human-approved test deletion) is not the bead's, and must
