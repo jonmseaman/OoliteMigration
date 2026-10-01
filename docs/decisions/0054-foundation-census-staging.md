@@ -1,6 +1,6 @@
 # ADR-0054: What the Foundation census counts, and at which stage
 
-- Status: Proposed. The default is in effect until Jon decides (CLAUDE.md rule 10).
+- Status: Accepted (Jon, 2026-09-30, in chat). Recorded from the in-effect default (CLAUDE.md rule 10).
 - Date: 2026-09-29
 - Beads: oo-qps.20 (this ADR), oo-qps.27 (the tool change), gate oo-qps.3; owners oo-snzn,
   oo-qps.28, oo-qps.29; stragglers oo-qps.21..26
