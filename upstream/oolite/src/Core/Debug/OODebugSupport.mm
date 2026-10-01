@@ -34,6 +34,7 @@ SOFTWARE.
 #import "OODebugTCPConsoleClient.h"
 #import "GameController.h"
 #import "OOJavaScriptEngine.h"
+#import "OODebugSupport+ObjCBridge.h"	// the plug-in controller's -setUpDebugger
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
@@ -49,13 +50,6 @@ static id LoadDebugPlugIn(void);
 static id sDebugPlugInController;
 
 
-@interface OOObject (OODebugPlugInController)
-
-- (id<OODebuggerInterface>) setUpDebugger;
-
-@end
-
-
 void OOInitDebugSupport(void)
 {
 	std::optional<std::string>	debugOXPPath;
@@ -63,7 +57,7 @@ void OOInitDebugSupport(void)
 	std::optional<std::string>	consoleHost;
 	unsigned short				consolePort = 0;
 	id<OODebuggerInterface>		debugger = nil;
-	BOOL						activateDebugConsole = NO;
+	bool						activateDebugConsole = false;
 
 	// Load debug settings.
 	debugSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
@@ -87,19 +81,19 @@ void OOInitDebugSupport(void)
 		consolePort = debugSettings.get<unsigned short>("console-port");
 
 		// If consoleHost is nil, and the debug plug-in can set up a debugger, use that.
-		if (!consoleHost.has_value() && [sDebugPlugInController respondsToSelector:@selector(setUpDebugger)])
+		if (!consoleHost.has_value() && OODebugPlugInControllerCanSetUpDebugger(sDebugPlugInController))
 		{
-			debugger = [sDebugPlugInController setUpDebugger];
-			[[OODebugMonitor sharedDebugMonitor] setUsingPlugInController:YES];
+			debugger = OODebugPlugInControllerSetUpDebugger(sDebugPlugInController);
+			cxx::OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(true);
 		}
 		
 		// Otherwise, use TCP debugger connection.
 		if (debugger == nil)
 		{
-			debugger = [[OODebugTCPConsoleClient alloc] initWithAddress:consoleHost
-																   port:consolePort];
-			[debugger autorelease];
-			[[OODebugMonitor sharedDebugMonitor] setUsingPlugInController:NO];
+			// The client's facade, autoreleased as before; nil when it cannot connect.
+			debugger = oo::ToObjC(cxx::OODebugTCPConsoleClient::clientWithAddress(consoleHost,
+																				  consolePort).get());
+			cxx::OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(false);
 		}
 		
 		activateDebugConsole = (debugger != nil);
@@ -114,7 +108,7 @@ void OOInitDebugSupport(void)
 	if (activateDebugConsole)
 	{
 		// Set up monitor and register debugger, if any.
-		[[OODebugMonitor sharedDebugMonitor] setDebugger:debugger];
+		cxx::OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger);
 		[[OOJavaScriptEngine sharedEngine] enableDebuggerStatement];
 	}
 }

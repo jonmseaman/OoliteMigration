@@ -8,7 +8,10 @@
 	console-port, and tells the monitor it is not using a plug-in controller; the console is
 	activated when the client connected, or when always-load-debug-console is set, and then the
 	monitor is given the debugger (nil if none) and the JavaScript engine enables the debugger
-	statement. These expectations were written against the Objective-C file and run on it first.
+	statement. These expectations were written against the Objective-C file and run on it first
+	(commit 45775d64b), against Objective-C stand-ins of the monitor and the
+	client; since the conversion the stand-ins are those classes' C++ members that the debug support
+	calls, and the client's oo::ToObjC.
 
 	What it reaches would bring the game into the link, so this file stands in for it (proposed
 	ADR-0056, amendment oo-z1s4 item 4): the resource manager (the configuration and the beacon's
@@ -18,7 +21,8 @@
 */
 
 #import "OODebugSupport.h"
-#import "OOCocoa.h"
+#import "OODebugMonitor.h"
+#import "OODebugTCPConsoleClient.h"
 
 #include "oofnd/PList.hpp"
 #include "oo_test.hpp"
@@ -113,57 +117,48 @@ typedef enum
 @end
 
 
-@interface OODebugMonitor: OOObject
-+ (OODebugMonitor *) sharedDebugMonitor;
-- (BOOL) setDebugger:(id)debugger;
-- (void) setUsingPlugInController:(BOOL)flag;
-@end
-
-@implementation OODebugMonitor
-
-+ (OODebugMonitor *) sharedDebugMonitor
+// The C++ monitor's and TCP client's members that the debug support calls, and the client's
+// crossing to its facade (an object of the test's standing for it).
+cxx::OODebugMonitor *cxx::OODebugMonitor::sharedDebugMonitor()
 {
-	static OODebugMonitor *monitor = nil;
-	if (monitor == nil)  monitor = [[OODebugMonitor alloc] init];
+	static cxx::OODebugMonitor *monitor = nullptr;
+	if (monitor == nullptr)  monitor = oo::makeRef<cxx::OODebugMonitor>().leakRef();
 	return monitor;
 }
 
 
-- (BOOL) setDebugger:(id)debugger
+bool cxx::OODebugMonitor::setDebugger(id<OODebuggerInterface> debugger)
 {
 	sRecord.debuggersSet.push_back(debugger);
 	return debugger != nil;
 }
 
 
-- (void) setUsingPlugInController:(BOOL)flag
+void cxx::OODebugMonitor::setUsingPlugInController(bool flag)
 {
 	sRecord.usingPlugInController.push_back(flag);
 }
 
-@end
 
-
-@interface OODebugTCPConsoleClient: OOObject
-- (id) initWithAddress:(const std::optional<std::string> &)address port:(uint16_t)port;
-@end
-
-@implementation OODebugTCPConsoleClient
-
-- (id) initWithAddress:(const std::optional<std::string> &)address port:(uint16_t)port
+oo::Ref<cxx::OODebugTCPConsoleClient> cxx::OODebugTCPConsoleClient::clientWithAddress(const std::optional<std::string> &address, uint16_t port)
 {
 	sRecord.clientsMade.emplace_back(address, port);
-	if (sRecord.clientFails)
-	{
-		[self release];
-		return nil;
-	}
-	self = [super init];
-	sRecord.lastClient = self;
-	return self;
+	if (sRecord.clientFails)  return oo::Ref<cxx::OODebugTCPConsoleClient>();
+	return oo::adopt(new cxx::OODebugTCPConsoleClient);
 }
 
-@end
+
+cxx::OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
+{
+}
+
+
+OODebugTCPConsoleClient *oo::ToObjC(cxx::OODebugTCPConsoleClient *client)
+{
+	if (client == nullptr)  return nil;
+	sRecord.lastClient = [[[OOObject alloc] init] autorelease];
+	return (OODebugTCPConsoleClient *)sRecord.lastClient;
+}
 
 
 namespace {
