@@ -84,7 +84,7 @@ static OOTexture *sShotTexture2 = nil;
 	Quaternion q = kIdentityQuaternion;
 	Vector q_up = vector_up_from_quaternion(q);
 	Quaternion q0 = [ship normalOrientation];
-	velocity = vector_multiply_scalar(vector_forward_from_quaternion(q0), [ship flightSpeed]);
+	_cxxEntity->velocity = vector_multiply_scalar(vector_forward_from_quaternion(q0), [ship flightSpeed]);
 	
 	switch (direction)
 	{

@@ -5,7 +5,8 @@ OOMaterial+ObjCBridge.mm
 TRANSITIONAL (proposed ADR-0056, amendment oo-smy): the Objective-C OOMaterial facade (see
 OOMaterial+ObjCBridge.h). Every method forwards to its C++ member: arguments that were
 OOMaterial * go through oo::ToCxx, results come back through oo::ToObjC. An Objective-C
-subclass's C++ part is an ObjCMaterial, whose virtual members message the subclass. Deleted with
+subclass's C++ part is an oo::ObjCMaterial (OOMaterial+ObjCBridge.h), whose virtual members
+message the subclass. Deleted with
 OOMaterial+ObjCBridge.h.
 
 
@@ -35,6 +36,7 @@ SOFTWARE.
 #import "OODescription.h"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOObjCPeer.h"
+#include "oofnd/objc/OORuntime.h"
 
 #include <cstdlib>
 #include <cxxabi.h>
@@ -51,64 +53,57 @@ oo::ObjCPeers &Peers()
 }
 
 
-/*	The C++ part of an Objective-C material: each virtual member messages the Objective-C object,
-	so the subclass's override runs, as it did when the base class was Objective-C. The
-	Objective-C object owns this (its _cxxMaterial) and is not retained by it; its -dealloc clears
-	the pointer, after which the members answer as a message to nil did.
-*/
-class ObjCMaterial final : public cxx::OOMaterial
+std::string DemangledName(const std::type_info &type)
 {
-public:
-	explicit ObjCMaterial(::OOMaterial *owner) : _owner(owner) {}
-
-	::OOMaterial *owner()	{ return _owner; }
-	void ownerDeallocated()	{ _owner = nil; }
-
-	std::optional<std::string> name() override								{ return [_owner cxx_name]; }
-	std::optional<std::string> descriptionComponents() const override		{ return [_owner cxx_descriptionComponents]; }
-	void ensureFinishedLoading() override									{ [_owner ensureFinishedLoading]; }
-	bool isFinishedLoading() override										{ return [_owner isFinishedLoading]; }
-	void setBindingTarget(id<OOWeakReferenceSupport> target) override		{ [_owner setBindingTarget:target]; }
-	bool wantsNormalsAsTextureCoordinates() override						{ return [_owner wantsNormalsAsTextureCoordinates]; }
-#if OO_MULTITEXTURE
-	NSUInteger countOfTextureUnitsWithBaseCoordinates() override			{ return [_owner countOfTextureUnitsWithBaseCoordinates]; }
-#endif
-#ifndef NDEBUG
-	std::vector<oo::ObjCRef<OOTexture *>> allTextures() override			{ return [_owner cxx_allTextures]; }
-#endif
-	bool doApply() override													{ return [_owner doApply]; }
-	void unapplyWithNext(cxx::OOMaterial *next) override					{ [_owner unapplyWithNext:oo::ToObjC(next)]; }
-
-private:
-	::OOMaterial *_owner = {};	// Not retained.
-};
-
-
-ObjCMaterial *AsObjCMaterial(cxx::OOMaterial *material)
-{
-	return dynamic_cast<ObjCMaterial *>(material);
+	int status = 0;
+	char *demangled = abi::__cxa_demangle(type.name(), nullptr, nullptr, &status);
+	std::string result = (status == 0 && demangled != nullptr) ? demangled : type.name();
+	std::free(demangled);
+	return result;
 }
 
 
 // The C++ class's name, as [self class] named an Objective-C material's class ("cxx::" dropped).
 std::string ClassName(cxx::OOMaterial &material)
 {
-	int status = 0;
-	char *demangled = abi::__cxa_demangle(typeid(material).name(), nullptr, nullptr, &status);
-	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(material).name();
-	std::free(demangled);
+	std::string result = DemangledName(typeid(material));
 	if (result.starts_with("cxx::"))  result.erase(0, 5);
 	return result;
 }
 
+
+// A class's (first) base class, from the Itanium C++ ABI's type information; null for none.
+const std::type_info *BaseOf(const std::type_info &type)
+{
+	if (const auto *single = dynamic_cast<const abi::__si_class_type_info *>(&type))  return single->__base_type;
+	if (const auto *multiple = dynamic_cast<const abi::__vmi_class_type_info *>(&type))
+	{
+		return multiple->__base_count > 0 ? multiple->__base_info[0].__base_type : nullptr;
+	}
+	return nullptr;
+}
+
+
+/*	The class of a C++ material's facade. A C++ class in namespace cxx has a facade of its own
+	(ADR-0056 item 5): the Objective-C class of the same name, a subclass of this one, which its
+	callers message by its own selectors (cxx::OOBasicMaterial's is OOBasicMaterial; ADR-0056
+	amendment of bead oo-up4b, item 3). A class without one (a global C++ class) is seen as its
+	nearest base class that has one, so a global subclass of cxx::OOBasicMaterial still answers the
+	basic material's selectors (amendment oo-vl43); failing that, as an OOMaterial.
+*/
+Class FacadeClass(cxx::OOMaterial &material)
+{
+	for (const std::type_info *type = &typeid(material); type != nullptr; type = BaseOf(*type))
+	{
+		const std::string name = DemangledName(*type);
+		if (!name.starts_with("cxx::"))  continue;
+		Class facade = OOClassFromName(std::string_view(name).substr(5));
+		if (facade != Nil && [facade isSubclassOfClass:[OOMaterial class]])  return facade;
+	}
+	return [OOMaterial class];
+}
+
 }	// namespace
-
-
-@interface OOMaterial (OOObjCBridgePrivate)
-
-- (id) initWithCxxMaterial:(cxx::OOMaterial *)material;
-
-@end
 
 
 @implementation OOMaterial
@@ -116,8 +111,16 @@ std::string ClassName(cxx::OOMaterial &material)
 // Inside the @implementation for the private ivar.
 OOMaterial *oo::ToObjC(cxx::OOMaterial *material)
 {
-	if (ObjCMaterial *objCMaterial = AsObjCMaterial(material))  return [[objCMaterial->owner() retain] autorelease];
-	return Peers().peerFor(material, [material] { return [[OOMaterial alloc] initWithCxxMaterial:material]; });
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(material))  return [[objCMaterial->owner() retain] autorelease];
+	if (material == nullptr)  return nil;
+	Class facadeClass = FacadeClass(*material);
+	return Peers().peerFor(material, [material, facadeClass] { return [[facadeClass alloc] initWithCxxMaterial:material]; });
+}
+
+
+oo::ObjCMaterialLink *oo::AsObjCMaterial(cxx::OOMaterial *material)
+{
+	return dynamic_cast<ObjCMaterialLink *>(material);
 }
 
 
@@ -132,12 +135,12 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 - (id)init
 {
 	self = [super init];
-	if (self != nil)  _cxxMaterial = oo::makeRef<ObjCMaterial>(self);
+	if (self != nil)  _cxxMaterial = oo::makeRef<oo::ObjCMaterial<cxx::OOMaterial>>(self);
 	return self;
 }
 
 
-// A C++ material's facade (oo::ToObjC).
+// A C++ material's facade (oo::ToObjC), or an intermediate class's Objective-C material (its initialisers).
 - (id) initWithCxxMaterial:(cxx::OOMaterial *)material
 {
 	self = [super init];
@@ -146,9 +149,25 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 }
 
 
+// A converted class's facade initialiser: the new C++ material, and this is its peer.
+- (id) initWithNewCxxMaterial:(const oo::Ref<cxx::OOMaterial> &)material
+{
+	self = [super init];
+	if (self != nil)
+	{
+		_cxxMaterial = material;
+		@autoreleasepool
+		{
+			Peers().peerFor(_cxxMaterial.get(), [self] { return [self retain]; });
+		}
+	}
+	return self;
+}
+
+
 - (void)dealloc
 {
-	if (ObjCMaterial *objCMaterial = AsObjCMaterial(_cxxMaterial.get()))
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))
 	{
 		// Ensure cleanup happens; doing it more than once is safe.
 		[self willDealloc];
@@ -161,10 +180,11 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 
 
 // On an Objective-C material this is reached only when the subclass does not override it, or by
-// [super ...]: the base class's own member answers. On a C++ material's facade the C++ override does.
+// [super ...]: its nearest converted superclass's own member answers (through the adapter's
+// super...() members). On a C++ material's facade the C++ override does.
 - (std::optional<std::string>) cxx_descriptionComponents
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::descriptionComponents();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superDescriptionComponents();
 	return _cxxMaterial->descriptionComponents();
 }
 
@@ -172,7 +192,7 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 // A C++ material's facade describes itself with the C++ class's name.
 - (std::optional<std::string>) cxx_description
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return [super cxx_description];
+	if (oo::AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return [super cxx_description];
 	std::string result = oo::str::format("<%s %s>", ClassName(*_cxxMaterial).c_str(), oo::str::pointerDescription(self).c_str());
 	if (const std::optional<std::string> components = _cxxMaterial->descriptionComponents())  result += "{" + *components + "}";
 	return result;
@@ -180,44 +200,50 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 
 
 + (void)setUp						{ cxx::OOMaterial::setUp(); }
-- (void)apply						{ _cxxMaterial->apply(); }
 + (void)applyNone					{ cxx::OOMaterial::applyNone(); }
 + (OOMaterial *)current				{ return oo::ToObjC(cxx::OOMaterial::current()); }
 
 
 // The overridable methods: the same two cases as -cxx_descriptionComponents.
 
+- (void)apply
+{
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  objCMaterial->superApply();
+	else  _cxxMaterial->apply();
+}
+
+
 - (std::optional<std::string>)cxx_name
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::name();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superName();
 	return _cxxMaterial->name();
 }
 
 
 - (void)ensureFinishedLoading
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  _cxxMaterial->cxx::OOMaterial::ensureFinishedLoading();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  objCMaterial->superEnsureFinishedLoading();
 	else  _cxxMaterial->ensureFinishedLoading();
 }
 
 
 - (BOOL) isFinishedLoading
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::isFinishedLoading();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superIsFinishedLoading();
 	return _cxxMaterial->isFinishedLoading();
 }
 
 
 - (void)setBindingTarget:(id<OOWeakReferenceSupport>)target
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  _cxxMaterial->cxx::OOMaterial::setBindingTarget(target);
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  objCMaterial->superSetBindingTarget(target);
 	else  _cxxMaterial->setBindingTarget(target);
 }
 
 
 - (BOOL) wantsNormalsAsTextureCoordinates
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::wantsNormalsAsTextureCoordinates();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superWantsNormalsAsTextureCoordinates();
 	return _cxxMaterial->wantsNormalsAsTextureCoordinates();
 }
 
@@ -225,7 +251,7 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 #if OO_MULTITEXTURE
 - (NSUInteger) countOfTextureUnitsWithBaseCoordinates
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::countOfTextureUnitsWithBaseCoordinates();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superCountOfTextureUnitsWithBaseCoordinates();
 	return _cxxMaterial->countOfTextureUnitsWithBaseCoordinates();
 }
 #endif
@@ -234,7 +260,7 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 #ifndef NDEBUG
 - (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::allTextures();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superAllTextures();
 	return _cxxMaterial->allTextures();
 }
 #endif
@@ -242,14 +268,14 @@ cxx::OOMaterial *oo::ToCxx(OOMaterial *material)
 
 - (BOOL)doApply
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  return _cxxMaterial->cxx::OOMaterial::doApply();
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  return objCMaterial->superDoApply();
 	return _cxxMaterial->doApply();
 }
 
 
 - (void)unapplyWithNext:(OOMaterial *)next
 {
-	if (AsObjCMaterial(_cxxMaterial.get()) != nullptr)  _cxxMaterial->cxx::OOMaterial::unapplyWithNext(oo::ToCxx(next));
+	if (oo::ObjCMaterialLink *objCMaterial = oo::AsObjCMaterial(_cxxMaterial.get()))  objCMaterial->superUnapplyWithNext(oo::ToCxx(next));
 	else  _cxxMaterial->unapplyWithNext(oo::ToCxx(next));
 }
 
