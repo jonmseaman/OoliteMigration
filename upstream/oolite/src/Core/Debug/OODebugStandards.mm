@@ -49,7 +49,11 @@ void OOStandardsInternal(const std::string &type, const std::string &message);
 
 }	// namespace
 
-static bool sSetup = false;
+namespace {
+
+bool sSetup = false;
+
+}	// namespace
 
 typedef enum {
 // do nothing (equivalent to release build)
