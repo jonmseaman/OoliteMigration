@@ -31,10 +31,13 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
-#import "OOTexture.h"
+#import "OOOpenGL.h"
 #import "OOMaths.h"
 
 #include "oofnd/StdLib.hpp"
+
+
+@class OOTexture;
 
 
 @interface OOProbabilisticTextureManager: OOObject
