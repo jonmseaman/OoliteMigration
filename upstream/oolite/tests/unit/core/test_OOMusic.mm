@@ -10,7 +10,9 @@
 	under it are this file's stubs, which record what the source tells them, and so are the
 	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4):
 	"missing.ogg" has no decoder. These expectations were written against the Objective-C
-	API and ran on the unconverted class first. Run: bash tools/check-core-tests.sh test_OOMusic
+	API and ran on the unconverted class first; they now run through the facade, which is its
+	forwarding test. After them come the C++ API (cxx::OOMusic, a subclass of cxx::OOSound) and the
+	facade's contract. Run: bash tools/check-core-tests.sh test_OOMusic
 */
 
 #import "OOALMusic.h"
@@ -358,6 +360,53 @@ OO_TEST(releasedWhilePlaying)
 	OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "stop" }));
 	OO_CHECK(source != nil && [source sound] == nil && ![source isPlaying]);
 	OO_CHECK(gLiveSounds == 0);
+}
+
+
+// The C++ API: the factory hides the root's and answers null where the initialiser answered nil.
+OO_TEST(cxxApi)
+{
+	SetUp();
+	TakeChannelLog();
+	@autoreleasepool
+	{
+		OO_CHECK(!cxx::OOMusic::initWithContentsOfFile(std::string("missing.ogg")));
+		const oo::Ref<cxx::OOMusic> music = cxx::OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
+		OO_CHECK(music && music->name() == std::optional<std::string>("theme.ogg"));
+		OO_CHECK(!music->isPlaying() && music->soundBuffer() == 0);	// the root's default
+		music->playLooped(false);
+		OO_CHECK(music->isPlaying() && music->musicSoundSource() != nil);
+		music->setMusicGain(0.5f);
+		OO_CHECK(music->musicGain() == 0.5f);
+		music->stop();
+		OO_CHECK(!music->isPlaying());
+		OO_CHECK((TakeChannelLog() == std::vector<std::string>{ "gain 0.250000", "play theme.ogg", "gain 0.500000", "stop" }));
+	}
+	OO_CHECK(gLiveSounds == 0);
+}
+
+
+// The facade's contract: a music's facade is an OOMusic, one per music, and is what
+// [[OOMusic alloc] cxx_initWithContentsOfFile:] answers.
+OO_TEST(facade)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOMusic> music = cxx::OOMusic::initWithContentsOfFile(std::string("theme.ogg"));
+		OOMusic *facade = oo::ToObjC(music.get());
+		OO_CHECK([facade isKindOfClass:[OOMusic class]]);
+		OO_CHECK(facade == oo::ToObjC(static_cast<cxx::OOSound *>(music.get())));
+		OO_CHECK(oo::ToCxx(facade) == music.get());
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOMusic 0x"));
+
+		OOMusic *made = [[[OOMusic alloc] cxx_initWithContentsOfFile:std::string("docked.ogg")] autorelease];
+		OO_CHECK(oo::ToObjC(oo::ToCxx(made)) == made);
+		OO_CHECK(oo::ToCxx(made)->name() == std::optional<std::string>("docked.ogg"));
+	}
+	OOMusic *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOMusic *>(nullptr)) == nil);
 }
 
 
