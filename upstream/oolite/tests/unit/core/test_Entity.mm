@@ -631,6 +631,42 @@ OO_TEST(liveEntityCount)
 #endif
 
 
+// A failing initialiser releases self before [super init] and answers nil (OOQuiriumCascadeEntity,
+// OOFlasherEntity and others with a nil ship): -dealloc runs on an entity whose -init never did.
+@interface TestFailingInitEntity: Entity
+- (id) initFailing;
+@end
+
+
+@implementation TestFailingInitEntity
+
+- (id) initFailing
+{
+	[self release];
+	return nil;
+}
+
+@end
+
+
+OO_TEST(releasedBeforeInit)
+{
+	@autoreleasepool
+	{
+		SetUpUniverse();
+		SetUpPlayer(kZeroHPVector, kZeroHPVector);
+#ifndef NDEBUG
+		const uint32_t count = gLiveEntityCount;
+		const size_t memory = gTotalEntityMemory;
+#endif
+		OO_CHECK([[TestFailingInitEntity alloc] initFailing] == nil);
+#ifndef NDEBUG
+		OO_CHECK(gLiveEntityCount == count && gTotalEntityMemory == memory);
+#endif
+	}
+}
+
+
 // --- The crossing (after the conversion) ---------------------------------------------------------
 
 OO_TEST(cxxEntityBehindItsFacade)
