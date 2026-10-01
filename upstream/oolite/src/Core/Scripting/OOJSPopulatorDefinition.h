@@ -2,6 +2,13 @@
 
 OOJSPopulatorDefinition.h
 
+C++20 since bead oo-1h0h (proposed ADR-0056, the OOColor house style). Its superclass,
+OOWeakRefObject, is still Objective-C (the weak-reference support that OOWeakReference+ObjCBridge
+keeps), so the class is cxx::OOJSPopulatorDefinition holding only its own ivars and methods, and
+OOJSPopulatorDefinition+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
+OOJSPopulatorDefinition : OOWeakRefObject that OOJSSystem makes and Universe keeps and messages
+(ADR-0056 amendment oo-o89). The bridge's deletion bead waits for OOWeakRefObject's retirement.
+
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -23,24 +30,48 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSScript.h"
+#ifndef OOJSPOPULATORDEFINITION_H
+#define OOJSPOPULATORDEFINITION_H
+
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
+#include "oofnd/Ref.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
-@interface OOJSPopulatorDefinition: OOWeakRefObject
+@class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+
+
+namespace cxx {
+
+class OOJSPopulatorDefinition : public oo::RefCounted
 {
-@private
-	ooscript::Value				_callback;
-	ooscript::Object _callbackThis;
-	OOJSScript			*_owningScript;
-}
+public:
+	// The old -init after [super init]. Made only by the facade (amendment oo-o89 item 2), until
+	// OOWeakRefObject is retired.
+	OOJSPopulatorDefinition();
+	~OOJSPopulatorDefinition() override;
 
-- (ooscript::Value)callback;
-- (void)setCallback:(ooscript::Value)callback;
-- (ooscript::Object)callbackThis;
-- (void)setCallbackThis:(ooscript::Object)callbackthis;
+	ooscript::Value callback();
+	void setCallback(ooscript::Value callback);
+	ooscript::Object callbackThis();
+	void setCallbackThis(ooscript::Object callbackthis);
 
-- (void)runPopulatorCallback:(HPVector)location;
+	void runPopulatorCallback(HPVector location);
 
-@end
+private:
+	void deleteJSPointers();
 
+	ooscript::Value				_callback = {};
+	ooscript::Object _callbackThis = {};
+	oo::ObjCRef<OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
+};
+
+}	// namespace cxx
+
+
+// Transitional: the Objective-C OOJSPopulatorDefinition, for callers not yet converted. Deleted,
+// with namespace cxx above, by the bridge's deletion bead.
+#import "OOJSPopulatorDefinition+ObjCBridge.h"
+
+#endif	// OOJSPOPULATORDEFINITION_H

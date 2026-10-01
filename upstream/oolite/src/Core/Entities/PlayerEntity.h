@@ -59,33 +59,8 @@ MA 02110-1301, USA.
 #define CUSTOM_VIEW_MAX_ZOOM_IN		1.5
 #define CUSTOM_VIEW_MAX_ZOOM_OUT	25
 
-#define ENTRY(label, value) label,
-
-typedef enum
-{
-	#include "OOGUIScreenID.tbl"
-} OOGUIScreenID;
-
-#define GALACTIC_HYPERSPACE_ENTRY(label, value) GALACTIC_HYPERSPACE_##label = value,
-
-typedef enum
-{
-	#include "OOGalacticHyperspaceBehaviour.tbl"
-#include <string_view>
-	
-	GALACTIC_HYPERSPACE_MAX					= GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES
-} OOGalacticHyperspaceBehaviour;
-
-#undef ENTRY
-#undef GALACTIC_HYPERSPACE_ENTRY
-
-
-enum
-{
-	// Values used for unknown strings.
-	kOOGUIScreenIDDefault					= GUI_SCREEN_MAIN,
-	kOOGalacticHyperspaceBehaviourDefault	= GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN
-};
+// OOGUIScreenID, OOGalacticHyperspaceBehaviour and their defaults (bead oo-9ht.64: plain header).
+#include "OOEntityEnums.h"
 
 typedef enum
 {

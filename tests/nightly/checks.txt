@@ -117,6 +117,7 @@
 [oo-hgfh] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSun && bash tools/tier-c.sh --only goldens
 [oo-mae5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSWaypoint && bash tools/tier-c.sh --only goldens
 [oo-ja7y] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderMaterial test_OOBasicMaterial && bash tools/tier-c.sh --only goldens
+=======
 [oo-n99o] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderUniform test_OOShaderMaterial && bash tools/tier-c.sh --only goldens
 [oo-ub2g] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSFlasher && bash tools/tier-c.sh --only goldens
 [oo-n041] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSFrameCallbacks && bash tools/tier-c.sh --only goldens
@@ -124,9 +125,18 @@
 [oo-utlm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSExhaustPlume && bash tools/tier-c.sh --only goldens
 [oo-bj8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity test_OOEntityWithDrawable test_CollisionRegion && bash tools/tier-c.sh --only goldens
 [oo-uw42] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckRequiresPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-9ht.24] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipGroup && bash tools/tier-c.sh --only goldens
+[oo-1h0h] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPopulatorDefinition && bash tools/tier-c.sh --only goldens
+[oo-r1ci7] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSTimer && bash tools/tier-c.sh --only goldens
 [oo-q9q4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListScript && bash tools/tier-c.sh --only goldens
 [oo-z2wr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckEquipmentPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-6bux] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJoystickManager test_OOSDLJoystickManager && bash tools/tier-c.sh --only goldens
+[oo-8fpc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSInterfaceDefinition && bash tools/tier-c.sh --only goldens
 [oo-tuq8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureVerifierStage && bash tools/tier-c.sh --only goldens
+=======
+[oo-2en] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSound && bash tools/tier-c.sh --only goldens
+[oo-9ht.66] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakReference && bash tools/check-core-tests.sh test_OOCharacter && bash tools/tier-c.sh --only goldens
+[oo-xg7g] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSGuiScreenKeyDefinition && bash tools/tier-c.sh --only goldens
 
 # Slow proofs of the Phase 3 beads re-offered after the Phase 2 gate (oo-9ht.67).
 [oo-3lj8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh
@@ -145,3 +155,9 @@
 [oo-o89] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-3rb.348] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-9hdp] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOProbabilisticTextureManager && bash tools/tier-c.sh --only goldens
+[oo-ljhc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureSprite && bash tools/tier-c.sh --only goldens
+[oo-9ht.64] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+[oo-bnjc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/tier-c.sh --only goldens
+[oo-9ht.65] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFileScannerVerifierStage test_OOAIStateMachineVerifierStage test_OOCheckDemoShipsPListVerifierStage test_OOCheckJSSyntaxVerifierStage test_OOCheckPListSyntaxVerifierStage test_OOCheckRequiresPListVerifierStage test_OOCheckEquipmentPListVerifierStage test_OOTextureVerifierStage
+# The upstream freeze policy check proves it fails on each defect (oo-kih, ADR-0059).
+[oo-kih] bash tools/upstream-delta-probe.sh

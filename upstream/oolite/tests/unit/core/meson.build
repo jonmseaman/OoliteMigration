@@ -9,6 +9,9 @@
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
 core_tests = {
+    'test_OOJSGuiScreenKeyDefinition': ['Core/Scripting/OOJSGuiScreenKeyDefinition.mm', 'Core/Scripting/OOJSGuiScreenKeyDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
+    'test_OOJSInterfaceDefinition': ['Core/Scripting/OOJSInterfaceDefinition.mm', 'Core/Scripting/OOJSInterfaceDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
+    'test_OOJSPopulatorDefinition': ['Core/Scripting/OOJSPopulatorDefinition.mm', 'Core/Scripting/OOJSPopulatorDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOPListScript': ['*'],
     'test_OOCache': ['Core/OOCache.mm', 'Core/OODescription.mm'],
     'test_OOCacheManager': ['Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OODescription.mm'],
@@ -17,7 +20,8 @@ core_tests = {
     'test_OOSoundReferencePoint': ['Core/OOBasicSoundReferencePoint.mm'],
     'test_OOColor': ['Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJoystickProfile': ['Core/OOJoystickProfile.mm', 'Core/OOJoystickProfile+ObjCBridge.mm'],
-    'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickProfile.mm', 'Core/OOJoystickProfile+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
+    'test_OOSDLJoystickManager': ['SDL/OOSDLJoystickManager.mm', 'SDL/OOSDLJoystickManager+ObjCBridge.mm', 'Core/OOJoystickManager.mm', 'Core/OOJoystickManager+ObjCBridge.mm', 'Core/OOJoystickProfile.mm', 'Core/OOJoystickProfile+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
+    'test_OOJoystickManager': ['Core/OOJoystickManager.mm', 'Core/OOJoystickManager+ObjCBridge.mm', 'Core/OOJoystickProfile.mm', 'Core/OOJoystickProfile+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm'],
     'test_OORegExpMatcher': ['Core/OORegExpMatcher.mm', 'Core/OORegExpMatcher+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOFileScannerVerifierStage': ['Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage+ObjCBridge.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOAIStateMachineVerifierStage': ['Core/OXPVerifier/OOAIStateMachineVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage.mm', 'Core/OXPVerifier/OOFileScannerVerifierStage+ObjCBridge.mm', 'Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
@@ -37,10 +41,12 @@ core_tests = {
     'test_OOShaderUniform': ['Core/Materials/OOShaderUniform.mm', 'Core/Materials/OOShaderUniform+ObjCBridge.mm', 'Core/Materials/OOShaderUniformMethodType.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/OOMatrix.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOpenALController': ['Core/OOOpenALController.mm'],
+    'test_OOSound': ['Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLStateManager': ['Core/OOOpenGLStateManager.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
+    'test_OOTextureSprite': ['Core/OOTextureSprite.mm', 'Core/OOTextureSprite+ObjCBridge.mm', 'Core/OOOpenGLStateManager.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOCrosshairs': ['Core/OOCrosshairs.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOpenGLMatrixManager': ['Core/OOOpenGLMatrixManager.mm', 'Core/OOOpenGLMatrixManager+ObjCBridge.mm', 'Core/OOMatrix.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOCharacter': ['Core/OOCharacter.mm', 'Core/OOCharacter+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
@@ -77,6 +83,7 @@ core_tests = {
     'test_OOJSFrameCallbacks': ['Core/Scripting/OOJSFrameCallbacks.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSCall': ['Core/Scripting/OOJSCall.mm', 'Core/Scripting/OOJSCall+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/Materials/OOShaderUniformMethodType.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
+    'test_GuiDisplayGen': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
 }
