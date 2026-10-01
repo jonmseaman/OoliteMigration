@@ -1518,3 +1518,31 @@ It also keeps the program in use retained in a file static.
    getOpenGLMatrixManager]`, a façade over the C++ matrix manager) crosses once with `oo::ToCxx`
    and null-guards each call with what the message to nil answered (`kZeroMatrix`, a null list;
    amendment oo-vt0o item 3).
+
+## Amendment (bead oo-9fwb): a category of a converted class in a file of its own
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMaterialConvenienceCreators.h/.mm`,
+  `OOMaterialConvenienceCreators+ObjCBridge.h/.mm`, the creators in `OOMaterial.h`,
+  `tests/unit/core/test_OOMaterialConvenienceCreators.mm`.
+
+**Context.** `OOMaterialConvenienceCreators` is the category `OOMaterial (OOConvenienceCreators)`:
+class methods that pick and make a material, and two private class methods of their own; its
+file also holds C++ helper functions (the shader-configuration synthesis) that are already C++.
+The root converted first (oo-smy), and its only outside caller (`OOMesh`) is still Objective-C.
+
+**Decision (recommended defaults).**
+
+1. **The category's class methods become static members of the converted class** (amendment oo-o89
+   item 4), declared in the class's header under a comment naming the category, and defined in the
+   category's own file, which keeps its name. Its private class methods are private static
+   members. `[self m]` in them is a plain call.
+2. **The category's `@interface` moves, unchanged, to `X+ObjCBridge.h`** of the category's file,
+   imported as its header's last line, and its `@implementation` is one-line forwarders in
+   `X+ObjCBridge.mm` that answer `oo::ToObjC(result)`. It goes with its own deletion bead, which
+   depends on the callers' beads.
+3. **The creators make materials with the C++ factories** (`OOShaderMaterial::shaderMaterialWithName`,
+   `OOBasicMaterial::materialWithName`, …), since every material class is converted; a class whose
+   test stubs its Objective-C collaborator (`OOCacheManager`, `OOTexture`) keeps the message to
+   `::X` (amendment oo-rmd7 item 3).
+4. **`+initialize` that set a file static** (compiled out here: the new-synthesizer branch) becomes a
+   function-local static read on first use, which is when `+initialize` ran.

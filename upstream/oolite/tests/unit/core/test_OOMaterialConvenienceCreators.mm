@@ -11,6 +11,8 @@
 	the cache, against the real material classes and GLSL programs compiled in a hidden GL context.
 	The universe, the resource manager (shader files), the cache manager, the textures and the
 	emission-map generator are stand-ins (proposed ADR-0056 amendment oo-z1s4 item 4).
+	Those checks ran on the Objective-C category first and now run through its forwarders; after
+	them, the same choices through the C++ static members (ADR-0056 amendment oo-9fwb).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -397,5 +399,52 @@ OO_TEST(fromDictionaries)
 		OO_CHECK(make("missing", oo::PList(), oo::PList()) == nil);
 	}
 }
+
+
+// --- The C++ static members (after the conversion) -------------------------------------------------
+
+namespace {
+
+bool IsCxx(const oo::Ref<cxx::OOMaterial> &material, Class cls)
+{
+	return material != nullptr && [oo::ToObjC(material) isMemberOfClass:cls];
+}
+
+oo::Ref<cxx::OOMaterial> MakeCxx(const char *name, oo::PList::Dict config, bool smooth = false, const std::optional<std::string> &cacheKey = std::nullopt)
+{
+	return cxx::OOMaterial::materialWithName(name != nullptr ? std::optional<std::string>(name) : std::nullopt,
+											 cacheKey, oo::PList(std::move(config)), oo::PList(), nil, smooth);
+}
+
+}	// namespace
+
+
+OO_TEST(cxxStaticMembers)
+{
+	if (!SetUp(NO))  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OO_CHECK(IsCxx(MakeCxx("hull.png", {}), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsCxx(MakeCxx(nullptr, {}), [OOBasicMaterial class]));
+		OO_CHECK(IsCxx(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } }), [OOMultiTextureMaterial class]));
+		OO_CHECK(MakeCxx("Named", {})->name() == std::optional<std::string>("Named"));
+	}
+
+	if (!SetUp(YES, DETAIL_LEVEL_SHADERS))  { OO_CHECK(false); return; }
+	@autoreleasepool
+	{
+		OO_CHECK(IsCxx(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship")), [OOShaderMaterial class]));
+		OO_CHECK(gCacheWrites.size() == 1);
+
+		const oo::PList materials = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "diffuse_map", oo::PList("m.png") } }) } });
+		const oo::PList shaders = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } }) } });
+		OO_CHECK(IsCxx(cxx::OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false), [OOShaderMaterial class]));
+		OO_CHECK(cxx::OOMaterial::materialWithName(std::string("missing"), std::nullopt, oo::PList(), oo::PList(), oo::PList(), nil, false) == nullptr);
+
+		// The facade's class method answers the same kind as the static member it forwards to.
+		OO_CHECK(Is(Make("hull.png", {}, YES), [OOShaderMaterial class]) && IsCxx(MakeCxx("hull.png", {}, true), [OOShaderMaterial class]));
+	}
+}
+
 
 OO_TEST_MAIN()
