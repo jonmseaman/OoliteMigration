@@ -9,6 +9,7 @@
 # tools/check-core-tests.sh fails when a test_*.mm here is missing from this list.
 
 core_tests = {
+    'test_OOPListScript': ['*'],
     'test_OOCache': ['Core/OOCache.mm', 'Core/OODescription.mm'],
     'test_OOCacheManager': ['Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOEncodingConverter': ['Core/OOEncodingConverter.mm', 'Core/OOCache.mm', 'Core/OODescription.mm'],
@@ -53,6 +54,9 @@ core_tests = {
     'test_CollisionRegion': ['*'],
     'test_Octree': ['*'],
     'test_OOJSVector': ['Core/Scripting/OOJSVector.mm', 'Core/Scripting/OOJSVector+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOHPVector.mm', 'Core/OOVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c'],
+    'test_OOJSSoundSource': ['Core/Scripting/OOJSSoundSource.mm', 'Core/Scripting/OOJSSoundSource+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOJSSound': ['Core/Scripting/OOJSSound.mm', 'Core/Scripting/OOJSSound+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOJSSun': ['Core/Scripting/OOJSSun.mm', 'Core/Scripting/OOJSSun+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSWaypoint': ['Core/Scripting/OOJSWaypoint.mm', 'Core/Scripting/OOJSWaypoint+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOQuaternion.cpp', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/legacy_random.c'],
     'test_OOJSFlasher': ['Core/Scripting/OOJSFlasher.mm', 'Core/Scripting/OOJSFlasher+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJSExhaustPlume': ['Core/Scripting/OOJSExhaustPlume.mm', 'Core/Scripting/OOJSExhaustPlume+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],

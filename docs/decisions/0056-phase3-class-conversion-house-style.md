@@ -1542,6 +1542,48 @@ subclass's calls the superclass's.
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
 
+## Amendment (bead oo-q9q4): scripting classes whose superclass is still Objective-C, and the rest of the batch
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOPListScript.h/.mm`,
+  `OOPListScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOPListScript.mm`; the same shape in
+  `OOJSPopulatorDefinition`, `OOJSInterfaceDefinition` and `OOJSGuiScreenKeyDefinition` (oo-1h0h,
+  oo-8fpc, oo-xg7g, superclass `OOWeakRefObject`).
+
+**Context.** Several scripting classes derive from classes that are still Objective-C: `OOPListScript`
+from `OOScript`, the three JS definition classes from `OOWeakRefObject` (whose instances are weakly
+referenced). Their callers `alloc`/`init` them, and `OOPListScript`'s own class methods make its
+instances. The rest of the batch (oo-3smy, oo-81hy, oo-n041, oo-lzsb) met smaller questions.
+
+**Decision (recommended defaults).**
+
+1. **They follow amendment oo-o89.** The façade keeps the old superclass, makes and owns the C++
+   object in its initialiser, forwards every method, and `oo::ToObjC` answers the live façade or nil.
+   A class method that makes instances becomes a static member that makes them through the façade
+   (`[[::OOPListScript alloc] initWithName:…]`, as `[[self alloc] …]` did): until the superclass
+   converts, an instance is its façade. The initialiser that only those factories used is declared
+   in the bridge header's category `OOObjCBridge`.
+2. **A header that imports another class's header only for an ivar type** names it with `@class`
+   and the `.mm` imports it (amendment oo-fg7i item 5), in the commit that adds the test, so that the
+   test can stand in for that class (`OOJSScript`) without importing its header.
+3. **A class whose only other link is the engine's by-selector glue gets the stand-ins of amendment
+   oo-ppc item 6 in its test,** including the engine object and `OOJSScript`, which the test defines
+   itself; a test that needs the cache manager, the sanitizer and the player links the whole game
+   (amendment oo-44gg) and reads its scripts from the cache.
+4. **A scripting file with no class** (`OOJSFrameCallbacks`) converts as a binding (amendment oo-ppc
+   item 2); a static whose line that touches moves into an anonymous namespace, as the others were,
+   because tier-a counts an edited line's old finding as new. **One with no Objective-C left**
+   (`OOJSEngineDebuggerHelpers`) gets an honest acceptance and an empty proof commit (CLAUDE.md rule 9).
+   **Objective-C that exists to be read by the runtime** (the method-signature template class of
+   `OOJSCall`) moves unchanged to the bridge (amendment oo-rmd7 item 1) until nothing is called by
+   name.
+5. **A converted class in `namespace cxx` that messages the class being converted** names its façade
+   `::X`, in its header's ivar too (`OORegExpMatcher`'s `::OOJSFunction *_tester`), as amendment
+   oo-rmd7 item 3 says.
+
+**Consequences.** Each of these classes has a façade with a deletion bead that waits for its
+superclass (oo-604l for `OOScript`; the retirement of `OOWeakRefObject`). No caller changed but the
+two `::OOJSFunction` lines.
+
 ## Amendment (bead oo-ja7y): categories on the root that a class's header declares, and `self` as a value
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderMaterial.h/.mm`,

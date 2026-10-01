@@ -112,6 +112,9 @@
 [oo-kdnm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckJSSyntaxVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-li7k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckPListSyntaxVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-si5w] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckDemoShipsPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-cib0] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSoundSource && bash tools/tier-c.sh --only goldens
+[oo-crq2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSound && bash tools/tier-c.sh --only goldens
+[oo-hgfh] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSun && bash tools/tier-c.sh --only goldens
 [oo-mae5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSWaypoint && bash tools/tier-c.sh --only goldens
 [oo-ja7y] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderMaterial test_OOBasicMaterial && bash tools/tier-c.sh --only goldens
 [oo-n99o] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShaderUniform test_OOShaderMaterial && bash tools/tier-c.sh --only goldens
@@ -121,6 +124,7 @@
 [oo-utlm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSExhaustPlume && bash tools/tier-c.sh --only goldens
 [oo-bj8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Entity test_OOEntityWithDrawable test_CollisionRegion && bash tools/tier-c.sh --only goldens
 [oo-uw42] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckRequiresPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-q9q4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListScript && bash tools/tier-c.sh --only goldens
 [oo-z2wr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckEquipmentPListVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-tuq8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureVerifierStage && bash tools/tier-c.sh --only goldens
 
