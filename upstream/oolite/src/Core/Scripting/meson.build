@@ -4,6 +4,7 @@ oolite_sources += files(
     'EntityOOJavaScriptExtensions.mm',
     'OOConstToJSString.mm',
     'OOJSCall.mm',
+    'OOJSCall+ObjCBridge.mm',
     'OOJSClock.mm',
     'OOJSDock.mm',
     'OOJSEngineDebuggerHelpers.mm',
