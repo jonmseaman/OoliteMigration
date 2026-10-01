@@ -76,6 +76,7 @@ core_tests = {
     'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
     'test_OOProfilingStopwatch': ['Core/OOProfilingStopwatch.mm'],
     'test_OOAsyncWorkManager': ['Core/OOAsyncWorkManager.mm', 'Core/OOAsyncWorkManager+ObjCBridge.mm', 'Core/OOAsyncQueue.mm', 'Core/OOCPUInfo.mm', 'Core/OODescription.mm'],
+    'test_AI': ['Core/AI.mm', 'Core/AI+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OOCallByName.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOWeakReference': ['Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOWeakSet': ['Core/OOWeakSet.mm', 'Core/OOWeakSet+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJSFunction': ['Core/Scripting/OOJSFunction.mm', 'Core/Scripting/OOJSFunction+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
