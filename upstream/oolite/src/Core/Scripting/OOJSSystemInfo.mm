@@ -362,9 +362,11 @@ std::vector<std::string> OOSystemInfo::allKeys()
 	{
 		// the dictionary's keys, in key order (-allKeys gave hash order)
 		std::vector<std::string> keys;
-		if (const oo::PList::Dict *systemData = [UNIVERSE cxx_currentSystemData].getIf<oo::PList::Dict>())
+		// -cxx_currentSystemData answers a copy: keep it alive while the loop reads it (bead oo-f4241).
+		const oo::PList systemData = [UNIVERSE cxx_currentSystemData];
+		if (const oo::PList::Dict *systemDict = systemData.getIf<oo::PList::Dict>())
 		{
-			for (const auto &entry : *systemData)  keys.push_back(entry.first);
+			for (const auto &entry : *systemDict)  keys.push_back(entry.first);
 		}
 		return keys;
 	}

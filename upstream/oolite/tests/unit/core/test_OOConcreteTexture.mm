@@ -45,12 +45,12 @@ uint32_t gDebugFlags = 0;
 - (void) loadTexture
 {
 	if (_empty)  return;
-	_width = 4;
-	_height = 2;
-	_format = kOOPixMapRGBA;
+	_cxxLoader->_width = 4;
+	_cxxLoader->_height = 2;
+	_cxxLoader->_format = kOOPixMapRGBA;
 	uint8_t *bytes = (uint8_t *)malloc(4 * 2 * 4);
 	for (unsigned i = 0; i < 4 * 2 * 4; i++)  bytes[i] = (uint8_t)(i + 1);
-	_data = bytes;
+	_cxxLoader->_data = bytes;
 }
 
 @end
