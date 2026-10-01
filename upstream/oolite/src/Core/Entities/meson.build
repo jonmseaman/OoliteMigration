@@ -51,6 +51,7 @@ oolite_sources += files(
     'ShipEntityLoadRestore.mm',
     'ShipEntityScriptMethods.mm',
     'SkyEntity.mm',
+    'SkyEntity+ObjCBridge.mm',
     'StationEntity.mm',
     'WormholeEntity.mm',
 )
