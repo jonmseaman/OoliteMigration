@@ -79,6 +79,7 @@ core_tests = {
     'test_OOJSSoundSource': ['Core/Scripting/OOJSSoundSource.mm', 'Core/Scripting/OOJSSoundSource+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSound': ['Core/Scripting/OOJSSound.mm', 'Core/Scripting/OOJSSound+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSun': ['Core/Scripting/OOJSSun.mm', 'Core/Scripting/OOJSSun+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOJSPlayer': ['Core/Scripting/OOJSPlayer.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_OOJSEntity': ['Core/Scripting/OOJSEntity.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/Scripting/OOConstToJSString.cpp', 'Core/OOQuaternion.cpp', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/legacy_random.c'],
     'test_OOJSMissionVariables': ['Core/Scripting/OOJSMissionVariables.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOIsNumberLiteral.cpp'],
     'test_OOJSMission': ['Core/Scripting/OOJSMission.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/Scripting/OOConstToJSString.cpp', 'Core/OODescription.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
