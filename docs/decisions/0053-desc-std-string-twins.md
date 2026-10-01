@@ -1,6 +1,6 @@
 # ADR-0053: DESC() gets std::string twins; callers move per file
 
-- Status: Proposed. The default is in effect until Jon decides (CLAUDE.md rule 10).
+- Status: Accepted (Jon, 2026-09-30, in chat). Recorded from the in-effect default (CLAUDE.md rule 10).
 - Date: 2026-09-29
 - Beads: oo-3rb.312 (DESC half of oo-mr9c), seam oo-3rb.316, chunks oo-3rb.317..323
 
