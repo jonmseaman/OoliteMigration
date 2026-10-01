@@ -77,6 +77,11 @@ core_tests = {
     'test_OOJSSoundSource': ['Core/Scripting/OOJSSoundSource.mm', 'Core/Scripting/OOJSSoundSource+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSound': ['Core/Scripting/OOJSSound.mm', 'Core/Scripting/OOJSSound+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSun': ['Core/Scripting/OOJSSun.mm', 'Core/Scripting/OOJSSun+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOJSPlanet': ['Core/Scripting/OOJSPlanet.mm', 'Core/Scripting/OOJSPlanet+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOJSSystemInfo': ['Core/Scripting/OOJSSystemInfo.mm', 'Core/Scripting/OOJSSystemInfo+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OOCommodities.mm', 'Core/OOCommodities+ObjCBridge.mm', 'Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/OOIsNumberLiteral.cpp', 'Core/legacy_random.c'],
+    'test_OOJSManifest': ['Core/Scripting/OOJSManifest.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOCommodities.mm', 'Core/OOCommodities+ObjCBridge.mm', 'Core/OOCommodityMarket.mm', 'Core/OOCommodityMarket+ObjCBridge.mm', 'Core/legacy_random.c'],
+    'test_OOJSShipGroup': ['Core/Scripting/OOJSShipGroup.mm', 'Core/Scripting/OOJSShipGroup+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOJSVisualEffect': ['Core/Scripting/OOJSVisualEffect.mm', 'Core/Scripting/OOJSVisualEffect+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJSWaypoint': ['Core/Scripting/OOJSWaypoint.mm', 'Core/Scripting/OOJSWaypoint+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOQuaternion.cpp', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/legacy_random.c'],
     'test_OOJSFlasher': ['Core/Scripting/OOJSFlasher.mm', 'Core/Scripting/OOJSFlasher+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJSExhaustPlume': ['Core/Scripting/OOJSExhaustPlume.mm', 'Core/Scripting/OOJSExhaustPlume+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
@@ -113,6 +118,7 @@ core_tests = {
     'test_OORingEffectEntity': ['*'],
     'test_OODebugMonitor': ['Core/Debug/OODebugMonitor.mm', 'Core/Debug/OODebugMonitor+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OODebugTCPConsoleClient': ['Core/Debug/OODebugTCPConsoleClient.mm', 'Core/Debug/OODebugTCPConsoleClient+ObjCBridge.mm', 'Core/Debug/OOTCPStreamDecoder.c', 'Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm', 'Core/OODescription.mm'],
+    'test_OODebugSupport': ['Core/Debug/OODebugSupport.mm', 'Core/Debug/OODebugSupport+ObjCBridge.mm'],
     'test_OODebugStandards': ['Core/Debug/OODebugStandards.mm'],
 }
 
