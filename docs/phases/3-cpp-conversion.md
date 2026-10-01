@@ -143,6 +143,10 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      methods with `[oo::ToObjC(this) …]`, and `ToObjC` never makes a new façade. The deletion bead
      depends on the superclass's conversion. A category of an unconverted class converts with that
      class. SDL/GL calls stay verbatim, and an SDL class's test simulates its device.
+   - **The superclass of such a façade** (ADR-0056 amendment oo-6bux; exemplar
+     `src/Core/OOJoystickManager.*`): convert it as a root (Amendment 1); the subclass's façade is
+     unchanged and gets an adapter as its C++ part. An `-init` that calls overridden members is
+     `init()`, run after the C++ part exists. A factory by registered `Class` stays in the façade.
    - **A JS binding file (`OOJS*`)** (ADR-0056 amendment oo-ppc; exemplar
      `src/Core/Scripting/OOJSVector.*`): it has no class, and its JS class is already C++. Do not
      touch `OOJS_NATIVE_*`/`OOJS_PROFILE_*`: they are C++ already, and an exception under a native
