@@ -14,6 +14,7 @@ oolite_sources += files(
     'OOJSEngineTimeManagement+ObjCBridge.mm',
     'OOJSEntity.mm',
     'OOJSEquipmentInfo.mm',
+    'OOJSEquipmentInfo+ObjCBridge.mm',
     'OOJSExhaustPlume.mm',
     'OOJSExhaustPlume+ObjCBridge.mm',
     'OOJSFlasher.mm',
