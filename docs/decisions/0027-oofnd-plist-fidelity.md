@@ -1,6 +1,6 @@
 # ADR-0027 — `oo::PList`: representation, and where it may differ from GNUstep
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, beads oo-075 / oo-6ft /
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, beads oo-075 / oo-6ft /
 oo-6rj / oo-gxv / oo-pig, 2026-09-23; ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Refines** the `PList` row of [Phase 2](../phases/2-oofnd.md) and architecture §3.4. Implemented in

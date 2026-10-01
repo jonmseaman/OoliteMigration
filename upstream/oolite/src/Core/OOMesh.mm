@@ -56,8 +56,6 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 #include "oofnd/Log.hpp"
@@ -93,10 +91,10 @@ static const char * const kOOLogMeshTooManyMaterials		= "mesh.load.failed.tooMan
 
 
 #if OOMESH_PROFILE
-#define PROFILE(tag)  do { _stopwatchLastTime = Profile(tag, _stopwatch, _stopwatchLastTime); } while (0)
+#define PROFILE(tag)  do { _stopwatchLastTime = Profile(tag, _stopwatch.get(), _stopwatchLastTime); } while (0)
 static OOTimeDelta Profile(const char *tag, OOProfilingStopwatch *stopwatch, OOTimeDelta lastTime)
 {
-	OOTimeDelta now = [stopwatch currentTime];
+	OOTimeDelta now = stopwatch->currentTime();
 	OO_LOG("mesh.profile", "Mesh profile: stage {}, {:g} seconds (delta {:g})", tag, now, now - lastTime);
 	return now;
 }
@@ -344,7 +342,7 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	DESTROY(_shaderBindingTarget);
 	
 #if OOMESH_PROFILE
-	DESTROY(_stopwatch);
+	_stopwatch = nullptr;
 #endif
 	
 	[super dealloc];
@@ -909,7 +907,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		_cacheWriteable = cacheWriteable;
 		
 #if OOMESH_PROFILE
-		_stopwatch = [[OOProfilingStopwatch alloc] init];
+		_stopwatch = oo::makeRef<OOProfilingStopwatch>();
 #endif
 		
 		if ([self loadData:name scaleFactor:scale])
@@ -941,7 +939,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			self = nil;
 		}
 #if OOMESH_PROFILE
-		DESTROY(_stopwatch);
+		_stopwatch = nullptr;
 #endif
 #if OO_MULTITEXTURE
 		if (EXPECT(self != nil))
@@ -971,8 +969,10 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	{
 		/*	The C++ ivars were copied bitwise too, so the copy's aliases self's storage: construct
 			each afresh over the copy (never assign, which would free self's buffers), where the
-			Objective-C ivars get their -retain.
+			Objective-C ivars get their -retain. The superclass's C++ part too (proposed ADR-0056,
+			amendment oo-smy).
 		*/
+		oo::ConstructCxxPartOfCopy(result);
 		new (&result->baseFile) std::optional<std::string>(baseFile);
 		new (&result->baseFileOctreeCacheRef) std::optional<std::string>(baseFileOctreeCacheRef);
 		[result->octree retain];

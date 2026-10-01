@@ -30,12 +30,10 @@ SOFTWARE.
 
 #import "OODebugSupport.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OODebugMonitor.h"
 #import "OODebugTCPConsoleClient.h"
 #import "GameController.h"
 #import "OOJavaScriptEngine.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"

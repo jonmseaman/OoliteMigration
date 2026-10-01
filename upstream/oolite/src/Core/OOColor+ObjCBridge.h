@@ -63,12 +63,6 @@ MA 02110-1301, USA.
 + (OOColor *) cxx_brightColorWithDescription:(const oo::PList &)description;
 + (OOColor *) cxx_colorWithDescription:(const oo::PList &)description saturationFactor:(float)factor;
 
-// The id forms of the three above: <description> through oo::PListFrom. Deleted by oo-qps.72
-// once their callers have moved to the PList forms.
-+ (OOColor *) colorWithDescription:(id)description;
-+ (OOColor *) brightColorWithDescription:(id)description;
-+ (OOColor *) colorWithDescription:(id)description saturationFactor:(float)factor;
-
 + (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString;
 
 + (OOColor *) blackColor;		// 0.0 white

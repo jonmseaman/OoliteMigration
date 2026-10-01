@@ -335,7 +335,11 @@ def test_every_exit_context_in_the_tree_is_distinguished_from_the_expected_one()
     contexts = set()
     for path in iter_source_files(src):
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
-            contexts |= set(re.findall(r'exitAppWithContext:@"([^"]+)"', fh.read()))
+            # Either spelling of the exit call: the ObjC -exitAppWithContext:@"..." or the C++
+            # -cxx_exitAppWithContext:"..." it became in Phase 2 (oo-6abg). Jon approved
+            # accepting both, 2026-09-29 (bead oo-3rb.332).
+            contexts |= set(re.findall(
+                r'(?:exitAppWithContext:@|cxx_exitAppWithContext:)"([^"]+)"', fh.read()))
     assert EXPECTED_EXIT_CONTEXT in contexts, (
         f"{EXPECTED_EXIT_CONTEXT!r} is not an exit context in the game's source any more; this "
         f"test would then never pass. Found: {sorted(contexts)}"
@@ -833,7 +837,9 @@ def test_the_witnesses_are_the_strings_the_game_really_writes():
         f"{SHUTDOWN_DEFAULTS_WITNESS!r} is not in GameController.m; the post-synchronize log "
         "line has been reworded and this witness now matches nothing"
     )
-    assert 'OOLog(@"exit.context"' in source, (
+    # Either spelling of the exit.context log call: the ObjC OOLog(@"...") or the C++ OO_LOG("...")
+    # it became in Phase 2 (oo-ffi5). Jon approved accepting both, 2026-09-29 (bead oo-3rb.332).
+    assert 'OOLog(@"exit.context"' in source or 'OO_LOG("exit.context"' in source, (
         "GameController.m no longer logs the exit.context domain, so "
         f"{SHUTDOWN_EXIT_CONTEXT_WITNESS!r} can never appear in a log"
     )

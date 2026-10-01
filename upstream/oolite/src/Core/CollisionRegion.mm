@@ -33,91 +33,78 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "OODebugFlags.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 
 #include "oofnd/String.hpp"
 
 
-static BOOL positionIsWithinRegion(HPVector position, CollisionRegion *region);
-static BOOL sphereIsWithinRegion(HPVector position, GLfloat rad, CollisionRegion *region);
-static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region);
-
-
-@implementation CollisionRegion
+namespace cxx {
 
 // basic alloc/ dealloc routines
 //
 static int crid_counter = 1;
 
 
-- (id) init	// Designated initializer.
+CollisionRegion::CollisionRegion()	// Designated initializer.
 {
-	if ((self = [super init]))
 	{
 		max_entities = COLLISION_MAX_ENTITIES;
 		entity_array = (Entity **)malloc(max_entities * sizeof(Entity *));
 		if (entity_array == NULL)
 		{
-			[self release];
-			return nil;
+			// -init released itself and returned nil; a constructor cannot, so it raises what
+			// -addEntity: raises when the list cannot grow (ADR-0056 amendment oo-44gg).
+			[OOException raise:OOMallocException format:"Not enough memory to create collision region member list."];
 		}
 		
 		crid = crid_counter++;
 	}
-	return self;
 }
 
 
-- (id) initAsUniverse
+CollisionRegion::CollisionRegion(AsUniverse) : CollisionRegion()
 {
-	if ((self = [self init]))
 	{
 		isUniverse = YES;
 	}
-	return self;
 }
 
 
-- (id) initAtLocation:(HPVector)locn withRadius:(GLfloat)rad withinRegion:(CollisionRegion *)otherRegion
+CollisionRegion::CollisionRegion(HPVector locn, GLfloat rad, CollisionRegion *otherRegion) : CollisionRegion()
 {
-	if ((self = [self init]))
 	{
 		location = locn;
 		radius = rad;
 		border_radius = COLLISION_REGION_BORDER_RADIUS;
 		parentRegion = otherRegion;
 	}
-	return self;
 }
 
 
-- (void) dealloc
+CollisionRegion::~CollisionRegion()
 {
 	free(entity_array);
 	subregions.clear();
-	
-	[super dealloc];
 }
 
 
 // OOObject's -description wraps this as "<CollisionRegion 0x...>{ID: ...}", which is what this
 // class's own -description printed.
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> CollisionRegion::descriptionComponents() const
 {
 	return oo::str::format("ID: %d, %zu subregions, %u ents", crid, subregions.size(), n_entities);
 }
 
 
-- (void) clearSubregions
+void CollisionRegion::clearSubregions()
 {
-	for (const auto &sub : subregions)  [sub.get() clearSubregions];
+	for (const auto &sub : subregions)  sub->clearSubregions();
 	subregions.clear();
 }
 
 
-- (void) addSubregionAtPosition:(HPVector)pos withRadius:(GLfloat)rad
+void CollisionRegion::addSubregionAtPosition(HPVector pos, GLfloat rad)
 {
 	// check if this can be fitted within any of the subregions
 	//
@@ -127,7 +114,7 @@ static int crid_counter = 1;
 		if (sphereIsWithinRegion(pos, rad, sub))
 		{
 			// if it fits, put it in!
-			[sub addSubregionAtPosition:pos withRadius:rad];
+			sub->addSubregionAtPosition(pos, rad);
 			return;
 		}
 		if (positionIsWithinRegion(pos, sub))
@@ -139,15 +126,15 @@ static int crid_counter = 1;
 	// no subregion fit - move on...
 	//
 	if (subregions.empty())  subregions.reserve(32);
-	subregions.push_back(oo::adoptObjC([[CollisionRegion alloc] initAtLocation:pos withRadius:rad withinRegion:self]));
+	subregions.push_back(oo::makeRef<CollisionRegion>(pos, rad, this));
 }
 
 
 // update routines to check if a position is within the radius or within its borders
 //
-static BOOL positionIsWithinRegion(HPVector position, CollisionRegion *region)
+bool CollisionRegion::positionIsWithinRegion(HPVector position, CollisionRegion *region)
 {
-	if (region == nil)  return NO;
+	if (region == nullptr)  return NO;
 	if (region->isUniverse)  return YES;
 	
 	HPVector loc = region->location;
@@ -164,9 +151,9 @@ static BOOL positionIsWithinRegion(HPVector position, CollisionRegion *region)
 }
 
 
-static BOOL sphereIsWithinRegion(HPVector position, GLfloat rad, CollisionRegion *region)
+bool CollisionRegion::sphereIsWithinRegion(HPVector position, GLfloat rad, CollisionRegion *region)
 {
-	if (region == nil)  return NO;
+	if (region == nullptr)  return NO;
 	if (region->isUniverse)  return YES;
 	
 	HPVector loc = region->location;
@@ -183,9 +170,9 @@ static BOOL sphereIsWithinRegion(HPVector position, GLfloat rad, CollisionRegion
 }
 
 
-static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
+bool CollisionRegion::positionIsWithinBorders(HPVector position, CollisionRegion *region)
 {
-	if (region == nil)  return NO;
+	if (region == nullptr)  return NO;
 	if (region->isUniverse)  return YES;
 	
 	HPVector loc = region->location;
@@ -204,15 +191,15 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 
 // collision checking
 //
-- (void) clearEntityList
+void CollisionRegion::clearEntityList()
 {
-	for (const auto &sub : subregions)  [sub.get() clearEntityList];
+	for (const auto &sub : subregions)  sub->clearEntityList();
 	n_entities = 0;
 	isPlayerInRegion = NO;
 }
 
 
-- (void) addEntity:(Entity *)ent
+void CollisionRegion::addEntity(Entity *ent)
 {
 	// expand if necessary
 	//	
@@ -233,34 +220,34 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 }
 
 
-- (BOOL) checkEntity:(Entity *)ent
+bool CollisionRegion::checkEntity(Entity *ent)
 {
 	HPVector position = ent->position;
 	
 	// check subregions
 	for (const auto &sub : subregions)
 	{
-		if (positionIsWithinBorders(position, sub.get()) && [sub.get() checkEntity:ent])
+		if (positionIsWithinBorders(position, sub.get()) && sub->checkEntity(ent))
 		{
 			return YES;
 		}
 	}
 	
-	if (!positionIsWithinBorders(position, self))
+	if (!positionIsWithinBorders(position, this))
 	{
 		return NO;
 	}
 	
-	[self addEntity:ent];
-	[ent setCollisionRegion:self];
+	addEntity(ent);
+	[ent setCollisionRegion:oo::ToObjC(this)];
 	return YES;
 }
 
 
-- (void) findCollisions
+void CollisionRegion::findCollisions()
 {
 	// test for collisions in each subregion
-	for (const auto &sub : subregions)  [sub.get() findCollisions];
+	for (const auto &sub : subregions)  sub->findCollisions();
 	
 	// reject trivial cases
 	if (n_entities < 2)  return;
@@ -288,7 +275,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
-		OO_LOG("collisionRegion.debug", "DEBUG in collision region {} testing {} out of {} entities", oo::DescriptionOf(self), n_entities_to_test, n_entities);
+		OO_LOG("collisionRegion.debug", "DEBUG in collision region {} testing {} out of {} entities", oo::DescriptionOf(oo::ToObjC(this)), n_entities_to_test, n_entities);
 	}
 #endif
 	
@@ -448,6 +435,9 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 }
 
 
+}	// namespace cxx
+
+
 // an outValue of 1 means it's just being occluded.
 static BOOL entityByEntityOcclusionToValue(Entity *e1, Entity *e2, OOSunEntity *the_sun, float *outValue)
 {
@@ -585,7 +575,9 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 }
 
 
-- (void) findShadowedEntities
+namespace cxx {
+
+void CollisionRegion::findShadowedEntities()
 {
 	// reject trivial cases
 	if (n_entities < 2)  return;
@@ -634,7 +626,7 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 	}
 	
 	// test for shadows in each subregion
-	for (const auto &sub : subregions)  [sub.get() findShadowedEntities];
+	for (const auto &sub : subregions)  sub->findShadowedEntities();
 	
 	// test each entity in this region against the others
 	for (i = 0; i < n_entities; i++)
@@ -722,20 +714,20 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 }
 
 
-- (std::string) collisionDescription
+std::string CollisionRegion::collisionDescription()
 {
 	return oo::str::format("p%u - c%u", checks_this_tick, checks_within_range);
 }
 
 
-- (std::optional<std::string>) debugOut
+std::optional<std::string> CollisionRegion::debugOut()
 {
 	std::string result = oo::str::format("%d:", n_entities);
 	for (const auto &sub : subregions)
 	{
-		if (const auto subOut = [sub.get() debugOut])  result += *subOut;
+		if (const auto subOut = sub->debugOut())  result += *subOut;
 	}
 	return result;
 }
 
-@end
+}	// namespace cxx

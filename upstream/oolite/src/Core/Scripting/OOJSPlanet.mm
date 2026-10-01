@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOJSVector.h"
 
 #import "OOPlanetEntity.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>

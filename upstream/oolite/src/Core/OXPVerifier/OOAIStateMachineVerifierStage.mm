@@ -24,13 +24,11 @@ MA 02110-1301, USA.
 */
 
 #import "OOAIStateMachineVerifierStage.h"
-#import "OOPListView.h"
 #import "OOPListParsing.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
@@ -78,28 +76,19 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 }	// namespace
 
 
-@interface OOAIStateMachineVerifierStage (Private)
-
-- (void) validateAI:(const std::string &)aiName;
-
-@end
-
-
-@implementation OOAIStateMachineVerifierStage
-
-- (std::optional<std::string>)cxx_name
+std::optional<std::string> OOAIStateMachineVerifierStage::name()
 {
 	return kStageName;
 }
 
 
-- (BOOL) shouldRun
+bool OOAIStateMachineVerifierStage::shouldRun()
 {
 	return !_usedAIs.empty();
 }
 
 
-- (void) run
+void OOAIStateMachineVerifierStage::run()
 {
 	// Build whitelist. Note that we merge in aliases since the distinction doesn't matter when just validating.
 	const oo::PList whitelist = [ResourceManager cxx_whitelistDictionary];
@@ -120,38 +109,34 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 
 	for (const std::string &aiName : SortedCaseInsensitively(_usedAIs))
 	{
-		[self validateAI:aiName];
+		validateAI(aiName);
 	}
 
 	_whitelist.clear();
 }
 
 
-+ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
+std::string OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(OOOXPVerifier *)
 {
 	return kStageName;
 }
 
 
-- (void) stateMachineNamed:(const std::string &)name usedByShip:(const std::string &)shipName
+void OOAIStateMachineVerifierStage::stateMachineNamed(const std::string &name, const std::string &shipName)
 {
-	OOFileScannerVerifierStage	*fileScanner = nil;
+	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
 
 	if (!AddString(_usedAIs, name))  return;
 
-	fileScanner = [[self verifier] fileScannerStage];
-	if (![fileScanner cxx_fileExists:name inFolder:"AIs" referencedFrom:oo::str::format("shipdata.plist entry \"%s\"", shipName.c_str()) checkBuiltIn:YES])
+	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	if (fileScanner == nullptr || !fileScanner->fileExists(name, "AIs", oo::str::format("shipdata.plist entry \"%s\"", shipName.c_str()), true))
 	{
-		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, [[self verifier] cxx_oxpDisplayName].value_or("(null)"));
+		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, [verifier() cxx_oxpDisplayName].value_or("(null)"));
 	}
 }
 
-@end
 
-
-@implementation OOAIStateMachineVerifierStage (Private)
-
-- (void) validateAI:(const std::string &)aiName
+void OOAIStateMachineVerifierStage::validateAI(const std::string &aiName)
 {
 	std::optional<std::string>	path;
 	oo::PList					aiStateMachine;
@@ -163,9 +148,9 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 	oo::log::indentIf("verifyOXP.verbose.validateAI");
 
 	// Attempt to load AI.
-	path = [[[self verifier] fileScannerStage] cxx_pathForFile:aiName inFolder:"AIs" referencedFrom:"AI list" checkBuiltIn:NO];
+	cxx::OOFileScannerVerifierStage *fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	if (fileScanner != nullptr)  path = fileScanner->pathForFile(aiName, "AIs", "AI list", false);
 	if (!path.has_value())  return;
-
 	aiStateMachine = PListDictionaryFromFile(*path);
 	if (aiStateMachine.isNull())
 	{
@@ -230,7 +215,5 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 	
 	oo::log::outdentIf("verifyOXP.verbose.validateAI");
 }
-
-@end
 
 #endif

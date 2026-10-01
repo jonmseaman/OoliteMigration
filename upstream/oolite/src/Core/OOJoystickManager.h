@@ -247,6 +247,7 @@ typedef struct
 
 
 #import "OOJoystickProfile.h"
+#include "oofnd/String.hpp"
 
 @interface OOJoystickManager: OOObject 
 {

@@ -42,7 +42,6 @@ MA 02110-1301, USA.
 #import "OOTexture.h"
 #import "OOTextureSprite.h"
 #import "OOPolygonSprite.h"
-#import "OOPListView.h"
 #import "OOEncodingConverter.h"
 #import "OOCrosshairs.h"
 #import "OOConstToString.h"
@@ -50,12 +49,13 @@ MA 02110-1301, USA.
 #import "OOJoystickManager.h"
 #import "OOJavaScriptEngine.h"
 #import "OOStringExpander.h"
-#import "OOFoundationBridge.h"
 #import "OOCallByName.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 #define ONE_SIXTEENTH				0.0625
@@ -1019,26 +1019,23 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	if (weapon != _lastWeaponType || overallAlpha != _lastOverallAlpha || weaponsOnline != _lastWeaponsOnline)
 	{
-		DESTROY(_crosshairs);
+		_crosshairs = nullptr;
 	}
 	
-	if (_crosshairs == nil)
+	if (_crosshairs == nullptr)
 	{
 		GLfloat useAlpha = weaponsOnline ? overallAlpha : overallAlpha * 0.5f;
 		
 		// Make new crosshairs object
 		points = [self crosshairDefinitionForWeaponType:weapon];
 		
-		_crosshairs = [[OOCrosshairs alloc] initWithPoints:points
-													 scale:_crosshairScale
-													 color:_crosshairColor
-											  overallAlpha:useAlpha];
+		_crosshairs = oo::makeRef<OOCrosshairs>(points, _crosshairScale, oo::ToCxx(_crosshairColor), useAlpha);
 		_lastWeaponType = weapon;
 		_lastOverallAlpha = useAlpha;
 		_lastWeaponsOnline = weaponsOnline;
 	}
 	
-	[_crosshairs render];
+	_crosshairs->render();
 }
 
 
@@ -1051,8 +1048,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 - (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition
 {
 	// force crosshair redraw
-	[_crosshairs release];
-	_crosshairs = nil;
+	_crosshairs = nullptr;
 
 	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
 															   inFolder:std::string("Config")
@@ -3990,7 +3986,7 @@ static void InitTextEngine(void)
 	sF6KernGovt = fontSpec.get<float>("f6KernGovernment", 1.0);
 	sF6KernTL = fontSpec.get<float>("f6KernTechLevel", 2.0);
 
-	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:fontSpec];
+	sEncodingCoverter = oo::makeRef<OOEncodingConverter>(fontSpec).leakRef();
 	widths = fontSpec.find("widths");	// used only if it is an array, as before
 	count = (widths != nullptr && widths->isArray()) ? widths->count() : 0;
 	if (count > 256)  count = 256;
@@ -4008,8 +4004,8 @@ namespace {
 */
 oo::Data ConvertedString(const std::string &text)
 {
-	if (sEncodingCoverter == nil)  return oo::Data();
-	return [sEncodingCoverter convertString:text];
+	if (sEncodingCoverter == nullptr)  return oo::Data();
+	return sEncodingCoverter->convertString(text);
 }
 
 }	// namespace
@@ -4018,7 +4014,9 @@ oo::Data ConvertedString(const std::string &text)
 void OOHUDResetTextEngine(void)
 {
 	DESTROY(sFontTexture);
-	DESTROY(sEncodingCoverter);
+	OOEncodingConverter *encodingConverter = sEncodingCoverter;	// DESTROY(): cleared before the release
+	sEncodingCoverter = nullptr;
+	oo::release(encodingConverter);
 }
 
 

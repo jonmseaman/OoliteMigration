@@ -40,7 +40,7 @@ namespace cxx {
 namespace {
 
 /*	The named colours colorWithDescription() accepts: the class methods whose names end in "Color",
-	which the Objective-C class looked up with NSSelectorFromString and -respondsToSelector:
+	which the Objective-C class looked up by selector name and -respondsToSelector:
 	(the Phase 3 recipe's "explicit table" for a selector called by name).
 */
 struct NamedColor

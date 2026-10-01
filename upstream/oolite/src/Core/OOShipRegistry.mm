@@ -28,7 +28,6 @@ SOFTWARE.
 #import "OOShipRegistry.h"
 #import "OOCacheManager.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOProbabilitySet.h"
 #import "OORoleSet.h"
 #import "OOStringParsing.h"
@@ -43,8 +42,8 @@ SOFTWARE.
 
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 #import "OOPListGameTypes.h"
+#include "oofnd/String.hpp"
 
 #define PRELOAD 0
 
@@ -196,7 +195,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 // A null PList where the parent was nil.
 - (oo::PList) mergeShip:(const oo::PList &)child withParent:(const oo::PList &)parent;
-- (void) mergeShipRoles:(const std::string &)roles forShipKey:(const std::string &)shipKey intoProbabilityMap:(std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>> &)probabilitySets;
+- (void) mergeShipRoles:(const std::string &)roles forShipKey:(const std::string &)shipKey intoProbabilityMap:(std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>> &)probabilitySets;
 
 // Declarations and ship data are property lists; a result is a declaration dictionary, or a
 // null PList where it was nil.
@@ -351,9 +350,9 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (OOProbabilitySet *) cxx_probabilitySetForRole:(const std::string &)role
 {
-	if (!_probabilitySets.has_value())  return nil;
+	if (!_probabilitySets.has_value())  return nullptr;
 	auto set = _probabilitySets->find(role);
-	return set != _probabilitySets->end() ? set->second.get() : nil;
+	return set != _probabilitySets->end() ? set->second.get() : nullptr;
 }
 
 
@@ -402,7 +401,8 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 {
 	// The set's string elements (ship keys), in its order; anything else skipped, as oo::StringsFrom did.
 	std::vector<std::string> keys;
-	for (const oo::PList &key : [[self cxx_probabilitySetForRole:role] cxx_allElements])
+	OOProbabilitySet *set = [self cxx_probabilitySetForRole:role];
+	for (const oo::PList &key : (set != nullptr) ? set->allElements() : std::vector<oo::PList>())
 	{
 		if (const std::string *string = key.getIf<std::string>())  keys.push_back(*string);
 	}
@@ -414,8 +414,8 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 {
 	// nullopt for no set, or no pick (every weight zero), as nil was.
 	OOProbabilitySet *set = [self cxx_probabilitySetForRole:role];
-	if (set == nil)  return std::nullopt;
-	const oo::PList key = [set randomObject];
+	if (set == nullptr)  return std::nullopt;
+	const oo::PList key = set->randomObject();
 	if (const std::string *string = key.getIf<std::string>())  return *string;
 	return std::nullopt;
 }
@@ -698,12 +698,12 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	const oo::PList cachedSets = [[OOCacheManager sharedCache] cxx_pListForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
 	if (cachedSets.isNull())  return;
 
-	std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>> restoredSets;
+	std::map<std::string, oo::Ref<OOProbabilitySet>, std::less<>> restoredSets;
 	if (const oo::PList::Dict *sets = cachedSets.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[role, representation] : *sets)
 		{
-			restoredSets[role] = oo::ObjCRef<OOProbabilitySet *>([OOProbabilitySet probabilitySetWithPropertyListRepresentation:representation]);
+			restoredSets[role] = OOProbabilitySet::probabilitySetWithPropertyListRepresentation(representation);
 		}
 	}
 
@@ -713,7 +713,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (void) buildRoleProbabilitySets
 {
-	std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>>	probabilitySets;
+	std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>>	probabilitySets;
 
 	// Build role sets (ships in key order; was hash order)
 	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
@@ -725,14 +725,14 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	}
 
 	// Convert role sets to immutable form, and build cache entry.
-	std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>>	sets;
+	std::map<std::string, oo::Ref<OOProbabilitySet>, std::less<>>	sets;
 	oo::PList::Dict		cacheEntry;
 	for (const auto &[role, mutableSet] : probabilitySets)
 	{
-		OOProbabilitySet *pset = [[mutableSet.get() copy] autorelease];
-		sets[role] = oo::ObjCRef<OOProbabilitySet *>(pset);
+		oo::Ref<OOProbabilitySet> pset = mutableSet->copy();
+		sets[role] = pset;
 		// OOProbabilitySet is an unmigrated callee (its weights are floats: single reals, written to disk)
-		cacheEntry[role] = [pset propertyListRepresentation];
+		cacheEntry[role] = pset->propertyListRepresentation();
 	}
 
 	_probabilitySets = std::move(sets);
@@ -1328,7 +1328,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (void) mergeShipRoles:(const std::string &)roles
 			 forShipKey:(const std::string &)shipKey
-	 intoProbabilityMap:(std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>> &)probabilitySets
+	 intoProbabilityMap:(std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>> &)probabilitySets
 {
 	/*	probabilitySets is a dictionary whose keys are roles and whose values
 		are mutable probability sets, whose values are ship keys.
@@ -1355,13 +1355,13 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	// (roles in role order; was hash order: each role's set is separate)
 	for (const auto &[role, weight] : rolesAndWeights)
 	{
-		oo::ObjCRef<OOMutableProbabilitySet *> &probSet = probabilitySets[role];
-		if (probSet.get() == nil)
+		oo::Ref<OOMutableProbabilitySet> &probSet = probabilitySets[role];
+		if (probSet == nullptr)
 		{
-			probSet = oo::ObjCRef<OOMutableProbabilitySet *>([OOMutableProbabilitySet probabilitySet]);
+			probSet = OOMutableProbabilitySet::probabilitySet();
 		}
 
-		[probSet.get() setWeight:weight forObject:oo::PList(shipKey)];
+		probSet->setWeight(weight, oo::PList(shipKey));
 	}
 }
 
