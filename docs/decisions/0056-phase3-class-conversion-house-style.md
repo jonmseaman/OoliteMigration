@@ -1630,3 +1630,47 @@ two `::OOJSFunction` lines.
    façade's deletion bead turns them into C++ calls.
 4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
    and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).
+
+## Amendment (bead oo-0otc): an entity intermediate class with Objective-C subclasses that read its ivars
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOLightParticleEntity.h/.mm`,
+  `OOLightParticleEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_OOLightParticleEntity.mm`; its
+  converted leaves `OOSparkEntity` (oo-c2dk) and `OOPlasmaBurstEntity` (oo-l2s5).
+
+**Context.** `OOLightParticleEntity` is the first entity class under `Entity` to convert while
+Objective-C classes still derive from it (`OOFlashEffectEntity`, `OOFlasherEntity`,
+`OOPlasmaShotEntity`), like `OOEntityWithDrawable` (amendment oo-bj8 item 5), but unlike it the
+class adds members its subclasses override (`-texture`, `-drawSubEntityImmediate:translucent:`),
+its subclasses read two `@protected` ivars by name (`_colorComponents`, `_diameter`), and it has
+class methods and a file-static texture whose graphics reset client is the class object.
+
+**Decision (recommended defaults).**
+
+1. **The entity adapter is not `final`.** An intermediate entity class that adds virtual members
+   derives its own adapter from `oo::ObjCEntity<cxx::X>` in its bridge `.mm`, one override per
+   added member that messages the Objective-C object, as amendment oo-vl43 item 1 does for the
+   materials. The façade's method for such a member calls the class's own member, qualified
+   (`part->cxx::X::texture()`), on an Objective-C subclass instance, and the virtual member
+   otherwise. Its `-init` makes that adapter; `-initWithX:` is `[self init]` and then the C++
+   initialiser (no subclass overrides `-init`).
+2. **An Objective-C subclass reads an ivar that moved to an intermediate class through the typed
+   crossing:** `oo::ToCxx(self)->_colorComponents`. The root's `_cxxEntity->` (amendment oo-bj8
+   item 2) is typed as the root and cannot name it; the typed `oo::ToCxx` of the class's bridge
+   header can. The edit is mechanical, as there, and deleting `oo::ToCxx(self)->` gives the
+   subclass's body back when it converts.
+3. **Class methods become static members, and a file-static object they keep stays file-static**
+   (`sBlobTexture`, retained by hand as before). The graphics reset client stays the façade class:
+   the converted body registers `[::X class]` with the C++ manager
+   (`OOGraphicsResetManager::sharedManager()->registerClient(...)`), and the façade's
+   `+resetGraphicsState` forwards to the static member. The client is still an Objective-C object,
+   so amendment oo-jpd8 item 3's C++ client interface is not needed yet.
+4. **An initialiser that calls members a subclass overrides** is a public member with its name,
+   run once after construction (amendment oo-vl43 item 2). A converted leaf's own initialiser calls
+   it first, as it called `[super initWithDiameter:]`, and its static factory is `makeRef` plus
+   its initialiser; the code that made it hands the result to `oo::NewEntityFacade`, whose chain
+   gains the class's line, so a C++ leaf's façade is the intermediate class's.
+
+**Consequences.** One façade and deletion bead (`OOLightParticleEntity+ObjCBridge`), which waits
+for the three Objective-C subclasses and for the universe and `OOParticleSystem`, which message the
+class. Nine reads in the subclasses changed by item 2. The root's adapter lost `final`; no other
+root file changed but `oo::NewEntityFacade`'s chain.

@@ -78,6 +78,7 @@ core_tests = {
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
+    'test_OOLightParticleEntity': ['*'],
 }
 
 fs = import('fs')
