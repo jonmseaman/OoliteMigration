@@ -70,7 +70,7 @@ public:
 	std::optional<std::string> scriptDescription();
 	std::optional<std::string> version();
 	bool requiresTickle();
-	void runWithTarget(Entity *target);
+	void runWithTarget(::Entity *target);
 
 private:
 	static std::vector<oo::ObjCRef<::OOScript *>> scriptsFromDictionaryOfScripts(const oo::PList &dictionary, const std::string &filePath);

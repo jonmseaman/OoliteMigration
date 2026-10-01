@@ -1542,6 +1542,250 @@ subclass's calls the superclass's.
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
 
+## Amendment (bead oo-puw9): a subclass of `OOWeakRefObject`, a deferred call to a class method, and an initialiser that hands `self` out
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/AI.h/.mm`,
+  `AI+ObjCBridge.h/.mm`, `tests/unit/core/test_AI.mm`.
+
+**Context.** `AI` derives from `OOWeakRefObject`, which stays Objective-C until its subclasses
+(`Entity`'s facade, `Universe`, `OOTexture` and others) are C++ (amendment oo-3kqi item 5). Ships
+keep it and weak references to it. It schedules deferred calls with `OOScheduleDeferredCall` on a
+class method of its own (`+deferredCallTrampolineWithInfo:`), passing an Objective-C holder object
+and naming the target selector with `@selector`. `-cxx_initWithStateMachine:andState:` loads a
+state machine and logs `self` while doing it. Its bodies `@try`/`@catch (OOException *)` and
+`@try`/`@finally`.
+
+**Decision (recommended defaults).**
+
+1. **A subclass of `OOWeakRefObject` converts as a subclass of an Objective-C class** (amendment
+   oo-o89 item 2): the facade keeps the superclass, makes and owns the C++ object in `-init`, and
+   `oo::ToObjC` answers the live facade or nil. The weak references callers hold are to the facade,
+   so the identity they rely on does not move.
+2. **A deferred call stays a deferred call to the facade.** The holder class and the class method it
+   targets move, bodies unchanged, into the bridge files (amendment oo-rmd7 item 1); the holder's
+   `@interface` and its struct go in the bridge header so `X.mm` can fill one. `X.mm` schedules
+   `[::X class]` with `OOSelectorFromName("…")`, and retains `oo::ToObjC(this)` where it retained
+   `self`, so a pending call still keeps the object alive. A private method that a deferred call
+   reaches by name (`-deferredSetState:`) stays on the facade as a one-line forwarder in a private
+   category.
+3. **An initialiser with arguments whose body hands `self` to Objective-C** (logs it, or reaches
+   code that calls `oo::ToObjC(this)`) is a member run by the facade after it is the object's peer
+   (`initWithStateMachine(…)`), not a constructor, where `oo::ToObjC(this)` would answer nil
+   (amendment oo-vl43 item 2 for the same reason with virtual calls).
+4. **`@try`/`@catch (OOException *)` and `@try`/`@finally` stay verbatim** in the converted members
+   (amendment oo-bj8 item 8); the gate's grep does not cover them, and Phase 4 replaces them with the
+   rest of the Objective-C exception sites.
+5. **A selector the class compared or asked about by a literal** (`respondsToSelector:@selector(interpretAIMessage:)`)
+   becomes `OOSelectorFromName("interpretAIMessage:")` (amendment oo-3lj8 item 2); the message to the
+   Objective-C owner stays.
+6. **The test** defines the classes and functions the AI reaches that would link the game
+   (`ResourceManager`, `OOCacheManager`, `cxx_OOPropertyListFromFile`, `OOScheduleDeferredCall`, the
+   `OOLog*Indent` functions), each answering from a table, and an owner of its own derived from
+   `OOWeakRefObject` that records the actions it is sent. It pins whitelisting and aliases, the
+   state-machine stack and its limit, message queueing and its limit, recursion, deferred calls and
+   their retain of the AI, and the logged lines.
+
+**Consequences.** No caller changed. One facade and one deletion bead, which depends on the
+callers (`ShipEntity*`, `PlayerEntity`) and on `OOWeakRefObject`'s retirement.
+
+## Amendment (bead oo-kq7): the Debug module, and a singleton whose superclass is Objective-C
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Debug/OODebugMonitor.h/.mm`
+  (`cxx::OODebugMonitor`), `OODebugMonitor+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OODebugMonitor.mm`. This is the Debug module's pattern seam: the other
+  `Core/Debug` beads copy it.
+
+**Context.** `OODebugMonitor` is the singleton that connects a debugger (the TCP console client,
+which the golden harness drives the game through) to the game. Its superclass, `OOWeakRefObject`,
+is Objective-C and keeps state (the object's weak reference, which the console's JavaScript object
+holds). It has the canonical singleton boilerplate (`+allocWithZone:` answers nil after the first;
+`-retain`/`-release` do nothing), so its `-dealloc` never ran. `OODebugMonitor.h` declares the
+`OODebugMonitorInterface` protocol that the class adopts, and the class also adopts the JavaScript
+engine's `OOJavaScriptEngineMonitor` in a private category. The whole file is `#ifndef NDEBUG`.
+
+**Decision (recommended defaults).**
+
+1. **The C++ class owns the singleton** (amendment oo-r7m0 item 1): `static X *sharedX()`,
+   recorded before its `init()` runs (amendment oo-z1s4 item 2). The façade is not the owner, as
+   amendment oo-o89 would make it, because converted code must reach the monitor without messaging
+   Objective-C.
+2. **Its façade is made once and lives as long as the process.** The façade keeps the singleton
+   boilerplate (it is the Objective-C object's retain and release), so once `oo::ToObjC` makes it
+   it is never deallocated. `oo::ToObjC` answers that one façade (`sSingleton`, recorded by
+   `+allocWithZone:`) with no peer table, and so never makes a second object with fresh
+   superclass state, which is the point of amendment oo-o89 item 2. `+sharedX` is
+   `oo::ToObjC(X::sharedX())`. The façade's superclass stays the Objective-C one, and the façade's
+   deletion bead depends on that superclass's conversion as well as on the callers'.
+3. **A `-dealloc` that never ran** (because `-release` did nothing) is not translated. A comment
+   stands where it was.
+4. **A protocol that the class adopts and that `X.h` declares** moves to `X+ObjCBridge.h`, before
+   the façade (amendment oo-jpd8 item 1). **A protocol from another module's header**
+   (`OOJavaScriptEngineMonitor`) is adopted by a category declared in `X+ObjCBridge.mm`, which
+   imports that header. `X+ObjCBridge.h` does not import it, so a test can stand in for that
+   module. The C++ class hands its façade to an API typed `id<P>` through a typed local
+   (`id monitor = oo::ToObjC(this);`, as amendment oo-vl43 item 6 does).
+5. **A struct private to the file that a private method takes** (`EntityDumpState`) becomes a
+   private nested `struct X::EntityDumpState;`, declared in the class and defined in `X.mm` where
+   it stood. That keeps the method a member and its body verbatim.
+6. **An observer registration that captured `self`** observes as `this` and captures `this`.
+   **`id x = _ivar; _ivar = nil; [x release];`** on an `oo::ObjCRef` (amendment oo-862e item 4) is
+   `_ivar = nullptr;`, which clears the ivar before it releases the object, as before.
+7. **A file that is `#ifndef NDEBUG`** keeps the guard in `X.mm`, and its bridge `.mm` has the same
+   guard.
+8. **The test** stands in for everything the monitor reaches (the resource manager, the JavaScript
+   engine, the console script and its JS wrapper, the time limiter, the textures and the universe),
+   with a real QuickJS context for the heap statistics. It drives a test debugger through the
+   façade. Because `OOCocoa.h` defines `true` and `false` as `1` and `0`, a test that builds a Bool
+   `oo::PList` node uses a `bool` constant (`kTrue`), not the literal. The golden gate is this
+   module's end-to-end proof, because the harness talks to the game through the debug console.
+
+**Consequences.** One façade and one deletion bead (`OODebugMonitor+ObjCBridge`). The deletion
+bead waits for the TCP console client, the JavaScript console, the debug support,
+`PlayerEntityControls` and `GameController`, and for `OOWeakRefObject`'s replacement. No caller
+changed.
+
+## Amendment (bead oo-cn4o): a category only its own file sends, result classes behind a C function, and the definitions' deletion order
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSEngineTimeManagement.h/.mm`,
+  `OOJSEngineTimeManagement+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSEngineTimeManagement.mm`.
+
+**Context.** `OOJSEngineTimeManagement` is a binding file (amendment oo-ppc) that also held a
+category on the engine (`-watchdogTimerThread`, sent only by `OOJSTimeManagementInit()` in the same
+file) and two small classes, `OOTimeProfile` and `OOTimeProfileEntry`, that the profiler makes and
+hands out through a C function (`OOJSEndProfiling()`, +1) to the debug console, which is still
+Objective-C.
+
+**Decision (recommended defaults).**
+
+1. **A category method that only its own file sends becomes a file-local free function** (in an
+   anonymous namespace) taking what it read from `self` as arguments (here the runtime, which the
+   caller already had). It gets no forwarder: nothing else sends it. A category sent from other
+   files keeps the oo-ppc rule (free functions plus `X+ObjCBridge` forwarders).
+2. **Result classes made only by C++ code** are plain `cxx::` classes (`oo::RefCounted`) held by
+   `oo::Ref`; their façades follow the default ADR-0056 shape (`oo::ToObjC` makes one when asked,
+   through `oo::ObjCPeers`), not amendment oo-o89, because their superclass is `OOObject`. A C
+   function that returned one +1 to Objective-C keeps its signature and returns
+   `[oo::ToObjC(result.get()) retain]`.
+3. **A test that stands in for a class whose ivar the code under test reads** declares that ivar
+   in its stand-in with the game's name and type, so the Objective-C-first run links.
+
+**Consequences.** One bridge with a deletion bead (oo-9ht.63) that waits for the debug console and
+the engine's object conversion. The three definition classes of amendment oo-q9q4 are deleted
+when their holders are C++ and hold them with `oo::WeakRef` (oo-9ht.60, .61, .62); the retirement
+of `OOWeakRefObject` (oo-9ht.22) comes after them, not before. No caller changed.
+
+## Amendment (bead oo-6bux): a root whose one subclass is already a façade, a factory by `Class`, and a state array handed out by pointer
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOJoystickManager.h/.mm`,
+  `OOJoystickManager+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJoystickManager.mm`.
+
+**Context.** `OOJoystickManager` is the root of a hierarchy whose one subclass,
+`OOSDLJoystickManager`, converted first (amendment oo-o89): its Objective-C façade still subclasses
+the Objective-C root, keeps the root's state in it, and reaches the root's decoders with
+`[oo::ToObjC(this) decodeAxisEvent:…]`. The root makes its shared instance from a registered
+`Class` (`+setStickHandlerClass:`, `+sharedStickHandler`), its `-init` calls the methods the
+subclass overrides, and it hands its callers a pointer into a `BOOL` array (`-getAllButtonStates`).
+
+**Decision (recommended defaults).**
+
+1. **The root converts as Amendment 1 says, and the subclass's façade does not change.** Its
+   `-init` still makes its own C++ object and then calls `[super init]`, which is now the root
+   façade's: that makes the adapter (`ObjCJoystickManager final : public cxx::OOJoystickManager`,
+   private to the bridge `.mm`, overriding the three members the subclass overrides) and runs the
+   old `-init` body on it. Its `[oo::ToObjC(this) decode…]` reaches the root façade's forwarders,
+   which reach the adapter, which holds the state. With one Objective-C subclass and no
+   intermediate class, the adapter is not a template; the root façade's methods for the virtual
+   members call the base's member, qualified, on a subclass instance (Amendment 1 item 3).
+2. **An `-init` body that calls overridden members is `void init()`, run by whoever made the
+   object, once, right after construction** (amendments oo-vl43 item 2 and oo-bj8 item 6): the
+   root façade's `-init` after it made the C++ part (so the subclass's overrides run during it, as
+   before), converted code after `oo::makeRef`. The façade's `-init` makes a C++ object with
+   itself as peer when `[self class]` is exactly the root, else the adapter.
+3. **A factory that makes an instance of a registered `Class`** (`+sharedStickHandler`,
+   `+setStickHandlerClass:` and their two file statics) stays in the façade, verbatim: the class it
+   makes is an Objective-C class. It becomes C++ in the façade's deletion bead, when the subclass is
+   C++ and the registration is a factory function.
+4. **A member array whose address the class hands to unconverted code** keeps its element type
+   (`BOOL butstate[BUTTON_end]`, returned as `const BOOL *`), with a comment; the other `BOOL` ivars
+   become `bool`. Changing it would change every caller's pointer type.
+5. **A getter that returned an ivar unretained** (`-getProfileForAxis:`) returns a borrowed raw
+   pointer to the C++ object (`cxx::X *`), not an `oo::Ref`; the façade answers `oo::ToObjC(...)`
+   of it, which keeps identity through the peer table.
+6. **The test** pins the root through its Objective-C API with an Objective-C test subclass that
+   overrides the hardware methods (also reached from `-init`, through saved settings), and points
+   the user defaults at a scratch home (`HOMEPATH`) before they are first read (amendment oo-rmd7
+   item 4). After the conversion it checks the crossing both ways, the subclass's C++ part
+   reaching its overrides, and that part outliving its owner as nil. The subclass's own test
+   (`test_OOSDLJoystickManager`) passes unchanged.
+
+**Consequences.** One façade and one deletion bead, which depends on this bead's callers
+(`PlayerEntity*`, `GameController`, `HeadUpDisplay`, `Universe`, `MyOpenGLView*`) and is done
+together with `oo-9ht.2`, which re-parents `cxx::OOSDLJoystickManager` onto `cxx::OOJoystickManager`.
+
+## Amendment (bead oo-2en): the Audio module, and a hierarchy root that is a class cluster
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOALSound.h/.mm`
+  (`cxx::OOSound`), `OOALSound+ObjCBridge.h/.mm`, `tests/unit/core/test_OOSound.mm`. This is the
+  Audio module's pattern seam: the other `OOAL*`/`OOSound*`/`OOMusic*` beads copy it.
+
+**Context.** `OOSound` is the root of the sounds: `OOALBufferedSound`, `OOALStreamedSound` and
+`OOMusic` derive from it in their own files. It keeps the sound system's global state (set up,
+sound OK, the master volume) in class methods, and its designated initialiser
+`-cxx_initWithContentsOfFile:` is a class cluster's: it releases the receiver and answers a
+buffered or a streamed sound, which are Objective-C subclasses. `OOMusic` overrides that
+initialiser. The other audio classes (the sources, the pool, the mixer, the channels, the decoder,
+the music controller) are not sounds.
+
+**Decision (recommended defaults).**
+
+1. **The module converts root first** (amendment oo-smy item 1): `OOSound` in this bead, with
+   amendment oo-smy's root façade and an adapter (`ObjCSound`, as `OODrawable`'s, since no
+   intermediate class exists). The per-file bead of `OOALSound.mm` is superseded by this one. The
+   three subclass beads depend on it; each derives from `cxx::OOSound`. The classes that are not
+   sounds follow the decision above, and amendment oo-r7m0 for the singletons (the mixer, the
+   music controller).
+2. **A class-cluster initialiser whose answers are Objective-C subclass instances** becomes a
+   static factory with the initialiser's name (amendment oo-novu item 1) that returns the
+   Objective-C object retained, `oo::ObjCRef<::X *>`, because an Objective-C object's C++ part does
+   not keep it alive (amendment oo-smy item 4). Null where it answered nil. The body stays in
+   `X.mm`; its `[[Sub alloc] init…]` sends are messages to unconverted classes. The façade's
+   initialiser keeps what concerns the receiver (`[self release]`, and the early `return nil`
+   that leaked it) and returns `factory(…).leakRef()`. The factory becomes `oo::Ref<X>` in the
+   façade's deletion bead.
+3. **A subclass that overrides the cluster's initialiser** (`OOMusic`) keeps overriding the
+   façade's method while it is Objective-C. When it converts it gets a static factory of the same
+   name, which hides the root's (amendment oo-489v item 2).
+4. **A root's `-init` side effect** (`[OOSound setUp]`) is the C++ constructor. The façade's
+   `-init` makes the adapter, which runs it, so `[[Sub alloc] init]` still sets sound up.
+5. **An initialiser that only the subclasses declare** (`-initWithDecoder:`, which answered nil on
+   the root) stays in the façade unchanged. It is not part of the C++ class.
+6. **A file-static of plain type whose line changes** (`static BOOL sIsSetUp` becoming `bool`)
+   moves into an anonymous namespace, which is what clang-tidy's `misc-use-anonymous-namespace`
+   asks of a changed line. Unchanged statics stay as they are.
+7. **The test** runs OpenAL on OpenAL Soft's null backend (`ALSOFT_DRIVERS=null`) and points
+   `HOMEPATH` at a scratch folder before the first use, so neither the machine's sound hardware
+   nor the user's saved volume changes the answers. The global state is per process, so the test
+   that sets sound up runs first. The decoder, the mixer and the two concrete sounds are stubs
+   in the test (amendment oo-z1s4 item 4); the concrete sounds are Objective-C subclasses, so the
+   class cluster's answers also exercise the adapter.
+
+**Consequences.** One façade and one deletion bead (`OOALSound+ObjCBridge`), which depends on the
+three subclass beads and on the beads of the files that message sounds. No caller changed.
+
+## Amendment (bead oo-9ht.66): a message whose selector no header declares
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `oo::SendClassName` in
+  `src/Core/OOWeakReference+ObjCBridge.h/.mm`, `oo::SendIntValue` in `OOCharacter+ObjCBridge.h/.mm`.
+
+**Context.** A converted body sends a selector (`-className`, `-intValue`) to an `id` that may
+answer it, but no visible header declares the method any more, so the send needs a local
+`@protocol` to type it. The item 8 grep forbids `@protocol` in `X.mm`.
+
+**Decision (recommended default).** The protocol and the one send move, verbatim, into a free
+function in `X+ObjCBridge.mm` (`id oo::SendClassName(id object)`), declared in `X+ObjCBridge.h`
+beside `oo::ToObjC`/`oo::ToCxx`; the C++ body calls the function where it sent the message. The
+function goes with the façade's deletion bead, or earlier once a header declares the method again.
+
 ## Amendment (bead oo-q9q4): scripting classes whose superclass is still Objective-C, and the rest of the batch
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOPListScript.h/.mm`,
@@ -1746,3 +1990,127 @@ meant the Objective-C object now names the C++ class.
 deletion bead (oo-9ht.39), which also removes the category. The test's nil case could not run on
 the class before its conversion: releasing an entity whose `-init` never ran crashes in the
 `Entity` façade's `-dealloc` (filed as its own bead).
+
+## Amendment (bead oo-f9zg): a cache of unretained objects that remove themselves
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderProgram.h/.mm`,
+  `OOShaderProgram+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderProgram.mm`.
+
+**Context.** `OOShaderProgram` keeps a cache of programs by key that does not retain them; a program
+erases itself in `-dealloc`, and the class methods return an autoreleased program (cached or new).
+It also keeps the program in use retained in a file static.
+
+**Decision (recommended defaults).**
+
+1. **The cache holds raw C++ pointers** in an anonymous namespace inside `namespace cxx`, and the
+   destructor erases the entry, as `-dealloc` did. The factories return `oo::Ref<X>` (a cache hit
+   is retained into the `Ref`); a failed initialiser is a `bool` member and the factory answers
+   null. The façade's class methods answer `oo::ToObjC(factory(...))`, whose autorelease keeps the
+   program until the pool drains, as the autoreleased program was kept (amendment oo-ct7c item 2);
+   a cache hit whose façade is alive answers that façade.
+2. **The retained file static** (`sActiveProgram`) is a never-destroyed holder (`ActiveProgram()`,
+   amendment oo-smy item 3) that keeps **the façade**, `oo::ObjCRef<::X *>(oo::ToObjC(this))`, as
+   the current material does (amendment oo-smy item 4), not an `oo::Ref<X>`: the façade owns the
+   C++ program and is the object `sActiveProgram` retained, so a façade in use stays alive and
+   stays the program's one façade (`test_OOShaderProgram` pins the retain on the façade). The
+   assignment sits in an `@autoreleasepool` so that `oo::ToObjC`'s autorelease drains at once and
+   the program in use carries only the slot's retain, as `[program retain]` did. The destructor's
+   imbalance check stays under `#ifndef NDEBUG` for fidelity (it cannot fire while the slot owns
+   the façade), and drops the reference without releasing it. The slot changes to `oo::Ref<X>`
+   in the façade's deletion bead.
+3. **An ivar that shares its name with its getter** (`program`) takes the leading underscore
+   (amendment oo-rdfh item 1).
+4. **A converted C++ class that messages a converted façade's collaborator** (`[[UNIVERSE gameView]
+   getOpenGLMatrixManager]`, a façade over the C++ matrix manager) crosses once with `oo::ToCxx`
+   and null-guards each call with what the message to nil answered (`kZeroMatrix`, a null list;
+   amendment oo-vt0o item 3).
+
+## Amendment (bead oo-9fwb): a category of a converted class in a file of its own
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMaterialConvenienceCreators.h/.mm`,
+  `OOMaterialConvenienceCreators+ObjCBridge.h/.mm`, the creators in `OOMaterial.h`,
+  `tests/unit/core/test_OOMaterialConvenienceCreators.mm`.
+
+**Context.** `OOMaterialConvenienceCreators` is the category `OOMaterial (OOConvenienceCreators)`:
+class methods that pick and make a material, and two private class methods of their own; its
+file also holds C++ helper functions (the shader-configuration synthesis) that are already C++.
+The root converted first (oo-smy), and its only outside caller (`OOMesh`) is still Objective-C.
+
+**Decision (recommended defaults).**
+
+1. **The category's class methods become static members of the converted class** (amendment oo-o89
+   item 4), declared in the class's header under a comment naming the category, and defined in the
+   category's own file, which keeps its name. Its private class methods are private static
+   members. `[self m]` in them is a plain call.
+2. **The category's `@interface` moves, unchanged, to `X+ObjCBridge.h`** of the category's file,
+   imported as its header's last line, and its `@implementation` is one-line forwarders in
+   `X+ObjCBridge.mm` that answer `oo::ToObjC(result)`. It goes with its own deletion bead, which
+   depends on the callers' beads.
+3. **The creators make materials with the C++ factories** (`OOShaderMaterial::shaderMaterialWithName`,
+   `OOBasicMaterial::materialWithName`, …), since every material class is converted; a class whose
+   test stubs its Objective-C collaborator (`OOCacheManager`, `OOTexture`) keeps the message to
+   `::X` (amendment oo-rmd7 item 3).
+4. **`+initialize` that set a file static** (compiled out here: the new-synthesizer branch) becomes a
+   function-local static read on first use, which is when `+initialize` ran.
+
+## Amendment (bead oo-peql): the effect leaves (entities that nothing messages by their own selectors)
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OORingEffectEntity.h/.mm`
+  (factories over a failable initialiser), `OOECMBlastEntity.h/.mm` with `OOECMBlastEntity+ObjCBridge.h/.mm`
+  (an initialiser-named factory, a category of `Entity` the class overrode), `OOParticleSystem.h/.mm` and
+  `OOExplosionCloudEntity.h/.mm` (beads oo-cenx and oo-ui7h: a hierarchy converted whole),
+  `tests/unit/core/test_OORingEffectEntity.mm`, `test_OOECMBlastEntity.mm`, `test_OOParticleSystem.mm`.
+
+**Context.** These are the first leaves of amendment oo-bj8 item 12. The effects are made in two or
+three places (`ShipEntity`'s explosion and `-fireECM`, `Universe`'s witchspace and laser-hit effects),
+handed to `-[Universe addEntity:]`, and after that reached only through `Entity`'s selectors. Their
+initialisers can answer nil (no source, no texture), one class sets up a table in `+initialize`, one
+file declares a category of `Entity` that its class overrode (`-isECMBlast`), and `OOParticleSystem`
+has three subclasses, all of which are in reach.
+
+**Decision (recommended defaults).**
+
+1. **No façade.** The class is global, `X : public cxx::Entity` (item 12). Its factories keep the
+   Objective-C names and arguments (`explosionCloudFromEntity(entity, size, settings)`), and the other
+   entity they take stays the Objective-C object, `::Entity *` (item 4), so the bodies' messages to it
+   (`[entity position]`, `[sourceEntity collisionRadius]`, nil-safe as before) are verbatim. A caller
+   writes `[UNIVERSE addEntity:oo::NewEntityFacade(X::factory(self))]`; one that set something first
+   keeps the `oo::Ref<X>`, null-guards the call (it was a message to nil), and passes the reference.
+   `NewEntityFacade(nullptr)` is nil, which `-addEntity:` already refused.
+2. **Failable initialisers** follow amendments oo-bhb9 and oo-novu: where the class had factories
+   (`+ringFromEntity:`) the initialiser is a private `bool initX(…)` they call after `makeRef`; where
+   callers sent `[[X alloc] initX:]` (`-initFromShip:`) it becomes the static factory of that name over
+   a private constructor, whose virtual calls are the base's own, qualified (amendment oo-bj8 item 6).
+   An initialiser that cannot fail is `void`, and a subclass keeps the statements its
+   `if ((self = [super init…]))` guarded in a plain block.
+3. **`+initialize`** becomes a private static member with a run-once guard, called by the factory
+   before the first object is made (the first message to the class was what ran it).
+4. **A category of `Entity` that the class overrode** moves to `X+ObjCBridge.h/.mm` (item 12), and its
+   method answers for both kinds of entity from the C++ part:
+   `dynamic_cast<X *>(_cxxEntity.get())`, then the member. Its deletion bead makes it a member of
+   `cxx::Entity` once its callers (none today) are C++.
+5. **A class whose subclasses are all in reach converts with them** (amendment oo-kdyh item 1), so no
+   intermediate façade or adapter is written to be deleted: `OOParticleSystem`, its two fragment
+   bursts and `OOExplosionCloudEntity` are one bead (oo-cenx); the subclass's bead (oo-ui7h) carries
+   an honest acceptance over the same files and an empty proof commit. Its `-init` that answered nil
+   (only the subclasses' initialisers made one) is a protected constructor, and its protected ivars
+   are protected members.
+6. **`OOColor` at file scope is the Objective-C façade** (entity headers `@class` it), so a global
+   class names the C++ colour `cxx::OOColor`. Retained Objective-C objects the class owned are
+   `oo::ObjCRef` (the texture; `-dealloc` goes); one the class never released (`OOECMBlastEntity`'s
+   weak reference to its ship) stays a raw pointer, still never released.
+7. **The tests** link the whole game (amendment oo-44gg) and make the entity through one block of
+   helpers, the only lines the conversion ported (`[X factory:…]` became
+   `oo::NewEntityFacade(X::factory(…))`); the rest reads the entity through `Entity`'s selectors.
+   `UNIVERSE` is a subclass of `Universe` made with `class_createInstance` that records
+   `-removeEntity:` (and the range searches); the RNG is seeded with `ranrot_srand`, as the game seeds
+   it (unseeded, `OORandomUnitVector()` never returns); a texture loader is replaced with
+   `method_setImplementation` so a test can say "found" or "not found". The cases where an
+   initialiser answers nil could not run on the Objective-C classes: `-[Entity dealloc]` of an entity
+   whose `-init` never ran crashes since oo-bj8 (bead oo-s6ic6); they ran after the conversion,
+   where no façade is made.
+
+**Consequences.** One façade-less class per effect, no deletion bead except the category's
+(`OOECMBlastEntity+ObjCBridge`, oo-9ht.75). `ShipEntity.mm` and `Universe.mm` change only at the lines that make
+the effects. A failed initialiser no longer reaches `-[Entity dealloc]`, so the crash of oo-s6ic6 is
+gone for these classes (the explosion cloud without its texture was a game path).

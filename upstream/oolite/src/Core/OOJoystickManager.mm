@@ -33,51 +33,14 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 
-static Class sStickHandlerClass = Nil;
-static id sSharedStickHandler = nil;
+// sStickHandlerClass, sSharedStickHandler, +sharedStickHandler and +setStickHandlerClass: are the
+// facade's (OOJoystickManager+ObjCBridge.mm): the shared handler is made from an Objective-C class.
 
 
-@interface OOJoystickManager (Private)
+namespace cxx {
 
-// Setting button and axis functions
-- (void) setFunctionForAxis:(int)axis
-                   function:(int)function
-                      stick:(int)stickNum;
-
-- (void) setFunctionForButton:(int)button
-                     function:(int)function
-                        stick:(int)stickNum;
-
-@end
-
-
-
-@implementation OOJoystickManager
-
-+ (id) sharedStickHandler
+void OOJoystickManager::init()
 {
-	if (sSharedStickHandler == nil)
-	{
-		if (sStickHandlerClass == Nil)  sStickHandlerClass = [OOJoystickManager class];
-		sSharedStickHandler = [[sStickHandlerClass alloc] init];
-	}
-	return sSharedStickHandler;
-}
-
-
-+ (BOOL) setStickHandlerClass:(Class)aClass
-{
-	OOAssert(sStickHandlerClass == nil, "Can't set joystick handler class after joystick handler is initialized.");
-	OOParameterAssert(aClass == Nil || [aClass isSubclassOfClass:[OOJoystickManager class]]);
-	
-	sStickHandlerClass = aClass;
-	return YES;
-}
-
-
-- (id) init
-{
-	if ((self = [super init]))
 	{
 		// set initial values for stick buttons/axes (NO for buttons,
 		// STICK_AXISUNASSIGNED for axes). Caution: calling this again
@@ -85,48 +48,47 @@ static id sSharedStickHandler = nil;
 		// STICK_AXISUNASSIGNED so if there is a need to do something
 		// like this, then do it some other way, or change this method
 		// so it doesn't do that.
-		[self clearStickStates];
+		clearStickStates();
 		
 		// Make some sensible mappings. This also ensures unassigned
 		// axes and buttons are set to unassigned (STICK_NOFUNCTION).
-		[self loadStickSettings];
-		invertPitch = NO;
-		precisionMode = NO;
+		loadStickSettings();
+		invertPitch = false;
+		precisionMode = false;
 	}
-	return self;
 }
 
 
 
-- (NSPoint) rollPitchAxis
+NSPoint OOJoystickManager::rollPitchAxis()
 {
-	return NSMakePoint([self getAxisState:AXIS_ROLL], [self getAxisState:AXIS_PITCH]);
+	return NSMakePoint(getAxisState(AXIS_ROLL), getAxisState(AXIS_PITCH));
 }
 
 
-- (NSPoint) viewAxis
+NSPoint OOJoystickManager::viewAxis()
 {
 	return NSMakePoint(axstate[AXIS_VIEWX], axstate[AXIS_VIEWY]);
 }
 
 
-- (BOOL) getButtonState: (int)function
+bool OOJoystickManager::getButtonState(int function)
 {
 	return butstate[function];
 }
 
 
-- (const BOOL *)getAllButtonStates
+const BOOL *OOJoystickManager::getAllButtonStates()
 {
 	return butstate;
 }
 
-- (BOOL) isButtonDown:(int)button stick:(int)stickNum
+bool OOJoystickManager::isButtonDown(int button, int stickNum)
 {
 	return true_butstate[stickNum][button];
 }
 
-- (double) getAxisState: (int)function
+double OOJoystickManager::getAxisState(int function)
 {
 	if (axstate[function] == STICK_AXISUNASSIGNED)
 	{
@@ -137,29 +99,29 @@ static id sSharedStickHandler = nil;
 	case AXIS_ROLL:
 		if (precisionMode)
 		{
-			return [roll_profile value:axstate[function]] / STICK_PRECISIONFAC;
+			return (roll_profile != nullptr ? roll_profile->value(axstate[function]) : 0.0) / STICK_PRECISIONFAC;
 		}
 		else
 		{
- 			return [roll_profile value:axstate[function]];
+ 			return (roll_profile != nullptr ? roll_profile->value(axstate[function]) : 0.0);
 		}
 	case AXIS_PITCH:
 		if (precisionMode)
 		{
-			return [pitch_profile value:axstate[function]] / STICK_PRECISIONFAC;
+			return (pitch_profile != nullptr ? pitch_profile->value(axstate[function]) : 0.0) / STICK_PRECISIONFAC;
 		}
 		else
 		{
-			return [pitch_profile value:axstate[function]];
+			return (pitch_profile != nullptr ? pitch_profile->value(axstate[function]) : 0.0);
 		}
 	case AXIS_YAW:
 		if (precisionMode)
 		{
-			return [yaw_profile value:axstate[function]] / STICK_PRECISIONFAC;
+			return (yaw_profile != nullptr ? yaw_profile->value(axstate[function]) : 0.0) / STICK_PRECISIONFAC;
 		}
 		else
 		{
-			return [yaw_profile value:axstate[function]];
+			return (yaw_profile != nullptr ? yaw_profile->value(axstate[function]) : 0.0);
 		}
 	default:
 		return axstate[function];
@@ -167,49 +129,46 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (double) getSensitivity
+double OOJoystickManager::getSensitivity()
 {
 	return precisionMode ? STICK_PRECISIONFAC : 1.0;
 }
 
-- (void) setProfile: (OOJoystickAxisProfile *) profile forAxis: (int) axis
+void OOJoystickManager::setProfile(OOJoystickAxisProfile *profile, int axis)
 {
 	switch (axis)
 	{
 	case AXIS_ROLL:
-		[roll_profile release];
-		roll_profile = [profile retain];
+		roll_profile = oo::Ref<OOJoystickAxisProfile>(profile);
 		break;
 
 	case AXIS_PITCH:
-		[pitch_profile release];
-		pitch_profile = [profile retain];
+		pitch_profile = oo::Ref<OOJoystickAxisProfile>(profile);
 		break;
 
 	case AXIS_YAW:
-		[yaw_profile release];
-		yaw_profile = [profile retain];
+		yaw_profile = oo::Ref<OOJoystickAxisProfile>(profile);
 		break;
 	}
 	return;
 }
 
-- (OOJoystickAxisProfile *) getProfileForAxis: (int) axis
+OOJoystickAxisProfile *OOJoystickManager::getProfileForAxis(int axis)
 {
 	switch (axis)
 	{
 	case AXIS_ROLL:
-		return roll_profile;
+		return roll_profile.get();
 	case AXIS_PITCH:
-		return pitch_profile;
+		return pitch_profile.get();
 	case AXIS_YAW:
-		return yaw_profile;
+		return yaw_profile.get();
 	}
-	return nil;
+	return nullptr;
 }
 
 
-- (void) saveProfileForAxis: (int) axis
+void OOJoystickManager::saveProfileForAxis(int axis)
 {
 	oo::Defaults &defaults = oo::Defaults::standard();
 	oo::PList::Dict dict;
@@ -221,21 +180,21 @@ static id sSharedStickHandler = nil;
 	NSPoint point;
 	NSUInteger i;
 	
-	profile = [self getProfileForAxis: axis];
+	profile = getProfileForAxis(axis);
 	if (!profile) return;
-	dict["Deadzone"] = oo::PList([profile deadzone]);
-	if ([profile isKindOfClass: [OOJoystickStandardAxisProfile class]])
+	dict["Deadzone"] = oo::PList(profile->deadzone());
+	if (dynamic_cast<OOJoystickStandardAxisProfile *>(profile) != nullptr)
 	{
-		standard_profile = (OOJoystickStandardAxisProfile *) profile;
+		standard_profile = static_cast<OOJoystickStandardAxisProfile *>(profile);
 		dict["Type"] = oo::PList("Standard");
-		dict["Power"] = oo::PList([standard_profile power]);
-		dict["Parameter"] = oo::PList([standard_profile parameter]);
+		dict["Power"] = oo::PList(standard_profile->power());
+		dict["Parameter"] = oo::PList(standard_profile->parameter());
 	}
-	else if ([profile isKindOfClass: [OOJoystickSplineAxisProfile class]])
+	else if (dynamic_cast<OOJoystickSplineAxisProfile *>(profile) != nullptr)
 	{
-		spline_profile = (OOJoystickSplineAxisProfile *) profile;
+		spline_profile = static_cast<OOJoystickSplineAxisProfile *>(profile);
 		dict["Type"] = oo::PList("Spline");
-		controlPoints = [spline_profile controlPoints];
+		controlPoints = spline_profile->controlPoints();
 		points.reserve(controlPoints.size());
 		for (i = 0; i < controlPoints.size(); i++)
 		{
@@ -269,12 +228,12 @@ static id sSharedStickHandler = nil;
 
 
 
-- (void) loadProfileForAxis: (int) axis
+void OOJoystickManager::loadProfileForAxis(int axis)
 {
 	oo::Defaults &defaults = oo::Defaults::standard();
 	oo::PList dict;
-	OOJoystickStandardAxisProfile *standard_profile;
-	OOJoystickSplineAxisProfile *spline_profile;
+	oo::Ref<OOJoystickStandardAxisProfile> standard_profile;
+	oo::Ref<OOJoystickSplineAxisProfile> spline_profile;
 
 	if (axis == AXIS_ROLL)
 	{
@@ -296,16 +255,16 @@ static id sSharedStickHandler = nil;
 	const oo::PList *type = dict.find("Type");
 	if (type != nullptr && type->isString() && *type->getIf<std::string>() == "Standard")
 	{
-		standard_profile = [[OOJoystickStandardAxisProfile alloc] init];
-		[standard_profile setDeadzone: dict.get<double>("Deadzone")];
-		[standard_profile setPower: dict.get<double>("Power")];
-		[standard_profile setParameter: dict.get<double>("Parameter")];
-		[self setProfile: [standard_profile autorelease] forAxis: axis];
+		standard_profile = oo::makeRef<OOJoystickStandardAxisProfile>();
+		standard_profile->setDeadzone(dict.get<double>("Deadzone"));
+		standard_profile->setPower(dict.get<double>("Power"));
+		standard_profile->setParameter(dict.get<double>("Parameter"));
+		setProfile(standard_profile.get(), axis);
 	}
 	else if(type != nullptr && type->isString() && *type->getIf<std::string>() == "Spline")
 	{
-		spline_profile = [[OOJoystickSplineAxisProfile alloc] init];
-		[spline_profile setDeadzone: dict.get<double>("Deadzone")];
+		spline_profile = oo::makeRef<OOJoystickSplineAxisProfile>();
+		spline_profile->setDeadzone(dict.get<double>("Deadzone"));
 		const oo::PList *points = dict.get<oo::PList::Array>("ControlPoints"), *pointArray;
 		NSPoint point;
 		NSUInteger i;
@@ -316,31 +275,31 @@ static id sSharedStickHandler = nil;
 			if (pointArray != nullptr && pointArray->count() >= 2)
 			{
 				point = NSMakePoint(pointArray->at<float>(0), pointArray->at<float>(1));
-				[spline_profile addControl: point];
+				spline_profile->addControl(point);
 			}
 		}
-		[self setProfile: [spline_profile autorelease] forAxis: axis];
+		setProfile(spline_profile.get(), axis);
 	}
 	else
 	{
-		[self setProfile: [[[OOJoystickStandardAxisProfile alloc] init] autorelease] forAxis: axis];
+		setProfile(oo::makeRef<OOJoystickStandardAxisProfile>().get(), axis);
 	}
 }
 
-- (std::vector<std::string>)listSticks
+std::vector<std::string> OOJoystickManager::listSticks()
 {
-	NSUInteger i, stickCount = [self joystickCount];
+	NSUInteger i, stickCount = joystickCount();
 
 	std::vector<std::string> stickList;
 	for (i = 0; i < stickCount; i++)
 	{
-		stickList.push_back([self nameOfJoystick:i].value_or(std::string()));	// a nameless stick lists as "", as before
+		stickList.push_back(nameOfJoystick(i).value_or(std::string()));	// a nameless stick lists as "", as before
 	}
 	return stickList;
 }
 
 
-- (oo::PList) axisFunctions
+oo::PList OOJoystickManager::axisFunctions()
 {
 	int i,j;
 	oo::PList::Dict fnList;
@@ -353,7 +312,7 @@ static id sSharedStickHandler = nil;
 			if(axismap[j][i] >= 0)
 			{
 				oo::PList::Dict fnDict;
-				fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(YES));
+				fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(true));
 				fnDict[std::string(STICK_NUMBER)] = oo::PList(j);
 				fnDict[std::string(STICK_AXBUT)] = oo::PList(i);
 				fnList[ENUMKEY(axismap[j][i])] = oo::PList(std::move(fnDict));
@@ -364,7 +323,7 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (oo::PList)buttonFunctions
+oo::PList OOJoystickManager::buttonFunctions()
 {
 	int i, j;
 	oo::PList::Dict fnList;
@@ -377,7 +336,7 @@ static id sSharedStickHandler = nil;
 			if(buttonmap[j][i] >= 0)
 			{
 				oo::PList::Dict fnDict;
-				fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(NO));
+				fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(false));
 				fnDict[std::string(STICK_NUMBER)] = oo::PList(j);
 				fnDict[std::string(STICK_AXBUT)] = oo::PList(i);
 				fnList[ENUMKEY(buttonmap[j][i])] = oo::PList(std::move(fnDict));
@@ -388,35 +347,35 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) setFunction:(int)function withDict:(const oo::PList &)stickFn
+void OOJoystickManager::setFunction(int function, const oo::PList &stickFn)
 {
-	BOOL isAxis = stickFn.get<bool>(std::string(STICK_ISAXIS)) ? YES : NO;
+	bool isAxis = stickFn.get<bool>(std::string(STICK_ISAXIS)) ? true : false;
 	int stickNum = stickFn.get<int>(std::string(STICK_NUMBER));
 	int stickAxBt = stickFn.get<int>(std::string(STICK_AXBUT));
 
 	if (isAxis)
 	{
-		[self setFunctionForAxis:stickAxBt 
-						function:function
-						   stick:stickNum];
+		setFunctionForAxis(stickAxBt,
+						function,
+						   stickNum);
 	}
 	else
 	{
-		[self setFunctionForButton:stickAxBt
-						  function:function
-							 stick:stickNum];
+		setFunctionForButton(stickAxBt,
+						  function,
+							 stickNum);
 	}
 }
 
 
-- (void) setFunctionForAxis:(int)axis 
-                   function:(int)function
-                      stick:(int)stickNum
+void OOJoystickManager::setFunctionForAxis(int axis,
+                   int function,
+                      int stickNum)
 {
-	OOParameterAssert(axis < MAX_AXES && stickNum < MAX_STICKS);
+	OOCParameterAssert(axis < MAX_AXES && stickNum < MAX_STICKS);
 	
-	int16_t axisvalue = [self getAxisWithStick:stickNum axis:axis];
-	[self unsetAxisFunction:function];
+	int16_t axisvalue = getAxisWithStick(stickNum, axis);
+	unsetAxisFunction(function);
 	axismap[stickNum][axis] = function;
 	
 	// initialize the throttle to what it's set to now (or else the
@@ -433,11 +392,11 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) setFunctionForButton:(int)button 
-                     function:(int)function 
-                        stick:(int)stickNum
+void OOJoystickManager::setFunctionForButton(int button,
+                     int function,
+                        int stickNum)
 {
-	OOParameterAssert(button < MAX_BUTTONS && stickNum < MAX_STICKS);
+	OOCParameterAssert(button < MAX_BUTTONS && stickNum < MAX_STICKS);
 	
 	int i, j;
 	for (i = 0; i < MAX_BUTTONS; i++)
@@ -455,7 +414,7 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) unsetAxisFunction:(int)function
+void OOJoystickManager::unsetAxisFunction(int function)
 {
 	int i, j;
 	for (i = 0; i < MAX_AXES; i++)
@@ -473,7 +432,7 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) unsetButtonFunction:(int)function
+void OOJoystickManager::unsetButtonFunction(int function)
 {
 	int i,j;
 	for (i = 0; i < MAX_BUTTONS; i++)
@@ -490,7 +449,7 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) setDefaultMapping
+void OOJoystickManager::setDefaultMapping()
 {
 	// assign the simplest mapping: stick 0 having
 	// axis 0/1 being roll/pitch and button 0 being fire, 1 being missile
@@ -502,14 +461,14 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) clearMappings
+void OOJoystickManager::clearMappings()
 {
 	memset(axismap, STICK_NOFUNCTION, sizeof axismap);
 	memset(buttonmap, STICK_NOFUNCTION, sizeof buttonmap);
 }
 
 
-- (void) clearStickStates
+void OOJoystickManager::clearStickStates()
 {
 	int i, j;
 	for (i = 0; i < AXIS_end; i++)
@@ -524,13 +483,13 @@ static id sSharedStickHandler = nil;
 	{
 		for (j = 0; j < MAX_STICKS; j++)
 		{
-			true_butstate[j][i] = NO;
+			true_butstate[j][i] = false;
 		}
 	}
 }
 
 
-- (void) clearStickButtonState:(int)stickButton
+void OOJoystickManager::clearStickButtonState(int stickButton)
 {
 	if (stickButton >= 0 && stickButton < BUTTON_end)
 	{
@@ -539,9 +498,9 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void)setCallback:(SEL) selector
-             object:(id) obj
-           hardware:(char)hwflags
+void OOJoystickManager::setCallback(SEL selector,
+             id obj,
+           char hwflags)
 {
 	cbObject = obj;
 	cbSelector = selector;
@@ -549,14 +508,14 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void)clearCallback
+void OOJoystickManager::clearCallback()
 {
-	cbObject = nil;
+	cbObject = nullptr;
 	cbHardware = 0;
 }
 
 
-- (void)decodeAxisEvent: (JoyAxisEvent *)evt
+void OOJoystickManager::decodeAxisEvent(JoyAxisEvent *evt)
 {
 	// Which axis moved? Does the value need to be made to fit a
 	// certain function? Convert axis value to a double.
@@ -569,12 +528,12 @@ static id sSharedStickHandler = nil;
 		if(axisvalue > AXCBTHRESH)
 		{
 			oo::PList::Dict fnDict;
-			fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(YES));
+			fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(true));
 			fnDict[std::string(STICK_NUMBER)] = oo::PList(static_cast<int>(evt->which));
 			fnDict[std::string(STICK_AXBUT)] = oo::PList(static_cast<int>(evt->axis));
 			cbHardware = 0;
 			OOCallByName(cbObject, cbSelector, oo::PList(std::move(fnDict)));	// called by name (ADR-0055 item 5)
-			cbObject = nil;
+			cbObject = nullptr;
 		}
 		
 		// we are done.
@@ -623,20 +582,20 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) decodeButtonEvent:(JoyButtonEvent *)evt
+void OOJoystickManager::decodeButtonEvent(JoyButtonEvent *evt)
 {
-	BOOL bs = NO;
+	bool bs = false;
 	
 	// Is there a callback we need to make?
 	if(cbObject && (cbHardware & HW_BUTTON))
 	{
 		oo::PList::Dict fnDict;
-		fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(NO));
+		fnDict[std::string(STICK_ISAXIS)] = oo::PList(static_cast<bool>(false));
 		fnDict[std::string(STICK_NUMBER)] = oo::PList(static_cast<int>(evt->which));
 		fnDict[std::string(STICK_AXBUT)] = oo::PList(static_cast<int>(evt->button));
 		cbHardware = 0;
 		OOCallByName(cbObject, cbSelector, oo::PList(std::move(fnDict)));	// called by name (ADR-0055 item 5)
-		cbObject = nil;
+		cbObject = nullptr;
 		
 		// we are done.
 		return;
@@ -655,7 +614,7 @@ static id sSharedStickHandler = nil;
 	}
 	if (evt->type == JOYBUTTONDOWN)
 	{
-		bs = YES;
+		bs = true;
 		if(function == BUTTON_PRECISION)
 			precisionMode = !precisionMode;
 	}
@@ -668,7 +627,7 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (void) decodeHatEvent:(JoyHatEvent *)evt
+void OOJoystickManager::decodeHatEvent(JoyHatEvent *evt)
 {
 	// HACK: handle this as a set of buttons
 	int i;
@@ -683,7 +642,7 @@ static id sSharedStickHandler = nil;
 			btn.type = (SDL_EventType)((evt->value & (1 << i)) ? JOYBUTTONDOWN : JOYBUTTONUP);
 			btn.button = MAX_REAL_BUTTONS + i + evt->which * 4;
 			btn.down = (evt->value & (1 << i));
-			[self decodeButtonEvent:&btn];
+			decodeButtonEvent(&btn);
 		}
 	}
 	
@@ -691,28 +650,28 @@ static id sSharedStickHandler = nil;
 }
 
 
-- (NSUInteger) joystickCount
+NSUInteger OOJoystickManager::joystickCount()
 {
 	return 0;
 }
 
 
-- (void) saveStickSettings
+void OOJoystickManager::saveStickSettings()
 {
 	oo::Defaults &defaults = oo::Defaults::standard();
 	
-	defaults.setObject(std::string(AXIS_SETTINGS), [self axisFunctions]);
-	defaults.setObject(std::string(BUTTON_SETTINGS), [self buttonFunctions]);
-	[self saveProfileForAxis: AXIS_ROLL];
-	[self saveProfileForAxis: AXIS_PITCH];
-	[self saveProfileForAxis: AXIS_YAW];
+	defaults.setObject(std::string(AXIS_SETTINGS), axisFunctions());
+	defaults.setObject(std::string(BUTTON_SETTINGS), buttonFunctions());
+	saveProfileForAxis(AXIS_ROLL);
+	saveProfileForAxis(AXIS_PITCH);
+	saveProfileForAxis(AXIS_YAW);
 	defaults.synchronize();
 }
 
 
-- (void) loadStickSettings
+void OOJoystickManager::loadStickSettings()
 {
-	[self clearMappings];
+	clearMappings();
 	oo::Defaults &defaults = oo::Defaults::standard();
 	const oo::PList axisSettings = defaults.object(std::string(AXIS_SETTINGS));
 	const oo::PList buttonSettings = defaults.object(std::string(BUTTON_SETTINGS));
@@ -724,8 +683,8 @@ static id sSharedStickHandler = nil;
 		{
 			for (const auto &[key, stickFn] : *settings)
 			{
-				[self setFunction: oo::str::intValue(key)
-						 withDict: stickFn];
+				setFunction(oo::str::intValue(key),
+						 stickFn);
 			}
 		}
 	}
@@ -735,31 +694,31 @@ static id sSharedStickHandler = nil;
 		{
 			for (const auto &[key, stickFn] : *settings)
 			{
-				[self setFunction:oo::str::intValue(key)
-						 withDict:stickFn];
+				setFunction(oo::str::intValue(key),
+						 stickFn);
 			}
 		}
 	}
 	else
 	{
 		// Nothing to load - set useful defaults
-		[self setDefaultMapping];
+		setDefaultMapping();
 	}
-	[self loadProfileForAxis: AXIS_ROLL];
-	[self loadProfileForAxis: AXIS_PITCH];
-	[self loadProfileForAxis: AXIS_YAW];
+	loadProfileForAxis(AXIS_ROLL);
+	loadProfileForAxis(AXIS_PITCH);
+	loadProfileForAxis(AXIS_YAW);
 }
 
 // These get overidden by subclasses
 
-- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber
+std::optional<std::string> OOJoystickManager::nameOfJoystick(NSUInteger /*stickNumber*/)
 {
 	return std::string("Dummy joystick");
 }
 
-- (int16_t) getAxisWithStick:(NSUInteger)stickNum axis:(NSUInteger)axisNum
+int16_t OOJoystickManager::getAxisWithStick(NSUInteger /*stickNum*/, NSUInteger /*axisNum*/)
 {
 	return 0;
 }
 
-@end
+}	// namespace cxx
