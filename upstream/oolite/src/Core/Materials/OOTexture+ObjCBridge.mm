@@ -424,15 +424,19 @@ cxx::OOTexture *oo::ToCxx(OOTexture *texture)
 // OOTextureInternal.h's subclass interface.
 @implementation OOTexture (SubclassInterface)
 
+/*	An Objective-C texture whose initialiser released it before it reached -[OOTexture init] (an
+	OOConcreteTexture with no loader) has no C++ part yet when its -dealloc uncaches it: nothing
+	is cached, as its nil cache key made the old method do nothing.
+*/
 - (void) addToCaches
 {
-	_cxxTexture->addToCaches();
+	if (_cxxTexture != nullptr)  _cxxTexture->addToCaches();
 }
 
 
 - (void) removeFromCaches
 {
-	_cxxTexture->removeFromCaches();
+	if (_cxxTexture != nullptr)  _cxxTexture->removeFromCaches();
 }
 
 
