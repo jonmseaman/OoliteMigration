@@ -1,0 +1,196 @@
+/*	test_OOShipRegistry.mm
+	Unit tests for OOShipRegistry (src/Core/OOShipRegistry.h): bead oo-3bgz, slice 1 of the Phase 3
+	slice plan docs/phases/3-slices/OOShipRegistry.md (the class shell, lifecycle, the lookups,
+	OOConveniences and the singleton), in the house style of the OOColor exemplar (proposed
+	ADR-0056).
+
+	It pins what the registry answered before the conversion, through the Objective-C API its
+	callers use, over a small ship data set that a stand-in ResourceManager serves: the shared
+	instance, every lookup (ship, effect and shipyard entries, player ships, roles and their
+	probability sets, keys with a role, a random key for a role, demo ships), replacing an entry,
+	and +reload, which makes a new registry from the cache the first one filled. The data pipeline
+	itself (OODataLoader, slices 2 and 3) runs as it is; this test only fixes its input. The
+	expectations were written against the unconverted class and run on it first. After the
+	conversion the class is cxx::OOShipRegistry behind an Objective-C facade; the test also checks
+	the facade (one per registry, the same answers from C++).
+	Run: bash tools/check-core-tests.sh test_OOShipRegistry
+*/
+
+#import "OOShipRegistry.h"
+#import "OOProbabilitySet.h"
+#import "OODescription.h"
+
+#include "oofnd/PListParsing.hpp"
+
+#include "oo_test.hpp"
+
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+
+
+// The stand-in ResourceManager: the files the registry reads, by name; everything else absent.
+@interface ResourceManager: OOObject
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache;
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles cache:(BOOL)useCache;
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
+@end
+
+
+namespace {
+
+std::vector<std::string> sFilesRead;
+
+oo::PList Parse(const char *text)
+{
+	auto result = oo::parsePropertyList(text);
+	if (!result)  std::fprintf(stderr, "  could not parse test plist: %s\n", text);
+	return result ? *result : oo::PList();
+}
+
+
+oo::PList FileNamed(const std::string &name)
+{
+	sFilesRead.push_back(name);
+	if (name == "shipdata.plist")  return Parse(
+		"{"
+		"  adder = { name = Adder; roles = \"trader hunter(0.5)\"; model = \"adder.dat\"; max_flight_speed = 240; };"
+		"  \"cobra3-player\" = { like_ship = adder; name = \"Cobra Mark III\"; roles = \"player trader(2)\"; };"
+		"  \"coriolis-station\" = { name = \"Coriolis Station\"; roles = \"coriolis station\"; model = \"coriolis.dat\"; isCarrier = yes; };"
+		"  \"template-ship\" = { is_template = yes; name = Template; model = \"adder.dat\"; roles = template; };"
+		"}");
+	if (name == "shipyard.plist")  return Parse(
+		"{ \"cobra3-player\" = { price = 150000; techlevel = 1; chance = 1; optional_equipment = (); standard_equipment = { extras = (); forward_weapon_type = EQ_WEAPON_PULSE_LASER; }; weapon_facings = 15; }; }");
+	if (name == "effectdata.plist")  return Parse(
+		"{ puff = { model = \"puff.dat\"; scale = 2; }; }");
+	if (name == "shiplibrary.plist")  return Parse(
+		"( { ship = adder; }, { ship = \"coriolis-station\"; class = station; }, { ship = missing; } )");
+	return oo::PList();
+}
+
+}	// namespace
+
+
+@implementation ResourceManager
+
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName mergeMode:(int)mergeMode cache:(BOOL)useCache
+{
+	(void)folderName; (void)mergeMode; (void)useCache;
+	return FileNamed(fileName);
+}
+
+
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL)mergeFiles cache:(BOOL)useCache
+{
+	(void)folderName; (void)mergeFiles; (void)useCache;
+	return FileNamed(fileName);
+}
+
+
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+{
+	return folderName.value_or("") + "/" + fileName;
+}
+
+@end
+
+
+namespace {
+
+std::string Join(const std::vector<std::string> &strings)
+{
+	std::string result;
+	for (const std::string &string : strings)  result += (result.empty() ? "" : " ") + string;
+	return result;
+}
+
+
+std::string Text(const oo::PList &plist)
+{
+	return plist.isNull() ? "(null)" : oo::DescriptionOf(plist);
+}
+
+
+bool Pinned(const char *what, const std::string &actual, const std::string &expected)
+{
+	if (OO_CHECK_EQ(actual, expected))  return true;
+	std::fprintf(stderr, "  %s got: %s\n", what, actual.c_str());
+	return false;
+}
+
+}	// namespace
+
+
+OO_TEST(sharedRegistryLoadsOnce)
+{
+	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
+	OO_CHECK(registry != nil);
+	OO_CHECK([OOShipRegistry sharedRegistry] == registry);
+	Pinned("files", Join(sFilesRead), "");
+}
+
+
+OO_TEST(looksUpShipsEffectsAndShipyards)
+{
+	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
+	Pinned("ship keys", Join([registry cxx_shipKeys]), "");
+	Pinned("adder", Text([registry cxx_shipInfoForKey:"adder"]), "");
+	Pinned("cobra", Text([registry cxx_shipInfoForKey:"cobra3-player"]), "");
+	Pinned("unknown", Text([registry cxx_shipInfoForKey:"viper"]), "");
+	Pinned("effect", Text([registry cxx_effectInfoForKey:"puff"]), "");
+	Pinned("no effect", Text([registry cxx_effectInfoForKey:"adder"]), "");
+	Pinned("shipyard", Text([registry cxx_shipyardInfoForKey:"cobra3-player"]), "");
+	Pinned("no shipyard", Text([registry cxx_shipyardInfoForKey:"adder"]), "");
+	Pinned("player ships", Join([registry cxx_playerShipKeys]), "");
+	Pinned("demo ships", Text([registry cxx_demoShipKeys]), "");
+}
+
+
+OO_TEST(answersRoles)
+{
+	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
+	Pinned("roles", Join([registry cxx_shipRoles]), "");
+	Pinned("traders", Join([registry cxx_shipKeysWithRole:"trader"]), "");
+	Pinned("hunters", Join([registry cxx_shipKeysWithRole:"hunter"]), "");
+	Pinned("none", Join([registry cxx_shipKeysWithRole:"pirate"]), "");
+	OO_CHECK([registry cxx_probabilitySetForRole:"pirate"] == nullptr);
+	OOProbabilitySet *traders = [registry cxx_probabilitySetForRole:"trader"];
+	OO_CHECK(traders != nullptr);
+	if (traders != nullptr)
+	{
+		OO_CHECK_EQ(traders->count(), 2u);
+		Pinned("trader weights", std::to_string(traders->weightForObject(oo::PList("adder"))) + " " + std::to_string(traders->weightForObject(oo::PList("cobra3-player"))), "");
+	}
+	Pinned("random hunter", [registry cxx_randomShipKeyForRole:"hunter"].value_or("(nullopt)"), "");
+	Pinned("random pirate", [registry cxx_randomShipKeyForRole:"pirate"].value_or("(nullopt)"), "");
+}
+
+
+OO_TEST(replacesAnEntry)
+{
+	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
+	[registry cxx_setShipInfoForKey:"viper" with:Parse("{ name = Viper; }")];
+	Pinned("viper", Text([registry cxx_shipInfoForKey:"viper"]), "{name = Viper; }");
+	Pinned("ship keys", Join([registry cxx_shipKeys]), "");
+}
+
+
+OO_TEST(reloadMakesANewRegistryFromTheCache)
+{
+	OOShipRegistry *before = [OOShipRegistry sharedRegistry];
+	sFilesRead.clear();
+	[OOShipRegistry reload];
+	OOShipRegistry *after = [OOShipRegistry sharedRegistry];
+	OO_CHECK(after != nil);
+	OO_CHECK(after != before);
+	Pinned("files", Join(sFilesRead), "");
+	Pinned("ship keys", Join([after cxx_shipKeys]), "");
+	Pinned("player ships", Join([after cxx_playerShipKeys]), "");
+	Pinned("roles", Join([after cxx_shipRoles]), "");
+	// The old registry was never released (its -release did nothing): it still answers.
+	Pinned("old ship keys", Join([before cxx_shipKeys]), "");
+}
+
+
+OO_TEST_MAIN()
