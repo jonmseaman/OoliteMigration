@@ -1,6 +1,6 @@
 # ADR-0031 — `PList::get<T>` retires `oo_*ForKey`; sweeps reach it through a zero-copy `oo::PListView`
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-u77, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-u77, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Implements** seam 2.4 of [Phase 2](../phases/2-oofnd.md) ("typed accessor `PList::get<T>` and one

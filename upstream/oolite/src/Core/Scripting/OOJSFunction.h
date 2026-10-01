@@ -4,6 +4,12 @@ OOJSFunction.h
 
 Object encapsulating a runnable JavaScript function.
 
+C++20 since bead oo-3smy (proposed ADR-0056, the OOColor house style). The class is
+cxx::OOJSFunction while OOJSFunction+ObjCBridge.h, imported at the end of this header, keeps the
+Objective-C OOJSFunction that ShipEntityAI (alloc/init and -evaluatePredicateWithContext:...) and
+OORegExpMatcher (which names it ::OOJSFunction) message; the bridge's deletion bead moves it out
+of namespace cxx.
+
 
 JavaScript support for Oolite
 Copyright (C) 2007-2013 David Taylor and Jens Ayton.
@@ -25,43 +31,79 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef OOJSFUNCTION_H
+#define OOJSFUNCTION_H
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
-@interface OOJSFunction: OOObject
+
+#include <optional>
+#include <string>
+#include <vector>
+
+
+namespace cxx {
+
+class OOJSFunction : public oo::RefCounted
 {
-@private
-	ooscript::Function _function;
+public:
+	// The initialisers' factories (proposed ADR-0056 amendment oo-novu): null where the
+	// initialiser answered nil (a NULL function; no code, missing argument names, or a compile
+	// error).
+	static oo::Ref<OOJSFunction> initWithFunction(ooscript::Function function, ooscript::Context context);
+	static oo::Ref<OOJSFunction> initWithName(const std::optional<std::string> &name,
+											  ooscript::Object scope,		// may be NULL, in which case global object is used.
+											  const std::optional<std::string> &code,		// full JS code for function, including function declaration.
+											  NSUInteger argCount,
+											  const char **argNames,
+											  const std::optional<std::string> &fileName,
+											  NSUInteger lineNumber,
+											  ooscript::Context context);	// may be NULL. If not null, must be in a request.
+
+	~OOJSFunction() override;
+
+	std::optional<std::string> descriptionComponents() const;
+
+	std::optional<std::string> name();	// nullopt: anonymous (bead oo-3rb.289.7)
+	ooscript::Function function();
+	ooscript::Value functionValue();
+
+	// Raw evaluation. Context may not be NULL and must be in a request.
+	bool evaluateWithContext(ooscript::Context context,
+							 ooscript::Object jsThis,
+							 unsigned argc,
+							 ooscript::Value *argv,
+							 ooscript::Value *result);
+
+	// Object-wrapper evaluation, converting the result to a boolean.
+	bool evaluatePredicateWithContext(ooscript::Context context,
+									  id jsThis,
+									  const std::vector<oo::ObjCRef<id>> &arguments);
+
+private:
+	// The part of -initWithFunction:context: that cannot fail.
+	OOJSFunction(ooscript::Function function, ooscript::Context context);
+
+	void deleteJSValue();
+
+	// Semi-raw evaluation shared by convenience methods below.
+	bool evaluateWithContext(ooscript::Context context,
+							 id jsThis,
+							 const std::vector<oo::ObjCRef<id>> &arguments,
+							 ooscript::Value *result);
+
+	ooscript::Function _function = {};
 	std::optional<std::string>	_name;	// nullopt for an anonymous function (was nil)
-}
+};
 
-- (id) initWithFunction:(ooscript::Function)function context:(ooscript::Context)context;
-- (id) initWithName:(const std::optional<std::string> &)name
-			  scope:(ooscript::Object)scope		// may be NULL, in which case global object is used.
-			   code:(const std::optional<std::string> &)code		// full JS code for function, including function declaration.
-	  argumentCount:(NSUInteger)argCount
-	  argumentNames:(const char **)argNames
-		   fileName:(const std::optional<std::string> &)fileName
-		 lineNumber:(NSUInteger)lineNumber
-			context:(ooscript::Context)context;	// may be NULL. If not null, must be in a request.
+}	// namespace cxx
 
-- (std::optional<std::string>) cxx_name;	// nullopt: anonymous (bead oo-3rb.289.7)
-- (ooscript::Function) function;
-- (ooscript::Value) functionValue;
 
-// Raw evaluation. Context may not be NULL and must be in a request.
-- (BOOL) evaluateWithContext:(ooscript::Context)context
-					   scope:(ooscript::Object)jsThis
-						argc:(unsigned)argc
-						argv:(ooscript::Value *)argv
-					  result:(ooscript::Value *)result;
+// Transitional: the Objective-C OOJSFunction, for callers not yet converted. Deleted, with
+// namespace cxx above, by the bridge's deletion bead.
+#import "OOJSFunction+ObjCBridge.h"
 
-// Object-wrapper evaluation, converting the result to a boolean.
-- (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
-								scope:(id)jsThis
-							arguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
-
-@end
+#endif	// OOJSFUNCTION_H

@@ -35,7 +35,6 @@ SOFTWARE.
 #import "OORegExpMatcher.h"
 #import "OOConstToString.h"
 #include "oofnd/objc/OOException.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 #include "oofnd/Log.hpp"
@@ -730,7 +729,7 @@ namespace {
 BOOL MatchesRegExp(const std::optional<std::string> &string, const std::string &regexp)
 {
 	if (!string.has_value())  return NO;
-	return [[OORegExpMatcher regExpMatcher] string:*string matchesExpression:regexp];
+	return [[::OORegExpMatcher regExpMatcher] string:*string matchesExpression:regexp];
 }
 
 

@@ -58,7 +58,6 @@ MA 02110-1301, USA.
 	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
 
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"		// Object nodes (OOJSValueFromPList)
 #import "Universe.h"
 #import "OOPlanetEntity.h"
@@ -105,7 +104,6 @@ MA 02110-1301, USA.
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/objc/OOAssert.h"
 
@@ -335,7 +333,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	[self setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
 #endif
 	
-	assert(sizeof(ooscript::Char16) == sizeof(unichar));
+	assert(sizeof(ooscript::Char16) == sizeof(uint16_t));
 	
 	// initialize the JS run time, and return result in runtime.
 	const oo::PList jsRuntimeSize = defaults.object("jsruntime-size-mib");
@@ -1122,15 +1120,7 @@ void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *for
 }
 
 
-void OOJSReportWrappedException(ooscript::Context context, id exception)
-{
-	if (!ooscript::isExceptionPending((context)))
-	{
-		if ([exception isKindOfClass:[OOException class]])  cxx_OOJSReportError(context, "Native exception: %s", [(OOException *)exception reason]);
-		else  cxx_OOJSReportError(context, "Unidentified native exception");
-	}
-	// Else, let the pending exception propagate.
-}
+// OOJSReportWrappedException() and OOJSReportCurrentException() are in OOJSEngineNativeWrappers.mm.
 
 
 #ifndef NDEBUG
@@ -1428,10 +1418,10 @@ ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 	if (object == nil)  return ooscript::nullValue();
 	if (EXPECT(IsOOObjectRooted(object)))  return [object oo_jsValueInContext:context];
 
-	// A Foundation object: its glue was the bridge's categories (proposed ADR-0051).
-	const oo::PList plist = oo::PListFrom(object);
-	if (plist.type() == oo::PList::Type::Object)  return ooscript::undefinedValue();	// NSObject's glue
-	return OOJSValueFromPList(context, plist);
+	// An object on another root has no JS glue: undefined, as NSObject's gave. oo-qps.72 deleted
+	// the Foundation branch (its property-list form, proposed ADR-0051): plist data is
+	// OOJSValueFromPList's.
+	return ooscript::undefinedValue();
 }
 
 
@@ -1911,7 +1901,7 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
 	ooscript::Value value = ooscript::undefinedValue();
-	VectorToJSValue(context, v, &value);
+	VectorToJSValue(context, [self getVector], &value);
 	return value;
 }
 
@@ -2363,9 +2353,11 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 }
 
 
+// The object of the value's PList::Object node (nil for plist data): oo-qps.72 deleted the
+// Foundation form of the rest (ADR-0055 Amendment 2).
 id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value)
 {
-	return oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, value));
+	return oo::ObjectIn(cxx_OOJSPListFromJSValue(context, value));
 }
 
 
@@ -2403,7 +2395,7 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object 
 
 id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tableObject)
 {
-	return oo::ObjectFromPList(cxx_OOJSPListFromJSObject(context, tableObject));
+	return oo::ObjectIn(cxx_OOJSPListFromJSObject(context, tableObject));
 }
 
 

@@ -28,36 +28,40 @@ SOFTWARE.
 #import "OOMaterial.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 
 
-static OOMaterial *sActiveMaterial = nil;
+namespace cxx {
+
+namespace {
+
+/*	The current material, retained. It holds the Objective-C object (an Objective-C material
+	itself, or a C++ material's facade), because while any subclass is Objective-C that is what
+	owns the whole material: an Objective-C material's C++ part does not retain it (proposed
+	ADR-0056, amendment oo-smy). Never destroyed, as the static pointer was not.
+*/
+oo::ObjCRef<::OOMaterial *> &ActiveMaterial()
+{
+	static auto *active = new oo::ObjCRef<::OOMaterial *>;
+	return *active;
+}
+
+}	// namespace
 
 
-@implementation OOMaterial
-
-+ (void)setUp
+void OOMaterial::setUp()
 {
 	// I thought we'd need this, but the stuff I needed it for turned out to be problematic. Maybe in future. -- Ahruman
 }
 
 
-- (void)dealloc
+// name() is a subclass's override, so it cannot be const.
+std::optional<std::string> OOMaterial::descriptionComponents() const
 {
-	// Ensure cleanup happens; doing it more than once is safe.
-	[self willDealloc];
-	
-	[super dealloc];
+	return "\"" + const_cast<OOMaterial *>(this)->name().value_or("(null)") + "\"";	// "%@" of the name, quoted
 }
 
 
-- (std::optional<std::string>) cxx_descriptionComponents
-{
-	return "\"" + [self cxx_name].value_or("(null)") + "\"";	// "%@" of the name, quoted
-}
-
-
-- (std::optional<std::string>)cxx_name
+std::optional<std::string> OOMaterial::name()
 {
 	OOLogGenericParameterError();
 	return std::nullopt;
@@ -65,59 +69,57 @@ static OOMaterial *sActiveMaterial = nil;
 
 
 // Make this the current GL shader program.
-- (void)apply
+void OOMaterial::apply()
 {
-	[sActiveMaterial unapplyWithNext:self];
-	[sActiveMaterial release];
-	sActiveMaterial = nil;
-	
-	if ([self doApply])
+	if (OOMaterial *active = oo::ToCxx(ActiveMaterial().get()))  active->unapplyWithNext(this);
+	ActiveMaterial() = nullptr;
+
+	if (doApply())
 	{
-		sActiveMaterial = [self retain];
+		ActiveMaterial() = oo::ObjCRef<::OOMaterial *>(oo::ToObjC(this));
 	}
 }
 
 
-+ (void)applyNone
+void OOMaterial::applyNone()
 {
-	[sActiveMaterial unapplyWithNext:nil];
-	[sActiveMaterial release];
-	sActiveMaterial = nil;
+	if (OOMaterial *active = oo::ToCxx(ActiveMaterial().get()))  active->unapplyWithNext(nullptr);
+	ActiveMaterial() = nullptr;
 }
 
 
-+ (OOMaterial *)current
+oo::Ref<OOMaterial> OOMaterial::current()
 {
-	return [[sActiveMaterial retain] autorelease];
+	return oo::Ref<OOMaterial>(oo::ToCxx(ActiveMaterial().get()));
 }
 
 
-- (void)ensureFinishedLoading
+void OOMaterial::ensureFinishedLoading()
 {
-	
+
 }
 
 
-- (BOOL) isFinishedLoading
+bool OOMaterial::isFinishedLoading()
 {
-	return YES;
+	return true;
 }
 
 
-- (void)setBindingTarget:(id<OOWeakReferenceSupport>)target
+void OOMaterial::setBindingTarget(id<OOWeakReferenceSupport> /*target*/)
 {
-	
+
 }
 
 
-- (BOOL) wantsNormalsAsTextureCoordinates
+bool OOMaterial::wantsNormalsAsTextureCoordinates()
 {
-	return NO;
+	return false;
 }
 
 
 #if OO_MULTITEXTURE
-- (NSUInteger) countOfTextureUnitsWithBaseCoordinates
+NSUInteger OOMaterial::countOfTextureUnitsWithBaseCoordinates()
 {
 	return 1;
 }
@@ -125,33 +127,33 @@ static OOMaterial *sActiveMaterial = nil;
 
 
 #ifndef NDEBUG
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
+std::vector<oo::ObjCRef<::OOTexture *>> OOMaterial::allTextures()
 {
 	return {};
 }
 #endif
 
-- (BOOL)doApply
+bool OOMaterial::doApply()
 {
 	OOLogGenericSubclassResponsibility();
-	return NO;
+	return false;
 }
 
 
-- (void)unapplyWithNext:(OOMaterial *)next
+void OOMaterial::unapplyWithNext(OOMaterial * /*next*/)
 {
 	// Do nothing.
 }
 
 
-- (void)willDealloc
+void OOMaterial::willDealloc()
 {
-	if (EXPECT_NOT(sActiveMaterial == self))
+	if (EXPECT_NOT(oo::ToCxx(ActiveMaterial().get()) == this))
 	{
 		OO_LOG("shader.dealloc.imbalance", "{}", "***** Material deallocated while active, indicating a retain/release imbalance.");
-		[self unapplyWithNext:nil];
-		sActiveMaterial = nil;
+		unapplyWithNext(nullptr);
+		(void)ActiveMaterial().leakRef();	// = nil: not released, it is being deallocated
 	}
 }
 
-@end
+}	// namespace cxx

@@ -217,7 +217,7 @@ struct OOTrumbleTestAccess
 	{
 		const cxx::OOTrumble &c = *oo::ToCxx(t);
 		char buffer[1024];
-		unichar *digram = [t digram];
+		uint16_t *digram = [t digram];
 		std::snprintf(buffer, sizeof buffer,
 			"digram %u %u size %.5g/%.5g growth %.5g hunger %.5g discomfort %.5g rot %.5g vel %.5g pos (%.5g %.5g) mov (%.5g %.5g) anim %d next %d time %.5g dur %.5g eyes %d mouth %d eye %.5g mouth %.5g spawn %d",
 			digram[0], digram[1], [t size], c.max_size, c.growth_rate, [t hunger], [t discomfort],

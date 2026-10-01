@@ -81,7 +81,6 @@ public:
 	id peekAtNextObject();				// Returns next object without removing it.
 	void removeNextObject();
 
-	void addObjects(id collection);		// collection must respond to -nextObject, or implement -objectEnumerator to return something that implements -nextObject -- such as an Objective-C enumerator.
 
 	std::vector<oo::ObjCRef<id>> sortedObjects();// Returns the objects in -nextObject order and empties the heap. To get the objects without emptying the heap, copy the priority queue first.
 	std::vector<oo::ObjCRef<id>> objectEnumerator();	// sortedObjects(): C++ iteration in nextObject() order (empties the heap)

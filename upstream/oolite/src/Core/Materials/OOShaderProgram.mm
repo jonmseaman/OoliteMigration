@@ -35,20 +35,36 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOMacroOpenGL.h"
-#import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 
 
-/*	Cache key -> program, not retained: a program removes itself in -dealloc. Was an
+namespace {
+
+// What "%@" printed for a nil-able string.
+std::string StringOrNull(const std::optional<std::string> &string)
+{
+	return string.value_or("(null)");
+}
+
+
+BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, std::optional<std::string> *outResult);
+std::string GetGLSLInfoLog(GLhandleARB shaderObject);
+
+}	// namespace
+
+
+namespace cxx {
+
+/*	Cache key -> program, not retained: a program removes itself in its destructor. Was an
 	Objective-C mutable dictionary of boxed values (bead oo-3rb.10); keys are the cache keys' UTF-8.
-	Allocated on first use and never freed, as the dictionary was, so a program deallocated
+	Allocated on first use and never freed, as the dictionary was, so a program destroyed
 	during exit never finds it destroyed.
 */
 namespace {
@@ -57,9 +73,9 @@ std::unordered_map<std::string, OOShaderProgram *> *sShaderCache = NULL;
 
 OOShaderProgram *CachedShaderProgram(const std::optional<std::string> &cacheKey)
 {
-	if (!cacheKey.has_value() || sShaderCache == NULL)  return nil;
+	if (!cacheKey.has_value() || sShaderCache == NULL)  return nullptr;
 	auto it = sShaderCache->find(*cacheKey);
-	return (it != sShaderCache->end()) ? it->second : nil;
+	return (it != sShaderCache->end()) ? it->second : nullptr;
 }
 
 void CacheShaderProgram(const std::string &cacheKey, OOShaderProgram *program)
@@ -69,86 +85,67 @@ void CacheShaderProgram(const std::string &cacheKey, OOShaderProgram *program)
 }
 
 
-// What "%@" printed for a nil-able string.
-std::string StringOrNull(const std::optional<std::string> &string)
+/*	The program in use, retained (sActiveProgram). It holds the Objective-C object (the facade),
+	which owns the C++ program and is what sActiveProgram retained, so a program in use keeps its
+	facade while the facade exists (proposed ADR-0056, amendment oo-f9zg item 2). Never destroyed,
+	as the static pointer was not (amendment oo-smy item 3).
+*/
+oo::ObjCRef<::OOShaderProgram *> &ActiveProgram()
 {
-	return string.value_or("(null)");
+	static auto *active = new oo::ObjCRef<::OOShaderProgram *>;
+	return *active;
 }
-
-OOShaderProgram			*sActiveProgram = nil;
-
-
-BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, std::optional<std::string> *outResult);
-std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 
 }	// namespace
 
 
-@interface OOShaderProgram (OOPrivate)
-
-- (id)initWithVertexShaderSource:(const std::optional<std::string> &)vertexSource
-			fragmentShaderSource:(const std::optional<std::string> &)fragmentSource
-					prefixString:(const std::optional<std::string> &)prefixString
-					  vertexName:(const std::optional<std::string> &)vertexName
-					fragmentName:(const std::optional<std::string> &)fragmentName
-			   attributeBindings:(const oo::PList &)attributeBindings
-							 key:(const std::optional<std::string> &)key;
-
-- (void) bindAttributes:(const oo::PList &)attributeBindings;
-- (void) bindStandardMatrixUniforms;
-
-@end
-
-
-@implementation OOShaderProgram
-
-+ (id) shaderProgramWithVertexShader:(const std::optional<std::string> &)vertexShaderSource
-					  fragmentShader:(const std::optional<std::string> &)fragmentShaderSource
-					vertexShaderName:(const std::optional<std::string> &)vertexShaderName
-				  fragmentShaderName:(const std::optional<std::string> &)fragmentShaderName
-							  prefix:(const std::optional<std::string> &)inPrefixString			// String prepended to program source (both vs and fs)
-				   attributeBindings:(const oo::PList &)attributeBindings	// Maps vertex attribute names to "locations".
-							cacheKey:(const std::optional<std::string> &)cacheKey
+oo::Ref<OOShaderProgram> OOShaderProgram::shaderProgramWithVertexShader(const std::optional<std::string> &vertexShaderSource,
+																		const std::optional<std::string> &fragmentShaderSource,
+																		const std::optional<std::string> &vertexShaderName,
+																		const std::optional<std::string> &fragmentShaderName,
+																		const std::optional<std::string> &inPrefixString,			// String prepended to program source (both vs and fs)
+																		const oo::PList &attributeBindings,	// Maps vertex attribute names to "locations".
+																		const std::optional<std::string> &cacheKey)
 {
-	OOShaderProgram			*result = nil;
+	oo::Ref<OOShaderProgram>	result;
 	std::optional<std::string>	prefixString = inPrefixString;
 
 	if (prefixString.has_value() && prefixString->empty())  prefixString = std::nullopt;
-	
+
 	// Use cache to avoid creating duplicate shader programs -- saves on GPU resources and potentially state changes.
 	// FIXME: probably needs to respond to graphics resets.
-	result = CachedShaderProgram(cacheKey);
-	
-	if (result == nil)
+	result = oo::Ref<OOShaderProgram>(CachedShaderProgram(cacheKey));
+
+	if (result == nullptr)
 	{
 		// No cached program; create one...
-		result = [[OOShaderProgram alloc] initWithVertexShaderSource:vertexShaderSource
-												fragmentShaderSource:fragmentShaderSource
-														prefixString:prefixString
-														  vertexName:vertexShaderName
-														fragmentName:fragmentShaderName
-												   attributeBindings:attributeBindings
-																 key:cacheKey];
-		[result autorelease];
-		
-		if (result != nil && cacheKey.has_value())
+		result = oo::adopt(new OOShaderProgram());
+		if (!result->initWithVertexShaderSource(vertexShaderSource,
+												fragmentShaderSource,
+												prefixString,
+												vertexShaderName,
+												fragmentShaderName,
+												attributeBindings,
+												cacheKey))  result = nullptr;
+
+		if (result != nullptr && cacheKey.has_value())
 		{
 			// ...and add it to the cache.
-			CacheShaderProgram(*cacheKey, result);	// the cache doesn't retain the program
+			CacheShaderProgram(*cacheKey, result.get());	// the cache doesn't retain the program
 		}
 	}
-	
+
 	return result;
 }
 
 
-+ (id)shaderProgramWithVertexShaderName:(const std::string &)vertexShaderName
-					 fragmentShaderName:(const std::string &)fragmentShaderName
-								 prefix:(const std::optional<std::string> &)inPrefixString
-					  attributeBindings:(const oo::PList &)attributeBindings
+oo::Ref<OOShaderProgram> OOShaderProgram::shaderProgramWithVertexShaderName(const std::string &vertexShaderName,
+																			const std::string &fragmentShaderName,
+																			const std::optional<std::string> &inPrefixString,
+																			const oo::PList &attributeBindings)
 {
 	std::string					cacheKey;
-	OOShaderProgram				*result = nil;
+	oo::Ref<OOShaderProgram>	result;
 	std::optional<std::string>	vertexSource;
 	std::optional<std::string>	fragmentSource;
 	std::optional<std::string>	prefixString = inPrefixString;
@@ -158,90 +155,94 @@ std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 	// Use cache to avoid creating duplicate shader programs -- saves on GPU resources and potentially state changes.
 	// FIXME: probably needs to respond to graphics resets.
 	cacheKey = "vertex:" + vertexShaderName + "\nfragment:" + fragmentShaderName + "\n----\n" + prefixString.value_or("");
-	result = CachedShaderProgram(cacheKey);
+	result = oo::Ref<OOShaderProgram>(CachedShaderProgram(cacheKey));
 
-	if (result == nil)
+	if (result == nullptr)
 	{
 		// No cached program; create one...
-		if (!GetShaderSource(vertexShaderName, "vertex", &vertexSource))  return nil;
-		if (!GetShaderSource(fragmentShaderName, "fragment", &fragmentSource))  return nil;
-		result = [[OOShaderProgram alloc] initWithVertexShaderSource:vertexSource
-												fragmentShaderSource:fragmentSource
-														prefixString:prefixString
-														  vertexName:vertexShaderName
-														fragmentName:fragmentShaderName
-												   attributeBindings:attributeBindings
-																 key:cacheKey];
-		
-		if (result != nil)
+		if (!GetShaderSource(vertexShaderName, "vertex", &vertexSource))  return nullptr;
+		if (!GetShaderSource(fragmentShaderName, "fragment", &fragmentSource))  return nullptr;
+		result = oo::adopt(new OOShaderProgram());
+		if (!result->initWithVertexShaderSource(vertexSource,
+												fragmentSource,
+												prefixString,
+												vertexShaderName,
+												fragmentShaderName,
+												attributeBindings,
+												cacheKey))  result = nullptr;
+
+		if (result != nullptr)
 		{
 			// ...and add it to the cache.
-			[result autorelease];
-			CacheShaderProgram(cacheKey, result);	// the cache doesn't retain the program
+			CacheShaderProgram(cacheKey, result.get());	// the cache doesn't retain the program
 		}
 	}
-	
+
 	return result;
 }
 
 
-- (void)dealloc
+OOShaderProgram::~OOShaderProgram()
 {
 	OO_ENTER_OPENGL();
-	
+
 #ifndef NDEBUG
-	if (EXPECT_NOT(sActiveProgram == self))
+	// Cannot happen while being in use retains the program; kept as the old imbalance check.
+	if (EXPECT_NOT(ActiveProgram() != nullptr && oo::ToCxx(ActiveProgram().get()) == this))
 	{
 		OO_LOG("shader.dealloc.imbalance", "{}", "***** OOShaderProgram deallocated while active, indicating a retain/release imbalance. Expect imminent crash.");
-		[OOShaderProgram applyNone];
+		// applyNone(), but not released: it is being destroyed.
+		(void)ActiveProgram().leakRef();
+		OOGL(glUseProgramObjectARB(NULL_SHADER));
 	}
 #endif
-	
+
 	if (key.has_value())
 	{
 		if (sShaderCache != NULL)  sShaderCache->erase(*key);
 		key = std::nullopt;
 	}
 
-	OOGL(glDeleteObjectARB(program));
-	
-	[super dealloc];
+	OOGL(glDeleteObjectARB(_program));
 }
 
 
-- (void)apply
+void OOShaderProgram::apply()
 {
 	OO_ENTER_OPENGL();
-	
-	if (sActiveProgram != self)
+
+	if (oo::ToCxx(ActiveProgram().get()) != this)
 	{
-		[sActiveProgram release];
-		sActiveProgram = [self retain];
-		OOGL(glUseProgramObjectARB(program));
-		[self bindStandardMatrixUniforms];
+		// The pool drains oo::ToObjC's autorelease here, so the program in use carries only the
+		// slot's retain, as [program retain] did (amendment oo-f9zg item 2).
+		@autoreleasepool
+		{
+			ActiveProgram() = oo::ObjCRef<::OOShaderProgram *>(oo::ToObjC(this));
+		}
+		OOGL(glUseProgramObjectARB(_program));
+		bindStandardMatrixUniforms();
 	}
 }
 
 
-+ (void)applyNone
+void OOShaderProgram::applyNone()
 {
 	OO_ENTER_OPENGL();
-	
-	if (sActiveProgram != nil)
+
+	if (ActiveProgram() != nullptr)
 	{
-		[sActiveProgram release];
-		sActiveProgram = nil;
+		ActiveProgram() = nullptr;
 		OOGL(glUseProgramObjectARB(NULL_SHADER));
 	}
 }
 
 
-- (GLhandleARB)program
+GLhandleARB OOShaderProgram::program()
 {
-	return program;
+	return _program;
 }
 
-@end
+}	// namespace cxx
 
 
 namespace {
@@ -319,26 +320,25 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 }	// namespace
 
 
-@implementation OOShaderProgram (OOPrivate)
+namespace cxx {
 
-- (id)initWithVertexShaderSource:(const std::optional<std::string> &)vertexSource
-			fragmentShaderSource:(const std::optional<std::string> &)fragmentSource
-					prefixString:(const std::optional<std::string> &)prefixString
-					  vertexName:(const std::optional<std::string> &)vertexName
-					fragmentName:(const std::optional<std::string> &)fragmentName
-			   attributeBindings:(const oo::PList &)attributeBindings
-							 key:(const std::optional<std::string> &)inKey
+bool OOShaderProgram::initWithVertexShaderSource(const std::optional<std::string> &vertexSource,
+												 const std::optional<std::string> &fragmentSource,
+												 const std::optional<std::string> &prefixString,
+												 const std::optional<std::string> &vertexName,
+												 const std::optional<std::string> &fragmentName,
+												 const oo::PList &attributeBindings,
+												 const std::optional<std::string> &inKey)
 {
 	BOOL					OK = YES;
 	const GLcharARB			*sourceStrings[3] = { "", "#line 0\n", NULL };
 	GLhandleARB				vertexShader = NULL_SHADER;
 	GLhandleARB				fragmentShader = NULL_SHADER;
-	
+
 	OO_ENTER_OPENGL();
-	
-	self = [super init];
-	if (self == nil)  OK = NO;
-	
+
+	// ([super init] could not fail: the object is already constructed.)
+
 	if (OK && !vertexSource.has_value() && !fragmentSource.has_value())  OK = NO;	// Must have at least one shader!
 
 	if (OK && prefixString.has_value())
@@ -355,12 +355,12 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 			sourceStrings[2] = vertexSource->c_str();
 			OOGL(glShaderSourceARB(vertexShader, 3, sourceStrings, NULL));
 			OOGL(glCompileShaderARB(vertexShader));
-			
+
 			OK = ValidateShaderObject(vertexShader, vertexName);
 		}
 		else  OK = NO;
 	}
-	
+
 	if (OK && fragmentSource.has_value())
 	{
 		// Compile fragment shader.
@@ -370,76 +370,78 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 			sourceStrings[2] = fragmentSource->c_str();
 			OOGL(glShaderSourceARB(fragmentShader, 3, sourceStrings, NULL));
 			OOGL(glCompileShaderARB(fragmentShader));
-			
+
 			OK = ValidateShaderObject(fragmentShader, fragmentName);
 		}
 		else  OK = NO;
 	}
-	
+
 	if (OK)
 	{
 		// Link shader.
-		OOGL(program = glCreateProgramObjectARB());
-		if (program != NULL_SHADER)
+		OOGL(_program = glCreateProgramObjectARB());
+		if (_program != NULL_SHADER)
 		{
-			if (vertexShader != NULL_SHADER)  OOGL(glAttachObjectARB(program, vertexShader));
-			if (fragmentShader != NULL_SHADER)  OOGL(glAttachObjectARB(program, fragmentShader));
-			[self bindAttributes:attributeBindings];
-			OOGL(glLinkProgramARB(program));
-			
-			OK = ValidateShaderObject(program, StringOrNull(vertexName) + "/" + StringOrNull(fragmentName));
+			if (vertexShader != NULL_SHADER)  OOGL(glAttachObjectARB(_program, vertexShader));
+			if (fragmentShader != NULL_SHADER)  OOGL(glAttachObjectARB(_program, fragmentShader));
+			bindAttributes(attributeBindings);
+			OOGL(glLinkProgramARB(_program));
+
+			OK = ValidateShaderObject(_program, StringOrNull(vertexName) + "/" + StringOrNull(fragmentName));
 		}
 		else  OK = NO;
 	}
-	
+
 	if (OK)
 	{
 		key = inKey;
 	}
-	
+
 	if (vertexShader != NULL_SHADER)  OOGL(glDeleteObjectARB(vertexShader));
 	if (fragmentShader != NULL_SHADER)  OOGL(glDeleteObjectARB(fragmentShader));
-	
+
 	if (OK)
 	{
-		OOOpenGLMatrixManager *matrixManager = [[UNIVERSE gameView] getOpenGLMatrixManager];
-		standardMatrixUniformLocations = [matrixManager standardMatrixUniformLocations: program];
+		// The matrix manager is C++: reached from the game view's facade (null-guarded, as a
+		// message to nil answered a null list).
+		OOOpenGLMatrixManager *matrixManager = oo::ToCxx([[UNIVERSE gameView] getOpenGLMatrixManager]);
+		standardMatrixUniformLocations = (matrixManager != nullptr) ? matrixManager->standardMatrixUniformLocations(_program) : oo::PList();
 	}
 	else
 	{
-		if (self != nil && program != NULL_SHADER)
+		if (_program != NULL_SHADER)
 		{
-			OOGL(glDeleteObjectARB(program));
-			program = NULL_SHADER;
+			OOGL(glDeleteObjectARB(_program));
+			_program = NULL_SHADER;
 		}
-		
-		[self release];
-		self = nil;
+
+		// [self release]; self = nil: the factory drops the object.
 	}
-	return self;
+	return OK;
 }
 
 
-- (void) bindAttributes:(const oo::PList &)attributeBindings
+void OOShaderProgram::bindAttributes(const oo::PList &attributeBindings)
 {
 	OO_ENTER_OPENGL();
 
 	if (!attributeBindings.isDict())  return;
 	for (const auto &[attrKey, location] : *attributeBindings.getIf<oo::PList::Dict>())
 	{
-		OOGL(glBindAttribLocationARB(program, attributeBindings.get<unsigned int>(attrKey), attrKey.c_str()));
+		OOGL(glBindAttribLocationARB(_program, attributeBindings.get<unsigned int>(attrKey), attrKey.c_str()));
 	}
 }
 
-- (void) bindStandardMatrixUniforms
+void OOShaderProgram::bindStandardMatrixUniforms()
 {
 	if (standardMatrixUniformLocations.isArray())
 	{
-		OOOpenGLMatrixManager *matrixManager = [[UNIVERSE gameView] getOpenGLMatrixManager];
+		OOOpenGLMatrixManager *matrixManager = oo::ToCxx([[UNIVERSE gameView] getOpenGLMatrixManager]);
 
 		OO_ENTER_OPENGL();
 
-		[matrixManager syncModelView];
+		// Null-guarded as messages to nil: nothing synced, and a zero matrix (amendment oo-vt0o item 3).
+		if (matrixManager != nullptr)  matrixManager->syncModelView();
 		for (const oo::PList &pair : *standardMatrixUniformLocations.getIf<oo::PList::Array>())
 		{
 			if (pair.isArray())
@@ -449,11 +451,11 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 				const bool noTypeName = typeName == nullptr || !(typeName->isString() || typeName->isNumber());
 				if (noTypeName || pair.at<std::string>(2) == "mat3")
 				{
-					OOGL(GLUniformMatrix3(pair.at<int>(0), [matrixManager getMatrix: pair.at<int>(1)]));
+					OOGL(GLUniformMatrix3(pair.at<int>(0), matrixManager != nullptr ? matrixManager->getMatrix(pair.at<int>(1)) : kZeroMatrix));
 				}
 				else
 				{
-					OOMatrix matrix = [matrixManager getMatrix: pair.at<int>(1)];
+					OOMatrix matrix = matrixManager != nullptr ? matrixManager->getMatrix(pair.at<int>(1)) : kZeroMatrix;
 					GLUniformMatrix(pair.at<int>(0), matrix);
 				}
 			}
@@ -462,9 +464,7 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 	return;
 }
 
-
-
-@end
+}	// namespace cxx
 
 
 namespace {

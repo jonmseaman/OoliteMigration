@@ -28,12 +28,28 @@ SOFTWARE.
 
 */
 
+#ifndef INCLUDED_OOPROFILINGSTOPWATCH_h
+#define INCLUDED_OOPROFILINGSTOPWATCH_h
+
 #ifndef OOSTOPWATCH_STANDALONE
+#ifdef __OBJC__
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOFunctionAttributes.h"
-#import "OOTypes.h"
+#else
+/*	A plain C++ translation unit (bead oo-9ht.72: the JS bindings, through
+	OOJSEngineNativeWrappers.h) cannot parse OOCocoa.h's @interfaces. The one platform switch
+	below that differs from its default on this build is set as OOCocoa.h sets it (WIN32 is only
+	defined on the GNUstep build), so
+	OOHighResTimeValue is the same type in both kinds of translation unit.
+*/
+#if defined(WIN32) && !defined(OOLITE_WINDOWS)
+#define OOLITE_WINDOWS 1
 #endif
+#endif
+#include "OOFunctionAttributes.h"
+#include "OOTypes.h"
+#endif
+
+#include "oofnd/Ref.hpp"
 
 
 /*	Platform-specific high-resolution timer:
@@ -118,24 +134,28 @@ OOINLINE OOHighResTimeValue OOGetHighResTime(void)
 OOTimeDelta OOHighResTimeDeltaInSeconds(OOHighResTimeValue startTime, OOHighResTimeValue endTime);
 
 
-@interface OOProfilingStopwatch: OOObject
+class OOProfilingStopwatch : public oo::RefCounted
 {
-@private
-	OOHighResTimeValue	_start;
-	OOHighResTimeValue	_end;
-	BOOL				_running;
-}
+public:
+	OOProfilingStopwatch();
+	~OOProfilingStopwatch() override;
 
-+ (instancetype) stopwatch;		// New stopwatch is initially started.
+	static oo::Ref<OOProfilingStopwatch> stopwatch();		// New stopwatch is initially started.
 
-- (void) start;
-- (void) stop;
-- (OOTimeDelta) currentTime;	// Returns stop time - start time if stopped, or now - start time if running.
+	void start();
+	void stop();
+	OOTimeDelta currentTime();	// Returns stop time - start time if stopped, or now - start time if running.
 
-/*	Resets timer to zero, returning the current value. This is drift-free, i.e.
-	if it is called twice in a row while running the sum is an accurate time
-	since the timer started.
-*/
-- (OOTimeDelta) reset;
+	/*	Resets timer to zero, returning the current value. This is drift-free, i.e.
+		if it is called twice in a row while running the sum is an accurate time
+		since the timer started.
+	*/
+	OOTimeDelta reset();
 
-@end
+private:
+	OOHighResTimeValue	_start = {};
+	OOHighResTimeValue	_end = {};
+	bool				_running = {};
+};
+
+#endif	// INCLUDED_OOPROFILINGSTOPWATCH_h

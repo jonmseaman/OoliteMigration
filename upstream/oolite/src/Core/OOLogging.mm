@@ -26,17 +26,12 @@ SOFTWARE.
 */
 
 
-#define OOLOG_POISON_NSLOG 0
-
 #import "OOLoggingExtended.h"
 #import "OOPListParsing.h"
 #import "OOFunctionAttributes.h"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/Defaults.hpp"
@@ -44,9 +39,7 @@ SOFTWARE.
 #include <string>
 #include <utility>
 #include <vector>
-
-#undef NSLog		// We need to be able to call the real NSLog.
-
+#include "oofnd/String.hpp"
 
 /*	The message-class settings, their resolution and cache, per-thread indentation, the line
 	layout and OOLogging's own diagnostics live in oofnd/Log.hpp (oo::log, bead oo-qpb), shared

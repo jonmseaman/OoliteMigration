@@ -37,7 +37,7 @@ extern "C" {
 
 void InitOOJSEntity(ooscript::Context context, ooscript::Object global);
 
-BOOL JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity);
+bool JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity);
 
 // The Entity class is an ooscript::ClassDef owned by OOJSEntity.mm (bead oo-oap); JSEntityClass()
 // returns it. Declared as a real function rather than OOINLINE so the class definition stays
@@ -59,7 +59,7 @@ OOINLINE ooscript::Object JSEntityPrototype(void)  { return gOOEntityJSPrototype
 	The optional outConsumed argument can be used to find out how many
 	parameters were used (currently, this will be 0 on failure, otherwise 1).
 	
-	On failure, it will return NO, annd the entity will be unaltered. If
+	On failure, it will return false, annd the entity will be unaltered. If
 	scriptClass and function are non-nil, a warning will be reported to the
 	log.
 */
@@ -67,7 +67,7 @@ OOINLINE ooscript::Object JSEntityPrototype(void)  { return gOOEntityJSPrototype
 extern "C" {
 #endif
 extern "C++" {	// C++ parameters (proposed ADR-0043, bead oo-emib); nullopt class or function: no warning (was nil)
-BOOL EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
+bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
 }
 #ifdef __cplusplus
 }
@@ -79,13 +79,13 @@ BOOL EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 	blockJSPlayerShipProps flag is in effect (i.e., the escape pod sequence is
 	active).
 */
-OOINLINE BOOL OOIsPlayerStale(void)
+OOINLINE bool OOIsPlayerStale(void)
 {
 	extern Entity *gOOJSPlayerIfStale;
 	return gOOJSPlayerIfStale != nil;
 }
 
-OOINLINE BOOL OOIsStaleEntity(Entity *entity)
+OOINLINE bool OOIsStaleEntity(Entity *entity)
 {
 	extern Entity *gOOJSPlayerIfStale;
 	return entity == nil || (entity == gOOJSPlayerIfStale);

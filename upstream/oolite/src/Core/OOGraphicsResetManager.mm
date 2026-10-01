@@ -29,8 +29,6 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 
@@ -79,7 +77,7 @@ void OOGraphicsResetManager::resetGraphicsState()
 	oo::log::indentIf("rendering.reset.start");
 	
 	OOOpenGLExtensionManager::sharedManager()->reset();
-	[OOTexture rebindAllTextures];
+	[::OOTexture rebindAllTextures];
 	
 	// A copy, so a client may register or unregister during the reset (one unregistered by an
 	// earlier client is skipped). Unordered, as the Foundation set was: its order was pointer-hash order,

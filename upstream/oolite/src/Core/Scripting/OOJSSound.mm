@@ -28,10 +28,10 @@ MA 02110-1301, USA.
 #import "OOMusicController.h"
 #import "ResourceManager.h"
 #import "Universe.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -46,6 +46,18 @@ MA 02110-1301, USA.
 	OOJSObjectWrapperToString, OOJSObjectWrapperFinalize and OOJSUnconstructableConstruct
 	natives are used as-is in the class and method tables.
 */
+
+/*
+	C++20 since bead oo-crq2, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on OOSound
+	became three free functions, and its methods moved to OOJSSound+ObjCBridge.mm (amendment oo-
+	ykoy). Messages to classes that are still Objective-C (OOSound, ResourceManager,
+	OOMusicController, PlayerEntity) stay as they are, which is why the file is still .mm until
+	Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -191,7 +203,7 @@ OOSound *SoundFromJSValue(ooscript::Context context, ooscript::Value value)
 namespace {
 static bool SoundGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -200,7 +212,7 @@ static bool SoundGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 	
 	OOSound						*sound = nil;
 	
-	if (EXPECT_NOT(!JSSoundGetSound(context, thisObj, &sound)))  return NO;
+	if (EXPECT_NOT(!JSSoundGetSound(context, thisObj, &sound)))  return false;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -208,12 +220,12 @@ static bool SoundGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 		{
 			const std::optional<std::string> name = [sound cxx_name];
 			*value = OOJSValueFromPList(context, name.has_value() ? oo::PList(*name) : oo::PList());
-			return YES;
+			return true;
 		}
 		
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sSoundProperties);
-			return NO;
+			return false;
 	}
 	
 	OOJS_NATIVE_EXIT
@@ -255,7 +267,7 @@ static bool SoundStaticLoad(ooscript::Context context, ooscript::CallArgs &oojsA
 	if (!name.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "Sound", "load", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -298,14 +310,14 @@ static bool SoundStaticPlayMusic(ooscript::Context context, ooscript::CallArgs &
 	if (!name.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "Sound", "playMusic", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() > 1)
 	{
 		if (!ooscript::valueToBoolean(context, (OOJS_ARGV[1]), &loop))
 		{
 			cxx_OOJSReportBadArguments(context, "Sound", "playMusic", 1, OOJS_ARGV + 1, std::nullopt, "boolean");
-			return NO;
+			return false;
 		}
 	}
 	
@@ -314,12 +326,12 @@ static bool SoundStaticPlayMusic(ooscript::Context context, ooscript::CallArgs &
 		if (!cxx_OOJSArgumentListGetNumber(context, "Sound", "playMusic", 2, OOJS_ARGV + 2, &gain, NULL))
 		{
 			cxx_OOJSReportBadArguments(context, "Sound", "playMusic", 1, OOJS_ARGV + 2, std::nullopt, "float");
-			return NO;
+			return false;
 		}
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	[[OOMusicController sharedController] playMusicNamed:*name loop:(loop ? YES : NO) gain:(float)gain];
+	[[OOMusicController sharedController] playMusicNamed:*name loop:(loop ? true : false) gain:(float)gain];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -343,7 +355,7 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 		if (EXPECT_NOT(!name.has_value()))
 		{
 			cxx_OOJSReportBadArguments(context, "Sound", "stopMusic", oojsArgs.count(), OOJS_ARGV, std::nullopt, "string or no argument");
-			return NO;
+			return false;
 		}
 	}
 	
@@ -362,9 +374,9 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 } // namespace
 
 
-@implementation OOSound (OOJavaScriptExtentions)
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+// The bodies of OOSound (OOJavaScriptExtentions), whose methods are in OOJSSound+ObjCBridge.mm
+// until OOSound converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+ooscript::Value OOJSSoundJSValueInContext(OOSound *sound, ooscript::Context context)
 {
 	ooscript::Object jsSelf = NULL;
 	ooscript::Value						result = ooscript::nullValue();
@@ -372,23 +384,19 @@ static bool SoundStaticStopMusic(ooscript::Context context, ooscript::CallArgs &
 	jsSelf = (ooscript::newObject((context), &sSoundClass, (sSoundPrototype), nullptr));
 	if (jsSelf != NULL)
 	{
-		if (!ooscript::setPrivate((context), (jsSelf), [self retain]))  jsSelf = NULL;
+		if (!ooscript::setPrivate((context), (jsSelf), [sound retain]))  jsSelf = NULL;
 	}
 	if (jsSelf != NULL)  result = ooscript::objectValue(jsSelf);
 	
 	return result;
 }
 
-
-- (std::optional<std::string>) cxx_oo_jsDescription
+std::optional<std::string> OOJSSoundJSDescription(OOSound *sound)
 {
-	return oo::str::format("[Sound \"%s\"]", [self cxx_name].value_or("(null)").c_str());
+	return oo::str::format("[Sound \"%s\"]", [sound cxx_name].value_or("(null)").c_str());
 }
 
-
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> OOJSSoundJSClassName(void)
 {
 	return std::string("Sound");
 }
-
-@end

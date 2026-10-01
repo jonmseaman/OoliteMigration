@@ -51,10 +51,10 @@ sets that will then be immutablized.
 
 #import "OOProbabilitySet.h"
 #import "OOFunctionAttributes.h"
-#import "OOFoundationBridge.h"
 #import "legacy_random.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
+#import "OOObjCPList.h"
 
 
 namespace {
@@ -101,20 +101,6 @@ NSUInteger IndexOfObject(const std::vector<oo::PList> &objects, const oo::PList 
 	return NSNotFound;
 }
 
-
-// The shared -allObjects (an id form, until oo-qps.44): the elements as the Objective-C objects the
-// id element API held, a string as an NSString and an Object node as its object.
-id ObjectiveCArray(const std::vector<oo::PList> &elements)
-{
-	std::vector<oo::ObjCRef<id>> objects;
-	for (const oo::PList &element : elements)
-	{
-		const std::string *string = element.getIf<std::string>();
-		objects.emplace_back(string != nullptr ? oo::NSStringOrNil(*string) : oo::ObjectIn(element));
-	}
-	return oo::NSArrayFromObjects(objects);
-}
-
 }	// namespace
 
 
@@ -130,7 +116,6 @@ public:
 	float weightForObject(const oo::PList &object) override;
 	float sumOfWeights() override;
 	NSUInteger count() override;
-	id allObjects() override;
 	std::vector<oo::PList> allElements() override;
 	oo::Ref<OOMutableProbabilitySet> mutableCopy() override;
 };
@@ -146,7 +131,6 @@ public:
 	float weightForObject(const oo::PList &object) override;
 	float sumOfWeights() override;
 	NSUInteger count() override;
-	id allObjects() override;
 	std::vector<oo::PList> allElements() override;
 	oo::Ref<OOMutableProbabilitySet> mutableCopy() override;
 
@@ -168,9 +152,7 @@ public:
 	oo::PList randomObject() override;
 	float weightForObject(const oo::PList &object) override;
 	float sumOfWeights() override;
-	id allObjects() override;
 	std::vector<oo::PList> allElements() override;
-	id objectEnumerator() override;
 	oo::Ref<OOMutableProbabilitySet> mutableCopy() override;
 
 private:
@@ -196,9 +178,7 @@ public:
 	oo::PList randomObject() override;
 	float weightForObject(const oo::PList &object) override;
 	float sumOfWeights() override;
-	id allObjects() override;
 	std::vector<oo::PList> allElements() override;
-	id objectEnumerator() override;
 	void setWeight(float weight, const oo::PList &object) override;
 	void removeObject(const oo::PList &object) override;
 	oo::Ref<OOProbabilitySet> copy() override;
@@ -327,12 +307,6 @@ bool OOProbabilitySet::containsObject(const oo::PList &object)
 }
 
 
-id OOProbabilitySet::objectEnumerator()
-{
-	return [allObjects() objectEnumerator];
-}
-
-
 float OOProbabilitySet::probabilityForObject(const oo::PList &object)
 {
 	float weight = weightForObject(object);
@@ -384,12 +358,6 @@ float OOEmptyProbabilitySet::sumOfWeights()
 NSUInteger OOEmptyProbabilitySet::count()
 {
 	return 0;
-}
-
-
-id OOEmptyProbabilitySet::allObjects()
-{
-	return ObjectiveCArray(allElements());
 }
 
 
@@ -448,12 +416,6 @@ float OOSingleObjectProbabilitySet::sumOfWeights()
 NSUInteger OOSingleObjectProbabilitySet::count()
 {
 	return 1;
-}
-
-
-id OOSingleObjectProbabilitySet::allObjects()
-{
-	return ObjectiveCArray(allElements());
 }
 
 
@@ -613,21 +575,9 @@ float OOConcreteProbabilitySet::sumOfWeights()
 }
 
 
-id OOConcreteProbabilitySet::allObjects()
-{
-	return ObjectiveCArray(allElements());
-}
-
-
 std::vector<oo::PList> OOConcreteProbabilitySet::allElements()
 {
 	return std::vector<oo::PList>(_objects, _objects + _count);
-}
-
-
-id OOConcreteProbabilitySet::objectEnumerator()
-{
-	return [allObjects() objectEnumerator];
 }
 
 
@@ -817,21 +767,9 @@ float OOConcreteMutableProbabilitySet::sumOfWeights()
 }
 
 
-id OOConcreteMutableProbabilitySet::allObjects()
-{
-	return ObjectiveCArray(allElements());
-}
-
-
 std::vector<oo::PList> OOConcreteMutableProbabilitySet::allElements()
 {
 	return _objects;
-}
-
-
-id OOConcreteMutableProbabilitySet::objectEnumerator()
-{
-	return [allObjects() objectEnumerator];
 }
 
 
