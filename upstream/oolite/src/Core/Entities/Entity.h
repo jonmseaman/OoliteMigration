@@ -4,6 +4,15 @@ Entity.h
 
 Base class for entities, i.e. drawable world objects.
 
+C++20 since bead oo-bj8, the Entities pattern seam (proposed ADR-0056, amendment oo-bj8). The
+class is cxx::Entity while Entity+ObjCBridge.h, imported at the end of this header, keeps the
+Objective-C Entity: the facade its callers message, the base its unconverted subclasses
+(ShipEntity, PlanetEntity, the effects, ...) derive from, and each entity's identity (the object
+the universe, weak references and JavaScript hold). The entity's state lives here, in the C++
+class. Unconverted code that read an ivar directly reads the member through the facade's one
+ivar: ent->_cxxEntity->position, and _cxxEntity->position in an Objective-C subclass's method.
+The bridge's deletion bead moves the class out of namespace cxx.
+
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
 
@@ -32,10 +41,12 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "OOWeakReference.h"
 #import "OOColor.h"
+#import "CollisionRegion.h"
 #include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class Universe, CollisionRegion, ShipEntity, OOVisualEffectEntity, OOTexture;
+@class Universe, ShipEntity, OOVisualEffectEntity, OOTexture, Entity;
 
 
 #ifndef NDEBUG
@@ -84,8 +95,175 @@ enum OOScanClass
 #undef ENTRY
 
 
-@interface Entity: OOWeakRefObject
+namespace cxx {
+
+/*	The base object for ships, stations, anything actually.
+
+	Data members that were @public or @protected ivars are public: the game reads them directly
+	(ent->position), and Objective-C subclasses cannot be granted protected access to a C++
+	class. A getter that had its ivar's name is get + the name (-position is getPosition(),
+	amendment oo-862e), so the bodies, and the subclasses' reads, keep the names. The members
+	that subclasses override are virtual (amendment oo-cwz item 2).
+*/
+class Entity : public oo::RefCounted
 {
+public:
+	Entity();
+
+	// -init's body: the constructor runs it, and the facade runs it again when an initialised
+	// entity is sent -init (PlayerEntity's deferred initialisation). Only then does it re-run.
+	void init();
+
+	// The session in which the entity was created.
+	virtual NSUInteger sessionID();
+
+	bool getIsShip();
+	virtual bool isDock();
+	bool getIsStation();
+	bool getIsSubEntity();
+	bool getIsPlayer();
+	virtual bool isPlanet();
+	virtual bool isSun();
+	bool getIsSunlit();
+	bool isStellarObject();
+	virtual bool isSky();
+	bool getIsWormhole();
+	virtual bool isEffect();
+	virtual bool getIsVisualEffect();
+	virtual bool isWaypoint();
+
+	virtual bool validForAddToUniverse();
+	void addToLinkedLists();
+	void removeFromLinkedLists();
+
+	void updateLinkedLists();
+
+	virtual void wasAddedToUniverse();
+	virtual void wasRemovedFromUniverse();
+
+	virtual void warnAboutHostiles();
+
+	CollisionRegion *getCollisionRegion();
+	void setCollisionRegion(CollisionRegion *region);
+
+	void setUniversalID(OOUniversalID uid);
+	OOUniversalID getUniversalID();
+
+	bool throwingSparks();
+	void setThrowSparks(bool value);
+	virtual void throwSparks();
+
+	virtual void setOwner(Entity *ent);
+	id owner();
+	ShipEntity *parentEntity();		// owner if self is subentity of owner, otherwise nil.
+	ShipEntity *rootShipEntity();	// like parentEntity, but recursive.
+	id<OOWeakReferenceSupport> superShaderBindingTarget();
+
+	virtual void setPosition(HPVector posn);
+	void setPositionX(OOHPScalar x, OOHPScalar y, OOHPScalar z);
+	HPVector getPosition();
+	Vector getCameraRelativePosition();
+	virtual GLfloat cameraRangeFront();
+	virtual GLfloat cameraRangeBack();
+
+	// Exposed to uniform bindings.
+	Vector relativePosition();
+
+	virtual void updateCameraRelativePosition();
+	// gets a low-position relative vector
+	Vector vectorTo(Entity *entity);
+
+	HPVector absolutePositionForSubentity();
+	HPVector absolutePositionForSubentityOffset(HPVector offset);
+
+	double zeroDistance();
+	double camZeroDistance();
+	virtual OOComparisonResult compareZeroDistance(Entity *otherEntity);
+
+	BoundingBox getBoundingBox();
+
+	GLfloat getMass();
+
+	Quaternion getOrientation();
+	virtual void setOrientation(Quaternion quat);
+	virtual Quaternion normalOrientation();	// Historical wart: orientation.w is reversed for player; -normalOrientation corrects this.
+	virtual void setNormalOrientation(Quaternion quat);
+	virtual void orientationChanged();
+
+	void setVelocity(Vector vel);
+	virtual Vector getVelocity();
+	double speed();
+
+	GLfloat getDistanceTravelled();
+	void setDistanceTravelled(GLfloat value);
+
+
+	virtual void setStatus(OOEntityStatus stat);
+	OOEntityStatus status();
+
+	void setScanClass(OOScanClass sClass);
+	virtual OOScanClass getScanClass();
+
+	void setEnergy(GLfloat amount);
+	GLfloat getEnergy();
+
+	void setMaxEnergy(GLfloat amount);
+	GLfloat getMaxEnergy();
+
+	virtual void applyRoll(GLfloat roll, GLfloat climb);
+	virtual void applyRoll(GLfloat roll, GLfloat climb, GLfloat yaw);
+	virtual void moveForward(double amount);
+
+	OOMatrix rotationMatrix();
+	virtual OOMatrix drawRotationMatrix();
+	OOMatrix transformationMatrix();
+	virtual OOMatrix drawTransformationMatrix();
+
+	virtual bool canCollide();
+	virtual GLfloat collisionRadius();
+	virtual GLfloat frustumRadius();
+	void setCollisionRadius(GLfloat amount);
+	std::vector<oo::ObjCRef<::Entity *>> *getCollidingEntities();	// the live list (ADR-0043 item 22)
+
+	virtual void update(OOTimeDelta delta_t);
+
+	void applyVelocity(OOTimeDelta delta_t);
+	virtual bool checkCloseCollisionWith(Entity *other);
+
+	virtual void takeEnergyDamage(double amount, Entity *ent, Entity *other, const std::string &weaponIdentifier);
+
+	void dumpState();		// General "describe situtation verbosely in log" command.
+	virtual void dumpSelfState();	// Subclasses should override this, not -dumpState, and call throught to super first.
+
+	virtual void subEntityReallyDied(ShipEntity *sub);
+
+	NSUInteger getLastDrawCounter();
+	void setLastDrawCounter(NSUInteger drawCounter);
+
+	// Subclass repsonsibilities
+	virtual double findCollisionRadius();
+	virtual void drawImmediate(bool immediate, bool translucent);
+	virtual bool isVisible();
+	bool isInSpace();
+	bool getIsImmuneToBreakPatternHide();
+
+	// For shader bindings.
+	GLfloat universalTime();
+	GLfloat getSpawnTime();
+	GLfloat timeElapsedSinceSpawn();
+	void setAtmosphereFogging(OOColor *fogging);
+	oo::Ref<OOColor> fogUniform();
+
+	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h).
+	virtual std::optional<std::string> descriptionComponents() const;
+
+#ifndef NDEBUG
+	std::optional<std::string> descriptionForObjDumpBasic();
+	virtual std::optional<std::string> descriptionForObjDump();
+
+	virtual std::vector<oo::ObjCRef<OOTexture *>> allTextures();
+#endif
+
 	// the base object for ships/stations/anything actually
 	//////////////////////////////////////////////////////
 	//
@@ -94,242 +272,83 @@ enum OOScanClass
 	// we forego encapsulation for some variables in order to
 	// lose the overheads of Obj-C accessor methods...
 	//
-@public
-	OOUniversalID			universalID;			// used to reference the entity
-	
-	unsigned				isShip: 1,
-							isStation: 1,
-							isPlayer: 1,
-							isWormhole: 1,
-							isSubEntity: 1,
-							hasMoved: 1,
-							hasRotated: 1,
-							hasCollided: 1,
-							isSunlit: 1,
-							collisionTestFilter: 2,
-							throw_sparks: 1,
-							isImmuneToBreakPatternHide: 1,
-							isExplicitlyNotMainStation: 1,
-							isVisualEffect: 1;
-	
-	OOScanClass				scanClass;
-	
-	GLfloat					zero_distance;
-	GLfloat					cam_zero_distance;
-	GLfloat					no_draw_distance;		// 10 km initially
-	GLfloat					collision_radius;
-	HPVector					position; // use high-precision vectors for global position
-	Vector						cameraRelativePosition;
-	Quaternion				orientation;
-	OOColor					*atmosphereFogging;
-	
-	int						zero_index;
-	
-	// Linked lists of entites, sorted by position on each (world) axis
-	Entity					*x_previous, *x_next;
-	Entity					*y_previous, *y_next;
-	Entity					*z_previous, *z_next;
-	
-	Entity					*collision_chain;
-	
-	OOUniversalID			shadingEntityID;
-	
-	Entity					*collider;
-	
-	CollisionRegion			*collisionRegion;		// initially nil - then maintained
-	
-@protected
-	HPVector					lastPosition;
-	Quaternion				lastOrientation;
-	
-	GLfloat					distanceTravelled;		// set to zero initially
-	
-	OOMatrix				rotMatrix;
-	
-	Vector					velocity;
-	
-	GLfloat					energy;
-	GLfloat					maxEnergy;
-	
-	BoundingBox				boundingBox;
-	GLfloat					mass;
-	
-	std::vector<oo::ObjCRef<Entity *>>	collidingEntities;	// filled by CollisionRegion each frame
-	
-	OOTimeAbsolute			spawnTime;
-	
-	ooscript::Object _jsSelf;
-	NSUInteger				lastDrawCounter;
-	
-@private
-	NSUInteger				_sessionID;
-	
-	OOWeakReference			*_owner;
-	OOEntityStatus			_status;
-}
+	OOUniversalID			universalID = {};			// used to reference the entity
 
-// The session in which the entity was created.
-- (NSUInteger) sessionID;
+	unsigned				isShip: 1 = 0,
+							isStation: 1 = 0,
+							isPlayer: 1 = 0,
+							isWormhole: 1 = 0,
+							isSubEntity: 1 = 0,
+							hasMoved: 1 = 0,
+							hasRotated: 1 = 0,
+							hasCollided: 1 = 0,
+							isSunlit: 1 = 0,
+							collisionTestFilter: 2 = 0,
+							throw_sparks: 1 = 0,
+							isImmuneToBreakPatternHide: 1 = 0,
+							isExplicitlyNotMainStation: 1 = 0,
+							isVisualEffect: 1 = 0;
 
-- (BOOL) isShip;
-- (BOOL) isDock;
-- (BOOL) isStation;
-- (BOOL) isSubEntity;
-- (BOOL) isPlayer;
-- (BOOL) isPlanet;
-- (BOOL) isSun;
-- (BOOL) isSunlit;
-- (BOOL) isStellarObject;
-- (BOOL) isSky;
-- (BOOL) isWormhole;
-- (BOOL) isEffect;
-- (BOOL) isVisualEffect;
-- (BOOL) isWaypoint;
+	OOScanClass				scanClass = {};
 
-- (BOOL) validForAddToUniverse;
-- (void) addToLinkedLists;
-- (void) removeFromLinkedLists;
+	GLfloat					zero_distance = {};
+	GLfloat					cam_zero_distance = {};
+	GLfloat					no_draw_distance = {};		// 10 km initially
+	GLfloat					collision_radius = {};
+	HPVector					position = {}; // use high-precision vectors for global position
+	Vector						cameraRelativePosition = {};
+	Quaternion				orientation = {};
+	oo::Ref<OOColor>		atmosphereFogging;
 
-- (void) updateLinkedLists;
+	int						zero_index = {};
 
-- (void) wasAddedToUniverse;
-- (void) wasRemovedFromUniverse;
+	// Linked lists of entites, sorted by position on each (world) axis. Pointers to other entities
+	// are their Objective-C objects, the entities' identity while any entity class is Objective-C.
+	::Entity				*x_previous = {}, *x_next = {};
+	::Entity				*y_previous = {}, *y_next = {};
+	::Entity				*z_previous = {}, *z_next = {};
 
-- (void) warnAboutHostiles;
+	::Entity				*collision_chain = {};
 
-- (CollisionRegion *) collisionRegion;
-- (void) setCollisionRegion:(CollisionRegion*)region;
+	OOUniversalID			shadingEntityID = {};
 
-- (void) setUniversalID:(OOUniversalID)uid;
-- (OOUniversalID) universalID;
+	::Entity				*collider = {};
 
-- (BOOL) throwingSparks;
-- (void) setThrowSparks:(BOOL)value;
-- (void) throwSparks;
+	oo::Ref<CollisionRegion>	collisionRegion;		// initially nil - then maintained
 
-- (void) setOwner:(Entity *)ent;
-- (id) owner;
-- (ShipEntity *) parentEntity;		// owner if self is subentity of owner, otherwise nil.
-- (ShipEntity *) rootShipEntity;	// like parentEntity, but recursive.
+	// @protected in Objective-C: public while Objective-C subclasses read them.
+	HPVector					lastPosition = {};
+	Quaternion				lastOrientation = {};
 
-- (void) setPosition:(HPVector)posn;
-- (void) setPositionX:(OOHPScalar)x y:(OOHPScalar)y z:(OOHPScalar)z;
-- (HPVector) position;
-- (Vector) cameraRelativePosition;
-- (GLfloat) cameraRangeFront;
-- (GLfloat) cameraRangeBack;
+	GLfloat					distanceTravelled = {};		// set to zero initially
 
-- (void) updateCameraRelativePosition;
-// gets a low-position relative vector
-- (Vector) vectorTo:(Entity *)entity;
+	OOMatrix				rotMatrix = {};
 
-- (HPVector) absolutePositionForSubentity;
-- (HPVector) absolutePositionForSubentityOffset:(HPVector) offset;
+	Vector					velocity = {};
 
-- (double) zeroDistance;
-- (double) camZeroDistance;
-- (OOComparisonResult) compareZeroDistance:(Entity *)otherEntity;
+	GLfloat					energy = {};
+	GLfloat					maxEnergy = {};
 
-- (BoundingBox) boundingBox;
+	BoundingBox				boundingBox = {};
+	GLfloat					mass = {};
 
-- (GLfloat) mass;
+	std::vector<oo::ObjCRef<::Entity *>>	collidingEntities;	// filled by CollisionRegion each frame
 
-- (Quaternion) orientation;
-- (void) setOrientation:(Quaternion) quat;
-- (Quaternion) normalOrientation;	// Historical wart: orientation.w is reversed for player; -normalOrientation corrects this.
-- (void) setNormalOrientation:(Quaternion) quat;
-- (void) orientationChanged;
+	OOTimeAbsolute			spawnTime = {};
 
-- (void) setVelocity:(Vector)vel;
-- (Vector) velocity;
-- (double) speed;
+	ooscript::Object _jsSelf = {};
+	NSUInteger				lastDrawCounter = {};
 
-- (GLfloat) distanceTravelled;
-- (void) setDistanceTravelled:(GLfloat)value;
+private:
+	bool checkLinkedLists();
 
+	NSUInteger				_sessionID = {};
 
-- (void) setStatus:(OOEntityStatus)stat;
-- (OOEntityStatus) status;
+	oo::ObjCRef<::OOWeakReference *>	_owner;
+	OOEntityStatus			_status = {};
+};
 
-- (void) setScanClass:(OOScanClass)sClass;
-- (OOScanClass) scanClass;
-
-- (void) setEnergy:(GLfloat)amount;
-- (GLfloat) energy;
-
-- (void) setMaxEnergy:(GLfloat)amount;
-- (GLfloat) maxEnergy;
-
-- (void) applyRoll:(GLfloat)roll andClimb:(GLfloat)climb;
-- (void) applyRoll:(GLfloat)roll climb:(GLfloat) climb andYaw:(GLfloat)yaw;
-- (void) moveForward:(double)amount;
-
-- (OOMatrix) rotationMatrix;
-- (OOMatrix) drawRotationMatrix;
-- (OOMatrix) transformationMatrix;
-- (OOMatrix) drawTransformationMatrix;
-
-- (BOOL) canCollide;
-- (GLfloat) collisionRadius;
-- (GLfloat) frustumRadius;
-- (void) setCollisionRadius:(GLfloat)amount;
-- (std::vector<oo::ObjCRef<Entity *>> *) cxx_collidingEntities;	// the live list (ADR-0043 item 22); nullptr on nil
-
-- (void) update:(OOTimeDelta)delta_t;
-
-- (void) applyVelocity:(OOTimeDelta)delta_t;
-- (BOOL) checkCloseCollisionWith:(Entity *)other;
-
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier;
-
-- (void) dumpState;		// General "describe situtation verbosely in log" command.
-- (void) dumpSelfState;	// Subclasses should override this, not -dumpState, and call throught to super first.
-
-- (NSUInteger) lastDrawCounter;
-- (void) setLastDrawCounter: (NSUInteger) drawCounter;
-
-// Subclass repsonsibilities
-- (double) findCollisionRadius;
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent;
-- (BOOL) isVisible;
-- (BOOL) isInSpace;
-- (BOOL) isImmuneToBreakPatternHide;
-
-// For shader bindings.
-- (GLfloat) universalTime;
-- (GLfloat) spawnTime;
-- (GLfloat) timeElapsedSinceSpawn;
-- (void) setAtmosphereFogging: (OOColor *) fogging;
-- (OOColor *) fogUniform;
-
-#ifndef NDEBUG
-- (std::optional<std::string>) descriptionForObjDumpBasic;
-- (std::optional<std::string>) descriptionForObjDump;	// flipped with its family (bead oo-3rb.278)
-
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures;
-#endif
-
-@end
-
-@protocol OOHUDBeaconIcon;
-
-// Methods that must be supported by entities with beacons, regardless of type.
-@protocol OOBeaconEntity
-
-- (OOComparisonResult) compareBeaconCodeWith:(Entity <OOBeaconEntity>*) other;
-- (std::optional<std::string>) beaconCode;	// flipped with its family (bead oo-3rb.260)
-- (void) setBeaconCode:(const std::optional<std::string> &)bcode;	// flipped with its family (bead oo-3rb.260)
-- (std::optional<std::string>) beaconLabel;	// flipped with its family (bead oo-3rb.260)
-- (void) setBeaconLabel:(const std::optional<std::string> &)blabel;	// flipped with its family (bead oo-3rb.260)
-- (BOOL) isBeacon;
-- (id <OOHUDBeaconIcon>) beaconDrawable;
-- (Entity <OOBeaconEntity> *) prevBeacon;
-- (Entity <OOBeaconEntity> *) nextBeacon;
-- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip;
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip;
-- (BOOL) isJammingScanning;
-
-@end
+}	// namespace cxx
 
 
 enum
@@ -352,3 +371,7 @@ std::string cxx_OOStringFromScanClass(OOScanClass scanClass);
 OOScanClass cxx_OOScanClassFromString(const std::string &string);
 #endif
 
+
+// Transitional: the Objective-C Entity, for callers and subclasses not yet converted. Deleted,
+// with namespace cxx above, by the bridge's deletion bead.
+#import "Entity+ObjCBridge.h"

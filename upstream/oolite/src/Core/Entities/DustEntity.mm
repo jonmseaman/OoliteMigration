@@ -113,7 +113,7 @@ enum
 																	lodBias:0.0] retain];
 	}	
 
-	collision_radius = DUST_SCALE; // for draw pass calculations
+	_cxxEntity->collision_radius = DUST_SCALE; // for draw pass calculations
 
 	[[OOGraphicsResetManager sharedManager] registerClient:self];
 
@@ -159,14 +159,14 @@ enum
 - (void) updateCameraRelativePosition
 {
 	HPVector c_pos = [PLAYER viewpointPosition];
-	cameraRelativePosition = make_vector((OOScalar)-fmod(c_pos.x,DUST_SCALE),(OOScalar)-fmod(c_pos.y,DUST_SCALE),(OOScalar)-fmod(c_pos.z,DUST_SCALE));
+	_cxxEntity->cameraRelativePosition = make_vector((OOScalar)-fmod(c_pos.x,DUST_SCALE),(OOScalar)-fmod(c_pos.y,DUST_SCALE),(OOScalar)-fmod(c_pos.z,DUST_SCALE));
 }
 
 
 - (void) update:(OOTimeDelta) delta_t
 {
 	// [self setPosition:position];
-	zero_distance = 0.0;
+	_cxxEntity->zero_distance = 0.0;
 			
 #if OO_SHADERS
 	if (EXPECT_NOT(shaderMode == kShaderModeUnknown))  [self checkShaderMode];
@@ -175,7 +175,7 @@ enum
 	if (shaderMode == kShaderModeOn)  return;
 #endif
 	
-	Vector offset = vector_flip(cameraRelativePosition);
+	Vector offset = vector_flip(_cxxEntity->cameraRelativePosition);
 	GLfloat  half_scale = DUST_SCALE * 0.50;
 	int vi;
 	for (vi = 0; vi < DUST_N_PARTICLES; vi++)
@@ -323,7 +323,7 @@ enum
 	{
 
 		float	*color = NULL;
-		if (player->isSunlit)  color = color_fv;
+		if (player->_cxxEntity->isSunlit)  color = color_fv;
 		else  color = UNIVERSE->stars_ambient;
 		OOGL(glColor4f(color[0], color[1], color[2], dustIntensity));
 	

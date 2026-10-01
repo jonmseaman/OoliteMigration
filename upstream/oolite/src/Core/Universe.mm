@@ -1242,7 +1242,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				Entity *ent = entities[index].get();
 				if ((ent != player)&&(ent != dockedStation))
 				{
-					if (ent->isStation)  // clear out queues
+					if (ent->_cxxEntity->isStation)  // clear out queues
 						[(StationEntity *)ent clear];
 					[self removeEntity:ent];
 				}
@@ -1820,7 +1820,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	 	HPVector v0 = make_HPvector(0,0,34567.89);
 	 	double min_safe_dist2 = 6000000.0 * 6000000.0;
 		HPVector sunPos = [cachedSun position];
-	 	while (HPmagnitude2(cachedSun->position) < min_safe_dist2)	// back off the planetary bodies
+	 	while (HPmagnitude2(cachedSun->_cxxEntity->position) < min_safe_dist2)	// back off the planetary bodies
 	 	{
 	 		v0.z *= 2.0;
 			
@@ -2176,9 +2176,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
 		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
 		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
-		sun_pos[0] = the_sun->position.x;
-		sun_pos[1] = the_sun->position.y;
-		sun_pos[2] = the_sun->position.z;
+		sun_pos[0] = the_sun->_cxxEntity->position.x;
+		sun_pos[1] = the_sun->_cxxEntity->position.y;
+		sun_pos[2] = the_sun->_cxxEntity->position.z;
 	}
 	else
 	{
@@ -2334,8 +2334,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		return pos;
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
-	HPVector  p_pos = the_planet->position;
-	HPVector  s_pos = the_sun->position;
+	HPVector  p_pos = the_planet->_cxxEntity->position;
+	HPVector  s_pos = the_sun->_cxxEntity->position;
 
 	const char* c_sys = l_sys.c_str();
 	HPVector p0, p1, p2;
@@ -2441,8 +2441,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		return pos;
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
-	HPVector  p_pos = the_planet->position;
-	HPVector  s_pos = the_sun->position;
+	HPVector  p_pos = the_planet->_cxxEntity->position;
+	HPVector  s_pos = the_sun->_cxxEntity->position;
 
 	const char* c_sys = l_sys.c_str();
 	HPVector p0, p1, p2;
@@ -2582,7 +2582,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		OOScanClass scanClass = [ship scanClass];
 		[ship setScanClass:CLASS_NO_DRAW];	// avoid lollipop flash
 		
-		GLfloat		safe_distance2 = ship->collision_radius * ship->collision_radius * SAFE_ADDITION_FACTOR2;
+		GLfloat		safe_distance2 = ship->_cxxEntity->collision_radius * ship->_cxxEntity->collision_radius * SAFE_ADDITION_FACTOR2;
 		BOOL		safe;
 		int			limit_count = 8;
 		
@@ -2871,7 +2871,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	ShipEntity  *ship = nil;
 	HPVector		spawn_pos;
 	Quaternion	spawn_q;
-	GLfloat		offset = (randf() + randf()) * entity->collision_radius;
+	GLfloat		offset = (randf() + randf()) * entity->_cxxEntity->collision_radius;
 	
 	quaternion_set_random(&spawn_q);
 	spawn_pos = HPvector_add([entity position], vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(spawn_q), offset)));
@@ -3150,7 +3150,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	unsigned i;
 	for (i = 0; i < n_entities; i++)
 	{
-		if (sortedEntities[i]->isShip)
+		if (sortedEntities[i]->_cxxEntity->isShip)
 		{
 			ShipEntity *my_ship = (ShipEntity*)sortedEntities[i];
 			Entity* my_target = [my_ship primaryTarget];
@@ -3257,11 +3257,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		// these ring objects existing in the first place. - CIM
 		if (forDocking && ![[PLAYER dockedStation] hasBreakPattern])
 		{
-			ring->isImmuneToBreakPatternHide = NO;
+			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
 		}
 		else if (!forDocking && ![self witchspaceBreakPattern])
 		{
-			ring->isImmuneToBreakPatternHide = NO;
+			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
 		}
 		[self addEntity:ring];
 		breakPatternCounter++;
@@ -3464,13 +3464,13 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		[ship setOrientation:q2];
 		if (!justCobra)
 		{
-			[ship setPositionX:0.0f y:0.0f z:DEMO2_VANISHING_DISTANCE * ship->collision_radius * 0.01];
-			[ship setDestination: ship->position];	// ideal position
+			[ship setPositionX:0.0f y:0.0f z:DEMO2_VANISHING_DISTANCE * ship->_cxxEntity->collision_radius * 0.01];
+			[ship setDestination: ship->_cxxEntity->position];	// ideal position
 		}
 		else
 		{
 			// main screen Cobra is closer
-			[ship setPositionX:0.0f y:0.0f z:3.6 * ship->collision_radius];
+			[ship setPositionX:0.0f y:0.0f z:3.6 * ship->_cxxEntity->collision_radius];
 		}
 		[ship setDemoShip: 1.0f];
 		[ship setDemoStartTime: universal_time];
@@ -3824,7 +3824,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 
 static BOOL IsCandidateMainStationPredicate(Entity *entity, void *parameter)
 {
-	return [entity isStation] && !entity->isExplicitlyNotMainStation;
+	return [entity isStation] && !entity->_cxxEntity->isExplicitlyNotMainStation;
 }
 
 
@@ -3932,7 +3932,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	if (playerStatus == STATUS_START_GAME)  return;
 	
 	StationEntity *theStation = [self station];
-	if (theStation != nil)  theStation->isExplicitlyNotMainStation = YES;
+	if (theStation != nil)  theStation->_cxxEntity->isExplicitlyNotMainStation = YES;
 	cachedStation = nil;
 }
 
@@ -5245,7 +5245,7 @@ static const OOMatrix	starboard_matrix =
 						drawthing = my_entities[i];
 						OOEntityStatus d_status = [drawthing status];
 					
-						if (bpHide && !drawthing->isImmuneToBreakPatternHide)  continue;
+						if (bpHide && !drawthing->_cxxEntity->isImmuneToBreakPatternHide)  continue;
 						if ([drawthing lastDrawCounter] == drawCounter) continue;
 						if (vdist == 0 && [drawthing cameraRangeFront] < nearPlane)
 						{
@@ -5293,7 +5293,7 @@ static const OOMatrix	starboard_matrix =
 								[drawthing setAtmosphereFogging: [OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
 							}
 						
-							[self lightForEntity:demoShipMode || drawthing->isSunlit];
+							[self lightForEntity:demoShipMode || drawthing->_cxxEntity->isSunlit];
 						
 							// draw the thing
 							[drawthing setLastDrawCounter: drawCounter];
@@ -5622,7 +5622,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
-			checkEnt = checkEnt->x_next;
+			checkEnt = checkEnt->_cxxEntity->x_next;
 		}
 		if ((checkEnt)||(n > 0))
 		{
@@ -5634,7 +5634,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		
 		n = uni->n_entities;
 		checkEnt = last;
-		while ((n--)&&(checkEnt))	checkEnt = checkEnt->x_previous;
+		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->x_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
@@ -5646,12 +5646,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING x_previous list from x_next list");
 #endif
 				checkEnt = uni->x_list_start;
-				checkEnt->x_previous = nil;
-				while (checkEnt->x_next)
+				checkEnt->_cxxEntity->x_previous = nil;
+				while (checkEnt->_cxxEntity->x_next)
 				{
 					last = checkEnt;
-					checkEnt = checkEnt->x_next;
-					checkEnt->x_previous = last;
+					checkEnt = checkEnt->_cxxEntity->x_next;
+					checkEnt->_cxxEntity->x_previous = last;
 				}
 			}
 		}
@@ -5661,7 +5661,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
-			checkEnt = checkEnt->y_next;
+			checkEnt = checkEnt->_cxxEntity->y_next;
 		}
 		if ((checkEnt)||(n > 0))
 		{
@@ -5673,7 +5673,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		
 		n = uni->n_entities;
 		checkEnt = last;
-		while ((n--)&&(checkEnt))	checkEnt = checkEnt->y_previous;
+		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->y_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
@@ -5685,12 +5685,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING y_previous list from y_next list");
 #endif
 				checkEnt = uni->y_list_start;
-				checkEnt->y_previous = nil;
-				while (checkEnt->y_next)
+				checkEnt->_cxxEntity->y_previous = nil;
+				while (checkEnt->_cxxEntity->y_next)
 				{
 					last = checkEnt;
-					checkEnt = checkEnt->y_next;
-					checkEnt->y_previous = last;
+					checkEnt = checkEnt->_cxxEntity->y_next;
+					checkEnt->_cxxEntity->y_previous = last;
 				}
 			}
 		}
@@ -5700,7 +5700,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
-			checkEnt = checkEnt->z_next;
+			checkEnt = checkEnt->_cxxEntity->z_next;
 		}
 		if ((checkEnt)||(n > 0))
 		{
@@ -5712,7 +5712,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		
 		n = uni->n_entities;
 		checkEnt = last;
-		while ((n--)&&(checkEnt))	checkEnt = checkEnt->z_previous;
+		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->z_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
@@ -5725,12 +5725,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 #endif
 				checkEnt = uni->z_list_start;
 				OOCAssert(checkEnt != nil, "Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
-				checkEnt->z_previous = nil;
-				while (checkEnt->z_next)
+				checkEnt->_cxxEntity->z_previous = nil;
+				while (checkEnt->_cxxEntity->z_next)
 				{
 					last = checkEnt;
-					checkEnt = checkEnt->z_next;
-					checkEnt->z_previous = last;
+					checkEnt = checkEnt->_cxxEntity->z_next;
+					checkEnt->_cxxEntity->z_previous = last;
 				}
 			}
 		}
@@ -5750,12 +5750,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		for (const oo::ObjCRef<Entity *> &entry : allEntities)
 		{
 			ent = entry.get();
-			ent->x_next = nil;
-			ent->x_previous = nil;
-			ent->y_next = nil;
-			ent->y_previous = nil;
-			ent->z_next = nil;
-			ent->z_previous = nil;
+			ent->_cxxEntity->x_next = nil;
+			ent->_cxxEntity->x_previous = nil;
+			ent->_cxxEntity->y_next = nil;
+			ent->_cxxEntity->y_previous = nil;
+			ent->_cxxEntity->z_next = nil;
+			ent->_cxxEntity->z_previous = nil;
 			[ent addToLinkedLists];
 		}
 	}
@@ -5840,7 +5840,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 						[se setRoll: 0.0];
 					}
 					[(StationEntity *)se setPlanet:[self planet]];
-					if ([se maxFlightSpeed] > 0) se->isExplicitlyNotMainStation = YES; // we never want carriers to become main stations.
+					if ([se maxFlightSpeed] > 0) se->_cxxEntity->isExplicitlyNotMainStation = YES; // we never want carriers to become main stations.
 				}
 				// stations used to have STATUS_ACTIVE, they're all STATUS_IN_FLIGHT now.
 				if ([se status] != STATUS_COCKPIT_DISPLAY)
@@ -5871,28 +5871,28 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		
 		// lighting considerations
-		entity->isSunlit = YES;
-		entity->shadingEntityID = NO_TARGET;
+		entity->_cxxEntity->isSunlit = YES;
+		entity->_cxxEntity->shadingEntityID = NO_TARGET;
 		
 		// add it to the universe
 		entities.emplace_back(entity);
 		[entity wasAddedToUniverse];
 		
 		// maintain sorted list (and for the scanner relative position)
-		HPVector entity_pos = entity->position;
-		HPVector delta = HPvector_between(entity_pos, PLAYER->position);
+		HPVector entity_pos = entity->_cxxEntity->position;
+		HPVector delta = HPvector_between(entity_pos, PLAYER->_cxxEntity->position);
 		double z_distance = HPmagnitude2(delta);
-		entity->zero_distance = z_distance;
+		entity->_cxxEntity->zero_distance = z_distance;
 		unsigned index = n_entities;
 		sortedEntities[index] = entity;
-		entity->zero_index = index;
-		while ((index > 0)&&(z_distance < sortedEntities[index - 1]->zero_distance))	// bubble into place
+		entity->_cxxEntity->zero_index = index;
+		while ((index > 0)&&(z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance))	// bubble into place
 		{
 			sortedEntities[index] = sortedEntities[index - 1];
-			sortedEntities[index]->zero_index = index;
+			sortedEntities[index]->_cxxEntity->zero_index = index;
 			index--;
 			sortedEntities[index] = entity;
-			entity->zero_index = index;
+			entity->_cxxEntity->zero_index = index;
 		}
 		
 		// increase n_entities...
@@ -5969,7 +5969,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 #ifndef NDEBUG
 	Entity* p0 = entities[0].get();
-	if (!(p0->isPlayer))
+	if (!(p0->_cxxEntity->isPlayer))
 	{
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
 		exit(EXIT_FAILURE);
@@ -5982,7 +5982,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	while (entities.size() > 1)
 	{
 		Entity* ent = entities[1].get();
-		if (ent->isStation)  // clear out queues
+		if (ent->_cxxEntity->isStation)  // clear out queues
 			[(StationEntity *)ent clear];
 		if (EXPECT(![ent isVisualEffect]))
 		{
@@ -6078,7 +6078,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		return NO;
 	
 	HPVector  f1;
-	HPVector p1 = e1->position;
+	HPVector p1 = e1->_cxxEntity->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
 	
@@ -6103,18 +6103,18 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		Entity *e2 = my_entities[i];
 		if ((e2 != e1)&&([e2 canCollide]))
 		{
-			HPVector epos = e2->position;
+			HPVector epos = e2->_cxxEntity->position;
 			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
 			
 			double d_forward = HPdot_product(epos,f1);	// distance along f1 which is nearest to e2's position
 			
 			if ((d_forward > 0)&&(d_forward < nearest))
 			{
-				double cr = 1.10 * (e2->collision_radius + e1->collision_radius); //  10% safety margin
-				HPVector p0 = e1->position;
+				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
+				HPVector p0 = e1->_cxxEntity->position;
 				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
 				// p0 holds nearest point on current course to center of incident object
-				HPVector epos = e2->position;
+				HPVector epos = e2->_cxxEntity->position;
 				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
 				// compare with center of incident object
 				double  dist2 = p0.x * p0.x + p0.y * p0.y + p0.z * p0.z;
@@ -6139,7 +6139,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		return nil;
 	
 	HPVector f1;
-	HPVector p1 = e1->position;
+	HPVector p1 = e1->_cxxEntity->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
 	
@@ -6165,18 +6165,18 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		Entity *e2 = my_entities[i];
 		if ((e2 != e1)&&([e2 canCollide]))
 		{
-			HPVector epos = e2->position;
+			HPVector epos = e2->_cxxEntity->position;
 			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
 			
 			double d_forward = HPdot_product(epos,f1);	// distance along f1 which is nearest to e2's position
 			
 			if ((d_forward > 0)&&(d_forward < nearest))
 			{
-				double cr = 1.10 * (e2->collision_radius + e1->collision_radius); //  10% safety margin
-				HPVector p0 = e1->position;
+				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
+				HPVector p0 = e1->_cxxEntity->position;
 				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
 				// p0 holds nearest point on current course to center of incident object
-				HPVector epos = e2->position;
+				HPVector epos = e2->_cxxEntity->position;
 				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
 				// compare with center of incident object
 				double  dist2 = HPmagnitude2(p0);
@@ -6208,7 +6208,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = [sortedEntities[i] retain];	// retained
-	HPVector p1 = e1->position;
+	HPVector p1 = e1->_cxxEntity->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
 	
@@ -6224,18 +6224,18 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		Entity *e2 = my_entities[i];
 		if ((e2 != e1)&&([e2 canCollide]))
 		{
-			HPVector epos = e2->position;
+			HPVector epos = e2->_cxxEntity->position;
 			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z;
 			double d_forward = HPdot_product(epos,f1);
 			if ((d_forward > 0)&&(d_forward < nearest))
 			{
-				double cr = 1.20 * (e2->collision_radius + e1->collision_radius); //  20% safety margin
+				double cr = 1.20 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  20% safety margin
 				
-				HPVector p0 = e1->position;
+				HPVector p0 = e1->_cxxEntity->position;
 				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
 				// p0 holds nearest point on current course to center of incident object
 				
-				HPVector epos = e2->position;
+				HPVector epos = e2->_cxxEntity->position;
 				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
 				// compare with center of incident object
 				
@@ -6243,7 +6243,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 				
 				if (dist2 < cr*cr)
 				{
-					result = e2->position;			// center of incident object
+					result = e2->_cxxEntity->position;			// center of incident object
 					nearest = d_forward;
 					
 					if (dist2 == 0.0)
@@ -6429,8 +6429,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		ShipEntity *e2 = my_entities[i];
 		
 		// check outermost bounding sphere
-		GLfloat cr = e2->collision_radius;
-		Vector rpos = HPVectorToVector(HPvector_subtract(e2->position, p0));
+		GLfloat cr = e2->_cxxEntity->collision_radius;
+		Vector rpos = HPVectorToVector(HPvector_subtract(e2->_cxxEntity->position, p0));
 		Vector v_off = make_vector(dot_product(rpos, r1), dot_product(rpos, u1), dot_product(rpos, f1));
 		if (v_off.z > 0.0 && v_off.z < nearest + cr &&								// ahead AND within range
 			v_off.x < cr && v_off.x > -cr && v_off.y < cr && v_off.y > -cr &&		// AND not off to one side or another
@@ -6660,7 +6660,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 	if (predicate == NULL)  predicate = YESPredicate;
 	
-	if (e1 != nil)  p1 = e1->position;
+	if (e1 != nil)  p1 = e1->_cxxEntity->position;
 	else  p1 = kZeroHPVector;
 	
 	for (i = 0; i < n_entities; i++)
@@ -6671,8 +6671,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			if (range < 0)  distance = -1;	// Negative range means infinity
 			else
 			{
-				cr = range + e2->collision_radius;
-				distance = HPdistance2(e2->position, p1) - cr * cr;
+				cr = range + e2->_cxxEntity->collision_radius;
+				distance = HPdistance2(e2->_cxxEntity->position, p1) - cr * cr;
 			}
 			if (distance < 0)
 			{
@@ -6716,8 +6716,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 {
 	if (range < 0)  return YES;
-	float cr = range + e2->collision_radius;
-	return HPdistance2(e2->position,p1) < cr * cr;
+	float cr = range + e2->_cxxEntity->collision_radius;
+	return HPdistance2(e2->_cxxEntity->position,p1) < cr * cr;
 }
 
 
@@ -7431,7 +7431,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 								demo_stage_time = universal_time + 300.0;
 								break;
 							case DEMO_SHOW_THING:
-								vel = make_vector(0, 0, DEMO2_VANISHING_DISTANCE * demo_ship->collision_radius * 6.0);
+								vel = make_vector(0, 0, DEMO2_VANISHING_DISTANCE * demo_ship->_cxxEntity->collision_radius * 6.0);
 								[demo_ship setVelocity:vel];
 								demo_stage = DEMO_FLY_OUT;
 								demo_stage_time = universal_time + 0.25;
@@ -7459,7 +7459,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 									{
 										[demo_ship release];		// We now own a reference through the entity list.
 										[demo_ship setStatus:STATUS_COCKPIT_DISPLAY];
-										demo_start_z=DEMO2_VANISHING_DISTANCE * demo_ship->collision_radius;
+										demo_start_z=DEMO2_VANISHING_DISTANCE * demo_ship->_cxxEntity->collision_radius;
 										[demo_ship setPositionX:0.0f y:0.0f z:demo_start_z];
 										[demo_ship setDestination: make_HPvector(0.0f, 0.0f, demo_start_z * 0.01f)];	// ideal position
 										[demo_ship setVelocity:kZeroVector];
@@ -7517,15 +7517,15 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 #endif
 				
 				// maintain distance-from-player list
-				GLfloat z_distance = thing->zero_distance;
+				GLfloat z_distance = thing->_cxxEntity->zero_distance;
 				
-				int index = thing->zero_index;
-				while (index > 0 && z_distance < sortedEntities[index - 1]->zero_distance)
+				int index = thing->_cxxEntity->zero_index;
+				while (index > 0 && z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance)
 				{
 					sortedEntities[index] = sortedEntities[index - 1];	// bubble up the list, usually by just one position
 					sortedEntities[index - 1] = thing;
-					thing->zero_index = index - 1;
-					sortedEntities[index]->zero_index = index;
+					thing->_cxxEntity->zero_index = index - 1;
+					sortedEntities[index]->_cxxEntity->zero_index = index;
 					index--;
 				}
 				
@@ -7713,9 +7713,9 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	e0 = z_list_start;
 	while (e0)
 	{
-		e0->collisionTestFilter = [e0 canCollide]?0:3;
-		e0->collision_chain = nil;
-		e0 = e0->z_next;
+		e0->_cxxEntity->collisionTestFilter = [e0 canCollide]?0:3;
+		e0->_cxxEntity->collision_chain = nil;
+		e0 = e0->_cxxEntity->z_next;
 	}
 	// done.
 	
@@ -7730,42 +7730,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.z - 2.0f * e0->collision_radius;
-		finish = start + 4.0f * e0->collision_radius;
-		next = e0->z_next;
-		while ((next)&&(next->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->z_next;
+		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->z_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->z_next;
 		if (next)
 		{
-			next_start = next->position.z - 2.0f * next->collision_radius;
+			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->collision_radius;
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->z_next;
-					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->z_next;
+					next = e0->_cxxEntity->z_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->z_next;
 					if (next)
-						next_start = next->position.z - 2.0f * next->collision_radius;
+						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter = 1;
+				e0->_cxxEntity->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter = 1;
+			e0->_cxxEntity->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -7774,42 +7774,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.z + 2.0f * e0->collision_radius;
-		finish = start - 4.0f * e0->collision_radius;
-		prev = e0->z_previous;
-		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->z_previous;
+		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->z_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->z_previous;
 		if (prev)
 		{
-			prev_start = prev->position.z + 2.0f * prev->collision_radius;
+			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->z_previous;
-					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->z_previous;
+					prev = e0->_cxxEntity->z_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->z_previous;
 					if (prev)
-						prev_start = prev->position.z + 2.0f * prev->collision_radius;
+						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter |= 2;
+				e0->_cxxEntity->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter |= 2;
+			e0->_cxxEntity->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -7820,43 +7820,43 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.y - 2.0f * e0->collision_radius;
-		finish = start + 4.0f * e0->collision_radius;
-		next = e0->y_next;
-		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->y_next;
+		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->y_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->y_next;
 		if (next)
 		{
 			
-			next_start = next->position.y - 2.0f * next->collision_radius;
+			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->collision_radius;
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->y_next;
-					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->y_next;
+					next = e0->_cxxEntity->y_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->y_next;
 					if (next)
-						next_start = next->position.y - 2.0f * next->collision_radius;
+						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter = 1;
+				e0->_cxxEntity->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter = 1;
+			e0->_cxxEntity->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -7865,42 +7865,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.y + 2.0f * e0->collision_radius;
-		finish = start - 4.0f * e0->collision_radius;
-		prev = e0->y_previous;
-		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->y_previous;
+		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->y_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->y_previous;
 		if (prev)
 		{
-			prev_start = prev->position.y + 2.0f * prev->collision_radius;
+			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->y_previous;
-					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->y_previous;
+					prev = e0->_cxxEntity->y_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->y_previous;
 					if (prev)
-						prev_start = prev->position.y + 2.0f * prev->collision_radius;
+						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter |= 2;
+				e0->_cxxEntity->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter |= 2;
+			e0->_cxxEntity->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -7911,42 +7911,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.x - 2.0f * e0->collision_radius;
-		finish = start + 4.0f * e0->collision_radius;
-		next = e0->x_next;
-		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->x_next;
+		start = e0->_cxxEntity->position.x - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->x_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->x_next;
 		if (next)
 		{
-			next_start = next->position.x - 2.0f * next->collision_radius;
+			next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->collision_radius;
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->x_next;
-					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->x_next;
+					next = e0->_cxxEntity->x_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->x_next;
 					if (next)
-						next_start = next->position.x - 2.0f * next->collision_radius;
+						next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter = 1;
+				e0->_cxxEntity->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter = 1;
+			e0->_cxxEntity->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -7955,42 +7955,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.x + 2.0f * e0->collision_radius;
-		finish = start - 4.0f * e0->collision_radius;
-		prev = e0->x_previous;
-		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->x_previous;
+		start = e0->_cxxEntity->position.x + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->x_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->x_previous;
 		if (prev)
 		{
-			prev_start = prev->position.x + 2.0f * prev->collision_radius;
+			prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->x_previous;
-					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->x_previous;
+					prev = e0->_cxxEntity->x_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->x_previous;
 					if (prev)
-						prev_start = prev->position.x + 2.0f * prev->collision_radius;
+						prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter |= 2;
+				e0->_cxxEntity->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter |= 2;
+			e0->_cxxEntity->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -8001,42 +8001,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.y - 2.0f * e0->collision_radius;
-		finish = start + 4.0f * e0->collision_radius;
-		next = e0->y_next;
-		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->y_next;
+		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->y_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->y_next;
 		if (next)
 		{
-			next_start = next->position.y - 2.0f * next->collision_radius;
+			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->collision_radius;
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->y_next;
-					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->y_next;
+					next = e0->_cxxEntity->y_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->y_next;
 					if (next)
-						next_start = next->position.y - 2.0f * next->collision_radius;
+						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter = 1;
+				e0->_cxxEntity->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter = 1;
+			e0->_cxxEntity->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -8044,42 +8044,42 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.y + 2.0f * e0->collision_radius;
-		finish = start - 4.0f * e0->collision_radius;
-		prev = e0->y_previous;
-		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->y_previous;
+		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->y_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->y_previous;
 		if (prev)
 		{
-			prev_start = prev->position.y + 2.0f * prev->collision_radius;
+			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
 				while ((prev)&&(prev_start > finish))
 				{
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->y_previous;
-					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->y_previous;
+					prev = e0->_cxxEntity->y_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->y_previous;
 					if (prev)
-						prev_start = prev->position.y + 2.0f * prev->collision_radius;
+						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter |= 2;
+				e0->_cxxEntity->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter |= 2;
+			e0->_cxxEntity->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -8090,45 +8090,45 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.z - 2.0f * e0->collision_radius;
-		finish = start + 4.0f * e0->collision_radius;
-		next = e0->z_next;
-		while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->z_next;
+		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->z_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->z_next;
 		if (next)
 		{
-			next_start = next->position.z - 2.0f * next->collision_radius;
+			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
 			if (next_start < finish)
 			{
 				// e0 and next overlap
 				while ((next)&&(next_start < finish))
 				{
 					// chain e0 to next in collision
-					e0->collision_chain = next;
+					e0->_cxxEntity->collision_chain = next;
 					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->collision_radius;
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
 					if (next_finish > finish)
 						finish = next_finish;
 					e0 = next;
-					next = e0->z_next;
-					while ((next)&&(next->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->z_next;
+					next = e0->_cxxEntity->z_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->z_next;
 					if (next)
-						next_start = next->position.z - 2.0f * next->collision_radius;
+						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
 				}
 				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-				e0->collision_chain = nil;	// end the collision chain
+				e0->_cxxEntity->collision_chain = nil;	// end the collision chain
 			}
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter = 1;
+				e0->_cxxEntity->collisionTestFilter = 1;
 			}
 		}
 		else // (next == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter = 1;
+			e0->_cxxEntity->collisionTestFilter = 1;
 		}
 		e0 = next;
 	}
@@ -8136,14 +8136,14 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
-		start = e0->position.z + 2.0f * e0->collision_radius;
-		finish = start - 4.0f * e0->collision_radius;
-		prev = e0->z_previous;
-		while ((prev)&&(prev->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->z_previous;
+		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->z_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->z_previous;
 		if (prev)
 		{
-			prev_start = prev->position.z + 2.0f * prev->collision_radius;
+			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
 			if (prev_start > finish)
 			{
 				// e0 and next overlap
@@ -8151,41 +8151,41 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				{
 					// e0 probably already in collision chain at this point, but if it
 					// isn't we have to insert it
-					if (prev->collision_chain != e0)
+					if (prev->_cxxEntity->collision_chain != e0)
 					{
-						if (prev->collision_chain == nil)
+						if (prev->_cxxEntity->collision_chain == nil)
 						{
 							// easy, just add it onto the start of the chain
-							prev->collision_chain = e0;
+							prev->_cxxEntity->collision_chain = e0;
 						}
 						else
 						{
 							/* not nil and not e0 shouldn't be possible, I think.
 							 * if it is, that implies that e0->collision_chain is nil, though
 							 * so: */
-							if (e0->collision_chain == nil)
+							if (e0->_cxxEntity->collision_chain == nil)
 							{
-								e0->collision_chain = prev->collision_chain;
-								prev->collision_chain = e0;
+								e0->_cxxEntity->collision_chain = prev->_cxxEntity->collision_chain;
+								prev->_cxxEntity->collision_chain = e0;
 							}
 							else
 							{
 								/* This shouldn't happen... If it does, we accept
 								 * missing collision checks and move on */
-								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(prev), oo::DescriptionOf(prev->collision_chain), oo::DescriptionOf(e0), oo::DescriptionOf(e0->collision_chain));
+								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(prev), oo::DescriptionOf(prev->_cxxEntity->collision_chain), oo::DescriptionOf(e0), oo::DescriptionOf(e0->_cxxEntity->collision_chain));
 							}
 						}
 					}
 					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->collision_radius;
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
 					if (prev_finish < finish)
 						finish = prev_finish;
 					e0 = prev;
-					prev = e0->z_previous;
-					while ((prev)&&(prev->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->z_previous;
+					prev = e0->_cxxEntity->z_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->z_previous;
 					if (prev)
-						prev_start = prev->position.z + 2.0f * prev->collision_radius;
+						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
 				}
 				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
 
@@ -8195,13 +8195,13 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			else
 			{
 				// e0 is a singleton
-				e0->collisionTestFilter |= 2;
+				e0->_cxxEntity->collisionTestFilter |= 2;
 			}
 		}
 		else // (prev == nil)
 		{
 			// at the end of the list so e0 is a singleton
-			e0->collisionTestFilter |= 2;
+			e0->_cxxEntity->collisionTestFilter |= 2;
 		}
 		e0 = prev;
 	}
@@ -10362,14 +10362,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimStartPositionForShip:");
 		return kZeroHPVector;
 	}
-	HPVector v0 = the_sun->position;
-	HPVector v1 = ship->position;
+	HPVector v0 = the_sun->_cxxEntity->position;
+	HPVector v1 = ship->_cxxEntity->position;
 	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;	// vector from sun to ship
 	if (v1.x||v1.y||v1.z)
 		v1 = HPvector_normal(v1);
 	else
 		v1.z = 1.0;
-	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->collision_radius - 250.0; // 250 m inside the skim radius
+	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
 	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
 	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
 	
@@ -10391,8 +10391,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimEndPositionForShip:");
 		return kZeroHPVector;
 	}
-	HPVector v0 = the_sun->position;
-	HPVector v1 = ship->position;
+	HPVector v0 = the_sun->_cxxEntity->position;
+	HPVector v1 = ship->_cxxEntity->position;
 	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;
 	if (v1.x||v1.y||v1.z)
 		v1 = HPvector_normal(v1);
@@ -10408,7 +10408,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		v3 = HPvector_normal(v3);
 	else
 		v3.y = 1.0;
-	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->collision_radius - 250.0; // 250 m inside the skim radius
+	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
 	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
 	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
 	v1.x += 15000 * v3.x;	v1.y += 15000 * v3.y;	v1.z += 15000 * v3.z;	// point 15000m at a tangent to sun from v1
@@ -10456,7 +10456,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	ShipEntity* my_ships[ent_count];
 	for (i = 0; i < ent_count; i++)
 	{
-		if (sortedEntities[i]->isShip)
+		if (sortedEntities[i]->_cxxEntity->isShip)
 		{
 			my_ships[ship_count++] = [(ShipEntity *)sortedEntities[i] retain];	// retained
 		}
@@ -11162,7 +11162,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[entity wasRemovedFromUniverse];
 	
 	// maintain sorted lists
-	int index = entity->zero_index;
+	int index = entity->_cxxEntity->zero_index;
 	
 	int n = 1;
 	if (index >= 0)
@@ -11204,7 +11204,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 				sortedEntities[index] = sortedEntities[index + n];	// copy entity[index + n] -> entity[index] (preserves sort order)
 				if (sortedEntities[index])
 				{
-					sortedEntities[index]->zero_index = index;				// give it its correct position
+					sortedEntities[index]->_cxxEntity->zero_index = index;				// give it its correct position
 				}
 				index++;
 			}
@@ -11216,7 +11216,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 				sortedEntities[n_entities] = nil;
 			}
 		}
-		entity->zero_index = -1;	// it's GONE!
+		entity->_cxxEntity->zero_index = -1;	// it's GONE!
 	}
 	
 	// remove from the definitive list

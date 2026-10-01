@@ -55,8 +55,8 @@ static OOTexture *sBlobTexture = nil;
 	if ((self = [super init]))
 	{
 		_diameter = diameter;
-		no_draw_distance = pow(diameter / 2.0, M_SQRT2) * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;
-		no_draw_distance *= [UNIVERSE reducedDetail] ? PARTICLE_DISTANCE_SCALE_LOW : PARTICLE_DISTANCE_SCALE_HIGH;
+		_cxxEntity->no_draw_distance = pow(diameter / 2.0, M_SQRT2) * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;
+		_cxxEntity->no_draw_distance *= [UNIVERSE reducedDetail] ? PARTICLE_DISTANCE_SCALE_LOW : PARTICLE_DISTANCE_SCALE_HIGH;
 		
 		_colorComponents[0] = 1.0f;
 		_colorComponents[1] = 1.0f;
@@ -104,12 +104,12 @@ static OOTexture *sBlobTexture = nil;
 		zero_distances are necessary for flashers, if they haven't already.
 		-- Ahruman 2009-09-20
 	*/
-	cam_zero_distance = [[self owner] camZeroDistance];
-	if (no_draw_distance <= cam_zero_distance)  return;
+	_cxxEntity->cam_zero_distance = [[self owner] camZeroDistance];
+	if (_cxxEntity->no_draw_distance <= _cxxEntity->cam_zero_distance)  return;
 	
 	Entity *father = [self owner];
 	Entity *last = nil;
-	HPVector abspos = position;
+	HPVector abspos = _cxxEntity->position;
 
 	while (father != nil && father != last && father != (Entity *)NO_TARGET)
 	{
@@ -150,7 +150,7 @@ static OOTexture *sBlobTexture = nil;
 			return;
 		}
 	}
-	if (no_draw_distance <= cam_zero_distance)  return;
+	if (_cxxEntity->no_draw_distance <= _cxxEntity->cam_zero_distance)  return;
 	
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_ADDITIVE_BLENDING);
@@ -162,7 +162,7 @@ static OOTexture *sBlobTexture = nil;
 	OOGL(glEnable(GL_TEXTURE_2D));
 	OOGL(glDepthMask(GL_FALSE));
 	
-	GLfloat distanceAttenuation = cam_zero_distance / no_draw_distance;
+	GLfloat distanceAttenuation = _cxxEntity->cam_zero_distance / _cxxEntity->no_draw_distance;
 	distanceAttenuation = 1.0 - distanceAttenuation;
 	GLfloat components[4] = { _colorComponents[0], _colorComponents[1], _colorComponents[2], _colorComponents[3] * distanceAttenuation };
 	OOGL(glColor4fv(components));
