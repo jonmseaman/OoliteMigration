@@ -90,7 +90,7 @@ MA 02110-1301, USA.
 
 - (void) getCurrentColorComponents
 {
-	[self setColor:[self flasherColorAtIndex:_activeColor] alpha:_colorComponents[3]];
+	[self setColor:[self flasherColorAtIndex:_activeColor] alpha:oo::ToCxx(self)->_colorComponents[3]];
 }
 
 
@@ -108,10 +108,10 @@ MA 02110-1301, USA.
 
 - (OOColor *) color
 {
-	return [OOColor colorWithRed:_colorComponents[0]
-						   green:_colorComponents[1]
-							blue:_colorComponents[2]
-						   alpha:_colorComponents[3]];
+	return [OOColor colorWithRed:oo::ToCxx(self)->_colorComponents[0]
+						   green:oo::ToCxx(self)->_colorComponents[1]
+							blue:oo::ToCxx(self)->_colorComponents[2]
+						   alpha:oo::ToCxx(self)->_colorComponents[3]];
 }
 
 
@@ -188,13 +188,13 @@ MA 02110-1301, USA.
 			brightness = _brightfraction + ((_brightfraction/(threshold+1))*(wave-threshold));
 		}
 
-		_colorComponents[3] = brightness;
+		oo::ToCxx(self)->_colorComponents[3] = brightness;
 		
 		_wave = wave;
 	}
 	else
 	{
-		_colorComponents[3] = 1.0;
+		oo::ToCxx(self)->_colorComponents[3] = 1.0;
 	}
 }
 

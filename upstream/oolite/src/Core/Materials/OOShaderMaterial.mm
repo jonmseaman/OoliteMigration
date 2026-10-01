@@ -187,7 +187,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 
 			OOLogIndent();
 			// Retained here (the ivar is an oo::ObjCRef), where the old code retained it once OK.
-			shaderProgram = oo::ObjCRef<OOShaderProgram *>([OOShaderProgram shaderProgramWithVertexShader:vertexShader
+			shaderProgram = oo::ObjCRef<::OOShaderProgram *>([::OOShaderProgram shaderProgramWithVertexShader:vertexShader
 																						   fragmentShader:fragmentShader
 																						 vertexShaderName:vsName
 																					   fragmentShaderName:fsName
@@ -214,7 +214,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 					cacheKey = *cacheKey + "\n$SIMPLIFIED FALLBACK\n";
 
 					OOLogIndent();
-					shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:vertexShader
+					shaderProgram = [::OOShaderProgram shaderProgramWithVertexShader:vertexShader
 																	fragmentShader:fragmentShader
 																  vertexShaderName:vsName
 																fragmentShaderName:fsName
@@ -728,7 +728,7 @@ void OOShaderMaterial::unapplyWithNext(OOMaterial *next)
 	if (dynamic_cast<OOShaderMaterial *>(next) == nullptr)	// Avoid redundant state change (-isKindOfClass:; nil is not one)
 	{
 		OO_ENTER_OPENGL();
-		[OOShaderProgram applyNone];
+		[::OOShaderProgram applyNone];
 
 		/*	BUG: unapplyWithNext: was failing to clear texture state. If a
 			shader material was followed by a basic material (with no texture),

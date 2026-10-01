@@ -1875,6 +1875,112 @@ two `::OOJSFunction` lines.
 4. **`-cxx_description` that printed `[self class]` and `self`** prints the class name as a literal
    and the façade's address, `oo::ToObjC(this)` (amendments oo-3lj8 item 4, oo-bhb9 item 6).
 
+## Amendment (bead oo-0otc): an entity intermediate class with Objective-C subclasses that read its ivars
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOLightParticleEntity.h/.mm`,
+  `OOLightParticleEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_OOLightParticleEntity.mm`; its
+  converted leaves `OOSparkEntity` (oo-c2dk) and `OOPlasmaBurstEntity` (oo-l2s5).
+
+**Context.** `OOLightParticleEntity` is the first entity class under `Entity` to convert while
+Objective-C classes still derive from it (`OOFlashEffectEntity`, `OOFlasherEntity`,
+`OOPlasmaShotEntity`), like `OOEntityWithDrawable` (amendment oo-bj8 item 5), but unlike it the
+class adds members its subclasses override (`-texture`, `-drawSubEntityImmediate:translucent:`),
+its subclasses read two `@protected` ivars by name (`_colorComponents`, `_diameter`), and it has
+class methods and a file-static texture whose graphics reset client is the class object.
+
+**Decision (recommended defaults).**
+
+1. **The entity adapter is not `final`.** An intermediate entity class that adds virtual members
+   derives its own adapter from `oo::ObjCEntity<cxx::X>` in its bridge `.mm`, one override per
+   added member that messages the Objective-C object, as amendment oo-vl43 item 1 does for the
+   materials. The façade's method for such a member calls the class's own member, qualified
+   (`part->cxx::X::texture()`), on an Objective-C subclass instance, and the virtual member
+   otherwise. Its `-init` makes that adapter; `-initWithX:` is `[self init]` and then the C++
+   initialiser (no subclass overrides `-init`).
+2. **An Objective-C subclass reads an ivar that moved to an intermediate class through the typed
+   crossing:** `oo::ToCxx(self)->_colorComponents`. The root's `_cxxEntity->` (amendment oo-bj8
+   item 2) is typed as the root and cannot name it; the typed `oo::ToCxx` of the class's bridge
+   header can. The edit is mechanical, as there, and deleting `oo::ToCxx(self)->` gives the
+   subclass's body back when it converts.
+3. **Class methods become static members, and a file-static object they keep stays file-static**
+   (`sBlobTexture`, retained by hand as before). The graphics reset client stays the façade class:
+   the converted body registers `[::X class]` with the C++ manager
+   (`OOGraphicsResetManager::sharedManager()->registerClient(...)`), and the façade's
+   `+resetGraphicsState` forwards to the static member. The client is still an Objective-C object,
+   so amendment oo-jpd8 item 3's C++ client interface is not needed yet.
+4. **An initialiser that calls members a subclass overrides** is a public member with its name,
+   run once after construction (amendment oo-vl43 item 2). A converted leaf's own initialiser calls
+   it first, as it called `[super initWithDiameter:]`, and its static factory is `makeRef` plus
+   its initialiser; the code that made it hands the result to `oo::NewEntityFacade`, whose chain
+   gains the class's line, so a C++ leaf's façade is the intermediate class's.
+
+**Consequences.** One façade and deletion bead (`OOLightParticleEntity+ObjCBridge`), which waits
+for the three Objective-C subclasses and for the universe and `OOParticleSystem`, which message the
+class. Nine reads in the subclasses changed by item 2. The root's adapter lost `final`; no other
+root file changed but `oo::NewEntityFacade`'s chain.
+
+## Amendment (bead oo-f9zg): a cache of unretained objects that remove themselves
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOShaderProgram.h/.mm`,
+  `OOShaderProgram+ObjCBridge.h/.mm`, `tests/unit/core/test_OOShaderProgram.mm`.
+
+**Context.** `OOShaderProgram` keeps a cache of programs by key that does not retain them; a program
+erases itself in `-dealloc`, and the class methods return an autoreleased program (cached or new).
+It also keeps the program in use retained in a file static.
+
+**Decision (recommended defaults).**
+
+1. **The cache holds raw C++ pointers** in an anonymous namespace inside `namespace cxx`, and the
+   destructor erases the entry, as `-dealloc` did. The factories return `oo::Ref<X>` (a cache hit
+   is retained into the `Ref`); a failed initialiser is a `bool` member and the factory answers
+   null. The façade's class methods answer `oo::ToObjC(factory(...))`, whose autorelease keeps the
+   program until the pool drains, as the autoreleased program was kept (amendment oo-ct7c item 2);
+   a cache hit whose façade is alive answers that façade.
+2. **The retained file static** (`sActiveProgram`) is a never-destroyed holder (`ActiveProgram()`,
+   amendment oo-smy item 3) that keeps **the façade**, `oo::ObjCRef<::X *>(oo::ToObjC(this))`, as
+   the current material does (amendment oo-smy item 4), not an `oo::Ref<X>`: the façade owns the
+   C++ program and is the object `sActiveProgram` retained, so a façade in use stays alive and
+   stays the program's one façade (`test_OOShaderProgram` pins the retain on the façade). The
+   assignment sits in an `@autoreleasepool` so that `oo::ToObjC`'s autorelease drains at once and
+   the program in use carries only the slot's retain, as `[program retain]` did. The destructor's
+   imbalance check stays under `#ifndef NDEBUG` for fidelity (it cannot fire while the slot owns
+   the façade), and drops the reference without releasing it. The slot changes to `oo::Ref<X>`
+   in the façade's deletion bead.
+3. **An ivar that shares its name with its getter** (`program`) takes the leading underscore
+   (amendment oo-rdfh item 1).
+4. **A converted C++ class that messages a converted façade's collaborator** (`[[UNIVERSE gameView]
+   getOpenGLMatrixManager]`, a façade over the C++ matrix manager) crosses once with `oo::ToCxx`
+   and null-guards each call with what the message to nil answered (`kZeroMatrix`, a null list;
+   amendment oo-vt0o item 3).
+
+## Amendment (bead oo-9fwb): a category of a converted class in a file of its own
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOMaterialConvenienceCreators.h/.mm`,
+  `OOMaterialConvenienceCreators+ObjCBridge.h/.mm`, the creators in `OOMaterial.h`,
+  `tests/unit/core/test_OOMaterialConvenienceCreators.mm`.
+
+**Context.** `OOMaterialConvenienceCreators` is the category `OOMaterial (OOConvenienceCreators)`:
+class methods that pick and make a material, and two private class methods of their own; its
+file also holds C++ helper functions (the shader-configuration synthesis) that are already C++.
+The root converted first (oo-smy), and its only outside caller (`OOMesh`) is still Objective-C.
+
+**Decision (recommended defaults).**
+
+1. **The category's class methods become static members of the converted class** (amendment oo-o89
+   item 4), declared in the class's header under a comment naming the category, and defined in the
+   category's own file, which keeps its name. Its private class methods are private static
+   members. `[self m]` in them is a plain call.
+2. **The category's `@interface` moves, unchanged, to `X+ObjCBridge.h`** of the category's file,
+   imported as its header's last line, and its `@implementation` is one-line forwarders in
+   `X+ObjCBridge.mm` that answer `oo::ToObjC(result)`. It goes with its own deletion bead, which
+   depends on the callers' beads.
+3. **The creators make materials with the C++ factories** (`OOShaderMaterial::shaderMaterialWithName`,
+   `OOBasicMaterial::materialWithName`, …), since every material class is converted; a class whose
+   test stubs its Objective-C collaborator (`OOCacheManager`, `OOTexture`) keeps the message to
+   `::X` (amendment oo-rmd7 item 3).
+4. **`+initialize` that set a file static** (compiled out here: the new-synthesizer branch) becomes a
+   function-local static read on first use, which is when `+initialize` ran.
+
 ## Amendment (bead oo-peql): the effect leaves (entities that nothing messages by their own selectors)
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OORingEffectEntity.h/.mm`

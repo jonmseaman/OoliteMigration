@@ -112,11 +112,11 @@ static OOTexture *sFlashTexture = nil;
 	float tf1 = _duration - tf;
 	
 	// Scale up.
-	_diameter += delta_t * _growthRate;
+	oo::ToCxx(self)->_diameter += delta_t * _growthRate;
 	
 	// Fade in and out.
 	OOTimeDelta lifeTime = [self timeElapsedSinceSpawn];
-	_colorComponents[3] = _alpha * ((lifeTime < tf) ? (lifeTime / tf) : (_duration - lifeTime) / tf1);
+	oo::ToCxx(self)->_colorComponents[3] = _alpha * ((lifeTime < tf) ? (lifeTime / tf) : (_duration - lifeTime) / tf1);
 	
 	// Disappear as necessary.
 	if (lifeTime > _duration)  [UNIVERSE removeEntity:self];

@@ -43,6 +43,17 @@ MA 02110-1301, USA.
 	registrations with &sDockClass itself. `this` is renamed to `thisObj` because it is a
 	reserved word once this file compiles as Objective-C++ (ADR-0001).
 */
+
+/*
+	C++20 since bead oo-zbx3, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on DockEntity
+	became two free functions, and its methods moved to OOJSDock+ObjCBridge.mm (amendment oo-
+	ykoy). Messages to classes that are still Objective-C (DockEntity, ShipEntity, Entity) stay
+	as they are, which is why the file is still .mm until Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -60,10 +71,10 @@ static ooscript::Object sDockPrototype;
 } // namespace
 
 namespace {
-static BOOL JSDockGetDockEntity(ooscript::Context context, ooscript::Object stationObj, DockEntity **outEntity);
+static bool JSDockGetDockEntity(ooscript::Context context, ooscript::Object stationObj, DockEntity **outEntity);
 } // namespace
 namespace {
-static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object shipObj, ShipEntity **outEntity);
+static bool JSDockGetShipEntity(ooscript::Context context, ooscript::Object shipObj, ShipEntity **outEntity);
 } // namespace
 
 namespace {
@@ -162,23 +173,23 @@ void InitOOJSDock(ooscript::Context context, ooscript::Object global)
 
 
 namespace {
-static BOOL JSDockGetDockEntity(ooscript::Context context, ooscript::Object dockObj, DockEntity **outEntity)
+static bool JSDockGetDockEntity(ooscript::Context context, ooscript::Object dockObj, DockEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
-	BOOL						result;
+	bool						result;
 	Entity						*entity = nil;
 	
-	if (outEntity == NULL)  return NO;
+	if (outEntity == NULL)  return false;
 	*outEntity = nil;
 	
 	result = OOJSEntityGetEntity(context, dockObj, &entity);
-	if (!result)  return NO;
+	if (!result)  return false;
 	
-	if (![entity isKindOfClass:[DockEntity class]])  return NO;
+	if (![entity isKindOfClass:[DockEntity class]])  return false;
 	
 	*outEntity = (DockEntity *)entity;
-	return YES;
+	return true;
 	
 	OOJS_PROFILE_EXIT
 }
@@ -186,50 +197,47 @@ static BOOL JSDockGetDockEntity(ooscript::Context context, ooscript::Object dock
 
 
 namespace {
-static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object shipObj, ShipEntity **outEntity)
+static bool JSDockGetShipEntity(ooscript::Context context, ooscript::Object shipObj, ShipEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
-	BOOL						result;
+	bool						result;
 	Entity						*entity = nil;
 	
-	if (outEntity == NULL)  return NO;
+	if (outEntity == NULL)  return false;
 	*outEntity = nil;
 	
 	result = OOJSEntityGetEntity(context, shipObj, &entity);
-	if (!result)  return NO;
+	if (!result)  return false;
 	
-	if (![entity isKindOfClass:[ShipEntity class]])  return NO;
+	if (![entity isKindOfClass:[ShipEntity class]])  return false;
 	
 	*outEntity = (ShipEntity *)entity;
-	return YES;
+	return true;
 	
 	OOJS_PROFILE_EXIT
 }
 } // namespace
 
 
-@implementation DockEntity (OOJavaScriptExtensions)
-
-- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+// The bodies of DockEntity (OOJavaScriptExtensions), whose methods are in OOJSDock+ObjCBridge.mm
+// until DockEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+void OOJSDockGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = &sDockClass;
 	*outPrototype = sDockPrototype;
 }
 
-
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> OOJSDockJSClassName(void)
 {
 	return std::string("Dock");
 }
-
-@end
 
 
 namespace {
 static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -239,22 +247,22 @@ static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *va
 	
 	DockEntity				*entity = nil;
 	
-	if (!JSDockGetDockEntity(context, thisObj, &entity))  return NO;
-	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return YES; }
+	if (!JSDockGetDockEntity(context, thisObj, &entity))  return false;
+	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return true; }
 	
 	switch (ooscript::idToInt32(propID))
 	{
 		case kDock_allowsDocking:
 			*value_raw = OOJSValueFromBOOL([entity allowsDocking]);
-			return YES;
+			return true;
 
 		case kDock_disallowedDockingCollides:
 			*value_raw = OOJSValueFromBOOL([entity disallowedDockingCollides]);
-			return YES;
+			return true;
 
 		case kDock_allowsLaunching:
 			*value_raw = OOJSValueFromBOOL([entity allowsLaunching]);
-			return YES;
+			return true;
 		
 		case kDock_dockingQueueLength:
 			return ooscript::newNumberValue(cx, [entity countOfShipsInDockingQueue], value);
@@ -264,7 +272,7 @@ static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *va
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sDockPropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJS_NATIVE_EXIT
@@ -275,7 +283,7 @@ static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *va
 namespace {
 static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -286,8 +294,8 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 	DockEntity				*entity = nil;
 	bool						bValue;
 	
-	if (!JSDockGetDockEntity(context, thisObj, &entity)) return NO;
-	if (entity == nil)  return YES;
+	if (!JSDockGetDockEntity(context, thisObj, &entity)) return false;
+	if (entity == nil)  return true;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -295,7 +303,7 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setAllowsDocking:bValue];
-				return YES;
+				return true;
 			}
 			break;
 
@@ -303,7 +311,7 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setAllowsLaunching:bValue];
-				return YES;
+				return true;
 			}
 			break;
 
@@ -311,17 +319,17 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setDisallowedDockingCollides:bValue];
-				return YES;
+				return true;
 			}
 			break;
 
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sDockPropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJSReportBadPropertyValue(context, thisObj, (propID), sDockPropertiesRaw, *value_raw);
-	return NO;
+	return false;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -336,14 +344,14 @@ static bool DockIsQueued(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	BOOL result = NO;
+	bool result = false;
 	DockEntity *dock = nil;
 
 	JSDockGetDockEntity(context, OOJS_THIS, &dock); 
 	if (oojsArgs.count() == 0)
 	{
 		cxx_OOJSReportBadArguments(context, "Dock", "isQueued", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "ship");
-		return NO;
+		return false;
 	}
 	ShipEntity *ship = nil;
 	JSDockGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &ship);
