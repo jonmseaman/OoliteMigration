@@ -26,7 +26,14 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJavaScriptEngine.h"
+/*	Plain includes (bead oo-9ht.64): this header and OOConstToJSString's translation unit are C++,
+	not Objective-C. The script engine facade, OOINLINE, NSInteger/NSUInteger and the constant
+	enumerations are all the inlines below need.
+*/
+#include "ooscript/JSEngine.hpp"
+#include "OOFunctionAttributes.h"
+#include "OOTypes.h"
+#include "OOEntityEnums.h"
 
 
 #ifdef __cplusplus

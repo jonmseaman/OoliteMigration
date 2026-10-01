@@ -1,6 +1,6 @@
 # ADR-0048 — S6's fight-dependent survival assertion stays as written and is tracked nightly
 
-**Status:** Proposed — default in effect (Claude Code, orchestrator, bead oo-9aq4, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, orchestrator, bead oo-9aq4, 2026-09-23;
 ADR-0013, CLAUDE.md rule 10). Made under Jon's 2026-09-23 authorisation to resolve `human` and
 frontier beads by best judgement when they would otherwise block progress. Jon may override; the
 recommended override is option (b) below.

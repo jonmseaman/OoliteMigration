@@ -1,6 +1,6 @@
 # ADR-0050: A message to an undeclared Objective-C method fails the build
 
-- Status: Proposed. The default is in effect until Jon decides.
+- Status: Accepted (Jon, 2026-09-30, in chat). Recorded from the in-effect default.
 - Date: 2026-09-28
 - Beads: oo-tk0w (implements); oo-2o5x (evidence)
 
