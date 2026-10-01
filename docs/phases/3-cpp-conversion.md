@@ -183,6 +183,12 @@ façade), `tests/unit/core/test_OOColor.mm` (its test). Open them and do what th
      removed ivar). The Objective-C object stays the identity and owns the C++ part; a C++
      subclass's façade comes from `oo::NewEntityFacade`. An entity leaf's bead derives from
      `cxx::Entity` and keeps its bodies verbatim.
+   - **The Audio module: a root that is a class cluster** (ADR-0056 amendment oo-2en; exemplar
+     `src/Core/OOALSound.*`, `cxx::OOSound`): the root converts first with an `OODrawable`-style
+     façade and adapter. Its cluster initialiser is a static factory returning the Objective-C
+     subclass instance as `oo::ObjCRef<::X *>`; the façade's initialiser releases the receiver and
+     returns `factory(…).leakRef()`. `-init`'s side effect is the constructor. The test runs OpenAL
+     on the null backend with a scratch `HOMEPATH`.
 7. **Callers you convert later** hold `oo::Ref<cxx::X>` (not `X *` or `oo::ObjCRef<X *>`), call
    with `->`, and cross with `ToObjC`/`ToCxx` only where they call unconverted code.
 8. **Test.** Write `tests/unit/core/test_X.mm` and add one entry in `tests/unit/core/meson.build`
@@ -262,3 +268,8 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `bash tools/check-foundation-free.sh --stage source` with 0 findings. A selector that no
   header declares any more is sent through a local protocol cast; see `OOCharacterIntValue`
   and `OOWeakReferenceClassName`. Merge phase-3 into your bead branch before you queue.
+- 2026-09-30 — Audio module pattern seam (bead oo-2en, ADR-0056 amendment oo-2en): `OOSound`
+  (`OOALSound.h/.mm`) is `cxx::OOSound` behind `OOALSound+ObjCBridge.h/.mm`, the root of the three
+  Objective-C sounds; its class-cluster initialiser is the static factory
+  `cxx::OOSound::initWithContentsOfFile`, which answers the Objective-C sound it makes. Test:
+  `tests/unit/core/test_OOSound.mm`. No caller changed.
