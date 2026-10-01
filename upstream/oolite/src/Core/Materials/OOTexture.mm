@@ -157,7 +157,7 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithName(const std::optional<std::s
 		}
 
 		// No existing texture, load texture.
-		result = oo::adoptObjC<::OOTexture *>([[::OOConcreteTexture alloc] initWithPath:*path key:key options:options anisotropy:anisotropy lodBias:lodBias]);
+		result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithPath(*path, key, options, anisotropy, lodBias)));
 	}
 
 
@@ -223,11 +223,11 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 	}
 	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
 
-	oo::ObjCRef<::OOTexture *> result = oo::adoptObjC<::OOTexture *>([[::OOConcreteTexture alloc] initWithLoader:generator
-																									  key:[generator cxx_cacheKey]
-																								  options:OOApplyTextureOptionDefaults([generator textureOptions])
-																							   anisotropy:[generator anisotropy]
-																								  lodBias:[generator lodBias]]);
+	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithLoader(generator,
+																												 [generator cxx_cacheKey],
+																												 OOApplyTextureOptionDefaults([generator textureOptions]),
+																												 [generator anisotropy],
+																												 [generator lodBias])));
 
 	return result;
 }
@@ -412,10 +412,27 @@ std::optional<std::string> OOTexture::name()
 	OOLogGenericSubclassResponsibility();
 	return std::nullopt;
 }
+
+
+void OOTexture::setTrace(bool trace)
+{
+	if (trace && !_trace)
+	{
+		::OOTexture *self = oo::ToObjC(this);
+		OO_LOG("texture.allocTrace.begin", "Started tracing texture {} with retain count {}.", oo::str::pointerDescription(self), [self retainCount]);
+	}
+	_trace = trace;
+}
 #endif
 
 
 std::optional<std::string> OOTexture::descriptionComponents() const
+{
+	return std::nullopt;
+}
+
+
+std::optional<std::string> OOTexture::shortDescriptionComponents() const
 {
 	return std::nullopt;
 }

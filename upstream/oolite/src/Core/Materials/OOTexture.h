@@ -201,17 +201,25 @@ public:
 	size_t dataSize();
 
 	virtual std::optional<std::string> name();	// nullopt: none (bead oo-3rb.289.4)
+
+	void setTrace(bool trace);
 #endif
 
-	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h). None here, as
-	// OOObject answered.
+	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h), and the short
+	// form's. None here, as OOObject answered.
 	virtual std::optional<std::string> descriptionComponents() const;
+	virtual std::optional<std::string> shortDescriptionComponents() const;
 
 	// Internal: OOTextureInternal.h's subclass interface, for the subclasses.
 	virtual void forceRebind();				// Subclass responsibility
 	void addToCaches();
 	void removeFromCaches();	// Must be called on destruction (while cacheKey() is still valid) for cacheable textures.
 	static OOTexture *existingTextureForKey(const std::optional<std::string> &key);	// borrowed; null for nullopt
+
+protected:
+#ifndef NDEBUG
+	bool	_trace = {};	// was the facade's @protected ivar; the subclasses read it (bead oo-qa7c)
+#endif
 
 private:
 	static void checkExtensions();
