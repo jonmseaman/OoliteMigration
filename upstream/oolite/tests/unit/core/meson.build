@@ -33,7 +33,7 @@ core_tests = {
     'test_OOMultiTextureMaterial': ['Core/Materials/OOMultiTextureMaterial.mm', 'Core/Materials/OOMultiTextureMaterial+ObjCBridge.mm', 'Core/Materials/OOBasicMaterial.mm', 'Core/Materials/OOBasicMaterial+ObjCBridge.mm', 'Core/Materials/OOMaterial.mm', 'Core/Materials/OOMaterial+ObjCBridge.mm', 'Core/Materials/OOMaterialSpecifier.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOOpenALController': ['Core/OOOpenALController.mm'],
-    'test_OOSound': ['Core/OOALSound.mm', 'Core/OOOpenALController.mm'],
+    'test_OOSound': ['Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOShipGroup': ['Core/OOShipGroup.mm', 'Core/OOShipGroup+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOGraphicsResetManager': ['Core/OOGraphicsResetManager.mm', 'Core/OOGraphicsResetManager+ObjCBridge.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
     'test_OOOpenGLExtensionManager': ['Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm'],
