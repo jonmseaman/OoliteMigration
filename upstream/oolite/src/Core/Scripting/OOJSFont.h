@@ -29,7 +29,6 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #ifdef __cplusplus
 extern "C" {
