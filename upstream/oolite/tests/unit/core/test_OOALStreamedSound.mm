@@ -9,7 +9,9 @@
 	own, on the game's Resources: boop.ogg fits in one chunk, OoliteTheme.ogg (the music) needs
 	many and is the one the root's class cluster streams. The buffered sound and the mixer, which
 	OOALSound.mm also names, are this file's stubs (amendment oo-z1s4 item 4). These expectations
-	were written against the Objective-C API and ran on the unconverted class first.
+	were written against the Objective-C API and ran on the unconverted class first; they now run
+	through the facade, which is its forwarding test. After them come the C++ API
+	(cxx::OOALStreamedSound, a subclass of cxx::OOSound) and the facade's contract.
 	Run: bash tools/check-core-tests.sh test_OOALStreamedSound
 */
 
@@ -210,6 +212,52 @@ OO_TEST(theClusterStreamsTheMusic)
 		OO_CHECK([sound soundIncomplete]);
 		OO_CHECK(NextBufferSize(sound) == static_cast<ALint>(OOAL_STREAM_CHUNK_SIZE));
 	}
+}
+
+
+// The C++ API: the factory answers null where the initialiser answered nil.
+OO_TEST(cxxApi)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OO_CHECK(!cxx::OOALStreamedSound::initWithDecoder(nil));
+		const oo::Ref<cxx::OOALStreamedSound> sound = cxx::OOALStreamedSound::initWithDecoder([OOALSoundDecoder codecWithPath:BoopPath()]);
+		OO_CHECK(sound && sound->name() == std::optional<std::string>("boop.ogg"));
+		OO_CHECK(sound->soundIncomplete());
+		ALuint buffer = sound->soundBuffer();
+		OO_CHECK(BufferInt(buffer, AL_SIZE) == kBoopBytes && BufferInt(buffer, AL_FREQUENCY) == kBoopRate);
+		alDeleteBuffers(1, &buffer);
+		OO_CHECK(!sound->soundIncomplete());
+		sound->rewind();
+		OO_CHECK(sound->soundIncomplete());
+	}
+}
+
+
+// The facade's contract: the sound's facade is an OOALStreamedSound, one per sound, and the
+// cluster's answer is the C++ sound's peer.
+OO_TEST(facade)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOALStreamedSound> sound = cxx::OOALStreamedSound::initWithDecoder([OOALSoundDecoder codecWithPath:BoopPath()]);
+		OOALStreamedSound *facade = oo::ToObjC(sound.get());
+		OO_CHECK([facade isKindOfClass:[OOALStreamedSound class]]);
+		OO_CHECK(facade == oo::ToObjC(static_cast<cxx::OOSound *>(sound.get())));
+		OO_CHECK(oo::ToCxx(facade) == sound.get());
+		[facade rewind];
+		OO_CHECK([facade soundIncomplete] && sound->soundIncomplete());
+
+		OOSound *made = [[[OOSound alloc] cxx_initWithContentsOfFile:ThemePath()] autorelease];
+		cxx::OOSound *part = oo::ToCxx(made);
+		OO_CHECK(dynamic_cast<cxx::OOALStreamedSound *>(part) != nullptr);
+		OO_CHECK(oo::ToObjC(part) == made);
+	}
+	OOALStreamedSound *none = nil;
+	OO_CHECK(oo::ToCxx(none) == nullptr);
+	OO_CHECK(oo::ToObjC(static_cast<cxx::OOALStreamedSound *>(nullptr)) == nil);
 }
 
 
