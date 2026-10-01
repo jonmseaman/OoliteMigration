@@ -76,11 +76,11 @@ SOFTWARE.
 	}
 	
 	// Set up output ivars as per OOTextureLoader contract.
-	_data = _pixMap.pixels;
-	_width = _pixMap.width;
-	_height = _pixMap.height;
-	_rowBytes = _pixMap.rowBytes;
-	_format = _pixMap.format;
+	_cxxLoader->_data = _pixMap.pixels;
+	_cxxLoader->_width = _pixMap.width;
+	_cxxLoader->_height = _pixMap.height;
+	_cxxLoader->_rowBytes = _pixMap.rowBytes;
+	_cxxLoader->_format = _pixMap.format;
 	
 	//	Explicitly do not free pixels - ownership passes to texture.
 	_pixMap.pixels = NULL;
