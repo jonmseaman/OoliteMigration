@@ -1542,6 +1542,56 @@ subclass's calls the superclass's.
 a timer queue of C++ timers; `OOJSTimer`'s waits for the engine's object wrappers to hold C++
 objects. No caller changed.
 
+## Amendment (bead oo-2en): the Audio module, and a hierarchy root that is a class cluster
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar: `src/Core/OOALSound.h/.mm`
+  (`cxx::OOSound`), `OOALSound+ObjCBridge.h/.mm`, `tests/unit/core/test_OOSound.mm`. This is the
+  Audio module's pattern seam: the other `OOAL*`/`OOSound*`/`OOMusic*` beads copy it.
+
+**Context.** `OOSound` is the root of the sounds: `OOALBufferedSound`, `OOALStreamedSound` and
+`OOMusic` derive from it in their own files. It keeps the sound system's global state (set up,
+sound OK, the master volume) in class methods, and its designated initialiser
+`-cxx_initWithContentsOfFile:` is a class cluster's: it releases the receiver and answers a
+buffered or a streamed sound, which are Objective-C subclasses. `OOMusic` overrides that
+initialiser. The other audio classes (the sources, the pool, the mixer, the channels, the decoder,
+the music controller) are not sounds.
+
+**Decision (recommended defaults).**
+
+1. **The module converts root first** (amendment oo-smy item 1): `OOSound` in this bead, with
+   amendment oo-smy's root façade and an adapter (`ObjCSound`, as `OODrawable`'s, since no
+   intermediate class exists). The per-file bead of `OOALSound.mm` is superseded by this one. The
+   three subclass beads depend on it; each derives from `cxx::OOSound`. The classes that are not
+   sounds follow the decision above, and amendment oo-r7m0 for the singletons (the mixer, the
+   music controller).
+2. **A class-cluster initialiser whose answers are Objective-C subclass instances** becomes a
+   static factory with the initialiser's name (amendment oo-novu item 1) that returns the
+   Objective-C object retained, `oo::ObjCRef<::X *>`, because an Objective-C object's C++ part does
+   not keep it alive (amendment oo-smy item 4). Null where it answered nil. The body stays in
+   `X.mm`; its `[[Sub alloc] init…]` sends are messages to unconverted classes. The façade's
+   initialiser keeps what concerns the receiver (`[self release]`, and the early `return nil`
+   that leaked it) and returns `factory(…).leakRef()`. The factory becomes `oo::Ref<X>` in the
+   façade's deletion bead.
+3. **A subclass that overrides the cluster's initialiser** (`OOMusic`) keeps overriding the
+   façade's method while it is Objective-C. When it converts it gets a static factory of the same
+   name, which hides the root's (amendment oo-489v item 2).
+4. **A root's `-init` side effect** (`[OOSound setUp]`) is the C++ constructor. The façade's
+   `-init` makes the adapter, which runs it, so `[[Sub alloc] init]` still sets sound up.
+5. **An initialiser that only the subclasses declare** (`-initWithDecoder:`, which answered nil on
+   the root) stays in the façade unchanged. It is not part of the C++ class.
+6. **A file-static of plain type whose line changes** (`static BOOL sIsSetUp` becoming `bool`)
+   moves into an anonymous namespace, which is what clang-tidy's `misc-use-anonymous-namespace`
+   asks of a changed line. Unchanged statics stay as they are.
+7. **The test** runs OpenAL on OpenAL Soft's null backend (`ALSOFT_DRIVERS=null`) and points
+   `HOMEPATH` at a scratch folder before the first use, so neither the machine's sound hardware
+   nor the user's saved volume changes the answers. The global state is per process, so the test
+   that sets sound up runs first. The decoder, the mixer and the two concrete sounds are stubs
+   in the test (amendment oo-z1s4 item 4); the concrete sounds are Objective-C subclasses, so the
+   class cluster's answers also exercise the adapter.
+
+**Consequences.** One façade and one deletion bead (`OOALSound+ObjCBridge`), which depends on the
+three subclass beads and on the beads of the files that message sounds. No caller changed.
+
 ## Amendment (bead oo-9ht.66): a message whose selector no header declares
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar: `oo::SendClassName` in
