@@ -112,7 +112,7 @@ private:
 	void dependencyCompleted(OOOXPVerifierStage *dependency);
 	void notifyDependents();
 
-	OOOXPVerifier								*_verifier = {};	// Not retained.
+	::OOOXPVerifier								*_verifier = {};	// Not retained.
 	std::vector<oo::Ref<OOOXPVerifierStage>>	_dependencies = {};
 	std::vector<oo::Ref<OOOXPVerifierStage>>	_incompleteDependencies = {};
 	std::vector<oo::Ref<OOOXPVerifierStage>>	_dependents = {};
