@@ -56,7 +56,7 @@ struct OOPListSchemaVerifierError
 
 /*	The key path the verification core hands down, one link per level (a dictionary key, an array
 	index, or neither for the root). Private to OOPListSchemaVerifier.mm until slice 1 of its
-	Phase 3 conversion (bead oo-pni4): the facade's OOPrivate category forwards it, so its
+	Phase 3 conversion (bead oo-pni4): the verification core's members below take it, so its
 	definition is here. Not for other callers.
 */
 typedef struct BackLinkChain BackLinkChain;
@@ -92,7 +92,7 @@ public:
 	static std::optional<std::string> descriptionForKeyPath(const oo::PList &keyPath);	// a null or empty path is "root"; nullopt for a component that is neither string nor number
 
 	// Internal (the OOPrivate category): the verification core and the delegate calls, which the
-	// type verifiers in OOPListSchemaVerifier.mm reach.
+	// type verifiers in OOPListSchemaVerifier.mm (file-static functions) call directly.
 	bool delegateVerifierWithPropertyList(const oo::PList &rootPList, const std::string &name, const oo::PList &subPList, BackLinkChain keyPath, const oo::PList &typeKey, std::optional<OOPListSchemaVerifierError> *outError);
 	bool delegateVerifierWithPropertyList(const oo::PList &rootPList, const std::string &name, const oo::PList &subPList, const OOPListSchemaVerifierError &error, const oo::PList &localSchema);
 	bool verifyPList(const oo::PList &rootPList, const std::string &name, const oo::PList &subProperty, const oo::PList &subSchema, BackLinkChain keyPath, bool tentative, std::optional<OOPListSchemaVerifierError> *outError, BOOL *outStop);

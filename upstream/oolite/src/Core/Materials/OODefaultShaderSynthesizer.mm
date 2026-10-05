@@ -1228,19 +1228,19 @@ oo::PList AddingValue(oo::PList specifier, const char *key, oo::PList value)
 }
 
 
-// +[OOColor colorWithDescription:] of the value for key (nil if there is none).
-OOColor *ColorIn(const oo::PList &spec, const char *key)
+// cxx::OOColor::colorWithDescription() of the value for key (null if there is none).
+oo::Ref<cxx::OOColor> ColorIn(const oo::PList &spec, const char *key)
 {
 	const oo::PList *value = spec.find(key);
-	return [OOColor cxx_colorWithDescription:(value != nullptr) ? *value : oo::PList()];
+	return cxx::OOColor::colorWithDescription((value != nullptr) ? *value : oo::PList());
 }
 
 
-// -[OOColor normalizedArray]: four +numberWithFloat: components.
-oo::PList NormalizedArray(OOColor *color)
+// cxx::OOColor::normalizedArray(): four +numberWithFloat: components. (The callers never pass null.)
+oo::PList NormalizedArray(cxx::OOColor *color)
 {
 	oo::PList::Array result;
-	for (float component : [color cxx_normalizedArray])  result.push_back(oo::PList::singleReal(component));
+	for (float component : color->normalizedArray())  result.push_back(oo::PList::singleReal(component));
 	return oo::PList(std::move(result));
 }
 
@@ -1255,28 +1255,28 @@ oo::PList NormalizedArray(OOColor *color)
 oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::optional<std::string> &materialKey)
 {
 	oo::PList::Dict			result;
-	OOColor					*col = nil;
+	oo::Ref<cxx::OOColor>	col;
 	oo::PList				texSpec;
 	
 	// Colours.
 	col = ColorIn(spec, cxx_kOOMaterialDiffuseColorName);
-	if (col == nil)  col = ColorIn(spec, cxx_kOOMaterialDiffuseColorLegacyName);
-	if (col != nil)  result[cxx_kOOMaterialDiffuseColorName] = NormalizedArray(col);
+	if (col == nullptr)  col = ColorIn(spec, cxx_kOOMaterialDiffuseColorLegacyName);
+	if (col != nullptr)  result[cxx_kOOMaterialDiffuseColorName] = NormalizedArray(col.get());
 	
 	col = ColorIn(spec, cxx_kOOMaterialAmbientColorName);
-	if (col == nil)  col = ColorIn(spec, cxx_kOOMaterialAmbientColorLegacyName);
-	if (col != nil)  result[cxx_kOOMaterialAmbientColorName] = NormalizedArray(col);
+	if (col == nullptr)  col = ColorIn(spec, cxx_kOOMaterialAmbientColorLegacyName);
+	if (col != nullptr)  result[cxx_kOOMaterialAmbientColorName] = NormalizedArray(col.get());
 	
 	col = ColorIn(spec, cxx_kOOMaterialSpecularColorName);
-	if (col == nil)  col = ColorIn(spec, cxx_kOOMaterialSpecularColorLegacyName);
-	if (col != nil)  result[cxx_kOOMaterialSpecularColorName] = NormalizedArray(col);
+	if (col == nullptr)  col = ColorIn(spec, cxx_kOOMaterialSpecularColorLegacyName);
+	if (col != nullptr)  result[cxx_kOOMaterialSpecularColorName] = NormalizedArray(col.get());
 	
 	col = ColorIn(spec, cxx_kOOMaterialSpecularModulateColorName);
-	if (col != nil)  result[cxx_kOOMaterialSpecularModulateColorName] = NormalizedArray(col);
+	if (col != nullptr)  result[cxx_kOOMaterialSpecularModulateColorName] = NormalizedArray(col.get());
 	
 	col = ColorIn(spec, cxx_kOOMaterialEmissionColorName);
-	if (col == nil)  col = ColorIn(spec, cxx_kOOMaterialEmissionColorLegacyName);
-	if (col != nil)  result[cxx_kOOMaterialEmissionColorName] = NormalizedArray(col);
+	if (col == nullptr)  col = ColorIn(spec, cxx_kOOMaterialEmissionColorLegacyName);
+	if (col != nullptr)  result[cxx_kOOMaterialEmissionColorName] = NormalizedArray(col.get());
 	
 	// Diffuse map.
 	const oo::PList *diffuseSpec = spec.find(cxx_kOOMaterialDiffuseMapName);
@@ -1412,9 +1412,9 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 			if (modulateColor != lmDict.end() && !modulateColor->second.isArray())
 			{
 				// Don't convert arrays here, because we specifically don't want the behaviour of treating numbers greater than 1 as 0..255 components.
-				col = [OOColor cxx_colorWithDescription:modulateColor->second];
+				col = cxx::OOColor::colorWithDescription(modulateColor->second);
 				// A description that is no colour leaves no colour (upstream set nil, which Foundation refuses).
-				if (col != nil)  modulateColor->second = NormalizedArray(col);
+				if (col != nullptr)  modulateColor->second = NormalizedArray(col.get());
 				else  lmDict.erase(modulateColor);
 			}
 			
@@ -1463,7 +1463,7 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 				if (emissionSpec.isDict())
 				{
 					col = ColorIn(spec, cxx_kOOMaterialEmissionModulateColorName);
-					if (col != nil)  emissionSpec = AddingValue(emissionSpec, cxx_kOOTextureSpecifierModulateColorKey, NormalizedArray(col));
+					if (col != nullptr)  emissionSpec = AddingValue(emissionSpec, cxx_kOOTextureSpecifierModulateColorKey, NormalizedArray(col.get()));
 					
 					lightMaps.push_back(emissionSpec);
 				}
@@ -1478,7 +1478,7 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 				if (illuminationSpec.isDict())
 				{
 					col = ColorIn(spec, cxx_kOOMaterialIlluminationModulateColorName);
-					if (col != nil)  illuminationSpec = AddingValue(illuminationSpec, cxx_kOOTextureSpecifierModulateColorKey, NormalizedArray(col));
+					if (col != nullptr)  illuminationSpec = AddingValue(illuminationSpec, cxx_kOOTextureSpecifierModulateColorKey, NormalizedArray(col.get()));
 					
 					illuminationSpec = AddingValue(illuminationSpec, cxx_kOOTextureSpecifierIlluminationModeKey, oo::PList(true));
 					

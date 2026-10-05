@@ -8,7 +8,9 @@
 	-setLighting, and an entity that answers the viewpoint the test sets as PLAYER. Its drawable,
 	OOSkyDrawable, loads star textures from the game's resources, which the test has not; the
 	test replaces the drawable's star set-up with a stand-in that records the two colours the sky
-	passed (method_setImplementation, as test_OOParticleSystem does for the texture loader). The
+	passed (method_setImplementation, as test_OOParticleSystem does for the texture loader, until
+	OOSkyDrawable became C++ with no facade in bead oo-4jjl: since then its test seam, ported with
+	Jon's decision oo-jsx0h, expectations unchanged). The
 	expectations were written against the Objective-C API and run on the unconverted class first:
 	the sky colour is the system's sun colour, else the blend of the two colours; the sky's colours
 	come from "sky_rgb_colors" (six numbers) or "sky_color_1"/"sky_color_2" (premultiplied); the
@@ -83,13 +85,28 @@ TestPlayer *sPlayer = nil;
 OOColor *sStarColor1 = nil;
 OOColor *sStarColor2 = nil;
 
-void SetUpStars(id, SEL, OOColor *color1, OOColor *color2)
+void SetUpStars(OOSkyDrawable *, cxx::OOColor *color1, cxx::OOColor *color2)
 {
 	[sStarColor1 release];
 	[sStarColor2 release];
-	sStarColor1 = [color1 retain];
-	sStarColor2 = [color2 retain];
+	sStarColor1 = [oo::ToObjC(color1) retain];
+	sStarColor2 = [oo::ToObjC(color2) retain];
 }
+
+}	// namespace
+
+
+// The converted drawable's test seam for its star set-up (decision oo-jsx0h).
+struct OOSkyDrawableTestAccess
+{
+	static void SetStarSetUpStandIn(void (*standIn)(OOSkyDrawable *, cxx::OOColor *, cxx::OOColor *))
+	{
+		OOSkyDrawable::sSetUpStarsStandIn = standIn;
+	}
+};
+
+
+namespace {
 
 
 void SetUp()
@@ -98,8 +115,7 @@ void SetUp()
 	{
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
 		sPlayer = [[TestPlayer alloc] init];
-		Method stars = class_getInstanceMethod([OOSkyDrawable class], sel_registerName("setUpStarsWithColor1:color2:"));
-		method_setImplementation(stars, (IMP)SetUpStars);
+		OOSkyDrawableTestAccess::SetStarSetUpStandIn(SetUpStars);
 	}
 	sUniverse->_lightings = 0;
 	gSharedUniverse = sUniverse;
@@ -151,7 +167,7 @@ OO_TEST(made)
 		SetUp();
 		SkyEntity *sky = Sky(Dict({ { "sky_n_stars", oo::PList(7) } }));
 		OO_CHECK(sky != nil && [sky isKindOfClass:[SkyEntity class]] && [sky isKindOfClass:[OOEntityWithDrawable class]]);
-		OO_CHECK([[sky drawable] isKindOfClass:[OOSkyDrawable class]]);
+		OO_CHECK(dynamic_cast<OOSkyDrawable *>(oo::ToCxx([sky drawable])) != nullptr);
 		OO_CHECK([sky status] == STATUS_EFFECT);
 		OO_CHECK([sky isSky] && [sky isVisible] && ![sky canCollide]);
 		OO_CHECK([sky cameraRangeFront] == (GLfloat)MAX_CLEAR_DEPTH && [sky cameraRangeBack] == (GLfloat)MAX_CLEAR_DEPTH);
