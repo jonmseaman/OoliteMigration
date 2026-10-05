@@ -253,3 +253,4 @@
 [oo-bm1q] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-u61e.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens
 [oo-4jjl] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSkyDrawable test_SkyEntity test_OOGraphicsResetManager && bash tools/tier-c.sh --only goldens
+[oo-4s5i] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
