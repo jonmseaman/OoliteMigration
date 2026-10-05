@@ -5,7 +5,7 @@ OOTexture+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, amendments oo-smy and oo-2en): the Objective-C OOTexture, a
 facade over the C++ cxx::OOTexture (OOTexture.h), for the callers that message textures (the
 materials, the HUD, the GUI, the planets, the debug support, the scripting bindings) and for the
-textures not converted yet (OOConcreteTexture, OONullTexture, OOEnvironmentCubeMap). Its interface
+textures not converted yet (OOConcreteTexture, OONullTexture). Its interface
 is the one OOTexture.h declared before the conversion, copied exactly (same selectors, same types,
 same superclass), so they compile and behave unchanged; OOTextureInternal.h's categories are its
 categories. Imported as the last line of OOTexture.h; do not import it directly.

@@ -22,6 +22,12 @@
 # Engine sources resolved by stem (oo-7j3t): the whole GUI tier, live, under its own gui-lock.
 [oo-7j3t] tools/gui-tier.sh
 [oo-44gg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_CollisionRegion
+# Double-clicks timed by their SDL events (oo-3rb.333, G5/G8/G1 flake): three full GUI-tier sessions
+# in a row, the stability sweep that failed ~1 in 10 while a stalled poll split a double-click.
+[oo-3rb.333] for i in 1 2 3; do OO_GUI_REQUIRE=1 bash tools/gui-tier.sh || exit 1; done
+# G8's first confirm lands seconds after launch, when frame hitches are longest (oo-3rb.336 failed on the
+# first launch after a rebuild): G8 alone, five fresh launches, each one's row-22 confirm must arrive.
+[oo-3rb.336] for i in 1 2 3 4 5; do OO_GUI_REQUIRE=1 bash tools/gui-tier.sh upstream/oolite/tests/gui/test_g8_scenario_screen_back_out.py || exit 1; done
 
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
 # (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
@@ -222,9 +228,27 @@
 [oo-z55j] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_WormholeEntity && bash tools/tier-c.sh --only goldens
 [oo-dqxj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureScaling && bash tools/tier-c.sh --only goldens
 [oo-zffj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCrosshairs
+[oo-pni4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListSchemaVerifier && bash tools/tier-c.sh --only goldens
 [oo-0hxr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm && bash tools/tier-c.sh --only goldens
 [oo-f4241] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
 [oo-zl36] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureLoader test_OOConcreteTexture test_OOTexture && bash tools/tier-c.sh --only goldens
+[oo-9ht.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSDLJoystickManager
 [oo-rr2x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureGenerator test_OOTextureLoader test_OOTexture && bash tools/tier-c.sh --only goldens
 [oo-f1yi3] export PATH="/ucrt64/bin:$PATH"; bash tools/check-jsengine-facade-quickjs.sh && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSMissionVariables && bash tools/tier-c.sh --only goldens
 [oo-ptv5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSFont.cpp && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-3c81] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConstToString && bash tools/tier-c.sh --only goldens
+[oo-ss3p] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSDLJoystickManager && bash tools/tier-c.sh --only goldens
+[oo-z889] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOPNGTextureLoader.mm && bash tools/check-core-tests.sh test_OOPNGTextureLoader test_OOTextureLoader test_OOTexture && bash tools/tier-c.sh --only goldens
+[oo-1v2w] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-aeev] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_EntityShaderBindings && bash tools/tier-c.sh --only goldens
+[oo-g223] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_EntityOOJavaScriptExtensions && bash tools/tier-c.sh --only goldens
+[oo-mw4u] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPlanetDrawable && bash tools/tier-c.sh --only goldens
+[oo-mp0d] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPlanetEntity && bash tools/tier-c.sh --only goldens
+[oo-9ht.126] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPlanetEntity test_OOPlanetDrawable && bash tools/tier-c.sh --only goldens
+[oo-kvqq] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOPixMapTextureLoader.mm && bash tools/check-core-tests.sh test_OOPixMapTextureLoader test_OOTextureGenerator test_OOTexture && bash tools/tier-c.sh --only goldens
+[oo-5zby] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOModelVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-604l] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOScript test_OOPListScript test_OOCommodities test_OOCharacter test_OOEquipmentType && bash tools/tier-c.sh --only goldens
+[oo-kyje] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOPlanetTextureGenerator.mm && bash tools/check-core-tests.sh test_OOPlanetTextureGenerator test_OOPlanetEntity test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
+[oo-y3dd] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOStandaloneAtmosphereGenerator.mm && bash tools/check-core-tests.sh test_OOStandaloneAtmosphereGenerator test_OOPlanetEntity test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
+[oo-e6xa] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOCombinedEmissionMapGenerator.mm && bash tools/check-core-tests.sh test_OOCombinedEmissionMapGenerator test_OOMultiTextureMaterial test_OOMaterialConvenienceCreators test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
+[oo-bm1q] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens

@@ -36,8 +36,14 @@ MA 02110-1301, USA.
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-asx8): the models to check are a vector of
 	distinct entries, in the order they were reported. Materials and shaders are plist data
-	(oo::PList, null for none). +nameForReverseDependencyForVerifier: is a shared selector (the
+	(oo::PList, null for none). nameForReverseDependencyForVerifier() is a shared name (the
 	other stages declare it) and, flipped with the others, returns a std::string (bead oo-3rb.274.2).
+
+	C++20 since bead oo-5zby (proposed ADR-0056 Amendment 1, amendments oo-up4b and oo-94qk): a
+	subclass of cxx::OOTextureHandlingStage. It is global and has no facade: its one caller, the
+	ship data stage, calls these members, and the Objective-C verifier holds it as an
+	OOOXPVerifierStage (oo::ToObjC). The verifier's -modelVerifierStage, a category of an
+	Objective-C class, is in OOModelVerifierStage+ObjCBridge.h, imported at the end of this header.
 */
 struct OOModelVerifierEntry
 {
@@ -50,32 +56,41 @@ struct OOModelVerifierEntry
 };
 
 
-@interface OOModelVerifierStage: OOTextureHandlingStage
+class OOModelVerifierStage : public cxx::OOTextureHandlingStage
 {
-@private
-	std::vector<OOModelVerifierEntry>	_modelsToCheck;
-}
+public:
+	// The stage's name, as name() returns it (for the verifier's -modelVerifierStage).
+	static const char * const kName;
 
-// Returns name to be used in -dependents by other stages; also registers stage.
-+ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier;	// flipped with its family (bead oo-3rb.274.2)
+	// Returns name to be used in dependents() by other stages; also registers stage.
+	static std::string nameForReverseDependencyForVerifier(OOOXPVerifier *verifier);	// flipped with its family (bead oo-3rb.274.2)
 
-/*	This can be called by other stages *before* the model stage runs.
-	returns YES if the model is found, NO if it is not. Caller is responsible
-	for complaining if it is not. An empty name is not found, as nil was; entryName may be absent.
-*/
-- (BOOL)modelNamed:(const std::string &)name
-	  usedForEntry:(const std::optional<std::string> &)entryName
-			inFile:(const std::string &)fileName
-	 withMaterials:(const oo::PList &)materials
-		andShaders:(const oo::PList &)shaders;
+	std::optional<std::string> name() override;
+	bool shouldRun() override;
+	void run() override;
 
-@end
+	/*	This can be called by other stages *before* the model stage runs.
+		returns true if the model is found, false if it is not. Caller is responsible
+		for complaining if it is not. An empty name is not found, as nil was; entryName may be absent.
+	*/
+	bool modelNamed(const std::string &name,
+					const std::optional<std::string> &entryName,
+					const std::string &fileName,
+					const oo::PList &materials,
+					const oo::PList &shaders);
+
+private:
+	void checkModel(const std::string &name,
+					const std::string &context,
+					const oo::PList &materials,
+					const oo::PList &shaders);
+
+	std::vector<OOModelVerifierEntry>	_modelsToCheck = {};
+};
 
 
-@interface OOOXPVerifier(OOModelVerifierStage)
-
-- (OOModelVerifierStage *)modelVerifierStage;
-
-@end
+// Transitional: the verifier's -modelVerifierStage, a category of the Objective-C verifier.
+// Deleted by the bridge's deletion bead.
+#import "OOModelVerifierStage+ObjCBridge.h"
 
 #endif

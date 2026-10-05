@@ -2768,3 +2768,416 @@ are made with the root's designated initialiser `-cxx_initWithPath:options:`, no
 **Consequences.** One more façade and deletion bead (`OOTextureGenerator+ObjCBridge`), done before
 the loaders' root bridge's (oo-9ht.114), which depends on it. The root's bridge changed shape
 (template adapter, initialiser, base walk) without any caller or test changing.
+
+## Amendment (bead oo-pni4): a class-shell slice, with the class's other slices still Objective-C
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OXPVerifier/OOPListSchemaVerifier.h/.mm`
+  (slice 1 of `docs/phases/3-slices/OOPListSchemaVerifier.md`), `OOPListSchemaVerifier+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOPListSchemaVerifier.mm`.
+
+**Context.** A plan's first slice carries the class shell: every method of the class becomes a
+member of `cxx::X`, while the units of the other slices (here the four `Verify_*` functions) stay
+Objective-C until their own beads, and they message the class, including its private category.
+The private category took a type private to the `.mm` (`BackLinkChain`) by value.
+
+**Decision (recommended defaults).**
+
+1. **The class gets its façade in the shell slice** (item 5): the unconverted units of the other
+   slices are outside the bead, like any caller. The façade also keeps the private category those
+   units message, declared in `X+ObjCBridge.h` and forwarding like the rest (amendment oo-up4b
+   item 4); its members are public on `cxx::X` under an "Internal" comment (Amendment 1 item 2).
+2. **A file-private type that the forwarded category takes by value** moves, unchanged, from the
+   `.mm` to `X.h`, with a comment saying why. Nothing else of the preamble moves.
+3. **The converted core hands `oo::ToObjC(this)` to an unconverted unit** that took `self`
+   (`Verify_##T(oo::ToObjC(this), …)`), and to an Objective-C delegate (`[_delegate verifier:oo::ToObjC(this) …]`),
+   so both see the façade the caller registered with. `respondsToSelector:@selector(x)` becomes
+   `OOSelectorFromName("x")` (amendment oo-puw9 item 5); `@try`/`@catch` stay (oo-puw9 item 4).
+4. **An out-parameter the unconverted units pass through stays its type** (`BOOL *outStop`), so they
+   compile unchanged; by-value `BOOL` parameters and results become `bool`.
+5. **The gate is `--slice-done`.** The plain plan check then reports the converted members as
+   verbatim units that contain Objective-C (they fall to `verbatim: *`); that is the checker's
+   gap, recorded as oo-9ht.117 for a decision, not a defect of the slice.
+
+**Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
+Slice 2 converts its four functions with no bridge change, then calls the members directly.
+
+## Amendment (bead oo-z889): a leaf that only its root's factory makes, and C callbacks that held it
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPNGTextureLoader.h/.mm`,
+  `loaderWithPath` in `OOTextureLoader.mm`, `tests/unit/core/test_OOPNGTextureLoader.mm`. Follows
+  amendments oo-bj8 item 12, oo-vl43 item 4 and oo-zl36.
+
+**Context.** `OOPNGTextureLoader` is a leaf of the texture loaders that no code outside the loaders'
+own factory names: `cxx::OOTextureLoader::loaderWithPath` made it with `+alloc`/`-cxx_initWithPath:`
+and queued it on the work manager. libpng holds it as a `void *` (the I/O pointer) and calls back
+file-static C functions that messaged it.
+
+**Decision (recommended defaults).**
+
+1. **Such a leaf converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   the C++ root, its private methods private members. The factory makes it (`makeRef` plus
+   `initWithPath`) and answers its façade, `oo::ObjCRef(oo::ToObjC(loader))`: the root's façade
+   (amendment oo-vl43 item 4), which owns it and which the work manager holds. The factory's
+   result type does not change.
+2. **A C library's context pointer is `this`,** and its C callbacks `static_cast` it back and call
+   members. A callback that libpng can call before the pointer is set (its error and warning
+   handlers) checks for null and answers what messaging nil did (`"(null)"` for the path). A
+   method that was private but a callback calls is a public member marked "Internal".
+
+**Consequences.** No façade and no deletion bead. The test is written against the factory (the
+only way the class was made), so it ran unchanged before and after; one more test pins the C++ API.
+
+## Amendment (bead oo-1v2w): a converted class that is an Objective-C object's delegate
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar:
+  `src/Core/OXPVerifier/OOCheckShipDataPListVerifierStage.h/.mm`,
+  `OOCheckShipDataPListVerifierStage+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOCheckShipDataPListVerifierStage.mm`.
+
+**Context.** The ship data stage is the delegate of an `OOPListSchemaVerifier`, which is still
+Objective-C and messages its delegate through an informal protocol (a category on `OOObject`).
+A C++ object cannot be that delegate. Both delegate selectors start with `verifier:`, and a member
+named `verifier` would hide the base's `verifier()`.
+
+**Decision (recommended defaults).**
+
+1. **The delegate is a helper that stays Objective-C,** as amendment oo-rmd7 item 1 does for a
+   formal protocol: `XDelegate`-style class (here `OOCheckShipDataPListVerifierStageSchemaDelegate`)
+   in `X+ObjCBridge.h/.mm`, holding a borrowed `X *`. The C++ class makes it where it set itself as
+   delegate, keeps it in an `oo::ObjCRef<id>` member (the Objective-C object held its delegate
+   unretained), and passes it to `-setDelegate:`. The helper forwards each delegate method in one
+   line to a public member of the class, commented with the caller. The bridge's deletion bead
+   waits for the delegating class's conversion.
+2. **A selector whose first keyword would hide an inherited member** (`verifier:…`) takes its
+   distinguishing keyword as well, as amendment oo-fn2f item 5 does for a clash:
+   `verifierTestProperty(...)`, `verifierFailedForProperty(...)`. Parameters the body does not use
+   are unnamed.
+3. **Inside a member of a class derived from `cxx::OOOXPVerifierStage`**, the Objective-C façade
+   type in a cast is written `::OOOXPVerifierStage` (amendment 1 item 4).
+
+## Amendment (bead oo-aeev): a category reached only by selector, in a file the build did not compile
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/EntityShaderBindings.mm`,
+  `EntityShaderBindings+ObjCBridge.mm`, the members under "The category ShaderBindings" in `Entity.h`,
+  `tests/unit/core/test_EntityShaderBindings.mm`.
+
+**Context.** `Entity (ShaderBindings)` is eight getters (the clock, the system's "flavour" numbers
+and attributes, all read from `PLAYER`) that the shader uniforms find by selector on any entity;
+`shader-uniform-bindings.plist` whitelists them for entities. No header declares the category, and
+no `meson.build` listed the file: the game this repository builds never compiled it, so a shader
+that bound `clock` or `systemEconomy` got no value. Its test, written against the Objective-C
+category, failed for that reason before anything was converted.
+
+**Decision (recommended defaults).**
+
+1. **A source file of the game's that no `meson.build` lists, and that the upstream sources define
+   for the runtime to find, is added to the build in its conversion bead**, in the commit that adds
+   its test, and the test runs on the Objective-C file first. That is the one behaviour change: the
+   whitelisted uniforms now have values. A file that is dead upstream too would be deleted instead,
+   with a bead for Jon; this one is not (its selectors are whitelisted).
+2. **The category's methods are members of the converted class** (amendment oo-9fwb item 1),
+   declared in `Entity.h` under a comment that names the category and defined in the category's
+   own file. A member named like a C library function (`clock()`) hides it only inside the class
+   and its subclasses, none of which calls the C function.
+3. **The category stays, as one-line forwarders in `X+ObjCBridge.mm` with no header** (amendment
+   oo-ppc item 3): the uniforms find the methods by selector and read their return types from the
+   runtime (`OOShaderUniformTypeFromMethod`), so the forwarders keep the exact return types, and the
+   test pins each method's type encoding. The bridge goes with the `Entity` façade's deletion, when
+   the uniforms bind C++ members.
+4. **The test declares the category itself** (a test-side `@interface`, as amendment oo-ykoy item 4
+   does for a binding's category) and sends its selectors to a real `Entity`; `PLAYER` is an entity
+   that answers the selectors the category sends.
+
+**Consequences.** One bridge (no façade class) that goes with the `Entity` façade (oo-9ht.39). A
+bug bead for Jon records the build-list omission (the default is in effect: the file is built).
+
+## Amendment (bead oo-g223): two categories in one file, on classes the file does not wrap
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Scripting/EntityOOJavaScriptExtensions.h/.mm`,
+  `EntityOOJavaScriptExtensions+ObjCBridge.h/.mm`, `tests/unit/core/test_EntityOOJavaScriptExtensions.mm`.
+
+**Context.** `EntityOOJavaScriptExtensions` has no class and no JS class of its own. It holds the
+categories `Entity (OOJavaScriptExtensions)` and `ShipEntity (OOJavaScriptExtensions)`, which the
+engine sends by selector (`-isVisibleToScripts`, `-getJSClass:andPrototype:`,
+`-oo_jsValueInContext:`, `-cxx_oo_jsClassName`, `-deleteJSSelf`) and which the entity subclasses
+override, and the scripts' `-subEntitiesForScript` and `-setTargetForScript:`. Its header declares
+both categories and `PlayerEntity (OOJavaScriptExtensions)`, whose method `PlayerEntity.mm`
+implements, and sixteen files import it to send those selectors.
+
+**Decision (recommended defaults).**
+
+1. **The bodies are free functions** (amendments oo-ppc item 3 and oo-ykoy item 1), declared in
+   `X.h`. With two categories in one file the name is the class the category extends plus the
+   selector's first keyword, less `cxx_`/`oo_` (`EntityJSValueInContext(entity, context)`,
+   `ShipEntityJSSetTargetForScript(ship, target)`); a body that used `self` takes the object, named
+   after the class, and its messages to it stay messages, because the subclasses that override
+   them are Objective-C.
+2. **The categories' `@interface`s move, copied exactly, to `X+ObjCBridge.h`, imported as the last
+   line of `X.h`**, not into the bridge `.mm` as amendment oo-ykoy item 2 does: other files send
+   these selectors through `X.h`. The `@implementation`s are one-line forwarders in
+   `X+ObjCBridge.mm`. The category whose methods another file implements (`PlayerEntity`'s) moves
+   with them unchanged.
+3. **The test** links the whole game (`['*']`) because the bodies reach the `Entity` façade's C++
+   part (`_jsSelf`). A ship is the test's subclass of `ShipEntity` made with `class_createInstance`
+   (never initialised, never released) that answers the selectors the category sends; a JS object
+   the entity already has is a plain object of a runtime the test makes. Making a new JS object
+   needs the engine's shared instance, so that path is left to the goldens.
+
+**Consequences.** One bridge pair and its deletion bead, which waits for `Entity`, `ShipEntity` and
+`PlayerEntity` to be C++.
+
+## Amendment (bead oo-mw4u): a subclass of a converted root whose one caller is adapted
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OOPlanetDrawable.h/.mm`, its caller
+  `src/Core/Entities/OOPlanetEntity.h/.mm`, `tests/unit/core/test_OOPlanetDrawable.mm`.
+
+**Context.** `OOPlanetDrawable` derives from `OODrawable`, a converted root with a façade (amendment
+oo-smy), and has one caller, `OOPlanetEntity`, which keeps four of them in ivars, copies them for
+its miniature and messages them by their own selectors. The drawable keeps a material, swaps it
+with `[_material autorelease]`, and is copied with `-copy` (`OOCopying`).
+
+**Decision (recommended defaults).**
+
+1. **No façade** (amendment oo-zffj item 1): the class is global, `OOPlanetDrawable : public
+   cxx::OODrawable`, with `override` on the root's virtual members; the caller's ivars are
+   `oo::Ref<OOPlanetDrawable>` (`class OOPlanetDrawable;` in its header), its sends are member
+   calls, null-guarded where the drawable may be absent (the atmosphere's: a message to nil did
+   nothing, and `[nil radius]` was 0), and `DESTROY` is `= nullptr`. Nothing hands the drawable to
+   Objective-C, so the root façade's class lookup is not needed.
+2. **`-copyWithZone:` that callers reach as `-copy` is `oo::Ref<X> copy()`**: a new object of the
+   class (`[[self class] alloc]`, and the class has no subclass) with the copied state.
+3. **`-initAsAtmosphere`, sent only by the class's factory, is a static factory of that name**
+   (amendment oo-peql item 2); `-init` is the constructor.
+4. **The material stays the Objective-C object** (amendment oo-smy item 4), `oo::ObjCRef<OOMaterial *>`,
+   and the bodies cross once with `oo::ToCxx`, null-guarded. `[_material autorelease]` before a new
+   one is `objc_autorelease(_material.leakRef())` (amendment oo-y0gz item 6); a material it makes
+   comes from the C++ factory and is kept as `oo::ToObjC` of it.
+5. **The test** makes and reads the drawable through one block of helpers, the only lines the
+   conversion ported (they sent messages before and call members after); the universe answers the
+   detail setting and a game view of the test's size.
+
+**Consequences.** No façade and no deletion bead. `OOPlanetEntity.h/.mm` changed at the drawable's
+lines only; the planet's own conversion (oo-mp0d) keeps them.
+
+## Amendment (bead oo-mp0d): the planet (a leaf with a façade that is a shader binding target)
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOPlanetEntity.h/.mm`,
+  `OOPlanetEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_OOPlanetEntity.mm`. Follows amendments
+  oo-0mxi and oo-ubjo.
+
+**Context.** The universe and the legacy scripts make planets with `alloc` and two initialisers, a
+test sends plain `-init`, and about fifteen files message planets. The planet is also the binding
+target of its shader materials (the uniforms read its air colour and terminator by selector), puts
+its colours into the planet info as `PList::Object` nodes and reads them back, takes textures from
+the texture loader and the generators, and makes a miniature copy of itself with a private
+initialiser.
+
+**Decision (recommended defaults).**
+
+1. **The façade overrides `-init`** to make a `cxx::OOPlanetEntity` (or keep the part it has), and
+   its initialisers send `[self init]` and run the C++ body, as the Objective-C ones did; without
+   the override, `Entity`'s `-init` would make an Objective-C entity's adapter and the forwarders'
+   typed `oo::ToCxx` would be wrong.
+2. **What Objective-C keeps or binds is the façade:** the shader materials' binding target, the
+   graphics reset client and the nearest-ship search's entity are `oo::ToObjC(this)`; the colours
+   the planet puts into the planet info are `oo::ToObjC` of the C++ colours, and the colours it
+   reads back cross with `oo::ToCxx((::OOColor *)ObjectForKey(...))` (the node holds `id`,
+   amendment oo-vl43 item 6).
+3. **Textures stay the Objective-C objects** the loader and the generators answer through their
+   out-parameters (`::OOTexture *`); the test replaces the loader's class method, so the body keeps
+   that message (amendment oo-rmd7 item 3), and calls the converted texture through `oo::ToCxx`.
+   Materials are made with the C++ factories and handed to the drawables as their façades.
+4. **A private initialiser that the class's own method sends to a new object**
+   (`-initAsMiniatureVersionOfPlanet:` from `-miniatureVersion`) is a private `bool` member, and
+   the method is a factory over it (amendment oo-novu); the façade's method answers
+   `oo::NewEntityFacade` of its result.
+5. **An out-parameter a message to nil left unwritten** (`-airColorAsVector` of a planet with no
+   air colour, which returned whatever the stack held) is zero-initialised (the decision, item 4).
+
+**Consequences.** One façade and its deletion bead; the planet binding's category bridge
+(oo-9ht.92) stays on the façade until it goes.
+
+## Amendment (bead oo-kvqq): a generator leaf that one Objective-C caller makes, with an initialiser that fails
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPixMapTextureLoader.h/.mm`,
+  its two callers in `src/Core/Entities/PlanetEntity.mm`, `tests/unit/core/test_OOPixMapTextureLoader.mm`.
+  Follows amendments oo-bj8 item 12, oo-2c6g item 2, oo-novu, oo-rr2x item 3 and oo-z889.
+
+**Context.** `OOPixMapTextureLoader` is a leaf under the converted `cxx::OOTextureGenerator`. Its one
+caller (`PlanetEntity`, still Objective-C) made it with `alloc`/`-initWithPixMap:textureOptions:freeWhenDone:`
+and handed it to `+[OOTexture textureWithGenerator:]`; no test stubs it, and nothing else names it.
+Its initialiser answered nil for a pixmap that is not valid (`DESTROY(self)`).
+
+**Decision (recommended defaults).**
+
+1. **It converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   `cxx::OOTextureGenerator`, with `override` on the members it overrode. The initialiser is a
+   `bool` member and a static factory (`loaderWithPixMap`) answers null where it answered nil
+   (amendment oo-novu); the destructor frees the pixmap, as `DESTROY(self)`'s `-dealloc` did.
+2. **The caller calls the factory and hands on `oo::ToObjC(loader.get())`** (amendment oo-2c6g
+   item 2): the generator façade (amendment oo-rr2x item 3), which owns the loader, autoreleased,
+   as `[loader autorelease]` was. The typed overload for `cxx::OOTextureGenerator *` is the best
+   match for a derived pointer, so no cast is written.
+3. **A quirk of the old initialiser is kept** (it duplicated its own empty pixmap instead of the
+   one it was given when `freeWhenDone` was NO, so it answered nil); the test pins it.
+4. **The transitional comments that list the loaders still Objective-C** (in the roots' headers
+   and bridges) are left to the bridges' deletion beads, so the sibling beads do not conflict.
+
+**Consequences.** No façade and no deletion bead. The test's maker helper is the only line it
+ported; one more test pins the C++ API.
+
+## Amendment (bead oo-604l): a hierarchy root whose subclasses are an Objective-C class and an oo-o89 façade, and class methods that make subclass instances
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOScript.h/.mm`,
+  `OOScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOScript.mm`.
+
+**Context.** `OOScript` is the abstract root of the scripts. One subclass, `OOJSScript`, is still
+Objective-C; the other, `OOPListScript`, converted first (amendment oo-q9q4), so its façade
+subclasses the Objective-C root and owns its own C++ part in an ivar named `_cxxScript`. The root's
+class methods load scripts and answer the subclasses' Objective-C objects; converted callers in
+`namespace cxx` (`OOCommodities`, `OOCharacter`, `OOEquipmentType`) name the Objective-C class.
+
+**Decision (recommended defaults).**
+
+1. **The root converts as amendment oo-6bux says**: a private adapter (`ObjCScript`) is the C++
+   part of every Objective-C subclass instance, including an oo-o89 façade, whose own C++ part is
+   unrelated to the root's. Neither subclass changes. The methods subclasses override, including
+   `-cxx_descriptionComponents` (which `OOJSScript` overrides and calls `super` on), are virtual.
+2. **The root façade's ivar is named so it cannot clash with a subclass façade's** (`_cxxRootScript`,
+   not `_cxxScript`), and the bridge header says why.
+3. **Class methods that make subclass instances are static members that still message the
+   subclasses' Objective-C classes** (`[OOJSScript scriptWithPath:…]`, and
+   `[::OOPListScript scriptsInPListFile:…]` where a `cxx::` class of that name exists), answering
+   `oo::ObjCRef<::X *>` (or `id`) as before; `[self m…]` on the class becomes a static call. They
+   become C++ factories when the subclasses convert.
+4. **Converted callers in `namespace cxx` that named the root's Objective-C class write `::X`**
+   (amendment oo-q9q4 item 5), in the same bead, because `X` now names the C++ root there.
+
+**Consequences.** One façade with a deletion bead that waits for `OOJSScript`'s conversion
+(oo-u61e.4) and `OOPListScript`'s façade deletion (oo-9ht.57). Converting `OOJSScript` now makes it
+a plain C++ subclass of `cxx::OOScript` instead of an oo-o89 façade.
+
+## Amendment (bead oo-kyje): a generator with private helper generators in its file, and overloads that would collide
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPlanetTextureGenerator.h/.mm`,
+  its caller in `src/Core/Entities/OOPlanetEntity.mm`, `tests/unit/core/test_OOPlanetTextureGenerator.mm`.
+  Follows amendments oo-fn2f, oo-kvqq and oo-y3dd.
+
+**Context.** `OOPlanetTextureGenerator` makes, besides its own texture, a normal map and an atmosphere
+through two Objective-C generators private to its file (`OOPlanetNormalMapGenerator`,
+`OOPlanetAtmosphereGenerator`), which it holds and which the atmosphere's generator holds back (a
+retain cycle). Its class methods include `+generatePlanetTexture:andAtmosphere:withInfo:seed:` and
+`+generatePlanetTexture:secondaryTexture:withInfo:seed:`, whose arguments have the same types.
+
+**Decision (recommended defaults).**
+
+1. **The private helpers convert with the class, as global C++ classes defined in its `.mm`**
+   (amendment oo-fn2f), forward-declared in its header for its `oo::Ref` members, which hold them;
+   the cycle is kept as it was. Not in an anonymous namespace: their descriptions name the class.
+2. **Two class methods whose converted signatures would be the same get different names**: the
+   later-declared one that took an atmosphere is `generatePlanetTextureAndAtmosphere`. The others
+   are overloads of `generatePlanetTexture`.
+3. **`[super enqueue]` from a helper is the base's member, qualified** (`cxx::OOTextureGenerator::enqueue()`),
+   and a real override of the root's `getResult` keeps `override`.
+
+**Consequences.** No façade and no deletion bead; amendment oo-y3dd's out-parameters and its
+non-overriding `getResultFormatWidthHeight` apply here too.
+
+## Amendment (bead oo-y3dd): class methods that wrote Objective-C objects through pointers, and a method that only looked like an override
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOStandaloneAtmosphereGenerator.h/.mm`,
+  its caller in `src/Core/Entities/OOPlanetEntity.mm`, `tests/unit/core/test_OOStandaloneAtmosphereGenerator.mm`.
+  Follows amendments oo-bj8 item 12, oo-2en item 2, oo-novu and oo-kvqq.
+
+**Context.** `OOStandaloneAtmosphereGenerator` is a leaf under `cxx::OOTextureGenerator` that no test
+stubs; its one caller (`OOPlanetEntity`, Objective-C) sends it a class method,
+`+generateAtmosphereTexture:withInfo:seed:`, which wrote an autoreleased `OOTexture *` through an
+`OOTexture **`. It also declared `-getResult:format:width:height:`, whose keywords differ from the
+root's `-getResult:format:originalWidth:originalHeight:`: it never overrode it, and nothing sends it.
+
+**Decision (recommended defaults).**
+
+1. **No façade** (amendment oo-kvqq): a global class, its initialiser a `bool` member behind a static
+   factory, and its class methods static members.
+2. **An `X **` out-parameter that received an autoreleased object becomes `oo::ObjCRef<X *> *`**,
+   and a class method that answered one answers `oo::ObjCRef<X *>` (amendment oo-2en item 2). The
+   caller declares the `ObjCRef` where its old local lived and reads `.get()` into that local, so
+   the object lives at least as long as the local is used.
+3. **A method whose selector only resembled an inherited one keeps a name that does not override
+   it** (`getResultFormatWidthHeight`), with a comment; converting it to the inherited name would
+   make it an override and change what runs.
+4. **`oo::DescriptionOf(self)` in a log is `oo::DescriptionOf(oo::ToObjC(this))`** (amendment oo-n99o
+   item 4): the facade the work manager already holds, so the text is the same.
+
+**Consequences.** No façade and no deletion bead. The test's helpers that made the generator and sent
+the class methods are the lines it ported.
+
+## Amendment (bead oo-e6xa): a generator leaf whose caller's test stubs it by name, and colours it holds
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOCombinedEmissionMapGenerator.h/.mm`,
+  `OOCombinedEmissionMapGenerator+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCombinedEmissionMapGenerator.mm`.
+  Follows amendments oo-qa7c, oo-rmd7 item 3, oo-n99o item 3, oo-novu and oo-rr2x.
+
+**Context.** `OOCombinedEmissionMapGenerator` is a leaf under the converted `cxx::OOTextureGenerator`.
+Its one caller, the converted `cxx::OOMultiTextureMaterial`, makes it with `alloc` and one of two
+initialisers, and that caller's test (`test_OOMultiTextureMaterial.mm`) stubs the class by name to
+record which initialiser was sent. It holds the diffuse map (an `OOTexture`) and two `OOColor`s.
+
+**Decision (recommended defaults).**
+
+1. **It is `cxx::OOCombinedEmissionMapGenerator` with a façade of its own** (amendment oo-qa7c):
+   `@interface OOCombinedEmissionMapGenerator : OOTextureGenerator`, no ivars, the two old
+   initialisers, each making the C++ object with its factory, releasing the receiver and answering
+   the C++ object's façade (`nil` where the factory answers null). The caller keeps its messages,
+   written `::OOCombinedEmissionMapGenerator` inside `namespace cxx` (amendments oo-rmd7 item 3,
+   oo-n99o item 3), so its test's stub is still what it makes. The façade's deletion bead turns the
+   messages into the factories; the caller's test then links the real class instead of its stub,
+   a test change that bead must have approved (ADR-0049).
+2. **The two public initialisers are two static factories; the shared private designated
+   initialiser is a `bool` member** (amendments oo-novu, oo-n99o item 1).
+3. **A colour it keeps is `oo::Ref<cxx::OOColor>`** and its arguments are `cxx::OOColor *` (the
+   façade passes `oo::ToCxx(colour)`); a message to a nil colour is a null check (`-isWhite` of nil
+   was NO). **A texture it keeps is `oo::ObjCRef<::OOTexture *>`** (amendment oo-smy item 4), read
+   through `oo::ToCxx(texture)`, with a null check where nil answered nil. A loader it makes with
+   the root's factory is held as the factory answers it (`oo::ObjCRef<::OOTextureLoader *>`) for
+   the scope that used it.
+
+**Consequences.** One façade (`OOCombinedEmissionMapGenerator+ObjCBridge`) and its deletion bead.
+
+## Amendment (bead oo-bm1q): a class private to its file, and stages dispatched by selector
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OODefaultShaderSynthesizer.h/.mm`
+  (slice 1 of `docs/phases/3-slices/OODefaultShaderSynthesizer.md`), `OODefaultShaderSynthesizer+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OODefaultShaderSynthesizer.mm`.
+
+**Context.** `OODefaultShaderSynthesizer` was declared and defined only in its `.mm`; its one caller
+is the file's own entry point `OOSynthesizeMaterialShader()`. Item 5's last rule would give it no
+façade, but its shader stages (slice 2) stay Objective-C until their bead, and a façade
+`@implementation OODefaultShaderSynthesizer` in the `.mm` would be read by `--slice-done 1` as the
+plan's `@OODefaultShaderSynthesizer` block still being Objective-C. The stages are dispatched by
+selector through a macro (`REQUIRE_STAGE`, `-performStage:` with `-performSelector:`), and
+`-dealloc` sent a stage-slice method.
+
+**Decision (recommended defaults).**
+
+1. **A class private to its file gets the house-style files in its shell slice** when later
+   slices stay Objective-C: `cxx::X` is declared in `X.h` (the class is no longer private; the
+   header's includers do not use it), and the façade in `X+ObjCBridge.h/.mm` as amendment oo-pni4
+   says. The later slices' methods are a category on the façade in `X.mm`, declared in the bridge
+   header. A method the stages sent without a declaration (it was defined above them) is declared
+   in an `OOPrivate` category there. The façade and its deletion bead go when the last slice lands.
+2. **A dispatch macro has two forms while its targets are Objective-C:** the old name for the
+   category methods (`self` is the façade, the flags are `oo::ToCxx(self)->…`) and a `_CXX_` form for
+   the members (`[oo::ToObjC(this) NAME]`, or `performStage(…)` in a debug build). Both name the
+   selector with `OOSelectorFromName(#NAME)`, so a recursion check keyed by `SEL` sees one pointer
+   per stage from either side (a literal `@selector` need not equal it, `OORuntime.h`). The stage
+   slice makes the stages members and keeps one form.
+3. **A `-dealloc` that only sent a later-slice method which empties members** has no destructor
+   body: the implicit destructor destroys them, and a destructor must not make a façade.
+4. **An `@autoreleasepool` in a converted function** becomes `objc_autoreleasePoolPush()` /
+   `objc_autoreleasePoolPop()` (`<objc/objc-arc.h>`, as `OOMesh.mm` does), while the Objective-C
+   code it calls still autoreleases (here the façade the stages are run on).
+
+**Consequences.** One façade and deletion bead for a class nothing outside its file names; slice 2
+deletes the `REQUIRE_STAGE` Objective-C form, the Stages category and, with the façade, its
+bridge files.
