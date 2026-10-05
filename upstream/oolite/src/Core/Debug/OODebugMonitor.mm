@@ -463,15 +463,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	}
 	if ([entity isPlanet])
 	{
-#if NEW_PLANETS
 		// FIXME: dump atmosphere texture.
-#else
-		PlanetEntity *atmosphere = [entity atmosphere];
-		if (atmosphere != nil)
-		{
-			dumpEntity(atmosphere, state, visible);
-		}
-#endif
 	}
 	if ([entity isWormhole])
 	{
