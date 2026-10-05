@@ -17,6 +17,7 @@
 */
 
 #import "OOShipRegistry.h"
+#import "OOCacheManager.h"
 #import "OOProbabilitySet.h"
 #import "OODescription.h"
 
@@ -82,6 +83,7 @@ std::string OOShipLibraryCategoryPlural(const std::string &category)
 namespace {
 
 std::vector<std::string> sFilesRead;
+bool sSubentityData = false;	// canonicalizesSubentityDeclarations: serve the subentity data set
 
 oo::PList Parse(const char *text)
 {
@@ -94,6 +96,25 @@ oo::PList Parse(const char *text)
 oo::PList FileNamed(const std::string &name)
 {
 	sFilesRead.push_back(name);
+	// New-style subentity declarations only (an old-style string one is deprecated, which the
+	// standards stub aborts on): a ball turret with out-of-range weapon values, a dock, flashers
+	// (one colour, a colours list, one of size 0), a reference to no ship on an external dependency,
+	// and a bad type on a frangible ship.
+	if (name == "shipdata.plist" && sSubentityData)  return Parse(
+		"{"
+		"  \"cobra3-player\" = { name = Cobra; roles = player; model = \"adder.dat\"; };"
+		"  mothership = { name = Mothership; roles = trader; model = \"adder.dat\"; subentities = ("
+		"    { type = \"ball_turret\"; \"subentity_key\" = turret; position = (1, 2, 3); \"fire_rate\" = 0.1; \"weapon_range\" = 99999; \"weapon_energy\" = 200; },"
+		"    { \"subentity_key\" = dock; \"is_dock\" = yes; position = (0, 0, 5); orientation = (2, 0, 0, 0); \"allow_launching\" = no; },"
+		"    { type = flasher; position = (0, 0, 5); color = redColor; size = 4; phase = 1; },"
+		"    { type = flasher; colors = (blueColor, greenColor); \"bright_fraction\" = 0.25; \"initially_on\" = no; },"
+		"    { type = flasher; size = 0; }"
+		"  ); };"
+		"  turret = { name = Turret; model = \"adder.dat\"; };"
+		"  dock = { name = Dock; model = \"adder.dat\"; };"
+		"  orphan = { name = Orphan; roles = trader; model = \"adder.dat\"; \"is_external_dependency\" = yes; subentities = ( { \"subentity_key\" = nosuch; } ); };"
+		"  wreck = { name = Wreck; roles = trader; model = \"adder.dat\"; frangible = yes; subentities = ( { type = weird; \"subentity_key\" = turret; }, { \"subentity_key\" = turret; } ); };"
+		"}");
 	if (name == "shipdata.plist")  return Parse(
 		"{"
 		"  adder = { name = Adder; roles = \"trader hunter(0.5)\"; model = \"adder.dat\"; max_flight_speed = 240; };"
@@ -252,6 +273,25 @@ OO_TEST(facadeContract)
 		OO_CHECK(registry->shipInfoForKey("adder") == [facade cxx_shipInfoForKey:"adder"]);
 	}
 	OO_CHECK([OOShipRegistry sharedRegistry] == [OOShipRegistry sharedRegistry]);
+}
+
+
+// Subentity declarations (slice 3 of the plan, the loader's canonicalisation and validation): a
+// fresh load of the subentity data set, the registry's cache cleared first so that +reload reads
+// the files again. Pinned on the unconverted loader (bead oo-r9gn) before slice 3 (bead oo-ugw3).
+OO_TEST(canonicalizesSubentityDeclarations)
+{
+	sSubentityData = true;
+	cxx::OOCacheManager::sharedCache()->clearCache("ship registry");
+	[OOShipRegistry reload];
+	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
+	Pinned("ship keys", Join([registry cxx_shipKeys]), "");
+	Pinned("mothership", Text([registry cxx_shipInfoForKey:"mothership"]), "");
+	Pinned("turret", Text([registry cxx_shipInfoForKey:"turret"]), "");
+	Pinned("wreck", Text([registry cxx_shipInfoForKey:"wreck"]), "");
+	Pinned("orphan", Text([registry cxx_shipInfoForKey:"orphan"]), "");
+	Pinned("roles", Join([registry cxx_shipRoles]), "");
+	sSubentityData = false;
 }
 
 
