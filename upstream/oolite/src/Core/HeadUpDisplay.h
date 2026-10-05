@@ -299,6 +299,7 @@ public:
 	void setDeferredHudName(const std::optional<std::string> &newDeferredHudName);
 	std::optional<std::string> getDeferredHudName();
 	std::optional<std::string> getCrosshairDefinition();
+	bool setCrosshairDefinition(const std::string &newDefinition);
 
 	// Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
 	void addLegend(const oo::PList &info);
@@ -306,6 +307,8 @@ public:
 	void addMFD(const oo::PList &info);
 
 	NSUInteger mfdCount();
+
+	void renderHUD();
 
 	void refreshLastTransmitter();
 
@@ -325,9 +328,14 @@ public:
 	oo::Ref<OOColor> reticleColorForIndex(NSUInteger idx);
 	bool setReticleColorForIndex(NSUInteger idx, OOColor *newColor);
 
-	// Internal: what the drawing of slices 2-6 (Objective-C on the facade) sends.
+	// Internal: what the drawing of slices 3-6 (Objective-C on the facade) sends.
 	bool checkPlayerInFlight();
 	bool checkPlayerInSystemFlight();
+
+	// Internal: dials, called by name on the facade (ADR-0055 item 5), which forwards them.
+	void drawSurround(const oo::PList &info);
+	void drawGreenSurround(const oo::PList &info);
+	void drawYellowSurround(const oo::PList &info);
 
 	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
@@ -384,6 +392,20 @@ public:
 	bool			scanner_ultra_zoom = {};
 
 private:
+	void drawCrosshairs();
+	void drawLegends();
+	void drawDials();
+	void drawMFDs();
+
+	void drawLegend(const oo::PList &info);
+	void drawHUDItem(const oo::PList &info);
+
+	void drawMultiFunctionDisplay(const oo::PList &info, const std::string &text, NSUInteger index);
+
+	void drawSurroundInternal(const oo::PList &info, const GLfloat color[4]);
+
+	oo::PList crosshairDefinitionForWeaponType(OOWeaponType weapon);	// a null PList for none
+
 	void resetGui(::GuiDisplayGen *gui, const oo::PList &gui_info);
 	void resetGuiPosition(::GuiDisplayGen *gui, const oo::PList &gui_info);
 };
