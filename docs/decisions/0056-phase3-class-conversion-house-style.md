@@ -3056,3 +3056,29 @@ class methods load scripts and answer the subclasses' Objective-C objects; conve
 **Consequences.** One façade with a deletion bead that waits for `OOJSScript`'s conversion
 (oo-u61e.4) and `OOPListScript`'s façade deletion (oo-9ht.57). Converting `OOJSScript` now makes it
 a plain C++ subclass of `cxx::OOScript` instead of an oo-o89 façade.
+
+## Amendment (bead oo-kyje): a generator with private helper generators in its file, and overloads that would collide
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPlanetTextureGenerator.h/.mm`,
+  its caller in `src/Core/Entities/OOPlanetEntity.mm`, `tests/unit/core/test_OOPlanetTextureGenerator.mm`.
+  Follows amendments oo-fn2f, oo-kvqq and oo-y3dd.
+
+**Context.** `OOPlanetTextureGenerator` makes, besides its own texture, a normal map and an atmosphere
+through two Objective-C generators private to its file (`OOPlanetNormalMapGenerator`,
+`OOPlanetAtmosphereGenerator`), which it holds and which the atmosphere's generator holds back (a
+retain cycle). Its class methods include `+generatePlanetTexture:andAtmosphere:withInfo:seed:` and
+`+generatePlanetTexture:secondaryTexture:withInfo:seed:`, whose arguments have the same types.
+
+**Decision (recommended defaults).**
+
+1. **The private helpers convert with the class, as global C++ classes defined in its `.mm`**
+   (amendment oo-fn2f), forward-declared in its header for its `oo::Ref` members, which hold them;
+   the cycle is kept as it was. Not in an anonymous namespace: their descriptions name the class.
+2. **Two class methods whose converted signatures would be the same get different names**: the
+   later-declared one that took an atmosphere is `generatePlanetTextureAndAtmosphere`. The others
+   are overloads of `generatePlanetTexture`.
+3. **`[super enqueue]` from a helper is the base's member, qualified** (`cxx::OOTextureGenerator::enqueue()`),
+   and a real override of the root's `getResult` keeps `override`.
+
+**Consequences.** No façade and no deletion bead; amendment oo-y3dd's out-parameters and its
+non-overriding `getResultFormatWidthHeight` apply here too.

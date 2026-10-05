@@ -1044,6 +1044,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	std::optional<std::string> textureName = textureFileName;
 	::OOTexture *diffuseMap = nil;
 	::OOTexture *normalMap = nil;
+	oo::ObjCRef<::OOTexture *> generatedDiffuseMap, generatedNormalMap;	// the C++ generator answers them retained (bead oo-kyje)
 	oo::PList macros;	// null: nil
 	const oo::PList materialDefaults = [ResourceManager cxx_materialDefaults];
 	
@@ -1095,10 +1096,12 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	}
 	else
 	{
-		[OOPlanetTextureGenerator generatePlanetTexture:&diffuseMap
-									   secondaryTexture:(detailLevel >= DETAIL_LEVEL_SHADERS) ? &normalMap : NULL
-											   withInfo:_materialParameters
-												   seed:_noiseMapSeed];
+		OOPlanetTextureGenerator::generatePlanetTexture(&generatedDiffuseMap,
+														(detailLevel >= DETAIL_LEVEL_SHADERS) ? &generatedNormalMap : NULL,
+														_materialParameters,
+														_noiseMapSeed);
+		diffuseMap = generatedDiffuseMap.get();
+		normalMap = generatedNormalMap.get();
 
 		if (shadersOn)
 		{
