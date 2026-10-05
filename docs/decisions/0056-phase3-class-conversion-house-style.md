@@ -2801,6 +2801,42 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
 
+## Amendment (bead oo-aeev): a category reached only by selector, in a file the build did not compile
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/EntityShaderBindings.mm`,
+  `EntityShaderBindings+ObjCBridge.mm`, the members under "The category ShaderBindings" in `Entity.h`,
+  `tests/unit/core/test_EntityShaderBindings.mm`.
+
+**Context.** `Entity (ShaderBindings)` is eight getters (the clock, the system's "flavour" numbers
+and attributes, all read from `PLAYER`) that the shader uniforms find by selector on any entity;
+`shader-uniform-bindings.plist` whitelists them for entities. No header declares the category, and
+no `meson.build` listed the file: the game this repository builds never compiled it, so a shader
+that bound `clock` or `systemEconomy` got no value. Its test, written against the Objective-C
+category, failed for that reason before anything was converted.
+
+**Decision (recommended defaults).**
+
+1. **A source file of the game's that no `meson.build` lists, and that the upstream sources define
+   for the runtime to find, is added to the build in its conversion bead**, in the commit that adds
+   its test, and the test runs on the Objective-C file first. That is the one behaviour change: the
+   whitelisted uniforms now have values. A file that is dead upstream too would be deleted instead,
+   with a bead for Jon; this one is not (its selectors are whitelisted).
+2. **The category's methods are members of the converted class** (amendment oo-9fwb item 1),
+   declared in `Entity.h` under a comment that names the category and defined in the category's
+   own file. A member named like a C library function (`clock()`) hides it only inside the class
+   and its subclasses, none of which calls the C function.
+3. **The category stays, as one-line forwarders in `X+ObjCBridge.mm` with no header** (amendment
+   oo-ppc item 3): the uniforms find the methods by selector and read their return types from the
+   runtime (`OOShaderUniformTypeFromMethod`), so the forwarders keep the exact return types, and the
+   test pins each method's type encoding. The bridge goes with the `Entity` façade's deletion, when
+   the uniforms bind C++ members.
+4. **The test declares the category itself** (a test-side `@interface`, as amendment oo-ykoy item 4
+   does for a binding's category) and sends its selectors to a real `Entity`; `PLAYER` is an entity
+   that answers the selectors the category sends.
+
+**Consequences.** One bridge (no façade class) that goes with the `Entity` façade (oo-9ht.39). A
+bug bead for Jon records the build-list omission (the default is in effect: the file is built).
+
 ## Amendment (bead oo-kvqq): a generator leaf that one Objective-C caller makes, with an initialiser that fails
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPixMapTextureLoader.h/.mm`,
