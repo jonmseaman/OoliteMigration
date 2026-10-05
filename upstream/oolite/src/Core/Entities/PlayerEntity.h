@@ -37,12 +37,14 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOAssert.h"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource;
 @class OOJoystickManager, OOTexture, OOLaserShotEntity;
-@class StickProfileScreen, OOJSGuiScreenKeyDefinition, OOJSScript;
+@class OOJSGuiScreenKeyDefinition, OOJSScript;
+class StickProfileScreen;	// C++ (PlayerEntityStickProfile.h, bead oo-movn)
 
 #define ALLOW_CUSTOM_VIEWS_WHILE_PAUSED	1
 #define SCRIPT_TIMER_INTERVAL			10.0
@@ -786,7 +788,7 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 	ShipEntity				*demoShip; // Used while docked to maintain demo ship rotation.
 	std::vector<oo::ObjCRef<OOLaserShotEntity *>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
-	StickProfileScreen		*stickProfileScreen;
+	oo::Ref<StickProfileScreen>	stickProfileScreen;
 
 	double					maxFieldOfView;
 	double					fieldOfView;

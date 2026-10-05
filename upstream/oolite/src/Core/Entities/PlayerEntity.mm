@@ -2460,8 +2460,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	demoShip = nil;
 	
 	[[OOMusicController sharedController] justStop];
-	[stickProfileScreen release];
-	stickProfileScreen = [[StickProfileScreen alloc] init];
+	stickProfileScreen = oo::makeRef<StickProfileScreen>();
 	return YES;
 }
 
