@@ -64,7 +64,7 @@ OOJSPopulatorDefinition::OOJSPopulatorDefinition() {
 	_callback = ooscript::undefinedValue();
 	_callbackThis = NULL;
 
-	_owningScript = oo::adoptObjC(static_cast<OOJSScript *>([[OOJSScript currentlyRunningScript] weakRetain]));
+	_owningScript = oo::adoptObjC(static_cast<::OOJSScript *>([[::OOJSScript currentlyRunningScript] weakRetain]));
 
 	oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 														[OOJavaScriptEngine sharedEngine],
@@ -134,8 +134,8 @@ void OOJSPopulatorDefinition::runPopulatorCallback(HPVector location)
 
 	VectorToJSValue(context, HPVectorToVector(location), &loc);
 
-	const oo::ObjCRef<OOJSScript *> owner = _owningScript; // local copy needed
-	[OOJSScript pushScript:owner.get()];
+	const oo::ObjCRef<::OOJSScript *> owner = _owningScript; // local copy needed
+	[::OOJSScript pushScript:owner.get()];
 
 	[engine callJSFunction:_callback
 				 forObject:_callbackThis
@@ -143,7 +143,7 @@ void OOJSPopulatorDefinition::runPopulatorCallback(HPVector location)
 					  argv:&loc
 					result:&rval];
 
-	[OOJSScript popScript:owner.get()];
+	[::OOJSScript popScript:owner.get()];
 
 	OOJSRelinquishContext(context);
 }
