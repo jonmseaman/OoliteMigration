@@ -107,7 +107,6 @@ oolite_sources += files(
     'OOSoundSource+ObjCBridge.mm',
     'OOSoundSourcePool.mm',
     'OOSoundSourcePool+ObjCBridge.mm',
-    'OOSpatialReference.mm',
     'OOStringExpander.mm',
     'OOStringParsing.mm',
     'OOSystemDescriptionManager.mm',
@@ -128,7 +127,6 @@ oolite_sources += files(
     'Octree.mm',
     'Octree+ObjCBridge.mm',
     'ResourceManager.mm',
-    'TextureStore.mm',
     'Universe.mm',
     'legacy_random.c',
 )

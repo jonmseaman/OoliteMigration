@@ -64,7 +64,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::ObjCRef<OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
+	oo::ObjCRef<::OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
 };
 
 }	// namespace cxx
