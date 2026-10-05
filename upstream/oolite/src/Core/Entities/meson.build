@@ -27,6 +27,7 @@ oolite_sources += files(
     'OOLightParticleEntity+ObjCBridge.mm',
     'OOParticleSystem.mm',
     'OOPlanetEntity.mm',
+    'OOPlanetEntity+ObjCBridge.mm',
     'OOPlasmaBurstEntity.mm',
     'OOPlasmaShotEntity.mm',
     'OOQuiriumCascadeEntity.mm',
