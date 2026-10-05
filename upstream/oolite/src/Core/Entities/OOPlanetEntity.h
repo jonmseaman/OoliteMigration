@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-eofd): the planet configuration and material
 	parameters are oo::PLists (mixed: colours are PList::Object nodes); texture and planet names are
@@ -41,16 +42,17 @@ MA 02110-1301, USA.
 	-name / -setName: retired with oo-qps.44); -textureFileName and -setUpPlanetFromTexture: flipped with PlanetEntity (bead oo-3rb.269.1).
 */
 
-@class OOPlanetDrawable, ShipEntity, OOMaterial;
+@class ShipEntity, OOMaterial;
+class OOPlanetDrawable;	// C++ since bead oo-mw4u (no facade: this class is its one caller)
 
 
 @interface OOPlanetEntity: Entity <OOStellarBody>
 {
 @private
-	OOPlanetDrawable		*_planetDrawable;
-	OOPlanetDrawable		*_atmosphereDrawable;
-	OOPlanetDrawable		*_cloudsShaderDrawable;
-	OOPlanetDrawable		*_atmosphereShaderDrawable;
+	oo::Ref<OOPlanetDrawable>	_planetDrawable;
+	oo::Ref<OOPlanetDrawable>	_atmosphereDrawable;
+	oo::Ref<OOPlanetDrawable>	_cloudsShaderDrawable;
+	oo::Ref<OOPlanetDrawable>	_atmosphereShaderDrawable;
 	
 	BOOL					_miniature;
 	OOColor				*_airColor;
