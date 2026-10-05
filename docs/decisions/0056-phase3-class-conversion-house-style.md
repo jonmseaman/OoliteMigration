@@ -2904,3 +2904,41 @@ with `[_material autorelease]`, and is copied with `-copy` (`OOCopying`).
 
 **Consequences.** No façade and no deletion bead. `OOPlanetEntity.h/.mm` changed at the drawable's
 lines only; the planet's own conversion (oo-mp0d) keeps them.
+
+## Amendment (bead oo-mp0d): the planet (a leaf with a façade that is a shader binding target)
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/OOPlanetEntity.h/.mm`,
+  `OOPlanetEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_OOPlanetEntity.mm`. Follows amendments
+  oo-0mxi and oo-ubjo.
+
+**Context.** The universe and the legacy scripts make planets with `alloc` and two initialisers, a
+test sends plain `-init`, and about fifteen files message planets. The planet is also the binding
+target of its shader materials (the uniforms read its air colour and terminator by selector), puts
+its colours into the planet info as `PList::Object` nodes and reads them back, takes textures from
+the texture loader and the generators, and makes a miniature copy of itself with a private
+initialiser.
+
+**Decision (recommended defaults).**
+
+1. **The façade overrides `-init`** to make a `cxx::OOPlanetEntity` (or keep the part it has), and
+   its initialisers send `[self init]` and run the C++ body, as the Objective-C ones did; without
+   the override, `Entity`'s `-init` would make an Objective-C entity's adapter and the forwarders'
+   typed `oo::ToCxx` would be wrong.
+2. **What Objective-C keeps or binds is the façade:** the shader materials' binding target, the
+   graphics reset client and the nearest-ship search's entity are `oo::ToObjC(this)`; the colours
+   the planet puts into the planet info are `oo::ToObjC` of the C++ colours, and the colours it
+   reads back cross with `oo::ToCxx((::OOColor *)ObjectForKey(...))` (the node holds `id`,
+   amendment oo-vl43 item 6).
+3. **Textures stay the Objective-C objects** the loader and the generators answer through their
+   out-parameters (`::OOTexture *`); the test replaces the loader's class method, so the body keeps
+   that message (amendment oo-rmd7 item 3), and calls the converted texture through `oo::ToCxx`.
+   Materials are made with the C++ factories and handed to the drawables as their façades.
+4. **A private initialiser that the class's own method sends to a new object**
+   (`-initAsMiniatureVersionOfPlanet:` from `-miniatureVersion`) is a private `bool` member, and
+   the method is a factory over it (amendment oo-novu); the façade's method answers
+   `oo::NewEntityFacade` of its result.
+5. **An out-parameter a message to nil left unwritten** (`-airColorAsVector` of a planet with no
+   air colour, which returned whatever the stack held) is zero-initialised (the decision, item 4).
+
+**Consequences.** One façade and its deletion bead; the planet binding's category bridge
+(oo-9ht.92) stays on the façade until it goes.
