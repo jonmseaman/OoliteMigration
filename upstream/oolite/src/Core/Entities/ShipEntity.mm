@@ -59,7 +59,7 @@ MA 02110-1301, USA.
 #import "DockEntity.h"
 #import "OOSunEntity.h"
 #import "OOPlanetEntity.h"
-#import "PlanetEntity.h"
+#import "OOStellarBody.h"
 #import "PlayerEntity.h"
 #import "WormholeEntity.h"
 #import "OOFlasherEntity.h"
