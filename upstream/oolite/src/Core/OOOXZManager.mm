@@ -497,7 +497,7 @@ std::optional<std::string> OOOXZManager::humanSize(NSUInteger bytes)
 	{
 		return "<1 kB";
 	}
-	else if (bytes < 1024*1024)
+	else if (bytes < static_cast<NSUInteger>(1024)*1024)	// the product in NSUInteger, as the Objective-C compare promoted it
 	{
 		return oo::str::format("%zu kB", (size_t)(bytes>>10));
 	}
