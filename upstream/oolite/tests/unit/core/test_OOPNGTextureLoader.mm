@@ -9,8 +9,9 @@
 	under the working directory, so no game resource is read. It links the whole game but main
 	(tests/unit/core/meson.build entry ['*']), on the hidden GL context of oo_gl_test_context.hpp
 	(the loaders' one-time set-up reads the GL texture size limit). The expectations were written
-	against the Objective-C API and run on the unconverted class first; the loader is made by the
-	factory, so they hold unchanged after it. The last test pins the C++ API.
+	against the Objective-C API and run on the unconverted class first (commit a35e9c1a5); the
+	loader is made by the factory, so they hold unchanged after it. The last test pins the C++ API
+	of the converted class (a global C++ class with no facade of its own).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -243,6 +244,46 @@ OO_TEST(failures)
 		Result cutShort = GetResult(truncatedLoader);
 		OO_CHECK(!cutShort.ok && OOIsNullPixMap(cutShort.pixMap) && [truncatedLoader isReady]);
 		OO_CHECK(oo::DescriptionOf(truncatedLoader).ends_with(">{{" + truncated + " -- failed}}"));
+	}
+}
+
+
+// --- The C++ API (after the conversion) --------------------------------------------------------
+
+OO_TEST(cxxApi)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		const std::string path = WritePNG("cxx.png", 8, 8, PNG_FORMAT_RGBA);
+		const oo::Ref<OOPNGTextureLoader> loader = oo::makeRef<OOPNGTextureLoader>();
+		OO_CHECK(!loader->initWithPath(std::nullopt, 0));
+		OO_CHECK(loader->initWithPath(path, kOOTextureMinFilterLinear));
+		OO_CHECK(loader->path() == std::optional<std::string>(path) && loader->cacheKey() == std::optional<std::string>("cxx.png:0x0002"));
+
+		// Its facade is an OOTextureLoader (it has none of its own), and the work manager takes it.
+		OOTextureLoader *facade = oo::ToObjC(loader.get());
+		OO_CHECK([facade class] == [OOTextureLoader class] && oo::ToCxx(facade) == loader.get());
+		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOPNGTextureLoader 0x"));
+		OO_CHECK([[OOAsyncWorkManager sharedAsyncWorkManager] addTask:facade priority:kOOAsyncPriorityMedium]);
+		OOPixMap pixMap = kOONullPixMap;
+		OOTextureDataFormat format = kOOPixMapInvalidFormat;
+		OO_CHECK(loader->getResult(&pixMap, &format, nullptr, nullptr) && loader->isReady());
+		OO_CHECK(format == kOOPixMapRGBA && pixMap.width == 8 && ((const uint8_t *)pixMap.pixels)[0] == 1);
+		OOFreePixMap(&pixMap);
+
+		// The factory's loader is one.
+		oo::ObjCRef<OOTextureLoader *> made = cxx::OOTextureLoader::loaderWithPath(path, kOOTextureMinFilterLinear);
+		OO_CHECK(dynamic_cast<OOPNGTextureLoader *>(oo::ToCxx(made.get())) != nullptr);
+		OO_CHECK(oo::ToCxx(made.get())->getResult(&pixMap, &format, nullptr, nullptr));
+		OOFreePixMap(&pixMap);
+
+		// Reading on its own (as libpng's read callback does): the loader reads its file first.
+		const oo::Ref<OOPNGTextureLoader> direct = oo::makeRef<OOPNGTextureLoader>();
+		OO_CHECK(direct->initWithPath(WritePNG("direct.png", 8, 8, PNG_FORMAT_GA), 0));
+		direct->loadTexture();
+		OO_CHECK(direct->_data != nullptr && direct->_format == kOOPixMapGrayscaleAlpha && direct->_width == 8 && direct->_rowBytes == 16);
 	}
 }
 
