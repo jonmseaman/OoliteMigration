@@ -3219,3 +3219,46 @@ is C++.
 5. **An argument expression with a side effect in a message to a possibly-nil receiver is
    evaluated first** (`const float fraction = randf();`), so the random stream is the same when
    the receiver is null-guarded.
+
+## Amendment (bead oo-9ht.139): a slice's free function that messages a class it does not wait for
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Plans:
+  `docs/phases/3-slices/OOJSShip.md`, `docs/phases/3-slices/HeadUpDisplay.md`. Follows amendments
+  oo-ppc items 4-5, oo-6ia4 items 2 and 6, oo-vnts item 2, oo-jy98 item 2 and oo-dqxj.
+
+**Context.** A slice story is done when `tools/check-slice-plan.py --slice-done` finds no
+Objective-C in its units. A converted method is an out-of-line C++ member, and a member may keep
+messages to classes that are still Objective-C (amendment oo-ppc item 4; the checker exempts it,
+oo-9ht.117). A *free function* gets no such exemption: any message send in it fails the check.
+That is every native of a binding file (`OOJSShip`, `OOJSSystem`, `OOJSPlayerShip`) and the
+file-scope drawing helpers of a class (`hudDrawReticleOnTarget()` in `HeadUpDisplay.mm`). Their
+sends go to three kinds of class: converted ones (`OOColor`, `OOShipGroup`, `Entity`); the class
+the file is about (`ShipEntity` for `OOJSShip`), which the slices can wait for; and classes that
+convert only after the file, because their own conversion waits for it (`Universe`, oo-pas,
+depends on every binding bead) or is far off (`PlayerEntity`, oo-a70). Waiting for the last kind
+is a dependency cycle or a stall, and a slice cannot be done while it sends to them.
+
+**Decision (recommended defaults).**
+
+1. **A converted class is reached as `cxx::`** through `oo::ToCxx`/`oo::ToObjC`, nil-guarded
+   (amendment oo-6ia4 item 2).
+2. **The class the file is about is waited for.** The slice beads depend on that class's
+   conversion (for `OOJSShip`: `ShipEntity`, oo-k8a, then the `ShipEntity` slices that own the
+   members a slice calls once its plan files them), and the sends become member calls.
+3. **Any other send to a class that is still Objective-C when the slice is worked** moves behind a
+   one-line C++ function in `X+ObjCBridge.mm`, declared in `X+ObjCBridge.h` and imported by
+   `X.mm` (the shape of amendments oo-vnts item 2, oo-jy98 item 2 and oo-6ia4 item 6). One function
+   per distinct send, named after the file and the selector (amendment oo-ykoy item 1):
+   `OOJSShipUniverseSun()`, `OOJSShipPlayerAlertCondition()`; a send to an object passes it first.
+   The body is the send, verbatim, with `BOOL` results returned as `bool`. A class file that already
+   has a façade bridge (`HeadUpDisplay+ObjCBridge.mm`) puts them there.
+4. **The bridge's deletion bead** ("Delete X+ObjCBridge", `sweep:objc-bridge`) depends on the
+   conversion beads of the classes its functions message; each of those beads turns the callers
+   into direct `cxx::` calls and deletes its functions.
+5. **This applies to slice stories filed before it** (`OOJSSystem` oo-luhd and slice 2,
+   `OOJSPlayerShip` oo-ft5n and slices 2-3): their natives' `[UNIVERSE …]` / `[PLAYER …]` sends
+   take item 3; their beads are not changed.
+
+**Consequences.** A binding gets a bridge of free functions (no façade) and a deletion bead that
+waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
+more call frame. `--slice-done` stays as strict as it is.
