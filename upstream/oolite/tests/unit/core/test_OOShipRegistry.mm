@@ -285,12 +285,12 @@ OO_TEST(canonicalizesSubentityDeclarations)
 	cxx::OOCacheManager::sharedCache()->clearCache("ship registry");
 	[OOShipRegistry reload];
 	OOShipRegistry *registry = [OOShipRegistry sharedRegistry];
-	Pinned("ship keys", Join([registry cxx_shipKeys]), "");
-	Pinned("mothership", Text([registry cxx_shipInfoForKey:"mothership"]), "");
-	Pinned("turret", Text([registry cxx_shipInfoForKey:"turret"]), "");
-	Pinned("wreck", Text([registry cxx_shipInfoForKey:"wreck"]), "");
-	Pinned("orphan", Text([registry cxx_shipInfoForKey:"orphan"]), "");
-	Pinned("roles", Join([registry cxx_shipRoles]), "");
+	Pinned("ship keys", Join([registry cxx_shipKeys]), "cobra3-player dock mothership turret wreck");
+	Pinned("mothership", Text([registry cxx_shipInfoForKey:"mothership"]), "{model = \"adder.dat\"; name = Mothership; roles = trader; subentities = ({\"fire_rate\" = \"0.25\"; orientation = {w = 1; x = 0; y = 0; z = 0; }; position = {x = 1; y = 2; z = 3; }; \"subentity_key\" = turret; type = \"ball_turret\"; \"weapon_energy\" = 100; \"weapon_range\" = \"7200.00048828125\"; }, {\"allow_docking\" = 1; \"allow_launching\" = 0; \"disallowed_docking_collides\" = 0; \"dock_label\" = \"the docking bay\"; \"is_dock\" = 1; orientation = {w = 1; x = 0; y = 0; z = 0; }; position = {x = 0; y = 0; z = 5; }; \"subentity_key\" = dock; type = standard; }, {\"bright_fraction\" = \"0.5\"; colors = ((1, 0, 0, 1)); frequency = 2; \"initially_on\" = 1; phase = 1; position = {x = 0; y = 0; z = 5; }; size = 4; type = flasher; }, {\"bright_fraction\" = \"0.25\"; colors = ((0, 0, 1, 1), (0, 1, 0, 1)); frequency = 2; \"initially_on\" = 0; position = {x = 0; y = 0; z = 0; }; size = 8; type = flasher; }); }");
+	Pinned("turret", Text([registry cxx_shipInfoForKey:"turret"]), "{\"_oo_is_subentity\" = 1; model = \"adder.dat\"; name = Turret; }");
+	Pinned("wreck", Text([registry cxx_shipInfoForKey:"wreck"]), "{frangible = yes; model = \"adder.dat\"; name = Wreck; roles = trader; subentities = ({orientation = {w = 1; x = 0; y = 0; z = 0; }; position = {x = 0; y = 0; z = 0; }; \"subentity_key\" = turret; type = standard; }); }");
+	Pinned("orphan", Text([registry cxx_shipInfoForKey:"orphan"]), "(null)");
+	Pinned("roles", Join([registry cxx_shipRoles]), "[cobra3-player] [dock] [mothership] [turret] [wreck] player trader");
 	sSubentityData = false;
 }
 
