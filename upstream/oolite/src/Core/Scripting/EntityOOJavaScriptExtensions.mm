@@ -2,6 +2,13 @@
 
 EntityOOJavaScriptExtensions.m
 
+C++20 since bead oo-g223 (proposed ADR-0056, amendments oo-ppc and oo-ykoy): the bodies of the
+categories Entity (OOJavaScriptExtensions) and ShipEntity (OOJavaScriptExtensions) as free
+functions (EntityOOJavaScriptExtensions.h). A method that used self takes the object as its first
+parameter, and its messages to the object stay messages: the categories are overridden by
+subclasses that are still Objective-C. The categories' forwarders are in
+EntityOOJavaScriptExtensions+ObjCBridge.mm.
+
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
 
@@ -38,102 +45,100 @@ MA 02110-1301, USA.
 #include "oofnd/Notification.hpp"
 
 
-@implementation Entity (OOJavaScriptExtensions)
+// MARK: Entity (OOJavaScriptExtensions)
 
-- (BOOL) isVisibleToScripts
+bool EntityJSIsVisibleToScripts(void)
 {
-	return NO;
+	return false;
 }
 
 
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> EntityJSClassName(void)
 {
 	return std::string("Entity");
 }
 
 
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+ooscript::Value EntityJSValueInContext(Entity *entity, ooscript::Context context)
 {
 	ooscript::ClassDef					*jsClass = NULL;
 	ooscript::Object prototype = NULL;
 	ooscript::Value					result = ooscript::nullValue();
 	
-	if (_cxxEntity->_jsSelf == NULL && [self isVisibleToScripts])
+	if (entity->_cxxEntity->_jsSelf == NULL && [entity isVisibleToScripts])
 	{
 		// Create JS object
-		[self getJSClass:&jsClass andPrototype:&prototype];
+		[entity getJSClass:&jsClass andPrototype:&prototype];
 		
-		_cxxEntity->_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
-		if (_cxxEntity->_jsSelf != NULL)
+		entity->_cxxEntity->_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
+		if (entity->_cxxEntity->_jsSelf != NULL)
 		{
-			if (!ooscript::setPrivate(context, _cxxEntity->_jsSelf, OOConsumeReference([self weakRetain])))  _cxxEntity->_jsSelf = NULL;
+			if (!ooscript::setPrivate(context, entity->_cxxEntity->_jsSelf, OOConsumeReference([entity weakRetain])))  entity->_cxxEntity->_jsSelf = NULL;
 		}
 		
-		if (_cxxEntity->_jsSelf != NULL)
+		if (entity->_cxxEntity->_jsSelf != NULL)
 		{
-			OOJSAddGCObjectRoot(context, &_cxxEntity->_jsSelf, "Entity jsSelf");
-			oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+			OOJSAddGCObjectRoot(context, &entity->_cxxEntity->_jsSelf, "Entity jsSelf");
+			oo::NotificationCenter::defaultCenter().addObserver(entity, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine],
-																[self](const oo::Notification &) { [self deleteJSSelf]; });
+																[entity](const oo::Notification &) { [entity deleteJSSelf]; });
 		}
 	}
 	
-	if (_cxxEntity->_jsSelf != NULL)  result = ooscript::objectValue(_cxxEntity->_jsSelf);
+	if (entity->_cxxEntity->_jsSelf != NULL)  result = ooscript::objectValue(entity->_cxxEntity->_jsSelf);
 	
 	return result;
 	// Analyzer: object leaked. [Expected, object is retained by JS object.]
 }
 
 
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+void EntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = JSEntityClass();
 	*outPrototype = JSEntityPrototype();
 }
 
 
-- (void) deleteJSSelf
+void EntityJSDeleteJSSelf(Entity *entity)
 {
-	if (_cxxEntity->_jsSelf != NULL)
+	if (entity->_cxxEntity->_jsSelf != NULL)
 	{
-		_cxxEntity->_jsSelf = NULL;
+		entity->_cxxEntity->_jsSelf = NULL;
 		ooscript::Context context = OOJSAcquireContext();
-		ooscript::removeObjectRoot(context, &_cxxEntity->_jsSelf);
+		ooscript::removeObjectRoot(context, &entity->_cxxEntity->_jsSelf);
 		OOJSRelinquishContext(context);
 		
-		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+		oo::NotificationCenter::defaultCenter().removeObserver(entity, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine]);
 	}
 }
 
-@end
 
+// MARK: ShipEntity (OOJavaScriptExtensions)
 
-@implementation ShipEntity (OOJavaScriptExtensions)
-
-- (BOOL) isVisibleToScripts
+bool ShipEntityJSIsVisibleToScripts(void)
 {
-	return YES;
+	return true;
 }
 
 
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+void ShipEntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = JSShipClass();
 	*outPrototype = JSShipPrototype();
 }
 
 
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> ShipEntityJSClassName(void)
 {
 	return std::string("Ship");
 }
 
 
-- (std::vector<oo::ObjCRef<Entity *>>) subEntitiesForScript
+std::vector<oo::ObjCRef<Entity *>> ShipEntityJSSubEntitiesForScript(ShipEntity *ship)
 {
 	std::vector<oo::ObjCRef<Entity *>> result;
-	for (const auto &sub : [self cxx_shipSubEntities])
+	for (const auto &sub : [ship cxx_shipSubEntities])
 	{
 		result.emplace_back(sub.get());
 	}
@@ -141,9 +146,9 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setTargetForScript:(ShipEntity *)target
+void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target)
 {
-	ShipEntity *me = self;
+	ShipEntity *me = ship;
 	
 	// Ensure coherence by not fiddling with subentities.
 	while ([me isSubEntity])
@@ -163,6 +168,3 @@ MA 02110-1301, USA.
 	}
 	else  [me removeTarget:[me primaryTarget]];
 }
-
-@end
-
