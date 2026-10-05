@@ -2801,6 +2801,60 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
 
+## Amendment (bead oo-z889): a leaf that only its root's factory makes, and C callbacks that held it
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPNGTextureLoader.h/.mm`,
+  `loaderWithPath` in `OOTextureLoader.mm`, `tests/unit/core/test_OOPNGTextureLoader.mm`. Follows
+  amendments oo-bj8 item 12, oo-vl43 item 4 and oo-zl36.
+
+**Context.** `OOPNGTextureLoader` is a leaf of the texture loaders that no code outside the loaders'
+own factory names: `cxx::OOTextureLoader::loaderWithPath` made it with `+alloc`/`-cxx_initWithPath:`
+and queued it on the work manager. libpng holds it as a `void *` (the I/O pointer) and calls back
+file-static C functions that messaged it.
+
+**Decision (recommended defaults).**
+
+1. **Such a leaf converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   the C++ root, its private methods private members. The factory makes it (`makeRef` plus
+   `initWithPath`) and answers its façade, `oo::ObjCRef(oo::ToObjC(loader))`: the root's façade
+   (amendment oo-vl43 item 4), which owns it and which the work manager holds. The factory's
+   result type does not change.
+2. **A C library's context pointer is `this`,** and its C callbacks `static_cast` it back and call
+   members. A callback that libpng can call before the pointer is set (its error and warning
+   handlers) checks for null and answers what messaging nil did (`"(null)"` for the path). A
+   method that was private but a callback calls is a public member marked "Internal".
+
+**Consequences.** No façade and no deletion bead. The test is written against the factory (the
+only way the class was made), so it ran unchanged before and after; one more test pins the C++ API.
+
+## Amendment (bead oo-1v2w): a converted class that is an Objective-C object's delegate
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar:
+  `src/Core/OXPVerifier/OOCheckShipDataPListVerifierStage.h/.mm`,
+  `OOCheckShipDataPListVerifierStage+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOCheckShipDataPListVerifierStage.mm`.
+
+**Context.** The ship data stage is the delegate of an `OOPListSchemaVerifier`, which is still
+Objective-C and messages its delegate through an informal protocol (a category on `OOObject`).
+A C++ object cannot be that delegate. Both delegate selectors start with `verifier:`, and a member
+named `verifier` would hide the base's `verifier()`.
+
+**Decision (recommended defaults).**
+
+1. **The delegate is a helper that stays Objective-C,** as amendment oo-rmd7 item 1 does for a
+   formal protocol: `XDelegate`-style class (here `OOCheckShipDataPListVerifierStageSchemaDelegate`)
+   in `X+ObjCBridge.h/.mm`, holding a borrowed `X *`. The C++ class makes it where it set itself as
+   delegate, keeps it in an `oo::ObjCRef<id>` member (the Objective-C object held its delegate
+   unretained), and passes it to `-setDelegate:`. The helper forwards each delegate method in one
+   line to a public member of the class, commented with the caller. The bridge's deletion bead
+   waits for the delegating class's conversion.
+2. **A selector whose first keyword would hide an inherited member** (`verifier:…`) takes its
+   distinguishing keyword as well, as amendment oo-fn2f item 5 does for a clash:
+   `verifierTestProperty(...)`, `verifierFailedForProperty(...)`. Parameters the body does not use
+   are unnamed.
+3. **Inside a member of a class derived from `cxx::OOOXPVerifierStage`**, the Objective-C façade
+   type in a cast is written `::OOOXPVerifierStage` (amendment 1 item 4).
+
 ## Amendment (bead oo-aeev): a category reached only by selector, in a file the build did not compile
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/EntityShaderBindings.mm`,
@@ -2942,3 +2996,63 @@ initialiser.
 
 **Consequences.** One façade and its deletion bead; the planet binding's category bridge
 (oo-9ht.92) stays on the façade until it goes.
+
+## Amendment (bead oo-kvqq): a generator leaf that one Objective-C caller makes, with an initialiser that fails
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPixMapTextureLoader.h/.mm`,
+  its two callers in `src/Core/Entities/PlanetEntity.mm`, `tests/unit/core/test_OOPixMapTextureLoader.mm`.
+  Follows amendments oo-bj8 item 12, oo-2c6g item 2, oo-novu, oo-rr2x item 3 and oo-z889.
+
+**Context.** `OOPixMapTextureLoader` is a leaf under the converted `cxx::OOTextureGenerator`. Its one
+caller (`PlanetEntity`, still Objective-C) made it with `alloc`/`-initWithPixMap:textureOptions:freeWhenDone:`
+and handed it to `+[OOTexture textureWithGenerator:]`; no test stubs it, and nothing else names it.
+Its initialiser answered nil for a pixmap that is not valid (`DESTROY(self)`).
+
+**Decision (recommended defaults).**
+
+1. **It converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   `cxx::OOTextureGenerator`, with `override` on the members it overrode. The initialiser is a
+   `bool` member and a static factory (`loaderWithPixMap`) answers null where it answered nil
+   (amendment oo-novu); the destructor frees the pixmap, as `DESTROY(self)`'s `-dealloc` did.
+2. **The caller calls the factory and hands on `oo::ToObjC(loader.get())`** (amendment oo-2c6g
+   item 2): the generator façade (amendment oo-rr2x item 3), which owns the loader, autoreleased,
+   as `[loader autorelease]` was. The typed overload for `cxx::OOTextureGenerator *` is the best
+   match for a derived pointer, so no cast is written.
+3. **A quirk of the old initialiser is kept** (it duplicated its own empty pixmap instead of the
+   one it was given when `freeWhenDone` was NO, so it answered nil); the test pins it.
+4. **The transitional comments that list the loaders still Objective-C** (in the roots' headers
+   and bridges) are left to the bridges' deletion beads, so the sibling beads do not conflict.
+
+**Consequences.** No façade and no deletion bead. The test's maker helper is the only line it
+ported; one more test pins the C++ API.
+
+## Amendment (bead oo-604l): a hierarchy root whose subclasses are an Objective-C class and an oo-o89 façade, and class methods that make subclass instances
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOScript.h/.mm`,
+  `OOScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOScript.mm`.
+
+**Context.** `OOScript` is the abstract root of the scripts. One subclass, `OOJSScript`, is still
+Objective-C; the other, `OOPListScript`, converted first (amendment oo-q9q4), so its façade
+subclasses the Objective-C root and owns its own C++ part in an ivar named `_cxxScript`. The root's
+class methods load scripts and answer the subclasses' Objective-C objects; converted callers in
+`namespace cxx` (`OOCommodities`, `OOCharacter`, `OOEquipmentType`) name the Objective-C class.
+
+**Decision (recommended defaults).**
+
+1. **The root converts as amendment oo-6bux says**: a private adapter (`ObjCScript`) is the C++
+   part of every Objective-C subclass instance, including an oo-o89 façade, whose own C++ part is
+   unrelated to the root's. Neither subclass changes. The methods subclasses override, including
+   `-cxx_descriptionComponents` (which `OOJSScript` overrides and calls `super` on), are virtual.
+2. **The root façade's ivar is named so it cannot clash with a subclass façade's** (`_cxxRootScript`,
+   not `_cxxScript`), and the bridge header says why.
+3. **Class methods that make subclass instances are static members that still message the
+   subclasses' Objective-C classes** (`[OOJSScript scriptWithPath:…]`, and
+   `[::OOPListScript scriptsInPListFile:…]` where a `cxx::` class of that name exists), answering
+   `oo::ObjCRef<::X *>` (or `id`) as before; `[self m…]` on the class becomes a static call. They
+   become C++ factories when the subclasses convert.
+4. **Converted callers in `namespace cxx` that named the root's Objective-C class write `::X`**
+   (amendment oo-q9q4 item 5), in the same bead, because `X` now names the C++ root there.
+
+**Consequences.** One façade with a deletion bead that waits for `OOJSScript`'s conversion
+(oo-u61e.4) and `OOPListScript`'s façade deletion (oo-9ht.57). Converting `OOJSScript` now makes it
+a plain C++ subclass of `cxx::OOScript` instead of an oo-o89 façade.
