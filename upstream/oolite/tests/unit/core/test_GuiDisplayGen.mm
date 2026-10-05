@@ -14,12 +14,34 @@
 	GuiDisplayGen's object references Universe and the player, so the test links the whole game but
 	main (tests/unit/core/meson.build entry ['*'], ADR-0056 amendment oo-44gg) and defines the one
 	global main.mm did, gDebugFlags. UNIVERSE is nil; -init and this method do not use it.
+
+	Bead oo-2g51 (slice 1 of docs/phases/3-slices/GuiDisplayGen.md, Phase 3, house style of proposed
+	ADR-0056 and its amendments oo-pni4 and oo-3bgz) added the tests after these four: they pin, through
+	the Objective-C API the game uses, what the slice's units computed before the conversion (the two
+	initialisers, the sizes, the title rule, the rows' texts and keys, the selection and its skip rows,
+	the colours and the colour settings, the fades' alpha, the tab-stop override, clearing and the two
+	resizes). They were written against the unconverted class and run on it first. The units of slices
+	2-4 that they reach (-clear's -clearBackground, -cxx_getLastLines, -cxx_setArray:forRow:,
+	-cxx_printLineNoScroll:...) run as they are. The settings -init reads (gui-settings.plist, through
+	the real ResourceManager) depend on where the test runs, so the tests that need them check that
+	they are a dictionary first and pin nothing of their content.
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "GuiDisplayGen.h"
+#import "OOColor.h"
+#import "OOJavaScriptEngine.h"
+
+#include "oofnd/Data.hpp"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 
 #include "oo_test.hpp"
+
+#include <cstdlib>
+#include <filesystem>
+#include <process.h>
+#include <string>
 
 
 // main.mm defines the debug flags, and the test has its own main.
@@ -98,6 +120,377 @@ OO_TEST(answersForThePointerNowWithoutARender)
 		OO_CHECK_EQ([gui rowAtVirtualJoystickPosition:NSMakePoint(0.0, MiddleOfRow(20))], 20);
 		OO_CHECK_EQ([gui rowAtVirtualJoystickPosition:NSMakePoint(0.0, MiddleOfRow(22))], 22);
 		OO_CHECK_EQ([gui rowAtVirtualJoystickPosition:NSMakePoint(0.0, MiddleOfRow(26))], 26);
+	}
+}
+
+
+// --- bead oo-2g51: slice 1 (the class shell, sizes, colours, fades, rows and selection) ---
+
+namespace {
+
+bool SameComponents(OOColor *a, OOColor *b)
+{
+	if (a == nil || b == nil)  return a == b;
+	OORGBAComponents ca = [a rgbaComponents], cb = [b rgbaComponents];
+	return ca.r == cb.r && ca.g == cb.g && ca.b == cb.b && ca.a == cb.a;
+}
+
+
+std::optional<std::string> RowString(GuiDisplayGen *gui, OOGUIRow row)
+{
+	const oo::PList text = [gui objectForRow:row];
+	if (const std::string *string = text.getIf<std::string>())  return *string;
+	return std::nullopt;
+}
+
+
+/*	Selecting a row reports it to the player's scripts (guiSelectedRowChanged), and naming that event
+	(OOJSID) needs the JavaScript engine, even though PLAYER is nil and nothing is sent. The engine
+	is started once, as test_OOJSScript starts it: in a scratch home and game folder, so that it
+	reads none of the machine's own files.
+*/
+void StartJavaScript()
+{
+	static bool started = false;
+	if (started)  return;
+	started = true;
+	namespace stdfs = std::filesystem;
+	const stdfs::path root = stdfs::temp_directory_path() / ("oo-test-guidisplaygen-" + std::to_string(static_cast<unsigned long>(::_getpid())));
+	stdfs::remove_all(root);
+	stdfs::create_directories(root / "Resources");
+	OO_CHECK(::_putenv_s("HOMEPATH", root.string().c_str()) == 0);
+	stdfs::current_path(root);
+	const std::string info = "{ CFBundleVersion = \"9.9.9-test\"; }";
+	OO_CHECK(oo::fs::writeFile(root / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct).has_value());
+	(void)[OOJavaScriptEngine sharedEngine];
+}
+
+
+// A small GUI made by the second initialiser: 5 rows, no user settings.
+GuiDisplayGen *SmallGUI(const std::optional<std::string> &title)
+{
+	return [[[GuiDisplayGen alloc] cxx_initWithPixelSize:NSMakeSize(200, 100) columns:4 rows:5 rowHeight:12 rowStart:8 title:title] autorelease];
+}
+
+}	// namespace
+
+
+OO_TEST(initDefaults)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = [[[GuiDisplayGen alloc] init] autorelease];
+		OO_CHECK([gui size].width == 480 && [gui size].height == 480);
+		OO_CHECK_EQ([gui columns], 6u);
+		OO_CHECK_EQ([gui rows], 30u);
+		OO_CHECK_EQ([gui rowHeight], 16u);
+		OO_CHECK_EQ([gui rowStart], 40);
+		OO_CHECK([gui cxx_title] == std::optional<std::string>(""));	// empty, not none
+		Vector position = [gui drawPosition];
+		OO_CHECK(position.x == 0.0f && position.y == 0.0f && position.z == 640.0f);
+		OO_CHECK(SameComponents([gui textColor], [OOColor yellowColor]));
+		OO_CHECK([gui textCommsColor] == nil);
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>("."));
+		OO_CHECK(RowString(gui, 29) == std::optional<std::string>("."));
+		OO_CHECK([gui objectForRow:30].isNull());
+		OO_CHECK([gui objectForRow:-1].isNull());
+		OO_CHECK([gui cxx_keyForRow:3] == std::optional<std::string>("3"));
+		OO_CHECK([gui cxx_keyForRow:30] == std::nullopt);
+		OO_CHECK_EQ([gui cxx_rowForKey:"17"], 17);
+		OO_CHECK_EQ([gui cxx_rowForKey:"x"], -1);
+		OO_CHECK_EQ([gui cxx_rowForKey:std::nullopt], -1);
+		OO_CHECK_EQ([gui selectedRow], -1);	// nothing selectable yet
+		OO_CHECK([gui selectableRange].location == 0 && [gui selectableRange].length == 0);
+		OO_CHECK_EQ([gui alpha], 0.0f);
+		OO_CHECK_EQ([gui statusPage], 0u);
+	}
+}
+
+
+OO_TEST(initWithPixelSize)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		OO_CHECK([gui size].width == 200 && [gui size].height == 100);
+		OO_CHECK_EQ([gui columns], 4u);
+		OO_CHECK_EQ([gui rows], 5u);
+		OO_CHECK_EQ([gui rowHeight], 12u);
+		OO_CHECK_EQ([gui rowStart], 8);
+		OO_CHECK([gui cxx_title] == std::optional<std::string>("T"));
+		OO_CHECK(RowString(gui, 4) == std::optional<std::string>(""));
+		OO_CHECK([gui objectForRow:5].isNull());
+		OO_CHECK([gui cxx_keyForRow:0] == std::optional<std::string>(""));
+		OO_CHECK_EQ([gui cxx_rowForKey:""], 0);	// the first empty key
+		OO_CHECK(SameComponents([gui textColor], [OOColor yellowColor]));
+		OO_CHECK([gui cxx_userSettings].isNull());
+		Vector position = [gui drawPosition];
+		OO_CHECK(position.x == 0.0f && position.y == 0.0f && position.z == 0.0f);
+		// The title is kept as given: an empty one stays empty, none stays none.
+		OO_CHECK([SmallGUI("") cxx_title] == std::optional<std::string>(""));
+		OO_CHECK([SmallGUI(std::nullopt) cxx_title] == std::nullopt);
+	}
+}
+
+
+OO_TEST(titleAndDrawPosition)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui cxx_setTitle:"Hello"];
+		OO_CHECK([gui cxx_title] == std::optional<std::string>("Hello"));
+		[gui cxx_setTitle:""];	// an empty title is no title
+		OO_CHECK([gui cxx_title] == std::nullopt);
+		[gui cxx_setTitle:"Again"];
+		[gui cxx_setTitle:std::nullopt];
+		OO_CHECK([gui cxx_title] == std::nullopt);
+		[gui setDrawPosition:make_vector(1.0f, -2.0f, 3.5f)];
+		Vector position = [gui drawPosition];
+		OO_CHECK(position.x == 1.0f && position.y == -2.0f && position.z == 3.5f);
+	}
+}
+
+
+OO_TEST(rowTextsAndKeys)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui cxx_setText:"one" forRow:1];
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("one"));
+		[gui cxx_setText:std::optional<std::string>("two") forRow:2 align:GUI_ALIGN_RIGHT];
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("two"));
+		[gui cxx_setText:std::optional<std::string>(std::nullopt) forRow:2 align:GUI_ALIGN_LEFT];	// none: no change
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("two"));
+		[gui cxx_setText:"out" forRow:5];	// out of range: ignored
+		[gui cxx_setText:"out" forRow:-1];
+		OO_CHECK([gui objectForRow:5].isNull());
+		[gui cxx_setKey:"k3" forRow:3];
+		[gui cxx_setKey:"k9" forRow:9];	// ignored
+		OO_CHECK([gui cxx_keyForRow:3] == std::optional<std::string>("k3"));
+		OO_CHECK_EQ([gui cxx_rowForKey:"k3"], 3);
+		OO_CHECK_EQ([gui cxx_rowForKey:"k9"], -1);
+		[gui cxx_setArray:{ "a", "b" } forRow:4];	// slice 2's unit: a row of columns
+		OO_CHECK([gui objectForRow:4].isArray());
+		OO_CHECK_EQ([gui objectForRow:4].count(), 2u);
+
+		// The last two rows' text, colour and fade time (slice 2's -cxx_getLastLines) show the colour.
+		[gui setColor:[OOColor redColor] forRow:3];
+		[gui setColor:[OOColor greenColor] forRow:7];	// ignored
+		[gui cxx_setText:"three" forRow:3];
+		[gui cxx_setText:"four" forRow:4];
+		const oo::PList lines = [gui cxx_getLastLines];
+		OO_CHECK_EQ(lines.count(), 6u);
+		OO_CHECK(lines.at<std::string>(0) == "three");
+		OO_CHECK(lines.at<std::string>(1) == "1 0 0 1");
+		OO_CHECK(lines.at<std::string>(3) == "four");
+		OO_CHECK(lines.at<std::string>(4) == "0 1 0 1");	// the initialiser's green
+	}
+}
+
+
+OO_TEST(selectionSkipsSkipRows)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		GuiDisplayGen *gui = [[[GuiDisplayGen alloc] init] autorelease];
+		[gui clear];	// every key is SKIP-ROW
+		OO_CHECK([gui cxx_keyForRow:0] == std::optional<std::string>(GUI_KEY_SKIP));
+		for (OOGUIRow row = 2; row <= 6; row++)
+		{
+			[gui cxx_setKey:oo::str::format("key%d", (int)row) forRow:row];
+			[gui cxx_setText:oo::str::format("text%d", (int)row) forRow:row];
+		}
+		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:4];
+		[gui cxx_setArray:{ "first", "second" } forRow:6];
+		[gui setSelectableRange:NSMakeRange(2, 5)];
+		OO_CHECK([gui selectableRange].location == 2 && [gui selectableRange].length == 5);
+
+		OO_CHECK(![gui setSelectedRow:4]);	// a skip row
+		OO_CHECK(![gui setSelectedRow:7]);	// outside the range
+		OO_CHECK([gui setSelectedRow:3]);
+		OO_CHECK_EQ([gui selectedRow], 3);
+		OO_CHECK([gui setSelectedRow:3]);	// already selected
+		OO_CHECK([gui cxx_selectedRowKey] == std::optional<std::string>("key3"));
+		OO_CHECK([gui cxx_selectedRowText] == std::optional<std::string>("text3"));
+
+		OO_CHECK([gui setNextRow:1]);	// over the skip row
+		OO_CHECK_EQ([gui selectedRow], 5);
+		OO_CHECK([gui setNextRow:1]);
+		OO_CHECK_EQ([gui selectedRow], 6);
+		OO_CHECK([gui cxx_selectedRowText] == std::optional<std::string>("first"));	// the first column
+		OO_CHECK(![gui setNextRow:1]);	// off the end: unchanged
+		OO_CHECK_EQ([gui selectedRow], 6);
+		OO_CHECK([gui setNextRow:-2]);
+		OO_CHECK_EQ([gui selectedRow], 2);	// 4 is a skip row, 2 is not
+
+		OO_CHECK([gui setLastSelectableRow]);
+		OO_CHECK_EQ([gui selectedRow], 6);
+		OO_CHECK([gui setFirstSelectableRow]);
+		OO_CHECK_EQ([gui selectedRow], 2);
+
+		[gui setNoSelectedRow];
+		OO_CHECK_EQ([gui selectedRow], -1);
+		OO_CHECK([gui cxx_selectedRowKey] == std::nullopt);
+
+		// A selection outside the selectable range is reported as none, but kept.
+		OO_CHECK([gui setSelectedRow:5]);
+		[gui setSelectableRange:NSMakeRange(10, 2)];
+		OO_CHECK_EQ([gui selectedRow], -1);
+		OO_CHECK([gui cxx_selectedRowKey] == std::optional<std::string>("key5"));
+
+		// Nothing selectable (rows 10 and 11 are skip rows, or an empty range): none.
+		OO_CHECK(![gui setFirstSelectableRow]);
+		OO_CHECK(![gui setLastSelectableRow]);
+		OO_CHECK([gui cxx_selectedRowKey] == std::nullopt);
+		[gui setSelectableRange:NSMakeRange(0, 0)];
+		OO_CHECK(![gui setFirstSelectableRow]);
+		OO_CHECK(![gui setLastSelectableRow]);
+	}
+}
+
+
+OO_TEST(currentRowIsWhereALineIsPrinted)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui setCurrentRow:3];
+		[gui cxx_printLineNoScroll:"printed" align:GUI_ALIGN_LEFT color:nil fadeTime:0.0f key:"pk" addToArray:nullptr];
+		OO_CHECK(RowString(gui, 3) == std::optional<std::string>("printed"));
+		OO_CHECK([gui cxx_keyForRow:3] == std::optional<std::string>("pk"));
+		[gui setCurrentRow:5];	// out of range: no current row (and no text cursor)
+		[gui setCurrentRow:1];
+		[gui cxx_printLineNoScroll:"again" align:GUI_ALIGN_LEFT color:nil fadeTime:0.0f key:std::nullopt addToArray:nullptr];
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("again"));
+		[gui setShowTextCursor:YES];
+	}
+}
+
+
+OO_TEST(alphaAndFades)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui setAlpha:0.5f];
+		OO_CHECK_EQ([gui alpha], 0.5f);	// max alpha 1
+		[gui setMaxAlpha:0.5f];
+		[gui setAlpha:0.5f];
+		OO_CHECK_EQ([gui alpha], 0.25f);
+		[gui fadeOutFromTime:10.0 overDuration:2.0];
+		[gui fadeOutFromTime:10.0 overDuration:0.0];
+		[gui stopFadeOuts];
+		OO_CHECK_EQ([gui alpha], 0.25f);	// fading happens as the GUI is drawn
+		[gui setAlpha:0.0f];
+		[gui fadeOutFromTime:10.0 overDuration:2.0];	// nothing to fade
+		OO_CHECK_EQ([gui alpha], 0.0f);
+	}
+}
+
+
+OO_TEST(coloursAndColourSettings)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		OOColor *red = [OOColor redColor];
+		[gui setTextColor:red];
+		OO_CHECK([gui textColor] == red);
+		[gui setTextColor:nil];
+		OO_CHECK(SameComponents([gui textColor], [OOColor yellowColor]));
+		[gui setTextCommsColor:red];
+		OO_CHECK([gui textCommsColor] == red);
+		[gui setTextCommsColor:nil];
+		OO_CHECK(SameComponents([gui textCommsColor], [OOColor yellowColor]));
+		[gui setBackgroundColor:red];
+		[gui setBackgroundColor:nil];
+
+		// No settings: the default, else the text colour, as a copy.
+		[gui setTextColor:[OOColor blueColor]];
+		OO_CHECK(SameComponents([gui cxx_colorFromSetting:"anything" defaultValue:nil], [OOColor blueColor]));
+		OO_CHECK(SameComponents([gui cxx_colorFromSetting:std::nullopt defaultValue:nil], [OOColor blueColor]));
+		OO_CHECK(SameComponents([gui cxx_colorFromSetting:"anything" defaultValue:[OOColor greenColor]], [OOColor greenColor]));
+		[gui cxx_setGuiColorSettingFromKey:"k" color:red];	// no settings: nothing to change
+		OO_CHECK([gui cxx_userSettings].isNull());
+
+		// With settings (gui-settings.plist, when the test finds it), a set colour is read back.
+		GuiDisplayGen *main = [[[GuiDisplayGen alloc] init] autorelease];
+		if ([main cxx_userSettings].isDict())
+		{
+			[main cxx_setGuiColorSettingFromKey:"oo_test_colour" color:red];
+			OO_CHECK([main cxx_userSettings].find("oo_test_colour") != nullptr);
+			OO_CHECK(SameComponents([main cxx_colorFromSetting:"oo_test_colour" defaultValue:[OOColor greenColor]], red));
+			[main cxx_setGuiColorSettingFromKey:"oo_test_colour" color:nil];
+			OO_CHECK([main cxx_userSettings].find("oo_test_colour") == nullptr);
+			OO_CHECK(SameComponents([main cxx_colorFromSetting:"oo_test_colour" defaultValue:[OOColor greenColor]], [OOColor greenColor]));
+		}
+	}
+}
+
+
+OO_TEST(tabStops)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		OOGUITabSettings stops = { 0, 10, 20 };
+		[gui setTabStops:stops];
+		[gui setTabStops:NULL];
+		// No settings: the stops are left as they are.
+		[gui cxx_overrideTabs:stops from:"equipment_tabs" length:3];
+		OO_CHECK(stops[0] == 0 && stops[1] == 10 && stops[2] == 20);
+		[gui cxx_overrideTabs:NULL from:"equipment_tabs" length:3];
+		[gui setCharacterSize:NSMakeSize(8, 8)];
+		[gui setShowAdvancedNavArray:YES];
+	}
+}
+
+
+OO_TEST(clearAndResize)
+{
+	@autoreleasepool
+	{
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui cxx_setText:"x" forRow:2];
+		[gui cxx_setKey:"k" forRow:2];
+		[gui setSelectableRange:NSMakeRange(0, 3)];
+		[gui clearAndKeepBackground:YES];
+		OO_CHECK([gui cxx_title] == std::nullopt);
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>(""));
+		OO_CHECK([gui cxx_keyForRow:2] == std::optional<std::string>(GUI_KEY_SKIP));
+		OO_CHECK([gui selectableRange].length == 0);
+		[gui cxx_setTitle:"T"];
+		[gui clear];
+		OO_CHECK([gui cxx_title] == std::nullopt);
+
+		// Resize with explicit metrics: the title follows -setTitle:'s rule.
+		[gui cxx_resizeWithPixelSize:NSMakeSize(300, 200) columns:3 rows:4 rowHeight:10 rowStart:5 title:""];
+		OO_CHECK([gui size].width == 300 && [gui size].height == 200);
+		OO_CHECK_EQ([gui columns], 3u);
+		OO_CHECK_EQ([gui rows], 4u);
+		OO_CHECK_EQ([gui rowHeight], 10u);
+		OO_CHECK_EQ([gui rowStart], 5);
+		OO_CHECK([gui cxx_title] == std::nullopt);
+		OO_CHECK([gui objectForRow:4].isNull());	// the row range is 0..3 now
+		[gui cxx_resizeWithPixelSize:NSMakeSize(300, 200) columns:3 rows:4 rowHeight:10 rowStart:5 title:"R"];
+		OO_CHECK([gui cxx_title] == std::optional<std::string>("R"));
+
+		// Resize to a character height: the metrics follow from it, and a title moves the rows down.
+		[gui cxx_resizeTo:NSMakeSize(320, 168) characterHeight:16 title:"R"];
+		OO_CHECK_EQ([gui columns], 20u);
+		OO_CHECK_EQ([gui rows], 10u);
+		OO_CHECK_EQ([gui rowHeight], 16u);
+		OO_CHECK_EQ([gui rowStart], 48);	// 2.75 * 16 + 0.5 * (168 - 160)
+		OO_CHECK([gui cxx_title] == std::nullopt);	// the closing -clear drops the title the rows made room for
+		OO_CHECK(RowString(gui, 9) == std::optional<std::string>(""));
+		OO_CHECK([gui cxx_keyForRow:9] == std::optional<std::string>(GUI_KEY_SKIP));
+		OO_CHECK([gui objectForRow:10].isNull());
+		[gui cxx_resizeTo:NSMakeSize(320, 168) characterHeight:16 title:std::nullopt];
+		OO_CHECK_EQ([gui rowStart], 20);	// 16 + 0.5 * 8
+		OO_CHECK([gui cxx_title] == std::nullopt);
 	}
 }
 
