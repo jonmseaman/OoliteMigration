@@ -67,6 +67,7 @@ core_tests = {
     'test_OOTextureScaling': ['Core/OOTextureScaling.mm', 'Core/Materials/OOPixMap.mm'],
     'test_OOTextureLoader': ['*'],
     'test_OOTextureGenerator': ['*'],
+    'test_OOPNGTextureLoader': ['*'],
     'test_OOPixMapTextureLoader': ['*'],
     'test_OOCombinedEmissionMapGenerator': ['*'],
     'test_OOStandaloneAtmosphereGenerator': ['*'],

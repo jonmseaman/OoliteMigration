@@ -2801,6 +2801,32 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
 
+## Amendment (bead oo-z889): a leaf that only its root's factory makes, and C callbacks that held it
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPNGTextureLoader.h/.mm`,
+  `loaderWithPath` in `OOTextureLoader.mm`, `tests/unit/core/test_OOPNGTextureLoader.mm`. Follows
+  amendments oo-bj8 item 12, oo-vl43 item 4 and oo-zl36.
+
+**Context.** `OOPNGTextureLoader` is a leaf of the texture loaders that no code outside the loaders'
+own factory names: `cxx::OOTextureLoader::loaderWithPath` made it with `+alloc`/`-cxx_initWithPath:`
+and queued it on the work manager. libpng holds it as a `void *` (the I/O pointer) and calls back
+file-static C functions that messaged it.
+
+**Decision (recommended defaults).**
+
+1. **Such a leaf converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   the C++ root, its private methods private members. The factory makes it (`makeRef` plus
+   `initWithPath`) and answers its façade, `oo::ObjCRef(oo::ToObjC(loader))`: the root's façade
+   (amendment oo-vl43 item 4), which owns it and which the work manager holds. The factory's
+   result type does not change.
+2. **A C library's context pointer is `this`,** and its C callbacks `static_cast` it back and call
+   members. A callback that libpng can call before the pointer is set (its error and warning
+   handlers) checks for null and answers what messaging nil did (`"(null)"` for the path). A
+   method that was private but a callback calls is a public member marked "Internal".
+
+**Consequences.** No façade and no deletion bead. The test is written against the factory (the
+only way the class was made), so it ran unchanged before and after; one more test pins the C++ API.
+
 ## Amendment (bead oo-1v2w): a converted class that is an Objective-C object's delegate
 
 - Date: 2026-09-30. Status: Proposed, as above. Exemplar:
