@@ -1,6 +1,10 @@
 /*
 
-OOSpatialReference.m
+OOModelVerifierStage+ObjCBridge.mm
+
+TRANSITIONAL (proposed ADR-0056 amendment oo-up4b item 4, bead oo-5zby): the verifier's
+-modelVerifierStage (see OOModelVerifierStage+ObjCBridge.h). Deleted with
+OOModelVerifierStage+ObjCBridge.h.
 
 
 Oolite
@@ -23,4 +27,18 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOSpatialReference.h"
+#import "OOModelVerifierStage.h"
+
+#if OO_OXP_VERIFIER_ENABLED
+
+
+@implementation OOOXPVerifier(OOModelVerifierStage)
+
+- (OOOXPVerifierStage *)modelVerifierStage
+{
+	return [self cxx_stageWithName:OOModelVerifierStage::kName];
+}
+
+@end
+
+#endif	// OO_OXP_VERIFIER_ENABLED
