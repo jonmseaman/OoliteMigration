@@ -1628,10 +1628,10 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	}
 	
 	OOPixMap pm = OOMakePixMap(data, width, height, kOOPixMapRGBA, 0, 0);
-	OOTextureGenerator *loader = [[OOPixMapTextureLoader alloc] initWithPixMap:pm
-																textureOptions:kOOTextureDefaultOptions | kOOTextureRepeatS
-																  freeWhenDone:YES];
-	[loader autorelease];
+	// The converted loader (bead oo-kvqq) crosses as its facade, an OOTextureGenerator.
+	OOTextureGenerator *loader = oo::ToObjC(OOPixMapTextureLoader::loaderWithPixMap(pm,
+																					 kOOTextureDefaultOptions | kOOTextureRepeatS,
+																					 true).get());
 	
 	return [OOTexture textureWithGenerator:loader];
 }
@@ -1654,10 +1654,10 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 	}
 	
 	OOPixMap pm = OOMakePixMap(data, width, height, kOOPixMapRGBA, 0, 0);
-	OOTextureGenerator *loader = [[OOPixMapTextureLoader alloc] initWithPixMap:pm
-																textureOptions:kOOTextureDefaultOptions | kOOTextureRepeatS
-																  freeWhenDone:YES];
-	[loader autorelease];
+	// The converted loader (bead oo-kvqq) crosses as its facade, an OOTextureGenerator.
+	OOTextureGenerator *loader = oo::ToObjC(OOPixMapTextureLoader::loaderWithPixMap(pm,
+																					 kOOTextureDefaultOptions | kOOTextureRepeatS,
+																					 true).get());
 	
 	return [OOTexture textureWithGenerator:loader];
 }
