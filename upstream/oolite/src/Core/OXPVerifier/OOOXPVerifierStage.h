@@ -50,7 +50,7 @@ namespace cxx {
 class OOOXPVerifierStage : public oo::RefCounted
 {
 public:
-	OOOXPVerifier *verifier();
+	::OOOXPVerifier *verifier();
 	bool completed();
 
 	// Subclass responsibilities:
@@ -93,7 +93,7 @@ public:
 		OOInternal category, OOOXPVerifierStageInternal.h, which the facade still declares for
 		the Objective-C verifier). Nothing else calls these.
 	*/
-	void setVerifier(OOOXPVerifier *verifier);
+	void setVerifier(::OOOXPVerifier *verifier);
 	bool isDependentOf(OOOXPVerifierStage *stage);
 	void registerDependency(OOOXPVerifierStage *dependency);
 	void dependencyRegistrationComplete();

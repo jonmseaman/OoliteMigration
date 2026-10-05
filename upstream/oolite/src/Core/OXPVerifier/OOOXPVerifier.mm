@@ -259,8 +259,8 @@ void OOOXPVerifier::registerStage(::OOOXPVerifierStage *stage)
 	// Checks passed, store state.
 	// The stage keeps the Objective-C verifier, unretained: run() keeps it alive while stages work.
 	oo::ToCxx(stage)->setVerifier(oo::ToObjC(this));
-	_stagesByName[*name] = oo::ObjCRef<OOOXPVerifierStage *>(stage);
-	_waitingStages.push_back(oo::ObjCRef<OOOXPVerifierStage *>(stage));
+	_stagesByName[*name] = oo::ObjCRef<::OOOXPVerifierStage *>(stage);
+	_waitingStages.push_back(oo::ObjCRef<::OOOXPVerifierStage *>(stage));
 }
 
 
@@ -484,7 +484,7 @@ void OOOXPVerifier::buildDependencyGraph()
 				added.
 			*/
 			if (_waitingStages.empty())  break;
-			const oo::ObjCRef<OOOXPVerifierStage *> waiting = _waitingStages.front();
+			const oo::ObjCRef<::OOOXPVerifierStage *> waiting = _waitingStages.front();
 			_waitingStages.erase(_waitingStages.begin());
 			stage = waiting.get();
 
