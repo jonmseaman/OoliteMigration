@@ -75,6 +75,7 @@ oolite_sources += files(
     'OOMusicController.mm',
     'OOMusicController+ObjCBridge.mm',
     'OOOXZManager.mm',
+    'OOOXZManager+ObjCBridge.mm',
     'OOOpenALController.mm',
     'OOOpenGL.mm',
     'OOOpenGLExtensionManager.mm',
