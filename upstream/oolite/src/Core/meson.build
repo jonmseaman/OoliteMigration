@@ -128,7 +128,6 @@ oolite_sources += files(
     'Octree.mm',
     'Octree+ObjCBridge.mm',
     'ResourceManager.mm',
-    'TextureStore.mm',
     'Universe.mm',
     'legacy_random.c',
 )
