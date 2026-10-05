@@ -26,7 +26,6 @@
 #import "OOCocoa.h"
 #import "OOStellarBody.h"
 
-#if NEW_PLANETS
 
 
 #define DEBUG_DUMP			(	0	&& OOLITE_DEBUG)
@@ -1398,4 +1397,3 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 @end
 
-#endif	// NEW_PLANETS
