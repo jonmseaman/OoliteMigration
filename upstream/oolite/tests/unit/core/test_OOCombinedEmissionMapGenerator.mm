@@ -9,10 +9,11 @@
 	when it is made (unless a texture of its key exists), and bakes them on the work thread:
 	emission tinted by its colour, plus illumination tinted by its colour and modulated by the
 	diffuse map. Its source maps are PNGs the test writes under a scratch Resources/Textures, the
-	current directory and HOMEPATH both pointed at the scratch folder first, so no game resource
-	and no add-on is read. It links the whole game but main (tests/unit/core/meson.build entry
-	['*']), on the hidden GL context of oo_gl_test_context.hpp. The expectations were written
-	against the Objective-C API and run on the unconverted class first.
+	current directory and HOMEPATH both pointed at the scratch folder first and the resource
+	manager in strict mode (the built-in Resources alone), so no game resource and no add-on is
+	read. It links the whole game but main (tests/unit/core/meson.build entry ['*']), on the
+	hidden GL context of oo_gl_test_context.hpp. The expectations were written against the
+	Objective-C API and run on the unconverted class first.
 	Run: bash tools/check-core-tests.sh test_OOCombinedEmissionMapGenerator
 */
 
@@ -21,6 +22,7 @@
 #import "OOColor.h"
 #import "OODescription.h"
 #import "OOTextureInternal.h"
+#import "ResourceManager.h"
 
 #include "oo_test.hpp"
 #include "oo_gl_test_context.hpp"
@@ -72,7 +74,6 @@ bool WritePNG(const char *name, uint32_t size, png_uint_32 format, uint8_t fill)
 void SetUp()
 {
 	OO_CHECK(OOTestGLContext());
-	setvbuf(stdout, NULL, _IONBF, 0);	// DIAG
 	if (sRoot.empty())
 	{
 		sRoot = stdfs::temp_directory_path() / ("oo-test-emission-" + std::to_string(static_cast<unsigned long>(::_getpid())));
@@ -84,6 +85,7 @@ void SetUp()
 		OO_CHECK(WritePNG("i.png", 8, PNG_FORMAT_GRAY, 100));
 		OO_CHECK(WritePNG("d.png", 8, PNG_FORMAT_RGB, 128));
 		OO_CHECK(WritePNG("c.png", 8, PNG_FORMAT_RGBA, 200));
+		[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];	// strict: the built-in Resources alone
 	}
 	@autoreleasepool
 	{
