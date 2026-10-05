@@ -235,3 +235,4 @@
 [oo-rr2x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureGenerator test_OOTextureLoader test_OOTexture && bash tools/tier-c.sh --only goldens
 [oo-f1yi3] export PATH="/ucrt64/bin:$PATH"; bash tools/check-jsengine-facade-quickjs.sh && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSMissionVariables && bash tools/tier-c.sh --only goldens
 [oo-3c81] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConstToString && bash tools/tier-c.sh --only goldens
+[oo-aeev] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_EntityShaderBindings && bash tools/tier-c.sh --only goldens
