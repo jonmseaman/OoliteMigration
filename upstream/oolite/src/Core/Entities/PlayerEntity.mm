@@ -9249,13 +9249,6 @@ std::string SliderString(NSInteger amountIn20ths)
 		}
 #endif
 		
-#if !NEW_PLANETS
-		if ([UNIVERSE doProcedurallyTexturedPlanets])
-			[gui cxx_setText:OO_DESC("gameoptions-procedurally-textured-planets-yes") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
-		else
-			[gui cxx_setText:OO_DESC("gameoptions-procedurally-textured-planets-no") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
-		[gui cxx_setKey:std::string(GUI_KEY_OK) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)];
-#endif
 
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
 		const std::string shaderEffectsOptionsString = cxx_OOExpand("gameoptions-detaillevel-[detailLevel]", detailLevel).value_or(std::string());
