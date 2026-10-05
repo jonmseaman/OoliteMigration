@@ -23,7 +23,6 @@
  */
 
 #import "OOStellarBody.h"
-#if NEW_PLANETS
 
 
 #import "OOPlanetDrawable.h"
@@ -429,4 +428,3 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOPlanetDrawable::allTextures()
 
 #endif
 
-#endif	/* NEW_PLANETS */

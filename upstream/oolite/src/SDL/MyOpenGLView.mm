@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #import "OOSound.h"
 #import "PlayerEntity.h"
 #import "GuiDisplayGen.h"
-#import "PlanetEntity.h"
+#import "OOStellarBody.h"
 #import "OOGraphicsResetManager.h"
 #import "OOFullScreenController.h"
 #import "ResourceManager.h"
