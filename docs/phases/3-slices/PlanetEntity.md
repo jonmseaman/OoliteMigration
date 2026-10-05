@@ -24,6 +24,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 ```slice-plan
 source: upstream/oolite/src/Core/Entities/PlanetEntity.mm
 header: upstream/oolite/src/Core/Entities/PlanetEntity.h
+retired-by: oo-9ht.126
 
 slice 1: class shell, lifecycle, collision, update, accessors and shuttles
   @PlanetEntity

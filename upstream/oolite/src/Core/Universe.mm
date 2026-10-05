@@ -251,9 +251,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) runLocalizationTools;
 #endif
 
-#if NEW_PLANETS
 - (void) prunePreloadingPlanetMaterials;
-#endif
 
 // Set shader effects level without logging or triggering a reset -- should only be used directly during startup.
 - (void) setShaderEffectsLevelDirectly:(OOShaderSetting)value;
@@ -7648,9 +7646,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	AutoreleaseAll(entitiesDeadThisUpdate);
 	entitiesDeadThisUpdate.reserve(n_entities);
 	
-#if NEW_PLANETS
 	[self prunePreloadingPlanetMaterials];
-#endif
 
 	OO_LOG("universe.profile.update", "{}", "Update complete");
 }
@@ -11538,7 +11534,6 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 #endif
 
 
-#if NEW_PLANETS
 // See notes at preloadPlanetTexturesForSystem:.
 - (void) prunePreloadingPlanetMaterials
 {
@@ -11553,7 +11548,6 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 		}
 	}
 }
-#endif
 
 
 

@@ -155,11 +155,7 @@ SOFTWARE.
 		OOPlanetEntity	*planet = planetRef.get();
 		OOGLPushModelView();
 		OOGLTranslateModelView([planet position]);	// (the Foundation code was missing the "[": this file is not built)
-#if NEW_PLANETS
 		[[planet drawable] renderOpaqueParts];
-#else
-		[planet drawUnconditionally];
-#endif
 		OOGLPopModelView();
 	}
 	

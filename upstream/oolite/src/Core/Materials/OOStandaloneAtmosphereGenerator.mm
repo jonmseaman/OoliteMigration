@@ -27,7 +27,6 @@
 #import "OOCocoa.h"
 #import "OOStellarBody.h"
 
-#if NEW_PLANETS
 
 
 #define DEBUG_DUMP			(	0	&& OOLITE_DEBUG)
@@ -850,4 +849,3 @@ static float QFactor(float *accbuffer, int x, int y, unsigned width, float polar
 
 
 
-#endif	// NEW_PLANETS
