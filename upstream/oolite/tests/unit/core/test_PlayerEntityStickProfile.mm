@@ -14,7 +14,8 @@
 	The GUI object references Universe and the player, so the test links the whole game but main
 	(tests/unit/core/meson.build entry ['*'], amendment oo-44gg) and defines gDebugFlags. UNIVERSE is
 	nil: a description lookup answers its key, so the rows show the keys. PLAYER is a stand-in that
-	answers -status only (amendment oo-vt0o item 4). The defaults' home (HOMEPATH) is a scratch
+	answers -status and takes the GUI's row-changed script event (amendment oo-vt0o item 4); the GUI
+	names that event by its JS id, so the test makes the engine's main-thread JS context. The defaults' home (HOMEPATH) is a scratch
 	folder, set before they are first read, as in test_OOJoystickManager.
 	The expectations were written against the Objective-C class and run on it first; they now
 	call the C++ members, which are the same methods.
@@ -27,6 +28,7 @@
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/String.hpp"
+#include "ooscript/JSEngine.hpp"
 #include "oo_test.hpp"
 
 #include <cmath>
@@ -44,11 +46,13 @@ uint32_t gDebugFlags = 0;
 
 
 extern PlayerEntity *gOOPlayer;	// PlayerEntity.mm's, what PLAYER answers
+extern ooscript::Context gOOJSMainThreadContext;	// the engine's; OOJSID needs it
 
 
-// PLAYER: the screen asks it only for its status.
+// PLAYER: the screen asks it for its status; the GUI sends it a script event when a row is selected.
 @interface StickProfileTestPlayer: OOObject
 - (OOEntityStatus) status;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments;
 @end
 
 
@@ -57,6 +61,11 @@ extern PlayerEntity *gOOPlayer;	// PlayerEntity.mm's, what PLAYER answers
 - (OOEntityStatus) status
 {
 	return STATUS_DOCKED;
+}
+
+
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withPListArguments:(const std::vector<oo::PList> &)arguments
+{
 }
 
 @end
@@ -80,6 +89,7 @@ void SetUp()
 	(void)oo::Defaults::standard();
 
 	gOOPlayer = (PlayerEntity *)[[StickProfileTestPlayer alloc] init];
+	gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
 }
 
 
