@@ -53,7 +53,7 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 - (void)loadTexture
 {
 	// Get data from file
-	fileData = OODataFromOXZFile(_path);
+	fileData = OODataFromOXZFile(_cxxLoader->_path);
 	if (!fileData.has_value())  return;
 	length = fileData->length();
 	
@@ -94,17 +94,17 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 	if (pngInfo != NULL)  pngEndInfo = png_create_info_struct(png);
 	if (pngEndInfo == NULL)
 	{
-		OO_LOG("texture.load.png.setup.failed", "***** Error preparing to read {}.", _path);
+		OO_LOG("texture.load.png.setup.failed", "***** Error preparing to read {}.", _cxxLoader->_path);
 		goto FAIL;
 	}
 	
 	if (EXPECT_NOT(setjmp(png_jmpbuf(png))))
 	{
 		// libpng will jump here on error.
-		if (_data)
+		if (_cxxLoader->_data)
 		{
-			free(_data);
-			_data = NULL;
+			free(_cxxLoader->_data);
+			_cxxLoader->_data = NULL;
 		}
 		goto FAIL;
 	}
@@ -115,7 +115,7 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 	// Read header, get format info and check that it meets our expectations.
 	if (EXPECT_NOT(!png_get_IHDR(png, pngInfo, &pngWidth, &pngHeight, &depth, &colorType, NULL, NULL, NULL)))
 	{
-		OO_LOG("texture.load.png.failed", "Failed to get metadata from PNG {}", _path);
+		OO_LOG("texture.load.png.failed", "Failed to get metadata from PNG {}", _cxxLoader->_path);
 		goto FAIL;
 	}
 	png_set_strip_16(png);			// 16 bits per channel -> 8 bpc
@@ -126,15 +126,15 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 	
 	if (colorType == PNG_COLOR_TYPE_GRAY)
 	{
-		_format = (OOTextureDataFormat)kOOTextureDataGrayscale;
+		_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataGrayscale;
 	}
 	else if (colorType == PNG_COLOR_TYPE_GRAY_ALPHA)
 	{
-		_format = (OOTextureDataFormat)kOOTextureDataGrayscaleAlpha;
+		_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataGrayscaleAlpha;
 	}
 	else
 	{
-		_format = (OOTextureDataFormat)kOOTextureDataRGBA;
+		_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 		
 #if OOLITE_BIG_ENDIAN
 		png_set_bgr(png);
@@ -151,32 +151,32 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 	png_set_interlace_handling(png);
 	
 	// Metadata is acceptable; load data.
-	_width = pngWidth;
-	_height = pngHeight;
-	_rowBytes = png_get_rowbytes(png, pngInfo);
+	_cxxLoader->_width = pngWidth;
+	_cxxLoader->_height = pngHeight;
+	_cxxLoader->_rowBytes = png_get_rowbytes(png, pngInfo);
 	
 	// png_read_png
-	rows = (png_bytepp)malloc(sizeof *rows * _height);
-	_data = malloc(_rowBytes * _height);
-	if (EXPECT_NOT(rows == NULL || _data == NULL))
+	rows = (png_bytepp)malloc(sizeof *rows * _cxxLoader->_height);
+	_cxxLoader->_data = malloc(_cxxLoader->_rowBytes * _cxxLoader->_height);
+	if (EXPECT_NOT(rows == NULL || _cxxLoader->_data == NULL))
 	{
 		if (rows != NULL)
 		{
 			free(rows);
 			rows = NULL;
 		}
-		if (_data != NULL)
+		if (_cxxLoader->_data != NULL)
 		{
-			free(_data);
-			_data = NULL;
+			free(_cxxLoader->_data);
+			_cxxLoader->_data = NULL;
 		}
-		OO_LOG(cxx_kOOLogAllocationFailure, "Failed to allocate space ({} bytes) for texture {}", _rowBytes * _height, _path);
+		OO_LOG(cxx_kOOLogAllocationFailure, "Failed to allocate space ({} bytes) for texture {}", _cxxLoader->_rowBytes * _cxxLoader->_height, _cxxLoader->_path);
 		goto FAIL;
 	}
 	
-	for (i = 0; i != _height; ++i)
+	for (i = 0; i != _cxxLoader->_height; ++i)
 	{
-		rows[i] = ((png_bytep)_data) + i * _rowBytes;
+		rows[i] = ((png_bytep)_cxxLoader->_data) + i * _cxxLoader->_rowBytes;
 	}
 	png_read_image(png, rows);
 	png_read_end(png, pngEndInfo);
@@ -194,7 +194,7 @@ FAIL:
 	{
 		// (static: png_error() longjmps out of this frame, so nothing here may need destroying)
 		static thread_local std::string message;
-		message = oo::str::format("attempt to read beyond end of file (%s), file may be truncated.", _path.c_str());
+		message = oo::str::format("attempt to read beyond end of file (%s), file may be truncated.", _cxxLoader->_path.c_str());
 		png_error(png, message.c_str());	// Will not return
 	}
 	

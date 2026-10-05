@@ -71,17 +71,14 @@ static void LogSendPacket(const oo::PList &packet);
 #endif
 
 
-// The decoder's callbacks; its string and dictionary handles are OOALObjectRef.
 namespace {
-void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet);
-void DecoderError(void *cbInfo, OOALObjectRef errorDesc);
-}
 
-
-OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
+OOINLINE bool StatusIsSendable(OOTCPClientConnectionStatus status)
 {
 	return status == kOOTCPClientStartedConnectionStage1 || status == kOOTCPClientStartedConnectionStage2 || status == kOOTCPClientConnected;
 }
+
+}	// namespace
 
 
 /*	The socket (bead oo-3rb.14, proposed ADR-0041). What the Foundation streams did, measured
@@ -166,7 +163,7 @@ std::optional<std::string> SocketErrorDescription(int error)
 
 
 // Every client with an open socket, for the frame loop (not retained: a client removes itself when it closes).
-std::vector<OODebugTCPConsoleClient *> sLiveClients;
+std::vector<cxx::OODebugTCPConsoleClient *> sLiveClients;
 
 }
 
@@ -194,52 +191,6 @@ std::optional<std::string> PacketString(const oo::PList &packet, const char *key
 }
 
 
-@interface OODebugTCPConsoleClient (OOPrivate)
-
-- (void) closeConnection;
-
-- (BOOL) sendBytes:(const void *)bytes count:(size_t)count;
-- (void) sendDictionary:(const oo::PList &)dictionary;
-
-// Packet type and parameter names are OODebugTCPConsoleProtocol.h's constants (ProtocolName()).
-- (void) sendPacket:(const std::string &)packetType
-	 withParameters:(const oo::PList &)parameters;	// a dictionary; null: the type alone
-
-- (void) sendPacket:(const std::string &)packetType
-		  withValue:(const oo::PList &)value
-	   forParameter:(const std::string &)paramKey;	// a null value or empty key: the type alone
-
-- (BOOL) openSocketToHost:(const std::string &)address port:(uint16_t)port;
-- (NSInteger) receive:(uint8_t *)buffer maxLength:(size_t)length;
-- (BOOL) isWaitingForInput;
-- (BOOL) hasPendingErrorEvent;
-- (uintptr_t) socket;
-- (void) addToWaitSets:(fd_set *)readSet :(fd_set *)writeSet :(fd_set *)exceptSet;
-- (void) handleWaitResultRead:(BOOL)readable write:(BOOL)writable except:(BOOL)exceptional;
-- (void) handleErrorEvent;
-- (void) serviceSocketFor:(double)seconds;
-
-- (void) readData;
-- (void) dispatchPacket:(const oo::PList &)packet ofType:(const std::string &)packetType;
-
-// Packets are property-list dictionaries (anything else answers no values).
-- (void) handleApproveConnectionPacket:(const oo::PList &)packet;
-- (void) handleRejectConnectionPacket:(const oo::PList &)packet;
-- (void) handleCloseConnectionPacket:(const oo::PList &)packet;
-- (void) handleNoteConfigurationChangePacket:(const oo::PList &)packet;
-- (void) handlePerformCommandPacket:(const oo::PList &)packet;
-- (void) handleRequestConfigurationValuePacket:(const oo::PList &)packet;
-- (void) handlePingPacket:(const oo::PList &)packet;
-- (void) handlePongPacket:(const oo::PList &)packet;
-
-- (void) disconnectFromServerWithMessage:(const std::optional<std::string> &)message;	// nullopt: a close packet without a message
-- (void) breakConnectionWithMessage:(const std::string &)message;
-- (void) breakConnectionWithStreamError:(int)error;
-
-@end
-
-
-
 namespace {
 
 // Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
@@ -260,27 +211,29 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 }  // namespace
 
-@implementation OODebugTCPConsoleClient
+namespace cxx {
 
-- (id) init
+// -init (initWithAddress:nullopt port:0) stays in the facade.
+oo::Ref<OODebugTCPConsoleClient> OODebugTCPConsoleClient::clientWithAddress(const std::optional<std::string> &address, uint16_t port)
 {
-	return [self initWithAddress:std::nullopt port:0];
+	oo::Ref<OODebugTCPConsoleClient> client = oo::adopt(new OODebugTCPConsoleClient);
+	if (!client->initWithAddress(address, port))  return oo::Ref<OODebugTCPConsoleClient>();
+	return client;
 }
 
 
-- (id) initWithAddress:(const std::optional<std::string> &)hostAddress port:(uint16_t)port
+bool OODebugTCPConsoleClient::initWithAddress(const std::optional<std::string> &hostAddress, uint16_t port)
 {
-	BOOL					OK = NO;
+	bool					OK = false;
 
 	const std::string address = hostAddress.value_or("127.0.0.1");
 	if (port == 0)  port = kOOTCPConsolePort;
-	
-	self = [super init];
-	if (self != nil)
+
+	// (The object is constructed: [super init] cannot fail.)
 	{
 		_socket = kNoSocket;
 
-		if ([self openSocketToHost:address port:port])
+		if (openSocketToHost(address, port))
 		{
 			// Need to wait for the streams to reach open status before we can send packets
 			// TODO: Might be neater to use the handleEvent callback to flag this.. - Micha 20090425
@@ -292,12 +245,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				OODebugTCPConsoleServiceInput(-1.0);
 			}
 
-			_decoder = OOTCPStreamDecoderCreate(DecoderPacket, DecoderError, NULL, self);
+			_decoder = OOTCPStreamDecoderCreate(DecoderPacket, DecoderError, NULL, this);
 		}
 
 		if (_decoder != NULL)
 		{
-			OK = YES;
+			OK = true;
 			_status = kOOTCPClientStartedConnectionStage1;
 			
 			
@@ -308,78 +261,76 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			const std::optional<std::string> versionStr = OoliteInfoString("CFBundleVersion");
 			const oo::PList version = versionStr ? oo::PList(*versionStr) : oo::PList();
 			if (!version.isNull())  parameters[ProtocolName(kOOTCPOoliteVersion)] = version;
-			[self sendPacket:ProtocolName(kOOTCPPacket_RequestConnection)
-			   withParameters:oo::PList(std::move(parameters))];
-			
+			sendPacket(ProtocolName(kOOTCPPacket_RequestConnection),
+					   oo::PList(std::move(parameters)));
+
 			if (_status == kOOTCPClientStartedConnectionStage1)  _status = kOOTCPClientStartedConnectionStage2;
-			else  OK = NO;	// Connection failed.
+			else  OK = false;	// Connection failed.
 		}
 		
 		if (!OK)
 		{
 			OO_LOG("debugTCP.connect.failed", "Failed to connect to debug console at address {}:{}.", address, port);
-			[self release];
-			self = nil;
+			return OK;	// self was released and nil answered: the factory drops the object
 		}
 	}
-	
-	return self;
+
+	return OK;
 }
 
 
-- (void) dealloc
+OODebugTCPConsoleClient::~OODebugTCPConsoleClient()
 {
 	if (StatusIsSendable(_status))
 	{
-		[self disconnectFromServerWithMessage:std::string("TCP console bridge unexpectedly released while active.")];
+		disconnectFromServerWithMessage(std::string("TCP console bridge unexpectedly released while active."));
 	}
-	if (_monitor)
-	{
-		[_monitor disconnectDebugger:self message:"TCP console bridge unexpectedly released while active."];
-	}
-	
-	
-	[self closeConnection];
-	
+	/*	-dealloc then told a connected monitor (_monitor set) to disconnect it. That never did
+		anything: the monitor retains its debugger (this client's facade) while _monitor is set, so
+		the client could not be released then, and the monitor ignores a debugger that is not its
+		own. Not translated (proposed ADR-0056, amendment oo-kq7 item 3).
+	*/
+
+
+	closeConnection();
+
 	OOTCPStreamDecoderDestroy(_decoder);
 	_decoder = NULL;
-	
-	[super dealloc];
 }
 
 
-- (BOOL)connectDebugMonitor:(OODebugMonitor *)debugMonitor
-			   errorMessage:(std::optional<std::string> *)message
+bool OODebugTCPConsoleClient::connectDebugMonitor(OODebugMonitor *debugMonitor,
+												  std::optional<std::string> *message)
 {
 	if (_status == kOOTCPClientConnectionRefused)
 	{
 		if (message != NULL)  *message = "Connection refused.";
-		return NO;
+		return false;
 	}
 	if (_status == kOOTCPClientDisconnected)
 	{
 		if (message != NULL)  *message = "Cannot reconnect after disconnecting.";
-		return NO;
+		return false;
 	}
-	
+
 	_monitor = debugMonitor;
-	
-	return YES;
+
+	return true;
 }
 
 
-- (void)disconnectDebugMonitor:(OODebugMonitor *)debugMonitor
-					   message:(const std::optional<std::string> &)message
+void OODebugTCPConsoleClient::disconnectDebugMonitor(OODebugMonitor * /*debugMonitor*/,
+													 const std::optional<std::string> &message)
 {
-	[self disconnectFromServerWithMessage:message];
-	_monitor = nil;
+	disconnectFromServerWithMessage(message);
+	_monitor = nullptr;
 }
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor
-	  jsConsoleOutput:(const std::string &)output
-			 colorKey:(const std::optional<std::string> &)colorKey
-		emphasisRange:(NSRange)emphasisRange
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
+										   const std::string &output,
+										   const std::optional<std::string> &colorKey,
+										   NSRange emphasisRange)
 {
 	oo::PList::Dict parameters;
 	parameters[ProtocolName(kOOTCPMessage)] = oo::PList(output);
@@ -391,77 +342,72 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			oo::PList(static_cast<std::int64_t>(emphasisRange.length)) });
 	}
 
-	[self sendPacket:ProtocolName(kOOTCPPacket_ConsoleOutput)
-	   withParameters:oo::PList(std::move(parameters))];
+	sendPacket(ProtocolName(kOOTCPPacket_ConsoleOutput),
+			   oo::PList(std::move(parameters)));
 }
 
 
-- (void)debugMonitorClearConsole:(OODebugMonitor *)debugMonitor
+void OODebugTCPConsoleClient::debugMonitorClearConsole(OODebugMonitor * /*debugMonitor*/)
 {
-	[self sendPacket:ProtocolName(kOOTCPPacket_ClearConsole)
-	   withParameters:oo::PList()];
+	sendPacket(ProtocolName(kOOTCPPacket_ClearConsole),
+			   oo::PList());
 }
 
 
-- (void)debugMonitorShowConsole:(OODebugMonitor *)debugMonitor
+void OODebugTCPConsoleClient::debugMonitorShowConsole(OODebugMonitor * /*debugMonitor*/)
 {
-	[self sendPacket:ProtocolName(kOOTCPPacket_ShowConsole)
-	   withParameters:oo::PList()];
+	sendPacket(ProtocolName(kOOTCPPacket_ShowConsole),
+			   oo::PList());
 }
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor
-	noteConfiguration:(const oo::PList &)configuration
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
+										   const oo::PList &configuration)
 {
-	[self sendPacket:ProtocolName(kOOTCPPacket_NoteConfiguration)
-			withValue:configuration
-		 forParameter:ProtocolName(kOOTCPConfiguration)];
+	sendPacket(ProtocolName(kOOTCPPacket_NoteConfiguration),
+			   configuration,
+			   ProtocolName(kOOTCPConfiguration));
 }
 
 
-- (void)debugMonitor:(OODebugMonitor *)debugMonitor
-noteChangedConfigrationValue:(const oo::PList &)newValue
-					 forKey:(const std::string &)key
+void OODebugTCPConsoleClient::debugMonitor(OODebugMonitor * /*debugMonitor*/,
+										   const oo::PList &newValue,
+										   const std::string &key)
 {
 	if (newValue)
 	{
 		oo::PList::Dict change;
 		change[key] = newValue;
-		[self sendPacket:ProtocolName(kOOTCPPacket_NoteConfiguration)
-				withValue:oo::PList(std::move(change))
-			 forParameter:ProtocolName(kOOTCPConfiguration)];
+		sendPacket(ProtocolName(kOOTCPPacket_NoteConfiguration),
+				   oo::PList(std::move(change)),
+				   ProtocolName(kOOTCPConfiguration));
 	}
 	else
 	{
-		[self sendPacket:ProtocolName(kOOTCPPacket_NoteConfiguration)
-				withValue:oo::PList(oo::PList::Array{ oo::PList(key) })
-			 forParameter:ProtocolName(kOOTCPRemovedConfigurationKeys)];
+		sendPacket(ProtocolName(kOOTCPPacket_NoteConfiguration),
+				   oo::PList(oo::PList::Array{ oo::PList(key) }),
+				   ProtocolName(kOOTCPRemovedConfigurationKeys));
 	}
 }
 
 
-@end
-
-
-@implementation OODebugTCPConsoleClient (OOPrivate)
-
-- (void) closeConnection
+void OODebugTCPConsoleClient::closeConnection()
 {
 	if (_socket != kNoSocket)
 	{
 		CloseSocket((OOSocket)_socket);
 		_socket = kNoSocket;
-		sLiveClients.erase(std::remove(sLiveClients.begin(), sLiveClients.end(), self), sLiveClients.end());
+		sLiveClients.erase(std::remove(sLiveClients.begin(), sLiveClients.end(), this), sLiveClients.end());
 	}
 	_inStatus = _outStatus = kStreamStatusNotOpen;
 	_inError = _outError = 0;
-	_errorEventPending = NO;
+	_errorEventPending = false;
 
 	_hostName = std::nullopt;
 }
 
 
-- (BOOL) openSocketToHost:(const std::string &)address port:(uint16_t)port
+bool OODebugTCPConsoleClient::openSocketToHost(const std::string &address, uint16_t port)
 {
 	struct addrinfo			hints, *found = NULL;
 	struct sockaddr_in		host;
@@ -484,23 +430,23 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	{
 		// Same text as gnustep-base's unknown-host message, via OO_LOG.
 		OO_LOG("unclassified", "Host '{}' not found - perhaps the hostname is wrong or networking is not set up on your machine", address);
-		return NO;
+		return false;
 	}
 	memcpy(&host, found->ai_addr, sizeof host);
 	freeaddrinfo(found);
 	host.sin_port = htons(port);
 
-	s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if ((uintptr_t)s == kNoSocket)  return NO;
+	s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);	// the C function, not socket() below
+	if ((uintptr_t)s == kNoSocket)  return false;
 	if (!SetNonBlocking(s))
 	{
 		CloseSocket(s);
-		return NO;
+		return false;
 	}
 
 	_hostName = address;
 	_socket = (uintptr_t)s;
-	sLiveClients.push_back(self);
+	sLiveClients.push_back(this);
 	_inStatus = _outStatus = kStreamStatusOpening;
 
 	if (connect(s, (struct sockaddr *)&host, sizeof host) == 0)
@@ -515,15 +461,15 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 			_inStatus = kStreamStatusError;
 			_inError = _outError = error;
 			_pendingErrorCode = error;
-			_errorEventPending = YES;
+			_errorEventPending = true;
 		}
 	}
 
-	return YES;
+	return true;
 }
 
 
-- (NSInteger) receive:(uint8_t *)buffer maxLength:(size_t)length
+NSInteger OODebugTCPConsoleClient::receive(uint8_t *buffer, size_t length)
 {
 	if (_socket == kNoSocket)  return 0;
 	if (_inStatus == kStreamStatusAtEnd)  return 0;
@@ -556,34 +502,34 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 		_inStatus = kStreamStatusError;
 		_inError = error;
 		_pendingErrorCode = error;
-		_errorEventPending = YES;
+		_errorEventPending = true;
 	}
 	return -1;
 }
 
 
-- (BOOL) isWaitingForInput
+bool OODebugTCPConsoleClient::isWaitingForInput()
 {
-	if (_errorEventPending)  return YES;
-	if (_socket == kNoSocket)  return NO;
+	if (_errorEventPending)  return true;
+	if (_socket == kNoSocket)  return false;
 	return _inStatus == kStreamStatusOpening || _outStatus == kStreamStatusOpening ||
 		   _inStatus == kStreamStatusOpen || _inStatus == kStreamStatusReading;
 }
 
 
-- (BOOL) hasPendingErrorEvent
+bool OODebugTCPConsoleClient::hasPendingErrorEvent()
 {
 	return _errorEventPending;
 }
 
 
-- (uintptr_t) socket
+uintptr_t OODebugTCPConsoleClient::socket()
 {
 	return _socket;
 }
 
 
-- (void) addToWaitSets:(fd_set *)readSet :(fd_set *)writeSet :(fd_set *)exceptSet
+void OODebugTCPConsoleClient::addToWaitSets(fd_set *readSet, fd_set *writeSet, fd_set *exceptSet)
 {
 	if (_socket == kNoSocket)  return;
 	OOSocket s = (OOSocket)_socket;
@@ -600,7 +546,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 }
 
 
-- (void) handleWaitResultRead:(BOOL)readable write:(BOOL)writable except:(BOOL)exceptional
+void OODebugTCPConsoleClient::handleWaitResultRead(bool readable, bool writable, bool exceptional)
 {
 	if (_inStatus == kStreamStatusOpening || _outStatus == kStreamStatusOpening)
 	{
@@ -620,7 +566,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 			_inStatus = kStreamStatusError;
 			_inError = _outError = error;
 			_pendingErrorCode = error;
-			[self handleErrorEvent];
+			handleErrorEvent();
 		}
 		return;
 	}
@@ -628,24 +574,24 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	if (readable)
 	{
 		// The bytes-available event (end of stream was an event the delegate ignored).
-		if (_status <= kOOTCPClientConnected)  [self readData];
-		if (_errorEventPending)  [self handleErrorEvent];
+		if (_status <= kOOTCPClientConnected)  readData();
+		if (_errorEventPending)  handleErrorEvent();
 	}
 }
 
 
 // The delegate's error branch, for the event the failing stream raised.
-- (void) handleErrorEvent
+void OODebugTCPConsoleClient::handleErrorEvent()
 {
-	_errorEventPending = NO;
+	_errorEventPending = false;
 	if (_status > kOOTCPClientConnected)  return;
-	[self breakConnectionWithStreamError:_pendingErrorCode];
+	breakConnectionWithStreamError(_pendingErrorCode);
 }
 
 
 // A nested run of the run loop for the given time, as far as the console is concerned: its
 // socket's events as they arrive.
-- (void) serviceSocketFor:(double)seconds
+void OODebugTCPConsoleClient::serviceSocketFor(double seconds)
 {
 	const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(seconds));
 	for (;;)
@@ -671,10 +617,10 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 }
 
 
-- (BOOL) sendBytes:(const void *)bytes count:(size_t)count
+bool OODebugTCPConsoleClient::sendBytes(const void *bytes, size_t count)
 {
-	if (bytes == NULL || count == 0)  return YES;
-	if (!StatusIsSendable(_status) || _socket == kNoSocket)  return NO;
+	if (bytes == NULL || count == 0)  return true;
+	if (!StatusIsSendable(_status) || _socket == kNoSocket)  return false;
 
 	do
 	{
@@ -699,23 +645,23 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 				}
 			}
 		}
-		if (written < 1)  return NO;
+		if (written < 1)  return false;
 
 		count -= written;
 		bytes = (const uint8_t *)bytes + written;
 	}
 	while (count > 0);
-	
-	return YES;
+
+	return true;
 }
 
 
-- (void) sendDictionary:(const oo::PList &)dictionary
+void OODebugTCPConsoleClient::sendDictionary(const oo::PList &dictionary)
 {
 	size_t					count;
 	const uint8_t			*bytes = NULL;
 	uint32_t				header;
-	bool 					sentOK = YES;
+	bool 					sentOK = true;
 
 	if (dictionary.isNull() || !StatusIsSendable(_status))  return;
 
@@ -743,47 +689,47 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 		rejecting headers. Made the protocol a bit more fault tolerant.
 		-- Kaks 2012.03.24
 	*/
-	if (![self sendBytes:&header count:sizeof header])
+	if (!sendBytes(&header, sizeof header))
 	{
 		OO_LOG("debugTCP.send.warning", "{}", "Error sending packet header, retrying.");
 		// wait 8 milliseconds, resend the header
-		[self serviceSocketFor:.008];
-		if (![self sendBytes:&header count:sizeof header])
+		serviceSocketFor(.008);
+		if (!sendBytes(&header, sizeof header))
 		{
 			// debugTCP.send.warning: Error sending packet header, retrying one more time.
 			// wait 16 milliseconds, try to resend the header one last time!
-			[self serviceSocketFor:.016];
-			if (![self sendBytes:&header count:sizeof header])
+			serviceSocketFor(.016);
+			if (!sendBytes(&header, sizeof header))
 			{
-				sentOK = NO;
+				sentOK = false;
 			}
 		}
 	}
-	
-	if(sentOK && ![self sendBytes:bytes count:count])
+
+	if(sentOK && !sendBytes(bytes, count))
 	{
 		OO_LOG("debugTCP.send.warning", "{}", "Error sending packet body, retrying.");
 		// wait 8 milliseconds, try again.
-		[self serviceSocketFor:.008];
-		if(![self sendBytes:bytes count:count])
+		serviceSocketFor(.008);
+		if(!sendBytes(bytes, count))
 		{
-			sentOK = NO;
+			sentOK = false;
 		}
 	}
 	
 	if (!sentOK)
 	{
 		OO_LOG("debugTCP.send.error", "The following packet could not be sent: {}", oo::DescriptionOf(dictionary));
-		if(![[OODebugMonitor sharedDebugMonitor] TCPIgnoresDroppedPackets])
+		if(!OODebugMonitor::sharedDebugMonitor()->TCPIgnoresDroppedPackets())
 		{
-			[self breakConnectionWithStreamError:(_socket != kNoSocket ? _outError : 0)];
+			breakConnectionWithStreamError(_socket != kNoSocket ? _outError : 0);
 		}
 	}
 }
 
 
-- (void) sendPacket:(const std::string &)packetType
-	 withParameters:(const oo::PList &)parameters
+void OODebugTCPConsoleClient::sendPacket(const std::string &packetType,
+										 const oo::PList &parameters)
 {
 	// A copy of the parameters with the packet type set (was dictionary copy with one added entry);
 	// no parameters: the type alone.
@@ -791,13 +737,13 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	if (const oo::PList::Dict *given = parameters.getIf<oo::PList::Dict>())  dict = *given;
 	dict[ProtocolName(kOOTCPPacketType)] = oo::PList(packetType);
 
-	[self sendDictionary:oo::PList(std::move(dict))];
+	sendDictionary(oo::PList(std::move(dict)));
 }
 
 
-- (void) sendPacket:(const std::string &)packetType
-		  withValue:(const oo::PList &)value
-	   forParameter:(const std::string &)paramKey
+void OODebugTCPConsoleClient::sendPacket(const std::string &packetType,
+										 const oo::PList &value,
+										 const std::string &paramKey)
 {
 	// A null value or an empty key gives the type-only packet, as +dictionaryWithObjectsAndKeys:
 	// did by stopping at the nil.
@@ -805,18 +751,18 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	dict[ProtocolName(kOOTCPPacketType)] = oo::PList(packetType);
 	if (!value.isNull() && !paramKey.empty())  dict[paramKey] = value;
 
-	[self sendDictionary:oo::PList(std::move(dict))];
+	sendDictionary(oo::PList(std::move(dict)));
 }
 
 
-- (void) readData
+void OODebugTCPConsoleClient::readData()
 {
 	enum { kBufferSize = 16 << 10 };
 	
 	uint8_t							buffer[kBufferSize];
 	NSInteger						length;
 
-	length = [self receive:buffer maxLength:kBufferSize];
+	length = receive(buffer, kBufferSize);
 	while (length > 0)
 	{
 		// The bytes go to the decoder in a data handle (OOTCPStreamDecoderAbstractionLayer), which
@@ -825,17 +771,17 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 		OOALMutableDataAppendBytes(data, buffer, (size_t)length);
 		OOTCPStreamDecoderReceiveData(_decoder, data);
 		OOALRelease(data);
-		length = [self receive:buffer maxLength:kBufferSize];
+		length = receive(buffer, kBufferSize);
 	}
 }
 
 
-- (void) dispatchPacket:(const oo::PList &)packet ofType:(const std::string &)packetType
+void OODebugTCPConsoleClient::dispatchPacket(const oo::PList &packet, const std::string &packetType)
 {
 	if (packet.isNull())  return;
 
 	// The packet type names are OODebugTCPConsoleProtocol.h's constants, read as C++ strings.
-#define PACKET_CASE(x) else if (packetType == ProtocolName(kOOTCPPacket_##x))  { [self handle##x##Packet:packet]; }
+#define PACKET_CASE(x) else if (packetType == ProtocolName(kOOTCPPacket_##x))  { handle##x##Packet(packet); }
 	
 	if (0) {}
 	PACKET_CASE(ApproveConnection)
@@ -853,7 +799,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 }
 
 
-- (void) handleApproveConnectionPacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handleApproveConnectionPacket(const oo::PList &packet)
 {
 	if (_status == kOOTCPClientStartedConnectionStage2)
 	{
@@ -883,7 +829,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 }
 
 
-- (void) handleRejectConnectionPacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handleRejectConnectionPacket(const oo::PList &packet)
 {
 	if (_status == kOOTCPClientStartedConnectionStage2)
 	{
@@ -894,23 +840,23 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 		OO_LOG("debugTCP.protocolError.outOfOrder", "Got {} packet from debug console in wrong context.", kOOTCPPacket_RejectConnection);
 	}
 	
-	[self breakConnectionWithMessage:PacketString(packet, kOOTCPMessage).value_or("Console refused connection.")];
+	breakConnectionWithMessage(PacketString(packet, kOOTCPMessage).value_or("Console refused connection."));
 }
 
 
-- (void) handleCloseConnectionPacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handleCloseConnectionPacket(const oo::PList &packet)
 {
 	if (!StatusIsSendable(_status))
 	{
 		OO_LOG("debugTCP.protocolError.outOfOrder", "Got {} packet from debug console in wrong context.", kOOTCPPacket_CloseConnection);
 	}
-	[self breakConnectionWithMessage:PacketString(packet, kOOTCPMessage).value_or("Console closed connection.")];
+	breakConnectionWithMessage(PacketString(packet, kOOTCPMessage).value_or("Console closed connection."));
 }
 
 
-- (void) handleNoteConfigurationChangePacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handleNoteConfigurationChangePacket(const oo::PList &packet)
 {
-	if (_monitor == nil)  return;
+	if (_monitor == nullptr)  return;
 
 	const oo::PList *configuration = packet.find(ProtocolName(kOOTCPConfiguration));
 	if (configuration != nullptr && !configuration->isDict())  configuration = nullptr;
@@ -918,7 +864,7 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	{
 		for (const auto &entry : *configuration->getIf<oo::PList::Dict>())
 		{
-			[_monitor setConfigurationValue:entry.second forKey:entry.first];
+			_monitor->setConfigurationValue(entry.second, entry.first);
 		}
 	}
 
@@ -930,65 +876,65 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 		{
 			const std::string *keyStr = key.getIf<std::string>();
 			if (keyStr != nullptr)
-				[_monitor setConfigurationValue:oo::PList() forKey:*keyStr];
+				_monitor->setConfigurationValue(oo::PList(), *keyStr);
 		}
 	}
 }
 
 
-- (void) handlePerformCommandPacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handlePerformCommandPacket(const oo::PList &packet)
 {
 	const std::optional<std::string> message = PacketString(packet, kOOTCPMessage);
-	if (message.has_value())  [_monitor performJSConsoleCommand:*message];
+	if (message.has_value() && _monitor != nullptr)  _monitor->performJSConsoleCommand(*message);	// no monitor: nothing, as nil did
 }
 
 
-- (void) handleRequestConfigurationValuePacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handleRequestConfigurationValuePacket(const oo::PList &packet)
 {
 	const std::optional<std::string> key = PacketString(packet, kOOTCPConfigurationKey);
 	if (key.has_value())
 	{
-		const oo::PList value = [_monitor configurationValueForKey:*key];
-		[self debugMonitor:_monitor
- noteChangedConfigrationValue:value
-					forKey:*key];
+		const oo::PList value = (_monitor != nullptr) ? _monitor->configurationValueForKey(*key) : oo::PList();	// no monitor: null, as nil gave
+		debugMonitor(_monitor,
+					 value,
+					 *key);
 	}
 }
 
 
-- (void) handlePingPacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handlePingPacket(const oo::PList &packet)
 {
 	const oo::PList *message = packet.find(ProtocolName(kOOTCPMessage));
-	[self sendPacket:ProtocolName(kOOTCPPacket_Pong)
-			withValue:(message != nullptr) ? *message : oo::PList()
-		 forParameter:ProtocolName(kOOTCPMessage)];
+	sendPacket(ProtocolName(kOOTCPPacket_Pong),
+			   (message != nullptr) ? *message : oo::PList(),
+			   ProtocolName(kOOTCPMessage));
 }
 
 
-- (void) handlePongPacket:(const oo::PList &)packet
+void OODebugTCPConsoleClient::handlePongPacket(const oo::PList &packet)
 {
 	// Do nothing; we don't currently send pings.
 }
 
 
-- (void) disconnectFromServerWithMessage:(const std::optional<std::string> &)message
+void OODebugTCPConsoleClient::disconnectFromServerWithMessage(const std::optional<std::string> &message)
 {
 	if (StatusIsSendable(_status))
 	{
 		// nullopt: a close packet without a message key, as nil gave.
-		[self sendPacket:ProtocolName(kOOTCPPacket_CloseConnection)
-				withValue:message.has_value() ? oo::PList(*message) : oo::PList()
-			 forParameter:ProtocolName(kOOTCPMessage)];
+		sendPacket(ProtocolName(kOOTCPPacket_CloseConnection),
+				   message.has_value() ? oo::PList(*message) : oo::PList(),
+				   ProtocolName(kOOTCPMessage));
 	}
-	[self closeConnection];
+	closeConnection();
 	
 	_status = kOOTCPClientDisconnected;
 }
 
 
-- (void) breakConnectionWithMessage:(const std::string &)message
+void OODebugTCPConsoleClient::breakConnectionWithMessage(const std::string &message)
 {
-	[self closeConnection];
+	closeConnection();
 
 	if (_status != kOOTCPClientConnectionRefused)  _status = kOOTCPClientDisconnected;
 
@@ -1003,34 +949,34 @@ noteChangedConfigrationValue:(const oo::PList &)newValue
 	
 #if 0
 	// Disconnecting causes crashiness for reasons I don't understand, and isn't very important anyway.
-	[_monitor disconnectDebugger:self message:message];
-	_monitor = nil;
+	_monitor->disconnectDebugger(oo::ToObjC(this), message);
+	_monitor = nullptr;
 #endif
 }
 
 
 // error: the failing stream's error code; 0 for none (a closed stream, or one at its end).
-- (void) breakConnectionWithStreamError:(int)error
+void OODebugTCPConsoleClient::breakConnectionWithStreamError(int error)
 {
 	std::optional<std::string> errorDesc;
 
 	if (error != 0)  errorDesc = SocketErrorDescription(error);
 	if (!errorDesc.has_value())  errorDesc = "bad stream.";
-	[self breakConnectionWithMessage:oo::str::format(
+	breakConnectionWithMessage(oo::str::format(
 	   "Connection to debug console failed: '%s' (outStream status: %zu, inStream status: %zu).",
-		errorDesc->c_str(), (size_t)_outStatus, (size_t)_inStatus)];
+		errorDesc->c_str(), (size_t)_outStatus, (size_t)_inStatus));
 }
 
-@end
+}	// namespace cxx
 
 
-BOOL OODebugTCPConsoleIsWaitingForInput(void)
+bool OODebugTCPConsoleIsWaitingForInput(void)
 {
-	for (OODebugTCPConsoleClient *client : sLiveClients)
+	for (cxx::OODebugTCPConsoleClient *client : sLiveClients)
 	{
-		if ([client isWaitingForInput])  return YES;
+		if (client->isWaitingForInput())  return true;
 	}
-	return NO;
+	return false;
 }
 
 
@@ -1041,11 +987,11 @@ void OODebugTCPConsoleServiceInput(double timeout)
 	int						highest = -1;
 
 	// An error event already raised is delivered without waiting.
-	for (OODebugTCPConsoleClient *client : std::vector<OODebugTCPConsoleClient *>(sLiveClients))
+	for (cxx::OODebugTCPConsoleClient *client : std::vector<cxx::OODebugTCPConsoleClient *>(sLiveClients))
 	{
-		if ([client hasPendingErrorEvent])
+		if (client->hasPendingErrorEvent())
 		{
-			[client handleErrorEvent];
+			client->handleErrorEvent();
 			return;
 		}
 	}
@@ -1053,12 +999,12 @@ void OODebugTCPConsoleServiceInput(double timeout)
 	FD_ZERO(&readSet);
 	FD_ZERO(&writeSet);
 	FD_ZERO(&exceptSet);
-	for (OODebugTCPConsoleClient *client : sLiveClients)
+	for (cxx::OODebugTCPConsoleClient *client : sLiveClients)
 	{
-		if ([client isWaitingForInput])
+		if (client->isWaitingForInput())
 		{
-			[client addToWaitSets:&readSet :&writeSet :&exceptSet];
-			if ((int)[client socket] > highest)  highest = (int)[client socket];
+			client->addToWaitSets(&readSet, &writeSet, &exceptSet);
+			if ((int)client->socket() > highest)  highest = (int)client->socket();
 		}
 	}
 	if (highest < 0)  return;
@@ -1073,43 +1019,43 @@ void OODebugTCPConsoleServiceInput(double timeout)
 	}
 	if (select(highest + 1, &readSet, &writeSet, &exceptSet, limitPtr) <= 0)  return;
 
-	for (OODebugTCPConsoleClient *client : std::vector<OODebugTCPConsoleClient *>(sLiveClients))
+	for (cxx::OODebugTCPConsoleClient *client : std::vector<cxx::OODebugTCPConsoleClient *>(sLiveClients))
 	{
-		if ([client socket] == kNoSocket)  continue;
-		OOSocket s = (OOSocket)[client socket];
-		BOOL readable = FD_ISSET(s, &readSet) != 0;
-		BOOL writable = FD_ISSET(s, &writeSet) != 0;
-		BOOL exceptional = FD_ISSET(s, &exceptSet) != 0;
+		if (client->socket() == kNoSocket)  continue;
+		OOSocket s = (OOSocket)client->socket();
+		bool readable = FD_ISSET(s, &readSet) != 0;
+		bool writable = FD_ISSET(s, &writeSet) != 0;
+		bool exceptional = FD_ISSET(s, &exceptSet) != 0;
 		if (readable || writable || exceptional)
 		{
 			// One client's events per wait: handling them can close (and release) clients.
-			[client handleWaitResultRead:readable write:writable except:exceptional];
+			client->handleWaitResultRead(readable, writable, exceptional);
 			return;
 		}
 	}
 }
 
 
-namespace {
+namespace cxx {
 
-void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet)
+void OODebugTCPConsoleClient::DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet)
 {
 	// The decoder's handles hold property lists (OOTCPStreamDecoderAbstractionLayer, bead oo-x3xy).
 	// A type that is not a string was nil, and no packet was dispatched.
 	const std::string *type = OOALObjectPList(packetType).getIf<std::string>();
 	if (type == nullptr)  return;
-	[(OODebugTCPConsoleClient *)cbInfo dispatchPacket:OOALObjectPList(packet) ofType:*type];
+	static_cast<OODebugTCPConsoleClient *>(cbInfo)->dispatchPacket(OOALObjectPList(packet), *type);
 }
 
 
-void DecoderError(void *cbInfo, OOALObjectRef errorDesc)
+void OODebugTCPConsoleClient::DecoderError(void *cbInfo, OOALObjectRef errorDesc)
 {
 	// A description that is not a string was nil: no message ("Debug console not connected.").
 	const std::string *description = OOALObjectPList(errorDesc).getIf<std::string>();
-	[(OODebugTCPConsoleClient *)cbInfo breakConnectionWithMessage:(description != nullptr) ? *description : std::string()];
+	static_cast<OODebugTCPConsoleClient *>(cbInfo)->breakConnectionWithMessage((description != nullptr) ? *description : std::string());
 }
 
-}
+}	// namespace cxx
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS

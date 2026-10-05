@@ -2,6 +2,13 @@
 
 OOJSGuiScreenKeyDefinition.h
 
+C++20 since bead oo-xg7g (proposed ADR-0056, the OOColor house style). Its superclass,
+OOWeakRefObject, is still Objective-C (the weak-reference support that OOWeakReference+ObjCBridge
+keeps), so the class is cxx::OOJSGuiScreenKeyDefinition holding only its own ivars and methods, and
+OOJSGuiScreenKeyDefinition+ObjCBridge.h, imported at the end of this header, keeps the Objective-C
+OOJSGuiScreenKeyDefinition : OOWeakRefObject that the JS player object makes and PlayerEntity keeps and messages
+(ADR-0056 amendment oo-o89). The bridge's deletion bead waits for OOWeakRefObject's retirement.
+
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -23,33 +30,61 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSScript.h"
+#ifndef OOJSGUISCREENKEYDEFINITION_H
+#define OOJSGUISCREENKEYDEFINITION_H
+
+#import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-@interface OOJSGuiScreenKeyDefinition: OOWeakRefObject
+
+#include <optional>
+#include <string>
+#include "oofnd/Ref.hpp"
+#include "oofnd/objc/OOObjCRef.h"
+
+@class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+
+
+namespace cxx {
+
+class OOJSGuiScreenKeyDefinition : public oo::RefCounted
 {
-@private
-	ooscript::Value				_callback;
-	ooscript::Object _callbackThis;
-	OOJSScript			*_owningScript;
+public:
+	// The old -init after [super init]. Made only by the facade (amendment oo-o89 item 2), until
+	// OOWeakRefObject is retired.
+	OOJSGuiScreenKeyDefinition();
+	~OOJSGuiScreenKeyDefinition() override;
+
+	std::optional<std::string> name();	// nullopt until set (bead oo-3rb.289.7)
+	void setName(const std::optional<std::string> &name);
+	oo::PList registerKeys();
+	void setRegisterKeys(const oo::PList &registerKeys);
+	ooscript::Value callback();
+	void setCallback(ooscript::Value callback);
+	ooscript::Object callbackThis();
+	void setCallbackThis(ooscript::Object callbackthis);
+
+	void runCallback(const std::string &key);
+
+	OOComparisonResult interfaceCompare(OOJSGuiScreenKeyDefinition *other);
+
+private:
+	void deleteJSPointers();
+
+	ooscript::Value				_callback = {};
+	ooscript::Object _callbackThis = {};
+	oo::ObjCRef<OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
 
 	std::optional<std::string>	_name;			// nullopt until set (was nil)
 	oo::PList			_registerKeys;	// key name -> key definitions; null until set (was nil)
-}
+};
 
-- (std::optional<std::string>)cxx_name;	// nullopt until set (bead oo-3rb.289.7)
-- (void)cxx_setName:(const std::optional<std::string> &)name;
-- (oo::PList)registerKeys;
-- (void)setRegisterKeys:(const oo::PList &)registerKeys;
-- (ooscript::Value)callback;
-- (void)setCallback:(ooscript::Value)callback;
-- (ooscript::Object)callbackThis;
-- (void)setCallbackThis:(ooscript::Object)callbackthis;
+}	// namespace cxx
 
-- (void)runCallback:(const std::string &)key;
 
-- (OOComparisonResult)interfaceCompare:(OOJSGuiScreenKeyDefinition *)other;
+// Transitional: the Objective-C OOJSGuiScreenKeyDefinition, for callers not yet converted. Deleted,
+// with namespace cxx above, by the bridge's deletion bead.
+#import "OOJSGuiScreenKeyDefinition+ObjCBridge.h"
 
-@end
-
+#endif	// OOJSGUISCREENKEYDEFINITION_H

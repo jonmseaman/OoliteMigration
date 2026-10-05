@@ -36,6 +36,18 @@ MA 02110-1301, USA.
 // OOJSWaypoint.mm do it (bead oo-sdz exemplar): stub hooks become nullptr, InitClass
 // becomes ooscript::initClass, numeric conversion becomes ooscript::newNumberValue, and
 // `this` is renamed to `thisObj` (reserved word in Objective-C++, ADR-0001).
+
+/*
+	C++20 since bead oo-ykoy, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on
+	WormholeEntity became three free functions, and its methods moved to
+	OOJSWormhole+ObjCBridge.mm (amendment oo-ykoy). Messages to classes that are still
+	Objective-C (WormholeEntity, Entity) stay as they are, which is why the file is still .mm
+	until Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -56,7 +68,7 @@ static ooscript::Object sWormholePrototype;
 } // namespace
 
 namespace {
-static BOOL JSWormholeGetWormholeEntity(ooscript::Context context, ooscript::Object stationObj, WormholeEntity **outEntity);
+static bool JSWormholeGetWormholeEntity(ooscript::Context context, ooscript::Object stationObj, WormholeEntity **outEntity);
 } // namespace
 
 
@@ -149,55 +161,53 @@ void InitOOJSWormhole(ooscript::Context context, ooscript::Object global)
 
 
 namespace {
-static BOOL JSWormholeGetWormholeEntity(ooscript::Context context, ooscript::Object wormholeObj, WormholeEntity **outEntity)
+static bool JSWormholeGetWormholeEntity(ooscript::Context context, ooscript::Object wormholeObj, WormholeEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
-	BOOL						result;
+	bool						result;
 	Entity						*entity = nil;
 	
-	if (outEntity == NULL)  return NO;
+	if (outEntity == NULL)  return false;
 	*outEntity = nil;
 	
 	result = OOJSEntityGetEntity(context, wormholeObj, &entity);
-	if (!result)  return NO;
+	if (!result)  return false;
 	
-	if (![entity isKindOfClass:[WormholeEntity class]])  return NO;
+	if (![entity isKindOfClass:[WormholeEntity class]])  return false;
 	
 	*outEntity = (WormholeEntity *)entity;
-	return YES;
+	return true;
 	
 	OOJS_PROFILE_EXIT
 }
 } // namespace
 
 
-@implementation WormholeEntity (OOJavaScriptExtensions)
-
-- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
+// The bodies of WormholeEntity (OOJavaScriptExtensions), whose methods are in
+// OOJSWormhole+ObjCBridge.mm until WormholeEntity converts (proposed ADR-0056 amendments oo-ppc
+// and oo-ykoy).
+void OOJSWormholeGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = &sWormholeClass;
 	*outPrototype = sWormholePrototype;
 }
 
-
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> OOJSWormholeJSClassName(void)
 {
 	return std::string("Wormhole");
 }
 
-- (BOOL) isVisibleToScripts
+bool OOJSWormholeIsVisibleToScripts(void)
 {
-	return YES;
+	return true;
 }
-
-@end
 
 
 namespace {
 static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = reinterpret_cast<ooscript::Context >(cx);
 	ooscript::Object thisObj = (obj);
@@ -208,8 +218,8 @@ static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value
 	WormholeEntity				*entity = nil;
 	id result = nil;
 	
-	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity))  return NO;
-	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return YES; }
+	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity))  return false;
+	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return true; }
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -227,11 +237,11 @@ static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value
 
 	default:
 		OOJSReportBadPropertySelector(context, thisObj, (propID), sWormholePropertiesRaw);
-		return NO;
+		return false;
 	}
 
 	*value_raw = OOJSValueFromNativeObject(context, result);
-	return YES;
+	return true;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -241,7 +251,7 @@ static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value
 namespace {
 static bool WormholeSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = reinterpret_cast<ooscript::Context >(cx);
 	ooscript::Object thisObj = (obj);
@@ -251,19 +261,19 @@ static bool WormholeSetProperty(Context cx, Object obj, PropertyId propID, bool 
 
 	WormholeEntity				*entity = nil;
 
-	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity)) return NO;
-	if (entity == nil)  return YES;
+	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity)) return false;
+	if (entity == nil)  return true;
 	
 	switch (ooscript::idToInt32(propID))
 	{
 
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sWormholePropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJSReportBadPropertyValue(context, thisObj, (propID), sWormholePropertiesRaw, *value_raw);
-	return NO;
+	return false;
 	
 	OOJS_NATIVE_EXIT
 }

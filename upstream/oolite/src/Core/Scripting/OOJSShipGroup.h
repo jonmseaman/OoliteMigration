@@ -25,6 +25,11 @@ MA 02110-1301, USA.
 
 */
 
+#import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
+@class OOShipGroup;
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,3 +39,12 @@ void InitOOJSShipGroup(ooscript::Context context, ooscript::Object global);
 #ifdef __cplusplus
 }
 #endif
+
+
+/*	The bodies of OOShipGroup (OOJavaScriptExtensions), which the engine reaches by selector. Its
+	methods are one-line forwarders to these in OOJSShipGroup+ObjCBridge.mm, which pass the façade's
+	_jsSelf ivar by reference, until the façade goes (proposed ADR-0056 amendments oo-ppc, oo-ykoy
+	and oo-bwrq).
+*/
+ooscript::Value OOJSShipGroupJSValueInContext(OOShipGroup *group, ooscript::Object &jsSelf, ooscript::Context context);
+void OOJSShipGroupClearJSSelf(ooscript::Object &jsSelf, ooscript::Object selfVal);

@@ -27,9 +27,6 @@ MA 02110-1301, USA.
 
 #import "Entity.h"
 
-@class OOColor;
-
-
 enum
 {
 	kOOBreakPatternMaxSides			= 128,
@@ -41,26 +38,46 @@ enum
 #define BREAK_PATTERN_RING_SPEED		200.0
 
 
-@interface OOBreakPatternEntity: Entity
+struct OOBreakPatternEntityTestAccess;
+
+
+namespace cxx {
+
+class OOBreakPatternEntity : public Entity
 {
-@private
-	Vector					_vertexPosition[kOOBreakPatternMaxVertices];
-	GLfloat					_vertexColor[kOOBreakPatternMaxVertices][4];
-	NSUInteger				_vertexCount;
-	double					_lifetime;
-}
+public:
+	// +breakPatternWithPolygonSides:startAngle:aspectRatio:: a new ring, initialised. The facade's
+	// class method hands it to Objective-C (oo::NewEntityFacade).
+	static oo::Ref<OOBreakPatternEntity> breakPatternWithPolygonSides(NSUInteger sides, float startAngleDegrees, float aspectRatio);
 
-+ (instancetype) breakPatternWithPolygonSides:(NSUInteger)sides startAngle:(float)startAngleDegrees aspectRatio:(float)aspectRatio;
+	void setInnerColor(OOColor *color1, OOColor *color2);
 
-- (void) setInnerColor:(OOColor *)color1 outerColor:(OOColor *)color2;
+	void setLifetime(double lifetime);
 
-- (void) setLifetime:(double)lifetime;
+	void update(OOTimeDelta delta_t) override;
+	void drawImmediate(bool immediate, bool translucent) override;
+	bool canCollide() override;
+	bool isBreakPattern();
 
-@end
+private:
+	friend struct ::OOBreakPatternEntityTestAccess;
+
+	// -initWithPolygonSides:startAngle:aspectRatio:'s body, run once right after construction
+	// (amendment oo-vl43 item 2).
+	void initWithPolygonSides(NSUInteger sides, float startAngleDegrees, float aspectRatio);
+
+	void setInnerColorComponents(GLfloat color1[4], GLfloat color2[4]);
+
+	Vector					_vertexPosition[kOOBreakPatternMaxVertices] = {};
+	GLfloat					_vertexColor[kOOBreakPatternMaxVertices][4] = {};
+	NSUInteger				_vertexCount = {};
+	double					_lifetime = {};
+};
+
+}	// namespace cxx
 
 
-@interface Entity (OOBreakPatternEntity)
-
-- (BOOL) isBreakPattern;
-
-@end
+// Transitional: the Objective-C OOBreakPatternEntity, for the universe, which makes the rings and
+// messages them, and the category the header declared. Deleted, with namespace cxx above, by the
+// bridge's deletion bead.
+#import "OOBreakPatternEntity+ObjCBridge.h"
