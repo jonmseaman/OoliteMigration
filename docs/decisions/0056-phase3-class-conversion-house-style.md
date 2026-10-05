@@ -2837,6 +2837,41 @@ category, failed for that reason before anything was converted.
 **Consequences.** One bridge (no façade class) that goes with the `Entity` façade (oo-9ht.39). A
 bug bead for Jon records the build-list omission (the default is in effect: the file is built).
 
+## Amendment (bead oo-g223): two categories in one file, on classes the file does not wrap
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Scripting/EntityOOJavaScriptExtensions.h/.mm`,
+  `EntityOOJavaScriptExtensions+ObjCBridge.h/.mm`, `tests/unit/core/test_EntityOOJavaScriptExtensions.mm`.
+
+**Context.** `EntityOOJavaScriptExtensions` has no class and no JS class of its own. It holds the
+categories `Entity (OOJavaScriptExtensions)` and `ShipEntity (OOJavaScriptExtensions)`, which the
+engine sends by selector (`-isVisibleToScripts`, `-getJSClass:andPrototype:`,
+`-oo_jsValueInContext:`, `-cxx_oo_jsClassName`, `-deleteJSSelf`) and which the entity subclasses
+override, and the scripts' `-subEntitiesForScript` and `-setTargetForScript:`. Its header declares
+both categories and `PlayerEntity (OOJavaScriptExtensions)`, whose method `PlayerEntity.mm`
+implements, and sixteen files import it to send those selectors.
+
+**Decision (recommended defaults).**
+
+1. **The bodies are free functions** (amendments oo-ppc item 3 and oo-ykoy item 1), declared in
+   `X.h`. With two categories in one file the name is the class the category extends plus the
+   selector's first keyword, less `cxx_`/`oo_` (`EntityJSValueInContext(entity, context)`,
+   `ShipEntityJSSetTargetForScript(ship, target)`); a body that used `self` takes the object, named
+   after the class, and its messages to it stay messages, because the subclasses that override
+   them are Objective-C.
+2. **The categories' `@interface`s move, copied exactly, to `X+ObjCBridge.h`, imported as the last
+   line of `X.h`**, not into the bridge `.mm` as amendment oo-ykoy item 2 does: other files send
+   these selectors through `X.h`. The `@implementation`s are one-line forwarders in
+   `X+ObjCBridge.mm`. The category whose methods another file implements (`PlayerEntity`'s) moves
+   with them unchanged.
+3. **The test** links the whole game (`['*']`) because the bodies reach the `Entity` façade's C++
+   part (`_jsSelf`). A ship is the test's subclass of `ShipEntity` made with `class_createInstance`
+   (never initialised, never released) that answers the selectors the category sends; a JS object
+   the entity already has is a plain object of a runtime the test makes. Making a new JS object
+   needs the engine's shared instance, so that path is left to the goldens.
+
+**Consequences.** One bridge pair and its deletion bead, which waits for `Entity`, `ShipEntity` and
+`PlayerEntity` to be C++.
+
 ## Amendment (bead oo-kvqq): a generator leaf that one Objective-C caller makes, with an initialiser that fails
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPixMapTextureLoader.h/.mm`,
