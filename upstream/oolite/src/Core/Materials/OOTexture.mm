@@ -210,13 +210,14 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator *generator, bool enqueue)
 {
 	if (generator == nil)  return nullptr;
+	cxx::OOTextureGenerator *cxxGenerator = oo::ToCxx(generator);	// the generator's C++ part (bead oo-rr2x)
 
 #ifndef OOTEXTURE_NO_CACHE
-	::OOTexture *existing = oo::ToObjC(existingTextureForKey([generator cxx_cacheKey]));
+	::OOTexture *existing = oo::ToObjC(existingTextureForKey(cxxGenerator->cacheKey()));
 	if (existing != nil && !enqueue)  return oo::ObjCRef<::OOTexture *>(existing);
 #endif
 
-	if (![generator enqueue])
+	if (!cxxGenerator->enqueue())
 	{
 		OO_LOG_ERR("texture.generator.queue.failed", "Failed to queue generator {}", oo::DescriptionOf(generator));
 		return nullptr;
@@ -224,10 +225,10 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
 
 	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithLoader(generator,
-																												 [generator cxx_cacheKey],
-																												 OOApplyTextureOptionDefaults([generator textureOptions]),
-																												 [generator anisotropy],
-																												 [generator lodBias])));
+																												 cxxGenerator->cacheKey(),
+																												 OOApplyTextureOptionDefaults(cxxGenerator->textureOptions()),
+																												 cxxGenerator->anisotropy(),
+																												 cxxGenerator->lodBias())));
 
 	return result;
 }

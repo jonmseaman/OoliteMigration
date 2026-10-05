@@ -1173,15 +1173,36 @@ for idx in idxs:
   done
 }
 
+# --- upstream freeze (bead oo-9ht.70, proposed ADR-0059) ------------------------------------
+#
+# Not one of the four rules, and not about the change: the per-module freeze policy is a fact
+# about the TREE. tools/upstream-delta.sh --check fails when a src/ module that holds Phase 3 work
+# (a cxx:: class or an +ObjCBridge facade) is still 'open' in docs/UPSTREAM_DELTA.md, or a new
+# source directory is unclassified. Run here so the conversion that starts a module is the change
+# that has to freeze it. Offline, ~1 s. A tree without the policy file (the selftest's fixtures)
+# has nothing to check; a tree with the file but without the checker has lost its guard and fails.
+check_upstream_delta() {
+  local out
+  if [ ! -f tools/upstream-delta.sh ]; then
+    [ ! -f docs/UPSTREAM_DELTA.md ] || bad "upstream-delta: docs/UPSTREAM_DELTA.md exists but tools/upstream-delta.sh does not, so the freeze policy cannot be checked"
+    return 0
+  fi
+  if ! out=$(bash tools/upstream-delta.sh --check 2>&1); then
+    bad "upstream-delta: the per-module freeze policy is not in force (bash tools/upstream-delta.sh --check):"
+    printf '%s\n' "$out" | sed 's/^/    /' >&2
+  fi
+}
+
 prime_is_code
 check_goldens
 check_suppression
 check_tests
 check_denylist
+check_upstream_delta
 
 if [ "$fail" -ne 0 ]; then
   note "FAIL"
   exit 1
 fi
-note "OK (goldens, suppression, tests, deny-list) against $BASE_SHA"
+note "OK (goldens, suppression, tests, deny-list, upstream-delta) against $BASE_SHA"
 exit 0
