@@ -18,7 +18,8 @@
 	list and of the uniforms, and the warnings and errors logged. Light-map bindings are not
 	covered: they read the binding types from the game's resources (ResourceManager).
 	Slice 1 made the class C++ (cxx::OODefaultShaderSynthesizer) with an Objective-C facade for the
-	stages; the last tests pin the C++ API and the facade's contract.
+	stages; the last tests pin the C++ API and the facade's contract. Slice 2 (oo-bhxc) pinned three
+	more stage cases on the unconverted stages (commit 66021ca17), then made the stages members.
 	Run: bash tools/check-core-tests.sh
 */
 

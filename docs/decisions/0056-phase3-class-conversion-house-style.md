@@ -3181,3 +3181,31 @@ selector through a macro (`REQUIRE_STAGE`, `-performStage:` with `-performSelect
 **Consequences.** One façade and deletion bead for a class nothing outside its file names; slice 2
 deletes the `REQUIRE_STAGE` Objective-C form, the Stages category and, with the façade, its
 bridge files.
+
+## Amendment (bead oo-bhxc): stages dispatched by selector become member-function pointers
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OODefaultShaderSynthesizer.h/.mm`
+  (slice 2 of `docs/phases/3-slices/OODefaultShaderSynthesizer.md`), `tests/unit/core/test_OODefaultShaderSynthesizer.mm`.
+
+**Context.** The synthesizer's stages were pulled in by a macro that sent `-performStage:` with a
+selector, which checked a hash table of selectors for recursion and sent `-performSelector:`. Once
+the stages are members there is no selector to send.
+
+**Decision (recommended defaults).**
+
+1. **A stage named by selector becomes its name and a member-function pointer:**
+   `performStage(#NAME, &X::NAME)` (`using Stage = void (X::*)();`), which calls `(this->*stage)()`.
+   The recursion set holds the names (`std::unordered_set<std::string_view>`; each name is the
+   macro's string literal, so it outlives the set), and the log line prints the name where it printed
+   `OOSelectorName(stage)`. The release form calls `NAME()` directly, as it sent `[self NAME]`.
+2. **The stage slice keeps the shell slice's façade** when its only sender left is the test's
+   façade-contract case: the façade loses the internal methods and categories that no longer have a
+   sender, keeps the public interface, and goes in its deletion bead, which retires that test case
+   under the standing approval oo-9n5p9. The class's internals become private.
+3. **Converted code reads a converted class's façade that an unconverted function answers through
+   its C++ object** (`oo::Ref<cxx::OOColor>(oo::ToCxx(cxx_OOMaterialDiffuseColor(…)))`), and calls
+   its members; a message to an unconverted class (`[ResourceManager cxx_shaderBindingTypesDictionary]`)
+   stays (oo-9ht.117).
+
+**Consequences.** `OODefaultShaderSynthesizer.mm` has no Objective-C method left; its façade and
+`cxx::` go with oo-9ht.134.

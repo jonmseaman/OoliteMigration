@@ -252,3 +252,4 @@
 [oo-e6xa] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOCombinedEmissionMapGenerator.mm && bash tools/check-core-tests.sh test_OOCombinedEmissionMapGenerator test_OOMultiTextureMaterial test_OOMaterialConvenienceCreators test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
 [oo-bm1q] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-4s5i] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
+[oo-bhxc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
