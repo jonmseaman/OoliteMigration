@@ -253,3 +253,5 @@
 [oo-bm1q] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-u61e.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens
 [oo-4jjl] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSkyDrawable test_SkyEntity test_OOGraphicsResetManager && bash tools/tier-c.sh --only goldens
+# OOJSShip pre-split (oo-9ht.139): the setter with each OO_VARIABLE_TORUS_SPEED arm closing its own block compiles, tidies and passes the deny-list.
+[oo-9ht.139] export PATH="/ucrt64/bin:$PATH"; OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSShip.mm
