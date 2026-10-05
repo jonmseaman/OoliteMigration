@@ -350,7 +350,7 @@ oo::PList OOSystemInfo::valueForKey(const std::optional<std::string> &key)
 void OOSystemInfo::setValue(const oo::PList &value, const std::string &key)
 {
 	// The running script's manifest identifier, handed on as it was read.
-	const oo::PList manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+	const oo::PList manifest = [[::OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 
 	[UNIVERSE cxx_setSystemDataForGalaxy:_galaxy planet:_system key:key value:value fromManifest:ManifestString(manifest) forLayer:OO_LAYER_OXP_DYNAMIC];
 }
@@ -846,7 +846,7 @@ static bool SystemInfoSetPropertyMethod(ooscript::Context context, ooscript::Cal
 	}
 	else
 	{
-		manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+		manifest = [[::OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 	}
 
 	[UNIVERSE cxx_setSystemDataForGalaxy:GalaxyOf(thisInfo) planet:SystemOf(thisInfo) key:property.value_or("") value:value fromManifest:ManifestString(manifest) forLayer:layer];
@@ -1028,7 +1028,7 @@ static bool SystemInfoStaticSetInterstellarProperty(ooscript::Context context, o
 	}
 	else
 	{
-		manifest = [[OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
+		manifest = [[::OOJSScript currentlyRunningScript] cxx_propertyNamed:kLocalManifestProperty];
 	}
 
 	std::string key = oo::str::format("interstellar: %u %u %u",g,s1,s2);
