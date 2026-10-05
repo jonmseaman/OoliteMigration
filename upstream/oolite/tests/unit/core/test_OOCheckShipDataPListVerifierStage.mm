@@ -200,7 +200,8 @@ void OOFreePixMap(OOPixMap *ioPixMap)
 
 /*	The schema verifier (OOPListSchemaVerifier.mm reaches the game's plist types): a value "BAD"
 	fails, a value "DELEGATED" is a delegated type, and each is reported to the delegate as the
-	real verifier reports it.
+	real verifier reports it. Its header's ivar is the C++ verifier since oo-pni4, so the stand-in
+	keeps its own state in ivars of its @implementation.
 */
 const char * const kPListKeyPathErrorKey = "keyPath";
 
@@ -212,6 +213,10 @@ int gSchemaVerifiers = 0;
 
 
 @implementation OOPListSchemaVerifier
+{
+	oo::PList	_schema;
+	id			_delegate;	// Not retained, as the real verifier's.
+}
 
 + (instancetype)verifierWithSchema:(const oo::PList &)schema
 {
