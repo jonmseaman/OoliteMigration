@@ -561,7 +561,8 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 																	   andMerge:YES
 																		  cache:NO];
 	const oo::PList::Array noShips;
-	const oo::PList::Array &initialEntries = initialDemoShips.isArray() ? *initialDemoShips.getIf<oo::PList::Array>() : noShips;
+	const oo::PList::Array *initialArray = initialDemoShips.getIf<oo::PList::Array>();	// null unless isArray()
+	const oo::PList::Array &initialEntries = initialArray != nullptr ? *initialArray : noShips;
 	oo::PList::Array demoShips = initialEntries;
 	// -removeObject: took every equal entry out
 	auto removeEntry = [&demoShips](const oo::PList &entry)

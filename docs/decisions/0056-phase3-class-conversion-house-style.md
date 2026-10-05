@@ -2768,3 +2768,30 @@ are made with the root's designated initialiser `-cxx_initWithPath:options:`, no
 **Consequences.** One more façade and deletion bead (`OOTextureGenerator+ObjCBridge`), done before
 the loaders' root bridge's (oo-9ht.114), which depends on it. The root's bridge changed shape
 (template adapter, initialiser, base walk) without any caller or test changing.
+
+## Amendment (bead oo-3bgz): a class-shell slice whose later slices are a category of the class
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOShipRegistry.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOShipRegistry.md`), `OOShipRegistry+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOShipRegistry.mm`. Follows amendments oo-pni4 and oo-r7m0.
+
+**Context.** The later slices of `OOShipRegistry.mm` are not free functions (as in oo-pni4) but the
+class's own `OODataLoader` category, about 1,350 lines that read and write the ivars directly. The
+singleton's `-init` sends that category's loaders to `self`.
+
+**Decision (recommended defaults).**
+
+1. **A later slice's methods stay an Objective-C category of the façade, in place in `X.mm`,**
+   unchanged except that each ivar they touch is `oo::ToCxx(self)->_ivar` (a scripted, word-bounded
+   rewrite). The C++ members they need are public under an "Internal" comment (oo-pni4 item 1).
+   Their slice bead turns them into members and the rewrite disappears with the category.
+2. **A converted member that sent one of those methods to `self`** sends it to `oo::ToObjC(this)`,
+   the façade the peer table already holds for it.
+3. **An `-init` that sends them** cannot be the constructor (no façade exists until the object is
+   owned). It is a private `void init()` that the factory runs right after `oo::makeRef<X>()`
+   (`sharedX()` for a singleton, which has set `sSingleton` first, so a re-entrant `sharedX()` answers
+   the object being loaded, as the old `+allocWithZone:` did). A log line the singleton boilerplate
+   wrote moves to the factory, in the same order.
+
+**Consequences.** No change to any caller or to the category's logic; the façade (deletion bead
+oo-9ht.122) waits for slices 2 and 3 as well as for the callers.
