@@ -2801,6 +2801,33 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
 
+## Amendment (bead oo-3bgz): a class-shell slice whose later slices are a category of the class
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOShipRegistry.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOShipRegistry.md`), `OOShipRegistry+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOShipRegistry.mm`. Follows amendments oo-pni4 and oo-r7m0.
+
+**Context.** The later slices of `OOShipRegistry.mm` are not free functions (as in oo-pni4) but the
+class's own `OODataLoader` category, about 1,350 lines that read and write the ivars directly. The
+singleton's `-init` sends that category's loaders to `self`.
+
+**Decision (recommended defaults).**
+
+1. **A later slice's methods stay an Objective-C category of the façade, in place in `X.mm`,**
+   unchanged except that each ivar they touch is `oo::ToCxx(self)->_ivar` (a scripted, word-bounded
+   rewrite). The C++ members they need are public under an "Internal" comment (oo-pni4 item 1).
+   Their slice bead turns them into members and the rewrite disappears with the category.
+2. **A converted member that sent one of those methods to `self`** sends it to `oo::ToObjC(this)`,
+   the façade the peer table already holds for it.
+3. **An `-init` that sends them** cannot be the constructor (no façade exists until the object is
+   owned). It is a private `void init()` that the factory runs right after `oo::makeRef<X>()`
+   (`sharedX()` for a singleton, which has set `sSingleton` first, so a re-entrant `sharedX()` answers
+   the object being loaded, as the old `+allocWithZone:` did). A log line the singleton boilerplate
+   wrote moves to the factory, in the same order.
+
+**Consequences.** No change to any caller or to the category's logic; the façade (deletion bead
+oo-9ht.122) waits for slices 2 and 3 as well as for the callers.
+
 ## Amendment (bead oo-z889): a leaf that only its root's factory makes, and C callbacks that held it
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPNGTextureLoader.h/.mm`,
@@ -3181,6 +3208,172 @@ selector through a macro (`REQUIRE_STAGE`, `-performStage:` with `-performSelect
 **Consequences.** One façade and deletion bead for a class nothing outside its file names; slice 2
 deletes the `REQUIRE_STAGE` Objective-C form, the Stages category and, with the façade, its
 bridge files.
+
+## Amendment (bead oo-4jjl): a drawable with no façade that is a graphics reset client, and a test seam for a private step
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOSkyDrawable.h/.mm`, its caller
+  `src/Core/Entities/SkyEntity.mm`, `src/Core/OOGraphicsResetManager.h/.mm`,
+  `tests/unit/core/test_OOSkyDrawable.mm`, `tests/unit/core/test_SkyEntity.mm`.
+
+**Context.** `OOSkyDrawable` derives from the converted root `OODrawable` and has one caller,
+`SkyEntity` (already C++), so it converts with no façade (amendments oo-zffj item 1 and oo-mw4u).
+It registered itself with `OOGraphicsResetManager` as an `<OOGraphicsResetClient>`, which takes
+only an Objective-C `id`; and `test_SkyEntity` replaced its private star set-up (which needs the
+game's star textures) with `method_setImplementation`, which has nothing to hook once the class
+is C++.
+
+**Decision (recommended defaults).**
+
+1. **The first C++ graphics reset client adds the C++ client interface** that amendment oo-jpd8
+   item 3 foresaw: `cxx::OOGraphicsResetClient` (the protocol's `-resetGraphicsState` as a pure
+   virtual) in `OOGraphicsResetManager.h`, and `registerCxxClient()`/`unregisterCxxClient()`
+   (distinct names, so `registerClient(nil)` stays unambiguous). The manager tells its C++
+   clients after its Objective-C ones, from a snapshot, with the same exception handling. The
+   client derives from the interface as well as its root and registers `this` in its constructor
+   and unregisters in its destructor, as `-init`/`-dealloc` did.
+2. **The entity holds the drawable's root façade.** `OOEntityWithDrawable` keeps an Objective-C
+   `OODrawable *`, so the caller makes the C++ drawable with `oo::makeRef` and passes
+   `oo::ToObjC(drawable.get())`; the façade keeps the C++ object alive.
+3. **A test that replaced a private Objective-C method gets a static stand-in hook**, declared
+   private in the class and set only through its `friend struct XTestAccess` (amendment oo-zffj
+   item 3): the member checks the hook first and returns after calling it, as the replaced
+   method did. In the game the hook is null. Porting an existing test's stand-in to it is a test
+   edit (CLAUDE.md rule 2): it needs Jon's decision (here oo-jsx0h), with every expectation kept.
+4. **A file-private helper class** (`OOSkyQuadSet`) converts in the same bead, global, no façade
+   (amendment oo-vt0o item 2); its failable initialiser is a static returning null (amendment
+   oo-novu). A malloc()ed array of structs that held autoreleased colours becomes a
+   `std::vector` of structs holding `oo::Ref`, since a C++ colour must be owned.
+5. **An argument expression with a side effect in a message to a possibly-nil receiver is
+   evaluated first** (`const float fraction = randf();`), so the random stream is the same when
+   the receiver is null-guarded.
+
+## Amendment (bead oo-9ht.139): a slice's free function that messages a class it does not wait for
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Plans:
+  `docs/phases/3-slices/OOJSShip.md`, `docs/phases/3-slices/HeadUpDisplay.md`. Follows amendments
+  oo-ppc items 4-5, oo-6ia4 items 2 and 6, oo-vnts item 2, oo-jy98 item 2 and oo-dqxj.
+
+**Context.** A slice story is done when `tools/check-slice-plan.py --slice-done` finds no
+Objective-C in its units. A converted method is an out-of-line C++ member, and a member may keep
+messages to classes that are still Objective-C (amendment oo-ppc item 4; the checker exempts it,
+oo-9ht.117). A *free function* gets no such exemption: any message send in it fails the check.
+That is every native of a binding file (`OOJSShip`, `OOJSSystem`, `OOJSPlayerShip`) and the
+file-scope drawing helpers of a class (`hudDrawReticleOnTarget()` in `HeadUpDisplay.mm`). Their
+sends go to three kinds of class: converted ones (`OOColor`, `OOShipGroup`, `Entity`); the class
+the file is about (`ShipEntity` for `OOJSShip`), which the slices can wait for; and classes that
+convert only after the file, because their own conversion waits for it (`Universe`, oo-pas,
+depends on every binding bead) or is far off (`PlayerEntity`, oo-a70). Waiting for the last kind
+is a dependency cycle or a stall, and a slice cannot be done while it sends to them.
+
+**Decision (recommended defaults).**
+
+1. **A converted class is reached as `cxx::`** through `oo::ToCxx`/`oo::ToObjC`, nil-guarded
+   (amendment oo-6ia4 item 2).
+2. **The class the file is about is waited for.** The slice beads depend on that class's
+   conversion (for `OOJSShip`: `ShipEntity`, oo-k8a, then the `ShipEntity` slices that own the
+   members a slice calls once its plan files them), and the sends become member calls.
+3. **Any other send to a class that is still Objective-C when the slice is worked** moves behind a
+   one-line C++ function in `X+ObjCBridge.mm`, declared in `X+ObjCBridge.h` and imported by
+   `X.mm` (the shape of amendments oo-vnts item 2, oo-jy98 item 2 and oo-6ia4 item 6). One function
+   per distinct send, named after the file and the selector (amendment oo-ykoy item 1):
+   `OOJSShipUniverseSun()`, `OOJSShipPlayerAlertCondition()`; a send to an object passes it first.
+   The body is the send, verbatim, with `BOOL` results returned as `bool`. A class file that already
+   has a façade bridge (`HeadUpDisplay+ObjCBridge.mm`) puts them there.
+4. **The bridge's deletion bead** ("Delete X+ObjCBridge", `sweep:objc-bridge`) depends on the
+   conversion beads of the classes its functions message; each of those beads turns the callers
+   into direct `cxx::` calls and deletes its functions.
+5. **This applies to slice stories filed before it** (`OOJSSystem` oo-luhd and slice 2,
+   `OOJSPlayerShip` oo-ft5n and slices 2-3): their natives' `[UNIVERSE …]` / `[PLAYER …]` sends
+   take item 3; their beads are not changed.
+
+**Consequences.** A binding gets a bridge of free functions (no façade) and a deletion bead that
+waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
+more call frame. `--slice-done` stays as strict as it is.
+
+## Amendment (bead oo-bwjb): a class-shell slice whose later slices hold public methods, and a filter called through its selector
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOOXZManager.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOOXZManager.md`), `OOOXZManager+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOOXZManager.mm`.
+
+**Context.** `OOOXZManager` is a singleton (amendment oo-r7m0) whose slice plan gives slice 1 the
+class shell, the paths, the filters, the manifests and the download plumbing, and slices 2 to 4
+the installing, the GUI page and the option pages. Unlike `OOPListSchemaVerifier` (amendment
+oo-pni4), whose later slice was free functions, here the later slices are methods, and eleven of
+them are public: the old `@interface` declares `-gui`, `-processSelection`, `-showInstallOptions`
+and the rest, which `PlayerEntity` and `PlayerEntityControls` send. Kept in the façade's
+`@interface` and implemented by a category in `X.mm`, they would leave the façade's own
+`@implementation` (in `X+ObjCBridge.mm`) incomplete, which `-Wincomplete-implementation` reports.
+The slice also calls its filters through `-methodForSelector:` with a selector chosen from the
+filter text.
+
+**Decision (recommended defaults).**
+
+1. **The old `@interface` is split in `X+ObjCBridge.h`, unchanged otherwise:** the façade's
+   `@interface` keeps the shell slice's selectors (each forwarded in one line), and a category
+   right after it (`@interface X (XSlices)`) declares, verbatim and in their old order, the public
+   selectors of the later slices. `X.mm` implements that category: the later slices' methods, in
+   place, become `@implementation X (XSlices)` (one block when they are contiguous). Callers see
+   the same selectors with the same types, and both `@implementation`s are complete.
+2. **The private category is split the same way:** the later slices' private selectors stay
+   declared in `X.mm` (`@interface X (OOPrivate)`, implemented by the `XSlices` category); the shell
+   slice's private selectors that the later slices still send are declared in the bridge header
+   by a category of their own (`(OOPrivateForwarded)`) and forwarded by the bridge; the rest are
+   C++ members only. The shell's members are public under an "Internal" comment while any later
+   slice reads them (amendment oo-pni4 item 1), except state that no later slice touches.
+3. **A converted unit that sends a later slice's selector sends it to `oo::ToObjC(this)`**
+   (`[oo::ToObjC(this) gui]`); for a singleton that is the façade `+sharedX` keeps, so the later
+   slice sees the object its callers message.
+4. **A method called through a selector chosen at run time becomes a pointer to a member
+   function** chosen the same way (item 4's "explicit table of its candidates", for a closed set
+   of the class's own methods): the selectors' one- and two-argument IMP typedefs become
+   `bool (X::*)(...)` typedefs, and the arity test that compared selectors becomes "which pointer
+   is set". An unused parameter of such a member keeps its type and loses its name.
+5. **The unit test reaches the private API before the conversion through a test-only category**
+   that declares the private selectors it calls, behind one helper function each; the port
+   replaces the helpers' bodies with the C++ members and leaves the expectations alone.
+
+**Consequences.** The shell's façade has three categories in flight (the later slices, the
+forwarded private units, the bridge's own initialiser), each deleted by the slice that empties it;
+the deletion bead deletes what is left. Slices 2 to 4 convert their methods into `cxx::X` members
+and delete their declarations from `XSlices` and `OOPrivate`, and the forwards from
+`OOPrivateForwarded` that no longer have a sender.
+
+## Amendment (bead oo-u61e.4): a subclass of a converted root whose façade is the object's identity
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSScript.h/.mm`,
+  `OOJSScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSScript.mm`.
+
+**Context.** `OOJSScript` converts after its root (`OOScript`, amendment oo-604l), so it is a plain
+C++ subclass. But the Objective-C object is what everything holds: its JS object's private slot
+holds a weak reference to it, the stack of running scripts holds it, timers and definitions keep
+weak references to it, and `-initWithPath:properties:` hands it to all of these while it runs.
+Converted callers inside `namespace cxx` named the Objective-C class unqualified.
+
+**Decision (recommended defaults).**
+
+1. **`cxx::X : public cxx::Root`, and the façade `@interface X : Root` has no ivars** (amendment
+   oo-up4b item 3); the root façade's ivar holds the C++ object. The root's forwarders for the
+   virtual members reach `X`'s overrides, so the façade does not repeat them.
+2. **The façade is the identity, as amendment oo-3kqi's is: it makes and owns its C++ object.** The
+   root façade gets a public initialiser in its `OOObjCBridge` category (`-initWithCxxRootScript:`)
+   that stores the object and records the façade as its peer; the subclass façade's initialiser
+   calls it with `oo::makeRef<cxx::X>()`. Converted code does not make a `cxx::X`.
+3. **The old initialiser's body is a `bool` member run by the façade once it is the peer**
+   (amendment oo-puw9 item 3); `self` in it is `oo::ToObjC(this)`. Where it destroyed `self` on
+   failure it answers `false`, and the façade releases itself. **The part of `-dealloc` before
+   `[super dealloc]` is a member (`willDealloc()`) that the façade's `-dealloc` runs**, and it must
+   not call `oo::ToObjC(this)`: the peer table already reads the dying façade as dead.
+4. **Ivars named like the members that answer them take a leading underscore** (`_name`,
+   `_version`), as amendment oo-862e says for a getter with its ivar's name.
+5. **Callers in `namespace cxx` that name the Objective-C class are qualified `::X` in a bead of
+   their own before the conversion** (oo-u61e.5) when they would push the conversion past the
+   eight-file budget.
+6. **A category on the root that the class's header declared** (`OOScript (JavaScriptEvents)`)
+   moves with its `@interface` to `X+ObjCBridge.h/.mm` (amendment oo-up4b item 4).
+
+**Consequences.** One façade with its deletion bead (oo-9ht.137), which the root's (oo-9ht.133)
+now waits for. The root bridge gained one initialiser.
 
 ## Amendment (bead oo-bhxc): stages dispatched by selector become member-function pointers
 

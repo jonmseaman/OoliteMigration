@@ -8,6 +8,11 @@ The plan is the markdown file's single fenced block tagged `slice-plan`:
 
     source: upstream/oolite/src/Core/Foo.mm      # the file being split (required)
     header: upstream/oolite/src/Core/Foo.h       # its header; every slice reads it (optional)
+    header-decls: per-slice                      # optional (bead oo-9ht.140): a slice reads the
+                                                 # header's method declarations of its own units
+                                                 # only, and all the rest of the header (macros,
+                                                 # ivars, types); for a header too big to charge
+                                                 # whole to every slice (ShipEntity.h)
     retired-by: oo-xxxx                          # optional: the file is deleted by that bead; an
                                                  # absent source then passes, a present one is checked
     slice 1: class shell and lifecycle           # a slice: "slice <n>: <title>", then its entries
@@ -39,6 +44,9 @@ Checks (exit 1 on any failure):
     wins: exact name, then a name with '*', then @block, then a lone '*' catch-all), so a slice
     can take a whole category by @block and another slice can still claim single methods of it;
   * each slice's read estimate, header + preamble + its own units, is under --max-read (1,500);
+    with `header-decls: per-slice` the header part is the header less every method declaration
+    of an @interface block, plus the declarations (and the comment lines directly above them) of
+    the slice's own methods, matched by -[Class selector];
   * each slice's own units total at most --max-own lines (default 800): converting a method
     rewrites roughly half its lines, so this keeps a story near the ~400-lines-written budget;
   * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...), except an
@@ -203,18 +211,53 @@ def parse_units(path):
     preamble = sum(1 for t in taken if not t)
     return units, preamble, len(raw_lines), code_lines, raw_lines
 
+def header_decls(path):
+    """The method declarations of a header's @interface blocks: (total lines, {'-[Class sel]': lines}).
+
+    A declaration runs from its '-'/'+' line to its ';' and owns the comment-only lines directly
+    above it (its doc comment). Ivar blocks, macros and everything outside @interface are not
+    declarations. Used by `header-decls: per-slice` (bead oo-9ht.140)."""
+    raw = open(path, encoding="utf-8", errors="replace").read()
+    code_lines = blank_comments_and_strings(raw).split("\n"); raw_lines = raw.split("\n")
+    if raw_lines and raw_lines[-1] == "": raw_lines.pop(); code_lines = code_lines[:len(raw_lines)]
+    decls = {}; cls = None; depth = 0; pp = False; cur = None
+    for ln, line in enumerate(code_lines):
+        s = line.strip()
+        if pp or (cur is None and s.startswith("#")):   # directives and macro bodies
+            pp = line.rstrip().endswith("\\"); continue
+        if cls is None:
+            m = re.match(r"@interface\s+(\w+)", s)
+            if m and not s.endswith(";"): cls = m.group(1); depth = s.count("{") - s.count("}")
+            continue
+        if depth > 0 or (cur is None and s.startswith("{")):   # the ivar block
+            depth += line.count("{") - line.count("}"); continue
+        if cur is None:
+            if s.startswith("@end"): cls = None; continue
+            if s[:1] not in ("-", "+"): continue
+            cur = {"start": ln, "text": ""}
+        cur["text"] += line + " "
+        if ";" in line:
+            head = cur["text"].split(";", 1)[0]
+            name = f"{head.strip()[0]}[{cls} {selector_of(head)}]"
+            k = cur["start"]
+            while k > 0 and code_lines[k-1].strip() == "" and raw_lines[k-1].strip() != "":
+                k -= 1   # the doc comment directly above
+            decls[name] = decls.get(name, 0) + ln - k + 1
+            cur = None
+    return len(raw_lines), decls
+
 # ---------------------------------------------------------------- plan
 def read_plan(path):
     text = open(path, encoding="utf-8").read()
     m = re.search(r"^```slice-plan[ \t]*\n(.*?)^```", text, re.S | re.M)
     if not m: raise SystemExit(f"{path}: no ```slice-plan fenced block")
-    plan = {"source": None, "header": None, "retired_by": None, "groups": []}
+    plan = {"source": None, "header": None, "retired_by": None, "header_decls": None, "groups": []}
     group = None
     for raw in m.group(1).splitlines():
         line = raw.split("#", 1)[0].rstrip() if not raw.lstrip().startswith("#") else ""
         if not line.strip(): continue
         s = line.strip()
-        kv = re.match(r"(source|header|retired-by):\s*(\S+)$", s)
+        kv = re.match(r"(source|header|retired-by|header-decls):\s*(\S+)$", s)
         if kv and not raw[:1].isspace():
             plan[kv.group(1).replace("-", "_")] = kv.group(2); continue
         g = re.match(r"slice\s+(\w+)\s*:\s*(.*)$", s)
@@ -229,6 +272,8 @@ def read_plan(path):
         if group is None: raise SystemExit(f"{path}: entry before any slice: {s!r}")
         group["entries"].append(s)
     if not plan["source"]: raise SystemExit(f"{path}: plan has no 'source:'")
+    if plan["header_decls"] not in (None, "per-slice"): raise SystemExit(f"{path}: header-decls must be 'per-slice'")
+    if plan["header_decls"] and not plan["header"]: raise SystemExit(f"{path}: header-decls needs a 'header:'")
     ids = [g["id"] for g in plan["groups"]]
     if len(ids) != len(set(ids)): raise SystemExit(f"{path}: duplicate slice id")
     return plan
@@ -267,6 +312,10 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         hp = os.path.join(base, plan["header"])
         if os.path.exists(hp): hdr = sum(1 for _ in open(hp, encoding="utf-8", errors="replace"))
         else: errors.append(f"header {plan['header']} missing")
+    decls = {}
+    if plan["header_decls"] and hdr:
+        hdr, decls = header_decls(hp)
+    hdr_shared = hdr - sum(decls.values())
     names = [u["name"] for u in units]
     for n in sorted(set(x for x in names if names.count(x) > 1)):
         warnings.append(f"unit name {n} occurs {names.count(n)} times (preprocessor alternatives?); each copy is assigned the same way, except that a mac-only entry claims a copy in an OOLITE_MAC_OS_X arm")
@@ -318,12 +367,13 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
             report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": True, "units": len(mine), "own": own, "read": 0,
                            "members": [u["name"] for u in mine]})
             continue
-        read = hdr + preamble + own
+        h = hdr_shared + sum(decls.get(n, 0) for n in sorted(set(u["name"] for u in mine))) if decls else hdr
+        read = h + preamble + own
         if not mine: empty.append(g["id"]); errors.append(f"slice {g['id']} is empty")
-        if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {hdr} + preamble {preamble} + own {own}); must be under {max_read}")
+        if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
         if own > max_own: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}")
         report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
-                       "members": [u["name"] for u in mine]})
+                       "header": h, "members": [u["name"] for u in mine]})
     return {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
             "unassigned": unassigned, "empty": empty,
             "total": total, "preamble": preamble, "header_lines": hdr, "slices": report, "errors": errors,
@@ -503,6 +553,21 @@ def selftest():
     run(rest, 0)                                                              # converted member in verbatim
     open(os.path.join(d, "Foo.mm"), "w").write(landed.replace("int plainC(int y) { return y * 2; }", "int plainC(int y) { return [Foo twice:y]; }"))
     run(rest, 1)                                                              # a plain function still may not
+    # header-decls: per-slice (bead oo-9ht.140): a slice is charged the header less its method
+    # declarations, plus its own units' declarations (with their doc comments)
+    open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC)
+    open(os.path.join(d, "Foo.h"), "w").write("#define X 1\n@interface Foo : Bar\n{\n\tint _x;\n\t- not a decl;\n}\n"
+                                              "- (id) init;\n/* doc */\n- (void) setA:(int)a\n\tb:(oo::PList *)b;\n\n- (void) gone;\n"
+                                              "#define M(x) do { \\n- (void) notOne; \\n} while (0)\n@end\n@interface Foo (Private)\n- (void) hidden;\n@end\n")
+    hl, hd = header_decls(os.path.join(d, "Foo.h"))
+    if hl != 17 or hd != {"-[Foo init]": 1, "-[Foo setA:b:]": 3, "-[Foo gone]": 1, "-[Foo hidden]": 1}: fails.append(f"header decls: {hl} {hd}")
+    p = os.path.join(d, "hd.md"); open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader: Foo.h\nheader-decls: per-slice\n" + good + "```\n")
+    hr = {r["id"]: r.get("header") for r in analyse(p, base=d)["slices"] if not r["verbatim"]}
+    if hr != {"1": 11 + 1 + 3, "2": 11 + 1}: fails.append(f"header-decls charges: {hr}")
+    open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader-decls: per-slice\n" + good + "```\n")
+    try:
+        analyse(p, base=d); fails.append("header-decls without a header accepted")
+    except SystemExit: pass
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)
     print("selftest OK" if not fails else "selftest FAILED")
