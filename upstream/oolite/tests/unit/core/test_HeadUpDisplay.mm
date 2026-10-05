@@ -28,6 +28,8 @@
 #include "oo_test.hpp"
 #include "oo_gl_test_context.hpp"
 
+#include "oofnd/objc/OORuntime.h"
+
 #include <process.h>
 #include <stdlib.h>
 
@@ -314,8 +316,90 @@ OO_TEST(nonlinearScannerScale)
 	const Vector unit = vector_normal(v);
 	OO_CHECK(std::fabs(unit.x - 0.6f) < 1e-6f && unit.y == 0.0f && std::fabs(unit.z - 0.8f) < 1e-6f);
 	const float length = magnitude(v);
-	std::printf("nonlinearScannerScale: %.9g\n", length);
-	OO_CHECK(length > 0.0f);
+	OO_CHECK(std::fabs(length - 50.0f) < 1e-4f);	// 49.9999962 on the Objective-C class
+}
+
+
+// --- The C++ API and the facade's contract (bead oo-engam) ----------------------------------
+
+OO_TEST(cxxAPI)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		oo::Ref<cxx::HeadUpDisplay> hud = oo::makeRef<cxx::HeadUpDisplay>();
+		hud->initWithDictionary(oo::PList(oo::PList::Dict{
+			{ "dials", oo::PList(oo::PList::Array{ Dial("drawCompass:") }) },
+			{ "multi_function_displays", oo::PList(oo::PList::Array{ oo::PList(oo::PList::Dict{}) }) },
+			{ "crosshair_file", oo::PList("testcross.plist") },
+		}), std::string("cxx.plist"));
+		OO_CHECK(hud->getHudName() == std::optional<std::string>("cxx.plist"));
+		OO_CHECK_EQ(hud->mfdCount(), 1u);
+		OO_CHECK(hud->isCompassActive());
+		OO_CHECK(hud->getOverallAlpha() == 0.75f);
+		OO_CHECK(hud->getLineWidth() == 1.0f);
+		OO_CHECK(hud->getCrosshairDefinition() == std::optional<std::string>("testcross.plist"));
+		OO_CHECK(hud->getPropertiesReticleTargetSensitive()->get<bool>("isAccurate", false));
+
+		oo::Ref<cxx::OOColor> target = hud->reticleColorForIndex(OO_RETICLE_COLOR_TARGET);
+		OO_CHECK(target != nullptr && target->redComponent() == 0.0f && target->greenComponent() == 1.0f);
+		OO_CHECK(hud->reticleColorForIndex(3) == nullptr);
+		oo::Ref<cxx::OOColor> blue = cxx::OOColor::blueColor();
+		OO_CHECK(hud->setReticleColorForIndex(OO_RETICLE_COLOR_TARGET, blue.get()));
+		OO_CHECK(hud->reticleColorForIndex(OO_RETICLE_COLOR_TARGET) == blue);
+		OO_CHECK(!hud->setReticleColorForIndex(OO_RETICLE_COLOR_TARGET, nullptr));
+
+		hud->setOverallAlpha(2.0f);
+		OO_CHECK(hud->getOverallAlpha() == 1.0f);
+		hud->setHidden(true);
+		OO_CHECK(hud->getAllowBigGui());
+		hud->setHiddenSelector("drawCompass:", true);
+		OO_CHECK(hud->hasHidden(std::string("drawCompass:")));
+
+		// Neither the player nor the universe: not in flight.
+		OO_CHECK(!hud->checkPlayerInFlight());
+		OO_CHECK(!hud->checkPlayerInSystemFlight());
+
+		const Vector v = cxx::HeadUpDisplay::nonlinearScannerScale(make_vector(3000.0f, 0.0f, 4000.0f), 1.0f, 256.0);
+		OO_CHECK(std::fabs(magnitude(v) - 50.0f) < 1e-4f);
+	}
+}
+
+
+OO_TEST(facadeContract)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The facade the caller made is the C++ HUD's peer, and the crossing keeps identity.
+		HeadUpDisplay *hud = NewHUD(oo::PList(oo::PList::Dict{}));
+		cxx::HeadUpDisplay *cxxHUD = oo::ToCxx(hud);
+		OO_CHECK(cxxHUD != nullptr);
+		OO_CHECK(oo::ToObjC(cxxHUD) == hud);
+		OO_CHECK(oo::ToCxx(static_cast<HeadUpDisplay *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::HeadUpDisplay *>(nullptr)) == nil);
+
+		// The same answers through either side.
+		cxxHUD->setScannerZoom(3.0f);
+		OO_CHECK([hud scannerZoom] == 3.0f);
+		[hud setLineWidth:2.0f];
+		OO_CHECK(cxxHUD->getLineWidth() == 2.0f);
+
+		// A colour set through the facade is held as its C++ colour and reads back as the same object.
+		OOColor *orange = [OOColor orangeColor];
+		OO_CHECK([hud setReticleColorForIndex:OO_RETICLE_COLOR_TARGET toColor:orange]);
+		OO_CHECK(cxxHUD->reticleColorForIndex(OO_RETICLE_COLOR_TARGET).get() == oo::ToCxx(orange));
+		OO_CHECK([hud reticleColorForIndex:OO_RETICLE_COLOR_TARGET] == orange);
+
+		// The dials are the facade's methods, called by name.
+		OO_CHECK([hud respondsToSelector:OOSelectorFromName("drawCompass:")]);
+		OO_CHECK([hud respondsToSelector:OOSelectorFromName("drawPrimedEquipment:")]);
+
+		// A C++ HUD with no facade gets one when it crosses.
+		oo::Ref<cxx::HeadUpDisplay> bare = oo::makeRef<cxx::HeadUpDisplay>();
+		HeadUpDisplay *made = oo::ToObjC(bare);
+		OO_CHECK(made != nil && oo::ToCxx(made) == bare.get() && oo::ToObjC(bare) == made);
+	}
 }
 
 

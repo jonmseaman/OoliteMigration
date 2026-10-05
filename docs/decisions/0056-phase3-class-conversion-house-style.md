@@ -3262,3 +3262,41 @@ is a dependency cycle or a stall, and a slice cannot be done while it sends to t
 **Consequences.** A binding gets a bridge of free functions (no façade) and a deletion bead that
 waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
 more call frame. `--slice-done` stays as strict as it is.
+
+## Amendment (bead oo-engam): a class shell whose dials are called by name, and colours it held as façades
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/HeadUpDisplay.h/.mm` (slice 1 of
+  `docs/phases/3-slices/HeadUpDisplay.md`), `HeadUpDisplay+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_HeadUpDisplay.mm`. Follows amendments oo-pni4, oo-bm1q and oo-9ht.139.
+
+**Context.** The HUD's class shell converts while its drawing (slices 2-6, about 3,500 lines) stays
+Objective-C. The drawing is the dials, which `drawHUDItem:` sends by name to the object (ADR-0055
+item 5) and `addDial:` checks with `respondsToSelector:`; the initialiser, which converts, both
+checks the dials and reads a crosshair file through `-cxx_setCrosshairDefinition:`, which slice 2
+owns. The old interface declared slice 2's `-renderHUD` and `-cxx_setCrosshairDefinition:` with the
+class, and nine getters share their ivar's name. The colours were `OOColor *` ivars.
+
+**Decision (recommended defaults).**
+
+1. **The drawing becomes the façade's `Private` category, in place in `X.mm`** (as `OODefaultShaderSynthesizer`'s
+   stages): `@implementation X (Private)` after the members, its `@interface` moved from the `.mm` to
+   `X+ObjCBridge.h`, with the old interface's methods that a later slice owns (`-renderHUD`) moved into it,
+   so the façade's main `@implementation` is complete. A selector the `.mm` declared and nothing
+   implemented (`-drawPrimedEquipmentText:`) is replaced by the one implemented (`-drawPrimedEquipment:`).
+   The drawing reads the state as `oo::ToCxx(self)->ivar`, a mechanical rewrite of each use.
+2. **An initialiser that hands the object to the drawing is a member run after the façade is the
+   peer** (amendment oo-8kx7 item 2, oo-6bux): the façade's `-cxx_initWithDictionary:inFile:` makes
+   the C++ object with its default constructor, registers itself, then calls
+   `initWithDictionary(...)`, whose `[self respondsToSelector:]` and slice 2's send are
+   `[oo::ToObjC(this) …]`, so they see the façade the caller holds.
+3. **Getters with their ivar's name are `get` + the name** (amendment oo-862e item 1:
+   `getHudName()`, `getOverallAlpha()`, `getLineWidth()`, …), because the drawing uses the ivars on
+   every line; ivars keep their names.
+4. **A converted class's colours are held as `oo::Ref<cxx::OOColor>`**, made with `cxx::OOColor`'s
+   factories; the façade answers `oo::ToObjC(...)`, so a colour set through the façade reads back as
+   the same object. A drawing unit that reads one still messages its façade, through
+   `oo::ToObjC(...)` at the read, until its own slice.
+
+**Consequences.** One façade (deletion bead oo-mwd58) whose deletion waits for the HUD's
+callers and the drawing slices; the slice beads 2-6 turn the category's methods into members and
+leave one forwarder per dial.
