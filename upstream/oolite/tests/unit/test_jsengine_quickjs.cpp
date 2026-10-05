@@ -288,6 +288,24 @@ bool EnumGet(Context cx, Object, PropertyId id, Value* vp)
 ClassDef sEnumClass = { "Enum", ClassFlag::NewEnumerate, nullptr, nullptr, EnumGet, nullptr,
                         nullptr, EnumNext, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
+// Store: Enum's names, plus a setProperty hook (bead oo-f1yi3). Assigning to a name the last
+// enumeration listed must reach the setter, as SpiderMonkey's add-then-set did.
+std::int32_t gStoreA = 1;
+int gStoreSets = 0;
+bool StoreGet(Context cx, Object, PropertyId id, Value* vp)
+{
+	if (idIs(cx, id, "a"))  *vp = int32Value(gStoreA);
+	return true;
+}
+bool StoreSet(Context cx, Object, PropertyId id, bool, Value* vp)
+{
+	++gStoreSets;
+	if (idIs(cx, id, "a") && isInt32(*vp))  gStoreA = toInt32(*vp);
+	return true;
+}
+ClassDef sStoreClass = { "Store", ClassFlag::NewEnumerate, nullptr, nullptr, StoreGet, StoreSet,
+                         nullptr, EnumNext, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+
 // Temp: a convert hook; Callable: a class call hook.
 bool TempConvert(Context, Object, Type hint, Value* vp)
 {
@@ -483,6 +501,20 @@ void exerciseFacade(Runtime rt, Context cx)
 	CHECK(setProperty(cx, global, "en", &enVal));
 	CHECK(eval(cx, nullptr, "var ks = []; for (var k in en) ks.push(k); ks.join(',') + '|' + Object.keys(en).join(',') + '|' + en.a + en.b", &rv));
 	CHECK(valIs(cx, rv, u"a,b|a,b|12"));
+
+	Object store = newObject(cx, &sStoreClass, nullptr, nullptr);
+	Value storeVal = objectValue(store);
+	CHECK(setProperty(cx, global, "store", &storeVal));
+	CHECK(eval(cx, nullptr,
+	           "var o3 = [Object.keys(store).join(','), store.a];"
+	           "store.a = 5; o3.push(store.a);"
+	           "var d3 = Object.getOwnPropertyDescriptor(store, 'a'); o3.push(d3.writable, d3.configurable);"
+	           "store.a = 6; o3.push(delete store.a);"
+	           "o3.join('|')", &rv));
+	CHECK(valIs(cx, rv, u"a,b|1|5|true|true|true"));
+	CHECK(gStoreSets == 2 && gStoreA == 6);
+	gStoreA = 3;   // the hook's value, not one frozen on the object
+	CHECK(eval(cx, nullptr, "store.a", &rv) && isInt32(rv) && toInt32(rv) == 3);
 
 	CHECK(initClass(cx, global, nullptr, &sTempClass, TempConstruct, 0, nullptr, nullptr, nullptr, nullptr) != nullptr);
 	CHECK(eval(cx, nullptr, "var t = new Temp(); t * 2", &rv) && isInt32(rv) && toInt32(rv) == 42);

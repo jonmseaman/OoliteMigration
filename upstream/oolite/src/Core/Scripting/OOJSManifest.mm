@@ -28,10 +28,11 @@ MA 02110-1301, USA.
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntityContracts.h"
 #import "Universe.h"
+#import "OOCommodities.h"
+#import "OOCommodityMarket.h"
 #import "OOJSPlayer.h"
 #import "OOJSPlayerShip.h"
 #import "OOIsNumberLiteral.h"
-#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -49,6 +50,18 @@ MA 02110-1301, USA.
 	object construction in oo_jsValueInContext: (the engine's NewObject/SetPrivate) is
 	retargeted the same way JSVectorWithVector() retargets it in OOJSVector.mm.
 */
+/*
+	C++20 since bead oo-7nfv, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. OOManifest, a helper class that
+	nothing made, is gone (see where it stood). OOCommodities and OOCommodityMarket, which are C++
+	since beads oo-fqyw and oo-ih7y, are reached as cxx:: classes through oo::ToCxx (amendment
+	oo-ppc, item 4), null-guarded where a message to nil answered. Messages to classes that are
+	still Objective-C (PlayerEntity, Universe) stay as they are, which is why the file is still .mm
+	until Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -145,41 +158,9 @@ static FunctionSpec sManifestMethods[] =
 } // namespace
 
 
-// Helper class wrapped by JS Manifest objects
-@interface OOManifest: OOObject
-@end
-
-
-@implementation OOManifest
-
-- (void) dealloc
-{
-	[super dealloc];
-}
-
-
-- (std::optional<std::string>) cxx_oo_jsClassName
-{
-	return std::string("Manifest");
-}
-
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
-{
-	ooscript::Object jsSelf = NULL;
-	ooscript::Value						result = ooscript::nullValue();
-	
-	jsSelf = (ooscript::newObject((context), &sManifestClass, (sManifestPrototype), nullptr));
-	if (jsSelf != NULL)
-	{
-		if (!ooscript::setPrivate((context), (jsSelf), [self retain]))  jsSelf = NULL;
-	}
-	if (jsSelf != NULL)  result = ooscript::objectValue(jsSelf);
-	
-	return result;
-}
-
-@end
+// OOManifest, the helper class "wrapped by JS Manifest objects", is gone (bead oo-7nfv): nothing
+// made one. Both Manifest objects are defined with no private object (InitOOJSManifest), and no
+// other file names the class, so its -oo_jsValueInContext: and -cxx_oo_jsClassName were never sent.
 
 
 void InitOOJSManifest(ooscript::Context context, ooscript::Object global)
@@ -203,7 +184,7 @@ namespace {
 static bool ManifestDeleteProperty(Context cx, Object obj, PropertyId propID, Value * /*value*/)
 {
 	ooscript::Value v = ooscript::undefinedValue();
-	return ManifestSetProperty(cx, obj, propID, NO, &v);
+	return ManifestSetProperty(cx, obj, propID, false, &v);
 }
 } // namespace
 
@@ -216,7 +197,7 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	id							result = nil;
+	oo::PList					result;	// null: nil
 	PlayerEntity				*entity = OOPlayerForScripting();
 	
 	if (ooscript::isInt32Id(propID))
@@ -224,12 +205,12 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		switch (ooscript::idToInt32(propID))
 		{
 			case kManifest_list:
-				result = oo::ObjectFromPList([entity cargoListForScripting]);
+				result = [entity cargoListForScripting];
 				break;
 				
 			default:
 				OOJSReportBadPropertySelector(context, thisObj, propID, sManifestProperties);
-				return NO;
+				return false;
 		}
 	}
 	else if (ooscript::isStringId(propID))
@@ -239,19 +220,20 @@ static bool ManifestGetProperty(Context cx, Object obj, PropertyId propID, Value
 		 * compatible-ish with 1.80 and earlier except that
 		 * alienItems and similar aliases don't work */
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
-		if ([[UNIVERSE commodities] cxx_goodDefined:key])
+		cxx::OOCommodities *commodities = oo::ToCxx([UNIVERSE commodities]);	// null: no good is defined, as a message to nil
+		if (commodities != nullptr && commodities->goodDefined(key))
 		{
 			*value = ooscript::int32Value([entity cxx_cargoQuantityForType:key]);
-			return YES;
+			return true;
 		}
 		else
 		{
-			return YES;
+			return true;
 		}
 	}
 	
-	*value = OOJSValueFromNativeObject(context, result);
-	return YES;
+	*value = OOJSValueFromPList(context, result);
+	return true;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -273,12 +255,13 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 	{
 		std::string key = cxx_OOStringFromJSString(context, ooscript::idToString(propID)).value_or(std::string());
 
-		OOMassUnit unit = [[UNIVERSE commodityMarket] massUnitForGood:key];
+		cxx::OOCommodityMarket *market = oo::ToCxx([UNIVERSE commodityMarket]);
+		OOMassUnit unit = (market != nullptr) ? market->massUnitForGood(key) : UNITS_TONS;	// UNITS_TONS (0): what a message to nil answered
 		// we can always change gold, platinum & gem-stones quantities, even with special cargo
 		if (unit == UNITS_TONS && [entity cxx_specialCargo].has_value())
 		{
 			cxx_OOJSReportWarning(context, "PlayerShip.manifest['foo'] - cannot modify cargo tonnage when Special Cargo is in use.");
-			return YES;
+			return true;
 		}
 	
 		std::int32_t iValue32 = 0;
@@ -293,7 +276,7 @@ static bool ManifestSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			OOJSReportBadPropertyValue(context, thisObj, propID, sManifestProperties, *value);
 		}
 	}
-	return YES;
+	return true;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -317,12 +300,13 @@ static bool ManifestComment(ooscript::Context context, ooscript::CallArgs &oojsA
 	if (!good.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "Manifest", "comment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "good");
-		return NO;
+		return false;
 	}
 
-	information = [[PLAYER shipCommodityData] cxx_commentForGood:*good];
+	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: no comment, as a message to nil
+	if (market != nullptr)  information = market->commentForGood(*good);
 
-	OOJS_RETURN_OBJECT(oo::NSStringOrNil(information));
+	OOJS_RETURN_STRING_OR_NULL(information);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -336,7 +320,7 @@ static bool ManifestSetComment(ooscript::Context context, ooscript::CallArgs &oo
 
 	OOJS_NATIVE_ENTER(context)
 
-	BOOL 			OK;
+	bool 			OK;
 	std::optional<std::string>	good;
 	std::optional<std::string>	information;
 
@@ -348,10 +332,11 @@ static bool ManifestSetComment(ooscript::Context context, ooscript::CallArgs &oo
 	if (!good.has_value() || !information.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "Manifest", "setComment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "good and information text");
-		return NO;
+		return false;
 	}
 
-	OK = [[PLAYER shipCommodityData] cxx_setComment:*information forGood:*good];
+	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: false, as a message to nil
+	OK = market != nullptr && market->setComment(*information, *good);
 
 	OOJS_RETURN_BOOL(OK);
 	
@@ -377,12 +362,13 @@ static bool ManifestShortComment(ooscript::Context context, ooscript::CallArgs &
 	if (!good.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "Manifest", "shortComment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "good");
-		return NO;
+		return false;
 	}
 
-	information = [[PLAYER shipCommodityData] cxx_shortCommentForGood:*good];
+	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: no comment, as a message to nil
+	if (market != nullptr)  information = market->shortCommentForGood(*good);
 
-	OOJS_RETURN_OBJECT(oo::NSStringOrNil(information));
+	OOJS_RETURN_STRING_OR_NULL(information);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -396,7 +382,7 @@ static bool ManifestSetShortComment(ooscript::Context context, ooscript::CallArg
 
 	OOJS_NATIVE_ENTER(context)
 
-	BOOL 			OK;
+	bool 			OK;
 	std::optional<std::string>	good;
 	std::optional<std::string>	information;
 
@@ -408,10 +394,11 @@ static bool ManifestSetShortComment(ooscript::Context context, ooscript::CallArg
 	if (!good.has_value() || !information.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "Manifest", "setShortComment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "good and information text");
-		return NO;
+		return false;
 	}
 
-	OK = [[PLAYER shipCommodityData] cxx_setShortComment:*information forGood:*good];
+	cxx::OOCommodityMarket *market = oo::ToCxx([PLAYER shipCommodityData]);	// null: false, as a message to nil
+	OK = market != nullptr && market->setShortComment(*information, *good);
 
 	OOJS_RETURN_BOOL(OK);
 	

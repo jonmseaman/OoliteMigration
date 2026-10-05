@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOPlanetEntity.h"
+#import "OOObjCPList.h"
 
 #if NEW_PLANETS
 
@@ -50,7 +51,6 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 #import "OOStringExpander.h"
 #import "OOOpenGLMatrixManager.h"
-#import "OOFoundationBridge.h"
 #import "OOJavaScriptEngine.h"	// OONull
 #import "OOPListGameTypes.h"
 
@@ -83,11 +83,20 @@ void SetInfo(oo::PList &info, const std::string &key, oo::PList value)
 }
 
 
-// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
+// The live object an Object node for <key> holds (nil when absent, or for any other value, which
+// the callers never store there: the colours this class puts in the planet info).
 id ObjectForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? oo::ObjectIn(*value) : nil;
+}
+
+
+// -objectForKey: as plist data (a null PList when absent), for +cxx_colorWithDescription:.
+oo::PList ValueForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return value != nullptr ? *value : oo::PList();
 }
 
 
@@ -143,11 +152,11 @@ oo::PList CubeMapTextureSpec(const std::string &name)
 }
 
 
-// A mutable copy of a material configuration with _oo_texture_objects set to the textures up to
-// the first nil (+arrayWithObjects: stopped there); nil where there was no configuration.
-id MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_list<OOTexture *> textures)
+// A copy of a material configuration with _oo_texture_objects set to the textures up to the first
+// nil (+arrayWithObjects: stopped there); null where there was no configuration.
+oo::PList MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_list<OOTexture *> textures)
 {
-	if (configuration.isNull())  return nil;
+	if (configuration.isNull())  return oo::PList();
 	oo::PList result = configuration;
 	oo::PList::Array textureObjects;
 	for (OOTexture *texture : textures)
@@ -156,7 +165,7 @@ id MaterialConfigWithTextures(const oo::PList &configuration, std::initializer_l
 		textureObjects.push_back(oo::PListObject(texture));
 	}
 	(*result.getIf<oo::PList::Dict>())["_oo_texture_objects"] = oo::PList(std::move(textureObjects));
-	return oo::ObjectFromPList(result);
+	return result;
 }
 
 }	// namespace
@@ -194,7 +203,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	self = [self init];
 	if (self == nil)  return nil;
 	
-	scanClass = CLASS_NO_DRAW;
+	_cxxEntity->scanClass = CLASS_NO_DRAW;
 	
 	oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:systemID];	// null where it was nil
 
@@ -222,7 +231,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	[self cxx_setName:planetName.has_value() ? cxx_OOExpand(*planetName) : std::nullopt];
 
 	int radius_km = dict.get<int>(std::string(KEY_RADIUS), planetInfo.get<int>(std::string(KEY_RADIUS)));
-	collision_radius = radius_km * 10.0;	// Scale down by a factor of 100
+	_cxxEntity->collision_radius = radius_km * 10.0;	// Scale down by a factor of 100
 	OOTechLevelID techLevel = dict.get<int>(std::string(KEY_TECHLEVEL), planetInfo.get<int>(std::string(KEY_TECHLEVEL)));
 	
 	if (techLevel > 14)  techLevel = 14;
@@ -260,10 +269,10 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 		// shader atmosphere always has a radius of collision_radius + ATMOSPHERE_DEPTH. For texture atmosphere, we need to check
 		// if a shader atmosphere is also used. If yes, set its radius to just cover the planet so that it doesn't conflict with 
 		// the shader atmosphere at the planet edges. If no shader atmosphere is used, then set it to the standard radius
-		double atmosphereRadius = [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS ? collision_radius : collision_radius + ATMOSPHERE_DEPTH;
+		double atmosphereRadius = [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS ? _cxxEntity->collision_radius : _cxxEntity->collision_radius + ATMOSPHERE_DEPTH;
 		_atmosphereDrawable = [[OOPlanetDrawable atmosphereWithRadius:atmosphereRadius] retain];
 		_cloudsShaderDrawable = [[OOPlanetDrawable atmosphereWithRadius:atmosphereRadius] retain];
-		_atmosphereShaderDrawable = [[OOPlanetDrawable atmosphereWithRadius:collision_radius + ATMOSPHERE_DEPTH] retain];
+		_atmosphereShaderDrawable = [[OOPlanetDrawable atmosphereWithRadius:_cxxEntity->collision_radius + ATMOSPHERE_DEPTH] retain];
 		
 		// convert the atmosphere settings to generic 'material parameters'
 		percent_land = 100 - dict.get<int>("percent_cloud", 100 - (3 + (gen_rnd_number() & 31)+(gen_rnd_number() & 31)));
@@ -292,18 +301,18 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 		_materialParameters = ValuesForKeys(planetInfo, { "land_fraction", "land_color", "sea_color", "polar_land_color", "polar_sea_color", "economy", "polar_fraction",  "isMiniature", "perlin_3d", "terminator_threshold_vector", "illumination_color" });
 	}
 	
-	_mesopause2 = (atmosphere) ? (kMesosphere + collision_radius) * (kMesosphere + collision_radius) : 0.0;
+	_mesopause2 = (atmosphere) ? (kMesosphere + _cxxEntity->collision_radius) * (kMesosphere + _cxxEntity->collision_radius) : 0.0;
 	
 	_normSpecMapName = OptionalStringForKey(dict, "texture_normspec"); // must be set up before _textureName
 
 	_textureName = OptionalStringForKey(dict, "texture");
 	[self setUpPlanetFromTexture:_textureName];
-	[_planetDrawable setRadius:collision_radius];
+	[_planetDrawable setRadius:_cxxEntity->collision_radius];
 		
 	// Orientation should be handled by the code that calls this planetEntity. Starting with a default value anyway.
-	orientation = (Quaternion){ M_SQRT1_2, M_SQRT1_2, 0, 0 };
+	_cxxEntity->orientation = (Quaternion){ M_SQRT1_2, M_SQRT1_2, 0, 0 };
 	_atmosphereOrientation = kIdentityQuaternion;
-	_rotationAxis = vector_up_from_quaternion(orientation);
+	_rotationAxis = vector_up_from_quaternion(_cxxEntity->orientation);
 	
 	// set speed of rotation.
 	if (dict.find("rotational_velocity") != nullptr)
@@ -319,14 +328,14 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	_atmosphereRotationalVelocity = dict.get<float>("atmosphere_rotational_velocity", 0.01f * randf());
 
 	// set energy
-	energy = collision_radius * 1000.0f;
+	_cxxEntity->energy = _cxxEntity->collision_radius * 1000.0f;
 	
 	setRandomSeed(savedRndSeed);
 	RANROTSetFullSeed(savedRanrotSeed);
 	
 	// rotate planet based on current time, needs to be done here - backported from PlanetEntity.
 	int		deltaT = floor(fmod([PLAYER clockTimeAdjusted], 86400));
-	quaternion_rotate_about_axis(&orientation, _rotationAxis, _rotationalVelocity * deltaT);
+	quaternion_rotate_about_axis(&_cxxEntity->orientation, _rotationAxis, _rotationalVelocity * deltaT);
 	quaternion_rotate_about_axis(&_atmosphereOrientation, kBasisYVector, _atmosphereRotationalVelocity * deltaT);
 	
 	
@@ -453,15 +462,15 @@ static OOColor *ColorWithHSBColor(Vector c)
 		if (landHSB.z > 0.66f) landHSB.z = 0.66f;
 		
 		// planetinfo.plist overrides
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "land_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "land_color")];
 		if (color != nil) landHSB = HSBColorWithColor(color);
 		else cxx_ScanVectorFromString(OptionalStringForKey(sourceInfo, "land_hsb_color"), &landHSB);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "sea_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "sea_color")];
 		if (color != nil) seaHSB = HSBColorWithColor(color);
 		else cxx_ScanVectorFromString(OptionalStringForKey(sourceInfo, "sea_hsb_color"), &seaHSB);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "illumination_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "illumination_color")];
 		if (color != nil) illumHSB = HSBColorWithColor(color);
 		else
 		{
@@ -471,7 +480,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		}
 		
 		// polar areas are brighter but have less colour (closer to white)
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "polar_land_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "polar_land_color")];
 		if (color != nil)
 		{
 			landPolarHSB = HSBColorWithColor(color);
@@ -481,7 +490,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 			landPolarHSB = LighterHSBColor(landHSB);
 		}
 
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "polar_sea_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "polar_sea_color")];
 		if (color != nil)
 		{
 			seaPolarHSB = HSBColorWithColor(color);
@@ -509,17 +518,17 @@ static OOColor *ColorWithHSBColor(Vector c)
 		SetInfo(targetInfo, "cloud_alpha", oo::PList::singleReal(cloudAlpha));	// +numberWithFloat:
 		
 		// planetinfo overrides
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "air_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "air_color")];
 		if (color != nil) seaHSB = HSBColorWithColor(color);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "cloud_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "cloud_color")];
 		if (color != nil) landHSB = HSBColorWithColor(color);
 		
 		// polar areas: brighter, less saturation
 		landPolarHSB = vector_add(landHSB,LighterHSBColor(landHSB));
 		scale_vector(&landPolarHSB, 0.5);
 		
-		color = [OOColor colorWithDescription:ObjectForKey(sourceInfo, "polar_cloud_color")];
+		color = [OOColor cxx_colorWithDescription:ValueForKey(sourceInfo, "polar_cloud_color")];
 		if (color != nil) landPolarHSB = HSBColorWithColor(color);
 		
 		SetInfo(targetInfo, "air_color", oo::PListObject(ColorWithHSBColor(seaHSB)));
@@ -544,11 +553,11 @@ static OOColor *ColorWithHSBColor(Vector c)
 	self = [self init];
 	if (self == nil)  return nil;
 	
-	scanClass = CLASS_NO_DRAW;
+	_cxxEntity->scanClass = CLASS_NO_DRAW;
 	[self setStatus:STATUS_COCKPIT_DISPLAY];
 	
-	collision_radius = planet->collision_radius * PLANET_MINIATURE_FACTOR;
-	orientation = planet->orientation;
+	_cxxEntity->collision_radius = planet->_cxxEntity->collision_radius * PLANET_MINIATURE_FACTOR;
+	_cxxEntity->orientation = planet->_cxxEntity->orientation;
 	_rotationAxis = planet->_rotationAxis;
 	_atmosphereOrientation = planet->_atmosphereOrientation;
 	_rotationalVelocity = 0.04;
@@ -558,15 +567,15 @@ static OOColor *ColorWithHSBColor(Vector c)
 	_miniature = YES;
 	
 	_planetDrawable = [planet->_planetDrawable copy];
-	[_planetDrawable setRadius:collision_radius];
+	[_planetDrawable setRadius:_cxxEntity->collision_radius];
 	
 	// FIXME: in old planet code, atmosphere (if textured) is set to 0.6 alpha.
 	_atmosphereDrawable = [planet->_atmosphereDrawable copy];
 	_cloudsShaderDrawable = [planet->_cloudsShaderDrawable copy];
 	_atmosphereShaderDrawable = [planet->_atmosphereShaderDrawable copy];
-	[_atmosphereDrawable setRadius:collision_radius + ATMOSPHERE_DEPTH * PLANET_MINIATURE_FACTOR * 2.0]; //not to scale: invisible otherwise
-	if (_cloudsShaderDrawable)  [_cloudsShaderDrawable setRadius:collision_radius + ATMOSPHERE_DEPTH * PLANET_MINIATURE_FACTOR * 2.0]; //not to scale: invisible otherwise
-	if (_atmosphereShaderDrawable)  [_atmosphereShaderDrawable setRadius:collision_radius + ATMOSPHERE_DEPTH * PLANET_MINIATURE_FACTOR * 2.0];
+	[_atmosphereDrawable setRadius:_cxxEntity->collision_radius + ATMOSPHERE_DEPTH * PLANET_MINIATURE_FACTOR * 2.0]; //not to scale: invisible otherwise
+	if (_cloudsShaderDrawable)  [_cloudsShaderDrawable setRadius:_cxxEntity->collision_radius + ATMOSPHERE_DEPTH * PLANET_MINIATURE_FACTOR * 2.0]; //not to scale: invisible otherwise
+	if (_atmosphereShaderDrawable)  [_atmosphereShaderDrawable setRadius:_cxxEntity->collision_radius + ATMOSPHERE_DEPTH * PLANET_MINIATURE_FACTOR * 2.0];
 	
 	[_planetDrawable setLevelOfDetail:0.8f];
 	[_atmosphereDrawable setLevelOfDetail:0.8f];
@@ -608,7 +617,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 
 - (double) radius
 {
-	return collision_radius;
+	return _cxxEntity->collision_radius;
 }
 
 
@@ -633,11 +642,11 @@ static OOColor *ColorWithHSBColor(Vector c)
 	if (EXPECT(!_miniature))
 	{
 		BOOL canDrawShaderAtmosphere = _atmosphereShaderDrawable && [UNIVERSE detailLevel] >= DETAIL_LEVEL_SHADERS;
-		if (EXPECT_NOT(_atmosphereDrawable && cam_zero_distance < _mesopause2))
+		if (EXPECT_NOT(_atmosphereDrawable && _cxxEntity->cam_zero_distance < _mesopause2))
 		{
 			OOAssert(_airColor != nil, "Expected a non-nil air colour for normal planet. Exiting.");
-			double		alt = (sqrt(cam_zero_distance) - collision_radius) / kMesosphere; // the viewpoint altitude
-			double		trueAlt = (sqrt(zero_distance) - collision_radius) / kMesosphere; // the actual ship altitude
+			double		alt = (sqrt(_cxxEntity->cam_zero_distance) - _cxxEntity->collision_radius) / kMesosphere; // the viewpoint altitude
+			double		trueAlt = (sqrt(_cxxEntity->zero_distance) - _cxxEntity->collision_radius) / kMesosphere; // the actual ship altitude
 			// if at long distance external view, rotating the camera could potentially end up with it being
 			// at negative altitude. Since we know we are already inside the atmosphere at this point, just make sure
 			// that altitude is kept to a minimum positive value to avoid sudden black skies
@@ -676,16 +685,16 @@ static OOColor *ColorWithHSBColor(Vector c)
 				}
 				else
 				{
-					if (PLAYER->isSunlit && _airColor != nil) mixColor = _airColor;
+					if (PLAYER->_cxxEntity->isSunlit && _airColor != nil) mixColor = _airColor;
 				}
 				[UNIVERSE setSkyColorRed:[mixColor redComponent] * aleph2
 								   green:[mixColor greenComponent] * aleph2
 									blue:[mixColor blueComponent] * aleph
 								   alpha:aleph];
-				double atmosphereRadius = canDrawShaderAtmosphere ? collision_radius : collision_radius + (ATMOSPHERE_DEPTH * alt);
+				double atmosphereRadius = canDrawShaderAtmosphere ? _cxxEntity->collision_radius : _cxxEntity->collision_radius + (ATMOSPHERE_DEPTH * alt);
 				[_atmosphereDrawable setRadius:atmosphereRadius];
 				if (_cloudsShaderDrawable) [_cloudsShaderDrawable setRadius: atmosphereRadius];
-				if (_atmosphereShaderDrawable)  [_atmosphereShaderDrawable setRadius:collision_radius + (ATMOSPHERE_DEPTH * alt)];
+				if (_atmosphereShaderDrawable)  [_atmosphereShaderDrawable setRadius:_cxxEntity->collision_radius + (ATMOSPHERE_DEPTH * alt)];
 				// apply air resistance for the ship, not the camera. Although setSkyColorRed
 				// has already set the air resistance to aleph, override it immediately
 				[UNIVERSE setAirResistanceFactor:OOClamp_0_1_f(1.0 - trueAlt)];
@@ -693,17 +702,17 @@ static OOColor *ColorWithHSBColor(Vector c)
 		}
 		else
 		{
-			if (EXPECT_NOT([_atmosphereDrawable radius] < collision_radius + ATMOSPHERE_DEPTH))
+			if (EXPECT_NOT([_atmosphereDrawable radius] < _cxxEntity->collision_radius + ATMOSPHERE_DEPTH))
 			{
-				[_atmosphereDrawable setRadius:collision_radius + ATMOSPHERE_DEPTH];
-				if (_cloudsShaderDrawable) [_cloudsShaderDrawable setRadius: collision_radius * ATMOSPHERE_DEPTH];
-				if (_atmosphereShaderDrawable)  [_atmosphereShaderDrawable setRadius:collision_radius + ATMOSPHERE_DEPTH];
+				[_atmosphereDrawable setRadius:_cxxEntity->collision_radius + ATMOSPHERE_DEPTH];
+				if (_cloudsShaderDrawable) [_cloudsShaderDrawable setRadius: _cxxEntity->collision_radius * ATMOSPHERE_DEPTH];
+				if (_atmosphereShaderDrawable)  [_atmosphereShaderDrawable setRadius:_cxxEntity->collision_radius + ATMOSPHERE_DEPTH];
 			}
-			if (canDrawShaderAtmosphere && [_atmosphereDrawable radius] != collision_radius)
+			if (canDrawShaderAtmosphere && [_atmosphereDrawable radius] != _cxxEntity->collision_radius)
 			{
 				// if shader atmo is in use, force texture atmo radius to just collision_radius for cosmetic purposes
-				[_atmosphereDrawable setRadius:collision_radius];
-				if (_cloudsShaderDrawable) [_cloudsShaderDrawable setRadius: collision_radius];
+				[_atmosphereDrawable setRadius:_cxxEntity->collision_radius];
+				if (_cloudsShaderDrawable) [_cloudsShaderDrawable setRadius: _cxxEntity->collision_radius];
 			}
 			if ([PLAYER findNearestPlanet] == self) // ensure no problems in case of more than one planets
 			{
@@ -716,7 +725,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		if (_shuttlesOnGround > 0 && time > _lastLaunchTime + _shuttleLaunchInterval)  [self launchShuttle];
 	}
 	
-	quaternion_rotate_about_axis(&orientation, _rotationAxis, _rotationalVelocity * delta_t);
+	quaternion_rotate_about_axis(&_cxxEntity->orientation, _rotationAxis, _rotationalVelocity * delta_t);
 	// atmosphere orientation is relative to the orientation of the planet
 	quaternion_rotate_about_axis(&_atmosphereOrientation, kBasisYVector, _atmosphereRotationalVelocity * delta_t);
 
@@ -746,10 +755,10 @@ static OOColor *ColorWithHSBColor(Vector c)
 	if (_miniature && ![self isFinishedLoading])  return; // For responsiveness, don't block to draw as miniature.
 
 	// too far away to be drawn
-	if (magnitude(cameraRelativePosition) > [self radius]*3000) {
+	if (magnitude(_cxxEntity->cameraRelativePosition) > [self radius]*3000) {
 		return;
 	}
-	if (![UNIVERSE viewFrustumIntersectsSphereAt:cameraRelativePosition withRadius:([self radius] + ATMOSPHERE_DEPTH)])
+	if (![UNIVERSE viewFrustumIntersectsSphereAt:_cxxEntity->cameraRelativePosition withRadius:([self radius] + ATMOSPHERE_DEPTH)])
 	{
 		// Don't draw
 		return;
@@ -759,7 +768,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 	
 	if (!_miniature)
 	{
-		[_planetDrawable calculateLevelOfDetailForViewDistance:cam_zero_distance];
+		[_planetDrawable calculateLevelOfDetailForViewDistance:_cxxEntity->cam_zero_distance];
 		[_atmosphereDrawable setLevelOfDetail:[_planetDrawable levelOfDetail]];
 		if (canDrawShaderAtmosphere)
 		{
@@ -828,7 +837,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 {
 	if (!other)
 		return NO;
-	if (other->isShip)
+	if (other->_cxxEntity->isShip)
 	{
 		ShipEntity *ship = (ShipEntity *)other;
 		if ([ship behaviour] == BEHAVIOUR_LAND_ON_PLANET)
@@ -849,7 +858,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 										   parameter:nil
 									relativeToEntity:self];
 	
-	if (station && HPdistance([station position], position) < 4 * collision_radius) // there is a station in range.
+	if (station && HPdistance([station position], _cxxEntity->position) < 4 * _cxxEntity->collision_radius) // there is a station in range.
 	{
 		return YES;
 	}
@@ -877,8 +886,8 @@ static OOColor *ColorWithHSBColor(Vector c)
 	
 	Quaternion  q1;
 	quaternion_set_random(&q1);
-	float start_distance = collision_radius + 125.0f;
-	HPVector launch_pos = HPvector_add(position, vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(q1), start_distance)));
+	float start_distance = _cxxEntity->collision_radius + 125.0f;
+	HPVector launch_pos = HPvector_add(_cxxEntity->position, vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(q1), start_distance)));
 	
 	ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
@@ -893,7 +902,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		
 		[shuttle_ship setScanClass: CLASS_NEUTRAL];
 		[shuttle_ship setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
-		[shuttle_ship switchAITo:@"oolite-shuttleAI.js"];
+		[shuttle_ship switchAITo:"oolite-shuttleAI.js"];
 		[UNIVERSE addEntity:shuttle_ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
 		_shuttlesOnGround--;
 		_lastLaunchTime = [UNIVERSE getTime];
@@ -1129,18 +1138,18 @@ static OOColor *ColorWithHSBColor(Vector c)
 		
 		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(self), oo::DescriptionOf(atmosphere));
 		
-		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:nil];
+		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:oo::PList()];
 		[_atmosphereDrawable setMaterial:dynamicMaterial];
 
 		if (shadersOn)
 		{
-			id aConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "atmosphere-material"), { diffuseMap, normalMap });
+			const oo::PList aConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "atmosphere-material"), { diffuseMap, normalMap });
 
-			id amacros = oo::ObjectFromPList(DictionaryForKey(materialDefaults, "atmosphere-dynamic-macros"));
+			const oo::PList amacros = DictionaryForKey(materialDefaults, "atmosphere-dynamic-macros");
 
 			OOMaterial *dynamicShaderMaterial = [OOShaderMaterial shaderMaterialWithName:"dynamic"
-																	configuration:oo::PListFrom(aConfig)
-																	macros:oo::PListFrom(amacros)
+																	configuration:aConfig
+																	macros:amacros
 																	bindingTarget:self];
 																	
 			if (dynamicShaderMaterial == nil)
@@ -1152,12 +1161,12 @@ static OOColor *ColorWithHSBColor(Vector c)
 				[_atmosphereShaderDrawable setMaterial:dynamicShaderMaterial];
 			}
 
-			id cloudConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "clouds-dynamic-material"), { atmosphere });
-			id cloudMacros = oo::ObjectFromPList(DictionaryForKey(materialDefaults, "clouds-dynamic-macros"));
+			const oo::PList cloudConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "clouds-dynamic-material"), { atmosphere });
+			const oo::PList cloudMacros = DictionaryForKey(materialDefaults, "clouds-dynamic-macros");
 
 			OOMaterial *cloudsMaterial = [OOShaderMaterial shaderMaterialWithName:"dynamic"
-										configuration: oo::PListFrom(cloudConfig)
-										macros: oo::PListFrom(cloudMacros)
+										configuration: cloudConfig
+										macros: cloudMacros
 										bindingTarget: self];
 			if (cloudsMaterial == nil)
 			{
@@ -1177,17 +1186,17 @@ static OOColor *ColorWithHSBColor(Vector c)
 #if OO_SHADERS
 	if (shadersOn)
 	{
-		id config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap, normalMap });
+		const oo::PList config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap, normalMap });
 
 		material = [OOShaderMaterial shaderMaterialWithName:textureName
-											  configuration:oo::PListFrom(config)
+											  configuration:config
 													 macros:macros
 											  bindingTarget:self];
 	}
 #endif
 	if (material == nil)
 	{
-		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:nil];
+		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:oo::PList()];
 		[material autorelease];
 	}
 	[_planetDrawable setMaterial:material];
@@ -1220,21 +1229,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
 - (std::optional<std::string>) cxx_name
 {
 	return _name;
-}
-
-
-- (void) setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
-{
-	[self cxx_setName:oo::OptionalString(name)];
 }
 
 

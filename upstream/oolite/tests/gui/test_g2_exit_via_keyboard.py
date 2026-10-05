@@ -201,9 +201,12 @@ def exit_row_dispatch():
         "which row ` Exit Game ` is"
     )
     row_zero = int(match.group(1))
+    # Either spelling of the exit call: the ObjC -exitAppWithContext:@"..." or the C++
+    # -cxx_exitAppWithContext:"..." it became in Phase 2 (oo-6abg). Jon approved accepting
+    # both, 2026-09-29 (bead oo-3rb.332).
     branch = re.search(
         r"\[gui selectedRow\]\s*==\s*(\d+)\s*\+\s*row_zero\s*\)\s*\{\s*"
-        r"\[\[UNIVERSE gameController\] exitAppWithContext:@\"([^\"]+)\"\]",
+        r"\[\[UNIVERSE gameController\] (?:exitAppWithContext:@|cxx_exitAppWithContext:)\"([^\"]+)\"\]",
         body,
     )
     assert branch, (
@@ -584,7 +587,10 @@ def test_the_start_screen_exit_context_is_unique_in_the_tree():
     the only runtime evidence of WHICH one ran. A second site passing the same string would make
     the launching test's final assertion a weaker claim than its message says.
     """
-    hits = _grep(r'exitAppWithContext:@"' + re.escape(EXPECTED_EXIT_CONTEXT) + r'"')
+    # Either spelling of the exit call: the ObjC -exitAppWithContext:@"..." or the C++
+    # -cxx_exitAppWithContext:"..." it became in Phase 2 (oo-6abg). Jon approved accepting
+    # both, 2026-09-29 (bead oo-3rb.332).
+    hits = _grep(r'(?:exitAppWithContext:@|cxx_exitAppWithContext:)"' + re.escape(EXPECTED_EXIT_CONTEXT) + r'"')
     assert len(hits) == 1, (
         f"{EXPECTED_EXIT_CONTEXT!r} is passed to -exitAppWithContext: from {len(hits)} places, "
         f"not 1: {hits}. G2 asserts that string to prove the start-screen ` Exit Game ` row ran."
@@ -593,8 +599,8 @@ def test_the_start_screen_exit_context_is_unique_in_the_tree():
     # would let a different path satisfy it.
     others = {
         match
-        for _path, _number, line in _grep(r'exitAppWithContext:@"')
-        for match in re.findall(r'exitAppWithContext:@"([^"]+)"', line)
+        for _path, _number, line in _grep(r'(?:exitAppWithContext:@|cxx_exitAppWithContext:)"')
+        for match in re.findall(r'(?:exitAppWithContext:@|cxx_exitAppWithContext:)"([^"]+)"', line)
     } - {EXPECTED_EXIT_CONTEXT}
     assert others, "no other exit contexts found at all; this guard is not reading the tree"
     for other in others:
@@ -614,9 +620,11 @@ def test_the_keyboard_and_mouse_exit_paths_converge_on_one_call_site():
     replace G2's navigation evidence with the far simpler context assertion.
     """
     body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
+    # Either spelling of the exit call (ObjC or the Phase 2 cxx_ form, oo-6abg); Jon approved
+    # accepting both, 2026-09-29 (bead oo-3rb.332).
     branch = re.search(
         r"(\([^\n]*\)[^\n]*\[gui selectedRow\]\s*==\s*\d+\s*\+\s*row_zero\s*\))\s*\{\s*"
-        r"\[\[UNIVERSE gameController\] exitAppWithContext:",
+        r"\[\[UNIVERSE gameController\] (?:cxx_)?exitAppWithContext:",
         body,
     )
     assert branch, "the start screen's exit branch is no longer recognisable"

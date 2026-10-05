@@ -250,9 +250,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (unsigned)rowHeight;
 - (int)rowStart;
 
-- (id)title;	// shared selector (Foundation declares -title too): -cxx_title as an Objective-C string, or nil
 - (std::optional<std::string>)cxx_title;	// nullopt: no title (bead oo-3rb.290)
-- (void) setTitle:(id)str;	// shared selector (Foundation declares -setTitle: too); an empty string means no title
 - (void) cxx_setTitle:(const std::optional<std::string> &)str;	// empty string means no title (bead oo-3rb.290)
 
 - (void) dealloc;
@@ -285,7 +283,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 
 - (void) setColor:(OOColor *)color forRow:(OOGUIRow)row;
 
-- (id) objectForRow:(OOGUIRow)row;
+- (oo::PList) objectForRow:(OOGUIRow)row;	// a string, or an array of column strings; null out of range
 - (std::optional<std::string>) cxx_keyForRow:(OOGUIRow)row;
 - (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key;
 - (OOGUIRow) selectedRow;
@@ -381,6 +379,10 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (oo::PList) cxx_getLastLines;	// text, colour, fade time (x 2); null with no rows
 
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor;
+// The row under a virtual-joystick (pointer) position: the row -drawGUI:drawCursor:YES returns for
+// that position, without rendering. A click uses it so that it activates the row under the pointer
+// NOW, not the row of the last render (bead oo-3rb.348).
+- (int) rowAtVirtualJoystickPosition:(NSPoint) vjpos;
 - (void) drawGUIBackground;
 - (void) setStatusPage:(NSInteger) pageNum;
 - (NSUInteger) statusPage;

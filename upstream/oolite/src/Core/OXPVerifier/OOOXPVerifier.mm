@@ -56,31 +56,92 @@ SOFTWARE.
 #import "OOLoggingExtended.h"
 #include "oofnd/Log.hpp"
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "GameController.h"
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
+#include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
+#import "OOAIStateMachineVerifierStage.h"
+#import "OOCheckJSSyntaxVerifierStage.h"
+#import "OOCheckPListSyntaxVerifierStage.h"
+#import "OOCheckDemoShipsPListVerifierStage.h"
+#import "OOCheckRequiresPListVerifierStage.h"
+#import "OOCheckEquipmentPListVerifierStage.h"
+#import "OOTextureVerifierStage.h"
 
 namespace {
 void SwitchLogFile(const std::string &name);
 void NoteVerificationStage(const std::string &displayName, const std::string &stage);
 void OpenLogFile();
+
+
+bool IsPathSeparator(char c)
+{
+	return c == '/' || c == '\\';
+}
+
+
+/*	-stringByExpandingTildeInPath as gnustep-base 1.31.1 answers it on Windows (probed): a path
+	that is "~" or starts with "~" and a separator ('/' or '\') becomes the home directory
+	(oo::ResourcePaths, '/' separators) followed by the rest's non-empty components joined with
+	'/' ("~/a\\b/" -> "<home>/a/b"); anything else is returned as it is. "~user" is also left as it
+	is: GNUstep expanded it only for the current user's own name, which is not looked up here.
+*/
+std::string ExpandTildeInPath(const std::string &path)
+{
+	if (path.empty() || path[0] != '~')  return path;
+	if (path.size() > 1 && !IsPathSeparator(path[1]))  return path;
+
+	std::string result = oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory());
+	std::string component;
+	for (size_t i = 1; i <= path.size(); i++)
+	{
+		if (i == path.size() || IsPathSeparator(path[i]))
+		{
+			if (!component.empty())  result += "/" + component;
+			component.clear();
+		}
+		else  component += path[i];
+	}
+	return result;
+}
+
+
+/*	The stages verifyOXP.plist names ("stages") that are C++ (proposed ADR-0056 amendment oo-up4b
+	item 5). A converted leaf stage is global and has no Objective-C class, so OOClassFromName finds
+	nothing; -registerBaseStages looks here first and registers the stage's facade. Each bead that
+	converts such a stage adds its line; the table moves into the verifier when it converts (oo-tsa4).
+*/
+struct CxxStage
+{
+	std::string_view						name;
+	oo::Ref<cxx::OOOXPVerifierStage>		(*make)();
+};
+
+constexpr CxxStage kCxxStages[] =
+{
+	{ "OOAIStateMachineVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOAIStateMachineVerifierStage>()); } },
+	{ "OOCheckJSSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckJSSyntaxVerifierStage>()); } },
+	{ "OOCheckPListSyntaxVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckPListSyntaxVerifierStage>()); } },
+	{ "OOCheckDemoShipsPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckDemoShipsPListVerifierStage>()); } },
+	{ "OOCheckRequiresPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckRequiresPListVerifierStage>()); } },
+	{ "OOCheckEquipmentPListVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOCheckEquipmentPListVerifierStage>()); } },
+	{ "OOTextureVerifierStage", [] { return oo::Ref<cxx::OOOXPVerifierStage>(oo::makeRef<OOTextureVerifierStage>()); } },
+};
+
+
 }
 
 @interface OOOXPVerifier (OOPrivate)
 
-- (id)initWithPath:(id)path;	// path: an Objective-C string. Shared selector (Foundation declares it too): -cxx_initWithPath:.
 - (id)cxx_initWithPath:(const std::optional<std::string> &)path OO_RETURNS_RETAINED;	// nullopt: nil (bead oo-3rb.292.2)
 - (void)run;
 
@@ -134,7 +195,7 @@ void OpenLogFile();
 				objc_autoreleasePoolPop(pool);
 				return YES;
 			}
-			foundPath = oo::StdString([oo::NSStringFrom(*foundPath) stringByExpandingTildeInPath]);	// no oo::str form yet: runs on the bridged string
+			foundPath = ExpandTildeInPath(*foundPath);
 			break;
 		}
 	}
@@ -289,12 +350,6 @@ void OpenLogFile();
 
 @implementation OOOXPVerifier (OOPrivate)
 
-- (id)initWithPath:(id)path	// shared selector (Foundation declares it too)
-{
-	return [self cxx_initWithPath:oo::OptionalString(path)];
-}
-
-
 - (id)cxx_initWithPath:(const std::optional<std::string> &)path
 {
 	self = [super init];
@@ -401,6 +456,13 @@ void OpenLogFile();
 		}
 		for (const std::string &stageName : stages)
 		{
+			const auto cxxStage = std::find_if(std::begin(kCxxStages), std::end(kCxxStages), [&stageName](const CxxStage &entry) { return entry.name == stageName; });
+			if (cxxStage != std::end(kCxxStages))
+			{
+				[self registerStage:oo::ToObjC(cxxStage->make().get())];
+				continue;
+			}
+
 			stageClass = OOClassFromName(stageName);
 			if (stageClass == Nil)
 			{
@@ -448,9 +510,8 @@ void OpenLogFile();
 			const std::optional<std::vector<std::string>> dependents = [stage dependents];
 			if (dependents.has_value())
 			{
-				// Through the Objective-C set the stages returned before, so the names keep its
-				// enumeration order (-setUpDependents: registers them in that order).
-				dependentsByStage[stage] = oo::StringsFrom(oo::NSSetFromStrings(*dependents));
+				// -setUpDependents: registers them in this order (-dependents has no duplicates).
+				dependentsByStage[stage] = *dependents;
 			}
 		}
 		_waitingStages.clear();
@@ -734,8 +795,7 @@ namespace {
 void SwitchLogFile(const std::string &name)
 {
 //#ifndef OOLITE_LINUX
-	// -stringByAppendingPathExtension: has no oo::str form yet: it runs on the bridged string.
-	const std::string logName = oo::StdString([oo::NSStringFrom(name) stringByAppendingPathExtension:@"log"]);
+	const std::string logName = oo::str::appendingPathExtension(name, "log");
 	OO_LOG("verifyOXP.switchingLog", "Switching log files -- logging to \"{}\".", logName);
 	cxx_OOLogOutputHandlerChangeLogFile(logName);
 //#else
@@ -763,7 +823,9 @@ void OpenLogFile()
 		[[NSWorkspace sharedWorkspace] openFile:oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath())];
 #elif OOLITE_WINDOWS
 		// ShellExecute will automatically use the app associated with .log files
-		ShellExecute(NULL, NULL, [oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath()) UTF8String], NULL, NULL, SW_SHOWNORMAL);
+		// A nil path's -UTF8String was NULL.
+		const std::optional<std::string> logPath = cxx_OOLogHandlerGetLogPath();
+		ShellExecute(NULL, NULL, logPath.has_value() ? logPath->c_str() : NULL, NULL, NULL, SW_SHOWNORMAL);
 #elif  OOLITE_LINUX
 		// MKW - needed to suppress 'ignoring return value' warning for system() call
 		//		int ret;
@@ -771,7 +833,7 @@ void OpenLogFile()
 		// value to void seems to keep it quiet for now
 		// Nothing to do here, since we dump to stdout instead of to a file.
 		//OOLogOutputHandlerStopLoggingToStdout();
-		(void) system(oo::str::format("cat \"%s\"", oo::DescriptionOf(oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath())).c_str()).c_str());
+		(void) system(oo::str::format("cat \"%s\"", cxx_OOLogHandlerGetLogPath().value_or("(null)").c_str()).c_str());
 #else 
 		do {} while (0);
 #endif

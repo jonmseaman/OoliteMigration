@@ -35,7 +35,6 @@ SOFTWARE.
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
 #import "NSObjectOOExtensions.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/objc/OOException.h"
@@ -322,7 +321,7 @@ static OOColor *DebugColor(Vector orientation)
 #else
 		currQuad->color = [color1 blendedColorWithFraction:randf() ofColor:color2];
 #endif
-		currQuad->texture = [sStarTextures selectTexture];	// Not retained, since sStarTextures is never released.
+		currQuad->texture = (sStarTextures != nullptr) ? sStarTextures->selectTexture() : nil;	// Not retained, since sStarTextures is never released.
 		
 		// Select scale; calculate centre position and offset to first corner.
 		size = (1 + (ranrot_rand() % 6)) * SKY_ELEMENT_SCALE_FACTOR;
@@ -392,7 +391,7 @@ static OOColor *DebugColor(Vector orientation)
 #else
 			currQuad->color = [color colorWithBrightnessFactor:nebulaAlpha * (0.5f + (float)r1 / 32.0f)];
 #endif
-			currQuad->texture = [sNebulaTextures selectTexture];	// Not retained, since sStarTextures is never released.
+			currQuad->texture = (sNebulaTextures != nullptr) ? sNebulaTextures->selectTexture() : nil;	// Not retained, since sStarTextures is never released.
 			
 			middle = vector_multiply_scalar(vk, BILLBOARD_DEPTH);
 			offset = vector_multiply_scalar(vector_add(vi, vj), 0.5f * size);
@@ -447,48 +446,46 @@ static OOColor *DebugColor(Vector orientation)
 
 - (void)loadStarTextures
 {
-	if (sStarTextures == nil)
+	if (sStarTextures == nullptr)
 	{
-		sStarTextures = [[OOProbabilisticTextureManager alloc]
-							initWithPListName:"startextures.plist"
-									  options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
-								   anisotropy:0.0f
-									  lodBias:-0.0f];
-		if (sStarTextures == nil)
+		sStarTextures = OOProbabilisticTextureManager::createWithPListName("startextures.plist",
+							kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask,
+							0.0f,
+							-0.0f).leakRef();
+		if (sStarTextures == nullptr)
 		{
 			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No star textures could be loaded."];
 		}
 	}
 	
-	[sStarTextures setSeed:RANROTGetFullSeed()];
+	sStarTextures->setSeed(RANROTGetFullSeed());
 	
 }
 
 
 - (void)loadNebulaTextures
 {
-	if (sNebulaTextures == nil)
+	if (sNebulaTextures == nullptr)
 	{
-		sNebulaTextures = [[OOProbabilisticTextureManager alloc]
-							initWithPListName:"nebulatextures.plist"
-									  options:kOOTextureDefaultOptions | kOOTextureAlphaMask
-								   anisotropy:0.0f
-									  lodBias:0.0f];
-		if (sNebulaTextures == nil)
+		sNebulaTextures = OOProbabilisticTextureManager::createWithPListName("nebulatextures.plist",
+							kOOTextureDefaultOptions | kOOTextureAlphaMask,
+							0.0f,
+							0.0f).leakRef();
+		if (sNebulaTextures == nullptr)
 		{
 			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No nebula textures could be loaded."];
 		}
 	}
 	
-	[sNebulaTextures setSeed:RANROTGetFullSeed()];
+	sNebulaTextures->setSeed(RANROTGetFullSeed());
 	
 }
 
 
 - (void)ensureTexturesLoaded
 {
-	[sStarTextures ensureTexturesLoaded];
-	[sNebulaTextures ensureTexturesLoaded];
+	if (sStarTextures != nullptr)  sStarTextures->ensureTexturesLoaded();
+	if (sNebulaTextures != nullptr)  sNebulaTextures->ensureTexturesLoaded();
 }
 
 

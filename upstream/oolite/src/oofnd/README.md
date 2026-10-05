@@ -30,7 +30,7 @@ Rules that hold for every component:
 | `src/oofnd/PListParsing.hpp` | `oo::parsePropertyList`: OOPropertyListFromData's DTD change + format detection + dispatch to the two readers |
 | `src/oofnd/PListDescription.hpp` | `oo::describe(plist)`: gnustep-base's `-description` of the Foundation form of a `PList` (what `%@` printed for `ObjectFromPList(plist)`), byte for byte; pinned by rows captured with `tools/captures/plist-description/capture.sh` (ADR-0055 item 1). Game code calls `oo::DescriptionOf(plist)` |
 | `src/oofnd/PListGet.hpp` | `oo::PList::get<T>(key, fallback)` / `at<T>(index, fallback)`: OOCollectionExtractors' `oo_*ForKey:` / `oo_*AtIndex:` with GNUstep's exact conversions ([ADR-0031](../../../../docs/decisions/0031-plist-get-and-the-foundation-bridge.md)); included by `PList.hpp` |
-| `src/Core/OOPListView.h` (game side) | `oo::PListView`: the same `get<T>`/`at<T>` over a Foundation collection, for sweeping `oo_*ForKey` before the containers are `PList`; see below |
+| `src/Core/OOPListView.h` (game side) | deleted by oo-snzn with `OOCollectionExtractors` (ADR-0055): it was `oo::PListView`, the same `get<T>`/`at<T>` over a Foundation collection; the recipe below is history |
 | `src/oofnd/Data.hpp` | `oo::Data`: `NSData` / `NSMutableData` as a value type ([ADR-0028](../../../../docs/decisions/0028-oofnd-filesystem-paths-data.md)) |
 | `src/oofnd/FileSystem.hpp` | `oo::fs`: `NSFileManager` + its OOExtensions category + NSData file I/O, on `std::filesystem` with GNUstep semantics |
 | `src/oofnd/ResourcePaths.hpp` | `oo::ResourcePaths`: the game's Resources/AddOns/saves/logs/caches locations, exactly as computed today on Windows and Linux |
@@ -45,14 +45,15 @@ Rules that hold for every component:
 | `src/oofnd/Log.hpp` | `oo::log`: OOLogging without Foundation: message-class switches (inheritance, `$metaclasses`, `_default`/`_override`), per-thread indentation, the exact Latest.log line layout, OOLogging's own diagnostics, and the `OO_LOG("cls", "{}", ...)` std::format front end. `src/Core/OOLogging.mm` is its Objective-C shell ([ADR-0035](../../../../docs/decisions/0035-oofnd-logging.md)) |
 | `src/oofnd/LogFile.hpp` | `oo::log::FileWriter`, `logFileBytes`, `consoleBytes`, `rotateToPrevious`: the Latest.log writer (OOLogOutputHandler's OOAsyncLogger) without Foundation, byte for byte: CRLF, lone-surrogate lines dropped, 1 GiB saturation, Previous.log rotation ([ADR-0042](../../../../docs/decisions/0042-oofnd-log-file-writer.md)) |
 | `src/oofnd/Http.hpp` | `oo::http::Download`, `parseUrl`: the OXZ manager's `NSURLConnection` without Foundation: one GET on its own thread (WinHTTP on Windows), its response/data/finish/failure callbacks taken in order on the main thread; every status delivers its body, Content-Length or -1, no cookies, redirects followed, file: URLs read from disk ([ADR-0044](../../../../docs/decisions/0044-oofnd-http-client.md)) |
-| `src/Core/OOStringBridge.h` (game side) | `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`: the exact `NSString` <-> `std::string` bridge for calling `oo::str` from files that still hold `NSString`s; see below |
+| `src/Core/OOStringBridge.h` (game side) | deleted by oo-qps.16 (ADR-0055): it was `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`, the `NSString` <-> `std::string` bridge; the Phase 5 Mac port restores what it needs from `git show <oo-qps.16>^` (ADR-0055 item 7) |
 | `src/oofnd/objc/OOObjCRef.h` | `oo::ObjCRef<T *>`: a retaining reference to an Objective-C object for std containers (`objc_retain`/`objc_release`; `Ref<T>`'s API); `test_objc_ref.mm` also pins the nil-message zero-fill the sweep's return types rest on (proposed [ADR-0043](../../../../docs/decisions/0043-foundation-sweep-recipe.md)) |
-| `src/Core/OOFoundationBridge.h` (game side) | the Foundation sweep's boundary helpers: nil-able strings, kind tests, string and object collections, `oo::PList` <-> property-list objects, `%@` text; see "Migrating Foundation usage" |
+| `src/Core/OOFoundationBridge.h` (game side) | deleted by oo-qps.16 (ADR-0055): it held the Foundation sweep's boundary helpers; Object nodes moved to `src/Core/OOObjCPList.h`, `%@` text to `src/Core/OODescription.h` |
 | `tools/check-selector-types.py` | which of a header's selectors are shared (keep `id`) and the tree-wide guard against a selector family disagreeing on a C++ type |
 | `src/oofnd/Defaults.hpp` | `oo::Defaults`: preferences store matching former `NSUserDefaults`+Override/`NSBundle+Override` behaviour: same `GNUstep/Defaults/oolite.plist`, same search list and coercions, `oo::writeOpenStepPList` (GNUstep's OpenStep writer, byte-identical) ([ADR-0032](../../../../docs/decisions/0032-oofnd-defaults.md)); shim deleted by oo-iobt |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++, not linked into the game until the reroot bead |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++; linked into the game by bead oo-3rb.2 (exemplar reroot: `Core/OORoleSet`), but `OOObjCInstallFloor()` is not called until the constant-string flip |
 | `src/oofnd/objc/OOConstantString.h`, `.mm` | `OOConstantString`/`OOTinyString`: the classes behind `@"..."` under `-fconstant-string-class=OOConstantString` (ADR-0029) |
+| `src/oofnd/objc/OOObjCPeer.h` | `oo::ObjCPeers`: at most one live Objective-C façade per C++ object, held weakly (libobjc2 weak refs), for the Phase 3 `X+ObjCBridge` façades; `test_objc_peer.mm` ([ADR-0056](../../../../docs/decisions/0056-phase3-class-conversion-house-style.md)) |
 | `src/oofnd/objc/OORuntime.h` | `OOClassFromName`/`OOClassName`/`OOSelectorFromName`/`OOSelectorName`/`OOSelectorsEqual`: `NSClassFromString` & co. on the libobjc2 calls GNUstep makes, UTF-8 in and out; header-only |
 | `src/oofnd/objc/OOException.h`, `.mm` | `OOException`: `NSException` without Foundation; `@try`/`@catch` stay Objective-C (ADR-0029 Decision 4). `+raise:format:` is printf-style; `OOInvalidArgumentException` & co. are `const char *` with Foundation's text |
 | `src/oofnd/objc/OOFoundationTypes.h` | Foundation's C types (`NSInteger`/`NSUInteger`, `NSRange`, `NSNotFound`, `NSPoint`/`NSSize`/`NSRect`, `NSMake*`, `NSEqual*`, `NSTimeInterval`, `CGFloat`) with GNUstep's exact definitions and names (ADR-0029 Decision 5); refuses to compile beside Foundation, so OOCocoa.h includes it only from oo-qps. Pinned by `tests/unit/oofnd/test_foundation_types.cpp` |
@@ -65,6 +66,11 @@ Rules that hold for every component:
 
 ## Migrating oo_*ForKey
 
+> **History (ADR-0055).** This recipe is kept as the record of what the sweep beads did. Its
+> header, `src/Core/OOPListView.h`, was deleted by oo-snzn with `OOCollectionExtractors`; do not recreate it or import it. Code written today holds
+> C++ values: `oo::PList`'s own `get<T>`/`at<T>` (`oofnd/PListGet.hpp`), and an Objective-C object in a
+> property list goes through `Core/OOObjCPList.h`.
+
 The recipe for every `sweep:extractors` bead ("Retire oo_*ForKey in <file>"). Proposed
 [ADR-0031](../../../../docs/decisions/0031-plist-get-and-the-foundation-bridge.md); exemplar
 `src/Core/Entities/OOWaypointEntity.mm` (bead oo-u77) - open it and do what it does.
@@ -74,9 +80,9 @@ The file keeps its Foundation collections. Each call goes through `oo::PListView
 the same lookup and calls the same conversion function as the category method it replaces, so the
 change is behaviour-preserving by construction. Do exactly this, nothing else:
 
-1. **Import.** Replace `#import "OOCollectionExtractors.h"` with `#import "OOPListView.h"` (the view
-   imports it, so nothing is lost). If the file has no such import, add `#import "OOPListView.h"`
-   after its last `#import`.
+1. **Import** (history). The bead swapped the file's `OOCollectionExtractors.h` import for the
+   view's header, `OOPListView.h` (the view imported it, so nothing was lost), or added the view's
+   header after the file's last import.
 2. **Rewrite each call.** Receiver, key, index and fallback expressions move over **unchanged**
    (keep `@"..."`, `#define`d keys and `NSString *` constants as they are):
 
@@ -131,14 +137,19 @@ becomes `x.` and the Objective-C types map to `std::string`, `PList::Array`, `PL
 
 ## Migrating NSString category calls (oo::str)
 
+> **History (ADR-0055).** This recipe is kept as the record of what the sweep beads did. Its
+> header, `src/Core/OOStringBridge.h`, was deleted by oo-qps.16; do not recreate it or import it. Code written today holds
+> C++ values: call `oo::str` on the `std::string` directly (the table in `String.hpp`'s banner),
+> with no `oo::StdString` / `oo::StringMap` / `oo::NSStringFrom` around it.
+
 The recipe for a file's `NSStringOOExtensions` / `NSString (OOUtilities)` calls (seam 2.5b, bead
 oo-dps; proposed [ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)); exemplar
 `src/Core/OOOXZManager.mm`. The file keeps its `NSString`s; each call goes through the bridge in
 `src/Core/OOStringBridge.h`.
 
-1. **Import.** Replace `#import "NSStringOOExtensions.h"` with `#import "OOStringBridge.h"`; if the
-   file has no such import (the call came through `OOStringParsing.h`), add it after its last
-   `#import`. Keep `OOStringParsing.h` if the file uses anything else from it.
+1. **Import** (history). The bead swapped the file's `NSStringOOExtensions.h` import for the
+   string bridge header, `OOStringBridge.h`, or added the bridge header after its last import when
+   the call came through `OOStringParsing.h` (kept if the file used anything else from it).
 2. **Rewrite each call** (the table is in `String.hpp`'s banner):
 
    | Objective-C | becomes |
@@ -164,12 +175,18 @@ retained a string, take `std::string_view` / `const std::string&` or move; copy 
 
 ## Migrating NSScanner / NSCharacterSet calls (oo::str::Scanner)
 
+> **History (ADR-0055).** This recipe is kept as the record of what the sweep beads did. Its
+> header, `src/Core/OOStringBridge.h`, was deleted by oo-qps.16; do not recreate it or import it. Code written today holds
+> C++ values: `#include "oofnd/Scanner.hpp"` and construct `oo::str::Scanner` from the
+> `std::string` itself.
+
 The recipe for the `NSScanner` / `NSCharacterSet` chunk beads (bead oo-3rb.12; proposed
 [ADR-0039](../../../../docs/decisions/0039-oofnd-scanner.md)); exemplars `src/Core/OOColor.mm`,
 `src/Core/OORoleSet.mm`, `src/Core/OOStringParsing.mm`. The file keeps its `NSString`s and bridges
 per call (`OOStringBridge.h`).
 
-1. **Include** `#import "OOStringBridge.h"` and `#include "oofnd/Scanner.hpp"` after the last `#import`.
+1. **Include** (history) the string bridge header, `OOStringBridge.h`, and `#include "oofnd/Scanner.hpp"`
+   after the last import. Today only the `Scanner.hpp` include remains.
 2. **Rewrite each call** (the full table is in `Scanner.hpp`'s banner):
 
    | Objective-C | becomes |
@@ -250,8 +267,13 @@ acceptance grep matches (comments included), the whole tree builds, and the game
 
 Use `oofnd/StdLib.hpp` for standard containers (never `<vector>` directly: OOCocoa.h's
 `true`/`false` macros), `oofnd/String.hpp` for `oo::str`, `oofnd/PList.hpp` for `oo::PList`,
-`oofnd/objc/OOObjCRef.h` for `oo::ObjCRef`, and `#import "OOFoundationBridge.h"` (which brings
-`OOStringBridge.h`) for the boundary helpers.
+`oofnd/objc/OOObjCRef.h` for `oo::ObjCRef`, `Core/OOObjCPList.h` for an Objective-C object inside a
+property list (`oo::PListObject`, `oo::ObjectIn`, `oo::PListFromObjects`, `oo::ObjCRefsIn`), and
+`oo::DescriptionOf` (`Core/OODescription.h`, imported by `OOCocoa.h`) for `%@` text. The boundary
+helpers this step used to name (`oo::StdString`, `oo::NSStringFrom`, `oo::NSStringOrNil`,
+`oo::NSArrayFromStrings` & co.) lived in `OOFoundationBridge.h` / `OOStringBridge.h`, deleted by
+oo-qps.16 (ADR-0055): where the tables below still name them they are history, and the forms that
+replace them are in "The last Foundation boundaries (ADR-0055)".
 
 | Foundation | inside the file (ivars, locals, statics) | parameter of a unique selector / C function | result of a unique **method** (receiver may be nil) | result of a C function |
 |---|---|---|---|---|
@@ -289,6 +311,7 @@ valid empty `std::vector`, a disengaged `std::optional`, a null `oo::ObjCRef` or
 | `ScanTokensFromString(s)` | `oo::str::tokens(s)` |
 | `NSScanner -scanFloat:` / `-scanDouble:` on a string you hold | `oo::plist_get::scanDouble(oo::utf8ToUtf16(s), &d)` (the NSScanner port; narrow for float) |
 | `-pathComponents`, `+pathWithComponents:`, `-lastPathComponent`, `-stringByDeletingLastPathComponent`, `-stringByAppendingPathComponent:c` | `oo::str::pathComponents(s)`, `pathWithComponents(v)`, `lastPathComponent(s)`, `deletingLastPathComponent(s)`, `appendingPathComponent(s, c)` (GNUstep's Windows rules; `c` is one component) |
+| `-stringByAppendingPathExtension:e` | `oo::str::appendingPathExtension(s, e)` (GNUstep's Windows rules: trailing `/` and `\` dropped; an empty or bare-root path — `/`, `C:`, `~` — comes back unchanged, without GNUstep's "cannot append extension" log line; pinned by `tests/unit/oofnd/test_string_path_extension.cpp`, bead oo-3rb.327). Never write a file-local copy |
 | `%p` in a format string | `%s` with `oo::str::pointerDescription(p).c_str()` (GNUstep's text: low 32 bits, `(null)`) |
 | `[s UTF8String]` to hand a path to a C API | `s.c_str()` |
 | `OOCommodityType` (a typedef of `NSString *`) | `std::string`; never name the typedef in a migrated file (also `OOALStringRef` & co.) |
@@ -311,7 +334,8 @@ direct caller **at the call expression only**, in the same commit:
 | use of the result as a dictionary of numbers | `std::optional<std::map<std::string, float>>` | build it in the caller's own Foundation code: `for (const auto &[k, v] : *m) [d setObject:[NSNumber numberWithFloat:v] forKey:oo::NSStringFrom(k)];` (the exact NSNumber type the old code stored) |
 | a nil receiver whose nil result mattered (e.g. handed to JavaScript, where nil is not `[]`) | any collection result | test the receiver: `r != nil ? oo::NSArrayFromStrings([r foo]) : nil` (`OOJSShip.mm`, `kShip_roles`) |
 
-Add `#import "OOFoundationBridge.h"` (or `OOStringBridge.h`) after the caller's last import. Change
+(History: the bead also added the bridge header, `OOFoundationBridge.h` or `OOStringBridge.h`, after
+the caller's last import; both are deleted (ADR-0055), and a caller today holds C++ values.) Change
 nothing else in the caller. A caller whose own bead has landed already holds C++ values: pass them
 directly.
 
@@ -381,6 +405,9 @@ Root-class selectors are shared by construction: `-description`, `-descriptionCo
 
 ### 6. Over budget: a transitional bridge
 
+> **History (ADR-0055).** No bridge can be made now: every one was deleted (see "Transitional
+> bridges" below), and so was the bridge header they imported. The steps record how they were built.
+
 For a file `X` whose unique Foundation-typed API has too many direct callers (exemplar
 `OOColor.mm`):
 
@@ -392,7 +419,7 @@ For a file `X` whose unique Foundation-typed API has too many direct callers (ex
    it), an include guard, no imports, and a category `@interface X (OOFoundationBridge)` holding
    the old declarations **copied exactly** (same selector names, same types) plus the old C
    function prototypes. Create `X+FoundationBridge.mm`: `#import "X.h"` and
-   `#import "OOFoundationBridge.h"`, and implement each old method by forwarding to its `cxx_`
+   the boundary helper header, `OOFoundationBridge.h`, and implement each old method by forwarding to its `cxx_`
    twin and converting the result as the old code built it (the same NSNumber type, nil for nil,
    immutable collections).
 3. Add `#import "X+FoundationBridge.h"` as the LAST line of `X.h`, under a comment saying it is

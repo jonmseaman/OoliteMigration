@@ -19,6 +19,14 @@ The plan is the markdown file's single fenced block tagged `slice-plan`:
     verbatim: plain C, no Objective-C            # units that are not converted (ADR-0012, CLAUDE.md
       OOScaleHelper()                            # rule 9): never read by a slice, and each must
                                                  # contain no Objective-C syntax
+    mac-only: the Mac layer, Phase 5             # units the fleet never compiles (bead oo-q9l2w):
+      @Foo(MacOSX)                               # each must lie wholly inside an #if/#ifdef
+                                                 # OOLITE_MAC_OS_X arm; not converted in Phase 3
+                                                 # (ADR-0056 amendment oo-bgmb item 2, ADR-0009),
+                                                 # never read by a slice, no story is emitted; a
+                                                 # mac-only entry claims a unit in a Mac arm
+                                                 # whatever its tier (the Mac arm of a method a
+                                                 # slice names exactly stays Mac)
 
 Units are found by a light lexer: comments and string literals are blanked, braces counted.
 A unit is a method definition inside @implementation, or a function definition at file scope
@@ -33,11 +41,17 @@ Checks (exit 1 on any failure):
   * each slice's read estimate, header + preamble + its own units, is under --max-read (1,500);
   * each slice's own units total at most --max-own lines (default 800): converting a method
     rewrites roughly half its lines, so this keeps a story near the ~400-lines-written budget;
-  * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...).
+  * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...);
+  * every mac-only unit lies wholly inside an OOLITE_MAC_OS_X preprocessor arm.
 An exact entry that matches no unit is a warning (the method was removed or renamed upstream).
 
     python3 tools/check-slice-plan.py docs/phases/3-slices/Foo.md [--json] [--units]
     python3 tools/check-slice-plan.py --selftest
+    python3 tools/check-slice-plan.py --slice-done 2 docs/phases/3-slices/Foo.md
+
+--slice-done is a slice story's acceptance (tools/gen-stories.py emits one conversion story per
+slice): it exits nonzero while any unit the plan assigns to that slice is still an Objective-C
+method or a function with Objective-C syntax in it, and zero once none is.
 """
 import argparse, json, os, re, sys
 
@@ -70,6 +84,7 @@ def blank_comments_and_strings(text):
     return "".join(out)
 
 OBJC_SEND = re.compile(r"\[\s*[A-Za-z_][\w.]*(\s*(->|\.)\s*\w+|\([^()]*\))*\s+[A-Za-z_]\w*\s*[\]:]")
+MAC_COND = re.compile(r"(defined\s*\(\s*OOLITE_MAC_OS_X\s*\)|defined\s+OOLITE_MAC_OS_X|OOLITE_MAC_OS_X)")
 OBJC_AT = re.compile(r'@"|@(selector|try|catch|finally|throw|synchronized|encode|protocol|autoreleasepool|interface|implementation)\b')
 
 def objc_sites(code_lines):
@@ -108,11 +123,23 @@ def parse_units(path):
     cur = None            # the unit being read
     def eff(): return sum(1 for k in stack if k != "ns")
     pp = False            # inside a preprocessor directive (continued with a trailing backslash)
+    cond = []             # one bool per open #if: is its current arm an OOLITE_MAC_OS_X arm?
+    mac_line = [False] * len(code_lines)
     for ln, line in enumerate(code_lines):
         s = line.strip()
         if pp or s.startswith("#"):   # directives never count braces (#define bodies, #if arms)
+            if not pp:
+                d = re.match(r"#\s*(ifdef|ifndef|if|elif|else|endif)\b\s*(.*)$", s)
+                if d:
+                    kw, arg = d.group(1), d.group(2).strip()
+                    if kw in ("if", "ifdef", "ifndef"): cond.append(kw != "ifndef" and bool(MAC_COND.fullmatch(arg)))
+                    elif kw == "elif" and cond: cond[-1] = bool(MAC_COND.fullmatch(arg))
+                    elif kw == "else" and cond: cond[-1] = False
+                    elif kw == "endif" and cond: cond.pop()
             pp = line.rstrip().endswith("\\")
+            mac_line[ln] = any(cond)
             continue
+        mac_line[ln] = any(cond)
         if eff() == 0 and cur is None:
             if in_interface:
                 if s.startswith("@end"): in_interface = False
@@ -151,10 +178,14 @@ def parse_units(path):
                     cur["end"] = ln; units.append(cur); cur = None
                 if eff() == 0: buf = []; buf_line = None
             elif ch == ";" and eff() == 0 and cur is None:
+                if impl and "".join(buf).strip()[:1] in ("-", "+"):
+                    continue   # '- (void) foo:(int)x;' then '{' is a legal method definition: keep the head
                 buf = []; buf_line = None
             elif eff() == 0 and cur is None:
                 if buf_line is None and not ch.isspace(): buf_line = ln
                 if buf_line is not None: buf.append(ch)
+    for u in units:   # before the leading comments are attached: the unit's own lines
+        u["mac"] = all(mac_line[k] for k in range(u["start"], u["end"] + 1))
     # attach leading comment / blank lines to each unit
     taken = [False] * len(raw_lines)
     for u in units:
@@ -185,10 +216,13 @@ def read_plan(path):
             plan[kv.group(1).replace("-", "_")] = kv.group(2); continue
         g = re.match(r"slice\s+(\w+)\s*:\s*(.*)$", s)
         if g and not raw[:1].isspace():
-            group = {"id": g.group(1), "title": g.group(2), "verbatim": False, "entries": []}; plan["groups"].append(group); continue
+            group = {"id": g.group(1), "title": g.group(2), "verbatim": False, "mac_only": False, "entries": []}; plan["groups"].append(group); continue
+        mo = re.match(r"mac-only\s*:\s*(.*)$", s)
+        if mo and not raw[:1].isspace():
+            group = {"id": "mac-only", "title": mo.group(1), "verbatim": False, "mac_only": True, "entries": []}; plan["groups"].append(group); continue
         v = re.match(r"verbatim\s*:\s*(.*)$", s)
         if v and not raw[:1].isspace():
-            group = {"id": "verbatim", "title": v.group(1), "verbatim": True, "entries": []}; plan["groups"].append(group); continue
+            group = {"id": "verbatim", "title": v.group(1), "verbatim": True, "mac_only": False, "entries": []}; plan["groups"].append(group); continue
         if group is None: raise SystemExit(f"{path}: entry before any slice: {s!r}")
         group["entries"].append(s)
     if not plan["source"]: raise SystemExit(f"{path}: plan has no 'source:'")
@@ -210,15 +244,20 @@ def entry_matches(e, u):
     if e.startswith("@"): return wild(e, u["block"]) if u["block"] else False
     return wild(e, u["name"])
 
-def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=ROOT):
+def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
+    """Parse the plan and its source; return everything check() reports, as data.
+
+    Keys: plan, retired (source absent and the plan says retired-by), missing (source absent and
+    no retired-by), and when the source exists: units, assign (unit index -> slice id), shared
+    (unit index -> slice ids, for a unit claimed by several), unassigned (unit
+    indices), empty (ids of slices that match no unit), total, preamble, header_lines,
+    slices (the per-group report), errors, warnings, code_lines, raw_lines.
+    tools/gen-stories.py reads plans through this function, so there is one parser."""
     plan = read_plan(plan_path)
     src = os.path.join(base, plan["source"])
-    errors, warnings = [], []
     if not os.path.exists(src):
-        if plan["retired_by"]:
-            print(f"OK {plan['source']}: absent, retired by {plan['retired_by']}; nothing to slice")
-            return 0
-        print(f"FAIL {plan['source']}: source file missing and the plan has no retired-by"); return 1
+        return {"plan": plan, "retired": bool(plan["retired_by"]), "missing": not plan["retired_by"]}
+    errors, warnings = [], []
     units, preamble, total, code_lines, raw_lines = parse_units(src)
     hdr = 0
     if plan["header"]:
@@ -227,18 +266,26 @@ def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=RO
         else: errors.append(f"header {plan['header']} missing")
     names = [u["name"] for u in units]
     for n in sorted(set(x for x in names if names.count(x) > 1)):
-        warnings.append(f"unit name {n} occurs {names.count(n)} times (preprocessor alternatives?); each copy is assigned the same way")
-    assign = {}
+        warnings.append(f"unit name {n} occurs {names.count(n)} times (preprocessor alternatives?); each copy is assigned the same way, except that a mac-only entry claims a copy in an OOLITE_MAC_OS_X arm")
+    assign = {}; shared = {}; unassigned = []; empty = []
     for i, u in enumerate(units):
         best = None; owners = set()
+        # A mac-only entry claims a unit inside an OOLITE_MAC_OS_X arm whatever its tier: the Mac arm
+        # of a method a slice names exactly (-[X performGameTick:] in both arms) stays Mac (oo-q9l2w).
+        if u.get("mac") and any(g["mac_only"] and any(entry_matches(e, u) for e in g["entries"]) for g in plan["groups"]):
+            assign[i] = "mac-only"; continue
         for g in plan["groups"]:
+            if g["mac_only"]: continue   # outside a Mac arm: a slice or verbatim owns it (below if none)
             for e in g["entries"]:
                 if entry_matches(e, u):
                     t = entry_tier(e)
                     if best is None or t < best: best, owners = t, {g["id"]}
                     elif t == best: owners.add(g["id"])
-        if not owners: errors.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
-        elif len(owners) > 1: errors.append(f"assigned to {len(owners)} slices ({', '.join(sorted(owners))}): {u['name']}")
+        if not owners and any(g["mac_only"] and any(entry_matches(e, u) for e in g["entries"]) for g in plan["groups"]):
+            assign[i] = "mac-only"   # claimed by mac-only only, but compiled: reported below
+        elif not owners: unassigned.append(i); errors.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
+        elif len(owners) > 1:
+            errors.append(f"assigned to {len(owners)} slices ({', '.join(sorted(owners))}): {u['name']}"); shared[i] = owners
         else: assign[i] = owners.pop()
     for g in plan["groups"]:
         for e in g["entries"]:
@@ -254,22 +301,76 @@ def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=RO
                     errors.append(f"verbatim unit {u['name']} is a method: it must become a member function in some slice"); continue
                 hits = objc_sites(code_lines[u["start"]:u["end"]+1])
                 if hits: errors.append(f"verbatim unit {u['name']} contains Objective-C at line {u['start']+hits[0]+1}: {raw_lines[u['start']+hits[0]].strip()[:90]}")
-            report.append({"id": g["id"], "title": g["title"], "verbatim": True, "units": len(mine), "own": own, "read": 0,
+            report.append({"id": g["id"], "title": g["title"], "verbatim": True, "mac_only": False, "units": len(mine), "own": own, "read": 0,
+                           "members": [u["name"] for u in mine]})
+            continue
+        if g["mac_only"]:
+            for u in mine:
+                if not u["mac"]: errors.append(f"mac-only unit {u['name']} (line {u['start']+1}) is not wholly inside an OOLITE_MAC_OS_X arm: the fleet compiles it, so some slice converts it")
+            report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": True, "units": len(mine), "own": own, "read": 0,
                            "members": [u["name"] for u in mine]})
             continue
         read = hdr + preamble + own
-        if not mine: errors.append(f"slice {g['id']} is empty")
+        if not mine: empty.append(g["id"]); errors.append(f"slice {g['id']} is empty")
         if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {hdr} + preamble {preamble} + own {own}); must be under {max_read}")
         if own > max_own: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}")
-        report.append({"id": g["id"], "title": g["title"], "verbatim": False, "units": len(mine), "own": own, "read": read,
+        report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
                        "members": [u["name"] for u in mine]})
+    return {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
+            "unassigned": unassigned, "empty": empty,
+            "total": total, "preamble": preamble, "header_lines": hdr, "slices": report, "errors": errors,
+            "warnings": warnings, "code_lines": code_lines, "raw_lines": raw_lines}
+
+def unconverted(a, slice_id):
+    """The units of slice `slice_id` that are still Objective-C: a method (it is still inside an
+    @implementation block) or a function whose body still has Objective-C syntax. Empty means the
+    slice is converted. A unit claimed by several slices counts for each of them."""
+    out = []
+    for i, u in enumerate(a["units"]):
+        if a["assign"].get(i) != slice_id and slice_id not in a["shared"].get(i, ()): continue
+        if u["kind"] == "method":
+            out.append((u, f"still an Objective-C method in {u['block']}"))
+        else:
+            hits = objc_sites(a["code_lines"][u["start"]:u["end"]+1])
+            if hits: out.append((u, f"Objective-C at line {u['start']+hits[0]+1}: {a['raw_lines'][u['start']+hits[0]].strip()[:90]}"))
+    return out
+
+def slice_done(plan_path, slice_id, base=ROOT):
+    """A slice story's acceptance: 0 once none of the slice's units is Objective-C.
+
+    Nonzero before the story (the slice owns at least one method or Objective-C function) and zero
+    after it, whatever the other slices of the file still hold. Units are matched by the plan's
+    entries, so a converted method (now a C++ member function outside @implementation) is no longer
+    one of the slice's -[X sel] / @X(Cat) units."""
+    a = analyse(plan_path, base=base); plan = a["plan"]
+    if a["retired"]:
+        print(f"OK {plan['source']}: absent, retired by {plan['retired_by']}; slice {slice_id} has nothing left"); return 0
+    if a["missing"]:
+        print(f"FAIL {plan['source']}: source file missing and the plan has no retired-by"); return 1
+    if not any(g["id"] == slice_id and not g["verbatim"] and not g["mac_only"] for g in plan["groups"]):
+        print(f"FAIL {plan_path}: no slice {slice_id!r}"); return 1
+    left = unconverted(a, slice_id)
+    for u, why in left: print(f"  not converted: {u['name']} (line {u['start']+1}): {why}")
+    print(f"slice {slice_id} of {plan['source']}: " + ("converted" if not left else f"{len(left)} unit(s) still Objective-C"))
+    return 1 if left else 0
+
+def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=ROOT):
+    a = analyse(plan_path, max_read, max_own, base)
+    plan = a["plan"]
+    if a["retired"]:
+        print(f"OK {plan['source']}: absent, retired by {plan['retired_by']}; nothing to slice")
+        return 0
+    if a["missing"]:
+        print(f"FAIL {plan['source']}: source file missing and the plan has no retired-by"); return 1
+    units, assign, report, errors, warnings = a["units"], a["assign"], a["slices"], a["errors"], a["warnings"]
+    total, preamble, hdr = a["total"], a["preamble"], a["header_lines"]
     if as_json:
         print(json.dumps({"source": plan["source"], "header": plan["header"], "lines": total, "header_lines": hdr,
                           "preamble": preamble, "slices": report, "errors": errors, "warnings": warnings}, indent=1))
     else:
         print(f"{plan['source']}: {total} lines, {len(units)} units, preamble {preamble}, header {hdr}")
         for r in report:
-            tag = "verbatim" if r["verbatim"] else f"slice {r['id']}"
+            tag = "verbatim" if r["verbatim"] else "mac-only" if r["mac_only"] else f"slice {r['id']}"
             print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}")
         if show_units:
             for u in units:
@@ -301,7 +402,7 @@ static int helper(int x)
 @implementation Foo (Private)
 - (void) hidden
 {
-	NSLog(@"}");
+	[self log:@"}"];
 }
 @end
 namespace {
@@ -319,6 +420,10 @@ def selftest():
     want = ["helper()", "-[Foo init]", "-[Foo setA:b:]", "-[Foo hidden]", "plainC()"]
     fails = []
     if got != want: fails.append(f"units {got} != {want}")
+    # a method defined with a stray ';' before its body (legal Objective-C; SDL/MyOpenGLView.mm has one)
+    open(os.path.join(d, "Semi.mm"), "w").write("@implementation Foo\n- (void) adjust:(float)x;\n{\n\t_x += x;\n}\nstatic int n;\n- (int) n { return n; }\n@end\n")
+    got = [u["name"] for u in parse_units(os.path.join(d, "Semi.mm"))[0]]
+    if got != ["-[Foo adjust:]", "-[Foo n]"]: fails.append(f"stray-semicolon method: units {got}")
     def run(body, expect):
         p = os.path.join(d, "plan.md")
         open(p, "w").write("x\n```slice-plan\nsource: Foo.mm\nheader: Foo.h\n" + body + "```\n")
@@ -342,6 +447,45 @@ def selftest():
         if check(p, 1500, 800, base=d) != 0: fails.append("retired absent source should pass")
     with contextlib.redirect_stdout(io.StringIO()):
         if check(os.path.join(d, "plan.md"), 10, 800, base=d) != 1: fails.append("read budget not enforced")
+    # --slice-done: nonzero while a slice's units are Objective-C, zero once they are C++
+    open(os.path.join(d, "plan.md"), "w").write("x\n```slice-plan\nsource: Foo.mm\nheader: Foo.h\n" + good + "```\n")
+    def done(sid):
+        with contextlib.redirect_stdout(io.StringIO()): return slice_done(os.path.join(d, "plan.md"), sid, base=d)
+    if done("1") != 1 or done("2") != 1: fails.append("slice-done passed before conversion")
+    if done("9") != 1: fails.append("slice-done accepted an unknown slice id")
+    if done("verbatim") != 1: fails.append("slice-done accepted the verbatim group as a slice")
+    private = '@implementation Foo (Private)\n- (void) hidden\n{\n\t[self log:@"}"];\n}\n@end\n'
+    converted = SELFTEST_SRC.replace(private, 'void Foo::hidden()\n{\n\too::log("}");\n}\n')
+    if converted == SELFTEST_SRC: fails.append("selftest fixture edit did not apply")
+    open(os.path.join(d, "Foo.mm"), "w").write(converted)
+    if done("2") != 0: fails.append("slice-done failed after slice 2 was converted")
+    if done("1") != 1: fails.append("slice-done passed slice 1, which is still Objective-C")
+    open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC.replace("\treturn x + 1;", "\treturn [Foo bar:x];"))
+    if not any(u["name"] == "helper()" for u, _ in unconverted(analyse(os.path.join(d, "plan.md"), base=d), "1")):
+        fails.append("slice-done missed Objective-C inside a slice's C function")
+    # mac-only (bead oo-q9l2w): a unit wholly inside an OOLITE_MAC_OS_X arm is not converted and gets no
+    # story; a unit outside one (or in its #else) cannot be mac-only
+    open(os.path.join(d, "Mac.mm"), "w").write("@implementation Foo\n- (void) a { }\n#if OOLITE_MAC_OS_X\n- (void) m { [x y]; }\n#else\n- (void) e { }\n#endif\n@end\n"
+                                               "#if OO_DEBUG\n#ifdef OOLITE_MAC_OS_X\nstatic void mf(void) { [x y]; }\n#endif\n#endif\n#if !OOLITE_MAC_OS_X\nstatic void nf(void) { }\n#endif\n")
+    mac = {u["name"]: u["mac"] for u in parse_units(os.path.join(d, "Mac.mm"))[0]}
+    if mac != {"-[Foo a]": False, "-[Foo m]": True, "-[Foo e]": False, "mf()": True, "nf()": False}: fails.append(f"mac arms: {mac}")
+    def macplan(body, expect):
+        p = os.path.join(d, "mac.md"); open(p, "w").write("```slice-plan\nsource: Mac.mm\n" + body + "```\n")
+        with contextlib.redirect_stdout(io.StringIO()): r = check(p, 1500, 800, base=d)
+        if r != expect: fails.append(f"mac plan exit {r} != {expect}:\n{body}")
+        return p
+    mp = macplan("slice 1: all\n  -[Foo a]\n  -[Foo e]\n  nf()\nmac-only: Mac\n  -[Foo m]\n  mf()\n", 0)
+    a = analyse(mp, base=d)
+    if [r["id"] for r in a["slices"] if not r["verbatim"] and not r["mac_only"]] != ["1"]: fails.append("mac-only reported as a slice")
+    with contextlib.redirect_stdout(io.StringIO()):
+        if slice_done(mp, "mac-only", base=d) != 1: fails.append("slice-done accepted the mac-only group as a slice")
+    open(os.path.join(d, "Arms.mm"), "w").write("@implementation Foo\n#if OOLITE_MAC_OS_X\n- (void) t { [x y]; }\n#else\n- (void) t { }\n#endif\n@end\n"
+                                                "#if OOLITE_MAC_OS_X\n@implementation Foo (Mac)\n- (void) u { [x y]; }\n@end\n#endif\n")
+    p = os.path.join(d, "arms.md"); open(p, "w").write("```slice-plan\nsource: Arms.mm\nslice 1: t\n  -[Foo t]\nmac-only: Mac\n  -[Foo t]\n  @Foo(Mac)\n```\n")
+    a = analyse(p, base=d)   # the exact name in slice 1 takes only the compiled arm; the Mac arm stays Mac
+    if a["errors"] or sorted(a["assign"].values()) != ["1", "mac-only", "mac-only"]: fails.append(f"mac arm of a sliced method: {a['errors']} {a['assign']}")
+    macplan("slice 1: all\n  -[Foo a]\n  nf()\nmac-only: Mac\n  -[Foo m]\n  -[Foo e]\n  mf()\n", 1)   # the #else arm is compiled
+    macplan("slice 1: all\n  -[Foo e]\n  -[Foo m]\n  mf()\nmac-only: Mac\n  -[Foo a]\n  nf()\n", 1)    # outside any arm / #if !MAC
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)
     print("selftest OK" if not fails else "selftest FAILED")
@@ -355,6 +499,7 @@ def main():
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--units", action="store_true", help="also list every unit with its slice")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--slice-done", metavar="ID", help="exit 0 iff slice ID of the one plan given has no Objective-C unit left (a slice story's acceptance)")
     ap.add_argument("--dump", metavar="SOURCE", help="list the units of a source file (to write a plan from)")
     a = ap.parse_args()
     if a.selftest: return selftest()
@@ -366,6 +511,9 @@ def main():
             print(f"{u['start']+1:5d}-{u['end']+1:5d} {u['end']-u['start']+1:4d} {objc:4} {u['block']:28} {u['name']}")
         return 0
     if not a.plans: ap.error("give at least one plan, or --selftest")
+    if a.slice_done is not None:
+        if len(a.plans) != 1: ap.error("--slice-done takes exactly one plan")
+        return slice_done(a.plans[0], a.slice_done)
     rc = 0
     for p in a.plans: rc |= check(p, a.max_read, a.max_own, a.json, a.units)
     return rc

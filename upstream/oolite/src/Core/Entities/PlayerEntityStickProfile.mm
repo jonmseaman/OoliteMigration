@@ -32,7 +32,6 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOMacroOpenGL.h"
 #import "HeadUpDisplay.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 

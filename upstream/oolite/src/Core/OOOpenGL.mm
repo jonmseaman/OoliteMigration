@@ -28,7 +28,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OOFunctionAttributes.h"
 #import "OOOpenGLExtensionManager.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
@@ -409,7 +408,7 @@ static void GLDumpMaterialState(void)
 	OO_LOG(kOOLogOpenGLStateDump, "Texture env mode: {}", OOGLEnumToString(texMode));
 	
 #if OO_MULTITEXTURE
-	if ([[OOOpenGLExtensionManager sharedManager] textureUnitCount] > 1)
+	if (cxx::OOOpenGLExtensionManager::sharedManager()->textureUnitCount() > 1)
 	{
 		GLint textureUnit;
 		OOGL(glGetIntegerv(GL_ACTIVE_TEXTURE_ARB, &textureUnit));

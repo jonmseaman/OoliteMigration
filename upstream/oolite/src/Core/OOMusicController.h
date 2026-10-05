@@ -4,6 +4,12 @@ OOMusicController.h
 
 Singleton controller for music playback.
 
+C++20 since bead oo-lfkq (proposed ADR-0056, the Audio module: amendment oo-2en; a singleton:
+amendment oo-r7m0). The class is cxx::OOMusicController while OOMusicController+ObjCBridge.h,
+imported at the end of this header, keeps the Objective-C OOMusicController that the player, the
+universe and the JS Sound and Mission classes message; the bridge's deletion bead moves it out of
+namespace cxx.
+
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -25,11 +31,16 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef OOMUSICCONTROLLER_H
+#define OOMUSICCONTROLLER_H
+
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOSoundSource.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/Ref.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 @class OOMusic;
 
@@ -51,43 +62,63 @@ typedef enum
 } OOMusicMode;
 
 
-@interface OOMusicController: OOObject
+namespace cxx {
+
+class OOMusicController : public oo::RefCounted
 {
-@private
-	OOMusicMode				_mode;
+public:
+	/*	Was +sharedController (amendment oo-r7m0 item 1): the one controller, made on first use and
+		never released; borrowed.
+	*/
+	static OOMusicController *sharedController();
+
+	OOMusicController();	// was -init
+
+	void playMusicNamed(const std::string &name, bool loop);
+	void playMusicNamed(const std::string &name, bool loop, float gain);
+
+	void playThemeMusic();
+	void playDockingMusic();
+	void playDockedMusic();
+
+	void setMissionMusic(const std::optional<std::string> &missionMusicName);	// was -cxx_setMissionMusic:; nullopt: none
+	void playMissionMusic();
+
+	void justStop();
+	void stop();
+	void stopMusicNamed(const std::string &name);	// Stop only if name == playingMusic
+	void stopThemeMusic();
+	void stopDockingMusic();
+	void stopMissionMusic();
+
+	void toggleDockingMusic();	// Start docking music if none playing, stop docking music if currently playing docking music.
+
+	::OOSoundSource *soundSource();
+
+	std::optional<std::string> playingMusic();	// nullopt: nothing playing
+	bool isPlaying();
+
+	OOMusicMode mode();
+	void setMode(OOMusicMode mode);
+
+private:
+	// The private category (the iTunes integration, Mac only).
+	void playiTunesPlaylist(const char *playlistName);
+	void pauseiTunes();
+
+	OOMusicMode				_mode = {};
 	std::optional<std::string>	_missionMusic;
-	OOMusic					*_current;
-	uint8_t					_special;
-}
+	// The music is an Objective-C object, which the resource manager makes and this test stubs
+	// (amendment oo-rmd7 item 3); retained, as before.
+	oo::ObjCRef<::OOMusic *>	_current;
+	uint8_t					_special = {};
+};
 
-+ (OOMusicController *) sharedController;
-
-- (void) playMusicNamed:(const std::string &)name loop:(BOOL)loop;
-- (void) playMusicNamed:(const std::string &)name loop:(BOOL)loop gain:(float)gain;
-
-- (void) playThemeMusic;
-- (void) playDockingMusic;
-- (void) playDockedMusic;
-
-- (void) setMissionMusic:(id)missionMusicName;	// shared selector: an Objective-C string, or nil
-- (void) playMissionMusic;
-
-- (void) justStop;
-- (void) stop;
-- (void) stopMusicNamed:(const std::string &)name;	// Stop only if name == playingMusic
-- (void) stopThemeMusic;
-- (void) stopDockingMusic;
-- (void) stopMissionMusic;
-
-- (void) toggleDockingMusic;	// Start docking music if none playing, stop docking music if currently playing docking music.
-
-- (OOSoundSource *) soundSource;
-
-- (std::optional<std::string>) playingMusic;	// nullopt: nothing playing
-- (BOOL) isPlaying;
-
-- (OOMusicMode) mode;
-- (void) setMode:(OOMusicMode)mode;
+}	// namespace cxx
 
 
-@end
+// Transitional: the Objective-C OOMusicController, for its callers.
+// Deleted, with namespace cxx above, by the bridge's deletion bead.
+#import "OOMusicController+ObjCBridge.h"
+
+#endif	// OOMUSICCONTROLLER_H

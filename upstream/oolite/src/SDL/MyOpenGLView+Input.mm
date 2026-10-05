@@ -14,7 +14,6 @@ Oolite
 #import "OOSDLJoystickManager.h"
 #import "PlayerEntity.h"
 #import "ResourceManager.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
@@ -292,7 +291,13 @@ std::string FormattedCharacter(unsigned code)
 
 			case SDL_EVENT_MOUSE_BUTTON_UP:
 				mbtn_event = (SDL_MouseButtonEvent*)&event;
-				NSTimeInterval timeBetweenClicks; timeBetweenClicks = timeNow - timeIntervalAtLastClick;
+				// Timed by the release itself, not by this poll (bugs oo-3rb.333/oo-3rb.336). timeNow is
+				// sampled once as the poll starts, so the two releases of one double-click - 50 ms apart -
+				// that straddled a poll which stalled (measured: 0.86 s) were timed as 0.9 s apart and the
+				// double-click became two single clicks. SDL stamps every event on the SDL_GetTicksNS()
+				// clock when it is queued, which is the clock timeIntervalAtLastClick starts on.
+				NSTimeInterval timeOfClick; timeOfClick = (NSTimeInterval)mbtn_event->timestamp / 1e9;
+				NSTimeInterval timeBetweenClicks; timeBetweenClicks = timeOfClick - timeIntervalAtLastClick;
 				timeIntervalAtLastClick += timeBetweenClicks;
 				if (mbtn_event->button == SDL_BUTTON_LEFT)
 				{

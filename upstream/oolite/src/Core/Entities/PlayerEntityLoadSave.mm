@@ -39,19 +39,17 @@
 #import "OOStringParsing.h"
 #import "OOPListParsing.h"
 #import "StationEntity.h"
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOShipRegistry.h"
 #import "OOTexture.h"
 #import "OOJavaScriptEngine.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/FileSystem.hpp"
 
 #include <algorithm>
 #include "oofnd/objc/OOAssert.h"
 #import "OOPListGameTypes.h"
+#include "oofnd/String.hpp"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -76,12 +74,6 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	return std::nullopt;
 }
 
-
-std::optional<std::string> OptionalStringValue(id object)
-{
-	const oo::PList value = oo::PListFrom(object);
-	return OptionalStringValue(&value);
-}
 
 // [[key componentsSeparatedByString:@":"] oo_intAtIndex:1]: element 1's -intValue, 0 when there is
 // none (or no key).
@@ -814,11 +806,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	if (dockedStation)
 	{
-		position = [dockedStation position];
+		_cxxEntity->position = [dockedStation position];
 		[self setOrientation: kIdentityQuaternion];
-		v_forward = vector_forward_from_quaternion(orientation);
-		v_right = vector_right_from_quaternion(orientation);
-		v_up = vector_up_from_quaternion(orientation);
+		v_forward = vector_forward_from_quaternion(_cxxEntity->orientation);
+		v_right = vector_right_from_quaternion(_cxxEntity->orientation);
+		v_up = vector_up_from_quaternion(_cxxEntity->orientation);
 	}
 	
 	flightRoll = 0.0;
@@ -872,11 +864,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (saveStation != nil && [saveStation allowsSaving])
 	{
 		[self setDockedStation:saveStation];
-		position = [saveStation position];
+		_cxxEntity->position = [saveStation position];
 	}
 	// and initialise markets for the secondary stations
 	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");
-	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? oo::PListFrom(oo::ObjectFromPList(*stationMarkets)) : oo::PList()];
+	[UNIVERSE cxx_loadStationMarkets:stationMarkets != nullptr ? *stationMarkets : oo::PList()];
 
 	OO_LOG("load.progress", "{}", "Completing JS startup");
 	[self startUpComplete];

@@ -41,9 +41,11 @@ UCRT_PKGS=(
 )
 
 # Installed by upstream's install_deps.sh from the oolite_windeps_build releases, not from a
-# repository: the GNUstep/libobjc2 stack built against clang. Phase 2 deletes these; until then
-# the build needs them. (SpiderMonkey left with Phase 1, bead oo-7wx.)
-WINDEPS_PKGS=(libobjc2 gnustep-make gnustep-base)
+# repository: the libobjc2 runtime built against clang, and gnustep-make. The Foundation library
+# left the build with oo-qps.18 (ADR-0055); the test harnesses that still compile against it
+# (tools/check-string-expander.sh, tools/check-sysdesc-tools.sh, the plist-description capture)
+# install it themselves (bead oo-qqz6). (SpiderMonkey left with Phase 1, bead oo-7wx.)
+WINDEPS_PKGS=(libobjc2 gnustep-make)
 
 # Pure-Python, no MSYS2 package exists. pytest-bdd drives the component tier (ADR-0018);
 # pyautogui drives the GUI tier against a real window (docs/phases/0-gui-tier.md). The GUI
@@ -54,7 +56,7 @@ PIP_PKGS=(pytest-bdd pyautogui)
 
 # Shared compiler cache, outside every worktree so it survives worktree removal (I1 item 2).
 CCACHE_DIR_DEFAULT="C:/ccache"
-CCACHE_MAX_SIZE="20G"
+CCACHE_MAX_SIZE="60G"
 
 # --- Plumbing ------------------------------------------------------------------------------
 
@@ -235,7 +237,7 @@ ccache_reports() {
 }
 
 if ccache_reports cache_dir "$(cygpath -w "$CCACHE_DIR_WANTED" | sed 's/\\/\\\\/g')" \
-   && ccache_reports max_size '20\.0 GB'; then
+   && ccache_reports max_size '60\.0 GB'; then
   skip "ccache reports cache_dir $CCACHE_DIR_WANTED, max_size $CCACHE_MAX_SIZE"
 elif want "ccache config at $CCACHE_CONF"; then
   say "configuring shared ccache at $CCACHE_DIR_WANTED"

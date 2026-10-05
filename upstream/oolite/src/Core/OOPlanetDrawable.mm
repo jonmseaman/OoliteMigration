@@ -33,7 +33,6 @@
 #import "OOMacroOpenGL.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 #ifndef NDEBUG
@@ -151,7 +150,7 @@
 		// {diffuse_map={repeat_s=yes;cube_map=yes};}, as the old-style property list parsed.
 		const oo::PList spec(oo::PList::Dict{
 			{ "diffuse_map", oo::PList(oo::PList::Dict{ { "repeat_s", oo::PList("yes") }, { "cube_map", oo::PList("yes") } }) } });
-		_material = [[OOSingleTextureMaterial alloc] initWithName:oo::NSStringFrom(textureName) configuration:oo::ObjectFromPList(spec)];
+		_material = [[OOSingleTextureMaterial alloc] initWithName:textureName configuration:spec];
 	}
 }
 

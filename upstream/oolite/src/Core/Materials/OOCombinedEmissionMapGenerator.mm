@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOTextureScaling.h"
 #import "OOTextureInternal.h"
 #import "OOMaterialSpecifier.h"
-#import "OOFoundationBridge.h"
 #import "OOTextureLoader.h"
 
 #include "oofnd/Log.hpp"
@@ -478,15 +477,15 @@ void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB)
 	OOCompactPixMap(&_emissionPx);
 	if (OOIsValidPixMap(_emissionPx))
 	{
-		_data = _emissionPx.pixels;
-		_width = _emissionPx.width;
-		_height = _emissionPx.height;
-		_rowBytes = _emissionPx.rowBytes;
-		_format = _emissionPx.format;
+		_cxxLoader->_data = _emissionPx.pixels;
+		_cxxLoader->_width = _emissionPx.width;
+		_cxxLoader->_height = _emissionPx.height;
+		_cxxLoader->_rowBytes = _emissionPx.rowBytes;
+		_cxxLoader->_format = _emissionPx.format;
 		
 		_emissionPx.pixels = NULL;	// So it won't be freed by -dealloc.
 	}
-	if (_data == NULL)
+	if (_cxxLoader->_data == NULL)
 	{
 		OO_LOG_ERR("texture.combinedEmissionMap.error", "Unknown error loading {}", oo::DescriptionOf(self));
 	}

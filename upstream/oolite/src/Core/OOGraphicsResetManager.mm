@@ -1,6 +1,6 @@
 /*
 
-OOGraphicsResetManager.m
+OOGraphicsResetManager.mm
 
 
 Copyright (C) 2007-2013 Jens Ayton and contributors
@@ -29,32 +29,32 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Log.hpp"
 
 
-static OOGraphicsResetManager *sSingleton = nil;
+namespace {
+
+cxx::OOGraphicsResetManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
+
+}	// namespace
 
 
-@implementation OOGraphicsResetManager
+namespace cxx {
 
-- (void) dealloc
+OOGraphicsResetManager::~OOGraphicsResetManager()
 {
-	if (sSingleton == self)  sSingleton = nil;
-	
-	[super dealloc];
+	if (sSingleton == this)  sSingleton = nullptr;
 }
 
 
-+ (OOGraphicsResetManager *) sharedManager
+OOGraphicsResetManager *OOGraphicsResetManager::sharedManager()
 {
-	if (sSingleton == nil)  sSingleton = [[self alloc] init];
+	if (sSingleton == nullptr)  sSingleton = oo::makeRef<OOGraphicsResetManager>().leakRef();
 	return sSingleton;
 }
 
 
-- (void) registerClient:(id<OOGraphicsResetClient>)client
+void OOGraphicsResetManager::registerClient(id client)
 {
 	if (client != nil)
 	{
@@ -63,21 +63,21 @@ static OOGraphicsResetManager *sSingleton = nil;
 }
 
 
-- (void) unregisterClient:(id<OOGraphicsResetClient>)client
+void OOGraphicsResetManager::unregisterClient(id client)
 {
 	clients.erase(client);
 }
 
 
-- (void) resetGraphicsState
+void OOGraphicsResetManager::resetGraphicsState()
 {
 	OOGL(glFinish());
 	
 	OO_LOG("rendering.reset.start", "{}", "Resetting graphics state.");
 	oo::log::indentIf("rendering.reset.start");
 	
-	[[OOOpenGLExtensionManager sharedManager] reset];
-	[OOTexture rebindAllTextures];
+	OOOpenGLExtensionManager::sharedManager()->reset();
+	[::OOTexture rebindAllTextures];
 	
 	// A copy, so a client may register or unregister during the reset (one unregistered by an
 	// earlier client is skipped). Unordered, as the Foundation set was: its order was pointer-hash order,
@@ -100,54 +100,9 @@ static OOGraphicsResetManager *sSingleton = nil;
 	OO_LOG("rendering.reset.end", "{}", "End of graphics state reset.");
 }
 
-@end
+}	// namespace cxx
 
 
-@implementation OOGraphicsResetManager (Singleton)
-
-/*	Canonical singleton boilerplate.
-	See Cocoa Fundamentals Guide: Creating a Singleton Instance.
-	See also +sharedManager above.
-	
-	// NOTE: assumes single-threaded first access.
-*/
-
-+ (id) allocWithZone:(OOZone *)inZone
-{
-	if (sSingleton == nil)
-	{
-		sSingleton = [super allocWithZone:inZone];
-		return sSingleton;
-	}
-	return nil;
-}
-
-
-- (id) copyWithZone:(OOZone *)inZone
-{
-	return self;
-}
-
-
-- (id) retain
-{
-	return self;
-}
-
-
-- (NSUInteger) retainCount
-{
-	return UINT_MAX;
-}
-
-
-- (void) release
-{}
-
-
-- (id) autorelease
-{
-	return self;
-}
-
-@end
+// The singleton category (+allocWithZone:, and -retain/-release/-autorelease doing nothing) is
+// not translated: the one instance is made only by sharedManager() and never released (proposed
+// ADR-0056 amendment oo-r7m0).

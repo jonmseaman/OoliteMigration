@@ -28,13 +28,10 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "Universe.h"
 #import "OOJavaScriptEngine.h"
-#import "OOPListView.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntity.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #import "OOCallByName.h"
 
 #include <map>
@@ -45,6 +42,8 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/objc/OOException.h"
+#include "oofnd/String.hpp"
 
 /*	The expansion engine works on UTF-16 code units, as it did on the Objective-C string's
 	characters, held in std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed
@@ -275,23 +274,13 @@ std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, con
 
 
 /*	The Foundation forms, kept as the expander test's surface (OOStringExpander.h; bead oo-m2nh,
-	proposed ADR-0052). Moved unchanged from the deleted transitional bridge: the overrides and
-	legacy locals once per call with oo::PListFrom (mixed values, Object nodes for anything else),
-	strings with oo::StdString / oo::OptionalString in and oo::NSStringOrNil out (nil for nullopt).
-	Compiled only by tools/check-string-expander.sh (OO_EXPANDER_TEST_SURFACE; bead oo-qps.29).
+	proposed ADR-0052). Compiled only by tools/check-string-expander.sh (OO_EXPANDER_TEST_SURFACE;
+	bead oo-qps.29), which links gnustep-base; the definitions live with that harness, in
+	tests/unit/expander/OOStringExpanderTestSurface.h (bead oo-3rb.345), which it copies next to
+	this file.
 */
 #if OO_EXPANDER_TEST_SURFACE
-NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options)
-{
-	if (string == nil)  return nil;
-	return oo::NSStringOrNil(cxx_OOExpandDescriptionString(seed, oo::StdString(string), oo::PListFrom(overrides), oo::PListFrom(legacyLocals), oo::OptionalString(systemName), options));
-}
-
-
-NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name)
-{
-	return oo::NSStringOrNil(cxx_OOGenerateSystemDescription(seed, oo::OptionalString(name)));
-}
+#import "OOStringExpanderTestSurface.h"
 #endif
 
 
@@ -352,7 +341,7 @@ OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInte
 		*/
 		OOMaybeUnits replacement;
 		NSUInteger replaceLength = 0;
-		unichar thisChar = characters[idx];
+		uint16_t thisChar = characters[idx];
 		
 		if (thisChar == '[')
 		{
@@ -384,11 +373,14 @@ OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInte
 		{
 			/*	If replacement string is "\x7F", eat the following character.
 				This is used in system_description for the one empty string
-				in [22].
+				in [22]. At the end of the string there is no following
+				character, and nothing is eaten (bead oo-3rb.69, approved by
+				Jon 2026-09-29: upstream tested replaceLength < size, which let
+				idx + replaceLength pass size there and assert below).
 			*/
 			if (*replacement == u"\x7F" && replaceLength < size)
 			{
-				replaceLength++;
+				if (idx + replaceLength < size)  replaceLength++;
 				replacement = OOUnits();
 			}
 
@@ -765,7 +757,7 @@ OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const st
 #if WARNINGS
 		if (!value->isString() && !value->isNumber())
 		{
-			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::ShortDescriptionOf(oo::ObjectFromPList(*value)).c_str(), key.c_str());
+			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::DescriptionOf(*value).c_str(), key.c_str());	// the value (was <ClassName 0x...> of its Foundation object, bead oo-qps.50)
 		}
 #endif
 		return ValueText(*value);
@@ -880,7 +872,7 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 		if (text == nullptr)
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::ShortDescriptionOf(oo::ObjectFromPList(value)), key);
+			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::DescriptionOf(value), key);	// the value (was <ClassName 0x...> of its Foundation object, bead oo-qps.50)
 			return std::nullopt;
 		}
 
@@ -900,7 +892,12 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* contex
 {
 	if (HasPrefix(key, u"mission_"))
 	{
-		return UnitsFromOptional(oo::OptionalString(oo::ObjectFromPList([PLAYER cxx_missionVariableForKey:keyString])));
+		// A string variable expands to its text; an unset one to nothing. A variable that is not a
+		// string (an array, from the legacy set-list action) expands as unset: its Objective-C
+		// object was sent -length, which it did not answer (bead oo-qps.50).
+		const oo::PList value = [PLAYER cxx_missionVariableForKey:keyString];
+		const std::string *text = value.getIf<std::string>();
+		return UnitsFromOptional((text != nullptr) ? std::optional<std::string>(*text) : std::nullopt);
 	}
 
 	return std::nullopt;
@@ -1086,7 +1083,7 @@ OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16
 	
 	// All %-escapes except %J and %G are 2 characters.
 	*replaceLength = 2;
-	unichar selector = characters[idx + 1];
+	uint16_t selector = characters[idx + 1];
 	
 	switch (selector)
 	{
@@ -1398,9 +1395,12 @@ OOUnits Digram(const std::optional<std::string> &digrams, const OOUnits &units, 
 {
 	if (location + 2 > units.size())
 	{
-		// Raises OORangeException, as it did (by messaging the string itself); answers nothing
-		// (nothing appended) for no <digrams>.
-		[oo::NSStringOrNil(digrams) substringWithRange:NSMakeRange(location, 2)];
+		// Raises OORangeException with GNUstep's -substringWithRange: text, as messaging the string
+		// did; answers nothing (nothing appended) for no <digrams> (a message to nil).
+		if (digrams.has_value())
+		{
+			[OOException raise:OORangeException format:"in substringWithRange:, range { %lu, 2 } extends beyond size (%lu)", (unsigned long)location, (unsigned long)units.size()];
+		}
 		return OOUnits();
 	}
 	return units.substr(location, 2);

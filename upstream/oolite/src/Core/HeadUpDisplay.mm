@@ -42,7 +42,6 @@ MA 02110-1301, USA.
 #import "OOTexture.h"
 #import "OOTextureSprite.h"
 #import "OOPolygonSprite.h"
-#import "OOPListView.h"
 #import "OOEncodingConverter.h"
 #import "OOCrosshairs.h"
 #import "OOConstToString.h"
@@ -50,12 +49,13 @@ MA 02110-1301, USA.
 #import "OOJoystickManager.h"
 #import "OOJavaScriptEngine.h"
 #import "OOStringExpander.h"
-#import "OOFoundationBridge.h"
 #import "OOCallByName.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 #define ONE_SIXTEENTH				0.0625
@@ -126,18 +126,6 @@ void ReleaseHUDWidgets(std::vector<OOHUDWidget> &widgets)
 }
 
 
-/*	A dial's configuration. Dials are called by name (hud.plist, whitelist.plist) through
-	OOCallByName with the widget's configuration as a const oo::PList & (ADR-0055 item 5).
-	TRANSITIONAL (until oo-qps.46 retypes the dials): a dial still typed id receives that
-	configuration as an Objective-C object, converted back here (into *storage).
-*/
-const oo::PList &DialInfo(id info, oo::PList *storage)
-{
-	*storage = oo::PListFrom(info);
-	return *storage;
-}
-
-
 /*	A string from the configuration, nullopt where oo_stringForKey: gave nil: the key is absent,
 	or its value is neither a string nor a number (a number reads as its -stringValue).
 */
@@ -149,13 +137,13 @@ std::optional<std::string> OptionalStringIn(const oo::PList &info, std::string_v
 }
 
 
-/*	A value from the configuration as the object -objectForKey: gave (nil if absent), for callees
-	that still take Objective-C objects (+[OOColor colorWithDescription:]).
+/*	A value from the configuration as -objectForKey: gave it, a null PList where that gave nil
+	(the key is absent), for +[OOColor cxx_colorWithDescription:] (null gives nil, as nil did).
 */
-id ObjectForKeyIn(const oo::PList &info, std::string_view key)
+oo::PList PListForKeyIn(const oo::PList &info, std::string_view key)
 {
 	const oo::PList *value = info.find(key);
-	return (value != nullptr) ? oo::ObjectFromPList(*value) : nil;
+	return (value != nullptr) ? *value : oo::PList();
 }
 
 
@@ -232,55 +220,55 @@ enum
 - (void) drawLegend:(const oo::PList &)info;
 - (void) drawHUDItem:(const oo::PList &)info;
 
-- (void) drawScanner:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawScannerZoomIndicator:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawScanner:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawScannerZoomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
-- (void) drawCompass:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawCompass:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawCompassPlanetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
 - (void) drawCompassStationBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
 - (void) drawCompassSunBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
 - (void) drawCompassTargetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
 - (void) drawCompassBeaconBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
 
-- (void) drawAegis:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawSpeedBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawRollBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawPitchBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawYawBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawEnergyGauge:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawForwardShieldBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawAftShieldBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawFuelBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawWitchspaceDestination:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawCabinTempBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawWeaponTempBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawAltitudeBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawMissileDisplay:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawTargetReticle:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawAegis:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawSpeedBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawRollBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawPitchBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawYawBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawEnergyGauge:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawForwardShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawAftShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawFuelBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawWitchspaceDestination:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawCabinTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawWeaponTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawAltitudeBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawMissileDisplay:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawTargetReticle:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawSecondaryTargetReticle:(const oo::PList &)info;
-- (void) drawWaypoints:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawStatusLight:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawWaypoints:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawStatusLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawDirectionCue:(const oo::PList &)info;
-- (void) drawClock:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawClock:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawPrimedEquipmentText:(const oo::PList &)info;
-- (void) drawASCTarget:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawWeaponsOfflineText:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawASCTarget:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawWeaponsOfflineText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index;
-- (void) drawFPSInfoCounter:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawScoopStatus:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawStickSensitivityIndicator:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawCustomBar:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawCustomText:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawCustomIndicator:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawCustomLight:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawCustomImage:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawFPSInfoCounter:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawScoopStatus:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawCustomBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawCustomText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawCustomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawCustomLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawCustomImage:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
 - (void) drawSurroundInternal:(const oo::PList &)info color:(const GLfloat[4])color;
-- (void) drawSurround:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawGreenSurround:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawYellowSurround:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawGreenSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawYellowSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
-- (void) drawTrumbles:(id)info;	// called by name (ADR-0043 item 21)
+- (void) drawTrumbles:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
 - (oo::PList) crosshairDefinitionForWeaponType:(OOWeaponType)weapon;	// a null PList for none
 
@@ -327,12 +315,6 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (id) initWithDictionary:(id)hudinfo	// shared selector (proposed ADR-0043)
-{
-	return [self cxx_initWithDictionary:oo::PListFrom(hudinfo) inFile:std::nullopt];
-}
-
-
 - (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName
 {
 	unsigned		i;
@@ -368,12 +350,15 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		if (!isCompassToBeDrawn && dial_info.get<std::string>(SELECTOR_KEY) == "drawCompass:")  isCompassToBeDrawn = YES;
 		if (dial_info.get<std::string>(SELECTOR_KEY) == "drawTargetReticle:")
 		{
-			id targetColor = ObjectForKeyIn(dial_info, "target_rgba");
-			id targetSensitiveColor = ObjectForKeyIn(dial_info, "target_sensitive_rgba");
-			id wormholeColor = ObjectForKeyIn(dial_info, "wormhole_rgba");
-			OOColor *colors[3] = { [OOColor colorWithDescription:(targetColor != nil) ? targetColor : @"greenColor"],
-								   [OOColor colorWithDescription:(targetSensitiveColor != nil) ? targetSensitiveColor : @"redColor"],
-								   [OOColor colorWithDescription:(wormholeColor != nil) ? wormholeColor : @"cyanColor"] };
+			oo::PList targetColor = PListForKeyIn(dial_info, "target_rgba");
+			oo::PList targetSensitiveColor = PListForKeyIn(dial_info, "target_sensitive_rgba");
+			oo::PList wormholeColor = PListForKeyIn(dial_info, "wormhole_rgba");
+			if (targetColor.isNull())  targetColor = oo::PList("greenColor");
+			if (targetSensitiveColor.isNull())  targetSensitiveColor = oo::PList("redColor");
+			if (wormholeColor.isNull())  wormholeColor = oo::PList("cyanColor");
+			OOColor *colors[3] = { [OOColor cxx_colorWithDescription:targetColor],
+								   [OOColor cxx_colorWithDescription:targetSensitiveColor],
+								   [OOColor cxx_colorWithDescription:wormholeColor] };
 			_reticleColors.clear();
 			for (OOColor *color : colors)
 			{
@@ -449,9 +434,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		[self cxx_setCrosshairDefinition:*crossfile];
 	}
 	
-	id crosshairColor = ObjectForKeyIn(info, "crosshair_color");
-	if (crosshairColor == nil)  crosshairColor = @"greenColor";
-	_crosshairColor = [[OOColor colorWithDescription:crosshairColor] retain];
+	oo::PList crosshairColor = PListForKeyIn(info, "crosshair_color");
+	if (crosshairColor.isNull())  crosshairColor = oo::PList("greenColor");
+	_crosshairColor = [[OOColor cxx_colorWithDescription:crosshairColor] retain];
 	_crosshairScale = info.get<float>("crosshair_scale", 32.0f);
 	_crosshairWidth = info.get<float>("crosshair_width", 1.5f);
 
@@ -483,7 +468,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	NSSize		siz =	[gui	size];
 	int			rht =	[gui	rowHeight];
-	std::optional<std::string>	title =	oo::OptionalString([gui	title]);
+	std::optional<std::string>	title =	[gui cxx_title];
 	if (gui_info.find(WIDTH_KEY) != nullptr)
 		siz.width = gui_info.get<float>(WIDTH_KEY);
 	if (gui_info.find(HEIGHT_KEY) != nullptr)
@@ -548,8 +533,8 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		// set message gui text colors - one for standard messages, one for incoming comms
 		// incoming comms message color must default to green for compatibility with older huds that
 		// don't have this key
-		[gui setTextColor:[OOColor colorWithDescription:ObjectForKeyIn(*gui_info, "text_color")]];
-		OOColor *textCommsColor = [OOColor colorWithDescription:ObjectForKeyIn(*gui_info, "text_comms_color")];
+		[gui setTextColor:[OOColor cxx_colorWithDescription:PListForKeyIn(*gui_info, "text_color")]];
+		OOColor *textCommsColor = [OOColor cxx_colorWithDescription:PListForKeyIn(*gui_info, "text_comms_color")];
 		if (!textCommsColor)  textCommsColor = [OOColor greenColor];
 		[gui setTextCommsColor:textCommsColor];
 		
@@ -1034,26 +1019,23 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	if (weapon != _lastWeaponType || overallAlpha != _lastOverallAlpha || weaponsOnline != _lastWeaponsOnline)
 	{
-		DESTROY(_crosshairs);
+		_crosshairs = nullptr;
 	}
 	
-	if (_crosshairs == nil)
+	if (_crosshairs == nullptr)
 	{
 		GLfloat useAlpha = weaponsOnline ? overallAlpha : overallAlpha * 0.5f;
 		
 		// Make new crosshairs object
 		points = [self crosshairDefinitionForWeaponType:weapon];
 		
-		_crosshairs = [[OOCrosshairs alloc] initWithPoints:points
-													 scale:_crosshairScale
-													 color:_crosshairColor
-											  overallAlpha:useAlpha];
+		_crosshairs = oo::makeRef<OOCrosshairs>(points, _crosshairScale, oo::ToCxx(_crosshairColor), useAlpha);
 		_lastWeaponType = weapon;
 		_lastOverallAlpha = useAlpha;
 		_lastWeaponsOnline = weaponsOnline;
 	}
 	
-	[_crosshairs render];
+	_crosshairs->render();
 }
 
 
@@ -1066,8 +1048,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 - (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition
 {
 	// force crosshair redraw
-	[_crosshairs release];
-	_crosshairs = nil;
+	_crosshairs = nullptr;
 
 	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
 															   inFolder:std::string("Config")
@@ -1280,10 +1261,8 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 
 //---------------------------------------------------------------------//
 
-- (void) drawScanner:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawScanner:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int				i, x, y;
 	NSSize			siz;
 	GLfloat			scanner_color[4] = { 1.0, 0.0, 0.0, 1.0 };
@@ -1399,12 +1378,12 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				
 				if (emptyDial)  continue;
 				
-				if (isnan(scannedEntity->zero_distance))
+				if (isnan(scannedEntity->_cxxEntity->zero_distance))
 					continue;
 				
 				// exit if it's too far away
-				GLfloat	act_dist = sqrt(scannedEntity->zero_distance);
-				GLfloat	lim_dist = act_dist - scannedEntity->collision_radius;
+				GLfloat	act_dist = sqrt(scannedEntity->_cxxEntity->zero_distance);
+				GLfloat	lim_dist = act_dist - scannedEntity->_cxxEntity->collision_radius;
 				
 				// for efficiency, assume no scannable entity > 10km radius
 				if (act_dist > max_zoomed_range + 10000.0)
@@ -1482,7 +1461,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				if ([scannedEntity isShip])
 				{
 					ShipEntity* ship = (ShipEntity*)scannedEntity;
-					if ((!nonlinear_scanner && ship->collision_radius * upscale > 4.5) ||
+					if ((!nonlinear_scanner && ship->_cxxEntity->collision_radius * upscale > 4.5) ||
 						(nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
 					{
 						Vector bounds[6];
@@ -1530,11 +1509,11 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				{
 					if (nonlinear_scanner)
 					{
-						GLDrawNonlinearCascadeWeapon( scanner_cx, scanner_cy, z1, siz, rrp, scannedEntity->collision_radius, zoom, alpha );
+						GLDrawNonlinearCascadeWeapon( scanner_cx, scanner_cy, z1, siz, rrp, scannedEntity->_cxxEntity->collision_radius, zoom, alpha );
 					}
 					else
 					{
-						GLfloat r1 = 2.5 + scannedEntity->collision_radius * upscale;
+						GLfloat r1 = 2.5 + scannedEntity->_cxxEntity->collision_radius * upscale;
 						GLfloat l2 = r1 * r1 - relativePosition.y * relativePosition.y;
 						GLfloat r0 = (l2 > 0)? sqrt(l2): 0;
 						if (r0 > 0)
@@ -1638,7 +1617,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 - (void) refreshLastTransmitter
 {
 	Entity* lt = [UNIVERSE entityForUniversalID:last_transmitter];
-	if ((lt == nil)||(!(lt->isShip)))
+	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
 		return;
 	ShipEntity* st = (ShipEntity*)lt;
 	if ([st messageTime] <= 0.0)
@@ -1646,10 +1625,8 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 }
 
 
-- (void) drawScannerZoomIndicator:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawScannerZoomIndicator:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	GLfloat				alpha;
@@ -1693,10 +1670,8 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 }
 
 
-- (void) drawCompass:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCompass:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	GLfloat				alpha;
@@ -1891,7 +1866,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawAegis:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawAegis:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
 	if (([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)||([UNIVERSE sun] == nil)||([PLAYER checkForAegis] != AEGIS_IN_DOCKING_RANGE))
 		return;	// don't draw
@@ -1943,10 +1918,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawCustomBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCustomBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -1988,10 +1961,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawCustomText:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCustomText:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				size;
 	GLfloat				alpha = overallAlpha;
@@ -2021,10 +1992,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawCustomIndicator:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCustomIndicator:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2054,10 +2023,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawCustomLight:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCustomLight:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	GLfloat				alpha = overallAlpha;
@@ -2091,10 +2058,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawCustomImage:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCustomImage:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	GLfloat				alpha = overallAlpha;
 
@@ -2139,10 +2104,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawSpeedBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawSpeedBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2185,10 +2148,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawRollBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawRollBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2216,10 +2177,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawPitchBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawPitchBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2247,10 +2206,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawYawBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawYawBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2279,10 +2236,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawEnergyGauge:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawEnergyGauge:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	unsigned			i;
 	NSSize				siz;
@@ -2363,10 +2318,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawForwardShieldBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawForwardShieldBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2406,10 +2359,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawAftShieldBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawAftShieldBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2449,10 +2400,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawFuelBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawFuelBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2499,10 +2448,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawWitchspaceDestination:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawWitchspaceDestination:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	// A zero-distance jump counts as 0.1LY
 	if ([PLAYER dialHyperRange] == 0.0f)
 	{
@@ -2540,10 +2487,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawCabinTempBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawCabinTempBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2589,10 +2534,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawWeaponTempBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawWeaponTempBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2626,10 +2569,8 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-- (void) drawAltitudeBar:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawAltitudeBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
@@ -2799,10 +2740,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawMissileDisplay:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawMissileDisplay:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y, sp;
 	NSSize				siz;
 	GLfloat				alpha = overallAlpha;
@@ -2871,10 +2810,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawTargetReticle:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawTargetReticle:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
 	
 	if ([PLAYER primaryTarget] != nil)
@@ -2924,10 +2861,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawWaypoints:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawWaypoints:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
 	GLfloat scale = info.get<float>("reticle_scale", ONE_SIXTYFOURTH);
 
@@ -2943,7 +2878,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawStatusLight:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawStatusLight:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
 	int					x, y;
 	NSSize				siz;
@@ -3087,10 +3022,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawClock:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawClock:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					x, y;
 	NSSize				siz;
 	GLfloat				itemColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
@@ -3111,10 +3044,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawPrimedEquipment:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawPrimedEquipment:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	if ([PLAYER status] == STATUS_DOCKED)
 	{
 		// Can't activate equipment while docked
@@ -3173,10 +3104,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawASCTarget:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawASCTarget:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	if (!([self checkPlayerInSystemFlight] && [PLAYER status] != STATUS_LAUNCHING)) // normal system
 	{
 		// Can't have compass target when docked, etc. (matches blip condition)
@@ -3213,10 +3142,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawWeaponsOfflineText:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawWeaponsOfflineText:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	OOViewID					viewID = [UNIVERSE viewDirection];
 	GLfloat						textColor[4] = {0.0f, 1.0f, 0.0f, 1.0f};
 
@@ -3253,10 +3180,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawFPSInfoCounter:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawFPSInfoCounter:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	if (![UNIVERSE displayFPS])  return;
 	
 	int					x, y;
@@ -3293,10 +3218,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawScoopStatus:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawScoopStatus:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	int					i, x, y;
 	NSSize				siz;
 	GLfloat				alpha;
@@ -3388,7 +3311,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawStickSensitivityIndicator:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
 	GLfloat				x, y;
 	NSSize				siz;
@@ -3466,15 +3389,13 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawSurround:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawSurround:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	GLfloat	itemColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
-	id		colorDesc = ObjectForKeyIn(info, COLOR_KEY);
-	if (colorDesc != nil)
+	oo::PList	colorDesc = PListForKeyIn(info, COLOR_KEY);
+	if (!colorDesc.isNull())
 	{
-		OOColor *color = [OOColor colorWithDescription:colorDesc];
+		OOColor *color = [OOColor cxx_colorWithDescription:colorDesc];
 		if (color != nil)
 		{
 			itemColor[0] = [color redComponent];
@@ -3487,23 +3408,19 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawGreenSurround:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawGreenSurround:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	[self drawSurroundInternal:info color:green_color];
 }
 
 
-- (void) drawYellowSurround:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawYellowSurround:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	oo::PList			infoStorage;
-	const oo::PList		&info = DialInfo(dialInfo, &infoStorage);
 	[self drawSurroundInternal:info color:yellow_color];
 }
 
 
-- (void) drawTrumbles:(id)dialInfo	// called by name (ADR-0043 item 21)
+- (void) drawTrumbles:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
 	OOTrumble** trumbles = [PLAYER trumbleArray];
 	NSUInteger i;
@@ -3528,7 +3445,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
 	
 	GLfloat mfd_color[4] =		{0.0, 1.0, 0.0, (GLfloat)(0.9*alpha)};
-	OOColor *mfdcol = [OOColor colorWithDescription:ObjectForKeyIn(info, COLOR_KEY)];
+	OOColor *mfdcol = [OOColor cxx_colorWithDescription:PListForKeyIn(info, COLOR_KEY)];
 	if (mfdcol != nil) 
 	{
 		[mfdcol getRed:&mfd_color[0] green:&mfd_color[1] blue:&mfd_color[2] alpha:&mfd_color[3]];
@@ -3751,7 +3668,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 	hudRotateViewpointForVirtualDepth(player1,p1);
 
 	// draw the reticle
-	float range = sqrt(target->zero_distance) - target->collision_radius;
+	float range = sqrt(target->_cxxEntity->zero_distance) - target->_cxxEntity->collision_radius;
 	
 	int flash = (int)([UNIVERSE getTime] * 4);
 	flash &= 1;
@@ -4069,7 +3986,7 @@ static void InitTextEngine(void)
 	sF6KernGovt = fontSpec.get<float>("f6KernGovernment", 1.0);
 	sF6KernTL = fontSpec.get<float>("f6KernTechLevel", 2.0);
 
-	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:fontSpec];
+	sEncodingCoverter = oo::makeRef<OOEncodingConverter>(fontSpec).leakRef();
 	widths = fontSpec.find("widths");	// used only if it is an array, as before
 	count = (widths != nullptr && widths->isArray()) ? widths->count() : 0;
 	if (count > 256)  count = 256;
@@ -4087,8 +4004,8 @@ namespace {
 */
 oo::Data ConvertedString(const std::string &text)
 {
-	if (sEncodingCoverter == nil)  return oo::Data();
-	return [sEncodingCoverter convertString:text];
+	if (sEncodingCoverter == nullptr)  return oo::Data();
+	return sEncodingCoverter->convertString(text);
 }
 
 }	// namespace
@@ -4097,7 +4014,9 @@ oo::Data ConvertedString(const std::string &text)
 void OOHUDResetTextEngine(void)
 {
 	DESTROY(sFontTexture);
-	DESTROY(sEncodingCoverter);
+	OOEncodingConverter *encodingConverter = sEncodingCoverter;	// DESTROY(): cleared before the release
+	sEncodingCoverter = nullptr;
+	oo::release(encodingConverter);
 }
 
 
@@ -4654,12 +4573,11 @@ namespace {
 
 void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat defaultColor[4], GLfloat alpha)
 {
-	id			colorDesc = nil;
 	OOColor		*color = nil;
-	colorDesc = ObjectForKeyIn(info, key);
-	if (colorDesc != nil)
+	const oo::PList colorDesc = PListForKeyIn(info, key);
+	if (!colorDesc.isNull())
 	{
-		color = [OOColor colorWithDescription:colorDesc];
+		color = [OOColor cxx_colorWithDescription:colorDesc];
 		if (color != nil)
 		{
 			GLfloat ioColor[4];
@@ -4674,14 +4592,13 @@ void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat d
 
 void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4])
 {
-	id						colorDesc = nil;
 	OOColor					*color = nil;
 
 	// First, look for general colour specifier.
-	colorDesc = ObjectForKeyIn(info, RGB_COLOR_KEY);
-	if (colorDesc != nil && info.find(ALPHA_KEY) == nullptr)
+	const oo::PList colorDesc = PListForKeyIn(info, RGB_COLOR_KEY);
+	if (!colorDesc.isNull() && info.find(ALPHA_KEY) == nullptr)
 	{
-		color = [OOColor colorWithDescription:colorDesc];
+		color = [OOColor cxx_colorWithDescription:colorDesc];
 		if (color != nil)
 		{
 			[color getRed:&ioColor[0] green:&ioColor[1] blue:&ioColor[2] alpha:&ioColor[3]];

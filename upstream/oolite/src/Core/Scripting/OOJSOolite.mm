@@ -32,13 +32,13 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "MyOpenGLView.h"
 #import "OOConstToString.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/ResourcePaths.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/String.hpp"
 
 namespace {
 
@@ -66,6 +66,15 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 // ooscript::ClassDef (stub hooks become nullptr), InitClass becomes ooscript::initClass,
 // numeric conversion becomes ooscript::newNumberValue/ooscript::valueToNumber, and `this` is
 // renamed to `thisObj` (reserved word in Objective-C++, ADR-0001).
+/*
+	C++20 since bead oo-whvg, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. Nothing else in the file was
+	Objective-C: the universe, its game view and the resource manager, which are not converted, are
+	still messaged, which is why the file is still .mm until Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -217,7 +226,7 @@ void InitOOJSOolite(ooscript::Context context, ooscript::Object global)
 namespace {
 static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -225,7 +234,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	id						result = nil;
+	oo::PList				result;	// null: nil
 	MyOpenGLView			*gameView = [UNIVERSE gameView];
 	
 	switch (ooscript::idToInt32(propID))
@@ -235,37 +244,44 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			// The components as ComponentsFromVersionString() gave them: an array of unsigned numbers.
 			oo::PList::Array components;
 			for (unsigned component : VersionComponents())  components.push_back(oo::PList::unsignedInteger(component));
-			result = oo::ObjectFromPList(oo::PList(std::move(components)));
+			result = oo::PList(std::move(components));
 			break;
 		}
 		
 		case kOolite_versionString:
-			result = oo::NSStringOrNil(VersionString());
+		{
+			const std::optional<std::string> version = VersionString();
+			if (version.has_value())  result = oo::PList(*version);
 			break;
+		}
 		
 		case kOolite_jsVersion:
 			*value_raw = ooscript::int32Value(static_cast<int>(ooscript::getVersion(cx)));
-			return YES;
+			return true;
 		
 		case kOolite_jsVersionString:
 			*value_raw = ooscript::stringValue((ooscript::newStringCopyZ(cx, ooscript::versionToString(ooscript::getVersion(cx)))));
-			return YES;
+			return true;
 		
 		case kOolite_gameSettings:
-			result = oo::ObjectFromPList([UNIVERSE cxx_gameSettings]);
+			result = [UNIVERSE cxx_gameSettings];
 			break;
 			
 		case kOolite_resourcePaths:
 			// user name in displayed paths masked for privacy - remember that the console can be run remotely too
-			result = oo::NSArrayFromStrings([ResourceManager cxx_maskUserNameInPathArray:[ResourceManager cxx_paths]]);
+		{
+			oo::PList::Array paths;
+			for (const std::string &path : [ResourceManager cxx_maskUserNameInPathArray:[ResourceManager cxx_paths]])  paths.push_back(oo::PList(path));
+			result = oo::PList(std::move(paths));
 			break;
+		}
 			
 		case kOolite_colorSaturation:
 			return ooscript::newNumberValue(cx, [gameView colorSaturation], value);
 			
 		case kOolite_postFX:
 			*value_raw = ooscript::int32Value([UNIVERSE currentPostFX]);
-			return YES;
+			return true;
 			
 		case kOolite_hdrToneMapper:
 		{
@@ -276,7 +292,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 				toneMapperStr = cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]);
 			}
 #endif
-			result = oo::NSStringOrNil(toneMapperStr);
+			if (toneMapperStr.has_value())  result = oo::PList(*toneMapperStr);
 			break;
 		}
 		
@@ -287,7 +303,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			{
 				toneMapperStr = cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]);
 			}
-			result = oo::NSStringOrNil(toneMapperStr);
+			if (toneMapperStr.has_value())  result = oo::PList(*toneMapperStr);
 			break;
 		}
 			
@@ -298,11 +314,11 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 		
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sOolitePropertiesRaw);
-			return NO;
+			return false;
 	}
 	
-	*value_raw = OOJSValueFromNativeObject(context, result);
-	return YES;
+	*value_raw = OOJSValueFromPList(context, result);
+	return true;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -312,7 +328,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 namespace {
 static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	ooscript::Object thisObj = (obj);
@@ -332,7 +348,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				float currentColorSaturation = [gameView colorSaturation];
 				[gameView adjustColorSaturation:fValue - currentColorSaturation];
-				return YES;
+				return true;
 			}
 			break;
 			
@@ -341,7 +357,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				iValue = MAX(iValue, 0);
 				[UNIVERSE setCurrentPostFX:iValue];
-				return YES;
+				return true;
 			}
 			break;
 			
@@ -354,7 +370,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 				if ([gameView hdrOutput])  [gameView setHDRToneMapper:cxx_OOHDRToneMapperFromString(*sValue)];
 				else  cxx_OOJSReportWarning(context, "hdrToneMapper cannot be set if not running in HDR mode");
 #endif
-				return YES;
+				return true;
 			}
 			break;
 			
@@ -365,7 +381,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			{
 				if (![gameView hdrOutput])  [gameView setSDRToneMapper:cxx_OOSDRToneMapperFromString(*sValue)];
 				else  cxx_OOJSReportWarning(context, "sdrToneMapper cannot be set if not running in SDR mode");
-				return YES;
+				return true;
 			}
 			break;
 			
@@ -374,18 +390,18 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[UNIVERSE setTimeAccelerationFactor:fValue];
-				return YES;
+				return true;
 			}
 			break;
 #endif
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, (propID), sOolitePropertiesRaw);
-			return NO;
+			return false;
 	}
 	
 	OOJSReportBadPropertyValue(context, thisObj, (propID), sOolitePropertiesRaw, *value_raw);
-	return NO;
+	return false;
 	
 	OOJS_NATIVE_EXIT
 }

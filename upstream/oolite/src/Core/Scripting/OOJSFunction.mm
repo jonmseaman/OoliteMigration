@@ -27,147 +27,144 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OOJSEngineTimeManagement.h"
 #include "oofnd/Notification.hpp"
-#import "OOFoundationBridge.h"
 #include "oofnd/objc/OOAssert.h"
+#include "oofnd/String.hpp"
 
 
-@implementation OOJSFunction
+/*	C++20 since bead oo-3smy (proposed ADR-0056): cxx::OOJSFunction. The initialisers answered nil
+	for their input, so they are static factories of the same name (amendment oo-novu item 1); the
+	part of -initWithFunction:context: that cannot fail is the private constructor. The engine,
+	the script stack and the wrapped arguments are Objective-C and are messaged as before.
+*/
 
-- (id) initWithFunction:(ooscript::Function)function context:(ooscript::Context)context
+namespace cxx {
+
+oo::Ref<OOJSFunction> OOJSFunction::initWithFunction(ooscript::Function function, ooscript::Context context)
 {
-	OOParameterAssert(context != NULL);
-	
+	OOCParameterAssert(context != NULL);
+
 	if (function == NULL)
 	{
-		[self release];
-		return nil;
+		return nullptr;
 	}
-	
-	if ((self = [super init]))
+
+	return oo::adopt(new OOJSFunction(function, context));
+}
+
+
+OOJSFunction::OOJSFunction(ooscript::Function function, ooscript::Context context)
+{
 	{
 		_function = function;
 		OOJSAddGCObjectRoot(context, (ooscript::Object *)&_function, "OOJSFunction._function");
 		_name = cxx_OOStringFromJSString(context, ooscript::getFunctionId(function));
-		
-		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+
+		oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 															[OOJavaScriptEngine sharedEngine],
-															[self](const oo::Notification &) { [self deleteJSValue]; });
+															[this](const oo::Notification &) { deleteJSValue(); });
 	}
-	
-	return self;
 }
 
 
-- (id) initWithName:(const std::optional<std::string> &)name
-			  scope:(ooscript::Object)scope
-			   code:(const std::optional<std::string> &)code
-	  argumentCount:(NSUInteger)argCount
-	  argumentNames:(const char **)argNames
-		   fileName:(const std::optional<std::string> &)fileName
-		 lineNumber:(NSUInteger)lineNumber
-			context:(ooscript::Context)context
+oo::Ref<OOJSFunction> OOJSFunction::initWithName(const std::optional<std::string> &name,
+												 ooscript::Object scope,
+												 const std::optional<std::string> &code,
+												 NSUInteger argCount,
+												 const char **argNames,
+												 const std::optional<std::string> &fileName,
+												 NSUInteger lineNumber,
+												 ooscript::Context context)
 {
-	BOOL						OK = YES;
-	BOOL						releaseContext = NO;
+	bool						OK = true;
+	bool						releaseContext = false;
 	ooscript::Char16						*buffer = NULL;
 	size_t						length = 0;
-	ooscript::Function function;
-	
+	ooscript::Function function = NULL;
+	oo::Ref<OOJSFunction>		result;
+
 	if (context == NULL)
 	{
 		context = OOJSAcquireContext();
-		releaseContext = YES;
+		releaseContext = true;
 	}
 	if (scope == NULL)  scope = [[OOJavaScriptEngine sharedEngine] globalObject];
-	
-	if (!code.has_value() || (argCount > 0 && argNames == NULL))  OK = NO;
-	
+
+	if (!code.has_value() || (argCount > 0 && argNames == NULL))  OK = false;
+
 	// ooscript::Char16 is a 16-bit element; the code's UTF-16 units go in as -getCharacters: gave them.
 	std::u16string units;
 	if (OK)
 	{
 		units = oo::utf8ToUtf16(*code);
-		
+
 		length = units.size();
 		buffer = (ooscript::Char16 *)malloc(sizeof(ooscript::Char16) * length);
-		if (buffer == NULL)  OK = NO;
+		if (buffer == NULL)  OK = false;
 	}
-	
+
 	if (OK)
 	{
 		assert(argCount < UINT32_MAX);
-		
+
 		std::copy(units.begin(), units.end(), buffer);
-		
+
 		function = ooscript::compileUCFunction(context, scope, name.has_value() ? name->c_str() : NULL, (uint32_t)argCount, argNames, buffer, length, fileName.has_value() ? fileName->c_str() : NULL, (uint32_t)lineNumber);
-		if (function == NULL)  OK = NO;
-		
+		if (function == NULL)  OK = false;
+
 		free(buffer);
 	}
-	
+
 	if (OK)
 	{
-		self = [self initWithFunction:function context:context];
+		result = initWithFunction(function, context);
 	}
-	else
-	{
-		DESTROY(self);
-	}
-	
+
 	if (releaseContext)  OOJSRelinquishContext(context);
-	
-	return self;
+
+	return result;
 }
 
 
-- (void) deleteJSValue
+void OOJSFunction::deleteJSValue()
 {
 	if (_function != NULL)
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		ooscript::removeObjectRoot(context, (ooscript::Object *)&_function);
 		OOJSRelinquishContext(context);
-		
+
 		_function = NULL;
-		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+		oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
 																[OOJavaScriptEngine sharedEngine]);
 	}
 }
 
 
-- (void) dealloc
+OOJSFunction::~OOJSFunction()
 {
-	[self deleteJSValue];
-	
-	[super dealloc];
+	deleteJSValue();
 }
 
 
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> OOJSFunction::descriptionComponents() const
 {
 	return oo::str::format("%s()", _name.value_or("<anonymous>").c_str());
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
-- (std::optional<std::string>) cxx_name
+std::optional<std::string> OOJSFunction::name()
 {
 	return _name;
 }
 
 
-- (ooscript::Function) function
+ooscript::Function OOJSFunction::function()
 {
 	return _function;
 }
 
 
-- (ooscript::Value) functionValue
+ooscript::Value OOJSFunction::functionValue()
 {
 	if (EXPECT(_function != NULL))
 	{
@@ -181,67 +178,67 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) evaluateWithContext:(ooscript::Context)context
-					   scope:(ooscript::Object)jsThis
-						argc:(unsigned)argc
-						argv:(ooscript::Value *)argv
-					  result:(ooscript::Value *)result
+bool OOJSFunction::evaluateWithContext(ooscript::Context context,
+									   ooscript::Object jsThis,
+									   unsigned argc,
+									   ooscript::Value *argv,
+									   ooscript::Value *result)
 {
 	[OOJSScript pushScript:nil];
 	OOJSStartTimeLimiter();
-	BOOL OK = ooscript::callFunction(context, jsThis, _function, argc, argv, result);
+	bool OK = ooscript::callFunction(context, jsThis, _function, argc, argv, result);
 	OOJSStopTimeLimiter();
 	[OOJSScript popScript:nil];
-	
+
 	return OK;
 }
 
 // Semi-raw evaluation shared by convenience methods below.
-- (BOOL) evaluateWithContext:(ooscript::Context)context
-					   scope:(id)jsThis
-				   arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
-					  result:(ooscript::Value *)result
+bool OOJSFunction::evaluateWithContext(ooscript::Context context,
+									   id jsThis,
+									   const std::vector<oo::ObjCRef<id>> &arguments,
+									   ooscript::Value *result)
 {
 	NSUInteger i, argc = arguments.size();
 	assert(argc < UINT32_MAX);
 	ooscript::Value argv[argc];
-	
+
 	for (i = 0; i < argc; i++)
 	{
 		argv[i] = arguments[i].get() != nil ? OOJSValueFromNativeObject(context, arguments[i].get()) : ooscript::Value{0};	// (a message to nil gave the zero value)
 		OOJSAddGCValueRoot(context, &argv[i], "OOJSFunction argv");
 	}
-	
+
 	ooscript::Object scopeObj = NULL;
-	BOOL OK = YES;
+	bool OK = true;
 	if (jsThis != nil)  OK = ooscript::valueToObject(context, OOJSValueFromNativeObject(context, jsThis), &scopeObj);
-	if (OK)  OK = [self evaluateWithContext:context
-									  scope:scopeObj
-									   argc:(uint32_t)argc
-									   argv:argv
-									 result:result];
-	
+	if (OK)  OK = evaluateWithContext(context,
+									  scopeObj,
+									  (uint32_t)argc,
+									  argv,
+									  result);
+
 	for (i = 0; i < argc; i++)
 	{
 		ooscript::removeValueRoot(context, &argv[i]);
 	}
-	
+
 	return OK;
 }
 
 
-- (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
-								scope:(id)jsThis
-							arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
+bool OOJSFunction::evaluatePredicateWithContext(ooscript::Context context,
+												id jsThis,
+												const std::vector<oo::ObjCRef<id>> &arguments)
 {
 	ooscript::Value result;
-	BOOL OK = [self evaluateWithContext:context
-								  scope:jsThis
-							  arguments:arguments
-								 result:&result];
-	bool retval = NO;
+	bool OK = evaluateWithContext(context,
+								  jsThis,
+								  arguments,
+								  &result);
+	bool retval = false;
 	if (OK)  OK = ooscript::valueToBoolean(context, result, &retval);
 	return OK && retval;
 }
 
-@end
+}	// namespace cxx

@@ -58,7 +58,6 @@ MA 02110-1301, USA.
 	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
 
-#import "OOFoundationBridge.h"
 #import "OOObjCPList.h"		// Object nodes (OOJSValueFromPList)
 #import "Universe.h"
 #import "OOPlanetEntity.h"
@@ -105,7 +104,6 @@ MA 02110-1301, USA.
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 
 #include "oofnd/objc/OOAssert.h"
 
@@ -173,19 +171,19 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 } // namespace
 
 namespace {
-static id JSArrayConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSArrayConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSStringConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSStringConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSNumberConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSNumberConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSBooleanConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSBooleanConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSPlainObjectConverter(ooscript::Context context, ooscript::Object object);
+static oo::PList JSPlainObjectConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 
 
@@ -335,7 +333,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	[self setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
 #endif
 	
-	assert(sizeof(ooscript::Char16) == sizeof(unichar));
+	assert(sizeof(ooscript::Char16) == sizeof(uint16_t));
 	
 	// initialize the JS run time, and return result in runtime.
 	const oo::PList jsRuntimeSize = defaults.object("jsruntime-size-mib");
@@ -1122,15 +1120,7 @@ void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *for
 }
 
 
-void OOJSReportWrappedException(ooscript::Context context, id exception)
-{
-	if (!ooscript::isExceptionPending((context)))
-	{
-		if ([exception isKindOfClass:[OOException class]])  cxx_OOJSReportError(context, "Native exception: %s", [(OOException *)exception reason]);
-		else  cxx_OOJSReportError(context, "Unidentified native exception");
-	}
-	// Else, let the pending exception propagate.
-}
+// OOJSReportWrappedException() and OOJSReportCurrentException() are in OOJSEngineNativeWrappers.mm.
 
 
 #ifndef NDEBUG
@@ -1332,7 +1322,7 @@ static bool IsOOObjectRooted(id object)
 }
 
 
-// NSArray's glue (JSArrayFromNSArray + JSNewNSArrayValue) over ObjectFromPList's array: null elements dropped.
+// The Foundation array's glue (JSArrayFromNSArray + JSNewNSArrayValue) over ObjectFromPList's array: null elements dropped.
 static ooscript::Value JSArrayValueFromPList(ooscript::Context context, const oo::PList::Array &array)
 {
 	OOJS_PROFILE_ENTER
@@ -1374,7 +1364,7 @@ static ooscript::Value JSArrayValueFromPList(ooscript::Context context, const oo
 }
 
 
-// NSDictionary's glue (JSObjectFromNSDictionary + JSNewNSDictionaryValue) over ObjectFromPList's
+// The Foundation dictionary's glue (JSObjectFromNSDictionary + JSNewNSDictionaryValue) over ObjectFromPList's
 // dictionary: null values dropped, empty keys skipped, key order.
 static ooscript::Value JSObjectValueFromPList(ooscript::Context context, const oo::PList::Dict &dict)
 {
@@ -1413,7 +1403,7 @@ static ooscript::Value JSObjectValueFromPList(ooscript::Context context, const o
 }
 
 
-// NSNumber's glue: an integer outside int32 range, or a real, as a double.
+// The Foundation number's glue: an integer outside int32 range, or a real, as a double.
 static ooscript::Value JSNumberValue(ooscript::Context context, double number)
 {
 	ooscript::Value result;
@@ -1428,10 +1418,10 @@ ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 	if (object == nil)  return ooscript::nullValue();
 	if (EXPECT(IsOOObjectRooted(object)))  return [object oo_jsValueInContext:context];
 
-	// A Foundation object: its glue was the bridge's categories (proposed ADR-0051).
-	const oo::PList plist = oo::PListFrom(object);
-	if (plist.type() == oo::PList::Type::Object)  return ooscript::undefinedValue();	// NSObject's glue
-	return OOJSValueFromPList(context, plist);
+	// An object on another root has no JS glue: undefined, as the root class's gave. oo-qps.72 deleted
+	// the Foundation branch (its property-list form, proposed ADR-0051): plist data is
+	// OOJSValueFromPList's.
+	return ooscript::undefinedValue();
 }
 
 
@@ -1479,7 +1469,7 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 
 		case oo::PList::Type::Data:
 		case oo::PList::Type::Date:
-			return ooscript::undefinedValue();	// NSData, NSDate: NSObject's glue
+			return ooscript::undefinedValue();	// Foundation data and dates: the root class's glue
 
 		case oo::PList::Type::Array:
 			return JSArrayValueFromPList(context, *plist.getIf<oo::PList::Array>());
@@ -1911,7 +1901,7 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
 	ooscript::Value value = ooscript::undefinedValue();
-	VectorToJSValue(context, v, &value);
+	VectorToJSValue(context, [self getVector], &value);
 	return value;
 }
 
@@ -2363,9 +2353,11 @@ oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value va
 }
 
 
+// The object of the value's PList::Object node (nil for plist data): oo-qps.72 deleted the
+// Foundation form of the rest (ADR-0055 Amendment 2).
 id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value)
 {
-	return oo::ObjectFromPList(cxx_OOJSPListFromJSValue(context, value));
+	return oo::ObjectIn(cxx_OOJSPListFromJSValue(context, value));
 }
 
 
@@ -2394,15 +2386,8 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object 
 	}
 	if (converter == NULL)  return oo::PList();
 
-	// The engine's own converters build the PList directly; the id converters are their ObjectFromPList.
-	if (converter == JSArrayConverter)  return PListFromJSArray(context, tableObject);
-	if (converter == JSStringConverter)  return PListFromJSStringObject(context, tableObject);
-	if (converter == JSNumberConverter)  return PListFromJSNumberObject(context, tableObject);
-	if (converter == JSBooleanConverter)  return PListFromJSBooleanObject(context, tableObject);
-	if (converter == JSPlainObjectConverter)  return cxx_OOJSDictionaryFromJSObject(context, tableObject);
-
-	// A registered private-object converter: a PList::Object node holding what it returns.
-	return oo::PListFrom(converter(context, tableObject));
+	// The engine's own converters build the PList; a private-object converter gives an Object node.
+	return converter(context, tableObject);
 
 	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
@@ -2410,7 +2395,7 @@ oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object 
 
 id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tableObject)
 {
-	return oo::ObjectFromPList(cxx_OOJSPListFromJSObject(context, tableObject));
+	return oo::ObjectIn(cxx_OOJSPListFromJSObject(context, tableObject));
 }
 
 
@@ -2430,7 +2415,7 @@ id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Obje
 }
 
 
-id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object)
+oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object)
 {
 	id						result;
 	
@@ -2439,7 +2424,7 @@ id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object o
 		it returns nil.
 	*/
 	result = (id)ooscript::getPrivate((context), (object));
-	return [result weakRefUnderlyingObject];
+	return oo::PListObject([result weakRefUnderlyingObject]);	// nil: a null PList
 }
 
 
@@ -2494,9 +2479,9 @@ static oo::PList PListFromJSArray(ooscript::Context context, ooscript::Object ar
 }
 
 
-static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
+static oo::PList JSArrayConverter(ooscript::Context context, ooscript::Object array)
 {
-	return oo::ObjectFromPList(PListFromJSArray(context, array));
+	return PListFromJSArray(context, array);
 }
 } // namespace
 
@@ -2509,9 +2494,9 @@ static oo::PList PListFromJSStringObject(ooscript::Context context, ooscript::Ob
 }
 
 
-static id JSStringConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSStringConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(PListFromJSStringObject(context, object));
+	return PListFromJSStringObject(context, object);
 }
 } // namespace
 
@@ -2528,9 +2513,9 @@ static oo::PList PListFromJSNumberObject(ooscript::Context context, ooscript::Ob
 }
 
 
-static id JSNumberConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSNumberConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(PListFromJSNumberObject(context, object));
+	return PListFromJSNumberObject(context, object);
 }
 } // namespace
 
@@ -2552,16 +2537,16 @@ static oo::PList PListFromJSBooleanObject(ooscript::Context context, ooscript::O
 }
 
 
-static id JSBooleanConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSBooleanConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(PListFromJSBooleanObject(context, object));
+	return PListFromJSBooleanObject(context, object);
 }
 
 
 // A plain JS Object: cxx_OOJSDictionaryFromJSObject() (proposed ADR-0051; was the bridge's
 // Foundation converter, which kept an integer-like key as a number).
-static id JSPlainObjectConverter(ooscript::Context context, ooscript::Object object)
+static oo::PList JSPlainObjectConverter(ooscript::Context context, ooscript::Object object)
 {
-	return oo::ObjectFromPList(cxx_OOJSDictionaryFromJSObject(context, object));
+	return cxx_OOJSDictionaryFromJSObject(context, object);
 }
 } // namespace

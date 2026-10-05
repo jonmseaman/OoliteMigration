@@ -36,10 +36,12 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/Ref.hpp"
 
 struct OOHUDWidget;	// HeadUpDisplay.mm
 
-@class OOCrosshairs, OOColor;
+@class OOColor;
+class OOCrosshairs;
 
 @protocol OOHUDBeaconIcon;
 
@@ -277,7 +279,7 @@ enum
 	std::set<std::string>	_hiddenSelectors;
 	
 	// Crosshairs
-	OOCrosshairs		*_crosshairs;
+	oo::Ref<OOCrosshairs>	_crosshairs;
 	OOWeaponType		_lastWeaponType;
 	GLfloat				_lastOverallAlpha;
 	BOOL				_lastWeaponsOnline;
@@ -299,7 +301,6 @@ enum
 
 }
 
-- (id) initWithDictionary:(id)hudinfo;	// shared selector (proposed ADR-0043)
 - (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName OO_RETURNS_RETAINED;
 
 - (void) cxx_resetGuis:(const oo::PList &)info;
@@ -422,6 +423,6 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 void OODrawHilightedPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSize siz);
 
-CGFloat cxx_OOStringWidthInEm(const std::string &text);
+#include "OOStringWidth.h"	// cxx_OOStringWidthInEm() (bead oo-9ht.72: plain header)
 
 void OOHUDResetTextEngine(void);

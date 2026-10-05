@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 #import "OOEquipmentType.h"
 #import "GameController.h"
-#import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
 
@@ -195,7 +194,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 #if OOLITE_WINDOWS
 	if ([self status] == STATUS_START_GAME) { return; }
 #endif
-	[sInterfaceBeepSource playSound:[OOSound cxx_soundWithCustomSoundKey:beepKey]];
+	[sInterfaceBeepSource playOOSound:[OOSound cxx_soundWithCustomSoundKey:beepKey]];
 }
 
 
@@ -292,7 +291,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 - (void) playAutopilotOff
 {
 	// only if still alive
-	if (energy > 0.0)
+	if (_cxxEntity->energy > 0.0)
 	{
 		[self playInterfaceBeep:"[autopilot-off]"];
 	}

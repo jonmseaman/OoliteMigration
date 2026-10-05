@@ -34,7 +34,6 @@ SOFTWARE.
 #import "OOStellarBody.h"
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
-#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"

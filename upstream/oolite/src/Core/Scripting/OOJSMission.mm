@@ -32,16 +32,13 @@ MA 02110-1301, USA.
 #import "OOJSPlayer.h"
 #import "PlayerEntityScriptMethods.h"
 #import "OOStringExpander.h"
-#import "OOPListView.h"
 #import "OOMusicController.h"
 #import "GuiDisplayGen.h"
 #import "OODebugStandards.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -54,6 +51,21 @@ MA 02110-1301, USA.
 	hooks (getProperty, setProperty) and every ooscript::FunctionSpec entry take the façade's
 	Context/Object/PropertyId/Value/CallArgs signature directly.
 */
+/*
+	C++20 since bead oo-nge8, converted the way bead oo-ppc converted OOJSVector.mm (proposed
+	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
+	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. OOMusicController, which is C++
+	since bead oo-lfkq, is reached as cxx::OOMusicController (amendment oo-ppc, item 4).
+	MissionRunCallback()'s @try/@catch (OOException *) around the callback stays verbatim (amendment
+	oo-puw9 item 4); Phase 4 replaces it with the rest of the Objective-C exception sites.
+	mission.markedSystems kept the destinations it reads in a local: it read them through a pointer
+	into a temporary that had died (bead oo-nge8; the same defect in OOJSSystemInfo.mm is bead
+	oo-f4241). Messages to classes that are still Objective-C (PlayerEntity, Universe,
+	GuiDisplayGen, OOJSScript, OOJavaScriptEngine) stay as they are, which is why the file is still
+	.mm until Phase 4.
+*/
+
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -97,7 +109,7 @@ static bool MissionRunShipLibrary(ooscript::Context cx, ooscript::CallArgs &oojs
 } // namespace
 
 namespace {
-static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::CallArgs &oojsArgs, BOOL isKey);
+static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::CallArgs &oojsArgs, bool isKey);
 } // namespace
 
 namespace {
@@ -224,13 +236,13 @@ void MissionRunCallback()
 	sCallbackThis = ooscript::nullValue();
 	
 	ooscript::Value args[2];
-	argval = OOJSValueFromNativeObject(context, [player missionChoice_string]);
-	argval2 = OOJSValueFromNativeObject(context, [player missionKeyPress_string]);
+	argval = OOJSValueFromPList(context, [player missionChoice_string]);
+	argval2 = OOJSValueFromPList(context, [player missionKeyPress_string]);
 	args[0] = argval;
 	args[1] = argval2;
 
 	// now reset the mission choice silently, before calling the callback script.
-	[player cxx_setMissionChoice:std::nullopt keyPress:"" withEvent:NO];
+	[player cxx_setMissionChoice:std::nullopt keyPress:"" withEvent:false];
 	
 	// Call the callback.
 	@try
@@ -261,38 +273,50 @@ void MissionRunCallback()
 namespace {
 static bool MissionGetProperty(Context cx, Object thisObj, PropertyId propID, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	
 	OOJS_NATIVE_ENTER(context)
 
-	id result = nil;
+	oo::PList result;	// null maps to null
 	PlayerEntity		*player = OOPlayerForScripting();
 
 	switch (ooscript::idToInt32(propID))
 	{
 		case kMission_markedSystems:
-			result = [[oo::ObjectFromPList([player cxx_getMissionDestinations]) mutableCopy] autorelease];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
-			result = [result allValues];
+			{
+				// The destinations' values, in key order (-allValues gave hash order).
+				oo::PList::Array values;
+				// Kept in a local: getIf() points into it, and the temporary the message answered died
+				// at the end of the if's initialiser (a dangling pointer until bead oo-nge8).
+				const oo::PList missionDestinations = [player cxx_getMissionDestinations];
+				if (const oo::PList::Dict *destinations = missionDestinations.getIf<oo::PList::Dict>())
+				{
+					for (const auto &entry : *destinations)
+					{
+						if (!entry.second.isNull())  values.push_back(entry.second);
+					}
+				}
+				result = oo::PList(std::move(values));
+			}
 			break;
 
 		case kMission_screenID:
-			result = oo::NSStringOrNil([player cxx_missionScreenID]);
+			if (const std::optional<std::string> screenID = [player cxx_missionScreenID])  result = oo::PList(*screenID);
 			break;
 
 		case kMission_exitScreen:
 			*value = OOJSValueFromGUIScreenID(context, [player missionExitScreen]);
-			return YES;
+			return true;
 
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, propID, sMissionProperties);
-			return NO;
+			return false;
 	}
 
-	*value = OOJSValueFromNativeObject(context, result);
-	return YES;
+	*value = OOJSValueFromPList(context, result);
+	return true;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -302,7 +326,7 @@ static bool MissionGetProperty(Context cx, Object thisObj, PropertyId propID, Va
 namespace {
 static bool MissionSetProperty(Context cx, Object thisObj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	ooscript::Context context = (cx);
 	
@@ -316,14 +340,14 @@ static bool MissionSetProperty(Context cx, Object thisObj, PropertyId propID, bo
 		case kMission_exitScreen:
 			exitScreen = OOGUIScreenIDFromJSValue(context, *value);
 			[player setMissionExitScreen:exitScreen];
-			return YES;
+			return true;
 	
 		default:
 			OOJSReportBadPropertySelector(context, thisObj, propID, sMissionProperties);
 	}
 	
 	OOJSReportBadPropertyValue(context, thisObj, propID, sMissionProperties, *value);
-	return NO;
+	return false;
 	
 	OOJS_NATIVE_EXIT
 }
@@ -353,7 +377,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 			if (!ooscript::isObjectOrNull(OOJS_ARGV[i]))
 			{
 				cxx_OOJSReportBadArguments(context, "Mission", "markSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "numbers or objects");
-				return NO;
+				return false;
 			}
 		}
 	}
@@ -406,12 +430,12 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 			if (!ooscript::isObjectOrNull(OOJS_ARGV[i]))
 			{
 				cxx_OOJSReportBadArguments(context, "Mission", "unmarkSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "numbers or objects");
-				return NO;
+				return false;
 			}
 		}
 	}
 
-	BOOL result = YES;
+	bool result = true;
 	for (i=0;i<oojsArgs.count();i++)
 	{
 		if (ooscript::valueToInt32(context, (OOJS_ARGV[i]), &dest)) 
@@ -420,7 +444,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 			if (!OOEnforceStandards())
 			{
 				if (![player cxx_removeMissionDestinationMarker:[player cxx_defaultMarker:dest]]) {
-					result = NO;
+					result = false;
 				}
 			}
 		}
@@ -432,7 +456,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 			if (system >= 0)
 			{
 				if (![player cxx_removeMissionDestinationMarker:marker]) {
-					result = NO;
+					result = false;
 				}
 			}
 		}
@@ -463,7 +487,7 @@ static bool MissionAddMessageText(ooscript::Context context, ooscript::CallArgs 
 	// Found "FIXME: warning if no mission screen running.",,,
 	// However: used routinely by the Constrictor mission in F7, without mission screens.
 	text = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
-	[player addLiteralMissionText:oo::NSStringOrNil(text)];
+	if (text.has_value())  [player addLiteralMissionText:*text];	// (nil added nothing)
 	
 	OOJS_RETURN_VOID;
 	
@@ -476,7 +500,7 @@ static bool MissionAddMessageText(ooscript::Context context, ooscript::CallArgs 
 namespace {
 static bool MissionSetInstructionsKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	return MissionSetInstructionsInternal(context, oojsArgs, YES);
+	return MissionSetInstructionsInternal(context, oojsArgs, true);
 }
 } // namespace
 
@@ -485,13 +509,13 @@ static bool MissionSetInstructionsKey(ooscript::Context context, ooscript::CallA
 namespace {
 static bool MissionSetInstructions(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	return MissionSetInstructionsInternal(context, oojsArgs, NO);
+	return MissionSetInstructionsInternal(context, oojsArgs, false);
 }
 } // namespace
 
 
 namespace {
-static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::CallArgs &oojsArgs, BOOL isKey)
+static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::CallArgs &oojsArgs, bool isKey)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -507,7 +531,7 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	else if (EXPECT_NOT(ooscript::isUndefined(OOJS_ARGV[0])))
 	{
 		cxx_OOJSReportBadArguments(context, "Mission", std::string(isKey ? "setInstructionsKey" : "setInstructions"), 1, OOJS_ARGV, std::nullopt, "string or null");
-		return NO;
+		return false;
 	}
 	else if (!ooscript::isNull(OOJS_ARGV[0]) && ooscript::isObjectOrNull(OOJS_ARGV[0]))
 	{
@@ -544,7 +568,8 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	}
 	else
 	{
-		[player clearMissionDescriptionForMission:oo::NSStringOrNil(missionKey)];
+		if (missionKey.has_value())  [player clearMissionDescriptionForMission:*missionKey];
+		else  [player cxx_setMissionInstructions:std::string() forMission:std::nullopt];	// logs "mission key not set", as a nil key did
 	}
 	
 	OOJS_RETURN_VOID;
@@ -584,11 +609,10 @@ static std::optional<std::string> GetParameterString(ooscript::Context context, 
 
 // What -oo_stringForKey: made of the value it found: a string, or a number's text; nullopt (was
 // nil) for no value or any other kind of value.
-static std::optional<std::string> StringFromObject(id object)
+static std::optional<std::string> StringFromPList(const oo::PList *value)
 {
-	const oo::PList value = oo::PListFrom(object);
-	if (!(value.isString() || value.isNumber()))  return std::nullopt;
-	return oo::PListGet<std::string>::from(&value, std::string());
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
 }
 } // namespace
 
@@ -626,21 +650,21 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	{
 		// (though no JS should be loaded at this stage, so this
 		// check may be obsolete - CIM)
-		OOJS_RETURN_BOOL(NO);
+		OOJS_RETURN_BOOL(false);
 	}
 	
 	// Validate arguments.
 	if (oojsArgs.count() < 1 || !ooscript::valueToObject(context, (OOJS_ARGV[0]), &params))
 	{
 		cxx_OOJSReportBadArguments(context, "mission", "runScreen", MIN(oojsArgs.count(), 1U), &OOJS_ARGV[0], std::nullopt, "parameter object");
-		return NO;
+		return false;
 	}
 	
 	if (oojsArgs.count() > 1)  function = OOJS_ARGV[1];
 	if (!ooscript::isNull(function) && !OOJSValueIsFunction(context, function))
 	{
 		cxx_OOJSReportBadArguments(context, "mission", "runScreen", 1, &OOJS_ARGV[1], std::nullopt, "function");
-		return NO;
+		return false;
 	}
 	
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use JSAPI while paused.
@@ -677,7 +701,8 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		std::optional<std::string> titleKey = GetParameterString(context, params, "titleKey");
 		if (titleKey.has_value())
 		{
-			std::optional<std::string> message = StringFromObject([oo::ObjectFromPList([UNIVERSE cxx_missiontext]) objectForKey:oo::NSStringFrom(*titleKey)]);
+			const oo::PList missionText = [UNIVERSE cxx_missiontext];
+			std::optional<std::string> message = StringFromPList(missionText.find(*titleKey));	// -objectForKey:
 			if (message.has_value())
 			{
 				[player cxx_setMissionTitle:cxx_OOExpand(*message)];
@@ -689,7 +714,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		}
 	}
 	
-	[[OOMusicController	sharedController] setMissionMusic:oo::NSStringOrNil(GetParameterString(context, params, "music"))];
+	cxx::OOMusicController::sharedController()->setMissionMusic(GetParameterString(context, params, "music"));
 	[player cxx_setMissionOverlayDescriptor:GetParameterImageDescriptor(context, params, "overlay")];
 	[player cxx_setMissionBackgroundDescriptor:GetParameterImageDescriptor(context, params, "background")];
 	[player cxx_setMissionBackgroundSpecial:GetParameterString(context, params, "backgroundSpecial").value_or("")];
@@ -823,11 +848,11 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	}
 	if (textEntry)
 	{
-		[player setMissionChoiceByTextEntry:YES];
+		[player setMissionChoiceByTextEntry:true];
 	}
 	else
 	{
-		[player setMissionChoiceByTextEntry:NO];
+		[player setMissionChoiceByTextEntry:false];
 	}
 
 	// Start the mission screen.
@@ -842,12 +867,12 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	std::optional<std::string> message = GetParameterString(context, params, "message");
 	if (message.has_value())
 	{
-		[player addLiteralMissionText:oo::NSStringFrom(*message)];
+		[player addLiteralMissionText:*message];
 	}
 	else
 	{
 		std::optional<std::string> messageKey = GetParameterString(context, params, "messageKey");
-		if (messageKey.has_value())  [player addMissionText:oo::NSStringFrom(*messageKey)];
+		if (messageKey.has_value())  [player addMissionText:*messageKey];
 	}
 	
 	if (!textEntry)
@@ -855,7 +880,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		oo::PList choices = GetParameterDictionary(context, params, "choices");
 		if (choices.isNull())
 		{
-			[player setMissionChoices:oo::NSStringOrNil(GetParameterString(context, params, "choicesKey"))];
+			[player setMissionChoices:GetParameterString(context, params, "choicesKey").value_or(std::string())];	// (nil was "")
 		}
 		else 
 		{
@@ -877,11 +902,11 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 	[player cxx_setMissionOverlayDescriptor:oo::PList()];
 	[player cxx_setMissionBackgroundDescriptor:oo::PList()];
 	[player cxx_setMissionTitle:std::nullopt];
-	[player setMissionMusic:nil];
+	[player setMissionMusic:std::string()];	// (nil was "none")
 	
 	OOJSResumeTimeLimiter();
 	
-	OOJS_RETURN_BOOL(YES);
+	OOJS_RETURN_BOOL(true);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -894,15 +919,15 @@ static bool MissionRunShipLibrary(ooscript::Context context, ooscript::CallArgs 
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity	*player = OOPlayerForScripting();
-	BOOL			OK = YES;
+	bool			OK = true;
 	if ([player status] != STATUS_DOCKED)
 	{
 		cxx_OOJSReportWarning(context, "Mission.runShipLibrary: must be docked.");
-		OK = NO;
+		OK = false;
 	}
 	else
 	{
-		[PLAYER setGuiToIntroFirstGo:NO];
+		[PLAYER setGuiToIntroFirstGo:false];
 	}
 	
 	OOJS_RETURN_BOOL(OK);

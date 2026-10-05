@@ -1,6 +1,6 @@
 # ADR-0039 — `oo::str::Scanner` and `CharacterSet`: NSScanner's rules, GNUstep's tables
 
-**Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.12, 2026-09-23;
+**Status:** Accepted (Jon, 2026-09-30, in chat) — default in effect (Claude Code, frontier agent, bead oo-3rb.12, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
 **Implements** the `NSCharacterSet` / `NSScanner` family of [ADR-0029](0029-objc-floor-without-foundation.md)

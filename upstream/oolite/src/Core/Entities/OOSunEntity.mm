@@ -34,10 +34,8 @@ MA 02110-1301, USA.
 #import "OOCharacter.h"
 #import "OOStringParsing.h"
 #import "PlayerEntity.h"
-#import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "OOStringExpander.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/Log.hpp"
 
@@ -45,39 +43,21 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 
-@interface OOSunEntity (Private)
+namespace cxx {
 
-- (void) calculateGLArrays:(GLfloat)inner_radius width:(GLfloat)width zDistance:(GLfloat)z_distance;
-- (void) drawOpaqueParts;
-- (void) drawTranslucentParts;
-
-@end
-
-
-@implementation OOSunEntity
-
-#ifndef NDEBUG
-- (id) init
+bool OOSunEntity::setSunColor(OOColor *sun_colorIn)
 {
-	assert(0);
-	return nil;
-}
-#endif
+	if (sun_colorIn == nullptr) return NO;
 
-
-- (BOOL) setSunColor:(OOColor*)sun_color
-{
-	if (sun_color == nil) return NO;
-	
 	OO_ENTER_OPENGL();
-	
+
 	float		hue, sat, bri, alf;
-	OOColor		*color = nil;
-	
+	oo::Ref<OOColor>	color;
+
 	// blend some white into the sun color to brighten it up
-	sun_color = [sun_color blendedColorWithFraction:0.3 ofColor:[OOColor whiteColor]];
-	
-	[sun_color getHue:&hue saturation:&sat brightness:&bri alpha:&alf];
+	const oo::Ref<OOColor> sun_color = sun_colorIn->blendedColorWithFraction(0.3, OOColor::whiteColor().get());
+
+	sun_color->getHue(&hue, &sat, &bri, &alf);
 	hue /= 360;
 	
 /*
@@ -92,7 +72,7 @@ MA 02110-1301, USA.
 	
 	// set the lighting color for the sun
 	GLfloat		r,g,b,a;
-	[sun_color getRed:&r green:&g blue:&b alpha:&a];
+	sun_color->getRed(&r, &g, &b, &a);
 	
 	GLfloat		sun_ambient[] = { 0.0, 0.0, 0.0, 1.0};	// real ambient light inside gl_LightModel.ambient
 	sun_diffuse[0] = 0.5f * (1.0f + r);	// paler
@@ -109,11 +89,11 @@ MA 02110-1301, USA.
 	OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
 	
 	// main disc less saturation (partially taken care of by the ACES tonemapper) more brightness
-	color = [OOColor colorWithHue:hue saturation:sat * 0.75f brightness:1.0f alpha:1.0f];
+	color = OOColor::colorWithHue(hue, sat * 0.75f, 1.0f, 1.0f);
 	// our OpenGL color values are unclamped, so we can multiply the color components by
 	// any value we want, in order to make the sun a truly bright object in the sky
-	color = [OOColor colorWithRed:[color redComponent] * _sunBrightnessFactor green:[color greenComponent] * _sunBrightnessFactor blue:[color blueComponent] * _sunBrightnessFactor alpha:[color alphaComponent]];
-	[color getRed:&discColor[0] green:&discColor[1] blue:&discColor[2] alpha:&discColor[3]];
+	color = OOColor::colorWithRed(color->redComponent() * _sunBrightnessFactor, color->greenComponent() * _sunBrightnessFactor, color->blueComponent() * _sunBrightnessFactor, color->alphaComponent());
+	color->getRed(&discColor[0], &discColor[1], &discColor[2], &discColor[3]);
 	
 	/*	Two inner corona layers with low alpha and saturation are additively
 		blended with main corona. This produces something vaguely like a bloom
@@ -121,19 +101,19 @@ MA 02110-1301, USA.
 	*/
 	hue += hue_drift * 3;
 	// saturation = 1 would shift white to red
-	color = [OOColor colorWithHue:hue saturation:OOClamp_0_1_f(sat*1.0f) brightness:bri * 0.75f alpha:0.45f];
-	color = [OOColor colorWithRed:[color redComponent] * _sunBrightnessFactor green:[color greenComponent] * _sunBrightnessFactor blue:[color blueComponent] * _sunBrightnessFactor alpha:[color alphaComponent]];
-	[color getRed:&outerCoronaColor[0] green:&outerCoronaColor[1] blue:&outerCoronaColor[2] alpha:&outerCoronaColor[3]];
+	color = OOColor::colorWithHue(hue, OOClamp_0_1_f(sat*1.0f), bri * 0.75f, 0.45f);
+	color = OOColor::colorWithRed(color->redComponent() * _sunBrightnessFactor, color->greenComponent() * _sunBrightnessFactor, color->blueComponent() * _sunBrightnessFactor, color->alphaComponent());
+	color->getRed(&outerCoronaColor[0], &outerCoronaColor[1], &outerCoronaColor[2], &outerCoronaColor[3]);
 	
 	return YES;
 }
 
 
-- (id) initSunWithColor:(OOColor *)sun_color andDictionary:(const oo::PList &) dict
+void OOSunEntity::initSunWithColor(OOColor *sun_color, const oo::PList &dict)
 {
 	int			i;
-	
-	self = [super init];
+
+	// self = [super init]: the constructor ran Entity's -init body.
 	
 	collision_radius = 100000.0; //  100km across
 	
@@ -147,10 +127,10 @@ MA 02110-1301, USA.
 		_sunCoronaAlphaFactor = oo::PListGet<float>::from(scaf.isNull() ? nullptr : &scaf, 0.005f);
 	}
 	
-	[self setSunColor:sun_color];
+	setSunColor(sun_color);
 
 	// A nil dictionary read nil for the name (messaging nil), not the default.
-	[self cxx_setName:dict ? cxx_OOExpand(dict.get<std::string>(std::string(KEY_SUNNAME), "[oolite-default-star-name]")) : std::nullopt];
+	setName(dict ? cxx_OOExpand(dict.get<std::string>(std::string(KEY_SUNNAME), "[oolite-default-star-name]")) : std::nullopt);
 
 	corona_blending=OOClamp_0_1_f(dict.get<float>("corona_hues", 1.0f));
 	corona_speed_factor=dict.get<float>("corona_shimmer", -1.0);
@@ -173,7 +153,7 @@ MA 02110-1301, USA.
 		rvalue[i] = randf();
 	
 	// set up the radius properties
-	[self changeSunProperty:"sun_radius" withDictionary:dict];
+	changeSunProperty("sun_radius", dict);
 	
 	unsigned k = 0;
 	for (unsigned i=0 ; i < 360 ; i++)
@@ -216,26 +196,19 @@ MA 02110-1301, USA.
 		sunTriangles[k++] = 1441+i;
 		sunTriangles[k++] = 1441+j;
 	}
-
-	return self;
 }
 
 
-- (void) dealloc
+std::optional<std::string> OOSunEntity::descriptionComponents() const
 {
-	_name.reset();
-	[super dealloc];
-}
-
-
-- (std::optional<std::string>) cxx_descriptionComponents
-{
-	std::string result = oo::str::format("ID: %u position: %s radius: %.3fkm", [self universalID], cxx_HPVectorDescription([self position]).c_str(), 0.001 * [self radius]);
-	if ([self goneNova])
+	// The getters read these members (or answer from them).
+	OOSunEntity *sun = const_cast<OOSunEntity *>(this);
+	std::string result = oo::str::format("ID: %u position: %s radius: %.3fkm", universalID, cxx_HPVectorDescription(position).c_str(), 0.001 * sun->radius());
+	if (sun->goneNova())
 	{
 		result += " (gone nova)";
 	}
-	else if ([self willGoNova])
+	else if (sun->willGoNova())
 	{
 		result += " (will go nova)";
 	}
@@ -244,28 +217,28 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) canCollide
+bool OOSunEntity::canCollide()
 {
 	return YES;
 }
 
 
 #ifndef NDEBUG
-- (BOOL) checkCloseCollisionWith:(Entity *)other
+bool OOSunEntity::checkCloseCollisionWith(Entity *other)
 {
 	if (gDebugFlags & DEBUG_COLLISIONS)
 	{
 		OO_LOG("sun.collide", "{}", "SUN Collision!");
 	}
 	
-	return [super checkCloseCollisionWith:other];
+	return Entity::checkCloseCollisionWith(other);
 }
 #endif
 
 
-- (void) update:(OOTimeDelta) delta_t
+void OOSunEntity::update(OOTimeDelta delta_t)
 {
-	[super update:delta_t];
+	Entity::update(delta_t);
 	
 	PlayerEntity	*player = PLAYER;
 	assert(player != nil);
@@ -303,9 +276,9 @@ MA 02110-1301, USA.
 				if (sky_bri == 1.0)
 				{	
 					// This sun has now gone nova!
-					[UNIVERSE cxx_setSystemDataKey:"sun_gone_nova" value:oo::ObjectFromPList(oo::PList(static_cast<bool>(YES))) fromManifest:"org.oolite.oolite"];	// +numberWithBool:
-					[UNIVERSE cxx_setSystemDataKey:"corona_flare" value:oo::ObjectFromPList(oo::PList::singleReal(0.3)) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
-					[UNIVERSE cxx_setSystemDataKey:"corona_hues" value:oo::ObjectFromPList(oo::PList::singleReal(0.05)) fromManifest:"org.oolite.oolite"];
+					[UNIVERSE cxx_setSystemDataKey:"sun_gone_nova" value:oo::PList(static_cast<bool>(YES)) fromManifest:"org.oolite.oolite"];	// +numberWithBool:
+					[UNIVERSE cxx_setSystemDataKey:"corona_flare" value:oo::PList::singleReal(0.3) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+					[UNIVERSE cxx_setSystemDataKey:"corona_hues" value:oo::PList::singleReal(0.05) fromManifest:"org.oolite.oolite"];
 					// Novas are stored under the core manifest if the
 					// player was there at the time. Default layer 2
 					// is fine.
@@ -313,14 +286,14 @@ MA 02110-1301, USA.
 				}
 				discColor[0] = 1.0 * _sunBrightnessFactor;	discColor[1] = 1.0 * _sunBrightnessFactor;	discColor[2] = 1.0 * _sunBrightnessFactor;
 				_novaExpansionTimer += delta_t;
-				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::ObjectFromPList(oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate)) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
+				[UNIVERSE cxx_setSystemDataKey:"sun_radius" value:oo::PList::singleReal(collision_radius + delta_t * _novaExpansionRate) fromManifest:"org.oolite.oolite"];	// +numberWithFloat:
 			}
 			else
 			{
 				OO_LOG("sun.nova.end", "DEBUG: NOVA final radius {:.1f}", collision_radius);
 				
 				// reset at the new size
-				[self resetNova];
+				resetNova();
 				throw_sparks = YES;	// keep throw_sparks at YES to indicate the higher temperature
 			}
 		}
@@ -346,7 +319,7 @@ MA 02110-1301, USA.
 
 
 
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
+void OOSunEntity::drawImmediate(bool /*immediate*/, bool translucent)
 {
 	if (![UNIVERSE breakPatternHide])
 	{
@@ -356,7 +329,7 @@ MA 02110-1301, USA.
 		}
 		else
 		{
-			[self drawOpaqueParts];
+			drawOpaqueParts();
 			/* Despite the side effects, we have to draw the translucent
 			 * parts on the opaque pass. Planets, at long range, aren't
 			 * depth-buffered. So if the translucent parts are drawn on the
@@ -365,15 +338,15 @@ MA 02110-1301, USA.
 			 * you have any clever ideas.
 			 *
 			 * - CIM 8/7/2013 */
-			[self drawTranslucentParts];
+			drawTranslucentParts();
 		}
 	}
 }
 
 
-- (void) updateCameraRelativePosition
+void OOSunEntity::updateCameraRelativePosition()
 {
-	HPVector cr_temp = HPvector_subtract([self absolutePositionForSubentity],[PLAYER viewpointPosition]);
+	HPVector cr_temp = HPvector_subtract(absolutePositionForSubentity(),[PLAYER viewpointPosition]);
 	/* Special calculation as suns viewed over ~1E9 - and the bigger
 	 * ones are still just about visible at this range - get floating
 	 * point errors messing up the display */
@@ -385,7 +358,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) drawOpaqueParts
+void OOSunEntity::drawOpaqueParts()
 {
 	float sqrt_zero_distance = sqrt(cam_zero_distance);
 	float effective_radius = collision_radius;
@@ -449,9 +422,9 @@ MA 02110-1301, USA.
 	}
 	else
 	{
-		[self calculateGLArrays:effective_radius
-						  width:effective_cor16k
-					  zDistance:sqrt_zero_distance];
+		calculateGLArrays(effective_radius,
+						  effective_cor16k,
+					  sqrt_zero_distance);
 		OOGL(glDisable(GL_BLEND));
 		OOGL(glVertexPointer(3, GL_FLOAT, 0, sunVertices));
 		
@@ -467,11 +440,11 @@ MA 02110-1301, USA.
 	}
 	
 	OOVerifyOpenGLState();
-	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SunEntity after drawing " + oo::DescriptionOf(self); });
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "SunEntity after drawing " + oo::DescriptionOf(oo::ToObjC(this)); });
 }
 
 
-- (void) drawTranslucentParts
+void OOSunEntity::drawTranslucentParts()
 {
 	if ([UNIVERSE reducedDetail]) 
 	{
@@ -493,7 +466,7 @@ MA 02110-1301, USA.
 
 }
 
-- (void) calculateGLArrays:(GLfloat)inner_radius width:(GLfloat)width zDistance:(GLfloat)z_distance
+void OOSunEntity::calculateGLArrays(GLfloat inner_radius, GLfloat width, GLfloat z_distance)
 {
 //	if (EXPECT_NOT(inner_radius >= z_distance))  return;	// inside the sphere
 	
@@ -615,14 +588,14 @@ MA 02110-1301, USA.
 }
 
 
-- (void) drawDirectVisionSunGlare
+void OOSunEntity::drawDirectVisionSunGlare()
 {
 #if SUN_DIRECT_VISION_GLARE
 	OO_ENTER_OPENGL();
 	
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
 	
-	GLfloat sunGlareAngularSize = atan([self radius]/HPdistance([PLAYER viewpointPosition], [self position])) * SUN_GLARE_MULT_FACTOR + (SUN_GLARE_ADD_FACTOR);
+	GLfloat sunGlareAngularSize = atan(radius()/HPdistance([PLAYER viewpointPosition], getPosition())) * SUN_GLARE_MULT_FACTOR + (SUN_GLARE_ADD_FACTOR);
 
 	GLfloat	directVisionSunGlare = [PLAYER lookingAtSunWithThresholdAngleCos:cosf(sunGlareAngularSize)];
 	if (directVisionSunGlare)
@@ -634,7 +607,7 @@ MA 02110-1301, USA.
 		GLfloat atmosphericReductionFactor =  1.0f - [PLAYER insideAtmosphereFraction];
 		// 182: square of ratio of radius to sun-witchpoint distance
 		// in default Lave
-		GLfloat distanceReductionFactor = OOClamp_0_1_f(([self radius] * [self radius] * 182.0) / HPdistance2([PLAYER position], [self position]));
+		GLfloat distanceReductionFactor = OOClamp_0_1_f((radius() * radius() * 182.0) / HPdistance2([PLAYER position], getPosition()));
 		GLfloat	sunGlareFilterMultiplierLocal = [PLAYER sunGlareFilter];
 		GLfloat directVisionSunGlareColor[4] = {discColor[0], discColor[1], discColor[2], directVisionSunGlare *
 													atmosphericReductionFactor * distanceReductionFactor * 
@@ -653,7 +626,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) drawStarGlare
+void OOSunEntity::drawStarGlare()
 {
 	OO_ENTER_OPENGL();
 
@@ -690,46 +663,46 @@ MA 02110-1301, USA.
 
 
 
-- (BOOL) changeSunProperty:(const std::string &)key withDictionary:(const oo::PList &) dict
+bool OOSunEntity::changeSunProperty(const std::string &key, const oo::PList &dict)
 {
-	const oo::PList *value = dict.find(key);
-	id	object = value != nullptr ? oo::ObjectFromPList(*value) : nil;	// -doubleValue / -floatValue as before
+	// the value's -doubleValue / -floatValue (0 when absent, as nil answered): get<> with fallback 0 is
+	// the same for a string or a number
 	static GLfloat oldRadius = 0.0;
 	if (key == "sun_radius")
 	{
-		oldRadius =	[object doubleValue];	// clamp corona_flare in case planetinfo.plist / savegame contains the wrong value
-		[self setRadius:oldRadius andCorona:dict.get<float>("corona_flare", 0.0f)];
+		oldRadius =	dict.get<double>(key, 0.0);	// clamp corona_flare in case planetinfo.plist / savegame contains the wrong value
+		setRadius(oldRadius, dict.get<float>("corona_flare", 0.0f));
 	}
 	else if (key == std::string(KEY_SUNNAME))
 	{
 		// the Foundation get<> read nil unless a string or a number's text
 		const oo::PList *name = dict.find(key);
-		[self cxx_setName:(name != nullptr && (name->isString() || name->isNumber())) ? std::optional<std::string>(dict.get<std::string>(key)) : std::nullopt];
+		setName((name != nullptr && (name->isString() || name->isNumber())) ? std::optional<std::string>(dict.get<std::string>(key)) : std::nullopt);
 	}
 	else if (key == "corona_flare")
 	{
-		[self setRadius:collision_radius andCorona:[object floatValue]];
+		setRadius(collision_radius, dict.get<float>(key, 0.0f));
 	}
 	else if (key == "corona_shimmer")
 	{
-		corona_speed_factor=OOClamp_0_1_f([object floatValue]) * 2.0 + randf() * randf();
+		corona_speed_factor=OOClamp_0_1_f(dict.get<float>(key, 0.0f)) * 2.0 + randf() * randf();
 	}
 	else if (key == "corona_hues")
 	{
-		corona_blending=OOClamp_0_1_f([object floatValue]);
+		corona_blending=OOClamp_0_1_f(dict.get<float>(key, 0.0f));
 	}
 	else if (key == "sun_gone_nova")
 	{
 
 		if (dict.get<bool>(key))
 		{
-			[self setGoingNova:YES inTime:0];
+			setGoingNova(YES, 0);
 		}
 		else
 		{
-			[self setGoingNova:NO inTime:0];
+			setGoingNova(NO, 0);
 			// oldRadius is always the radius we had before going nova...
-			[self setRadius: oldRadius andCorona:dict.get<float>("corona_flare", 0.0f)];
+			setRadius(oldRadius, dict.get<float>("corona_flare", 0.0f));
 
 		}
 	}
@@ -742,33 +715,33 @@ MA 02110-1301, USA.
 }
 
 
-- (OOStellarBodyType) planetType
+OOStellarBodyType OOSunEntity::planetType()
 {
 	return STELLAR_TYPE_SUN;
 }
 
 
-- (void) getDiffuseComponents:(GLfloat[4])components
+void OOSunEntity::getDiffuseComponents(GLfloat components[4])
 {
-	OOParameterAssert(components != NULL);
+	OOCParameterAssert(components != NULL);
 	memcpy(components, sun_diffuse, sizeof sun_diffuse);
 }
 
 
-- (void) getSpecularComponents:(GLfloat[4])components
+void OOSunEntity::getSpecularComponents(GLfloat components[4])
 {
-	OOParameterAssert(components != NULL);
+	OOCParameterAssert(components != NULL);
 	memcpy(components, sun_specular, sizeof sun_specular);
 }
 
 
-- (double) radius
+double OOSunEntity::radius()
 {
 	return collision_radius;
 }
 
 
-- (void) setRadius:(GLfloat) rad andCorona:(GLfloat)corona
+void OOSunEntity::setRadius(GLfloat rad, GLfloat corona)
 {
 	collision_radius = rad;
 	if (corona < 0.01f) {
@@ -782,26 +755,26 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setPosition:(HPVector) posn
+void OOSunEntity::setPosition(HPVector posn)
 {
-	[super setPosition: posn];
+	Entity::setPosition(posn);
 	[UNIVERSE setMainLightPosition: HPVectorToVector(posn)];
 }
 
 
-- (BOOL) willGoNova
+bool OOSunEntity::willGoNova()
 {
 	return throw_sparks;
 }
 
 
-- (BOOL) goneNova
+bool OOSunEntity::goneNova()
 {
 	return throw_sparks && _novaCountdown <= 0;
 }
 
 
-- (void) setGoingNova:(BOOL) yesno inTime:(double)interval
+void OOSunEntity::setGoingNova(bool yesno, double interval)
 {
 	throw_sparks = yesno;
 	if (throw_sparks)
@@ -815,7 +788,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) resetNova
+void OOSunEntity::resetNova()
 {
 	_novaExpansionTimer = 0.0;
 	_novaExpansionRate = 0.0f;
@@ -823,40 +796,27 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) isSun
+bool OOSunEntity::isSun()
 {
 	return YES;
 }
 
 
-- (BOOL) isVisible
+bool OOSunEntity::isVisible()
 {
 	return YES;
 }
 
 
-- (id) name	// shared selector (Foundation declares -name too; retires with oo-qps)
-{
-	return oo::NSStringOrNil([self cxx_name]);
-}
-
-
-- (std::optional<std::string>) cxx_name
+std::optional<std::string> OOSunEntity::name()
 {
 	return _name;
 }
 
 
-- (void) setName:(id)name	// shared selector (Foundation declares -setName: too; retires with oo-qps)
-{
-	[self cxx_setName:oo::OptionalString(name)];
-}
-
-
-- (void) cxx_setName:(const std::optional<std::string> &)name
+void OOSunEntity::setName(const std::optional<std::string> &name)
 {
 	_name = name;
 }
 
-
-@end
+}	// namespace cxx

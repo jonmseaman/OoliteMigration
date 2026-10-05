@@ -58,7 +58,6 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
 #import "OOPListParsing.h"
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOTexture.h"
 #import "OORoleSet.h"
@@ -86,8 +85,6 @@ MA 02110-1301, USA.
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/PListParsing.hpp"
@@ -97,6 +94,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 #import "OOPListGameTypes.h"
 #include <string_view>
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 
 static constexpr std::string_view PLAYER_DEFAULT_NAME				= "Jameson";
@@ -387,6 +386,13 @@ static GLfloat		sBaseMass = 0.0;
 
 
 namespace {
+
+// An equipment key as -hasEquipmentItem: takes it: a null PList for nullopt (was nil).
+oo::PList OptionalKeyPList(const std::optional<std::string> &key)
+{
+	return key.has_value() ? oo::PList(*key) : oo::PList();
+}
+
 
 // Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
 std::optional<std::string> OoliteInfoString(std::string_view key)
@@ -1366,7 +1372,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	result["scripted_planetinfo_overrides"] = [[UNIVERSE systemManager] cxx_exportScriptedChanges];
 
 	// trumble information (unmigrated: OOTrumble's records)
-	const oo::PList trumbles = oo::PListFrom([self trumbleValue]);
+	const oo::PList trumbles = [self trumbleValue];
 	if (!trumbles.isNull())  result["trumbles"] = trumbles;
 
 	// wormhole information
@@ -1646,7 +1652,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 
 	eqScripts.clear();
-	[self addEquipmentFromCollection:oo::ObjectFromPList(oo::PList(equipment))];
+	[self addEquipmentFromCollection:oo::PList(equipment)];
 	primedEquipment = [self cxx_eqScriptIndexForKey:StringForKey(dict, "primed_equipment").value_or("")];	// if key not found primedEquipment is set to primed-none
 
 	[self cxx_setFastEquipmentA:StringForKey(dict, "primed_equipment_a").value_or("EQ_CLOAKING_DEVICE")];
@@ -1917,7 +1923,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	const std::size_t commCount = savedCommLog.isArray() ? savedCommLog.count() : 0;	// oo_arrayForKey:
 	for (std::size_t i = 0; i < commCount; i++)
 	{
-		[UNIVERSE cxx_addCommsMessage:oo::OptionalString(oo::ObjectFromPList(*savedCommLog.at(i))) forCount:0 andShowComms:NO logOnly:YES];
+		const std::string *savedMessage = savedCommLog.at(i)->getIf<std::string>();	// (a saved comm log holds strings)
+		[UNIVERSE cxx_addCommsMessage:(savedMessage != nullptr) ? std::optional<std::string>(*savedMessage) : std::nullopt forCount:0 andShowComms:NO logOnly:YES];
 	}
 
 	/*	entity_personality for scripts and shaders. If undefined, we fall back
@@ -2035,7 +2042,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// trumble information
 	[self setUpTrumbles];
 	const oo::PList *trumbles = dict.find("trumbles");
-	[self setTrumbleValueFrom:(trumbles != nullptr) ? oo::ObjectFromPList(*trumbles) : nil];	// if it doesn't exist we'll check user-defaults
+	[self setTrumbleValueFrom:(trumbles != nullptr) ? *trumbles : oo::PList()];	// if it doesn't exist we'll check user-defaults
 
 	return YES;
 }
@@ -2078,7 +2085,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	afterburnerSoundLooping = NO;
 	
-	isPlayer = YES;
+	_cxxEntity->isPlayer = YES;
 	
 	[self setStatus:STATUS_START_GAME];
 
@@ -2241,7 +2248,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	roleSystemList.clear();
 
-	energy					= 256;
+	_cxxEntity->energy					= 256;
 	weapon_temp				= 0.0f;
 	forward_weapon_temp		= 0.0f;
 	aft_weapon_temp			= 0.0f;
@@ -2256,7 +2263,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	alertFlags				= 0;
 	hyperspeed_engaged		= NO;
 	autopilot_engaged = NO;
-	velocity = kZeroVector;
+	_cxxEntity->velocity = kZeroVector;
 	
 	flightRoll = 0.0f;
 	flightPitch = 0.0f;
@@ -2396,7 +2403,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	forward_shield			= [self maxForwardShieldLevel];
 	aft_shield				= [self maxAftShieldLevel];
 	
-	scanClass				= CLASS_PLAYER;
+	_cxxEntity->scanClass				= CLASS_PLAYER;
 	
 	[UNIVERSE clearGUIs];
 	
@@ -2445,8 +2452,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[self setUpWeaponSounds];
 	
-	[self setGalacticHyperspaceBehaviourTo:oo::NSStringFrom(StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_behaviour").value_or("BEHAVIOUR_STANDARD"))];
-	[self setGalacticHyperspaceFixedCoordsTo:oo::NSStringFrom(StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_fixed_coords").value_or("96 96"))];
+	[self setGalacticHyperspaceBehaviourTo:StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_behaviour").value_or("BEHAVIOUR_STANDARD")];
+	[self setGalacticHyperspaceFixedCoordsTo:StringForKey([UNIVERSE cxx_globalSettings], "galactic_hyperspace_fixed_coords").value_or("96 96")];
 	
 	cloaking_device_active = NO;
 
@@ -2508,17 +2515,17 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	pitch_delta =		2.0f * max_flight_pitch;
 	yaw_delta =			2.0f * max_flight_yaw;
 	
-	energy = maxEnergy;
+	_cxxEntity->energy = _cxxEntity->maxEnergy;
 	//if (forward_weapon_type == WEAPON_NONE) [self setWeaponDataFromType:forward_weapon_type]; 
 	scannerRange = (float)SCANNER_MAX_RANGE; 
 	
 	[roleSet release];
 	roleSet = nil;
-	[self setPrimaryRole:@"player"];
+	[self setPrimaryRole:"player"];
 	
 	[self removeAllEquipment];
 	const oo::PList *extraEquipment = shipDict.find("extra_equipment");
-	[self addEquipmentFromCollection:(extraEquipment != nullptr) ? oo::ObjectFromPList(*extraEquipment) : nil];
+	[self addEquipmentFromCollection:(extraEquipment != nullptr) ? *extraEquipment : oo::PList()];
 
 	[self resetHud];
 	[hud setHidden:NO];
@@ -2688,7 +2695,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
 	for (i = 0; i < ent_count; i++)
 	{
-		if (uni_entities[i]->isSunlit)
+		if (uni_entities[i]->_cxxEntity->isSunlit)
 		{
 			if ([uni_entities[i] isPlanet] || 
 				([uni_entities[i] isShip] &&
@@ -2953,8 +2960,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		UPDATE_STAGE("updating cloaking device");
 		
-		energy -= (float)delta_t * CLOAKING_DEVICE_ENERGY_RATE;
-		if (energy < CLOAKING_DEVICE_MIN_ENERGY)
+		_cxxEntity->energy -= (float)delta_t * CLOAKING_DEVICE_ENERGY_RATE;
+		if (_cxxEntity->energy < CLOAKING_DEVICE_MIN_ENERGY)
 			[self deactivateCloakingDevice];
 	}
 	
@@ -2965,13 +2972,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		
 		if (military_jammer_active)
 		{
-			energy -= (float)delta_t * MILITARY_JAMMER_ENERGY_RATE;
-			if (energy < MILITARY_JAMMER_MIN_ENERGY)
+			_cxxEntity->energy -= (float)delta_t * MILITARY_JAMMER_ENERGY_RATE;
+			if (_cxxEntity->energy < MILITARY_JAMMER_MIN_ENERGY)
 				military_jammer_active = NO;
 		}
 		else
 		{
-			if (energy > 1.5 * MILITARY_JAMMER_MIN_ENERGY)
+			if (_cxxEntity->energy > 1.5 * MILITARY_JAMMER_MIN_ENERGY)
 				military_jammer_active = YES;
 		}
 	}
@@ -2981,8 +2988,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		UPDATE_STAGE("updating ECM");
 		
-		if (energy > 0.0)
-			energy -= (float)(ECM_ENERGY_DRAIN_FACTOR * delta_t);		// drain energy because of the ECM
+		if (_cxxEntity->energy > 0.0)
+			_cxxEntity->energy -= (float)(ECM_ENERGY_DRAIN_FACTOR * delta_t);		// drain energy because of the ECM
 		else
 		{
 			ecm_in_operation = NO;
@@ -3027,7 +3034,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	UPDATE_STAGE("updating energy and shield charges");
 	
 	// 1. (Over)charge energy banks (will get normalised later)
-	energy += [self energyRechargeRate] * delta_t;
+	_cxxEntity->energy += [self energyRechargeRate] * delta_t;
 	
 	// 2. Calculate shield recharge rates
 	float fwdMax = [self maxForwardShieldLevel];
@@ -3049,12 +3056,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	//       the critical threshold, we allocate all energy.  Ideally we
 	//       would only allocate the full recharge to the critical shield,
 	//       but doing so would add another few levels of if-then below.
-	float energyForShields = energy;
+	float energyForShields = _cxxEntity->energy;
 	if( (forward_shield > fwdMax * 0.25) && (aft_shield > aftMax * 0.25) )
 	{
 		// TODO: Can this be cached anywhere sensibly (without adding another member variable)?
 		float minEnergyBankLevel = [UNIVERSE cxx_globalSettings].get<float>("shield_charge_energybank_threshold", 0.25);
-		energyForShields = MAX(0.0, energy -0.1 - (maxEnergy * minEnergyBankLevel)); // NB: The - 0.1 ensures the energy value does not 'bounce' across the critical energy message and causes spurious energy-low warnings
+		energyForShields = MAX(0.0, _cxxEntity->energy -0.1 - (_cxxEntity->maxEnergy * minEnergyBankLevel)); // NB: The - 0.1 ensures the energy value does not 'bounce' across the critical energy message and causes spurious energy-low warnings
 	}
 	
 	if( forward_shield < aft_shield )
@@ -3071,19 +3078,19 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// 3. Recharge shields, drain banks, and clamp values
 	forward_shield += rechargeFwd;
 	aft_shield += rechargeAft;
-	energy -= rechargeFwd + rechargeAft;
+	_cxxEntity->energy -= rechargeFwd + rechargeAft;
 	
 	forward_shield = OOClamp_0_max_f(forward_shield, fwdMax);
 	aft_shield = OOClamp_0_max_f(aft_shield, aftMax);
-	energy = OOClamp_0_max_f(energy, maxEnergy);
+	_cxxEntity->energy = OOClamp_0_max_f(_cxxEntity->energy, _cxxEntity->maxEnergy);
 	
 	if (sun)
 	{
 		UPDATE_STAGE("updating sun effects");
 		
 		// set the ambient temperature here
-		double  sun_zd = sun->zero_distance;	// square of distance
-		double  sun_cr = sun->collision_radius;
+		double  sun_zd = sun->_cxxEntity->zero_distance;	// square of distance
+		double  sun_cr = sun->_cxxEntity->collision_radius;
 		double	alt1 = sun_cr * sun_cr / sun_zd;
 		external_temp = SUN_TEMPERATURE * alt1;
 
@@ -3329,7 +3336,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	// update subentities
 	UPDATE_STAGE("updating subentities");
-	totalBoundingBox = boundingBox; //	reset totalBoundingBox
+	totalBoundingBox = _cxxEntity->boundingBox; //	reset totalBoundingBox
 	for (const auto &seRef : [self subEntities])
 	{
 		Entity *se = seRef.get();
@@ -3373,10 +3380,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) updateMovementFlags
 {
-	hasMoved = !HPvector_equal(position, lastPosition);
-	hasRotated = !quaternion_equal(orientation, lastOrientation);
-	lastPosition = position;
-	lastOrientation = orientation;
+	_cxxEntity->hasMoved = !HPvector_equal(_cxxEntity->position, _cxxEntity->lastPosition);
+	_cxxEntity->hasRotated = !quaternion_equal(_cxxEntity->orientation, _cxxEntity->lastOrientation);
+	_cxxEntity->lastPosition = _cxxEntity->position;
+	_cxxEntity->lastOrientation = _cxxEntity->orientation;
 }
 
 
@@ -3413,7 +3420,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			// not visual effects, waypoints, ships, etc.
 			if (scannedEntity != self && [scannedEntity canCollide] && (![scannedEntity isShip] || ![self collisionExceptedFor:(ShipEntity *) scannedEntity]))
 			{
-				hsnDistance = sqrt(scannedEntity->zero_distance)-[scannedEntity collisionRadius];
+				hsnDistance = sqrt(scannedEntity->_cxxEntity->zero_distance)-[scannedEntity collisionRadius];
 				needHyperspeedNearest = NO;
 			}
 		} 
@@ -3422,7 +3429,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			// planets, stars might be closest surface even if not
 			// closest centre. That could be true of others, but the
 			// error is negligible there.
-			double thisHSN = sqrt(scannedEntity->zero_distance)-[scannedEntity collisionRadius];
+			double thisHSN = sqrt(scannedEntity->_cxxEntity->zero_distance)-[scannedEntity collisionRadius];
 			if (thisHSN < hsnDistance)
 			{
 				hsnDistance = thisHSN;
@@ -3430,7 +3437,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 #endif
 		
-		if (scannedEntity->zero_distance < SCANNER_MAX_RANGE2 || !scannedEntity->isShip)
+		if (scannedEntity->_cxxEntity->zero_distance < SCANNER_MAX_RANGE2 || !scannedEntity->_cxxEntity->isShip)
 		{
 			int theirClass = [scannedEntity scanClass];
 			// here we could also force masslock for higher than yellow alert, but
@@ -3493,7 +3500,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	
 	BOOL energyCritical = NO;
-	if (energy < 64 && energy < maxEnergy * 0.8)
+	if (_cxxEntity->energy < 64 && _cxxEntity->energy < _cxxEntity->maxEnergy * 0.8)
 	{
 		energyCritical = YES;
 	}
@@ -3537,8 +3544,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		Entity<OOStellarBody> *stellar = (Entity<OOStellarBody> *)ent;
 		if (EXPECT([stellar planetType] != STELLAR_TYPE_MINIATURE))
 		{
-			double dist = stellar->zero_distance;
-			double rad = stellar->collision_radius;
+			double dist = stellar->_cxxEntity->zero_distance;
+			double rad = stellar->_cxxEntity->collision_radius;
 			double factor = ([stellar isSun]) ? 2.0 : 4.0;
 			// plus ensure mass lock when 25 km or less from the surface of small stellar bodies
 			// dist is a square distance so it needs to be compared to (rad+25000) * (rad+25000)!
@@ -3556,7 +3563,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 
-	if (!massLocked && ent->zero_distance <= SCANNER_MAX_RANGE2)
+	if (!massLocked && ent->_cxxEntity->zero_distance <= SCANNER_MAX_RANGE2)
 	{
 		switch (theirClass)
 		{
@@ -3606,11 +3613,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		lastScriptAlertCondition = cond;
 	}
 	/* Update heuristic assessment of whether player is fleeing */
-	if (cond == ALERT_CONDITION_DOCKED || cond == ALERT_CONDITION_GREEN || (cond == ALERT_CONDITION_YELLOW && energy == maxEnergy))
+	if (cond == ALERT_CONDITION_DOCKED || cond == ALERT_CONDITION_GREEN || (cond == ALERT_CONDITION_YELLOW && _cxxEntity->energy == _cxxEntity->maxEnergy))
 	{
 		fleeing_status = PLAYER_FLEEING_NONE;
 	}
-	else if (fleeing_status == PLAYER_FLEEING_UNLIKELY && (energy > maxEnergy*0.6 || cond != ALERT_CONDITION_RED))
+	else if (fleeing_status == PLAYER_FLEEING_UNLIKELY && (_cxxEntity->energy > _cxxEntity->maxEnergy*0.6 || cond != ALERT_CONDITION_RED))
 	{
 		fleeing_status = PLAYER_FLEEING_NONE;
 	}
@@ -3630,7 +3637,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	{
 		fleeing_status = PLAYER_FLEEING_MAYBE;
 	}
-	else if ((fleeing_status == PLAYER_FLEEING_MAYBE || fleeing_status == PLAYER_FLEEING_CARGO) && cond == ALERT_CONDITION_RED && last_shot_time + 10 < t && flightSpeed > 0.75*maxFlightSpeed && energy < maxEnergy * 0.5 && (forward_shield < [self maxForwardShieldLevel]*0.25 || aft_shield < [self maxAftShieldLevel]*0.25))
+	else if ((fleeing_status == PLAYER_FLEEING_MAYBE || fleeing_status == PLAYER_FLEEING_CARGO) && cond == ALERT_CONDITION_RED && last_shot_time + 10 < t && flightSpeed > 0.75*maxFlightSpeed && _cxxEntity->energy < _cxxEntity->maxEnergy * 0.5 && (forward_shield < [self maxForwardShieldLevel]*0.25 || aft_shield < [self maxAftShieldLevel]*0.25))
 	{
 		fleeing_status = PLAYER_FLEEING_LIKELY;
 	}
@@ -3685,7 +3692,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	while (prev_day < now_day)
 	{
 		prev_day++;
-		[self doScriptEvent:OOJSID("dayChanged") withArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(prev_day))];
+		[self cxx_doScriptEvent:OOJSID("dayChanged") withPListArguments:{ oo::PList::unsignedInteger(prev_day) }];
 		// not impossible that at ultra-low frame rates two of these will
 		// happen in a single update.
 	}
@@ -3797,7 +3804,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	const std::optional<std::string> stationDockingClearanceStatus = [stationForDocking cxx_acceptDockingClearanceRequestFrom:self];
 	if (stationDockingClearanceStatus.has_value())
 	{
-		[self doScriptEvent:OOJSID("playerRequestedDockingClearance") withArgument:oo::NSStringFrom(*stationDockingClearanceStatus)];
+		[self cxx_doScriptEvent:OOJSID("playerRequestedDockingClearance") withPListArguments:{ oo::PList(*stationDockingClearanceStatus) }];
 		if (*stationDockingClearanceStatus == "DOCKING_CLEARANCE_GRANTED") 
 		{
 			[self doScriptEvent:OOJSID("playerDockingClearanceGranted")];
@@ -3848,7 +3855,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	autopilot_engaged = YES;
 	ident_engaged = NO;
 	[self safeAllMissiles];
-	velocity = kZeroVector;
+	_cxxEntity->velocity = kZeroVector;
 	if ([self status] == STATUS_WITCHSPACE_COUNTDOWN) [self cancelWitchspaceCountdown]; // cancel witchspace countdown properly
 	[self setStatus:STATUS_AUTOPILOT_ENGAGED];
 	[self resetAutopilotAI];
@@ -3895,7 +3902,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// JSAI: will need changing if oolite-dockingAI.js written
 	if ([myAI cxx_name] != std::string(PLAYER_DOCKING_AI_NAME))	// (no AI never matched)
 	{
-		[self setAITo:oo::NSStringFrom(PLAYER_DOCKING_AI_NAME)];
+		[self setAITo:std::string(PLAYER_DOCKING_AI_NAME)];
 	}
 	[myAI clearAllData];
 	[myAI cxx_setState:"GLOBAL"];
@@ -3954,7 +3961,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	
 
-	GLfloat velmag = magnitude(velocity);
+	GLfloat velmag = magnitude(_cxxEntity->velocity);
 	GLfloat velmag2 = velmag - (float)delta_t * thrust * thrust_factor;
 	if (velmag > 0)
 	{
@@ -3968,8 +3975,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 			else  rate = (velmag - VELOCITY_CLEANUP_MIN) / (VELOCITY_CLEANUP_FULL - VELOCITY_CLEANUP_MIN) * VELOCITY_CLEANUP_RATE;
 			velmag2 -= velmag * rate;
 		}
-		if (velmag2 < 0.0f)  velocity = kZeroVector;
-		else  velocity = vector_multiply_scalar(velocity, velmag2 / velmag);
+		if (velmag2 < 0.0f)  _cxxEntity->velocity = kZeroVector;
+		else  _cxxEntity->velocity = vector_multiply_scalar(_cxxEntity->velocity, velmag2 / velmag);
 		
 	}
 	
@@ -4004,7 +4011,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	/* TODO: this check should possibly be hasEquipmentItemProviding:,
 	 * but if it was we'd need to know which item was actually doing
 	 * the providing so it could be removed. */
-	if (EXPECT_NOT(galactic_witchjump && ![self hasEquipmentItem:@"EQ_GAL_DRIVE"]))
+	if (EXPECT_NOT(galactic_witchjump && ![self hasEquipmentItem:oo::PList("EQ_GAL_DRIVE")]))
 	{
 		galactic_witchjump = NO;
 		[self setStatus:STATUS_IN_FLIGHT];
@@ -4089,7 +4096,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		// similarly reset the misjump range to the traditional 0.5
 		[self setScriptedMisjumpRange:0.5];
 
-		[self doScriptEvent:OOJSID("shipExitedWitchspace") withArgument:oo::NSStringOrNil([self cxx_jumpCause])];
+		const std::optional<std::string> jumpCause = [self cxx_jumpCause];
+		[self cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ jumpCause.has_value() ? oo::PList(*jumpCause) : oo::PList() }];
 
 		[self doBookkeeping:delta_t]; // arrival frame updates
 
@@ -4191,7 +4199,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		return NO;
 
 	// If target is beyond scanner range, it's lost
-	if(target->zero_distance > SCANNER_MAX_RANGE2)
+	if(target->_cxxEntity->zero_distance > SCANNER_MAX_RANGE2)
 		return NO;
 
 	// If target is a ship, check whether it's cloaked or is actively jamming our scanner
@@ -4268,7 +4276,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[ship setDemoShip: 0.6];
 	[ship setDemoStartTime: [UNIVERSE getTime]];
 	if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
-	[ship setAITo: @"nullAI.plist"];
+	[ship setAITo: "nullAI.plist"];
 	const oo::PList *subEntStatus = shipData.find("subentities_status");
 	// show missing subentities if there's a subentities_status key
 	if (subEntStatus != nullptr) [ship cxx_deserializeShipSubEntitiesFrom:oo::PListGet<std::string>::from(subEntStatus, std::string())];
@@ -4413,13 +4421,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) orientationChanged
 {
-	quaternion_normalize(&orientation);
-	rotMatrix = OOMatrixForQuaternionRotation(orientation);
-	OOMatrixGetBasisVectors(rotMatrix, &v_right, &v_up, &v_forward);
+	quaternion_normalize(&_cxxEntity->orientation);
+	_cxxEntity->rotMatrix = OOMatrixForQuaternionRotation(_cxxEntity->orientation);
+	OOMatrixGetBasisVectors(_cxxEntity->rotMatrix, &v_right, &v_up, &v_forward);
 	
-	orientation.w = -orientation.w;
-	playerRotMatrix = OOMatrixForQuaternionRotation(orientation);	// this is the rotation similar to ordinary ships
-	orientation.w = -orientation.w;
+	_cxxEntity->orientation.w = -_cxxEntity->orientation.w;
+	playerRotMatrix = OOMatrixForQuaternionRotation(_cxxEntity->orientation);	// this is the rotation similar to ordinary ships
+	_cxxEntity->orientation.w = -_cxxEntity->orientation.w;
 }
 
 
@@ -4432,26 +4440,26 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) applyRoll:(GLfloat) roll1 andClimb:(GLfloat) climb1
 {
-	if (roll1 == 0.0 && climb1 == 0.0 && hasRotated == NO)
+	if (roll1 == 0.0 && climb1 == 0.0 && _cxxEntity->hasRotated == NO)
 		return;
 
 	if (roll1)
-		quaternion_rotate_about_z(&orientation, -roll1);
+		quaternion_rotate_about_z(&_cxxEntity->orientation, -roll1);
 	if (climb1)
-		quaternion_rotate_about_x(&orientation, -climb1);
+		quaternion_rotate_about_x(&_cxxEntity->orientation, -climb1);
 	
 	/*	Bugginess may put us in a state where the orientation quat is all
 		zeros, at which point it’s impossible to move.
 	*/
-	if (EXPECT_NOT(quaternion_equal(orientation, kZeroQuaternion)))
+	if (EXPECT_NOT(quaternion_equal(_cxxEntity->orientation, kZeroQuaternion)))
 	{
-		if (!quaternion_equal(lastOrientation, kZeroQuaternion))
+		if (!quaternion_equal(_cxxEntity->lastOrientation, kZeroQuaternion))
 		{
-			orientation = lastOrientation;
+			_cxxEntity->orientation = _cxxEntity->lastOrientation;
 		}
 		else
 		{
-			orientation = kIdentityQuaternion;
+			_cxxEntity->orientation = kIdentityQuaternion;
 		}
 	}
 	
@@ -4465,7 +4473,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
  */
 - (void) applyYaw:(GLfloat) yaw
 {
-	quaternion_rotate_about_y(&orientation, -yaw);
+	quaternion_rotate_about_y(&_cxxEntity->orientation, -yaw);
 	
 	[self orientationChanged];
 }
@@ -4481,13 +4489,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	OOMatrix result = playerRotMatrix;
 	// HPVect: modify to use camera-relative positioning
-	return OOMatrixTranslate(result, HPVectorToVector(position));
+	return OOMatrixTranslate(result, HPVectorToVector(_cxxEntity->position));
 }
 
 
 - (Quaternion) normalOrientation
 {
-	return make_quaternion(-orientation.w, orientation.x, orientation.y, orientation.z);
+	return make_quaternion(-_cxxEntity->orientation.w, _cxxEntity->orientation.x, _cxxEntity->orientation.y, _cxxEntity->orientation.z);
 }
 
 
@@ -4499,14 +4507,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (void) moveForward:(double) amount
 {
-	distanceTravelled += (float)amount;
-	[self setPosition:HPvector_add(position, vectorToHPVector(vector_multiply_scalar(v_forward, (float)amount)))];
+	_cxxEntity->distanceTravelled += (float)amount;
+	[self setPosition:HPvector_add(_cxxEntity->position, vectorToHPVector(vector_multiply_scalar(v_forward, (float)amount)))];
 }
 
 
 - (HPVector) breakPatternPosition
 {
-	return HPvector_add(position,vectorToHPVector(quaternion_rotate_vector(quaternion_conjugate(orientation),forwardViewOffset)));
+	return HPvector_add(_cxxEntity->position,vectorToHPVector(quaternion_rotate_vector(quaternion_conjugate(_cxxEntity->orientation),forwardViewOffset)));
 }
 
 
@@ -4564,7 +4572,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
  * that it's worth caching the result per-frame - CIM */
 - (HPVector) viewpointPosition
 {
-	HPVector		viewpoint = position;
+	HPVector		viewpoint = _cxxEntity->position;
 	if (showDemoShips)
 	{
 		viewpoint = kZeroHPVector;
@@ -4572,7 +4580,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	Vector		offset = [self viewpointOffset];
 	
 	// FIXME: this ought to be done with matrix or quaternion functions.
-	OOMatrix r = rotMatrix;
+	OOMatrix r = _cxxEntity->rotMatrix;
 	
 	viewpoint.x += offset.x * r.m[0][0];	viewpoint.y += offset.x * r.m[1][0];	viewpoint.z += offset.x * r.m[2][0];
 	viewpoint.x += offset.y * r.m[0][1];	viewpoint.y += offset.y * r.m[1][1];	viewpoint.z += offset.y * r.m[2][1];
@@ -4766,13 +4774,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 - (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey
 {
 	const auto found = customDialSettings.find(dialKey);
-	return [OOColor colorWithDescription:(found != customDialSettings.end() ? oo::ObjectFromPList(found->second) : nil)];
+	return [OOColor cxx_colorWithDescription:(found != customDialSettings.end() ? found->second : oo::PList())];
 }
 
 
-- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey
+- (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey
 {
-	customDialSettings[dialKey] = oo::PListFrom(value);	// non-plist values (colours...) are kept as Object nodes; nil is a null entry (it raised before)
+	customDialSettings[dialKey] = value;	// non-plist values (colours...) are Object nodes; null is a null entry (it raised before)
 }
 
 
@@ -4943,14 +4951,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (GLfloat) dialEnergy
 {
-	GLfloat result = energy / maxEnergy;
+	GLfloat result = _cxxEntity->energy / _cxxEntity->maxEnergy;
 	return OOClamp_0_1_f(result);
 }
 
 
 - (GLfloat) dialMaxEnergy
 {
-	return maxEnergy;
+	return _cxxEntity->maxEnergy;
 }
 
 
@@ -5019,8 +5027,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	Entity	*nearestPlanet = [self findNearestStellarBody];
 	if (nearestPlanet == nil)  return 1.0f;
 	
-	GLfloat	zd = nearestPlanet->zero_distance;
-	GLfloat	cr = nearestPlanet->collision_radius;
+	GLfloat	zd = nearestPlanet->_cxxEntity->zero_distance;
+	GLfloat	cr = nearestPlanet->_cxxEntity->collision_radius;
 	GLfloat	alt = sqrt(zd) - cr;
 	
 	return OOClamp_0_1_f(alt / (GLfloat)PLAYER_DIAL_MAX_ALTITUDE);
@@ -5408,7 +5416,11 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		if (EXPECT_NOT(new_target != [self compassTarget]))
 		{
 			[self setCompassTarget:new_target];
-			[self cxx_doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PList(cxx_OOStringFromCompassMode([self compassMode])) })))];
+			// a nil target was left out of the Objective-C argument array, as before
+			std::vector<oo::PList> compassArguments;
+			if (new_target != nil)  compassArguments.push_back(oo::PListObject(new_target));
+			compassArguments.emplace_back(cxx_OOStringFromCompassMode([self compassMode]));
+			[self cxx_doScriptEvent:OOJSID("compassTargetChanged") withPListArguments:compassArguments];
 		}
 	}
 }
@@ -5996,9 +6008,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 /////////////////////////////////////////////////////////////////////
 
 
-- (void) interpretAIMessage:(id)ms	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) interpretAIMessage:(const std::string &)message	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
-	const std::optional<std::string> message = oo::OptionalString(ms);
 
 	if ((message == "HOLD_FULL"))
 	{
@@ -6277,18 +6288,18 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 - (OOEnergyUnitType) installedEnergyUnitType
 {
-	if ([self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT"])  return ENERGY_UNIT_NAVAL;
-	if ([self hasEquipmentItem:@"EQ_ENERGY_UNIT"])  return ENERGY_UNIT_NORMAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT")])  return ENERGY_UNIT_NAVAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT")])  return ENERGY_UNIT_NORMAL;
 	return ENERGY_UNIT_NONE;
 }
 
 
 - (OOEnergyUnitType) energyUnitType
 {
-	if ([self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT"])  return ENERGY_UNIT_NAVAL;
-	if ([self hasEquipmentItem:@"EQ_ENERGY_UNIT"])  return ENERGY_UNIT_NORMAL;
-	if ([self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"])  return ENERGY_UNIT_NAVAL_DAMAGED;
-	if ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"])  return ENERGY_UNIT_NORMAL_DAMAGED;
+	if ([self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT")])  return ENERGY_UNIT_NAVAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT")])  return ENERGY_UNIT_NORMAL;
+	if ([self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT_DAMAGED")])  return ENERGY_UNIT_NAVAL_DAMAGED;
+	if ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT_DAMAGED")])  return ENERGY_UNIT_NORMAL_DAMAGED;
 	return ENERGY_UNIT_NONE;
 }
 
@@ -6352,7 +6363,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		multiplier = [self cxx_laserPortOffset:currentWeaponFacing].size();
 	}
 	
-	if (energy <= weapon_energy_use * multiplier)
+	if (_cxxEntity->energy <= weapon_energy_use * multiplier)
 	{
 		[UNIVERSE cxx_addMessage:OO_DESC("weapon-out-of-juice") forCount:3.0];
 		return NO;
@@ -6360,7 +6371,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	using_mining_laser = [weapon_to_be_fired isMiningLaser];
 
-	energy -= weapon_energy_use * multiplier;
+	_cxxEntity->energy -= weapon_energy_use * multiplier;
 
 	switch (currentWeaponFacing)
 	{
@@ -6447,8 +6458,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 {
 	if (hitEntity)
 		hitEntity[0] = (ShipEntity*)nil;
-	Vector u0 = HPVectorToVector(HPvector_between(position, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
+	Vector u0 = HPVectorToVector(HPvector_between(_cxxEntity->position, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(_cxxEntity->position, v1));
 	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
 	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
 	GLfloat hit_distance = [octree isHitByLine:w0 :w1];
@@ -6516,7 +6527,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[[other retain] autorelease];
 	
 	rel_pos = (ent != nil) ? [ent position] : kZeroHPVector;
-	rel_pos = HPvector_subtract(rel_pos, position);
+	rel_pos = HPvector_subtract(rel_pos, _cxxEntity->position);
 	
 	[self doScriptEvent:OOJSID("shipBeingAttacked") withArgument:ent];
 	if ([ent isShip]) [(ShipEntity *)ent doScriptEvent:OOJSID("shipAttackedOther") withArgument:self];
@@ -6565,7 +6576,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (amount > 0.0)
 	{
-		energy -= amount;
+		_cxxEntity->energy -= amount;
 		[self cxx_playDirectHit:relative weaponIdentifier:weaponIdentifier];
 		if (ship_temperature < SHIP_MAX_CABIN_TEMP)
 		{
@@ -6580,9 +6591,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 	}
 	[self noteTakingDamage:amount from:other type:damageType];
-	if (cascading) energy = 0.0; // explicitly set energy to zero when cascading, in case an oxp raised the energy in noteTakingDamage.
+	if (cascading) _cxxEntity->energy = 0.0; // explicitly set energy to zero when cascading, in case an oxp raised the energy in noteTakingDamage.
 	
-	if (energy <= 0.0) //use normal ship temperature calculations for heat damage
+	if (_cxxEntity->energy <= 0.0) //use normal ship temperature calculations for heat damage
 	{
 		if ([other isShip])
 		{
@@ -6623,7 +6634,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	[[ent retain] autorelease];
 	rel_pos = ent ? [ent position] : kZeroHPVector;
-	rel_pos = HPvector_subtract(rel_pos, position);
+	rel_pos = HPvector_subtract(rel_pos, _cxxEntity->position);
 	// rel_pos is now small
 	d_forward = dot_product(HPVectorToVector(rel_pos), v_forward);
 	d_right = dot_product(HPVectorToVector(rel_pos), v_right);
@@ -6722,7 +6733,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[result setDesiredSpeed:[self flightSpeed]];
 		[result setRoll:flightRoll];
 		[result setBehaviour:BEHAVIOUR_IDLE];
-		[result switchAITo:@"nullAI.plist"];  // fly straight on
+		[result switchAITo:"nullAI.plist"];  // fly straight on
 		[result setTemperature:[self temperature]];
 		[result copyValuesFromPlayer:self];
 	}
@@ -6778,10 +6789,10 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 
 	// must do this before next step or uses BBox of pod, not old ship!
-	float sheight = (float)(boundingBox.max.y - boundingBox.min.y);
-	position = HPvector_subtract(position, vectorToHPVector(vector_multiply_scalar(v_up, sheight)));
-	float sdepth = (float)(boundingBox.max.z - boundingBox.min.z);
-	position = HPvector_subtract(position, vectorToHPVector(vector_multiply_scalar(v_forward, sdepth/2.0)));
+	float sheight = (float)(_cxxEntity->boundingBox.max.y - _cxxEntity->boundingBox.min.y);
+	_cxxEntity->position = HPvector_subtract(_cxxEntity->position, vectorToHPVector(vector_multiply_scalar(v_up, sheight)));
+	float sdepth = (float)(_cxxEntity->boundingBox.max.z - _cxxEntity->boundingBox.min.z);
+	_cxxEntity->position = HPvector_subtract(_cxxEntity->position, vectorToHPVector(vector_multiply_scalar(v_forward, sdepth/2.0)));
 
 	// set up you
 	escapePod = [UNIVERSE cxx_newShipWithName:"escape-capsule"];	// retained
@@ -6849,7 +6860,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	// remove cargo
 	cargo.clear();
 	
-	energy = 25;
+	_cxxEntity->energy = 25;
 	[UNIVERSE cxx_addMessage:OO_DESC("escape-sequence") forCount:4.5];
 	[self resetShotTime];
 	
@@ -6866,22 +6877,23 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 }
 
 
-- (id) dumpCargo	// shared selector (proposed ADR-0043), called by name: an Objective-C string (the commodity), or nil
+- (void) dumpCargo	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
 	if (flightSpeed > 4.0 * maxFlightSpeed)
 	{
 		[UNIVERSE cxx_addMessage:cxx_OOExpandKey("hold-locked") forCount:3.0];
-		return nil;
+		return;
 	}
 
-	id result = [super dumpCargo];
-	if (result != nil)
+	// what -[ShipEntity dumpCargo] did, keeping the commodity it returned (nil for no pod or no type)
+	ShipEntity *jetto = [self cxx_dumpCargoItem:std::nullopt];
+	const std::optional<std::string> result = jetto != nil ? [jetto cxx_commodityType] : std::nullopt;
+	if (result.has_value())
 	{
-		const std::string commodity = [UNIVERSE cxx_displayNameForCommodity:oo::StdString(result)].value_or(std::string());	// (nil raised in the expansion)
+		const std::string commodity = [UNIVERSE cxx_displayNameForCommodity:*result].value_or(std::string());
 		[UNIVERSE cxx_addMessage:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "commodity-ejected", { { "commodity", oo::PList(commodity) } }) forCount:3.0 forceDisplay:YES];
 		[self playCargoJettisioned];
 	}
-	return result;
 }
 
 
@@ -6950,7 +6962,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	legalStatus = (int)amount; // can't set the new bounty until the size of the change is known
 
-	ooscript::Value reasonVal = OOJSValueFromNativeObject(context, oo::NSStringFrom(reason));
+	ooscript::Value reasonVal = OOJSValueFromPList(context, oo::PList(reason));
 		
 	ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
 		
@@ -7127,9 +7139,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 		const std::string damagedKey = oo::str::format("%s_DAMAGED", system_key->c_str());
 		[self addEquipmentItem:damagedKey withValidation: NO inContext:"damage"];	// for possible future repair.
-		[self doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(*system_key)];
+		[self cxx_doScriptEvent:OOJSID("equipmentDamaged") withPListArguments:{ oo::PList(*system_key) }];
 
-		if (![self hasEquipmentItem:oo::NSStringFrom(*system_name)] && [self hasEquipmentItem:oo::NSStringFrom(damagedKey)])
+		if (![self hasEquipmentItem:oo::PList(*system_name)] && [self hasEquipmentItem:oo::PList(damagedKey)])
 		{
 			/*
 				Display "foo damaged" message only if no script has
@@ -7166,7 +7178,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		[[UNIVERSE gameController] cxx_setPlayerFileToLoad:save_path.value_or("")];	// make sure we load the correct game
 	}
 	
-	energy = 0.0f;
+	_cxxEntity->energy = 0.0f;
 	afterburner_engaged = NO;
 	[self disengageAutopilot];
 
@@ -7180,7 +7192,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	[self moveForward:100.0];
 	
 	flightSpeed = 160.0f;
-	velocity = kZeroVector;
+	_cxxEntity->velocity = kZeroVector;
 	flightRoll = 0.0;
 	flightPitch = 0.0;
 	flightYaw = 0.0;
@@ -7207,7 +7219,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	for (i = 0; i < ent_count ; i++)
 	{
 		Entity* thing = my_entities[i];
-		if (thing->isShip)
+		if (thing->_cxxEntity->isShip)
 		{
 			ShipEntity* ship = (ShipEntity *)thing;
 			if (self == [ship primaryTarget])
@@ -7265,7 +7277,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	if ([self status] == STATUS_LAUNCHING)  return; // a JS script has aborted the docking.
 	
 	[self setOrientation: kIdentityQuaternion];	// reset orientation to dock
-	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:orientation forDocking:YES];
+	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:_cxxEntity->orientation forDocking:YES];
 	[self playDockWithStation];
 	[station noteDockedShip:self];
 	
@@ -7300,7 +7312,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	forward_shield =	[self maxForwardShieldLevel];
 	aft_shield =		[self maxAftShieldLevel];
-	energy =			maxEnergy;
+	_cxxEntity->energy =			_cxxEntity->maxEnergy;
 	weapon_temp =		0.0f;
 	ship_temperature =	60.0f;
 
@@ -7452,13 +7464,13 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
 	[UNIVERSE forceWitchspaceEntries];
 	ship_clock_adjust += 600.0;			// 10 minutes to leave dock
-	velocity = kZeroVector; // just in case
+	_cxxEntity->velocity = kZeroVector; // just in case
 
 	[station launchShip:self];
 
 	launchRoll = -flightRoll; // save the station's spin. (inverted for player)
 	flightRoll = 0; // don't spin when showing the break pattern.
-	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:orientation forDocking:YES];
+	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:_cxxEntity->orientation forDocking:YES];
 
 	[self setDockedStation:nil];
 	
@@ -7830,7 +7842,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 		}
 		else
 		{
-			[self setFuelLeak:oo::NSStringFrom(oo::str::format("%f", (randf() + randf()) * 5.0))];
+			[self setFuelLeak:oo::str::format("%f", (randf() + randf()) * 5.0)];
 		}
 	}
 #endif	
@@ -7971,7 +7983,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	}
 	HPVector		v1 = HPvector_forward_from_quaternion(q1);
 	exitpos = HPvector_add(pos, HPvector_multiply_scalar(v1, d1)); // randomise exit position
-	position = exitpos;
+	_cxxEntity->position = exitpos;
 	[self setOrientation:[UNIVERSE getWitchspaceExitRotation]];
 
 	// While setting the wormhole position to the player position looks very nice for ships following the player, 
@@ -8005,7 +8017,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 				distance.z = 0;
 				distance = HPvector_multiply_scalar(HPvector_normal(distance), min_d1);
 				whpos = HPvector_add(whpos, distance);
-				position = HPvector_add(position, distance);
+				_cxxEntity->position = HPvector_add(_cxxEntity->position, distance);
 			}
 			[wormhole setExitPosition: whpos];
 		}
@@ -8027,7 +8039,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	flightPitch = 0.0f;
 	flightYaw = 0.0f;
 
-	velocity = kZeroVector;
+	_cxxEntity->velocity = kZeroVector;
 	[self setStatus:STATUS_EXITING_WITCHSPACE];
 	gui_screen = GUI_SCREEN_MAIN;
 	being_fined = NO;				// until you're scanned by a copper!
@@ -8048,11 +8060,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 	
 	if (galactic_witchjump)
 	{
-		[self doScriptEvent:OOJSID("playerEnteredNewGalaxy") withArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(galaxy_number))];
+		[self cxx_doScriptEvent:OOJSID("playerEnteredNewGalaxy") withPListArguments:{ oo::PList::unsignedInteger(galaxy_number) }];
 	}
 	
-	[self doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:oo::NSStringOrNil([self cxx_jumpCause])];
-	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:orientation forDocking:NO];
+	const std::optional<std::string> jumpCause = [self cxx_jumpCause];
+	[self cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ jumpCause.has_value() ? oo::PList(*jumpCause) : oo::PList() }];
+	[UNIVERSE setUpBreakPattern:[self breakPatternPosition] orientation:_cxxEntity->orientation forDocking:NO];
 }
 
 
@@ -8272,14 +8285,14 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 					}
 				}
 			}
-			else if ([self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_identifier])])
+			else if ([self hasEquipmentItem:OptionalKeyPList([eqType cxx_identifier])])
 			{
 				quip2.push_back(EquipmentRow([eqType cxx_name], true, [eqType displayColor]));
 			}
 			else
 			{
 				// Check for damaged version
-				if ([self hasEquipmentItem:oo::NSStringFrom([eqType cxx_identifier].value_or("") + "_DAMAGED")])
+				if ([self hasEquipmentItem:oo::PList([eqType cxx_identifier].value_or("") + "_DAMAGED")])
 				{
 					desc = oo::str::formatRuntime(OO_DESC("equipment-@-not-available"), { [eqType cxx_name].value_or("(null)") });
 
@@ -9536,7 +9549,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if ([eqType isAvailableToAll])  options.insert(eqKey);
 		
 		// if you have a damaged system you can get it repaired at a tech level one less than that required to buy it
-		if (minTechLevel != 0 && [self hasEquipmentItem:oo::NSStringOrNil([eqType cxx_damagedIdentifier])])  minTechLevel--;
+		if (minTechLevel != 0 && [self hasEquipmentItem:OptionalKeyPList([eqType cxx_damagedIdentifier])])  minTechLevel--;
 		
 		// reduce the minimum techlevel occasionally as a bonus..
 		if (techlevel < minTechLevel && techlevel + 3 > minTechLevel)
@@ -9679,7 +9692,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					installTime = 600 + price;
 				}
 				// is this item damaged?
-				if ([self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])])
+				if ([self hasEquipmentItem:OptionalKeyPList([eqInfo cxx_damagedIdentifier])])
 				{
 					desc = oo::str::formatRuntime(OO_DESC("equip-repair-@"), { desc });
 					price /= 2.0;
@@ -9878,13 +9891,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			std::optional<std::string> desc = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] cxx_descriptiveText];
 			const std::string eq_key_damaged = *eqKey + "_DAMAGED";
 			int weight = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqKey] requiredCargoSpace];
-			if ([self hasEquipmentItem:oo::NSStringFrom(eq_key_damaged)])
+			if ([self hasEquipmentItem:oo::PList(eq_key_damaged)])
 			{
 				desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-price-is-for-repairing"), { TextArg(desc) });
 			}
 			else
 			{
-				if(oo::str::hasSuffix(*eqKey, "ENERGY_UNIT") && ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"] || [self hasEquipmentItem:@"EQ_ENERGY_UNIT"] || [self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"]))
+				if(oo::str::hasSuffix(*eqKey, "ENERGY_UNIT") && ([self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT_DAMAGED")] || [self hasEquipmentItem:oo::PList("EQ_ENERGY_UNIT")] || [self hasEquipmentItem:oo::PList("EQ_NAVAL_ENERGY_UNIT_DAMAGED")]))
 					desc = oo::str::formatRuntime(OO_DESC("@-will-replace-other-energy"), { TextArg(desc) });
 				if (weight > 0) desc = oo::str::formatRuntime(OO_DESC("upgradeinfo-@-weight-d-of-equipment"), { TextArg(desc), weight });
 			}
@@ -10088,7 +10101,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (definition)
 	{
 		[[UNIVERSE gameView] clearKeys];
-		[definition runCallback:oo::NSStringOrNil(key)];
+		[definition runCallback:*key];	// a definition was found, so key has a value
 	}
 	else
 	{
@@ -10358,12 +10371,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		if (toScreen == GUI_SCREEN_SYSTEM_DATA)
 		{
 			// system data screen: ensure correct sun light color is used on miniature planet
-			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]])]];
+			[[UNIVERSE sun] setSunColor:[OOColor cxx_colorWithDescription:[[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:info_system_id inGalaxy:[self galaxyNumber]]]];
 		}
 		else
 		{
 			// any other screen: reset local sun light color
-			[[UNIVERSE sun] setSunColor:[OOColor colorWithDescription:oo::ObjectFromPList([[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]])]];
+			[[UNIVERSE sun] setSunColor:[OOColor cxx_colorWithDescription:[[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:system_id inGalaxy:[self galaxyNumber]]]];
 		}
 		
 		if (![[UNIVERSE gameController] isGamePaused])
@@ -10425,7 +10438,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	OOCreditsQuantity old_credits = credits;
 	OOEquipmentType *eqInfo = (key.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*key] : nil);
-	BOOL isRepair = [self hasEquipmentItem:oo::NSStringOrNil([eqInfo cxx_damagedIdentifier])];
+	BOOL isRepair = [self hasEquipmentItem:OptionalKeyPList([eqInfo cxx_damagedIdentifier])];
 	if ([self tryBuyingItem:key.value_or(std::string())])	// (a nil key bought nothing, as "" does)
 	{
 		if (credits == old_credits)
@@ -10465,7 +10478,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			// [key, price paid as a long long]; a nil key ended the list
 			oo::PList::Array boughtArguments;
 			if (key.has_value())  boughtArguments = { oo::PList(*key), oo::PList::signedInteger(static_cast<long long>(old_credits - credits)) };
-			[self cxx_doScriptEvent:OOJSID("playerBoughtEquipment") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(std::move(boughtArguments))))];
+			[self cxx_doScriptEvent:OOJSID("playerBoughtEquipment") withPListArguments:boughtArguments];
 			if (gui_screen == GUI_SCREEN_EQUIP_SHIP) //if we haven't changed gui screen inside playerBoughtEquipment
 			{ 
 				// show any change due to playerBoughtEquipment
@@ -10534,7 +10547,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	BOOL	isRepair = NO;
 	
 	// repairs cost 50%
-	if ([self hasEquipmentItem:oo::NSStringOrNil(eqKeyDamaged)])
+	if ([self hasEquipmentItem:OptionalKeyPList(eqKeyDamaged)])
 	{
 		price /= 2.0;
 		isRepair = YES;
@@ -10780,7 +10793,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[self addEquipmentItem:eqKey withValidation:NO inContext:"purchase"]; // no need to validate twice.
 		if (isRepair)
 		{
-			[self doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(eqKey)];
+			[self cxx_doScriptEvent:OOJSID("equipmentRepaired") withPListArguments:{ oo::PList(eqKey) }];
 		}
 		return YES;
 	}
@@ -11640,7 +11653,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([UNIVERSE autoSave])  [UNIVERSE setAutoSaveNow:YES];
 	
-	[self cxx_doScriptEvent:OOJSID("playerBoughtCargo") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) })))];	// the same number kinds (signed, unsigned long long)
+	[self cxx_doScriptEvent:OOJSID("playerBoughtCargo") withPListArguments:{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) }];	// the same number kinds (signed, unsigned long long)
 	if ([localMarket cxx_exportLegalityForGood:index] > 0)
 	{
 		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));	// +numberWithInt:
@@ -11703,7 +11716,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
 	
-	[self cxx_doScriptEvent:OOJSID("playerSoldCargo") withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) })))];	// the same number kinds (signed, unsigned long long)
+	[self cxx_doScriptEvent:OOJSID("playerSoldCargo") withPListArguments:{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) }];	// the same number kinds (signed, unsigned long long)
 	
 	return YES;
 }
@@ -11861,25 +11874,28 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) addEquipmentFromCollection:(id)equipment
+- (void) addEquipmentFromCollection:(const oo::PList &)equipment
 {
 	oo::PList	dict;	// null unless the collection is a dictionary
 	std::vector<std::string>	eqKeys;	// the keys / elements in the collection's enumeration order
 	NSUInteger	i, count;
 
 	// Pass 1: Load the entire collection.
-	if (oo::IsNSDictionary(equipment))
+	if (const oo::PList::Dict *equipmentDict = equipment.getIf<oo::PList::Dict>())
 	{
-		dict = oo::PListFrom(equipment);
-		eqKeys = oo::StringsFrom(equipment);
+		dict = equipment;
+		for (const auto &[eqKey, value] : *equipmentDict)  eqKeys.push_back(eqKey);	// key byte order (was NSDictionary order)
 	}
-	else if (oo::IsNSArray(equipment) || oo::IsNSSet(equipment))
+	else if (const oo::PList::Array *equipmentArray = equipment.getIf<oo::PList::Array>())
 	{
-		eqKeys = oo::StringsFrom(equipment);
+		for (const oo::PList &element : *equipmentArray)
+		{
+			if (const std::string *eqKey = element.getIf<std::string>())  eqKeys.push_back(*eqKey);	// strings only, as before
+		}
 	}
-	else if (oo::IsNSString(equipment))
+	else if (const std::string *eqKey = equipment.getIf<std::string>())
 	{
-		eqKeys = { oo::StdString(equipment) };
+		eqKeys = { *eqKey };
 	}
 	else
 	{
@@ -12124,13 +12140,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (void) setDefaultViewOffsets
 {
-	float halfLength = 0.5f * (boundingBox.max.z - boundingBox.min.z);
-	float halfWidth = 0.5f * (boundingBox.max.x - boundingBox.min.x);
+	float halfLength = 0.5f * (_cxxEntity->boundingBox.max.z - _cxxEntity->boundingBox.min.z);
+	float halfWidth = 0.5f * (_cxxEntity->boundingBox.max.x - _cxxEntity->boundingBox.min.x);
 
-	forwardViewOffset = make_vector(0.0f, 0.0f, boundingBox.max.z - halfLength);
-	aftViewOffset = make_vector(0.0f, 0.0f, boundingBox.min.z + halfLength);
-	portViewOffset = make_vector(boundingBox.min.x + halfWidth, 0.0f, 0.0f);
-	starboardViewOffset = make_vector(boundingBox.max.x - halfWidth, 0.0f, 0.0f);
+	forwardViewOffset = make_vector(0.0f, 0.0f, _cxxEntity->boundingBox.max.z - halfLength);
+	aftViewOffset = make_vector(0.0f, 0.0f, _cxxEntity->boundingBox.min.z + halfLength);
+	portViewOffset = make_vector(_cxxEntity->boundingBox.min.x + halfWidth, 0.0f, 0.0f);
+	starboardViewOffset = make_vector(_cxxEntity->boundingBox.max.x - halfWidth, 0.0f, 0.0f);
 	customViewOffset = kZeroVector;
 }
 
@@ -12173,8 +12189,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (void) setUpTrumbles
 {
 	std::u16string trumbleDigrams;	// UTF-16 units, as the old mutable string held them
-	unichar	xchar = (unichar)0;
-	unichar digramchars[2];
+	uint16_t	xchar = (uint16_t)0;
+	uint16_t digramchars[2];
 
 	while (trumbleDigrams.size() < PLAYER_MAX_TRUMBLES + 2)
 	{
@@ -12254,7 +12270,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (id)trumbleValue
+- (oo::PList)trumbleValue
 {
 	const std::string	namekey = oo::str::format("%s-humbletrash", [self cxx_commanderName].value_or("(null)").c_str());
 	int			trumbleHash;
@@ -12276,11 +12292,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 
 	// [count (unsigned), hash (signed), trumbles]: the same number kinds as before
-	return oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(trumbleCount), oo::PList::signedInteger(trumbleHash), oo::PList(std::move(trumbleArray)) }));
+	return oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(trumbleCount), oo::PList::signedInteger(trumbleHash), oo::PList(std::move(trumbleArray)) });
 }
 
 
-- (void) setTrumbleValueFrom:(id) trumbleValue
+- (void) setTrumbleValueFrom:(const oo::PList &) trumbleValue
 {
 	BOOL info_failed = NO;
 	int trumbleHash;
@@ -12292,14 +12308,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	[self setUpTrumbles];
 	
-	if (trumbleValue)
+	if (!trumbleValue.isNull())
 	{
 		BOOL possible_cheat = NO;
-		if (!oo::IsNSArray(trumbleValue))
+		if (!trumbleValue.isArray())
 			info_failed = YES;
 		else
 		{
-			const oo::PList values = oo::PListFrom(trumbleValue);
+			const oo::PList &values = trumbleValue;
 			if (values.count() >= 1)
 				putativeNTrumbles = values.at<int>(0);
 			if (values.count() >= 2)
@@ -12560,9 +12576,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		{
 			ShipEntity *potential_target = [(OOWeakReference *)targ_id weakRefUnderlyingObject];
 		
-			if ((potential_target)&&(potential_target->isShip)&&([potential_target isInSpace]))
+			if ((potential_target)&&(potential_target->_cxxEntity->isShip)&&([potential_target isInSpace]))
 			{
-				if (potential_target->zero_distance < SCANNER_MAX_RANGE2 && (![potential_target isCloaked]))
+				if (potential_target->_cxxEntity->zero_distance < SCANNER_MAX_RANGE2 && (![potential_target isCloaked]))
 				{
 					[super addTarget:potential_target];
 					if (missile_status != MISSILE_STATUS_SAFE)
@@ -12659,9 +12675,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	customViewOffset = vector_subtract(customViewOffset, customViewRotationCenter);
 	customViewOffset = vector_multiply_scalar(customViewOffset, 1.0/rate);
 	OOScalar m = magnitude(customViewOffset);
-	if (m < CUSTOM_VIEW_MAX_ZOOM_IN * collision_radius)
+	if (m < CUSTOM_VIEW_MAX_ZOOM_IN * _cxxEntity->collision_radius)
 	{
-		scale_vector(&customViewOffset, CUSTOM_VIEW_MAX_ZOOM_IN * collision_radius / m);
+		scale_vector(&customViewOffset, CUSTOM_VIEW_MAX_ZOOM_IN * _cxxEntity->collision_radius / m);
 	}
 	customViewOffset = vector_add(customViewOffset, customViewRotationCenter);
 }
@@ -12672,9 +12688,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	customViewOffset = vector_subtract(customViewOffset, customViewRotationCenter);
 	customViewOffset = vector_multiply_scalar(customViewOffset, rate);
 	OOScalar m = magnitude(customViewOffset);
-	if (m > CUSTOM_VIEW_MAX_ZOOM_OUT * collision_radius)
+	if (m > CUSTOM_VIEW_MAX_ZOOM_OUT * _cxxEntity->collision_radius)
 	{
-		scale_vector(&customViewOffset, CUSTOM_VIEW_MAX_ZOOM_OUT * collision_radius / m);
+		scale_vector(&customViewOffset, CUSTOM_VIEW_MAX_ZOOM_OUT * _cxxEntity->collision_radius / m);
 	}
 	customViewOffset = vector_add(customViewOffset, customViewRotationCenter);
 }
@@ -13562,8 +13578,8 @@ else _dockTarget = NO_TARGET;
 	{
 		OOJSGuiScreenKeyDefinition *def = keydefs[i].get();
 		// the old code read "name" from the definition object with PListView, which only reads
-		// dictionaries, so this never matched; kept as it was (oo::PListFrom(def) is an Object node)
-		const oo::PList definitionValue = oo::PListFrom(def);
+		// dictionaries, so this never matched; kept as it was (the definition as an Object node)
+		const oo::PList definitionValue = oo::PListObject(def);
 		const oo::PList *definitionName = definitionValue.find("name");
 		if (def && definitionName != nullptr && definitionName->isString() && *definitionName->getIf<std::string>() == key)
 		{

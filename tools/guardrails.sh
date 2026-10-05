@@ -310,6 +310,16 @@ tools/refactor/js-stubs-selftest.sh|acceptance test asserting js-stubs.sh remove
 tools/plist-fuzz/gnustep_oracle.mm|the GNUstep reference side of the oofnd plist differential harness (bead oo-g2k, contract C1): its job is to call GNUstep's NSPropertyListSerialization, so it imports Foundation; tools/plist_fuzz.py builds it on demand as a test utility and it is never linked into the game
 tools/captures/plist-description/probe.m|the GNUstep reference side of the captured -description rows that pin oo::describe (bead oo-qps.32, ADR-0055 item 1): its job is to call gnustep-base's -description, so it imports Foundation; capture.sh builds it on demand and it is never linked into the game
 tools/captures/plist-description/capture.sh|builds and links probe.m against gnustep-base (its compile flags and gnustep-config link line are the deny-listed spellings); a capture tool, never part of the game build
+upstream/oolite/tests/unit/expander/OOHarnessFoundation.h|the string-expander harness's own Foundation prefix (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is to import Foundation ahead of the game headers; compiled only by tools/check-string-expander.sh, never part of the game build
+upstream/oolite/tests/unit/expander/OOFoundationBridge.h|the string-expander harness's own Foundation bridge stub (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is the NSString/NSNumber/NSDictionary conversions the deleted bridge headers made, copied unchanged so the pinned digests stay identical; compiled only by tools/check-string-expander.sh, never part of the game build
+upstream/oolite/tests/unit/sysdesc/OOHarnessFoundation.h|the sysdesc-tools harness's own Foundation prefix (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is to import Foundation ahead of the game headers; compiled only by tools/check-sysdesc-tools.sh, never part of the game build
+upstream/oolite/tests/unit/sysdesc/OOFoundationBridge.h|the sysdesc-tools harness's own Foundation bridge stub (bead oo-3rb.335, Jon approved 2026-09-30): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is the NSString/NSNumber/NSDictionary conversions the deleted bridge headers made, copied unchanged so the pinned digests stay identical; compiled only by tools/check-sysdesc-tools.sh, never part of the game build
+tools/check-foundation-free.sh|the Foundation census (ADR-0054/0055): its job is to find the NS* names, so its kind table and its --selftest fixtures spell them (bead oo-3rb.345); like tools/check-jsengine-facade.sh, it greps for the names it must not find and is never part of the game build
+tools/check-selector-types-probe.sh|probes tools/check-selector-types.py on synthetic trees: fixture 13 (oo-qps.72, ADR-0055 Amendment 2) must declare an NS*-typed result to prove --strict-called-by-name rejects it (bead oo-3rb.345); a test utility, never part of the game build
+tools/codemods/description-family.py|the -description-family codemod (ADR-0055 item 1, bead oo-qps.43): its inline self-test cases are Objective-C fixtures that must spell the Foundation string type to prove the rewrite leaves it alone (bead oo-3rb.345); pattern text and fixtures, never built into the game
+tools/codemods/key-constants.py|the key-constant codemod (bead oo-qps.42): its job is to find and rewrite Foundation-string key constants, so its regex, docstring and self-test fixtures spell the type it rewrites (bead oo-3rb.345); pattern text and fixtures, never built into the game
+upstream/oolite/tests/unit/expander/OOStringExpanderTestSurface.h|the Foundation forms of the string expander (ADR-0052's OO_EXPANDER_TEST_SURFACE block, moved verbatim out of src/Core/OOStringExpander.mm into the harness by bead oo-3rb.345): the harness links gnustep-base as test infrastructure, like tools/plist-fuzz/gnustep_oracle.mm, so its job is the Foundation-to-C++ conversions its test drives; compiled only by tools/check-string-expander.sh, never part of the game build
+upstream/oolite/tests/gui/test_g8_scenario_screen_back_out.py|GUI test G8: it reads PlayerEntityLoadSave.mm and must accept either spelling of -loadPlayerFromFile:asNew:, the legacy Foundation-typed one included (Jon approved both, bead oo-3rb.332), so the legacy signature is a string it searches for, not a use (bead oo-3rb.345); a test, never part of the game build
 tools/refactor/testdata/OOJSVector.pre-retarget.m|frozen pre-retarget fixture (restored from git history) used only to prove js-stubs.sh's rewrite (bead oo-oio); never built, never linked
 tools/refactor/testdata/js-stubs-string-literal.m|regression fixture proving js-stubs.sh leaves JS_* tokens inside string literals untouched (bead oo-oio review round 2); never built, never linked
 tools/refactor/testdata/js-stubs-comment-call.m|regression fixture proving js-stubs.sh leaves JS_* call-shaped mentions inside comments untouched (bead oo-oio review round 2); never built, never linked
@@ -440,7 +450,24 @@ is_code() {         # is_code <path> - does this path's extension/name make it C
   # Deliberately NOT `printf ... | grep -qE "$CODE_RE"`: see the pipefail note in is_exempt.
   # grep reads one short line here so it would probably never fire, but the shape is the bug
   # and the shape is what a later reader copies. A single non-pipelined grep is immune.
+  # Paths of the change were classified up front by prime_is_code (one grep for all of them,
+  # bead oo-3rb.334); anything else still gets the per-path grep.
+  if [ -n "${IS_CODE_KNOWN[$1]+x}" ]; then [ "${IS_CODE_KNOWN[$1]}" = 1 ]; return; fi
   grep -qE "$CODE_RE" <<< "$1"
+}
+
+# prime_is_code: classify EVERY path of the change with ONE grep instead of one fork per path
+# (bead oo-3rb.334). On Windows/MSYS2 a fork costs ~45 ms of kernel time (see the basename note
+# at is_test_path); the suppression and deny-list checks each called is_code once per changed
+# file, which on a ~190-file change was hundreds of forks per check. grep -E over the paths one
+# per line applies the same $CODE_RE to each path as `grep -qE "$CODE_RE" <<< "$path"` does, so
+# the verdict per path is identical. Paths are git's, one per line (git quotes any path holding
+# a newline), so a line is a path.
+declare -A IS_CODE_KNOWN=()
+prime_is_code() {
+  local p
+  while IFS= read -r p; do [ -n "$p" ] && IS_CODE_KNOWN["$p"]=0; done < <(all_paths)
+  while IFS= read -r p; do [ -n "$p" ] && IS_CODE_KNOWN["$p"]=1; done < <(all_paths | grep -E "$CODE_RE")
 }
 
 is_exempt() {       # is_exempt <path>
@@ -637,9 +664,28 @@ check_suppression() {
   n=$(printf '%s\n%s\n%s\n%s\n' "$canary1" "$canary2" "$canary3" "$canary4" | sup_match | wc -l)
   [ "$n" -eq 4 ] || { bad "suppression: matcher recognised $n/4 canary lines - the pattern set is broken and this check cannot fire"; return; }
 
-  local p base out
+  # Prefilter (bead oo-3rb.334): ONE grep -l over every changed file that exists, with the same
+  # pattern sup_match uses. added_lines prints only lines OF the file (never of the baseline),
+  # so a file in which no line matches anywhere cannot add a matching line: skipping it cannot
+  # change a verdict. Only files that match somewhere pay for added_lines + sup_match (~8 forks
+  # each, which on a ~190-file change was ~150 s of this check on Windows).
+  local p base out f
+  local -a sup_files=()
+  local -A sup_cand=()
+  while IFS="$US" read -r p base; do
+    [ -n "${p:-}" ] && [ -e "$p" ] && sup_files+=("$p")
+  done <<EOF
+$(scan_targets)
+EOF
+  if [ "${#sup_files[@]}" -gt 0 ]; then
+    while IFS= read -r f; do
+      [ -n "$f" ] && sup_cand["$f"]=1
+    done < <(printf '%s\0' "${sup_files[@]}" | xargs -0 grep -lE -- "$(sup_patterns | paste -sd'|' -)" 2>/dev/null)
+  fi
+
   while IFS="$US" read -r p base; do
     [ -n "${p:-}" ] || continue
+    [ -n "${sup_cand[$p]+x}" ] || continue   # no line of the file matches, so no added line can
     is_code "$p" || continue
     is_exempt "$p" && continue
     [ -n "${base:-}" ] && is_exempt "$base" && continue
@@ -1028,7 +1074,7 @@ check_denylist() {
   # is the same as deny_count's: the lines matching each pattern, summed over the patterns. On the
   # ~200-file .m -> .mm rename (oo-x7o) the per-file form spawned ~7,000 greps and took 16 minutes.
   local p base i k n=0 pattern line f c
-  local -a now_paths=() base_paths=() now_count=() before_count=()
+  local -a now_paths=() base_paths=() now_count=() before_count=() want_n=() want_spec=()
   local tmpd
   tmpd=$(mktemp -d) || { bad "deny-list: cannot create a scratch directory - this check cannot run"; return; }
   while IFS="$US" read -r p base; do
@@ -1041,13 +1087,59 @@ check_denylist() {
     base_paths[n]=""
     now_count[n]=0
     before_count[n]=0
-    if [ -n "${base:-}" ] && git cat-file -e "$BASE:$base" 2>/dev/null; then
-      git show "$BASE:$base" > "$tmpd/$n" && base_paths[n]="$tmpd/$n"
-    fi
+    if [ -n "${base:-}" ]; then want_n+=("$n"); want_spec+=("$BASE:$base"); fi
     n=$(( n + 1 ))
   done <<EOF
 $(scan_targets)
 EOF
+
+  # The baseline copies, extracted by ONE `git cat-file --batch` (bead oo-3rb.334) instead of a
+  # `git cat-file -e` + `git show` pair per file: ~380 git processes on a ~190-file change, ~70 s
+  # on Windows. Same bytes: `git show <rev>:<path>` of a blob streams the raw blob (no textconv
+  # unless asked on the command line), exactly what --batch emits; a spec that does not resolve
+  # ("<spec> missing", where -e failed) leaves the file without a baseline, as before. The stream
+  # is split by SIZE, as in tools/check-file-modes.sh. A non-blob (never a changed file's
+  # baseline in practice) is reported and extracted the old way, so nothing changes for it either.
+  if [ "${#want_n[@]}" -gt 0 ]; then
+    if ! printf '%s\n' "${want_spec[@]}" | git cat-file --batch 2>/dev/null | python3 -c '
+import os, sys
+buf = sys.stdin.buffer
+tmpd, idxs = sys.argv[1], sys.argv[2:]
+for idx in idxs:
+    header = buf.readline()
+    if not header:
+        sys.exit("git cat-file --batch ended early")
+    fields = header.rstrip(b"\n").split(b" ")
+    if len(fields) != 3 or not fields[2].isdigit():
+        continue                                  # "<spec> missing" (or ambiguous): no baseline
+    size = int(fields[2])
+    data = buf.read(size)
+    buf.read(1)                                   # the newline --batch puts after the content
+    if len(data) != size:
+        sys.exit("git cat-file --batch: short read")
+    if fields[1] == b"blob":
+        with open(os.path.join(tmpd, idx), "wb") as out:
+            out.write(data)
+        print(idx)
+    else:
+        print("nonblob " + idx)
+' "$tmpd" "${want_n[@]}" > "$tmpd/extracted"; then
+      bad "deny-list: could not extract the baseline copies at $BASE_SHA - this check cannot run"
+      rm -rf "$tmpd"; return
+    fi
+    while IFS= read -r line; do
+      line=${line%$'\r'}   # a Windows-native python3 prints CRLF
+      case "$line" in
+        nonblob\ *) k=${line#nonblob }
+          for (( i = 0; i < ${#want_n[@]}; i++ )); do
+            [ "${want_n[i]}" = "$k" ] || continue
+            git show "${want_spec[i]}" > "$tmpd/$k" && base_paths[k]="$tmpd/$k"
+          done ;;
+        '') ;;
+        *) base_paths[line]="$tmpd/$line" ;;
+      esac
+    done < "$tmpd/extracted"
+  fi
 
   # grep -cH prints "<file>:<count>" per file; the file name is matched back to its index. Repo
   # paths and the scratch names contain no ':' before the count, so the LAST ':' splits the line.
@@ -1087,14 +1179,36 @@ EOF
   done
 }
 
+# --- upstream freeze (bead oo-9ht.70, proposed ADR-0059) ------------------------------------
+#
+# Not one of the four rules, and not about the change: the per-module freeze policy is a fact
+# about the TREE. tools/upstream-delta.sh --check fails when a src/ module that holds Phase 3 work
+# (a cxx:: class or an +ObjCBridge facade) is still 'open' in docs/UPSTREAM_DELTA.md, or a new
+# source directory is unclassified. Run here so the conversion that starts a module is the change
+# that has to freeze it. Offline, ~1 s. A tree without the policy file (the selftest's fixtures)
+# has nothing to check; a tree with the file but without the checker has lost its guard and fails.
+check_upstream_delta() {
+  local out
+  if [ ! -f tools/upstream-delta.sh ]; then
+    [ ! -f docs/UPSTREAM_DELTA.md ] || bad "upstream-delta: docs/UPSTREAM_DELTA.md exists but tools/upstream-delta.sh does not, so the freeze policy cannot be checked"
+    return 0
+  fi
+  if ! out=$(bash tools/upstream-delta.sh --check 2>&1); then
+    bad "upstream-delta: the per-module freeze policy is not in force (bash tools/upstream-delta.sh --check):"
+    printf '%s\n' "$out" | sed 's/^/    /' >&2
+  fi
+}
+
+prime_is_code
 check_goldens
 check_suppression
 check_tests
 check_denylist
+check_upstream_delta
 
 if [ "$fail" -ne 0 ]; then
   note "FAIL"
   exit 1
 fi
-note "OK (goldens, suppression, tests, deny-list) against $BASE_SHA"
+note "OK (goldens, suppression, tests, deny-list, upstream-delta) against $BASE_SHA"
 exit 0

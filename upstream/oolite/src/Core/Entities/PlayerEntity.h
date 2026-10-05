@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
-@class OOSound, OOSoundSource, OOSoundReferencePoint;
+@class OOSound, OOSoundSource;
 @class OOJoystickManager, OOTexture, OOLaserShotEntity;
 @class StickProfileScreen, OOJSGuiScreenKeyDefinition, OOJSScript;
 
@@ -59,33 +59,8 @@ MA 02110-1301, USA.
 #define CUSTOM_VIEW_MAX_ZOOM_IN		1.5
 #define CUSTOM_VIEW_MAX_ZOOM_OUT	25
 
-#define ENTRY(label, value) label,
-
-typedef enum
-{
-	#include "OOGUIScreenID.tbl"
-} OOGUIScreenID;
-
-#define GALACTIC_HYPERSPACE_ENTRY(label, value) GALACTIC_HYPERSPACE_##label = value,
-
-typedef enum
-{
-	#include "OOGalacticHyperspaceBehaviour.tbl"
-#include <string_view>
-	
-	GALACTIC_HYPERSPACE_MAX					= GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES
-} OOGalacticHyperspaceBehaviour;
-
-#undef ENTRY
-#undef GALACTIC_HYPERSPACE_ENTRY
-
-
-enum
-{
-	// Values used for unknown strings.
-	kOOGUIScreenIDDefault					= GUI_SCREEN_MAIN,
-	kOOGalacticHyperspaceBehaviourDefault	= GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN
-};
+// OOGUIScreenID, OOGalacticHyperspaceBehaviour and their defaults (bead oo-9ht.64: plain header).
+#include "OOEntityEnums.h"
 
 typedef enum
 {
@@ -922,7 +897,7 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 - (float) cxx_dialCustomFloat:(const std::string &)dialKey;
 - (std::string) cxx_dialCustomString:(const std::string &)dialKey;
 - (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
-- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given
+- (void) cxx_setDialCustom:(const oo::PList &)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given (live objects as Object nodes)
 
 
 - (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList;	// nullopt = inactive MFD
@@ -1155,7 +1130,7 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 
 - (OOSpeechSettings) isSpeechOn;
 
-- (void) addEquipmentFromCollection:(id)equipment;	// equipment may be an array, a set, a dictionary whose values are all YES, or a string.
+- (void) addEquipmentFromCollection:(const oo::PList &)equipment;	// equipment may be an array, a dictionary whose values are all YES, or a string.
  
 - (void) getFined;
 - (void) adjustTradeInFactorBy:(int)value;
@@ -1174,8 +1149,8 @@ inline constexpr std::string_view MISSION_DEST_LEGACY				= "__oolite_legacy_dest
 - (OOTrumble **) trumbleArray;
 - (NSUInteger) trumbleCount;
 // loading and saving trumbleCount
-- (id) trumbleValue;
-- (void) setTrumbleValueFrom:(id)trumbleValue;
+- (oo::PList) trumbleValue;	// [count, hash, trumble records]
+- (void) setTrumbleValueFrom:(const oo::PList &)trumbleValue;	// null: none saved
 
 - (float) trumbleAppetiteAccumulator;
 - (void) setTrumbleAppetiteAccumulator:(float)value;

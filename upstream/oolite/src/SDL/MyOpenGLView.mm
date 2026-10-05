@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #include <SDL3/SDL_init.h>
+#include <SDL3/SDL_timer.h>
 #import "png.h"
 #import "MyOpenGLView.h"
 #include "oofnd/Process.hpp"
@@ -39,7 +40,6 @@ MA 02110-1301, USA.
 #import "OOFullScreenController.h"
 #import "ResourceManager.h"
 #import "OOConstToString.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListGet.hpp"
@@ -485,7 +485,8 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	allowingStringInput = gvStringInputNo;
 	isAlphabetKeyDown = NO;
 
-	timeIntervalAtLastClick = timeSinceLastMouseWheel = oo::date::monotonicSeconds();	// intervals only (MyOpenGLView+Input.mm)
+	timeIntervalAtLastClick = (NSTimeInterval)SDL_GetTicksNS() / 1e9;	// the clock SDL stamps events on (MyOpenGLView+Input.mm)
+	timeSinceLastMouseWheel = oo::date::monotonicSeconds();	// intervals only (MyOpenGLView+Input.mm)
 
 	_mouseWheelDelta = 0.0f;
 

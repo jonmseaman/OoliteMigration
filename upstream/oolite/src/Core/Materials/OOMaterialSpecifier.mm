@@ -29,22 +29,22 @@ SOFTWARE.
 #import "OOColor.h"
 #import "OOTexture.h"
 #import "Universe.h"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 
 
 namespace {
 
-id ValueFor(const oo::PList &configuration, const char *key)
+// The value for key; null if there is none.
+oo::PList ValueFor(const oo::PList &configuration, const char *key)
 {
 	const oo::PList *value = configuration.find(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? *value : oo::PList();
 }
 
 
 OOColor *ColorFor(const oo::PList &configuration, const char *key)
 {
-	return [OOColor colorWithDescription:ValueFor(configuration, key)];
+	return [OOColor cxx_colorWithDescription:ValueFor(configuration, key)];
 }
 
 
@@ -52,7 +52,7 @@ OOColor *ColorFor(const oo::PList &configuration, const char *key)
 // -oo_textureSpecifierForKey:defaultName: did.
 oo::PList TextureSpecifierFor(const oo::PList &configuration, const char *key, const std::optional<std::string> &defaultName)
 {
-	return cxx_OOTextureSpecFromObject(oo::PListFrom(ValueFor(configuration, key)), defaultName);
+	return cxx_OOTextureSpecFromObject(ValueFor(configuration, key), defaultName);
 }
 
 

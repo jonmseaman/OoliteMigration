@@ -43,7 +43,6 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "OOSound.h"
 #import "OOStringParsing.h"
-#import "OOPListView.h"
 #import "OOOXZManager.h"
 #import "OOStringExpander.h"
 #import "ResourceManager.h"
@@ -65,12 +64,12 @@ MA 02110-1301, USA.
 #import "OODebugSupport.h"
 #import "OODebugMonitor.h"
 #include "oofnd/objc/OOException.h"
-#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
-#import "OOFoundationBridge.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/objc/OOAssert.h"
+#import "OOObjCPList.h"
+#include "oofnd/String.hpp"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
@@ -694,6 +693,22 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 }
 
+// The GUI row a mouse click activates (bead oo-3rb.348). UNIVERSE->cursor_row is only recomputed
+// when the GUI is RENDERED, so after a stall the motion events and the click arrive in one tick and
+// cursor_row is still the row of the last render, not the row under the pointer (a click aimed at
+// row 26 activated row 22, which the pointer had crossed on its way). On an interactive GUI screen,
+// ask the GUI for the row under the pointer as it is now, with the same maths the render uses.
+static int ClickedGUIRow(GuiDisplayGen *gui)
+{
+	if (!UNIVERSE)  return 0;
+	if ([[UNIVERSE gameController] mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION && gui != nil)
+	{
+		return [gui rowAtVirtualJoystickPosition:[[UNIVERSE gameView] virtualJoystickPosition]];
+	}
+	return UNIVERSE->cursor_row;
+}
+
+
 // DJS + aegidian: Moved from the big switch/case block in pollGuiArrowKeyControls
 - (BOOL) handleGUIUpDownArrowKeys
 {
@@ -749,9 +764,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	{
 		if (!upDownKeyPressed)
 		{
-			int click_row = 0;
-			if (UNIVERSE)
-				click_row = UNIVERSE->cursor_row;
+			int click_row = ClickedGUIRow(gui);
 			if ([gui setSelectedRow:click_row])
 			{
 				result = YES;
@@ -760,9 +773,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 	if (mouse_dbl_click)
 	{
-		int click_row = 0;
-		if (UNIVERSE)
-			click_row = UNIVERSE->cursor_row;
+		int click_row = ClickedGUIRow(gui);
 		if ([gui setSelectedRow:click_row])
 		{
 			result = YES;
@@ -864,7 +875,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		[UNIVERSE cxx_displayCountdownMessage:ExpandKeyWithArguments("witch-to-x-in-y-seconds",
 			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } }) forCount:1.0];
 		[self cxx_doScriptEvent:OOJSID("playerStartedJumpCountdown")
-					withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) })))];
+					withPListArguments:{ oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }];
 		[UNIVERSE preloadPlanetTexturesForSystem:target_system_id];
 	}
 }
@@ -1321,7 +1332,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							[self playWeaponsOffline];
 						}
 						[UNIVERSE cxx_addMessage:weaponsOnlineToggleMsg forCount:2.0];
-						[self doScriptEvent:OOJSID("weaponsSystemsToggled") withArgument:oo::ObjectFromPList(oo::PList(static_cast<bool>([self weaponsOnline])))];
+						[self cxx_doScriptEvent:OOJSID("weaponsSystemsToggled") withPListArguments:{ oo::PList(static_cast<bool>([self weaponsOnline])) }];
 						weaponsOnlineToggle_pressed = YES;
 					}
 				}
@@ -1433,7 +1444,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							const std::string equipmentName = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eqKey] cxx_name].value_or(std::string());
 							[UNIVERSE cxx_addMessage:ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } }) forCount:2.0];
 						}
-						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
+						[self cxx_doScriptEvent:OOJSID("playerChangedPrimedEquipment") withPListArguments:{ oo::PList(eqKey) }];
 					}
 					prime_equipment_pressed = YES;
 					
@@ -1755,7 +1766,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							// FIXME: how to preload target system for hyperspace jump?
 							
 							[self cxx_doScriptEvent:OOJSID("playerStartedJumpCountdown")
-								  withArguments:oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) })))];
+								  withPListArguments:{ oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }];
 						}
 					}
 					galhyperspace_pressed = YES;
@@ -2118,7 +2129,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 						[self setLongRangeChartMode:OOLRC_MODE_SUNCOLOR];
 					}
-					[self doScriptEvent:OOJSID("chartHighlightModeChanged") withArgument:oo::NSStringFrom(cxx_OOStringFromLongRangeChartMode([self longRangeChartMode]))];
+					[self cxx_doScriptEvent:OOJSID("chartHighlightModeChanged") withPListArguments:{ oo::PList(cxx_OOStringFromLongRangeChartMode([self longRangeChartMode])) }];
 				}
 				queryPressed = YES;
 			}
@@ -3016,7 +3027,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							[UNIVERSE removeDemoShips];
 							[self setGuiToStatusScreen];
 							[self playBuyShip];
-							[self doScriptEvent:OOJSID("playerBoughtNewShip") withArgument:self andArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(shipprice))]; // some equipment.oxp might want to know everything has changed.
+							[self cxx_doScriptEvent:OOJSID("playerBoughtNewShip") withPListArguments:{ oo::PListObject(self), oo::PList::unsignedInteger(shipprice) }]; // some equipment.oxp might want to know everything has changed.
 						}
 					}
 					else
@@ -3074,7 +3085,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						if (definition)
 						{
 							[[UNIVERSE gameView] clearKeys];
-							[definition runCallback:oo::NSStringFrom(key)];
+							[definition runCallback:key];
 						}
 						else
 						{
@@ -5523,8 +5534,8 @@ static BOOL autopilot_pause;
 		
 		for (i = 0; i < uni->n_entities && nStations < 2; i++)
 		{
-			if (entities[i]->isStation && [entities[i] isKindOfClass:[StationEntity class]] &&
-				entities[i]->zero_distance <= SCANNER_MAX_RANGE2)
+			if (entities[i]->_cxxEntity->isStation && [entities[i] isKindOfClass:[StationEntity class]] &&
+				entities[i]->_cxxEntity->zero_distance <= SCANNER_MAX_RANGE2)
 			{
 				nStations++;
 				target = entities[i];
