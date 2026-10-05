@@ -1893,13 +1893,15 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 				else if (fValue > MIN_HYPERSPEED_FACTOR)
 				{
 					cxx_OOJSReportError(context, "ship.injectorSpeedFactor cannot be higher than minimum torus speed factor (%f).",MIN_HYPERSPEED_FACTOR);
+					return NO;
+				}
 #else
 				else if (fValue > HYPERSPEED_FACTOR)
 				{
 					cxx_OOJSReportError(context, "ship.injectorSpeedFactor cannot be higher than torus speed factor (%f).",HYPERSPEED_FACTOR);
-#endif
 					return NO;
 				}
+#endif
 				[entity setAfterburnerFactor:fValue];
 				return YES;
 			}
