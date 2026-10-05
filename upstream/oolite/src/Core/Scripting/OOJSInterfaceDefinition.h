@@ -76,7 +76,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::ObjCRef<OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
+	oo::ObjCRef<::OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
 
 	std::optional<std::string>	_title;		// nullopt until set (was nil)
 	std::optional<std::string>	_summary;
