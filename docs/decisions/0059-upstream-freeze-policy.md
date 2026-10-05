@@ -1,6 +1,6 @@
 # ADR-0059: The per-module upstream freeze policy
 
-- Status: Proposed — default in effect (CLAUDE.md rule 10)
+- Status: Accepted (delegated 2026-10-05: Jon delegated the human-assigned beads to the orchestrator's best judgement; ratified as proposed, bead oo-1x6ak; record in [delegated-2026-10-05.md](delegated-2026-10-05.md))
 - Date: 2026-09-30
 - Beads: oo-kih (this ADR, `docs/UPSTREAM_DELTA.md`, `tools/upstream-delta.sh`, the
   upstream-tracker prompt)

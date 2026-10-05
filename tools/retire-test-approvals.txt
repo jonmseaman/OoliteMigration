@@ -7,3 +7,11 @@ upstream/oolite/tests/unit/game/meson.build	oo-iobt: game-unit suite emptied wit
 upstream/oolite/tests/unit/test_enumeration_shuffle.c	oo-qps.7: subject OOEnumerationShufflePRNG.h deleted with the debug-only enumeration shuffle (Jon approved 2026-09-29)
 tools/check-enumeration-shuffle.sh	oo-qps.7: checks the OOEnumerationShuffle code and OOCocoa.h foreach sentinels oo-qps.7 deletes (Jon approved 2026-09-29)
 upstream/oolite/tests/unit/oofnd/test_objc_description.mm	oo-qps.73: ONLY the cases whose sole subject is the deleted legacy-override forwarding / foreign-root fallback of OODescription.mm - the_root_forwards_to_a_legacy_override; OOTestLegacy, OOTestLegacyWhole, OOTestFlippedOverLegacy, OOTestForeignRoot, OOTestForeignString; the foreign-object checks of nil_classes_literals_and_foreign_objects. Every other case stays (Jon approved 2026-09-30)
+
+# Standing approval oo-9n5p9 (delegated by Jon 2026-10-05; record docs/decisions/delegated-2026-10-05.md).
+# Scope: a façade-deletion bead (label sweep:objc-bridge, "Delete X+ObjCBridge") may retire ONLY the
+# test cases and stand-ins that exercise the deleted façade - its selectors, oo::ToObjC/oo::ToCxx
+# crossings, the façade's -dealloc. The class's C++ API checks stay and must still pass; nothing else
+# is removed or weakened under it. This block approves no path by itself: each deletion bead lists
+# the cases it retires and gets its own path line(s) here, reason starting "oo-9n5p9:", landed by a
+# change before its deletion (a change that deletes a listed test may not also edit this file).
