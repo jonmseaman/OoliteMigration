@@ -247,11 +247,11 @@ enum
 @class Entity, PlayerEntity, OOTextureSprite, GuiDisplayGen;
 
 
-/*	The HUD itself (Phase 3, bead oo-engam: slice 1 of docs/phases/3-slices/HeadUpDisplay.md, the
-	class shell). Its callers and the drawing of slices 2-6 are still Objective-C and reach it
-	through the facade HeadUpDisplay+ObjCBridge.h, so the members they reach, and the state the
-	drawing reads and writes, are public under "Internal" (ADR-0056 amendment oo-pni4 item 1).
-	Getters named after their state are get + the name (amendment oo-862e item 1).
+/*	The HUD itself (Phase 3, beads oo-engam .. oo-0tx6c: the six slices of
+	docs/phases/3-slices/HeadUpDisplay.md). Its callers are still Objective-C and reach it through
+	the facade HeadUpDisplay+ObjCBridge.h, which also answers the dials by name; the dial members
+	and the state are public under "Internal" until the facade goes (ADR-0056 amendment oo-pni4
+	item 1). Getters named after their state are get + the name (amendment oo-862e item 1).
 */
 namespace cxx {
 
@@ -263,8 +263,8 @@ public:
 	HeadUpDisplay();
 	~HeadUpDisplay() override;
 
-	// -cxx_initWithDictionary:inFile:, run by the facade once it is the HUD's peer (it hands the
-	// HUD to the drawing, which is still Objective-C).
+	// -cxx_initWithDictionary:inFile:, run by the facade once it is the HUD's peer (the dial check
+	// asks the facade which dials it answers).
 	void initWithDictionary(const oo::PList &hudinfo, const std::optional<std::string> &hudFileName);
 
 	void resetGuis(const oo::PList &info);
@@ -327,7 +327,6 @@ public:
 	oo::Ref<OOColor> reticleColorForIndex(NSUInteger idx);
 	bool setReticleColorForIndex(NSUInteger idx, OOColor *newColor);
 
-	// Internal: what the drawing of slices 3-6 (Objective-C on the facade) sends.
 	bool checkPlayerInFlight();
 	bool checkPlayerInSystemFlight();
 
@@ -358,8 +357,18 @@ public:
 	void drawCabinTempBar(const oo::PList &info);
 	void drawWeaponTempBar(const oo::PList &info);
 	void drawAltitudeBar(const oo::PList &info);
+	void drawMissileDisplay(const oo::PList &info);
+	void drawStatusLight(const oo::PList &info);
+	void drawClock(const oo::PList &info);
+	void drawPrimedEquipment(const oo::PList &info);
+	void drawASCTarget(const oo::PList &info);
+	void drawWeaponsOfflineText(const oo::PList &info);
+	void drawFPSInfoCounter(const oo::PList &info);
+	void drawScoopStatus(const oo::PList &info);
+	void drawStickSensitivityIndicator(const oo::PList &info);
+	void drawTrumbles(const oo::PList &info);
 
-	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
+	// Internal: the state (the old ivars).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
 	std::vector<OOHUDWidget>	legendArray;
 	std::vector<OOHUDWidget>	dialArray;
@@ -434,6 +443,10 @@ private:
 
 	void drawSecondaryTargetReticle(const oo::PList &info);
 
+	void drawIconForMissile(::ShipEntity *missile, bool selected, OOMissileStatus status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
+	void drawIconForEmptyPylonAtX(int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
+	void drawDirectionCue(const oo::PList &info);
+
 	oo::PList crosshairDefinitionForWeaponType(OOWeaponType weapon);	// a null PList for none
 
 	void resetGui(::GuiDisplayGen *gui, const oo::PList &gui_info);
@@ -506,6 +519,6 @@ NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSiz
 void OOHUDResetTextEngine(void);
 
 
-// Transitional: the Objective-C facade, for the callers and the drawing that are still Objective-C.
+// Transitional: the Objective-C facade, for the callers that are still Objective-C.
 // Deleted, with namespace cxx above, by the bridge's deletion bead.
 #import "HeadUpDisplay+ObjCBridge.h"

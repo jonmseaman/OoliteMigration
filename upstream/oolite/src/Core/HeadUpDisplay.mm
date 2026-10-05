@@ -2727,38 +2727,6 @@ void cxx::HeadUpDisplay::drawAltitudeBar(const oo::PList &info)
 }
 
 
-@implementation HeadUpDisplay (Private)
-
-
-namespace {
-
-void prefetchData(const oo::PList &info, struct CachedInfo *data)
-{
-	data->x = info.get<float>(X_KEY, NOT_DEFINED);
-	data->x0 = info.get<float>(X_ORIGIN_KEY, 0.0);
-	data->y = info.get<float>(Y_KEY, NOT_DEFINED);
-	data->y0 = info.get<float>(Y_ORIGIN_KEY, 0.0);
-	data->width = info.get<float>(WIDTH_KEY, NOT_DEFINED);
-	data->height = info.get<float>(HEIGHT_KEY, NOT_DEFINED);
-	data->alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f);	
-}
-
-}	// namespace
-
-
-OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
-{
-	if (relativeZ >= 0.0f)
-	{
-		OOGL(glColor4f(0.0f, 1.0f, 0.0f, alpha));
-	}
-	else
-	{
-		OOGL(glColor4f(1.0f, 0.0f, 0.0f, alpha));
-	}
-}
-
-
 static constexpr const char *kDefaultMissileIconKey = "oolite-default-missile-icon";
 static constexpr const char *kDefaultMineIconKey = "oolite-default-mine-icon";
 static const GLfloat kOutlineWidth = 0.5f;
@@ -2771,24 +2739,25 @@ namespace {
 */
 oo::PList MissileIconDefinition(const std::string &key)
 {
-	const oo::PList *iconDef = [UNIVERSE cxx_descriptions]->find(key);
+	const oo::PList *iconDef = HeadUpDisplayUniverseDescriptions()->find(key);
 	return (iconDef != nullptr && iconDef->isArray()) ? *iconDef : oo::PList();
 }
 
 
-OOPolygonSprite *IconForMissileRole(const std::string &role)
+cxx::OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
-	static std::map<std::string, oo::ObjCRef<OOPolygonSprite *>, std::less<>>	sIcons;
-	OOPolygonSprite				*result = nil;
+	static std::map<std::string, oo::Ref<cxx::OOPolygonSprite>, std::less<>>	sIcons;
+	cxx::OOPolygonSprite		*result = nullptr;
 
 	auto cached = sIcons.find(role);
 	if (cached != sIcons.end())  result = cached->second.get();
-	if (result == nil)
+	if (result == nullptr)
 	{
 		std::string key = role;
 		oo::PList iconDef = MissileIconDefinition(key);
-		if (!iconDef.isNull())  result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
-		if (result == nil)	// No custom icon or bad data
+		oo::Ref<cxx::OOPolygonSprite> made;
+		if (!iconDef.isNull())  made = cxx::OOPolygonSprite::initWithDataArray(iconDef, kOutlineWidth, key);
+		if (made == nullptr)	// No custom icon or bad data
 		{
 			/*	Backwards compatibility note:
 				The old implementation used suffixes "MISSILE" and "MINE" (without
@@ -2801,12 +2770,13 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 			else  key = kDefaultMineIconKey;
 
 			iconDef = MissileIconDefinition(key);
-			result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
+			made = cxx::OOPolygonSprite::initWithDataArray(iconDef, kOutlineWidth, key);
 		}
 
-		if (result != nil)
+		if (made != nullptr)
 		{
-			sIcons[role] = oo::adoptObjC(result);	// Balance alloc
+			result = made.get();
+			sIcons[role] = std::move(made);
 		}
 	}
 	
@@ -2816,30 +2786,26 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }	// namespace
 
 
-- (void) drawIconForMissile:(ShipEntity *)missile
-				   selected:(BOOL)selected
-					 status:(OOMissileStatus)status
-						  x:(int)x y:(int)y
-					  width:(GLfloat)width height:(GLfloat)height alpha:(GLfloat)alpha
+void cxx::HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, OOMissileStatus status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
 {
-	OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
+	cxx::OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
 	
 	if (selected)
 	{
 		// Draw yellow outline.
 		OOGLPushModelView();
-		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
+		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
 		OOGLScaleModelView(make_vector(width, height, 1.0f));
 		GLColorWithOverallAlpha(yellow_color, alpha);
-		[sprite drawOutline];
+		if (sprite != nullptr)  sprite->drawOutline();	// a message to nil did nothing
 		OOGLPopModelView();
 		
 		// Draw black backing, so outline colour isn’t blended into missile colour.
 		OOGLPushModelView();
-		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
+		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
 		OOGLScaleModelView(make_vector(width, height, 1.0f));
 		GLColorWithOverallAlpha(black_color, alpha);
-		[sprite drawFilled];
+		if (sprite != nullptr)  sprite->drawFilled();	// a message to nil did nothing
 		OOGLPopModelView();
 		
 		switch (status)
@@ -2859,34 +2825,32 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	}
 	
 	OOGLPushModelView();
-	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
+	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
 	OOGLScaleModelView(make_vector(width, height, 1.0f));
-	[sprite drawFilled];
+	if (sprite != nullptr)  sprite->drawFilled();	// a message to nil did nothing
 	OOGLPopModelView();
 }
 
 
-
-- (void) drawIconForEmptyPylonAtX:(int)x y:(int)y
-							width:(GLfloat)width height:(GLfloat)height alpha:(GLfloat)alpha
+void cxx::HeadUpDisplay::drawIconForEmptyPylonAtX(int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
 {
 	OOPolygonSprite *sprite = IconForMissileRole(kDefaultMissileIconKey);
 	
 	// Draw gray outline.
 	OOGLPushModelView();
-	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
+	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
 	OOGLScaleModelView(make_vector(width, height, 1.0f));
 	GLColorWithOverallAlpha(lightgray_color, alpha);
-	[sprite drawOutline];
+	if (sprite != nullptr)  sprite->drawOutline();	// a message to nil did nothing
 	OOGLPopModelView();
 }
 
 
-- (void) drawMissileDisplay:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawMissileDisplay(const oo::PList &info)
 {
 	int					x, y, sp;
 	NSSize				siz;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
+	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2907,20 +2871,20 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		NSUInteger i, n_mis = [PLAYER dialMaxMissiles];
 		for (i = 0; i < n_mis; i++)
 		{
-			ShipEntity *missile = [PLAYER missileForPylon:i];
+			::ShipEntity *missile = [PLAYER missileForPylon:i];
 			if (missile)
 			{
-				[self drawIconForMissile:missile
-								selected:weaponsOnline && i == [PLAYER activeMissile]
-								  status:status
-									   x:x + (int)i * sp + 2 y:y
-								   width:siz.width * 0.25f height:siz.height * 0.25f
-								   alpha:alpha];
+				drawIconForMissile(missile,
+								   weaponsOnline && i == [PLAYER activeMissile],
+								   status,
+								   x + (int)i * sp + 2, y,
+								   siz.width * 0.25f, siz.height * 0.25f,
+								   alpha);
 			}
 			else
 			{
-				[self drawIconForEmptyPylonAtX:x + (int)i * sp + 2 y:y
-									width:siz.width * 0.25f height:siz.height * 0.25f alpha:alpha];
+				drawIconForEmptyPylonAtX(x + (int)i * sp + 2, y,
+									 siz.width * 0.25f, siz.height * 0.25f, alpha);
 			}
 		}
 	}
@@ -2940,24 +2904,24 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 				GLColorWithOverallAlpha(red_color, alpha);		break;
 		}
 		OOGLBEGIN(GL_QUADS);
-			glVertex3i(x , y, oo::ToCxx(self)->z1);
-			glVertex3i(x + siz.width, y, oo::ToCxx(self)->z1);
-			glVertex3i(x + siz.width, y + siz.height, oo::ToCxx(self)->z1);
-			glVertex3i(x , y + siz.height, oo::ToCxx(self)->z1);
+			glVertex3i(x , y, z1);
+			glVertex3i(x + siz.width, y, z1);
+			glVertex3i(x + siz.width, y + siz.height, z1);
+			glVertex3i(x , y + siz.height, z1);
 		OOGLEND();
 		GLColorWithOverallAlpha(green_color, alpha);
-		cxx_OODrawString([PLAYER cxx_dialTargetName].value_or(""), x + sp, y - 1, oo::ToCxx(self)->z1, NSMakeSize(siz.width, siz.height));
+		cxx_OODrawString([PLAYER cxx_dialTargetName].value_or(""), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
 	}
 	
 }
 
 
-- (void) drawStatusLight:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawStatusLight(const oo::PList &info)
 {
 	int					x, y;
 	NSSize				siz;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	BOOL				blueAlert = oo::ToCxx(self)->cloakIndicatorOnStatusLight && [PLAYER isCloaked];
+	GLfloat				alpha = overallAlpha;
+	BOOL				blueAlert = cloakIndicatorOnStatusLight && [PLAYER isCloaked];
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2999,18 +2963,18 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	status_color[3] = flash_alpha;
 	GLColorWithOverallAlpha(status_color, alpha);
 	OOGLBEGIN(GL_POLYGON);
-	hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
+	hudDrawStatusIconAt(x, y, z1, siz);
 	OOGLEND();
 	OOGL(glColor4f(0.25, 0.25, 0.25, alpha));
 	OOGLBEGIN(GL_LINE_LOOP);
-		hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
+		hudDrawStatusIconAt(x, y, z1, siz);
 	OOGLEND();
 }
 
 
-- (void) drawDirectionCue:(const oo::PList &)info
+void cxx::HeadUpDisplay::drawDirectionCue(const oo::PList &info)
 {
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
+	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -3019,7 +2983,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	
 	if ([UNIVERSE displayGUI])  return;
 	
-	Entity		*target = [PLAYER primaryTarget];
+	::Entity		*target = [PLAYER primaryTarget];
 	if (target == nil)  return;
 	
 	// draw the direction cue
@@ -3072,31 +3036,31 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		if (alpha > 0.0f)
 		{
 			NSUInteger cueColorIndex = [target isWormhole] ? OO_RETICLE_COLOR_WORMHOLE : OO_RETICLE_COLOR_TARGET;
-			OOColor *directionCueColor = oo::ToObjC(ReticleColorAt(oo::ToCxx(self)->_reticleColors, cueColorIndex));
-			GLfloat	clearColorArray[4] =	{[directionCueColor redComponent],
-											[directionCueColor greenComponent],
-											[directionCueColor blueComponent],
+			OOColor *directionCueColor = ReticleColorAt(_reticleColors, cueColorIndex);	// never null: it raises past the end
+			GLfloat	clearColorArray[4] =	{directionCueColor->redComponent(),
+											directionCueColor->greenComponent(),
+											directionCueColor->blueComponent(),
 											0.0f};
-			GLfloat directionCueColorArray[4] = {[directionCueColor redComponent],
-												[directionCueColor greenComponent],
-												[directionCueColor blueComponent],
-												[directionCueColor alphaComponent]};
+			GLfloat directionCueColorArray[4] = {directionCueColor->redComponent(),
+												directionCueColor->greenComponent(),
+												directionCueColor->blueComponent(),
+												directionCueColor->alphaComponent()};
 			drawPos.z = 0.0f;	// flatten vector
 			drawPos = vector_normal(drawPos);
 			OOGLBEGIN(GL_LINE_STRIP);
 				glColor4fv(clearColorArray);
-				glVertex3f(drawPos.x * innerSize - drawPos.y * width, drawPos.y * innerSize + drawPos.x * width, oo::ToCxx(self)->z1);
+				glVertex3f(drawPos.x * innerSize - drawPos.y * width, drawPos.y * innerSize + drawPos.x * width, z1);
 				GLColorWithOverallAlpha(directionCueColorArray, alpha);
-				glVertex3f(drawPos.x * outerSize, drawPos.y * outerSize, oo::ToCxx(self)->z1);
+				glVertex3f(drawPos.x * outerSize, drawPos.y * outerSize, z1);
 				glColor4fv(clearColorArray);
-				glVertex3f(drawPos.x * innerSize + drawPos.y * width, drawPos.y * innerSize - drawPos.x * width, oo::ToCxx(self)->z1);
+				glVertex3f(drawPos.x * innerSize + drawPos.y * width, drawPos.y * innerSize - drawPos.x * width, z1);
 			OOGLEND();
 		}
 	}
 }
 
 
-- (void) drawClock:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawClock(const oo::PList &info)
 {
 	int					x, y;
 	NSSize				siz;
@@ -3111,14 +3075,14 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	siz.height = useDefined(cached.height, CLOCK_DISPLAY_HEIGHT);
 	
 	GetRGBAArrayFromInfo(info, itemColor);
-	itemColor[3] *= oo::ToCxx(self)->overallAlpha;
+	itemColor[3] *= overallAlpha;
 	
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-	cxx_OODrawString([PLAYER cxx_dial_clock], x, y, oo::ToCxx(self)->z1, siz);
+	cxx_OODrawString([PLAYER cxx_dial_clock], x, y, z1, siz);
 }
 
 
-- (void) drawPrimedEquipment:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawPrimedEquipment(const oo::PList &info)
 {
 	if ([PLAYER status] == STATUS_DOCKED)
 	{
@@ -3150,13 +3114,13 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	}
 
 	GetRGBAArrayFromInfo(info, itemColor);
-	itemColor[3] *= oo::ToCxx(self)->overallAlpha;
+	itemColor[3] *= overallAlpha;
 
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 		const std::optional<std::string> equipmentName = [PLAYER cxx_primedEquipmentName:0];
-		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, oo::ToCxx(self)->z1, size);
+		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, z1, size);
 	}
 	else
 	{
@@ -3170,7 +3134,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 				// instead compact the display towards its centre
 				GLfloat alphaScale = 1.0/((i<0)?(1.0-i):(1.0+i));
 				OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]*alphaScale));
-				cxx_OODrawString([PLAYER cxx_primedEquipmentName:i].value_or(""), x, y, oo::ToCxx(self)->z1, size);
+				cxx_OODrawString([PLAYER cxx_primedEquipmentName:i].value_or(""), x, y, z1, size);
 			}
 			y -= size.height;
 		}	
@@ -3178,9 +3142,9 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 }
 
 
-- (void) drawASCTarget:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawASCTarget(const oo::PList &info)
 {
-	if (!([self checkPlayerInSystemFlight] && [PLAYER status] != STATUS_LAUNCHING)) // normal system
+	if (!(checkPlayerInSystemFlight() && [PLAYER status] != STATUS_LAUNCHING)) // normal system
 	{
 		// Can't have compass target when docked, etc. (matches blip condition)
 		return;
@@ -3201,28 +3165,28 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	};
 
 	GetRGBAArrayFromInfo(info, itemColor);
-	itemColor[3] *= oo::ToCxx(self)->overallAlpha;
+	itemColor[3] *= overallAlpha;
 
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 	if (info.get<int>("align") == 1)
 	{
-		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, oo::ToCxx(self)->z1, size,YES);
+		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,YES);
 	}
 	else
 	{
-		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, oo::ToCxx(self)->z1, size,NO);
+		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,NO);
 	}
 	
 }
 
 
-- (void) drawWeaponsOfflineText:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawWeaponsOfflineText(const oo::PList &info)
 {
 	OOViewID					viewID = [UNIVERSE viewDirection];
 	GLfloat						textColor[4] = {0.0f, 1.0f, 0.0f, 1.0f};
 
 	if (viewID == VIEW_CUSTOM ||
-		oo::ToCxx(self)->overallAlpha == 0.0f ||
+		overallAlpha == 0.0f ||
 		!([PLAYER status] == STATUS_IN_FLIGHT || [PLAYER status] == STATUS_WITCHSPACE_COUNTDOWN) ||
 		[UNIVERSE displayGUI]
 		)
@@ -3245,16 +3209,16 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		siz.height = useDefined(cached.height, WEAPONSOFFLINETEXT_HEIGHT);
 		
 		GetRGBAArrayFromInfo(info, textColor);
-		textColor[3] *= oo::ToCxx(self)->overallAlpha;
+		textColor[3] *= overallAlpha;
 		
 		OOGL(glColor4f(textColor[0], textColor[1], textColor[2], textColor[3]));
 		// TODO: some caching required...
-		cxx_OODrawString(OO_DESC("weapons-systems-offline"), x, y, oo::ToCxx(self)->z1, siz);
+		cxx_OODrawString(OO_DESC("weapons-systems-offline"), x, y, z1, siz);
 	}
 }
 
 
-- (void) drawFPSInfoCounter:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawFPSInfoCounter(const oo::PList &info)
 {
 	if (![UNIVERSE displayFPS])  return;
 	
@@ -3277,22 +3241,22 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	// We prefer the FPS counter to be always visible - Nikos 20100405
 	GetRGBAArrayFromInfo(info, textColor);
 	OOGL(glColor4f(textColor[0], textColor[1], textColor[2], 1.0f));
-	cxx_OODrawString([PLAYER cxx_dial_fpsinfo], x, y, oo::ToCxx(self)->z1, siz);
+	cxx_OODrawString([PLAYER cxx_dial_fpsinfo], x, y, z1, siz);
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
 	std::string collDebugInfo = oo::str::format("%s - %s", [PLAYER cxx_dial_objinfo].c_str(), [UNIVERSE collisionDescription].c_str());
-	cxx_OODrawString(collDebugInfo, x, y - siz.height, oo::ToCxx(self)->z1, siz);
+	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
 
-	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, oo::ToCxx(self)->z1, siz08);
+	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
 
 	std::string timeAccelerationFactorInfo = oo::str::format("TAF: %s%.2f", OO_DESC("multiplication-sign").c_str(), [UNIVERSE timeAccelerationFactor]);
-	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, oo::ToCxx(self)->z1, siz08);
+	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
 #endif
 }
 
 
-- (void) drawScoopStatus:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawScoopStatus(const oo::PList &info)
 {
 	int					i, x, y;
 	NSSize				siz;
@@ -3371,25 +3335,25 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOGL(glDisable(GL_TEXTURE_2D));
 	OOGLBEGIN(GL_QUADS);
 	// section 1
-		GLColorWithOverallAlpha(s1c, oo::ToCxx(self)->overallAlpha);
-		glVertex3f(x, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x - w2, y + h2, oo::ToCxx(self)->z1);	glVertex3f(x, y + h3, oo::ToCxx(self)->z1);	glVertex3f(x + w2, y + h2, oo::ToCxx(self)->z1);
+		GLColorWithOverallAlpha(s1c, overallAlpha);
+		glVertex3f(x, y + h1, z1);	glVertex3f(x - w2, y + h2, z1);	glVertex3f(x, y + h3, z1);	glVertex3f(x + w2, y + h2, z1);
 	// section 2
-		GLColorWithOverallAlpha(s2c, oo::ToCxx(self)->overallAlpha);
-		glVertex3f(x, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x - w4, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x - w4, y + h2, oo::ToCxx(self)->z1);	glVertex3f(x, y, oo::ToCxx(self)->z1);
-		glVertex3f(x, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x + w4, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x + w4, y + h2, oo::ToCxx(self)->z1);	glVertex3f(x, y, oo::ToCxx(self)->z1);
+		GLColorWithOverallAlpha(s2c, overallAlpha);
+		glVertex3f(x, y - h1, z1);	glVertex3f(x - w4, y + h1, z1);	glVertex3f(x - w4, y + h2, z1);	glVertex3f(x, y, z1);
+		glVertex3f(x, y - h1, z1);	glVertex3f(x + w4, y + h1, z1);	glVertex3f(x + w4, y + h2, z1);	glVertex3f(x, y, z1);
 	// section 3
-		GLColorWithOverallAlpha(s3c, oo::ToCxx(self)->overallAlpha);
-		glVertex3f(x, y - h4, oo::ToCxx(self)->z1);	glVertex3f(x - w2, y - h2, oo::ToCxx(self)->z1);	glVertex3f(x - w2, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x, y - h2, oo::ToCxx(self)->z1);
-		glVertex3f(x, y - h4, oo::ToCxx(self)->z1);	glVertex3f(x + w2, y - h2, oo::ToCxx(self)->z1);	glVertex3f(x + w2, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x, y - h2, oo::ToCxx(self)->z1);
+		GLColorWithOverallAlpha(s3c, overallAlpha);
+		glVertex3f(x, y - h4, z1);	glVertex3f(x - w2, y - h2, z1);	glVertex3f(x - w2, y - h1, z1);	glVertex3f(x, y - h2, z1);
+		glVertex3f(x, y - h4, z1);	glVertex3f(x + w2, y - h2, z1);	glVertex3f(x + w2, y - h1, z1);	glVertex3f(x, y - h2, z1);
 	OOGLEND();
 }
 
 
-- (void) drawStickSensitivityIndicator:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList &info)
 {
 	GLfloat				x, y;
 	NSSize				siz;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
+	GLfloat				alpha = overallAlpha;
 	BOOL				mouse = [PLAYER isMouseControlOn];
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
 	struct CachedInfo	cached;
@@ -3410,43 +3374,75 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	GLfloat div = [stickHandler getSensitivity];
 	
 	GLColorWithOverallAlpha(black_color, alpha / 4);
-	GLDrawFilledOval(x, y, oo::ToCxx(self)->z1, siz, 10);
+	GLDrawFilledOval(x, y, z1, siz, 10);
 	
 	GLColorWithOverallAlpha((div < 1.0 || mouse) ? lightgray_color : green_color, alpha);
-	OOGL(GLScaledLineWidth(oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth));
+	OOGL(GLScaledLineWidth(_crosshairWidth * lineWidth));
 	
 	if (div >= 1.0)
 	{
 		if (!mouse)
 		{
 			NSSize siz8th = { siz.width / 8, siz.height / 8 };
-			GLDrawFilledOval(x, y, oo::ToCxx(self)->z1, siz8th, 30);
+			GLDrawFilledOval(x, y, z1, siz8th, 30);
 			
 			if (div == 1.0) // normal mode
 				GLColorWithOverallAlpha(lightgray_color, alpha);
 		}
 		
-		siz.width -= oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth / 2;
-		siz.height -= oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth / 2;
-		GLDrawOval(x, y, oo::ToCxx(self)->z1, siz, 10);
+		siz.width -= _crosshairWidth * lineWidth / 2;
+		siz.height -= _crosshairWidth * lineWidth / 2;
+		GLDrawOval(x, y, z1, siz, 10);
 	}
 	else if (div < 1.0) // insensitive mode (shouldn't happen)
-		GLDrawFilledOval(x, y, oo::ToCxx(self)->z1, siz, 10);
+		GLDrawFilledOval(x, y, z1, siz, 10);
 
-	OOGL(GLScaledLineWidth(oo::ToCxx(self)->lineWidth)); // reset
+	OOGL(GLScaledLineWidth(lineWidth)); // reset
 }
 
 
-- (void) drawTrumbles:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawTrumbles(const oo::PList &info)
 {
-	OOTrumble** trumbles = [PLAYER trumbleArray];
+	::OOTrumble** trumbles = [PLAYER trumbleArray];
 	NSUInteger i;
 	for (i = [PLAYER trumbleCount]; i > 0; i--)
 	{
-		OOTrumble* trum = trumbles[i - 1];
-		[trum drawTrumble: oo::ToCxx(self)->z1];
+		::OOTrumble* trum = trumbles[i - 1];
+		oo::ToCxx(trum)->drawTrumble(z1);
 	}
 }
+
+
+namespace {
+
+void prefetchData(const oo::PList &info, struct CachedInfo *data)
+{
+	data->x = info.get<float>(X_KEY, NOT_DEFINED);
+	data->x0 = info.get<float>(X_ORIGIN_KEY, 0.0);
+	data->y = info.get<float>(Y_KEY, NOT_DEFINED);
+	data->y0 = info.get<float>(Y_ORIGIN_KEY, 0.0);
+	data->width = info.get<float>(WIDTH_KEY, NOT_DEFINED);
+	data->height = info.get<float>(HEIGHT_KEY, NOT_DEFINED);
+	data->alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f);	
+}
+
+}	// namespace
+
+
+OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
+{
+	if (relativeZ >= 0.0f)
+	{
+		OOGL(glColor4f(0.0f, 1.0f, 0.0f, alpha));
+	}
+	else
+	{
+		OOGL(glColor4f(1.0f, 0.0f, 0.0f, alpha));
+	}
+}
+
+
+
 
 //---------------------------------------------------------------------//
 
@@ -4449,8 +4445,6 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 		}
 	OOGLEND();
 }
-
-@end
 
 
 /*	The beacon icons (slice 4). OOPolygonSprite's OOHUDBeaconIcon category is a free function on the
