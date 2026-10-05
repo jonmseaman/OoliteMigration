@@ -253,3 +253,5 @@
 [oo-bm1q] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-u61e.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens
 [oo-4jjl] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSkyDrawable test_SkyEntity test_OOGraphicsResetManager && bash tools/tier-c.sh --only goldens
+# A paused console-driven game stays at normal priority (oo-37zzy): the regression test, then the goldens three times.
+[oo-37zzy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && (cd upstream/oolite/tests/component && python3 -m pytest -q -p no:cacheprovider test_paused_console_priority.py) && for i in 1 2 3; do bash tools/tier-c.sh --only goldens || exit 1; done
