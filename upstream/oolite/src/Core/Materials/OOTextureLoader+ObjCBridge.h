@@ -5,8 +5,8 @@ OOTextureLoader+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, amendments oo-whzh, oo-bj8 and oo-zl36): the Objective-C
 OOTextureLoader, a facade over the C++ cxx::OOTextureLoader (OOTextureLoader.h), for its callers
 (the textures, the emission map generator, the OXP verifier), for the work manager, which holds a
-loader as an Objective-C task, and for the loaders not converted yet (OOPNGTextureLoader,
-OOPixMapTextureLoader, OOTextureGenerator and the generators under it). Its interface is the one
+loader as an Objective-C task, and for the loaders not converted yet (OOPixMapTextureLoader,
+OOTextureGenerator and the generators under it). Its interface is the one
 OOTextureLoader.h declared before the conversion, copied exactly but for its ivars: the subclasses
 read the root's state through _cxxLoader. Imported as the last line of OOTextureLoader.h; do not
 import it directly.
