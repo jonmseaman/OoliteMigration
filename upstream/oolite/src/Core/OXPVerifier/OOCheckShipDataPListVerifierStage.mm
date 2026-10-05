@@ -98,7 +98,7 @@ std::optional<std::string> OOCheckShipDataPListVerifierStage::name()
 std::optional<std::vector<std::string>> OOCheckShipDataPListVerifierStage::dependents()
 {
 	std::vector<std::string> result = cxx::OOTextureHandlingStage::dependents().value_or(std::vector<std::string>());
-	for (const std::string &name : { [OOModelVerifierStage nameForReverseDependencyForVerifier:verifier()],
+	for (const std::string &name : { OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier()),
 									 OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier()) })
 	{
 		if (std::find(result.begin(), result.end(), name) == result.end())  result.push_back(name);
@@ -330,11 +330,13 @@ void OOCheckShipDataPListVerifierStage::checkModel()
 
 	if (model.has_value())
 	{
-		if (![[verifier() modelVerifierStage] modelNamed:*model
-												 usedForEntry:_name
-													   inFile:"shipdata.plist"
-												withMaterials:materials != nullptr ? *materials : oo::PList()
-												   andShaders:shaders != nullptr ? *shaders : oo::PList()])
+		// C++ since bead oo-5zby; the verifier holds it as its facade (may be null).
+		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>(oo::ToCxx([verifier() modelVerifierStage]));
+		if (modelStage == nullptr || !modelStage->modelNamed(*model,
+															 _name,
+															 "shipdata.plist",
+															 materials != nullptr ? *materials : oo::PList(),
+															 shaders != nullptr ? *shaders : oo::PList()))
 		{
 			reportMessage(oo::str::formatRuntime("----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", { *model, TextOrNull([verifier() cxx_oxpDisplayName]) }));
 		}
