@@ -2,6 +2,7 @@
 
 oolite_sources += files(
     'EntityOOJavaScriptExtensions.mm',
+    'EntityOOJavaScriptExtensions+ObjCBridge.mm',
     'OOConstToJSString.cpp',
     'OOJSCall.mm',
     'OOJSCall+ObjCBridge.mm',
