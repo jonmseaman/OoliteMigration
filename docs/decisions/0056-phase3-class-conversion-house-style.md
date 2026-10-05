@@ -2942,3 +2942,41 @@ initialiser.
 
 **Consequences.** One façade and its deletion bead; the planet binding's category bridge
 (oo-9ht.92) stays on the façade until it goes.
+
+## Amendment (bead oo-4jjl): a drawable with no façade that is a graphics reset client, and a test seam for a private step
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOSkyDrawable.h/.mm`, its caller
+  `src/Core/Entities/SkyEntity.mm`, `src/Core/OOGraphicsResetManager.h/.mm`,
+  `tests/unit/core/test_OOSkyDrawable.mm`, `tests/unit/core/test_SkyEntity.mm`.
+
+**Context.** `OOSkyDrawable` derives from the converted root `OODrawable` and has one caller,
+`SkyEntity` (already C++), so it converts with no façade (amendments oo-zffj item 1 and oo-mw4u).
+It registered itself with `OOGraphicsResetManager` as an `<OOGraphicsResetClient>`, which takes
+only an Objective-C `id`; and `test_SkyEntity` replaced its private star set-up (which needs the
+game's star textures) with `method_setImplementation`, which has nothing to hook once the class
+is C++.
+
+**Decision (recommended defaults).**
+
+1. **The first C++ graphics reset client adds the C++ client interface** that amendment oo-jpd8
+   item 3 foresaw: `cxx::OOGraphicsResetClient` (the protocol's `-resetGraphicsState` as a pure
+   virtual) in `OOGraphicsResetManager.h`, and `registerCxxClient()`/`unregisterCxxClient()`
+   (distinct names, so `registerClient(nil)` stays unambiguous). The manager tells its C++
+   clients after its Objective-C ones, from a snapshot, with the same exception handling. The
+   client derives from the interface as well as its root and registers `this` in its constructor
+   and unregisters in its destructor, as `-init`/`-dealloc` did.
+2. **The entity holds the drawable's root façade.** `OOEntityWithDrawable` keeps an Objective-C
+   `OODrawable *`, so the caller makes the C++ drawable with `oo::makeRef` and passes
+   `oo::ToObjC(drawable.get())`; the façade keeps the C++ object alive.
+3. **A test that replaced a private Objective-C method gets a static stand-in hook**, declared
+   private in the class and set only through its `friend struct XTestAccess` (amendment oo-zffj
+   item 3): the member checks the hook first and returns after calling it, as the replaced
+   method did. In the game the hook is null. Porting an existing test's stand-in to it is a test
+   edit (CLAUDE.md rule 2): it needs Jon's decision (here oo-jsx0h), with every expectation kept.
+4. **A file-private helper class** (`OOSkyQuadSet`) converts in the same bead, global, no façade
+   (amendment oo-vt0o item 2); its failable initialiser is a static returning null (amendment
+   oo-novu). A malloc()ed array of structs that held autoreleased colours becomes a
+   `std::vector` of structs holding `oo::Ref`, since a C++ colour must be owned.
+5. **An argument expression with a side effect in a message to a possibly-nil receiver is
+   evaluated first** (`const float fraction = randf();`), so the random stream is the same when
+   the receiver is null-guarded.
