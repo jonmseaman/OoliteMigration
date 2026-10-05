@@ -132,6 +132,7 @@ core_tests = {
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_GuiDisplayGen': ['*'],
     'test_Entity': ['*'],
+    'test_ShipEntity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],
     'test_OOPlanetDrawable': ['*'],
