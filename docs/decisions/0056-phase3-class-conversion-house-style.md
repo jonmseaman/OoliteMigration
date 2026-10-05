@@ -3025,3 +3025,34 @@ Its initialiser answered nil for a pixmap that is not valid (`DESTROY(self)`).
 
 **Consequences.** No façade and no deletion bead. The test's maker helper is the only line it
 ported; one more test pins the C++ API.
+
+## Amendment (bead oo-604l): a hierarchy root whose subclasses are an Objective-C class and an oo-o89 façade, and class methods that make subclass instances
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOScript.h/.mm`,
+  `OOScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOScript.mm`.
+
+**Context.** `OOScript` is the abstract root of the scripts. One subclass, `OOJSScript`, is still
+Objective-C; the other, `OOPListScript`, converted first (amendment oo-q9q4), so its façade
+subclasses the Objective-C root and owns its own C++ part in an ivar named `_cxxScript`. The root's
+class methods load scripts and answer the subclasses' Objective-C objects; converted callers in
+`namespace cxx` (`OOCommodities`, `OOCharacter`, `OOEquipmentType`) name the Objective-C class.
+
+**Decision (recommended defaults).**
+
+1. **The root converts as amendment oo-6bux says**: a private adapter (`ObjCScript`) is the C++
+   part of every Objective-C subclass instance, including an oo-o89 façade, whose own C++ part is
+   unrelated to the root's. Neither subclass changes. The methods subclasses override, including
+   `-cxx_descriptionComponents` (which `OOJSScript` overrides and calls `super` on), are virtual.
+2. **The root façade's ivar is named so it cannot clash with a subclass façade's** (`_cxxRootScript`,
+   not `_cxxScript`), and the bridge header says why.
+3. **Class methods that make subclass instances are static members that still message the
+   subclasses' Objective-C classes** (`[OOJSScript scriptWithPath:…]`, and
+   `[::OOPListScript scriptsInPListFile:…]` where a `cxx::` class of that name exists), answering
+   `oo::ObjCRef<::X *>` (or `id`) as before; `[self m…]` on the class becomes a static call. They
+   become C++ factories when the subclasses convert.
+4. **Converted callers in `namespace cxx` that named the root's Objective-C class write `::X`**
+   (amendment oo-q9q4 item 5), in the same bead, because `X` now names the C++ root there.
+
+**Consequences.** One façade with a deletion bead that waits for `OOJSScript`'s conversion
+(oo-u61e.4) and `OOPListScript`'s façade deletion (oo-9ht.57). Converting `OOJSScript` now makes it
+a plain C++ subclass of `cxx::OOScript` instead of an oo-o89 façade.

@@ -29,7 +29,6 @@ Objective-C OOPlanetEntity for the code that makes and messages planets.
 #import "OOPlanetEntity.h"
 #import "OOObjCPList.h"
 
-#if NEW_PLANETS
 
 #define NEW_ATMOSPHERE 1
 
@@ -1223,4 +1222,3 @@ void OOPlanetEntity::setName(const std::optional<std::string> &name)
 
 }	// namespace cxx
 
-#endif	// NEW_PLANETS
