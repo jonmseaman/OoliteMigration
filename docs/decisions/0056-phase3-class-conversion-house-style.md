@@ -3085,3 +3085,35 @@ root's `-getResult:format:originalWidth:originalHeight:`: it never overrode it, 
 
 **Consequences.** No façade and no deletion bead. The test's helpers that made the generator and sent
 the class methods are the lines it ported.
+
+## Amendment (bead oo-e6xa): a generator leaf whose caller's test stubs it by name, and colours it holds
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOCombinedEmissionMapGenerator.h/.mm`,
+  `OOCombinedEmissionMapGenerator+ObjCBridge.h/.mm`, `tests/unit/core/test_OOCombinedEmissionMapGenerator.mm`.
+  Follows amendments oo-qa7c, oo-rmd7 item 3, oo-n99o item 3, oo-novu and oo-rr2x.
+
+**Context.** `OOCombinedEmissionMapGenerator` is a leaf under the converted `cxx::OOTextureGenerator`.
+Its one caller, the converted `cxx::OOMultiTextureMaterial`, makes it with `alloc` and one of two
+initialisers, and that caller's test (`test_OOMultiTextureMaterial.mm`) stubs the class by name to
+record which initialiser was sent. It holds the diffuse map (an `OOTexture`) and two `OOColor`s.
+
+**Decision (recommended defaults).**
+
+1. **It is `cxx::OOCombinedEmissionMapGenerator` with a façade of its own** (amendment oo-qa7c):
+   `@interface OOCombinedEmissionMapGenerator : OOTextureGenerator`, no ivars, the two old
+   initialisers, each making the C++ object with its factory, releasing the receiver and answering
+   the C++ object's façade (`nil` where the factory answers null). The caller keeps its messages,
+   written `::OOCombinedEmissionMapGenerator` inside `namespace cxx` (amendments oo-rmd7 item 3,
+   oo-n99o item 3), so its test's stub is still what it makes. The façade's deletion bead turns the
+   messages into the factories; the caller's test then links the real class instead of its stub,
+   a test change that bead must have approved (ADR-0049).
+2. **The two public initialisers are two static factories; the shared private designated
+   initialiser is a `bool` member** (amendments oo-novu, oo-n99o item 1).
+3. **A colour it keeps is `oo::Ref<cxx::OOColor>`** and its arguments are `cxx::OOColor *` (the
+   façade passes `oo::ToCxx(colour)`); a message to a nil colour is a null check (`-isWhite` of nil
+   was NO). **A texture it keeps is `oo::ObjCRef<::OOTexture *>`** (amendment oo-smy item 4), read
+   through `oo::ToCxx(texture)`, with a null check where nil answered nil. A loader it makes with
+   the root's factory is held as the factory answers it (`oo::ObjCRef<::OOTextureLoader *>`) for
+   the scope that used it.
+
+**Consequences.** One façade (`OOCombinedEmissionMapGenerator+ObjCBridge`) and its deletion bead.
