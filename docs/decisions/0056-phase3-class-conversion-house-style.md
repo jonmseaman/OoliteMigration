@@ -3057,6 +3057,35 @@ class methods load scripts and answer the subclasses' Objective-C objects; conve
 (oo-u61e.4) and `OOPListScript`'s façade deletion (oo-9ht.57). Converting `OOJSScript` now makes it
 a plain C++ subclass of `cxx::OOScript` instead of an oo-o89 façade.
 
+## Amendment (bead oo-y3dd): class methods that wrote Objective-C objects through pointers, and a method that only looked like an override
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOStandaloneAtmosphereGenerator.h/.mm`,
+  its caller in `src/Core/Entities/OOPlanetEntity.mm`, `tests/unit/core/test_OOStandaloneAtmosphereGenerator.mm`.
+  Follows amendments oo-bj8 item 12, oo-2en item 2, oo-novu and oo-kvqq.
+
+**Context.** `OOStandaloneAtmosphereGenerator` is a leaf under `cxx::OOTextureGenerator` that no test
+stubs; its one caller (`OOPlanetEntity`, Objective-C) sends it a class method,
+`+generateAtmosphereTexture:withInfo:seed:`, which wrote an autoreleased `OOTexture *` through an
+`OOTexture **`. It also declared `-getResult:format:width:height:`, whose keywords differ from the
+root's `-getResult:format:originalWidth:originalHeight:`: it never overrode it, and nothing sends it.
+
+**Decision (recommended defaults).**
+
+1. **No façade** (amendment oo-kvqq): a global class, its initialiser a `bool` member behind a static
+   factory, and its class methods static members.
+2. **An `X **` out-parameter that received an autoreleased object becomes `oo::ObjCRef<X *> *`**,
+   and a class method that answered one answers `oo::ObjCRef<X *>` (amendment oo-2en item 2). The
+   caller declares the `ObjCRef` where its old local lived and reads `.get()` into that local, so
+   the object lives at least as long as the local is used.
+3. **A method whose selector only resembled an inherited one keeps a name that does not override
+   it** (`getResultFormatWidthHeight`), with a comment; converting it to the inherited name would
+   make it an override and change what runs.
+4. **`oo::DescriptionOf(self)` in a log is `oo::DescriptionOf(oo::ToObjC(this))`** (amendment oo-n99o
+   item 4): the facade the work manager already holds, so the text is the same.
+
+**Consequences.** No façade and no deletion bead. The test's helpers that made the generator and sent
+the class methods are the lines it ported.
+
 ## Amendment (bead oo-e6xa): a generator leaf whose caller's test stubs it by name, and colours it holds
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOCombinedEmissionMapGenerator.h/.mm`,

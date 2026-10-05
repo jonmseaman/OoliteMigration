@@ -1,5 +1,5 @@
 /*
-	OOStandaloneAtmosphereGenerator.m
+	OOStandaloneAtmosphereGenerator.mm
 	
 	Generator for atmosphere textures when the planet is using a
 	non-generated diffuse map.
@@ -63,15 +63,6 @@ enum
 };
 
 
-@interface OOStandaloneAtmosphereGenerator (Private)
-
-#if DEBUG_DUMP_RAW
-- (void) dumpNoiseBuffer:(float *)noise;
-#endif
-
-@end
-
-
 namespace {
 
 FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key);	// dictionary: the planet info (colours are Object nodes)
@@ -98,17 +89,22 @@ enum
 };
 
 
-@implementation OOStandaloneAtmosphereGenerator
+oo::Ref<OOStandaloneAtmosphereGenerator> OOStandaloneAtmosphereGenerator::generatorWithPlanetInfo(const oo::PList &planetInfo, RANROTSeed seed)
+{
+	oo::Ref<OOStandaloneAtmosphereGenerator> result = oo::makeRef<OOStandaloneAtmosphereGenerator>();
+	if (!result->initWithPlanetInfo(planetInfo, seed))  return {};
+	return result;
+}
 
-- (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
+
+bool OOStandaloneAtmosphereGenerator::initWithPlanetInfo(const oo::PList &planetInfo, RANROTSeed seed)
 {
 	OO_LOG("texture.planet.generate", "{}", "Initialising standalone atmosphere generator");
 
 	// AllowCubeMap not used yet but might be in future
-	self = [super cxx_initWithPath:oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str()) options:kOOTextureAllowCubeMap];
-	if (self != nil)
+	if (initWithPath(oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(this).c_str()), kOOTextureAllowCubeMap))
 	{
-		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(self));
+		OO_LOG("texture.planet.generate", "Extracting parameters for generator {}", oo::DescriptionOf(oo::ToObjC(this)));
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		OO_LOG("texture.planet.generate", "{}", "Extracting atmosphere parameters");
 		// we are an atmosphere:
@@ -134,58 +130,52 @@ enum
 		_info.perlin3d = planetInfo.get<bool>("perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset	= 8 - _info.planetAspectRatio;
+		return true;
 	}
-	
-	return self;
+
+	return false;
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
+oo::ObjCRef<::OOTexture *> OOStandaloneAtmosphereGenerator::planetTextureWithInfo(const oo::PList &planetInfo, RANROTSeed seed)
 {
-	OOTexture *result = nil;
-	OOStandaloneAtmosphereGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
-	if (generator != nil)
+	oo::ObjCRef<::OOTexture *> result;
+	const oo::Ref<OOStandaloneAtmosphereGenerator> generator = generatorWithPlanetInfo(planetInfo, seed);
+	if (generator)
 	{
-		result = [OOTexture textureWithGenerator:generator];
-		[generator release];
+		result = cxx::OOTexture::textureWithGenerator(oo::ToObjC(generator.get()));
 	}
-	
+
 	return result;
 }
 
 
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
+bool OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(oo::ObjCRef<::OOTexture *> *texture, const oo::PList &planetInfo, RANROTSeed seed)
 {
-	OOParameterAssert(texture != NULL);
-	
-	OOStandaloneAtmosphereGenerator *atmoGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
-	if (atmoGen == nil)  return NO;
-	
-	*texture = [OOTexture textureWithGenerator:atmoGen];
-	
-	return *texture != nil;
+	OOCParameterAssert(texture != NULL);
+
+	const oo::Ref<OOStandaloneAtmosphereGenerator> atmoGen = generatorWithPlanetInfo(planetInfo, seed);
+	if (!atmoGen)  return false;
+
+	*texture = cxx::OOTexture::textureWithGenerator(oo::ToObjC(atmoGen.get()));
+
+	return texture->get() != nil;
 }
 
 
-- (void) dealloc
-{
-	[super dealloc];
-}
-
-
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> OOStandaloneAtmosphereGenerator::descriptionComponents() const
 {
 	return oo::str::format("seed: %u,%u", _info.seed.high, _info.seed.low);
 }
 
 
-- (uint32_t) textureOptions
+uint32_t OOStandaloneAtmosphereGenerator::textureOptions()
 {
 	return PLANET_TEXTURE_OPTIONS;
 }
 
 
-- (std::optional<std::string>) cxx_cacheKey
+std::optional<std::string> OOStandaloneAtmosphereGenerator::cacheKey()
 {
 	return oo::str::format("OOStandaloneAtmosphereGenerator-@%u\n%u,%u/%u,%u/%f/%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
 			_planetScale,
@@ -200,27 +190,24 @@ enum
 
 
 
-- (BOOL)getResult:(OOPixMap *)outData
-		   format:(OOTextureDataFormat *)outFormat
-			width:(uint32_t *)outWidth
-		   height:(uint32_t *)outHeight
+bool OOStandaloneAtmosphereGenerator::getResultFormatWidthHeight(OOPixMap *outData, OOTextureDataFormat *outFormat, uint32_t *outWidth, uint32_t *outHeight)
 {
 	BOOL waiting = NO;
-	if (![self isReady])
+	if (!isReady())
 	{
 		waiting = true;
-		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(self));
+		OO_LOG("texture.planet.generate.wait", "{} generator {}", "Waiting for", oo::DescriptionOf(oo::ToObjC(this)));
 	}
-	
-	BOOL result = [super getResult:outData format:outFormat originalWidth:outWidth originalHeight:outHeight];
-	
+
+	BOOL result = cxx::OOTextureGenerator::getResult(outData, outFormat, outWidth, outHeight);
+
 	if (waiting)
 	{
-		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {}", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(oo::ToObjC(this)));
 	}
 	else
 	{
-		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(self));
+		OO_LOG("texture.planet.generate.dequeue", "{} generator {} without waiting.", result ? "Dequeued" : "Failed to dequeue", oo::DescriptionOf(oo::ToObjC(this)));
 	}
 	
 	return result;
@@ -228,28 +215,28 @@ enum
 
 /* TODO: fix duplication between here and OOPlanetTextureGenerator of
  * various noise, interpolation, etc. functions */
-- (void) loadTexture
+void OOStandaloneAtmosphereGenerator::loadTexture()
 {
-	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(self));
+	OO_LOG("texture.planet.generate.begin", "Started generator {}", oo::DescriptionOf(oo::ToObjC(this)));
 	
 	BOOL success = NO;
 	
 	uint8_t		*aBuffer = NULL, *apx = NULL;
 	float		*randomBuffer = NULL;
 	
-	_cxxLoader->_height = _info.height = 1 << (_planetScale + _info.planetScaleOffset);
-	_cxxLoader->_width = _info.width = _cxxLoader->_height * _info.planetAspectRatio;
+	_height = _info.height = 1 << (_planetScale + _info.planetScaleOffset);
+	_width = _info.width = _height * _info.planetAspectRatio;
 	
 #define FAIL_IF(cond)  do { if (EXPECT_NOT(cond))  goto END; } while (0)
 #define FAIL_IF_NULL(x)  FAIL_IF((x) == NULL)
 	
-	aBuffer = (uint8_t *)malloc(4 * static_cast<size_t>(_cxxLoader->_width) * _cxxLoader->_height);
+	aBuffer = (uint8_t *)malloc(4 * static_cast<size_t>(_width) * _height);
 	FAIL_IF_NULL(aBuffer);
 	apx = aBuffer;
 	
 	FAIL_IF(!FillFBMBuffer(&_info));
 #if DEBUG_DUMP_RAW
-	[self dumpNoiseBuffer:_info.fbmBuffer];
+	dumpNoiseBuffer(_info.fbmBuffer);
 #endif
 	{
 	
@@ -258,19 +245,19 @@ enum
 	int x, y;
 	FloatRGBA color;
 	float q, nearPole;
-	float rHeight = 1.0f / _cxxLoader->_height;
-	float fy, fHeight = _cxxLoader->_height;
+	float rHeight = 1.0f / _height;
+	float fy, fHeight = _height;
 	
 	float cloudFraction = _info.cloudFraction;
 	
-	for (y = (int)_cxxLoader->_height - 1, fy = (float)y; y >= 0; y--, fy--)
+	for (y = (int)_height - 1, fy = (float)y; y >= 0; y--, fy--)
 	{
 		nearPole = (2.0f * fy - fHeight) * rHeight;
 		nearPole *= nearPole;
 		
-		for (x = (int)_cxxLoader->_width - 1; x >= 0; x--)
+		for (x = (int)_width - 1; x >= 0; x--)
 		{
-			q = QFactor(_info.fbmBuffer, x, y, _cxxLoader->_width, paleClouds, cloudFraction, nearPole);
+			q = QFactor(_info.fbmBuffer, x, y, _width, paleClouds, cloudFraction, nearPole);
 			color = CloudMix(&_info, q, nearPole);
 			*apx++ = 255.0f * color.r;
 			*apx++ = 255.0f * color.g;
@@ -280,7 +267,7 @@ enum
 	}
 	
 	success = YES;
-	_cxxLoader->_format = (OOTextureDataFormat)kOOTextureDataRGBA;
+	_format = (OOTextureDataFormat)kOOTextureDataRGBA;
 	}
 	
 END:
@@ -288,14 +275,14 @@ END:
 	FREE(randomBuffer);
 	if (success)
 	{
-		_cxxLoader->_data = aBuffer;
+		_data = aBuffer;
 	}
 	else
 	{
 		FREE(aBuffer);
 	}
 	
-	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(self), success ? "" : "un");
+	OO_LOG("texture.planet.generate.complete", "Completed generator {} {}successfully", oo::DescriptionOf(oo::ToObjC(this)), success ? "" : "un");
 	
 #if DEBUG_DUMP
 	if (success)
@@ -306,9 +293,9 @@ END:
 		[[UNIVERSE gameView] cxx_dumpRGBAToRGBFileNamed:diffuseName
 								   andGrayFileNamed:lightsName
 											  bytes:aBuffer
-											  width:_cxxLoader->_width
-											 height:_cxxLoader->_height
-										   rowBytes:_cxxLoader->_width * 4];
+											  width:_width
+											 height:_height
+										   rowBytes:_width * 4];
 	}
 #endif
 }
@@ -316,31 +303,29 @@ END:
 
 #if DEBUG_DUMP_RAW
 
-- (void) dumpNoiseBuffer:(float *)noise
+void OOStandaloneAtmosphereGenerator::dumpNoiseBuffer(float *noise)
 {
 	const std::string noiseName = oo::str::format("atmosphere-%u-%u-noise-new", _info.seed.high, _info.seed.low);
 	
-	uint8_t *noisePx = malloc(_cxxLoader->_width * _cxxLoader->_height);
+	uint8_t *noisePx = malloc(_width * _height);
 	unsigned x, y;
-	for (y = 0; y < _cxxLoader->_height; y++)
+	for (y = 0; y < _height; y++)
 	{
-		for (x = 0; x < _cxxLoader->_width; x++)
+		for (x = 0; x < _width; x++)
 		{
-			noisePx[y * _cxxLoader->_width + x] = 255.0f * noise[y * _cxxLoader->_width + x];
+			noisePx[y * _width + x] = 255.0f * noise[y * _width + x];
 		}
 	}
 	
 	[[UNIVERSE gameView] cxx_dumpGrayToFileNamed:noiseName
 									   bytes:noisePx
-									   width:_cxxLoader->_width
-									  height:_cxxLoader->_height
-									rowBytes:_cxxLoader->_width];
+									   width:_width
+									  height:_height
+									rowBytes:_width];
 	FREE(noisePx);
 }
 
 #endif
-
-@end
 
 
 OOINLINE float Lerp(float v0, float v1, float fraction)
