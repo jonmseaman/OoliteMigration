@@ -2768,3 +2768,35 @@ are made with the root's designated initialiser `-cxx_initWithPath:options:`, no
 **Consequences.** One more façade and deletion bead (`OOTextureGenerator+ObjCBridge`), done before
 the loaders' root bridge's (oo-9ht.114), which depends on it. The root's bridge changed shape
 (template adapter, initialiser, base walk) without any caller or test changing.
+
+## Amendment (bead oo-pni4): a class-shell slice, with the class's other slices still Objective-C
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OXPVerifier/OOPListSchemaVerifier.h/.mm`
+  (slice 1 of `docs/phases/3-slices/OOPListSchemaVerifier.md`), `OOPListSchemaVerifier+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOPListSchemaVerifier.mm`.
+
+**Context.** A plan's first slice carries the class shell: every method of the class becomes a
+member of `cxx::X`, while the units of the other slices (here the four `Verify_*` functions) stay
+Objective-C until their own beads, and they message the class, including its private category.
+The private category took a type private to the `.mm` (`BackLinkChain`) by value.
+
+**Decision (recommended defaults).**
+
+1. **The class gets its façade in the shell slice** (item 5): the unconverted units of the other
+   slices are outside the bead, like any caller. The façade also keeps the private category those
+   units message, declared in `X+ObjCBridge.h` and forwarding like the rest (amendment oo-up4b
+   item 4); its members are public on `cxx::X` under an "Internal" comment (Amendment 1 item 2).
+2. **A file-private type that the forwarded category takes by value** moves, unchanged, from the
+   `.mm` to `X.h`, with a comment saying why. Nothing else of the preamble moves.
+3. **The converted core hands `oo::ToObjC(this)` to an unconverted unit** that took `self`
+   (`Verify_##T(oo::ToObjC(this), …)`), and to an Objective-C delegate (`[_delegate verifier:oo::ToObjC(this) …]`),
+   so both see the façade the caller registered with. `respondsToSelector:@selector(x)` becomes
+   `OOSelectorFromName("x")` (amendment oo-puw9 item 5); `@try`/`@catch` stay (oo-puw9 item 4).
+4. **An out-parameter the unconverted units pass through stays its type** (`BOOL *outStop`), so they
+   compile unchanged; by-value `BOOL` parameters and results become `bool`.
+5. **The gate is `--slice-done`.** The plain plan check then reports the converted members as
+   verbatim units that contain Objective-C (they fall to `verbatim: *`); that is the checker's
+   gap, recorded as oo-9ht.117 for a decision, not a defect of the slice.
+
+**Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
+Slice 2 converts its four functions with no bridge change, then calls the members directly.
