@@ -2769,6 +2769,103 @@ are made with the root's designated initialiser `-cxx_initWithPath:options:`, no
 the loaders' root bridge's (oo-9ht.114), which depends on it. The root's bridge changed shape
 (template adapter, initialiser, base walk) without any caller or test changing.
 
+## Amendment (bead oo-pni4): a class-shell slice, with the class's other slices still Objective-C
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OXPVerifier/OOPListSchemaVerifier.h/.mm`
+  (slice 1 of `docs/phases/3-slices/OOPListSchemaVerifier.md`), `OOPListSchemaVerifier+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOPListSchemaVerifier.mm`.
+
+**Context.** A plan's first slice carries the class shell: every method of the class becomes a
+member of `cxx::X`, while the units of the other slices (here the four `Verify_*` functions) stay
+Objective-C until their own beads, and they message the class, including its private category.
+The private category took a type private to the `.mm` (`BackLinkChain`) by value.
+
+**Decision (recommended defaults).**
+
+1. **The class gets its façade in the shell slice** (item 5): the unconverted units of the other
+   slices are outside the bead, like any caller. The façade also keeps the private category those
+   units message, declared in `X+ObjCBridge.h` and forwarding like the rest (amendment oo-up4b
+   item 4); its members are public on `cxx::X` under an "Internal" comment (Amendment 1 item 2).
+2. **A file-private type that the forwarded category takes by value** moves, unchanged, from the
+   `.mm` to `X.h`, with a comment saying why. Nothing else of the preamble moves.
+3. **The converted core hands `oo::ToObjC(this)` to an unconverted unit** that took `self`
+   (`Verify_##T(oo::ToObjC(this), …)`), and to an Objective-C delegate (`[_delegate verifier:oo::ToObjC(this) …]`),
+   so both see the façade the caller registered with. `respondsToSelector:@selector(x)` becomes
+   `OOSelectorFromName("x")` (amendment oo-puw9 item 5); `@try`/`@catch` stay (oo-puw9 item 4).
+4. **An out-parameter the unconverted units pass through stays its type** (`BOOL *outStop`), so they
+   compile unchanged; by-value `BOOL` parameters and results become `bool`.
+5. **The gate is `--slice-done`.** The plain plan check then reports the converted members as
+   verbatim units that contain Objective-C (they fall to `verbatim: *`); that is the checker's
+   gap, recorded as oo-9ht.117 for a decision, not a defect of the slice.
+
+**Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
+Slice 2 converts its four functions with no bridge change, then calls the members directly.
+
+## Amendment (bead oo-aeev): a category reached only by selector, in a file the build did not compile
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/EntityShaderBindings.mm`,
+  `EntityShaderBindings+ObjCBridge.mm`, the members under "The category ShaderBindings" in `Entity.h`,
+  `tests/unit/core/test_EntityShaderBindings.mm`.
+
+**Context.** `Entity (ShaderBindings)` is eight getters (the clock, the system's "flavour" numbers
+and attributes, all read from `PLAYER`) that the shader uniforms find by selector on any entity;
+`shader-uniform-bindings.plist` whitelists them for entities. No header declares the category, and
+no `meson.build` listed the file: the game this repository builds never compiled it, so a shader
+that bound `clock` or `systemEconomy` got no value. Its test, written against the Objective-C
+category, failed for that reason before anything was converted.
+
+**Decision (recommended defaults).**
+
+1. **A source file of the game's that no `meson.build` lists, and that the upstream sources define
+   for the runtime to find, is added to the build in its conversion bead**, in the commit that adds
+   its test, and the test runs on the Objective-C file first. That is the one behaviour change: the
+   whitelisted uniforms now have values. A file that is dead upstream too would be deleted instead,
+   with a bead for Jon; this one is not (its selectors are whitelisted).
+2. **The category's methods are members of the converted class** (amendment oo-9fwb item 1),
+   declared in `Entity.h` under a comment that names the category and defined in the category's
+   own file. A member named like a C library function (`clock()`) hides it only inside the class
+   and its subclasses, none of which calls the C function.
+3. **The category stays, as one-line forwarders in `X+ObjCBridge.mm` with no header** (amendment
+   oo-ppc item 3): the uniforms find the methods by selector and read their return types from the
+   runtime (`OOShaderUniformTypeFromMethod`), so the forwarders keep the exact return types, and the
+   test pins each method's type encoding. The bridge goes with the `Entity` façade's deletion, when
+   the uniforms bind C++ members.
+4. **The test declares the category itself** (a test-side `@interface`, as amendment oo-ykoy item 4
+   does for a binding's category) and sends its selectors to a real `Entity`; `PLAYER` is an entity
+   that answers the selectors the category sends.
+
+**Consequences.** One bridge (no façade class) that goes with the `Entity` façade (oo-9ht.39). A
+bug bead for Jon records the build-list omission (the default is in effect: the file is built).
+
+## Amendment (bead oo-kvqq): a generator leaf that one Objective-C caller makes, with an initialiser that fails
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPixMapTextureLoader.h/.mm`,
+  its two callers in `src/Core/Entities/PlanetEntity.mm`, `tests/unit/core/test_OOPixMapTextureLoader.mm`.
+  Follows amendments oo-bj8 item 12, oo-2c6g item 2, oo-novu, oo-rr2x item 3 and oo-z889.
+
+**Context.** `OOPixMapTextureLoader` is a leaf under the converted `cxx::OOTextureGenerator`. Its one
+caller (`PlanetEntity`, still Objective-C) made it with `alloc`/`-initWithPixMap:textureOptions:freeWhenDone:`
+and handed it to `+[OOTexture textureWithGenerator:]`; no test stubs it, and nothing else names it.
+Its initialiser answered nil for a pixmap that is not valid (`DESTROY(self)`).
+
+**Decision (recommended defaults).**
+
+1. **It converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   `cxx::OOTextureGenerator`, with `override` on the members it overrode. The initialiser is a
+   `bool` member and a static factory (`loaderWithPixMap`) answers null where it answered nil
+   (amendment oo-novu); the destructor frees the pixmap, as `DESTROY(self)`'s `-dealloc` did.
+2. **The caller calls the factory and hands on `oo::ToObjC(loader.get())`** (amendment oo-2c6g
+   item 2): the generator façade (amendment oo-rr2x item 3), which owns the loader, autoreleased,
+   as `[loader autorelease]` was. The typed overload for `cxx::OOTextureGenerator *` is the best
+   match for a derived pointer, so no cast is written.
+3. **A quirk of the old initialiser is kept** (it duplicated its own empty pixmap instead of the
+   one it was given when `freeWhenDone` was NO, so it answered nil); the test pins it.
+4. **The transitional comments that list the loaders still Objective-C** (in the roots' headers
+   and bridges) are left to the bridges' deletion beads, so the sibling beads do not conflict.
+
+**Consequences.** No façade and no deletion bead. The test's maker helper is the only line it
+ported; one more test pins the C++ API.
+
 ## Amendment (bead oo-bm1q): a class private to its file, and stages dispatched by selector
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OODefaultShaderSynthesizer.h/.mm`
