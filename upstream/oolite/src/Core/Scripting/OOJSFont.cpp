@@ -25,11 +25,14 @@ SOFTWARE.
 
 */
 
-#import "OOJSFont.h"
-#import "OOJavaScriptEngine.h"
-#import "HeadUpDisplay.h"
+#include "OOJSFont.h"
+#include "OOJSEngineCore.h"
+#include "OOStringWidth.h"
 
 #include "ooscript/JSEngine.hpp"
+
+#include <algorithm>
+#include <optional>
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -38,8 +41,9 @@ SOFTWARE.
 	ooscript::defineObject and ooscript::defineFunction. This file has no class hooks, no
 	property table and no argument-marshalling beyond the OOJS_* macros (OOJS_NATIVE_ENTER,
 	OOJS_ARGV, OOJS_RETURN_DOUBLE), which expand to the CallArgs accessors of the façade
-	native signature. `this` is not used here, so no renaming is required, but the file is still
-	compiled as Objective-C++ (ADR-0001) because it now includes JSEngine.hpp.
+	native signature. `this` is not used here, so no renaming is required. It is plain C++ (bead
+	oo-ptv5, ADR-0012): it includes the engine's C++ header OOJSEngineCore.h and OOStringWidth.h
+	(oo-9ht.72), MIN became std::min on the same unsigned operands, and NO false.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -79,8 +83,8 @@ static bool FontMeasureString(ooscript::Context context, ooscript::CallArgs &ooj
 	if (EXPECT_NOT(oojsArgs.count() < 1) || ooscript::isUndefined(OOJS_ARGV[0]))
 	{
 		ooscript::Value undefined = ooscript::undefinedValue();
-		cxx_OOJSReportBadArguments(context, std::nullopt, "defaultFont.measureString", MIN(oojsArgs.count(), 1U), &undefined, std::nullopt, "string");
-		return NO;
+		cxx_OOJSReportBadArguments(context, std::nullopt, "defaultFont.measureString", std::min(oojsArgs.count(), 1U), &undefined, std::nullopt, "string");
+		return false;
 	}
 	
 	OOJS_RETURN_DOUBLE(cxx_OOStringWidthInEm(cxx_OOStringFromJSValue(context, OOJS_ARGV[0]).value_or(std::string())));	// nil measured as ""
