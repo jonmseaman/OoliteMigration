@@ -2801,6 +2801,33 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
 
+## Amendment (bead oo-3bgz): a class-shell slice whose later slices are a category of the class
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOShipRegistry.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOShipRegistry.md`), `OOShipRegistry+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOShipRegistry.mm`. Follows amendments oo-pni4 and oo-r7m0.
+
+**Context.** The later slices of `OOShipRegistry.mm` are not free functions (as in oo-pni4) but the
+class's own `OODataLoader` category, about 1,350 lines that read and write the ivars directly. The
+singleton's `-init` sends that category's loaders to `self`.
+
+**Decision (recommended defaults).**
+
+1. **A later slice's methods stay an Objective-C category of the façade, in place in `X.mm`,**
+   unchanged except that each ivar they touch is `oo::ToCxx(self)->_ivar` (a scripted, word-bounded
+   rewrite). The C++ members they need are public under an "Internal" comment (oo-pni4 item 1).
+   Their slice bead turns them into members and the rewrite disappears with the category.
+2. **A converted member that sent one of those methods to `self`** sends it to `oo::ToObjC(this)`,
+   the façade the peer table already holds for it.
+3. **An `-init` that sends them** cannot be the constructor (no façade exists until the object is
+   owned). It is a private `void init()` that the factory runs right after `oo::makeRef<X>()`
+   (`sharedX()` for a singleton, which has set `sSingleton` first, so a re-entrant `sharedX()` answers
+   the object being loaded, as the old `+allocWithZone:` did). A log line the singleton boilerplate
+   wrote moves to the factory, in the same order.
+
+**Consequences.** No change to any caller or to the category's logic; the façade (deletion bead
+oo-9ht.122) waits for slices 2 and 3 as well as for the callers.
+
 ## Amendment (bead oo-z889): a leaf that only its root's factory makes, and C callbacks that held it
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPNGTextureLoader.h/.mm`,
@@ -3219,6 +3246,49 @@ is C++.
 5. **An argument expression with a side effect in a message to a possibly-nil receiver is
    evaluated first** (`const float fraction = randf();`), so the random stream is the same when
    the receiver is null-guarded.
+
+## Amendment (bead oo-9ht.139): a slice's free function that messages a class it does not wait for
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Plans:
+  `docs/phases/3-slices/OOJSShip.md`, `docs/phases/3-slices/HeadUpDisplay.md`. Follows amendments
+  oo-ppc items 4-5, oo-6ia4 items 2 and 6, oo-vnts item 2, oo-jy98 item 2 and oo-dqxj.
+
+**Context.** A slice story is done when `tools/check-slice-plan.py --slice-done` finds no
+Objective-C in its units. A converted method is an out-of-line C++ member, and a member may keep
+messages to classes that are still Objective-C (amendment oo-ppc item 4; the checker exempts it,
+oo-9ht.117). A *free function* gets no such exemption: any message send in it fails the check.
+That is every native of a binding file (`OOJSShip`, `OOJSSystem`, `OOJSPlayerShip`) and the
+file-scope drawing helpers of a class (`hudDrawReticleOnTarget()` in `HeadUpDisplay.mm`). Their
+sends go to three kinds of class: converted ones (`OOColor`, `OOShipGroup`, `Entity`); the class
+the file is about (`ShipEntity` for `OOJSShip`), which the slices can wait for; and classes that
+convert only after the file, because their own conversion waits for it (`Universe`, oo-pas,
+depends on every binding bead) or is far off (`PlayerEntity`, oo-a70). Waiting for the last kind
+is a dependency cycle or a stall, and a slice cannot be done while it sends to them.
+
+**Decision (recommended defaults).**
+
+1. **A converted class is reached as `cxx::`** through `oo::ToCxx`/`oo::ToObjC`, nil-guarded
+   (amendment oo-6ia4 item 2).
+2. **The class the file is about is waited for.** The slice beads depend on that class's
+   conversion (for `OOJSShip`: `ShipEntity`, oo-k8a, then the `ShipEntity` slices that own the
+   members a slice calls once its plan files them), and the sends become member calls.
+3. **Any other send to a class that is still Objective-C when the slice is worked** moves behind a
+   one-line C++ function in `X+ObjCBridge.mm`, declared in `X+ObjCBridge.h` and imported by
+   `X.mm` (the shape of amendments oo-vnts item 2, oo-jy98 item 2 and oo-6ia4 item 6). One function
+   per distinct send, named after the file and the selector (amendment oo-ykoy item 1):
+   `OOJSShipUniverseSun()`, `OOJSShipPlayerAlertCondition()`; a send to an object passes it first.
+   The body is the send, verbatim, with `BOOL` results returned as `bool`. A class file that already
+   has a façade bridge (`HeadUpDisplay+ObjCBridge.mm`) puts them there.
+4. **The bridge's deletion bead** ("Delete X+ObjCBridge", `sweep:objc-bridge`) depends on the
+   conversion beads of the classes its functions message; each of those beads turns the callers
+   into direct `cxx::` calls and deletes its functions.
+5. **This applies to slice stories filed before it** (`OOJSSystem` oo-luhd and slice 2,
+   `OOJSPlayerShip` oo-ft5n and slices 2-3): their natives' `[UNIVERSE …]` / `[PLAYER …]` sends
+   take item 3; their beads are not changed.
+
+**Consequences.** A binding gets a bridge of free functions (no façade) and a deletion bead that
+waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
+more call frame. `--slice-done` stays as strict as it is.
 
 ## Amendment (bead oo-u61e.4): a subclass of a converted root whose façade is the object's identity
 
