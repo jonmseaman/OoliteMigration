@@ -3143,3 +3143,41 @@ record which initialiser was sent. It holds the diffuse map (an `OOTexture`) and
    the scope that used it.
 
 **Consequences.** One façade (`OOCombinedEmissionMapGenerator+ObjCBridge`) and its deletion bead.
+
+## Amendment (bead oo-bm1q): a class private to its file, and stages dispatched by selector
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OODefaultShaderSynthesizer.h/.mm`
+  (slice 1 of `docs/phases/3-slices/OODefaultShaderSynthesizer.md`), `OODefaultShaderSynthesizer+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OODefaultShaderSynthesizer.mm`.
+
+**Context.** `OODefaultShaderSynthesizer` was declared and defined only in its `.mm`; its one caller
+is the file's own entry point `OOSynthesizeMaterialShader()`. Item 5's last rule would give it no
+façade, but its shader stages (slice 2) stay Objective-C until their bead, and a façade
+`@implementation OODefaultShaderSynthesizer` in the `.mm` would be read by `--slice-done 1` as the
+plan's `@OODefaultShaderSynthesizer` block still being Objective-C. The stages are dispatched by
+selector through a macro (`REQUIRE_STAGE`, `-performStage:` with `-performSelector:`), and
+`-dealloc` sent a stage-slice method.
+
+**Decision (recommended defaults).**
+
+1. **A class private to its file gets the house-style files in its shell slice** when later
+   slices stay Objective-C: `cxx::X` is declared in `X.h` (the class is no longer private; the
+   header's includers do not use it), and the façade in `X+ObjCBridge.h/.mm` as amendment oo-pni4
+   says. The later slices' methods are a category on the façade in `X.mm`, declared in the bridge
+   header. A method the stages sent without a declaration (it was defined above them) is declared
+   in an `OOPrivate` category there. The façade and its deletion bead go when the last slice lands.
+2. **A dispatch macro has two forms while its targets are Objective-C:** the old name for the
+   category methods (`self` is the façade, the flags are `oo::ToCxx(self)->…`) and a `_CXX_` form for
+   the members (`[oo::ToObjC(this) NAME]`, or `performStage(…)` in a debug build). Both name the
+   selector with `OOSelectorFromName(#NAME)`, so a recursion check keyed by `SEL` sees one pointer
+   per stage from either side (a literal `@selector` need not equal it, `OORuntime.h`). The stage
+   slice makes the stages members and keeps one form.
+3. **A `-dealloc` that only sent a later-slice method which empties members** has no destructor
+   body: the implicit destructor destroys them, and a destructor must not make a façade.
+4. **An `@autoreleasepool` in a converted function** becomes `objc_autoreleasePoolPush()` /
+   `objc_autoreleasePoolPop()` (`<objc/objc-arc.h>`, as `OOMesh.mm` does), while the Objective-C
+   code it calls still autoreleases (here the façade the stages are run on).
+
+**Consequences.** One façade and deletion bead for a class nothing outside its file names; slice 2
+deletes the `REQUIRE_STAGE` Objective-C form, the Stages category and, with the façade, its
+bridge files.
