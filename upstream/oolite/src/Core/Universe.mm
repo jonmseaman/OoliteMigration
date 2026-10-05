@@ -251,9 +251,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) runLocalizationTools;
 #endif
 
-#if NEW_PLANETS
 - (void) prunePreloadingPlanetMaterials;
-#endif
 
 // Set shader effects level without logging or triggering a reset -- should only be used directly during startup.
 - (void) setShaderEffectsLevelDirectly:(OOShaderSetting)value;
@@ -586,7 +584,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	_bloom = [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
 	_currentPostFX = _colorblindMode = OO_POSTFX_NONE;
 
-	/* TODO: in OOEnvironmentCubeMap.m call these bind functions not with 0 but with "previousXxxID"s:
+	/* TODO (upstream; OOEnvironmentCubeMap.m was never built and was deleted as dead code, bead oo-v7ob,
+	   decision oo-9wpwn - kept for a revival): in OOEnvironmentCubeMap.m call these bind functions not with 0 but with "previousXxxID"s:
 	  - OOGL(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
 	  - OOGL(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0));
 	  - OOGL(glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0));
@@ -7648,9 +7647,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	AutoreleaseAll(entitiesDeadThisUpdate);
 	entitiesDeadThisUpdate.reserve(n_entities);
 	
-#if NEW_PLANETS
 	[self prunePreloadingPlanetMaterials];
-#endif
 
 	OO_LOG("universe.profile.update", "{}", "Update complete");
 }
@@ -11538,7 +11535,6 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 #endif
 
 
-#if NEW_PLANETS
 // See notes at preloadPlanetTexturesForSystem:.
 - (void) prunePreloadingPlanetMaterials
 {
@@ -11553,7 +11549,6 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 		}
 	}
 }
-#endif
 
 
 
