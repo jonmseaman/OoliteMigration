@@ -235,8 +235,14 @@
 [oo-9ht.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSDLJoystickManager
 [oo-rr2x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureGenerator test_OOTextureLoader test_OOTexture && bash tools/tier-c.sh --only goldens
 [oo-f1yi3] export PATH="/ucrt64/bin:$PATH"; bash tools/check-jsengine-facade-quickjs.sh && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSMissionVariables && bash tools/tier-c.sh --only goldens
+[oo-ptv5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSFont.cpp && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
+[oo-fgxt] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/tier-c.sh --only goldens
 [oo-3c81] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConstToString && bash tools/tier-c.sh --only goldens
 [oo-movn] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_PlayerEntityStickProfile test_OOJoystickManager test_OOJoystickProfile && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Entities/PlayerEntityStickProfile.mm && bash tools/tier-c.sh --only goldens
+[oo-3bgz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
+[oo-r9gn] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
+[oo-ugw3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
+[oo-pgh9] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListSchemaVerifier && bash tools/tier-c.sh --only goldens
 [oo-ss3p] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSDLJoystickManager && bash tools/tier-c.sh --only goldens
 [oo-z889] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOPNGTextureLoader.mm && bash tools/check-core-tests.sh test_OOPNGTextureLoader test_OOTextureLoader test_OOTexture && bash tools/tier-c.sh --only goldens
 [oo-1v2w] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage && bash tools/tier-c.sh --only goldens
@@ -252,3 +258,15 @@
 [oo-y3dd] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOStandaloneAtmosphereGenerator.mm && bash tools/check-core-tests.sh test_OOStandaloneAtmosphereGenerator test_OOPlanetEntity test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
 [oo-e6xa] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOCombinedEmissionMapGenerator.mm && bash tools/check-core-tests.sh test_OOCombinedEmissionMapGenerator test_OOMultiTextureMaterial test_OOMaterialConvenienceCreators test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
 [oo-bm1q] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
+# The core suite at a starved priority (oo-9ht.136): the tip watcher runs it under `nice -n 10`
+# (IDLE), where OpenAL/GL tests hung to meson's timeout; check-core-tests.sh renices itself to 0.
+# Three full parallel runs, each niced as the watcher does, must pass (a TIMEOUT fails meson, so the run).
+[oo-9ht.136] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && for i in 1 2 3; do nice -n 10 bash tools/check-core-tests.sh || exit 1; done
+[oo-u61e.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens
+[oo-4jjl] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSkyDrawable test_SkyEntity test_OOGraphicsResetManager && bash tools/tier-c.sh --only goldens
+# OOJSShip pre-split (oo-9ht.139): the setter with each OO_VARIABLE_TORUS_SPEED arm closing its own block compiles, tidies and passes the deny-list.
+[oo-9ht.139] export PATH="/ucrt64/bin:$PATH"; OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSShip.mm
+[oo-4s5i] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
+[oo-u61e.5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugMonitor test_OOCharacter test_OOJSFunction test_OOJSGuiScreenKeyDefinition test_OOJSInterfaceDefinition test_OOJSPopulatorDefinition test_OOJSTimer test_OOJSEngineTimeManagement test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
+# A paused console-driven game stays at normal priority (oo-37zzy): the regression test, then the goldens three times.
+[oo-37zzy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && (cd upstream/oolite/tests/component && python3 -m pytest -q -p no:cacheprovider test_paused_console_priority.py) && for i in 1 2 3; do bash tools/tier-c.sh --only goldens || exit 1; done
