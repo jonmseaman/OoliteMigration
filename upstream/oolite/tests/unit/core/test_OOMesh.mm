@@ -80,6 +80,28 @@ const char *const kTetrahedron =
 	"END\n";
 
 
+// The same tetrahedron with explicit vertex normals.
+const char *const kTetrahedronWithNormals =
+	"NVERTS 4\n"
+	"NFACES 4\n"
+	"VERTEX\n"
+	"0 0 0\n"
+	"10 0 0\n"
+	"0 10 0\n"
+	"0 0 10\n"
+	"FACES\n"
+	"0 0 0  0 0 -1  3 0 2 1\n"
+	"0 0 0  0 -1 0  3 0 1 3\n"
+	"0 0 0  -1 0 0  3 0 3 2\n"
+	"0 0 0  1 1 1  3 1 2 3\n"
+	"NORMALS\n"
+	"-1 -1 -1\n"
+	"1 0 0\n"
+	"0 1 0\n"
+	"0 0 1\n"
+	"END\n";
+
+
 // The scratch game folder, made once, before the resource and cache managers exist.
 void SetUp()
 {
@@ -95,6 +117,7 @@ void SetUp()
 	WriteText(sRoot / "game" / "Resources" / "Models" / "tetra.dat", kTetrahedron);
 	WriteText(sRoot / "game" / "Resources" / "Models" / "tetra2.dat", kTetrahedron);
 	WriteText(sRoot / "game" / "Resources" / "Models" / "tetra3.dat", kTetrahedron);
+	WriteText(sRoot / "game" / "Resources" / "Models" / "normals.dat", kTetrahedronWithNormals);
 	OO_CHECK(OOTestGLContext());
 }
 
@@ -339,6 +362,55 @@ OO_TEST(graphicsResetAfterRelease)
 	// Both are gone and unregistered themselves, so the reset does not reach them.
 	[[OOGraphicsResetManager sharedManager] resetGraphicsState];
 	OO_CHECK(true);
+}
+
+
+// Pins for the later slices (loading, geometry, rendering), taken before they convert.
+OO_TEST(laterSlices)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// Loading (slice 2): a smooth mesh caches its normals and tangents with normal mode 1.
+		OOMesh *smooth = Mesh("tetra2.dat", 1.0f, YES, YES);
+		OO_CHECK(smooth != nil);
+		const oo::PList smoothData = CachedPList("tetra2.dat:1:1.000", "OOMesh");
+		OO_CHECK(smoothData.isDict());
+		OO_CHECK_EQ(smoothData.get<unsigned int>("normal mode"), 1u);
+		OO_CHECK(smoothData.find("normal data") != nullptr);
+		OO_CHECK(smoothData.find("tangent data") != nullptr);
+		const oo::PList *keys = smoothData.find("material keys");
+		OO_CHECK(keys != nullptr && keys->isArray() && keys->getIf<oo::PList::Array>()->size() == 1);
+
+		// Explicit normals: the normal mode is explicit, cached under the per-face key.
+		OOMesh *normals = Mesh("normals.dat");
+		OO_CHECK(normals != nil);
+		if (normals == nil)  return;
+		OO_CHECK(oo::DescriptionOf(normals).find("normals: explicit}") != std::string::npos);
+		const oo::PList normalsData = CachedPList("normals.dat:0:1.000", "OOMesh");
+		OO_CHECK_EQ(normalsData.get<unsigned int>("normal mode"), 2u);
+		OO_CHECK(normalsData.find("normal data") != nullptr);
+		// A per-face mesh caches no normals.
+		OO_CHECK(CachedPList("tetra.dat:0:1.000", "OOMesh").find("normal data") == nullptr);
+
+		// Geometry (slice 3): the bounding box relative to a position and basis.
+		const Vector i = make_vector(1, 0, 0), j = make_vector(0, 1, 0), k = make_vector(0, 0, 1);
+		const BoundingBox relative = [normals findBoundingBoxRelativeToPosition:make_vector(0, 0, 0) basis:i :j :k selfPosition:make_vector(1, 2, 3) selfBasis:i :j :k];
+		OO_CHECK(SameVector(relative.min, make_vector(1, 2, 3)));
+		OO_CHECK(SameVector(relative.max, make_vector(11, 12, 13)));
+		// Seen along -x from (5, 0, 0): x is flipped and offset.
+		const BoundingBox flipped = [normals findBoundingBoxRelativeToPosition:make_vector(5, 0, 0) basis:make_vector(-1, 0, 0) :j :k selfPosition:make_vector(0, 0, 0) selfBasis:i :j :k];
+		OO_CHECK(SameVector(flipped.min, make_vector(-5, 0, 0)));
+		OO_CHECK(SameVector(flipped.max, make_vector(5, 10, 10)));
+		OO_CHECK([normals octree] != nil);
+
+		// Rendering (slice 4): rebinding the materials keeps the placeholder.
+		[normals rebindMaterials];
+		OO_CHECK([normals hasOpaqueParts]);
+#ifndef NDEBUG
+		OO_CHECK([normals cxx_allTextures].empty());
+#endif
+	}
 }
 
 
