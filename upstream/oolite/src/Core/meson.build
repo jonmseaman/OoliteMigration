@@ -69,6 +69,7 @@ oolite_sources += files(
     'OOLogging.mm',
     'OOMatrix.mm',
     'OOMesh.mm',
+    'OOMesh+ObjCBridge.mm',
     'OOMeshToOctreeConverter.mm',
     'OOMeshToOctreeConverter+ObjCBridge.mm',
     'OOMouseInteractionMode.cpp',

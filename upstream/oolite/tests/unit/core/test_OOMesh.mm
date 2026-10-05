@@ -16,7 +16,12 @@
 	first: loading (counts, name, radius, draw distance, bounding box, parts, the material and
 	shader dictionaries, the description), scaling, a missing model, the mesh and octree caches,
 	the placeholder material, -copy and -mutableCopy, -meshRescaledBy:, the subentity bounding box,
-	the debug state and size, and a graphics reset after a mesh is gone (it unregistered itself).
+	the debug state and size, and a graphics reset after a mesh is gone (it unregistered itself)
+	(commit 67fcb82ac). Slice 1 made the class shell C++ (cxx::OOMesh) with the Objective-C OOMesh
+	as its facade, so they now run through the facade, which is its forwarding test; only the
+	OOCacheManager (Octree) category became free functions, which OctreeForModel and
+	SetOctreeForModel below now call. The facade's contract (identity, nil, the same answers from
+	the C++ members and through the root's C++ pointer, the C++ factory) is checked last.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -106,16 +111,16 @@ oo::PList CachedPList(const std::string &key, const std::string &cache)
 }
 
 
-// The OOCacheManager (Octree) category.
+// The OOCacheManager (Octree) category: free functions on the C++ octree since bead oo-dnbf.
 Octree *OctreeForModel(const std::string &key)
 {
-	return [OOCacheManager octreeForModel:key];
+	return oo::ToObjC(OOCacheManagerOctreeForModel(key));
 }
 
 
 void SetOctreeForModel(Octree *octree, const std::string &key)
 {
-	[OOCacheManager setOctree:octree forModel:key];
+	OOCacheManagerSetOctree(oo::ToCxx(octree), key);
 }
 
 
@@ -334,6 +339,65 @@ OO_TEST(graphicsResetAfterRelease)
 	// Both are gone and unregistered themselves, so the reset does not reach them.
 	[[OOGraphicsResetManager sharedManager] resetGraphicsState];
 	OO_CHECK(true);
+}
+
+
+OO_TEST(facadeContract)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		cxx::OOMesh *cxxMesh = oo::ToCxx(mesh);
+		OO_CHECK(cxxMesh != nullptr);
+		if (cxxMesh == nullptr)  return;
+
+		// Identity and nil.
+		OO_CHECK(oo::ToObjC(cxxMesh) == mesh);
+		OO_CHECK(oo::ToCxx(static_cast<OOMesh *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOMesh *>(nullptr)) == nil);
+
+		// The C++ members answer what the facade does.
+		OO_CHECK_EQ(cxxMesh->getVertexCount(), [mesh vertexCount]);
+		OO_CHECK_EQ(cxxMesh->getFaceCount(), [mesh faceCount]);
+		OO_CHECK(cxxMesh->modelName() == [mesh modelName]);
+		OO_CHECK(cxxMesh->getMaterials() == [mesh materials]);
+		OO_CHECK(cxxMesh->shaders() == [mesh shaders]);
+		OO_CHECK(cxxMesh->hasOpaqueParts());
+		OO_CHECK(cxxMesh->descriptionComponents() == std::optional<std::string>("\"tetra.dat\", 4 vertices, 4 faces, radius: 10 m normals: per-face"));
+		OO_CHECK(cxxMesh->copyWithZone(nullptr).get() == cxxMesh);	// a copy is the mesh itself
+
+		// Through the root's C++ pointer, the overrides answer (the bounding box is slice 3's,
+		// reached through the facade), and the root's crossing gives this facade.
+		cxx::OODrawable *drawable = cxxMesh;
+		OO_CHECK(Near(drawable->collisionRadius(), 10.0));
+		OO_CHECK(Near(drawable->maxDrawDistance(), [mesh maxDrawDistance]));
+		OO_CHECK(SameVector(drawable->boundingBox().max, make_vector(10, 10, 10)));
+		OO_CHECK(!drawable->hasTranslucentParts());
+		OO_CHECK(oo::ToObjC(drawable) == mesh);
+
+		// The C++ factory: a mesh whose facade is an OOMesh; null for a missing model.
+		const oo::Ref<cxx::OOMesh> made = cxx::OOMesh::meshWithName("tetra.dat", std::nullopt, oo::PList(), oo::PList(), false, oo::PList(), nil, 2.0f, false);
+		OO_CHECK(made.get() != nullptr);
+		if (made.get() == nullptr)  return;
+		OO_CHECK(Near(made->collisionRadius(), 20.0));
+		OOMesh *madeFacade = oo::ToObjC(made);
+		OO_CHECK([madeFacade isKindOfClass:[OOMesh class]]);
+		OO_CHECK(oo::ToCxx(madeFacade) == made.get());
+		OO_CHECK(oo::DescriptionOf(madeFacade).starts_with("<OOMesh "));
+		OO_CHECK(cxx::OOMesh::meshWithName("no such model.dat", std::nullopt, oo::PList(), oo::PList(), false, oo::PList(), nil).get() == nullptr);
+
+		// A C++ mesh made bare is the old -init's: no model yet; its facade is still an OOMesh.
+		const oo::Ref<cxx::OOMesh> bare = oo::makeRef<cxx::OOMesh>();
+		OO_CHECK_EQ(bare->modelName().value_or("<none>"), "No Model");
+		OO_CHECK_EQ(bare->getVertexCount(), 0u);
+		OOMesh *bareFacade = oo::ToObjC(bare);
+		OO_CHECK([bareFacade isKindOfClass:[OOMesh class]]);
+		OO_CHECK_EQ([bareFacade vertexCount], 0u);
+
+		// The placeholder material's facade is the C++ material's.
+		OO_CHECK(oo::ToCxx([OOMesh placeholderMaterial]) == cxx::OOMesh::placeholderMaterial().get());
+	}
 }
 
 
