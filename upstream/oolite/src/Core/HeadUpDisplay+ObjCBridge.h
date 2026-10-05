@@ -54,7 +54,37 @@ MA 02110-1301, USA.
 #import "oofnd/objc/OOObject.h"
 
 
-@class OOColor, GuiDisplayGen, MyOpenGLView;
+#import "WormholeEntity.h"	// WORMHOLE_SCANINFO (a bridge function below)
+
+@class OOColor, GuiDisplayGen, MyOpenGLView, OOWeakReference, OOVisualEffectEntity;
+
+
+// Moved verbatim from HeadUpDisplay.h (bead oo-2p1ug, amendment oo-jpd8 item 1): adopted by the
+// facades below and by OOPolygonSprite's category, held by the entities' beacon drawables.
+/*
+	Protocol for things that can be used as HUD compass items. Really ought
+	to grow into a general protocol for HUD elements.
+*/
+@protocol OOHUDBeaconIcon <OOObject>
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z;
+
+@end
+
+
+/*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
+	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
+	drawables used; the drawing is the category's.
+*/
+@interface OOHUDBeaconCodeIcon: OOObject <OOHUDBeaconIcon>
+{
+@private
+	oo::Ref<cxx::OOHUDBeaconCodeIcon>	_cxxIcon;
+}
+
+- (id) initWithText:(const std::string &)text;
+
+@end
 
 
 @interface HeadUpDisplay: OOObject
@@ -145,6 +175,10 @@ MA 02110-1301, USA.
 - (void) drawYellowSurround:(const oo::PList &)info;
 - (void) drawScanner:(const oo::PList &)info;
 - (void) drawScannerZoomIndicator:(const oo::PList &)info;
+- (void) drawCompass:(const oo::PList &)info;
+- (void) drawAegis:(const oo::PList &)info;
+- (void) drawTargetReticle:(const oo::PList &)info;
+- (void) drawWaypoints:(const oo::PList &)info;
 
 @end
 
@@ -155,14 +189,6 @@ MA 02110-1301, USA.
 */
 @interface HeadUpDisplay (Private)
 
-- (void) drawCompass:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCompassPlanetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassStationBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassSunBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassTargetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassBeaconBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-
-- (void) drawAegis:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawSpeedBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawRollBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawPitchBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
@@ -176,9 +202,6 @@ MA 02110-1301, USA.
 - (void) drawWeaponTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawAltitudeBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawMissileDisplay:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawTargetReticle:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawSecondaryTargetReticle:(const oo::PList &)info;
-- (void) drawWaypoints:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawStatusLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawDirectionCue:(const oo::PList &)info;
 - (void) drawClock:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
@@ -208,6 +231,11 @@ inline HeadUpDisplay *ToObjC(const Ref<cxx::HeadUpDisplay> &hud)  { return ToObj
 // The C++ HUD behind a facade, borrowed (the facade retains it); null for nil.
 cxx::HeadUpDisplay *ToCxx(HeadUpDisplay *hud);
 
+// The same for the beacon code icon.
+OOHUDBeaconCodeIcon *ToObjC(cxx::OOHUDBeaconCodeIcon *icon);
+inline OOHUDBeaconCodeIcon *ToObjC(const Ref<cxx::OOHUDBeaconCodeIcon> &icon)  { return ToObjC(icon.get()); }
+cxx::OOHUDBeaconCodeIcon *ToCxx(OOHUDBeaconCodeIcon *icon);
+
 }	// namespace oo
 
 
@@ -223,5 +251,34 @@ void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::stri
 MyOpenGLView *HeadUpDisplayUniverseGameView();
 GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction);
 NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView);
+// The player, entities and universe as the reticles and waypoints read them (hudDrawReticleOnTarget(),
+// hudDrawWaypoint(), hudRotateViewpointForVirtualDepth()).
+OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player);
+HPVector HeadUpDisplayPlayerViewpointPosition(PlayerEntity *player);
+GLfloat HeadUpDisplayPlayerWeaponRange(PlayerEntity *player);
+std::optional<std::string> HeadUpDisplayPlayerDialTargetName(PlayerEntity *player);
+double HeadUpDisplayPlayerClockTimeAdjusted(PlayerEntity *player);
+Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player);
+Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player);
+Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player);
+OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player);
+bool HeadUpDisplayEntityIsShip(Entity *entity);
+bool HeadUpDisplayEntityIsWormhole(Entity *entity);
+bool HeadUpDisplayEntityIsVisualEffect(Entity *entity);
+HPVector HeadUpDisplayEntityPosition(Entity *entity);
+GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity);
+Quaternion HeadUpDisplayEntityOrientation(Entity *entity);
+std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship);
+bool HeadUpDisplayShipIsCloaked(ShipEntity *ship);
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship);
+GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash);
+GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash);
+WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole);
+double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole);
+double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole);
+OOTimeAbsolute HeadUpDisplayUniverseGetTime();
+OOViewID HeadUpDisplayUniverseViewDirection();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();
 
 #endif	// HEADUPDISPLAY_OBJCBRIDGE_H

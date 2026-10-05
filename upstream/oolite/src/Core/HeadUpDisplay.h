@@ -48,7 +48,6 @@ struct OOHUDWidget;	// HeadUpDisplay.mm
 @class OOColor;
 class OOCrosshairs;
 
-@protocol OOHUDBeaconIcon;
 
 
 #define SCANNER_CENTRE_X	0
@@ -338,6 +337,10 @@ public:
 	void drawYellowSurround(const oo::PList &info);
 	void drawScanner(const oo::PList &info);
 	void drawScannerZoomIndicator(const oo::PList &info);
+	void drawCompass(const oo::PList &info);
+	void drawAegis(const oo::PList &info);
+	void drawTargetReticle(const oo::PList &info);
+	void drawWaypoints(const oo::PList &info);
 
 	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
@@ -406,6 +409,14 @@ private:
 
 	void drawSurroundInternal(const oo::PList &info, const GLfloat color[4]);
 
+	void drawCompassPlanetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassStationBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassSunBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassTargetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassBeaconBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+
+	void drawSecondaryTargetReticle(const oo::PList &info);
+
 	oo::PList crosshairDefinitionForWeaponType(OOWeaponType weapon);	// a null PList for none
 
 	void resetGui(::GuiDisplayGen *gui, const oo::PList &gui_info);
@@ -415,31 +426,32 @@ private:
 }	// namespace cxx
 
 
-/*
-	Protocol for things that can be used as HUD compass items. Really ought
-	to grow into a general protocol for HUD elements.
-*/
-@protocol OOHUDBeaconIcon <OOObject>
-
-- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z;
-
-@end
-
-
 /*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
 	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
-	drawables used; the drawing is the category's.
+	drawables used; the drawing is the category's. The entities hold it by the OOHUDBeaconIcon
+	protocol (HeadUpDisplay+ObjCBridge.h) through its facade (bead oo-2p1ug; ADR-0056 amendments
+	oo-jpd8, oo-4nhg).
 */
-@interface OOHUDBeaconCodeIcon: OOObject <OOHUDBeaconIcon>
+namespace cxx {
+
+class OOPolygonSprite;
+
+class OOHUDBeaconCodeIcon : public oo::RefCounted
 {
-@private
+public:
+	explicit OOHUDBeaconCodeIcon(const std::string &text);	// -initWithText:
+
+	void drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat alpha, GLfloat z);	// -oo_drawHUDBeaconIconAt:size:alpha:z:
+
+private:
 	std::string				_text;
-}
+};
 
-- (id) initWithText:(const std::string &)text;
+}	// namespace cxx
 
-@end
 
+// -[OOPolygonSprite oo_drawHUDBeaconIconAt:size:alpha:z:] (the sprite's OOHUDBeaconIcon category).
+void OOPolygonSpriteDrawHUDBeaconIcon(cxx::OOPolygonSprite *sprite, NSPoint where, NSSize size, GLfloat alpha, GLfloat z);
 
 void cxx_OODrawString(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 void cxx_OODrawStringAligned(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign);
