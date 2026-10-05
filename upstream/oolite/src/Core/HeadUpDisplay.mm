@@ -1367,27 +1367,9 @@ void cxx::HeadUpDisplay::drawMultiFunctionDisplay(const oo::PList &info, const s
 }
 
 
-@implementation HeadUpDisplay (Private)
-
-
-namespace {
-
-void prefetchData(const oo::PList &info, struct CachedInfo *data)
-{
-	data->x = info.get<float>(X_KEY, NOT_DEFINED);
-	data->x0 = info.get<float>(X_ORIGIN_KEY, 0.0);
-	data->y = info.get<float>(Y_KEY, NOT_DEFINED);
-	data->y0 = info.get<float>(Y_ORIGIN_KEY, 0.0);
-	data->width = info.get<float>(WIDTH_KEY, NOT_DEFINED);
-	data->height = info.get<float>(HEIGHT_KEY, NOT_DEFINED);
-	data->alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f);	
-}
-
-}	// namespace
-
 //---------------------------------------------------------------------//
 
-- (void) drawScanner:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawScanner(const oo::PList &info)
 {
 	int				i, x, y;
 	NSSize			siz;
@@ -1419,7 +1401,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 
 		GetRGBAArrayFromInfo(info, scanner_color);
 		
-		scanner_color[3] *= oo::ToCxx(self)->overallAlpha;
+		scanner_color[3] *= overallAlpha;
 	}
 	
 	GLfloat			alpha = scanner_color[3];
@@ -1433,11 +1415,11 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	
 	int				scannerFootprint = SCANNER_MAX_RANGE * 2.5 / siz.width;
 	
-	GLfloat			zoom = oo::ToCxx(self)->scanner_zoom;
-	if (oo::ToCxx(self)->scanner_ultra_zoom)
+	GLfloat			zoom = scanner_zoom;
+	if (scanner_ultra_zoom)
 		zoom = pow(2, zoom - 1.0);
 	GLfloat			max_zoomed_range2 = SCANNER_SCALE * SCANNER_SCALE * 10000.0;
-	if (!oo::ToCxx(self)->nonlinear_scanner)
+	if (!nonlinear_scanner)
 	{
 		max_zoomed_range2 /= zoom * zoom;
 	}
@@ -1451,9 +1433,9 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	
 	// use a non-mutable copy so this can't be changed under us.
 	int				ent_count		= UNIVERSE->n_entities;
-	Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<Entity *>	my_entities(ent_count);
-	Entity			*scannedEntity = nil;
+	::Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
+	std::vector<::Entity *>	my_entities(ent_count);
+	::Entity			*scannedEntity = nil;
 	
 	for (i = 0; i < ent_count; i++)
 	{
@@ -1463,10 +1445,10 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	if (!emptyDial)
 	{
 		OOGL(glColor4fv(scanner_color));
-		drawScannerGrid(x, y, oo::ToCxx(self)->z1, siz, [UNIVERSE viewDirection], oo::ToCxx(self)->lineWidth, zoom, oo::ToCxx(self)->nonlinear_scanner, oo::ToCxx(self)->minimalistic_scanner);
+		drawScannerGrid(x, y, z1, siz, [UNIVERSE viewDirection], lineWidth, zoom, nonlinear_scanner, minimalistic_scanner);
 	}
 	
-	if ([self checkPlayerInFlight])
+	if (checkPlayerInFlight())
 	{
 		GLfloat upscale = zoom * 1.25 / scannerFootprint;
 		GLfloat max_blip = 0.0;
@@ -1492,7 +1474,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 			drawClass = [scannedEntity scanClass];
 			
 			// cloaked ships - and your own one - don't show up on the scanner.
-			if (EXPECT_NOT(drawClass == CLASS_PLAYER || ([scannedEntity isShip] && [(ShipEntity *)scannedEntity isCloaked])))
+			if (EXPECT_NOT(drawClass == CLASS_PLAYER || ([scannedEntity isShip] && [(::ShipEntity *)scannedEntity isCloaked])))
 			{
 				drawClass = CLASS_NO_DRAW;
 			}
@@ -1521,11 +1503,11 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				// has it sent a recent message
 				//
 				if ([scannedEntity isShip]) 
-					ms_blip = 2.0 * [(ShipEntity *)scannedEntity messageTime];
+					ms_blip = 2.0 * [(::ShipEntity *)scannedEntity messageTime];
 				if (ms_blip > max_blip)
 				{
 					max_blip = ms_blip;
-					oo::ToCxx(self)->last_transmitter = [scannedEntity universalID];
+					last_transmitter = [scannedEntity universalID];
 				}
 				ms_blip -= floor(ms_blip);
 				
@@ -1545,9 +1527,9 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				relativePosition = OOVectorMultiplyMatrix(relativePosition, rotMatrix);
 				Vector rrp = relativePosition;
 				// scale the view
-				if (oo::ToCxx(self)->nonlinear_scanner)
+				if (nonlinear_scanner)
 				{
-					relativePosition = [HeadUpDisplay nonlinearScannerScale: relativePosition Zoom: zoom Scale: 0.5*siz.width];
+					relativePosition = nonlinearScannerScale(relativePosition, zoom, 0.5*siz.width);
 				}
 				else
 				{
@@ -1561,7 +1543,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				isHostile = NO;
 				if ([scannedEntity isShip])
 				{
-					ShipEntity *ship = (ShipEntity *)scannedEntity;
+					::ShipEntity *ship = (::ShipEntity *)scannedEntity;
 					isHostile = (([ship hasHostileTarget])&&([ship primaryTarget] == PLAYER));
 					GLfloat *base_col = [ship scannerDisplayColorForShip:PLAYER :isHostile :flash
 																		:[ship scannerDisplayColor1] :[ship scannerDisplayColor2]
@@ -1571,7 +1553,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				}
 				else if ([scannedEntity isVisualEffect])
 				{
-					OOVisualEffectEntity *vis = (OOVisualEffectEntity *)scannedEntity;
+					::OOVisualEffectEntity *vis = (::OOVisualEffectEntity *)scannedEntity;
 					GLfloat* base_col = [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]];
 					col[0] = base_col[0];	col[1] = base_col[1];	col[2] = base_col[2];	col[3] = alpha * base_col[3];
 				}
@@ -1586,9 +1568,9 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 
 				if ([scannedEntity isShip])
 				{
-					ShipEntity* ship = (ShipEntity*)scannedEntity;
-					if ((!oo::ToCxx(self)->nonlinear_scanner && ship->_cxxEntity->collision_radius * upscale > 4.5) ||
-						(oo::ToCxx(self)->nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
+					::ShipEntity* ship = (::ShipEntity*)scannedEntity;
+					if ((!nonlinear_scanner && ship->_cxxEntity->collision_radius * upscale > 4.5) ||
+						(nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
 					{
 						Vector bounds[6];
 						BoundingBox bb = ship->totalBoundingBox;
@@ -1603,15 +1585,15 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 						for (i = 0; i < 6; i++)
 						{
 							bounds[i] = OOVectorMultiplyMatrix(vector_add(bounds[i], rp), rotMatrix);
-							if (oo::ToCxx(self)->nonlinear_scanner)
+							if (nonlinear_scanner)
 							{
-								bounds[i] = [HeadUpDisplay nonlinearScannerScale:bounds[i] Zoom: zoom Scale: 0.5*siz.width];
+								bounds[i] = nonlinearScannerScale(bounds[i], zoom, 0.5*siz.width);
 							}
 							else
 							{
 								scale_vector(&bounds[i], upscale);
 							}
-							bounds[i] = make_vector(bounds[i].x + scanner_cx, bounds[i].z * z_factor + bounds[i].y * y_factor + scanner_cy, oo::ToCxx(self)->z1 );
+							bounds[i] = make_vector(bounds[i].x + scanner_cx, bounds[i].z * z_factor + bounds[i].y * y_factor + scanner_cy, z1 );
 						}
 						// draw the diamond
 						//
@@ -1629,13 +1611,13 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				
 				if (ms_blip > 0.0)
 				{
-					DrawSpecialOval(x1 - 0.5, y2 + 1.5, oo::ToCxx(self)->z1, NSMakeSize(16.0 * (1.0 - ms_blip), 8.0 * (1.0 - ms_blip)), 30, col);
+					DrawSpecialOval(x1 - 0.5, y2 + 1.5, z1, NSMakeSize(16.0 * (1.0 - ms_blip), 8.0 * (1.0 - ms_blip)), 30, col);
 				}
 				if ([scannedEntity isCascadeWeapon])
 				{
-					if (oo::ToCxx(self)->nonlinear_scanner)
+					if (nonlinear_scanner)
 					{
-						GLDrawNonlinearCascadeWeapon( scanner_cx, scanner_cy, oo::ToCxx(self)->z1, siz, rrp, scannedEntity->_cxxEntity->collision_radius, zoom, alpha );
+						GLDrawNonlinearCascadeWeapon( scanner_cx, scanner_cy, z1, siz, rrp, scannedEntity->_cxxEntity->collision_radius, zoom, alpha );
 					}
 					else
 					{
@@ -1645,10 +1627,10 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 						if (r0 > 0)
 						{
 							OOGL(glColor4f(1.0, 0.5, 1.0, alpha));
-							GLDrawOval(x1  - 0.5, y1 + 1.5, oo::ToCxx(self)->z1, NSMakeSize(r0, r0 * siz.height / siz.width), 20);
+							GLDrawOval(x1  - 0.5, y1 + 1.5, z1, NSMakeSize(r0, r0 * siz.height / siz.width), 20);
 						}
 						OOGL(glColor4f(0.5, 0.0, 1.0, 0.33333 * alpha));
-						GLDrawFilledOval(x1  - 0.5, y2 + 1.5, oo::ToCxx(self)->z1, NSMakeSize(r1, r1), 15);
+						GLDrawFilledOval(x1  - 0.5, y2 + 1.5, z1, NSMakeSize(r1, r1), 15);
 					}
 				}
 				else
@@ -1658,7 +1640,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						cxx_OODrawString([(ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, oo::ToCxx(self)->z1, NSMakeSize(8, 8));
+						cxx_OODrawString([(::ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);
@@ -1666,19 +1648,19 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					{
 						// in colorblind mode turn hostile blips into X shapes for easier recognition
 						OOGLBEGIN(GL_LINES);
-						glVertex3f(x1+2, y2+3, oo::ToCxx(self)->z1);	glVertex3f(x1-3, y2, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2, oo::ToCxx(self)->z1);	glVertex3f(x1-3, y2+3, oo::ToCxx(self)->z1);
+						glVertex3f(x1+2, y2+3, z1);	glVertex3f(x1-3, y2, z1);	glVertex3f(x1+2, y2, z1);	glVertex3f(x1-3, y2+3, z1);
 						OOGLEND();
 					}
 					else
 					{
 						OOGLBEGIN(GL_QUADS);
-						glVertex3f(x1-3, y2, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2+3, oo::ToCxx(self)->z1);	glVertex3f(x1-3, y2+3, oo::ToCxx(self)->z1);	
+						glVertex3f(x1-3, y2, z1);	glVertex3f(x1+2, y2, z1);	glVertex3f(x1+2, y2+3, z1);	glVertex3f(x1-3, y2+3, z1);	
 						OOGLEND();
 					}
 					OOGLBEGIN(GL_QUADS); // lollipop tail
 						col[3] *= 0.3333; // one third the alpha
 						glColor4fv(col);
-						glVertex3f(x1, y1, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y1, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2, oo::ToCxx(self)->z1);	glVertex3f(x1, y2, oo::ToCxx(self)->z1);
+						glVertex3f(x1, y1, z1);	glVertex3f(x1+2, y1, z1);	glVertex3f(x1+2, y2, z1);	glVertex3f(x1, y2, z1);
 					OOGLEND();
 				}
 			}
@@ -1696,7 +1678,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 }
 
 
-- (void) drawScannerZoomIndicator:(const oo::PList &)info	// called by name (ADR-0055 item 5)
+void cxx::HeadUpDisplay::drawScannerZoomIndicator(const oo::PList &info)
 {
 	int					x, y;
 	NSSize				siz;
@@ -1712,33 +1694,52 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	siz.height = useDefined(cached.height, ZOOM_INDICATOR_HEIGHT);
 	
 	GetRGBAArrayFromInfo(info, zoom_color);
-	zoom_color[3] *= oo::ToCxx(self)->overallAlpha;
+	zoom_color[3] *= overallAlpha;
 	alpha = zoom_color[3];
 	
 	GLfloat cx = x - 0.3 * siz.width;
 	GLfloat cy = y - 0.75 * siz.height;
 	
-	int zl = oo::ToCxx(self)->scanner_zoom;
+	int zl = scanner_zoom;
 	if (zl < 1) zl = 1;
 	if (zl > SCANNER_ZOOM_LEVELS) zl = SCANNER_ZOOM_LEVELS;
 	if (zl == 1) zoom_color[3] *= 0.75;
-	if (oo::ToCxx(self)->scanner_ultra_zoom)
+	if (scanner_ultra_zoom)
 		zl = pow(2, zl - 1);
 	GLColorWithOverallAlpha(zoom_color, alpha);
 	OOGL(glEnable(GL_TEXTURE_2D));
-	[sFontTexture apply];
+	if (sFontTexture != nil)  oo::ToCxx(sFontTexture)->apply();	// a message to nil did nothing
 	
 	OOGLBEGIN(GL_QUADS);
 		if (zl / 10 > 0)
-			drawCharacterQuad(48 + zl / 10, cx - 0.8 * siz.width, cy, oo::ToCxx(self)->z1, siz);
-		drawCharacterQuad(48 + zl % 10, cx - 0.4 * siz.width, cy, oo::ToCxx(self)->z1, siz);
-		drawCharacterQuad(58, cx, cy, oo::ToCxx(self)->z1, siz);
-		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, oo::ToCxx(self)->z1, siz);
+			drawCharacterQuad(48 + zl / 10, cx - 0.8 * siz.width, cy, z1, siz);
+		drawCharacterQuad(48 + zl % 10, cx - 0.4 * siz.width, cy, z1, siz);
+		drawCharacterQuad(58, cx, cy, z1, siz);
+		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, z1, siz);
 	OOGLEND();
 	
-	[OOTexture applyNone];
+	cxx::OOTexture::applyNone();
 	OOGL(glDisable(GL_TEXTURE_2D));
 }
+
+
+@implementation HeadUpDisplay (Private)
+
+
+namespace {
+
+void prefetchData(const oo::PList &info, struct CachedInfo *data)
+{
+	data->x = info.get<float>(X_KEY, NOT_DEFINED);
+	data->x0 = info.get<float>(X_ORIGIN_KEY, 0.0);
+	data->y = info.get<float>(Y_KEY, NOT_DEFINED);
+	data->y0 = info.get<float>(Y_ORIGIN_KEY, 0.0);
+	data->width = info.get<float>(WIDTH_KEY, NOT_DEFINED);
+	data->height = info.get<float>(HEIGHT_KEY, NOT_DEFINED);
+	data->alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f);	
+}
+
+}	// namespace
 
 
 - (void) drawCompass:(const oo::PList &)info	// called by name (ADR-0055 item 5)
@@ -4218,7 +4219,7 @@ static void GLDrawNonlinearCascadeWeapon( GLfloat x, GLfloat y, GLfloat z, NSSiz
 			theta = i*2*M_PI/24;
 			spacepos.x = centre.x + r0 * cos(theta);
 			spacepos.z = centre.z + r0 * sin(theta);
-			scannerpos = [HeadUpDisplay nonlinearScannerScale: spacepos Zoom: zoom Scale: 0.5*siz.width];
+			scannerpos = cxx::HeadUpDisplay::nonlinearScannerScale(spacepos, zoom, 0.5*siz.width);
 			points[i].x = x + scannerpos.x;
 			points[i].y = y + scannerpos.z * z_factor + scannerpos.y * y_factor;
 			points[i].z = z;
@@ -4226,7 +4227,7 @@ static void GLDrawNonlinearCascadeWeapon( GLfloat x, GLfloat y, GLfloat z, NSSiz
 		spacepos.x = centre.x + r0;
 		spacepos.y = 0;
 		spacepos.z = centre.z;
-		scannerpos = [HeadUpDisplay nonlinearScannerScale: spacepos Zoom: zoom Scale: 0.5*siz.width];
+		scannerpos = cxx::HeadUpDisplay::nonlinearScannerScale(spacepos, zoom, 0.5*siz.width);
 		points[24].x = x + scannerpos.x;
 		points[24].y = y + scannerpos.z * z_factor + scannerpos.y * y_factor;
 		points[24].z = z;
@@ -4241,7 +4242,7 @@ static void GLDrawNonlinearCascadeWeapon( GLfloat x, GLfloat y, GLfloat z, NSSiz
 	spacepos.x = centre.x;
 	spacepos.y = centre.y + radius;
 	spacepos.z = centre.z;
-	scannerpos = [HeadUpDisplay nonlinearScannerScale: spacepos Zoom: zoom Scale: 0.5*siz.width];
+	scannerpos = cxx::HeadUpDisplay::nonlinearScannerScale(spacepos, zoom, 0.5*siz.width);
 	for (i = 0; i <= 24; i++)
 	{
 		points[2*i+1].x = x + scannerpos.x;
@@ -4260,7 +4261,7 @@ static void GLDrawNonlinearCascadeWeapon( GLfloat x, GLfloat y, GLfloat z, NSSiz
 			spacepos.x = centre.x + radius * sin(theta) * cos(phi);
 			spacepos.y = centre.y + radius * cos(theta);
 			spacepos.z = centre.z + radius * sin(theta) * sin(phi);
-			scannerpos = [HeadUpDisplay nonlinearScannerScale: spacepos Zoom: zoom Scale: 0.5*siz.width];
+			scannerpos = cxx::HeadUpDisplay::nonlinearScannerScale(spacepos, zoom, 0.5*siz.width);
 			points[2*j+1].x = x + scannerpos.x;
 			points[2*j+1].y = y + scannerpos.y * y_factor + scannerpos.z * z_factor;
 			points[2*j+1].z = z;
@@ -4289,7 +4290,7 @@ static void drawScannerGrid(GLfloat x, GLfloat y, GLfloat z, NSSize siz, int v_d
 {
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
 
-	MyOpenGLView* gameView = [UNIVERSE gameView];
+	MyOpenGLView* gameView = HeadUpDisplayUniverseGameView();
 
 	GLfloat w1, h1;
 	GLfloat ww = 0.5 * siz.width;
@@ -4387,8 +4388,8 @@ static void drawScannerGrid(GLfloat x, GLfloat y, GLfloat z, NSSize siz, int v_d
 			}
 		}
 
-		double tanfov = [gameView fov:YES];
-		GLfloat aspect = [gameView viewSize].width / [gameView viewSize].height;
+		double tanfov = HeadUpDisplayGameViewFov(gameView, YES);
+		GLfloat aspect = HeadUpDisplayGameViewViewSize(gameView).width / HeadUpDisplayGameViewViewSize(gameView).height;
 		if (aspect < 4.0/3.0)
 		{
 			tanfov *= 0.75 * aspect;
