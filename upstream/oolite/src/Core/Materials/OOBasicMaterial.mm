@@ -352,7 +352,7 @@ bool OOBasicMaterial::permitSpecular()
 
 
 #ifndef NDEBUG
-std::vector<oo::ObjCRef<OOTexture *>> OOBasicMaterial::allTextures()
+std::vector<oo::ObjCRef<::OOTexture *>> OOBasicMaterial::allTextures()
 {
 	return {};
 }

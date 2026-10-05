@@ -1,6 +1,6 @@
 # ADR-0051: Values crossing the JavaScript boundary are oo::PList; plain-object integer keys become strings
 
-- Status: Proposed. The default is in effect until Jon decides.
+- Status: Accepted (Jon, 2026-09-30, in chat). Recorded from the in-effect default.
 - Date: 2026-09-29
 - Beads: oo-k1y8 (and its children); oo-vp0y (deletes the bridge this makes unnecessary)
 

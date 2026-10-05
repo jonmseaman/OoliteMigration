@@ -66,7 +66,7 @@ public:
 	void apply() override;
 	void unapplyWithNext(OOMaterial *next) override;
 #ifndef NDEBUG
-	std::vector<oo::ObjCRef<OOTexture *>> allTextures() override;
+	std::vector<oo::ObjCRef<::OOTexture *>> allTextures() override;
 #endif
 
 private:
