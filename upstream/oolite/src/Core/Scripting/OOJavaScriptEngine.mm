@@ -2074,9 +2074,6 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*
 			case STELLAR_TYPE_SUN:
 				return YES;
 				
-#if !NEW_PLANETS
-			case STELLAR_TYPE_ATMOSPHERE:
-#endif
 			case STELLAR_TYPE_MINIATURE:
 				return NO;
 		}
