@@ -189,6 +189,23 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (void) drawTargetReticle:(const oo::PList &)info	{ _cxxHUD->drawTargetReticle(info); }
 - (void) drawWaypoints:(const oo::PList &)info	{ _cxxHUD->drawWaypoints(info); }
 
+- (void) drawCustomBar:(const oo::PList &)info	{ _cxxHUD->drawCustomBar(info); }
+- (void) drawCustomText:(const oo::PList &)info	{ _cxxHUD->drawCustomText(info); }
+- (void) drawCustomIndicator:(const oo::PList &)info	{ _cxxHUD->drawCustomIndicator(info); }
+- (void) drawCustomLight:(const oo::PList &)info	{ _cxxHUD->drawCustomLight(info); }
+- (void) drawCustomImage:(const oo::PList &)info	{ _cxxHUD->drawCustomImage(info); }
+- (void) drawSpeedBar:(const oo::PList &)info	{ _cxxHUD->drawSpeedBar(info); }
+- (void) drawRollBar:(const oo::PList &)info	{ _cxxHUD->drawRollBar(info); }
+- (void) drawPitchBar:(const oo::PList &)info	{ _cxxHUD->drawPitchBar(info); }
+- (void) drawYawBar:(const oo::PList &)info	{ _cxxHUD->drawYawBar(info); }
+- (void) drawEnergyGauge:(const oo::PList &)info	{ _cxxHUD->drawEnergyGauge(info); }
+- (void) drawForwardShieldBar:(const oo::PList &)info	{ _cxxHUD->drawForwardShieldBar(info); }
+- (void) drawAftShieldBar:(const oo::PList &)info	{ _cxxHUD->drawAftShieldBar(info); }
+- (void) drawFuelBar:(const oo::PList &)info	{ _cxxHUD->drawFuelBar(info); }
+- (void) drawWitchspaceDestination:(const oo::PList &)info	{ _cxxHUD->drawWitchspaceDestination(info); }
+- (void) drawCabinTempBar:(const oo::PList &)info	{ _cxxHUD->drawCabinTempBar(info); }
+- (void) drawWeaponTempBar:(const oo::PList &)info	{ _cxxHUD->drawWeaponTempBar(info); }
+- (void) drawAltitudeBar:(const oo::PList &)info	{ _cxxHUD->drawAltitudeBar(info); }
 @end
 
 

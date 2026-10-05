@@ -341,6 +341,23 @@ public:
 	void drawAegis(const oo::PList &info);
 	void drawTargetReticle(const oo::PList &info);
 	void drawWaypoints(const oo::PList &info);
+	void drawCustomBar(const oo::PList &info);
+	void drawCustomText(const oo::PList &info);
+	void drawCustomIndicator(const oo::PList &info);
+	void drawCustomLight(const oo::PList &info);
+	void drawCustomImage(const oo::PList &info);
+	void drawSpeedBar(const oo::PList &info);
+	void drawRollBar(const oo::PList &info);
+	void drawPitchBar(const oo::PList &info);
+	void drawYawBar(const oo::PList &info);
+	void drawEnergyGauge(const oo::PList &info);
+	void drawForwardShieldBar(const oo::PList &info);
+	void drawAftShieldBar(const oo::PList &info);
+	void drawFuelBar(const oo::PList &info);
+	void drawWitchspaceDestination(const oo::PList &info);
+	void drawCabinTempBar(const oo::PList &info);
+	void drawWeaponTempBar(const oo::PList &info);
+	void drawAltitudeBar(const oo::PList &info);
 
 	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).

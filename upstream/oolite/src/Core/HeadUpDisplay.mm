@@ -2026,6 +2026,707 @@ void cxx::HeadUpDisplay::drawWaypoints(const oo::PList &info)
 }
 
 
+void cxx::HeadUpDisplay::drawCustomBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	GLfloat				ds = OOClamp_0_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, 50);
+	siz.height = useDefined(cached.height, 8);
+	alpha *= cached.alpha;
+	
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
+	
+	SET_COLOR_SURROUND(green_color);
+	if (draw_surround)
+	{
+		// draw custom surround
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw custom bar
+	if (ds > .75)
+	{
+		SET_COLOR_HIGH(green_color);
+	}
+	else if (ds > .25)
+	{
+		SET_COLOR_MEDIUM(yellow_color);
+	}
+	else
+	{
+		SET_COLOR_LOW(red_color);
+	}
+
+	hudDrawBarAt(x, y, z1, siz, ds);
+}
+
+
+void cxx::HeadUpDisplay::drawCustomText(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				size;
+	GLfloat				alpha = overallAlpha;
+	std::string			text = [PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];	// nil drew nothing, as "" does
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	alpha *= cached.alpha;
+	
+	SET_COLOR(yellow_color);
+
+	size.width = useDefined(cached.width, 10.0f);
+	size.height = useDefined(cached.height, 10.0f);
+
+	if (info.get<int>("align") == 1)
+	{
+		cxx_OODrawStringAligned(text, x, y, z1, size, YES);
+	}
+	else
+	{
+		cxx_OODrawStringAligned(text, x, y, z1, size, NO);
+	}
+
+}
+
+
+void cxx::HeadUpDisplay::drawCustomIndicator(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	GLfloat				iv = OOClamp_n1_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
+
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, 50);
+	siz.height = useDefined(cached.height, 8);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
+	
+	if (draw_surround)
+	{
+		// draw custom surround
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw custom indicator
+	SET_COLOR(yellow_color);
+	hudDrawIndicatorAt(x, y, z1, siz, iv);
+}
+
+
+void cxx::HeadUpDisplay::drawCustomLight(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	GLfloat				alpha = overallAlpha;
+
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, 8);
+	siz.height = useDefined(cached.height, 8);
+	alpha *= cached.alpha;
+	
+	GLfloat light_color[4] = { 0.25, 0.25, 0.25, 0.0};
+	
+	::OOColor *color = [PLAYER cxx_dialCustomColor:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];
+	if (color != nil)	// a message to nil left the colour as it was
+	{
+		oo::ToCxx(color)->getRed(&light_color[0],
+								 &light_color[1],
+								 &light_color[2],
+								 &light_color[3]);
+	}
+
+	GLColorWithOverallAlpha(light_color, alpha);
+	OOGLBEGIN(GL_POLYGON);
+	hudDrawStatusIconAt(x, y, z1, siz);
+	OOGLEND();
+	OOGL(glColor4f(0.25, 0.25, 0.25, alpha));
+	OOGLBEGIN(GL_LINE_LOOP);
+		hudDrawStatusIconAt(x, y, z1, siz);
+	OOGLEND();
+}
+
+
+void cxx::HeadUpDisplay::drawCustomImage(const oo::PList &info)
+{
+	int					x, y;
+	GLfloat				alpha = overallAlpha;
+
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	alpha *= cached.alpha;
+
+	std::optional<std::string> textureFile = std::optional<std::string>([PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
+	if (!textureFile.has_value() || textureFile->empty()) {
+		return;
+	}
+
+	oo::ObjCRef<::OOTexture *> texture = OOTexture::textureWithName(textureFile,
+																std::string("Images"),
+																kOOTextureDefaultOptions | kOOTextureNoShrink,
+																kOOTextureDefaultAnisotropy,
+																kOOTextureDefaultLODBias);
+	if (texture == nullptr)
+	{
+		OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *textureFile);
+		return;
+	}
+		
+	NSSize imageSize = oo::ToCxx(texture.get())->dimensions();
+	imageSize.width = useDefined(cached.width, imageSize.width);
+	imageSize.height = useDefined(cached.height, imageSize.height);
+
+	/* There's possibly some optimisation which could be done by
+	 * caching the sprite, but regenerating it each frame doesn't
+	 * appear to take any significant amount of time compared with the
+	 * time taken to actually render it and the texture will be
+	 * returned from the cache anyway. - CIM */
+	oo::Ref<OOTextureSprite> sprite = OOTextureSprite::initWithTexture(texture.get(), imageSize);
+
+	if (sprite != nullptr)  sprite->blitCentredToX(x, y, z1, alpha);	// a message to nil did nothing
+
+}
+
+
+void cxx::HeadUpDisplay::drawSpeedBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	GLfloat				ds = [PLAYER dialSpeed];
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, SPEED_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, SPEED_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, SPEED_BAR_WIDTH);
+	siz.height = useDefined(cached.height, SPEED_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, SPEED_BAR_DRAW_SURROUND);
+	
+	
+	SET_COLOR_SURROUND(green_color);
+	if (draw_surround)
+	{
+		// draw speed surround
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw speed bar
+	if (ds > .80)
+	{
+		SET_COLOR_HIGH(red_color);
+	}
+	else if (ds > .25)
+	{
+		SET_COLOR_MEDIUM(yellow_color);
+	}
+	else
+	{
+		SET_COLOR_LOW(green_color);
+	}
+
+	hudDrawBarAt(x, y, z1, siz, ds);
+}
+
+
+void cxx::HeadUpDisplay::drawRollBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, ROLL_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, ROLL_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, ROLL_BAR_WIDTH);
+	siz.height = useDefined(cached.height, ROLL_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, ROLL_BAR_DRAW_SURROUND);
+	
+	if (draw_surround)
+	{
+		// draw ROLL surround
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw ROLL bar
+	SET_COLOR(yellow_color);
+	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialRoll]);
+}
+
+
+void cxx::HeadUpDisplay::drawPitchBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, PITCH_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, PITCH_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, PITCH_BAR_WIDTH);
+	siz.height = useDefined(cached.height, PITCH_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, PITCH_BAR_DRAW_SURROUND);
+	
+	if (draw_surround)
+	{
+		// draw PITCH surround
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw PITCH bar
+	SET_COLOR(yellow_color);
+	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialPitch]);
+}
+
+
+void cxx::HeadUpDisplay::drawYawBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	// No standard YAW definitions - using PITCH ones instead.
+	x = useDefined(cached.x, PITCH_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, PITCH_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, PITCH_BAR_WIDTH);
+	siz.height = useDefined(cached.height, PITCH_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, PITCH_BAR_DRAW_SURROUND);
+	
+	if (draw_surround)
+	{
+		// draw YAW surround
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw YAW bar
+	SET_COLOR(yellow_color);
+	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialYaw]);
+}
+
+
+void cxx::HeadUpDisplay::drawEnergyGauge(const oo::PList &info)
+{
+	int					x, y;
+	unsigned			i;
+	NSSize				siz;
+	BOOL				drawSurround, labelled, energyCritical = NO;
+	GLfloat				alpha = overallAlpha;
+	GLfloat				bankHeight, bankY;
+	::PlayerEntity *player = PLAYER;
+
+	unsigned n_bars = [player dialMaxEnergy]/64.0;
+	n_bars = info.get<unsigned int>(N_BARS_KEY, n_bars);
+	if (n_bars < 1)
+	{
+		n_bars = 1;
+	}
+	GLfloat				energy = [player dialEnergy] * n_bars;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, ENERGY_GAUGE_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, ENERGY_GAUGE_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, ENERGY_GAUGE_WIDTH);
+	siz.height = useDefined(cached.height, ENERGY_GAUGE_HEIGHT);
+	alpha *= cached.alpha;
+	drawSurround = info.get<bool>(DRAW_SURROUND_KEY, ENERGY_GAUGE_DRAW_SURROUND);
+	labelled = info.get<bool>(LABELLED_KEY, YES);
+	if (n_bars > 8)  labelled = NO;
+	
+	if (drawSurround)
+	{
+		// draw energy surround
+		SET_COLOR_SURROUND(yellow_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	
+	bankHeight = siz.height / n_bars;
+	// draw energy banks	
+	NSSize barSize = NSMakeSize(siz.width, bankHeight - 2.0);		// leave a gap between bars
+	GLfloat midBank = bankHeight / 2.0f;
+	bankY = y - (n_bars - 1) * midBank - 1.0;
+	
+	// avoid constant colour switching...
+	if (labelled)
+	{
+		GLColorWithOverallAlpha(green_color, alpha);
+		GLfloat labelStartX = x + 0.5f * barSize.width + 3.0f;
+		NSSize labelSize = NSMakeSize(9.0, (bankHeight < 18.0)? bankHeight : 18.0);
+		for (i = 0; i < n_bars; i++)
+		{
+			cxx_OODrawString(oo::str::format("E%x", n_bars - i), labelStartX, bankY - midBank, z1, labelSize);
+			bankY += bankHeight;
+		}
+	}
+	
+	if (energyCritical)
+	{
+		SET_COLOR_LOW(red_color);
+	}
+	else
+	{
+		SET_COLOR_MEDIUM(yellow_color);
+	}
+	bankY = y - (n_bars - 1) * midBank;
+	for (i = 0; i < n_bars; i++)
+	{
+		if (energy > 1.0)
+		{
+			hudDrawBarAt(x, bankY, z1, barSize, 1.0);
+		}
+		else if (energy > 0.0)
+		{
+			hudDrawBarAt(x, bankY, z1, barSize, energy);
+		}
+		
+		energy -= 1.0;
+		bankY += bankHeight;
+	}
+}
+
+
+void cxx::HeadUpDisplay::drawForwardShieldBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	GLfloat				shield = [PLAYER dialForwardShield];
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, FORWARD_SHIELD_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, FORWARD_SHIELD_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, FORWARD_SHIELD_BAR_WIDTH);
+	siz.height = useDefined(cached.height, FORWARD_SHIELD_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, FORWARD_SHIELD_BAR_DRAW_SURROUND);
+	
+	if (draw_surround)
+	{
+		// draw forward_shield surround
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw forward_shield bar
+	if (shield < .25)
+	{
+		SET_COLOR_LOW(red_color);
+	}
+	else if (shield < .80)
+	{
+		SET_COLOR_MEDIUM(yellow_color);
+	} 
+	else
+	{
+		SET_COLOR_HIGH(green_color);
+	}
+	hudDrawBarAt(x, y, z1, siz, shield);
+}
+
+
+void cxx::HeadUpDisplay::drawAftShieldBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alpha = overallAlpha;
+	GLfloat				shield = [PLAYER dialAftShield];
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, AFT_SHIELD_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, AFT_SHIELD_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, AFT_SHIELD_BAR_WIDTH);
+	siz.height = useDefined(cached.height, AFT_SHIELD_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, AFT_SHIELD_BAR_DRAW_SURROUND);
+	
+	if (draw_surround)
+	{
+		// draw forward_shield surround
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	// draw forward_shield bar
+	if (shield < .25)
+	{
+		SET_COLOR_LOW(red_color);
+	}
+	else if (shield < .80)
+	{
+		SET_COLOR_MEDIUM(yellow_color);
+	} 
+	else
+	{
+		SET_COLOR_HIGH(green_color);
+	}
+	hudDrawBarAt(x, y, z1, siz, shield);
+}
+
+
+void cxx::HeadUpDisplay::drawFuelBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	float				fu, hr;
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, FUEL_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, FUEL_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, FUEL_BAR_WIDTH);
+	siz.height = useDefined(cached.height, FUEL_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
+	
+	if (draw_surround)
+	{
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	
+	fu = [PLAYER dialFuel];
+	hr = [PLAYER dialHyperRange];
+	
+	// draw fuel bar
+	SET_COLOR_MEDIUM(yellow_color);
+	hudDrawBarAt(x, y, z1, siz, fu);
+	
+	// draw range indicator
+	if (hr > 0.0f && hr <= 1.0f)
+	{
+		if ([PLAYER hasSufficientFuelForJump])
+		{
+			SET_COLOR_HIGH(green_color);
+		}
+		else
+		{
+			SET_COLOR_LOW(red_color);
+		}
+		hudDrawMarkerAt(x, y, z1, siz, hr);
+	}
+
+}
+
+
+void cxx::HeadUpDisplay::drawWitchspaceDestination(const oo::PList &info)
+{
+	// A zero-distance jump counts as 0.1LY
+	if ([PLAYER dialHyperRange] == 0.0f)
+	{
+		return;
+	}
+
+	int					x, y;
+	NSSize				siz;
+	GLfloat				alpha = overallAlpha;
+
+	struct CachedInfo	cached;
+
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, WITCHDEST_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, WITCHDEST_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, WITCHDEST_WIDTH);
+	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
+	alpha *= cached.alpha;
+	std::string dest = [UNIVERSE cxx_getSystemName:[PLAYER targetSystemID]].value_or("");	// nil drew nothing, as "" does
+	NSInteger concealment = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = OO_DESC("status-unknown-system");
+
+	SET_COLOR(green_color);
+	
+	if (info.get<int>("align") == 1)
+	{
+		cxx_OODrawStringAligned(dest, x, y, z1, siz, YES);
+	}
+	else
+	{
+		cxx_OODrawStringAligned(dest, x, y, z1, siz, NO);
+	}
+
+}
+
+
+void cxx::HeadUpDisplay::drawCabinTempBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				temp = [PLAYER hullHeatLevel];
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, CABIN_TEMP_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, CABIN_TEMP_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, CABIN_TEMP_BAR_WIDTH);
+	siz.height = useDefined(cached.height, CABIN_TEMP_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
+	
+	if (draw_surround)
+	{
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	
+	int flash = (int)([UNIVERSE getTime] * 4);
+	flash &= 1;
+	// what color are we?
+	if (temp > .80)
+	{
+		if (temp > .90 && flash)
+			SET_COLOR_CRITICAL(redplus_color);
+		else
+			SET_COLOR_HIGH(red_color);
+	}
+	else
+	{
+		if (temp > .25)
+			SET_COLOR_MEDIUM(yellow_color);
+		else
+			SET_COLOR_LOW(green_color);
+	}
+
+	
+	hudDrawBarAt(x, y, z1, siz, temp);
+}
+
+
+void cxx::HeadUpDisplay::drawWeaponTempBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				temp = [PLAYER laserHeatLevel];
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, WEAPON_TEMP_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, WEAPON_TEMP_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, WEAPON_TEMP_BAR_WIDTH);
+	siz.height = useDefined(cached.height, WEAPON_TEMP_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
+	
+	if (draw_surround)
+	{
+		SET_COLOR_SURROUND(green_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	
+	// draw weapon_temp bar (only need to call GLColor() once!)
+	if (temp > .80)
+		SET_COLOR_HIGH(red_color);
+	else if (temp > .25)
+		SET_COLOR_MEDIUM(yellow_color);
+	else
+		SET_COLOR_LOW(green_color);
+	hudDrawBarAt(x, y, z1, siz, temp);
+}
+
+
+void cxx::HeadUpDisplay::drawAltitudeBar(const oo::PList &info)
+{
+	int					x, y;
+	NSSize				siz;
+	BOOL				draw_surround;
+	GLfloat				alt = [PLAYER dialAltitude];
+	GLfloat				alpha = overallAlpha;
+	struct CachedInfo	cached;
+	
+	GetCurrentCachedInfo(&cached);
+	
+	x = useDefined(cached.x, ALTITUDE_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
+	y = useDefined(cached.y, ALTITUDE_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
+	siz.width = useDefined(cached.width, ALTITUDE_BAR_WIDTH);
+	siz.height = useDefined(cached.height, ALTITUDE_BAR_HEIGHT);
+	alpha *= cached.alpha;
+	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
+	
+	if (draw_surround)
+	{
+		SET_COLOR_SURROUND(yellow_color);
+		hudDrawSurroundAt(x, y, z1, siz);
+	}
+	
+	int flash = (int)([UNIVERSE getTime] * 4);
+	flash &= 1;
+	
+	// draw altitude bar (evaluating the least amount of ifs per go)
+	if (alt < .25)
+	{
+		if (alt < .10 && flash)
+			SET_COLOR_CRITICAL(redplus_color);
+		else
+			SET_COLOR_HIGH(red_color);
+	}
+	else
+	{
+		if (alt < .75)
+			SET_COLOR_MEDIUM(yellow_color);
+		else
+			SET_COLOR_LOW(green_color);
+	}
+	
+	hudDrawBarAt(x, y, z1, siz, alt);
+	
+}
+
+
 @implementation HeadUpDisplay (Private)
 
 
@@ -2055,705 +2756,6 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		OOGL(glColor4f(1.0f, 0.0f, 0.0f, alpha));
 	}
-}
-
-
-- (void) drawCustomBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	GLfloat				ds = OOClamp_0_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, 50);
-	siz.height = useDefined(cached.height, 8);
-	alpha *= cached.alpha;
-	
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
-	
-	SET_COLOR_SURROUND(green_color);
-	if (draw_surround)
-	{
-		// draw custom surround
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw custom bar
-	if (ds > .75)
-	{
-		SET_COLOR_HIGH(green_color);
-	}
-	else if (ds > .25)
-	{
-		SET_COLOR_MEDIUM(yellow_color);
-	}
-	else
-	{
-		SET_COLOR_LOW(red_color);
-	}
-
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, ds);
-}
-
-
-- (void) drawCustomText:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				size;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	std::string			text = [PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];	// nil drew nothing, as "" does
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	alpha *= cached.alpha;
-	
-	SET_COLOR(yellow_color);
-
-	size.width = useDefined(cached.width, 10.0f);
-	size.height = useDefined(cached.height, 10.0f);
-
-	if (info.get<int>("align") == 1)
-	{
-		cxx_OODrawStringAligned(text, x, y, oo::ToCxx(self)->z1, size, YES);
-	}
-	else
-	{
-		cxx_OODrawStringAligned(text, x, y, oo::ToCxx(self)->z1, size, NO);
-	}
-
-}
-
-
-- (void) drawCustomIndicator:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	GLfloat				iv = OOClamp_n1_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
-
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, 50);
-	siz.height = useDefined(cached.height, 8);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
-	
-	if (draw_surround)
-	{
-		// draw custom surround
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw custom indicator
-	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, iv);
-}
-
-
-- (void) drawCustomLight:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, 8);
-	siz.height = useDefined(cached.height, 8);
-	alpha *= cached.alpha;
-	
-	GLfloat light_color[4] = { 0.25, 0.25, 0.25, 0.0};
-	
-	OOColor *color = [PLAYER cxx_dialCustomColor:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];
-	[color getRed:&light_color[0]
-			green:&light_color[1]
-			 blue:&light_color[2]
-			alpha:&light_color[3]];
-
-	GLColorWithOverallAlpha(light_color, alpha);
-	OOGLBEGIN(GL_POLYGON);
-	hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
-	OOGLEND();
-	OOGL(glColor4f(0.25, 0.25, 0.25, alpha));
-	OOGLBEGIN(GL_LINE_LOOP);
-		hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
-	OOGLEND();
-}
-
-
-- (void) drawCustomImage:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	alpha *= cached.alpha;
-
-	std::optional<std::string> textureFile = std::optional<std::string>([PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
-	if (!textureFile.has_value() || textureFile->empty()) {
-		return;
-	}
-
-	OOTexture *texture = [OOTexture cxx_textureWithName:textureFile
-											   inFolder:std::string("Images")
-												options:kOOTextureDefaultOptions | kOOTextureNoShrink
-											 anisotropy:kOOTextureDefaultAnisotropy
-												lodBias:kOOTextureDefaultLODBias];
-	if (texture == nil)
-	{
-		OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *textureFile);
-		return;
-	}
-		
-	NSSize imageSize = [texture dimensions];
-	imageSize.width = useDefined(cached.width, imageSize.width);
-	imageSize.height = useDefined(cached.height, imageSize.height);
-
-	/* There's possibly some optimisation which could be done by
-	 * caching the sprite, but regenerating it each frame doesn't
-	 * appear to take any significant amount of time compared with the
-	 * time taken to actually render it and the texture will be
-	 * returned from the cache anyway. - CIM */
-	OOTextureSprite *sprite = [[OOTextureSprite alloc] initWithTexture:texture size:imageSize];
-
-	[sprite blitCentredToX:x Y:y Z:oo::ToCxx(self)->z1 alpha:alpha];
-	[sprite release];
-
-}
-
-
-- (void) drawSpeedBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	GLfloat				ds = [PLAYER dialSpeed];
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, SPEED_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, SPEED_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, SPEED_BAR_WIDTH);
-	siz.height = useDefined(cached.height, SPEED_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, SPEED_BAR_DRAW_SURROUND);
-	
-	
-	SET_COLOR_SURROUND(green_color);
-	if (draw_surround)
-	{
-		// draw speed surround
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw speed bar
-	if (ds > .80)
-	{
-		SET_COLOR_HIGH(red_color);
-	}
-	else if (ds > .25)
-	{
-		SET_COLOR_MEDIUM(yellow_color);
-	}
-	else
-	{
-		SET_COLOR_LOW(green_color);
-	}
-
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, ds);
-}
-
-
-- (void) drawRollBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, ROLL_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, ROLL_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, ROLL_BAR_WIDTH);
-	siz.height = useDefined(cached.height, ROLL_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, ROLL_BAR_DRAW_SURROUND);
-	
-	if (draw_surround)
-	{
-		// draw ROLL surround
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw ROLL bar
-	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, [PLAYER dialRoll]);
-}
-
-
-- (void) drawPitchBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, PITCH_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, PITCH_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, PITCH_BAR_WIDTH);
-	siz.height = useDefined(cached.height, PITCH_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, PITCH_BAR_DRAW_SURROUND);
-	
-	if (draw_surround)
-	{
-		// draw PITCH surround
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw PITCH bar
-	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, [PLAYER dialPitch]);
-}
-
-
-- (void) drawYawBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	// No standard YAW definitions - using PITCH ones instead.
-	x = useDefined(cached.x, PITCH_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, PITCH_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, PITCH_BAR_WIDTH);
-	siz.height = useDefined(cached.height, PITCH_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, PITCH_BAR_DRAW_SURROUND);
-	
-	if (draw_surround)
-	{
-		// draw YAW surround
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw YAW bar
-	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, [PLAYER dialYaw]);
-}
-
-
-- (void) drawEnergyGauge:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	unsigned			i;
-	NSSize				siz;
-	BOOL				drawSurround, labelled, energyCritical = NO;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	GLfloat				bankHeight, bankY;
-	PlayerEntity *player = PLAYER;
-
-	unsigned n_bars = [player dialMaxEnergy]/64.0;
-	n_bars = info.get<unsigned int>(N_BARS_KEY, n_bars);
-	if (n_bars < 1)
-	{
-		n_bars = 1;
-	}
-	GLfloat				energy = [player dialEnergy] * n_bars;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, ENERGY_GAUGE_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, ENERGY_GAUGE_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, ENERGY_GAUGE_WIDTH);
-	siz.height = useDefined(cached.height, ENERGY_GAUGE_HEIGHT);
-	alpha *= cached.alpha;
-	drawSurround = info.get<bool>(DRAW_SURROUND_KEY, ENERGY_GAUGE_DRAW_SURROUND);
-	labelled = info.get<bool>(LABELLED_KEY, YES);
-	if (n_bars > 8)  labelled = NO;
-	
-	if (drawSurround)
-	{
-		// draw energy surround
-		SET_COLOR_SURROUND(yellow_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	
-	bankHeight = siz.height / n_bars;
-	// draw energy banks	
-	NSSize barSize = NSMakeSize(siz.width, bankHeight - 2.0);		// leave a gap between bars
-	GLfloat midBank = bankHeight / 2.0f;
-	bankY = y - (n_bars - 1) * midBank - 1.0;
-	
-	// avoid constant colour switching...
-	if (labelled)
-	{
-		GLColorWithOverallAlpha(green_color, alpha);
-		GLfloat labelStartX = x + 0.5f * barSize.width + 3.0f;
-		NSSize labelSize = NSMakeSize(9.0, (bankHeight < 18.0)? bankHeight : 18.0);
-		for (i = 0; i < n_bars; i++)
-		{
-			cxx_OODrawString(oo::str::format("E%x", n_bars - i), labelStartX, bankY - midBank, oo::ToCxx(self)->z1, labelSize);
-			bankY += bankHeight;
-		}
-	}
-	
-	if (energyCritical)
-	{
-		SET_COLOR_LOW(red_color);
-	}
-	else
-	{
-		SET_COLOR_MEDIUM(yellow_color);
-	}
-	bankY = y - (n_bars - 1) * midBank;
-	for (i = 0; i < n_bars; i++)
-	{
-		if (energy > 1.0)
-		{
-			hudDrawBarAt(x, bankY, oo::ToCxx(self)->z1, barSize, 1.0);
-		}
-		else if (energy > 0.0)
-		{
-			hudDrawBarAt(x, bankY, oo::ToCxx(self)->z1, barSize, energy);
-		}
-		
-		energy -= 1.0;
-		bankY += bankHeight;
-	}
-}
-
-
-- (void) drawForwardShieldBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	GLfloat				shield = [PLAYER dialForwardShield];
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, FORWARD_SHIELD_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, FORWARD_SHIELD_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, FORWARD_SHIELD_BAR_WIDTH);
-	siz.height = useDefined(cached.height, FORWARD_SHIELD_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, FORWARD_SHIELD_BAR_DRAW_SURROUND);
-	
-	if (draw_surround)
-	{
-		// draw forward_shield surround
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw forward_shield bar
-	if (shield < .25)
-	{
-		SET_COLOR_LOW(red_color);
-	}
-	else if (shield < .80)
-	{
-		SET_COLOR_MEDIUM(yellow_color);
-	} 
-	else
-	{
-		SET_COLOR_HIGH(green_color);
-	}
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, shield);
-}
-
-
-- (void) drawAftShieldBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	GLfloat				shield = [PLAYER dialAftShield];
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, AFT_SHIELD_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, AFT_SHIELD_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, AFT_SHIELD_BAR_WIDTH);
-	siz.height = useDefined(cached.height, AFT_SHIELD_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, AFT_SHIELD_BAR_DRAW_SURROUND);
-	
-	if (draw_surround)
-	{
-		// draw forward_shield surround
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	// draw forward_shield bar
-	if (shield < .25)
-	{
-		SET_COLOR_LOW(red_color);
-	}
-	else if (shield < .80)
-	{
-		SET_COLOR_MEDIUM(yellow_color);
-	} 
-	else
-	{
-		SET_COLOR_HIGH(green_color);
-	}
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, shield);
-}
-
-
-- (void) drawFuelBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	float				fu, hr;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, FUEL_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, FUEL_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, FUEL_BAR_WIDTH);
-	siz.height = useDefined(cached.height, FUEL_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
-	
-	if (draw_surround)
-	{
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	
-	fu = [PLAYER dialFuel];
-	hr = [PLAYER dialHyperRange];
-	
-	// draw fuel bar
-	SET_COLOR_MEDIUM(yellow_color);
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, fu);
-	
-	// draw range indicator
-	if (hr > 0.0f && hr <= 1.0f)
-	{
-		if ([PLAYER hasSufficientFuelForJump])
-		{
-			SET_COLOR_HIGH(green_color);
-		}
-		else
-		{
-			SET_COLOR_LOW(red_color);
-		}
-		hudDrawMarkerAt(x, y, oo::ToCxx(self)->z1, siz, hr);
-	}
-
-}
-
-
-- (void) drawWitchspaceDestination:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	// A zero-distance jump counts as 0.1LY
-	if ([PLAYER dialHyperRange] == 0.0f)
-	{
-		return;
-	}
-
-	int					x, y;
-	NSSize				siz;
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-
-	struct CachedInfo	cached;
-
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, WITCHDEST_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, WITCHDEST_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, WITCHDEST_WIDTH);
-	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
-	alpha *= cached.alpha;
-	std::string dest = [UNIVERSE cxx_getSystemName:[PLAYER targetSystemID]].value_or("");	// nil drew nothing, as "" does
-	NSInteger concealment = [[UNIVERSE systemManager] cxx_getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]].get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = OO_DESC("status-unknown-system");
-
-	SET_COLOR(green_color);
-	
-	if (info.get<int>("align") == 1)
-	{
-		cxx_OODrawStringAligned(dest, x, y, oo::ToCxx(self)->z1, siz, YES);
-	}
-	else
-	{
-		cxx_OODrawStringAligned(dest, x, y, oo::ToCxx(self)->z1, siz, NO);
-	}
-
-}
-
-
-- (void) drawCabinTempBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				temp = [PLAYER hullHeatLevel];
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, CABIN_TEMP_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, CABIN_TEMP_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, CABIN_TEMP_BAR_WIDTH);
-	siz.height = useDefined(cached.height, CABIN_TEMP_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
-	
-	if (draw_surround)
-	{
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	
-	int flash = (int)([UNIVERSE getTime] * 4);
-	flash &= 1;
-	// what color are we?
-	if (temp > .80)
-	{
-		if (temp > .90 && flash)
-			SET_COLOR_CRITICAL(redplus_color);
-		else
-			SET_COLOR_HIGH(red_color);
-	}
-	else
-	{
-		if (temp > .25)
-			SET_COLOR_MEDIUM(yellow_color);
-		else
-			SET_COLOR_LOW(green_color);
-	}
-
-	
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, temp);
-}
-
-
-- (void) drawWeaponTempBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				temp = [PLAYER laserHeatLevel];
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, WEAPON_TEMP_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, WEAPON_TEMP_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, WEAPON_TEMP_BAR_WIDTH);
-	siz.height = useDefined(cached.height, WEAPON_TEMP_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
-	
-	if (draw_surround)
-	{
-		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	
-	// draw weapon_temp bar (only need to call GLColor() once!)
-	if (temp > .80)
-		SET_COLOR_HIGH(red_color);
-	else if (temp > .25)
-		SET_COLOR_MEDIUM(yellow_color);
-	else
-		SET_COLOR_LOW(green_color);
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, temp);
-}
-
-
-- (void) drawAltitudeBar:(const oo::PList &)info	// called by name (ADR-0055 item 5)
-{
-	int					x, y;
-	NSSize				siz;
-	BOOL				draw_surround;
-	GLfloat				alt = [PLAYER dialAltitude];
-	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
-	struct CachedInfo	cached;
-	
-	GetCurrentCachedInfo(&cached);
-	
-	x = useDefined(cached.x, ALTITUDE_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
-	y = useDefined(cached.y, ALTITUDE_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
-	siz.width = useDefined(cached.width, ALTITUDE_BAR_WIDTH);
-	siz.height = useDefined(cached.height, ALTITUDE_BAR_HEIGHT);
-	alpha *= cached.alpha;
-	draw_surround = info.get<bool>(DRAW_SURROUND_KEY, NO);
-	
-	if (draw_surround)
-	{
-		SET_COLOR_SURROUND(yellow_color);
-		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
-	}
-	
-	int flash = (int)([UNIVERSE getTime] * 4);
-	flash &= 1;
-	
-	// draw altitude bar (evaluating the least amount of ifs per go)
-	if (alt < .25)
-	{
-		if (alt < .10 && flash)
-			SET_COLOR_CRITICAL(redplus_color);
-		else
-			SET_COLOR_HIGH(red_color);
-	}
-	else
-	{
-		if (alt < .75)
-			SET_COLOR_MEDIUM(yellow_color);
-		else
-			SET_COLOR_LOW(green_color);
-	}
-	
-	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, alt);
-	
 }
 
 
