@@ -243,7 +243,7 @@ std::string Bars(char mark, int count)
 */
 StickProfileScreen::StickProfileScreen()
 {
-	stickHandler = oo::ToCxx([OOJoystickManager sharedStickHandler]);
+	stickHandler = oo::ToCxx(static_cast<OOJoystickManager *>([OOJoystickManager sharedStickHandler]));	// +sharedStickHandler answers id
 	current_axis = AXIS_ROLL;
 	// profiles[][] start null (they were set to nil here).
 }
