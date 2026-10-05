@@ -3289,3 +3289,39 @@ is a dependency cycle or a stall, and a slice cannot be done while it sends to t
 **Consequences.** A binding gets a bridge of free functions (no façade) and a deletion bead that
 waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
 more call frame. `--slice-done` stays as strict as it is.
+
+## Amendment (bead oo-u61e.4): a subclass of a converted root whose façade is the object's identity
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSScript.h/.mm`,
+  `OOJSScript+ObjCBridge.h/.mm`, `tests/unit/core/test_OOJSScript.mm`.
+
+**Context.** `OOJSScript` converts after its root (`OOScript`, amendment oo-604l), so it is a plain
+C++ subclass. But the Objective-C object is what everything holds: its JS object's private slot
+holds a weak reference to it, the stack of running scripts holds it, timers and definitions keep
+weak references to it, and `-initWithPath:properties:` hands it to all of these while it runs.
+Converted callers inside `namespace cxx` named the Objective-C class unqualified.
+
+**Decision (recommended defaults).**
+
+1. **`cxx::X : public cxx::Root`, and the façade `@interface X : Root` has no ivars** (amendment
+   oo-up4b item 3); the root façade's ivar holds the C++ object. The root's forwarders for the
+   virtual members reach `X`'s overrides, so the façade does not repeat them.
+2. **The façade is the identity, as amendment oo-3kqi's is: it makes and owns its C++ object.** The
+   root façade gets a public initialiser in its `OOObjCBridge` category (`-initWithCxxRootScript:`)
+   that stores the object and records the façade as its peer; the subclass façade's initialiser
+   calls it with `oo::makeRef<cxx::X>()`. Converted code does not make a `cxx::X`.
+3. **The old initialiser's body is a `bool` member run by the façade once it is the peer**
+   (amendment oo-puw9 item 3); `self` in it is `oo::ToObjC(this)`. Where it destroyed `self` on
+   failure it answers `false`, and the façade releases itself. **The part of `-dealloc` before
+   `[super dealloc]` is a member (`willDealloc()`) that the façade's `-dealloc` runs**, and it must
+   not call `oo::ToObjC(this)`: the peer table already reads the dying façade as dead.
+4. **Ivars named like the members that answer them take a leading underscore** (`_name`,
+   `_version`), as amendment oo-862e says for a getter with its ivar's name.
+5. **Callers in `namespace cxx` that name the Objective-C class are qualified `::X` in a bead of
+   their own before the conversion** (oo-u61e.5) when they would push the conversion past the
+   eight-file budget.
+6. **A category on the root that the class's header declared** (`OOScript (JavaScriptEvents)`)
+   moves with its `@interface` to `X+ObjCBridge.h/.mm` (amendment oo-up4b item 4).
+
+**Consequences.** One façade with its deletion bead (oo-9ht.137), which the root's (oo-9ht.133)
+now waits for. The root bridge gained one initialiser.
