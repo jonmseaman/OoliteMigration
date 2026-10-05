@@ -237,3 +237,4 @@
 [oo-3c81] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConstToString && bash tools/tier-c.sh --only goldens
 [oo-3bgz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
 [oo-r9gn] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
+[oo-ugw3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens

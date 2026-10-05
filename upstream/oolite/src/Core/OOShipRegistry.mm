@@ -149,7 +149,7 @@ void AddEntries(oo::PList::Dict &to, const oo::PList &from)
 }
 
 
-// [[keys sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)] componentsJoinedByString:@", "]
+// -sortedArrayUsingSelector: with -caseInsensitiveCompare:, then -componentsJoinedByString:@", "
 std::string CaseInsensitiveSortedList(std::vector<std::string> keys)
 {
 	std::stable_sort(keys.begin(), keys.end(), [](const std::string &a, const std::string &b)
@@ -169,51 +169,6 @@ std::string CaseInsensitiveSortedList(std::vector<std::string> keys)
 void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 }	// namespace
-
-
-@interface OOShipRegistry (OODataLoader)
-
-// The rest of the loader (slice 3 of docs/phases/3-slices/OOShipRegistry.md), still Objective-C
-// on the facade; the C++ load stages (slice 2) send these to oo::ToObjC(this). The ship
-// dictionary each stage mutates is one property list, passed through every stage.
-- (BOOL) canonicalizeAndTagSubentities:(oo::PList &)ioData;
-
-#if PRELOAD
-- (BOOL) preloadShipMeshes:(oo::PList &)ioData;
-#endif
-
-- (void) mergeShipRoles:(const std::string &)roles forShipKey:(const std::string &)shipKey intoProbabilityMap:(std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>> &)probabilitySets;
-
-// Declarations and ship data are property lists; a result is a declaration dictionary, or a
-// null PList where it was nil.
-- (oo::PList) canonicalizeSubentityDeclaration:(const oo::PList &)declaration
-									   forShip:(const std::string &)shipKey
-									  shipData:(const oo::PList &)shipData
-									fatalError:(BOOL *)outFatalError;
-- (oo::PList) translateOldStyleSubentityDeclaration:(const std::string &)declaration
-											forShip:(const std::string &)shipKey
-										   shipData:(const oo::PList &)shipData
-										 fatalError:(BOOL *)outFatalError;
-- (oo::PList) translateOldStyleFlasherDeclaration:(const oo::PList &)tokens
-										  forShip:(const std::string &)shipKey
-									   fatalError:(BOOL *)outFatalError;
-- (oo::PList) translateOldStandardBasicSubentityDeclaration:(const oo::PList &)tokens
-													forShip:(const std::string &)shipKey
-												   shipData:(const oo::PList &)shipData
-												 fatalError:(BOOL *)outFatalError;
-- (oo::PList) validateNewStyleSubentityDeclaration:(const oo::PList &)declaration
-										   forShip:(const std::string &)shipKey
-										fatalError:(BOOL *)outFatalError;
-- (oo::PList) validateNewStyleFlasherDeclaration:(const oo::PList &)declaration
-										 forShip:(const std::string &)shipKey
-									  fatalError:(BOOL *)outFatalError;
-- (oo::PList) validateNewStyleStandardSubentityDeclaration:(const oo::PList &)declaration
-												   forShip:(const std::string &)shipKey
-												fatalError:(BOOL *)outFatalError;
-
-- (BOOL) shipIsBallTurretForKey:(const std::string &)shipKey inShipData:(const oo::PList &)shipData;
-
-@end
 
 
 namespace cxx {
@@ -442,7 +397,7 @@ void OOShipRegistry::loadShipData()
 	OO_LOG("shipData.load.progress", "{}", "Finished resolving like_ships...");
 
 	// Clean up subentity declarations and tag subentities so they won't be pruned.
-	if (![oo::ToObjC(this) canonicalizeAndTagSubentities:result])  return;
+	if (!canonicalizeAndTagSubentities(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished cleaning up subentities...");
 
 	// Clean out templates and invalid entries.
@@ -459,7 +414,7 @@ void OOShipRegistry::loadShipData()
 
 #if PRELOAD
 	// Preload and cache meshes.
-	if (![oo::ToObjC(this) preloadShipMeshes:result])  return;
+	if (!preloadShipMeshes(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished loading meshes...");
 #endif
 
@@ -489,7 +444,7 @@ void OOShipRegistry::loadShipData()
 	OO_LOG("effectData.load.progress", "{}", "Finished resolving like_effects...");
 
 	// Clean up subentity declarations and tag subentities so they won't be pruned.
-	if (![oo::ToObjC(this) canonicalizeAndTagSubentities:result])  return;
+	if (!canonicalizeAndTagSubentities(result))  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished cleaning up subentities...");
 
 	// Clean out templates and invalid entries.
@@ -697,7 +652,7 @@ void OOShipRegistry::buildRoleProbabilitySets()
 	{
 		for (const auto &[shipKey, shipEntry] : *ships)
 		{
-			[oo::ToObjC(this) mergeShipRoles:StringForKey(&shipEntry, "roles").value_or("") forShipKey:shipKey intoProbabilityMap:probabilitySets];
+			mergeShipRoles(StringForKey(&shipEntry, "roles").value_or(""), shipKey, probabilitySets);
 		}
 	}
 
@@ -1162,9 +1117,9 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }	// namespace cxx
 
 
-@implementation OOShipRegistry (OODataLoader)
+namespace cxx {
 
-- (BOOL) canonicalizeAndTagSubentities:(oo::PList &)ioData
+bool OOShipRegistry::canonicalizeAndTagSubentities(oo::PList &ioData)
 {
 	oo::PList::Dict			&ships = Entries(ioData);
 	BOOL					remove, fatal;
@@ -1188,7 +1143,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 			okSubentities.reserve(subentityDeclarations.count());
 			for (const oo::PList &subentityDecl : *subentityDeclarations.getIf<oo::PList::Array>())
 			{
-				oo::PList subentityDict = [self canonicalizeSubentityDeclaration:subentityDecl forShip:shipKey shipData:ioData fatalError:&fatal];
+				oo::PList subentityDict = canonicalizeSubentityDeclaration(subentityDecl, shipKey, ioData, &fatal);
 
 				// If entry is broken, we need to kill this ship.
 				if (fatal)
@@ -1209,7 +1164,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 							if (!subentityKey.has_value())
 							{
 								// -addObject:nil raised
-								[OOException raise:OOInvalidArgumentException format:"Tried to add nil to set"];
+								OORaiseException(OOInvalidArgumentException, "Tried to add nil to set");
 							}
 							badSubentities.insert(*subentityKey);
 						}
@@ -1255,12 +1210,12 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 		}
 	}
 
-	return YES;
+	return true;
 }
 
 
 #if PRELOAD
-- (BOOL) preloadShipMeshes:(oo::PList &)ioData
+bool OOShipRegistry::preloadShipMeshes(oo::PList &ioData)
 {
 	oo::PList::Dict			&ships = Entries(ioData);
 	OOMesh					*mesh = nil;
@@ -1302,14 +1257,12 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 
 	[[GameController sharedController] setProgressBarValue:-1.0f];
 
-	return YES;
+	return true;
 }
 #endif
 
 
-- (void) mergeShipRoles:(const std::string &)roles
-			 forShipKey:(const std::string &)shipKey
-	 intoProbabilityMap:(std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>> &)probabilitySets
+void OOShipRegistry::mergeShipRoles(const std::string &roles, const std::string &shipKey, std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>> &probabilitySets)
 {
 	/*	probabilitySets is a dictionary whose keys are roles and whose values
 		are mutable probability sets, whose values are ship keys.
@@ -1347,10 +1300,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (oo::PList) canonicalizeSubentityDeclaration:(const oo::PList &)declaration
-									   forShip:(const std::string &)shipKey
-									  shipData:(const oo::PList &)shipData
-									fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::canonicalizeSubentityDeclaration(const oo::PList &declaration, const std::string &shipKey, const oo::PList &shipData, BOOL *outFatalError)
 {
 	oo::PList				result;
 
@@ -1363,25 +1313,18 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 		cxx_OOStandardsDeprecated(oo::str::format("Old style sub-entity declarations are deprecated in %s", shipKey.c_str()));
 		if (!OOEnforceStandards())
 		{
-			result = [self translateOldStyleSubentityDeclaration:*declaration.getIf<std::string>()
-														 forShip:shipKey
-														shipData:shipData
-													  fatalError:outFatalError];
+			result = translateOldStyleSubentityDeclaration(*declaration.getIf<std::string>(), shipKey, shipData, outFatalError);
 		}
 		if (!result.isNull())
 		{
 			// Ensure internal translation made sense, and clean up a bit.
-			result = [self validateNewStyleSubentityDeclaration:result
-														forShip:shipKey
-													 fatalError:outFatalError];
+			result = validateNewStyleSubentityDeclaration(result, shipKey, outFatalError);
 		}
 	}
 	else if (declaration.isDict())
 	{
 		// Validate dictionary-based declaration.
-		result = [self validateNewStyleSubentityDeclaration:declaration
-													forShip:shipKey
-												 fatalError:outFatalError];
+		result = validateNewStyleSubentityDeclaration(declaration, shipKey, outFatalError);
 	}
 	else
 	{
@@ -1399,10 +1342,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (oo::PList) translateOldStyleSubentityDeclaration:(const std::string &)declaration
-											forShip:(const std::string &)shipKey
-										   shipData:(const oo::PList &)shipData
-										 fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::translateOldStyleSubentityDeclaration(const std::string &declaration, const std::string &shipKey, const oo::PList &shipData, BOOL *outFatalError)
 {
 	const std::vector<std::string>	tokenStrings = oo::str::tokens(declaration);
 	std::string						subentityKey;
@@ -1434,23 +1374,16 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 
 	if (isFlasher)
 	{
-		return [self translateOldStyleFlasherDeclaration:tokens
-												 forShip:shipKey
-											  fatalError:outFatalError];
+		return translateOldStyleFlasherDeclaration(tokens, shipKey, outFatalError);
 	}
 	else
 	{
-		return [self translateOldStandardBasicSubentityDeclaration:tokens
-														   forShip:shipKey
-														  shipData:shipData
-														fatalError:outFatalError];
+		return translateOldStandardBasicSubentityDeclaration(tokens, shipKey, shipData, outFatalError);
 	}
 }
 
 
-- (oo::PList) translateOldStyleFlasherDeclaration:(const oo::PList &)tokens
-										  forShip:(const std::string &)shipKey
-									   fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::translateOldStyleFlasherDeclaration(const oo::PList &tokens, const std::string &shipKey, BOOL *outFatalError)
 {
 	Vector					position;
 	float					size, frequency, phase, hue;
@@ -1485,10 +1418,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (oo::PList) translateOldStandardBasicSubentityDeclaration:(const oo::PList &)tokens
-													forShip:(const std::string &)shipKey
-												   shipData:(const oo::PList &)shipData
-												 fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::translateOldStandardBasicSubentityDeclaration(const oo::PList &tokens, const std::string &shipKey, const oo::PList &shipData, BOOL *outFatalError)
 {
 	std::string				subentityKey;
 	Vector					position;
@@ -1497,7 +1427,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 
 	subentityKey = tokens.at<std::string>(0);
 
-	isTurret = [self shipIsBallTurretForKey:subentityKey inShipData:shipData];
+	isTurret = shipIsBallTurretForKey(subentityKey, shipData);
 
 	position.x = tokens.at<float>(1);
 	position.y = tokens.at<float>(2);
@@ -1537,19 +1467,17 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (oo::PList) validateNewStyleSubentityDeclaration:(const oo::PList &)declaration
-										   forShip:(const std::string &)shipKey
-										fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::validateNewStyleSubentityDeclaration(const oo::PList &declaration, const std::string &shipKey, BOOL *outFatalError)
 {
 	const std::string		type = StringForKey(&declaration, "type").value_or("standard");
 
 	if (type == "flasher")
 	{
-		return [self validateNewStyleFlasherDeclaration:declaration forShip:shipKey fatalError:outFatalError];
+		return validateNewStyleFlasherDeclaration(declaration, shipKey, outFatalError);
 	}
 	else if (type == "standard" || type == "ball_turret")
 	{
-		return [self validateNewStyleStandardSubentityDeclaration:declaration forShip:shipKey fatalError:outFatalError];
+		return validateNewStyleStandardSubentityDeclaration(declaration, shipKey, outFatalError);
 	}
 	else
 	{
@@ -1560,9 +1488,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (oo::PList) validateNewStyleFlasherDeclaration:(const oo::PList &)declaration
-										 forShip:(const std::string &)shipKey
-									  fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::validateNewStyleFlasherDeclaration(const oo::PList &declaration, const std::string &shipKey, BOOL *outFatalError)
 {
 	Vector					position = kZeroVector;
 	float					size, frequency, phase, brightfraction;
@@ -1593,11 +1519,11 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 	oo::PList::Array validColors;
 	for (std::size_t i = 0; i != colors.count(); ++i)
 	{
-		OOColor *color = [OOColor cxx_colorWithDescription:*colors.at(i)];
-		if (color != nil)
+		oo::Ref<OOColor> color = OOColor::colorWithDescription(*colors.at(i));
+		if (color != nullptr)
 		{
 			oo::PList::Array components;
-			for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+			for (float component : color->normalizedArray())  components.push_back(oo::PList::singleReal(component));
 			validColors.emplace_back(std::move(components));
 		}
 		else
@@ -1646,9 +1572,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (oo::PList) validateNewStyleStandardSubentityDeclaration:(const oo::PList &)declaration
-												   forShip:(const std::string &)shipKey
-												fatalError:(BOOL *)outFatalError
+oo::PList OOShipRegistry::validateNewStyleStandardSubentityDeclaration(const oo::PList &declaration, const std::string &shipKey, BOOL *outFatalError)
 {
 	Vector					position = kZeroVector;
 	Quaternion				orientation = kIdentityQuaternion;
@@ -1740,7 +1664,7 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 }
 
 
-- (BOOL) shipIsBallTurretForKey:(const std::string &)shipKey inShipData:(const oo::PList &)shipData
+bool OOShipRegistry::shipIsBallTurretForKey(const std::string &shipKey, const oo::PList &shipData)
 {
 	// Test for presence of setup_actions containing initialiseTurret.
 	const oo::PList *shipEntry = shipData.get<oo::PList::Dict>(shipKey);
@@ -1749,20 +1673,20 @@ bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 	for (std::size_t i = 0; setupActions != nullptr && i != setupActions->count(); ++i)
 	{
 		const std::string *action = setupActions->at(i)->getIf<std::string>();
-		if (FirstToken(oo::str::tokens(action != nullptr ? *action : std::string())) == "initialiseTurret")  return YES;
+		if (FirstToken(oo::str::tokens(action != nullptr ? *action : std::string())) == "initialiseTurret")  return true;
 	}
 
 	if (shipKey == "ballturret")
 	{
 		// compatibility for OXPs using old subentity declarations and the
 		// core turret entity
-		return YES;
+		return true;
 	}
 
-	return NO;
+	return false;
 }
 
-@end
+}	// namespace cxx
 
 
 namespace {
