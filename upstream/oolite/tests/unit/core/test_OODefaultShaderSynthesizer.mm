@@ -14,9 +14,11 @@
 	gDebugFlags. The log is captured, so the warnings and errors are pinned too.
 
 	The expectations were written against the entry point while the class was Objective-C and
-	run on it first; they pin the whole of each shader text, the description of the texture
+	run on it first (commit 643b5358b); they pin the whole of each shader text, the description of the texture
 	list and of the uniforms, and the warnings and errors logged. Light-map bindings are not
 	covered: they read the binding types from the game's resources (ResourceManager).
+	Slice 1 made the class C++ (cxx::OODefaultShaderSynthesizer) with an Objective-C facade for the
+	stages; the last tests pin the C++ API and the facade's contract.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -1151,6 +1153,57 @@ OO_TEST(cubeMapFails)
 	OO_CHECK(s.textures.isNull());
 	OO_CHECK(s.uniforms.isNull());
 	OO_CHECK_EQ(LogLinesContaining("specifies a cube map texture"), 1);
+}
+
+
+// --- The C++ class and its facade (bead oo-bm1q) -------------------------------------------------
+
+// The C++ synthesizer, run directly, answers what the entry point wrote; it keeps the material key
+// and (as upstream did) not the entity name.
+OO_TEST(cxxSynthesizerAnswersAsTheEntryPoint)
+{
+	Synthesized expected = Synthesize({ { "specular", Color(1, 1, 1) }, { "shininess", oo::PList(20) } }, std::string("hull.png"));
+	@autoreleasepool
+	{
+		oo::Ref<cxx::OODefaultShaderSynthesizer> synthesizer = oo::makeRef<cxx::OODefaultShaderSynthesizer>(oo::PList(oo::PList::Dict{ { "specular", Color(1, 1, 1) }, { "shininess", oo::PList(20) } }), std::string("hull.png"), std::string("test entity"));
+		OO_CHECK(synthesizer->run());
+		OO_CHECK(synthesizer->vertexShader() == expected.vertex);
+		OO_CHECK(synthesizer->fragmentShader() == expected.fragment);
+		OO_CHECK(synthesizer->textureSpecifications() == expected.textures);
+		OO_CHECK(synthesizer->uniformSpecifications() == expected.uniforms);
+		OO_CHECK(synthesizer->materialKey() == std::optional<std::string>("hull.png"));
+		OO_CHECK(!synthesizer->entityName().has_value());
+	}
+}
+
+
+// The facade: one per C++ object, nil for null, the C++ object behind it, the same answers; and a
+// facade made from Objective-C is its object's facade.
+OO_TEST(facadeContract)
+{
+	@autoreleasepool
+	{
+		oo::Ref<cxx::OODefaultShaderSynthesizer> synthesizer = oo::makeRef<cxx::OODefaultShaderSynthesizer>(oo::PList(oo::PList::Dict{}), std::string("hull.png"), std::nullopt);
+		OODefaultShaderSynthesizer *facade = oo::ToObjC(synthesizer);
+		OO_CHECK(facade != nil);
+		OO_CHECK(oo::ToObjC(synthesizer) == facade);
+		OO_CHECK(oo::ToCxx(facade) == synthesizer.get());
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OODefaultShaderSynthesizer *>(nullptr)) == nil);
+		OO_CHECK(oo::ToCxx(static_cast<OODefaultShaderSynthesizer *>(nil)) == nullptr);
+		
+		OO_CHECK([facade run]);
+		OO_CHECK([facade vertexShader] == synthesizer->vertexShader());
+		OO_CHECK([facade fragmentShader] == synthesizer->fragmentShader());
+		OO_CHECK([facade textureSpecifications] == synthesizer->textureSpecifications());
+		OO_CHECK([facade uniformSpecifications] == synthesizer->uniformSpecifications());
+		OO_CHECK([facade materialKey] == synthesizer->materialKey());
+		
+		OODefaultShaderSynthesizer *made = [[[OODefaultShaderSynthesizer alloc] initWithMaterialConfiguration:oo::PList(oo::PList::Dict{}) materialKey:std::string("hull.png") entityName:std::nullopt] autorelease];
+		OO_CHECK(oo::ToCxx(made) != nullptr);
+		OO_CHECK(oo::ToObjC(oo::ToCxx(made)) == made);
+		OO_CHECK([made run]);
+		OO_CHECK([made fragmentShader] == synthesizer->fragmentShader());
+	}
 }
 
 
