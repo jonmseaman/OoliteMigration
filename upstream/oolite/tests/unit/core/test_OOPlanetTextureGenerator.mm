@@ -216,11 +216,12 @@ OO_TEST(withSecondaryTexture)
 	SetUp();
 	@autoreleasepool
 	{
-		// The normal map is filled when the surface is generated.
+		// The normal map is filled when the surface is generated, so the surface is loaded first
+		// (unlike the atmosphere's, the normal map's generator does not wait for the surface's).
 		Textures t = GenerateWithSecondary(PlanetInfo(false), (RANROTSeed){ 3, 3 }, true);
 		OO_CHECK(t.ok && t.atmosphere == nil);
-		OO_CHECK(Loaded(t.secondary, "OOPlanetTextureGenerator-normal@2\n", 512, 512));
 		OO_CHECK(Loaded(t.texture, "OOPlanetTextureGenerator-diffuse-raw@2\n", 512, 512));
+		OO_CHECK(Loaded(t.secondary, "OOPlanetTextureGenerator-normal@2\n", 512, 512));
 
 		Textures alone = GenerateWithSecondary(PlanetInfo(false), (RANROTSeed){ 4, 4 }, false);
 		OO_CHECK(alone.ok && alone.secondary == nil);
