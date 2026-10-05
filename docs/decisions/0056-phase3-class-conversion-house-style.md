@@ -2871,3 +2871,36 @@ implements, and sixteen files import it to send those selectors.
 
 **Consequences.** One bridge pair and its deletion bead, which waits for `Entity`, `ShipEntity` and
 `PlayerEntity` to be C++.
+
+## Amendment (bead oo-mw4u): a subclass of a converted root whose one caller is adapted
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OOPlanetDrawable.h/.mm`, its caller
+  `src/Core/Entities/OOPlanetEntity.h/.mm`, `tests/unit/core/test_OOPlanetDrawable.mm`.
+
+**Context.** `OOPlanetDrawable` derives from `OODrawable`, a converted root with a façade (amendment
+oo-smy), and has one caller, `OOPlanetEntity`, which keeps four of them in ivars, copies them for
+its miniature and messages them by their own selectors. The drawable keeps a material, swaps it
+with `[_material autorelease]`, and is copied with `-copy` (`OOCopying`).
+
+**Decision (recommended defaults).**
+
+1. **No façade** (amendment oo-zffj item 1): the class is global, `OOPlanetDrawable : public
+   cxx::OODrawable`, with `override` on the root's virtual members; the caller's ivars are
+   `oo::Ref<OOPlanetDrawable>` (`class OOPlanetDrawable;` in its header), its sends are member
+   calls, null-guarded where the drawable may be absent (the atmosphere's: a message to nil did
+   nothing, and `[nil radius]` was 0), and `DESTROY` is `= nullptr`. Nothing hands the drawable to
+   Objective-C, so the root façade's class lookup is not needed.
+2. **`-copyWithZone:` that callers reach as `-copy` is `oo::Ref<X> copy()`**: a new object of the
+   class (`[[self class] alloc]`, and the class has no subclass) with the copied state.
+3. **`-initAsAtmosphere`, sent only by the class's factory, is a static factory of that name**
+   (amendment oo-peql item 2); `-init` is the constructor.
+4. **The material stays the Objective-C object** (amendment oo-smy item 4), `oo::ObjCRef<OOMaterial *>`,
+   and the bodies cross once with `oo::ToCxx`, null-guarded. `[_material autorelease]` before a new
+   one is `objc_autorelease(_material.leakRef())` (amendment oo-y0gz item 6); a material it makes
+   comes from the C++ factory and is kept as `oo::ToObjC` of it.
+5. **The test** makes and reads the drawable through one block of helpers, the only lines the
+   conversion ported (they sent messages before and call members after); the universe answers the
+   detail setting and a game view of the test's size.
+
+**Consequences.** No façade and no deletion bead. `OOPlanetEntity.h/.mm` changed at the drawable's
+lines only; the planet's own conversion (oo-mp0d) keeps them.
