@@ -232,8 +232,10 @@
 [oo-0hxr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm && bash tools/tier-c.sh --only goldens
 [oo-f4241] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
 [oo-zl36] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureLoader test_OOConcreteTexture test_OOTexture && bash tools/tier-c.sh --only goldens
+[oo-9ht.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSDLJoystickManager
 [oo-rr2x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureGenerator test_OOTextureLoader test_OOTexture && bash tools/tier-c.sh --only goldens
 [oo-f1yi3] export PATH="/ucrt64/bin:$PATH"; bash tools/check-jsengine-facade-quickjs.sh && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSMissionVariables && bash tools/tier-c.sh --only goldens
 [oo-3c81] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConstToString && bash tools/tier-c.sh --only goldens
 [oo-aeev] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_EntityShaderBindings && bash tools/tier-c.sh --only goldens
 [oo-g223] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_EntityOOJavaScriptExtensions && bash tools/tier-c.sh --only goldens
+[oo-kvqq] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Materials/OOPixMapTextureLoader.mm && bash tools/check-core-tests.sh test_OOPixMapTextureLoader test_OOTextureGenerator test_OOTexture && bash tools/tier-c.sh --only goldens
