@@ -74,7 +74,7 @@ private:
 
 	ooscript::Value				_callback = {};
 	ooscript::Object _callbackThis = {};
-	oo::ObjCRef<OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
+	oo::ObjCRef<::OOJSScript *>	_owningScript;	// a weak reference (-weakRetain)
 
 	std::optional<std::string>	_name;			// nullopt until set (was nil)
 	oo::PList			_registerKeys;	// key name -> key definitions; null until set (was nil)

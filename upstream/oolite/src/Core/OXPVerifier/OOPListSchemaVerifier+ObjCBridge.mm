@@ -137,49 +137,4 @@ cxx::OOPListSchemaVerifier *oo::ToCxx(OOPListSchemaVerifier *verifier)
 @end
 
 
-@implementation OOPListSchemaVerifier (OOPrivate)
-
-- (BOOL)delegateVerifierWithPropertyList:(const oo::PList &)rootPList
-								   named:(const std::string &)name
-							testProperty:(const oo::PList &)subPList
-								  atPath:(BackLinkChain)keyPath
-							 againstType:(const oo::PList &)typeKey
-								   error:(std::optional<OOPListSchemaVerifierError> *)outError
-{
-	return _cxxVerifier->delegateVerifierWithPropertyList(rootPList, name, subPList, keyPath, typeKey, outError);
-}
-
-
-- (BOOL)delegateVerifierWithPropertyList:(const oo::PList &)rootPList
-								   named:(const std::string &)name
-					   failedForProperty:(const oo::PList &)subPList
-							   withError:(const OOPListSchemaVerifierError &)error
-							expectedType:(const oo::PList &)localSchema
-{
-	return _cxxVerifier->delegateVerifierWithPropertyList(rootPList, name, subPList, error, localSchema);
-}
-
-
-- (BOOL)verifyPList:(const oo::PList &)rootPList
-			  named:(const std::string &)name
-		subProperty:(const oo::PList &)subProperty
-  againstSchemaType:(const oo::PList &)subSchema
-			 atPath:(BackLinkChain)keyPath
-		  tentative:(BOOL)tentative
-			  error:(std::optional<OOPListSchemaVerifierError> *)outError
-			   stop:(BOOL *)outStop
-{
-	return _cxxVerifier->verifyPList(rootPList, name, subProperty, subSchema, keyPath, tentative, outError, outStop);
-}
-
-
-- (oo::PList)resolveSchemaType:(const oo::PList &)specifier
-					  atPath:(BackLinkChain)keyPath
-					   error:(std::optional<OOPListSchemaVerifierError> *)outError
-{
-	return _cxxVerifier->resolveSchemaType(specifier, keyPath, outError);
-}
-
-@end
-
 #endif	// OO_OXP_VERIFIER_ENABLED
