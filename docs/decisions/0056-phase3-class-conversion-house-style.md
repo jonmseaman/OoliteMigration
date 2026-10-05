@@ -2801,6 +2801,34 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
 
+## Amendment (bead oo-1v2w): a converted class that is an Objective-C object's delegate
+
+- Date: 2026-09-30. Status: Proposed, as above. Exemplar:
+  `src/Core/OXPVerifier/OOCheckShipDataPListVerifierStage.h/.mm`,
+  `OOCheckShipDataPListVerifierStage+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOCheckShipDataPListVerifierStage.mm`.
+
+**Context.** The ship data stage is the delegate of an `OOPListSchemaVerifier`, which is still
+Objective-C and messages its delegate through an informal protocol (a category on `OOObject`).
+A C++ object cannot be that delegate. Both delegate selectors start with `verifier:`, and a member
+named `verifier` would hide the base's `verifier()`.
+
+**Decision (recommended defaults).**
+
+1. **The delegate is a helper that stays Objective-C,** as amendment oo-rmd7 item 1 does for a
+   formal protocol: `XDelegate`-style class (here `OOCheckShipDataPListVerifierStageSchemaDelegate`)
+   in `X+ObjCBridge.h/.mm`, holding a borrowed `X *`. The C++ class makes it where it set itself as
+   delegate, keeps it in an `oo::ObjCRef<id>` member (the Objective-C object held its delegate
+   unretained), and passes it to `-setDelegate:`. The helper forwards each delegate method in one
+   line to a public member of the class, commented with the caller. The bridge's deletion bead
+   waits for the delegating class's conversion.
+2. **A selector whose first keyword would hide an inherited member** (`verifier:…`) takes its
+   distinguishing keyword as well, as amendment oo-fn2f item 5 does for a clash:
+   `verifierTestProperty(...)`, `verifierFailedForProperty(...)`. Parameters the body does not use
+   are unnamed.
+3. **Inside a member of a class derived from `cxx::OOOXPVerifierStage`**, the Objective-C façade
+   type in a cast is written `::OOOXPVerifierStage` (amendment 1 item 4).
+
 ## Amendment (bead oo-aeev): a category reached only by selector, in a file the build did not compile
 
 - Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/Entities/EntityShaderBindings.mm`,
