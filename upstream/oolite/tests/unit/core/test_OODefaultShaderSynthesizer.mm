@@ -1156,6 +1156,40 @@ OO_TEST(cubeMapFails)
 }
 
 
+// --- The shader stages (slice 2, bead oo-bhxc) ---------------------------------------------------
+
+// Light maps with textures: one in illumination mode (which pulls in the diffuse lighting), one
+// tinted black (no effect), one tinted grey with alpha.
+OO_TEST(lightMapsWithTextures)
+{
+	oo::PList::Array lightMaps{
+		oo::PList(oo::PList::Dict{ { "name", oo::PList("a.png") }, { "illumination_mode", oo::PList(true) } }),
+		oo::PList(oo::PList::Dict{ { "name", oo::PList("b.png") }, { "color", Color(0, 0, 0) } }),
+		oo::PList(oo::PList::Dict{ { "name", oo::PList("c.png") }, { "color", oo::PList(oo::PList::Array{ oo::PList(0.5), oo::PList(0.5), oo::PList(0.5), oo::PList(0.5) }) } }),
+	};
+	Synthesized s = Synthesize({ { "light_map", oo::PList(std::move(lightMaps)) } }, std::string("hull.png"));
+	CheckSynthesized("lightMapsWithTextures", s, { nullptr, nullptr, nullptr, nullptr });
+}
+
+
+// A parallax map read from two channels cannot be used: a warning, and plain texture coordinates.
+OO_TEST(parallaxMapExtractionMismatch)
+{
+	Synthesized s = Synthesize({ { "normal_map", oo::PList("n.png") }, { "parallax_map", Map("p.png", "rg") } }, std::string("hull.png"));
+	CheckSynthesized("parallaxMapExtractionMismatch", s, { nullptr, nullptr, nullptr, nullptr });
+	OO_CHECK_EQ(LogLinesContaining("specifies 2 channels to extract"), 1);
+}
+
+
+// A specular exponent map read from three channels cannot be used: a warning and a marker.
+OO_TEST(specularExponentMapExtractionMismatch)
+{
+	Synthesized s = Synthesize({ { "specular_color_map", oo::PList("s.png") }, { "specular_exponent_map", Map("e.png", "rgb") }, { "specular_exponent", oo::PList(10) } }, std::string("hull.png"));
+	CheckSynthesized("specularExponentMapExtractionMismatch", s, { nullptr, nullptr, nullptr, nullptr });
+	OO_CHECK_EQ(LogLinesContaining("specifies 3 channels to extract"), 1);
+}
+
+
 // --- The C++ class and its facade (bead oo-bm1q) -------------------------------------------------
 
 // The C++ synthesizer, run directly, answers what the entry point wrote; it keeps the material key
