@@ -102,6 +102,7 @@ oolite_sources += files(
     'OOShipGroup+ObjCBridge.mm',
     'OOShipLibraryDescriptions.mm',
     'OOShipRegistry.mm',
+    'OOShipRegistry+ObjCBridge.mm',
     'OOSkyDrawable.mm',
     'OOSoundSource.mm',
     'OOSoundSource+ObjCBridge.mm',
