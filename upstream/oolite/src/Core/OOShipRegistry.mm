@@ -48,10 +48,10 @@ SOFTWARE.
 #define PRELOAD 0
 
 
-static cxx::OOShipRegistry	*sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
-
-
 namespace {
+
+cxx::OOShipRegistry	*sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+
 
 constexpr const char *kRoleWeightsCacheKey			= "role weights";
 constexpr const char *kDefaultDemoShip				= "coriolis-station";
