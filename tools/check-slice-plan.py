@@ -41,7 +41,9 @@ Checks (exit 1 on any failure):
   * each slice's read estimate, header + preamble + its own units, is under --max-read (1,500);
   * each slice's own units total at most --max-own lines (default 800): converting a method
     rewrites roughly half its lines, so this keeps a story near the ~400-lines-written budget;
-  * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...);
+  * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...), except an
+    out-of-line C++ member definition (X::m, its head qualified): that is a member a landed slice
+    already converted, which ADR-0056 lets keep sends to Objective-C objects and @try (oo-9ht.117);
   * every mac-only unit lies wholly inside an OOLITE_MAC_OS_X preprocessor arm.
 An exact entry that matches no unit is a warning (the method was removed or renamed upstream).
 
@@ -157,15 +159,16 @@ def parse_units(path):
                     head = "".join(buf).strip()
                     if impl and head[:1] in "-+":
                         cur = {"name": f"{head[0]}[{impl.split('(')[0]} {selector_of(head)}]",
-                               "block": "@" + impl, "kind": "method", "start": buf_line}
+                               "block": "@" + impl, "kind": "method", "member": False, "start": buf_line}
                         stack.append("body")
                     elif re.match(r"^(namespace\b[^{]*|extern\s*\"C\"\s*)$", head):
                         stack.append("ns")
                     elif head and not NOT_FUNC.search(head) and FUNC_NAME.search(head):
                         name = FUNC_NAME.search(head).group(1)
+                        member = "::" in name   # an out-of-line C++ member definition: X::m(...) { (oo-9ht.117)
                         mac = re.fullmatch(r"([A-Z][A-Z0-9_]+)\s*\(([^()]*)\)", head)
                         name = f"{mac.group(1)}({mac.group(2).strip()})" if mac else name.split("::")[-1] + "()"
-                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "start": buf_line}
+                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "member": member, "start": buf_line}
                         stack.append("body")
                     else:
                         stack.append("other")
@@ -299,6 +302,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
             for u in mine:
                 if u["kind"] == "method":
                     errors.append(f"verbatim unit {u['name']} is a method: it must become a member function in some slice"); continue
+                if u["member"]:
+                    # A converted member (cxx::X::m) that a landed slice moved out of its @implementation:
+                    # ADR-0056 keeps sends to unconverted Objective-C objects and @try/@catch (amendment
+                    # oo-puw9 item 4) in it, so it is not plain C and is not held to that (oo-9ht.117).
+                    continue
                 hits = objc_sites(code_lines[u["start"]:u["end"]+1])
                 if hits: errors.append(f"verbatim unit {u['name']} contains Objective-C at line {u['start']+hits[0]+1}: {raw_lines[u['start']+hits[0]].strip()[:90]}")
             report.append({"id": g["id"], "title": g["title"], "verbatim": True, "mac_only": False, "units": len(mine), "own": own, "read": 0,
@@ -486,6 +494,15 @@ def selftest():
     if a["errors"] or sorted(a["assign"].values()) != ["1", "mac-only", "mac-only"]: fails.append(f"mac arm of a sliced method: {a['errors']} {a['assign']}")
     macplan("slice 1: all\n  -[Foo a]\n  nf()\nmac-only: Mac\n  -[Foo m]\n  -[Foo e]\n  mf()\n", 1)   # the #else arm is compiled
     macplan("slice 1: all\n  -[Foo e]\n  -[Foo m]\n  mf()\nmac-only: Mac\n  -[Foo a]\n  nf()\n", 1)    # outside any arm / #if !MAC
+    # a landed class-shell slice (oo-9ht.117): its converted out-of-line members fall to the verbatim
+    # catch-all and may still message Objective-C objects; a plain function that does still fails
+    landed = SELFTEST_SRC.replace(private, 'void Foo::hidden()\n{\n\t[_delegate log:@"}"];\n\t@try { x(); } @catch (id e) { }\n}\n')
+    if landed == SELFTEST_SRC: fails.append("selftest landed-slice fixture edit did not apply")
+    open(os.path.join(d, "Foo.mm"), "w").write(landed)
+    rest = "slice 1: shell\n  -[Foo init]\n  -[Foo set*]\n  helper()\nverbatim: C\n  *\n"
+    run(rest, 0)                                                              # converted member in verbatim
+    open(os.path.join(d, "Foo.mm"), "w").write(landed.replace("int plainC(int y) { return y * 2; }", "int plainC(int y) { return [Foo twice:y]; }"))
+    run(rest, 1)                                                              # a plain function still may not
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)
     print("selftest OK" if not fails else "selftest FAILED")
