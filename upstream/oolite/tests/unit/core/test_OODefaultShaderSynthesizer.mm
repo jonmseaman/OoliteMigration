@@ -15,8 +15,8 @@
 
 	The expectations were written against the entry point while the class was Objective-C and
 	run on it first; they pin the whole of each shader text, the description of the texture
-	list and of the uniforms, and the log classes written. Light-map bindings are not covered:
-	they read the binding types from the game's resources (ResourceManager).
+	list and of the uniforms, and the warnings and errors logged. Light-map bindings are not
+	covered: they read the binding types from the game's resources (ResourceManager).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -1023,8 +1023,10 @@ OO_TEST(emissionAndIlluminationMaps)
 }
 
 
-// Light maps: a colour only, a texture in illumination mode, one tinted black.
-OO_TEST(lightMaps)
+// Light maps: a colour only, a texture in illumination mode, one tinted black. The colour-only
+// map is read as a texture specifier with no name (cxx_OOTextureSpecFromObject keeps a dictionary
+// when there is no default name), which is invalid, so nothing is synthesized (but YES).
+OO_TEST(lightMapColourOnlyFails)
 {
 	oo::PList::Array lightMaps{
 		oo::PList(oo::PList::Dict{ { "color", Color(0, 1, 0) } }),
@@ -1032,12 +1034,16 @@ OO_TEST(lightMaps)
 		oo::PList(oo::PList::Dict{ { "name", oo::PList("b.png") }, { "color", Color(0, 0, 0) } }),
 	};
 	Synthesized s = Synthesize({ { "light_map", oo::PList(std::move(lightMaps)) } }, std::string("hull.png"));
-	CheckSynthesized("lightMaps", s, { nullptr, nullptr, nullptr, nullptr });
+	OO_CHECK(s.ok);
+	OO_CHECK(s.vertex.empty());
+	OO_CHECK(s.fragment.empty());
+	OO_CHECK(s.textures.isNull());
+	OO_CHECK(s.uniforms.isNull());
 }
 
 
-// A light map entry with neither colour nor name is read as a texture with no name: the texture
-// specifier is invalid, and nothing is synthesized (but YES).
+// A colour-only light map and one with neither colour nor name: both are texture specifiers with
+// no name, so nothing is synthesized (but YES).
 OO_TEST(lightMapWithNoNameFails)
 {
 	oo::PList::Array lightMaps{
