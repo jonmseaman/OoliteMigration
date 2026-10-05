@@ -8,8 +8,10 @@
 	hands the pixels to the texture as they are, after making room for and generating mip-maps when
 	its options ask for them. It links the whole game but main (tests/unit/core/meson.build entry
 	['*']), on the hidden GL context of oo_gl_test_context.hpp. The expectations were written against
-	the Objective-C API and run on the unconverted class first. Making a loader goes through the
-	helper below, the only lines the conversion ports (amendment oo-bj8 item 11).
+	the Objective-C API and run on the unconverted class first (commit ab440895f). Making a loader
+	goes through the helper below, the only lines the conversion ported (amendment oo-bj8 item 11):
+	the class is now a global C++ class with no facade of its own, made by its factory, and its
+	object crosses as an OOTextureGenerator. The last test pins the C++ API.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -51,10 +53,10 @@ OOPixMap TestPixMap()
 }
 
 
-// [[OOPixMapTextureLoader alloc] initWithPixMap:...], autoreleased: the loader as a generator.
+// Was [[OOPixMapTextureLoader alloc] initWithPixMap:...], autoreleased: the loader as a generator.
 OOTextureGenerator *NewLoader(OOPixMap pixMap, uint32_t options, BOOL freeWhenDone)
 {
-	return [[[OOPixMapTextureLoader alloc] initWithPixMap:pixMap textureOptions:options freeWhenDone:freeWhenDone] autorelease];
+	return oo::ToObjC(OOPixMapTextureLoader::loaderWithPixMap(pixMap, options, freeWhenDone).get());
 }
 
 
@@ -147,6 +149,33 @@ OO_TEST(aTextureOfTheGenerator)
 		OO_CHECK([texture isFinishedLoading]);
 	}
 	ClearCache();
+}
+
+
+// --- The C++ API (after the conversion) --------------------------------------------------------
+
+OO_TEST(cxxApi)
+{
+	OO_CHECK(OOTestGLContext());
+	SetUpLoaders();
+	@autoreleasepool
+	{
+		OO_CHECK(!OOPixMapTextureLoader::loaderWithPixMap(kOONullPixMap, 0, true));
+
+		const oo::Ref<OOPixMapTextureLoader> loader = OOPixMapTextureLoader::loaderWithPixMap(TestPixMap(), kOOTextureMinFilterLinear, true);
+		OO_CHECK(loader && loader->textureOptions() == OOApplyTextureOptionDefaults(kOOTextureMinFilterLinear));
+		OO_CHECK(loader->path().value_or("").starts_with("OOPixMap@") && !loader->cacheKey().has_value());
+
+		// Its facade is an OOTextureGenerator (it has none of its own), the same one each time.
+		OOTextureGenerator *facade = oo::ToObjC(loader.get());
+		OO_CHECK([facade class] == [OOTextureGenerator class] && oo::ToCxx(facade) == loader.get());
+		OO_CHECK(oo::ToObjC(loader.get()) == facade && [facade textureOptions] == loader->textureOptions());
+
+		// Loading hands the pixels over as they are.
+		loader->loadTexture();
+		OO_CHECK(loader->_data != nullptr && loader->_width == 8 && loader->_height == 8 && loader->_rowBytes == 32);
+		OO_CHECK(loader->_format == kOOPixMapRGBA && ((const uint8_t *)loader->_data)[0] == 1);
+	}
 }
 
 

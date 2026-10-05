@@ -2768,3 +2768,32 @@ are made with the root's designated initialiser `-cxx_initWithPath:options:`, no
 **Consequences.** One more façade and deletion bead (`OOTextureGenerator+ObjCBridge`), done before
 the loaders' root bridge's (oo-9ht.114), which depends on it. The root's bridge changed shape
 (template adapter, initialiser, base walk) without any caller or test changing.
+
+## Amendment (bead oo-kvqq): a generator leaf that one Objective-C caller makes, with an initialiser that fails
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Materials/OOPixMapTextureLoader.h/.mm`,
+  its two callers in `src/Core/Entities/PlanetEntity.mm`, `tests/unit/core/test_OOPixMapTextureLoader.mm`.
+  Follows amendments oo-bj8 item 12, oo-2c6g item 2, oo-novu, oo-rr2x item 3 and oo-z889.
+
+**Context.** `OOPixMapTextureLoader` is a leaf under the converted `cxx::OOTextureGenerator`. Its one
+caller (`PlanetEntity`, still Objective-C) made it with `alloc`/`-initWithPixMap:textureOptions:freeWhenDone:`
+and handed it to `+[OOTexture textureWithGenerator:]`; no test stubs it, and nothing else names it.
+Its initialiser answered nil for a pixmap that is not valid (`DESTROY(self)`).
+
+**Decision (recommended defaults).**
+
+1. **It converts with no façade of its own** (amendment oo-bj8 item 12): a global class over
+   `cxx::OOTextureGenerator`, with `override` on the members it overrode. The initialiser is a
+   `bool` member and a static factory (`loaderWithPixMap`) answers null where it answered nil
+   (amendment oo-novu); the destructor frees the pixmap, as `DESTROY(self)`'s `-dealloc` did.
+2. **The caller calls the factory and hands on `oo::ToObjC(loader.get())`** (amendment oo-2c6g
+   item 2): the generator façade (amendment oo-rr2x item 3), which owns the loader, autoreleased,
+   as `[loader autorelease]` was. The typed overload for `cxx::OOTextureGenerator *` is the best
+   match for a derived pointer, so no cast is written.
+3. **A quirk of the old initialiser is kept** (it duplicated its own empty pixmap instead of the
+   one it was given when `freeWhenDone` was NO, so it answered nil); the test pins it.
+4. **The transitional comments that list the loaders still Objective-C** (in the roots' headers
+   and bridges) are left to the bridges' deletion beads, so the sibling beads do not conflict.
+
+**Consequences.** No façade and no deletion bead. The test's maker helper is the only line it
+ported; one more test pins the C++ API.
