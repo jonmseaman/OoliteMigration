@@ -17,7 +17,10 @@
 	size; the managed OXZs read from disk and matched against the list; a manifest download from
 	start to finish (the list replaced, the cache rewritten, the temporary file removed, the
 	managed list rebuilt), and the requests it then refuses. The expectations were written
-	against the Objective-C API and run on the unconverted class first.
+	against the Objective-C API and run on the unconverted class first; the public API still runs
+	through the facade, which is its forwarding test, and the private units through their C++
+	members (proposed ADR-0056 amendment oo-bwjb item 5). The facade's contract follows: one facade
+	for the singleton, identity both ways, nil and null, and the forwarded private units.
 	Run: bash tools/check-core-tests.sh test_OOOXZManager
 */
 
@@ -47,20 +50,6 @@
 
 // main.mm's global, which the game's objects reference (the test links all of them but main's).
 uint32_t gDebugFlags = 0;
-
-
-// The manager's private methods, as the unconverted class answers them.
-@interface OOOXZManager (TestPrivate)
-- (std::optional<std::string>) manifestPath;
-- (std::optional<std::string>) downloadPath;
-- (std::optional<std::string>) extractionBasePathForIdentifier:(const std::string &)identifier andVersion:(const std::string &)version;
-- (std::optional<std::string>) dataURL;
-- (std::optional<std::string>) humanSize:(NSUInteger)bytes;
-- (BOOL) ensureInstallPath;
-- (BOOL) validateFilter:(const std::string &)input;
-- (void) setFilter:(const std::string &)filter;
-- (oo::PList) applyCurrentFilter:(const oo::PList &)list;
-@end
 
 
 // A text check that prints what it got.
@@ -181,20 +170,20 @@ std::string Titles(const oo::PList &list)
 }
 
 
-// The manager's private API (the units of slice 1 the facade does not declare).
-std::optional<std::string> ManifestPath()					{ return [[OOOXZManager sharedManager] manifestPath]; }
-std::optional<std::string> DownloadPath()					{ return [[OOOXZManager sharedManager] downloadPath]; }
-std::optional<std::string> ExtractionBase(const std::string &identifier, const std::string &version)	{ return [[OOOXZManager sharedManager] extractionBasePathForIdentifier:identifier andVersion:version]; }
-std::optional<std::string> DataURL()						{ return [[OOOXZManager sharedManager] dataURL]; }
-std::optional<std::string> HumanSize(NSUInteger bytes)		{ return [[OOOXZManager sharedManager] humanSize:bytes]; }
-bool EnsureInstallPath()									{ return [[OOOXZManager sharedManager] ensureInstallPath]; }
-bool ValidateFilter(const std::string &input)				{ return [[OOOXZManager sharedManager] validateFilter:input]; }
+// The manager's private API (the units of slice 1 the facade does not declare): its C++ members.
+cxx::OOOXZManager *Manager()								{ return cxx::OOOXZManager::sharedManager(); }
+std::optional<std::string> ManifestPath()					{ return Manager()->manifestPath(); }
+std::optional<std::string> DownloadPath()					{ return Manager()->downloadPath(); }
+std::optional<std::string> ExtractionBase(const std::string &identifier, const std::string &version)	{ return Manager()->extractionBasePathForIdentifier(identifier, version); }
+std::optional<std::string> DataURL()						{ return Manager()->dataURL(); }
+std::optional<std::string> HumanSize(NSUInteger bytes)		{ return Manager()->humanSize(bytes); }
+bool EnsureInstallPath()									{ return Manager()->ensureInstallPath(); }
+bool ValidateFilter(const std::string &input)				{ return Manager()->validateFilter(input); }
 
 std::string Filtered(const std::string &filter)
 {
-	OOOXZManager *manager = [OOOXZManager sharedManager];
-	[manager setFilter:filter];
-	return Titles([manager applyCurrentFilter:[manager manifests]]);
+	Manager()->setFilter(filter);
+	return Titles(Manager()->applyCurrentFilter(Manager()->manifests()));
 }
 
 }	// namespace
@@ -303,9 +292,8 @@ OO_TEST(filters)
 		OO_CHECK_TEXT(Filtered("d:0"), "");
 		OO_CHECK_TEXT(Filtered("zzz"), "Mission 0.1, Alpha 2.0, Alpha 1.5, Zeta 1.0");
 		// A null list filters to an empty one.
-		OOOXZManager *manager = [OOOXZManager sharedManager];
-		OO_CHECK_TEXT(Titles([manager applyCurrentFilter:oo::PList()]), "");
-		[manager setFilter:"*"];
+		OO_CHECK_TEXT(Titles(Manager()->applyCurrentFilter(oo::PList())), "");
+		Manager()->setFilter("*");
 	}
 }
 
@@ -343,7 +331,7 @@ OO_TEST(managedOXZs)
 		// The installable states (slice 2) decide these, from the managed OXZs.
 		OO_CHECK_TEXT(Filtered("u"), "Alpha 2.0, Alpha 1.5");
 		OO_CHECK_TEXT(Filtered("i"), "Mission 0.1, Alpha 2.0, Alpha 1.5, Zeta 1.0");
-		[[OOOXZManager sharedManager] setFilter:"*"];
+		Manager()->setFilter("*");
 	}
 }
 
@@ -396,6 +384,46 @@ OO_TEST(manifestDownload)
 		OO_CHECK(![manager updateManifests]);
 		OO_CHECK(![manager cancelUpdate]);
 		OO_CHECK_EQ(DownloadPath().value_or("(none)"), oo::str::appendingPathComponent(cacheDirectory, "Oolite-download.oxz"));
+	}
+}
+
+
+OO_TEST(facadeContract)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		cxx::OOOXZManager *manager = cxx::OOOXZManager::sharedManager();
+		OO_CHECK(manager != nullptr);
+		OO_CHECK(oo::ToCxx(facade) == manager);
+		OO_CHECK(oo::ToObjC(manager) == facade);
+		OO_CHECK([OOOXZManager sharedManager] == facade);
+		OO_CHECK(oo::ToCxx(static_cast<OOOXZManager *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOOXZManager *>(nullptr)) == nil);
+
+		// The same answers from either side.
+		OO_CHECK(Titles([facade manifests]) == Titles(manager->manifests()));
+		OO_CHECK(Titles([facade managedOXZs]) == Titles(manager->managedOXZs()));
+		OO_CHECK([facade installPath] == manager->installPath());
+		OO_CHECK([facade extractAddOnsPath] == manager->extractAddOnsPath());
+		OO_CHECK([facade additionalAddOnsPaths] == manager->additionalAddOnsPaths());
+
+		// The slice 1 units that slices 2 to 4 send, forwarded.
+		OO_CHECK([facade downloadPath] == manager->downloadPath());
+		OO_CHECK([facade humanSize:2048] == std::optional<std::string>("2 kB"));
+		OO_CHECK([facade validateFilter:"k:x"]);
+		OO_CHECK(![facade validateFilter:"k:"]);
+		OO_CHECK([facade ensureInstallPath]);
+		OO_CHECK([facade extractionBasePathForIdentifier:"a" andVersion:"1"] == manager->extractionBasePathForIdentifier("a", "1"));
+		[facade setFilter:"C:MISS"];
+		OO_CHECK_EQ(manager->_currentFilter, "c:miss");
+		OO_CHECK_TEXT(Titles([facade applyCurrentFilter:[facade manifests]]), "");
+		[facade setFilteredList:[facade manifests]];
+		OO_CHECK(manager->_filteredList == manager->_oxzList);
+		[facade setProgressStatus:"halfway"];
+		OO_CHECK_EQ(manager->_progressStatus, "halfway");
+		[facade setFilter:"*"];
 	}
 }
 

@@ -2800,3 +2800,52 @@ The private category took a type private to the `.mm` (`BackLinkChain`) by value
 
 **Consequences.** One façade (deletion bead oo-9ht.119, after slice 2 and the caller convert).
 Slice 2 converts its four functions with no bridge change, then calls the members directly.
+
+## Amendment (bead oo-bwjb): a class-shell slice whose later slices hold public methods, and a filter called through its selector
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOOXZManager.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOOXZManager.md`), `OOOXZManager+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOOXZManager.mm`.
+
+**Context.** `OOOXZManager` is a singleton (amendment oo-r7m0) whose slice plan gives slice 1 the
+class shell, the paths, the filters, the manifests and the download plumbing, and slices 2 to 4
+the installing, the GUI page and the option pages. Unlike `OOPListSchemaVerifier` (amendment
+oo-pni4), whose later slice was free functions, here the later slices are methods, and eleven of
+them are public: the old `@interface` declares `-gui`, `-processSelection`, `-showInstallOptions`
+and the rest, which `PlayerEntity` and `PlayerEntityControls` send. Kept in the façade's
+`@interface` and implemented by a category in `X.mm`, they would leave the façade's own
+`@implementation` (in `X+ObjCBridge.mm`) incomplete, which `-Wincomplete-implementation` reports.
+The slice also calls its filters through `-methodForSelector:` with a selector chosen from the
+filter text.
+
+**Decision (recommended defaults).**
+
+1. **The old `@interface` is split in `X+ObjCBridge.h`, unchanged otherwise:** the façade's
+   `@interface` keeps the shell slice's selectors (each forwarded in one line), and a category
+   right after it (`@interface X (XSlices)`) declares, verbatim and in their old order, the public
+   selectors of the later slices. `X.mm` implements that category: the later slices' methods, in
+   place, become `@implementation X (XSlices)` (one block when they are contiguous). Callers see
+   the same selectors with the same types, and both `@implementation`s are complete.
+2. **The private category is split the same way:** the later slices' private selectors stay
+   declared in `X.mm` (`@interface X (OOPrivate)`, implemented by the `XSlices` category); the shell
+   slice's private selectors that the later slices still send are declared in the bridge header
+   by a category of their own (`(OOPrivateForwarded)`) and forwarded by the bridge; the rest are
+   C++ members only. The shell's members are public under an "Internal" comment while any later
+   slice reads them (amendment oo-pni4 item 1), except state that no later slice touches.
+3. **A converted unit that sends a later slice's selector sends it to `oo::ToObjC(this)`**
+   (`[oo::ToObjC(this) gui]`); for a singleton that is the façade `+sharedX` keeps, so the later
+   slice sees the object its callers message.
+4. **A method called through a selector chosen at run time becomes a pointer to a member
+   function** chosen the same way (item 4's "explicit table of its candidates", for a closed set
+   of the class's own methods): the selectors' one- and two-argument IMP typedefs become
+   `bool (X::*)(...)` typedefs, and the arity test that compared selectors becomes "which pointer
+   is set". An unused parameter of such a member keeps its type and loses its name.
+5. **The unit test reaches the private API before the conversion through a test-only category**
+   that declares the private selectors it calls, behind one helper function each; the port
+   replaces the helpers' bodies with the C++ members and leaves the expectations alone.
+
+**Consequences.** The shell's façade has three categories in flight (the later slices, the
+forwarded private units, the bridge's own initialiser), each deleted by the slice that empties it;
+the deletion bead deletes what is left. Slices 2 to 4 convert their methods into `cxx::X` members
+and delete their declarations from `XSlices` and `OOPrivate`, and the forwards from
+`OOPrivateForwarded` that no longer have a sender.
