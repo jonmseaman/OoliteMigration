@@ -530,7 +530,7 @@ void OOShipRegistry::loadDemoShips()
 				}
 				else
 				{
-					OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*conditions];
+					::OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*conditions];
 					if (condScript != nil) // should always be non-nil, but just in case
 					{
 						ooscript::Context context = OOJSAcquireContext();
