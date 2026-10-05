@@ -15,6 +15,7 @@ core_tests = {
     'test_OOJSPopulatorDefinition': ['Core/Scripting/OOJSPopulatorDefinition.mm', 'Core/Scripting/OOJSPopulatorDefinition+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm'],
     'test_OOPListScript': ['*'],
     'test_OOScript': ['*'],
+    'test_OOJSScript': ['*'],
     'test_OOCache': ['Core/OOCache.mm', 'Core/OODescription.mm'],
     'test_OOCacheManager': ['Core/OOCacheManager.mm', 'Core/OOCacheManager+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOEncodingConverter': ['Core/OOEncodingConverter.mm', 'Core/OOCache.mm', 'Core/OODescription.mm'],
