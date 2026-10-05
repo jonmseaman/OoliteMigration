@@ -237,7 +237,7 @@ static bool OperationCallback(ooscript::Context context)
 	
 	if (elapsed <= sLimiterTimeLimit)  return true;
 	
-	OO_LOG_ERR("script.javaScript.timeLimit", "Script \"{}\" ran for {:g} seconds and has been terminated.", [[OOJSScript currentlyRunningScript] cxx_name].value_or("(null)"), elapsed);
+	OO_LOG_ERR("script.javaScript.timeLimit", "Script \"{}\" ran for {:g} seconds and has been terminated.", [[::OOJSScript currentlyRunningScript] cxx_name].value_or("(null)"), elapsed);
 #ifndef NDEBUG
 	OOJSDumpStack(context);
 #endif

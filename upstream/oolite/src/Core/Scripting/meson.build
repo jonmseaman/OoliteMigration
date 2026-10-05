@@ -20,7 +20,7 @@ oolite_sources += files(
     'OOJSExhaustPlume+ObjCBridge.mm',
     'OOJSFlasher.mm',
     'OOJSFlasher+ObjCBridge.mm',
-    'OOJSFont.mm',
+    'OOJSFont.cpp',
     'OOJSFrameCallbacks.mm',
     'OOJSFunction.mm',
     'OOJSFunction+ObjCBridge.mm',
@@ -74,6 +74,7 @@ oolite_sources += files(
     'OOPListScript.mm',
     'OOPListScript+ObjCBridge.mm',
     'OOScript.mm',
+    'OOScript+ObjCBridge.mm',
     'OOScriptTimer.mm',
     'OOScriptTimer+ObjCBridge.mm',
 )

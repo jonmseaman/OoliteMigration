@@ -5,9 +5,8 @@ OOPListSchemaVerifier+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, bead oo-pni4): the Objective-C OOPListSchemaVerifier, a facade over
 the C++ cxx::OOPListSchemaVerifier (OOPListSchemaVerifier.h), for the code that is not converted yet:
 its one caller, OOCheckShipDataPListVerifierStage, which makes it, sets itself as the delegate and
-verifies with it; and the type verifiers of slice 2 of OOPListSchemaVerifier.mm
-(docs/phases/3-slices/OOPListSchemaVerifier.md), which call back into the verification core through
-the OOPrivate category below. Its interface is the one OOPListSchemaVerifier.h declared before the
+verifies with it. (The type verifiers of slice 2 of OOPListSchemaVerifier.mm call the C++ core
+directly since bead oo-pgh9, so the OOPrivate category is gone.) Its interface is the one OOPListSchemaVerifier.h declared before the
 conversion, copied exactly (same selectors, same types), and so is the delegate's informal
 protocol; each method forwards to its C++ member. Imported as the last line of
 OOPListSchemaVerifier.h; do not import it directly.
@@ -75,40 +74,6 @@ SOFTWARE.
 	"adder-player.custom_views[0].view_description".
 */
 + (std::optional<std::string>)descriptionForKeyPath:(const oo::PList &)keyPath;	// a null or empty path is "root"; nullopt for a component that is neither string nor number
-
-@end
-
-
-// The verification core, for the type verifiers of OOPListSchemaVerifier.mm that are still
-// Objective-C (slice 2). Moved from the .mm (ADR-0056 amendment oo-up4b item 4).
-@interface OOPListSchemaVerifier (OOPrivate)
-
-// Call delegate methods.
-- (BOOL)delegateVerifierWithPropertyList:(const oo::PList &)rootPList
-								   named:(const std::string &)name
-							testProperty:(const oo::PList &)subPList
-								  atPath:(BackLinkChain)keyPath
-							 againstType:(const oo::PList &)typeKey
-								   error:(std::optional<OOPListSchemaVerifierError> *)outError;
-
-- (BOOL)delegateVerifierWithPropertyList:(const oo::PList &)rootPList
-								   named:(const std::string &)name
-					   failedForProperty:(const oo::PList &)subPList
-							   withError:(const OOPListSchemaVerifierError &)error
-							expectedType:(const oo::PList &)localSchema;
-
-- (BOOL)verifyPList:(const oo::PList &)rootPList
-			  named:(const std::string &)name
-		subProperty:(const oo::PList &)subProperty
-  againstSchemaType:(const oo::PList &)subSchema
-			 atPath:(BackLinkChain)keyPath
-		  tentative:(BOOL)tentative
-			  error:(std::optional<OOPListSchemaVerifierError> *)outError
-			   stop:(BOOL *)outStop;
-
-- (oo::PList)resolveSchemaType:(const oo::PList &)specifier	// null: not resolved (*outError says why)
-					  atPath:(BackLinkChain)keyPath
-					   error:(std::optional<OOPListSchemaVerifierError> *)outError;
 
 @end
 
