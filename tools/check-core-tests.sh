@@ -39,6 +39,19 @@ for t in "${tests[@]}"; do
   grep -q "'$name'" "$TEST_DIR/meson.build" || die "$t is not registered in $TEST_DIR/meson.build, so it would never run"
 done
 
+# Run the tests at normal priority even when the caller is niced (oo-9ht.136). MSYS maps a nice
+# of 4..9 to BELOW_NORMAL and 10+ to IDLE; a test at either class, on a machine whose cores are
+# saturated by normal-priority builds, is starved to a few slices a minute, and the tests whose
+# threads hand work to one another (OpenAL Soft's mixer for test_OOSoundChannel, the GL driver's
+# threads behind every OOTestGLContext() test) then never finish inside meson's timeout although
+# each passes in under a second at normal priority. The suite is a few seconds of CPU, so it does
+# not need the nice that the caller gives its build; on Windows a process may raise itself back to
+# NORMAL without privilege.
+if [ "$(nice)" -gt 0 ]; then
+  renice -n 0 -p $$ >/dev/null 2>&1 \
+    || printf 'check-core-tests: could not renice to 0 (nice %s); timing-sensitive tests may time out\n' "$(nice)" >&2
+fi
+
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 rc=0
