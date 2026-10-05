@@ -21,7 +21,7 @@ its syntactic context:
   (c) id slot    everything else: a message argument, a macro body, an assignment, a return,
                  an initializer. These stay (ADR-0029); the census lists them by context.
 
-Only the literal's own syntax is read: a literal that reaches an NSString method through a
+Only the literal's own syntax is read: a literal that reaches a Foundation string method through a
 variable, a macro or a callee is (c) here. Comments are not code: a literal in a comment is not
 counted. A text such as "status-@" (an @ before the closing quote) is not a literal.
 
