@@ -240,7 +240,7 @@ oo::PList OOCommodities::createDefinitionFrom(const oo::PList & good, OOCreditsQ
 	{
 		return definition;
 	}
-	OOScript *goodScript = [PLAYER cxx_commodityScriptNamed:goodScriptName];	// (has a value: checked above)
+	::OOScript *goodScript = [PLAYER cxx_commodityScriptNamed:goodScriptName];	// (has a value: checked above)
 	if (goodScript == nil)
 	{
 		return definition;
@@ -249,7 +249,7 @@ oo::PList OOCommodities::createDefinitionFrom(const oo::PList & good, OOCreditsQ
 }
 
 
-oo::PList OOCommodities::modifyGood(const oo::PList &good, OOScript *script, StationEntity *station, OOSystemID system, bool localMode)
+oo::PList OOCommodities::modifyGood(const oo::PList &good, ::OOScript *script, StationEntity *station, OOSystemID system, bool localMode)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value				rval;
@@ -310,7 +310,7 @@ oo::PList OOCommodities::modifyGood(const oo::PList &good, OOScript *script, Sta
 
 oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForSystemWithEconomy(OOEconomyID economy, const std::optional<std::string> &scriptName)
 {
-	OOScript *script = [PLAYER cxx_commodityScriptNamed:scriptName];
+	::OOScript *script = [PLAYER cxx_commodityScriptNamed:scriptName];
 
 	oo::Ref<OOCommodityMarket> market = oo::makeRef<OOCommodityMarket>();
 
@@ -340,7 +340,7 @@ oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForSystemWithEconomy(OOE
 oo::Ref<OOCommodityMarket> OOCommodities::generateMarketForStation(StationEntity *station)
 {
 	const oo::PList marketDefinition = [station cxx_marketDefinition];
-	OOScript *marketScript = [PLAYER cxx_commodityScriptNamed:[station cxx_marketScriptName]];
+	::OOScript *marketScript = [PLAYER cxx_commodityScriptNamed:[station cxx_marketScriptName]];
 	if (!marketDefinition && marketScript == nil)
 	{
 		oo::Ref<OOCommodityMarket> market = generateBlankMarket();
@@ -516,7 +516,7 @@ OOCreditsQuantity OOCommodities::samplePriceForCommodity(const std::string &comm
 	good = createDefinitionFrom(good, p, 0, commodity, nullptr, system);
 	if (scriptName.has_value())
 	{
-		OOScript *script = [PLAYER cxx_commodityScriptNamed:scriptName];	// (has a value: checked above)
+		::OOScript *script = [PLAYER cxx_commodityScriptNamed:scriptName];	// (has a value: checked above)
 		if (script != nil)
 		{
 			good = modifyGood(good, script, nullptr, system, true);

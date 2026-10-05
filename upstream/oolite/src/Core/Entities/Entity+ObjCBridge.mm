@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 #import "OOWaypointEntity.h"
 #import "OOFlasherEntity.h"
 #import "OOFlashEffectEntity.h"
+#import "OOPlanetEntity.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "Universe.h"
 #import "NSObjectOOExtensions.h"
@@ -94,6 +95,7 @@ oo::ObjCPeers &Peers()
 	if (dynamic_cast<cxx::OOWaypointEntity *>(entity.get()) != nullptr)  facadeClass = [::OOWaypointEntity class];
 	if (dynamic_cast<cxx::OOFlasherEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlasherEntity class];
 	if (dynamic_cast<cxx::OOFlashEffectEntity *>(entity.get()) != nullptr)  facadeClass = [::OOFlashEffectEntity class];
+	if (dynamic_cast<cxx::OOPlanetEntity *>(entity.get()) != nullptr)  facadeClass = [::OOPlanetEntity class];
 	return [[(::Entity *)[facadeClass alloc] initWithCxxEntity:entity.get()] autorelease];
 }
 
