@@ -3215,6 +3215,10 @@ ivars of its own.
    `-textureVerifierStage`, `-modelVerifierStage`) until those files' deletion beads; the façade's
    own interface is the old one, so the stage tests' double, an `@implementation` of the façade
    class with ivars of its own, compiles unchanged and does not link the bridge.
+5. **Once the class is `cxx::X`, code inside `namespace cxx` that keeps the façade names it `::X`**
+   (`::OOOXPVerifier *verifier()`, `oo::ObjCRef<::OOOXPVerifierStage *>`): unqualified, `X` there is
+   now the C++ class. The stages' `verifier()`/`setVerifier()` and the `nameFor…ForVerifier()`
+   helpers changed only in that spelling; global leaves need no change.
 
 **Consequences.** One façade and its deletion bead. No caller and no existing test changed. The
 verifier no longer messages the `OOCacheManager` façade (it calls `cxx::OOCacheManager`), which the
