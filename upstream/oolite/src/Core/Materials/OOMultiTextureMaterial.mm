@@ -94,11 +94,11 @@ bool OOMultiTextureMaterial::initWithName(const std::optional<std::string> &name
 		}
 		else
 		{
-			OOCombinedEmissionMapGenerator *generator = nil;
+			::OOCombinedEmissionMapGenerator *generator = nil;	// the facade (proposed ADR-0056, amendment oo-e6xa)
 			
 			if (!emissionAndIlluminationSpec.isNull())
 			{
-				generator = [[OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionAndIlluminationMapSpec:emissionAndIlluminationSpec
+				generator = [[::OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionAndIlluminationMapSpec:emissionAndIlluminationSpec
 																							diffuseMap:_diffuseMap.get()
 																						  diffuseColor:diffuseColor
 																						 emissionColor:emissionColor
@@ -108,7 +108,7 @@ bool OOMultiTextureMaterial::initWithName(const std::optional<std::string> &name
 			else
 			{
 				const oo::PList optionsSpec = !emissionSpec.isNull() ? emissionSpec : illuminationSpec;
-				generator = [[OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionMapSpec:emissionSpec
+				generator = [[::OOCombinedEmissionMapGenerator alloc] cxx_initWithEmissionMapSpec:emissionSpec
 																			  emissionColor:emissionColor
 																				 diffuseMap:_diffuseMap.get()
 																			   diffuseColor:diffuseColor

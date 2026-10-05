@@ -1115,10 +1115,12 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	{
 		OO_LOG("texture.planet.generate", "Preparing atmosphere for planet {}", oo::DescriptionOf(oo::ToObjC(this)));
 		/* Generate a standalone atmosphere texture */
-		::OOTexture *atmosphere = nil;
-		[OOStandaloneAtmosphereGenerator generateAtmosphereTexture:&atmosphere
-														withInfo:_materialParameters
-															seed:_noiseMapSeed];
+		// (the C++ generator answers it retained: bead oo-y3dd)
+		oo::ObjCRef<::OOTexture *> generatedAtmosphere;
+		OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&generatedAtmosphere,
+																   _materialParameters,
+																   _noiseMapSeed);
+		::OOTexture *atmosphere = generatedAtmosphere.get();
 		
 		OO_LOG("texture.planet.generate", "Planet {} has atmosphere {}", oo::DescriptionOf(oo::ToObjC(this)), oo::DescriptionOf(atmosphere));
 		
