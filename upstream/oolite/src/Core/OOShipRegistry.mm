@@ -173,28 +173,15 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 @interface OOShipRegistry (OODataLoader)
 
-- (void) loadShipData;
-- (void) loadDemoShipConditions;
-- (void) loadDemoShips;
-- (void) loadCachedRoleProbabilitySets;
-- (void) buildRoleProbabilitySets;
-
-// The ship dictionary each stage mutates is one property list, passed through every stage.
-- (BOOL) applyLikeShips:(oo::PList &)ioData withKey:(const std::string &)likeKey;
-- (BOOL) loadAndMergeShipyard:(oo::PList &)ioData;
-- (BOOL) stripPrivateKeys:(oo::PList &)ioData;
-- (BOOL) makeShipEntriesMutable:(oo::PList &)ioData;
-- (BOOL) loadAndApplyShipDataOverrides:(oo::PList &)ioData;
+// The rest of the loader (slice 3 of docs/phases/3-slices/OOShipRegistry.md), still Objective-C
+// on the facade; the C++ load stages (slice 2) send these to oo::ToObjC(this). The ship
+// dictionary each stage mutates is one property list, passed through every stage.
 - (BOOL) canonicalizeAndTagSubentities:(oo::PList &)ioData;
-- (BOOL) removeUnusableEntries:(oo::PList &)ioData shipMode:(BOOL)shipMode;
-- (BOOL) sanitizeConditions:(oo::PList &)ioData;
 
 #if PRELOAD
 - (BOOL) preloadShipMeshes:(oo::PList &)ioData;
 #endif
 
-// A null PList where the parent was nil.
-- (oo::PList) mergeShip:(const oo::PList &)child withParent:(const oo::PList &)parent;
 - (void) mergeShipRoles:(const std::string &)roles forShipKey:(const std::string &)shipKey intoProbabilityMap:(std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>> &)probabilitySets;
 
 // Declarations and ship data are property lists; a result is a declaration dictionary, or a
@@ -263,8 +250,6 @@ void OOShipRegistry::init()
 {
 	@autoreleasepool
 	{
-		// The loaders (OODataLoader, slices 2 and 3) are still Objective-C, on the facade.
-		::OOShipRegistry *loader = oo::ToObjC(this);
 		OOCacheManager			*cache = OOCacheManager::sharedCache();
 
 		_shipData = cache->pListForKey(kShipDataCacheKey, kShipRegistryCacheName);
@@ -280,7 +265,7 @@ void OOShipRegistry::init()
 		_effectData = cache->pListForKey(kVisualEffectDataCacheKey, kVisualEffectRegistryCacheName);
 		if (_shipData.count() == 0)	// Don't accept nil or empty
 		{
-			[loader loadShipData];
+			loadShipData();
 			if (_shipData.count() == 0)
 			{
 				OORaiseException("OOShipRegistryLoadFailure", "Could not load any ship data.");
@@ -291,17 +276,17 @@ void OOShipRegistry::init()
 			}
 		}
 
-		[loader loadDemoShipConditions];
-		[loader loadDemoShips]; // testing only
+		loadDemoShipConditions();
+		loadDemoShips(); // testing only
 		if (_demoShips.count() == 0)
 		{
 			OORaiseException("OOShipRegistryLoadFailure", "Could not load or synthesize any demo ships.");
 		}
 
-		[loader loadCachedRoleProbabilitySets];
+		loadCachedRoleProbabilitySets();
 		if (!_probabilitySets.has_value())
 		{
-			[loader buildRoleProbabilitySets];
+			buildRoleProbabilitySets();
 			if (_probabilitySets->empty())
 			{
 				OORaiseException("OOShipRegistryLoadFailure", "Could not load or synthesize role probability sets.");
@@ -352,7 +337,7 @@ OOProbabilitySet *OOShipRegistry::probabilitySetForRole(const std::string &role)
 oo::PList OOShipRegistry::demoShipKeys()
 {
 	// with condition scripts in use, can't cache this value
-	[oo::ToObjC(this) loadDemoShips];
+	loadDemoShips();
 
 	return _demoShips;
 }
@@ -414,7 +399,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 }	// namespace cxx
 
 
-@implementation OOShipRegistry (OODataLoader)
+namespace cxx {
 
 /*	-loadShipData
 	
@@ -423,13 +408,13 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		* Apply all like_ship entries.
 		* Load shipdata-overrides.plist and apply patches.
 		* Load shipyard.plist, add shipyard data into ship dictionaries, and
-		  create oo::ToCxx(self)->_playerShips array.
+		  create _playerShips array.
 		* Build role->ship type probability sets.
 */
-- (void) loadShipData
+void OOShipRegistry::loadShipData()
 {
-	oo::ToCxx(self)->_shipData = oo::PList();
-	oo::ToCxx(self)->_playerShips.clear();
+	_shipData = oo::PList();
+	_playerShips.clear();
 
 	// Load shipdata.plist.
 	oo::PList result = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist"
@@ -441,49 +426,49 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	DumpStringAddrs(result, "shipdata.plist");
 
 	// Make each entry mutable to simplify later stages. Also removes any entries that aren't dictionaries.
-	if (![self makeShipEntriesMutable:result])  return;
+	if (!makeShipEntriesMutable(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished initial cleanup...");
 
 	// Apply patches.
-	if (![self loadAndApplyShipDataOverrides:result])  return;
+	if (!loadAndApplyShipDataOverrides(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished applying patches...");
 
 	// Strip private keys (anything starting with _oo_).
-	if (![self stripPrivateKeys:result])  return;
+	if (!stripPrivateKeys(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished stripping private keys...");
 
 	// Resolve like_ship entries.
-	if (![self applyLikeShips:result withKey:"like_ship"])  return;
+	if (!applyLikeShips(result, "like_ship"))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished resolving like_ships...");
 
 	// Clean up subentity declarations and tag subentities so they won't be pruned.
-	if (![self canonicalizeAndTagSubentities:result])  return;
+	if (![oo::ToObjC(this) canonicalizeAndTagSubentities:result])  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished cleaning up subentities...");
 
 	// Clean out templates and invalid entries.
-	if (![self removeUnusableEntries:result shipMode:YES])  return;
+	if (!removeUnusableEntries(result, true))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished removing invalid entries...");
 
 	// Add shipyard entries into shipdata entries.
-	if (![self loadAndMergeShipyard:result])  return;
+	if (!loadAndMergeShipyard(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished adding shipyard entries...");
 
 	// Sanitize conditions.
-	if (![self sanitizeConditions:result])  return;
+	if (!sanitizeConditions(result))  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished validating data...");
 
 #if PRELOAD
 	// Preload and cache meshes.
-	if (![self preloadShipMeshes:result])  return;
+	if (![oo::ToObjC(this) preloadShipMeshes:result])  return;
 	OO_LOG("shipData.load.progress", "{}", "Finished loading meshes...");
 #endif
 
-	oo::ToCxx(self)->_shipData = std::move(result);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::ToCxx(self)->_shipData forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
+	_shipData = std::move(result);
+	OOCacheManager::sharedCache()->setPList(_shipData, kShipDataCacheKey, kShipRegistryCacheName);
 
 	OO_LOG("shipData.load.done", "{}", "Ship data loaded.");
 
-	oo::ToCxx(self)->_effectData = oo::PList();
+	_effectData = oo::PList();
 
 	result = [ResourceManager cxx_dictionaryFromFilesNamed:"effectdata.plist"
 												  inFolder:"Config"
@@ -492,33 +477,33 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	if (result.isNull())  return;
 
 	// Make each entry mutable to simplify later stages. Also removes any entries that aren't dictionaries.
-	if (![self makeShipEntriesMutable:result])  return;
+	if (!makeShipEntriesMutable(result))  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished initial cleanup...");
 
 	// Strip private keys (anything starting with _oo_).
-	if (![self stripPrivateKeys:result])  return;
+	if (!stripPrivateKeys(result))  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished stripping private keys...");
 
 	// Resolve like_effect entries.
-	if (![self applyLikeShips:result withKey:"like_effect"])  return;
+	if (!applyLikeShips(result, "like_effect"))  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished resolving like_effects...");
 
 	// Clean up subentity declarations and tag subentities so they won't be pruned.
-	if (![self canonicalizeAndTagSubentities:result])  return;
+	if (![oo::ToObjC(this) canonicalizeAndTagSubentities:result])  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished cleaning up subentities...");
 
 	// Clean out templates and invalid entries.
-	if (![self removeUnusableEntries:result shipMode:NO])  return;
+	if (!removeUnusableEntries(result, false))  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished removing invalid entries...");
 
-	oo::ToCxx(self)->_effectData = std::move(result);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::ToCxx(self)->_effectData forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
+	_effectData = std::move(result);
+	OOCacheManager::sharedCache()->setPList(_effectData, kVisualEffectDataCacheKey, kVisualEffectRegistryCacheName);
 
 	OO_LOG("effectData.load.done", "{}", "Effect data loaded.");
 }
 
 
-- (void) loadDemoShipConditions
+void OOShipRegistry::loadDemoShipConditions()
 {
 	std::vector<std::string>	conditionScripts;
 
@@ -542,7 +527,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 
 	oo::PList::Array conditionScriptList;	// an array of strings, as the Objective-C array was
 	for (const std::string &conditionScript : conditionScripts)  conditionScriptList.emplace_back(conditionScript);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"demoship conditions" inCache:"condition scripts"];
+	OOCacheManager::sharedCache()->setPList(oo::PList(std::move(conditionScriptList)), "demoship conditions", "condition scripts");
 }
 
 
@@ -552,9 +537,9 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	ships remain, try adding coriolis; if this fails, add any ship in
 	shipdata.
 */
-- (void) loadDemoShips
+void OOShipRegistry::loadDemoShips()
 {
-	oo::ToCxx(self)->_demoShips = oo::PList();
+	_demoShips = oo::PList();
 
 	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
 																	   inFolder:"Config"
@@ -574,7 +559,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	for (const oo::PList &key : initialEntries)
 	{
 		const std::optional<std::string> shipKey = StringForKey(&key, kOODemoShipKey);
-		if (!key.isDict() || !shipKey.has_value() || oo::ToCxx(self)->_shipData.find(*shipKey) == nullptr)
+		if (!key.isDict() || !shipKey.has_value() || _shipData.find(*shipKey) == nullptr)
 		{
 			removeEntry(key);
 		}
@@ -623,13 +608,13 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	if (demoShips.empty())
 	{
 		std::string shipKey;
-		if (oo::ToCxx(self)->_shipData.find(kDefaultDemoShip) != nullptr)
+		if (_shipData.find(kDefaultDemoShip) != nullptr)
 		{
 			shipKey = kDefaultDemoShip;
 		}
 		else
 		{
-			shipKey = oo::ToCxx(self)->_shipData.getIf<oo::PList::Dict>()->begin()->first;	// the first key in key order (was hash order)
+			shipKey = _shipData.getIf<oo::PList::Dict>()->begin()->first;	// the first key in key order (was hash order)
 		}
 		oo::PList::Dict entry;
 		entry.emplace(kOODemoShipKey, shipKey);
@@ -650,11 +635,11 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		oo::PList demoEntry = key;
 		oo::PList::Dict &demoEntryValues = *demoEntry.getIf<oo::PList::Dict>();
 		// add "name" object to dictionary from ship definition
-		const std::optional<std::string> name = StringForKey(oo::ToCxx(self)->_shipData.find(demoEntry.get<std::string>("ship")), kOODemoShipName);
+		const std::optional<std::string> name = StringForKey(_shipData.find(demoEntry.get<std::string>("ship")), kOODemoShipName);
 		if (!name.has_value())
 		{
 			// -setObject:nil forKey: raised
-			[OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", kOODemoShipName];
+			OORaiseException(OOInvalidArgumentException, "Tried to add nil value for key '%s' to dictionary", kOODemoShipName);
 		}
 		demoEntryValues[kOODemoShipName] = *name;
 		// set "class" object to standard ship if not otherwise set
@@ -681,13 +666,13 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	{
 		return oo::str::compare(OOShipLibraryCategoryPlural(a.at(0)->get<std::string>("class")), OOShipLibraryCategoryPlural(b.at(0)->get<std::string>("class"))) < 0;
 	});
-	oo::ToCxx(self)->_demoShips = oo::PList(std::move(categories));
+	_demoShips = oo::PList(std::move(categories));
 }
 
 
-- (void) loadCachedRoleProbabilitySets
+void OOShipRegistry::loadCachedRoleProbabilitySets()
 {
-	const oo::PList cachedSets = [[OOCacheManager sharedCache] cxx_pListForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
+	const oo::PList cachedSets = OOCacheManager::sharedCache()->pListForKey(kRoleWeightsCacheKey, kShipRegistryCacheName);
 	if (cachedSets.isNull())  return;
 
 	std::map<std::string, oo::Ref<OOProbabilitySet>, std::less<>> restoredSets;
@@ -699,20 +684,20 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		}
 	}
 
-	oo::ToCxx(self)->_probabilitySets = std::move(restoredSets);
+	_probabilitySets = std::move(restoredSets);
 }
 
 
-- (void) buildRoleProbabilitySets
+void OOShipRegistry::buildRoleProbabilitySets()
 {
 	std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>>	probabilitySets;
 
 	// Build role sets (ships in key order; was hash order)
-	if (const oo::PList::Dict *ships = oo::ToCxx(self)->_shipData.getIf<oo::PList::Dict>())
+	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[shipKey, shipEntry] : *ships)
 		{
-			[self mergeShipRoles:StringForKey(&shipEntry, "roles").value_or("") forShipKey:shipKey intoProbabilityMap:probabilitySets];
+			[oo::ToObjC(this) mergeShipRoles:StringForKey(&shipEntry, "roles").value_or("") forShipKey:shipKey intoProbabilityMap:probabilitySets];
 		}
 	}
 
@@ -727,8 +712,8 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		cacheEntry[role] = pset->propertyListRepresentation();
 	}
 
-	oo::ToCxx(self)->_probabilitySets = std::move(sets);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(cacheEntry)) forKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
+	_probabilitySets = std::move(sets);
+	OOCacheManager::sharedCache()->setPList(oo::PList(std::move(cacheEntry)), kRoleWeightsCacheKey, kShipRegistryCacheName);
 }
 
 
@@ -746,7 +731,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	resolved (either their like_ships do not exist, or they form reference
 	cycles) so we stop looping and report it.
 */
-- (BOOL) applyLikeShips:(oo::PList &)ioData withKey:(const std::string &)likeKey
+bool OOShipRegistry::applyLikeShips(oo::PList &ioData, const std::string &likeKey)
 {
 	oo::PList::Dict			&ships = Entries(ioData);
 	std::set<std::string>	remainingLikeShips;
@@ -777,7 +762,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 				auto parentEntry = ships.find(*parentKey);
 				if (parentEntry != ships.end())
 				{
-					oo::PList shipEntry = [self mergeShip:ships[key] withParent:parentEntry->second];
+					oo::PList shipEntry = mergeShip(ships[key], parentEntry->second);
 					remainingLikeShips.erase(key);
 					ships[key] = std::move(shipEntry);
 				}
@@ -811,11 +796,11 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		lastCount = count;
 	}
 
-	return YES;
+	return true;
 }
 
 
-- (oo::PList) mergeShip:(const oo::PList &)child withParent:(const oo::PList &)parent
+oo::PList OOShipRegistry::mergeShip(const oo::PList &child, const oo::PList &parent)
 {
 	if (parent.isNull())  return oo::PList();
 	oo::PList result = parent;
@@ -875,7 +860,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 }
 
 
-- (BOOL) makeShipEntriesMutable:(oo::PList &)ioData
+bool OOShipRegistry::makeShipEntriesMutable(oo::PList &ioData)
 {
 	// Entries are values (so already mutable): this stage only drops the ones that aren't dictionaries.
 	oo::PList::Dict &ships = Entries(ioData);
@@ -892,11 +877,11 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		}
 	}
 
-	return YES;
+	return true;
 }
 
 
-- (BOOL) loadAndApplyShipDataOverrides:(oo::PList &)ioData
+bool OOShipRegistry::loadAndApplyShipDataOverrides(oo::PList &ioData)
 {
 	oo::PList::Dict &ships = Entries(ioData);
 	const oo::PList overrides = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata-overrides.plist"
@@ -923,11 +908,11 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		}
 	}
 
-	return YES;
+	return true;
 }
 
 
-- (BOOL) stripPrivateKeys:(oo::PList &)ioData
+bool OOShipRegistry::stripPrivateKeys(oo::PList &ioData)
 {
 	for (auto &ship : Entries(ioData))
 	{
@@ -937,7 +922,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		});
 	}
 
-	return YES;
+	return true;
 }
 
 
@@ -948,7 +933,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	Before that, we strip out any "shipyard" entries already in shipdata, and
 	apply any shipyard-overrides.plist stuff to shipyard.
 */
-- (BOOL) loadAndMergeShipyard:(oo::PList &)ioData
+bool OOShipRegistry::loadAndMergeShipyard(oo::PList &ioData)
 {
 	oo::PList::Dict				&ships = Entries(ioData);
 	std::vector<std::string>	playerShips;
@@ -998,111 +983,16 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		}
 	}
 
-	oo::ToCxx(self)->_playerShips = std::move(playerShips);
+	_playerShips = std::move(playerShips);
 	oo::PList::Array playerShipList;	// an array of strings, as the Objective-C array was
-	for (const std::string &playerShip : oo::ToCxx(self)->_playerShips)  playerShipList.emplace_back(playerShip);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(playerShipList)) forKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
+	for (const std::string &playerShip : _playerShips)  playerShipList.emplace_back(playerShip);
+	OOCacheManager::sharedCache()->setPList(oo::PList(std::move(playerShipList)), kPlayerShipsCacheKey, kShipRegistryCacheName);
 
-	return YES;
+	return true;
 }
 
 
-- (BOOL) canonicalizeAndTagSubentities:(oo::PList &)ioData
-{
-	oo::PList::Dict			&ships = Entries(ioData);
-	BOOL					remove, fatal;
-
-	// Convert all subentity declarations to dictionaries and add
-	// _oo_is_subentity=YES to all entries used as subentities.
-
-	// Iterate over all ships. (Entries change in place; none is added or removed. The declaration
-	// helpers read only "frangible" and "setup_actions" of the ship data, which this loop never writes.)
-	for (auto &[shipKey, shipEntry] : ships)
-	{
-		remove = NO;
-		std::set<std::string> badSubentities;
-
-		// Iterate over each subentity declaration of each ship
-		const oo::PList *declarations = shipEntry.get<oo::PList::Array>("subentities");
-		if (declarations != nullptr)
-		{
-			const oo::PList subentityDeclarations = *declarations;	// a copy: the entry's list is replaced below
-			oo::PList::Array okSubentities;
-			okSubentities.reserve(subentityDeclarations.count());
-			for (const oo::PList &subentityDecl : *subentityDeclarations.getIf<oo::PList::Array>())
-			{
-				oo::PList subentityDict = [self canonicalizeSubentityDeclaration:subentityDecl forShip:shipKey shipData:ioData fatalError:&fatal];
-
-				// If entry is broken, we need to kill this ship.
-				if (fatal)
-				{
-					cxx_OOStandardsError("Bad subentity definition found");
-					remove = YES;
-				}
-				else if (!subentityDict.isNull())
-				{
-					// Tag subentities.
-					if (StringForKey(&subentityDict, "type") != "flasher")
-					{
-						const std::optional<std::string> subentityKey = StringForKey(&subentityDict, "subentity_key");
-						auto subentityShipEntry = subentityKey.has_value() ? ships.find(*subentityKey) : ships.end();
-						if (subentityShipEntry == ships.end())
-						{
-							// Oops, reference to non-existent subent.
-							if (!subentityKey.has_value())
-							{
-								// -addObject:nil raised
-								[OOException raise:OOInvalidArgumentException format:"Tried to add nil to set"];
-							}
-							badSubentities.insert(*subentityKey);
-						}
-						else
-						{
-							// Subent exists, add _oo_is_subentity so roles aren't required.
-							Entries(subentityShipEntry->second)["_oo_is_subentity"] = true;
-						}
-					}
-
-					okSubentities.push_back(std::move(subentityDict));
-				}
-			}
-
-			// Set updated subentity list.
-			oo::PList::Dict &entry = Entries(shipEntry);
-			if (!okSubentities.empty())
-			{
-				entry["subentities"] = std::move(okSubentities);
-			}
-			else
-			{
-				entry.erase("subentities");
-			}
-
-			if (!badSubentities.empty())
-			{
-				if (!shipEntry.get<bool>("is_external_dependency"))
-				{
-					const std::size_t badCount = badSubentities.size();
-					const std::string badSubentitiesList = CaseInsensitiveSortedList(std::vector<std::string>(badSubentities.begin(), badSubentities.end()));
-					OO_LOG_ERR("shipData.load.error", "the shipdata.plist entry \"{}\" has unresolved subentit{} {}.", shipKey, (badCount == 1) ? "y" : "ies", badSubentitiesList);
-					cxx_OOStandardsError("Bad subentity definition found");
-				}
-				remove = YES;
-			}
-
-			if (remove)
-			{
-				// Removal is deferred to avoid bogus "entry doesn't exist" errors.
-				entry["_oo_deferred_remove"] = true;
-			}
-		}
-	}
-
-	return YES;
-}
-
-
-- (BOOL) removeUnusableEntries:(oo::PList &)ioData shipMode:(BOOL)shipMode
+bool OOShipRegistry::removeUnusableEntries(oo::PList &ioData, bool shipMode)
 {
 	oo::PList::Dict &ships = Entries(ioData);
 
@@ -1140,7 +1030,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 		else  ++ship;
 	}
 
-	return YES;
+	return true;
 }
 
 
@@ -1148,7 +1038,7 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 	shipyard.conditions from hasShipyard to sanitized form.
   Also get list of condition_scripts
 */
-- (BOOL) sanitizeConditions:(oo::PList &)ioData
+bool OOShipRegistry::sanitizeConditions(oo::PList &ioData)
 {
 	std::vector<std::string> conditionScripts;	// each once, in first-seen order
 	auto addConditionScript = [&conditionScripts](const std::optional<std::string> &script)
@@ -1264,7 +1154,106 @@ std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::strin
 
 	oo::PList::Array conditionScriptList;	// an array of strings, as the Objective-C array was
 	for (const std::string &conditionScript : conditionScripts)  conditionScriptList.emplace_back(conditionScript);
-	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(conditionScriptList)) forKey:"ship conditions" inCache:"condition scripts"];
+	OOCacheManager::sharedCache()->setPList(oo::PList(std::move(conditionScriptList)), "ship conditions", "condition scripts");
+
+	return true;
+}
+
+}	// namespace cxx
+
+
+@implementation OOShipRegistry (OODataLoader)
+
+- (BOOL) canonicalizeAndTagSubentities:(oo::PList &)ioData
+{
+	oo::PList::Dict			&ships = Entries(ioData);
+	BOOL					remove, fatal;
+
+	// Convert all subentity declarations to dictionaries and add
+	// _oo_is_subentity=YES to all entries used as subentities.
+
+	// Iterate over all ships. (Entries change in place; none is added or removed. The declaration
+	// helpers read only "frangible" and "setup_actions" of the ship data, which this loop never writes.)
+	for (auto &[shipKey, shipEntry] : ships)
+	{
+		remove = NO;
+		std::set<std::string> badSubentities;
+
+		// Iterate over each subentity declaration of each ship
+		const oo::PList *declarations = shipEntry.get<oo::PList::Array>("subentities");
+		if (declarations != nullptr)
+		{
+			const oo::PList subentityDeclarations = *declarations;	// a copy: the entry's list is replaced below
+			oo::PList::Array okSubentities;
+			okSubentities.reserve(subentityDeclarations.count());
+			for (const oo::PList &subentityDecl : *subentityDeclarations.getIf<oo::PList::Array>())
+			{
+				oo::PList subentityDict = [self canonicalizeSubentityDeclaration:subentityDecl forShip:shipKey shipData:ioData fatalError:&fatal];
+
+				// If entry is broken, we need to kill this ship.
+				if (fatal)
+				{
+					cxx_OOStandardsError("Bad subentity definition found");
+					remove = YES;
+				}
+				else if (!subentityDict.isNull())
+				{
+					// Tag subentities.
+					if (StringForKey(&subentityDict, "type") != "flasher")
+					{
+						const std::optional<std::string> subentityKey = StringForKey(&subentityDict, "subentity_key");
+						auto subentityShipEntry = subentityKey.has_value() ? ships.find(*subentityKey) : ships.end();
+						if (subentityShipEntry == ships.end())
+						{
+							// Oops, reference to non-existent subent.
+							if (!subentityKey.has_value())
+							{
+								// -addObject:nil raised
+								[OOException raise:OOInvalidArgumentException format:"Tried to add nil to set"];
+							}
+							badSubentities.insert(*subentityKey);
+						}
+						else
+						{
+							// Subent exists, add _oo_is_subentity so roles aren't required.
+							Entries(subentityShipEntry->second)["_oo_is_subentity"] = true;
+						}
+					}
+
+					okSubentities.push_back(std::move(subentityDict));
+				}
+			}
+
+			// Set updated subentity list.
+			oo::PList::Dict &entry = Entries(shipEntry);
+			if (!okSubentities.empty())
+			{
+				entry["subentities"] = std::move(okSubentities);
+			}
+			else
+			{
+				entry.erase("subentities");
+			}
+
+			if (!badSubentities.empty())
+			{
+				if (!shipEntry.get<bool>("is_external_dependency"))
+				{
+					const std::size_t badCount = badSubentities.size();
+					const std::string badSubentitiesList = CaseInsensitiveSortedList(std::vector<std::string>(badSubentities.begin(), badSubentities.end()));
+					OO_LOG_ERR("shipData.load.error", "the shipdata.plist entry \"{}\" has unresolved subentit{} {}.", shipKey, (badCount == 1) ? "y" : "ies", badSubentitiesList);
+					cxx_OOStandardsError("Bad subentity definition found");
+				}
+				remove = YES;
+			}
+
+			if (remove)
+			{
+				// Removal is deferred to avoid bogus "entry doesn't exist" errors.
+				entry["_oo_deferred_remove"] = true;
+			}
+		}
+	}
 
 	return YES;
 }

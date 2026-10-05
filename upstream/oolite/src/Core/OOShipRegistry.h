@@ -63,17 +63,33 @@ public:
 	std::vector<std::string> shipKeysWithRole(const std::string &role);
 	std::optional<std::string> randomShipKeyForRole(const std::string &role);	// nullopt: no ship has the role
 
-	// Internal: the registry's state. The OODataLoader category (slices 2 and 3 of
-	// docs/phases/3-slices/OOShipRegistry.md), still Objective-C on the facade, reads and writes it
-	// through oo::ToCxx(self); it becomes private when those slices convert.
+private:
 	oo::PList				_shipData;		// ship key -> ship dictionary (null until loaded)
 	oo::PList				_effectData;	// effect key -> effect dictionary (null until loaded)
 	oo::PList				_demoShips;		// demo ship entries (dictionaries) grouped in arrays by class
 	std::vector<std::string>	_playerShips;	// shipyard keys, in shipyard.plist key order
 	std::optional<std::map<std::string, oo::Ref<OOProbabilitySet>, std::less<>>>	_probabilitySets;	// role -> ship keys; nullopt: none cached yet
 
-private:
-	void init();	// -init's body: run by sharedRegistry() on the new object, since it messages the facade's loaders
+	void init();	// -init's body: run by sharedRegistry() on the new object, which the load stages hand to the facade's (oo::ToObjC(this))
+
+	// (OODataLoader) The load stages. The ship dictionary each stage mutates is one property list,
+	// passed through every stage. The rest of the loader (slice 3 of
+	// docs/phases/3-slices/OOShipRegistry.md) is still Objective-C, a category of the facade.
+	void loadShipData();
+	void loadDemoShipConditions();
+	void loadDemoShips();
+	void loadCachedRoleProbabilitySets();
+	void buildRoleProbabilitySets();
+
+	bool applyLikeShips(oo::PList &ioData, const std::string &likeKey);
+	bool loadAndMergeShipyard(oo::PList &ioData);
+	bool stripPrivateKeys(oo::PList &ioData);
+	bool makeShipEntriesMutable(oo::PList &ioData);
+	bool loadAndApplyShipDataOverrides(oo::PList &ioData);
+	bool removeUnusableEntries(oo::PList &ioData, bool shipMode);
+	bool sanitizeConditions(oo::PList &ioData);
+
+	oo::PList mergeShip(const oo::PList &child, const oo::PList &parent);	// a null PList where the parent was nil
 };
 
 }	// namespace cxx
