@@ -1,6 +1,6 @@
 # ADR-0058: A GUI click activates the row under the pointer at click time
 
-- Status: Proposed. The default is in effect until Jon decides (CLAUDE.md rule 10).
+- Status: Accepted (delegated 2026-10-05: Jon delegated the human-assigned beads to the orchestrator's best judgement; ratified as proposed, bead oo-f4rft; record in [delegated-2026-10-05.md](delegated-2026-10-05.md))
 - Date: 2026-09-30
 - Beads: oo-3rb.348 (this ADR, the fix and its unit test); found from oo-3rb.333 (GUI G5 flake)
 
