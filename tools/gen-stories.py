@@ -654,8 +654,10 @@ def sweep_slices(titles=None, base=None, report=None):
                     f"`python3 tools/check-slice-plan.py --slice-done {sid} {prel}` sees the slice is done. "
                     "If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under "
                     "upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one.")
-            files = f"- {source} ({a['total']} lines; read the preamble and this slice's units only)" + (f"\n- {header} ({a['header_lines']} lines)" if header else "") + f"\n- {prel} (the slice plan)"
-            budget = (f"Reads ~{r['read']} lines: header {a['header_lines']} + preamble {a['preamble']} + this slice's units {r['own']} "
+            # header-decls: per-slice (bead oo-9ht.140): the slice reads the header less the other slices' declarations
+            hdr_note = "; read its macros, types and ivars and this slice's units' declarations only" if plan.get("header_decls") else ""
+            files = f"- {source} ({a['total']} lines; read the preamble and this slice's units only)" + (f"\n- {header} ({a['header_lines']} lines{hdr_note})" if header else "") + f"\n- {prel} (the slice plan)"
+            budget = (f"Reads ~{r['read']} lines: header {r.get('header', a['header_lines'])} + preamble {a['preamble']} + this slice's units {r['own']} "
                       "(tools/check-slice-plan.py; under 1,500).")
             units = "\n".join(f"- `{m}`" for m in r["members"])
             desc = f"{what}\n\n## Files\n{files}\n\n## Read budget\n{budget}\n\n## Units ({r['units']})\n{units}"
