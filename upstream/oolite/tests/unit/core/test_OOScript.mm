@@ -14,8 +14,9 @@
 	The expectations were written against the Objective-C API and run on the unconverted class
 	first: the root's own answers, an Objective-C subclass's overrides and [super ...], the loaders
 	(no file, a folder, an unknown extension, a legacy script from the cache, names not found, a
-	world-scripts list, a folder with no scripts). The crossing checks (ADR-0056 Amendment 1 item 8)
-	come last.
+	world-scripts list, a folder with no scripts). The crossing checks (ADR-0056 Amendment 1 item 8),
+	added with the conversion, come last: an Objective-C subclass's C++ part reaching its overrides,
+	a C++ subclass behind its facade, identity and nil, and the adapter outliving its owner.
 	Run: bash tools/check-core-tests.sh test_OOScript
 */
 
@@ -265,6 +266,106 @@ OO_TEST(worldScriptsAtPath)
 		const auto listWins = [OOScript cxx_worldScriptsAtPath:legacy];
 		OO_CHECK(listWins.has_value() && listWins->empty());
 	}
+}
+
+
+// The crossing (ADR-0056 Amendment 1 item 8), after the conversion.
+
+namespace {
+
+// A C++ subclass, as a converted OOJSScript or OOPListScript will be.
+class TestCxxScript final : public cxx::OOScript
+{
+public:
+	std::optional<std::string> name() override				{ return std::string("cxx"); }
+	std::optional<std::string> version() override			{ return std::string("2"); }
+	bool requiresTickle() override							{ return true; }
+	void runWithTarget(::Entity *target) override			{ runs++; lastTarget = target; }
+
+	int runs = 0;
+	::Entity *lastTarget = nullptr;
+};
+
+}	// namespace
+
+
+OO_TEST(crossingObjCSubclass)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// C++ virtual calls on an Objective-C subclass's C++ part reach its overrides.
+		TestObjCScript *script = [[[TestObjCScript alloc] init] autorelease];
+		script->hasVersion = YES;
+		cxx::OOScript *part = oo::ToCxx(script);
+		OO_CHECK(part != nullptr);
+		OO_CHECK_EQ(part->name().value_or("<none>"), "objc");
+		OO_CHECK_EQ(part->scriptDescription().value_or("<none>"), "an Objective-C test script");
+		OO_CHECK_EQ(part->displayName().value_or("<none>"), "objc 1.5");
+		OO_CHECK_EQ(part->descriptionComponents().value_or("<none>"), "\"objc\" version 1.5");
+		OO_CHECK(part->requiresTickle());
+		part->runWithTarget(nil);
+		OO_CHECK_EQ(script->runs, 1);
+		OO_CHECK(oo::ToObjC(part) == script);	// the Objective-C object itself, with no peer
+
+		// The subclass facade's own C++ part (OOPListScript) is unaffected.
+		OO_CHECK(oo::ToCxx(static_cast<OOScript *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOScript *>(nullptr)) == nil);
+	}
+}
+
+
+OO_TEST(crossingCxxSubclass)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The facade of a C++ subclass reaches its overrides; one live facade per object.
+		const oo::Ref<TestCxxScript> script = oo::makeRef<TestCxxScript>();
+		OOScript *facade = oo::ToObjC(script.get());
+		OO_CHECK(facade != nil);
+		OO_CHECK(oo::ToObjC(script.get()) == facade);
+		OO_CHECK(oo::ToCxx(facade) == script.get());
+		OO_CHECK_EQ([facade cxx_name].value_or("<none>"), "cxx");
+		OO_CHECK_EQ([facade cxx_version].value_or("<none>"), "2");
+		OO_CHECK(![facade scriptDescription].has_value());	// not overridden: the root's
+		OO_CHECK_EQ([facade displayName].value_or("<none>"), "cxx 2");
+		OO_CHECK([facade requiresTickle]);
+		OO_CHECK(oo::DescriptionOf(facade).find("\"cxx\" version 2") != std::string::npos);
+		Entity *target = [[[Entity alloc] init] autorelease];
+		[facade runWithTarget:target];
+		OO_CHECK_EQ(script->runs, 1);
+		OO_CHECK(script->lastTarget == target);
+
+		// [[OOScript alloc] init] is the facade of a plain C++ root.
+		OOScript *root = [[[OOScript alloc] init] autorelease];
+		OO_CHECK(oo::ToCxx(root) != nullptr);
+		OO_CHECK(oo::ToObjC(oo::ToCxx(root)) == root);
+
+		// The loaders as static members.
+		OO_CHECK(cxx::OOScript::scriptsFromList(std::vector<std::string>{ "oo-test-missing.js" }).empty());
+		OO_CHECK(!cxx::OOScript::scriptsFromFileAtPath(Folder("files") + "/missing.js").has_value());
+		OO_CHECK(cxx::OOScript::jsScriptFromFileNamed("", oo::PList()) == nil);
+	}
+}
+
+
+OO_TEST(adapterOutlivesOwner)
+{
+	SetUp();
+	oo::Ref<cxx::OOScript> part;
+	@autoreleasepool
+	{
+		TestObjCScript *script = [[TestObjCScript alloc] init];
+		part = oo::Ref<cxx::OOScript>(oo::ToCxx(script));
+		[script release];
+	}
+	// The Objective-C object is gone: its C++ part answers as a message to nil did.
+	OO_CHECK(!part->name().has_value());
+	OO_CHECK(!part->displayName().has_value());
+	OO_CHECK(!part->requiresTickle());
+	part->runWithTarget(nullptr);
+	OO_CHECK(oo::ToObjC(part.get()) == nil);
 }
 
 
