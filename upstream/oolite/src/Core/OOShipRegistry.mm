@@ -48,10 +48,10 @@ SOFTWARE.
 #define PRELOAD 0
 
 
-static OOShipRegistry	*sSingleton = nil;
-
-
 namespace {
+
+cxx::OOShipRegistry	*sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+
 
 constexpr const char *kRoleWeightsCacheKey			= "role weights";
 constexpr const char *kDefaultDemoShip				= "coriolis-station";
@@ -111,7 +111,7 @@ std::string FirstToken(const std::vector<std::string> &tokens)
 {
 	if (tokens.empty())
 	{
-		[OOException raise:OORangeException format:"Index 0 is out of range 0 (in 'objectAtIndex:')"];
+		OORaiseException(OORangeException, "Index 0 is out of range 0 (in 'objectAtIndex:')");
 	}
 	return tokens[0];
 }
@@ -229,103 +229,96 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 @end
 
 
-@implementation OOShipRegistry
+namespace cxx {
 
-+ (OOShipRegistry *) sharedRegistry
+OOShipRegistry *OOShipRegistry::sharedRegistry()
 {
-	if (sSingleton == nil)
+	if (sSingleton == nullptr)
 	{
-		sSingleton = [[self alloc] init];
+		OO_LOG("shipData.load.begin", "{}", "Loading ship data.");	// was +allocWithZone:'s
+		sSingleton = oo::makeRef<OOShipRegistry>().leakRef();
+		sSingleton->init();
 	}
-	
+
 	return sSingleton;
 }
 
 
-+ (void) reload
+void OOShipRegistry::reload()
 {
-	if (sSingleton != nil)
+	if (sSingleton != nullptr)
 	{
 		/* CIM: 'release' doesn't work - the class definition
 		 * overrides it, so this leaks memory. Needs a proper reset
 		 * method for reloading the ship registry data instead */
-		[sSingleton release];
-		sSingleton = nil;
-		
-		(void) [self sharedRegistry];
+		// The singleton's -release did nothing, so the old registry is never freed (leakRef above).
+		sSingleton = nullptr;
+
+		(void) sharedRegistry();
 	}
 }
 
 
-- (id) init
+void OOShipRegistry::init()
 {
-	if ((self = [super init]))
+	@autoreleasepool
 	{
-		@autoreleasepool
-		{
-			OOCacheManager			*cache = [OOCacheManager sharedCache];
+		// The loaders (OODataLoader, slices 2 and 3) are still Objective-C, on the facade.
+		::OOShipRegistry *loader = oo::ToObjC(this);
+		OOCacheManager			*cache = OOCacheManager::sharedCache();
 
-			_shipData = [cache cxx_pListForKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
-			_playerShips.clear();	// the cached array's string elements, in order (anything else skipped, as oo::StringsFrom did)
-			const oo::PList cachedPlayerShips = [cache cxx_pListForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
-			if (const oo::PList::Array *playerShips = cachedPlayerShips.getIf<oo::PList::Array>())
+		_shipData = cache->pListForKey(kShipDataCacheKey, kShipRegistryCacheName);
+		_playerShips.clear();	// the cached array's string elements, in order (anything else skipped, as oo::StringsFrom did)
+		const oo::PList cachedPlayerShips = cache->pListForKey(kPlayerShipsCacheKey, kShipRegistryCacheName);
+		if (const oo::PList::Array *playerShips = cachedPlayerShips.getIf<oo::PList::Array>())
+		{
+			for (const oo::PList &element : *playerShips)
 			{
-				for (const oo::PList &element : *playerShips)
-				{
-					if (const std::string *playerShip = element.getIf<std::string>())  _playerShips.push_back(*playerShip);
-				}
+				if (const std::string *playerShip = element.getIf<std::string>())  _playerShips.push_back(*playerShip);
 			}
-			_effectData = [cache cxx_pListForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
-			if (_shipData.count() == 0)	// Don't accept nil or empty
+		}
+		_effectData = cache->pListForKey(kVisualEffectDataCacheKey, kVisualEffectRegistryCacheName);
+		if (_shipData.count() == 0)	// Don't accept nil or empty
+		{
+			[loader loadShipData];
+			if (_shipData.count() == 0)
 			{
-				[self loadShipData];
-				if (_shipData.count() == 0)
-				{
-					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load any ship data."];
-				}
-				if (_playerShips.empty())
-				{
-					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load any player ships."];
-				}
+				OORaiseException("OOShipRegistryLoadFailure", "Could not load any ship data.");
 			}
-			
-			[self loadDemoShipConditions];
-			[self loadDemoShips]; // testing only
-			if (_demoShips.count() == 0)
+			if (_playerShips.empty())
 			{
-				[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load or synthesize any demo ships."];
+				OORaiseException("OOShipRegistryLoadFailure", "Could not load any player ships.");
 			}
-			
-			[self loadCachedRoleProbabilitySets];
-			if (!_probabilitySets.has_value())
+		}
+
+		[loader loadDemoShipConditions];
+		[loader loadDemoShips]; // testing only
+		if (_demoShips.count() == 0)
+		{
+			OORaiseException("OOShipRegistryLoadFailure", "Could not load or synthesize any demo ships.");
+		}
+
+		[loader loadCachedRoleProbabilitySets];
+		if (!_probabilitySets.has_value())
+		{
+			[loader buildRoleProbabilitySets];
+			if (_probabilitySets->empty())
 			{
-				[self buildRoleProbabilitySets];
-				if (_probabilitySets->empty())
-				{
-					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load or synthesize role probability sets."];
-				}
+				OORaiseException("OOShipRegistryLoadFailure", "Could not load or synthesize role probability sets.");
 			}
 		}
 	}
-	return self;
 }
 
 
-- (void) dealloc
-{
-
-	[super dealloc];
-}
-
-
-- (oo::PList) cxx_shipInfoForKey:(const std::string &)key
+oo::PList OOShipRegistry::shipInfoForKey(const std::string &key)
 {
 	const oo::PList *entry = _shipData.find(key);
 	return entry != nullptr ? *entry : oo::PList();
 }
 
 
-- (void) cxx_setShipInfoForKey:(const std::string &)key with:(const oo::PList &)newShipData
+void OOShipRegistry::setShipInfoForKey(const std::string &key, const oo::PList &newShipData)
 {
 	// A value copy (it was a deep copy into a rebuilt dictionary).
 	if (!_shipData.isDict())  _shipData = oo::PList(oo::PList::Dict());
@@ -333,14 +326,14 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 }
 
 
-- (oo::PList) cxx_effectInfoForKey:(const std::string &)key
+oo::PList OOShipRegistry::effectInfoForKey(const std::string &key)
 {
 	const oo::PList *entry = _effectData.find(key);
 	return entry != nullptr ? *entry : oo::PList();
 }
 
 
-- (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key
+oo::PList OOShipRegistry::shipyardInfoForKey(const std::string &key)
 {
 	const oo::PList *entry = _shipData.find(key);
 	const oo::PList *shipyard = entry != nullptr ? entry->find("_oo_shipyard") : nullptr;
@@ -348,7 +341,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 }
 
 
-- (OOProbabilitySet *) cxx_probabilitySetForRole:(const std::string &)role
+OOProbabilitySet *OOShipRegistry::probabilitySetForRole(const std::string &role)
 {
 	if (!_probabilitySets.has_value())  return nullptr;
 	auto set = _probabilitySets->find(role);
@@ -356,26 +349,24 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 }
 
 
-- (oo::PList) cxx_demoShipKeys
+oo::PList OOShipRegistry::demoShipKeys()
 {
 	// with condition scripts in use, can't cache this value
-	[self loadDemoShips];
+	[oo::ToObjC(this) loadDemoShips];
 
 	return _demoShips;
 }
 
 
-- (std::vector<std::string>) cxx_playerShipKeys
+std::vector<std::string> OOShipRegistry::playerShipKeys()
 {
 	return _playerShips;
 }
 
-@end
 
+// (OOConveniences)
 
-@implementation OOShipRegistry (OOConveniences)
-
-- (std::vector<std::string>) cxx_shipKeys
+std::vector<std::string> OOShipRegistry::shipKeys()
 {
 	std::vector<std::string> keys;
 	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
@@ -386,7 +377,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	return keys;
 }
 
-- (std::vector<std::string>) cxx_shipRoles
+std::vector<std::string> OOShipRegistry::shipRoles()
 {
 	std::vector<std::string> roles;
 	if (_probabilitySets.has_value())
@@ -397,11 +388,11 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	return roles;
 }
 
-- (std::vector<std::string>) cxx_shipKeysWithRole:(const std::string &)role
+std::vector<std::string> OOShipRegistry::shipKeysWithRole(const std::string &role)
 {
 	// The set's string elements (ship keys), in its order; anything else skipped, as oo::StringsFrom did.
 	std::vector<std::string> keys;
-	OOProbabilitySet *set = [self cxx_probabilitySetForRole:role];
+	::OOProbabilitySet *set = probabilitySetForRole(role);
 	for (const oo::PList &key : (set != nullptr) ? set->allElements() : std::vector<oo::PList>())
 	{
 		if (const std::string *string = key.getIf<std::string>())  keys.push_back(*string);
@@ -410,17 +401,17 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 }
 
 
-- (std::optional<std::string>) cxx_randomShipKeyForRole:(const std::string &)role
+std::optional<std::string> OOShipRegistry::randomShipKeyForRole(const std::string &role)
 {
 	// nullopt for no set, or no pick (every weight zero), as nil was.
-	OOProbabilitySet *set = [self cxx_probabilitySetForRole:role];
+	::OOProbabilitySet *set = probabilitySetForRole(role);
 	if (set == nullptr)  return std::nullopt;
 	const oo::PList key = set->randomObject();
 	if (const std::string *string = key.getIf<std::string>())  return *string;
 	return std::nullopt;
 }
 
-@end
+}	// namespace cxx
 
 
 @implementation OOShipRegistry (OODataLoader)
@@ -432,13 +423,13 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		* Apply all like_ship entries.
 		* Load shipdata-overrides.plist and apply patches.
 		* Load shipyard.plist, add shipyard data into ship dictionaries, and
-		  create _playerShips array.
+		  create oo::ToCxx(self)->_playerShips array.
 		* Build role->ship type probability sets.
 */
 - (void) loadShipData
 {
-	_shipData = oo::PList();
-	_playerShips.clear();
+	oo::ToCxx(self)->_shipData = oo::PList();
+	oo::ToCxx(self)->_playerShips.clear();
 
 	// Load shipdata.plist.
 	oo::PList result = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist"
@@ -487,12 +478,12 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	OO_LOG("shipData.load.progress", "{}", "Finished loading meshes...");
 #endif
 
-	_shipData = std::move(result);
-	[[OOCacheManager sharedCache] cxx_setPList:_shipData forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
+	oo::ToCxx(self)->_shipData = std::move(result);
+	[[OOCacheManager sharedCache] cxx_setPList:oo::ToCxx(self)->_shipData forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
 
 	OO_LOG("shipData.load.done", "{}", "Ship data loaded.");
 
-	_effectData = oo::PList();
+	oo::ToCxx(self)->_effectData = oo::PList();
 
 	result = [ResourceManager cxx_dictionaryFromFilesNamed:"effectdata.plist"
 												  inFolder:"Config"
@@ -520,8 +511,8 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	if (![self removeUnusableEntries:result shipMode:NO])  return;
 	OO_LOG("effectData.load.progress", "{}", "Finished removing invalid entries...");
 
-	_effectData = std::move(result);
-	[[OOCacheManager sharedCache] cxx_setPList:_effectData forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
+	oo::ToCxx(self)->_effectData = std::move(result);
+	[[OOCacheManager sharedCache] cxx_setPList:oo::ToCxx(self)->_effectData forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
 
 	OO_LOG("effectData.load.done", "{}", "Effect data loaded.");
 }
@@ -563,14 +554,15 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 */
 - (void) loadDemoShips
 {
-	_demoShips = oo::PList();
+	oo::ToCxx(self)->_demoShips = oo::PList();
 
 	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
 																	   inFolder:"Config"
 																	   andMerge:YES
 																		  cache:NO];
 	const oo::PList::Array noShips;
-	const oo::PList::Array &initialEntries = initialDemoShips.isArray() ? *initialDemoShips.getIf<oo::PList::Array>() : noShips;
+	const oo::PList::Array *initialArray = initialDemoShips.getIf<oo::PList::Array>();	// null unless isArray()
+	const oo::PList::Array &initialEntries = initialArray != nullptr ? *initialArray : noShips;
 	oo::PList::Array demoShips = initialEntries;
 	// -removeObject: took every equal entry out
 	auto removeEntry = [&demoShips](const oo::PList &entry)
@@ -582,7 +574,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	for (const oo::PList &key : initialEntries)
 	{
 		const std::optional<std::string> shipKey = StringForKey(&key, kOODemoShipKey);
-		if (!key.isDict() || !shipKey.has_value() || _shipData.find(*shipKey) == nullptr)
+		if (!key.isDict() || !shipKey.has_value() || oo::ToCxx(self)->_shipData.find(*shipKey) == nullptr)
 		{
 			removeEntry(key);
 		}
@@ -631,13 +623,13 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	if (demoShips.empty())
 	{
 		std::string shipKey;
-		if (_shipData.find(kDefaultDemoShip) != nullptr)
+		if (oo::ToCxx(self)->_shipData.find(kDefaultDemoShip) != nullptr)
 		{
 			shipKey = kDefaultDemoShip;
 		}
 		else
 		{
-			shipKey = _shipData.getIf<oo::PList::Dict>()->begin()->first;	// the first key in key order (was hash order)
+			shipKey = oo::ToCxx(self)->_shipData.getIf<oo::PList::Dict>()->begin()->first;	// the first key in key order (was hash order)
 		}
 		oo::PList::Dict entry;
 		entry.emplace(kOODemoShipKey, shipKey);
@@ -658,7 +650,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		oo::PList demoEntry = key;
 		oo::PList::Dict &demoEntryValues = *demoEntry.getIf<oo::PList::Dict>();
 		// add "name" object to dictionary from ship definition
-		const std::optional<std::string> name = StringForKey(_shipData.find(demoEntry.get<std::string>("ship")), kOODemoShipName);
+		const std::optional<std::string> name = StringForKey(oo::ToCxx(self)->_shipData.find(demoEntry.get<std::string>("ship")), kOODemoShipName);
 		if (!name.has_value())
 		{
 			// -setObject:nil forKey: raised
@@ -689,7 +681,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	{
 		return oo::str::compare(OOShipLibraryCategoryPlural(a.at(0)->get<std::string>("class")), OOShipLibraryCategoryPlural(b.at(0)->get<std::string>("class"))) < 0;
 	});
-	_demoShips = oo::PList(std::move(categories));
+	oo::ToCxx(self)->_demoShips = oo::PList(std::move(categories));
 }
 
 
@@ -707,7 +699,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		}
 	}
 
-	_probabilitySets = std::move(restoredSets);
+	oo::ToCxx(self)->_probabilitySets = std::move(restoredSets);
 }
 
 
@@ -716,7 +708,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	std::map<std::string, oo::Ref<OOMutableProbabilitySet>, std::less<>>	probabilitySets;
 
 	// Build role sets (ships in key order; was hash order)
-	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
+	if (const oo::PList::Dict *ships = oo::ToCxx(self)->_shipData.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[shipKey, shipEntry] : *ships)
 		{
@@ -735,7 +727,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		cacheEntry[role] = pset->propertyListRepresentation();
 	}
 
-	_probabilitySets = std::move(sets);
+	oo::ToCxx(self)->_probabilitySets = std::move(sets);
 	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(cacheEntry)) forKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
 }
 
@@ -1006,9 +998,9 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		}
 	}
 
-	_playerShips = std::move(playerShips);
+	oo::ToCxx(self)->_playerShips = std::move(playerShips);
 	oo::PList::Array playerShipList;	// an array of strings, as the Objective-C array was
-	for (const std::string &playerShip : _playerShips)  playerShipList.emplace_back(playerShip);
+	for (const std::string &playerShip : oo::ToCxx(self)->_playerShips)  playerShipList.emplace_back(playerShip);
 	[[OOCacheManager sharedCache] cxx_setPList:oo::PList(std::move(playerShipList)) forKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
 
 	return YES;
@@ -1779,57 +1771,6 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	}
 
 	return NO;
-}
-
-@end
-
-
-@implementation OOShipRegistry (Singleton)
-
-/*	Canonical singleton boilerplate.
-	See Cocoa Fundamentals Guide: Creating a Singleton Instance.
-	See also +sharedRegistry above.
-	
-	NOTE: assumes single-threaded access.
-*/
-
-+ (id) allocWithZone:(OOZone *)inZone
-{
-	if (sSingleton == nil)
-	{
-		OO_LOG("shipData.load.begin", "{}", "Loading ship data.");
-		sSingleton = [super allocWithZone:inZone];
-		return sSingleton;
-	}
-	return nil;
-}
-
-
-- (id) copyWithZone:(OOZone *)inZone
-{
-	return self;
-}
-
-
-- (id) retain
-{
-	return self;
-}
-
-
-- (NSUInteger) retainCount
-{
-	return UINT_MAX;
-}
-
-
-- (void) release
-{}
-
-
-- (id) autorelease
-{
-	return self;
 }
 
 @end
