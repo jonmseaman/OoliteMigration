@@ -16,6 +16,7 @@
 */
 
 #import "OOSoundSource.h"
+#import "OOALSoundMixer.h"
 #import "OODescription.h"
 
 #include "oo_test.hpp"
@@ -133,22 +134,16 @@ static std::vector<std::string> gLog;
 static int gChannelsOut = 0;
 static int gChannelsAvailable = 8;
 
-@interface OOSoundMixer: OOObject
-+ (id) sharedMixer;
-@end
-
-
-@implementation OOSoundMixer
-
-+ (id) sharedMixer
+// The mixer (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed):
+// one, never released, handing out at most gChannelsAvailable channels.
+OOSoundMixer *OOSoundMixer::sharedMixer()
 {
-	static OOSoundMixer *mixer = nil;
-	if (mixer == nil)  mixer = [[OOSoundMixer alloc] init];
+	static OOSoundMixer *mixer = oo::makeRef<OOSoundMixer>().leakRef();
 	return mixer;
 }
 
 
-- (OOSoundChannel *) popChannel
+::OOSoundChannel *OOSoundMixer::popChannel()
 {
 	if (gChannelsOut == gChannelsAvailable)  return nil;
 	gChannelsOut++;
@@ -156,14 +151,12 @@ static int gChannelsAvailable = 8;
 }
 
 
-- (void) pushChannel:(OOSoundChannel *)channel
+void OOSoundMixer::pushChannel(::OOSoundChannel *channel)
 {
 	(void)channel;
 	gChannelsOut--;
 	gLog.push_back("push");
 }
-
-@end
 
 
 namespace {
