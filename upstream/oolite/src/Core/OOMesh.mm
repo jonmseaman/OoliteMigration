@@ -146,23 +146,15 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 	cacheWriteable:(BOOL)cacheWriteable;
 
 - (BOOL) loadData:(const std::string &)filename scaleFactor:(float)scale;
-- (void) checkNormalsAndAdjustWinding;
-- (void) generateFaceTangents;
-- (void) calculateVertexNormalsAndTangentsWithFaceRefs:(VertexFaceRef *)faceRefs;
-- (void) calculateVertexTangentsWithFaceRefs:(VertexFaceRef *)faceRefs;
 
 - (void) deleteDisplayLists;
 
 - (oo::PList) modelData;	// null: incomplete
 - (BOOL) setModelFromModelData:(const oo::PList &)dict name:(const std::string &)fileName;
 
-- (void) getNormal:(Vector *)outNormal andTangent:(Vector *)outTangent forVertex:(OOMeshVertexCount)v_index inSmoothGroup:(OOMeshSmoothGroup)smoothGroup;
-
 - (BOOL) setUpVertexArrays;
 
-- (void) calculateBoundingVolumes;
 
-- (void) rescaleByFactor:(GLfloat)factor;
 
 #ifndef NDEBUG
 - (void)debugDrawNormals;
@@ -328,8 +320,6 @@ OOMesh::~OOMesh()
 {
 	unsigned				i;
 
-	DESTROY(octree);
-
 	// [self deleteDisplayLists] and the graphics reset manager's -unregisterClient:self are the
 	// facade's -dealloc (OOMesh+ObjCBridge.mm): they message the facade, the registered client,
 	// which is gone by the time its C++ part is destroyed.
@@ -401,16 +391,10 @@ size_t OOMesh::getFaceCount()
 }
 
 
-// Slices 3 and 4, still Objective-C: the facade's category methods (amendment oo-dnbf).
+// Slice 4, still Objective-C: the facade's category method (amendment oo-dnbf).
 void OOMesh::renderOpaqueParts()
 {
 	[oo::ToObjC(this) renderOpaqueParts];
-}
-
-
-BoundingBox OOMesh::boundingBox()
-{
-	return [oo::ToObjC(this) boundingBox];
 }
 
 }	// namespace cxx
@@ -680,21 +664,21 @@ GLfloat OOMesh::maxDrawDistance()
 }	// namespace cxx
 
 
-@implementation OOMesh (OOMeshGeometry)
+namespace cxx {
 
 #if ADAPTIVE_OCTREE_DEPTH
-- (unsigned) octreeDepth
+unsigned OOMesh::octreeDepth()
 {
 	float				threshold = kOctreeSizeThreshold;
 	unsigned			result = kBaseOctreeDepth;
 	GLfloat				xs, ys, zs, t, size;
-	
-	bounding_box_get_dimensions(oo::ToCxx(self)->_boundingBox, &xs, &ys, &zs);
+
+	bounding_box_get_dimensions(_boundingBox, &xs, &ys, &zs);
 	// Shuffle dimensions around so zs is smallest
 	if (xs < zs)  { t = zs; zs = xs; xs = t; }
 	if (ys < zs)  { t = zs; zs = ys; ys = t; }
 	size = (xs + ys) / 2.0f;	// Use average of two largest
-	
+
 	if (size < kOctreeSmallSizeThreshold)  result = kSmallOctreeDepth;
 	else while (result < kMaxOctreeDepth)
 	{
@@ -702,61 +686,58 @@ GLfloat OOMesh::maxDrawDistance()
 		threshold *= 2.0f;
 		result++;
 	}
-	
-	OO_LOG("mesh.load.octree.size", "Selected octree depth {} for size {:g} for {}", result, size, oo::ToCxx(self)->baseFile.value_or("(null)"));
+
+	OO_LOG("mesh.load.octree.size", "Selected octree depth {} for size {:g} for {}", result, size, baseFile.value_or("(null)"));
 	return result;
 }
 #else
-- (unsigned) octreeDepth
+unsigned OOMesh::octreeDepth()
 {
 	return kBaseOctreeDepth;
 }
 #endif
 
 
-- (Octree *)octree
+oo::Ref<Octree> OOMesh::getOctree()
 {
-	if (oo::ToCxx(self)->octree == nil)
+	if (octree == nullptr)
 	{
-		oo::ToCxx(self)->octree = oo::ToCxx(self)->baseFileOctreeCacheRef ? [oo::ToObjC(OOCacheManagerOctreeForModel(*oo::ToCxx(self)->baseFileOctreeCacheRef)) retain] : nil;
-		if (oo::ToCxx(self)->octree == nil)
+		octree = baseFileOctreeCacheRef ? OOCacheManagerOctreeForModel(*baseFileOctreeCacheRef) : oo::Ref<Octree>();
+		if (octree == nullptr)
 		{
-			@autoreleasepool
+			void *pool = objc_autoreleasePoolPush();	// @autoreleasepool
 			{
-				OOMeshToOctreeConverter *converter = [OOMeshToOctreeConverter converterWithCapacity:oo::ToCxx(self)->faceCount];
+				oo::Ref<OOMeshToOctreeConverter> converter = OOMeshToOctreeConverter::converterWithCapacity(faceCount);
 				OOMeshFaceCount i;
-				for (i = 0; i < oo::ToCxx(self)->faceCount; i++)
+				for (i = 0; i < faceCount; i++)
 				{
 					// Somewhat surprisingly, this method doesn't even show up in profiles. -- Ahruman 2012-09-22
 					Triangle tri;
-					tri.v[0] = oo::ToCxx(self)->_vertices[oo::ToCxx(self)->_faces[i].vertex[0]];
-					tri.v[1] = oo::ToCxx(self)->_vertices[oo::ToCxx(self)->_faces[i].vertex[1]];
-					tri.v[2] = oo::ToCxx(self)->_vertices[oo::ToCxx(self)->_faces[i].vertex[2]];
-					[converter addTriangle:tri];
+					tri.v[0] = _vertices[_faces[i].vertex[0]];
+					tri.v[1] = _vertices[_faces[i].vertex[1]];
+					tri.v[2] = _vertices[_faces[i].vertex[2]];
+					converter->addTriangle(tri);
 				}
-				
-				oo::ToCxx(self)->octree = [converter findOctreeToDepth:[self octreeDepth]];
-				[oo::ToCxx(self)->octree retain];
-				if (EXPECT(oo::ToCxx(self)->_cacheWriteable) && oo::ToCxx(self)->baseFileOctreeCacheRef)
+
+				octree = converter->findOctreeToDepth(octreeDepth());
+				if (EXPECT(_cacheWriteable) && baseFileOctreeCacheRef)
 				{
-					OOCacheManagerSetOctree(oo::ToCxx(oo::ToCxx(self)->octree), *oo::ToCxx(self)->baseFileOctreeCacheRef);
+					OOCacheManagerSetOctree(octree.get(), *baseFileOctreeCacheRef);
 				}
 			}
+			objc_autoreleasePoolPop(pool);
 		}
 		else
 		{
-			OO_LOG("mesh.load.octreeCached", "Retrieved octree \"{}\" from cache.", oo::ToCxx(self)->baseFileOctreeCacheRef.value_or("(null)"));
+			OO_LOG("mesh.load.octreeCached", "Retrieved octree \"{}\" from cache.", baseFileOctreeCacheRef.value_or("(null)"));
 		}
 	}
-	
-	return oo::ToCxx(self)->octree;
+
+	return octree;
 }
 
 
-- (BoundingBox) findBoundingBoxRelativeToPosition:(Vector)opv
-											basis:(Vector)ri :(Vector)rj :(Vector)rk
-									 selfPosition:(Vector)position
-										selfBasis:(Vector)si :(Vector)sj :(Vector)sk
+BoundingBox OOMesh::findBoundingBoxRelativeToPosition(Vector opv, Vector ri, Vector rj, Vector rk, Vector position, Vector si, Vector sj, Vector sk)
 {
 	BoundingBox	result;
 	Vector		pv, rv;
@@ -768,15 +749,15 @@ GLfloat OOMesh::maxDrawDistance()
 	rv.y = dot_product(rj,rpos);
 	rv.z = dot_product(rk,rpos);	// model origin rel to opv in ijk
 	
-	if (EXPECT_NOT(oo::ToCxx(self)->vertexCount < 1))
+	if (EXPECT_NOT(vertexCount < 1))
 	{
 		bounding_box_reset_to_vector(&result, rv);
 	}
 	else
 	{
-		pv.x = rpos.x + si.x * oo::ToCxx(self)->_vertices[0].x + sj.x * oo::ToCxx(self)->_vertices[0].y + sk.x * oo::ToCxx(self)->_vertices[0].z;
-		pv.y = rpos.y + si.y * oo::ToCxx(self)->_vertices[0].x + sj.y * oo::ToCxx(self)->_vertices[0].y + sk.y * oo::ToCxx(self)->_vertices[0].z;
-		pv.z = rpos.z + si.z * oo::ToCxx(self)->_vertices[0].x + sj.z * oo::ToCxx(self)->_vertices[0].y + sk.z * oo::ToCxx(self)->_vertices[0].z;	// _vertices[0] position rel to opv
+		pv.x = rpos.x + si.x * _vertices[0].x + sj.x * _vertices[0].y + sk.x * _vertices[0].z;
+		pv.y = rpos.y + si.y * _vertices[0].x + sj.y * _vertices[0].y + sk.y * _vertices[0].z;
+		pv.z = rpos.z + si.z * _vertices[0].x + sj.z * _vertices[0].y + sk.z * _vertices[0].z;	// _vertices[0] position rel to opv
 		rv.x = dot_product(ri, pv);
 		rv.y = dot_product(rj, pv);
 		rv.z = dot_product(rk, pv);	// _vertices[0] position rel to opv in ijk
@@ -784,11 +765,11 @@ GLfloat OOMesh::maxDrawDistance()
 	}
 	
 	OOMeshVertexCount i;
-	for (i = 1; i < oo::ToCxx(self)->vertexCount; i++)
+	for (i = 1; i < vertexCount; i++)
 	{
-		pv.x = rpos.x + si.x * oo::ToCxx(self)->_vertices[i].x + sj.x * oo::ToCxx(self)->_vertices[i].y + sk.x * oo::ToCxx(self)->_vertices[i].z;
-		pv.y = rpos.y + si.y * oo::ToCxx(self)->_vertices[i].x + sj.y * oo::ToCxx(self)->_vertices[i].y + sk.y * oo::ToCxx(self)->_vertices[i].z;
-		pv.z = rpos.z + si.z * oo::ToCxx(self)->_vertices[i].x + sj.z * oo::ToCxx(self)->_vertices[i].y + sk.z * oo::ToCxx(self)->_vertices[i].z;
+		pv.x = rpos.x + si.x * _vertices[i].x + sj.x * _vertices[i].y + sk.x * _vertices[i].z;
+		pv.y = rpos.y + si.y * _vertices[i].x + sj.y * _vertices[i].y + sk.y * _vertices[i].z;
+		pv.z = rpos.z + si.z * _vertices[i].x + sj.z * _vertices[i].y + sk.z * _vertices[i].z;
 		rv.x = dot_product(ri, pv);
 		rv.y = dot_product(rj, pv);
 		rv.z = dot_product(rk, pv);
@@ -799,48 +780,50 @@ GLfloat OOMesh::maxDrawDistance()
 }
 
 
-- (BoundingBox)findSubentityBoundingBoxWithPosition:(Vector)position rotMatrix:(OOMatrix)rotMatrix
+BoundingBox OOMesh::findSubentityBoundingBoxWithPosition(Vector position, OOMatrix rotMatrix)
 {
 	// HACK! Should work out what the various bounding box things do and make it neat and consistent.
 	// FIXME: this is a bottleneck.
 // Try to fix bottleneck by caching for common case where subentity
 // pos+rot is constant from frame to frame. - CIM
 
-	if (vector_equal(position,oo::ToCxx(self)->_lastPosition) && OOMatrixEqual(rotMatrix,oo::ToCxx(self)->_lastRotMatrix))
+	if (vector_equal(position,_lastPosition) && OOMatrixEqual(rotMatrix,_lastRotMatrix))
 	{
-		return oo::ToCxx(self)->_lastBoundingBox;
+		return _lastBoundingBox;
 	}
 
 	BoundingBox		result;
 	Vector			v;
 	
-	v = vector_add(position, OOVectorMultiplyMatrix(oo::ToCxx(self)->_vertices[0], rotMatrix));
+	v = vector_add(position, OOVectorMultiplyMatrix(_vertices[0], rotMatrix));
 	bounding_box_reset_to_vector(&result,v);
 	
 	OOMeshVertexCount i;
-	for (i = 1; i < oo::ToCxx(self)->vertexCount; i++)
+	for (i = 1; i < vertexCount; i++)
 	{
-		v = vector_add(position, OOVectorMultiplyMatrix(oo::ToCxx(self)->_vertices[i], rotMatrix));
+		v = vector_add(position, OOVectorMultiplyMatrix(_vertices[i], rotMatrix));
 		bounding_box_add_vector(&result,v);
 	}
 	
-	oo::ToCxx(self)->_lastBoundingBox = result;
-	oo::ToCxx(self)->_lastPosition = position;
-	oo::ToCxx(self)->_lastRotMatrix = rotMatrix;
+	_lastBoundingBox = result;
+	_lastPosition = position;
+	_lastRotMatrix = rotMatrix;
 
 	return result;
 }
 
 
-- (OOMesh *)meshRescaledBy:(GLfloat)scaleFactor
+oo::Ref<OOMesh> OOMesh::meshRescaledBy(GLfloat scaleFactor)
 {
-	OOMesh *result = [self mutableCopy];
-	[result rescaleByFactor:scaleFactor];
-	return [result autorelease];
+	// -mutableCopy is slice 2's, still Objective-C: the copy's facade (its graphics reset client)
+	// lives until the pool drains, as the autoreleased result did.
+	::OOMesh *copy = [[oo::ToObjC(this) mutableCopy] autorelease];
+	oo::Ref<OOMesh> result(oo::ToCxx(copy));
+	result->rescaleByFactor(scaleFactor);
+	return result;
 }
 
-
-@end
+}	// namespace cxx
 
 
 namespace cxx {
@@ -905,7 +888,7 @@ size_t OOMesh::totalSize()
 	}
 
 	// A nil octree answered 0.
-	if (Octree *cxxOctree = oo::ToCxx(octree))  result += cxxOctree->totalSize();
+	if (octree != nullptr)  result += octree->totalSize();
 	return result;
 }
 #endif
@@ -922,7 +905,6 @@ bool OOMesh::suppressClangStuff()
 }
 
 }	// namespace cxx
-
 
 
 @implementation OOMesh (Private)
@@ -953,7 +935,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		
 		if ([self loadData:name scaleFactor:scale])
 		{
-			[self calculateBoundingVolumes];
+			oo::ToCxx(self)->calculateBoundingVolumes();
 			PROFILE("finished calculateBoundingVolumes (again\?\?)");
 			
 			oo::ToCxx(self)->baseFile = name;
@@ -1008,9 +990,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 
 	if (result != nil)
 	{
-		// The Objective-C members, copied as pointers, get their -retain.
+		// The Objective-C members, copied as pointers, get their -retain (the octree is a C++ reference, copied).
 		cxx::OOMesh *copy = oo::ToCxx(result);
-		[copy->octree retain];
 		[copy->_shaderBindingTarget retain];
 
 		for (i = 0; i != kOOMeshMaxMaterials; ++i)
@@ -1605,12 +1586,12 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		
 		if (IsLegacyNormalMode((OOMeshNormalMode)oo::ToCxx(self)->_normalMode))
 		{
-			[self checkNormalsAndAdjustWinding];
+			oo::ToCxx(self)->checkNormalsAndAdjustWinding();
 			PROFILE("finished checkNormalsAndAdjustWinding");
 		}
 		if (!explicitTangents)
 		{
-			[self generateFaceTangents];
+			oo::ToCxx(self)->generateFaceTangents();
 			PROFILE("finished generateFaceTangents");
 		}
 		
@@ -1622,13 +1603,13 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(oo::ToCxx(self)->vertexCount));
 				return NO;
 			}
-			[self calculateVertexNormalsAndTangentsWithFaceRefs:faceRefs];
+			oo::ToCxx(self)->calculateVertexNormalsAndTangentsWithFaceRefs(faceRefs);
 			PROFILE("finished calculateVertexNormalsAndTangents");
 			
 		}
 		else if (IsPerVertexNormalMode((OOMeshNormalMode)oo::ToCxx(self)->_normalMode) && !explicitTangents)
 		{
-			[self calculateVertexTangentsWithFaceRefs:faceRefs];
+			oo::ToCxx(self)->calculateVertexTangentsWithFaceRefs(faceRefs);
 			PROFILE("finished calculateVertexTangents");
 		}
 		
@@ -1645,7 +1626,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 	}
 	
-	[self calculateBoundingVolumes];
+	oo::ToCxx(self)->calculateBoundingVolumes();
 	PROFILE("finished calculateBoundingVolumes");
 	
 	// set up vertex arrays for drawing
@@ -1655,246 +1636,6 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	return YES;
 	
 	OOJS_PROFILE_EXIT
-}
-
-
-- (void) checkNormalsAndAdjustWinding
-{
-	OOJS_PROFILE_ENTER
-	
-	Vector				calculatedNormal;
-	OOMeshFaceCount		i;
-	
-	OOParameterAssert(oo::ToCxx(self)->_normalMode != kNormalModeExplicit);
-	
-	for (i = 0; i < oo::ToCxx(self)->faceCount; i++)
-	{
-		Vector v0, v1, v2, norm;
-		v0 = oo::ToCxx(self)->_vertices[oo::ToCxx(self)->_faces[i].vertex[0]];
-		v1 = oo::ToCxx(self)->_vertices[oo::ToCxx(self)->_faces[i].vertex[1]];
-		v2 = oo::ToCxx(self)->_vertices[oo::ToCxx(self)->_faces[i].vertex[2]];
-		norm = oo::ToCxx(self)->_faces[i].normal;
-		
-		calculatedNormal = normal_to_surface(v2, v1, v0);
-		if (vector_equal(norm, kZeroVector))
-		{
-			norm = vector_flip(calculatedNormal);
-			oo::ToCxx(self)->_faces[i].normal = norm;
-		}
-		
-		/*	FIXME: for 2.0, either require explicit normals for every model
-			or change to: if (dot_product(norm, calculatedNormal) < 0.0f)
-			-- Ahruman 2010-01-23
-		*/
-		if (norm.x * calculatedNormal.x < 0 || norm.y * calculatedNormal.y < 0 || norm.z * calculatedNormal.z < 0)
-		{
-			// normal lies in the WRONG direction!
-			// reverse the winding
-			int v0 = oo::ToCxx(self)->_faces[i].vertex[0];
-			oo::ToCxx(self)->_faces[i].vertex[0] = oo::ToCxx(self)->_faces[i].vertex[2];
-			oo::ToCxx(self)->_faces[i].vertex[2] = v0;
-			
-			GLfloat f0 = oo::ToCxx(self)->_faces[i].s[0];
-			oo::ToCxx(self)->_faces[i].s[0] = oo::ToCxx(self)->_faces[i].s[2];
-			oo::ToCxx(self)->_faces[i].s[2] = f0;
-			
-			f0 = oo::ToCxx(self)->_faces[i].t[0];
-			oo::ToCxx(self)->_faces[i].t[0] = oo::ToCxx(self)->_faces[i].t[2];
-			oo::ToCxx(self)->_faces[i].t[2] = f0;
-		}
-	}
-	
-	OOJS_PROFILE_EXIT_VOID
-}
-
-
-- (void) generateFaceTangents
-{
-	OOJS_PROFILE_ENTER
-	
-	OOMeshFaceCount	i;
-	for (i = 0; i < oo::ToCxx(self)->faceCount; i++)
-	{
-		OOMeshFace *face = oo::ToCxx(self)->_faces + i;
-		
-		/*	Generate tangents, i.e. vectors that run in the direction of the s
-			texture coordinate. Based on code I found in a forum somewhere and
-			then lost track of. Sorry to whomever I should be crediting.
-			-- Ahruman 2008-11-23
-		*/
-		Vector vAB = vector_subtract(oo::ToCxx(self)->_vertices[face->vertex[1]], oo::ToCxx(self)->_vertices[face->vertex[0]]);
-		Vector vAC = vector_subtract(oo::ToCxx(self)->_vertices[face->vertex[2]], oo::ToCxx(self)->_vertices[face->vertex[0]]);
-		Vector nA = face->normal;
-		
-		// projAB = aB - (nA . vAB) * nA
-		Vector vProjAB = vector_subtract(vAB, vector_multiply_scalar(nA, dot_product(nA, vAB)));
-		Vector vProjAC = vector_subtract(vAC, vector_multiply_scalar(nA, dot_product(nA, vAC)));
-		
-		// delta s/t
-		GLfloat dsAB = face->s[1] - face->s[0];
-		GLfloat dsAC = face->s[2] - face->s[0];
-		GLfloat dtAB = face->t[1] - face->t[0];
-		GLfloat dtAC = face->t[2] - face->t[0];
-		
-		if (dsAC * dtAB > dsAB * dtAC)
-		{
-			face->tangent = vector_normal(vector_subtract(vector_multiply_scalar(vProjAC, dtAB), vector_multiply_scalar(vProjAB, dtAC)));
-		}
-		else
-		{
-			face->tangent = vector_normal(vector_subtract(vector_multiply_scalar(vProjAB, dtAC), vector_multiply_scalar(vProjAC, dtAB)));
-		}			
-	}
-	
-	OOJS_PROFILE_EXIT_VOID
-}
-
-
-static float FaceArea(GLuint *vertIndices, Vector *vertices)
-{
-	/*	Calculate areas using Heron's formula.	*/
-	float	a2 = distance2(vertices[vertIndices[0]], vertices[vertIndices[1]]);
-	float	b2 = distance2(vertices[vertIndices[1]], vertices[vertIndices[2]]);
-	float	c2 = distance2(vertices[vertIndices[2]], vertices[vertIndices[0]]);
-	return sqrt((2.0f * (a2 * b2 + b2 * c2 + c2 * a2) - (a2 * a2 + b2 * b2 +c2 * c2)) * 0.0625f);
-}
-
-
-- (void) calculateVertexNormalsAndTangentsWithFaceRefs:(VertexFaceRef *)faceRefs
-{
-	OOJS_PROFILE_ENTER
-	
-	OOParameterAssert(faceRefs != NULL);
-	
-	NSUInteger	i,j;
-	std::vector<float>	triangle_area(oo::ToCxx(self)->faceCount);
-	
-	OOAssert(oo::ToCxx(self)->_normals != NULL && oo::ToCxx(self)->_tangents != NULL, "Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
-	
-	for (i = 0 ; i < oo::ToCxx(self)->faceCount; i++)
-	{
-		triangle_area[i] = FaceArea(oo::ToCxx(self)->_faces[i].vertex, oo::ToCxx(self)->_vertices);
-	}
-	for (i = 0; i < oo::ToCxx(self)->vertexCount; i++)
-	{
-		Vector normal_sum = kZeroVector;
-		Vector tangent_sum = kZeroVector;
-		
-		VertexFaceRef *vfr = &faceRefs[i];
-		NSUInteger fIter, fCount = VFRGetCount(vfr);
-		for (fIter = 0; fIter < fCount; fIter++)
-		{
-			j = VFRGetFaceAtIndex(vfr, fIter);
-			
-			float t = triangle_area[j]; // weight sum by area
-			normal_sum = vector_add(normal_sum, vector_multiply_scalar(oo::ToCxx(self)->_faces[j].normal, t));
-			tangent_sum = vector_add(tangent_sum, vector_multiply_scalar(oo::ToCxx(self)->_faces[j].tangent, t));
-		}
-		
-		normal_sum = vector_normal_or_fallback(normal_sum, kBasisZVector);
-		tangent_sum = vector_subtract(tangent_sum, vector_multiply_scalar(normal_sum, dot_product(tangent_sum, normal_sum)));
-		tangent_sum = vector_normal_or_fallback(tangent_sum, kBasisXVector);
-		
-		oo::ToCxx(self)->_normals[i] = normal_sum;
-		oo::ToCxx(self)->_tangents[i] = tangent_sum;
-	}
-	
-	OOJS_PROFILE_EXIT_VOID
-}
-
-
-static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
-{
-	/*	Calculate area of triangle.
-		The magnitude of the cross product of two vectors is the area of
-		the parallelogram they span. The area of a triangle is half the
-		area of a parallelogram sharing two of its sides.
-		Since we only use the area of the triangle as a weight factor,
-		constant terms are irrelevant, so we don't bother halving the
-		value.
-	*/
-	Vector AB = vector_subtract(vertices[vertIndices[1]], vertices[vertIndices[0]]);
-	Vector AC = vector_subtract(vertices[vertIndices[2]], vertices[vertIndices[0]]);
-	return magnitude(true_cross_product(AB, AC));
-}
-
-
-- (void) calculateVertexTangentsWithFaceRefs:(VertexFaceRef *)faceRefs
-{
-	OOJS_PROFILE_ENTER
-	
-	OOParameterAssert(faceRefs != NULL);
-	
-	/*	This is conceptually broken.
-		At the moment, it's calculating one tangent per "input" vertex. It should
-		be calculating one tangent per "real" vertex, where a "real" vertex is
-		defined as a combination of position, normal, material and texture
-		coordinates.
-		Currently, we don't have a format with unique "real" vertices.
-		This basically means explicit-normal models without explicit tangents
-		can't usefully be normal mapped.
-		I don't intend to do anything about this pre-MSNR, although it might be
-		possible to fix it by moving tangent generation to the same stage as
-		smooth-grouped normal generation.
-		-- Ahruman 2010-05-22
-	*/
-	NSUInteger	i,j;
-	std::vector<float>	triangle_area(oo::ToCxx(self)->faceCount);
-	for (i = 0 ; i < oo::ToCxx(self)->faceCount; i++)
-	{
-		triangle_area[i] = FaceAreaCorrect(oo::ToCxx(self)->_faces[i].vertex, oo::ToCxx(self)->_vertices);
-	}
-	for (i = 0; i < oo::ToCxx(self)->vertexCount; i++)
-	{
-		Vector tangent_sum = kZeroVector;
-		
-		VertexFaceRef *vfr = &faceRefs[i];
-		NSUInteger fIter, fCount = VFRGetCount(vfr);
-		for (fIter = 0; fIter < fCount; fIter++)
-		{
-			j = VFRGetFaceAtIndex(vfr, fIter);
-			
-			float t = triangle_area[j]; // weight sum by area
-			tangent_sum = vector_add(tangent_sum, vector_multiply_scalar(oo::ToCxx(self)->_faces[j].tangent, t));
-		}
-		
-		tangent_sum = vector_subtract(tangent_sum, vector_multiply_scalar(oo::ToCxx(self)->_normals[i], dot_product(oo::ToCxx(self)->_normals[i], tangent_sum)));
-		tangent_sum = vector_normal_or_fallback(tangent_sum, kBasisXVector);
-		
-		oo::ToCxx(self)->_tangents[i] = tangent_sum;
-	}
-	
-	OOJS_PROFILE_EXIT_VOID
-}
-
-/* profiling suggests this function takes a lot of time - almost all
- * the overhead of setting up a new ship is here. - CIM */
-- (void) getNormal:(Vector *)outNormal andTangent:(Vector *)outTangent forVertex:(OOMeshVertexCount)v_index inSmoothGroup:(OOMeshSmoothGroup)smoothGroup
-{
-	OOJS_PROFILE_ENTER
-	
-	assert(outNormal != NULL && outTangent != NULL);
-	
-	NSUInteger j;
-	Vector normal_sum = kZeroVector;
-	Vector tangent_sum = kZeroVector;
-	for (j = 0; j < oo::ToCxx(self)->faceCount; j++)
-	{
-		if (oo::ToCxx(self)->_faces[j].smoothGroup == smoothGroup)
-		{
-			if ((oo::ToCxx(self)->_faces[j].vertex[0] == v_index)||(oo::ToCxx(self)->_faces[j].vertex[1] == v_index)||(oo::ToCxx(self)->_faces[j].vertex[2] == v_index))
-			{
-				float area = FaceArea(oo::ToCxx(self)->_faces[j].vertex, oo::ToCxx(self)->_vertices);
-				normal_sum = vector_add(normal_sum, vector_multiply_scalar(oo::ToCxx(self)->_faces[j].normal, area));
-				tangent_sum = vector_add(tangent_sum, vector_multiply_scalar(oo::ToCxx(self)->_faces[j].tangent, area));
-			}
-		}
-	}
-	
-	*outNormal = vector_normal_or_fallback(normal_sum, kBasisZVector);
-	*outTangent = vector_normal_or_fallback(tangent_sum, kBasisXVector);
-	
-	OOJS_PROFILE_EXIT_VOID
 }
 
 
@@ -1957,7 +1698,7 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 					{
 						if (is_edge_vertex[v])
 						{
-							[self getNormal:&normal	andTangent:&tangent forVertex:v inSmoothGroup:oo::ToCxx(self)->_faces[fi].smoothGroup];
+							oo::ToCxx(self)->getNormal(&normal, &tangent, v, oo::ToCxx(self)->_faces[fi].smoothGroup);
 						}
 						else
 						{
@@ -1990,78 +1731,6 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 	return YES;
 	
 	OOJS_PROFILE_EXIT
-}
-
-
-- (void) calculateBoundingVolumes
-{
-	OOJS_PROFILE_ENTER
-	
-	OOMeshVertexCount	i;
-	float				d_squared, length_longest_axis, length_shortest_axis;
-	GLfloat				result;
-	
-	result = 0.0f;
-	if (oo::ToCxx(self)->vertexCount)  bounding_box_reset_to_vector(&oo::ToCxx(self)->_boundingBox, oo::ToCxx(self)->_vertices[0]);
-	else  bounding_box_reset(&oo::ToCxx(self)->_boundingBox);
-
-	for (i = 0; i < oo::ToCxx(self)->vertexCount; i++)
-	{
-		d_squared = magnitude2(oo::ToCxx(self)->_vertices[i]);
-		if (d_squared > result)  result = d_squared;
-		bounding_box_add_vector(&oo::ToCxx(self)->_boundingBox, oo::ToCxx(self)->_vertices[i]);
-	}
-
-	length_longest_axis = oo::ToCxx(self)->_boundingBox.max.x - oo::ToCxx(self)->_boundingBox.min.x;
-	if (oo::ToCxx(self)->_boundingBox.max.y - oo::ToCxx(self)->_boundingBox.min.y > length_longest_axis)
-		length_longest_axis = oo::ToCxx(self)->_boundingBox.max.y - oo::ToCxx(self)->_boundingBox.min.y;
-	if (oo::ToCxx(self)->_boundingBox.max.z - oo::ToCxx(self)->_boundingBox.min.z > length_longest_axis)
-		length_longest_axis = oo::ToCxx(self)->_boundingBox.max.z - oo::ToCxx(self)->_boundingBox.min.z;
-
-	length_shortest_axis = oo::ToCxx(self)->_boundingBox.max.x - oo::ToCxx(self)->_boundingBox.min.x;
-	if (oo::ToCxx(self)->_boundingBox.max.y - oo::ToCxx(self)->_boundingBox.min.y < length_shortest_axis)
-		length_shortest_axis = oo::ToCxx(self)->_boundingBox.max.y - oo::ToCxx(self)->_boundingBox.min.y;
-	if (oo::ToCxx(self)->_boundingBox.max.z - oo::ToCxx(self)->_boundingBox.min.z < length_shortest_axis)
-		length_shortest_axis = oo::ToCxx(self)->_boundingBox.max.z - oo::ToCxx(self)->_boundingBox.min.z;
-
-	d_squared = (length_longest_axis + length_shortest_axis) * (length_longest_axis + length_shortest_axis) * 0.25; // square of average length
-	oo::ToCxx(self)->_maxDrawDistance = d_squared * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;	// no longer based on the collision radius
-	
-	oo::ToCxx(self)->_collisionRadius = sqrtf(result);
-	
-	OOJS_PROFILE_EXIT_VOID
-}
-
-
-- (void) rescaleByFactor:(GLfloat)factor
-{
-	// Rescale base vertices used for geometry calculations.
-	OOMeshVertexCount	i;
-	Vector				*vertex = NULL;
-	
-	for (i = 0; i < oo::ToCxx(self)->vertexCount; i++)
-	{
-		vertex = &oo::ToCxx(self)->_vertices[i];
-		*vertex = vector_multiply_scalar(*vertex, factor);
-	}
-	
-	// Rescale actual display vertices.
-	for (i = 0; i < oo::ToCxx(self)->_displayLists.count; i++)
-	{
-		vertex = &oo::ToCxx(self)->_displayLists.vertexArray[i];
-		*vertex = vector_multiply_scalar(*vertex, factor);
-	}
-	
-	[self calculateBoundingVolumes];
-	DESTROY(oo::ToCxx(self)->octree);
-	oo::ToCxx(self)->baseFile.reset();	// Avoid octree cache.
-	oo::ToCxx(self)->baseFileOctreeCacheRef.reset();
-}
-
-
-- (BoundingBox)boundingBox
-{
-	return oo::ToCxx(self)->_boundingBox;
 }
 
 
@@ -2217,6 +1886,323 @@ static void Scribble(void *bytes, size_t size)
 }
 
 @end
+
+
+static float FaceArea(GLuint *vertIndices, Vector *vertices)
+{
+	/*	Calculate areas using Heron's formula.	*/
+	float	a2 = distance2(vertices[vertIndices[0]], vertices[vertIndices[1]]);
+	float	b2 = distance2(vertices[vertIndices[1]], vertices[vertIndices[2]]);
+	float	c2 = distance2(vertices[vertIndices[2]], vertices[vertIndices[0]]);
+	return sqrt((2.0f * (a2 * b2 + b2 * c2 + c2 * a2) - (a2 * a2 + b2 * b2 +c2 * c2)) * 0.0625f);
+}
+
+
+static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
+{
+	/*	Calculate area of triangle.
+		The magnitude of the cross product of two vectors is the area of
+		the parallelogram they span. The area of a triangle is half the
+		area of a parallelogram sharing two of its sides.
+		Since we only use the area of the triangle as a weight factor,
+		constant terms are irrelevant, so we don't bother halving the
+		value.
+	*/
+	Vector AB = vector_subtract(vertices[vertIndices[1]], vertices[vertIndices[0]]);
+	Vector AC = vector_subtract(vertices[vertIndices[2]], vertices[vertIndices[0]]);
+	return magnitude(true_cross_product(AB, AC));
+}
+
+
+namespace cxx {
+
+void OOMesh::checkNormalsAndAdjustWinding()
+{
+	OOJS_PROFILE_ENTER
+	
+	Vector				calculatedNormal;
+	OOMeshFaceCount		i;
+	
+	OOCParameterAssert(_normalMode != kNormalModeExplicit);
+	
+	for (i = 0; i < faceCount; i++)
+	{
+		Vector v0, v1, v2, norm;
+		v0 = _vertices[_faces[i].vertex[0]];
+		v1 = _vertices[_faces[i].vertex[1]];
+		v2 = _vertices[_faces[i].vertex[2]];
+		norm = _faces[i].normal;
+		
+		calculatedNormal = normal_to_surface(v2, v1, v0);
+		if (vector_equal(norm, kZeroVector))
+		{
+			norm = vector_flip(calculatedNormal);
+			_faces[i].normal = norm;
+		}
+		
+		/*	FIXME: for 2.0, either require explicit normals for every model
+			or change to: if (dot_product(norm, calculatedNormal) < 0.0f)
+			-- Ahruman 2010-01-23
+		*/
+		if (norm.x * calculatedNormal.x < 0 || norm.y * calculatedNormal.y < 0 || norm.z * calculatedNormal.z < 0)
+		{
+			// normal lies in the WRONG direction!
+			// reverse the winding
+			int v0 = _faces[i].vertex[0];
+			_faces[i].vertex[0] = _faces[i].vertex[2];
+			_faces[i].vertex[2] = v0;
+			
+			GLfloat f0 = _faces[i].s[0];
+			_faces[i].s[0] = _faces[i].s[2];
+			_faces[i].s[2] = f0;
+			
+			f0 = _faces[i].t[0];
+			_faces[i].t[0] = _faces[i].t[2];
+			_faces[i].t[2] = f0;
+		}
+	}
+	
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+void OOMesh::generateFaceTangents()
+{
+	OOJS_PROFILE_ENTER
+	
+	OOMeshFaceCount	i;
+	for (i = 0; i < faceCount; i++)
+	{
+		OOMeshFace *face = _faces + i;
+		
+		/*	Generate tangents, i.e. vectors that run in the direction of the s
+			texture coordinate. Based on code I found in a forum somewhere and
+			then lost track of. Sorry to whomever I should be crediting.
+			-- Ahruman 2008-11-23
+		*/
+		Vector vAB = vector_subtract(_vertices[face->vertex[1]], _vertices[face->vertex[0]]);
+		Vector vAC = vector_subtract(_vertices[face->vertex[2]], _vertices[face->vertex[0]]);
+		Vector nA = face->normal;
+		
+		// projAB = aB - (nA . vAB) * nA
+		Vector vProjAB = vector_subtract(vAB, vector_multiply_scalar(nA, dot_product(nA, vAB)));
+		Vector vProjAC = vector_subtract(vAC, vector_multiply_scalar(nA, dot_product(nA, vAC)));
+		
+		// delta s/t
+		GLfloat dsAB = face->s[1] - face->s[0];
+		GLfloat dsAC = face->s[2] - face->s[0];
+		GLfloat dtAB = face->t[1] - face->t[0];
+		GLfloat dtAC = face->t[2] - face->t[0];
+		
+		if (dsAC * dtAB > dsAB * dtAC)
+		{
+			face->tangent = vector_normal(vector_subtract(vector_multiply_scalar(vProjAC, dtAB), vector_multiply_scalar(vProjAB, dtAC)));
+		}
+		else
+		{
+			face->tangent = vector_normal(vector_subtract(vector_multiply_scalar(vProjAB, dtAC), vector_multiply_scalar(vProjAC, dtAB)));
+		}			
+	}
+	
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+void OOMesh::calculateVertexNormalsAndTangentsWithFaceRefs(VertexFaceRef *faceRefs)
+{
+	OOJS_PROFILE_ENTER
+	
+	OOCParameterAssert(faceRefs != NULL);
+	
+	NSUInteger	i,j;
+	std::vector<float>	triangle_area(faceCount);
+	
+	OOCAssert(_normals != NULL && _tangents != NULL, "Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
+	
+	for (i = 0 ; i < faceCount; i++)
+	{
+		triangle_area[i] = FaceArea(_faces[i].vertex, _vertices);
+	}
+	for (i = 0; i < vertexCount; i++)
+	{
+		Vector normal_sum = kZeroVector;
+		Vector tangent_sum = kZeroVector;
+		
+		VertexFaceRef *vfr = &faceRefs[i];
+		NSUInteger fIter, fCount = VFRGetCount(vfr);
+		for (fIter = 0; fIter < fCount; fIter++)
+		{
+			j = VFRGetFaceAtIndex(vfr, fIter);
+			
+			float t = triangle_area[j]; // weight sum by area
+			normal_sum = vector_add(normal_sum, vector_multiply_scalar(_faces[j].normal, t));
+			tangent_sum = vector_add(tangent_sum, vector_multiply_scalar(_faces[j].tangent, t));
+		}
+		
+		normal_sum = vector_normal_or_fallback(normal_sum, kBasisZVector);
+		tangent_sum = vector_subtract(tangent_sum, vector_multiply_scalar(normal_sum, dot_product(tangent_sum, normal_sum)));
+		tangent_sum = vector_normal_or_fallback(tangent_sum, kBasisXVector);
+		
+		_normals[i] = normal_sum;
+		_tangents[i] = tangent_sum;
+	}
+	
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+void OOMesh::calculateVertexTangentsWithFaceRefs(VertexFaceRef *faceRefs)
+{
+	OOJS_PROFILE_ENTER
+	
+	OOCParameterAssert(faceRefs != NULL);
+	
+	/*	This is conceptually broken.
+		At the moment, it's calculating one tangent per "input" vertex. It should
+		be calculating one tangent per "real" vertex, where a "real" vertex is
+		defined as a combination of position, normal, material and texture
+		coordinates.
+		Currently, we don't have a format with unique "real" vertices.
+		This basically means explicit-normal models without explicit tangents
+		can't usefully be normal mapped.
+		I don't intend to do anything about this pre-MSNR, although it might be
+		possible to fix it by moving tangent generation to the same stage as
+		smooth-grouped normal generation.
+		-- Ahruman 2010-05-22
+	*/
+	NSUInteger	i,j;
+	std::vector<float>	triangle_area(faceCount);
+	for (i = 0 ; i < faceCount; i++)
+	{
+		triangle_area[i] = FaceAreaCorrect(_faces[i].vertex, _vertices);
+	}
+	for (i = 0; i < vertexCount; i++)
+	{
+		Vector tangent_sum = kZeroVector;
+		
+		VertexFaceRef *vfr = &faceRefs[i];
+		NSUInteger fIter, fCount = VFRGetCount(vfr);
+		for (fIter = 0; fIter < fCount; fIter++)
+		{
+			j = VFRGetFaceAtIndex(vfr, fIter);
+			
+			float t = triangle_area[j]; // weight sum by area
+			tangent_sum = vector_add(tangent_sum, vector_multiply_scalar(_faces[j].tangent, t));
+		}
+		
+		tangent_sum = vector_subtract(tangent_sum, vector_multiply_scalar(_normals[i], dot_product(_normals[i], tangent_sum)));
+		tangent_sum = vector_normal_or_fallback(tangent_sum, kBasisXVector);
+		
+		_tangents[i] = tangent_sum;
+	}
+	
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+/* profiling suggests this function takes a lot of time - almost all
+ * the overhead of setting up a new ship is here. - CIM */
+void OOMesh::getNormal(Vector *outNormal, Vector *outTangent, OOMeshVertexCount v_index, OOMeshSmoothGroup smoothGroup)
+{
+	OOJS_PROFILE_ENTER
+	
+	assert(outNormal != NULL && outTangent != NULL);
+	
+	NSUInteger j;
+	Vector normal_sum = kZeroVector;
+	Vector tangent_sum = kZeroVector;
+	for (j = 0; j < faceCount; j++)
+	{
+		if (_faces[j].smoothGroup == smoothGroup)
+		{
+			if ((_faces[j].vertex[0] == v_index)||(_faces[j].vertex[1] == v_index)||(_faces[j].vertex[2] == v_index))
+			{
+				float area = FaceArea(_faces[j].vertex, _vertices);
+				normal_sum = vector_add(normal_sum, vector_multiply_scalar(_faces[j].normal, area));
+				tangent_sum = vector_add(tangent_sum, vector_multiply_scalar(_faces[j].tangent, area));
+			}
+		}
+	}
+	
+	*outNormal = vector_normal_or_fallback(normal_sum, kBasisZVector);
+	*outTangent = vector_normal_or_fallback(tangent_sum, kBasisXVector);
+	
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+void OOMesh::calculateBoundingVolumes()
+{
+	OOJS_PROFILE_ENTER
+	
+	OOMeshVertexCount	i;
+	float				d_squared, length_longest_axis, length_shortest_axis;
+	GLfloat				result;
+	
+	result = 0.0f;
+	if (vertexCount)  bounding_box_reset_to_vector(&_boundingBox, _vertices[0]);
+	else  bounding_box_reset(&_boundingBox);
+
+	for (i = 0; i < vertexCount; i++)
+	{
+		d_squared = magnitude2(_vertices[i]);
+		if (d_squared > result)  result = d_squared;
+		bounding_box_add_vector(&_boundingBox, _vertices[i]);
+	}
+
+	length_longest_axis = _boundingBox.max.x - _boundingBox.min.x;
+	if (_boundingBox.max.y - _boundingBox.min.y > length_longest_axis)
+		length_longest_axis = _boundingBox.max.y - _boundingBox.min.y;
+	if (_boundingBox.max.z - _boundingBox.min.z > length_longest_axis)
+		length_longest_axis = _boundingBox.max.z - _boundingBox.min.z;
+
+	length_shortest_axis = _boundingBox.max.x - _boundingBox.min.x;
+	if (_boundingBox.max.y - _boundingBox.min.y < length_shortest_axis)
+		length_shortest_axis = _boundingBox.max.y - _boundingBox.min.y;
+	if (_boundingBox.max.z - _boundingBox.min.z < length_shortest_axis)
+		length_shortest_axis = _boundingBox.max.z - _boundingBox.min.z;
+
+	d_squared = (length_longest_axis + length_shortest_axis) * (length_longest_axis + length_shortest_axis) * 0.25; // square of average length
+	_maxDrawDistance = d_squared * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR;	// no longer based on the collision radius
+	
+	_collisionRadius = sqrtf(result);
+	
+	OOJS_PROFILE_EXIT_VOID
+}
+
+
+void OOMesh::rescaleByFactor(GLfloat factor)
+{
+	// Rescale base vertices used for geometry calculations.
+	OOMeshVertexCount	i;
+	Vector				*vertex = NULL;
+	
+	for (i = 0; i < vertexCount; i++)
+	{
+		vertex = &_vertices[i];
+		*vertex = vector_multiply_scalar(*vertex, factor);
+	}
+	
+	// Rescale actual display vertices.
+	for (i = 0; i < _displayLists.count; i++)
+	{
+		vertex = &_displayLists.vertexArray[i];
+		*vertex = vector_multiply_scalar(*vertex, factor);
+	}
+	
+	calculateBoundingVolumes();
+	octree = nullptr;
+	baseFile.reset();	// Avoid octree cache.
+	baseFileOctreeCacheRef.reset();
+}
+
+
+BoundingBox OOMesh::boundingBox()
+{
+	return _boundingBox;
+}
+
+}	// namespace cxx
 
 
 static const char * const kOOCacheMeshes = "OOMesh";
