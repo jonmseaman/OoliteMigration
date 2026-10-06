@@ -96,7 +96,7 @@ core_tests = {
     'test_OOJSDock': ['Core/Scripting/OOJSDock.mm', 'Core/Scripting/OOJSDock+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSoundSource': ['Core/Scripting/OOJSSoundSource.mm', 'Core/Scripting/OOJSSoundSource+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSSound': ['Core/Scripting/OOJSSound.mm', 'Core/Scripting/OOJSSound+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
-    'test_OOJSSun': ['Core/Scripting/OOJSSun.mm', 'Core/Scripting/OOJSSun+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OOJSSun': ['Core/Scripting/OOJSSun.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSOolite': ['Core/Scripting/OOJSOolite.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSEquipmentInfo': ['Core/Scripting/OOJSEquipmentInfo.mm', 'Core/Scripting/OOJSEquipmentInfo+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOEquipmentType.mm', 'Core/OOEquipmentType+ObjCBridge.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/OODescription.mm'],
     'test_OOJSPlayer': ['Core/Scripting/OOJSPlayer.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OODescription.mm', 'Core/legacy_random.c'],
