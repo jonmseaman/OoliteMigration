@@ -287,7 +287,7 @@ bool OOVisualEffectEntity::setUpSubEntities()
 }
 
 
-void OOVisualEffectEntity::removeSubEntity(::Entity<OOSubEntity> *sub)
+void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)
 {
 	[sub setOwner:nil];
 	if (_subEntities.has_value())  std::erase_if(*_subEntities, [sub](const auto &entry) { return entry.get() == sub; });
@@ -360,7 +360,7 @@ bool OOVisualEffectEntity::setUpOneStandardSubentity(const oo::PList &subentDict
 }
 
 
-void OOVisualEffectEntity::addSubEntity(::Entity<OOSubEntity> *sub)
+void OOVisualEffectEntity::addSubEntity(OOVisualEffectSubEntity *sub)
 {
 	if (sub == nil)  return;
 
@@ -404,7 +404,7 @@ std::optional<std::vector<oo::ObjCRef<::OOVisualEffectEntity *>>> OOVisualEffect
 }
 
 
-bool OOVisualEffectEntity::hasSubEntity(::Entity<OOSubEntity> *sub)
+bool OOVisualEffectEntity::hasSubEntity(OOVisualEffectSubEntity *sub)
 {
 	if (!_subEntities.has_value())  return false;
 	return std::find_if(_subEntities->begin(), _subEntities->end(), [sub](const auto &entry) { return entry.get() == sub; }) != _subEntities->end();
@@ -459,7 +459,7 @@ void OOVisualEffectEntity::rescaleBy(GLfloat factor)
 	}
 
 	// rescale subentities
-	::Entity<OOSubEntity>	*se = nil;
+	OOVisualEffectSubEntity	*se = nil;
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
 		se = seRef.get();
@@ -513,7 +513,7 @@ GLfloat OOVisualEffectEntity::scaleX()
 void OOVisualEffectEntity::setScaleX(GLfloat factor)
 {
 	// rescale subentities
-	::Entity<OOSubEntity>	*se = nil;
+	OOVisualEffectSubEntity	*se = nil;
 	GLfloat flasher_factor = pow(factor/_scaleX,1.0/3.0);
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
@@ -545,7 +545,7 @@ GLfloat OOVisualEffectEntity::scaleY()
 void OOVisualEffectEntity::setScaleY(GLfloat factor)
 {
 	// rescale subentities
-	::Entity<OOSubEntity>	*se = nil;
+	OOVisualEffectSubEntity	*se = nil;
 	GLfloat flasher_factor = pow(factor/_scaleY,1.0/3.0);
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
@@ -577,7 +577,7 @@ GLfloat OOVisualEffectEntity::scaleZ()
 void OOVisualEffectEntity::setScaleZ(GLfloat factor)
 {
 	// rescale subentities
-	::Entity<OOSubEntity>	*se = nil;
+	OOVisualEffectSubEntity	*se = nil;
 	GLfloat flasher_factor = pow(factor/_scaleZ,1.0/3.0);
 	for (const auto &seRef : SubEntitiesOf(_subEntities))
 	{
@@ -655,7 +655,7 @@ void OOVisualEffectEntity::drawImmediate(bool immediate, bool translucent)
 	// Draw subentities.
 	if (!immediate)	// TODO: is this relevant any longer?
 	{
-		::Entity<OOSubEntity> *subEntity = nil;
+		OOVisualEffectSubEntity *subEntity = nil;
 		for (const auto &subEntityRef : SubEntitiesOf(_subEntities))
 		{
 			subEntity = subEntityRef.get();

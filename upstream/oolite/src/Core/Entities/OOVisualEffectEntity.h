@@ -45,6 +45,8 @@
 	-subEntityEnumerator / -flasherEnumerator return std::vector snapshots (empty where the
 	array was nil).
 */
+// A subentity, as the class names it from inside namespace cxx (where Entity is the C++ root).
+typedef Entity<OOSubEntity> OOVisualEffectSubEntity;
 using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>>;
 
 
@@ -82,12 +84,12 @@ public:
 
 	void clearSubEntities();
 	bool setUpSubEntities();
-	void removeSubEntity(::Entity<OOSubEntity> *sub);
+	void removeSubEntity(OOVisualEffectSubEntity *sub);
 	void setNoDrawDistance();
 	std::vector<oo::ObjCRef<::Entity *>> subEntities();	// a snapshot; empty before the first subentity (was nil)
 	NSUInteger subEntityCount();
 	std::optional<std::vector<oo::ObjCRef<::OOVisualEffectEntity *>>> visualEffectSubEntityEnumerator();	// the visual-effect subentities; nullopt where the array was nil
-	bool hasSubEntity(::Entity<OOSubEntity> *sub);
+	bool hasSubEntity(OOVisualEffectSubEntity *sub);
 
 	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();	// snapshot, same as subEntities()
 	std::vector<oo::ObjCRef<::OOVisualEffectEntity *>> effectSubEntityEnumerator();
@@ -169,7 +171,7 @@ public:
 	GLfloat _scaleZ = {};
 
 private:
-	void addSubEntity(::Entity<OOSubEntity> *sub);
+	void addSubEntity(OOVisualEffectSubEntity *sub);
 	bool setUpOneSubentity(const oo::PList &subentDict);
 	bool setUpOneFlasher(const oo::PList &subentDict);
 	bool setUpOneStandardSubentity(const oo::PList &subentDict);
