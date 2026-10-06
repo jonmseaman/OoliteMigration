@@ -49,7 +49,7 @@ MA 02110-1301, USA.
 
 @interface ShipEntity (OOObjCBridgePrivate)
 
-- (id) cxx_initShipEntity;
+- (id) initShipPart;
 
 @end
 
@@ -69,7 +69,7 @@ MA 02110-1301, USA.
 
 - (id) initBypassForPlayer
 {
-	return [self cxx_initShipEntity];	// [super init]
+	return [self initShipPart];	// [super init]
 }
 
 
@@ -77,7 +77,7 @@ MA 02110-1301, USA.
 {
 	OOJS_PROFILE_ENTER
 
-	self = [self cxx_initShipEntity];	// [super init]
+	self = [self initShipPart];	// [super init]
 	if (self == nil)  return nil;
 
 	_cxxShip->initWithKey(key);
@@ -104,7 +104,7 @@ MA 02110-1301, USA.
 	this class or a subclass, has a C++ part over cxx::ShipEntity (amendment oo-bj8 item 5), as
 	OOEntityWithDrawable's -init makes one over its class.
 */
-- (id) cxx_initShipEntity
+- (id) initShipPart
 {
 	// -init sent again to an initialised ship keeps its C++ part (the root's -initWithCxxEntity:).
 	if (_cxxEntity != nullptr)  return [self initWithCxxEntity:_cxxEntity.get()];

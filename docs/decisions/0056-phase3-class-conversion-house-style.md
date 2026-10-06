@@ -3411,16 +3411,21 @@ also read the ivars it declared `@private`, and they stay Objective-C until thei
    has a C++ twin is named `::X` (`::ShipEntity *scanned_ships[]`, `::OOWeakReference *`).
 4. **The initialisers.** The facade's `-init`, `-initBypassForPlayer` and
    `-cxx_initWithKey:definition:` make the ship's adapter, `oo::ObjCEntity<cxx::ShipEntity>`,
-   where they sent `[super init]` (one private `-cxx_initShipEntity`, which keeps the part of a ship
+   where they sent `[super init]` (one private `-initShipPart`, which keeps the part of a ship
    sent the initialiser again, as `PlayerEntity`'s `-deferredInit` does). The initialiser's body
    between `[super init]` and the set-up is `cxx::ShipEntity::initWithKey()`; the set-up, which may
    release the object and answer nil, and the top-speed check stay in the facade.
 5. **`-dealloc` stays in the facade** (amendment oo-bj8 item 7), with the root's guard (oo-s6ic6):
    a ship released before its initialiser ran has no part and skips the body.
 6. **The slice checker sees a slice done when its units leave the file:** a unit that needs the
-   Objective-C object as self (an initialiser, `-dealloc`) moves to the facade's `.mm`, the rest
-   become members (`isShipWithSubEntityShip()`, whose category method on the facade forwards), and
-   a category of `Entity` in the file moves to the facade's `.mm` (amendment oo-bj8 item 12).
+   Objective-C object as self (an initialiser, `-dealloc`) moves to a category of the facade in
+   the facade's `.mm` (`ShipEntity (OOObjCBridge)`), because the class's `@implementation` stays
+   in `ShipEntity.mm` until the last slice; a declared selector it implements
+   (`-cxx_initWithKey:definition:`, `OO_RETURNS_RETAINED` as the house's other `cxx_init...` are)
+   moves to that category's `@interface` in the bridge header, so the primary `@implementation`
+   stays complete. The other units become members (`isShipWithSubEntityShip()`, whose category
+   method on the facade forwards), and a category of `Entity` in the file moves to the facade's
+   `.mm` (amendment oo-bj8 item 12).
 
 **Consequences.** One more load per member read from unconverted code, as for `_cxxEntity`. The
 subclasses (`StationEntity`, `DockEntity`, `PlayerEntity`, `ProxyPlayerEntity`), the three

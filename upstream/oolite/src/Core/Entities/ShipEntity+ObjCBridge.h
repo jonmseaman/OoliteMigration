@@ -863,7 +863,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 // still ShipEntity.mm; declared in the class's interface before slice 1.
 @interface ShipEntity (OOObjCBridge)
 
-- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
+- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict OO_RETURNS_RETAINED;
 
 @end
 
