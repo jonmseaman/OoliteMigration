@@ -160,52 +160,19 @@ MA 02110-1301, USA.
 // Fuel and capacity in tenths of light-years.
 
 
-- (void) setRoll:(double)amount;
-- (void) setRawRoll:(double)amount; // does not multiply by PI/2
-- (void) setPitch:(double)amount;
-- (void) setYaw:(double)amount;
-- (void) setThrust:(double)amount;
-- (void) applySticks:(double)delta_t;
 
 
-- (void)setThrustForDemo:(float)factor;
 
 /*
  Sets the bounty on this ship to amount.  
  Does not check to see if the ship is allowed to have a bounty, for example if it is police.
  */
-- (void) setBounty:(OOCreditsQuantity)amount;
-- (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason;
-- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason;	// flipped with its family (bead oo-3rb.259)
-- (OOCreditsQuantity) bounty;
-
-- (int) legalStatus;
-
-- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
-- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
-- (std::optional<std::string>) cxx_commodityType;
-- (OOCargoQuantity) commodityAmount;
-
-- (OOCargoQuantity) maxAvailableCargoSpace;
-- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue;
-- (OOCargoQuantity) availableCargoSpace;
-- (OOCargoQuantity) cargoQuantityOnBoard;
-- (OOCargoType) cargoType;
-- (oo::PList) cargoListForScripting;	// flipped with its family (bead oo-3rb.259): an array of dictionaries
-- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;	// the live cargo pods (nullptr for a nil receiver)
-- (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
-- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
-- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo;
-- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount;
-- (BOOL) showScoopMessage;
 
 
-- (OOCargoFlag) cargoFlag;
-- (void) setCargoFlag:(OOCargoFlag)flag;
 
-- (void) setSpeed:(double)amount;
-- (double) desiredSpeed;
-- (void) setDesiredSpeed:(double)amount;
+
+
+
 - (double) desiredRange;
 - (void) setDesiredRange:(double)amount;
 
@@ -1085,6 +1052,48 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setFuel:(OOFuelQuantity)amount;
 - (OOFuelQuantity) fuelCapacity;
 - (GLfloat) fuelChargeRate;
+
+@end
+
+
+// Slice 20 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice20)
+
+- (void) applySticks:(double)delta_t;
+- (void) setRoll:(double)amount;
+- (void) setRawRoll:(double)amount; // does not multiply by PI/2
+- (void) setPitch:(double)amount;
+- (void) setYaw:(double)amount;
+- (void) setThrust:(double)amount;
+- (void)setThrustForDemo:(float)factor;
+- (void) setBounty:(OOCreditsQuantity)amount;
+- (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason;
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason;	// flipped with its family (bead oo-3rb.259)
+- (OOCreditsQuantity) bounty;
+- (int) legalStatus;
+- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
+- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
+- (std::optional<std::string>) cxx_commodityType;
+- (OOCargoQuantity) commodityAmount;
+- (OOCargoQuantity) maxAvailableCargoSpace;
+- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue;
+- (OOCargoQuantity) availableCargoSpace;
+- (OOCargoQuantity) cargoQuantityOnBoard;
+- (OOCargoType) cargoType;
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;	// the live cargo pods (nullptr for a nil receiver)
+- (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
+- (oo::PList) cargoListForScripting;	// flipped with its family (bead oo-3rb.259): an array of dictionaries
+- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
+- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo;
+- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount;
+- (BOOL) showScoopMessage;
+- (OOCargoFlag) cargoFlag;
+- (void) setCargoFlag:(OOCargoFlag)flag;
+- (void) setSpeed:(double)amount;
+- (void) setDesiredSpeed:(double)amount;
+- (double) desiredSpeed;
 
 @end
 

@@ -464,455 +464,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (void) applySticks:(double)delta_t
-{
-	
-	double  rate1 = 2.0 * delta_t; //roll 
-	double  rate2 = 4.0 * delta_t; //pitch
-	double  rate3 = 4.0 * delta_t; //yaw
-
-	if (((_cxxShip->stick_roll > 0.0)&&(_cxxShip->flightRoll < 0.0))||((_cxxShip->stick_roll < 0.0)&&(_cxxShip->flightRoll > 0.0)))
-		rate1 *= 4.0;	// much faster correction
-	if (((_cxxShip->stick_pitch > 0.0)&&(_cxxShip->flightPitch < 0.0))||((_cxxShip->stick_pitch < 0.0)&&(_cxxShip->flightPitch > 0.0)))
-		rate2 *= 4.0;	// much faster correction
-	if (((_cxxShip->stick_yaw > 0.0)&&(_cxxShip->flightYaw < 0.0))||((_cxxShip->stick_yaw < 0.0)&&(_cxxShip->flightYaw > 0.0)))
-		rate3 *= 4.0;	// much faster correction
-
-	if (_cxxShip->accuracy >= COMBAT_AI_TRACKS_CLOSER) 
-	{
-		if (_cxxShip->stick_roll == 0.0)
-			rate1 *= 2.0;	// faster correction
-		if (_cxxShip->stick_pitch == 0.0)
-			rate2 *= 2.0;	// faster correction
-		if (_cxxShip->stick_yaw == 0.0)
-			rate3 *= 2.0;	// faster correction
-	}
-
-	// apply stick movement limits
-	if (_cxxShip->flightRoll < _cxxShip->stick_roll - rate1)
-	{
-		_cxxShip->flightRoll = _cxxShip->flightRoll + rate1;
-	}
-	else if (_cxxShip->flightRoll > _cxxShip->stick_roll + rate1)
-	{
-		_cxxShip->flightRoll = _cxxShip->flightRoll - rate1;
-	}
-	else
-	{
-		_cxxShip->flightRoll = _cxxShip->stick_roll;
-	}
-
-	if (_cxxShip->flightPitch < _cxxShip->stick_pitch - rate2)
-	{
-		_cxxShip->flightPitch = _cxxShip->flightPitch + rate2;
-	}
-	else if (_cxxShip->flightPitch > _cxxShip->stick_pitch + rate2)
-	{
-		_cxxShip->flightPitch = _cxxShip->flightPitch - rate2;
-	}
-	else
-	{
-		_cxxShip->flightPitch = _cxxShip->stick_pitch;
-	}
-
-	if (_cxxShip->flightYaw < _cxxShip->stick_yaw - rate3)
-	{
-		_cxxShip->flightYaw = _cxxShip->flightYaw + rate3;
-	}
-	else if (_cxxShip->flightYaw > _cxxShip->stick_yaw + rate3)
-	{
-		_cxxShip->flightYaw = _cxxShip->flightYaw - rate3;
-	}
-	else
-	{
-		_cxxShip->flightYaw = _cxxShip->stick_yaw;
-	}
-
-}
-
-
-- (void) setRoll:(double) amount
-{
-	_cxxShip->flightRoll = amount * M_PI / 2.0;
-}
-
-
-- (void) setRawRoll:(double) amount
-{
-	_cxxShip->flightRoll = amount;
-}
-
-
-- (void) setPitch:(double) amount
-{
-	_cxxShip->flightPitch = amount * M_PI / 2.0;
-}
-
-
-- (void) setYaw:(double) amount
-{
-	_cxxShip->flightYaw = amount * M_PI / 2.0;
-}
-
-
-- (void) setThrust:(double) amount
-{
-	_cxxShip->thrust = amount;
-}
-
-
-- (void) setThrustForDemo:(float) factor
-{
-	_cxxShip->flightSpeed = factor * _cxxShip->maxFlightSpeed;
-}
-
-
-- (void) setBounty:(OOCreditsQuantity) amount
-{
-	[self setBounty:amount withReason:kOOLegalStatusReasonUnknown];
-}
-
-
-- (void) setBounty:(OOCreditsQuantity) amount withReason:(OOLegalStatusReason)reason
-{
-	if ([self isSubEntity]) 
-	{
-		[[self parentEntity] setBounty:amount withReason:reason];
-	}
-	else 
-	{
-		if ((_cxxEntity->scanClass == CLASS_THARGOID || _cxxEntity->scanClass == CLASS_STATION) && reason != kOOLegalStatusReasonSetup && reason != kOOLegalStatusReasonByScript)
-		{
-			return; // no standard bounties for Thargoids / Stations
-		}
-		if (_cxxEntity->scanClass == CLASS_POLICE && amount != 0)
-		{
-			return; // police never have bounties
-		}
-		[self setBounty:amount withReasonAsString:cxx_OOStringFromLegalStatusReason(reason)];
-	}
-}
-
-- (void) setBounty:(OOCreditsQuantity) amount withReasonAsString:(const std::string &)reason
-{
-	if ([self isSubEntity]) 
-	{
-		[[self parentEntity] setBounty:amount withReasonAsString:reason];
-	}
-	else 
-	{
-		ooscript::Context context = OOJSAcquireContext();
-	
-		ooscript::Value amountVal = ooscript::undefinedValue();
-		ooscript::newNumberValue(context, (int)amount-(int)_cxxShip->bounty, &amountVal);
-
-		_cxxShip->bounty = amount; // can't set the new bounty until the size of the change is known
-
-		ooscript::Value reasonVal = OOJSValueFromPList(context, oo::PList(reason));
-		
-		ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
-		
-		OOJSRelinquishContext(context);
-
-	}
-}
-
-
-- (OOCreditsQuantity) bounty
-{
-	if ([self isSubEntity]) 
-	{
-		return [[self parentEntity] bounty];
-	}
-	else 
-	{		
-		return _cxxShip->bounty;
-	}
-}
-
-
-- (int) legalStatus
-{
-	if (_cxxEntity->scanClass == CLASS_THARGOID)
-		return 5 * _cxxEntity->collision_radius;
-	if (_cxxEntity->scanClass == CLASS_ROCK)
-		return 0;
-	return (int)[self bounty];
-}
-
-
-- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount
-{
-	/* scoopUp can pass a reference to self.commodity_type (the old code copied it first);
-	 * assigning a std::string from itself is safe. */
-	_cxxShip->commodity_type = co_type;
-	_cxxShip->commodity_amount = co_amount;
-}
-
-
-- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount
-{
-	// can be nil for pods
-	if (!co_type.has_value())
-	{
-		_cxxShip->commodity_type = std::nullopt;
-		_cxxShip->commodity_amount = 0;
-		return;
-	}
-	// pod content should never be greater than 1 ton or this will give cargo counting problems elsewhere in the code.
-	// so do first a mass check for cargo added by script/plist.
-	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:*co_type];
-	if (unit == UNITS_TONS && co_amount > 1) co_amount = 1;
-	else if (unit == UNITS_KILOGRAMS && co_amount > 1000) co_amount = 1000;
-	else if (unit == UNITS_GRAMS && co_amount > 1000000) co_amount = 1000000;
-	[self cxx_setCommodity:*co_type andAmount:co_amount];
-}
-
-
-- (std::optional<std::string>) cxx_commodityType
-{
-	return _cxxShip->commodity_type;
-}
-
-
-- (OOCargoQuantity) commodityAmount
-{
-	return _cxxShip->commodity_amount;
-}
-
-
-- (OOCargoQuantity) maxAvailableCargoSpace
-{
-	return _cxxShip->max_cargo - _cxxShip->equipment_weight;
-}
-
-
-- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue
-{
-	_cxxShip->max_cargo = newValue + _cxxShip->equipment_weight;
-}
-
-
-- (OOCargoQuantity) availableCargoSpace
-{
-	// OOCargoQuantity is unsigned, we need to check for underflows.
-	if (EXPECT_NOT([self cargoQuantityOnBoard] + _cxxShip->equipment_weight >= _cxxShip->max_cargo)) return 0;
-	return [self maxAvailableCargoSpace] - [self cargoQuantityOnBoard];
-}
-
-
-- (OOCargoQuantity) cargoQuantityOnBoard
-{
-	NSUInteger result = [self cxx_cargoCount];
-	OOAssert(result < UINT32_MAX, "Cargo quantity out of bounds.");
-	return (OOCargoQuantity)result;
-}
-
-
-- (OOCargoType) cargoType
-{
-	return _cxxShip->cargo_type;
-}
-
-
-/* Note: this array probably contains some template cargo pods. Do not
- * pass it to Javascript without reifying them first. The live container: callers edit it in place
- * (ADR-0043 Amendment 3 item 22); nullptr for a nil receiver. */
-- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo
-{
-	return &_cxxShip->cargo;
-}
-
-
-- (NSUInteger) cxx_cargoCount
-{
-	return _cxxShip->cargo.size();
-}
-
-
-- (oo::PList) cargoListForScripting
-{
-	oo::PList::Array	list;
-
-	const std::vector<std::string> goods = [[UNIVERSE commodityMarket] goods];
-	NSUInteger			i, commodityCount = goods.size();
-	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
-
-	for (i = 0; i < _cxxShip->cargo.size(); i++)
-	{
-		ShipEntity *container = _cxxShip->cargo[i].get();
-		const std::optional<std::string> good = [container cxx_commodityType];
-		const auto j = good.has_value() ? std::ranges::find(goods, *good) : goods.end();
-		// A pod whose commodity is not a good (or has none) indexed past the array before; it is skipped.
-		if (j != goods.end())  quantityInHold[(std::size_t)(j - goods.begin())] += [container commodityAmount];
-	}
-
-	for (i = 0; i < commodityCount; i++)
-	{
-		if (quantityInHold[i] > 0)
-		{
-			oo::PList::Dict	commodity;
-			const std::string &good = goods[i];
-			// commodity, quantity - keep consistency between .manifest and .contracts
-			commodity["commodity"] = good;
-			commodity["quantity"] = oo::PList(quantityInHold[i]);	// an unsigned integer
-			const std::optional<std::string> goodName = [[UNIVERSE commodityMarket] cxx_nameForGood:good];
-			if (goodName.has_value())  commodity["displayName"] = *goodName;
-			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(good).value_or("");
-			list.emplace_back(std::move(commodity));
-		}
-	}
-
-	return oo::PList(std::move(list));
-}
-
-- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
-{
-	_cxxShip->cargo = some_cargo;
-}
-
-
-- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
-{
-	if (_cxxShip->cargo.size() + some_cargo.size() > [self maxAvailableCargoSpace])
-	{
-		return NO;
-	}
-	else
-	{
-		_cxxShip->cargo.insert(_cxxShip->cargo.end(), some_cargo.begin(), some_cargo.end());
-		return YES;
-	}
-}
-
-
-- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount
-{
-	OOCargoQuantity found = 0;
-	for (const auto &pod : _cxxShip->cargo)
-	{
-		if ([pod.get() cxx_commodityType] == commodity)
-		{
-			found++;
-		}
-	}
-	if (found < amount)
-	{
-		// don't remove any if there aren't enough to remove the full amount
-		return NO;
-	}
-	
-	NSUInteger i = _cxxShip->cargo.size() - 1;
-	// iterate downwards to be safe removing during iteration
-	while (amount > 0)
-	{
-		if ([_cxxShip->cargo[i].get() cxx_commodityType] == commodity)
-		{
-			amount--;
-			_cxxShip->cargo.erase(_cxxShip->cargo.begin() + i);
-		}
-		// check above means array index can't underflow here
-		i--;
-	}
-
-	return YES;
-}
-
-
-- (BOOL) showScoopMessage
-{
-	return _cxxShip->hasScoopMessage;
-}
-
-
-- (OOCargoFlag) cargoFlag
-{
-	return _cxxShip->cargo_flag;
-}
-
-
-- (void) setCargoFlag:(OOCargoFlag) flag
-{
-	if (_cxxShip->cargo_flag != flag)
-	{
-		_cxxShip->cargo_flag = flag;
-		std::vector<oo::ObjCRef<ShipEntity *>> newCargo;
-		unsigned num = 0;
-		if (_cxxShip->likely_cargo > 0)
-		{
-			num = _cxxShip->likely_cargo * (0.5+randf());
-			if (num > [self maxAvailableCargoSpace])
-			{
-				num = [self maxAvailableCargoSpace];
-			}
-		}
-		else
-		{
-			num = [self maxAvailableCargoSpace];
-		}
-		if (num > 200)
-		{
-			num = 200; 
-			/* no core NPC ship carries this much when generated (the
-			 * Anaconda could, but doesn't): let's not waste time generating
-			 * thousands of pods - even if they are semi-virtual - for some
-			 * massive OXP ship */
-		}
-		if (num > 0)
-		{
-			switch (_cxxShip->cargo_flag)
-			{
-			case CARGO_FLAG_FULL_UNIFORM:
-				{
-					const oo::PList &info = _cxxShip->shipinfoDictionary;
-					newCargo = [UNIVERSE cxx_getContainersOfCommodity:StringForKey(info, "cargo_carried").value_or("") :num];
-				}
-				break;
-			case CARGO_FLAG_FULL_PLENTIFUL:
-				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:NO legal:YES];
-				break;
-			case CARGO_FLAG_FULL_SCARCE:
-				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:YES];
-				break;
-			case CARGO_FLAG_FULL_MEDICAL:
-				newCargo = [UNIVERSE cxx_getContainersOfCommodity:"Narcotics" :num];
-				break;
-			case CARGO_FLAG_FULL_CONTRABAND:
-				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:NO];
-				break;
-			case CARGO_FLAG_PIRATE:
-				newCargo = [UNIVERSE cxx_getContainersOfGoods:(Ranrot() % (1+num/2)) scarce:YES legal:NO];
-				break;
-			case CARGO_FLAG_FULL_PASSENGERS:
-				// TODO: allow passengers to survive
-			case CARGO_FLAG_NONE:
-			default:
-				break;
-			}
-		}
-		[self setCargo:newCargo];
-	}
-}
-
-
-- (void) setSpeed:(double) amount
-{
-	_cxxShip->flightSpeed = amount;
-}
-
-
-- (void) setDesiredSpeed:(double) amount
-{
-	_cxxShip->desired_speed = amount;
-}
-
-
-- (double) desiredSpeed
-{
-	return _cxxShip->desired_speed;
-}
-
-
 - (double) desiredRange
 {
 	return _cxxShip->desired_range;
@@ -15342,6 +14893,476 @@ GLfloat ShipEntity::fuelChargeRate()
 #endif
 	
 	return rate;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 20 of docs/phases/3-slices/ShipEntity.md (bead oo-66inv): sticks, bounty and legal status,
+// commodities and cargo, speed. The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends
+// to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::applySticks(double delta_t)
+{
+	
+	double  rate1 = 2.0 * delta_t; //roll 
+	double  rate2 = 4.0 * delta_t; //pitch
+	double  rate3 = 4.0 * delta_t; //yaw
+
+	if (((stick_roll > 0.0)&&(flightRoll < 0.0))||((stick_roll < 0.0)&&(flightRoll > 0.0)))
+		rate1 *= 4.0;	// much faster correction
+	if (((stick_pitch > 0.0)&&(flightPitch < 0.0))||((stick_pitch < 0.0)&&(flightPitch > 0.0)))
+		rate2 *= 4.0;	// much faster correction
+	if (((stick_yaw > 0.0)&&(flightYaw < 0.0))||((stick_yaw < 0.0)&&(flightYaw > 0.0)))
+		rate3 *= 4.0;	// much faster correction
+
+	if (accuracy >= COMBAT_AI_TRACKS_CLOSER) 
+	{
+		if (stick_roll == 0.0)
+			rate1 *= 2.0;	// faster correction
+		if (stick_pitch == 0.0)
+			rate2 *= 2.0;	// faster correction
+		if (stick_yaw == 0.0)
+			rate3 *= 2.0;	// faster correction
+	}
+
+	// apply stick movement limits
+	if (flightRoll < stick_roll - rate1)
+	{
+		flightRoll = flightRoll + rate1;
+	}
+	else if (flightRoll > stick_roll + rate1)
+	{
+		flightRoll = flightRoll - rate1;
+	}
+	else
+	{
+		flightRoll = stick_roll;
+	}
+
+	if (flightPitch < stick_pitch - rate2)
+	{
+		flightPitch = flightPitch + rate2;
+	}
+	else if (flightPitch > stick_pitch + rate2)
+	{
+		flightPitch = flightPitch - rate2;
+	}
+	else
+	{
+		flightPitch = stick_pitch;
+	}
+
+	if (flightYaw < stick_yaw - rate3)
+	{
+		flightYaw = flightYaw + rate3;
+	}
+	else if (flightYaw > stick_yaw + rate3)
+	{
+		flightYaw = flightYaw - rate3;
+	}
+	else
+	{
+		flightYaw = stick_yaw;
+	}
+
+}
+
+
+void ShipEntity::setRoll(double amount)
+{
+	flightRoll = amount * M_PI / 2.0;
+}
+
+
+void ShipEntity::setRawRoll(double amount)
+{
+	flightRoll = amount;
+}
+
+
+void ShipEntity::setPitch(double amount)
+{
+	flightPitch = amount * M_PI / 2.0;
+}
+
+
+void ShipEntity::setYaw(double amount)
+{
+	flightYaw = amount * M_PI / 2.0;
+}
+
+
+void ShipEntity::setThrust(double amount)
+{
+	thrust = amount;
+}
+
+
+void ShipEntity::setThrustForDemo(float factor)
+{
+	flightSpeed = factor * maxFlightSpeed;
+}
+
+
+void ShipEntity::setBounty(OOCreditsQuantity amount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setBounty:amount withReason:kOOLegalStatusReasonUnknown];
+}
+
+
+void ShipEntity::setBounty(OOCreditsQuantity amount, OOLegalStatusReason reason)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self isSubEntity]) 
+	{
+		[[self parentEntity] setBounty:amount withReason:reason];
+	}
+	else 
+	{
+		if ((scanClass == CLASS_THARGOID || scanClass == CLASS_STATION) && reason != kOOLegalStatusReasonSetup && reason != kOOLegalStatusReasonByScript)
+		{
+			return; // no standard bounties for Thargoids / Stations
+		}
+		if (scanClass == CLASS_POLICE && amount != 0)
+		{
+			return; // police never have bounties
+		}
+		[self setBounty:amount withReasonAsString:cxx_OOStringFromLegalStatusReason(reason)];
+	}
+}
+
+
+void ShipEntity::setBounty(OOCreditsQuantity amount, const std::string &reason)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self isSubEntity]) 
+	{
+		[[self parentEntity] setBounty:amount withReasonAsString:reason];
+	}
+	else 
+	{
+		ooscript::Context context = OOJSAcquireContext();
+	
+		ooscript::Value amountVal = ooscript::undefinedValue();
+		ooscript::newNumberValue(context, (int)amount-(int)bounty, &amountVal);
+
+		bounty = amount; // can't set the new bounty until the size of the change is known
+
+		ooscript::Value reasonVal = OOJSValueFromPList(context, oo::PList(reason));
+		
+		ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
+		
+		OOJSRelinquishContext(context);
+
+	}
+}
+
+
+OOCreditsQuantity ShipEntity::getBounty()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self isSubEntity]) 
+	{
+		return [[self parentEntity] bounty];
+	}
+	else 
+	{		
+		return bounty;
+	}
+}
+
+
+int ShipEntity::legalStatus()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (scanClass == CLASS_THARGOID)
+		return 5 * collision_radius;
+	if (scanClass == CLASS_ROCK)
+		return 0;
+	return (int)[self bounty];
+}
+
+
+void ShipEntity::setCommodity(const std::string &co_type, OOCargoQuantity co_amount)
+{
+	/* scoopUp can pass a reference to self.commodity_type (the old code copied it first);
+	 * assigning a std::string from itself is safe. */
+	commodity_type = co_type;
+	commodity_amount = co_amount;
+}
+
+
+void ShipEntity::setCommodityForPod(const std::optional<std::string> &co_type, OOCargoQuantity co_amount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// can be nil for pods
+	if (!co_type.has_value())
+	{
+		commodity_type = std::nullopt;
+		commodity_amount = 0;
+		return;
+	}
+	// pod content should never be greater than 1 ton or this will give cargo counting problems elsewhere in the code.
+	// so do first a mass check for cargo added by script/plist.
+	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:*co_type];
+	if (unit == UNITS_TONS && co_amount > 1) co_amount = 1;
+	else if (unit == UNITS_KILOGRAMS && co_amount > 1000) co_amount = 1000;
+	else if (unit == UNITS_GRAMS && co_amount > 1000000) co_amount = 1000000;
+	[self cxx_setCommodity:*co_type andAmount:co_amount];
+}
+
+
+std::optional<std::string> ShipEntity::commodityType()
+{
+	return commodity_type;
+}
+
+
+OOCargoQuantity ShipEntity::commodityAmount()
+{
+	return commodity_amount;
+}
+
+
+OOCargoQuantity ShipEntity::maxAvailableCargoSpace()
+{
+	return max_cargo - equipment_weight;
+}
+
+
+void ShipEntity::setMaxAvailableCargoSpace(OOCargoQuantity newValue)
+{
+	max_cargo = newValue + equipment_weight;
+}
+
+
+OOCargoQuantity ShipEntity::availableCargoSpace()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// OOCargoQuantity is unsigned, we need to check for underflows.
+	if (EXPECT_NOT([self cargoQuantityOnBoard] + equipment_weight >= max_cargo)) return 0;
+	return [self maxAvailableCargoSpace] - [self cargoQuantityOnBoard];
+}
+
+
+OOCargoQuantity ShipEntity::cargoQuantityOnBoard()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	NSUInteger result = [self cxx_cargoCount];
+	OOCAssert(result < UINT32_MAX, "Cargo quantity out of bounds.");
+	return (OOCargoQuantity)result;
+}
+
+
+OOCargoType ShipEntity::cargoType()
+{
+	return cargo_type;
+}
+
+
+/* Note: this array probably contains some template cargo pods. Do not
+ * pass it to Javascript without reifying them first. The live container: callers edit it in place
+ * (ADR-0043 Amendment 3 item 22); nullptr for a nil receiver. */
+std::vector<oo::ObjCRef<::ShipEntity *>> *ShipEntity::getCargo()
+{
+	return &cargo;
+}
+
+
+NSUInteger ShipEntity::cargoCount()
+{
+	return cargo.size();
+}
+
+
+oo::PList ShipEntity::cargoListForScripting()
+{
+	oo::PList::Array	list;
+
+	const std::vector<std::string> goods = [[UNIVERSE commodityMarket] goods];
+	NSUInteger			i, commodityCount = goods.size();
+	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
+
+	for (i = 0; i < cargo.size(); i++)
+	{
+		::ShipEntity *container = cargo[i].get();
+		const std::optional<std::string> good = [container cxx_commodityType];
+		const auto j = good.has_value() ? std::ranges::find(goods, *good) : goods.end();
+		// A pod whose commodity is not a good (or has none) indexed past the array before; it is skipped.
+		if (j != goods.end())  quantityInHold[(std::size_t)(j - goods.begin())] += [container commodityAmount];
+	}
+
+	for (i = 0; i < commodityCount; i++)
+	{
+		if (quantityInHold[i] > 0)
+		{
+			oo::PList::Dict	commodity;
+			const std::string &good = goods[i];
+			// commodity, quantity - keep consistency between .manifest and .contracts
+			commodity["commodity"] = good;
+			commodity["quantity"] = oo::PList(quantityInHold[i]);	// an unsigned integer
+			const std::optional<std::string> goodName = [[UNIVERSE commodityMarket] cxx_nameForGood:good];
+			if (goodName.has_value())  commodity["displayName"] = *goodName;
+			commodity["unit"] = cxx_DisplayStringForMassUnitForCommodity(good).value_or("");
+			list.emplace_back(std::move(commodity));
+		}
+	}
+
+	return oo::PList(std::move(list));
+}
+
+
+void ShipEntity::setCargo(const std::vector<oo::ObjCRef<::ShipEntity *>> &some_cargo)
+{
+	cargo = some_cargo;
+}
+
+
+bool ShipEntity::addCargo(const std::vector<oo::ObjCRef<::ShipEntity *>> &some_cargo)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (cargo.size() + some_cargo.size() > [self maxAvailableCargoSpace])
+	{
+		return NO;
+	}
+	else
+	{
+		cargo.insert(cargo.end(), some_cargo.begin(), some_cargo.end());
+		return YES;
+	}
+}
+
+
+bool ShipEntity::removeCargo(const std::string &commodity, OOCargoQuantity amount)
+{
+	OOCargoQuantity found = 0;
+	for (const auto &pod : cargo)
+	{
+		if ([pod.get() cxx_commodityType] == commodity)
+		{
+			found++;
+		}
+	}
+	if (found < amount)
+	{
+		// don't remove any if there aren't enough to remove the full amount
+		return NO;
+	}
+	
+	NSUInteger i = cargo.size() - 1;
+	// iterate downwards to be safe removing during iteration
+	while (amount > 0)
+	{
+		if ([cargo[i].get() cxx_commodityType] == commodity)
+		{
+			amount--;
+			cargo.erase(cargo.begin() + i);
+		}
+		// check above means array index can't underflow here
+		i--;
+	}
+
+	return YES;
+}
+
+
+bool ShipEntity::showScoopMessage()
+{
+	return hasScoopMessage;
+}
+
+
+OOCargoFlag ShipEntity::cargoFlag()
+{
+	return cargo_flag;
+}
+
+
+void ShipEntity::setCargoFlag(OOCargoFlag flag)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (cargo_flag != flag)
+	{
+		cargo_flag = flag;
+		std::vector<oo::ObjCRef<::ShipEntity *>> newCargo;
+		unsigned num = 0;
+		if (likely_cargo > 0)
+		{
+			num = likely_cargo * (0.5+randf());
+			if (num > [self maxAvailableCargoSpace])
+			{
+				num = [self maxAvailableCargoSpace];
+			}
+		}
+		else
+		{
+			num = [self maxAvailableCargoSpace];
+		}
+		if (num > 200)
+		{
+			num = 200; 
+			/* no core NPC ship carries this much when generated (the
+			 * Anaconda could, but doesn't): let's not waste time generating
+			 * thousands of pods - even if they are semi-virtual - for some
+			 * massive OXP ship */
+		}
+		if (num > 0)
+		{
+			switch (cargo_flag)
+			{
+			case CARGO_FLAG_FULL_UNIFORM:
+				{
+					const oo::PList &info = shipinfoDictionary;
+					newCargo = [UNIVERSE cxx_getContainersOfCommodity:StringForKey(info, "cargo_carried").value_or("") :num];
+				}
+				break;
+			case CARGO_FLAG_FULL_PLENTIFUL:
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:NO legal:YES];
+				break;
+			case CARGO_FLAG_FULL_SCARCE:
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:YES];
+				break;
+			case CARGO_FLAG_FULL_MEDICAL:
+				newCargo = [UNIVERSE cxx_getContainersOfCommodity:"Narcotics" :num];
+				break;
+			case CARGO_FLAG_FULL_CONTRABAND:
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:NO];
+				break;
+			case CARGO_FLAG_PIRATE:
+				newCargo = [UNIVERSE cxx_getContainersOfGoods:(Ranrot() % (1+num/2)) scarce:YES legal:NO];
+				break;
+			case CARGO_FLAG_FULL_PASSENGERS:
+				// TODO: allow passengers to survive
+			case CARGO_FLAG_NONE:
+			default:
+				break;
+			}
+		}
+		[self setCargo:newCargo];
+	}
+}
+
+
+void ShipEntity::setSpeed(double amount)
+{
+	flightSpeed = amount;
+}
+
+
+void ShipEntity::setDesiredSpeed(double amount)
+{
+	desired_speed = amount;
+}
+
+
+double ShipEntity::desiredSpeed()
+{
+	return desired_speed;
 }
 
 
