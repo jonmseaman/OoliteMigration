@@ -37,7 +37,7 @@ SOFTWARE.
 #import "OOJSScript.h"
 #import "OOObjCPList.h"
 #import "OOJSEngineTimeManagement.h"
-#import "OOJSSpecialFunctions.h"
+#import "OOJSSpecialFunctions+ObjCBridge.h"
 
 #import "NSObjectOOExtensions.h"
 #import "OOTexture.h"

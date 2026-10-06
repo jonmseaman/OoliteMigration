@@ -1,13 +1,11 @@
 /*
 
-OOJSSpecialFunctions.h
+OOJSSpecialFunctions+ObjCBridge.h
 
-Special functions for certain scripts, currently the global prefix script and
-the debug console script. Note that it's possible for other scripts to get at
-the "special" object through the debug console object
-(debugConsole.script.special). If putting actually dangerous functions in here,
-it'd be a good idea to learn to use SpiderMonkey's security architecture
-(JSPrincipals and such).
+TRANSITIONAL (proposed ADR-0056): the one-line bridge from cxx_JSSpecialFunctionsObjectWrapper()
+(OOJSSpecialFunctions.h, plain C++) to the Objective-C OOJSValue that its remaining callers
+(OOJavaScriptEngine.mm, OODebugMonitor.mm) hand to Objective-C collections. Deleted when they
+convert and take the cxx::OOJSValue directly.
 
 
 Oolite
@@ -30,8 +28,7 @@ MA 02110-1301, USA.
 
 */
 
-#include "OOJSEngineCore.h"
+#import "OOJavaScriptEngine.h"
 
 
-void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global);
-oo::Ref<cxx::OOJSValue> cxx_JSSpecialFunctionsObjectWrapper(ooscript::Context context);
+extern "C" OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context);
