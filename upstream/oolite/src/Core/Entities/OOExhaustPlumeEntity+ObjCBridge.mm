@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOExhaustPlumeEntity.h"
+#import "OOJSExhaustPlume.h"
 
 
 @implementation OOExhaustPlumeEntity
@@ -69,6 +70,15 @@ MA 02110-1301, USA.
 - (void) rescaleBy:(GLfloat)factor									{ oo::ToCxx(self)->rescaleBy(factor); }
 - (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache	{ oo::ToCxx(self)->rescaleBy(factor, writeToCache); }
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent	{ oo::ToCxx(self)->drawSubEntityImmediate(immediate, translucent); }
+
+
+// The JS side, which the engine asks for by selector (Entity (OOJavaScriptExtensions)): the
+// binding's category, moved here from the binding's bridge file, which it deletes (bead oo-9ht.48;
+// ADR-0056 amendment oo-6ia4 item 3). Each forwards to the OOJSExhaustPlume.mm function that holds
+// its old body; they become members of the C++ class with this facade's deletion (oo-9ht.110).
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype	{ ::OOJSExhaustPlumeGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName				{ return ::OOJSExhaustPlumeJSClassName(); }
+- (BOOL) isVisibleToScripts										{ return ::OOJSExhaustPlumeIsVisibleToScripts(); }
 
 @end
 

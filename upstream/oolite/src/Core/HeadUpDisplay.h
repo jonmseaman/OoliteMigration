@@ -48,7 +48,6 @@ struct OOHUDWidget;	// HeadUpDisplay.mm
 @class OOColor;
 class OOCrosshairs;
 
-@protocol OOHUDBeaconIcon;
 
 
 #define SCANNER_CENTRE_X	0
@@ -248,11 +247,11 @@ enum
 @class Entity, PlayerEntity, OOTextureSprite, GuiDisplayGen;
 
 
-/*	The HUD itself (Phase 3, bead oo-engam: slice 1 of docs/phases/3-slices/HeadUpDisplay.md, the
-	class shell). Its callers and the drawing of slices 2-6 are still Objective-C and reach it
-	through the facade HeadUpDisplay+ObjCBridge.h, so the members they reach, and the state the
-	drawing reads and writes, are public under "Internal" (ADR-0056 amendment oo-pni4 item 1).
-	Getters named after their state are get + the name (amendment oo-862e item 1).
+/*	The HUD itself (Phase 3, beads oo-engam .. oo-0tx6c: the six slices of
+	docs/phases/3-slices/HeadUpDisplay.md). Its callers are still Objective-C and reach it through
+	the facade HeadUpDisplay+ObjCBridge.h, which also answers the dials by name; the dial members
+	and the state are public under "Internal" until the facade goes (ADR-0056 amendment oo-pni4
+	item 1). Getters named after their state are get + the name (amendment oo-862e item 1).
 */
 namespace cxx {
 
@@ -264,8 +263,8 @@ public:
 	HeadUpDisplay();
 	~HeadUpDisplay() override;
 
-	// -cxx_initWithDictionary:inFile:, run by the facade once it is the HUD's peer (it hands the
-	// HUD to the drawing, which is still Objective-C).
+	// -cxx_initWithDictionary:inFile:, run by the facade once it is the HUD's peer (the dial check
+	// asks the facade which dials it answers).
 	void initWithDictionary(const oo::PList &hudinfo, const std::optional<std::string> &hudFileName);
 
 	void resetGuis(const oo::PList &info);
@@ -299,6 +298,7 @@ public:
 	void setDeferredHudName(const std::optional<std::string> &newDeferredHudName);
 	std::optional<std::string> getDeferredHudName();
 	std::optional<std::string> getCrosshairDefinition();
+	bool setCrosshairDefinition(const std::string &newDefinition);
 
 	// Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
 	void addLegend(const oo::PList &info);
@@ -306,6 +306,8 @@ public:
 	void addMFD(const oo::PList &info);
 
 	NSUInteger mfdCount();
+
+	void renderHUD();
 
 	void refreshLastTransmitter();
 
@@ -325,11 +327,48 @@ public:
 	oo::Ref<OOColor> reticleColorForIndex(NSUInteger idx);
 	bool setReticleColorForIndex(NSUInteger idx, OOColor *newColor);
 
-	// Internal: what the drawing of slices 2-6 (Objective-C on the facade) sends.
 	bool checkPlayerInFlight();
 	bool checkPlayerInSystemFlight();
 
-	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
+	// Internal: dials, called by name on the facade (ADR-0055 item 5), which forwards them.
+	void drawSurround(const oo::PList &info);
+	void drawGreenSurround(const oo::PList &info);
+	void drawYellowSurround(const oo::PList &info);
+	void drawScanner(const oo::PList &info);
+	void drawScannerZoomIndicator(const oo::PList &info);
+	void drawCompass(const oo::PList &info);
+	void drawAegis(const oo::PList &info);
+	void drawTargetReticle(const oo::PList &info);
+	void drawWaypoints(const oo::PList &info);
+	void drawCustomBar(const oo::PList &info);
+	void drawCustomText(const oo::PList &info);
+	void drawCustomIndicator(const oo::PList &info);
+	void drawCustomLight(const oo::PList &info);
+	void drawCustomImage(const oo::PList &info);
+	void drawSpeedBar(const oo::PList &info);
+	void drawRollBar(const oo::PList &info);
+	void drawPitchBar(const oo::PList &info);
+	void drawYawBar(const oo::PList &info);
+	void drawEnergyGauge(const oo::PList &info);
+	void drawForwardShieldBar(const oo::PList &info);
+	void drawAftShieldBar(const oo::PList &info);
+	void drawFuelBar(const oo::PList &info);
+	void drawWitchspaceDestination(const oo::PList &info);
+	void drawCabinTempBar(const oo::PList &info);
+	void drawWeaponTempBar(const oo::PList &info);
+	void drawAltitudeBar(const oo::PList &info);
+	void drawMissileDisplay(const oo::PList &info);
+	void drawStatusLight(const oo::PList &info);
+	void drawClock(const oo::PList &info);
+	void drawPrimedEquipment(const oo::PList &info);
+	void drawASCTarget(const oo::PList &info);
+	void drawWeaponsOfflineText(const oo::PList &info);
+	void drawFPSInfoCounter(const oo::PList &info);
+	void drawScoopStatus(const oo::PList &info);
+	void drawStickSensitivityIndicator(const oo::PList &info);
+	void drawTrumbles(const oo::PList &info);
+
+	// Internal: the state (the old ivars).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
 	std::vector<OOHUDWidget>	legendArray;
 	std::vector<OOHUDWidget>	dialArray;
@@ -384,6 +423,33 @@ public:
 	bool			scanner_ultra_zoom = {};
 
 private:
+	void drawCrosshairs();
+	void drawLegends();
+	void drawDials();
+	void drawMFDs();
+
+	void drawLegend(const oo::PList &info);
+	void drawHUDItem(const oo::PList &info);
+
+	void drawMultiFunctionDisplay(const oo::PList &info, const std::string &text, NSUInteger index);
+
+	void drawSurroundInternal(const oo::PList &info, const GLfloat color[4]);
+
+	void drawCompassPlanetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassStationBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassSunBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassTargetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+	void drawCompassBeaconBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha);
+
+	void drawSecondaryTargetReticle(const oo::PList &info);
+
+	// status: an OOMissileStatus (PlayerEntity.h, which this header does not import: it would close an import cycle).
+	void drawIconForMissile(::ShipEntity *missile, bool selected, int status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
+	void drawIconForEmptyPylonAtX(int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
+	void drawDirectionCue(const oo::PList &info);
+
+	oo::PList crosshairDefinitionForWeaponType(OOWeaponType weapon);	// a null PList for none
+
 	void resetGui(::GuiDisplayGen *gui, const oo::PList &gui_info);
 	void resetGuiPosition(::GuiDisplayGen *gui, const oo::PList &gui_info);
 };
@@ -391,31 +457,32 @@ private:
 }	// namespace cxx
 
 
-/*
-	Protocol for things that can be used as HUD compass items. Really ought
-	to grow into a general protocol for HUD elements.
-*/
-@protocol OOHUDBeaconIcon <OOObject>
-
-- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z;
-
-@end
-
-
 /*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
 	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
-	drawables used; the drawing is the category's.
+	drawables used; the drawing is the category's. The entities hold it by the OOHUDBeaconIcon
+	protocol (HeadUpDisplay+ObjCBridge.h) through its facade (bead oo-2p1ug; ADR-0056 amendments
+	oo-jpd8, oo-4nhg).
 */
-@interface OOHUDBeaconCodeIcon: OOObject <OOHUDBeaconIcon>
+namespace cxx {
+
+class OOPolygonSprite;
+
+class OOHUDBeaconCodeIcon : public oo::RefCounted
 {
-@private
+public:
+	explicit OOHUDBeaconCodeIcon(const std::string &text);	// -initWithText:
+
+	void drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat alpha, GLfloat z);	// -oo_drawHUDBeaconIconAt:size:alpha:z:
+
+private:
 	std::string				_text;
-}
+};
 
-- (id) initWithText:(const std::string &)text;
+}	// namespace cxx
 
-@end
 
+// -[OOPolygonSprite oo_drawHUDBeaconIconAt:size:alpha:z:] (the sprite's OOHUDBeaconIcon category).
+void OOPolygonSpriteDrawHUDBeaconIcon(cxx::OOPolygonSprite *sprite, NSPoint where, NSSize size, GLfloat alpha, GLfloat z);
 
 void cxx_OODrawString(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 void cxx_OODrawStringAligned(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign);
@@ -453,6 +520,6 @@ NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSiz
 void OOHUDResetTextEngine(void);
 
 
-// Transitional: the Objective-C facade, for the callers and the drawing that are still Objective-C.
+// Transitional: the Objective-C facade, for the callers that are still Objective-C.
 // Deleted, with namespace cxx above, by the bridge's deletion bead.
 #import "HeadUpDisplay+ObjCBridge.h"

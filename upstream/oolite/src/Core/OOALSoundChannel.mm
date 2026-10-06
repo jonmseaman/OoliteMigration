@@ -32,9 +32,7 @@ SOFTWARE.
 
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
-#include "oofnd/objc/OORuntime.h"
 
-namespace cxx {
 
 // The body of -init after [super init]; [self release]; self = nil; is false.
 bool OOSoundChannel::init()
@@ -58,10 +56,12 @@ bool OOSoundChannel::init()
 }
 
 
-// -dealloc's [self hasStopped] stays in the facade's -dealloc, which tells the delegate of itself
-// (amendment oo-smy item 3).
+// -dealloc: [self hasStopped] (make sure buffers are dequeued and deleted, and tell the delegate),
+// which the facade's -dealloc sent until bead oo-9ht.86, then the source goes. A channel whose
+// init() failed has no source (the facade of one was never made, so nothing was told).
 OOSoundChannel::~OOSoundChannel()
 {
+	if (_source != 0)  hasStopped();
 	OOAL(alDeleteSources(1, &_source));
 }
 
@@ -74,7 +74,7 @@ void OOSoundChannel::update()
 		OOAL(alGetSourcei(_source,AL_SOURCE_STATE,&check));
 		if (check == AL_STOPPED)
 		{
-			hasStopped(oo::ToObjC(this));
+			hasStopped();
 		}
 		else if (oo::ToCxx(_sound.get())->soundIncomplete()) // streaming and not finished loading
 		{
@@ -122,7 +122,7 @@ void OOSoundChannel::getNextSoundBuffer()
 }
 
 
-void OOSoundChannel::setDelegate(id delegate)
+void OOSoundChannel::setDelegate(OOSoundChannelDelegate *delegate)
 {
 	_delegate = delegate;
 }
@@ -179,12 +179,12 @@ void OOSoundChannel::stop()
 	{
 		OOAL(alSourceStop(_source));
 		OOAL(alSourcei(_source, AL_BUFFER, AL_NONE));
-		hasStopped(oo::ToObjC(this));
+		hasStopped();
 	}
 }
 
 
-void OOSoundChannel::hasStopped(::OOSoundChannel *channel)
+void OOSoundChannel::hasStopped()
 {
 	ALint queued;
 	OOAL(alGetSourcei(_source, AL_BUFFERS_QUEUED, &queued));
@@ -206,9 +206,9 @@ void OOSoundChannel::hasStopped(::OOSoundChannel *channel)
 
 	oo::ObjCRef<::OOSound *> sound = std::move(_sound);	// [sound release] at the end of the scope
 
-	if (nil != _delegate && [_delegate respondsToSelector:OOSelectorFromName("channel:didFinishPlayingSound:")])
+	if (nullptr != _delegate)
 	{
-		[_delegate channel:channel didFinishPlayingSound:sound.get()];
+		_delegate->channel(this, sound.get());
 	}
 }
 
@@ -248,4 +248,3 @@ bool OOSoundChannel::enqueueBuffer(::OOSound *sound)
 	return _sound.get();
 }
 
-}	// namespace cxx

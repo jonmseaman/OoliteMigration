@@ -154,17 +154,4 @@ cxx::OOSoundSource *oo::ToCxx(OOSoundSource *source)
 - (void) setGainInsideCone:(float)inInside outsideCone:(float)inOutside	{ _cxxSource->setGainInsideCone(inInside, inOutside); }
 - (void) positionRelativeTo:(OOSoundReferencePoint *)inPoint		{ _cxxSource->positionRelativeTo(inPoint); }
 
-
-// OOSoundChannelDelegate
-- (void)channel:(OOSoundChannel *)channel didFinishPlayingSound:(OOSound *)sound
-{
-	_cxxSource->channel(channel, sound);
-}
-
-
-+ (void)channel:(OOSoundChannel *)inChannel didFinishPlayingSound:(OOSound *)inSound
-{
-	cxx::OOSoundSource::channelOfStoppedSource(inChannel, inSound);
-}
-
 @end
