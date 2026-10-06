@@ -9,7 +9,7 @@
 	whole game but main (tests/unit/core/meson.build entry ['*']), on the hidden GL context of
 	oo_gl_test_context.hpp; the generator runs on the game's own work manager. The expectations
 	were written against the Objective-C API and run on the unconverted class first (commit
-	4477d13b5); that API then became the facade (OOConcreteTexture+ObjCBridge.h), and the last
+	4477d13b5); that API then became the facade, and the last
 	tests pinned the C++ API and the facade's contract.
 
 	Bead oo-9ht.105 deleted the facade (ADR-0056 amendment "deleting a facade"). The texture is made
