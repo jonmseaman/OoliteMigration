@@ -151,7 +151,7 @@ public:
 	Vector _v_up = {};
 	Vector _v_right = {};
 
-	OOJSScript				*script = {};	// retained
+	::OOJSScript			*script = {};	// retained
 	oo::PList				scriptInfo;
 
 	std::optional<std::string>	_effectKey;
