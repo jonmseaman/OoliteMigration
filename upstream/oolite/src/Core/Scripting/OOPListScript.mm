@@ -41,12 +41,11 @@ constexpr const char *kCacheName				= "sanitized legacy scripts";
 } // namespace
 
 
-/*	C++20 since bead oo-q9q4 (proposed ADR-0056): cxx::OOPListScript. Its superclass is still
-	Objective-C, so a script object is made by its facade (amendment oo-o89 item 2): the class's
-	own factories below make them with [[::OOPListScript alloc] initWithName:...], as
-	[[self alloc] ...] did, and hand back the Objective-C scripts. A message to self that
-	OOScript implements (-displayName) goes to the facade. The cache manager is C++ and is called
-	directly.
+/*	C++20 since bead oo-q9q4 (proposed ADR-0056), a C++ subclass of cxx::OOScript since bead
+	oo-9ht.57 deleted its facade (amendment oo-o89 item 3): the class's own factories below make
+	the scripts with oo::makeRef, as [[self alloc] ...] did, and hand back their Objective-C
+	objects (the root's facades). -displayName, which OOScript implements, is the inherited
+	member. The cache manager is C++ and is called directly.
 */
 
 std::optional<std::vector<oo::ObjCRef<::OOScript *>>> OOPListScript::scriptsInPListFile(const std::string &filePath)
