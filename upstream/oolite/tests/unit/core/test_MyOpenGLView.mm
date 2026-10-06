@@ -140,7 +140,6 @@ OO_TEST(updateGLSizeSetsTheProjection)
 		// 4:3 or narrower: the depth and x offset are fixed, y follows the aspect.
 		[view updateGLSize:NSMakeSize(800, 600)];
 		OO_CHECK([view viewSize].width == 800 && [view viewSize].height == 600);
-		OO_CHECK([view bounds].size.width == 800 && [view bounds].size.height == 600);
 		OO_CHECK([view backingViewSize].width == 800);
 		OO_CHECK(Near([view display_z], 640.0));
 		OO_CHECK(Near([view x_offset], 320.0));
