@@ -10,7 +10,6 @@ oolite_sources += files(
     'OOCheckShipDataPListVerifierStage.mm',
     'OOCheckShipDataPListVerifierStage+ObjCBridge.mm',
     'OOFileScannerVerifierStage.mm',
-    'OOFileScannerVerifierStage+ObjCBridge.mm',
     'OOModelVerifierStage.mm',
     'OOModelVerifierStage+ObjCBridge.mm',
     'OOOXPVerifier.mm',
@@ -20,7 +19,6 @@ oolite_sources += files(
     'OOPListSchemaVerifier.mm',
     'OOPListSchemaVerifier+ObjCBridge.mm',
     'OOTextureVerifierStage.mm',
-    'OOTextureVerifierStage+ObjCBridge.mm',
 )
 
 oolite_includes += include_directories('.')
