@@ -65,7 +65,7 @@ OO_TEST(oneSharedInstance)
 	// It outlives the pools it was handed out in.
 	@autoreleasepool
 	{
-		OO_CHECK(oo::ToCxx([OOTexture nullTexture]) == OONullTexture::sharedNullTexture());
+		OO_CHECK(oo::ToCxx(static_cast<OOTexture *>([OOTexture nullTexture])) == OONullTexture::sharedNullTexture());
 	}
 }
 
