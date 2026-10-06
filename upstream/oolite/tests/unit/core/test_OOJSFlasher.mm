@@ -1,11 +1,12 @@
 /*	test_OOJSFlasher.mm
 	Unit tests for the Flasher JS binding (src/Core/Scripting/OOJSFlasher.h/.mm) and its
-	OOFlasherEntity category (OOJSFlasher+ObjCBridge.mm): bead oo-ub2g, converted the way bead
-	oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	OOFlasherEntity category (whose forwarders are on the OOFlasherEntity facade since bead
+	oo-9ht.49; this test's stand-in OOFlasherEntity forwards the same way): bead oo-ub2g, converted
+	the way bead oo-ppc converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
-	objects for the binding, its bridge, the engine's exception translator
+	objects for the binding, the engine's exception translator
 	(OOJSEngineNativeWrappers.mm) and OOColor (a converted class, reached through its façade), and
 	stands in for the entity classes (Entity, ShipEntity, OOVisualEffectEntity and OOFlasherEntity
 	answer only the selectors the binding sends) and for the engine functions the binding links
@@ -84,6 +85,10 @@
 @end
 
 extern "C" void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
+// The category's bodies, which the stand-in forwards to as the facade does (declared in OOJSFlasher.h).
+void OOJSFlasherGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+std::optional<std::string> OOJSFlasherJSClassName(void);
+bool OOJSFlasherIsVisibleToScripts(void);
 
 
 #include "oo_test.hpp"
@@ -141,6 +146,13 @@ extern "C" void InitOOJSFlasher(ooscript::Context context, ooscript::Object glob
 	if (_frequency == 98)  throw std::runtime_error("cxx boom");
 	return _frequency;
 }
+
+
+// The binding's category, as the OOFlasherEntity facade forwards it (OOFlasherEntity+ObjCBridge.mm,
+// bead oo-9ht.49): the engine sends these selectors to the wrapped object.
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { ::OOJSFlasherGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName  { return ::OOJSFlasherJSClassName(); }
+- (BOOL) isVisibleToScripts  { return ::OOJSFlasherIsVisibleToScripts(); }
 
 @end
 

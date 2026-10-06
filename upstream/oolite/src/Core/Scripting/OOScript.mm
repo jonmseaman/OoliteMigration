@@ -115,7 +115,7 @@ std::optional<std::vector<oo::ObjCRef<::OOScript *>>> OOScript::worldScriptsAtPa
 				OO_LOG("script.load.pList", "Trying to load property list script {}", filePath);
 				oo::log::indentIf("script.load.pList");
 				
-				result = [::OOPListScript scriptsInPListFile:filePath];
+				result = ::OOPListScript::scriptsInPListFile(filePath);
 				if (result.has_value())  OO_LOG("script.load.parseOK", "Successfully loaded property list script {}", filePath);
 				else  OO_LOG_ERR("script.load.parseError", "Failed to load property list script {}", filePath);
 			
@@ -188,7 +188,7 @@ std::optional<std::vector<oo::ObjCRef<::OOScript *>>> OOScript::scriptsFromFileA
 		{
 			return std::nullopt;
 		}
-		return [::OOPListScript scriptsInPListFile:filePath];
+		return ::OOPListScript::scriptsInPListFile(filePath);
 	}
 	
 	OO_LOG_ERR("script.load.badName", "Don't know how to load a script from {}.", filePath);
