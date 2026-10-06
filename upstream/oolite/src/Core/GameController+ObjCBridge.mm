@@ -30,8 +30,6 @@ MA 02110-1301, USA.
 
 #include "oofnd/objc/OOObjCPeer.h"
 #include "oofnd/objc/OOException.h"
-#include "oofnd/Log.hpp"
-#include "oofnd/String.hpp"
 
 
 namespace {
@@ -121,7 +119,7 @@ cxx::GameController *oo::ToCxx(GameController *controller)
 @end
 
 
-bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument)
+bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason)
 {
 	@try
 	{
@@ -129,8 +127,8 @@ bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argumen
 	}
 	@catch (OOException *exception)
 	{
-		// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
-		OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", [exception name], [exception reason], oo::str::pointerDescription(target));
+		*outName = [exception name];
+		*outReason = [exception reason];
 		return false;
 	}
 	return true;

@@ -188,12 +188,13 @@ MA 02110-1301, USA.
 @end
 
 
-/*	[target performSelector:selector withObject:argument] for a deferred call (OOScheduleDeferredCall),
-	with the handler the Foundation timer had: an OOException is logged and swallowed and the answer
-	is false; anything else propagates. The free function FireOneDueDeferredCall() calls it (ADR-0056
-	amendment oo-9ht.139 item 3: its @try/@catch and send stay Objective-C here).
+/*	[target performSelector:selector withObject:argument] for a deferred call (OOScheduleDeferredCall):
+	false when it raised an OOException, which is caught and its name and reason (the exception's own strings, alive until the pool drains) written out (the
+	caller logs them as the Foundation timer did); anything else propagates. The free function
+	FireOneDueDeferredCall() calls it (ADR-0056 amendment oo-9ht.139 item 3: its @try/@catch and send
+	stay Objective-C here).
 */
-bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument);
+bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument, const char **outName, const char **outReason);
 
 
 namespace oo {

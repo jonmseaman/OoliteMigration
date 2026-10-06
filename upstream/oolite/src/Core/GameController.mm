@@ -177,8 +177,11 @@ void FireOneDueDeferredCall(void)
 			sDeferredCalls.erase(it);
 			
 			// The perform and its handler, in the bridge (ADR-0056 amendment oo-9ht.139 item 3).
-			if (!GameControllerPerformSelectorWithObject(call.target, call.selector, call.argument))
+			const char *exceptionName = NULL, *exceptionReason = NULL;
+			if (!GameControllerPerformSelectorWithObject(call.target, call.selector, call.argument, &exceptionName, &exceptionReason))
 			{
+				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
+				OO_LOG("unclassified", "*** NSTimer ignoring exception '{}' (reason '{}') raised during posting of timer with target {} and selector 'fire'", exceptionName, exceptionReason, oo::str::pointerDescription(call.target));
 				return;	// target and argument stay retained, as the performer leaked them
 			}
 			
