@@ -2,10 +2,10 @@
 
 OOFileScannerVerifierStage.m
 
-C++20 since bead oo-up4b (proposed ADR-0056 Amendment 1 and amendment oo-up4b): cxx::OOFileScannerVerifierStage,
-OOListUnusedFilesStage (bead oo-cwz) and cxx::OOFileHandlingVerifierStage. Method bodies are the
-Objective-C ones with message sends turned into calls (ADR-0012). The Objective-C facades, and the
-verifier's -fileScannerStage, are in OOFileScannerVerifierStage+ObjCBridge.mm. Still
+C++20 since bead oo-up4b (proposed ADR-0056 Amendment 1 and amendment oo-up4b): OOFileScannerVerifierStage,
+OOListUnusedFilesStage (bead oo-cwz) and OOFileHandlingVerifierStage. Method bodies are the
+Objective-C ones with message sends turned into calls (ADR-0012). Their Objective-C facades, and the
+verifier's -fileScannerStage, were deleted by bead oo-9ht.7. Still
 Objective-C++ until Phase 4: the verifier and the resource manager are Objective-C objects.
 
 
@@ -88,8 +88,6 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 }	// namespace
 
 
-
-namespace cxx {
 
 const char * const OOFileScannerVerifierStage::kName = kFileScannerStageName;
 
@@ -663,8 +661,6 @@ std::vector<std::string> OOFileScannerVerifierStage::constructReadMeNames()
 	return result;
 }
 
-}	// namespace cxx
-
 
 // OOListUnusedFilesStage: C++ since bead oo-cwz (proposed ADR-0056 Amendment 1).
 
@@ -701,10 +697,7 @@ std::string OOListUnusedFilesStage::nameForReverseDependencyForVerifier(OOOXPVer
 }
 
 
-// OOFileHandlingVerifierStage: C++ since bead oo-up4b. Its Objective-C subclasses reach these
-// through their facade (OOFileScannerVerifierStage+ObjCBridge.mm).
-
-namespace cxx {
+// OOFileHandlingVerifierStage: C++ since bead oo-up4b; global since bead oo-9ht.7 deleted its facade.
 
 std::optional<std::vector<std::string>> OOFileHandlingVerifierStage::dependencies()
 {
@@ -716,8 +709,6 @@ std::optional<std::vector<std::string>> OOFileHandlingVerifierStage::dependents(
 {
 	return std::vector<std::string>{ OOListUnusedFilesStage::nameForReverseDependencyForVerifier(verifier()) };
 }
-
-}	// namespace cxx
 
 
 namespace {
