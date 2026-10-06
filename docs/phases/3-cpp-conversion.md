@@ -309,6 +309,15 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   method declaration, plus its own units' declarations, because `ShipEntity.h` (1,334 lines) charged
   whole leaves no slice under the budget. oo-k8a is now the umbrella over the slices, the
   `ShipEntityAI` slices, oo-42dr and oo-kw44; the subclasses wait on the slices they override.
+- 2026-10-05 — `PlayerEntity` and `Universe` pre-splits (beads oo-9ht.154 and oo-9ht.155, plans
+  `3-slices/PlayerEntity.md`, 28 slices, and `3-slices/Universe.md`, 26 slices), each slice 1 a
+  frontier class shell (`_cxxPlayer->` / `_cxxUniverse->` rewrite), the rest fleet stories in file
+  order. Slice plans gain `header-names: by-use`: a slice is charged the header's other declarations
+  (ivars, macros, enums, constants, inline functions) only where its units name them, because
+  `PlayerEntity.h`'s 451-line ivar block and ~340 lines of GUI constants left a 613-line method no
+  slice under the budget. oo-a70 and oo-pas are the umbrellas; the player's slices wait on the
+  `ShipEntity` slices they override, its category slices on its slice 1, and the façade-deletion
+  beads on the slices that name the façade.
 - 2026-10-01 — The rest of the Audio module (beads oo-y0gz, oo-2wpb, oo-03g7, oo-nwbw, oo-5vp8,
   oo-6g4z, oo-zoj3, oo-d2y9, oo-lfkq; ADR-0056 amendment oo-y0gz): each class is `cxx::X` behind
   `X+ObjCBridge.h/.mm`; converted code keeps its sends to the module's other classes as `::X`
