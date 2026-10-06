@@ -156,6 +156,29 @@ OO_TEST(sharedControllerIsOneObject)
 }
 
 
+// main.mm makes the application's controller with alloc/init, apart from +sharedController's:
+// once the shared one exists, that raises (and releases the receiver).
+OO_TEST(secondControllerRaises)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *shared = [GameController sharedController];
+		bool raised = false;
+		@try
+		{
+			[[GameController alloc] init];
+		}
+		@catch (OOException *exception)
+		{
+			raised = (std::string([exception name]) == OOInternalInconsistencyException);
+		}
+		OO_CHECK(raised);
+		OO_CHECK([GameController sharedController] == shared);
+	}
+}
+
+
 OO_TEST(gameViewIsKeptAndToldOfTheController)
 {
 	SetUp();

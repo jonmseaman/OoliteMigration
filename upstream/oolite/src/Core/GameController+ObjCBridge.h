@@ -124,6 +124,8 @@ MA 02110-1301, USA.
 
 + (GameController *) sharedController;
 
+- (id) init;	// a controller of its own, as main.mm makes it (the old -init)
+
 - (BOOL) finishedLaunching;
 
 - (BOOL) isGamePaused;

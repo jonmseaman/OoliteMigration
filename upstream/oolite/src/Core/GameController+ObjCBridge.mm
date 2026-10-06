@@ -66,6 +66,36 @@ cxx::GameController *oo::ToCxx(GameController *controller)
 }
 
 
+// [[GameController alloc] init] (main.mm makes the application's controller so, apart from
+// +sharedController's): a new C++ controller, whose constructor is the old -init's body (it raises
+// if the shared controller exists, after releasing the receiver, as -init did), with this façade
+// as its peer.
+- (id) init
+{
+	oo::Ref<cxx::GameController> controller;
+	@try
+	{
+		controller = oo::makeRef<cxx::GameController>();
+	}
+	@catch (id exception)
+	{
+		[self release];
+		@throw;
+	}
+	
+	self = [super init];
+	if (self != nil)
+	{
+		_cxxController = controller;
+		@autoreleasepool
+		{
+			Peers().peerFor(_cxxController.get(), [self] { return [self retain]; });
+		}
+	}
+	return self;
+}
+
+
 - (id) initWithCxxController:(cxx::GameController *)controller
 {
 	self = [super init];
