@@ -92,7 +92,7 @@ static const char * const kOOLogMeshTooManyMaterials		= "mesh.load.failed.tooMan
 
 
 #if OOMESH_PROFILE
-#define PROFILE(tag)  do { oo::ToCxx(self)->_stopwatchLastTime = Profile(tag, oo::ToCxx(self)->_stopwatch.get(), oo::ToCxx(self)->_stopwatchLastTime); } while (0)
+#define PROFILE(tag)  do { _stopwatchLastTime = Profile(tag, _stopwatch.get(), _stopwatchLastTime); } while (0)
 static OOTimeDelta Profile(const char *tag, OOProfilingStopwatch *stopwatch, OOTimeDelta lastTime)
 {
 	OOTimeDelta now = stopwatch->currentTime();
@@ -131,26 +131,6 @@ typedef struct VertexFaceRef
 static void VFRAddFace(VertexFaceRef *vfr, NSUInteger index);
 static NSUInteger VFRGetCount(VertexFaceRef *vfr);
 static NSUInteger VFRGetFaceAtIndex(VertexFaceRef *vfr, NSUInteger index);
-
-
-@interface OOMesh (Private) <OOMutableCopying>
-
-- (id)initWithName:(const std::string &)name
-		  cacheKey:(const std::optional<std::string> &)cacheKey
-materialDictionary:(const oo::PList &)materialDict
- shadersDictionary:(const oo::PList &)shadersDict
-			smooth:(BOOL)smooth
-	  shaderMacros:(const oo::PList &)macros
-shaderBindingTarget:(id<OOWeakReferenceSupport>)object
-	   scaleFactor:(float)scale
-	cacheWriteable:(BOOL)cacheWriteable;
-
-- (BOOL) loadData:(const std::string &)filename scaleFactor:(float)scale;
-
-- (oo::PList) modelData;	// null: incomplete
-- (BOOL) setModelFromModelData:(const oo::PList &)dict name:(const std::string &)fileName;
-
-@end
 
 
 // The OOCacheManager (OOMesh) category, as free functions next to the cache (defined below).
@@ -226,18 +206,10 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 const oo::PList &macros,
 									 id<OOWeakReferenceSupport> object)
 {
-	// The designated initialiser is slice 2's, still Objective-C: the facade's, which makes this
-	// mesh (its -init) and loads it, or answers nil.
-	::OOMesh *mesh = [[[::OOMesh alloc] initWithName:name
-											 cacheKey:cacheKey
-								   materialDictionary:materialDict
-									shadersDictionary:shadersDict
-											   smooth:smooth
-										 shaderMacros:macros
-								  shaderBindingTarget:object
-										  scaleFactor:1.0f
-									   cacheWriteable:YES] autorelease];
-	return oo::Ref<OOMesh>(oo::ToCxx(mesh));
+	// [[self alloc] initWithName:...] autoreleased: a new mesh, loaded, or null when it did not load.
+	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();
+	if (!mesh->initWithName(name, cacheKey, materialDict, shadersDict, smooth, macros, object, 1.0f, true))  return nullptr;
+	return mesh;
 }
 
 oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
@@ -250,16 +222,9 @@ oo::Ref<OOMesh> OOMesh::meshWithName(const std::string &name,
 									 float scale,
 									 bool cacheWriteable)
 {
-	::OOMesh *mesh = [[[::OOMesh alloc] initWithName:name
-											 cacheKey:cacheKey
-								   materialDictionary:materialDict
-									shadersDictionary:shadersDict
-											   smooth:smooth
-										 shaderMacros:macros
-								  shaderBindingTarget:object
-										  scaleFactor:scale
-									   cacheWriteable:cacheWriteable] autorelease];
-	return oo::Ref<OOMesh>(oo::ToCxx(mesh));
+	oo::Ref<OOMesh> mesh = oo::makeRef<OOMesh>();
+	if (!mesh->initWithName(name, cacheKey, materialDict, shadersDict, smooth, macros, object, scale, cacheWriteable))  return nullptr;
+	return mesh;
 }
 
 
@@ -298,14 +263,14 @@ OOMesh::~OOMesh()
 {
 	unsigned				i;
 
-	// [self deleteDisplayLists] and the graphics reset manager's -unregisterClient:self are the
-	// facade's -dealloc (OOMesh+ObjCBridge.mm): they message the facade, the registered client,
-	// which is gone by the time its C++ part is destroyed.
+	deleteDisplayLists();
 
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
 		DESTROY(materials[i]);
 	}
+
+	OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
 
 	DESTROY(_shaderBindingTarget);
 
@@ -344,10 +309,7 @@ oo::Ref<OOMesh> OOMesh::copyWithZone(OOZone *zone)
 {
 	// -zone is always nil (OOObject.h), so this is [self zone].
 	if (zone == nullptr)  return oo::Ref<OOMesh>(this);	// OK because we're immutable seen from the outside
-	// -mutableCopyWithZone: is slice 2's, still Objective-C. The copy's facade, its graphics reset
-	// client, lives until the pool drains.
-	::OOMesh *copy = [[oo::ToObjC(this) mutableCopyWithZone:zone] autorelease];
-	return oo::Ref<OOMesh>(oo::ToCxx(copy));
+	else  return mutableCopyWithZone(zone);
 }
 
 
@@ -786,10 +748,7 @@ BoundingBox OOMesh::findSubentityBoundingBoxWithPosition(Vector position, OOMatr
 
 oo::Ref<OOMesh> OOMesh::meshRescaledBy(GLfloat scaleFactor)
 {
-	// -mutableCopy is slice 2's, still Objective-C: the copy's facade (its graphics reset client)
-	// lives until the pool drains, as the autoreleased result did.
-	::OOMesh *copy = [[oo::ToObjC(this) mutableCopy] autorelease];
-	oo::Ref<OOMesh> result(oo::ToCxx(copy));
+	oo::Ref<OOMesh> result = mutableCopyWithZone(nullptr);	// [self mutableCopy]
 	result->rescaleByFactor(scaleFactor);
 	return result;
 }
@@ -878,143 +837,135 @@ bool OOMesh::suppressClangStuff()
 }	// namespace cxx
 
 
-@implementation OOMesh (Private)
+namespace cxx {
 
-- (id)initWithName:(const std::string &)name
-		  cacheKey:(const std::optional<std::string> &)cacheKey
-materialDictionary:(const oo::PList &)materialDict
- shadersDictionary:(const oo::PList &)shadersDict
-			smooth:(BOOL)smooth
-	  shaderMacros:(const oo::PList &)macros
-shaderBindingTarget:(id<OOWeakReferenceSupport>)target
-	   scaleFactor:(float)scale
-	cacheWriteable:(BOOL)cacheWriteable
+bool OOMesh::initWithName(const std::string &name,
+						  const std::optional<std::string> &cacheKey,
+						  const oo::PList &materialDict,
+						  const oo::PList &shadersDict,
+						  bool smooth,
+						  const oo::PList &macros,
+						  id<OOWeakReferenceSupport> target,
+						  float scale,
+						  bool cacheWriteable)
 {
 	OOJS_PROFILE_ENTER
 	
-	self = [self init];	// the C++ mesh (bead oo-dnbf): was [super init], with every ivar zero
-	if (self == nil)  return nil;
-	
-	@autoreleasepool
+	// The mesh is new (the factory made it; -init's defaults, which loading overwrites). It answers
+	// whether it loaded: the factory drops it when not, as [self release] did.
+	bool loaded = false;
+	void *pool = objc_autoreleasePoolPush();	// @autoreleasepool
 	{
-		oo::ToCxx(self)->_normalMode = smooth ? kNormalModeSmooth : kNormalModePerFace;
-		oo::ToCxx(self)->_cacheWriteable = cacheWriteable;
+		_normalMode = smooth ? kNormalModeSmooth : kNormalModePerFace;
+		_cacheWriteable = cacheWriteable;
 		
 #if OOMESH_PROFILE
-		oo::ToCxx(self)->_stopwatch = oo::makeRef<OOProfilingStopwatch>();
+		_stopwatch = oo::makeRef<OOProfilingStopwatch>();
 #endif
 		
-		if ([self loadData:name scaleFactor:scale])
+		if (loadData(name, scale))
 		{
-			oo::ToCxx(self)->calculateBoundingVolumes();
+			calculateBoundingVolumes();
 			PROFILE("finished calculateBoundingVolumes (again\?\?)");
 			
-			oo::ToCxx(self)->baseFile = name;
-			oo::ToCxx(self)->baseFileOctreeCacheRef = oo::str::format("%s-%.3f", name.c_str(), scale);
+			baseFile = name;
+			baseFileOctreeCacheRef = oo::str::format("%s-%.3f", name.c_str(), scale);
 			
 			/*	New in r3033: save the material-defining parameters here so we
 				can rebind the materials at any time.
 				-- Ahruman 2010-02-17
 			*/
-			oo::ToCxx(self)->_materialDict = materialDict;
-			oo::ToCxx(self)->_shadersDict = shadersDict;
-			oo::ToCxx(self)->_cacheKey = cacheKey;
-			oo::ToCxx(self)->_shaderMacros = macros;
-			oo::ToCxx(self)->_shaderBindingTarget = [target weakRetain];
+			_materialDict = materialDict;
+			_shadersDict = shadersDict;
+			_cacheKey = cacheKey;
+			_shaderMacros = macros;
+			_shaderBindingTarget = [target weakRetain];
 			
-			oo::ToCxx(self)->rebindMaterials();
+			rebindMaterials();
 			PROFILE("finished material setup");
 			
-			[[OOGraphicsResetManager sharedManager] registerClient:self];
-		}
-		else
-		{
-			[self release];
-			self = nil;
+			OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
+			loaded = true;
 		}
 #if OOMESH_PROFILE
-		oo::ToCxx(self)->_stopwatch = nullptr;
+		_stopwatch = nullptr;
 #endif
 #if OO_MULTITEXTURE
-		if (EXPECT(self != nil))
+		if (EXPECT(loaded))
 		{
-			oo::ToCxx(self)->_textureUnitCount = NSNotFound;
+			_textureUnitCount = NSNotFound;
 		}
 #endif
 	}
-	return self;
+	objc_autoreleasePoolPop(pool);
+	return loaded;
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-- (id)mutableCopyWithZone:(OOZone *)zone
+oo::Ref<OOMesh> OOMesh::mutableCopyWithZone(OOZone * /*zone*/)
 {
-	OOMesh				*result = nil;
 	OOMeshMaterialCount	i;
 
-	// NSCopyObject(self, 0, zone) without Foundation (ADR-0029 reroot), on the C++ part (bead
-	// oo-dnbf): a new mesh whose members are copied one by one, as NSCopyObject copied the ivars
-	// bitwise and the C++ ones were then constructed afresh over the copy (so the buffers are
-	// shared). Its facade is a new one of this class. Zones are unused, as on GNUstep.
-	result = [oo::ToObjC(oo::makeRef<cxx::OOMesh>(*oo::ToCxx(self))) retain];
+	// NSCopyObject(self, 0, zone) without Foundation (ADR-0029 reroot): a new mesh whose members
+	// are copied one by one (the copy constructor), as NSCopyObject copied the ivars bitwise and
+	// the C++ ones were then constructed afresh over the copy, so the buffers are shared. Zones are
+	// unused, as on GNUstep.
+	oo::Ref<OOMesh> result = oo::makeRef<OOMesh>(*this);
 
-	if (result != nil)
+	// The Objective-C members, copied as pointers, get their -retain (the octree is a C++ reference, copied).
+	[result->_shaderBindingTarget retain];
+
+	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
-		// The Objective-C members, copied as pointers, get their -retain (the octree is a C++ reference, copied).
-		cxx::OOMesh *copy = oo::ToCxx(result);
-		[copy->_shaderBindingTarget retain];
-
-		for (i = 0; i != kOOMeshMaxMaterials; ++i)
-		{
-			[copy->materials[i] retain];
-		}
-
-		// Reset unsharable GL state
-		copy->listsReady = NO;
-
-		[[OOGraphicsResetManager sharedManager] registerClient:result];
+		[result->materials[i] retain];
 	}
+
+	// Reset unsharable GL state
+	result->listsReady = NO;
+
+	OOGraphicsResetManager::sharedManager()->registerCxxClient(result.get());
 
 	return result;
 }
 
 
-- (oo::PList)modelData
+oo::PList OOMesh::modelData()
 {
 	OOJS_PROFILE_ENTER
 
-	BOOL includeNormals = IsPerVertexNormalMode((OOMeshNormalMode)oo::ToCxx(self)->_normalMode);
+	BOOL includeNormals = IsPerVertexNormalMode((OOMeshNormalMode)_normalMode);
 
 	// Prepare cache data elements.
-	const auto vertData = oo::ToCxx(self)->_retainedObjects.find("vertices");
-	const auto faceData = oo::ToCxx(self)->_retainedObjects.find("faces");
-	const auto normData = oo::ToCxx(self)->_retainedObjects.find("normals");
-	const auto tanData = oo::ToCxx(self)->_retainedObjects.find("tangents");
+	const auto vertData = _retainedObjects.find("vertices");
+	const auto faceData = _retainedObjects.find("faces");
+	const auto normData = _retainedObjects.find("normals");
+	const auto tanData = _retainedObjects.find("tangents");
 
 	// Ensure we have all the required data elements.
-	if (vertData == oo::ToCxx(self)->_retainedObjects.end() || faceData == oo::ToCxx(self)->_retainedObjects.end())
+	if (vertData == _retainedObjects.end() || faceData == _retainedObjects.end())
 	{
 		return oo::PList();
 	}
 
 	if (includeNormals)
 	{
-		if (normData == oo::ToCxx(self)->_retainedObjects.end() || tanData == oo::ToCxx(self)->_retainedObjects.end())  return oo::PList();
+		if (normData == _retainedObjects.end() || tanData == _retainedObjects.end())  return oo::PList();
 	}
 
 	// All OK; stick 'em in a dictionary. The counts are unsigned (+numberWithUnsignedInt:, and
 	// +numberWithUnsignedChar: for the normal mode); the normals are only included when used.
 	oo::PList::Array mtlKeys;
-	for (OOMeshMaterialCount i = 0; i != oo::ToCxx(self)->materialCount; ++i)  mtlKeys.emplace_back(oo::ToCxx(self)->materialKeys[i]);
+	for (OOMeshMaterialCount i = 0; i != materialCount; ++i)  mtlKeys.emplace_back(materialKeys[i]);
 
 	oo::PList::Dict result;
-	result["vertex count"] = oo::PList(oo::ToCxx(self)->vertexCount);
+	result["vertex count"] = oo::PList(vertexCount);
 	result["vertex data"] = oo::PList(vertData->second->data());
-	result["face count"] = oo::PList(oo::ToCxx(self)->faceCount);
+	result["face count"] = oo::PList(faceCount);
 	result["face data"] = oo::PList(faceData->second->data());
 	result["material keys"] = oo::PList(std::move(mtlKeys));
-	result["normal mode"] = oo::PList::unsignedInteger(oo::ToCxx(self)->_normalMode);
+	result["normal mode"] = oo::PList::unsignedInteger(_normalMode);
 	if (includeNormals)
 	{
 		result["normal data"] = oo::PList(normData->second->data());
@@ -1026,7 +977,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 }
 
 
-- (BOOL)setModelFromModelData:(const oo::PList &)dict name:(const std::string &)fileName
+bool OOMesh::setModelFromModelData(const oo::PList &dict, const std::string &fileName)
 {
 	OOJS_PROFILE_ENTER
 
@@ -1034,10 +985,10 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 
 	if (!dict.isDict())  return NO;
 
-	oo::ToCxx(self)->vertexCount = dict.get<unsigned int>("vertex count");
-	oo::ToCxx(self)->faceCount = dict.get<unsigned int>("face count");
+	vertexCount = dict.get<unsigned int>("vertex count");
+	faceCount = dict.get<unsigned int>("face count");
 
-	if (oo::ToCxx(self)->vertexCount == 0 || oo::ToCxx(self)->faceCount == 0)  return NO;
+	if (vertexCount == 0 || faceCount == 0)  return NO;
 
 	// Read data elements from dictionary.
 	const oo::PList *vertData = dict.get<oo::PList::Data>("vertex data");
@@ -1046,8 +997,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	const oo::PList *tanData = nullptr;
 
 	const oo::PList *mtlKeys = dict.get<oo::PList::Array>("material keys");
-	oo::ToCxx(self)->_normalMode = dict.get<unsigned char>("normal mode");
-	BOOL includeNormals = IsPerVertexNormalMode((OOMeshNormalMode)oo::ToCxx(self)->_normalMode);
+	_normalMode = dict.get<unsigned char>("normal mode");
+	BOOL includeNormals = IsPerVertexNormalMode((OOMeshNormalMode)_normalMode);
 
 	// Ensure we have all the required data elements.
 	if (vertData == nullptr ||
@@ -1070,39 +1021,39 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	}
 
 	// Ensure data objects are of correct size.
-	if (vertData->getIf<oo::PList::Data>()->length() != sizeof *oo::ToCxx(self)->_vertices * oo::ToCxx(self)->vertexCount)  return NO;
-	if (faceData->getIf<oo::PList::Data>()->length() != sizeof *oo::ToCxx(self)->_faces * oo::ToCxx(self)->faceCount)  return NO;
+	if (vertData->getIf<oo::PList::Data>()->length() != sizeof *_vertices * vertexCount)  return NO;
+	if (faceData->getIf<oo::PList::Data>()->length() != sizeof *_faces * faceCount)  return NO;
 	if (includeNormals)
 	{
-		if (normData->getIf<oo::PList::Data>()->length() != sizeof *oo::ToCxx(self)->_normals * oo::ToCxx(self)->vertexCount)  return NO;
-		if (tanData->getIf<oo::PList::Data>()->length() != sizeof *oo::ToCxx(self)->_tangents * oo::ToCxx(self)->vertexCount)  return NO;
+		if (normData->getIf<oo::PList::Data>()->length() != sizeof *_normals * vertexCount)  return NO;
+		if (tanData->getIf<oo::PList::Data>()->length() != sizeof *_tangents * vertexCount)  return NO;
 	}
 
 	// Retain data: each is copied into a buffer of this mesh's, and the pointers taken from it.
-	oo::ToCxx(self)->setRetainedObject(*vertData->getIf<oo::PList::Data>(), "vertices");
-	oo::ToCxx(self)->_vertices = (Vector *)oo::ToCxx(self)->_retainedObjects.find("vertices")->second->data().mutableBytes();
-	oo::ToCxx(self)->setRetainedObject(*faceData->getIf<oo::PList::Data>(), "faces");
-	oo::ToCxx(self)->_faces = (OOMeshFace *)oo::ToCxx(self)->_retainedObjects.find("faces")->second->data().mutableBytes();
+	setRetainedObject(*vertData->getIf<oo::PList::Data>(), "vertices");
+	_vertices = (Vector *)_retainedObjects.find("vertices")->second->data().mutableBytes();
+	setRetainedObject(*faceData->getIf<oo::PList::Data>(), "faces");
+	_faces = (OOMeshFace *)_retainedObjects.find("faces")->second->data().mutableBytes();
 	if (includeNormals)
 	{
-		oo::ToCxx(self)->setRetainedObject(*normData->getIf<oo::PList::Data>(), "normals");
-		oo::ToCxx(self)->_normals = (Vector *)oo::ToCxx(self)->_retainedObjects.find("normals")->second->data().mutableBytes();
-		oo::ToCxx(self)->setRetainedObject(*tanData->getIf<oo::PList::Data>(), "tangents");
-		oo::ToCxx(self)->_tangents = (Vector *)oo::ToCxx(self)->_retainedObjects.find("tangents")->second->data().mutableBytes();
+		setRetainedObject(*normData->getIf<oo::PList::Data>(), "normals");
+		_normals = (Vector *)_retainedObjects.find("normals")->second->data().mutableBytes();
+		setRetainedObject(*tanData->getIf<oo::PList::Data>(), "tangents");
+		_tangents = (Vector *)_retainedObjects.find("tangents")->second->data().mutableBytes();
 	}
 	else
 	{
-		oo::ToCxx(self)->_normals = NULL;
-		oo::ToCxx(self)->_tangents = NULL;
+		_normals = NULL;
+		_tangents = NULL;
 	}
 
 	// Copy material keys (oo_stringAtIndex: a string, or a number's -stringValue).
 	const oo::PList::Array &keys = *mtlKeys->getIf<oo::PList::Array>();
-	oo::ToCxx(self)->materialCount = keys.size();
-	for (i = 0; i != oo::ToCxx(self)->materialCount; ++i)
+	materialCount = keys.size();
+	for (i = 0; i != materialCount; ++i)
 	{
 		const oo::PList &key = keys[i];
-		if (key.isString() || key.isNumber())  oo::ToCxx(self)->materialKeys[i] = oo::PListGet<std::string>::from(&key, std::string());
+		if (key.isString() || key.isNumber())  materialKeys[i] = oo::PListGet<std::string>::from(&key, std::string());
 		else
 		{
 			OO_LOG("mesh.load.error.badCacheData", "Ignoring bad cache data for mesh \"{}\".", fileName);
@@ -1116,7 +1067,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 }
 
 
-- (BOOL)loadData:(const std::string &)filename scaleFactor:(float)scale
+bool OOMesh::loadData(const std::string &filename, float scale)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1127,11 +1078,11 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	std::map<std::string, unsigned, std::less<>>	texFileName2Idx;
 	BOOL				using_preloaded = NO;
 	
-	const std::string cacheKey = oo::str::format("%s:%u:%.3f", filename.c_str(), oo::ToCxx(self)->_normalMode, scale);
+	const std::string cacheKey = oo::str::format("%s:%u:%.3f", filename.c_str(), _normalMode, scale);
 	const oo::PList cacheData = OOCacheManagerMeshDataForName(cacheKey);
 	if (cacheData)
 	{
-		if ([self setModelFromModelData:cacheData name:filename])
+		if (setModelFromModelData(cacheData, filename))
 		{
 			using_preloaded = YES;
 			PROFILE("loaded from cache");
@@ -1208,7 +1159,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		{
 			int n_v;
 			if (scanner->scanInt(&n_v))
-				oo::ToCxx(self)->vertexCount = n_v;
+				vertexCount = n_v;
 			else
 			{
 				failFlag = YES;
@@ -1221,9 +1172,9 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			failString += "Failed to read NVERTS\n";
 		}
 		
-		if (!oo::ToCxx(self)->allocateVertexBuffersWithCount(oo::ToCxx(self)->vertexCount))
+		if (!allocateVertexBuffersWithCount(vertexCount))
 		{
-			OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(oo::ToCxx(self)->vertexCount));
+			OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(vertexCount));
 			return NO;
 		}
 		
@@ -1233,7 +1184,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			int n_f;
 			if (scanner->scanInt(&n_f))
 			{
-				oo::ToCxx(self)->faceCount = n_f;
+				faceCount = n_f;
 			}
 			else
 			{
@@ -1248,19 +1199,19 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 		
 		// Allocate face->vertex table.
-		std::vector<VertexFaceRef> faceRefTable(oo::ToCxx(self)->vertexCount);	// zeroed, freed when loading ends
+		std::vector<VertexFaceRef> faceRefTable(vertexCount);	// zeroed, freed when loading ends
 		VertexFaceRef *faceRefs = faceRefTable.data();
 
-		if (!oo::ToCxx(self)->allocateFaceBuffersWithCount(oo::ToCxx(self)->faceCount))
+		if (!allocateFaceBuffersWithCount(faceCount))
 		{
-			OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices, {} faces).", filename, static_cast<unsigned>(oo::ToCxx(self)->vertexCount), static_cast<unsigned>(oo::ToCxx(self)->faceCount));
+			OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices, {} faces).", filename, static_cast<unsigned>(vertexCount), static_cast<unsigned>(faceCount));
 			return NO;
 		}
 		
 		// get vertex data
 		if (scanner->scanString("VERTEX"))
 		{
-			for (j = 0; j < oo::ToCxx(self)->vertexCount; j++)
+			for (j = 0; j < vertexCount; j++)
 			{
 				float x, y, z;
 				if (!failFlag)
@@ -1270,7 +1221,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					if (!scanner->scanFloat(&z))  failFlag = YES;
 					if (!failFlag)
 					{
-						oo::ToCxx(self)->_vertices[j] = make_vector(x*scale, y*scale, z*scale);
+						_vertices[j] = make_vector(x*scale, y*scale, z*scale);
 					}
 					else
 					{
@@ -1288,7 +1239,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		// get face data
 		if (scanner->scanString("FACES"))
 		{
-			for (j = 0; j < oo::ToCxx(self)->faceCount; j++)
+			for (j = 0; j < faceCount; j++)
 			{
 				int r, g, b;
 				float nx, ny, nz;
@@ -1301,7 +1252,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					if (!scanner->scanInt(&b))  failFlag = YES;
 					if (!failFlag)
 					{
-						oo::ToCxx(self)->_faces[j].smoothGroup = r;
+						_faces[j].smoothGroup = r;
 					}
 					else
 					{
@@ -1314,7 +1265,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					if (!scanner->scanFloat(&nz))  failFlag = YES;
 					if (!failFlag)
 					{
-						oo::ToCxx(self)->_faces[j].normal = vector_normal(make_vector(nx, ny, nz));
+						_faces[j].normal = vector_normal(make_vector(nx, ny, nz));
 					}
 					else
 					{
@@ -1331,7 +1282,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						}
 						else if (n_v > 3)
 						{
-							OO_LOG_WARN("mesh.load.warning.nonTriangular", "Face[{}] of {} has {} vertices specified. Only the first three will be used.", static_cast<unsigned>(j), oo::ToCxx(self)->baseFile.value_or("(null)"), static_cast<unsigned>(n_v));
+							OO_LOG_WARN("mesh.load.warning.nonTriangular", "Face[{}] of {} has {} vertices specified. Only the first three will be used.", static_cast<unsigned>(j), baseFile.value_or("(null)"), static_cast<unsigned>(n_v));
 							n_v = 3;
 						}
 					}
@@ -1348,7 +1299,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						{
 							if (scanner->scanInt(&vi))
 							{
-								oo::ToCxx(self)->_faces[j].vertex[i] = vi;
+								_faces[j].vertex[i] = vi;
 								if (faceRefs != NULL)  VFRAddFace(&faceRefs[vi], j);
 							}
 							else
@@ -1370,7 +1321,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		// Get textures data.
 		if (scanner->scanString("TEXTURES"))
 		{
-			for (j = 0; j < oo::ToCxx(self)->faceCount; j++)
+			for (j = 0; j < faceCount; j++)
 			{
 				std::string	materialKey;
 				float	max_x, max_y;
@@ -1392,19 +1343,19 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						const auto indexIt = texFileName2Idx.find(materialKey);
 						if (indexIt != texFileName2Idx.end())
 						{
-							oo::ToCxx(self)->_faces[j].materialIndex = indexIt->second;
+							_faces[j].materialIndex = indexIt->second;
 						}
 						else
 						{
-							if (oo::ToCxx(self)->materialCount == kOOMeshMaxMaterials)
+							if (materialCount == kOOMeshMaxMaterials)
 							{
 								OO_LOG(kOOLogMeshTooManyMaterials, "***** ERROR: model {} has too many materials (maximum is {})", filename, static_cast<int>(kOOMeshMaxMaterials));
 								return NO;
 							}
-							oo::ToCxx(self)->_faces[j].materialIndex = oo::ToCxx(self)->materialCount;
-							oo::ToCxx(self)->materialKeys[oo::ToCxx(self)->materialCount] = materialKey;
-							texFileName2Idx.emplace(materialKey, oo::ToCxx(self)->materialCount);
-							++oo::ToCxx(self)->materialCount;
+							_faces[j].materialIndex = materialCount;
+							materialKeys[materialCount] = materialKey;
+							texFileName2Idx.emplace(materialKey, materialCount);
+							++materialCount;
 						}
 					}
 
@@ -1428,8 +1379,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 							if (!scanner->scanFloat(&t))  failFlag = YES;
 							if (!failFlag)
 							{
-								oo::ToCxx(self)->_faces[j].s[i] = s / max_x;
-								oo::ToCxx(self)->_faces[j].t[i] = t / max_y;
+								_faces[j].s[i] = s / max_x;
+								_faces[j].t[i] = t / max_y;
 							}
 							else
 								failString += oo::str::format("Failed to read s t coordinates for vertex[%d] in face[%d] in TEXTURES\n", i, j);
@@ -1442,12 +1393,12 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		{
 			failFlag = YES;
 			failString += "Failed to find TEXTURES data (will use placeholder material)\n";
-			oo::ToCxx(self)->materialKeys[0] = "_oo_placeholder_material";
-			oo::ToCxx(self)->materialCount = 1;
+			materialKeys[0] = "_oo_placeholder_material";
+			materialCount = 1;
 			
-			for (j = 0; j < oo::ToCxx(self)->faceCount; j++)
+			for (j = 0; j < faceCount; j++)
 			{
-				oo::ToCxx(self)->_faces[j].materialIndex = 0;
+				_faces[j].materialIndex = 0;
 			}
 		}
 		
@@ -1472,7 +1423,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					}
 					else
 					{
-						oo::ToCxx(self)->renameTexturesFrom(oo::str::format("%u", j), scannedName);
+						renameTexturesFrom(oo::str::format("%u", j), scannedName);
 					}
 				}
 			}
@@ -1483,14 +1434,14 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		// Get explicit normals.
 		if (scanner->scanString("NORMALS"))
 		{
-			oo::ToCxx(self)->_normalMode = kNormalModeExplicit;
-			if (!oo::ToCxx(self)->allocateNormalBuffersWithCount(oo::ToCxx(self)->vertexCount))
+			_normalMode = kNormalModeExplicit;
+			if (!allocateNormalBuffersWithCount(vertexCount))
 			{
-				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(oo::ToCxx(self)->vertexCount));
+				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(vertexCount));
 				return NO;
 			}
 			
-			for (j = 0; j < oo::ToCxx(self)->vertexCount; j++)
+			for (j = 0; j < vertexCount; j++)
 			{
 				float x, y, z;
 				if (!failFlag)
@@ -1500,7 +1451,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					if (!scanner->scanFloat(&z))  failFlag = YES;
 					if (!failFlag)
 					{
-						oo::ToCxx(self)->_normals[j] = vector_normal(make_vector(x, y, z));
+						_normals[j] = vector_normal(make_vector(x, y, z));
 					}
 					else
 					{
@@ -1512,7 +1463,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			// Get explicit tangents (only together with vertices).
 			if (scanner->scanString("TANGENTS"))
 			{
-				for (j = 0; j < oo::ToCxx(self)->vertexCount; j++)
+				for (j = 0; j < vertexCount; j++)
 				{
 					float x, y, z;
 					if (!failFlag)
@@ -1522,7 +1473,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						if (!scanner->scanFloat(&z))  failFlag = YES;
 						if (!failFlag)
 						{
-							oo::ToCxx(self)->_tangents[j] = vector_normal(make_vector(x, y, z));
+							_tangents[j] = vector_normal(make_vector(x, y, z));
 						}
 						else
 						{
@@ -1535,39 +1486,39 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		
 		PROFILE("finished parsing");
 		
-		if (IsLegacyNormalMode((OOMeshNormalMode)oo::ToCxx(self)->_normalMode))
+		if (IsLegacyNormalMode((OOMeshNormalMode)_normalMode))
 		{
-			oo::ToCxx(self)->checkNormalsAndAdjustWinding();
+			checkNormalsAndAdjustWinding();
 			PROFILE("finished checkNormalsAndAdjustWinding");
 		}
 		if (!explicitTangents)
 		{
-			oo::ToCxx(self)->generateFaceTangents();
+			generateFaceTangents();
 			PROFILE("finished generateFaceTangents");
 		}
 		
 		// check for smooth shading and recalculate normals
-		if (oo::ToCxx(self)->_normalMode == kNormalModeSmooth)
+		if (_normalMode == kNormalModeSmooth)
 		{
-			if (!oo::ToCxx(self)->allocateNormalBuffersWithCount(oo::ToCxx(self)->vertexCount))
+			if (!allocateNormalBuffersWithCount(vertexCount))
 			{
-				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(oo::ToCxx(self)->vertexCount));
+				OO_LOG(cxx_kOOLogAllocationFailure, "***** ERROR: failed to allocate memory for model {} ({} vertices).", filename, static_cast<unsigned>(vertexCount));
 				return NO;
 			}
-			oo::ToCxx(self)->calculateVertexNormalsAndTangentsWithFaceRefs(faceRefs);
+			calculateVertexNormalsAndTangentsWithFaceRefs(faceRefs);
 			PROFILE("finished calculateVertexNormalsAndTangents");
 			
 		}
-		else if (IsPerVertexNormalMode((OOMeshNormalMode)oo::ToCxx(self)->_normalMode) && !explicitTangents)
+		else if (IsPerVertexNormalMode((OOMeshNormalMode)_normalMode) && !explicitTangents)
 		{
-			oo::ToCxx(self)->calculateVertexTangentsWithFaceRefs(faceRefs);
+			calculateVertexTangentsWithFaceRefs(faceRefs);
 			PROFILE("finished calculateVertexTangents");
 		}
 		
 		// save the resulting data for possible reuse
-		if (EXPECT(oo::ToCxx(self)->_cacheWriteable))
+		if (EXPECT(_cacheWriteable))
 		{
-			OOCacheManagerSetMeshData([self modelData], cacheKey);
+			OOCacheManagerSetMeshData(modelData(), cacheKey);
 			PROFILE("saved to cache");
 		}
 		
@@ -1577,11 +1528,11 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 	}
 	
-	oo::ToCxx(self)->calculateBoundingVolumes();
+	calculateBoundingVolumes();
 	PROFILE("finished calculateBoundingVolumes");
 	
 	// set up vertex arrays for drawing
-	if (!oo::ToCxx(self)->setUpVertexArrays())  return NO;
+	if (!setUpVertexArrays())  return NO;
 	PROFILE("finished setUpVertexArrays");
 	
 	return YES;
@@ -1589,8 +1540,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	OOJS_PROFILE_EXIT
 }
 
-
-@end
+}	// namespace cxx
 
 
 #if SCRIBBLE
