@@ -96,7 +96,6 @@ oolite_sources += files(
     'OOProfilingStopwatch.mm',
     'OOQuaternion.cpp',
     'OORegExpMatcher.mm',
-    'OORegExpMatcher+ObjCBridge.mm',
     'OORoleSet.mm',
     'OORoleSet+ObjCBridge.mm',
     'OOShipGroup.mm',

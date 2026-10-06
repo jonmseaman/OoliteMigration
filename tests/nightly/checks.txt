@@ -279,5 +279,12 @@
 [oo-pfern] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh && python3 -m pytest -q -p no:cacheprovider tests/golden/test_clear_system_retry.py && for i in 1 2 3 4 5; do bash tools/tier-c.sh --only goldens || exit 1; done
 [oo-bhxc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-9ht.87] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSoundMixer test_OOSound test_OOOpenALController test_OOSoundSource test_OOMusic test_OOSoundChannel test_OOALBufferedSound test_OOALStreamedSound && bash tools/tier-c.sh --only goldens
+[oo-9ht.12] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OORegExpMatcher test_OOOpenGLExtensionManager test_OOGraphicsResetManager test_OOMaterialConvenienceCreators test_OOMultiTextureMaterial test_OOOpenGLMatrixManager test_OOOpenGLStateManager test_OOShaderMaterial test_OOShaderProgram test_OOShaderUniform test_OOShaderUniformMethodType test_OOTextureSprite && bash tools/tier-c.sh --only goldens
 [oo-0hyr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
 [oo-dnbf] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
+[oo-8fiz9] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
+[oo-8j1y2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
+[oo-2p1ug] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay test_OOPolygonSprite test_OOWaypointEntity && bash tools/tier-c.sh --only goldens
+[oo-kdrc6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
+[oo-0tx6c] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
+[oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
