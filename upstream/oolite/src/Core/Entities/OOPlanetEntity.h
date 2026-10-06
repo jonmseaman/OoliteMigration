@@ -63,7 +63,7 @@ public:
 
 	bool planetHasStation();
 	void launchShuttle();
-	void welcomeShuttle(ShipEntity *shuttle);
+	void welcomeShuttle(::ShipEntity *shuttle);
 
 	bool hasAtmosphere();
 

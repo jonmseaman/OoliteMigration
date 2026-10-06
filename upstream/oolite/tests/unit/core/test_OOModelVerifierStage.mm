@@ -6,8 +6,9 @@
 	registers it (once), its neighbours (the intermediate class's), the models other stages name
 	(found in the OXP or built in, or not; an empty name is not found; each model and context once),
 	when it runs, and what it logs (a placeholder check of each model, in the order named). The
-	verifier finds it again through -modelVerifierStage. Then the crossing: the converted stage is
-	global, so Objective-C sees it as an OOOXPVerifierStage.
+	verifier finds it again by its name (through -modelVerifierStage until bead oo-9ht.56 deleted
+	that category: standing approval oo-9n5p9). Then the crossing: the converted stage is global, so
+	Objective-C sees it as an OOOXPVerifierStage.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -159,12 +160,12 @@ OO_TEST(nameRegistersTheStage)
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		OO_CHECK([verifier cxx_stageWithName:"Testing models"] == nil);
-		OO_CHECK([verifier modelVerifierStage] == nil);
+		OO_CHECK([verifier cxx_stageWithName:OOModelVerifierStage::kName] == nil);
 		OO_CHECK(OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier) == "Testing models");
-		OOOXPVerifierStage *registered = [verifier modelVerifierStage];
+		OOOXPVerifierStage *registered = [verifier cxx_stageWithName:OOModelVerifierStage::kName];
 		OO_CHECK(registered != nil && [verifier cxx_stageWithName:"Testing models"] == registered);
 		OO_CHECK(OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier) == "Testing models");
-		OO_CHECK([verifier modelVerifierStage] == registered);	// once
+		OO_CHECK([verifier cxx_stageWithName:OOModelVerifierStage::kName] == registered);	// once
 
 		OO_CHECK([registered cxx_name] == std::optional<std::string>("Testing models"));
 		OO_CHECK([registered cxx_dependencies] == kScannerName);
@@ -218,14 +219,14 @@ OO_TEST(stagesNameModels)
 
 
 // The converted stage is global: the stage the verifier registered is its facade, an
-// OOOXPVerifierStage, one per stage, and -modelVerifierStage finds it for the ship data stage.
+// OOOXPVerifierStage, one per stage, and the verifier finds it by name for the ship data stage.
 OO_TEST(facade)
 {
 	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({ { "Models/ship.dat", "model" } });
 		OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier);
-		OOOXPVerifierStage *facade = [verifier modelVerifierStage];
+		OOOXPVerifierStage *facade = [verifier cxx_stageWithName:OOModelVerifierStage::kName];
 		OO_CHECK(facade != nil && [facade class] == [OOOXPVerifierStage class]);
 		OOModelVerifierStage *stage = static_cast<OOModelVerifierStage *>(oo::ToCxx(facade));
 		OO_CHECK(stage != nullptr && oo::ToObjC(stage) == facade);
