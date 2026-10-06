@@ -40,6 +40,7 @@
 
 #include "oo_test.hpp"
 
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <process.h>
@@ -756,6 +757,44 @@ b", 0, GUI_ALIGN_LEFT), 2);
 		[facade cxx_setArray:{ "f" } forRow:0];
 		OO_CHECK(gui->objectForRow(0).isArray());
 		OO_CHECK_EQ([facade statusPage], 1u);
+	}
+}
+
+
+// --- bead oo-bcz4: slice 3 (drawing, the star chart's title, found systems) ---
+// No universe and no player (both nil): the drawing has no view to ask, no chart to draw and no
+// found systems, so these pin what the units do without them.
+
+OO_TEST(drawingWithoutAUniverse)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		GuiDisplayGen *gui = SmallGUI("T");
+		OO_CHECK_EQ([gui drawGUI:0.0f drawCursor:NO], 0);	// too faint to draw: nothing, row 0
+		[gui setAlpha:0.5f];
+		[gui fadeOutFromTime:0.0 overDuration:1.0];
+		OO_CHECK_EQ([gui drawGUI:0.0f drawCursor:NO], 0);
+		OO_CHECK_EQ([gui alpha], 0.5f);	// the fade moves only as the GUI is drawn visibly
+		[gui drawGUIBackground];	// no background sprite
+		[gui refreshStarChart];
+		OO_CHECK_EQ([gui targetNextFoundSystem:1], 0);	// not on a chart screen: the player's target
+		OO_CHECK_EQ([gui targetNextFoundSystem:0], 0);
+	}
+}
+
+
+OO_TEST(starChartTitleWithoutAUniverse)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		GuiDisplayGen *gui = SmallGUI("T");
+		[gui setStarChartTitle];
+		const std::optional<std::string> title = [gui cxx_title];
+		std::printf("  star chart title: %s
+", title ? title->c_str() : "(none)");
+		OO_CHECK(title != std::optional<std::string>("T"));	// replaced
 	}
 }
 
