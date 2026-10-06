@@ -192,12 +192,10 @@ OO_TEST(matches)
 	OO_CHECK(!Matches("GeForce GTX 1080", "^GTX"));
 	OO_CHECK(!Matches("geforce", "GeForce"));
 	OO_CHECK(Matches("geforce", "GeForce", kOORegExpCaseInsensitive));
-	OO_CHECK(!Matches("one
-two", "^two"));
-	OO_CHECK(Matches("one
-two", "^two", kOORegExpMultiLine));
+	OO_CHECK(!Matches("one\ntwo", "^two"));
+	OO_CHECK(Matches("one\ntwo", "^two", kOORegExpMultiLine));
 	OO_CHECK(Matches("", "^$"));
-	OO_CHECK(Matches("cafÃ©", "Ã©$"));	// UTF-8 in, UTF-16 units to the engine
+	OO_CHECK(Matches("caf\xC3\xA9", "\xC3\xA9$"));	// UTF-8 in, UTF-16 units to the engine
 	OO_CHECK(OORegExpMatcher::regExpMatcher()->string("abc", "b"));	// flags 0
 }
 
@@ -264,8 +262,7 @@ OO_TEST(cxxMatches)
 	OO_CHECK(matcher->string("GeForce GTX 1080", "^GeForce GTX [0-9]+$"));
 	OO_CHECK(!matcher->string("geforce", "GeForce"));
 	OO_CHECK(matcher->string("geforce", "GeForce", kOORegExpCaseInsensitive));
-	OO_CHECK(matcher->string("one
-two", "^two", kOORegExpMultiLine));
+	OO_CHECK(matcher->string("one\ntwo", "^two", kOORegExpMultiLine));
 	OO_CHECK(!matcher->string("abc", ""));
 }
 
