@@ -3885,3 +3885,52 @@ subclasses (`StationEntity`, `DockEntity`, `PlayerEntity`, `ProxyPlayerEntity`),
 category files and every reader of a ship's ivars changed only by item 1. The facade's deletion
 bead removes every `_cxxShip->`, makes the item 2 members private and depends on the umbrella
 oo-k8a.
+
+## Amendment (bead oo-luhd): a binding's slice beads, whose natives message the universe and the player
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSSystem.mm` and
+  `OOJSSystem+ObjCBridge.h/.mm` after slices 1-2 of `docs/phases/3-slices/OOJSSystem.md` (beads
+  oo-luhd, oo-yqoa), `tests/unit/core/test_OOJSSystem.mm`. Follows amendments oo-ppc, oo-6ia4,
+  oo-nge8, oo-dqxj and oo-9ht.139, which says these sends go behind one-line functions.
+
+**Context.** `OOJSSystem.mm` is the first binding converted slice by slice. It has no class of its
+own: its slices are natives and helpers, almost every line of which messages the universe or the
+player, and a few of which message a converted class (`OOJSScript`, `Entity`, the populator
+definition) or send a category selector that each entity class answers (`-isVisibleToScripts`).
+Its natives need the real engine to run, and the old test style (amendment oo-ppc item 6) would
+stand in for half of the game.
+
+**Decision (recommended defaults).**
+
+1. **A binding with no class gets `X+ObjCBridge.h/.mm` of one-line send functions only** (amendment
+   oo-9ht.139 item 3), with no façade. `X.mm` imports the bridge header; `X.h` does not, so the
+   binding's callers see nothing new. `meson.build` lists `X+ObjCBridge.mm` after `X.mm`. A send
+   repeated in several units is one function; the functions are grouped in the header by the
+   class they message.
+2. **A send to a converted class becomes a `cxx::` call, nil-guarded** (amendment oo-6ia4 item 2):
+   `cxx::OOJSScript::currentlyRunningScript()` then `oo::ToCxx(script)->propertyNamed(...)`, null for
+   no script; `[entity isPlayer]` is `oo::ToCxx(entity)->getIsPlayer()`.
+3. **A category selector that entity classes answer each in their own way** (`-isVisibleToScripts`,
+   implemented by the `OOJS*` bindings' categories) stays a message, in a bridge function
+   (`OOJSSystemEntityIsVisibleToScripts(entity)`), even when the receiver's root is converted: the
+   answer depends on the receiver's class.
+4. **A converted class whose façade only alloc/init may make** (amendment oo-o89 item 2:
+   `OOJSPopulatorDefinition`) is made by a bridge function that returns the façade retained
+   (`OOJSSystemNewPopulatorDefinition()`, `OO_RETURNS_RETAINED`), held in
+   `oo::ObjCRef` by `oo::adoptObjC` and used through `oo::ToCxx`; the reference is dropped where
+   `-release` was.
+5. **A slice converts only its units' bodies and the prototypes their signatures need** (a helper's
+   `BOOL isGroup` parameter becomes `bool` with its prototype). Callers outside the slice that pass
+   `YES`/`NO` compile unchanged.
+6. **The binding's test runs the real engine**, linking the whole game but `main` (meson entry
+   `['*']`, as `test_OOJSScript` does): `[OOJavaScriptEngine sharedEngine]` defines the binding's
+   objects in the engine's own context, and the test evaluates JS there. The universe and the player
+   are stand-in classes of other names (`FakeUniverse`, `FakePlayer`) stored in `gSharedUniverse`
+   and `gOOPlayer` after the engine exists; they answer only the selectors the slices send and log
+   what they are told. Entities are real `Entity` objects (a test subclass that is visible to
+   scripts), so the engine's predicates, wrappers and `JSValueToEntity()` run unchanged. The same
+   file runs on the Objective-C binding and on each converted slice; each slice adds its tests.
+
+**Consequences.** One bridge file per binding, with a deletion bead that waits for `Universe` and
+`PlayerEntity` (and, for a binding that wraps one, the entity class); no caller changes. The bridge
+functions are the binding's list of what it still needs from unconverted classes.

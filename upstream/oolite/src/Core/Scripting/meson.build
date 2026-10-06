@@ -53,6 +53,7 @@ oolite_sources += files(
     'OOJSStation+ObjCBridge.mm',
     'OOJSSun.mm',
     'OOJSSystem.mm',
+    'OOJSSystem+ObjCBridge.mm',
     'OOJSSystemInfo.mm',
     'OOJSSystemInfo+ObjCBridge.mm',
     'OOJSTimer.mm',
