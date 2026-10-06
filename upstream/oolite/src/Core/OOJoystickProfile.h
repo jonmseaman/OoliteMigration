@@ -14,8 +14,8 @@ quadratic with the gradients matching at the control point.
 
 C++20 since bead oo-fn2f (proposed ADR-0056 and its hierarchy amendments oo-cwz/oo-up4b). The
 three profile classes are C++ classes, the curve (rawValue) virtual; the spline's segments are
-the private OOJoystickSplineSegment. Bead oo-9ht.16 deleted their Objective-C facades
-(OOJoystickProfile+ObjCBridge) and moved the classes to the global namespace.
+the private OOJoystickSplineSegment. Bead oo-9ht.16 deleted their Objective-C facades and moved
+the classes to the global namespace.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
