@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 
 #import "OOPListSchemaVerifier.h"	// the delegate interface; C++ since bead oo-9ht.119
@@ -47,7 +46,7 @@ class OOAIStateMachineVerifierStage;	// C++ since bead oo-94qk
 	and holds it (as its OOOXPVerifierStage facade until bead oo-9ht.4). It is the schema
 	verifier's delegate, through the C++ interface OOPListSchemaVerifierDelegate since bead
 	oo-9ht.119 deleted the schema verifier's facade (a helper Objective-C object, made by run(),
-	was its delegate before; its files go with bead oo-9ht.54).
+	was its delegate before; bead oo-9ht.54 deleted it).
 */
 class OOCheckShipDataPListVerifierStage : public OOTextureHandlingStage, public OOPListSchemaVerifierDelegate
 {
@@ -95,7 +94,6 @@ private:
 								_playerKeys = {},
 								_allKeys = {};
 	oo::Ref<OOPListSchemaVerifier>	_schemaVerifier = {};	// Made by run() (its facade was autoreleased there until bead oo-9ht.119).
-	oo::ObjCRef<id>				_schemaDelegate = {};	// The helper that was the schema verifier's delegate; unused since bead oo-9ht.119, deleted by oo-9ht.54.
 	OOAIStateMachineVerifierStage *_aiVerifierStage = {};	// Not retained (the verifier holds it).
 
 	// Info about ship currently being checked.
@@ -107,10 +105,5 @@ private:
 								_isTemplate = {},
 								_havePrintedMessage = {};
 };
-
-
-// Transitional: the schema verifier's former delegate, an Objective-C helper, unused since bead
-// oo-9ht.119 made the stage the delegate. Deleted by the bridge's deletion bead (oo-9ht.54).
-#import "OOCheckShipDataPListVerifierStage+ObjCBridge.h"
 
 #endif
