@@ -247,10 +247,18 @@ OO_TEST(standardSubentities)
 		subs.push_back(Dict({ { "subentity_key", oo::PList(std::string("missing")) } }));	// the universe has none
 		subs.push_back(Dict({ { "position", Numbers(1, 1, 1) } }));							// no key
 		subs.push_back(Flasher(-3));
-		OOVisualEffectEntity *effect = Effect("parent", Dict({ { "subentities", oo::PList(std::move(subs)) } }));
+		// Made, and the snapshot taken, in a pool of their own: what is left after it drains is what
+		// owns the child (pending autoreleases are not ownership).
+		OOVisualEffectEntity *effect = nil;
+		std::vector<oo::ObjCRef<OOVisualEffectEntity *>> effects;
+		@autoreleasepool
+		{
+			effect = [[OOVisualEffectEntity alloc] cxx_initWithKey:"parent" definition:Dict({ { "subentities", oo::PList(std::move(subs)) } })];
+			effects = [effect effectSubEntityEnumerator];
+		}
+		[effect autorelease];
 
 		OO_CHECK_EQ([effect subEntityCount], 2u);
-		std::vector<oo::ObjCRef<OOVisualEffectEntity *>> effects = [effect effectSubEntityEnumerator];
 		OO_CHECK_EQ(effects.size(), 1u);
 		OO_CHECK([effect visualEffectSubEntityEnumerator].has_value() && [effect visualEffectSubEntityEnumerator]->size() == 1);
 		OO_CHECK_EQ([effect flasherEnumerator].size(), 1u);
