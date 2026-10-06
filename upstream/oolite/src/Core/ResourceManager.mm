@@ -1532,7 +1532,7 @@ oo::PList cxx::ResourceManager::dictionaryFromFilesNamed(const std::string &file
 	if (mergeMode == MERGE_NONE)
 	{
 		// Find "last" matching dictionary
-		const std::vector<std::string> paths = paths();
+		const std::vector<std::string> paths = ResourceManager::paths();
 		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
 			const std::string &path = *pathIt;
@@ -1609,7 +1609,7 @@ oo::PList cxx::ResourceManager::arrayFromFilesNamed(const std::string &fileName,
 	if (!mergeFiles)
 	{
 		// Find "last" matching array
-		const std::vector<std::string> paths = paths();
+		const std::vector<std::string> paths = ResourceManager::paths();
 		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
 			const std::string &path = *pathIt;
@@ -1849,7 +1849,7 @@ oo::PList cxx::ResourceManager::logControlDictionary()
 {
 	// Load built-in copy of logcontrol.plist.
 	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
-	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath(), "Config"), "logcontrol.plist");
+	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*ResourceManager::builtInPath(), "Config"), "logcontrol.plist");
 	oo::PList logControl = PListDictionaryFromFile(builtInPath);
 	if (!logControl.isDict())  logControl = oo::PList(oo::PList::Dict());
 	oo::PList::Dict &logControlEntries = *logControl.getIf<oo::PList::Dict>();
@@ -1861,7 +1861,7 @@ oo::PList cxx::ResourceManager::logControlDictionary()
 		coreRoots.insert(LogClassKeyRoot(key));
 	}
 
-	const std::vector<std::string> rootPaths = rootPaths();
+	const std::vector<std::string> rootPaths = ResourceManager::rootPaths();
 
 	// The logcontrol.plist in path/Config, else in path itself.
 	auto configDictionary = [](const std::string &path) -> oo::PList
