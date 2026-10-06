@@ -4,9 +4,8 @@ OOOXZManager+ObjCBridge.h
 
 TRANSITIONAL (proposed ADR-0056, bead oo-bwjb): the Objective-C OOOXZManager, a facade over the C++
 cxx::OOOXZManager (OOOXZManager.h), for the code that is not converted yet: its callers
-(GameController, PlayerEntity, PlayerEntityControls), and the units of slices 2 to 4 of
-OOOXZManager.mm (docs/phases/3-slices/OOOXZManager.md: installing and removing OXZs, the GUI
-pages and their input), which stay Objective-C methods of this facade, in OOOXZManager.mm, until
+(GameController, PlayerEntity, PlayerEntityControls), and the units of slice 4 of
+OOOXZManager.mm (docs/phases/3-slices/OOOXZManager.md: the install and remove option pages), which stay Objective-C methods of this facade, in OOOXZManager.mm, until
 their own beads. Its interface is the one OOOXZManager.h declared before the conversion, copied
 exactly (same selectors, same types): the slice 1 methods forward to their C++ members in one
 line each, and the rest are declared by the OOOXZManagerSlices category below, which
@@ -22,7 +21,7 @@ directly.
 
 The manager is a singleton: +sharedManager answers one facade for the life of the process
 (proposed ADR-0056 amendment oo-r7m0, item 5). Never add to this file; converted code does not
-message the facade. Deleted by its deletion bead once slices 2 to 4 are converted and no file
+message the facade. Deleted by its deletion bead once slice 4 is converted and no file
 outside OOOXZManager.* names the Objective-C class.
 
 Oolite
@@ -76,12 +75,6 @@ MA 02110-1301, USA.
 - (oo::PList) manifests;	// an Array, or null before a list is loaded
 - (oo::PList) managedOXZs;	// an Array
 
-@end
-
-
-// The rest of the old interface: slices 2 to 4, still Objective-C, implemented in OOOXZManager.mm.
-@interface OOOXZManager (OOOXZManagerSlices)
-
 - (void) gui;
 - (BOOL) isRestarting;
 - (BOOL) isAcceptingTextInput;
@@ -93,6 +86,13 @@ MA 02110-1301, USA.
 - (void) processFilterKey;
 - (void) processShowInfoKey;
 - (void) processExtractKey;
+
+@end
+
+
+// The rest of the old interface: slice 4, still Objective-C, implemented in OOOXZManager.mm.
+@interface OOOXZManager (OOOXZManagerSlices)
+
 - (OOGUIRow) showInstallOptions;
 - (OOGUIRow) showRemoveOptions;
 - (void) showOptionsUpdate;
@@ -104,8 +104,9 @@ MA 02110-1301, USA.
 @end
 
 
-// The slice 1 units of the private category that slices 2 to 4 send, forwarded to their C++
-// members (proposed ADR-0056 amendment oo-pni4 item 1). Moved from OOOXZManager.mm.
+// The units of slices 1 and 2 of the private category that slice 4 sends (or the unit test
+// does), forwarded to their C++ members (proposed ADR-0056 amendment oo-pni4 item 1). Moved from
+// OOOXZManager.mm.
 @interface OOOXZManager (OOPrivateForwarded)
 
 - (std::optional<std::string>) downloadPath;	// nullopt: no cache directory
@@ -114,8 +115,6 @@ MA 02110-1301, USA.
 
 - (BOOL) ensureInstallPath;
 
-- (BOOL) beginDownload:(const std::string &)url;
-
 - (BOOL) validateFilter:(const std::string &)input;
 
 - (void) setFilteredList:(const oo::PList &)list;
@@ -123,6 +122,15 @@ MA 02110-1301, USA.
 - (oo::PList) applyCurrentFilter:(const oo::PList &)list;	// an Array
 
 - (void) setProgressStatus:(const std::string &)newStatus;
+
+- (OOColor *) colorForManifest:(const oo::PList &)manifest;
+- (std::optional<std::string>) installStatusForManifest:(const oo::PList &)manifest;	// nullopt: its description is missing
+
+- (BOOL) installOXZ:(NSUInteger)item;
+- (BOOL) updateAllOXZ;
+- (BOOL) removeOXZ:(NSUInteger)item;
+
+- (std::string) extractOXZ:(NSUInteger)item;	// the extraction log
 
 @end
 

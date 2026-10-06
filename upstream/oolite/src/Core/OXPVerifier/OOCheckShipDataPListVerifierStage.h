@@ -41,14 +41,14 @@ struct OOPListSchemaVerifierError;
 	are oo::PList; the key and role sets are sorted std::vectors of strings.
 
 	C++20 since bead oo-1v2w (proposed ADR-0056 Amendment 1, amendments oo-up4b and oo-rmd7): a
-	subclass of cxx::OOTextureHandlingStage. It is global and has no facade: nothing outside this
+	subclass of OOTextureHandlingStage. It is global and has no facade: nothing outside this
 	file names it, and the Objective-C verifier makes it from its name (kCxxStages in
 	OOOXPVerifier.mm) and holds it as an OOOXPVerifierStage (oo::ToObjC). It is the schema
 	verifier's delegate, an Objective-C role, through a helper object that stays Objective-C until
 	OOPListSchemaVerifier is C++: OOCheckShipDataPListVerifierStage+ObjCBridge.h, imported at the
 	end of this header.
 */
-class OOCheckShipDataPListVerifierStage : public cxx::OOTextureHandlingStage
+class OOCheckShipDataPListVerifierStage : public OOTextureHandlingStage
 {
 public:
 	std::optional<std::string> name() override;

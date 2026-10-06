@@ -802,7 +802,7 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 		@try
 		{
 			// Load state machine and validate against whitelist.
-			const std::optional<std::string> aiPath = [ResourceManager cxx_pathForFileNamed:smName inFolder:"AIs"];
+			const std::optional<std::string> aiPath = [::ResourceManager cxx_pathForFileNamed:smName inFolder:"AIs"];
 			if (aiPath.has_value())
 			{
 				newSM = PListDictionaryFromFile(*aiPath);
@@ -889,7 +889,7 @@ oo::PList AI::cleanActions(const oo::PList &actions, const std::string &handlerK
 
 	if (!whitelist.has_value())
 	{
-		const oo::PList whitelistDictionary = [ResourceManager cxx_whitelistDictionary];
+		const oo::PList whitelistDictionary = [::ResourceManager cxx_whitelistDictionary];
 		whitelist.emplace();
 		for (const char *key : { "ai_methods", "ai_and_action_methods" })
 		{

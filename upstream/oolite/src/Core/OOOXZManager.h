@@ -7,8 +7,8 @@ Responsible for installing and uninstalling OXZs
 C++20 since bead oo-bwjb, slice 1 of docs/phases/3-slices/OOOXZManager.md (proposed ADR-0056: a
 singleton, amendment oo-r7m0; a class-shell slice, amendment oo-pni4). OOOXZManager+ObjCBridge.h,
 imported at the end of this header, keeps the Objective-C OOOXZManager as a facade over this class
-for its callers (GameController, PlayerEntity, PlayerEntityControls) and for the units of slices
-2 to 4, which stay Objective-C, on the facade, until their own beads. The bridge's deletion bead
+for its callers (GameController, PlayerEntity, PlayerEntityControls) and for the units of slice
+4, which stay Objective-C, on the facade, until their own beads. The bridge's deletion bead
 moves the class out of namespace cxx.
 
 Oolite
@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOTypes.h"
 #import "GuiDisplayGen.h"
+#import "OOColor.h"
 
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
@@ -74,6 +75,22 @@ typedef enum {
 } OXZInterfaceState;
 
 
+// What a manifest's OXZ can do here (installableState()). Moved from OOOXZManager.mm by bead oo-0hyr
+// (a member's result; ADR-0056 amendment oo-pni4 item 2).
+typedef enum {
+	OXZ_INSTALLABLE_OKAY,
+	OXZ_INSTALLABLE_UPDATE,
+	OXZ_INSTALLABLE_DEPENDENCIES,
+	OXZ_INSTALLABLE_CONFLICTS,
+	// for things to work, _ALREADY must be the first UNINSTALLABLE state
+	// and all the INSTALLABLE ones must be before all the UNINSTALLABLE ones
+	OXZ_UNINSTALLABLE_ALREADY,
+	OXZ_UNINSTALLABLE_NOREMOTE,
+	OXZ_UNINSTALLABLE_VERSION,
+	OXZ_UNINSTALLABLE_MANUAL
+} OXZInstallableState;
+
+
 namespace cxx {
 
 class OOOXZManager : public oo::RefCounted
@@ -101,7 +118,20 @@ public:
 	oo::PList manifests();	// an Array, or null before a list is loaded
 	oo::PList managedOXZs();	// an Array
 
-	// Internal (the OOPrivate and OOFilterRules categories): the units of slices 2 to 4 of
+	bool isRestarting();
+
+	void gui();
+	bool isAcceptingTextInput();
+	bool isAcceptingGUIInput();
+
+	void processSelection();
+	void processTextInput(const std::string &input);
+	void refreshTextInput(const std::string &input);
+	void processFilterKey();
+	void processShowInfoKey();
+	void processExtractKey();
+
+	// Internal (the OOPrivate and OOFilterRules categories): the units of slice 4 of
 	// docs/phases/3-slices/OOOXZManager.md, still Objective-C on the facade, send some of these
 	// (the facade forwards them) and read and write the state below through oo::ToCxx(self); they
 	// become private as those slices convert.
@@ -115,6 +145,18 @@ public:
 
 	bool beginDownload(const std::string &url);
 	bool processDownloadedManifests();
+	bool processDownloadedOXZ();
+
+	oo::PList installedManifestForIdentifier(const std::string &identifier);	// null: not installed
+	OXZInstallableState installableState(const oo::PList &manifest);
+	oo::Ref<OOColor> colorForManifest(const oo::PList &manifest);
+	std::optional<std::string> installStatusForManifest(const oo::PList &manifest);	// nullopt: its description is missing
+
+	bool installOXZ(NSUInteger item);
+	bool updateAllOXZ();
+	bool removeOXZ(NSUInteger item);
+
+	std::string extractOXZ(NSUInteger item);	// the extraction log
 
 	bool validateFilter(const std::string &input);
 

@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 static const char * const kStageName	= "Testing textures and images";
 
 
-std::string OOTextureVerifierStage::nameForReverseDependencyForVerifier(OOOXPVerifier *)
+std::string OOTextureVerifierStage::nameForReverseDependencyForVerifier(::OOOXPVerifier *)
 {
 	return kStageName;
 }
@@ -49,7 +49,7 @@ std::optional<std::string> OOTextureVerifierStage::name()
 
 bool OOTextureVerifierStage::shouldRun()
 {
-	cxx::OOFileScannerVerifierStage *fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	return !_usedTextures.empty() || (fileScanner != nullptr && fileScanner->filesInFolder("Images").has_value());
 }
 
@@ -66,7 +66,7 @@ void OOTextureVerifierStage::run()
 	_usedTextures.clear();
 	
 	// All "images" are considered used, since we don't have a reasonable way to look for images referenced in JavaScript scripts.
-	cxx::OOFileScannerVerifierStage *fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner == nullptr)  return;	// a nil scanner listed no images
 	for (const std::string &name : fileScanner->filesInFolder("Images").value_or(std::vector<std::string>{}))
 	{
@@ -77,14 +77,14 @@ void OOTextureVerifierStage::run()
 
 void OOTextureVerifierStage::textureNamed(const std::string &name, const std::string &context)
 {
-	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
+	OOFileScannerVerifierStage	*fileScanner = nullptr;
 	
 	if (name.empty())  return;
 	const auto where = std::lower_bound(_usedTextures.begin(), _usedTextures.end(), name);
 	if (where != _usedTextures.end() && *where == name)  return;
 	_usedTextures.insert(where, name);
 	
-	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner == nullptr || !fileScanner->fileExists(name, "Textures", context, true))
 	{
 		OO_LOG("verifyOXP.texture.notFound", "----- WARNING: texture \"{}\" referenced in {} could not be found in {} or in Oolite.", name, context, [verifier() cxx_oxpDisplayName].value_or("(null)"));
@@ -96,14 +96,14 @@ void OOTextureVerifierStage::checkTextureNamed(const std::string &name, const st
 {
 	OOTextureLoader				*loader = nil;
 	std::optional<std::string>	path;
-	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
+	OOFileScannerVerifierStage	*fileScanner = nullptr;
 	std::optional<std::string>	displayName;
 	OOPixMapDimension			rWidth, rHeight;
 	bool						success;
 	OOPixMap					pixmap;
 	OOTextureDataFormat			format;
 	
-	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner != nullptr)  path = fileScanner->pathForFile(name, folder, std::nullopt, false);
 	
 	if (!path.has_value())  return;
@@ -147,19 +147,14 @@ void OOTextureVerifierStage::checkTextureNamed(const std::string &name, const st
 }
 
 
-// OOTextureHandlingStage: C++ since bead oo-tuq8. Its Objective-C subclasses reach this through
-// their facade (OOTextureVerifierStage+ObjCBridge.mm).
-
-namespace cxx {
+// OOTextureHandlingStage: C++ since bead oo-tuq8; global since bead oo-9ht.45 deleted its facade.
 
 std::optional<std::vector<std::string>> OOTextureHandlingStage::dependents()
 {
 	std::vector<std::string> result = OOFileHandlingVerifierStage::dependents().value_or(std::vector<std::string>());
-	const std::string reverse = ::OOTextureVerifierStage::nameForReverseDependencyForVerifier(verifier());
+	const std::string reverse = OOTextureVerifierStage::nameForReverseDependencyForVerifier(verifier());
 	if (std::find(result.begin(), result.end(), reverse) == result.end())  result.push_back(reverse);
 	return result;
 }
-
-}	// namespace cxx
 
 #endif
