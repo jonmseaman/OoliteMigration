@@ -16,6 +16,7 @@ core_tests = {
     'test_OOPListScript': ['*'],
     'test_OOScript': ['*'],
     'test_OOJSScript': ['*'],
+    'test_OOJavaScriptEngine': ['*'],
     'test_OOJSSystem': ['*'],
     'test_OOJSPlayerShip': ['*'],
     'test_OOCache': ['Core/OOCache.mm', 'Core/OODescription.mm'],

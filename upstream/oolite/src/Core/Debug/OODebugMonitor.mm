@@ -85,7 +85,7 @@ void OODebugMonitor::init()
 
 		_TCPIgnoresDroppedPackets = false;
 
-		OOJavaScriptEngine *jsEng = [OOJavaScriptEngine sharedEngine];
+		::OOJavaScriptEngine *jsEng = [::OOJavaScriptEngine sharedEngine];
 #if OOJSENGINE_MONITOR_SUPPORT
 		id monitor = oo::ToObjC(this);	// the facade adopts OOJavaScriptEngineMonitor (OODebugMonitor+ObjCBridge.mm)
 		[jsEng setMonitor:monitor];
@@ -724,7 +724,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 	// If no script, just make console visible globally as debugConsole.
 	if (!_script)
 	{
-		ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
+		ooscript::Object global = [[::OOJavaScriptEngine sharedEngine] globalObject];
 		ooscript::defineProperty(context, global, "debugConsole", oo_jsValueInContext(context), NULL, NULL, ooscript::PropertyFlag::Enumerate);
 	}
 	
@@ -829,7 +829,7 @@ oo::PList OODebugMonitor::normalizeConfigValue(const oo::PList &value, const std
 }
 
 
-void OODebugMonitor::jsEngine(OOJavaScriptEngine * /*engine*/,
+void OODebugMonitor::jsEngine(::OOJavaScriptEngine * /*engine*/,
 							  ooscript::Context /*context*/,
 							  ooscript::ErrorReport *errorReport,
 							  unsigned stackSkip,
@@ -912,7 +912,7 @@ void OODebugMonitor::jsEngine(OOJavaScriptEngine * /*engine*/,
 }
 
 
-void OODebugMonitor::jsEngine(OOJavaScriptEngine * /*engine*/,
+void OODebugMonitor::jsEngine(::OOJavaScriptEngine * /*engine*/,
 							  ooscript::Context /*context*/,
 							  const std::string &message,
 							  const std::optional<std::string> & /*messageClass*/)

@@ -104,6 +104,7 @@ MA 02110-1301, USA.
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OORuntime.h"
 
 #include "oofnd/objc/OOAssert.h"
 
@@ -124,7 +125,7 @@ MA 02110-1301, USA.
 
 
 namespace {
-static OOJavaScriptEngine	*sSharedEngine = nil;
+static cxx::OOJavaScriptEngine	*sSharedEngine = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
 } // namespace
 namespace {
 static unsigned				sErrorHandlerStackSkip = 0;
@@ -153,17 +154,6 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 @end
 
 #endif
-
-
-@interface OOJavaScriptEngine (Private)
-
-- (BOOL) lookUpStandardClassPointers;
-- (void) registerStandardObjectConverters;
-
-- (void) createMainThreadContext;
-- (void) destroyMainThreadContext;
-
-@end
 
 
 namespace {
@@ -299,32 +289,37 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 // JavaScript engine initialisation and shutdown
 //===========================================================================
 
-@implementation OOJavaScriptEngine
+namespace cxx {
 
-+ (OOJavaScriptEngine *) sharedEngine
+OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 {
-	if (sSharedEngine == nil)  sSharedEngine = [[self alloc] init];
-	
+	if (sSharedEngine == nullptr)
+	{
+		// The one +1, never released (amendment oo-r7m0 item 1). Recorded before init() runs, as
+		// -init recorded self before it made the context, so a re-entrant sharedEngine() answers
+		// the engine being set up (amendment oo-3bgz item 3).
+		OOJavaScriptEngine *engine = oo::makeRef<OOJavaScriptEngine>().leakRef();
+		sSharedEngine = engine;
+		engine->init();
+	}
+
 	return sSharedEngine;
 }
 
 
-- (void) runMissionCallback
+void OOJavaScriptEngine::runMissionCallback()
 {
 	MissionRunCallback();
 }
 
 
-- (id) init
+void OOJavaScriptEngine::init()
 {
-	OOAssert(sSharedEngine == nil, "Attempt to create multiple OOJavaScriptEngines.");
-	
-	self = [super init];
-	if (!self)  { return nil; }
-	sSharedEngine = self;
-	
+	// -init asserted that no engine existed yet; sharedEngine() makes only this one.
+	OOCAssert(sSharedEngine == this, "Attempt to create multiple OOJavaScriptEngines.");
+
 	ooscript::setCStringsAreUTF8();
-	
+
 	oo::Defaults &defaults = oo::Defaults::standard();
 #ifndef NDEBUG
 	/*	Set stack trace preferences from preferences. These will be overriden
@@ -332,8 +327,8 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		without setting up the debug console could be useful for debugging
 		users' problems.
 	*/
-	[self setDumpStackForErrors:defaults.boolForKey("dump-stack-for-errors")];
-	[self setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
+	[oo::ToObjC(this) setDumpStackForErrors:defaults.boolForKey("dump-stack-for-errors")];	// slice 2, still Objective-C on the facade
+	[oo::ToObjC(this) setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
 #endif
 	
 	assert(sizeof(ooscript::Char16) == sizeof(uint16_t));
@@ -351,17 +346,15 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	}
 	
 	// OOJSTimeManagementInit() must be called before any context is created!
-	OOJSTimeManagementInit(self, _runtime);
+	OOJSTimeManagementInit(oo::ToObjC(this), _runtime);	// the watchdog holds the facade
 	
-	[self createMainThreadContext];
-	
-	return self;
+	createMainThreadContext();
 }
 
 
-- (void) createMainThreadContext
+void OOJavaScriptEngine::createMainThreadContext()
 {
-	OOAssert(gOOJSMainThreadContext == NULL, "-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
+	OOCAssert(gOOJSMainThreadContext == NULL, "-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
 	
 	// create a context and associate it with the JS runtime.
 	gOOJSMainThreadContext = (ooscript::newContext(_runtime, OOJS_STACK_SIZE));
@@ -397,12 +390,12 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
 	// Initialize the built-in JS objects and the global object.
 	ooscript::initStandardClasses((gOOJSMainThreadContext), (_globalObject));
-	if (![self lookUpStandardClassPointers])
+	if (!lookUpStandardClassPointers())
 	{
 		OO_LOG("script.javaScript.init.error", "{}", "***** FATAL ERROR: failed to look up standard JavaScript classes.");
 		exit(1);
 	}
-	[self registerStandardObjectConverters];
+	registerStandardObjectConverters();
 	
 	SetUpOOJSGlobal(gOOJSMainThreadContext, _globalObject);
 	OOConstToJSStringInit(gOOJSMainThreadContext);
@@ -442,8 +435,8 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	InitOOJSFont(gOOJSMainThreadContext, _globalObject);
 	
 	// Run prefix scripts.
-	[OOJSScript cxx_jsScriptFromFileNamed:"oolite-global-prefix.js"
-						   properties:oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})];
+	[::OOJSScript cxx_jsScriptFromFileNamed:"oolite-global-prefix.js"
+							 properties:oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}})];
 
 	ooscript::endRequest((gOOJSMainThreadContext));
 	
@@ -451,7 +444,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 }
 
 
-- (void) destroyMainThreadContext
+void OOJavaScriptEngine::destroyMainThreadContext()
 {
 	if (gOOJSMainThreadContext != NULL)
 	{
@@ -478,9 +471,9 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 }
 
 
-- (BOOL) reset
+bool OOJavaScriptEngine::reset()
 {
-	OOAssert(gOOJSMainThreadContext != NULL, "JavaScript engine not active. Can't reset.");
+	OOCAssert(gOOJSMainThreadContext != NULL, "JavaScript engine not active. Can't reset.");
 	
 	OOJSFrameCallbacksRemoveAll();
 	
@@ -490,7 +483,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	if (counter-- == 0) {
 	counter = 3;
 	OO_LOG("script.javascript.init.error", "{}", "JavaScript processes still pending. Can't reset JavaScript engine.");
-		return NO;
+		return false;
 	}
 	else
 	{
@@ -506,7 +499,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		{
 			// some threads are still pending, this should mean timers are still being removed.
 			OO_LOG("script.javascript.init.error", "{}", "JavaScript processes still pending. Can't reset JavaScript engine.");
-			return NO;
+			return false;
 		}
 		else
 		{
@@ -515,37 +508,86 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	}
 	
 	ooscript::Context context = OOJSAcquireContext();
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, self);
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, oo::ToObjC(this));	// the facade: what observers filter on
 OOJSRelinquishContext(context);
 	
-	[self destroyMainThreadContext];
-	[self createMainThreadContext];
+	destroyMainThreadContext();
+	createMainThreadContext();
 	
 	context = OOJSAcquireContext();
-	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, self);
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, oo::ToObjC(this));
 OOJSRelinquishContext(context);
 	
-	[self garbageCollectionOpportunity:YES];
-	return YES;
+	[oo::ToObjC(this) garbageCollectionOpportunity:YES];	// slice 2, still Objective-C on the facade
+	return true;
 }
 
 
-- (void) dealloc
+OOJavaScriptEngine::~OOJavaScriptEngine()
 {
-	sSharedEngine = nil;
+	sSharedEngine = nullptr;
 	
 	OOJSFrameCallbacksRemoveAll();
 	
-	[self destroyMainThreadContext];
+	destroyMainThreadContext();
 	ooscript::destroyRuntime(_runtime);
-	
-	[super dealloc];
 }
 
 
+bool OOJavaScriptEngine::lookUpStandardClassPointers()
+{
+	ooscript::Object templateObject = NULL;
+	
+	templateObject = (ooscript::newObject((gOOJSMainThreadContext), NULL, NULL, NULL));
+	if (EXPECT_NOT(templateObject == NULL))  return false;
+	_objectClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
+	
+	{
+		ooscript::Object obj = (templateObject);
+		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::emptyStringValue((gOOJSMainThreadContext)), &obj)))  return false;
+		templateObject = (obj);
+	}
+	_stringClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
+	
+	templateObject = (ooscript::newArrayObject((gOOJSMainThreadContext), 0, NULL));
+	if (EXPECT_NOT(templateObject == NULL))  return false;
+	_arrayClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
+	
+	{
+		ooscript::Object obj = (templateObject);
+		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::int32Value(0), &obj)))  return false;
+		templateObject = (obj);
+	}
+	_numberClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
+	
+	{
+		ooscript::Object obj = (templateObject);
+		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::falseValue(), &obj)))  return false;
+		templateObject = (obj);
+	}
+	_booleanClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
+	
+	return true;
+}
+
+
+void OOJavaScriptEngine::registerStandardObjectConverters()
+{
+	// The getters are slice 2's, still Objective-C on the facade.
+	OOJSRegisterObjectConverter([oo::ToObjC(this) objectClass], JSPlainObjectConverter);
+	OOJSRegisterObjectConverter([oo::ToObjC(this) stringClass], JSStringConverter);
+	OOJSRegisterObjectConverter([oo::ToObjC(this) arrayClass], JSArrayConverter);
+	OOJSRegisterObjectConverter([oo::ToObjC(this) numberClass], JSNumberConverter);
+	OOJSRegisterObjectConverter([oo::ToObjC(this) booleanClass], JSBooleanConverter);
+}
+
+}	// namespace cxx
+
+@implementation OOJavaScriptEngine
+
 - (ooscript::Object) globalObject
 {
-	return _globalObject;
+	return oo::ToCxx(self)->_globalObject;
 }
 
 
@@ -606,90 +648,43 @@ OOJSRelinquishContext(context);
 
 - (BOOL) showErrorLocations
 {
-	return _showErrorLocations;
+	return oo::ToCxx(self)->_showErrorLocations;
 }
 
 
 - (void) setShowErrorLocations:(BOOL)value
 {
-	_showErrorLocations = !!value;
+	oo::ToCxx(self)->_showErrorLocations = !!value;
 }
 
 
 - (ooscript::ClassDef *) objectClass
 {
-	return _objectClass;
+	return oo::ToCxx(self)->_objectClass;
 }
 
 
 - (ooscript::ClassDef *) stringClass
 {
-	return _stringClass;
+	return oo::ToCxx(self)->_stringClass;
 }
 
 
 - (ooscript::ClassDef *) arrayClass
 {
-	return _arrayClass;
+	return oo::ToCxx(self)->_arrayClass;
 }
 
 
 - (ooscript::ClassDef *) numberClass
 {
-	return _numberClass;
+	return oo::ToCxx(self)->_numberClass;
 }
 
 
 - (ooscript::ClassDef *) booleanClass
 {
-	return _booleanClass;
-}
-
-
-- (BOOL) lookUpStandardClassPointers
-{
-	ooscript::Object templateObject = NULL;
-	
-	templateObject = (ooscript::newObject((gOOJSMainThreadContext), NULL, NULL, NULL));
-	if (EXPECT_NOT(templateObject == NULL))  return NO;
-	_objectClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
-	
-	{
-		ooscript::Object obj = (templateObject);
-		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::emptyStringValue((gOOJSMainThreadContext)), &obj)))  return NO;
-		templateObject = (obj);
-	}
-	_stringClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
-	
-	templateObject = (ooscript::newArrayObject((gOOJSMainThreadContext), 0, NULL));
-	if (EXPECT_NOT(templateObject == NULL))  return NO;
-	_arrayClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
-	
-	{
-		ooscript::Object obj = (templateObject);
-		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::int32Value(0), &obj)))  return NO;
-		templateObject = (obj);
-	}
-	_numberClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
-	
-	{
-		ooscript::Object obj = (templateObject);
-		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::falseValue(), &obj)))  return NO;
-		templateObject = (obj);
-	}
-	_booleanClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
-	
-	return YES;
-}
-
-
-- (void) registerStandardObjectConverters
-{
-	OOJSRegisterObjectConverter([self objectClass], JSPlainObjectConverter);
-	OOJSRegisterObjectConverter([self stringClass], JSStringConverter);
-	OOJSRegisterObjectConverter([self arrayClass], JSArrayConverter);
-	OOJSRegisterObjectConverter([self numberClass], JSNumberConverter);
-	OOJSRegisterObjectConverter([self booleanClass], JSBooleanConverter);
+	return oo::ToCxx(self)->_booleanClass;
 }
 
 
@@ -709,31 +704,31 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 
 - (BOOL) dumpStackForErrors
 {
-	return _dumpStackForErrors;
+	return oo::ToCxx(self)->_dumpStackForErrors;
 }
 
 
 - (void) setDumpStackForErrors:(BOOL)value
 {
-	_dumpStackForErrors = !!value;
+	oo::ToCxx(self)->_dumpStackForErrors = !!value;
 }
 
 
 - (BOOL) dumpStackForWarnings
 {
-	return _dumpStackForWarnings;
+	return oo::ToCxx(self)->_dumpStackForWarnings;
 }
 
 
 - (void) setDumpStackForWarnings:(BOOL)value
 {
-	_dumpStackForWarnings = !!value;
+	oo::ToCxx(self)->_dumpStackForWarnings = !!value;
 }
 
 
 - (void) enableDebuggerStatement
 {
-	ooscript::setDebuggerHandler(_runtime, DebuggerHook, self);
+	ooscript::setDebuggerHandler(oo::ToCxx(self)->_runtime, DebuggerHook, self);
 }
 #endif
 
@@ -742,41 +737,34 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 
 #if OOJSENGINE_MONITOR_SUPPORT
 
-@implementation OOJavaScriptEngine (OOMonitorSupport)
+namespace cxx {
 
-- (void) setMonitor:(id<OOJavaScriptEngineMonitor>)inMonitor
+void OOJavaScriptEngine::setMonitor(id<OOJavaScriptEngineMonitor> inMonitor)
 {
-	[_monitor autorelease];
-	_monitor = [inMonitor retain];
+	[_monitor.leakRef() autorelease];
+	_monitor = oo::ObjCRef<id<OOJavaScriptEngineMonitor>>(inMonitor);
 }
 
-@end
 
-
-@implementation OOJavaScriptEngine (OOMonitorSupportInternal)
-
-- (void) sendMonitorError:(ooscript::ErrorReport *)errorReport
-			  withMessage:(const std::string &)message
-				inContext:(ooscript::Context)theContext
+void OOJavaScriptEngine::sendMonitorError(ooscript::ErrorReport *errorReport, const std::string &message, ooscript::Context theContext)
 {
-	if ([_monitor respondsToSelector:@selector(jsEngine:context:error:stackSkip:showingLocation:withMessage:)])
+	if ([_monitor.get() respondsToSelector:OOSelectorFromName("jsEngine:context:error:stackSkip:showingLocation:withMessage:")])
 	{
-		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:message];
+		// -showErrorLocations is slice 2's, still Objective-C on the facade.
+		[_monitor.get() jsEngine:oo::ToObjC(this) context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[oo::ToObjC(this) showErrorLocations] withMessage:message];
 	}
 }
 
 
-- (void) sendMonitorLogMessage:(const std::optional<std::string> &)message
-			  withMessageClass:(const std::optional<std::string> &)messageClass
-					 inContext:(ooscript::Context)theContext
+void OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context theContext)
 {
-	if ([_monitor respondsToSelector:@selector(jsEngine:context:logMessage:ofClass:)])
+	if ([_monitor.get() respondsToSelector:OOSelectorFromName("jsEngine:context:logMessage:ofClass:")])
 	{
-		[_monitor jsEngine:self context:theContext logMessage:message.value_or("") ofClass:messageClass];
+		[_monitor.get() jsEngine:oo::ToObjC(this) context:theContext logMessage:message.value_or("") ofClass:messageClass];
 	}
 }
 
-@end
+}	// namespace cxx
 
 #endif
 

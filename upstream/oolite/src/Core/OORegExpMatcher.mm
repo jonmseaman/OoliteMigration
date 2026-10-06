@@ -79,7 +79,7 @@ bool OORegExpMatcher::init()
 	unsigned codeLine = __LINE__ + 1;	// NB: should remain line before code.
 	const char *code = "return regexp.test(string);";
 	
-	[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
+	[::OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 	
 	ooscript::Context context = OOJSAcquireContext();
 	_tester = [[::OOJSFunction alloc] initWithName:std::string("matchesRegExp")
