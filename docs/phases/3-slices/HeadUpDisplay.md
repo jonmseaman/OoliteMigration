@@ -118,6 +118,7 @@ slice 3: scanner
 slice 4: compass and beacon icons, aegis, reticles, waypoints
   -[HeadUpDisplay drawCompass*]
   @OOPolygonSprite(OOHUDBeaconIcon)
+  OOPolygonSpriteDrawHUDBeaconIcon()   # that category's body as a free function (amendments oo-6ia4 item 3, oo-9fwb)
   @OOHUDBeaconCodeIcon
   -[HeadUpDisplay drawAegis:]
   -[HeadUpDisplay drawTargetReticle:]
