@@ -263,11 +263,11 @@ void StickProfileScreen::startGui(GuiDisplayGen *gui_display_gen)
 
 void StickProfileScreen::mouseDown(NSPoint position)
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickSplineAxisProfile *spline_profile;
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickSplineAxisProfile *spline_profile;
 	NSPoint spline_position;
 
-	spline_profile = dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile);
+	spline_profile = dynamic_cast<OOJoystickSplineAxisProfile *>(profile);
 	if (spline_profile == nullptr)
 	{
 		return;
@@ -305,8 +305,8 @@ void StickProfileScreen::mouseUp()
 
 void StickProfileScreen::deleteSelected()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickSplineAxisProfile *spline_profile = dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickSplineAxisProfile *spline_profile = dynamic_cast<OOJoystickSplineAxisProfile *>(profile);
 	if (spline_profile != nullptr && selected_control_point >= 0)
 	{
 		spline_profile->removeControl(selected_control_point);
@@ -359,7 +359,7 @@ std::optional<std::string> StickProfileScreen::currentAxis()
 
 void StickProfileScreen::increaseDeadzone()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
 	if (profile)
 	{
 		profile->setDeadzone(profile->deadzone() + STICK_MAX_DEADZONE / 20);
@@ -371,7 +371,7 @@ void StickProfileScreen::increaseDeadzone()
 
 void StickProfileScreen::decreaseDeadzone()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
 	if (profile)
 	{
 		profile->setDeadzone(profile->deadzone() - STICK_MAX_DEADZONE / 20);
@@ -383,16 +383,16 @@ void StickProfileScreen::decreaseDeadzone()
 
 void StickProfileScreen::nextProfileType()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
 	double deadzone;
 
-	if (dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile) != nullptr)
+	if (dynamic_cast<OOJoystickStandardAxisProfile *>(profile) != nullptr)
 	{
 		deadzone = profile->deadzone();
-		profiles[current_axis][0] = oo::Ref<cxx::OOJoystickAxisProfile>(profile);
+		profiles[current_axis][0] = oo::Ref<OOJoystickAxisProfile>(profile);
 		if (!profiles[current_axis][1])
 		{
-			profiles[current_axis][1] = oo::makeRef<cxx::OOJoystickSplineAxisProfile>();
+			profiles[current_axis][1] = oo::makeRef<OOJoystickSplineAxisProfile>();
 		}
 		profiles[current_axis][1]->setDeadzone(deadzone);
 		stickHandler->setProfile(profiles[current_axis][1].get(), current_axis);
@@ -405,16 +405,16 @@ void StickProfileScreen::nextProfileType()
 
 void StickProfileScreen::previousProfileType()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
 	double deadzone;
 
-	if (dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile) != nullptr)
+	if (dynamic_cast<OOJoystickSplineAxisProfile *>(profile) != nullptr)
 	{
 		deadzone = profile->deadzone();
-		profiles[current_axis][1] = oo::Ref<cxx::OOJoystickAxisProfile>(profile);
+		profiles[current_axis][1] = oo::Ref<OOJoystickAxisProfile>(profile);
 		if (!profiles[current_axis][0])
 		{
-			profiles[current_axis][0] = oo::makeRef<cxx::OOJoystickStandardAxisProfile>();
+			profiles[current_axis][0] = oo::makeRef<OOJoystickStandardAxisProfile>();
 		}
 		profiles[current_axis][0]->setDeadzone(deadzone);
 		stickHandler->setProfile(profiles[current_axis][0].get(), current_axis);
@@ -427,7 +427,7 @@ void StickProfileScreen::previousProfileType()
 
 bool StickProfileScreen::currentProfileIsSpline()
 {
-	if (dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(stickHandler->getProfileForAxis(current_axis)) != nullptr)
+	if (dynamic_cast<OOJoystickSplineAxisProfile *>(stickHandler->getProfileForAxis(current_axis)) != nullptr)
 	{
 		return true;
 	}
@@ -437,8 +437,8 @@ bool StickProfileScreen::currentProfileIsSpline()
 
 void StickProfileScreen::IncreasePower()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<OOJoystickStandardAxisProfile *>(profile);
 
 	if (standard_profile != nullptr)
 	{
@@ -452,8 +452,8 @@ void StickProfileScreen::IncreasePower()
 
 void StickProfileScreen::DecreasePower()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<OOJoystickStandardAxisProfile *>(profile);
 
 	if (standard_profile != nullptr)
 	{
@@ -467,8 +467,8 @@ void StickProfileScreen::DecreasePower()
 
 void StickProfileScreen::IncreaseParam()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<OOJoystickStandardAxisProfile *>(profile);
 
 	if (standard_profile != nullptr)
 	{
@@ -482,8 +482,8 @@ void StickProfileScreen::IncreaseParam()
 
 void StickProfileScreen::DecreaseParam()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickStandardAxisProfile *standard_profile = dynamic_cast<OOJoystickStandardAxisProfile *>(profile);
 
 	if (standard_profile != nullptr)
 	{
@@ -497,8 +497,8 @@ void StickProfileScreen::DecreaseParam()
 
 void StickProfileScreen::graphProfile(GLfloat alpha, Vector at, NSSize size)
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickSplineAxisProfile *spline_profile;
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickSplineAxisProfile *spline_profile;
 	NSInteger i;
 	NSPoint point;
 	std::vector<NSPoint> control_points;
@@ -524,7 +524,7 @@ void StickProfileScreen::graphProfile(GLfloat alpha, Vector at, NSSize size)
 	OOGL(glColor4f(0.5,0.0,0.5,alpha));
 	GLDrawFilledOval(at.x+10,at.y+10,at.z,NSMakeSize(4,4),20);
 	GLDrawFilledOval(at.x+size.width-10,at.y+size.height-10,at.z,NSMakeSize(4,4),20);
-	spline_profile = dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile);
+	spline_profile = dynamic_cast<OOJoystickSplineAxisProfile *>(profile);
 	if (spline_profile != nullptr)
 	{
 		control_points = spline_profile->controlPoints();
@@ -577,8 +577,8 @@ void StickProfileScreen::saveSettings()
 
 void StickProfileScreen::showScreen()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
-	cxx::OOJoystickStandardAxisProfile *standard_profile;
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickStandardAxisProfile *standard_profile;
 	int bars;
 	double value;
 	double power;
@@ -602,7 +602,7 @@ void StickProfileScreen::showScreen()
 	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_DEADZONE];
 	[gui cxx_setArray: ColumnsUpToNil({ OO_DESC("oolite-stickprofile-profile-type"), profileType() }) forRow: GUI_ROW_STICKPROFILE_PROFILE_TYPE];
 	[gui cxx_setKey: std::string(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE_PROFILE_TYPE];
-	standard_profile = dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile);
+	standard_profile = dynamic_cast<OOJoystickStandardAxisProfile *>(profile);
 	if (standard_profile != nullptr)
 	{
 		power = standard_profile->power();
@@ -641,13 +641,13 @@ void StickProfileScreen::showScreen()
 
 std::optional<std::string> StickProfileScreen::profileType()
 {
-	cxx::OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
+	OOJoystickAxisProfile *profile = stickHandler->getProfileForAxis(current_axis);
 
-	if (dynamic_cast<cxx::OOJoystickStandardAxisProfile *>(profile) != nullptr)
+	if (dynamic_cast<OOJoystickStandardAxisProfile *>(profile) != nullptr)
 	{
 		return OO_DESC("oolite-stickprofile-type-standard");
 	}
-	if (dynamic_cast<cxx::OOJoystickSplineAxisProfile *>(profile) != nullptr)
+	if (dynamic_cast<OOJoystickSplineAxisProfile *>(profile) != nullptr)
 	{
 		return OO_DESC("oolite-stickprofile-type-spline");
 	}
