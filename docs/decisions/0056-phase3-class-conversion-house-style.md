@@ -3402,3 +3402,55 @@ the stages are members there is no selector to send.
 
 **Consequences.** `OODefaultShaderSynthesizer.mm` has no Objective-C method left; its façade and
 `cxx::` go with oo-9ht.134.
+
+## Amendment (bead oo-9ht.12): deleting a façade
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: the first façade deletion, bead oo-9ht.12
+  (`OORegExpMatcher+ObjCBridge`): `src/Core/OORegExpMatcher.h/.mm`, its one caller
+  `src/Core/OOOpenGLExtensionManager.mm`, `tests/unit/core/test_OORegExpMatcher.mm` and the
+  stand-ins in eleven other core tests; approval lines landed by oo-9ht.145.
+
+**Context.** Item 5 says a deletion bead "moves the class to the global namespace and deletes `cxx::`
+at every use, one mechanical replacement". The first one showed what else it takes: a caller whose
+deps were wrong, converted code that still messages the façade, tests that stub the Objective-C
+class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façade carried.
+
+**Decision (recommended defaults).** A "Delete X+ObjCBridge" bead does this, in this order:
+
+1. **Check readiness first, with the bead's grep and one wider one:** `\[X |\[\[X |\bX \*|ObjCRef<X\b`
+   and `\[::X ` outside `X*` files. An unconverted Objective-C file that still messages, makes,
+   declares or answers `X` means the deps are wrong: `bd dep add` the caller's conversion bead (or
+   its slices, or its own façade's deletion bead), note the lines in the bead, and skip it. Do not
+   convert the caller in a deletion bead. A converted file (C++ class, `namespace cxx`) that still
+   messages the façade (`[::X ...]`, `oo::ObjCRef<::X *>`, `oo::ToCxx(...)` of it) is adapted in the
+   deletion bead: it calls the C++ class directly.
+2. **List the test cases and stand-ins that go, and land their approval lines first.** Under the
+   standing approval oo-9n5p9 only the façade's own cases go: its selectors, `oo::ToObjC`/`oo::ToCxx`
+   crossings, `-dealloc`, its autorelease-pool lifetime. A case that asked a question through a
+   selector keeps its name and every expectation and asks the C++ class instead. A test that stubs
+   the Objective-C class (an `@interface X` stand-in, because the code it links messaged the façade)
+   gets a C++ stand-in with the same answers: definitions of the members that code now calls (and the
+   virtual destructor, for the vtable), after `#import "X.h"`. One path line per changed test file in
+   `tools/retire-test-approvals.txt`, reason `oo-9n5p9: <deletion bead> deletes the X façade - ONLY
+   ...`, landed by a separate small bead the deletion bead depends on, because a change may not
+   approve its own retirement. One approvals bead may carry the lines of several deletion beads.
+3. **Delete the bridge**: `git rm X+ObjCBridge.h/.mm`, the `#import` at the end of `X.h` with its
+   comment, the meson line in the module, and the bridge in each core test's meson entry.
+4. **Move the class to the global namespace**: drop `namespace cxx {` / `}` around the class in
+   `X.h` and `X.mm`, and replace `cxx::X` with `X` everywhere (sources and tests). Code that stays in
+   `namespace cxx` may keep `::X`; it now names the C++ class. Rewrite comments that described the
+   façade (the header banner says which bead deleted it).
+5. **Keep what the façade kept.** A façade's autoreleased object lived until the pool drained
+   (amendment oo-ct7c); a converted caller that made several calls in one pass now holds one
+   `oo::Ref<X>` across them (taken on first use if the old code took it lazily, so nothing new is
+   made when no call happens), and a test counts what is made per pass.
+6. **Gates and acceptance**: build (`tools/build-windows.sh test`, no new warning), `check-core-tests`
+   for the class's test and every test whose stand-in changed, tier-a on the changed sources, goldens,
+   guardrails, all through `buildslot.sh`. The bead's acceptance is the fast proof: `! test -e` both
+   bridge files, `! git grep -n 'ObjCBridge'` over `X.h` and the module's meson, `! git grep -nw
+   'cxx::X'` over `src` and `tests`, `grep -qF '[<id>] ' tests/nightly/checks.txt`, guardrails; the
+   nightly line runs the build, those core tests and the goldens.
+
+**Consequences.** Every deletion bead is two beads (approval lines, then deletion) unless it retires
+no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
+deps instead of growing into conversions.
