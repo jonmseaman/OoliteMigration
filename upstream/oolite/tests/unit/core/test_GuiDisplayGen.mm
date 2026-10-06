@@ -799,4 +799,24 @@ OO_TEST(starChartTitleWithoutAUniverse)
 }
 
 
+OO_TEST(cxxSlice3API)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		oo::Ref<cxx::GuiDisplayGen> gui = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
+		OO_CHECK_EQ(gui->drawGUI(0.0f, false), 0);
+		gui->drawGUIBackground();
+		gui->refreshStarChart();
+		OO_CHECK_EQ(gui->targetNextFoundSystem(1), 0);
+		gui->setStarChartTitle();
+		OO_CHECK(gui->getTitle() != std::optional<std::string>("T"));
+		// The facade forwards slice 3's selectors, and the ones slice 4 still sends.
+		GuiDisplayGen *facade = oo::ToObjC(gui);
+		OO_CHECK_EQ([facade drawGUI:0.0f drawCursor:NO], 0);
+		OO_CHECK([facade respondsToSelector:@selector(drawSystemMarkers:atX:andY:andZ:withAlpha:andScale:)]);
+	}
+}
+
+
 OO_TEST_MAIN()

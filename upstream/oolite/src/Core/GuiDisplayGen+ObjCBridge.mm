@@ -568,6 +568,58 @@ cxx::GuiDisplayGen *oo::ToCxx(GuiDisplayGen *gui)
 	_cxxGui->drawEquipmentList(eqptList, z);
 }
 
+
+- (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor
+{
+	return _cxxGui->drawGUI(alpha, drawCursor);
+}
+
+
+- (void) drawGUIBackground
+{
+	_cxxGui->drawGUIBackground();
+}
+
+
+- (void) refreshStarChart
+{
+	_cxxGui->refreshStarChart();
+}
+
+
+- (void) setStarChartTitle
+{
+	_cxxGui->setStarChartTitle();
+}
+
+
+- (OOSystemID) targetNextFoundSystem:(int)direction
+{
+	return _cxxGui->targetNextFoundSystem(direction);
+}
+
+@end
+
+
+@implementation GuiDisplayGen (OOGuiDisplayGenInternalForwarded)
+
+- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z
+{
+	_cxxGui->drawCrossHairsWithSize(size, x, y, z);
+}
+
+
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
+{
+	_cxxGui->drawSystemMarkers(marker, x, y, z, alpha, scale);
+}
+
+
+- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom
+{
+	_cxxGui->drawAdvancedNavArrayAtX(x, y, z, alpha, route, optimizeBy, zoom);
+}
+
 @end
 
 
