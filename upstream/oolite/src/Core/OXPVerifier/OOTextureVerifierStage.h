@@ -38,13 +38,13 @@ MA 02110-1301, USA.
 	(the other stages declare it) and, flipped with the others, returns a std::string (bead oo-3rb.274.2).
 
 	C++20 since bead oo-tuq8 (proposed ADR-0056 Amendment 1, amendment oo-up4b items 2 and 6).
-	OOTextureVerifierStage is a leaf of cxx::OOFileHandlingVerifierStage; it is global and has no
+	OOTextureVerifierStage is a leaf of OOFileHandlingVerifierStage; it is global and has no
 	facade, because nothing outside this file messages it (the verifier makes it from its name,
 	kCxxStages in OOOXPVerifier.mm). OOTextureHandlingStage is an intermediate class that the ship
 	data and model stages subclass; its Objective-C facade was deleted by bead oo-9ht.45 once they
 	were C++ (ADR-0056 amendment "deleting a facade"), with the verifier's -textureVerifierStage.
 */
-class OOTextureVerifierStage : public cxx::OOFileHandlingVerifierStage
+class OOTextureVerifierStage : public OOFileHandlingVerifierStage
 {
 public:
 	// Returns name to be used in dependents() by other stages.
@@ -69,7 +69,7 @@ private:
 
 
 // Convenience base class for stages that need to run before OOTextureHandlingStage.
-class OOTextureHandlingStage : public cxx::OOFileHandlingVerifierStage
+class OOTextureHandlingStage : public OOFileHandlingVerifierStage
 {
 public:
 	std::optional<std::vector<std::string>> dependents() override;

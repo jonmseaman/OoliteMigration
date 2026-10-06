@@ -109,21 +109,21 @@ std::optional<std::vector<std::string>> OOCheckShipDataPListVerifierStage::depen
 
 bool OOCheckShipDataPListVerifierStage::shouldRun()
 {
-	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
+	OOFileScannerVerifierStage	*fileScanner = nullptr;
 
-	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	return fileScanner != nullptr && fileScanner->fileExists("shipdata.plist", "Config", std::nullopt, false);
 }
 
 
 void OOCheckShipDataPListVerifierStage::run()
 {
-	cxx::OOFileScannerVerifierStage	*fileScanner = nullptr;
+	OOFileScannerVerifierStage	*fileScanner = nullptr;
 	std::vector<std::string>	ooliteShipData;	// the keys of Oolite's own merged shipdata.plist
 	oo::PList					settings;
 	std::vector<std::string>	shipList;
 
-	fileScanner = oo::ToCxx([verifier() fileScannerStage]);
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner != nullptr)  _shipdataPList = fileScanner->plistNamed("shipdata.plist", "Config", std::nullopt, false);
 
 	if (_shipdataPList.isNull())  return;
