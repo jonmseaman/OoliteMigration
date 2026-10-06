@@ -16,11 +16,14 @@
 	hardware cannot change the answers; the user's defaults are a scratch folder's (HOMEPATH), so
 	the machine's own volume cannot either. The decoder, the two concrete sounds and the mixer are
 	this file's stubs (proposed ADR-0056, amendment oo-z1s4 item 4): the real ones would bring
-	Vorbis and the whole mixer into the link. The concrete sounds are Objective-C subclasses, as
-	the real ones are. Run: bash tools/check-core-tests.sh
+	Vorbis and the whole mixer into the link. The streamed sound is an Objective-C subclass, as the
+	real one's facade is; the buffered sound is a C++ stand-in since bead oo-9ht.83 deleted its
+	facade, and its class checks ask the C++ sound (standing approval oo-9n5p9).
+	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOALSound.h"
+#import "OOALBufferedSound.h"
 #import "OOALSoundMixer.h"
 #import "OOLogging.h"
 
@@ -133,44 +136,34 @@ static int gLiveDecoders = 0;
 @end
 
 
-// The two concrete sounds, as Objective-C subclasses of the root. "bad.ogg" fails to load.
-@interface OOALBufferedSound: OOSound
+// The two concrete sounds. "bad.ogg" fails to load. The buffered sound is a C++ stand-in since
+// bead oo-9ht.83 deleted the Objective-C facade this file stubbed (the members the cluster and the
+// root's facade call); the streamed sound is an Objective-C subclass of the root, as the real one's
+// facade is.
+oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)
 {
-	std::optional<std::string>	_name;
-}
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder;
-
-@end
-
-
-@implementation OOALBufferedSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder
-{
-	if ([inDecoder cxx_name] == "bad.ogg")
-	{
-		[self release];
-		return nil;
-	}
-	self = [super init];
-	if (self != nil)  _name = [inDecoder cxx_name];
-	return self;
+	if ([inDecoder cxx_name] == "bad.ogg")  return nullptr;
+	oo::Ref<OOALBufferedSound> sound = oo::adopt(new OOALBufferedSound);
+	sound->_name = [inDecoder cxx_name];
+	return sound;
 }
 
 
-- (std::optional<std::string>)cxx_name
+OOALBufferedSound::~OOALBufferedSound()
+{
+}
+
+
+std::optional<std::string> OOALBufferedSound::name()
 {
 	return _name;
 }
 
 
-- (ALuint) soundBuffer
+ALuint OOALBufferedSound::soundBuffer()
 {
 	return 42;
 }
-
-@end
 
 
 @interface OOALStreamedSound: OOSound
@@ -413,12 +406,12 @@ OO_TEST(loadingPicksBufferedOrStreamed)
 	@autoreleasepool
 	{
 		OOSound *small = [[[OOSound alloc] cxx_initWithContentsOfFile:std::string("small.ogg")] autorelease];
-		OO_CHECK([small isKindOfClass:[OOALBufferedSound class]]);
+		OO_CHECK(dynamic_cast<OOALBufferedSound *>(oo::ToCxx(small)) != nullptr);
 		OO_CHECK([small cxx_name] == std::optional<std::string>("small.ogg"));
 		OO_CHECK([small soundBuffer] == 42 && ![small soundIncomplete]);
 
 		OOSound *edge = [[[OOSound alloc] cxx_initWithContentsOfFile:std::string("edge.ogg")] autorelease];
-		OO_CHECK([edge isKindOfClass:[OOALBufferedSound class]]);
+		OO_CHECK(dynamic_cast<OOALBufferedSound *>(oo::ToCxx(edge)) != nullptr);
 
 		OOSound *big = [[[OOSound alloc] cxx_initWithContentsOfFile:std::string("big.ogg")] autorelease];
 		OO_CHECK([big isKindOfClass:[OOALStreamedSound class]]);
@@ -498,7 +491,7 @@ OO_TEST(cxxApi)
 	{
 		// The factory answers the concrete Objective-C sound, retained.
 		const oo::ObjCRef<OOSound *> small = cxx::OOSound::initWithContentsOfFile(std::string("small.ogg"));
-		OO_CHECK([small.get() isKindOfClass:[OOALBufferedSound class]]);
+		OO_CHECK(dynamic_cast<OOALBufferedSound *>(oo::ToCxx(small.get())) != nullptr);
 		OO_CHECK(oo::ToCxx(small.get())->name() == std::optional<std::string>("small.ogg"));
 		const oo::ObjCRef<OOSound *> big = cxx::OOSound::initWithContentsOfFile(std::string("big.ogg"));
 		OO_CHECK([big.get() isKindOfClass:[OOALStreamedSound class]]);

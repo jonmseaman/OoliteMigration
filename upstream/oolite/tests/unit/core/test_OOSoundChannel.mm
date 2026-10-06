@@ -21,6 +21,7 @@
 
 #import "OOALSoundChannel.h"
 #import "OOALSound.h"
+#import "OOALBufferedSound.h"
 #import "OOALSoundMixer.h"
 
 #include "oo_test.hpp"
@@ -55,11 +56,12 @@ void OOSoundMixer::shutdown()  {}
 - (id)cxx_initWithPath:(const std::optional<std::string> &)inPath	{ (void)inPath; [self release]; return nil; }
 @end
 
-@interface OOALBufferedSound: OOSound
-@end
-
-@implementation OOALBufferedSound
-@end
+// The buffered sound the root's cluster names: a C++ stand-in since bead oo-9ht.83 deleted the
+// Objective-C facade this file stubbed. The decoder above refuses every path, so none is made.
+oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+OOALBufferedSound::~OOALBufferedSound()  {}
+std::optional<std::string> OOALBufferedSound::name()  { return _name; }
+ALuint OOALBufferedSound::soundBuffer()  { return 0; }
 
 @interface OOALStreamedSound: OOSound
 @end
