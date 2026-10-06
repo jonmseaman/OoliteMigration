@@ -399,6 +399,24 @@ public:
 	float shieldRechargeRate();
 	double maxHyperspaceDistance();
 
+	// Slice 11: thrust and afterburner; behaviours: idle, tumble, tractored, track, intercept, break off, dogfight, evasive.
+	float afterburnerFactor();
+	float afterburnerRate();
+	void setAfterburnerFactor(GLfloat newValue);
+	void setAfterburnerRate(GLfloat newValue);
+	float maxThrust();
+	void setMaxThrust(GLfloat newValue);
+	float getThrust();
+	void behaviour_stop_still(double delta_t);
+	void behaviour_idle(double delta_t);
+	void behaviour_tumble(double delta_t);
+	void behaviour_tractored(double delta_t);
+	void behaviour_track_target(double delta_t);
+	void behaviour_intercept_target(double delta_t);
+	void behaviour_attack_break_off_target(double delta_t);
+	void behaviour_attack_slow_dogfight(double delta_t);
+	void behaviour_evasive_action(double delta_t);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
