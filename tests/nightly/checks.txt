@@ -238,6 +238,7 @@
 [oo-ptv5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSFont.cpp && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-fgxt] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/tier-c.sh --only goldens
 [oo-3c81] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConstToString && bash tools/tier-c.sh --only goldens
+[oo-tsa4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXPVerifier test_OOOXPVerifierStage test_OOFileScannerVerifierStage test_OOAIStateMachineVerifierStage test_OOCheckJSSyntaxVerifierStage test_OOCheckPListSyntaxVerifierStage test_OOCheckDemoShipsPListVerifierStage test_OOCheckRequiresPListVerifierStage test_OOCheckEquipmentPListVerifierStage test_OOTextureVerifierStage && OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh upstream/oolite/src/Core/OXPVerifier/OOOXPVerifier.mm && bash tools/tier-c.sh --only goldens
 [oo-3bgz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
 [oo-r9gn] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
 [oo-ugw3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens

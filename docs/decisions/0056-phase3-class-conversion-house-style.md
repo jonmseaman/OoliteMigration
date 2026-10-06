@@ -3442,6 +3442,50 @@ class, and nine getters share their ivar's name. The colours were `OOColor *` iv
 callers and the drawing slices; the slice beads 2-6 turn the category's methods into members and
 leave one forwarder per dial.
 
+## Amendment (bead oo-tsa4): the OXPVerifier manager, a class whose façade other objects keep unretained
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OXPVerifier/OOOXPVerifier.h/.mm`,
+  `OOOXPVerifier+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOXPVerifier.mm`. Follows Amendment 1
+  (oo-cwz), amendments oo-up4b, oo-94qk, oo-smy, oo-novu and oo-fg7i, and human bead oo-4amcj.
+
+**Context.** `OOOXPVerifier` drives the stage hierarchy, which still has Objective-C subclasses
+(`OOCheckShipDataPListVerifierStage`, `OOModelVerifierStage`). Every stage keeps its verifier as
+an unretained `OOOXPVerifier *` (`cxx::OOOXPVerifierStage::verifier()`) and messages it; the
+verifier was made by `+runVerificationIfRequested` and lived for the whole run. The stage tests
+link a test double instead of the verifier (oo-9ht.65), an `@implementation OOOXPVerifier` with
+ivars of its own.
+
+**Decision (recommended defaults).**
+
+1. **A C++ object whose façade other objects keep unretained keeps that façade alive itself** for
+   the span the Objective-C object lived: `run()` opens with
+   `const oo::ObjCRef<::OOOXPVerifier *> facade(oo::ToObjC(this));`, so every stage registered
+   during the run sees one façade. The C++ object never retains its façade beyond that span (no
+   cycle); a stage registered outside a run sees the façade of the moment, as `ToObjC` makes it.
+2. **Converted code that drives a hierarchy with Objective-C subclasses keeps the objects as
+   their Objective-C objects** (`oo::ObjCRef<::OOOXPVerifierStage *>`, amendment oo-smy) and calls
+   their C++ part, `oo::ToCxx(stage)->name()`: an adapter's virtual members message the subclass,
+   so its overrides answer as before. Where the old code exposed the Objective-C pointer (the
+   graphviz node names), the C++ objects it gets back cross with `oo::ToObjC` so the same pointer
+   is printed.
+3. **A failing initialiser becomes `createWithX()` + `bool initWithX()`** (amendment oo-fg7i);
+   the class method that made and ran the object is a `static` member that holds it in an
+   `oo::Ref`.
+4. **Categories that other files add to the class stay on the façade** (`-fileScannerStage`,
+   `-textureVerifierStage`, `-modelVerifierStage`) until those files' deletion beads; the façade's
+   own interface is the old one, so the stage tests' double, an `@implementation` of the façade
+   class with ivars of its own, compiles unchanged and does not link the bridge.
+5. **Once the class is `cxx::X`, code inside `namespace cxx` that keeps the façade names it `::X`**
+   (`::OOOXPVerifier *verifier()`, `oo::ObjCRef<::OOOXPVerifierStage *>`): unqualified, `X` there is
+   now the C++ class. The stages' `verifier()`/`setVerifier()` and the `nameFor…ForVerifier()`
+   helpers changed only in that spelling; global leaves need no change.
+
+**Consequences.** One façade and its deletion bead (oo-9ht.130). No caller's behaviour and no test
+expectation changed: the stages changed only in spelling (item 5), and the two stage tests that
+had pasted the old double moved to the shared one first (oo-9ht.141). The
+verifier no longer messages the `OOCacheManager` façade (it calls `cxx::OOCacheManager`), which the
+cache manager's deletion bead (oo-9ht.31) waited on.
+
 ## Amendment (bead oo-dnbf): the class-shell slice of a converted root's subclass
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOMesh.h/.mm` (slice 1 of
