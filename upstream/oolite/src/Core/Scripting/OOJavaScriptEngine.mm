@@ -789,9 +789,9 @@ static void DumpVariable(ooscript::Context context, ooscript::Variable *prop)
 
 void OOJSDumpStack(ooscript::Context context)
 {
-	@autoreleasepool
+	void *pool = objc_autoreleasePoolPush();	// was @autoreleasepool (amendment oo-bm1q item 4)
 	{
-		@try
+		try
 		{
 			ooscript::StackFrame	frame = NULL;
 			unsigned		idx = 0;
@@ -908,11 +908,16 @@ ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 				}
 			}
 		}
-		@catch (OOException *exception)
+		catch (...)
 		{
-			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", [exception name], [exception reason]);
+			// Was @catch (OOException *): an OOException is logged, anything else goes on up as before
+			// (amendment oo-10qz).
+			std::string name, reason;
+			if (!OOJavaScriptEngineCaughtOOException(name, reason))  throw;
+			OO_LOG(cxx_kOOLogException, "Exception during JavaScript stack trace: {}:{}", name, reason);
 		}
 	}
+	objc_autoreleasePoolPop(pool);
 }
 
 
@@ -1237,33 +1242,33 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 
 // The root-class JS glue for classes rooted on OOObject (ADR-0029). Foundation objects have none:
 // OOJSValueFromNativeObject() converts them through their property-list form (proposed ADR-0051).
-@implementation OOObject (OOJavaScriptConversion)
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+// The category OOObject (OOJavaScriptConversion) forwards to these from OOJavaScriptEngine+ObjCBridge.mm
+// (amendment oo-ppc item 3); the sends to the object go through its bridges (amendment oo-9ht.139).
+ooscript::Value OOObjectJSValueInContext(ooscript::Context /*context*/)
 {
 	return ooscript::undefinedValue();
 }
 
 
-- (std::optional<std::string>) cxx_oo_jsClassName
+std::optional<std::string> OOObjectJSClassName()
 {
 	return std::nullopt;
 }
 
 
-- (std::optional<std::string>) cxx_oo_jsDescription
+std::optional<std::string> OOObjectJSDescription(id object)
 {
-	return [self cxx_oo_jsDescriptionWithClassName:[self cxx_oo_jsClassName]];
+	return OOJavaScriptEngineJSDescriptionWithClassName(object, OOJavaScriptEngineJSClassName(object));
 }
 
 
-- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className
+std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const std::optional<std::string> &className)
 {
 	OOJS_PROFILE_ENTER
 
-	const std::optional<std::string> components = [self cxx_descriptionComponents];
+	const std::optional<std::string> components = OOJavaScriptEngineDescriptionComponents(object);
 	std::optional<std::string> name = className;
-	if (!name.has_value())  name = oo::DescriptionOf([self class]);	// the class's name
+	if (!name.has_value())  name = oo::DescriptionOf(OOJavaScriptEngineClass(object));	// the class's name
 
 	if (components.has_value())
 	{
@@ -1278,12 +1283,10 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal
+void OOObjectClearJSSelf(ooscript::Object /*selfVal*/)
 {
 
 }
-
-@end
 
 
 namespace {
@@ -1293,7 +1296,7 @@ static bool IsOOObjectRooted(id object)
 {
 	Class cls = object_getClass(object);
 	for (Class superclass = class_getSuperclass(cls); superclass != Nil; superclass = class_getSuperclass(cls))  cls = superclass;
-	return cls == [OOObject class];
+	return cls == OOJavaScriptEngineOOObjectClass();
 }
 
 
@@ -1391,7 +1394,7 @@ static ooscript::Value JSNumberValue(ooscript::Context context, double number)
 ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 {
 	if (object == nil)  return ooscript::nullValue();
-	if (EXPECT(IsOOObjectRooted(object)))  return [object oo_jsValueInContext:context];
+	if (EXPECT(IsOOObjectRooted(object)))  return OOJavaScriptEngineJSValueInContext(object, context);
 
 	// An object on another root has no JS glue: undefined, as the root class's gave. oo-qps.72 deleted
 	// the Foundation branch (its property-list form, proposed ADR-0051): plist data is
@@ -1569,7 +1572,7 @@ void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, B
 	ooscript::String jsString = (ooscript::internString((context), string));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[OOException raise:OOGenericException format:"Failed to initialize JavaScript string literal cache for \"%s\".", cxx_OOJSEscapedForJavaScriptLiteral(string != NULL ? std::string_view(string) : std::string_view()).c_str()];
+		OORaiseException(OOGenericException, "Failed to initialize JavaScript string literal cache for \"%s\".", cxx_OOJSEscapedForJavaScriptLiteral(string != NULL ? std::string_view(string) : std::string_view()).c_str());
 	}
 	
 	*strCache = ooscript::stringValue(jsString);
@@ -1672,7 +1675,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 	
 	std::optional<std::string>	result;
 	ooscript::ClassDef				*valueClass = NULL;
-	OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
+	cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 	
 	if (ooscript::isObjectOrNull(value) && !ooscript::isNull(value))
 	{
@@ -1680,7 +1683,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 	}
 	
 	// Convert String objects to strings.
-	if (valueClass == [jsEng stringClass])
+	if (valueClass == jsEng->stringClass())
 	{
 		value = ooscript::stringValue((ooscript::valueToString((context), (value))));
 	}
@@ -1697,7 +1700,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 		std::string truncated = (chars != NULL) ? oo::utf16ToUtf8(std::u16string_view(chars, MIN(length, (size_t)kMaxLength))) : std::string();
 		result = "\"" + cxx_OOJSEscapedForJavaScriptLiteral(truncated) + ((length > kMaxLength) ? "..." : "") + "\"";
 	}
-	else if (valueClass == [jsEng arrayClass])
+	else if (valueClass == jsEng->arrayClass())
 	{
 		// Descibe up to four elements of an array.
 		uint32_t count;
@@ -1746,7 +1749,7 @@ static std::string DescribeValue(ooscript::Context context, ooscript::Value valu
 	{
 		result = cxx_OOStringFromJSValueEvenIfNull(context, value);
 		
-		if (abbreviateObjects && valueClass == [jsEng objectClass] && result && *result == "[object Object]")
+		if (abbreviateObjects && valueClass == jsEng->objectClass() && result && *result == "[object Object]")
 		{
 			result = "{...}";
 		}
@@ -1871,46 +1874,41 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 }
 
 
-@implementation OONativeVector (OOJavaScriptConversion)
-
-- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
+// OONativeVector (OOJavaScriptConversion)'s -oo_jsValueInContext:, which forwards here from
+// OOJavaScriptEngine+ObjCBridge.mm (amendment oo-ppc item 3).
+ooscript::Value OONativeVectorJSValueInContext(cxx::OONativeVector *vector, ooscript::Context context)
 {
 	ooscript::Value value = ooscript::undefinedValue();
-	VectorToJSValue(context, [self getVector], &value);
+	VectorToJSValue(context, vector->getVector(), &value);
 	return value;
 }
 
-@end
 
+namespace cxx {
 
-@implementation OONull
-
-+ (OONull *) null
+OONull *OONull::null()
 {
-	static OONull *sNull = nil;
-	if (sNull == nil)  sNull = [[OONull alloc] init];
+	static OONull *sNull = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
+	if (sNull == nullptr)  sNull = oo::makeRef<OONull>().leakRef();
 	return sNull;
 }
 
 
-- (id) copyWithZone:(OOZone *)zone
-{
-	return [self retain];
-}
+// (-copyWithZone:, which answered the object itself, is the facade's: OOJavaScriptEngine+ObjCBridge.mm.)
 
 
-- (std::optional<std::string>) cxx_description
+std::optional<std::string> OONull::description()
 {
 	return "<null>";
 }
 
 
-- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
+ooscript::Value OONull::jsValueInContext(ooscript::Context /*context*/)
 {
 	return ooscript::nullValue();
 }
 
-@end
+}	// namespace cxx
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
