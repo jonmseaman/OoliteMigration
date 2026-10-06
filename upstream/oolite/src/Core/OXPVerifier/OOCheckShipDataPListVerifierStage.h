@@ -31,24 +31,24 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/Ref.hpp"
 
-@class OOPListSchemaVerifier;
+#import "OOPListSchemaVerifier.h"	// the delegate interface; C++ since bead oo-9ht.119
+
 class OOAIStateMachineVerifierStage;	// C++ since bead oo-94qk
-struct OOPListSchemaVerifierError;
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-v1zb): shipdata.plist and the entry being checked
 	are oo::PList; the key and role sets are sorted std::vectors of strings.
 
 	C++20 since bead oo-1v2w (proposed ADR-0056 Amendment 1, amendments oo-up4b and oo-rmd7): a
 	subclass of OOTextureHandlingStage. It is global and has no facade: nothing outside this
-	file names it, and the Objective-C verifier makes it from its name (kCxxStages in
-	OOOXPVerifier.mm) and holds it as an OOOXPVerifierStage (oo::ToObjC). It is the schema
-	verifier's delegate, an Objective-C role, through a helper object that stays Objective-C until
-	OOPListSchemaVerifier is C++: OOCheckShipDataPListVerifierStage+ObjCBridge.h, imported at the
-	end of this header.
+	file names it, and the verifier makes it from its name (kCxxStages in OOOXPVerifier.mm)
+	and holds it (as its OOOXPVerifierStage facade until bead oo-9ht.4). It is the schema
+	verifier's delegate, through the C++ interface OOPListSchemaVerifierDelegate since bead
+	oo-9ht.119 deleted the schema verifier's facade (a helper Objective-C object, made by run(),
+	was its delegate before; bead oo-9ht.54 deleted it).
 */
-class OOCheckShipDataPListVerifierStage : public OOTextureHandlingStage
+class OOCheckShipDataPListVerifierStage : public OOTextureHandlingStage, public OOPListSchemaVerifierDelegate
 {
 public:
 	std::optional<std::string> name() override;
@@ -56,9 +56,9 @@ public:
 	bool shouldRun() override;
 	void run() override;
 
-	/*	The schema verifier's delegate methods (OOPListSchemaVerifierDelegate), which the helper
-		OOCheckShipDataPListVerifierStageSchemaDelegate forwards here. Both selectors start with
-		verifier:, which would hide verifier(), so each name adds its distinguishing keyword.
+	/*	The schema verifier's delegate (OOPListSchemaVerifierDelegate; the informal protocol's two
+		selectors until bead oo-9ht.119). Both selectors start with verifier:, which would hide
+		verifier(), so each name adds its distinguishing keyword.
 	*/
 	bool verifierTestProperty(OOPListSchemaVerifier *verifier,
 							  const oo::PList &rootPList,
@@ -66,13 +66,13 @@ public:
 							  const oo::PList &subPList,
 							  const oo::PList &keyPath,
 							  const oo::PList &typeKey,
-							  std::optional<OOPListSchemaVerifierError> *outError);
+							  std::optional<OOPListSchemaVerifierError> *outError) override;
 	bool verifierFailedForProperty(OOPListSchemaVerifier *verifier,
 								   const oo::PList &rootPList,
 								   const std::string &name,
 								   const oo::PList &subPList,
 								   const OOPListSchemaVerifierError &error,
-								   const oo::PList &localSchema);
+								   const oo::PList &localSchema) override;
 
 private:
 	void verifyShipInfo(const oo::PList &info, const std::string &name);
@@ -93,8 +93,7 @@ private:
 								_stationKeys = {},
 								_playerKeys = {},
 								_allKeys = {};
-	OOPListSchemaVerifier		*_schemaVerifier = {};	// Not retained (autoreleased in run()).
-	oo::ObjCRef<id>				_schemaDelegate = {};	// The helper that is the schema verifier's delegate.
+	oo::Ref<OOPListSchemaVerifier>	_schemaVerifier = {};	// Made by run() (its facade was autoreleased there until bead oo-9ht.119).
 	OOAIStateMachineVerifierStage *_aiVerifierStage = {};	// Not retained (the verifier holds it).
 
 	// Info about ship currently being checked.
@@ -106,10 +105,5 @@ private:
 								_isTemplate = {},
 								_havePrintedMessage = {};
 };
-
-
-// Transitional: the schema verifier's delegate, an Objective-C helper. Deleted by the bridge's
-// deletion bead once OOPListSchemaVerifier is C++.
-#import "OOCheckShipDataPListVerifierStage+ObjCBridge.h"
 
 #endif
