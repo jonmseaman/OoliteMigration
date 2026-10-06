@@ -138,24 +138,6 @@ const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.
 const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
 
-#if OOJSENGINE_MONITOR_SUPPORT
-
-@interface OOJavaScriptEngine (OOMonitorSupportInternal)
-
-- (void)sendMonitorError:(ooscript::ErrorReport *)errorReport
-			 withMessage:(const std::string &)message
-			   inContext:(ooscript::Context)context;
-
-// nullopt is meaningful to the monitor (Log() with a null message; no class for Log()).
-- (void)sendMonitorLogMessage:(const std::optional<std::string> &)message
-			 withMessageClass:(const std::optional<std::string> &)messageClass
-					inContext:(ooscript::Context)context;
-
-@end
-
-#endif
-
-
 namespace {
 static void ReportJSError(ooscript::Context context, const char *message, const ooscript::ErrorReport *report);
 } // namespace
@@ -194,8 +176,8 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	std::string			messageClass;
 	std::string			highlight = "*****";
 	std::string			activeScript;
-OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
-	BOOL				showLocation = [jsEng showErrorLocations];
+cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
+	bool				showLocation = jsEng->showErrorLocations();
 	
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.
 	OOJSPauseTimeLimiter();
@@ -232,7 +214,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	while (oo::str::hasSuffix(lineBuf, "\n") || oo::str::hasSuffix(lineBuf, "\r"))  lineBuf.pop_back();
 
 	// Get string for error number, for useful log message classes
-	const oo::PList errorNames = [ResourceManager cxx_dictionaryFromFilesNamed:"javascript-errors.plist" inFolder:"Config" andMerge:YES];
+	const oo::PList errorNames = OOJavaScriptEngineDictionaryFromFilesNamed("javascript-errors.plist", "Config", true);	// ResourceManager, still Objective-C
 	const std::string errorNumberStr = oo::str::format("%u", report->errorNumber);
 	const std::string errorName = errorNames.get<std::string>(errorNumberStr, errorNumberStr);
 
@@ -244,9 +226,10 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	{
 		// First line: problem description
 		// avoid windows DEP exceptions!
-		OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-		activeScript = [[thisScript weakRefUnderlyingObject] displayName].value_or("<unidentified script>");
-		[thisScript release];
+		::OOJSScript *runningScript = cxx::OOJSScript::currentlyRunningScript();
+		id thisScript = (runningScript != nil) ? oo::ToCxx(runningScript)->weakRetain() : nil;	// a weak reference, retained
+		activeScript = OOJavaScriptEngineDisplayName(OOJavaScriptEngineWeakRefUnderlyingObject(thisScript)).value_or("<unidentified script>");
+		objc_release(thisScript);
 
 		OO_LOG(messageClass, "{} JavaScript {} ({}): {}", highlight, severity, activeScript, messageText);
 
@@ -264,18 +247,16 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 		}
 
 #ifndef NDEBUG
-		BOOL dump;
-		if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  dump = [jsEng dumpStackForWarnings];
-		else  dump = [jsEng dumpStackForErrors];
+		bool dump;
+		if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  dump = jsEng->dumpStackForWarnings();
+		else  dump = jsEng->dumpStackForErrors();
 		if (dump)  OOJSDumpStack((context));
 #endif
 		
 #if OOJSENGINE_MONITOR_SUPPORT
 		ooscript::ExceptionState *exState = ooscript::saveExceptionState(context);
 		ooscript::ErrorReport nativeReport = *report;
-		[[OOJavaScriptEngine sharedEngine] sendMonitorError:&nativeReport
-														withMessage:messageText
-														  inContext:(context)];
+		cxx::OOJavaScriptEngine::sharedEngine()->sendMonitorError(&nativeReport, messageText, (context));
 		ooscript::restoreExceptionState(context, exState);
 #endif
 	}
@@ -327,8 +308,8 @@ void OOJavaScriptEngine::init()
 		without setting up the debug console could be useful for debugging
 		users' problems.
 	*/
-	[oo::ToObjC(this) setDumpStackForErrors:defaults.boolForKey("dump-stack-for-errors")];	// slice 2, still Objective-C on the facade
-	[oo::ToObjC(this) setDumpStackForWarnings:defaults.boolForKey("dump-stack-for-warnings")];
+	setDumpStackForErrors(defaults.boolForKey("dump-stack-for-errors"));
+	setDumpStackForWarnings(defaults.boolForKey("dump-stack-for-warnings"));
 #endif
 	
 	assert(sizeof(ooscript::Char16) == sizeof(uint16_t));
@@ -518,7 +499,7 @@ OOJSRelinquishContext(context);
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, oo::ToObjC(this));
 OOJSRelinquishContext(context);
 	
-	[oo::ToObjC(this) garbageCollectionOpportunity:YES];	// slice 2, still Objective-C on the facade
+	garbageCollectionOpportunity(true);
 	return true;
 }
 
@@ -573,34 +554,27 @@ bool OOJavaScriptEngine::lookUpStandardClassPointers()
 
 void OOJavaScriptEngine::registerStandardObjectConverters()
 {
-	// The getters are slice 2's, still Objective-C on the facade.
-	OOJSRegisterObjectConverter([oo::ToObjC(this) objectClass], JSPlainObjectConverter);
-	OOJSRegisterObjectConverter([oo::ToObjC(this) stringClass], JSStringConverter);
-	OOJSRegisterObjectConverter([oo::ToObjC(this) arrayClass], JSArrayConverter);
-	OOJSRegisterObjectConverter([oo::ToObjC(this) numberClass], JSNumberConverter);
-	OOJSRegisterObjectConverter([oo::ToObjC(this) booleanClass], JSBooleanConverter);
+	OOJSRegisterObjectConverter(objectClass(), JSPlainObjectConverter);
+	OOJSRegisterObjectConverter(stringClass(), JSStringConverter);
+	OOJSRegisterObjectConverter(arrayClass(), JSArrayConverter);
+	OOJSRegisterObjectConverter(numberClass(), JSNumberConverter);
+	OOJSRegisterObjectConverter(booleanClass(), JSBooleanConverter);
 }
 
-}	// namespace cxx
 
-@implementation OOJavaScriptEngine
 
-- (ooscript::Object) globalObject
+ooscript::Object OOJavaScriptEngine::globalObject()
 {
-	return oo::ToCxx(self)->_globalObject;
+	return _globalObject;
 }
 
 
-- (BOOL) callJSFunction:(ooscript::Value)function
-			  forObject:(ooscript::Object)jsThis
-				   argc:(unsigned)argc
-				   argv:(ooscript::Value *)argv
-				 result:(ooscript::Value *)outResult
+bool OOJavaScriptEngine::callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	ooscript::Context context = NULL;
-	BOOL						result;
+	bool						result;
 	
-	OOParameterAssert(OOJSValueIsFunction(context, function));
+	OOCParameterAssert(OOJSValueIsFunction(context, function));
 	
 	context = OOJSAcquireContext();
 	
@@ -615,7 +589,7 @@ void OOJavaScriptEngine::registerStandardObjectConverters()
 }
 
 
-- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr
+void OOJavaScriptEngine::removeGCObjectRoot(ooscript::Object *rootPtr)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::removeObjectRoot((context), rootPtr);
@@ -623,7 +597,7 @@ void OOJavaScriptEngine::registerStandardObjectConverters()
 }
 
 
-- (void) removeGCValueRoot:(ooscript::Value *)rootPtr
+void OOJavaScriptEngine::removeGCValueRoot(ooscript::Value *rootPtr)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::removeValueRoot((context), (rootPtr));
@@ -631,7 +605,7 @@ void OOJavaScriptEngine::registerStandardObjectConverters()
 }
 
 
-- (void) garbageCollectionOpportunity:(BOOL)force
+void OOJavaScriptEngine::garbageCollectionOpportunity(bool force)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	if (force)
@@ -646,55 +620,59 @@ void OOJavaScriptEngine::registerStandardObjectConverters()
 }
 
 
-- (BOOL) showErrorLocations
+bool OOJavaScriptEngine::showErrorLocations()
 {
-	return oo::ToCxx(self)->_showErrorLocations;
+	return _showErrorLocations;
 }
 
 
-- (void) setShowErrorLocations:(BOOL)value
+void OOJavaScriptEngine::setShowErrorLocations(bool value)
 {
-	oo::ToCxx(self)->_showErrorLocations = !!value;
+	_showErrorLocations = !!value;
 }
 
 
-- (ooscript::ClassDef *) objectClass
+ooscript::ClassDef *OOJavaScriptEngine::objectClass()
 {
-	return oo::ToCxx(self)->_objectClass;
+	return _objectClass;
 }
 
 
-- (ooscript::ClassDef *) stringClass
+ooscript::ClassDef *OOJavaScriptEngine::stringClass()
 {
-	return oo::ToCxx(self)->_stringClass;
+	return _stringClass;
 }
 
 
-- (ooscript::ClassDef *) arrayClass
+ooscript::ClassDef *OOJavaScriptEngine::arrayClass()
 {
-	return oo::ToCxx(self)->_arrayClass;
+	return _arrayClass;
 }
 
 
-- (ooscript::ClassDef *) numberClass
+ooscript::ClassDef *OOJavaScriptEngine::numberClass()
 {
-	return oo::ToCxx(self)->_numberClass;
+	return _numberClass;
 }
 
 
-- (ooscript::ClassDef *) booleanClass
+ooscript::ClassDef *OOJavaScriptEngine::booleanClass()
 {
-	return oo::ToCxx(self)->_booleanClass;
+	return _booleanClass;
 }
 
 
 #ifndef NDEBUG
+}	// namespace cxx
+
+
 namespace {
 static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
-	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", [[OOJSScript currentlyRunningScript] displayName].value_or("(null)"));
+	::OOJSScript *runningScript = cxx::OOJSScript::currentlyRunningScript();
+	OO_LOG("script.javaScript.debugger", "debugger invoked during {}:", ((runningScript != nil) ? oo::ToCxx(runningScript)->displayName() : std::nullopt).value_or("(null)"));
 	OOJSDumpStack(context);
 	
 	OOJSResumeTimeLimiter();
@@ -702,37 +680,39 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 } // namespace
 
 
-- (BOOL) dumpStackForErrors
+namespace cxx {
+
+bool OOJavaScriptEngine::dumpStackForErrors()
 {
-	return oo::ToCxx(self)->_dumpStackForErrors;
+	return _dumpStackForErrors;
 }
 
 
-- (void) setDumpStackForErrors:(BOOL)value
+void OOJavaScriptEngine::setDumpStackForErrors(bool value)
 {
-	oo::ToCxx(self)->_dumpStackForErrors = !!value;
+	_dumpStackForErrors = !!value;
 }
 
 
-- (BOOL) dumpStackForWarnings
+bool OOJavaScriptEngine::dumpStackForWarnings()
 {
-	return oo::ToCxx(self)->_dumpStackForWarnings;
+	return _dumpStackForWarnings;
 }
 
 
-- (void) setDumpStackForWarnings:(BOOL)value
+void OOJavaScriptEngine::setDumpStackForWarnings(bool value)
 {
-	oo::ToCxx(self)->_dumpStackForWarnings = !!value;
+	_dumpStackForWarnings = !!value;
 }
 
 
-- (void) enableDebuggerStatement
+void OOJavaScriptEngine::enableDebuggerStatement()
 {
-	ooscript::setDebuggerHandler(oo::ToCxx(self)->_runtime, DebuggerHook, self);
+	ooscript::setDebuggerHandler(_runtime, DebuggerHook, this);	// the closure is unused
 }
 #endif
 
-@end
+}	// namespace cxx
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
@@ -750,8 +730,7 @@ void OOJavaScriptEngine::sendMonitorError(ooscript::ErrorReport *errorReport, co
 {
 	if ([_monitor.get() respondsToSelector:OOSelectorFromName("jsEngine:context:error:stackSkip:showingLocation:withMessage:")])
 	{
-		// -showErrorLocations is slice 2's, still Objective-C on the facade.
-		[_monitor.get() jsEngine:oo::ToObjC(this) context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[oo::ToObjC(this) showErrorLocations] withMessage:message];
+		[_monitor.get() jsEngine:oo::ToObjC(this) context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:showErrorLocations() withMessage:message];
 	}
 }
 
@@ -1009,13 +988,13 @@ void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 	ooscript::String string = (ooscript::internString((context), name));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[OOException raise:OOGenericException format:"Failed to initialize JS ID cache for \"%s\".", name];
+		OORaiseException(OOGenericException, "Failed to initialize JS ID cache for \"%s\".", name);
 	}
 	
 	// The string is interned, so the engine's value-to-id conversion returns its atom id unchanged.
 	if (EXPECT_NOT(!ooscript::valueToId(context, ooscript::stringValue(string), idCache)))
 	{
-		[OOException raise:OOGenericException format:"Failed to initialize JS ID cache for \"%s\".", name];
+		OORaiseException(OOGenericException, "Failed to initialize JS ID cache for \"%s\".", name);
 	}
 	
 	OOJSRelinquishContext(context);
@@ -1080,7 +1059,7 @@ void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional
 {
 	va_list					args;
 
-	@try
+	try
 	{
 		va_start(args, format);
 		std::string msg = oo::str::vformat(format, args);
@@ -1088,9 +1067,10 @@ void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional
 
 		cxx_OOJSReportError(context, "%s%s", CallerPrefix(scriptClass, function).c_str(), msg.c_str());
 	}
-	@catch (id exception)
+	catch (...)
 	{
-		// Squash any secondary errors during error handling.
+		// Squash any secondary errors during error handling: nothing more to do.
+		return;
 	}
 }
 
@@ -1099,14 +1079,15 @@ void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *for
 {
 	OOCParameterAssert(ooscript::isInRequest((context)));
 
-	@try
+	try
 	{
 		std::string msg = oo::str::vformat(format, args);
 		ooscript::reportError((context), msg.c_str());
 	}
-	@catch (id exception)
+	catch (...)
 	{
-		// Squash any secondary errors during error handling.
+		// Squash any secondary errors during error handling: nothing more to do.
+		return;
 	}
 }
 
@@ -1139,7 +1120,7 @@ void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::option
 {
 	va_list					args;
 
-	@try
+	try
 	{
 		va_start(args, format);
 		std::string msg = oo::str::vformat(format, args);
@@ -1147,23 +1128,25 @@ void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::option
 
 		cxx_OOJSReportWarning(context, "%s%s", CallerPrefix(scriptClass, function).c_str(), msg.c_str());
 	}
-	@catch (id exception)
+	catch (...)
 	{
-		// Squash any secondary errors during error handling.
+		// Squash any secondary errors during error handling: nothing more to do.
+		return;
 	}
 }
 
 
 void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args)
 {
-	@try
+	try
 	{
 		std::string msg = oo::str::vformat(format, args);
 		ooscript::reportWarning((context), msg.c_str());
 	}
-	@catch (id exception)
+	catch (...)
 	{
-		// Squash any secondary errors during error handling.
+		// Squash any secondary errors during error handling: nothing more to do.
+		return;
 	}
 }
 
@@ -1190,7 +1173,7 @@ void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object this
 
 void cxx_OOJSReportBadArguments(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, const std::optional<std::string> &message, const std::optional<std::string> &expectedArgsDescription)
 {
-	@try
+	try
 	{
 		std::string text = message ? *message : std::string("Invalid arguments");
 		std::optional<std::string> parameters = cxx_OOJSStringWithJavaScriptParameters(argv, argc, context);
@@ -1199,9 +1182,10 @@ void cxx_OOJSReportBadArguments(ooscript::Context context, const std::optional<s
 
 		cxx_OOJSReportErrorForCaller(context, scriptClass, function, "%s.", text.c_str());
 	}
-	@catch (id exception)
+	catch (...)
 	{
-		// Squash any secondary errors during error handling.
+		// Squash any secondary errors during error handling: nothing more to do.
+		return;
 	}
 }
 

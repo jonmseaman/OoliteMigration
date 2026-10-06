@@ -2,17 +2,15 @@
 
 OOJavaScriptEngine+ObjCBridge.h
 
-TRANSITIONAL (proposed ADR-0056, bead oo-10qz): the Objective-C OOJavaScriptEngine, a facade over the
-C++ cxx::OOJavaScriptEngine (OOJavaScriptEngine.h), for the code that is not converted yet: nearly
-every scripting file, the debug support, the player, the universe, and the units of slices 2-4 of
-OOJavaScriptEngine.mm (docs/phases/3-slices/OOJavaScriptEngine.md). Its interface is the one
-OOJavaScriptEngine.h declared before the conversion, copied exactly (same selectors, same types,
-same root), split as amendment oo-10qz of ADR-0056 says: the main interface holds slice 2's
-selectors, which stay Objective-C methods of this facade, in OOJavaScriptEngine.mm's
-`@implementation OOJavaScriptEngine`, until their own bead; the OOJavaScriptEngineShell category
-holds slice 1's, forwarded to their C++ members in one line each by OOJavaScriptEngine+ObjCBridge.mm.
-The monitor protocol and the OOMonitorSupport category moved here from OOJavaScriptEngine.h.
-Imported as the last line of OOJavaScriptEngine.h; do not import it directly.
+TRANSITIONAL (proposed ADR-0056, beads oo-10qz and oo-903c): the Objective-C OOJavaScriptEngine, a
+facade over the C++ cxx::OOJavaScriptEngine (OOJavaScriptEngine.h), for the code that is not
+converted yet: nearly every scripting file, the debug support, the player and the universe. Its
+interface is the one OOJavaScriptEngine.h declared before the conversion, copied exactly (same
+selectors, same types, same root); every method forwards to its C++ member in one line
+(OOJavaScriptEngine+ObjCBridge.mm). The monitor protocol and the OOMonitorSupport category moved
+here from OOJavaScriptEngine.h. Below them are the one-line bridges through which
+OOJavaScriptEngine.mm's free functions send to classes that are still Objective-C (amendment
+oo-9ht.139 item 3). Imported as the last line of OOJavaScriptEngine.h; do not import it directly.
 
 	a caller that is                       holds / passes                       crosses with
 	-------------------------------------  -----------------------------------  ------------------------
@@ -54,15 +52,22 @@ MA 02110-1301, USA.
 #import "oofnd/objc/OOObject.h"
 
 
-// Slice 2 of docs/phases/3-slices/OOJavaScriptEngine.md, still Objective-C: implemented by
-// OOJavaScriptEngine.mm's @implementation OOJavaScriptEngine.
 @interface OOJavaScriptEngine: OOObject
 {
 @private
 	oo::Ref<cxx::OOJavaScriptEngine>	_cxxEngine;
 }
 
++ (OOJavaScriptEngine *) sharedEngine;
+
 - (ooscript::Object) globalObject;
+
+- (void) runMissionCallback;
+
+/*	Tear down context and global object and rebuild them from scratch. This
+	invalidates -globalObject and the main thread context.
+*/
+- (BOOL) reset;
 
 // Call a JS function, setting up new contexts as necessary. Caller is responsible for ensuring the ooscript::Value passed really is a function.
 - (BOOL) callJSFunction:(ooscript::Value)function
@@ -95,21 +100,6 @@ MA 02110-1301, USA.
 // Install handler for JS "debugger" statment.
 - (void) enableDebuggerStatement;
 #endif
-
-@end
-
-
-// Slice 1, forwarded to cxx::OOJavaScriptEngine by OOJavaScriptEngine+ObjCBridge.mm.
-@interface OOJavaScriptEngine (OOJavaScriptEngineShell)
-
-+ (OOJavaScriptEngine *) sharedEngine;
-
-- (void) runMissionCallback;
-
-/*	Tear down context and global object and rebuild them from scratch. This
-	invalidates -globalObject and the main thread context.
-*/
-- (BOOL) reset;
 
 @end
 
@@ -157,5 +147,17 @@ OOJavaScriptEngine *ToObjC(cxx::OOJavaScriptEngine *engine);
 cxx::OOJavaScriptEngine *ToCxx(OOJavaScriptEngine *engine);
 
 }	// namespace oo
+
+
+/*	One-line bridges for OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139 item 3): each
+	is the one message it is named after, verbatim, to a class that is still Objective-C. Each goes
+	with the conversion of the class it messages.
+*/
+// +[ResourceManager cxx_dictionaryFromFilesNamed:inFolder:andMerge:]
+oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
+// -weakRefUnderlyingObject (OOWeakReferenceSupport): the object itself for a non-weakref, nil for nil.
+id OOJavaScriptEngineWeakRefUnderlyingObject(id object);
+// -displayName of a script (OOScript); nullopt for nil.
+std::optional<std::string> OOJavaScriptEngineDisplayName(id script);
 
 #endif	// OOJAVASCRIPTENGINE_OBJCBRIDGE_H
