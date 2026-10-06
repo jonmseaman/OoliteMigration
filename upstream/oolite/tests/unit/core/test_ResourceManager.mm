@@ -414,4 +414,19 @@ OO_TEST(equipmentAndStarListMerging)
 }
 
 
+OO_TEST(cxxSlice3API)
+{
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::ResourceManager::dictionaryFromFilesNamed("oo-test-dict.plist", std::string("Config"), MERGE_BASIC, false).find("fromA") != nullptr);
+		OO_CHECK(cxx::ResourceManager::dictionaryFromFilesNamed("oo-test-none.plist", std::string("Config"), true).isNull());
+		OO_CHECK(cxx::ResourceManager::arrayFromFilesNamed("oo-test-array.plist", std::string("Config"), true, false).isArray());
+		OO_CHECK(!cxx::ResourceManager::corePlist("oo-test-dict.plist", *cxx::ResourceManager::builtInPath()));
+		OO_CHECK(cxx::ResourceManager::whitelistDictionary().isNull());
+		OO_CHECK(cxx::ResourceManager::roleCategoriesDictionary().isDict());
+		OO_CHECK(cxx::ResourceManager::logControlDictionary().isDict());
+	}
+}
+
+
 OO_TEST_MAIN()

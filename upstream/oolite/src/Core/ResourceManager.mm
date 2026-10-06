@@ -84,8 +84,6 @@ constexpr const char *kOOCacheKeyModificationDates	= "modification dates";
 @interface ResourceManager (OOPrivate)
 
 
-+ (BOOL) checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths;
-+ (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)category;
 
 @end
 
@@ -443,7 +441,7 @@ std::vector<std::string> cxx::ResourceManager::rootPaths()
 {
 	/* Built-in data, then managed OXZs, then manually installed ones,
 	 * which may be useful for debugging/testing purposes.
-	 * oo::ResourcePaths computes the same paths as [self builtInPath] and
+	 * oo::ResourcePaths computes the same paths as [::ResourceManager builtInPath] and
 	 * [[OOOXZManager sharedManager] installPath]. */
 	static std::optional<std::vector<std::string>> sRootPaths;
 	if (!sRootPaths.has_value())
@@ -606,7 +604,7 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 		filterSearchPathsByScenario(searchPaths);
 	}
 
-	[::ResourceManager checkCacheUpToDateForPaths:searchPaths];
+	checkCacheUpToDateForPaths(searchPaths);
 
 	return searchPaths;
 }
@@ -775,7 +773,7 @@ void cxx::ResourceManager::setUseAddOns(const std::string &useAddOns)
 			cmgr->setAllowCacheWrites(false);
 		}
 
-		[::ResourceManager checkCacheUpToDateForPaths:paths()];
+		checkCacheUpToDateForPaths(paths());
 		logPaths();
 		/* preloading the file lists at this stage helps efficiency a
 		 * lot when many OXZs are installed */
@@ -1387,12 +1385,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 }
 
 
-// Slices 3 and 4 of docs/phases/3-slices/ResourceManager.md, still Objective-C: a category of the
-// facade over the same file-scope state (ADR-0056 amendment oo-3bgz). Each slice's bead moves
-// its methods into cxx::ResourceManager above.
-@implementation ResourceManager (OOResourceManagerUnconverted)
-
-+ (BOOL)checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths
+bool cxx::ResourceManager::checkCacheUpToDateForPaths(const std::vector<std::string> &searchPaths)
 {
 	/*	Check if caches are up to date.
 		The strategy is to use a two-entry cache. One entry is an array
@@ -1402,7 +1395,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		OOCacheManager holds Foundation objects (an unmigrated callee): the two
 		arrays are built for it at each call and compared with -isEqual:, as before.
 	*/
-	OOCacheManager		*cacheMgr = [OOCacheManager sharedCache];
+	OOCacheManager		*cacheMgr = OOCacheManager::sharedCache();
 	BOOL				upToDate = YES;
 
 	if (EXPECT_NOT(oo::Defaults::standard().boolForKey("always-flush-cache")))
@@ -1410,13 +1403,13 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
 		upToDate = NO;
 	}
-	else if ([MyOpenGLView pollShiftKey])
+	else if ([::MyOpenGLView pollShiftKey])
 	{
 		OO_LOG("dataCache.rebuild.explicitFlush", "{}", "Cache explicitly flushed with shift key. Rebuilding from scratch.");
 		upToDate = NO;
 	}
 
-	const oo::PList oldPaths = [cacheMgr cxx_pListForKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];	// null: none
+	const oo::PList oldPaths = cacheMgr->pListForKey(kOOCacheKeySearchPaths, kOOCacheSearchPathModDates);	// null: none
 	const oo::PList searchPathList = StringArray(searchPaths);
 	if (upToDate && !PListIsEqual(&oldPaths, &searchPathList))
 	{
@@ -1439,7 +1432,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	}
 	const oo::PList modDateList(std::move(modDates));
 
-	const oo::PList oldModDates = [cacheMgr cxx_pListForKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates];
+	const oo::PList oldModDates = cacheMgr->pListForKey(kOOCacheKeyModificationDates, kOOCacheSearchPathModDates);
 	if (upToDate && !PListIsEqual(&oldModDates, &modDateList))
 	{
 		OO_LOG("dataCache.rebuild.datesChanged", "{}", "Cache is stale (modification dates have changed). Rebuilding from scratch.");
@@ -1448,9 +1441,9 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 
 	if (!upToDate)
 	{
-		[cacheMgr clearAllCaches];
-		[cacheMgr cxx_setPList:searchPathList forKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];
-		[cacheMgr cxx_setPList:modDateList forKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates];
+		cacheMgr->clearAllCaches();
+		cacheMgr->setPList(searchPathList, kOOCacheKeySearchPaths, kOOCacheSearchPathModDates);
+		cacheMgr->setPList(modDateList, kOOCacheKeyModificationDates, kOOCacheSearchPathModDates);
 	}
 	else OO_LOG("dataCache.upToDate", "{}", "Data cache is up to date.");
 
@@ -1466,9 +1459,9 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
  * excluded by not including the plists which reference them, and
  * everything else can be excluded by not referencing it from a plist.
  */
-+ (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path
+bool cxx::ResourceManager::corePlist(const std::string &fileName, const std::string &path)
 {
-	if (path != [self cxx_builtInPath])
+	if (path != builtInPath())
 	{
 		// non-core paths always okay
 		return NO;
@@ -1490,15 +1483,20 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 }
 
 
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+oo::PList cxx::ResourceManager::dictionaryFromFilesNamed(const std::string &fileName,
+													 const std::optional<std::string> &folderName,
+													 bool mergeFiles)
 								  inFolder:(const std::optional<std::string> &)folderName
 								  andMerge:(BOOL) mergeFiles
 {
-	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName mergeMode:mergeFiles ? MERGE_BASIC : MERGE_NONE cache:YES];
+	return dictionaryFromFilesNamed(fileName, folderName, mergeFiles ? MERGE_BASIC : MERGE_NONE, YES);
 }
 
 
-+ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+oo::PList cxx::ResourceManager::dictionaryFromFilesNamed(const std::string &fileName,
+													 const std::optional<std::string> &folderName,
+													 OOResourceMergeMode mergeMode,
+													 bool useCache)
 								  inFolder:(const std::optional<std::string> &)folderName
 								 mergeMode:(OOResourceMergeMode)mergeMode
 									 cache:(BOOL)cache
@@ -1506,7 +1504,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	oo::PList		result;
 	std::string		cacheKey;
 	const char		*mergeType = nullptr;
-	OOCacheManager	*cacheMgr = [OOCacheManager sharedCache];
+	OOCacheManager	*cacheMgr = OOCacheManager::sharedCache();
 
 	switch (mergeMode)
 	{
@@ -1539,7 +1537,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		{
 			cacheKey = oo::str::format("%s merge:%s", fileName.c_str(), mergeType);
 		}
-		oo::PList cached = [cacheMgr cxx_pListForKey:cacheKey inCache:"dictionaries"];
+		oo::PList cached = cacheMgr->pListForKey(cacheKey, "dictionaries");
 		if (!cached.isNull())  return cached;
 	}
 
@@ -1547,7 +1545,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	if (mergeMode == MERGE_NONE)
 	{
 		// Find "last" matching dictionary
-		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		const std::vector<std::string> paths = paths();
 		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
 			const std::string &path = *pathIt;
@@ -1564,9 +1562,9 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	{
 		// Find all matching dictionaries
 		std::vector<oo::PList> results;
-		for (const std::string &path : [ResourceManager cxx_paths])
+		for (const std::string &path : paths())
 		{
-			if ([ResourceManager cxx_corePlist:fileName excludedAt:path])
+			if (corePlist(fileName, path))
 			{
 				continue;
 			}
@@ -1593,30 +1591,30 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		result = oo::PList(std::move(merged));
 	}
 
-	if (cache && !result.isNull())  [cacheMgr cxx_setPList:result forKey:cacheKey inCache:"dictionaries"];
+	if (cache && !result.isNull())  cacheMgr->setPList(result, cacheKey, "dictionaries");
 
 	return result;
 }
 
 
-+ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL) mergeFiles
+oo::PList cxx::ResourceManager::arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
 {
-	return [self cxx_arrayFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles cache:YES];
+	return arrayFromFilesNamed(fileName, folderName, mergeFiles, YES);
 }
 
 
-+ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL) mergeFiles cache:(BOOL)useCache
+oo::PList cxx::ResourceManager::arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles, bool useCache)
 {
 	oo::PList		result;
 	std::string		cacheKey;
-	OOCacheManager	*cache = [OOCacheManager sharedCache];
+	OOCacheManager	*cache = OOCacheManager::sharedCache();
 	const std::string lowercaseName = oo::str::lowercase(fileName);
 	const bool		textureList = lowercaseName == "nebulatextures.plist" || lowercaseName == "startextures.plist";
 
 	if (useCache)
 	{
 		cacheKey = oo::str::format("%s%s merge:%s", folderName.has_value() ? (*folderName + "/").c_str() : "", fileName.c_str(), mergeFiles ? "yes" : "no");
-		oo::PList cached = [cache cxx_pListForKey:cacheKey inCache:"arrays"];
+		oo::PList cached = cache->pListForKey(cacheKey, "arrays");
 		if (!cached.isNull())  return cached;
 	}
 
@@ -1624,7 +1622,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	if (!mergeFiles)
 	{
 		// Find "last" matching array
-		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		const std::vector<std::string> paths = paths();
 		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
 			const std::string &path = *pathIt;
@@ -1642,9 +1640,9 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		// Find all matching arrays (an array of arrays, merged in place by the handlers below)
 		oo::PList results = oo::PList(oo::PList::Array());
 		oo::PList::Array &resultArrays = *results.getIf<oo::PList::Array>();
-		for (const std::string &path : [ResourceManager cxx_paths])
+		for (const std::string &path : paths())
 		{
-			if ([ResourceManager cxx_corePlist:fileName excludedAt:path])
+			if (corePlist(fileName, path))
 			{
 				continue;
 			}
@@ -1665,12 +1663,12 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 				// "key" property
 				// (The array just added is the last of results, which the handlers edit in place.)
 				if (resultArrays.back().count() != 0 && textureList)
-					[self handleStarNebulaListMerging:results];
+					handleStarNebulaListMerging(results);
 
 				if (resultArrays.back().count() != 0 && resultArrays.back().at(0)->isArray())
 				{
 					if (lowercaseName == "equipment.plist")
-						[self handleEquipmentListMerging:results forLookupIndex:3]; // Index 3 is the role string (EQ_*).
+						handleEquipmentListMerging(results, 3); // Index 3 is the role string (EQ_*).
 				}
 			}
 		}
@@ -1688,11 +1686,11 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		// if we're doing equipment.plist, do equipment overrides now, while the array is still mutable
 		if (lowercaseName == "equipment.plist")
 		{
-			[self handleEquipmentOverrides:result];
+			handleEquipmentOverrides(result);
 		}
 	}
 
-	if (useCache && !result.isNull())  [cache cxx_setPList:result forKey:cacheKey inCache:"arrays"];
+	if (useCache && !result.isNull())  cache->setPList(result, cacheKey, "arrays");
 
 	return result;
 }
@@ -1701,7 +1699,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 // A method for handling merging of arrays. Currently used with the equipment.plist entries.
 // The arrayToProcess array is scanned for repetitions of the item at lookup index location and, if found,
 // the latest entry replaces the earliest.
-+ (void) handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex
+void cxx::ResourceManager::handleEquipmentListMerging(oo::PList &arrayToProcess, unsigned lookupIndex)
 {
 	NSUInteger i,j,k;
 	oo::PList::Array &lists = *arrayToProcess.getIf<oo::PList::Array>();
@@ -1737,12 +1735,9 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 // format of file is slightly different to the standard equipment.plist file, in that it is a 
 // dictionary of dictionary objects (rather than an array of arrays). this allows properties like
 // techlevel, price, name/short_description and description/long_description to be updated via the overrides file.
-+ (void) handleEquipmentOverrides: (oo::PList &)arrayToProcess
+void cxx::ResourceManager::handleEquipmentOverrides(oo::PList &arrayToProcess)
 {
-	const oo::PList overrides = [ResourceManager cxx_dictionaryFromFilesNamed:"equipment-overrides.plist"
-															 inFolder:std::string("Config")
-															mergeMode:MERGE_SMART
-																cache:NO];
+	const oo::PList overrides = dictionaryFromFilesNamed("equipment-overrides.plist", std::string("Config"), MERGE_SMART, NO);
 	const oo::PList::Dict *overrideEntries = overrides.getIf<oo::PList::Dict>();
 	if (overrideEntries == nullptr)  return;
 	oo::PList::Array &entries = *arrayToProcess.getIf<oo::PList::Array>();
@@ -1812,7 +1807,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 
 // A method for handling merging of arrays. Currently used with the nebulatextures.plist and startextures.plist entries.
 // uses the "texture" filename as the key value, or "key" if found
-+ (void) handleStarNebulaListMerging: (oo::PList &)arrayToProcess
+void cxx::ResourceManager::handleStarNebulaListMerging(oo::PList &arrayToProcess)
 {
 	NSUInteger i,j,k;
 	oo::PList::Array &lists = *arrayToProcess.getIf<oo::PList::Array>();
@@ -1850,26 +1845,24 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 }
 
 
-+ (oo::PList) cxx_whitelistDictionary
+oo::PList cxx::ResourceManager::whitelistDictionary()
 {
 	static std::optional<oo::PList> whitelistDictionary;	// a missing whitelist is remembered as null, not retried
 
 	if (!whitelistDictionary.has_value())
 	{
-		whitelistDictionary = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "whitelist.plist"));
+		whitelistDictionary = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath(), "Config"), "whitelist.plist"));
 	}
 
 	return *whitelistDictionary;
 }
 
 
-
-
-+ (oo::PList) cxx_logControlDictionary
+oo::PList cxx::ResourceManager::logControlDictionary()
 {
 	// Load built-in copy of logcontrol.plist.
 	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
-	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "logcontrol.plist");
+	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath(), "Config"), "logcontrol.plist");
 	oo::PList logControl = PListDictionaryFromFile(builtInPath);
 	if (!logControl.isDict())  logControl = oo::PList(oo::PList::Dict());
 	oo::PList::Dict &logControlEntries = *logControl.getIf<oo::PList::Dict>();
@@ -1881,7 +1874,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		coreRoots.insert(LogClassKeyRoot(key));
 	}
 
-	const std::vector<std::string> rootPaths = [self cxx_rootPaths];
+	const std::vector<std::string> rootPaths = rootPaths();
 
 	// The logcontrol.plist in path/Config, else in path itself.
 	auto configDictionary = [](const std::string &path) -> oo::PList
@@ -1895,7 +1888,7 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	};
 
 	// Look for logcontrol.plists inside OXPs (but not in root paths). These are not allowed to define keys in hierarchies used by the build-in one.
-	for (const std::string &path : [self cxx_paths])
+	for (const std::string &path : paths())
 	{
 		if (std::find(rootPaths.begin(), rootPaths.end(), path) != rootPaths.end())  continue;
 
@@ -1936,14 +1929,14 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 }
 
 
-+ (oo::PList) cxx_roleCategoriesDictionary
+oo::PList cxx::ResourceManager::roleCategoriesDictionary()
 {
 	oo::PList roleCategories = oo::PList(oo::PList::Dict());
 
 	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
-	for (const std::string &path : [self cxx_paths])
+	for (const std::string &path : paths())
 	{
-		if ([ResourceManager cxx_corePlist:"role-categories.plist" excludedAt:path])
+		if (corePlist("role-categories.plist", path))
 		{
 			continue;
 		}
@@ -1952,12 +1945,12 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 		const oo::PList categories = PListDictionaryFromFile(configPath);
 		if (!categories.isNull())
 		{
-			[ResourceManager mergeRoleCategories:categories intoDictionary:roleCategories];
+			mergeRoleCategories(categories, roleCategories);
 		}
 	}
 
 	/* If the old pirate-victim-roles files exist, merge them in */
-	const oo::PList pirateVictims = [ResourceManager cxx_arrayFromFilesNamed:"pirate-victim-roles.plist" inFolder:std::string("Config") andMerge:YES];
+	const oo::PList pirateVictims = arrayFromFilesNamed("pirate-victim-roles.plist", std::string("Config"), YES);
 	if (OOEnforceStandards() && pirateVictims.count() > 0)
 	{
 		cxx_OOStandardsDeprecated("pirate-victim-roles.plist is still being used.");
@@ -1965,17 +1958,17 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	if (pirateVictims.isNull())
 	{
 		// +dictionaryWithObject:forKey: with a nil object raised
-		[OOException raise:OOInvalidArgumentException format:"Tried to init dictionary with nil value"];
+		OORaiseException(OOInvalidArgumentException, "Tried to init dictionary with nil value");
 	}
 	oo::PList::Dict pirateVictimCategory;
 	pirateVictimCategory.emplace("oolite-pirate-victim", pirateVictims);
-	[ResourceManager mergeRoleCategories:oo::PList(std::move(pirateVictimCategory)) intoDictionary:roleCategories];
+	mergeRoleCategories(oo::PList(std::move(pirateVictimCategory)), roleCategories);
 
 	return roleCategories;
 }
 
 
-+ (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)categories
+void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PList &categories)
 {
 	// A category is a set of roles: an array of unique values (by -isEqual:), in the order first seen.
 	const oo::PList::Dict *catDataEntries = catData.getIf<oo::PList::Dict>();
@@ -2004,6 +1997,11 @@ void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, co
 	}
 }
 
+
+// Slice 4 of docs/phases/3-slices/ResourceManager.md, still Objective-C: a category of the
+// facade over the same file-scope state (ADR-0056 amendment oo-3bgz). Each slice's bead moves
+// its methods into cxx::ResourceManager above.
+@implementation ResourceManager (OOResourceManagerUnconverted)
 
 + (OOSystemDescriptionManager *) systemDescriptionManager
 {

@@ -95,6 +95,22 @@ public:
 	// Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 	static void clearCaches();
 
+	static bool corePlist(const std::string &fileName, const std::string &path);	// -cxx_corePlist:excludedAt:
+	// A null PList when no file was found; folderName nullopt where nil was passed.
+	static oo::PList dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
+	static oo::PList dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache);
+	static oo::PList arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
+	static oo::PList arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles, bool useCache);
+	// In-out: an array of arrays (the merged files), edited in place.
+	static void handleEquipmentListMerging(oo::PList &arrayToProcess, unsigned lookupIndex);
+	static void handleEquipmentOverrides(oo::PList &arrayToProcess);
+	static void handleStarNebulaListMerging(oo::PList &arrayToProcess);
+	// These are deliberately not merged like normal plists for security reasons.
+	static oo::PList whitelistDictionary();			// a null PList when the file is missing
+	// These have special merging rules.
+	static oo::PList logControlDictionary();
+	static oo::PList roleCategoriesDictionary();	// category -> array of its roles, each once (a set), in first-seen order
+
 	// compatibility checks (a manifest or relation is a Dict; title is nullopt where nil was passed)
 	static bool checkVersionCompatibility(const oo::PList &manifest, const std::optional<std::string> &title);
 	static bool manifestHasConflicts(const oo::PList &manifest, bool logErrors);
@@ -109,6 +125,8 @@ private:
 	static void preloadFileListFromOXZ(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFileListFromFolder(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFilePathFor(const std::string &fileName, const std::string &subFolder, const std::string &path);
+	static bool checkCacheUpToDateForPaths(const std::vector<std::string> &searchPaths);
+	static void mergeRoleCategories(const oo::PList &catData, oo::PList &categories);
 	static void checkOXPMessagesInPath(const std::string &path);
 	static void checkPotentialPath(const std::string &path, std::vector<std::string> &searchPaths);
 	static bool validateManifest(const oo::PList &manifest, const std::string &path);
