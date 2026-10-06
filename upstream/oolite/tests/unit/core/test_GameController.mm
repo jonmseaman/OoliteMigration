@@ -444,7 +444,7 @@ OO_TEST(saveDirectoryLookup)
 
 		[controller cxx_setPlayerFileDirectory:std::nullopt];
 		const std::optional<std::string> found = [controller cxx_playerFileDirectory];
-		OO_CHECK(found.has_value() && stdfs::is_directory(saves) && stdfs::equivalent(stdfs::u8path(*found), saves));
+		OO_CHECK(found.has_value() && stdfs::is_directory(saves) && stdfs::equivalent(oo::fs::pathFromUTF8(*found), saves));
 		OO_CHECK([controller cxx_playerFileDirectory] == found);	// looked up once
 
 		oo::Defaults::standard().setObject("save-directory", oo::PList(std::string("Z:/no/such/directory")));
@@ -452,7 +452,7 @@ OO_TEST(saveDirectoryLookup)
 		OO_CHECK(!oo::Defaults::standard().stringForKey("save-directory").has_value());
 		oo::Defaults::standard().setObject("save-directory", oo::PList(std::string("Z:/no/such/directory")));
 		const std::optional<std::string> again = [controller cxx_playerFileDirectory];
-		OO_CHECK(again.has_value() && stdfs::equivalent(stdfs::u8path(*again), saves));
+		OO_CHECK(again.has_value() && stdfs::equivalent(oo::fs::pathFromUTF8(*again), saves));
 
 		[controller cxx_setPlayerFileDirectory:std::nullopt];
 		stdfs::remove_all(saves);
