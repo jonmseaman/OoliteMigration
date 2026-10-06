@@ -77,7 +77,7 @@ namespace cxx {
 void OODebugMonitor::init()
 {
 	{
-		_configFromOXPs = normalizeConfigDictionary([ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
+		_configFromOXPs = normalizeConfigDictionary([::ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
 																						  inFolder:"Config"
 																						  andMerge:YES]);
 
@@ -709,7 +709,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 
 	if (!path)
 	{
-		path = [ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
+		path = [::ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
 	}
 	if (path)
 	{

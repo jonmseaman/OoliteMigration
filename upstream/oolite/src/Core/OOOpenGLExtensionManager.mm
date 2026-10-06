@@ -228,7 +228,7 @@ void OOOpenGLExtensionManager::reset()
 	 search paths here. If we don't, the search path dump ends up in
 	 the middle of the OpenGL stuff.
 	 */
-	[ResourceManager cxx_paths];
+	[::ResourceManager cxx_paths];
 	
 	OO_LOG("rendering.opengl.version", "OpenGL renderer version: {}.{}.{} (\"{}\"). Vendor: \"{}\". Renderer: \"{}\".", major, minor, release_, versionString ? reinterpret_cast<const char *>(versionString) : "(null)", vendor.value_or("(null)"), renderer.value_or("(null)"));
 	{
@@ -775,7 +775,7 @@ oo::PList StringForKey(const oo::PList *dict, std::string_view key)
 
 oo::PList OOOpenGLExtensionManager::lookUpPerGPUSettingsWithVersionString(const std::optional<std::string> &versionStr, const std::optional<std::string> &extensionsStr)
 {
-	const oo::PList configurations = [ResourceManager cxx_dictionaryFromFilesNamed:"gpu-settings.plist"
+	const oo::PList configurations = [::ResourceManager cxx_dictionaryFromFilesNamed:"gpu-settings.plist"
 																	inFolder:"Config"
 																	andMerge:YES];
 

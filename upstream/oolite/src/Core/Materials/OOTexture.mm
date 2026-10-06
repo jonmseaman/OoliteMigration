@@ -149,7 +149,7 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithName(const std::optional<std::s
 	result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(existingTextureForKey(key)));
 	if (result == nullptr)
 	{
-		path = [ResourceManager cxx_pathForFileNamed:*name inFolder:directory];
+		path = [::ResourceManager cxx_pathForFileNamed:*name inFolder:directory];
 		if (!path.has_value())
 		{
 			if (!noFNF)  OO_LOG_WARN(cxx_kOOLogFileNotFound, "Could not find texture file \"{}\".", *name);
