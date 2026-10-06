@@ -21,6 +21,7 @@ If it ever needs the foreground it must take tools/gui-lock like every other lau
 import argparse
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
@@ -44,6 +45,28 @@ def default_app_dir():
     return os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test", "oolite.app")
 
 
+# Same bounded clear-repeat as launch_dock.clear_system (bug oo-pfern; see CLEAR_ATTEMPTS there
+# for the measured arrival sources): a ship can arrive between the clear and the count.
+CLEAR_ATTEMPTS = 10
+CLEAR_RETRY_SECONDS = 0.5
+CLEAR_NON_STATION_SHIPS_JS = (
+    "(function(){"
+    " var ships = system.allShips, n = 0;"
+    " for (var i = 0; i < ships.length; i++) {"
+    "   if (!ships[i].isPlayer && !ships[i].isStation) { ships[i].remove(); n++; }"
+    " }"
+    " return n; })()"
+)
+COUNT_NON_STATION_SHIPS_JS = (
+    "(function(){"
+    " var ships = system.allShips, n = 0;"
+    " for (var i = 0; i < ships.length; i++) {"
+    "   if (!ships[i].isPlayer && !ships[i].isStation) n++;"
+    " }"
+    " return n; })()"
+)
+
+
 def clear_system(console):
     """Remove every non-player, non-station ship.
 
@@ -51,23 +74,19 @@ def clear_system(console):
     the main station undocks the player mid-scenario, which is exactly the divergence source this
     hit during development: an early version removed it, and the player's docked/undocked state
     became a second, unintended RNG-shaped source of run-to-run difference.
+
+    Repeats clear-then-count up to CLEAR_ATTEMPTS times and fails only when the system never
+    empties (bug oo-pfern).
     """
-    removed = console.evaluate_int(
-        "(function(){"
-        " var ships = system.allShips, n = 0;"
-        " for (var i = 0; i < ships.length; i++) {"
-        "   if (!ships[i].isPlayer && !ships[i].isStation) { ships[i].remove(); n++; }"
-        " }"
-        " return n; })()"
-    )
-    remaining = console.evaluate_int(
-        "(function(){"
-        " var ships = system.allShips, n = 0;"
-        " for (var i = 0; i < ships.length; i++) {"
-        "   if (!ships[i].isPlayer && !ships[i].isStation) n++;"
-        " }"
-        " return n; })()"
-    )
+    removed = 0
+    remaining = None
+    for attempt in range(CLEAR_ATTEMPTS):
+        if attempt:
+            time.sleep(CLEAR_RETRY_SECONDS)
+        removed += console.evaluate_int(CLEAR_NON_STATION_SHIPS_JS)
+        remaining = console.evaluate_int(COUNT_NON_STATION_SHIPS_JS)
+        if remaining <= 0:
+            break
     if remaining > 0:
         raise SystemExit(
             "cleared %d ships but %d non-station ship(s) remain; scenario would measure "
