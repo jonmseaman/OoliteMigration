@@ -1236,7 +1236,7 @@ void cxx::HeadUpDisplay::drawHUDItem(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawSurroundInternal(const oo::PList &info, const GLfloat color[4])
+void cxx::HeadUpDisplay::drawSurroundInternal(const oo::PList & /*info*/, const GLfloat color[4])	// the geometry is the current item's cached info
 {
 	NSInteger			x, y;
 	NSSize				siz;
@@ -1700,20 +1700,20 @@ void cxx::HeadUpDisplay::drawScannerZoomIndicator(const oo::PList &info)
 	GLfloat cx = x - 0.3 * siz.width;
 	GLfloat cy = y - 0.75 * siz.height;
 	
-	int zl = scanner_zoom;
-	if (zl < 1) zl = 1;
-	if (zl > SCANNER_ZOOM_LEVELS) zl = SCANNER_ZOOM_LEVELS;
-	if (zl == 1) zoom_color[3] *= 0.75;
+	int zoomLevel = scanner_zoom;	// was zl, which reads as the member z1 (clang-tidy misc-confusable-identifiers)
+	if (zoomLevel < 1) zoomLevel = 1;
+	if (zoomLevel > SCANNER_ZOOM_LEVELS) zoomLevel = SCANNER_ZOOM_LEVELS;
+	if (zoomLevel == 1) zoom_color[3] *= 0.75;
 	if (scanner_ultra_zoom)
-		zl = pow(2, zl - 1);
+		zoomLevel = pow(2, zoomLevel - 1);
 	GLColorWithOverallAlpha(zoom_color, alpha);
 	OOGL(glEnable(GL_TEXTURE_2D));
 	if (sFontTexture != nil)  oo::ToCxx(sFontTexture)->apply();	// a message to nil did nothing
 	
 	OOGLBEGIN(GL_QUADS);
-		if (zl / 10 > 0)
-			drawCharacterQuad(48 + zl / 10, cx - 0.8 * siz.width, cy, z1, siz);
-		drawCharacterQuad(48 + zl % 10, cx - 0.4 * siz.width, cy, z1, siz);
+		if (zoomLevel / 10 > 0)
+			drawCharacterQuad(48 + zoomLevel / 10, cx - 0.8 * siz.width, cy, z1, siz);
+		drawCharacterQuad(48 + zoomLevel % 10, cx - 0.4 * siz.width, cy, z1, siz);
 		drawCharacterQuad(58, cx, cy, z1, siz);
 		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, z1, siz);
 	OOGLEND();
@@ -4143,7 +4143,7 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 		// see OODrawHilightedPlanetInfo
 		cx += drawCharacterQuad(23 - eco, cx, y, z, siz);	// characters 16..23 are economy symbols
 		HeadUpDisplayUniverseGUISetGLColorFromSetting(oo::str::format(cxx_kGuiChartGovernmentUColor, (size_t)gov),
-													  oo::ToObjC(cxx::OOColor::colorWithRed(govcol[gov*3], govcol[1+(gov*3)], govcol[2+(gov*3)], 1.0f)),
+													  oo::ToObjC(cxx::OOColor::colorWithRed(govcol[static_cast<std::size_t>(gov)*3], govcol[1+(gov*3)], govcol[2+(gov*3)], 1.0f)),
 													  1.0);
 
 		cx += drawCharacterQuad(gov, cx, y, z, siz) - sF6KernGovt;		// charcters 0..7 are government symbols
