@@ -1890,4 +1890,78 @@ OO_TEST(commoditiesAndCargo)
 }
 
 
+// Slice 21: the flight controls, clamped to the ship's limits.
+OO_TEST(flightControls)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("controls");
+		[ship setDesiredRange:750];
+		OO_CHECK([ship desiredRange] == 750 && [ship cruiseSpeed] == 0);
+
+		[ship increase_flight_speed:50];
+		OO_CHECK([ship flightSpeed] == 50);
+		[ship increase_flight_speed:500];		// past the top speed: overshoots once
+		OO_CHECK([ship flightSpeed] == 550);
+		[ship increase_flight_speed:1];			// then is the top speed
+		OO_CHECK([ship flightSpeed] == 200);
+		OO_CHECK([ship speedFactor] == 1);
+		[ship decrease_flight_speed:150];
+		OO_CHECK([ship flightSpeed] == 50);
+		[ship decrease_flight_speed:80];
+		OO_CHECK([ship flightSpeed] == 0);
+
+		[ship setMaxFlightRoll:2];
+		[ship setMaxFlightPitch:1];
+		[ship setMaxFlightYaw:0.5f];
+		OO_CHECK([ship maxFlightRoll] == 2 && [ship maxFlightPitch] == 1 && [ship maxFlightYaw] == 0.5f);
+		[ship increase_flight_roll:3];
+		[ship increase_flight_pitch:0.25];
+		[ship decrease_flight_yaw:1];
+		OO_CHECK([ship flightRoll] == 2 && [ship flightPitch] == 0.25f && [ship flightYaw] == -0.5f);
+		[ship decrease_flight_roll:5];
+		[ship decrease_flight_pitch:0.5];
+		[ship increase_flight_yaw:2];
+		OO_CHECK([ship flightRoll] == -2 && [ship flightPitch] == -0.25f && [ship flightYaw] == 0.5f);
+
+		[ship setMaxFlightSpeed:0];
+		OO_CHECK([ship speedFactor] == 0 && [ship maxFlightSpeed] == 0);
+	}
+}
+
+
+// Slice 21: temperature, insulation, damage and hulks.
+OO_TEST(temperatureDamageAndHulks)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("hot");
+		OO_CHECK([ship temperature] == SHIP_MIN_CABIN_TEMP);
+		OO_CHECK([ship randomEjectaTemperature] == SHIP_MIN_CABIN_TEMP);	// a cold ship's debris is as cold
+		[ship setTemperature:500];
+		OO_CHECK([ship temperature] == 500);
+		float ejecta = [ship randomEjectaTemperatureWithMaxFactor:0.5f];
+		OO_CHECK(ejecta > SHIP_MIN_CABIN_TEMP && ejecta < 500);
+		[ship setHeatInsulation:2];
+		OO_CHECK([ship heatInsulation] == 2);
+
+		[ship setMaxEnergy:200];
+		[ship setEnergy:150];
+		OO_CHECK([ship damage] == 25);
+
+		OO_CHECK(![ship isHulk]);
+		[ship setHulk:YES];
+		OO_CHECK([ship isHulk] && [ship isUnpiloted]);
+		[ship setHulk:NO];
+		TestShip *sub = FlyingShip("turret");
+		SetSubEntity(sub, true);
+		[sub setHulk:YES];		// a subentity never is
+		OO_CHECK(![sub isHulk]);
+		SetSubEntity(sub, false);
+	}
+}
+
+
 OO_TEST_MAIN()

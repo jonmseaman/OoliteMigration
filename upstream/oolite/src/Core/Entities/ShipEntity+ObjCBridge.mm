@@ -112,6 +112,12 @@ public:
 	int legalStatus() override	{ return [(::ShipEntity *)_objcOwner legalStatus]; }
 	OOCargoQuantity cargoQuantityOnBoard() override	{ return [(::ShipEntity *)_objcOwner cargoQuantityOnBoard]; }
 	oo::PList cargoListForScripting() override	{ return [(::ShipEntity *)_objcOwner cargoListForScripting]; }
+
+	// Slice 21 (bead oo-cicod).
+	void setMaxFlightPitch(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightPitch:newValue]; }
+	void setMaxFlightRoll(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightRoll:newValue]; }
+	void setMaxFlightYaw(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightYaw:newValue]; }
+	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner noteTakingDamage:amount from:entity type:type]; }
 };
 
 }	// namespace
@@ -764,5 +770,49 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setSpeed:(double)amount	{ _cxxShip->setSpeed(amount); }
 - (void) setDesiredSpeed:(double)amount	{ _cxxShip->setDesiredSpeed(amount); }
 - (double) desiredSpeed	{ return _cxxShip->desiredSpeed(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice21)
+
+- (double) desiredRange	{ return _cxxShip->desiredRange(); }
+- (void) setDesiredRange:(double)amount	{ _cxxShip->setDesiredRange(amount); }
+- (double) cruiseSpeed	{ return _cxxShip->getCruiseSpeed(); }
+- (void) increase_flight_speed:(double)delta	{ _cxxShip->increase_flight_speed(delta); }
+- (void) decrease_flight_speed:(double)delta	{ _cxxShip->decrease_flight_speed(delta); }
+- (void) increase_flight_roll:(double)delta	{ _cxxShip->increase_flight_roll(delta); }
+- (void) decrease_flight_roll:(double)delta	{ _cxxShip->decrease_flight_roll(delta); }
+- (void) increase_flight_pitch:(double)delta	{ _cxxShip->increase_flight_pitch(delta); }
+- (void) decrease_flight_pitch:(double)delta	{ _cxxShip->decrease_flight_pitch(delta); }
+- (void) increase_flight_yaw:(double)delta	{ _cxxShip->increase_flight_yaw(delta); }
+- (void) decrease_flight_yaw:(double)delta	{ _cxxShip->decrease_flight_yaw(delta); }
+- (GLfloat) flightRoll	{ return _cxxShip->getFlightRoll(); }
+- (GLfloat) flightPitch	{ return _cxxShip->getFlightPitch(); }
+- (GLfloat) flightYaw	{ return _cxxShip->getFlightYaw(); }
+- (GLfloat) flightSpeed	{ return _cxxShip->getFlightSpeed(); }
+- (GLfloat) maxFlightPitch	{ return _cxxShip->maxFlightPitch(); }
+- (GLfloat) maxFlightSpeed	{ return _cxxShip->getMaxFlightSpeed(); }
+- (GLfloat) maxFlightRoll	{ return _cxxShip->maxFlightRoll(); }
+- (GLfloat) maxFlightYaw	{ return _cxxShip->maxFlightYaw(); }
+- (void) setMaxFlightPitch:(GLfloat)newValue	{ _cxxShip->cxx::ShipEntity::setMaxFlightPitch(newValue); }
+- (void) setMaxFlightSpeed:(GLfloat)newValue	{ _cxxShip->setMaxFlightSpeed(newValue); }
+- (void) setMaxFlightRoll:(GLfloat)newValue	{ _cxxShip->cxx::ShipEntity::setMaxFlightRoll(newValue); }
+- (void) setMaxFlightYaw:(GLfloat)newValue	{ _cxxShip->cxx::ShipEntity::setMaxFlightYaw(newValue); }
+- (GLfloat) speedFactor	{ return _cxxShip->speedFactor(); }
+- (GLfloat) temperature	{ return _cxxShip->temperature(); }
+- (void) setTemperature:(GLfloat)value	{ _cxxShip->setTemperature(value); }
+- (float) randomEjectaTemperature	{ return _cxxShip->randomEjectaTemperature(); }
+- (float) randomEjectaTemperatureWithMaxFactor:(float)factor	{ return _cxxShip->randomEjectaTemperatureWithMaxFactor(factor); }
+- (GLfloat) heatInsulation	{ return _cxxShip->heatInsulation(); }
+- (void) setHeatInsulation:(GLfloat)value	{ _cxxShip->setHeatInsulation(value); }
+- (int) damage	{ return _cxxShip->damage(); }
+- (void) dealEnergyDamage:(GLfloat)baseDamage atRange:(GLfloat)range withBias:(GLfloat)velocityBias	{ _cxxShip->dealEnergyDamage(baseDamage, range, velocityBias); }
+- (void) dealEnergyDamageWithinDesiredRange	{ _cxxShip->dealEnergyDamageWithinDesiredRange(); }
+- (void) dealMomentumWithinDesiredRange:(double)amount	{ _cxxShip->dealMomentumWithinDesiredRange(amount); }
+- (BOOL) isHulk	{ return _cxxShip->getIsHulk(); }
+- (void) setHulk:(BOOL)isNowHulk	{ _cxxShip->setHulk(isNowHulk); }
+- (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type	{ _cxxShip->cxx::ShipEntity::noteTakingDamage(amount, entity, type); }
+- (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type	{ _cxxShip->noteKilledBy(whom, type); }
 
 @end
