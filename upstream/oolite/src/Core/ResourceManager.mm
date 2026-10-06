@@ -2214,10 +2214,10 @@ std::optional<std::string> cxx::ResourceManager::stringFromFilesNamed(const std:
 }
 
 
-std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> cxx::ResourceManager::loadScripts()
+std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> cxx::ResourceManager::loadScripts()
 {
 	// name -> script, in the order each name was first loaded (a later script of the same name replaces the earlier one in place)
-	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>	loadedScripts;
+	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>	loadedScripts;
 
 	OO_LOG("script.load.world.begin", "{}", "Loading world scripts...");
 
@@ -2232,11 +2232,11 @@ std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> cxx::ResourceManage
 			{
 				@try
 				{
-					std::optional<std::vector<oo::ObjCRef<OOScript *>>> results = [::OOScript cxx_worldScriptsAtPath:oo::str::appendingPathComponent(path, "Config")];
+					std::optional<std::vector<oo::ObjCRef<::OOScript *>>> results = [::OOScript cxx_worldScriptsAtPath:oo::str::appendingPathComponent(path, "Config")];
 					if (!results.has_value()) results = [::OOScript cxx_worldScriptsAtPath:path];
 					if (results.has_value())
 					{
-						for (const oo::ObjCRef<OOScript *> &script : *results)
+						for (const oo::ObjCRef<::OOScript *> &script : *results)
 						{
 							const std::optional<std::string> name = [script.get() cxx_name];
 							if (name.has_value())

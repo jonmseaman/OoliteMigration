@@ -106,7 +106,7 @@ public:
 	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName);
 	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache);
 	// World scripts by name, in the order each name was first loaded.
-	static std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> loadScripts();
+	static std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> loadScripts();
 	/*	writeDiagnosticData()
 		writeDiagnosticString()
 		writeDiagnosticPList()
