@@ -42,8 +42,6 @@ SOFTWARE.
 #include "oofnd/String.hpp"
 
 
-namespace cxx {
-
 // The public initialisers, each [[self alloc] init...] of the old (self is result): a new uniform
 // whose initialiser answered nil is dropped (null) instead of released.
 
@@ -86,7 +84,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 }
 
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, OOColor *constValue)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, cxx::OOColor *constValue)
 {
 	if (EXPECT_NOT(constValue == nullptr))
 	{
@@ -291,7 +289,7 @@ std::optional<std::string> OOShaderUniform::description()
 		The class is named as a literal and the address is the facade's, as [self class] and self
 		were (amendments oo-3lj8 item 4 and oo-bhb9 item 6).
 	*/
-	return oo::str::format("<%s %s>{%i: %s %s = %s;}", "OOShaderUniform", oo::str::pointerDescription(oo::ToObjC(this)).c_str(), location, valueType != nullptr ? valueType : "(null)", name.c_str(), valueDesc->c_str());
+	return oo::str::format("<%s %s>{%i: %s %s = %s;}", "OOShaderUniform", oo::str::pointerDescription(this).c_str(), location, valueType != nullptr ? valueType : "(null)", name.c_str(), valueDesc->c_str());
 }
 
 
@@ -573,7 +571,5 @@ void OOShaderUniform::applyBinding()
 		GLUniformMatrix(location, mVal);
 	}
 }
-
-}	// namespace cxx
 
 #endif // OO_SHADERS
