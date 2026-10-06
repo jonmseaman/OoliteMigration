@@ -873,7 +873,7 @@ namespace oo {
 // The root's crossings, typed (amendment oo-up4b item 3).
 inline cxx::ShipEntity *ToCxx(::ShipEntity *entity)
 {
-	return entity != nil ? entity->_cxxShip : nullptr;
+	return static_cast<cxx::ShipEntity *>(ToCxx(static_cast<::Entity *>(entity)));
 }
 
 inline ::ShipEntity *ToObjC(cxx::ShipEntity *entity)

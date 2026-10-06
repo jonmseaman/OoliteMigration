@@ -3398,7 +3398,9 @@ also read the ivars it declared `@private`, and they stay Objective-C until thei
    names, `_cxxShip->fuel` in a method of the facade, its categories or an Objective-C subclass,
    and `ship->_cxxShip->fuel` from another class. The rewrite is amendment oo-bj8 item 2's,
    compiler-guided, with the same poison-ivar proof; each slice deletes `_cxxShip->` from the
-   bodies it moves and gets them back verbatim. `oo::ToCxx(::ShipEntity *)` answers `_cxxShip`.
+   bodies it moves and gets them back verbatim. `oo::ToCxx(::ShipEntity *)` is the root's
+   crossing, typed (amendment oo-up4b item 3), not a read of `_cxxShip`: overload resolution picks
+   it for every `PlayerEntity *`, and the unit tests' stand-in `PLAYER` is a plain entity.
 2. **The `@private` ivars are public members while the class is half converted**, marked so in
    the class: the facade's unconverted methods read them, and an Objective-C class cannot be a C++
    friend. The facade's deletion bead makes them private again.
