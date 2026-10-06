@@ -14647,7 +14647,7 @@ void ShipEntity::behaviour_evasive_action(double delta_t)
 // oo-mvzmb).
 namespace cxx {
 
-void ShipEntity::behaviour_attack_target(double delta_t)
+void ShipEntity::behaviour_attack_target(double /*delta_t*/)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	double  range = [self rangeToPrimaryTarget];
@@ -14847,7 +14847,7 @@ void ShipEntity::behaviour_attack_target(double delta_t)
 }
 
 
-void ShipEntity::behaviour_attack_broadside(double delta_t)
+void ShipEntity::behaviour_attack_broadside(double /*delta_t*/)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
