@@ -47,14 +47,6 @@ MA 02110-1301, USA.
 }
 
 // ship brains
-- (void) setStateMachine:(const std::string &)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-- (void) setAI:(AI *)ai;
-- (AI *) getAI;
-- (BOOL) hasAutoAI;
-- (BOOL) hasNewAI;
-- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
-- (double) frustration;
-- (void) setLaunchDelay:(double)delay;
 
 - (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
@@ -84,7 +76,6 @@ MA 02110-1301, USA.
 
 
 
-- (BOOL) hasAutoWeapons;
 
 
 
@@ -158,32 +149,16 @@ MA 02110-1301, USA.
 
 
 
-- (OOAegisStatus) checkForAegis;
-- (void) forceAegisCheck;
-- (BOOL) withinStationAegis;
-- (void) setLastAegisLock:(Entity<OOStellarBody> *)lastAegisLock;
-
-- (OOSystemID) homeSystem;
-- (OOSystemID) destinationSystem;
-- (void) setHomeSystem:(OOSystemID)s;
-- (void) setDestinationSystem:(OOSystemID)s;
 
 
-- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew;	// nullopt: unpiloted
-- (std::vector<oo::PList>) cxx_crewForScripting;	// each member's -infoForScripting
-- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray;
+
 /**
 	Convenience to set the crew to a single character of the given role,
 	originating in the ship's home system. Does nothing if unpiloted.
  */
-- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole;
 
 // Fuel and capacity in tenths of light-years.
-- (OOFuelQuantity) fuel;
-- (void) setFuel:(OOFuelQuantity)amount;
-- (OOFuelQuantity) fuelCapacity;
 
-- (GLfloat) fuelChargeRate;
 
 - (void) setRoll:(double)amount;
 - (void) setRawRoll:(double)amount; // does not multiply by PI/2
@@ -1078,9 +1053,46 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// Slice 19 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice19)
+
+- (OOAegisStatus) checkForAegis;
+- (void) forceAegisCheck;
+- (BOOL) withinStationAegis;
+- (Entity<OOStellarBody> *) lastAegisLock;
+- (void) setLastAegisLock:(Entity<OOStellarBody> *)lastAegisLock;
+- (OOSystemID) homeSystem;
+- (OOSystemID) destinationSystem;
+- (void) setHomeSystem:(OOSystemID)s;
+- (void) setDestinationSystem:(OOSystemID)s;
+- (void) setStatus:(OOEntityStatus)stat;
+- (void) setLaunchDelay:(double)delay;
+- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew;	// nullopt: unpiloted
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray;
+- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole;
+- (std::vector<oo::PList>) cxx_crewForScripting;	// each member's -infoForScripting
+- (void) setStateMachine:(const std::string &)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (void) setAI:(AI *)ai;
+- (AI *) getAI;
+- (BOOL) hasAutoAI;
+- (BOOL) hasNewAI;
+- (BOOL) hasAutoWeapons;
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
+- (double) frustration;
+- (OOFuelQuantity) fuel;
+- (void) setFuel:(OOFuelQuantity)amount;
+- (OOFuelQuantity) fuelCapacity;
+- (GLfloat) fuelChargeRate;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]
+GLfloat ShipEntityPlayerBaseMass(void);	// [PLAYER baseMass]
 
 
 namespace oo {

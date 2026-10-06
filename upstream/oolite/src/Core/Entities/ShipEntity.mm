@@ -107,7 +107,7 @@ static GLfloat calcFuelChargeRate (GLfloat myMass)
 #define kMassCharge 0.65				// the closer to 1 this number is, the more the fuel price changes from ship to ship.
 #define kBaseCharge (1.0 - kMassCharge)	// proportion of price that doesn't change with ship's mass.
 
-	GLfloat baseMass = [PLAYER baseMass];
+	GLfloat baseMass = ShipEntityPlayerBaseMass();
 	// if anything is wrong, use 1 (the default  charge rate).
 	if (myMass <= 0.0 || baseMass <=0.0) return 1.0;
 	
@@ -461,433 +461,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	if (p1 > p2) return OOOrderedDescending;
 	
 	return OOOrderedSame;
-}
-
-
-- (OOAegisStatus) checkForAegis
-{
-	Entity<OOStellarBody>	*nearest = [self findNearestStellarBody];
-	BOOL					sunGoneNova = [[UNIVERSE sun] goneNova];
-	
-	if (nearest == nil)
-	{
-		if (_cxxShip->aegis_status != AEGIS_NONE)
-		{
-			// Planet disappeared!
-			[self transitionToAegisNone];
-		}
-		return AEGIS_NONE;
-	}
-	// check planet
-	float			cr = [nearest radius];
-	float			cr2 = cr * cr;
-	OOAegisStatus	result = AEGIS_NONE;
-	float			d2 = HPmagnitude2(HPvector_subtract([nearest position], [self position]));
-	// not scannerRange: aegis shouldn't depend on that
-	float 		sd2 = SCANNER_MAX_RANGE2 * 10.0f;
-
-	// check if nearing a surface
-	unsigned wasNearPlanetSurface = _cxxShip->isNearPlanetSurface;	// isNearPlanetSurface is a bit flag, not an actual BOOL
-	_cxxShip->isNearPlanetSurface = (d2 - cr2) < (250000.0f + 1000.0f * cr); //less than 500m from the surface: (a+b)*(a+b) = a*a+b*b +2*a*b
-
-
-	if (EXPECT_NOT((wasNearPlanetSurface != _cxxShip->isNearPlanetSurface) && !_cxxShip->suppressAegisMessages))
-	{
-		if (_cxxShip->isNearPlanetSurface)
-		{
-			[self doScriptEvent:OOJSID("shipApproachingPlanetSurface") withArgument:nearest];
-			[_cxxShip->shipAI cxx_reactToMessage:"APPROACHING_SURFACE" context:"flight update"];
-		}
-		else
-		{
-			[self doScriptEvent:OOJSID("shipLeavingPlanetSurface") withArgument:nearest];
-			[_cxxShip->shipAI cxx_reactToMessage:"LEAVING_SURFACE" context:"flight update"];
-		}
-	}
-	
-	// being close to the station takes precedence over planets
-	StationEntity	*the_station = [UNIVERSE station];
-	if (the_station)
-	{
-		sd2 = HPmagnitude2(HPvector_subtract([the_station position], [self position]));
-	}
-	// again, notional scanner range is intentional
-	if (sd2 < SCANNER_MAX_RANGE2 * 4.0f) // double scanner range
-	{
-		result = AEGIS_IN_DOCKING_RANGE;
-	}
-	else if (EXPECT_NOT(_cxxShip->isNearPlanetSurface || d2 < cr2 * 9.0f)) // to 3x radius of any planet/moon - or 500m of tiny ones,
-	{
-		result = AEGIS_CLOSE_TO_ANY_PLANET;
-		if (EXPECT((OOPlanetEntity *)nearest == [UNIVERSE planet]))
-		{
-			result = AEGIS_CLOSE_TO_MAIN_PLANET;
-		}
-	}
-	// need to do this check separately from above case to avoid oddity where
-	// main planet and small moon are at just the wrong distance. - CIM
-	if (result != AEGIS_CLOSE_TO_MAIN_PLANET && result != AEGIS_IN_DOCKING_RANGE && !sunGoneNova)
-	{
-		// are we also close to the main planet?
-		OOPlanetEntity *mainPlanet = [UNIVERSE planet];
-		d2 = HPmagnitude2(HPvector_subtract([mainPlanet position], [self position]));
-		cr2 = [mainPlanet radius];
-		cr2 *= cr2;	
-		if (d2 < cr2 * 9.0f)
-		{
-			nearest = mainPlanet;
-			result = AEGIS_CLOSE_TO_MAIN_PLANET;
-		}
-	}
-
-
-	/*	Rewrote aegis stuff and tested it against redux.oxp that adds multiple planets and moons.
-		Made sure AI scripts can differentiate between MAIN and NON-MAIN planets so they can decide
-		if they can dock at the systemStation or just any station.
-		Added sun detection so route2Patrol can turn before they heat up in the sun.
-		-- Eric 2009-07-11
-		
-		More rewriting of the aegis stuff, it's now a bit faster and works properly when moving
-		from one secondary planet/moon vicinity to another one.  -- Kaks 20120917
-	*/
-	if (EXPECT(!_cxxShip->suppressAegisMessages))
-	{
-		// script/AI messages on change in status
-		if (EXPECT_NOT(_cxxShip->aegis_status == AEGIS_IN_DOCKING_RANGE && result != _cxxShip->aegis_status))
-		{
-			[self doScriptEvent:OOJSID("shipExitedStationAegis") withArgument:the_station];
-			[_cxxShip->shipAI message:"AEGIS_LEAVING_DOCKING_RANGE"];
-		}
-		
-		if (EXPECT_NOT(result == AEGIS_IN_DOCKING_RANGE && _cxxShip->aegis_status != result))
-		{
-			[self doScriptEvent:OOJSID("shipEnteredStationAegis") withArgument:the_station];
-			[_cxxShip->shipAI message:"AEGIS_IN_DOCKING_RANGE"];
-			
-			if([self lastAegisLock] == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
-			{
-				[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:[UNIVERSE planet]];
-				[self setLastAegisLock:[UNIVERSE planet]];
-			}
-		}
-		else if (EXPECT_NOT(result == AEGIS_NONE && _cxxShip->aegis_status != result))
-		{
-			if([self lastAegisLock] == nil && !sunGoneNova)
-			{
-				[self setLastAegisLock:[UNIVERSE planet]];  // in case of a first launch from a near-planet station.
-			}
-			[self transitionToAegisNone];
-		}
-		// approaching..
-		else if (EXPECT_NOT((result == AEGIS_CLOSE_TO_ANY_PLANET || result == AEGIS_CLOSE_TO_MAIN_PLANET) && [self lastAegisLock] != nearest))
-		{
-			if(_cxxShip->aegis_status != AEGIS_NONE && [self lastAegisLock] != nil)	// we were close to another stellar body
-			{
-				[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:[self lastAegisLock]];
-				[_cxxShip->shipAI message:"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
-			}
-			[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:nearest];
-			[self setLastAegisLock:nearest];
-			
-			if (EXPECT_NOT([nearest isSun]))
-			{
-				[_cxxShip->shipAI message:"CLOSE_TO_SUN"];
-			}
-			else
-			{
-				[_cxxShip->shipAI message:"CLOSE_TO_PLANET"];
-				
-				if (EXPECT(result == AEGIS_CLOSE_TO_MAIN_PLANET))
-				{
-					// It's been years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
-					//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	    // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
-					[_cxxShip->shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
-				}
-				else if (EXPECT_NOT([nearest planetType] == STELLAR_TYPE_MOON))
-				{
-					[_cxxShip->shipAI message:"CLOSE_TO_MOON"];
-				}
-				else
-				{
-					[_cxxShip->shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
-				}
-			}
-		}
-		
-
-	}
-	if (result == AEGIS_NONE)
-	{
-		[self setLastAegisLock:nil];
-	}
-
-	_cxxShip->aegis_status = result;	// put this here
-	return result;
-}
-
-
-- (void) forceAegisCheck
-{
-	_cxxShip->_nextAegisCheck = -1.0f;
-}
-
-
-- (BOOL) withinStationAegis
-{
-	return _cxxShip->aegis_status == AEGIS_IN_DOCKING_RANGE;
-}
-
-
-- (Entity<OOStellarBody> *) lastAegisLock
-{
-	Entity<OOStellarBody> *stellar = [_cxxShip->_lastAegisLock weakRefUnderlyingObject];
-	if (stellar == nil)
-	{
-		[_cxxShip->_lastAegisLock release];
-		_cxxShip->_lastAegisLock = nil;
-	}
-	
-	return stellar;
-}
-
-
-- (void) setLastAegisLock:(Entity<OOStellarBody> *)lastAegisLock
-{
-	[_cxxShip->_lastAegisLock release];
-	_cxxShip->_lastAegisLock = [lastAegisLock weakRetain];
-}
-
-
-- (OOSystemID) homeSystem
-{
-	return _cxxShip->home_system;
-}
-
-
-- (OOSystemID) destinationSystem
-{
-	return _cxxShip->destination_system;
-}
-
-
-- (void) setHomeSystem:(OOSystemID)s
-{
-	_cxxShip->home_system = s;
-}
-
-
-- (void) setDestinationSystem:(OOSystemID)s
-{
-	_cxxShip->destination_system = s;
-}
-
-
-- (void) setStatus:(OOEntityStatus) stat
-{
-	if ([self status] == stat) return;
-	[super setStatus:stat];
-	if (stat == STATUS_LAUNCHING)
-	{
-		_cxxShip->launch_time = [UNIVERSE getTime];
-	}
-}
-
-- (void) setLaunchDelay:(double)delay
-{
-	_cxxShip->launch_delay = delay;
-}
-
-
-- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew
-{
-	return _cxxShip->crew;
-}
-
-
-- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray
-{
-	if ([self isExplicitlyUnpiloted])
-	{
-		//unpiloted ships cannot have crew
-		// but may have crew before isExplicitlyUnpiloted set, so force *that* to clear too
-		_cxxShip->crew = std::nullopt;
-		return;
-	}
-	//do not set to hulk here when crew is nil (or 0).  Some things like missiles have no crew.
-	_cxxShip->crew = crewArray;
-}
-
-
-- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole
-{
-	if (![self isUnpiloted])
-	{
-		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:crewRole
-												 andOriginalSystem:[self homeSystem]];
-		[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(crewMember) }];
-	}
-}
-
-
-- (std::vector<oo::PList>) cxx_crewForScripting
-{
-	std::vector<oo::PList> result;
-	if (!_cxxShip->crew.has_value())
-	{
-		return result;
-	}
-	result.reserve(_cxxShip->crew->size());
-	for (const auto &crewMember : *_cxxShip->crew)
-	{
-		result.push_back([crewMember.get() infoForScripting]);
-	}
-	return result;
-}
-
-
-- (void) setStateMachine:(const std::string &)smName	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-{
-	[self setAITo:smName];
-}
-
-
-- (void) setAI:(AI *)ai
-{
-	[ai retain];
-	if (_cxxShip->shipAI)
-	{
-		[_cxxShip->shipAI clearAllData];
-		[_cxxShip->shipAI autorelease];
-	}
-	_cxxShip->shipAI = ai;
-}
-
-
-- (AI *) getAI
-{
-	return _cxxShip->shipAI;
-}
-
-
-- (BOOL) hasAutoAI
-{
-	return 	FuzzyBooleanForKey(_cxxShip->shipinfoDictionary, "auto_ai", YES);
-}
-
-
-- (BOOL) hasNewAI
-{
-	return [[self getAI] cxx_name] == "nullAI.plist";	// (no AI never matched)
-}
-
-
-- (BOOL) hasAutoWeapons
-{
-	return 	FuzzyBooleanForKey(_cxxShip->shipinfoDictionary, "auto_weapons", NO);
-}
-
-
-- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name
-{
-	oo::PList::Dict			properties;
-	const oo::PList			*actions = nullptr;
-
-	properties["ship"] = oo::PListObject(self);
-
-	[_cxxShip->script autorelease];
-	_cxxShip->script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:oo::PList(properties)];	// nil as "", as the Foundation form sent it
-
-	if (_cxxShip->script == nil)
-	{
-		actions = ArrayForKey(_cxxShip->shipinfoDictionary, "launch_actions");
-		if (actions)
-		{
-			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
-			if (!OOEnforceStandards())
-			{
-				properties["legacy_launchActions"] = *actions;
-			}
-		}
-
-		actions = ArrayForKey(_cxxShip->shipinfoDictionary, "script_actions");
-		if (actions)
-		{
-			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
-			if (!OOEnforceStandards())
-			{
-				properties["legacy_scriptActions"] = *actions;
-			}
-		}
-
-		actions = ArrayForKey(_cxxShip->shipinfoDictionary, "death_actions");
-		if (actions)
-		{
-			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
-			if (!OOEnforceStandards())
-			{
-				properties["legacy_deathActions"] = *actions;
-			}
-		}
-
-		actions = ArrayForKey(_cxxShip->shipinfoDictionary, "setup_actions");
-		if (actions)
-		{
-			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
-			if (!OOEnforceStandards())
-			{
-				properties["legacy_setupActions"] = *actions;
-			}
-		}
-
-		_cxxShip->script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-ship-script.js"
-										  properties:oo::PList(std::move(properties))];
-	}
-	[_cxxShip->script retain];
-}
-
-
-- (double)frustration
-{
-	return _cxxShip->frustration;
-}
-
-
-- (OOFuelQuantity) fuel
-{
-	return _cxxShip->fuel;
-}
-
-
-- (void) setFuel:(OOFuelQuantity) amount
-{
-	if (amount > [self fuelCapacity])  amount = [self fuelCapacity];
-	
-	_cxxShip->fuel = amount;
-}
-
-
-- (OOFuelQuantity) fuelCapacity
-{
-	// FIXME: shipdata.plist can allow greater fuel quantities (without extending hyperspace range). Need some consistency here.
-	return PLAYER_MAX_FUEL;
-}
-
-
-- (GLfloat) fuelChargeRate
-{
-	GLfloat		rate = 1.0; // Standard (& strict play) charge rate.
-	
-#if MASS_DEPENDENT_FUEL_PRICES
-	
-	if (EXPECT(PLAYER != nil && _cxxEntity->mass> 0 && _cxxEntity->mass != [PLAYER baseMass]))
-	{
-		rate = calcFuelChargeRate(_cxxEntity->mass);
-	}
-
-	OO_LOG("fuelPrices", "\"{}\" fuel charge rate: {:.2f} (mass ratio: {:.2f}/{:.2f})", [self cxx_shipDataKey].value_or("(null)"), rate, _cxxEntity->mass, [PLAYER baseMass]);
-#endif
-	
-	return rate;
 }
 
 
@@ -15323,6 +14896,452 @@ void ShipEntity::transitionToAegisNone()
 	result = planets[0].get();
 
 	return result;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 19 of docs/phases/3-slices/ShipEntity.md (bead oo-umyg2): aegis, home and destination
+// systems, status, crew, AI and ship script, fuel. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+OOAegisStatus ShipEntity::checkForAegis()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity<OOStellarBody>	*nearest = [self findNearestStellarBody];
+	BOOL					sunGoneNova = [[UNIVERSE sun] goneNova];
+	
+	if (nearest == nil)
+	{
+		if (aegis_status != AEGIS_NONE)
+		{
+			// Planet disappeared!
+			[self transitionToAegisNone];
+		}
+		return AEGIS_NONE;
+	}
+	// check planet
+	float			cr = [nearest radius];
+	float			cr2 = cr * cr;
+	OOAegisStatus	result = AEGIS_NONE;
+	float			d2 = HPmagnitude2(HPvector_subtract([nearest position], [self position]));
+	// not scannerRange: aegis shouldn't depend on that
+	float 		sd2 = SCANNER_MAX_RANGE2 * 10.0f;
+
+	// check if nearing a surface
+	unsigned wasNearPlanetSurface = isNearPlanetSurface;	// isNearPlanetSurface is a bit flag, not an actual BOOL
+	isNearPlanetSurface = (d2 - cr2) < (250000.0f + 1000.0f * cr); //less than 500m from the surface: (a+b)*(a+b) = a*a+b*b +2*a*b
+
+
+	if (EXPECT_NOT((wasNearPlanetSurface != isNearPlanetSurface) && !suppressAegisMessages))
+	{
+		if (isNearPlanetSurface)
+		{
+			[self doScriptEvent:OOJSID("shipApproachingPlanetSurface") withArgument:nearest];
+			[shipAI cxx_reactToMessage:"APPROACHING_SURFACE" context:"flight update"];
+		}
+		else
+		{
+			[self doScriptEvent:OOJSID("shipLeavingPlanetSurface") withArgument:nearest];
+			[shipAI cxx_reactToMessage:"LEAVING_SURFACE" context:"flight update"];
+		}
+	}
+	
+	// being close to the station takes precedence over planets
+	::StationEntity	*the_station = [UNIVERSE station];
+	if (the_station)
+	{
+		sd2 = HPmagnitude2(HPvector_subtract([the_station position], [self position]));
+	}
+	// again, notional scanner range is intentional
+	if (sd2 < SCANNER_MAX_RANGE2 * 4.0f) // double scanner range
+	{
+		result = AEGIS_IN_DOCKING_RANGE;
+	}
+	else if (EXPECT_NOT(isNearPlanetSurface || d2 < cr2 * 9.0f)) // to 3x radius of any planet/moon - or 500m of tiny ones,
+	{
+		result = AEGIS_CLOSE_TO_ANY_PLANET;
+		if (EXPECT((::OOPlanetEntity *)nearest == [UNIVERSE planet]))
+		{
+			result = AEGIS_CLOSE_TO_MAIN_PLANET;
+		}
+	}
+	// need to do this check separately from above case to avoid oddity where
+	// main planet and small moon are at just the wrong distance. - CIM
+	if (result != AEGIS_CLOSE_TO_MAIN_PLANET && result != AEGIS_IN_DOCKING_RANGE && !sunGoneNova)
+	{
+		// are we also close to the main planet?
+		::OOPlanetEntity *mainPlanet = [UNIVERSE planet];
+		d2 = HPmagnitude2(HPvector_subtract([mainPlanet position], [self position]));
+		cr2 = [mainPlanet radius];
+		cr2 *= cr2;	
+		if (d2 < cr2 * 9.0f)
+		{
+			nearest = mainPlanet;
+			result = AEGIS_CLOSE_TO_MAIN_PLANET;
+		}
+	}
+
+
+	/*	Rewrote aegis stuff and tested it against redux.oxp that adds multiple planets and moons.
+		Made sure AI scripts can differentiate between MAIN and NON-MAIN planets so they can decide
+		if they can dock at the systemStation or just any station.
+		Added sun detection so route2Patrol can turn before they heat up in the sun.
+		-- Eric 2009-07-11
+		
+		More rewriting of the aegis stuff, it's now a bit faster and works properly when moving
+		from one secondary planet/moon vicinity to another one.  -- Kaks 20120917
+	*/
+	if (EXPECT(!suppressAegisMessages))
+	{
+		// script/AI messages on change in status
+		if (EXPECT_NOT(aegis_status == AEGIS_IN_DOCKING_RANGE && result != aegis_status))
+		{
+			[self doScriptEvent:OOJSID("shipExitedStationAegis") withArgument:the_station];
+			[shipAI message:"AEGIS_LEAVING_DOCKING_RANGE"];
+		}
+		
+		if (EXPECT_NOT(result == AEGIS_IN_DOCKING_RANGE && aegis_status != result))
+		{
+			[self doScriptEvent:OOJSID("shipEnteredStationAegis") withArgument:the_station];
+			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
+			
+			if([self lastAegisLock] == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
+			{
+				[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:[UNIVERSE planet]];
+				[self setLastAegisLock:[UNIVERSE planet]];
+			}
+		}
+		else if (EXPECT_NOT(result == AEGIS_NONE && aegis_status != result))
+		{
+			if([self lastAegisLock] == nil && !sunGoneNova)
+			{
+				[self setLastAegisLock:[UNIVERSE planet]];  // in case of a first launch from a near-planet station.
+			}
+			[self transitionToAegisNone];
+		}
+		// approaching..
+		else if (EXPECT_NOT((result == AEGIS_CLOSE_TO_ANY_PLANET || result == AEGIS_CLOSE_TO_MAIN_PLANET) && [self lastAegisLock] != nearest))
+		{
+			if(aegis_status != AEGIS_NONE && [self lastAegisLock] != nil)	// we were close to another stellar body
+			{
+				[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:[self lastAegisLock]];
+				[shipAI message:"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
+			}
+			[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:nearest];
+			[self setLastAegisLock:nearest];
+			
+			if (EXPECT_NOT([nearest isSun]))
+			{
+				[shipAI message:"CLOSE_TO_SUN"];
+			}
+			else
+			{
+				[shipAI message:"CLOSE_TO_PLANET"];
+				
+				if (EXPECT(result == AEGIS_CLOSE_TO_MAIN_PLANET))
+				{
+					// It's been years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
+					//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	    // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
+					[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
+				}
+				else if (EXPECT_NOT([nearest planetType] == STELLAR_TYPE_MOON))
+				{
+					[shipAI message:"CLOSE_TO_MOON"];
+				}
+				else
+				{
+					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
+				}
+			}
+		}
+		
+
+	}
+	if (result == AEGIS_NONE)
+	{
+		[self setLastAegisLock:nil];
+	}
+
+	aegis_status = result;	// put this here
+	return result;
+}
+
+
+void ShipEntity::forceAegisCheck()
+{
+	_nextAegisCheck = -1.0f;
+}
+
+
+bool ShipEntity::withinStationAegis()
+{
+	return aegis_status == AEGIS_IN_DOCKING_RANGE;
+}
+
+
+::Entity *ShipEntity::lastAegisLock()
+{
+	::Entity<OOStellarBody> *stellar = [_lastAegisLock weakRefUnderlyingObject];
+	if (stellar == nil)
+	{
+		[_lastAegisLock release];
+		_lastAegisLock = nil;
+	}
+	
+	return stellar;
+}
+
+
+void ShipEntity::setLastAegisLock(::Entity *lastAegisLock)
+{
+	[_lastAegisLock release];
+	_lastAegisLock = [lastAegisLock weakRetain];
+}
+
+
+OOSystemID ShipEntity::homeSystem()
+{
+	return home_system;
+}
+
+
+OOSystemID ShipEntity::destinationSystem()
+{
+	return destination_system;
+}
+
+
+void ShipEntity::setHomeSystem(OOSystemID s)
+{
+	home_system = s;
+}
+
+
+void ShipEntity::setDestinationSystem(OOSystemID s)
+{
+	destination_system = s;
+}
+
+
+void ShipEntity::setStatus(OOEntityStatus stat)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self status] == stat) return;
+	OOEntityWithDrawable::setStatus(stat);	// [super setStatus:stat]
+	if (stat == STATUS_LAUNCHING)
+	{
+		launch_time = [UNIVERSE getTime];
+	}
+}
+
+
+void ShipEntity::setLaunchDelay(double delay)
+{
+	launch_delay = delay;
+}
+
+
+std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> ShipEntity::getCrew()
+{
+	return crew;
+}
+
+
+void ShipEntity::setCrew(const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> &crewArray)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self isExplicitlyUnpiloted])
+	{
+		//unpiloted ships cannot have crew
+		// but may have crew before isExplicitlyUnpiloted set, so force *that* to clear too
+		crew = std::nullopt;
+		return;
+	}
+	//do not set to hulk here when crew is nil (or 0).  Some things like missiles have no crew.
+	crew = crewArray;
+}
+
+
+void ShipEntity::setSingleCrewWithRole(const std::string &crewRole)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self isUnpiloted])
+	{
+		::OOCharacter *crewMember = [::OOCharacter randomCharacterWithRole:crewRole
+												 andOriginalSystem:[self homeSystem]];
+		[self cxx_setCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>(crewMember) }];
+	}
+}
+
+
+std::vector<oo::PList> ShipEntity::crewForScripting()
+{
+	std::vector<oo::PList> result;
+	if (!crew.has_value())
+	{
+		return result;
+	}
+	result.reserve(crew->size());
+	for (const auto &crewMember : *crew)
+	{
+		result.push_back([crewMember.get() infoForScripting]);
+	}
+	return result;
+}
+
+
+void ShipEntity::setStateMachine(const std::string &smName)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self setAITo:smName];
+}
+
+
+void ShipEntity::setAI(::AI *ai)
+{
+	[ai retain];
+	if (shipAI)
+	{
+		[shipAI clearAllData];
+		[shipAI autorelease];
+	}
+	shipAI = ai;
+}
+
+
+::AI *ShipEntity::getAI()
+{
+	return shipAI;
+}
+
+
+bool ShipEntity::hasAutoAI()
+{
+	return 	FuzzyBooleanForKey(shipinfoDictionary, "auto_ai", YES);
+}
+
+
+bool ShipEntity::hasNewAI()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [[self getAI] cxx_name] == "nullAI.plist";	// (no AI never matched)
+}
+
+
+bool ShipEntity::hasAutoWeapons()
+{
+	return 	FuzzyBooleanForKey(shipinfoDictionary, "auto_weapons", NO);
+}
+
+
+void ShipEntity::setShipScript(const std::optional<std::string> &script_name)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	oo::PList::Dict			properties;
+	const oo::PList			*actions = nullptr;
+
+	properties["ship"] = oo::PListObject(self);
+
+	[script autorelease];
+	script = [::OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:oo::PList(properties)];	// nil as "", as the Foundation form sent it
+
+	if (script == nil)
+	{
+		actions = ArrayForKey(shipinfoDictionary, "launch_actions");
+		if (actions)
+		{
+			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
+			if (!OOEnforceStandards())
+			{
+				properties["legacy_launchActions"] = *actions;
+			}
+		}
+
+		actions = ArrayForKey(shipinfoDictionary, "script_actions");
+		if (actions)
+		{
+			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
+			if (!OOEnforceStandards())
+			{
+				properties["legacy_scriptActions"] = *actions;
+			}
+		}
+
+		actions = ArrayForKey(shipinfoDictionary, "death_actions");
+		if (actions)
+		{
+			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
+			if (!OOEnforceStandards())
+			{
+				properties["legacy_deathActions"] = *actions;
+			}
+		}
+
+		actions = ArrayForKey(shipinfoDictionary, "setup_actions");
+		if (actions)
+		{
+			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", [self displayName].value_or("(null)").c_str()));
+			if (!OOEnforceStandards())
+			{
+				properties["legacy_setupActions"] = *actions;
+			}
+		}
+
+		script = [::OOScript cxx_jsScriptFromFileNamed:"oolite-default-ship-script.js"
+										  properties:oo::PList(std::move(properties))];
+	}
+	[script retain];
+}
+
+
+double ShipEntity::getFrustration()
+{
+	return frustration;
+}
+
+
+OOFuelQuantity ShipEntity::getFuel()
+{
+	return fuel;
+}
+
+
+void ShipEntity::setFuel(OOFuelQuantity amount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (amount > [self fuelCapacity])  amount = [self fuelCapacity];
+	
+	fuel = amount;
+}
+
+
+OOFuelQuantity ShipEntity::fuelCapacity()
+{
+	// FIXME: shipdata.plist can allow greater fuel quantities (without extending hyperspace range). Need some consistency here.
+	return PLAYER_MAX_FUEL;
+}
+
+
+GLfloat ShipEntity::fuelChargeRate()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	GLfloat		rate = 1.0; // Standard (& strict play) charge rate.
+	
+#if MASS_DEPENDENT_FUEL_PRICES
+	
+	if (EXPECT(PLAYER != nil && mass> 0 && mass != [PLAYER baseMass]))
+	{
+		rate = calcFuelChargeRate(mass);
+	}
+
+	OO_LOG("fuelPrices", "\"{}\" fuel charge rate: {:.2f} (mass ratio: {:.2f}/{:.2f})", [self cxx_shipDataKey].value_or("(null)"), rate, mass, [PLAYER baseMass]);
+#endif
+	
+	return rate;
 }
 
 
