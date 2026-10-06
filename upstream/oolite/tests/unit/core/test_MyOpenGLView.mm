@@ -15,6 +15,8 @@
 	which a unit test must not do (CLAUDE.md, tools/gui-lock); the goldens launch the game, which runs
 	all of them. The expectations were written against the unconverted class and run on it first.
 	The view's -dealloc quits SDL, so one view serves every test and the last one releases it.
+	Bead oo-72cz (slice 2) adds the accessors, the display-mode list and the saved window,
+	full-screen and HDR settings, again without a window.
 
 	MyOpenGLView.mm reaches the game controller, the universe and the player, so the test links
 	every game object but main's (tests/unit/core/meson.build entry ['*'], ADR-0056 amendment
@@ -26,6 +28,7 @@
 #import "OOOpenGLMatrixManager.h"
 #import "OOFullScreenController.h"
 
+#include "oofnd/Defaults.hpp"
 #include "oofnd/PList.hpp"
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
@@ -164,6 +167,155 @@ OO_TEST(updateGLSizeSetsTheProjection)
 }
 
 
+// --- bead oo-72cz: slice 2 (accessors, display modes, settings, display / HDR, FOV and MSAA) ---
+// No window: none of these open one (full-screen mode is only switched off again, and the screen
+// size is set while windowed). Settings the setters save go to the scratch home's defaults.
+
+OO_TEST(slice2AccessorsAndViewSettings)
+{
+	@autoreleasepool
+	{
+		MyOpenGLView *view = View();
+
+		// The game controller is not retained: any object round-trips.
+		OOObject *controller = [[OOObject alloc] init];
+		[view setGameController:(GameController *)controller];
+		OO_CHECK([view gameController] == (GameController *)controller);
+		[view setGameController:nil];
+		OO_CHECK([view gameController] == nil);
+		[controller release];
+
+		// FOV: stored as tan(half the angle); in degrees or as that fraction.
+		[view setFov:60.0f fromFraction:NO];
+		OO_CHECK(Near([view fov:YES], std::tan(30.0 * M_PI / 180.0)));
+		OO_CHECK(Near([view fov:NO], 60.0));
+		[view setFov:0.5f fromFraction:YES];
+		OO_CHECK(Near([view fov:YES], 0.5));
+		OO_CHECK(Near([view fov:NO], 2.0 * std::atan(0.5) * 180.0 / M_PI));
+
+		[view setMsaa:YES];
+		OO_CHECK([view msaa]);
+		[view setMsaa:NO];
+		OO_CHECK(![view msaa]);
+
+		// SDR tone mapper: clamped to the enum's range.
+		[view setSDRToneMapper:(OOSDRToneMapper)99];
+		OO_CHECK([view sdrToneMapper] == OOSDR_TONEMAPPER_REINHARD);
+		[view setSDRToneMapper:(OOSDRToneMapper)-7];
+		OO_CHECK([view sdrToneMapper] == OOSDR_TONEMAPPER_NONE);
+		[view setSDRToneMapper:OOSDR_TONEMAPPER_AgX];
+		OO_CHECK([view sdrToneMapper] == OOSDR_TONEMAPPER_AgX);
+
+		// Colour saturation: adjusted, clamped to [0, MAX_COLOR_SATURATION]. No window: it starts at 0.
+		OO_CHECK_EQ([view colorSaturation], 0.0f);
+		[view adjustColorSaturation:0.25f];
+		OO_CHECK(Near([view colorSaturation], 0.25));
+		[view adjustColorSaturation:10.0f];
+		OO_CHECK(Near([view colorSaturation], MAX_COLOR_SATURATION));
+		[view adjustColorSaturation:-10.0f];
+		OO_CHECK_EQ([view colorSaturation], 0.0f);
+
+		OO_CHECK(![view hdrOutput]);
+		(void)[view isOutputDisplayHDREnabled];	// the display's; not pinned
+		[view grabMouseInsideGameWindow:NO];
+
+		// +pollShiftKey reads the keyboard: nobody holds shift during a test run.
+		OO_CHECK(![MyOpenGLView pollShiftKey]);
+		OO_CHECK([view getOpenGLMatrixManager] != nil);
+
+#if OOLITE_WINDOWS
+		// No window: -isRunningOnPrimaryDisplayDevice answers NO, and -atDesktopResolution is unset.
+		OO_CHECK(![view isRunningOnPrimaryDisplayDevice]);
+		OO_CHECK(![view atDesktopResolution]);
+		unsigned width = 7, height = 9;
+		[view getDisplayDimensions:&width height:&height];	// no window, no display: unchanged
+		OO_CHECK(width == 7 && height == 9);
+		(void)[view isDarkModeOn];	// the user's theme; not pinned
+
+		// HDR settings: clamped and saved to the defaults.
+		[view setHDRMaxBrightness:10.0f];
+		OO_CHECK(Near([view hdrMaxBrightness], MIN_HDR_MAXBRIGHTNESS));
+		[view setHDRMaxBrightness:5000.0f];
+		OO_CHECK(Near([view hdrMaxBrightness], MAX_HDR_MAXBRIGHTNESS));
+		[view setHDRMaxBrightness:600.0f];
+		OO_CHECK(Near([view hdrMaxBrightness], 600.0));
+		OO_CHECK(Near(oo::Defaults::standard().floatForKey("hdr-max-brightness"), 600.0));
+		[view setHDRPaperWhiteBrightness:1.0f];
+		OO_CHECK(Near([view hdrPaperWhiteBrightness], MIN_HDR_PAPERWHITE));
+		[view setHDRPaperWhiteBrightness:1000.0f];
+		OO_CHECK(Near([view hdrPaperWhiteBrightness], MAX_HDR_PAPERWHITE));
+		[view setHDRPaperWhiteBrightness:150.0f];
+		OO_CHECK(Near([view hdrPaperWhiteBrightness], 150.0));
+		OO_CHECK(Near(oo::Defaults::standard().floatForKey("hdr-paperwhite-brightness"), 150.0));
+		[view setHDRToneMapper:(OOHDRToneMapper)42];
+		OO_CHECK([view hdrToneMapper] == OOHDR_TONEMAPPER_REINHARD);
+		[view setHDRToneMapper:(OOHDRToneMapper)-3];
+		OO_CHECK([view hdrToneMapper] == OOHDR_TONEMAPPER_NONE);
+		[view setHDRToneMapper:OOHDR_TONEMAPPER_DICE];
+		OO_CHECK([view hdrToneMapper] == OOHDR_TONEMAPPER_DICE);
+#endif
+	}
+}
+
+
+OO_TEST(slice2DisplayModesAndSavedSettings)
+{
+	@autoreleasepool
+	{
+		MyOpenGLView *view = View();
+		const std::vector<oo::PList> modes = [view getScreenSizeArray];
+		OO_CHECK(!modes.empty());
+		if (modes.empty())  return;
+		const int nativeWidth = modes[0].get<int>(std::string(kOODisplayWidth), -1);
+		const int nativeHeight = modes[0].get<int>(std::string(kOODisplayHeight), -1);
+
+		// Mode 0 is the native mode, refresh 0.
+		OO_CHECK([view modeAsSize:0].width == nativeWidth && [view modeAsSize:0].height == nativeHeight);
+		OO_CHECK_EQ([view indexOfDisplayModeForWidth:nativeWidth Height:nativeHeight Refresh:0], 0);
+		OO_CHECK_EQ([view indexOfDisplayModeForWidth:7 Height:5 Refresh:3], 0);	// none: the native mode
+		const int last = static_cast<int>(modes.size()) - 1;
+		const oo::PList &lastMode = modes[last];
+		const int lastIndex = [view indexOfDisplayModeForWidth:lastMode.get<int>(std::string(kOODisplayWidth))
+															Height:lastMode.get<int>(std::string(kOODisplayHeight))
+														   Refresh:lastMode.get<int>(std::string(kOODisplayRefreshRate))];
+		OO_CHECK(lastIndex >= 0 && lastIndex <= last);
+
+		// Repopulating the list gives the same list.
+		[view populateFullScreenModelist];
+		OO_CHECK_EQ([view getScreenSizeArray].size(), modes.size());
+
+		// Windowed: choosing a mode only records it.
+		OO_CHECK(![view inFullScreenMode]);
+		[view setScreenSize:last];
+		OO_CHECK([view currentScreenMode] == lastMode);
+		OO_CHECK([view currentScreenSize].width == lastMode.get<int>(std::string(kOODisplayWidth)));
+		[view setDisplayMode:0 fullScreen:NO];
+		OO_CHECK(![view inFullScreenMode]);
+		OO_CHECK([view currentScreenMode] == modes[0]);
+		OO_CHECK([view currentScreenSize].width == nativeWidth && [view currentScreenSize].height == nativeHeight);
+
+		// Full-screen mode is saved to the defaults; switching it on without a window is not tried.
+		[view setFullScreenMode:NO];
+		OO_CHECK(![view inFullScreenMode]);
+		OO_CHECK(oo::Defaults::standard().object("fullscreen").isBool() && !oo::Defaults::standard().boolForKey("fullscreen"));
+
+		// The windowed size round-trips through the defaults.
+		[view saveWindowSize:NSMakeSize(1000, 700)];
+		OO_CHECK_EQ(oo::Defaults::standard().integerForKey("window_width"), 1000);
+		OO_CHECK([view loadWindowSize].width == 1000 && [view loadWindowSize].height == 700);
+
+		// Full-screen settings: windowed (saved above), the saved mode's index (none saved: 0).
+		OO_CHECK_EQ([view loadFullscreenSettings], 0);
+		OO_CHECK(![view inFullScreenMode]);
+		oo::Defaults::standard().setInteger("display_width", nativeWidth);
+		oo::Defaults::standard().setInteger("display_height", nativeHeight);
+		oo::Defaults::standard().setInteger("display_refresh", 0);
+		OO_CHECK_EQ([view loadFullscreenSettings], 0);
+		OO_CHECK([view currentScreenMode] == modes[0]);
+	}
+}
+
+
 // After the conversion: the C++ view behind the facade the game made.
 OO_TEST(facadeContract)
 {
@@ -182,6 +334,46 @@ OO_TEST(facadeContract)
 		OO_CHECK(Near(cxxView->display_z, 640.0));
 		// The matrix manager is C++; the facade's getter answers its facade.
 		OO_CHECK(oo::ToCxx([view getOpenGLMatrixManager]) == cxxView->matrixManager.get());
+	}
+}
+
+
+// After slice 2's conversion: its members answer as the facade's methods do.
+OO_TEST(cxxSlice2API)
+{
+	@autoreleasepool
+	{
+		MyOpenGLView *view = View();
+		cxx::MyOpenGLView *cxxView = oo::ToCxx(view);
+		OO_CHECK(cxxView != nullptr);
+		if (cxxView == nullptr)  return;
+		OO_CHECK(cxxView->getViewSize().width == [view viewSize].width);
+		OO_CHECK(cxxView->backingViewSize().height == [view backingViewSize].height);
+		OO_CHECK(cxxView->getDisplay_z() == [view display_z]);
+		OO_CHECK(cxxView->getX_offset() == [view x_offset] && cxxView->getY_offset() == [view y_offset]);
+		OO_CHECK(cxxView->getGameController() == [view gameController]);
+		cxxView->setFov(45.0f, false);
+		OO_CHECK(Near([view fov:NO], 45.0) && cxxView->fov(true) == [view fov:YES]);
+		cxxView->setMsaa(true);
+		OO_CHECK([view msaa] && cxxView->msaa());
+		cxxView->setMsaa(false);
+		cxxView->setSDRToneMapper(OOSDR_TONEMAPPER_UC2);
+		OO_CHECK([view sdrToneMapper] == OOSDR_TONEMAPPER_UC2);
+		OO_CHECK(cxxView->colorSaturation() == [view colorSaturation]);
+		OO_CHECK(cxxView->hdrOutput() == static_cast<bool>([view hdrOutput]));
+		OO_CHECK(cxxView->inFullScreenMode() == static_cast<bool>([view inFullScreenMode]));
+		OO_CHECK(cxxView->getScreenSizeArray() == [view getScreenSizeArray]);
+		OO_CHECK(cxxView->currentScreenMode() == [view currentScreenMode]);
+		OO_CHECK(cxxView->modeAsSize(0).width == [view modeAsSize:0].width);
+		OO_CHECK_EQ(cxxView->indexOfDisplayModeForWidth(7, 5, 3), 0);
+		OO_CHECK(cxxView->loadWindowSize().width == [view loadWindowSize].width);
+		OO_CHECK(cxx::MyOpenGLView::pollShiftKey() == static_cast<bool>([MyOpenGLView pollShiftKey]));
+		OO_CHECK(oo::ToObjC(cxxView->getOpenGLMatrixManager()) == [view getOpenGLMatrixManager]);
+#if OOLITE_WINDOWS
+		cxxView->setHDRMaxBrightness(700.0f);
+		OO_CHECK(Near([view hdrMaxBrightness], 700.0));
+		OO_CHECK(cxxView->getAtDesktopResolution() == static_cast<bool>([view atDesktopResolution]));
+#endif
 	}
 }
 

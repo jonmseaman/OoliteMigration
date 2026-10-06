@@ -200,10 +200,62 @@ public:
 	SDL_DisplayID getDisplayId();
 	oo::PList getNativeSize();
 
-	/*	Internal: the view's state. The methods of slices 2 and 3 of docs/phases/3-slices/MyOpenGLView.md
-		(accessors, display modes, settings, HDR, snapshots) and the Input category
-		(MyOpenGLView+Input.mm), still Objective-C categories of the facade, read and write it through
-		oo::ToCxx(self) (ADR-0056 amendment oo-3bgz); it becomes private when they convert.
+	// Slice 2 (bead oo-72cz): accessors, display modes, settings, display / HDR, FOV and MSAA. A getter
+	// named like its member is get<Name> (ADR-0056 amendment oo-862e).
+	NSRect getBounds();
+	NSSize getViewSize();
+	NSSize backingViewSize();
+	GLfloat getDisplay_z();
+	GLfloat getX_offset();
+	GLfloat getY_offset();
+	::GameController *getGameController();
+	void setGameController(::GameController *controller);
+	bool isRunningOnPrimaryDisplayDevice();
+#if OOLITE_WINDOWS
+	void getDisplayDimensions(unsigned *width, unsigned *height);
+	void refreshDarKOrLightMode();
+	bool isDarkModeOn();
+	bool getAtDesktopResolution();
+	float hdrMaxBrightness();
+	void setHDRMaxBrightness(float newMaxBrightness);
+	float hdrPaperWhiteBrightness();
+	void setHDRPaperWhiteBrightness(float newPaperWhiteBrightness);
+	OOHDRToneMapper hdrToneMapper();
+	void setHDRToneMapper(OOHDRToneMapper newToneMapper);
+#endif
+	OOSDRToneMapper sdrToneMapper();
+	void setSDRToneMapper(OOSDRToneMapper newToneMapper);
+	float colorSaturation();
+	void adjustColorSaturation(float colorSaturationAdjustment);
+	bool hdrOutput();
+	bool isOutputDisplayHDREnabled();
+	void grabMouseInsideGameWindow(bool value);
+	void stringToClipboard(const std::string &stringToCopy);
+	void setFullScreenMode(bool fsm);
+	bool inFullScreenMode();
+	void toggleScreenMode();
+	void setDisplayMode(int mode, bool fsm);
+	void setScreenSize(int sizeIndex);
+	std::vector<oo::PList> getScreenSizeArray();
+	void populateFullScreenModelist();
+	NSSize modeAsSize(int sizeIndex);
+	void saveWindowSize(NSSize windowSize);
+	NSSize loadWindowSize();
+	int loadFullscreenSettings();
+	int indexOfDisplayModeForWidth(unsigned int d_width, unsigned int d_height, unsigned int d_refresh);
+	NSSize currentScreenSize();
+	oo::PList currentScreenMode();	// null: no mode
+	void setFov(float value, bool fromFraction);
+	float fov(bool inFraction);
+	void setMsaa(bool newMsaa);
+	bool msaa();
+	static bool pollShiftKey();
+	cxx::OOOpenGLMatrixManager *getOpenGLMatrixManager();	// borrowed
+
+	/*	Internal: the view's state. The methods of slice 3 of docs/phases/3-slices/MyOpenGLView.md
+		(snapshots and image dumps) and the Input category (MyOpenGLView+Input.mm), still Objective-C
+		categories of the facade, read and write it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz);
+		it becomes private when they convert.
 	*/
 	::GameController		*gameController = {};	// not retained
 	bool				keys[NUM_KEYS] = {};
@@ -291,8 +343,8 @@ private:
 
 
 // Transitional: the Objective-C MyOpenGLView, for the game controller, the universe, the player and
-// the many callers of [UNIVERSE gameView], and for the methods of this file's slices 2-3 and the
-// Input category, which are not yet converted. Deleted, with namespace cxx above, by the bridge's
+// the many callers of [UNIVERSE gameView], and for the methods of this file's slice 3 and the Input
+// category, which are not yet converted. Deleted, with namespace cxx above, by the bridge's
 // deletion bead.
 #import "MyOpenGLView+ObjCBridge.h"
 

@@ -155,4 +155,290 @@ cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *view)
 	return _cxxView->getNativeSize();
 }
 
+
+// Slice 2 (bead oo-72cz). -bounds was never declared; it is kept for any sender of the selector.
+- (NSRect) bounds
+{
+	return _cxxView->getBounds();
+}
+
+
+- (NSSize) viewSize
+{
+	return _cxxView->getViewSize();
+}
+
+
+- (NSSize) backingViewSize
+{
+	return _cxxView->backingViewSize();
+}
+
+
+- (GLfloat) display_z
+{
+	return _cxxView->getDisplay_z();
+}
+
+
+- (GLfloat) x_offset
+{
+	return _cxxView->getX_offset();
+}
+
+
+- (GLfloat) y_offset
+{
+	return _cxxView->getY_offset();
+}
+
+
+- (GameController *) gameController
+{
+	return _cxxView->getGameController();
+}
+
+
+- (void) setGameController:(GameController *) controller
+{
+	_cxxView->setGameController(controller);
+}
+
+
+- (BOOL) isRunningOnPrimaryDisplayDevice
+{
+	return _cxxView->isRunningOnPrimaryDisplayDevice();
+}
+
+
+#if OOLITE_WINDOWS
+- (void)getDisplayDimensions:(unsigned *)width height:(unsigned *)height
+{
+	_cxxView->getDisplayDimensions(width, height);
+}
+
+
+- (void) refreshDarKOrLightMode
+{
+	_cxxView->refreshDarKOrLightMode();
+}
+
+
+- (BOOL) isDarkModeOn
+{
+	return _cxxView->isDarkModeOn();
+}
+
+
+- (BOOL) atDesktopResolution
+{
+	return _cxxView->getAtDesktopResolution();
+}
+
+
+- (float) hdrMaxBrightness
+{
+	return _cxxView->hdrMaxBrightness();
+}
+
+
+- (void) setHDRMaxBrightness:(float)newMaxBrightness
+{
+	_cxxView->setHDRMaxBrightness(newMaxBrightness);
+}
+
+
+- (float) hdrPaperWhiteBrightness
+{
+	return _cxxView->hdrPaperWhiteBrightness();
+}
+
+
+- (void) setHDRPaperWhiteBrightness:(float)newPaperWhiteBrightness
+{
+	_cxxView->setHDRPaperWhiteBrightness(newPaperWhiteBrightness);
+}
+
+
+- (OOHDRToneMapper) hdrToneMapper
+{
+	return _cxxView->hdrToneMapper();
+}
+
+
+- (void) setHDRToneMapper: (OOHDRToneMapper)newToneMapper
+{
+	_cxxView->setHDRToneMapper(newToneMapper);
+}
+#endif
+
+
+- (OOSDRToneMapper) sdrToneMapper
+{
+	return _cxxView->sdrToneMapper();
+}
+
+
+- (void) setSDRToneMapper: (OOSDRToneMapper)newToneMapper
+{
+	_cxxView->setSDRToneMapper(newToneMapper);
+}
+
+
+- (float) colorSaturation
+{
+	return _cxxView->colorSaturation();
+}
+
+
+- (void) adjustColorSaturation:(float)colorSaturationAdjustment
+{
+	_cxxView->adjustColorSaturation(colorSaturationAdjustment);
+}
+
+
+- (BOOL) hdrOutput
+{
+	return _cxxView->hdrOutput();
+}
+
+
+- (BOOL) isOutputDisplayHDREnabled
+{
+	return _cxxView->isOutputDisplayHDREnabled();
+}
+
+
+- (void) grabMouseInsideGameWindow:(BOOL) value
+{
+	_cxxView->grabMouseInsideGameWindow(value);
+}
+
+
+- (void) cxx_stringToClipboard:(const std::string &)stringToCopy
+{
+	_cxxView->stringToClipboard(stringToCopy);
+}
+
+
+- (void) setFullScreenMode:(BOOL)fsm
+{
+	_cxxView->setFullScreenMode(fsm);
+}
+
+
+- (BOOL) inFullScreenMode
+{
+	return _cxxView->inFullScreenMode();
+}
+
+
+- (void) toggleScreenMode
+{
+	_cxxView->toggleScreenMode();
+}
+
+
+- (void) setDisplayMode:(int)mode fullScreen:(BOOL)fsm
+{
+	_cxxView->setDisplayMode(mode, fsm);
+}
+
+
+- (void) setScreenSize: (int)sizeIndex
+{
+	_cxxView->setScreenSize(sizeIndex);
+}
+
+
+- (std::vector<oo::PList>) getScreenSizeArray
+{
+	return _cxxView->getScreenSizeArray();
+}
+
+
+- (void) populateFullScreenModelist
+{
+	_cxxView->populateFullScreenModelist();
+}
+
+
+- (NSSize) modeAsSize: (int)sizeIndex
+{
+	return _cxxView->modeAsSize(sizeIndex);
+}
+
+
+- (void) saveWindowSize: (NSSize) windowSize
+{
+	_cxxView->saveWindowSize(windowSize);
+}
+
+
+- (NSSize) loadWindowSize
+{
+	return _cxxView->loadWindowSize();
+}
+
+
+- (int) loadFullscreenSettings
+{
+	return _cxxView->loadFullscreenSettings();
+}
+
+
+- (int) indexOfDisplayModeForWidth: (unsigned int) d_width Height:(unsigned int) d_height
+                        Refresh: (unsigned int)d_refresh
+{
+	return _cxxView->indexOfDisplayModeForWidth(d_width, d_height, d_refresh);
+}
+
+
+- (NSSize) currentScreenSize
+{
+	return _cxxView->currentScreenSize();
+}
+
+
+- (oo::PList) currentScreenMode
+{
+	return _cxxView->currentScreenMode();
+}
+
+
+- (void) setFov:(float)value fromFraction:(BOOL)fromFraction
+{
+	_cxxView->setFov(value, fromFraction);
+}
+
+
+- (float) fov:(BOOL)inFraction
+{
+	return _cxxView->fov(inFraction);
+}
+
+
+- (void) setMsaa:(BOOL)newMsaa
+{
+	_cxxView->setMsaa(newMsaa);
+}
+
+
+- (BOOL) msaa
+{
+	return _cxxView->msaa();
+}
+
+
++ (BOOL) pollShiftKey
+{
+	return cxx::MyOpenGLView::pollShiftKey();
+}
+
+
+- (OOOpenGLMatrixManager *) getOpenGLMatrixManager
+{
+	return oo::ToObjC(_cxxView->getOpenGLMatrixManager());	// C++ since bead oo-vt0o: its facade
+}
+
 @end

@@ -78,14 +78,6 @@ MA 02110-1301, USA.
 - (SDL_DisplayID) getDisplayId;
 - (oo::PList) getNativeSize;
 
-@end
-
-
-// Slices 2 and 3 of docs/phases/3-slices/MyOpenGLView.md: still Objective-C, implemented by this
-// category in MyOpenGLView.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to MyOpenGLView+ObjCBridge.mm.
-@interface MyOpenGLView (OOMyOpenGLViewUnconverted)
-
 - (NSSize) viewSize;
 - (NSSize) backingViewSize;
 - (GLfloat) display_z;
@@ -119,7 +111,6 @@ MA 02110-1301, USA.
 
 - (void) cxx_stringToClipboard:(const std::string &)stringToCopy;
 
-- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename;	// nullopt: auto-numbered "oolite-NNN"
 - (void) setFullScreenMode:(BOOL)fsm;
 - (BOOL) inFullScreenMode;
 - (void) toggleScreenMode;
@@ -149,6 +140,15 @@ MA 02110-1301, USA.
 
 - (OOOpenGLMatrixManager *) getOpenGLMatrixManager;
 
+@end
+
+
+// Slice 3 of docs/phases/3-slices/MyOpenGLView.md: still Objective-C, implemented by this category in
+// MyOpenGLView.mm on the facade. Its bead moves its methods to the C++ class and their forwarders to
+// MyOpenGLView+ObjCBridge.mm.
+@interface MyOpenGLView (OOMyOpenGLViewUnconverted)
+
+- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename;	// nullopt: auto-numbered "oolite-NNN"
 #ifndef NDEBUG
 // General image-dumping method.
 - (void) cxx_dumpRGBAToFileNamed:(const std::string &)name
