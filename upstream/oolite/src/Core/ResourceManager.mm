@@ -1478,8 +1478,6 @@ bool cxx::ResourceManager::corePlist(const std::string &fileName, const std::str
 oo::PList cxx::ResourceManager::dictionaryFromFilesNamed(const std::string &fileName,
 													 const std::optional<std::string> &folderName,
 													 bool mergeFiles)
-								  inFolder:(const std::optional<std::string> &)folderName
-								  andMerge:(BOOL) mergeFiles
 {
 	return dictionaryFromFilesNamed(fileName, folderName, mergeFiles ? MERGE_BASIC : MERGE_NONE, YES);
 }
@@ -1488,10 +1486,7 @@ oo::PList cxx::ResourceManager::dictionaryFromFilesNamed(const std::string &file
 oo::PList cxx::ResourceManager::dictionaryFromFilesNamed(const std::string &fileName,
 													 const std::optional<std::string> &folderName,
 													 OOResourceMergeMode mergeMode,
-													 bool useCache)
-								  inFolder:(const std::optional<std::string> &)folderName
-								 mergeMode:(OOResourceMergeMode)mergeMode
-									 cache:(BOOL)cache
+													 bool cache)
 {
 	oo::PList		result;
 	std::string		cacheKey;
