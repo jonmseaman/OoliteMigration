@@ -36,7 +36,6 @@ SOFTWARE.
 #if OO_MULTITEXTURE
 
 
-namespace cxx {
 
 oo::Ref<OOMultiTextureMaterial> OOMultiTextureMaterial::materialWithName(const std::optional<std::string> &name, const oo::PList &configuration)
 {
@@ -233,7 +232,5 @@ std::vector<oo::ObjCRef<::OOTexture *>> OOMultiTextureMaterial::allTextures()
 	return result;
 }
 #endif
-
-}	// namespace cxx
 
 #endif	/* OO_MULTITEXTURE */
