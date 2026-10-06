@@ -19,6 +19,7 @@
 */
 
 #import "OOMultiTextureMaterial.h"
+#import "OORegExpMatcher.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODescription.h"
 
@@ -51,15 +52,10 @@ void OOLogOutdent(void)  {}
 @end
 
 
-@interface OORegExpMatcher: OOObject
-+ (instancetype) regExpMatcher;
-- (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp;
-@end
-
-@implementation OORegExpMatcher
-+ (instancetype) regExpMatcher  { return [[[self alloc] init] autorelease]; }
-- (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp  { return NO; }
-@end
+// OORegExpMatcher is C++ since its facade was deleted (bead oo-9ht.12): the stub answers no match.
+oo::Ref<OORegExpMatcher> OORegExpMatcher::regExpMatcher()  { return oo::makeRef<OORegExpMatcher>(); }
+bool OORegExpMatcher::string(const std::string &, const std::string &)  { return false; }
+OORegExpMatcher::~OORegExpMatcher()  {}
 
 
 OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
