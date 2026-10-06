@@ -645,4 +645,79 @@ OO_TEST(subEntityLists)
 }
 
 
+// --- Slice 5: bounding boxes, octree hit tests, universe add / remove, beacons, boulders (oo-ddnn8)
+
+OO_TEST(octreeAndTractorWithoutAModel)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"nomodel" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{ { "scoop_position", oo::PList(std::string("0 0 10")) } })]);
+		OO_CHECK([ship octree] == nil && [ship volume] == 0.0f);
+		OO_CHECK([ship doesHitLine:kZeroHPVector :make_HPvector(0, 0, 100)] == 0.0f);
+		[ship setPosition:make_HPvector(1, 2, 3)];
+		[ship setOrientation:kIdentityQuaternion];
+		HPVector tractor = [ship absoluteTractorPosition];
+		OO_CHECK(tractor.x == 1 && tractor.y == 2 && tractor.z == 13);
+	}
+}
+
+
+OO_TEST(beacons)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"beacon" definition:Definition()] autorelease];
+		TestShip *other = [[[TestShip alloc] cxx_initWithKey:"other" definition:Definition()] autorelease];
+		OO_CHECK(![ship isBeacon] && [ship beaconCode] == std::nullopt && [ship beaconLabel] == std::nullopt);
+		[ship setBeaconCode:std::string()];	// empty is none
+		OO_CHECK(![ship isBeacon]);
+		[ship setBeaconCode:std::string("X")];
+		OO_CHECK([ship isBeacon] && [ship beaconCode] == std::optional<std::string>("X"));
+		OO_CHECK([ship beaconLabel] == std::optional<std::string>("X"));	// the label defaults to the code
+		[ship setBeaconLabel:std::string()];
+		OO_CHECK([ship beaconLabel] == std::nullopt);
+		[ship setBeaconCode:std::nullopt];
+		OO_CHECK(![ship isBeacon]);
+
+		OO_CHECK([ship nextBeacon] == nil && [ship prevBeacon] == nil);
+		[ship setNextBeacon:other];
+		[ship setPrevBeacon:other];
+		OO_CHECK([ship nextBeacon] == other && [ship prevBeacon] == other);
+		[ship setNextBeacon:nil];
+		OO_CHECK([ship nextBeacon] == nil && [ship prevBeacon] == other);
+	}
+}
+
+
+OO_TEST(visibilityBouldersAndKills)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"rock" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList()]);
+		MutablePart(ship)->no_draw_distance = 100.0f;
+		MutablePart(ship)->cam_zero_distance = 50.0f;
+		OO_CHECK([ship isVisible]);
+		MutablePart(ship)->cam_zero_distance = 150.0f;
+		OO_CHECK(![ship isVisible]);
+
+		OO_CHECK(![ship isBoulder] && ![ship isMinable]);
+		[ship setIsBoulder:YES];
+		OO_CHECK([ship isBoulder] && [ship isMinable]);
+		MutablePart(ship)->noRocks = 1;
+		OO_CHECK(![ship isMinable]);
+		[ship setIsBoulder:NO];
+		OO_CHECK(![ship isBoulder]);
+
+		OO_CHECK([ship countsAsKill]);
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{ { "counts_as_kill", oo::PList(false) } })]);
+		OO_CHECK(![ship countsAsKill]);
+	}
+}
+
+
 OO_TEST_MAIN()

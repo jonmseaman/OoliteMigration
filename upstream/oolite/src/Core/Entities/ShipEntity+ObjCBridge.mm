@@ -64,6 +64,9 @@ public:
 	// Slice 3 (bead oo-mvzmb).
 	bool setUpShipFromDictionary(const oo::PList &shipDict) override	{ return [(::ShipEntity *)_objcOwner setUpShipFromDictionary:shipDict]; }
 	bool setUpSubEntities() override	{ return [(::ShipEntity *)_objcOwner setUpSubEntities]; }
+
+	// Slice 5 (bead oo-ddnn8).
+	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override	{ return [(::ShipEntity *)_objcOwner doesHitLine:v0 :v1 :hitEntity]; }
 };
 
 }	// namespace
@@ -293,5 +296,37 @@ DESTROY(_cxxShip->laser_color);
 - (OOTimeAbsolute) shipAIScriptWakeTime	{ return _cxxShip->shipAIScriptWakeTime(); }
 - (void) setAIScriptWakeTime:(OOTimeAbsolute)t	{ _cxxShip->setAIScriptWakeTime(t); }
 - (std::optional<std::string>) cxx_descriptionComponents	{ return _cxxShip->cxx::ShipEntity::descriptionComponents(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice5)
+
+- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)_i :(Vector)_j :(Vector)_k	{ return _cxxShip->findBoundingBoxRelativeToPosition(opv, _i, _j, _k); }
+- (Octree *) octree	{ return _cxxShip->getOctree(); }
+- (float) volume	{ return _cxxShip->volume(); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1	{ return _cxxShip->doesHitLine(v0, v1); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity	{ return _cxxShip->cxx::ShipEntity::doesHitLine(v0, v1, hitEntity); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k	{ return _cxxShip->doesHitLine(v0, v1, o, i, j, k); }
+- (void) wasAddedToUniverse	{ _cxxShip->cxx::ShipEntity::wasAddedToUniverse(); }
+- (void) wasRemovedFromUniverse	{ _cxxShip->cxx::ShipEntity::wasRemovedFromUniverse(); }
+- (HPVector) absoluteTractorPosition	{ return _cxxShip->absoluteTractorPosition(); }
+- (std::optional<std::string>) beaconCode	{ return _cxxShip->beaconCode(); }
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode	{ _cxxShip->setBeaconCode(bcode); }
+- (std::optional<std::string>) beaconLabel	{ return _cxxShip->beaconLabel(); }
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel	{ _cxxShip->setBeaconLabel(blabel); }
+- (BOOL) isVisible	{ return _cxxShip->cxx::ShipEntity::isVisible(); }
+- (BOOL) isBeacon	{ return _cxxShip->isBeacon(); }
+- (id <OOHUDBeaconIcon>) beaconDrawable	{ return _cxxShip->beaconDrawable(); }
+- (Entity <OOBeaconEntity> *) prevBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->prevBeacon(); }
+- (Entity <OOBeaconEntity> *) nextBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->nextBeacon(); }
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setPrevBeacon(beaconShip); }
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setNextBeacon(beaconShip); }
+- (void) setIsBoulder:(BOOL)flag	{ _cxxShip->setIsBoulder(flag); }
+- (BOOL) isBoulder	{ return _cxxShip->isBoulder(); }
+- (BOOL) isMinable	{ return _cxxShip->isMinable(); }
+- (BOOL) countsAsKill	{ return _cxxShip->countsAsKill(); }
+- (void) setUpEscorts	{ _cxxShip->setUpEscorts(); }
+- (void) setUpMixedEscorts	{ _cxxShip->setUpMixedEscorts(); }
 
 @end
