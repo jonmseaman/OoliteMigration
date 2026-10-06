@@ -4,10 +4,11 @@ OOShaderMaterial.h
 
 Managers a combination of a shader program, textures and uniforms.
 
-C++20 since bead oo-ja7y (proposed ADR-0056, amendments oo-smy and oo-vl43). The class is
-cxx::OOShaderMaterial while OOShaderMaterial+ObjCBridge.h, imported at the end of this header,
-keeps the Objective-C OOShaderMaterial that its callers make and message, and the two informal
-protocols on OOObject; the bridge's deletion bead moves the class out of namespace cxx.
+C++20 since bead oo-ja7y (proposed ADR-0056, amendments oo-smy and oo-vl43). Its Objective-C
+facade was deleted by bead oo-9ht.46 (ADR-0056 amendment "deleting a facade"): the class is global,
+and Objective-C sees one as the nearest facade, OOBasicMaterial's. The two informal protocols on
+OOObject that shader binding targets implement (-superShaderBindingTarget, -randomSeedForShaders)
+moved with it to their implementers' header, Entity+ObjCBridge.h.
 
 
 Copyright (C) 2007-2013 Jens Ayton
@@ -66,9 +67,7 @@ enum
 typedef uint16_t OOUniformConvertOptions;
 
 
-namespace cxx {
-
-class OOShaderMaterial : public OOBasicMaterial
+class OOShaderMaterial : public cxx::OOBasicMaterial
 {
 public:
 	~OOShaderMaterial() override;
@@ -196,7 +195,6 @@ private:
 	oo::ObjCRef<::OOWeakReference *>	bindingTarget = {};
 };
 
-}	// namespace cxx
 
 
 enum
@@ -229,11 +227,6 @@ inline constexpr const char *kOOUniformsKey					= "uniforms";
 inline constexpr const char *kOOIsSynthesizedMaterialConfigurationKey = "_oo_is_synthesized_config";
 inline constexpr const char *kOOIsSynthesizedMaterialMacrosKey = "_oo_synthesized_material_macros";
 
-
-// Transitional: the Objective-C OOShaderMaterial, and the informal protocols on OOObject that
-// shader binding targets implement, for callers not yet converted. Deleted, with namespace cxx
-// above, by the bridge's deletion bead.
-#import "OOShaderMaterial+ObjCBridge.h"
 
 #endif // OO_SHADERS
 

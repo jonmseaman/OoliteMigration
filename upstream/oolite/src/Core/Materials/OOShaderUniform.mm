@@ -27,6 +27,7 @@ SOFTWARE.
 
 
 #import "OOShaderUniform.h"
+#import "Entity.h"	// the shader binding targets' informal protocols (-superShaderBindingTarget)
 #include "oofnd/objc/OORuntime.h"
 
 #if OO_SHADERS
