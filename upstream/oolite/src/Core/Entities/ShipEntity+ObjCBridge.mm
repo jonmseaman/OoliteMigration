@@ -208,3 +208,10 @@ DESTROY(_cxxShip->laser_color);
 - (BOOL) isShipWithSubEntityShip:(Entity *)other	{ return oo::ToCxx(self)->isShipWithSubEntityShip(other); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice2)
+
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &)inShipDict	{ return _cxxShip->setUpFromDictionary(inShipDict); }
+
+@end

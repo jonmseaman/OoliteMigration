@@ -123,7 +123,6 @@ MA 02110-1301, USA.
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
 - (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
@@ -864,6 +863,16 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @interface ShipEntity (OOObjCBridge)
 
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict OO_RETURNS_RETAINED;
+
+@end
+
+
+// Slice 2 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice2)
+
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
 
 @end
 

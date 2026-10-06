@@ -381,282 +381,6 @@ void ShipEntity::initWithKey(const std::string &key)
 
 @implementation ShipEntity
 
-- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) inShipDict
-{
-	OOJS_PROFILE_ENTER
-
-	// Settings shared by players & NPCs.
-	//
-	// In order for default values to work and float values to not be junk,
-	// replace nil with empty dictionary. -- Ahruman 2008-04-28
-	_cxxShip->shipinfoDictionary = inShipDict;
-	if (_cxxShip->shipinfoDictionary.isNull())  _cxxShip->shipinfoDictionary = oo::PList(oo::PList::Dict{});
-	const oo::PList &shipDict = _cxxShip->shipinfoDictionary;	// Ensure no mutation.
-
-	// set these flags explicitly.
-	_cxxShip->haveExecutedSpawnAction = NO;
-	_cxxShip->haveStartedJSAI = NO;
-	_cxxShip->scripted_misjump		= NO;
-	_cxxShip->_scriptedMisjumpRange		= 0.5;
-	_cxxShip->being_fined = NO;
-	_cxxShip->isNearPlanetSurface = NO;
-	_cxxShip->suppressAegisMessages = NO;
-	_cxxShip->isMissile = NO;
-	_cxxShip->suppressExplosion = NO;
-	_cxxShip->_lightsActive = YES;
-	
-
-	// set things from dictionary from here out - default values might require adjustment -- Kaks 20091130
-	_cxxShip->_scaleFactor = shipDict.get<float>("model_scale_factor", 1.0f);
-
-
-	float defaultSpeed = _cxxEntity->isStation ? 0.0f : 160.0f;
-	_cxxShip->maxFlightSpeed = shipDict.get<float>("max_flight_speed", defaultSpeed);
-	_cxxShip->max_flight_roll = shipDict.get<float>("max_flight_roll", 2.0f);
-	_cxxShip->max_flight_pitch = shipDict.get<float>("max_flight_pitch", 1.0f);
-	_cxxShip->max_flight_yaw = shipDict.get<float>("max_flight_yaw", _cxxShip->max_flight_pitch);	// Note by default yaw == pitch
-	_cxxShip->cruiseSpeed = _cxxShip->maxFlightSpeed*0.8f;
-	
-	_cxxShip->max_thrust = shipDict.get<float>("thrust", 15.0f);
-	_cxxShip->thrust = _cxxShip->max_thrust;
-
-	_cxxShip->afterburner_rate = shipDict.get<float>("injector_burn_rate", AFTERBURNER_BURNRATE);
-	_cxxShip->afterburner_speed_factor = shipDict.get<float>("injector_speed_factor", 7.0f);
-	if (_cxxShip->afterburner_speed_factor < 1.0)
-	{
-		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be lower than 1.0 for {}", oo::DescriptionOf(self));
-		_cxxShip->afterburner_speed_factor = 1.0;
-	}
-#if OO_VARIABLE_TORUS_SPEED
-	else if (_cxxShip->afterburner_speed_factor > MIN_HYPERSPEED_FACTOR)
-	{
-		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than minimum torus speed factor ({:f}) for {}.", MIN_HYPERSPEED_FACTOR, oo::DescriptionOf(self));
-		_cxxShip->afterburner_speed_factor = MIN_HYPERSPEED_FACTOR;
-	}
-#else
-	else if (_cxxShip->afterburner_speed_factor > HYPERSPEED_FACTOR)
-	{
-		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than torus speed factor ({:f}) for {}.", HYPERSPEED_FACTOR, oo::DescriptionOf(self));
-		_cxxShip->afterburner_speed_factor = HYPERSPEED_FACTOR;
-	}
-#endif
-
-	_cxxEntity->maxEnergy = shipDict.get<float>("max_energy", 200.0f);
-	_cxxShip->energy_recharge_rate = shipDict.get<float>("energy_recharge_rate", 1.0f);
-	
-	_cxxShip->_showDamage = shipDict.get<bool>("show_damage", (_cxxShip->energy_recharge_rate > 0));
-	// Each new ship should start in seemingly good operating condition, unless specifically told not to - this does not affect the ship's energy levels
-	[self setThrowSparks:shipDict.get<bool>("throw_sparks", NO)];
-	
-	_cxxShip->weapon_facings = shipDict.get<int>("weapon_facings", VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
-	if (_cxxShip->weapon_facings & WEAPON_FACING_FORWARD)
-		_cxxShip->forward_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("forward_weapon_type", "EQ_WEAPON_NONE"));
-	if (_cxxShip->weapon_facings & WEAPON_FACING_AFT)
-		_cxxShip->aft_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("aft_weapon_type", "EQ_WEAPON_NONE"));
-	if (_cxxShip->weapon_facings & WEAPON_FACING_PORT)
-		_cxxShip->port_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("port_weapon_type", "EQ_WEAPON_NONE"));
-	if (_cxxShip->weapon_facings & WEAPON_FACING_STARBOARD)
-		_cxxShip->starboard_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("starboard_weapon_type", "EQ_WEAPON_NONE"));
-
-	_cxxShip->cloaking_device_active = NO;
-	_cxxShip->military_jammer_active = NO;
-	_cxxShip->cloakPassive = shipDict.get<bool>("cloak_passive", YES); // Nikos - switched passive cloak default to YES 20120523
-	_cxxShip->cloakAutomatic = shipDict.get<bool>("cloak_automatic", YES);
-
-	_cxxShip->missiles = shipDict.get<int>("missiles", 0);
-	/* TODO: The following initializes the missile list to be blank, which prevents a crash caused by hasOneEquipmentItem trying to access a missile list
-	         previously initialized but then released.  See issue #204.  We need to investigate further the cause of the missile list being released.
- 			- kanthoney 10/03/2017
-		Update 20170818: The issue seems to have been resolved properly using the fix below and the problem was apparently an access of the
-		missile_list array elements before their initialization and while we were checking whether equipment can be added or not. There is
-		probably not much more that can be done here, unless someone would like to have a go at refactoring the entire ship initialization
-		code. In any case, the crash is no more and the applied solution is both simple and logical - Nikos
-	*/
-	unsigned i;
-	for (i = 0; i < _cxxShip->missiles; i++)
-	{
-		_cxxShip->missile_list[i] = nil;
-	}
-	_cxxShip->max_missiles = shipDict.get<int>("max_missiles", _cxxShip->missiles);
-	if (_cxxShip->max_missiles > SHIPENTITY_MAX_MISSILES) _cxxShip->max_missiles = SHIPENTITY_MAX_MISSILES;
-	if (_cxxShip->missiles > _cxxShip->max_missiles) _cxxShip->missiles = _cxxShip->max_missiles;
-	_cxxShip->missile_load_time = fmax(0.0, shipDict.get<double>("missile_load_time", 0.0)); // no negative load times
-	_cxxShip->missile_launch_time = [UNIVERSE getTime] + _cxxShip->missile_load_time;
-	
-	// upgrades:
-	_cxxShip->equipment_weight = 0; 
-	if (FuzzyBooleanForKey(shipDict, "has_ecm"))  [self addEquipmentItem:"EQ_ECM" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_scoop"))  [self addEquipmentItem:"EQ_FUEL_SCOOPS" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_escape_pod"))  [self addEquipmentItem:"EQ_ESCAPE_POD" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_cloaking_device"))  [self addEquipmentItem:"EQ_CLOAKING_DEVICE" inContext:"npc"];
-	if (shipDict.get<float>("has_energy_bomb") > 0)
-	{
-		/*	NOTE: has_energy_bomb actually refers to QC mines.
-			
-			max_missiles for NPCs is a newish addition, and ships have
-			traditionally not needed to reserve a slot for a Q-mine added this
-			way. If has_energy_bomb is possible, and max_missiles is not
-			explicit, we add an extra missile slot to compensate.
-			-- Ahruman 2011-03-25
-		*/
-		if (FuzzyBooleanForKey(shipDict, "has_energy_bomb"))
-		{
-			if (_cxxShip->max_missiles == _cxxShip->missiles && _cxxShip->max_missiles < SHIPENTITY_MAX_MISSILES && shipDict.find("max_missiles") == nullptr)
-			{
-				_cxxShip->max_missiles++;
-			}
-			[self addEquipmentItem:"EQ_QC_MINE" inContext:"npc"];
-		}
-	}
-
-	if (FuzzyBooleanForKey(shipDict, "has_fuel_injection"))  [self addEquipmentItem:"EQ_FUEL_INJECTION" inContext:"npc"];
-
-#if USEMASC
-	if (FuzzyBooleanForKey(shipDict, "has_military_jammer"))  [self addEquipmentItem:"EQ_MILITARY_JAMMER" inContext:"npc"];
-	if (FuzzyBooleanForKey(shipDict, "has_military_scanner_filter"))  [self addEquipmentItem:"EQ_MILITARY_SCANNER_FILTER" inContext:"npc"];
-#endif
-	
-	
-	// can it be 'mined' for alloys?
-	_cxxShip->canFragment = (unsigned char)FuzzyBooleanForKey(shipDict, "fragment_chance", 0.9);
-	_cxxShip->isWreckage = NO;
-
-	// can subentities be destroyed separately?
-	_cxxShip->isFrangible = shipDict.get<bool>("frangible", YES);
-	
-	_cxxShip->max_cargo = shipDict.get<unsigned int>("max_cargo");
-	_cxxShip->extra_cargo = shipDict.get<unsigned int>("extra_cargo", 15);
-	
-	_cxxShip->hyperspaceMotorSpinTime = shipDict.get<float>("hyperspace_motor_spin_time", DEFAULT_HYPERSPACE_SPIN_TIME);
-	if(!shipDict.get<bool>("hyperspace_motor", YES)) _cxxShip->hyperspaceMotorSpinTime = -1;
-	
-	_cxxShip->name = shipDict.get<std::string>("name", "?");
-
-	_cxxShip->shipUniqueName = shipDict.get<std::string>("ship_name", "");
-
-	_cxxShip->shipClassName = shipDict.get<std::string>("ship_class_name", *_cxxShip->name);
-
-	_cxxShip->displayName = StringForKey(shipDict, "display_name");
-
-	// Load the model (must be before subentities)
-	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
-	if (modelName.has_value())
-	{
-		OOMesh *mesh = nil;
-
-		mesh = [OOMesh meshWithName:*modelName
-						   cacheKey:oo::str::format("%s-%.3f", _cxxShip->_shipKey.value_or("(null)").c_str(), _cxxShip->_scaleFactor)	// %@ printed nil as (null)
-				 materialDictionary:DictionaryForKey(shipDict, "materials")
-				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
-							 smooth:shipDict.get<bool>("smooth", false)
-					   shaderMacros:OODefaultShipShaderMacros()
-					   shaderBindingTarget:self
-						scaleFactor:_cxxShip->_scaleFactor
-					 cacheWriteable:YES];
-
-		if (mesh == nil)  return NO;
-		[self setMesh:mesh];
-	}
-	
-	float density = shipDict.get<float>("density", 1.0f);
-	if (_cxxShip->octree)  _cxxEntity->mass = (GLfloat)(density * 20.0f * [_cxxShip->octree volume]);
-	
-	DESTROY(_cxxShip->default_laser_color);
-	_cxxShip->default_laser_color = [[OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
-	
-	if (_cxxShip->default_laser_color == nil) 
-	{
-		[self setLaserColor:[OOColor redColor]];
-	}
-	else
-	{
-		[self setLaserColor:_cxxShip->default_laser_color];
-	}
-	// exhaust emissive color
-	OORGBAComponents defaultExhaustEmissiveColorComponents; // pale blue is exhaust default color
-	defaultExhaustEmissiveColorComponents.r = 0.7f;
-	defaultExhaustEmissiveColorComponents.g = 0.9f;
-	defaultExhaustEmissiveColorComponents.b = 1.0f;
-	defaultExhaustEmissiveColorComponents.a = 0.9f;
-	OOColor *color = [OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "exhaust_emissive_color")];
-	if (color == nil)  color = [OOColor colorWithRGBAComponents:defaultExhaustEmissiveColorComponents];
-	[self setExhaustEmissiveColor:color];
-	
-	[self clearSubEntities];
-	[self setUpSubEntities];
-
-// correctly initialise weaponRange, etc. (must be after subentity setup)
-	if (isWeaponNone(_cxxShip->forward_weapon_type))
-	{
-		OOWeaponType 			weapon_type = nil;
-		BOOL hasTurrets = NO;
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			if (!isWeaponNone(weapon_type))  break;
-			ShipEntity *se = sub.get();
-			weapon_type = se->_cxxShip->forward_weapon_type;
-			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
-			{
-				hasTurrets = YES;
-			}
-		}
-		if (isWeaponNone(weapon_type) && hasTurrets)
-		{ /* safety for ships only equipped with turrets
-		     note: this was hard-coded to 10000.0, although turrets have a notably 
-		     shorter range. We are using a multiplier of 1.667 in order to not change
-		     something that already works, but probably it would be best to use
-		     TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR here
-		  */
-			_cxxShip->weaponRange = TURRET_SHOT_RANGE * 1.667;
-		}
-		else
-		{
-			[self setWeaponDataFromType:weapon_type];
-		}
-	}
-	else
-	{
-		[self setWeaponDataFromType:_cxxShip->forward_weapon_type];
-	}
-	
-	// rotating subentities
-	_cxxShip->subentityRotationalVelocity = kIdentityQuaternion;
-	if (shipDict.find("rotational_velocity") != nullptr)
-	{
-		_cxxShip->subentityRotationalVelocity = QuaternionForKey(shipDict, "rotational_velocity");
-	}
-
-	// set weapon offsets
-	const oo::PList &weaponMounts = shipDict;
-	const std::string weaponMountMode = weaponMounts.get<std::string>("weapon_mount_mode", "single");
-	_cxxShip->_multiplyWeapons = weaponMountMode == "multiply";
-	_cxxShip->forwardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_forward" inMode:weaponMountMode];
-	_cxxShip->aftWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_aft" inMode:weaponMountMode];
-	_cxxShip->portWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_port" inMode:weaponMountMode];
-	_cxxShip->starboardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_starboard" inMode:weaponMountMode];
-
-	
-	_cxxShip->tractor_position = vector_multiply_scalar(VectorFromPList(shipDict.find("scoop_position")),_cxxShip->_scaleFactor);
-	
-
-	
-	// sun glare filter - default is high filter, both for HDR and SDR
-	[self setSunGlareFilter:shipDict.get<float>("sun_glare_filter", 0.97f)];
-	
-	// Get scriptInfo dictionary, containing arbitrary stuff scripts might be interested in.
-	_cxxShip->scriptInfo = DictionaryForKey(shipDict, "script_info");	// null when absent
-
-	const oo::PList *explosion = ArrayForKey(shipDict, "explosion_type");
-	_cxxShip->explosionType = explosion != nullptr ? *explosion : oo::PList();	// null when absent
-
-	_cxxShip->isDemoShip = NO;
-	
-	return YES;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
 
 - (BOOL) setUpShipFromDictionary:(const oo::PList &) shipDict
 {
@@ -4234,7 +3958,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	[self applySticks:delta_t];
 
 	
-	
 }
 
 
@@ -4906,7 +4629,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	_cxxShip->frustration = 0.0;	// behaviour changed, so reset frustration
 
 	
-	
 }
 
 
@@ -5033,7 +4755,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	
 	
-
 	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
 	{
 		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
@@ -5339,7 +5060,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	[self fireMainWeapon:range];
 	
 	
-
 	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
 	{
 		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
@@ -5524,7 +5244,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	[self fireMainWeapon:range];
 	
 	
-
 	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && _cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && _cxxShip->aim_tolerance * range < COMBAT_AI_CONFIDENCE_FACTOR)
 	{
 		// don't do this if the target is fleeing and the front laser is
@@ -5780,7 +5499,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	_cxxShip->frustration = 0.0;
 
 	
-	
 }
 
 
@@ -6014,7 +5732,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 
 
-	
 		if (distance < last_distance)	// improvement
 		{
 			_cxxShip->frustration -= 0.25 * delta_t;
@@ -6085,7 +5802,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * (0.5 * dq + 0.5);
 	}
 
-	
 	
 }
 
@@ -6229,7 +5945,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	
 
-	
 	GLfloat temp = _cxxShip->desired_speed;
 	_cxxShip->desired_speed *= v0 * v0;
 	
@@ -8069,7 +7784,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-
 - (void) setStateMachine:(const std::string &)smName	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 {
 	[self setAITo:smName];
@@ -8370,7 +8084,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-
 - (OOCreditsQuantity) bounty
 {
 	if ([self isSubEntity]) 
@@ -8460,7 +8173,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	OOAssert(result < UINT32_MAX, "Cargo quantity out of bounds.");
 	return (OOCargoQuantity)result;
 }
-
 
 
 - (OOCargoType) cargoType
@@ -8571,7 +8283,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 	return YES;
 }
-
 
 
 - (BOOL) showScoopMessage
@@ -10898,7 +10609,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-
 - (double) missileTrackPrimaryTarget:(double) delta_t
 {
 	Vector  relPos;
@@ -11224,7 +10934,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	return [_cxxShip->_collisionExceptions containsObject:ship];
 }
-
 
 
 - (NSUInteger) defenseTargetCount
@@ -14939,6 +14648,293 @@ bool ShipEntity::isShipWithSubEntityShip(::Entity *other)
 }
 
 }	// namespace cxx
+
+
+// Slice 2 of docs/phases/3-slices/ShipEntity.md (bead oo-cvbe3): set-up from the ship dictionary
+// (cxx_setUpFromDictionary:). The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends
+// to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::setUpFromDictionary(const oo::PList &inShipDict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOJS_PROFILE_ENTER
+
+	// Settings shared by players & NPCs.
+	//
+	// In order for default values to work and float values to not be junk,
+	// replace nil with empty dictionary. -- Ahruman 2008-04-28
+	shipinfoDictionary = inShipDict;
+	if (shipinfoDictionary.isNull())  shipinfoDictionary = oo::PList(oo::PList::Dict{});
+	const oo::PList &shipDict = shipinfoDictionary;	// Ensure no mutation.
+
+	// set these flags explicitly.
+	haveExecutedSpawnAction = NO;
+	haveStartedJSAI = NO;
+	scripted_misjump		= NO;
+	_scriptedMisjumpRange		= 0.5;
+	being_fined = NO;
+	isNearPlanetSurface = NO;
+	suppressAegisMessages = NO;
+	isMissile = NO;
+	suppressExplosion = NO;
+	_lightsActive = YES;
+	
+
+	// set things from dictionary from here out - default values might require adjustment -- Kaks 20091130
+	_scaleFactor = shipDict.get<float>("model_scale_factor", 1.0f);
+
+
+	float defaultSpeed = isStation ? 0.0f : 160.0f;
+	maxFlightSpeed = shipDict.get<float>("max_flight_speed", defaultSpeed);
+	max_flight_roll = shipDict.get<float>("max_flight_roll", 2.0f);
+	max_flight_pitch = shipDict.get<float>("max_flight_pitch", 1.0f);
+	max_flight_yaw = shipDict.get<float>("max_flight_yaw", max_flight_pitch);	// Note by default yaw == pitch
+	cruiseSpeed = maxFlightSpeed*0.8f;
+	
+	max_thrust = shipDict.get<float>("thrust", 15.0f);
+	thrust = max_thrust;
+
+	afterburner_rate = shipDict.get<float>("injector_burn_rate", AFTERBURNER_BURNRATE);
+	afterburner_speed_factor = shipDict.get<float>("injector_speed_factor", 7.0f);
+	if (afterburner_speed_factor < 1.0)
+	{
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be lower than 1.0 for {}", oo::DescriptionOf(self));
+		afterburner_speed_factor = 1.0;
+	}
+#if OO_VARIABLE_TORUS_SPEED
+	else if (afterburner_speed_factor > MIN_HYPERSPEED_FACTOR)
+	{
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than minimum torus speed factor ({:f}) for {}.", MIN_HYPERSPEED_FACTOR, oo::DescriptionOf(self));
+		afterburner_speed_factor = MIN_HYPERSPEED_FACTOR;
+	}
+#else
+	else if (afterburner_speed_factor > HYPERSPEED_FACTOR)
+	{
+		OO_LOG("ship.setup.injectorSpeed", "injector_speed_factor cannot be higher than torus speed factor ({:f}) for {}.", HYPERSPEED_FACTOR, oo::DescriptionOf(self));
+		afterburner_speed_factor = HYPERSPEED_FACTOR;
+	}
+#endif
+
+	maxEnergy = shipDict.get<float>("max_energy", 200.0f);
+	energy_recharge_rate = shipDict.get<float>("energy_recharge_rate", 1.0f);
+	
+	_showDamage = shipDict.get<bool>("show_damage", (energy_recharge_rate > 0));
+	// Each new ship should start in seemingly good operating condition, unless specifically told not to - this does not affect the ship's energy levels
+	[self setThrowSparks:shipDict.get<bool>("throw_sparks", NO)];
+	
+	weapon_facings = shipDict.get<int>("weapon_facings", VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+	if (weapon_facings & WEAPON_FACING_FORWARD)
+		forward_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("forward_weapon_type", "EQ_WEAPON_NONE"));
+	if (weapon_facings & WEAPON_FACING_AFT)
+		aft_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("aft_weapon_type", "EQ_WEAPON_NONE"));
+	if (weapon_facings & WEAPON_FACING_PORT)
+		port_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("port_weapon_type", "EQ_WEAPON_NONE"));
+	if (weapon_facings & WEAPON_FACING_STARBOARD)
+		starboard_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("starboard_weapon_type", "EQ_WEAPON_NONE"));
+
+	cloaking_device_active = NO;
+	military_jammer_active = NO;
+	cloakPassive = shipDict.get<bool>("cloak_passive", YES); // Nikos - switched passive cloak default to YES 20120523
+	cloakAutomatic = shipDict.get<bool>("cloak_automatic", YES);
+
+	missiles = shipDict.get<int>("missiles", 0);
+	/* TODO: The following initializes the missile list to be blank, which prevents a crash caused by hasOneEquipmentItem trying to access a missile list
+	         previously initialized but then released.  See issue #204.  We need to investigate further the cause of the missile list being released.
+ 			- kanthoney 10/03/2017
+		Update 20170818: The issue seems to have been resolved properly using the fix below and the problem was apparently an access of the
+		missile_list array elements before their initialization and while we were checking whether equipment can be added or not. There is
+		probably not much more that can be done here, unless someone would like to have a go at refactoring the entire ship initialization
+		code. In any case, the crash is no more and the applied solution is both simple and logical - Nikos
+	*/
+	unsigned i;
+	for (i = 0; i < missiles; i++)
+	{
+		missile_list[i] = nil;
+	}
+	max_missiles = shipDict.get<int>("max_missiles", missiles);
+	if (max_missiles > SHIPENTITY_MAX_MISSILES) max_missiles = SHIPENTITY_MAX_MISSILES;
+	if (missiles > max_missiles) missiles = max_missiles;
+	missile_load_time = fmax(0.0, shipDict.get<double>("missile_load_time", 0.0)); // no negative load times
+	missile_launch_time = [UNIVERSE getTime] + missile_load_time;
+	
+	// upgrades:
+	equipment_weight = 0; 
+	if (FuzzyBooleanForKey(shipDict, "has_ecm"))  [self addEquipmentItem:"EQ_ECM" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_scoop"))  [self addEquipmentItem:"EQ_FUEL_SCOOPS" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_escape_pod"))  [self addEquipmentItem:"EQ_ESCAPE_POD" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_cloaking_device"))  [self addEquipmentItem:"EQ_CLOAKING_DEVICE" inContext:"npc"];
+	if (shipDict.get<float>("has_energy_bomb") > 0)
+	{
+		/*	NOTE: has_energy_bomb actually refers to QC mines.
+			
+			max_missiles for NPCs is a newish addition, and ships have
+			traditionally not needed to reserve a slot for a Q-mine added this
+			way. If has_energy_bomb is possible, and max_missiles is not
+			explicit, we add an extra missile slot to compensate.
+			-- Ahruman 2011-03-25
+		*/
+		if (FuzzyBooleanForKey(shipDict, "has_energy_bomb"))
+		{
+			if (max_missiles == missiles && max_missiles < SHIPENTITY_MAX_MISSILES && shipDict.find("max_missiles") == nullptr)
+			{
+				max_missiles++;
+			}
+			[self addEquipmentItem:"EQ_QC_MINE" inContext:"npc"];
+		}
+	}
+
+	if (FuzzyBooleanForKey(shipDict, "has_fuel_injection"))  [self addEquipmentItem:"EQ_FUEL_INJECTION" inContext:"npc"];
+
+#if USEMASC
+	if (FuzzyBooleanForKey(shipDict, "has_military_jammer"))  [self addEquipmentItem:"EQ_MILITARY_JAMMER" inContext:"npc"];
+	if (FuzzyBooleanForKey(shipDict, "has_military_scanner_filter"))  [self addEquipmentItem:"EQ_MILITARY_SCANNER_FILTER" inContext:"npc"];
+#endif
+	
+	
+	// can it be 'mined' for alloys?
+	canFragment = (unsigned char)FuzzyBooleanForKey(shipDict, "fragment_chance", 0.9);
+	isWreckage = NO;
+
+	// can subentities be destroyed separately?
+	isFrangible = shipDict.get<bool>("frangible", YES);
+	
+	max_cargo = shipDict.get<unsigned int>("max_cargo");
+	extra_cargo = shipDict.get<unsigned int>("extra_cargo", 15);
+	
+	hyperspaceMotorSpinTime = shipDict.get<float>("hyperspace_motor_spin_time", DEFAULT_HYPERSPACE_SPIN_TIME);
+	if(!shipDict.get<bool>("hyperspace_motor", YES)) hyperspaceMotorSpinTime = -1;
+	
+	name = shipDict.get<std::string>("name", "?");
+
+	shipUniqueName = shipDict.get<std::string>("ship_name", "");
+
+	shipClassName = shipDict.get<std::string>("ship_class_name", *name);
+
+	displayName = StringForKey(shipDict, "display_name");
+
+	// Load the model (must be before subentities)
+	const std::optional<std::string> modelName = StringForKey(shipDict, "model");
+	if (modelName.has_value())
+	{
+		::OOMesh *mesh = nil;
+
+		mesh = [::OOMesh meshWithName:*modelName
+						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
+				 materialDictionary:DictionaryForKey(shipDict, "materials")
+				  shadersDictionary:DictionaryForKey(shipDict, "shaders")
+							 smooth:shipDict.get<bool>("smooth", false)
+					   shaderMacros:OODefaultShipShaderMacros()
+					   shaderBindingTarget:self
+						scaleFactor:_scaleFactor
+					 cacheWriteable:YES];
+
+		if (mesh == nil)  return NO;
+		[self setMesh:mesh];
+	}
+	
+	float density = shipDict.get<float>("density", 1.0f);
+	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+	
+	DESTROY(default_laser_color);
+	default_laser_color = [[::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "laser_color")] retain];
+	
+	if (default_laser_color == nil) 
+	{
+		[self setLaserColor:[::OOColor redColor]];
+	}
+	else
+	{
+		[self setLaserColor:default_laser_color];
+	}
+	// exhaust emissive color
+	OORGBAComponents defaultExhaustEmissiveColorComponents; // pale blue is exhaust default color
+	defaultExhaustEmissiveColorComponents.r = 0.7f;
+	defaultExhaustEmissiveColorComponents.g = 0.9f;
+	defaultExhaustEmissiveColorComponents.b = 1.0f;
+	defaultExhaustEmissiveColorComponents.a = 0.9f;
+	::OOColor *color = [::OOColor cxx_brightColorWithDescription:ValueForKey(shipDict, "exhaust_emissive_color")];
+	if (color == nil)  color = [::OOColor colorWithRGBAComponents:defaultExhaustEmissiveColorComponents];
+	[self setExhaustEmissiveColor:color];
+	
+	[self clearSubEntities];
+	[self setUpSubEntities];
+
+// correctly initialise weaponRange, etc. (must be after subentity setup)
+	if (isWeaponNone(forward_weapon_type))
+	{
+		OOWeaponType 			weapon_type = nil;
+		BOOL hasTurrets = NO;
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			if (!isWeaponNone(weapon_type))  break;
+			::ShipEntity *se = sub.get();
+			weapon_type = se->_cxxShip->forward_weapon_type;
+			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
+			{
+				hasTurrets = YES;
+			}
+		}
+		if (isWeaponNone(weapon_type) && hasTurrets)
+		{ /* safety for ships only equipped with turrets
+		     note: this was hard-coded to 10000.0, although turrets have a notably 
+		     shorter range. We are using a multiplier of 1.667 in order to not change
+		     something that already works, but probably it would be best to use
+		     TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR here
+		  */
+			weaponRange = TURRET_SHOT_RANGE * 1.667;
+		}
+		else
+		{
+			[self setWeaponDataFromType:weapon_type];
+		}
+	}
+	else
+	{
+		[self setWeaponDataFromType:forward_weapon_type];
+	}
+	
+	// rotating subentities
+	subentityRotationalVelocity = kIdentityQuaternion;
+	if (shipDict.find("rotational_velocity") != nullptr)
+	{
+		subentityRotationalVelocity = QuaternionForKey(shipDict, "rotational_velocity");
+	}
+
+	// set weapon offsets
+	const oo::PList &weaponMounts = shipDict;
+	const std::string weaponMountMode = weaponMounts.get<std::string>("weapon_mount_mode", "single");
+	_multiplyWeapons = weaponMountMode == "multiply";
+	forwardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_forward" inMode:weaponMountMode];
+	aftWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_aft" inMode:weaponMountMode];
+	portWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_port" inMode:weaponMountMode];
+	starboardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_starboard" inMode:weaponMountMode];
+
+	
+	tractor_position = vector_multiply_scalar(VectorFromPList(shipDict.find("scoop_position")),_scaleFactor);
+	
+
+	
+	// sun glare filter - default is high filter, both for HDR and SDR
+	[self setSunGlareFilter:shipDict.get<float>("sun_glare_filter", 0.97f)];
+	
+	// Get scriptInfo dictionary, containing arbitrary stuff scripts might be interested in.
+	scriptInfo = DictionaryForKey(shipDict, "script_info");	// null when absent
+
+	const oo::PList *explosion = ArrayForKey(shipDict, "explosion_type");
+	explosionType = explosion != nullptr ? *explosion : oo::PList();	// null when absent
+
+	isDemoShip = NO;
+	
+	return YES;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+}	// namespace cxx
+
 
 
 oo::PList OODefaultShipShaderMacros(void)

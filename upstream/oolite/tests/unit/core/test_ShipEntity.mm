@@ -326,4 +326,117 @@ OO_TEST(releasedBeforeInit)
 }
 
 
+// --- Slice 2: -cxx_setUpFromDictionary:, the set-up players and NPCs share (bead oo-cvbe3) -------
+
+namespace {
+
+const cxx::ShipEntity *Part(ShipEntity *s)	{ return s->_cxxShip; }
+
+}	// namespace
+
+
+// An empty definition (nil, as PlayerEntity's -deferredInit may give) is an empty dictionary,
+// and every setting takes its default.
+OO_TEST(setUpFromDictionaryDefaults)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"defaults" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList()]);
+		const cxx::ShipEntity *part = Part(ship);
+		OO_CHECK([ship cxx_shipInfoDictionary].isDict() && [ship cxx_shipInfoDictionary].count() == 0);
+		OO_CHECK([ship maxFlightSpeed] == 160.0f && [ship maxFlightRoll] == 2.0f && [ship maxFlightPitch] == 1.0f && [ship maxFlightYaw] == 1.0f);
+		OO_CHECK([ship cruiseSpeed] == 160.0f * 0.8f);
+		OO_CHECK([ship maxThrust] == 15.0f && [ship thrust] == 15.0f);
+		OO_CHECK([ship afterburnerFactor] == 7.0f && [ship afterburnerRate] == AFTERBURNER_BURNRATE);
+		OO_CHECK([ship maxEnergy] == 200.0f && part->energy_recharge_rate == 1.0f);
+		OO_CHECK([ship weaponFacings] == VALID_WEAPON_FACINGS);
+		OO_CHECK([ship missileCount] == 0 && [ship missileCapacity] == 0);
+		OO_CHECK(part->cloakPassive && part->cloakAutomatic && !part->cloaking_device_active && !part->military_jammer_active);
+		OO_CHECK(part->isFrangible && !part->isWreckage && part->canFragment);
+		OO_CHECK(part->max_cargo == 0 && [ship extraCargo] == 15);
+		OO_CHECK([ship hyperspaceSpinTime] == DEFAULT_HYPERSPACE_SPIN_TIME);
+		OO_CHECK([ship cxx_name] == std::optional<std::string>("?"));
+		OO_CHECK([ship cxx_shipUniqueName] == std::optional<std::string>(""));
+		OO_CHECK([ship cxx_shipClassName] == std::optional<std::string>("?"));
+		OO_CHECK(part->displayName == std::nullopt);
+		OO_CHECK(part->_scaleFactor == 1.0f);
+		OO_CHECK(![ship scriptedMisjump] && [ship scriptedMisjumpRange] == 0.5f);
+		OO_CHECK(part->_lightsActive && !part->haveExecutedSpawnAction && !part->isMissile);
+		OO_CHECK(quaternion_equal([ship subEntityRotationalVelocity], kIdentityQuaternion));
+		OO_CHECK(!part->_multiplyWeapons && part->forwardWeaponOffset.size() == 1 && vector_equal(part->forwardWeaponOffset[0], kZeroVector));
+		OO_CHECK([ship sunGlareFilter] == 0.97f);
+		OO_CHECK(part->scriptInfo.isNull() && part->explosionType.isNull());
+		OO_CHECK(![ship isDemoShip]);
+	}
+}
+
+
+// Each setting from the definition, with the clamps: an injector speed factor under 1, too many
+// missiles for the pylons, too many pylons; and what follows from others (scaled positions, the
+// class name from the name, no hyperspace motor).
+OO_TEST(setUpFromDictionaryValues)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"values" definition:Definition()] autorelease];
+		const oo::PList definition(oo::PList::Dict{
+			{ "max_flight_speed", oo::PList(300.0) },
+			{ "max_flight_roll", oo::PList(3.0) },
+			{ "max_flight_pitch", oo::PList(1.5) },
+			{ "thrust", oo::PList(20.0) },
+			{ "injector_burn_rate", oo::PList(0.5) },
+			{ "injector_speed_factor", oo::PList(0.5) },
+			{ "max_energy", oo::PList(500.0) },
+			{ "energy_recharge_rate", oo::PList(4.0) },
+			{ "weapon_facings", oo::PList(0xFF) },
+			{ "missiles", oo::PList(40) },
+			{ "max_missiles", oo::PList(50) },
+			{ "cloak_passive", oo::PList(false) },
+			{ "frangible", oo::PList(false) },
+			{ "max_cargo", oo::PList(20) },
+			{ "extra_cargo", oo::PList(5) },
+			{ "hyperspace_motor", oo::PList(false) },
+			{ "name", oo::PList(std::string("Viper")) },
+			{ "ship_name", oo::PList(std::string("Bob")) },
+			{ "display_name", oo::PList(std::string("Police Viper")) },
+			{ "model_scale_factor", oo::PList(2.0) },
+			{ "scoop_position", oo::PList(std::string("1 2 3")) },
+			{ "weapon_mount_mode", oo::PList(std::string("multiply")) },
+			{ "weapon_position_forward", oo::PList(oo::PList::Array{ oo::PList(std::string("1 0 0")), oo::PList(std::string("-1 0 0")) }) },
+			{ "sun_glare_filter", oo::PList(0.5) },
+			{ "script_info", oo::PList(oo::PList::Dict{ { "a", oo::PList(1) } }) },
+			{ "explosion_type", oo::PList(oo::PList::Array{ oo::PList(std::string("boom")) }) },
+		});
+		OO_CHECK([ship cxx_setUpFromDictionary:definition]);
+		const cxx::ShipEntity *part = Part(ship);
+		OO_CHECK([ship cxx_shipInfoDictionary].get<std::string>("name", "") == "Viper");
+		OO_CHECK([ship maxFlightSpeed] == 300.0f && [ship maxFlightRoll] == 3.0f && [ship maxFlightPitch] == 1.5f);
+		OO_CHECK([ship maxFlightYaw] == 1.5f);	// yaw defaults to pitch
+		OO_CHECK([ship cruiseSpeed] == 300.0f * 0.8f);
+		OO_CHECK([ship maxThrust] == 20.0f && [ship thrust] == 20.0f);
+		OO_CHECK([ship afterburnerFactor] == 1.0f && [ship afterburnerRate] == 0.5f);
+		OO_CHECK([ship maxEnergy] == 500.0f && part->energy_recharge_rate == 4.0f);
+		OO_CHECK([ship weaponFacings] == VALID_WEAPON_FACINGS);
+		OO_CHECK([ship missileCapacity] == SHIPENTITY_MAX_MISSILES && part->missiles == SHIPENTITY_MAX_MISSILES);
+		OO_CHECK(!part->cloakPassive && !part->isFrangible);
+		OO_CHECK(part->max_cargo == 20 && [ship extraCargo] == 5);
+		OO_CHECK([ship hyperspaceSpinTime] == -1);
+		OO_CHECK([ship cxx_name] == std::optional<std::string>("Viper"));
+		OO_CHECK([ship cxx_shipUniqueName] == std::optional<std::string>("Bob"));
+		OO_CHECK([ship cxx_shipClassName] == std::optional<std::string>("Viper"));
+		OO_CHECK(part->displayName == std::optional<std::string>("Police Viper"));
+		OO_CHECK(part->_scaleFactor == 2.0f);
+		OO_CHECK(vector_equal(part->tractor_position, make_vector(2, 4, 6)));
+		OO_CHECK(part->_multiplyWeapons && part->forwardWeaponOffset.size() == 2);
+		OO_CHECK(part->forwardWeaponOffset.size() == 2 && vector_equal(part->forwardWeaponOffset[1], make_vector(-2, 0, 0)));
+		OO_CHECK([ship sunGlareFilter] == 0.5f);
+		OO_CHECK(part->scriptInfo.get<int>("a", 0) == 1);
+		OO_CHECK(part->explosionType.isArray() && part->explosionType.count() == 1);
+	}
+}
+
+
 OO_TEST_MAIN()

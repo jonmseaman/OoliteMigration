@@ -221,6 +221,9 @@ public:
 	// this ship agrees.
 	bool isShipWithSubEntityShip(::Entity *other);
 
+	// Slice 2: set-up from the ship dictionary (cxx_setUpFromDictionary:).
+	bool setUpFromDictionary(const oo::PList &inShipDict);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
