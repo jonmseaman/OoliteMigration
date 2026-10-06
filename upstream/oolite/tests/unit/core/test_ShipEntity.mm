@@ -113,6 +113,10 @@ GLfloat WeaponDamage(ShipEntity *s)	{ return s->_cxxShip->weapon_damage; }
 OOAegisStatus AegisStatus(ShipEntity *s)	{ return s->_cxxShip->aegis_status; }
 void SetAegisStatus(ShipEntity *s, OOAegisStatus status)	{ s->_cxxShip->aegis_status = status; }
 void SetSticks(ShipEntity *s, GLfloat roll, GLfloat pitch, GLfloat yaw)	{ s->_cxxShip->stick_roll = roll; s->_cxxShip->stick_pitch = pitch; s->_cxxShip->stick_yaw = yaw; }
+GLfloat ScaleFactor(ShipEntity *s)	{ return s->_cxxShip->_scaleFactor; }
+void SetMass(Entity *e, GLfloat value)	{ e->_cxxEntity->mass = value; }
+bool IsWreckage(ShipEntity *s)	{ return s->_cxxShip->isWreckage; }
+void SetShowDamage(ShipEntity *s, bool value)	{ s->_cxxShip->_showDamage = value; }
 double NextAegisCheck(ShipEntity *s)	{ return s->_cxxShip->_nextAegisCheck; }
 double LaunchTime(ShipEntity *s)	{ return s->_cxxShip->launch_time; }
 double LaunchDelay(ShipEntity *s)	{ return s->_cxxShip->launch_delay; }
@@ -1960,6 +1964,37 @@ OO_TEST(temperatureDamageAndHulks)
 		[sub setHulk:YES];		// a subentity never is
 		OO_CHECK(![sub isHulk]);
 		SetSubEntity(sub, false);
+	}
+}
+
+
+// Slice 22: a ship with no model rescales its scale factor and its mass (by the cube), and its
+// subentities' positions; wreckage and the damage flag; a ship with no cargo throws nothing out.
+OO_TEST(rescaleWreckageAndDebris)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("big");
+		TestShip *sub = FlyingShip("part");
+		[sub setPosition:make_HPvector(1, 2, 3)];
+		[ship addSubEntity:sub];
+		const GLfloat scale = ScaleFactor(ship);
+		SetMass(ship, 10);
+		[ship rescaleBy:2 writeToCache:NO];
+		OO_CHECK(ScaleFactor(ship) == scale * 2 && [ship mass] == 80);
+		OO_CHECK(HPdistance([sub position], make_HPvector(2, 4, 6)) < 1e-9);
+		[ship rescaleBy:0.5];
+		OO_CHECK(ScaleFactor(ship) == scale && [ship mass] == 10);
+
+		OO_CHECK(!IsWreckage(ship) && ![ship showDamage]);
+		[ship setIsWreckage:YES];
+		SetShowDamage(ship, true);
+		OO_CHECK(IsWreckage(ship) && [ship showDamage]);
+
+		OO_CHECK([ship cxx_cargoCount] == 0);
+		[ship releaseCargoPodsDebris];
+		OO_CHECK([ship cxx_cargoCount] == 0);
 	}
 }
 

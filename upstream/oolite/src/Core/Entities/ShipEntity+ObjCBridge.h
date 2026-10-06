@@ -184,13 +184,7 @@ MA 02110-1301, USA.
 // Dispatch shipTakingDamage() event.
 // Dispatch shipDied() and possibly shipKilledOther() events. This is only for use by getDestroyedBy:damageType:, but needs to be visible to PlayerEntity's version.
 
-- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
-- (void) becomeExplosion;
 - (void) becomeLargeExplosion:(double) factor;
-- (void) becomeEnergyBlast;
-- (void) broadcastEnergyBlastImminent;
-- (void) setIsWreckage:(BOOL)isw;
-- (BOOL) showDamage;
 
 - (Vector) positionOffsetForAlignment:(const std::string &) align;
 Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, const std::string &align);
@@ -214,7 +208,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (void) resetExhaustPlumes;
 
-- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
 - (void) removeFlasher:(OOFlasherEntity *)flasher;
 
 
@@ -1103,6 +1096,25 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setHulk:(BOOL) isNowHulk;
 - (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type;
 - (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type;
+
+@end
+
+
+// Slice 22 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice22)
+
+- (void) getDestroyedBy:(Entity *)whom damageType:(OOShipDamageType)type;
+- (void) rescaleBy:(GLfloat)factor;
+- (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
+- (void) releaseCargoPodsDebris;
+- (void) setIsWreckage:(BOOL)isw;
+- (BOOL) showDamage;
+- (void) becomeExplosion;
+- (void) becomeEnergyBlast;
+- (void) broadcastEnergyBlastImminent;
+- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
 
 @end
 
