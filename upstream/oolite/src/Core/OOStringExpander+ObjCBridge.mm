@@ -29,9 +29,12 @@ MA 02110-1301, USA.
 */
 
 #import "OOStringExpander+ObjCBridge.h"
+// The imports OOStringExpander.mm made for these sends (tools/check-string-expander.sh stubs the same set).
 #import "Universe.h"
-#import "PlayerEntity.h"
+#import "OOJavaScriptEngine.h"
 #import "ResourceManager.h"
+#import "PlayerEntityScriptMethods.h"
+#import "PlayerEntity.h"
 
 
 Random_Seed OOStringExpanderUniverseRandomSeedForCurrentSystem(void)
