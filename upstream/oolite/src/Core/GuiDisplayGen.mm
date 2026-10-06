@@ -178,16 +178,7 @@ oo::Ref<cxx::OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &de
 }	// namespace
 
 
-static BOOL _refreshStarChart = NO;	// set by refreshStarChart(), read by slice 4's star chart
-
-
-@interface GuiDisplayGen (Internal)
-
-
-- (void) drawStarChart:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha :(BOOL) compact;
-
-
-@end
+static BOOL _refreshStarChart = NO;	// set by refreshStarChart(), read by drawStarChart()
 
 
 cxx::GuiDisplayGen::GuiDisplayGen()
@@ -1489,13 +1480,13 @@ int cxx::GuiDisplayGen::drawGUI(GLfloat alpha, bool drawCursor)
 				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST ||
 				backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
 			{
-				[oo::ToObjC(this) drawStarChart:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha :NO];
+				drawStarChart(x - 0.5f * size_in_pixels.width, y - 0.5f * size_in_pixels.height, z, alpha, NO);
 			}
 			if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG || 
 					backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
 					backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST)
 			{
-				[oo::ToObjC(this) drawStarChart:x - 0.5f * size_in_pixels.width :y - 0.5f * size_in_pixels.height :z :alpha :YES];
+				drawStarChart(x - 0.5f * size_in_pixels.width, y - 0.5f * size_in_pixels.height, z, alpha, YES);
 			}
 			if ([player guiScreen] == GUI_SCREEN_STATUS)
 			{
@@ -2135,33 +2126,14 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 }
 
 
-// Slice 4 of docs/phases/3-slices/GuiDisplayGen.md, still Objective-C: a category of the
-// facade, reading and writing the C++ GUI's state through oo::ToCxx(self) (ADR-0056 amendment
-// oo-3bgz). Each slice's bead moves its methods into cxx::GuiDisplayGen above.
-@implementation GuiDisplayGen (OOGuiDisplayGenUnconverted)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- (void) drawStarChart:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha :(BOOL)compact
+void cxx::GuiDisplayGen::drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, bool compact)
 {
 	PlayerEntity* player = PLAYER;
 
 	if (!player)
 		return;
 
-	OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
+	::OOSystemDescriptionManager *systemManager = [UNIVERSE systemManager];
 
 	OOScalar	zoom = [player chart_zoom];
 	NSPoint	chart_centre_coordinates = [player adjusted_chart_centre];
@@ -2177,19 +2149,19 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 
 	double fuel = 35.0 * [player dialFuel];
 	
-	double		hcenter = oo::ToCxx(self)->size_in_pixels.width/2.0;
-	double		hscale = oo::ToCxx(self)->size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
-	double		vscale = -oo::ToCxx(self)->size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
+	double		hcenter = size_in_pixels.width/2.0;
+	double		hscale = size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
+	double		vscale = -size_in_pixels.height / (2*CHART_HEIGHT_AT_MAX_ZOOM*zoom);
 	double		vcenter = CHART_SCREEN_VERTICAL_CENTRE;
 	double		hoffset = hcenter - chart_centre_coordinates.x*hscale;
-	double		voffset = oo::ToCxx(self)->size_in_pixels.height - vcenter - chart_centre_coordinates.y*vscale;
+	double		voffset = size_in_pixels.height - vcenter - chart_centre_coordinates.y*vscale;
 
 	if (compact)
 	{
-		hscale = oo::ToCxx(self)->size_in_pixels.width / 256.0;
-		vscale = -1.0 * oo::ToCxx(self)->size_in_pixels.height / 512.0;
+		hscale = size_in_pixels.width / 256.0;
+		vscale = -1.0 * size_in_pixels.height / 512.0;
 		hoffset = 0.0f;
-		voffset = oo::ToCxx(self)->size_in_pixels.height - oo::ToCxx(self)->pixel_title_size.height - 5;
+		voffset = size_in_pixels.height - pixel_title_size.height - 5;
 		vcenter = CHART_SCREEN_VERTICAL_CENTRE_COMPACT;
 		chart_centre_coordinates.x = 128.0;
 		chart_centre_coordinates.y = 128.0;
@@ -2237,9 +2209,9 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 
 	NSInteger textRow = compact ? GUI_ROW_CHART_SYSTEM_COMPACT : GUI_ROW_CHART_SYSTEM;
 	
-	clipRect = NSMakeRect((viewSize.width - oo::ToCxx(self)->size_in_pixels.width*pixelRatio)/2.0,
-				(viewSize.height + oo::ToCxx(self)->size_in_pixels.height*pixelRatio)/2.0 - (oo::ToCxx(self)->pixel_title_size.height + 15 + (textRow-2)*MAIN_GUI_ROW_HEIGHT) * pixelRatio,
-				oo::ToCxx(self)->size_in_pixels.width * pixelRatio,
+	clipRect = NSMakeRect((viewSize.width - size_in_pixels.width*pixelRatio)/2.0,
+				(viewSize.height + size_in_pixels.height*pixelRatio)/2.0 - (pixel_title_size.height + 15 + (textRow-2)*MAIN_GUI_ROW_HEIGHT) * pixelRatio,
+				size_in_pixels.width * pixelRatio,
 				(textRow-1) * MAIN_GUI_ROW_HEIGHT * pixelRatio);
 
 	OOSystemID target = [PLAYER targetSystemID];
@@ -2302,15 +2274,15 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	static oo::PList routeInfo;	// null: no cached route
 
 	/* May override current mode for mission screens */
-	if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || 
-		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST || 
-		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
+	if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || 
+		backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST || 
+		backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST)
 	{
 		advancedNavArrayMode = OPTIMIZED_BY_JUMPS;
 	}
-	else if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
-		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
-		oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST)
+	else if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST ||
+		backgroundSpecial == GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST ||
+		backgroundSpecial == GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST)
 	{
 		advancedNavArrayMode = OPTIMIZED_BY_TIME;
 	}
@@ -2334,7 +2306,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 		
 		if (!routeInfo.isNull())  routeExists = YES;
 		
-		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute:(planetNumber != destNumber ? routeInfo : oo::PList()) optimizedBy:advancedNavArrayMode zoom: zoom];
+		drawAdvancedNavArrayAtX(x+hoffset, y+voffset, z, alpha, (planetNumber != destNumber ? routeInfo : oo::PList()), advancedNavArrayMode, zoom);
 
 		if (routeExists)
 		{
@@ -2352,7 +2324,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	}
 	else
 	{
-		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute:oo::PList() optimizedBy:OPTIMIZED_BY_NONE zoom: zoom];
+		drawAdvancedNavArrayAtX(x+hoffset, y+voffset, z, alpha, oo::PList(), OPTIMIZED_BY_NONE, zoom);
 	}
 	if (!routeExists)
 	{
@@ -2382,7 +2354,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	{
 		// draw fuel range circle
 		OOGL(GLScaledLineWidth(2.0f));
-		[self cxx_setGLColorFromSetting:cxx_kGuiChartRangeColor defaultValue:[OOColor greenColor] alpha:alpha];
+		setGLColorFromSetting(cxx_kGuiChartRangeColor, [::OOColor greenColor], alpha);
 						
 		GLDrawOval(x + cu.x, y + cu.y, z, NSMakeSize((float)(fuel*hscale), 2*(float)(fuel*vscale)), 5);
 	}
@@ -2390,16 +2362,16 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	
 	// draw crosshairs over current location
 	//
-	[self cxx_setGLColorFromSetting:cxx_kGuiChartCrosshairColor defaultValue:[OOColor greenColor] alpha:alpha];
+	setGLColorFromSetting(cxx_kGuiChartCrosshairColor, [::OOColor greenColor], alpha);
 
-	[self drawCrossHairsWithSize:12/zoom+2 x:x + cu.x y:y + cu.y z:z];
+	drawCrossHairsWithSize(12/zoom+2, x + cu.x, y + cu.y, z);
 
 
 	// draw crosshairs over cursor
 	//
-	[self cxx_setGLColorFromSetting:cxx_kGuiChartCursorColor defaultValue:[OOColor redColor] alpha:alpha];
+	setGLColorFromSetting(cxx_kGuiChartCursorColor, [::OOColor redColor], alpha);
 	cu = NSMakePoint((float)(hscale*cursor_coordinates.x+hoffset),(float)(vscale*cursor_coordinates.y+voffset));
-	[self drawCrossHairsWithSize:7/zoom+2 x:x + cu.x y:y + cu.y z:z];
+	drawCrossHairsWithSize(7/zoom+2, x + cu.x, y + cu.y, z);
 
 	// draw marks and stars
 	//
@@ -2423,7 +2395,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 		}
 
 		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxy_id];
-		float blob_factor = oo::ToCxx(self)->guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
+		float blob_factor = guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
 		float blob_size = (1.0f + blob_factor * systemInfo.get<float>("radius"))/zoom;
 		if (blob_size < 0.5) blob_size = 0.5;
 
@@ -2439,8 +2411,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 			if (markersIt != markedDestinations->end())	// is marked
 			{
 				GLfloat base_size = 0.5f * blob_size + 2.5f;
-				[self drawSystemMarkers:oo::PList(oo::PList::Array(markersIt->second.begin(), markersIt->second.end()))
-									atX:x+star.x andY:y+star.y andZ:z withAlpha:alpha andScale:base_size];
+				drawSystemMarkers(oo::PList(oo::PList::Array(markersIt->second.begin(), markersIt->second.end())), x+star.x, y+star.y, z, alpha, base_size);
 			}
 		}
 
@@ -2456,9 +2427,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 				{
 					systemParameter = nearby_systems[i].eco;
 					GLfloat ce1 = 1.0f - 0.125f * systemParameter;
-					[self cxx_setGLColorFromSetting:oo::str::format(cxx_kGuiChartEconomyUColor, systemParameter)
-								   defaultValue:[OOColor colorWithRed:ce1 green:1.0f blue:0.0f alpha:1.0f] 
-										  alpha:1.0];
+					setGLColorFromSetting(oo::str::format(cxx_kGuiChartEconomyUColor, systemParameter), [::OOColor colorWithRed:ce1 green:1.0f blue:0.0f alpha:1.0f], 1.0);
 				}
 				else
 				{
@@ -2470,9 +2439,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 				if (EXPECT(noNova))
 				{
 					systemParameter = nearby_systems[i].gov;
-					[self cxx_setGLColorFromSetting:oo::str::format(cxx_kGuiChartGovernmentUColor, systemParameter)
-								   defaultValue:[OOColor colorWithRed:govcol[systemParameter*3] green:govcol[1+(systemParameter*3)] blue:govcol[2+(systemParameter*3)] alpha:1.0f] 
-										  alpha:1.0];
+					setGLColorFromSetting(oo::str::format(cxx_kGuiChartGovernmentUColor, systemParameter), [::OOColor colorWithRed:govcol[systemParameter*3] green:govcol[1+(systemParameter*3)] blue:govcol[2+(systemParameter*3)] alpha:1.0f], 1.0);
 				}
 				else
 				{
@@ -2498,7 +2465,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 				if (EXPECT(noNova))
 				{
 					r = g = b = 1.0;
-					OOColor *sunColor = [OOColor cxx_colorWithDescription:[[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:i inGalaxy:galaxy_id]];
+					::OOColor *sunColor = [::OOColor cxx_colorWithDescription:[[UNIVERSE systemManager] cxx_getProperty:"sun_color" forSystem:i inGalaxy:galaxy_id]];
 					if (sunColor != nil) {
 						[sunColor getRed:&r green:&g blue:&b alpha:&alpha];
 						alpha = 1.0; // reset
@@ -2520,24 +2487,24 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	
 	// draw found stars and captions
 	//
-	GLfloat systemNameScale = oo::ToCxx(self)->guiUserSettings.get<float>(cxx_kGuiChartLabelScale, 1.0);
+	GLfloat systemNameScale = guiUserSettings.get<float>(cxx_kGuiChartLabelScale, 1.0);
 
 	OOGL(GLScaledLineWidth(1.5f));
-	[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
+	setGLColorFromSetting(cxx_kGuiChartMatchBoxColor, [::OOColor greenColor], alpha);
 
 	int n_matches = 0, foundIndex = -1;
 	
 	for (i = 0; i < 256; i++) if (systemsFound[i])
 	{
-		if(oo::ToCxx(self)->foundSystem == n_matches) foundIndex = i;
+		if(foundSystem == n_matches) foundIndex = i;
 		n_matches++;
 	}
 	
 	if (n_matches == 0)
 	{
-		oo::ToCxx(self)->foundSystem = 0;
+		foundSystem = 0;
 	}
-	else if (oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST || oo::ToCxx(self)->backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG)
+	else if (backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST || backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST || backgroundSpecial == GUI_BACKGROUND_SPECIAL_LONG)
 	{
 		// do nothing at this stage
 	}
@@ -2569,12 +2536,12 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 				OOGLEND();
 				if (i == foundIndex || n_matches == 1)
 				{
-					if (n_matches == 1) oo::ToCxx(self)->foundSystem = 0;
+					if (n_matches == 1) foundSystem = 0;
 					if (zoom > CHART_ZOOM_SHOW_LABELS && advancedNavArrayMode == OPTIMIZED_BY_NONE)
 					{
-						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchLabelColor defaultValue:[OOColor cyanColor] alpha:alpha];
+						setGLColorFromSetting(cxx_kGuiChartMatchLabelColor, [::OOColor cyanColor], alpha);
 						cxx_OODrawString([UNIVERSE cxx_systemNameIndex:i].value_or("") , x + star.x + 2.0, y + star.y - 10.0f, z, NSMakeSize(10*systemNameScale,10*systemNameScale));
-						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
+						setGLColorFromSetting(cxx_kGuiChartMatchBoxColor, [::OOColor greenColor], alpha);
 					}
 				}
 				else if (zoom > CHART_ZOOM_SHOW_LABELS)
@@ -2591,7 +2558,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	
 	int targetIdx = -1;
 	struct saved_system *sys;
-	NSSize chSize = NSMakeSize(oo::ToCxx(self)->pixel_row_height*systemNameScale/zoom,oo::ToCxx(self)->pixel_row_height*systemNameScale/zoom);
+	NSSize chSize = NSMakeSize(pixel_row_height*systemNameScale/zoom,pixel_row_height*systemNameScale/zoom);
 	
 	double jumpRange = MAX_JUMP_RANGE * [PLAYER dialFuel];
 	for (i = 0; i < num_nearby_systems; i++)
@@ -2626,11 +2593,11 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 				d = distanceBetweenPlanetPositions(galaxy_coordinates.x, galaxy_coordinates.y, sys_coordinates.x, sys_coordinates.y);
 				if (d <= jumpRange)
 				{
-					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelReachableColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiChartLabelReachableColor, [::OOColor yellowColor], alpha);
 				}
 				else
 				{
-					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiChartLabelColor, [::OOColor yellowColor], alpha);
 
 				}
 
@@ -2640,7 +2607,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 			{
 				if (concealment[i] >= OO_SYSTEMCONCEALMENT_NODATA)
 				{
-					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiChartLabelColor, [::OOColor yellowColor], alpha);
 					cxx_OODrawHilightedString("???", x + star.x + 2.0, y + star.y, z, chSize);
 				}
 				else
@@ -2668,11 +2635,11 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 				d = distanceBetweenPlanetPositions(galaxy_coordinates.x, galaxy_coordinates.y, sys_coordinates.x, sys_coordinates.y);
 				if (d <= jumpRange)
 				{
-					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelReachableColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiChartLabelReachableColor, [::OOColor yellowColor], alpha);
 				}
 				else
 				{
-					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiChartLabelColor, [::OOColor yellowColor], alpha);
 				
 				}
 
@@ -2682,7 +2649,7 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 			{
 				if (concealment[targetIdx] >= OO_SYSTEMCONCEALMENT_NODATA)
 				{
-					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					setGLColorFromSetting(cxx_kGuiChartLabelColor, [::OOColor yellowColor], alpha);
 					cxx_OODrawHilightedString("???", x + star.x + 2.0, y + star.y, z, chSize);
 				}
 				else
@@ -2697,8 +2664,8 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	tab_stops[0] = 0;
 	tab_stops[1] = 96;
 	tab_stops[2] = 288;
-	[self cxx_overrideTabs:tab_stops from:cxx_kGuiChartTraveltimeTabs length:3];
-	[self setTabStops:tab_stops];
+	overrideTabs(tab_stops, cxx_kGuiChartTraveltimeTabs, 3);
+	setTabStops(tab_stops);
 	const std::string targetName = [UNIVERSE cxx_getSystemName:target].value_or(std::string());
 
 	// distance-f & est-travel-time-f are identical between short & long range charts in standard Oolite, however can be alterered separately via OXPs
@@ -2715,27 +2682,27 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	
 	if(concealment[target] < OO_SYSTEMCONCEALMENT_NONAME)
 	{
-		[self cxx_setArray:{ targetName, travelDistLine, travelTimeLine } forRow:textRow];
+		setArray({ targetName, travelDistLine, travelTimeLine }, textRow);
 	}
 	else
 	{
-		[self cxx_setArray:{ "", travelDistLine, travelTimeLine } forRow:textRow];
+		setArray({ "", travelDistLine, travelTimeLine }, textRow);
 	}
 	if ([PLAYER guiScreen] == GUI_SCREEN_SHORT_RANGE_CHART)
 	{
 		if (jumps > 0)
 		{
-			[self cxx_setArray:{ "", cxx_OOExpandKey("short-range-chart-jumps", jumps).value_or(std::string()) } forRow: textRow + 1];
+			setArray({ "", cxx_OOExpandKey("short-range-chart-jumps", jumps).value_or(std::string()) }, textRow + 1);
 		}
 		else
 		{
-			[self cxx_setArray:{} forRow: textRow + 1];
+			setArray({}, textRow + 1);
 		}
 	}
 
 	// draw planet info circle
 	OOGL(GLScaledLineWidth(2.0f));
-	[self cxx_setGLColorFromSetting: cxx_kGuiChartInfoMarkerColor defaultValue:[OOColor blueColor] alpha:alpha];
+	setGLColorFromSetting(cxx_kGuiChartInfoMarkerColor, [::OOColor blueColor], alpha);
 	cu = NSMakePoint((float)(hscale*info_system_coordinates.x+hoffset),(float)(vscale*info_system_coordinates.y+voffset));
 	GLDrawOval(x + cu.x, y + cu.y, z, NSMakeSize(6.0f/zoom+2.0f, 6.0f/zoom+2.0f), 5);
 
@@ -2743,21 +2710,12 @@ void cxx::GuiDisplayGen::drawAdvancedNavArrayAtX(float x, float y, float z, floa
 	OOGL(glDisable(GL_SCISSOR_TEST));
 
 	// Draw bottom divider
-	[self cxx_setGLColorFromSetting:cxx_kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
+	setGLColorFromSetting(cxx_kGuiScreenDividerColor, [::OOColor colorWithWhite:0.75 alpha:1.0], alpha);
 	OOGLBEGIN(GL_QUADS);
-		glVertex3f(x + 0, (float)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height),	z);
-		glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width, (GLfloat)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height), z);
-		glVertex3f(x + oo::ToCxx(self)->size_in_pixels.width, (GLfloat)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height - 2), z);
-		glVertex3f(x + 0, (GLfloat)(y + oo::ToCxx(self)->size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - oo::ToCxx(self)->pixel_title_size.height - 2), z);
+		glVertex3f(x + 0, (float)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height),	z);
+		glVertex3f(x + size_in_pixels.width, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height), z);
+		glVertex3f(x + size_in_pixels.width, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height - 2), z);
+		glVertex3f(x + 0, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height - 2), z);
 	OOGLEND();
 }
 
-
-
-
-
-
-
-
-
-@end
