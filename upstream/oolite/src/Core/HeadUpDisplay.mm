@@ -191,7 +191,6 @@ static void hudDrawMarkerAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 static void hudDrawBarAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat amount);
 static void hudDrawSurroundAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz);
-OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha);
 static void hudDrawReticleOnTarget(Entity* target, PlayerEntity* player1, GLfloat z1,
 				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
 				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::Ref<cxx::OOColor>> &reticleColors);
@@ -1237,7 +1236,7 @@ void cxx::HeadUpDisplay::drawHUDItem(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawSurroundInternal(const oo::PList &info, const GLfloat color[4])
+void cxx::HeadUpDisplay::drawSurroundInternal(const oo::PList & /*info*/, const GLfloat color[4])	// the geometry is the current item's cached info
 {
 	NSInteger			x, y;
 	NSSize				siz;
@@ -1701,20 +1700,20 @@ void cxx::HeadUpDisplay::drawScannerZoomIndicator(const oo::PList &info)
 	GLfloat cx = x - 0.3 * siz.width;
 	GLfloat cy = y - 0.75 * siz.height;
 	
-	int zl = scanner_zoom;
-	if (zl < 1) zl = 1;
-	if (zl > SCANNER_ZOOM_LEVELS) zl = SCANNER_ZOOM_LEVELS;
-	if (zl == 1) zoom_color[3] *= 0.75;
+	int zoomLevel = scanner_zoom;	// was zl, which reads as the member z1 (clang-tidy misc-confusable-identifiers)
+	if (zoomLevel < 1) zoomLevel = 1;
+	if (zoomLevel > SCANNER_ZOOM_LEVELS) zoomLevel = SCANNER_ZOOM_LEVELS;
+	if (zoomLevel == 1) zoom_color[3] *= 0.75;
 	if (scanner_ultra_zoom)
-		zl = pow(2, zl - 1);
+		zoomLevel = pow(2, zoomLevel - 1);
 	GLColorWithOverallAlpha(zoom_color, alpha);
 	OOGL(glEnable(GL_TEXTURE_2D));
 	if (sFontTexture != nil)  oo::ToCxx(sFontTexture)->apply();	// a message to nil did nothing
 	
 	OOGLBEGIN(GL_QUADS);
-		if (zl / 10 > 0)
-			drawCharacterQuad(48 + zl / 10, cx - 0.8 * siz.width, cy, z1, siz);
-		drawCharacterQuad(48 + zl % 10, cx - 0.4 * siz.width, cy, z1, siz);
+		if (zoomLevel / 10 > 0)
+			drawCharacterQuad(48 + zoomLevel / 10, cx - 0.8 * siz.width, cy, z1, siz);
+		drawCharacterQuad(48 + zoomLevel % 10, cx - 0.4 * siz.width, cy, z1, siz);
 		drawCharacterQuad(58, cx, cy, z1, siz);
 		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, z1, siz);
 	OOGLEND();
@@ -1822,92 +1821,7 @@ void cxx::HeadUpDisplay::drawCompass(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawCompassPlanetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
-{
-	if (relativePosition.z >= 0)
-	{
-		OOGL(glColor4f(0.0,1.0,0.0,0.75 * alpha));
-		GLDrawFilledOval(relativePosition.x, relativePosition.y, z1, siz, 30);
-		OOGL(glColor4f(0.0,1.0,0.0,alpha));
-		GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
-	}
-	else
-	{
-		OOGL(glColor4f(1.0,0.0,0.0,alpha));
-		GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
-	}
-}
-
-
-void cxx::HeadUpDisplay::drawCompassStationBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
-{
-	SetCompassBlipColor(relativePosition.z, alpha);
-	
-	OOGLBEGIN(GL_LINE_LOOP);
-		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, z1);
-	OOGLEND();
-}
-
-
-void cxx::HeadUpDisplay::drawCompassSunBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
-{
-	OOGL(glColor4f(1.0, 1.0, 0.0, 0.75 * alpha));
-	GLDrawFilledOval(relativePosition.x, relativePosition.y, z1, siz, 30);
-	
-	SetCompassBlipColor(relativePosition.z, alpha);
-	
-	GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
-}
-
-
-void cxx::HeadUpDisplay::drawCompassTargetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
-{
-	SetCompassBlipColor(relativePosition.z, alpha);
-	
-	OOGLBEGIN(GL_LINES);
-		glVertex3f(relativePosition.x - siz.width, relativePosition.y, z1);
-		glVertex3f(relativePosition.x + siz.width, relativePosition.y, z1);
-		glVertex3f(relativePosition.x, relativePosition.y - siz.height, z1);
-		glVertex3f(relativePosition.x, relativePosition.y + siz.height, z1);
-	OOGLEND();
-	
-	GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
-}
-
-
-void cxx::HeadUpDisplay::drawCompassBeaconBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
-{
-	SetCompassBlipColor(relativePosition.z, alpha);
-	
-	OOGLBEGIN(GL_LINES);
-	/*		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x, relativePosition.y + 0.5 * siz.height, z1);
-		
-		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x, relativePosition.y + 0.5 * siz.height, z1);
-		
-		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1); */
-	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, z1);
-
-	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, z1);
-
-	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, z1);
-
-	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, z1);
-
-	OOGLEND();
-}
-
-
-void cxx::HeadUpDisplay::drawAegis(const oo::PList &info)
+void cxx::HeadUpDisplay::drawAegis(const oo::PList & /*info*/)	// the geometry is the current item's cached info
 {
 	if (([UNIVERSE viewDirection] == VIEW_GUI_DISPLAY)||([UNIVERSE sun] == nil)||([PLAYER checkForAegis] != AEGIS_IN_DOCKING_RANGE))
 		return;	// don't draw
@@ -3443,6 +3357,91 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
+void cxx::HeadUpDisplay::drawCompassPlanetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
+{
+	if (relativePosition.z >= 0)
+	{
+		OOGL(glColor4f(0.0,1.0,0.0,0.75 * alpha));
+		GLDrawFilledOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+		OOGL(glColor4f(0.0,1.0,0.0,alpha));
+		GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+	}
+	else
+	{
+		OOGL(glColor4f(1.0,0.0,0.0,alpha));
+		GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+	}
+}
+
+
+void cxx::HeadUpDisplay::drawCompassStationBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
+{
+	SetCompassBlipColor(relativePosition.z, alpha);
+	
+	OOGLBEGIN(GL_LINE_LOOP);
+		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, z1);
+	OOGLEND();
+}
+
+
+void cxx::HeadUpDisplay::drawCompassSunBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
+{
+	OOGL(glColor4f(1.0, 1.0, 0.0, 0.75 * alpha));
+	GLDrawFilledOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+	
+	SetCompassBlipColor(relativePosition.z, alpha);
+	
+	GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+}
+
+
+void cxx::HeadUpDisplay::drawCompassTargetBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
+{
+	SetCompassBlipColor(relativePosition.z, alpha);
+	
+	OOGLBEGIN(GL_LINES);
+		glVertex3f(relativePosition.x - siz.width, relativePosition.y, z1);
+		glVertex3f(relativePosition.x + siz.width, relativePosition.y, z1);
+		glVertex3f(relativePosition.x, relativePosition.y - siz.height, z1);
+		glVertex3f(relativePosition.x, relativePosition.y + siz.height, z1);
+	OOGLEND();
+	
+	GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+}
+
+
+void cxx::HeadUpDisplay::drawCompassBeaconBlipAt(Vector relativePosition, NSSize siz, GLfloat alpha)
+{
+	SetCompassBlipColor(relativePosition.z, alpha);
+	
+	OOGLBEGIN(GL_LINES);
+	/*		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x, relativePosition.y + 0.5 * siz.height, z1);
+		
+		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x, relativePosition.y + 0.5 * siz.height, z1);
+		
+		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1); */
+	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, z1);
+	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, z1);
+
+	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, z1);
+	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, z1);
+
+	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, z1);
+	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, z1);
+
+	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, z1);
+	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, z1);
+
+	OOGLEND();
+}
+
+
 
 
 //---------------------------------------------------------------------//
@@ -4142,7 +4141,7 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 		// see OODrawHilightedPlanetInfo
 		cx += drawCharacterQuad(23 - eco, cx, y, z, siz);	// characters 16..23 are economy symbols
 		HeadUpDisplayUniverseGUISetGLColorFromSetting(oo::str::format(cxx_kGuiChartGovernmentUColor, (size_t)gov),
-													  oo::ToObjC(cxx::OOColor::colorWithRed(govcol[gov*3], govcol[1+(gov*3)], govcol[2+(gov*3)], 1.0f)),
+													  oo::ToObjC(cxx::OOColor::colorWithRed(govcol[static_cast<std::size_t>(gov)*3], govcol[1+(gov*3)], govcol[2+(gov*3)], 1.0f)),
 													  1.0);
 
 		cx += drawCharacterQuad(gov, cx, y, z, siz) - sF6KernGovt;		// charcters 0..7 are government symbols
@@ -4479,7 +4478,7 @@ cxx::OOHUDBeaconCodeIcon::OOHUDBeaconCodeIcon(const std::string &text)
 }
 
 
-void cxx::OOHUDBeaconCodeIcon::drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat alpha, GLfloat z)
+void cxx::OOHUDBeaconCodeIcon::drawHUDBeaconIconAt(NSPoint where, NSSize size, GLfloat /*alpha*/, GLfloat z)
 {
 	cxx_OODrawString(_text, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
 }
