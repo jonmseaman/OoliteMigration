@@ -17,6 +17,7 @@
 	The view's -dealloc quits SDL, so one view serves every test and the last one releases it.
 	Bead oo-72cz (slice 2) adds the accessors, the display-mode list and the saved window,
 	full-screen and HDR settings, again without a window.
+	Bead oo-299r (slice 3) adds the debug image dumps; the snapshot needs the game window.
 
 	MyOpenGLView.mm reaches the game controller, the universe and the player, so the test links
 	every game object but main's (tests/unit/core/meson.build entry ['*'], ADR-0056 amendment
@@ -38,6 +39,7 @@
 #include <filesystem>
 #include <process.h>
 #include <string>
+#include <vector>
 
 
 // main.mm defines the debug flags, and the test has its own main.
@@ -316,6 +318,65 @@ OO_TEST(slice2DisplayModesAndSavedSettings)
 }
 
 
+// --- bead oo-299r: slice 3 (snapshots and the debug image dumps) ---
+// -cxx_snapShot: reads the game window's surface, which a unit test may not open (the goldens'
+// screenshots run it). The dumps write PNGs under <home>/oolite-saves/snapshots.
+
+#ifndef NDEBUG
+namespace {
+
+std::filesystem::path DumpPath(const std::string &name)
+{
+	return std::filesystem::current_path() / "oolite-saves" / "snapshots" / (name + ".png");
+}
+
+}	// namespace
+
+
+OO_TEST(slice3DebugImageDumps)
+{
+	@autoreleasepool
+	{
+		namespace stdfs = std::filesystem;
+		MyOpenGLView *view = View();
+		std::filesystem::create_directories(stdfs::current_path() / "oolite-saves" / "snapshots");
+		OO_CHECK(stdfs::exists(stdfs::current_path() / "oolite-saves" / "snapshots"));
+
+		// 3 x 2 pixels, rows padded to 16 bytes.
+		std::vector<uint8_t> rgba(16 * 2, 0x80);
+		[view cxx_dumpRGBAToFileNamed:"oo-test-rgba" bytes:rgba.data() width:3 height:2 rowBytes:16];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-rgba")));
+		[view cxx_dumpRGBToFileNamed:"oo-test-rgb" bytes:rgba.data() width:3 height:2 rowBytes:16];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-rgb")));
+		[view cxx_dumpGrayToFileNamed:"oo-test-gray" bytes:rgba.data() width:3 height:2 rowBytes:16];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-gray")));
+		// -dumpGrayAlpha writes its expansion into the bytes it was given (4 per pixel), so they are
+		// a buffer with 4 bytes a pixel; only the file is pinned.
+		std::vector<uint8_t> grayAlpha(16 * 2, 0x40);
+		[view cxx_dumpGrayAlphaToFileNamed:"oo-test-grayalpha" bytes:grayAlpha.data() width:3 height:2 rowBytes:16];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-grayalpha")));
+
+		// Too short rows, no bytes, or no size: nothing is written.
+		[view cxx_dumpRGBAToFileNamed:"oo-test-short" bytes:rgba.data() width:3 height:2 rowBytes:11];
+		[view cxx_dumpRGBToFileNamed:"oo-test-short" bytes:nullptr width:3 height:2 rowBytes:16];
+		[view cxx_dumpGrayToFileNamed:"oo-test-short" bytes:rgba.data() width:0 height:2 rowBytes:16];
+		[view cxx_dumpGrayAlphaToFileNamed:"oo-test-short" bytes:rgba.data() width:3 height:2 rowBytes:5];
+		OO_CHECK(!stdfs::exists(DumpPath("oo-test-short")));
+
+		// RGBA split: the RGB file always; the gray (alpha) file only when some alpha is neither 0 nor 255.
+		std::vector<uint8_t> opaque(16 * 2, 0xFF);
+		[view cxx_dumpRGBAToRGBFileNamed:std::string("oo-test-split-rgb") andGrayFileNamed:std::string("oo-test-split-alpha") bytes:opaque.data() width:3 height:2 rowBytes:16];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-split-rgb")));
+		OO_CHECK(!stdfs::exists(DumpPath("oo-test-split-alpha")));
+		std::vector<uint8_t> translucent(16 * 2, 0x80);
+		[view cxx_dumpRGBAToRGBFileNamed:std::nullopt andGrayFileNamed:std::string("oo-test-split2-alpha") bytes:translucent.data() width:3 height:2 rowBytes:16];
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-split2-alpha")));
+		[view cxx_dumpRGBAToRGBFileNamed:std::nullopt andGrayFileNamed:std::nullopt bytes:translucent.data() width:3 height:2 rowBytes:16];
+	}
+}
+#endif
+
+
 // After the conversion: the C++ view behind the facade the game made.
 OO_TEST(facadeContract)
 {
@@ -373,6 +434,29 @@ OO_TEST(cxxSlice2API)
 		cxxView->setHDRMaxBrightness(700.0f);
 		OO_CHECK(Near([view hdrMaxBrightness], 700.0));
 		OO_CHECK(cxxView->getAtDesktopResolution() == static_cast<bool>([view atDesktopResolution]));
+#endif
+	}
+}
+
+
+// After slice 3's conversion: the dumps as members.
+OO_TEST(cxxSlice3API)
+{
+	@autoreleasepool
+	{
+#ifndef NDEBUG
+		namespace stdfs = std::filesystem;
+		cxx::MyOpenGLView *cxxView = oo::ToCxx(View());
+		OO_CHECK(cxxView != nullptr);
+		if (cxxView == nullptr)  return;
+		std::vector<uint8_t> rgba(16 * 2, 0x80);
+		cxxView->dumpRGBAToFileNamed("oo-test-cxx-rgba", rgba.data(), 3, 2, 16);
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-cxx-rgba")));
+		cxxView->dumpRGBAToRGBFileNamed(std::string("oo-test-cxx-rgb"), std::string("oo-test-cxx-alpha"), rgba.data(), 3, 2, 16);
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-cxx-rgb")));
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-cxx-alpha")));
+		cxxView->dumpGrayToFileNamed("oo-test-cxx-short", rgba.data(), 3, 2, 2);
+		OO_CHECK(!stdfs::exists(DumpPath("oo-test-cxx-short")));
 #endif
 	}
 }
