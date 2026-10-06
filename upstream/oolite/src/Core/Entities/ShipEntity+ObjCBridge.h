@@ -112,13 +112,6 @@ MA 02110-1301, USA.
 
 
 // Behaviours
-- (void) behaviour_attack_fly_from_target:(double) delta_t;
-- (void) behaviour_running_defense:(double) delta_t;
-- (void) behaviour_flee_target:(double) delta_t;
-- (void) behaviour_fly_range_from_destination:(double) delta_t;
-- (void) behaviour_face_destination:(double) delta_t;
-- (void) behaviour_land_on_planet:(double) delta_t;
-- (void) behaviour_formation_form_up:(double) delta_t;
 - (void) behaviour_fly_to_destination:(double) delta_t;
 - (void) behaviour_fly_from_destination:(double) delta_t;
 - (void) behaviour_avoid_collision:(double) delta_t;
@@ -1009,6 +1002,22 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) behaviour_fly_to_target_six:(double) delta_t;
 - (void) behaviour_attack_mining_target:(double) delta_t;
 - (void) behaviour_attack_fly_to_target:(double) delta_t;
+
+@end
+
+
+// Slice 14 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice14)
+
+- (void) behaviour_attack_fly_from_target:(double) delta_t;
+- (void) behaviour_running_defense:(double) delta_t;
+- (void) behaviour_flee_target:(double) delta_t;
+- (void) behaviour_fly_range_from_destination:(double) delta_t;
+- (void) behaviour_face_destination:(double) delta_t;
+- (void) behaviour_land_on_planet:(double) delta_t;
+- (void) behaviour_formation_form_up:(double) delta_t;
 
 @end
 

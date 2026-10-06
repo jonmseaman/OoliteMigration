@@ -432,6 +432,15 @@ public:
 	void behaviour_attack_mining_target(double delta_t);
 	void behaviour_attack_fly_to_target(double delta_t);
 
+	// Slice 14: behaviours: fly from target, running defence, flee, range from destination, face destination, land on planet, formation.
+	void behaviour_attack_fly_from_target(double delta_t);
+	void behaviour_running_defense(double delta_t);
+	void behaviour_flee_target(double delta_t);
+	void behaviour_fly_range_from_destination(double delta_t);
+	void behaviour_face_destination(double delta_t);
+	void behaviour_land_on_planet(double delta_t);
+	void behaviour_formation_form_up(double delta_t);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

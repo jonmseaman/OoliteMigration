@@ -516,3 +516,16 @@ DESTROY(_cxxShip->laser_color);
 - (void) behaviour_attack_fly_to_target:(double)delta_t	{ _cxxShip->behaviour_attack_fly_to_target(delta_t); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice14)
+
+- (void) behaviour_attack_fly_from_target:(double)delta_t	{ _cxxShip->behaviour_attack_fly_from_target(delta_t); }
+- (void) behaviour_running_defense:(double)delta_t	{ _cxxShip->behaviour_running_defense(delta_t); }
+- (void) behaviour_flee_target:(double)delta_t	{ _cxxShip->behaviour_flee_target(delta_t); }
+- (void) behaviour_fly_range_from_destination:(double)delta_t	{ _cxxShip->behaviour_fly_range_from_destination(delta_t); }
+- (void) behaviour_face_destination:(double)delta_t	{ _cxxShip->behaviour_face_destination(delta_t); }
+- (void) behaviour_land_on_planet:(double)delta_t	{ _cxxShip->behaviour_land_on_planet(delta_t); }
+- (void) behaviour_formation_form_up:(double)delta_t	{ _cxxShip->behaviour_formation_form_up(delta_t); }
+
+@end
