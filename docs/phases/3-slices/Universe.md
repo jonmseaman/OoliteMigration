@@ -120,6 +120,11 @@ Calls from a converted body to a method of a slice that has not landed stay send
 - `OOConstToString.mm` still sends `cxx_descriptions`, `cxx_descriptionForKey:` and
   `commodityMarket` to `UNIVERSE` (oo-3c81's note): those become member calls once slices 19 and 20
   land; no bead waits on it.
+- **Slice beads** (filed by `tools/gen-stories.py --sweep slices`): 1 oo-riqmz, 2 oo-27jxj, 3
+  oo-ef6rc, 4 oo-ni9u8, 5 oo-d0i7y, 6 oo-15e3o, 7 oo-49wmm, 8 oo-m0rz6, 9 oo-hkvet, 10 oo-e9enf, 11
+  oo-8rsqz, 12 oo-9lucq, 13 oo-0uz9w, 14 oo-7jhs5, 15 oo-dg9d1, 16 oo-focfo, 17 oo-gr7a2, 18
+  oo-tail0, 19 oo-z3u03, 20 oo-lftoq, 21 oo-enek8, 22 oo-05ow5, 23 oo-ni1hw, 24 oo-jxitg, 25
+  oo-wmc72, 26 oo-32kcu.
 - **oo-pas is the umbrella.** It keeps its old dependencies (it was the phase's "last" bead) and
   gains the 26 slices and this pre-split. Its acceptance is every slice's `--slice-done` and the guardrails
   (not a whole-file `@implementation` grep: the fenced Mac speech arms stay Objective-C, as
