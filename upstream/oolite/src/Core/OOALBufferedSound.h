@@ -5,8 +5,8 @@ OOALBufferedSound.h
 OOALBufferedSound - OpenAL sound implementation for Oolite.
 
 C++20 since bead oo-2wpb (proposed ADR-0056, the Audio module: amendment oo-2en): a subclass of
-cxx::OOSound. Bead oo-9ht.83 deleted its Objective-C facade and moved it to the global namespace; the root's class cluster makes it, and it crosses to Objective-C
-as the root's facade, an OOSound.
+cxx::OOSound. Bead oo-9ht.83 deleted its Objective-C facade and moved it to the global namespace;
+the root's class cluster makes it, and it crosses to Objective-C as the root's facade, an OOSound.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
