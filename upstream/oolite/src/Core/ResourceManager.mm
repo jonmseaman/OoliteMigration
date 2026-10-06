@@ -441,7 +441,7 @@ std::vector<std::string> cxx::ResourceManager::rootPaths()
 {
 	/* Built-in data, then managed OXZs, then manually installed ones,
 	 * which may be useful for debugging/testing purposes.
-	 * oo::ResourcePaths computes the same paths as [::ResourceManager builtInPath] and
+	 * oo::ResourcePaths computes the same paths as [self builtInPath] and
 	 * [[OOOXZManager sharedManager] installPath]. */
 	static std::optional<std::vector<std::string>> sRootPaths;
 	if (!sRootPaths.has_value())
