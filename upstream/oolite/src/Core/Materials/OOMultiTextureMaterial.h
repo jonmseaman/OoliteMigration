@@ -6,7 +6,7 @@ A material that uses multitexturing and texture combiners.
 
 C++20 since bead oo-lh0x (proposed ADR-0056, amendments oo-smy and oo-vl43). Its Objective-C
 facade was deleted by bead oo-9ht.42 (ADR-0056 amendment "deleting a facade"): the class is global,
-and Objective-C sees one as the nearest facade, OOBasicMaterial's.
+and Objective-C sees one as an OOMaterial (OOBasicMaterial's facade was deleted by bead oo-9ht.33).
 
 
 Copyright (C) 2010-2013 Jens Ayton
@@ -43,7 +43,7 @@ SOFTWARE.
 @class OOTexture;
 
 
-class OOMultiTextureMaterial : public cxx::OOBasicMaterial
+class OOMultiTextureMaterial : public OOBasicMaterial
 {
 public:
 	/*	A new material, initialised by initWithName() (below); null where it failed (it answered
