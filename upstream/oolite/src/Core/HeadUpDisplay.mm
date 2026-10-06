@@ -1059,12 +1059,12 @@ bool cxx::HeadUpDisplay::setCrosshairDefinition(const std::string &newDefinition
 	// force crosshair redraw
 	_crosshairs = nullptr;
 
-	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
+	_crosshairOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
 															   inFolder:std::string("Config")
 															   andMerge:YES];
 	if (_crosshairOverrides.count() == 0)
 	{ // invalid file (none found, or empty)
-		_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+		_crosshairOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
 																   inFolder:std::string("Config")
 																   andMerge:YES];
 		crosshairDefinition = "crosshairs.plist";
@@ -1101,7 +1101,7 @@ oo::PList cxx::HeadUpDisplay::crosshairDefinitionForWeaponType(OOWeaponType weap
 	{
 		if (crosshairDefs.isNull())
 		{
-			crosshairDefs = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+			crosshairDefs = [::ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
 																 inFolder:std::string("Config")
 																 andMerge:YES];
 		}
