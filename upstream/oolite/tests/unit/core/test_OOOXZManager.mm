@@ -1552,4 +1552,30 @@ OO_TEST(guiInput)
 }
 
 
+OO_TEST(facadeContractSliceThree)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The slice 3 units: the facade forwards to the C++ members, which draw the same page.
+		StandInUniverse standIn;
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		cxx::OOOXZManager *m = Manager();
+		m->_interfaceState = OXZ_STATE_SETFILTER;
+		OO_CHECK([facade isAcceptingTextInput] == m->isAcceptingTextInput());
+		OO_CHECK([facade isAcceptingGUIInput] == m->isAcceptingGUIInput());
+		[facade gui];
+		const std::string fromFacade = standIn.Page();
+		m->gui();
+		OO_CHECK_TEXT(standIn.Page(), fromFacade);
+		m->refreshTextInput("t:x");
+		OO_CHECK(!standIn.Page().empty());
+		m->processTextInput("t:x");
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALL);
+		m->setFilter("*");
+		m->_interfaceState = OXZ_STATE_MAIN;
+	}
+}
+
+
 OO_TEST_MAIN()
