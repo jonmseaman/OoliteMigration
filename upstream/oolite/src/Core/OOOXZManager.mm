@@ -2493,7 +2493,7 @@ void OOOXZManager::downloadDidReceiveData(const std::string &data)
 	 * loop (it runs on its own thread, proposed ADR-0044); the call stays
 	 * so a burst of queued chunks still lets the game tick between them.
 	 */
-	[[GameController sharedController] fireDueTimers];
+	[[::GameController sharedController] fireDueTimers];
 #endif
 }
 
