@@ -385,436 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) behaviour_attack_sniper:(double) delta_t
-{
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	Entity*	rawTarget = [self primaryTarget];
-	if (![rawTarget isShip])
-	{
-		// can't attack a wormhole
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	ShipEntity *target = (ShipEntity *)rawTarget;
-
-	double  range = [self rangeToPrimaryTarget];
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-
-	if (range < 15000)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-	else 
-	{
-		if (range > _cxxShip->weaponRange || range > _cxxShip->scannerRange * 0.8)
-		{
-			BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-			if (canBurn && [target weaponRange] > _cxxShip->weaponRange && range > _cxxShip->weaponRange)
-			{
-				// if outside maximum weapon range, but inside target weapon range
-				// close to fight ASAP!
-				max_available_speed *= [self afterburnerFactor];
-			}
-			_cxxShip->desired_speed = max_available_speed;
-		}
-		else
-		{
-			_cxxShip->desired_speed = max_available_speed / 10.0f;
-		}
-
-		double last_success_factor = _cxxShip->success_factor;
-		_cxxShip->success_factor = [self trackPrimaryTarget:delta_t:NO];
-		
-		if ((_cxxShip->success_factor > 0.999)||(_cxxShip->success_factor > last_success_factor))
-		{
-			_cxxShip->frustration -= delta_t;
-			if (_cxxShip->frustration < 0.0)
-				_cxxShip->frustration = 0.0;
-		}
-		else
-		{
-			_cxxShip->frustration += delta_t;
-			if (_cxxShip->frustration > 3.0)	// 3s of frustration
-			{
-				[self noteFrustration:"BEHAVIOUR_ATTACK_SNIPER"];
-				[self setEvasiveJink:1000.0];
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-				_cxxShip->frustration = 0.0;
-				_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-			}
-		}
-
-	}
-
-	if (_cxxShip->missiles) [self considerFiringMissile:delta_t];
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	[self fireMainWeapon:range];
-
-	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && _cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-
-}
-
-
-- (void) behaviour_fly_to_target_six:(double) delta_t
-{
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	double  range = [self rangeToPrimaryTarget];
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	
-	// deal with collisions and lost targets
-	if ([self proximityAlert] != nil)
-	{
-		if ([self proximityAlert] == [self primaryTarget])
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
-			[self behaviour_attack_fly_from_target: delta_t]; // do it now.
-		}
-		else
-		{
-			[self avoidCollision];
-		}
-		return;
-	}
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-
-	// control speed
-	BOOL isUsingAfterburner = canBurn && (_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed);
-	BOOL closeQuickly = (canBurn && range > _cxxShip->weaponRange);
-	double	slow_down_range = _cxxShip->weaponRange * COMBAT_WEAPON_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
-	if (closeQuickly)
-	{
-		slow_down_range = _cxxShip->weaponRange * COMBAT_OUT_RANGE_FACTOR;
-	}
-	double	back_off_range = _cxxShip->weaponRange * COMBAT_OUT_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
-	Entity*	rawTarget = [self primaryTarget];
-	if (![rawTarget isShip])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	ShipEntity*	target = (ShipEntity *)rawTarget;
-	double target_speed = [target speed];
-	double last_success_factor = _cxxShip->success_factor;
-	double distance = [self rangeToDestination];
-	_cxxShip->success_factor = distance;
-		
-	if (range < slow_down_range && (_cxxShip->behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX))
-	{
-		if (range < back_off_range)
-		{
-			_cxxShip->desired_speed = fmax(0.9 * target_speed, 0.4 * _cxxShip->maxFlightSpeed);
-		} 
-		else
-		{
-			_cxxShip->desired_speed = fmax(target_speed * 1.2, _cxxShip->maxFlightSpeed);
-		}
-		
-		// avoid head-on collision
-		if ((range < 0.5 * distance)&&(_cxxShip->behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX))
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
-	}
-	else
-	{
-		if (range < back_off_range)
-		{
-			_cxxShip->desired_speed = fmax(0.9 * target_speed, 0.8 * _cxxShip->maxFlightSpeed);
-		} 
-		else 
-		{
-			_cxxShip->desired_speed = max_available_speed; // use afterburner to approach
-		}
-	}
-
-
-	// if within 0.75km of the target's six or twelve, or if target almost at standstill for 62.5% of non-thargoid ships (!),
-	// then vector in attack. 
-	if (distance < 750.0 || (target_speed < 0.2 && ![self isThargoid] && ([self universalID] & 14) > 4))
- 	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-		_cxxShip->frustration = 0.0;
-		_cxxShip->desired_speed = fmax(target_speed, 0.4 * _cxxShip->maxFlightSpeed);   // within the weapon's range don't use afterburner
-	}
-
-	// target-six
-	if (_cxxShip->behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX)
-	{
-		// head for a point weapon-range * 0.5 to the six of the target
-		//
-		_cxxShip->_destination = [target distance_six:0.5 * _cxxShip->weaponRange];
-	}
-	// target-twelve
-	if (_cxxShip->behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE)
-	{
-		if ([_cxxShip->forward_weapon_type isTurretLaser])
-		{
-			// head for a point near the target, avoiding common Galcop weapon mount locations
-			// TODO: this should account for weapon ranges
-			GLfloat offset = 1000.0;
-			GLfloat spacing = 2000.0;
-			if (_cxxShip->accuracy > 0.0) 
-			{
-				offset = _cxxShip->accuracy * 750.0;
-				spacing = 2000.0 + (_cxxShip->accuracy * 500.0);
-			}
-			if (_cxxShip->entity_personality & 1)
-			{ // half at random
-				offset = -offset;
-			}
-			_cxxShip->_destination = [target distance_twelve:spacing withOffset:offset];
-		}
-		else 
-		{
-			// head for a point 1.25km above the target
-			_cxxShip->_destination = [target distance_twelve:1250 withOffset:0];
-		}
-	}
-
-	_cxxShip->pitching_over = NO; // in case it's set from elsewhere
-	double confidenceFactor = [self trackDestination:delta_t :NO];
-	
-	if(_cxxShip->success_factor > last_success_factor || confidenceFactor < 0.85) _cxxShip->frustration += delta_t;
-	else if(_cxxShip->frustration > 0.0) _cxxShip->frustration -= delta_t * 0.75;
-
-	double aspect = [self approachAspectToPrimaryTarget];
-	if(![_cxxShip->forward_weapon_type isTurretLaser] && (_cxxShip->frustration > 10 || aspect > 0.75))
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-	}
-
-	// use weaponry
-	if (_cxxShip->missiles) [self considerFiringMissile:delta_t];
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	[self fireMainWeapon:range];
-	
-	
-	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-}
-
-
-- (void) behaviour_attack_mining_target:(double) delta_t
-{
-	double  range = [self rangeToPrimaryTarget];
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * 0.375;
-		return;
-	}
-	else if ((range < 650) || ([self proximityAlert] != nil))
-	{
-		if ([self proximityAlert] == (Entity *)NO_TARGET)
-		{
-			_cxxShip->desired_speed = range * _cxxShip->maxFlightSpeed / (650.0 * 16.0);
-		}
-		else
-		{
-			[self avoidCollision];
-		}
-	}
-	else
-	{
-		//we have a target, its within scanner range, and outside 650
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * 0.875;
-	}
-
-	[self trackPrimaryTarget:delta_t:NO];
-
-	/* Don't open fire until within 3km - it doesn't take many mining
-	 * laser shots to destroy an asteroid, but some of these mining
-	 * ships are way too slow to effectively chase down the debris:
-	 * wait until reasonably close before trying to split it. */
-	if (range < 3000)
-	{
-		[self fireMainWeapon:range];
-	}
-	
-	
-}
-
-
-- (void) behaviour_attack_fly_to_target:(double) delta_t
-{
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	double  range = [self rangeToPrimaryTarget];
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	if ([self primaryTarget] == nil)
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	Entity*	rawTarget = [self primaryTarget];
-	if (![rawTarget isShip])
-	{
-		// can't attack a wormhole
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-
-	ShipEntity *target = (ShipEntity *)rawTarget;
-	if ((range < COMBAT_IN_RANGE_FACTOR * _cxxShip->weaponRange)||([self proximityAlert] != nil))
-	{
-		if (![self hasProximityAlertIgnoringTarget:YES])
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		}
-		else
-		{
-			[self avoidCollision];
-			return;
-		}
-	}
-	else
-	{
-		if (![self canStillTrackPrimaryTarget])
-		{
-			[self noteLostTargetAndGoIdle];
-			return;
-		}
-	}
-
-	// control speed
-	//
-	BOOL isUsingAfterburner = canBurn && (_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed);
-	BOOL closeQuickly = (canBurn && [target weaponRange] > _cxxShip->weaponRange && range > _cxxShip->weaponRange);
-	double slow_down_range = _cxxShip->weaponRange * COMBAT_WEAPON_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
-	if (closeQuickly)
-	{
-		slow_down_range = _cxxShip->weaponRange * COMBAT_OUT_RANGE_FACTOR;
-	}
-	double	back_off_range = 10000 * COMBAT_OUT_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
-	double target_speed = [target speed];
-	double aspect = [self approachAspectToPrimaryTarget];
-
-	if (range <= slow_down_range)
-	{
-		if (range < back_off_range)
-		{
-			if (_cxxShip->accuracy < COMBAT_AI_IS_SMART || ([target primaryTarget] == self && aspect > 0.8) || _cxxShip->aim_tolerance*range > COMBAT_AI_CONFIDENCE_FACTOR)
-			{
-				if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER && aspect > 0.8)
-				{
-					_cxxShip->desired_speed = fmax(target_speed * 1.25, 0.8 * _cxxShip->maxFlightSpeed);
-					// stay at high speed if might be taking return fire
-				}
-				else
-				{
-					_cxxShip->desired_speed = fmax(target_speed * 1.05, 0.25 * _cxxShip->maxFlightSpeed);   // within the weapon's range match speed
-
-				}
-			}
-			else
-			{ // smart, and not being shot at right now - slow down to attack
-				_cxxShip->desired_speed = fmax(0.1 * target_speed, 0.1 * _cxxShip->maxFlightSpeed);
-			}
-		}
-		else
-		{
-			if (_cxxShip->accuracy < COMBAT_AI_IS_SMART || ([target isShip] && [(ShipEntity *)target primaryTarget] == self) || range > _cxxShip->weaponRange / 2.0)
-			{
-				_cxxShip->desired_speed = fmax(target_speed * 1.5, _cxxShip->maxFlightSpeed);
-			}
-			else
-			{ // smart, and not being shot at right now - slow down to attack
-				if (aspect > -0.25)
-				{
-					_cxxShip->desired_speed = fmax(0.5 * target_speed, 0.5 * _cxxShip->maxFlightSpeed);
-				}
-				else
-				{
-					_cxxShip->desired_speed = fmax(1.25 * target_speed, 0.5 * _cxxShip->maxFlightSpeed);
-				}
-			}
-		}
-	}
-	else
-	{
-		if (closeQuickly)
-		{
-			_cxxShip->desired_speed = max_available_speed; // use afterburner to approach
-		}
-		else
-		{
-			_cxxShip->desired_speed = fmax(_cxxShip->maxFlightSpeed,fmin(3.0 * target_speed, max_available_speed)); // possibly use afterburner to approach
-		}
-	}
-
-
-	double last_success_factor = _cxxShip->success_factor;
-	_cxxShip->success_factor = [self trackPrimaryTarget:delta_t:NO];	// do the actual piloting
-
-	if ((_cxxShip->success_factor > 0.999)||(_cxxShip->success_factor > last_success_factor))
-	{
-		_cxxShip->frustration -= delta_t;
-		if (_cxxShip->frustration < 0.0)
-			_cxxShip->frustration = 0.0;
-	}
-	else
-	{
-		_cxxShip->frustration += delta_t;
-		if (_cxxShip->frustration > 3.0)	// 3s of frustration
-		{
-			[self noteFrustration:"BEHAVIOUR_ATTACK_FLY_TO_TARGET"];
-			[self setEvasiveJink:1000.0];
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-			_cxxShip->frustration = 0.0;
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-		}
-	}
-
-	if (_cxxShip->missiles) [self considerFiringMissile:delta_t];
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	[self fireMainWeapon:range];
-	
-	
-	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && _cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && _cxxShip->aim_tolerance * range < COMBAT_AI_CONFIDENCE_FACTOR)
-	{
-		// don't do this if the target is fleeing and the front laser is
-		// the only weapon, or if we're too far away to use non-front
-		// lasers effectively
-		if (aspect < 0 || 
-			!isWeaponNone(_cxxShip->aft_weapon_type) ||
-			!isWeaponNone(_cxxShip->port_weapon_type) ||
-			!isWeaponNone(_cxxShip->starboard_weapon_type))
-		{
-			_cxxShip->frustration = 0.0;
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		}
-	}
-	else if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER_2) 
-	{
-		// if we're right in their gunsights, dodge!
-		// need to dodge sooner if in aft sights
-		if ([target behaviour] != BEHAVIOUR_FLEE_TARGET && [target behaviour] != BEHAVIOUR_FLEE_EVASIVE_ACTION)
-		{
-			if ((aspect > 0.99999 && !isWeaponNone([target weaponTypeForFacing:WEAPON_FACING_FORWARD strict:NO])) || (aspect < -0.999 && !isWeaponNone([target weaponTypeForFacing:WEAPON_FACING_AFT strict:NO])))
-			{
-				_cxxShip->frustration = 0.0;
-				_cxxShip->behaviour = BEHAVIOUR_EVASIVE_ACTION;
-			}
-		}
-	}
-}
-
-
 - (void) behaviour_attack_fly_from_target:(double) delta_t
 {
 	double  range = [self rangeToPrimaryTarget];
@@ -15126,6 +14696,455 @@ void ShipEntity::behaviour_close_with_target(double delta_t)
 	}
 
 
+}
+
+
+}	// namespace cxx
+
+
+// Slice 13 of docs/phases/3-slices/ShipEntity.md (bead oo-xmajv): behaviours: sniper, fly to target
+// six, mining target, attack fly to target. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::behaviour_attack_sniper(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	::Entity*	rawTarget = [self primaryTarget];
+	if (![rawTarget isShip])
+	{
+		// can't attack a wormhole
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	::ShipEntity *target = (::ShipEntity *)rawTarget;
+
+	double  range = [self rangeToPrimaryTarget];
+	float	max_available_speed = maxFlightSpeed;
+
+	if (range < 15000)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+	else 
+	{
+		if (range > weaponRange || range > scannerRange * 0.8)
+		{
+			BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+			if (canBurn && [target weaponRange] > weaponRange && range > weaponRange)
+			{
+				// if outside maximum weapon range, but inside target weapon range
+				// close to fight ASAP!
+				max_available_speed *= [self afterburnerFactor];
+			}
+			desired_speed = max_available_speed;
+		}
+		else
+		{
+			desired_speed = max_available_speed / 10.0f;
+		}
+
+		double last_success_factor = success_factor;
+		success_factor = [self trackPrimaryTarget:delta_t:NO];
+		
+		if ((success_factor > 0.999)||(success_factor > last_success_factor))
+		{
+			frustration -= delta_t;
+			if (frustration < 0.0)
+				frustration = 0.0;
+		}
+		else
+		{
+			frustration += delta_t;
+			if (frustration > 3.0)	// 3s of frustration
+			{
+				[self noteFrustration:"BEHAVIOUR_ATTACK_SNIPER"];
+				[self setEvasiveJink:1000.0];
+				behaviour = BEHAVIOUR_ATTACK_TARGET;
+				frustration = 0.0;
+				desired_speed = maxFlightSpeed;
+			}
+		}
+
+	}
+
+	if (missiles) [self considerFiringMissile:delta_t];
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+	[self fireMainWeapon:range];
+
+	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && accuracy >= COMBAT_AI_ISNT_AWFUL)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+
+}
+
+
+void ShipEntity::behaviour_fly_to_target_six(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+	double  range = [self rangeToPrimaryTarget];
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	
+	// deal with collisions and lost targets
+	if ([self proximityAlert] != nil)
+	{
+		if ([self proximityAlert] == [self primaryTarget])
+		{
+			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
+			[self behaviour_attack_fly_from_target: delta_t]; // do it now.
+		}
+		else
+		{
+			[self avoidCollision];
+		}
+		return;
+	}
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+
+	// control speed
+	BOOL isUsingAfterburner = canBurn && (flightSpeed > maxFlightSpeed);
+	BOOL closeQuickly = (canBurn && range > weaponRange);
+	double	slow_down_range = weaponRange * COMBAT_WEAPON_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
+	if (closeQuickly)
+	{
+		slow_down_range = weaponRange * COMBAT_OUT_RANGE_FACTOR;
+	}
+	double	back_off_range = weaponRange * COMBAT_OUT_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
+	::Entity*	rawTarget = [self primaryTarget];
+	if (![rawTarget isShip])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	::ShipEntity*	target = (::ShipEntity *)rawTarget;
+	double target_speed = [target speed];
+	double last_success_factor = success_factor;
+	double distance = [self rangeToDestination];
+	success_factor = distance;
+		
+	if (range < slow_down_range && (behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX))
+	{
+		if (range < back_off_range)
+		{
+			desired_speed = fmax(0.9 * target_speed, 0.4 * maxFlightSpeed);
+		} 
+		else
+		{
+			desired_speed = fmax(target_speed * 1.2, maxFlightSpeed);
+		}
+		
+		// avoid head-on collision
+		if ((range < 0.5 * distance)&&(behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX))
+			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
+	}
+	else
+	{
+		if (range < back_off_range)
+		{
+			desired_speed = fmax(0.9 * target_speed, 0.8 * maxFlightSpeed);
+		} 
+		else 
+		{
+			desired_speed = max_available_speed; // use afterburner to approach
+		}
+	}
+
+
+	// if within 0.75km of the target's six or twelve, or if target almost at standstill for 62.5% of non-thargoid ships (!),
+	// then vector in attack. 
+	if (distance < 750.0 || (target_speed < 0.2 && ![self isThargoid] && ([self universalID] & 14) > 4))
+ 	{
+		behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+		frustration = 0.0;
+		desired_speed = fmax(target_speed, 0.4 * maxFlightSpeed);   // within the weapon's range don't use afterburner
+	}
+
+	// target-six
+	if (behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX)
+	{
+		// head for a point weapon-range * 0.5 to the six of the target
+		//
+		_destination = [target distance_six:0.5 * weaponRange];
+	}
+	// target-twelve
+	if (behaviour == BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE)
+	{
+		if ([forward_weapon_type isTurretLaser])
+		{
+			// head for a point near the target, avoiding common Galcop weapon mount locations
+			// TODO: this should account for weapon ranges
+			GLfloat offset = 1000.0;
+			GLfloat spacing = 2000.0;
+			if (accuracy > 0.0) 
+			{
+				offset = accuracy * 750.0;
+				spacing = 2000.0 + (accuracy * 500.0);
+			}
+			if (entity_personality & 1)
+			{ // half at random
+				offset = -offset;
+			}
+			_destination = [target distance_twelve:spacing withOffset:offset];
+		}
+		else 
+		{
+			// head for a point 1.25km above the target
+			_destination = [target distance_twelve:1250 withOffset:0];
+		}
+	}
+
+	pitching_over = NO; // in case it's set from elsewhere
+	double confidenceFactor = [self trackDestination:delta_t :NO];
+	
+	if(success_factor > last_success_factor || confidenceFactor < 0.85) frustration += delta_t;
+	else if(frustration > 0.0) frustration -= delta_t * 0.75;
+
+	double aspect = [self approachAspectToPrimaryTarget];
+	if(![forward_weapon_type isTurretLaser] && (frustration > 10 || aspect > 0.75))
+	{
+		behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+	}
+
+	// use weaponry
+	if (missiles) [self considerFiringMissile:delta_t];
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+	[self fireMainWeapon:range];
+	
+	
+
+	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+}
+
+
+void ShipEntity::behaviour_attack_mining_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double  range = [self rangeToPrimaryTarget];
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		desired_speed = maxFlightSpeed * 0.375;
+		return;
+	}
+	else if ((range < 650) || ([self proximityAlert] != nil))
+	{
+		if ([self proximityAlert] == (::Entity *)NO_TARGET)
+		{
+			desired_speed = range * maxFlightSpeed / (650.0 * 16.0);
+		}
+		else
+		{
+			[self avoidCollision];
+		}
+	}
+	else
+	{
+		//we have a target, its within scanner range, and outside 650
+		desired_speed = maxFlightSpeed * 0.875;
+	}
+
+	[self trackPrimaryTarget:delta_t:NO];
+
+	/* Don't open fire until within 3km - it doesn't take many mining
+	 * laser shots to destroy an asteroid, but some of these mining
+	 * ships are way too slow to effectively chase down the debris:
+	 * wait until reasonably close before trying to split it. */
+	if (range < 3000)
+	{
+		[self fireMainWeapon:range];
+	}
+	
+	
+}
+
+
+void ShipEntity::behaviour_attack_fly_to_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+	double  range = [self rangeToPrimaryTarget];
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	if ([self primaryTarget] == nil)
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	::Entity*	rawTarget = [self primaryTarget];
+	if (![rawTarget isShip])
+	{
+		// can't attack a wormhole
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+
+	::ShipEntity *target = (::ShipEntity *)rawTarget;
+	if ((range < COMBAT_IN_RANGE_FACTOR * weaponRange)||([self proximityAlert] != nil))
+	{
+		if (![self hasProximityAlertIgnoringTarget:YES])
+		{
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+		}
+		else
+		{
+			[self avoidCollision];
+			return;
+		}
+	}
+	else
+	{
+		if (![self canStillTrackPrimaryTarget])
+		{
+			[self noteLostTargetAndGoIdle];
+			return;
+		}
+	}
+
+	// control speed
+	//
+	BOOL isUsingAfterburner = canBurn && (flightSpeed > maxFlightSpeed);
+	BOOL closeQuickly = (canBurn && [target weaponRange] > weaponRange && range > weaponRange);
+	double slow_down_range = weaponRange * COMBAT_WEAPON_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
+	if (closeQuickly)
+	{
+		slow_down_range = weaponRange * COMBAT_OUT_RANGE_FACTOR;
+	}
+	double	back_off_range = 10000 * COMBAT_OUT_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
+	double target_speed = [target speed];
+	double aspect = [self approachAspectToPrimaryTarget];
+
+	if (range <= slow_down_range)
+	{
+		if (range < back_off_range)
+		{
+			if (accuracy < COMBAT_AI_IS_SMART || ([target primaryTarget] == self && aspect > 0.8) || aim_tolerance*range > COMBAT_AI_CONFIDENCE_FACTOR)
+			{
+				if (accuracy >= COMBAT_AI_FLEES_BETTER && aspect > 0.8)
+				{
+					desired_speed = fmax(target_speed * 1.25, 0.8 * maxFlightSpeed);
+					// stay at high speed if might be taking return fire
+				}
+				else
+				{
+					desired_speed = fmax(target_speed * 1.05, 0.25 * maxFlightSpeed);   // within the weapon's range match speed
+
+				}
+			}
+			else
+			{ // smart, and not being shot at right now - slow down to attack
+				desired_speed = fmax(0.1 * target_speed, 0.1 * maxFlightSpeed);
+			}
+		}
+		else
+		{
+			if (accuracy < COMBAT_AI_IS_SMART || ([target isShip] && [(::ShipEntity *)target primaryTarget] == self) || range > weaponRange / 2.0)
+			{
+				desired_speed = fmax(target_speed * 1.5, maxFlightSpeed);
+			}
+			else
+			{ // smart, and not being shot at right now - slow down to attack
+				if (aspect > -0.25)
+				{
+					desired_speed = fmax(0.5 * target_speed, 0.5 * maxFlightSpeed);
+				}
+				else
+				{
+					desired_speed = fmax(1.25 * target_speed, 0.5 * maxFlightSpeed);
+				}
+			}
+		}
+	}
+	else
+	{
+		if (closeQuickly)
+		{
+			desired_speed = max_available_speed; // use afterburner to approach
+		}
+		else
+		{
+			desired_speed = fmax(maxFlightSpeed,fmin(3.0 * target_speed, max_available_speed)); // possibly use afterburner to approach
+		}
+	}
+
+
+	double last_success_factor = success_factor;
+	success_factor = [self trackPrimaryTarget:delta_t:NO];	// do the actual piloting
+
+	if ((success_factor > 0.999)||(success_factor > last_success_factor))
+	{
+		frustration -= delta_t;
+		if (frustration < 0.0)
+			frustration = 0.0;
+	}
+	else
+	{
+		frustration += delta_t;
+		if (frustration > 3.0)	// 3s of frustration
+		{
+			[self noteFrustration:"BEHAVIOUR_ATTACK_FLY_TO_TARGET"];
+			[self setEvasiveJink:1000.0];
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+			frustration = 0.0;
+			desired_speed = maxFlightSpeed;
+		}
+	}
+
+	if (missiles) [self considerFiringMissile:delta_t];
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+	[self fireMainWeapon:range];
+	
+	
+
+	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE && accuracy >= COMBAT_AI_ISNT_AWFUL && aim_tolerance * range < COMBAT_AI_CONFIDENCE_FACTOR)
+	{
+		// don't do this if the target is fleeing and the front laser is
+		// the only weapon, or if we're too far away to use non-front
+		// lasers effectively
+		if (aspect < 0 || 
+			!isWeaponNone(aft_weapon_type) ||
+			!isWeaponNone(port_weapon_type) ||
+			!isWeaponNone(starboard_weapon_type))
+		{
+			frustration = 0.0;
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+		}
+	}
+	else if (accuracy >= COMBAT_AI_FLEES_BETTER_2) 
+	{
+		// if we're right in their gunsights, dodge!
+		// need to dodge sooner if in aft sights
+		if ([target behaviour] != BEHAVIOUR_FLEE_TARGET && [target behaviour] != BEHAVIOUR_FLEE_EVASIVE_ACTION)
+		{
+			if ((aspect > 0.99999 && !isWeaponNone([target weaponTypeForFacing:WEAPON_FACING_FORWARD strict:NO])) || (aspect < -0.999 && !isWeaponNone([target weaponTypeForFacing:WEAPON_FACING_AFT strict:NO])))
+			{
+				frustration = 0.0;
+				behaviour = BEHAVIOUR_EVASIVE_ACTION;
+			}
+		}
+	}
 }
 
 

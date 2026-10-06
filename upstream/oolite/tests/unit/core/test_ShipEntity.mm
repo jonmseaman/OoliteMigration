@@ -24,6 +24,7 @@
 #import "OOShipGroup.h"
 #import "OODescription.h"
 #import "Universe.h"
+#import "OOColor.h"
 
 #include "oo_test.hpp"
 
@@ -99,6 +100,13 @@ namespace {
 OOTimeDelta ShotTime(ShipEntity *s)		{ return s->_cxxShip->shot_time; }
 OOBehaviour Behaviour(ShipEntity *s)	{ return s->_cxxShip->behaviour; }
 void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
+void SetFrustration(ShipEntity *s, GLfloat value)	{ s->_cxxShip->frustration = value; }
+
+void SetPrimaryTarget(ShipEntity *s, Entity *target)
+{
+	[s->_cxxShip->_primaryTarget release];
+	s->_cxxShip->_primaryTarget = [target weakRetain];
+}
 
 // --------------------------------------------------------------------------------------------------
 
@@ -1092,6 +1100,119 @@ OO_TEST(attackBehavioursWithoutATarget)
 		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
 		[ship behaviour_close_with_target:0.1];
 		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// --- Slices 13-15: the behaviours (the expectations were run on the Objective-C methods first) ----
+
+namespace {
+
+// A ship in flight at the origin, with a top speed and a scanner, and nothing else.
+TestShip *FlyingShip(const char *key)
+{
+	TestShip *ship = [[[TestShip alloc] cxx_initWithKey:key definition:Definition()] autorelease];
+	[ship setMaxFlightSpeed:200];
+	[ship setScannerRange:25600];
+	[ship setPosition:kZeroHPVector];
+	return ship;
+}
+
+
+// A ship the first one targets, at (0, 0, z).
+// (Not -addTarget:, which tells the ship's scripts, and a ship has no JavaScript object here.)
+TestShip *TargetAt(TestShip *ship, double z)
+{
+	TestShip *target = FlyingShip("target");
+	[target setPosition:make_HPvector(0, 0, z)];
+	SetPrimaryTarget(ship, target);
+	return target;
+}
+
+}	// namespace
+
+
+// Slices 13 and 14: an attack behaviour with no target to track notes the lost target and goes idle.
+OO_TEST(attackBehavioursWithoutATargetGoIdle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		const struct { OOBehaviour behaviour; void (*run)(TestShip *); } cases[] =
+		{
+			{ BEHAVIOUR_ATTACK_SNIPER, [](TestShip *s) { [s behaviour_attack_sniper:0.1]; } },
+			{ BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX, [](TestShip *s) { [s behaviour_fly_to_target_six:0.1]; } },
+			{ BEHAVIOUR_ATTACK_MINING_TARGET, [](TestShip *s) { [s behaviour_attack_mining_target:0.1]; } },
+			{ BEHAVIOUR_ATTACK_FLY_TO_TARGET, [](TestShip *s) { [s behaviour_attack_fly_to_target:0.1]; } },
+			{ BEHAVIOUR_ATTACK_FLY_FROM_TARGET, [](TestShip *s) { [s behaviour_attack_fly_from_target:0.1]; } },
+			{ BEHAVIOUR_RUNNING_DEFENSE, [](TestShip *s) { [s behaviour_running_defense:0.1]; } },
+			{ BEHAVIOUR_FLEE_TARGET, [](TestShip *s) { [s behaviour_flee_target:0.1]; } },
+		};
+		for (const auto &c : cases)
+		{
+			TestShip *ship = FlyingShip("lonely");
+			[ship setBehaviour:c.behaviour];
+			SetFrustration(ship, 2);
+			c.run(ship);
+			OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE && [ship frustration] == 0);
+		}
+
+		// The miner also slows to three eighths of its top speed.
+		TestShip *miner = FlyingShip("miner");
+		[miner behaviour_attack_mining_target:0.1];
+		OO_CHECK([miner desiredSpeed] == 200 * 0.375);
+	}
+}
+
+
+// Slice 13: the sniper closes in to attack inside 15 km, and outside it flies at top speed while
+// out of weapon range.
+OO_TEST(sniper)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("sniper");
+		TargetAt(ship, 1000);
+		[ship setBehaviour:BEHAVIOUR_ATTACK_SNIPER];
+		[ship behaviour_attack_sniper:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_ATTACK_TARGET);
+
+		TestShip *distant = FlyingShip("distant sniper");
+		TargetAt(distant, 20000);
+		[distant setBehaviour:BEHAVIOUR_ATTACK_SNIPER];
+		[distant behaviour_attack_sniper:0.1];
+		OO_CHECK(Behaviour(distant) == BEHAVIOUR_ATTACK_SNIPER && [distant desiredSpeed] == 200);
+	}
+}
+
+
+// Slice 13: a ship already at the point it was heading for vectors in to attack at 0.4 of its top
+// speed (the target is at a standstill); the miner closes on a rock at seven eighths of it; and an
+// attacker inside its weapon range starts its attack run.
+OO_TEST(attackApproaches)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *six = FlyingShip("six");
+		TargetAt(six, 2000);
+		[six setBehaviour:BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX];
+		[six behaviour_fly_to_target_six:0.1];
+		OO_CHECK(Behaviour(six) == BEHAVIOUR_ATTACK_FLY_TO_TARGET && [six desiredSpeed] == 200 * 0.4);
+
+		TestShip *miner = FlyingShip("miner");
+		TargetAt(miner, 2000);
+		[miner setBehaviour:BEHAVIOUR_ATTACK_MINING_TARGET];
+		[miner behaviour_attack_mining_target:0.1];
+		OO_CHECK(Behaviour(miner) == BEHAVIOUR_ATTACK_MINING_TARGET && [miner desiredSpeed] == 200 * 0.875);
+
+		TestShip *attacker = FlyingShip("attacker");
+		TargetAt(attacker, 1000);
+		[attacker setWeaponRange:30000];
+		[attacker setBehaviour:BEHAVIOUR_ATTACK_FLY_TO_TARGET];
+		[attacker behaviour_attack_fly_to_target:0.1];
+		OO_CHECK(Behaviour(attacker) == BEHAVIOUR_ATTACK_TARGET);
 	}
 }
 
