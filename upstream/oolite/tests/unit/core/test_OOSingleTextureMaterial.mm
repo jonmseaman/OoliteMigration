@@ -278,7 +278,7 @@ OO_TEST(unapplyWithNext)
 		OO_CHECK(Same(c, { 0.5f, 0.25f, 0.125f, 1 }));
 
 		// A basic material: no texture; it sets its own GL material.
-		m->unapplyWithNext(oo::ToCxx([[[OOBasicMaterial alloc] cxx_initWithName:std::string("Basic")] autorelease]));
+		m->unapplyWithNext(oo::ToCxx(static_cast<OOMaterial *>([[[OOBasicMaterial alloc] cxx_initWithName:std::string("Basic")] autorelease])));
 		OO_CHECK(gTextureApplyNones == applyNones + 1);
 		glGetMaterialfv(GL_FRONT, GL_DIFFUSE, c);
 		OO_CHECK(Same(c, { 0.5f, 0.25f, 0.125f, 1 }));
