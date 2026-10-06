@@ -327,6 +327,24 @@ public:
 	// Slice 7: update:.
 	void update(OOTimeDelta delta_t) override;
 
+	// Slice 8: behaviour dispatch, attack response, equipment queries.
+	void processBehaviour(OOTimeDelta delta_t);
+	void noteFrustration(const std::string &context);
+	void respondToAttackFrom(::Entity *from, ::Entity *other);
+	bool hasOneEquipmentItem(const std::string &itemKey, bool includeWeapons, bool loading);
+	bool hasOneEquipmentItemIncludingMissiles(const std::string &itemKey, bool includeMissiles, bool loading);
+	virtual bool hasPrimaryWeapon(OOWeaponType weaponType);
+	NSUInteger countEquipmentItem(const std::string &eqkey);
+	bool hasEquipmentItem(const oo::PList &equipmentKeys, bool includeWeapons, bool loading);
+	bool hasEquipmentItem(const oo::PList &equipmentKeys);
+	bool hasEquipmentItemProviding(const std::string &equipmentType);
+	std::optional<std::string> equipmentItemProviding(const std::string &equipmentType);
+	bool hasAllEquipment(const oo::PList &equipmentKeys, bool includeWeapons, bool loading);
+	bool hasAllEquipment(const oo::PList &equipmentKeys);
+	bool hasHyperspaceMotor();
+	float hyperspaceSpinTime();
+	void setHyperspaceSpinTime(float newValue);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

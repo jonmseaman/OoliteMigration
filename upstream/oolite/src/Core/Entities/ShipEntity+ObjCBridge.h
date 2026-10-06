@@ -87,26 +87,15 @@ MA 02110-1301, USA.
 - (BOOL) hasAutoWeapons;
 
 
-- (void) respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other;
 
 // Equipment
 - (OOWeaponFacingSet) weaponFacings;
-- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;	// This can take a string or an array of strings (a set's keys as an array). If a collection, returns YES if ship has _any_ of the specified equipment. If includeWeapons is NO, missiles and primary weapons are not checked.
-- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys;			// Short for hasEquipmentItem:foo includeWeapons:NO whileLoading:NO
-- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey;
-- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType;
-- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType;
-- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;		// Like hasEquipmentItem:includeWeapons:, but requires _all_ elements in collection.
-- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys;				// Short for hasAllEquipment:foo includeWeapons:NO
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context;		// flipped with its family (bead oo-3rb.258). Test ability to add equipment, taking equipment-specific constriants into account.
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.
 - (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context;
 - (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
 - (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
-- (BOOL) hasHyperspaceMotor;
-- (float) hyperspaceSpinTime;
-- (void) setHyperspaceSpinTime:(float)newValue;
 
 
 - (std::vector<std::string>) cxx_equipmentKeys;	// a snapshot, in order added
@@ -117,9 +106,6 @@ MA 02110-1301, USA.
 - (OOCreditsQuantity) removeMissiles;
 
 // Internal, subject to change. Use the methods above instead.
-- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeMissiles whileLoading:(BOOL)loading;
-- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading;
-- (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType;
 - (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
 
 // Passengers and parcels - not supported for NPCs, but interface is here for genericity.
@@ -173,7 +159,6 @@ MA 02110-1301, USA.
 - (void) setEnergyRechargeRate:(GLfloat)newValue;
 
 
-- (void) processBehaviour:(OOTimeDelta)delta_t;
 // Behaviours
 - (void) behaviour_stop_still:(double) delta_t;
 - (void) behaviour_idle:(double) delta_t;
@@ -952,6 +937,31 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @interface ShipEntity (OOSlice7)
 
 - (void) update:(OOTimeDelta)delta_t;
+
+@end
+
+
+// Slice 8 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice8)
+
+- (void) processBehaviour:(OOTimeDelta)delta_t;
+- (void) noteFrustration:(const std::string &)context;
+- (void) respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other;
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeMissiles whileLoading:(BOOL)loading;
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading;
+- (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType;
+- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey;
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;	// This can take a string or an array of strings (a set's keys as an array). If a collection, returns YES if ship has _any_ of the specified equipment. If includeWeapons is NO, missiles and primary weapons are not checked.
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys;			// Short for hasEquipmentItem:foo includeWeapons:NO whileLoading:NO
+- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType;
+- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType;
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;		// Like hasEquipmentItem:includeWeapons:, but requires _all_ elements in collection.
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys;				// Short for hasAllEquipment:foo includeWeapons:NO
+- (BOOL) hasHyperspaceMotor;
+- (float) hyperspaceSpinTime;
+- (void) setHyperspaceSpinTime:(float)newValue;
 
 @end
 

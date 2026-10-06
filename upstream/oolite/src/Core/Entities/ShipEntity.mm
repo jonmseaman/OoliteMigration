@@ -385,440 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) processBehaviour:(OOTimeDelta)delta_t
-{
-	BOOL applyThrust = YES;
-	switch (_cxxShip->behaviour)
-	{
-	case BEHAVIOUR_TUMBLE :
-		[self behaviour_tumble: delta_t];
-		break;
-
-	case BEHAVIOUR_STOP_STILL :
-	case BEHAVIOUR_STATION_KEEPING :
-		[self behaviour_stop_still: delta_t];
-		break;
-
-	case BEHAVIOUR_IDLE :
-		if ([self isSubEntity])
-		{
-			applyThrust = NO;
-		}
-		[self behaviour_idle: delta_t];
-		break;
-
-	case BEHAVIOUR_TRACTORED :
-		[self behaviour_tractored: delta_t];
-		break;
-
-	case BEHAVIOUR_TRACK_TARGET :
-		[self behaviour_track_target: delta_t];
-		break;
-
-	case BEHAVIOUR_INTERCEPT_TARGET :
-	case BEHAVIOUR_COLLECT_TARGET :
-		[self behaviour_intercept_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_TARGET :
-		[self behaviour_attack_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX :
-	case BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE :
-		[self behaviour_fly_to_target_six: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_MINING_TARGET :
-		[self behaviour_attack_mining_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_FLY_TO_TARGET :
-		[self behaviour_attack_fly_to_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_FLY_FROM_TARGET :
-		[self behaviour_attack_fly_from_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_BREAK_OFF_TARGET :
-		[self behaviour_attack_break_off_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_SLOW_DOGFIGHT :
-		[self behaviour_attack_slow_dogfight: delta_t];
-		break;
-
-	case BEHAVIOUR_RUNNING_DEFENSE :
-		[self behaviour_running_defense: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_BROADSIDE :
-		[self behaviour_attack_broadside: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_BROADSIDE_LEFT :
-		[self behaviour_attack_broadside_left: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_BROADSIDE_RIGHT :
-		[self behaviour_attack_broadside_right: delta_t];
-		break;
-
-	case BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE :
-		[self behaviour_close_to_broadside_range: delta_t];
-		break;
-
-	case BEHAVIOUR_CLOSE_WITH_TARGET :
-		[self behaviour_close_with_target: delta_t];
-		break;
-
-	case BEHAVIOUR_ATTACK_SNIPER :
-		[self behaviour_attack_sniper: delta_t];
-		break;
-
-	case BEHAVIOUR_EVASIVE_ACTION :
-	case BEHAVIOUR_FLEE_EVASIVE_ACTION :
-		[self behaviour_evasive_action: delta_t];
-		break;
-
-	case BEHAVIOUR_FLEE_TARGET :
-		[self behaviour_flee_target: delta_t];
-		break;
-
-	case BEHAVIOUR_FLY_RANGE_FROM_DESTINATION :
-		[self behaviour_fly_range_from_destination: delta_t];
-		break;
-
-	case BEHAVIOUR_FACE_DESTINATION :
-		[self behaviour_face_destination: delta_t];
-		break;
-
-	case BEHAVIOUR_LAND_ON_PLANET :
-		[self behaviour_land_on_planet: delta_t];
-		break;
-				
-	case BEHAVIOUR_FORMATION_FORM_UP :
-		[self behaviour_formation_form_up: delta_t];
-		break;
-
-	case BEHAVIOUR_FLY_TO_DESTINATION :
-		[self behaviour_fly_to_destination: delta_t];
-		break;
-
-	case BEHAVIOUR_FLY_FROM_DESTINATION :
-	case BEHAVIOUR_FORMATION_BREAK :
-		[self behaviour_fly_from_destination: delta_t];
-		break;
-
-	case BEHAVIOUR_AVOID_COLLISION :
-		[self behaviour_avoid_collision: delta_t];
-		break;
-
-	case BEHAVIOUR_TRACK_AS_TURRET :
-		applyThrust = NO;
-		[self behaviour_track_as_turret: delta_t];
-		break;
-
-	case BEHAVIOUR_FLY_THRU_NAVPOINTS :
-		[self behaviour_fly_thru_navpoints: delta_t];
-		break;
-
-	case BEHAVIOUR_SCRIPTED_AI:
-	case BEHAVIOUR_SCRIPTED_ATTACK_AI:
-		[self behaviour_scripted_ai: delta_t];
-		break;
-
-	case BEHAVIOUR_ENERGY_BOMB_COUNTDOWN:
-		applyThrust = NO;
-		// Do nothing
-		break;
-	}
-
-	// generally the checks above should be turning this *off* for subents
-	if (applyThrust)
-	{
-		[self applyAttitudeChanges:delta_t];
-		[self applyThrust:delta_t];
-	}
-}
-
-
-// called when behaviour is unable to improve position
-- (void)noteFrustration:(const std::string &)context
-{
-	[_cxxShip->shipAI cxx_reactToMessage:"FRUSTRATED" context:context];
-	[self cxx_doScriptEvent:OOJSID("shipAIFrustrated") withPListArguments:{ oo::PList(context) }];
-}
-
-
-- (void)respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other
-{
-	Entity				*source = nil;
-	
-	if ([other isKindOfClass:[ShipEntity class]])
-	{
-		source = other;
-
-		// JSAIs handle friendly fire themselves
-		if (![self hasNewAI])
-		{
-		
-			ShipEntity *hunter = (ShipEntity *)other;
-			//if we are in the same group, then we have to be careful about how we handle things
-			if ([self isPolice] && [hunter isPolice]) 
-			{
-				//police never get into a fight with each other
-				return;
-			}
-		
-			OOShipGroup *group = [self group];
-		
-			if (group != nil && group == [hunter group]) 
-			{
-				//we are in the same group, do we forgive you?
-				//criminals are less likely to forgive
-				if (randf() < (0.8 - (_cxxShip->bounty/100))) 
-				{
-					//it was an honest mistake, lets get on with it
-					return;
-				}
-			
-				ShipEntity *groupLeader = [group leader];
-				if (hunter == groupLeader)
-				{
-					//oops we were attacked by our leader, desert him
-					[group removeShip:self];
-				}
-				else 
-				{
-					//evict them from our group
-					[group removeShip:hunter];
-				
-					[groupLeader setFoundTarget:other];
-					[groupLeader setPrimaryAggressor:hunter];
-					[groupLeader respondToAttackFrom:from becauseOf:other];
-				}
-			}
-		}
-	}
-	else
-	{
-		source = from;
-	}	
-	
-	[self cxx_doScriptEvent:OOJSID("shipBeingAttacked") withArgument:source andReactToAIMessage:"ATTACKED"];
-	if ([source isShip]) [(ShipEntity *)source doScriptEvent:OOJSID("shipAttackedOther") withArgument:self];
-}
-
-
-// Equipment
-
-- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
-{
-	if ([self cxx_hasOneEquipmentItem:itemKey includeMissiles:includeWeapons whileLoading:loading])  return YES;
-
-	if (loading)
-	{
-		const std::string damaged = itemKey + "_DAMAGED";
-		if (std::ranges::find(_cxxShip->_equipment, damaged) != _cxxShip->_equipment.end())  return YES;
-	}
-
-	if (includeWeapons)
-	{
-		// Check for primary weapon
-		OOWeaponType weaponType = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(itemKey);
-		if (!isWeaponNone(weaponType))
-		{
-			if ([self hasPrimaryWeapon:weaponType])  return YES;
-		}
-	}
-	
-	return NO;
-}
-
-
-- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading
-{
-	if (std::ranges::find(_cxxShip->_equipment, itemKey) != _cxxShip->_equipment.end())  return YES;
-
-	if (loading)
-	{
-		const std::string damaged = itemKey + "_DAMAGED";
-		if (std::ranges::find(_cxxShip->_equipment, damaged) != _cxxShip->_equipment.end())  return YES;
-	}
-
-	if (includeMissiles && _cxxShip->missiles > 0)
-	{
-		unsigned i;
-		const std::string key = (itemKey == "thargon") ? std::string("EQ_THARGON") : itemKey;
-		for (i = 0; i < _cxxShip->missiles; i++)
-		{
-			if (_cxxShip->missile_list[i] != nil && [_cxxShip->missile_list[i] cxx_identifier].value_or("") == key)  return YES;
-		}
-	}
-	
-	return NO;
-}
-
-
-- (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType
-{
-	// -isEqualToString: of the identifiers: a nil weapon (nullopt) matches nothing.
-	const std::optional<std::string> weaponIdentifier = [weaponType cxx_identifier];
-	if (weaponIdentifier.has_value() &&
-		([_cxxShip->forward_weapon_type cxx_identifier] == weaponIdentifier ||
-		 [_cxxShip->aft_weapon_type cxx_identifier] == weaponIdentifier ||
-		 [_cxxShip->port_weapon_type cxx_identifier] == weaponIdentifier ||
-		 [_cxxShip->starboard_weapon_type cxx_identifier] == weaponIdentifier))
-	{
-		return YES;
-	}
-
-	for (const auto &subEntity : [self cxx_shipSubEntities])
-	{
-		if ([subEntity.get() hasPrimaryWeapon:weaponType])  return YES;
-	}
-	
-	return NO;
-}
-
-
-- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey
-{
-	return (NSUInteger)std::ranges::count(_cxxShip->_equipment, eqkey);
-}
-
-
-- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
-{
-	// this method is also used internally to find out if an equipped item is undamaged.
-	if (const std::string *key = equipmentKeys.getIf<std::string>())
-	{
-		return [self cxx_hasOneEquipmentItem:*key includeWeapons:includeWeapons whileLoading:loading];
-	}
-	else
-	{
-		OOParameterAssert(equipmentKeys.isArray());
-
-		// Any match: order-insensitive. Only string keys can match an equipment key.
-		if (const oo::PList::Array *keys = equipmentKeys.getIf<oo::PList::Array>())
-		{
-			for (const oo::PList &element : *keys)
-			{
-				const std::string *elementKey = element.getIf<std::string>();
-				if (elementKey != nullptr && [self cxx_hasOneEquipmentItem:*elementKey includeWeapons:includeWeapons whileLoading:loading])  return YES;
-			}
-		}
-	}
-
-	return NO;
-}
-
-
-- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys
-{
-	return [self hasEquipmentItem:equipmentKeys includeWeapons:NO whileLoading:NO];
-}
-
-
-/* allows OXP equipment to provide core functions (or indeed OXP
- * functions, potentially) */
-- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType
-{
-	for (const std::string &key : _cxxShip->_equipment) {
-		if (key == equipmentType)
-		{
-			// equipment always provides itself
-			return YES;
-		}
-		else
-		{
-			OOEquipmentType *et = [OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
-			if (et != nil && [et cxx_provides:equipmentType])
-			{
-				return YES;
-			}
-		}
-	}
-	return NO;
-}
-
-
-- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType
-{
-	for (const std::string &key : _cxxShip->_equipment) {
-		if (key == equipmentType)
-		{
-			// equipment always provides itself
-			return key;
-		}
-		else
-		{
-			OOEquipmentType *et = [OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
-			if (et != nil && [et cxx_provides:equipmentType])
-			{
-				return key;
-			}
-		}
-	}
-	return std::nullopt;
-}
-
-
-- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
-{
-	if (_cxxShip->_equipment.empty())  return NO;
-
-	// Make sure it's an array, using a single-element list if it's a string.
-	std::vector<std::string> keys;
-	if (const std::string *key = equipmentKeys.getIf<std::string>())  keys.push_back(*key);
-	else if (const oo::PList::Array *elements = equipmentKeys.getIf<oo::PList::Array>())
-	{
-		for (const oo::PList &element : *elements)
-		{
-			const std::string *elementKey = element.getIf<std::string>();
-			// A key that is not a string is never held: the whole test fails, as it did.
-			if (elementKey == nullptr)  return NO;
-			keys.push_back(*elementKey);
-		}
-	}
-	else  return NO;
-
-	// All must match: order-insensitive.
-	for (const std::string &key : keys)
-	{
-		if (![self cxx_hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return NO;
-	}
-
-	return YES;
-}
-
-
-- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys
-{
-	return [self hasAllEquipment:equipmentKeys includeWeapons:NO whileLoading:NO];
-}
-
-
-- (BOOL) hasHyperspaceMotor
-{
-	return _cxxShip->hyperspaceMotorSpinTime >= 0;
-}
-
-
-- (float) hyperspaceSpinTime
-{
-	return _cxxShip->hyperspaceMotorSpinTime;
-}
-
-
-- (void) setHyperspaceSpinTime:(float)newValue
-{
-	_cxxShip->hyperspaceMotorSpinTime = newValue;
-}
-
-
 - (BOOL) canAddEquipment:(const std::string &)equipmentKeyIn inContext:(const std::string &)context
 {
 	std::string equipmentKey = equipmentKeyIn;
@@ -15023,6 +14589,458 @@ void ShipEntity::update(OOTimeDelta delta_t)
 		aiScriptWakeTime = 0;
 		[self doScriptEvent:OOJSID("aiAwoken")];
 	}
+}
+
+
+}	// namespace cxx
+
+
+// Slice 8 of docs/phases/3-slices/ShipEntity.md (bead oo-vxdsc): behaviour dispatch, attack
+// response, equipment queries. The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends
+// to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::processBehaviour(OOTimeDelta delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL applyThrust = YES;
+	switch (behaviour)
+	{
+	case BEHAVIOUR_TUMBLE :
+		[self behaviour_tumble: delta_t];
+		break;
+
+	case BEHAVIOUR_STOP_STILL :
+	case BEHAVIOUR_STATION_KEEPING :
+		[self behaviour_stop_still: delta_t];
+		break;
+
+	case BEHAVIOUR_IDLE :
+		if ([self isSubEntity])
+		{
+			applyThrust = NO;
+		}
+		[self behaviour_idle: delta_t];
+		break;
+
+	case BEHAVIOUR_TRACTORED :
+		[self behaviour_tractored: delta_t];
+		break;
+
+	case BEHAVIOUR_TRACK_TARGET :
+		[self behaviour_track_target: delta_t];
+		break;
+
+	case BEHAVIOUR_INTERCEPT_TARGET :
+	case BEHAVIOUR_COLLECT_TARGET :
+		[self behaviour_intercept_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_TARGET :
+		[self behaviour_attack_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX :
+	case BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE :
+		[self behaviour_fly_to_target_six: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_MINING_TARGET :
+		[self behaviour_attack_mining_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_FLY_TO_TARGET :
+		[self behaviour_attack_fly_to_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_FLY_FROM_TARGET :
+		[self behaviour_attack_fly_from_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_BREAK_OFF_TARGET :
+		[self behaviour_attack_break_off_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_SLOW_DOGFIGHT :
+		[self behaviour_attack_slow_dogfight: delta_t];
+		break;
+
+	case BEHAVIOUR_RUNNING_DEFENSE :
+		[self behaviour_running_defense: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_BROADSIDE :
+		[self behaviour_attack_broadside: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_BROADSIDE_LEFT :
+		[self behaviour_attack_broadside_left: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_BROADSIDE_RIGHT :
+		[self behaviour_attack_broadside_right: delta_t];
+		break;
+
+	case BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE :
+		[self behaviour_close_to_broadside_range: delta_t];
+		break;
+
+	case BEHAVIOUR_CLOSE_WITH_TARGET :
+		[self behaviour_close_with_target: delta_t];
+		break;
+
+	case BEHAVIOUR_ATTACK_SNIPER :
+		[self behaviour_attack_sniper: delta_t];
+		break;
+
+	case BEHAVIOUR_EVASIVE_ACTION :
+	case BEHAVIOUR_FLEE_EVASIVE_ACTION :
+		[self behaviour_evasive_action: delta_t];
+		break;
+
+	case BEHAVIOUR_FLEE_TARGET :
+		[self behaviour_flee_target: delta_t];
+		break;
+
+	case BEHAVIOUR_FLY_RANGE_FROM_DESTINATION :
+		[self behaviour_fly_range_from_destination: delta_t];
+		break;
+
+	case BEHAVIOUR_FACE_DESTINATION :
+		[self behaviour_face_destination: delta_t];
+		break;
+
+	case BEHAVIOUR_LAND_ON_PLANET :
+		[self behaviour_land_on_planet: delta_t];
+		break;
+				
+	case BEHAVIOUR_FORMATION_FORM_UP :
+		[self behaviour_formation_form_up: delta_t];
+		break;
+
+	case BEHAVIOUR_FLY_TO_DESTINATION :
+		[self behaviour_fly_to_destination: delta_t];
+		break;
+
+	case BEHAVIOUR_FLY_FROM_DESTINATION :
+	case BEHAVIOUR_FORMATION_BREAK :
+		[self behaviour_fly_from_destination: delta_t];
+		break;
+
+	case BEHAVIOUR_AVOID_COLLISION :
+		[self behaviour_avoid_collision: delta_t];
+		break;
+
+	case BEHAVIOUR_TRACK_AS_TURRET :
+		applyThrust = NO;
+		[self behaviour_track_as_turret: delta_t];
+		break;
+
+	case BEHAVIOUR_FLY_THRU_NAVPOINTS :
+		[self behaviour_fly_thru_navpoints: delta_t];
+		break;
+
+	case BEHAVIOUR_SCRIPTED_AI:
+	case BEHAVIOUR_SCRIPTED_ATTACK_AI:
+		[self behaviour_scripted_ai: delta_t];
+		break;
+
+	case BEHAVIOUR_ENERGY_BOMB_COUNTDOWN:
+		applyThrust = NO;
+		// Do nothing
+		break;
+	}
+
+	// generally the checks above should be turning this *off* for subents
+	if (applyThrust)
+	{
+		[self applyAttitudeChanges:delta_t];
+		[self applyThrust:delta_t];
+	}
+}
+
+
+// called when behaviour is unable to improve position
+void ShipEntity::noteFrustration(const std::string &context)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[shipAI cxx_reactToMessage:"FRUSTRATED" context:context];
+	[self cxx_doScriptEvent:OOJSID("shipAIFrustrated") withPListArguments:{ oo::PList(context) }];
+}
+
+
+void ShipEntity::respondToAttackFrom(::Entity *from, ::Entity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity				*source = nil;
+	
+	if ([other isKindOfClass:[::ShipEntity class]])
+	{
+		source = other;
+
+		// JSAIs handle friendly fire themselves
+		if (![self hasNewAI])
+		{
+		
+			::ShipEntity *hunter = (::ShipEntity *)other;
+			//if we are in the same group, then we have to be careful about how we handle things
+			if ([self isPolice] && [hunter isPolice]) 
+			{
+				//police never get into a fight with each other
+				return;
+			}
+		
+			::OOShipGroup *group = [self group];
+		
+			if (group != nil && group == [hunter group]) 
+			{
+				//we are in the same group, do we forgive you?
+				//criminals are less likely to forgive
+				if (randf() < (0.8 - (bounty/100))) 
+				{
+					//it was an honest mistake, lets get on with it
+					return;
+				}
+			
+				::ShipEntity *groupLeader = [group leader];
+				if (hunter == groupLeader)
+				{
+					//oops we were attacked by our leader, desert him
+					[group removeShip:self];
+				}
+				else 
+				{
+					//evict them from our group
+					[group removeShip:hunter];
+				
+					[groupLeader setFoundTarget:other];
+					[groupLeader setPrimaryAggressor:hunter];
+					[groupLeader respondToAttackFrom:from becauseOf:other];
+				}
+			}
+		}
+	}
+	else
+	{
+		source = from;
+	}	
+	
+	[self cxx_doScriptEvent:OOJSID("shipBeingAttacked") withArgument:source andReactToAIMessage:"ATTACKED"];
+	if ([source isShip]) [(::ShipEntity *)source doScriptEvent:OOJSID("shipAttackedOther") withArgument:self];
+}
+
+
+// Equipment
+
+bool ShipEntity::hasOneEquipmentItem(const std::string &itemKey, bool includeWeapons, bool loading)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self cxx_hasOneEquipmentItem:itemKey includeMissiles:includeWeapons whileLoading:loading])  return YES;
+
+	if (loading)
+	{
+		const std::string damaged = itemKey + "_DAMAGED";
+		if (std::ranges::find(_equipment, damaged) != _equipment.end())  return YES;
+	}
+
+	if (includeWeapons)
+	{
+		// Check for primary weapon
+		OOWeaponType weaponType = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(itemKey);
+		if (!isWeaponNone(weaponType))
+		{
+			if ([self hasPrimaryWeapon:weaponType])  return YES;
+		}
+	}
+	
+	return NO;
+}
+
+
+bool ShipEntity::hasOneEquipmentItemIncludingMissiles(const std::string &itemKey, bool includeMissiles, bool loading)
+{
+	if (std::ranges::find(_equipment, itemKey) != _equipment.end())  return YES;
+
+	if (loading)
+	{
+		const std::string damaged = itemKey + "_DAMAGED";
+		if (std::ranges::find(_equipment, damaged) != _equipment.end())  return YES;
+	}
+
+	if (includeMissiles && missiles > 0)
+	{
+		unsigned i;
+		const std::string key = (itemKey == "thargon") ? std::string("EQ_THARGON") : itemKey;
+		for (i = 0; i < missiles; i++)
+		{
+			if (missile_list[i] != nil && [missile_list[i] cxx_identifier].value_or("") == key)  return YES;
+		}
+	}
+	
+	return NO;
+}
+
+
+bool ShipEntity::hasPrimaryWeapon(OOWeaponType weaponType)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// -isEqualToString: of the identifiers: a nil weapon (nullopt) matches nothing.
+	const std::optional<std::string> weaponIdentifier = [weaponType cxx_identifier];
+	if (weaponIdentifier.has_value() &&
+		([forward_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [aft_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [port_weapon_type cxx_identifier] == weaponIdentifier ||
+		 [starboard_weapon_type cxx_identifier] == weaponIdentifier))
+	{
+		return YES;
+	}
+
+	for (const auto &subEntity : [self cxx_shipSubEntities])
+	{
+		if ([subEntity.get() hasPrimaryWeapon:weaponType])  return YES;
+	}
+	
+	return NO;
+}
+
+
+NSUInteger ShipEntity::countEquipmentItem(const std::string &eqkey)
+{
+	return (NSUInteger)std::ranges::count(_equipment, eqkey);
+}
+
+
+bool ShipEntity::hasEquipmentItem(const oo::PList &equipmentKeys, bool includeWeapons, bool loading)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// this method is also used internally to find out if an equipped item is undamaged.
+	if (const std::string *key = equipmentKeys.getIf<std::string>())
+	{
+		return [self cxx_hasOneEquipmentItem:*key includeWeapons:includeWeapons whileLoading:loading];
+	}
+	else
+	{
+		OOCParameterAssert(equipmentKeys.isArray());
+
+		// Any match: order-insensitive. Only string keys can match an equipment key.
+		if (const oo::PList::Array *keys = equipmentKeys.getIf<oo::PList::Array>())
+		{
+			for (const oo::PList &element : *keys)
+			{
+				const std::string *elementKey = element.getIf<std::string>();
+				if (elementKey != nullptr && [self cxx_hasOneEquipmentItem:*elementKey includeWeapons:includeWeapons whileLoading:loading])  return YES;
+			}
+		}
+	}
+
+	return NO;
+}
+
+
+bool ShipEntity::hasEquipmentItem(const oo::PList &equipmentKeys)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self hasEquipmentItem:equipmentKeys includeWeapons:NO whileLoading:NO];
+}
+
+
+/* allows OXP equipment to provide core functions (or indeed OXP
+ * functions, potentially) */
+bool ShipEntity::hasEquipmentItemProviding(const std::string &equipmentType)
+{
+	for (const std::string &key : _equipment) {
+		if (key == equipmentType)
+		{
+			// equipment always provides itself
+			return YES;
+		}
+		else
+		{
+			::OOEquipmentType *et = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
+			if (et != nil && [et cxx_provides:equipmentType])
+			{
+				return YES;
+			}
+		}
+	}
+	return NO;
+}
+
+
+std::optional<std::string> ShipEntity::equipmentItemProviding(const std::string &equipmentType)
+{
+	for (const std::string &key : _equipment) {
+		if (key == equipmentType)
+		{
+			// equipment always provides itself
+			return key;
+		}
+		else
+		{
+			::OOEquipmentType *et = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:key];
+			if (et != nil && [et cxx_provides:equipmentType])
+			{
+				return key;
+			}
+		}
+	}
+	return std::nullopt;
+}
+
+
+bool ShipEntity::hasAllEquipment(const oo::PList &equipmentKeys, bool includeWeapons, bool loading)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (_equipment.empty())  return NO;
+
+	// Make sure it's an array, using a single-element list if it's a string.
+	std::vector<std::string> keys;
+	if (const std::string *key = equipmentKeys.getIf<std::string>())  keys.push_back(*key);
+	else if (const oo::PList::Array *elements = equipmentKeys.getIf<oo::PList::Array>())
+	{
+		for (const oo::PList &element : *elements)
+		{
+			const std::string *elementKey = element.getIf<std::string>();
+			// A key that is not a string is never held: the whole test fails, as it did.
+			if (elementKey == nullptr)  return NO;
+			keys.push_back(*elementKey);
+		}
+	}
+	else  return NO;
+
+	// All must match: order-insensitive.
+	for (const std::string &key : keys)
+	{
+		if (![self cxx_hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return NO;
+	}
+
+	return YES;
+}
+
+
+bool ShipEntity::hasAllEquipment(const oo::PList &equipmentKeys)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self hasAllEquipment:equipmentKeys includeWeapons:NO whileLoading:NO];
+}
+
+
+bool ShipEntity::hasHyperspaceMotor()
+{
+	return hyperspaceMotorSpinTime >= 0;
+}
+
+
+float ShipEntity::hyperspaceSpinTime()
+{
+	return hyperspaceMotorSpinTime;
+}
+
+
+void ShipEntity::setHyperspaceSpinTime(float newValue)
+{
+	hyperspaceMotorSpinTime = newValue;
 }
 
 

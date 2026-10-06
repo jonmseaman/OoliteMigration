@@ -862,4 +862,52 @@ OO_TEST(updateReachesTheSubclass)
 }
 
 
+// --- Slice 8: behaviour dispatch, attack response, equipment queries (bead oo-vxdsc) ---------------
+
+// The equipment queries over the ship's equipment keys (no equipment data is loaded, so no type is
+// known: a key provides only itself).
+OO_TEST(equipmentQueries)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"kit" definition:Definition()] autorelease];
+		OO_CHECK(![ship hasEquipmentItem:oo::PList(std::string("EQ_A"))]);
+		OO_CHECK(![ship hasAllEquipment:oo::PList(std::string("EQ_A"))]);	// none at all
+		MutablePart(ship)->_equipment = { "EQ_A", "EQ_B_DAMAGED", "EQ_A" };
+		OO_CHECK([ship cxx_countEquipmentItem:"EQ_A"] == 2 && [ship cxx_countEquipmentItem:"EQ_B"] == 0);
+		OO_CHECK([ship cxx_hasOneEquipmentItem:"EQ_A" includeWeapons:NO whileLoading:NO]);
+		OO_CHECK(![ship cxx_hasOneEquipmentItem:"EQ_B" includeWeapons:NO whileLoading:NO]);
+		OO_CHECK([ship cxx_hasOneEquipmentItem:"EQ_B" includeWeapons:NO whileLoading:YES]);	// damaged counts while loading
+		OO_CHECK([ship cxx_hasOneEquipmentItem:"EQ_B" includeMissiles:NO whileLoading:YES]);
+		OO_CHECK(![ship cxx_hasOneEquipmentItem:"EQ_C" includeMissiles:YES whileLoading:NO]);
+		OO_CHECK([ship hasEquipmentItem:oo::PList(std::string("EQ_A"))]);
+		OO_CHECK([ship hasEquipmentItem:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_X")), oo::PList(std::string("EQ_A")) })]);
+		OO_CHECK(![ship hasEquipmentItem:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_X")), oo::PList(1) })]);
+		OO_CHECK([ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")) })]);
+		OO_CHECK(![ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")), oo::PList(std::string("EQ_B")) })]);
+		OO_CHECK([ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")), oo::PList(std::string("EQ_B")) }) includeWeapons:NO whileLoading:YES]);
+		OO_CHECK(![ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")), oo::PList(2) })]);
+		OO_CHECK([ship cxx_hasEquipmentItemProviding:"EQ_A"] && ![ship cxx_hasEquipmentItemProviding:"EQ_Z"]);
+		OO_CHECK([ship cxx_equipmentItemProviding:"EQ_A"] == std::optional<std::string>("EQ_A"));
+		OO_CHECK([ship cxx_equipmentItemProviding:"EQ_Z"] == std::nullopt);
+		OO_CHECK(![ship hasPrimaryWeapon:nil]);
+	}
+}
+
+
+OO_TEST(hyperspaceMotor)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"motor" definition:Definition()] autorelease];
+		[ship setHyperspaceSpinTime:12.0f];
+		OO_CHECK([ship hyperspaceSpinTime] == 12.0f && [ship hasHyperspaceMotor]);
+		[ship setHyperspaceSpinTime:-1.0f];
+		OO_CHECK(![ship hasHyperspaceMotor]);
+	}
+}
+
+
 OO_TEST_MAIN()
