@@ -24,6 +24,8 @@
 #import "OOJavaScriptEngine.h"
 #import "Universe.h"
 #import "ShipEntity.h"
+#import "OOColor.h"
+#import "OOJSPropID.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oo_test.hpp"
@@ -301,6 +303,112 @@ OO_TEST(orientationVectors)
 		OO_CHECK(Near([effect upVector].x, u.x) && Near([effect upVector].y, u.y) && Near([effect upVector].z, u.z));
 		OO_CHECK(Near([effect rightVector].x, r.x) && Near([effect rightVector].y, r.y) && Near([effect rightVector].z, r.z));
 		OO_CHECK(!Near([effect forwardVector].z, 1.0));
+	}
+}
+
+
+// Slice 2 (bead oo-xkf6c): the scanner colours, the script, the beacons and the shader uniforms.
+OO_TEST(scannerColours)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOVisualEffectEntity *plain = Effect("plain", Dict({}));
+		OO_CHECK([plain scannerDisplayColor1] == nil);
+		OO_CHECK([plain scannerDisplayColor2] == nil);
+		OO_CHECK([plain scannerDisplayColorForShip:YES :nil :nil][3] == 0.0f);	// transparent black
+
+		OOVisualEffectEntity *effect = Effect("coloured", Dict({ { "scanner_display_color1", oo::PList(std::string("redColor")) }, { "scanner_display_color2", oo::PList(std::string("blueColor")) } }));
+		OOColor *c1 = [effect scannerDisplayColor1];
+		OOColor *c2 = [effect scannerDisplayColor2];
+		OO_CHECK(c1 != nil && c2 != nil);
+		float r, g, b, a;
+		[c1 getRed:&r green:&g blue:&b alpha:&a];
+		OO_CHECK(r == 1.0f && g == 0.0f && b == 0.0f && a == 1.0f);
+
+		GLfloat *flashOn = [effect scannerDisplayColorForShip:YES :c1 :c2];
+		OO_CHECK(flashOn[0] == 1.0f && flashOn[2] == 0.0f);
+		GLfloat *flashOff = [effect scannerDisplayColorForShip:NO :c1 :c2];
+		OO_CHECK(flashOff[0] == 0.0f && flashOff[2] == 1.0f);
+		OO_CHECK([effect scannerDisplayColorForShip:NO :c1 :nil][0] == 1.0f);
+		OO_CHECK([effect scannerDisplayColorForShip:YES :nil :c2][2] == 1.0f);
+
+		// A new colour replaces it; nil takes the definition's again.
+		[effect setScannerDisplayColor1:[OOColor greenColor]];
+		[[effect scannerDisplayColor1] getRed:&r green:&g blue:&b alpha:&a];
+		OO_CHECK(r == 0.0f && g == 1.0f && b == 0.0f);
+		[effect setScannerDisplayColor1:nil];
+		[[effect scannerDisplayColor1] getRed:&r green:&g blue:&b alpha:&a];
+		OO_CHECK(r == 1.0f && g == 0.0f && b == 0.0f);
+	}
+}
+
+
+OO_TEST(scriptAndScriptInfo)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// No scripts in the scratch folder: neither the named script nor the default one is found.
+		OOVisualEffectEntity *effect = Effect("scripted", Dict({ { "script", oo::PList(std::string("no-such-script.js")) }, { "script_info", Dict({ { "k", oo::PList(std::string("v")) } }) } }));
+		OO_CHECK([effect script] == nil);
+		OO_CHECK([effect scriptInfo] == Dict({ { "k", oo::PList(std::string("v")) } }));
+		OO_CHECK([Effect("bare", Dict({})) scriptInfo] == Dict({}));
+		[effect doScriptEvent:OOJSID("anEvent")];	// no script: nothing happens
+	}
+}
+
+
+OO_TEST(beacons)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOVisualEffectEntity *effect = Effect("unlit", Dict({}));
+		OO_CHECK(![effect isBeacon]);
+		OO_CHECK(![effect beaconCode].has_value());
+		OO_CHECK(![effect beaconLabel].has_value());
+		OO_CHECK(![effect isJammingScanning]);
+		OO_CHECK([effect prevBeacon] == nil && [effect nextBeacon] == nil);
+
+		OOVisualEffectEntity *other = Effect("other", Dict({}));
+		[effect setPrevBeacon:other];
+		[effect setNextBeacon:other];
+		OO_CHECK([effect prevBeacon] == other && [effect nextBeacon] == other);
+		[effect setNextBeacon:nil];
+		OO_CHECK([effect nextBeacon] == nil);
+		[effect setPrevBeacon:nil];
+
+		// An empty code is none.
+		[effect setBeaconCode:std::optional<std::string>("")];
+		OO_CHECK(![effect beaconCode].has_value());
+		OO_CHECK([effect compareBeaconCodeWith:other] == OOOrderedSame);
+	}
+}
+
+
+OO_TEST(shaderUniforms)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOVisualEffectEntity *effect = Effect("shaded", Dict({}));
+		OO_CHECK(Near([effect hullHeatLevel], 60.0 / 256.0));
+		[effect setHullHeatLevel:2.0f];
+		OO_CHECK([effect hullHeatLevel] == 1.0f);	// clamped
+		[effect setHullHeatLevel:-1.0f];
+		OO_CHECK([effect hullHeatLevel] == 0.0f);
+		OO_CHECK([effect shaderFloat1] == 0.0f && [effect shaderFloat2] == 0.0f);
+		OO_CHECK([effect shaderInt1] == 0 && [effect shaderInt2] == 0);
+		[effect setShaderFloat1:1.5f];
+		[effect setShaderFloat2:2.5f];
+		[effect setShaderInt1:3];
+		[effect setShaderInt2:4];
+		[effect setShaderVector1:make_vector(1, 2, 3)];
+		[effect setShaderVector2:make_vector(4, 5, 6)];
+		OO_CHECK([effect shaderFloat1] == 1.5f && [effect shaderFloat2] == 2.5f);
+		OO_CHECK([effect shaderInt1] == 3 && [effect shaderInt2] == 4);
+		OO_CHECK([effect shaderVector1].y == 2.0f && [effect shaderVector2].z == 6.0f);
 	}
 }
 
