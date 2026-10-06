@@ -12373,7 +12373,7 @@ void ShipEntity::setUpMixedEscorts()
 
 namespace cxx {
 
-void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &escortRole, HPVector ex_pos, uint8_t currentEscortCount)
+void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &/*escortRole*/, HPVector ex_pos, uint8_t currentEscortCount)
 {
 	::ShipEntity *self = oo::ToObjC(this);
 	std::string		autoAI;
@@ -12616,7 +12616,8 @@ Triangle ShipEntity::absoluteIJKForSubentity()
 	::Entity		*father = self;
 	OOMatrix	r_mat;
 	
-	while ((father)&&(father != last) && (father != (::Entity *)NO_TARGET))
+	// NO_TARGET is 0, so the old `father != (Entity *)NO_TARGET` test only repeated the null check.
+	while ((father)&&(father != last))
 	{
 		r_mat = [father drawRotationMatrix];
 		result.v[0] = OOVectorMultiplyMatrix(result.v[0], r_mat);
