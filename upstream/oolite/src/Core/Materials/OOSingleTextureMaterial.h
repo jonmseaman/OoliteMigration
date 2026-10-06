@@ -6,7 +6,7 @@ A material with a single texture (and no shaders).
 
 C++20 since bead oo-zxzb (proposed ADR-0056, amendments oo-smy and oo-vl43). Its Objective-C
 facade was deleted by bead oo-9ht.38 (ADR-0056 amendment "deleting a facade"): the class is global,
-and Objective-C sees one as the nearest facade, OOBasicMaterial's.
+and Objective-C sees one as an OOMaterial (OOBasicMaterial's facade was deleted by bead oo-9ht.33).
 
 
 Copyright (C) 2007-2013 Jens Ayton
@@ -39,7 +39,7 @@ SOFTWARE.
 @class OOTexture;
 
 
-class OOSingleTextureMaterial : public cxx::OOBasicMaterial
+class OOSingleTextureMaterial : public OOBasicMaterial
 {
 public:
 	/*	A new material, initialised by the initialiser of the same arguments (below); null where
