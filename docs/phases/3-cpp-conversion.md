@@ -324,6 +324,12 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   (their tests stub them), the concrete sounds and the music have façades of their own under the
   root's, and the channel tells its delegate of itself from the façade's `-dealloc`. Tests:
   `tests/unit/core/test_<Class>.mm`, on the game's own `.ogg` resources. No caller changed.
+- 2026-10-06 — `NSObjectOOExtensions` (bead oo-eoi6) has nothing to convert in Phase 3: it is a
+  debug-only category on the root `OOObject` (`+oo_instanceSize`, `-oo_objectSize`), Objective-C
+  runtime reflection, and every remaining sender messages a façade or an `id` for its instance size
+  (`Entity+ObjCBridge.mm`, `OODebugMonitor.mm`, `OODrawable::totalSize`, `OOWeakReference`). It goes
+  with the façades and the runtime in Phase 4 (bead oo-6e1.1), where each sender takes the C++
+  object's own size.
 - 2026-10-06 — `HeadUpDisplay` fully converted (umbrella bead oo-xjm): all six slices of
   `3-slices/HeadUpDisplay.md` landed (oo-engam, oo-8fiz9, oo-8j1y2, oo-2p1ug, oo-kdrc6, oo-0tx6c) and
   each reports `--slice-done`; the frame-hash proof is the goldens, run nightly from the slices'
