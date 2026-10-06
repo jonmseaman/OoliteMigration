@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOMesh.h"
 #import "OOMaterial.h"
 #import "OOGraphicsResetManager.h"
+#import "Octree.h"
 
 
 // Slice 4's display-list deletion, in the private category of OOMesh.mm, which the facade's
@@ -124,5 +125,22 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 
 - (size_t) vertexCount						{ return oo::ToCxx(self)->getVertexCount(); }
 - (size_t) faceCount						{ return oo::ToCxx(self)->getFaceCount(); }
+
+- (Octree *) octree							{ return oo::ToObjC(oo::ToCxx(self)->getOctree()); }
+
+- (BoundingBox) findBoundingBoxRelativeToPosition:(Vector)opv
+											basis:(Vector)ri :(Vector)rj :(Vector)rk
+									 selfPosition:(Vector)position
+										selfBasis:(Vector)si :(Vector)sj :(Vector)sk
+{
+	return oo::ToCxx(self)->findBoundingBoxRelativeToPosition(opv, ri, rj, rk, position, si, sj, sk);
+}
+
+- (BoundingBox) findSubentityBoundingBoxWithPosition:(Vector)position rotMatrix:(OOMatrix)rotMatrix
+{
+	return oo::ToCxx(self)->findSubentityBoundingBoxWithPosition(position, rotMatrix);
+}
+
+- (OOMesh *) meshRescaledBy:(GLfloat)scaleFactor	{ return oo::ToObjC(oo::ToCxx(self)->meshRescaledBy(scaleFactor)); }
 
 @end

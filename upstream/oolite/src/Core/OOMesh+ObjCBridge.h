@@ -4,11 +4,11 @@ OOMesh+ObjCBridge.h
 
 TRANSITIONAL (proposed ADR-0056, amendment oo-dnbf): the Objective-C OOMesh, a facade over the C++
 cxx::OOMesh (OOMesh.h), for the code that is not converted yet: the callers that message meshes
-(the ship and visual effect entities, the ship registry, the scripting bindings), and slices 2-4
-of docs/phases/3-slices/OOMesh.md (loading, geometry, rendering), which are still Objective-C and
+(the ship and visual effect entities, the ship registry, the scripting bindings), and slices 2
+and 4 of docs/phases/3-slices/OOMesh.md (loading, rendering), which are still Objective-C and
 are categories of this facade in OOMesh.mm. Its interface is the one OOMesh.h declared before the
 conversion, copied exactly (same selectors, same types), less the ivars, which are the C++ class's
-members; the selectors that slices 3 and 4 implement are declared in their categories below. Each
+members; the selector that slice 4 implements is declared in its category below. Each
 method of the class forwards to its C++ member. Imported as the last line of OOMesh.h; do not
 import it directly.
 
@@ -84,20 +84,6 @@ MA 02110-1301, USA.
 - (size_t) vertexCount;
 - (size_t) faceCount;
 
-@end
-
-
-// Slice 4 (rendering), still Objective-C: OOMesh.mm.
-@interface OOMesh (OOMeshRendering)
-
-- (void) rebindMaterials;
-
-@end
-
-
-// Slice 3 (geometry), still Objective-C: OOMesh.mm.
-@interface OOMesh (OOMeshGeometry)
-
 - (Octree *) octree;
 
 // This needs a better name.
@@ -108,6 +94,14 @@ MA 02110-1301, USA.
 - (BoundingBox) findSubentityBoundingBoxWithPosition:(Vector)position rotMatrix:(OOMatrix)rotMatrix;
 
 - (OOMesh *) meshRescaledBy:(GLfloat)scaleFactor;
+
+@end
+
+
+// Slice 4 (rendering), still Objective-C: OOMesh.mm.
+@interface OOMesh (OOMeshRendering)
+
+- (void) rebindMaterials;
 
 @end
 
