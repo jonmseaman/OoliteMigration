@@ -49,11 +49,12 @@ MA 02110-1301, USA.
 	C++20 since bead oo-mae5, converted the way bead oo-ppc converted OOJSVector.mm (proposed
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
-	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on
-	OOWaypointEntity became three free functions, and its methods and interface moved to
-	OOJSWaypoint+ObjCBridge.mm (amendment oo-ykoy). Messages to classes that are still
-	Objective-C (OOWaypointEntity, Entity, Universe, PlayerEntity) stay as they are, which is
-	why the file is still .mm until Phase 4.
+	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on OOWaypointEntity
+	became three free functions, and its methods and interface moved to a bridge file of the binding
+	(amendment oo-ykoy), then onto the OOWaypointEntity facade in OOWaypointEntity+ObjCBridge.mm
+	(bead oo-9ht.50, amendment oo-6ia4 item 3). Messages to classes that are still Objective-C
+	(OOWaypointEntity, Entity, Universe, PlayerEntity) stay as they are, which is why the file is
+	still .mm until Phase 4.
 */
 
 namespace ooscript { }
@@ -193,9 +194,9 @@ static bool JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Obj
 } // namespace
 
 
-// The bodies of OOWaypointEntity (OOJavaScriptExtensions), whose methods are in
-// OOJSWaypoint+ObjCBridge.mm until OOWaypointEntity converts (proposed ADR-0056 amendments oo-ppc
-// and oo-ykoy).
+// The bodies of OOWaypointEntity (OOJavaScriptExtensions), whose methods are on the
+// OOWaypointEntity facade, in OOWaypointEntity+ObjCBridge.mm (bead oo-9ht.50), until that facade
+// goes (oo-9ht.108; proposed ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 void OOJSWaypointGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
 {
 	*outClass = &sWaypointClass;
