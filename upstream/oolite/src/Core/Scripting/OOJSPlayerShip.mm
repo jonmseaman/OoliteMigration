@@ -1759,33 +1759,33 @@ static bool PlayerShipSetCustomView(ooscript::Context context, ooscript::CallArg
 	if (oojsArgs.count() < 2)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "setCustomView", oojsArgs.count(), OOJS_ARGV, std::nullopt, "position, orientiation, [weapon]");
-		return NO;
+		return false;
 	}
 
 // must be in custom view
-	if ([UNIVERSE viewDirection] != VIEW_CUSTOM) 
+	if (OOJSPlayerShipUniverseViewDirection() != VIEW_CUSTOM) 
 	{
 		cxx_OOJSReportError(context, "PlayerShip.setCustomView only works when custom view is active.");
-		return NO;
+		return false;
 	}
 
 	oo::PList::Dict				viewData;
 
 	Vector position = kZeroVector;
-	BOOL gotpos = JSValueToVector(context, OOJS_ARGV[0], &position);
+	bool gotpos = JSValueToVector(context, OOJS_ARGV[0], &position);
 	if (!gotpos)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "setCustomView", oojsArgs.count(), OOJS_ARGV, std::nullopt, "position, orientiation, [weapon]");
-		return NO;
+		return false;
 	}
 	std::string positionstr = oo::str::format("%f %f %f",position.x,position.y,position.z);   
 
 	Quaternion orientation = kIdentityQuaternion;
-	BOOL gotquat = JSValueToQuaternion(context, OOJS_ARGV[1], &orientation);
+	bool gotquat = JSValueToQuaternion(context, OOJS_ARGV[1], &orientation);
 	if (!gotquat)
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "setCustomView", oojsArgs.count(), OOJS_ARGV, std::nullopt, "position, orientiation, [weapon]");
-		return NO;
+		return false;
 	}
 	std::string orientationstr = oo::str::format("%f %f %f %f",orientation.w,orientation.x,orientation.y,orientation.z);
 
@@ -1796,15 +1796,15 @@ static bool PlayerShipSetCustomView(ooscript::Context context, ooscript::CallArg
 	{
 		std::optional<std::string> facing = cxx_OOStringFromJSValue(context,OOJS_ARGV[2]);
 		// -setObject:forKey: raised on a nil facing (GNUstep 1.31.1's text).
-		if (!facing.has_value())  [OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", "weapon_facing"];
+		if (!facing.has_value())  OORaiseException(OOInvalidArgumentException, "Tried to add nil value for key '%s' to dictionary", "weapon_facing");
 		viewData["weapon_facing"] = *facing;
 	} 
 
-	[player cxx_setCustomViewDataFromDictionary:oo::PList(std::move(viewData)) withScaling:NO];
-	[player noteSwitchToView:VIEW_CUSTOM fromView:VIEW_CUSTOM];
+	OOJSPlayerShipPlayerSetCustomViewDataFromDictionary(player, oo::PList(std::move(viewData)), false);
+	OOJSPlayerShipPlayerNoteSwitchToView(player, VIEW_CUSTOM, VIEW_CUSTOM);
 
 
-	OOJS_RETURN_BOOL(YES);
+	OOJS_RETURN_BOOL(true);
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -1820,16 +1820,16 @@ static bool PlayerShipResetCustomView(ooscript::Context context, ooscript::CallA
 	PlayerEntity		*player = OOPlayerForScripting();
 	
 // must be in custom view
-	if ([UNIVERSE viewDirection] != VIEW_CUSTOM) 
+	if (OOJSPlayerShipUniverseViewDirection() != VIEW_CUSTOM) 
 	{
 		cxx_OOJSReportError(context, "PlayerShip.setCustomView only works when custom view is active.");
-		return NO;
+		return false;
 	}
 
-	[player resetCustomView];
-	[player noteSwitchToView:VIEW_CUSTOM fromView:VIEW_CUSTOM];
+	OOJSPlayerShipPlayerResetCustomView(player);
+	OOJSPlayerShipPlayerNoteSwitchToView(player, VIEW_CUSTOM, VIEW_CUSTOM);
 
-	OOJS_RETURN_BOOL(YES);
+	OOJS_RETURN_BOOL(true);
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -1844,7 +1844,7 @@ static bool PlayerShipResetScannerZoom(ooscript::Context context, ooscript::Call
 	
 	PlayerEntity		*player = OOPlayerForScripting();
 	
-	[player resetScannerZoom];
+	OOJSPlayerShipPlayerResetScannerZoom(player);
 
 	OOJS_RETURN_VOID;
 	OOJS_NATIVE_EXIT
@@ -1861,7 +1861,7 @@ static bool PlayerShipTakeInternalDamage(ooscript::Context context, ooscript::Ca
 	
 	PlayerEntity		*player = OOPlayerForScripting();
 	
-	BOOL took = [player takeInternalDamage];
+	bool took = OOJSPlayerShipPlayerTakeInternalDamage(player);
 
 	OOJS_RETURN_BOOL(took);
 	OOJS_NATIVE_EXIT
@@ -1879,7 +1879,7 @@ static bool PlayerShipBeginHyperspaceCountdown(ooscript::Context context, ooscri
 	PlayerEntity		*player = OOPlayerForScripting();
 	int32_t                           spin_time;
 	int32_t                           witchspaceSpinUpTime = 0;
-	BOOL begun = NO;
+	bool begun = false;
 	if (oojsArgs.count() < 1) 
 	{
 		witchspaceSpinUpTime = 0;
@@ -1893,7 +1893,7 @@ static bool PlayerShipBeginHyperspaceCountdown(ooscript::Context context, ooscri
 		if (!ooscript::valueToInt32(context, (OOJS_ARGV[0]), &spin_time) || spin_time < 5 || spin_time > 60)
 		{
 			cxx_OOJSReportBadArguments(context, "PlayerShip", "beginHyperspaceCountdown", 1, &OOJS_ARGV[0], std::nullopt, "between 5 and 60 seconds");
-			return NO;
+			return false;
 		}
 		if (spin_time < 5) 
 		{
@@ -1904,10 +1904,10 @@ static bool PlayerShipBeginHyperspaceCountdown(ooscript::Context context, ooscri
 			witchspaceSpinUpTime = spin_time;
 		}
 	}
-	if ([player hasHyperspaceMotor] && [player status] == STATUS_IN_FLIGHT && [player witchJumpChecklist:false])
+	if (OOJSPlayerShipPlayerHasHyperspaceMotor(player) && OOJSPlayerShipPlayerStatus(player) == STATUS_IN_FLIGHT && OOJSPlayerShipPlayerWitchJumpChecklist(player, false))
 	{
-		[player beginWitchspaceCountdown:witchspaceSpinUpTime];
-		begun = YES;
+		OOJSPlayerShipPlayerBeginWitchspaceCountdown(player, witchspaceSpinUpTime);
+		begun = true;
 	}
 	OOJS_RETURN_BOOL(begun);
 	OOJS_NATIVE_EXIT
@@ -1924,12 +1924,12 @@ static bool PlayerShipCancelHyperspaceCountdown(ooscript::Context context, ooscr
        
 	PlayerEntity            *player = OOPlayerForScripting();
        
-	BOOL cancelled = NO;
-	if ([player hasHyperspaceMotor] && [player status] == STATUS_WITCHSPACE_COUNTDOWN)
+	bool cancelled = false;
+	if (OOJSPlayerShipPlayerHasHyperspaceMotor(player) && OOJSPlayerShipPlayerStatus(player) == STATUS_WITCHSPACE_COUNTDOWN)
 	{
-		[player cancelWitchspaceCountdown];
-		[player setJumpType:false];
-		cancelled = YES;
+		OOJSPlayerShipPlayerCancelWitchspaceCountdown(player);
+		OOJSPlayerShipPlayerSetJumpType(player, false);
+		cancelled = true;
 	}
 
 	OOJS_RETURN_BOOL(cancelled);
@@ -1948,14 +1948,14 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 	PlayerEntity		*player = OOPlayerForScripting();
 	int32_t				spin_time;
 	int32_t				witchspaceSpinUpTime = 5;
-	BOOL begun = NO;
+	bool begun = false;
 	if (oojsArgs.count() == 1) 
 	{
 
 		if (!ooscript::valueToInt32(context, (OOJS_ARGV[0]), &spin_time) || spin_time < 5 || spin_time > 60)
 		{
 			cxx_OOJSReportBadArguments(context, "PlayerShip", "beginGalacticHyperspaceCountdown", 1, &OOJS_ARGV[0], std::nullopt, "between 5 and 60 seconds");
-			return NO;
+			return false;
 		}
 		if (spin_time < 5) 
 		{
@@ -1966,15 +1966,15 @@ static bool PlayerShipBeginGalacticHyperspaceCountdown(ooscript::Context context
 			witchspaceSpinUpTime = spin_time;
 		}
 	}
-	if ([player cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"] && [player status] == STATUS_IN_FLIGHT && [player witchJumpChecklist:true])
+	if (OOJSPlayerShipPlayerHasEquipmentItemProviding(player, "EQ_GAL_DRIVE") && OOJSPlayerShipPlayerStatus(player) == STATUS_IN_FLIGHT && OOJSPlayerShipPlayerWitchJumpChecklist(player, true))
 	{
-		[player setJumpType:YES];
-		[player setWitchspaceCountdown:witchspaceSpinUpTime];
-		[player setStatus:STATUS_WITCHSPACE_COUNTDOWN];
-		[player playGalacticHyperspace];
+		OOJSPlayerShipPlayerSetJumpType(player, true);
+		OOJSPlayerShipPlayerSetWitchspaceCountdown(player, witchspaceSpinUpTime);
+		OOJSPlayerShipPlayerSetStatus(player, STATUS_WITCHSPACE_COUNTDOWN);
+		OOJSPlayerShipPlayerPlayGalacticHyperspace(player);
 		// say it!
-		[UNIVERSE cxx_addMessage:oo::str::format(OO_DESC("witch-galactic-in-f-seconds").c_str(), witchspaceSpinUpTime) forCount:1.0];
-		begun = YES;
+		OOJSPlayerShipUniverseAddMessage(oo::str::format(OO_DESC("witch-galactic-in-f-seconds").c_str(), witchspaceSpinUpTime), 1.0);
+		begun = true;
 	}
 	OOJS_RETURN_BOOL(begun);
 	OOJS_NATIVE_EXIT
@@ -1992,14 +1992,14 @@ static bool PlayerShipSetMultiFunctionDisplay(ooscript::Context context, ooscrip
 	std::optional<std::string>		key;
 	uint32_t			index = 0;
 	PlayerEntity	*player = OOPlayerForScripting();
-	BOOL			OK = YES;
+	bool			OK = true;
 
 	if (oojsArgs.count() > 0)  
 	{
 		if (!ooscript::valueToECMAUint32(context, (OOJS_ARGV[0]), &index))
 		{
 			cxx_OOJSReportBadArguments(context, "PlayerShip", "setMultiFunctionDisplay", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "number (index) [, string (key)]");
-			return NO;
+			return false;
 		}
 	}
 
@@ -2008,7 +2008,7 @@ static bool PlayerShipSetMultiFunctionDisplay(ooscript::Context context, ooscrip
 		key = cxx_OOStringFromJSValue(context, OOJS_ARGV[1]);
 	}
 
-	OK = [player cxx_setMultiFunctionDisplay:index toKey:key];
+	OK = OOJSPlayerShipPlayerSetMultiFunctionDisplay(player, index, key);
 
 	OOJS_RETURN_BOOL(OK);
 
@@ -2027,7 +2027,7 @@ static bool PlayerShipSetMultiFunctionText(ooscript::Context context, ooscript::
 	std::optional<std::string>				key;
 	std::optional<std::string>	value;
 	PlayerEntity			*player = OOPlayerForScripting();
-	bool					reflow = NO;
+	bool					reflow = false;
 
 	if (oojsArgs.count() > 0)  
 	{
@@ -2036,7 +2036,7 @@ static bool PlayerShipSetMultiFunctionText(ooscript::Context context, ooscript::
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "setMultiFunctionText", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (key) [, string (text)]");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() > 1)
 	{
@@ -2045,17 +2045,17 @@ static bool PlayerShipSetMultiFunctionText(ooscript::Context context, ooscript::
 	if (oojsArgs.count() > 2 && EXPECT_NOT(!ooscript::valueToBoolean(context, (OOJS_ARGV[2]), &reflow)))
 	{
 		cxx_OOJSReportBadArguments(context, "setMultiFunctionText", "reflow", oojsArgs.count(), OOJS_ARGV, std::nullopt, "boolean");
-		return NO;
+		return false;
 	}
 
 	if (!reflow)
 	{
-		[player cxx_setMultiFunctionText:value forKey:key];
+		OOJSPlayerShipPlayerSetMultiFunctionText(player, value, key);
 	}
 	else
 	{
-		GuiDisplayGen	*gui = [UNIVERSE gui];
-		[player cxx_setMultiFunctionText:[gui cxx_reflowTextForMFD:value] forKey:key];
+		GuiDisplayGen	*gui = OOJSPlayerShipUniverseGui();
+		OOJSPlayerShipPlayerSetMultiFunctionText(player, OOJSPlayerShipGuiReflowTextForMFD(gui, value), key);
 	}
 
 	OOJS_RETURN_VOID;
@@ -2073,7 +2073,7 @@ static bool PlayerShipSetPrimedEquipment(ooscript::Context context, ooscript::Ca
 
 	std::optional<std::string>				key;
 	PlayerEntity			*player = OOPlayerForScripting();
-	bool					showMsg = YES;
+	bool					showMsg = true;
 
 	if (oojsArgs.count() > 0)  
 	{
@@ -2082,15 +2082,15 @@ static bool PlayerShipSetPrimedEquipment(ooscript::Context context, ooscript::Ca
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "setPrimedEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (key)");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() > 1 && EXPECT_NOT(!ooscript::valueToBoolean(context, (OOJS_ARGV[1]), &showMsg)))
  	{
  		cxx_OOJSReportBadArguments(context, "PlayerShip", "setPrimedEquipment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "boolean");
- 		return NO;
+ 		return false;
  	}
 
-	OOJS_RETURN_BOOL(key.has_value() ? [player cxx_setPrimedEquipment:*key showMessage:showMsg] : NO);
+	OOJS_RETURN_BOOL(key.has_value() ? OOJSPlayerShipPlayerSetPrimedEquipment(player, *key, showMsg) : false);
 
 	OOJS_NATIVE_EXIT
 }
@@ -2115,7 +2115,7 @@ static bool PlayerShipSetCustomHUDDial(ooscript::Context context, ooscript::Call
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "setCustomHUDDial", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (key), value]");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() > 1)
 	{
@@ -2126,7 +2126,7 @@ static bool PlayerShipSetCustomHUDDial(ooscript::Context context, ooscript::Call
 		value = oo::PList(std::string());
 	}
 
-	[player cxx_setDialCustom:value forKey:key.value_or("")];
+	OOJSPlayerShipPlayerSetDialCustom(player, value, key.value_or(""));
 	
 
 	OOJS_RETURN_VOID;
@@ -2152,9 +2152,9 @@ static bool PlayerShipHideHUDSelector(ooscript::Context context, ooscript::CallA
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
-		return NO;
+		return false;
 	}
-	[[player hud] cxx_setHiddenSelector:key.value_or("") hidden:YES];
+	if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setHiddenSelector(key.value_or(""), true);
 	
 	OOJS_RETURN_VOID;
 
@@ -2179,9 +2179,9 @@ static bool PlayerShipShowHUDSelector(ooscript::Context context, ooscript::CallA
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "PlayerShip", "hideHUDSelector", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (selector)");
-		return NO;
+		return false;
 	}
-	[[player hud] cxx_setHiddenSelector:key.value_or("") hidden:NO];
+	if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->setHiddenSelector(key.value_or(""), false);
 	
 	OOJS_RETURN_VOID;
 

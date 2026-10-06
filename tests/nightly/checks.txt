@@ -330,3 +330,4 @@
 [oo-yqoa] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSystem && bash tools/tier-c.sh --only goldens
 [oo-ft5n] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPlayerShip && bash tools/tier-c.sh --only goldens
 [oo-9t14] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPlayerShip && bash tools/tier-c.sh --only goldens
+[oo-1qr5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPlayerShip && bash tools/tier-c.sh --only goldens

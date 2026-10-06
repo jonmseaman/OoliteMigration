@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityControls.h"
 #import "PlayerEntityScriptMethods.h"
 #import "GuiDisplayGen.h"
+#import "PlayerEntitySound.h"
 #import "StationEntity.h"
 
 
@@ -178,3 +179,25 @@ void OOJSPlayerShipPlayerDisengageAutopilot(PlayerEntity *player)	{ [player dise
 void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEntity *stationForDocking)	{ [player requestDockingClearance:stationForDocking]; }
 void OOJSPlayerShipPlayerCancelDockingRequest(PlayerEntity *player, StationEntity *stationForDocking)	{ [player cancelDockingRequest:stationForDocking]; }
 bool OOJSPlayerShipPlayerAssignToActivePylon(PlayerEntity *player, const std::string &identifierKey)	{ return [player cxx_assignToActivePylon:identifierKey]; }
+
+
+// The views, the hyperspace countdowns, the MFDs, primed equipment and the HUD dials (slice 3).
+void OOJSPlayerShipPlayerSetCustomViewDataFromDictionary(PlayerEntity *player, const oo::PList &viewDict, bool withScaling)	{ [player cxx_setCustomViewDataFromDictionary:viewDict withScaling:withScaling]; }
+void OOJSPlayerShipPlayerNoteSwitchToView(PlayerEntity *player, OOViewID toView, OOViewID fromView)	{ [player noteSwitchToView:toView fromView:fromView]; }
+void OOJSPlayerShipPlayerResetCustomView(PlayerEntity *player)	{ [player resetCustomView]; }
+void OOJSPlayerShipPlayerResetScannerZoom(PlayerEntity *player)	{ [player resetScannerZoom]; }
+bool OOJSPlayerShipPlayerTakeInternalDamage(PlayerEntity *player)	{ return [player takeInternalDamage]; }
+bool OOJSPlayerShipPlayerHasHyperspaceMotor(PlayerEntity *player)	{ return [player hasHyperspaceMotor]; }
+void OOJSPlayerShipPlayerSetStatus(PlayerEntity *player, OOEntityStatus stat)	{ [player setStatus:stat]; }
+bool OOJSPlayerShipPlayerWitchJumpChecklist(PlayerEntity *player, bool isGalacticJump)	{ return [player witchJumpChecklist:isGalacticJump]; }
+void OOJSPlayerShipPlayerBeginWitchspaceCountdown(PlayerEntity *player, int spinTime)	{ [player beginWitchspaceCountdown:spinTime]; }
+void OOJSPlayerShipPlayerCancelWitchspaceCountdown(PlayerEntity *player)	{ [player cancelWitchspaceCountdown]; }
+void OOJSPlayerShipPlayerSetJumpType(PlayerEntity *player, bool isGalacticJump)	{ [player setJumpType:isGalacticJump]; }
+void OOJSPlayerShipPlayerSetWitchspaceCountdown(PlayerEntity *player, int spinTime)	{ [player setWitchspaceCountdown:spinTime]; }
+void OOJSPlayerShipPlayerPlayGalacticHyperspace(PlayerEntity *player)	{ [player playGalacticHyperspace]; }
+bool OOJSPlayerShipPlayerSetMultiFunctionDisplay(PlayerEntity *player, NSUInteger index, const std::optional<std::string> &key)	{ return [player cxx_setMultiFunctionDisplay:index toKey:key]; }
+void OOJSPlayerShipPlayerSetMultiFunctionText(PlayerEntity *player, const std::optional<std::string> &text, const std::optional<std::string> &key)	{ [player cxx_setMultiFunctionText:text forKey:key]; }
+void OOJSPlayerShipPlayerSetDialCustom(PlayerEntity *player, const oo::PList &value, const std::string &dialKey)	{ [player cxx_setDialCustom:value forKey:dialKey]; }
+void OOJSPlayerShipUniverseAddMessage(const std::optional<std::string> &text, OOTimeDelta count)	{ [UNIVERSE cxx_addMessage:text forCount:count]; }
+GuiDisplayGen *OOJSPlayerShipUniverseGui()	{ return [UNIVERSE gui]; }
+std::optional<std::string> OOJSPlayerShipGuiReflowTextForMFD(GuiDisplayGen *gui, const std::optional<std::string> &input)	{ return [gui cxx_reflowTextForMFD:input]; }

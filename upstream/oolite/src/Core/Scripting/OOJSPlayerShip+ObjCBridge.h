@@ -161,4 +161,25 @@ void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEn
 void OOJSPlayerShipPlayerCancelDockingRequest(PlayerEntity *player, StationEntity *stationForDocking);
 bool OOJSPlayerShipPlayerAssignToActivePylon(PlayerEntity *player, const std::string &identifierKey);
 
+// The views, the hyperspace countdowns, the MFDs, primed equipment and the HUD dials (slice 3).
+void OOJSPlayerShipPlayerSetCustomViewDataFromDictionary(PlayerEntity *player, const oo::PList &viewDict, bool withScaling);
+void OOJSPlayerShipPlayerNoteSwitchToView(PlayerEntity *player, OOViewID toView, OOViewID fromView);
+void OOJSPlayerShipPlayerResetCustomView(PlayerEntity *player);
+void OOJSPlayerShipPlayerResetScannerZoom(PlayerEntity *player);
+bool OOJSPlayerShipPlayerTakeInternalDamage(PlayerEntity *player);
+bool OOJSPlayerShipPlayerHasHyperspaceMotor(PlayerEntity *player);
+void OOJSPlayerShipPlayerSetStatus(PlayerEntity *player, OOEntityStatus stat);
+bool OOJSPlayerShipPlayerWitchJumpChecklist(PlayerEntity *player, bool isGalacticJump);
+void OOJSPlayerShipPlayerBeginWitchspaceCountdown(PlayerEntity *player, int spinTime);
+void OOJSPlayerShipPlayerCancelWitchspaceCountdown(PlayerEntity *player);
+void OOJSPlayerShipPlayerSetJumpType(PlayerEntity *player, bool isGalacticJump);
+void OOJSPlayerShipPlayerSetWitchspaceCountdown(PlayerEntity *player, int spinTime);
+void OOJSPlayerShipPlayerPlayGalacticHyperspace(PlayerEntity *player);
+bool OOJSPlayerShipPlayerSetMultiFunctionDisplay(PlayerEntity *player, NSUInteger index, const std::optional<std::string> &key);
+void OOJSPlayerShipPlayerSetMultiFunctionText(PlayerEntity *player, const std::optional<std::string> &text, const std::optional<std::string> &key);
+void OOJSPlayerShipPlayerSetDialCustom(PlayerEntity *player, const oo::PList &value, const std::string &dialKey);
+void OOJSPlayerShipUniverseAddMessage(const std::optional<std::string> &text, OOTimeDelta count);
+GuiDisplayGen *OOJSPlayerShipUniverseGui();
+std::optional<std::string> OOJSPlayerShipGuiReflowTextForMFD(GuiDisplayGen *gui, const std::optional<std::string> &input);
+
 #endif	// OOJSPLAYERSHIP_OBJCBRIDGE_H
