@@ -3578,3 +3578,24 @@ convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ 
    not show a window on the desktop (CLAUDE.md, `tools/gui-lock`). The test pins what the slice computes
    without one (the state `-init` leaves in a scratch home, the display and its native size, the projection
    `-updateGLSize:` sets in a hidden test context), and the goldens, which launch the game, run the rest.
+
+## Amendment (bead oo-72cz): a later slice of a class-shell class, with platform arms and a converted-collaborator getter
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: slice 2 of
+  `docs/phases/3-slices/MyOpenGLView.md` (`src/SDL/MyOpenGLView.h/.mm`, `MyOpenGLView+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_MyOpenGLView.mm`). Follows amendments oo-3bgz and oo-6rb6.
+
+**Decision (recommended defaults).**
+
+1. **A method defined in both arms of `#if OOLITE_WINDOWS … #else`** (the Windows display / HDR block and
+   its stubs) is one member; each arm's definition stays in its arm, and the declaration and the façade's
+   forwarder follow the old `@interface`'s arms (unconditional where it was, inside `#if OOLITE_WINDOWS`
+   where it was). A definition under a build guard (`#ifdef GNUSTEP_BASE_LIBRARY`) keeps the guard.
+2. **A getter named like its ivar is `get<Name>`** (amendment oo-862e), including one the old header never
+   declared (`-bounds`, now `getBounds()`); its façade forwarder is kept so the selector still answers.
+3. **The getter that answered a converted collaborator's façade** (`-getOpenGLMatrixManager`, amendment
+   oo-6rb6 item 3) answers the borrowed C++ object as a member; the façade's forwarder wraps it in
+   `oo::ToObjC`.
+4. **A class method is a static member** (`+pollShiftKey`), and a `cxx_` selector's member drops the prefix
+   (`stringToClipboard`). Slice 1's sends of this slice's selectors (`[oo::ToObjC(this) loadWindowSize]`)
+   become member calls; its sends to the Input category stay as they are.

@@ -338,6 +338,46 @@ OO_TEST(facadeContract)
 }
 
 
+// After slice 2's conversion: its members answer as the facade's methods do.
+OO_TEST(cxxSlice2API)
+{
+	@autoreleasepool
+	{
+		MyOpenGLView *view = View();
+		cxx::MyOpenGLView *cxxView = oo::ToCxx(view);
+		OO_CHECK(cxxView != nullptr);
+		if (cxxView == nullptr)  return;
+		OO_CHECK(cxxView->getViewSize().width == [view viewSize].width);
+		OO_CHECK(cxxView->backingViewSize().height == [view backingViewSize].height);
+		OO_CHECK(cxxView->getDisplay_z() == [view display_z]);
+		OO_CHECK(cxxView->getX_offset() == [view x_offset] && cxxView->getY_offset() == [view y_offset]);
+		OO_CHECK(cxxView->getGameController() == [view gameController]);
+		cxxView->setFov(45.0f, false);
+		OO_CHECK(Near([view fov:NO], 45.0) && cxxView->fov(true) == [view fov:YES]);
+		cxxView->setMsaa(true);
+		OO_CHECK([view msaa] && cxxView->msaa());
+		cxxView->setMsaa(false);
+		cxxView->setSDRToneMapper(OOSDR_TONEMAPPER_UC2);
+		OO_CHECK([view sdrToneMapper] == OOSDR_TONEMAPPER_UC2);
+		OO_CHECK(cxxView->colorSaturation() == [view colorSaturation]);
+		OO_CHECK(cxxView->hdrOutput() == static_cast<bool>([view hdrOutput]));
+		OO_CHECK(cxxView->inFullScreenMode() == static_cast<bool>([view inFullScreenMode]));
+		OO_CHECK(cxxView->getScreenSizeArray() == [view getScreenSizeArray]);
+		OO_CHECK(cxxView->currentScreenMode() == [view currentScreenMode]);
+		OO_CHECK(cxxView->modeAsSize(0).width == [view modeAsSize:0].width);
+		OO_CHECK_EQ(cxxView->indexOfDisplayModeForWidth(7, 5, 3), 0);
+		OO_CHECK(cxxView->loadWindowSize().width == [view loadWindowSize].width);
+		OO_CHECK(cxx::MyOpenGLView::pollShiftKey() == static_cast<bool>([MyOpenGLView pollShiftKey]));
+		OO_CHECK(oo::ToObjC(cxxView->getOpenGLMatrixManager()) == [view getOpenGLMatrixManager]);
+#if OOLITE_WINDOWS
+		cxxView->setHDRMaxBrightness(700.0f);
+		OO_CHECK(Near([view hdrMaxBrightness], 700.0));
+		OO_CHECK(cxxView->getAtDesktopResolution() == static_cast<bool>([view atDesktopResolution]));
+#endif
+	}
+}
+
+
 // Last: -dealloc quits SDL.
 OO_TEST(zzDeallocReleasesTheView)
 {
