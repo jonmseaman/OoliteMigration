@@ -83,23 +83,6 @@ MA 02110-1301, USA.
 + (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors;
 + (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version;
 
-@end
-
-
-// Slices 3 and 4 of docs/phases/3-slices/ResourceManager.md: still Objective-C, implemented by this
-// category in ResourceManager.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to ResourceManager+ObjCBridge.mm.
-@interface ResourceManager (OOResourceManagerUnconverted)
-
-// In-out: an array of arrays (the merged files), edited in place.
-+ (void)handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex;
-+ (void)handleEquipmentOverrides: (oo::PList &)arrayToProcess;
-+ (void)handleStarNebulaListMerging: (oo::PList &)arrayToProcess;
-
-// nullopt when not found (was nil); folderName nullopt where nil was passed.
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
-
 + (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path;
 
 // A null PList when no file was found; folderName nullopt where nil was passed.
@@ -119,13 +102,29 @@ MA 02110-1301, USA.
 						andMerge:(BOOL) mergeFiles
 						   cache:(BOOL)useCache;
 
-// These are deliberately not merged like normal plists for security reasons.
+// In-out: an array of arrays (the merged files), edited in place.
++ (void)handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex;
++ (void)handleEquipmentOverrides: (oo::PList &)arrayToProcess;
++ (void)handleStarNebulaListMerging: (oo::PList &)arrayToProcess;
 + (oo::PList) cxx_whitelistDictionary;			// a null PList when the file is missing
-+ (oo::PList) cxx_shaderBindingTypesDictionary;
-
-// These have special merging rules.
 + (oo::PList) cxx_logControlDictionary;
 + (oo::PList) cxx_roleCategoriesDictionary;	// category -> array of its roles, each once (a set), in first-seen order
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/ResourceManager.md: still Objective-C, implemented by this
+// category in ResourceManager.mm on the facade. Each slice's bead moves its methods to the C++ class
+// and their forwarders to ResourceManager+ObjCBridge.mm.
+@interface ResourceManager (OOResourceManagerUnconverted)
+
+// nullopt when not found (was nil); folderName nullopt where nil was passed.
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
+
+// These are deliberately not merged like normal plists for security reasons.
++ (oo::PList) cxx_shaderBindingTypesDictionary;
+
 + (OOSystemDescriptionManager *) systemDescriptionManager;
 
 + (OOSound *)cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;

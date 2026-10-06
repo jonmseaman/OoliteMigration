@@ -152,4 +152,70 @@ MA 02110-1301, USA.
 	return cxx::ResourceManager::matchVersions(rangeDict, version);
 }
 
+
++ (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path
+{
+	return cxx::ResourceManager::corePlist(fileName, path);
+}
+
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
+								  andMerge:(BOOL) mergeFiles
+{
+	return cxx::ResourceManager::dictionaryFromFilesNamed(fileName, folderName, mergeFiles);
+}
+
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
+								 mergeMode:(OOResourceMergeMode)mergeMode
+									 cache:(BOOL)useCache
+{
+	return cxx::ResourceManager::dictionaryFromFilesNamed(fileName, folderName, mergeMode, useCache);
+}
+
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName
+						inFolder:(const std::optional<std::string> &)folderName
+						andMerge:(BOOL) mergeFiles
+{
+	return cxx::ResourceManager::arrayFromFilesNamed(fileName, folderName, mergeFiles);
+}
+
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName
+						inFolder:(const std::optional<std::string> &)folderName
+						andMerge:(BOOL) mergeFiles
+						   cache:(BOOL)useCache
+{
+	return cxx::ResourceManager::arrayFromFilesNamed(fileName, folderName, mergeFiles, useCache);
+}
+
++ (void)handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex
+{
+	cxx::ResourceManager::handleEquipmentListMerging(arrayToProcess, lookupIndex);
+}
+
++ (void)handleEquipmentOverrides: (oo::PList &)arrayToProcess
+{
+	cxx::ResourceManager::handleEquipmentOverrides(arrayToProcess);
+}
+
++ (void)handleStarNebulaListMerging: (oo::PList &)arrayToProcess
+{
+	cxx::ResourceManager::handleStarNebulaListMerging(arrayToProcess);
+}
+
++ (oo::PList) cxx_whitelistDictionary
+{
+	return cxx::ResourceManager::whitelistDictionary();
+}
+
++ (oo::PList) cxx_logControlDictionary
+{
+	return cxx::ResourceManager::logControlDictionary();
+}
+
++ (oo::PList) cxx_roleCategoriesDictionary
+{
+	return cxx::ResourceManager::roleCategoriesDictionary();
+}
+
 @end
