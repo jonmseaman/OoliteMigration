@@ -324,6 +324,9 @@ public:
 	::ShipEntity *launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew);
 	bool validForAddToUniverse() override;
 
+	// Slice 7: update:.
+	void update(OOTimeDelta delta_t) override;
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

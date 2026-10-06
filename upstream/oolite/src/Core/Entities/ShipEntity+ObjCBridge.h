@@ -946,6 +946,16 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// Slice 7 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice7)
+
+- (void) update:(OOTimeDelta)delta_t;
+
+@end
+
+
 namespace oo {
 
 // The root's crossings, typed (amendment oo-up4b item 3).

@@ -356,3 +356,10 @@ DESTROY(_cxxShip->laser_color);
 - (BOOL) validForAddToUniverse	{ return _cxxShip->cxx::ShipEntity::validForAddToUniverse(); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice7)
+
+- (void) update:(OOTimeDelta)delta_t	{ _cxxShip->cxx::ShipEntity::update(delta_t); }
+
+@end
