@@ -64,8 +64,6 @@ MA 02110-1301, USA.
 
 - (void) applicationDidFinishLaunching;
 
-- (void) performGameTick:(id)sender;
-
 #if OOLITE_MAC_OS_X
 - (IBAction) showLogAction:(id)sender;
 - (IBAction) showLogFolderAction:(id)sender;
@@ -100,17 +98,6 @@ MA 02110-1301, USA.
 - (void) debugPopProgressMessage;
 #endif
 - (void) endSplashScreen;
-
-- (void) startAnimationTimer;
-- (void) stopAnimationTimer;
-
-/*	Fire whatever is due now, the game tick first, then one deferred call:
-	what the run loop's -limitDateForMode: did for the game while its tick and
-	deferred calls were run-loop timers. For code that must let the game tick
-	while it blocks the frame loop (the OXZ download callback). See proposed
-	ADR-0033 and ADR-0040.
-*/
-- (void) fireDueTimers;
 
 - (void)windowDidResize;
 
@@ -148,6 +135,29 @@ MA 02110-1301, USA.
 - (MyOpenGLView *) gameView;
 - (void) setGameView:(MyOpenGLView *)view;
 
+// Slice 2 (bead oo-hn0fw).
+- (void) performGameTick:(id)sender;
+
+- (void) startAnimationTimer;
+- (void) stopAnimationTimer;
+
+/*	Fire whatever is due now, the game tick first, then one deferred call:
+	what the run loop's -limitDateForMode: did for the game while its tick and
+	deferred calls were run-loop timers. For code that must let the game tick
+	while it blocks the frame loop (the OXZ download callback). See proposed
+	ADR-0033 and ADR-0040.
+*/
+- (void) fireDueTimers;
+
+@end
+
+
+// The slice 2 unit that slice 3 (still Objective-C) sends, forwarded to its C++ member (proposed
+// ADR-0056 amendment oo-bwjb item 2).
+@interface GameController (OOPrivateForwarded)
+
+- (void) runFrameLoop;
+
 @end
 
 
@@ -176,6 +186,14 @@ MA 02110-1301, USA.
 - (void) setUpDisplayModes;
 
 @end
+
+
+/*	[target performSelector:selector withObject:argument] for a deferred call (OOScheduleDeferredCall),
+	with the handler the Foundation timer had: an OOException is logged and swallowed and the answer
+	is false; anything else propagates. The free function FireOneDueDeferredCall() calls it (ADR-0056
+	amendment oo-9ht.139 item 3: its @try/@catch and send stay Objective-C here).
+*/
+bool GameControllerPerformSelectorWithObject(id target, SEL selector, id argument);
 
 
 namespace oo {

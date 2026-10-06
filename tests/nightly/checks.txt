@@ -307,3 +307,5 @@
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
 # GameController slice 1 (oo-zkpmt): the class shell, its facade, and the full-screen category on the shell state.
 [oo-zkpmt] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
+# GameController slice 2 (oo-hn0fw): the frame loop as members; the deferred calls through the bridge perform.
+[oo-hn0fw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
