@@ -95,6 +95,7 @@ MA 02110-1301, USA.
 #import "OOJSSound.h"
 #import "OOJSSoundSource.h"
 #import "OOJSSpecialFunctions.h"
+#import "OOJSSpecialFunctions+ObjCBridge.h"
 #import "OOJSSystemInfo.h"
 #import "OOJSEquipmentInfo.h"
 #import "OOJSShipGroup.h"
