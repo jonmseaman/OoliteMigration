@@ -282,8 +282,8 @@ OO_TEST(withoutShaders)
 	@autoreleasepool
 	{
 		// A diffuse map (named, or the material's own name): one texture.
-		OO_CHECK(Is(Make("hull.png", {}), [OOSingleTextureMaterial class]));
-		OO_CHECK(Is(Make("hull.png", { { "diffuse_map", oo::PList("d.png") } }), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "diffuse_map", oo::PList("d.png") } })));
 		// With no name the single-texture initialiser fails (it needs one), so basic (observed on the
 		// Objective-C category before its conversion).
 		OO_CHECK(Is(Make(nullptr, { { "diffuse_map", oo::PList("d.png") } }), [OOBasicMaterial class]));
@@ -295,7 +295,7 @@ OO_TEST(withoutShaders)
 		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "illumination_map", oo::PList("i.png") } })));
 		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "emission_and_illumination_map", oo::PList("ei.png") } })));
 		// A shader configuration without shaders: its fixed-function equivalent.
-		OO_CHECK(Is(Make("hull.png", { { "vertex_shader", oo::PList("named") } }), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "vertex_shader", oo::PList("named") } })));
 		OO_CHECK([Make("Named", {}) cxx_name] == std::optional<std::string>("Named"));
 	}
 }
@@ -312,7 +312,7 @@ OO_TEST(namedShaders)
 
 		// A shader that fails, at low detail and not smoothed: the fixed-function material.
 		m = Make("hull.png", { { "vertex_shader", oo::PList("absent") } });
-		OO_CHECK(Is(m, [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(m));
 	}
 }
 
@@ -362,7 +362,7 @@ OO_TEST(synthesisTriggersAndLoops)
 	@autoreleasepool
 	{
 		// Low detail: fixed function, unless smoothed or a map needs the shader.
-		OO_CHECK(Is(Make("hull.png", {}), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
 		OO_CHECK(Is(Make("hull.png", {}, YES), [OOShaderMaterial class]));
 		OO_CHECK(Is(Make("hull.png", { { "normal_map", oo::PList("n.png") } }), [OOShaderMaterial class]));
 		OO_CHECK(Is(Make("hull.png", { { "specular_map", oo::PList("s.png") } }), [OOShaderMaterial class]));
@@ -374,11 +374,11 @@ OO_TEST(synthesisTriggersAndLoops)
 			conversion).
 		*/
 		gShaderFiles.erase("oolite-default-shader.fragment");
-		OO_CHECK(Is(Make("hull.png", {}, YES), [OOSingleTextureMaterial class]));
-		OO_CHECK(Is(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, YES), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {}, YES)));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, YES)));
 		// Without the smoothing that forces the shader, at low detail, the emission map still asks for
 		// the shader, and the result is the same.
-		OO_CHECK(Is(Make("hull.png", { { "emission_map", oo::PList("e.png") } }), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } })));
 	}
 }
 
@@ -400,9 +400,9 @@ OO_TEST(fromDictionaries)
 		OO_CHECK(Is(make("hull.png", materials, shaders), [OOShaderMaterial class]));
 		gUniverse->_useShaders = NO;
 		OOMaterial *m = make("hull.png", materials, shaders);
-		OO_CHECK(Is(m, [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(m));
 		// Neither: an empty configuration if the texture of that name loads, else nothing.
-		OO_CHECK(Is(make("other.png", materials, shaders), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(make("other.png", materials, shaders)));
 		OO_CHECK(make("missing", materials, shaders) == nil);
 		OO_CHECK(make("missing", oo::PList(), oo::PList()) == nil);
 	}
@@ -438,7 +438,7 @@ OO_TEST(cxxStaticMembers)
 	if (!SetUp(NO))  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		OO_CHECK(IsCxx(MakeCxx("hull.png", {}), [OOSingleTextureMaterial class]));
+		OO_CHECK(IsCxxExactly<OOSingleTextureMaterial>(MakeCxx("hull.png", {})));
 		OO_CHECK(IsCxx(MakeCxx(nullptr, {}), [OOBasicMaterial class]));
 		OO_CHECK(IsCxxExactly<OOMultiTextureMaterial>(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } })));
 		OO_CHECK(MakeCxx("Named", {})->name() == std::optional<std::string>("Named"));
