@@ -686,7 +686,7 @@ void GameController::beginSplashScreen()
 #if !OOLITE_MAC_OS_X
 	if(!_gameView)
 	{
-		_gameView = [MyOpenGLView alloc];
+		_gameView = [::MyOpenGLView alloc];
 		[_gameView init];
 		[_gameView setGameController:oo::ToObjC(this)];
 		[_gameView initSplashScreen];
