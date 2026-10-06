@@ -343,7 +343,7 @@ bool OOOXPVerifier::initWithPath(const std::optional<std::string> &path)
 
 	// Any plist format; missing, unreadable or not a dictionary is no configuration, as
 	// -dictionaryWithContentsOfFile: returned nil for them.
-	const std::optional<std::string> builtInPath = [ResourceManager cxx_builtInPath];
+	const std::optional<std::string> builtInPath = [::ResourceManager cxx_builtInPath];
 	if (builtInPath.has_value())
 	{
 		const std::string verifierPListPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath, "Config"), "verifyOXP.plist");
@@ -389,7 +389,7 @@ void OOOXPVerifier::run()
 	 * been explicitly listed as required_oxps in the
 	 * manifest. Reading the manifest from the OXP being verified and
 	 * setting 'id:<its identifier>' below will do this. */
-	[ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];
+	[::ResourceManager cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_NONE)];
 	
 	SwitchLogFile(_displayName);
 	OO_LOG("verifyOXP.start", "Running OXP verifier for {}", _basePath);//_displayName);
@@ -761,9 +761,9 @@ void OOOXPVerifier::dumpDebugGraphviz()
 
 	graphViz += graphVizTemplate.get<std::string>("postamble");
 
-	// Write file: what +[ResourceManager writeDiagnosticString:toFileNamed:] did for a name with no
+	// Write file: what +[::ResourceManager writeDiagnosticString:toFileNamed:] did for a name with no
 	// directory part (UTF-8, atomically, in the diagnostic directory).
-	const std::optional<std::string> directory = [ResourceManager cxx_diagnosticFileLocation];
+	const std::optional<std::string> directory = [::ResourceManager cxx_diagnosticFileLocation];
 	if (directory.has_value())
 	{
 		const std::string path = oo::str::appendingPathComponent(*directory, "OXPVerifierStageDependencies.dot");
