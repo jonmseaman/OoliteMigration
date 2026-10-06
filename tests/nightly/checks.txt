@@ -270,6 +270,10 @@
 [oo-4s5i] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-9ht.141] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage test_OOModelVerifierStage
 [oo-u61e.5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugMonitor test_OOCharacter test_OOJSFunction test_OOJSGuiScreenKeyDefinition test_OOJSInterfaceDefinition test_OOJSPopulatorDefinition test_OOJSTimer test_OOJSEngineTimeManagement test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
+[oo-jfno] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
+[oo-he11] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
+[oo-elve] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
+[oo-5dzou] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
 [oo-engam] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 # A paused console-driven game stays at normal priority (oo-37zzy): the regression test, then the goldens three times.
 [oo-37zzy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && (cd upstream/oolite/tests/component && python3 -m pytest -q -p no:cacheprovider test_paused_console_priority.py) && for i in 1 2 3; do bash tools/tier-c.sh --only goldens || exit 1; done
