@@ -111,7 +111,7 @@ bool OOCheckShipDataPListVerifierStage::shouldRun()
 {
 	OOFileScannerVerifierStage	*fileScanner = nullptr;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]);
 	return fileScanner != nullptr && fileScanner->fileExists("shipdata.plist", "Config", std::nullopt, false);
 }
 
@@ -123,13 +123,13 @@ void OOCheckShipDataPListVerifierStage::run()
 	oo::PList					settings;
 	std::vector<std::string>	shipList;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]);
 	if (fileScanner != nullptr)  _shipdataPList = fileScanner->plistNamed("shipdata.plist", "Config", std::nullopt, false);
 
 	if (_shipdataPList.isNull())  return;
 
-	// Get AI verifier stage (may be null). C++ since bead oo-94qk; the verifier holds it as its facade.
-	_aiVerifierStage = static_cast<OOAIStateMachineVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier())])));
+	// Get AI verifier stage (may be null). C++ since bead oo-94qk; the verifier holds it.
+	_aiVerifierStage = static_cast<OOAIStateMachineVerifierStage *>([verifier() cxx_stageWithName:OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier())]);
 	
 	const oo::PList ooliteShipDataPList = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist" inFolder:"Config" andMerge:YES];
 	if (const oo::PList::Dict *shipDataDict = ooliteShipDataPList.getIf<oo::PList::Dict>())
@@ -330,8 +330,8 @@ void OOCheckShipDataPListVerifierStage::checkModel()
 
 	if (model.has_value())
 	{
-		// C++ since bead oo-5zby; the verifier holds it as its facade (may be null).
-		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOModelVerifierStage::kName])));
+		// C++ since bead oo-5zby; the verifier holds it (may be null).
+		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>([verifier() cxx_stageWithName:OOModelVerifierStage::kName]);
 		if (modelStage == nullptr || !modelStage->modelNamed(*model,
 															 _name,
 															 "shipdata.plist",

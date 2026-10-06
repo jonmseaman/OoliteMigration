@@ -42,8 +42,8 @@ struct OOPListSchemaVerifierError;
 
 	C++20 since bead oo-1v2w (proposed ADR-0056 Amendment 1, amendments oo-up4b and oo-rmd7): a
 	subclass of OOTextureHandlingStage. It is global and has no facade: nothing outside this
-	file names it, and the Objective-C verifier makes it from its name (kCxxStages in
-	OOOXPVerifier.mm) and holds it as an OOOXPVerifierStage (oo::ToObjC). It is the schema
+	file names it, and the verifier makes it from its name (kCxxStages in OOOXPVerifier.mm)
+	and holds it (as its OOOXPVerifierStage facade until bead oo-9ht.4). It is the schema
 	verifier's delegate, an Objective-C role, through a helper object that stays Objective-C until
 	OOPListSchemaVerifier is C++: OOCheckShipDataPListVerifierStage+ObjCBridge.h, imported at the
 	end of this header.
