@@ -1966,7 +1966,7 @@ void cxx::HeadUpDisplay::drawTargetReticle(const oo::PList &info)
 	if ([PLAYER primaryTarget] != nil)
 	{
 		hudDrawReticleOnTarget([PLAYER primaryTarget], PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
-		[oo::ToObjC(this) drawDirectionCue:info];	// slice 6's, still on the facade
+		drawDirectionCue(info);
 	}
 	// extra feature if extra equipment installed
 	if ([PLAYER cxx_hasEquipmentItemProviding:"EQ_INTEGRATED_TARGETING_SYSTEM"])
@@ -2787,7 +2787,7 @@ cxx::OOPolygonSprite *IconForMissileRole(const std::string &role)
 }	// namespace
 
 
-void cxx::HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, OOMissileStatus status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
+void cxx::HeadUpDisplay::drawIconForMissile(::ShipEntity *missile, bool selected, int status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha)
 {
 	cxx::OOPolygonSprite *sprite = IconForMissileRole([missile cxx_primaryRole].value_or(""));
 	
@@ -3356,10 +3356,10 @@ void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList &info)
 	NSSize				siz;
 	GLfloat				alpha = overallAlpha;
 	BOOL				mouse = [PLAYER isMouseControlOn];
-	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
+	::OOJoystickManager	*stickHandler = [::OOJoystickManager sharedStickHandler];	// the facade makes the platform's handler (amendment oo-6bux)
 	struct CachedInfo	cached;
 	
-	if (![stickHandler joystickCount])
+	if (stickHandler == nil || !oo::ToCxx(stickHandler)->joystickCount())	// a message to nil answered 0
 	{
 		return; // no need to draw if no joystick fitted
 	}
@@ -3372,7 +3372,7 @@ void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList &info)
 	siz.height = useDefined(cached.height, STATUS_LIGHT_HEIGHT);
 	alpha *= cached.alpha;
 	
-	GLfloat div = [stickHandler getSensitivity];
+	GLfloat div = oo::ToCxx(stickHandler)->getSensitivity();
 	
 	GLColorWithOverallAlpha(black_color, alpha / 4);
 	GLDrawFilledOval(x, y, z1, siz, 10);

@@ -443,7 +443,8 @@ private:
 
 	void drawSecondaryTargetReticle(const oo::PList &info);
 
-	void drawIconForMissile(::ShipEntity *missile, bool selected, OOMissileStatus status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
+	// status: an OOMissileStatus (PlayerEntity.h, which this header does not import: it would close an import cycle).
+	void drawIconForMissile(::ShipEntity *missile, bool selected, int status, int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
 	void drawIconForEmptyPylonAtX(int x, int y, GLfloat width, GLfloat height, GLfloat alpha);
 	void drawDirectionCue(const oo::PList &info);
 
