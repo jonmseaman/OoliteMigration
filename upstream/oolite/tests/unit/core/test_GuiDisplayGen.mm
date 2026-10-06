@@ -601,12 +601,16 @@ OO_TEST(printingScrollsAndKeepsTheLines)
 		std::vector<std::string> printed;
 		[gui cxx_printLongText:"first\nsecond" align:GUI_ALIGN_LEFT color:[OOColor redColor] fadeTime:2.0f key:"pk" addToArray:&printed];
 		OO_CHECK(printed == (std::vector<std::string>{ "first", "second" }));
-		OO_CHECK(RowString(gui, 3) == std::optional<std::string>("first"));
+		// "first" goes on row 3; "second" would go on the last row, so everything scrolls up by one
+		// before it is printed: "first" on row 2, row 3 empty.
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("first"));
+		OO_CHECK(RowString(gui, 3) == std::optional<std::string>(""));
 		OO_CHECK(RowString(gui, 4) == std::optional<std::string>("second"));
 		OO_CHECK([gui cxx_keyForRow:4] == std::optional<std::string>("pk"));
-		// The current row is now the last: the next line scrolls everything up by one.
+		// The current row is still the last: the next line scrolls everything up by one again.
 		[gui cxx_printLongText:"third" align:GUI_ALIGN_LEFT color:nil fadeTime:0.0f key:std::nullopt addToArray:nullptr];
-		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("first"));
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("first"));
+		OO_CHECK(RowString(gui, 2) == std::optional<std::string>(""));
 		OO_CHECK(RowString(gui, 3) == std::optional<std::string>("second"));
 		OO_CHECK(RowString(gui, 4) == std::optional<std::string>("third"));
 		[gui cxx_printLongText:std::nullopt align:GUI_ALIGN_LEFT color:nil fadeTime:0.0f key:std::nullopt addToArray:&printed];
@@ -619,7 +623,8 @@ OO_TEST(printingScrollsAndKeepsTheLines)
 		OO_CHECK(lines.at<std::string>(3) == "third");
 
 		[gui scrollUp:2];
-		OO_CHECK(RowString(gui, 0) == std::optional<std::string>("first"));
+		OO_CHECK(RowString(gui, 0) == std::optional<std::string>(""));
+		OO_CHECK(RowString(gui, 1) == std::optional<std::string>("second"));
 		OO_CHECK(RowString(gui, 2) == std::optional<std::string>("third"));
 		OO_CHECK(RowString(gui, 3) == std::optional<std::string>(""));
 		OO_CHECK([gui cxx_keyForRow:4] == std::optional<std::string>(""));
