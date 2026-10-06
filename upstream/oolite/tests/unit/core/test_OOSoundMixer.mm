@@ -18,6 +18,8 @@
 #import "OOALSoundMixer.h"
 #import "OOALSoundChannel.h"
 #import "OOALSound.h"
+#import "OOALBufferedSound.h"
+#import "OOALStreamedSound.h"
 
 #include "oo_test.hpp"
 
@@ -44,17 +46,21 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 - (id)cxx_initWithPath:(const std::optional<std::string> &)inPath	{ (void)inPath; [self release]; return nil; }
 @end
 
-@interface OOALBufferedSound: OOSound
-@end
+// The buffered sound the root's cluster names: a C++ stand-in since bead oo-9ht.83 deleted the
+// Objective-C facade this file stubbed. The decoder above refuses every path, so none is made.
+oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+OOALBufferedSound::~OOALBufferedSound()  {}
+std::optional<std::string> OOALBufferedSound::name()  { return _name; }
+ALuint OOALBufferedSound::soundBuffer()  { return 0; }
 
-@implementation OOALBufferedSound
-@end
-
-@interface OOALStreamedSound: OOSound
-@end
-
-@implementation OOALStreamedSound
-@end
+// The streamed sound the root's cluster names: a C++ stand-in since bead oo-9ht.84 deleted the
+// Objective-C facade this file stubbed. None is made here.
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+OOALStreamedSound::~OOALStreamedSound()  {}
+std::optional<std::string> OOALStreamedSound::name()  { return _name; }
+void OOALStreamedSound::rewind()  {}
+bool OOALStreamedSound::soundIncomplete()  { return false; }
+ALuint OOALStreamedSound::soundBuffer()  { return 0; }
 
 
 /*	The channels: a C++ stand-in since bead oo-9ht.86 deleted the Objective-C facade this file

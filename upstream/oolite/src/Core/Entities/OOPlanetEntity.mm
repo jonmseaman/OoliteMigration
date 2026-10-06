@@ -822,7 +822,7 @@ bool OOPlanetEntity::checkCloseCollisionWith(Entity *other)
 		return NO;
 	if (other->isShip)
 	{
-		ShipEntity *ship = (ShipEntity *)oo::ToObjC(other);
+		::ShipEntity *ship = (::ShipEntity *)oo::ToObjC(other);
 		if ([ship behaviour] == BEHAVIOUR_LAND_ON_PLANET)
 		{
 			return NO;
@@ -836,7 +836,7 @@ bool OOPlanetEntity::checkCloseCollisionWith(Entity *other)
 bool OOPlanetEntity::planetHasStation()
 {
 	// find the nearest station...
-	ShipEntity	*station =  nil;
+	::ShipEntity	*station =  nil;
 	station = [UNIVERSE nearestShipMatchingPredicate:IsStationPredicate
 										   parameter:nil
 									relativeToEntity:oo::ToObjC(this)];
@@ -872,7 +872,7 @@ void OOPlanetEntity::launchShuttle()
 	float start_distance = collision_radius + 125.0f;
 	HPVector launch_pos = HPvector_add(position, vectorToHPVector(vector_multiply_scalar(vector_forward_from_quaternion(q1), start_distance)));
 	
-	ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
+	::ShipEntity *shuttle_ship = [UNIVERSE cxx_newShipWithRole:"shuttle"];   // retain count = 1
 	if (shuttle_ship)
 	{
 		if ([shuttle_ship cxx_crew].value_or(std::vector<oo::ObjCRef<::OOCharacter *>>()).empty())
@@ -895,7 +895,7 @@ void OOPlanetEntity::launchShuttle()
 }
 
 
-void OOPlanetEntity::welcomeShuttle(ShipEntity * /*shuttle*/)
+void OOPlanetEntity::welcomeShuttle(::ShipEntity * /*shuttle*/)
 {
 	_shuttlesOnGround++;
 }
