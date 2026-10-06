@@ -9,7 +9,7 @@
 	written against the Objective-C API and run on the unconverted class first: one shared
 	instance, what it answers as a texture (no size, not mip-mapped, the root's defaults), that
 	applying it binds no texture, that a graphics reset leaves it alone, and its debug name (commit
-	dc5b2aff6). That API then became the facade (OONullTexture+ObjCBridge.h), and the last tests
+	dc5b2aff6). That API then became the facade, and the last tests
 	pinned the C++ API and the facade's contract.
 
 	Bead oo-9ht.100 deleted the facade (ADR-0056 amendment "deleting a facade"). The cases that
