@@ -179,6 +179,23 @@ MA 02110-1301, USA.
 - (void) drawAegis:(const oo::PList &)info;
 - (void) drawTargetReticle:(const oo::PList &)info;
 - (void) drawWaypoints:(const oo::PList &)info;
+- (void) drawCustomBar:(const oo::PList &)info;
+- (void) drawCustomText:(const oo::PList &)info;
+- (void) drawCustomIndicator:(const oo::PList &)info;
+- (void) drawCustomLight:(const oo::PList &)info;
+- (void) drawCustomImage:(const oo::PList &)info;
+- (void) drawSpeedBar:(const oo::PList &)info;
+- (void) drawRollBar:(const oo::PList &)info;
+- (void) drawPitchBar:(const oo::PList &)info;
+- (void) drawYawBar:(const oo::PList &)info;
+- (void) drawEnergyGauge:(const oo::PList &)info;
+- (void) drawForwardShieldBar:(const oo::PList &)info;
+- (void) drawAftShieldBar:(const oo::PList &)info;
+- (void) drawFuelBar:(const oo::PList &)info;
+- (void) drawWitchspaceDestination:(const oo::PList &)info;
+- (void) drawCabinTempBar:(const oo::PList &)info;
+- (void) drawWeaponTempBar:(const oo::PList &)info;
+- (void) drawAltitudeBar:(const oo::PList &)info;
 
 @end
 
@@ -189,18 +206,6 @@ MA 02110-1301, USA.
 */
 @interface HeadUpDisplay (Private)
 
-- (void) drawSpeedBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawRollBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawPitchBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawYawBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawEnergyGauge:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawForwardShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawAftShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawFuelBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWitchspaceDestination:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCabinTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWeaponTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawAltitudeBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawMissileDisplay:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawStatusLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawDirectionCue:(const oo::PList &)info;
@@ -211,12 +216,6 @@ MA 02110-1301, USA.
 - (void) drawFPSInfoCounter:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawScoopStatus:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawStickSensitivityIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomImage:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
 
 - (void) drawTrumbles:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
