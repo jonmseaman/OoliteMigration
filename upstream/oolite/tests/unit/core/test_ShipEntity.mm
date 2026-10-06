@@ -439,4 +439,111 @@ OO_TEST(setUpFromDictionaryValues)
 }
 
 
+// --- Slice 3: -setUpShipFromDictionary:, subentity serialisation and set-up (bead oo-mvzmb) -----
+
+// A ship that keeps ShipEntity's own set-up.
+@interface PlainShip: ShipEntity
+@end
+
+
+@implementation PlainShip
+@end
+
+
+namespace {
+
+cxx::ShipEntity *MutablePart(ShipEntity *s)	{ return s->_cxxShip; }
+
+}	// namespace
+
+
+// The NPC settings on top of the shared ones: scan class, energy, weapon damage of a missile,
+// roles without "player", the escort clamp, beacons, an unpiloted ship.
+OO_TEST(setUpShipFromDictionaryNPC)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		const oo::PList definition(oo::PList::Dict{
+			{ "scan_class", oo::PList(std::string("CLASS_POLICE")) },
+			{ "scan_description", oo::PList(std::string("Cop")) },
+			{ "max_energy", oo::PList(300.0) },
+			{ "weapon_energy", oo::PList(12.0) },
+			{ "scanner_range", oo::PList(30000.0) },
+			{ "fuel", oo::PList(70) },
+			{ "likely_cargo", oo::PList(3) },
+			{ "has_scoop_message", oo::PList(false) },
+			{ "roles", oo::PList(std::string("police player")) },
+			{ "accuracy", oo::PList(3.0) },
+			{ "escorts", oo::PList(20) },
+			{ "beacon", oo::PList(std::string("B")) },
+			{ "heat_insulation", oo::PList(1.5) },
+			{ "unpiloted", oo::PList(true) },
+			{ "reaction_time", oo::PList(2.0) },
+		});
+		PlainShip *ship = [[[PlainShip alloc] cxx_initWithKey:"npc" definition:definition] autorelease];
+		OO_CHECK(ship != nil);
+		const cxx::ShipEntity *part = Part(ship);
+		OO_CHECK([ship isShip] && [ship scanClass] == CLASS_POLICE);
+		OO_CHECK(part->scan_description == std::optional<std::string>("Cop"));
+		OO_CHECK([ship energy] == 300.0 && [ship maxEnergy] == 300.0f);
+		OO_CHECK(part->weapon_damage == 12.0f && part->weapon_damage_override == 12.0f);
+		OO_CHECK(part->scannerRange == 30000.0f && [ship fuel] == 70 && part->fuel_accumulator == 1.0f);
+		OO_CHECK(part->likely_cargo == 3 && !part->hasScoopMessage);
+		OO_CHECK([ship hasRole:"police"] && ![ship hasRole:"player"]);
+		OO_CHECK([ship accuracy] == 3.0f);
+		OO_CHECK(part->_maxEscortCount == MAX_ESCORTS && part->_pendingEscortCount == MAX_ESCORTS);
+		OO_CHECK([ship beaconCode] == std::optional<std::string>("B") && [ship beaconLabel] == std::optional<std::string>("B"));
+		OO_CHECK(part->_heatInsulation == 1.5f);
+		OO_CHECK(part->_explicitlyUnpiloted && part->crew == std::nullopt);
+		OO_CHECK(part->reactionTime == 2.0f);
+		OO_CHECK(vector_equal([ship forwardVector], kBasisZVector) && vector_equal([ship upVector], kBasisYVector) && vector_equal([ship rightVector], kBasisXVector));
+		OO_CHECK(part->cargo_type == CARGO_NOT_CARGO);
+		OO_CHECK([ship getAI] != nil && [ship owner] == ship);
+	}
+}
+
+
+OO_TEST(subIdxAndSerialisation)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"mother" definition:Definition()] autorelease];
+		TestShip *a = [[[TestShip alloc] cxx_initWithKey:"a" definition:Definition()] autorelease];
+		TestShip *b = [[[TestShip alloc] cxx_initWithKey:"b" definition:Definition()] autorelease];
+		[a setSubIdx:0];
+		[b setSubIdx:2];
+		OO_CHECK([a subIdx] == 0 && [b subIdx] == 2);
+		[ship addSubEntity:a];
+		[ship addSubEntity:b];
+		MutablePart(ship)->_maxShipSubIdx = 4;
+		OO_CHECK([ship maxShipSubEntities] == 4);
+		OO_CHECK([ship cxx_serializeShipSubEntities] == std::optional<std::string>("1010"));
+		[ship cxx_deserializeShipSubEntitiesFrom:"1111"];	// every one is alive: nothing happens
+		OO_CHECK([ship subEntityCount] == 2 && [a owner] == ship && [b owner] == ship);
+		[ship clearSubEntities];
+	}
+}
+
+
+// -setUpSubEntities with no exhausts or subentities: the profile radius is the collision radius,
+// and the frustum radius is the profile radius (no exhaust is longer).
+OO_TEST(setUpSubEntitiesAndFrustumRadius)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"bare" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList()]);
+		MutablePart(ship)->collision_radius = 25.0f;
+		OO_CHECK([ship setUpSubEntities]);
+		OO_CHECK([ship maxShipSubEntities] == 0 && [ship subEntityCount] == 0);
+		OO_CHECK(Part(ship)->_profileRadius == 25.0f);
+		OO_CHECK([ship frustumRadius] == 25.0f);
+		OO_CHECK(Part(ship)->no_draw_distance == (GLfloat)(25.0 * 25.0 * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0));
+	}
+}
+
+
 OO_TEST_MAIN()
