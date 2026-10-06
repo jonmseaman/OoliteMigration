@@ -320,6 +320,26 @@ OO_TEST(nonlinearScannerScale)
 }
 
 
+OO_TEST(setCrosshairDefinition)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// Slice 2 (bead oo-8fiz9): the scripts' crosshair setter, and the frame's dials by name.
+		HeadUpDisplay *hud = NewHUD(oo::PList(oo::PList::Dict{}));
+		OO_CHECK([hud cxx_setCrosshairDefinition:"testcross.plist"]);
+		OO_CHECK([hud cxx_crosshairDefinition] == std::optional<std::string>("testcross.plist"));
+		OO_CHECK(![hud cxx_setCrosshairDefinition:"nosuch.plist"]);
+		OO_CHECK([hud cxx_crosshairDefinition] == std::optional<std::string>("crosshairs.plist"));
+
+		OO_CHECK([hud respondsToSelector:OOSelectorFromName("drawSurround:")]);
+		OO_CHECK([hud respondsToSelector:OOSelectorFromName("drawGreenSurround:")]);
+		OO_CHECK([hud respondsToSelector:OOSelectorFromName("drawYellowSurround:")]);
+		OO_CHECK([hud respondsToSelector:OOSelectorFromName("renderHUD")]);
+	}
+}
+
+
 // --- The C++ API and the facade's contract (bead oo-engam) ----------------------------------
 
 OO_TEST(cxxAPI)

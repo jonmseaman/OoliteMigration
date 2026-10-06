@@ -96,6 +96,7 @@ MA 02110-1301, USA.
 - (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName;
 - (std::optional<std::string>) cxx_deferredHudName;
 - (std::optional<std::string>) cxx_crosshairDefinition;
+- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition;
 
 // Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
 - (void) addLegend:(const oo::PList &)info;
@@ -103,6 +104,8 @@ MA 02110-1301, USA.
 - (void) addMFD:(const oo::PList &)info;
 
 - (NSUInteger) mfdCount;
+
+- (void) renderHUD;
 
 - (void) refreshLastTransmitter;
 
@@ -125,11 +128,21 @@ MA 02110-1301, USA.
 @end
 
 
-// Sent by the drawing methods (slices 2-6), which the .mm declared in its Private category.
+// Sent by the drawing methods (slices 3-6), which the .mm declared in its Private category.
 @interface HeadUpDisplay (OOPrivate)
 
 - (BOOL) checkPlayerInFlight;
 - (BOOL) checkPlayerInSystemFlight;
+
+@end
+
+
+// The dials that are C++ members, called by name (ADR-0055 item 5): one forwarder each.
+@interface HeadUpDisplay (OODials)
+
+- (void) drawSurround:(const oo::PList &)info;
+- (void) drawGreenSurround:(const oo::PList &)info;
+- (void) drawYellowSurround:(const oo::PList &)info;
 
 @end
 
@@ -139,17 +152,6 @@ MA 02110-1301, USA.
 	which nothing implemented or sent; the dial it draws is -drawPrimedEquipment:.
 */
 @interface HeadUpDisplay (Private)
-
-- (void) renderHUD;
-- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition;
-
-- (void) drawCrosshairs;
-- (void) drawLegends;
-- (void) drawDials;
-- (void) drawMFDs;
-
-- (void) drawLegend:(const oo::PList &)info;
-- (void) drawHUDItem:(const oo::PList &)info;
 
 - (void) drawScanner:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawScannerZoomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
@@ -184,7 +186,6 @@ MA 02110-1301, USA.
 - (void) drawPrimedEquipment:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawASCTarget:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawWeaponsOfflineText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index;
 - (void) drawFPSInfoCounter:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawScoopStatus:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawStickSensitivityIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
@@ -194,14 +195,8 @@ MA 02110-1301, USA.
 - (void) drawCustomLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawCustomImage:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
-- (void) drawSurroundInternal:(const oo::PList &)info color:(const GLfloat[4])color;
-- (void) drawSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawGreenSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawYellowSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
 - (void) drawTrumbles:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (oo::PList) crosshairDefinitionForWeaponType:(OOWeaponType)weapon;	// a null PList for none
 
 @end
 
@@ -217,9 +212,13 @@ cxx::HeadUpDisplay *ToCxx(HeadUpDisplay *hud);
 }	// namespace oo
 
 
-/*	Sends of converted code to classes that are still Objective-C (ADR-0056 amendment oo-9ht.139),
-	one function per send, the body the send verbatim. None yet: slice 1's members keep their sends
-	(they are members, amendment oo-ppc item 4); the free functions of slices 2-6 add theirs here.
+/*	Sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment
+	oo-9ht.139), one function per send, the body the send verbatim. Members keep their sends
+	(amendment oo-ppc item 4). Each goes with its class's conversion.
 */
+// +[ResourceManager cxx_dictionaryFromFilesNamed:inFolder:andMerge:] (InitTextEngine()).
+oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
+// -[[UNIVERSE gui] cxx_setGLColorFromSetting:defaultValue:alpha:] (OODrawPlanetInfo()).
+void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha);
 
 #endif	// HEADUPDISPLAY_OBJCBRIDGE_H

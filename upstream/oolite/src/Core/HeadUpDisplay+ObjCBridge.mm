@@ -28,6 +28,9 @@ MA 02110-1301, USA.
 
 #import "HeadUpDisplay.h"
 #import "OOColor.h"
+#import "GuiDisplayGen.h"
+#import "ResourceManager.h"
+#import "Universe.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 
@@ -132,12 +135,15 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName	{ _cxxHUD->setDeferredHudName(newDeferredHudName); }
 - (std::optional<std::string>) cxx_deferredHudName	{ return _cxxHUD->getDeferredHudName(); }
 - (std::optional<std::string>) cxx_crosshairDefinition	{ return _cxxHUD->getCrosshairDefinition(); }
+- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition	{ return _cxxHUD->setCrosshairDefinition(newDefinition); }
 
 - (void) addLegend:(const oo::PList &)info	{ _cxxHUD->addLegend(info); }
 - (void) addDial:(const oo::PList &)info	{ _cxxHUD->addDial(info); }
 - (void) addMFD:(const oo::PList &)info	{ _cxxHUD->addMFD(info); }
 
 - (NSUInteger) mfdCount	{ return _cxxHUD->mfdCount(); }
+
+- (void) renderHUD	{ _cxxHUD->renderHUD(); }
 
 - (void) refreshLastTransmitter	{ _cxxHUD->refreshLastTransmitter(); }
 
@@ -166,3 +172,24 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (BOOL) checkPlayerInSystemFlight	{ return _cxxHUD->checkPlayerInSystemFlight(); }
 
 @end
+
+
+@implementation HeadUpDisplay (OODials)
+
+- (void) drawSurround:(const oo::PList &)info	{ _cxxHUD->drawSurround(info); }
+- (void) drawGreenSurround:(const oo::PList &)info	{ _cxxHUD->drawGreenSurround(info); }
+- (void) drawYellowSurround:(const oo::PList &)info	{ _cxxHUD->drawYellowSurround(info); }
+
+@end
+
+
+oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
+{
+	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles];
+}
+
+
+void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha)
+{
+	[[UNIVERSE gui] cxx_setGLColorFromSetting:setting defaultValue:defaultValue alpha:alpha];
+}
