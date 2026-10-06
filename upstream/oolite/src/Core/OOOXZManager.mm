@@ -1389,7 +1389,7 @@ void OOOXZManager::gui()
 #if OOLITE_WINDOWS
 	/* unlock OXZs ahead of potential changes by making sure sound
 	 * files aren't being held open */
-	[ResourceManager clearCaches];
+	[::ResourceManager clearCaches];
 	[PLAYER destroySound];
 #endif
 
@@ -1983,12 +1983,12 @@ OOGUIRow OOOXZManager::showInstallOptions()
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
 	bool oxzLineSelected = false;
-	const std::optional<std::string> installPath = installPath();
+	const std::optional<std::string> installPath = this->installPath();
 
 	for (const oo::PList &manifest : options)
 	{
 		const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
-		oo::PList installed = [ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
+		oo::PList installed = [::ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
 		const std::string localPath = oo::str::appendingPathComponent(installPath.value_or(std::string()), identifier.value_or(std::string())) + ".oxz";
 		const auto readLocalManifest = [&localPath] { return PListDictionaryFromFile(oo::str::appendingPathComponent(localPath, "manifest.plist")); };
 		if (!installed)
