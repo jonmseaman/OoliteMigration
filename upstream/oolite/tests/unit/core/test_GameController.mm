@@ -79,6 +79,8 @@ extern PlayerEntity *gOOPlayer;
 	std::vector<oo::PList>				_screenModes;
 	oo::PList							_currentMode;
 	BOOL								_inFullScreen;
+	int									_splashEnds;
+	int									_screenUpdates;
 }
 @end
 
@@ -94,6 +96,8 @@ extern PlayerEntity *gOOPlayer;
 - (oo::PList) currentScreenMode					{ return _currentMode; }
 - (NSSize) currentScreenSize					{ return NSMakeSize(0, 0); }
 - (BOOL) inFullScreenMode						{ return _inFullScreen; }
+- (void) endSplashScreen						{ _splashEnds++; }
+- (void) updateScreen							{ _screenUpdates++; }
 
 @end
 
@@ -395,6 +399,63 @@ OO_TEST(deferredCalls)
 
 		[controller stopAnimationTimer];
 		[argument release];
+	}
+}
+
+
+// Slice 3 (bead oo-5ah4k): the splash screen and window messages reach the view; with no universe
+// starting up there is no progress line; with no player file nothing is loaded.
+OO_TEST(splashAndWindow)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *controller = [GameController sharedController];
+		TestView *view = (TestView *)[controller gameView];
+		OO_CHECK(view != nil);
+		const int ends = view->_splashEnds, updates = view->_screenUpdates;
+
+		[controller beginSplashScreen];	// a view exists: none is made
+		OO_CHECK([controller gameView] == (MyOpenGLView *)view);
+		[controller endSplashScreen];
+		OO_CHECK(view->_splashEnds == ends + 1);
+		[controller windowDidResize];
+		OO_CHECK(view->_screenUpdates == updates + 1);
+
+		[controller cxx_logProgress:"progress"];	// no universe doing start-up: nothing
+		[controller cxx_setPlayerFileToLoad:"none.txt"];
+		[controller loadPlayerIfRequired];			// no player file: nothing
+		OO_CHECK(![controller finishedLaunching]);
+	}
+}
+
+
+// Slice 3: with no save-directory default (or one that does not exist), the save directory is
+// OO_SAVEDIR, made if missing.
+OO_TEST(saveDirectoryLookup)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *controller = [GameController sharedController];
+		const stdfs::path saves = stdfs::temp_directory_path() / ("oo-test-gamecontroller-saves-" + std::to_string(static_cast<unsigned long>(::_getpid())));
+		stdfs::remove_all(saves);
+		OO_CHECK(::_putenv_s("OO_SAVEDIR", saves.string().c_str()) == 0);
+
+		[controller cxx_setPlayerFileDirectory:std::nullopt];
+		const std::optional<std::string> found = [controller cxx_playerFileDirectory];
+		OO_CHECK(found.has_value() && stdfs::is_directory(saves) && stdfs::equivalent(stdfs::u8path(*found), saves));
+		OO_CHECK([controller cxx_playerFileDirectory] == found);	// looked up once
+
+		oo::Defaults::standard().setObject("save-directory", oo::PList(std::string("Z:/no/such/directory")));
+		[controller cxx_setPlayerFileDirectory:std::nullopt];	// clears the default too
+		OO_CHECK(!oo::Defaults::standard().stringForKey("save-directory").has_value());
+		oo::Defaults::standard().setObject("save-directory", oo::PList(std::string("Z:/no/such/directory")));
+		const std::optional<std::string> again = [controller cxx_playerFileDirectory];
+		OO_CHECK(again.has_value() && stdfs::equivalent(stdfs::u8path(*again), saves));
+
+		[controller cxx_setPlayerFileDirectory:std::nullopt];
+		stdfs::remove_all(saves);
 	}
 }
 
