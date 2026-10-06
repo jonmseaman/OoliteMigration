@@ -171,7 +171,7 @@ OO_TEST(acceptsAValidPropertyList)
 {
 	@autoreleasepool
 	{
-		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema)];
+		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
 		verifier->setDelegate(delegate.get());
 		OO_CHECK(verifier->verifyPropertyList(GoodShip(), "cobra"));
@@ -185,7 +185,7 @@ OO_TEST(reportsEachFailureToTheDelegate)
 {
 	@autoreleasepool
 	{
-		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema)];
+		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
 		delegate->continueAfterFailure = true;
 		verifier->setDelegate(delegate.get());
@@ -215,7 +215,7 @@ OO_TEST(stopsWhenTheDelegateSaysSo)
 {
 	@autoreleasepool
 	{
-		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema)];
+		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse(kShipSchema));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
 		delegate->continueAfterFailure = false;
 		verifier->setDelegate(delegate.get());
@@ -263,7 +263,7 @@ OO_TEST(asksTheDelegateAboutDelegatedTypes)
 {
 	@autoreleasepool
 	{
-		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse("{ type = array; valueType = { type = delegatedType; baseType = string; key = shipKey; }; }")];
+		const oo::Ref<OOPListSchemaVerifier> verifier = OOPListSchemaVerifier::verifierWithSchema(Parse("{ type = array; valueType = { type = delegatedType; baseType = string; key = shipKey; }; }"));
 		const oo::Ref<TestSchemaDelegate> delegate = oo::makeRef<TestSchemaDelegate>();
 		delegate->continueAfterFailure = true;
 		verifier->setDelegate(delegate.get());
