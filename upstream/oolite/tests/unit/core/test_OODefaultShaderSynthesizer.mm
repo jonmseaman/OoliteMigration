@@ -18,7 +18,8 @@
 	list and of the uniforms, and the warnings and errors logged. Light-map bindings are not
 	covered: they read the binding types from the game's resources (ResourceManager).
 	Slice 1 made the class C++ (cxx::OODefaultShaderSynthesizer) with an Objective-C facade for the
-	stages; the last tests pin the C++ API and the facade's contract.
+	stages; the last tests pin the C++ API and the facade's contract. Slice 2 (oo-bhxc) pinned three
+	more stage cases on the unconverted stages (commit 66021ca17), then made the stages members.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -1153,6 +1154,265 @@ OO_TEST(cubeMapFails)
 	OO_CHECK(s.textures.isNull());
 	OO_CHECK(s.uniforms.isNull());
 	OO_CHECK_EQ(LogLinesContaining("specifies a cube map texture"), 1);
+}
+
+
+// --- The shader stages (slice 2, bead oo-bhxc) ---------------------------------------------------
+
+// Light maps with textures: one in illumination mode (which pulls in the diffuse lighting), one
+// tinted black (no effect), one tinted grey with alpha.
+OO_TEST(lightMapsWithTextures)
+{
+	oo::PList::Array lightMaps{
+		oo::PList(oo::PList::Dict{ { "name", oo::PList("a.png") }, { "illumination_mode", oo::PList(true) } }),
+		oo::PList(oo::PList::Dict{ { "name", oo::PList("b.png") }, { "color", Color(0, 0, 0) } }),
+		oo::PList(oo::PList::Dict{ { "name", oo::PList("c.png") }, { "color", oo::PList(oo::PList::Array{ oo::PList(0.5), oo::PList(0.5), oo::PList(0.5), oo::PList(0.5) }) } }),
+	};
+	Synthesized s = Synthesize({ { "light_map", oo::PList(std::move(lightMaps)) } }, std::string("hull.png"));
+	CheckSynthesized("lightMapsWithTextures", s, {
+		"// Attributes\n"
+		"attribute vec3\t\ttangent;\n"
+		"\n"
+		"\n"
+		"// Varyings\n"
+		"varying vec2\t\tvTexCoords;\n"
+		"varying vec3\t\tvLightVector;\n"
+		"varying vec3\t\tvEyeVector;\n"
+		"\n"
+		"\n"
+		"void main(void)\n"
+		"{\n"
+		"\tvTexCoords = gl_MultiTexCoord0.st;\n"
+		"\t\n"
+		"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
+		"\tgl_Position = gl_ProjectionMatrix * position;\n"
+		"\t\n"
+		"\t// Build tangent space basis\n"
+		"\tvec3 n = gl_NormalMatrix * gl_Normal;\n"
+		"\tvec3 t = gl_NormalMatrix * tangent;\n"
+		"\tvec3 b = cross(n, t);\n"
+		"\tmat3 TBN = mat3(t, b, n);\n"
+		"\t\n"
+		"\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
+		"\tvLightVector = lightVector * TBN;\n"
+		"\t\n"
+		"\tvEyeVector = position.xyz * TBN;\n"
+		"}",
+		"// Uniforms\n"
+		"uniform sampler2D\tuTexture0;\n"
+		"uniform sampler2D\tuTexture1;\n"
+		"uniform sampler2D\tuTexture2;\n"
+		"\n"
+		"\n"
+		"// Varyings\n"
+		"varying vec2\t\tvTexCoords;\n"
+		"varying vec3\t\tvLightVector;\n"
+		"varying vec3\t\tvEyeVector;\n"
+		"\n"
+		"\n"
+		"void main(void)\n"
+		"{\n"
+		"\tvec3 totalColor = vec3(0.0);\n"
+		"\t\n"
+		"\tvec2 texCoords = vTexCoords;\n"
+		"\tvec3 eyeVector = normalize(vEyeVector);\n"
+		"\t\n"
+		"\t\n"
+		"\t// Texture lookups\n"
+		"\tvec4 tex0Sample = texture2D(uTexture0, texCoords);  // hull.png\n"
+		"\tvec4 tex1Sample = texture2D(uTexture1, texCoords);  // a.png\n"
+		"\tvec4 tex2Sample = texture2D(uTexture2, texCoords);  // c.png\n"
+		"\t\n"
+		"\tvec3 diffuseColor = tex0Sample.rgb;\n"
+		"\t\n"
+		"\tvec3 lightVector = normalize(vLightVector);\n"
+		"\t\n"
+		"\t// Diffuse (Lambertian) and ambient lighting\n"
+		"\tvec3 diffuseLight = (gl_LightSource[1].diffuse * max(0.0, lightVector.z) + gl_LightModel.ambient).rgb;\n"
+		"\t\n"
+		"\t// Specular (Blinn-Phong) lighting\n"
+		"\tvec3 specularColor = vec3(0.2, 0.2, 0.2);  // Constant colour\n"
+		"\tconst float specularExponent = 10.0;\n"
+		"\tvec3 reflection = vec3(lightVector.x, lightVector.y, -lightVector.z);  // Equivalent to reflect(lightVector, normal) since normal is known to be (0, 0, 1) in tangent space.\n"
+		"\tfloat specIntensity = dot(reflection, eyeVector);\n"
+		"\tspecIntensity = pow(max(0.0, specIntensity), specularExponent);\n"
+		"\ttotalColor += specIntensity * specularColor * gl_LightSource[1].specular.rgb;\n"
+		"\t\n"
+		"\tvec3 lightMapColor;\n"
+		"\tlightMapColor = tex1Sample.rgb;\n"
+		"\tdiffuseLight += lightMapColor;\n"
+		"\t\n"
+		"\t// Light map tinted black has no effect.\n"
+		"\t\n"
+		"\tlightMapColor = tex2Sample.rgb;\n"
+		"\tlightMapColor *= vec3(0.25, 0.25, 0.25);\n"
+		"\ttotalColor += lightMapColor;\n"
+		"\t\n"
+		"\ttotalColor += diffuseColor * diffuseLight;\n"
+		"\tgl_FragColor = vec4(totalColor, 1.0);\n"
+		"}",
+		"({name = \"hull.png\"; }, {name = \"a.png\"; }, {name = \"c.png\"; })",
+		"{uTexture0 = {type = texture; value = 0; }; uTexture1 = {type = texture; value = 1; }; uTexture2 = {type = texture; value = 2; }; }" });
+}
+
+
+// A parallax map read from two channels cannot be used: a warning, and plain texture coordinates.
+OO_TEST(parallaxMapExtractionMismatch)
+{
+	Synthesized s = Synthesize({ { "normal_map", oo::PList("n.png") }, { "parallax_map", Map("p.png", "rg") } }, std::string("hull.png"));
+	CheckSynthesized("parallaxMapExtractionMismatch", s, {
+		"// Attributes\n"
+		"attribute vec3\t\ttangent;\n"
+		"\n"
+		"\n"
+		"// Varyings\n"
+		"varying vec2\t\tvTexCoords;\n"
+		"varying vec3\t\tvLightVector;\n"
+		"varying vec3\t\tvEyeVector;\n"
+		"\n"
+		"\n"
+		"void main(void)\n"
+		"{\n"
+		"\tvTexCoords = gl_MultiTexCoord0.st;\n"
+		"\t\n"
+		"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
+		"\tgl_Position = gl_ProjectionMatrix * position;\n"
+		"\t\n"
+		"\t// Build tangent space basis\n"
+		"\tvec3 n = gl_NormalMatrix * gl_Normal;\n"
+		"\tvec3 t = gl_NormalMatrix * tangent;\n"
+		"\tvec3 b = cross(n, t);\n"
+		"\tmat3 TBN = mat3(t, b, n);\n"
+		"\t\n"
+		"\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
+		"\tvLightVector = lightVector * TBN;\n"
+		"\t\n"
+		"\tvEyeVector = position.xyz * TBN;\n"
+		"}",
+		"// Uniforms\n"
+		"uniform sampler2D\tuTexture0;\n"
+		"uniform sampler2D\tuTexture1;\n"
+		"\n"
+		"\n"
+		"// Varyings\n"
+		"varying vec2\t\tvTexCoords;\n"
+		"varying vec3\t\tvLightVector;\n"
+		"varying vec3\t\tvEyeVector;\n"
+		"\n"
+		"\n"
+		"void main(void)\n"
+		"{\n"
+		"\tvec3 totalColor = vec3(0.0);\n"
+		"\t\n"
+		"\tvec2 texCoords = vTexCoords;\n"
+		"\tvec3 eyeVector = normalize(vEyeVector);\n"
+		"\t\n"
+		"\t\n"
+		"\t// Texture lookups\n"
+		"\tvec4 tex0Sample = texture2D(uTexture0, texCoords);  // hull.png\n"
+		"\tvec4 tex1Sample = texture2D(uTexture1, texCoords);  // n.png\n"
+		"\t\n"
+		"\tvec3 diffuseColor = tex0Sample.rgb;\n"
+		"\t\n"
+		"\tvec3 normal = normalize(tex1Sample.rgb - 0.5);\n"
+		"\t\n"
+		"\tvec3 lightVector = normalize(vLightVector);\n"
+		"\t\n"
+		"\t// Diffuse (Lambertian) and ambient lighting\n"
+		"\tvec3 diffuseLight = (gl_LightSource[1].diffuse * max(0.0, dot(normal, lightVector)) + gl_LightModel.ambient).rgb;\n"
+		"\t\n"
+		"\t// Specular (Blinn-Phong) lighting\n"
+		"\tvec3 specularColor = vec3(0.2, 0.2, 0.2);  // Constant colour\n"
+		"\tconst float specularExponent = 10.0;\n"
+		"\tvec3 reflection = reflect(lightVector, normal);\n"
+		"\tfloat specIntensity = dot(reflection, eyeVector);\n"
+		"\tspecIntensity = pow(max(0.0, specIntensity), specularExponent);\n"
+		"\ttotalColor += specIntensity * specularColor * gl_LightSource[1].specular.rgb;\n"
+		"\t\n"
+		"\ttotalColor += diffuseColor * diffuseLight;\n"
+		"\tgl_FragColor = vec4(totalColor, 1.0);\n"
+		"}",
+		"({name = \"hull.png\"; }, {name = \"n.png\"; })",
+		"{uTexture0 = {type = texture; value = 0; }; uTexture1 = {type = texture; value = 1; }; }" });
+	OO_CHECK_EQ(LogLinesContaining("specifies 2 channels to extract"), 1);
+}
+
+
+// A specular exponent map read from three channels cannot be used: a warning and a marker.
+OO_TEST(specularExponentMapExtractionMismatch)
+{
+	Synthesized s = Synthesize({ { "specular_color_map", oo::PList("s.png") }, { "specular_exponent_map", Map("e.png", "rgb") }, { "specular_exponent", oo::PList(10) } }, std::string("hull.png"));
+	CheckSynthesized("specularExponentMapExtractionMismatch", s, {
+		"// Attributes\n"
+		"attribute vec3\t\ttangent;\n"
+		"\n"
+		"\n"
+		"// Varyings\n"
+		"varying vec2\t\tvTexCoords;\n"
+		"varying vec3\t\tvLightVector;\n"
+		"varying vec3\t\tvEyeVector;\n"
+		"\n"
+		"\n"
+		"void main(void)\n"
+		"{\n"
+		"\tvTexCoords = gl_MultiTexCoord0.st;\n"
+		"\t\n"
+		"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
+		"\tgl_Position = gl_ProjectionMatrix * position;\n"
+		"\t\n"
+		"\t// Build tangent space basis\n"
+		"\tvec3 n = gl_NormalMatrix * gl_Normal;\n"
+		"\tvec3 t = gl_NormalMatrix * tangent;\n"
+		"\tvec3 b = cross(n, t);\n"
+		"\tmat3 TBN = mat3(t, b, n);\n"
+		"\t\n"
+		"\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
+		"\tvLightVector = lightVector * TBN;\n"
+		"\t\n"
+		"\tvEyeVector = position.xyz * TBN;\n"
+		"}",
+		"// Uniforms\n"
+		"uniform sampler2D\tuTexture0;\n"
+		"uniform sampler2D\tuTexture1;\n"
+		"uniform sampler2D\tuTexture2;\n"
+		"\n"
+		"\n"
+		"// Varyings\n"
+		"varying vec2\t\tvTexCoords;\n"
+		"varying vec3\t\tvLightVector;\n"
+		"varying vec3\t\tvEyeVector;\n"
+		"\n"
+		"\n"
+		"void main(void)\n"
+		"{\n"
+		"\tvec3 totalColor = vec3(0.0);\n"
+		"\t\n"
+		"\tvec2 texCoords = vTexCoords;\n"
+		"\tvec3 eyeVector = normalize(vEyeVector);\n"
+		"\t\n"
+		"\t\n"
+		"\t// Texture lookups\n"
+		"\tvec4 tex0Sample = texture2D(uTexture0, texCoords);  // hull.png\n"
+		"\tvec4 tex1Sample = texture2D(uTexture1, texCoords);  // s.png\n"
+		"\tvec4 tex2Sample = texture2D(uTexture2, texCoords);  // e.png\n"
+		"\t\n"
+		"\tvec3 diffuseColor = tex0Sample.rgb;\n"
+		"\t\n"
+		"\tvec3 lightVector = normalize(vLightVector);\n"
+		"\t\n"
+		"\t// Diffuse (Lambertian) and ambient lighting\n"
+		"\tvec3 diffuseLight = (gl_LightSource[1].diffuse * max(0.0, lightVector.z) + gl_LightModel.ambient).rgb;\n"
+		"\t\n"
+		"\t// Specular (Blinn-Phong) lighting\n"
+		"\tvec3 specularColor = tex1Sample.rgb;\n"
+		"\t// INVALID EXTRACTION KEY\n"
+		"\t\n"
+		"\ttotalColor += diffuseColor * diffuseLight;\n"
+		"\tgl_FragColor = vec4(totalColor, 1.0);\n"
+		"}",
+		"({name = \"hull.png\"; }, {name = \"s.png\"; }, {name = \"e.png\"; })",
+		"{uTexture0 = {type = texture; value = 0; }; uTexture1 = {type = texture; value = 1; }; uTexture2 = {type = texture; value = 2; }; }" });
+	OO_CHECK_EQ(LogLinesContaining("specifies 3 channels to extract"), 1);
 }
 
 
