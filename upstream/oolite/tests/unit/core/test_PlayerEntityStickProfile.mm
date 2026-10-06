@@ -104,7 +104,7 @@ void ResetProfiles()
 {
 	for (int axis : { AXIS_ROLL, AXIS_PITCH, AXIS_YAW })
 	{
-		[Handler() setProfile:[[[OOJoystickStandardAxisProfile alloc] init] autorelease] forAxis:axis];
+		[Handler() setProfile:oo::makeRef<OOJoystickStandardAxisProfile>().get() forAxis:axis];
 	}
 }
 
@@ -206,23 +206,23 @@ OO_TEST(theDeadZoneStepsByATwentiethOfItsMaximumOnTheCurrentAxis)
 	@autoreleasepool
 	{
 		Started s = Start();
-		OOJoystickAxisProfile *roll = [Handler() getProfileForAxis:AXIS_ROLL];
-		OOJoystickAxisProfile *pitch = [Handler() getProfileForAxis:AXIS_PITCH];
+		oo::Ref<OOJoystickAxisProfile> roll([Handler() getProfileForAxis:AXIS_ROLL]);
+		oo::Ref<OOJoystickAxisProfile> pitch([Handler() getProfileForAxis:AXIS_PITCH]);
 
 		s.screen->increaseDeadzone();
-		OO_CHECK(Near([roll deadzone], STICK_DEADZONE + STICK_MAX_DEADZONE / 20));
-		OO_CHECK(Near([pitch deadzone], STICK_DEADZONE));
-		OO_CHECK([s.gui objectForRow:2] == Row({ "oolite-stickprofile-deadzone", Bars(11) + " (" + oo::str::format("%0.4f", [roll deadzone]) + ")" }));
+		OO_CHECK(Near(roll->deadzone(), STICK_DEADZONE + STICK_MAX_DEADZONE / 20));
+		OO_CHECK(Near(pitch->deadzone(), STICK_DEADZONE));
+		OO_CHECK([s.gui objectForRow:2] == Row({ "oolite-stickprofile-deadzone", Bars(11) + " (" + oo::str::format("%0.4f", roll->deadzone()) + ")" }));
 
 		s.screen->nextAxis();
 		s.screen->decreaseDeadzone();
 		s.screen->decreaseDeadzone();
-		OO_CHECK(Near([pitch deadzone], STICK_DEADZONE - 2 * STICK_MAX_DEADZONE / 20));
-		OO_CHECK(Near([roll deadzone], STICK_DEADZONE + STICK_MAX_DEADZONE / 20));
+		OO_CHECK(Near(pitch->deadzone(), STICK_DEADZONE - 2 * STICK_MAX_DEADZONE / 20));
+		OO_CHECK(Near(roll->deadzone(), STICK_DEADZONE + STICK_MAX_DEADZONE / 20));
 
 		// The profile clamps it at zero.
 		for (int i = 0; i < 20; i++)  s.screen->decreaseDeadzone();
-		OO_CHECK([pitch deadzone] == 0.0);
+		OO_CHECK(pitch->deadzone() == 0.0);
 		OO_CHECK([s.gui objectForRow:2] == Row({ "oolite-stickprofile-deadzone", Bars(0) + " (0.0000)" }));
 	}
 }
@@ -233,22 +233,22 @@ OO_TEST(powerAndParameterStepTheStandardProfile)
 	@autoreleasepool
 	{
 		Started s = Start();
-		OOJoystickStandardAxisProfile *roll = (OOJoystickStandardAxisProfile *)[Handler() getProfileForAxis:AXIS_ROLL];
+		oo::Ref<OOJoystickStandardAxisProfile> roll(static_cast<OOJoystickStandardAxisProfile *>([Handler() getProfileForAxis:AXIS_ROLL]));
 
 		s.screen->IncreasePower();
 		s.screen->IncreasePower();
-		OO_CHECK(Near([roll power], 1.0 + 2 * STICKPROFILE_MAX_POWER / 20));
+		OO_CHECK(Near(roll->power(), 1.0 + 2 * STICKPROFILE_MAX_POWER / 20));
 		OO_CHECK([s.gui objectForRow:4] == Row({ "oolite-stickprofile-range", Bars(4) + " (2.0) " }));
 		s.screen->DecreasePower();
-		OO_CHECK(Near([roll power], 1.0 + STICKPROFILE_MAX_POWER / 20));
+		OO_CHECK(Near(roll->power(), 1.0 + STICKPROFILE_MAX_POWER / 20));
 
 		s.screen->DecreaseParam();
 		s.screen->DecreaseParam();
-		OO_CHECK(Near([roll parameter], 0.9));
+		OO_CHECK(Near(roll->parameter(), 0.9));
 		// The bar count is 20 x the parameter truncated, as the screen computes it (17 for 1 - 0.05 - 0.05).
-		OO_CHECK([s.gui objectForRow:5] == Row({ "oolite-stickprofile-sensitivity", Bars(static_cast<int>(20 * [roll parameter])) + " (0.90) " }));
+		OO_CHECK([s.gui objectForRow:5] == Row({ "oolite-stickprofile-sensitivity", Bars(static_cast<int>(20 * roll->parameter())) + " (0.90) " }));
 		s.screen->IncreaseParam();
-		OO_CHECK(Near([roll parameter], 0.95));
+		OO_CHECK(Near(roll->parameter(), 0.95));
 	}
 }
 
@@ -258,19 +258,19 @@ OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 	@autoreleasepool
 	{
 		Started s = Start();
-		OOJoystickAxisProfile *standard = [Handler() getProfileForAxis:AXIS_ROLL];
+		oo::Ref<OOJoystickAxisProfile> standard([Handler() getProfileForAxis:AXIS_ROLL]);
 		s.screen->increaseDeadzone();
-		const double deadzone = [standard deadzone];
+		const double deadzone = standard->deadzone();
 
 		OO_CHECK(!s.screen->currentProfileIsSpline());
 		s.screen->previousProfileType();	// standard is the first
 		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == standard);
 
 		s.screen->nextProfileType();
-		OOJoystickAxisProfile *spline = [Handler() getProfileForAxis:AXIS_ROLL];
-		OO_CHECK([spline isKindOfClass:[OOJoystickSplineAxisProfile class]]);
+		oo::Ref<OOJoystickAxisProfile> spline([Handler() getProfileForAxis:AXIS_ROLL]);
+		OO_CHECK(dynamic_cast<OOJoystickSplineAxisProfile *>(spline.get()) != nullptr);
 		OO_CHECK(s.screen->currentProfileIsSpline());
-		OO_CHECK(Near([spline deadzone], deadzone));	// the dead zone carries over
+		OO_CHECK(Near(spline->deadzone(), deadzone));	// the dead zone carries over
 		OO_CHECK([s.gui objectForRow:3] == Row({ "oolite-stickprofile-profile-type", "oolite-stickprofile-type-spline" }));
 		OO_CHECK([s.gui objectForRow:4] == oo::PList(std::string()));
 		OO_CHECK([s.gui cxx_keyForRow:4] == std::optional<std::string>(std::string(GUI_KEY_SKIP)));
@@ -286,10 +286,10 @@ OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == spline);
 
 		// Back to the very standard profile it had, and forward to the very spline.
-		[spline setDeadzone:0.0];
+		spline->setDeadzone(0.0);
 		s.screen->previousProfileType();
 		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == standard);
-		OO_CHECK([standard deadzone] == 0.0);
+		OO_CHECK(standard->deadzone() == 0.0);
 		s.screen->nextProfileType();
 		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] == spline);
 
@@ -297,7 +297,7 @@ OO_TEST(theProfileTypeSwitchesAndKeepsTheOtherForTheSwitchBack)
 		s.screen->startGui(s.gui);
 		s.screen->previousProfileType();
 		OO_CHECK([Handler() getProfileForAxis:AXIS_ROLL] != standard);
-		OO_CHECK([[Handler() getProfileForAxis:AXIS_ROLL] isKindOfClass:[OOJoystickStandardAxisProfile class]]);
+		OO_CHECK(dynamic_cast<OOJoystickStandardAxisProfile *>([Handler() getProfileForAxis:AXIS_ROLL]) != nullptr);
 	}
 }
 
@@ -315,35 +315,35 @@ OO_TEST(theMouseAddsMovesAndDeletesSplinePoints)
 		OO_CHECK(!s.screen->currentProfileIsSpline());
 
 		s.screen->nextProfileType();
-		OOJoystickSplineAxisProfile *spline = (OOJoystickSplineAxisProfile *)[Handler() getProfileForAxis:AXIS_ROLL];
-		const int points = [spline countPoints];
+		oo::Ref<OOJoystickSplineAxisProfile> spline(static_cast<OOJoystickSplineAxisProfile *>([Handler() getProfileForAxis:AXIS_ROLL]));
+		const int points = spline->countPoints();
 
 		// With the zero graph rectangle, (0, 0) is the spline point (0.5, 0.5).
 		s.screen->mouseDown(NSMakePoint(0, 0));
-		OO_CHECK_EQ([spline countPoints], points + 1);
-		const std::vector<NSPoint> added = [spline controlPoints];
+		OO_CHECK_EQ(spline->countPoints(), points + 1);
+		const std::vector<NSPoint> added = spline->controlPoints();
 		bool found = false;
 		for (const NSPoint &point : added)  found = found || (point.x == 0.5 && point.y == 0.5);
 		OO_CHECK(found);
 
 		// Dragging moves the same point: (-2, 0) is (0.6, 0.5).
 		s.screen->mouseDown(NSMakePoint(-2, 0));
-		OO_CHECK_EQ([spline countPoints], points + 1);
+		OO_CHECK_EQ(spline->countPoints(), points + 1);
 		found = false;
-		for (const NSPoint &point : [spline controlPoints])  found = found || (Near(point.x, 0.6) && point.y == 0.5);
+		for (const NSPoint &point : spline->controlPoints())  found = found || (Near(point.x, 0.6) && point.y == 0.5);
 		OO_CHECK(found);
 
 		// A click outside the unit square does nothing: (12, 0) is (-0.1, 0.5).
 		s.screen->mouseUp();
 		s.screen->mouseDown(NSMakePoint(12, 0));
-		OO_CHECK_EQ([spline countPoints], points + 1);
+		OO_CHECK_EQ(spline->countPoints(), points + 1);
 		s.screen->mouseUp();
 
 		// The selected point goes; a second delete has nothing selected.
 		s.screen->deleteSelected();
-		OO_CHECK_EQ([spline countPoints], points);
+		OO_CHECK_EQ(spline->countPoints(), points);
 		s.screen->deleteSelected();
-		OO_CHECK_EQ([spline countPoints], points);
+		OO_CHECK_EQ(spline->countPoints(), points);
 	}
 }
 

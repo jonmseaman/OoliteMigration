@@ -7,8 +7,8 @@ C++ cxx::OOOXPVerifier (OOOXPVerifier.h), for GameController (+runVerificationIf
 stages, which keep it as their verifier and message it. Its interface is the one OOOXPVerifier.h
 declared before the conversion, copied exactly (same selectors, same types), so they compile and
 behave unchanged; the categories that other files add to it (-fileScannerStage,
--textureVerifierStage, -modelVerifierStage) are unchanged too. Imported as the last line of
-OOOXPVerifier.h; do not import it directly.
+-textureVerifierStage) are unchanged too (the model stage's went with bead oo-9ht.56). Imported as
+the last line of OOOXPVerifier.h; do not import it directly.
 
 Never add to this file; converted code does not message the facade. Deleted by its deletion bead.
 

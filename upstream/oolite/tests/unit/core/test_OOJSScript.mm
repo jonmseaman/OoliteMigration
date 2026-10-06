@@ -298,6 +298,26 @@ OO_TEST(engineReset)
 }
 
 
+// oo-9ht.142: a file that does not compile is not loaded (nil), its error goes through the
+// engine's error reporter, and the failure path leaves nothing running and nothing dangling: the
+// next script loads and runs as before.
+OO_TEST(broken)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OO_CHECK([OOJSScript scriptWithPath:Script("broken/broken.js", "\"use strict\";\nthis.name = ;\n") properties:oo::PList()] == nil);
+		OO_CHECK([OOJSScript currentlyRunningScript] == nil);
+		OO_CHECK([OOJSScript scriptStack].empty());
+	}
+	@autoreleasepool
+	{
+		OOJSScript *after = [OOJSScript scriptWithPath:Script("broken/after.js", kNamedScript) properties:oo::PList()];
+		OO_CHECK(after != nil);
+		OO_CHECK_EQ([after cxx_name].value_or("<none>"), "test-script");
+	}
+}
+
 
 OO_TEST(cleanUp)
 {
