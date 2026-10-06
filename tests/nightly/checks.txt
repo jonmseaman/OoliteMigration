@@ -278,6 +278,7 @@
 # The golden harness's clear_system repeats clear-then-count until no non-station ship remains (oo-pfern): offline retry test, then the goldens five times.
 [oo-pfern] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh && python3 -m pytest -q -p no:cacheprovider tests/golden/test_clear_system_retry.py && for i in 1 2 3 4 5; do bash tools/tier-c.sh --only goldens || exit 1; done
 [oo-bhxc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
+[oo-9ht.87] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSoundMixer test_OOSound test_OOOpenALController test_OOSoundSource test_OOMusic test_OOSoundChannel test_OOALBufferedSound test_OOALStreamedSound && bash tools/tier-c.sh --only goldens
 [oo-9ht.75] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOECMBlastEntity && bash tools/tier-c.sh --only goldens
 [oo-9ht.92] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSPlanet test_OOPlanetEntity && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.51] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSSun test_OOSunEntity && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens

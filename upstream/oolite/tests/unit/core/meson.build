@@ -57,7 +57,7 @@ core_tests = {
     'test_OOALStreamedSound': ['Core/OOALStreamedSound.mm', 'Core/OOALStreamedSound+ObjCBridge.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOALSoundDecoder.mm', 'Core/OOALSoundDecoder+ObjCBridge.mm', 'Core/MiniZip/unzip.c', 'Core/MiniZip/ioapi.c', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOMusic': ['Core/OOALMusic.mm', 'Core/OOALMusic+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOSoundSource.mm', 'Core/OOSoundSource+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOSoundChannel': ['Core/OOALSoundChannel.mm', 'Core/OOALSoundChannel+ObjCBridge.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
-    'test_OOSoundMixer': ['Core/OOALSoundMixer.mm', 'Core/OOALSoundMixer+ObjCBridge.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
+    'test_OOSoundMixer': ['Core/OOALSoundMixer.mm', 'Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOSoundSource': ['Core/OOSoundSource.mm', 'Core/OOSoundSource+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOSoundSourcePool': ['Core/OOSoundSourcePool.mm', 'Core/OOSoundSourcePool+ObjCBridge.mm', 'Core/OOVector.mm', 'Core/legacy_random.c'],
     'test_OOMusicController': ['Core/OOMusicController.mm', 'Core/OOMusicController+ObjCBridge.mm'],
