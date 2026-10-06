@@ -52,7 +52,7 @@ core_tests = {
     'test_OOShaderProgram': ['Core/Materials/OOShaderProgram.mm', 'Core/Materials/OOShaderProgram+ObjCBridge.mm', 'Core/OOOpenGLMatrixManager.mm', 'Core/OOOpenGLMatrixManager+ObjCBridge.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm', 'Core/OOMatrix.mm', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OODescription.mm'],
     'test_OOOXPVerifier': ['*'],
-    'test_OOPListSchemaVerifier': ['Core/OXPVerifier/OOPListSchemaVerifier.mm', 'Core/OXPVerifier/OOPListSchemaVerifier+ObjCBridge.mm', 'Core/OOPListGameTypes.mm', 'Core/OOIsNumberLiteral.cpp', 'Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c', 'Core/OODescription.mm'],
+    'test_OOPListSchemaVerifier': ['Core/OXPVerifier/OOPListSchemaVerifier.mm', 'Core/OOPListGameTypes.mm', 'Core/OOIsNumberLiteral.cpp', 'Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOOpenALController': ['Core/OOOpenALController.mm'],
     'test_OOSound': ['Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
     'test_OOALSoundDecoder': ['Core/OOALSoundDecoder.mm', 'Core/OOALSoundDecoder+ObjCBridge.mm', 'Core/MiniZip/unzip.c', 'Core/MiniZip/ioapi.c', 'Core/OODescription.mm'],

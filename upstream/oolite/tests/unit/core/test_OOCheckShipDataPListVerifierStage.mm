@@ -119,8 +119,9 @@ void OOFreePixMap(OOPixMap *ioPixMap)
 
 /*	The schema verifier (OOPListSchemaVerifier.mm reaches the game's plist types): a value "BAD"
 	fails, a value "DELEGATED" is a delegated type, and each is reported to the delegate as the
-	real verifier reports it. Its header's ivar is the C++ verifier since oo-pni4, so the stand-in
-	keeps its own state in ivars of its @implementation.
+	real verifier reports it. Since bead oo-9ht.119 deleted its Objective-C facade the stand-in
+	defines the C++ class's members that the stage calls (it was an @implementation of the facade
+	with ivars of its own), and tells the stage through the C++ delegate interface.
 */
 const char * const kPListKeyPathErrorKey = "keyPath";
 
@@ -131,36 +132,25 @@ int gSchemaVerifiers = 0;
 }	// namespace
 
 
-@implementation OOPListSchemaVerifier
+oo::Ref<OOPListSchemaVerifier> OOPListSchemaVerifier::verifierWithSchema(const oo::PList &schema)
 {
-	oo::PList	_schema;
-	id			_delegate;	// Not retained, as the real verifier's.
-}
-
-+ (instancetype)verifierWithSchema:(const oo::PList &)schema
-{
-	if (schema.isNull())  return nil;
-	return [[[self alloc] initWithSchema:schema] autorelease];
+	if (schema.isNull())  return nullptr;
+	return oo::adopt(new OOPListSchemaVerifier(schema));
 }
 
 
-- (id)initWithSchema:(const oo::PList &)schema
+OOPListSchemaVerifier::OOPListSchemaVerifier(const oo::PList &schema)
 {
-	self = [super init];
-	if (self != nil)
-	{
-		_schema = schema;
-		gSchemaVerifiers++;
-	}
-	return self;
+	_schema = schema;
+	gSchemaVerifiers++;
 }
 
 
-- (void)setDelegate:(id)delegate	{ _delegate = delegate; }
-- (id)delegate						{ return _delegate; }
+void OOPListSchemaVerifier::setDelegate(OOPListSchemaVerifierDelegate *delegate)	{ _delegate = delegate; }	// Not retained, as the real verifier's.
+OOPListSchemaVerifierDelegate *OOPListSchemaVerifier::delegate()					{ return _delegate; }
 
 
-- (BOOL)verifyPropertyList:(const oo::PList &)plist named:(const std::string &)name
+bool OOPListSchemaVerifier::verifyPropertyList(const oo::PList &plist, const std::string &name)
 {
 	for (const auto &[key, value] : *plist.getIf<oo::PList::Dict>())
 	{
@@ -170,19 +160,19 @@ int gSchemaVerifiers = 0;
 			OOPListSchemaVerifierError error;
 			error.failureReason = "a test failure";
 			error.userInfo = *oo::parsePropertyListData("{ keyPath = (\"" + key + "\"); }");
-			[_delegate verifier:self withPropertyList:plist named:name failedForProperty:value withError:error expectedType:oo::PList()];
+			if (_delegate != nullptr)  _delegate->verifierFailedForProperty(this, plist, name, value, error, oo::PList());
 		}
 		if (value.getIf<std::string>() != nullptr && *value.getIf<std::string>() == "DELEGATED")
 		{
 			std::optional<OOPListSchemaVerifierError> error;
-			[_delegate verifier:self withPropertyList:plist named:name testProperty:value atPath:keyPath againstType:oo::PList(std::string("aTestType")) error:&error];
+			if (_delegate != nullptr)  _delegate->verifierTestProperty(this, plist, name, value, keyPath, oo::PList(std::string("aTestType")), &error);
 		}
 	}
-	return YES;
+	return true;
 }
 
 
-+ (std::optional<std::string>)descriptionForKeyPath:(const oo::PList &)keyPath
+std::optional<std::string> OOPListSchemaVerifier::descriptionForKeyPath(const oo::PList &keyPath)
 {
 	std::string result;
 	for (const oo::PList &component : *keyPath.getIf<oo::PList::Array>())
@@ -192,8 +182,6 @@ int gSchemaVerifiers = 0;
 	}
 	return result;
 }
-
-@end
 
 
 namespace {
