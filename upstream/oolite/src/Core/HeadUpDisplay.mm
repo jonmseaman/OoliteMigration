@@ -1236,7 +1236,7 @@ void cxx::HeadUpDisplay::drawHUDItem(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawSurroundInternal(const oo::PList &info, const GLfloat color[4])
+void cxx::HeadUpDisplay::drawSurroundInternal(const oo::PList & /*info*/, const GLfloat color[4])	// the geometry is the current item's cached info
 {
 	NSInteger			x, y;
 	NSSize				siz;
@@ -4142,7 +4142,7 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 		// see OODrawHilightedPlanetInfo
 		cx += drawCharacterQuad(23 - eco, cx, y, z, siz);	// characters 16..23 are economy symbols
 		HeadUpDisplayUniverseGUISetGLColorFromSetting(oo::str::format(cxx_kGuiChartGovernmentUColor, (size_t)gov),
-													  oo::ToObjC(cxx::OOColor::colorWithRed(govcol[gov*3], govcol[1+(gov*3)], govcol[2+(gov*3)], 1.0f)),
+													  oo::ToObjC(cxx::OOColor::colorWithRed(govcol[static_cast<std::size_t>(gov)*3], govcol[1+(gov*3)], govcol[2+(gov*3)], 1.0f)),
 													  1.0);
 
 		cx += drawCharacterQuad(gov, cx, y, z, siz) - sF6KernGovt;		// charcters 0..7 are government symbols
