@@ -72,6 +72,36 @@ public:
 	*/
 	bool reset();
 
+	ooscript::Object globalObject();
+
+	// Call a JS function, setting up new contexts as necessary. Caller is responsible for ensuring the ooscript::Value passed really is a function.
+	bool callJSFunction(ooscript::Value function, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+
+	void removeGCObjectRoot(ooscript::Object *rootPtr);
+	void removeGCValueRoot(ooscript::Value *rootPtr);
+
+	void garbageCollectionOpportunity(bool force);
+
+	bool showErrorLocations();
+	void setShowErrorLocations(bool value);
+
+	ooscript::ClassDef *objectClass();
+	ooscript::ClassDef *stringClass();
+	ooscript::ClassDef *arrayClass();
+	ooscript::ClassDef *numberClass();
+	ooscript::ClassDef *booleanClass();
+
+#ifndef NDEBUG
+	bool dumpStackForErrors();
+	void setDumpStackForErrors(bool value);
+
+	bool dumpStackForWarnings();
+	void setDumpStackForWarnings(bool value);
+
+	// Install handler for JS "debugger" statment.
+	void enableDebuggerStatement();
+#endif
+
 #if OOJSENGINE_MONITOR_SUPPORT
 	// (OOMonitorSupport)
 	void setMonitor(id<OOJavaScriptEngineMonitor> monitor);
@@ -82,9 +112,15 @@ public:
 	void sendMonitorLogMessage(const std::optional<std::string> &message, const std::optional<std::string> &messageClass, ooscript::Context context);
 #endif
 
-	// Internal: the units of slice 2 of docs/phases/3-slices/OOJavaScriptEngine.md, still
-	// Objective-C methods of the facade in OOJavaScriptEngine.mm, read and write this state through
-	// oo::ToCxx(self) (amendment oo-3bgz item 1); it becomes private as that slice converts.
+private:
+	void init();	// -init's body after [super init]: run by sharedEngine() on the new object
+
+	bool lookUpStandardClassPointers();
+	void registerStandardObjectConverters();
+
+	void createMainThreadContext();
+	void destroyMainThreadContext();
+
 	ooscript::Runtime				_runtime = {};
 	ooscript::Object				_globalObject = {};
 	bool							_showErrorLocations = {};
@@ -99,16 +135,6 @@ public:
 	bool							_dumpStackForErrors = {};
 	bool							_dumpStackForWarnings = {};
 #endif
-
-private:
-	void init();	// -init's body after [super init]: run by sharedEngine() on the new object
-
-	bool lookUpStandardClassPointers();
-	void registerStandardObjectConverters();
-
-	void createMainThreadContext();
-	void destroyMainThreadContext();
-
 #if OOJSENGINE_MONITOR_SUPPORT
 	oo::ObjCRef<id<OOJavaScriptEngineMonitor>>	_monitor;
 #endif

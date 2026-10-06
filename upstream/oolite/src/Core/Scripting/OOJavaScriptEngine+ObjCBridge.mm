@@ -2,10 +2,9 @@
 
 OOJavaScriptEngine+ObjCBridge.mm
 
-TRANSITIONAL (proposed ADR-0056, bead oo-10qz): the Objective-C OOJavaScriptEngine facade's own
-methods (see OOJavaScriptEngine+ObjCBridge.h). Slice 1's selectors forward to their C++ members in
-one line each; slice 2's are still Objective-C methods of the facade in OOJavaScriptEngine.mm, so
-the facade's crossing and lifetime methods are a category here (amendment oo-10qz of ADR-0056).
+TRANSITIONAL (proposed ADR-0056, beads oo-10qz and oo-903c): the Objective-C OOJavaScriptEngine
+facade (see OOJavaScriptEngine+ObjCBridge.h). Every method forwards to its C++ member in one line.
+Then the one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139).
 Deleted with OOJavaScriptEngine+ObjCBridge.h.
 
 JavaScript support for Oolite
@@ -29,6 +28,9 @@ MA 02110-1301, USA.
 */
 
 #import "OOJavaScriptEngine.h"
+#import "ResourceManager.h"
+#import "OOScript.h"
+#import "OOWeakReference.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 
@@ -54,14 +56,9 @@ oo::ObjCPeers &Peers()
 
 #if OOJSENGINE_MONITOR_SUPPORT
 
-// The engine's internal monitor sends (OOJavaScriptEngine.mm's ReportJSError(), slice 2, and
-// OOJSGlobalSendMonitorLogMessage() in OOJSGlobal+ObjCBridge.mm, amendment oo-6ia4 item 6), which
-// declare the category themselves.
+// The engine's internal monitor send of OOJSGlobalSendMonitorLogMessage() in OOJSGlobal+ObjCBridge.mm
+// (amendment oo-6ia4 item 6), which declares the category itself.
 @interface OOJavaScriptEngine (OOMonitorSupportInternal)
-
-- (void)sendMonitorError:(ooscript::ErrorReport *)errorReport
-			 withMessage:(const std::string &)message
-			   inContext:(ooscript::Context)context;
 
 // nullopt is meaningful to the monitor (Log() with a null message; no class for Log()).
 - (void)sendMonitorLogMessage:(const std::optional<std::string> &)message
@@ -73,9 +70,9 @@ oo::ObjCPeers &Peers()
 #endif
 
 
-@implementation OOJavaScriptEngine (OOJavaScriptEngineShell)
+@implementation OOJavaScriptEngine
 
-// Inside an @implementation of the class for the private ivar.
+// Inside the @implementation for the private ivar.
 OOJavaScriptEngine *oo::ToObjC(cxx::OOJavaScriptEngine *engine)
 {
 	return Peers().peerFor(engine, [engine] { return [[OOJavaScriptEngine alloc] initWithCxxEngine:engine]; });
@@ -113,8 +110,33 @@ cxx::OOJavaScriptEngine *oo::ToCxx(OOJavaScriptEngine *engine)
 }
 
 
+- (ooscript::Object) globalObject						{ return _cxxEngine->globalObject(); }
 - (void) runMissionCallback								{ _cxxEngine->runMissionCallback(); }
 - (BOOL) reset											{ return _cxxEngine->reset(); }
+
+- (BOOL) callJSFunction:(ooscript::Value)function forObject:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)outResult
+{
+	return _cxxEngine->callJSFunction(function, jsThis, argc, argv, outResult);
+}
+
+- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr	{ _cxxEngine->removeGCObjectRoot(rootPtr); }
+- (void) removeGCValueRoot:(ooscript::Value *)rootPtr	{ _cxxEngine->removeGCValueRoot(rootPtr); }
+- (void) garbageCollectionOpportunity:(BOOL)force		{ _cxxEngine->garbageCollectionOpportunity(force); }
+- (BOOL) showErrorLocations								{ return _cxxEngine->showErrorLocations(); }
+- (void) setShowErrorLocations:(BOOL)value				{ _cxxEngine->setShowErrorLocations(value); }
+- (ooscript::ClassDef *) objectClass					{ return _cxxEngine->objectClass(); }
+- (ooscript::ClassDef *) stringClass					{ return _cxxEngine->stringClass(); }
+- (ooscript::ClassDef *) arrayClass						{ return _cxxEngine->arrayClass(); }
+- (ooscript::ClassDef *) numberClass					{ return _cxxEngine->numberClass(); }
+- (ooscript::ClassDef *) booleanClass					{ return _cxxEngine->booleanClass(); }
+
+#ifndef NDEBUG
+- (BOOL) dumpStackForErrors								{ return _cxxEngine->dumpStackForErrors(); }
+- (void) setDumpStackForErrors:(BOOL)value				{ _cxxEngine->setDumpStackForErrors(value); }
+- (BOOL) dumpStackForWarnings							{ return _cxxEngine->dumpStackForWarnings(); }
+- (void) setDumpStackForWarnings:(BOOL)value			{ _cxxEngine->setDumpStackForWarnings(value); }
+- (void) enableDebuggerStatement						{ _cxxEngine->enableDebuggerStatement(); }
+#endif
 
 @end
 
@@ -130,12 +152,6 @@ cxx::OOJavaScriptEngine *oo::ToCxx(OOJavaScriptEngine *engine)
 
 @implementation OOJavaScriptEngine (OOMonitorSupportInternal)
 
-- (void) sendMonitorError:(ooscript::ErrorReport *)errorReport withMessage:(const std::string &)message inContext:(ooscript::Context)context
-{
-	_cxxEngine->sendMonitorError(errorReport, message, context);
-}
-
-
 - (void) sendMonitorLogMessage:(const std::optional<std::string> &)message withMessageClass:(const std::optional<std::string> &)messageClass inContext:(ooscript::Context)context
 {
 	_cxxEngine->sendMonitorLogMessage(message, messageClass, context);
@@ -144,3 +160,21 @@ cxx::OOJavaScriptEngine *oo::ToCxx(OOJavaScriptEngine *engine)
 @end
 
 #endif
+
+
+oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
+{
+	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles];
+}
+
+
+id OOJavaScriptEngineWeakRefUnderlyingObject(id object)
+{
+	return [object weakRefUnderlyingObject];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineDisplayName(id script)
+{
+	return [script displayName];
+}
