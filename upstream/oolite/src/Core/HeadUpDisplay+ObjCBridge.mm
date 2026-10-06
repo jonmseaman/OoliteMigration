@@ -196,6 +196,17 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (void) drawCabinTempBar:(const oo::PList &)info	{ _cxxHUD->drawCabinTempBar(info); }
 - (void) drawWeaponTempBar:(const oo::PList &)info	{ _cxxHUD->drawWeaponTempBar(info); }
 - (void) drawAltitudeBar:(const oo::PList &)info	{ _cxxHUD->drawAltitudeBar(info); }
+- (void) drawMissileDisplay:(const oo::PList &)info	{ _cxxHUD->drawMissileDisplay(info); }
+- (void) drawStatusLight:(const oo::PList &)info	{ _cxxHUD->drawStatusLight(info); }
+- (void) drawClock:(const oo::PList &)info	{ _cxxHUD->drawClock(info); }
+- (void) drawPrimedEquipment:(const oo::PList &)info	{ _cxxHUD->drawPrimedEquipment(info); }
+- (void) drawASCTarget:(const oo::PList &)info	{ _cxxHUD->drawASCTarget(info); }
+- (void) drawWeaponsOfflineText:(const oo::PList &)info	{ _cxxHUD->drawWeaponsOfflineText(info); }
+- (void) drawFPSInfoCounter:(const oo::PList &)info	{ _cxxHUD->drawFPSInfoCounter(info); }
+- (void) drawScoopStatus:(const oo::PList &)info	{ _cxxHUD->drawScoopStatus(info); }
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info	{ _cxxHUD->drawStickSensitivityIndicator(info); }
+- (void) drawTrumbles:(const oo::PList &)info	{ _cxxHUD->drawTrumbles(info); }
+
 @end
 
 
@@ -246,16 +257,6 @@ oo::ObjCPeers &IconPeers()
 @interface OOHUDBeaconCodeIcon (OOObjCBridgePrivate)
 
 - (id) initWithCxxIcon:(cxx::OOHUDBeaconCodeIcon *)icon;
-- (void) drawMissileDisplay:(const oo::PList &)info	{ _cxxHUD->drawMissileDisplay(info); }
-- (void) drawStatusLight:(const oo::PList &)info	{ _cxxHUD->drawStatusLight(info); }
-- (void) drawClock:(const oo::PList &)info	{ _cxxHUD->drawClock(info); }
-- (void) drawPrimedEquipment:(const oo::PList &)info	{ _cxxHUD->drawPrimedEquipment(info); }
-- (void) drawASCTarget:(const oo::PList &)info	{ _cxxHUD->drawASCTarget(info); }
-- (void) drawWeaponsOfflineText:(const oo::PList &)info	{ _cxxHUD->drawWeaponsOfflineText(info); }
-- (void) drawFPSInfoCounter:(const oo::PList &)info	{ _cxxHUD->drawFPSInfoCounter(info); }
-- (void) drawScoopStatus:(const oo::PList &)info	{ _cxxHUD->drawScoopStatus(info); }
-- (void) drawStickSensitivityIndicator:(const oo::PList &)info	{ _cxxHUD->drawStickSensitivityIndicator(info); }
-- (void) drawTrumbles:(const oo::PList &)info	{ _cxxHUD->drawTrumbles(info); }
 
 @end
 
