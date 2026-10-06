@@ -552,7 +552,7 @@ OO_TEST(texturesApplyAndUnapply)
 		// Anything else: no program, and each texture unit cleared (the superclass is not asked).
 		m->unapplyWithNext(nullptr);
 		OO_CHECK(gProgramApplyNones == programApplyNones + 1 && gTextureApplyNones == applyNones + 3);
-		m->unapplyWithNext(oo::ToCxx([[[OOBasicMaterial alloc] cxx_initWithName:std::string("Basic")] autorelease]));
+		m->unapplyWithNext(oo::ToCxx(static_cast<OOMaterial *>([[[OOBasicMaterial alloc] cxx_initWithName:std::string("Basic")] autorelease])));
 		OO_CHECK(gProgramApplyNones == programApplyNones + 2 && gTextureApplyNones == applyNones + 6);
 
 		// No textures: one unit is still cleared.
