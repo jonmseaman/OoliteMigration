@@ -18,7 +18,14 @@
 	(order, reverse dependencies, an unresolved dependency, a loop), running (a stage that should
 	not run, an exception in a stage), and what a stage reads from the verifier (path, display
 	name, configuration, other stages by name). The expectations were written against the
-	Objective-C class and run on it first. Run: bash tools/check-core-tests.sh test_OOOXPVerifier
+	Objective-C class and run on it first.
+
+	Bead oo-9ht.4 deleted the stage facade, so a stage can no longer be an Objective-C class that
+	the verifier makes from its name: the test's stages became C++ subclasses of OOOXPVerifierStage
+	with the same names and answers, which the verifier makes by name through its test hook
+	(OOOXPVerifierTestAccess, asked where the class lookup was), and the stages hand and compare the
+	C++ stages with -registerStage: and -cxx_stageWithName: (ADR-0049, standing approval oo-9n5p9;
+	no case or expectation changed). Run: bash tools/check-core-tests.sh test_OOOXPVerifier
 */
 
 #import "OOOXPVerifier.h"
@@ -31,6 +38,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <map>
 #include <process.h>
 #include <string>
 #include <vector>
@@ -42,12 +50,26 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
+/*	The verifier makes the stages verifyOXP.plist names; a test's stage by its class name through
+	this hook (it made an Objective-C stage class from its name until bead oo-9ht.4).
+*/
+struct OOOXPVerifierTestAccess
+{
+	static void SetStageMaker(oo::Ref<OOOXPVerifierStage> (*maker)(const std::string &name))
+	{
+		cxx::OOOXPVerifier::sTestStageMaker = maker;
+	}
+};
+
+
 namespace {
 
 namespace stdfs = std::filesystem;
 
 stdfs::path sRoot;
 std::vector<std::string> gEvents;
+
+oo::Ref<OOOXPVerifierStage> MakeTestStage(const std::string &name);	// with the test's stages, below
 
 // What a stage read from the verifier during its run.
 struct VerifierView
@@ -105,6 +127,7 @@ void SetUp()
 	WriteText(sRoot / "a-file.txt", "not an OXP\n");
 	// The verifier opens its log in the user's editor at the end unless told not to.
 	oo::Defaults::standard().setObject("oxp-verifier-open-log", oo::PList(false));
+	OOOXPVerifierTestAccess::SetStageMaker(MakeTestStage);
 }
 
 
@@ -123,46 +146,45 @@ bool RunWithArguments(std::vector<std::string> arguments)
 
 
 // --- The test's stages ------------------------------------------------------------------------
+// C++ subclasses of OOOXPVerifierStage (Objective-C subclasses of its facade until bead oo-9ht.4).
 
-@interface OOTestStage: OOOXPVerifierStage
-@end
-
-@implementation OOTestStage
-- (std::optional<std::string>)cxx_name	{ return std::nullopt; }
-- (void)run
+class OOTestStage : public OOOXPVerifierStage
 {
-	gEvents.push_back("run " + [self cxx_name].value_or("(null)"));
-}
-@end
+public:
+	std::optional<std::string> name() override	{ return std::nullopt; }
+	void run() override
+	{
+		gEvents.push_back("run " + name().value_or("(null)"));
+	}
+};
 
-#define TEST_STAGE(cls, stageName)  @interface cls: OOTestStage @end  @implementation cls  - (std::optional<std::string>)cxx_name { return std::string(stageName); }
-#define DEPENDS_ON(...)  - (std::optional<std::vector<std::string>>)cxx_dependencies { return std::vector<std::string>{ __VA_ARGS__ }; }
-#define DEPENDENTS(...)  - (std::optional<std::vector<std::string>>)dependents { return std::vector<std::string>{ __VA_ARGS__ }; }
+#define TEST_STAGE(cls, stageName)  class cls : public OOTestStage { public:  std::optional<std::string> name() override { return std::string(stageName); }
+#define DEPENDS_ON(...)  std::optional<std::vector<std::string>> dependencies() override { return std::vector<std::string>{ __VA_ARGS__ }; }
+#define DEPENDENTS(...)  std::optional<std::vector<std::string>> dependents() override { return std::vector<std::string>{ __VA_ARGS__ }; }
 
-TEST_STAGE(OOTestStageB, "B")  DEPENDS_ON("A")  @end
-TEST_STAGE(OOTestStageC, "C")  DEPENDS_ON("Missing")  @end
-TEST_STAGE(OOTestStageD, "D")  DEPENDENTS("A", "Nowhere")  @end
-TEST_STAGE(OOTestStageE, "E")  - (BOOL)shouldRun { gEvents.push_back("should E"); return NO; }  @end
-TEST_STAGE(OOTestStageF, "F")  DEPENDS_ON("E")  @end
-TEST_STAGE(OOTestStageH, "H")  DEPENDS_ON("G")  @end
-TEST_STAGE(OOTestStageI, "I")  DEPENDS_ON("J")  @end
-TEST_STAGE(OOTestStageJ, "J")  DEPENDS_ON("I")  @end
-TEST_STAGE(OOTestStageX, "X")  @end
-TEST_STAGE(OOTestStageDup1, "Dup")  - (void)run { gEvents.push_back("run Dup1"); }  @end
-TEST_STAGE(OOTestStageDup2, "Dup")  - (void)run { gEvents.push_back("run Dup2"); }  @end
-TEST_STAGE(OOTestStageSub, "Sub")  @end
-TEST_STAGE(OOTestStageLate, "Late")  @end
+TEST_STAGE(OOTestStageB, "B")  DEPENDS_ON("A")  };
+TEST_STAGE(OOTestStageC, "C")  DEPENDS_ON("Missing")  };
+TEST_STAGE(OOTestStageD, "D")  DEPENDENTS("A", "Nowhere")  };
+TEST_STAGE(OOTestStageE, "E")  bool shouldRun() override { gEvents.push_back("should E"); return false; }  };
+TEST_STAGE(OOTestStageF, "F")  DEPENDS_ON("E")  };
+TEST_STAGE(OOTestStageH, "H")  DEPENDS_ON("G")  };
+TEST_STAGE(OOTestStageI, "I")  DEPENDS_ON("J")  };
+TEST_STAGE(OOTestStageJ, "J")  DEPENDS_ON("I")  };
+TEST_STAGE(OOTestStageX, "X")  };
+TEST_STAGE(OOTestStageDup1, "Dup")  void run() override { gEvents.push_back("run Dup1"); }  };
+TEST_STAGE(OOTestStageDup2, "Dup")  void run() override { gEvents.push_back("run Dup2"); }  };
+TEST_STAGE(OOTestStageSub, "Sub")  };
+TEST_STAGE(OOTestStageLate, "Late")  };
 
-@interface OOTestStageNameless: OOTestStage @end
-@implementation OOTestStageNameless @end
+class OOTestStageNameless : public OOTestStage {};
 
 
 // A reads the verifier while it runs.
 TEST_STAGE(OOTestStageA, "A")
-- (void)run
+void run() override
 {
-	[super run];
-	OOOXPVerifier *verifier = [self verifier];
+	OOTestStage::run();
+	OOOXPVerifier *verifier = this->verifier();
 	gView.seen = (verifier != nil);
 	gView.path = [verifier cxx_oxpPath];
 	gView.displayName = [verifier cxx_oxpDisplayName];
@@ -177,45 +199,73 @@ TEST_STAGE(OOTestStageA, "A")
 	gView.notAString = [verifier cxx_configurationStringForKey:"notAString"];
 	gView.set = [verifier cxx_configurationSetForKey:"anArray"];
 	gView.notASet = [verifier cxx_configurationSetForKey:"aDictionary"];
-	gView.foundA = ([verifier cxx_stageWithName:"A"] == self);
-	gView.foundNothing = ([verifier cxx_stageWithName:"Missing"] == nil);
+	gView.foundA = ([verifier cxx_stageWithName:"A"] == this);
+	gView.foundNothing = ([verifier cxx_stageWithName:"Missing"] == nullptr);
 }
-@end
+};
 
 
 // G raises while it runs.
 TEST_STAGE(OOTestStageG, "G")
-- (void)run
+void run() override
 {
-	[super run];
+	OOTestStage::run();
 	[OOException raise:"OOTestException" format:"%s", "G fails"];
 }
-@end
+};
 
 
 // K registers a substage when asked for its dependents, as the verifier allows.
 TEST_STAGE(OOTestStageK, "K")
-- (std::optional<std::vector<std::string>>)dependents
+std::optional<std::vector<std::string>> dependents() override
 {
-	OOTestStageSub *sub = [[OOTestStageSub alloc] init];
-	[[self verifier] registerStage:sub];
-	[sub release];
+	const oo::Ref<OOTestStageSub> sub = oo::makeRef<OOTestStageSub>();
+	[verifier() registerStage:sub.get()];
 	return std::nullopt;
 }
-@end
+};
 
 
 // L registers a stage while it runs, which the verifier refuses.
 TEST_STAGE(OOTestStageL, "L")
-- (void)run
+void run() override
 {
-	[super run];
-	OOTestStageLate *late = [[OOTestStageLate alloc] init];
-	[[self verifier] registerStage:late];
-	[late release];
-	gEvents.push_back([[self verifier] cxx_stageWithName:"Late"] == nil ? "Late refused" : "Late registered");
+	OOTestStage::run();
+	const oo::Ref<OOTestStageLate> late = oo::makeRef<OOTestStageLate>();
+	[verifier() registerStage:late.get()];
+	gEvents.push_back([verifier() cxx_stageWithName:"Late"] == nullptr ? "Late refused" : "Late registered");
 }
-@end
+};
+
+
+// The stages the verifier makes by name through the test hook.
+namespace {
+
+template <class Stage>
+oo::Ref<OOOXPVerifierStage> Make()
+{
+	return oo::Ref<OOOXPVerifierStage>(oo::makeRef<Stage>());
+}
+
+
+oo::Ref<OOOXPVerifierStage> MakeTestStage(const std::string &name)
+{
+	static const std::map<std::string, oo::Ref<OOOXPVerifierStage> (*)()> makers = {
+		{ "OOTestStageA", Make<OOTestStageA> }, { "OOTestStageB", Make<OOTestStageB> },
+		{ "OOTestStageC", Make<OOTestStageC> }, { "OOTestStageD", Make<OOTestStageD> },
+		{ "OOTestStageE", Make<OOTestStageE> }, { "OOTestStageF", Make<OOTestStageF> },
+		{ "OOTestStageG", Make<OOTestStageG> }, { "OOTestStageH", Make<OOTestStageH> },
+		{ "OOTestStageI", Make<OOTestStageI> }, { "OOTestStageJ", Make<OOTestStageJ> },
+		{ "OOTestStageK", Make<OOTestStageK> }, { "OOTestStageL", Make<OOTestStageL> },
+		{ "OOTestStageX", Make<OOTestStageX> }, { "OOTestStageNameless", Make<OOTestStageNameless> },
+		{ "OOTestStageDup1", Make<OOTestStageDup1> }, { "OOTestStageDup2", Make<OOTestStageDup2> },
+		{ "OOTestStageSub", Make<OOTestStageSub> }, { "OOTestStageLate", Make<OOTestStageLate> },
+	};
+	const auto found = makers.find(name);
+	return found != makers.end() ? found->second() : nullptr;
+}
+
+}	// namespace
 
 
 // --- Tests ------------------------------------------------------------------------------------
