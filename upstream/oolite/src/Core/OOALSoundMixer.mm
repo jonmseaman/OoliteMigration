@@ -65,7 +65,7 @@ bool OOSoundMixer::init()
 {
 	bool						OK = true;
 	uint32_t					idx = 0, count = kMixerGeneralChannels;
-	::OOSoundChannel			*channel;
+	oo::Ref<OOSoundChannel>		channel;
 
 	if (!cxx::OOSound::setUp())  OK = false;
 
@@ -74,11 +74,12 @@ bool OOSoundMixer::init()
 		// Allocate channels
 		do
 		{
-			channel = [[::OOSoundChannel alloc] init];
-			if (nil != channel)
+			channel = oo::makeRef<OOSoundChannel>();
+			if (!channel->init())  channel = nullptr;	// [[OOSoundChannel alloc] init] answered nil
+			if (nullptr != channel)
 			{
-				_channels[idx++] = channel;
-				pushChannel(channel);
+				pushChannel(channel.get());
+				_channels[idx++] = channel.leakRef();	// the reference alloc/init gave
 			}
 		}  while (--count);
 	}
@@ -93,7 +94,8 @@ void OOSoundMixer::shutdown()
 	uint32_t i;
 	for (i = 0; i < kMixerGeneralChannels; ++i)
 	{
-		DESTROY(_channels[i]);
+		if (_channels[i] != nullptr)  oo::release(_channels[i]);	// DESTROY
+		_channels[i] = nullptr;
 	}
 }
 
@@ -103,26 +105,26 @@ void OOSoundMixer::update()
 	uint32_t i;
 	for (i = 0; i < kMixerGeneralChannels; ++i)
 	{
-		[_channels[i] update];
+		if (_channels[i] != nullptr)  _channels[i]->update();
 	}
 }
 
 
-::OOSoundChannel *OOSoundMixer::popChannel()
+OOSoundChannel *OOSoundMixer::popChannel()
 {
-	::OOSoundChannel *channel = _freeList;
-	_freeList = [channel next];
-	[channel setNext:nil];
+	OOSoundChannel *channel = _freeList;
+	_freeList = channel != nullptr ? channel->next() : nullptr;	// a message to nil answered nil
+	if (channel != nullptr)  channel->setNext(nullptr);
 
 	return channel;
 }
 
 
-void OOSoundMixer::pushChannel(::OOSoundChannel *channel)
+void OOSoundMixer::pushChannel(OOSoundChannel *channel)
 {
-	assert(channel != nil);
+	assert(channel != nullptr);
 
-	[channel setNext:_freeList];
+	channel->setNext(_freeList);
 	_freeList = channel;
 }
 

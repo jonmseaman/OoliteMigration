@@ -3550,6 +3550,42 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
 class, through the root's bridge. Slices 2-4 each delete their category and trampolines as they
 convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ members.
 
+## Amendment (bead oo-9ht.86): a delegate protocol between two façades, and a singleton's members
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: bead oo-9ht.86 (`OOALSoundChannel+ObjCBridge`):
+  `src/Core/OOALSoundChannel.h/.mm`, `OOALSoundMixer.h/.mm`, `OOSoundSource.h/.mm`,
+  `OOSoundSource+ObjCBridge.mm`, `tests/unit/core/test_OOSoundChannel.mm`; approval lines landed by
+  oo-9ht.149.
+
+**Context.** The channel called its delegate, an `id` answering `-channel:didFinishPlayingSound:`
+(the informal `OOObject (OOSoundChannelDelegate)` category in the channel's bridge header), and
+the delegate was another class's façade (a playing `OOSoundSource`) or that class itself (a
+stopped source's channel). Neither façade could go first while the other answered or sent the
+selector. The mixer, a never-destroyed singleton (amendment oo-r7m0), retained its channels.
+
+**Decision (recommended defaults).**
+
+1. **An informal delegate protocol becomes a C++ interface in the sender's header**
+   (`class OOSoundChannelDelegate` with the selector's first keyword as a pure virtual member and a
+   protected non-virtual destructor), held unretained as the `id` was. The converted class that
+   answered it implements it (`cxx::OOSoundSource : public oo::RefCounted, public
+   ::OOSoundChannelDelegate`); a class method that answered it becomes a file-local object
+   implementing it that calls the static member. The receiver façade's forwarding methods for the
+   selector go in the sender's deletion bead, which owns the protocol; the receiver's own façade
+   deletion is not a dependency.
+2. **What the façade's `-dealloc` sent goes into the destructor**, guarded by what made the façade
+   (a channel whose `init()` failed never had one).
+3. **A never-destroyed singleton keeps converted objects as the +1 raw pointers alloc/init gave**
+   (released where it released them), not `oo::Ref` members: an `oo::Ref<Y>` member needs the
+   complete `Y` in every includer of the singleton's header, and importing `Y`'s header there can
+   change overload resolution in unrelated tests (it brought the vector bridge's `oo::ToCxx` into
+   `test_OOSound.mm`).
+4. **Test stand-ins of a class with private state** keep what the stub's extra ivars held in a map
+   keyed by the object, and reach private members through the class's test-access friend.
+
+**Consequences.** The sound source keeps its façade for its other callers (oo-9ht.88); the
+channel's delegate no longer depends on it.
+
 ## Amendment (bead oo-0tx6c): the rest of a class-shell plan's slices, when the dials are its façade's methods
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/HeadUpDisplay.h/.mm` and
