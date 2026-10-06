@@ -3441,3 +3441,112 @@ class, and nine getters share their ivar's name. The colours were `OOColor *` iv
 **Consequences.** One façade (deletion bead oo-mwd58) whose deletion waits for the HUD's
 callers and the drawing slices; the slice beads 2-6 turn the category's methods into members and
 leave one forwarder per dial.
+
+## Amendment (bead oo-tsa4): the OXPVerifier manager, a class whose façade other objects keep unretained
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OXPVerifier/OOOXPVerifier.h/.mm`,
+  `OOOXPVerifier+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOXPVerifier.mm`. Follows Amendment 1
+  (oo-cwz), amendments oo-up4b, oo-94qk, oo-smy, oo-novu and oo-fg7i, and human bead oo-4amcj.
+
+**Context.** `OOOXPVerifier` drives the stage hierarchy, which still has Objective-C subclasses
+(`OOCheckShipDataPListVerifierStage`, `OOModelVerifierStage`). Every stage keeps its verifier as
+an unretained `OOOXPVerifier *` (`cxx::OOOXPVerifierStage::verifier()`) and messages it; the
+verifier was made by `+runVerificationIfRequested` and lived for the whole run. The stage tests
+link a test double instead of the verifier (oo-9ht.65), an `@implementation OOOXPVerifier` with
+ivars of its own.
+
+**Decision (recommended defaults).**
+
+1. **A C++ object whose façade other objects keep unretained keeps that façade alive itself** for
+   the span the Objective-C object lived: `run()` opens with
+   `const oo::ObjCRef<::OOOXPVerifier *> facade(oo::ToObjC(this));`, so every stage registered
+   during the run sees one façade. The C++ object never retains its façade beyond that span (no
+   cycle); a stage registered outside a run sees the façade of the moment, as `ToObjC` makes it.
+2. **Converted code that drives a hierarchy with Objective-C subclasses keeps the objects as
+   their Objective-C objects** (`oo::ObjCRef<::OOOXPVerifierStage *>`, amendment oo-smy) and calls
+   their C++ part, `oo::ToCxx(stage)->name()`: an adapter's virtual members message the subclass,
+   so its overrides answer as before. Where the old code exposed the Objective-C pointer (the
+   graphviz node names), the C++ objects it gets back cross with `oo::ToObjC` so the same pointer
+   is printed.
+3. **A failing initialiser becomes `createWithX()` + `bool initWithX()`** (amendment oo-fg7i);
+   the class method that made and ran the object is a `static` member that holds it in an
+   `oo::Ref`.
+4. **Categories that other files add to the class stay on the façade** (`-fileScannerStage`,
+   `-textureVerifierStage`, `-modelVerifierStage`) until those files' deletion beads; the façade's
+   own interface is the old one, so the stage tests' double, an `@implementation` of the façade
+   class with ivars of its own, compiles unchanged and does not link the bridge.
+5. **Once the class is `cxx::X`, code inside `namespace cxx` that keeps the façade names it `::X`**
+   (`::OOOXPVerifier *verifier()`, `oo::ObjCRef<::OOOXPVerifierStage *>`): unqualified, `X` there is
+   now the C++ class. The stages' `verifier()`/`setVerifier()` and the `nameFor…ForVerifier()`
+   helpers changed only in that spelling; global leaves need no change.
+
+**Consequences.** One façade and its deletion bead (oo-9ht.130). No caller's behaviour and no test
+expectation changed: the stages changed only in spelling (item 5), and the two stage tests that
+had pasted the old double moved to the shared one first (oo-9ht.141). The
+verifier no longer messages the `OOCacheManager` façade (it calls `cxx::OOCacheManager`), which the
+cache manager's deletion bead (oo-9ht.31) waited on.
+
+## Amendment (bead oo-dnbf): the class-shell slice of a converted root's subclass
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOMesh.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOMesh.md`), `OOMesh+ObjCBridge.h/.mm`, the façade class lookup in
+  `OODrawable+ObjCBridge.mm`, `tests/unit/core/test_OOMesh.mm`. Follows amendments oo-up4b item 3,
+  oo-smy, oo-pni4 and the sub-brief's slice rules.
+
+**Context.** `OOMesh` is an Objective-C subclass of the converted root `OODrawable`, which its
+callers message by its own selectors, and its file is split into four slices. Slice 1 makes the
+class shell C++, so the mesh becomes the first C++ drawable while its loading (2), geometry (3)
+and rendering (4) stay Objective-C. Those slices implement two of the root's virtual members
+(`-renderOpaqueParts`, `-boundingBox`), the designated initialiser, a bitwise
+`-mutableCopyWithZone:`, and the graphics-reset client that the loader registers (`self`).
+
+**Decision (recommended defaults).**
+
+1. **The subclass is `cxx::X : public cxx::Root`, with a façade `@interface X : Root` and no ivars**
+   (amendment oo-up4b item 3). The root's `oo::ToObjC` picks the façade class by the C++ class's
+   name, walking its bases, as `OOMaterial+ObjCBridge.mm` does; the root's bridge gains the public
+   `-initWithNewCxxDrawable:` (amendment oo-862e item 3) for the façade's `-init`. Typed
+   `oo::ToObjC`/`oo::ToCxx` `static_cast` to and from the root's.
+2. **Later-slice units of the primary `@implementation` become in-place categories named after
+   their slice** (`OOMesh (OOMeshRendering)`, `OOMesh (OOMeshGeometry)`); the `Private` category
+   stays as it was. Their public selectors move from the façade's `@interface` to matching
+   category interfaces in `X+ObjCBridge.h`, so the façade's own `@implementation` is complete (no
+   `-Wincomplete-implementation`). This is amendment oo-bwjb item 1, which landed alongside; the
+   blocks here are not contiguous, so each gets its own category name (a category cannot be
+   implemented twice in one file). The ivar rewrite `oo::ToCxx(self)->ivar` is scripted; selector
+   positions and signatures are left alone.
+3. **A root virtual member that a later slice implements gets a C++ trampoline**,
+   `void renderOpaqueParts() override { [oo::ToObjC(this) renderOpaqueParts]; }`, so a converted
+   caller that calls it through `cxx::Root *` reaches the slice's method, which is the façade's
+   category override. The slice that converts the method replaces the trampoline with the body.
+4. **Members whose names clash:** an ivar named like an overridden virtual getter takes a leading
+   underscore (`_collisionRadius`, `_maxDrawDistance`, `_boundingBox`; amendment oo-rdfh item 1); a
+   non-virtual getter named like its ivar becomes `get` + name (`getVertexCount()`,
+   `getFaceCount()`, `getMaterials()`; amendment oo-862e item 1). Inside `namespace cxx` the
+   Objective-C types of members are written `::OOMaterial *`, `::Octree *`.
+5. **`-init` is the constructor, and a later slice's designated initialiser sends `[self init]`**
+   where it sent `[super init]`, since `[super init]` would now make the root's Objective-C
+   adapter. The constructor's defaults are overwritten by a successful load or die with a failed
+   one, so nothing observable changes.
+6. **A bitwise copy of the object** (`class_createInstance` + `memcpy`, then each C++ ivar
+   constructed afresh) cannot copy a façade's C++ part. It becomes the C++ copy constructor
+   (`= default`: member by member, which is the old "construct afresh" list) and a new façade; the
+   raw Objective-C members are retained after, as before. The root's
+   `oo::ConstructCxxPartOfCopy` keeps its test but has no caller left.
+7. **What `-dealloc` sent to `self`** (`[self deleteDisplayLists]`, a later slice's method, and
+   `-unregisterClient:self` to the converted graphics reset manager, whose client is the façade
+   the loader registered) stays in the façade's `-dealloc`, before `[super dealloc]`; the
+   destructor does the C++ teardown. `oo::ToObjC(this)` is never called from a destructor.
+8. **A category on another converted class in the file** (`OOCacheManager (OOMesh)`,
+   `OOCacheManager (Octree)`) becomes free functions named class + selector
+   (`OOCacheManagerOctreeForModel`, `OOCacheManagerSetOctree`), on the C++ classes: in an
+   anonymous namespace where only the file sends them (`misc-use-anonymous-namespace`), else
+   declared where the category was (`OOMesh.h`). Their
+   Objective-C senders in later slices cross with `oo::ToObjC`/`oo::ToCxx`.
+9. **`-oo_objectSize` of a façade or Objective-C object** in a converted debug body is its
+   definition, `class_getInstanceSize(object_getClass(object))` (0 for nil).
+
+**Consequences.** One façade (`OOMesh+ObjCBridge`) and its deletion bead, which waits for slices
+2-4 and the callers. A C++ subclass of a root is now visible to Objective-C as its own façade
+class, through the root's bridge. Slices 2-4 each delete their category and trampolines as they
+convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ members.
