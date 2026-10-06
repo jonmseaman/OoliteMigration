@@ -20,7 +20,8 @@
 	the Objective-C API the game uses, what the slice's units computed before the conversion (the two
 	initialisers, the sizes, the title rule, the rows' texts and keys, the selection and its skip rows,
 	the colours and the colour settings, the fades' alpha, the tab-stop override, clearing and the two
-	resizes). They were written against the unconverted class and run on it first. The units of slices
+	resizes). They were written against the unconverted class and run on it first (commit 9afc661c6);
+	the last two (cxxAPIAnswersTheSame, facadeContract) pin the C++ API and the facade's contract. The units of slices
 	2-4 that they reach (-clear's -clearBackground, -cxx_getLastLines, -cxx_setArray:forRow:,
 	-cxx_printLineNoScroll:...) run as they are. The settings -init reads (gui-settings.plist, through
 	the real ResourceManager) depend on where the test runs, so the tests that need them check that
@@ -491,6 +492,77 @@ OO_TEST(clearAndResize)
 		[gui cxx_resizeTo:NSMakeSize(320, 168) characterHeight:16 title:std::nullopt];
 		OO_CHECK_EQ([gui rowStart], 20);	// 16 + 0.5 * 8
 		OO_CHECK([gui cxx_title] == std::nullopt);
+	}
+}
+
+
+// --- after the conversion: the C++ API and the facade's contract ---
+
+OO_TEST(cxxAPIAnswersTheSame)
+{
+	@autoreleasepool
+	{
+		oo::Ref<cxx::GuiDisplayGen> gui = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
+		OO_CHECK_EQ(gui->columns(), 4u);
+		OO_CHECK_EQ(gui->rows(), 5u);
+		OO_CHECK_EQ(gui->rowHeight(), 12u);
+		OO_CHECK_EQ(gui->rowStart(), 8);
+		OO_CHECK(gui->getTitle() == std::optional<std::string>("T"));
+		gui->setTitle("");
+		OO_CHECK(gui->getTitle() == std::nullopt);
+		gui->setText("one", 1);
+		gui->setKey("k1", 1);
+		OO_CHECK(gui->objectForRow(1) == oo::PList("one"));
+		OO_CHECK(gui->keyForRow(1) == std::optional<std::string>("k1"));
+		OO_CHECK_EQ(gui->rowForKey("k1"), 1);
+		gui->setSelectableRange(NSMakeRange(0, 3));
+		OO_CHECK(gui->getSelectableRange().location == 0 && gui->getSelectableRange().length == 3);
+		gui->setMaxAlpha(0.5f);
+		gui->setAlpha(1.0f);
+		OO_CHECK_EQ(gui->alpha(), 0.5f);
+		gui->setDrawPosition(make_vector(1.0f, 2.0f, 3.0f));
+		OO_CHECK(gui->getDrawPosition().z == 3.0f);
+		OO_CHECK(SameComponents(gui->getTextColor(), [OOColor yellowColor]));
+		OO_CHECK_EQ(gui->rowAtVirtualJoystickPosition(NSMakePoint(0.0, 0.0)), 4);	// 1 + floor((50 - 8) / 12)
+		gui->clearAndKeepBackground(true);
+		OO_CHECK(gui->keyForRow(1) == std::optional<std::string>(GUI_KEY_SKIP));
+
+		oo::Ref<cxx::GuiDisplayGen> main = oo::makeRef<cxx::GuiDisplayGen>();
+		OO_CHECK_EQ(main->rows(), 30u);
+		OO_CHECK(main->objectForRow(0) == oo::PList("."));
+	}
+}
+
+
+OO_TEST(facadeContract)
+{
+	@autoreleasepool
+	{
+		// The facade the universe makes with +alloc/-init is the C++ GUI's one facade.
+		GuiDisplayGen *facade = [[[GuiDisplayGen alloc] init] autorelease];
+		cxx::GuiDisplayGen *gui = oo::ToCxx(facade);
+		OO_CHECK(gui != nullptr);
+		OO_CHECK(oo::ToObjC(gui) == facade);
+		OO_CHECK(oo::ToObjC(gui) == oo::ToObjC(gui));
+		GuiDisplayGen *small = SmallGUI("T");
+		OO_CHECK(oo::ToObjC(oo::ToCxx(small)) == small);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::GuiDisplayGen *>(nullptr)) == nil);
+		OO_CHECK(oo::ToCxx(static_cast<GuiDisplayGen *>(nil)) == nullptr);
+
+		// The same answers from either side.
+		[facade cxx_setText:"x" forRow:3];
+		OO_CHECK(gui->objectForRow(3) == oo::PList("x"));
+		gui->setKey("k", 3);
+		OO_CHECK([facade cxx_keyForRow:3] == std::optional<std::string>("k"));
+
+		// A C++ GUI made first gets a facade on demand, and keeps it while it is used.
+		oo::Ref<cxx::GuiDisplayGen> made = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(100, 100), 2, 3, 10, 0, std::optional<std::string>());
+		GuiDisplayGen *madeFacade = oo::ToObjC(made);
+		OO_CHECK(madeFacade != nil && oo::ToCxx(madeFacade) == made.get());
+		OO_CHECK_EQ([madeFacade rows], 3u);
+		// The facade's category (slices 2-4) reaches the same state.
+		[madeFacade cxx_setArray:{ "a", "b" } forRow:2];
+		OO_CHECK(made->objectForRow(2).isArray());
 	}
 }
 
