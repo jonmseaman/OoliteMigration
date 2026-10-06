@@ -263,7 +263,7 @@ OO_TEST(standardSubentities)
 		OO_CHECK(Near([child position].y, 5.0));
 		OO_CHECK([child owner] == effect);
 		OO_CHECK([child isSubEntity]);
-		OO_CHECK([child retainCount] == 1);	// the parent's list holds the one reference
+		OO_CHECK([child retainCount] == 2);	// the parent's list and the enumerator's snapshot (effects)
 		OO_CHECK([effect isShipWithSubEntityShip:child]);
 		OO_CHECK((id)[child parentEntity] == effect);
 		OO_CHECK(![child isShipWithSubEntityShip:effect]);
