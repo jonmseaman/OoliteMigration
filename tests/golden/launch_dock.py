@@ -201,23 +201,46 @@ def suppress_populators(console):
     return [k for k in keys.split(",") if k]
 
 
+# Emptying the system is a clear-then-count, and a live universe can add a ship between the two
+# console commands (bug oo-pfern: "1 non-station ship(s) remain after clearing", ~1 golden run in
+# 6 on a loaded machine). The sources are the ones the component tier measured in oo-hmnbb
+# (world_steps._clear_to_player): a ship removed part-way through Ship.dumpCargo(n) keeps ejecting
+# pods, because its n-1 deferred -dumpCargo calls outlive it; the station launches shuttles; the
+# repopulation timer. So the clear is repeated until one clear-then-count sees no non-station ship
+# - a wait for a condition, not a longer sleep - and the failure below is unchanged: a system that
+# never empties still raises ScenarioError.
+CLEAR_ATTEMPTS = 10
+CLEAR_RETRY_SECONDS = 0.5
+CLEAR_NON_STATION_SHIPS_JS = (
+    "(function(){ var ships = system.allShips, n = 0;"
+    " for (var i = 0; i < ships.length; i++) {"
+    "   if (!ships[i].isPlayer && !ships[i].isStation) { ships[i].remove(); n++; } }"
+    " return n; })()")
+COUNT_NON_STATION_SHIPS_JS = (
+    "(function(){ var ships = system.allShips, n = 0;"
+    " for (var i = 0; i < ships.length; i++) {"
+    "   if (!ships[i].isPlayer && !ships[i].isStation) n++; }"
+    " return n; })()")
+
+
 def clear_system(console):
     """Remove every non-player, non-station ship.
 
     Copied from run_dump.clear_system for the reason its docstring gives: removing the main
     station undocks the player and makes docked/undocked a second, unintended source of
     divergence. Here it matters more, because this scenario docks at that station.
+
+    Repeats clear-then-count up to CLEAR_ATTEMPTS times (see CLEAR_ATTEMPTS for why one pass is
+    not enough) and raises only when the system never empties.
     """
-    console.evaluate_int(
-        "(function(){ var ships = system.allShips, n = 0;"
-        " for (var i = 0; i < ships.length; i++) {"
-        "   if (!ships[i].isPlayer && !ships[i].isStation) { ships[i].remove(); n++; } }"
-        " return n; })()")
-    remaining = console.evaluate_int(
-        "(function(){ var ships = system.allShips, n = 0;"
-        " for (var i = 0; i < ships.length; i++) {"
-        "   if (!ships[i].isPlayer && !ships[i].isStation) n++; }"
-        " return n; })()")
+    remaining = None
+    for attempt in range(CLEAR_ATTEMPTS):
+        if attempt:
+            time.sleep(CLEAR_RETRY_SECONDS)
+        console.evaluate_int(CLEAR_NON_STATION_SHIPS_JS)
+        remaining = console.evaluate_int(COUNT_NON_STATION_SHIPS_JS)
+        if not remaining:
+            break
     if remaining:
         raise ScenarioError("%d non-station ship(s) remain after clearing; the dump would measure "
                             "the ambient population instead of the scenario" % remaining)
