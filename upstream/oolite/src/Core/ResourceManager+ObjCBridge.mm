@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 */
 
 #import "ResourceManager.h"
+#import "OOSystemDescriptionManager.h"
 
 
 @implementation ResourceManager
