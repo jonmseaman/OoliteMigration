@@ -116,7 +116,7 @@ void OOAIStateMachineVerifierStage::run()
 }
 
 
-std::string OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(OOOXPVerifier *)
+std::string OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(::OOOXPVerifier *)
 {
 	return kStageName;
 }
