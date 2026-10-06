@@ -4,10 +4,9 @@ OOMultiTextureMaterial.h
 
 A material that uses multitexturing and texture combiners.
 
-C++20 since bead oo-lh0x (proposed ADR-0056, amendments oo-smy and oo-vl43). The class is
-cxx::OOMultiTextureMaterial while OOMultiTextureMaterial+ObjCBridge.h, imported at the end of this
-header, keeps the Objective-C OOMultiTextureMaterial that its caller makes; the bridge's deletion
-bead moves it out of namespace cxx.
+C++20 since bead oo-lh0x (proposed ADR-0056, amendments oo-smy and oo-vl43). Its Objective-C
+facade was deleted by bead oo-9ht.42 (ADR-0056 amendment "deleting a facade"): the class is global,
+and Objective-C sees one as the nearest facade, OOBasicMaterial's.
 
 
 Copyright (C) 2010-2013 Jens Ayton
@@ -44,9 +43,7 @@ SOFTWARE.
 @class OOTexture;
 
 
-namespace cxx {
-
-class OOMultiTextureMaterial : public OOBasicMaterial
+class OOMultiTextureMaterial : public cxx::OOBasicMaterial
 {
 public:
 	/*	A new material, initialised by initWithName() (below); null where it failed (it answered
@@ -75,13 +72,6 @@ private:
 
 	NSUInteger					_unitsUsed = {};
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOMultiTextureMaterial, for its caller not yet converted.
-// Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOMultiTextureMaterial+ObjCBridge.h"
 
 #endif	/* OO_MULTITEXTURE */
 
