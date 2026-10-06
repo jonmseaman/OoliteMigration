@@ -20,6 +20,8 @@
 */
 
 #import "OOFlasherEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSFlasher.h"
 #import "OOColor.h"
 #import "Universe.h"
 
@@ -307,6 +309,25 @@ OO_TEST(facade)
 		OO_CHECK(dynamic_cast<cxx::OOFlasherEntity *>(oo::ToCxx(flasher)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(flasher)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(flasher)) == flasher);
+	}
+}
+
+
+// The binding's category, which the facade carries since bead oo-9ht.49: what the engine asks a
+// OOFlasherEntity for by selector is what OOJSFlasher.mm answers.
+OO_TEST(jsExtensions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:WhiteBlack(1, 0.5)];
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[flasher getJSClass:&jsClass andPrototype:&prototype];
+		OOJSFlasherGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([flasher cxx_oo_jsClassName] == std::optional<std::string>("Flasher"));
+		OO_CHECK([flasher isVisibleToScripts] == YES);
 	}
 }
 

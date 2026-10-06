@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOPlanetEntity.h"
+#import "OOJSPlanet.h"
 #import "OOPlanetDrawable.h"
 #import "OOColor.h"
 #import "OOGraphicsResetManager.h"
@@ -109,5 +110,14 @@ MA 02110-1301, USA.
 
 // OOGraphicsResetClient: the facade is the client the planet registered.
 - (void) resetGraphicsState														{ oo::ToCxx(self)->resetGraphicsState(); }
+
+
+// The JS side, which the engine asks for by selector (Entity (OOJavaScriptExtensions)): the
+// binding's category, moved here from the binding's bridge file, which it deletes (bead oo-9ht.92;
+// ADR-0056 amendment oo-6ia4 item 3). Each forwards to the OOJSPlanet.mm function that holds its
+// old body; they become members of the C++ class with this facade's deletion (oo-9ht.129).
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype	{ ::OOJSPlanetGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName				{ return ::OOJSPlanetJSClassName(self); }
+- (BOOL) isVisibleToScripts										{ return ::OOJSPlanetIsVisibleToScripts(self); }
 
 @end
