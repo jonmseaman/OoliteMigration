@@ -312,6 +312,7 @@
 [oo-kdrc6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 [oo-0tx6c] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
+[oo-9ht.120] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOpenGLExtensionManager test_OOShaderUniformMethodType
 [oo-9ht.115] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureScaling && bash tools/tier-c.sh --only goldens
 [oo-q7r3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
 [oo-zmix] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
