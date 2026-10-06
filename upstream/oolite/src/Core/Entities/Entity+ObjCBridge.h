@@ -248,7 +248,7 @@ MA 02110-1301, USA.
 /*	The informal protocols a shader binding target implements, categories of the Objective-C root
 	that the entities implement (Entity's facade, ShipEntity). They are not the material's: they
 	stay Objective-C until the entities convert (ADR-0056 amendment of bead oo-3kqi, item 5), moved
-	here unchanged from OOShaderMaterial+ObjCBridge.h when bead oo-9ht.46 deleted it.
+	here unchanged from the shader material's facade header when bead oo-9ht.46 deleted it.
 */
 @interface OOObject (ShaderBindingHierarchy)
 
