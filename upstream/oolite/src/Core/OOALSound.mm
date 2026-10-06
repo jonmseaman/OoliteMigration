@@ -125,7 +125,9 @@ oo::ObjCRef<::OOSound *> OOSound::initWithContentsOfFile(const std::optional<std
 	}
 	else
 	{
-		self = [[::OOALStreamedSound alloc] initWithDecoder:decoder];
+		// C++ since oo-9ht.84: as the buffered sound above.
+		const oo::Ref<OOALStreamedSound> sound = OOALStreamedSound::initWithDecoder(decoder);
+		self = sound ? [[::OOSound alloc] initWithNewCxxSound:sound] : nil;
 	}
 	[decoder release];
 

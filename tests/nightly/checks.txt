@@ -313,6 +313,7 @@
 [oo-0tx6c] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
 [oo-9ht.83] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALBufferedSound test_OOALStreamedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
+[oo-9ht.84] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALStreamedSound test_OOALBufferedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
 [oo-9ht.16] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJoystickProfile test_OOJoystickManager test_OOSDLJoystickManager test_PlayerEntityStickProfile && bash tools/tier-c.sh --only goldens
 [oo-9ht.134] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-9ht.142] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens

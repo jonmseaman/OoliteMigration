@@ -16,14 +16,15 @@
 	hardware cannot change the answers; the user's defaults are a scratch folder's (HOMEPATH), so
 	the machine's own volume cannot either. The decoder, the two concrete sounds and the mixer are
 	this file's stubs (proposed ADR-0056, amendment oo-z1s4 item 4): the real ones would bring
-	Vorbis and the whole mixer into the link. The streamed sound is an Objective-C subclass, as the
-	real one's facade is; the buffered sound is a C++ stand-in since bead oo-9ht.83 deleted its
-	facade, and its class checks ask the C++ sound (standing approval oo-9n5p9).
+	Vorbis and the whole mixer into the link. The concrete sounds are C++ stand-ins since beads
+	oo-9ht.83 and oo-9ht.84 deleted their facades, and their class checks ask the C++ sound
+	(standing approval oo-9n5p9).
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOALSound.h"
 #import "OOALBufferedSound.h"
+#import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
 #import "OOLogging.h"
 
@@ -34,6 +35,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <map>
 #include <process.h>
 #include <string>
 #include <string_view>
@@ -166,53 +168,55 @@ ALuint OOALBufferedSound::soundBuffer()
 }
 
 
-@interface OOALStreamedSound: OOSound
+// The streamed sound: a C++ stand-in since bead oo-9ht.84 deleted the Objective-C facade this file
+// stubbed. Its rewinds are counted per sound (its _rewinds ivar was), and a rewind reaches the root's.
+static std::map<const OOALStreamedSound *, int> gStreamedRewinds;
+
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)
 {
-@public
-	std::optional<std::string>	_name;
-	int							_rewinds;
-}
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder;
-
-@end
-
-
-@implementation OOALStreamedSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder
-{
-	self = [super init];
-	if (self != nil)  _name = [inDecoder cxx_name];
-	return self;
+	oo::Ref<OOALStreamedSound> sound = oo::adopt(new OOALStreamedSound);
+	sound->_name = [inDecoder cxx_name];
+	return sound;
 }
 
 
-- (std::optional<std::string>)cxx_name
+OOALStreamedSound::~OOALStreamedSound()
+{
+	gStreamedRewinds.erase(this);
+}
+
+
+std::optional<std::string> OOALStreamedSound::name()
 {
 	return _name;
 }
 
 
-- (void) rewind
+void OOALStreamedSound::rewind()
 {
-	_rewinds++;
-	[super rewind];
+	gStreamedRewinds[this]++;
+	cxx::OOSound::rewind();
 }
 
 
-- (BOOL) soundIncomplete
+bool OOALStreamedSound::soundIncomplete()
 {
-	return YES;
+	return true;
 }
 
 
-- (ALuint) soundBuffer
+ALuint OOALStreamedSound::soundBuffer()
 {
 	return 7;
 }
 
-@end
+
+// The rewinds of the streamed sound behind a facade.
+static int Rewinds(OOSound *sound)
+{
+	const auto found = gStreamedRewinds.find(dynamic_cast<OOALStreamedSound *>(oo::ToCxx(sound)));
+	return found != gStreamedRewinds.end() ? found->second : 0;
+}
 
 
 // A subclass that overrides the designated initialiser and wraps a sound, as OOMusic does.
@@ -414,11 +418,11 @@ OO_TEST(loadingPicksBufferedOrStreamed)
 		OO_CHECK(dynamic_cast<OOALBufferedSound *>(oo::ToCxx(edge)) != nullptr);
 
 		OOSound *big = [[[OOSound alloc] cxx_initWithContentsOfFile:std::string("big.ogg")] autorelease];
-		OO_CHECK([big isKindOfClass:[OOALStreamedSound class]]);
+		OO_CHECK(dynamic_cast<OOALStreamedSound *>(oo::ToCxx(big)) != nullptr);
 		OO_CHECK([big cxx_name] == std::optional<std::string>("big.ogg"));
 		OO_CHECK([big soundBuffer] == 7 && [big soundIncomplete]);
 		[big rewind];
-		OO_CHECK(((OOALStreamedSound *)big)->_rewinds == 1);
+		OO_CHECK(Rewinds(big) == 1);
 
 		OO_CHECK(gLiveDecoders == 0);
 	}
@@ -494,7 +498,7 @@ OO_TEST(cxxApi)
 		OO_CHECK(dynamic_cast<OOALBufferedSound *>(oo::ToCxx(small.get())) != nullptr);
 		OO_CHECK(oo::ToCxx(small.get())->name() == std::optional<std::string>("small.ogg"));
 		const oo::ObjCRef<OOSound *> big = cxx::OOSound::initWithContentsOfFile(std::string("big.ogg"));
-		OO_CHECK([big.get() isKindOfClass:[OOALStreamedSound class]]);
+		OO_CHECK(dynamic_cast<OOALStreamedSound *>(oo::ToCxx(big.get())) != nullptr);
 		OO_CHECK(!cxx::OOSound::initWithContentsOfFile(std::nullopt));
 		OO_CHECK(!cxx::OOSound::initWithContentsOfFile(std::string("bad.ogg")));
 		OO_CHECK(gLiveDecoders == 0);
@@ -542,11 +546,12 @@ OO_TEST(objCSoundBehindACxxPointer)
 		cxx::OOSound *part = oo::ToCxx(objCSound);
 		OO_CHECK(part != nullptr && oo::ToObjC(part) == objCSound);	// the object itself
 
-		// Virtual calls from C++ reach the Objective-C overrides, and [super rewind] the root's.
+		// Virtual calls from C++ reach the overrides (the streamed sound is C++ since oo-9ht.84),
+		// and its rewind the root's.
 		OO_CHECK(part->name() == std::optional<std::string>("big.ogg"));
 		OO_CHECK(part->soundBuffer() == 7 && part->soundIncomplete());
 		part->rewind();
-		OO_CHECK(((OOALStreamedSound *)objCSound)->_rewinds == 1);
+		OO_CHECK(Rewinds(objCSound) == 1);
 		OO_CHECK(!part->descriptionComponents().has_value());
 
 		// A subclass that overrides only some: the root answers the rest.
@@ -565,11 +570,13 @@ OO_TEST(nilAndLifetime)
 	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSound *>(nullptr)) == nil);
 	OO_CHECK([none soundBuffer] == 0 && ![none soundIncomplete]);
 
-	// An Objective-C sound's C++ part outlives it, and then answers as nil did.
+	// An Objective-C sound's C++ part outlives it, and then answers as nil did. (The streamed sound
+	// was one until bead oo-9ht.84 made it C++; the subclass that overrides the initialiser is one.)
 	oo::Ref<cxx::OOSound> part;
 	@autoreleasepool
 	{
-		part = oo::Ref<cxx::OOSound>(oo::ToCxx([[[OOSound alloc] cxx_initWithContentsOfFile:std::string("big.ogg")] autorelease]));
+		OOSound *objCSound = [[[TestMusic alloc] cxx_initWithContentsOfFile:std::string("big.ogg")] autorelease];
+		part = oo::Ref<cxx::OOSound>(oo::ToCxx(objCSound));
 	}
 	OO_CHECK(!part->name().has_value() && part->soundBuffer() == 0 && !part->soundIncomplete());
 	OO_CHECK(oo::ToObjC(part) == nil);

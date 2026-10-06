@@ -21,7 +21,6 @@ oolite_sources += files(
     'OOALSoundDecoder+ObjCBridge.mm',
     'OOALSoundMixer.mm',
     'OOALStreamedSound.mm',
-    'OOALStreamedSound+ObjCBridge.mm',
     'OOAsyncQueue.mm',
     'OOAsyncWorkManager.mm',
     'OOAsyncWorkManager+ObjCBridge.mm',
