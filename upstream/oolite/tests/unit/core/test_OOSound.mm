@@ -53,7 +53,8 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 
 static unsigned gMixerUpdates = 0;
 
-// The mixer (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed): one, never released, counting the updates the root sends it.
+// The mixer (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed):
+// one, never released, counting the updates the root sends it.
 OOSoundMixer *OOSoundMixer::sharedMixer()
 {
 	static OOSoundMixer *mixer = oo::makeRef<OOSoundMixer>().leakRef();

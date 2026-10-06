@@ -182,7 +182,8 @@ void OOSoundChannel::stop()
 
 static int gChannelsOut = 0;
 
-// The mixer (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed): one, never released, handing out a new channel each time.
+// The mixer (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed):
+// one, never released, handing out a new channel each time.
 OOSoundMixer *OOSoundMixer::sharedMixer()
 {
 	static OOSoundMixer *mixer = oo::makeRef<OOSoundMixer>().leakRef();
