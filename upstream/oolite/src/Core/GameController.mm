@@ -69,7 +69,8 @@ static void SetUpSparkle(void);
 #endif
 
 
-static GameController *sSharedController = nil;
+static cxx::GameController *sSharedController = nullptr;
+
 
 
 @interface GameController (OOPrivate)
@@ -81,29 +82,27 @@ static GameController *sSharedController = nil;
 @end
 
 
-@implementation GameController
+namespace cxx {
 
-+ (GameController *) sharedController
+GameController *GameController::sharedController()
 {
-	if (sSharedController == nil)
+	if (sSharedController == nullptr)
 	{
-		sSharedController = [[self alloc] init];
+		sSharedController = oo::makeRef<GameController>().leakRef();
 	}
 	return sSharedController;
 }
 
 
-- (id) init
+GameController::GameController()
 {
-	if (sSharedController != nil)
+	if (sSharedController != nullptr)
 	{
-		[self release];
-		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
+		OORaiseException(OOInternalInconsistencyException, "%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__);
 	}
 	
-	if ((self = [super init]))
 	{
-		_finishedLaunching = NO;
+		_finishedLaunching = false;
 		last_timeInterval = oo::date::monotonicSeconds();	// the frame clock: intervals only (-doPerformGameTick)
 		delta_t = 0.01; // one hundredth of a second 
 		{ oo::Defaults &prefs = oo::Defaults::standard();
@@ -127,51 +126,47 @@ static GameController *sSharedController = nil;
 		
 		_splashStart = oo::date::monotonicSeconds();
 	}
-	
-	return self;
 }
 
 
-- (void) dealloc
+GameController::~GameController()
 {
 #if OOLITE_MAC_OS_X
 	[[[NSWorkspace sharedWorkspace] notificationCenter]	removeObserver:UNIVERSE];
 #endif
 	
-	[gameView release];
+	[_gameView release];
 	[UNIVERSE release];
-	
-	[super dealloc];
 }
 
 
-- (BOOL) isGamePaused
+bool GameController::isGamePaused()
 {
 	return gameIsPaused;
 }
 
 
-- (void) setGamePaused:(BOOL)value
+void GameController::setGamePaused(bool value)
 {
 	if (value && !gameIsPaused)
 	{
-		_resumeMode = [self mouseInteractionMode];
-		[self setMouseInteractionModeForUIWithMouseInteraction:NO];
-		[self setEcoQoS:YES];
-		gameIsPaused = YES;
+		_resumeMode = mouseInteractionMode();
+		setMouseInteractionModeForUIWithMouseInteraction(false);
+		setEcoQoS(true);
+		gameIsPaused = true;
 		[PLAYER doScriptEvent:OOJSID("gamePaused")];
 	}
 	else if (!value && gameIsPaused)
 	{
-		[self setMouseInteractionMode:_resumeMode];
-		[self setEcoQoS:NO];
-		gameIsPaused = NO;
+		setMouseInteractionMode(_resumeMode);
+		setEcoQoS(false);
+		gameIsPaused = false;
 		[PLAYER doScriptEvent:OOJSID("gameResumed")];
 	}
 }
 
 
-- (void) setEcoQoS: (BOOL)efficiencyModeRequested
+void GameController::setEcoQoS(bool efficiencyModeRequested)
 {
 #if OOLITE_WINDOWS
 #ifndef NDEBUG
@@ -183,9 +178,9 @@ static GameController *sSharedController = nil;
 	*/
 	if (efficiencyModeRequested && OODebugTCPConsoleIsWaitingForInput())  return;
 #endif
-	if (oo::Defaults::standard().object("ecoqos").isNull() ? YES : oo::Defaults::standard().boolForKey("ecoqos"))
+	if (oo::Defaults::standard().object("ecoqos").isNull() ? true : oo::Defaults::standard().boolForKey("ecoqos"))
 	{
-		BOOL setEfficiencyMode = !!efficiencyModeRequested; // yes or no, not 42
+		bool setEfficiencyMode = !!efficiencyModeRequested; // yes or no, not 42
 		HANDLE currentProcess = GetCurrentProcess();
 		
 		if (EXPECT_NOT(!SetPriorityClass(currentProcess, setEfficiencyMode ? IDLE_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS)))
@@ -207,13 +202,13 @@ static GameController *sSharedController = nil;
 }
 
 
-- (OOMouseInteractionMode) mouseInteractionMode
+OOMouseInteractionMode GameController::mouseInteractionMode()
 {
 	return _mouseMode;
 }
 
 
-- (void) setMouseInteractionMode:(OOMouseInteractionMode)mode
+void GameController::setMouseInteractionMode(OOMouseInteractionMode mode)
 {
 	OOMouseInteractionMode oldMode = _mouseMode;
 	if (mode == oldMode)  return;
@@ -222,44 +217,66 @@ static GameController *sSharedController = nil;
 	OO_LOG("input.mouseMode.changed", "Mouse interaction mode changed from {} to {}", OOStringFromMouseInteractionMode(oldMode), OOStringFromMouseInteractionMode(mode));
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
-	if ([self inFullScreenMode])
+	if ([oo::ToObjC(this) inFullScreenMode])
 	{
-		[_fullScreenController noteMouseInteractionModeChangedFrom:oldMode to:mode];
+		_fullScreenController->noteMouseInteractionModeChangedFrom(oldMode, mode);
 	}
 	else
 #endif
 	{
-		[[self gameView] noteMouseInteractionModeChangedFrom:oldMode to:mode];
+		[gameView() noteMouseInteractionModeChangedFrom:oldMode to:mode];
 	}
 }
 
 
-- (void) setMouseInteractionModeForFlight
+void GameController::setMouseInteractionModeForFlight()
 {
-	[self setMouseInteractionMode:[PLAYER isMouseControlOn] ? MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL : MOUSE_MODE_FLIGHT_NO_MOUSE_CONTROL];
+	setMouseInteractionMode([PLAYER isMouseControlOn] ? MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL : MOUSE_MODE_FLIGHT_NO_MOUSE_CONTROL);
 }
 
 
-- (void) setMouseInteractionModeForUIWithMouseInteraction:(BOOL)interaction
+void GameController::setMouseInteractionModeForUIWithMouseInteraction(bool interaction)
 {
-	[self setMouseInteractionMode:interaction ? MOUSE_MODE_UI_SCREEN_WITH_INTERACTION : MOUSE_MODE_UI_SCREEN_NO_INTERACTION];
+	setMouseInteractionMode(interaction ? MOUSE_MODE_UI_SCREEN_WITH_INTERACTION : MOUSE_MODE_UI_SCREEN_NO_INTERACTION);
 }
 
 
-- (MyOpenGLView *) gameView
+MyOpenGLView *GameController::gameView()
 {
-	return gameView;
+	return _gameView;
 }
 
 
-- (void) setGameView:(MyOpenGLView *)view
+void GameController::setGameView(MyOpenGLView *view)
 {
-	[gameView release];
-	gameView = [view retain];
-	[gameView setGameController:self];
-	[UNIVERSE setGameView:gameView];
+	[_gameView release];
+	_gameView = [view retain];
+	[_gameView setGameController:oo::ToObjC(this)];
+	[UNIVERSE setGameView:_gameView];
 }
 
+
+bool GameController::finishedLaunching()
+{
+	return _finishedLaunching;
+}
+
+
+#ifndef NDEBUG
+/*	This method exists purely to suppress Clang static analyzer warnings that
+	these ivars are unused (but may be used by categories, which they are).
+*/
+bool GameController::suppressClangStuff()
+{
+	return pauseSelector &&
+	pauseTarget;
+}
+#endif
+
+}	// namespace cxx
+
+
+@implementation GameController
 
 - (void) applicationDidFinishLaunching
 {
@@ -295,7 +312,7 @@ static GameController *sSharedController = nil;
 		[self setUpDisplayModes];
 		
 		// moved to before the Universe is created
-		for (const std::string &expansionPath : expansionPathsToInclude)
+		for (const std::string &expansionPath : _cxxController->expansionPathsToInclude)
 		{
 			[ResourceManager cxx_addExternalPath:expansionPath];
 		}
@@ -305,7 +322,7 @@ static GameController *sSharedController = nil;
 
 		// moved here to try to avoid initialising this before having an Open GL context
 		//[self cxx_logProgress:OO_DESC("Initialising universe")]; // DESC expansions only possible after Universe init
-		[[Universe alloc] initWithGameView:gameView];
+		[[Universe alloc] initWithGameView:_cxxController->_gameView];
 		
 		[self loadPlayerIfRequired];
 		
@@ -322,13 +339,13 @@ static GameController *sSharedController = nil;
 		exit(EXIT_FAILURE);
 	}
 	
-	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
+	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _cxxController->_splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	[self setFullScreenMode:oo::Defaults::standard().boolForKey("fullscreen")];
 #endif
 
-	_finishedLaunching = YES;
+	_cxxController->_finishedLaunching = YES;
 	
 	// Release anything allocated above that is not required.
 	objc_autoreleasePoolPop(pool);
@@ -339,22 +356,18 @@ static GameController *sSharedController = nil;
 }
 
 
-- (BOOL) finishedLaunching
-{
-	return _finishedLaunching;
-}
 
 
 - (void) loadPlayerIfRequired
 {
-	if (playerFileToLoad.has_value())
+	if (_cxxController->playerFileToLoad.has_value())
 	{
 		[self cxx_logProgress:OO_DESC("loading-player")];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:*playerFileToLoad asNew:NO];
+		[PLAYER loadPlayerFromFile:*_cxxController->playerFileToLoad asNew:NO];
 	}
 }
 
@@ -362,15 +375,15 @@ static GameController *sSharedController = nil;
 - (void) beginSplashScreen
 {
 #if !OOLITE_MAC_OS_X
-	if(!gameView)
+	if(!_cxxController->_gameView)
 	{
-		gameView = [MyOpenGLView alloc];
-		[gameView init];
-		[gameView setGameController:self];
-		[gameView initSplashScreen];
+		_cxxController->_gameView = [MyOpenGLView alloc];
+		[_cxxController->_gameView init];
+		[_cxxController->_gameView setGameController:self];
+		[_cxxController->_gameView initSplashScreen];
 	}
 #else
-	[gameView updateScreen];
+	[_cxxController->_gameView updateScreen];
 #endif
 }
 
@@ -381,7 +394,7 @@ static GameController *sSharedController = nil;
 {
 	void *pool = objc_autoreleasePoolPush();
 	
-	[gameView pollControls];
+	[_cxxController->_gameView pollControls];
 	[self doPerformGameTick];
 	
 	objc_autoreleasePoolPop(pool);
@@ -394,25 +407,25 @@ static GameController *sSharedController = nil;
 {
 	@try
 	{
-		if (gameIsPaused)
-			delta_t = 0.0;  // no movement!
+		if (_cxxController->gameIsPaused)
+			_cxxController->delta_t = 0.0;  // no movement!
 		else
 		{
-			delta_t = oo::date::monotonicSeconds() - last_timeInterval;
-			last_timeInterval += delta_t;
-			if (delta_t > MINIMUM_GAME_TICK)
-				delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
+			_cxxController->delta_t = oo::date::monotonicSeconds() - _cxxController->last_timeInterval;
+			_cxxController->last_timeInterval += _cxxController->delta_t;
+			if (_cxxController->delta_t > MINIMUM_GAME_TICK)
+				_cxxController->delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
 		}
 		
-		[UNIVERSE update:delta_t];
+		[UNIVERSE update:_cxxController->delta_t];
 		if (EXPECT_NOT([PLAYER status] == STATUS_RESTART_GAME))
 		{
 			[UNIVERSE reinitAndShowDemo:YES];
 		}
 		[OOSound update];
-		if (!gameIsPaused)
+		if (!_cxxController->gameIsPaused)
 		{
-			OOJSFrameCallbacksInvoke(delta_t);
+			OOJSFrameCallbacksInvoke(_cxxController->delta_t);
 		}
 	}
 	@catch (id exception) 
@@ -432,7 +445,7 @@ static GameController *sSharedController = nil;
 	
 	@try
 	{
-		[gameView updateScreen];
+		[_cxxController->_gameView updateScreen];
 	}
 	@catch (id exception) {}
 }
@@ -571,7 +584,7 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 {
 	if (!sGameTickScheduled)
 	{   
-		NSTimeInterval ti = _animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
+		NSTimeInterval ti = _cxxController->_animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
 		if (ti <= 0.0)  ti = 0.0001;	// as the Foundation timer did
 		
 		sGameTickInterval = std::chrono::duration_cast<TickClock::duration>(std::chrono::duration<double>(ti)).count();
@@ -691,12 +704,12 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 	if (![UNIVERSE doingStartUp])  return;
 
 #if OOLITE_MAC_OS_X
-	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];
-	[splashProgressTextField display];
+	[_cxxController->splashProgressTextField setStringValue:oo::NSStringFrom(message)];
+	[_cxxController->splashProgressTextField display];
 #endif
 	if (!message.empty())
 	{
-		OO_LOG("startup.progress", "===== [{:.2f} s] {}", oo::date::monotonicSeconds() - _splashStart, message);
+		OO_LOG("startup.progress", "===== [{:.2f} s] {}", oo::date::monotonicSeconds() - _cxxController->_splashStart, message);
 	}
 }
 
@@ -759,14 +772,14 @@ std::vector<std::string> sMessageStack;
 	
 #if OOLITE_MAC_OS_X
 	// These views will be released when we replace the content view.
-	splashProgressTextField = nil;
-	splashView = nil;
+	_cxxController->splashProgressTextField = nil;
+	_cxxController->splashView = nil;
 	
-	[gameWindow setAcceptsMouseMovedEvents:YES];
-	[gameWindow setContentView:gameView];
-	[gameWindow makeFirstResponder:gameView];
+	[_cxxController->gameWindow setAcceptsMouseMovedEvents:YES];
+	[_cxxController->gameWindow setContentView:_cxxController->_gameView];
+	[_cxxController->gameWindow makeFirstResponder:_cxxController->_gameView];
 #elif OOLITE_SDL
-	[gameView endSplashScreen];
+	[_cxxController->_gameView endSplashScreen];
 #endif
 }
 
@@ -783,7 +796,7 @@ std::vector<std::string> sMessageStack;
 #if OOLITE_WINDOWS
 	// This should not be required normally but we have to ensure that
 	// desktop resolution is restored also on some Intel cards on Win10
-	if (![gameView atDesktopResolution])
+	if (![_cxxController->_gameView atDesktopResolution])
 	{
 		OO_LOG("gameController.exitApp", "{}", "Restoring desktop resolution.");
 		ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
@@ -810,36 +823,36 @@ std::vector<std::string> sMessageStack;
 
 - (void)windowDidResize
 {
-	[gameView updateScreen];
+	[_cxxController->_gameView updateScreen];
 }
 
 
 - (std::optional<std::string>) cxx_playerFileToLoad
 {
-	return playerFileToLoad;
+	return _cxxController->playerFileToLoad;
 }
 
 
 - (void) cxx_setPlayerFileToLoad:(const std::string &)filename
 {
-	playerFileToLoad = std::nullopt;
+	_cxxController->playerFileToLoad = std::nullopt;
 	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
-		playerFileToLoad = filename;
+		_cxxController->playerFileToLoad = filename;
 }
 
 
 - (std::optional<std::string>) cxx_playerFileDirectory
 {
-	if (!playerFileDirectory.has_value())
+	if (!_cxxController->playerFileDirectory.has_value())
 	{
 		// save-directory via oo::Defaults (ADR-0032 / oo-mwo0 shared store).
-		playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
-		if (playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*playerFileDirectory)))
+		_cxxController->playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
+		if (_cxxController->playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*_cxxController->playerFileDirectory)))
 		{
-			playerFileDirectory = std::nullopt;
+			_cxxController->playerFileDirectory = std::nullopt;
 		}
 		// -[defaultCommanderPath]: OO_SAVEDIR or ~/oolite-saves, create if missing, else home.
-		if (!playerFileDirectory.has_value())
+		if (!_cxxController->playerFileDirectory.has_value())
 		{
 			const oo::ResourcePaths paths = oo::ResourcePaths::current();
 			const oo::fs::Path savedir = paths.saveDirectory();
@@ -848,27 +861,27 @@ std::vector<std::string> sMessageStack;
 			{
 				if (oo::fs::createDirectories(savedir))
 				{
-					playerFileDirectory = oo::fs::utf8String(savedir);
+					_cxxController->playerFileDirectory = oo::fs::utf8String(savedir);
 				}
 				else
 				{
 					OO_LOG_ERR("savedGame.defaultPath.create.failed", "Unable to create '{}'. Saved games will go to the home directory.", oo::fs::utf8String(savedir));
-					playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+					_cxxController->playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 				}
 			}
 			else if (type != oo::fs::FileType::directory)
 			{
 				OO_LOG_ERR("savedGame.defaultPath.notDirectory", "'{}' is not a directory, saved games will go to the home directory.", oo::fs::utf8String(savedir));
-				playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+				_cxxController->playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 			}
 			else
 			{
-				playerFileDirectory = oo::fs::utf8String(savedir);
+				_cxxController->playerFileDirectory = oo::fs::utf8String(savedir);
 			}
 		}
 	}
 
-	return playerFileDirectory;
+	return _cxxController->playerFileDirectory;
 }
 
 
@@ -880,7 +893,7 @@ std::vector<std::string> sMessageStack;
 		directory = oo::str::deletingLastPathComponent(*directory);
 	}
 
-	playerFileDirectory = directory;
+	_cxxController->playerFileDirectory = directory;
 	if (directory.has_value())  oo::Defaults::standard().setObject("save-directory", oo::PList(*directory));
 	else  oo::Defaults::standard().removeObject("save-directory");
 }
@@ -898,17 +911,6 @@ std::vector<std::string> sMessageStack;
 	#endif
 }
 
-
-#ifndef NDEBUG
-/*	This method exists purely to suppress Clang static analyzer warnings that
-	these ivars are unused (but may be used by categories, which they are).
-*/
-- (BOOL) suppressClangStuff
-{
-	return pauseSelector &&
-	pauseTarget;
-}
-#endif
 
 @end
 

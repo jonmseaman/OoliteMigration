@@ -18,7 +18,8 @@
 	events, and the process priority class EcoQoS sets on Windows); and, through the façade, the
 	full-screen category (still Objective-C, reading the state the class shell now holds) and the
 	player-file paths of slice 3. The expectations were written against the Objective-C API and run
-	on the unconverted class first.
+	on the unconverted class first; the façade contract (identity both ways, the C++ members, the
+	state the façade's methods read) came with the conversion.
 	Run: bash tools/check-core-tests.sh test_GameController
 */
 
@@ -323,6 +324,51 @@ OO_TEST(playerFilePaths)
 		OO_CHECK(oo::Defaults::standard().stringForKey("save-directory") == std::optional<std::string>("C:/games/saves"));
 		[controller cxx_setPlayerFileDirectory:std::nullopt];
 		OO_CHECK(!oo::Defaults::standard().stringForKey("save-directory").has_value());
+	}
+}
+
+
+// The façade (bead oo-zkpmt): one for the singleton, identity both ways, nil and null, and the C++
+// members giving the façade's answers.
+OO_TEST(facadeContract)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		GameController *facade = [GameController sharedController];
+		cxx::GameController *controller = cxx::GameController::sharedController();
+		OO_CHECK(controller != nullptr);
+		OO_CHECK(cxx::GameController::sharedController() == controller);
+		OO_CHECK(oo::ToCxx(facade) == controller);
+		OO_CHECK(oo::ToObjC(controller) == facade);
+		OO_CHECK([GameController sharedController] == facade);
+		OO_CHECK(oo::ToCxx(static_cast<GameController *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::GameController *>(nullptr)) == nil);
+
+		OO_CHECK(controller->isGamePaused() == (bool)[facade isGamePaused]);
+		OO_CHECK(controller->finishedLaunching() == (bool)[facade finishedLaunching]);
+		OO_CHECK(controller->gameView() == [facade gameView]);
+
+		// The C++ members tell the view of the façade, which slices 2 and 3 run on.
+		TestView *view = (TestView *)controller->gameView();
+		TestView *other = [[TestView alloc] init];
+		controller->setGameView((MyOpenGLView *)other);
+		OO_CHECK(other->_controller == facade);
+		OO_CHECK([facade gameView] == (MyOpenGLView *)other);
+		controller->setGameView((MyOpenGLView *)view);
+		OO_CHECK([other retainCount] == 1);
+		[other release];
+
+		controller->setMouseInteractionMode(MOUSE_MODE_UI_SCREEN_WITH_INTERACTION);
+		OO_CHECK([facade mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION);
+		controller->setMouseInteractionModeForUIWithMouseInteraction(false);
+		OO_CHECK([facade mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_NO_INTERACTION);
+
+		// The state slices 2 and 3 read through the façade.
+		OO_CHECK(facade->_cxxController.get() == controller);
+		[facade cxx_setPlayerFileToLoad:"x.oolite-save"];
+		OO_CHECK(controller->playerFileToLoad == std::optional<std::string>("x.oolite-save"));
+		[facade cxx_setPlayerFileToLoad:"x"];
 	}
 }
 
