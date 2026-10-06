@@ -287,19 +287,6 @@ std::optional<std::string> JoinedTags(const oo::PList &manifest)
 
 static cxx::OOOXZManager *sSingleton = nullptr;	// the one +1 is never released (amendment oo-r7m0 item 1)
 
-// The private units of slice 4, still Objective-C methods of the facade (below). The slice 1
-// to 3 units of this category and of OOFilterRules are members of cxx::OOOXZManager; the facade
-// forwards those that slice 4 sends (OOOXZManager+ObjCBridge.h).
-@interface OOOXZManager (OOPrivate)
-
-- (std::vector<oo::PList>) installOptions;	// the manifests on the current page
-- (std::vector<oo::PList>) removeOptions;	// empty: nothing removable (was nil)
-
-@end
-
-
-
-
 namespace {
 
 // Info-gnustep.plist string (CFBundleVersion / CFBundleName as the Override category used to expose).
@@ -1579,19 +1566,19 @@ void OOOXZManager::gui()
 	{
 		[gui cxx_setTitle:OO_DESC("oolite-oxzmanager-title-install")];
 		setFilteredList(applyCurrentFilter(_oxzList));
-		startRow = [oo::ToObjC(this) showInstallOptions];
+		startRow = showInstallOptions();
 	}
 	else if (_interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		[gui cxx_setTitle:OO_DESC("oolite-oxzmanager-title-installed")];
 		setFilteredList(applyCurrentFilter(managedOXZs()));
-		startRow = [oo::ToObjC(this) showInstallOptions];
+		startRow = showInstallOptions();
 	}
 	else if (_interfaceState == OXZ_STATE_PICK_REMOVE)
 	{
 		[gui cxx_setTitle:OO_DESC("oolite-oxzmanager-title-remove")];
 		setFilteredList(applyCurrentFilter(managedOXZs()));
-		startRow = [oo::ToObjC(this) showRemoveOptions];
+		startRow = showRemoveOptions();
 	}
 
 
@@ -1727,12 +1714,12 @@ void OOOXZManager::processSelection()
 	}
 	else if (selection == OXZ_GUI_ROW_LISTPREV)
 	{
-		[oo::ToObjC(this) processOptionsPrev];
+		processOptionsPrev();
 		return;
 	}
 	else if (selection == OXZ_GUI_ROW_LISTNEXT)
 	{
-		[oo::ToObjC(this) processOptionsNext];
+		processOptionsNext();
 		return;
 	}
 	else
@@ -1830,7 +1817,7 @@ void OOOXZManager::processShowInfoKey()
 			// reset list selection position
 			[gui setSelectedRow:(_item - _offset + OXZ_GUI_ROW_LISTSTART)];
 			// and do the GUI again with the correct positions
-			[oo::ToObjC(this) showOptionsUpdate]; // restore screen
+			showOptionsUpdate(); // restore screen
 		}
 		else
 		{
@@ -1912,37 +1899,30 @@ void OOOXZManager::processExtractKey()
 	}
 }
 
-}	// namespace cxx
-
-
-// Slice 4 of docs/phases/3-slices/OOOXZManager.md, still Objective-C: methods of the facade
-// (OOOXZManager+ObjCBridge.h), whose state is the C++ manager's, read through oo::ToCxx(self).
-@implementation OOOXZManager (OOOXZManagerSlices)
-
-- (std::vector<oo::PList>) installOptions
+std::vector<oo::PList> OOOXZManager::installOptions()
 {
-	NSUInteger start = oo::ToCxx(self)->_offset;
-	if (start >= oo::ToCxx(self)->_filteredList.count())
+	NSUInteger start = _offset;
+	if (start >= _filteredList.count())
 	{
 		start = 0;
-		oo::ToCxx(self)->_offset = 0;
+		_offset = 0;
 	}
 	NSUInteger end = start + OXZ_GUI_NUM_LISTROWS;
-	if (end > oo::ToCxx(self)->_filteredList.count())
+	if (end > _filteredList.count())
 	{
-		end = oo::ToCxx(self)->_filteredList.count();
+		end = _filteredList.count();
 	}
-	const oo::PList::Array &all = Elements(oo::ToCxx(self)->_filteredList);
+	const oo::PList::Array &all = Elements(_filteredList);
 	return std::vector<oo::PList>(all.begin() + start, all.begin() + end);
 }
 
 
-- (OOGUIRow) showInstallOptions
+OOGUIRow OOOXZManager::showInstallOptions()
 {
 	// shows the current installation options page
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
-	const std::vector<oo::PList> options = [self installOptions];
-	NSUInteger optCount = oo::ToCxx(self)->_filteredList.count();
+	const std::vector<oo::PList> options = installOptions();
+	NSUInteger optCount = _filteredList.count();
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUITabSettings tab_stops;
 	tab_stops[0] = 0;
@@ -1957,9 +1937,9 @@ void OOOXZManager::processExtractKey()
 						   OO_DESC("oolite-oxzmanager-heading-installed"),
 						   OO_DESC("oolite-oxzmanager-heading-downloadable")}) forRow:OXZ_GUI_ROW_LISTHEAD];
 
-	if (oo::ToCxx(self)->_offset > 0)
+	if (_offset > 0)
 	{
-		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setArray:Columns({OO_DESC("gui-back"), "", "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setKey:"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
@@ -1972,9 +1952,9 @@ void OOOXZManager::processExtractKey()
 		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
 		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
 	}
-	if (oo::ToCxx(self)->_offset + 10 < optCount)
+	if (_offset + 10 < optCount)
 	{
-		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setArray:Columns({OO_DESC("gui-more"), "", "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setKey:"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
@@ -2002,8 +1982,8 @@ void OOOXZManager::processExtractKey()
 	}
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
-	BOOL oxzLineSelected = NO;
-	const std::optional<std::string> installPath = [self installPath];
+	bool oxzLineSelected = false;
+	const std::optional<std::string> installPath = installPath();
 
 	for (const oo::PList &manifest : options)
 	{
@@ -2052,14 +2032,14 @@ void OOOXZManager::processExtractKey()
 
 		[gui cxx_setKey:identifier.value_or(std::string()) forRow:row];
 		/* yellow for installable, orange for dependency issues, grey and unselectable for version issues, white and unselectable for already installed (manually or otherwise) at the current version, red and unselectable for already installed manually at a different version. */
-		[gui setColor:[self colorForManifest:manifest] forRow:row];
+		[gui setColor:oo::ToObjC(colorForManifest(manifest)) forRow:row];
 
 		if (row == [gui selectedRow])
 		{
-			oxzLineSelected = YES;
+			oxzLineSelected = true;
 
-			[gui cxx_setText:[self installStatusForManifest:manifest].value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
-			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui cxx_setText:installStatusForManifest(manifest).value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTSTATUS];
 
 			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 
@@ -2077,12 +2057,12 @@ void OOOXZManager::processExtractKey()
 				//keep only the first part of the date string description, which should be in YYYY-MM-DD format
 				const std::string updatedDesc = oo::str::split(oo::date::description(oo::date::dateWithTimeIntervalSince1970(timestamp)), " ").front();
 
-				[gui cxx_setArray:Columns({OO_DESC("oolite-oxzmanager-infoline-size"), [self humanSize:size], OO_DESC("oolite-oxzmanager-infoline-date"), updatedDesc}) forRow:OXZ_GUI_ROW_LISTINFO2];
+				[gui cxx_setArray:Columns({OO_DESC("oolite-oxzmanager-infoline-size"), humanSize(size), OO_DESC("oolite-oxzmanager-infoline-date"), updatedDesc}) forRow:OXZ_GUI_ROW_LISTINFO2];
 			}
 			else if (size > 0)
 			{
 				// list of installed/removable OXZs
-				[gui cxx_setArray:Columns({OO_DESC("oolite-oxzmanager-infoline-size"), [self humanSize:size]}) forRow:OXZ_GUI_ROW_LISTINFO2];
+				[gui cxx_setArray:Columns({OO_DESC("oolite-oxzmanager-infoline-size"), humanSize(size)}) forRow:OXZ_GUI_ROW_LISTINFO2];
 			}
 			
 
@@ -2094,7 +2074,7 @@ void OOOXZManager::processExtractKey()
 
 	if (!oxzLineSelected)
 	{
-		if (oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALLED)
+		if (_interfaceState == OXZ_STATE_PICK_INSTALLED)
 		{
 			// installeD
 			[gui cxx_addLongText:cxx_OOExpand(cxx_OOLookUpDescriptionPRIV("oolite-oxzmanager-installed-nonepicked")) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
@@ -2112,33 +2092,33 @@ void OOOXZManager::processExtractKey()
 }
 
 
-- (std::vector<oo::PList>) removeOptions
+std::vector<oo::PList> OOOXZManager::removeOptions()
 {
-	if (oo::ToCxx(self)->_filteredList.count() == 0)
+	if (_filteredList.count() == 0)
 	{
 		return {};
 	}
-	NSUInteger start = oo::ToCxx(self)->_offset;
-	if (start >= oo::ToCxx(self)->_filteredList.count())
+	NSUInteger start = _offset;
+	if (start >= _filteredList.count())
 	{
 		start = 0;
-		oo::ToCxx(self)->_offset = 0;
+		_offset = 0;
 	}
 	NSUInteger end = start + OXZ_GUI_NUM_LISTROWS;
-	if (end > oo::ToCxx(self)->_filteredList.count())
+	if (end > _filteredList.count())
 	{
-		end = oo::ToCxx(self)->_filteredList.count();
+		end = _filteredList.count();
 	}
-	const oo::PList::Array &all = Elements(oo::ToCxx(self)->_filteredList);
+	const oo::PList::Array &all = Elements(_filteredList);
 	return std::vector<oo::PList>(all.begin() + start, all.begin() + end);
 }
 
 
-- (OOGUIRow) showRemoveOptions
+OOGUIRow OOOXZManager::showRemoveOptions()
 {
 	// shows the current installation options page
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
-	const std::vector<oo::PList> options = [self removeOptions];
+	const std::vector<oo::PList> options = removeOptions();
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	if (options.empty())
 	{
@@ -2155,9 +2135,9 @@ void OOOXZManager::processExtractKey()
 	[gui cxx_setArray:Columns({OO_DESC("oolite-oxzmanager-heading-category"),
 						   OO_DESC("oolite-oxzmanager-heading-title"),
 						   OO_DESC("oolite-oxzmanager-heading-version")}) forRow:OXZ_GUI_ROW_LISTHEAD];
-	if (oo::ToCxx(self)->_offset > 0)
+	if (_offset > 0)
 	{
-		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setArray:Columns({OO_DESC("gui-back"), "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui cxx_setKey:"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
@@ -2170,9 +2150,9 @@ void OOOXZManager::processExtractKey()
 		[gui cxx_setText:"" forRow:OXZ_GUI_ROW_LISTPREV align:GUI_ALIGN_LEFT];
 		[gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:OXZ_GUI_ROW_LISTPREV];
 	}
-	if (oo::ToCxx(self)->_offset + OXZ_GUI_NUM_LISTROWS < [self managedOXZs].count())
+	if (_offset + OXZ_GUI_NUM_LISTROWS < managedOXZs().count())
 	{
-		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setArray:Columns({OO_DESC("gui-more"), "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui cxx_setKey:"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
@@ -2201,7 +2181,7 @@ void OOOXZManager::processExtractKey()
 
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
-	BOOL oxzSelected = NO;
+	bool oxzSelected = false;
 
 	for (const oo::PList &manifest : options)
 	{
@@ -2214,16 +2194,16 @@ void OOOXZManager::processExtractKey()
 		const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 		[gui cxx_setKey:identifier.value_or(std::string()) forRow:row];
 
-		[gui setColor:[self colorForManifest:manifest] forRow:row];
+		[gui setColor:oo::ToObjC(colorForManifest(manifest)) forRow:row];
 
 		if (row == [gui selectedRow])
 		{
-			[gui cxx_setText:[self installStatusForManifest:manifest].value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
-			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui cxx_setText:installStatusForManifest(manifest).value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui setColor:oo::ToObjC(OOColor::greenColor()) forRow:OXZ_GUI_ROW_LISTSTATUS];
 
 			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 			
-			oxzSelected = YES;
+			oxzSelected = true;
 		}
 		row++;
 	}
@@ -2237,82 +2217,78 @@ void OOOXZManager::processExtractKey()
 }
 
 
-- (void) showOptionsUpdate
+void OOOXZManager::showOptionsUpdate()
 {
 
-	if (oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALL)
+	if (_interfaceState == OXZ_STATE_PICK_INSTALL)
 	{
-		[self setFilteredList:[self applyCurrentFilter:oo::ToCxx(self)->_oxzList]];
-		[self showInstallOptions];
+		setFilteredList(applyCurrentFilter(_oxzList));
+		showInstallOptions();
 	}
-	else if (oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALLED)
+	else if (_interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
-		[self setFilteredList:[self applyCurrentFilter:[self managedOXZs]]];
-		[self showInstallOptions];
+		setFilteredList(applyCurrentFilter(managedOXZs()));
+		showInstallOptions();
 	}
-	else if (oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_REMOVE)
+	else if (_interfaceState == OXZ_STATE_PICK_REMOVE)
 	{
-		[self setFilteredList:[self applyCurrentFilter:[self managedOXZs]]];
-		[self showRemoveOptions];
+		setFilteredList(applyCurrentFilter(managedOXZs()));
+		showRemoveOptions();
 	}
 	// else nothing necessary
 }
 
 
-- (void) showOptionsPrev
+void OOOXZManager::showOptionsPrev()
 {
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	if (oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALL || oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_REMOVE || oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALLED)
+	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		if ([gui selectedRow] == OXZ_GUI_ROW_LISTPREV)
 		{
-			[self processSelection];
+			processSelection();
 		}
 	}
 }
 
 
-- (void) processOptionsPrev
+void OOOXZManager::processOptionsPrev()
 {
-	if (oo::ToCxx(self)->_offset < OXZ_GUI_NUM_LISTROWS)  
+	if (_offset < OXZ_GUI_NUM_LISTROWS)  
 	{
-		oo::ToCxx(self)->_offset = 0;
+		_offset = 0;
 	}
 	else
 	{
-		oo::ToCxx(self)->_offset -= OXZ_GUI_NUM_LISTROWS;
+		_offset -= OXZ_GUI_NUM_LISTROWS;
 	}
-	[self showOptionsUpdate];
+	showOptionsUpdate();
 }
 
 
-- (void) processOptionsNext
+void OOOXZManager::processOptionsNext()
 {
-	if (oo::ToCxx(self)->_offset + OXZ_GUI_NUM_LISTROWS < oo::ToCxx(self)->_filteredList.count())
+	if (_offset + OXZ_GUI_NUM_LISTROWS < _filteredList.count())
 	{
-		oo::ToCxx(self)->_offset += OXZ_GUI_NUM_LISTROWS;
+		_offset += OXZ_GUI_NUM_LISTROWS;
 	}
-	[self showOptionsUpdate];
+	showOptionsUpdate();
 	return;
 }
 
 
-- (void) showOptionsNext
+void OOOXZManager::showOptionsNext()
 {
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	if (oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALL || oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_REMOVE || oo::ToCxx(self)->_interfaceState == OXZ_STATE_PICK_INSTALLED)
+	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		if ([gui selectedRow] == OXZ_GUI_ROW_LISTNEXT)
 		{
-			[self processSelection];
+			processSelection();
 		}
 	}
 }
 
-@end
-
-
-namespace cxx {
 
 std::string OOOXZManager::extractOXZ(NSUInteger item)
 {

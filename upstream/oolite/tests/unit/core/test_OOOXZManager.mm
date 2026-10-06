@@ -1579,16 +1579,10 @@ OO_TEST(facadeContractSliceThree)
 
 
 // Slice 4 (bead oo-qbgo): the install and remove option pages, and their paging.
-@interface OOOXZManager (TestSliceFour)
-- (std::vector<oo::PList>) installOptions;
-- (std::vector<oo::PList>) removeOptions;
-@end
-
-
 namespace {
 
-std::vector<oo::PList> InstallOptions()	{ return [[OOOXZManager sharedManager] installOptions]; }
-std::vector<oo::PList> RemoveOptions()	{ return [[OOOXZManager sharedManager] removeOptions]; }
+std::vector<oo::PList> InstallOptions()	{ return Manager()->installOptions(); }
+std::vector<oo::PList> RemoveOptions()	{ return Manager()->removeOptions(); }
 
 
 std::string OptionTitles(const std::vector<oo::PList> &options)
