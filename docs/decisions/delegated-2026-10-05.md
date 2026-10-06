@@ -80,3 +80,17 @@ the recommended default the bead already carried, which had been the default in 
   check, with a selftest case: a converted member that messages an object passes; a plain
   function that does still fails. `--slice-done` is unchanged.
 - Delegation: Jon, 2026-10-05: "handle human-assigned beads ... to your best judgement".
+
+## oo-a1mau: EntityShaderBindings.mm is now built
+
+- Question: keep `upstream/oolite/src/Core/Entities/EntityShaderBindings.mm` in the build (bead
+  oo-aeev added it to `src/Core/Entities/meson.build`, so the entity shader uniforms whitelisted
+  in `shader-uniform-bindings.plist` — `clock`, `pseudoFixedD100`/`D256`, `systemGovernment`,
+  `systemEconomy`, `systemTechLevel`, `systemPopulation`, `systemProductivity` — have values
+  again), or drop it and leave those uniforms unbound?
+- Decision: take the recommended default, keep building it. The upstream sources define the
+  category for the runtime to find and the whitelist names its methods, so an unbound uniform was
+  a defect of this tree's meson lists, not upstream behaviour. Its test stays. A sweep for other
+  sources missing from the meson lists is a separate bead if wanted.
+- Recorded 2026-10-06 under the same delegation.
+- Delegation: Jon, 2026-10-05: "handle human-assigned beads ... to your best judgement".
