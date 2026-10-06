@@ -446,7 +446,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	oo::log::indent();
 	if ([entity isShip])
 	{
-		for (const auto &subRef : [(ShipEntity *)entity subEntityEnumerator])
+		for (const auto &subRef : [(::ShipEntity *)entity subEntityEnumerator])
 		{
 			dumpEntity(subRef.get(), state, visible);
 		}
@@ -473,7 +473,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			for (const oo::PList &shipInfo : *shipInfos)
 			{
 				const oo::PList *shipNode = shipInfo.find("ship");
-				ShipEntity *ship = (shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil;
+				::ShipEntity *ship = (shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil;
 				dumpEntity(ship, state, false);
 			}
 		}

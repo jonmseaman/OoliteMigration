@@ -96,8 +96,8 @@ namespace {
 
 // --- Ivars the game reads directly (ship->shot_time), and nothing else ----------------------------
 
-OOTimeDelta ShotTime(ShipEntity *s)		{ return s->shot_time; }
-OOBehaviour Behaviour(ShipEntity *s)	{ return s->behaviour; }
+OOTimeDelta ShotTime(ShipEntity *s)		{ return s->_cxxShip->shot_time; }
+OOBehaviour Behaviour(ShipEntity *s)	{ return s->_cxxShip->behaviour; }
 void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
 
 // --------------------------------------------------------------------------------------------------
@@ -280,6 +280,48 @@ OO_TEST(subEntityRelationship)
 #endif
 		[ship clearSubEntities];
 		OO_CHECK([sub owner] == nil);
+	}
+}
+
+
+// --- The crossing (after the conversion) ---------------------------------------------------------
+
+// An Objective-C ship's C++ part is a cxx::ShipEntity, and the facade's typed alias is that part.
+OO_TEST(objCShipPartIsAShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"crossing" definition:Definition()] autorelease];
+		Entity *asEntity = ship;
+		cxx::ShipEntity *part = oo::ToCxx(ship);
+		OO_CHECK(part != nullptr && part == ship->_cxxShip);
+		OO_CHECK(dynamic_cast<cxx::ShipEntity *>(oo::ToCxx(asEntity)) == part);
+		OO_CHECK(oo::AsObjCEntity(part) != nullptr && oo::ToObjC(part) == ship);
+		OO_CHECK(part->getIsShip() && part->_shipKey == std::optional<std::string>("crossing"));
+
+		// From C++, a member that a subclass overrides reaches the Objective-C override.
+		part->setStatus(STATUS_LAUNCHING);
+		OO_CHECK([ship status] == STATUS_LAUNCHING);
+		OO_CHECK(part->isShipWithSubEntityShip(asEntity) == false);
+
+		// A ship made the player's way has its part as well.
+		TestShip *bypass = [[[TestShip alloc] initBypassForPlayer] autorelease];
+		OO_CHECK(bypass->_cxxShip != nullptr && bypass->_cxxShip == oo::ToCxx(static_cast<Entity *>(bypass)));
+	}
+}
+
+
+// A failing initialiser that releases the ship before [super init] (the Objective-C idiom): the
+// facade's -dealloc runs without a C++ part, as the root's does (oo-s6ic6).
+OO_TEST(releasedBeforeInit)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [TestShip alloc];
+		OO_CHECK(ship->_cxxShip == nullptr);
+		[ship release];
 	}
 }
 
