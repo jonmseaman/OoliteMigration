@@ -38,10 +38,9 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
+#import "OOALSoundChannel.h"	// complete: the mixer keeps oo::Ref<OOSoundChannel> members
 
 #include "oofnd/Ref.hpp"
-
-class OOSoundChannel;
 
 
 enum
