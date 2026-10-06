@@ -2102,7 +2102,7 @@ std::optional<std::string> cxx::ResourceManager::pathForFileNamed(const std::str
 
 	// Search for file (OXZ-aware exists, same answers as -oo_oxzFileExistsAtPath:).
 	// reverse object enumerator allows OXPs to override core
-	const std::vector<std::string> paths = paths();
+	const std::vector<std::string> paths = ResourceManager::paths();
 	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 	{
 		const std::string &path = *pathIt;
@@ -2142,11 +2142,6 @@ id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
 										 std::optional<std::string> key,
 										 Class klass,
 										 bool useCache)
-				inFolder:(const std::optional<std::string> &)folderName
-				   cache:(std::map<std::string, oo::ObjCRef<id>, std::less<>> *)ioCache
-					 key:(std::optional<std::string>)key
-				   class:(Class)klass
-			usePathCache:(BOOL)useCache
 {
 	id				result = nil;
 
