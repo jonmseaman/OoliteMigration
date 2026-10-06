@@ -207,9 +207,9 @@ cxx::OOJavaScriptEngine	*jsEng = cxx::OOJavaScriptEngine::sharedEngine();
 	messageText = message;
 
 	// Get offending line, if present, and trim trailing line breaks
-	// The façade's reports may have no line (JSEngine.hpp: "may be null"; the QuickJS backend never
-	// sets one), and a string view of a null pointer crashed here (found by test_OOJavaScriptEngine,
-	// bead oo-10qz; amendment oo-nge8 item 3). No line is an empty line, as the blank report's is.
+	// The report's linebuf may be NULL (ooscript's ErrorReport; the QuickJS engine never sets it):
+	// a string_view of NULL read through a null pointer and crashed every report (bead
+	// oo-9ht.142). NULL reads as no line, as it did before the Foundation sweep (oo-3rb.203).
 	if (report->linebuf != NULL)  lineBuf = oo::utf16ToUtf8(std::u16string_view(report->linebuf));
 	while (oo::str::hasSuffix(lineBuf, "\n") || oo::str::hasSuffix(lineBuf, "\r"))  lineBuf.pop_back();
 

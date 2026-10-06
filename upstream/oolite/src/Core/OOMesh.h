@@ -38,12 +38,14 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
+#import "OOGraphicsResetManager.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
 
 @class OOMaterial, Octree;
+struct VertexFaceRef;	// OOMesh.mm: the faces that use one vertex, while loading
 class OOMeshBuffer;	// OOMesh.mm: one refcounted buffer (an oo::Data), shared by a mesh and its mutable copies
 
 
@@ -101,10 +103,10 @@ class OOMaterial;
 	amendments oo-smy, oo-pni4 and oo-dnbf): the class shell, its factories, lifecycle and
 	accessors. The class is cxx::OOMesh, a C++ subclass of cxx::OODrawable, while
 	OOMesh+ObjCBridge.h, imported at the end of this header, keeps the Objective-C OOMesh its
-	callers message. Slices 2-4 (loading, geometry, rendering) are still Objective-C: categories of
-	that facade in OOMesh.mm, which read and write the members below through oo::ToCxx(self).
+	callers message. Slices 2, 3 and 4 (loading, geometry and rendering, beads oo-rdwg, oo-9z7x and
+	oo-zmix) are C++ too, so OOMesh.mm has no Objective-C class code left.
 */
-class OOMesh : public OODrawable
+class OOMesh : public OODrawable, public OOGraphicsResetClient
 {
 public:
 	static oo::Ref<OOMesh> meshWithName(const std::string &name,
@@ -132,6 +134,7 @@ public:
 	~OOMesh() override;
 
 	oo::Ref<OOMesh> copyWithZone(OOZone *zone);
+	oo::Ref<OOMesh> mutableCopyWithZone(OOZone *zone);
 
 	std::optional<std::string> modelName();
 
@@ -153,13 +156,25 @@ public:
 	size_t totalSize() override;
 #endif
 
-	// Slices 3 and 4, still Objective-C (categories of the facade in OOMesh.mm): a C++ caller of
-	// the drawable reaches them through the facade until their slices convert them.
-	void renderOpaqueParts() override;
+	oo::Ref<Octree> getOctree();	// -octree (the member octree is the octree)
+
+	// This needs a better name.
+	BoundingBox findBoundingBoxRelativeToPosition(Vector opv, Vector ri, Vector rj, Vector rk, Vector position, Vector si, Vector sj, Vector sk);
+	BoundingBox findSubentityBoundingBoxWithPosition(Vector position, OOMatrix rotMatrix);
+
+	oo::Ref<OOMesh> meshRescaledBy(GLfloat scaleFactor);
+
 	BoundingBox boundingBox() override;
 
-	// Internal: the state, read and written by the Objective-C categories of slices 2-4 through
-	// oo::ToCxx(self) (amendment oo-pni4 item 1). Zero, as class_createInstance left the ivars.
+	void renderOpaqueParts() override;
+
+	void rebindMaterials();
+
+	// OOGraphicsResetClient: the mesh registers itself once loaded, and unregisters when destroyed.
+	void resetGraphicsState() override;
+
+	// Internal: the state, public while the facade and the test read it (amendment oo-pni4 item 1).
+	// Zero, as class_createInstance left the ivars.
 	uint8_t					_normalMode: 2 = 0,
 							brokenInRender: 1 = 0,
 							listsReady: 1 = 0;
@@ -190,7 +205,7 @@ public:
 	GLfloat					_maxDrawDistance = {};
 	BoundingBox				_boundingBox = {};
 	
-	::Octree				*octree = {};	// retained
+	oo::Ref<Octree>			octree;
 	
 	std::map<std::string, oo::Ref<OOMeshBuffer>, std::less<>>	_retainedObjects;	// the buffers _vertices & co. point into, by key
 	
@@ -213,7 +228,50 @@ public:
 	double					_stopwatchLastTime = {};
 #endif
 
+	// Internal: slice 3's geometry, which the loading calls.
+	void checkNormalsAndAdjustWinding();
+	void generateFaceTangents();
+	void calculateVertexNormalsAndTangentsWithFaceRefs(VertexFaceRef *faceRefs);
+	void calculateVertexTangentsWithFaceRefs(VertexFaceRef *faceRefs);
+	void getNormal(Vector *outNormal, Vector *outTangent, OOMeshVertexCount v_index, OOMeshSmoothGroup smoothGroup);
+	void calculateBoundingVolumes();
+	void rescaleByFactor(GLfloat factor);
+
+	// Internal: slice 4's buffers and display lists, which the loading and the destructor call.
+	void deleteDisplayLists();
+	bool setUpVertexArrays();
+
+	// Manage the set of refcounted buffers we need to hang on to.
+	void setRetainedObject(oo::Data object, const std::string &key);
+	void *allocateBytesWithSize(size_t size, NSUInteger count, const std::string &key);
+
+	// Allocate all per-vertex/per-face buffers.
+	bool allocateVertexBuffersWithCount(NSUInteger count);
+	bool allocateNormalBuffersWithCount(NSUInteger count);
+	bool allocateFaceBuffersWithCount(NSUInteger count);
+	bool allocateVertexArrayBuffersWithCount(NSUInteger count);
+
+	void renameTexturesFrom(const std::string &from, const std::string &to);
+
 private:
+	// Slice 2's loading (bead oo-rdwg).
+	bool initWithName(const std::string &name,
+					  const std::optional<std::string> &cacheKey,
+					  const oo::PList &materialDict,
+					  const oo::PList &shadersDict,
+					  bool smooth,
+					  const oo::PList &macros,
+					  id<OOWeakReferenceSupport> target,
+					  float scale,
+					  bool cacheWriteable);
+	bool loadData(const std::string &filename, float scale);
+	oo::PList modelData();	// null: incomplete
+	bool setModelFromModelData(const oo::PList &dict, const std::string &fileName);
+
+#ifndef NDEBUG
+	void debugDrawNormals();
+#endif
+	unsigned octreeDepth();
 	bool suppressClangStuff();
 };
 
@@ -227,6 +285,5 @@ oo::Ref<cxx::Octree> OOCacheManagerOctreeForModel(const std::string &inKey);
 void OOCacheManagerSetOctree(cxx::Octree *inOctree, const std::string &inKey);
 
 
-// Transitional: the Objective-C OOMesh, for its callers and for slices 2-4 of OOMesh.mm, not yet
-// converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
+// Transitional: the Objective-C OOMesh, for its callers not yet converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
 #import "OOMesh+ObjCBridge.h"

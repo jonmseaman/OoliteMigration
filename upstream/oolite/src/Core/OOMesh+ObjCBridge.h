@@ -4,11 +4,9 @@ OOMesh+ObjCBridge.h
 
 TRANSITIONAL (proposed ADR-0056, amendment oo-dnbf): the Objective-C OOMesh, a facade over the C++
 cxx::OOMesh (OOMesh.h), for the code that is not converted yet: the callers that message meshes
-(the ship and visual effect entities, the ship registry, the scripting bindings), and slices 2-4
-of docs/phases/3-slices/OOMesh.md (loading, geometry, rendering), which are still Objective-C and
-are categories of this facade in OOMesh.mm. Its interface is the one OOMesh.h declared before the
+(the ship and visual effect entities, the ship registry, the scripting bindings). Its interface is the one OOMesh.h declared before the
 conversion, copied exactly (same selectors, same types), less the ivars, which are the C++ class's
-members; the selectors that slices 3 and 4 implement are declared in their categories below. Each
+members; the graphics-reset conformance is declared in a category below. Each
 method of the class forwards to its C++ member. Imported as the last line of OOMesh.h; do not
 import it directly.
 
@@ -23,10 +21,10 @@ members reach cxx::OOMesh's overrides.
 	  handing the mesh to Objective-C                                      oo::ToObjC(mesh)
 	  taking it from Objective-C                                           oo::ToCxx(objcMesh)
 
-The facade is the mesh's graphics reset client (its loading registered it), so its -dealloc
-unregisters it and deletes the display lists, which message it. oo::ToObjC(oo::ToCxx(m)) == m.
+The C++ mesh is its own graphics reset client (amendment oo-rdwg item 3); the facade keeps the
+conformance and forwards -resetGraphicsState for any Objective-C sender. oo::ToObjC(oo::ToCxx(m)) == m.
 Never add to this file; converted code does not message the facade. Deleted by its deletion bead
-once every slice and every caller is C++.
+once every caller is C++.
 
 
 Oolite
@@ -51,6 +49,8 @@ MA 02110-1301, USA.
 
 #ifndef OOMESH_OBJCBRIDGE_H
 #define OOMESH_OBJCBRIDGE_H
+
+#import "OOGraphicsResetManager.h"
 
 
 @interface OOMesh: OODrawable <OOCopying>
@@ -78,25 +78,13 @@ MA 02110-1301, USA.
 
 - (std::optional<std::string>) modelName;
 
+- (void) rebindMaterials;
+
 - (oo::PList) materials;	// null: none
 - (oo::PList) shaders;
 
 - (size_t) vertexCount;
 - (size_t) faceCount;
-
-@end
-
-
-// Slice 4 (rendering), still Objective-C: OOMesh.mm.
-@interface OOMesh (OOMeshRendering)
-
-- (void) rebindMaterials;
-
-@end
-
-
-// Slice 3 (geometry), still Objective-C: OOMesh.mm.
-@interface OOMesh (OOMeshGeometry)
 
 - (Octree *) octree;
 
@@ -109,6 +97,11 @@ MA 02110-1301, USA.
 
 - (OOMesh *) meshRescaledBy:(GLfloat)scaleFactor;
 
+@end
+
+
+// The facade forwards the graphics-reset client method (the C++ mesh is the registered client).
+@interface OOMesh (OOMeshGraphicsReset) <OOGraphicsResetClient>
 @end
 
 
