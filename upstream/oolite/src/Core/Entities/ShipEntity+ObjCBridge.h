@@ -108,7 +108,6 @@ MA 02110-1301, USA.
 - (void) setMaxFlightSpeed:(GLfloat)newValue;
 - (void) setMaxFlightRoll:(GLfloat)newValue;
 - (void) setMaxFlightYaw:(GLfloat)newValue;
-- (void) setEnergyRechargeRate:(GLfloat)newValue;
 
 
 // Behaviours
@@ -129,37 +128,13 @@ MA 02110-1301, USA.
 // allow adjustment of escort numbers from shipdata.plist levels
 
 
-- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
 
-- (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
-- (OORoleSet *)roleSet;
 
-- (void) addRole:(const std::string &)role;
-- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability;
-- (void) cxx_removeRole:(const std::string &)role;
 
-- (std::optional<std::string>) cxx_primaryRole;
-- (void)setPrimaryRole:(const std::string &)role;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-- (BOOL) cxx_hasPrimaryRole:(const std::string &)role;
 
-- (BOOL)isPolice;		// Scan class is CLASS_POLICE
-- (BOOL)isThargoid;		// Scan class is CLASS_THARGOID
-- (BOOL)isTrader;		// Primary role is "trader" || isPlayer
-- (BOOL)isPirate;		// Primary role is "pirate"
-- (BOOL)isMissile;		// Primary role has suffix "MISSILE"
-- (BOOL)isMine;			// Primary role has suffix "MINE"
-- (BOOL)isWeapon;		// isMissile || isWeapon
-- (BOOL)isEscort;		// Primary role is "escort" or "wingman"
-- (BOOL)isShuttle;		// Primary role is "shuttle"
-- (BOOL)isTurret;		// Behaviour is BEHAVIOUR_TRACK_AS_TURRET
-- (BOOL)isPirateVictim;	// Primary role is listed in pirate-victim-roles.plist
-- (BOOL)isExplicitlyUnpiloted; // Has unpiloted = yes in its shipdata.plist entry
-- (BOOL)isUnpiloted;	// Explicitly unpiloted, hulk, rock, cargo, debris etc; an open-ended criterion that may grow.
 
 - (OOAlertCondition) alertCondition; // quick calc for shaders
 - (OOAlertCondition) realAlertCondition; // full calculation for scripting
-- (BOOL) hasHostileTarget;
-- (BOOL) isHostileTo:(Entity *)entity;
 
 // defense target handling
 - (NSUInteger) defenseTargetCount;
@@ -179,28 +154,10 @@ MA 02110-1301, USA.
 
 
 
-- (GLfloat) weaponRange;
-- (void) setWeaponRange:(GLfloat) value;
-- (void) setWeaponDataFromType:(OOWeaponType)weapon_type;
-- (float) energyRechargeRate; // final rate after energy units
-- (float) weaponRechargeRate;
-- (void) setWeaponRechargeRate:(float)value;
-- (void) setWeaponEnergy:(float)value;
-- (OOWeaponFacing) currentWeaponFacing;
 
-- (GLfloat) scannerRange;
-- (void) setScannerRange:(GLfloat)value;
 
-- (Vector) reference;
-- (void) setReference:(Vector)v;
 
-- (BOOL) reportAIMessages;
-- (void) setReportAIMessages:(BOOL)yn;
 
-- (void) transitionToAegisNone;
-- (OOPlanetEntity *) findNearestPlanet;
-- (Entity<OOStellarBody> *) findNearestStellarBody;		// NOTE: includes sun.
-- (OOPlanetEntity *) findNearestPlanetExcludingMoons;
 - (OOAegisStatus) checkForAegis;
 - (void) forceAegisCheck;
 - (BOOL) withinStationAegis;
@@ -1067,6 +1024,63 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
 
 @end
+
+
+// Slice 18 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice18)
+
+- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip;	// Name displayed to other ships (flipped with its family, bead oo-3rb.279)
+- (BOOL) hasRole:(const std::string &)role;	// flipped with its family (bead oo-3rb.280)
+- (OORoleSet *)roleSet;
+- (void) addRole:(const std::string &)role;
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability;
+- (void) cxx_removeRole:(const std::string &)role;
+- (std::optional<std::string>) cxx_primaryRole;
+- (void)setPrimaryRole:(const std::string &)role;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role;
+- (BOOL)isPolice;		// Scan class is CLASS_POLICE
+- (BOOL)isThargoid;		// Scan class is CLASS_THARGOID
+- (BOOL)isTrader;		// Primary role is "trader" || isPlayer
+- (BOOL)isPirate;		// Primary role is "pirate"
+- (BOOL)isMissile;		// Primary role has suffix "MISSILE"
+- (BOOL)isMine;			// Primary role has suffix "MINE"
+- (BOOL)isWeapon;		// isMissile || isWeapon
+- (BOOL)isEscort;		// Primary role is "escort" or "wingman"
+- (BOOL)isShuttle;		// Primary role is "shuttle"
+- (BOOL)isTurret;		// Behaviour is BEHAVIOUR_TRACK_AS_TURRET
+- (BOOL)isPirateVictim;	// Primary role is listed in pirate-victim-roles.plist
+- (BOOL)isExplicitlyUnpiloted; // Has unpiloted = yes in its shipdata.plist entry
+- (BOOL)isUnpiloted;	// Explicitly unpiloted, hulk, rock, cargo, debris etc; an open-ended criterion that may grow.
+- (BOOL) hasHostileTarget;
+- (BOOL) isHostileTo:(Entity *)entity;
+- (GLfloat) weaponRange;
+- (void) setWeaponRange:(GLfloat) value;
+- (void) setWeaponDataFromType:(OOWeaponType)weapon_type;
+- (float) energyRechargeRate; // final rate after energy units
+- (void) setEnergyRechargeRate:(GLfloat)newValue;
+- (float) weaponRechargeRate;
+- (void) setWeaponRechargeRate:(float)value;
+- (void) setWeaponEnergy:(float)value;
+- (OOWeaponFacing) currentWeaponFacing;
+- (GLfloat) scannerRange;
+- (void) setScannerRange:(GLfloat)value;
+- (Vector) reference;
+- (void) setReference:(Vector)v;
+- (BOOL) reportAIMessages;
+- (void) setReportAIMessages:(BOOL)yn;
+- (void) transitionToAegisNone;
+- (OOPlanetEntity *) findNearestPlanet;
+- (Entity<OOStellarBody> *) findNearestStellarBody;		// NOTE: includes sun.
+- (OOPlanetEntity *) findNearestPlanetExcludingMoons;
+
+@end
+
+
+// The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
+// oo-9ht.139 item 3); deleted with this header.
+double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]
 
 
 namespace oo {

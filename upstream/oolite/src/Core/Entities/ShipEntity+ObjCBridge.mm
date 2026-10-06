@@ -95,6 +95,10 @@ public:
 	// Slice 17 (bead oo-6hofy).
 	void applyAttitudeChanges(double delta_t) override	{ [(::ShipEntity *)_objcOwner applyAttitudeChanges:delta_t]; }
 	void setName(const std::optional<std::string> &inName) override	{ [(::ShipEntity *)_objcOwner cxx_setName:inName]; }
+
+	// Slice 18 (bead oo-vho1o).
+	bool isUnpiloted() override	{ return [(::ShipEntity *)_objcOwner isUnpiloted]; }
+	bool hasHostileTarget() override	{ return [(::ShipEntity *)_objcOwner hasHostileTarget]; }
 };
 
 }	// namespace
@@ -238,6 +242,9 @@ DESTROY(_cxxShip->laser_color);
 }
 
 @end
+
+
+double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar)	{ return [stellar radius]; }
 
 
 @implementation Entity (SubEntityRelationship)
@@ -622,5 +629,54 @@ DESTROY(_cxxShip->laser_color);
 - (void) cxx_setShipClassName:(const std::optional<std::string> &)inName	{ _cxxShip->setShipClassName(inName); }
 - (void) cxx_setDisplayName:(const std::optional<std::string> &)inName	{ _cxxShip->setDisplayName(inName); }
 - (void) cxx_setScanDescription:(const std::optional<std::string> &)inName	{ _cxxShip->setScanDescription(inName); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice18)
+
+- (std::optional<std::string>) identFromShip:(ShipEntity*)otherShip	{ return _cxxShip->identFromShip(otherShip); }
+- (BOOL) hasRole:(const std::string &)role	{ return _cxxShip->hasRole(role); }
+- (OORoleSet *) roleSet	{ return _cxxShip->getRoleSet(); }
+- (void) addRole:(const std::string &)role	{ _cxxShip->addRole(role); }
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability	{ _cxxShip->addRole(role, probability); }
+- (void) cxx_removeRole:(const std::string &)role	{ _cxxShip->removeRole(role); }
+- (std::optional<std::string>) cxx_primaryRole	{ return _cxxShip->getPrimaryRole(); }
+- (void) setPrimaryRole:(const std::string &)role	{ _cxxShip->setPrimaryRole(role); }
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role	{ return _cxxShip->hasPrimaryRole(role); }
+- (BOOL) isPolice	{ return _cxxShip->isPolice(); }
+- (BOOL) isThargoid	{ return _cxxShip->isThargoid(); }
+- (BOOL) isTrader	{ return _cxxShip->isTrader(); }
+- (BOOL) isPirate	{ return _cxxShip->isPirate(); }
+- (BOOL) isMissile	{ return _cxxShip->getIsMissile(); }
+- (BOOL) isMine	{ return _cxxShip->isMine(); }
+- (BOOL) isWeapon	{ return _cxxShip->isWeapon(); }
+- (BOOL) isEscort	{ return _cxxShip->isEscort(); }
+- (BOOL) isShuttle	{ return _cxxShip->isShuttle(); }
+- (BOOL) isTurret	{ return _cxxShip->isTurret(); }
+- (BOOL) isPirateVictim	{ return _cxxShip->isPirateVictim(); }
+- (BOOL) isExplicitlyUnpiloted	{ return _cxxShip->isExplicitlyUnpiloted(); }
+- (BOOL) isUnpiloted	{ return _cxxShip->cxx::ShipEntity::isUnpiloted(); }
+- (BOOL) hasHostileTarget	{ return _cxxShip->cxx::ShipEntity::hasHostileTarget(); }
+- (BOOL) isHostileTo:(Entity *)entity	{ return _cxxShip->isHostileTo(entity); }
+- (GLfloat) weaponRange	{ return _cxxShip->getWeaponRange(); }
+- (void) setWeaponRange:(GLfloat)value	{ _cxxShip->setWeaponRange(value); }
+- (void) setWeaponDataFromType:(OOWeaponType)weapon_type	{ _cxxShip->setWeaponDataFromType(weapon_type); }
+- (float) energyRechargeRate	{ return _cxxShip->energyRechargeRate(); }
+- (void) setEnergyRechargeRate:(GLfloat)newValue	{ _cxxShip->setEnergyRechargeRate(newValue); }
+- (float) weaponRechargeRate	{ return _cxxShip->weaponRechargeRate(); }
+- (void) setWeaponRechargeRate:(float)value	{ _cxxShip->setWeaponRechargeRate(value); }
+- (void) setWeaponEnergy:(float)value	{ _cxxShip->setWeaponEnergy(value); }
+- (OOWeaponFacing) currentWeaponFacing	{ return _cxxShip->getCurrentWeaponFacing(); }
+- (GLfloat) scannerRange	{ return _cxxShip->getScannerRange(); }
+- (void) setScannerRange:(GLfloat)value	{ _cxxShip->setScannerRange(value); }
+- (Vector) reference	{ return _cxxShip->getReference(); }
+- (void) setReference:(Vector)v	{ _cxxShip->setReference(v); }
+- (BOOL) reportAIMessages	{ return _cxxShip->getReportAIMessages(); }
+- (void) setReportAIMessages:(BOOL)yn	{ _cxxShip->setReportAIMessages(yn); }
+- (void) transitionToAegisNone	{ _cxxShip->transitionToAegisNone(); }
+- (OOPlanetEntity *) findNearestPlanet	{ return _cxxShip->findNearestPlanet(); }
+- (Entity<OOStellarBody> *) findNearestStellarBody	{ return (Entity<OOStellarBody> *)_cxxShip->findNearestStellarBody(); }
+- (OOPlanetEntity *) findNearestPlanetExcludingMoons	{ return _cxxShip->findNearestPlanetExcludingMoons(); }
 
 @end

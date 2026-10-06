@@ -398,171 +398,6 @@ static GLfloat mascem_color2[4] =	{ 0.4, 0.1, 0.4, 1.0};	// purple
 static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by script
 
 
-
-- (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip
-{
-	if ([self isJammingScanning] && ![otherShip hasMilitaryScannerFilter])
-	{
-		return OO_DESC("unknown-target");
-	}
-	return [self displayName];
-}
-
-
-- (BOOL) hasRole:(const std::string &)role
-{
-	if ([_cxxShip->roleSet hasRole:role])  return YES;
-	return role == _cxxShip->primaryRole || role == [self cxx_shipDataKeyAutoRole];
-}
-
-
-- (OORoleSet *)roleSet
-{
-	if (_cxxShip->roleSet == nil)  _cxxShip->roleSet = [[OORoleSet alloc] initWithRoleString:_cxxShip->primaryRole.value_or(std::string())];
-	return [[_cxxShip->roleSet roleSetWithAddedRoleIfNotSet:_cxxShip->primaryRole.value_or(std::string()) probability:1.0] roleSetWithAddedRoleIfNotSet:*[self cxx_shipDataKeyAutoRole] probability:1.0];
-}
-
-
-- (void) addRole:(const std::string &)role
-{
-	[self cxx_addRole:role withProbability:0.0f];
-}
-
-
-- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability
-{
-	if (![self hasRole:role])
-	{
-		OORoleSet *newRoles = nil;
-		if (_cxxShip->roleSet != nil)  newRoles = [_cxxShip->roleSet roleSetWithAddedRole:role probability:probability];
-		else  newRoles = [OORoleSet roleSetWithRole:role probability:probability];
-		if (newRoles != nil)
-		{
-			[_cxxShip->roleSet release];
-			_cxxShip->roleSet = [newRoles retain];
-		}
-	}
-}
-
-
-- (void) cxx_removeRole:(const std::string &)role
-{
-	if ([self hasRole:role])
-	{
-		OORoleSet *newRoles = [_cxxShip->roleSet roleSetWithRemovedRole:role];
-		if (newRoles != nil)
-		{
-			[_cxxShip->roleSet release];
-			_cxxShip->roleSet = [newRoles retain];
-		}
-	}
-}
-
-
-- (std::optional<std::string>) cxx_primaryRole
-{
-	if (!_cxxShip->primaryRole.has_value())
-	{
-		_cxxShip->primaryRole = [_cxxShip->roleSet anyRole];
-		if (!_cxxShip->primaryRole.has_value())  _cxxShip->primaryRole = "trader";
-		OO_LOG("ship.noPrimaryRole", "{} had no primary role, randomly selected \"{}\".", [self cxx_name].value_or("(null)"), _cxxShip->primaryRole.value_or("(null)"));
-	}
-
-	return _cxxShip->primaryRole;
-}
-
-
-// Exposed to AI.
-- (void)setPrimaryRole:(const std::string &)role	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-{
-	_cxxShip->primaryRole = role;
-}
-
-
-- (BOOL) cxx_hasPrimaryRole:(const std::string &)role
-{
-	return [self cxx_primaryRole] == role;
-}
-
-
-- (BOOL)isPolice
-{
-	//bounty hunters have a police role, but are not police, so we must test by scan class, not by role
-	return [self scanClass] == CLASS_POLICE;
-}
-
-- (BOOL)isThargoid
-{
-	return [self scanClass] == CLASS_THARGOID;
-}
-
-
-- (BOOL)isTrader
-{
-	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-trader"];
-}
-
-
-- (BOOL)isPirate
-{
-	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-pirate"];
-}
-
-
-- (BOOL)isMissile
-{
-	return ([self cxx_primaryRole].value_or("").ends_with("MISSILE") || [self cxx_hasPrimaryRole:"missile"]);
-}
-
-
-- (BOOL)isMine
-{
-	return [self cxx_primaryRole].value_or("").ends_with("MINE");
-}
-
-
-- (BOOL)isWeapon
-{
-	return [self isMissile] || [self isMine];
-}
-
-
-- (BOOL)isEscort
-{
-	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-escort"];
-}
-
-
-- (BOOL)isShuttle
-{
-	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-shuttle"];
-}
-
-
-- (BOOL)isTurret
-{
-	return _cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET;
-}
-
-
-- (BOOL)isPirateVictim
-{
-	return [UNIVERSE cxx_roleIsPirateVictim:[self cxx_primaryRole].value_or("")];
-}
-
-
-- (BOOL)isExplicitlyUnpiloted
-{
-	return _cxxShip->_explicitlyUnpiloted;
-}
-
-
-- (BOOL)isUnpiloted
-{
-	return [self isExplicitlyUnpiloted] || [self isHulk] || [self scanClass] == CLASS_ROCK || [self scanClass] == CLASS_CARGO;
-}
-
-
 static BOOL IsBehaviourHostile(OOBehaviour behaviour)
 {
 	switch (behaviour)
@@ -596,168 +431,10 @@ static BOOL IsBehaviourHostile(OOBehaviour behaviour)
 }
 
 
-// Exposed to shaders.
-- (BOOL) hasHostileTarget
-{
-	Entity *t = [self primaryTarget];
-	if (t == nil || ![t isShip])
-	{
-		return NO;
-	}
-	if ([self isMissile])
-	{
-		return YES;	// missiles are always fired against a hostile target
-	}
-	if ((_cxxShip->behaviour == BEHAVIOUR_AVOID_COLLISION)&&(!_cxxShip->previousCondition.isNull()))
-	{
-		int old_behaviour = _cxxShip->previousCondition.get<int>("behaviour");
-		return IsBehaviourHostile((OOBehaviour)old_behaviour);
-	}
-	return IsBehaviourHostile(_cxxShip->behaviour);
-}
-
-
-- (BOOL) isHostileTo:(Entity *)entity
-{
-	return ([self hasHostileTarget] && [self primaryTarget] == entity);
-}
-
-- (GLfloat) weaponRange
-{
-	return _cxxShip->weaponRange;
-}
-
-
-- (void) setWeaponRange: (GLfloat) value
-{
-	_cxxShip->weaponRange = value;
-}
-
-
-- (void) setWeaponDataFromType: (OOWeaponType) weapon_type
-{
-	_cxxShip->weaponRange = getWeaponRangeFromType(weapon_type);
-	_cxxShip->weapon_energy_use = [weapon_type weaponEnergyUse];
-	_cxxShip->weapon_recharge_rate = [weapon_type weaponRechargeRate];
-	_cxxShip->weapon_shot_temperature = [weapon_type weaponShotTemperature];
-	_cxxShip->weapon_damage = [weapon_type weaponDamage];
-
-	if (_cxxShip->default_laser_color == nil)
-	{
-		OOColor *wcol = [weapon_type weaponColor];
-		if (wcol != nil)
-		{
-			[self setLaserColor:wcol];
-		}
-	}
-
-}
-
-
-- (float) energyRechargeRate
-{
-	return _cxxShip->energy_recharge_rate;
-}
-
-
-- (void) setEnergyRechargeRate:(GLfloat)newValue
-{
-	_cxxShip->energy_recharge_rate = newValue;
-}
-
-
-- (float) weaponRechargeRate
-{
-	return _cxxShip->weapon_recharge_rate;
-}
-
-
-- (void) setWeaponRechargeRate:(float)value
-{
-	_cxxShip->weapon_recharge_rate = value;
-}
-
-
-- (void) setWeaponEnergy:(float)value
-{
-	_cxxShip->weapon_damage = value;
-}
-
-
--	(OOWeaponFacing) currentWeaponFacing
-{
-	return _cxxShip->currentWeaponFacing;
-}
-
-
-- (GLfloat) scannerRange
-{
-	return _cxxShip->scannerRange;
-}
-
-
-- (void) setScannerRange: (GLfloat) value
-{
-	_cxxShip->scannerRange = value;
-}
-
-
-- (Vector) reference
-{
-	return _cxxShip->reference;
-}
-
-
-- (void) setReference:(Vector) v
-{
-	_cxxShip->reference = v;
-}
-
-
-- (BOOL) reportAIMessages
-{
-	return _cxxShip->reportAIMessages;
-}
-
-
-- (void) setReportAIMessages:(BOOL) yn
-{
-	_cxxShip->reportAIMessages = yn;
-}
-
-
-- (void) transitionToAegisNone
-{
-	if (!_cxxShip->suppressAegisMessages && _cxxShip->aegis_status != AEGIS_NONE)
-	{
-		Entity<OOStellarBody> *lastAegisLock = [self lastAegisLock];
-		if (lastAegisLock != nil)
-		{
-			[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:lastAegisLock];
-			
-			if (lastAegisLock == [UNIVERSE sun])
-			{
-				[_cxxShip->shipAI message:"AWAY_FROM_SUN"];
-			}
-			else
-			{
-				[_cxxShip->shipAI message:"AWAY_FROM_PLANET"];
-			}
-		}
-
-		if (_cxxShip->aegis_status != AEGIS_CLOSE_TO_ANY_PLANET)
-		{
-			[_cxxShip->shipAI message:"AEGIS_NONE"];
-		}
-	}
-	_cxxShip->aegis_status = AEGIS_NONE;
-}
-
-
 static float SurfaceDistanceSqaredV(HPVector reference, Entity<OOStellarBody> *stellar)
 {
-	float centerDistance = HPmagnitude2(HPvector_subtract([stellar position], reference));
-	float r = [stellar radius];
+	float centerDistance = HPmagnitude2(HPvector_subtract(oo::ToCxx(static_cast<Entity *>(stellar))->getPosition(), reference));
+	float r = ShipEntityStellarBodyRadius(stellar);
 	/*	1.35: empirical value used to help determine proximity when non-nested
 			planets are close to each other
 		*/
@@ -767,7 +444,7 @@ static float SurfaceDistanceSqaredV(HPVector reference, Entity<OOStellarBody> *s
 
 static float SurfaceDistanceSqared(Entity *reference, Entity<OOStellarBody> *stellar)
 {
-	return SurfaceDistanceSqaredV([reference position], stellar);
+	return SurfaceDistanceSqaredV(oo::ToCxx(reference)->getPosition(), stellar);
 }
 
 
@@ -784,80 +461,6 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	if (p1 > p2) return OOOrderedDescending;
 	
 	return OOOrderedSame;
-}
-
-
-- (OOPlanetEntity *) findNearestPlanet
-{
-	/*
-		Performance note: this method is called every frame by every ship, and
-		has a significant profiler presence.
-		-- Ahruman 2012-09-13
-	*/
-	OOPlanetEntity *planet = nil, *bestPlanet = nil;
-	float bestRange = INFINITY;
-	HPVector myPosition = [self position];
-	
-	// valgrind complains about this line here. Might be compiler/GNUstep bug? 
-	// should we go back to a traditional enumerator? - CIM
-	// similar complaints about the other foreach() in this file
-	for (const auto &planetRef : [UNIVERSE cxx_planets])
-	{
-		planet = planetRef.get();
-		// Ignore miniature planets.
-		if ([planet planetType] == STELLAR_TYPE_MINIATURE)  continue;
-		
-		float range = SurfaceDistanceSqaredV(myPosition, planet);
-		if (range < bestRange)
-		{
-			bestPlanet = planet;
-			bestRange = range;
-		}
-	}
-	
-	return bestPlanet;
-}
-
-
-- (Entity<OOStellarBody> *) findNearestStellarBody
-{
-	Entity<OOStellarBody> *match = [self findNearestPlanet];
-	OOSunEntity *sun = [UNIVERSE sun];
-	
-	if (sun != nil)
-	{
-		if (match == nil ||
-			SurfaceDistanceSqared(self, sun) < SurfaceDistanceSqared(self, match))
-		{
-			match = sun;
-		}
-	}
-	
-	return match;
-}
-
-
-- (OOPlanetEntity *) findNearestPlanetExcludingMoons
-{
-	OOPlanetEntity		*result = nil;
-	std::vector<oo::ObjCRef<OOPlanetEntity *>>	planets;
-
-	for (const auto &planet : [UNIVERSE cxx_planets])
-	{
-		if([planet.get() planetType] == STELLAR_TYPE_NORMAL_PLANET)
-					planets.push_back(planet);
-	}
-
-	if (planets.empty())  return nil;
-
-	// ComparePlanetsBySurfaceDistance's order; the nearest comes first.
-	std::stable_sort(planets.begin(), planets.end(), [self](const oo::ObjCRef<OOPlanetEntity *> &a, const oo::ObjCRef<OOPlanetEntity *> &b)
-	{
-		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == OOOrderedAscending;
-	});
-	result = planets[0].get();
-
-	return result;
 }
 
 
@@ -15261,6 +14864,465 @@ void ShipEntity::setDisplayName(const std::optional<std::string> &inName)
 void ShipEntity::setScanDescription(const std::optional<std::string> &inName)
 {
 	scan_description = inName;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 18 of docs/phases/3-slices/ShipEntity.md (bead oo-vho1o): roles, ship-type predicates,
+// hostility, weapon data, scanner range, aegis transition, nearest planet. The facade forwards each
+// selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+std::optional<std::string> ShipEntity::identFromShip(::ShipEntity *otherShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if ([self isJammingScanning] && ![otherShip hasMilitaryScannerFilter])
+	{
+		return OO_DESC("unknown-target");
+	}
+	return [self displayName];
+}
+
+
+bool ShipEntity::hasRole(const std::string &role)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if ([roleSet hasRole:role])  return YES;
+	return role == primaryRole || role == [self cxx_shipDataKeyAutoRole];
+}
+
+
+::OORoleSet *ShipEntity::getRoleSet()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (roleSet == nil)  roleSet = [[::OORoleSet alloc] initWithRoleString:primaryRole.value_or(std::string())];
+	return [[roleSet roleSetWithAddedRoleIfNotSet:primaryRole.value_or(std::string()) probability:1.0] roleSetWithAddedRoleIfNotSet:*[self cxx_shipDataKeyAutoRole] probability:1.0];
+}
+
+
+void ShipEntity::addRole(const std::string &role)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	[self cxx_addRole:role withProbability:0.0f];
+}
+
+
+void ShipEntity::addRole(const std::string &role, float probability)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (![self hasRole:role])
+	{
+		::OORoleSet *newRoles = nil;
+		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:role probability:probability];
+		else  newRoles = [::OORoleSet roleSetWithRole:role probability:probability];
+		if (newRoles != nil)
+		{
+			[roleSet release];
+			roleSet = [newRoles retain];
+		}
+	}
+}
+
+
+void ShipEntity::removeRole(const std::string &role)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if ([self hasRole:role])
+	{
+		::OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:role];
+		if (newRoles != nil)
+		{
+			[roleSet release];
+			roleSet = [newRoles retain];
+		}
+	}
+}
+
+
+std::optional<std::string> ShipEntity::getPrimaryRole()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (!primaryRole.has_value())
+	{
+		primaryRole = [roleSet anyRole];
+		if (!primaryRole.has_value())  primaryRole = "trader";
+		OO_LOG("ship.noPrimaryRole", "{} had no primary role, randomly selected \"{}\".", [self cxx_name].value_or("(null)"), primaryRole.value_or("(null)"));
+	}
+
+	return primaryRole;
+}
+
+
+// Exposed to AI.
+void ShipEntity::setPrimaryRole(const std::string &role)
+{
+	primaryRole = role;
+}
+
+
+bool ShipEntity::hasPrimaryRole(const std::string &role)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [self cxx_primaryRole] == role;
+}
+
+
+bool ShipEntity::isPolice()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	//bounty hunters have a police role, but are not police, so we must test by scan class, not by role
+	return [self scanClass] == CLASS_POLICE;
+}
+
+
+bool ShipEntity::isThargoid()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [self scanClass] == CLASS_THARGOID;
+}
+
+
+bool ShipEntity::isTrader()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-trader"];
+}
+
+
+bool ShipEntity::isPirate()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-pirate"];
+}
+
+
+bool ShipEntity::getIsMissile()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return ([self cxx_primaryRole].value_or("").ends_with("MISSILE") || [self cxx_hasPrimaryRole:"missile"]);
+}
+
+
+bool ShipEntity::isMine()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [self cxx_primaryRole].value_or("").ends_with("MINE");
+}
+
+
+bool ShipEntity::isWeapon()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [self isMissile] || [self isMine];
+}
+
+
+bool ShipEntity::isEscort()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-escort"];
+}
+
+
+bool ShipEntity::isShuttle()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [UNIVERSE cxx_role:[self cxx_primaryRole].value_or("") isInCategory:"oolite-shuttle"];
+}
+
+
+bool ShipEntity::isTurret()
+{
+	return behaviour == BEHAVIOUR_TRACK_AS_TURRET;
+}
+
+
+bool ShipEntity::isPirateVictim()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [UNIVERSE cxx_roleIsPirateVictim:[self cxx_primaryRole].value_or("")];
+}
+
+
+bool ShipEntity::isExplicitlyUnpiloted()
+{
+	return _explicitlyUnpiloted;
+}
+
+
+bool ShipEntity::isUnpiloted()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [self isExplicitlyUnpiloted] || [self isHulk] || [self scanClass] == CLASS_ROCK || [self scanClass] == CLASS_CARGO;
+}
+
+
+// Exposed to shaders.
+bool ShipEntity::hasHostileTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	::Entity *t = [self primaryTarget];
+	if (t == nil || ![t isShip])
+	{
+		return NO;
+	}
+	if ([self isMissile])
+	{
+		return YES;	// missiles are always fired against a hostile target
+	}
+	if ((behaviour == BEHAVIOUR_AVOID_COLLISION)&&(!previousCondition.isNull()))
+	{
+		int old_behaviour = previousCondition.get<int>("behaviour");
+		return IsBehaviourHostile((OOBehaviour)old_behaviour);
+	}
+	return IsBehaviourHostile(behaviour);
+}
+
+
+bool ShipEntity::isHostileTo(::Entity *entity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return ([self hasHostileTarget] && [self primaryTarget] == entity);
+}
+
+
+GLfloat ShipEntity::getWeaponRange()
+{
+	return weaponRange;
+}
+
+
+void ShipEntity::setWeaponRange(GLfloat value)
+{
+	weaponRange = value;
+}
+
+
+void ShipEntity::setWeaponDataFromType(OOWeaponType weapon_type)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	weaponRange = getWeaponRangeFromType(weapon_type);
+	weapon_energy_use = [weapon_type weaponEnergyUse];
+	weapon_recharge_rate = [weapon_type weaponRechargeRate];
+	weapon_shot_temperature = [weapon_type weaponShotTemperature];
+	weapon_damage = [weapon_type weaponDamage];
+
+	if (default_laser_color == nil)
+	{
+		::OOColor *wcol = [weapon_type weaponColor];
+		if (wcol != nil)
+		{
+			[self setLaserColor:wcol];
+		}
+	}
+
+}
+
+
+float ShipEntity::energyRechargeRate()
+{
+	return energy_recharge_rate;
+}
+
+
+void ShipEntity::setEnergyRechargeRate(GLfloat newValue)
+{
+	energy_recharge_rate = newValue;
+}
+
+
+float ShipEntity::weaponRechargeRate()
+{
+	return weapon_recharge_rate;
+}
+
+
+void ShipEntity::setWeaponRechargeRate(float value)
+{
+	weapon_recharge_rate = value;
+}
+
+
+void ShipEntity::setWeaponEnergy(float value)
+{
+	weapon_damage = value;
+}
+
+
+OOWeaponFacing ShipEntity::getCurrentWeaponFacing()
+{
+	return currentWeaponFacing;
+}
+
+
+GLfloat ShipEntity::getScannerRange()
+{
+	return scannerRange;
+}
+
+
+void ShipEntity::setScannerRange(GLfloat value)
+{
+	scannerRange = value;
+}
+
+
+Vector ShipEntity::getReference()
+{
+	return reference;
+}
+
+
+void ShipEntity::setReference(Vector v)
+{
+	reference = v;
+}
+
+
+bool ShipEntity::getReportAIMessages()
+{
+	return reportAIMessages;
+}
+
+
+void ShipEntity::setReportAIMessages(bool yn)
+{
+	reportAIMessages = yn;
+}
+
+
+void ShipEntity::transitionToAegisNone()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (!suppressAegisMessages && aegis_status != AEGIS_NONE)
+	{
+		::Entity<OOStellarBody> *lastAegisLock = [self lastAegisLock];
+		if (lastAegisLock != nil)
+		{
+			[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:lastAegisLock];
+			
+			if (lastAegisLock == [UNIVERSE sun])
+			{
+				[shipAI message:"AWAY_FROM_SUN"];
+			}
+			else
+			{
+				[shipAI message:"AWAY_FROM_PLANET"];
+			}
+		}
+
+		if (aegis_status != AEGIS_CLOSE_TO_ANY_PLANET)
+		{
+			[shipAI message:"AEGIS_NONE"];
+		}
+	}
+	aegis_status = AEGIS_NONE;
+}
+
+
+::OOPlanetEntity *ShipEntity::findNearestPlanet()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	/*
+		Performance note: this method is called every frame by every ship, and
+		has a significant profiler presence.
+		-- Ahruman 2012-09-13
+	*/
+	::OOPlanetEntity *planet = nil, *bestPlanet = nil;
+	float bestRange = INFINITY;
+	HPVector myPosition = [self position];
+	
+	// valgrind complains about this line here. Might be compiler/GNUstep bug? 
+	// should we go back to a traditional enumerator? - CIM
+	// similar complaints about the other foreach() in this file
+	for (const auto &planetRef : [UNIVERSE cxx_planets])
+	{
+		planet = planetRef.get();
+		// Ignore miniature planets.
+		if ([planet planetType] == STELLAR_TYPE_MINIATURE)  continue;
+		
+		float range = SurfaceDistanceSqaredV(myPosition, planet);
+		if (range < bestRange)
+		{
+			bestPlanet = planet;
+			bestRange = range;
+		}
+	}
+	
+	return bestPlanet;
+}
+
+
+::Entity *ShipEntity::findNearestStellarBody()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	::Entity<OOStellarBody> *match = [self findNearestPlanet];
+	::OOSunEntity *sun = [UNIVERSE sun];
+	
+	if (sun != nil)
+	{
+		if (match == nil ||
+			SurfaceDistanceSqared(self, sun) < SurfaceDistanceSqared(self, match))
+		{
+			match = sun;
+		}
+	}
+	
+	return match;
+}
+
+
+::OOPlanetEntity *ShipEntity::findNearestPlanetExcludingMoons()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	::OOPlanetEntity		*result = nil;
+	std::vector<oo::ObjCRef<::OOPlanetEntity *>>	planets;
+
+	for (const auto &planet : [UNIVERSE cxx_planets])
+	{
+		if([planet.get() planetType] == STELLAR_TYPE_NORMAL_PLANET)
+					planets.push_back(planet);
+	}
+
+	if (planets.empty())  return nil;
+
+	// ComparePlanetsBySurfaceDistance's order; the nearest comes first.
+	std::stable_sort(planets.begin(), planets.end(), [self](const oo::ObjCRef<::OOPlanetEntity *> &a, const oo::ObjCRef<::OOPlanetEntity *> &b)
+	{
+		return ComparePlanetsBySurfaceDistance(a.get(), b.get(), self) == OOOrderedAscending;
+	});
+	result = planets[0].get();
+
+	return result;
 }
 
 
