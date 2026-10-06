@@ -72,7 +72,9 @@ MA 02110-1301, USA.
 - (IBAction) showSnapshotsAction:(id)sender;
 - (IBAction) showAddOnsAction:(id)sender;
 - (void) recenterVirtualJoystick;
-- (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create;
+// -snapshotsURLCreatingIfNeeded: is not redeclared here: only the fenced Mac category in
+// GameController.mm sends it, after defining it, and its Foundation return type would be a new
+// deny-list hit in this new file (the guardrails' file-split limitation).
 #endif
 
 - (void) cxx_exitAppWithContext:(const std::string &)context;
