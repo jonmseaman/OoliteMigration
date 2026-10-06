@@ -27,6 +27,8 @@
 
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
+
+#include <typeinfo>
 #include "oofnd/String.hpp"
 
 #include <cstdlib>
@@ -261,6 +263,16 @@ bool Is(OOMaterial *material, Class cls)
 	return material != nil && [material isMemberOfClass:cls];
 }
 
+
+// The material's C++ class, exactly: what -isMemberOfClass: asked of a subclass with a facade of
+// its own, before the facade-deletion beads (oo-9ht.42) made Objective-C see the nearest facade.
+template <typename T>
+bool IsExactly(OOMaterial *material)
+{
+	cxx::OOMaterial *part = oo::ToCxx(material);
+	return part != nullptr && typeid(*part) == typeid(T);
+}
+
 }	// namespace
 
 
@@ -279,9 +291,9 @@ OO_TEST(withoutShaders)
 		OO_CHECK(Is(Make(nullptr, {}), [OOBasicMaterial class]));
 		OO_CHECK(Is(Make("missing", {}), [OOBasicMaterial class]));
 		// Emission or illumination maps: multitexture, when the combiners are there (they are).
-		OO_CHECK(Is(Make("hull.png", { { "emission_map", oo::PList("e.png") } }), [OOMultiTextureMaterial class]));
-		OO_CHECK(Is(Make("hull.png", { { "illumination_map", oo::PList("i.png") } }), [OOMultiTextureMaterial class]));
-		OO_CHECK(Is(Make("hull.png", { { "emission_and_illumination_map", oo::PList("ei.png") } }), [OOMultiTextureMaterial class]));
+		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } })));
+		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "illumination_map", oo::PList("i.png") } })));
+		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "emission_and_illumination_map", oo::PList("ei.png") } })));
 		// A shader configuration without shaders: its fixed-function equivalent.
 		OO_CHECK(Is(Make("hull.png", { { "vertex_shader", oo::PList("named") } }), [OOSingleTextureMaterial class]));
 		OO_CHECK([Make("Named", {}) cxx_name] == std::optional<std::string>("Named"));
@@ -406,6 +418,12 @@ bool IsCxx(const oo::Ref<cxx::OOMaterial> &material, Class cls)
 	return material != nullptr && [oo::ToObjC(material) isMemberOfClass:cls];
 }
 
+template <typename T>
+bool IsCxxExactly(const oo::Ref<cxx::OOMaterial> &material)
+{
+	return material != nullptr && typeid(*material.get()) == typeid(T);
+}
+
 oo::Ref<cxx::OOMaterial> MakeCxx(const char *name, oo::PList::Dict config, bool smooth = false, const std::optional<std::string> &cacheKey = std::nullopt)
 {
 	return cxx::OOMaterial::materialWithName(name != nullptr ? std::optional<std::string>(name) : std::nullopt,
@@ -422,7 +440,7 @@ OO_TEST(cxxStaticMembers)
 	{
 		OO_CHECK(IsCxx(MakeCxx("hull.png", {}), [OOSingleTextureMaterial class]));
 		OO_CHECK(IsCxx(MakeCxx(nullptr, {}), [OOBasicMaterial class]));
-		OO_CHECK(IsCxx(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } }), [OOMultiTextureMaterial class]));
+		OO_CHECK(IsCxxExactly<OOMultiTextureMaterial>(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } })));
 		OO_CHECK(MakeCxx("Named", {})->name() == std::optional<std::string>("Named"));
 	}
 
