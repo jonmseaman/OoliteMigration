@@ -3800,3 +3800,30 @@ deps instead of growing into conversions.
 4. **A class method is a static member** (`+pollShiftKey`), and a `cxx_` selector's member drops the prefix
    (`stringToClipboard`). Slice 1's sends of this slice's selectors (`[oo::ToObjC(this) loadWindowSize]`)
    become member calls; its sends to the Input category stay as they are.
+
+## Amendment (bead oo-rdwg): the last slice of a converted subclass, its designated initialiser, and a client that becomes C++
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 2 of `docs/phases/3-slices/OOMesh.md`
+  in `src/Core/OOMesh.h/.mm`, `OOMesh+ObjCBridge.h/.mm`, `tests/unit/core/test_OOMesh.mm`. Follows
+  amendments oo-dnbf, oo-9z7x and oo-zmix.
+
+**Decision (recommended defaults).**
+
+1. **The designated initialiser is a private `bool` member with its first keyword's name**
+   (`initWithName(...)`, amendments oo-zl36 item 3 and oo-u61e.4 item 3) run on a new object by
+   the class's factories: `oo::makeRef<X>()`, then the member, and null when it answers `false`
+   (where it sent `[self release]; self = nil`). Its `@autoreleasepool` is
+   `objc_autoreleasePoolPush`/`Pop` (amendment oo-9z7x item 3). The façade keeps `-init` (a new
+   C++ object) for `[[X alloc] init]`.
+2. **A copy that the façade made** is the member `mutableCopyWithZone(OOZone *)`, answering
+   `oo::Ref<X>` (the copy constructor, then what the old body did to the copy); the façade's
+   `-mutableCopyWithZone:` forwards and answers `[oo::ToObjC(copy) retain]`, and the members that
+   sent `-mutableCopy` to the façade call it directly.
+3. **When the code that registered `self` with a manager converts, the C++ object becomes the
+   client** (`cxx::OOGraphicsResetClient`, `registerCxxClient(this)`), and its destructor
+   unregisters it; what the façade's `-dealloc` did for the client moves into the destructor. The
+   façade keeps its forwarder and conformance (amendment oo-zmix item 1) for any Objective-C sender,
+   but is no longer registered, so a C++ holder with no façade alive is still reset.
+4. **With its last slice, `X.mm` has no Objective-C class code**: the ObjC-syntax gate of item 8
+   applies to `X.mm` and `X.h` from this bead on; what remains Objective-C is the façade and its
+   deletion bead.
