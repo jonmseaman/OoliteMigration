@@ -3934,3 +3934,38 @@ stand in for half of the game.
 **Consequences.** One bridge file per binding, with a deletion bead that waits for `Universe` and
 `PlayerEntity` (and, for a binding that wraps one, the entity class); no caller changes. The bridge
 functions are the binding's list of what it still needs from unconverted classes.
+
+## Amendment (bead oo-ft5n): a binding's category on a class that is still Objective-C, in a slice plan
+
+- Date: 2026-10-06. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSPlayerShip.h/.mm` and
+  `OOJSPlayerShip+ObjCBridge.h/.mm` after slices 1-3 of `docs/phases/3-slices/OOJSPlayerShip.md` (beads
+  oo-ft5n, oo-9t14, oo-1qr5), `tests/unit/core/test_OOJSPlayerShip.mm`. Follows amendments oo-ykoy and
+  oo-luhd.
+
+**Decision (recommended defaults).**
+
+1. **The category's methods become free functions in the plan's first slice** (amendment oo-ykoy
+   item 1: `OOJSPlayerShipJSClassName()`, `OOJSPlayerShipSetJSSelf(player, ...)`,
+   `OOJSPlayerShipJavaScriptEngineWillReset(player, ...)`), declared in `X.h` outside its
+   `extern "C"` block, and the `@implementation` forwards to them from the same `X+ObjCBridge.mm`
+   that holds the slices' send functions. `self->_ivar` in a body is `player->_cxxEntity->_ivar`.
+2. **A body that sent another method of the same category, or a converted unit that sent one**
+   (`[self javaScriptEngineWillReset:]` from the observer block, `[player setJSSelf:context:]` from
+   `InitOOJSPlayerShip()`), calls its free function directly, with a comment: the receiver's class
+   has no subclass that overrides the method, so dispatch picked that body anyway.
+3. **A converted class the binding reaches through an unconverted one** (`[player hud]`, a
+   `cxx::HeadUpDisplay`) is asked for by a bridge function and crossed with `oo::ToCxx`; many
+   reads go through one file-local helper that answers the value-initialised result for a player
+   with no HUD (`AskHud(player, &cxx::HeadUpDisplay::member)`, amendment oo-nge8 item 6), and a
+   setter is `if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->...;`. A setter that answered the
+   HUD's `BOOL` answers `hud != nullptr && ...`.
+4. **A helper of the slice whose parameter was a converted class's façade** and whose callers are
+   all in the slice (`NormalizedColorComponents(OOColor *)`) takes the C++ class
+   (`cxx::OOColor *`); a façade from an unconverted class crosses with `oo::ToCxx` at the call.
+5. **A send function shared by several slices is added by the first slice that needs it**; later
+   slices reuse it.
+
+**Consequences.** The binding's bridge holds the category until `PlayerEntity` converts (its
+deletion bead waits for oo-a70 as well as `Universe`, `GuiDisplayGen` and the engine's slices). The
+test runs the real engine and the real `player.ship`, with stand-ins for what `PLAYER` and
+`UNIVERSE` answer and a real HUD in a hidden GL context.
