@@ -5,6 +5,14 @@ OOJSScript.h
 JavaScript support for Oolite
 Copyright (C) 2007-2013 David Taylor and Jens Ayton.
 
+C++20 since bead oo-u61e.4 (proposed ADR-0056, the OOColor house style). The script is
+cxx::OOJSScript, a subclass of cxx::OOScript (bead oo-604l). Its callers are still Objective-C, and
+its JS object, the stack of running scripts and the weak references to it all hold the Objective-C
+object, so the Objective-C OOJSScript in OOJSScript+ObjCBridge.h (imported at the end of this header)
+is its identity: it makes and owns the C++ object, and oo::ToObjC answers it (amendment oo-3kqi).
+-initWithPath:properties: hands the script to JS, so its body is initWithPath(), run by the facade
+once it is the object's peer (amendment oo-puw9 item 3).
+
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
@@ -22,75 +30,95 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef OOJSSCRIPT_H
+#define OOJSSCRIPT_H
 
 #import "OOScript.h"
 #import "OOJavaScriptEngine.h"
+#include "oofnd/Notification.hpp"
 
 // The script property that holds the identifier of the manifest the script was loaded under.
 inline constexpr char kLocalManifestProperty[] = "oolite_manifest_identifier";
 
-@interface OOJSScript: OOScript <OOWeakReferenceSupport>
+@class OOJSScript, OOWeakReference;
+
+
+namespace cxx {
+
+class OOJSScript : public OOScript
 {
-@private
-	ooscript::Object _jsSelf;
-	
-	std::optional<std::string>	name;
-	std::optional<std::string>	description;
-	std::optional<std::string>	version;
-	std::optional<std::string>	filePath;
-	
-	OOWeakReference		*weakSelf;
-}
+public:
+	// The old -initWithPath:properties: after [super init] (path nullopt is nil: the script is then
+	// named after its address; properties may hold live objects). Run by the facade once it is
+	// the peer; false: the script could not be loaded, and the facade releases itself.
+	bool initWithPath(const std::optional<std::string> &path, const oo::PList &properties);
+	// The old -dealloc before [super dealloc], run by the facade's -dealloc.
+	void willDealloc();
 
-// path nullopt is nil (the script is then named after its address); properties may hold live objects.
-+ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties;
+	static ::OOJSScript *currentlyRunningScript();
+	static std::vector<oo::ObjCRef<::OOJSScript *>> scriptStack();
 
-- (id) initWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties;
+	/*	External manipulation of acrtive script stack. Used, for instance, by
+		timers. Failing to balance these will crash!
+		Passing a nil script is valid for cases where JS is used which is not
+		attached to a specific script.
+	*/
+	static void pushScript(::OOJSScript *script);
+	static void popScript(::OOJSScript *script);
 
-+ (OOJSScript *) currentlyRunningScript;
-+ (std::vector<oo::ObjCRef<OOJSScript *>>) scriptStack;
+	/*	Call a method.
+		Requires a request on context.
+		outResult may be NULL.
+	*/
+	bool callMethod(ooscript::PropertyId methodID, ooscript::Context context, ooscript::Value *argv, int argc, ooscript::Value *outResult);
 
-/*	External manipulation of acrtive script stack. Used, for instance, by
-	timers. Failing to balance these will crash!
-	Passing a nil script is valid for cases where JS is used which is not
-	attached to a specific script.
-*/
-+ (void) pushScript:(OOJSScript *)script;
-+ (void) popScript:(OOJSScript *)script;
+	// The property as cxx_OOJSPListFromJSValue() converts it; null when there is no script object or it could not be read.
+	oo::PList propertyWithID(ooscript::PropertyId propID, ooscript::Context context);
+	// Set a property which can be modified or deleted by the script.
+	bool setProperty(const oo::PList &value, ooscript::PropertyId propID, ooscript::Context context);
+	// Set a special property which cannot be modified or deleted by the script.
+	bool defineProperty(const oo::PList &value, ooscript::PropertyId propID, ooscript::Context context);
 
-/*	Call a method.
-	Requires a request on context.
-	outResult may be NULL.
-*/
-- (BOOL) callMethod:(ooscript::PropertyId)methodID
-		  inContext:(ooscript::Context)context
-	  withArguments:(ooscript::Value *)argv count:(int)argc
-			 result:(ooscript::Value *)outResult;
+	oo::PList propertyNamed(const std::string &name);
+	bool setProperty(const oo::PList &value, const std::string &name);
+	bool defineProperty(const oo::PList &value, const std::string &name);
 
-// The property as cxx_OOJSPListFromJSValue() converts it; null when there is no script object or it could not be read.
-- (oo::PList) cxx_propertyWithID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
-// Set a property which can be modified or deleted by the script.
-- (BOOL) setProperty:(const oo::PList &)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
-// Set a special property which cannot be modified or deleted by the script.
-- (BOOL) defineProperty:(const oo::PList &)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
+	// OOWeakReferenceSupport and the JS glue of OOObject, forwarded by the facade.
+	id weakRetain();
+	void weakRefDied(::OOWeakReference *weakRef);
+	std::optional<std::string> jsClassName();
+	ooscript::Value jsValueInContext(ooscript::Context context);
 
-- (oo::PList) cxx_propertyNamed:(const std::string &)name;
-- (BOOL) setProperty:(const oo::PList &)value named:(const std::string &)name;
-- (BOOL) defineProperty:(const oo::PList &)value named:(const std::string &)name;
+	// OOScript
+	std::optional<std::string> descriptionComponents() override;
+	std::optional<std::string> name() override;
+	std::optional<std::string> scriptDescription() override;
+	std::optional<std::string> version() override;
+	void runWithTarget(::Entity *target) override;
 
-@end
+private:
+	void javaScriptEngineWillReset(const oo::Notification &notification);
+	std::string scriptNameFromPath(const std::optional<std::string> &path);
+	oo::PList::Dict defaultPropertiesFromPath(const std::optional<std::string> &path);
 
+	ooscript::Object			_jsSelf = {};
 
-@interface OOScript (JavaScriptEvents)
+	std::optional<std::string>	_name;
+	std::optional<std::string>	_description;
+	std::optional<std::string>	_version;
+	std::optional<std::string>	_filePath;
 
-// For simplicity, calling methods on non-JS scripts works but does nothing.
-- (BOOL) callMethod:(ooscript::PropertyId)methodID
-		  inContext:(ooscript::Context)context
-	  withArguments:(ooscript::Value *)argv count:(int)argc
-			 result:(ooscript::Value *)outResult;
+	::OOWeakReference			*_weakSelf = nil;
+};
 
-@end
+}	// namespace cxx
 
 
 OOJS_EXTERN_C void InitOOJSScript(ooscript::Context context, ooscript::Object global);
 
+
+// Transitional: the Objective-C OOJSScript, for callers not yet converted. Deleted, with
+// namespace cxx above, by the bridge's deletion bead.
+#import "OOJSScript+ObjCBridge.h"
+
+#endif	// OOJSSCRIPT_H

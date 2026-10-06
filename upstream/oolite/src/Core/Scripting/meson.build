@@ -43,6 +43,7 @@ oolite_sources += files(
     'OOJSQuaternion.mm',
     'OOJSQuaternion+ObjCBridge.mm',
     'OOJSScript.mm',
+    'OOJSScript+ObjCBridge.mm',
     'OOJSShip.mm',
     'OOJSShipGroup.mm',
     'OOJSShipGroup+ObjCBridge.mm',
