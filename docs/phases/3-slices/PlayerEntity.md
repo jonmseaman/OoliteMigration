@@ -156,6 +156,11 @@ Slices 3, 4, 7, 19, 20 and 21 override nothing of the ship's.
   reaching it) and the phase review and gate keep waiting on the umbrella.
 - **oo-dxxt** (`OOJSWorldScripts`) needs `cxx_worldScriptsByName` / `cxx_worldScriptNames` as C++:
   slice 27.
+- **Slice beads** (filed by `tools/gen-stories.py --sweep slices`): 1 oo-jx5np, 2 oo-m4tfc, 3
+  oo-7pa3t, 4 oo-qvnwb, 5 oo-mmcfq, 6 oo-vzjco, 7 oo-5c466, 8 oo-ijf0s, 9 oo-qyjcv, 10 oo-9u9w6, 11
+  oo-zxg1h, 12 oo-rqcfz, 13 oo-30g73, 14 oo-m8x1y, 15 oo-2lpiu, 16 oo-vqjjb, 17 oo-6tuef, 18
+  oo-3fzv5, 19 oo-4tqku, 20 oo-dycza, 21 oo-a602n, 22 oo-mv49m, 23 oo-wt5jv, 24 oo-bj7u8, 25
+  oo-hu1xk, 26 oo-cpam5, 27 oo-u1e9m, 28 oo-zn1vy.
 - **oo-a70 is the umbrella.** It depends on the 28 slices, the category beads above (oo-9ht.156
   and oo-e1d among them) and this pre-split. Its acceptance is every slice's `--slice-done` (this plan and the four category
   plans), no `@implementation` left in `PlayerEntity*.mm`, and the guardrails.
