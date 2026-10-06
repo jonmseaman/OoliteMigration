@@ -385,177 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) startTrackingCurve
-{
-	Entity *target = [self primaryTarget];
-	if (target == nil)
-	{
-		return;
-	}
-	OOTimeAbsolute now = [UNIVERSE getTime];
-	_cxxShip->trackingCurvePositions[0] = [target position];
-	_cxxShip->trackingCurvePositions[1] = [target position];
-	_cxxShip->trackingCurvePositions[2] = [target position];
-	_cxxShip->trackingCurvePositions[3] = [target position];
-	_cxxShip->trackingCurveTimes[0] = now;
-	_cxxShip->trackingCurveTimes[1] = now - _cxxShip->reactionTime/3.0;
-	_cxxShip->trackingCurveTimes[2] = now - _cxxShip->reactionTime*2.0/3.0;
-	_cxxShip->trackingCurveTimes[3] = now - _cxxShip->reactionTime;
-	[self calculateTrackingCurve];
-	return;
-}
-
-
-- (void) updateTrackingCurve
-{
-	Entity *target = [self primaryTarget];
-	OOTimeAbsolute now = [UNIVERSE getTime];
-	if (target == nil || _cxxShip->reactionTime <= 0.0 || _cxxShip->trackingCurveTimes[0] + _cxxShip->reactionTime/3.0 > now) return;
-	_cxxShip->trackingCurvePositions[3] = _cxxShip->trackingCurvePositions[2];
-	_cxxShip->trackingCurvePositions[2] = _cxxShip->trackingCurvePositions[1];
-	_cxxShip->trackingCurvePositions[1] = _cxxShip->trackingCurvePositions[0];
-	if (EXPECT_NOT([target isShip] && [(ShipEntity *)target isCloaked]))
-	{
-		// if target is cloaked, introduce some more inaccuracy
-		// 0.02 seems to be enough to give them slight difficulty on
-		// a straight-line target and real trouble on anything better
-		_cxxShip->trackingCurvePositions[0] = HPvector_add([target position],OOHPVectorRandomSpatial([(ShipEntity *)target flightSpeed]*_cxxShip->reactionTime*0.02));
-	}
-	else
-	{
-		_cxxShip->trackingCurvePositions[0] = [target position];
-	}
-	_cxxShip->trackingCurveTimes[3] = _cxxShip->trackingCurveTimes[2];
-	_cxxShip->trackingCurveTimes[2] = _cxxShip->trackingCurveTimes[1];
-	_cxxShip->trackingCurveTimes[1] = _cxxShip->trackingCurveTimes[0];
-	_cxxShip->trackingCurveTimes[0] = now;
-	[self calculateTrackingCurve];
-	return;
-}
-
-- (void) calculateTrackingCurve
-{
-	if (_cxxShip->reactionTime <= 0.0)
-	{
-		_cxxShip->trackingCurveCoeffs[0] = _cxxShip->trackingCurvePositions[0];
-		_cxxShip->trackingCurveCoeffs[1] = kZeroHPVector;
-		_cxxShip->trackingCurveCoeffs[2] = kZeroHPVector;
-		return;
-	}
-	double	t1 = _cxxShip->trackingCurveTimes[2] - _cxxShip->trackingCurveTimes[1],
-		t2 = _cxxShip->trackingCurveTimes[3] - _cxxShip->trackingCurveTimes[1];
-	_cxxShip->trackingCurveCoeffs[0] = _cxxShip->trackingCurvePositions[1];
-	_cxxShip->trackingCurveCoeffs[1] = HPvector_add(HPvector_add(
-		HPvector_multiply_scalar(_cxxShip->trackingCurvePositions[1], -(t1+t2)/(t1*t2)),
-		HPvector_multiply_scalar(_cxxShip->trackingCurvePositions[2], -t2/(t1*(t1-t2)))),
-		HPvector_multiply_scalar(_cxxShip->trackingCurvePositions[3], t1/(t2*(t1-t2))));
-	_cxxShip->trackingCurveCoeffs[2] = HPvector_add(HPvector_add(
-		HPvector_multiply_scalar(_cxxShip->trackingCurvePositions[1], 1/(t1*t2)),
-		HPvector_multiply_scalar(_cxxShip->trackingCurvePositions[2], 1/(t1*(t1-t2)))),
-		HPvector_multiply_scalar(_cxxShip->trackingCurvePositions[3], -1/(t2*(t1-t2))));
-	return;
-}
-
-- (void) drawImmediate:(bool)immediate translucent:(bool)translucent
-{
-	if ((_cxxEntity->no_draw_distance < _cxxEntity->cam_zero_distance) ||	// Done redundantly to skip subentities
-		(_cxxShip->cloaking_device_active && randf() > 0.10))
-	{
-		// Don't draw.
-		return;
-	}
-	
-	// Draw self.
-	[super drawImmediate:immediate translucent:translucent];
-	
-#ifndef NDEBUG
-	// Draw bounding boxes if we have to before going for the subentities.
-	// TODO: the translucent flag here makes very little sense. Something's wrong with the matrices.
-	if (translucent)  [self drawDebugStuff];
-	else if (gDebugFlags & DEBUG_BOUNDING_BOXES && ![self isSubEntity])
-	{
-		OODebugDrawBoundingBox([self boundingBox]);
-		OODebugDrawColoredBoundingBox(_cxxShip->totalBoundingBox, [OOColor purpleColor]);
-	}
-#endif
-	
-	// Draw subentities.
-	if (!immediate)	// TODO: is this relevant any longer?
-	{
-		// save time by not copying the subentity array if it's empty - CIM
-		if ([self subEntityCount] > 0) 
-		{ 
-			const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;	// a snapshot, as -subEntities copied
-			for (const auto &sub : subs)
-			{
-				Entity<OOSubEntity> *subEntity = (Entity<OOSubEntity> *)sub.get();
-				OOAssert([subEntity owner] == self, "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::DescriptionOf(subEntity).c_str(), oo::DescriptionOf(self).c_str(), oo::DescriptionOf([subEntity owner]).c_str());
-				[subEntity drawSubEntityImmediate:immediate translucent:translucent];
-			}
-		}
-	}
-}
-
-
-#ifndef NDEBUG
-- (void) drawDebugStuff
-{
-	// HPVect: imprecise here - needs camera relative
-	if (0 && _cxxShip->reportAIMessages)
-	{
-		OODebugDrawPoint(HPVectorToVector(_cxxShip->_destination), [OOColor blueColor]);
-		OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector(_cxxShip->_destination), [OOColor colorWithWhite:0.15 alpha:1.0]);
-		
-		Entity *pTarget = [self primaryTarget];
-		if (pTarget != nil)
-		{
-			OODebugDrawPoint(HPVectorToVector([pTarget position]), [OOColor redColor]);
-			OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector([pTarget position]), [OOColor colorWithRed:0.2 green:0.0 blue:0.0 alpha:1.0]);
-		}
-		
-		Entity *sTarget = [self targetStation];
-		if (sTarget != pTarget && [sTarget isStation])
-		{
-			OODebugDrawPoint(HPVectorToVector([sTarget position]), [OOColor cyanColor]);
-		}
-		
-		Entity *fTarget = [self foundTarget];
-		if (fTarget != nil && fTarget != pTarget && fTarget != sTarget)
-		{
-			OODebugDrawPoint(HPVectorToVector([fTarget position]), [OOColor magentaColor]);
-		}
-	}
-}
-#endif
-
-
-- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent
-{
-	OOVerifyOpenGLState();
-	
-	if (_cxxEntity->cam_zero_distance > _cxxEntity->no_draw_distance) // this test provides an opportunity to do simple LoD culling
-	{
-		return; // TOO FAR AWAY
-	}
-	OOGLPushModelView();
-	
-	// HPVect: need to make camera-relative
-	OOGLTranslateModelView(HPVectorToVector(_cxxEntity->position));
-	OOGLMultModelView(_cxxEntity->rotMatrix);
-	[self drawImmediate:immediate translucent:translucent];
-	
-#ifndef NDEBUG
-	if (gDebugFlags & DEBUG_BOUNDING_BOXES)
-	{
-		OODebugDrawBoundingBox([self boundingBox]);
-	}
-#endif
-	
-	OOGLPopModelView();
-	
-	OOVerifyOpenGLState();	
-}
-
 
 static GLfloat cargo_color[4] =		{ 0.9, 0.9, 0.9, 1.0};	// gray
 static GLfloat hostile_color[4] =	{ 1.0, 0.25, 0.0, 1.0};	// red/orange
@@ -568,303 +397,6 @@ static GLfloat jammed_color[4] =	{ 0.0, 0.0, 0.0, 0.0};	// clear black
 static GLfloat mascem_color1[4] =	{ 0.3, 0.3, 0.3, 1.0};	// dark gray
 static GLfloat mascem_color2[4] =	{ 0.4, 0.1, 0.4, 1.0};	// purple
 static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by script
-
-- (GLfloat *) scannerDisplayColorForShip:(ShipEntity*)otherShip :(BOOL)isHostile :(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2 :(OOColor *)scannerDisplayColorH1 :(OOColor *)scannerDisplayColorH2
-{
-	if (isHostile)
-	{
-		/* if there are any scripted scanner hostile display colours
-		 * for the ship, use them - otherwise fall through to the
-		 * normal scripted colours, then the scan class colours */
-		if (scannerDisplayColorH1 || scannerDisplayColorH2)
-		{
-			if (scannerDisplayColorH1 && !scannerDisplayColorH2)
-			{
-				[scannerDisplayColorH1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-			}
-		
-			if (!scannerDisplayColorH1 && scannerDisplayColorH2)
-			{
-				[scannerDisplayColorH2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-			}
-		
-			if (scannerDisplayColorH1 && scannerDisplayColorH2)
-			{
-				if (flash)
-					[scannerDisplayColorH1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-				else
-					[scannerDisplayColorH2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-			}
-		
-			return scripted_color;
-		}
-	}
-
-	// if there are any scripted scanner display colors for the ship, use them
-	if (scannerDisplayColor1 || scannerDisplayColor2)
-	{
-		if (scannerDisplayColor1 && !scannerDisplayColor2)
-		{
-			[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-		}
-		
-		if (!scannerDisplayColor1 && scannerDisplayColor2)
-		{
-			[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-		}
-		
-		if (scannerDisplayColor1 && scannerDisplayColor2)
-		{
-			if (flash)
-				[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-			else
-				[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
-		}
-		
-		return scripted_color;
-	}
-
-	// no scripted scanner display colors defined, proceed as per standard
-	if ([self isJammingScanning])
-	{
-		if (![otherShip hasMilitaryScannerFilter])
-			return jammed_color;
-		else
-		{
-			if (flash)
-				return mascem_color1;
-			else
-			{
-				if (isHostile)
-					return hostile_color;
-				else
-					return mascem_color2;
-			}
-		}
-	}
-
-	switch (_cxxEntity->scanClass)
-	{
-		case CLASS_ROCK :
-		case CLASS_CARGO :
-			return cargo_color;
-		case CLASS_THARGOID :
-			if (flash)
-				return hostile_color;
-			else
-				return friendly_color;
-		case CLASS_MISSILE :
-			return missile_color;
-		case CLASS_STATION :
-			return friendly_color;
-		case CLASS_BUOY :
-			if (flash)
-				return friendly_color;
-			else
-				return neutral_color;
-		case CLASS_POLICE :
-		case CLASS_MILITARY :
-			if ((isHostile)&&(flash))
-				return police_color2;
-			else
-				return police_color1;
-		case CLASS_MINE :
-			if (flash)
-				return neutral_color;
-			else
-				return hostile_color;
-		default :
-			if (isHostile)
-				return hostile_color;
-	}
-	return neutral_color;
-}
-
-
-- (void)setScannerDisplayColor1:(OOColor *)color
-{
-	DESTROY(_cxxShip->scanner_display_color1);
-	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(_cxxShip->shipinfoDictionary, "scanner_display_color1")];
-	_cxxShip->scanner_display_color1 = [color retain];
-}
-
-
-- (void)setScannerDisplayColor2:(OOColor *)color
-{
-	DESTROY(_cxxShip->scanner_display_color2);
-	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(_cxxShip->shipinfoDictionary, "scanner_display_color2")];
-	_cxxShip->scanner_display_color2 = [color retain];
-}
-
-
-- (OOColor *)scannerDisplayColor1
-{
-	return [[_cxxShip->scanner_display_color1 retain] autorelease];
-}
-
-
-- (OOColor *)scannerDisplayColor2
-{
-	return [[_cxxShip->scanner_display_color2 retain] autorelease];
-}
-
-
-- (void)setScannerDisplayColorHostile1:(OOColor *)color
-{
-	DESTROY(_cxxShip->scanner_display_color_hostile1);
-	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(_cxxShip->shipinfoDictionary, "scanner_hostile_display_color1")];
-	_cxxShip->scanner_display_color_hostile1 = [color retain];
-}
-
-
-- (void)setScannerDisplayColorHostile2:(OOColor *)color
-{
-	DESTROY(_cxxShip->scanner_display_color_hostile2);
-	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(_cxxShip->shipinfoDictionary, "scanner_hostile_display_color2")];
-	_cxxShip->scanner_display_color_hostile2 = [color retain];
-}
-
-
-- (OOColor *)scannerDisplayColorHostile1
-{
-	return [[_cxxShip->scanner_display_color_hostile1 retain] autorelease];
-}
-
-
-- (OOColor *)scannerDisplayColorHostile2
-{
-	return [[_cxxShip->scanner_display_color_hostile2 retain] autorelease];
-}
-
-
-- (BOOL)isCloaked
-{
-	return _cxxShip->cloaking_device_active;
-}
-
-
-- (BOOL) cloakPassive
-{
-	return _cxxShip->cloakPassive;
-}
-
-
-- (void)setCloaked:(BOOL)cloak
-{
-	if (cloak)  [self activateCloakingDevice];
-	else  [self deactivateCloakingDevice];
-}
-
-
-- (BOOL)hasAutoCloak
-{
-	return _cxxShip->cloakAutomatic;
-}
-
-
-- (void)setAutoCloak:(BOOL)automatic
-{
-	_cxxShip->cloakAutomatic = !!automatic;
-}
-
-
-- (BOOL) isJammingScanning
-{
-	return ([self hasMilitaryJammer] && _cxxShip->military_jammer_active);
-}
-
-
-- (void) addSubEntity:(Entity<OOSubEntity> *)sub
-{
-	if (sub == nil)  return;
-	
-	sub->_cxxEntity->isSubEntity = YES;
-	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
-	_cxxShip->subEntities.emplace_back(sub);
-	[sub setOwner:self];
-	
-	[self addSubentityToCollisionRadius:sub];
-}
-
-
-- (void) setOwner:(Entity *)who_owns_entity
-{
-	[super setOwner:who_owns_entity];
-	
-	/*	Reset shader binding target so that bind-to-super works.
-		This is necessary since we don't know about the owner in
-		setUpShipFromDictionary:, when the mesh is initially set up.
-		-- Ahruman 2008-04-19
-	*/
-	if (_cxxEntity->isSubEntity)
-	{
-		[[self drawable] setBindingTarget:self];
-	}
-}
-
-
-- (void) applyThrust:(double) delta_t
-{
-	GLfloat dt_thrust = SHIP_THRUST_FACTOR * _cxxShip->thrust * delta_t;
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	BOOL	isUsingAfterburner = (canBurn && (_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed) && (_cxxShip->desired_speed >= _cxxShip->flightSpeed));
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	
-	if (_cxxShip->thrust)
-	{
-		// If we have Newtonian (non-thrust) velocity, brake it.
-		GLfloat velmag = magnitude(_cxxEntity->velocity);
-		if (velmag)
-		{
-			GLfloat vscale = fmaxf((velmag - dt_thrust) / velmag, 0.0f);
-			scale_vector(&_cxxEntity->velocity, vscale);
-		}
-	}
-
-	if (_cxxShip->behaviour == BEHAVIOUR_TUMBLE)  return;
-
-	// check for speed
-	if (_cxxShip->desired_speed > max_available_speed)
-		_cxxShip->desired_speed = max_available_speed;
-
-	if (_cxxShip->flightSpeed > _cxxShip->desired_speed)
-	{
-		[self decrease_flight_speed: dt_thrust];
-		if (_cxxShip->flightSpeed < _cxxShip->desired_speed)   _cxxShip->flightSpeed = _cxxShip->desired_speed;
-	}
-	if (_cxxShip->flightSpeed < _cxxShip->desired_speed)
-	{
-		[self increase_flight_speed: dt_thrust];
-		if (_cxxShip->flightSpeed > _cxxShip->desired_speed)   _cxxShip->flightSpeed = _cxxShip->desired_speed;
-	}
-	[self moveForward: delta_t*_cxxShip->flightSpeed];
-
-	// burn fuel at the appropriate rate
-	if (isUsingAfterburner) // no fuelconsumption on slowdown
-	{
-		_cxxShip->fuel_accumulator -= delta_t * _cxxShip->afterburner_rate;
-		while (_cxxShip->fuel_accumulator < 0.0)
-		{
-			_cxxShip->fuel--;
-			_cxxShip->fuel_accumulator += 1.0;
-		}
-	}
-}
-
-
-- (void) orientationChanged
-{
-	[super orientationChanged];
-	
-	_cxxShip->v_forward   = vector_forward_from_quaternion(_cxxEntity->orientation);
-	_cxxShip->v_up		= vector_up_from_quaternion(_cxxEntity->orientation);
-	_cxxShip->v_right		= vector_right_from_quaternion(_cxxEntity->orientation);
-}
 
 
 - (void) applyRoll:(GLfloat) roll1 andClimb:(GLfloat) climb1
@@ -14798,7 +14330,6 @@ void ShipEntity::behaviour_fly_to_destination(double delta_t)
 		}
 
 
-	
 		if (distance < last_distance)	// improvement
 		{
 			frustration -= 0.25 * delta_t;
@@ -14873,7 +14404,6 @@ void ShipEntity::behaviour_avoid_collision(double delta_t)
 		desired_speed = maxFlightSpeed * (0.5 * dq + 0.5);
 	}
 
-	
 	
 }
 
@@ -15021,7 +14551,6 @@ void ShipEntity::behaviour_fly_thru_navpoints(double delta_t)
 	}
 	
 
-	
 	GLfloat temp = desired_speed;
 	desired_speed *= v0 * v0;
 	
@@ -15192,6 +14721,509 @@ HPVector ShipEntity::calculateTargetPosition()
 	}
 	double t = [UNIVERSE getTime] - trackingCurveTimes[1];
 	return HPvector_add(HPvector_add(trackingCurveCoeffs[0], HPvector_multiply_scalar(trackingCurveCoeffs[1],t)), HPvector_multiply_scalar(trackingCurveCoeffs[2],t*t));
+}
+
+
+}	// namespace cxx
+
+
+// Slice 16 of docs/phases/3-slices/ShipEntity.md (bead oo-d96oe): tracking curve, drawing, scanner
+// colours, cloaking, subentities and owner, thrust. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::startTrackingCurve()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	::Entity *target = [self primaryTarget];
+	if (target == nil)
+	{
+		return;
+	}
+	OOTimeAbsolute now = [UNIVERSE getTime];
+	trackingCurvePositions[0] = [target position];
+	trackingCurvePositions[1] = [target position];
+	trackingCurvePositions[2] = [target position];
+	trackingCurvePositions[3] = [target position];
+	trackingCurveTimes[0] = now;
+	trackingCurveTimes[1] = now - reactionTime/3.0;
+	trackingCurveTimes[2] = now - reactionTime*2.0/3.0;
+	trackingCurveTimes[3] = now - reactionTime;
+	[self calculateTrackingCurve];
+	return;
+}
+
+
+void ShipEntity::updateTrackingCurve()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	::Entity *target = [self primaryTarget];
+	OOTimeAbsolute now = [UNIVERSE getTime];
+	if (target == nil || reactionTime <= 0.0 || trackingCurveTimes[0] + reactionTime/3.0 > now) return;
+	trackingCurvePositions[3] = trackingCurvePositions[2];
+	trackingCurvePositions[2] = trackingCurvePositions[1];
+	trackingCurvePositions[1] = trackingCurvePositions[0];
+	if (EXPECT_NOT([target isShip] && [(::ShipEntity *)target isCloaked]))
+	{
+		// if target is cloaked, introduce some more inaccuracy
+		// 0.02 seems to be enough to give them slight difficulty on
+		// a straight-line target and real trouble on anything better
+		trackingCurvePositions[0] = HPvector_add([target position],OOHPVectorRandomSpatial([(::ShipEntity *)target flightSpeed]*reactionTime*0.02));
+	}
+	else
+	{
+		trackingCurvePositions[0] = [target position];
+	}
+	trackingCurveTimes[3] = trackingCurveTimes[2];
+	trackingCurveTimes[2] = trackingCurveTimes[1];
+	trackingCurveTimes[1] = trackingCurveTimes[0];
+	trackingCurveTimes[0] = now;
+	[self calculateTrackingCurve];
+	return;
+}
+
+
+void ShipEntity::calculateTrackingCurve()
+{
+	if (reactionTime <= 0.0)
+	{
+		trackingCurveCoeffs[0] = trackingCurvePositions[0];
+		trackingCurveCoeffs[1] = kZeroHPVector;
+		trackingCurveCoeffs[2] = kZeroHPVector;
+		return;
+	}
+	double	t1 = trackingCurveTimes[2] - trackingCurveTimes[1],
+		t2 = trackingCurveTimes[3] - trackingCurveTimes[1];
+	trackingCurveCoeffs[0] = trackingCurvePositions[1];
+	trackingCurveCoeffs[1] = HPvector_add(HPvector_add(
+		HPvector_multiply_scalar(trackingCurvePositions[1], -(t1+t2)/(t1*t2)),
+		HPvector_multiply_scalar(trackingCurvePositions[2], -t2/(t1*(t1-t2)))),
+		HPvector_multiply_scalar(trackingCurvePositions[3], t1/(t2*(t1-t2))));
+	trackingCurveCoeffs[2] = HPvector_add(HPvector_add(
+		HPvector_multiply_scalar(trackingCurvePositions[1], 1/(t1*t2)),
+		HPvector_multiply_scalar(trackingCurvePositions[2], 1/(t1*(t1-t2)))),
+		HPvector_multiply_scalar(trackingCurvePositions[3], -1/(t2*(t1-t2))));
+	return;
+}
+
+
+void ShipEntity::drawImmediate(bool immediate, bool translucent)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if ((no_draw_distance < cam_zero_distance) ||	// Done redundantly to skip subentities
+		(cloaking_device_active && randf() > 0.10))
+	{
+		// Don't draw.
+		return;
+	}
+	
+	// Draw self.
+	OOEntityWithDrawable::drawImmediate(immediate, translucent);
+	
+#ifndef NDEBUG
+	// Draw bounding boxes if we have to before going for the subentities.
+	// TODO: the translucent flag here makes very little sense. Something's wrong with the matrices.
+	if (translucent)  [self drawDebugStuff];
+	else if (gDebugFlags & DEBUG_BOUNDING_BOXES && ![self isSubEntity])
+	{
+		OODebugDrawBoundingBox([self boundingBox]);
+		OODebugDrawColoredBoundingBox(totalBoundingBox, [::OOColor purpleColor]);
+	}
+#endif
+	
+	// Draw subentities.
+	if (!immediate)	// TODO: is this relevant any longer?
+	{
+		// save time by not copying the subentity array if it's empty - CIM
+		if ([self subEntityCount] > 0) 
+		{ 
+			const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+			for (const auto &sub : subs)
+			{
+				::Entity<OOSubEntity> *subEntity = (::Entity<OOSubEntity> *)sub.get();
+				OOCAssert([subEntity owner] == self, "Subentity ownership broke - %s should be owned by %s but is owned by %s.", oo::DescriptionOf(subEntity).c_str(), oo::DescriptionOf(self).c_str(), oo::DescriptionOf([subEntity owner]).c_str());
+				[subEntity drawSubEntityImmediate:immediate translucent:translucent];
+			}
+		}
+	}
+}
+
+
+#ifndef NDEBUG
+void ShipEntity::drawDebugStuff()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	// HPVect: imprecise here - needs camera relative
+	if (0 && reportAIMessages)
+	{
+		OODebugDrawPoint(HPVectorToVector(_destination), [::OOColor blueColor]);
+		OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector(_destination), [::OOColor colorWithWhite:0.15 alpha:1.0]);
+		
+		::Entity *pTarget = [self primaryTarget];
+		if (pTarget != nil)
+		{
+			OODebugDrawPoint(HPVectorToVector([pTarget position]), [::OOColor redColor]);
+			OODebugDrawColoredLine(HPVectorToVector([self position]), HPVectorToVector([pTarget position]), [::OOColor colorWithRed:0.2 green:0.0 blue:0.0 alpha:1.0]);
+		}
+		
+		::Entity *sTarget = [self targetStation];
+		if (sTarget != pTarget && [sTarget isStation])
+		{
+			OODebugDrawPoint(HPVectorToVector([sTarget position]), [::OOColor cyanColor]);
+		}
+		
+		::Entity *fTarget = [self foundTarget];
+		if (fTarget != nil && fTarget != pTarget && fTarget != sTarget)
+		{
+			OODebugDrawPoint(HPVectorToVector([fTarget position]), [::OOColor magentaColor]);
+		}
+	}
+}
+#endif
+
+
+void ShipEntity::drawSubEntityImmediate(bool immediate, bool translucent)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	OOVerifyOpenGLState();
+	
+	if (cam_zero_distance > no_draw_distance) // this test provides an opportunity to do simple LoD culling
+	{
+		return; // TOO FAR AWAY
+	}
+	OOGLPushModelView();
+	
+	// HPVect: need to make camera-relative
+	OOGLTranslateModelView(HPVectorToVector(position));
+	OOGLMultModelView(rotMatrix);
+	[self drawImmediate:immediate translucent:translucent];
+	
+#ifndef NDEBUG
+	if (gDebugFlags & DEBUG_BOUNDING_BOXES)
+	{
+		OODebugDrawBoundingBox([self boundingBox]);
+	}
+#endif
+	
+	OOGLPopModelView();
+	
+	OOVerifyOpenGLState();	
+}
+
+
+GLfloat *ShipEntity::scannerDisplayColorForShip(::ShipEntity *otherShip, bool isHostile, bool flash, ::OOColor *scannerDisplayColor1, ::OOColor *scannerDisplayColor2, ::OOColor *scannerDisplayColorH1, ::OOColor *scannerDisplayColorH2)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (isHostile)
+	{
+		/* if there are any scripted scanner hostile display colours
+		 * for the ship, use them - otherwise fall through to the
+		 * normal scripted colours, then the scan class colours */
+		if (scannerDisplayColorH1 || scannerDisplayColorH2)
+		{
+			if (scannerDisplayColorH1 && !scannerDisplayColorH2)
+			{
+				[scannerDisplayColorH1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			}
+		
+			if (!scannerDisplayColorH1 && scannerDisplayColorH2)
+			{
+				[scannerDisplayColorH2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			}
+		
+			if (scannerDisplayColorH1 && scannerDisplayColorH2)
+			{
+				if (flash)
+					[scannerDisplayColorH1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				else
+					[scannerDisplayColorH2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			}
+		
+			return scripted_color;
+		}
+	}
+
+	// if there are any scripted scanner display colors for the ship, use them
+	if (scannerDisplayColor1 || scannerDisplayColor2)
+	{
+		if (scannerDisplayColor1 && !scannerDisplayColor2)
+		{
+			[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+		}
+		
+		if (!scannerDisplayColor1 && scannerDisplayColor2)
+		{
+			[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+		}
+		
+		if (scannerDisplayColor1 && scannerDisplayColor2)
+		{
+			if (flash)
+				[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			else
+				[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+		}
+		
+		return scripted_color;
+	}
+
+	// no scripted scanner display colors defined, proceed as per standard
+	if ([self isJammingScanning])
+	{
+		if (![otherShip hasMilitaryScannerFilter])
+			return jammed_color;
+		else
+		{
+			if (flash)
+				return mascem_color1;
+			else
+			{
+				if (isHostile)
+					return hostile_color;
+				else
+					return mascem_color2;
+			}
+		}
+	}
+
+	switch (scanClass)
+	{
+		case CLASS_ROCK :
+		case CLASS_CARGO :
+			return cargo_color;
+		case CLASS_THARGOID :
+			if (flash)
+				return hostile_color;
+			else
+				return friendly_color;
+		case CLASS_MISSILE :
+			return missile_color;
+		case CLASS_STATION :
+			return friendly_color;
+		case CLASS_BUOY :
+			if (flash)
+				return friendly_color;
+			else
+				return neutral_color;
+		case CLASS_POLICE :
+		case CLASS_MILITARY :
+			if ((isHostile)&&(flash))
+				return police_color2;
+			else
+				return police_color1;
+		case CLASS_MINE :
+			if (flash)
+				return neutral_color;
+			else
+				return hostile_color;
+		default :
+			if (isHostile)
+				return hostile_color;
+	}
+	return neutral_color;
+}
+
+
+void ShipEntity::setScannerDisplayColor1(::OOColor *color)
+{
+	DESTROY(scanner_display_color1);
+	
+	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_display_color1")];
+	scanner_display_color1 = [color retain];
+}
+
+
+void ShipEntity::setScannerDisplayColor2(::OOColor *color)
+{
+	DESTROY(scanner_display_color2);
+	
+	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_display_color2")];
+	scanner_display_color2 = [color retain];
+}
+
+
+::OOColor *ShipEntity::scannerDisplayColor1()
+{
+	return [[scanner_display_color1 retain] autorelease];
+}
+
+
+::OOColor *ShipEntity::scannerDisplayColor2()
+{
+	return [[scanner_display_color2 retain] autorelease];
+}
+
+
+void ShipEntity::setScannerDisplayColorHostile1(::OOColor *color)
+{
+	DESTROY(scanner_display_color_hostile1);
+	
+	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_hostile_display_color1")];
+	scanner_display_color_hostile1 = [color retain];
+}
+
+
+void ShipEntity::setScannerDisplayColorHostile2(::OOColor *color)
+{
+	DESTROY(scanner_display_color_hostile2);
+	
+	if (color == nil)  color = [::OOColor cxx_colorWithDescription:ValueForKey(shipinfoDictionary, "scanner_hostile_display_color2")];
+	scanner_display_color_hostile2 = [color retain];
+}
+
+
+::OOColor *ShipEntity::scannerDisplayColorHostile1()
+{
+	return [[scanner_display_color_hostile1 retain] autorelease];
+}
+
+
+::OOColor *ShipEntity::scannerDisplayColorHostile2()
+{
+	return [[scanner_display_color_hostile2 retain] autorelease];
+}
+
+
+bool ShipEntity::isCloaked()
+{
+	return cloaking_device_active;
+}
+
+
+bool ShipEntity::getCloakPassive()
+{
+	return cloakPassive;
+}
+
+
+void ShipEntity::setCloaked(bool cloak)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (cloak)  [self activateCloakingDevice];
+	else  [self deactivateCloakingDevice];
+}
+
+
+bool ShipEntity::hasAutoCloak()
+{
+	return cloakAutomatic;
+}
+
+
+void ShipEntity::setAutoCloak(bool automatic)
+{
+	cloakAutomatic = !!automatic;
+}
+
+
+bool ShipEntity::isJammingScanning()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return ([self hasMilitaryJammer] && military_jammer_active);
+}
+
+
+void ShipEntity::addSubEntity(::Entity *sub)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (sub == nil)  return;
+	
+	sub->_cxxEntity->isSubEntity = YES;
+	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
+	subEntities.emplace_back(sub);
+	[sub setOwner:self];
+	
+	[self addSubentityToCollisionRadius:(::Entity<OOSubEntity> *)sub];
+}
+
+
+void ShipEntity::setOwner(Entity *who_owns_entity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	OOEntityWithDrawable::setOwner(who_owns_entity);
+	
+	/*	Reset shader binding target so that bind-to-super works.
+		This is necessary since we don't know about the owner in
+		setUpShipFromDictionary:, when the mesh is initially set up.
+		-- Ahruman 2008-04-19
+	*/
+	if (isSubEntity)
+	{
+		[[self drawable] setBindingTarget:self];
+	}
+}
+
+
+void ShipEntity::applyThrust(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	GLfloat dt_thrust = SHIP_THRUST_FACTOR * thrust * delta_t;
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	BOOL	isUsingAfterburner = (canBurn && (flightSpeed > maxFlightSpeed) && (desired_speed >= flightSpeed));
+	float	max_available_speed = maxFlightSpeed;
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	
+	if (thrust)
+	{
+		// If we have Newtonian (non-thrust) velocity, brake it.
+		GLfloat velmag = magnitude(velocity);
+		if (velmag)
+		{
+			GLfloat vscale = fmaxf((velmag - dt_thrust) / velmag, 0.0f);
+			scale_vector(&velocity, vscale);
+		}
+	}
+
+	if (behaviour == BEHAVIOUR_TUMBLE)  return;
+
+	// check for speed
+	if (desired_speed > max_available_speed)
+		desired_speed = max_available_speed;
+
+	if (flightSpeed > desired_speed)
+	{
+		[self decrease_flight_speed: dt_thrust];
+		if (flightSpeed < desired_speed)   flightSpeed = desired_speed;
+	}
+	if (flightSpeed < desired_speed)
+	{
+		[self increase_flight_speed: dt_thrust];
+		if (flightSpeed > desired_speed)   flightSpeed = desired_speed;
+	}
+	[self moveForward: delta_t*flightSpeed];
+
+	// burn fuel at the appropriate rate
+	if (isUsingAfterburner) // no fuelconsumption on slowdown
+	{
+		fuel_accumulator -= delta_t * afterburner_rate;
+		while (fuel_accumulator < 0.0)
+		{
+			fuel--;
+			fuel_accumulator += 1.0;
+		}
+	}
+}
+
+
+void ShipEntity::orientationChanged()
+{
+	OOEntityWithDrawable::orientationChanged();
+	
+	v_forward   = vector_forward_from_quaternion(orientation);
+	v_up		= vector_up_from_quaternion(orientation);
+	v_right		= vector_right_from_quaternion(orientation);
 }
 
 

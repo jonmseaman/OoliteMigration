@@ -544,3 +544,36 @@ DESTROY(_cxxShip->laser_color);
 - (HPVector) calculateTargetPosition	{ return _cxxShip->calculateTargetPosition(); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice16)
+
+- (void) startTrackingCurve	{ _cxxShip->startTrackingCurve(); }
+- (void) updateTrackingCurve	{ _cxxShip->updateTrackingCurve(); }
+- (void) calculateTrackingCurve	{ _cxxShip->calculateTrackingCurve(); }
+- (void) drawImmediate:(bool)immediate translucent:(bool)translucent	{ _cxxShip->cxx::ShipEntity::drawImmediate(immediate, translucent); }
+#ifndef NDEBUG
+- (void) drawDebugStuff	{ _cxxShip->drawDebugStuff(); }
+#endif
+- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent	{ _cxxShip->drawSubEntityImmediate(immediate, translucent); }
+- (GLfloat *) scannerDisplayColorForShip:(ShipEntity*)otherShip :(BOOL)isHostile :(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2 :(OOColor *)scannerDisplayColorH1 :(OOColor *)scannerDisplayColorH2	{ return _cxxShip->scannerDisplayColorForShip(otherShip, isHostile, flash, scannerDisplayColor1, scannerDisplayColor2, scannerDisplayColorH1, scannerDisplayColorH2); }
+- (void) setScannerDisplayColor1:(OOColor *)color	{ _cxxShip->setScannerDisplayColor1(color); }
+- (void) setScannerDisplayColor2:(OOColor *)color	{ _cxxShip->setScannerDisplayColor2(color); }
+- (OOColor *) scannerDisplayColor1	{ return _cxxShip->scannerDisplayColor1(); }
+- (OOColor *) scannerDisplayColor2	{ return _cxxShip->scannerDisplayColor2(); }
+- (void) setScannerDisplayColorHostile1:(OOColor *)color	{ _cxxShip->setScannerDisplayColorHostile1(color); }
+- (void) setScannerDisplayColorHostile2:(OOColor *)color	{ _cxxShip->setScannerDisplayColorHostile2(color); }
+- (OOColor *) scannerDisplayColorHostile1	{ return _cxxShip->scannerDisplayColorHostile1(); }
+- (OOColor *) scannerDisplayColorHostile2	{ return _cxxShip->scannerDisplayColorHostile2(); }
+- (BOOL) isCloaked	{ return _cxxShip->isCloaked(); }
+- (BOOL) cloakPassive	{ return _cxxShip->getCloakPassive(); }
+- (void) setCloaked:(BOOL)cloak	{ _cxxShip->setCloaked(cloak); }
+- (BOOL) hasAutoCloak	{ return _cxxShip->hasAutoCloak(); }
+- (void) setAutoCloak:(BOOL)automatic	{ _cxxShip->setAutoCloak(automatic); }
+- (BOOL) isJammingScanning	{ return _cxxShip->isJammingScanning(); }
+- (void) addSubEntity:(Entity<OOSubEntity> *)sub	{ _cxxShip->addSubEntity(sub); }
+- (void) setOwner:(Entity *)who_owns_entity	{ _cxxShip->cxx::ShipEntity::setOwner(oo::ToCxx(who_owns_entity)); }
+- (void) applyThrust:(double)delta_t	{ _cxxShip->applyThrust(delta_t); }
+- (void) orientationChanged	{ _cxxShip->cxx::ShipEntity::orientationChanged(); }
+
+@end

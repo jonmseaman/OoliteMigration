@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #define SHIPENTITY_OBJCBRIDGE_H
 
 
-@interface ShipEntity: OOEntityWithDrawable <OOSubEntity>	// and <OOBeaconEntity>, by the category ShipEntity (OOBeaconEntity)
+@interface ShipEntity: OOEntityWithDrawable	// <OOSubEntity> and <OOBeaconEntity>, by the categories ShipEntity (OOSubEntity) and ShipEntity (OOBeaconEntity)
 {
 @public
 	cxx::ShipEntity		*_cxxShip;		// _cxxEntity, typed; borrowed, set by the initialiser
@@ -113,26 +113,9 @@ MA 02110-1301, USA.
 
 // Behaviours
 
-- (void) startTrackingCurve;
-- (void) updateTrackingCurve;
-- (void) calculateTrackingCurve;
 
-- (GLfloat *) scannerDisplayColorForShip:(ShipEntity*)otherShip :(BOOL)isHostile :(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2 :(OOColor *)scannerDisplayColorH1 :(OOColor *)scannerDisplayColorH2;
-- (void)setScannerDisplayColor1:(OOColor *)color1;
-- (void)setScannerDisplayColor2:(OOColor *)color2;
-- (OOColor *)scannerDisplayColor1;
-- (OOColor *)scannerDisplayColor2;
-- (void)setScannerDisplayColorHostile1:(OOColor *)color1;
-- (void)setScannerDisplayColorHostile2:(OOColor *)color2;
-- (OOColor *)scannerDisplayColorHostile1;
-- (OOColor *)scannerDisplayColorHostile2;
 
-- (BOOL)isCloaked;
-- (void)setCloaked:(BOOL)cloak;
-- (BOOL)hasAutoCloak;
-- (void)setAutoCloak:(BOOL)automatic;
 
-- (void) applyThrust:(double) delta_t;
 - (void) applyAttitudeChanges:(double) delta_t;
 
 - (void) avoidCollision;
@@ -1027,6 +1010,50 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (float) reactionTime;
 - (void) setReactionTime: (float) newReactionTime;
 - (HPVector) calculateTargetPosition;
+
+@end
+
+
+/*	The ship adopts <OOSubEntity> here and not in its interface (slice 16, bead oo-d96oe), for the
+	reason it adopts <OOBeaconEntity> by a category (slice 5): -drawSubEntityImmediate:translucent:
+	is a forwarder in the slice's category (ADR-0056 amendment oo-xmajv item 2).
+*/
+@interface ShipEntity (OOSubEntity) <OOSubEntity>
+@end
+
+
+// Slice 16 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice16)
+
+- (void) startTrackingCurve;
+- (void) updateTrackingCurve;
+- (void) calculateTrackingCurve;
+- (void) drawImmediate:(bool)immediate translucent:(bool)translucent;
+#ifndef NDEBUG
+- (void) drawDebugStuff;
+#endif
+- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent;
+- (GLfloat *) scannerDisplayColorForShip:(ShipEntity*)otherShip :(BOOL)isHostile :(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2 :(OOColor *)scannerDisplayColorH1 :(OOColor *)scannerDisplayColorH2;
+- (void)setScannerDisplayColor1:(OOColor *)color1;
+- (void)setScannerDisplayColor2:(OOColor *)color2;
+- (OOColor *)scannerDisplayColor1;
+- (OOColor *)scannerDisplayColor2;
+- (void)setScannerDisplayColorHostile1:(OOColor *)color1;
+- (void)setScannerDisplayColorHostile2:(OOColor *)color2;
+- (OOColor *)scannerDisplayColorHostile1;
+- (OOColor *)scannerDisplayColorHostile2;
+- (BOOL)isCloaked;
+- (BOOL) cloakPassive;
+- (void)setCloaked:(BOOL)cloak;
+- (BOOL)hasAutoCloak;
+- (void)setAutoCloak:(BOOL)automatic;
+- (BOOL) isJammingScanning;
+- (void) addSubEntity:(Entity<OOSubEntity> *)sub;
+- (void) setOwner:(Entity *)who_owns_entity;
+- (void) applyThrust:(double) delta_t;
+- (void) orientationChanged;
 
 @end
 
