@@ -120,3 +120,4 @@ upstream/oolite/tests/unit/core/test_OOCheckShipDataPListVerifierStage.mm	oo-9n5
 
 # oo-9ht.84, one more line under oo-9n5p9; landed by oo-9ht.166.
 upstream/oolite/tests/unit/core/test_OOSound.mm	oo-9n5p9: oo-9ht.84 deletes the OOALStreamedSound façade - ONLY the case nilAndLifetime's Objective-C sound, which the class cluster made from big.ogg (the Objective-C OOALStreamedSound stub) and is now the file's Objective-C TestMusic subclass (the streamed sound is C++), with every expectation kept
+upstream/oolite/tests/unit/core/test_OOMeshToOctreeConverter.mm	oo-9n5p9: oo-9ht.26 deletes the OOMeshToOctreeConverter façade - ONLY facadeNilStaysNil and facadeIdentity; the C++ API cases stay with every expectation kept
