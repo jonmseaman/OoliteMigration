@@ -19,6 +19,12 @@ The plan is the markdown file's single fenced block tagged `slice-plan`:
                                                  # its own units use the names they declare; for a
                                                  # header whose ivars and constants leave a big
                                                  # method no room (PlayerEntity.h)
+    one-unit-slices: frontier                    # optional (bead oo-9ht.157): a slice that owns
+                                                 # exactly one unit may own more than --max-own
+                                                 # (it must still read under --max-read): one
+                                                 # method the plan cannot cut is a frontier story,
+                                                 # not a fleet one (PlayerEntityControls.mm's
+                                                 # 1,105-line pollGuiArrowKeyControls:)
     retired-by: oo-xxxx                          # optional: the file is deleted by that bead; an
                                                  # absent source then passes, a present one is checked
     slice 1: class shell and lifecycle           # a slice: "slice <n>: <title>", then its entries
@@ -58,6 +64,8 @@ Checks (exit 1 on any failure):
     the ones those use in turn;
   * each slice's own units total at most --max-own lines (default 800): converting a method
     rewrites roughly half its lines, so this keeps a story near the ~400-lines-written budget;
+    with `one-unit-slices: frontier` a slice of a single unit is exempt (no plan can cut one
+    method) and is reported as "frontier", which is the label its story bead takes;
   * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...), except an
     out-of-line C++ member definition (X::m, its head qualified): that is a member a landed slice
     already converted, which ADR-0056 lets keep sends to Objective-C objects and @try (oo-9ht.117);
@@ -356,13 +364,13 @@ def read_plan(path):
     text = open(path, encoding="utf-8").read()
     m = re.search(r"^```slice-plan[ \t]*\n(.*?)^```", text, re.S | re.M)
     if not m: raise SystemExit(f"{path}: no ```slice-plan fenced block")
-    plan = {"source": None, "header": None, "retired_by": None, "header_decls": None, "header_names": None, "groups": []}
+    plan = {"source": None, "header": None, "retired_by": None, "header_decls": None, "header_names": None, "one_unit_slices": None, "groups": []}
     group = None
     for raw in m.group(1).splitlines():
         line = raw.split("#", 1)[0].rstrip() if not raw.lstrip().startswith("#") else ""
         if not line.strip(): continue
         s = line.strip()
-        kv = re.match(r"(source|header|retired-by|header-decls|header-names):\s*(\S+)$", s)
+        kv = re.match(r"(source|header|retired-by|header-decls|header-names|one-unit-slices):\s*(\S+)$", s)
         if kv and not raw[:1].isspace():
             plan[kv.group(1).replace("-", "_")] = kv.group(2); continue
         g = re.match(r"slice\s+(\w+)\s*:\s*(.*)$", s)
@@ -381,6 +389,7 @@ def read_plan(path):
     if plan["header_decls"] and not plan["header"]: raise SystemExit(f"{path}: header-decls needs a 'header:'")
     if plan["header_names"] not in (None, "by-use"): raise SystemExit(f"{path}: header-names must be 'by-use'")
     if plan["header_names"] and not plan["header"]: raise SystemExit(f"{path}: header-names needs a 'header:'")
+    if plan["one_unit_slices"] not in (None, "frontier"): raise SystemExit(f"{path}: one-unit-slices must be 'frontier'")
     ids = [g["id"] for g in plan["groups"]]
     if len(ids) != len(set(ids)): raise SystemExit(f"{path}: duplicate slice id")
     return plan
@@ -487,9 +496,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         read = h + preamble + own
         if not mine: empty.append(g["id"]); errors.append(f"slice {g['id']} is empty")
         if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
-        if own > max_own: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}")
+        # one-unit-slices: frontier (bead oo-9ht.157): one method over --max-own is a frontier story
+        frontier = bool(plan["one_unit_slices"]) and len(mine) == 1 and own > max_own
+        if own > max_own and not frontier: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}" + ("" if len(mine) != 1 else " (one unit: see one-unit-slices: frontier)"))
         report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
-                       "header": h, "members": [u["name"] for u in mine]})
+                       "header": h, "frontier": frontier, "members": [u["name"] for u in mine]})
     return {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
             "unassigned": unassigned, "empty": empty,
             "total": total, "preamble": preamble, "header_lines": hdr, "slices": report, "errors": errors,
@@ -545,7 +556,7 @@ def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=RO
         print(f"{plan['source']}: {total} lines, {len(units)} units, preamble {preamble}, header {hdr}")
         for r in report:
             tag = "verbatim" if r["verbatim"] else "mac-only" if r["mac_only"] else f"slice {r['id']}"
-            print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}")
+            print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}" + ("  [frontier: one unit over --max-own]" if r.get("frontier") else ""))
         if show_units:
             for u in units:
                 print(f"    {u['start']+1:5d}-{u['end']+1:5d} {u['end']-u['start']+1:4d}  {assign.get(units.index(u), '-'):>8}  {u['name']}")
@@ -710,6 +721,22 @@ def selftest():
     open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader-names: by-use\n" + good + "```\n")
     try:
         analyse(p, base=d); fails.append("header-names without a header accepted")
+    except SystemExit: pass
+    # one-unit-slices: frontier (bead oo-9ht.157): a one-unit slice over --max-own passes with the
+    # key and is reported frontier; without the key, or for a slice of two units, it still fails
+    def own_check(body, max_own):
+        open(p, "w").write("```slice-plan\nsource: Foo.mm\n" + body + "```\n")
+        with contextlib.redirect_stdout(io.StringIO()): r = check(p, 1500, max_own, base=d)
+        return r, {x["id"]: x.get("frontier") for x in analyse(p, 1500, max_own, base=d)["slices"] if not x["verbatim"]}
+    one = "slice 1: init\n  -[Foo init]\nslice 2: set\n  -[Foo set*]\n  helper()\nslice 3: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    two = "slice 1: init and set\n  -[Foo init]\n  -[Foo set*]\nslice 2: helper\n  helper()\nslice 3: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    if own_check(one, 5)[0] != 1: fails.append("a one-unit slice over --max-own passed without one-unit-slices")
+    got = own_check("one-unit-slices: frontier\n" + one, 5)
+    if got != (0, {"1": True, "2": False, "3": False}): fails.append(f"one-unit-slices: frontier: {got}")
+    if own_check("one-unit-slices: frontier\n" + two, 5)[0] != 1: fails.append("one-unit-slices exempted a slice of two units")
+    open(p, "w").write("```slice-plan\nsource: Foo.mm\none-unit-slices: yes\n" + good + "```\n")
+    try:
+        analyse(p, base=d); fails.append("one-unit-slices: yes accepted")
     except SystemExit: pass
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)
