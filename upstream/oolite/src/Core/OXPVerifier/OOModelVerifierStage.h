@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 	other stages declare it) and, flipped with the others, returns a std::string (bead oo-3rb.274.2).
 
 	C++20 since bead oo-5zby (proposed ADR-0056 Amendment 1, amendments oo-up4b and oo-94qk): a
-	subclass of cxx::OOTextureHandlingStage. It is global and has no facade: its one caller, the
+	subclass of OOTextureHandlingStage. It is global and has no facade: its one caller, the
 	ship data stage, calls these members, and the Objective-C verifier holds it as an
 	OOOXPVerifierStage (oo::ToObjC). The verifier's -modelVerifierStage, a category of an
 	Objective-C class, is in OOModelVerifierStage+ObjCBridge.h, imported at the end of this header.
@@ -56,7 +56,7 @@ struct OOModelVerifierEntry
 };
 
 
-class OOModelVerifierStage : public cxx::OOTextureHandlingStage
+class OOModelVerifierStage : public OOTextureHandlingStage
 {
 public:
 	// The stage's name, as name() returns it (for the verifier's -modelVerifierStage).

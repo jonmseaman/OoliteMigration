@@ -1,11 +1,12 @@
 /*	test_OOJSSun.mm
 	Unit tests for the Sun JS binding (src/Core/Scripting/OOJSSun.h/.mm) and its OOSunEntity
-	category (OOJSSun+ObjCBridge.mm): bead oo-hgfh, converted the way bead oo-ppc converted
-	OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+	category (whose forwarders are on the OOSunEntity facade since bead oo-9ht.51; this test's
+	stand-in OOSunEntity forwards the same way): bead oo-hgfh, converted the way bead oo-ppc
+	converted OOJSVector (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 
 	As test_OOJSWormhole.mm does (amendment oo-ykoy, item 4), it runs the JS class in a real
 	context on the game's own façade backend (ooscript/JSEngine_quickjs.cpp), links the game's own
-	objects for the binding, its bridge and the engine's exception translator
+	objects for the binding and the engine's exception translator
 	(OOJSEngineNativeWrappers.mm), and stands in for the entity classes (Entity and OOSunEntity
 	answer only the selectors the binding sends) and for the engine functions the binding links
 	against, with the engine headers' linkage. The expectations were written against the
@@ -94,6 +95,13 @@
 	_novaTime = interval;
 	_novaCalls++;
 }
+
+
+// The binding's category, as the OOSunEntity facade forwards it (OOSunEntity+ObjCBridge.mm, bead
+// oo-9ht.51): the engine sends these selectors to the wrapped object.
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { ::OOJSSunGetJSClass(outClass, outPrototype); }
+- (std::optional<std::string>) cxx_oo_jsClassName  { return ::OOJSSunJSClassName(); }
+- (BOOL) isVisibleToScripts  { return ::OOJSSunIsVisibleToScripts(); }
 
 @end
 
