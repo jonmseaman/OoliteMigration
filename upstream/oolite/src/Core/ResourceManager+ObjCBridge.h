@@ -76,14 +76,6 @@ MA 02110-1301, USA.
 // Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 + (void) clearCaches;
 
-@end
-
-
-// Slices 2-4 of docs/phases/3-slices/ResourceManager.md: still Objective-C, implemented by this
-// category in ResourceManager.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to ResourceManager+ObjCBridge.mm.
-@interface ResourceManager (OOResourceManagerUnconverted)
-
 // compatibility checks (a manifest or relation is a Dict; title is nullopt where nil was passed)
 + (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title;
 + (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
@@ -91,7 +83,13 @@ MA 02110-1301, USA.
 + (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors;
 + (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version;
 
+@end
 
+
+// Slices 3 and 4 of docs/phases/3-slices/ResourceManager.md: still Objective-C, implemented by this
+// category in ResourceManager.mm on the facade. Each slice's bead moves its methods to the C++ class
+// and their forwarders to ResourceManager+ObjCBridge.mm.
+@interface ResourceManager (OOResourceManagerUnconverted)
 
 // In-out: an array of arrays (the merged files), edited in place.
 + (void)handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex;

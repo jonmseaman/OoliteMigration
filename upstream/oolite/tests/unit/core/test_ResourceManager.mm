@@ -299,4 +299,21 @@ OO_TEST(scanKeepsTheAddOnsWhoseManifestsAllowThem)
 }
 
 
+OO_TEST(cxxSlice2API)
+{
+	@autoreleasepool
+	{
+		const oo::PList range = Manifest("{ version = \"1.0\"; maximum_version = \"2.0\"; }");
+		OO_CHECK(cxx::ResourceManager::matchVersions(range, "1.5"));
+		OO_CHECK(!cxx::ResourceManager::matchVersions(range, "3"));
+		OO_CHECK(cxx::ResourceManager::checkVersionCompatibility(Manifest("{ required_oolite_version = \"1.0\"; }"), "t"));
+		OO_CHECK(!cxx::ResourceManager::checkVersionCompatibility(Manifest("{ required_oolite_version = \"10.0\"; }"), std::nullopt));
+		OO_CHECK(!cxx::ResourceManager::manifestHasConflicts(Manifest("{}"), false));
+		OO_CHECK(!cxx::ResourceManager::manifestHasMissingDependencies(Manifest("{}"), false));
+		OO_CHECK(cxx::ResourceManager::manifest(Manifest("{ title = X; }"), Manifest("{ identifier = \"org.test.none\"; }"), false));
+		OO_CHECK([ResourceManager cxx_matchVersions:range withVersion:"1.5"] == cxx::ResourceManager::matchVersions(range, "1.5"));
+	}
+}
+
+
 OO_TEST_MAIN()
