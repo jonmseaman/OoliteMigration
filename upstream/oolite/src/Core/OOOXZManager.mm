@@ -392,7 +392,7 @@ std::vector<std::string> OOOXZManager::additionalAddOnsPaths()
 
 std::optional<std::string> OOOXZManager::extractionBasePathForIdentifier(const std::string &identifier, const std::string &version)
 {
-	const std::vector<std::string> userRootPaths = [ResourceManager cxx_userRootPaths];
+	const std::vector<std::string> userRootPaths = [::ResourceManager cxx_userRootPaths];
 	if (userRootPaths.empty())  return std::nullopt;
 	const std::string &basePath = userRootPaths.back();
 	std::string mainDir = identifier + "-" + version + ".off";
@@ -809,7 +809,7 @@ oo::PList OOOXZManager::managedOXZs()
 	if (!_managedList)
 	{
 		// if this list is being reset, also reset the current install list
-		[ResourceManager resetManifestKnowledgeForOXZManager];
+		[::ResourceManager resetManifestKnowledgeForOXZManager];
 		const std::optional<std::string> installPath = this->installPath();
 		std::vector<std::string> filenames;
 		if (installPath.has_value())
@@ -850,7 +850,7 @@ oo::PList OOOXZManager::managedOXZs()
 							{
 								adjEntries[std::string(kOOManifestDownloadURL)] = oo::PList(*url);
 							}
-							if ([ResourceManager cxx_checkVersionCompatibility:manifest forOXP:std::nullopt])
+							if ([::ResourceManager cxx_checkVersionCompatibility:manifest forOXP:std::nullopt])
 							{
 								foundInstallable = true;
 							}
@@ -973,7 +973,7 @@ bool OOOXZManager::processDownloadedOXZ()
 	}
 	_changesMade = true;
 	_managedList = oo::PList(); // will need updating
-	[ResourceManager resetManifestKnowledgeForOXZManager];
+	[::ResourceManager resetManifestKnowledgeForOXZManager];
 
 	const oo::PList *requiredNode = downloadedManifest.find(std::string(kOOManifestRequiresOXPs));
 	if (requiredNode == nullptr || !requiredNode->isArray())
@@ -999,7 +999,7 @@ bool OOOXZManager::processDownloadedOXZ()
 			{
 				if (req == requirement)  { inRequired = true; break; }
 			}
-			if (![ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO]
+			if (![::ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO]
 				&& !requiredOXPs.empty() && inRequired)
 			{
 				progress += DescFormat(OO_DESC("oolite-oxzmanager-progress-now-has-@"), {
@@ -1019,7 +1019,7 @@ bool OOOXZManager::processDownloadedOXZ()
 	{
 		for (const oo::PList &requirement : requiredOXPs)
 		{
-			if ([ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO])
+			if ([::ResourceManager cxx_manifest:downloadedManifest HasUnmetDependency:requirement logErrors:NO])
 			{
 				OO_LOG("oxz.manager.debug", "Dependency stack: adding {}", ManifestString(requirement, std::string(kOOManifestRelationIdentifier)).value_or("(null)"));
 				DependencyStackAdd(_dependencyStack, requirement);
@@ -1056,7 +1056,7 @@ bool OOOXZManager::processDownloadedOXZ()
 				const std::optional<std::string> availableIdentifier = ManifestString(availableDownload, std::string(kOOManifestIdentifier));
 				if (availableIdentifier.has_value() && needsIdentifier.has_value() && *availableIdentifier == *needsIdentifier)
 				{
-					if ([ResourceManager cxx_matchVersions:requirement withVersion:ManifestString(availableDownload, std::string(kOOManifestVersion)).value_or("")])
+					if ([::ResourceManager cxx_matchVersions:requirement withVersion:ManifestString(availableDownload, std::string(kOOManifestVersion)).value_or("")])
 					{
 						OO_LOG("oxz.manager.debug", "{}", "Dependency stack: found download for next item");
 						foundDownload = true;
@@ -1162,7 +1162,7 @@ OXZInstallableState OOOXZManager::installableState(const oo::PList &manifest)
 	const std::optional<std::string> title = ManifestString(manifest, std::string(kOOManifestTitle));
 	const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
 	/* Check Oolite version */
-	if (![ResourceManager cxx_checkVersionCompatibility:manifest forOXP:title])
+	if (![::ResourceManager cxx_checkVersionCompatibility:manifest forOXP:title])
 	{
 		return OXZ_UNINSTALLABLE_VERSION;
 	}
@@ -1171,7 +1171,7 @@ OXZInstallableState OOOXZManager::installableState(const oo::PList &manifest)
 	if (!installed)
 	{
 		// check for manual install
-		installed = [ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
+		installed = [::ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
 	}
 
 	// available_version, else version (the fallback of the old string read)
@@ -1205,7 +1205,7 @@ OXZInstallableState OOOXZManager::installableState(const oo::PList &manifest)
 		}
 	}
 	/* Check for dependencies being met */
-	if ([ResourceManager cxx_manifestHasConflicts:manifest logErrors:NO])
+	if ([::ResourceManager cxx_manifestHasConflicts:manifest logErrors:NO])
 	{
 		return OXZ_INSTALLABLE_CONFLICTS;
 	}
@@ -1223,7 +1223,7 @@ OXZInstallableState OOOXZManager::installableState(const oo::PList &manifest)
 		}
 		return OXZ_INSTALLABLE_UPDATE;
 	}
-	if ([ResourceManager cxx_manifestHasMissingDependencies:manifest logErrors:NO])
+	if ([::ResourceManager cxx_manifestHasMissingDependencies:manifest logErrors:NO])
 	{
 		return OXZ_INSTALLABLE_DEPENDENCIES;
 	}
@@ -1287,7 +1287,7 @@ bool OOOXZManager::isRestarting()
 	if (EXPECT_NOT(_interfaceState == OXZ_STATE_RESTARTING))
 	{
 		// Rebuilds OXP search
-		[ResourceManager reset];
+		[::ResourceManager reset];
 		[UNIVERSE reinitAndShowDemo:YES];
 		_changesMade = false;
 		_interfaceState = OXZ_STATE_MAIN;
