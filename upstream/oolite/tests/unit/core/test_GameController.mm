@@ -438,7 +438,7 @@ OO_TEST(facadeContract)
 		// The state slices 2 and 3 read through the façade.
 		OO_CHECK(facade->_cxxController.get() == controller);
 		[facade cxx_setPlayerFileToLoad:"x.oolite-save"];
-		OO_CHECK(controller->playerFileToLoad == std::optional<std::string>("x.oolite-save"));
+		OO_CHECK(controller->_playerFileToLoad == std::optional<std::string>("x.oolite-save"));
 		[facade cxx_setPlayerFileToLoad:"x"];
 	}
 }

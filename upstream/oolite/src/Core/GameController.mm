@@ -665,14 +665,14 @@ void GameController::runFrameLoop()
 
 - (void) loadPlayerIfRequired
 {
-	if (_cxxController->playerFileToLoad.has_value())
+	if (_cxxController->_playerFileToLoad.has_value())
 	{
 		[self cxx_logProgress:OO_DESC("loading-player")];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:*_cxxController->playerFileToLoad asNew:NO];
+		[PLAYER loadPlayerFromFile:*_cxxController->_playerFileToLoad asNew:NO];
 	}
 }
 
@@ -829,30 +829,30 @@ std::vector<std::string> sMessageStack;
 
 - (std::optional<std::string>) cxx_playerFileToLoad
 {
-	return _cxxController->playerFileToLoad;
+	return _cxxController->_playerFileToLoad;
 }
 
 
 - (void) cxx_setPlayerFileToLoad:(const std::string &)filename
 {
-	_cxxController->playerFileToLoad = std::nullopt;
+	_cxxController->_playerFileToLoad = std::nullopt;
 	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
-		_cxxController->playerFileToLoad = filename;
+		_cxxController->_playerFileToLoad = filename;
 }
 
 
 - (std::optional<std::string>) cxx_playerFileDirectory
 {
-	if (!_cxxController->playerFileDirectory.has_value())
+	if (!_cxxController->_playerFileDirectory.has_value())
 	{
 		// save-directory via oo::Defaults (ADR-0032 / oo-mwo0 shared store).
-		_cxxController->playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
-		if (_cxxController->playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*_cxxController->playerFileDirectory)))
+		_cxxController->_playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
+		if (_cxxController->_playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*_cxxController->_playerFileDirectory)))
 		{
-			_cxxController->playerFileDirectory = std::nullopt;
+			_cxxController->_playerFileDirectory = std::nullopt;
 		}
 		// -[defaultCommanderPath]: OO_SAVEDIR or ~/oolite-saves, create if missing, else home.
-		if (!_cxxController->playerFileDirectory.has_value())
+		if (!_cxxController->_playerFileDirectory.has_value())
 		{
 			const oo::ResourcePaths paths = oo::ResourcePaths::current();
 			const oo::fs::Path savedir = paths.saveDirectory();
@@ -861,27 +861,27 @@ std::vector<std::string> sMessageStack;
 			{
 				if (oo::fs::createDirectories(savedir))
 				{
-					_cxxController->playerFileDirectory = oo::fs::utf8String(savedir);
+					_cxxController->_playerFileDirectory = oo::fs::utf8String(savedir);
 				}
 				else
 				{
 					OO_LOG_ERR("savedGame.defaultPath.create.failed", "Unable to create '{}'. Saved games will go to the home directory.", oo::fs::utf8String(savedir));
-					_cxxController->playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+					_cxxController->_playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 				}
 			}
 			else if (type != oo::fs::FileType::directory)
 			{
 				OO_LOG_ERR("savedGame.defaultPath.notDirectory", "'{}' is not a directory, saved games will go to the home directory.", oo::fs::utf8String(savedir));
-				_cxxController->playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+				_cxxController->_playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 			}
 			else
 			{
-				_cxxController->playerFileDirectory = oo::fs::utf8String(savedir);
+				_cxxController->_playerFileDirectory = oo::fs::utf8String(savedir);
 			}
 		}
 	}
 
-	return _cxxController->playerFileDirectory;
+	return _cxxController->_playerFileDirectory;
 }
 
 
@@ -893,7 +893,7 @@ std::vector<std::string> sMessageStack;
 		directory = oo::str::deletingLastPathComponent(*directory);
 	}
 
-	_cxxController->playerFileDirectory = directory;
+	_cxxController->_playerFileDirectory = directory;
 	if (directory.has_value())  oo::Defaults::standard().setObject("save-directory", oo::PList(*directory));
 	else  oo::Defaults::standard().removeObject("save-directory");
 }
