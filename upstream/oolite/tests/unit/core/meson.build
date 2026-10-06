@@ -134,6 +134,7 @@ core_tests = {
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_GuiDisplayGen': ['*'],
     'test_MyOpenGLView': ['*'],
+    'test_ResourceManager': ['*'],
     'test_PlayerEntityStickProfile': ['*'],
     'test_HeadUpDisplay': ['*'],
     'test_Entity': ['*'],
