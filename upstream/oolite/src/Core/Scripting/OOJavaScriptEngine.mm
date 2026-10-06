@@ -237,7 +237,7 @@ OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	// Get offending line, if present, and trim trailing line breaks
 	// The report's linebuf may be NULL (ooscript's ErrorReport; the QuickJS engine never sets it):
 	// a string_view of NULL read through a null pointer and crashed every report (bead
-	// oo-9ht.142). NULL reads as no line, as [NSString stringWithUTF16String:NULL] did.
+	// oo-9ht.142). NULL reads as no line, as it did before the Foundation sweep (oo-3rb.203).
 	if (report->linebuf != NULL)  lineBuf = oo::utf16ToUtf8(std::u16string_view(report->linebuf));
 	while (oo::str::hasSuffix(lineBuf, "\n") || oo::str::hasSuffix(lineBuf, "\r"))  lineBuf.pop_back();
 
