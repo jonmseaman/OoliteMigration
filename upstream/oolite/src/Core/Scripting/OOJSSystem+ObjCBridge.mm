@@ -28,6 +28,8 @@ MA 02110-1301, USA.
 #import "OOJSSystem+ObjCBridge.h"
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "EntityOOJavaScriptExtensions.h"
+#import "OOJSPopulatorDefinition.h"
+#import "ShipEntity.h"
 
 
 // --- The player (SystemGetProperty(), SystemSetProperty(), SystemToString(), SystemAddPlanet(),
@@ -92,3 +94,34 @@ unsigned OOJSSystemUniverseCountShipsWithPrimaryRole(const std::string &role, do
 unsigned OOJSSystemUniverseCountShipsWithRole(const std::string &role, double range, Entity *entity)	{ return [UNIVERSE cxx_countShipsWithRole:role inRange:range ofEntity:entity]; }
 unsigned OOJSSystemUniverseCountShipsWithScanClass(OOScanClass scanClass, double range, Entity *entity)	{ return [UNIVERSE countShipsWithScanClass:scanClass inRange:range ofEntity:entity]; }
 HPVector OOJSSystemUniverseLocationByCode(const std::string &code, OOSunEntity *sun, OOPlanetEntity *planet)	{ return [UNIVERSE cxx_locationByCode:code withSun:sun andPlanet:planet]; }
+
+
+// --- The ship creators, legacy spawners, static lookups, effects, populators and waypoints
+// (SystemLegacy*(), SystemStatic*(), SystemAddVisualEffect(), SystemSetPopulator(),
+// SystemSetWaypoint(), SystemAddShipsOrGroup(), SystemAddShipsOrGroupToRoute())
+
+void OOJSSystemUniverseWitchspaceShipWithPrimaryRole(const std::string &role)	{ [UNIVERSE cxx_witchspaceShipWithPrimaryRole:role]; }
+void OOJSSystemUniverseAddShipWithRoleNearRouteOneAt(const std::string &desc, double routeFraction)	{ [UNIVERSE cxx_addShipWithRole:desc nearRouteOneAt:routeFraction]; }
+bool OOJSSystemUniverseSpawnShip(const std::string &shipdesc)	{ return [UNIVERSE cxx_spawnShip:shipdesc]; }
+std::optional<std::string> OOJSSystemUniverseGetSystemName(OOSystemID sys)	{ return [UNIVERSE cxx_getSystemName:sys]; }
+OOSystemID OOJSSystemUniverseFindSystemFromName(const std::string &sysName)	{ return [UNIVERSE cxx_findSystemFromName:sysName]; }
+OOVisualEffectEntity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const std::string &key)	{ return [UNIVERSE cxx_addVisualEffectAt:pos withKey:key]; }
+void OOJSSystemUniverseSetPopulatorSetting(const std::string &key, const oo::PList &setting)	{ [UNIVERSE cxx_setPopulatorSetting:key to:setting]; }
+void OOJSSystemUniverseDefineWaypoint(const oo::PList &definition, const std::string &key)	{ [UNIVERSE cxx_defineWaypoint:definition forKey:key]; }
+HPVector OOJSSystemUniverseGetWitchspaceExitPosition()	{ return [UNIVERSE getWitchspaceExitPosition]; }
+
+std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup)
+{
+	return [UNIVERSE cxx_addShipsAt:pos withRole:role quantity:count withinRadius:radius asGroup:isGroup];
+}
+
+std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup)
+{
+	return [UNIVERSE cxx_addShipsToRoute:route withRole:role quantity:count routeFraction:routeFraction asGroup:isGroup];
+}
+
+void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ [player addShipsAt:rolesNumberSystemXYZ]; }
+void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ)	{ [player addShipsAtPrecisely:rolesNumberSystemXYZ]; }
+void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR)	{ [player addShipsWithinRadius:rolesNumberSystemXYZR]; }
+OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship)	{ return [ship group]; }
+OOJSPopulatorDefinition *OOJSSystemNewPopulatorDefinition()	{ return [[OOJSPopulatorDefinition alloc] init]; }
