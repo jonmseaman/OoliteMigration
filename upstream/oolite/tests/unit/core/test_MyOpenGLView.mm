@@ -178,7 +178,7 @@ OO_TEST(slice2AccessorsAndViewSettings)
 		MyOpenGLView *view = View();
 
 		// The game controller is not retained: any object round-trips.
-		NSObject *controller = [[NSObject alloc] init];
+		OOObject *controller = [[OOObject alloc] init];
 		[view setGameController:(GameController *)controller];
 		OO_CHECK([view gameController] == (GameController *)controller);
 		[view setGameController:nil];
