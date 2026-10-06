@@ -302,6 +302,28 @@ public:
 	void setUpEscorts();
 	void setUpMixedEscorts();
 
+	// Slice 6: escort creation, ship data key, weapon offsets, octree collision checks, subentity geometry, escape-pod launch.
+	void setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &escortRole, HPVector ex_pos, uint8_t currentEscortCount);
+	std::optional<std::string> shipDataKey();
+	std::optional<std::string> shipDataKeyAutoRole();
+	void setShipDataKey(const std::optional<std::string> &key);
+	oo::PList shipInfoDictionary();
+	std::vector<Vector> weaponOffsetsFrom(const oo::PList &dict, const std::string &key, const std::string &mode);
+	std::vector<Vector> getAftWeaponOffset();
+	std::vector<Vector> getForwardWeaponOffset();
+	std::vector<Vector> getPortWeaponOffset();
+	std::vector<Vector> getStarboardWeaponOffset();
+	bool getIsFrangible();
+	bool suppressFlightNotifications();
+	OOScanClass getScanClass() override;
+	bool canCollide() override;
+	bool checkCloseCollisionWith(cxx::Entity *other) override;
+	BoundingBox findSubentityBoundingBox();
+	Triangle absoluteIJKForSubentity();
+	void addSubentityToCollisionRadius(::Entity *subent);
+	::ShipEntity *launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew);
+	bool validForAddToUniverse() override;
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

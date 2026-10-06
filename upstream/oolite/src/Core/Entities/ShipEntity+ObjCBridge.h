@@ -82,21 +82,10 @@ MA 02110-1301, USA.
 - (void) updateEscortFormation;
 
 
-- (std::optional<std::string>) cxx_shipDataKey;
-- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
-- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
-- (oo::PList) cxx_shipInfoDictionary;
 
-- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
-- (std::vector<Vector>) cxx_aftWeaponOffset;
-- (std::vector<Vector>) cxx_forwardWeaponOffset;
-- (std::vector<Vector>) cxx_portWeaponOffset;
-- (std::vector<Vector>) cxx_starboardWeaponOffset;
 - (BOOL) hasAutoWeapons;
 
-- (BOOL) isFrangible;
-- (BOOL) suppressFlightNotifications;
 
 - (void) respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other;
 
@@ -498,9 +487,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (void) collectBountyFor:(ShipEntity *)other;
 
-- (BoundingBox) findSubentityBoundingBox;
 
-- (Triangle) absoluteIJKForSubentity;
 
 - (GLfloat)weaponRecoveryTime;
 - (GLfloat)laserHeatLevel;
@@ -927,6 +914,34 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (BOOL) countsAsKill;
 - (void) setUpEscorts;
 - (void) setUpMixedEscorts;
+
+@end
+
+
+// Slice 6 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice6)
+
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount;
+- (std::optional<std::string>) cxx_shipDataKey;
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
+- (oo::PList) cxx_shipInfoDictionary;
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
+- (std::vector<Vector>) cxx_aftWeaponOffset;
+- (std::vector<Vector>) cxx_forwardWeaponOffset;
+- (std::vector<Vector>) cxx_portWeaponOffset;
+- (std::vector<Vector>) cxx_starboardWeaponOffset;
+- (BOOL) isFrangible;
+- (BOOL) suppressFlightNotifications;
+- (OOScanClass) scanClass;
+- (BOOL) canCollide;
+- (BoundingBox) findSubentityBoundingBox;
+- (Triangle) absoluteIJKForSubentity;
+- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent;
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew;
+- (BOOL) validForAddToUniverse;
 
 @end
 

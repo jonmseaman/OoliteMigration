@@ -720,4 +720,89 @@ OO_TEST(visibilityBouldersAndKills)
 }
 
 
+// --- Slice 6: ship data key, weapon offsets, collision checks, subentity geometry (oo-5z5wd) --------
+
+OO_TEST(shipDataKeyAndInfo)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"keyed" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_shipDataKey] == std::optional<std::string>("keyed"));
+		OO_CHECK([ship cxx_shipDataKeyAutoRole] == std::optional<std::string>("[keyed]"));
+		[ship cxx_setShipDataKey:std::nullopt];
+		OO_CHECK([ship cxx_shipDataKey] == std::nullopt && [ship cxx_shipDataKeyAutoRole] == std::optional<std::string>("[(null)]"));
+		OO_CHECK([ship cxx_shipInfoDictionary].isNull());	// the test ship's set-up kept none
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{
+			{ "frangible", oo::PList(false) },
+			{ "model_scale_factor", oo::PList(2.0) },
+			{ "weapon_position_aft", oo::PList(std::string("0 0 -5")) },
+		})]);
+		OO_CHECK([ship cxx_shipInfoDictionary].get<bool>("frangible", true) == false);
+		OO_CHECK(![ship isFrangible]);
+		OO_CHECK([ship cxx_aftWeaponOffset].size() == 1 && vector_equal([ship cxx_aftWeaponOffset][0], make_vector(0, 0, -10)));
+		OO_CHECK([ship cxx_forwardWeaponOffset].size() == 1 && vector_equal([ship cxx_forwardWeaponOffset][0], kZeroVector));
+		OO_CHECK([ship cxx_portWeaponOffset].size() == 1 && [ship cxx_starboardWeaponOffset].size() == 1);
+
+		// The modes: "single" is one scaled vector; otherwise an array of them, or one zero vector.
+		const oo::PList mounts(oo::PList::Dict{ { "k", oo::PList(oo::PList::Array{ oo::PList(std::string("1 0 0")), oo::PList(std::string("0 1 0")) }) } });
+		const std::vector<Vector> multi = [ship cxx_weaponOffsetsFrom:mounts withKey:"k" inMode:"multiply"];
+		OO_CHECK(multi.size() == 2 && vector_equal(multi[1], make_vector(0, 2, 0)));
+		const std::vector<Vector> none = [ship cxx_weaponOffsetsFrom:mounts withKey:"absent" inMode:"multiply"];
+		OO_CHECK(none.size() == 1 && vector_equal(none[0], kZeroVector));
+	}
+}
+
+
+OO_TEST(scanClassAndCollisionFlags)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"flags" definition:Definition()] autorelease];
+		[ship setScanClass:CLASS_NEUTRAL];
+		OO_CHECK([ship scanClass] == CLASS_NEUTRAL);
+		MutablePart(ship)->cloaking_device_active = 1;
+		OO_CHECK([ship scanClass] == CLASS_NO_DRAW);
+		MutablePart(ship)->cloaking_device_active = 0;
+
+		OO_CHECK(![ship suppressFlightNotifications]);
+		MutablePart(ship)->suppressAegisMessages = 1;
+		OO_CHECK([ship suppressFlightNotifications]);
+
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT && [ship canCollide]);
+		MutablePart(ship)->isWreckage = 1;
+		OO_CHECK(![ship canCollide]);
+		MutablePart(ship)->isWreckage = 0;
+		[ship setStatus:STATUS_DEAD];
+		OO_CHECK(![ship canCollide]);
+		[ship setStatus:STATUS_IN_FLIGHT];
+		OO_CHECK([ship canCollide]);
+	}
+}
+
+
+// -checkCloseCollisionWith: nil, an entity already colliding, a plain entity (a collision), and a
+// ship (the octrees decide; with no model, no collision). -absoluteIJKForSubentity of a free ship is
+// its frame.
+OO_TEST(closeCollisionAndFrame)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"hull" definition:Definition()] autorelease];
+		TestShip *other = [[[TestShip alloc] cxx_initWithKey:"other" definition:Definition()] autorelease];
+		Entity *plain = [[[Entity alloc] init] autorelease];
+		OO_CHECK(![ship checkCloseCollisionWith:nil]);
+		OO_CHECK([ship checkCloseCollisionWith:plain] && Part(ship)->collider == plain);
+		MutablePart(ship)->collider = nil;
+		OO_CHECK(![ship checkCloseCollisionWith:other] && Part(ship)->collider == nil);
+
+		[ship setOrientation:kIdentityQuaternion];
+		Triangle ijk = [ship absoluteIJKForSubentity];
+		OO_CHECK(vector_equal(ijk.v[0], kBasisXVector) && vector_equal(ijk.v[1], kBasisYVector) && vector_equal(ijk.v[2], kBasisZVector));
+	}
+}
+
+
 OO_TEST_MAIN()
