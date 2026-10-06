@@ -19,7 +19,6 @@ oolite_sources += files(
     'OOJSExhaustPlume.mm',
     'OOJSExhaustPlume+ObjCBridge.mm',
     'OOJSFlasher.mm',
-    'OOJSFlasher+ObjCBridge.mm',
     'OOJSFont.cpp',
     'OOJSFrameCallbacks.mm',
     'OOJSFunction.mm',
