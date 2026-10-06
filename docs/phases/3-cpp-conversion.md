@@ -324,3 +324,9 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   (their tests stub them), the concrete sounds and the music have façades of their own under the
   root's, and the channel tells its delegate of itself from the façade's `-dealloc`. Tests:
   `tests/unit/core/test_<Class>.mm`, on the game's own `.ogg` resources. No caller changed.
+- 2026-10-06 — `NSObjectOOExtensions` (bead oo-eoi6) has nothing to convert in Phase 3: it is a
+  debug-only category on the root `OOObject` (`+oo_instanceSize`, `-oo_objectSize`), Objective-C
+  runtime reflection, and every remaining sender messages a façade or an `id` for its instance size
+  (`Entity+ObjCBridge.mm`, `OODebugMonitor.mm`, `OODrawable::totalSize`, `OOWeakReference`). It goes
+  with the façades and the runtime in Phase 4 (bead oo-6e1.1), where each sender takes the C++
+  object's own size.
