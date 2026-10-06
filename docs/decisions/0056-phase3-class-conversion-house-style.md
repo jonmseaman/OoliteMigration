@@ -3440,11 +3440,27 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
    `X.h` and `X.mm`, and replace `cxx::X` with `X` everywhere (sources and tests). Code that stays in
    `namespace cxx` may keep `::X`; it now names the C++ class. Rewrite comments that described the
    façade (the header banner says which bead deleted it).
+   **Leaving `namespace cxx` changes what an unqualified name means.** Inside a member function an
+   unqualified base name still finds the C++ base (the injected class name), but any other class
+   that is still `cxx::Y` with a façade `Y` now names the Objective-C façade: qualify it
+   (`cxx::OOOpenGLExtensionManager::sharedManager()`, `cxx::OOColor *` in a signature, the base in
+   `class X : public cxx::Base`). List the candidates before building: every class declared in a
+   `namespace cxx { }` block, used unqualified in the moved files.
 5. **Keep what the façade kept.** A façade's autoreleased object lived until the pool drained
    (amendment oo-ct7c); a converted caller that made several calls in one pass now holds one
    `oo::Ref<X>` across them (taken on first use if the old code took it lazily, so nothing new is
    made when no call happens), and a test counts what is made per pass.
-6. **Gates and acceptance**: build (`tools/build-windows.sh test`, no new warning), `check-core-tests`
+6. **A subclass façade's objects cross as the nearest façade left.** Once `X+ObjCBridge` (a subclass
+   façade, `@interface X : Root`) is gone, the root's `oo::ToObjC` gives an object of the nearest
+   Objective-C façade class still standing (the root's, or an intermediate's). Its description
+   still names the C++ class where the root prints `ClassName` of the C++ object. Code and tests
+   that asked `-isKindOfClass:[X class]` / `-isMemberOfClass:` ask `dynamic_cast<X *>(oo::ToCxx(o))`
+   / `typeid` instead; a test adds one case that pins the new crossing (the façade class it now
+   gets, identity, `ToCxx`). Where the deleted façade kept an object for the process (a
+   singleton's `+shared...`), the C++ caller that answers it keeps the root façade the same way.
+   Deletion beads of one hierarchy that touch the same tests are stacked: each branch is made from
+   the previous one and queued after it.
+7. **Gates and acceptance**: build (`tools/build-windows.sh test`, no new warning), `check-core-tests`
    for the class's test and every test whose stand-in changed, tier-a on the changed sources, goldens,
    guardrails, all through `buildslot.sh`. The bead's acceptance is the fast proof: `! test -e` both
    bridge files, `! git grep -n 'ObjCBridge'` over `X.h` and the module's meson, `! git grep -nw
