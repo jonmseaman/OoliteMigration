@@ -25,7 +25,8 @@
 	Slice 3 (bead oo-9z7x) made the geometry C++ members; the pins of laterSlices and copies ran
 	on it unchanged, and geometryMembers checks the members against the facade. Slice 4 (bead
 	oo-zmix) made the rendering members: rendering was pinned first, and renderingMembers checks
-	the members.
+	the members. Slice 2 (bead oo-rdwg) made loading and copying members and the mesh its own
+	graphics reset client; loadingMembers checks them with no facade alive.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -579,6 +580,39 @@ OO_TEST(renderingMembers)
 		void *bytes = cxxMesh->allocateBytesWithSize(4, 3, "test bytes");
 		OO_CHECK(bytes != nullptr);
 		OO_CHECK(cxxMesh->_retainedObjects.find("test bytes") != cxxMesh->_retainedObjects.end());
+	}
+}
+
+
+// Slice 2 (bead oo-rdwg): loading and copying are C++ members, and the mesh itself is the
+// graphics reset client.
+OO_TEST(loadingMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOMesh> mesh = cxx::OOMesh::meshWithName("tetra.dat", std::nullopt, oo::PList(), oo::PList(), false, oo::PList(), nil);
+		OO_CHECK(mesh.get() != nullptr);
+		if (mesh.get() == nullptr)  return;
+		OO_CHECK_EQ(mesh->getVertexCount(), 4u);
+		OO_CHECK_EQ(mesh->modelName().value_or("<none>"), "tetra.dat");
+
+		// A mutable copy shares the buffers and is a new mesh.
+		const oo::Ref<cxx::OOMesh> copy = mesh->mutableCopyWithZone(nullptr);
+		OO_CHECK(copy.get() != nullptr && copy.get() != mesh.get());
+		if (copy.get() == nullptr)  return;
+		OO_CHECK(copy->_vertices == mesh->_vertices);
+		OO_CHECK(copy->octree == mesh->octree);
+		OO_CHECK(!copy->listsReady);
+
+		// Both are registered with no facade alive for either: a reset deletes their display lists.
+		while (glGetError() != GL_NO_ERROR)  {}
+		mesh->renderOpaqueParts();
+		copy->renderOpaqueParts();
+		OO_CHECK(mesh->listsReady && copy->listsReady);
+		cxx::OOGraphicsResetManager::sharedManager()->resetGraphicsState();
+		OO_CHECK(!mesh->listsReady && !copy->listsReady);
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 	}
 }
 
