@@ -3969,6 +3969,7 @@ functions are the binding's list of what it still needs from unconverted classes
 deletion bead waits for oo-a70 as well as `Universe`, `GuiDisplayGen` and the engine's slices). The
 test runs the real engine and the real `player.ship`, with stand-ins for what `PLAYER` and
 `UNIVERSE` answer and a real HUD in a hidden GL context.
+
 ## Amendment (bead oo-10qz): the JavaScript engine, whose later slice is the class's own block, and the file's categories on other classes
 
 - Date: 2026-10-05. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
