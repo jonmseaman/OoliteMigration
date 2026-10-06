@@ -3,8 +3,7 @@
 HeadUpDisplay+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, bead oo-engam): the Objective-C facade over cxx::HeadUpDisplay.
-See HeadUpDisplay+ObjCBridge.h. The drawing (the Private category) is implemented in
-HeadUpDisplay.mm, not here.
+See HeadUpDisplay+ObjCBridge.h. The drawing is cxx::HeadUpDisplay's, in HeadUpDisplay.mm.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -28,6 +27,12 @@ MA 02110-1301, USA.
 
 #import "HeadUpDisplay.h"
 #import "OOColor.h"
+#import "GuiDisplayGen.h"
+#import "ResourceManager.h"
+#import "Universe.h"
+#import "PlayerEntity.h"
+#import "OOVisualEffectEntity.h"
+#import "OOPolygonSprite.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 
@@ -67,9 +72,8 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 }
 
 
-/*	The facade is the HUD's peer before the C++ initialisation runs: it hands the HUD to the drawing
-	that is still Objective-C (the dial check asks the facade which dials it answers, and a crosshair
-	file is read by -cxx_setCrosshairDefinition:), which must see this object (amendment oo-8kx7).
+/*	The facade is the HUD's peer before the C++ initialisation runs: the dial check asks the facade
+	which dials it answers, and it must ask this object (amendment oo-8kx7).
 */
 - (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName
 {
@@ -132,12 +136,15 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName	{ _cxxHUD->setDeferredHudName(newDeferredHudName); }
 - (std::optional<std::string>) cxx_deferredHudName	{ return _cxxHUD->getDeferredHudName(); }
 - (std::optional<std::string>) cxx_crosshairDefinition	{ return _cxxHUD->getCrosshairDefinition(); }
+- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition	{ return _cxxHUD->setCrosshairDefinition(newDefinition); }
 
 - (void) addLegend:(const oo::PList &)info	{ _cxxHUD->addLegend(info); }
 - (void) addDial:(const oo::PList &)info	{ _cxxHUD->addDial(info); }
 - (void) addMFD:(const oo::PList &)info	{ _cxxHUD->addMFD(info); }
 
 - (NSUInteger) mfdCount	{ return _cxxHUD->mfdCount(); }
+
+- (void) renderHUD	{ _cxxHUD->renderHUD(); }
 
 - (void) refreshLastTransmitter	{ _cxxHUD->refreshLastTransmitter(); }
 
@@ -160,9 +167,184 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 @end
 
 
-@implementation HeadUpDisplay (OOPrivate)
+@implementation HeadUpDisplay (OODials)
 
-- (BOOL) checkPlayerInFlight	{ return _cxxHUD->checkPlayerInFlight(); }
-- (BOOL) checkPlayerInSystemFlight	{ return _cxxHUD->checkPlayerInSystemFlight(); }
+- (void) drawSurround:(const oo::PList &)info	{ _cxxHUD->drawSurround(info); }
+- (void) drawGreenSurround:(const oo::PList &)info	{ _cxxHUD->drawGreenSurround(info); }
+- (void) drawYellowSurround:(const oo::PList &)info	{ _cxxHUD->drawYellowSurround(info); }
+- (void) drawScanner:(const oo::PList &)info	{ _cxxHUD->drawScanner(info); }
+- (void) drawScannerZoomIndicator:(const oo::PList &)info	{ _cxxHUD->drawScannerZoomIndicator(info); }
+- (void) drawCompass:(const oo::PList &)info	{ _cxxHUD->drawCompass(info); }
+- (void) drawAegis:(const oo::PList &)info	{ _cxxHUD->drawAegis(info); }
+- (void) drawTargetReticle:(const oo::PList &)info	{ _cxxHUD->drawTargetReticle(info); }
+- (void) drawWaypoints:(const oo::PList &)info	{ _cxxHUD->drawWaypoints(info); }
+
+- (void) drawCustomBar:(const oo::PList &)info	{ _cxxHUD->drawCustomBar(info); }
+- (void) drawCustomText:(const oo::PList &)info	{ _cxxHUD->drawCustomText(info); }
+- (void) drawCustomIndicator:(const oo::PList &)info	{ _cxxHUD->drawCustomIndicator(info); }
+- (void) drawCustomLight:(const oo::PList &)info	{ _cxxHUD->drawCustomLight(info); }
+- (void) drawCustomImage:(const oo::PList &)info	{ _cxxHUD->drawCustomImage(info); }
+- (void) drawSpeedBar:(const oo::PList &)info	{ _cxxHUD->drawSpeedBar(info); }
+- (void) drawRollBar:(const oo::PList &)info	{ _cxxHUD->drawRollBar(info); }
+- (void) drawPitchBar:(const oo::PList &)info	{ _cxxHUD->drawPitchBar(info); }
+- (void) drawYawBar:(const oo::PList &)info	{ _cxxHUD->drawYawBar(info); }
+- (void) drawEnergyGauge:(const oo::PList &)info	{ _cxxHUD->drawEnergyGauge(info); }
+- (void) drawForwardShieldBar:(const oo::PList &)info	{ _cxxHUD->drawForwardShieldBar(info); }
+- (void) drawAftShieldBar:(const oo::PList &)info	{ _cxxHUD->drawAftShieldBar(info); }
+- (void) drawFuelBar:(const oo::PList &)info	{ _cxxHUD->drawFuelBar(info); }
+- (void) drawWitchspaceDestination:(const oo::PList &)info	{ _cxxHUD->drawWitchspaceDestination(info); }
+- (void) drawCabinTempBar:(const oo::PList &)info	{ _cxxHUD->drawCabinTempBar(info); }
+- (void) drawWeaponTempBar:(const oo::PList &)info	{ _cxxHUD->drawWeaponTempBar(info); }
+- (void) drawAltitudeBar:(const oo::PList &)info	{ _cxxHUD->drawAltitudeBar(info); }
+- (void) drawMissileDisplay:(const oo::PList &)info	{ _cxxHUD->drawMissileDisplay(info); }
+- (void) drawStatusLight:(const oo::PList &)info	{ _cxxHUD->drawStatusLight(info); }
+- (void) drawClock:(const oo::PList &)info	{ _cxxHUD->drawClock(info); }
+- (void) drawPrimedEquipment:(const oo::PList &)info	{ _cxxHUD->drawPrimedEquipment(info); }
+- (void) drawASCTarget:(const oo::PList &)info	{ _cxxHUD->drawASCTarget(info); }
+- (void) drawWeaponsOfflineText:(const oo::PList &)info	{ _cxxHUD->drawWeaponsOfflineText(info); }
+- (void) drawFPSInfoCounter:(const oo::PList &)info	{ _cxxHUD->drawFPSInfoCounter(info); }
+- (void) drawScoopStatus:(const oo::PList &)info	{ _cxxHUD->drawScoopStatus(info); }
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info	{ _cxxHUD->drawStickSensitivityIndicator(info); }
+- (void) drawTrumbles:(const oo::PList &)info	{ _cxxHUD->drawTrumbles(info); }
 
 @end
+
+
+oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
+{
+	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles];
+}
+
+
+void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha)
+{
+	[[UNIVERSE gui] cxx_setGLColorFromSetting:setting defaultValue:defaultValue alpha:alpha];
+}
+
+
+MyOpenGLView *HeadUpDisplayUniverseGameView()
+{
+	return [UNIVERSE gameView];
+}
+
+
+GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction)
+{
+	return [gameView fov:inFraction];
+}
+
+
+NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView)
+{
+	return [gameView viewSize];
+}
+
+
+// --- The beacon icons (bead oo-2p1ug) ---------------------------------------------------------
+
+namespace {
+
+// Never destroyed: a facade may be released while the process exits.
+oo::ObjCPeers &IconPeers()
+{
+	static oo::ObjCPeers *peers = new oo::ObjCPeers;
+	return *peers;
+}
+
+}	// namespace
+
+
+@interface OOHUDBeaconCodeIcon (OOObjCBridgePrivate)
+
+- (id) initWithCxxIcon:(cxx::OOHUDBeaconCodeIcon *)icon;
+
+@end
+
+
+@implementation OOHUDBeaconCodeIcon
+
+OOHUDBeaconCodeIcon *oo::ToObjC(cxx::OOHUDBeaconCodeIcon *icon)
+{
+	return IconPeers().peerFor(icon, [icon] { return [[OOHUDBeaconCodeIcon alloc] initWithCxxIcon:icon]; });
+}
+
+
+cxx::OOHUDBeaconCodeIcon *oo::ToCxx(OOHUDBeaconCodeIcon *icon)
+{
+	if (icon == nil)  return nullptr;
+	return icon->_cxxIcon.get();
+}
+
+
+- (id) initWithText:(const std::string &)text
+{
+	self = [super init];
+	if (self == nil)  return nil;
+
+	_cxxIcon = oo::makeRef<cxx::OOHUDBeaconCodeIcon>(text);
+	@autoreleasepool
+	{
+		IconPeers().peerFor(_cxxIcon.get(), [self] { return [self retain]; });
+	}
+	return self;
+}
+
+
+- (id) initWithCxxIcon:(cxx::OOHUDBeaconCodeIcon *)icon
+{
+	self = [super init];
+	if (self != nil)  _cxxIcon = oo::Ref<cxx::OOHUDBeaconCodeIcon>(icon);
+	return self;
+}
+
+
+- (void) dealloc
+{
+	IconPeers().forget(_cxxIcon.get());
+	[super dealloc];
+}
+
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z	{ _cxxIcon->drawHUDBeaconIconAt(where, size, alpha, z); }
+
+@end
+
+
+// Declared in OOPolygonSprite+ObjCBridge.h; the drawing is OOPolygonSpriteDrawHUDBeaconIcon() in HeadUpDisplay.mm.
+@implementation OOPolygonSprite (OOHUDBeaconIcon)
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z	{ OOPolygonSpriteDrawHUDBeaconIcon(oo::ToCxx(self), where, size, alpha, z); }
+
+@end
+
+
+// --- Sends of the reticles and waypoints (hudDrawReticleOnTarget(), hudDrawWaypoint(), hudRotateViewpointForVirtualDepth())
+
+OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player)	{ return [player guiScreen]; }
+HPVector HeadUpDisplayPlayerViewpointPosition(PlayerEntity *player)	{ return [player viewpointPosition]; }
+GLfloat HeadUpDisplayPlayerWeaponRange(PlayerEntity *player)	{ return [player weaponRange]; }
+std::optional<std::string> HeadUpDisplayPlayerDialTargetName(PlayerEntity *player)	{ return [player cxx_dialTargetName]; }
+double HeadUpDisplayPlayerClockTimeAdjusted(PlayerEntity *player)	{ return [player clockTimeAdjusted]; }
+Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player)	{ return [player customViewForwardVector]; }
+Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player)	{ return [player customViewUpVector]; }
+Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player)	{ return [player customViewQuaternion]; }
+OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player)	{ return [player rotationMatrix]; }
+bool HeadUpDisplayEntityIsShip(Entity *entity)	{ return [entity isShip]; }
+bool HeadUpDisplayEntityIsWormhole(Entity *entity)	{ return [entity isWormhole]; }
+bool HeadUpDisplayEntityIsVisualEffect(Entity *entity)	{ return [entity isVisualEffect]; }
+HPVector HeadUpDisplayEntityPosition(Entity *entity)	{ return [entity position]; }
+GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity)	{ return [entity collisionRadius]; }
+Quaternion HeadUpDisplayEntityOrientation(Entity *entity)	{ return [entity orientation]; }
+std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship)	{ return [ship cxx_scanDescription]; }
+bool HeadUpDisplayShipIsCloaked(ShipEntity *ship)	{ return [ship isCloaked]; }
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship)	{ return (([ship hasHostileTarget])&&([ship primaryTarget] == PLAYER)); }
+GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash)	{ return [ship scannerDisplayColorForShip:PLAYER :isHostile :flash :[ship scannerDisplayColor1] :[ship scannerDisplayColor2] :[ship scannerDisplayColorHostile1] :[ship scannerDisplayColorHostile2]]; }
+GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash)	{ return [vis scannerDisplayColorForShip:flash :[vis scannerDisplayColor1] :[vis scannerDisplayColor2]]; }
+WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ return [wormhole scanInfo]; }
+double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return [wormhole estimatedArrivalTime]; }
+double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole)	{ return [wormhole expiryTime]; }
+OOTimeAbsolute HeadUpDisplayUniverseGetTime()	{ return [UNIVERSE getTime]; }
+const oo::PList *HeadUpDisplayUniverseDescriptions()	{ return [UNIVERSE cxx_descriptions]; }
+OOViewID HeadUpDisplayUniverseViewDirection()	{ return [UNIVERSE viewDirection]; }
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer()	{ return [UNIVERSE firstEntityTargetedByPlayer]; }
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely()	{ return [UNIVERSE firstEntityTargetedByPlayerPrecisely]; }
