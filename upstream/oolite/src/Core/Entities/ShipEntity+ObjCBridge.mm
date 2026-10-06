@@ -70,6 +70,17 @@ public:
 
 	// Slice 8 (bead oo-vxdsc).
 	bool hasPrimaryWeapon(OOWeaponType weaponType) override	{ return [(::ShipEntity *)_objcOwner hasPrimaryWeapon:weaponType]; }
+
+	// Slice 9 (bead oo-ke13m).
+	bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner canAddEquipment:equipmentKeyIn inContext:context]; }
+	::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict) override	{ return [(::ShipEntity *)_objcOwner weaponTypeForFacing:facing strict:strict]; }
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList() override	{ return [(::ShipEntity *)_objcOwner missilesList]; }
+	oo::PList passengerListForScripting() override	{ return [(::ShipEntity *)_objcOwner passengerListForScripting]; }
+	oo::PList parcelListForScripting() override	{ return [(::ShipEntity *)_objcOwner parcelListForScripting]; }
+	oo::PList contractListForScripting() override	{ return [(::ShipEntity *)_objcOwner contractListForScripting]; }
+	bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey) override	{ return [(::ShipEntity *)_objcOwner setWeaponMount:facing toWeapon:eqKey]; }
+	bool addEquipmentItem(const std::string &equipmentKey, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKey inContext:context]; }
+	bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKeyIn withValidation:validateAddition inContext:context]; }
 };
 
 }	// namespace
@@ -386,5 +397,28 @@ DESTROY(_cxxShip->laser_color);
 - (BOOL) hasHyperspaceMotor	{ return _cxxShip->hasHyperspaceMotor(); }
 - (float) hyperspaceSpinTime	{ return _cxxShip->hyperspaceSpinTime(); }
 - (void) setHyperspaceSpinTime:(float)newValue	{ _cxxShip->setHyperspaceSpinTime(newValue); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice9)
+
+- (BOOL) canAddEquipment:(const std::string &)equipmentKeyIn inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::canAddEquipment(equipmentKeyIn, context); }
+- (OOWeaponFacingSet) weaponFacings	{ return _cxxShip->weaponFacings(); }
+- (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->weaponTypeIDForFacing(facing, strict); }
+- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->cxx::ShipEntity::weaponTypeForFacing(facing, strict); }
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList	{ return _cxxShip->cxx::ShipEntity::missilesList(); }
+- (oo::PList) passengerListForScripting	{ return _cxxShip->cxx::ShipEntity::passengerListForScripting(); }
+- (oo::PList) parcelListForScripting	{ return _cxxShip->cxx::ShipEntity::parcelListForScripting(); }
+- (oo::PList) contractListForScripting	{ return _cxxShip->cxx::ShipEntity::contractListForScripting(); }
+- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role	{ return _cxxShip->generateMissileEquipmentTypeFrom(role); }
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting	{ return _cxxShip->equipmentListForScripting(); }
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(equipmentKey, context); }
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)fullEquipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(fullEquipmentKey, loading, context); }
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey	{ return _cxxShip->cxx::ShipEntity::setWeaponMount(facing, eqKey); }
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKey, context); }
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKeyIn withValidation:(BOOL)validateAddition inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKeyIn, validateAddition, context); }
+- (std::vector<std::string>) cxx_equipmentKeys	{ return _cxxShip->equipmentKeys(); }
+- (NSUInteger) equipmentCount	{ return _cxxShip->equipmentCount(); }
 
 @end

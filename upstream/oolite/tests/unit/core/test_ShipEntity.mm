@@ -910,4 +910,44 @@ OO_TEST(hyperspaceMotor)
 }
 
 
+// --- Slice 9: equipment validity and adding, weapon mounts, scripting lists (bead oo-ke13m) ---------
+
+OO_TEST(weaponMountsAndLists)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"mounts" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{ { "weapon_facings", oo::PList(WEAPON_FACING_FORWARD | WEAPON_FACING_AFT) } })]);
+		OO_CHECK([ship weaponFacings] == (WEAPON_FACING_FORWARD | WEAPON_FACING_AFT));
+		// No weapon data is loaded: every mount is empty, and a facing the ship lacks has nothing.
+		OO_CHECK(isWeaponNone([ship weaponTypeIDForFacing:WEAPON_FACING_FORWARD strict:YES]));
+		OO_CHECK([ship weaponTypeIDForFacing:WEAPON_FACING_PORT strict:NO] == nil);
+		OO_CHECK([ship weaponTypeForFacing:WEAPON_FACING_STARBOARD strict:NO] == nil);
+		OO_CHECK([ship missilesList].empty());
+		const oo::PList passengers = [ship passengerListForScripting];
+		OO_CHECK(passengers.isArray() && passengers.count() == 0);
+		OO_CHECK([ship parcelListForScripting].isArray() && [ship contractListForScripting].isArray());
+	}
+}
+
+
+OO_TEST(equipmentKeysAndUnknownEquipment)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"keys" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_equipmentKeys].empty() && [ship equipmentCount] == 0);
+		MutablePart(ship)->_equipment = { "EQ_A", "EQ_B" };
+		OO_CHECK([ship cxx_equipmentKeys] == std::vector<std::string>({ "EQ_A", "EQ_B" }) && [ship equipmentCount] == 2);
+		// An equipment key with no equipment type is never valid, and is not added.
+		OO_CHECK(![ship cxx_equipmentValidToAdd:"EQ_UNKNOWN" inContext:"npc"]);
+		OO_CHECK(![ship canAddEquipment:"EQ_UNKNOWN" inContext:"npc"]);
+		OO_CHECK(![ship addEquipmentItem:"EQ_UNKNOWN" inContext:"npc"]);
+		OO_CHECK([ship equipmentCount] == 2);
+	}
+}
+
+
 OO_TEST_MAIN()

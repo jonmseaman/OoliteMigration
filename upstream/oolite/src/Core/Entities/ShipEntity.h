@@ -345,6 +345,25 @@ public:
 	float hyperspaceSpinTime();
 	void setHyperspaceSpinTime(float newValue);
 
+	// Slice 9: equipment validity and adding, weapon mounts, scripting lists.
+	virtual bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context);
+	OOWeaponFacingSet weaponFacings();
+	OOWeaponType weaponTypeIDForFacing(OOWeaponFacing facing, bool strict);
+	virtual ::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict);
+	virtual std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList();
+	virtual oo::PList passengerListForScripting();
+	virtual oo::PList parcelListForScripting();
+	virtual oo::PList contractListForScripting();
+	::OOEquipmentType *generateMissileEquipmentTypeFrom(const std::string &role);
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> equipmentListForScripting();
+	bool equipmentValidToAdd(const std::string &equipmentKey, const std::string &context);
+	bool equipmentValidToAdd(const std::string &fullEquipmentKey, bool loading, const std::string &context);
+	virtual bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey);
+	virtual bool addEquipmentItem(const std::string &equipmentKey, const std::string &context);
+	virtual bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context);
+	std::vector<std::string> equipmentKeys();
+	NSUInteger equipmentCount();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
