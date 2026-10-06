@@ -41,22 +41,22 @@ SOFTWARE.
 /*	Foundation sweep (proposed ADR-0043, bead oo-56tr / oo-cjel): file and folder names are UTF-8
 	std::strings; a name that could be nil is std::optional.
 
-	C++20 since bead oo-up4b (proposed ADR-0056 Amendment 1 and amendment oo-up4b). The unconverted stages still
-	message the file scanner and subclass OOFileHandlingVerifierStage, so both are in namespace
-	cxx and keep an Objective-C facade: OOFileScannerVerifierStage+ObjCBridge.h, imported at the
-	end of this header. OOListUnusedFilesStage (bead oo-cwz) has no facade and is global.
+	C++20 since bead oo-up4b (proposed ADR-0056 Amendment 1 and amendment oo-up4b). Bead oo-9ht.7
+	deleted the Objective-C facades of OOFileScannerVerifierStage and OOFileHandlingVerifierStage,
+	and the verifier's -fileScannerStage, once every stage was C++ (ADR-0056 amendment "deleting a
+	facade"): both classes are global, as OOListUnusedFilesStage (bead oo-cwz) always was. A stage
+	finds the scanner by its name through the verifier's stage lookup (an id: cast to the root
+	facade before oo::ToCxx) until the verifier is C++ (oo-tsa4).
 */
 
-namespace cxx {
-
-class OOFileScannerVerifierStage : public OOOXPVerifierStage
+class OOFileScannerVerifierStage : public cxx::OOOXPVerifierStage
 {
 public:
-	// The stage's name, as name() returns it (for the verifier's -fileScannerStage).
+	// The stage's name, as name() returns it (the stages look the scanner up by it).
 	static const char * const kName;
 
 	// Returns name to be used in dependencies() by other stages; also registers stage.
-	static std::optional<std::string> nameForDependencyForVerifier(OOOXPVerifier *verifier);
+	static std::optional<std::string> nameForDependencyForVerifier(::OOOXPVerifier *verifier);
 
 	std::optional<std::string> name() override;
 	void run() override;
@@ -138,8 +138,6 @@ private:
 	std::set<std::string>		_skipDirectoryNames = {};
 };
 
-}	// namespace cxx
-
 
 /*	C++20 since bead oo-cwz, the converted stage of the Phase 3 class-hierarchy exemplar (proposed
 	ADR-0056 Amendment 1). A C++ subclass of cxx::OOOXPVerifierStage that overrides its virtual
@@ -150,7 +148,7 @@ class OOListUnusedFilesStage : public cxx::OOOXPVerifierStage
 {
 public:
 	// Returns name to be used in dependents() by other stages; also registers stage.
-	static std::string nameForReverseDependencyForVerifier(OOOXPVerifier *verifier);	// flipped with its family (bead oo-3rb.274.2)
+	static std::string nameForReverseDependencyForVerifier(::OOOXPVerifier *verifier);	// flipped with its family (bead oo-3rb.274.2)
 
 	std::optional<std::string> name() override;
 	std::optional<std::vector<std::string>> dependencies() override;
@@ -158,22 +156,12 @@ public:
 };
 
 
-namespace cxx {
-
 // Convenience base class for stages that require OOFileScannerVerifierStage and OOListUnusedFilesStage.
-class OOFileHandlingVerifierStage : public OOOXPVerifierStage
+class OOFileHandlingVerifierStage : public cxx::OOOXPVerifierStage
 {
 public:
 	std::optional<std::vector<std::string>> dependencies() override;
 	std::optional<std::vector<std::string>> dependents() override;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOFileScannerVerifierStage and OOFileHandlingVerifierStage, and the
-// verifier's -fileScannerStage, for the stages not yet converted. Deleted, with namespace cxx
-// above, by the bridge's deletion bead.
-#import "OOFileScannerVerifierStage+ObjCBridge.h"
 
 #endif

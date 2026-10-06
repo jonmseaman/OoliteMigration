@@ -58,8 +58,6 @@
 static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *outFormat, GLenum *outInternalFormat, GLenum *outType);
 
 
-namespace cxx {
-
 OOConcreteTexture::OOConcreteTexture(::OOTextureLoader *loader,
 									 const std::optional<std::string> &key,
 									 uint32_t options,
@@ -658,8 +656,6 @@ bool OOConcreteTexture::isReloadable()
 }
 
 #endif
-
-}	// namespace cxx
 
 
 static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *outFormat, GLenum *outInternalFormat, GLenum *outType)
