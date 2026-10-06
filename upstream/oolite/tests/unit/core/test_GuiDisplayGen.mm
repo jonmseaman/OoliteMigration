@@ -736,11 +736,9 @@ OO_TEST(cxxSlice2API)
 	{
 		StartJavaScript();
 		oo::Ref<cxx::GuiDisplayGen> gui = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
-		OO_CHECK_EQ(gui->addLongText("a
-b", 0, GUI_ALIGN_LEFT), 2);
+		OO_CHECK_EQ(gui->addLongText("a\nb", 0, GUI_ALIGN_LEFT), 2);
 		OO_CHECK(gui->objectForRow(1) == oo::PList("b"));
-		OO_CHECK(gui->reflowTextForMFD("x y") == std::optional<std::string>("x y
-"));
+		OO_CHECK(gui->reflowTextForMFD("x y") == std::optional<std::string>("x y\n"));
 		gui->setCurrentRow(2);
 		std::vector<std::string> printed;
 		gui->printLineNoScroll("p", GUI_ALIGN_LEFT, nil, 0.0f, std::optional<std::string>("pk"), &printed);
