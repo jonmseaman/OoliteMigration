@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityControls.h"
 #import "PlayerEntityScriptMethods.h"
 #import "GuiDisplayGen.h"
+#import "StationEntity.h"
 
 
 @implementation PlayerEntity (OOJavaScriptExtensions)
@@ -133,3 +134,47 @@ bool OOJSPlayerShipPlayerRemoveParcel(PlayerEntity *player, const std::string &n
 bool OOJSPlayerShipPlayerAwardContract(PlayerEntity *player, unsigned qty, const std::string &commodity, unsigned start, unsigned destination, double eta, double fee, double premium)	{ return [player cxx_awardContract:qty commodity:commodity start:start destination:destination eta:eta fee:fee premium:premium]; }
 bool OOJSPlayerShipPlayerRemoveContract(PlayerEntity *player, const std::string &commodity, unsigned destination)	{ return [player cxx_removeContract:commodity destination:destination]; }
 double OOJSPlayerShipPlayerClockTime(PlayerEntity *player)	{ return [player clockTime]; }
+
+
+// The player, the universe and the message GUI as the property setter, launch, cargo, autopilot, docking and pylon methods reach them (slice 2).
+void OOJSPlayerShipPlayerSetFuelLeakRate(PlayerEntity *player, float value)	{ [player setFuelLeakRate:value]; }
+void OOJSPlayerShipPlayerSetMassLockable(PlayerEntity *player, bool newValue)	{ [player setMassLockable:newValue]; }
+void OOJSPlayerShipPlayerSetLongRangeChartMode(PlayerEntity *player, OOLongRangeChartMode mode)	{ [player setLongRangeChartMode:mode]; }
+void OOJSPlayerShipPlayerDoScriptEvent(PlayerEntity *player, ooscript::PropertyId message, const std::vector<oo::PList> &arguments)	{ [player cxx_doScriptEvent:message withPListArguments:arguments]; }
+void OOJSPlayerShipPlayerSetCompassMode(PlayerEntity *player, OOCompassMode value)	{ [player setCompassMode:value]; }
+void OOJSPlayerShipPlayerValidateCompassTarget(PlayerEntity *player)	{ [player validateCompassTarget]; }
+void OOJSPlayerShipPlayerSetNextCompassMode(PlayerEntity *player)	{ [player setNextCompassMode]; }
+bool OOJSPlayerShipPlayerHasEquipmentItemProviding(PlayerEntity *player, const std::string &equipmentType)	{ return [player cxx_hasEquipmentItemProviding:equipmentType]; }
+void OOJSPlayerShipPlayerSetGalacticHyperspaceBehaviour(PlayerEntity *player, OOGalacticHyperspaceBehaviour galacticHyperspaceBehaviour)	{ [player setGalacticHyperspaceBehaviour:galacticHyperspaceBehaviour]; }
+void OOJSPlayerShipPlayerSetGalacticHyperspaceFixedCoords(PlayerEntity *player, NSPoint point)	{ [player setGalacticHyperspaceFixedCoords:point]; }
+void OOJSPlayerShipPlayerSetFastEquipmentA(PlayerEntity *player, const std::optional<std::string> &eqKey)	{ [player cxx_setFastEquipmentA:eqKey]; }
+void OOJSPlayerShipPlayerSetFastEquipmentB(PlayerEntity *player, const std::optional<std::string> &eqKey)	{ [player cxx_setFastEquipmentB:eqKey]; }
+bool OOJSPlayerShipPlayerSetPrimedEquipment(PlayerEntity *player, const std::string &eqKey, bool showMsg)	{ return [player cxx_setPrimedEquipment:eqKey showMessage:showMsg]; }
+void OOJSPlayerShipPlayerDecreaseFlightPitch(PlayerEntity *player, double delta)	{ [player decrease_flight_pitch:delta]; }
+void OOJSPlayerShipPlayerDecreaseFlightRoll(PlayerEntity *player, double delta)	{ [player decrease_flight_roll:delta]; }
+void OOJSPlayerShipPlayerDecreaseFlightYaw(PlayerEntity *player, double delta)	{ [player decrease_flight_yaw:delta]; }
+void OOJSPlayerShipPlayerSetForwardShieldLevel(PlayerEntity *player, GLfloat level)	{ [player setForwardShieldLevel:level]; }
+void OOJSPlayerShipPlayerSetAftShieldLevel(PlayerEntity *player, GLfloat level)	{ [player setAftShieldLevel:level]; }
+void OOJSPlayerShipPlayerSetMaxForwardShieldLevel(PlayerEntity *player, float newValue)	{ [player setMaxForwardShieldLevel:newValue]; }
+void OOJSPlayerShipPlayerSetMaxAftShieldLevel(PlayerEntity *player, float newValue)	{ [player setMaxAftShieldLevel:newValue]; }
+void OOJSPlayerShipPlayerSetForwardShieldRechargeRate(PlayerEntity *player, float newValue)	{ [player setForwardShieldRechargeRate:newValue]; }
+void OOJSPlayerShipPlayerSetAftShieldRechargeRate(PlayerEntity *player, float newValue)	{ [player setAftShieldRechargeRate:newValue]; }
+void OOJSPlayerShipPlayerSetScoopOverride(PlayerEntity *player, bool newValue)	{ [player setScoopOverride:newValue]; }
+bool OOJSPlayerShipPlayerSwitchHudTo(PlayerEntity *player, const std::string &hudFileName)	{ return [player cxx_switchHudTo:hudFileName]; }
+void OOJSPlayerShipPlayerResetHud(PlayerEntity *player)	{ [player resetHud]; }
+void OOJSPlayerShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value)	{ [player adjustTradeInFactorBy:value]; }
+bool OOJSPlayerShipPlayerSetWeaponMount(PlayerEntity *player, OOWeaponFacing facing, const std::string &eqKey, const std::optional<std::string> &context)	{ return [player cxx_setWeaponMount:facing toWeapon:eqKey inContext:context]; }
+OOEntityStatus OOJSPlayerShipPlayerStatus(PlayerEntity *player)	{ return [player status]; }
+void OOJSPlayerShipPlayerSetTargetSystemID(PlayerEntity *player, OOSystemID sid)	{ [player setTargetSystemID:sid]; }
+void OOJSPlayerShipPlayerSetInfoSystemID(PlayerEntity *player, OOSystemID sid, bool moveChart)	{ [player setInfoSystemID:sid moveChart:moveChart]; }
+void OOJSPlayerShipUniverseMessageGUISetTextColor(OOColor *color)	{ [[UNIVERSE messageGUI] setTextColor:color]; }
+void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color)	{ [[UNIVERSE messageGUI] setTextCommsColor:color]; }
+void OOJSPlayerShipPlayerLaunchFromStation(PlayerEntity *player)	{ [player launchFromStation]; }
+void OOJSPlayerShipPlayerRemoveAllCargo(PlayerEntity *player)	{ [player removeAllCargo]; }
+void OOJSPlayerShipPlayerUseSpecialCargo(PlayerEntity *player, const std::string &descriptionString)	{ [player useSpecialCargo:descriptionString]; }
+Class OOJSPlayerShipStationEntityClass()	{ return [StationEntity class]; }
+bool OOJSPlayerShipPlayerEngageAutopilotToStation(PlayerEntity *player, StationEntity *stationForDocking)	{ return [player engageAutopilotToStation:stationForDocking]; }
+void OOJSPlayerShipPlayerDisengageAutopilot(PlayerEntity *player)	{ [player disengageAutopilot]; }
+void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEntity *stationForDocking)	{ [player requestDockingClearance:stationForDocking]; }
+void OOJSPlayerShipPlayerCancelDockingRequest(PlayerEntity *player, StationEntity *stationForDocking)	{ [player cancelDockingRequest:stationForDocking]; }
+bool OOJSPlayerShipPlayerAssignToActivePylon(PlayerEntity *player, const std::string &identifierKey)	{ return [player cxx_assignToActivePylon:identifierKey]; }

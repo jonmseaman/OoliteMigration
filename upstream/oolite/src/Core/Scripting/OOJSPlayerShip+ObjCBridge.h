@@ -118,4 +118,47 @@ bool OOJSPlayerShipPlayerAwardContract(PlayerEntity *player, unsigned qty, const
 bool OOJSPlayerShipPlayerRemoveContract(PlayerEntity *player, const std::string &commodity, unsigned destination);
 double OOJSPlayerShipPlayerClockTime(PlayerEntity *player);
 
+// The player, the universe and the message GUI as the property setter, launch, cargo, autopilot, docking and pylon methods reach them (slice 2).
+void OOJSPlayerShipPlayerSetFuelLeakRate(PlayerEntity *player, float value);
+void OOJSPlayerShipPlayerSetMassLockable(PlayerEntity *player, bool newValue);
+void OOJSPlayerShipPlayerSetLongRangeChartMode(PlayerEntity *player, OOLongRangeChartMode mode);
+void OOJSPlayerShipPlayerDoScriptEvent(PlayerEntity *player, ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
+void OOJSPlayerShipPlayerSetCompassMode(PlayerEntity *player, OOCompassMode value);
+void OOJSPlayerShipPlayerValidateCompassTarget(PlayerEntity *player);
+void OOJSPlayerShipPlayerSetNextCompassMode(PlayerEntity *player);
+bool OOJSPlayerShipPlayerHasEquipmentItemProviding(PlayerEntity *player, const std::string &equipmentType);
+void OOJSPlayerShipPlayerSetGalacticHyperspaceBehaviour(PlayerEntity *player, OOGalacticHyperspaceBehaviour galacticHyperspaceBehaviour);
+void OOJSPlayerShipPlayerSetGalacticHyperspaceFixedCoords(PlayerEntity *player, NSPoint point);
+void OOJSPlayerShipPlayerSetFastEquipmentA(PlayerEntity *player, const std::optional<std::string> &eqKey);
+void OOJSPlayerShipPlayerSetFastEquipmentB(PlayerEntity *player, const std::optional<std::string> &eqKey);
+bool OOJSPlayerShipPlayerSetPrimedEquipment(PlayerEntity *player, const std::string &eqKey, bool showMsg);
+void OOJSPlayerShipPlayerDecreaseFlightPitch(PlayerEntity *player, double delta);
+void OOJSPlayerShipPlayerDecreaseFlightRoll(PlayerEntity *player, double delta);
+void OOJSPlayerShipPlayerDecreaseFlightYaw(PlayerEntity *player, double delta);
+void OOJSPlayerShipPlayerSetForwardShieldLevel(PlayerEntity *player, GLfloat level);
+void OOJSPlayerShipPlayerSetAftShieldLevel(PlayerEntity *player, GLfloat level);
+void OOJSPlayerShipPlayerSetMaxForwardShieldLevel(PlayerEntity *player, float newValue);
+void OOJSPlayerShipPlayerSetMaxAftShieldLevel(PlayerEntity *player, float newValue);
+void OOJSPlayerShipPlayerSetForwardShieldRechargeRate(PlayerEntity *player, float newValue);
+void OOJSPlayerShipPlayerSetAftShieldRechargeRate(PlayerEntity *player, float newValue);
+void OOJSPlayerShipPlayerSetScoopOverride(PlayerEntity *player, bool newValue);
+bool OOJSPlayerShipPlayerSwitchHudTo(PlayerEntity *player, const std::string &hudFileName);
+void OOJSPlayerShipPlayerResetHud(PlayerEntity *player);
+void OOJSPlayerShipPlayerAdjustTradeInFactorBy(PlayerEntity *player, int value);
+bool OOJSPlayerShipPlayerSetWeaponMount(PlayerEntity *player, OOWeaponFacing facing, const std::string &eqKey, const std::optional<std::string> &context);
+OOEntityStatus OOJSPlayerShipPlayerStatus(PlayerEntity *player);
+void OOJSPlayerShipPlayerSetTargetSystemID(PlayerEntity *player, OOSystemID sid);
+void OOJSPlayerShipPlayerSetInfoSystemID(PlayerEntity *player, OOSystemID sid, bool moveChart);
+void OOJSPlayerShipUniverseMessageGUISetTextColor(OOColor *color);
+void OOJSPlayerShipUniverseMessageGUISetTextCommsColor(OOColor *color);
+void OOJSPlayerShipPlayerLaunchFromStation(PlayerEntity *player);
+void OOJSPlayerShipPlayerRemoveAllCargo(PlayerEntity *player);
+void OOJSPlayerShipPlayerUseSpecialCargo(PlayerEntity *player, const std::string &descriptionString);
+Class OOJSPlayerShipStationEntityClass();
+bool OOJSPlayerShipPlayerEngageAutopilotToStation(PlayerEntity *player, StationEntity *stationForDocking);
+void OOJSPlayerShipPlayerDisengageAutopilot(PlayerEntity *player);
+void OOJSPlayerShipPlayerRequestDockingClearance(PlayerEntity *player, StationEntity *stationForDocking);
+void OOJSPlayerShipPlayerCancelDockingRequest(PlayerEntity *player, StationEntity *stationForDocking);
+bool OOJSPlayerShipPlayerAssignToActivePylon(PlayerEntity *player, const std::string &identifierKey);
+
 #endif	// OOJSPLAYERSHIP_OBJCBRIDGE_H
