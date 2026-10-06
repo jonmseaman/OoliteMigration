@@ -3,7 +3,7 @@
 OOOXZManager+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, bead oo-bwjb): the Objective-C OOOXZManager facade. Every converted
-method forwards to cxx::OOOXZManager in one line; slices 3 and 4 are implemented, still Objective-C,
+method forwards to cxx::OOOXZManager in one line; slice 4 is implemented, still Objective-C,
 in OOOXZManager.mm. See OOOXZManager+ObjCBridge.h.
 
 Oolite
@@ -99,6 +99,15 @@ cxx::OOOXZManager *oo::ToCxx(OOOXZManager *manager)
 - (oo::PList) manifests									{ return _cxxManager->manifests(); }
 - (oo::PList) managedOXZs								{ return _cxxManager->managedOXZs(); }
 - (BOOL) isRestarting									{ return _cxxManager->isRestarting(); }
+- (void) gui											{ _cxxManager->gui(); }
+- (BOOL) isAcceptingTextInput							{ return _cxxManager->isAcceptingTextInput(); }
+- (BOOL) isAcceptingGUIInput							{ return _cxxManager->isAcceptingGUIInput(); }
+- (void) processSelection								{ _cxxManager->processSelection(); }
+- (void) processTextInput:(const std::string &)input	{ _cxxManager->processTextInput(input); }
+- (void) refreshTextInput:(const std::string &)input	{ _cxxManager->refreshTextInput(input); }
+- (void) processFilterKey								{ _cxxManager->processFilterKey(); }
+- (void) processShowInfoKey								{ _cxxManager->processShowInfoKey(); }
+- (void) processExtractKey								{ _cxxManager->processExtractKey(); }
 
 @end
 
