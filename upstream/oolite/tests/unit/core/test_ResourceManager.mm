@@ -70,8 +70,7 @@ struct ScratchGameFolder
 		const std::string info = "{ CFBundleVersion = \"9.9.9\"; }";
 		if (!oo::fs::writeFile(root / "work" / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct))
 		{
-			std::fprintf(stderr, "  could not write the scratch Info-gnustep.plist
-");
+			std::fprintf(stderr, "  could not write the scratch Info-gnustep.plist\n");
 		}
 	}
 };
