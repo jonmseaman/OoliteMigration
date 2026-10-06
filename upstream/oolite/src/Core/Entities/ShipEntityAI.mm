@@ -704,8 +704,8 @@ using ooscript::Context;
 	if (!whole)
 	{
 		// locate nearest wormhole
-		int				ent_count =		UNIVERSE->n_entities;
-		Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+		int				ent_count =		UNIVERSE->_cxxUniverse->n_entities;
+		Entity**		uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 		std::vector<WormholeEntity *>	wormholes(ent_count);
 		int i;
 		int wh_count = 0;
@@ -1787,8 +1787,8 @@ using ooscript::Context;
 
 - (void) becomeUncontrolledThargon
 {
-	int			ent_count =		UNIVERSE->n_entities;
-	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
+	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
+	Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	int i;
 	for (i = 0; i < ent_count; i++) if (uni_entities[i]->_cxxEntity->isShip)
 	{
@@ -2522,8 +2522,8 @@ using ooscript::Context;
 - (void) setTargetToRandomStation
 {
 	/*- selects the nearest station it can find -*/
-	int				ent_count = UNIVERSE->n_entities;
-	Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
+	int				ent_count = UNIVERSE->_cxxUniverse->n_entities;
+	Entity			**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	std::vector<Entity *>	my_entities(ent_count);
 	StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;

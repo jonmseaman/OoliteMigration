@@ -10,7 +10,11 @@
 	with, the settings and flags a headless universe can answer and their clamping, the post-FX and
 	colour-blind modes, and the public members other classes read directly (the entity list, the
 	collision lists, the cursor row, the ambient star light), which go through the small block of
-	helpers below, the one place that knows where they live.
+	helpers below, the one place that knows where they live. The conversion ported two things:
+	those helpers, which read the members through the facade's _cxxUniverse, and the set-up, which
+	gives each never-initialised universe the C++ part -initWithGameView: makes first (ADR-0056
+	amendment oo-riqmz). The last case pins the crossing: oo::ToCxx / oo::ToObjC, the accessors
+	over the members, a new part's zeroes, and a universe released with no part.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -33,17 +37,19 @@ namespace {
 Universe *NewUniverse()
 {
 	Universe *universe = (Universe *)class_createInstance([Universe class], 0);	// never released
+	universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first
 	gSharedUniverse = universe;
 	return universe;
 }
 
 
-// The members other classes read directly.
-unsigned EntityListCount(Universe *u)		{ return u->n_entities; }
-Entity *SortedEntity(Universe *u, unsigned i)	{ return u->sortedEntities[i]; }
-int CursorRow(Universe *u)					{ return u->cursor_row; }
-GLfloat StarsAmbient(Universe *u, int i)	{ return u->stars_ambient[i]; }
-bool ListHeadsEmpty(Universe *u)			{ return u->x_list_start == nil && u->y_list_start == nil && u->z_list_start == nil; }
+// The members other classes read directly: since the conversion, through the facade's _cxxUniverse
+// (ADR-0056 amendment oo-riqmz).
+unsigned EntityListCount(Universe *u)		{ return u->_cxxUniverse->n_entities; }
+Entity *SortedEntity(Universe *u, unsigned i)	{ return u->_cxxUniverse->sortedEntities[i]; }
+int CursorRow(Universe *u)					{ return u->_cxxUniverse->cursor_row; }
+GLfloat StarsAmbient(Universe *u, int i)	{ return u->_cxxUniverse->stars_ambient[i]; }
+bool ListHeadsEmpty(Universe *u)			{ return u->_cxxUniverse->x_list_start == nil && u->_cxxUniverse->y_list_start == nil && u->_cxxUniverse->z_list_start == nil; }
 
 }	// namespace
 
@@ -207,6 +213,43 @@ OO_TEST(flags)
 		// Each universe has its own state.
 		Universe *other = NewUniverse();
 		OO_CHECK(![other displayFPS] && ![other pauseMessageVisible] && [u displayFPS]);
+	}
+}
+
+
+// Since the conversion: the facade and its C++ part (ADR-0056 amendment oo-riqmz).
+OO_TEST(facadeAndPart)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		cxx::Universe *part = oo::ToCxx(u);
+		OO_CHECK(part != nullptr && part == u->_cxxUniverse.get());
+		OO_CHECK(oo::ToObjC(part) == u);
+		OO_CHECK(oo::ToCxx(static_cast<Universe *>(nil)) == nullptr && oo::ToObjC(static_cast<cxx::Universe *>(nullptr)) == nil);
+
+		// The accessors answer the part's members, and the setters set them.
+		[u setAmbientLightLevel:2.5f];
+		OO_CHECK(part->ambientLightLevel == 2.5f);
+		part->universal_time = 42.0;
+		part->_sessionID = 3;
+		OO_CHECK([u getTime] == 42.0 && [u sessionID] == 3);
+		[u setCurrentPostFX:OO_POSTFX_COLORBLINDNESS_TRITAN];
+		OO_CHECK(part->_currentPostFX == OO_POSTFX_COLORBLINDNESS_TRITAN && part->_colorblindMode == OO_POSTFX_COLORBLINDNESS_TRITAN);
+
+		// A new part is zeroed, as the runtime zeroed the ivars.
+		oo::Ref<cxx::Universe> fresh = oo::makeRef<cxx::Universe>(nil);
+		OO_CHECK(fresh->n_entities == 0 && fresh->x_list_start == nil && fresh->gameView == nil);
+		OO_CHECK(fresh->sortedEntities[UNIVERSE_MAX_ENTITIES] == nil && fresh->frustum[5][3] == 0.0f);
+		OO_CHECK(fresh->entities.empty() && fresh->demo_ships.isNull() && !fresh->currentMessage.has_value());
+		OO_CHECK(oo::ToObjC(fresh.get()) == nil);
+
+		// A universe released before -initWithGameView: made its part tears nothing down (oo-s6ic6):
+		// the shared universe stays.
+		Universe *unused = [Universe alloc];
+		OO_CHECK(oo::ToCxx(unused) == nullptr);
+		[unused release];
+		OO_CHECK(gSharedUniverse == u);
 	}
 }
 
