@@ -37,6 +37,15 @@ bool SamePoint(NSPoint p, double x, double y)
 	return Near(p.x, x) && Near(p.y, y);
 }
 
+
+// Whether profile is exactly a T (bead oo-9ht.168: typeid of a plain pointer's object, not of a
+// Ref's overloaded operator*, which clang counts as a side effect).
+template <class T>
+bool IsExactly(OOJoystickAxisProfile *profile)
+{
+	return profile != nullptr && typeid(*profile) == typeid(T);
+}
+
 }	// namespace
 
 
@@ -62,7 +71,7 @@ OO_TEST(axisProfileDeadzone)
 		OO_CHECK(Near(profile->deadzone(), STICK_DEADZONE * 1.5));
 
 		oo::Ref<OOJoystickAxisProfile> copy = profile->copy();
-		OO_CHECK(copy != profile && typeid(*copy) == typeid(OOJoystickAxisProfile));
+		OO_CHECK(copy != profile && IsExactly<OOJoystickAxisProfile>(copy.get()));
 		OO_CHECK(Near(copy->deadzone(), STICK_DEADZONE));	// the dead zone is not copied
 	}
 }
@@ -99,7 +108,7 @@ OO_TEST(standardProfile)
 
 		profile->setDeadzone(0.0);
 		oo::Ref<OOJoystickStandardAxisProfile> copy(dynamic_cast<OOJoystickStandardAxisProfile *>(profile->copy().get()));
-		OO_CHECK(copy != nullptr && typeid(*copy) == typeid(OOJoystickStandardAxisProfile));
+		OO_CHECK(copy != nullptr && IsExactly<OOJoystickStandardAxisProfile>(copy.get()));
 		OO_CHECK(copy->power() == 3.0 && copy->parameter() == 0.5);
 		OO_CHECK(Near(copy->deadzone(), STICK_DEADZONE));	// not copied
 	}
@@ -171,7 +180,7 @@ OO_TEST(splineProfileCurve)
 		OO_CHECK(Near(profile->rawValue(-0.65), -0.3421875));
 
 		oo::Ref<OOJoystickSplineAxisProfile> copy(dynamic_cast<OOJoystickSplineAxisProfile *>(profile->copy().get()));
-		OO_CHECK(copy != nullptr && typeid(*copy) == typeid(OOJoystickSplineAxisProfile));
+		OO_CHECK(copy != nullptr && IsExactly<OOJoystickSplineAxisProfile>(copy.get()));
 		OO_CHECK(copy->countPoints() == 2 && Near(copy->rawValue(0.3), profile->rawValue(0.3)));
 		copy->addControl(NSMakePoint(0.3, 0.3));
 		OO_CHECK(profile->countPoints() == 2);	// the original is untouched
