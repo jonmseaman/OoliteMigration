@@ -772,7 +772,7 @@ void OOOXPVerifier::dumpDebugGraphviz()
 
 	graphViz += graphVizTemplate.get<std::string>("postamble");
 
-	// Write file: what +[ResourceManager writeDiagnosticString:toFileNamed:] did for a name with no
+	// Write file: what +[::ResourceManager writeDiagnosticString:toFileNamed:] did for a name with no
 	// directory part (UTF-8, atomically, in the diagnostic directory).
 	const std::optional<std::string> directory = [::ResourceManager cxx_diagnosticFileLocation];
 	if (directory.has_value())

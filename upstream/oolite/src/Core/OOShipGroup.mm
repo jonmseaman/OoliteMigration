@@ -133,7 +133,7 @@ oo::Ref<OOShipGroup> OOShipGroup::groupWithName(const std::optional<std::string>
 }
 
 
-oo::Ref<OOShipGroup> OOShipGroup::groupWithName(const std::optional<std::string> &name, ShipEntity *leader)
+oo::Ref<OOShipGroup> OOShipGroup::groupWithName(const std::optional<std::string> &name, ::ShipEntity *leader)
 {
 	oo::Ref<OOShipGroup> result = groupWithName(name);
 	if (result != nullptr)  result->setLeader(leader);
@@ -186,9 +186,9 @@ void OOShipGroup::setName(const std::optional<std::string> &name)
 }
 
 
-ShipEntity *OOShipGroup::leader()
+::ShipEntity *OOShipGroup::leader()
 {
-	ShipEntity *result = [_leader weakRefUnderlyingObject];
+	::ShipEntity *result = [_leader weakRefUnderlyingObject];
 
 	// If reference is stale, delete weakref object.
 	if (result == nil && _leader != nil)
@@ -201,7 +201,7 @@ ShipEntity *OOShipGroup::leader()
 }
 
 
-void OOShipGroup::setLeader(ShipEntity *leader)
+void OOShipGroup::setLeader(::ShipEntity *leader)
 {
 	_updateCount++;
 
@@ -214,14 +214,14 @@ void OOShipGroup::setLeader(ShipEntity *leader)
 }
 
 
-std::vector<oo::ObjCRef<ShipEntity *>> OOShipGroup::memberArray()
+std::vector<oo::ObjCRef<::ShipEntity *>> OOShipGroup::memberArray()
 {
-	std::vector<oo::ObjCRef<ShipEntity *>>	result;
+	std::vector<oo::ObjCRef<::ShipEntity *>>	result;
 
 	if (_count == 0)  return result;
 
 	result.reserve(_count);
-	for (ShipEntity *ship : OOShipGroupMembers(this))
+	for (::ShipEntity *ship : OOShipGroupMembers(this))
 	{
 		result.emplace_back(ship);
 	}
@@ -230,16 +230,16 @@ std::vector<oo::ObjCRef<ShipEntity *>> OOShipGroup::memberArray()
 }
 
 
-std::vector<oo::ObjCRef<ShipEntity *>> OOShipGroup::memberArrayExcludingLeader()
+std::vector<oo::ObjCRef<::ShipEntity *>> OOShipGroup::memberArrayExcludingLeader()
 {
-	std::vector<oo::ObjCRef<ShipEntity *>>	result;
-	ShipEntity				*leader = nil;
+	std::vector<oo::ObjCRef<::ShipEntity *>>	result;
+	::ShipEntity				*leader = nil;
 
 	if (_count == 0)  return result;
 	leader = this->leader();
 
 	result.reserve(_count);
-	for (ShipEntity *ship : OOShipGroupMembers(this))
+	for (::ShipEntity *ship : OOShipGroupMembers(this))
 	{
 		if (ship != leader)
 		{
@@ -251,9 +251,9 @@ std::vector<oo::ObjCRef<ShipEntity *>> OOShipGroup::memberArrayExcludingLeader()
 }
 
 
-bool OOShipGroup::containsShip(ShipEntity *ship)
+bool OOShipGroup::containsShip(::ShipEntity *ship)
 {
-	for (ShipEntity *containedShip : OOShipGroupMembers(this))
+	for (::ShipEntity *containedShip : OOShipGroupMembers(this))
 	{
 		if ([ship isEqual:containedShip])
 		{
@@ -264,7 +264,7 @@ bool OOShipGroup::containsShip(ShipEntity *ship)
 	return false;
 }
 
-bool OOShipGroup::addShip(ShipEntity *ship)
+bool OOShipGroup::addShip(::ShipEntity *ship)
 {
 	_updateCount++;
 
@@ -288,9 +288,9 @@ bool OOShipGroup::addShip(ShipEntity *ship)
 }
 
 
-bool OOShipGroup::removeShip(ShipEntity *ship)
+bool OOShipGroup::removeShip(::ShipEntity *ship)
 {
-	ShipEntity				*containedShip = nil;
+	::ShipEntity				*containedShip = nil;
 	NSUInteger				index;
 	bool					foundIt = false;
 
@@ -395,13 +395,13 @@ NSUInteger OOShipGroup::updateCount()
 }	// namespace cxx
 
 
-ShipEntity *OOShipGroupCursor::next()
+::ShipEntity *OOShipGroupCursor::next()
 {
 	// The cursor is a friend of cxx::OOShipGroup, so that we can have access to both OOShipGroup's and OOShipGroupCursor's ivars.
 
 	OOShipGroupCursor		*enumerator = this;
 	cxx::OOShipGroup		*group = enumerator->_group.get();
-	ShipEntity				*result = nil;
+	::ShipEntity				*result = nil;
 	BOOL					cleanupNeeded = NO;
 
 	if (enumerator->_updateCount != group->_updateCount)
@@ -442,7 +442,7 @@ ShipEntity *OOShipGroupCursor::next()
 NSUInteger OOShipGroupMembers::FillBatch(cxx::OOShipGroup *group, NSUInteger *ioIndex, id *buffer, NSUInteger length)
 {
 	NSUInteger				srcIndex, dstIndex = 0;
-	ShipEntity				*item = nil;
+	::ShipEntity				*item = nil;
 	BOOL					cleanupNeeded = NO;
 
 	srcIndex = *ioIndex;
