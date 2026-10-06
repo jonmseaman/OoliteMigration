@@ -292,7 +292,7 @@ oo::Ref<OOMaterial> OOMesh::placeholderMaterial()
 	if (placeholderMaterial == nullptr)
 	{
 		// +cxx_materialDefaults answers a copy: keep it alive while noTextures points into it (bead oo-f4241).
-		const oo::PList materialDefaults = [ResourceManager cxx_materialDefaults];
+		const oo::PList materialDefaults = [::ResourceManager cxx_materialDefaults];
 		const oo::PList *noTextures = materialDefaults.find("no-textures-material");
 		placeholderMaterial = OOBasicMaterial::materialWithName(std::string("/placeholder/"), (noTextures != nullptr ? *noTextures : oo::PList())).leakRef();
 	}

@@ -3709,3 +3709,21 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 **Consequences.** Every deletion bead is two beads (approval lines, then deletion) unless it retires
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
+
+## Amendment (bead oo-jfno): a class with only class methods, and the senders it gains in namespace cxx
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: slice 1 of
+  `docs/phases/3-slices/ResourceManager.md` (`src/Core/ResourceManager.h/.mm`,
+  `ResourceManager+ObjCBridge.h/.mm`, `tests/unit/core/test_ResourceManager.mm`).
+
+**Decision (recommended defaults).**
+
+1. **A class that has only class methods** (`ResourceManager`) becomes `cxx::X` with static members and
+   a deleted constructor; its façade is an `OOObject` subclass with class methods only, each forwarding
+   to the static member in one line. It has no peer table and no `oo::ToObjC`/`oo::ToCxx`.
+2. **Converting a class makes its bare name, inside namespace cxx, the C++ class** (measurement 1 above),
+   so every send to the class from converted code (`[ResourceManager cxx_paths]` in a member of
+   `cxx::OOShipRegistry`) stops compiling. The bead that introduces `cxx::X` qualifies each of those sends
+   as `[::X …]`, one token per line, in every file that has one (18 files for `ResourceManager`); that
+   edit is outside the story's 8-file budget by necessity and changes nothing else. A send from
+   Objective-C code is left as it is.
