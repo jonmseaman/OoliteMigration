@@ -147,19 +147,14 @@ void OOTextureVerifierStage::checkTextureNamed(const std::string &name, const st
 }
 
 
-// OOTextureHandlingStage: C++ since bead oo-tuq8. Its Objective-C subclasses reach this through
-// their facade (OOTextureVerifierStage+ObjCBridge.mm).
-
-namespace cxx {
+// OOTextureHandlingStage: C++ since bead oo-tuq8; global since bead oo-9ht.45 deleted its facade.
 
 std::optional<std::vector<std::string>> OOTextureHandlingStage::dependents()
 {
-	std::vector<std::string> result = OOFileHandlingVerifierStage::dependents().value_or(std::vector<std::string>());
-	const std::string reverse = ::OOTextureVerifierStage::nameForReverseDependencyForVerifier(verifier());
+	std::vector<std::string> result = cxx::OOFileHandlingVerifierStage::dependents().value_or(std::vector<std::string>());
+	const std::string reverse = OOTextureVerifierStage::nameForReverseDependencyForVerifier(verifier());
 	if (std::find(result.begin(), result.end(), reverse) == result.end())  result.push_back(reverse);
 	return result;
 }
-
-}	// namespace cxx
 
 #endif
