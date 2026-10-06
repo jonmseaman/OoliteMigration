@@ -70,7 +70,7 @@ MA 02110-1301, USA.
 
 
 /*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
-	text. It replaces the NSString (OOHUDBeaconIcon) category (bead oo-f9rf) the entities' beacon
+	text. It replaces the string class's OOHUDBeaconIcon category (bead oo-f9rf) the entities' beacon
 	drawables used; the drawing is the category's.
 */
 @interface OOHUDBeaconCodeIcon: OOObject <OOHUDBeaconIcon>
