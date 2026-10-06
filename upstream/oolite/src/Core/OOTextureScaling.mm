@@ -1342,7 +1342,13 @@ static void SqueezeVertically1(OOPixMap srcPx, OOPixMapDimension dstHeight)
 				src = (uint8_t *)((char *)src + srcRowBytes);
 				if (EXPECT_NOT(y == endY))
 				{
-					if (EXPECT(endY < lastRow))  accum += *src * endWeight;
+					/*	<= as in SqueezeVertically2/4 (bead oo-9ht.115): with < the last
+						source row's endWeight was counted in weight but not in accum, so a
+						non-integer squeeze darkened the last output row (90 -> 33 for 8 -> 5).
+						endY == srcPx.height (one past the last row) only happens with
+						endWeight 0, and is still skipped.
+					*/
+					if (EXPECT(endY <= lastRow))  accum += *src * endWeight;
 					break;
 				}
 				else
