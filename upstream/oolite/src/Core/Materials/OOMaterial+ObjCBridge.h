@@ -9,7 +9,7 @@ oo-vl43). Its interface is the one OOMaterial.h
 declared before the conversion, copied exactly (same selectors, same types), so they compile and
 behave unchanged. Imported as the last line of OOMaterial.h; do not import it directly.
 
-It is a hierarchy root's facade, as OOOXPVerifierStage+ObjCBridge.h is (ADR-0056 Amendment 1):
+It is a hierarchy root's facade, as the OXP verifier stage facade was until bead oo-9ht.4 (ADR-0056 Amendment 1):
 
 	the material is                      its facade is                      virtual calls on the
 	                                                                          C++ side reach

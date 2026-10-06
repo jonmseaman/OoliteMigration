@@ -12,13 +12,17 @@
 	reach the whole game, so the test replaces them: the schema verifier reports a value "BAD" as
 	a failure and asks its delegate about a value "DELEGATED". Then the crossing: the converted
 	stage is global, so Objective-C sees it as an OOOXPVerifierStage.
+	Bead oo-9ht.4 deleted the stage facade: the verifier registers and answers the C++ stage
+	itself, so the facade case asks the stage (its description through description()), and the
+	checks that pinned only the facade crossing (one live facade, oo::ToObjC/oo::ToCxx, its class,
+	oo::AsObjCStage) were retired with it (ADR-0049, standing approval oo-9n5p9).
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOCheckShipDataPListVerifierStage.h"
 #import "OOModelVerifierStage.h"
 #import "OOAIStateMachineVerifierStage.h"
-#import "OOOXPVerifierStageInternal.h"
+#import "OOOXPVerifierStage.h"
 #import "OODescription.h"
 #import "OOPListSchemaVerifier.h"
 #import "OOPixMap.h"
@@ -246,7 +250,7 @@ void WriteFile(const std::filesystem::path &path, const char *contents)
 void RunScanner(OOOXPVerifier *verifier)
 {
 	OOFileScannerVerifierStage::nameForDependencyForVerifier(verifier);
-	[[verifier cxx_stageWithName:OOFileScannerVerifierStage::kName] run];	// was -fileScannerStage (bead oo-9ht.7)
+	[verifier cxx_stageWithName:OOFileScannerVerifierStage::kName]->run();	// was -fileScannerStage (bead oo-9ht.7); the C++ stage since oo-9ht.4
 }
 
 
@@ -297,10 +301,10 @@ OO_TEST(nameAndNeighbours)
 		stage->setVerifier(verifier);
 		OO_CHECK(stage->name() == std::optional<std::string>("Checking shipdata.plist"));
 		OO_CHECK(stage->dependencies() == kScannerName);
-		OO_CHECK([verifier cxx_stageWithName:"Testing models"] == nil);
+		OO_CHECK([verifier cxx_stageWithName:"Testing models"] == nullptr);
 		OO_CHECK(stage->dependents() == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images", "Testing models", "Validating AIs" }));
-		OO_CHECK([verifier cxx_stageWithName:"Testing models"] != nil);	// asking registers the model stage
-		OO_CHECK([verifier cxx_stageWithName:"Validating AIs"] == nil);	// but not the AI stage
+		OO_CHECK([verifier cxx_stageWithName:"Testing models"] != nullptr);	// asking registers the model stage
+		OO_CHECK([verifier cxx_stageWithName:"Validating AIs"] == nullptr);	// but not the AI stage
 		OO_CHECK(!stage->shouldRun());
 		stage->run();
 		OO_CHECK(gLog.empty());
@@ -335,7 +339,7 @@ OO_TEST(checksEachShip)
 				"}" },
 		});
 		const oo::Ref<OOAIStateMachineVerifierStage> aiStage = oo::makeRef<OOAIStateMachineVerifierStage>();
-		[verifier registerStage:oo::ToObjC(aiStage.get())];
+		[verifier registerStage:aiStage.get()];
 		const oo::Ref<OOCheckShipDataPListVerifierStage> stage = oo::makeRef<OOCheckShipDataPListVerifierStage>();
 		stage->setVerifier(verifier);
 		stage->dependents();	// registers the model stage, as the verifier's dependency pass does
@@ -366,33 +370,28 @@ OO_TEST(checksEachShip)
 		OO_CHECK(gLog.front().find("\"both\"") != std::string::npos);
 
 		// The models found went to the model stage; the AI (not the JavaScript one) to the AI stage.
-		OO_CHECK([[verifier cxx_stageWithName:"Testing models"] shouldRun]);
+		OO_CHECK([verifier cxx_stageWithName:"Testing models"]->shouldRun());
 		OO_CHECK(aiStage->shouldRun());
 	}
 	std::filesystem::remove_all(kBase);
 }
 
 
-// The converted stage is global: Objective-C (the verifier) sees it as an OOOXPVerifierStage, one
-// facade per stage, whose methods answer as the stage does; its C++ part is the stage itself.
+// The converted stage is global: the verifier registers it and finds it by name (it held its
+// OOOXPVerifierStage facade until bead oo-9ht.4), and it describes itself with its class's name.
 OO_TEST(facade)
 {
 	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
 		const oo::Ref<OOCheckShipDataPListVerifierStage> stage = oo::makeRef<OOCheckShipDataPListVerifierStage>();
-		OOOXPVerifierStage *facade = oo::ToObjC(stage.get());
-		OO_CHECK(facade != nil && facade == oo::ToObjC(stage.get()) && oo::ToCxx(facade) == stage.get());
-		OO_CHECK([facade class] == [OOOXPVerifierStage class]);
-		OO_CHECK(oo::AsObjCStage(stage.get()) == nullptr);
-		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOCheckShipDataPListVerifierStage 0x"));
+		OO_CHECK(stage->description().starts_with("<OOCheckShipDataPListVerifierStage 0x"));
 
-		[verifier registerStage:facade];
-		OO_CHECK([verifier cxx_stageWithName:"Checking shipdata.plist"] == facade);
-		OO_CHECK([facade cxx_name] == std::optional<std::string>("Checking shipdata.plist"));
-		OO_CHECK([facade cxx_dependencies] == kScannerName);
-		OO_CHECK([facade dependents] == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images", "Testing models", "Validating AIs" }));
-		OO_CHECK([facade shouldRun] == stage->shouldRun());
+		[verifier registerStage:stage.get()];
+		OO_CHECK([verifier cxx_stageWithName:"Checking shipdata.plist"] == stage.get());
+		OO_CHECK(stage->name() == std::optional<std::string>("Checking shipdata.plist"));
+		OO_CHECK(stage->dependencies() == kScannerName);
+		OO_CHECK(stage->dependents() == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images", "Testing models", "Validating AIs" }));
 	}
 }
 
