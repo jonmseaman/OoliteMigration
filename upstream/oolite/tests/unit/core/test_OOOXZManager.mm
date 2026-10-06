@@ -642,4 +642,940 @@ OO_TEST(facadeContractSliceTwo)
 }
 
 
+// Slices 3 and 4 (beads oo-q7r3, oo-qbgo): the GUI pages. A stand-in UNIVERSE (amendment oo-8kx7
+// item 7, as an object put in gSharedUniverse for these cases only, since the test links the real
+// Universe) answers -gui with a recording screen; the manager's sends to it are the page.
+@class Universe;
+extern Universe *gSharedUniverse;
+
+// The page's rows (OOOXZManager.mm's private OXZ_GUI_ROW_* values).
+enum
+{
+	OXZ_GUI_ROW_LISTSTART	= 2,
+	OXZ_GUI_ROW_INSTALL		= 22,
+	OXZ_GUI_ROW_INSTALLED	= 23,
+	OXZ_GUI_ROW_REMOVE		= 25,
+	OXZ_GUI_ROW_UPDATE		= 26,
+	OXZ_GUI_ROW_CANCEL		= 26,
+	OXZ_GUI_ROW_EXIT		= 27
+};
+
+
+@interface TestGui: OOObject
+{
+@public
+	std::vector<std::string>	log;
+	OOGUIRow					selected;
+}
+@end
+
+@implementation TestGui
+- (void) clearAndKeepBackground:(BOOL)keepBackground	{ log.push_back(keepBackground ? "clear keep" : "clear"); }
+- (void) cxx_setTitle:(const std::optional<std::string> &)str	{ log.push_back("title " + str.value_or("(nil)")); }
+- (void) cxx_setText:(const std::optional<std::string> &)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
+{
+	log.push_back("text " + std::to_string(row) + " " + std::to_string(static_cast<int>(alignment)) + " " + str.value_or("(nil)"));
+}
+- (void) cxx_setText:(const std::string &)str forRow:(OOGUIRow)row	{ log.push_back("text " + std::to_string(row) + " " + str); }
+- (OOGUIRow) cxx_addLongText:(const std::optional<std::string> &)str startingAtRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
+{
+	log.push_back("long " + std::to_string(row) + " " + std::to_string(static_cast<int>(alignment)) + " " + str.value_or("(nil)"));
+	return row + 1;
+}
+- (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row	{ log.push_back("key " + std::to_string(row) + " " + str); }
+- (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row
+{
+	std::string line = "array " + std::to_string(row);
+	for (const std::string &column : arr)  line += " |" + column;
+	log.push_back(line);
+}
+- (void) setColor:(OOColor *)color forRow:(OOGUIRow)row
+{
+	cxx::OOColor *c = oo::ToCxx(color);
+	log.push_back("color " + std::to_string(row) + " " + (c != nullptr ? std::to_string(static_cast<int>(c->redComponent() * 100)) + "," + std::to_string(static_cast<int>(c->greenComponent() * 100)) + "," + std::to_string(static_cast<int>(c->blueComponent() * 100)) : std::string("nil")));
+}
+- (OOGUIRow) selectedRow	{ return selected; }
+- (BOOL) setSelectedRow:(OOGUIRow)row	{ log.push_back("select " + std::to_string(row)); selected = row; return YES; }
+- (void) setSelectableRange:(NSRange)range	{ log.push_back("range " + std::to_string(range.location) + "+" + std::to_string(range.length)); }
+- (void) setTabStops:(OOGUITabSettings)stops	{ log.push_back("tabs " + std::to_string(stops[1]) + "," + std::to_string(stops[2])); }
+@end
+
+
+@interface TestGameView: OOObject
+{
+@public
+	int				resets;
+	std::string		clipboard;
+}
+@end
+
+@implementation TestGameView
+- (void) resetTypedString	{ resets++; }
+- (void) cxx_stringToClipboard:(const std::string &)stringToCopy	{ clipboard = stringToCopy; }
+@end
+
+
+@interface TestUniverse: OOObject
+{
+@public
+	TestGui			*gui;
+	TestGameView	*gameView;
+	oo::PList		descriptions;
+}
+@end
+
+@implementation TestUniverse
+- (id) init
+{
+	if ((self = [super init]))
+	{
+		gui = [[TestGui alloc] init];
+		gameView = [[TestGameView alloc] init];
+		descriptions = oo::PList(oo::PList::Dict());
+	}
+	return self;
+}
+- (void) dealloc	{ [gui release]; [gameView release]; [super dealloc]; }
+- (id) gui	{ return gui; }
+- (id) gameView	{ return gameView; }
+- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key	{ (void)key; return std::nullopt; }
+- (const oo::PList *) cxx_descriptions	{ return &descriptions; }
+- (id) systemManager	{ return nil; }
+- (BOOL) reinitAndShowDemo:(BOOL)showDemo	{ (void)showDemo; return YES; }
+@end
+
+
+namespace {
+
+// Installs the stand-in for the life of one case.
+struct StandInUniverse
+{
+	TestUniverse *universe;
+	StandInUniverse()  { universe = [[TestUniverse alloc] init]; gSharedUniverse = (Universe *)universe; }
+	~StandInUniverse()  { gSharedUniverse = nil; [universe release]; }
+	std::string Page()
+	{
+		std::string page;
+		for (const std::string &line : universe->gui->log)  page += line + "\n";
+		universe->gui->log.clear();
+		return page;
+	}
+};
+
+
+// Prints a page as C++ string literal lines, to pin it.
+void Show(const char *name, const std::string &page)
+{
+	std::printf("PAGE %s\n", name);
+	size_t start = 0;
+	while (start < page.size())
+	{
+		size_t end = page.find('\n', start);
+		std::string line = page.substr(start, end - start);
+		std::string escaped;
+		for (char c : line)  { if (c == '"' || c == '\\')  escaped += '\\'; escaped += c; }
+		std::printf("\t\t\t\"%s\\n\"\n", escaped.c_str());
+		start = end + 1;
+	}
+	std::fflush(stdout);
+}
+
+
+void CheckPage(const char *name, const std::string &page, const std::string &expected, int line)
+{
+	if (page != expected)  Show(name, page);
+	::oo_test::check(page == expected, name, __FILE__, line);
+}
+
+#define OO_CHECK_PAGE(name, page, expected) CheckPage(name, page, expected, __LINE__)
+
+}	// namespace
+
+
+OO_TEST(guiPages)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		StandInUniverse standIn;
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		cxx::OOOXZManager *m = Manager();
+		m->_changesMade = false;
+		m->_offset = 0;
+		m->_item = 0;
+		m->setFilter("*");
+		standIn.universe->gui->selected = 0;
+
+		m->_interfaceState = OXZ_STATE_NODATA;
+		[facade gui];
+		OO_CHECK_PAGE("nodata", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-secondrun\n"
+			"text 25 2 oolite-oxzmanager-download-noupdate\n"
+			"key 25 _MAIN\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 25+4\n"
+			"select 26\n");
+
+		m->_interfaceState = OXZ_STATE_SETFILTER;
+		[facade gui];
+		OO_CHECK_PAGE("setfilter", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"title oolite-oxzmanager-title-setfilter\n"
+			"text 26 0 oolite-oxzmanager-currentfilter-is-@\n"
+			"long 1 0 oolite-oxzmanager-filterhelp\n");
+
+		m->_interfaceState = OXZ_STATE_RESTARTING;
+		[facade gui];
+		OO_CHECK_PAGE("restarting", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-restart\n");
+
+		m->_interfaceState = OXZ_STATE_MAIN;
+		[facade gui];
+		OO_CHECK_PAGE("main", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-intro\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 22+7\n"
+			"select 22\n");
+
+		m->_interfaceState = OXZ_STATE_UPDATING;
+		m->_downloadStatus = OXZ_DOWNLOAD_RECEIVING;
+		m->_currentDownloadName = "The list";
+		m->_downloadProgress = 2048;
+		m->_downloadExpected = 4096;
+		m->setProgressStatus("progress");
+		[facade gui];
+		OO_CHECK_PAGE("updating", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"title oolite-oxzmanager-title-downloading\n"
+			"long 1 0 oolite-oxzmanager-progress-@-is-@-of-@\n"
+			"long 3 0 progress\n"
+			"text 26 2 oolite-oxzmanager-cancel\n"
+			"key 26 _CANCEL\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 26+3\n"
+			"select 26\n");
+
+		m->_interfaceState = OXZ_STATE_DEPENDENCIES;
+		[facade gui];
+		OO_CHECK_PAGE("dependencies", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"title oolite-oxzmanager-title-dependencies\n"
+			"text 1 0 oolite-oxzmanager-dependencies-decision\n"
+			"long 3 0 progress\n"
+			"text 23 2 oolite-oxzmanager-dependencies-yes-all\n"
+			"key 23 _PROCEED_ALL\n"
+			"text 25 2 oolite-oxzmanager-dependencies-yes\n"
+			"key 25 _PROCEED\n"
+			"text 26 2 oolite-oxzmanager-dependencies-no\n"
+			"key 26 _CANCEL\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 23+6\n"
+			"select 23\n");
+
+		m->_interfaceState = OXZ_STATE_REMOVING;
+		[facade gui];
+		OO_CHECK_PAGE("removing", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-removal-done\n"
+			"text 26 2 oolite-oxzmanager-acknowledge\n"
+			"key 26 _ACK\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 26+3\n"
+			"select 26\n");
+
+		m->_interfaceState = OXZ_STATE_TASKDONE;
+		m->_downloadStatus = OXZ_DOWNLOAD_COMPLETE;
+		m->_changesMade = true;
+		[facade gui];
+		OO_CHECK_PAGE("taskdone", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-progress-done-3-3\n"
+			"long 5 0 progress\n"
+			"text 26 2 oolite-oxzmanager-acknowledge\n"
+			"key 26 _ACK\n"
+			"text 27 2 oolite-oxzmanager-exit-restart\n"
+			"key 27 _EXIT\n"
+			"range 26+3\n"
+			"select 26\n");
+
+		m->_interfaceState = OXZ_STATE_EXTRACTDONE;
+		[facade gui];
+		OO_CHECK_PAGE("extractdone", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 progress\n"
+			"text 26 2 oolite-oxzmanager-acknowledge\n"
+			"key 26 _ACK\n"
+			"text 27 2 oolite-oxzmanager-exit-restart\n"
+			"key 27 _EXIT\n"
+			"range 26+3\n"
+			"select 26\n");
+
+		m->setFilteredList(m->managedOXZs());
+		m->_item = 2;
+		m->_interfaceState = OXZ_STATE_EXTRACT;
+		[facade gui];
+		OO_CHECK_PAGE("extract", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"title oolite-oxzmanager-title-extract\n"
+			"text 0 0 oolite-oxzmanager-infopage-title-@-version-@\n"
+			"long 2 0 oolite-oxzmanager-extract-info\n"
+			"long 10 0 oolite-oxzmanager-extract-to-@\n"
+			"text 25 2 oolite-oxzmanager-extract-proceed\n"
+			"key 25 _PROCEED\n"
+			"text 26 2 oolite-oxzmanager-extract-cancel\n"
+			"key 26 _CANCEL\n"
+			"text 27 2 oolite-oxzmanager-exit-restart\n"
+			"key 27 _EXIT\n"
+			"range 25+4\n"
+			"select 25\n");
+
+		// The list pages (slice 4's options), with the filter line through the string expander.
+		m->_changesMade = false;
+		m->_downloadStatus = OXZ_DOWNLOAD_NONE;
+		standIn.universe->gui->selected = OXZ_GUI_ROW_LISTSTART;
+		m->_interfaceState = OXZ_STATE_PICK_INSTALL;
+		[facade gui];
+		OO_CHECK_PAGE("pick install", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"text 21 0 oolite-oxzmanager-currentfilter-is-@-@\n"
+			"color 21 0,100,0\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"title oolite-oxzmanager-title-install\n"
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ships |Alpha |oolite-oxzmanager-version-none |3.0\n"
+			"key 2 oolite.oxp.test.alpha\n"
+			"color 2 0,100,100\n"
+			"text 14 oolite-oxzmanager-installable-update\n"
+			"color 14 0,100,0\n"
+			"long 16 0 Cobra variants\n"
+			"array 3 |Ships |Beta |oolite-oxzmanager-version-none |1.0\n"
+			"key 3 oolite.oxp.test.beta\n"
+			"color 3 100,100,0\n"
+			"array 4 |Ships |Gamma |oolite-oxzmanager-version-none |1.0\n"
+			"key 4 oolite.oxp.test.gamma\n"
+			"color 4 100,100,0\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 1+28\n"
+			"select 22\n");
+
+		m->_interfaceState = OXZ_STATE_PICK_INSTALLED;
+		[facade gui];
+		OO_CHECK_PAGE("pick installed", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"text 21 0 oolite-oxzmanager-currentfilter-is-@-@\n"
+			"color 21 0,100,0\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"title oolite-oxzmanager-title-installed\n"
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ambience |Late |oolite-oxzmanager-version-none |1\n"
+			"key 2 oolite.oxp.test.late\n"
+			"color 2 100,100,100\n"
+			"array 3 |Ambience |Local |oolite-oxzmanager-version-none |3\n"
+			"key 3 oolite.oxp.test.local\n"
+			"color 3 100,100,100\n"
+			"array 4 |Ships |Alpha |oolite-oxzmanager-version-none |3.0\n"
+			"key 4 oolite.oxp.test.alpha\n"
+			"color 4 0,100,100\n"
+			"long 16 0 oolite-oxzmanager-installed-nonepicked\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 1+28\n"
+			"select 22\n");
+
+		m->_interfaceState = OXZ_STATE_PICK_REMOVE;
+		[facade gui];
+		OO_CHECK_PAGE("pick remove", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"text 21 0 oolite-oxzmanager-currentfilter-is-@-@\n"
+			"color 21 0,100,0\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"title oolite-oxzmanager-title-remove\n"
+			"tabs 100,400\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-version\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ambience |Late |1\n"
+			"key 2 oolite.oxp.test.late\n"
+			"color 2 100,100,100\n"
+			"array 3 |Ambience |Local |3\n"
+			"key 3 oolite.oxp.test.local\n"
+			"color 3 100,100,100\n"
+			"array 4 |Ships |Alpha |1.0\n"
+			"key 4 oolite.oxp.test.alpha\n"
+			"color 4 0,100,100\n"
+			"long 16 0 oolite-oxzmanager-remover-nonepicked\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 1+28\n"
+			"select 22\n");
+
+		m->_interfaceState = OXZ_STATE_UPDATING;
+		m->_downloadStatus = OXZ_DOWNLOAD_ERROR;
+		[facade gui];
+		OO_CHECK_PAGE("updating error", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"title oolite-oxzmanager-title-downloading\n"
+			"long 1 0 (nil)\n"
+			"long 3 0 progress\n"
+			"text 26 2 oolite-oxzmanager-cancel\n"
+			"key 26 _CANCEL\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 26+3\n"
+			"select 26\n");
+
+		m->_interfaceState = OXZ_STATE_MAIN;
+		m->_downloadStatus = OXZ_DOWNLOAD_NONE;
+		m->setProgressStatus("");
+	}
+}
+
+
+OO_TEST(guiInput)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		StandInUniverse standIn;
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		cxx::OOOXZManager *m = Manager();
+		TestGui *gui = standIn.universe->gui;
+
+		// The filter: the key, typed text, its prompt.
+		m->_interfaceState = OXZ_STATE_NODATA;
+		[facade processFilterKey];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_NODATA);
+		OO_CHECK(![facade isAcceptingTextInput]);
+		m->_interfaceState = OXZ_STATE_MAIN;
+		m->_interfaceShowingOXZDetail = true;
+		[facade processFilterKey];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_SETFILTER);
+		OO_CHECK(!m->_interfaceShowingOXZDetail);
+		OO_CHECK_EQ(standIn.universe->gameView->resets, 1);
+		OO_CHECK([facade isAcceptingTextInput]);
+		OO_CHECK([facade isAcceptingGUIInput]);
+		standIn.Page();
+		[facade refreshTextInput:"k:x"];
+		OO_CHECK_PAGE("prompt valid", standIn.Page(),
+			"text 27 0 oolite-oxzmanager-text-prompt-@\n"
+			"color 27 0,100,100\n");
+		[facade refreshTextInput:"k:"];
+		OO_CHECK_PAGE("prompt invalid", standIn.Page(),
+			"text 27 0 oolite-oxzmanager-text-prompt-@\n"
+			"color 27 100,50,0\n");
+		[facade processTextInput:"k:"];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_SETFILTER);
+		OO_CHECK_PAGE("text invalid", standIn.Page(), "");
+		[facade processTextInput:"C:Ships"];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALL);
+		OO_CHECK_TEXT(m->_currentFilter, "c:ships");
+		OO_CHECK_PAGE("text valid", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"text 21 0 oolite-oxzmanager-currentfilter-is-@-@\n"
+			"color 21 0,100,0\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"title oolite-oxzmanager-title-install\n"
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ships |Alpha |oolite-oxzmanager-version-none |3.0\n"
+			"key 2 oolite.oxp.test.alpha\n"
+			"color 2 0,100,100\n"
+			"array 3 |Ships |Beta |oolite-oxzmanager-version-none |1.0\n"
+			"key 3 oolite.oxp.test.beta\n"
+			"color 3 100,100,0\n"
+			"array 4 |Ships |Gamma |oolite-oxzmanager-version-none |1.0\n"
+			"key 4 oolite.oxp.test.gamma\n"
+			"color 4 100,100,0\n"
+			"long 16 0 oolite-oxzmanager-installer-nonepicked\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 1+28\n"
+			"select 22\n");
+		[facade processTextInput:""];
+		OO_CHECK_TEXT(m->_currentFilter, "c:ships");
+		m->setFilter("*");
+		standIn.Page();
+
+		// The info page of the selected entry, and back.
+		gui->selected = OXZ_GUI_ROW_LISTSTART + 1;
+		[facade processShowInfoKey];
+		OO_CHECK(m->_interfaceShowingOXZDetail);
+		OO_CHECK(![facade isAcceptingGUIInput]);
+		OO_CHECK_EQ(m->_item, 1u);
+		OO_CHECK_TEXT(standIn.universe->gameView->clipboard, "");
+		OO_CHECK_PAGE("info", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title-infopage\n"
+			"text 0 0 oolite-oxzmanager-infopage-title-@-version-@\n"
+			"text 1 0 oolite-oxzmanager-infopage-author-@\n"
+			"long 2 0 oolite-oxzmanager-infopage-license-@\n"
+			"long 4 0 oolite-oxzmanager-infopage-tags-@\n"
+			"long 7 0 oolite-oxzmanager-infopage-description-@\n"
+			"text 25 0 oolite-oxzmanager-infopage-infourl-@\n"
+			"text 27 2 oolite-oxzmanager-infopage-return\n"
+			"color 27 0,100,0\n");
+		[facade processShowInfoKey];
+		OO_CHECK(!m->_interfaceShowingOXZDetail);
+		OO_CHECK_PAGE("info closed", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"text 21 0 oolite-oxzmanager-currentfilter-is-@-@\n"
+			"color 21 0,100,0\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"title oolite-oxzmanager-title-install\n"
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ships |Alpha |oolite-oxzmanager-version-none |3.0\n"
+			"key 2 oolite.oxp.test.alpha\n"
+			"color 2 0,100,100\n"
+			"array 3 |Ships |Beta |oolite-oxzmanager-version-none |1.0\n"
+			"key 3 oolite.oxp.test.beta\n"
+			"color 3 100,100,0\n"
+			"text 14 oolite-oxzmanager-installable-okay\n"
+			"color 14 0,100,0\n"
+			"long 16 0 Beta ship\n"
+			"array 4 |Ships |Gamma |oolite-oxzmanager-version-none |1.0\n"
+			"key 4 oolite.oxp.test.gamma\n"
+			"color 4 100,100,0\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 1+28\n"
+			"select 22\n"
+			"select 3\n"
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ships |Alpha |oolite-oxzmanager-version-none |3.0\n"
+			"key 2 oolite.oxp.test.alpha\n"
+			"color 2 0,100,100\n"
+			"array 3 |Ships |Beta |oolite-oxzmanager-version-none |1.0\n"
+			"key 3 oolite.oxp.test.beta\n"
+			"color 3 100,100,0\n"
+			"text 14 oolite-oxzmanager-installable-okay\n"
+			"color 14 0,100,0\n"
+			"long 16 0 Beta ship\n"
+			"array 4 |Ships |Gamma |oolite-oxzmanager-version-none |1.0\n"
+			"key 4 oolite.oxp.test.gamma\n"
+			"color 4 100,100,0\n");
+		gui->selected = 0;
+		[facade processShowInfoKey];
+		OO_CHECK(!m->_interfaceShowingOXZDetail);
+
+		// Extracting is offered from the installed list only.
+		gui->selected = OXZ_GUI_ROW_LISTSTART;
+		[facade processExtractKey];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALL);
+		m->_interfaceState = OXZ_STATE_PICK_INSTALLED;
+		[facade gui];
+		standIn.Page();
+		OO_CHECK_EQ(gui->selected, OXZ_GUI_ROW_INSTALL);	// the page selected its first control
+		[facade processExtractKey];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALLED);
+		gui->selected = OXZ_GUI_ROW_LISTSTART;
+		[facade processExtractKey];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_EXTRACT);
+		OO_CHECK_EQ(m->_item, 0u);
+		OO_CHECK_PAGE("extract key", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"title oolite-oxzmanager-title-extract\n"
+			"text 0 0 oolite-oxzmanager-infopage-title-@-version-@\n"
+			"long 2 0 oolite-oxzmanager-extract-info\n"
+			"long 10 0 oolite-oxzmanager-extract-to-@\n"
+			"text 25 2 oolite-oxzmanager-extract-proceed\n"
+			"key 25 _PROCEED\n"
+			"text 26 2 oolite-oxzmanager-extract-cancel\n"
+			"key 26 _CANCEL\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 25+4\n"
+			"select 25\n");
+
+		// Selections.
+		gui->selected = OXZ_GUI_ROW_CANCEL;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_MAIN);
+		OO_CHECK_PAGE("extract cancelled", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-intro\n"
+			"text 22 2 oolite-oxzmanager-install\n"
+			"key 22 _INSTALL\n"
+			"text 23 2 oolite-oxzmanager-installed\n"
+			"key 23 _INSTALLED\n"
+			"text 25 2 oolite-oxzmanager-remove\n"
+			"key 25 _REMOVE\n"
+			"text 26 2 oolite-oxzmanager-update-list\n"
+			"key 26 _UPDATE\n"
+			"text 24 2 oolite-oxzmanager-update-all\n"
+			"key 24 _UPDATE_ALL\n"
+			"text 27 2 oolite-oxzmanager-exit\n"
+			"key 27 _EXIT\n"
+			"range 22+7\n"
+			"select 22\n");
+		gui->selected = OXZ_GUI_ROW_INSTALLED;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALLED);
+		standIn.Page();
+		gui->selected = OXZ_GUI_ROW_REMOVE;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_REMOVE);
+		standIn.Page();
+		m->_interfaceState = OXZ_STATE_REMOVING;
+		gui->selected = OXZ_GUI_ROW_UPDATE;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_REMOVE);
+		standIn.Page();
+		gui->selected = OXZ_GUI_ROW_INSTALL;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALL);
+		standIn.Page();
+		m->_changesMade = false;
+		gui->selected = OXZ_GUI_ROW_EXIT;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_MAIN);
+		OO_CHECK_PAGE("exit", standIn.Page(), "");
+		m->_changesMade = true;
+		[facade processSelection];
+		OO_CHECK(m->_interfaceState == OXZ_STATE_RESTARTING);
+		OO_CHECK_PAGE("exit to restart", standIn.Page(),
+			"clear keep\n"
+			"title oolite-oxzmanager-title\n"
+			"long 1 0 oolite-oxzmanager-restart\n");
+		OO_CHECK([facade isRestarting]);
+		OO_CHECK(m->_interfaceState == OXZ_STATE_MAIN);
+	}
+}
+
+
+OO_TEST(facadeContractSliceThree)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The slice 3 units: the facade forwards to the C++ members, which draw the same page.
+		StandInUniverse standIn;
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		cxx::OOOXZManager *m = Manager();
+		m->_interfaceState = OXZ_STATE_SETFILTER;
+		OO_CHECK([facade isAcceptingTextInput] == m->isAcceptingTextInput());
+		OO_CHECK([facade isAcceptingGUIInput] == m->isAcceptingGUIInput());
+		[facade gui];
+		const std::string fromFacade = standIn.Page();
+		m->gui();
+		OO_CHECK_TEXT(standIn.Page(), fromFacade);
+		m->refreshTextInput("t:x");
+		OO_CHECK(!standIn.Page().empty());
+		m->processTextInput("t:x");
+		OO_CHECK(m->_interfaceState == OXZ_STATE_PICK_INSTALL);
+		m->setFilter("*");
+		m->_interfaceState = OXZ_STATE_MAIN;
+	}
+}
+
+
 OO_TEST_MAIN()
