@@ -62,6 +62,22 @@ std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 
 namespace cxx {
 
+// The game view's matrix manager, taken from the C++ view. Null when there is no universe or view.
+namespace {
+
+OOOpenGLMatrixManager *MatrixManagerOfGameView()
+{
+	cxx::MyOpenGLView *view = oo::ToCxx([UNIVERSE gameView]);
+	return (view != nullptr) ? view->getOpenGLMatrixManager() : nullptr;
+}
+
+}	// namespace
+
+}	// namespace cxx
+
+
+namespace cxx {
+
 /*	Cache key -> program, not retained: a program removes itself in its destructor. Was an
 	Objective-C mutable dictionary of boxed values (bead oo-3rb.10); keys are the cache keys' UTF-8.
 	Allocated on first use and never freed, as the dictionary was, so a program destroyed
@@ -402,9 +418,9 @@ bool OOShaderProgram::initWithVertexShaderSource(const std::optional<std::string
 
 	if (OK)
 	{
-		// The matrix manager is C++: reached from the game view's facade (null-guarded, as a
+		// The matrix manager is C++: taken from the C++ game view (null-guarded, as a
 		// message to nil answered a null list).
-		OOOpenGLMatrixManager *matrixManager = oo::ToCxx([[UNIVERSE gameView] getOpenGLMatrixManager]);
+		OOOpenGLMatrixManager *matrixManager = MatrixManagerOfGameView();
 		standardMatrixUniformLocations = (matrixManager != nullptr) ? matrixManager->standardMatrixUniformLocations(_program) : oo::PList();
 	}
 	else
@@ -436,7 +452,7 @@ void OOShaderProgram::bindStandardMatrixUniforms()
 {
 	if (standardMatrixUniformLocations.isArray())
 	{
-		OOOpenGLMatrixManager *matrixManager = oo::ToCxx([[UNIVERSE gameView] getOpenGLMatrixManager]);
+		OOOpenGLMatrixManager *matrixManager = MatrixManagerOfGameView();
 
 		OO_ENTER_OPENGL();
 
