@@ -481,6 +481,45 @@ public:
 	void applyThrust(double delta_t);
 	void orientationChanged() override;
 
+	// Slice 17: attitude, collision avoidance, messages, groups and escort accessors, proximity alert, names and descriptions.
+	void applyRoll(GLfloat roll1, GLfloat climb1) override;
+	void applyRoll(GLfloat roll1, GLfloat climb1, GLfloat yaw1) override;
+	virtual void applyAttitudeChanges(double delta_t);	// PlayerEntity overrides
+	void avoidCollision();
+	void resumePostProximityAlert();
+	double getMessageTime();
+	void setMessageTime(double value);
+	::OOShipGroup *group();
+	void setGroup(::OOShipGroup *group);
+	::OOShipGroup *escortGroup();
+	void setEscortGroup(::OOShipGroup *group);
+#ifndef NDEBUG
+	::OOShipGroup *rawEscortGroup();
+#endif
+	::OOShipGroup *stationGroup();
+	bool hasEscorts();
+	std::vector<oo::ObjCRef<::ShipEntity *>> escorts();
+	std::vector<oo::ObjCRef<::ShipEntity *>> escortArray();
+	uint8_t escortCount();
+	uint8_t pendingEscortCount();
+	void setPendingEscortCount(uint8_t count);
+	uint8_t maxEscortCount();
+	void setMaxEscortCount(uint8_t newCount);
+	NSUInteger turretCount();
+	::Entity *proximityAlert();
+	void setProximityAlert(::ShipEntity *other);
+	std::optional<std::string> getName();
+	std::optional<std::string> getShipUniqueName();
+	std::optional<std::string> getShipClassName();
+	std::optional<std::string> getDisplayName();
+	std::optional<std::string> scanDescriptionForScripting();
+	std::optional<std::string> scanDescription();
+	virtual void setName(const std::optional<std::string> &inName);	// PlayerEntity overrides
+	void setShipUniqueName(const std::optional<std::string> &inName);
+	void setShipClassName(const std::optional<std::string> &inName);
+	void setDisplayName(const std::optional<std::string> &inName);
+	void setScanDescription(const std::optional<std::string> &inName);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

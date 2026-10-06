@@ -91,6 +91,10 @@ public:
 	NSUInteger passengerCapacity() override	{ return [(::ShipEntity *)_objcOwner passengerCapacity]; }
 	float maxForwardShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxForwardShieldLevel]; }
 	float maxAftShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxAftShieldLevel]; }
+
+	// Slice 17 (bead oo-6hofy).
+	void applyAttitudeChanges(double delta_t) override	{ [(::ShipEntity *)_objcOwner applyAttitudeChanges:delta_t]; }
+	void setName(const std::optional<std::string> &inName) override	{ [(::ShipEntity *)_objcOwner cxx_setName:inName]; }
 };
 
 }	// namespace
@@ -575,5 +579,48 @@ DESTROY(_cxxShip->laser_color);
 - (void) setOwner:(Entity *)who_owns_entity	{ _cxxShip->cxx::ShipEntity::setOwner(oo::ToCxx(who_owns_entity)); }
 - (void) applyThrust:(double)delta_t	{ _cxxShip->applyThrust(delta_t); }
 - (void) orientationChanged	{ _cxxShip->cxx::ShipEntity::orientationChanged(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice17)
+
+- (void) applyRoll:(GLfloat)roll1 andClimb:(GLfloat)climb1	{ _cxxShip->cxx::ShipEntity::applyRoll(roll1, climb1); }
+- (void) applyRoll:(GLfloat)roll1 climb:(GLfloat)climb1 andYaw:(GLfloat)yaw1	{ _cxxShip->cxx::ShipEntity::applyRoll(roll1, climb1, yaw1); }
+- (void) applyAttitudeChanges:(double)delta_t	{ _cxxShip->cxx::ShipEntity::applyAttitudeChanges(delta_t); }
+- (void) avoidCollision	{ _cxxShip->avoidCollision(); }
+- (void) resumePostProximityAlert	{ _cxxShip->resumePostProximityAlert(); }
+- (double) messageTime	{ return _cxxShip->getMessageTime(); }
+- (void) setMessageTime:(double)value	{ _cxxShip->setMessageTime(value); }
+- (OOShipGroup *) group	{ return _cxxShip->group(); }
+- (void) setGroup:(OOShipGroup *)group	{ _cxxShip->setGroup(group); }
+- (OOShipGroup *) escortGroup	{ return _cxxShip->escortGroup(); }
+- (void) setEscortGroup:(OOShipGroup *)group	{ _cxxShip->setEscortGroup(group); }
+#ifndef NDEBUG
+- (OOShipGroup *) rawEscortGroup	{ return _cxxShip->rawEscortGroup(); }
+#endif
+- (OOShipGroup *) stationGroup	{ return _cxxShip->stationGroup(); }
+- (BOOL) hasEscorts	{ return _cxxShip->hasEscorts(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts	{ return _cxxShip->escorts(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray	{ return _cxxShip->escortArray(); }
+- (uint8_t) escortCount	{ return _cxxShip->escortCount(); }
+- (uint8_t) pendingEscortCount	{ return _cxxShip->pendingEscortCount(); }
+- (void) setPendingEscortCount:(uint8_t)count	{ _cxxShip->setPendingEscortCount(count); }
+- (uint8_t) maxEscortCount	{ return _cxxShip->maxEscortCount(); }
+- (void) setMaxEscortCount:(uint8_t)newCount	{ _cxxShip->setMaxEscortCount(newCount); }
+- (NSUInteger) turretCount	{ return _cxxShip->turretCount(); }
+- (Entity*) proximityAlert	{ return _cxxShip->proximityAlert(); }
+- (void) setProximityAlert:(ShipEntity*)other	{ _cxxShip->setProximityAlert(other); }
+- (std::optional<std::string>) cxx_name	{ return _cxxShip->getName(); }
+- (std::optional<std::string>) cxx_shipUniqueName	{ return _cxxShip->getShipUniqueName(); }
+- (std::optional<std::string>) cxx_shipClassName	{ return _cxxShip->getShipClassName(); }
+- (std::optional<std::string>) displayName	{ return _cxxShip->getDisplayName(); }
+- (std::optional<std::string>) cxx_scanDescriptionForScripting	{ return _cxxShip->scanDescriptionForScripting(); }
+- (std::optional<std::string>) cxx_scanDescription	{ return _cxxShip->scanDescription(); }
+- (void) cxx_setName:(const std::optional<std::string> &)inName	{ _cxxShip->cxx::ShipEntity::setName(inName); }
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName	{ _cxxShip->setShipUniqueName(inName); }
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName	{ _cxxShip->setShipClassName(inName); }
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName	{ _cxxShip->setDisplayName(inName); }
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName	{ _cxxShip->setScanDescription(inName); }
 
 @end

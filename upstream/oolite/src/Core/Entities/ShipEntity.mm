@@ -385,7 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-
 static GLfloat cargo_color[4] =		{ 0.9, 0.9, 0.9, 1.0};	// gray
 static GLfloat hostile_color[4] =	{ 1.0, 0.25, 0.0, 1.0};	// red/orange
 static GLfloat neutral_color[4] =	{ 1.0, 1.0, 0.0, 1.0};	// yellow
@@ -398,450 +397,6 @@ static GLfloat mascem_color1[4] =	{ 0.3, 0.3, 0.3, 1.0};	// dark gray
 static GLfloat mascem_color2[4] =	{ 0.4, 0.1, 0.4, 1.0};	// purple
 static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by script
 
-
-- (void) applyRoll:(GLfloat) roll1 andClimb:(GLfloat) climb1
-{
-	Quaternion q1 = kIdentityQuaternion;
-
-	if (!roll1 && !climb1 && !_cxxEntity->hasRotated)  return;
-
-	if (roll1)  quaternion_rotate_about_z(&q1, -roll1);
-	if (climb1)  quaternion_rotate_about_x(&q1, -climb1);
-
-	_cxxEntity->orientation = quaternion_multiply(q1, _cxxEntity->orientation);
-	[self orientationChanged];
-}
-
-
-- (void) applyRoll:(GLfloat) roll1 climb:(GLfloat) climb1 andYaw:(GLfloat) yaw1
-{
-	if ((roll1 == 0.0)&&(climb1 == 0.0)&&(yaw1 == 0.0)&&(!_cxxEntity->hasRotated))
-		return;
-
-	Quaternion q1 = kIdentityQuaternion;
-
-	if (roll1)
-		quaternion_rotate_about_z(&q1, -roll1);
-	if (climb1)
-		quaternion_rotate_about_x(&q1, -climb1);
-	if (yaw1)
-		quaternion_rotate_about_y(&q1, -yaw1);
-
-	_cxxEntity->orientation = quaternion_multiply(q1, _cxxEntity->orientation);
-	[self orientationChanged];
-}
-
-
-- (void) applyAttitudeChanges:(double) delta_t
-{
-	[self applyRoll:_cxxShip->flightRoll*delta_t climb:_cxxShip->flightPitch*delta_t andYaw:_cxxShip->flightYaw*delta_t];
-}
-
-
-- (void) avoidCollision
-{
-	if (_cxxEntity->scanClass == CLASS_MISSILE)
-		return;						// missiles are SUPPOSED to collide!
-	
-	ShipEntity* prox_ship = (ShipEntity*)[self proximityAlert];
-
-	if (prox_ship)
-	{
-		oo::PList::Dict condition;
-		condition["behaviour"] = oo::PList((long)_cxxShip->behaviour);	// as oo_setInteger: stored it
-		if ([self primaryTarget] != nil)
-		{
-			// must use the weak ref here to prevent potential over-retention
-			condition["primaryTarget"] = oo::PListObject([[self primaryTarget] weakSelf]);
-		}
-		condition["desired_range"] = oo::PList::singleReal(_cxxShip->desired_range);	// floats, as oo_setFloat: stored them
-		condition["desired_speed"] = oo::PList::singleReal(_cxxShip->desired_speed);
-		condition["destination"] = OOPListFromHPVector(_cxxShip->_destination);	// as oo_setHPVector: stored it
-		_cxxShip->previousCondition = oo::PList(std::move(condition));
-		
-		_cxxShip->_destination = [prox_ship position];
-		_cxxShip->_destination = OOHPVectorInterpolate(_cxxEntity->position, [prox_ship position], 0.5);		// point between us and them
-		
-		_cxxShip->desired_range = prox_ship->_cxxEntity->collision_radius * PROXIMITY_AVOID_DISTANCE_FACTOR;
-		
-		_cxxShip->behaviour = BEHAVIOUR_AVOID_COLLISION;
-		_cxxShip->pitching_over = YES;
-	}
-}
-
-
-- (void) resumePostProximityAlert
-{
-	if (_cxxShip->previousCondition.isNull())  return;
-
-	_cxxShip->behaviour =		(OOBehaviour)_cxxShip->previousCondition.get<int>("behaviour");
-	[_cxxShip->_primaryTarget release];
-	const oo::PList *previousTarget = _cxxShip->previousCondition.find("primaryTarget");
-	_cxxShip->_primaryTarget =	[(previousTarget != nullptr ? oo::ObjectIn(*previousTarget) : nil) weakRetain];
-	[self startTrackingCurve];
-	_cxxShip->desired_range =	_cxxShip->previousCondition.get<float>("desired_range");
-	_cxxShip->desired_speed =	_cxxShip->previousCondition.get<float>("desired_speed");
-	_cxxShip->_destination =	HPVectorForKey(_cxxShip->previousCondition, "destination");
-
-	_cxxShip->previousCondition = oo::PList();
-	_cxxShip->frustration = 0.0;
-	
-	DESTROY(_cxxShip->_proximityAlert);
-	
-	//[shipAI message:@"RESTART_DOCKING"];	// if docking, start over, other AIs will ignore this message
-}
-
-
-- (double) messageTime
-{
-	return _cxxShip->messageTime;
-}
-
-
-- (void) setMessageTime:(double) value
-{
-	_cxxShip->messageTime = value;
-}
-
-
-- (OOShipGroup *) group
-{
-	return _cxxShip->_group;
-}
-
-
-- (void) setGroup:(OOShipGroup *)group
-{
-	if (group != _cxxShip->_group)
-	{
-		if (_cxxShip->_escortGroup != _cxxShip->_group) 
-		{
-			if (self == [_cxxShip->_group leader])  [_cxxShip->_group setLeader:nil];
-			[_cxxShip->_group removeShip:self];
-		}
-		[_cxxShip->_group release];
-		[group addShip:self];
-		_cxxShip->_group = [group retain];
-		
-		[[group leader] updateEscortFormation];
-	}
-}
-
-
-- (OOShipGroup *) escortGroup
-{
-	if (_cxxShip->_escortGroup == nil)
-	{
-		_cxxShip->_escortGroup = [[OOShipGroup alloc] cxx_initWithName:std::string("escort group")];
-		[_cxxShip->_escortGroup setLeader:self];
-	}
-	
-	return _cxxShip->_escortGroup;
-}
-
-
-- (void) setEscortGroup:(OOShipGroup *)group
-{
-	if (group != _cxxShip->_escortGroup)
-	{
-		[_cxxShip->_escortGroup release];
-		_cxxShip->_escortGroup = [group retain];
-		[group setLeader:self];	// A ship is always leader of its own escort group.
-		[self updateEscortFormation];
-	}
-}
-
-
-#ifndef NDEBUG
-- (OOShipGroup *) rawEscortGroup
-{
-	return _cxxShip->_escortGroup;
-}
-#endif
-
-
-- (OOShipGroup *) stationGroup
-{
-	if (_cxxShip->_group == nil)
-	{
-		_cxxShip->_group = [[OOShipGroup alloc] cxx_initWithName:std::string("station group")];
-		[_cxxShip->_group setLeader:self];
-	}
-	
-	return _cxxShip->_group;
-}
-
-
-- (BOOL) hasEscorts
-{
-	if (_cxxShip->_escortGroup == nil)  return NO;
-	return [_cxxShip->_escortGroup count] > 1;	// If only one member, it's self.
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts
-{
-	std::vector<oo::ObjCRef<ShipEntity *>> escorts;
-	if (_cxxShip->_escortGroup == nil)  return escorts;
-	// The group's members at this moment, in its order, without self (as -ooExcludingObject: skipped it).
-	for (const oo::ObjCRef<ShipEntity *> &memberRef : [_cxxShip->_escortGroup cxx_memberArray])
-	{
-		ShipEntity *member = memberRef.get();
-		if (member == self)  continue;
-		escorts.emplace_back(member);
-	}
-	return escorts;
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray
-{
-	return [self cxx_escorts];
-}
-
-
-- (uint8_t) escortCount
-{
-	if (_cxxShip->_escortGroup == nil)  return 0;
-	return [_cxxShip->_escortGroup count] - 1;
-}
-
-
-- (uint8_t) pendingEscortCount
-{
-	return _cxxShip->_pendingEscortCount;
-}
-
-
-- (void) setPendingEscortCount:(uint8_t)count
-{
-	_cxxShip->_pendingEscortCount = MIN(count, _cxxShip->_maxEscortCount);
-}
-
-
-- (uint8_t) maxEscortCount
-{
-	return _cxxShip->_maxEscortCount;
-}
-
-
-- (void) setMaxEscortCount:(uint8_t)newCount
-{
-	_cxxShip->_maxEscortCount = newCount;
-}
-
-
-- (NSUInteger) turretCount
-{
-	NSUInteger count = 0;
-	for (const auto &se : [self cxx_shipSubEntities])
-	{
-		if ([se.get() isTurret])
-		{
-			count ++; 
-		}
-	}
-	return count;
-}
-
-
-- (Entity*) proximityAlert
-{
-	Entity* prox = [_cxxShip->_proximityAlert weakRefUnderlyingObject];
-	if (prox == nil)
-	{
-		DESTROY(_cxxShip->_proximityAlert);
-	}
-	return prox;
-}
-
-
-- (void) setProximityAlert:(ShipEntity*) other
-{
-	if (!other)
-	{
-		DESTROY(_cxxShip->_proximityAlert);
-		return;
-	}
-
-	if ([other mass] < 2000) // we are not alerted by small objects. (a cargopod has a mass of about 1000)
-		return;
-	
-
-	if (_cxxEntity->isStation) // stations don't worry about colliding with things
-		return; 
-
-	/* Ignore station collision warnings if launching or docking */
-	if ((other->_cxxEntity->isStation) && ([self status] == STATUS_LAUNCHING || 
-							   !_cxxShip->dockingInstructions.isNull()))
-	{
-		return; 
-	}	
-
-	if (!_cxxShip->crew) // Ships without pilot (cargo, rocks, missiles, buoys etc) will not get alarmed. (escape-pods have pilots)
-		return;
-	
-	// check vectors
-	Vector vdiff = HPVectorToVector(HPvector_between(_cxxEntity->position, other->_cxxEntity->position));
-	GLfloat d_forward = dot_product(vdiff, _cxxShip->v_forward);
-	GLfloat d_up = dot_product(vdiff, _cxxShip->v_up);
-	GLfloat d_right = dot_product(vdiff, _cxxShip->v_right);
-	if ((d_forward > 0.0)&&(_cxxShip->flightSpeed > 0.0))	// it's ahead of us and we're moving forward
-		d_forward *= 0.25 * _cxxShip->maxFlightSpeed / _cxxShip->flightSpeed;	// extend the collision zone forward up to 400%
-	double d2 = d_forward * d_forward + d_up * d_up + d_right * d_right;
-	double cr2 = _cxxEntity->collision_radius * 2.0 + other->_cxxEntity->collision_radius;	cr2 *= cr2;	// check with twice the combined radius
-
-	if (d2 > cr2) // we're okay
-	return;
-
-	if (_cxxShip->behaviour == BEHAVIOUR_AVOID_COLLISION)	//	already avoiding something
-	{
-		ShipEntity* prox = (ShipEntity*)[self proximityAlert];
-		if ((prox)&&(prox != other))
-		{
-			// check which subtends the greatest angle
-			GLfloat sa_prox = prox->_cxxEntity->collision_radius * prox->_cxxEntity->collision_radius / HPdistance2(_cxxEntity->position, prox->_cxxEntity->position);
-			GLfloat sa_other = other->_cxxEntity->collision_radius *  other->_cxxEntity->collision_radius / HPdistance2(_cxxEntity->position, other->_cxxEntity->position);
-			if (sa_prox < sa_other)  return;
-		}
-	}
-	[_cxxShip->_proximityAlert release];
-	_cxxShip->_proximityAlert = [other weakRetain];
-}
-
-
-- (std::optional<std::string>) cxx_name
-{
-	return _cxxShip->name;
-}
-
-
-- (std::optional<std::string>) cxx_shipUniqueName
-{
-	return _cxxShip->shipUniqueName;
-}
-
-
-- (std::optional<std::string>) cxx_shipClassName
-{
-	return _cxxShip->shipClassName;
-}
-
-
-- (std::optional<std::string>) displayName
-{
-	if (!_cxxShip->displayName.has_value() || _cxxShip->displayName->empty())
-	{
-		if (!_cxxShip->shipUniqueName.has_value() || _cxxShip->shipUniqueName->empty())
-		{
-			if (!_cxxShip->shipClassName.has_value())
-			{
-				return _cxxShip->name;
-			}
-			else
-			{
-				return *_cxxShip->shipClassName;
-			}
-		}
-		else
-		{
-			// %@ printed nil as (null)
-			if (!_cxxShip->shipClassName.has_value())
-			{
-				return oo::str::format("%s: %s", _cxxShip->name.value_or("(null)").c_str(), _cxxShip->shipUniqueName->c_str());
-			}
-			else
-			{
-				return oo::str::format("%s: %s", _cxxShip->shipClassName->c_str(), _cxxShip->shipUniqueName->c_str());
-			}
-		}
-	}
-	return *_cxxShip->displayName;
-}
-
-
-// needed so that scan_description = scan_description doesn't have odd effects
-- (std::optional<std::string>) cxx_scanDescriptionForScripting
-{
-	return _cxxShip->scan_description;
-}
-
-
-- (std::optional<std::string>) cxx_scanDescription
-{
-	if (_cxxShip->scan_description.has_value())
-	{
-		return _cxxShip->scan_description;
-	}
-	else
-	{
-		std::optional<std::string> desc;
-		switch ([self scanClass])
-		{
-		case CLASS_NEUTRAL:
-			{
-				int legal = [self legalStatus];
-				int legal_i = 0;
-				if (legal > 0)
-				{
-					legal_i =  (legal <= 50) ? 1 : 2;
-				}
-				// the entry if it is a string (or a number's -stringValue), else nil
-				const oo::PList *legalStatusEntry = [UNIVERSE cxx_descriptions]->find("legal_status");
-				const oo::PList legalStatus = (legalStatusEntry != nullptr) ? *legalStatusEntry : oo::PList();
-				const oo::PList *entry = legalStatus.at(legal_i);
-				if (entry != nullptr && (entry->isString() || entry->isNumber()))  desc = legalStatus.at<std::string>(legal_i);
-			}
-			break;
-
-		case CLASS_THARGOID:
-			desc = OO_DESC("legal-desc-alien");
-			break;
-
-		case CLASS_POLICE:
-			desc = OO_DESC("legal-desc-system-vessel");
-			break;
-
-		case CLASS_MILITARY:
-			desc = OO_DESC("legal-desc-military-vessel");
-			break;
-
-		default:
-			break;
-		}
-		return desc;
-	}
-}
-
-
-- (void) cxx_setName:(const std::optional<std::string> &)inName
-{
-	_cxxShip->name = inName;
-}
-
-
-- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName
-{
-	_cxxShip->shipUniqueName = inName;
-}
-
-
-- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName
-{
-	_cxxShip->shipClassName = inName;
-}
-
-
-- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName
-{
-	_cxxShip->displayName = inName;
-}
-
-
-- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName
-{
-	_cxxShip->scan_description = inName;
-}
 
 
 - (std::optional<std::string>) identFromShip:(ShipEntity*) otherShip
@@ -15224,6 +14779,488 @@ void ShipEntity::orientationChanged()
 	v_forward   = vector_forward_from_quaternion(orientation);
 	v_up		= vector_up_from_quaternion(orientation);
 	v_right		= vector_right_from_quaternion(orientation);
+}
+
+
+}	// namespace cxx
+
+
+// Slice 17 of docs/phases/3-slices/ShipEntity.md (bead oo-6hofy): attitude, collision avoidance,
+// messages, groups and escort accessors, proximity alert, names and descriptions. The facade
+// forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C
+// subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::applyRoll(GLfloat roll1, GLfloat climb1)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	Quaternion q1 = kIdentityQuaternion;
+
+	if (!roll1 && !climb1 && !hasRotated)  return;
+
+	if (roll1)  quaternion_rotate_about_z(&q1, -roll1);
+	if (climb1)  quaternion_rotate_about_x(&q1, -climb1);
+
+	orientation = quaternion_multiply(q1, orientation);
+	[self orientationChanged];
+}
+
+
+void ShipEntity::applyRoll(GLfloat roll1, GLfloat climb1, GLfloat yaw1)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if ((roll1 == 0.0)&&(climb1 == 0.0)&&(yaw1 == 0.0)&&(!hasRotated))
+		return;
+
+	Quaternion q1 = kIdentityQuaternion;
+
+	if (roll1)
+		quaternion_rotate_about_z(&q1, -roll1);
+	if (climb1)
+		quaternion_rotate_about_x(&q1, -climb1);
+	if (yaw1)
+		quaternion_rotate_about_y(&q1, -yaw1);
+
+	orientation = quaternion_multiply(q1, orientation);
+	[self orientationChanged];
+}
+
+
+void ShipEntity::applyAttitudeChanges(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	[self applyRoll:flightRoll*delta_t climb:flightPitch*delta_t andYaw:flightYaw*delta_t];
+}
+
+
+void ShipEntity::avoidCollision()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (scanClass == CLASS_MISSILE)
+		return;						// missiles are SUPPOSED to collide!
+	
+	::ShipEntity* prox_ship = (::ShipEntity*)[self proximityAlert];
+
+	if (prox_ship)
+	{
+		oo::PList::Dict condition;
+		condition["behaviour"] = oo::PList((long)behaviour);	// as oo_setInteger: stored it
+		if ([self primaryTarget] != nil)
+		{
+			// must use the weak ref here to prevent potential over-retention
+			condition["primaryTarget"] = oo::PListObject([[self primaryTarget] weakSelf]);
+		}
+		condition["desired_range"] = oo::PList::singleReal(desired_range);	// floats, as oo_setFloat: stored them
+		condition["desired_speed"] = oo::PList::singleReal(desired_speed);
+		condition["destination"] = OOPListFromHPVector(_destination);	// as oo_setHPVector: stored it
+		previousCondition = oo::PList(std::move(condition));
+		
+		_destination = [prox_ship position];
+		_destination = OOHPVectorInterpolate(position, [prox_ship position], 0.5);		// point between us and them
+		
+		desired_range = prox_ship->_cxxEntity->collision_radius * PROXIMITY_AVOID_DISTANCE_FACTOR;
+		
+		behaviour = BEHAVIOUR_AVOID_COLLISION;
+		pitching_over = YES;
+	}
+}
+
+
+void ShipEntity::resumePostProximityAlert()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (previousCondition.isNull())  return;
+
+	behaviour =		(OOBehaviour)previousCondition.get<int>("behaviour");
+	[_primaryTarget release];
+	const oo::PList *previousTarget = previousCondition.find("primaryTarget");
+	_primaryTarget =	[(previousTarget != nullptr ? oo::ObjectIn(*previousTarget) : nil) weakRetain];
+	[self startTrackingCurve];
+	desired_range =	previousCondition.get<float>("desired_range");
+	desired_speed =	previousCondition.get<float>("desired_speed");
+	_destination =	HPVectorForKey(previousCondition, "destination");
+
+	previousCondition = oo::PList();
+	frustration = 0.0;
+	
+	DESTROY(_proximityAlert);
+	
+	//[shipAI message:@"RESTART_DOCKING"];	// if docking, start over, other AIs will ignore this message
+}
+
+
+double ShipEntity::getMessageTime()
+{
+	return messageTime;
+}
+
+
+void ShipEntity::setMessageTime(double value)
+{
+	messageTime = value;
+}
+
+
+::OOShipGroup *ShipEntity::group()
+{
+	return _group;
+}
+
+
+void ShipEntity::setGroup(::OOShipGroup *group)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (group != _group)
+	{
+		if (_escortGroup != _group) 
+		{
+			if (self == [_group leader])  [_group setLeader:nil];
+			[_group removeShip:self];
+		}
+		[_group release];
+		[group addShip:self];
+		_group = [group retain];
+		
+		[[group leader] updateEscortFormation];
+	}
+}
+
+
+::OOShipGroup *ShipEntity::escortGroup()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (_escortGroup == nil)
+	{
+		_escortGroup = [[::OOShipGroup alloc] cxx_initWithName:std::string("escort group")];
+		[_escortGroup setLeader:self];
+	}
+	
+	return _escortGroup;
+}
+
+
+void ShipEntity::setEscortGroup(::OOShipGroup *group)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (group != _escortGroup)
+	{
+		[_escortGroup release];
+		_escortGroup = [group retain];
+		[group setLeader:self];	// A ship is always leader of its own escort group.
+		[self updateEscortFormation];
+	}
+}
+
+
+#ifndef NDEBUG
+::OOShipGroup *ShipEntity::rawEscortGroup()
+{
+	return _escortGroup;
+}
+#endif
+
+
+::OOShipGroup *ShipEntity::stationGroup()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (_group == nil)
+	{
+		_group = [[::OOShipGroup alloc] cxx_initWithName:std::string("station group")];
+		[_group setLeader:self];
+	}
+	
+	return _group;
+}
+
+
+bool ShipEntity::hasEscorts()
+{
+	if (_escortGroup == nil)  return NO;
+	return [_escortGroup count] > 1;	// If only one member, it's self.
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::escorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	std::vector<oo::ObjCRef<::ShipEntity *>> escorts;
+	if (_escortGroup == nil)  return escorts;
+	// The group's members at this moment, in its order, without self (as -ooExcludingObject: skipped it).
+	for (const oo::ObjCRef<::ShipEntity *> &memberRef : [_escortGroup cxx_memberArray])
+	{
+		::ShipEntity *member = memberRef.get();
+		if (member == self)  continue;
+		escorts.emplace_back(member);
+	}
+	return escorts;
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::escortArray()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	return [self cxx_escorts];
+}
+
+
+uint8_t ShipEntity::escortCount()
+{
+	if (_escortGroup == nil)  return 0;
+	return [_escortGroup count] - 1;
+}
+
+
+uint8_t ShipEntity::pendingEscortCount()
+{
+	return _pendingEscortCount;
+}
+
+
+void ShipEntity::setPendingEscortCount(uint8_t count)
+{
+	_pendingEscortCount = MIN(count, _maxEscortCount);
+}
+
+
+uint8_t ShipEntity::maxEscortCount()
+{
+	return _maxEscortCount;
+}
+
+
+void ShipEntity::setMaxEscortCount(uint8_t newCount)
+{
+	_maxEscortCount = newCount;
+}
+
+
+NSUInteger ShipEntity::turretCount()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	NSUInteger count = 0;
+	for (const auto &se : [self cxx_shipSubEntities])
+	{
+		if ([se.get() isTurret])
+		{
+			count ++; 
+		}
+	}
+	return count;
+}
+
+
+::Entity *ShipEntity::proximityAlert()
+{
+	::Entity* prox = [_proximityAlert weakRefUnderlyingObject];
+	if (prox == nil)
+	{
+		DESTROY(_proximityAlert);
+	}
+	return prox;
+}
+
+
+void ShipEntity::setProximityAlert(::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (!other)
+	{
+		DESTROY(_proximityAlert);
+		return;
+	}
+
+	if ([other mass] < 2000) // we are not alerted by small objects. (a cargopod has a mass of about 1000)
+		return;
+	
+
+	if (isStation) // stations don't worry about colliding with things
+		return; 
+
+	/* Ignore station collision warnings if launching or docking */
+	if ((other->_cxxEntity->isStation) && ([self status] == STATUS_LAUNCHING || 
+							   !dockingInstructions.isNull()))
+	{
+		return; 
+	}	
+
+	if (!crew) // Ships without pilot (cargo, rocks, missiles, buoys etc) will not get alarmed. (escape-pods have pilots)
+		return;
+	
+	// check vectors
+	Vector vdiff = HPVectorToVector(HPvector_between(position, other->_cxxEntity->position));
+	GLfloat d_forward = dot_product(vdiff, v_forward);
+	GLfloat d_up = dot_product(vdiff, v_up);
+	GLfloat d_right = dot_product(vdiff, v_right);
+	if ((d_forward > 0.0)&&(flightSpeed > 0.0))	// it's ahead of us and we're moving forward
+		d_forward *= 0.25 * maxFlightSpeed / flightSpeed;	// extend the collision zone forward up to 400%
+	double d2 = d_forward * d_forward + d_up * d_up + d_right * d_right;
+	double cr2 = collision_radius * 2.0 + other->_cxxEntity->collision_radius;	cr2 *= cr2;	// check with twice the combined radius
+
+	if (d2 > cr2) // we're okay
+	return;
+
+	if (behaviour == BEHAVIOUR_AVOID_COLLISION)	//	already avoiding something
+	{
+		::ShipEntity* prox = (::ShipEntity*)[self proximityAlert];
+		if ((prox)&&(prox != other))
+		{
+			// check which subtends the greatest angle
+			GLfloat sa_prox = prox->_cxxEntity->collision_radius * prox->_cxxEntity->collision_radius / HPdistance2(position, prox->_cxxEntity->position);
+			GLfloat sa_other = other->_cxxEntity->collision_radius *  other->_cxxEntity->collision_radius / HPdistance2(position, other->_cxxEntity->position);
+			if (sa_prox < sa_other)  return;
+		}
+	}
+	[_proximityAlert release];
+	_proximityAlert = [other weakRetain];
+}
+
+
+std::optional<std::string> ShipEntity::getName()
+{
+	return name;
+}
+
+
+std::optional<std::string> ShipEntity::getShipUniqueName()
+{
+	return shipUniqueName;
+}
+
+
+std::optional<std::string> ShipEntity::getShipClassName()
+{
+	return shipClassName;
+}
+
+
+std::optional<std::string> ShipEntity::getDisplayName()
+{
+	if (!displayName.has_value() || displayName->empty())
+	{
+		if (!shipUniqueName.has_value() || shipUniqueName->empty())
+		{
+			if (!shipClassName.has_value())
+			{
+				return name;
+			}
+			else
+			{
+				return *shipClassName;
+			}
+		}
+		else
+		{
+			// %@ printed nil as (null)
+			if (!shipClassName.has_value())
+			{
+				return oo::str::format("%s: %s", name.value_or("(null)").c_str(), shipUniqueName->c_str());
+			}
+			else
+			{
+				return oo::str::format("%s: %s", shipClassName->c_str(), shipUniqueName->c_str());
+			}
+		}
+	}
+	return *displayName;
+}
+
+
+// needed so that scan_description = scan_description doesn't have odd effects
+std::optional<std::string> ShipEntity::scanDescriptionForScripting()
+{
+	return scan_description;
+}
+
+
+std::optional<std::string> ShipEntity::scanDescription()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	if (scan_description.has_value())
+	{
+		return scan_description;
+	}
+	else
+	{
+		std::optional<std::string> desc;
+		switch ([self scanClass])
+		{
+		case CLASS_NEUTRAL:
+			{
+				int legal = [self legalStatus];
+				int legal_i = 0;
+				if (legal > 0)
+				{
+					legal_i =  (legal <= 50) ? 1 : 2;
+				}
+				// the entry if it is a string (or a number's -stringValue), else nil
+				const oo::PList *legalStatusEntry = [UNIVERSE cxx_descriptions]->find("legal_status");
+				const oo::PList legalStatus = (legalStatusEntry != nullptr) ? *legalStatusEntry : oo::PList();
+				const oo::PList *entry = legalStatus.at(legal_i);
+				if (entry != nullptr && (entry->isString() || entry->isNumber()))  desc = legalStatus.at<std::string>(legal_i);
+			}
+			break;
+
+		case CLASS_THARGOID:
+			desc = OO_DESC("legal-desc-alien");
+			break;
+
+		case CLASS_POLICE:
+			desc = OO_DESC("legal-desc-system-vessel");
+			break;
+
+		case CLASS_MILITARY:
+			desc = OO_DESC("legal-desc-military-vessel");
+			break;
+
+		default:
+			break;
+		}
+		return desc;
+	}
+}
+
+
+void ShipEntity::setName(const std::optional<std::string> &inName)
+{
+	name = inName;
+}
+
+
+void ShipEntity::setShipUniqueName(const std::optional<std::string> &inName)
+{
+	shipUniqueName = inName;
+}
+
+
+void ShipEntity::setShipClassName(const std::optional<std::string> &inName)
+{
+	shipClassName = inName;
+}
+
+
+void ShipEntity::setDisplayName(const std::optional<std::string> &inName)
+{
+	displayName = inName;
+}
+
+
+void ShipEntity::setScanDescription(const std::optional<std::string> &inName)
+{
+	scan_description = inName;
 }
 
 
