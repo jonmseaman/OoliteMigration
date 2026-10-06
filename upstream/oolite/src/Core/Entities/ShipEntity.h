@@ -364,6 +364,41 @@ public:
 	std::vector<std::string> equipmentKeys();
 	NSUInteger equipmentCount();
 
+	// Slice 10: equipment removal, missile selection, capacities and has-equipment predicates, shields.
+	virtual void removeEquipmentItem(const std::string &equipmentKey);
+	virtual bool removeExternalStore(::OOEquipmentType *eqType);
+	::OOEquipmentType *verifiedMissileTypeFromRole(const std::string &requestedRole);
+	::OOEquipmentType *selectMissile();
+	void removeAllEquipment();
+	virtual OOCreditsQuantity removeMissiles();
+	virtual NSUInteger parcelCount();
+	virtual NSUInteger passengerCount();
+	virtual NSUInteger passengerCapacity();
+	NSUInteger missileCount();
+	NSUInteger missileCapacity();
+	NSUInteger extraCargo();
+	bool hasScoop();
+	bool hasFuelScoop();
+	bool hasCargoScoop();
+	bool hasECM();
+	bool hasCloakingDevice();
+	bool hasMilitaryScannerFilter();
+	bool hasMilitaryJammer();
+	bool hasExpandedCargoBay();
+	bool hasShieldBooster();
+	bool hasMilitaryShieldEnhancer();
+	bool hasHeatShield();
+	bool hasFuelInjection();
+	bool hasCascadeMine();
+	bool hasEscapePod();
+	bool hasDockingComputer();
+	bool hasGalacticHyperdrive();
+	float shieldBoostFactor();
+	virtual float maxForwardShieldLevel();
+	virtual float maxAftShieldLevel();
+	float shieldRechargeRate();
+	double maxHyperspaceDistance();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

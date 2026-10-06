@@ -950,4 +950,54 @@ OO_TEST(equipmentKeysAndUnknownEquipment)
 }
 
 
+// --- Slice 10: equipment removal, missiles, capacities, has-equipment predicates, shields (oo-wvcs2)
+
+OO_TEST(capacitiesAndPredicates)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"preds" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{
+			{ "missiles", oo::PList(2) }, { "max_missiles", oo::PList(4) }, { "extra_cargo", oo::PList(7) } })]);
+		OO_CHECK([ship missileCount] == 2 && [ship missileCapacity] == 4 && [ship extraCargo] == 7);
+		OO_CHECK([ship parcelCount] == 0 && [ship passengerCount] == 0 && [ship passengerCapacity] == 0);
+		OO_CHECK([ship maxHyperspaceDistance] == MAX_JUMP_RANGE);
+
+		OO_CHECK(![ship hasScoop] && ![ship hasECM] && ![ship hasShieldBooster] && ![ship hasEscapePod]);
+		OO_CHECK([ship shieldBoostFactor] == 1.0f && [ship shieldRechargeRate] == 2.0f);
+		OO_CHECK([ship maxForwardShieldLevel] == BASELINE_SHIELD_LEVEL && [ship maxAftShieldLevel] == BASELINE_SHIELD_LEVEL);
+
+		// Each predicate is "some equipment provides the key" (a key provides itself).
+		MutablePart(ship)->_equipment = { "EQ_FUEL_SCOOPS", "EQ_ECM", "EQ_SHIELD_BOOSTER", "EQ_NAVAL_SHIELD_BOOSTER",
+			"EQ_CLOAKING_DEVICE", "EQ_MILITARY_SCANNER_FILTER", "EQ_MILITARY_JAMMER", "EQ_CARGO_BAY", "EQ_HEAT_SHIELD",
+			"EQ_FUEL_INJECTION", "EQ_QC_MINE", "EQ_ESCAPE_POD", "EQ_DOCK_COMP", "EQ_GAL_DRIVE" };
+		OO_CHECK([ship hasScoop] && [ship hasFuelScoop] && ![ship hasCargoScoop]);
+		OO_CHECK([ship hasECM] && [ship hasCloakingDevice] && [ship hasMilitaryScannerFilter] && [ship hasMilitaryJammer]);
+		OO_CHECK([ship hasExpandedCargoBay] && [ship hasShieldBooster] && [ship hasMilitaryShieldEnhancer]);
+		OO_CHECK([ship hasHeatShield] && [ship hasFuelInjection] && [ship hasEscapePod] && [ship hasCascadeMine]);
+		OO_CHECK([ship hasDockingComputer] && [ship hasGalacticHyperdrive]);
+		OO_CHECK([ship shieldBoostFactor] == 3.0f && [ship shieldRechargeRate] == 3.0f);
+		OO_CHECK([ship maxForwardShieldLevel] == BASELINE_SHIELD_LEVEL * 3.0f);
+
+		// An unknown equipment type is not removed; -removeAllEquipment clears the keys.
+		[ship removeEquipmentItem:"EQ_ECM"];
+		OO_CHECK([ship hasECM]);
+		[ship removeAllEquipment];
+		OO_CHECK([ship equipmentCount] == 0 && ![ship hasECM]);
+	}
+}
+
+
+OO_TEST(removeMissiles)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"launcher" definition:Definition()] autorelease];
+		OO_CHECK([ship removeMissiles] == 0 && [ship missileCount] == 0);
+	}
+}
+
+
 OO_TEST_MAIN()

@@ -91,50 +91,18 @@ MA 02110-1301, USA.
 // Equipment
 
 
-- (void) removeEquipmentItem:(const std::string &)equipmentKey;	// flipped with its family (bead oo-3rb.258)
-- (void) removeAllEquipment;
-- (OOEquipmentType *) selectMissile;
-- (OOCreditsQuantity) removeMissiles;
 
 // Internal, subject to change. Use the methods above instead.
-- (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
 
 // Passengers and parcels - not supported for NPCs, but interface is here for genericity.
-- (NSUInteger) parcelCount;
-- (NSUInteger) passengerCount;
-- (NSUInteger) passengerCapacity;
 
-- (NSUInteger) missileCount;
-- (NSUInteger) missileCapacity;
 
-- (NSUInteger) extraCargo;
 
 // Tests for the various special-cased equipment items
 // (Nowadays, more convenience methods)
-- (BOOL) hasScoop;
-- (BOOL) hasFuelScoop;
-- (BOOL) hasCargoScoop;
-- (BOOL) hasECM;
-- (BOOL) hasCloakingDevice;
-- (BOOL) hasMilitaryScannerFilter;
-- (BOOL) hasMilitaryJammer;
-- (BOOL) hasExpandedCargoBay;
-- (BOOL) hasShieldBooster;
-- (BOOL) hasMilitaryShieldEnhancer;
-- (BOOL) hasHeatShield;
-- (BOOL) hasFuelInjection;
-- (BOOL) hasCascadeMine;
-- (BOOL) hasEscapePod;
-- (BOOL) hasDockingComputer;
-- (BOOL) hasGalacticHyperdrive;
 
 // Shield information derived from equipment. NPCs can't have shields, but that should change at some point.
-- (float) shieldBoostFactor;
-- (float) maxForwardShieldLevel;
-- (float) maxAftShieldLevel;
-- (float) shieldRechargeRate;
 
-- (double) maxHyperspaceDistance;
 - (float) afterburnerFactor;
 - (float) afterburnerRate;
 - (void) setAfterburnerFactor:(GLfloat)newValue;
@@ -972,6 +940,48 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
 - (std::vector<std::string>) cxx_equipmentKeys;	// a snapshot, in order added
 - (NSUInteger) equipmentCount;
+
+@end
+
+
+// Slice 10 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice10)
+
+- (void) removeEquipmentItem:(const std::string &)equipmentKey;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
+- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole;
+- (OOEquipmentType *) selectMissile;
+- (void) removeAllEquipment;
+- (OOCreditsQuantity) removeMissiles;
+- (NSUInteger) parcelCount;
+- (NSUInteger) passengerCount;
+- (NSUInteger) passengerCapacity;
+- (NSUInteger) missileCount;
+- (NSUInteger) missileCapacity;
+- (NSUInteger) extraCargo;
+- (BOOL) hasScoop;
+- (BOOL) hasFuelScoop;
+- (BOOL) hasCargoScoop;
+- (BOOL) hasECM;
+- (BOOL) hasCloakingDevice;
+- (BOOL) hasMilitaryScannerFilter;
+- (BOOL) hasMilitaryJammer;
+- (BOOL) hasExpandedCargoBay;
+- (BOOL) hasShieldBooster;
+- (BOOL) hasMilitaryShieldEnhancer;
+- (BOOL) hasHeatShield;
+- (BOOL) hasFuelInjection;
+- (BOOL) hasCascadeMine;
+- (BOOL) hasEscapePod;
+- (BOOL) hasDockingComputer;
+- (BOOL) hasGalacticHyperdrive;
+- (float) shieldBoostFactor;
+- (float) maxForwardShieldLevel;
+- (float) maxAftShieldLevel;
+- (float) shieldRechargeRate;
+- (double) maxHyperspaceDistance;
 
 @end
 

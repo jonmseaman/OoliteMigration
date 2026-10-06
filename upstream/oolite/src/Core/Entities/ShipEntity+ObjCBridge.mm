@@ -81,6 +81,16 @@ public:
 	bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey) override	{ return [(::ShipEntity *)_objcOwner setWeaponMount:facing toWeapon:eqKey]; }
 	bool addEquipmentItem(const std::string &equipmentKey, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKey inContext:context]; }
 	bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKeyIn withValidation:validateAddition inContext:context]; }
+
+	// Slice 10 (bead oo-wvcs2).
+	void removeEquipmentItem(const std::string &equipmentKey) override	{ [(::ShipEntity *)_objcOwner removeEquipmentItem:equipmentKey]; }
+	bool removeExternalStore(::OOEquipmentType *eqType) override	{ return [(::ShipEntity *)_objcOwner removeExternalStore:eqType]; }
+	OOCreditsQuantity removeMissiles() override	{ return [(::ShipEntity *)_objcOwner removeMissiles]; }
+	NSUInteger parcelCount() override	{ return [(::ShipEntity *)_objcOwner parcelCount]; }
+	NSUInteger passengerCount() override	{ return [(::ShipEntity *)_objcOwner passengerCount]; }
+	NSUInteger passengerCapacity() override	{ return [(::ShipEntity *)_objcOwner passengerCapacity]; }
+	float maxForwardShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxForwardShieldLevel]; }
+	float maxAftShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxAftShieldLevel]; }
 };
 
 }	// namespace
@@ -420,5 +430,44 @@ DESTROY(_cxxShip->laser_color);
 - (BOOL) addEquipmentItem:(const std::string &)equipmentKeyIn withValidation:(BOOL)validateAddition inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKeyIn, validateAddition, context); }
 - (std::vector<std::string>) cxx_equipmentKeys	{ return _cxxShip->equipmentKeys(); }
 - (NSUInteger) equipmentCount	{ return _cxxShip->equipmentCount(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice10)
+
+- (void) removeEquipmentItem:(const std::string &)equipmentKey	{ _cxxShip->cxx::ShipEntity::removeEquipmentItem(equipmentKey); }
+- (BOOL) removeExternalStore:(OOEquipmentType *)eqType	{ return _cxxShip->cxx::ShipEntity::removeExternalStore(eqType); }
+- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole	{ return _cxxShip->verifiedMissileTypeFromRole(requestedRole); }
+- (OOEquipmentType *) selectMissile	{ return _cxxShip->selectMissile(); }
+- (void) removeAllEquipment	{ _cxxShip->removeAllEquipment(); }
+- (OOCreditsQuantity) removeMissiles	{ return _cxxShip->cxx::ShipEntity::removeMissiles(); }
+- (NSUInteger) parcelCount	{ return _cxxShip->cxx::ShipEntity::parcelCount(); }
+- (NSUInteger) passengerCount	{ return _cxxShip->cxx::ShipEntity::passengerCount(); }
+- (NSUInteger) passengerCapacity	{ return _cxxShip->cxx::ShipEntity::passengerCapacity(); }
+- (NSUInteger) missileCount	{ return _cxxShip->missileCount(); }
+- (NSUInteger) missileCapacity	{ return _cxxShip->missileCapacity(); }
+- (NSUInteger) extraCargo	{ return _cxxShip->extraCargo(); }
+- (BOOL) hasScoop	{ return _cxxShip->hasScoop(); }
+- (BOOL) hasFuelScoop	{ return _cxxShip->hasFuelScoop(); }
+- (BOOL) hasCargoScoop	{ return _cxxShip->hasCargoScoop(); }
+- (BOOL) hasECM	{ return _cxxShip->hasECM(); }
+- (BOOL) hasCloakingDevice	{ return _cxxShip->hasCloakingDevice(); }
+- (BOOL) hasMilitaryScannerFilter	{ return _cxxShip->hasMilitaryScannerFilter(); }
+- (BOOL) hasMilitaryJammer	{ return _cxxShip->hasMilitaryJammer(); }
+- (BOOL) hasExpandedCargoBay	{ return _cxxShip->hasExpandedCargoBay(); }
+- (BOOL) hasShieldBooster	{ return _cxxShip->hasShieldBooster(); }
+- (BOOL) hasMilitaryShieldEnhancer	{ return _cxxShip->hasMilitaryShieldEnhancer(); }
+- (BOOL) hasHeatShield	{ return _cxxShip->hasHeatShield(); }
+- (BOOL) hasFuelInjection	{ return _cxxShip->hasFuelInjection(); }
+- (BOOL) hasCascadeMine	{ return _cxxShip->hasCascadeMine(); }
+- (BOOL) hasEscapePod	{ return _cxxShip->hasEscapePod(); }
+- (BOOL) hasDockingComputer	{ return _cxxShip->hasDockingComputer(); }
+- (BOOL) hasGalacticHyperdrive	{ return _cxxShip->hasGalacticHyperdrive(); }
+- (float) shieldBoostFactor	{ return _cxxShip->shieldBoostFactor(); }
+- (float) maxForwardShieldLevel	{ return _cxxShip->cxx::ShipEntity::maxForwardShieldLevel(); }
+- (float) maxAftShieldLevel	{ return _cxxShip->cxx::ShipEntity::maxAftShieldLevel(); }
+- (float) shieldRechargeRate	{ return _cxxShip->shieldRechargeRate(); }
+- (double) maxHyperspaceDistance	{ return _cxxShip->maxHyperspaceDistance(); }
 
 @end

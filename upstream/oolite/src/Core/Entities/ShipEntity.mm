@@ -384,455 +384,6 @@ void ShipEntity::initWithKey(const std::string &key)
 
 static constexpr std::string_view kBoulderRole = "boulder";
 
-
-- (void) removeEquipmentItem:(const std::string &)equipmentKey
-{
-	// "" (a former nil) matches no equipment key.
-	std::string			equipmentTypeCheckKey = equipmentKey;
-	const std::string	lcEquipmentKey = oo::str::lowercase(equipmentKey);
-	// determine the equipment type and make sure it works also in the case of damaged equipment
-	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
-	{
-		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
-	}
-	OOEquipmentType *eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentTypeCheckKey];
-	if (eqType == nil)  return;
-
-	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
-	{
-		[self removeExternalStore:eqType];
-	}
-	else
-	{
-		if (std::ranges::find(_cxxShip->_equipment, equipmentKey) != _cxxShip->_equipment.end())
-		{
-			if (equipmentKey != "EQ_PASSENGER_BERTH")
-			{
-				_cxxShip->equipment_weight -= [eqType requiredCargoSpace]; // all other cases;
-			}
-						
-			if (equipmentKey == "EQ_CLOAKING_DEVICE")
-			{
-				if ([self isCloaked])  [self setCloaked:NO];
-			}
-
-			if (!_cxxEntity->isPlayer)
-			{
-				if(equipmentKey == "EQ_SHIELD_BOOSTER")
-				{
-					_cxxEntity->maxEnergy -= 256.0f;
-					if (_cxxEntity->maxEnergy < _cxxEntity->energy) _cxxEntity->energy = _cxxEntity->maxEnergy;
-				}
-				else if(equipmentKey == "EQ_SHIELD_ENHANCER")
-				{
-					_cxxEntity->maxEnergy -= 256.0f;
-					_cxxShip->energy_recharge_rate /= 1.5;
-					if (_cxxEntity->maxEnergy < _cxxEntity->energy) _cxxEntity->energy = _cxxEntity->maxEnergy;
-				}
-				else if (equipmentKey == "EQ_CARGO_BAY")
-				{
-					_cxxShip->max_cargo -= _cxxShip->extra_cargo;
-				}
-			}
-		}
-
-		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && ![eqType canCarryMultiple])
-		{
-			const std::string damagedKey = equipmentKey + "_DAMAGED";
-			const auto damaged = std::ranges::find(_cxxShip->_equipment, damagedKey);
-			if (damaged != _cxxShip->_equipment.end())
-			{
-				// remove damaged counterpart (the first occurrence, as -indexOfObject: found it)
-				_cxxShip->_equipment.erase(damaged);
-				_cxxShip->equipment_weight -= [eqType requiredCargoSpace];
-			}
-		}
-		const auto equipped = std::ranges::find(_cxxShip->_equipment, equipmentKey);
-		if (equipped != _cxxShip->_equipment.end())
-		{
-			_cxxShip->_equipment.erase(equipped);
-		}
-		// this event must come after the item is actually removed
-		[self cxx_doScriptEvent:OOJSID("equipmentRemoved") withPListArguments:{ oo::PList(equipmentKey) }];
-		
-		// if all docking computers are damaged while active
-		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
-		{
-			[(PlayerEntity *)self disengageAutopilot];
-		}
-
-
-		if (_cxxShip->_equipment.empty())  [self removeAllEquipment];
-	}
-}
-
-
-- (BOOL) removeExternalStore:(OOEquipmentType *)eqType
-{
-	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
-	const std::optional<std::string>	identifier = [eqType cxx_identifier];
-	unsigned	i;
-
-	for (i = 0; i < _cxxShip->missiles; i++)
-	{
-		if (identifier.has_value() && [_cxxShip->missile_list[i] cxx_identifier] == identifier)
-		{
-			// now 'delete' [i] by compacting the array
-			while ( ++i < _cxxShip->missiles ) _cxxShip->missile_list[i - 1] = _cxxShip->missile_list[i];
-			
-			_cxxShip->missiles--;
-			return YES;
-		}
-	}
-	return NO;
-}
-
-
-- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole
-{
-	std::string			role = requestedRole;
-	std::optional<std::string> eqRole;
-	std::optional<std::string> shipKey;
-	ShipEntity			*missile = nil;
-	OOEquipmentType		*missileType = nil;
-	BOOL				isRandomMissile = role == "missile";
-
-	if (isRandomMissile)
-	{
-		while (!shipKey.has_value())
-		{
-			shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
-			if (!shipKey.has_value())
-			{
-				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", shipKey.value_or("(null)"), [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
-			}
-		}
-	}
-	else
-	{
-		shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
-		if (!shipKey.has_value())
-		{
-			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
-			return nil;
-		}
-	}
-
-	eqRole = [OOEquipmentType cxx_getMissileRegistryRoleForShip:*shipKey];	// eqRole != role for generic missiles.
-
-	if (!eqRole.has_value())
-	{
-		missile = [UNIVERSE cxx_newShipWithName:*shipKey];
-		if (!missile)
-		{
-			if (isRandomMissile)
-				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", *shipKey, [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
-			else
-				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
-
-			[OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
-			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
-			else return nil;
-		}
-
-		if(isRandomMissile)
-		{
-			for (const std::string &value : [[missile roleSet] roles])
-			{
-				role = value;
-				missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
-				// ensure that we have a missile or mine
-				if ([missileType isMissileOrMine]) break;
-			}
-
-			if (![missileType isMissileOrMine])
-			{
-				role = *shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
-			}
-		}
-
-		missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
-
-		if (!missileType)
-		{
-			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", (isRandomMissile ? "random missile" : "missile_role"), role, [self cxx_name].value_or("(null)"), "equipment", " Enabling compatibility mode.");
-			missileType = [self generateMissileEquipmentTypeFrom:role];
-		}
-
-		[OOEquipmentType cxx_setMissileRegistryRole:role forShip:*shipKey];
-		[missile release];
-	}
-	else
-	{
-		if (eqRole->empty())
-		{
-			// wrong ship definition, already written to the log in a previous call.
-			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
-			return nil;
-		}
-		missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqRole];
-	}
-
-	return missileType;
-}
-
-
-- (OOEquipmentType *) selectMissile
-{
-	OOEquipmentType		*missileType = nil;
-	std::string			role;
-	double				chance = randf();
-	BOOL				thargoidMissile = NO;
-
-	if ([self isThargoid])
-	{
-		if (_cxxShip->_missileRole.has_value()) missileType = [self verifiedMissileTypeFromRole:*_cxxShip->_missileRole];
-		if (missileType == nil) {
-			_cxxShip->_missileRole = "EQ_THARGON";	// no valid missile_role defined, use thargoid fallback from now on.
-			missileType = [self verifiedMissileTypeFromRole:*_cxxShip->_missileRole];
-		}
-	}
-	else
-	{
-		// All other ships: random role 10% of the cases when auto weapons is set, if a missile_role is defined.
-		// Without auto weapons, never random.
-		float randomSelectionChance = chance;
-		if(![self hasAutoWeapons])  randomSelectionChance = 0.0f;
-		if (randomSelectionChance < 0.9f && _cxxShip->_missileRole.has_value())
-		{
-			missileType = [self verifiedMissileTypeFromRole:*_cxxShip->_missileRole];
-		}
-
-		if (missileType == nil)	// the random 10% , or no valid missile_role defined
-		{
-			if (chance < 0.9f && _cxxShip->_missileRole.has_value())	// no valid missile_role defined?
-			{
-				_cxxShip->_missileRole = std::nullopt;	// use generic ship fallback from now on.
-			}
-
-			// assign random missiles 20% of the time without missile_role (or 10% with valid missile_role)
-			if (chance > 0.8f) role = "missile";
-			// otherwise use the standard role
-			else role = "EQ_MISSILE";
-
-			missileType = [self verifiedMissileTypeFromRole:role];
-		}
-	}
-
-	if (missileType == nil) OO_LOG_ERR("ship.setUp.missiles", "could not resolve missile / mine type for ship \"{}\". Original missile role:\"{}\".", [self cxx_name].value_or("(null)"), _cxxShip->_missileRole.value_or("(null)"));
-
-	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
-	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
-
-	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
-	{
-		return missileType;
-	}
-	else
-	{
-		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", [missileType cxx_identifier].value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
-		return nil;
-	}
-}
-
-
-- (void) removeAllEquipment
-{
-	_cxxShip->_equipment.clear();
-}
-
-
-- (OOCreditsQuantity) removeMissiles
-{
-	_cxxShip->missiles = 0;
-	return 0;
-}
-
-
-- (NSUInteger) parcelCount
-{
-	return 0;
-}
-
-
-- (NSUInteger) passengerCount
-{
-	return 0;
-}
-
-
-- (NSUInteger) passengerCapacity
-{
-	return 0;
-}
-
-
-- (NSUInteger) missileCount
-{
-	return _cxxShip->missiles;
-}
-
-
-- (NSUInteger) missileCapacity
-{
-	return _cxxShip->max_missiles;
-}
-
-
-- (NSUInteger) extraCargo
-{
-	return _cxxShip->extra_cargo;
-}
-
-
-/* This is used for e.g. displaying the HUD icon */
-- (BOOL) hasScoop
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"] || [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
-}
-
-
-- (BOOL) hasFuelScoop
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"];
-}
-
-
-/* No such core equipment item, but EQ_FUEL_SCOOPS provides it */
-- (BOOL) hasCargoScoop
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
-}
-
-
-- (BOOL) hasECM
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_ECM"];
-}
-
-
-- (BOOL) hasCloakingDevice
-{
-	/* TODO: Checks above stop this being 'providing'. */
-	return [self hasEquipmentItem:oo::PList("EQ_CLOAKING_DEVICE")];
-}
-
-
-- (BOOL) hasMilitaryScannerFilter
-{
-#if USEMASC
-	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_SCANNER_FILTER"];
-#else
-	return NO;
-#endif
-}
-
-
-- (BOOL) hasMilitaryJammer
-{
-#if USEMASC
-	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_JAMMER"];
-#else
-	return NO;
-#endif
-}
-
-
-- (BOOL) hasExpandedCargoBay
-{
-	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:oo::PList("EQ_CARGO_BAY")];
-}
-
-
-- (BOOL) hasShieldBooster
-{
-	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:oo::PList("EQ_SHIELD_BOOSTER")];
-}
-
-
-- (BOOL) hasMilitaryShieldEnhancer
-{
-	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:oo::PList("EQ_NAVAL_SHIELD_BOOSTER")];
-}
-
-
-- (BOOL) hasHeatShield
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_HEAT_SHIELD"];
-}
-
-
-- (BOOL) hasFuelInjection
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_INJECTION"];
-}
-
-
-- (BOOL) hasCascadeMine
-{
-	/* TODO: this could be providing since theoretically OXP
-	 * deployable mines could also do cascade effects, but there are
-	 * probably better ways to manage OXP pylon AI */
-	return [self hasEquipmentItem:oo::PList("EQ_QC_MINE") includeWeapons:YES whileLoading:NO];
-}
-
-
-- (BOOL) hasEscapePod
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"];
-}
-
-
-- (BOOL) hasDockingComputer
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_DOCK_COMP"];
-}
-
-
-- (BOOL) hasGalacticHyperdrive
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"];
-}
-
-
-- (float) shieldBoostFactor
-{
-	float boostFactor = 1.0f;
-	if ([self hasShieldBooster])  boostFactor += 1.0f;
-	if ([self hasMilitaryShieldEnhancer])  boostFactor += 1.0f;
-	
-	return boostFactor;
-}
-
-
-/* These next three are never called as of 12/12/2014, as NPCs don't
- * have shields and PlayerEntity overrides these. */
-- (float) maxForwardShieldLevel
-{
-	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
-}
-
-
-- (float) maxAftShieldLevel
-{
-	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
-}
-
-
-- (float) shieldRechargeRate
-{
-	return [self hasMilitaryShieldEnhancer] ? 3.0f : 2.0f;
-}
-
-
-- (double) maxHyperspaceDistance
-{
-	return MAX_JUMP_RANGE;
-}
-
 - (float) afterburnerFactor
 {
 	return _cxxShip->afterburner_speed_factor;
@@ -15059,6 +14610,487 @@ std::vector<std::string> ShipEntity::equipmentKeys()
 NSUInteger ShipEntity::equipmentCount()
 {
 	return _equipment.size();
+}
+
+
+}	// namespace cxx
+
+
+// Slice 10 of docs/phases/3-slices/ShipEntity.md (bead oo-wvcs2): equipment removal, missile
+// selection, capacities and has-equipment predicates, shields. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// "" (a former nil) matches no equipment key.
+	std::string			equipmentTypeCheckKey = equipmentKey;
+	const std::string	lcEquipmentKey = oo::str::lowercase(equipmentKey);
+	// determine the equipment type and make sure it works also in the case of damaged equipment
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
+	{
+		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
+	}
+	::OOEquipmentType *eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentTypeCheckKey];
+	if (eqType == nil)  return;
+
+	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
+	{
+		[self removeExternalStore:eqType];
+	}
+	else
+	{
+		if (std::ranges::find(_equipment, equipmentKey) != _equipment.end())
+		{
+			if (equipmentKey != "EQ_PASSENGER_BERTH")
+			{
+				equipment_weight -= [eqType requiredCargoSpace]; // all other cases;
+			}
+						
+			if (equipmentKey == "EQ_CLOAKING_DEVICE")
+			{
+				if ([self isCloaked])  [self setCloaked:NO];
+			}
+
+			if (!isPlayer)
+			{
+				if(equipmentKey == "EQ_SHIELD_BOOSTER")
+				{
+					maxEnergy -= 256.0f;
+					if (maxEnergy < energy) energy = maxEnergy;
+				}
+				else if(equipmentKey == "EQ_SHIELD_ENHANCER")
+				{
+					maxEnergy -= 256.0f;
+					energy_recharge_rate /= 1.5;
+					if (maxEnergy < energy) energy = maxEnergy;
+				}
+				else if (equipmentKey == "EQ_CARGO_BAY")
+				{
+					max_cargo -= extra_cargo;
+				}
+			}
+		}
+
+		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && ![eqType canCarryMultiple])
+		{
+			const std::string damagedKey = equipmentKey + "_DAMAGED";
+			const auto damaged = std::ranges::find(_equipment, damagedKey);
+			if (damaged != _equipment.end())
+			{
+				// remove damaged counterpart (the first occurrence, as -indexOfObject: found it)
+				_equipment.erase(damaged);
+				equipment_weight -= [eqType requiredCargoSpace];
+			}
+		}
+		const auto equipped = std::ranges::find(_equipment, equipmentKey);
+		if (equipped != _equipment.end())
+		{
+			_equipment.erase(equipped);
+		}
+		// this event must come after the item is actually removed
+		[self cxx_doScriptEvent:OOJSID("equipmentRemoved") withPListArguments:{ oo::PList(equipmentKey) }];
+		
+		// if all docking computers are damaged while active
+		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
+		{
+			[(PlayerEntity *)self disengageAutopilot];
+		}
+
+
+		if (_equipment.empty())  [self removeAllEquipment];
+	}
+}
+
+
+bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
+{
+	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
+	const std::optional<std::string>	identifier = [eqType cxx_identifier];
+	unsigned	i;
+
+	for (i = 0; i < missiles; i++)
+	{
+		if (identifier.has_value() && [missile_list[i] cxx_identifier] == identifier)
+		{
+			// now 'delete' [i] by compacting the array
+			while ( ++i < missiles ) missile_list[i - 1] = missile_list[i];
+			
+			missiles--;
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+::OOEquipmentType *ShipEntity::verifiedMissileTypeFromRole(const std::string &requestedRole)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string			role = requestedRole;
+	std::optional<std::string> eqRole;
+	std::optional<std::string> shipKey;
+	::ShipEntity			*missile = nil;
+	::OOEquipmentType		*missileType = nil;
+	BOOL				isRandomMissile = role == "missile";
+
+	if (isRandomMissile)
+	{
+		while (!shipKey.has_value())
+		{
+			shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
+			if (!shipKey.has_value())
+			{
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", shipKey.value_or("(null)"), [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
+			}
+		}
+	}
+	else
+	{
+		shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
+		if (!shipKey.has_value())
+		{
+			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
+			return nil;
+		}
+	}
+
+	eqRole = [::OOEquipmentType cxx_getMissileRegistryRoleForShip:*shipKey];	// eqRole != role for generic missiles.
+
+	if (!eqRole.has_value())
+	{
+		missile = [UNIVERSE cxx_newShipWithName:*shipKey];
+		if (!missile)
+		{
+			if (isRandomMissile)
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", *shipKey, [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
+			else
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
+
+			[::OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
+			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
+			else return nil;
+		}
+
+		if(isRandomMissile)
+		{
+			for (const std::string &value : [[missile roleSet] roles])
+			{
+				role = value;
+				missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+				// ensure that we have a missile or mine
+				if ([missileType isMissileOrMine]) break;
+			}
+
+			if (![missileType isMissileOrMine])
+			{
+				role = *shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
+			}
+		}
+
+		missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+
+		if (!missileType)
+		{
+			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", (isRandomMissile ? "random missile" : "missile_role"), role, [self cxx_name].value_or("(null)"), "equipment", " Enabling compatibility mode.");
+			missileType = [self generateMissileEquipmentTypeFrom:role];
+		}
+
+		[::OOEquipmentType cxx_setMissileRegistryRole:role forShip:*shipKey];
+		[missile release];
+	}
+	else
+	{
+		if (eqRole->empty())
+		{
+			// wrong ship definition, already written to the log in a previous call.
+			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
+			return nil;
+		}
+		missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqRole];
+	}
+
+	return missileType;
+}
+
+
+::OOEquipmentType *ShipEntity::selectMissile()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOEquipmentType		*missileType = nil;
+	std::string			role;
+	double				chance = randf();
+	BOOL				thargoidMissile = NO;
+
+	if ([self isThargoid])
+	{
+		if (_missileRole.has_value()) missileType = [self verifiedMissileTypeFromRole:*_missileRole];
+		if (missileType == nil) {
+			_missileRole = "EQ_THARGON";	// no valid missile_role defined, use thargoid fallback from now on.
+			missileType = [self verifiedMissileTypeFromRole:*_missileRole];
+		}
+	}
+	else
+	{
+		// All other ships: random role 10% of the cases when auto weapons is set, if a missile_role is defined.
+		// Without auto weapons, never random.
+		float randomSelectionChance = chance;
+		if(![self hasAutoWeapons])  randomSelectionChance = 0.0f;
+		if (randomSelectionChance < 0.9f && _missileRole.has_value())
+		{
+			missileType = [self verifiedMissileTypeFromRole:*_missileRole];
+		}
+
+		if (missileType == nil)	// the random 10% , or no valid missile_role defined
+		{
+			if (chance < 0.9f && _missileRole.has_value())	// no valid missile_role defined?
+			{
+				_missileRole = std::nullopt;	// use generic ship fallback from now on.
+			}
+
+			// assign random missiles 20% of the time without missile_role (or 10% with valid missile_role)
+			if (chance > 0.8f) role = "missile";
+			// otherwise use the standard role
+			else role = "EQ_MISSILE";
+
+			missileType = [self verifiedMissileTypeFromRole:role];
+		}
+	}
+
+	if (missileType == nil) OO_LOG_ERR("ship.setUp.missiles", "could not resolve missile / mine type for ship \"{}\". Original missile role:\"{}\".", [self cxx_name].value_or("(null)"), _missileRole.value_or("(null)"));
+
+	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
+	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
+
+	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
+	{
+		return missileType;
+	}
+	else
+	{
+		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", [missileType cxx_identifier].value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
+		return nil;
+	}
+}
+
+
+void ShipEntity::removeAllEquipment()
+{
+	_equipment.clear();
+}
+
+
+OOCreditsQuantity ShipEntity::removeMissiles()
+{
+	missiles = 0;
+	return 0;
+}
+
+
+NSUInteger ShipEntity::parcelCount()
+{
+	return 0;
+}
+
+
+NSUInteger ShipEntity::passengerCount()
+{
+	return 0;
+}
+
+
+NSUInteger ShipEntity::passengerCapacity()
+{
+	return 0;
+}
+
+
+NSUInteger ShipEntity::missileCount()
+{
+	return missiles;
+}
+
+
+NSUInteger ShipEntity::missileCapacity()
+{
+	return max_missiles;
+}
+
+
+NSUInteger ShipEntity::extraCargo()
+{
+	return extra_cargo;
+}
+
+
+/* This is used for e.g. displaying the HUD icon */
+bool ShipEntity::hasScoop()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"] || [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
+}
+
+
+bool ShipEntity::hasFuelScoop()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"];
+}
+
+
+/* No such core equipment item, but EQ_FUEL_SCOOPS provides it */
+bool ShipEntity::hasCargoScoop()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
+}
+
+
+bool ShipEntity::hasECM()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_ECM"];
+}
+
+
+bool ShipEntity::hasCloakingDevice()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* TODO: Checks above stop this being 'providing'. */
+	return [self hasEquipmentItem:oo::PList("EQ_CLOAKING_DEVICE")];
+}
+
+
+bool ShipEntity::hasMilitaryScannerFilter()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+#if USEMASC
+	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_SCANNER_FILTER"];
+#else
+	return NO;
+#endif
+}
+
+
+bool ShipEntity::hasMilitaryJammer()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+#if USEMASC
+	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_JAMMER"];
+#else
+	return NO;
+#endif
+}
+
+
+bool ShipEntity::hasExpandedCargoBay()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* Not 'providing' - controlled through scripts */
+	return [self hasEquipmentItem:oo::PList("EQ_CARGO_BAY")];
+}
+
+
+bool ShipEntity::hasShieldBooster()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* Not 'providing' - controlled through scripts */
+	return [self hasEquipmentItem:oo::PList("EQ_SHIELD_BOOSTER")];
+}
+
+
+bool ShipEntity::hasMilitaryShieldEnhancer()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* Not 'providing' - controlled through scripts */
+	return [self hasEquipmentItem:oo::PList("EQ_NAVAL_SHIELD_BOOSTER")];
+}
+
+
+bool ShipEntity::hasHeatShield()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_HEAT_SHIELD"];
+}
+
+
+bool ShipEntity::hasFuelInjection()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_INJECTION"];
+}
+
+
+bool ShipEntity::hasCascadeMine()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* TODO: this could be providing since theoretically OXP
+	 * deployable mines could also do cascade effects, but there are
+	 * probably better ways to manage OXP pylon AI */
+	return [self hasEquipmentItem:oo::PList("EQ_QC_MINE") includeWeapons:YES whileLoading:NO];
+}
+
+
+bool ShipEntity::hasEscapePod()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"];
+}
+
+
+bool ShipEntity::hasDockingComputer()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_DOCK_COMP"];
+}
+
+
+bool ShipEntity::hasGalacticHyperdrive()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"];
+}
+
+
+float ShipEntity::shieldBoostFactor()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	float boostFactor = 1.0f;
+	if ([self hasShieldBooster])  boostFactor += 1.0f;
+	if ([self hasMilitaryShieldEnhancer])  boostFactor += 1.0f;
+	
+	return boostFactor;
+}
+
+
+/* These next three are never called as of 12/12/2014, as NPCs don't
+ * have shields and PlayerEntity overrides these. */
+float ShipEntity::maxForwardShieldLevel()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
+}
+
+
+float ShipEntity::maxAftShieldLevel()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
+}
+
+
+float ShipEntity::shieldRechargeRate()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self hasMilitaryShieldEnhancer] ? 3.0f : 2.0f;
+}
+
+
+double ShipEntity::maxHyperspaceDistance()
+{
+	return MAX_JUMP_RANGE;
 }
 
 
