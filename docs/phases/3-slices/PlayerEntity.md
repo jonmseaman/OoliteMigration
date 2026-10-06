@@ -146,8 +146,9 @@ Slices 3, 4, 7, 19, 20 and 21 override nothing of the ship's.
   slice 3, oo-wc9o3, and waits on it), and the whole-file beads `PlayerEntityScriptMethods.mm`
   (oo-50zg), `PlayerEntitySound.mm` (oo-xowh) and `PlayerEntityStickMapper.mm` (oo-ibm8).
   `PlayerEntityControls.mm` (5,684 lines) is still one frontier bead, oo-e1d, now after slice 1;
-  its own pre-split is a follow-up bead. `PlayerEntityStickProfile.mm` is a separate class,
-  already converted (oo-movn).
+  its own pre-split is oo-9ht.157. `PlayerEntityStickProfile.mm`'s `StickProfileScreen` class is
+  converted (oo-movn), but its `PlayerEntity (StickProfile)` category (three methods) is not:
+  oo-9ht.156, after slice 1.
 - **The façade-deletion beads** that waited on oo-a70 wait instead on slice 1 and the slices (and
   category beads) whose units name the façade's class, an accessor or member typed with it, or a
   selector only it declares; the list is in oo-a70's notes. Beads that need the Objective-C
@@ -155,8 +156,8 @@ Slices 3, 4, 7, 19, 20 and 21 override nothing of the ship's.
   reaching it) and the phase review and gate keep waiting on the umbrella.
 - **oo-dxxt** (`OOJSWorldScripts`) needs `cxx_worldScriptsByName` / `cxx_worldScriptNames` as C++:
   slice 27.
-- **oo-a70 is the umbrella.** It depends on the 28 slices, the category beads above, oo-e1d and
-  this pre-split. Its acceptance is every slice's `--slice-done` (this plan and the four category
+- **oo-a70 is the umbrella.** It depends on the 28 slices, the category beads above (oo-9ht.156
+  and oo-e1d among them) and this pre-split. Its acceptance is every slice's `--slice-done` (this plan and the four category
   plans), no `@implementation` left in `PlayerEntity*.mm`, and the guardrails.
 
 ```slice-plan
