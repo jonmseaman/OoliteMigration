@@ -2917,7 +2917,7 @@ void cxx::HeadUpDisplay::drawMissileDisplay(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawStatusLight(const oo::PList &info)
+void cxx::HeadUpDisplay::drawStatusLight(const oo::PList & /*info*/)
 {
 	int					x, y;
 	NSSize				siz;
@@ -2973,7 +2973,7 @@ void cxx::HeadUpDisplay::drawStatusLight(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawDirectionCue(const oo::PList &info)
+void cxx::HeadUpDisplay::drawDirectionCue(const oo::PList & /*info*/)
 {
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
@@ -3350,7 +3350,7 @@ void cxx::HeadUpDisplay::drawScoopStatus(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList &info)
+void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList & /*info*/)
 {
 	GLfloat				x, y;
 	NSSize				siz;
@@ -3402,7 +3402,7 @@ void cxx::HeadUpDisplay::drawStickSensitivityIndicator(const oo::PList &info)
 }
 
 
-void cxx::HeadUpDisplay::drawTrumbles(const oo::PList &info)
+void cxx::HeadUpDisplay::drawTrumbles(const oo::PList & /*info*/)
 {
 	::OOTrumble** trumbles = [PLAYER trumbleArray];
 	NSUInteger i;
