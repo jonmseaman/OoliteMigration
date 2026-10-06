@@ -38,6 +38,11 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
+
 struct OOHUDWidget;	// HeadUpDisplay.mm
 
 @class OOColor;
@@ -240,130 +245,150 @@ enum
 };
 
 
-@class Entity, PlayerEntity, OOTextureSprite;
+@class Entity, PlayerEntity, OOTextureSprite, GuiDisplayGen;
 
 
-@interface HeadUpDisplay: OOObject
+/*	The HUD itself (Phase 3, bead oo-engam: slice 1 of docs/phases/3-slices/HeadUpDisplay.md, the
+	class shell). Its callers and the drawing of slices 2-6 are still Objective-C and reach it
+	through the facade HeadUpDisplay+ObjCBridge.h, so the members they reach, and the state the
+	drawing reads and writes, are public under "Internal" (ADR-0056 amendment oo-pni4 item 1).
+	Getters named after their state are get + the name (amendment oo-862e item 1).
+*/
+namespace cxx {
+
+class OOColor;
+
+class HeadUpDisplay : public oo::RefCounted
 {
-@private
+public:
+	HeadUpDisplay();
+	~HeadUpDisplay() override;
+
+	// -cxx_initWithDictionary:inFile:, run by the facade once it is the HUD's peer (it hands the
+	// HUD to the drawing, which is still Objective-C).
+	void initWithDictionary(const oo::PList &hudinfo, const std::optional<std::string> &hudFileName);
+
+	void resetGuis(const oo::PList &info);
+
+	std::optional<std::string> getHudName();
+	void setHudName(const std::optional<std::string> &newHudName);	// nullopt is ignored, as nil was
+
+	GLfloat scannerZoom();
+	void setScannerZoom(GLfloat value);
+
+	GLfloat getOverallAlpha();
+	void setOverallAlpha(GLfloat newAlphaValue);
+
+	bool getReticleTargetSensitive();
+	void setReticleTargetSensitive(bool newReticleTargetSensitiveValue);
+	oo::PList *getPropertiesReticleTargetSensitive();	// the live dictionary
+
+	bool isHidden();
+	void setHidden(bool newValue);
+
+	bool getAllowBigGui();
+
+	bool hasHidden(const std::optional<std::string> &selectorName);	// nullopt (was nil): false
+	void setHiddenSelector(const std::string &selectorName, bool hide);
+	void clearHiddenSelectors();
+
+	bool isCompassActive();
+	void setCompassActive(bool newValue);
+
+	bool isUpdating();
+	void setDeferredHudName(const std::optional<std::string> &newDeferredHudName);
+	std::optional<std::string> getDeferredHudName();
+	std::optional<std::string> getCrosshairDefinition();
+
+	// Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
+	void addLegend(const oo::PList &info);
+	void addDial(const oo::PList &info);
+	void addMFD(const oo::PList &info);
+
+	NSUInteger mfdCount();
+
+	void refreshLastTransmitter();
+
+	void setLineWidth(GLfloat value);
+	GLfloat getLineWidth();
+
+	bool minimalisticScanner();
+	void setMinimalisticScanner(bool newValue);
+
+	static Vector nonlinearScannerScale(Vector V, GLfloat zoom, double scale);
+	bool nonlinearScanner();
+	void setNonlinearScanner(bool newValue);
+
+	bool scannerUltraZoom();
+	void setScannerUltraZoom(bool newValue);
+
+	oo::Ref<OOColor> reticleColorForIndex(NSUInteger idx);
+	bool setReticleColorForIndex(NSUInteger idx, OOColor *newColor);
+
+	// Internal: what the drawing of slices 2-6 (Objective-C on the facade) sends.
+	bool checkPlayerInFlight();
+	bool checkPlayerInSystemFlight();
+
+	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
 	std::vector<OOHUDWidget>	legendArray;
 	std::vector<OOHUDWidget>	dialArray;
 	std::vector<OOHUDWidget>	mfdArray;
-	
+
 	// zoom level
-	GLfloat				scanner_zoom;
-	
+	GLfloat				scanner_zoom = {};
+
 	//where to draw it
-	GLfloat				z1;
-	GLfloat				lineWidth;
-	
+	GLfloat				z1 = {};
+	GLfloat				lineWidth = {};
+
 	std::optional<std::string>	hudName;
 	std::optional<std::string>	deferredHudName;	// Usually it will be nullopt. If engaged, then it means that we have a deferred HUD waiting to be drawn This may happen
 											// for example when a script handler attempts to switch HUD while it is being rendered. - Nikos 20110628
-	BOOL				hudUpdating;
-	
-	GLfloat				overallAlpha;
-	
-	BOOL				reticleTargetSensitive;   // TO DO: Move this into the propertiesReticleTargetSensitive structure (Getafix - 2010/08/21)
-	oo::PList			propertiesReticleTargetSensitive;	// isAccurate (bool), timeLastAccuracyProbabilityCalculation (double)
-	
-	BOOL				cloakIndicatorOnStatusLight;
-	
-	BOOL				hudHidden;
-	
-	BOOL				allowBigGui;
+	bool				hudUpdating = {};
 
-	int					last_transmitter;
+	GLfloat				overallAlpha = {};
+
+	bool				reticleTargetSensitive = {};   // TO DO: Move this into the propertiesReticleTargetSensitive structure (Getafix - 2010/08/21)
+	oo::PList			propertiesReticleTargetSensitive;	// isAccurate (bool), timeLastAccuracyProbabilityCalculation (double)
+
+	bool				cloakIndicatorOnStatusLight = {};
+
+	bool				hudHidden = {};
+
+	bool				allowBigGui = {};
+
+	int					last_transmitter = {};
 
 	std::set<std::string>	_hiddenSelectors;
-	
+
 	// Crosshairs
 	oo::Ref<OOCrosshairs>	_crosshairs;
-	OOWeaponType		_lastWeaponType;
-	GLfloat				_lastOverallAlpha;
-	BOOL				_lastWeaponsOnline;
+	OOWeaponType		_lastWeaponType = {};
+	GLfloat				_lastOverallAlpha = {};
+	bool				_lastWeaponsOnline = {};
 	oo::PList			_crosshairOverrides;	// null for none
-	OOColor				*_crosshairColor;
-	GLfloat				_crosshairScale;
-	GLfloat				_crosshairWidth;
+	oo::Ref<OOColor>	_crosshairColor;
+	GLfloat				_crosshairScale = {};
+	GLfloat				_crosshairWidth = {};
 	std::optional<std::string>	crosshairDefinition;
-	BOOL				_compassActive;
-	
-	std::vector<oo::ObjCRef<OOColor *>>	_reticleColors;
-	
+	bool				_compassActive = {};
+
+	std::vector<oo::Ref<OOColor>>	_reticleColors;
+
 	// essentially scanner without gridlines
-	BOOL			minimalistic_scanner;
-	
+	bool			minimalistic_scanner = {};
+
 	// Nonlinear scanner
-	BOOL			nonlinear_scanner;
-	BOOL			scanner_ultra_zoom;
+	bool			nonlinear_scanner = {};
+	bool			scanner_ultra_zoom = {};
 
-}
+private:
+	void resetGui(::GuiDisplayGen *gui, const oo::PList &gui_info);
+	void resetGuiPosition(::GuiDisplayGen *gui, const oo::PList &gui_info);
+};
 
-- (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName OO_RETURNS_RETAINED;
-
-- (void) cxx_resetGuis:(const oo::PList &)info;
-
-- (std::optional<std::string>) cxx_hudName;
-- (void) setHudName:(const std::optional<std::string> &)newHudName;	// nullopt is ignored, as nil was
-
-- (GLfloat) scannerZoom;
-- (void) setScannerZoom:(GLfloat)value;
-
-- (GLfloat) overallAlpha;
-- (void) setOverallAlpha:(GLfloat)newAlphaValue;
-
-- (BOOL) reticleTargetSensitive;
-- (void) setReticleTargetSensitive:(BOOL)newReticleTargetSensitiveValue;
-- (oo::PList *) propertiesReticleTargetSensitive;	// the live dictionary; nullptr for a nil receiver
-
-- (BOOL) isHidden;
-- (void) setHidden:(BOOL)newValue;
-
-- (BOOL) allowBigGui;
-
-- (BOOL) hasHidden:(const std::optional<std::string> &)selectorName;	// nullopt (was nil): NO
-- (void) cxx_setHiddenSelector:(const std::string &)selectorName hidden:(BOOL)hide;
-- (void) clearHiddenSelectors;
-
-- (BOOL) isCompassActive;
-- (void) setCompassActive:(BOOL)newValue;
-
-- (BOOL) isUpdating;
-- (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName;
-- (std::optional<std::string>) cxx_deferredHudName;
-- (std::optional<std::string>) cxx_crosshairDefinition;
-- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition;
-
-// Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
-- (void) addLegend:(const oo::PList &)info;
-- (void) addDial:(const oo::PList &)info;
-- (void) addMFD:(const oo::PList &)info;
-
-- (NSUInteger) mfdCount;
-
-- (void) renderHUD;
-
-- (void) refreshLastTransmitter;
-
-- (void) setLineWidth:(GLfloat)value;
-- (GLfloat) lineWidth;
-
-- (BOOL) minimalisticScanner;
-- (void) setMinimalisticScanner: (BOOL) newValue;
-
-+ (Vector) nonlinearScannerScale:(Vector) V Zoom:(GLfloat) zoom Scale:(double) scale;
-- (BOOL) nonlinearScanner;
-- (void) setNonlinearScanner: (BOOL)newValue;
-
-- (BOOL) scannerUltraZoom;
-- (void) setScannerUltraZoom: (BOOL)newValue;
-
-- (OOColor *) reticleColorForIndex:(NSUInteger)idx;
-- (BOOL) setReticleColorForIndex:(NSUInteger)idx toColor:(OOColor *)newColor;
-
-@end
+}	// namespace cxx
 
 
 /*
@@ -426,3 +451,8 @@ NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSiz
 #include "OOStringWidth.h"	// cxx_OOStringWidthInEm() (bead oo-9ht.72: plain header)
 
 void OOHUDResetTextEngine(void);
+
+
+// Transitional: the Objective-C facade, for the callers and the drawing that are still Objective-C.
+// Deleted, with namespace cxx above, by the bridge's deletion bead.
+#import "HeadUpDisplay+ObjCBridge.h"
