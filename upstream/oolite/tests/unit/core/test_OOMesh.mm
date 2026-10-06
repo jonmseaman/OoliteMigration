@@ -510,6 +510,39 @@ OO_TEST(geometryMembers)
 }
 
 
+// Slice 4 (bead oo-zmix), pinned before it converted: drawing on the hidden GL context, the
+// display lists it makes, and a graphics reset between draws.
+OO_TEST(rendering)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		OOMesh *smooth = Mesh("tetra2.dat", 1.0f, YES, YES);
+		OO_CHECK(mesh != nil && smooth != nil);
+		if (mesh == nil || smooth == nil)  return;
+		while (glGetError() != GL_NO_ERROR)  {}
+
+		[mesh renderOpaqueParts];	// makes the display lists
+		[mesh renderOpaqueParts];
+		[smooth renderOpaqueParts];
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+
+		// A reset deletes the display lists and rebinds the materials; the next draw remakes them.
+		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
+		[mesh renderOpaqueParts];
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+		OO_CHECK_EQ([mesh vertexCount], 4u);
+		OO_CHECK(Near([mesh collisionRadius], 10.0));
+
+		// A mutable copy draws on its own lists.
+		OOMesh *copy = [[mesh mutableCopy] autorelease];
+		[copy renderOpaqueParts];
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+	}
+}
+
+
 OO_TEST(cleanUp)
 {
 	stdfs::current_path(stdfs::temp_directory_path());
