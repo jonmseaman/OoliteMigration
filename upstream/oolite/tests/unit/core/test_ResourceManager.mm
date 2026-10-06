@@ -130,4 +130,27 @@ OO_TEST(externalPathsAreTheSearchPathsWithoutAScan)
 }
 
 
+OO_TEST(cxxAPIAnswersTheSame)
+{
+	@autoreleasepool
+	{
+		// The facade forwards each class method to the static member of the same name.
+		OO_CHECK(cxx::ResourceManager::builtInPath() == [ResourceManager cxx_builtInPath]);
+		OO_CHECK(cxx::ResourceManager::rootPaths() == [ResourceManager cxx_rootPaths]);
+		OO_CHECK(cxx::ResourceManager::userRootPaths() == [ResourceManager cxx_userRootPaths]);
+		OO_CHECK(cxx::ResourceManager::maskUserName("jon", "/home/jon") == std::optional<std::string>("/home/*"));
+		OO_CHECK(cxx::ResourceManager::useAddOns() == std::nullopt);
+		OO_CHECK(cxx::ResourceManager::errors() == std::nullopt);
+		OO_CHECK(cxx::ResourceManager::manifestForIdentifier("org.test.none").isNull());
+		OO_CHECK(cxx::ResourceManager::OXPsWithMessagesFound().empty());
+		cxx::ResourceManager::addExternalPath("ext/cxx.oxp");
+		OO_CHECK([ResourceManager cxx_paths] == std::vector<std::string>{ "ext/cxx.oxp" });
+		OO_CHECK(cxx::ResourceManager::paths() == std::vector<std::string>{ "ext/cxx.oxp" });
+		OO_CHECK(cxx::ResourceManager::pathsWithAddOns() == std::vector<std::string>{ "ext/cxx.oxp" });
+		cxx::ResourceManager::reset();
+		cxx::ResourceManager::clearCaches();
+	}
+}
+
+
 OO_TEST_MAIN()
