@@ -1068,4 +1068,32 @@ OO_TEST(behavioursWithoutATarget)
 }
 
 
+// --- Slice 12: behaviours: attack target, broadside, close with target (bead oo-0akes) --------------
+
+// With no target the attack behaviours note the lost target and go idle.
+OO_TEST(attackBehavioursWithoutATarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"attacker" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
+		[ship behaviour_attack_broadside:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+		[ship behaviour_attack_broadside_left:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+		[ship behaviour_attack_broadside_right:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
+		[ship behaviour_close_to_broadside_range:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
+		[ship behaviour_close_with_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
 OO_TEST_MAIN()

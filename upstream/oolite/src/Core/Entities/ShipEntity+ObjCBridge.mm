@@ -493,3 +493,16 @@ DESTROY(_cxxShip->laser_color);
 - (void) behaviour_evasive_action:(double)delta_t	{ _cxxShip->behaviour_evasive_action(delta_t); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice12)
+
+- (void) behaviour_attack_target:(double)delta_t	{ _cxxShip->behaviour_attack_target(delta_t); }
+- (void) behaviour_attack_broadside:(double)delta_t	{ _cxxShip->behaviour_attack_broadside(delta_t); }
+- (void) behaviour_attack_broadside_left:(double)delta_t	{ _cxxShip->behaviour_attack_broadside_left(delta_t); }
+- (void) behaviour_attack_broadside_right:(double)delta_t	{ _cxxShip->behaviour_attack_broadside_right(delta_t); }
+- (void) behaviour_attack_broadside_target:(double)delta_t leftside:(BOOL)leftside	{ _cxxShip->behaviour_attack_broadside_target(delta_t, leftside); }
+- (void) behaviour_close_to_broadside_range:(double)delta_t	{ _cxxShip->behaviour_close_to_broadside_range(delta_t); }
+- (void) behaviour_close_with_target:(double)delta_t	{ _cxxShip->behaviour_close_with_target(delta_t); }
+
+@end

@@ -417,6 +417,15 @@ public:
 	void behaviour_attack_slow_dogfight(double delta_t);
 	void behaviour_evasive_action(double delta_t);
 
+	// Slice 12: behaviours: attack target, broadside, close with target.
+	void behaviour_attack_target(double delta_t);
+	void behaviour_attack_broadside(double delta_t);
+	void behaviour_attack_broadside_left(double delta_t);
+	void behaviour_attack_broadside_right(double delta_t);
+	void behaviour_attack_broadside_target(double delta_t, bool leftside);
+	void behaviour_close_to_broadside_range(double delta_t);
+	void behaviour_close_with_target(double delta_t);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
