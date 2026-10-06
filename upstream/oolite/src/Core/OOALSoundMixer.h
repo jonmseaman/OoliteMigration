@@ -7,9 +7,8 @@ implementation detail. Do not use it directly; use an OOSoundSource to play an
 OOSound.
 
 C++20 since bead oo-6g4z (proposed ADR-0056, the Audio module: amendment oo-2en; a singleton:
-amendment oo-r7m0). The class is cxx::OOSoundMixer while OOALSoundMixer+ObjCBridge.h, imported at
-the end of this header, keeps the Objective-C OOSoundMixer that the sound sources, the root sound
-and the OpenAL controller message; the bridge's deletion bead moves it out of namespace cxx.
+amendment oo-r7m0). Its Objective-C facade was deleted by bead oo-9ht.87: the sound sources, the
+root sound and the OpenAL controller call OOSoundMixer::sharedMixer(), null-guarded.
 
 OOALSound - OpenAL sound implementation for Oolite.
 Copyright (C) 2006-2013 Jens Ayton
@@ -51,8 +50,6 @@ enum
 };
 
 
-namespace cxx {
-
 class OOSoundMixer : public oo::RefCounted
 {
 public:
@@ -82,12 +79,5 @@ private:
 	// kept: -Wunused-private-field.)
 
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOSoundMixer, for the sound sources, the root sound and the OpenAL
-// controller. Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOALSoundMixer+ObjCBridge.h"
 
 #endif	// OOALSOUNDMIXER_H

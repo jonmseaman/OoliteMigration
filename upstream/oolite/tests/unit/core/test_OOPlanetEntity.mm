@@ -22,6 +22,8 @@
 */
 
 #import "OOPlanetEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSPlanet.h"
 #import "OOColor.h"
 #import "OOTexture.h"
 #import "OODescription.h"
@@ -389,6 +391,25 @@ OO_TEST(facade)
 		OO_CHECK(oo::ToObjC(oo::ToCxx(moon)) == moon);
 		OOPlanetEntity *mini = [moon miniatureVersion];
 		OO_CHECK([mini class] == [OOPlanetEntity class] && dynamic_cast<cxx::OOPlanetEntity *>(oo::ToCxx(mini)) != nullptr);
+	}
+}
+
+
+// The binding's category, which the facade carries since bead oo-9ht.92: what the engine asks a
+// OOPlanetEntity for by selector is what OOJSPlanet.mm answers.
+OO_TEST(jsExtensions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		OOPlanetEntity *moon = Planet(NO);
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[moon getJSClass:&jsClass andPrototype:&prototype];
+		OOJSPlanetGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([moon cxx_oo_jsClassName] == std::optional<std::string>("Moon"));
+		OO_CHECK([moon isVisibleToScripts] == YES);
 	}
 }
 
