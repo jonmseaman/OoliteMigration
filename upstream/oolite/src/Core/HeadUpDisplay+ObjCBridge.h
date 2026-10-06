@@ -2,30 +2,27 @@
 
 HeadUpDisplay+ObjCBridge.h
 
-TRANSITIONAL (proposed ADR-0056, bead oo-engam): the Objective-C HeadUpDisplay, a facade over the
-C++ cxx::HeadUpDisplay (HeadUpDisplay.h), for the code that is not converted yet: the HUD's
-callers (the player, the universe, the scripting bindings: about 30 files reach it through
-[PLAYER hud]) and the drawing of slices 2-6 of HeadUpDisplay.mm
-(docs/phases/3-slices/HeadUpDisplay.md), which stays Objective-C, as the Private category below,
-until each slice's own bead. Its interface is the old one, copied exactly (same selectors, same
-types, same root), except that -renderHUD and -cxx_setCrosshairDefinition:, which slice 2 owns, are
-declared in the Private category that implements them, with the drawing methods the .mm declared
-in it. Each method of the class forwards to its C++ member. Imported as the last line of
-HeadUpDisplay.h; do not import it directly.
+TRANSITIONAL (proposed ADR-0056, beads oo-engam .. oo-0tx6c, the six slices of
+docs/phases/3-slices/HeadUpDisplay.md): the Objective-C HeadUpDisplay, a facade over the C++
+cxx::HeadUpDisplay (HeadUpDisplay.h), for the HUD's callers that are not converted yet (the
+player, the universe, the scripting bindings: about 30 files reach it through [PLAYER hud]). Its
+interface is the old one, copied exactly (same selectors, same types, same root). Each method
+forwards to its C++ member. Imported as the last line of HeadUpDisplay.h; do not import it
+directly.
 
 	a caller that is                       holds / passes                       crosses with
 	-------------------------------------  -----------------------------------  ------------------------
 	still Objective-C                      HeadUpDisplay *                      (nothing)
-	  a drawing method (slices 2-6)        HeadUpDisplay * (self)               oo::ToCxx(self) for the state
 	converted (C++)                        oo::Ref<cxx::HeadUpDisplay>          oo::ToObjC(hud)
 
-The dials are called by name on the facade (OOCallByName, ADR-0055 item 5), so the facade keeps
-answering every dial selector until it is deleted. The functions at the end are the one-line
-sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment
-oo-9ht.139); each goes with its class's conversion.
+The dials are called by name on the facade (OOCallByName, ADR-0055 item 5), so the facade answers
+every dial selector (the OODials category, one forwarder each) until it is deleted. Below it are
+the beacon code icon's facade and protocol, and the one-line sends of converted free functions to
+classes that are still Objective-C (ADR-0056 amendment oo-9ht.139); each send goes with its
+class's conversion.
 
 Never add to this file except a forwarder or a send of that kind. Deleted, with namespace cxx in
-HeadUpDisplay.h, by its deletion bead once the callers and the drawing are converted.
+HeadUpDisplay.h, by its deletion bead (oo-mwd58) once the callers are converted.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -54,7 +51,37 @@ MA 02110-1301, USA.
 #import "oofnd/objc/OOObject.h"
 
 
-@class OOColor, GuiDisplayGen;
+#import "WormholeEntity.h"	// WORMHOLE_SCANINFO (a bridge function below)
+
+@class OOColor, GuiDisplayGen, MyOpenGLView, OOWeakReference, OOVisualEffectEntity;
+
+
+// Moved verbatim from HeadUpDisplay.h (bead oo-2p1ug, amendment oo-jpd8 item 1): adopted by the
+// facades below and by OOPolygonSprite's category, held by the entities' beacon drawables.
+/*
+	Protocol for things that can be used as HUD compass items. Really ought
+	to grow into a general protocol for HUD elements.
+*/
+@protocol OOHUDBeaconIcon <OOObject>
+
+- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z;
+
+@end
+
+
+/*	The compass icon of a beacon whose code names no icon: the code's first character, drawn as
+	text. It replaces the string class's OOHUDBeaconIcon category (bead oo-f9rf) the entities' beacon
+	drawables used; the drawing is the category's.
+*/
+@interface OOHUDBeaconCodeIcon: OOObject <OOHUDBeaconIcon>
+{
+@private
+	oo::Ref<cxx::OOHUDBeaconCodeIcon>	_cxxIcon;
+}
+
+- (id) initWithText:(const std::string &)text;
+
+@end
 
 
 @interface HeadUpDisplay: OOObject
@@ -96,6 +123,7 @@ MA 02110-1301, USA.
 - (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName;
 - (std::optional<std::string>) cxx_deferredHudName;
 - (std::optional<std::string>) cxx_crosshairDefinition;
+- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition;
 
 // Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
 - (void) addLegend:(const oo::PList &)info;
@@ -103,6 +131,8 @@ MA 02110-1301, USA.
 - (void) addMFD:(const oo::PList &)info;
 
 - (NSUInteger) mfdCount;
+
+- (void) renderHUD;
 
 - (void) refreshLastTransmitter;
 
@@ -125,83 +155,45 @@ MA 02110-1301, USA.
 @end
 
 
-// Sent by the drawing methods (slices 2-6), which the .mm declared in its Private category.
-@interface HeadUpDisplay (OOPrivate)
+// The dials that are C++ members, called by name (ADR-0055 item 5): one forwarder each.
+@interface HeadUpDisplay (OODials)
 
-- (BOOL) checkPlayerInFlight;
-- (BOOL) checkPlayerInSystemFlight;
-
-@end
-
-
-/*	The drawing (slices 2-6 of HeadUpDisplay.mm, still Objective-C), implemented in HeadUpDisplay.mm.
-	The dials are called by name (ADR-0055 item 5). The .mm declared -drawPrimedEquipmentText:,
-	which nothing implemented or sent; the dial it draws is -drawPrimedEquipment:.
-*/
-@interface HeadUpDisplay (Private)
-
-- (void) renderHUD;
-- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition;
-
-- (void) drawCrosshairs;
-- (void) drawLegends;
-- (void) drawDials;
-- (void) drawMFDs;
-
-- (void) drawLegend:(const oo::PList &)info;
-- (void) drawHUDItem:(const oo::PList &)info;
-
-- (void) drawScanner:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawScannerZoomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawCompass:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCompassPlanetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassStationBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassSunBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassTargetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassBeaconBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-
-- (void) drawAegis:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawSpeedBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawRollBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawPitchBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawYawBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawEnergyGauge:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawForwardShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawAftShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawFuelBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWitchspaceDestination:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCabinTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWeaponTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawAltitudeBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawMissileDisplay:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawTargetReticle:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawSecondaryTargetReticle:(const oo::PList &)info;
-- (void) drawWaypoints:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawStatusLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawDirectionCue:(const oo::PList &)info;
-- (void) drawClock:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawPrimedEquipment:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawASCTarget:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWeaponsOfflineText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index;
-- (void) drawFPSInfoCounter:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawScoopStatus:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawStickSensitivityIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomImage:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawSurroundInternal:(const oo::PList &)info color:(const GLfloat[4])color;
-- (void) drawSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawGreenSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawYellowSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawTrumbles:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (oo::PList) crosshairDefinitionForWeaponType:(OOWeaponType)weapon;	// a null PList for none
+- (void) drawSurround:(const oo::PList &)info;
+- (void) drawGreenSurround:(const oo::PList &)info;
+- (void) drawYellowSurround:(const oo::PList &)info;
+- (void) drawScanner:(const oo::PList &)info;
+- (void) drawScannerZoomIndicator:(const oo::PList &)info;
+- (void) drawCompass:(const oo::PList &)info;
+- (void) drawAegis:(const oo::PList &)info;
+- (void) drawTargetReticle:(const oo::PList &)info;
+- (void) drawWaypoints:(const oo::PList &)info;
+- (void) drawCustomBar:(const oo::PList &)info;
+- (void) drawCustomText:(const oo::PList &)info;
+- (void) drawCustomIndicator:(const oo::PList &)info;
+- (void) drawCustomLight:(const oo::PList &)info;
+- (void) drawCustomImage:(const oo::PList &)info;
+- (void) drawSpeedBar:(const oo::PList &)info;
+- (void) drawRollBar:(const oo::PList &)info;
+- (void) drawPitchBar:(const oo::PList &)info;
+- (void) drawYawBar:(const oo::PList &)info;
+- (void) drawEnergyGauge:(const oo::PList &)info;
+- (void) drawForwardShieldBar:(const oo::PList &)info;
+- (void) drawAftShieldBar:(const oo::PList &)info;
+- (void) drawFuelBar:(const oo::PList &)info;
+- (void) drawWitchspaceDestination:(const oo::PList &)info;
+- (void) drawCabinTempBar:(const oo::PList &)info;
+- (void) drawWeaponTempBar:(const oo::PList &)info;
+- (void) drawAltitudeBar:(const oo::PList &)info;
+- (void) drawMissileDisplay:(const oo::PList &)info;
+- (void) drawStatusLight:(const oo::PList &)info;
+- (void) drawClock:(const oo::PList &)info;
+- (void) drawPrimedEquipment:(const oo::PList &)info;
+- (void) drawASCTarget:(const oo::PList &)info;
+- (void) drawWeaponsOfflineText:(const oo::PList &)info;
+- (void) drawFPSInfoCounter:(const oo::PList &)info;
+- (void) drawScoopStatus:(const oo::PList &)info;
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info;
+- (void) drawTrumbles:(const oo::PList &)info;
 
 @end
 
@@ -214,12 +206,55 @@ inline HeadUpDisplay *ToObjC(const Ref<cxx::HeadUpDisplay> &hud)  { return ToObj
 // The C++ HUD behind a facade, borrowed (the facade retains it); null for nil.
 cxx::HeadUpDisplay *ToCxx(HeadUpDisplay *hud);
 
+// The same for the beacon code icon.
+OOHUDBeaconCodeIcon *ToObjC(cxx::OOHUDBeaconCodeIcon *icon);
+inline OOHUDBeaconCodeIcon *ToObjC(const Ref<cxx::OOHUDBeaconCodeIcon> &icon)  { return ToObjC(icon.get()); }
+cxx::OOHUDBeaconCodeIcon *ToCxx(OOHUDBeaconCodeIcon *icon);
+
 }	// namespace oo
 
 
-/*	Sends of converted code to classes that are still Objective-C (ADR-0056 amendment oo-9ht.139),
-	one function per send, the body the send verbatim. None yet: slice 1's members keep their sends
-	(they are members, amendment oo-ppc item 4); the free functions of slices 2-6 add theirs here.
+/*	Sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment
+	oo-9ht.139), one function per send, the body the send verbatim. Members keep their sends
+	(amendment oo-ppc item 4). Each goes with its class's conversion.
 */
+// +[ResourceManager cxx_dictionaryFromFilesNamed:inFolder:andMerge:] (InitTextEngine()).
+oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
+// -[[UNIVERSE gui] cxx_setGLColorFromSetting:defaultValue:alpha:] (OODrawPlanetInfo()).
+void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha);
+// [UNIVERSE gameView], -[MyOpenGLView fov:] and -[MyOpenGLView viewSize] (drawScannerGrid()).
+MyOpenGLView *HeadUpDisplayUniverseGameView();
+GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction);
+NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView);
+// The player, entities and universe as the reticles and waypoints read them (hudDrawReticleOnTarget(),
+// hudDrawWaypoint(), hudRotateViewpointForVirtualDepth()).
+OOGUIScreenID HeadUpDisplayPlayerGuiScreen(PlayerEntity *player);
+HPVector HeadUpDisplayPlayerViewpointPosition(PlayerEntity *player);
+GLfloat HeadUpDisplayPlayerWeaponRange(PlayerEntity *player);
+std::optional<std::string> HeadUpDisplayPlayerDialTargetName(PlayerEntity *player);
+double HeadUpDisplayPlayerClockTimeAdjusted(PlayerEntity *player);
+Vector HeadUpDisplayPlayerCustomViewForwardVector(PlayerEntity *player);
+Vector HeadUpDisplayPlayerCustomViewUpVector(PlayerEntity *player);
+Quaternion HeadUpDisplayPlayerCustomViewQuaternion(PlayerEntity *player);
+OOMatrix HeadUpDisplayPlayerRotationMatrix(PlayerEntity *player);
+bool HeadUpDisplayEntityIsShip(Entity *entity);
+bool HeadUpDisplayEntityIsWormhole(Entity *entity);
+bool HeadUpDisplayEntityIsVisualEffect(Entity *entity);
+HPVector HeadUpDisplayEntityPosition(Entity *entity);
+GLfloat HeadUpDisplayEntityCollisionRadius(Entity *entity);
+Quaternion HeadUpDisplayEntityOrientation(Entity *entity);
+std::optional<std::string> HeadUpDisplayShipScanDescription(ShipEntity *ship);
+bool HeadUpDisplayShipIsCloaked(ShipEntity *ship);
+bool HeadUpDisplayShipIsHostileToPlayer(ShipEntity *ship);
+GLfloat *HeadUpDisplayShipScannerDisplayColor(ShipEntity *ship, BOOL isHostile, BOOL flash);
+GLfloat *HeadUpDisplayVisualEffectScannerDisplayColor(OOVisualEffectEntity *vis, BOOL flash);
+WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole);
+double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole);
+double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole);
+OOTimeAbsolute HeadUpDisplayUniverseGetTime();
+const oo::PList *HeadUpDisplayUniverseDescriptions();	// MissileIconDefinition()
+OOViewID HeadUpDisplayUniverseViewDirection();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
+Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();
 
 #endif	// HEADUPDISPLAY_OBJCBRIDGE_H
