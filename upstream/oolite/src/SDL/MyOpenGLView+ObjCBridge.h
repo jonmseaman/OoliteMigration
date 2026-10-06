@@ -5,14 +5,11 @@ MyOpenGLView+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, bead oo-6rb6): the Objective-C MyOpenGLView, a facade over the C++
 cxx::MyOpenGLView (MyOpenGLView.h), for the code that is not converted yet: the game controller,
 which makes the view with +alloc/-init and drives the splash screen, the universe and every caller
-of [UNIVERSE gameView], and the methods of slices 2 and 3 of docs/phases/3-slices/MyOpenGLView.md
-(accessors, display modes, settings, HDR, snapshots) and of the Input category
-(MyOpenGLView+Input.mm), which are still Objective-C categories of this facade and reach the view's
-state through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz). Its interface is the one MyOpenGLView.h
-declared before the conversion, copied exactly (same selectors, same types), less the ivars, which
-are the C++ class's members; the selectors of slices 2 and 3 are declared in the category
-MyOpenGLView (OOMyOpenGLViewUnconverted) that implements them (proposed amendment oo-2g51 item 1).
-Each method of slice 1 forwards to its C++ member. Imported by MyOpenGLView.h after the class; do
+of [UNIVERSE gameView], and the Input category (MyOpenGLView+Input.mm), which is still an
+Objective-C category of this facade and reaches the view's state through oo::ToCxx(self) (ADR-0056
+amendment oo-3bgz). Its interface is the one MyOpenGLView.h declared before the conversion, copied
+exactly (same selectors, same types), less the ivars, which are the C++ class's members. Each method
+forwards to its C++ member (slices 1-3, beads oo-6rb6, oo-72cz and oo-299r). Imported by MyOpenGLView.h after the class; do
 not import it directly.
 
 	a caller that is                       holds / passes                  crosses with
@@ -140,14 +137,6 @@ MA 02110-1301, USA.
 
 - (OOOpenGLMatrixManager *) getOpenGLMatrixManager;
 
-@end
-
-
-// Slice 3 of docs/phases/3-slices/MyOpenGLView.md: still Objective-C, implemented by this category in
-// MyOpenGLView.mm on the facade. Its bead moves its methods to the C++ class and their forwarders to
-// MyOpenGLView+ObjCBridge.mm.
-@interface MyOpenGLView (OOMyOpenGLViewUnconverted)
-
 - (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename;	// nullopt: auto-numbered "oolite-NNN"
 #ifndef NDEBUG
 // General image-dumping method.
@@ -181,7 +170,6 @@ MA 02110-1301, USA.
 #endif
 
 @end
-
 
 namespace oo {
 

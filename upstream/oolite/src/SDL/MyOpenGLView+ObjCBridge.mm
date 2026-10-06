@@ -441,4 +441,63 @@ cxx::MyOpenGLView *oo::ToCxx(MyOpenGLView *view)
 	return oo::ToObjC(_cxxView->getOpenGLMatrixManager());	// C++ since bead oo-vt0o: its facade
 }
 
+// Slice 3 (bead oo-299r).
+- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename
+{
+	return _cxxView->snapShot(filename);
+}
+
+
+#ifndef NDEBUG
+- (void) cxx_dumpRGBAToFileNamed:(const std::string &)name
+						   bytes:(uint8_t *)bytes
+						   width:(NSUInteger)width
+						  height:(NSUInteger)height
+						rowBytes:(NSUInteger)rowBytes
+{
+	_cxxView->dumpRGBAToFileNamed(name, bytes, width, height, rowBytes);
+}
+
+
+- (void) cxx_dumpRGBToFileNamed:(const std::string &)name
+						  bytes:(uint8_t *)bytes
+						  width:(NSUInteger)width
+						 height:(NSUInteger)height
+					   rowBytes:(NSUInteger)rowBytes
+{
+	_cxxView->dumpRGBToFileNamed(name, bytes, width, height, rowBytes);
+}
+
+
+- (void) cxx_dumpGrayToFileNamed:(const std::string &)name
+						   bytes:(uint8_t *)bytes
+						   width:(NSUInteger)width
+						  height:(NSUInteger)height
+						rowBytes:(NSUInteger)rowBytes
+{
+	_cxxView->dumpGrayToFileNamed(name, bytes, width, height, rowBytes);
+}
+
+
+- (void) cxx_dumpGrayAlphaToFileNamed:(const std::string &)name
+								bytes:(uint8_t *)bytes
+								width:(NSUInteger)width
+							   height:(NSUInteger)height
+							 rowBytes:(NSUInteger)rowBytes
+{
+	_cxxView->dumpGrayAlphaToFileNamed(name, bytes, width, height, rowBytes);
+}
+
+
+- (void) cxx_dumpRGBAToRGBFileNamed:(const std::optional<std::string> &)rgbName
+				   andGrayFileNamed:(const std::optional<std::string> &)grayName
+							  bytes:(uint8_t *)bytes
+							  width:(NSUInteger)width
+							 height:(NSUInteger)height
+						   rowBytes:(NSUInteger)rowBytes
+{
+	_cxxView->dumpRGBAToRGBFileNamed(rgbName, grayName, bytes, width, height, rowBytes);
+}
+#endif
+
 @end

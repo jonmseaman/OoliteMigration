@@ -83,10 +83,6 @@ enum PreferredAppMode
 #endif
 #endif //OOLITE_WINDOWS
 
-@interface MyOpenGLView (OOPrivate)
-
-@end
-
 
 namespace {
 
@@ -1342,12 +1338,9 @@ bool cxx::MyOpenGLView::pollShiftKey()
 }
 
 
-// Slice 3 of docs/phases/3-slices/MyOpenGLView.md, still Objective-C: a category of the facade,
-// reading and writing the C++ view's state through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz).
-// Its bead moves its methods into cxx::MyOpenGLView above.
-@implementation MyOpenGLView (OOMyOpenGLViewUnconverted)
+// Slice 3 of docs/phases/3-slices/MyOpenGLView.md (bead oo-299r): snapshots and debug image dumps.
 
-- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename
+bool cxx::MyOpenGLView::snapShot(const std::optional<std::string> &filename)
 {
 	BOOL snapShotOK = YES;
 	SDL_Surface* tmpSurface;
@@ -1412,7 +1405,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 		imageNo = tmpImageNo;
 	}
 
-	SDL_Surface *surface = SDL_GetWindowSurface(oo::ToCxx(self)->window);
+	SDL_Surface *surface = SDL_GetWindowSurface(window);
 	OO_LOG("screenshot", "Saving screen shot \"{}\" ({} x {} pixels).", *pathToPic, static_cast<unsigned>(surface->w), static_cast<unsigned>(surface->h));
 
 	int pitch = surface->pitch;
@@ -1445,7 +1438,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 	free(pixls);
 
 	// if outputting HDR signal, save also either an .exr or a Radiance .hdr snapshot
-	if ([self hdrOutput])
+	if (hdrOutput())
 	{
 		std::string fileExtension = DefaultsString("hdr-snapshot-format", std::string(SNAPSHOTHDR_EXTENSION_DEFAULT));
 
@@ -1485,11 +1478,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 
 
 #ifndef NDEBUG
-- (void) cxx_dumpRGBAToFileNamed:(const std::string &)name
-					   bytes:(uint8_t *)bytes
-					   width:(NSUInteger)width
-					  height:(NSUInteger)height
-					rowBytes:(NSUInteger)rowBytes
+void cxx::MyOpenGLView::dumpRGBAToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
 {
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
@@ -1503,11 +1492,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 }
 
 
-- (void) cxx_dumpRGBToFileNamed:(const std::string &)name
-					   bytes:(uint8_t *)bytes
-					   width:(NSUInteger)width
-					  height:(NSUInteger)height
-					rowBytes:(NSUInteger)rowBytes
+void cxx::MyOpenGLView::dumpRGBToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
 {
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)  return;
 
@@ -1521,11 +1506,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 }
 
 
-- (void) cxx_dumpGrayToFileNamed:(const std::string &)name
-					   bytes:(uint8_t *)bytes
-					   width:(NSUInteger)width
-					  height:(NSUInteger)height
-					rowBytes:(NSUInteger)rowBytes
+void cxx::MyOpenGLView::dumpGrayToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
 {
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width)  return;
 
@@ -1551,11 +1532,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 }
 
 
-- (void) cxx_dumpGrayAlphaToFileNamed:(const std::string &)name
-					   bytes:(uint8_t *)bytes
-					   width:(NSUInteger)width
-					  height:(NSUInteger)height
-					rowBytes:(NSUInteger)rowBytes
+void cxx::MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
 {
 	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)  return;
 
@@ -1581,12 +1558,7 @@ bool cxx::MyOpenGLView::pollShiftKey()
 }
 
 
-- (void) cxx_dumpRGBAToRGBFileNamed:(const std::optional<std::string> &)rgbName
-				   andGrayFileNamed:(const std::optional<std::string> &)grayName
-						  bytes:(uint8_t *)bytes
-						  width:(NSUInteger)width
-						 height:(NSUInteger)height
-					   rowBytes:(NSUInteger)rowBytes
+void cxx::MyOpenGLView::dumpRGBAToRGBFileNamed(const std::optional<std::string> &rgbName, const std::optional<std::string> &grayName, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
 {
 	if ((!rgbName.has_value() && !grayName.has_value()) || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
@@ -1620,24 +1592,14 @@ bool cxx::MyOpenGLView::pollShiftKey()
 
 	if (rgbName.has_value())
 	{
-		[self cxx_dumpRGBToFileNamed:*rgbName
-							   bytes:rgbBytes
-							   width:width
-							  height:height
-							rowBytes:width * 3];
+		dumpRGBToFileNamed(*rgbName, rgbBytes, width, height, width * 3);
 	}
 	free(rgbBytes);
 
 	if (!trivalAlpha && grayName.has_value())
 	{
-		[self cxx_dumpGrayToFileNamed:*grayName
-								bytes:grayBytes
-								width:width
-							   height:height
-							 rowBytes:width];
+		dumpGrayToFileNamed(*grayName, grayBytes, width, height, width);
 	}
 	free(grayBytes);
 }
 #endif
-
-@end

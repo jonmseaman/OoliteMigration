@@ -252,10 +252,21 @@ public:
 	static bool pollShiftKey();
 	cxx::OOOpenGLMatrixManager *getOpenGLMatrixManager();	// borrowed
 
-	/*	Internal: the view's state. The methods of slice 3 of docs/phases/3-slices/MyOpenGLView.md
-		(snapshots and image dumps) and the Input category (MyOpenGLView+Input.mm), still Objective-C
-		categories of the facade, read and write it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz);
-		it becomes private when they convert.
+	// Slice 3 (bead oo-299r): snapshots and debug image dumps.
+	bool snapShot(const std::optional<std::string> &filename);	// nullopt: auto-numbered "oolite-NNN"
+#ifndef NDEBUG
+	// General image-dumping method.
+	void dumpRGBAToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes);
+	void dumpRGBToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes);
+	void dumpGrayToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes);
+	void dumpGrayAlphaToFileNamed(const std::string &name, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes);
+	// A nullopt name skips that file.
+	void dumpRGBAToRGBFileNamed(const std::optional<std::string> &rgbName, const std::optional<std::string> &grayName, uint8_t *bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes);
+#endif
+
+	/*	Internal: the view's state. The Input category (MyOpenGLView+Input.mm), still an Objective-C
+		category of the facade, reads and writes it through oo::ToCxx(self) (ADR-0056 amendments oo-3bgz
+		and oo-6rb6 item 1); it becomes private when that category converts (bead oo-0806).
 	*/
 	::GameController		*gameController = {};	// not retained
 	bool				keys[NUM_KEYS] = {};
@@ -343,8 +354,7 @@ private:
 
 
 // Transitional: the Objective-C MyOpenGLView, for the game controller, the universe, the player and
-// the many callers of [UNIVERSE gameView], and for the methods of this file's slice 3 and the Input
-// category, which are not yet converted. Deleted, with namespace cxx above, by the bridge's
+// the many callers of [UNIVERSE gameView], and for the Input category, which is not yet converted. Deleted, with namespace cxx above, by the bridge's
 // deletion bead.
 #import "MyOpenGLView+ObjCBridge.h"
 

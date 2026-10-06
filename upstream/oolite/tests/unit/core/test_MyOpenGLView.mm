@@ -439,6 +439,29 @@ OO_TEST(cxxSlice2API)
 }
 
 
+// After slice 3's conversion: the dumps as members.
+OO_TEST(cxxSlice3API)
+{
+	@autoreleasepool
+	{
+#ifndef NDEBUG
+		namespace stdfs = std::filesystem;
+		cxx::MyOpenGLView *cxxView = oo::ToCxx(View());
+		OO_CHECK(cxxView != nullptr);
+		if (cxxView == nullptr)  return;
+		std::vector<uint8_t> rgba(16 * 2, 0x80);
+		cxxView->dumpRGBAToFileNamed("oo-test-cxx-rgba", rgba.data(), 3, 2, 16);
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-cxx-rgba")));
+		cxxView->dumpRGBAToRGBFileNamed(std::string("oo-test-cxx-rgb"), std::string("oo-test-cxx-alpha"), rgba.data(), 3, 2, 16);
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-cxx-rgb")));
+		OO_CHECK(stdfs::exists(DumpPath("oo-test-cxx-alpha")));
+		cxxView->dumpGrayToFileNamed("oo-test-cxx-short", rgba.data(), 3, 2, 2);
+		OO_CHECK(!stdfs::exists(DumpPath("oo-test-cxx-short")));
+#endif
+	}
+}
+
+
 // Last: -dealloc quits SDL.
 OO_TEST(zzDeallocReleasesTheView)
 {
