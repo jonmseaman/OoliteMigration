@@ -119,11 +119,15 @@ oo::ObjCRef<::OOSound *> OOSound::initWithContentsOfFile(const std::optional<std
 
 	if ([decoder sizeAsBuffer] <= kMaxBufferedSoundSize)
 	{
-		self = [[::OOALBufferedSound alloc] initWithDecoder:decoder];
+		// C++ since oo-9ht.83: the new sound's facade is the root's, made as its subclass facade made it.
+		const oo::Ref<OOALBufferedSound> sound = OOALBufferedSound::initWithDecoder(decoder);
+		self = sound ? [[::OOSound alloc] initWithNewCxxSound:sound] : nil;
 	}
 	else
 	{
-		self = [[::OOALStreamedSound alloc] initWithDecoder:decoder];
+		// C++ since oo-9ht.84: as the buffered sound above.
+		const oo::Ref<OOALStreamedSound> sound = OOALStreamedSound::initWithDecoder(decoder);
+		self = sound ? [[::OOSound alloc] initWithNewCxxSound:sound] : nil;
 	}
 	[decoder release];
 
