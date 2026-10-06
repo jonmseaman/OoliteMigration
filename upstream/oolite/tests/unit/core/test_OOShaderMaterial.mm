@@ -26,6 +26,7 @@
 */
 
 #import "OOShaderMaterial.h"
+#import "OOShaderUniform.h"
 #import "OORegExpMatcher.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODescription.h"
@@ -164,62 +165,49 @@ static std::vector<std::string> gUniforms;
 static int gUniformApplies = 0;
 static std::vector<std::string> gUniformTargets;
 
-@interface OOShaderUniform: OOObject
-{
-@public
-	std::string	_name;
-}
-@end
+// OOShaderUniform is C++ since its facade was deleted (bead oo-9ht.55): the same stand-in, as
+// definitions of the members the material calls. Each initialiser is recorded as "name kind
+// value"; the name "bad" fails (null).
+#define OO_TEST_MADE_UNIFORM(uniformName, what)	\
+	do {	\
+		gUniforms.push_back((uniformName) + " " + (what));	\
+		if ((uniformName) == "bad")  return nullptr;	\
+		oo::Ref<OOShaderUniform> made = oo::adopt(new OOShaderUniform());	\
+		made->name = (uniformName);	\
+		return made;	\
+	} while (0)
 
-@implementation OOShaderUniform
-
-- (id) made:(const std::string &)name what:(const std::string &)what
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *shaderProgram, GLint constValue)
 {
-	gUniforms.push_back(name + " " + what);
-	if (name == "bad")
-	{
-		[self release];
-		return nil;
-	}
-	self = [super init];
-	_name = name;
-	return self;
+	OO_TEST_MADE_UNIFORM(uniformName, "int " + std::to_string(constValue) + (shaderProgram != nil ? "" : " (no program)"));
 }
 
-- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram intValue:(GLint)constValue
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *, GLfloat constValue)
 {
-	return [self made:uniformName what:"int " + std::to_string(constValue) + (shaderProgram != nil ? "" : " (no program)")];
+	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("float %g", constValue));
 }
 
-- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram floatValue:(GLfloat)constValue
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *, GLfloat constValue[4])
 {
-	return [self made:uniformName what:oo::str::format("float %g", constValue)];
+	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("vector %g %g %g %g", constValue[0], constValue[1], constValue[2], constValue[3]));
 }
 
-- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram vectorValue:(GLfloat[4])constValue
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *, Quaternion constValue, bool asMatrix)
 {
-	return [self made:uniformName what:oo::str::format("vector %g %g %g %g", constValue[0], constValue[1], constValue[2], constValue[3])];
+	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("quaternion %g %g %g %g %s", constValue.w, constValue.x, constValue.y, constValue.z, asMatrix ? "matrix" : "vector"));
 }
 
-- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram quaternionValue:(Quaternion)constValue asMatrix:(BOOL)asMatrix
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName, ::OOShaderProgram *, id<OOWeakReferenceSupport>, SEL selector, OOUniformConvertOptions options)
 {
-	return [self made:uniformName what:oo::str::format("quaternion %g %g %g %g %s", constValue.w, constValue.x, constValue.y, constValue.z, asMatrix ? "matrix" : "vector")];
+	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("binding %s options %u", sel_getName(selector), (unsigned)options));
 }
 
-- (id)initWithName:(const std::string &)uniformName
-	 shaderProgram:(OOShaderProgram *)shaderProgram
-	 boundToObject:(id<OOWeakReferenceSupport>)target
-		  property:(SEL)selector
-	convertOptions:(OOUniformConvertOptions)options
-{
-	return [self made:uniformName what:oo::str::format("binding %s options %u", sel_getName(selector), (unsigned)options)];
-}
+#undef OO_TEST_MADE_UNIFORM
 
-- (void) apply											{ gUniformApplies++; }
-- (void) setBindingTarget:(id<OOWeakReferenceSupport>)target	{ gUniformTargets.push_back(_name + (target != nil ? " target" : " nil")); }
-- (std::optional<std::string>) cxx_descriptionComponents	{ return _name; }
-
-@end
+OOShaderUniform::~OOShaderUniform()  {}
+std::optional<std::string> OOShaderUniform::description()					{ return name; }
+void OOShaderUniform::apply()												{ gUniformApplies++; }
+void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)	{ gUniformTargets.push_back(name + (target != nil ? " target" : " nil")); }
 
 
 // The textures: "missing" fails to load, and then the null texture stands in.

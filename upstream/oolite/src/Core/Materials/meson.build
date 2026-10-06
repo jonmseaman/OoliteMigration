@@ -26,7 +26,6 @@ oolite_sources += files(
     'OOShaderProgram.mm',
     'OOShaderProgram+ObjCBridge.mm',
     'OOShaderUniform.mm',
-    'OOShaderUniform+ObjCBridge.mm',
     'OOShaderUniformMethodType.mm',
     'OOSingleTextureMaterial.mm',
     'OOStandaloneAtmosphereGenerator.mm',
