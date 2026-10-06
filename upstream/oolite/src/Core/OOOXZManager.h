@@ -7,9 +7,9 @@ Responsible for installing and uninstalling OXZs
 C++20 since bead oo-bwjb, slice 1 of docs/phases/3-slices/OOOXZManager.md (proposed ADR-0056: a
 singleton, amendment oo-r7m0; a class-shell slice, amendment oo-pni4). OOOXZManager+ObjCBridge.h,
 imported at the end of this header, keeps the Objective-C OOOXZManager as a facade over this class
-for its callers (GameController, PlayerEntity, PlayerEntityControls) and for the units of slices
-3 and 4, which stay Objective-C, on the facade, until their own beads. The bridge's deletion bead
-moves the class out of namespace cxx.
+for its callers (GameController, PlayerEntity, PlayerEntityControls); slices 2 to 4 (beads oo-0hyr,
+oo-q7r3, oo-qbgo) converted the rest of the file. The bridge's deletion bead moves the class out of
+namespace cxx.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -120,10 +120,27 @@ public:
 
 	bool isRestarting();
 
-	// Internal (the OOPrivate and OOFilterRules categories): the units of slices 3 and 4 of
-	// docs/phases/3-slices/OOOXZManager.md, still Objective-C on the facade, send some of these
-	// (the facade forwards them) and read and write the state below through oo::ToCxx(self); they
-	// become private as those slices convert.
+	void gui();
+	bool isAcceptingTextInput();
+	bool isAcceptingGUIInput();
+
+	void processSelection();
+	void processTextInput(const std::string &input);
+	void refreshTextInput(const std::string &input);
+	void processFilterKey();
+	void processShowInfoKey();
+	void processExtractKey();
+	OOGUIRow showInstallOptions();
+	OOGUIRow showRemoveOptions();
+	void showOptionsUpdate();
+	void showOptionsPrev();
+	void showOptionsNext();
+	void processOptionsPrev();
+	void processOptionsNext();
+
+	// Internal (the OOPrivate and OOFilterRules categories): public for the unit test, which calls
+	// them and sets the state below, and for the facade's forwards; private once the facade is
+	// deleted and the test reaches them otherwise.
 	std::optional<std::string> manifestPath();	// nullopt: no cache directory
 	std::optional<std::string> downloadPath();	// nullopt: no cache directory
 	std::optional<std::string> extractionBasePathForIdentifier(const std::string &identifier, const std::string &version);	// nullopt: no user root
@@ -146,6 +163,9 @@ public:
 	bool removeOXZ(NSUInteger item);
 
 	std::string extractOXZ(NSUInteger item);	// the extraction log
+
+	std::vector<oo::PList> installOptions();	// the manifests on the current page
+	std::vector<oo::PList> removeOptions();	// empty: nothing removable (was nil)
 
 	bool validateFilter(const std::string &input);
 

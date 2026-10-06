@@ -19,6 +19,12 @@ The plan is the markdown file's single fenced block tagged `slice-plan`:
                                                  # its own units use the names they declare; for a
                                                  # header whose ivars and constants leave a big
                                                  # method no room (PlayerEntity.h)
+    one-unit-slices: frontier                    # optional (bead oo-9ht.157): a slice that owns
+                                                 # exactly one unit may own more than --max-own
+                                                 # (it must still read under --max-read): one
+                                                 # method the plan cannot cut is a frontier story,
+                                                 # not a fleet one (PlayerEntityControls.mm's
+                                                 # 1,105-line pollGuiArrowKeyControls:)
     retired-by: oo-xxxx                          # optional: the file is deleted by that bead; an
                                                  # absent source then passes, a present one is checked
     slice 1: class shell and lifecycle           # a slice: "slice <n>: <title>", then its entries
@@ -58,6 +64,8 @@ Checks (exit 1 on any failure):
     the ones those use in turn;
   * each slice's own units total at most --max-own lines (default 800): converting a method
     rewrites roughly half its lines, so this keeps a story near the ~400-lines-written budget;
+    with `one-unit-slices: frontier` a slice of a single unit is exempt (no plan can cut one
+    method) and is reported as "frontier", which is the label its story bead takes;
   * no verbatim unit contains Objective-C (message send, @"...", @selector, @try, ...), except an
     out-of-line C++ member definition (X::m, its head qualified): that is a member a landed slice
     already converted, which ADR-0056 lets keep sends to Objective-C objects and @try (oo-9ht.117);
@@ -124,7 +132,7 @@ def selector_of(decl):
     m = re.search(r"\w+", s)
     return m.group(0) if m else "?"
 
-FUNC_NAME = re.compile(r"(~?[A-Za-z_][\w:]*|operator\s*\S+)\s*\([^;]*\)\s*(const\s*|noexcept\s*|override\s*|->\s*[\w:<>*& ]+)*$", re.S)
+FUNC_NAME = re.compile(r"((?:[A-Za-z_]\w*\s*::\s*)*(?:~?[A-Za-z_]\w*|operator\s*\S+))\s*\([^;]*\)\s*(const\s*|noexcept\s*|override\s*|->\s*[\w:<>*& ]+)*$", re.S)
 NOT_FUNC = re.compile(r"^\s*(struct|class|union|enum|typedef|namespace|extern\s*\"C\"|template\s*<[^>]*>\s*(struct|class))\b|=\s*$|=[^=]*$")
 
 def parse_units(path):
@@ -176,16 +184,18 @@ def parse_units(path):
                     head = "".join(buf).strip()
                     if impl and head[:1] in "-+":
                         cur = {"name": f"{head[0]}[{impl.split('(')[0]} {selector_of(head)}]",
-                               "block": "@" + impl, "kind": "method", "member": False, "start": buf_line}
+                               "block": "@" + impl, "kind": "method", "member": False, "cls": None, "start": buf_line}
                         stack.append("body")
                     elif re.match(r"^(namespace\b[^{]*|extern\s*\"C\"\s*)$", head):
                         stack.append("ns")
                     elif head and not NOT_FUNC.search(head) and FUNC_NAME.search(head):
                         name = FUNC_NAME.search(head).group(1)
+                        name = re.sub(r"\s*::\s*", "::", name)
                         member = "::" in name   # an out-of-line C++ member definition: X::m(...) { (oo-9ht.117)
+                        cls = name.split("::")[-2] if member else None   # cxx::X::m -> X (oo-7j62d)
                         mac = re.fullmatch(r"([A-Z][A-Z0-9_]+)\s*\(([^()]*)\)", head)
                         name = f"{mac.group(1)}({mac.group(2).strip()})" if mac else name.split("::")[-1] + "()"
-                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "member": member, "start": buf_line}
+                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "member": member, "cls": cls, "start": buf_line}
                         stack.append("body")
                     else:
                         stack.append("other")
@@ -356,13 +366,13 @@ def read_plan(path):
     text = open(path, encoding="utf-8").read()
     m = re.search(r"^```slice-plan[ \t]*\n(.*?)^```", text, re.S | re.M)
     if not m: raise SystemExit(f"{path}: no ```slice-plan fenced block")
-    plan = {"source": None, "header": None, "retired_by": None, "header_decls": None, "header_names": None, "groups": []}
+    plan = {"source": None, "header": None, "retired_by": None, "header_decls": None, "header_names": None, "one_unit_slices": None, "groups": []}
     group = None
     for raw in m.group(1).splitlines():
         line = raw.split("#", 1)[0].rstrip() if not raw.lstrip().startswith("#") else ""
         if not line.strip(): continue
         s = line.strip()
-        kv = re.match(r"(source|header|retired-by|header-decls|header-names):\s*(\S+)$", s)
+        kv = re.match(r"(source|header|retired-by|header-decls|header-names|one-unit-slices):\s*(\S+)$", s)
         if kv and not raw[:1].isspace():
             plan[kv.group(1).replace("-", "_")] = kv.group(2); continue
         g = re.match(r"slice\s+(\w+)\s*:\s*(.*)$", s)
@@ -381,6 +391,7 @@ def read_plan(path):
     if plan["header_decls"] and not plan["header"]: raise SystemExit(f"{path}: header-decls needs a 'header:'")
     if plan["header_names"] not in (None, "by-use"): raise SystemExit(f"{path}: header-names must be 'by-use'")
     if plan["header_names"] and not plan["header"]: raise SystemExit(f"{path}: header-names needs a 'header:'")
+    if plan["one_unit_slices"] not in (None, "frontier"): raise SystemExit(f"{path}: one-unit-slices must be 'frontier'")
     ids = [g["id"] for g in plan["groups"]]
     if len(ids) != len(set(ids)): raise SystemExit(f"{path}: duplicate slice id")
     return plan
@@ -443,6 +454,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
                     elif t == best: owners.add(g["id"])
         if not owners and any(g["mac_only"] and any(entry_matches(e, u) for e in g["entries"]) for g in plan["groups"]):
             assign[i] = "mac-only"   # claimed by mac-only only, but compiled: reported below
+        elif not owners and u["member"]:
+            # A converted member (cxx::X::m) no entry names: a landed slice turned -[X m] into it, so the
+            # plan's -[X m] / @X entries no longer match. It is verbatim (the oo-9ht.117 rule) whether
+            # the plan's verbatim group is '*' or a list of names, or absent (oo-7j62d).
+            assign[i] = "verbatim"
         elif not owners: unassigned.append(i); errors.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
         elif len(owners) > 1:
             errors.append(f"assigned to {len(owners)} slices ({', '.join(sorted(owners))}): {u['name']}"); shared[i] = owners
@@ -451,6 +467,14 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         for e in g["entries"]:
             if not any(entry_matches(e, u) for u in units):
                 warnings.append(f"slice {g['id']}: entry matches nothing: {e}")
+    converted = set(u["cls"] for u in units if u["member"])
+    def landed(g):
+        """A slice that matches nothing because it LANDED (oo-7j62d): every entry names a method or
+        an @block of a class X that now has converted out-of-line members (cxx::X::m) in the file."""
+        for e in g["entries"]:
+            m = re.match(r"[-+]\[(\w+)\s", e) or re.match(r"@(\w+)", e)
+            if not m or m.group(1) not in converted: return False
+        return bool(g["entries"])
     report = []
     for g in plan["groups"]:
         mine = [units[i] for i, gid in assign.items() if gid == g["id"]]
@@ -485,11 +509,16 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
                     if i not in used and declared & toks: used.add(i); toks |= uses; grew = True
             h += sum(hnames[i][0] for i in used)
         read = h + preamble + own
-        if not mine: empty.append(g["id"]); errors.append(f"slice {g['id']} is empty")
+        if not mine:
+            empty.append(g["id"])
+            if landed(g): warnings.append(f"slice {g['id']} is empty: landed (its class has converted members)")
+            else: errors.append(f"slice {g['id']} is empty")
         if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
-        if own > max_own: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}")
+        # one-unit-slices: frontier (bead oo-9ht.157): one method over --max-own is a frontier story
+        frontier = bool(plan["one_unit_slices"]) and len(mine) == 1 and own > max_own
+        if own > max_own and not frontier: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}" + ("" if len(mine) != 1 else " (one unit: see one-unit-slices: frontier)"))
         report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
-                       "header": h, "members": [u["name"] for u in mine]})
+                       "header": h, "frontier": frontier, "members": [u["name"] for u in mine]})
     return {"plan": plan, "retired": False, "missing": False, "units": units, "assign": assign, "shared": shared,
             "unassigned": unassigned, "empty": empty,
             "total": total, "preamble": preamble, "header_lines": hdr, "slices": report, "errors": errors,
@@ -545,7 +574,7 @@ def check(plan_path, max_read, max_own, as_json=False, show_units=False, base=RO
         print(f"{plan['source']}: {total} lines, {len(units)} units, preamble {preamble}, header {hdr}")
         for r in report:
             tag = "verbatim" if r["verbatim"] else "mac-only" if r["mac_only"] else f"slice {r['id']}"
-            print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}")
+            print(f"  {tag:>9}: {r['units']:3d} units, own {r['own']:4d}, reads ~{r['read']:4d}  {r['title']}" + ("  [frontier: one unit over --max-own]" if r.get("frontier") else ""))
         if show_units:
             for u in units:
                 print(f"    {u['start']+1:5d}-{u['end']+1:5d} {u['end']-u['start']+1:4d}  {assign.get(units.index(u), '-'):>8}  {u['name']}")
@@ -669,6 +698,20 @@ def selftest():
     run(rest, 0)                                                              # converted member in verbatim
     open(os.path.join(d, "Foo.mm"), "w").write(landed.replace("int plainC(int y) { return y * 2; }", "int plainC(int y) { return [Foo twice:y]; }"))
     run(rest, 1)                                                              # a plain function still may not
+    # a plan whose verbatim group lists names (oo-7j62d): a converted member no entry names is verbatim
+    # too, as is one in a plan with no verbatim group; a converted destructor is a member; a slice that
+    # is empty because its class's methods became members has landed, an empty slice of another class
+    # has not; a plain function no entry names is still unassigned
+    open(os.path.join(d, "Foo.mm"), "w").write(landed + "Foo::~Foo()\n{\n\t[_delegate release];\n}\n")
+    if not any(u["name"] == "~Foo()" and u["member"] and u["cls"] == "Foo" for u in parse_units(os.path.join(d, "Foo.mm"))[0]):
+        fails.append("a converted destructor Foo::~Foo() is not a member of Foo")
+    named = "slice 1: shell\n  -[Foo init]\n  -[Foo set*]\n  helper()\nslice 2: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    run(named, 0)                                                             # members, named verbatim list
+    run(named.replace("verbatim: C\n  plainC()\n", "slice 3: c\n  plainC()\n"), 0)   # members, no verbatim group
+    run(named.replace("  @Foo(Private)\n", "  -[Bar gone]\n"), 1)            # an empty slice of a class with no members
+    run(named.replace("  plainC()\n", ""), 1)                                # a plain function is still unassigned
+    a = analyse(os.path.join(d, "plan.md"), base=d)
+    if a["unassigned"] != [i for i, u in enumerate(a["units"]) if u["name"] == "plainC()"]: fails.append(f"unassigned: {a['unassigned']}")
     # header-decls: per-slice (bead oo-9ht.140): a slice is charged the header less its method
     # declarations, plus its own units' declarations (with their doc comments)
     open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC)
@@ -710,6 +753,22 @@ def selftest():
     open(p, "w").write("```slice-plan\nsource: Foo.mm\nheader-names: by-use\n" + good + "```\n")
     try:
         analyse(p, base=d); fails.append("header-names without a header accepted")
+    except SystemExit: pass
+    # one-unit-slices: frontier (bead oo-9ht.157): a one-unit slice over --max-own passes with the
+    # key and is reported frontier; without the key, or for a slice of two units, it still fails
+    def own_check(body, max_own):
+        open(p, "w").write("```slice-plan\nsource: Foo.mm\n" + body + "```\n")
+        with contextlib.redirect_stdout(io.StringIO()): r = check(p, 1500, max_own, base=d)
+        return r, {x["id"]: x.get("frontier") for x in analyse(p, 1500, max_own, base=d)["slices"] if not x["verbatim"]}
+    one = "slice 1: init\n  -[Foo init]\nslice 2: set\n  -[Foo set*]\n  helper()\nslice 3: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    two = "slice 1: init and set\n  -[Foo init]\n  -[Foo set*]\nslice 2: helper\n  helper()\nslice 3: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    if own_check(one, 5)[0] != 1: fails.append("a one-unit slice over --max-own passed without one-unit-slices")
+    got = own_check("one-unit-slices: frontier\n" + one, 5)
+    if got != (0, {"1": True, "2": False, "3": False}): fails.append(f"one-unit-slices: frontier: {got}")
+    if own_check("one-unit-slices: frontier\n" + two, 5)[0] != 1: fails.append("one-unit-slices exempted a slice of two units")
+    open(p, "w").write("```slice-plan\nsource: Foo.mm\none-unit-slices: yes\n" + good + "```\n")
+    try:
+        analyse(p, base=d); fails.append("one-unit-slices: yes accepted")
     except SystemExit: pass
     import shutil; shutil.rmtree(d, ignore_errors=True)
     for f in fails: print("SELFTEST FAIL:", f)

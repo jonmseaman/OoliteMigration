@@ -340,19 +340,19 @@ using ooscript::Context;
 {
 	const oo::PList properties(oo::PList::Dict{ { "ship", oo::PListObject(self) } });
 	
-	[aiScript autorelease];
-	aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:properties];
-	if (aiScript == nil)
+	[_cxxShip->aiScript autorelease];
+	_cxxShip->aiScript = [OOScript cxx_jsAIScriptFromFileNamed:aiString properties:properties];
+	if (_cxxShip->aiScript == nil)
 	{
 		OO_LOG("ai.load.failed.unknownAI", "Unable to load JS AI {} for ship {} ({} for role {})", aiString, oo::DescriptionOf(self), [self cxx_shipDataKey].value_or("(null)"), [self cxx_primaryRole].value_or("(null)"));
-		aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:properties];
+		_cxxShip->aiScript = [OOScript cxx_jsAIScriptFromFileNamed:"oolite-nullAI.js" properties:properties];
 	}
 	else
 	{
-		aiScriptWakeTime = 0;
-		haveStartedJSAI = NO;
+		_cxxShip->aiScriptWakeTime = 0;
+		_cxxShip->haveStartedJSAI = NO;
 	}
-	[aiScript retain];
+	[_cxxShip->aiScript retain];
 }
 
 
@@ -366,15 +366,15 @@ using ooscript::Context;
 - (void) scanForHostiles
 {
 	/*-- Locates all the ships in range targeting the receiver and chooses the nearest --*/
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	
 	[self checkScanner];
 	unsigned i;
-	GLfloat found_d2 = scannerRange * scannerRange;
-	for (i = 0; i < n_scanned_ships ; i++)
+	GLfloat found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ShipEntity *thing = scanned_ships[i];
-		GLfloat d2 = distance2_scanned_ships[i];
+		ShipEntity *thing = _cxxShip->scanned_ships[i];
+		GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 		if ((d2 < found_d2) 
 			&& ([thing isThargoid] || (([thing primaryTarget] == self) && [thing hasHostileTarget]) || [thing isDefenseTarget:self])
 			&& ![thing isCloaked])
@@ -399,7 +399,7 @@ using ooscript::Context;
 	if ([self group] == nil)		// ship is alone!
 	{
 		[self setFoundTarget:target];
-		[shipAI cxx_reactToMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
+		[_cxxShip->shipAI cxx_reactToMessage:"GROUP_ATTACK_TARGET" context:"groupAttackTarget"];
 		[self doScriptEvent:OOJSID("helpRequestReceived") withArgument:self andArgument:target];
 		return;
 	}
@@ -427,52 +427,52 @@ using ooscript::Context;
 
 - (void) performAttack
 {
-	if (behaviour != BEHAVIOUR_EVASIVE_ACTION)
+	if (_cxxShip->behaviour != BEHAVIOUR_EVASIVE_ACTION)
 	{
-		behaviour = BEHAVIOUR_ATTACK_TARGET;
-		desired_range = 1250 * randf() + 750; // 750 til 2000
-		frustration = 0.0;	
+		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
+		_cxxShip->desired_range = 1250 * randf() + 750; // 750 til 2000
+		_cxxShip->frustration = 0.0;	
 	}
 }
 
 
 - (void) performCollect
 {
-	behaviour = BEHAVIOUR_COLLECT_TARGET;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_COLLECT_TARGET;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performEscort
 {
-	if(behaviour != BEHAVIOUR_FORMATION_FORM_UP) 
+	if(_cxxShip->behaviour != BEHAVIOUR_FORMATION_FORM_UP) 
 	{
-		behaviour = BEHAVIOUR_FORMATION_FORM_UP;
-		frustration = 0.0; // behavior changed, reset frustration.
+		_cxxShip->behaviour = BEHAVIOUR_FORMATION_FORM_UP;
+		_cxxShip->frustration = 0.0; // behavior changed, reset frustration.
 	}
 }
 
 
 - (void) performFaceDestination
 {
-	behaviour = BEHAVIOUR_FACE_DESTINATION;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_FACE_DESTINATION;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performFlee
 {
-	if (behaviour != BEHAVIOUR_FLEE_EVASIVE_ACTION)
+	if (_cxxShip->behaviour != BEHAVIOUR_FLEE_EVASIVE_ACTION)
 	{
-		behaviour = BEHAVIOUR_FLEE_TARGET;
+		_cxxShip->behaviour = BEHAVIOUR_FLEE_TARGET;
 		[self setEvasiveJink:400.0];
-		frustration = 0.0;
-		if (accuracy > COMBAT_AI_ISNT_AWFUL)
+		_cxxShip->frustration = 0.0;
+		if (_cxxShip->accuracy > COMBAT_AI_ISNT_AWFUL)
 		{
 			// alert! they've got us in their sights! react!!
 			if ([self approachAspectToPrimaryTarget] > 0.9995)
 			{
-				behaviour = randf() < 0.15 ? BEHAVIOUR_EVASIVE_ACTION : BEHAVIOUR_FLEE_EVASIVE_ACTION;
+				_cxxShip->behaviour = randf() < 0.15 ? BEHAVIOUR_EVASIVE_ACTION : BEHAVIOUR_FLEE_EVASIVE_ACTION;
 			}
 		}
 	}
@@ -481,49 +481,49 @@ using ooscript::Context;
 
 - (void) performFlyToRangeFromDestination
 {
-	behaviour = BEHAVIOUR_FLY_RANGE_FROM_DESTINATION;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_FLY_RANGE_FROM_DESTINATION;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performHold
 {
-	desired_speed = 0.0;
-	behaviour = BEHAVIOUR_TRACK_TARGET;
-	frustration = 0.0;
+	_cxxShip->desired_speed = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_TRACK_TARGET;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performIdle
 {
-	behaviour = BEHAVIOUR_IDLE;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_IDLE;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performIntercept
 {
-	behaviour = BEHAVIOUR_INTERCEPT_TARGET;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_INTERCEPT_TARGET;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performLandOnPlanet
 {
 	OOPlanetEntity	*nearest = [self findNearestPlanet];
-	if (isNearPlanetSurface)
+	if (_cxxShip->isNearPlanetSurface)
 	{
-		_destination = [nearest position];
-		behaviour = BEHAVIOUR_LAND_ON_PLANET;
-		planetForLanding = [nearest universalID];
+		_cxxShip->_destination = [nearest position];
+		_cxxShip->behaviour = BEHAVIOUR_LAND_ON_PLANET;
+		_cxxShip->planetForLanding = [nearest universalID];
 	}
 	else
 	{
-		behaviour = BEHAVIOUR_IDLE;
-		[shipAI message:"NO_PLANET_NEARBY"];
+		_cxxShip->behaviour = BEHAVIOUR_IDLE;
+		[_cxxShip->shipAI message:"NO_PLANET_NEARBY"];
 	}
 	
-	frustration = 0.0;
+	_cxxShip->frustration = 0.0;
 }
 
 
@@ -533,8 +533,8 @@ using ooscript::Context;
 	// mining is not seen as hostile behaviour, so ensure it is only used against rocks.
 	if (target &&  [target scanClass] == CLASS_ROCK)
 	{
-		behaviour = BEHAVIOUR_ATTACK_MINING_TARGET;
-		frustration = 0.0;
+		_cxxShip->behaviour = BEHAVIOUR_ATTACK_MINING_TARGET;
+		_cxxShip->frustration = 0.0;
 	}
 	else
 	{	
@@ -545,41 +545,41 @@ using ooscript::Context;
 
 - (void) performScriptedAI
 {
-	behaviour = BEHAVIOUR_SCRIPTED_AI;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_SCRIPTED_AI;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performScriptedAttackAI
 {
-	behaviour = BEHAVIOUR_SCRIPTED_ATTACK_AI;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_SCRIPTED_ATTACK_AI;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performBuoyTumble
 {
-	stick_roll = 0.10;
-	stick_pitch = 0.15;
-	behaviour = BEHAVIOUR_TUMBLE;
-	frustration = 0.0;
+	_cxxShip->stick_roll = 0.10;
+	_cxxShip->stick_pitch = 0.15;
+	_cxxShip->behaviour = BEHAVIOUR_TUMBLE;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performStop
 {
-	behaviour = BEHAVIOUR_STOP_STILL;
-	desired_speed = 0.0;
-	frustration = 0.0;
+	_cxxShip->behaviour = BEHAVIOUR_STOP_STILL;
+	_cxxShip->desired_speed = 0.0;
+	_cxxShip->frustration = 0.0;
 }
 
 
 - (void) performTumble
 {
-	stick_roll = max_flight_roll*2.0*(randf() - 0.5);
-	stick_pitch = max_flight_pitch*2.0*(randf() - 0.5);
-	behaviour = BEHAVIOUR_TUMBLE;
-	frustration = 0.0;
+	_cxxShip->stick_roll = _cxxShip->max_flight_roll*2.0*(randf() - 0.5);
+	_cxxShip->stick_pitch = _cxxShip->max_flight_pitch*2.0*(randf() - 0.5);
+	_cxxShip->behaviour = BEHAVIOUR_TUMBLE;
+	_cxxShip->frustration = 0.0;
 }
 
 
@@ -618,42 +618,42 @@ using ooscript::Context;
 	// NPC ships getting stuck with a dockingAI while just outside the aegis - Nikos 20090630, as proposed by Eric
 	// On very busy systems (> 50 docking ships) docking ships can be sent to a hold position outside the range, 
 	// so also test for presence of dockingInstructions. - Eric 20091130
-	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
+	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !_cxxShip->dockingInstructions.isNull()))
 	{
 		// remember the instructions (the station's weak reference is kept as an Object node)
-		dockingInstructions = [station dockingInstructionsForShip:self];
-		if (!dockingInstructions.isNull())
+		_cxxShip->dockingInstructions = [station dockingInstructionsForShip:self];
+		if (!_cxxShip->dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];
 			
 			// the strings the instructions hold (StationEntity -dockingInstructionsForShip:), sent as before (absent: nothing)
-			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
-			if (aiMessage != nullptr && aiMessage->isString())  [shipAI message:*aiMessage->getIf<std::string>()];
-			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
+			const oo::PList *aiMessage = _cxxShip->dockingInstructions.find("ai_message");
+			if (aiMessage != nullptr && aiMessage->isString())  [_cxxShip->shipAI message:*aiMessage->getIf<std::string>()];
+			const oo::PList *commsMessage = _cxxShip->dockingInstructions.find("comms_message");
 			if (commsMessage != nullptr && commsMessage->isString())  [station cxx_sendExpandedMessage:*commsMessage->getIf<std::string>() toShip:self];
 		}
 	}
 	else
 	{
-		dockingInstructions = oo::PList();
+		_cxxShip->dockingInstructions = oo::PList();
 	}
 	
-	if (dockingInstructions.isNull())
+	if (_cxxShip->dockingInstructions.isNull())
 	{
-		[shipAI message:"NO_STATION_FOUND"];
+		[_cxxShip->shipAI message:"NO_STATION_FOUND"];
 	}
 }
 
 
 - (void) recallDockingInstructions
 {
-	if (!dockingInstructions.isNull())
+	if (!_cxxShip->dockingInstructions.isNull())
 	{
-		const oo::PList *destination = dockingInstructions.find("destination");
-		_destination = OOHPVectorFromPList(destination, kZeroHPVector);
-		desired_speed = fmin(dockingInstructions.get<float>("speed"), maxFlightSpeed);
-		desired_range = dockingInstructions.get<float>("range");
-		if (const oo::PList *stationRef = dockingInstructions.find("station"))
+		const oo::PList *destination = _cxxShip->dockingInstructions.find("destination");
+		_cxxShip->_destination = OOHPVectorFromPList(destination, kZeroHPVector);
+		_cxxShip->desired_speed = fmin(_cxxShip->dockingInstructions.get<float>("speed"), _cxxShip->maxFlightSpeed);
+		_cxxShip->desired_range = _cxxShip->dockingInstructions.get<float>("range");
+		if (const oo::PList *stationRef = _cxxShip->dockingInstructions.find("station"))
 		{
 			StationEntity *targetStation = [oo::ObjectIn(*stationRef) weakRefUnderlyingObject];
 			if (targetStation != nil)
@@ -666,7 +666,7 @@ using ooscript::Context;
 				[self removeTarget:[self primaryTarget]];
 			}
 		}
-		docking_match_rotation = dockingInstructions.get<bool>("match_rotation");
+		_cxxShip->docking_match_rotation = _cxxShip->dockingInstructions.get<bool>("match_rotation");
 	}
 }
 
@@ -691,7 +691,7 @@ using ooscript::Context;
 {
 	WormholeEntity *whole = nil;
 	ShipEntity		*targEnt = [self primaryTarget];
-	double found_d2 = scannerRange * scannerRange;
+	double found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
 	
 	if (targEnt && (HPdistance2(_cxxEntity->position, [targEnt position]) < found_d2))
 	{
@@ -752,8 +752,8 @@ using ooscript::Context;
 	
 	// We now have no escorts..
 
-	[_escortGroup release];
-	_escortGroup = nil;
+	[_cxxShip->_escortGroup release];
+	_cxxShip->_escortGroup = nil;
 
 }
 
@@ -770,7 +770,7 @@ using ooscript::Context;
 	if (mother)
 	{
 #ifndef NDEBUG
-		if (reportAIMessages)
+		if (_cxxShip->reportAIMessages)
 		{
 			OO_LOG("ai.suggestEscort", "DEBUG: {} suggests escorting {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
 		}
@@ -779,7 +779,7 @@ using ooscript::Context;
 		if ([mother acceptAsEscort:self])
 		{
 			// copy legal status across
-			if (([mother legalStatus] > 0)&&(bounty <= 0))
+			if (([mother legalStatus] > 0)&&(_cxxShip->bounty <= 0))
 			{
 				int extra = 1 | (ranrot_rand() & 15);
 //				[mother setBounty: [mother legalStatus] + extra withReason:kOOLegalStatusReasonAssistingOffender];
@@ -789,12 +789,12 @@ using ooscript::Context;
 			
 			[self setOwner:mother];
 			[self setGroup:[mother escortGroup]];
-			[shipAI message:"ESCORTING"];
+			[_cxxShip->shipAI message:"ESCORTING"];
 			return YES;
 		}
 		
 #ifndef NDEBUG
-		if (reportAIMessages)
+		if (_cxxShip->reportAIMessages)
 		{
 			OO_LOG("ai.suggestEscort.refused", "DEBUG: {} refused by {}", oo::DescriptionOf(self), oo::DescriptionOf(mother));
 		}
@@ -802,7 +802,7 @@ using ooscript::Context;
 		
 	}
 	[self setOwner:self];
-	[shipAI message:"NOT_ESCORTING"];
+	[_cxxShip->shipAI message:"NOT_ESCORTING"];
 	[self doScriptEvent:OOJSID("escortRejected") withArgument:mother];
 	return NO;
 }
@@ -817,21 +817,21 @@ using ooscript::Context;
 - (void) broadcastDistressMessageWithDumping:(BOOL)dumpCargo
 {
 	[self checkScannerIgnoringUnpowered];
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	
 	ShipEntity	*aggressor_ship = (ShipEntity*)[self primaryAggressor];
 	if (aggressor_ship == nil)  return;
 	
 	// don't send too many distress messages at once, space them out semi-randomly
-	if (messageTime > 2.0 * randf())  return;
+	if (_cxxShip->messageTime > 2.0 * randf())  return;
 	
 	BOOL		is_buoy = (_cxxEntity->scanClass == CLASS_BUOY);
 	const char	*distress_message = is_buoy ? "[buoy-distress-call]" : "[distress-call]";
 	
 	unsigned i;
-	for (i = 0; i < n_scanned_ships; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships; i++)
 	{
-		ShipEntity*	ship = scanned_ships[i];
+		ShipEntity*	ship = _cxxShip->scanned_ships[i];
 
     // dump cargo if energy is low
 		if (dumpCargo && !is_buoy && [self primaryAggressor] == ship && _cxxEntity->energy < 0.375 * _cxxEntity->maxEnergy)
@@ -858,7 +858,7 @@ using ooscript::Context;
 			}
 			
 			// reset the thanked_ship_id
-			DESTROY(_thankedShip);
+			DESTROY(_cxxShip->_thankedShip);
 		}
 		else if ([self bounty] == 0 && [ship cxx_crew].has_value()) // Only clean ships can have their distress calls accepted
 		{
@@ -896,7 +896,7 @@ using ooscript::Context;
 
 - (void) pauseAI:(const std::string &)intervalString	// called by name (ADR-0055 item 5)
 {
-	[shipAI setNextThinkTime:[UNIVERSE getTime] + oo::str::doubleValue(intervalString)];
+	[_cxxShip->shipAI setNextThinkTime:[UNIVERSE getTime] + oo::str::doubleValue(intervalString)];
 }
 
 
@@ -914,7 +914,7 @@ using ooscript::Context;
 	start = oo::str::doubleValue(tokens[0]);	// -oo_doubleAtIndex:
 	end   = oo::str::doubleValue(tokens[1]);
 	
-	[shipAI setNextThinkTime:[UNIVERSE getTime] + (start + (end - start)*randf())];
+	[_cxxShip->shipAI setNextThinkTime:[UNIVERSE getTime] + (start + (end - start)*randf())];
 }
 
 
@@ -922,61 +922,61 @@ using ooscript::Context;
 {
 	for (const std::string &message : oo::str::split(messageString, ","))
 	{
-		[shipAI cxx_dropMessage:oo::str::trimTrailing(oo::str::trimLeading(message, IsWhitespace), IsWhitespace)];
+		[_cxxShip->shipAI cxx_dropMessage:oo::str::trimTrailing(oo::str::trimLeading(message, IsWhitespace), IsWhitespace)];
 	}
 }
 
 
 - (void) debugDumpPendingMessages
 {
-	[shipAI debugDumpPendingMessages];
+	[_cxxShip->shipAI debugDumpPendingMessages];
 }
 
 
 - (void) setDestinationToCurrentLocation
 {
 	// randomly add a .5m variance
-	_destination = HPvector_add(_cxxEntity->position, OOHPVectorRandomSpatial(0.5));
+	_cxxShip->_destination = HPvector_add(_cxxEntity->position, OOHPVectorRandomSpatial(0.5));
 }
 
 
 - (void) setDestinationToJinkPosition
 {
-	Vector front = vector_multiply_scalar([self forwardVector], flightSpeed / max_flight_pitch * 2);
-	_destination = HPvector_add(_cxxEntity->position, vectorToHPVector(vector_add(front, OOVectorRandomSpatial(100))));
-	pitching_over = YES; // don't complete roll first, but immediately start with pitching. 
+	Vector front = vector_multiply_scalar([self forwardVector], _cxxShip->flightSpeed / _cxxShip->max_flight_pitch * 2);
+	_cxxShip->_destination = HPvector_add(_cxxEntity->position, vectorToHPVector(vector_add(front, OOVectorRandomSpatial(100))));
+	_cxxShip->pitching_over = YES; // don't complete roll first, but immediately start with pitching. 
 }
 
 
 - (void) setDesiredRangeTo:(const std::string &)rangeString	// called by name (ADR-0055 item 5)
 {
-	desired_range = oo::str::doubleValue(rangeString);
+	_cxxShip->desired_range = oo::str::doubleValue(rangeString);
 }
 
 - (void) setDesiredRangeForWaypoint
 {
-	desired_range = fmax(maxFlightSpeed / max_flight_pitch / 6, 50.0); // some ships need a longer range to reach a waypoint.
+	_cxxShip->desired_range = fmax(_cxxShip->maxFlightSpeed / _cxxShip->max_flight_pitch / 6, 50.0); // some ships need a longer range to reach a waypoint.
 }
 
 - (void) setSpeedTo:(const std::string &)speedString	// called by name (ADR-0055 item 5)
 {
-	desired_speed = oo::str::doubleValue(speedString);
+	_cxxShip->desired_speed = oo::str::doubleValue(speedString);
 }
 
 
 - (void) setSpeedFactorTo:(const std::string &)speedString	// called by name (ADR-0055 item 5)
 {
-	desired_speed = maxFlightSpeed * oo::str::doubleValue(speedString);
+	_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * oo::str::doubleValue(speedString);
 }
 
 - (void) setSpeedToCruiseSpeed
 {
-	desired_speed = cruiseSpeed;
+	_cxxShip->desired_speed = _cxxShip->cruiseSpeed;
 }
 
 - (void) setThrustFactorTo:(const std::string &)thrustFactorString	// called by name (ADR-0055 item 5)
 {
-	thrust = OOClamp_0_1_f(oo::str::doubleValue(thrustFactorString)) * max_thrust;
+	_cxxShip->thrust = OOClamp_0_1_f(oo::str::doubleValue(thrustFactorString)) * _cxxShip->max_thrust;
 }
 
 
@@ -1040,20 +1040,20 @@ using ooscript::Context;
 	//-- Locates the nearest merchantman in range.
 	[self checkScannerIgnoringUnpowered];
 	
-	found_d2 = scannerRange * scannerRange;
-	DESTROY(_foundTarget);
+	found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	DESTROY(_cxxShip->_foundTarget);
 	
-	for (i = 0; i < n_scanned_ships ; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ship = scanned_ships[i];
+		ship = _cxxShip->scanned_ships[i];
 		if ([ship isPirateVictim] && ([ship status] != STATUS_DEAD) && ([ship status] != STATUS_DOCKED) && ![ship isCloaked])
 		{
-			d2 = distance2_scanned_ships[i];
-			if (PIRATES_PREFER_PLAYER && (d2 < desired_range * desired_range) && ship->_cxxEntity->isPlayer && [self isPirate])
+			d2 = _cxxShip->distance2_scanned_ships[i];
+			if (PIRATES_PREFER_PLAYER && (d2 < _cxxShip->desired_range * _cxxShip->desired_range) && ship->_cxxEntity->isPlayer && [self isPirate])
 			{
 				d2 = 0.0;
 			}
-			else d2 = distance2_scanned_ships[i];
+			else d2 = _cxxShip->distance2_scanned_ships[i];
 			if (d2 < found_d2)
 			{
 				found_d2 = d2;
@@ -1071,25 +1071,25 @@ using ooscript::Context;
 	
 	//-- Locates one of the merchantman in range.
 	[self checkScannerIgnoringUnpowered];
-	std::vector<ShipEntity *>	ids_found(n_scanned_ships);
+	std::vector<ShipEntity *>	ids_found(_cxxShip->n_scanned_ships);
 	
 	n_found = 0;
-	DESTROY(_foundTarget);
-	for (i = 0; i < n_scanned_ships ; i++)
+	DESTROY(_cxxShip->_foundTarget);
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ShipEntity *ship = scanned_ships[i];
+		ShipEntity *ship = _cxxShip->scanned_ships[i];
 		if (([ship status] != STATUS_DEAD) && ([ship status] != STATUS_DOCKED) && [ship isPirateVictim] && ![ship isCloaked])
 			ids_found[n_found++] = ship;
 	}
 	if (n_found == 0)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 	}
 	else
 	{
 		i = ranrot_rand() % n_found;	// pick a number from 0 -> (n_found - 1)
 		[self setFoundTarget:ids_found[i]];
-		[shipAI message:"TARGET_FOUND"];
+		[_cxxShip->shipAI message:"TARGET_FOUND"];
 	}
 }
 
@@ -1101,13 +1101,13 @@ using ooscript::Context;
 	{
 		if (![self hasCargoScoop])
 		{
-			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
+			[_cxxShip->shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 			return;
 		}
 		if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 		{
-			if (max_cargo)  [shipAI message:"HOLD_FULL"];	//can't collect loot if holds are full!
-			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if holds are full!
+			if (_cxxShip->max_cargo)  [_cxxShip->shipAI message:"HOLD_FULL"];	//can't collect loot if holds are full!
+			[_cxxShip->shipAI message:"NOTHING_FOUND"];		//can't collect loot if holds are full!
 			return;
 		}
 	}
@@ -1115,24 +1115,24 @@ using ooscript::Context;
 	{
 		if (magnitude2([self velocity]))
 		{
-			[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you're a moving station
+			[_cxxShip->shipAI message:"NOTHING_FOUND"];		//can't collect loot if you're a moving station
 			return;
 		}
 	}
 	
 	[self checkScanner];
 	
-	double found_d2 = scannerRange * scannerRange;
-	DESTROY(_foundTarget);
+	double found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	DESTROY(_cxxShip->_foundTarget);
 	unsigned i;
-	for (i = 0; i < n_scanned_ships; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships; i++)
 	{
-		ShipEntity *other = (ShipEntity *)scanned_ships[i];
+		ShipEntity *other = (ShipEntity *)_cxxShip->scanned_ships[i];
 		if ([other scanClass] == CLASS_CARGO && [other cargoType] != CARGO_NOT_CARGO && [other status] != STATUS_BEING_SCOOPED)
 		{
 			if ((![self isPolice]) || ([other cxx_commodityType] == "slaves")) // police only rescue lifepods and slaves
 			{
-				GLfloat d2 = distance2_scanned_ships[i];
+				GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 				if (d2 < found_d2)
 				{
 					found_d2 = d2;
@@ -1150,7 +1150,7 @@ using ooscript::Context;
 	/*-- Locates the all debris in range and chooses a piece at random from the first sixteen found --*/
 	if (![self isStation] && ![self hasCargoScoop])
 	{
-		[shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 		return;
 	}
 	//
@@ -1158,11 +1158,11 @@ using ooscript::Context;
 	//
 	ShipEntity* thing_uids_found[16];
 	unsigned things_found = 0;
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	unsigned i;
-	for (i = 0; (i < n_scanned_ships)&&(things_found < 16) ; i++)
+	for (i = 0; (i < _cxxShip->n_scanned_ships)&&(things_found < 16) ; i++)
 	{
-		ShipEntity *other = scanned_ships[i];
+		ShipEntity *other = _cxxShip->scanned_ships[i];
 		if ([other scanClass] == CLASS_CARGO && [other cargoType] != CARGO_NOT_CARGO && [other status] != STATUS_BEING_SCOOPED)
 		{
 			thing_uids_found[things_found++] = other;
@@ -1172,10 +1172,10 @@ using ooscript::Context;
 	if (things_found != 0)
 	{
 		[self setFoundTarget:thing_uids_found[ranrot_rand() % things_found]];
-		[shipAI message:"TARGET_FOUND"];
+		[_cxxShip->shipAI message:"TARGET_FOUND"];
 	}
 	else
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 }
 
 
@@ -1187,7 +1187,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		[shipAI message:"TARGET_LOST"]; // to prevent the ship going for a wrong, previous target. Should not be a reactToMessage.
+		[_cxxShip->shipAI message:"TARGET_LOST"]; // to prevent the ship going for a wrong, previous target. Should not be a reactToMessage.
 	}
 }
 
@@ -1206,17 +1206,17 @@ using ooscript::Context;
 
 - (void) checkForFullHold
 {
-	if (!max_cargo)
+	if (!_cxxShip->max_cargo)
 	{
-		[shipAI message:"NO_CARGO_BAY"];
+		[_cxxShip->shipAI message:"NO_CARGO_BAY"];
 	}
 	else if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 	{
-		[shipAI message:"HOLD_FULL"];
+		[_cxxShip->shipAI message:"HOLD_FULL"];
 	}
 	else
 	{
-		[shipAI message:"HOLD_NOT_FULL"];
+		[_cxxShip->shipAI message:"HOLD_NOT_FULL"];
 	}
 }
 
@@ -1229,8 +1229,8 @@ using ooscript::Context;
 	/*- calculates coordinates from the nearest station it can find, or just fly 10s forward -*/
 	if (!UNIVERSE)
 	{
-		Vector  vr = vector_multiply_scalar(v_forward, maxFlightSpeed * 10.0);  // 10 second flying away
-		coordinates = HPvector_add(_cxxEntity->position, vectorToHPVector(vr));
+		Vector  vr = vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->maxFlightSpeed * 10.0);  // 10 second flying away
+		_cxxShip->coordinates = HPvector_add(_cxxEntity->position, vectorToHPVector(vr));
 		return;
 	}
 	//
@@ -1246,25 +1246,25 @@ using ooscript::Context;
 	if (station && HPdistance2([station position], _cxxEntity->position) < SCANNER_MAX_RANGE2) // there is a station in range.
 	{
 		Vector  vr = vector_multiply_scalar([station rightVector], 10000);  // 10km from station
-		coordinates = HPvector_add([station position], vectorToHPVector(vr));
+		_cxxShip->coordinates = HPvector_add([station position], vectorToHPVector(vr));
 	}
 	else
 	{
-		Vector  vr = vector_multiply_scalar(v_forward, maxFlightSpeed * 10.0);  // 10 second flying away
-		coordinates = HPvector_add(_cxxEntity->position, vectorToHPVector(vr));
+		Vector  vr = vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->maxFlightSpeed * 10.0);  // 10 second flying away
+		_cxxShip->coordinates = HPvector_add(_cxxEntity->position, vectorToHPVector(vr));
 	}
 }
 
 
 - (void) setDestinationFromCoordinates
 {
-	_destination = coordinates;
+	_cxxShip->_destination = _cxxShip->coordinates;
 }
 
 
 - (void) setCoordinatesFromPosition
 {
-	coordinates = _cxxEntity->position;
+	_cxxShip->coordinates = _cxxEntity->position;
 }
 
 
@@ -1278,9 +1278,9 @@ using ooscript::Context;
 	ShipEntity			*target = nil;
 	
 	[self checkScannerIgnoringUnpowered];
-	for (i = 0; (i < n_scanned_ships)&&(missile == nil); i++)
+	for (i = 0; (i < _cxxShip->n_scanned_ships)&&(missile == nil); i++)
 	{
-		ShipEntity *thing = scanned_ships[i];
+		ShipEntity *thing = _cxxShip->scanned_ships[i];
 		if (thing->_cxxEntity->scanClass == CLASS_MISSILE)
 		{
 			target = [thing primaryTarget];
@@ -1342,9 +1342,9 @@ using ooscript::Context;
 	}
 	
 	// RUN AWAY !!
-	desired_range = 10000;
+	_cxxShip->desired_range = 10000;
 	[self performFlee];
-	[shipAI message:"FLEEING"];
+	[_cxxShip->shipAI message:"FLEEING"];
 }
 
 
@@ -1354,7 +1354,7 @@ using ooscript::Context;
 	OOPlanetEntity	*the_planet =  [self findNearestPlanetExcludingMoons];
 	if (the_planet)
 	{
-		double variation = (aegis_status == AEGIS_NONE ? 0.5 : 0.2); // more random deviation when far from planet.
+		double variation = (_cxxShip->aegis_status == AEGIS_NONE ? 0.5 : 0.2); // more random deviation when far from planet.
 		HPVector p_pos = the_planet->_cxxEntity->position;
 		double p_cr = the_planet->_cxxEntity->collision_radius;		// the surface
 		HPVector p1 = HPvector_between(p_pos, _cxxEntity->position);
@@ -1363,12 +1363,12 @@ using ooscript::Context;
 		p1.y += variation * (randf() - variation);
 		p1.z += variation * (randf() - variation);
 		p1 = HPvector_normal(p1); 
-		_destination = HPvector_add(p_pos, HPvector_multiply_scalar(p1, p_cr));	// on surface
-		desired_range = _cxxEntity->collision_radius + 100.0;	// +100m from the destination
+		_cxxShip->_destination = HPvector_add(p_pos, HPvector_multiply_scalar(p1, p_cr));	// on surface
+		_cxxShip->desired_range = _cxxEntity->collision_radius + 100.0;	// +100m from the destination
 	}
 	else
 	{
-		[shipAI message:"NO_PLANET_FOUND"];
+		[_cxxShip->shipAI message:"NO_PLANET_FOUND"];
 	}
 }
 
@@ -1379,9 +1379,9 @@ using ooscript::Context;
 	OOPlanetEntity	*the_planet =  [self findNearestPlanet];
 	if (the_planet)
 	{
-		_destination = HPvector_add([the_planet position], HPvector_multiply_scalar(
+		_cxxShip->_destination = HPvector_add([the_planet position], HPvector_multiply_scalar(
 																			   HPvector_normal(HPvector_subtract([the_planet position],_cxxEntity->position)),-10000.0-the_planet->_cxxEntity->collision_radius));// 10km straight up
-		desired_range = 50.0;
+		_cxxShip->desired_range = 50.0;
 	}
 	else
 	{
@@ -1402,7 +1402,7 @@ using ooscript::Context;
 	ShipEntity  *other_ship = [self primaryTarget];
 	if (!other_ship)
 	{
-		[shipAI message:"NO_TARGET"];
+		[_cxxShip->shipAI message:"NO_TARGET"];
 		return;
 	}
 	else
@@ -1410,20 +1410,20 @@ using ooscript::Context;
 		int ls = [other_ship legalStatus];
 		if (ls > 50)
 		{
-			[shipAI message:"TARGET_FUGITIVE"];
+			[_cxxShip->shipAI message:"TARGET_FUGITIVE"];
 			return;
 		}
 		if (ls > 20)
 		{
-			[shipAI message:"TARGET_OFFENDER"];
+			[_cxxShip->shipAI message:"TARGET_OFFENDER"];
 			return;
 		}
 		if (ls > 0)
 		{
-			[shipAI message:"TARGET_MINOR_OFFENDER"];
+			[_cxxShip->shipAI message:"TARGET_MINOR_OFFENDER"];
 			return;
 		}
-		[shipAI message:"TARGET_CLEAN"];
+		[_cxxShip->shipAI message:"TARGET_CLEAN"];
 	}
 }
 
@@ -1432,32 +1432,32 @@ using ooscript::Context;
 {
 	if (_cxxEntity->scanClass == CLASS_THARGOID)
 	{
-		[shipAI message:"SELF_THARGOID"];
+		[_cxxShip->shipAI message:"SELF_THARGOID"];
 		return;
 	}
 	int ls = [self legalStatus];
 	if (ls > 50)
 	{
-		[shipAI message:"SELF_FUGITIVE"];
+		[_cxxShip->shipAI message:"SELF_FUGITIVE"];
 		return;
 	}
 	if (ls > 20)
 	{
-		[shipAI message:"SELF_OFFENDER"];
+		[_cxxShip->shipAI message:"SELF_OFFENDER"];
 		return;
 	}
 	if (ls > 0)
 	{
-		[shipAI message:"SELF_MINOR_OFFENDER"];
+		[_cxxShip->shipAI message:"SELF_MINOR_OFFENDER"];
 		return;
 	}
-	[shipAI message:"SELF_CLEAN"];
+	[_cxxShip->shipAI message:"SELF_CLEAN"];
 }
 
 
 - (void) exitAIWithMessage:(const std::string &)message	// called by name (ADR-0055 item 5)
 {
-	[shipAI cxx_exitStateMachineWithMessage:message.empty() ? std::string("RESTARTED") : message];
+	[_cxxShip->shipAI cxx_exitStateMachineWithMessage:message.empty() ? std::string("RESTARTED") : message];
 }
 
 
@@ -1465,7 +1465,7 @@ using ooscript::Context;
 {
 	Entity *the_target = [self primaryTarget];
 	if (the_target)
-		_destination = the_target->_cxxEntity->position;
+		_cxxShip->_destination = the_target->_cxxEntity->position;
 }
 
 
@@ -1478,36 +1478,36 @@ using ooscript::Context;
 		Quaternion q;	quaternion_set_random(&q);
 		Vector v = vector_forward_from_quaternion(q);
 		GLfloat d = (randf() - randf()) * the_target->_cxxEntity->collision_radius;  // NOLINT(misc-redundant-expression): two independent randf() draws, pre-existing; behaviour unchanged by this retarget.
-		_destination = make_HPvector(pos.x + d * v.x, pos.y + d * v.y, pos.z + d * v.z);
+		_cxxShip->_destination = make_HPvector(pos.x + d * v.x, pos.y + d * v.y, pos.z + d * v.z);
 	}
 }
 
 
 - (void) checkCourseToDestination
 {
-	Entity *hazard = [UNIVERSE hazardOnRouteFromEntity: self toDistance: desired_range fromPoint: _destination];
+	Entity *hazard = [UNIVERSE hazardOnRouteFromEntity: self toDistance: _cxxShip->desired_range fromPoint: _cxxShip->_destination];
 	
-	if (hazard == nil || ([hazard isShip] && HPdistance(_cxxEntity->position, [hazard position]) > scannerRange) || ([hazard isPlanet] && aegis_status == AEGIS_NONE)) 
-		[shipAI message:"COURSE_OK"]; // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
+	if (hazard == nil || ([hazard isShip] && HPdistance(_cxxEntity->position, [hazard position]) > _cxxShip->scannerRange) || ([hazard isPlanet] && _cxxShip->aegis_status == AEGIS_NONE)) 
+		[_cxxShip->shipAI message:"COURSE_OK"]; // Avoid going into a waypoint.plist for far away objects, it cripples the main AI a bit in its funtionality.
 	else
 	{
-		if ([hazard isShip] && (weapon_damage * 24.0 > [hazard energy]))
+		if ([hazard isShip] && (_cxxShip->weapon_damage * 24.0 > [hazard energy]))
 		{
-			[shipAI cxx_reactToMessage:"HAZARD_CAN_BE_DESTROYED" context:"checkCourseToDestination"];
+			[_cxxShip->shipAI cxx_reactToMessage:"HAZARD_CAN_BE_DESTROYED" context:"checkCourseToDestination"];
 		}
 		
-		_destination = [UNIVERSE getSafeVectorFromEntity:self toDistance:desired_range fromPoint:_destination];
-		[shipAI message:"WAYPOINT_SET"];
+		_cxxShip->_destination = [UNIVERSE getSafeVectorFromEntity:self toDistance:_cxxShip->desired_range fromPoint:_cxxShip->_destination];
+		[_cxxShip->shipAI message:"WAYPOINT_SET"];
 	}
 }
 
 
 - (void) checkAegis
 {
-	switch (aegis_status)
+	switch (_cxxShip->aegis_status)
 	{
 		case AEGIS_CLOSE_TO_MAIN_PLANET: 
-			[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];
+			[_cxxShip->shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];
 			// It's been a few years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
 			//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	     // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
 			return;
@@ -1517,33 +1517,33 @@ using ooscript::Context;
 			
 			if([nearest isSun])
 			{
-				[shipAI message:"CLOSE_TO_SUN"];
+				[_cxxShip->shipAI message:"CLOSE_TO_SUN"];
 			}
 			else
 			{
-				[shipAI message:"CLOSE_TO_PLANET"];
+				[_cxxShip->shipAI message:"CLOSE_TO_PLANET"];
 				if ([nearest planetType] == STELLAR_TYPE_MOON)
 				{
-					[shipAI message:"CLOSE_TO_MOON"];
+					[_cxxShip->shipAI message:"CLOSE_TO_MOON"];
 				}
 				else
 				{
-					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
+					[_cxxShip->shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
 				}
 			}
 			return;
 		}
 		case AEGIS_IN_DOCKING_RANGE:
-			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
+			[_cxxShip->shipAI message:"AEGIS_IN_DOCKING_RANGE"];
 			return;
 		case AEGIS_NONE:
-			[shipAI message:"AEGIS_NONE"];
+			[_cxxShip->shipAI message:"AEGIS_NONE"];
 			return;
 	}
 	
-	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(aegis_status));
-	aegis_status = AEGIS_NONE;
-	[shipAI message:"AEGIS_NONE"];
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::DescriptionOf(self), static_cast<int>(_cxxShip->aegis_status));
+	_cxxShip->aegis_status = AEGIS_NONE;
+	[_cxxShip->shipAI message:"AEGIS_NONE"];
 }
 
 
@@ -1551,20 +1551,20 @@ using ooscript::Context;
 {
 	if (_cxxEntity->energy == _cxxEntity->maxEnergy)
 	{
-		[shipAI message:"ENERGY_FULL"];
+		[_cxxShip->shipAI message:"ENERGY_FULL"];
 		return;
 	}
 	if (_cxxEntity->energy >= _cxxEntity->maxEnergy * 0.75)
 	{
-		[shipAI message:"ENERGY_HIGH"];
+		[_cxxShip->shipAI message:"ENERGY_HIGH"];
 		return;
 	}
 	if (_cxxEntity->energy <= _cxxEntity->maxEnergy * 0.25)
 	{
-		[shipAI message:"ENERGY_LOW"];
+		[_cxxShip->shipAI message:"ENERGY_LOW"];
 		return;
 	}
-	[shipAI message:"ENERGY_MEDIUM"];
+	[_cxxShip->shipAI message:"ENERGY_MEDIUM"];
 }
 
 - (void) checkHeatInsulation
@@ -1573,10 +1573,10 @@ using ooscript::Context;
 	
 	if ([self heatInsulation] < minInsulation)
 	{
-		[shipAI message:"INSULATION_POOR"];
+		[_cxxShip->shipAI message:"INSULATION_POOR"];
 		return;
 	}
-	[shipAI message:"INSULATION_OK"];
+	[_cxxShip->shipAI message:"INSULATION_OK"];
 }
 
 
@@ -1584,9 +1584,9 @@ using ooscript::Context;
 {
 	[self checkScanner];
 	unsigned i;
-	for (i = 0; i < n_scanned_ships ; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ShipEntity *ship = scanned_ships[i];
+		ShipEntity *ship = _cxxShip->scanned_ships[i];
 		if (![ship isCloaked] && (([ship primaryTarget] == self && [ship hasHostileTarget]) || [ship isMine] || ([ship isThargoid] != [self isThargoid])))
 		{
 			if (![self isDefenseTarget:ship])
@@ -1607,21 +1607,21 @@ using ooscript::Context;
 	if ([UNIVERSE sun] == nil)
 		gov_factor = 1.0;
 	//
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	
 	// find the worst offender on the scanner
 	//
 	[self checkScanner];
 	unsigned i;
 	float	worst_legal_factor = 0;
-	GLfloat found_d2 = scannerRange * scannerRange;
+	GLfloat found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
 	OOShipGroup *group = [self group];
-	for (i = 0; i < n_scanned_ships ; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ShipEntity *ship = scanned_ships[i];
+		ShipEntity *ship = _cxxShip->scanned_ships[i];
 		if ((ship->_cxxEntity->scanClass != CLASS_CARGO)&&([ship status] != STATUS_DEAD)&&([ship status] != STATUS_DOCKED)&& ![ship isCloaked])
 		{
-			GLfloat	d2 = distance2_scanned_ships[i];
+			GLfloat	d2 = _cxxShip->distance2_scanned_ships[i];
 			float	legal_factor = [ship legalStatus] * gov_factor;
 			int random_factor = ranrot_rand() & 255;   // 25% chance of spotting a fugitive in 15s
 			if ((d2 < found_d2)&&(random_factor < legal_factor)&&(legal_factor > worst_legal_factor))
@@ -1643,15 +1643,15 @@ using ooscript::Context;
 {
 	if (UNIVERSE)
 	{
-		_destination = [UNIVERSE getWitchspaceExitPosition];
-		desired_range = 10000.0;   // 10km away
+		_cxxShip->_destination = [UNIVERSE getWitchspaceExitPosition];
+		_cxxShip->desired_range = 10000.0;   // 10km away
 	}
 }
 
 
 - (void) setDestinationToWitchpoint
 {
-	_destination = [UNIVERSE getWitchspaceExitPosition];
+	_cxxShip->_destination = [UNIVERSE getWitchspaceExitPosition];
 }
 
 
@@ -1659,7 +1659,7 @@ using ooscript::Context;
 {
 	if ([UNIVERSE station])
 	{
-		_destination = [[UNIVERSE station] beaconPosition];
+		_cxxShip->_destination = [[UNIVERSE station] beaconPosition];
 	}
 }
 
@@ -1678,7 +1678,7 @@ using ooscript::Context;
 
 - (void) disengageAutopilot
 {
-	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [shipAI cxx_name].value_or("(null)"), [shipAI cxx_state].value_or("(null)"));
+	OO_LOG_ERR("ai.invalid.notPlayer", "Error in {}:{}, AI method endAutoPilot is only applicable to the player.", [_cxxShip->shipAI cxx_name].value_or("(null)"), [_cxxShip->shipAI cxx_state].value_or("(null)"));
 }
 
 
@@ -1736,15 +1736,15 @@ using ooscript::Context;
 - (void) scanForNonThargoid
 {
 	/*-- Locates all the non thargoid ships in range and chooses the nearest --*/
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	
 	[self checkScanner];
 	unsigned i;
-	GLfloat	found_d2 = scannerRange * scannerRange;
-	for (i = 0; i < n_scanned_ships ; i++)
+	GLfloat	found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ShipEntity *thing = scanned_ships[i];
-		GLfloat d2 = distance2_scanned_ships[i];
+		ShipEntity *thing = _cxxShip->scanned_ships[i];
+		GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 		if (([thing scanClass] != CLASS_CARGO) && ([thing status] != STATUS_DOCKED) && ![thing isThargoid] && ![thing isCloaked] && (d2 < found_d2))
 		{
 			[self setFoundTarget:thing];
@@ -1762,11 +1762,11 @@ using ooscript::Context;
 	ShipEntity   *mother = [self owner];
 	if (mother == nil && [self group])  mother = [[self group] leader];
 	
-	double	maxRange2 = scannerRange * scannerRange;
+	double	maxRange2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
 	
 	if (mother && mother != self && HPdistance2(mother->_cxxEntity->position, _cxxEntity->position) < maxRange2)
 	{
-		[shipAI message:"TARGET_FOUND"]; // no need for scanning, we still have our mother.
+		[_cxxShip->shipAI message:"TARGET_FOUND"]; // no need for scanning, we still have our mother.
 	}
 	else
 	{
@@ -1804,9 +1804,9 @@ using ooscript::Context;
 	}
 	// now we're just a bunch of alien artefacts!
 	_cxxEntity->scanClass = CLASS_CARGO;
-	reportAIMessages = NO;
+	_cxxShip->reportAIMessages = NO;
 	[self setAITo:"dumbAI.plist"];
-	DESTROY(_primaryTarget);
+	DESTROY(_cxxShip->_primaryTarget);
 	[self setSpeed: 0.0];
 	[self setGroup:nil];
 }
@@ -1814,8 +1814,8 @@ using ooscript::Context;
 
 - (void) checkDistanceTravelled
 {
-	if (_cxxEntity->distanceTravelled > desired_range)
-		[shipAI message:"GONE_BEYOND_RANGE"];
+	if (_cxxEntity->distanceTravelled > _cxxShip->desired_range)
+		[_cxxShip->shipAI message:"GONE_BEYOND_RANGE"];
 }
 
 
@@ -1829,27 +1829,27 @@ using ooscript::Context;
 		if (leTarget != nil)
 		{
 			[self setFoundTarget:leTarget];
-			[shipAI message:"FLEEING"];
+			[_cxxShip->shipAI message:"FLEEING"];
 			return;
 		}
 		
 		[self setPrimaryAggressor:[self foundTarget]];
 		[self addTarget:[self foundTarget]];
 		[self deployEscorts];
-		[shipAI message:"DEPLOYING_ESCORTS"];
-		[shipAI message:"FLEEING"];
+		[_cxxShip->shipAI message:"DEPLOYING_ESCORTS"];
+		[_cxxShip->shipAI message:"FLEEING"];
 		return;
 	}
 	
 	// consider launching a missile
-	if (missiles > 2)   // keep a reserve
+	if (_cxxShip->missiles > 2)   // keep a reserve
 	{
 		if (randf() < 0.50)
 		{
 			[self setPrimaryAggressor:[self foundTarget]];
 			[self addTarget:[self foundTarget]];
 			[self fireMissile];
-			[shipAI message:"FLEEING"];
+			[_cxxShip->shipAI message:"FLEEING"];
 			return;
 		}
 	}
@@ -1859,11 +1859,11 @@ using ooscript::Context;
 	{
 		[self setPrimaryAggressor:[self foundTarget]];
 		//[self performAttack];
-		[shipAI message:"FIGHTING"];
+		[_cxxShip->shipAI message:"FIGHTING"];
 		return;
 	}
 	
-	[shipAI message:"FLEEING"];
+	[_cxxShip->shipAI message:"FLEEING"];
 }
 
 
@@ -1883,13 +1883,13 @@ using ooscript::Context;
 	{
 		[self setOwner:mother];
 		[self setGroup:[mother escortGroup]];
-		[shipAI message:"ESCORTING"];
+		[_cxxShip->shipAI message:"ESCORTING"];
 	}
 	else
 	{
 		[self setOwner:self];
 		if ([self group] == [mother escortGroup])  [self setGroup:nil];
-		[shipAI message:"NOT_ESCORTING"];
+		[_cxxShip->shipAI message:"NOT_ESCORTING"];
 	}
 }
 
@@ -1901,15 +1901,15 @@ using ooscript::Context;
 	
 	if (ownGroupCount == targetGroupCount)
 	{
-		[shipAI message:"ODDS_LEVEL"];
+		[_cxxShip->shipAI message:"ODDS_LEVEL"];
 	}
 	else if (ownGroupCount > targetGroupCount)
 	{
-		[shipAI message:"ODDS_GOOD"];
+		[_cxxShip->shipAI message:"ODDS_GOOD"];
 	}
 	else
 	{
-		[shipAI message:"ODDS_BAD"];
+		[_cxxShip->shipAI message:"ODDS_BAD"];
 	}
 }
 
@@ -1919,16 +1919,16 @@ using ooscript::Context;
 - (void) scanForFormationLeader
 {
 	//-- Locates the nearest suitable formation leader in range --//
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	[self checkScannerIgnoringUnpowered];
 	unsigned i;
-	GLfloat	found_d2 = scannerRange * scannerRange;
-	for (i = 0; i < n_scanned_ships; i++)
+	GLfloat	found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	for (i = 0; i < _cxxShip->n_scanned_ships; i++)
 	{
-		ShipEntity *ship = scanned_ships[i];
+		ShipEntity *ship = _cxxShip->scanned_ships[i];
 		if ((ship != self) && (!ship->_cxxEntity->isPlayer) && (ship->_cxxEntity->scanClass == _cxxEntity->scanClass) && [ship primaryTarget] != self && ![ship isCloaked])	// look for alike
 		{
-			GLfloat d2 = distance2_scanned_ships[i];
+			GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 			if ((d2 < found_d2) && [ship canAcceptEscort:self])
 			{
 				found_d2 = d2;
@@ -1937,10 +1937,10 @@ using ooscript::Context;
 		}
 	}
 	
-	if ([self foundTarget] != nil)  [shipAI message:"TARGET_FOUND"];
+	if ([self foundTarget] != nil)  [_cxxShip->shipAI message:"TARGET_FOUND"];
 	else
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 		if ([self cxx_hasPrimaryRole:"wingman"])
 		{
 			// become free-lance police :)
@@ -1971,8 +1971,8 @@ using ooscript::Context;
 - (void) setPlanetPatrolCoordinates
 {
 	// check we've arrived near the last given coordinates
-	HPVector r_pos = HPvector_subtract(_cxxEntity->position, coordinates);
-	if (HPmagnitude2(r_pos) < 1000000 || patrol_counter == 0)
+	HPVector r_pos = HPvector_subtract(_cxxEntity->position, _cxxShip->coordinates);
+	if (HPmagnitude2(r_pos) < 1000000 || _cxxShip->patrol_counter == 0)
 	{
 		Entity *the_sun = [UNIVERSE sun];
 		ShipEntity *the_station = [[self group] leader];
@@ -1988,35 +1988,35 @@ using ooscript::Context;
 		Vector v0 = [the_station forwardVector];
 		Vector v1 = cross_product(v0, vSun);
 		Vector v2 = cross_product(v0, v1);
-		switch (patrol_counter)
+		switch (_cxxShip->patrol_counter)
 		{
 			case 0:		// first go to 5km ahead of the station
-				coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
-				desired_range = 250.0;
+				_cxxShip->coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
+				_cxxShip->desired_range = 250.0;
 				break;
 			case 1:		// go to 25km N of the station
-				coordinates = make_HPvector(stn_pos.x + 25000 * v1.x, stn_pos.y + 25000 * v1.y, stn_pos.z + 25000 * v1.z);
-				desired_range = 250.0;
+				_cxxShip->coordinates = make_HPvector(stn_pos.x + 25000 * v1.x, stn_pos.y + 25000 * v1.y, stn_pos.z + 25000 * v1.z);
+				_cxxShip->desired_range = 250.0;
 				break;
 			case 2:		// go to 25km E of the station
-				coordinates = make_HPvector(stn_pos.x + 25000 * v2.x, stn_pos.y + 25000 * v2.y, stn_pos.z + 25000 * v2.z);
-				desired_range = 250.0;
+				_cxxShip->coordinates = make_HPvector(stn_pos.x + 25000 * v2.x, stn_pos.y + 25000 * v2.y, stn_pos.z + 25000 * v2.z);
+				_cxxShip->desired_range = 250.0;
 				break;
 			case 3:		// go to 25km S of the station
-				coordinates = make_HPvector(stn_pos.x - 25000 * v1.x, stn_pos.y - 25000 * v1.y, stn_pos.z - 25000 * v1.z);
-				desired_range = 250.0;
+				_cxxShip->coordinates = make_HPvector(stn_pos.x - 25000 * v1.x, stn_pos.y - 25000 * v1.y, stn_pos.z - 25000 * v1.z);
+				_cxxShip->desired_range = 250.0;
 				break;
 			case 4:		// go to 25km W of the station
-				coordinates = make_HPvector(stn_pos.x - 25000 * v2.x, stn_pos.y - 25000 * v2.y, stn_pos.z - 25000 * v2.z);
-				desired_range = 250.0;
+				_cxxShip->coordinates = make_HPvector(stn_pos.x - 25000 * v2.x, stn_pos.y - 25000 * v2.y, stn_pos.z - 25000 * v2.z);
+				_cxxShip->desired_range = 250.0;
 				break;
 			default:	// We should never come here
-				coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
-				desired_range = 250.0;
+				_cxxShip->coordinates = make_HPvector(stn_pos.x + 5000 * v0.x, stn_pos.y + 5000 * v0.y, stn_pos.z + 5000 * v0.z);
+				_cxxShip->desired_range = 250.0;
 				break;
 		}
-		patrol_counter++;
-		if (patrol_counter > 4)
+		_cxxShip->patrol_counter++;
+		if (_cxxShip->patrol_counter > 4)
 		{
 			if (randf() < .25)
 			{
@@ -2028,11 +2028,11 @@ using ooscript::Context;
 			else
 			{
 				// go around again
-				patrol_counter = 1;
+				_cxxShip->patrol_counter = 1;
 			}
 		}
 	}
-	[shipAI message:"APPROACH_COORDINATES"];
+	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
 }
 
 
@@ -2040,7 +2040,7 @@ using ooscript::Context;
 {
 	if ([UNIVERSE sun] == nil)
 	{
-		[shipAI message:"NO_SUN_FOUND"];
+		[_cxxShip->shipAI message:"NO_SUN_FOUND"];
 		return;
 	}
 	
@@ -2048,12 +2048,12 @@ using ooscript::Context;
 	
 	if (!HPvector_equal(v0, kZeroHPVector))
 	{
-		coordinates = v0;
-		[shipAI message:"APPROACH_COORDINATES"];
+		_cxxShip->coordinates = v0;
+		[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
 	}
 	else
 	{
-		[shipAI message:"WAIT_FOR_SUN"];
+		[_cxxShip->shipAI message:"WAIT_FOR_SUN"];
 	}
 }
 
@@ -2062,12 +2062,12 @@ using ooscript::Context;
 {
 	if ([UNIVERSE sun] == nil)
 	{
-		[shipAI message:"NO_SUN_FOUND"];
+		[_cxxShip->shipAI message:"NO_SUN_FOUND"];
 		return;
 	}
 	
-	coordinates = [UNIVERSE getSunSkimEndPositionForShip:self];
-	[shipAI message:"APPROACH_COORDINATES"];
+	_cxxShip->coordinates = [UNIVERSE getSunSkimEndPositionForShip:self];
+	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
 }
 
 
@@ -2083,8 +2083,8 @@ using ooscript::Context;
 	else
 		vout.z = 1.0;
 	v1.x += 10000 * vout.x;	v1.y += 10000 * vout.y;	v1.z += 10000 * vout.z;
-	coordinates = v1;
-	[shipAI message:"APPROACH_COORDINATES"];
+	_cxxShip->coordinates = v1;
+	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
 }
 
 
@@ -2102,17 +2102,17 @@ using ooscript::Context;
 	ShipEntity *motherStation = [[self group] leader];
 	if ((!motherStation) || (!(motherStation->_cxxEntity->isStation)))
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 		return;
 	}
-	double found_d2 = scannerRange * scannerRange;
+	double found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
 	HPVector v0 = motherStation->_cxxEntity->position;
 	if (HPdistance2(v0,_cxxEntity->position) > found_d2)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 		return;
 	}
-	[shipAI message:"STATION_FOUND"];		
+	[_cxxShip->shipAI message:"STATION_FOUND"];		
 }
 
 
@@ -2136,7 +2136,7 @@ using ooscript::Context;
 		[self noteLostTarget];
 		return;
 	}
-	if ([ship markForFines])  [shipAI message:"TARGET_MARKED"];
+	if ([ship markForFines])  [_cxxShip->shipAI message:"TARGET_MARKED"];
 }
 
 
@@ -2166,7 +2166,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		DESTROY(_rememberedShip);
+		DESTROY(_cxxShip->_rememberedShip);
 	}
 	
 }
@@ -2179,7 +2179,7 @@ using ooscript::Context;
 	if (oldTarget && ![oldTarget isCloaked])
 	{
 		GLfloat range2 = HPdistance2([oldTarget position], _cxxEntity->position);
-		if (range2 <= scannerRange * scannerRange && range2 <= SCANNER_MAX_RANGE2)
+		if (range2 <= _cxxShip->scannerRange * _cxxShip->scannerRange && range2 <= SCANNER_MAX_RANGE2)
 		{
 			found = YES;
 		}
@@ -2188,12 +2188,12 @@ using ooscript::Context;
 	if (found)
 	{
 		[self setFoundTarget:oldTarget];
-		[shipAI message:"TARGET_FOUND"];
+		[_cxxShip->shipAI message:"TARGET_FOUND"];
 	}
 	else
 	{
-		if (oldTarget == nil) DESTROY(_rememberedShip); // ship no longer exists
-		[shipAI message:"NOTHING_FOUND"];
+		if (oldTarget == nil) DESTROY(_cxxShip->_rememberedShip); // ship no longer exists
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 	}
 	
 }
@@ -2204,16 +2204,16 @@ using ooscript::Context;
 	
 	// find boulders then asteroids within range
 	//
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	[self checkScanner];
 	unsigned i;
-	GLfloat found_d2 = scannerRange * scannerRange;
-	for (i = 0; i < n_scanned_ships; i++)
+	GLfloat found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
+	for (i = 0; i < _cxxShip->n_scanned_ships; i++)
 	{
-		ShipEntity *thing = scanned_ships[i];
+		ShipEntity *thing = _cxxShip->scanned_ships[i];
 		if ([thing isBoulder])
 		{
-			GLfloat d2 = distance2_scanned_ships[i];
+			GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 			if (d2 < found_d2)
 			{
 				[self setFoundTarget:thing];
@@ -2223,12 +2223,12 @@ using ooscript::Context;
 	}
 	if ([self foundTarget] == nil)
 	{
-		for (i = 0; i < n_scanned_ships; i++)
+		for (i = 0; i < _cxxShip->n_scanned_ships; i++)
 		{
-			ShipEntity *thing = scanned_ships[i];
+			ShipEntity *thing = _cxxShip->scanned_ships[i];
 			if ([thing hasRole:"asteroid"])
 			{
-				GLfloat d2 = distance2_scanned_ships[i];
+				GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 				if (d2 < found_d2)
 				{
 					[self setFoundTarget:thing];
@@ -2259,8 +2259,8 @@ using ooscript::Context;
 	
 	v0.x *= bo_distance;	v0.y *= bo_distance;	v0.z *= bo_distance;
 	v0.x += d0.x;	v0.y += d0.y;	v0.z += d0.z;
-	coordinates = v0;
-	_destination = v0;
+	_cxxShip->coordinates = v0;
+	_cxxShip->_destination = v0;
 }
 
 
@@ -2269,20 +2269,20 @@ using ooscript::Context;
 	ShipEntity *mother = [[self group] leader];
 	if (mother == nil)
 	{
-		[shipAI message:"MOTHER_LOST"];
+		[_cxxShip->shipAI message:"MOTHER_LOST"];
 		return;
 	}
 	
 	/*-- Locates all the ships in range targeting the mother ship and chooses the nearest/biggest --*/
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	[self checkScanner];
 	unsigned i;
-	GLfloat found_d2 = scannerRange * scannerRange;
+	GLfloat found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
 	GLfloat max_e = 0;
-	for (i = 0; i < n_scanned_ships ; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		ShipEntity *thing = scanned_ships[i];
-		GLfloat d2 = distance2_scanned_ships[i];
+		ShipEntity *thing = _cxxShip->scanned_ships[i];
+		GLfloat d2 = _cxxShip->distance2_scanned_ships[i];
 		GLfloat e1 = [thing energy];
 		if ((d2 < found_d2) && ![thing isCloaked] && (([thing isThargoid] && ![mother isThargoid]) || (([thing primaryTarget] == mother) && [thing hasHostileTarget])))
 		{
@@ -2304,7 +2304,7 @@ using ooscript::Context;
 	if (die_sides > 0)
 	{
 		int die_roll = 1 + (ranrot_rand() % die_sides);
-		[shipAI cxx_reactToMessage:oo::str::format("ROLL_%d", die_roll) context:"rollD:"];
+		[_cxxShip->shipAI cxx_reactToMessage:oo::str::format("ROLL_%d", die_roll) context:"rollD:"];
 	}
 	else
 	{
@@ -2470,7 +2470,7 @@ using ooscript::Context;
 		}
 		
 		// Select nothing
-		DESTROY(_foundTarget);
+		DESTROY(_cxxShip->_foundTarget);
 		[[self getAI] message:"NOTHING_FOUND"];
 	}
 	
@@ -2504,18 +2504,18 @@ using ooscript::Context;
 	HPVector posn = make_HPvector((float)oo::str::doubleValue(xString), (float)oo::str::doubleValue(yString), (float)oo::str::doubleValue(zString));
 	GLfloat	scalar = 1.0;
 	
-	coordinates = [UNIVERSE cxx_coordinatesForPosition:posn withCoordinateSystem:systemString returningScalar:&scalar];
+	_cxxShip->coordinates = [UNIVERSE cxx_coordinatesForPosition:posn withCoordinateSystem:systemString returningScalar:&scalar];
 	
-	[shipAI message:"APPROACH_COORDINATES"];
+	[_cxxShip->shipAI message:"APPROACH_COORDINATES"];
 }
 
 
 - (void) checkForNormalSpace
 {
 	if ([UNIVERSE sun] && [UNIVERSE planet])
-		[shipAI message:"NORMAL_SPACE"];
+		[_cxxShip->shipAI message:"NORMAL_SPACE"];
 	else
-		[shipAI message:"INTERSTELLAR_SPACE"];
+		[_cxxShip->shipAI message:"INTERSTELLAR_SPACE"];
 }
 
 
@@ -2526,7 +2526,7 @@ using ooscript::Context;
 	Entity			**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	std::vector<Entity *>	my_entities(ent_count);
 	StationEntity	*station = nil, *my_station = nil;
-	double			maxRange2 = desired_range * desired_range;
+	double			maxRange2 = _cxxShip->desired_range * _cxxShip->desired_range;
 	int				i;
 	int				station_count = 0;
 	
@@ -2564,11 +2564,11 @@ using ooscript::Context;
 	{
 		[self addTarget:station];
 		[self setTargetStation:station];
-		[shipAI message:"STATION_FOUND"];
+		[_cxxShip->shipAI message:"STATION_FOUND"];
 	}
 	else
 	{
-		[shipAI message:"NO_STATION_IN_RANGE"];
+		[_cxxShip->shipAI message:"NO_STATION_IN_RANGE"];
 	}
 }
 
@@ -2582,7 +2582,7 @@ using ooscript::Context;
 	}
 	else
 	{
-		[shipAI message:"NO_STATION_FOUND"];
+		[_cxxShip->shipAI message:"NO_STATION_FOUND"];
 		[self setTargetStation:nil];
 	}
 	
@@ -2696,10 +2696,10 @@ using ooscript::Context;
 	if (!all_beacons.empty())
 	{
 		[self addTarget:(ShipEntity*)all_beacons[0].get()];
-		[shipAI message:"TARGET_FOUND"];
+		[_cxxShip->shipAI message:"TARGET_FOUND"];
 	}
 	else
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 }
 
 
@@ -2710,8 +2710,8 @@ using ooscript::Context;
 	
 	if ((!current_beacon)||(![current_beacon isBeacon]))
 	{
-		[shipAI message:"NO_CURRENT_BEACON"];
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NO_CURRENT_BEACON"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 		return;
 	}
 	
@@ -2722,7 +2722,7 @@ using ooscript::Context;
 	
 	if (i == NSNotFound)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 		return;
 	}
 	
@@ -2732,12 +2732,12 @@ using ooscript::Context;
 	{
 		// locate current target in list
 		[self addTarget:(ShipEntity*)all_beacons[i].get()];
-		[shipAI message:"TARGET_FOUND"];
+		[_cxxShip->shipAI message:"TARGET_FOUND"];
 	}
 	else
 	{
-		[shipAI message:"LAST_BEACON"];
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"LAST_BEACON"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 	}
 }
 
@@ -2748,27 +2748,27 @@ using ooscript::Context;
 	ShipEntity *ship = [self primaryTarget];
 	if (ship == nil)
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 		return;
 	}
-	Vector k = ship->v_forward;
+	Vector k = ship->_cxxShip->v_forward;
 	GLfloat c = ship->_cxxEntity->collision_radius;
 	HPVector o = ship->_cxxEntity->position;
-	navpoints[0] = make_HPvector(o.x - c * k.x, o.y - c * k.y, o.z - c * k.z);
-	navpoints[1] = make_HPvector(o.x + c * k.x, o.y + c * k.y, o.z + c * k.z);
-	navpoints[2] = make_HPvector(o.x + 2.0 * c * k.x, o.y + 2.0 * c * k.y, o.z + 2.0 * c * k.z);
-	number_of_navpoints = 2;
-	next_navpoint_index = 0;
-	_destination = navpoints[0];
-	[shipAI message:"RACEPOINTS_SET"];
+	_cxxShip->navpoints[0] = make_HPvector(o.x - c * k.x, o.y - c * k.y, o.z - c * k.z);
+	_cxxShip->navpoints[1] = make_HPvector(o.x + c * k.x, o.y + c * k.y, o.z + c * k.z);
+	_cxxShip->navpoints[2] = make_HPvector(o.x + 2.0 * c * k.x, o.y + 2.0 * c * k.y, o.z + 2.0 * c * k.z);
+	_cxxShip->number_of_navpoints = 2;
+	_cxxShip->next_navpoint_index = 0;
+	_cxxShip->_destination = _cxxShip->navpoints[0];
+	[_cxxShip->shipAI message:"RACEPOINTS_SET"];
 }
 
 
 - (void) performFlyRacepoints
 {
-	next_navpoint_index = 0;
-	desired_range = _cxxEntity->collision_radius;
-	behaviour = BEHAVIOUR_FLY_THRU_NAVPOINTS;
+	_cxxShip->next_navpoint_index = 0;
+	_cxxShip->desired_range = _cxxEntity->collision_radius;
+	_cxxShip->behaviour = BEHAVIOUR_FLY_THRU_NAVPOINTS;
 }
 
 @end
@@ -2781,11 +2781,11 @@ using ooscript::Context;
 {
 	if ([self foundTarget] != nil) 
 	{
-		[shipAI message:"TARGET_FOUND"];
+		[_cxxShip->shipAI message:"TARGET_FOUND"];
 	}
 	else
 	{
-		[shipAI message:"NOTHING_FOUND"];
+		[_cxxShip->shipAI message:"NOTHING_FOUND"];
 	}
 }
 
@@ -2800,7 +2800,7 @@ using ooscript::Context;
 {
 	if(![self hasHyperspaceMotor])
 	{
-		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
+		[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
 		return NO;
 	}
 	if([self status] == STATUS_ENTERING_WITCHSPACE)
@@ -2813,13 +2813,13 @@ using ooscript::Context;
 	NSUInteger		i = 0;
 	
 	// get a list of destinations within range
-	const oo::PList sDests = [UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * fuel];
+	const oo::PList sDests = [UNIVERSE cxx_nearbyDestinationsWithinRange: 0.1f * _cxxShip->fuel];
 	NSUInteger n_dests = sDests.count();
 	
 	// if none available report to the AI and exit
 	if (n_dests == 0)
 	{
-		[shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
+		[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE UNAVAILABLE" context:"performHyperSpaceExit"];
 		
 		// If no systems exist near us, the AI is switched to a different state, so we do not need
 		// the nearby destinations array anymore.
@@ -2831,7 +2831,7 @@ using ooscript::Context;
 	if (blocker)
 	{
 		[self setFoundTarget:blocker];
-		[shipAI cxx_reactToMessage:"WITCHSPACE BLOCKED" context:"performHyperSpaceExit"];
+		[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE BLOCKED" context:"performHyperSpaceExit"];
 		[self doScriptEvent:OOJSID("shipWitchspaceBlocked") withArgument:blocker];
 
 		return NO;
@@ -2863,11 +2863,11 @@ using ooscript::Context;
 		}
 	}
 	float dist = sDests.at(i)->get<float>("distance");
-	if (dist > [self maxHyperspaceDistance] || dist > fuel/10.0f) 
+	if (dist > [self maxHyperspaceDistance] || dist > _cxxShip->fuel/10.0f) 
 	{
-		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, fuel);
+		OO_LOG_WARN("script.debug", "DEBUG: {} Jumping {:f} which is further than allowed.  I have {} fuel", oo::DescriptionOf(self), dist, _cxxShip->fuel);
 	}
-	fuel -= 10 * dist;
+	_cxxShip->fuel -= 10 * dist;
 	
 	// create wormhole
 	WormholeEntity  *whole = [[[WormholeEntity alloc] initWormholeTo: targetSystem fromShip:self] autorelease];
@@ -2885,17 +2885,17 @@ using ooscript::Context;
 	// Locates all the ships in range for which predicate returns YES, and chooses the nearest.
 	unsigned		i;
 	ShipEntity		*candidate;
-	float			d2, found_d2 = scannerRange * scannerRange;
+	float			d2, found_d2 = _cxxShip->scannerRange * _cxxShip->scannerRange;
 	
-	DESTROY(_foundTarget);
+	DESTROY(_cxxShip->_foundTarget);
 	[self checkScanner];
 	
 	if (predicate == NULL)  return;
 	
-	for (i = 0; i < n_scanned_ships ; i++)
+	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
 	{
-		candidate = scanned_ships[i];
-		d2 = distance2_scanned_ships[i];
+		candidate = _cxxShip->scanned_ships[i];
+		d2 = _cxxShip->distance2_scanned_ships[i];
 		if ((d2 < found_d2) && (candidate->_cxxEntity->scanClass != CLASS_CARGO) && ([candidate status] != STATUS_DOCKED) 
 					&& predicate(candidate, parameter) && ![candidate isCloaked])
 		{
@@ -2923,7 +2923,7 @@ using ooscript::Context;
 		[(ShipEntity*)[self foundTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];  // you have been warned!!
 	}
 	
-	[shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:DebugContext(other, "broadcastDistressMessage")];
+	[_cxxShip->shipAI cxx_reactToMessage:"ACCEPT_DISTRESS_CALL" context:DebugContext(other, "broadcastDistressMessage")];
 	
 }
 
@@ -2939,11 +2939,11 @@ using ooscript::Context;
 {
 	if (self != [UNIVERSE station])  return;
 	
-	OOWeakReference *old_target = _primaryTarget;
-	_primaryTarget = [[[other primaryTarget] weakRetain] autorelease];
+	OOWeakReference *old_target = _cxxShip->_primaryTarget;
+	_cxxShip->_primaryTarget = [[[other primaryTarget] weakRetain] autorelease];
 	[(ShipEntity *)[other primaryTarget] markAsOffender:8 withReason:kOOLegalStatusReasonDistressCall];	// mark their card
 	[self launchDefenseShip];
-	_primaryTarget = old_target;
+	_cxxShip->_primaryTarget = old_target;
 	
 }
 

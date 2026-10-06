@@ -4,8 +4,7 @@ OOMesh+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, amendment oo-dnbf): the Objective-C OOMesh facade (see
 OOMesh+ObjCBridge.h). Every method forwards to its C++ member through oo::ToCxx(self); -init makes
-a new cxx::OOMesh, which the designated initialiser of slice 2 (still Objective-C, in OOMesh.mm)
-then loads. Deleted with OOMesh+ObjCBridge.h.
+a new cxx::OOMesh (as [[OOMesh alloc] init] made an empty mesh). Deleted with OOMesh+ObjCBridge.h.
 
 
 Oolite
@@ -32,16 +31,6 @@ MA 02110-1301, USA.
 #import "OOMaterial.h"
 #import "OOGraphicsResetManager.h"
 #import "Octree.h"
-
-
-// Slice 4's display-list deletion, in the private category of OOMesh.mm, which the facade's
-// -dealloc sends (it messaged self from -dealloc before); that category makes the mesh a graphics
-// reset client.
-@interface OOMesh (Private) <OOGraphicsResetClient>
-
-- (void) deleteDisplayLists;
-
-@end
 
 
 // A facade of this class is only ever made for a cxx::OOMesh (oo::ToObjC names the facade class
@@ -102,13 +91,9 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 }
 
 
-// The facade is the mesh's graphics reset client, so what the old -dealloc sent to self is sent
-// here, before the C++ part goes (its destructor releases the members).
-- (void) dealloc
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
-	[self deleteDisplayLists];
-	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
-	[super dealloc];
+	return [oo::ToObjC(oo::ToCxx(self)->mutableCopyWithZone(zone)) retain];
 }
 
 
@@ -119,6 +104,10 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 
 
 - (std::optional<std::string>) modelName	{ return oo::ToCxx(self)->modelName(); }
+
+- (void) rebindMaterials					{ oo::ToCxx(self)->rebindMaterials(); }
+
+- (void) resetGraphicsState					{ oo::ToCxx(self)->resetGraphicsState(); }
 
 - (oo::PList) materials						{ return oo::ToCxx(self)->getMaterials(); }
 - (oo::PList) shaders						{ return oo::ToCxx(self)->shaders(); }

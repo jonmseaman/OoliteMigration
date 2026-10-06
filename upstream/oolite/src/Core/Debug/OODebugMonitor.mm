@@ -77,7 +77,7 @@ namespace cxx {
 void OODebugMonitor::init()
 {
 	{
-		_configFromOXPs = normalizeConfigDictionary([ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
+		_configFromOXPs = normalizeConfigDictionary([::ResourceManager cxx_dictionaryFromFilesNamed:"debugConfig.plist"
 																						  inFolder:"Config"
 																						  andMerge:YES]);
 
@@ -446,7 +446,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 	oo::log::indent();
 	if ([entity isShip])
 	{
-		for (const auto &subRef : [(ShipEntity *)entity subEntityEnumerator])
+		for (const auto &subRef : [(::ShipEntity *)entity subEntityEnumerator])
 		{
 			dumpEntity(subRef.get(), state, visible);
 		}
@@ -473,7 +473,7 @@ void OODebugMonitor::dumpEntity(id entity, EntityDumpState *state, bool parentVi
 			for (const oo::PList &shipInfo : *shipInfos)
 			{
 				const oo::PList *shipNode = shipInfo.find("ship");
-				ShipEntity *ship = (shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil;
+				::ShipEntity *ship = (shipNode != nullptr) ? oo::ObjectIn(*shipNode) : nil;
 				dumpEntity(ship, state, false);
 			}
 		}
@@ -709,7 +709,7 @@ void OODebugMonitor::setUpDebugConsoleScript()
 
 	if (!path)
 	{
-		path = [ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
+		path = [::ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
 	}
 	if (path)
 	{

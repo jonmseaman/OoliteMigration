@@ -426,7 +426,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 #endif
 
 	// init the Resource Manager
-	[ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths if changed
+	[::ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths if changed
 
 	// Set up the internal game strings
 	[self loadDescriptions];
@@ -488,7 +488,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	gui = [[GuiDisplayGen alloc] init]; // alloc retains
 	comm_log_gui = [[GuiDisplayGen alloc] init]; // alloc retains
 
-	missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
 
 	waypoints.clear();
 
