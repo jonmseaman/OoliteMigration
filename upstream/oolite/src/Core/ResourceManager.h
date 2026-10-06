@@ -95,6 +95,13 @@ public:
 	// Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 	static void clearCaches();
 
+	// compatibility checks (a manifest or relation is a Dict; title is nullopt where nil was passed)
+	static bool checkVersionCompatibility(const oo::PList &manifest, const std::optional<std::string> &title);
+	static bool manifestHasConflicts(const oo::PList &manifest, bool logErrors);
+	static bool manifestHasMissingDependencies(const oo::PList &manifest, bool logErrors);
+	static bool manifest(const oo::PList &manifest, const oo::PList &required, bool logErrors);	// -cxx_manifest:HasUnmetDependency:logErrors:
+	static bool matchVersions(const oo::PList &rangeDict, const std::string &version);
+
 private:
 	// (OOPrivate)
 	static void logPaths();
@@ -102,6 +109,18 @@ private:
 	static void preloadFileListFromOXZ(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFileListFromFolder(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFilePathFor(const std::string &fileName, const std::string &subFolder, const std::string &path);
+	static void checkOXPMessagesInPath(const std::string &path);
+	static void checkPotentialPath(const std::string &path, std::vector<std::string> &searchPaths);
+	static bool validateManifest(const oo::PList &manifest, const std::string &path);
+	static bool areRequirementsFulfilled(const oo::PList &requirements, const std::optional<std::string> &path, const std::string &file);
+	static void filterSearchPathsForConflicts(std::vector<std::string> &searchPaths);
+	static bool filterSearchPathsForRequirements(std::vector<std::string> &searchPaths);
+	static void filterSearchPathsToExcludeScenarioOnlyPaths(std::vector<std::string> &searchPaths);
+	static void filterSearchPathsByScenario(std::vector<std::string> &searchPaths);
+	static bool manifestAllowedByScenario(const oo::PList &manifest);
+	static bool manifestAllowedByScenario(const oo::PList &manifest, const std::string &identifier);	// withIdentifier:
+	static bool manifestAllowedByScenarioWithTag(const oo::PList &manifest, const std::string &tag);	// its own name: the overloads would collide (amendment oo-kyje item 2)
+	static void addErrorWithKey(const std::string &descriptionKey, const std::string &param1, const std::string &param2);
 };
 
 }	// namespace cxx

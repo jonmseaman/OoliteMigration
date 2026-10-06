@@ -83,19 +83,7 @@ constexpr const char *kOOCacheKeyModificationDates	= "modification dates";
 
 @interface ResourceManager (OOPrivate)
 
-+ (void) checkOXPMessagesInPath:(const std::string &)path;
-+ (void) checkPotentialPath:(const std::string &)path :(std::vector<std::string> &)searchPaths;
-+ (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path;
-+ (BOOL) areRequirementsFulfilled:(const oo::PList &)requirements forOXP:(const std::optional<std::string> &)path andFile:(const std::string &)file;
-+ (void) filterSearchPathsForConflicts:(std::vector<std::string> &)searchPaths;
-+ (BOOL) filterSearchPathsForRequirements:(std::vector<std::string> &)searchPaths;
-+ (void) filterSearchPathsToExcludeScenarioOnlyPaths:(std::vector<std::string> &)searchPaths;
-+ (void) filterSearchPathsByScenario:(std::vector<std::string> &)searchPaths;
-+ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest;
-+ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier;
-+ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag;
 
-+ (void) addErrorWithKey:(const std::string &)descriptionKey param1:(const std::string &)param1 param2:(const std::string &)param2;
 + (BOOL) checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths;
 + (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)category;
 
@@ -528,7 +516,7 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 	std::vector<std::string> &searchPaths = *sSearchPaths;
 	for (const std::string &path : existingRootPaths)
 	{
-		[::ResourceManager checkPotentialPath:path :searchPaths];
+		checkPotentialPath(path, searchPaths);
 	}
 
 	// Iterate over root paths.
@@ -553,8 +541,8 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 						// If it is, is it an OXP?.
 						if (oo::str::lowercase(oo::str::pathExtension(path)) == "oxp")
 						{
-							[::ResourceManager checkPotentialPath:path :searchPaths];
-							if (PathListContains(searchPaths, path))  [::ResourceManager checkOXPMessagesInPath:path];
+							checkPotentialPath(path, searchPaths);
+							if (PathListContains(searchPaths, path))  checkOXPMessagesInPath(path);
 						}
 						else
 						{
@@ -567,8 +555,8 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 						// If not a directory, is it an OXZ?
 						if (oo::str::lowercase(oo::str::pathExtension(path)) == "oxz")
 						{
-							[::ResourceManager checkPotentialPath:path :searchPaths];
-							if (PathListContains(searchPaths, path))  [::ResourceManager checkOXPMessagesInPath:path];
+							checkPotentialPath(path, searchPaths);
+							if (PathListContains(searchPaths, path))  checkOXPMessagesInPath(path);
 						}
 					}
 				}
@@ -578,8 +566,8 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 
 	for (const std::string &path : sExternalPaths)
 	{
-		[::ResourceManager checkPotentialPath:path :searchPaths];
-		if (PathListContains(searchPaths, path))  [::ResourceManager checkOXPMessagesInPath:path];
+		checkPotentialPath(path, searchPaths);
+		if (PathListContains(searchPaths, path))  checkOXPMessagesInPath(path);
 	}
 
 	/* If a scenario restriction is *not* in place, remove
@@ -587,7 +575,7 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 	// test string
 	if (sUseAddOns == std::string(SCENARIO_OXP_DEFINITION_ALL))
 	{
-		[::ResourceManager filterSearchPathsToExcludeScenarioOnlyPaths:searchPaths];
+		filterSearchPathsToExcludeScenarioOnlyPaths(searchPaths);
 	}
 
 	/* This is a conservative filter. It probably gets rid of more
@@ -596,7 +584,7 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 	 * resolved by the user rather than Oolite. The point is to avoid
 	 * loading OXPs which we shouldn't; if doing so takes out other
 	 * OXPs which would have been safe, that's not important. */
-	[::ResourceManager filterSearchPathsForConflicts:searchPaths];
+	filterSearchPathsForConflicts(searchPaths);
 
 	/* This one needs to be run repeatedly to be sure. Take the chain
 	 * A depends on B depends on C. A and B are installed. A is
@@ -608,14 +596,14 @@ std::vector<std::string> cxx::ResourceManager::pathsWithAddOns()
 	 * There may well be more elegant and efficient ways to do this
 	 * but this is already fast enough for most purposes.
 	 */
-	while (![::ResourceManager filterSearchPathsForRequirements:searchPaths]) {}
+	while (!filterSearchPathsForRequirements(searchPaths)) {}
 
 	/* If a scenario restriction is in place, restrict OXPs to the
 	 * ones valid for the scenario only. */
 	// test string
 	if (sUseAddOns != std::string(SCENARIO_OXP_DEFINITION_ALL))
 	{
-		[::ResourceManager filterSearchPathsByScenario:searchPaths];
+		filterSearchPathsByScenario(searchPaths);
 	}
 
 	[::ResourceManager checkCacheUpToDateForPaths:searchPaths];
@@ -851,12 +839,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-// Slices 2-4 of docs/phases/3-slices/ResourceManager.md, still Objective-C: a category of the
-// facade over the same file-scope state (ADR-0056 amendment oo-3bgz). Each slice's bead moves
-// its methods into cxx::ResourceManager above.
-@implementation ResourceManager (OOResourceManagerUnconverted)
-
-+ (void) checkOXPMessagesInPath:(const std::string &)path
+void cxx::ResourceManager::checkOXPMessagesInPath(const std::string &path)
 {
 	// OOArrayFromFile (OOPListParsing) is an unmigrated callee: its array arrives through oo::PListFrom.
 	const oo::PList OXPMessageArray = PListArrayFromFile(oo::str::appendingPathComponent(path, "OXPMessages.plist"));
@@ -879,7 +862,7 @@ void cxx::ResourceManager::clearCaches()
 
 
 // Given a path to an assumed OXP (or other location where files are permissible), check for a requires.plist or manifest.plist and add to search paths if acceptable.
-+ (void)checkPotentialPath:(const std::string &)path :(std::vector<std::string> &)searchPaths
+void cxx::ResourceManager::checkPotentialPath(const std::string &path, std::vector<std::string> &searchPaths)
 {
 	oo::PList				requirements;
 	oo::PList				manifest;
@@ -891,13 +874,13 @@ void cxx::ResourceManager::clearCaches()
 	{
 		// OXZ format ignores requires.plist
 		requirements = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "requires.plist"));
-		requirementsMet = [self areRequirementsFulfilled:requirements forOXP:path andFile:"requires.plist"];
+		requirementsMet = areRequirementsFulfilled(requirements, path, "requires.plist");
 	}
 	if (!requirementsMet)
 	{
 		const std::optional<std::string> version = OoliteInfoString("CFBundleVersion");
 		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, version.value_or("(null)"));
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:version.value_or("")];
+		addErrorWithKey("oxp-is-incompatible", oo::str::lastPathComponent(path), version.value_or(""));
 		return;
 	}
 
@@ -907,7 +890,7 @@ void cxx::ResourceManager::clearCaches()
 		if (extension == "oxz")
 		{
 			OO_LOG("oxp.noManifest", "OXZ {} has no manifest.plist", path);
-			[self addErrorWithKey:"oxz-lacks-manifest" param1:oo::str::lastPathComponent(path) param2:""];
+			addErrorWithKey("oxz-lacks-manifest", oo::str::lastPathComponent(path), "");
 			return;
 		}
 		else
@@ -917,7 +900,7 @@ void cxx::ResourceManager::clearCaches()
 				cxx_OOStandardsError(oo::str::format("OXP %s has no manifest.plist", path.c_str()));
 				if (OOEnforceStandards())
 				{
-					[self addErrorWithKey:"oxp-lacks-manifest" param1:oo::str::lastPathComponent(path) param2:""];
+					addErrorWithKey("oxp-lacks-manifest", oo::str::lastPathComponent(path), "");
 					return;
 				}
 			}
@@ -931,7 +914,7 @@ void cxx::ResourceManager::clearCaches()
 		}
 	}
 
-	requirementsMet = [self validateManifest:manifest forOXP:path];
+	requirementsMet = validateManifest(manifest, path);
 
 
 	if (requirementsMet)
@@ -941,7 +924,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path
+bool cxx::ResourceManager::validateManifest(const oo::PList &manifest, const std::string &path)
 {
 	BOOL 		OK = YES;
 	const std::optional<std::string> identifier = ManifestString(manifest, std::string(kOOManifestIdentifier));
@@ -952,38 +935,38 @@ void cxx::ResourceManager::clearCaches()
 	if (!identifier.has_value())
 	{
 		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestIdentifier);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestIdentifier)];
+		addErrorWithKey("oxp-manifest-incomplete", title.value_or(""), std::string(kOOManifestIdentifier));
 		OK = NO;
 	}
 	if (!version.has_value())
 	{
 		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestVersion);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestVersion)];
+		addErrorWithKey("oxp-manifest-incomplete", title.value_or(""), std::string(kOOManifestVersion));
 		OK = NO;
 	}
 	if (!required.has_value())
 	{
 		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestRequiredOoliteVersion);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestRequiredOoliteVersion)];
+		addErrorWithKey("oxp-manifest-incomplete", title.value_or(""), std::string(kOOManifestRequiredOoliteVersion));
 		OK = NO;
 	}
 	if (!title.has_value())
 	{
 		OO_LOG("oxp.noManifest", "OXZ {} manifest.plist has no '{}' field.", path, kOOManifestTitle);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:std::string(kOOManifestTitle)];
+		addErrorWithKey("oxp-manifest-incomplete", title.value_or(""), std::string(kOOManifestTitle));
 		OK = NO;
 	}
 	if (!OK)
 	{
 		return NO;
 	}
-	OK = [self cxx_checkVersionCompatibility:manifest forOXP:title];
+	OK = checkVersionCompatibility(manifest, title);
 
 	if (!OK)
 	{
 		const std::optional<std::string> ooliteVersion = OoliteInfoString("CFBundleVersion");
 		OO_LOG("oxp.versionMismatch", "OXP {} is incompatible with version {} of Oolite.", path, ooliteVersion.value_or("(null)"));
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:ooliteVersion.value_or("")];
+		addErrorWithKey("oxp-is-incompatible", oo::str::lastPathComponent(path), ooliteVersion.value_or(""));
 		return NO;
 	}
 
@@ -992,7 +975,7 @@ void cxx::ResourceManager::clearCaches()
 	{
 		const std::optional<std::string> duplicatePath = ManifestString(duplicate->second, std::string(kOOManifestFilePath));
 		OO_LOG("oxp.duplicate", "OXP {} has the same identifier ({}) as {} which has already been loaded.", path, *identifier, duplicatePath.value_or("(null)"));
-		[self addErrorWithKey:"oxp-manifest-duplicate" param1:path param2:duplicatePath.value_or("")];
+		addErrorWithKey("oxp-manifest-duplicate", path, duplicatePath.value_or(""));
 		return NO;
 	}
 	oo::PList mData = manifest;
@@ -1003,7 +986,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title
+bool cxx::ResourceManager::checkVersionCompatibility(const oo::PList &manifest, const std::optional<std::string> &title)
 {
 	const std::optional<std::string> required = ManifestString(manifest, std::string(kOOManifestRequiredOoliteVersion));
 	const std::optional<std::string> maxRequired = ManifestString(manifest, std::string(kOOManifestMaximumOoliteVersion));
@@ -1015,11 +998,11 @@ void cxx::ResourceManager::clearCaches()
 		// ignore empty max version string rather than treating as "version 0"
 		if (maxRequired.has_value() && !maxRequired->empty())  requirements["max_version"] = oo::PList(*maxRequired);
 	}
-	return [self areRequirementsFulfilled:oo::PList(std::move(requirements)) forOXP:title andFile:"manifest.plist"];
+	return areRequirementsFulfilled(oo::PList(std::move(requirements)), title, "manifest.plist");
 }
 
 
-+ (BOOL) areRequirementsFulfilled:(const oo::PList &)requirements forOXP:(const std::optional<std::string> &)path andFile:(const std::string &)file
+bool cxx::ResourceManager::areRequirementsFulfilled(const oo::PList &requirements, const std::optional<std::string> &path, const std::string &file)
 {
 	BOOL				OK = YES;
 	unsigned			conditionsHandled = 0;
@@ -1085,7 +1068,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors
+bool cxx::ResourceManager::manifestHasConflicts(const oo::PList &manifest, bool logErrors)
 {
 	const oo::PList *conflicts = manifest.get<oo::PList::Array>(std::string(kOOManifestConflictOXPs), nullptr);
 	// if it has a non-empty conflict_oxps list
@@ -1100,11 +1083,11 @@ void cxx::ResourceManager::clearCaches()
 			if (conflictManifest != sOXPManifests.end())
 			{
 				// then check versions
-				if ([self cxx_matchVersions:conflicting withVersion:ManifestString(conflictManifest->second, std::string(kOOManifestVersion)).value_or("")])
+				if (matchVersions(conflicting, ManifestString(conflictManifest->second, std::string(kOOManifestVersion)).value_or("")))
 				{
 					if (logErrors)
 					{
-						[self addErrorWithKey:"oxp-conflict" param1:ManifestString(manifest, std::string(kOOManifestTitle)).value_or("") param2:ManifestString(conflictManifest->second, std::string(kOOManifestTitle)).value_or("")];
+						addErrorWithKey("oxp-conflict", ManifestString(manifest, std::string(kOOManifestTitle)).value_or(""), ManifestString(conflictManifest->second, std::string(kOOManifestTitle)).value_or(""));
 						OO_LOG("oxp.conflict", "OXP {} conflicts with {} and was removed from the loading list", (LastPathComponent(ManifestString(manifest, std::string(kOOManifestFilePath)))).value_or("(null)"), (LastPathComponent(ManifestString(conflictManifest->second, std::string(kOOManifestFilePath)))).value_or("(null)"));
 					}
 					return YES;
@@ -1116,7 +1099,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (void) filterSearchPathsForConflicts:(std::vector<std::string> &)searchPaths
+void cxx::ResourceManager::filterSearchPathsForConflicts(std::vector<std::string> &searchPaths)
 {
 	std::vector<std::string>	identifiers;	// identifier order (was hash order)
 	identifiers.reserve(sOXPManifests.size());
@@ -1130,7 +1113,7 @@ void cxx::ResourceManager::clearCaches()
 		if (entry != sOXPManifests.end())
 		{
 			const oo::PList manifest = entry->second;
-			if ([self cxx_manifestHasConflicts:manifest logErrors:YES])
+			if (manifestHasConflicts(manifest, YES))
 			{
 				// then we have a conflict, so remove this path
 				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
@@ -1141,7 +1124,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors
+bool cxx::ResourceManager::manifestHasMissingDependencies(const oo::PList &manifest, bool logErrors)
 {
 	const oo::PList *requireds = manifest.get<oo::PList::Array>(std::string(kOOManifestRequiresOXPs), nullptr);
 	// if it has a non-empty required_oxps list
@@ -1150,7 +1133,7 @@ void cxx::ResourceManager::clearCaches()
 		// iterate over that list
 		for (const oo::PList &required : *requireds->getIf<oo::PList::Array>())
 		{
-			if ([ResourceManager cxx_manifest:manifest HasUnmetDependency:required logErrors:logErrors])
+			if (ResourceManager::manifest(manifest, required, logErrors))
 			{
 				return YES;
 			}
@@ -1160,7 +1143,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors
+bool cxx::ResourceManager::manifest(const oo::PList &manifest, const oo::PList &required, bool logErrors)
 {
 	const std::optional<std::string> requiredID = ManifestString(required, std::string(kOOManifestRelationIdentifier));
 	auto requiredManifest = requiredID.has_value() ? sOXPManifests.find(*requiredID) : sOXPManifests.end();
@@ -1169,7 +1152,7 @@ void cxx::ResourceManager::clearCaches()
 	if (requiredManifest != sOXPManifests.end())
 	{
 		// then check versions
-		if ([self cxx_matchVersions:required withVersion:ManifestString(requiredManifest->second, std::string(kOOManifestVersion)).value_or("")])
+		if (matchVersions(required, ManifestString(requiredManifest->second, std::string(kOOManifestVersion)).value_or("")))
 		{
 			requirementsMet = YES;
 			/* Mark the requiredManifest as a dependency of the
@@ -1202,7 +1185,7 @@ void cxx::ResourceManager::clearCaches()
 		if (logErrors)
 		{
 			const std::optional<std::string> requiredDescription = ManifestString(required, std::string(kOOManifestRelationDescription));
-			[self addErrorWithKey:"oxp-required" param1:ManifestString(manifest, std::string(kOOManifestTitle)).value_or("") param2:requiredDescription.has_value() ? *requiredDescription : requiredID.value_or("")];
+			addErrorWithKey("oxp-required", ManifestString(manifest, std::string(kOOManifestTitle)).value_or(""), requiredDescription.has_value() ? *requiredDescription : requiredID.value_or(""));
 			OO_LOG("oxp.requirementMissing", "OXP {} had unmet requirements and was removed from the loading list", (LastPathComponent(ManifestString(manifest, std::string(kOOManifestFilePath)))).value_or("(null)"));
 		}
 		return YES;
@@ -1211,7 +1194,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) filterSearchPathsForRequirements:(std::vector<std::string> &)searchPaths
+bool cxx::ResourceManager::filterSearchPathsForRequirements(std::vector<std::string> &searchPaths)
 {
 	std::vector<std::string>	identifiers;	// identifier order (was hash order)
 	identifiers.reserve(sOXPManifests.size());
@@ -1227,7 +1210,7 @@ void cxx::ResourceManager::clearCaches()
 		if (entry != sOXPManifests.end())
 		{
 			const oo::PList manifest = entry->second;
-			if ([self cxx_manifestHasMissingDependencies:manifest logErrors:YES])
+			if (manifestHasMissingDependencies(manifest, YES))
 			{
 				// then we have a missing requirement, so remove this path
 				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
@@ -1241,7 +1224,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version
+bool cxx::ResourceManager::matchVersions(const oo::PList &rangeDict, const std::string &version)
 {
 	const std::optional<std::string> minimum = ManifestString(rangeDict, std::string(kOOManifestRelationVersion));
 	const std::optional<std::string> maximum = ManifestString(rangeDict, std::string(kOOManifestRelationMaxVersion));
@@ -1267,7 +1250,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (void) filterSearchPathsToExcludeScenarioOnlyPaths:(std::vector<std::string> &)searchPaths
+void cxx::ResourceManager::filterSearchPathsToExcludeScenarioOnlyPaths(std::vector<std::string> &searchPaths)
 {
 	std::vector<std::string>	identifiers;	// identifier order (was hash order)
 	identifiers.reserve(sOXPManifests.size());
@@ -1291,8 +1274,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-
-+ (void) filterSearchPathsByScenario:(std::vector<std::string> &)searchPaths
+void cxx::ResourceManager::filterSearchPathsByScenario(std::vector<std::string> &searchPaths)
 {
 	std::vector<std::string>	identifiers;	// identifier order (was hash order)
 	identifiers.reserve(sOXPManifests.size());
@@ -1306,7 +1288,7 @@ void cxx::ResourceManager::clearCaches()
 		if (entry != sOXPManifests.end())
 		{
 			const oo::PList manifest = entry->second;
-			if (![ResourceManager manifestAllowedByScenario:manifest])
+			if (!manifestAllowedByScenario(manifest))
 			{
 				// then we don't need this one
 				RemovePath(searchPaths, ManifestString(manifest, std::string(kOOManifestFilePath)));
@@ -1317,7 +1299,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest
+bool cxx::ResourceManager::manifestAllowedByScenario(const oo::PList &manifest)
 {
 	/* Checks for a couple of "never happens" cases */
 #ifndef NDEBUG
@@ -1346,18 +1328,18 @@ void cxx::ResourceManager::clearCaches()
 	{
 		if (oo::str::hasPrefix(uaoBit, byID))
 		{
-			result |= [ResourceManager manifestAllowedByScenario:manifest withIdentifier:uaoBit.substr(byID.size())];
+			result |= manifestAllowedByScenario(manifest, uaoBit.substr(byID.size()));
 		}
 		else if (oo::str::hasPrefix(uaoBit, byTag))
 		{
-			result |= [ResourceManager manifestAllowedByScenario:manifest withTag:uaoBit.substr(byTag.size())];
+			result |= manifestAllowedByScenarioWithTag(manifest, uaoBit.substr(byTag.size()));
 		}
 	}
 	return result;
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier
+bool cxx::ResourceManager::manifestAllowedByScenario(const oo::PList &manifest, const std::string &identifier)
 {
 	if (ManifestString(manifest, std::string(kOOManifestIdentifier)) == identifier)
 	{
@@ -1375,7 +1357,7 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag
+bool cxx::ResourceManager::manifestAllowedByScenarioWithTag(const oo::PList &manifest, const std::string &tag)
 {
 	if (ManifestListContains(manifest, std::string(kOOManifestTags), tag))
 	{
@@ -1398,13 +1380,17 @@ void cxx::ResourceManager::clearCaches()
 }
 
 
-
-+ (void) addErrorWithKey:(const std::string &)descriptionKey param1:(const std::string &)param1 param2:(const std::string &)param2
+void cxx::ResourceManager::addErrorWithKey(const std::string &descriptionKey, const std::string &param1, const std::string &param2)
 {
 	// Every caller passes a key; a nil parameter arrives as "" (was `param ?: @""`).
 	sErrors.push_back({ descriptionKey, param1, param2 });
 }
 
+
+// Slices 3 and 4 of docs/phases/3-slices/ResourceManager.md, still Objective-C: a category of the
+// facade over the same file-scope state (ADR-0056 amendment oo-3bgz). Each slice's bead moves
+// its methods into cxx::ResourceManager above.
+@implementation ResourceManager (OOResourceManagerUnconverted)
 
 + (BOOL)checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths
 {

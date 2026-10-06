@@ -126,4 +126,30 @@ MA 02110-1301, USA.
 	cxx::ResourceManager::clearCaches();
 }
 
+
++ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title
+{
+	return cxx::ResourceManager::checkVersionCompatibility(manifest, title);
+}
+
++ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors
+{
+	return cxx::ResourceManager::manifestHasConflicts(manifest, logErrors);
+}
+
++ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors
+{
+	return cxx::ResourceManager::manifestHasMissingDependencies(manifest, logErrors);
+}
+
++ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors
+{
+	return cxx::ResourceManager::manifest(manifest, required, logErrors);
+}
+
++ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version
+{
+	return cxx::ResourceManager::matchVersions(rangeDict, version);
+}
+
 @end
