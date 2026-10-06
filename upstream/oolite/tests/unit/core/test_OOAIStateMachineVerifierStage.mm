@@ -9,7 +9,7 @@
 	reports goes to the log, which the test captures. Then the crossing: the converted stage is
 	global, so Objective-C sees it as an OOOXPVerifierStage (the verifier registers its facade, and
 	the ship data stage finds it by name), and it reaches the scanner through
-	the verifier's -fileScannerStage.
+	the stage lookup by the scanner's name (the verifier's -fileScannerStage until bead oo-9ht.7).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -155,8 +155,8 @@ int LogLinesContaining(std::string_view text)
 // The scanner, registered with the verifier and run over its OXP, as the verifier runs it first.
 void RunScanner(OOOXPVerifier *verifier)
 {
-	[OOFileScannerVerifierStage nameForDependencyForVerifier:verifier];
-	[[verifier fileScannerStage] run];
+	OOFileScannerVerifierStage::nameForDependencyForVerifier(verifier);
+	[[verifier cxx_stageWithName:OOFileScannerVerifierStage::kName] run];	// was -fileScannerStage (bead oo-9ht.7)
 }
 
 const std::vector<std::string> kScannerName = { "Scanning files" };

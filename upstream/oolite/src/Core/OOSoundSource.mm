@@ -146,7 +146,8 @@ void OOSoundSource::play()
 	if (_channel)  stop();
 
 	::OOSoundSource *objCSelf = oo::ToObjC(this);
-	_channel = [[::OOSoundMixer sharedMixer] popChannel];
+	::OOSoundMixer *mixer = ::OOSoundMixer::sharedMixer();
+	_channel = mixer != nullptr ? mixer->popChannel() : nil;
 	if (nil != _channel)
 	{
 		_remainingCount = repeatCount();
@@ -346,7 +347,7 @@ void OOSoundSource::channel(::OOSoundChannel *channel, ::OOSound * /*sound*/)
 	{
 		::OOSoundSource *objCSelf = oo::ToObjC(this);
 		[_channel setDelegate:nil];
-		[[::OOSoundMixer sharedMixer] pushChannel:_channel];
+		if (::OOSoundMixer *mixer = ::OOSoundMixer::sharedMixer())  mixer->pushChannel(_channel);
 		_channel = nil;
 		objc_release(objCSelf);
 	}
@@ -357,7 +358,7 @@ void OOSoundSource::channel(::OOSoundChannel *channel, ::OOSound * /*sound*/)
 void OOSoundSource::channelOfStoppedSource(::OOSoundChannel *inChannel, ::OOSound * /*inSound*/)
 {
 	// This delegate is used for a stopped source
-	[[::OOSoundMixer sharedMixer] pushChannel:inChannel];
+	if (::OOSoundMixer *mixer = ::OOSoundMixer::sharedMixer())  mixer->pushChannel(inChannel);
 }
 
 }	// namespace cxx

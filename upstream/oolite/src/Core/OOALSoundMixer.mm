@@ -34,12 +34,10 @@ SOFTWARE.
 
 namespace {
 
-cxx::OOSoundMixer *sSingleton = nullptr;
+OOSoundMixer *sSingleton = nullptr;
 
 }	// namespace
 
-
-namespace cxx {
 
 /*	The singleton category recorded the mixer in +allocWithZone:, before -init ran (amendment
 	oo-z1s4 item 2); it is recorded first here too. -init's failure ([super release], which freed
@@ -69,7 +67,7 @@ bool OOSoundMixer::init()
 	uint32_t					idx = 0, count = kMixerGeneralChannels;
 	::OOSoundChannel			*channel;
 
-	if (!OOSound::setUp())  OK = false;
+	if (!cxx::OOSound::setUp())  OK = false;
 
 	if (OK)
 	{
@@ -127,8 +125,6 @@ void OOSoundMixer::pushChannel(::OOSoundChannel *channel)
 	[channel setNext:_freeList];
 	_freeList = channel;
 }
-
-}	// namespace cxx
 
 
 // The singleton category (+allocWithZone:, -retain and the rest) is not translated: the mixer has
