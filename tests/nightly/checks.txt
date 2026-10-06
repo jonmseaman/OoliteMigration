@@ -270,6 +270,7 @@
 [oo-4s5i] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-9ht.141] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage test_OOModelVerifierStage
 [oo-u61e.5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugMonitor test_OOCharacter test_OOJSFunction test_OOJSGuiScreenKeyDefinition test_OOJSInterfaceDefinition test_OOJSPopulatorDefinition test_OOJSTimer test_OOJSEngineTimeManagement test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
+[oo-60fwo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity test_Entity test_OOEntityWithDrawable && bash tools/tier-c.sh --only goldens
 [oo-jfno] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
 [oo-he11] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
 [oo-elve] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
@@ -314,6 +315,15 @@
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
 # OOStringExpander slice 1 (oo-6060): the sends to Universe/PlayerEntity/ResourceManager behind the bridge; the differential expander test over the bridge, and the goldens.
 [oo-6060] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-string-expander.sh && bash tools/tier-c.sh --only goldens
+[oo-9ht.56] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOModelVerifierStage test_OOCheckShipDataPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-9ht.83] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALBufferedSound test_OOALStreamedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
+[oo-9ht.84] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALStreamedSound test_OOALBufferedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
+[oo-9ht.16] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJoystickProfile test_OOJoystickManager test_OOSDLJoystickManager test_PlayerEntityStickProfile && bash tools/tier-c.sh --only goldens
+[oo-9ht.134] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
+[oo-9ht.142] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens
+[oo-9ht.120] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOpenGLExtensionManager test_OOShaderUniformMethodType
+[oo-9ht.115] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureScaling && bash tools/tier-c.sh --only goldens
 [oo-q7r3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
 [oo-zmix] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
 [oo-rdwg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
+[oo-qbgo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
