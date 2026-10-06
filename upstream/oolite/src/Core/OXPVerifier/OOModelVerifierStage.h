@@ -41,8 +41,8 @@ MA 02110-1301, USA.
 
 	C++20 since bead oo-5zby (proposed ADR-0056 Amendment 1, amendments oo-up4b and oo-94qk): a
 	subclass of OOTextureHandlingStage. It is global and has no facade: its one caller, the
-	ship data stage, calls these members, and the Objective-C verifier holds it as an
-	OOOXPVerifierStage (oo::ToObjC). The ship data stage finds it by name through the verifier's
+	ship data stage, calls these members, and the verifier holds it (as its OOOXPVerifierStage
+	facade until bead oo-9ht.4). The ship data stage finds it by name through the verifier's
 	stage lookup (the verifier's category that answered it went with bead oo-9ht.56).
 */
 struct OOModelVerifierEntry
