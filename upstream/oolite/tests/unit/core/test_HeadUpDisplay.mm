@@ -340,6 +340,23 @@ OO_TEST(setCrosshairDefinition)
 }
 
 
+OO_TEST(beaconCodeIcon)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// Slice 4 (bead oo-2p1ug): the entities hold the code icon by the protocol; the facade keeps
+		// the C++ icon's identity.
+		OOHUDBeaconCodeIcon *icon = [[[OOHUDBeaconCodeIcon alloc] initWithText:"A"] autorelease];
+		OO_CHECK(icon != nil);
+		OO_CHECK([icon conformsToProtocol:objc_getProtocol("OOHUDBeaconIcon")]);
+		OO_CHECK([icon respondsToSelector:OOSelectorFromName("oo_drawHUDBeaconIconAt:size:alpha:z:")]);
+		cxx::OOHUDBeaconCodeIcon *cxxIcon = oo::ToCxx(icon);
+		OO_CHECK(cxxIcon != nullptr && oo::ToObjC(cxxIcon) == icon);
+	}
+}
+
+
 // --- The C++ API and the facade's contract (bead oo-engam) ----------------------------------
 
 OO_TEST(cxxAPI)
