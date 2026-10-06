@@ -51,8 +51,6 @@ using ooscript::Object;
 
 
 
-namespace cxx {
-
 // Pseudo-singleton: a single instance exists at a given time, but can be released.
 namespace {
 static OORegExpMatcher *sActiveInstance;
@@ -166,5 +164,3 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 	
 	return result;
 }
-
-}	// namespace cxx

@@ -758,7 +758,7 @@ void cxx::HeadUpDisplay::addDial(const oo::PList &info)
 	static bool allowedSelectorsLoaded = false;
 	if (!allowedSelectorsLoaded)
 	{
-		const oo::PList whitelist = [ResourceManager cxx_whitelistDictionary];
+		const oo::PList whitelist = [::ResourceManager cxx_whitelistDictionary];
 		const oo::PList *dialMethods = whitelist.get<oo::PList::Array>("hud_dial_methods");
 		// the set held what the array held; only strings can match a selector name
 		for (std::size_t j = 0; dialMethods != nullptr && j < dialMethods->count(); j++)
@@ -1059,12 +1059,12 @@ bool cxx::HeadUpDisplay::setCrosshairDefinition(const std::string &newDefinition
 	// force crosshair redraw
 	_crosshairs = nullptr;
 
-	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
+	_crosshairOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
 															   inFolder:std::string("Config")
 															   andMerge:YES];
 	if (_crosshairOverrides.count() == 0)
 	{ // invalid file (none found, or empty)
-		_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+		_crosshairOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
 																   inFolder:std::string("Config")
 																   andMerge:YES];
 		crosshairDefinition = "crosshairs.plist";
@@ -1101,7 +1101,7 @@ oo::PList cxx::HeadUpDisplay::crosshairDefinitionForWeaponType(OOWeaponType weap
 	{
 		if (crosshairDefs.isNull())
 		{
-			crosshairDefs = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+			crosshairDefs = [::ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
 																 inFolder:std::string("Config")
 																 andMerge:YES];
 		}

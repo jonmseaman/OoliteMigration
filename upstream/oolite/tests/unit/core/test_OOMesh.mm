@@ -22,6 +22,11 @@
 	OOCacheManager (Octree) category became free functions, which OctreeForModel and
 	SetOctreeForModel below now call. The facade's contract (identity, nil, the same answers from
 	the C++ members and through the root's C++ pointer, the C++ factory) is checked last.
+	Slice 3 (bead oo-9z7x) made the geometry C++ members; the pins of laterSlices and copies ran
+	on it unchanged, and geometryMembers checks the members against the facade. Slice 4 (bead
+	oo-zmix) made the rendering members: rendering was pinned first, and renderingMembers checks
+	the members. Slice 2 (bead oo-rdwg) made loading and copying members and the mesh its own
+	graphics reset client; loadingMembers checks them with no facade alive.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -469,6 +474,145 @@ OO_TEST(facadeContract)
 
 		// The placeholder material's facade is the C++ material's.
 		OO_CHECK(oo::ToCxx([OOMesh placeholderMaterial]) == cxx::OOMesh::placeholderMaterial().get());
+	}
+}
+
+
+// Slice 3 (bead oo-9z7x): the geometry members answer what the facade does.
+OO_TEST(geometryMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		cxx::OOMesh *cxxMesh = oo::ToCxx(mesh);
+		OO_CHECK(cxxMesh != nullptr);
+		if (cxxMesh == nullptr)  return;
+
+		const oo::Ref<cxx::Octree> octree = cxxMesh->getOctree();
+		OO_CHECK(octree.get() != nullptr);
+		OO_CHECK(cxxMesh->getOctree().get() == octree.get());	// made once
+		OO_CHECK(oo::ToCxx([mesh octree]) == octree.get());
+
+		OO_CHECK(SameVector(cxxMesh->boundingBox().max, make_vector(10, 10, 10)));
+		const Vector i = make_vector(1, 0, 0), j = make_vector(0, 1, 0), k = make_vector(0, 0, 1);
+		const BoundingBox relative = cxxMesh->findBoundingBoxRelativeToPosition(make_vector(0, 0, 0), i, j, k, make_vector(1, 2, 3), i, j, k);
+		OO_CHECK(SameVector(relative.max, make_vector(11, 12, 13)));
+		const BoundingBox moved = cxxMesh->findSubentityBoundingBoxWithPosition(make_vector(2, 2, 2), kIdentityMatrix);
+		OO_CHECK(SameVector(moved.min, make_vector(2, 2, 2)));
+		OO_CHECK(SameVector(moved.max, make_vector(12, 12, 12)));
+
+		// Rescaled through the C++ member: a new mesh whose facade is an OOMesh, with no name.
+		const oo::Ref<cxx::OOMesh> rescaled = cxxMesh->meshRescaledBy(0.5f);
+		OO_CHECK(rescaled.get() != nullptr && rescaled.get() != cxxMesh);
+		if (rescaled.get() == nullptr)  return;
+		OO_CHECK(Near(rescaled->collisionRadius(), 5.0));
+		OO_CHECK(!rescaled->modelName().has_value());
+		OO_CHECK([oo::ToObjC(rescaled) isKindOfClass:[OOMesh class]]);
+	}
+}
+
+
+// Slice 4 (bead oo-zmix), pinned before it converted: drawing on the hidden GL context, the
+// display lists it makes, and a graphics reset between draws.
+OO_TEST(rendering)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		OOMesh *smooth = Mesh("tetra2.dat", 1.0f, YES, YES);
+		OO_CHECK(mesh != nil && smooth != nil);
+		if (mesh == nil || smooth == nil)  return;
+		while (glGetError() != GL_NO_ERROR)  {}
+
+		[mesh renderOpaqueParts];	// makes the display lists
+		[mesh renderOpaqueParts];
+		[smooth renderOpaqueParts];
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+
+		// A reset deletes the display lists and rebinds the materials; the next draw remakes them.
+		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
+		[mesh renderOpaqueParts];
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+		OO_CHECK_EQ([mesh vertexCount], 4u);
+		OO_CHECK(Near([mesh collisionRadius], 10.0));
+
+		// A mutable copy draws on its own lists.
+		OOMesh *copy = [[mesh mutableCopy] autorelease];
+		[copy renderOpaqueParts];
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+	}
+}
+
+
+// Slice 4 (bead oo-zmix): the rendering members, through the C++ mesh.
+OO_TEST(renderingMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		cxx::OOMesh *cxxMesh = oo::ToCxx(mesh);
+		OO_CHECK(cxxMesh != nullptr);
+		if (cxxMesh == nullptr)  return;
+		while (glGetError() != GL_NO_ERROR)  {}
+
+		// Through the root's C++ pointer, as the entities draw.
+		cxx::OODrawable *drawable = cxxMesh;
+		drawable->renderOpaqueParts();
+		OO_CHECK(cxxMesh->listsReady);
+		cxxMesh->deleteDisplayLists();
+		OO_CHECK(!cxxMesh->listsReady);
+		drawable->renderOpaqueParts();
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+
+		// The materials: the placeholder's facade, rebound; a reset through the facade.
+		cxxMesh->rebindMaterials();
+		OO_CHECK(cxxMesh->materials[0] == [OOMesh placeholderMaterial]);
+		[mesh resetGraphicsState];
+		OO_CHECK(!cxxMesh->listsReady);
+		OO_CHECK(cxxMesh->materials[0] == [OOMesh placeholderMaterial]);
+
+		// The buffers: a renamed key, and bytes kept by key.
+		cxxMesh->renameTexturesFrom("_oo_placeholder_material", "_oo_placeholder_material");
+		OO_CHECK_EQ(cxxMesh->materialKeys[0], "_oo_placeholder_material");
+		void *bytes = cxxMesh->allocateBytesWithSize(4, 3, "test bytes");
+		OO_CHECK(bytes != nullptr);
+		OO_CHECK(cxxMesh->_retainedObjects.find("test bytes") != cxxMesh->_retainedObjects.end());
+	}
+}
+
+
+// Slice 2 (bead oo-rdwg): loading and copying are C++ members, and the mesh itself is the
+// graphics reset client.
+OO_TEST(loadingMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<cxx::OOMesh> mesh = cxx::OOMesh::meshWithName("tetra.dat", std::nullopt, oo::PList(), oo::PList(), false, oo::PList(), nil);
+		OO_CHECK(mesh.get() != nullptr);
+		if (mesh.get() == nullptr)  return;
+		OO_CHECK_EQ(mesh->getVertexCount(), 4u);
+		OO_CHECK_EQ(mesh->modelName().value_or("<none>"), "tetra.dat");
+
+		// A mutable copy shares the buffers and is a new mesh.
+		const oo::Ref<cxx::OOMesh> copy = mesh->mutableCopyWithZone(nullptr);
+		OO_CHECK(copy.get() != nullptr && copy.get() != mesh.get());
+		if (copy.get() == nullptr)  return;
+		OO_CHECK(copy->_vertices == mesh->_vertices);
+		OO_CHECK(copy->octree == mesh->octree);
+		OO_CHECK(!copy->listsReady);
+
+		// Both are registered with no facade alive for either: a reset deletes their display lists.
+		while (glGetError() != GL_NO_ERROR)  {}
+		mesh->renderOpaqueParts();
+		copy->renderOpaqueParts();
+		OO_CHECK(mesh->listsReady && copy->listsReady);
+		cxx::OOGraphicsResetManager::sharedManager()->resetGraphicsState();
+		OO_CHECK(!mesh->listsReady && !copy->listsReady);
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 	}
 }
 

@@ -1046,7 +1046,7 @@ void OOPlanetEntity::setTextureFileName(const std::optional<std::string> &textur
 	::OOTexture *normalMap = nil;
 	oo::ObjCRef<::OOTexture *> generatedDiffuseMap, generatedNormalMap;	// the C++ generator answers them retained (bead oo-kyje)
 	oo::PList macros;	// null: nil
-	const oo::PList materialDefaults = [ResourceManager cxx_materialDefaults];
+	const oo::PList materialDefaults = [::ResourceManager cxx_materialDefaults];
 	
 #if OO_SHADERS
 	OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
