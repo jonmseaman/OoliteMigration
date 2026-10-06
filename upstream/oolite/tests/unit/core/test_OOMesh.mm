@@ -22,6 +22,8 @@
 	OOCacheManager (Octree) category became free functions, which OctreeForModel and
 	SetOctreeForModel below now call. The facade's contract (identity, nil, the same answers from
 	the C++ members and through the root's C++ pointer, the C++ factory) is checked last.
+	Slice 3 (bead oo-9z7x) made the geometry C++ members; the pins of laterSlices and copies ran
+	on it unchanged, and geometryMembers checks the members against the facade.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -469,6 +471,41 @@ OO_TEST(facadeContract)
 
 		// The placeholder material's facade is the C++ material's.
 		OO_CHECK(oo::ToCxx([OOMesh placeholderMaterial]) == cxx::OOMesh::placeholderMaterial().get());
+	}
+}
+
+
+// Slice 3 (bead oo-9z7x): the geometry members answer what the facade does.
+OO_TEST(geometryMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		cxx::OOMesh *cxxMesh = oo::ToCxx(mesh);
+		OO_CHECK(cxxMesh != nullptr);
+		if (cxxMesh == nullptr)  return;
+
+		const oo::Ref<cxx::Octree> octree = cxxMesh->getOctree();
+		OO_CHECK(octree.get() != nullptr);
+		OO_CHECK(cxxMesh->getOctree().get() == octree.get());	// made once
+		OO_CHECK(oo::ToCxx([mesh octree]) == octree.get());
+
+		OO_CHECK(SameVector(cxxMesh->boundingBox().max, make_vector(10, 10, 10)));
+		const Vector i = make_vector(1, 0, 0), j = make_vector(0, 1, 0), k = make_vector(0, 0, 1);
+		const BoundingBox relative = cxxMesh->findBoundingBoxRelativeToPosition(make_vector(0, 0, 0), i, j, k, make_vector(1, 2, 3), i, j, k);
+		OO_CHECK(SameVector(relative.max, make_vector(11, 12, 13)));
+		const BoundingBox moved = cxxMesh->findSubentityBoundingBoxWithPosition(make_vector(2, 2, 2), kIdentityMatrix);
+		OO_CHECK(SameVector(moved.min, make_vector(2, 2, 2)));
+		OO_CHECK(SameVector(moved.max, make_vector(12, 12, 12)));
+
+		// Rescaled through the C++ member: a new mesh whose facade is an OOMesh, with no name.
+		const oo::Ref<cxx::OOMesh> rescaled = cxxMesh->meshRescaledBy(0.5f);
+		OO_CHECK(rescaled.get() != nullptr && rescaled.get() != cxxMesh);
+		if (rescaled.get() == nullptr)  return;
+		OO_CHECK(Near(rescaled->collisionRadius(), 5.0));
+		OO_CHECK(!rescaled->modelName().has_value());
+		OO_CHECK([oo::ToObjC(rescaled) isKindOfClass:[OOMesh class]]);
 	}
 }
 

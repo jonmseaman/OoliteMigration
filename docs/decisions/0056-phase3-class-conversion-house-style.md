@@ -3582,3 +3582,27 @@ convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ 
 
 **Consequences.** The HUD's façade serves only its callers and the dial dispatch; its deletion
 (oo-mwd58) replaces `OOCallByName` with a table of member pointers.
+
+## Amendment (bead oo-9z7x): a later slice of a converted subclass, whose units sat in the private category between other slices' units
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 3 of `docs/phases/3-slices/OOMesh.md`
+  in `src/Core/OOMesh.h/.mm`, `OOMesh+ObjCBridge.h/.mm`, `tests/unit/core/test_OOMesh.mm`. Follows
+  amendments oo-dnbf, oo-bwjb and oo-pni4.
+
+**Decision (recommended defaults).**
+
+1. **A later slice's units that sit inside the private category, between units of slices still
+   Objective-C, move to just after that category's `@end`** as `cxx::X` members, with the
+   file-static C functions they call. An `@implementation` of one category cannot be closed and
+   reopened in a file, and a second category name would leave the private `@interface` without
+   its methods (`-Wincomplete-implementation`). Their declarations leave the private
+   `@interface`; their Objective-C senders in the slices still Objective-C call
+   `oo::ToCxx(self)->m(...)`, and the selectors the façade's callers send move from the slice's
+   category in `X+ObjCBridge.h` back to the façade's `@interface`, forwarded in one line.
+2. **A member that held a converted class's façade by hand** (`::Octree *octree`, retained) becomes
+   `oo::Ref<cxx::Y>` when its slice converts: the destructor's `DESTROY`, the copy's `-retain` and
+   the size's crossing go, and the façade method answers `oo::ToObjC(member)`.
+3. **`@autoreleasepool { ... }` in a converted member** is `objc_autoreleasePoolPush()` /
+   `objc_autoreleasePoolPop(pool)` around the same block, as the file's loader already did.
+4. **A trampoline (amendment oo-dnbf item 3) is deleted by the slice that converts its method**;
+   the member is then the body.
