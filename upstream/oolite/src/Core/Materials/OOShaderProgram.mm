@@ -479,7 +479,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 
 	if (!fileName.has_value())  return YES;	// It's OK for one or the other of the shaders to be undefined.
 
-	result = [ResourceManager cxx_stringFromFilesNamed:*fileName inFolder:"Shaders"];
+	result = [::ResourceManager cxx_stringFromFilesNamed:*fileName inFolder:"Shaders"];
 	if (!result.has_value())
 	{
 		const std::vector<std::string> extensions { shaderType, shaderType.substr(0, 4) };	// vertex and vert, or fragment and frag
@@ -489,7 +489,7 @@ BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::stri
 		{
 			for (const std::string &extension : extensions)
 			{
-				result = [ResourceManager cxx_stringFromFilesNamed:oo::str::appendingPathExtension(*fileName, extension)
+				result = [::ResourceManager cxx_stringFromFilesNamed:oo::str::appendingPathExtension(*fileName, extension)
 																		inFolder:"Shaders"];
 				if (result.has_value()) break;
 			}
