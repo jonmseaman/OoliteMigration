@@ -97,7 +97,7 @@ std::optional<std::string> OOCheckShipDataPListVerifierStage::name()
 
 std::optional<std::vector<std::string>> OOCheckShipDataPListVerifierStage::dependents()
 {
-	std::vector<std::string> result = cxx::OOTextureHandlingStage::dependents().value_or(std::vector<std::string>());
+	std::vector<std::string> result = OOTextureHandlingStage::dependents().value_or(std::vector<std::string>());
 	for (const std::string &name : { OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier()),
 									 OOAIStateMachineVerifierStage::nameForReverseDependencyForVerifier(verifier()) })
 	{

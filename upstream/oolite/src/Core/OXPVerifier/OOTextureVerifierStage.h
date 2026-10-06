@@ -41,8 +41,8 @@ MA 02110-1301, USA.
 	OOTextureVerifierStage is a leaf of cxx::OOFileHandlingVerifierStage; it is global and has no
 	facade, because nothing outside this file messages it (the verifier makes it from its name,
 	kCxxStages in OOOXPVerifier.mm). OOTextureHandlingStage is an intermediate class that the ship
-	data and model stages still subclass in Objective-C, so it is cxx::OOTextureHandlingStage and
-	keeps a facade: OOTextureVerifierStage+ObjCBridge.h, imported at the end of this header.
+	data and model stages subclass; its Objective-C facade was deleted by bead oo-9ht.45 once they
+	were C++ (ADR-0056 amendment "deleting a facade"), with the verifier's -textureVerifierStage.
 */
 class OOTextureVerifierStage : public cxx::OOFileHandlingVerifierStage
 {
@@ -68,20 +68,11 @@ private:
 };
 
 
-namespace cxx {
-
 // Convenience base class for stages that need to run before OOTextureHandlingStage.
-class OOTextureHandlingStage : public OOFileHandlingVerifierStage
+class OOTextureHandlingStage : public cxx::OOFileHandlingVerifierStage
 {
 public:
 	std::optional<std::vector<std::string>> dependents() override;
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C OOTextureHandlingStage, and the verifier's -textureVerifierStage,
-// for the stages not yet converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
-#import "OOTextureVerifierStage+ObjCBridge.h"
 
 #endif
