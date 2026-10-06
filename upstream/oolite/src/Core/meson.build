@@ -60,7 +60,6 @@ oolite_sources += files(
     'OOJoystickManager.mm',
     'OOJoystickManager+ObjCBridge.mm',
     'OOJoystickProfile.mm',
-    'OOJoystickProfile+ObjCBridge.mm',
     'OOLogHeader.mm',
     'OOLogOutputHandler.mm',
     'OOLogging.mm',
