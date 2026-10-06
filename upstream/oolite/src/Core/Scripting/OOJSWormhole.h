@@ -40,9 +40,10 @@ void InitOOJSWormhole(ooscript::Context context, ooscript::Object global);
 #endif
 
 
-/*	The bodies of WormholeEntity (OOJavaScriptExtensions), which the engine reaches by selector.
-	Its methods are one-line forwarders to these in OOJSWormhole+ObjCBridge.mm until
-	WormholeEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+/*	The bodies of WormholeEntity (OOJavaScriptExtensions), which the engine reaches by selector. Its
+	methods are one-line forwarders to these on the WormholeEntity facade, in
+	WormholeEntity+ObjCBridge.mm (bead oo-9ht.43), until that facade goes (oo-9ht.112; proposed
+	ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 */
 void OOJSWormholeGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSWormholeJSClassName(void);
