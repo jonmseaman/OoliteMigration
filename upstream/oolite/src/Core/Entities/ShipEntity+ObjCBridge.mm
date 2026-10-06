@@ -529,3 +529,18 @@ DESTROY(_cxxShip->laser_color);
 - (void) behaviour_formation_form_up:(double)delta_t	{ _cxxShip->behaviour_formation_form_up(delta_t); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice15)
+
+- (void) behaviour_fly_to_destination:(double)delta_t	{ _cxxShip->behaviour_fly_to_destination(delta_t); }
+- (void) behaviour_fly_from_destination:(double)delta_t	{ _cxxShip->behaviour_fly_from_destination(delta_t); }
+- (void) behaviour_avoid_collision:(double)delta_t	{ _cxxShip->behaviour_avoid_collision(delta_t); }
+- (void) behaviour_track_as_turret:(double)delta_t	{ _cxxShip->behaviour_track_as_turret(delta_t); }
+- (void) behaviour_fly_thru_navpoints:(double)delta_t	{ _cxxShip->behaviour_fly_thru_navpoints(delta_t); }
+- (void) behaviour_scripted_ai:(double)delta_t	{ _cxxShip->behaviour_scripted_ai(delta_t); }
+- (float) reactionTime	{ return _cxxShip->getReactionTime(); }
+- (void) setReactionTime:(float)newReactionTime	{ _cxxShip->setReactionTime(newReactionTime); }
+- (HPVector) calculateTargetPosition	{ return _cxxShip->calculateTargetPosition(); }
+
+@end

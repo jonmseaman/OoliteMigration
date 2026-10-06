@@ -344,3 +344,4 @@
 [oo-0akes] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-xmajv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-v9sa5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-x4qqv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens

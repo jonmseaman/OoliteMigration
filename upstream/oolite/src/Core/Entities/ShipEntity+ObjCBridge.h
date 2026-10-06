@@ -112,16 +112,7 @@ MA 02110-1301, USA.
 
 
 // Behaviours
-- (void) behaviour_fly_to_destination:(double) delta_t;
-- (void) behaviour_fly_from_destination:(double) delta_t;
-- (void) behaviour_avoid_collision:(double) delta_t;
-- (void) behaviour_track_as_turret:(double) delta_t;
-- (void) behaviour_fly_thru_navpoints:(double) delta_t;
-- (void) behaviour_scripted_ai:(double) delta_t;
 
-- (float) reactionTime;
-- (void) setReactionTime: (float) newReactionTime;
-- (HPVector) calculateTargetPosition;
 - (void) startTrackingCurve;
 - (void) updateTrackingCurve;
 - (void) calculateTrackingCurve;
@@ -1018,6 +1009,24 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) behaviour_face_destination:(double) delta_t;
 - (void) behaviour_land_on_planet:(double) delta_t;
 - (void) behaviour_formation_form_up:(double) delta_t;
+
+@end
+
+
+// Slice 15 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice15)
+
+- (void) behaviour_fly_to_destination:(double) delta_t;
+- (void) behaviour_fly_from_destination:(double) delta_t;
+- (void) behaviour_avoid_collision:(double) delta_t;
+- (void) behaviour_track_as_turret:(double) delta_t;
+- (void) behaviour_fly_thru_navpoints:(double) delta_t;
+- (void) behaviour_scripted_ai:(double) delta_t;
+- (float) reactionTime;
+- (void) setReactionTime: (float) newReactionTime;
+- (HPVector) calculateTargetPosition;
 
 @end
 

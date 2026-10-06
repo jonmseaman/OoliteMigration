@@ -385,467 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) behaviour_fly_to_destination:(double) delta_t
-{
-	double distance = [self rangeToDestination];
-	// double desiredRange = (dockingInstructions != nil) ? 1.2 * desired_range : desired_range; // stop a bit earlyer when docking.
-	if (distance < _cxxShip->desired_range) // + collision_radius)
-	{
-		// desired range achieved
-		[_cxxShip->shipAI message:"DESIRED_RANGE_ACHIEVED"];
-		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
-
-		if(!_cxxShip->docking_match_rotation) // IDLE stops rotating while docking
-		{
-			_cxxShip->behaviour = BEHAVIOUR_IDLE;
-			_cxxShip->desired_speed = 0.0;
-		}
-		_cxxShip->frustration = 0.0;
-	}
-	else
-	{
-		double last_distance = _cxxShip->success_factor;
-		_cxxShip->success_factor = distance;
-
-		// do the actual piloting!!
-		double confidenceFactor = [self trackDestination:delta_t: NO];
-		if(confidenceFactor < 0.2) confidenceFactor = 0.2;  // don't allow small or negative values.
-		
-		/*	2009-07-19 Eric: Estimated Time of Arrival (eta) should also take the "angle to target" into account (confidenceFactor = cos(angle to target))
-			and should not fuss about that last meter and use "distance + 1" instead of just "distance".
-			trackDestination already did pitch regulation, use confidence here only for cutting down to high speeds.
-			This should prevent ships crawling to their destination when they try to pull up close to their destination.
-			
-			To prevent ships circling around their target without reaching destination I added a limitation based on turnrate,
-			speed and distance to target. Formula based on satelite orbit:
-					orbitspeed = turnrate (rad/sec) * radius (m)   or   flightSpeed = max_flight_pitch * 2 Pi * distance
-			Speed must be significant lower when not flying in direction of target (low confidenceFactor) or it can never approach its destination 
-			and the ships runs the risk flying in circles around the target. (exclude active escorts)
-		*/
-		GLfloat eta = ((distance + 1) - _cxxShip->desired_range) / (0.51 * _cxxShip->flightSpeed * confidenceFactor);	// 2% safety margin assuming an average of half current speed
-		GLfloat slowdownTime = (_cxxShip->thrust > 0.0)? _cxxShip->flightSpeed / (_cxxShip->thrust) : 4.0;
-		GLfloat minTurnSpeedFactor = 0.05 * _cxxShip->max_flight_pitch * _cxxShip->max_flight_roll;	// faster turning implies higher speeds
-		if (!_cxxShip->dockingInstructions.isNull())
-		{
-			minTurnSpeedFactor /= 10.0;
-			if (minTurnSpeedFactor * _cxxShip->maxFlightSpeed > 20.0)
-			{
-				minTurnSpeedFactor /= 10.0;
-			}
-		}
-
-
-		if (((eta < slowdownTime)&&(_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed * minTurnSpeedFactor)) || (_cxxShip->flightSpeed > _cxxShip->max_flight_pitch * 5 * confidenceFactor * distance))
-		{
-			_cxxShip->desired_speed = _cxxShip->flightSpeed * 0.50;   // cut speed by 50% to a minimum minTurnSpeedFactor of speed
-		}
-
-		/* Flight correction block to prevent one possible form of
-		 * crashes in late docking process */
-		if (_cxxShip->docking_match_rotation && confidenceFactor >= MAX_COS && !_cxxShip->dockingInstructions.isNull() && _cxxShip->dockingInstructions.get<int>("docking_stage") >= 7)
-		{
-			// then at this point should be rotating to match the station
-			StationEntity* station_for_docking = (StationEntity*)[self targetStation];
-
-			if ((station_for_docking)&&(station_for_docking->_cxxEntity->isStation))
-			{
-				float rollMatch = dot_product([station_for_docking portUpVectorForShip:self],[self upVector]);
-				if (rollMatch < MAX_COS && rollMatch > -MAX_COS)
-				{
-					// not matching rotating - stop until corrected
-					_cxxShip->desired_speed = 0.1;
-				}
-				else if (_cxxShip->desired_speed <= 0.2)
-				{
-					// had previously paused, so return to normal speed
-					_cxxShip->desired_speed = _cxxShip->dockingInstructions.get<float>("speed");
-				}
-			}
-		}
-
-
-		if (distance < last_distance)	// improvement
-		{
-			_cxxShip->frustration -= 0.25 * delta_t;
-			if (_cxxShip->frustration < 0.0)
-				_cxxShip->frustration = 0.0;
-		}
-		else
-		{
-			_cxxShip->frustration += delta_t;
-			if ((_cxxShip->frustration > slowdownTime * 10.0 && slowdownTime > 0)||(_cxxShip->frustration > 15.0))	// 10x slowdownTime or 15s of frustration
-			{
-				[self noteFrustration:"BEHAVIOUR_FLY_TO_DESTINATION"];
-				_cxxShip->frustration -= slowdownTime * 5.0;	//repeat after another five units of frustration
-			}
-		}
-	}
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-	
-}
-
-
-- (void) behaviour_fly_from_destination:(double) delta_t
-{
-	double distance = [self rangeToDestination];
-	if (distance > _cxxShip->desired_range)
-	{
-		// desired range achieved
-		[_cxxShip->shipAI message:"DESIRED_RANGE_ACHIEVED"];
-		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
-
-		_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		_cxxShip->frustration = 0.0;
-		_cxxShip->desired_speed = 0.0;
-	}
-
-	[self trackDestination:delta_t:YES];
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-	
-}
-
-
-- (void) behaviour_avoid_collision:(double) delta_t
-{
-	double distance = [self rangeToDestination];
-	if (distance > _cxxShip->desired_range)
-	{
-		[self resumePostProximityAlert];
-	}
-	else
-	{
-		ShipEntity* prox_ship = (ShipEntity*)[self proximityAlert];
-		if (prox_ship)
-		{
-			_cxxShip->desired_range = prox_ship->_cxxEntity->collision_radius * PROXIMITY_AVOID_DISTANCE_FACTOR;
-			_cxxShip->_destination = prox_ship->_cxxEntity->position;
-		}
-		double dq = [self trackDestination:delta_t:YES]; // returns 0 when heading towards prox_ship
-		// Heading towards target with desired_speed > 0, avoids collisions better than setting desired_speed to zero.
-		// (tested with boa class cruiser on collisioncourse with buoy)
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * (0.5 * dq + 0.5);
-	}
-
-	
-}
-
-
-- (void) behaviour_track_as_turret:(double) delta_t
-{
-	double aim = -2.0;
-	ShipEntity *turret_owner = (ShipEntity *)[self owner];
-	ShipEntity *turret_target = (ShipEntity *)[turret_owner primaryTarget];
-	if (turret_owner && turret_target && [turret_owner hasHostileTarget])
-	{
-		aim = [self ballTrackLeadingTarget:delta_t atTarget:turret_target];
-		if (aim > -1.0) // potential target
-		{
-			HPVector p = HPvector_subtract([turret_target position], [turret_owner position]);
-			double cr = [turret_owner collisionRadius];
-			
-			if (aim > .95)
-			{
-				[self fireTurretCannon:HPmagnitude(p) - cr];
-			}
-			return;
-		}
-	}
-	
-	// can't fire on primary target; track secondary targets instead
-	for (const auto &targetRef : [turret_owner cxx_defenseTargets])
-	{
-		Entity *target = targetRef.get();
-		// defense targets cannot be tracked while cloaked
-		if ([target scanClass] == CLASS_NO_DRAW || [(ShipEntity *)target isCloaked] || [target energy] <= 0.0)
-		{
-			[turret_owner removeDefenseTarget:target];
-		}
-		else 
-		{
-			double range = [turret_owner rangeToSecondaryTarget:target];
-			if (range < _cxxShip->weaponRange)
-			{
-				aim = [self ballTrackLeadingTarget:delta_t atTarget:target];
-				if (aim > -1.0)
-				{ // tracking...
-					HPVector p = HPvector_subtract([target position], [turret_owner position]);
-					double cr = [turret_owner collisionRadius];
-		
-					if (aim > .95)
-					{ // fire!
-						[self fireTurretCannon:HPmagnitude(p) - cr];
-					}
-					return;
-				}
-				// else that target is out of range, try the next priority defense target
-			}
-			else if (range > _cxxShip->scannerRange)
-			{
-				[turret_owner removeDefenseTarget:target];
-			}
-		}
-	}
-
-	// turrets now don't return to neutral facing if no suitable target
-	// better for shooting at targets that are on edge of fire arc
-}
-
-
-- (void) behaviour_fly_thru_navpoints:(double) delta_t
-{
-	int navpoint_plus_index = (_cxxShip->next_navpoint_index + 1) % _cxxShip->number_of_navpoints;
-	HPVector d1 = _cxxShip->navpoints[_cxxShip->next_navpoint_index];		// head for this one
-	HPVector d2 = _cxxShip->navpoints[navpoint_plus_index];	// but be facing this one
-	
-	HPVector rel = HPvector_between(d1, _cxxEntity->position);	// vector from d1 to position 
-	HPVector ref = HPvector_between(d2, d1);		// vector from d2 to d1
-	ref = HPvector_normal(ref);
-	
-	HPVector xp = make_HPvector(ref.y * rel.z - ref.z * rel.y, ref.z * rel.x - ref.x * rel.z, ref.x * rel.y - ref.y * rel.x);	
-	
-	GLfloat v0 = 0.0;
-	
-	GLfloat	r0 = HPdot_product(rel, ref);	// proportion of rel in direction ref
-	
-	// if r0 is negative then we're the wrong side of things
-	
-	GLfloat	r1 = HPmagnitude(xp);	// distance of position from line
-	
-	BOOL in_cone = (r0 > 0.5 * r1);
-	
-	if (!in_cone)	// are we in the approach cone ?
-		r1 = 25.0 * _cxxShip->flightSpeed;	// aim a few km out!
-	else
-		r1 *= 2.0;
-	
-	GLfloat dist2 = HPmagnitude2(rel);
-	
-	if (dist2 < _cxxShip->desired_range * _cxxShip->desired_range)
-	{
-		// desired range achieved
-		[self cxx_doScriptEvent:OOJSID("shipReachedNavPoint") andReactToAIMessage:"NAVPOINT_REACHED"];
-		if (navpoint_plus_index == 0)
-		{
-			[self cxx_doScriptEvent:OOJSID("shipReachedEndPoint") andReactToAIMessage:"ENDPOINT_REACHED"];
-			_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		}
-		_cxxShip->next_navpoint_index = navpoint_plus_index;	// loop as required
-	}
-	else
-	{
-		double last_success_factor = _cxxShip->success_factor;
-		double last_dist2 = last_success_factor;
-		_cxxShip->success_factor = dist2;
-
-		// set destination spline point from r1 and ref
-		_cxxShip->_destination = make_HPvector(d1.x + r1 * ref.x, d1.y + r1 * ref.y, d1.z + r1 * ref.z);
-
-		// do the actual piloting!!
-		//
-		// aim to within 1m
-		GLfloat temp = _cxxShip->desired_range;
-		if (in_cone)
-			_cxxShip->desired_range = 1.0;
-		else
-			_cxxShip->desired_range = 100.0;
-		v0 = [self trackDestination:delta_t: NO];
-		_cxxShip->desired_range = temp;
-		
-		if (dist2 < last_dist2)	// improvement
-		{
-			_cxxShip->frustration -= 0.25 * delta_t;
-			if (_cxxShip->frustration < 0.0)
-				_cxxShip->frustration = 0.0;
-		}
-		else
-		{
-			_cxxShip->frustration += delta_t;
-			if (_cxxShip->frustration > 15.0)	// 15s of frustration
-			{
-				[self noteFrustration:"BEHAVIOUR_FLY_THRU_NAVPOINTS"];
-				_cxxShip->frustration -= 15.0;	//repeat after another 15s of frustration
-			}
-		}
-	}
-	
-
-	GLfloat temp = _cxxShip->desired_speed;
-	_cxxShip->desired_speed *= v0 * v0;
-	
-	_cxxShip->desired_speed = temp;
-}
-
-
-- (void) behaviour_scripted_ai:(double) delta_t
-{
-	
-	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value		rval = ooscript::undefinedValue();
-	ooscript::Value		deltaJS = ooscript::undefinedValue();
-	oo::PList result;
-	
-	BOOL OK = ooscript::newNumberValue(context, delta_t, &deltaJS);
-	if (OK)
-	{
-		OK = [[self script] callMethod:OOJSID("scriptedAI")
-							 inContext:context
-						 withArguments:&deltaJS
-								 count:1
-								result:&rval];
-	}
-	
-	if (!OK)
-	{
-		OO_LOG("ai.error", "Could not call scriptedAI in ship script of {}, reverting to idle", oo::DescriptionOf(self));
-		_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		OOJSRelinquishContext(context);
-		return;
-	}
-
-	if (!ooscript::isObjectOrNull(rval))
-	{
-		OO_LOG("ai.error", "Invalid return value of scriptedAI in ship script of {}, reverting to idle", oo::DescriptionOf(self));
-		_cxxShip->behaviour = BEHAVIOUR_IDLE;
-		OOJSRelinquishContext(context);
-		return;
-	}
-
-	result = cxx_OOJSPListFromJSObject(context, ooscript::toObject(rval));
-	OOJSRelinquishContext(context);
-
-	// roll or roll factor
-	if (result.find("stickRollFactor") != nullptr)
-	{
-		_cxxShip->stick_roll = result.get<float>("stickRollFactor") * _cxxShip->max_flight_roll;
-	} 
-	else 
-	{
-		_cxxShip->stick_roll = result.get<float>("stickRoll");
-	}
-	if (_cxxShip->stick_roll > _cxxShip->max_flight_roll) 
-	{
-		_cxxShip->stick_roll = _cxxShip->max_flight_roll;
-	}
-	else if (_cxxShip->stick_roll < -_cxxShip->max_flight_roll)
-	{
-		_cxxShip->stick_roll = -_cxxShip->max_flight_roll;
-	}
-
-	// pitch or pitch factor
-	if (result.find("stickPitchFactor") != nullptr)
-	{
-		_cxxShip->stick_pitch = result.get<float>("stickPitchFactor") * _cxxShip->max_flight_pitch;
-	} 
-	else 
-	{
-		_cxxShip->stick_pitch = result.get<float>("stickPitch");
-	}
-	if (_cxxShip->stick_pitch > _cxxShip->max_flight_pitch) 
-	{
-		_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-	}
-	else if (_cxxShip->stick_pitch < -_cxxShip->max_flight_pitch)
-	{
-		_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-	}
-
-	// yaw or yaw factor
-	if (result.find("stickYawFactor") != nullptr)
-	{
-		_cxxShip->stick_yaw = result.get<float>("stickYawFactor") * _cxxShip->max_flight_yaw;
-	} 
-	else 
-	{
-		_cxxShip->stick_yaw = result.get<float>("stickYaw");
-	}
-	if (_cxxShip->stick_yaw > _cxxShip->max_flight_yaw) 
-	{
-		_cxxShip->stick_yaw = _cxxShip->max_flight_yaw;
-	}
-	else if (_cxxShip->stick_yaw < -_cxxShip->max_flight_yaw)
-	{
-		_cxxShip->stick_yaw = -_cxxShip->max_flight_yaw;
-	}	
-
-	// apply sticks to current flight profile
-	[self applySticks:delta_t];
-
-	// desired speed
-	if (result.find("desiredSpeedFactor") != nullptr)
-	{
-		_cxxShip->desired_speed = result.get<float>("desiredSpeedFactor") * _cxxShip->maxFlightSpeed;
-	}
-	else
-	{
-		_cxxShip->desired_speed = result.get<float>("desiredSpeed");
-	}
-
-	if (_cxxShip->desired_speed < 0.0)
-	{
-		_cxxShip->desired_speed = 0.0;
-	}
-	// overspeed and injector use is handled by applyThrust
-
-	if (_cxxShip->behaviour == BEHAVIOUR_SCRIPTED_ATTACK_AI)
-	{
-		const std::string chosen_weapon = result.get<std::string>("chosenWeapon", "FORWARD");
-		double  range = [self rangeToPrimaryTarget];
-
-		if (chosen_weapon == "FORWARD")
-		{
-			[self fireMainWeapon:range];
-		}
-		else if (chosen_weapon == "AFT")
-		{
-			[self fireAftWeapon:range];
-		}
-		else if (chosen_weapon == "PORT")
-		{
-			[self firePortWeapon:range];
-		}
-		else if (chosen_weapon == "STARBOARD")
-		{
-			[self fireStarboardWeapon:range];
-		}
-	}
-}
-
-- (float) reactionTime
-{
-	return _cxxShip->reactionTime;
-}
-
-
-- (void) setReactionTime: (float) newReactionTime
-{
-	_cxxShip->reactionTime = newReactionTime;
-}
-
-
-- (HPVector) calculateTargetPosition
-{
-	Entity *target = [self primaryTarget];
-	if (target == nil)
-	{
-		return kZeroHPVector;
-	}
-	if (_cxxShip->reactionTime <= 0.0)
-	{
-		return [target position];
-	}
-	double t = [UNIVERSE getTime] - _cxxShip->trackingCurveTimes[1];
-	return HPvector_add(HPvector_add(_cxxShip->trackingCurveCoeffs[0], HPvector_multiply_scalar(_cxxShip->trackingCurveCoeffs[1],t)), HPvector_multiply_scalar(_cxxShip->trackingCurveCoeffs[2],t*t));
-}
-
-
 - (void) startTrackingCurve
 {
 	Entity *target = [self primaryTarget];
@@ -15009,7 +14548,6 @@ void ShipEntity::behaviour_fly_range_from_destination(double /*delta_t*/)
 	frustration = 0.0;
 
 	
-	
 }
 
 
@@ -15167,6 +14705,493 @@ void ShipEntity::behaviour_formation_form_up(double delta_t)
 	}
 	
 	
+}
+
+
+}	// namespace cxx
+
+
+// Slice 15 of docs/phases/3-slices/ShipEntity.md (bead oo-x4qqv): behaviours: fly to / from
+// destination, avoid collision, turret, navpoints, scripted AI; reaction time. The facade forwards
+// each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::behaviour_fly_to_destination(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double distance = [self rangeToDestination];
+	// double desiredRange = (dockingInstructions != nil) ? 1.2 * desired_range : desired_range; // stop a bit earlyer when docking.
+	if (distance < desired_range) // + collision_radius)
+	{
+		// desired range achieved
+		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
+		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
+
+		if(!docking_match_rotation) // IDLE stops rotating while docking
+		{
+			behaviour = BEHAVIOUR_IDLE;
+			desired_speed = 0.0;
+		}
+		frustration = 0.0;
+	}
+	else
+	{
+		double last_distance = success_factor;
+		success_factor = distance;
+
+		// do the actual piloting!!
+		double confidenceFactor = [self trackDestination:delta_t: NO];
+		if(confidenceFactor < 0.2) confidenceFactor = 0.2;  // don't allow small or negative values.
+		
+		/*	2009-07-19 Eric: Estimated Time of Arrival (eta) should also take the "angle to target" into account (confidenceFactor = cos(angle to target))
+			and should not fuss about that last meter and use "distance + 1" instead of just "distance".
+			trackDestination already did pitch regulation, use confidence here only for cutting down to high speeds.
+			This should prevent ships crawling to their destination when they try to pull up close to their destination.
+			
+			To prevent ships circling around their target without reaching destination I added a limitation based on turnrate,
+			speed and distance to target. Formula based on satelite orbit:
+					orbitspeed = turnrate (rad/sec) * radius (m)   or   flightSpeed = max_flight_pitch * 2 Pi * distance
+			Speed must be significant lower when not flying in direction of target (low confidenceFactor) or it can never approach its destination 
+			and the ships runs the risk flying in circles around the target. (exclude active escorts)
+		*/
+		GLfloat eta = ((distance + 1) - desired_range) / (0.51 * flightSpeed * confidenceFactor);	// 2% safety margin assuming an average of half current speed
+		GLfloat slowdownTime = (thrust > 0.0)? flightSpeed / (thrust) : 4.0;
+		GLfloat minTurnSpeedFactor = 0.05 * max_flight_pitch * max_flight_roll;	// faster turning implies higher speeds
+		if (!dockingInstructions.isNull())
+		{
+			minTurnSpeedFactor /= 10.0;
+			if (minTurnSpeedFactor * maxFlightSpeed > 20.0)
+			{
+				minTurnSpeedFactor /= 10.0;
+			}
+		}
+
+
+		if (((eta < slowdownTime)&&(flightSpeed > maxFlightSpeed * minTurnSpeedFactor)) || (flightSpeed > max_flight_pitch * 5 * confidenceFactor * distance))
+		{
+			desired_speed = flightSpeed * 0.50;   // cut speed by 50% to a minimum minTurnSpeedFactor of speed
+		}
+
+		/* Flight correction block to prevent one possible form of
+		 * crashes in late docking process */
+		if (docking_match_rotation && confidenceFactor >= MAX_COS && !dockingInstructions.isNull() && dockingInstructions.get<int>("docking_stage") >= 7)
+		{
+			// then at this point should be rotating to match the station
+			::StationEntity* station_for_docking = (::StationEntity*)[self targetStation];
+
+			if ((station_for_docking)&&(station_for_docking->_cxxEntity->isStation))
+			{
+				float rollMatch = dot_product([station_for_docking portUpVectorForShip:self],[self upVector]);
+				if (rollMatch < MAX_COS && rollMatch > -MAX_COS)
+				{
+					// not matching rotating - stop until corrected
+					desired_speed = 0.1;
+				}
+				else if (desired_speed <= 0.2)
+				{
+					// had previously paused, so return to normal speed
+					desired_speed = dockingInstructions.get<float>("speed");
+				}
+			}
+		}
+
+
+	
+		if (distance < last_distance)	// improvement
+		{
+			frustration -= 0.25 * delta_t;
+			if (frustration < 0.0)
+				frustration = 0.0;
+		}
+		else
+		{
+			frustration += delta_t;
+			if ((frustration > slowdownTime * 10.0 && slowdownTime > 0)||(frustration > 15.0))	// 10x slowdownTime or 15s of frustration
+			{
+				[self noteFrustration:"BEHAVIOUR_FLY_TO_DESTINATION"];
+				frustration -= slowdownTime * 5.0;	//repeat after another five units of frustration
+			}
+		}
+	}
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+	
+}
+
+
+void ShipEntity::behaviour_fly_from_destination(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double distance = [self rangeToDestination];
+	if (distance > desired_range)
+	{
+		// desired range achieved
+		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
+		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
+
+		behaviour = BEHAVIOUR_IDLE;
+		frustration = 0.0;
+		desired_speed = 0.0;
+	}
+
+	[self trackDestination:delta_t:YES];
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+	
+}
+
+
+void ShipEntity::behaviour_avoid_collision(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double distance = [self rangeToDestination];
+	if (distance > desired_range)
+	{
+		[self resumePostProximityAlert];
+	}
+	else
+	{
+		::ShipEntity* prox_ship = (::ShipEntity*)[self proximityAlert];
+		if (prox_ship)
+		{
+			desired_range = prox_ship->_cxxEntity->collision_radius * PROXIMITY_AVOID_DISTANCE_FACTOR;
+			_destination = prox_ship->_cxxEntity->position;
+		}
+		double dq = [self trackDestination:delta_t:YES]; // returns 0 when heading towards prox_ship
+		// Heading towards target with desired_speed > 0, avoids collisions better than setting desired_speed to zero.
+		// (tested with boa class cruiser on collisioncourse with buoy)
+		desired_speed = maxFlightSpeed * (0.5 * dq + 0.5);
+	}
+
+	
+	
+}
+
+
+void ShipEntity::behaviour_track_as_turret(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	double aim = -2.0;
+	::ShipEntity *turret_owner = (::ShipEntity *)[self owner];
+	::ShipEntity *turret_target = (::ShipEntity *)[turret_owner primaryTarget];
+	if (turret_owner && turret_target && [turret_owner hasHostileTarget])
+	{
+		aim = [self ballTrackLeadingTarget:delta_t atTarget:turret_target];
+		if (aim > -1.0) // potential target
+		{
+			HPVector p = HPvector_subtract([turret_target position], [turret_owner position]);
+			double cr = [turret_owner collisionRadius];
+			
+			if (aim > .95)
+			{
+				[self fireTurretCannon:HPmagnitude(p) - cr];
+			}
+			return;
+		}
+	}
+	
+	// can't fire on primary target; track secondary targets instead
+	for (const auto &targetRef : [turret_owner cxx_defenseTargets])
+	{
+		::Entity *target = targetRef.get();
+		// defense targets cannot be tracked while cloaked
+		if ([target scanClass] == CLASS_NO_DRAW || [(::ShipEntity *)target isCloaked] || [target energy] <= 0.0)
+		{
+			[turret_owner removeDefenseTarget:target];
+		}
+		else 
+		{
+			double range = [turret_owner rangeToSecondaryTarget:target];
+			if (range < weaponRange)
+			{
+				aim = [self ballTrackLeadingTarget:delta_t atTarget:target];
+				if (aim > -1.0)
+				{ // tracking...
+					HPVector p = HPvector_subtract([target position], [turret_owner position]);
+					double cr = [turret_owner collisionRadius];
+		
+					if (aim > .95)
+					{ // fire!
+						[self fireTurretCannon:HPmagnitude(p) - cr];
+					}
+					return;
+				}
+				// else that target is out of range, try the next priority defense target
+			}
+			else if (range > scannerRange)
+			{
+				[turret_owner removeDefenseTarget:target];
+			}
+		}
+	}
+
+	// turrets now don't return to neutral facing if no suitable target
+	// better for shooting at targets that are on edge of fire arc
+}
+
+
+void ShipEntity::behaviour_fly_thru_navpoints(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	int navpoint_plus_index = (next_navpoint_index + 1) % number_of_navpoints;
+	HPVector d1 = navpoints[next_navpoint_index];		// head for this one
+	HPVector d2 = navpoints[navpoint_plus_index];	// but be facing this one
+	
+	HPVector rel = HPvector_between(d1, position);	// vector from d1 to position 
+	HPVector ref = HPvector_between(d2, d1);		// vector from d2 to d1
+	ref = HPvector_normal(ref);
+	
+	HPVector xp = make_HPvector(ref.y * rel.z - ref.z * rel.y, ref.z * rel.x - ref.x * rel.z, ref.x * rel.y - ref.y * rel.x);	
+	
+	GLfloat v0 = 0.0;
+	
+	GLfloat	r0 = HPdot_product(rel, ref);	// proportion of rel in direction ref
+	
+	// if r0 is negative then we're the wrong side of things
+	
+	GLfloat	r1 = HPmagnitude(xp);	// distance of position from line
+	
+	BOOL in_cone = (r0 > 0.5 * r1);
+	
+	if (!in_cone)	// are we in the approach cone ?
+		r1 = 25.0 * flightSpeed;	// aim a few km out!
+	else
+		r1 *= 2.0;
+	
+	GLfloat dist2 = HPmagnitude2(rel);
+	
+	if (dist2 < desired_range * desired_range)
+	{
+		// desired range achieved
+		[self cxx_doScriptEvent:OOJSID("shipReachedNavPoint") andReactToAIMessage:"NAVPOINT_REACHED"];
+		if (navpoint_plus_index == 0)
+		{
+			[self cxx_doScriptEvent:OOJSID("shipReachedEndPoint") andReactToAIMessage:"ENDPOINT_REACHED"];
+			behaviour = BEHAVIOUR_IDLE;
+		}
+		next_navpoint_index = navpoint_plus_index;	// loop as required
+	}
+	else
+	{
+		double last_success_factor = success_factor;
+		double last_dist2 = last_success_factor;
+		success_factor = dist2;
+
+		// set destination spline point from r1 and ref
+		_destination = make_HPvector(d1.x + r1 * ref.x, d1.y + r1 * ref.y, d1.z + r1 * ref.z);
+
+		// do the actual piloting!!
+		//
+		// aim to within 1m
+		GLfloat temp = desired_range;
+		if (in_cone)
+			desired_range = 1.0;
+		else
+			desired_range = 100.0;
+		v0 = [self trackDestination:delta_t: NO];
+		desired_range = temp;
+		
+		if (dist2 < last_dist2)	// improvement
+		{
+			frustration -= 0.25 * delta_t;
+			if (frustration < 0.0)
+				frustration = 0.0;
+		}
+		else
+		{
+			frustration += delta_t;
+			if (frustration > 15.0)	// 15s of frustration
+			{
+				[self noteFrustration:"BEHAVIOUR_FLY_THRU_NAVPOINTS"];
+				frustration -= 15.0;	//repeat after another 15s of frustration
+			}
+		}
+	}
+	
+
+	
+	GLfloat temp = desired_speed;
+	desired_speed *= v0 * v0;
+	
+	desired_speed = temp;
+}
+
+
+void ShipEntity::behaviour_scripted_ai(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value		rval = ooscript::undefinedValue();
+	ooscript::Value		deltaJS = ooscript::undefinedValue();
+	oo::PList result;
+	
+	BOOL OK = ooscript::newNumberValue(context, delta_t, &deltaJS);
+	if (OK)
+	{
+		OK = [[self script] callMethod:OOJSID("scriptedAI")
+							 inContext:context
+						 withArguments:&deltaJS
+								 count:1
+								result:&rval];
+	}
+	
+	if (!OK)
+	{
+		OO_LOG("ai.error", "Could not call scriptedAI in ship script of {}, reverting to idle", oo::DescriptionOf(self));
+		behaviour = BEHAVIOUR_IDLE;
+		OOJSRelinquishContext(context);
+		return;
+	}
+
+	if (!ooscript::isObjectOrNull(rval))
+	{
+		OO_LOG("ai.error", "Invalid return value of scriptedAI in ship script of {}, reverting to idle", oo::DescriptionOf(self));
+		behaviour = BEHAVIOUR_IDLE;
+		OOJSRelinquishContext(context);
+		return;
+	}
+
+	result = cxx_OOJSPListFromJSObject(context, ooscript::toObject(rval));
+	OOJSRelinquishContext(context);
+
+	// roll or roll factor
+	if (result.find("stickRollFactor") != nullptr)
+	{
+		stick_roll = result.get<float>("stickRollFactor") * max_flight_roll;
+	} 
+	else 
+	{
+		stick_roll = result.get<float>("stickRoll");
+	}
+	if (stick_roll > max_flight_roll) 
+	{
+		stick_roll = max_flight_roll;
+	}
+	else if (stick_roll < -max_flight_roll)
+	{
+		stick_roll = -max_flight_roll;
+	}
+
+	// pitch or pitch factor
+	if (result.find("stickPitchFactor") != nullptr)
+	{
+		stick_pitch = result.get<float>("stickPitchFactor") * max_flight_pitch;
+	} 
+	else 
+	{
+		stick_pitch = result.get<float>("stickPitch");
+	}
+	if (stick_pitch > max_flight_pitch) 
+	{
+		stick_pitch = max_flight_pitch;
+	}
+	else if (stick_pitch < -max_flight_pitch)
+	{
+		stick_pitch = -max_flight_pitch;
+	}
+
+	// yaw or yaw factor
+	if (result.find("stickYawFactor") != nullptr)
+	{
+		stick_yaw = result.get<float>("stickYawFactor") * max_flight_yaw;
+	} 
+	else 
+	{
+		stick_yaw = result.get<float>("stickYaw");
+	}
+	if (stick_yaw > max_flight_yaw) 
+	{
+		stick_yaw = max_flight_yaw;
+	}
+	else if (stick_yaw < -max_flight_yaw)
+	{
+		stick_yaw = -max_flight_yaw;
+	}	
+
+	// apply sticks to current flight profile
+	[self applySticks:delta_t];
+
+	// desired speed
+	if (result.find("desiredSpeedFactor") != nullptr)
+	{
+		desired_speed = result.get<float>("desiredSpeedFactor") * maxFlightSpeed;
+	}
+	else
+	{
+		desired_speed = result.get<float>("desiredSpeed");
+	}
+
+	if (desired_speed < 0.0)
+	{
+		desired_speed = 0.0;
+	}
+	// overspeed and injector use is handled by applyThrust
+
+	if (behaviour == BEHAVIOUR_SCRIPTED_ATTACK_AI)
+	{
+		const std::string chosen_weapon = result.get<std::string>("chosenWeapon", "FORWARD");
+		double  range = [self rangeToPrimaryTarget];
+
+		if (chosen_weapon == "FORWARD")
+		{
+			[self fireMainWeapon:range];
+		}
+		else if (chosen_weapon == "AFT")
+		{
+			[self fireAftWeapon:range];
+		}
+		else if (chosen_weapon == "PORT")
+		{
+			[self firePortWeapon:range];
+		}
+		else if (chosen_weapon == "STARBOARD")
+		{
+			[self fireStarboardWeapon:range];
+		}
+	}
+}
+
+
+float ShipEntity::getReactionTime()
+{
+	return reactionTime;
+}
+
+
+void ShipEntity::setReactionTime(float newReactionTime)
+{
+	reactionTime = newReactionTime;
+}
+
+
+HPVector ShipEntity::calculateTargetPosition()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+
+	::Entity *target = [self primaryTarget];
+	if (target == nil)
+	{
+		return kZeroHPVector;
+	}
+	if (reactionTime <= 0.0)
+	{
+		return [target position];
+	}
+	double t = [UNIVERSE getTime] - trackingCurveTimes[1];
+	return HPvector_add(HPvector_add(trackingCurveCoeffs[0], HPvector_multiply_scalar(trackingCurveCoeffs[1],t)), HPvector_multiply_scalar(trackingCurveCoeffs[2],t*t));
 }
 
 
