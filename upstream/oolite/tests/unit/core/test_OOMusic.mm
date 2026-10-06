@@ -152,48 +152,32 @@ static int gLiveSounds = 0;
 
 /*	The mixer and its channels, under the real sound source (OOSoundSource.mm): the mixer hands
 	out channels that record what they are told, in order, and a stopped channel tells its
-	delegate as the real one does.
+	delegate as the real one does. The channel is a C++ stand-in since bead oo-9ht.86 deleted the
+	Objective-C facade this file stubbed (the members the source calls), with its own delegate and
+	sound.
 */
 static std::vector<std::string> gChannelLog;
 
-@interface OOObject (TestChannelDelegate)
-- (void)channel:(id)inChannel didFinishPlayingSound:(OOSound *)inSound;
-@end
-
-@interface OOSoundChannel: OOObject
-{
-@public
-	id			_delegate;
-	OOSound		*_sound;
-}
-@end
+OOSoundChannel::~OOSoundChannel()  {}
+void OOSoundChannel::setDelegate(OOSoundChannelDelegate *delegate)  { _delegate = delegate; }
+void OOSoundChannel::setPosition(Vector position)  { (void)position; }
+void OOSoundChannel::setGain(float gain)  { gChannelLog.push_back("gain " + std::to_string(gain)); }
 
 
-@implementation OOSoundChannel
-
-- (void) setDelegate:(id)delegate		{ _delegate = delegate; }
-- (void) setPosition:(Vector)position	{ (void)position; }
-- (void) setGain:(float)gain			{ gChannelLog.push_back("gain " + std::to_string(gain)); }
-
-
-- (BOOL) playSound:(OOSound *)sound looped:(BOOL)loop
+bool OOSoundChannel::playSound(::OOSound *sound, bool loop)
 {
 	gChannelLog.push_back("play " + [sound cxx_name].value_or("(none)") + (loop ? " looped" : ""));
-	_sound = [sound retain];
-	return YES;
+	_sound = oo::ObjCRef<::OOSound *>(sound);	// [sound retain]
+	return true;
 }
 
 
-- (void) stop
+void OOSoundChannel::stop()
 {
 	gChannelLog.push_back("stop");
-	OOSound *sound = _sound;
-	_sound = nil;
-	[_delegate channel:self didFinishPlayingSound:sound];
-	[sound release];
+	oo::ObjCRef<::OOSound *> sound = std::move(_sound);	// _sound = nil; [sound release] at the end of the scope
+	if (_delegate != nullptr)  _delegate->channel(this, sound.get());
 }
-
-@end
 
 
 static int gChannelsOut = 0;
@@ -220,7 +204,7 @@ void OOSoundMixer::shutdown()
 ::OOSoundChannel *OOSoundMixer::popChannel()
 {
 	gChannelsOut++;
-	return [[OOSoundChannel alloc] init];	// leaked: a few per run
+	return oo::makeRef<OOSoundChannel>().leakRef();	// leaked: a few per run
 }
 
 

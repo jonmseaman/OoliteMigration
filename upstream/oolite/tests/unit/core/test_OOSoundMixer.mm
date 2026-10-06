@@ -5,23 +5,25 @@
 	The mixer is made on first use, after setting sound up, with kMixerGeneralChannels channels on
 	a free list that the sound sources pop and push; -update updates every channel, and -shutdown
 	(at exit) releases them. OpenAL runs on OpenAL Soft's null backend and the user's defaults are
-	a scratch folder's, as in test_OOSound.mm. The channels are this file's stubs, which count what
-	they are told (the real ones would make OpenAL sources); so are the decoder and the two
-	concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4). The root's +update is the
-	game's, so it reaches this mixer. These expectations were written against the Objective-C API
-	and ran on the unconverted class first; they ran through the facade until bead oo-9ht.87 deleted
+	a scratch folder's, as in test_OOSound.mm. The channels are this file's stubs (C++ since bead
+	oo-9ht.86), which count what they are told (the real ones would make OpenAL sources); so are the
+	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4). The
+	root's +update is the game's, so it reaches this mixer. These expectations were written
+	against the Objective-C API and ran on the unconverted class first; they ran through the facade until bead oo-9ht.87 deleted
 	it, and now ask the C++ mixer with the same expectations (the facade's own contract was retired
 	with it: ADR-0049, standing approval oo-9n5p9). Before the shutdown, which is last, comes the
 	C++ API. Run: bash tools/check-core-tests.sh test_OOSoundMixer
 */
 
 #import "OOALSoundMixer.h"
+#import "OOALSoundChannel.h"
 #import "OOALSound.h"
 
 #include "oo_test.hpp"
 
 #include <cstdlib>
 #include <filesystem>
+#include <map>
 #include <process.h>
 #include <set>
 #include <string>
@@ -55,58 +57,46 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 @end
 
 
+/*	The channels: a C++ stand-in since bead oo-9ht.86 deleted the Objective-C facade this file
+	stubbed (the members the mixer calls). They count the live ones and the updates each is sent;
+	the free list's link is the channel's own _next.
+*/
 static int gLiveChannels = 0;
 static int gChannelUpdates = 0;
+static std::map<OOSoundChannel *, int> gUpdates;	// per channel: the stub's _updates
 
-@interface OOSoundChannel: OOObject
+
+bool OOSoundChannel::init()
 {
-@public
-	OOSoundChannel	*_next;
-	int				_updates;
-}
-
-- (OOSoundChannel *) next;
-- (void) setNext:(OOSoundChannel *)next;
-
-@end
-
-
-@implementation OOSoundChannel
-
-- (id) init
-{
-	self = [super init];
-	if (self != nil)  gLiveChannels++;
-	return self;
+	gLiveChannels++;
+	return true;
 }
 
 
-- (void) dealloc
+OOSoundChannel::~OOSoundChannel()
 {
 	gLiveChannels--;
-	[super dealloc];
+	gUpdates.erase(this);
 }
 
 
-- (void) update
+void OOSoundChannel::update()
 {
-	_updates++;
+	gUpdates[this]++;
 	gChannelUpdates++;
 }
 
 
-- (OOSoundChannel *) next
+OOSoundChannel *OOSoundChannel::next()
 {
 	return _next;
 }
 
 
-- (void) setNext:(OOSoundChannel *)next
+void OOSoundChannel::setNext(OOSoundChannel *next)
 {
 	_next = next;
 }
-
-@end
 
 
 namespace {
@@ -148,26 +138,26 @@ OO_TEST(popAndPushTheFreeList)
 	SetUp();
 	OOSoundMixer *mixer = OOSoundMixer::sharedMixer();
 	std::set<OOSoundChannel *> popped;
-	OOSoundChannel *first = nil;
+	OOSoundChannel *first = nullptr;
 	for (int i = 0; i < kMixerGeneralChannels; i++)
 	{
 		OOSoundChannel *channel = mixer->popChannel();
-		OO_CHECK(channel != nil && [channel next] == nil);
-		if (first == nil)  first = channel;
+		OO_CHECK(channel != nullptr && channel->next() == nullptr);
+		if (first == nullptr)  first = channel;
 		popped.insert(channel);
 	}
 	OO_CHECK(popped.size() == kMixerGeneralChannels);
-	OO_CHECK(mixer->popChannel() == nil);
-	OO_CHECK(mixer->popChannel() == nil);
+	OO_CHECK(mixer->popChannel() == nullptr);
+	OO_CHECK(mixer->popChannel() == nullptr);
 
 	OOSoundChannel *a = *popped.begin();
 	OOSoundChannel *b = *popped.rbegin();
 	mixer->pushChannel(a);
 	mixer->pushChannel(b);
-	OO_CHECK([b next] == a);
+	OO_CHECK(b->next() == a);
 	OO_CHECK(mixer->popChannel() == b);
 	OO_CHECK(mixer->popChannel() == a);
-	OO_CHECK(mixer->popChannel() == nil);
+	OO_CHECK(mixer->popChannel() == nullptr);
 
 	for (OOSoundChannel *channel : popped)  mixer->pushChannel(channel);
 	OO_CHECK(gLiveChannels == kMixerGeneralChannels);
@@ -187,7 +177,7 @@ OO_TEST(updateUpdatesEveryChannel)
 	OO_CHECK(gChannelUpdates == before + 2 * kMixerGeneralChannels);
 
 	OOSoundChannel *channel = mixer->popChannel();
-	OO_CHECK(channel->_updates == 2);
+	OO_CHECK(gUpdates[channel] == 2);
 	mixer->pushChannel(channel);
 }
 
@@ -200,7 +190,7 @@ OO_TEST(cxxApi)
 	OO_CHECK(mixer != nullptr && mixer == OOSoundMixer::sharedMixer());
 
 	OOSoundChannel *channel = mixer->popChannel();
-	OO_CHECK(channel != nil && [channel next] == nil);
+	OO_CHECK(channel != nullptr && channel->next() == nullptr);
 	mixer->pushChannel(channel);
 	OO_CHECK(OOSoundMixer::sharedMixer()->popChannel() == channel);
 	OOSoundMixer::sharedMixer()->pushChannel(channel);

@@ -41,7 +41,7 @@ SOFTWARE.
 
 #include "oofnd/Ref.hpp"
 
-@class OOSoundChannel;
+class OOSoundChannel;
 
 
 enum
@@ -64,16 +64,18 @@ public:
 	// bead oo-r7m0: the declaration it resolved to was OOOpenALController's own -shutdown.)
 	void shutdown();
 
-	::OOSoundChannel *popChannel();
-	void pushChannel(::OOSoundChannel *channel);
+	OOSoundChannel *popChannel();
+	void pushChannel(OOSoundChannel *channel);
 
 private:
 	bool init();
 
-	// The channels are Objective-C objects (the mixer makes them by alloc/init, and its test stubs
-	// them; amendment oo-rmd7 item 3): _channels retains each, as before.
-	::OOSoundChannel			*_channels[kMixerGeneralChannels] = {};
-	::OOSoundChannel			*_freeList = {};
+	// _channels holds one reference to each channel the mixer made (+1 from oo::makeRef, released
+	// by shutdown(), as alloc/init and DESTROY did: the mixer is never destroyed, so no oo::Ref
+	// member, whose destructor would need the complete class in every includer); the free list is
+	// borrowed. C++ channels since bead oo-9ht.86 deleted their facade.
+	OOSoundChannel				*_channels[kMixerGeneralChannels] = {};
+	OOSoundChannel				*_freeList = {};
 
 	// (The Objective-C class's _maxChannels and _playMask, which nothing read or wrote, are not
 	// kept: -Wunused-private-field.)
