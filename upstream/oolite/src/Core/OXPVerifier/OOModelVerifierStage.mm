@@ -95,7 +95,7 @@ bool OOModelVerifierStage::modelNamed(const std::string &name,
 	if (entryName.has_value())  context = oo::str::format("entry \"%s\" of %s", entryName->c_str(), fileName.c_str());
 	else context = fileName;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner == nullptr || !fileScanner->fileExists(name, "Models", context, true))
 	{
 		return false;

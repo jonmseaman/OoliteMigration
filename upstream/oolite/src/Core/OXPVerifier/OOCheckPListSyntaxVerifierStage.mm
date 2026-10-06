@@ -74,7 +74,7 @@ void OOCheckPListSyntaxVerifierStage::run()
 	OOFileScannerVerifierStage	*fileScanner = nullptr;
 
 	
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 
 	const oo::PList knownFiles = [verifier() cxx_configurationDictionaryForKey:"knownFiles"];
 	const std::vector<std::string> plists = StringsForKey(knownFiles, "Config");

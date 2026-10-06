@@ -111,7 +111,7 @@ bool OOCheckShipDataPListVerifierStage::shouldRun()
 {
 	OOFileScannerVerifierStage	*fileScanner = nullptr;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	return fileScanner != nullptr && fileScanner->fileExists("shipdata.plist", "Config", std::nullopt, false);
 }
 
@@ -123,7 +123,7 @@ void OOCheckShipDataPListVerifierStage::run()
 	oo::PList					settings;
 	std::vector<std::string>	shipList;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner != nullptr)  _shipdataPList = fileScanner->plistNamed("shipdata.plist", "Config", std::nullopt, false);
 
 	if (_shipdataPList.isNull())  return;

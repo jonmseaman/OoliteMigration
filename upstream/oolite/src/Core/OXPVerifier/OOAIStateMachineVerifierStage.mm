@@ -128,7 +128,7 @@ void OOAIStateMachineVerifierStage::stateMachineNamed(const std::string &name, c
 
 	if (!AddString(_usedAIs, name))  return;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner == nullptr || !fileScanner->fileExists(name, "AIs", oo::str::format("shipdata.plist entry \"%s\"", shipName.c_str()), true))
 	{
 		OO_LOG("verifyOXP.validateAI.notFound", "----- WARNING: AI state machine \"{}\" referenced in shipdata.plist entry \"{}\" could not be found in {} or in Oolite.", name, shipName, [verifier() cxx_oxpDisplayName].value_or("(null)"));
@@ -148,7 +148,7 @@ void OOAIStateMachineVerifierStage::validateAI(const std::string &aiName)
 	oo::log::indentIf("verifyOXP.verbose.validateAI");
 
 	// Attempt to load AI.
-	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner != nullptr)  path = fileScanner->pathForFile(aiName, "AIs", "AI list", false);
 	if (!path.has_value())  return;
 	aiStateMachine = PListDictionaryFromFile(*path);

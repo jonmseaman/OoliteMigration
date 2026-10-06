@@ -49,7 +49,7 @@ std::optional<std::string> OOTextureVerifierStage::name()
 
 bool OOTextureVerifierStage::shouldRun()
 {
-	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	return !_usedTextures.empty() || (fileScanner != nullptr && fileScanner->filesInFolder("Images").has_value());
 }
 
@@ -66,7 +66,7 @@ void OOTextureVerifierStage::run()
 	_usedTextures.clear();
 	
 	// All "images" are considered used, since we don't have a reasonable way to look for images referenced in JavaScript scripts.
-	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	OOFileScannerVerifierStage *fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner == nullptr)  return;	// a nil scanner listed no images
 	for (const std::string &name : fileScanner->filesInFolder("Images").value_or(std::vector<std::string>{}))
 	{
@@ -84,7 +84,7 @@ void OOTextureVerifierStage::textureNamed(const std::string &name, const std::st
 	if (where != _usedTextures.end() && *where == name)  return;
 	_usedTextures.insert(where, name);
 	
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner == nullptr || !fileScanner->fileExists(name, "Textures", context, true))
 	{
 		OO_LOG("verifyOXP.texture.notFound", "----- WARNING: texture \"{}\" referenced in {} could not be found in {} or in Oolite.", name, context, [verifier() cxx_oxpDisplayName].value_or("(null)"));
@@ -103,7 +103,7 @@ void OOTextureVerifierStage::checkTextureNamed(const std::string &name, const st
 	OOPixMap					pixmap;
 	OOTextureDataFormat			format;
 	
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner != nullptr)  path = fileScanner->pathForFile(name, folder, std::nullopt, false);
 	
 	if (!path.has_value())  return;
