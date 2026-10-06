@@ -157,7 +157,7 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithName(const std::optional<std::s
 		}
 
 		// No existing texture, load texture.
-		result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithPath(*path, key, options, anisotropy, lodBias)));
+		result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(static_cast<cxx::OOTexture *>(::OOConcreteTexture::initWithPath(*path, key, options, anisotropy, lodBias).get())));
 	}
 
 
@@ -224,11 +224,11 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 	}
 	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
 
-	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithLoader(generator,
+	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(static_cast<cxx::OOTexture *>(::OOConcreteTexture::initWithLoader(generator,
 																												 cxxGenerator->cacheKey(),
 																												 OOApplyTextureOptionDefaults(cxxGenerator->textureOptions()),
 																												 cxxGenerator->anisotropy(),
-																												 cxxGenerator->lodBias())));
+																												 cxxGenerator->lodBias()).get())));
 
 	return result;
 }
