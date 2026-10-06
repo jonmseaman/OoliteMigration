@@ -123,8 +123,8 @@ public:
 	
 	int						my_mouse_x = {}, my_mouse_y = {};
 
-	std::optional<std::string>	playerFileDirectory;	// nullopt: not looked up yet, or none (was nil)
-	std::optional<std::string>	playerFileToLoad;		// nullopt: none (was nil)
+	std::optional<std::string>	_playerFileDirectory;	// nullopt: not looked up yet, or none (was nil); named so -cxx_playerFileDirectory's member can be playerFileDirectory()
+	std::optional<std::string>	_playerFileToLoad;		// nullopt: none (was nil); named so -cxx_playerFileToLoad's member can be playerFileToLoad()
 	std::vector<std::string>	expansionPathsToInclude;	// expansion folders opened with the application (Mac)
 	
 	NSTimeInterval			_animationTimerInterval = {};
