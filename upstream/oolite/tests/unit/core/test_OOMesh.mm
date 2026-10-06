@@ -23,7 +23,9 @@
 	SetOctreeForModel below now call. The facade's contract (identity, nil, the same answers from
 	the C++ members and through the root's C++ pointer, the C++ factory) is checked last.
 	Slice 3 (bead oo-9z7x) made the geometry C++ members; the pins of laterSlices and copies ran
-	on it unchanged, and geometryMembers checks the members against the facade.
+	on it unchanged, and geometryMembers checks the members against the facade. Slice 4 (bead
+	oo-zmix) made the rendering members: rendering was pinned first, and renderingMembers checks
+	the members.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -539,6 +541,44 @@ OO_TEST(rendering)
 		OOMesh *copy = [[mesh mutableCopy] autorelease];
 		[copy renderOpaqueParts];
 		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+	}
+}
+
+
+// Slice 4 (bead oo-zmix): the rendering members, through the C++ mesh.
+OO_TEST(renderingMembers)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOMesh *mesh = Mesh("tetra.dat");
+		cxx::OOMesh *cxxMesh = oo::ToCxx(mesh);
+		OO_CHECK(cxxMesh != nullptr);
+		if (cxxMesh == nullptr)  return;
+		while (glGetError() != GL_NO_ERROR)  {}
+
+		// Through the root's C++ pointer, as the entities draw.
+		cxx::OODrawable *drawable = cxxMesh;
+		drawable->renderOpaqueParts();
+		OO_CHECK(cxxMesh->listsReady);
+		cxxMesh->deleteDisplayLists();
+		OO_CHECK(!cxxMesh->listsReady);
+		drawable->renderOpaqueParts();
+		OO_CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+
+		// The materials: the placeholder's facade, rebound; a reset through the facade.
+		cxxMesh->rebindMaterials();
+		OO_CHECK(cxxMesh->materials[0] == [OOMesh placeholderMaterial]);
+		[mesh resetGraphicsState];
+		OO_CHECK(!cxxMesh->listsReady);
+		OO_CHECK(cxxMesh->materials[0] == [OOMesh placeholderMaterial]);
+
+		// The buffers: a renamed key, and bytes kept by key.
+		cxxMesh->renameTexturesFrom("_oo_placeholder_material", "_oo_placeholder_material");
+		OO_CHECK_EQ(cxxMesh->materialKeys[0], "_oo_placeholder_material");
+		void *bytes = cxxMesh->allocateBytesWithSize(4, 3, "test bytes");
+		OO_CHECK(bytes != nullptr);
+		OO_CHECK(cxxMesh->_retainedObjects.find("test bytes") != cxxMesh->_retainedObjects.end());
 	}
 }
 
