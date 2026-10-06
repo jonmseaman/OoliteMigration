@@ -43,7 +43,7 @@ MA 02110-1301, USA.
 	subclass of OOTextureHandlingStage. It is global and has no facade: its one caller, the
 	ship data stage, calls these members, and the Objective-C verifier holds it as an
 	OOOXPVerifierStage (oo::ToObjC). The ship data stage finds it by name through the verifier's
-	stage lookup (the verifier's -modelVerifierStage category went with bead oo-9ht.56).
+	stage lookup (the verifier's category that answered it went with bead oo-9ht.56).
 */
 struct OOModelVerifierEntry
 {
