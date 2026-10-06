@@ -138,6 +138,7 @@ core_tests = {
     'test_PlayerEntityStickProfile': ['*'],
     'test_HeadUpDisplay': ['*'],
     'test_Entity': ['*'],
+    'test_ShipEntity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],
     'test_OOPlanetDrawable': ['*'],
