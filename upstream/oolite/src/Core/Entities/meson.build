@@ -36,6 +36,7 @@ oolite_sources += files(
     'OOSunEntity.mm',
     'OOSunEntity+ObjCBridge.mm',
     'OOVisualEffectEntity.mm',
+    'OOVisualEffectEntity+ObjCBridge.mm',
     'OOWaypointEntity.mm',
     'OOWaypointEntity+ObjCBridge.mm',
     'PlayerEntity.mm',

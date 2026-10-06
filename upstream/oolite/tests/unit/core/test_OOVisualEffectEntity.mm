@@ -14,7 +14,8 @@
 	run on the unconverted class first: an effect's flags, key, class and status; its scales and
 	the radii they scale; its flasher and standard subentities (made from the definition, owned,
 	listed, counted, scaled with it, removed and cleared); its orientation vectors; and the break
-	pattern flag.
+	pattern flag. The façade contract (a C++ entity behind the OOVisualEffectEntity façade, the C++
+	members, slice 2 on the façade) came with the conversion.
 	Run: bash tools/check-core-tests.sh test_OOVisualEffectEntity
 */
 
@@ -300,6 +301,42 @@ OO_TEST(orientationVectors)
 		OO_CHECK(Near([effect upVector].x, u.x) && Near([effect upVector].y, u.y) && Near([effect upVector].z, u.z));
 		OO_CHECK(Near([effect rightVector].x, r.x) && Near([effect rightVector].y, r.y) && Near([effect rightVector].z, r.z));
 		OO_CHECK(!Near([effect forwardVector].z, 1.0));
+	}
+}
+
+
+// The façade (bead oo-ukxy8): an effect is a C++ entity whose Objective-C object is the
+// OOVisualEffectEntity façade, made by the initialiser the universe sends; the C++ members give the
+// façade's answers, and slice 2's selectors still answer on the façade.
+OO_TEST(facadeContract)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOVisualEffectEntity *effect = Effect("facade", Dict({ { "subentities", oo::PList(oo::PList::Array{ Flasher(1) }) } }));
+		cxx::OOVisualEffectEntity *cxxEffect = oo::ToCxx(effect);
+		OO_CHECK(cxxEffect != nullptr);
+		OO_CHECK(oo::ToObjC(cxxEffect) == effect);
+		OO_CHECK([effect isMemberOfClass:[OOVisualEffectEntity class]]);
+		OO_CHECK(oo::ToCxx(static_cast<OOVisualEffectEntity *>(nil)) == nullptr);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::OOVisualEffectEntity *>(nullptr)) == nil);
+
+		OO_CHECK(cxxEffect->effectKey() == [effect effectKey]);
+		OO_CHECK(cxxEffect->subEntityCount() == [effect subEntityCount]);
+		OO_CHECK(cxxEffect->getIsVisualEffect() && cxxEffect->isEffect() && !cxxEffect->canCollide());
+		OO_CHECK(Near(cxxEffect->frustumRadius(), [effect frustumRadius]));
+		cxxEffect->setScaleZ(5.0f);
+		OO_CHECK([effect scaleZ] == 5.0f);
+		OO_CHECK([effect scaleMax] == 5.0f);
+
+		// The flasher's owner is the façade the C++ member handed it.
+		std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers = cxxEffect->flasherEnumerator();
+		OO_CHECK(flashers.size() == 1 && [flashers[0].get() owner] == effect);
+
+		// Slice 2, on the façade, reads the state the class keeps.
+		OO_CHECK(Near([effect hullHeatLevel], 60.0 / 256.0));
+		[effect setShaderFloat1:0.5f];
+		OO_CHECK(cxxEffect->_shaderFloat1 == 0.5f);
 	}
 }
 

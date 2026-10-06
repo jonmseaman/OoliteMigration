@@ -48,121 +48,136 @@
 using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>>;
 
 
-@interface OOVisualEffectEntity: OOEntityWithDrawable <OOSubEntity,OOBeaconEntity>
+@class OOVisualEffectEntity;	// the façade (OOVisualEffectEntity+ObjCBridge.h)
+
+
+namespace cxx {
+
+/*	A visual effect (bead oo-ukxy8, slice 1 of docs/phases/3-slices/OOVisualEffectEntity.md): the
+	class shell, its state and the entity side (construction from the effect definition, the mesh,
+	subentities and flashers, scaling, orientation vectors, drawing, update, the break pattern flag,
+	the subentity relationship). Slice 2 (scanner colours, the script and its events, the beacons
+	and the shader uniforms) is still Objective-C, a category of the façade
+	(OOVisualEffectEntity+ObjCBridge.h) in OOVisualEffectEntity.mm that reads the state below through
+	oo::ToCxx(self); the members here send its selectors to oo::ToObjC(this).
+*/
+class OOVisualEffectEntity : public OOEntityWithDrawable
 {
-@private
-	std::optional<OOVisualEffectSubEntities>	subEntities;
+public:
+	~OOVisualEffectEntity();
+
+	/*	-cxx_initWithKey:definition:'s body after [super init] (the constructor ran Entity's): false
+		where the initialiser released itself and answered nil. The façade runs it once it holds this
+		object (amendment oo-0mxi item 2), because the universe allocates effects.
+	*/
+	bool initWithKey(const std::string &key, const oo::PList &dict);
+	bool setUpVisualEffectFromDictionary(const oo::PList &effectDict);
+
+	::OOMesh *mesh();
+	void setMesh(::OOMesh *mesh);
+
+	std::optional<std::string> effectKey();
+
+	GLfloat frustumRadius() override;
+
+	void clearSubEntities();
+	bool setUpSubEntities();
+	void removeSubEntity(::Entity<OOSubEntity> *sub);
+	void setNoDrawDistance();
+	std::vector<oo::ObjCRef<::Entity *>> subEntities();	// a snapshot; empty before the first subentity (was nil)
+	NSUInteger subEntityCount();
+	std::optional<std::vector<oo::ObjCRef<::OOVisualEffectEntity *>>> visualEffectSubEntityEnumerator();	// the visual-effect subentities; nullopt where the array was nil
+	bool hasSubEntity(::Entity<OOSubEntity> *sub);
+
+	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();	// snapshot, same as subEntities()
+	std::vector<oo::ObjCRef<::OOVisualEffectEntity *>> effectSubEntityEnumerator();
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flasherEnumerator();	// flasher subentities, a snapshot
+
+	void orientationChanged() override;
+	Vector forwardVector();
+	Vector rightVector();
+	Vector upVector();
+
+	GLfloat scaleMax(); // used for calculating frustum cull size
+	GLfloat scaleX();
+	void setScaleX(GLfloat factor);
+	GLfloat scaleY();
+	void setScaleY(GLfloat factor);
+	GLfloat scaleZ();
+	void setScaleZ(GLfloat factor);
+
+	bool isBreakPattern();
+	void setIsBreakPattern(bool bp);
+
+	oo::PList effectInfoDictionary();
+
+	// OOSubEntity, answered by the façade.
+	void rescaleBy(GLfloat factor);
+	void rescaleBy(GLfloat factor, bool writeToCache);
+	void drawSubEntityImmediate(bool immediate, bool translucent);
+
+	// Entity (SubEntityRelationship), answered by the façade.
+	bool isShipWithSubEntityShip(::Entity *other);
+
+	bool isEffect() override;
+	bool getIsVisualEffect() override;
+	bool canCollide() override;
+	GLfloat collisionRadius() override;
+	void drawImmediate(bool immediate, bool translucent) override;
+	void update(OOTimeDelta delta_t) override;
+
+	// Internal: the state. Slice 2, still Objective-C on the façade, reads and writes it through
+	// oo::ToCxx(self); it becomes private as that slice converts.
+	std::optional<OOVisualEffectSubEntities>	_subEntities;	// was subEntities, named like its getter
 
 	oo::PList				effectinfoDictionary;
 
-	GLfloat					_profileRadius; // for frustum culling
+	GLfloat					_profileRadius = {}; // for frustum culling
 
-	OOColor					*scanner_display_color1;
-	OOColor					*scanner_display_color2;
+	::OOColor				*scanner_display_color1 = {};	// retained
+	::OOColor				*scanner_display_color2 = {};	// retained
 
-	GLfloat         _hullHeatLevel;
-	GLfloat         _shaderFloat1;
-	GLfloat         _shaderFloat2;
-	int             _shaderInt1;
-	int             _shaderInt2;
-	Vector          _shaderVector1;
-	Vector          _shaderVector2;
+	GLfloat         _hullHeatLevel = {};
+	GLfloat         _shaderFloat1 = {};
+	GLfloat         _shaderFloat2 = {};
+	int             _shaderInt1 = {};
+	int             _shaderInt2 = {};
+	Vector          _shaderVector1 = {};
+	Vector          _shaderVector2 = {};
 
-	Vector _v_forward;
-	Vector _v_up;
-	Vector _v_right;
+	Vector _v_forward = {};
+	Vector _v_up = {};
+	Vector _v_right = {};
 
-	OOJSScript				*script;
+	OOJSScript				*script = {};	// retained
 	oo::PList				scriptInfo;
 
 	std::optional<std::string>	_effectKey;
 
-	BOOL            _haveExecutedSpawnAction;
+	bool            _haveExecutedSpawnAction = {};
 
 	// beacons
 	std::optional<std::string>	_beaconCode;
 	std::optional<std::string>	_beaconLabel;
-	OOWeakReference			*_prevBeacon;
-	OOWeakReference			*_nextBeacon;
-	id <OOHUDBeaconIcon>	_beaconDrawable;
+	::OOWeakReference		*_prevBeacon = {};
+	::OOWeakReference		*_nextBeacon = {};
+	id <OOHUDBeaconIcon>	_beaconDrawable = {};	// retained
 
-	// scaling
-	GLfloat scaleX;
-	GLfloat scaleY;
-	GLfloat scaleZ;
+	// scaling (were scaleX, scaleY, scaleZ, named like their getters)
+	GLfloat _scaleX = {};
+	GLfloat _scaleY = {};
+	GLfloat _scaleZ = {};
 
-}
+private:
+	void addSubEntity(::Entity<OOSubEntity> *sub);
+	bool setUpOneSubentity(const oo::PList &subentDict);
+	bool setUpOneFlasher(const oo::PList &subentDict);
+	bool setUpOneStandardSubentity(const oo::PList &subentDict);
+};
 
-- (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
-- (BOOL) setUpVisualEffectFromDictionary:(const oo::PList &) effectDict;
-
-- (OOMesh *)mesh;
-- (void)setMesh:(OOMesh *)mesh;
-
-- (std::optional<std::string>)effectKey;
-
-- (GLfloat)frustumRadius;
-
-- (void) clearSubEntities;
-- (BOOL) setUpSubEntities;
-- (void) removeSubEntity:(Entity<OOSubEntity> *)sub;
-- (void) setNoDrawDistance;
-- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty before the first subentity (was nil)
-- (NSUInteger) subEntityCount;
-- (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator;	// the visual-effect subentities; nullopt where the array was nil
-- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
-
-- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
-- (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator;
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
-
-- (void) orientationChanged;
-- (Vector) forwardVector;
-- (Vector) rightVector;
-- (Vector) upVector;
-
-- (OOColor *)scannerDisplayColor1;
-- (OOColor *)scannerDisplayColor2;
-- (void)setScannerDisplayColor1:(OOColor *)color;
-- (void)setScannerDisplayColor2:(OOColor *)color; 
-- (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2;
-
-- (void) setScript:(const std::optional<std::string> &)script_name;
-- (OOJSScript *)script;
-- (oo::PList)scriptInfo;	// flipped with its family (bead oo-3rb.284)
-- (void) doScriptEvent:(ooscript::PropertyId)message;
-- (void) remove;
-
-- (GLfloat) scaleMax; // used for calculating frustum cull size
-- (GLfloat) scaleX;
-- (void) setScaleX:(GLfloat)factor;
-- (GLfloat) scaleY;
-- (void) setScaleY:(GLfloat)factor;
-- (GLfloat) scaleZ;
-- (void) setScaleZ:(GLfloat)factor;
-
-// convenience for shaders
-- (GLfloat)hullHeatLevel;
-- (void)setHullHeatLevel:(GLfloat)value;
-// shader properties
-- (GLfloat) shaderFloat1;
-- (void)setShaderFloat1:(GLfloat)value;
-- (GLfloat) shaderFloat2; 
-- (void)setShaderFloat2:(GLfloat)value;
-- (int) shaderInt1; 
-- (void)setShaderInt1:(int)value;
-- (int) shaderInt2;
-- (void)setShaderInt2:(int)value;
-- (Vector) shaderVector1; 
-- (void)setShaderVector1:(Vector)value;
-- (Vector) shaderVector2; 
-- (void)setShaderVector2:(Vector)value;
+}	// namespace cxx
 
 
-- (BOOL) isBreakPattern;
-- (void) setIsBreakPattern:(BOOL)bp;
-
-- (oo::PList)effectInfoDictionary;
-
-
-@end
+// Transitional: the Objective-C OOVisualEffectEntity, for code not yet converted. Deleted, with
+// namespace cxx above, by the bridge's deletion bead.
+#import "OOVisualEffectEntity+ObjCBridge.h"
