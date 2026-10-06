@@ -8,7 +8,7 @@ desireable to have a material which does not use normal GL material
 properties, in which case it should be based on OOMaterial directly.
 
 C++20 since bead oo-vl43 (proposed ADR-0056, amendment oo-vl43). The Objective-C facade
-(OOBasicMaterial+ObjCBridge) was deleted by bead oo-9ht.33, which moved the class out of namespace cxx.
+(its bridge header) was deleted by bead oo-9ht.33, which moved the class out of namespace cxx.
 
 
 Copyright (C) 2007-2013 Jens Ayton
