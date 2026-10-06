@@ -271,7 +271,7 @@ void OOSystemDescriptionManager::importScriptedChanges(const oo::PList &scripted
 		if (key.size() == 4)
 		{
 			const std::string &manifest = key[0];
-			if (![ResourceManager cxx_manifestForIdentifier:manifest].isNull())
+			if (![::ResourceManager cxx_manifestForIdentifier:manifest].isNull())
 			{
 //				OO_LOG("importing", "{} -> {}", oo::DescriptionOf(keyStr), oo::DescriptionOf([scripted objectForKey:keyStr]));
 				setProperty(key[2],
