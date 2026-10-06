@@ -15,6 +15,7 @@
 
 #import "OOALBufferedSound.h"
 #import "OOALSoundDecoder.h"
+#import "OOALSoundMixer.h"
 #import "OODescription.h"
 
 #include "oo_test.hpp"
@@ -36,27 +37,11 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 }
 
 
-@interface OOSoundMixer: OOObject
-
-+ (id) sharedMixer;
-- (void) update;
-
-@end
-
-
-@implementation OOSoundMixer
-
-+ (id) sharedMixer
-{
-	return nil;
-}
-
-
-- (void) update
-{
-}
-
-@end
+// The mixer, as the root's update() and the OpenAL controller's shutdown() reach it: there is
+// none (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed).
+OOSoundMixer *OOSoundMixer::sharedMixer()  { return nullptr; }
+void OOSoundMixer::update()  {}
+void OOSoundMixer::shutdown()  {}
 
 
 // OOALSound.mm makes a streamed sound for more than 1 MB of decoded data; never here.
