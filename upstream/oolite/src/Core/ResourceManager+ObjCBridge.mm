@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 */
 
 #import "ResourceManager.h"
+#import "OOSystemDescriptionManager.h"
 
 
 @implementation ResourceManager
@@ -216,6 +217,77 @@ MA 02110-1301, USA.
 + (oo::PList) cxx_roleCategoriesDictionary
 {
 	return cxx::ResourceManager::roleCategoriesDictionary();
+}
+
+
++ (OOSystemDescriptionManager *) systemDescriptionManager
+{
+	return oo::ToObjC(cxx::ResourceManager::systemDescriptionManager().get());
+}
+
++ (oo::PList) cxx_shaderBindingTypesDictionary
+{
+	return cxx::ResourceManager::shaderBindingTypesDictionary();
+}
+
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+{
+	return cxx::ResourceManager::pathForFileNamed(fileName, folderName);
+}
+
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
+{
+	return cxx::ResourceManager::pathForFileNamed(fileName, folderName, useCache);
+}
+
++ (OOMusic *)cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+{
+	return cxx::ResourceManager::ooMusicNamed(fileName, folderName);
+}
+
++ (OOSound *)cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+{
+	return cxx::ResourceManager::ooSoundNamed(fileName, folderName);
+}
+
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+{
+	return cxx::ResourceManager::stringFromFilesNamed(fileName, folderName);
+}
+
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
+{
+	return cxx::ResourceManager::stringFromFilesNamed(fileName, folderName, useCache);
+}
+
++ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts
+{
+	return cxx::ResourceManager::loadScripts();
+}
+
++ (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name
+{
+	return cxx::ResourceManager::writeDiagnosticData(data, name);
+}
+
++ (BOOL) cxx_writeDiagnosticString:(const std::string &)string toFileNamed:(const std::string &)name
+{
+	return cxx::ResourceManager::writeDiagnosticString(string, name);
+}
+
++ (BOOL) cxx_writeDiagnosticPList:(const oo::PList &)plist toFileNamed:(const std::string &)name
+{
+	return cxx::ResourceManager::writeDiagnosticPList(plist, name);
+}
+
++ (oo::PList) cxx_materialDefaults
+{
+	return cxx::ResourceManager::materialDefaults();
+}
+
++ (std::optional<std::string>) cxx_diagnosticFileLocation
+{
+	return cxx::ResourceManager::diagnosticFileLocation();
 }
 
 @end

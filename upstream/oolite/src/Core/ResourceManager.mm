@@ -80,14 +80,6 @@ constexpr const char *kOOCacheKeyModificationDates	= "modification dates";
 }	// namespace
 
 
-
-@interface ResourceManager (OOPrivate)
-
-
-
-@end
-
-
 namespace {
 
 // A path-scan error: a descriptions.plist key and the text of its two %@ parameters ("" for nil).
@@ -1993,21 +1985,16 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-// Slice 4 of docs/phases/3-slices/ResourceManager.md, still Objective-C: a category of the
-// facade over the same file-scope state (ADR-0056 amendment oo-3bgz). Each slice's bead moves
-// its methods into cxx::ResourceManager above.
-@implementation ResourceManager (OOResourceManagerUnconverted)
-
-+ (OOSystemDescriptionManager *) systemDescriptionManager
+oo::Ref<cxx::OOSystemDescriptionManager> cxx::ResourceManager::systemDescriptionManager()
 {
 	OO_LOG("resourceManager.planetinfo.load", "{}", "Initialising manager");
-	OOSystemDescriptionManager *manager = [[OOSystemDescriptionManager alloc] init];
+	oo::Ref<cxx::OOSystemDescriptionManager> manager = oo::makeRef<cxx::OOSystemDescriptionManager>();
 	
 	// OODictionaryFromFile (OOPListParsing) and OOSystemDescriptionManager are unmigrated callees:
 	// the planetinfo dictionaries arrive through oo::PListFrom and leave through oo::ObjectFromPList.
-	for (const std::string &path : [self cxx_paths])
+	for (const std::string &path : paths())
 	{
-		if ([ResourceManager cxx_corePlist:"planetinfo.plist" excludedAt:path])
+		if (corePlist("planetinfo.plist", path))
 		{
 			continue;
 		}
@@ -2021,35 +2008,34 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 				{
 					if (systemKey == std::string(PLANETINFO_UNIVERSAL_KEY))
 					{
-						[manager cxx_setUniversalProperties:values];
+						manager->setUniversalProperties(values);
 					}
 					else if (systemKey == std::string(PLANETINFO_INTERSTELLAR_KEY))
 					{
-						[manager cxx_setInterstellarProperties:values];
+						manager->setInterstellarProperties(values);
 					}
 					else
 					{
-						[manager cxx_setProperties:values forSystemKey:systemKey];
+						manager->setProperties(values, systemKey);
 					}
 				}
 			}
 		}
 	}
 	OO_LOG("resourceManager.planetinfo.load", "{}", "Caching routes");
-	[manager buildRouteCache];
+	manager->buildRouteCache();
 	OO_LOG("resourceManager.planetinfo.load", "{}", "Initialised manager");
-	return [manager autorelease];
+	return manager;
 }
 
 
-
-+ (oo::PList) cxx_shaderBindingTypesDictionary
+oo::PList cxx::ResourceManager::shaderBindingTypesDictionary()
 {
 	static std::optional<oo::PList> shaderBindingTypesDictionary;
 
 	if (!shaderBindingTypesDictionary.has_value())
 	{
-		oo::PList dict = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "shader-uniform-bindings.plist"));
+		oo::PList dict = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath(), "Config"), "shader-uniform-bindings.plist"));
 		oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>();
 		std::vector<std::string> keys;
 		if (entries != nullptr)
@@ -2089,18 +2075,18 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+std::optional<std::string> cxx::ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
-	return [self cxx_pathForFileNamed:fileName inFolder:folderName cache:YES];
+	return pathForFileNamed(fileName, folderName, YES);
 }
 
 
 /* This is extremely expensive to call with useCache:NO */
-+ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
+std::optional<std::string> cxx::ResourceManager::pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache)
 {
 	std::optional<std::string>	result;
 	std::string		cacheKey;
-	OOCacheManager	*cache = [OOCacheManager sharedCache];
+	OOCacheManager	*cache = OOCacheManager::sharedCache();
 	std::string		filePath;
 
 	// (The resolved-paths cache is consulted whatever useCache says: the old test was of the cache
@@ -2110,13 +2096,13 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 	{
 		if (folderName.has_value())  cacheKey = *folderName + "/" + fileName;
 		else  cacheKey = fileName;
-		const oo::PList cached = [cache cxx_pListForKey:cacheKey inCache:"resolved paths"];	// a string (null: none)
+		const oo::PList cached = cache->pListForKey(cacheKey, "resolved paths");	// a string (null: none)
 		if (const std::string *cachedPath = cached.getIf<std::string>())  return *cachedPath;
 	}
 
 	// Search for file (OXZ-aware exists, same answers as -oo_oxzFileExistsAtPath:).
 	// reverse object enumerator allows OXPs to override core
-	const std::vector<std::string> paths = [ResourceManager cxx_paths];
+	const std::vector<std::string> paths = ResourceManager::paths();
 	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 	{
 		const std::string &path = *pathIt;
@@ -2141,7 +2127,7 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 		OO_LOG("resourceManager.foundFile", "Found {}/{} at {}", folderName.value_or("(null)"), fileName, filePath);
 		if (useCache)
 		{
-			[cache cxx_setPList:oo::PList(*result) forKey:cacheKey inCache:"resolved paths"];
+			cache->setPList(oo::PList(*result), cacheKey, "resolved paths");
 		}
 	}
 	return result;
@@ -2150,12 +2136,12 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 
 /* use extreme caution in calling with usePathCache:NO - this can be
  * an extremely expensive operation */
-+ (id) retrieveFileNamed:(const std::string &)fileName
-				inFolder:(const std::optional<std::string> &)folderName
-				   cache:(std::map<std::string, oo::ObjCRef<id>, std::less<>> *)ioCache
-					 key:(std::optional<std::string>)key
-				   class:(Class)klass
-			usePathCache:(BOOL)useCache
+id cxx::ResourceManager::retrieveFileNamed(const std::string &fileName,
+										 const std::optional<std::string> &folderName,
+										 std::map<std::string, oo::ObjCRef<id>, std::less<>> *ioCache,
+										 std::optional<std::string> key,
+										 Class klass,
+										 bool useCache)
 {
 	id				result = nil;
 
@@ -2167,7 +2153,7 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 		if (cached != ioCache->end())  return cached->second.get();
 	}
 
-	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:useCache];
+	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, useCache);
 	if (path.has_value())  result = [[[klass alloc] cxx_initWithContentsOfFile:path] autorelease];	// klass: OOSound or OOMusic
 
 	if (result != nil && ioCache != NULL)
@@ -2179,35 +2165,25 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-+ (OOMusic *) cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+::OOMusic *cxx::ResourceManager::ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
-	return [self retrieveFileNamed:fileName
-						  inFolder:folderName
-							 cache:NULL	// Don't cache music objects; minimizing latency isn't really important.
-							   key:oo::str::format("OOMusic:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str())
-							 class:[OOMusic class]
-					  usePathCache:YES];
+	return retrieveFileNamed(fileName, folderName, NULL	/* Don't cache music objects; minimizing latency isn't really important. */, oo::str::format("OOMusic:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str()), [::OOMusic class], YES);
 }
 
 
-+ (OOSound *) cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+::OOSound *cxx::ResourceManager::ooSoundNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
-	return [self retrieveFileNamed:fileName
-						  inFolder:folderName
-							 cache:&sSoundCache
-							   key:oo::str::format("OOSound:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str())
-							 class:[OOSound class]
-					  usePathCache:YES];
+	return retrieveFileNamed(fileName, folderName, &sSoundCache, oo::str::format("OOSound:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str()), [::OOSound class], YES);
 }
 
 
-+ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
+std::optional<std::string> cxx::ResourceManager::stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName)
 {
-	return [self cxx_stringFromFilesNamed:fileName inFolder:folderName cache:YES];
+	return stringFromFilesNamed(fileName, folderName, YES);
 }
 
 
-+ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
+std::optional<std::string> cxx::ResourceManager::stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache)
 {
 	std::optional<std::string>	result;
 	std::string		key;
@@ -2220,7 +2196,7 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 		if (cached != sStringCache.end())  return cached->second;
 	}
 
-	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:YES];
+	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, YES);
 	if (path.has_value())
 	{
 		// +stringWithContentsOfUnicodeFile: (NSStringOOExtensions): the file's bytes, read as it read
@@ -2238,29 +2214,29 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-+ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts
+std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>> cxx::ResourceManager::loadScripts()
 {
 	// name -> script, in the order each name was first loaded (a later script of the same name replaces the earlier one in place)
-	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>	loadedScripts;
+	std::vector<std::pair<std::string, oo::ObjCRef<::OOScript *>>>	loadedScripts;
 
 	OO_LOG("script.load.world.begin", "{}", "Loading world scripts...");
 
-	for (const std::string &path : [ResourceManager cxx_paths])
+	for (const std::string &path : paths())
 	{
 		// excluding world-scripts.plist also excludes script.js / script.plist
 		// though as those core files don't and won't exist this is not
 		// a problem.
-		if (![ResourceManager cxx_corePlist:"world-scripts.plist" excludedAt:path])
+		if (!corePlist("world-scripts.plist", path))
 		{
 			@autoreleasepool
 			{
 				@try
 				{
-					std::optional<std::vector<oo::ObjCRef<OOScript *>>> results = [OOScript cxx_worldScriptsAtPath:oo::str::appendingPathComponent(path, "Config")];
-					if (!results.has_value()) results = [OOScript cxx_worldScriptsAtPath:path];
+					std::optional<std::vector<oo::ObjCRef<::OOScript *>>> results = [::OOScript cxx_worldScriptsAtPath:oo::str::appendingPathComponent(path, "Config")];
+					if (!results.has_value()) results = [::OOScript cxx_worldScriptsAtPath:path];
 					if (results.has_value())
 					{
-						for (const oo::ObjCRef<OOScript *> &script : *results)
+						for (const oo::ObjCRef<::OOScript *> &script : *results)
 						{
 							const std::optional<std::string> name = [script.get() cxx_name];
 							if (name.has_value())
@@ -2314,9 +2290,9 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-+ (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name
+bool cxx::ResourceManager::writeDiagnosticData(const oo::Data &data, const std::string &name)
 {
-	std::optional<std::string> directory = [self cxx_diagnosticFileLocation];
+	std::optional<std::string> directory = diagnosticFileLocation();
 	if (!directory.has_value())  return NO;
 
 	std::string fileName = name;
@@ -2343,30 +2319,30 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-+ (BOOL) cxx_writeDiagnosticString:(const std::string &)string toFileNamed:(const std::string &)name
+bool cxx::ResourceManager::writeDiagnosticString(const std::string &string, const std::string &name)
 {
-	return [self cxx_writeDiagnosticData:oo::Data::fromString(string) toFileNamed:name];
+	return writeDiagnosticData(oo::Data::fromString(string), name);
 }
 
 
-+ (BOOL) cxx_writeDiagnosticPList:(const oo::PList &)plist toFileNamed:(const std::string &)name
+bool cxx::ResourceManager::writeDiagnosticPList(const oo::PList &plist, const std::string &name)
 {
 	// The old-school writer (oo::writeOldStylePList, the port of the retired Objective-C old-school plist writer). Its
 	// XML fallback's result was never used, so a plist it cannot write is not written.
 	const auto data = oo::writeOldStylePList(plist);
 	if (!data.has_value())  return NO;
 
-	return [self cxx_writeDiagnosticData:*data toFileNamed:name];
+	return writeDiagnosticData(*data, name);
 }
 
 
-+ (oo::PList) cxx_materialDefaults
+oo::PList cxx::ResourceManager::materialDefaults()
 {
-	return [self cxx_dictionaryFromFilesNamed:"material-defaults.plist" inFolder:std::string("Config") andMerge:YES];
+	return dictionaryFromFilesNamed("material-defaults.plist", std::string("Config"), YES);
 }
 
 
-+ (BOOL)directoryExists:(const std::string &)inPath create:(BOOL)inCreate
+bool cxx::ResourceManager::directoryExists(const std::string &inPath, bool inCreate)
 {
 	const oo::fs::FileType	type = oo::fs::fileType(oo::fs::pathFromUTF8(inPath));
 	const BOOL				exists = type != oo::fs::FileType::none;
@@ -2391,9 +2367,7 @@ void cxx::ResourceManager::mergeRoleCategories(const oo::PList &catData, oo::PLi
 }
 
 
-+ (std::optional<std::string>) cxx_diagnosticFileLocation
+std::optional<std::string> cxx::ResourceManager::diagnosticFileLocation()
 {
 	return cxx_OOLogHandlerGetLogBasePath();
 }
-
-@end

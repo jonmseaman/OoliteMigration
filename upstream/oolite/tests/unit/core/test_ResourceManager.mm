@@ -25,6 +25,7 @@
 
 #import "ResourceManager.h"
 #import "OODescription.h"
+#import "OOSystemDescriptionManager.h"
 
 #include "oofnd/Data.hpp"
 #include "oofnd/FileSystem.hpp"
@@ -424,6 +425,88 @@ OO_TEST(cxxSlice3API)
 		OO_CHECK(cxx::ResourceManager::whitelistDictionary().isNull());
 		OO_CHECK(cxx::ResourceManager::roleCategoriesDictionary().isDict());
 		OO_CHECK(cxx::ResourceManager::logControlDictionary().isDict());
+	}
+}
+
+
+// --- bead oo-5dzou: slice 4 (file lookup, sounds, music, strings, scripts, diagnostics) ---
+// Over the same scratch game folder.
+
+OO_TEST(singleFileLookups)
+{
+	@autoreleasepool
+	{
+		namespace stdfs = std::filesystem;
+		const stdfs::path work = stdfs::current_path();
+		WriteText(work / "Resources" / "Config" / "oo-test-text.txt", "hello, built-in");
+		WriteText(work / "AddOns" / "a.oxp" / "Config" / "oo-test-text.txt", "hello, a.oxp");
+		WriteText(work / "Resources" / "oo-test-loose.txt", "loose");
+		[ResourceManager reset];
+		(void)[ResourceManager cxx_paths];
+
+		// The last search path that has the file (an add-on overrides the built-in data), with the
+		// folder, else without it; nullopt when no path has it.
+		const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:"oo-test-text.txt" inFolder:std::string("Config") cache:NO];
+		OO_CHECK(path.has_value() && EndsWith(*path, "a.oxp/Config/oo-test-text.txt"));
+		const std::optional<std::string> loose = [ResourceManager cxx_pathForFileNamed:"oo-test-loose.txt" inFolder:std::string("Config") cache:NO];
+		OO_CHECK(loose.has_value() && EndsWith(*loose, "Resources/oo-test-loose.txt"));
+		OO_CHECK([ResourceManager cxx_pathForFileNamed:"oo-test-missing.txt" inFolder:std::string("Config")] == std::nullopt);
+		OO_CHECK([ResourceManager cxx_pathForFileNamed:"oo-test-text.txt" inFolder:std::nullopt cache:NO] == std::nullopt);
+
+		OO_CHECK([ResourceManager cxx_stringFromFilesNamed:"oo-test-text.txt" inFolder:std::string("Config")] == std::optional<std::string>("hello, a.oxp"));
+		OO_CHECK([ResourceManager cxx_stringFromFilesNamed:"oo-test-missing.txt" inFolder:std::string("Config") cache:NO] == std::nullopt);
+
+		// No such sound or music file: nil.
+		OO_CHECK([ResourceManager cxx_ooSoundNamed:"oo-test-missing.ogg" inFolder:std::string("Sounds")] == nil);
+		OO_CHECK([ResourceManager cxx_ooMusicNamed:"oo-test-missing.ogg" inFolder:std::string("Music")] == nil);
+
+		// No shader-uniform-bindings.plist and no material-defaults.plist in the scratch data.
+		OO_CHECK([ResourceManager cxx_shaderBindingTypesDictionary].isNull());
+		OO_CHECK([ResourceManager cxx_materialDefaults].isNull());
+	}
+}
+
+
+OO_TEST(scriptsAndSystemsAndDiagnostics)
+{
+	@autoreleasepool
+	{
+		// No add-on has world scripts.
+		OO_CHECK([ResourceManager cxx_loadScripts].empty());
+
+		// No planetinfo.plist: a manager with nothing set, made anew on each call.
+		OOSystemDescriptionManager *manager = [ResourceManager systemDescriptionManager];
+		OO_CHECK(manager != nil);
+		OO_CHECK(manager != [ResourceManager systemDescriptionManager]);
+
+		// Diagnostics go under the log folder, which is under the scratch home.
+		const std::optional<std::string> logs = [ResourceManager cxx_diagnosticFileLocation];
+		std::printf("  diagnostics at: %s\n", logs ? logs->c_str() : "(none)");
+		if (logs.has_value())
+		{
+			OO_CHECK([ResourceManager cxx_writeDiagnosticString:"diagnostic text" toFileNamed:"oo-test/.hidden/note.txt"]);
+			const auto written = oo::fs::readFile(oo::fs::pathFromUTF8(*logs) / "oo-test" / "!hidden" / "note.txt");
+			OO_CHECK(written.has_value() && std::string(written->stringView()) == "diagnostic text");
+			OO_CHECK([ResourceManager cxx_writeDiagnosticPList:oo::PList(oo::PList::Dict{ { "k", oo::PList("v") } }) toFileNamed:"oo-test-plist.plist"]);
+		}
+	}
+}
+
+
+OO_TEST(cxxSlice4API)
+{
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::ResourceManager::stringFromFilesNamed("oo-test-text.txt", std::string("Config")) == std::optional<std::string>("hello, a.oxp"));
+		OO_CHECK(cxx::ResourceManager::pathForFileNamed("oo-test-missing.txt", std::string("Config"), false) == std::nullopt);
+		OO_CHECK(cxx::ResourceManager::ooSoundNamed("oo-test-missing.ogg", std::string("Sounds")) == nil);
+		OO_CHECK(cxx::ResourceManager::shaderBindingTypesDictionary().isNull());
+		OO_CHECK(cxx::ResourceManager::loadScripts().empty());
+		OO_CHECK(cxx::ResourceManager::systemDescriptionManager().get() != nullptr);
+		OO_CHECK(cxx::ResourceManager::diagnosticFileLocation() == [ResourceManager cxx_diagnosticFileLocation]);
+		// The facade answers the new manager's facade.
+		OOSystemDescriptionManager *manager = [ResourceManager systemDescriptionManager];
+		OO_CHECK(manager != nil && oo::ToCxx(manager) != nullptr);
 	}
 }
 
