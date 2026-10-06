@@ -121,8 +121,9 @@ Calls from a converted body to a method of a slice that has not landed stay send
   `commodityMarket` to `UNIVERSE` (oo-3c81's note): those become member calls once slices 19 and 20
   land; no bead waits on it.
 - **oo-pas is the umbrella.** It keeps its old dependencies (it was the phase's "last" bead) and
-  gains the 26 slices and this pre-split. Its acceptance is every slice's `--slice-done`, no
-  `@implementation` left in `Universe.mm`, and the guardrails.
+  gains the 26 slices and this pre-split. Its acceptance is every slice's `--slice-done` and the guardrails
+  (not a whole-file `@implementation` grep: the fenced Mac speech arms stay Objective-C, as
+  `GameController`'s Mac category does).
 
 ```slice-plan
 source: upstream/oolite/src/Core/Universe.mm
