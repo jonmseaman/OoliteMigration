@@ -54,12 +54,9 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &materialConfiguration, const st
 
 /*	The synthesizer itself (Phase 3, beads oo-bm1q and oo-bhxc: slices 1 and 2 of
 	docs/phases/3-slices/OODefaultShaderSynthesizer.md). It was an Objective-C class private to
-	OODefaultShaderSynthesizer.mm; its one caller is OOSynthesizeMaterialShader() above. Its facade
-	(OODefaultShaderSynthesizer+ObjCBridge.h) has no sender left but its test, and goes with its
-	deletion bead (oo-9ht.134).
+	OODefaultShaderSynthesizer.mm; its one caller is OOSynthesizeMaterialShader() above. Its
+	Objective-C facade was deleted, and the class moved to the global namespace, by bead oo-9ht.134.
 */
-namespace cxx {
-
 class OODefaultShaderSynthesizer : public oo::RefCounted
 {
 public:
@@ -254,10 +251,3 @@ private:
 	std::unordered_set<std::string_view>	_stagesInProgress;	// the stages' names (was a hash table of selectors)
 #endif
 };
-
-}	// namespace cxx
-
-
-// Transitional: the Objective-C facade, which only its test still sends. Deleted, with namespace cxx
-// above, by the bridge's deletion bead (oo-9ht.134).
-#import "OODefaultShaderSynthesizer+ObjCBridge.h"
