@@ -102,9 +102,9 @@ class OOMaterial;
 	amendments oo-smy, oo-pni4 and oo-dnbf): the class shell, its factories, lifecycle and
 	accessors. The class is cxx::OOMesh, a C++ subclass of cxx::OODrawable, while
 	OOMesh+ObjCBridge.h, imported at the end of this header, keeps the Objective-C OOMesh its
-	callers message. Slice 3 (geometry, bead oo-9z7x) is C++ too; slices 2 and 4 (loading,
-	rendering) are still Objective-C: categories of that facade in OOMesh.mm, which read and write
-	the members below through oo::ToCxx(self).
+	callers message. Slices 3 and 4 (geometry and rendering, beads oo-9z7x and oo-zmix) are C++
+	too; slice 2 (loading) is still Objective-C: the Private category of that facade in OOMesh.mm,
+	which reads and writes the members below through oo::ToCxx(self).
 */
 class OOMesh : public OODrawable
 {
@@ -165,11 +165,14 @@ public:
 
 	BoundingBox boundingBox() override;
 
-	// Slice 4, still Objective-C (a category of the facade in OOMesh.mm): a C++ caller of the
-	// drawable reaches it through the facade until its slice converts it.
 	void renderOpaqueParts() override;
 
-	// Internal: the state, read and written by the Objective-C categories of slices 2 and 4 through
+	void rebindMaterials();
+
+	// OOGraphicsResetClient (the facade, the registered client, forwards it).
+	void resetGraphicsState();
+
+	// Internal: the state, read and written by the Objective-C category of slice 2 through
 	// oo::ToCxx(self) (amendment oo-pni4 item 1). Zero, as class_createInstance left the ivars.
 	uint8_t					_normalMode: 2 = 0,
 							brokenInRender: 1 = 0,
@@ -224,8 +227,8 @@ public:
 	double					_stopwatchLastTime = {};
 #endif
 
-	// Internal: slice 3's geometry, which the Objective-C loading (slice 2) and vertex-array set-up
-	// (slice 4) call through oo::ToCxx(self).
+	// Internal: slice 3's geometry, which the Objective-C loading (slice 2) calls through
+	// oo::ToCxx(self).
 	void checkNormalsAndAdjustWinding();
 	void generateFaceTangents();
 	void calculateVertexNormalsAndTangentsWithFaceRefs(VertexFaceRef *faceRefs);
@@ -234,7 +237,27 @@ public:
 	void calculateBoundingVolumes();
 	void rescaleByFactor(GLfloat factor);
 
+	// Internal: slice 4's buffers and display lists, which the Objective-C loading (slice 2) and the
+	// facade's -dealloc call through oo::ToCxx(self).
+	void deleteDisplayLists();
+	bool setUpVertexArrays();
+
+	// Manage the set of refcounted buffers we need to hang on to.
+	void setRetainedObject(oo::Data object, const std::string &key);
+	void *allocateBytesWithSize(size_t size, NSUInteger count, const std::string &key);
+
+	// Allocate all per-vertex/per-face buffers.
+	bool allocateVertexBuffersWithCount(NSUInteger count);
+	bool allocateNormalBuffersWithCount(NSUInteger count);
+	bool allocateFaceBuffersWithCount(NSUInteger count);
+	bool allocateVertexArrayBuffersWithCount(NSUInteger count);
+
+	void renameTexturesFrom(const std::string &from, const std::string &to);
+
 private:
+#ifndef NDEBUG
+	void debugDrawNormals();
+#endif
 	unsigned octreeDepth();
 	bool suppressClangStuff();
 };
@@ -249,6 +272,6 @@ oo::Ref<cxx::Octree> OOCacheManagerOctreeForModel(const std::string &inKey);
 void OOCacheManagerSetOctree(cxx::Octree *inOctree, const std::string &inKey);
 
 
-// Transitional: the Objective-C OOMesh, for its callers and for slices 2 and 4 of OOMesh.mm, not yet
+// Transitional: the Objective-C OOMesh, for its callers and for slice 2 of OOMesh.mm, not yet
 // converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
 #import "OOMesh+ObjCBridge.h"
