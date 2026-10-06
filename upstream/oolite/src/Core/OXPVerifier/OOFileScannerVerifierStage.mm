@@ -122,7 +122,7 @@ void OOFileScannerVerifierStage::run()
 
 // The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
 // registered through its facade, oo::ToObjC.
-std::optional<std::string> OOFileScannerVerifierStage::nameForDependencyForVerifier(OOOXPVerifier *verifier)
+std::optional<std::string> OOFileScannerVerifierStage::nameForDependencyForVerifier(::OOOXPVerifier *verifier)
 {
 	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kFileScannerStageName];
 	if (stage == nil)
@@ -688,7 +688,7 @@ void OOListUnusedFilesStage::run()
 
 // The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
 // registered through its facade, oo::ToObjC.
-std::string OOListUnusedFilesStage::nameForReverseDependencyForVerifier(OOOXPVerifier *verifier)
+std::string OOListUnusedFilesStage::nameForReverseDependencyForVerifier(::OOOXPVerifier *verifier)
 {
 	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
 	if (stage == nil)
