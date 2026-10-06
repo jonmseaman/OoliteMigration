@@ -47,6 +47,28 @@ MA 02110-1301, USA.
 #include <cmath>
 
 
+namespace {
+
+/*	The C++ part of an Objective-C ship (ShipEntity, StationEntity, DockEntity, PlayerEntity, ...):
+	the root's adapter over cxx::ShipEntity, plus the members cxx::ShipEntity added that the
+	Objective-C subclasses override, which message the Objective-C object (ADR-0056 amendments
+	oo-vl43 item 1 and oo-mvzmb). Each slice that makes such a member virtual adds its line
+	(docs/phases/3-slices/ShipEntity.md); the facade's forwarder calls cxx::ShipEntity's own
+	member, which is what [super ...] (or not overriding) reached.
+*/
+class ObjCShipEntity final : public oo::ObjCEntity<cxx::ShipEntity>
+{
+public:
+	explicit ObjCShipEntity(::Entity *objcOwner) : oo::ObjCEntity<cxx::ShipEntity>(objcOwner) {}
+
+	// Slice 3 (bead oo-mvzmb).
+	bool setUpShipFromDictionary(const oo::PList &shipDict) override	{ return [(::ShipEntity *)_objcOwner setUpShipFromDictionary:shipDict]; }
+	bool setUpSubEntities() override	{ return [(::ShipEntity *)_objcOwner setUpSubEntities]; }
+};
+
+}	// namespace
+
+
 @interface ShipEntity (OOObjCBridgePrivate)
 
 - (id) initShipPart;
@@ -108,7 +130,7 @@ MA 02110-1301, USA.
 {
 	// -init sent again to an initialised ship keeps its C++ part (the root's -initWithCxxEntity:).
 	if (_cxxEntity != nullptr)  return [self initWithCxxEntity:_cxxEntity.get()];
-	return [self initWithCxxEntity:oo::makeRef<oo::ObjCEntity<cxx::ShipEntity>>(self).get()];
+	return [self initWithCxxEntity:oo::makeRef<ObjCShipEntity>(self).get()];
 }
 
 
@@ -213,5 +235,21 @@ DESTROY(_cxxShip->laser_color);
 @implementation ShipEntity (OOSlice2)
 
 - (BOOL) cxx_setUpFromDictionary:(const oo::PList &)inShipDict	{ return _cxxShip->setUpFromDictionary(inShipDict); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice3)
+
+- (BOOL) setUpShipFromDictionary:(const oo::PList &)shipDict	{ return _cxxShip->cxx::ShipEntity::setUpShipFromDictionary(shipDict); }
+- (void) setSubIdx:(NSUInteger)value	{ _cxxShip->setSubIdx(value); }
+- (NSUInteger) subIdx	{ return _cxxShip->subIdx(); }
+- (NSUInteger) maxShipSubEntities	{ return _cxxShip->maxShipSubEntities(); }
+- (std::optional<std::string>) cxx_serializeShipSubEntities	{ return _cxxShip->serializeShipSubEntities(); }
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string	{ _cxxShip->deserializeShipSubEntitiesFrom(string); }
+- (BOOL) setUpSubEntities	{ return _cxxShip->cxx::ShipEntity::setUpSubEntities(); }
+- (GLfloat) frustumRadius	{ return _cxxShip->cxx::ShipEntity::frustumRadius(); }
+- (BOOL) setUpOneSubentity:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneSubentity(subentDict); }
+- (BOOL) setUpOneFlasher:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneFlasher(subentDict); }
 
 @end

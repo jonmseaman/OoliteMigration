@@ -224,6 +224,18 @@ public:
 	// Slice 2: set-up from the ship dictionary (cxx_setUpFromDictionary:).
 	bool setUpFromDictionary(const oo::PList &inShipDict);
 
+	// Slice 3: setUpShipFromDictionary:, subentity serialisation and set-up.
+	virtual bool setUpShipFromDictionary(const oo::PList &shipDict);
+	void setSubIdx(NSUInteger value);
+	NSUInteger subIdx();
+	NSUInteger maxShipSubEntities();
+	std::optional<std::string> serializeShipSubEntities();
+	void deserializeShipSubEntitiesFrom(const std::string &string);
+	virtual bool setUpSubEntities();
+	GLfloat frustumRadius() override;
+	bool setUpOneSubentity(const oo::PList &subentDict);
+	bool setUpOneFlasher(const oo::PList &subentDict);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

@@ -11,7 +11,7 @@ it beside -init and -dealloc. Its methods keep their Objective-C bodies until th
 to cxx::ShipEntity and leaves a forwarder here. It has one ivar, _cxxShip: the root's _cxxEntity,
 typed, borrowed (the root owns the part), set by the initialiser; unconverted code reads the ship's
 members through it by their old names (_cxxShip->fuel, ship->_cxxShip->fuel). Its initialisers make
-an Objective-C ship's adapter over cxx::ShipEntity (oo::ObjCEntity<cxx::ShipEntity>), so
+an Objective-C ship's adapter over cxx::ShipEntity (ObjCShipEntity in the .mm), so
 StationEntity, DockEntity, PlayerEntity and ProxyPlayerEntity reach the ship's members through it.
 Imported as the last line of ShipEntity.h; do not import it directly. Never add to this file.
 Deleted by its deletion bead once every slice, the categories and the subclasses are C++.
@@ -94,11 +94,6 @@ MA 02110-1301, USA.
 - (void) setSubEntityRotationalVelocity:(Quaternion)rv;
 
 // subentities management
-- (std::optional<std::string>) cxx_serializeShipSubEntities;
-- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string;
-- (NSUInteger) maxShipSubEntities;
-- (void) setSubIdx:(NSUInteger)value;
-- (NSUInteger) subIdx;
 
 - (Octree *) octree;
 - (float) volume;
@@ -123,10 +118,7 @@ MA 02110-1301, USA.
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
-- (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
-- (GLfloat)frustumRadius;
 
 - (std::optional<std::string>) cxx_shipDataKey;
 - (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
@@ -873,6 +865,25 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @interface ShipEntity (OOSlice2)
 
 - (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice3)
+
+- (BOOL)setUpShipFromDictionary:(const oo::PList &) shipDict;	// flipped with its family (bead oo-3rb.282)
+- (void) setSubIdx:(NSUInteger)value;
+- (NSUInteger) subIdx;
+- (NSUInteger) maxShipSubEntities;
+- (std::optional<std::string>) cxx_serializeShipSubEntities;
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string;
+- (BOOL)setUpSubEntities;
+- (GLfloat)frustumRadius;
+- (BOOL) setUpOneSubentity:(const oo::PList &)subentDict;
+- (BOOL) setUpOneFlasher:(const oo::PList &)subentDict;
 
 @end
 

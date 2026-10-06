@@ -3969,3 +3969,58 @@ functions are the binding's list of what it still needs from unconverted classes
 deletion bead waits for oo-a70 as well as `Universe`, `GuiDisplayGen` and the engine's slices). The
 test runs the real engine and the real `player.ship`, with stand-ins for what `PLAYER` and
 `UNIVERSE` answer and a real HUD in a hidden GL context.
+
+## Amendment (bead oo-mvzmb): ShipEntity's later slices, members an Objective-C subclass overrides, and the ship's adapter
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 2-12. Exemplar: `src/Core/Entities/ShipEntity.h/.mm`,
+  `ShipEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_ShipEntity.mm`. Follows amendments oo-60fwo
+  (the class shell), oo-vl43 (an intermediate class's adapter) and oo-72cz (a later slice).
+
+**Context.** Each later slice of `ShipEntity.mm` moves its methods into `cxx::ShipEntity` while the
+class's `@implementation` stays in the file for the slices still to come, and three workers convert
+slices of the file at once. `StationEntity`, `DockEntity`, `PlayerEntity` and the unit tests'
+ships are Objective-C subclasses that override some of the moved selectors
+(`-setUpShipFromDictionary:`, `-setUpSubEntities`, `-update:`, ...), and the façade's adapter was
+the root's template, which messages only the root's virtual members.
+
+**Decision (recommended defaults).**
+
+1. **A slice's members are a `namespace cxx` block of their own after the `@implementation`**, in
+   the file's order, under a comment naming the slice and its bead; their declarations are a block
+   in `cxx::ShipEntity` under the same comment. The façade's forwarders are a category per slice,
+   `ShipEntity (OOSliceN)`, in `ShipEntity+ObjCBridge.mm`, and each forwarded declaration moves from
+   the primary `@interface` to that category's `@interface` in the bridge header (amendment oo-60fwo
+   item 6: the primary `@implementation` stays complete). A selector the class did not declare in
+   its interface (its private category, a protocol's, a root's) is declared in the slice's
+   category. One block per slice keeps the workers' merges to adjacent, independent hunks.
+2. **A member an Objective-C subclass overrides is `virtual`, and the ship's adapter gets its
+   line.** The adapter is `ObjCShipEntity`, private to `ShipEntity+ObjCBridge.mm`, derived from
+   `oo::ObjCEntity<cxx::ShipEntity>` (as `ObjCLightParticleEntity` is, amendment oo-vl43) and made
+   by the façade's `-initShipPart`; each slice that makes a member virtual adds its override, which
+   messages the Objective-C object. A member that overrides a virtual member of `cxx::Entity`
+   (`frustumRadius()`, `descriptionComponents()`, `update()`) is `override`, and the root's
+   template already has its line.
+3. **The forwarder of such a member calls `cxx::ShipEntity`'s own member**,
+   `_cxxShip->cxx::ShipEntity::setUpShipFromDictionary(dict)`, which is what `[super ...]` from a
+   subclass (or not overriding) reached; a call through the virtual would come back to the
+   subclass. Every ship has the adapter, so no `oo::AsObjCEntity` test is needed.
+4. **Sends to `self` in a moved body stay sends** to the façade (`::ShipEntity *self =
+   oo::ToObjC(this)` at the top, as slice 1's member does), so a subclass's override still runs and
+   a selector of a slice not yet landed still answers. `[super x]` becomes the base class's member,
+   qualified (`OOEntityWithDrawable::descriptionComponents()`); in a `const` member `self` is
+   `oo::ToObjC(const_cast<ShipEntity *>(this))`.
+5. **A parameter or result typed `Entity<OOSubEntity> *` is `::Entity *` in the member**: C++
+   takes no protocol qualifier after a qualified name. The façade's forwarder keeps the Objective-C
+   signature (and casts a result back to the qualified type).
+6. **A protocol the ship adopts whose methods a slice forwards** (`<OOBeaconEntity>`, slice 5) is
+   adopted by a category with no `@implementation`, `ShipEntity (OOBeaconEntity)`, instead of the
+   class's interface: a category that implements a method of a protocol the class itself adopts is
+   warned about as one the class will implement (`-Wobjc-protocol-method-implementation`), and a
+   warning is not silenced (CLAUDE.md rule 3). The ship conforms as before.
+7. **Tests:** each slice adds its cases to `test_ShipEntity.mm` under a comment naming the slice,
+   written against the façade and run on the unconverted class first; a ship that keeps
+   `ShipEntity`'s own set-up is a subclass with no overrides (`PlainShip`).
+
+**Consequences.** One adapter class for the ship, one category per slice on the façade; the
+façade's deletion bead (oo-9ht.144) removes them with the forwarders.
