@@ -431,17 +431,6 @@ OO_TEST(facadeContract)
 
 
 // Slice 2 (bead oo-0hyr): installing, updating, removing and extracting OXZs.
-@interface OOOXZManager (TestSliceTwo)
-- (oo::PList) installedManifestForIdentifier:(const std::string &)identifier;
-- (std::optional<std::string>) installStatusForManifest:(const oo::PList &)manifest;
-- (OOColor *) colorForManifest:(const oo::PList &)manifest;
-- (BOOL) installOXZ:(NSUInteger)item;
-- (BOOL) updateAllOXZ;
-- (BOOL) removeOXZ:(NSUInteger)item;
-- (std::string) extractOXZ:(NSUInteger)item;
-@end
-
-
 namespace {
 
 // A stored (uncompressed) zip of the named files, written by hand: a synthetic OXZ.
@@ -487,9 +476,8 @@ void WriteZip(const stdfs::path &path, const std::vector<std::pair<std::string, 
 const char *kGammaManifest = "{ identifier = \"oolite.oxp.test.gamma\"; title = Gamma; version = \"1.0\"; category = Ships; }";
 
 
-std::string ColorName(OOColor *color)
+std::string ColorName(cxx::OOColor *c)
 {
-	cxx::OOColor *c = oo::ToCxx(color);
 	if (c == nullptr)  return "nil";
 	const std::pair<const char *, oo::Ref<cxx::OOColor>> named[] = {
 		{ "yellow", cxx::OOColor::yellowColor() }, { "cyan", cxx::OOColor::cyanColor() }, { "orange", cxx::OOColor::orangeColor() },
@@ -503,14 +491,14 @@ std::string ColorName(OOColor *color)
 }
 
 
-// The slice 2 units.
-oo::PList InstalledManifest(const std::string &identifier)		{ return [[OOOXZManager sharedManager] installedManifestForIdentifier:identifier]; }
-std::string InstallStatus(const oo::PList &manifest)			{ return [[OOOXZManager sharedManager] installStatusForManifest:manifest].value_or("(none)"); }
-std::string Color(const oo::PList &manifest)					{ return ColorName([[OOOXZManager sharedManager] colorForManifest:manifest]); }
-bool InstallOXZ(NSUInteger item)								{ return [[OOOXZManager sharedManager] installOXZ:item]; }
-bool UpdateAllOXZ()												{ return [[OOOXZManager sharedManager] updateAllOXZ]; }
-bool RemoveOXZ(NSUInteger item)									{ return [[OOOXZManager sharedManager] removeOXZ:item]; }
-std::string ExtractOXZ(NSUInteger item)							{ return [[OOOXZManager sharedManager] extractOXZ:item]; }
+// The slice 2 units: their C++ members (isRestarting through the facade, which forwards it).
+oo::PList InstalledManifest(const std::string &identifier)		{ return Manager()->installedManifestForIdentifier(identifier); }
+std::string InstallStatus(const oo::PList &manifest)			{ return Manager()->installStatusForManifest(manifest).value_or("(none)"); }
+std::string Color(const oo::PList &manifest)					{ return ColorName(Manager()->colorForManifest(manifest).get()); }
+bool InstallOXZ(NSUInteger item)								{ return Manager()->installOXZ(item); }
+bool UpdateAllOXZ()												{ return Manager()->updateAllOXZ(); }
+bool RemoveOXZ(NSUInteger item)									{ return Manager()->removeOXZ(item); }
+std::string ExtractOXZ(NSUInteger item)							{ return Manager()->extractOXZ(item); }
 bool IsRestarting()												{ return [[OOOXZManager sharedManager] isRestarting]; }
 
 
@@ -631,6 +619,25 @@ OO_TEST(restartAndUpdateAll)
 		OO_CHECK_TEXT(Titles(Manager()->_filteredList), "Alpha 3.0, Beta 1.0, Gamma 1.0");
 		FinishDownload();
 		OO_CHECK(Manager()->_downloadStatus == OXZ_DOWNLOAD_ERROR);
+	}
+}
+
+
+OO_TEST(facadeContractSliceTwo)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The slice 2 units that slices 3 and 4 send, forwarded.
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		const oo::PList alpha = *Manager()->manifests().at(0);
+		OO_CHECK_TEXT(ColorName(oo::ToCxx([facade colorForManifest:alpha])), Color(alpha));
+		OO_CHECK_TEXT([facade installStatusForManifest:alpha].value_or("(none)"), InstallStatus(alpha));
+		OO_CHECK(![facade installOXZ:99]);
+		OO_CHECK(![facade removeOXZ:99]);
+		OO_CHECK_TEXT([facade extractOXZ:99], "oolite-oxzmanager-extract-log-no-original");
+		OO_CHECK(![facade updateAllOXZ]);	// the failed download is not cleared
+		OO_CHECK(![facade isRestarting]);
 	}
 }
 
