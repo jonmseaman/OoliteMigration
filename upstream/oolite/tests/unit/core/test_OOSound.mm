@@ -21,6 +21,7 @@
 */
 
 #import "OOALSound.h"
+#import "OOALSoundMixer.h"
 #import "OOLogging.h"
 
 #include "oofnd/Defaults.hpp"
@@ -52,36 +53,23 @@ void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 
 static unsigned gMixerUpdates = 0;
 
-@interface OOSoundMixer: OOObject
-
-+ (id) sharedMixer;
-- (void) update;
-- (void) shutdown;
-
-@end
-
-
-@implementation OOSoundMixer
-
-+ (id) sharedMixer
+// The mixer (a C++ stand-in since bead oo-9ht.87 deleted the Objective-C facade this file stubbed): one, never released, counting the updates the root sends it.
+OOSoundMixer *OOSoundMixer::sharedMixer()
 {
-	static OOSoundMixer *mixer = nil;
-	if (mixer == nil)  mixer = [[OOSoundMixer alloc] init];
+	static OOSoundMixer *mixer = oo::makeRef<OOSoundMixer>().leakRef();
 	return mixer;
 }
 
 
-- (void) update
+void OOSoundMixer::update()
 {
 	gMixerUpdates++;
 }
 
 
-- (void) shutdown
+void OOSoundMixer::shutdown()
 {
 }
-
-@end
 
 
 /*	The decoder: a path names its decoded size. "missing.ogg" (and no path) has no decoder,
