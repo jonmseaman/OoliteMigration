@@ -3400,7 +3400,9 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
    their slice** (`OOMesh (OOMeshRendering)`, `OOMesh (OOMeshGeometry)`); the `Private` category
    stays as it was. Their public selectors move from the façade's `@interface` to matching
    category interfaces in `X+ObjCBridge.h`, so the façade's own `@implementation` is complete (no
-   `-Wincomplete-implementation`). The ivar rewrite `oo::ToCxx(self)->ivar` is scripted; selector
+   `-Wincomplete-implementation`). This is amendment oo-bwjb item 1, which landed alongside; the
+   blocks here are not contiguous, so each gets its own category name (a category cannot be
+   implemented twice in one file). The ivar rewrite `oo::ToCxx(self)->ivar` is scripted; selector
    positions and signatures are left alone.
 3. **A root virtual member that a later slice implements gets a C++ trampoline**,
    `void renderOpaqueParts() override { [oo::ToObjC(this) renderOpaqueParts]; }`, so a converted
