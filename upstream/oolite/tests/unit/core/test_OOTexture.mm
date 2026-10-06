@@ -324,7 +324,7 @@ OO_TEST(texturesFromGenerators)
 
 		TestGenerator *generator = MakeGenerator(std::string("test:gen"), YES);
 		OOTexture *first = [OOTexture textureWithGenerator:generator];
-		OO_CHECK([first isKindOfClass:[OOConcreteTexture class]] && generator->_enqueues == 1);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(first)) != nullptr) && generator->_enqueues == 1);
 		OO_CHECK([first cxx_cacheKey] == std::optional<std::string>("test:gen"));
 		OO_CHECK([OOTexture cxx_existingTextureForKey:std::string("test:gen")] == first);
 
@@ -428,7 +428,7 @@ OO_TEST(cxxApi)
 		OO_CHECK(dynamic_cast<OONullTexture *>(oo::ToCxx(none.get())) != nullptr && none.get() == [OOTexture nullTexture]);
 		TestGenerator *generator = MakeGenerator(std::string("test:cxxgen"), YES);
 		const oo::ObjCRef<OOTexture *> generated = cxx::OOTexture::textureWithGenerator(generator);
-		OO_CHECK([generated.get() isKindOfClass:[OOConcreteTexture class]]);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(generated.get())) != nullptr));
 		OO_CHECK(cxx::OOTexture::existingTextureForKey(std::string("test:cxxgen")) == oo::ToCxx(generated.get()));
 		OO_CHECK(cxx::OOTexture::textureWithGenerator(generator, false) == generated && generator->_enqueues == 1);
 		OO_CHECK(!cxx::OOTexture::textureWithConfiguration(oo::PList(3.0)));
