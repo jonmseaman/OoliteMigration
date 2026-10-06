@@ -3710,6 +3710,30 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
 
+## Amendment (bead oo-zmix): the rendering slice of a converted subclass, and a façade that stays a protocol client
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 4 of `docs/phases/3-slices/OOMesh.md`
+  in `src/Core/OOMesh.h/.mm`, `OOMesh+ObjCBridge.h/.mm`, `tests/unit/core/test_OOMesh.mm`. Follows
+  amendments oo-dnbf and oo-9z7x.
+
+**Decision (recommended defaults).**
+
+1. **A protocol method that a manager sends to the façade** (`-resetGraphicsState`, the
+   `OOGraphicsResetClient` the loader registers with `registerClient:self`) becomes a member that
+   the façade forwards in one line. The conformance moves from the private category in `X.mm`
+   (whose `@implementation` no longer has the method) to an empty category of the façade in
+   `X+ObjCBridge.h` (`@interface OOMesh (OOMeshGraphicsReset) <OOGraphicsResetClient>`), so the
+   still-Objective-C loader's `registerClient:self` keeps its type. The client becomes the C++
+   object (`cxx::OOGraphicsResetClient`) only when the loader converts and registers `this`.
+2. **A member array of a converted class's Objective-C objects** (`::OOMaterial *materials[]`,
+   retained) stays one while code outside the slice (the copy) retains its elements; the converted
+   members cross per element (`oo::ToCxx(materials[i])->apply()`), null-guarded as a message to nil
+   was, and store `[oo::ToObjC(material.get()) retain]` where they made one with the C++ factory.
+3. **`@try`/`@catch (OOException *)` in a converted member stays** (amendment oo-puw9 item 4); the
+   slice check accepts it in a converted unit (oo-9ht.117).
+4. **The last trampoline goes with its slice** (amendment oo-9z7x item 4): `renderOpaqueParts()` is
+   the body, reached by the root façade's forwarder and by C++ callers alike.
+
 ## Amendment (bead oo-jfno): a class with only class methods, and the senders it gains in namespace cxx
 
 - Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: slice 1 of

@@ -34,16 +34,6 @@ MA 02110-1301, USA.
 #import "Octree.h"
 
 
-// Slice 4's display-list deletion, in the private category of OOMesh.mm, which the facade's
-// -dealloc sends (it messaged self from -dealloc before); that category makes the mesh a graphics
-// reset client.
-@interface OOMesh (Private) <OOGraphicsResetClient>
-
-- (void) deleteDisplayLists;
-
-@end
-
-
 // A facade of this class is only ever made for a cxx::OOMesh (oo::ToObjC names the facade class
 // after the C++ class, and -init makes one), so the casts are exact.
 OOMesh *oo::ToObjC(cxx::OOMesh *mesh)
@@ -106,7 +96,7 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 // here, before the C++ part goes (its destructor releases the members).
 - (void) dealloc
 {
-	[self deleteDisplayLists];
+	oo::ToCxx(self)->deleteDisplayLists();
 	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
 	[super dealloc];
 }
@@ -119,6 +109,10 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 
 
 - (std::optional<std::string>) modelName	{ return oo::ToCxx(self)->modelName(); }
+
+- (void) rebindMaterials					{ oo::ToCxx(self)->rebindMaterials(); }
+
+- (void) resetGraphicsState					{ oo::ToCxx(self)->resetGraphicsState(); }
 
 - (oo::PList) materials						{ return oo::ToCxx(self)->getMaterials(); }
 - (oo::PList) shaders						{ return oo::ToCxx(self)->shaders(); }
