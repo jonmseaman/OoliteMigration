@@ -19,11 +19,16 @@
 	cases that pinned only the deleted facades (scannerMadeByAllocInit, objCFileStageBehindACxxPointer,
 	the facade half of scannerFacade, nilAndLifetime) were retired with them (ADR-0049, standing
 	approval oo-9n5p9).
+	Bead oo-9ht.4 deleted the root's facade (OOOXPVerifierStage): the verifier answers the C++
+	stage itself, so cxxFileStageBehindTheFacade asks the stage (its description through
+	description(), as scannerFindsFiles does), and the checks that pinned only that facade's
+	crossing (one live facade, oo::ToObjC/oo::ToCxx, its class; the C++-made scanner's half of
+	scannerFacade) were retired with it (ADR-0049, standing approval oo-9n5p9).
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOFileScannerVerifierStage.h"
-#import "OOOXPVerifierStageInternal.h"
+#import "OOOXPVerifierStage.h"
 #import "OODescription.h"
 
 #import "OOLogging.h"
@@ -155,7 +160,7 @@ const std::vector<std::string> kUnusedName = { "Checking for unused files" };
 // The registered scanner, as the stages find it (the verifier's -fileScannerStage until bead oo-9ht.7).
 OOFileScannerVerifierStage *ScannerOf(OOOXPVerifier *verifier)
 {
-	return dynamic_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	return dynamic_cast<OOFileScannerVerifierStage *>([verifier cxx_stageWithName:OOFileScannerVerifierStage::kName]);
 }
 
 }	// namespace
@@ -174,7 +179,7 @@ OO_TEST(fileHandlingStageNamesAndRegistersItsNeighbours)
 		OO_CHECK(stage->dependents() == kUnusedName);
 		OO_CHECK([verifier registrations] == before + 2);
 		OO_CHECK(ScannerOf(verifier) != nullptr);
-		OO_CHECK([verifier cxx_stageWithName:"Checking for unused files"] != nil);
+		OO_CHECK([verifier cxx_stageWithName:"Checking for unused files"] != nullptr);
 
 		// Asked again (by another stage), nothing new is registered.
 		OO_CHECK(stage->dependencies() == kScannerName);
@@ -210,8 +215,8 @@ OO_TEST(scannerFindsFiles)
 		OOFileScannerVerifierStage *scanner = ScannerOf(verifier);
 		OO_CHECK(scanner != nullptr && scanner->verifier() == verifier);
 		OO_CHECK(scanner->name() == std::optional<std::string>("Scanning files"));
-		OO_CHECK(oo::DescriptionOf(oo::ToObjC(scanner)).starts_with("<OOFileScannerVerifierStage 0x"));
-		OO_CHECK(oo::DescriptionOf(oo::ToObjC(scanner)).ends_with(">{\"Scanning files\"}"));
+		OO_CHECK(scanner->description().starts_with("<OOFileScannerVerifierStage 0x"));
+		OO_CHECK(scanner->description().ends_with(">{\"Scanning files\"}"));
 		scanner->run();
 
 		// Case-insensitive, in the folder or bare in the root; the result is the path on disk.
@@ -266,15 +271,13 @@ OO_TEST(cxxFileStageBehindTheFacade)
 		OO_CHECK(stage->dependents() == kUnusedName);
 		OO_CHECK(ScannerOf(verifier) != nullptr);
 
-		OOOXPVerifierStage *facade = oo::ToObjC(stage.get());
-		OO_CHECK(facade != nil && facade == oo::ToObjC(stage.get()) && oo::ToCxx(facade) == stage.get());
-		OO_CHECK([facade cxx_name] == std::optional<std::string>("Testing files in C++"));
-		OO_CHECK([facade cxx_dependencies] == kScannerName);
-		OO_CHECK([facade dependents] == kUnusedName);
-		[facade dependencyRegistrationComplete];
-		[facade performRun];
+		OO_CHECK(stage->name() == std::optional<std::string>("Testing files in C++"));
+		OO_CHECK(stage->dependencies() == kScannerName);
+		OO_CHECK(stage->dependents() == kUnusedName);
+		stage->dependencyRegistrationComplete();
+		stage->performRun();
 		OO_CHECK(stage->runs == 1);
-		OO_CHECK(oo::DescriptionOf(facade).starts_with("<TestCxxFileStage 0x"));
+		OO_CHECK(stage->description().starts_with("<TestCxxFileStage 0x"));
 	}
 }
 
@@ -299,14 +302,6 @@ OO_TEST(scannerFacade)
 		OO_CHECK(cxxScanner->plistNamed("shipdata.plist", "Config", std::nullopt, false).get<std::string>("a") == "1");
 		OO_CHECK(cxxScanner->displayNameForFile("f", "d") == std::optional<std::string>("d/f"));
 		std::filesystem::remove_all(base);
-
-		// A scanner made in C++ crosses as the root's facade, as every global stage does.
-		const oo::Ref<OOFileScannerVerifierStage> made = oo::makeRef<OOFileScannerVerifierStage>();
-		OOOXPVerifierStage *facade = oo::ToObjC(made.get());
-		OO_CHECK([facade class] == [OOOXPVerifierStage class]);
-		OO_CHECK(facade == oo::ToObjC(static_cast<cxx::OOOXPVerifierStage *>(made.get())));
-		OO_CHECK(oo::ToCxx(facade) == made.get());
-		OO_CHECK(oo::ToObjC(static_cast<OOFileScannerVerifierStage *>(nullptr)) == nil);
 	}
 }
 
