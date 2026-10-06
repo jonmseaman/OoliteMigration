@@ -3745,6 +3745,13 @@ slice bead.
    `+sharedController` keeps.
 4. **Header macros that message the class name the façade `::X`** (`OO_DEBUG_PROGRESS`), so a
    caller inside `namespace cxx` still reaches the Objective-C class.
+5. **A singleton that callers also `alloc`/`init`** (`main.mm` makes the application's controller
+   that way, apart from `+sharedController`'s) keeps `-init` on the façade: it makes a new C++ object
+   (the constructor is the old `-init` body, raising where it raised, after releasing the receiver)
+   and becomes its peer. Converted senders name the façade `[::X sharedX]` (amendment oo-jfno item 2).
+6. **A Mac-only declaration with a Foundation type** (`-snapshotsURLCreatingIfNeeded:`) is not
+   copied into the new bridge header when only the fenced Mac category sends it: the type would be a
+   new deny-list hit in a new file (the guardrails' file-split limitation).
 
 **Consequences.** One façade and its deletion bead, which waits for slices 2 and 3 and the
 `FullScreen` category (oo-qinv); each later slice turns its methods into members and deletes their
