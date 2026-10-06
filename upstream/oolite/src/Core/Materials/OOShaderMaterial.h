@@ -6,7 +6,7 @@ Managers a combination of a shader program, textures and uniforms.
 
 C++20 since bead oo-ja7y (proposed ADR-0056, amendments oo-smy and oo-vl43). Its Objective-C
 facade was deleted by bead oo-9ht.46 (ADR-0056 amendment "deleting a facade"): the class is global,
-and Objective-C sees one as the nearest facade, OOBasicMaterial's. The two informal protocols on
+and Objective-C sees one as an OOMaterial (OOBasicMaterial's facade was deleted by bead oo-9ht.33). The two informal protocols on
 OOObject that shader binding targets implement (-superShaderBindingTarget, -randomSeedForShaders)
 moved with it to their implementers' header, Entity+ObjCBridge.h.
 
@@ -68,7 +68,7 @@ enum
 typedef uint16_t OOUniformConvertOptions;
 
 
-class OOShaderMaterial : public cxx::OOBasicMaterial
+class OOShaderMaterial : public OOBasicMaterial
 {
 public:
 	~OOShaderMaterial() override;

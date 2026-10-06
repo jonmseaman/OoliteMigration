@@ -118,15 +118,14 @@ void OOFileScannerVerifierStage::run()
 }
 
 
-// The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
-// registered through its facade, oo::ToObjC.
+// The verifier holds the C++ stages (it held their facades until bead oo-9ht.4).
 std::optional<std::string> OOFileScannerVerifierStage::nameForDependencyForVerifier(::OOOXPVerifier *verifier)
 {
-	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kFileScannerStageName];
-	if (stage == nil)
+	OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kFileScannerStageName];
+	if (stage == nullptr)
 	{
 		const oo::Ref<OOFileScannerVerifierStage> newStage = oo::makeRef<OOFileScannerVerifierStage>();
-		[verifier registerStage:oo::ToObjC(newStage.get())];
+		[verifier registerStage:newStage.get()];
 	}
 	
 	return kFileScannerStageName;
@@ -682,15 +681,14 @@ void OOListUnusedFilesStage::run()
 }
 
 
-// The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
-// registered through its facade, oo::ToObjC.
+// The verifier holds the C++ stages (it held their facades until bead oo-9ht.4).
 std::string OOListUnusedFilesStage::nameForReverseDependencyForVerifier(::OOOXPVerifier *verifier)
 {
-	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
-	if (stage == nil)
+	OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
+	if (stage == nullptr)
 	{
 		const oo::Ref<OOListUnusedFilesStage> newStage = oo::makeRef<OOListUnusedFilesStage>();
-		[verifier registerStage:oo::ToObjC(newStage.get())];
+		[verifier registerStage:newStage.get()];
 	}
 	
 	return kUnusedListerStageName;

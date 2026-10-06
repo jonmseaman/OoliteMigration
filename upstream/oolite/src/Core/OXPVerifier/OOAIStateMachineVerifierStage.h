@@ -38,8 +38,8 @@ MA 02110-1301, USA.
 
 	C++20 since bead oo-94qk (proposed ADR-0056 Amendment 1, amendment oo-up4b item 6): a leaf of
 	OOFileHandlingVerifierStage. It is global and has no facade: its one caller,
-	OOCheckShipDataPListVerifierStage, calls these members, and the Objective-C verifier holds
-	it as an OOOXPVerifierStage (oo::ToObjC) and makes it from its name through a table.
+	OOCheckShipDataPListVerifierStage, calls these members, and the verifier holds it (as its
+	OOOXPVerifierStage facade until bead oo-9ht.4) and makes it from its name through a table.
 */
 class OOAIStateMachineVerifierStage : public OOFileHandlingVerifierStage
 {
