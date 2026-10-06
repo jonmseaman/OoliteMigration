@@ -164,6 +164,28 @@ OO_TEST(updateGLSizeSetsTheProjection)
 }
 
 
+// After the conversion: the C++ view behind the facade the game made.
+OO_TEST(facadeContract)
+{
+	@autoreleasepool
+	{
+		MyOpenGLView *view = View();
+		cxx::MyOpenGLView *cxxView = oo::ToCxx(view);
+		OO_CHECK(cxxView != nullptr);
+		OO_CHECK(oo::ToObjC(cxxView) == view);
+		OO_CHECK(oo::ToObjC(static_cast<cxx::MyOpenGLView *>(nullptr)) == nil);
+		OO_CHECK(oo::ToCxx(static_cast<MyOpenGLView *>(nil)) == nullptr);
+		OO_CHECK(cxxView->getWindowCaption() == [view getWindowCaption]);
+		OO_CHECK(cxxView->getDisplayId() == [view getDisplayId]);
+		cxxView->updateGLSize(NSMakeSize(1024, 768));
+		OO_CHECK([view viewSize].width == 1024 && cxxView->viewSize.height == 768);
+		OO_CHECK(Near(cxxView->display_z, 640.0));
+		// The matrix manager is C++; the facade's getter answers its facade.
+		OO_CHECK(oo::ToCxx([view getOpenGLMatrixManager]) == cxxView->matrixManager.get());
+	}
+}
+
+
 // Last: -dealloc quits SDL.
 OO_TEST(zzDeallocReleasesTheView)
 {

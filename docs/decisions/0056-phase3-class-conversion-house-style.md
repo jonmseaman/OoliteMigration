@@ -3550,3 +3550,31 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
 2-4 and the callers. A C++ subclass of a root is now visible to Objective-C as its own façade
 class, through the root's bridge. Slices 2-4 each delete their category and trampolines as they
 convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ members.
+
+## Amendment (bead oo-6rb6): a class-shell slice whose class has a category in another file, a failable `-init` that sends that category, and a window a unit test may not open
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: `src/SDL/MyOpenGLView.h/.mm`
+  (slice 1 of `docs/phases/3-slices/MyOpenGLView.md`), `MyOpenGLView+ObjCBridge.h/.mm`,
+  `MyOpenGLView+Input.mm`, `tests/unit/core/test_MyOpenGLView.mm`. Follows amendments oo-o89, oo-3bgz
+  and oo-2g51.
+
+**Decision (recommended defaults).**
+
+1. **A category of the class in a file of its own that no slice of the plan owns** (`MyOpenGLView+Input.mm`,
+   bead oo-0806) takes the same mechanical rewrite as the plan's later slices: each ivar it touches is
+   `oo::ToCxx(self)->ivar`, and nothing else in it changes. Amendment oo-o89 item 4 (its methods become
+   members of `cxx::X`) applies when its own bead converts it.
+2. **A failable `-init` that sends the façade's other methods** (`-initKeyMappingData`,
+   `-populateFullScreenModelist`, `-loadWindowSize`) is `bool init()`, run by the façade's `-init` after it
+   has made the empty C++ object (`X() = default`) and become its peer (amendment oo-3bgz item 3); where it
+   answered nil after `[self dealloc]`, it returns false and the façade releases itself, so the destructor
+   (the old `-dealloc` body) runs as before.
+3. **Bool ivars become `bool`** (item 3), including the key-state array, and assignments of `YES`/`NO`
+   stay verbatim. A converted collaborator ivar (`OOOpenGLMatrixManager *matrixManager`) is an
+   `oo::Ref<cxx::X>`; a later slice's getter that answered it answers `oo::ToObjC(...)` of it, the one
+   line that changes beyond the rewrite.
+4. **Units that open the game's window** (`-createWindowWithSize:`, `-initSplashScreen`,
+   `-endSplashScreen`, `-initialiseGLWithSize:`, `-updateScreen`) are not run by the unit test: a test may
+   not show a window on the desktop (CLAUDE.md, `tools/gui-lock`). The test pins what the slice computes
+   without one (the state `-init` leaves in a scratch home, the display and its native size, the projection
+   `-updateGLSize:` sets in a hidden test context), and the goldens, which launch the game, run the rest.
