@@ -184,8 +184,10 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 
 
 // The OOCacheManager (OOMesh) category, as free functions next to the cache (defined below).
-static oo::PList OOCacheManagerMeshDataForName(const std::string &inShipName);
-static void OOCacheManagerSetMeshData(const oo::PList &inData, const std::string &inShipName);
+namespace {
+oo::PList OOCacheManagerMeshDataForName(const std::string &inShipName);
+void OOCacheManagerSetMeshData(const oo::PList &inData, const std::string &inShipName);
+}
 
 
 // One mesh buffer: the bytes _vertices & co. point into, shared (refcounted) by a mesh and its
@@ -2221,19 +2223,23 @@ static const char * const kOOCacheMeshes = "OOMesh";
 
 // The OOCacheManager (OOMesh) category, as free functions next to the cache (the slice plan).
 
-static oo::PList OOCacheManagerMeshDataForName(const std::string &inShipName)
+namespace {
+
+oo::PList OOCacheManagerMeshDataForName(const std::string &inShipName)
 {
 	return cxx::OOCacheManager::sharedCache()->pListForKey(inShipName, kOOCacheMeshes);
 }
 
 
-static void OOCacheManagerSetMeshData(const oo::PList &inData, const std::string &inShipName)
+void OOCacheManagerSetMeshData(const oo::PList &inData, const std::string &inShipName)
 {
 	if (inData)
 	{
 		cxx::OOCacheManager::sharedCache()->setPList(inData, inShipName, kOOCacheMeshes);
 	}
 }
+
+}	// namespace
 
 
 static const char * const kOOCacheOctrees = "octrees";

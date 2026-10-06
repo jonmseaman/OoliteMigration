@@ -3233,8 +3233,9 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
    destructor does the C++ teardown. `oo::ToObjC(this)` is never called from a destructor.
 8. **A category on another converted class in the file** (`OOCacheManager (OOMesh)`,
    `OOCacheManager (Octree)`) becomes free functions named class + selector
-   (`OOCacheManagerOctreeForModel`, `OOCacheManagerSetOctree`), on the C++ classes: file-static
-   where only the file sends them, else declared where the category was (`OOMesh.h`). Their
+   (`OOCacheManagerOctreeForModel`, `OOCacheManagerSetOctree`), on the C++ classes: in an
+   anonymous namespace where only the file sends them (`misc-use-anonymous-namespace`), else
+   declared where the category was (`OOMesh.h`). Their
    Objective-C senders in later slices cross with `oo::ToObjC`/`oo::ToCxx`.
 9. **`-oo_objectSize` of a façade or Objective-C object** in a converted debug body is its
    definition, `class_getInstanceSize(object_getClass(object))` (0 for nil).
