@@ -1578,4 +1578,275 @@ OO_TEST(facadeContractSliceThree)
 }
 
 
+// Slice 4 (bead oo-qbgo): the install and remove option pages, and their paging.
+namespace {
+
+std::vector<oo::PList> InstallOptions()	{ return Manager()->installOptions(); }
+std::vector<oo::PList> RemoveOptions()	{ return Manager()->removeOptions(); }
+
+
+std::string OptionTitles(const std::vector<oo::PList> &options)
+{
+	return Titles(oo::PList(oo::PList::Array(options.begin(), options.end())));
+}
+
+}	// namespace
+
+
+OO_TEST(optionPages)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		StandInUniverse standIn;
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		cxx::OOOXZManager *m = Manager();
+		TestGui *gui = standIn.universe->gui;
+		const oo::PList savedList = m->manifests();
+
+		// Thirteen entries: two pages of ten.
+		oo::PList::Array many;
+		for (int i = 0; i < 13; i++)
+		{
+			char title[16];
+			std::snprintf(title, sizeof title, "Item %02d", i);
+			many.push_back(Manifest(("oolite.oxp.test.item" + std::to_string(i)).c_str(), title, "1", "Misc", "Ann", "An item", {}, -1, nullptr));
+		}
+		m->setOXZList(oo::PList(std::move(many)));
+		m->setFilter("*");
+		m->setFilteredList(m->manifests());
+		m->_interfaceState = OXZ_STATE_PICK_INSTALL;
+		m->_offset = 0;
+
+		OO_CHECK_TEXT(OptionTitles(InstallOptions()), "Item 00 1, Item 01 1, Item 02 1, Item 03 1, Item 04 1, Item 05 1, Item 06 1, Item 07 1, Item 08 1, Item 09 1");
+		m->_offset = 10;
+		OO_CHECK_TEXT(OptionTitles(InstallOptions()), "Item 10 1, Item 11 1, Item 12 1");
+		m->_offset = 20;
+		OO_CHECK_TEXT(OptionTitles(InstallOptions()), "Item 00 1, Item 01 1, Item 02 1, Item 03 1, Item 04 1, Item 05 1, Item 06 1, Item 07 1, Item 08 1, Item 09 1");
+		OO_CHECK_EQ(m->_offset, 0u);
+
+		// Paging through the install list.
+		gui->selected = OXZ_GUI_ROW_LISTSTART + 1;
+		[facade processOptionsNext];
+		OO_CHECK_EQ(m->_offset, 10u);
+		OO_CHECK_PAGE("install page 2", standIn.Page(),
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"color 1 0,100,0\n"
+			"array 1 |gui-back | | | <-- \n"
+			"key 1 _BACK\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Misc |Item 10 |oolite-oxzmanager-version-none |1\n"
+			"key 2 oolite.oxp.test.item10\n"
+			"color 2 100,100,0\n"
+			"array 3 |Misc |Item 11 |oolite-oxzmanager-version-none |1\n"
+			"key 3 oolite.oxp.test.item11\n"
+			"color 3 100,100,0\n"
+			"text 14 oolite-oxzmanager-installable-okay\n"
+			"color 14 0,100,0\n"
+			"long 16 0 An item\n"
+			"array 4 |Misc |Item 12 |oolite-oxzmanager-version-none |1\n"
+			"key 4 oolite.oxp.test.item12\n"
+			"color 4 100,100,0\n");
+		[facade processOptionsNext];
+		OO_CHECK_EQ(m->_offset, 10u);
+		standIn.Page();
+		[facade processOptionsPrev];
+		OO_CHECK_EQ(m->_offset, 0u);
+		OO_CHECK_PAGE("install page 1", standIn.Page(),
+			"tabs 100,320\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-installed |oolite-oxzmanager-heading-downloadable\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"color 12 0,100,0\n"
+			"array 12 |gui-more | | | --> \n"
+			"key 12 _NEXT\n"
+			"text 14 0 \n"
+			"key 14 SKIP-ROW\n"
+			"text 15 0 \n"
+			"key 15 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Misc |Item 00 |oolite-oxzmanager-version-none |1\n"
+			"key 2 oolite.oxp.test.item0\n"
+			"color 2 100,100,0\n"
+			"array 3 |Misc |Item 01 |oolite-oxzmanager-version-none |1\n"
+			"key 3 oolite.oxp.test.item1\n"
+			"color 3 100,100,0\n"
+			"text 14 oolite-oxzmanager-installable-okay\n"
+			"color 14 0,100,0\n"
+			"long 16 0 An item\n"
+			"array 4 |Misc |Item 02 |oolite-oxzmanager-version-none |1\n"
+			"key 4 oolite.oxp.test.item2\n"
+			"color 4 100,100,0\n"
+			"array 5 |Misc |Item 03 |oolite-oxzmanager-version-none |1\n"
+			"key 5 oolite.oxp.test.item3\n"
+			"color 5 100,100,0\n"
+			"array 6 |Misc |Item 04 |oolite-oxzmanager-version-none |1\n"
+			"key 6 oolite.oxp.test.item4\n"
+			"color 6 100,100,0\n"
+			"array 7 |Misc |Item 05 |oolite-oxzmanager-version-none |1\n"
+			"key 7 oolite.oxp.test.item5\n"
+			"color 7 100,100,0\n"
+			"array 8 |Misc |Item 06 |oolite-oxzmanager-version-none |1\n"
+			"key 8 oolite.oxp.test.item6\n"
+			"color 8 100,100,0\n"
+			"array 9 |Misc |Item 07 |oolite-oxzmanager-version-none |1\n"
+			"key 9 oolite.oxp.test.item7\n"
+			"color 9 100,100,0\n"
+			"array 10 |Misc |Item 08 |oolite-oxzmanager-version-none |1\n"
+			"key 10 oolite.oxp.test.item8\n"
+			"color 10 100,100,0\n"
+			"array 11 |Misc |Item 09 |oolite-oxzmanager-version-none |1\n"
+			"key 11 oolite.oxp.test.item9\n"
+			"color 11 100,100,0\n");
+		[facade processOptionsPrev];
+		OO_CHECK_EQ(m->_offset, 0u);
+		standIn.Page();
+		gui->selected = 12;		// the "more" row
+		[facade showOptionsNext];
+		OO_CHECK_EQ(m->_offset, 10u);
+		standIn.Page();
+		gui->selected = 1;		// the "back" row
+		[facade showOptionsPrev];
+		OO_CHECK_EQ(m->_offset, 0u);
+		standIn.Page();
+		gui->selected = OXZ_GUI_ROW_LISTSTART;
+		[facade showOptionsNext];	// not on the "more" row
+		OO_CHECK_EQ(m->_offset, 0u);
+		OO_CHECK_PAGE("show next elsewhere", standIn.Page(), "");
+		OO_CHECK_EQ([facade showInstallOptions], 1);
+		standIn.Page();
+
+		// The remove list: the managed OXZs, then nothing.
+		m->_interfaceState = OXZ_STATE_PICK_REMOVE;
+		[facade showOptionsUpdate];
+		OO_CHECK_TEXT(Titles(m->_filteredList), "Late 1, Local 3, Alpha 1.0");
+		OO_CHECK_TEXT(OptionTitles(RemoveOptions()), "Late 1, Local 3, Alpha 1.0");
+		OO_CHECK_PAGE("remove page", standIn.Page(),
+			"tabs 100,400\n"
+			"array 0 |oolite-oxzmanager-heading-category |oolite-oxzmanager-heading-title |oolite-oxzmanager-heading-version\n"
+			"text 1 0 \n"
+			"key 1 SKIP-ROW\n"
+			"text 12 0 \n"
+			"key 12 SKIP-ROW\n"
+			"text 16 0 \n"
+			"key 16 SKIP-ROW\n"
+			"text 17 0 \n"
+			"key 17 SKIP-ROW\n"
+			"text 18 0 \n"
+			"key 18 SKIP-ROW\n"
+			"text 19 0 \n"
+			"key 19 SKIP-ROW\n"
+			"text 20 0 \n"
+			"key 20 SKIP-ROW\n"
+			"text 2 0 \n"
+			"key 2 SKIP-ROW\n"
+			"text 3 0 \n"
+			"key 3 SKIP-ROW\n"
+			"text 4 0 \n"
+			"key 4 SKIP-ROW\n"
+			"text 5 0 \n"
+			"key 5 SKIP-ROW\n"
+			"text 6 0 \n"
+			"key 6 SKIP-ROW\n"
+			"text 7 0 \n"
+			"key 7 SKIP-ROW\n"
+			"text 8 0 \n"
+			"key 8 SKIP-ROW\n"
+			"text 9 0 \n"
+			"key 9 SKIP-ROW\n"
+			"text 10 0 \n"
+			"key 10 SKIP-ROW\n"
+			"text 11 0 \n"
+			"key 11 SKIP-ROW\n"
+			"array 2 |Ambience |Late |1\n"
+			"key 2 oolite.oxp.test.late\n"
+			"color 2 100,100,100\n"
+			"text 14 oolite-oxzmanager-installable-already\n"
+			"color 14 0,100,0\n"
+			"long 16 0 (nil)\n"
+			"array 3 |Ambience |Local |3\n"
+			"key 3 oolite.oxp.test.local\n"
+			"color 3 100,100,100\n"
+			"array 4 |Ships |Alpha |1.0\n"
+			"key 4 oolite.oxp.test.alpha\n"
+			"color 4 100,100,100\n");
+		m->setFilteredList(oo::PList(oo::PList::Array()));
+		OO_CHECK(RemoveOptions().empty());
+		OO_CHECK_EQ([facade showRemoveOptions], 1);
+		OO_CHECK_PAGE("nothing removable", standIn.Page(),
+			"long 1 0 oolite-oxzmanager-nothing-removable\n");
+
+		m->setOXZList(savedList);
+		m->setFilteredList(m->manifests());
+		m->_offset = 0;
+		m->_interfaceState = OXZ_STATE_MAIN;
+	}
+}
+
+
 OO_TEST_MAIN()
