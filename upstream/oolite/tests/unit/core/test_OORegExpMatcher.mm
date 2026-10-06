@@ -12,7 +12,7 @@
 	run on the unconverted class first: what matches, the flags, the empty pattern, the cache
 	(one compiled RegExp per pattern and flags), and the pseudo-singleton (one matcher per
 	autorelease pool, a new one after the pool drains; nil, and asked again, when the tester does
-	not compile). The C++ tests then pinned the same answers through cxx::OORegExpMatcher, and the
+	not compile). The C++ tests then pinned the same answers through the C++ matcher, and the
 	last test the facade's contract (one facade per matcher, nil stays nil). Bead oo-9ht.12 deleted
 	the facade: see the note above the tests.
 	Run: bash tools/check-core-tests.sh
