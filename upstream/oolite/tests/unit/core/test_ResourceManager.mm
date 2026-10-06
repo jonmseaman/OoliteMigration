@@ -24,6 +24,7 @@
 */
 
 #import "ResourceManager.h"
+#import "OODescription.h"
 
 #include "oofnd/Data.hpp"
 #include "oofnd/FileSystem.hpp"
@@ -312,6 +313,103 @@ OO_TEST(cxxSlice2API)
 		OO_CHECK(!cxx::ResourceManager::manifestHasMissingDependencies(Manifest("{}"), false));
 		OO_CHECK(cxx::ResourceManager::manifest(Manifest("{ title = X; }"), Manifest("{ identifier = \"org.test.none\"; }"), false));
 		OO_CHECK([ResourceManager cxx_matchVersions:range withVersion:"1.5"] == cxx::ResourceManager::matchVersions(range, "1.5"));
+	}
+}
+
+
+// --- bead oo-elve: slice 3 (plist loading and merging, the configuration dictionaries) ---
+// Over the scratch game folder of slice 2's test: the built-in data and two fixture add-ons, a.oxp
+// and h.oxp (both kept by the scan), each with Config plists that the test writes. No cache:
+// every load is asked with the cache off, or for a file name no other test loads.
+
+OO_TEST(mergedPlistsFromTheSearchPaths)
+{
+	@autoreleasepool
+	{
+		namespace stdfs = std::filesystem;
+		const stdfs::path work = stdfs::current_path();
+		WriteText(work / "Resources" / "Config" / "oo-test-dict.plist", "{ base = 1; shared = { x = 1; y = 1; }; list = (a); }");
+		WriteText(work / "AddOns" / "a.oxp" / "Config" / "oo-test-dict.plist", "{ fromA = 2; shared = { y = 2; z = 2; }; list = (b); }");
+		WriteText(work / "AddOns" / "h.oxp" / "Config" / "oo-test-dict.plist", "{ fromH = 3; }");
+		WriteText(work / "Resources" / "Config" / "oo-test-array.plist", "( one, two )");
+		WriteText(work / "AddOns" / "a.oxp" / "Config" / "oo-test-array.plist", "( three )");
+		WriteText(work / "Resources" / "Config" / "role-categories.plist", "{ oolite-trader = ( trader, \"trader-courier\" ); }");
+		WriteText(work / "AddOns" / "a.oxp" / "Config" / "role-categories.plist", "{ oolite-trader = ( trader, \"a-trader\" ); oolite-test = ( tester ); }");
+		WriteText(work / "Resources" / "Config" / "pirate-victim-roles.plist", "( trader, courier )");
+		WriteText(work / "Resources" / "Config" / "logcontrol.plist", "{ \"oo-test.base\" = yes; \"oo-test.overridden\" = no; }");
+		WriteText(work / "AddOns" / "a.oxp" / "Config" / "logcontrol.plist", "{ \"oo-test.overridden\" = yes; \"oo-test.fromA\" = no; }");
+
+		[ResourceManager reset];
+		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		OO_CHECK(paths.size() >= 2);
+
+		// MERGE_NONE: the last file in search order; MERGE_BASIC: top-level keys; MERGE_SMART: second level.
+		const oo::PList last = [ResourceManager cxx_dictionaryFromFilesNamed:"oo-test-dict.plist" inFolder:std::string("Config") mergeMode:MERGE_NONE cache:NO];
+		std::printf("  MERGE_NONE: %s\n", oo::DescriptionOf(last).c_str());
+		const oo::PList basic = [ResourceManager cxx_dictionaryFromFilesNamed:"oo-test-dict.plist" inFolder:std::string("Config") mergeMode:MERGE_BASIC cache:NO];
+		std::printf("  MERGE_BASIC: %s\n", oo::DescriptionOf(basic).c_str());
+		const oo::PList smart = [ResourceManager cxx_dictionaryFromFilesNamed:"oo-test-dict.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:NO];
+		std::printf("  MERGE_SMART: %s\n", oo::DescriptionOf(smart).c_str());
+		OO_CHECK(basic.find("base") != nullptr && basic.find("fromA") != nullptr && basic.find("fromH") != nullptr);
+		OO_CHECK(smart.find("shared") != nullptr && smart.find("shared")->find("x") != nullptr && smart.find("shared")->find("z") != nullptr);
+		OO_CHECK([ResourceManager cxx_dictionaryFromFilesNamed:"oo-test-none.plist" inFolder:std::string("Config") andMerge:YES].isNull());
+
+		const oo::PList array = [ResourceManager cxx_arrayFromFilesNamed:"oo-test-array.plist" inFolder:std::string("Config") andMerge:YES cache:NO];
+		std::printf("  array merged: %s\n", oo::DescriptionOf(array).c_str());
+		OO_CHECK(array.isArray());
+		const oo::PList arrayLast = [ResourceManager cxx_arrayFromFilesNamed:"oo-test-array.plist" inFolder:std::string("Config") andMerge:NO cache:NO];
+		std::printf("  array last: %s\n", oo::DescriptionOf(arrayLast).c_str());
+		OO_CHECK([ResourceManager cxx_arrayFromFilesNamed:"oo-test-none.plist" inFolder:std::string("Config") andMerge:YES].isNull());
+
+		// The built-in path is not excluded for a core plist; an add-on is, unless it overrides it.
+		OO_CHECK(![ResourceManager cxx_corePlist:"oo-test-dict.plist" excludedAt:*[ResourceManager cxx_builtInPath]]);
+
+		const oo::PList roles = [ResourceManager cxx_roleCategoriesDictionary];
+		std::printf("  role categories: %s\n", oo::DescriptionOf(roles).c_str());
+		OO_CHECK(roles.isDict() && roles.find("oolite-trader") != nullptr && roles.find("oolite-test") != nullptr);
+
+		const oo::PList logControl = [ResourceManager cxx_logControlDictionary];
+		OO_CHECK(logControl.isDict());
+		std::printf("  log control oo-test.*: base=%s overridden=%s fromA=%s\n",
+					logControl.find("oo-test.base") ? oo::DescriptionOf(*logControl.find("oo-test.base")).c_str() : "-",
+					logControl.find("oo-test.overridden") ? oo::DescriptionOf(*logControl.find("oo-test.overridden")).c_str() : "-",
+					logControl.find("oo-test.fromA") ? oo::DescriptionOf(*logControl.find("oo-test.fromA")).c_str() : "-");
+
+		OO_CHECK([ResourceManager cxx_whitelistDictionary].isNull());	// no whitelist.plist in the scratch data
+	}
+}
+
+
+OO_TEST(equipmentAndStarListMerging)
+{
+	@autoreleasepool
+	{
+		// Equipment lists: an entry of an earlier file whose key (index 3) a later file also has is
+		// replaced by the later one.
+		oo::PList lists(oo::PList::Array{
+			oo::PList(oo::PList::Array{
+				oo::PList(oo::PList::Array{ oo::PList(1), oo::PList(10), oo::PList("Old"), oo::PList("EQ_A") }),
+				oo::PList(oo::PList::Array{ oo::PList(1), oo::PList(10), oo::PList("Keep"), oo::PList("EQ_B") }) }),
+			oo::PList(oo::PList::Array{
+				oo::PList(oo::PList::Array{ oo::PList(2), oo::PList(20), oo::PList("New"), oo::PList("EQ_A") }) }) });
+		[ResourceManager handleEquipmentListMerging:lists forLookupIndex:3];
+		std::printf("  equipment lists merged: %s\n", oo::DescriptionOf(lists).c_str());
+		OO_CHECK(lists.at(0) != nullptr && lists.at(0)->at(0) != nullptr && lists.at(0)->at(0)->at<std::string>(2) == "New");
+		OO_CHECK(lists.at(0) != nullptr && lists.at(0)->at(1) != nullptr && lists.at(0)->at(1)->at<std::string>(2) == "Keep");
+
+		// Star and nebula lists: the same by the entry itself (or a dictionary's key / texture).
+		oo::PList stars(oo::PList::Array{
+			oo::PList(oo::PList::Array{ oo::PList("star1.png"), oo::PList(oo::PList::Dict{ { "key", oo::PList("k") }, { "texture", oo::PList("old.png") } }) }),
+			oo::PList(oo::PList::Array{ oo::PList(oo::PList::Dict{ { "key", oo::PList("k") }, { "texture", oo::PList("new.png") } }) }) });
+		[ResourceManager handleStarNebulaListMerging:stars];
+		std::printf("  star lists merged: %s\n", oo::DescriptionOf(stars).c_str());
+		OO_CHECK(stars.at(0) != nullptr && stars.at(0)->at(1) != nullptr && stars.at(0)->at(1)->get<std::string>("texture") == "new.png");
+
+		// No equipment-overrides.plist: the lists are unchanged.
+		oo::PList equipment(oo::PList::Array{ oo::PList(oo::PList::Array{ oo::PList(1), oo::PList(10), oo::PList("Name"), oo::PList("EQ_A") }) });
+		const oo::PList before = equipment;
+		[ResourceManager handleEquipmentOverrides:equipment];
+		OO_CHECK(oo::DescriptionOf(equipment) == oo::DescriptionOf(before));
 	}
 }
 
