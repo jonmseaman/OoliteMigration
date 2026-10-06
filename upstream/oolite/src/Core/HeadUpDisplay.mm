@@ -758,7 +758,7 @@ void cxx::HeadUpDisplay::addDial(const oo::PList &info)
 	static bool allowedSelectorsLoaded = false;
 	if (!allowedSelectorsLoaded)
 	{
-		const oo::PList whitelist = [ResourceManager cxx_whitelistDictionary];
+		const oo::PList whitelist = [::ResourceManager cxx_whitelistDictionary];
 		const oo::PList *dialMethods = whitelist.get<oo::PList::Array>("hud_dial_methods");
 		// the set held what the array held; only strings can match a selector name
 		for (std::size_t j = 0; dialMethods != nullptr && j < dialMethods->count(); j++)
