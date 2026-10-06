@@ -84,7 +84,7 @@ bool OOCheckRequiresPListVerifierStage::shouldRun()
 {
 	OOFileScannerVerifierStage	*fileScanner = nullptr;
 	
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	return fileScanner != nullptr && fileScanner->fileExists("requires.plist", "Config", std::nullopt, false);
 }
 
@@ -101,7 +101,7 @@ void OOCheckRequiresPListVerifierStage::run()
 	std::optional<std::vector<unsigned>>	versionComponents,
 											maxVersionComponents;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 	if (fileScanner != nullptr)  requiresPList = fileScanner->plistNamed("requires.plist", "Config", std::nullopt, false);
 
 	if (requiresPList.isNull())  return;

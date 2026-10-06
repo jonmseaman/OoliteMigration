@@ -45,8 +45,8 @@ SOFTWARE.
 	deleted the Objective-C facades of OOFileScannerVerifierStage and OOFileHandlingVerifierStage,
 	and the verifier's -fileScannerStage, once every stage was C++ (ADR-0056 amendment "deleting a
 	facade"): both classes are global, as OOListUnusedFilesStage (bead oo-cwz) always was. A stage
-	finds the scanner with static_cast<OOFileScannerVerifierStage *>(oo::ToCxx([verifier()
-	cxx_stageWithName:OOFileScannerVerifierStage::kName])) until the verifier is C++ (oo-tsa4).
+	finds the scanner by its name through the verifier's stage lookup (an id: cast to the root
+	facade before oo::ToCxx) until the verifier is C++ (oo-tsa4).
 */
 
 class OOFileScannerVerifierStage : public cxx::OOOXPVerifierStage

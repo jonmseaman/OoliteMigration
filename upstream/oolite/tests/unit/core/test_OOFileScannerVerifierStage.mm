@@ -155,7 +155,7 @@ const std::vector<std::string> kUnusedName = { "Checking for unused files" };
 // The registered scanner, as the stages find it (the verifier's -fileScannerStage until bead oo-9ht.7).
 OOFileScannerVerifierStage *ScannerOf(OOOXPVerifier *verifier)
 {
-	return dynamic_cast<OOFileScannerVerifierStage *>(oo::ToCxx([verifier cxx_stageWithName:OOFileScannerVerifierStage::kName]));
+	return dynamic_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<OOOXPVerifierStage *>([verifier cxx_stageWithName:OOFileScannerVerifierStage::kName])));
 }
 
 }	// namespace
