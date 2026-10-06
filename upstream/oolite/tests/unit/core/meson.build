@@ -135,6 +135,7 @@ core_tests = {
     'test_GuiDisplayGen': ['*'],
     'test_PlayerEntityStickProfile': ['*'],
     'test_HeadUpDisplay': ['*'],
+    'test_GameController': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],
