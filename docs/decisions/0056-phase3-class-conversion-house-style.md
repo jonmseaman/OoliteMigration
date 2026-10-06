@@ -3867,3 +3867,61 @@ declarations from the façade's `@interface`.
 4. **With its last slice, `X.mm` has no Objective-C class code**: the ObjC-syntax gate of item 8
    applies to `X.mm` and `X.h` from this bead on; what remains Objective-C is the façade and its
    deletion bead.
+
+## Amendment (bead oo-60fwo): a giant class converted slice by slice, whose state moves first (ShipEntity)
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` "Slice 1". Exemplar: `src/Core/Entities/ShipEntity.h`,
+  `ShipEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_ShipEntity.mm`. Follows amendment oo-bj8
+  (the entities) and oo-9ht.140 (the slice plan).
+
+**Context.** `ShipEntity` (15,000 lines, ~640 methods, 197 ivars) converts in 34 slices, each a
+story that moves its methods into `cxx::ShipEntity`. Slice 1 moves the state first, so that every
+later slice has a C++ class to move into. Amendment oo-bj8 moved a root's ivars and gave the
+unconverted code one `@public` facade ivar, `_cxxEntity`, to reach them by. A ship is not a root:
+its `_cxxEntity` is a `cxx::Entity`, and the ship's members need a `cxx::ShipEntity`. Its methods
+also read the ivars it declared `@private`, and they stay Objective-C until their slice.
+
+**Decision (recommended defaults).**
+
+1. **The facade carries one `@public`, non-owning, typed alias of the root's part:**
+   `cxx::ShipEntity *_cxxShip`, set by the facade's override of the root's designated initialiser
+   (`-initWithCxxEntity:`, a checked `dynamic_cast` of `_cxxEntity`) and never released: the root's
+   `_cxxEntity` owns the part. Unconverted code reads the ship's members through it by the old
+   names, `_cxxShip->fuel` in a method of the facade, its categories or an Objective-C subclass,
+   and `ship->_cxxShip->fuel` from another class. The rewrite is amendment oo-bj8 item 2's,
+   compiler-guided, with the same poison-ivar proof; each slice deletes `_cxxShip->` from the
+   bodies it moves and gets them back verbatim. `oo::ToCxx(::ShipEntity *)` is the root's
+   crossing, typed (amendment oo-up4b item 3), not a read of `_cxxShip`: overload resolution picks
+   it for every `PlayerEntity *`, and the unit tests' stand-in `PLAYER` is a plain entity.
+2. **The `@private` ivars are public members while the class is half converted**, marked so in
+   the class: the facade's unconverted methods read them, and an Objective-C class cannot be a C++
+   friend. The facade's deletion bead makes them private again.
+3. **Every member is zero-initialised** (amendment oo-bj8 item 1), and keeps its type: Objective-C
+   object pointers stay raw pointers, retained and released by hand where the bodies did
+   (`DESTROY(_cxxShip->shipAI)` in the facade's `-dealloc`); they become `oo::ObjCRef` or
+   `oo::Ref` in the slices that own them. Inside `namespace cxx` an Objective-C class whose name
+   has a C++ twin is named `::X` (`::ShipEntity *scanned_ships[]`, `::OOWeakReference *`).
+4. **The initialisers.** The facade's `-init`, `-initBypassForPlayer` and
+   `-cxx_initWithKey:definition:` make the ship's adapter, `oo::ObjCEntity<cxx::ShipEntity>`,
+   where they sent `[super init]` (one private `-initShipPart`, which keeps the part of a ship
+   sent the initialiser again, as `PlayerEntity`'s `-deferredInit` does). The initialiser's body
+   between `[super init]` and the set-up is `cxx::ShipEntity::initWithKey()`; the set-up, which may
+   release the object and answer nil, and the top-speed check stay in the facade.
+5. **`-dealloc` stays in the facade** (amendment oo-bj8 item 7), with the root's guard (oo-s6ic6):
+   a ship released before its initialiser ran has no part and skips the body.
+6. **The slice checker sees a slice done when its units leave the file:** a unit that needs the
+   Objective-C object as self (an initialiser, `-dealloc`) moves to a category of the facade in
+   the facade's `.mm` (`ShipEntity (OOObjCBridge)`), because the class's `@implementation` stays
+   in `ShipEntity.mm` until the last slice; a declared selector it implements
+   (`-cxx_initWithKey:definition:`, `OO_RETURNS_RETAINED` as the house's other `cxx_init...` are)
+   moves to that category's `@interface` in the bridge header, so the primary `@implementation`
+   stays complete. The other units become members (`isShipWithSubEntityShip()`, whose category
+   method on the facade forwards), and a category of `Entity` in the file moves to the facade's
+   `.mm` (amendment oo-bj8 item 12).
+
+**Consequences.** One more load per member read from unconverted code, as for `_cxxEntity`. The
+subclasses (`StationEntity`, `DockEntity`, `PlayerEntity`, `ProxyPlayerEntity`), the three
+category files and every reader of a ship's ivars changed only by item 1. The facade's deletion
+bead removes every `_cxxShip->`, makes the item 2 members private and depends on the umbrella
+oo-k8a.

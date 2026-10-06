@@ -29,8 +29,6 @@ SOFTWARE.
 #import "OOALStreamedSound.h"
 #import "OOALSoundDecoder.h"
 
-namespace cxx {
-
 // The decoder is released by its oo::ObjCRef.
 OOALStreamedSound::~OOALStreamedSound()
 {
@@ -125,4 +123,3 @@ ALuint OOALStreamedSound::soundBuffer()
 	}
 }
 
-}	// namespace cxx
