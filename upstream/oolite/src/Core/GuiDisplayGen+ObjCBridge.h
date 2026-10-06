@@ -153,14 +153,6 @@ MA 02110-1301, USA.
 // NOW, not the row of the last render (bead oo-3rb.348).
 - (int) rowAtVirtualJoystickPosition:(NSPoint) vjpos;
 
-@end
-
-
-// Slices 2-4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
-// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
-@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
-
 // Chunk 2 (oo-3rb.93): a nil text or key is std::nullopt (nothing printed / no key set, as before);
 // text_array, when not nullptr, receives each line printed.
 - (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input;
@@ -188,8 +180,6 @@ MA 02110-1301, USA.
 						 withKeys:(const oo::PList &)item_keys
 						  intoRow:(OOGUIRow)row
 							color:(OOColor *)text_color;
-
-/////////////////////////////////////////////////////
 
 - (void) scrollUp:(int) how_much;
 
@@ -226,18 +216,32 @@ MA 02110-1301, USA.
 
 - (void) leaveLastLine;
 - (oo::PList) cxx_getLastLines;	// text, colour, fade time (x 2); null with no rows
+- (void) setStatusPage:(NSInteger) pageNum;
+- (NSUInteger) statusPage;
+- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
+
+@end
+
+
+// Slices 3 and 4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
+// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
+// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
+@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
 
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor;
 - (void) drawGUIBackground;
-- (void) setStatusPage:(NSInteger) pageNum;
-- (NSUInteger) statusPage;
 - (void) refreshStarChart;
 - (void) setStarChartTitle;
-- (void) cxx_drawEquipmentList:(const oo::PList &)eqptList z:(GLfloat)z;
 
 - (OOSystemID) targetNextFoundSystem:(int)direction;
 
 @end
+
+
+// One-line bridges (ADR-0056 amendment oo-9ht.139 item 3) for the file-scope helpers of
+// GuiDisplayGen.mm, which may not message the universe themselves. Deleted with the universe's
+// conversion.
+bool GuiDisplayGenUniverseUseShaders();
 
 
 namespace oo {

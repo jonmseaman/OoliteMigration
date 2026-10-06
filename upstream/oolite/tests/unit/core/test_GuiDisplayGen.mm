@@ -725,4 +725,39 @@ OO_TEST(noTexturesWithoutAUniverse)
 }
 
 
+OO_TEST(cxxSlice2API)
+{
+	@autoreleasepool
+	{
+		StartJavaScript();
+		oo::Ref<cxx::GuiDisplayGen> gui = oo::makeRef<cxx::GuiDisplayGen>(NSMakeSize(200, 100), 4, 5, 12, 8, std::optional<std::string>("T"));
+		OO_CHECK_EQ(gui->addLongText("a
+b", 0, GUI_ALIGN_LEFT), 2);
+		OO_CHECK(gui->objectForRow(1) == oo::PList("b"));
+		OO_CHECK(gui->reflowTextForMFD("x y") == std::optional<std::string>("x y
+"));
+		gui->setCurrentRow(2);
+		std::vector<std::string> printed;
+		gui->printLineNoScroll("p", GUI_ALIGN_LEFT, nil, 0.0f, std::optional<std::string>("pk"), &printed);
+		OO_CHECK(gui->keyForRow(2) == std::optional<std::string>("pk") && printed.size() == 1);
+		gui->setArray({ "c1", "c2" }, 3);
+		OO_CHECK(gui->objectForRow(3).isArray());
+		gui->scrollUp(1);
+		OO_CHECK(gui->objectForRow(2).isArray());
+		gui->setStatusPage(0);
+		OO_CHECK_EQ(gui->getStatusPage(), 1u);
+		OO_CHECK(!gui->setBackgroundTextureDescriptor(oo::PList()));
+		OO_CHECK(!gui->preloadGUITexture(oo::PList()));
+		gui->clearBackground();
+		gui->leaveLastLine();
+		OO_CHECK(gui->getLastLines().isArray());
+		// The facade forwards slice 2's selectors to the same object.
+		GuiDisplayGen *facade = oo::ToObjC(gui);
+		[facade cxx_setArray:{ "f" } forRow:0];
+		OO_CHECK(gui->objectForRow(0).isArray());
+		OO_CHECK_EQ([facade statusPage], 1u);
+	}
+}
+
+
 OO_TEST_MAIN()

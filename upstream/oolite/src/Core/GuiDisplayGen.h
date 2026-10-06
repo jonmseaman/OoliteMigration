@@ -165,6 +165,8 @@ inline constexpr const char *cxx_kGuiDockingContinueColor	= "docking_continue_co
 
 @class OOSound, OOColor, OOTexture, OOTextureSprite, HeadUpDisplay;
 
+namespace cxx { class OOTextureSprite; }	// C++ since bead oo-9ht (OOTextureSprite.h)
+
 
 typedef NSInteger OOGUIRow;	// -1 for none
 typedef NSInteger OOGUITabStop; // negative value = right align text
@@ -263,17 +265,82 @@ public:
 	void setText(const std::string &str, OOGUIRow row);
 	void setText(const std::optional<std::string> &str, OOGUIRow row, OOGUIAlignment alignment);	// nullopt: no change
 
+	// Chunk 2 (oo-3rb.93): a nil text or key is std::nullopt (nothing printed / no key set, as before);
+	// text_array, when not nullptr, receives each line printed.
+	std::optional<std::string> reflowTextForMFD(const std::optional<std::string> &input);
+	OOGUIRow addLongText(const std::optional<std::string> &str,
+						 OOGUIRow row,
+						 OOGUIAlignment alignment);
+	void printLongText(const std::optional<std::string> &str,
+					   OOGUIAlignment alignment,
+					   ::OOColor *text_color,
+					   float text_fade,
+					   const std::optional<std::string> &text_key,
+					   std::vector<std::string> *text_array);
+	void printLineNoScroll(const std::optional<std::string> &str,
+						   OOGUIAlignment alignment,
+						   ::OOColor *text_color,
+						   float text_fade,
+						   const std::optional<std::string> &text_key,
+						   std::vector<std::string> *text_array);
+
+	void setArray(const std::vector<std::string> &arr, OOGUIRow row);	// one string per column
+
+	// items: an array of row texts (a string, or an array of column strings); item_keys: null or an
+	// array of the same length.
+	void insertItemsFromArray(const oo::PList &items,
+							  const oo::PList &item_keys,
+							  OOGUIRow row,
+							  ::OOColor *text_color);
+
+	void scrollUp(int how_much);
+
+	/* allows the use of special dynamic backgrounds */
+	void setBackgroundTextureSpecial(OOGUIBackgroundSpecial spec, bool withBackground);
+
+	/*
+		A background/foreground texture descriptor is a dictionary with a string
+		property keyed "name" and optional number properties keyed "width" and
+		"height". Chunk 4 (oo-3rb.94..95): descriptors are oo::PList (null = nil).
+	*/
+
+	bool setBackgroundTextureDescriptor(const oo::PList &descriptor);
+	bool setForegroundTextureDescriptor(const oo::PList &descriptor);
+	bool setBackgroundTextureKey(const std::optional<std::string> &key);
+	bool setForegroundTextureKey(const std::optional<std::string> &key);
+
+	bool preloadGUITexture(const oo::PList &descriptor);
+
+	/*
+		Interpret a JavaScript value as a texture descriptor for
+		set{Background|Foreground}TextureDescriptor(). Also starts
+		preloading the texture. Null: no such texture.
+
+		callerDescription is a string describing the context in which this was
+		called, generally a method name (like "mission.runScreen()") for warning
+		generation.
+
+		Requires a request on context.
+	*/
+	oo::PList textureDescriptorFromJSValue(ooscript::Value value, ooscript::Context context, const std::optional<std::string> &callerDescription);
+
+	void clearBackground();
+
+	void leaveLastLine();
+	oo::PList getLastLines();	// text, colour, fade time (x 2); null with no rows
+
 	// The row under a virtual-joystick (pointer) position: the row -drawGUI:drawCursor:YES returns for
 	// that position, without rendering. A click uses it so that it activates the row under the pointer
 	// NOW, not the row of the last render (bead oo-3rb.348).
 	int rowAtVirtualJoystickPosition(NSPoint vjpos);
+	void setStatusPage(NSInteger pageNum);
+	NSUInteger getStatusPage();
+	void drawEquipmentList(const oo::PList &eqptList, GLfloat z);
 
-	/*	Internal: the GUI's state. The methods of slices 2-4 of docs/phases/3-slices/GuiDisplayGen.md
-		(text layout, textures, drawing, the star chart), still an Objective-C category of the facade
-		in GuiDisplayGen.mm, read and write it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz);
-		it becomes private when those slices convert. The two sprites stay +1 raw pointers, released
-		by the destructor, because slice 2 replaces them with -autorelease (proposed amendment
-		oo-2g51 item 2).
+	/*	Internal: the GUI's state. The methods of slices 3 and 4 of docs/phases/3-slices/GuiDisplayGen.md
+		(drawing, the star chart), still an Objective-C category of the facade in GuiDisplayGen.mm,
+		read and write it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz); it becomes private
+		when those slices convert.
 	*/
 	NSSize					size_in_pixels = {};
 	unsigned				n_columns = {};
@@ -291,8 +358,8 @@ public:
 	oo::ObjCRef<::OOColor *>	textColor;
 	oo::ObjCRef<::OOColor *>	textCommsColor;
 
-	::OOTextureSprite		*backgroundSprite = {};	// +1
-	::OOTextureSprite		*foregroundSprite = {};	// +1
+	oo::Ref<cxx::OOTextureSprite>	backgroundSprite;
+	oo::Ref<cxx::OOTextureSprite>	foregroundSprite;
 	OOGUIBackgroundSpecial	backgroundSpecial = {};
 
 	std::optional<std::string>	title;		// none: no title bar
