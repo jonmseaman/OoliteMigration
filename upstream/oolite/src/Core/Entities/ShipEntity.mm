@@ -14924,7 +14924,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	if ([self status] == STATUS_BEING_SCOOPED)
 	{
 		//if we are being tractored, but we have no owner, then we have a problem
-		if (behaviour != BEHAVIOUR_TRACTORED  || [self owner] == nil || [self owner] == self || [self owner] == (id)NO_TARGET)
+		if (behaviour != BEHAVIOUR_TRACTORED  || [self owner] == nil || [self owner] == self)	// NO_TARGET is 0: `[self owner] == (id)NO_TARGET` only repeated the nil test
 		{
 			// escaped tractor beam
 			[self setStatus:STATUS_IN_FLIGHT];	// should correct 'uncollidable objects' bug
