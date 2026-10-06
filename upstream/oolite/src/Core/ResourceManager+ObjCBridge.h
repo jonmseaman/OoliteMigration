@@ -110,33 +110,19 @@ MA 02110-1301, USA.
 + (oo::PList) cxx_logControlDictionary;
 + (oo::PList) cxx_roleCategoriesDictionary;	// category -> array of its roles, each once (a set), in first-seen order
 
-@end
-
-
-// Slice 4 of docs/phases/3-slices/ResourceManager.md: still Objective-C, implemented by this
-// category in ResourceManager.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to ResourceManager+ObjCBridge.mm.
-@interface ResourceManager (OOResourceManagerUnconverted)
-
++ (OOSystemDescriptionManager *) systemDescriptionManager;
+// These are deliberately not merged like normal plists for security reasons.
++ (oo::PList) cxx_shaderBindingTypesDictionary;
 // nullopt when not found (was nil); folderName nullopt where nil was passed.
 + (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 + (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
-
-// These are deliberately not merged like normal plists for security reasons.
-+ (oo::PList) cxx_shaderBindingTypesDictionary;
-
-+ (OOSystemDescriptionManager *) systemDescriptionManager;
-
-+ (OOSound *)cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 + (OOMusic *)cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
-
++ (OOSound *)cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 // nullopt when no file was found (was nil); folderName nullopt where nil was passed.
 + (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 + (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
-
 // World scripts by name, in the order each name was first loaded.
 + (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts;
-
 /*	+cxx_writeDiagnosticData:toFileNamed:
 	+cxx_writeDiagnosticString:toFileNamed:
 	+cxx_writeDiagnosticPList:toFileNamed:
@@ -147,10 +133,8 @@ MA 02110-1301, USA.
 + (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name;
 + (BOOL) cxx_writeDiagnosticString:(const std::string &)string toFileNamed:(const std::string &)name;
 + (BOOL) cxx_writeDiagnosticPList:(const oo::PList &)plist toFileNamed:(const std::string &)name;
-
-+ (std::optional<std::string>) cxx_diagnosticFileLocation;
-
 + (oo::PList) cxx_materialDefaults;
++ (std::optional<std::string>) cxx_diagnosticFileLocation;
 
 @end
 

@@ -95,6 +95,31 @@ public:
 	// Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 	static void clearCaches();
 
+	static oo::Ref<OOSystemDescriptionManager> systemDescriptionManager();	// a new manager (C++ since bead oo-0sr1)
+	static oo::PList shaderBindingTypesDictionary();
+	// nullopt when not found (was nil); folderName nullopt where nil was passed.
+	static std::optional<std::string> pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName);
+	static std::optional<std::string> pathForFileNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache);
+	static ::OOMusic *ooMusicNamed(const std::string &fileName, const std::optional<std::string> &folderName);	// autoreleased
+	static ::OOSound *ooSoundNamed(const std::string &fileName, const std::optional<std::string> &folderName);	// autoreleased
+	// nullopt when no file was found (was nil); folderName nullopt where nil was passed.
+	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName);
+	static std::optional<std::string> stringFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool useCache);
+	// World scripts by name, in the order each name was first loaded.
+	static std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> loadScripts();
+	/*	writeDiagnosticData()
+		writeDiagnosticString()
+		writeDiagnosticPList()
+
+		Write data to the specified path within the log directory. Slashes may be
+		used as path separators in name.
+	 */
+	static bool writeDiagnosticData(const oo::Data &data, const std::string &name);
+	static bool writeDiagnosticString(const std::string &string, const std::string &name);
+	static bool writeDiagnosticPList(const oo::PList &plist, const std::string &name);
+	static oo::PList materialDefaults();
+	static std::optional<std::string> diagnosticFileLocation();
+
 	static bool corePlist(const std::string &fileName, const std::string &path);	// -cxx_corePlist:excludedAt:
 	// A null PList when no file was found; folderName nullopt where nil was passed.
 	static oo::PList dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
@@ -125,6 +150,8 @@ private:
 	static void preloadFileListFromOXZ(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFileListFromFolder(const std::string &path, const std::vector<std::string> &folders);
 	static void preloadFilePathFor(const std::string &fileName, const std::string &subFolder, const std::string &path);
+	static id retrieveFileNamed(const std::string &fileName, const std::optional<std::string> &folderName, std::map<std::string, oo::ObjCRef<id>, std::less<>> *ioCache, std::optional<std::string> key, Class klass, bool useCache);	// klass: the facade class OOSound or OOMusic; autoreleased
+	static bool directoryExists(const std::string &inPath, bool inCreate);
 	static bool checkCacheUpToDateForPaths(const std::vector<std::string> &searchPaths);
 	static void mergeRoleCategories(const oo::PList &catData, oo::PList &categories);
 	static void checkOXPMessagesInPath(const std::string &path);

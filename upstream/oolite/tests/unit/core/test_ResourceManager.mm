@@ -494,4 +494,22 @@ OO_TEST(scriptsAndSystemsAndDiagnostics)
 }
 
 
+OO_TEST(cxxSlice4API)
+{
+	@autoreleasepool
+	{
+		OO_CHECK(cxx::ResourceManager::stringFromFilesNamed("oo-test-text.txt", std::string("Config")) == std::optional<std::string>("hello, a.oxp"));
+		OO_CHECK(cxx::ResourceManager::pathForFileNamed("oo-test-missing.txt", std::string("Config"), false) == std::nullopt);
+		OO_CHECK(cxx::ResourceManager::ooSoundNamed("oo-test-missing.ogg", std::string("Sounds")) == nil);
+		OO_CHECK(cxx::ResourceManager::shaderBindingTypesDictionary().isNull());
+		OO_CHECK(cxx::ResourceManager::loadScripts().empty());
+		OO_CHECK(cxx::ResourceManager::systemDescriptionManager().get() != nullptr);
+		OO_CHECK(cxx::ResourceManager::diagnosticFileLocation() == [ResourceManager cxx_diagnosticFileLocation]);
+		// The facade answers the new manager's facade.
+		OOSystemDescriptionManager *manager = [ResourceManager systemDescriptionManager];
+		OO_CHECK(manager != nil && oo::ToCxx(manager) != nullptr);
+	}
+}
+
+
 OO_TEST_MAIN()
