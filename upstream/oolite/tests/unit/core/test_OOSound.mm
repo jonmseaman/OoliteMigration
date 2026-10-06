@@ -570,11 +570,13 @@ OO_TEST(nilAndLifetime)
 	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSound *>(nullptr)) == nil);
 	OO_CHECK([none soundBuffer] == 0 && ![none soundIncomplete]);
 
-	// An Objective-C sound's C++ part outlives it, and then answers as nil did.
+	// An Objective-C sound's C++ part outlives it, and then answers as nil did. (The streamed sound
+	// was one until bead oo-9ht.84 made it C++; the subclass that overrides the initialiser is one.)
 	oo::Ref<cxx::OOSound> part;
 	@autoreleasepool
 	{
-		part = oo::Ref<cxx::OOSound>(oo::ToCxx([[[OOSound alloc] cxx_initWithContentsOfFile:std::string("big.ogg")] autorelease]));
+		OOSound *objCSound = [[[TestMusic alloc] cxx_initWithContentsOfFile:std::string("big.ogg")] autorelease];
+		part = oo::Ref<cxx::OOSound>(oo::ToCxx(objCSound));
 	}
 	OO_CHECK(!part->name().has_value() && part->soundBuffer() == 0 && !part->soundIncomplete());
 	OO_CHECK(oo::ToObjC(part) == nil);

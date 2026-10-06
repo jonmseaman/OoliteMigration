@@ -31,7 +31,7 @@ SOFTWARE.
 #ifndef OOALSTREAMEDSOUND_H
 #define OOALSTREAMEDSOUND_H
 
-#import "OOSound.h"
+#import "OOALSound.h"
 @class OOALSoundDecoder;	// only named here; the tests that stub the decoder declare their own
 
 #include "oofnd/StdLib.hpp"
@@ -54,6 +54,8 @@ public:
 	ALuint soundBuffer() override;
 
 private:
+	friend struct OOALStreamedSoundTestAccess;	// the stand-ins of tests that stub the sound (bead oo-9ht.84)
+
 	OOALStreamedSound() = default;
 
 	char				*_buffer = {};
