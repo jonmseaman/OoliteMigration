@@ -152,14 +152,6 @@ MA 02110-1301, USA.
 @end
 
 
-// The slice 2 unit that slice 3 (still Objective-C) sends, forwarded to its C++ member (proposed
-// ADR-0056 amendment oo-bwjb item 2).
-@interface GameController (OOPrivateForwarded)
-
-- (void) runFrameLoop;
-
-@end
-
 
 @interface GameController (FullScreen)
 

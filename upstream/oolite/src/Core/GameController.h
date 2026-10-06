@@ -62,11 +62,11 @@ class OOFullScreenController;	// C++ since bead oo-bgmb
 namespace cxx {
 
 /*	The application controller (bead oo-zkpmt, slice 1 of docs/phases/3-slices/GameController.md):
-	the class shell, its state and accessors. The frame loop and deferred calls (slice 2) and the
-	start-up, splash and progress messages, exit and player-file methods (slice 3) are still
-	Objective-C methods of the façade (GameController+ObjCBridge.h), in GameController.mm, as is the
-	FullScreen category (SDL/GameController+SDLFullScreen.mm, bead oo-qinv); they read and write the
-	state below through the façade's _cxxController.
+	the class shell, its state and accessors; the frame loop and deferred calls (slice 2, bead
+	oo-hn0fw); start-up, splash and progress messages, exit and the player file (slice 3, bead
+	oo-5ah4k). The FullScreen category (SDL/GameController+SDLFullScreen.mm, bead oo-qinv) is still
+	Objective-C on the façade (GameController+ObjCBridge.h) and reads and writes the state below
+	through the façade's _cxxController.
 */
 class GameController : public oo::RefCounted
 {
@@ -121,8 +121,34 @@ public:
 	*/
 	void fireDueTimers();
 
-	// Internal: -applicationDidFinishLaunching (slice 3, still Objective-C) runs it.
-	void runFrameLoop();
+	// Start-up, splash and progress messages, exit, player file (bead oo-5ah4k, slice 3).
+	void applicationDidFinishLaunching();
+
+	void exitAppWithContext(const std::string &context);
+	void exitAppCommandQ();
+
+	// nullopt: no saved game to load (was nil).
+	std::optional<std::string> playerFileToLoad();
+	void setPlayerFileToLoad(const std::string &filename);	// kept only for a .oolite-save path
+
+	// nullopt: no save directory (was nil). A nullopt argument clears it and the save-directory
+	// default, and the next playerFileDirectory() looks it up again (as nil did; "" does not).
+	std::optional<std::string> playerFileDirectory();
+	void setPlayerFileDirectory(const std::optional<std::string> &filename);
+
+	void loadPlayerIfRequired();
+
+	void beginSplashScreen();
+	void logProgress(const std::string &message);
+#if OO_DEBUG
+	// These take the formatted message, as do OO_DEBUG_PROGRESS / OO_DEBUG_PUSH_PROGRESS below.
+	void debugLogProgress(const std::string &message);
+	void debugPushProgressMessage(const std::string &message);
+	void debugPopProgressMessage();
+#endif
+	void endSplashScreen();
+
+	void windowDidResize();
 
 	// Internal: the state, which slices 2 and 3 and the FullScreen category (still Objective-C on
 	// the façade) read and write through _cxxController; it becomes private as they convert.
@@ -180,6 +206,13 @@ private:
 	void doPerformGameTick();
 	void performGameTickIfDue();
 	void fireDueDeadlines();
+	void runFrameLoop();
+
+	void reportUnhandledStartupExceptionName(const std::string &name, const std::optional<std::string> &reason);	// reason nullopt: none (was nil)
+#if OO_DEBUG && !OOLITE_MAC_OS_X
+	bool debugMessageTrackingIsOn();
+	std::string debugMessageCurrentString();
+#endif
 };
 
 }	// namespace cxx

@@ -309,3 +309,5 @@
 [oo-zkpmt] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
 # GameController slice 2 (oo-hn0fw): the frame loop as members; the deferred calls through the bridge perform.
 [oo-hn0fw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
+# GameController slice 3 (oo-5ah4k): start-up, splash, progress, exit and player file as members.
+[oo-5ah4k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
