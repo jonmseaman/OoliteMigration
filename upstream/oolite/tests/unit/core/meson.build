@@ -132,6 +132,7 @@ core_tests = {
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_GuiDisplayGen': ['*'],
     'test_PlayerEntityStickProfile': ['*'],
+    'test_HeadUpDisplay': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],
@@ -162,6 +163,7 @@ core_tests = {
     'test_OODebugTCPConsoleClient': ['Core/Debug/OODebugTCPConsoleClient.mm', 'Core/Debug/OODebugTCPConsoleClient+ObjCBridge.mm', 'Core/Debug/OOTCPStreamDecoder.c', 'Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm', 'Core/OODescription.mm'],
     'test_OODebugSupport': ['Core/Debug/OODebugSupport.mm', 'Core/Debug/OODebugSupport+ObjCBridge.mm'],
     'test_OODebugStandards': ['Core/Debug/OODebugStandards.mm'],
+    'test_OOOXZManager': ['*'],
 }
 
 fs = import('fs')

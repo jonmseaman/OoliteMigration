@@ -196,6 +196,21 @@ cxx::OOScript *oo::ToCxx(::OOScript *script)
 }
 
 
+- (id) initWithCxxRootScript:(cxx::OOScript *)script
+{
+	self = [super init];
+	if (self != nil)
+	{
+		_cxxRootScript = oo::Ref<cxx::OOScript>(script);
+		@autoreleasepool
+		{
+			Peers().peerFor(_cxxRootScript.get(), [self] { return [self retain]; });
+		}
+	}
+	return self;
+}
+
+
 - (void) dealloc
 {
 	if (ObjCScript *objCScript = AsObjCScript(_cxxRootScript.get()))  objCScript->ownerDeallocated();
