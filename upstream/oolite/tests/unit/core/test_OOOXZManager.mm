@@ -30,10 +30,12 @@
 #import "OOManifestProperties.h"
 #import "OOXMLExtensions.h"
 #import "OOPListParsing.h"
+#import "OOColor.h"
 
 #include "oofnd/Date.hpp"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/PListParsing.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 #include "oo_test.hpp"
@@ -424,6 +426,218 @@ OO_TEST(facadeContract)
 		[facade setProgressStatus:"halfway"];
 		OO_CHECK_EQ(manager->_progressStatus, "halfway");
 		[facade setFilter:"*"];
+	}
+}
+
+
+// Slice 2 (bead oo-0hyr): installing, updating, removing and extracting OXZs.
+namespace {
+
+// A stored (uncompressed) zip of the named files, written by hand: a synthetic OXZ.
+uint32_t Crc32(const std::string &data)
+{
+	uint32_t crc = 0xFFFFFFFFu;
+	for (unsigned char byte : data)
+	{
+		crc ^= byte;
+		for (int k = 0; k < 8; k++)  crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+	}
+	return ~crc;
+}
+
+
+void Put16(std::string &out, unsigned value)  { out += static_cast<char>(value & 0xFF); out += static_cast<char>((value >> 8) & 0xFF); }
+void Put32(std::string &out, uint32_t value)  { Put16(out, value & 0xFFFF); Put16(out, value >> 16); }
+
+
+void WriteZip(const stdfs::path &path, const std::vector<std::pair<std::string, std::string>> &entries)
+{
+	std::string zip, directory;
+	for (const auto &[name, data] : entries)
+	{
+		const uint32_t offset = static_cast<uint32_t>(zip.size()), crc = Crc32(data), size = static_cast<uint32_t>(data.size());
+		Put32(zip, 0x04034b50); Put16(zip, 20); Put16(zip, 0); Put16(zip, 0); Put16(zip, 0); Put16(zip, 0x21);
+		Put32(zip, crc); Put32(zip, size); Put32(zip, size); Put16(zip, static_cast<unsigned>(name.size())); Put16(zip, 0);
+		zip += name; zip += data;
+		Put32(directory, 0x02014b50); Put16(directory, 20); Put16(directory, 20); Put16(directory, 0); Put16(directory, 0);
+		Put16(directory, 0); Put16(directory, 0x21); Put32(directory, crc); Put32(directory, size); Put32(directory, size);
+		Put16(directory, static_cast<unsigned>(name.size())); Put16(directory, 0); Put16(directory, 0); Put16(directory, 0);
+		Put16(directory, 0); Put32(directory, 0); Put32(directory, offset);
+		directory += name;
+	}
+	const uint32_t directoryOffset = static_cast<uint32_t>(zip.size());
+	zip += directory;
+	Put32(zip, 0x06054b50); Put16(zip, 0); Put16(zip, 0); Put16(zip, static_cast<unsigned>(entries.size())); Put16(zip, static_cast<unsigned>(entries.size()));
+	Put32(zip, static_cast<uint32_t>(directory.size())); Put32(zip, directoryOffset); Put16(zip, 0);
+	WriteText(path, zip);
+}
+
+
+const char *kGammaManifest = "{ identifier = \"oolite.oxp.test.gamma\"; title = Gamma; version = \"1.0\"; category = Ships; }";
+
+
+std::string ColorName(cxx::OOColor *c)
+{
+	if (c == nullptr)  return "nil";
+	const std::pair<const char *, oo::Ref<cxx::OOColor>> named[] = {
+		{ "yellow", cxx::OOColor::yellowColor() }, { "cyan", cxx::OOColor::cyanColor() }, { "orange", cxx::OOColor::orangeColor() },
+		{ "brown", cxx::OOColor::brownColor() }, { "white", cxx::OOColor::whiteColor() }, { "red", cxx::OOColor::redColor() },
+		{ "gray", cxx::OOColor::grayColor() }, { "blue", cxx::OOColor::blueColor() } };
+	for (const auto &[name, n] : named)
+	{
+		if (n->redComponent() == c->redComponent() && n->greenComponent() == c->greenComponent() && n->blueComponent() == c->blueComponent())  return name;
+	}
+	return "other";
+}
+
+
+// The slice 2 units: their C++ members (isRestarting through the facade, which forwards it).
+oo::PList InstalledManifest(const std::string &identifier)		{ return Manager()->installedManifestForIdentifier(identifier); }
+std::string InstallStatus(const oo::PList &manifest)			{ return Manager()->installStatusForManifest(manifest).value_or("(none)"); }
+std::string Color(const oo::PList &manifest)					{ return ColorName(Manager()->colorForManifest(manifest).get()); }
+bool InstallOXZ(NSUInteger item)								{ return Manager()->installOXZ(item); }
+bool UpdateAllOXZ()												{ return Manager()->updateAllOXZ(); }
+bool RemoveOXZ(NSUInteger item)									{ return Manager()->removeOXZ(item); }
+std::string ExtractOXZ(NSUInteger item)							{ return Manager()->extractOXZ(item); }
+bool IsRestarting()												{ return [[OOOXZManager sharedManager] isRestarting]; }
+
+
+// Deliver the download's events until it is no longer under way (at most 20 s).
+void FinishDownload()
+{
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+	while ((Manager()->_downloadStatus == OXZ_DOWNLOAD_STARTED || Manager()->_downloadStatus == OXZ_DOWNLOAD_RECEIVING) && std::chrono::steady_clock::now() < deadline)
+	{
+		Manager()->processDownloadEvents();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+}
+
+
+std::string Element(const oo::PList &list, NSUInteger index)
+{
+	const oo::PList *element = list.at(index);
+	return (element != nullptr) ? Str(*element, kOOManifestTitle) : "(none)";
+}
+
+}	// namespace
+
+
+OO_TEST(installableStates)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The list holds Alpha 3.0 and Beta 1.0; Alpha 1.0 is managed.
+		const oo::PList list = Manager()->manifests();
+		OO_CHECK_TEXT(Titles(list), "Alpha 3.0, Beta 1.0");
+		const oo::PList alpha = *list.at(0), beta = *list.at(1);
+		OO_CHECK_TEXT(InstallStatus(alpha), "oolite-oxzmanager-installable-update");
+		OO_CHECK_TEXT(InstallStatus(beta), "oolite-oxzmanager-installable-okay");
+		OO_CHECK_TEXT(Color(alpha), "cyan");
+		OO_CHECK_TEXT(Color(beta), "yellow");
+		OO_CHECK_TEXT(Str(InstalledManifest("oolite.oxp.test.alpha"), kOOManifestVersion), "1.0");
+		OO_CHECK(InstalledManifest("oolite.oxp.test.beta").isNull());
+		OO_CHECK(!IsRestarting());
+	}
+}
+
+
+OO_TEST(installExtractAndRemove)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// A synthetic OXZ, offered in the list with a file: URL.
+		WriteZip(sRoot / "gamma.oxz", { { "manifest.plist", kGammaManifest }, { "Config/notes.txt", "gamma notes" } });
+		oo::PList::Array entries = *Manager()->manifests().getIf<oo::PList::Array>();
+		auto parsed = oo::parsePropertyList(kGammaManifest);
+		oo::PList gamma = parsed ? *parsed : oo::PList();
+		gamma.getIf<oo::PList::Dict>()->insert_or_assign(std::string(kOOManifestDownloadURL), oo::PList("file:///" + Generic(sRoot / "gamma.oxz")));
+		entries.push_back(gamma);
+		Manager()->setOXZList(oo::PList(std::move(entries)));
+		Manager()->setFilteredList(Manager()->manifests());
+		OO_CHECK_TEXT(Titles(Manager()->manifests()), "Alpha 3.0, Beta 1.0, Gamma 1.0");
+		Manager()->_downloadStatus = OXZ_DOWNLOAD_NONE;
+
+		OO_CHECK(!InstallOXZ(3));
+		OO_CHECK(InstallOXZ(2));
+		OO_CHECK(Manager()->_interfaceState == OXZ_STATE_INSTALLING);
+		OO_CHECK(!InstallOXZ(2));	// one download at a time
+		FinishDownload();
+		OO_CHECK(Manager()->_downloadStatus == OXZ_DOWNLOAD_COMPLETE);
+		OO_CHECK(Manager()->_interfaceState == OXZ_STATE_TASKDONE);
+		OO_CHECK(Manager()->_changesMade);
+		OO_CHECK(Manager()->_dependencyStack.empty());
+		OO_CHECK(stdfs::exists(sRoot / "Managed" / "oolite.oxp.test.gamma.oxz"));
+		const oo::PList managed = Manager()->managedOXZs();
+		OO_CHECK_TEXT(Titles(managed), "Late 1, Local 3, Alpha 1.0, Gamma 1.0");
+		OO_CHECK_TEXT(InstallStatus(*Manager()->manifests().at(2)), "oolite-oxzmanager-installable-already");
+		OO_CHECK_TEXT(Color(*Manager()->manifests().at(2)), "white");
+		Manager()->_downloadStatus = OXZ_DOWNLOAD_NONE;
+		OO_CHECK(!InstallOXZ(2));	// already installed
+
+		// Extracting: Gamma into the extract folder; again (it exists); Alpha (a folder, not a zip); nothing.
+		Manager()->setFilteredList(managed);
+		OO_CHECK_TEXT(Element(managed, 3), "Gamma");
+		OO_CHECK_TEXT(ExtractOXZ(3), "oolite-oxzmanager-extract-log-main-createdoolite-oxzmanager-extract-log-num-u-extractedoolite-oxzmanager-extract-log-extracted-to-@");
+		const stdfs::path extracted = sRoot / "Extract" / "oolite.oxp.test.gamma-1.0.off";
+		OO_CHECK(stdfs::exists(extracted / "manifest.plist"));
+		OO_CHECK(stdfs::exists(extracted / "Config" / "notes.txt"));
+		OO_CHECK_TEXT(ExtractOXZ(3), "oolite-oxzmanager-extract-log-main-exists");
+		OO_CHECK_TEXT(ExtractOXZ(2), "oolite-oxzmanager-extract-log-bad-original");
+		OO_CHECK_TEXT(ExtractOXZ(9), "oolite-oxzmanager-extract-log-no-original");
+
+		// Removing: out of range, then Gamma.
+		OO_CHECK(!RemoveOXZ(9));
+		OO_CHECK(RemoveOXZ(3));
+		OO_CHECK(!stdfs::exists(sRoot / "Managed" / "oolite.oxp.test.gamma.oxz"));
+		OO_CHECK(Manager()->_interfaceState == OXZ_STATE_REMOVING);
+		OO_CHECK_TEXT(Titles(Manager()->managedOXZs()), "Late 1, Local 3, Alpha 1.0");
+	}
+}
+
+
+OO_TEST(restartAndUpdateAll)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		Manager()->_interfaceState = OXZ_STATE_RESTARTING;
+		OO_CHECK(IsRestarting());
+		OO_CHECK(Manager()->_interfaceState == OXZ_STATE_MAIN);
+		OO_CHECK(!Manager()->_changesMade);
+		OO_CHECK(Manager()->_downloadStatus == OXZ_DOWNLOAD_NONE);
+		OO_CHECK(!IsRestarting());
+
+		// Alpha 3.0 updates the managed Alpha 1.0; its URL names no file, so the download fails.
+		OO_CHECK(UpdateAllOXZ());
+		OO_CHECK(Manager()->_downloadAllDependencies);
+		OO_CHECK_EQ(Manager()->_dependencyStack.size(), 1u);
+		OO_CHECK_EQ(Manager()->_item, 0u);
+		OO_CHECK(Manager()->_interfaceState == OXZ_STATE_INSTALLING);
+		OO_CHECK_TEXT(Titles(Manager()->_filteredList), "Alpha 3.0, Beta 1.0, Gamma 1.0");
+		FinishDownload();
+		OO_CHECK(Manager()->_downloadStatus == OXZ_DOWNLOAD_ERROR);
+	}
+}
+
+
+OO_TEST(facadeContractSliceTwo)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		// The slice 2 units that slices 3 and 4 send, forwarded.
+		OOOXZManager *facade = [OOOXZManager sharedManager];
+		const oo::PList alpha = *Manager()->manifests().at(0);
+		OO_CHECK_TEXT(ColorName(oo::ToCxx([facade colorForManifest:alpha])), Color(alpha));
+		OO_CHECK_TEXT([facade installStatusForManifest:alpha].value_or("(none)"), InstallStatus(alpha));
+		OO_CHECK(![facade installOXZ:99]);
+		OO_CHECK(![facade removeOXZ:99]);
+		OO_CHECK_TEXT([facade extractOXZ:99], "oolite-oxzmanager-extract-log-no-original");
+		OO_CHECK(![facade updateAllOXZ]);	// the failed download is not cleared
+		OO_CHECK(![facade isRestarting]);
 	}
 }
 

@@ -2,8 +2,8 @@
 
 OOOXZManager+ObjCBridge.mm
 
-TRANSITIONAL (proposed ADR-0056, bead oo-bwjb): the Objective-C OOOXZManager facade. Every slice 1
-method forwards to cxx::OOOXZManager in one line; slices 2 to 4 are implemented, still Objective-C,
+TRANSITIONAL (proposed ADR-0056, bead oo-bwjb): the Objective-C OOOXZManager facade. Every converted
+method forwards to cxx::OOOXZManager in one line; slices 3 and 4 are implemented, still Objective-C,
 in OOOXZManager.mm. See OOOXZManager+ObjCBridge.h.
 
 Oolite
@@ -98,6 +98,7 @@ cxx::OOOXZManager *oo::ToCxx(OOOXZManager *manager)
 - (void) processDownloadEvents							{ _cxxManager->processDownloadEvents(); }
 - (oo::PList) manifests									{ return _cxxManager->manifests(); }
 - (oo::PList) managedOXZs								{ return _cxxManager->managedOXZs(); }
+- (BOOL) isRestarting									{ return _cxxManager->isRestarting(); }
 
 @end
 
@@ -108,11 +109,16 @@ cxx::OOOXZManager *oo::ToCxx(OOOXZManager *manager)
 - (std::optional<std::string>) extractionBasePathForIdentifier:(const std::string &)identifier andVersion:(const std::string &)version	{ return _cxxManager->extractionBasePathForIdentifier(identifier, version); }
 - (std::optional<std::string>) humanSize:(NSUInteger)bytes	{ return _cxxManager->humanSize(bytes); }
 - (BOOL) ensureInstallPath								{ return _cxxManager->ensureInstallPath(); }
-- (BOOL) beginDownload:(const std::string &)url			{ return _cxxManager->beginDownload(url); }
 - (BOOL) validateFilter:(const std::string &)input		{ return _cxxManager->validateFilter(input); }
 - (void) setFilteredList:(const oo::PList &)list		{ _cxxManager->setFilteredList(list); }
 - (void) setFilter:(const std::string &)filter			{ _cxxManager->setFilter(filter); }
 - (oo::PList) applyCurrentFilter:(const oo::PList &)list	{ return _cxxManager->applyCurrentFilter(list); }
 - (void) setProgressStatus:(const std::string &)newStatus	{ _cxxManager->setProgressStatus(newStatus); }
+- (OOColor *) colorForManifest:(const oo::PList &)manifest	{ return oo::ToObjC(_cxxManager->colorForManifest(manifest)); }
+- (std::optional<std::string>) installStatusForManifest:(const oo::PList &)manifest	{ return _cxxManager->installStatusForManifest(manifest); }
+- (BOOL) installOXZ:(NSUInteger)item					{ return _cxxManager->installOXZ(item); }
+- (BOOL) updateAllOXZ									{ return _cxxManager->updateAllOXZ(); }
+- (BOOL) removeOXZ:(NSUInteger)item						{ return _cxxManager->removeOXZ(item); }
+- (std::string) extractOXZ:(NSUInteger)item				{ return _cxxManager->extractOXZ(item); }
 
 @end
