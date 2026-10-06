@@ -138,7 +138,7 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 		_cachedRegExpString = regExp;
 		Object regExpFacadeObj = ooscript::newUCRegExpObjectNoStatics((context), reinterpret_cast<const ooscript::Char16 *>(buffer), expLength, static_cast<std::uint32_t>(flags));
 		ooscript::Object regExpObj = (regExpFacadeObj);
-		_cachedRegExpObject = [[OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
+		_cachedRegExpObject = [[::OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
 		_cachedFlags = flags;
 		
 		free(buffer);

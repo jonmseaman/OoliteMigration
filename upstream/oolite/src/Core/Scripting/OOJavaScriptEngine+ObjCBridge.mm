@@ -2,9 +2,9 @@
 
 OOJavaScriptEngine+ObjCBridge.mm
 
-TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c and oo-elta): the Objective-C OOJavaScriptEngine
+TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c, oo-elta and oo-k4nu): the Objective-C OOJavaScriptEngine
 facade (see OOJavaScriptEngine+ObjCBridge.h). Every method forwards to its C++ member in one line.
-Then the OONull facade, the categories on OOObject and OONativeVector that forward to the free
+Then the OONull and OOJSValue facades, the categories on OOObject and OONativeVector that forward to the free
 functions holding their bodies (amendment oo-ppc item 3), and the one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139).
 Deleted with OOJavaScriptEngine+ObjCBridge.h.
 
@@ -33,6 +33,8 @@ MA 02110-1301, USA.
 #import "OOScript.h"
 #import "OOWeakReference.h"
 #import "OOVector.h"
+#import "OOPlanetEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
 #include "oofnd/objc/OOException.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
@@ -163,6 +165,97 @@ cxx::OOJavaScriptEngine *oo::ToCxx(OOJavaScriptEngine *engine)
 @end
 
 #endif
+
+
+@interface OOJSValue (OOObjCBridgePrivate)
+
+- (id) initWithCxxValue:(cxx::OOJSValue *)value;
+- (id) initWithNewCxxValue:(oo::Ref<cxx::OOJSValue>)value;
+
+@end
+
+
+@implementation OOJSValue
+
+// Inside the @implementation for the private ivar.
+OOJSValue *oo::ToObjC(cxx::OOJSValue *value)
+{
+	return Peers().peerFor(value, [value] { return [[OOJSValue alloc] initWithCxxValue:value]; });
+}
+
+
+cxx::OOJSValue *oo::ToCxx(OOJSValue *value)
+{
+	if (value == nil)  return nullptr;
+	return value->_cxxValue.get();
+}
+
+
+- (id) initWithCxxValue:(cxx::OOJSValue *)value
+{
+	self = [super init];
+	if (self != nil)  _cxxValue = oo::Ref<cxx::OOJSValue>(value);
+	return self;
+}
+
+
+// For -initWithJSValue:inContext: and -initWithJSObject:inContext:, which callers send after +alloc
+// (amendment oo-bhb9 item 3): the facade they made is the peer.
+- (id) initWithNewCxxValue:(oo::Ref<cxx::OOJSValue>)value
+{
+	if (value.get() == nullptr)
+	{
+		[self release];
+		return nil;
+	}
+
+	self = [super init];
+	if (self != nil)
+	{
+		_cxxValue = std::move(value);
+		@autoreleasepool
+		{
+			Peers().peerFor(_cxxValue.get(), [self] { return [self retain]; });
+		}
+	}
+	return self;
+}
+
+
+- (void) dealloc
+{
+	Peers().forget(_cxxValue.get());
+	[super dealloc];
+}
+
+
++ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
+{
+	return oo::ToObjC(cxx::OOJSValue::valueWithJSValue(value, context).get());
+}
+
+
++ (id) valueWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
+{
+	return oo::ToObjC(cxx::OOJSValue::valueWithJSObject(object, context).get());
+}
+
+
+- (id) initWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
+{
+	return [self initWithNewCxxValue:cxx::OOJSValue::valueWithJSValue(value, context)];
+}
+
+
+- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
+{
+	return [self initWithNewCxxValue:cxx::OOJSValue::valueWithJSObject(object, context)];
+}
+
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return _cxxValue->jsValueInContext(context); }
+
+@end
 
 
 @interface OONull (OOObjCBridgePrivate)
@@ -299,4 +392,52 @@ bool OOJavaScriptEngineCaughtOOException(std::string &name, std::string &reason)
 	{
 		return false;	// not an Objective-C exception: not what @catch (OOException *) caught
 	}
+}
+
+
+std::optional<std::string> OOJavaScriptEngineJSDescription(id object)
+{
+	return [object cxx_oo_jsDescription];
+}
+
+
+void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal)
+{
+	[object oo_clearJSSelf:selfVal];
+}
+
+
+bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
+{
+	return [object isKindOfClass:requiredClass];
+}
+
+
+bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity)
+{
+	return [entity isVisibleToScripts];
+}
+
+
+bool OOJavaScriptEngineIsShip(Entity *entity)
+{
+	return [entity isShip];
+}
+
+
+bool OOJavaScriptEngineIsSubEntity(Entity *entity)
+{
+	return [entity isSubEntity];
+}
+
+
+bool OOJavaScriptEngineIsPlanet(Entity *entity)
+{
+	return [entity isPlanet];
+}
+
+
+OOEntityStatus OOJavaScriptEngineStatus(Entity *entity)
+{
+	return [entity status];
 }

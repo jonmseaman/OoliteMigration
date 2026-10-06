@@ -2,7 +2,7 @@
 
 OOJavaScriptEngine+ObjCBridge.h
 
-TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c and oo-elta): the Objective-C OOJavaScriptEngine, a
+TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c, oo-elta and oo-k4nu): the Objective-C OOJavaScriptEngine, a
 facade over the C++ cxx::OOJavaScriptEngine (OOJavaScriptEngine.h), for the code that is not
 converted yet: nearly every scripting file, the debug support, the player and the universe. Its
 interface is the one OOJavaScriptEngine.h declared before the conversion, copied exactly (same
@@ -10,7 +10,7 @@ selectors, same types, same root); every method forwards to its C++ member in on
 (OOJavaScriptEngine+ObjCBridge.mm). The monitor protocol and the OOMonitorSupport category moved
 here from OOJavaScriptEngine.h, and so did the root class's JS glue (the category OOObject
 (OOJavaScript), whose default methods forward to free functions in OOJavaScriptEngine.mm) and
-OONull, the facade of cxx::OONull. Below them are the one-line bridges through which
+OONull and OOJSValue, the facades of cxx::OONull and cxx::OOJSValue. Below them are the one-line bridges through which
 OOJavaScriptEngine.mm's free functions send to classes that are still Objective-C (amendment
 oo-9ht.139 item 3). Imported as the last line of OOJavaScriptEngine.h; do not import it directly.
 
@@ -161,6 +161,29 @@ MA 02110-1301, USA.
 @end
 
 
+/*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
+	This is somewhat useful for putting JavaScript objects in ObjC collections,
+	for instance to pass as properties to script loaders. The value is
+	GC rooted for the lifetime of the OOJSValue.
+	
+	All methods take a context parameter, which must either be nil or a context
+	in a request. The facade of cxx::OOJSValue (OOJavaScriptEngine.h).
+*/
+@interface OOJSValue: OOObject
+{
+@private
+	oo::Ref<cxx::OOJSValue>	_cxxValue;
+}
+
++ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
++ (id) valueWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
+
+- (id) initWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
+- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
+
+@end
+
+
 #if OOJSENGINE_MONITOR_SUPPORT
 
 /*	Protocol for debugging "monitor" object.
@@ -203,6 +226,11 @@ OOJavaScriptEngine *ToObjC(cxx::OOJavaScriptEngine *engine);
 // The C++ engine behind a facade, borrowed; null for nil.
 cxx::OOJavaScriptEngine *ToCxx(OOJavaScriptEngine *engine);
 
+// A held value's Objective-C facade: its live one, else a new one; autoreleased. nil for null.
+OOJSValue *ToObjC(cxx::OOJSValue *value);
+// The C++ held value behind a facade, borrowed; null for nil.
+cxx::OOJSValue *ToCxx(OOJSValue *value);
+
 // The one null's facade, the same object every time (+[OONull null]); nil for null.
 OONull *ToObjC(cxx::OONull *null);
 // The C++ null behind the facade, borrowed; null for nil.
@@ -230,6 +258,18 @@ std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object);
 Class OOJavaScriptEngineClass(id object);
 // [OOObject class]
 Class OOJavaScriptEngineOOObjectClass();
+// -cxx_oo_jsDescription and -oo_clearJSSelf: of any object (OOObject (OOJavaScript)).
+std::optional<std::string> OOJavaScriptEngineJSDescription(id object);
+void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal);
+// -isKindOfClass: of any object; NO for nil.
+bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass);
+// What the entity predicates ask an entity (Entity and EntityOOJavaScriptExtensions.h), messaged as
+// the Objective-C Entity while its subclasses are Objective-C (amendment oo-nge8 item 5).
+bool OOJavaScriptEngineIsVisibleToScripts(Entity *entity);
+bool OOJavaScriptEngineIsShip(Entity *entity);
+bool OOJavaScriptEngineIsSubEntity(Entity *entity);
+bool OOJavaScriptEngineIsPlanet(Entity *entity);
+OOEntityStatus OOJavaScriptEngineStatus(Entity *entity);
 /*	Inside a catch (...) handler: true, with the exception's name and reason, if the exception
 	being handled is an OOException (what @catch (OOException *) caught); false for anything else,
 	which the handler rethrows.

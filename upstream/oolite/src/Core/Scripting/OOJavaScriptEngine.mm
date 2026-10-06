@@ -1473,94 +1473,97 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 }
 
 
-@implementation OOJSValue
+namespace cxx {
 
-+ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
+oo::Ref<OOJSValue> OOJSValue::valueWithJSValue(ooscript::Value value, ooscript::Context context)
 {
 	OOJS_PROFILE_ENTER
-	
-	return [[[self alloc] initWithJSValue:value inContext:context] autorelease];
-	
-	OOJS_PROFILE_EXIT
+
+	oo::Ref<OOJSValue> result = oo::makeRef<OOJSValue>();
+	result->initWithJSValue(value, context);
+	return result;
+
+	OOJS_PROFILE_EXIT_VAL(nullptr)
 }
 
 
-+ (id) valueWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
+oo::Ref<OOJSValue> OOJSValue::valueWithJSObject(ooscript::Object object, ooscript::Context context)
 {
 	OOJS_PROFILE_ENTER
-	
-	return [[[self alloc] initWithJSObject:object inContext:context] autorelease];
-	
-	OOJS_PROFILE_EXIT
+
+	oo::Ref<OOJSValue> result = oo::makeRef<OOJSValue>();
+	result->initWithJSObject(object, context);
+	return result;
+
+	OOJS_PROFILE_EXIT_VAL(nullptr)
 }
 
 
-- (id) initWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
+void OOJSValue::initWithJSValue(ooscript::Value value, ooscript::Context context)
 {
 	OOJS_PROFILE_ENTER
-	
-	self = [super init];
-	if (self != nil)
+
 	{
-		BOOL tempCtxt = NO;
+		bool tempCtxt = false;
 		if (context == NULL)
 		{
 			context = OOJSAcquireContext();
-			tempCtxt = YES;
+			tempCtxt = true;
 		}
-		
+
 		_val = value;
 		if (!ooscript::isUndefined(_val))
 		{
 			ooscript::addNamedValueRoot((context), (&_val), "OOJSValue");
-			
-			oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
-																[OOJavaScriptEngine sharedEngine],
-																[self](const oo::Notification &) { [self deleteJSValue]; });
+
+			// The engine's facade: the sender of its reset notifications. Kept for removing the
+			// observer, so the destructor does not ask for the engine (which could make it).
+			_resetSender = oo::ToObjC(OOJavaScriptEngine::sharedEngine());
+			oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
+																_resetSender,
+																[this](const oo::Notification &) { deleteJSValue(); });
 		}
-		
+
 		if (tempCtxt)  OOJSRelinquishContext(context);
 	}
-	return self;
-	
-	OOJS_PROFILE_EXIT
+
+	OOJS_PROFILE_EXIT_VOID
 }
 
 
-- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
+void OOJSValue::initWithJSObject(ooscript::Object object, ooscript::Context context)
 {
-	return [self initWithJSValue:ooscript::objectValue(object) inContext:context];
+	initWithJSValue(ooscript::objectValue(object), context);
 }
 
 
-- (void) deleteJSValue
+void OOJSValue::deleteJSValue()
 {
 	if (!ooscript::isUndefined(_val))
 	{
 		ooscript::Context context = OOJSAcquireContext();
 		ooscript::removeValueRoot((context), (&_val));
 		OOJSRelinquishContext(context);
-		
+
 		_val = ooscript::undefinedValue();
-		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
-																[OOJavaScriptEngine sharedEngine]);
+		oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
+																_resetSender);
 	}
 }
 
 
-- (void) dealloc
+OOJSValue::~OOJSValue()
 {
-	[self deleteJSValue];
-	[super dealloc];
+	deleteJSValue();
 }
 
 
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+ooscript::Value OOJSValue::jsValueInContext(ooscript::Context /*context*/)
 {
 	return _val;
 }
 
-@end
+}	// namespace cxx
 
 
 void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited)
@@ -1933,8 +1936,8 @@ void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisO
 	id object = (id)ooscript::getPrivate((context), (thisObj));
 	if (object != nil)
 	{
-		[[object weakRefUnderlyingObject] oo_clearJSSelf:thisObj];
-		[object release];
+		OOJavaScriptEngineClearJSSelf(OOJavaScriptEngineWeakRefUnderlyingObject(object), thisObj);
+		objc_release(object);
 		ooscript::setPrivate((context), (thisObj), nil);
 	}
 	
@@ -1953,7 +1956,7 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object != nil)
 	{
-		description = [object cxx_oo_jsDescription];
+		description = OOJavaScriptEngineJSDescription(object);
 		if (!description.has_value())  description = oo::DescriptionOf(object);	// object is not nil
 	}
 	if (!description.has_value())
@@ -1987,7 +1990,7 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 	
 	if (EXPECT_NOT(param->errorFlag))  return NO;
 	
-	args[0] = [entity oo_jsValueInContext:param->context];	// entity is required to be non-nil (asserted above), so oo_jsValueInContext: is safe.
+	args[0] = OOJavaScriptEngineJSValueInContext(entity, param->context);	// entity is required to be non-nil (asserted above), so oo_jsValueInContext: is safe.
 	
 	OOJSStartTimeLimiter();
 	OOJSResumeTimeLimiter();
@@ -2021,7 +2024,7 @@ BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void * /*parameter*/)
 {
 	OOJS_PROFILE_ENTER
 	
-	return [entity isVisibleToScripts];
+	return OOJavaScriptEngineIsVisibleToScripts(entity);
 	
 	OOJS_PROFILE_EXIT
 }
@@ -2031,16 +2034,16 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*
 {
 	OOJS_PROFILE_ENTER
 	
-	if (![entity isVisibleToScripts])  return NO;
-	if ([entity isShip])
+	if (!OOJavaScriptEngineIsVisibleToScripts(entity))  return NO;
+	if (OOJavaScriptEngineIsShip(entity))
 	{
-		if ([entity isSubEntity])  return NO;
-		if ([entity status] == STATUS_COCKPIT_DISPLAY)  return NO;	// Demo ship
+		if (OOJavaScriptEngineIsSubEntity(entity))  return NO;
+		if (OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY)  return NO;	// Demo ship
 		return YES;
 	}
-	else if ([entity isPlanet])
+	else if (OOJavaScriptEngineIsPlanet(entity))
 	{
-		switch ([(OOPlanetEntity *)entity planetType])
+		switch (oo::ToCxx((OOPlanetEntity *)entity)->planetType())	// a planet: not nil
 		{
 			case STELLAR_TYPE_MOON:
 			case STELLAR_TYPE_NORMAL_PLANET:
@@ -2060,7 +2063,7 @@ BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void * /*parameter*
 
 BOOL JSEntityIsDemoShipPredicate(Entity *entity, void * /*parameter*/)
 {
-	return ([entity isVisibleToScripts] && [entity isShip] && [entity status] == STATUS_COCKPIT_DISPLAY && ![entity isSubEntity]);
+	return (OOJavaScriptEngineIsVisibleToScripts(entity) && OOJavaScriptEngineIsShip(entity) && OOJavaScriptEngineStatus(entity) == STATUS_COCKPIT_DISPLAY && !OOJavaScriptEngineIsSubEntity(entity));
 }
 
 namespace {
@@ -2372,7 +2375,7 @@ id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tabl
 id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value value, Class requiredClass)
 {
 	id result = OOJSNativeObjectFromJSValue(context, value);
-	if (![result isKindOfClass:requiredClass])  result = nil;
+	if (!OOJavaScriptEngineIsKindOfClass(result, requiredClass))  result = nil;
 	return result;
 }
 
@@ -2380,7 +2383,7 @@ id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value
 id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass)
 {
 	id result = OOJSNativeObjectFromJSObject(context, object);
-	if (![result isKindOfClass:requiredClass])  result = nil;
+	if (!OOJavaScriptEngineIsKindOfClass(result, requiredClass))  result = nil;
 	return result;
 }
 
@@ -2394,7 +2397,7 @@ oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::O
 		it returns nil.
 	*/
 	result = (id)ooscript::getPrivate((context), (object));
-	return oo::PListObject([result weakRefUnderlyingObject]);	// nil: a null PList
+	return oo::PListObject(OOJavaScriptEngineWeakRefUnderlyingObject(result));	// nil: a null PList
 }
 
 
@@ -2441,7 +2444,7 @@ static oo::PList PListFromJSArray(ooscript::Context context, ooscript::Object ar
 		if (!ooscript::getElement((context), (array), i, (&value)))  value = ooscript::undefinedValue();
 
 		oo::PList element = cxx_OOJSPListFromJSValue(context, value);
-		if (element.isNull())  element = oo::PListObject([OONull null]);
+		if (element.isNull())  element = oo::PListObject(oo::ToObjC(cxx::OONull::null()));	// [OONull null]
 		values.push_back(std::move(element));
 	}
 
