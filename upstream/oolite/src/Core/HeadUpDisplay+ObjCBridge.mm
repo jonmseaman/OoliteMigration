@@ -179,6 +179,8 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (void) drawSurround:(const oo::PList &)info	{ _cxxHUD->drawSurround(info); }
 - (void) drawGreenSurround:(const oo::PList &)info	{ _cxxHUD->drawGreenSurround(info); }
 - (void) drawYellowSurround:(const oo::PList &)info	{ _cxxHUD->drawYellowSurround(info); }
+- (void) drawScanner:(const oo::PList &)info	{ _cxxHUD->drawScanner(info); }
+- (void) drawScannerZoomIndicator:(const oo::PList &)info	{ _cxxHUD->drawScannerZoomIndicator(info); }
 
 @end
 
@@ -192,4 +194,22 @@ oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, con
 void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha)
 {
 	[[UNIVERSE gui] cxx_setGLColorFromSetting:setting defaultValue:defaultValue alpha:alpha];
+}
+
+
+MyOpenGLView *HeadUpDisplayUniverseGameView()
+{
+	return [UNIVERSE gameView];
+}
+
+
+GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction)
+{
+	return [gameView fov:inFraction];
+}
+
+
+NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView)
+{
+	return [gameView viewSize];
 }

@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 #import "oofnd/objc/OOObject.h"
 
 
-@class OOColor, GuiDisplayGen;
+@class OOColor, GuiDisplayGen, MyOpenGLView;
 
 
 @interface HeadUpDisplay: OOObject
@@ -143,6 +143,8 @@ MA 02110-1301, USA.
 - (void) drawSurround:(const oo::PList &)info;
 - (void) drawGreenSurround:(const oo::PList &)info;
 - (void) drawYellowSurround:(const oo::PList &)info;
+- (void) drawScanner:(const oo::PList &)info;
+- (void) drawScannerZoomIndicator:(const oo::PList &)info;
 
 @end
 
@@ -152,9 +154,6 @@ MA 02110-1301, USA.
 	which nothing implemented or sent; the dial it draws is -drawPrimedEquipment:.
 */
 @interface HeadUpDisplay (Private)
-
-- (void) drawScanner:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawScannerZoomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 
 - (void) drawCompass:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
 - (void) drawCompassPlanetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
@@ -220,5 +219,9 @@ cxx::HeadUpDisplay *ToCxx(HeadUpDisplay *hud);
 oo::PList HeadUpDisplayDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
 // -[[UNIVERSE gui] cxx_setGLColorFromSetting:defaultValue:alpha:] (OODrawPlanetInfo()).
 void HeadUpDisplayUniverseGUISetGLColorFromSetting(const std::optional<std::string> &setting, OOColor *defaultValue, GLfloat alpha);
+// [UNIVERSE gameView], -[MyOpenGLView fov:] and -[MyOpenGLView viewSize] (drawScannerGrid()).
+MyOpenGLView *HeadUpDisplayUniverseGameView();
+GLfloat HeadUpDisplayGameViewFov(MyOpenGLView *gameView, bool inFraction);
+NSSize HeadUpDisplayGameViewViewSize(MyOpenGLView *gameView);
 
 #endif	// HEADUPDISPLAY_OBJCBRIDGE_H

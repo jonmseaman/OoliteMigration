@@ -336,6 +336,8 @@ public:
 	void drawSurround(const oo::PList &info);
 	void drawGreenSurround(const oo::PList &info);
 	void drawYellowSurround(const oo::PList &info);
+	void drawScanner(const oo::PList &info);
+	void drawScannerZoomIndicator(const oo::PList &info);
 
 	// Internal: the state (the old ivars), which the drawing reads through oo::ToCxx(self).
 	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
