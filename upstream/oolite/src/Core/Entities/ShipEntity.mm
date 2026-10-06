@@ -12664,7 +12664,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	if ([self status] == STATUS_BEING_SCOOPED)
 	{
 		//if we are being tractored, but we have no owner, then we have a problem
-		if (behaviour != BEHAVIOUR_TRACTORED  || [self owner] == nil || [self owner] == self || [self owner] == (id)NO_TARGET)
+		if (behaviour != BEHAVIOUR_TRACTORED  || [self owner] == nil || [self owner] == self)	// NO_TARGET is 0: `[self owner] == (id)NO_TARGET` only repeated the nil test
 		{
 			// escaped tractor beam
 			[self setStatus:STATUS_IN_FLIGHT];	// should correct 'uncollidable objects' bug
@@ -12972,7 +12972,7 @@ void ShipEntity::respondToAttackFrom(::Entity *from, ::Entity *other)
 			{
 				//we are in the same group, do we forgive you?
 				//criminals are less likely to forgive
-				if (randf() < (0.8 - (bounty/100))) 
+				if (randf() < (0.8 - static_cast<OOCreditsQuantity>(bounty/100)))	// whole hundreds, as before
 				{
 					//it was an honest mistake, lets get on with it
 					return;
