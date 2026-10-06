@@ -374,13 +374,13 @@ void GameController::setMouseInteractionModeForUIWithMouseInteraction(bool inter
 }
 
 
-MyOpenGLView *GameController::gameView()
+::MyOpenGLView *GameController::gameView()
 {
 	return _gameView;
 }
 
 
-void GameController::setGameView(MyOpenGLView *view)
+void GameController::setGameView(::MyOpenGLView *view)
 {
 	[_gameView release];
 	_gameView = [view retain];
