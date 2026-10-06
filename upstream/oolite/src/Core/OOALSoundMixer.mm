@@ -78,8 +78,8 @@ bool OOSoundMixer::init()
 			if (!channel->init())  channel = nullptr;	// [[OOSoundChannel alloc] init] answered nil
 			if (nullptr != channel)
 			{
-				_channels[idx++] = channel;
 				pushChannel(channel.get());
+				_channels[idx++] = channel.leakRef();	// the reference alloc/init gave
 			}
 		}  while (--count);
 	}
@@ -94,6 +94,7 @@ void OOSoundMixer::shutdown()
 	uint32_t i;
 	for (i = 0; i < kMixerGeneralChannels; ++i)
 	{
+		if (_channels[i] != nullptr)  oo::release(_channels[i]);	// DESTROY
 		_channels[i] = nullptr;
 	}
 }

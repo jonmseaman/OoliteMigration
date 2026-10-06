@@ -38,9 +38,10 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
-#import "OOALSoundChannel.h"	// complete: the mixer keeps oo::Ref<OOSoundChannel> members
 
 #include "oofnd/Ref.hpp"
+
+class OOSoundChannel;
 
 
 enum
@@ -69,9 +70,11 @@ public:
 private:
 	bool init();
 
-	// _channels keeps each channel the mixer made, as it retained each before; the free list is
-	// borrowed (C++ since bead oo-9ht.86 deleted the channel's facade).
-	oo::Ref<OOSoundChannel>		_channels[kMixerGeneralChannels];
+	// _channels holds one reference to each channel the mixer made (+1 from oo::makeRef, released
+	// by shutdown(), as alloc/init and DESTROY did: the mixer is never destroyed, so no oo::Ref
+	// member, whose destructor would need the complete class in every includer); the free list is
+	// borrowed. C++ channels since bead oo-9ht.86 deleted their facade.
+	OOSoundChannel				*_channels[kMixerGeneralChannels] = {};
 	OOSoundChannel				*_freeList = {};
 
 	// (The Objective-C class's _maxChannels and _playMask, which nothing read or wrote, are not
