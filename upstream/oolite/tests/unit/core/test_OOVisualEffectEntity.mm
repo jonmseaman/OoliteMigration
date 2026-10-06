@@ -449,4 +449,25 @@ OO_TEST(facadeContract)
 }
 
 
+// Slice 2's C++ members (bead oo-xkf6c) answer as the façade does.
+OO_TEST(slice2Members)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOVisualEffectEntity *effect = Effect("members", Dict({ { "scanner_display_color1", oo::PList(std::string("redColor")) } }));
+		cxx::OOVisualEffectEntity *cxxEffect = oo::ToCxx(effect);
+		OO_CHECK(oo::ToObjC(cxxEffect->scannerDisplayColor1()) == [effect scannerDisplayColor1]);
+		OO_CHECK(cxxEffect->scannerDisplayColor2() == nullptr);
+		cxxEffect->setShaderInt2(7);
+		OO_CHECK([effect shaderInt2] == 7);
+		cxxEffect->setHullHeatLevel(0.25f);
+		OO_CHECK([effect hullHeatLevel] == 0.25f);
+		OO_CHECK(cxxEffect->script() == [effect script]);
+		OO_CHECK(!cxxEffect->isBeacon() && !cxxEffect->isJammingScanning());
+		OO_CHECK(cxxEffect->scannerDisplayColorForShip(true, cxxEffect->scannerDisplayColor1(), nullptr)[0] == 1.0f);
+	}
+}
+
+
 OO_TEST_MAIN()

@@ -5,16 +5,13 @@ OOVisualEffectEntity+ObjCBridge.h
 TRANSITIONAL (proposed ADR-0056, bead oo-ukxy8; amendments oo-dnbf, oo-0mxi and oo-ubjo): the
 Objective-C OOVisualEffectEntity, a façade over the C++ cxx::OOVisualEffectEntity
 (OOVisualEffectEntity.h), for the code that still messages effects by selector (the universe, the
-HUD, the scripting bindings, the shader bindings) and for slice 2 of OOVisualEffectEntity.mm
-(docs/phases/3-slices/OOVisualEffectEntity.md), which stays an Objective-C category of this façade
-until its bead. Its interface is the one OOVisualEffectEntity.h declared before the conversion,
-copied exactly (same selectors, same types): slice 1's selectors forward to their C++ members in
-one line each (OOVisualEffectEntity+ObjCBridge.mm), and slice 2's are declared by the
-OOVisualEffectEntityScripting category below, which OOVisualEffectEntity.mm implements (with the
-OOBeaconEntity protocol it answers). The façade is the entity's Objective-C object and owns its
+HUD, the scripting bindings, the shader bindings). Its interface is the one OOVisualEffectEntity.h declared before the conversion,
+copied exactly (same selectors, same types); each forwards to its C++ member in one line
+(OOVisualEffectEntity+ObjCBridge.mm). Slice 2 (bead oo-xkf6c) returned its selectors and the
+OOBeaconEntity protocol to this interface. The façade is the entity's Objective-C object and owns its
 C++ part (amendment oo-bj8). Imported as the last line of OOVisualEffectEntity.h; do not import it
-directly. Deleted by its deletion bead once slice 2 is converted and no file outside
-OOVisualEffectEntity.* names the Objective-C class.
+directly. Deleted by its deletion bead once no file outside OOVisualEffectEntity.* names the
+Objective-C class.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -40,7 +37,7 @@ MA 02110-1301, USA.
 #define OOVISUALEFFECTENTITY_OBJCBRIDGE_H
 
 
-@interface OOVisualEffectEntity: OOEntityWithDrawable <OOSubEntity>
+@interface OOVisualEffectEntity: OOEntityWithDrawable <OOSubEntity,OOBeaconEntity>
 
 - (id)cxx_initWithKey:(const std::string &)key definition:(const oo::PList &)dict;
 - (BOOL) setUpVisualEffectFromDictionary:(const oo::PList &) effectDict;
@@ -82,12 +79,6 @@ MA 02110-1301, USA.
 - (void) setIsBreakPattern:(BOOL)bp;
 
 - (oo::PList)effectInfoDictionary;
-
-@end
-
-
-// Slice 2 of the old interface, still Objective-C, implemented in OOVisualEffectEntity.mm.
-@interface OOVisualEffectEntity (OOVisualEffectEntityScripting) <OOBeaconEntity>
 
 - (OOColor *)scannerDisplayColor1;
 - (OOColor *)scannerDisplayColor2;

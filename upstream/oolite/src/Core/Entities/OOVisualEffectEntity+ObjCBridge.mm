@@ -4,8 +4,8 @@ OOVisualEffectEntity+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, bead oo-ukxy8): the Objective-C OOVisualEffectEntity façade's own
 methods: its initialisers, which make the C++ effect and run its body, and one-line forwarders to
-cxx::OOVisualEffectEntity for slice 1's selectors, the OOSubEntity protocol and the subentity
-relationship. See OOVisualEffectEntity+ObjCBridge.h.
+cxx::OOVisualEffectEntity for its selectors (slices 1 and 2), the OOSubEntity and OOBeaconEntity
+protocols and the subentity relationship. See OOVisualEffectEntity+ObjCBridge.h.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOMesh.h"
 #import "OOFlasherEntity.h"
 #import "ShipEntity.h"
+#import "OOColor.h"
 
 
 @implementation OOVisualEffectEntity
@@ -89,6 +90,48 @@ MA 02110-1301, USA.
 - (BOOL) isBreakPattern														{ return oo::ToCxx(self)->isBreakPattern(); }
 - (void) setIsBreakPattern:(BOOL)bp											{ oo::ToCxx(self)->setIsBreakPattern(bp); }
 - (oo::PList)effectInfoDictionary											{ return oo::ToCxx(self)->effectInfoDictionary(); }
+
+- (OOColor *)scannerDisplayColor1											{ return oo::ToObjC(oo::ToCxx(self)->scannerDisplayColor1()); }
+- (OOColor *)scannerDisplayColor2											{ return oo::ToObjC(oo::ToCxx(self)->scannerDisplayColor2()); }
+- (void)setScannerDisplayColor1:(OOColor *)color							{ oo::ToCxx(self)->setScannerDisplayColor1(oo::ToCxx(color)); }
+- (void)setScannerDisplayColor2:(OOColor *)color							{ oo::ToCxx(self)->setScannerDisplayColor2(oo::ToCxx(color)); }
+- (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2	{ return oo::ToCxx(self)->scannerDisplayColorForShip(flash, oo::ToCxx(scannerDisplayColor1), oo::ToCxx(scannerDisplayColor2)); }
+
+- (void) setScript:(const std::optional<std::string> &)script_name			{ oo::ToCxx(self)->setScript(script_name); }
+- (OOJSScript *)script														{ return oo::ToCxx(self)->script(); }
+- (oo::PList)scriptInfo														{ return oo::ToCxx(self)->scriptInfo(); }
+- (void) doScriptEvent:(ooscript::PropertyId)message						{ oo::ToCxx(self)->doScriptEvent(message); }
+- (void) remove																{ oo::ToCxx(self)->remove(); }
+
+// OOBeaconEntity
+- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other	{ return oo::ToCxx(self)->compareBeaconCodeWith(other); }
+- (std::optional<std::string>) beaconCode									{ return oo::ToCxx(self)->beaconCode(); }
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode				{ oo::ToCxx(self)->setBeaconCode(bcode); }
+- (std::optional<std::string>) beaconLabel									{ return oo::ToCxx(self)->beaconLabel(); }
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel			{ oo::ToCxx(self)->setBeaconLabel(blabel); }
+- (BOOL) isBeacon															{ return oo::ToCxx(self)->isBeacon(); }
+- (id <OOHUDBeaconIcon>) beaconDrawable										{ return oo::ToCxx(self)->beaconDrawable(); }
+- (Entity <OOBeaconEntity> *) prevBeacon									{ return oo::ToCxx(self)->prevBeacon(); }
+- (Entity <OOBeaconEntity> *) nextBeacon									{ return oo::ToCxx(self)->nextBeacon(); }
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip				{ oo::ToCxx(self)->setPrevBeacon(beaconShip); }
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip				{ oo::ToCxx(self)->setNextBeacon(beaconShip); }
+- (BOOL) isJammingScanning													{ return oo::ToCxx(self)->isJammingScanning(); }
+
+// Shader bindable uniforms (the shader bindings send these by name to the façade).
+- (GLfloat)hullHeatLevel													{ return oo::ToCxx(self)->hullHeatLevel(); }
+- (void)setHullHeatLevel:(GLfloat)value										{ oo::ToCxx(self)->setHullHeatLevel(value); }
+- (GLfloat) shaderFloat1													{ return oo::ToCxx(self)->shaderFloat1(); }
+- (void)setShaderFloat1:(GLfloat)value										{ oo::ToCxx(self)->setShaderFloat1(value); }
+- (GLfloat) shaderFloat2													{ return oo::ToCxx(self)->shaderFloat2(); }
+- (void)setShaderFloat2:(GLfloat)value										{ oo::ToCxx(self)->setShaderFloat2(value); }
+- (int) shaderInt1															{ return oo::ToCxx(self)->shaderInt1(); }
+- (void)setShaderInt1:(int)value											{ oo::ToCxx(self)->setShaderInt1(value); }
+- (int) shaderInt2															{ return oo::ToCxx(self)->shaderInt2(); }
+- (void)setShaderInt2:(int)value											{ oo::ToCxx(self)->setShaderInt2(value); }
+- (Vector) shaderVector1													{ return oo::ToCxx(self)->shaderVector1(); }
+- (void)setShaderVector1:(Vector)value										{ oo::ToCxx(self)->setShaderVector1(value); }
+- (Vector) shaderVector2													{ return oo::ToCxx(self)->shaderVector2(); }
+- (void)setShaderVector2:(Vector)value										{ oo::ToCxx(self)->setShaderVector2(value); }
 
 // OOSubEntity
 - (void) rescaleBy:(GLfloat)factor											{ oo::ToCxx(self)->rescaleBy(factor); }

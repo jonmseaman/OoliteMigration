@@ -167,8 +167,8 @@ bool OOVisualEffectEntity::setUpVisualEffectFromDictionary(const oo::PList &effe
 	clearSubEntities();
 	setUpSubEntities();
 
-	[oo::ToObjC(this) setScannerDisplayColor1:nil];
-	[oo::ToObjC(this) setScannerDisplayColor2:nil];
+	setScannerDisplayColor1(nullptr);
+	setScannerDisplayColor2(nullptr);
 
 	scanClass = CLASS_VISUAL_EFFECT;
 
@@ -182,13 +182,13 @@ bool OOVisualEffectEntity::setUpVisualEffectFromDictionary(const oo::PList &effe
 	_shaderVector1 = kZeroVector;
 	_shaderVector2 = kZeroVector;
 
-	[oo::ToObjC(this) setBeaconCode:OptionalStringForKey(effectDict, "beacon")];
+	setBeaconCode(OptionalStringForKey(effectDict, "beacon"));
 	const std::optional<std::string> beaconLabel = OptionalStringForKey(effectDict, "beacon_label");
-	[oo::ToObjC(this) setBeaconLabel:beaconLabel.has_value() ? beaconLabel : [oo::ToObjC(this) beaconCode]];
+	setBeaconLabel(beaconLabel.has_value() ? beaconLabel : this->beaconCode());
 
 	const oo::PList *scriptInfoValue = effectDict.get<oo::PList::Dict>("script_info");
-	scriptInfo = scriptInfoValue != nullptr ? *scriptInfoValue : oo::PList();
-	[oo::ToObjC(this) setScript:OptionalStringForKey(effectDict, "script")];
+	_scriptInfo = scriptInfoValue != nullptr ? *scriptInfoValue : oo::PList();
+	setScript(OptionalStringForKey(effectDict, "script"));
 
 	return true;
 
@@ -199,9 +199,9 @@ bool OOVisualEffectEntity::setUpVisualEffectFromDictionary(const oo::PList &effe
 OOVisualEffectEntity::~OOVisualEffectEntity()
 {
 	clearSubEntities();
-	DESTROY(scanner_display_color1);
-	DESTROY(scanner_display_color2);
-	DESTROY(script);
+	scanner_display_color1 = nullptr;
+	scanner_display_color2 = nullptr;
+	DESTROY(_script);
 	DESTROY(_beaconDrawable);
 }
 
@@ -670,7 +670,7 @@ void OOVisualEffectEntity::update(OOTimeDelta delta_t)
 	OOEntityWithDrawable::update(delta_t);
 
 	if (!_haveExecutedSpawnAction) {
-		[oo::ToObjC(this) doScriptEvent:OOJSID("effectSpawned")];
+		doScriptEvent(OOJSID("effectSpawned"));
 		_haveExecutedSpawnAction = true;
 	}
 
@@ -723,72 +723,62 @@ bool OOVisualEffectEntity::isShipWithSubEntityShip(::Entity *other)
 	return true;
 }
 
-}	// namespace cxx
 
-
-// Slice 2 of docs/phases/3-slices/OOVisualEffectEntity.md (scanner colours, the script and its events,
-// the beacons and the shader uniforms): still Objective-C, a category of the façade declared in
-// OOVisualEffectEntity+ObjCBridge.h, reading the state through oo::ToCxx(self) (amendment oo-dnbf
-// item 2) until its bead.
-@implementation OOVisualEffectEntity (OOVisualEffectEntityScripting)
-
-
-
-- (OOColor *)scannerDisplayColor1
+cxx::OOColor *OOVisualEffectEntity::scannerDisplayColor1()
 {
-	return [[oo::ToCxx(self)->scanner_display_color1 retain] autorelease];
+	return scanner_display_color1.get();
 }
 
 
-- (OOColor *)scannerDisplayColor2
+cxx::OOColor *OOVisualEffectEntity::scannerDisplayColor2()
 {
-	return [[oo::ToCxx(self)->scanner_display_color2 retain] autorelease];
+	return scanner_display_color2.get();
 }
 
 
-- (void)setScannerDisplayColor1:(OOColor *)color
+void OOVisualEffectEntity::setScannerDisplayColor1(cxx::OOColor *color)
 {
-	DESTROY(oo::ToCxx(self)->scanner_display_color1);
-	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(oo::ToCxx(self)->effectinfoDictionary, "scanner_display_color1")];
-	oo::ToCxx(self)->scanner_display_color1 = [color retain];
+	scanner_display_color1 = nullptr;
+
+	if (color == nullptr)  scanner_display_color1 = cxx::OOColor::colorWithDescription(ValueForKey(effectinfoDictionary, "scanner_display_color1"));
+	else  scanner_display_color1 = oo::Ref<cxx::OOColor>(color);
 }
 
 
-- (void)setScannerDisplayColor2:(OOColor *)color
+void OOVisualEffectEntity::setScannerDisplayColor2(cxx::OOColor *color)
 {
-	DESTROY(oo::ToCxx(self)->scanner_display_color2);
-	
-	if (color == nil)  color = [OOColor cxx_colorWithDescription:ValueForKey(oo::ToCxx(self)->effectinfoDictionary, "scanner_display_color2")];
-	oo::ToCxx(self)->scanner_display_color2 = [color retain];
+	scanner_display_color2 = nullptr;
+
+	if (color == nullptr)  scanner_display_color2 = cxx::OOColor::colorWithDescription(ValueForKey(effectinfoDictionary, "scanner_display_color2"));
+	else  scanner_display_color2 = oo::Ref<cxx::OOColor>(color);
 }
 
 static GLfloat default_color[4] =	{ 0.0, 0.0, 0.0, 0.0};
 static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
-- (GLfloat *) scannerDisplayColorForShip:(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2
+GLfloat *OOVisualEffectEntity::scannerDisplayColorForShip(bool flash, cxx::OOColor *scannerDisplayColor1, cxx::OOColor *scannerDisplayColor2)
 {
-	
+
 	if (scannerDisplayColor1 || scannerDisplayColor2)
 	{
 		if (scannerDisplayColor1 && !scannerDisplayColor2)
 		{
-			[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			scannerDisplayColor1->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 		}
-		
+
 		if (!scannerDisplayColor1 && scannerDisplayColor2)
 		{
-			[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+			scannerDisplayColor2->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 		}
-		
+
 		if (scannerDisplayColor1 && scannerDisplayColor2)
 		{
 			if (flash)
-				[scannerDisplayColor1 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				scannerDisplayColor1->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 			else
-				[scannerDisplayColor2 getRed:&scripted_color[0] green:&scripted_color[1] blue:&scripted_color[2] alpha:&scripted_color[3]];
+				scannerDisplayColor2->getRed(&scripted_color[0], &scripted_color[1], &scripted_color[2], &scripted_color[3]);
 		}
-		
+
 		return scripted_color;
 	}
 
@@ -798,257 +788,256 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 /* scripting */
 
-- (void) setScript:(const std::optional<std::string> &)script_name
+void OOVisualEffectEntity::setScript(const std::optional<std::string> &script_name)
 {
 	oo::PList::Dict propertyList;
-	propertyList["visualEffect"] = oo::PListObject(self);
+	propertyList["visualEffect"] = oo::PListObject(oo::ToObjC(this));
 	const oo::PList properties(std::move(propertyList));
 
-	[oo::ToCxx(self)->script autorelease];
-	oo::ToCxx(self)->script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:properties];
+	[_script autorelease];
+	_script = cxx::OOScript::jsScriptFromFileNamed(script_name.value_or(std::string()), properties);
 	// does not support legacy scripting
-	if (oo::ToCxx(self)->script == nil) {
-		oo::ToCxx(self)->script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-effect-script.js" properties:properties];
+	if (_script == nil) {
+		_script = cxx::OOScript::jsScriptFromFileNamed("oolite-default-effect-script.js", properties);
 	}
-	[oo::ToCxx(self)->script retain];
+	[_script retain];
 }
 
 
-- (OOJSScript *)script
+::OOJSScript *OOVisualEffectEntity::script()
 {
-	return oo::ToCxx(self)->script;
+	return _script;
 }
 
 
-- (oo::PList)scriptInfo
+oo::PList OOVisualEffectEntity::scriptInfo()
 {
-	return oo::ToCxx(self)->scriptInfo ? oo::ToCxx(self)->scriptInfo : oo::PList(oo::PList::Dict{});
+	return _scriptInfo ? _scriptInfo : oo::PList(oo::PList::Dict{});
 }
 
 // unlikely to need events with arguments
-- (void) doScriptEvent:(ooscript::PropertyId)message
+void OOVisualEffectEntity::doScriptEvent(ooscript::PropertyId message)
 {
 	ooscript::Context context = OOJSAcquireContext();
-	[oo::ToCxx(self)->script callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
+	[_script callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
 	OOJSRelinquishContext(context);
 }
 
 
-- (void) remove
+void OOVisualEffectEntity::remove()
 {
-	[self doScriptEvent:OOJSID("effectRemoved")];
-	[UNIVERSE removeEntity:(Entity*)self];
+	doScriptEvent(OOJSID("effectRemoved"));
+	[UNIVERSE removeEntity:(::Entity*)oo::ToObjC(this)];
 }
 
 
 /* beacons */
 
-- (OOComparisonResult) compareBeaconCodeWith:(Entity<OOBeaconEntity> *) other
+OOComparisonResult OOVisualEffectEntity::compareBeaconCodeWith(OOVisualEffectBeaconEntity *other)
 {
-	return (OOComparisonResult)oo::str::caseInsensitiveCompare([self beaconCode].value_or(""), [other beaconCode].value_or(""));
+	return (OOComparisonResult)oo::str::caseInsensitiveCompare(beaconCode().value_or(""), [other beaconCode].value_or(""));
 }
 
 
-- (std::optional<std::string>) beaconCode
+std::optional<std::string> OOVisualEffectEntity::beaconCode()
 {
-	return oo::ToCxx(self)->_beaconCode;
+	return _beaconCode;
 }
 
 
 // bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
 // old by pointer, so any new string (every string this class hands out is new) replaced it.
-- (void) setBeaconCode:(const std::optional<std::string> &)bcode
+void OOVisualEffectEntity::setBeaconCode(const std::optional<std::string> &bcode)
 {
 	std::optional<std::string> code = bcode;
 	if (code.has_value() && code->empty())  code.reset();
 
-	if (code.has_value() || oo::ToCxx(self)->_beaconCode.has_value())
+	if (code.has_value() || _beaconCode.has_value())
 	{
-		oo::ToCxx(self)->_beaconCode = code;
+		_beaconCode = code;
 
-		DESTROY(oo::ToCxx(self)->_beaconDrawable);
+		DESTROY(_beaconDrawable);
 	}
 	// if not blanking code and label is currently blank, default label to code
-	if (code.has_value() && (!oo::ToCxx(self)->_beaconLabel.has_value() || oo::ToCxx(self)->_beaconLabel->empty()))
+	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
 	{
-		[self setBeaconLabel:code];
+		setBeaconLabel(code);
 	}
 
 }
 
 
-- (std::optional<std::string>) beaconLabel
+std::optional<std::string> OOVisualEffectEntity::beaconLabel()
 {
-	return oo::ToCxx(self)->_beaconLabel;
+	return _beaconLabel;
 }
 
 
-- (void) setBeaconLabel:(const std::optional<std::string> &)blabel
+void OOVisualEffectEntity::setBeaconLabel(const std::optional<std::string> &blabel)
 {
 	std::optional<std::string> label = blabel;
 	if (label.has_value() && label->empty())  label.reset();
 
-	if (label.has_value() || oo::ToCxx(self)->_beaconLabel.has_value())
+	if (label.has_value() || _beaconLabel.has_value())
 	{
-		oo::ToCxx(self)->_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
 	}
 }
 
 
-- (BOOL) isBeacon
+bool OOVisualEffectEntity::isBeacon()
 {
-	return [self beaconCode].has_value();
+	return beaconCode().has_value();
 }
 
 
-- (id <OOHUDBeaconIcon>) beaconDrawable
+id <OOHUDBeaconIcon> OOVisualEffectEntity::beaconDrawable()
 {
-	if (oo::ToCxx(self)->_beaconDrawable == nil)
+	if (_beaconDrawable == nil)
 	{
-		const std::u16string	beaconCode = oo::utf8ToUtf16(oo::ToCxx(self)->_beaconCode.value_or(std::string()));
+		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
 		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
 
 		if (length > 1)
 		{
-			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*oo::ToCxx(self)->_beaconCode);
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
 			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
-			if (iconData.isArray())  oo::ToCxx(self)->_beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*oo::ToCxx(self)->_beaconCode];
+			if (iconData.isArray())  _beaconDrawable = [[::OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
 
-		if (oo::ToCxx(self)->_beaconDrawable == nil)
+		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  oo::ToCxx(self)->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
-			else  oo::ToCxx(self)->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
+			if (length > 0)  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
 		}
 	}
-	
-	return oo::ToCxx(self)->_beaconDrawable;
+
+	return _beaconDrawable;
 }
 
 
-- (Entity <OOBeaconEntity> *) prevBeacon
+OOVisualEffectBeaconEntity *OOVisualEffectEntity::prevBeacon()
 {
-	return [oo::ToCxx(self)->_prevBeacon weakRefUnderlyingObject];
+	return [_prevBeacon weakRefUnderlyingObject];
 }
 
 
-- (Entity <OOBeaconEntity> *) nextBeacon
+OOVisualEffectBeaconEntity *OOVisualEffectEntity::nextBeacon()
 {
-	return [oo::ToCxx(self)->_nextBeacon weakRefUnderlyingObject];
+	return [_nextBeacon weakRefUnderlyingObject];
 }
 
 
-- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip
+void OOVisualEffectEntity::setPrevBeacon(OOVisualEffectBeaconEntity *beaconShip)
 {
-	if (beaconShip != [self prevBeacon])
+	if (beaconShip != prevBeacon())
 	{
-		[oo::ToCxx(self)->_prevBeacon release];
-		oo::ToCxx(self)->_prevBeacon = [beaconShip weakRetain];
+		[_prevBeacon release];
+		_prevBeacon = [beaconShip weakRetain];
 	}
 }
 
 
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip
+void OOVisualEffectEntity::setNextBeacon(OOVisualEffectBeaconEntity *beaconShip)
 {
-	if (beaconShip != [self nextBeacon])
+	if (beaconShip != nextBeacon())
 	{
-		[oo::ToCxx(self)->_nextBeacon release];
-		oo::ToCxx(self)->_nextBeacon = [beaconShip weakRetain];
+		[_nextBeacon release];
+		_nextBeacon = [beaconShip weakRetain];
 	}
 }
 
 
-- (BOOL) isJammingScanning 
+bool OOVisualEffectEntity::isJammingScanning()
 {
-	return NO;
+	return false;
 }
 
 
 /* Shader bindable uniforms */
 
 // no automatic change of this, but simplifies use of default shader
-- (GLfloat)hullHeatLevel
+GLfloat OOVisualEffectEntity::hullHeatLevel()
 {
-	return oo::ToCxx(self)->_hullHeatLevel;
+	return _hullHeatLevel;
 }
 
 
-- (void)setHullHeatLevel:(GLfloat)value
+void OOVisualEffectEntity::setHullHeatLevel(GLfloat value)
 {
-	oo::ToCxx(self)->_hullHeatLevel = OOClamp_0_1_f(value);
+	_hullHeatLevel = OOClamp_0_1_f(value);
 }
 
 
-- (GLfloat) shaderFloat1 
+GLfloat OOVisualEffectEntity::shaderFloat1()
 {
-	return oo::ToCxx(self)->_shaderFloat1;
+	return _shaderFloat1;
 }
 
 
-- (void)setShaderFloat1:(GLfloat)value
+void OOVisualEffectEntity::setShaderFloat1(GLfloat value)
 {
-	oo::ToCxx(self)->_shaderFloat1 = value;
+	_shaderFloat1 = value;
 }
 
 
-- (GLfloat) shaderFloat2 
+GLfloat OOVisualEffectEntity::shaderFloat2()
 {
-	return oo::ToCxx(self)->_shaderFloat2;
+	return _shaderFloat2;
 }
 
 
-- (void)setShaderFloat2:(GLfloat)value
+void OOVisualEffectEntity::setShaderFloat2(GLfloat value)
 {
-	oo::ToCxx(self)->_shaderFloat2 = value;
+	_shaderFloat2 = value;
 }
 
 
-- (int) shaderInt1 
+int OOVisualEffectEntity::shaderInt1()
 {
-	return oo::ToCxx(self)->_shaderInt1;
+	return _shaderInt1;
 }
 
 
-- (void)setShaderInt1:(int)value
+void OOVisualEffectEntity::setShaderInt1(int value)
 {
-	oo::ToCxx(self)->_shaderInt1 = value;
+	_shaderInt1 = value;
 }
 
 
-- (int) shaderInt2 
+int OOVisualEffectEntity::shaderInt2()
 {
-	return oo::ToCxx(self)->_shaderInt2;
+	return _shaderInt2;
 }
 
 
-- (void)setShaderInt2:(int)value
+void OOVisualEffectEntity::setShaderInt2(int value)
 {
-	oo::ToCxx(self)->_shaderInt2 = value;
+	_shaderInt2 = value;
 }
 
 
-- (Vector) shaderVector1 
+Vector OOVisualEffectEntity::shaderVector1()
 {
-	return oo::ToCxx(self)->_shaderVector1;
+	return _shaderVector1;
 }
 
 
-- (void)setShaderVector1:(Vector)value
+void OOVisualEffectEntity::setShaderVector1(Vector value)
 {
-	oo::ToCxx(self)->_shaderVector1 = value;
+	_shaderVector1 = value;
 }
 
 
-- (Vector) shaderVector2 
+Vector OOVisualEffectEntity::shaderVector2()
 {
-	return oo::ToCxx(self)->_shaderVector2;
+	return _shaderVector2;
 }
 
 
-- (void)setShaderVector2:(Vector)value
+void OOVisualEffectEntity::setShaderVector2(Vector value)
 {
-	oo::ToCxx(self)->_shaderVector2 = value;
+	_shaderVector2 = value;
 }
 
-
-@end
+}	// namespace cxx
