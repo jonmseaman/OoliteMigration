@@ -197,7 +197,11 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithConfiguration(const oo::PList &
 
 oo::ObjCRef<::OOTexture *> OOTexture::nullTexture()
 {
-	return oo::ObjCRef<::OOTexture *>([::OONullTexture sharedNullTexture]);
+	// The null texture's facade, kept for the life of the process, so it is the same object
+	// whenever it is asked, as +[OONullTexture sharedNullTexture] kept it until bead oo-9ht.100
+	// deleted that facade (amendment oo-r7m0 item 5). Never destroyed.
+	static const oo::ObjCRef<::OOTexture *> *sFacade = new oo::ObjCRef<::OOTexture *>(::oo::ToObjC(::OONullTexture::sharedNullTexture()));
+	return *sFacade;
 }
 
 
