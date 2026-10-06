@@ -6,6 +6,11 @@ Oolite expansion pack verification manager.
 
 NOTE: the overall design is discussed in OXP verifier design.txt.
 
+C++20 since bead oo-tsa4 (proposed ADR-0056 and its OXPVerifier amendments): the class is
+cxx::OOOXPVerifier. The stages, and GameController's +runVerificationIfRequested, still message the
+Objective-C OOOXPVerifier, so OOOXPVerifier+ObjCBridge.h, imported at the end of this header, keeps
+it as a facade; the bridge's deletion bead moves the class out of namespace cxx.
+
 
 Copyright (C) 2007-2013 Jens Ayton and contributors
 
@@ -44,61 +49,90 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
 @class OOOXPVerifierStage;
 
 
+namespace cxx {
+
 /*	Foundation sweep (proposed ADR-0043, bead oo-hkvv): verifyOXP.plist is an oo::PList, paths
 	and names are UTF-8 std::strings, stages are retained through oo::ObjCRef. The stages waiting
-	to be examined or run are a vector in registration order (they were a set). The configuration
-	accessors are cxx_ methods. -configurationValueForKey: is a shared selector (OODebugMonitor)
-	and keeps Objective-C objects.
+	to be examined or run are a vector in registration order (they were a set).
+	A stage is kept as its Objective-C object (oo::ObjCRef<::OOOXPVerifierStage *>): the stage
+	hierarchy still has Objective-C subclasses, whose C++ part (an adapter) does not retain them
+	(ADR-0056 amendment oo-smy).
 */
-@interface OOOXPVerifier: OOObject
+class OOOXPVerifier : public oo::RefCounted
 {
-@private
-	oo::PList														_verifierPList;
+public:
+	/*	Look for command-line arguments requesting OXP verification. If any are
+		found, run the verification and return true. Otherwise, return false.
+		
+		At the moment, only one OXP may be verified per run; additional requests
+		are ignored.
+	*/
+	static bool runVerificationIfRequested();
+
+
+	/*	Stage registration. Currently, stages are registered by OOOXPVerifier
+		itself. Stages may also register other stages - substages, as it were -
+		in their -initWithVerifier: methods, or when -dependencies or
+		-dependents are called. Registration at later points is not permitted.
+	*/
+	void registerStage(::OOOXPVerifierStage *stage);
+
+
+	//	All other methods are for use by verifier stages.
+	std::optional<std::string> oxpPath();
+	std::optional<std::string> oxpDisplayName();
+
+	::OOOXPVerifierStage *stageWithName(const std::string &name);	// nil: none
+
+	// Read from verifyOXP.plist
+	oo::PList configurationValueForKey(const std::string &key);
+	oo::PList configurationArrayForKey(const std::string &key);		// an Array, or null (was nil) if absent or not an array
+	oo::PList configurationDictionaryForKey(const std::string &key);	// a Dict, or null (was nil) if absent or not a dictionary
+	std::optional<std::string> configurationStringForKey(const std::string &key);	// a string, or a number's text; nullopt (was nil) otherwise
+	std::optional<std::vector<std::string>> configurationSetForKey(const std::string &key);	// the array's distinct strings in byte order; nullopt (was nil) if not an array
+
+private:
+	OOOXPVerifier() = default;
+
+	// -initWithPath:, which could fail (verifyOXP.plist unreadable): createWithPath() runs it on a
+	// new object and answers null then (ADR-0056 amendments oo-novu, oo-fg7i).
+	static oo::Ref<OOOXPVerifier> createWithPath(const std::optional<std::string> &path);
+	bool initWithPath(const std::optional<std::string> &path);	// nullopt: nil (bead oo-3rb.292.2)
+	void run();
+
+	void setUpLogOverrides();
+
+	void registerBaseStages();
+	void buildDependencyGraph();
+	void runStages();
+
+	bool setUpDependencies(const std::vector<std::string> &dependencies, ::OOOXPVerifierStage *stage);
+	void setUpDependents(const std::vector<std::string> &dependents, ::OOOXPVerifierStage *stage);
+
+	void dumpDebugGraphviz();
+
+	oo::PList														_verifierPList = {};
 	
-	std::string														_basePath;
-	std::string														_displayName;
+	std::string														_basePath = {};
+	std::string														_displayName = {};
 	
-	std::map<std::string, oo::ObjCRef<OOOXPVerifierStage *>, std::less<>>	_stagesByName;
-	std::vector<oo::ObjCRef<OOOXPVerifierStage *>>					_waitingStages;
+	std::map<std::string, oo::ObjCRef<::OOOXPVerifierStage *>, std::less<>>	_stagesByName = {};
+	std::vector<oo::ObjCRef<::OOOXPVerifierStage *>>				_waitingStages = {};
 	
-	BOOL															_openForRegistration;
-}
+	bool															_openForRegistration = {};
+};
 
-/*	Look for command-line arguments requesting OXP verification. If any are
-	found, run the verification and return YES. Otherwise, return NO.
-	
-	At the moment, only one OXP may be verified per run; additional requests
-	are ignored.
-*/
-+ (BOOL)runVerificationIfRequested;
+}	// namespace cxx
 
 
-/*	Stage registration. Currently, stages are registered by OOOXPVerifier
-	itself. Stages may also register other stages - substages, as it were -
-	in their -initWithVerifier: methods, or when -dependencies or
-	-dependents are called. Registration at later points is not permitted.
-*/
-- (void)registerStage:(OOOXPVerifierStage *)stage;
-
-
-//	All other methods are for use by verifier stages.
-- (std::optional<std::string>)cxx_oxpPath;
-- (std::optional<std::string>)cxx_oxpDisplayName;
-
-- (id)cxx_stageWithName:(const std::string &)name;
-
-// Read from verifyOXP.plist
-- (oo::PList)configurationValueForKey:(const std::string &)key;
-- (oo::PList)cxx_configurationArrayForKey:(const std::string &)key;		// an Array, or null (was nil) if absent or not an array
-- (oo::PList)cxx_configurationDictionaryForKey:(const std::string &)key;	// a Dict, or null (was nil) if absent or not a dictionary
-- (std::optional<std::string>)cxx_configurationStringForKey:(const std::string &)key;	// a string, or a number's text; nullopt (was nil) otherwise
-- (std::optional<std::vector<std::string>>)cxx_configurationSetForKey:(const std::string &)key;	// the array's distinct strings in byte order; nullopt (was nil) if not an array
-
-@end
+// Transitional: the Objective-C OOOXPVerifier, for GameController and the stages. Deleted, with
+// namespace cxx above, by the bridge's deletion bead.
+#import "OOOXPVerifier+ObjCBridge.h"
 
 #endif
