@@ -38,6 +38,8 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntityScriptMethods.h"
 
+@class OOJSPopulatorDefinition, OOShipGroup, OOVisualEffectEntity;
+
 
 // The player, as the property getter and setter, toString() and the planet methods read it.
 OOGalaxyID OOJSSystemPlayerCurrentGalaxyID(PlayerEntity *player);
@@ -76,5 +78,25 @@ unsigned OOJSSystemUniverseCountShipsWithPrimaryRole(const std::string &role, do
 unsigned OOJSSystemUniverseCountShipsWithRole(const std::string &role, double range, Entity *entity);
 unsigned OOJSSystemUniverseCountShipsWithScanClass(OOScanClass scanClass, double range, Entity *entity);
 HPVector OOJSSystemUniverseLocationByCode(const std::string &code, OOSunEntity *sun, OOPlanetEntity *planet);
+
+
+// The ship creators, legacy spawners, static lookups, effects, populators and waypoints (slice 2).
+void OOJSSystemUniverseWitchspaceShipWithPrimaryRole(const std::string &role);
+void OOJSSystemUniverseAddShipWithRoleNearRouteOneAt(const std::string &desc, double routeFraction);
+bool OOJSSystemUniverseSpawnShip(const std::string &shipdesc);
+std::optional<std::string> OOJSSystemUniverseGetSystemName(OOSystemID sys);
+OOSystemID OOJSSystemUniverseFindSystemFromName(const std::string &sysName);
+OOVisualEffectEntity *OOJSSystemUniverseAddVisualEffectAt(HPVector pos, const std::string &key);
+void OOJSSystemUniverseSetPopulatorSetting(const std::string &key, const oo::PList &setting);
+void OOJSSystemUniverseDefineWaypoint(const oo::PList &definition, const std::string &key);
+HPVector OOJSSystemUniverseGetWitchspaceExitPosition();
+std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
+std::vector<oo::ObjCRef<ShipEntity *>> OOJSSystemUniverseAddShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
+void OOJSSystemPlayerAddShipsAt(PlayerEntity *player, const std::string &rolesNumberSystemXYZ);
+void OOJSSystemPlayerAddShipsAtPrecisely(PlayerEntity *player, const std::string &rolesNumberSystemXYZ);
+void OOJSSystemPlayerAddShipsWithinRadius(PlayerEntity *player, const std::string &rolesNumberSystemXYZR);
+OOShipGroup *OOJSSystemShipGroup(ShipEntity *ship);
+// [[OOJSPopulatorDefinition alloc] init]: the facade of a new definition, retained (+1).
+OOJSPopulatorDefinition *OOJSSystemNewPopulatorDefinition() OO_RETURNS_RETAINED;
 
 #endif	// OOJSSYSTEM_OBJCBRIDGE_H

@@ -105,10 +105,10 @@ static OOComparisonResult CompareEntitiesByDistance(id a, id b, void *relativeTo
 } // namespace
 
 namespace {
-static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup);
+static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup);
 } // namespace
 namespace {
-static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL isGroup);
+static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool isGroup);
 } // namespace
 
 
@@ -1237,11 +1237,11 @@ static bool SystemLegacyAddShips(ooscript::Context context, ooscript::CallArgs &
 				   count < 1 || 64 < count))
 	{
 		cxx_OOJSReportBadArguments(context, "System", "legacy_addShips", oojsArgs.count(), OOJS_ARGV, std::nullopt, "role and positive count no greater than 64");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	while (count--)  [UNIVERSE cxx_witchspaceShipWithPrimaryRole:*role];
+	while (count--)  OOJSSystemUniverseWitchspaceShipWithPrimaryRole(*role);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1272,11 +1272,11 @@ static bool SystemLegacyAddSystemShips(ooscript::Context context, ooscript::Call
 				   !ooscript::valueToNumber(context, (OOJS_ARGV[2]), &position)))
 	{
 		cxx_OOJSReportBadArguments(context, "System", "legacy_addSystemShips", oojsArgs.count(), OOJS_ARGV, std::nullopt, "role, positive count no greater than 64, and position along route");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	while (count--)  [UNIVERSE cxx_addShipWithRole:*role nearRouteOneAt:position];
+	while (count--)  OOJSSystemUniverseAddShipWithRoleNearRouteOneAt(*role, position);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1312,12 +1312,12 @@ static bool SystemLegacyAddShipsAt(ooscript::Context context, ooscript::CallArgs
 				   !VectorFromArgumentListNoError(context, oojsArgs.count() - 3, OOJS_ARGV + 3, &where, NULL)))
 	{
 		cxx_OOJSReportBadArguments(context, "System", "legacy_addShipsAt", oojsArgs.count(), OOJS_ARGV, std::nullopt, "role, positive count no greater than 64, coordinate scheme and coordinates");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	arg = oo::str::format("%s %d %s %f %f %f", role->c_str(), count, coordScheme->c_str(), where.x, where.y, where.z);
-	[player addShipsAt:arg];
+	OOJSSystemPlayerAddShipsAt(player, arg);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1353,12 +1353,12 @@ static bool SystemLegacyAddShipsAtPrecisely(ooscript::Context context, ooscript:
 				   !VectorFromArgumentListNoError(context, oojsArgs.count() - 3, OOJS_ARGV + 3, &where, NULL)))
 	{
 		cxx_OOJSReportBadArguments(context, "System", "legacy_addShipsAtPrecisely", oojsArgs.count(), OOJS_ARGV, std::nullopt, "role, positive count no greater than 64, coordinate scheme and coordinates");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	arg = oo::str::format("%s %d %s %f %f %f", role->c_str(), count, coordScheme->c_str(), where.x, where.y, where.z);
-	[player addShipsAtPrecisely:arg];
+	OOJSSystemPlayerAddShipsAtPrecisely(player, arg);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1397,12 +1397,12 @@ static bool SystemLegacyAddShipsWithinRadius(ooscript::Context context, ooscript
 				   !ooscript::valueToNumber(context, (OOJS_ARGV[3 + consumed]), &radius)))
 	{
 		cxx_OOJSReportBadArguments(context, "System", "legacy_addShipWithinRadius", oojsArgs.count(), OOJS_ARGV, std::nullopt, "role, positive count no greater than 64, coordinate scheme, coordinates and radius");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	arg = oo::str::format("%s %d %s %f %f %f %f", role->c_str(), count, coordScheme->c_str(), where.x, where.y, where.z, radius);
-	[player addShipsWithinRadius:arg];
+	OOJSSystemPlayerAddShipsWithinRadius(player, arg);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1428,11 +1428,11 @@ static bool SystemLegacySpawnShip(ooscript::Context context, ooscript::CallArgs 
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", "legacy_spawnShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string (ship key)");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	[UNIVERSE cxx_spawnShip:*key];
+	OOJSSystemUniverseSpawnShip(*key);
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_VOID;
@@ -1456,13 +1456,13 @@ static bool SystemStaticSystemNameForID(ooscript::Context context, ooscript::Cal
 	if (oojsArgs.count() < 1 || !ooscript::valueToInt32(context, (OOJS_ARGV[0]), &systemID) || systemID < -1 || kOOMaximumSystemID < systemID)	// -1 interstellar space!
 	{
 		cxx_OOJSReportBadArguments(context, "System", "systemNameForID", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "system ID");
-		return NO;
+		return false;
 	}
 	
 	if (systemID == -1)
 		OOJS_RETURN_PLIST(oo::PList(std::string(OO_DESC("interstellar-space"))));
 	else
-		OOJS_RETURN_STRING_OR_NULL([UNIVERSE cxx_getSystemName:systemID]);
+		OOJS_RETURN_STRING_OR_NULL(OOJSSystemUniverseGetSystemName(systemID));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -1483,12 +1483,12 @@ static bool SystemStaticSystemIDForName(ooscript::Context context, ooscript::Cal
 	if (!name.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", "systemIDForName", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 
-	result = [UNIVERSE cxx_findSystemFromName:*name];
+	result = OOJSSystemUniverseFindSystemFromName(*name);
 
 	OOJS_END_FULL_NATIVE
 	
@@ -1549,20 +1549,20 @@ static bool SystemAddVisualEffect(ooscript::Context context, ooscript::CallArgs 
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", "addVisualEffect", MIN(oojsArgs.count(), 1U), &OOJS_ARGV[0], std::nullopt, "string (key)");
-		return NO;
+		return false;
 	}
 
 	if (!VectorFromArgumentListNoError(context, oojsArgs.count() - 1, OOJS_ARGV + 1, &where, &consumed))
 	{
 		cxx_OOJSReportBadArguments(context, "System", "addVisualEffect", MIN(oojsArgs.count() - 1, 1U), &OOJS_ARGV[1], std::nullopt, "vector");
-		return NO;
+		return false;
 	}
 
 	OOVisualEffectEntity *result = nil;
 
 	OOJS_BEGIN_FULL_NATIVE(context)
 
-	result = [UNIVERSE cxx_addVisualEffectAt:where withKey:*key];
+	result = OOJSSystemUniverseAddVisualEffectAt(where, *key);
 
 	OOJS_END_FULL_NATIVE
 	
@@ -1585,18 +1585,18 @@ static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oo
 	if (oojsArgs.count() < 1) 
 	{
 		cxx_OOJSReportBadArguments(context, "System", "setPopulator", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], std::nullopt, "string (key), object (settings)");
-		return NO;
+		return false;
 	}
 	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", "setPopulator", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], std::nullopt, "key, settings");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
 		// clearing
-		[UNIVERSE cxx_setPopulatorSetting:*key to:oo::PList()];
+		OOJSSystemUniverseSetPopulatorSetting(*key, oo::PList());
 	}
 	else
 	{
@@ -1604,21 +1604,23 @@ static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oo
 		if (!ooscript::valueToObject(context, (OOJS_ARGV[1]), OOJSFOBJP(&params)))
 		{
 			cxx_OOJSReportBadArguments(context, "System", "setPopulator", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "key, settings");
-			return NO;
+			return false;
 		}
 		ooscript::Value				callback = ooscript::nullValue();
 		if (!ooscript::getProperty(context, (params), "callback", (&callback)) || ooscript::isUndefined(callback))
 		{
 			cxx_OOJSReportBadArguments(context, "System", "setPopulator", MIN(oojsArgs.count(), 1U), OOJS_ARGV, std::nullopt, "settings must have a 'callback' property.");
-			return NO;
+			return false;
 		}
 
-		OOJSPopulatorDefinition *populator = [[OOJSPopulatorDefinition alloc] init];
-		[populator setCallback:callback];
+		// The definition is converted (cxx::OOJSPopulatorDefinition), and only alloc/init makes its
+		// facade (ADR-0056 amendment oo-o89 item 2); the reference releases it where -release did.
+		oo::ObjCRef<OOJSPopulatorDefinition *> populator = oo::adoptObjC(OOJSSystemNewPopulatorDefinition());
+		oo::ToCxx(populator.get())->setCallback(callback);
 
 		settings = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]));
 		oo::PList::Dict *settingsDict = settings.getIf<oo::PList::Dict>();	// messages to a nil dictionary did nothing
-		if (settingsDict != nullptr)  (*settingsDict)["callbackObj"] = oo::PListObject(populator);
+		if (settingsDict != nullptr)  (*settingsDict)["callbackObj"] = oo::PListObject(populator.get());
 
 		ooscript::Value				coords = ooscript::nullValue();
 		if (ooscript::getProperty(context, (params), "coordinates", (&coords)) && !ooscript::isUndefined(coords))
@@ -1631,9 +1633,9 @@ static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oo
 			}
 		}
 
-		[populator release];
+		populator = nullptr;	// -release
 
-		[UNIVERSE cxx_setPopulatorSetting:*key to:settings];
+		OOJSSystemUniverseSetPopulatorSetting(*key, settings);
 	}	
 
 	OOJS_RETURN_VOID;
@@ -1657,18 +1659,18 @@ static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &ooj
 	if (oojsArgs.count() < 1) 
 	{
 		cxx_OOJSReportBadArguments(context, "System", "setWaypoint", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], std::nullopt, "key, position, orientation, definition");
-		return NO;
+		return false;
 	}
 	key = cxx_OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (!key.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", "setWaypoint", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], std::nullopt, "key, position, orientation, definition");
-		return NO;
+		return false;
 	}
 	if (oojsArgs.count() < 4 || ooscript::isNull(OOJS_ARGV[3]))
 	{
 		// clearing
-		[UNIVERSE cxx_defineWaypoint:oo::PList() forKey:*key];
+		OOJSSystemUniverseDefineWaypoint(oo::PList(), *key);
 	}
 	else
 	{
@@ -1676,17 +1678,17 @@ static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &ooj
 		if (!JSValueToHPVector(context, OOJS_ARGV[1], &position))
 		{
 			cxx_OOJSReportBadArguments(context, "System", "setWaypoint", MIN(oojsArgs.count(), 2U), OOJS_ARGV, std::nullopt, "key, position, orientation, definition");
-			return NO;
+			return false;
 		}
 		if (!JSValueToQuaternion(context, OOJS_ARGV[2], &orientation))
 		{
 			cxx_OOJSReportBadArguments(context, "System", "setWaypoint", MIN(oojsArgs.count(), 3U), OOJS_ARGV, std::nullopt, "key, position, orientation, definition");
-			return NO;
+			return false;
 		}
 		if (!ooscript::isObjectOrNull(OOJS_ARGV[3]) || ooscript::isNull(OOJS_ARGV[3]))
 		{
 			cxx_OOJSReportBadArguments(context, "System", "setWaypoint", MIN(oojsArgs.count(), 4U), OOJS_ARGV, std::nullopt, "key, position, orientation, definition");
-			return NO;
+			return false;
 		}
 		
 		settings = cxx_OOJSPListFromJSObject(context, ooscript::toObject(OOJS_ARGV[3]));	// a copy, as -mutableCopy was
@@ -1696,7 +1698,7 @@ static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &ooj
 			(*settingsDict)["orientation"] = oo::PList(oo::PList::Array{ oo::PList(orientation.w), oo::PList(orientation.x), oo::PList(orientation.y), oo::PList(orientation.z) });
 		}
 
-		[UNIVERSE cxx_defineWaypoint:settings forKey:*key];
+		OOJSSystemUniverseDefineWaypoint(settings, *key);
 	}	
 
 	OOJS_RETURN_VOID;
@@ -1709,7 +1711,7 @@ static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &ooj
 
 // Shared implementation of addShips() and addGroup().
 namespace {
-static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
+static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, bool isGroup)
 {
 	ooscript::Context context = (cx);
 	unsigned argc = oojsArgs.count();
@@ -1729,17 +1731,17 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 	if (!role.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", func, MIN(argc, 1U), &OOJS_ARGV[0], std::nullopt, "string (role)");
-		return NO;
+		return false;
 	}
 	if (argc < 2 || !ooscript::valueToInt32(cx, (OOJS_ARGV[1]), &count) || count < 1 || 64 < count)
 	{
 		cxx_OOJSReportBadArguments(context, "System", func, MIN(argc - 1, 1U), &OOJS_ARGV[1], std::nullopt, "number (positive count no greater than 64)");
-		return NO;
+		return false;
 	}
 	
 	if (argc < 3)
 	{
-		where = [UNIVERSE getWitchspaceExitPosition];
+		where = OOJSSystemUniverseGetWitchspaceExitPosition();
 		radius = SCANNER_MAX_RANGE;
 	}
 	else
@@ -1747,7 +1749,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 		if (!VectorFromArgumentListNoError(context, argc - 2, OOJS_ARGV + 2, &where, &consumed))
 		{
 			cxx_OOJSReportBadArguments(context, "System", func, MIN(argc - 2, 1U), &OOJS_ARGV[2], std::nullopt, "vector");
-			return NO;
+			return false;
 		}
 		
 		if (argc > 2 + consumed)
@@ -1755,20 +1757,20 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 			if (!ooscript::valueToNumber(cx, (OOJS_ARGV[2 + consumed]), &radius))
 			{
 				cxx_OOJSReportBadArguments(context, "System", func, MIN(argc - 2 - consumed, 1U), &OOJS_ARGV[2 + consumed], std::nullopt, "number (radius)");
-				return NO;
+				return false;
 			}
 		}
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.
-	const std::vector<oo::ObjCRef<ShipEntity *>> added = [UNIVERSE cxx_addShipsAt:where withRole:*role quantity:count withinRadius:radius asGroup:isGroup];
+	const std::vector<oo::ObjCRef<ShipEntity *>> added = OOJSSystemUniverseAddShipsAt(where, *role, count, radius, isGroup);
 	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
 		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
-		if (ships.size() > 0)  result = oo::PListObject([ships[0].get() group]);
+		if (ships.size() > 0)  result = oo::PListObject(OOJSSystemShipGroup(ships[0].get()));
 		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
@@ -1781,7 +1783,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 
 
 namespace {
-static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL isGroup)
+static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, bool isGroup)
 {
 	ooscript::Context context = (cx);
 	unsigned argc = oojsArgs.count();
@@ -1801,12 +1803,12 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 	if (!role.has_value())
 	{
 		cxx_OOJSReportBadArguments(context, "System", func, MIN(argc, 1U), &OOJS_ARGV[0], std::nullopt, "string (role)");
-		return NO;
+		return false;
 	}
 	if (argc < 2 || !ooscript::valueToInt32(cx, (OOJS_ARGV[1]), &count) || count < 1 || 64 < count)
 	{
 		cxx_OOJSReportBadArguments(context, "System", func, MIN(argc - 1, 1U), &OOJS_ARGV[1], std::nullopt, "number (positive count no greater than 64)");
-		return NO;
+		return false;
 	}
 	
 	if (argc > 2)
@@ -1814,7 +1816,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 		if (!ooscript::valueToNumber(cx, (OOJS_ARGV[2]), &where) || !isfinite(where) || where < 0.0f || where > 1.0f)
 		{
 			cxx_OOJSReportBadArguments(context, "System", func, MIN(argc - 2, 1U), &OOJS_ARGV[2], std::nullopt, "number (position along route)");
-			return NO;
+			return false;
 		}
 		
 		if (argc > 3)
@@ -1825,20 +1827,20 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 			if (!route.has_value() || validRoutes.count(*route) == 0)
 			{
 				cxx_OOJSReportBadArguments(context, "System", func, MIN(argc - 3, 1U), &OOJS_ARGV[3], std::nullopt, "string (route specifier)");
-				return NO;
+				return false;
 			}
 		}
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
 	// Note: the use of witchspace-in effects (as in legacy_addShips) depends on proximity to the witchpoint.	
-	const std::vector<oo::ObjCRef<ShipEntity *>> added = [UNIVERSE cxx_addShipsToRoute:*route withRole:*role quantity:count routeFraction:where asGroup:isGroup];
+	const std::vector<oo::ObjCRef<ShipEntity *>> added = OOJSSystemUniverseAddShipsToRoute(*route, *role, count, where, isGroup);
 	if (!added.empty())  result = oo::PListFromObjects(added);	// null where no ship was added, as before
 	
 	if (isGroup)
 	{
 		const std::vector<oo::ObjCRef<ShipEntity *>> ships = oo::ObjCRefsIn<ShipEntity *>(result);
-		if (ships.size() > 0)  result = oo::PListObject([ships[0].get() group]);
+		if (ships.size() > 0)  result = oo::PListObject(OOJSSystemShipGroup(ships[0].get()));
 		else  result = oo::PList();
 	}
 	OOJS_END_FULL_NATIVE
