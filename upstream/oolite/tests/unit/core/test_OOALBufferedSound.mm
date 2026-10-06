@@ -17,6 +17,7 @@
 */
 
 #import "OOALBufferedSound.h"
+#import "OOALStreamedSound.h"
 #import "OOALSoundDecoder.h"
 #import "OOALSoundMixer.h"
 #import "OODescription.h"
@@ -47,24 +48,14 @@ void OOSoundMixer::update()  {}
 void OOSoundMixer::shutdown()  {}
 
 
-// OOALSound.mm makes a streamed sound for more than 1 MB of decoded data; never here.
-@interface OOALStreamedSound: OOSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder;
-
-@end
-
-
-@implementation OOALStreamedSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder
-{
-	(void)inDecoder;
-	[self release];
-	return nil;
-}
-
-@end
+// OOALSound.mm makes a streamed sound for more than 1 MB of decoded data; never here. A C++
+// stand-in since bead oo-9ht.84 deleted the Objective-C facade this file stubbed.
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+OOALStreamedSound::~OOALStreamedSound()  {}
+std::optional<std::string> OOALStreamedSound::name()  { return _name; }
+void OOALStreamedSound::rewind()  {}
+bool OOALStreamedSound::soundIncomplete()  { return false; }
+ALuint OOALStreamedSound::soundBuffer()  { return 0; }
 
 
 namespace {

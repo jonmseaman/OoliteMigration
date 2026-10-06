@@ -8,8 +8,8 @@
 	at a time. OpenAL runs on OpenAL Soft's null backend and the user's defaults are a scratch
 	folder's, as in test_OOSound.mm. The sound source is the game's; the mixer and its channels
 	under it are this file's stubs, which record what the source tells them, and so are the
-	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4; the
-	buffered one a C++ stand-in since bead oo-9ht.83 deleted its facade): "missing.ogg" has no
+	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4; C++
+	stand-ins since beads oo-9ht.83 and oo-9ht.84 deleted their facades): "missing.ogg" has no
 	decoder. These expectations were written against the Objective-C
 	API and ran on the unconverted class first; they now run through the facade, which is its
 	forwarding test. After them come the C++ API (cxx::OOMusic, a subclass of cxx::OOSound) and the
@@ -18,6 +18,7 @@
 
 #import "OOALMusic.h"
 #import "OOALBufferedSound.h"
+#import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
 #import "OODescription.h"
 
@@ -123,23 +124,14 @@ ALuint OOALBufferedSound::soundBuffer()
 }
 
 
-@interface OOALStreamedSound: OOSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder;
-
-@end
-
-
-@implementation OOALStreamedSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder
-{
-	(void)inDecoder;
-	[self release];
-	return nil;
-}
-
-@end
+// The streamed sound: a C++ stand-in since bead oo-9ht.84 deleted the Objective-C facade this
+// file stubbed. It refuses every decoder, as the stub did.
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+OOALStreamedSound::~OOALStreamedSound()  {}
+std::optional<std::string> OOALStreamedSound::name()  { return _name; }
+void OOALStreamedSound::rewind()  {}
+bool OOALStreamedSound::soundIncomplete()  { return false; }
+ALuint OOALStreamedSound::soundBuffer()  { return 0; }
 
 
 /*	The mixer and its channels, under the real sound source (OOSoundSource.mm): the mixer hands

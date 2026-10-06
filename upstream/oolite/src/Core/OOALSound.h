@@ -59,8 +59,8 @@ public:
 
 	/*	Was -cxx_initWithContentsOfFile:, a class cluster's initialiser: it answered, in place of
 		the receiver, an OOALBufferedSound for up to 1 MB of decoded data, else an
-		OOALStreamedSound. The result is the Objective-C object (the streamed sound's facade; the
-		buffered sound's root facade, an OOSound, since bead oo-9ht.83), retained (proposed
+		OOALStreamedSound. The result is the Objective-C object (the sound's root facade, an
+		OOSound, since beads oo-9ht.83 and oo-9ht.84), retained (proposed
 		ADR-0056, amendment oo-smy item 4: an Objective-C sound's C++ part does not retain it).
 		Null where it answered nil: sound not OK, no decoder for the path, or the concrete sound
 		refused.
