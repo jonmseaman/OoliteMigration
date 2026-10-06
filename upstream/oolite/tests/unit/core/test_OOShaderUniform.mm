@@ -107,7 +107,7 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 - (Quaternion) quaternionValue			{ Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f }; return q; }
 - (OOMatrix) matrixValue				{ return OOMatrixForScale(2, 3, 4); }
 - (NSPoint) pointValue					{ return NSMakePoint(1.5, -2.5); }
-- (id) colorValue						{ return cxx::OOColor::colorWithRed(0.25f,0.5f,0.75f,1.0f).get(); }
+- (id) colorValue						{ return [OOColor colorWithRed:0.25f green:0.5f blue:0.75f alpha:1.0f]; }
 - (id) notAColor						{ return self; }
 - (float) withArgument:(int)argument	{ return (float)argument; }
 - (void) nothing						{}
