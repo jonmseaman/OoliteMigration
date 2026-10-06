@@ -161,9 +161,8 @@ void OOCheckShipDataPListVerifierStage::run()
 	_allKeys = _playerKeys;
 	for (const std::string &key : _stationKeys)  AddString(_allKeys, key);
 
-	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:[ResourceManager cxx_dictionaryFromFilesNamed:"shipdataEntrySchema.plist" inFolder:"Schemata" andMerge:NO]];
-	_schemaDelegate = oo::adoptObjC([[OOCheckShipDataPListVerifierStageSchemaDelegate alloc] initWithStage:this]);
-	[_schemaVerifier setDelegate:_schemaDelegate.get()];
+	_schemaVerifier = OOPListSchemaVerifier::verifierWithSchema([ResourceManager cxx_dictionaryFromFilesNamed:"shipdataEntrySchema.plist" inFolder:"Schemata" andMerge:NO]);
+	if (_schemaVerifier != nullptr)  _schemaVerifier->setDelegate(this);	// the stage itself since bead oo-9ht.119 (a message to nil did nothing)
 
 	for (const auto &[shipKey, value] : *_shipdataPList.getIf<oo::PList::Dict>())  shipList.push_back(shipKey);
 	std::stable_sort(shipList.begin(), shipList.end(), [](const std::string &a, const std::string &b)
@@ -318,7 +317,7 @@ void OOCheckShipDataPListVerifierStage::checkKeys()
 
 void OOCheckShipDataPListVerifierStage::checkSchema()
 {
-	[_schemaVerifier verifyPropertyList:_info named:_name];
+	if (_schemaVerifier != nullptr)  _schemaVerifier->verifyPropertyList(_info, _name);	// a message to nil did nothing
 }
 
 
@@ -378,7 +377,7 @@ bool OOCheckShipDataPListVerifierStage::verifierTestProperty(OOPListSchemaVerifi
 															 const oo::PList &typeKey,
 															 std::optional<OOPListSchemaVerifierError> *)
 {
-	verboseMessage(oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(typeKey), _name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:keyPath]) }));
+	verboseMessage(oo::str::formatRuntime("- Skipping verification for type %@ at %@.%@.", { oo::DescriptionOf(typeKey), _name, TextOrNull(OOPListSchemaVerifier::descriptionForKeyPath(keyPath)) }));
 	return true;
 }
 
@@ -391,7 +390,7 @@ bool OOCheckShipDataPListVerifierStage::verifierFailedForProperty(OOPListSchemaV
 																  const oo::PList &)
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	reportMessage(oo::str::formatRuntime("***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", { name, TextOrNull([OOPListSchemaVerifier descriptionForKeyPath:(error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList()]), TextOrNull(error.failureReason) }));
+	reportMessage(oo::str::formatRuntime("***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", { name, TextOrNull(OOPListSchemaVerifier::descriptionForKeyPath((error.userInfo.find(kPListKeyPathErrorKey) != nullptr) ? *error.userInfo.find(kPListKeyPathErrorKey) : oo::PList())), TextOrNull(error.failureReason) }));
 	return true;
 }
 
