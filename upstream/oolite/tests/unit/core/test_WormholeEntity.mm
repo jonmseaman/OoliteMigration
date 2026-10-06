@@ -24,6 +24,8 @@
 */
 
 #import "WormholeEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSWormhole.h"
 #import "OOSystemDescriptionManager.h"
 #import "OODescription.h"
 #import "Universe.h"
@@ -399,6 +401,25 @@ OO_TEST(facade)
 		OO_CHECK(dynamic_cast<cxx::WormholeEntity *>(oo::ToCxx(wh)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(wh)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(wh)) == wh);
+	}
+}
+
+
+// The binding's category, which the facade carries since bead oo-9ht.43: what the engine asks a
+// WormholeEntity for by selector is what OOJSWormhole.mm answers.
+OO_TEST(jsExtensions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		WormholeEntity *wh = ToNine(Ship(1000.0f));
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[wh getJSClass:&jsClass andPrototype:&prototype];
+		OOJSWormholeGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([wh cxx_oo_jsClassName] == std::optional<std::string>("Wormhole"));
+		OO_CHECK([wh isVisibleToScripts] == YES);
 	}
 }
 

@@ -153,9 +153,9 @@ std::optional<std::string> OOSound::name()
 
 void OOSound::update()
 {
-	::OOSoundMixer * mixer = [::OOSoundMixer sharedMixer];
+	::OOSoundMixer * mixer = ::OOSoundMixer::sharedMixer();
 	if( sIsSoundOK && mixer)
-		[mixer update];
+		mixer->update();
 }
 
 bool OOSound::isSoundOK()
