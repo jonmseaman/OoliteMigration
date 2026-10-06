@@ -117,6 +117,7 @@ core_tests = {
     'test_OOJSClock': ['Core/Scripting/OOJSClock.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSWormhole': ['Core/Scripting/OOJSWormhole.mm', 'Core/Scripting/OOJSWormhole+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOMeshToOctreeConverter': ['*'],
+    'test_OOMesh': ['*'],
     'test_OOPolygonSprite': ['*'],
     'test_OOVector': ['Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
