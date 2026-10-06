@@ -232,8 +232,6 @@ OOINLINE void AddTriangle(GeometryData *data, Triangle tri)
 }
 
 
-namespace cxx {
-
 OOMeshToOctreeConverter::OOMeshToOctreeConverter(NSUInteger capacity)
 {
 	OOCParameterAssert(capacity < UINT32_MAX);
@@ -272,7 +270,7 @@ void OOMeshToOctreeConverter::addTriangle(Triangle tri)
 }
 
 
-oo::Ref<Octree> OOMeshToOctreeConverter::findOctreeToDepth(NSUInteger depth)
+oo::Ref<cxx::Octree> OOMeshToOctreeConverter::findOctreeToDepth(NSUInteger depth)
 {
 	oo::Ref<OOOctreeBuilder> builder = oo::makeRef<OOOctreeBuilder>();
 	OOScalar halfWidth = 0.5f + MaxDimensionFromOrigin(&_data);	// pad out from geometry by a half meter
@@ -281,8 +279,6 @@ oo::Ref<Octree> OOMeshToOctreeConverter::findOctreeToDepth(NSUInteger depth)
 	
 	return builder->buildOctreeWithRadius(halfWidth);
 }
-
-}	// namespace cxx
 
 
 static OOScalar MaxDimensionFromOrigin(GeometryData *data)
