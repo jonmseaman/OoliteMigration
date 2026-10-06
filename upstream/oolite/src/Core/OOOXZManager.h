@@ -7,8 +7,8 @@ Responsible for installing and uninstalling OXZs
 C++20 since bead oo-bwjb, slice 1 of docs/phases/3-slices/OOOXZManager.md (proposed ADR-0056: a
 singleton, amendment oo-r7m0; a class-shell slice, amendment oo-pni4). OOOXZManager+ObjCBridge.h,
 imported at the end of this header, keeps the Objective-C OOOXZManager as a facade over this class
-for its callers (GameController, PlayerEntity, PlayerEntityControls) and for the units of slices
-3 and 4, which stay Objective-C, on the facade, until their own beads. The bridge's deletion bead
+for its callers (GameController, PlayerEntity, PlayerEntityControls) and for the units of slice
+4, which stay Objective-C, on the facade, until their own beads. The bridge's deletion bead
 moves the class out of namespace cxx.
 
 Oolite
@@ -120,7 +120,18 @@ public:
 
 	bool isRestarting();
 
-	// Internal (the OOPrivate and OOFilterRules categories): the units of slices 3 and 4 of
+	void gui();
+	bool isAcceptingTextInput();
+	bool isAcceptingGUIInput();
+
+	void processSelection();
+	void processTextInput(const std::string &input);
+	void refreshTextInput(const std::string &input);
+	void processFilterKey();
+	void processShowInfoKey();
+	void processExtractKey();
+
+	// Internal (the OOPrivate and OOFilterRules categories): the units of slice 4 of
 	// docs/phases/3-slices/OOOXZManager.md, still Objective-C on the facade, send some of these
 	// (the facade forwards them) and read and write the state below through oo::ToCxx(self); they
 	// become private as those slices convert.
