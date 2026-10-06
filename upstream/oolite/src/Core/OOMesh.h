@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
+#import "OOGraphicsResetManager.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -102,11 +103,10 @@ class OOMaterial;
 	amendments oo-smy, oo-pni4 and oo-dnbf): the class shell, its factories, lifecycle and
 	accessors. The class is cxx::OOMesh, a C++ subclass of cxx::OODrawable, while
 	OOMesh+ObjCBridge.h, imported at the end of this header, keeps the Objective-C OOMesh its
-	callers message. Slices 3 and 4 (geometry and rendering, beads oo-9z7x and oo-zmix) are C++
-	too; slice 2 (loading) is still Objective-C: the Private category of that facade in OOMesh.mm,
-	which reads and writes the members below through oo::ToCxx(self).
+	callers message. Slices 2, 3 and 4 (loading, geometry and rendering, beads oo-rdwg, oo-9z7x and
+	oo-zmix) are C++ too, so OOMesh.mm has no Objective-C class code left.
 */
-class OOMesh : public OODrawable
+class OOMesh : public OODrawable, public OOGraphicsResetClient
 {
 public:
 	static oo::Ref<OOMesh> meshWithName(const std::string &name,
@@ -134,6 +134,7 @@ public:
 	~OOMesh() override;
 
 	oo::Ref<OOMesh> copyWithZone(OOZone *zone);
+	oo::Ref<OOMesh> mutableCopyWithZone(OOZone *zone);
 
 	std::optional<std::string> modelName();
 
@@ -169,11 +170,11 @@ public:
 
 	void rebindMaterials();
 
-	// OOGraphicsResetClient (the facade, the registered client, forwards it).
-	void resetGraphicsState();
+	// OOGraphicsResetClient: the mesh registers itself once loaded, and unregisters when destroyed.
+	void resetGraphicsState() override;
 
-	// Internal: the state, read and written by the Objective-C category of slice 2 through
-	// oo::ToCxx(self) (amendment oo-pni4 item 1). Zero, as class_createInstance left the ivars.
+	// Internal: the state, public while the facade and the test read it (amendment oo-pni4 item 1).
+	// Zero, as class_createInstance left the ivars.
 	uint8_t					_normalMode: 2 = 0,
 							brokenInRender: 1 = 0,
 							listsReady: 1 = 0;
@@ -227,8 +228,7 @@ public:
 	double					_stopwatchLastTime = {};
 #endif
 
-	// Internal: slice 3's geometry, which the Objective-C loading (slice 2) calls through
-	// oo::ToCxx(self).
+	// Internal: slice 3's geometry, which the loading calls.
 	void checkNormalsAndAdjustWinding();
 	void generateFaceTangents();
 	void calculateVertexNormalsAndTangentsWithFaceRefs(VertexFaceRef *faceRefs);
@@ -237,8 +237,7 @@ public:
 	void calculateBoundingVolumes();
 	void rescaleByFactor(GLfloat factor);
 
-	// Internal: slice 4's buffers and display lists, which the Objective-C loading (slice 2) and the
-	// facade's -dealloc call through oo::ToCxx(self).
+	// Internal: slice 4's buffers and display lists, which the loading and the destructor call.
 	void deleteDisplayLists();
 	bool setUpVertexArrays();
 
@@ -255,6 +254,20 @@ public:
 	void renameTexturesFrom(const std::string &from, const std::string &to);
 
 private:
+	// Slice 2's loading (bead oo-rdwg).
+	bool initWithName(const std::string &name,
+					  const std::optional<std::string> &cacheKey,
+					  const oo::PList &materialDict,
+					  const oo::PList &shadersDict,
+					  bool smooth,
+					  const oo::PList &macros,
+					  id<OOWeakReferenceSupport> target,
+					  float scale,
+					  bool cacheWriteable);
+	bool loadData(const std::string &filename, float scale);
+	oo::PList modelData();	// null: incomplete
+	bool setModelFromModelData(const oo::PList &dict, const std::string &fileName);
+
 #ifndef NDEBUG
 	void debugDrawNormals();
 #endif
@@ -272,6 +285,5 @@ oo::Ref<cxx::Octree> OOCacheManagerOctreeForModel(const std::string &inKey);
 void OOCacheManagerSetOctree(cxx::Octree *inOctree, const std::string &inKey);
 
 
-// Transitional: the Objective-C OOMesh, for its callers and for slice 2 of OOMesh.mm, not yet
-// converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
+// Transitional: the Objective-C OOMesh, for its callers not yet converted. Deleted, with namespace cxx above, by the bridge's deletion bead.
 #import "OOMesh+ObjCBridge.h"
