@@ -3733,3 +3733,70 @@ deps instead of growing into conversions.
    slice check accepts it in a converted unit (oo-9ht.117).
 4. **The last trampoline goes with its slice** (amendment oo-9z7x item 4): `renderOpaqueParts()` is
    the body, reached by the root façade's forwarder and by C++ callers alike.
+
+## Amendment (bead oo-jfno): a class with only class methods, and the senders it gains in namespace cxx
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: slice 1 of
+  `docs/phases/3-slices/ResourceManager.md` (`src/Core/ResourceManager.h/.mm`,
+  `ResourceManager+ObjCBridge.h/.mm`, `tests/unit/core/test_ResourceManager.mm`).
+
+**Decision (recommended defaults).**
+
+1. **A class that has only class methods** (`ResourceManager`) becomes `cxx::X` with static members and
+   a deleted constructor; its façade is an `OOObject` subclass with class methods only, each forwarding
+   to the static member in one line. It has no peer table and no `oo::ToObjC`/`oo::ToCxx`.
+2. **Converting a class makes its bare name, inside namespace cxx, the C++ class** (measurement 1 above),
+   so every send to the class from converted code (`[ResourceManager cxx_paths]` in a member of
+   `cxx::OOShipRegistry`) stops compiling. The bead that introduces `cxx::X` qualifies each of those sends
+   as `[::X …]`, one token per line, in every file that has one (18 files for `ResourceManager`); that
+   edit is outside the story's 8-file budget by necessity and changes nothing else. A send from
+   Objective-C code is left as it is.
+
+## Amendment (bead oo-6rb6): a class-shell slice whose class has a category in another file, a failable `-init` that sends that category, and a window a unit test may not open
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: `src/SDL/MyOpenGLView.h/.mm`
+  (slice 1 of `docs/phases/3-slices/MyOpenGLView.md`), `MyOpenGLView+ObjCBridge.h/.mm`,
+  `MyOpenGLView+Input.mm`, `tests/unit/core/test_MyOpenGLView.mm`. Follows amendments oo-o89, oo-3bgz
+  and oo-2g51.
+
+**Decision (recommended defaults).**
+
+1. **A category of the class in a file of its own that no slice of the plan owns** (`MyOpenGLView+Input.mm`,
+   bead oo-0806) takes the same mechanical rewrite as the plan's later slices: each ivar it touches is
+   `oo::ToCxx(self)->ivar`, and nothing else in it changes. Amendment oo-o89 item 4 (its methods become
+   members of `cxx::X`) applies when its own bead converts it.
+2. **A failable `-init` that sends the façade's other methods** (`-initKeyMappingData`,
+   `-populateFullScreenModelist`, `-loadWindowSize`) is `bool init()`, run by the façade's `-init` after it
+   has made the empty C++ object (`X() = default`) and become its peer (amendment oo-3bgz item 3); where it
+   answered nil after `[self dealloc]`, it returns false and the façade releases itself, so the destructor
+   (the old `-dealloc` body) runs as before.
+3. **Bool ivars become `bool`** (item 3), including the key-state array, and assignments of `YES`/`NO`
+   stay verbatim. A converted collaborator ivar (`OOOpenGLMatrixManager *matrixManager`) is an
+   `oo::Ref<cxx::X>`; a later slice's getter that answered it answers `oo::ToObjC(...)` of it, the one
+   line that changes beyond the rewrite.
+4. **Units that open the game's window** (`-createWindowWithSize:`, `-initSplashScreen`,
+   `-endSplashScreen`, `-initialiseGLWithSize:`, `-updateScreen`) are not run by the unit test: a test may
+   not show a window on the desktop (CLAUDE.md, `tools/gui-lock`). The test pins what the slice computes
+   without one (the state `-init` leaves in a scratch home, the display and its native size, the projection
+   `-updateGLSize:` sets in a hidden test context), and the goldens, which launch the game, run the rest.
+
+## Amendment (bead oo-72cz): a later slice of a class-shell class, with platform arms and a converted-collaborator getter
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: slice 2 of
+  `docs/phases/3-slices/MyOpenGLView.md` (`src/SDL/MyOpenGLView.h/.mm`, `MyOpenGLView+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_MyOpenGLView.mm`). Follows amendments oo-3bgz and oo-6rb6.
+
+**Decision (recommended defaults).**
+
+1. **A method defined in both arms of `#if OOLITE_WINDOWS … #else`** (the Windows display / HDR block and
+   its stubs) is one member; each arm's definition stays in its arm, and the declaration and the façade's
+   forwarder follow the old `@interface`'s arms (unconditional where it was, inside `#if OOLITE_WINDOWS`
+   where it was). A definition under a build guard (`#ifdef GNUSTEP_BASE_LIBRARY`) keeps the guard.
+2. **A getter named like its ivar is `get<Name>`** (amendment oo-862e), including one the old header never
+   declared (`-bounds`, now `getBounds()`); its façade forwarder is kept so the selector still answers.
+3. **The getter that answered a converted collaborator's façade** (`-getOpenGLMatrixManager`, amendment
+   oo-6rb6 item 3) answers the borrowed C++ object as a member; the façade's forwarder wraps it in
+   `oo::ToObjC`.
+4. **A class method is a static member** (`+pollShiftKey`), and a `cxx_` selector's member drops the prefix
+   (`stringToClipboard`). Slice 1's sends of this slice's selectors (`[oo::ToObjC(this) loadWindowSize]`)
+   become member calls; its sends to the Input category stay as they are.
