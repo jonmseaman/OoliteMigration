@@ -77,8 +77,7 @@ std::string ClassName(cxx::OOOXPVerifierStage &stage)
 
 /*	The class of a C++ stage's facade. A C++ class in namespace cxx has a facade of its own
 	(ADR-0056 item 5): the Objective-C class of the same name, a subclass of this one, which its
-	callers message by its own selectors (cxx::OOFileScannerVerifierStage's is
-	OOFileScannerVerifierStage). A global C++ class has none, and Objective-C sees it as an
+	callers message by its own selectors (the file scanner had one until bead oo-9ht.7). A global C++ class has none, and Objective-C sees it as an
 	OOOXPVerifierStage.
 */
 Class FacadeClass(cxx::OOOXPVerifierStage &stage)

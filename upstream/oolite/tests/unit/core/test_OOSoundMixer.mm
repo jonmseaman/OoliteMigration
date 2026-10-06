@@ -9,9 +9,10 @@
 	they are told (the real ones would make OpenAL sources); so are the decoder and the two
 	concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4). The root's +update is the
 	game's, so it reaches this mixer. These expectations were written against the Objective-C API
-	and ran on the unconverted class first; they now run through the facade, which is its forwarding
-	test. Before the shutdown, which is last, come the C++ API (cxx::OOSoundMixer) and the facade's
-	contract. Run: bash tools/check-core-tests.sh test_OOSoundMixer
+	and ran on the unconverted class first; they ran through the facade until bead oo-9ht.87 deleted
+	it, and now ask the C++ mixer with the same expectations (the facade's own contract was retired
+	with it: ADR-0049, standing approval oo-9n5p9). Before the shutdown, which is last, comes the
+	C++ API. Run: bash tools/check-core-tests.sh test_OOSoundMixer
 */
 
 #import "OOALSoundMixer.h"
@@ -132,11 +133,11 @@ OO_TEST(theSharedMixerMakesItsChannels)
 {
 	SetUp();
 	OO_CHECK(![OOSound isSoundOK]);
-	OOSoundMixer *mixer = [OOSoundMixer sharedMixer];
-	OO_CHECK(mixer != nil);
+	OOSoundMixer *mixer = OOSoundMixer::sharedMixer();
+	OO_CHECK(mixer != nullptr);
 	OO_CHECK([OOSound isSoundOK]);
 	OO_CHECK(gLiveChannels == kMixerGeneralChannels);
-	OO_CHECK([OOSoundMixer sharedMixer] == mixer);
+	OO_CHECK(OOSoundMixer::sharedMixer() == mixer);
 	OO_CHECK(gLiveChannels == kMixerGeneralChannels);
 }
 
@@ -145,30 +146,30 @@ OO_TEST(theSharedMixerMakesItsChannels)
 OO_TEST(popAndPushTheFreeList)
 {
 	SetUp();
-	OOSoundMixer *mixer = [OOSoundMixer sharedMixer];
+	OOSoundMixer *mixer = OOSoundMixer::sharedMixer();
 	std::set<OOSoundChannel *> popped;
 	OOSoundChannel *first = nil;
 	for (int i = 0; i < kMixerGeneralChannels; i++)
 	{
-		OOSoundChannel *channel = [mixer popChannel];
+		OOSoundChannel *channel = mixer->popChannel();
 		OO_CHECK(channel != nil && [channel next] == nil);
 		if (first == nil)  first = channel;
 		popped.insert(channel);
 	}
 	OO_CHECK(popped.size() == kMixerGeneralChannels);
-	OO_CHECK([mixer popChannel] == nil);
-	OO_CHECK([mixer popChannel] == nil);
+	OO_CHECK(mixer->popChannel() == nil);
+	OO_CHECK(mixer->popChannel() == nil);
 
 	OOSoundChannel *a = *popped.begin();
 	OOSoundChannel *b = *popped.rbegin();
-	[mixer pushChannel:a];
-	[mixer pushChannel:b];
+	mixer->pushChannel(a);
+	mixer->pushChannel(b);
 	OO_CHECK([b next] == a);
-	OO_CHECK([mixer popChannel] == b);
-	OO_CHECK([mixer popChannel] == a);
-	OO_CHECK([mixer popChannel] == nil);
+	OO_CHECK(mixer->popChannel() == b);
+	OO_CHECK(mixer->popChannel() == a);
+	OO_CHECK(mixer->popChannel() == nil);
 
-	for (OOSoundChannel *channel : popped)  [mixer pushChannel:channel];
+	for (OOSoundChannel *channel : popped)  mixer->pushChannel(channel);
 	OO_CHECK(gLiveChannels == kMixerGeneralChannels);
 	(void)first;
 }
@@ -178,33 +179,31 @@ OO_TEST(popAndPushTheFreeList)
 OO_TEST(updateUpdatesEveryChannel)
 {
 	SetUp();
-	OOSoundMixer *mixer = [OOSoundMixer sharedMixer];
+	OOSoundMixer *mixer = OOSoundMixer::sharedMixer();
 	const int before = gChannelUpdates;
-	[mixer update];
+	mixer->update();
 	OO_CHECK(gChannelUpdates == before + kMixerGeneralChannels);
 	[OOSound update];
 	OO_CHECK(gChannelUpdates == before + 2 * kMixerGeneralChannels);
 
-	OOSoundChannel *channel = [mixer popChannel];
+	OOSoundChannel *channel = mixer->popChannel();
 	OO_CHECK(channel->_updates == 2);
-	[mixer pushChannel:channel];
+	mixer->pushChannel(channel);
 }
 
 
-// The C++ API: the one mixer, the same free list and the same channels as the facade's.
+// The C++ API: the one mixer, the same free list and the same channels on every call.
 OO_TEST(cxxApi)
 {
 	SetUp();
-	cxx::OOSoundMixer *mixer = cxx::OOSoundMixer::sharedMixer();
-	OO_CHECK(mixer != nullptr && mixer == cxx::OOSoundMixer::sharedMixer());
-	OOSoundMixer *facade = [OOSoundMixer sharedMixer];	// +sharedMixer answers id
-	OO_CHECK(oo::ToCxx(facade) == mixer);
+	OOSoundMixer *mixer = OOSoundMixer::sharedMixer();
+	OO_CHECK(mixer != nullptr && mixer == OOSoundMixer::sharedMixer());
 
 	OOSoundChannel *channel = mixer->popChannel();
 	OO_CHECK(channel != nil && [channel next] == nil);
 	mixer->pushChannel(channel);
-	OO_CHECK([[OOSoundMixer sharedMixer] popChannel] == channel);
-	[[OOSoundMixer sharedMixer] pushChannel:channel];
+	OO_CHECK(OOSoundMixer::sharedMixer()->popChannel() == channel);
+	OOSoundMixer::sharedMixer()->pushChannel(channel);
 
 	const int before = gChannelUpdates;
 	mixer->update();
@@ -212,34 +211,17 @@ OO_TEST(cxxApi)
 }
 
 
-// The facade's contract: one facade for the life of the process.
-OO_TEST(facade)
-{
-	SetUp();
-	OOSoundMixer *facade = nil;
-	@autoreleasepool
-	{
-		facade = [OOSoundMixer sharedMixer];
-	}
-	OO_CHECK(facade == [OOSoundMixer sharedMixer]);
-	OO_CHECK(oo::ToObjC(cxx::OOSoundMixer::sharedMixer()) == facade);
-	OOSoundMixer *none = nil;
-	OO_CHECK(oo::ToCxx(none) == nullptr);
-	OO_CHECK(oo::ToObjC(static_cast<cxx::OOSoundMixer *>(nullptr)) == nil);
-}
-
-
 // Last: -shutdown releases the channels; -update then has nothing to update.
 OO_TEST(shutdownReleasesTheChannels)
 {
 	SetUp();
-	OOSoundMixer *mixer = [OOSoundMixer sharedMixer];
-	[mixer shutdown];
+	OOSoundMixer *mixer = OOSoundMixer::sharedMixer();
+	mixer->shutdown();
 	OO_CHECK(gLiveChannels == 0);
 	const int before = gChannelUpdates;
-	[mixer update];
+	mixer->update();
 	OO_CHECK(gChannelUpdates == before);
-	OO_CHECK([OOSoundMixer sharedMixer] == mixer);
+	OO_CHECK(OOSoundMixer::sharedMixer() == mixer);
 }
 
 

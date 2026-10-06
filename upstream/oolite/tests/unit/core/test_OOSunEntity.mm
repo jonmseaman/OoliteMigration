@@ -20,6 +20,8 @@
 */
 
 #import "OOSunEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSSun.h"
 #import "OOColor.h"
 #import "OODescription.h"
 #import "Universe.h"
@@ -319,6 +321,25 @@ OO_TEST(facade)
 		OO_CHECK(dynamic_cast<cxx::OOSunEntity *>(oo::ToCxx(sun)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(sun)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(sun)) == sun);
+	}
+}
+
+
+// The binding's category, which the facade carries since bead oo-9ht.51: what the engine asks a
+// OOSunEntity for by selector is what OOJSSun.mm answers.
+OO_TEST(jsExtensions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		OOSunEntity *sun = RedSun();
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[sun getJSClass:&jsClass andPrototype:&prototype];
+		OOJSSunGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([sun cxx_oo_jsClassName] == std::optional<std::string>("Sun"));
+		OO_CHECK([sun isVisibleToScripts] == YES);
 	}
 }
 

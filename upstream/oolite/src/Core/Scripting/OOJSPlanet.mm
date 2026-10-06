@@ -47,10 +47,12 @@ MA 02110-1301, USA.
 	ADR-0056 amendment oo-ppc). The JS class was already C++ on the ooscript façade;
 	OOJS_NATIVE_ENTER/EXIT and OOJS_PROFILE_ENTER/EXIT are C++ try/catch and scope guards
 	(OOJSEngineNativeWrappers.h); BOOL/YES/NO are bool/true/false. The category on OOPlanetEntity
-	became three free functions, and its methods moved to OOJSPlanet+ObjCBridge.mm (amendment
-	oo-ykoy). OOColor, which is C++ since bead oo-11m, is reached as cxx::OOColor through
-	oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). Messages to classes that are still Objective-C
-	(OOPlanetEntity, Universe) stay as they are, which is why the file is still .mm until Phase 4.
+	became three free functions, and its methods moved to a bridge file of the binding (amendment
+	oo-ykoy), then onto the OOPlanetEntity facade in OOPlanetEntity+ObjCBridge.mm (bead oo-9ht.92,
+	amendment oo-6ia4 item 3). OOColor, which is C++ since bead oo-11m, is reached as cxx::OOColor
+	through oo::ToCxx/oo::ToObjC (amendment oo-ppc, item 4). Messages to classes that are still
+	Objective-C (OOPlanetEntity, Universe) stay as they are, which is why the file is still .mm
+	until Phase 4.
 */
 
 namespace ooscript { }
@@ -193,9 +195,9 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global)
 }
 
 
-// The bodies of OOPlanetEntity (OOJavaScriptExtensions), whose methods are in
-// OOJSPlanet+ObjCBridge.mm until OOPlanetEntity converts (proposed ADR-0056 amendments oo-ppc and
-// oo-ykoy).
+// The bodies of OOPlanetEntity (OOJavaScriptExtensions), whose methods are on the OOPlanetEntity
+// facade, in OOPlanetEntity+ObjCBridge.mm (bead oo-9ht.92), until that facade goes (oo-9ht.129;
+// proposed ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 bool OOJSPlanetIsVisibleToScripts(OOPlanetEntity *planet)
 {
 	OOStellarBodyType type = [planet planetType];
