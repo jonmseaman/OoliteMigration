@@ -157,7 +157,7 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithName(const std::optional<std::s
 		}
 
 		// No existing texture, load texture.
-		result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithPath(*path, key, options, anisotropy, lodBias)));
+		result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(static_cast<cxx::OOTexture *>(::OOConcreteTexture::initWithPath(*path, key, options, anisotropy, lodBias).get())));
 	}
 
 
@@ -197,7 +197,11 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithConfiguration(const oo::PList &
 
 oo::ObjCRef<::OOTexture *> OOTexture::nullTexture()
 {
-	return oo::ObjCRef<::OOTexture *>([::OONullTexture sharedNullTexture]);
+	// The null texture's facade, kept for the life of the process, so it is the same object
+	// whenever it is asked, as +[OONullTexture sharedNullTexture] kept it until bead oo-9ht.100
+	// deleted that facade (amendment oo-r7m0 item 5). Never destroyed.
+	static const oo::ObjCRef<::OOTexture *> *sFacade = new oo::ObjCRef<::OOTexture *>(::oo::ToObjC(::OONullTexture::sharedNullTexture()));
+	return *sFacade;
 }
 
 
@@ -224,11 +228,11 @@ oo::ObjCRef<::OOTexture *> OOTexture::textureWithGenerator(::OOTextureGenerator 
 	}
 	OO_LOG("texture.generator.queue", "Queued texture generator {}", oo::DescriptionOf(generator));
 
-	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(OOConcreteTexture::initWithLoader(generator,
+	oo::ObjCRef<::OOTexture *> result = oo::ObjCRef<::OOTexture *>(oo::ToObjC(static_cast<cxx::OOTexture *>(::OOConcreteTexture::initWithLoader(generator,
 																												 cxxGenerator->cacheKey(),
 																												 OOApplyTextureOptionDefaults(cxxGenerator->textureOptions()),
 																												 cxxGenerator->anisotropy(),
-																												 cxxGenerator->lodBias())));
+																												 cxxGenerator->lodBias()).get())));
 
 	return result;
 }
