@@ -887,7 +887,7 @@ void cxx::HeadUpDisplay::refreshLastTransmitter()
 	::Entity* lt = [UNIVERSE entityForUniversalID:last_transmitter];
 	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
 		return;
-	ShipEntity* st = (ShipEntity*)lt;
+	::ShipEntity* st = (::ShipEntity*)lt;
 	if ([st messageTime] <= 0.0)
 		[st setMessageTime:2.5];
 }
