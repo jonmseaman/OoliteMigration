@@ -64,7 +64,7 @@ std::optional<std::string> OOOXPVerifierStage::descriptionComponents() const
 }
 
 
-OOOXPVerifier *OOOXPVerifierStage::verifier()
+::OOOXPVerifier *OOOXPVerifierStage::verifier()
 {
 	return [[_verifier retain] autorelease];
 }
@@ -109,7 +109,7 @@ void OOOXPVerifierStage::run()
 
 // Internal (was the OOInternal category).
 
-void OOOXPVerifierStage::setVerifier(OOOXPVerifier *verifier)
+void OOOXPVerifierStage::setVerifier(::OOOXPVerifier *verifier)
 {
 	_verifier = verifier;	// Not retained.
 }
