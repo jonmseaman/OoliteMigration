@@ -382,426 +382,6 @@ void ShipEntity::initWithKey(const std::string &key)
 @implementation ShipEntity
 
 
-- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret
-{
-	ShipEntity			*subentity = nil;
-	HPVector				subPosition;
-	Quaternion			subOrientation;
-
-	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
-	if (!subentKey.has_value()) {
-		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(subentDict));
-		return NO;
-	}
-
-	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
-	{
-		subentity = [UNIVERSE cxx_newDockWithName:*subentKey andScaleFactor:_cxxShip->_scaleFactor];
-	}
-	else
-	{
-		subentity = [UNIVERSE cxx_newSubentityWithName:*subentKey andScaleFactor:_cxxShip->_scaleFactor];
-	}
-	if (subentity == nil) {
-		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity {}", *subentKey);
-		return NO;
-	}
-
-	subPosition = HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_cxxShip->_scaleFactor);
-	subOrientation = QuaternionForKey(subentDict, "orientation");
-	
-	[subentity setPosition:subPosition];
-	[subentity setOrientation:subOrientation];
-	[subentity setReference:vector_forward_from_quaternion(subOrientation)];
-	// subentities inherit parent personality
-	[subentity setEntityPersonalityInt:[self entityPersonalityInt]];
-
-	if (asTurret)
-	{
-		[subentity setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
-		[subentity setWeaponRechargeRate:subentDict.get<float>("fire_rate", TURRET_SHOT_FREQUENCY)];
-		[subentity setWeaponEnergy:subentDict.get<float>("weapon_energy", TURRET_TYPICAL_ENERGY)];
-		[subentity setWeaponRange:subentDict.get<float>("weapon_range", TURRET_SHOT_RANGE)];
-		[subentity setStatus: STATUS_ACTIVE];
-	}
-	else
-	{
-		[subentity setStatus:STATUS_INACTIVE];
-	}
-	
-	const oo::PList *scriptInfoOverride = subentDict.find("script_info");
-	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? *scriptInfoOverride : oo::PList()];
-	
-	[self addSubEntity:subentity];
-	[subentity setSubIdx:_cxxShip->_maxShipSubIdx];
-	_cxxShip->_maxShipSubIdx++;
-	
-	// update subentities
-	BoundingBox sebb = [subentity findSubentityBoundingBox];
-	bounding_box_add_vector(&_cxxShip->totalBoundingBox, sebb.max);
-	bounding_box_add_vector(&_cxxShip->totalBoundingBox, sebb.min);
-
-	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
-	{
-		BOOL allow_docking = subentDict.get<bool>("allow_docking", true);
-		BOOL ddc = subentDict.get<bool>("disallowed_docking_collides", false);
-		BOOL allow_launching = subentDict.get<bool>("allow_launching", true);
-		// do not include this key in OOShipRegistry; should never be set by shipdata
-		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
-		if (virtual_dock)
-		{
-			[(DockEntity *)subentity setVirtual];
-		}
-		
-		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
-		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
-	}
-
-	[subentity release];
-	
-	return YES;
-}
-
-
-- (BOOL) isTemplateCargoPod
-{
-	return [self cxx_primaryRole] == "oolite-template-cargopod";
-}
-
-
-- (void) setUpCargoType:(const std::string &) cargoString
-{
-	_cxxShip->cargo_type = cxx_StringToCargoType(cargoString);
-	
-	switch (_cxxShip->cargo_type)
-	{
-		case CARGO_SLAVES:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "slaves";
-			_cxxShip->cargo_type = CARGO_RANDOM; // not realy random, but it tells that cargo is selected.
-			break;
-			
-		case CARGO_ALLOY:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "alloys";
-			_cxxShip->cargo_type = CARGO_RANDOM;
-			break;
-			
-		case CARGO_MINERALS:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "minerals";
-			_cxxShip->cargo_type = CARGO_RANDOM;
-			break;
-			
-		case CARGO_THARGOID:
-			_cxxShip->commodity_amount = 1;
-			_cxxShip->commodity_type = "alien_items";
-			_cxxShip->cargo_type = CARGO_RANDOM;
-			break;
-			
-		case CARGO_SCRIPTED_ITEM:
-			_cxxShip->commodity_amount = 1; // value > 0 is needed to be recognised as cargo by scripts;
-			_cxxShip->commodity_type = std::nullopt; // will be defined elsewhere when needed.
-			break;
-			
-		case CARGO_RANDOM:
-			// Could already be set by the cargo_carried key. If not, ensure at least one.
-			if (_cxxShip->commodity_amount == 0) _cxxShip->commodity_amount = 1;
-			break;
-
-		default:
-			break;
-	}
-}
-
-
-- (void) removeScript
-{
-	[_cxxShip->script autorelease];
-	_cxxShip->script = nil;
-}
-
-
-- (void) clearSubEntities
-{
-	// Ensure backlinks are broken (last to first, as -makeObjectsPerformSelector:withObject: went)
-	for (auto sub = _cxxShip->subEntities.rbegin(); sub != _cxxShip->subEntities.rend(); ++sub)  [sub->get() setOwner:nil];
-	_cxxShip->subEntities.clear();
-	
-	// reset size & mass!
-	_cxxEntity->collision_radius = [self findCollisionRadius];
-	_cxxShip->_profileRadius = _cxxEntity->collision_radius;
-	float density = _cxxShip->shipinfoDictionary.get<float>("density", 1.0f);
-	if (_cxxShip->octree)  _cxxEntity->mass = (GLfloat)(density * 20.0f * [_cxxShip->octree volume]);
-}
-
-
-- (Quaternion) subEntityRotationalVelocity
-{
-	return _cxxShip->subentityRotationalVelocity;
-}
-
-
-- (void) setSubEntityRotationalVelocity:(Quaternion)rv
-{
-	_cxxShip->subentityRotationalVelocity = rv;
-}
-
-
-- (std::optional<std::string>) cxx_descriptionComponents
-{
-	if (![self isSubEntity])
-	{
-		return oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), [super cxx_descriptionComponents].value_or("(null)").c_str());
-	}
-	else
-	{
-		// ID, scanClass and status are of no interest for subentities.
-		const char *subtype = nullptr;
-		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
-		else  subtype = "(subentity)";
-
-		return oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype);
-	}
-}
-
-
-- (std::optional<std::string>) cxx_shortDescriptionComponents
-{
-	return oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str());
-}
-
-
-- (GLfloat) sunGlareFilter
-{
-	return _cxxShip->sunGlareFilter;
-}
-
-
-- (void) setSunGlareFilter:(GLfloat)newValue
-{
-	_cxxShip->sunGlareFilter = OOClamp_0_1_f(newValue);
-}
-
-
-- (GLfloat) accuracy
-{
-	return _cxxShip->accuracy;
-}
-
-
-- (void) setAccuracy:(GLfloat) new_accuracy
-{
-	if (new_accuracy < 0.0f && _cxxEntity->scanClass == CLASS_MISSILE)
-	{
-		new_accuracy = 0.0;
-	}
-	else if (new_accuracy < -5.0f)
-	{
-		new_accuracy = -5.0;
-	}
-	else if (new_accuracy > 10.0f)
-	{
-		new_accuracy = 10.0;
-	}
-	_cxxShip->accuracy = new_accuracy;
-	_cxxShip->pitch_tolerance = 0.01 * (85.0f + _cxxShip->accuracy);
-// especially against small targets, less good pilots will waste some shots
-	_cxxShip->aim_tolerance = 240.0 - (18.0f * _cxxShip->accuracy);
-
-	if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && _cxxShip->missile_load_time < 0.1)
-	{
-		_cxxShip->missile_load_time = 2.0; // smart enough not to waste all missiles on 1 ECM!
-	}
-}
-
-- (OOMesh *)mesh
-{
-	return (OOMesh *)[self drawable];
-}
-
-
-- (void)setMesh:(OOMesh *)mesh
-{
-	if (mesh != [self mesh])
-	{
-		[self setDrawable:mesh];
-		[_cxxShip->octree autorelease];
-		_cxxShip->octree = [[mesh octree] retain];
-	}
-}
-
-
-- (BoundingBox) totalBoundingBox
-{
-	return _cxxShip->totalBoundingBox;
-}
-
-
-- (Vector) forwardVector
-{
-	return _cxxShip->v_forward;
-}
-
-
-- (Vector) upVector
-{
-	return _cxxShip->v_up;
-}
-
-
-- (Vector) rightVector
-{
-	return _cxxShip->v_right;
-}
-
-
-- (BOOL) scriptedMisjump
-{
-	return _cxxShip->scripted_misjump;
-}
-
-
-- (void) setScriptedMisjump:(BOOL)newValue
-{
-	_cxxShip->scripted_misjump = !!newValue;
-}
-
-
-- (GLfloat) scriptedMisjumpRange
-{
-	return _cxxShip->_scriptedMisjumpRange;
-}
-
-
-- (void) setScriptedMisjumpRange:(GLfloat)newValue
-{
-	_cxxShip->_scriptedMisjumpRange = newValue;
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) subEntities
-{
-	return _cxxShip->subEntities;
-}
-
-
-- (NSUInteger) subEntityCount
-{
-	return _cxxShip->subEntities.size();
-}
-
-
-- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub
-{
-	// Identity: a subentity's -isEqual: is NSObject's.
-	return std::find(_cxxShip->subEntities.begin(), _cxxShip->subEntities.end(), sub) != _cxxShip->subEntities.end();
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator
-{
-	return _cxxShip->subEntities;
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities
-{
-	std::vector<oo::ObjCRef<ShipEntity *>> result;
-	for (const auto &sub : _cxxShip->subEntities)
-	{
-		if ([sub.get() isShip])  result.emplace_back((ShipEntity *)sub.get());
-	}
-	return result;
-}
-
-
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator
-{
-	std::vector<oo::ObjCRef<OOFlasherEntity *>> flashers;
-	for (const auto &sub : _cxxShip->subEntities)
-	{
-		if ([sub.get() isFlasher])  flashers.emplace_back((OOFlasherEntity *)sub.get());
-	}
-	return flashers;
-}
-
-
-- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts
-{
-	std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>> result;
-	for (const auto &sub : _cxxShip->subEntities)
-	{
-		if ([sub.get() isExhaust])  result.emplace_back((OOExhaustPlumeEntity *)sub.get());
-	}
-	return result;
-}
-
-
-- (ShipEntity *) subEntityTakingDamage
-{
-	ShipEntity *result = [_cxxShip->_subEntityTakingDamage weakRefUnderlyingObject];
-	
-#ifndef NDEBUG
-	// Sanity check - there have been problems here, see fireLaserShotInDirection:
-	// -parentEntity will take care of reporting insanity.
-	if ([result parentEntity] != self)  result = nil;
-#endif
-	
-	// Clear the weakref if the subentity is dead.
-	if (result == nil)  [self setSubEntityTakingDamage:nil];
-	
-	return result;
-}
-
-
-- (void) setSubEntityTakingDamage:(ShipEntity *)sub
-{
-#ifndef NDEBUG
-	// Sanity checks: sub must be a ship subentity of self, or nil.
-	if (sub != nil)
-	{
-		if (![self hasSubEntity:sub])
-		{
-			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
-			sub = nil;
-		}
-		else if (![sub isShip])
-		{
-			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
-			sub = nil;
-		}
-	}
-#endif
-	
-	[_cxxShip->_subEntityTakingDamage release];
-	_cxxShip->_subEntityTakingDamage = [sub weakRetain];
-}
-
-
-- (OOScript *)shipScript
-{
-	return _cxxShip->script;
-}
-
-
-- (OOScript *)shipAIScript
-{
-	return _cxxShip->aiScript;
-}
-
-
-- (OOTimeAbsolute) shipAIScriptWakeTime
-{
-	return _cxxShip->aiScriptWakeTime;
-}
-
-
-- (void) setAIScriptWakeTime:(OOTimeAbsolute) t
-{
-	_cxxShip->aiScriptWakeTime = t;
-}
-
 
 - (BoundingBox)findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector) _i :(Vector) _j :(Vector) _k
 {
@@ -14945,6 +14525,447 @@ bool ShipEntity::setUpOneFlasher(const oo::PList &subentDict)
 	[flasher rescaleBy:_scaleFactor];
 	[self addSubEntity:flasher];
 	return YES;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 4 of docs/phases/3-slices/ShipEntity.md (bead oo-ln2m1): standard subentities and cargo
+// pods; descriptions, mesh, vectors, misjump, subentity lists, AI scripts. The facade forwards each
+// selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity			*subentity = nil;
+	HPVector				subPosition;
+	Quaternion			subOrientation;
+
+	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
+	if (!subentKey.has_value()) {
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity - no subentKey in {}", oo::DescriptionOf(subentDict));
+		return NO;
+	}
+
+	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
+	{
+		subentity = [UNIVERSE cxx_newDockWithName:*subentKey andScaleFactor:_scaleFactor];
+	}
+	else
+	{
+		subentity = [UNIVERSE cxx_newSubentityWithName:*subentKey andScaleFactor:_scaleFactor];
+	}
+	if (subentity == nil) {
+		OO_LOG("setup.ship.badEntry.subentities", "Failed to set up entity {}", *subentKey);
+		return NO;
+	}
+
+	subPosition = HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor);
+	subOrientation = QuaternionForKey(subentDict, "orientation");
+	
+	[subentity setPosition:subPosition];
+	[subentity setOrientation:subOrientation];
+	[subentity setReference:vector_forward_from_quaternion(subOrientation)];
+	// subentities inherit parent personality
+	[subentity setEntityPersonalityInt:[self entityPersonalityInt]];
+
+	if (asTurret)
+	{
+		[subentity setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
+		[subentity setWeaponRechargeRate:subentDict.get<float>("fire_rate", TURRET_SHOT_FREQUENCY)];
+		[subentity setWeaponEnergy:subentDict.get<float>("weapon_energy", TURRET_TYPICAL_ENERGY)];
+		[subentity setWeaponRange:subentDict.get<float>("weapon_range", TURRET_SHOT_RANGE)];
+		[subentity setStatus: STATUS_ACTIVE];
+	}
+	else
+	{
+		[subentity setStatus:STATUS_INACTIVE];
+	}
+	
+	const oo::PList *scriptInfoOverride = subentDict.find("script_info");
+	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? *scriptInfoOverride : oo::PList()];
+	
+	[self addSubEntity:subentity];
+	[subentity setSubIdx:_maxShipSubIdx];
+	_maxShipSubIdx++;
+	
+	// update subentities
+	BoundingBox sebb = [subentity findSubentityBoundingBox];
+	bounding_box_add_vector(&totalBoundingBox, sebb.max);
+	bounding_box_add_vector(&totalBoundingBox, sebb.min);
+
+	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
+	{
+		BOOL allow_docking = subentDict.get<bool>("allow_docking", true);
+		BOOL ddc = subentDict.get<bool>("disallowed_docking_collides", false);
+		BOOL allow_launching = subentDict.get<bool>("allow_launching", true);
+		// do not include this key in OOShipRegistry; should never be set by shipdata
+		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
+		if (virtual_dock)
+		{
+			[(DockEntity *)subentity setVirtual];
+		}
+		
+		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
+		[subentity cxx_setDisplayName:subentDict.get<std::string>("dock_label", "the docking bay")];
+	}
+
+	[subentity release];
+	
+	return YES;
+}
+
+
+bool ShipEntity::isTemplateCargoPod()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_primaryRole] == "oolite-template-cargopod";
+}
+
+
+void ShipEntity::setUpCargoType(const std::string &cargoString)
+{
+	cargo_type = cxx_StringToCargoType(cargoString);
+	
+	switch (cargo_type)
+	{
+		case CARGO_SLAVES:
+			commodity_amount = 1;
+			commodity_type = "slaves";
+			cargo_type = CARGO_RANDOM; // not realy random, but it tells that cargo is selected.
+			break;
+			
+		case CARGO_ALLOY:
+			commodity_amount = 1;
+			commodity_type = "alloys";
+			cargo_type = CARGO_RANDOM;
+			break;
+			
+		case CARGO_MINERALS:
+			commodity_amount = 1;
+			commodity_type = "minerals";
+			cargo_type = CARGO_RANDOM;
+			break;
+			
+		case CARGO_THARGOID:
+			commodity_amount = 1;
+			commodity_type = "alien_items";
+			cargo_type = CARGO_RANDOM;
+			break;
+			
+		case CARGO_SCRIPTED_ITEM:
+			commodity_amount = 1; // value > 0 is needed to be recognised as cargo by scripts;
+			commodity_type = std::nullopt; // will be defined elsewhere when needed.
+			break;
+			
+		case CARGO_RANDOM:
+			// Could already be set by the cargo_carried key. If not, ensure at least one.
+			if (commodity_amount == 0) commodity_amount = 1;
+			break;
+
+		default:
+			break;
+	}
+}
+
+
+void ShipEntity::removeScript()
+{
+	[script autorelease];
+	script = nil;
+}
+
+
+void ShipEntity::clearSubEntities()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Ensure backlinks are broken (last to first, as -makeObjectsPerformSelector:withObject: went)
+	for (auto sub = subEntities.rbegin(); sub != subEntities.rend(); ++sub)  [sub->get() setOwner:nil];
+	subEntities.clear();
+	
+	// reset size & mass!
+	collision_radius = [self findCollisionRadius];
+	_profileRadius = collision_radius;
+	float density = shipinfoDictionary.get<float>("density", 1.0f);
+	if (octree)  mass = (GLfloat)(density * 20.0f * [octree volume]);
+}
+
+
+Quaternion ShipEntity::subEntityRotationalVelocity()
+{
+	return subentityRotationalVelocity;
+}
+
+
+void ShipEntity::setSubEntityRotationalVelocity(Quaternion rv)
+{
+	subentityRotationalVelocity = rv;
+}
+
+
+std::optional<std::string> ShipEntity::shortDescriptionComponents()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return oo::str::format("\"%s\"", [self cxx_name].value_or("(null)").c_str());
+}
+
+
+GLfloat ShipEntity::getSunGlareFilter()
+{
+	return sunGlareFilter;
+}
+
+
+void ShipEntity::setSunGlareFilter(GLfloat newValue)
+{
+	sunGlareFilter = OOClamp_0_1_f(newValue);
+}
+
+
+GLfloat ShipEntity::getAccuracy()
+{
+	return accuracy;
+}
+
+
+void ShipEntity::setAccuracy(GLfloat new_accuracy)
+{
+	if (new_accuracy < 0.0f && scanClass == CLASS_MISSILE)
+	{
+		new_accuracy = 0.0;
+	}
+	else if (new_accuracy < -5.0f)
+	{
+		new_accuracy = -5.0;
+	}
+	else if (new_accuracy > 10.0f)
+	{
+		new_accuracy = 10.0;
+	}
+	accuracy = new_accuracy;
+	pitch_tolerance = 0.01 * (85.0f + accuracy);
+// especially against small targets, less good pilots will waste some shots
+	aim_tolerance = 240.0 - (18.0f * accuracy);
+
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missile_load_time < 0.1)
+	{
+		missile_load_time = 2.0; // smart enough not to waste all missiles on 1 ECM!
+	}
+}
+
+
+::OOMesh *ShipEntity::mesh()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return (::OOMesh *)[self drawable];
+}
+
+
+void ShipEntity::setMesh(::OOMesh *mesh)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (mesh != [self mesh])
+	{
+		[self setDrawable:mesh];
+		[octree autorelease];
+		octree = [[mesh octree] retain];
+	}
+}
+
+
+BoundingBox ShipEntity::getTotalBoundingBox()
+{
+	return totalBoundingBox;
+}
+
+
+Vector ShipEntity::forwardVector()
+{
+	return v_forward;
+}
+
+
+Vector ShipEntity::upVector()
+{
+	return v_up;
+}
+
+
+Vector ShipEntity::rightVector()
+{
+	return v_right;
+}
+
+
+bool ShipEntity::scriptedMisjump()
+{
+	return scripted_misjump;
+}
+
+
+void ShipEntity::setScriptedMisjump(bool newValue)
+{
+	scripted_misjump = !!newValue;
+}
+
+
+GLfloat ShipEntity::scriptedMisjumpRange()
+{
+	return _scriptedMisjumpRange;
+}
+
+
+void ShipEntity::setScriptedMisjumpRange(GLfloat newValue)
+{
+	_scriptedMisjumpRange = newValue;
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> ShipEntity::getSubEntities()
+{
+	return subEntities;
+}
+
+
+NSUInteger ShipEntity::subEntityCount()
+{
+	return subEntities.size();
+}
+
+
+bool ShipEntity::hasSubEntity(::Entity *sub)
+{
+	// Identity: a subentity's -isEqual: is NSObject's.
+	return std::find(subEntities.begin(), subEntities.end(), sub) != subEntities.end();
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> ShipEntity::subEntityEnumerator()
+{
+	return subEntities;
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::shipSubEntities()
+{
+	std::vector<oo::ObjCRef<::ShipEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isShip])  result.emplace_back((::ShipEntity *)sub.get());
+	}
+	return result;
+}
+
+
+std::vector<oo::ObjCRef<::OOFlasherEntity *>> ShipEntity::flasherEnumerator()
+{
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flashers;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isFlasher])  flashers.emplace_back((::OOFlasherEntity *)sub.get());
+	}
+	return flashers;
+}
+
+
+std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> ShipEntity::exhausts()
+{
+	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isExhaust])  result.emplace_back((::OOExhaustPlumeEntity *)sub.get());
+	}
+	return result;
+}
+
+
+::ShipEntity *ShipEntity::subEntityTakingDamage()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *result = [_subEntityTakingDamage weakRefUnderlyingObject];
+	
+#ifndef NDEBUG
+	// Sanity check - there have been problems here, see fireLaserShotInDirection:
+	// -parentEntity will take care of reporting insanity.
+	if ([result parentEntity] != self)  result = nil;
+#endif
+	
+	// Clear the weakref if the subentity is dead.
+	if (result == nil)  [self setSubEntityTakingDamage:nil];
+	
+	return result;
+}
+
+
+void ShipEntity::setSubEntityTakingDamage(::ShipEntity *sub)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+#ifndef NDEBUG
+	// Sanity checks: sub must be a ship subentity of self, or nil.
+	if (sub != nil)
+	{
+		if (![self hasSubEntity:sub])
+		{
+			OO_LOG("ship.subentity.sanityCheck.failed.details", "Attempt to set subentity taking damage of {} to {}, which is not a subentity.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
+			sub = nil;
+		}
+		else if (![sub isShip])
+		{
+			OO_LOG("ship.subentity.sanityCheck.failed", "Attempt to set subentity taking damage of {} to {}, which is not a ship.", oo::ShortDescriptionOf(self), oo::DescriptionOf(sub));
+			sub = nil;
+		}
+	}
+#endif
+	
+	[_subEntityTakingDamage release];
+	_subEntityTakingDamage = [sub weakRetain];
+}
+
+
+::OOScript *ShipEntity::shipScript()
+{
+	return script;
+}
+
+
+::OOScript *ShipEntity::shipAIScript()
+{
+	return aiScript;
+}
+
+
+OOTimeAbsolute ShipEntity::shipAIScriptWakeTime()
+{
+	return aiScriptWakeTime;
+}
+
+
+void ShipEntity::setAIScriptWakeTime(OOTimeAbsolute t)
+{
+	aiScriptWakeTime = t;
+}
+
+
+std::optional<std::string> ShipEntity::descriptionComponents() const
+{
+	::ShipEntity *self = oo::ToObjC(const_cast<ShipEntity *>(this));
+	if (![self isSubEntity])
+	{
+		// [super cxx_descriptionComponents]: the entity's own components.
+		return oo::str::format("\"%s\" %s", [self cxx_name].value_or("(null)").c_str(), OOEntityWithDrawable::descriptionComponents().value_or("(null)").c_str());
+	}
+	else
+	{
+		// ID, scanClass and status are of no interest for subentities.
+		const char *subtype = nullptr;
+		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
+		else  subtype = "(subentity)";
+
+		return oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype);
+	}
 }
 
 
