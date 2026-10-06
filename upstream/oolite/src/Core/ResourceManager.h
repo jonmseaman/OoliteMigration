@@ -98,7 +98,7 @@ public:
 	static bool corePlist(const std::string &fileName, const std::string &path);	// -cxx_corePlist:excludedAt:
 	// A null PList when no file was found; folderName nullopt where nil was passed.
 	static oo::PList dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
-	static oo::PList dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool useCache);
+	static oo::PList dictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, OOResourceMergeMode mergeMode, bool cache);
 	static oo::PList arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles);
 	static oo::PList arrayFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles, bool useCache);
 	// In-out: an array of arrays (the merged files), edited in place.
