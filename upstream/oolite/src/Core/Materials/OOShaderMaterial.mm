@@ -27,6 +27,7 @@ SOFTWARE.
 
 
 #import "OOShaderMaterial.h"
+#import "Entity.h"	// the shader binding targets' informal protocols (-randomSeedForShaders)
 #include "oofnd/objc/OORuntime.h"
 #import "OOObjCPList.h"
 
@@ -73,8 +74,6 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 } // namespace
 
 
-namespace cxx {
-
 bool OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(const oo::PList &configuration)
 {
 	if (configuration.isNull())  return false;
@@ -108,7 +107,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 	std::optional<std::string>	macroString;
 	std::optional<std::string>	vertexShader;
 	std::optional<std::string>	fragmentShader;
-	GLint					textureUnits = OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
+	GLint					textureUnits = cxx::OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
 	oo::PList				modifiedMacros;
 	std::optional<std::string>	vsName = "<synthesized>";
 	std::optional<std::string>	fsName = "<synthesized>";
@@ -817,8 +816,6 @@ void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTe
 		[textures[i] retain];
 	}
 }
-
-}	// namespace cxx
 
 
 namespace {

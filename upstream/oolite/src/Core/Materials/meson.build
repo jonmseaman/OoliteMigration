@@ -23,7 +23,6 @@ oolite_sources += files(
     'OOPixMapTextureLoader.mm',
     'OOPlanetTextureGenerator.mm',
     'OOShaderMaterial.mm',
-    'OOShaderMaterial+ObjCBridge.mm',
     'OOShaderProgram.mm',
     'OOShaderProgram+ObjCBridge.mm',
     'OOShaderUniform.mm',

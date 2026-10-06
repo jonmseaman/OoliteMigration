@@ -311,7 +311,7 @@ OO_TEST(namedShaders)
 	@autoreleasepool
 	{
 		OOMaterial *m = Make("hull.png", { { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } });
-		OO_CHECK(Is(m, [OOShaderMaterial class]));
+		OO_CHECK(IsExactly<OOShaderMaterial>(m));
 		OO_CHECK(gCacheWrites.empty());
 
 		// A shader that fails, at low detail and not smoothed: the fixed-function material.
@@ -329,7 +329,7 @@ OO_TEST(synthesizedShaders)
 		// Full shader detail: the configuration is synthesized into a shader material, and the
 		// synthesized configuration is cached under the cache key, the name and the configuration.
 		OOMaterial *m = Make("hull.png", { { "emission_map", oo::PList("e.png") } }, NO, std::string("ship"));
-		OO_CHECK(Is(m, [OOShaderMaterial class]));
+		OO_CHECK(IsExactly<OOShaderMaterial>(m));
 		OO_CHECK(gCacheWrites.size() == 1 && gCacheWrites[0].starts_with("synthesized shader materials|ship/hull.png/"));
 
 		const oo::PList &config = gCache.begin()->second;
@@ -351,11 +351,11 @@ OO_TEST(synthesizedShaders)
 
 		// Asked again: read from the cache, not written.
 		gCacheWrites.clear();
-		OO_CHECK(Is(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, NO, std::string("ship")), [OOShaderMaterial class]));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, NO, std::string("ship"))));
 		OO_CHECK(gCacheWrites.empty());
 
 		// No cache key: synthesized, not cached.
-		OO_CHECK(Is(Make("hull.png", {}), [OOShaderMaterial class]) && gCacheWrites.empty());
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", {})) && gCacheWrites.empty());
 	}
 }
 
@@ -367,9 +367,9 @@ OO_TEST(synthesisTriggersAndLoops)
 	{
 		// Low detail: fixed function, unless smoothed or a map needs the shader.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
-		OO_CHECK(Is(Make("hull.png", {}, YES), [OOShaderMaterial class]));
-		OO_CHECK(Is(Make("hull.png", { { "normal_map", oo::PList("n.png") } }), [OOShaderMaterial class]));
-		OO_CHECK(Is(Make("hull.png", { { "specular_map", oo::PList("s.png") } }), [OOShaderMaterial class]));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", {}, YES)));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "normal_map", oo::PList("n.png") } })));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "specular_map", oo::PList("s.png") } })));
 
 		/*	The synthesized shaders fail to build: no loop, and the fixed-function material of the
 			synthesized configuration, which the inner call makes. That configuration keeps only the
@@ -401,7 +401,7 @@ OO_TEST(fromDictionaries)
 		};
 
 		// With shaders, the shaders dictionary's entry; without, the materials dictionary's.
-		OO_CHECK(Is(make("hull.png", materials, shaders), [OOShaderMaterial class]));
+		OO_CHECK(IsExactly<OOShaderMaterial>(make("hull.png", materials, shaders)));
 		gUniverse->_useShaders = NO;
 		OOMaterial *m = make("hull.png", materials, shaders);
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(m));
@@ -451,16 +451,16 @@ OO_TEST(cxxStaticMembers)
 	if (!SetUp(YES, DETAIL_LEVEL_SHADERS))  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		OO_CHECK(IsCxx(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship")), [OOShaderMaterial class]));
+		OO_CHECK(IsCxxExactly<OOShaderMaterial>(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"))));
 		OO_CHECK(gCacheWrites.size() == 1);
 
 		const oo::PList materials = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "diffuse_map", oo::PList("m.png") } }) } });
 		const oo::PList shaders = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } }) } });
-		OO_CHECK(IsCxx(cxx::OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false), [OOShaderMaterial class]));
+		OO_CHECK(IsCxxExactly<OOShaderMaterial>(cxx::OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false)));
 		OO_CHECK(cxx::OOMaterial::materialWithName(std::string("missing"), std::nullopt, oo::PList(), oo::PList(), oo::PList(), nil, false) == nullptr);
 
 		// The facade's class method answers the same kind as the static member it forwards to.
-		OO_CHECK(Is(Make("hull.png", {}, YES), [OOShaderMaterial class]) && IsCxx(MakeCxx("hull.png", {}, true), [OOShaderMaterial class]));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", {}, YES)) && IsCxxExactly<OOShaderMaterial>(MakeCxx("hull.png", {}, true)));
 	}
 }
 
