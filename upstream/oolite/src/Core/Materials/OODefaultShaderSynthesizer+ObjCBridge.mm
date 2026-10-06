@@ -3,8 +3,7 @@
 OODefaultShaderSynthesizer+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, bead oo-bm1q): the Objective-C facade over cxx::OODefaultShaderSynthesizer.
-See OODefaultShaderSynthesizer+ObjCBridge.h. The shader stages (the Stages category) are implemented
-in OODefaultShaderSynthesizer.mm, not here.
+See OODefaultShaderSynthesizer+ObjCBridge.h. Only its test sends it.
 
 Copyright © 2011-2013 Jens Ayton
 
@@ -109,33 +108,5 @@ cxx::OODefaultShaderSynthesizer *oo::ToCxx(OODefaultShaderSynthesizer *synthesiz
 - (std::optional<std::string>) materialKey	{ return _cxxSynthesizer->materialKey(); }
 - (std::optional<std::string>) entityName	{ return _cxxSynthesizer->entityName(); }
 
-- (void) composeVertexShader	{ _cxxSynthesizer->composeVertexShader(); }
-- (void) composeFragmentShader	{ _cxxSynthesizer->composeFragmentShader(); }
-
-- (void) appendVariable:(const std::string &)name ofType:(const std::string &)type withPrefix:(const std::string &)prefix to:(std::string &)buffer	{ _cxxSynthesizer->appendVariable(name, type, prefix, buffer); }
-- (void) addAttribute:(const std::string &)name ofType:(const std::string &)type	{ _cxxSynthesizer->addAttribute(name, type); }
-- (void) addVarying:(const std::string &)name ofType:(const std::string &)type	{ _cxxSynthesizer->addVarying(name, type); }
-- (void) addVertexUniform:(const std::string &)name ofType:(const std::string &)type	{ _cxxSynthesizer->addVertexUniform(name, type); }
-- (void) addFragmentUniform:(const std::string &)name ofType:(const std::string &)type	{ _cxxSynthesizer->addFragmentUniform(name, type); }
-
-- (std::optional<std::string>) defineBindingUniform:(const oo::PList &)binding ofType:(const std::string &)type	{ return _cxxSynthesizer->defineBindingUniform(binding, type); }
-
-- (std::optional<std::string>) readRGBForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName	{ return _cxxSynthesizer->readRGBForTextureSpec(textureSpec, mapName); }
-- (std::optional<std::string>) readOneChannelForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName	{ return _cxxSynthesizer->readOneChannelForTextureSpec(textureSpec, mapName); }
-
-- (NSUInteger) textureIDForSpec:(const oo::PList &)textureSpec	{ return _cxxSynthesizer->textureIDForSpec(textureSpec); }
-- (void) setUpOneTexture:(const oo::PList &)textureSpec	{ _cxxSynthesizer->setUpOneTexture(textureSpec); }
-- (void) getSampleName:(std::string *)outSampleName andSwizzleOp:(std::string *)outSwizzleOp forTextureSpec:(const oo::PList &)textureSpec	{ _cxxSynthesizer->getSampleName(outSampleName, outSwizzleOp, textureSpec); }
-
-#ifndef NDEBUG
-- (void) performStage:(SEL)stage	{ _cxxSynthesizer->performStage(stage); }
-#endif
-
 @end
 
-
-@implementation OODefaultShaderSynthesizer (OOPrivate)
-
-- (NSUInteger) assignIDForTexture:(const oo::PList &)textureSpec	{ return _cxxSynthesizer->assignIDForTexture(textureSpec); }
-
-@end
