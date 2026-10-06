@@ -331,7 +331,7 @@ void OOCheckShipDataPListVerifierStage::checkModel()
 	if (model.has_value())
 	{
 		// C++ since bead oo-5zby; the verifier holds it as its facade (may be null).
-		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>(oo::ToCxx([verifier() modelVerifierStage]));
+		OOModelVerifierStage *modelStage = static_cast<OOModelVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOModelVerifierStage::kName])));
 		if (modelStage == nullptr || !modelStage->modelNamed(*model,
 															 _name,
 															 "shipdata.plist",
