@@ -18,17 +18,24 @@
 	ResourceManager.mm reaches the universe, the HUD, the OXZ manager and the scripts, so the test
 	links every game object but main's (tests/unit/core/meson.build entry ['*'], ADR-0056 amendment
 	oo-44gg) and defines gDebugFlags. UNIVERSE is nil.
+	Bead oo-he11 (slice 2: the OXP manifests) runs the tests in a scratch game folder (see
+	ScratchGameFolder) and adds a scan of fixture add-ons whose manifests the slice accepts or rejects.
 	Run: bash tools/check-core-tests.sh test_ResourceManager
 */
 
 #import "ResourceManager.h"
 
+#include "oofnd/Data.hpp"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/PListParsing.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 #include "oo_test.hpp"
 
+#include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <process.h>
 #include <string>
 #include <vector>
 
@@ -40,6 +47,36 @@ uint32_t gDebugFlags = 0;
 
 
 namespace {
+
+/*	Bead oo-he11: every folder ResourceManager reads is under a scratch game folder, made before
+	main() and so before the first ResourceManager call (the root paths are computed once): the
+	home (HOMEPATH), the managed and extract add-on folders, and the current directory, whose
+	Resources folder holds only an Info-gnustep.plist (version 9.9.9) and whose AddOns folder holds
+	only the fixtures the slice 2 test writes. The machine's own add-ons are never read.
+*/
+struct ScratchGameFolder
+{
+	ScratchGameFolder()
+	{
+		namespace stdfs = std::filesystem;
+		const stdfs::path root = stdfs::temp_directory_path() / ("oo-test-resourcemanager-" + std::to_string(static_cast<unsigned long>(::_getpid())));
+		stdfs::remove_all(root);
+		stdfs::create_directories(root / "work" / "Resources");
+		stdfs::create_directories(root / "work" / "AddOns");
+		::_putenv_s("HOMEPATH", root.string().c_str());
+		::_putenv_s("OO_MANAGEDADDONSDIR", (root / "managed").string().c_str());
+		::_putenv_s("OO_ADDONSEXTRACTDIR", (root / "extract").string().c_str());
+		stdfs::current_path(root / "work");
+		const std::string info = "{ CFBundleVersion = \"9.9.9\"; }";
+		if (!oo::fs::writeFile(root / "work" / "Resources" / "Info-gnustep.plist", oo::Data(info.data(), info.size()), oo::fs::WriteMode::direct))
+		{
+			std::fprintf(stderr, "  could not write the scratch Info-gnustep.plist
+");
+		}
+	}
+};
+const ScratchGameFolder sScratchGameFolder;
+
 
 // The user name the masking functions read, as they read it (the last component of the profile path).
 std::string UserName()
@@ -149,6 +186,115 @@ OO_TEST(cxxAPIAnswersTheSame)
 		OO_CHECK(cxx::ResourceManager::pathsWithAddOns() == std::vector<std::string>{ "ext/cxx.oxp" });
 		cxx::ResourceManager::reset();
 		cxx::ResourceManager::clearCaches();
+	}
+}
+
+
+// --- bead oo-he11: slice 2 (OXP manifests: validation, requirements, conflicts, dependencies, scenarios) ---
+// A scan of a scratch game folder whose only add-ons are fixtures the test writes: every root the
+// scan reads (the built-in data, the managed, extract and additional add-on folders, <cwd>/AddOns)
+// is under the scratch folder, set before the first ResourceManager call by ScratchGameFolder.
+
+namespace {
+
+void WriteText(const std::filesystem::path &path, const std::string &text)
+{
+	std::filesystem::create_directories(path.parent_path());
+	OO_CHECK(oo::fs::writeFile(path, oo::Data(text.data(), text.size()), oo::fs::WriteMode::direct).has_value());
+}
+
+
+oo::PList Manifest(const char *text)
+{
+	auto result = oo::parsePropertyList(text);
+	OO_CHECK(result.has_value());
+	return result ? *result : oo::PList();
+}
+
+
+bool EndsWith(const std::string &s, const std::string &suffix)
+{
+	return s.size() >= suffix.size() && s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+}	// namespace
+
+
+OO_TEST(versionsAndCompatibility)
+{
+	@autoreleasepool
+	{
+		const oo::PList range = Manifest("{ version = \"1.0\"; maximum_version = \"2.0\"; }");
+		OO_CHECK([ResourceManager cxx_matchVersions:range withVersion:"1.5"]);
+		OO_CHECK([ResourceManager cxx_matchVersions:range withVersion:"1.0"]);
+		OO_CHECK([ResourceManager cxx_matchVersions:range withVersion:"2.0"]);
+		OO_CHECK(![ResourceManager cxx_matchVersions:range withVersion:"0.9"]);
+		OO_CHECK(![ResourceManager cxx_matchVersions:range withVersion:"2.0.1"]);
+		OO_CHECK([ResourceManager cxx_matchVersions:Manifest("{}") withVersion:""]);
+		OO_CHECK(![ResourceManager cxx_matchVersions:Manifest("{ version = \"1\"; }") withVersion:""]);
+
+		// The game's version is the scratch Info-gnustep.plist's, 9.9.9.
+		OO_CHECK([ResourceManager cxx_checkVersionCompatibility:Manifest("{ required_oolite_version = \"1.80\"; }") forOXP:"t"]);
+		OO_CHECK(![ResourceManager cxx_checkVersionCompatibility:Manifest("{ required_oolite_version = \"10.0\"; }") forOXP:"t"]);
+		OO_CHECK(![ResourceManager cxx_checkVersionCompatibility:Manifest("{ required_oolite_version = \"1.0\"; maximum_oolite_version = \"9.0\"; }") forOXP:"t"]);
+		OO_CHECK([ResourceManager cxx_checkVersionCompatibility:Manifest("{ required_oolite_version = \"1.0\"; maximum_oolite_version = \"\"; }") forOXP:std::nullopt]);
+		OO_CHECK([ResourceManager cxx_checkVersionCompatibility:Manifest("{}") forOXP:"t"]);	// nothing required
+	}
+}
+
+
+OO_TEST(scanKeepsTheAddOnsWhoseManifestsAllowThem)
+{
+	@autoreleasepool
+	{
+		const std::filesystem::path addOns = std::filesystem::current_path() / "AddOns";
+		WriteText(addOns / "a.oxp" / "manifest.plist", "{ identifier = \"org.test.a\"; version = \"1.0\"; required_oolite_version = \"1.0\"; title = A; tags = (alpha); }");
+		WriteText(addOns / "a.oxp" / "OXPMessages.plist", "( \"hello from a\" )");
+		WriteText(addOns / "b.oxp" / "manifest.plist", "{ identifier = \"org.test.b\"; version = \"1.0\"; required_oolite_version = \"1.0\"; title = B; requires_oxps = ( { identifier = \"org.test.a\"; version = \"2.0\"; } ); }");
+		WriteText(addOns / "c.oxp" / "manifest.plist", "{ identifier = \"org.test.c\"; version = \"1.0\"; required_oolite_version = \"1.0\"; title = C; conflict_oxps = ( { identifier = \"org.test.a\"; } ); }");
+		WriteText(addOns / "d.oxp" / "manifest.plist", "{ identifier = \"org.test.d\"; version = \"1.0\"; required_oolite_version = \"99.0\"; title = D; }");
+		WriteText(addOns / "e.oxp" / "manifest.plist", "{ identifier = \"org.test.e\"; version = \"1.0\"; required_oolite_version = \"1.0\"; }");
+		WriteText(addOns / "f.oxp" / "manifest.plist", "{ identifier = \"org.test.f\"; version = \"1.0\"; required_oolite_version = \"1.0\"; title = F; tags = (\"oolite-scenario-only\"); }");
+		WriteText(addOns / "g.oxp" / "requires.plist", "{ version = \"99\"; }");
+		WriteText(addOns / "h.oxp" / "manifest.plist", "{ identifier = \"org.test.h\"; version = \"3.0\"; required_oolite_version = \"1.0\"; title = H; requires_oxps = ( { identifier = \"org.test.a\"; } ); }");
+
+		[ResourceManager reset];
+		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		for (const std::string &path : paths)  std::printf("  search path: %s\n", path.c_str());
+		bool sawA = false, sawH = false, sawOther = false;
+		for (const std::string &path : paths)
+		{
+			if (EndsWith(path, "a.oxp"))  sawA = true;
+			else if (EndsWith(path, "h.oxp"))  sawH = true;
+			else if (EndsWith(path, ".oxp"))  sawOther = true;
+		}
+		OO_CHECK(sawA && sawH && !sawOther);
+		OO_CHECK([ResourceManager cxx_useAddOns] == std::optional<std::string>(""));	// the scan chose "all"
+
+		const oo::PList a = [ResourceManager cxx_manifestForIdentifier:"org.test.a"];
+		OO_CHECK(a.isDict() && EndsWith(a.get<std::string>("file_path"), "a.oxp"));
+		OO_CHECK(a.find("required_by") != nullptr && a.find("required_by")->count() == 1);	// h requires it
+		OO_CHECK([ResourceManager cxx_manifestForIdentifier:"org.test.b"].isNull());
+		OO_CHECK([ResourceManager cxx_manifestForIdentifier:"org.test.c"].isNull());
+		OO_CHECK([ResourceManager cxx_manifestForIdentifier:"org.test.f"].isNull());
+		OO_CHECK([ResourceManager cxx_OXPsWithMessagesFound] == std::vector<std::string>{ "a.oxp" });
+
+		// With a in the list, c's conflict and b's requirement are seen again (not logged).
+		const oo::PList c = Manifest("{ identifier = \"org.test.c\"; title = C; conflict_oxps = ( { identifier = \"org.test.a\"; } ); }");
+		OO_CHECK([ResourceManager cxx_manifestHasConflicts:c logErrors:NO]);
+		OO_CHECK(![ResourceManager cxx_manifestHasConflicts:Manifest("{ conflict_oxps = ( { identifier = \"org.test.zz\"; } ); }") logErrors:NO]);
+		const oo::PList b = Manifest("{ identifier = \"org.test.b\"; title = B; requires_oxps = ( { identifier = \"org.test.a\"; version = \"2.0\"; } ); }");
+		OO_CHECK([ResourceManager cxx_manifestHasMissingDependencies:b logErrors:NO]);
+		OO_CHECK([ResourceManager cxx_manifest:b HasUnmetDependency:Manifest("{ identifier = \"org.test.a\"; version = \"2.0\"; }") logErrors:NO]);
+		OO_CHECK(![ResourceManager cxx_manifest:b HasUnmetDependency:Manifest("{ identifier = \"org.test.a\"; }") logErrors:NO]);
+		OO_CHECK(![ResourceManager cxx_manifestHasMissingDependencies:Manifest("{}") logErrors:NO]);
+
+		// The rejections were recorded; with no universe their texts are empty, and reading them clears them.
+		const std::optional<std::string> errors = [ResourceManager cxx_errors];
+		OO_CHECK(errors == std::optional<std::string>(""));
+		OO_CHECK([ResourceManager cxx_errors] == std::nullopt);
+
+		[ResourceManager reset];
 	}
 }
 
