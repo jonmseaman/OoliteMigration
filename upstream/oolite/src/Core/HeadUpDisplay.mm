@@ -108,7 +108,7 @@ void GetCurrentCachedInfo(struct CachedInfo *cached)
 {
 	if (EXPECT_NOT(!sCurrentDrawItem->hasCache))
 	{
-		[OOException raise:OORangeException format:"Index 1 is out of range 0 (in 'objectAtIndex:')"];
+		OORaiseException(OORangeException, "Index 1 is out of range 0 (in 'objectAtIndex:')");
 	}
 	*cached = sCurrentDrawItem->cache;
 }
@@ -162,11 +162,11 @@ std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t 
 	stopping at the first colour that did not parse, so the list may be short; an index past its
 	end raised, and still does, with the same text.
 */
-OOColor *ReticleColorAt(const std::vector<oo::ObjCRef<OOColor *>> &colors, NSUInteger index)
+cxx::OOColor *ReticleColorAt(const std::vector<oo::Ref<cxx::OOColor>> &colors, NSUInteger index)
 {
 	if (EXPECT_NOT(index >= colors.size()))
 	{
-		[OOException raise:OORangeException format:"Index %lu is out of range %lu (in 'objectAtIndex:')", (unsigned long)index, (unsigned long)colors.size()];
+		OORaiseException(OORangeException, "Index %lu is out of range %lu (in 'objectAtIndex:')", (unsigned long)index, (unsigned long)colors.size());
 	}
 	return colors[index].get();
 }
@@ -193,7 +193,7 @@ static void hudDrawSurroundAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz);
 static void hudDrawReticleOnTarget(Entity* target, PlayerEntity* player1, GLfloat z1,
 				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
-				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::ObjCRef<OOColor *>> &reticleColors);
+				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::Ref<cxx::OOColor>> &reticleColors);
 static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale);
 static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1);
 static void drawScannerGrid(GLfloat x, GLfloat y, GLfloat z, NSSize siz, int v_dir, GLfloat thickness, GLfloat zoom, BOOL nonlinear, BOOL minimalistic);
@@ -209,80 +209,6 @@ enum
 	kFontTextureOptions = kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureNoShrink | kOOTextureAlphaMask
 };
 
-
-@interface HeadUpDisplay (Private)
-
-- (void) drawCrosshairs;
-- (void) drawLegends;
-- (void) drawDials;
-- (void) drawMFDs;
-
-- (void) drawLegend:(const oo::PList &)info;
-- (void) drawHUDItem:(const oo::PList &)info;
-
-- (void) drawScanner:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawScannerZoomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawCompass:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCompassPlanetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassStationBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassSunBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassTargetBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-- (void) drawCompassBeaconBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha;
-
-- (void) drawAegis:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawSpeedBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawRollBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawPitchBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawYawBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawEnergyGauge:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawForwardShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawAftShieldBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawFuelBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWitchspaceDestination:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCabinTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWeaponTempBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawAltitudeBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawMissileDisplay:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawTargetReticle:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawSecondaryTargetReticle:(const oo::PList &)info;
-- (void) drawWaypoints:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawStatusLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawDirectionCue:(const oo::PList &)info;
-- (void) drawClock:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawPrimedEquipmentText:(const oo::PList &)info;
-- (void) drawASCTarget:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWeaponsOfflineText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index;
-- (void) drawFPSInfoCounter:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawScoopStatus:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawStickSensitivityIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomBar:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawCustomImage:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawSurroundInternal:(const oo::PList &)info color:(const GLfloat[4])color;
-- (void) drawSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawGreenSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawYellowSurround:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawTrumbles:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (oo::PList) crosshairDefinitionForWeaponType:(OOWeaponType)weapon;	// a null PList for none
-
-- (BOOL) checkPlayerInFlight;
-- (BOOL) checkPlayerInSystemFlight;
-
-- (void) resetGui:(GuiDisplayGen*)gui withInfo:(const oo::PList &)gui_info;
-- (void) resetGuiPosition:(GuiDisplayGen*)gui withInfo:(const oo::PList &)gui_info;
-
-
-@end
-
-
-@implementation HeadUpDisplay
 
 static const GLfloat red_color[4] =			{1.0, 0.0, 0.0, 1.0};
 static const GLfloat redplus_color[4] =		{1.0, 0.0, 0.5, 1.0};
@@ -313,31 +239,42 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	// NO OOGL(), this is called within immediate mode blocks.
 	glColor4f(color[0], color[1], color[2], color[3] * alpha);
 }
+//------------------------------------------------------------------------------------//
+//	The class shell (slice 1): cxx::HeadUpDisplay's members. The drawing (slices 2-6) follows, as
+//	the Objective-C Private category of the facade (HeadUpDisplay+ObjCBridge.h).
+
+cxx::HeadUpDisplay::HeadUpDisplay() = default;
 
 
-- (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName
+cxx::HeadUpDisplay::~HeadUpDisplay()
+{
+	ReleaseHUDWidgets(legendArray);
+	ReleaseHUDWidgets(dialArray);
+	ReleaseHUDWidgets(mfdArray);
+}
+
+
+void cxx::HeadUpDisplay::initWithDictionary(const oo::PList &hudinfo, const std::optional<std::string> &hudFileName)
 {
 	unsigned		i;
-	BOOL			isCompassToBeDrawn = NO;
-	BOOL			areTrumblesToBeDrawn = NO;
+	bool			isCompassToBeDrawn = false;
+	bool			areTrumblesToBeDrawn = false;
 	const oo::PList	&info = hudinfo;
 
-	self = [super init];
-	
 	lineWidth = 1.0;
-	
+
 	if (sFontTexture == nil)  InitTextEngine();
-	
+
 	deferredHudName.reset();	// if engaged, it means that we have a deferred HUD which is to be drawn at first available opportunity
 	hudName = hudFileName;
-	
+
 	// init arrays
 	dialArray.reserve(16);
 	legendArray.reserve(16);
 	mfdArray.reserve(8);
-	
+
 	_reticleColors.clear();
-	BOOL reticleColorsSet = NO;
+	bool reticleColorsSet = false;
 
 	// populate arrays
 	const oo::PList *dials = info.get<oo::PList::Array>(DIALS_KEY);
@@ -346,8 +283,8 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		const oo::PList	*dialEntry = dials->at<oo::PList::Dict>(i);
 		const oo::PList	&dial_info = (dialEntry != nullptr) ? *dialEntry : noEntry;
-		if (!areTrumblesToBeDrawn && dial_info.get<std::string>(SELECTOR_KEY) == "drawTrumbles:")  areTrumblesToBeDrawn = YES;
-		if (!isCompassToBeDrawn && dial_info.get<std::string>(SELECTOR_KEY) == "drawCompass:")  isCompassToBeDrawn = YES;
+		if (!areTrumblesToBeDrawn && dial_info.get<std::string>(SELECTOR_KEY) == "drawTrumbles:")  areTrumblesToBeDrawn = true;
+		if (!isCompassToBeDrawn && dial_info.get<std::string>(SELECTOR_KEY) == "drawCompass:")  isCompassToBeDrawn = true;
 		if (dial_info.get<std::string>(SELECTOR_KEY) == "drawTargetReticle:")
 		{
 			oo::PList targetColor = PListForKeyIn(dial_info, "target_rgba");
@@ -356,70 +293,70 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			if (targetColor.isNull())  targetColor = oo::PList("greenColor");
 			if (targetSensitiveColor.isNull())  targetSensitiveColor = oo::PList("redColor");
 			if (wormholeColor.isNull())  wormholeColor = oo::PList("cyanColor");
-			OOColor *colors[3] = { [OOColor cxx_colorWithDescription:targetColor],
-								   [OOColor cxx_colorWithDescription:targetSensitiveColor],
-								   [OOColor cxx_colorWithDescription:wormholeColor] };
+			oo::Ref<OOColor> colors[3] = { OOColor::colorWithDescription(targetColor),
+										   OOColor::colorWithDescription(targetSensitiveColor),
+										   OOColor::colorWithDescription(wormholeColor) };
 			_reticleColors.clear();
-			for (OOColor *color : colors)
+			for (const oo::Ref<OOColor> &color : colors)
 			{
-				if (color == nil)  break;	// the list stops at the first nil, as +arrayWithObjects: did
-				_reticleColors.push_back(oo::ObjCRef<OOColor *>(color));
+				if (color == nullptr)  break;	// the list stops at the first nil, as +arrayWithObjects: did
+				_reticleColors.push_back(color);
 			}
-			reticleColorsSet = YES;
+			reticleColorsSet = true;
 		}
-		[self addDial:dial_info];
+		addDial(dial_info);
 	}
-	
+
 	// reticle colors should be set at this point, but just be safe in case they are not
 	if (!reticleColorsSet)
 	{
-		_reticleColors = { oo::ObjCRef<OOColor *>([OOColor greenColor]), oo::ObjCRef<OOColor *>([OOColor redColor]), oo::ObjCRef<OOColor *>([OOColor cyanColor]) };
+		_reticleColors = { OOColor::greenColor(), OOColor::redColor(), OOColor::cyanColor() };
 	}
-	
+
 	if (!areTrumblesToBeDrawn)	// naughty - a hud with no built-in drawTrumbles: - one must be added!
 	{
 		const oo::PList	trumble_dial_info(oo::PList::Dict{ { SELECTOR_KEY, oo::PList(std::string("drawTrumbles:")) } });
-		[self addDial:trumble_dial_info];
+		addDial(trumble_dial_info);
 	}
-	
+
 	_compassActive = isCompassToBeDrawn;
-	
-	_lastWeaponType = nil;
+
+	_lastWeaponType = nullptr;
 
 	const oo::PList *legends = info.get<oo::PList::Array>(LEGENDS_KEY);
 	for (i = 0; legends != nullptr && i < legends->count(); i++)
 	{
 		const oo::PList *legend = legends->at<oo::PList::Dict>(i);
-		[self addLegend:(legend != nullptr) ? *legend : noEntry];
+		addLegend((legend != nullptr) ? *legend : noEntry);
 	}
 
 	const oo::PList *mfds = info.get<oo::PList::Array>(MFDS_KEY);
 	for (i = 0; mfds != nullptr && i < mfds->count(); i++)
 	{
 		const oo::PList *mfd = mfds->at<oo::PList::Dict>(i);
-		[self addMFD:(mfd != nullptr) ? *mfd : noEntry];
+		addMFD((mfd != nullptr) ? *mfd : noEntry);
 	}
 
 
-	hudHidden = NO;
+	hudHidden = false;
 
 	_hiddenSelectors.clear();
 
-	hudUpdating = NO;
-	
+	hudUpdating = false;
+
 	overallAlpha = info.get<float>("overall_alpha", DEFAULT_OVERALL_ALPHA);
 
-	reticleTargetSensitive = info.get<bool>("reticle_target_sensitive", NO);
+	reticleTargetSensitive = info.get<bool>("reticle_target_sensitive", false);
 	propertiesReticleTargetSensitive = oo::PList(oo::PList::Dict{
-										{ "isAccurate", oo::PList(static_cast<bool>(YES)) },
+										{ "isAccurate", oo::PList(static_cast<bool>(true)) },
 										{ "timeLastAccuracyProbabilityCalculation", oo::PList(static_cast<double>([UNIVERSE getTime])) } });
-	
-	cloakIndicatorOnStatusLight = info.get<bool>("cloak_indicator_on_status_light", YES);
 
-	allowBigGui = info.get<bool>("allow_big_gui", NO);
-	
+	cloakIndicatorOnStatusLight = info.get<bool>("cloak_indicator_on_status_light", true);
+
+	allowBigGui = info.get<bool>("allow_big_gui", false);
+
 	last_transmitter = NO_TARGET;
-	
+
 	crosshairDefinition.reset();
 
 	std::optional<std::string> crossfile = OptionalStringIn(info, "crosshair_file");
@@ -431,41 +368,28 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	}
 	else
 	{
-		[self cxx_setCrosshairDefinition:*crossfile];
+		[oo::ToObjC(this) cxx_setCrosshairDefinition:*crossfile];	// slice 2's, still on the facade
 	}
-	
+
 	oo::PList crosshairColor = PListForKeyIn(info, "crosshair_color");
 	if (crosshairColor.isNull())  crosshairColor = oo::PList("greenColor");
-	_crosshairColor = [[OOColor cxx_colorWithDescription:crosshairColor] retain];
+	_crosshairColor = OOColor::colorWithDescription(crosshairColor);
 	_crosshairScale = info.get<float>("crosshair_scale", 32.0f);
 	_crosshairWidth = info.get<float>("crosshair_width", 1.5f);
 
-	minimalistic_scanner = info.get<bool>("scanner_minimalistic", NO);
+	minimalistic_scanner = info.get<bool>("scanner_minimalistic", false);
 
-	nonlinear_scanner = info.get<bool>("scanner_non_linear", NO);
-	scanner_ultra_zoom = info.get<bool>("scanner_ultra_zoom", NO);
-	
-	return self;
-}
-
-
-- (void) dealloc
-{
-	ReleaseHUDWidgets(legendArray);
-	ReleaseHUDWidgets(dialArray);
-	ReleaseHUDWidgets(mfdArray);
-	DESTROY(_crosshairColor);
-
-	[super dealloc];
+	nonlinear_scanner = info.get<bool>("scanner_non_linear", false);
+	scanner_ultra_zoom = info.get<bool>("scanner_ultra_zoom", false);
 }
 
 //------------------------------------------------------------------------------------//
 
 
-- (void) resetGui:(GuiDisplayGen*)gui withInfo:(const oo::PList &)gui_info
+void cxx::HeadUpDisplay::resetGui(::GuiDisplayGen *gui, const oo::PList &gui_info)
 {
-	[self resetGuiPosition:gui withInfo:gui_info];
-	
+	resetGuiPosition(gui, gui_info);
+
 	NSSize		siz =	[gui	size];
 	int			rht =	[gui	rowHeight];
 	std::optional<std::string>	title =	[gui cxx_title];
@@ -479,7 +403,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		title = OptionalStringIn(gui_info, TITLE_KEY);
 	[gui cxx_resizeTo:siz characterHeight:rht title:title];
 	if (gui_info.find(BACKGROUND_RGBA_KEY) != nullptr)
-		[gui setBackgroundColor:[OOColor cxx_colorFromString:gui_info.get<std::string>(BACKGROUND_RGBA_KEY)]];
+		[gui setBackgroundColor:oo::ToObjC(OOColor::colorFromString(gui_info.get<std::string>(BACKGROUND_RGBA_KEY)))];
 	if (gui_info.find(ALPHA_KEY) != nullptr)
 		[gui setMaxAlpha: OOClamp_0_max_f(gui_info.get<float>(ALPHA_KEY),1.0f)];
 	else
@@ -487,7 +411,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) resetGuiPosition:(GuiDisplayGen*)gui withInfo:(const oo::PList &)gui_info
+void cxx::HeadUpDisplay::resetGuiPosition(::GuiDisplayGen *gui, const oo::PList &gui_info)
 {
 	Vector pos = [gui drawPosition];
 	if (gui_info.find(X_KEY) != nullptr)
@@ -495,7 +419,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			[[UNIVERSE gameView] x_offset] *
 			gui_info.get<float>(X_ORIGIN_KEY, 0.0);
 	if (gui_info.find(Y_KEY) != nullptr)
-		pos.y = gui_info.get<float>(Y_KEY) + 
+		pos.y = gui_info.get<float>(Y_KEY) +
 			[[UNIVERSE gameView] y_offset] *
 			gui_info.get<float>(Y_ORIGIN_KEY, 0.0);
 
@@ -503,12 +427,12 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) cxx_resetGuis:(const oo::PList &)info
+void cxx::HeadUpDisplay::resetGuis(const oo::PList &info)
 {
 	// check for entries in hud.plist for message_gui and comm_log_gui
 	// then resize and reposition them accordingly.
 
-	GuiDisplayGen*	gui = [UNIVERSE messageGUI];
+	::GuiDisplayGen*	gui = [UNIVERSE messageGUI];
 	const oo::PList	*gui_info = info.get<oo::PList::Dict>("message_gui");	// nullptr where nil was
 	if (gui && gui_info != nullptr && gui_info->count() > 0)
 	{
@@ -516,42 +440,42 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			If switching message guis, remember the last 2 message lines.
 			Present GUI limitations make it impractical to transfer anything
 			more...
-			
+
 			TODO: a more usable GUI code! - Kaks 2011.11.05
 		*/
-		
-		const oo::PList	lastLines = [gui cxx_getLastLines];	// text, colour, fade time - text, colour, fade time
-		BOOL		line1 = OptionalStringAt(lastLines, 0) != "";	// a missing line counted as not empty
-		[self resetGui:gui withInfo:*gui_info];
 
-		BOOL permanent = gui_info->get<bool>("permanent", NO);
+		const oo::PList	lastLines = [gui cxx_getLastLines];	// text, colour, fade time - text, colour, fade time
+		bool		line1 = OptionalStringAt(lastLines, 0) != "";	// a missing line counted as not empty
+		resetGui(gui, *gui_info);
+
+		bool permanent = gui_info->get<bool>("permanent", false);
 		[UNIVERSE setPermanentMessageLog:permanent];
-		
-		BOOL automaticBg = gui_info->get<bool>("background_automatic", YES);
+
+		bool automaticBg = gui_info->get<bool>("background_automatic", true);
 		[UNIVERSE setAutoMessageLogBg:automaticBg];
-		
+
 		// set message gui text colors - one for standard messages, one for incoming comms
 		// incoming comms message color must default to green for compatibility with older huds that
 		// don't have this key
-		[gui setTextColor:[OOColor cxx_colorWithDescription:PListForKeyIn(*gui_info, "text_color")]];
-		OOColor *textCommsColor = [OOColor cxx_colorWithDescription:PListForKeyIn(*gui_info, "text_comms_color")];
-		if (!textCommsColor)  textCommsColor = [OOColor greenColor];
-		[gui setTextCommsColor:textCommsColor];
-		
+		[gui setTextColor:oo::ToObjC(OOColor::colorWithDescription(PListForKeyIn(*gui_info, "text_color")))];
+		oo::Ref<OOColor> textCommsColor = OOColor::colorWithDescription(PListForKeyIn(*gui_info, "text_comms_color"));
+		if (!textCommsColor)  textCommsColor = OOColor::greenColor();
+		[gui setTextCommsColor:oo::ToObjC(textCommsColor)];
+
 		if (line1)
 		{
 			[gui cxx_printLongText:OptionalStringAt(lastLines, 0) align:GUI_ALIGN_CENTER
-						 color:[OOColor cxx_colorFromString:lastLines.at<std::string>(1)]
+						 color:oo::ToObjC(OOColor::colorFromString(lastLines.at<std::string>(1)))
 					  fadeTime:(permanent?0.0:lastLines.at<float>(2)) key:std::nullopt addToArray:nullptr];
 		}
 		if (lastLines.count() > 3 && (line1 || OptionalStringAt(lastLines, 3) != ""))
 		{
 			[gui cxx_printLongText:OptionalStringAt(lastLines, 3) align:GUI_ALIGN_CENTER
-						 color:[OOColor cxx_colorFromString:lastLines.at<std::string>(4)]
+						 color:oo::ToObjC(OOColor::colorFromString(lastLines.at<std::string>(4)))
 					  fadeTime:(permanent?0.0:lastLines.at<float>(5)) key:std::nullopt addToArray:nullptr];
 		}
 	}
-	
+
 	if (gui_info != nullptr && gui_info->count() == 0)
 	{
 		// exists and it's empty. complete reset.
@@ -559,42 +483,42 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		[gui setDrawPosition: make_vector(0.0, -40.0, 640.0)];
 		[gui cxx_resizeTo:NSMakeSize(480, 160) characterHeight:19 title:std::nullopt];
 		[gui setCharacterSize:NSMakeSize(16,20)];	// narrow characters
-		[gui setTextColor:[OOColor yellowColor]];
-		[gui setTextCommsColor:[OOColor greenColor]];
+		[gui setTextColor:oo::ToObjC(OOColor::yellowColor())];
+		[gui setTextCommsColor:oo::ToObjC(OOColor::greenColor())];
 		[UNIVERSE setPermanentMessageLog:NO];
 		[UNIVERSE setAutoMessageLogBg:YES];
 	}
-	
+
 	[gui setAlpha: 1.0f];	// message_gui is always visible.
-	
+
 	// And now set up the comms log
-	
+
 	gui = [UNIVERSE commLogGUI];
 	gui_info = info.get<oo::PList::Dict>("comm_log_gui");
 
 	if (gui && gui_info != nullptr && gui_info->count() > 0)
 	{
-		[UNIVERSE setAutoCommLog:gui_info->get<bool>("automatic", YES)];
-		[UNIVERSE setPermanentCommLog:gui_info->get<bool>("permanent", NO)];
-		
+		[UNIVERSE setAutoCommLog:gui_info->get<bool>("automatic", true)];
+		[UNIVERSE setPermanentCommLog:gui_info->get<bool>("permanent", false)];
+
 		/*
 			We need to repopulate the comms log after resetting it.
-			
+
 			At the moment the colour information is set on a per-line basis, rather than a per-text basis.
 			A comms message can span multiple lines, and two consecutive messages can share the same colour,
 			so trying to match the colour information from the GUI with each message won't work.
-			
+
 			Bottom line: colour information is lost on comms log gui reset.
 			And yes, this is yet another reason for the following
-			
+
 			TODO: a more usable GUI code! - Kaks 2011.11.05
 		*/
-		
+
 		const std::vector<std::string> *liveLog = [PLAYER cxx_commLog];
 		const std::vector<std::string> cLog = (liveLog != nullptr) ? *liveLog : std::vector<std::string>();
 		NSUInteger i, commCount = cLog.size();
 
-		[self resetGui:gui withInfo:*gui_info];
+		resetGui(gui, *gui_info);
 
 		for (i = 0; i < commCount; i++)
 		{
@@ -602,7 +526,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 					  fadeTime:0.0 key:std::nullopt addToArray:nullptr];
 		}
 	}
-	
+
 	if (gui_info != nullptr && gui_info->count() == 0)
 	{
 		// exists and it's empty. complete reset.
@@ -611,11 +535,11 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		[gui setCurrentRow:9];
 		[gui setDrawPosition: make_vector(0.0, 180.0, 640.0)];
 		[gui cxx_resizeTo:NSMakeSize(360, 120) characterHeight:12 title:std::nullopt];
-		[gui setBackgroundColor:[OOColor colorWithRed:0.0 green:0.05 blue:0.45 alpha:0.5]];
-		[gui setTextColor:[OOColor whiteColor]];
-		[gui cxx_printLongText:OO_DESC("communications-log-string") align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
+		[gui setBackgroundColor:oo::ToObjC(OOColor::colorWithRed(0.0, 0.05, 0.45, 0.5))];
+		[gui setTextColor:oo::ToObjC(OOColor::whiteColor())];
+		[gui cxx_printLongText:OO_DESC("communications-log-string") align:GUI_ALIGN_CENTER color:oo::ToObjC(OOColor::yellowColor()) fadeTime:0 key:std::nullopt addToArray:nullptr];
 	}
-	
+
 	if ([UNIVERSE permanentCommLog])
 	{
 		[gui stopFadeOuts];
@@ -628,13 +552,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (std::optional<std::string>) cxx_hudName
+std::optional<std::string> cxx::HeadUpDisplay::getHudName()
 {
 	return hudName;
 }
 
 
-- (void) setHudName:(const std::optional<std::string> &)newHudName
+void cxx::HeadUpDisplay::setHudName(const std::optional<std::string> &newHudName)
 {
 	if (newHudName.has_value())
 	{
@@ -643,97 +567,97 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (OOColor *) reticleColorForIndex:(NSUInteger)idx
+oo::Ref<cxx::OOColor> cxx::HeadUpDisplay::reticleColorForIndex(NSUInteger idx)
 {
 	if (idx < _reticleColors.size())
 	{
-		return _reticleColors[idx].get();
+		return _reticleColors[idx];
 	}
-	return nil;
+	return nullptr;
 }
 
 
-- (BOOL) setReticleColorForIndex:(NSUInteger)idx toColor:(OOColor *)newColor
+bool cxx::HeadUpDisplay::setReticleColorForIndex(NSUInteger idx, OOColor *newColor)
 {
 	if (newColor && idx < _reticleColors.size())
 	{
-		_reticleColors[idx] = oo::ObjCRef<OOColor *>(newColor);
-		return YES;
+		_reticleColors[idx] = oo::Ref<OOColor>(newColor);
+		return true;
 	}
-	return NO;
+	return false;
 }
 
 
-- (GLfloat) scannerZoom
+GLfloat cxx::HeadUpDisplay::scannerZoom()
 {
 	return scanner_zoom;
 }
 
 
-- (void) setScannerZoom:(GLfloat)value
+void cxx::HeadUpDisplay::setScannerZoom(GLfloat value)
 {
 	scanner_zoom = value;
 }
 
-- (GLfloat) overallAlpha
+GLfloat cxx::HeadUpDisplay::getOverallAlpha()
 {
 	return overallAlpha;
 }
 
 
-- (void) setOverallAlpha:(GLfloat) newAlphaValue
+void cxx::HeadUpDisplay::setOverallAlpha(GLfloat newAlphaValue)
 {
 	overallAlpha = OOClamp_0_1_f(newAlphaValue);
 }
 
 
-- (BOOL) reticleTargetSensitive
+bool cxx::HeadUpDisplay::getReticleTargetSensitive()
 {
 	return reticleTargetSensitive;
 }
 
 
-- (void) setReticleTargetSensitive:(BOOL) newReticleTargetSensitiveValue
+void cxx::HeadUpDisplay::setReticleTargetSensitive(bool newReticleTargetSensitiveValue)
 {
 	reticleTargetSensitive = !!newReticleTargetSensitiveValue; // ensure YES or NO.
 }
 
 
-- (oo::PList *) propertiesReticleTargetSensitive
+oo::PList *cxx::HeadUpDisplay::getPropertiesReticleTargetSensitive()
 {
 	return &propertiesReticleTargetSensitive;
 }
 
 
-- (BOOL) isHidden
+bool cxx::HeadUpDisplay::isHidden()
 {
 	return hudHidden;
 }
 
 
-- (void) setHidden:(BOOL)newValue
+void cxx::HeadUpDisplay::setHidden(bool newValue)
 {
 	hudHidden = !!newValue;	// ensure YES or NO
 }
 
 
-- (BOOL) allowBigGui
+bool cxx::HeadUpDisplay::getAllowBigGui()
 {
 	return allowBigGui || hudHidden;
 }
 
 
-- (BOOL) hasHidden:(const std::optional<std::string> &)selectorName
+bool cxx::HeadUpDisplay::hasHidden(const std::optional<std::string> &selectorName)
 {
 	if (!selectorName.has_value())
 	{
-		return NO;
+		return false;
 	}
 	return _hiddenSelectors.contains(*selectorName);
 }
 
 
-- (void) cxx_setHiddenSelector:(const std::string &)selectorName hidden:(BOOL)hide
+void cxx::HeadUpDisplay::setHiddenSelector(const std::string &selectorName, bool hide)
 {
 	if (hide)
 	{
@@ -746,48 +670,48 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) clearHiddenSelectors
+void cxx::HeadUpDisplay::clearHiddenSelectors()
 {
 	_hiddenSelectors.clear();
 }
 
 
-- (BOOL) isCompassActive
+bool cxx::HeadUpDisplay::isCompassActive()
 {
 	return _compassActive;
 }
 
 
-- (void) setCompassActive:(BOOL)newValue
+void cxx::HeadUpDisplay::setCompassActive(bool newValue)
 {
 	_compassActive = !!newValue;
 }
 
 
-- (BOOL) isUpdating
+bool cxx::HeadUpDisplay::isUpdating()
 {
 	return hudUpdating;
 }
 
 
-- (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName
+void cxx::HeadUpDisplay::setDeferredHudName(const std::optional<std::string> &newDeferredHudName)
 {
 	deferredHudName = newDeferredHudName;
 }
 
 
-- (std::optional<std::string>) cxx_deferredHudName
+std::optional<std::string> cxx::HeadUpDisplay::getDeferredHudName()
 {
 	return deferredHudName;
 }
 
 
-- (void) addLegend:(const oo::PList &)info
+void cxx::HeadUpDisplay::addLegend(const oo::PList &info)
 {
 	std::optional<std::string>	imageName;
-	OOTexture			*texture = nil;
+	oo::ObjCRef<::OOTexture *>	texture;
 	NSSize				imageSize;
-	OOTextureSprite		*legendSprite = nil;
+	oo::Ref<OOTextureSprite>	legendSprite;
 	struct CachedInfo	cache;
 
 	// prefetch data associated with this legend
@@ -796,29 +720,28 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	imageName = OptionalStringIn(info, IMAGE_KEY);
 	if (imageName.has_value())
 	{
-		texture = [OOTexture cxx_textureWithName:imageName
-										inFolder:std::string("Images")
-										 options:kOOTextureDefaultOptions | kOOTextureNoShrink
-									  anisotropy:kOOTextureDefaultAnisotropy
-										 lodBias:kOOTextureDefaultLODBias];
-		if (texture == nil)
+		texture = OOTexture::textureWithName(imageName,
+											 std::string("Images"),
+											 kOOTextureDefaultOptions | kOOTextureNoShrink,
+											 kOOTextureDefaultAnisotropy,
+											 kOOTextureDefaultLODBias);
+		if (texture == nullptr)
 		{
 			OO_LOG_ERR(cxx_kOOLogFileNotFound, "HeadUpDisplay couldn't get an image texture name for {}", *imageName);
 			return;
 		}
 
-		imageSize = [texture dimensions];
+		imageSize = oo::ToCxx(texture.get())->dimensions();
 		imageSize.width = info.get<float>(WIDTH_KEY, imageSize.width);
 		imageSize.height = info.get<float>(HEIGHT_KEY, imageSize.height);
 
- 		legendSprite = [[OOTextureSprite alloc] initWithTexture:texture size:imageSize];
+ 		legendSprite = OOTextureSprite::initWithTexture(texture.get(), imageSize);
 
-		// a copy of the entry holding the sprite (a mixed configuration: an Object node)
+		// a copy of the entry holding the sprite (a mixed configuration: an Object node, the sprite's facade)
 		oo::PList legendInfo = info;
-		(*legendInfo.getIf<oo::PList::Dict>())[SPRITE_KEY] = oo::PListObject(legendSprite);
+		(*legendInfo.getIf<oo::PList::Dict>())[SPRITE_KEY] = oo::PListObject(oo::ToObjC(legendSprite));
 		// add info and cache to the list
 		AddHUDWidget(legendArray, legendInfo, &cache, NULL, "");
-		[legendSprite release];
 	}
 	else if (OptionalStringIn(info, TEXT_KEY).has_value())
 	{
@@ -829,20 +752,20 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) addDial:(const oo::PList &)info
+void cxx::HeadUpDisplay::addDial(const oo::PList &info)
 {
 	static std::set<std::string> allowedSelectors;
-	static BOOL allowedSelectorsLoaded = NO;
+	static bool allowedSelectorsLoaded = false;
 	if (!allowedSelectorsLoaded)
 	{
-		const oo::PList whitelist = [ResourceManager cxx_whitelistDictionary];
+		const oo::PList whitelist = [::ResourceManager cxx_whitelistDictionary];
 		const oo::PList *dialMethods = whitelist.get<oo::PList::Array>("hud_dial_methods");
 		// the set held what the array held; only strings can match a selector name
 		for (std::size_t j = 0; dialMethods != nullptr && j < dialMethods->count(); j++)
 		{
 			if (const std::string *name = dialMethods->at(j)->getIf<std::string>())  allowedSelectors.insert(*name);
 		}
-		allowedSelectorsLoaded = YES;
+		allowedSelectorsLoaded = true;
 	}
 
 	std::optional<std::string> selectorString = OptionalStringIn(info, SELECTOR_KEY);
@@ -860,15 +783,16 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 	SEL selector = OOSelectorFromName(selectorString->c_str());
 
-	OOAssert([self respondsToSelector:selector], "HUD dial in %s uses selector \"%s\" which is in whitelist, but not implemented.", hudName.value_or("(null)").c_str(), selectorString->c_str());
+	// the dials are the facade's methods, called by name (ADR-0055 item 5)
+	OOCAssert([oo::ToObjC(this) respondsToSelector:selector], "HUD dial in %s uses selector \"%s\" which is in whitelist, but not implemented.", hudName.value_or("(null)").c_str(), selectorString->c_str());
 
 	//  handle the case above with NS_BLOCK_ASSERTIONS too.
-	if (![self respondsToSelector:selector])
+	if (![oo::ToObjC(this) respondsToSelector:selector])
 	{
 		OO_LOG_ERR("hud.dial.invalidSelector", "HUD dial in {} uses selector \"{}\"  which is in whitelist, but not implemented, and will be ignored.", hudName.value_or("(null)"), *selectorString);
 		return;
 	}
-	
+
 	// valid dial, now prefetch data
 	struct CachedInfo cache;
 	prefetchData(info, &cache);
@@ -877,7 +801,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) addMFD:(const oo::PList &)info
+void cxx::HeadUpDisplay::addMFD(const oo::PList &info)
 {
 	struct CachedInfo cache;
 	prefetchData(info, &cache);
@@ -885,10 +809,104 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (NSUInteger) mfdCount
+NSUInteger cxx::HeadUpDisplay::mfdCount()
 {
 	return mfdArray.size();
 }
+
+
+std::optional<std::string> cxx::HeadUpDisplay::getCrosshairDefinition()
+{
+	return crosshairDefinition;
+}
+
+
+bool cxx::HeadUpDisplay::checkPlayerInFlight()
+{
+	return [PLAYER isInSpace] && [PLAYER status] != STATUS_DOCKING;
+}
+
+
+bool cxx::HeadUpDisplay::checkPlayerInSystemFlight()
+{
+	::OOSunEntity		*the_sun = [UNIVERSE sun];
+	::OOPlanetEntity	*the_planet = [UNIVERSE planet];
+
+	return checkPlayerInFlight()		// be in the right mode
+		&& the_sun && the_planet		// and be in a system
+		&& !oo::ToCxx(the_sun)->goneNova();
+}
+
+
+bool cxx::HeadUpDisplay::minimalisticScanner()
+{
+	return minimalistic_scanner;
+}
+
+
+void cxx::HeadUpDisplay::setMinimalisticScanner(bool newValue)
+{
+	minimalistic_scanner = !!newValue;
+}
+
+
+Vector cxx::HeadUpDisplay::nonlinearScannerScale(Vector V, GLfloat zoom, double scale)
+{
+	OOScalar mag = magnitude(V);
+	Vector unit = vector_normal(V);
+	return vector_multiply_scalar(unit, nonlinearScannerFunc(mag, zoom, scale));
+}
+
+
+bool cxx::HeadUpDisplay::nonlinearScanner()
+{
+	return nonlinear_scanner;
+}
+
+
+void cxx::HeadUpDisplay::setNonlinearScanner(bool newValue)
+{
+	nonlinear_scanner = !!newValue;
+}
+
+
+bool cxx::HeadUpDisplay::scannerUltraZoom()
+{
+	return scanner_ultra_zoom;
+}
+
+
+void cxx::HeadUpDisplay::setScannerUltraZoom(bool newValue)
+{
+	scanner_ultra_zoom = !!newValue;
+}
+
+
+void cxx::HeadUpDisplay::refreshLastTransmitter()
+{
+	::Entity* lt = [UNIVERSE entityForUniversalID:last_transmitter];
+	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
+		return;
+	ShipEntity* st = (ShipEntity*)lt;
+	if ([st messageTime] <= 0.0)
+		[st setMessageTime:2.5];
+}
+
+
+void cxx::HeadUpDisplay::setLineWidth(GLfloat value)
+{
+	lineWidth = value;
+}
+
+
+GLfloat cxx::HeadUpDisplay::getLineWidth()
+{
+	return lineWidth;
+}
+
+
+@implementation HeadUpDisplay (Private)
+
 
 /*
 	SLOW_CODE
@@ -919,19 +937,19 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 */
 - (void) renderHUD
 {
-	hudUpdating = YES;
+	oo::ToCxx(self)->hudUpdating = YES;
 	
 	OOVerifyOpenGLState();
 	
-	if ((_crosshairWidth * lineWidth) > 0)
+	if ((oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth) > 0)
 	{
-		OOGL(GLScaledLineWidth(_crosshairWidth * lineWidth));
+		OOGL(GLScaledLineWidth(oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth));
 		[self drawCrosshairs];
 	}
 	
-	if (lineWidth > 0)
+	if (oo::ToCxx(self)->lineWidth > 0)
 	{
-		OOGL(GLScaledLineWidth(lineWidth));
+		OOGL(GLScaledLineWidth(oo::ToCxx(self)->lineWidth));
 		[self drawLegends];
 	}
 	
@@ -941,7 +959,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	OOVerifyOpenGLState();
 	
-	hudUpdating = NO;
+	oo::ToCxx(self)->hudUpdating = NO;
 }
 
 
@@ -950,11 +968,11 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	/* Since the order of legend drawing is significant, this loop must be kept
 	 * as an incrementing one for compatibility with previous Oolite versions.
 	 * CIM: 28/9/12 */
-	z1 = [[UNIVERSE gameView] display_z];
-	NSUInteger i, nLegends = legendArray.size();
+	oo::ToCxx(self)->z1 = [[UNIVERSE gameView] display_z];
+	NSUInteger i, nLegends = oo::ToCxx(self)->legendArray.size();
 	for (i = 0; i < nLegends; i++)
 	{
-		sCurrentDrawItem = &legendArray[i];
+		sCurrentDrawItem = &oo::ToCxx(self)->legendArray[i];
 		[self drawLegend:sCurrentDrawItem->info];
 	}
 }
@@ -962,22 +980,22 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 - (void) drawDials
 {	
-	z1 = [[UNIVERSE gameView] display_z];
+	oo::ToCxx(self)->z1 = [[UNIVERSE gameView] display_z];
 	// reset drawScanner flag.
 	_compassUpdated = NO;
 	
 	// tight loop, we assume dialArray doesn't change in mid-draw.
-	NSUInteger i, nDials = dialArray.size();
+	NSUInteger i, nDials = oo::ToCxx(self)->dialArray.size();
 	for (i = 0; i < nDials; i++)
 	{
-		sCurrentDrawItem = &dialArray[i];
+		sCurrentDrawItem = &oo::ToCxx(self)->dialArray[i];
 		[self drawHUDItem:sCurrentDrawItem->info];
 	}
 	
-	if (EXPECT_NOT(!_compassUpdated && _compassActive && [self checkPlayerInSystemFlight]))	// compass gone / broken / disabled ?
+	if (EXPECT_NOT(!_compassUpdated && oo::ToCxx(self)->_compassActive && [self checkPlayerInSystemFlight]))	// compass gone / broken / disabled ?
 	{
 		// trigger the targetChanged event with whom == null
-		_compassActive = NO;
+		oo::ToCxx(self)->_compassActive = NO;
 		[PLAYER cxx_doScriptEvent:OOJSID("compassTargetChanged") withPListArguments:{ oo::PList(), oo::PList(cxx_OOStringFromCompassMode([PLAYER compassMode])) }];	// null, as OONull gave
 	}
 	
@@ -986,14 +1004,14 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 - (void) drawMFDs
 {
-	NSUInteger i, nMFDs = mfdArray.size();
+	NSUInteger i, nMFDs = oo::ToCxx(self)->mfdArray.size();
 	std::optional<std::string> text;
 	for (i = 0; i < nMFDs; i++)
 	{
 		text = [PLAYER cxx_multiFunctionText:i];
 		if (text.has_value())
 		{
-			sCurrentDrawItem = &mfdArray[i];
+			sCurrentDrawItem = &oo::ToCxx(self)->mfdArray[i];
 			[self drawMultiFunctionDisplay:sCurrentDrawItem->info withText:*text asIndex:i];
 		}
 	}
@@ -1008,7 +1026,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	oo::PList					points;
 	
 	if (viewID == VIEW_CUSTOM ||
-		overallAlpha == 0.0f ||
+		oo::ToCxx(self)->overallAlpha == 0.0f ||
 		!([PLAYER status] == STATUS_IN_FLIGHT || [PLAYER status] == STATUS_WITCHSPACE_COUNTDOWN) ||
 		[UNIVERSE displayGUI]
 		)
@@ -1017,51 +1035,45 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		return;
 	}
 	
-	if (weapon != _lastWeaponType || overallAlpha != _lastOverallAlpha || weaponsOnline != _lastWeaponsOnline)
+	if (weapon != oo::ToCxx(self)->_lastWeaponType || oo::ToCxx(self)->overallAlpha != oo::ToCxx(self)->_lastOverallAlpha || weaponsOnline != oo::ToCxx(self)->_lastWeaponsOnline)
 	{
-		_crosshairs = nullptr;
+		oo::ToCxx(self)->_crosshairs = nullptr;
 	}
 	
-	if (_crosshairs == nullptr)
+	if (oo::ToCxx(self)->_crosshairs == nullptr)
 	{
-		GLfloat useAlpha = weaponsOnline ? overallAlpha : overallAlpha * 0.5f;
+		GLfloat useAlpha = weaponsOnline ? oo::ToCxx(self)->overallAlpha : oo::ToCxx(self)->overallAlpha * 0.5f;
 		
 		// Make new crosshairs object
 		points = [self crosshairDefinitionForWeaponType:weapon];
 		
-		_crosshairs = oo::makeRef<OOCrosshairs>(points, _crosshairScale, oo::ToCxx(_crosshairColor), useAlpha);
-		_lastWeaponType = weapon;
-		_lastOverallAlpha = useAlpha;
-		_lastWeaponsOnline = weaponsOnline;
+		oo::ToCxx(self)->_crosshairs = oo::makeRef<OOCrosshairs>(points, oo::ToCxx(self)->_crosshairScale, oo::ToCxx(self)->_crosshairColor.get(), useAlpha);
+		oo::ToCxx(self)->_lastWeaponType = weapon;
+		oo::ToCxx(self)->_lastOverallAlpha = useAlpha;
+		oo::ToCxx(self)->_lastWeaponsOnline = weaponsOnline;
 	}
 	
-	_crosshairs->render();
-}
-
-
-- (std::optional<std::string>) cxx_crosshairDefinition
-{
-	return crosshairDefinition;
+	oo::ToCxx(self)->_crosshairs->render();
 }
 
 
 - (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition
 {
 	// force crosshair redraw
-	_crosshairs = nullptr;
+	oo::ToCxx(self)->_crosshairs = nullptr;
 
-	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
+	oo::ToCxx(self)->_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
 															   inFolder:std::string("Config")
 															   andMerge:YES];
-	if (_crosshairOverrides.count() == 0)
+	if (oo::ToCxx(self)->_crosshairOverrides.count() == 0)
 	{ // invalid file (none found, or empty)
-		_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+		oo::ToCxx(self)->_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
 																   inFolder:std::string("Config")
 																   andMerge:YES];
-		crosshairDefinition = "crosshairs.plist";
+		oo::ToCxx(self)->crosshairDefinition = "crosshairs.plist";
 		return NO;
 	}
-	crosshairDefinition = newDefinition;
+	oo::ToCxx(self)->crosshairDefinition = newDefinition;
 	return YES;
 }
 
@@ -1082,12 +1094,12 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	weaponName = cxx_OOStringFromWeaponType(weapon).value_or("");
 	weaponName2 = weaponName.substr(3); // strip "EQ_"
-	result = _crosshairOverrides.get<oo::PList::Array>(weaponName);
+	result = oo::ToCxx(self)->_crosshairOverrides.get<oo::PList::Array>(weaponName);
 	if (result == nullptr)
 	{
-		result = _crosshairOverrides.get<oo::PList::Array>(weaponName2);
+		result = oo::ToCxx(self)->_crosshairOverrides.get<oo::PList::Array>(weaponName2);
 	}
-	if (result == nullptr)  result = _crosshairOverrides.get<oo::PList::Array>("OTHER");
+	if (result == nullptr)  result = oo::ToCxx(self)->_crosshairOverrides.get<oo::PList::Array>("OTHER");
 	if (result == nullptr)
 	{
 		if (crosshairDefs.isNull())
@@ -1146,7 +1158,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	std::optional<std::string>	legendText;
 	float						x, y;
 	NSSize						size;
-	GLfloat						alpha = overallAlpha;
+	GLfloat						alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo			cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -1161,7 +1173,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	legendSprite = (spriteNode != nullptr) ? oo::ObjectIn(*spriteNode) : nil;
 	if (legendSprite != nil)
 	{
-		[legendSprite blitCentredToX:x Y:y Z:z1 alpha:alpha];
+		[legendSprite blitCentredToX:x Y:y Z:oo::ToCxx(self)->z1 alpha:alpha];
 	}
 	else
 	{
@@ -1174,11 +1186,11 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			SET_COLOR(green_color);
 			if (info.get<int>("align") == 1)
 			{
-				cxx_OODrawStringAligned(*legendText, x, y, z1, size, YES);
+				cxx_OODrawStringAligned(*legendText, x, y, oo::ToCxx(self)->z1, size, YES);
 			}
 			else
 			{
-				cxx_OODrawStringAligned(*legendText, x, y, z1, size, NO);
+				cxx_OODrawStringAligned(*legendText, x, y, oo::ToCxx(self)->z1, size, NO);
 			}
 		}
 	}
@@ -1224,23 +1236,6 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "HeadUpDisplay after drawHUDItem " + oo::DescriptionOf(sCurrentDrawItem->info); });
 	
 	OOVerifyOpenGLState();
-}
-
-
-- (BOOL) checkPlayerInFlight
-{
-	return [PLAYER isInSpace] && [PLAYER status] != STATUS_DOCKING;
-}
-
-
-- (BOOL) checkPlayerInSystemFlight
-{
-	OOSunEntity		*the_sun = [UNIVERSE sun];
-	OOPlanetEntity	*the_planet = [UNIVERSE planet];
-	
-	return [self checkPlayerInFlight]		// be in the right mode
-		&& the_sun && the_planet		// and be in a system
-		&& ![the_sun goneNova];
 }
 
 
@@ -1293,7 +1288,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 
 		GetRGBAArrayFromInfo(info, scanner_color);
 		
-		scanner_color[3] *= overallAlpha;
+		scanner_color[3] *= oo::ToCxx(self)->overallAlpha;
 	}
 	
 	GLfloat			alpha = scanner_color[3];
@@ -1307,11 +1302,11 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	
 	int				scannerFootprint = SCANNER_MAX_RANGE * 2.5 / siz.width;
 	
-	GLfloat			zoom = scanner_zoom;
-	if (scanner_ultra_zoom)
+	GLfloat			zoom = oo::ToCxx(self)->scanner_zoom;
+	if (oo::ToCxx(self)->scanner_ultra_zoom)
 		zoom = pow(2, zoom - 1.0);
 	GLfloat			max_zoomed_range2 = SCANNER_SCALE * SCANNER_SCALE * 10000.0;
-	if (!nonlinear_scanner)
+	if (!oo::ToCxx(self)->nonlinear_scanner)
 	{
 		max_zoomed_range2 /= zoom * zoom;
 	}
@@ -1337,7 +1332,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	if (!emptyDial)
 	{
 		OOGL(glColor4fv(scanner_color));
-		drawScannerGrid(x, y, z1, siz, [UNIVERSE viewDirection], lineWidth, zoom, nonlinear_scanner, minimalistic_scanner);
+		drawScannerGrid(x, y, oo::ToCxx(self)->z1, siz, [UNIVERSE viewDirection], oo::ToCxx(self)->lineWidth, zoom, oo::ToCxx(self)->nonlinear_scanner, oo::ToCxx(self)->minimalistic_scanner);
 	}
 	
 	if ([self checkPlayerInFlight])
@@ -1399,7 +1394,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				if (ms_blip > max_blip)
 				{
 					max_blip = ms_blip;
-					last_transmitter = [scannedEntity universalID];
+					oo::ToCxx(self)->last_transmitter = [scannedEntity universalID];
 				}
 				ms_blip -= floor(ms_blip);
 				
@@ -1419,7 +1414,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				relativePosition = OOVectorMultiplyMatrix(relativePosition, rotMatrix);
 				Vector rrp = relativePosition;
 				// scale the view
-				if (nonlinear_scanner)
+				if (oo::ToCxx(self)->nonlinear_scanner)
 				{
 					relativePosition = [HeadUpDisplay nonlinearScannerScale: relativePosition Zoom: zoom Scale: 0.5*siz.width];
 				}
@@ -1461,8 +1456,8 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				if ([scannedEntity isShip])
 				{
 					ShipEntity* ship = (ShipEntity*)scannedEntity;
-					if ((!nonlinear_scanner && ship->_cxxEntity->collision_radius * upscale > 4.5) ||
-						(nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
+					if ((!oo::ToCxx(self)->nonlinear_scanner && ship->_cxxEntity->collision_radius * upscale > 4.5) ||
+						(oo::ToCxx(self)->nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
 					{
 						Vector bounds[6];
 						BoundingBox bb = ship->totalBoundingBox;
@@ -1477,7 +1472,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 						for (i = 0; i < 6; i++)
 						{
 							bounds[i] = OOVectorMultiplyMatrix(vector_add(bounds[i], rp), rotMatrix);
-							if (nonlinear_scanner)
+							if (oo::ToCxx(self)->nonlinear_scanner)
 							{
 								bounds[i] = [HeadUpDisplay nonlinearScannerScale:bounds[i] Zoom: zoom Scale: 0.5*siz.width];
 							}
@@ -1485,7 +1480,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 							{
 								scale_vector(&bounds[i], upscale);
 							}
-							bounds[i] = make_vector(bounds[i].x + scanner_cx, bounds[i].z * z_factor + bounds[i].y * y_factor + scanner_cy, z1 );
+							bounds[i] = make_vector(bounds[i].x + scanner_cx, bounds[i].z * z_factor + bounds[i].y * y_factor + scanner_cy, oo::ToCxx(self)->z1 );
 						}
 						// draw the diamond
 						//
@@ -1503,13 +1498,13 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 				
 				if (ms_blip > 0.0)
 				{
-					DrawSpecialOval(x1 - 0.5, y2 + 1.5, z1, NSMakeSize(16.0 * (1.0 - ms_blip), 8.0 * (1.0 - ms_blip)), 30, col);
+					DrawSpecialOval(x1 - 0.5, y2 + 1.5, oo::ToCxx(self)->z1, NSMakeSize(16.0 * (1.0 - ms_blip), 8.0 * (1.0 - ms_blip)), 30, col);
 				}
 				if ([scannedEntity isCascadeWeapon])
 				{
-					if (nonlinear_scanner)
+					if (oo::ToCxx(self)->nonlinear_scanner)
 					{
-						GLDrawNonlinearCascadeWeapon( scanner_cx, scanner_cy, z1, siz, rrp, scannedEntity->_cxxEntity->collision_radius, zoom, alpha );
+						GLDrawNonlinearCascadeWeapon( scanner_cx, scanner_cy, oo::ToCxx(self)->z1, siz, rrp, scannedEntity->_cxxEntity->collision_radius, zoom, alpha );
 					}
 					else
 					{
@@ -1519,10 +1514,10 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 						if (r0 > 0)
 						{
 							OOGL(glColor4f(1.0, 0.5, 1.0, alpha));
-							GLDrawOval(x1  - 0.5, y1 + 1.5, z1, NSMakeSize(r0, r0 * siz.height / siz.width), 20);
+							GLDrawOval(x1  - 0.5, y1 + 1.5, oo::ToCxx(self)->z1, NSMakeSize(r0, r0 * siz.height / siz.width), 20);
 						}
 						OOGL(glColor4f(0.5, 0.0, 1.0, 0.33333 * alpha));
-						GLDrawFilledOval(x1  - 0.5, y2 + 1.5, z1, NSMakeSize(r1, r1), 15);
+						GLDrawFilledOval(x1  - 0.5, y2 + 1.5, oo::ToCxx(self)->z1, NSMakeSize(r1, r1), 15);
 					}
 				}
 				else
@@ -1532,7 +1527,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						cxx_OODrawString([(ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
+						cxx_OODrawString([(ShipEntity *)scannedEntity displayName].value_or(""), x1 + 2, y2 + 2, oo::ToCxx(self)->z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);
@@ -1540,19 +1535,19 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					{
 						// in colorblind mode turn hostile blips into X shapes for easier recognition
 						OOGLBEGIN(GL_LINES);
-						glVertex3f(x1+2, y2+3, z1);	glVertex3f(x1-3, y2, z1);	glVertex3f(x1+2, y2, z1);	glVertex3f(x1-3, y2+3, z1);
+						glVertex3f(x1+2, y2+3, oo::ToCxx(self)->z1);	glVertex3f(x1-3, y2, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2, oo::ToCxx(self)->z1);	glVertex3f(x1-3, y2+3, oo::ToCxx(self)->z1);
 						OOGLEND();
 					}
 					else
 					{
 						OOGLBEGIN(GL_QUADS);
-						glVertex3f(x1-3, y2, z1);	glVertex3f(x1+2, y2, z1);	glVertex3f(x1+2, y2+3, z1);	glVertex3f(x1-3, y2+3, z1);	
+						glVertex3f(x1-3, y2, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2+3, oo::ToCxx(self)->z1);	glVertex3f(x1-3, y2+3, oo::ToCxx(self)->z1);	
 						OOGLEND();
 					}
 					OOGLBEGIN(GL_QUADS); // lollipop tail
 						col[3] *= 0.3333; // one third the alpha
 						glColor4fv(col);
-						glVertex3f(x1, y1, z1);	glVertex3f(x1+2, y1, z1);	glVertex3f(x1+2, y2, z1);	glVertex3f(x1, y2, z1);
+						glVertex3f(x1, y1, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y1, oo::ToCxx(self)->z1);	glVertex3f(x1+2, y2, oo::ToCxx(self)->z1);	glVertex3f(x1, y2, oo::ToCxx(self)->z1);
 					OOGLEND();
 				}
 			}
@@ -1567,61 +1562,6 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	
 	OOVerifyOpenGLState();
 	
-}
-
-
-- (BOOL) minimalisticScanner
-{
-	return minimalistic_scanner;
-}
-
-
-- (void) setMinimalisticScanner: (BOOL) newValue
-{
-	minimalistic_scanner = !!newValue;
-}
-
-
-+ (Vector) nonlinearScannerScale: (Vector) V Zoom:(GLfloat)zoom Scale:(double) scale
-{
-	OOScalar mag = magnitude(V);
-	Vector unit = vector_normal(V);
-	return vector_multiply_scalar(unit, nonlinearScannerFunc(mag, zoom, scale));
-}
-
-
-- (BOOL) nonlinearScanner
-{
-	return nonlinear_scanner;
-}
-
-
-- (void) setNonlinearScanner: (BOOL) newValue
-{
-	nonlinear_scanner = !!newValue;
-}
-
-
-- (BOOL) scannerUltraZoom
-{
-	return scanner_ultra_zoom;
-}
-
-
-- (void) setScannerUltraZoom: (BOOL) newValue
-{
-	scanner_ultra_zoom = !!newValue;
-}
-
-
-- (void) refreshLastTransmitter
-{
-	Entity* lt = [UNIVERSE entityForUniversalID:last_transmitter];
-	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
-		return;
-	ShipEntity* st = (ShipEntity*)lt;
-	if ([st messageTime] <= 0.0)
-		[st setMessageTime:2.5];
 }
 
 
@@ -1641,17 +1581,17 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	siz.height = useDefined(cached.height, ZOOM_INDICATOR_HEIGHT);
 	
 	GetRGBAArrayFromInfo(info, zoom_color);
-	zoom_color[3] *= overallAlpha;
+	zoom_color[3] *= oo::ToCxx(self)->overallAlpha;
 	alpha = zoom_color[3];
 	
 	GLfloat cx = x - 0.3 * siz.width;
 	GLfloat cy = y - 0.75 * siz.height;
 	
-	int zl = scanner_zoom;
+	int zl = oo::ToCxx(self)->scanner_zoom;
 	if (zl < 1) zl = 1;
 	if (zl > SCANNER_ZOOM_LEVELS) zl = SCANNER_ZOOM_LEVELS;
 	if (zl == 1) zoom_color[3] *= 0.75;
-	if (scanner_ultra_zoom)
+	if (oo::ToCxx(self)->scanner_ultra_zoom)
 		zl = pow(2, zl - 1);
 	GLColorWithOverallAlpha(zoom_color, alpha);
 	OOGL(glEnable(GL_TEXTURE_2D));
@@ -1659,10 +1599,10 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	
 	OOGLBEGIN(GL_QUADS);
 		if (zl / 10 > 0)
-			drawCharacterQuad(48 + zl / 10, cx - 0.8 * siz.width, cy, z1, siz);
-		drawCharacterQuad(48 + zl % 10, cx - 0.4 * siz.width, cy, z1, siz);
-		drawCharacterQuad(58, cx, cy, z1, siz);
-		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, z1, siz);
+			drawCharacterQuad(48 + zl / 10, cx - 0.8 * siz.width, cy, oo::ToCxx(self)->z1, siz);
+		drawCharacterQuad(48 + zl % 10, cx - 0.4 * siz.width, cy, oo::ToCxx(self)->z1, siz);
+		drawCharacterQuad(58, cx, cy, oo::ToCxx(self)->z1, siz);
+		drawCharacterQuad(49, cx + 0.3 * siz.width, cy, oo::ToCxx(self)->z1, siz);
 	OOGLEND();
 	
 	[OOTexture applyNone];
@@ -1686,7 +1626,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	siz.height = useDefined(cached.height, COMPASS_HALF_SIZE);
 	
 	GetRGBAArrayFromInfo(info, compass_color);
-	compass_color[3] *= overallAlpha;
+	compass_color[3] *= oo::ToCxx(self)->overallAlpha;
 	alpha = compass_color[3];
 	
 	// draw the compass
@@ -1696,17 +1636,17 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	GLfloat h3 = siz.height * 0.375;
 	GLfloat w1 = siz.width * 0.125;
 	GLfloat w3 = siz.width * 0.375;
-	OOGL(GLScaledLineWidth(2.0 * lineWidth));	// thicker
+	OOGL(GLScaledLineWidth(2.0 * oo::ToCxx(self)->lineWidth));	// thicker
 	OOGL(glColor4f(compass_color[0], compass_color[1], compass_color[2], alpha));
-	GLDrawOval(x, y, z1, siz, 12);	
+	GLDrawOval(x, y, oo::ToCxx(self)->z1, siz, 12);	
 	OOGL(glColor4f(compass_color[0], compass_color[1], compass_color[2], 0.5f * alpha));
 	OOGLBEGIN(GL_LINES);
-		glVertex3f(x - w1, y, z1);	glVertex3f(x - w3, y, z1);
-		glVertex3f(x + w1, y, z1);	glVertex3f(x + w3, y, z1);
-		glVertex3f(x, y - h1, z1);	glVertex3f(x, y - h3, z1);
-		glVertex3f(x, y + h1, z1);	glVertex3f(x, y + h3, z1);
+		glVertex3f(x - w1, y, oo::ToCxx(self)->z1);	glVertex3f(x - w3, y, oo::ToCxx(self)->z1);
+		glVertex3f(x + w1, y, oo::ToCxx(self)->z1);	glVertex3f(x + w3, y, oo::ToCxx(self)->z1);
+		glVertex3f(x, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x, y - h3, oo::ToCxx(self)->z1);
+		glVertex3f(x, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x, y + h3, oo::ToCxx(self)->z1);
 	OOGLEND();
-	OOGL(GLScaledLineWidth(lineWidth));	// thinner
+	OOGL(GLScaledLineWidth(oo::ToCxx(self)->lineWidth));	// thinner
 	
 	if ([self checkPlayerInSystemFlight] && [PLAYER status] != STATUS_LAUNCHING) // normal system
 	{
@@ -1725,7 +1665,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 		
 		siz.width *= 0.2;
 		siz.height *= 0.2;
-		OOGL(GLScaledLineWidth(2.0*lineWidth));
+		OOGL(GLScaledLineWidth(2.0*oo::ToCxx(self)->lineWidth));
 		switch ([PLAYER compassMode])
 		{
 			case COMPASS_MODE_INACTIVE:
@@ -1757,13 +1697,13 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 			case COMPASS_MODE_BEACONS:
 				[self drawCompassBeaconBlipAt:relativePosition Size:siz Alpha:alpha];
 				Entity <OOBeaconEntity>		*beacon = [PLAYER nextBeacon];
-				[[beacon beaconDrawable] oo_drawHUDBeaconIconAt:NSMakePoint(x, y) size:siz alpha:alpha z:z1];
+				[[beacon beaconDrawable] oo_drawHUDBeaconIconAt:NSMakePoint(x, y) size:siz alpha:alpha z:oo::ToCxx(self)->z1];
 				break;
 		}
-		OOGL(GLScaledLineWidth(lineWidth));	// reset
+		OOGL(GLScaledLineWidth(oo::ToCxx(self)->lineWidth));	// reset
 
 		_compassUpdated = YES;
-		_compassActive = YES;
+		oo::ToCxx(self)->_compassActive = YES;
 	}
 }
 
@@ -1786,14 +1726,14 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (relativePosition.z >= 0)
 	{
 		OOGL(glColor4f(0.0,1.0,0.0,0.75 * alpha));
-		GLDrawFilledOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+		GLDrawFilledOval(relativePosition.x, relativePosition.y, oo::ToCxx(self)->z1, siz, 30);
 		OOGL(glColor4f(0.0,1.0,0.0,alpha));
-		GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+		GLDrawOval(relativePosition.x, relativePosition.y, oo::ToCxx(self)->z1, siz, 30);
 	}
 	else
 	{
 		OOGL(glColor4f(1.0,0.0,0.0,alpha));
-		GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+		GLDrawOval(relativePosition.x, relativePosition.y, oo::ToCxx(self)->z1, siz, 30);
 	}
 }
 
@@ -1803,10 +1743,10 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	SetCompassBlipColor(relativePosition.z, alpha);
 	
 	OOGLBEGIN(GL_LINE_LOOP);
-		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, z1);
-		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, z1);
+		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, oo::ToCxx(self)->z1);
+		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, oo::ToCxx(self)->z1);
+		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, oo::ToCxx(self)->z1);
+		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y + 0.5 * siz.height, oo::ToCxx(self)->z1);
 	OOGLEND();
 }
 
@@ -1814,11 +1754,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 - (void) drawCompassSunBlipAt:(Vector) relativePosition Size:(NSSize) siz Alpha:(GLfloat) alpha
 {
 	OOGL(glColor4f(1.0, 1.0, 0.0, 0.75 * alpha));
-	GLDrawFilledOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+	GLDrawFilledOval(relativePosition.x, relativePosition.y, oo::ToCxx(self)->z1, siz, 30);
 	
 	SetCompassBlipColor(relativePosition.z, alpha);
 	
-	GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+	GLDrawOval(relativePosition.x, relativePosition.y, oo::ToCxx(self)->z1, siz, 30);
 }
 
 
@@ -1827,13 +1767,13 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	SetCompassBlipColor(relativePosition.z, alpha);
 	
 	OOGLBEGIN(GL_LINES);
-		glVertex3f(relativePosition.x - siz.width, relativePosition.y, z1);
-		glVertex3f(relativePosition.x + siz.width, relativePosition.y, z1);
-		glVertex3f(relativePosition.x, relativePosition.y - siz.height, z1);
-		glVertex3f(relativePosition.x, relativePosition.y + siz.height, z1);
+		glVertex3f(relativePosition.x - siz.width, relativePosition.y, oo::ToCxx(self)->z1);
+		glVertex3f(relativePosition.x + siz.width, relativePosition.y, oo::ToCxx(self)->z1);
+		glVertex3f(relativePosition.x, relativePosition.y - siz.height, oo::ToCxx(self)->z1);
+		glVertex3f(relativePosition.x, relativePosition.y + siz.height, oo::ToCxx(self)->z1);
 	OOGLEND();
 	
-	GLDrawOval(relativePosition.x, relativePosition.y, z1, siz, 30);
+	GLDrawOval(relativePosition.x, relativePosition.y, oo::ToCxx(self)->z1, siz, 30);
 }
 
 
@@ -1850,17 +1790,17 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		
 		glVertex3f(relativePosition.x - 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1);
 		glVertex3f(relativePosition.x + 0.5 * siz.width, relativePosition.y - 0.5 * siz.height, z1); */
-	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, z1);
+	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, oo::ToCxx(self)->z1);
+	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, oo::ToCxx(self)->z1);
 
-	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, z1);
+	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, oo::ToCxx(self)->z1);
+	glVertex3f(relativePosition.x, relativePosition.y + 0.6 * siz.height, oo::ToCxx(self)->z1);
 
-	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, z1);
+	glVertex3f(relativePosition.x + 0.6 * siz.width, relativePosition.y, oo::ToCxx(self)->z1);
+	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, oo::ToCxx(self)->z1);
 
-	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, z1);
-	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, z1);
+	glVertex3f(relativePosition.x - 0.6 * siz.width, relativePosition.y, oo::ToCxx(self)->z1);
+	glVertex3f(relativePosition.x, relativePosition.y - 0.6 * siz.height, oo::ToCxx(self)->z1);
 
 	OOGLEND();
 }
@@ -1873,7 +1813,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	
 	int					x, y;
 	NSSize				siz;
-	GLfloat				alpha = 0.5f * overallAlpha;
+	GLfloat				alpha = 0.5f * oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -1897,12 +1837,12 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		int i;
 		for (i = 0; i < 32; i += 2)
 		{
-			glVertex3f(x + w * strip[i], y - h * strip[i + 1], z1);
+			glVertex3f(x + w * strip[i], y - h * strip[i + 1], oo::ToCxx(self)->z1);
 		}
 	OOGLEND();
 #else
 	OOGLPushModelView();
-	OOGLTranslateModelView(make_vector(x, y, z1));
+	OOGLTranslateModelView(make_vector(x, y, oo::ToCxx(self)->z1));
 	OOGLScaleModelView(make_vector(w, -h, 1.0f));
 	
 	OOGL(glColor4f(0.0f, 1.0f, 0.0f, alpha));
@@ -1923,7 +1863,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	GLfloat				ds = OOClamp_0_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
 	struct CachedInfo	cached;
 	
@@ -1941,7 +1881,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (draw_surround)
 	{
 		// draw custom surround
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw custom bar
 	if (ds > .75)
@@ -1957,7 +1897,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		SET_COLOR_LOW(red_color);
 	}
 
-	hudDrawBarAt(x, y, z1, siz, ds);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, ds);
 }
 
 
@@ -1965,7 +1905,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 {
 	int					x, y;
 	NSSize				size;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	std::string			text = [PLAYER cxx_dialCustomString:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")];	// nil drew nothing, as "" does
 	struct CachedInfo	cached;
 	
@@ -1982,11 +1922,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	if (info.get<int>("align") == 1)
 	{
-		cxx_OODrawStringAligned(text, x, y, z1, size, YES);
+		cxx_OODrawStringAligned(text, x, y, oo::ToCxx(self)->z1, size, YES);
 	}
 	else
 	{
-		cxx_OODrawStringAligned(text, x, y, z1, size, NO);
+		cxx_OODrawStringAligned(text, x, y, oo::ToCxx(self)->z1, size, NO);
 	}
 
 }
@@ -1997,7 +1937,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	GLfloat				iv = OOClamp_n1_1_f([PLAYER cxx_dialCustomFloat:OptionalStringIn(info, CUSTOM_DIAL_KEY).value_or("")]);
 
 	struct CachedInfo	cached;
@@ -2015,11 +1955,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw custom surround
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw custom indicator
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, iv);
+	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, iv);
 }
 
 
@@ -2027,7 +1967,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 {
 	int					x, y;
 	NSSize				siz;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 
 	struct CachedInfo	cached;
 	
@@ -2049,11 +1989,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	GLColorWithOverallAlpha(light_color, alpha);
 	OOGLBEGIN(GL_POLYGON);
-	hudDrawStatusIconAt(x, y, z1, siz);
+	hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
 	OOGLEND();
 	OOGL(glColor4f(0.25, 0.25, 0.25, alpha));
 	OOGLBEGIN(GL_LINE_LOOP);
-		hudDrawStatusIconAt(x, y, z1, siz);
+		hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
 	OOGLEND();
 }
 
@@ -2061,7 +2001,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 - (void) drawCustomImage:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
 	int					x, y;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 
 	struct CachedInfo	cached;
 	
@@ -2098,7 +2038,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	 * returned from the cache anyway. - CIM */
 	OOTextureSprite *sprite = [[OOTextureSprite alloc] initWithTexture:texture size:imageSize];
 
-	[sprite blitCentredToX:x Y:y Z:z1 alpha:alpha];
+	[sprite blitCentredToX:x Y:y Z:oo::ToCxx(self)->z1 alpha:alpha];
 	[sprite release];
 
 }
@@ -2109,7 +2049,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	GLfloat				ds = [PLAYER dialSpeed];
 	struct CachedInfo	cached;
 	
@@ -2128,7 +2068,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (draw_surround)
 	{
 		// draw speed surround
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw speed bar
 	if (ds > .80)
@@ -2144,7 +2084,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		SET_COLOR_LOW(green_color);
 	}
 
-	hudDrawBarAt(x, y, z1, siz, ds);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, ds);
 }
 
 
@@ -2153,7 +2093,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2169,11 +2109,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw ROLL surround
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw ROLL bar
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialRoll]);
+	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, [PLAYER dialRoll]);
 }
 
 
@@ -2182,7 +2122,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2198,11 +2138,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw PITCH surround
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw PITCH bar
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialPitch]);
+	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, [PLAYER dialPitch]);
 }
 
 
@@ -2211,7 +2151,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2228,11 +2168,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw YAW surround
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw YAW bar
 	SET_COLOR(yellow_color);
-	hudDrawIndicatorAt(x, y, z1, siz, [PLAYER dialYaw]);
+	hudDrawIndicatorAt(x, y, oo::ToCxx(self)->z1, siz, [PLAYER dialYaw]);
 }
 
 
@@ -2242,7 +2182,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	unsigned			i;
 	NSSize				siz;
 	BOOL				drawSurround, labelled, energyCritical = NO;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	GLfloat				bankHeight, bankY;
 	PlayerEntity *player = PLAYER;
 
@@ -2270,7 +2210,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw energy surround
 		SET_COLOR_SURROUND(yellow_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	
 	bankHeight = siz.height / n_bars;
@@ -2287,7 +2227,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		NSSize labelSize = NSMakeSize(9.0, (bankHeight < 18.0)? bankHeight : 18.0);
 		for (i = 0; i < n_bars; i++)
 		{
-			cxx_OODrawString(oo::str::format("E%x", n_bars - i), labelStartX, bankY - midBank, z1, labelSize);
+			cxx_OODrawString(oo::str::format("E%x", n_bars - i), labelStartX, bankY - midBank, oo::ToCxx(self)->z1, labelSize);
 			bankY += bankHeight;
 		}
 	}
@@ -2305,11 +2245,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		if (energy > 1.0)
 		{
-			hudDrawBarAt(x, bankY, z1, barSize, 1.0);
+			hudDrawBarAt(x, bankY, oo::ToCxx(self)->z1, barSize, 1.0);
 		}
 		else if (energy > 0.0)
 		{
-			hudDrawBarAt(x, bankY, z1, barSize, energy);
+			hudDrawBarAt(x, bankY, oo::ToCxx(self)->z1, barSize, energy);
 		}
 		
 		energy -= 1.0;
@@ -2323,7 +2263,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	GLfloat				shield = [PLAYER dialForwardShield];
 	struct CachedInfo	cached;
 	
@@ -2340,7 +2280,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw forward_shield surround
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw forward_shield bar
 	if (shield < .25)
@@ -2355,7 +2295,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		SET_COLOR_HIGH(green_color);
 	}
-	hudDrawBarAt(x, y, z1, siz, shield);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, shield);
 }
 
 
@@ -2364,7 +2304,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				siz;
 	BOOL				draw_surround;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	GLfloat				shield = [PLAYER dialAftShield];
 	struct CachedInfo	cached;
 	
@@ -2381,7 +2321,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		// draw forward_shield surround
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	// draw forward_shield bar
 	if (shield < .25)
@@ -2396,7 +2336,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	{
 		SET_COLOR_HIGH(green_color);
 	}
-	hudDrawBarAt(x, y, z1, siz, shield);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, shield);
 }
 
 
@@ -2406,7 +2346,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSSize				siz;
 	BOOL				draw_surround;
 	float				fu, hr;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2421,7 +2361,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (draw_surround)
 	{
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	
 	fu = [PLAYER dialFuel];
@@ -2429,7 +2369,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	
 	// draw fuel bar
 	SET_COLOR_MEDIUM(yellow_color);
-	hudDrawBarAt(x, y, z1, siz, fu);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, fu);
 	
 	// draw range indicator
 	if (hr > 0.0f && hr <= 1.0f)
@@ -2442,7 +2382,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		{
 			SET_COLOR_LOW(red_color);
 		}
-		hudDrawMarkerAt(x, y, z1, siz, hr);
+		hudDrawMarkerAt(x, y, oo::ToCxx(self)->z1, siz, hr);
 	}
 
 }
@@ -2458,7 +2398,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	int					x, y;
 	NSSize				siz;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 
 	struct CachedInfo	cached;
 
@@ -2477,11 +2417,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	
 	if (info.get<int>("align") == 1)
 	{
-		cxx_OODrawStringAligned(dest, x, y, z1, siz, YES);
+		cxx_OODrawStringAligned(dest, x, y, oo::ToCxx(self)->z1, siz, YES);
 	}
 	else
 	{
-		cxx_OODrawStringAligned(dest, x, y, z1, siz, NO);
+		cxx_OODrawStringAligned(dest, x, y, oo::ToCxx(self)->z1, siz, NO);
 	}
 
 }
@@ -2493,7 +2433,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				temp = [PLAYER hullHeatLevel];
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2508,7 +2448,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (draw_surround)
 	{
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	
 	int flash = (int)([UNIVERSE getTime] * 4);
@@ -2530,7 +2470,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	}
 
 	
-	hudDrawBarAt(x, y, z1, siz, temp);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, temp);
 }
 
 
@@ -2540,7 +2480,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				temp = [PLAYER laserHeatLevel];
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2555,7 +2495,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (draw_surround)
 	{
 		SET_COLOR_SURROUND(green_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	
 	// draw weapon_temp bar (only need to call GLColor() once!)
@@ -2565,7 +2505,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		SET_COLOR_MEDIUM(yellow_color);
 	else
 		SET_COLOR_LOW(green_color);
-	hudDrawBarAt(x, y, z1, siz, temp);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, temp);
 }
 
 
@@ -2575,7 +2515,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSSize				siz;
 	BOOL				draw_surround;
 	GLfloat				alt = [PLAYER dialAltitude];
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2590,7 +2530,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	if (draw_surround)
 	{
 		SET_COLOR_SURROUND(yellow_color);
-		hudDrawSurroundAt(x, y, z1, siz);
+		hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 	}
 	
 	int flash = (int)([UNIVERSE getTime] * 4);
@@ -2612,7 +2552,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 			SET_COLOR_LOW(green_color);
 	}
 	
-	hudDrawBarAt(x, y, z1, siz, alt);
+	hudDrawBarAt(x, y, oo::ToCxx(self)->z1, siz, alt);
 	
 }
 
@@ -2686,7 +2626,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	{
 		// Draw yellow outline.
 		OOGLPushModelView();
-		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
+		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
 		OOGLScaleModelView(make_vector(width, height, 1.0f));
 		GLColorWithOverallAlpha(yellow_color, alpha);
 		[sprite drawOutline];
@@ -2694,7 +2634,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		
 		// Draw black backing, so outline colour isn’t blended into missile colour.
 		OOGLPushModelView();
-		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
+		OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
 		OOGLScaleModelView(make_vector(width, height, 1.0f));
 		GLColorWithOverallAlpha(black_color, alpha);
 		[sprite drawFilled];
@@ -2717,7 +2657,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	}
 	
 	OOGLPushModelView();
-	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
+	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
 	OOGLScaleModelView(make_vector(width, height, 1.0f));
 	[sprite drawFilled];
 	OOGLPopModelView();
@@ -2732,7 +2672,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	
 	// Draw gray outline.
 	OOGLPushModelView();
-	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, z1));
+	OOGLTranslateModelView(make_vector(x - width * 2.0f, y - height * 2.0f, oo::ToCxx(self)->z1));
 	OOGLScaleModelView(make_vector(width, height, 1.0f));
 	GLColorWithOverallAlpha(lightgray_color, alpha);
 	[sprite drawOutline];
@@ -2744,7 +2684,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
 	int					x, y, sp;
 	NSSize				siz;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2798,13 +2738,13 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 				GLColorWithOverallAlpha(red_color, alpha);		break;
 		}
 		OOGLBEGIN(GL_QUADS);
-			glVertex3i(x , y, z1);
-			glVertex3i(x + siz.width, y, z1);
-			glVertex3i(x + siz.width, y + siz.height, z1);
-			glVertex3i(x , y + siz.height, z1);
+			glVertex3i(x , y, oo::ToCxx(self)->z1);
+			glVertex3i(x + siz.width, y, oo::ToCxx(self)->z1);
+			glVertex3i(x + siz.width, y + siz.height, oo::ToCxx(self)->z1);
+			glVertex3i(x , y + siz.height, oo::ToCxx(self)->z1);
 		OOGLEND();
 		GLColorWithOverallAlpha(green_color, alpha);
-		cxx_OODrawString([PLAYER cxx_dialTargetName].value_or(""), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
+		cxx_OODrawString([PLAYER cxx_dialTargetName].value_or(""), x + sp, y - 1, oo::ToCxx(self)->z1, NSMakeSize(siz.width, siz.height));
 	}
 	
 }
@@ -2812,11 +2752,11 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 
 - (void) drawTargetReticle:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
+	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * oo::ToCxx(self)->overallAlpha;
 	
 	if ([PLAYER primaryTarget] != nil)
 	{
-		hudDrawReticleOnTarget([PLAYER primaryTarget], PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
+		hudDrawReticleOnTarget([PLAYER primaryTarget], PLAYER, oo::ToCxx(self)->z1, alpha, oo::ToCxx(self)->reticleTargetSensitive, &oo::ToCxx(self)->propertiesReticleTargetSensitive, NO, YES, info, oo::ToCxx(self)->_reticleColors);
 		[self drawDirectionCue:info];
 	}
 	// extra feature if extra equipment installed
@@ -2829,7 +2769,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 
 - (void) drawSecondaryTargetReticle:(const oo::PList &)info
 {
-	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha * 0.4;
+	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * oo::ToCxx(self)->overallAlpha * 0.4;
 	
 	PlayerEntity *player = PLAYER;
 	if ([player cxx_hasEquipmentItemProviding:"EQ_TARGET_MEMORY"])
@@ -2852,7 +2792,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 				{
 					if ([secondary zeroDistance] <= SCANNER_MAX_RANGE2 && [secondary isInSpace])
 					{
-						hudDrawReticleOnTarget(secondary, PLAYER, z1, alpha, NO, nullptr, YES, NO, info, _reticleColors);	
+						hudDrawReticleOnTarget(secondary, PLAYER, oo::ToCxx(self)->z1, alpha, NO, nullptr, YES, NO, info, oo::ToCxx(self)->_reticleColors);	
 					}			
 				}
 			}
@@ -2863,7 +2803,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 
 - (void) drawWaypoints:(const oo::PList &)info	// called by name (ADR-0055 item 5)
 {
-	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
+	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * oo::ToCxx(self)->overallAlpha;
 	GLfloat scale = info.get<float>("reticle_scale", ONE_SIXTYFOURTH);
 
 	OOWaypointEntity *waypoint = nil;
@@ -2872,7 +2812,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	for (const auto &[waypointKey, waypointRef] : [UNIVERSE cxx_currentWaypoints])
 	{
 		waypoint = waypointRef.get();
-		hudDrawWaypoint(waypoint, PLAYER, z1, alpha, waypoint==compass, scale);
+		hudDrawWaypoint(waypoint, PLAYER, oo::ToCxx(self)->z1, alpha, waypoint==compass, scale);
 	}
 
 }
@@ -2882,8 +2822,8 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
 	int					x, y;
 	NSSize				siz;
-	GLfloat				alpha = overallAlpha;
-	BOOL				blueAlert = cloakIndicatorOnStatusLight && [PLAYER isCloaked];
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
+	BOOL				blueAlert = oo::ToCxx(self)->cloakIndicatorOnStatusLight && [PLAYER isCloaked];
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2925,18 +2865,18 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	status_color[3] = flash_alpha;
 	GLColorWithOverallAlpha(status_color, alpha);
 	OOGLBEGIN(GL_POLYGON);
-	hudDrawStatusIconAt(x, y, z1, siz);
+	hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
 	OOGLEND();
 	OOGL(glColor4f(0.25, 0.25, 0.25, alpha));
 	OOGLBEGIN(GL_LINE_LOOP);
-		hudDrawStatusIconAt(x, y, z1, siz);
+		hudDrawStatusIconAt(x, y, oo::ToCxx(self)->z1, siz);
 	OOGLEND();
 }
 
 
 - (void) drawDirectionCue:(const oo::PList &)info
 {
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2998,7 +2938,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		if (alpha > 0.0f)
 		{
 			NSUInteger cueColorIndex = [target isWormhole] ? OO_RETICLE_COLOR_WORMHOLE : OO_RETICLE_COLOR_TARGET;
-			OOColor *directionCueColor = ReticleColorAt(_reticleColors, cueColorIndex);
+			OOColor *directionCueColor = oo::ToObjC(ReticleColorAt(oo::ToCxx(self)->_reticleColors, cueColorIndex));
 			GLfloat	clearColorArray[4] =	{[directionCueColor redComponent],
 											[directionCueColor greenComponent],
 											[directionCueColor blueComponent],
@@ -3011,11 +2951,11 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 			drawPos = vector_normal(drawPos);
 			OOGLBEGIN(GL_LINE_STRIP);
 				glColor4fv(clearColorArray);
-				glVertex3f(drawPos.x * innerSize - drawPos.y * width, drawPos.y * innerSize + drawPos.x * width, z1);
+				glVertex3f(drawPos.x * innerSize - drawPos.y * width, drawPos.y * innerSize + drawPos.x * width, oo::ToCxx(self)->z1);
 				GLColorWithOverallAlpha(directionCueColorArray, alpha);
-				glVertex3f(drawPos.x * outerSize, drawPos.y * outerSize, z1);
+				glVertex3f(drawPos.x * outerSize, drawPos.y * outerSize, oo::ToCxx(self)->z1);
 				glColor4fv(clearColorArray);
-				glVertex3f(drawPos.x * innerSize + drawPos.y * width, drawPos.y * innerSize - drawPos.x * width, z1);
+				glVertex3f(drawPos.x * innerSize + drawPos.y * width, drawPos.y * innerSize - drawPos.x * width, oo::ToCxx(self)->z1);
 			OOGLEND();
 		}
 	}
@@ -3037,10 +2977,10 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	siz.height = useDefined(cached.height, CLOCK_DISPLAY_HEIGHT);
 	
 	GetRGBAArrayFromInfo(info, itemColor);
-	itemColor[3] *= overallAlpha;
+	itemColor[3] *= oo::ToCxx(self)->overallAlpha;
 	
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-	cxx_OODrawString([PLAYER cxx_dial_clock], x, y, z1, siz);
+	cxx_OODrawString([PLAYER cxx_dial_clock], x, y, oo::ToCxx(self)->z1, siz);
 }
 
 
@@ -3076,13 +3016,13 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	}
 
 	GetRGBAArrayFromInfo(info, itemColor);
-	itemColor[3] *= overallAlpha;
+	itemColor[3] *= oo::ToCxx(self)->overallAlpha;
 
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 		const std::optional<std::string> equipmentName = [PLAYER cxx_primedEquipmentName:0];
-		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, z1, size);
+		cxx_OODrawString(cxx_OOExpandKey("equipment-primed-hud", equipmentName).value_or(std::string()), x, y, oo::ToCxx(self)->z1, size);
 	}
 	else
 	{
@@ -3096,7 +3036,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 				// instead compact the display towards its centre
 				GLfloat alphaScale = 1.0/((i<0)?(1.0-i):(1.0+i));
 				OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]*alphaScale));
-				cxx_OODrawString([PLAYER cxx_primedEquipmentName:i].value_or(""), x, y, z1, size);
+				cxx_OODrawString([PLAYER cxx_primedEquipmentName:i].value_or(""), x, y, oo::ToCxx(self)->z1, size);
 			}
 			y -= size.height;
 		}	
@@ -3127,16 +3067,16 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	};
 
 	GetRGBAArrayFromInfo(info, itemColor);
-	itemColor[3] *= overallAlpha;
+	itemColor[3] *= oo::ToCxx(self)->overallAlpha;
 
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 	if (info.get<int>("align") == 1)
 	{
-		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,YES);
+		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, oo::ToCxx(self)->z1, size,YES);
 	}
 	else
 	{
-		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, z1, size,NO);
+		cxx_OODrawStringAligned([PLAYER cxx_compassTargetLabel].value_or(""), x, y, oo::ToCxx(self)->z1, size,NO);
 	}
 	
 }
@@ -3148,7 +3088,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	GLfloat						textColor[4] = {0.0f, 1.0f, 0.0f, 1.0f};
 
 	if (viewID == VIEW_CUSTOM ||
-		overallAlpha == 0.0f ||
+		oo::ToCxx(self)->overallAlpha == 0.0f ||
 		!([PLAYER status] == STATUS_IN_FLIGHT || [PLAYER status] == STATUS_WITCHSPACE_COUNTDOWN) ||
 		[UNIVERSE displayGUI]
 		)
@@ -3171,11 +3111,11 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 		siz.height = useDefined(cached.height, WEAPONSOFFLINETEXT_HEIGHT);
 		
 		GetRGBAArrayFromInfo(info, textColor);
-		textColor[3] *= overallAlpha;
+		textColor[3] *= oo::ToCxx(self)->overallAlpha;
 		
 		OOGL(glColor4f(textColor[0], textColor[1], textColor[2], textColor[3]));
 		// TODO: some caching required...
-		cxx_OODrawString(OO_DESC("weapons-systems-offline"), x, y, z1, siz);
+		cxx_OODrawString(OO_DESC("weapons-systems-offline"), x, y, oo::ToCxx(self)->z1, siz);
 	}
 }
 
@@ -3203,17 +3143,17 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	// We prefer the FPS counter to be always visible - Nikos 20100405
 	GetRGBAArrayFromInfo(info, textColor);
 	OOGL(glColor4f(textColor[0], textColor[1], textColor[2], 1.0f));
-	cxx_OODrawString([PLAYER cxx_dial_fpsinfo], x, y, z1, siz);
+	cxx_OODrawString([PLAYER cxx_dial_fpsinfo], x, y, oo::ToCxx(self)->z1, siz);
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
 	std::string collDebugInfo = oo::str::format("%s - %s", [PLAYER cxx_dial_objinfo].c_str(), [UNIVERSE collisionDescription].c_str());
-	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
+	cxx_OODrawString(collDebugInfo, x, y - siz.height, oo::ToCxx(self)->z1, siz);
 
-	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
+	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, oo::ToCxx(self)->z1, siz08);
 
 	std::string timeAccelerationFactorInfo = oo::str::format("TAF: %s%.2f", OO_DESC("multiplication-sign").c_str(), [UNIVERSE timeAccelerationFactor]);
-	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
+	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, oo::ToCxx(self)->z1, siz08);
 #endif
 }
 
@@ -3297,16 +3237,16 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	OOGL(glDisable(GL_TEXTURE_2D));
 	OOGLBEGIN(GL_QUADS);
 	// section 1
-		GLColorWithOverallAlpha(s1c, overallAlpha);
-		glVertex3f(x, y + h1, z1);	glVertex3f(x - w2, y + h2, z1);	glVertex3f(x, y + h3, z1);	glVertex3f(x + w2, y + h2, z1);
+		GLColorWithOverallAlpha(s1c, oo::ToCxx(self)->overallAlpha);
+		glVertex3f(x, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x - w2, y + h2, oo::ToCxx(self)->z1);	glVertex3f(x, y + h3, oo::ToCxx(self)->z1);	glVertex3f(x + w2, y + h2, oo::ToCxx(self)->z1);
 	// section 2
-		GLColorWithOverallAlpha(s2c, overallAlpha);
-		glVertex3f(x, y - h1, z1);	glVertex3f(x - w4, y + h1, z1);	glVertex3f(x - w4, y + h2, z1);	glVertex3f(x, y, z1);
-		glVertex3f(x, y - h1, z1);	glVertex3f(x + w4, y + h1, z1);	glVertex3f(x + w4, y + h2, z1);	glVertex3f(x, y, z1);
+		GLColorWithOverallAlpha(s2c, oo::ToCxx(self)->overallAlpha);
+		glVertex3f(x, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x - w4, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x - w4, y + h2, oo::ToCxx(self)->z1);	glVertex3f(x, y, oo::ToCxx(self)->z1);
+		glVertex3f(x, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x + w4, y + h1, oo::ToCxx(self)->z1);	glVertex3f(x + w4, y + h2, oo::ToCxx(self)->z1);	glVertex3f(x, y, oo::ToCxx(self)->z1);
 	// section 3
-		GLColorWithOverallAlpha(s3c, overallAlpha);
-		glVertex3f(x, y - h4, z1);	glVertex3f(x - w2, y - h2, z1);	glVertex3f(x - w2, y - h1, z1);	glVertex3f(x, y - h2, z1);
-		glVertex3f(x, y - h4, z1);	glVertex3f(x + w2, y - h2, z1);	glVertex3f(x + w2, y - h1, z1);	glVertex3f(x, y - h2, z1);
+		GLColorWithOverallAlpha(s3c, oo::ToCxx(self)->overallAlpha);
+		glVertex3f(x, y - h4, oo::ToCxx(self)->z1);	glVertex3f(x - w2, y - h2, oo::ToCxx(self)->z1);	glVertex3f(x - w2, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x, y - h2, oo::ToCxx(self)->z1);
+		glVertex3f(x, y - h4, oo::ToCxx(self)->z1);	glVertex3f(x + w2, y - h2, oo::ToCxx(self)->z1);	glVertex3f(x + w2, y - h1, oo::ToCxx(self)->z1);	glVertex3f(x, y - h2, oo::ToCxx(self)->z1);
 	OOGLEND();
 }
 
@@ -3315,7 +3255,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
 	GLfloat				x, y;
 	NSSize				siz;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	BOOL				mouse = [PLAYER isMouseControlOn];
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
 	struct CachedInfo	cached;
@@ -3336,30 +3276,30 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	GLfloat div = [stickHandler getSensitivity];
 	
 	GLColorWithOverallAlpha(black_color, alpha / 4);
-	GLDrawFilledOval(x, y, z1, siz, 10);
+	GLDrawFilledOval(x, y, oo::ToCxx(self)->z1, siz, 10);
 	
 	GLColorWithOverallAlpha((div < 1.0 || mouse) ? lightgray_color : green_color, alpha);
-	OOGL(GLScaledLineWidth(_crosshairWidth * lineWidth));
+	OOGL(GLScaledLineWidth(oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth));
 	
 	if (div >= 1.0)
 	{
 		if (!mouse)
 		{
 			NSSize siz8th = { siz.width / 8, siz.height / 8 };
-			GLDrawFilledOval(x, y, z1, siz8th, 30);
+			GLDrawFilledOval(x, y, oo::ToCxx(self)->z1, siz8th, 30);
 			
 			if (div == 1.0) // normal mode
 				GLColorWithOverallAlpha(lightgray_color, alpha);
 		}
 		
-		siz.width -= _crosshairWidth * lineWidth / 2;
-		siz.height -= _crosshairWidth * lineWidth / 2;
-		GLDrawOval(x, y, z1, siz, 10);
+		siz.width -= oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth / 2;
+		siz.height -= oo::ToCxx(self)->_crosshairWidth * oo::ToCxx(self)->lineWidth / 2;
+		GLDrawOval(x, y, oo::ToCxx(self)->z1, siz, 10);
 	}
 	else if (div < 1.0) // insensitive mode (shouldn't happen)
-		GLDrawFilledOval(x, y, z1, siz, 10);
+		GLDrawFilledOval(x, y, oo::ToCxx(self)->z1, siz, 10);
 
-	OOGL(GLScaledLineWidth(lineWidth)); // reset
+	OOGL(GLScaledLineWidth(oo::ToCxx(self)->lineWidth)); // reset
 }
 
 
@@ -3367,7 +3307,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
 	NSInteger			x, y;
 	NSSize				siz;
-	GLfloat				alpha = overallAlpha;
+	GLfloat				alpha = oo::ToCxx(self)->overallAlpha;
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -3385,7 +3325,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	
 	// draw the surround
 	GLColorWithOverallAlpha(color, alpha);
-	hudDrawSurroundAt(x, y, z1, siz);
+	hudDrawSurroundAt(x, y, oo::ToCxx(self)->z1, siz);
 }
 
 
@@ -3427,7 +3367,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	for (i = [PLAYER trumbleCount]; i > 0; i--)
 	{
 		OOTrumble* trum = trumbles[i - 1];
-		[trum drawTrumble: z1];
+		[trum drawTrumble: oo::ToCxx(self)->z1];
 	}
 }
 
@@ -3442,7 +3382,7 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	{
 		return;
 	}
-	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * overallAlpha;
+	GLfloat alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f) * oo::ToCxx(self)->overallAlpha;
 	
 	GLfloat mfd_color[4] =		{0.0, 1.0, 0.0, (GLfloat)(0.9*alpha)};
 	OOColor *mfdcol = [OOColor cxx_colorWithDescription:PListForKeyIn(info, COLOR_KEY)];
@@ -3469,10 +3409,10 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 	GLfloat y1 = (GLfloat)(y - cached.height/2);
 	GLColorWithOverallAlpha(mfd_color, alpha*0.3);
 	OOGLBEGIN(GL_QUADS);
-		glVertex3f(x0-2,y0+2,z1);
-		glVertex3f(x0-2,y1-2,z1);
-		glVertex3f(x1+2,y1-2,z1);
-		glVertex3f(x1+2,y0+2,z1);
+		glVertex3f(x0-2,y0+2,oo::ToCxx(self)->z1);
+		glVertex3f(x0-2,y1-2,oo::ToCxx(self)->z1);
+		glVertex3f(x1+2,y1-2,oo::ToCxx(self)->z1);
+		glVertex3f(x1+2,y0+2,oo::ToCxx(self)->z1);
 	OOGLEND();
 
 	const std::vector<std::string> lines = oo::str::split(text, "\n");
@@ -3488,14 +3428,14 @@ OOPolygonSprite *IconForMissileRole(const std::string &role)
 			GLfloat textwidth = cxx_OORectFromString(line, 0.0f, 0.0f, siz).size.width;
 			if (textwidth <= cached.width)
 			{
-				cxx_OODrawString(line, x0, y0, z1, siz);
+				cxx_OODrawString(line, x0, y0, oo::ToCxx(self)->z1, siz);
 			}
 			else
 			{
 				// compress it so it fits
 				tmpsiz.height = siz.height;
 				tmpsiz.width = siz.width * cached.width / textwidth;
-				cxx_OODrawString(line, x0, y0, z1, tmpsiz);
+				cxx_OODrawString(line, x0, y0, oo::ToCxx(self)->z1, tmpsiz);
 			}
 		}
 		else
@@ -3624,7 +3564,7 @@ static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz)
 
 static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloat z1, 
 				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
-				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::ObjCRef<OOColor *>> &reticleColors)
+				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::Ref<cxx::OOColor>> &reticleColors)
 {
 	if (target == nil || player1 == nil)  
 	{
@@ -3676,7 +3616,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 	// Draw reticle cyan for Wormholes
 	if ([target isWormhole])
 	{
-		OOColor *wormholeReticleColor = ReticleColorAt(reticleColors, OO_RETICLE_COLOR_WORMHOLE);
+		OOColor *wormholeReticleColor = oo::ToObjC(ReticleColorAt(reticleColors, OO_RETICLE_COLOR_WORMHOLE));
 		GLfloat wormholeReticleColorArray[4] = {[wormholeReticleColor redComponent],
 												[wormholeReticleColor greenComponent],
 												[wormholeReticleColor blueComponent],
@@ -3758,12 +3698,12 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			OOColor *reticleDisplayColor = nil;
 			if (reticleTargetSensitive && isTargeted)
 			{
-				reticleDisplayColor = ReticleColorAt(reticleColors, OO_RETICLE_COLOR_TARGET_SENSITIVE);
+				reticleDisplayColor = oo::ToObjC(ReticleColorAt(reticleColors, OO_RETICLE_COLOR_TARGET_SENSITIVE));
 				if (!reticleDisplayColor)  reticleDisplayColor = [OOColor redColor];
 			}
 			else
 			{
-				reticleDisplayColor = ReticleColorAt(reticleColors, OO_RETICLE_COLOR_TARGET);
+				reticleDisplayColor = oo::ToObjC(ReticleColorAt(reticleColors, OO_RETICLE_COLOR_TARGET));
 				if (!reticleDisplayColor)  reticleDisplayColor = [OOColor greenColor];
 			}
 			GLfloat reticleDisplayColorArray[4] = {	[reticleDisplayColor redComponent],
@@ -4508,18 +4448,6 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 			glVertex3f(x + ww * s, y + hh * cos(theta), z);
 		}
 	OOGLEND();
-}
-
-
-- (void) setLineWidth:(GLfloat) value
-{
-	lineWidth = value;
-}
-
-
-- (GLfloat) lineWidth
-{
-	return lineWidth;
 }
 
 @end

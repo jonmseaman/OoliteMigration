@@ -48,6 +48,7 @@ core_tests = {
     'test_OOShaderUniform': ['Core/Materials/OOShaderUniform.mm', 'Core/Materials/OOShaderUniform+ObjCBridge.mm', 'Core/Materials/OOShaderUniformMethodType.mm', 'Core/OOColor.mm', 'Core/OOColor+ObjCBridge.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm', 'Core/OOWeakReference.mm', 'Core/OOWeakReference+ObjCBridge.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/OOMatrix.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOShaderProgram': ['Core/Materials/OOShaderProgram.mm', 'Core/Materials/OOShaderProgram+ObjCBridge.mm', 'Core/OOOpenGLMatrixManager.mm', 'Core/OOOpenGLMatrixManager+ObjCBridge.mm', 'Core/OOOpenGL.mm', 'Core/OOOpenGLExtensionManager.mm', 'Core/OOOpenGLExtensionManager+ObjCBridge.mm', 'Core/OOMatrix.mm', 'Core/OOVector.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOOXPVerifierStage': ['Core/OXPVerifier/OOOXPVerifierStage.mm', 'Core/OXPVerifier/OOOXPVerifierStage+ObjCBridge.mm', 'Core/OODescription.mm'],
+    'test_OOOXPVerifier': ['*'],
     'test_OOPListSchemaVerifier': ['Core/OXPVerifier/OOPListSchemaVerifier.mm', 'Core/OXPVerifier/OOPListSchemaVerifier+ObjCBridge.mm', 'Core/OOPListGameTypes.mm', 'Core/OOIsNumberLiteral.cpp', 'Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/OOHPVector.mm', 'Core/OOQuaternion.cpp', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOOpenALController': ['Core/OOOpenALController.mm'],
     'test_OOSound': ['Core/OOALSound.mm', 'Core/OOALSound+ObjCBridge.mm', 'Core/OOOpenALController.mm', 'Core/OODescription.mm'],
@@ -116,6 +117,7 @@ core_tests = {
     'test_OOJSClock': ['Core/Scripting/OOJSClock.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSWormhole': ['Core/Scripting/OOJSWormhole.mm', 'Core/Scripting/OOJSWormhole+ObjCBridge.mm', 'Core/Scripting/OOJSEngineNativeWrappers.mm', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOMeshToOctreeConverter': ['*'],
+    'test_OOMesh': ['*'],
     'test_OOPolygonSprite': ['*'],
     'test_OOVector': ['Core/OOVector.mm', 'Core/OOVector+ObjCBridge.mm', 'Core/legacy_random.c', 'Core/OODescription.mm'],
     'test_OOAsyncQueue': ['Core/OOAsyncQueue.mm'],
@@ -132,6 +134,8 @@ core_tests = {
     'test_OOSystemDescriptionManager': ['Core/OOSystemDescriptionManager.mm', 'Core/OOSystemDescriptionManager+ObjCBridge.mm', 'Core/OODescription.mm', 'Core/legacy_random.c'],
     'test_GuiDisplayGen': ['*'],
     'test_ResourceManager': ['*'],
+    'test_PlayerEntityStickProfile': ['*'],
+    'test_HeadUpDisplay': ['*'],
     'test_Entity': ['*'],
     'test_OOEntityWithDrawable': ['*'],
     'test_OOPlanetEntity': ['*'],
@@ -162,6 +166,7 @@ core_tests = {
     'test_OODebugTCPConsoleClient': ['Core/Debug/OODebugTCPConsoleClient.mm', 'Core/Debug/OODebugTCPConsoleClient+ObjCBridge.mm', 'Core/Debug/OOTCPStreamDecoder.c', 'Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm', 'Core/OODescription.mm'],
     'test_OODebugSupport': ['Core/Debug/OODebugSupport.mm', 'Core/Debug/OODebugSupport+ObjCBridge.mm'],
     'test_OODebugStandards': ['Core/Debug/OODebugStandards.mm'],
+    'test_OOOXZManager': ['*'],
 }
 
 fs = import('fs')
