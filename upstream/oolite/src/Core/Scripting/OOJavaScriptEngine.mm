@@ -1516,9 +1516,11 @@ void OOJSValue::initWithJSValue(ooscript::Value value, ooscript::Context context
 		{
 			ooscript::addNamedValueRoot((context), (&_val), "OOJSValue");
 
-			// The engine's facade: the sender of its reset notifications.
+			// The engine's facade: the sender of its reset notifications. Kept for removing the
+			// observer, so the destructor does not ask for the engine (which could make it).
+			_resetSender = oo::ToObjC(OOJavaScriptEngine::sharedEngine());
 			oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-																oo::ToObjC(OOJavaScriptEngine::sharedEngine()),
+																_resetSender,
 																[this](const oo::Notification &) { deleteJSValue(); });
 		}
 
@@ -1545,7 +1547,7 @@ void OOJSValue::deleteJSValue()
 
 		_val = ooscript::undefinedValue();
 		oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-																oo::ToObjC(OOJavaScriptEngine::sharedEngine()));
+																_resetSender);
 	}
 }
 

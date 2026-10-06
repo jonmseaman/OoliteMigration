@@ -212,6 +212,7 @@ private:
 	void deleteJSValue();
 
 	ooscript::Value					_val = {};
+	const void						*_resetSender = {};	// the engine's facade, while _val is rooted
 };
 
 }	// namespace cxx
