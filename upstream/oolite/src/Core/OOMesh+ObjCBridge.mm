@@ -4,8 +4,7 @@ OOMesh+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, amendment oo-dnbf): the Objective-C OOMesh facade (see
 OOMesh+ObjCBridge.h). Every method forwards to its C++ member through oo::ToCxx(self); -init makes
-a new cxx::OOMesh, which the designated initialiser of slice 2 (still Objective-C, in OOMesh.mm)
-then loads. Deleted with OOMesh+ObjCBridge.h.
+a new cxx::OOMesh (as [[OOMesh alloc] init] made an empty mesh). Deleted with OOMesh+ObjCBridge.h.
 
 
 Oolite
@@ -92,13 +91,9 @@ cxx::OOMesh *oo::ToCxx(OOMesh *mesh)
 }
 
 
-// The facade is the mesh's graphics reset client, so what the old -dealloc sent to self is sent
-// here, before the C++ part goes (its destructor releases the members).
-- (void) dealloc
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
-	oo::ToCxx(self)->deleteDisplayLists();
-	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
-	[super dealloc];
+	return [oo::ToObjC(oo::ToCxx(self)->mutableCopyWithZone(zone)) retain];
 }
 
 
