@@ -27,6 +27,7 @@ SOFTWARE.
 
 
 #import "OOShaderMaterial.h"
+#import "Entity.h"	// the shader binding targets' informal protocols (-randomSeedForShaders)
 #include "oofnd/objc/OORuntime.h"
 #import "OOObjCPList.h"
 
@@ -73,8 +74,6 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 } // namespace
 
 
-namespace cxx {
-
 bool OOShaderMaterial::configurationDictionarySpecifiesShaderMaterial(const oo::PList &configuration)
 {
 	if (configuration.isNull())  return false;
@@ -108,7 +107,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 	std::optional<std::string>	macroString;
 	std::optional<std::string>	vertexShader;
 	std::optional<std::string>	fragmentShader;
-	GLint					textureUnits = OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
+	GLint					textureUnits = cxx::OOOpenGLExtensionManager::sharedManager()->textureImageUnitCount();
 	oo::PList				modifiedMacros;
 	std::optional<std::string>	vsName = "<synthesized>";
 	std::optional<std::string>	fsName = "<synthesized>";
@@ -311,17 +310,13 @@ bool OOShaderMaterial::bindUniform(const std::string &uniformName,
 								   SEL selector,
 								   OOUniformConvertOptions options)
 {
-	::OOShaderUniform			*uniform = nil;
+	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = [[::OOShaderUniform alloc] initWithName:uniformName
-									  shaderProgram:shaderProgram.get()
-									  boundToObject:source
-										   property:selector
-									 convertOptions:options];
-	if (uniform != nil)
+	uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), source, selector, options);
+	if (uniform != nullptr)
 	{
-		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
-		uniforms[uniformName] = oo::ObjCRef<::OOShaderUniform *>::adopt(uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
+		uniforms[uniformName] = uniform;
 		return true;
 	}
 	else
@@ -360,15 +355,13 @@ bool OOShaderMaterial::bindSafeUniform(const std::string &uniformName,
 
 void OOShaderMaterial::setUniform(const std::string &uniformName, int value)
 {
-	::OOShaderUniform			*uniform = nil;
+	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = [[::OOShaderUniform alloc] initWithName:uniformName
-									  shaderProgram:shaderProgram.get()
-										   intValue:value];
-	if (uniform != nil)
+	uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), value);
+	if (uniform != nullptr)
 	{
-		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
-		uniforms[uniformName] = oo::ObjCRef<::OOShaderUniform *>::adopt(uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
+		uniforms[uniformName] = uniform;
 	}
 	else
 	{
@@ -380,15 +373,13 @@ void OOShaderMaterial::setUniform(const std::string &uniformName, int value)
 
 void OOShaderMaterial::setUniform(const std::string &uniformName, float value)
 {
-	::OOShaderUniform			*uniform = nil;
+	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = [[::OOShaderUniform alloc] initWithName:uniformName
-									  shaderProgram:shaderProgram.get()
-										 floatValue:value];
-	if (uniform != nil)
+	uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), value);
+	if (uniform != nullptr)
 	{
-		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
-		uniforms[uniformName] = oo::ObjCRef<::OOShaderUniform *>::adopt(uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
+		uniforms[uniformName] = uniform;
 	}
 	else
 	{
@@ -400,15 +391,13 @@ void OOShaderMaterial::setUniform(const std::string &uniformName, float value)
 
 void OOShaderMaterial::setUniform(const std::string &uniformName, GLfloat value[4])
 {
-	::OOShaderUniform			*uniform = nil;
+	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = [[::OOShaderUniform alloc] initWithName:uniformName
-									  shaderProgram:shaderProgram.get()
-										vectorValue:value];
-	if (uniform != nil)
+	uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), value);
+	if (uniform != nullptr)
 	{
-		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
-		uniforms[uniformName] = oo::ObjCRef<::OOShaderUniform *>::adopt(uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
+		uniforms[uniformName] = uniform;
 	}
 	else
 	{
@@ -437,13 +426,11 @@ void OOShaderMaterial::setUniform(const std::string &uniformName, const oo::PLis
 		vecArray[3] = 1.0;
 	}
 
-	::OOShaderUniform *uniform = [[::OOShaderUniform alloc] initWithName:uniformName
-													   shaderProgram:shaderProgram.get()
-														 vectorValue:vecArray];
-	if (uniform != nil)
+	oo::Ref<OOShaderUniform> uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), vecArray);
+	if (uniform != nullptr)
 	{
-		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
-		uniforms[uniformName] = oo::ObjCRef<::OOShaderUniform *>::adopt(uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
+		uniforms[uniformName] = uniform;
 	}
 	else
 	{
@@ -455,16 +442,13 @@ void OOShaderMaterial::setUniform(const std::string &uniformName, const oo::PLis
 
 void OOShaderMaterial::setUniform(const std::string &uniformName, Quaternion value, bool asMatrix)
 {
-	::OOShaderUniform			*uniform = nil;
+	oo::Ref<OOShaderUniform>	uniform;
 
-	uniform = [[::OOShaderUniform alloc] initWithName:uniformName
-									  shaderProgram:shaderProgram.get()
-									quaternionValue:value
-										   asMatrix:asMatrix];
-	if (uniform != nil)
+	uniform = OOShaderUniform::initWithName(uniformName, shaderProgram.get(), value, asMatrix);
+	if (uniform != nullptr)
 	{
-		OO_LOG("shader.uniform.set", "Set up uniform {}", oo::DescriptionOf(uniform));
-		uniforms[uniformName] = oo::ObjCRef<::OOShaderUniform *>::adopt(uniform);
+		OO_LOG("shader.uniform.set", "Set up uniform {}", uniform->description().value_or("(null)"));
+		uniforms[uniformName] = uniform;
 	}
 	else
 	{
@@ -677,7 +661,7 @@ bool OOShaderMaterial::doApply()
 	{
 		for (const auto &[name, uniform] : uniforms)
 		{
-			[uniform.get() apply];
+			uniform->apply();
 		}
 	}
 	catch (...)
@@ -753,7 +737,7 @@ void OOShaderMaterial::setBindingTarget(id<OOWeakReferenceSupport> target)
 {
 	for (const auto &[name, uniform] : uniforms)
 	{
-		[uniform.get() setBindingTarget:target];
+		uniform->setBindingTarget(target);
 	}
 	bindingTarget = oo::ObjCRef<::OOWeakReference *>::adopt([target weakRetain]);
 }
@@ -817,8 +801,6 @@ void OOShaderMaterial::addTexturesFromArray(const std::vector<oo::ObjCRef<::OOTe
 		[textures[i] retain];
 	}
 }
-
-}	// namespace cxx
 
 
 namespace {
