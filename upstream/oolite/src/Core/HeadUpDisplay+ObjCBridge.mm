@@ -3,8 +3,7 @@
 HeadUpDisplay+ObjCBridge.mm
 
 TRANSITIONAL (proposed ADR-0056, bead oo-engam): the Objective-C facade over cxx::HeadUpDisplay.
-See HeadUpDisplay+ObjCBridge.h. The drawing (the Private category) is implemented in
-HeadUpDisplay.mm, not here.
+See HeadUpDisplay+ObjCBridge.h. The drawing is cxx::HeadUpDisplay's, in HeadUpDisplay.mm.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -73,9 +72,8 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 }
 
 
-/*	The facade is the HUD's peer before the C++ initialisation runs: it hands the HUD to the drawing
-	that is still Objective-C (the dial check asks the facade which dials it answers, and a crosshair
-	file is read by -cxx_setCrosshairDefinition:), which must see this object (amendment oo-8kx7).
+/*	The facade is the HUD's peer before the C++ initialisation runs: the dial check asks the facade
+	which dials it answers, and it must ask this object (amendment oo-8kx7).
 */
 - (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName
 {
@@ -169,14 +167,6 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 @end
 
 
-@implementation HeadUpDisplay (OOPrivate)
-
-- (BOOL) checkPlayerInFlight	{ return _cxxHUD->checkPlayerInFlight(); }
-- (BOOL) checkPlayerInSystemFlight	{ return _cxxHUD->checkPlayerInSystemFlight(); }
-
-@end
-
-
 @implementation HeadUpDisplay (OODials)
 
 - (void) drawSurround:(const oo::PList &)info	{ _cxxHUD->drawSurround(info); }
@@ -206,6 +196,17 @@ cxx::HeadUpDisplay *oo::ToCxx(HeadUpDisplay *hud)
 - (void) drawCabinTempBar:(const oo::PList &)info	{ _cxxHUD->drawCabinTempBar(info); }
 - (void) drawWeaponTempBar:(const oo::PList &)info	{ _cxxHUD->drawWeaponTempBar(info); }
 - (void) drawAltitudeBar:(const oo::PList &)info	{ _cxxHUD->drawAltitudeBar(info); }
+- (void) drawMissileDisplay:(const oo::PList &)info	{ _cxxHUD->drawMissileDisplay(info); }
+- (void) drawStatusLight:(const oo::PList &)info	{ _cxxHUD->drawStatusLight(info); }
+- (void) drawClock:(const oo::PList &)info	{ _cxxHUD->drawClock(info); }
+- (void) drawPrimedEquipment:(const oo::PList &)info	{ _cxxHUD->drawPrimedEquipment(info); }
+- (void) drawASCTarget:(const oo::PList &)info	{ _cxxHUD->drawASCTarget(info); }
+- (void) drawWeaponsOfflineText:(const oo::PList &)info	{ _cxxHUD->drawWeaponsOfflineText(info); }
+- (void) drawFPSInfoCounter:(const oo::PList &)info	{ _cxxHUD->drawFPSInfoCounter(info); }
+- (void) drawScoopStatus:(const oo::PList &)info	{ _cxxHUD->drawScoopStatus(info); }
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info	{ _cxxHUD->drawStickSensitivityIndicator(info); }
+- (void) drawTrumbles:(const oo::PList &)info	{ _cxxHUD->drawTrumbles(info); }
+
 @end
 
 
@@ -343,6 +344,7 @@ WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole)	{ retu
 double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole)	{ return [wormhole estimatedArrivalTime]; }
 double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole)	{ return [wormhole expiryTime]; }
 OOTimeAbsolute HeadUpDisplayUniverseGetTime()	{ return [UNIVERSE getTime]; }
+const oo::PList *HeadUpDisplayUniverseDescriptions()	{ return [UNIVERSE cxx_descriptions]; }
 OOViewID HeadUpDisplayUniverseViewDirection()	{ return [UNIVERSE viewDirection]; }
 Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer()	{ return [UNIVERSE firstEntityTargetedByPlayer]; }
 Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely()	{ return [UNIVERSE firstEntityTargetedByPlayerPrecisely]; }

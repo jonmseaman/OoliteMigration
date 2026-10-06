@@ -2,30 +2,27 @@
 
 HeadUpDisplay+ObjCBridge.h
 
-TRANSITIONAL (proposed ADR-0056, bead oo-engam): the Objective-C HeadUpDisplay, a facade over the
-C++ cxx::HeadUpDisplay (HeadUpDisplay.h), for the code that is not converted yet: the HUD's
-callers (the player, the universe, the scripting bindings: about 30 files reach it through
-[PLAYER hud]) and the drawing of slices 2-6 of HeadUpDisplay.mm
-(docs/phases/3-slices/HeadUpDisplay.md), which stays Objective-C, as the Private category below,
-until each slice's own bead. Its interface is the old one, copied exactly (same selectors, same
-types, same root), except that -renderHUD and -cxx_setCrosshairDefinition:, which slice 2 owns, are
-declared in the Private category that implements them, with the drawing methods the .mm declared
-in it. Each method of the class forwards to its C++ member. Imported as the last line of
-HeadUpDisplay.h; do not import it directly.
+TRANSITIONAL (proposed ADR-0056, beads oo-engam .. oo-0tx6c, the six slices of
+docs/phases/3-slices/HeadUpDisplay.md): the Objective-C HeadUpDisplay, a facade over the C++
+cxx::HeadUpDisplay (HeadUpDisplay.h), for the HUD's callers that are not converted yet (the
+player, the universe, the scripting bindings: about 30 files reach it through [PLAYER hud]). Its
+interface is the old one, copied exactly (same selectors, same types, same root). Each method
+forwards to its C++ member. Imported as the last line of HeadUpDisplay.h; do not import it
+directly.
 
 	a caller that is                       holds / passes                       crosses with
 	-------------------------------------  -----------------------------------  ------------------------
 	still Objective-C                      HeadUpDisplay *                      (nothing)
-	  a drawing method (slices 2-6)        HeadUpDisplay * (self)               oo::ToCxx(self) for the state
 	converted (C++)                        oo::Ref<cxx::HeadUpDisplay>          oo::ToObjC(hud)
 
-The dials are called by name on the facade (OOCallByName, ADR-0055 item 5), so the facade keeps
-answering every dial selector until it is deleted. The functions at the end are the one-line
-sends of converted free functions to classes that are still Objective-C (ADR-0056 amendment
-oo-9ht.139); each goes with its class's conversion.
+The dials are called by name on the facade (OOCallByName, ADR-0055 item 5), so the facade answers
+every dial selector (the OODials category, one forwarder each) until it is deleted. Below it are
+the beacon code icon's facade and protocol, and the one-line sends of converted free functions to
+classes that are still Objective-C (ADR-0056 amendment oo-9ht.139); each send goes with its
+class's conversion.
 
 Never add to this file except a forwarder or a send of that kind. Deleted, with namespace cxx in
-HeadUpDisplay.h, by its deletion bead once the callers and the drawing are converted.
+HeadUpDisplay.h, by its deletion bead (oo-mwd58) once the callers are converted.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -158,15 +155,6 @@ MA 02110-1301, USA.
 @end
 
 
-// Sent by the drawing methods (slices 3-6), which the .mm declared in its Private category.
-@interface HeadUpDisplay (OOPrivate)
-
-- (BOOL) checkPlayerInFlight;
-- (BOOL) checkPlayerInSystemFlight;
-
-@end
-
-
 // The dials that are C++ members, called by name (ADR-0055 item 5): one forwarder each.
 @interface HeadUpDisplay (OODials)
 
@@ -196,28 +184,16 @@ MA 02110-1301, USA.
 - (void) drawCabinTempBar:(const oo::PList &)info;
 - (void) drawWeaponTempBar:(const oo::PList &)info;
 - (void) drawAltitudeBar:(const oo::PList &)info;
-
-@end
-
-
-/*	The drawing (slices 2-6 of HeadUpDisplay.mm, still Objective-C), implemented in HeadUpDisplay.mm.
-	The dials are called by name (ADR-0055 item 5). The .mm declared -drawPrimedEquipmentText:,
-	which nothing implemented or sent; the dial it draws is -drawPrimedEquipment:.
-*/
-@interface HeadUpDisplay (Private)
-
-- (void) drawMissileDisplay:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawStatusLight:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawDirectionCue:(const oo::PList &)info;
-- (void) drawClock:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawPrimedEquipment:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawASCTarget:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawWeaponsOfflineText:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawFPSInfoCounter:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawScoopStatus:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-- (void) drawStickSensitivityIndicator:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
-
-- (void) drawTrumbles:(const oo::PList &)info;	// called by name (ADR-0055 item 5)
+- (void) drawMissileDisplay:(const oo::PList &)info;
+- (void) drawStatusLight:(const oo::PList &)info;
+- (void) drawClock:(const oo::PList &)info;
+- (void) drawPrimedEquipment:(const oo::PList &)info;
+- (void) drawASCTarget:(const oo::PList &)info;
+- (void) drawWeaponsOfflineText:(const oo::PList &)info;
+- (void) drawFPSInfoCounter:(const oo::PList &)info;
+- (void) drawScoopStatus:(const oo::PList &)info;
+- (void) drawStickSensitivityIndicator:(const oo::PList &)info;
+- (void) drawTrumbles:(const oo::PList &)info;
 
 @end
 
@@ -276,6 +252,7 @@ WORMHOLE_SCANINFO HeadUpDisplayWormholeScanInfo(WormholeEntity *wormhole);
 double HeadUpDisplayWormholeEstimatedArrivalTime(WormholeEntity *wormhole);
 double HeadUpDisplayWormholeExpiryTime(WormholeEntity *wormhole);
 OOTimeAbsolute HeadUpDisplayUniverseGetTime();
+const oo::PList *HeadUpDisplayUniverseDescriptions();	// MissileIconDefinition()
 OOViewID HeadUpDisplayUniverseViewDirection();
 Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayer();
 Entity *HeadUpDisplayUniverseFirstEntityTargetedByPlayerPrecisely();

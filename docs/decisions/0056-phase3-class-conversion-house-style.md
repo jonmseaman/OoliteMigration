@@ -3550,3 +3550,35 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
 2-4 and the callers. A C++ subclass of a root is now visible to Objective-C as its own façade
 class, through the root's bridge. Slices 2-4 each delete their category and trampolines as they
 convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ members.
+
+## Amendment (bead oo-0tx6c): the rest of a class-shell plan's slices, when the dials are its façade's methods
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/HeadUpDisplay.h/.mm` and
+  `HeadUpDisplay+ObjCBridge.h/.mm` after slices 2-6 of `docs/phases/3-slices/HeadUpDisplay.md`
+  (beads oo-8fiz9, oo-8j1y2, oo-2p1ug, oo-kdrc6, oo-0tx6c). Follows amendment oo-engam.
+
+**Decision (recommended defaults).**
+
+1. **A slice moves its methods out of the façade's in-place category into the member section** of
+   `X.mm`, bodies verbatim but for `oo::ToCxx(self)->` (dropped) and `[self m]` (a member call). A
+   method the slice's own callers still send through the façade (`-renderHUD`) returns to the
+   façade's main interface as a forwarder; a dial (sent by name) moves to an `OODials` category,
+   one forwarder each. When the last slice lands, the in-place category and its `@interface` are
+   deleted, and `X.mm` has no Objective-C left.
+2. **A member that calls a slice still on the façade** sends `[oo::ToObjC(this) m]` until that
+   slice lands, which turns it into a member call. A file-scope helper a moved member now calls
+   before its definition gets a declaration with the file's other prototypes.
+3. **A category on a converted class's façade in the file** (`OOPolygonSprite (OOHUDBeaconIcon)`)
+   becomes a free function on the C++ class, declared in `X.h`, and its `@implementation` forwards
+   from `X+ObjCBridge.mm` (amendments oo-6ia4 item 3, oo-9fwb). **A small class the entities hold by
+   a protocol** (`OOHUDBeaconCodeIcon`) becomes `cxx::` with its own façade in the same bridge, and
+   the protocol moves verbatim to the bridge header (amendments oo-jpd8, oo-4nhg).
+4. **An enum a member's signature needs from a header that `X.h` cannot import** (an import cycle:
+   `OOMissileStatus` in `PlayerEntity.h`) is passed as `int` in that one private member, with a
+   comment naming the enum; the body's `switch` is unchanged.
+5. **A singleton made by its façade's class method** (`+[OOJoystickManager sharedStickHandler]`,
+   which picks the platform subclass, amendment oo-6bux) is still asked for through the façade, and
+   used through `oo::ToCxx`.
+
+**Consequences.** The HUD's façade serves only its callers and the dial dispatch; its deletion
+(oo-mwd58) replaces `OOCallByName` with a table of member pointers.
