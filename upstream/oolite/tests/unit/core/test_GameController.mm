@@ -444,7 +444,7 @@ OO_TEST(facadeContract)
 		OO_CHECK(controller->gameView() == [facade gameView]);
 
 		// The C++ members tell the view of the façade, which slices 2 and 3 run on.
-		TestView *view = (TestView *)controller->gameView();
+		TestView *view = [(TestView *)controller->gameView() retain];	// only the controller holds it
 		TestView *other = [[TestView alloc] init];
 		controller->setGameView((MyOpenGLView *)other);
 		OO_CHECK(other->_controller == facade);
@@ -452,6 +452,7 @@ OO_TEST(facadeContract)
 		controller->setGameView((MyOpenGLView *)view);
 		OO_CHECK([other retainCount] == 1);
 		[other release];
+		[view release];
 
 		controller->setMouseInteractionMode(MOUSE_MODE_UI_SCREEN_WITH_INTERACTION);
 		OO_CHECK([facade mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION);
