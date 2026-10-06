@@ -22,6 +22,8 @@
 */
 
 #import "OOExhaustPlumeEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSExhaustPlume.h"
 #import "OOColor.h"
 #import "OOTexture.h"
 #import "Universe.h"
@@ -291,6 +293,25 @@ OO_TEST(facade)
 		OO_CHECK(dynamic_cast<cxx::OOExhaustPlumeEntity *>(oo::ToCxx(plume)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(plume)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(plume)) == plume);
+	}
+}
+
+
+// The binding's category, which the facade carries since bead oo-9ht.48: what the engine asks a
+// OOExhaustPlumeEntity for by selector is what OOJSExhaustPlume.mm answers.
+OO_TEST(jsExtensions)
+{
+	@autoreleasepool
+	{
+		SetUp(0.0);
+		OOExhaustPlumeEntity *plume = Plume(Ship(), { "0", "0", "0", "1", "1", "1" }, 1.0f);
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[plume getJSClass:&jsClass andPrototype:&prototype];
+		OOJSExhaustPlumeGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([plume cxx_oo_jsClassName] == std::optional<std::string>("ExhaustPlume"));
+		OO_CHECK([plume isVisibleToScripts] == YES);
 	}
 }
 
