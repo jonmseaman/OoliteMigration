@@ -106,8 +106,8 @@ void WriteFile(const std::filesystem::path &path, const char *contents)
 // The scanner, registered with the verifier and run over its OXP, as the verifier runs it first.
 void RunScanner(OOOXPVerifier *verifier)
 {
-	[OOFileScannerVerifierStage nameForDependencyForVerifier:verifier];
-	[[verifier fileScannerStage] run];
+	OOFileScannerVerifierStage::nameForDependencyForVerifier(verifier);
+	[[verifier cxx_stageWithName:OOFileScannerVerifierStage::kName] run];	// was -fileScannerStage (bead oo-9ht.7)
 }
 
 
