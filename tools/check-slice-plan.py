@@ -124,7 +124,7 @@ def selector_of(decl):
     m = re.search(r"\w+", s)
     return m.group(0) if m else "?"
 
-FUNC_NAME = re.compile(r"(~?[A-Za-z_][\w:]*|operator\s*\S+)\s*\([^;]*\)\s*(const\s*|noexcept\s*|override\s*|->\s*[\w:<>*& ]+)*$", re.S)
+FUNC_NAME = re.compile(r"((?:[A-Za-z_]\w*\s*::\s*)*(?:~?[A-Za-z_]\w*|operator\s*\S+))\s*\([^;]*\)\s*(const\s*|noexcept\s*|override\s*|->\s*[\w:<>*& ]+)*$", re.S)
 NOT_FUNC = re.compile(r"^\s*(struct|class|union|enum|typedef|namespace|extern\s*\"C\"|template\s*<[^>]*>\s*(struct|class))\b|=\s*$|=[^=]*$")
 
 def parse_units(path):
@@ -176,16 +176,18 @@ def parse_units(path):
                     head = "".join(buf).strip()
                     if impl and head[:1] in "-+":
                         cur = {"name": f"{head[0]}[{impl.split('(')[0]} {selector_of(head)}]",
-                               "block": "@" + impl, "kind": "method", "member": False, "start": buf_line}
+                               "block": "@" + impl, "kind": "method", "member": False, "cls": None, "start": buf_line}
                         stack.append("body")
                     elif re.match(r"^(namespace\b[^{]*|extern\s*\"C\"\s*)$", head):
                         stack.append("ns")
                     elif head and not NOT_FUNC.search(head) and FUNC_NAME.search(head):
                         name = FUNC_NAME.search(head).group(1)
+                        name = re.sub(r"\s*::\s*", "::", name)
                         member = "::" in name   # an out-of-line C++ member definition: X::m(...) { (oo-9ht.117)
+                        cls = name.split("::")[-2] if member else None   # cxx::X::m -> X (oo-7j62d)
                         mac = re.fullmatch(r"([A-Z][A-Z0-9_]+)\s*\(([^()]*)\)", head)
                         name = f"{mac.group(1)}({mac.group(2).strip()})" if mac else name.split("::")[-1] + "()"
-                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "member": member, "start": buf_line}
+                        cur = {"name": name, "block": "@" + impl if impl else "", "kind": "function", "member": member, "cls": cls, "start": buf_line}
                         stack.append("body")
                     else:
                         stack.append("other")
@@ -443,6 +445,11 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
                     elif t == best: owners.add(g["id"])
         if not owners and any(g["mac_only"] and any(entry_matches(e, u) for e in g["entries"]) for g in plan["groups"]):
             assign[i] = "mac-only"   # claimed by mac-only only, but compiled: reported below
+        elif not owners and u["member"]:
+            # A converted member (cxx::X::m) no entry names: a landed slice turned -[X m] into it, so the
+            # plan's -[X m] / @X entries no longer match. It is verbatim (the oo-9ht.117 rule) whether
+            # the plan's verbatim group is '*' or a list of names, or absent (oo-7j62d).
+            assign[i] = "verbatim"
         elif not owners: unassigned.append(i); errors.append(f"unassigned: {u['name']} (line {u['start']+1}-{u['end']+1}, {u['end']-u['start']+1} lines)")
         elif len(owners) > 1:
             errors.append(f"assigned to {len(owners)} slices ({', '.join(sorted(owners))}): {u['name']}"); shared[i] = owners
@@ -451,6 +458,14 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
         for e in g["entries"]:
             if not any(entry_matches(e, u) for u in units):
                 warnings.append(f"slice {g['id']}: entry matches nothing: {e}")
+    converted = set(u["cls"] for u in units if u["member"])
+    def landed(g):
+        """A slice that matches nothing because it LANDED (oo-7j62d): every entry names a method or
+        an @block of a class X that now has converted out-of-line members (cxx::X::m) in the file."""
+        for e in g["entries"]:
+            m = re.match(r"[-+]\[(\w+)\s", e) or re.match(r"@(\w+)", e)
+            if not m or m.group(1) not in converted: return False
+        return bool(g["entries"])
     report = []
     for g in plan["groups"]:
         mine = [units[i] for i, gid in assign.items() if gid == g["id"]]
@@ -485,7 +500,10 @@ def analyse(plan_path, max_read=1500, max_own=800, base=ROOT):
                     if i not in used and declared & toks: used.add(i); toks |= uses; grew = True
             h += sum(hnames[i][0] for i in used)
         read = h + preamble + own
-        if not mine: empty.append(g["id"]); errors.append(f"slice {g['id']} is empty")
+        if not mine:
+            empty.append(g["id"])
+            if landed(g): warnings.append(f"slice {g['id']} is empty: landed (its class has converted members)")
+            else: errors.append(f"slice {g['id']} is empty")
         if read >= max_read: errors.append(f"slice {g['id']} reads ~{read} lines (header {h} + preamble {preamble} + own {own}); must be under {max_read}")
         if own > max_own: errors.append(f"slice {g['id']} owns {own} lines of units; at most {max_own}")
         report.append({"id": g["id"], "title": g["title"], "verbatim": False, "mac_only": False, "units": len(mine), "own": own, "read": read,
@@ -669,6 +687,20 @@ def selftest():
     run(rest, 0)                                                              # converted member in verbatim
     open(os.path.join(d, "Foo.mm"), "w").write(landed.replace("int plainC(int y) { return y * 2; }", "int plainC(int y) { return [Foo twice:y]; }"))
     run(rest, 1)                                                              # a plain function still may not
+    # a plan whose verbatim group lists names (oo-7j62d): a converted member no entry names is verbatim
+    # too, as is one in a plan with no verbatim group; a converted destructor is a member; a slice that
+    # is empty because its class's methods became members has landed, an empty slice of another class
+    # has not; a plain function no entry names is still unassigned
+    open(os.path.join(d, "Foo.mm"), "w").write(landed + "Foo::~Foo()\n{\n\t[_delegate release];\n}\n")
+    if not any(u["name"] == "~Foo()" and u["member"] and u["cls"] == "Foo" for u in parse_units(os.path.join(d, "Foo.mm"))[0]):
+        fails.append("a converted destructor Foo::~Foo() is not a member of Foo")
+    named = "slice 1: shell\n  -[Foo init]\n  -[Foo set*]\n  helper()\nslice 2: private\n  @Foo(Private)\nverbatim: C\n  plainC()\n"
+    run(named, 0)                                                             # members, named verbatim list
+    run(named.replace("verbatim: C\n  plainC()\n", "slice 3: c\n  plainC()\n"), 0)   # members, no verbatim group
+    run(named.replace("  @Foo(Private)\n", "  -[Bar gone]\n"), 1)            # an empty slice of a class with no members
+    run(named.replace("  plainC()\n", ""), 1)                                # a plain function is still unassigned
+    a = analyse(os.path.join(d, "plan.md"), base=d)
+    if a["unassigned"] != [i for i, u in enumerate(a["units"]) if u["name"] == "plainC()"]: fails.append(f"unassigned: {a['unassigned']}")
     # header-decls: per-slice (bead oo-9ht.140): a slice is charged the header less its method
     # declarations, plus its own units' declarations (with their doc comments)
     open(os.path.join(d, "Foo.mm"), "w").write(SELFTEST_SRC)
