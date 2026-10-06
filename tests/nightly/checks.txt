@@ -270,6 +270,10 @@
 [oo-4s5i] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
 [oo-9ht.141] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage test_OOModelVerifierStage
 [oo-u61e.5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODebugMonitor test_OOCharacter test_OOJSFunction test_OOJSGuiScreenKeyDefinition test_OOJSInterfaceDefinition test_OOJSPopulatorDefinition test_OOJSTimer test_OOJSEngineTimeManagement test_OOJSSystemInfo && bash tools/tier-c.sh --only goldens
+[oo-jfno] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
+[oo-he11] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
+[oo-elve] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
+[oo-5dzou] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ResourceManager && bash tools/tier-c.sh --only goldens
 [oo-engam] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 # A paused console-driven game stays at normal priority (oo-37zzy): the regression test, then the goldens three times.
 [oo-37zzy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && (cd upstream/oolite/tests/component && python3 -m pytest -q -p no:cacheprovider test_paused_console_priority.py) && for i in 1 2 3; do bash tools/tier-c.sh --only goldens || exit 1; done
@@ -296,6 +300,9 @@
 [oo-9ht.12] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OORegExpMatcher test_OOOpenGLExtensionManager test_OOGraphicsResetManager test_OOMaterialConvenienceCreators test_OOMultiTextureMaterial test_OOOpenGLMatrixManager test_OOOpenGLStateManager test_OOShaderMaterial test_OOShaderProgram test_OOShaderUniform test_OOShaderUniformMethodType test_OOTextureSprite && bash tools/tier-c.sh --only goldens
 [oo-0hyr] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
 [oo-dnbf] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
+[oo-6rb6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
+[oo-72cz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
+[oo-299r] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
 [oo-9ht.57] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListScript test_OOScript test_OOJSScript && bash tools/tier-c.sh --only goldens
 [oo-9ht.105] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOConcreteTexture test_OOTexture test_OOCombinedEmissionMapGenerator test_OOPixMapTextureLoader test_OOPlanetTextureGenerator test_OOStandaloneAtmosphereGenerator test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
 [oo-9ht.100] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OONullTexture test_OOTexture && bash tools/tier-c.sh --only goldens
@@ -309,3 +316,5 @@
 [oo-zkpmt] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
 # GameController slice 2 (oo-hn0fw): the frame loop as members; the deferred calls through the bridge perform.
 [oo-hn0fw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_GameController && bash tools/tier-c.sh --only goldens
+[oo-q7r3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
+[oo-zmix] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens

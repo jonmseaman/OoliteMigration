@@ -99,8 +99,8 @@ public:
 	void setMouseInteractionModeForFlight();	// Chooses mouse control mode appropriately.
 	void setMouseInteractionModeForUIWithMouseInteraction(bool interaction);
 
-	MyOpenGLView *gameView();
-	void setGameView(MyOpenGLView *view);
+	::MyOpenGLView *gameView();
+	void setGameView(::MyOpenGLView *view);
 
 #ifndef NDEBUG
 	bool suppressClangStuff();
@@ -134,7 +134,7 @@ public:
 	NSMenu					*dockMenu = {};
 #endif
 	
-	MyOpenGLView			*_gameView = {};	// retained; was gameView, named like its getter
+	::MyOpenGLView			*_gameView = {};	// retained; was gameView, named like its getter
 	
 	NSTimeInterval			last_timeInterval = {};
 	double					delta_t = {};
@@ -162,7 +162,7 @@ public:
 	OOFullScreenController	*_fullScreenController = {};
 #elif OOLITE_SDL
 	NSRect					fsGeometry = {};
-	MyOpenGLView			*switchView = {};
+	::MyOpenGLView			*switchView = {};
 	
 	oo::PList::Array		displayModes;			// the usable screen modes, each a mode dictionary
 	
