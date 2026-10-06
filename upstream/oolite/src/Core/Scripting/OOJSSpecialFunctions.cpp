@@ -23,7 +23,7 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOJSSpecialFunctions.h"
+#include "OOJSSpecialFunctions.h"
 
 
 static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojsArgs);
@@ -48,7 +48,7 @@ void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global
 }
 
 
-OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context)
+oo::Ref<cxx::OOJSValue> cxx_JSSpecialFunctionsObjectWrapper(ooscript::Context context)
 {
 	/*
 		Special object is created on the fly so it can be GCed (the debug
@@ -64,7 +64,7 @@ OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context)
 	ooscript::defineFunctions(context, special, sSpecialFunctionsMethods);
 	ooscript::freezeObject(context, special);
 	
-	OOJSValue *result = [OOJSValue valueWithJSObject:special inContext:context];
+	oo::Ref<cxx::OOJSValue> result = cxx::OOJSValue::valueWithJSObject(special, context);
 	
 	ooscript::removeObjectRoot(context, &special);
 	
@@ -79,7 +79,7 @@ static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojs
 	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
 		cxx_OOJSReportBadArguments(context, "special", "jsWarning", oojsArgs.count(), OOJS_ARGV, std::nullopt, "string");
-		return NO;
+		return false;
 	}
 	
 	OOJSSetWarningOrErrorStackSkip(1);
