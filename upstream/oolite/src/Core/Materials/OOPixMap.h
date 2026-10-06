@@ -59,8 +59,8 @@ typedef struct OOPixMap
 extern const OOPixMap kOONullPixMap;
 
 
-OOINLINE BOOL OOIsNullPixMap(OOPixMap pixMap)  { return pixMap.pixels == NULL; }
-BOOL OOIsValidPixMap(OOPixMap pixMap);
+OOINLINE bool OOIsNullPixMap(OOPixMap pixMap)  { return pixMap.pixels == NULL; }
+bool OOIsValidPixMap(OOPixMap pixMap);
 OOINLINE size_t OOMinimumPixMapBufferSize(OOPixMap pixMap)  { return pixMap.rowBytes * pixMap.height; }
 
 
@@ -96,7 +96,7 @@ OOPixMap OODuplicatePixMap(OOPixMap srcPixMap, size_t desiredSize);
 	Set the size of a pixmap's buffer. Fails if specified size is smaller than
 	required to fit the current pixels.
 */
-BOOL OOResizePixMap(OOPixMap *ioPixMap, size_t desiredSize);
+bool OOResizePixMap(OOPixMap *ioPixMap, size_t desiredSize);
 
 
 /*	OOCompactPixMap()
@@ -108,7 +108,7 @@ OOINLINE void OOCompactPixMap(OOPixMap *ioPixMap)  { OOResizePixMap(ioPixMap, OO
 /*	OOExpandPixMap()
 	Expand pixmap to at least desiredSize bytes. Returns false on failure.
 */
-BOOL OOExpandPixMap(OOPixMap *ioPixMap, size_t desiredSize);
+bool OOExpandPixMap(OOPixMap *ioPixMap, size_t desiredSize);
 
 
 #ifndef NDEBUG
@@ -118,7 +118,7 @@ void OODumpPixMap(OOPixMap pixMap, const std::string &name);	// Foundation sweep
 #endif
 
 
-BOOL OOIsValidPixMapFormat(OOPixMapFormat format);
+bool OOIsValidPixMapFormat(OOPixMapFormat format);
 
 
 #ifndef NDEBUG
@@ -138,4 +138,4 @@ OOINLINE unsigned short OOPixMapBytesPerPixel(OOPixMap pixMap)
 
 std::string OOPixMapFormatName(OOPixMapFormat format) PURE_FUNC;
 
-BOOL OOPixMapFormatHasAlpha(OOPixMapFormat format) PURE_FUNC;
+bool OOPixMapFormatHasAlpha(OOPixMapFormat format) PURE_FUNC;
