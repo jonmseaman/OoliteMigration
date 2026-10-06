@@ -3550,6 +3550,7 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
 class, through the root's bridge. Slices 2-4 each delete their category and trampolines as they
 convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ members.
 
+<<<<<<< HEAD
 ## Amendment (bead oo-9ht.12): deleting a façade
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: the first façade deletion, bead oo-9ht.12
@@ -3617,3 +3618,60 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 **Consequences.** Every deletion bead is two beads (approval lines, then deletion) unless it retires
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
+=======
+## Amendment (bead oo-0tx6c): the rest of a class-shell plan's slices, when the dials are its façade's methods
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/HeadUpDisplay.h/.mm` and
+  `HeadUpDisplay+ObjCBridge.h/.mm` after slices 2-6 of `docs/phases/3-slices/HeadUpDisplay.md`
+  (beads oo-8fiz9, oo-8j1y2, oo-2p1ug, oo-kdrc6, oo-0tx6c). Follows amendment oo-engam.
+
+**Decision (recommended defaults).**
+
+1. **A slice moves its methods out of the façade's in-place category into the member section** of
+   `X.mm`, bodies verbatim but for `oo::ToCxx(self)->` (dropped) and `[self m]` (a member call). A
+   method the slice's own callers still send through the façade (`-renderHUD`) returns to the
+   façade's main interface as a forwarder; a dial (sent by name) moves to an `OODials` category,
+   one forwarder each. When the last slice lands, the in-place category and its `@interface` are
+   deleted, and `X.mm` has no Objective-C left.
+2. **A member that calls a slice still on the façade** sends `[oo::ToObjC(this) m]` until that
+   slice lands, which turns it into a member call. A file-scope helper a moved member now calls
+   before its definition gets a declaration with the file's other prototypes.
+3. **A category on a converted class's façade in the file** (`OOPolygonSprite (OOHUDBeaconIcon)`)
+   becomes a free function on the C++ class, declared in `X.h`, and its `@implementation` forwards
+   from `X+ObjCBridge.mm` (amendments oo-6ia4 item 3, oo-9fwb). **A small class the entities hold by
+   a protocol** (`OOHUDBeaconCodeIcon`) becomes `cxx::` with its own façade in the same bridge, and
+   the protocol moves verbatim to the bridge header (amendments oo-jpd8, oo-4nhg).
+4. **An enum a member's signature needs from a header that `X.h` cannot import** (an import cycle:
+   `OOMissileStatus` in `PlayerEntity.h`) is passed as `int` in that one private member, with a
+   comment naming the enum; the body's `switch` is unchanged.
+5. **A singleton made by its façade's class method** (`+[OOJoystickManager sharedStickHandler]`,
+   which picks the platform subclass, amendment oo-6bux) is still asked for through the façade, and
+   used through `oo::ToCxx`.
+
+**Consequences.** The HUD's façade serves only its callers and the dial dispatch; its deletion
+(oo-mwd58) replaces `OOCallByName` with a table of member pointers.
+
+## Amendment (bead oo-9z7x): a later slice of a converted subclass, whose units sat in the private category between other slices' units
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 3 of `docs/phases/3-slices/OOMesh.md`
+  in `src/Core/OOMesh.h/.mm`, `OOMesh+ObjCBridge.h/.mm`, `tests/unit/core/test_OOMesh.mm`. Follows
+  amendments oo-dnbf, oo-bwjb and oo-pni4.
+
+**Decision (recommended defaults).**
+
+1. **A later slice's units that sit inside the private category, between units of slices still
+   Objective-C, move to just after that category's `@end`** as `cxx::X` members, with the
+   file-static C functions they call. An `@implementation` of one category cannot be closed and
+   reopened in a file, and a second category name would leave the private `@interface` without
+   its methods (`-Wincomplete-implementation`). Their declarations leave the private
+   `@interface`; their Objective-C senders in the slices still Objective-C call
+   `oo::ToCxx(self)->m(...)`, and the selectors the façade's callers send move from the slice's
+   category in `X+ObjCBridge.h` back to the façade's `@interface`, forwarded in one line.
+2. **A member that held a converted class's façade by hand** (`::Octree *octree`, retained) becomes
+   `oo::Ref<cxx::Y>` when its slice converts: the destructor's `DESTROY`, the copy's `-retain` and
+   the size's crossing go, and the façade method answers `oo::ToObjC(member)`.
+3. **`@autoreleasepool { ... }` in a converted member** is `objc_autoreleasePoolPush()` /
+   `objc_autoreleasePoolPop(pool)` around the same block, as the file's loader already did.
+4. **A trampoline (amendment oo-dnbf item 3) is deleted by the slice that converts its method**;
+   the member is then the body.
+>>>>>>> main
