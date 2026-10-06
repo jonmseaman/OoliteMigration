@@ -144,55 +144,43 @@ private:
 
 
 
-/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). An object on another root
-	has none: OOJSValueFromNativeObject() gives undefined for it (oo-qps.72).
-
-	-oo_jsValueInContext:
-
-	Return the JavaScript value representation of an object. The default
-	implementation returns ooscript::undefinedValue().
-
-	SAFETY NOTE: if this message is sent to nil, the return value depends on
-	the platform and the engine's value representation. If the
-	receiver may be nil, use OOJSValueFromNativeObject() instead.
-
-	Requires a request on context.
-
-	-cxx_oo_jsDescription
-	-cxx_oo_jsDescriptionWithClassName:
-	-cxx_oo_jsClassName
-
-	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components]. C++ string twins on OOObject.
-
-	oo_clearJSSelf:
-	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
-	collected. The default implementation does nothing.
+/*	The root-class JS glue for classes rooted on OOObject: the category OOObject (OOJavaScript)
+	(OOJavaScriptEngine+ObjCBridge.h) and the bodies of its default methods, which the category
+	forwards to (amendment oo-ppc item 3).
 */
-@interface OOObject (OOJavaScript)
+ooscript::Value OOObjectJSValueInContext(ooscript::Context context);
+std::optional<std::string> OOObjectJSClassName();
+std::optional<std::string> OOObjectJSDescription(id object);
+std::optional<std::string> OOObjectJSDescriptionWithClassName(id object, const std::optional<std::string> &className);
+void OOObjectClearJSSelf(ooscript::Object selfVal);
 
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (std::optional<std::string>) cxx_oo_jsDescription;
-- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
-
-@end
+// OONativeVector (OOJavaScriptConversion)'s -oo_jsValueInContext:.
+namespace cxx { class OONativeVector; }
+ooscript::Value OONativeVectorJSValueInContext(cxx::OONativeVector *vector, ooscript::Context context);
 
 
+namespace cxx {
 
 /*	OONull: the placeholder for null inside native collections, which cannot
 	hold nil (was Foundation's null singleton, ADR-0029 Decision 5). A JS array
 	element that is null or undefined becomes [OONull null] in the native array, and
-[OONull null] becomes JS null, so JS null round-trips as before. Game code
+	[OONull null] becomes JS null, so JS null round-trips as before. Game code
 	uses it where a collection slot is empty (MFD settings, target memory,
 	script event arguments). It describes itself as "<null>", as its
-	predecessor did, and -copy returns itself.
+	predecessor did, and -copy returns itself. Its Objective-C facade OONull
+	(OOJavaScriptEngine+ObjCBridge.h) is the object the collections hold.
 */
-@interface OONull: OOObject <OOCopying>
+class OONull : public oo::RefCounted
+{
+public:
+	// The one null, made on first use; borrowed, never released (amendment oo-r7m0).
+	static OONull *null();
 
-+ (OONull *) null;
+	std::optional<std::string> description();	// "<null>"
+	ooscript::Value jsValueInContext(ooscript::Context context);	// JS null
+};
 
-@end
+}	// namespace cxx
 
 
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.

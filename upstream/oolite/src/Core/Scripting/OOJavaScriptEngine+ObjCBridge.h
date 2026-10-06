@@ -2,13 +2,15 @@
 
 OOJavaScriptEngine+ObjCBridge.h
 
-TRANSITIONAL (proposed ADR-0056, beads oo-10qz and oo-903c): the Objective-C OOJavaScriptEngine, a
+TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c and oo-elta): the Objective-C OOJavaScriptEngine, a
 facade over the C++ cxx::OOJavaScriptEngine (OOJavaScriptEngine.h), for the code that is not
 converted yet: nearly every scripting file, the debug support, the player and the universe. Its
 interface is the one OOJavaScriptEngine.h declared before the conversion, copied exactly (same
 selectors, same types, same root); every method forwards to its C++ member in one line
 (OOJavaScriptEngine+ObjCBridge.mm). The monitor protocol and the OOMonitorSupport category moved
-here from OOJavaScriptEngine.h. Below them are the one-line bridges through which
+here from OOJavaScriptEngine.h, and so did the root class's JS glue (the category OOObject
+(OOJavaScript), whose default methods forward to free functions in OOJavaScriptEngine.mm) and
+OONull, the facade of cxx::OONull. Below them are the one-line bridges through which
 OOJavaScriptEngine.mm's free functions send to classes that are still Objective-C (amendment
 oo-9ht.139 item 3). Imported as the last line of OOJavaScriptEngine.h; do not import it directly.
 
@@ -104,6 +106,61 @@ MA 02110-1301, USA.
 @end
 
 
+/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). An object on another root
+	has none: OOJSValueFromNativeObject() gives undefined for it (oo-qps.72).
+
+	-oo_jsValueInContext:
+
+	Return the JavaScript value representation of an object. The default
+	implementation returns ooscript::undefinedValue().
+
+	SAFETY NOTE: if this message is sent to nil, the return value depends on
+	the platform and the engine's value representation. If the
+	receiver may be nil, use OOJSValueFromNativeObject() instead.
+
+	Requires a request on context.
+
+	-cxx_oo_jsDescription
+	-cxx_oo_jsDescriptionWithClassName:
+	-cxx_oo_jsClassName
+
+	They wrap -cxx_descriptionComponents (OODescription.h) as [jsClassName components]. C++ string twins on OOObject.
+
+	oo_clearJSSelf:
+	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
+	collected. The default implementation does nothing.
+*/
+@interface OOObject (OOJavaScript)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
+- (std::optional<std::string>) cxx_oo_jsDescription;
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className;
+- (std::optional<std::string>) cxx_oo_jsClassName;
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
+
+@end
+
+
+/*	OONull: the placeholder for null inside native collections, which cannot
+	hold nil (was Foundation's null singleton, ADR-0029 Decision 5). A JS array
+	element that is null or undefined becomes [OONull null] in the native array, and
+[OONull null] becomes JS null, so JS null round-trips as before. Game code
+	uses it where a collection slot is empty (MFD settings, target memory,
+	script event arguments). It describes itself as "<null>", as its
+	predecessor did, and -copy returns itself. The facade of cxx::OONull
+	(OOJavaScriptEngine.h): there is one, made by +null, for the life of the process.
+*/
+@interface OONull: OOObject <OOCopying>
+{
+@private
+	oo::Ref<cxx::OONull>	_cxxNull;
+}
+
++ (OONull *) null;
+
+@end
+
+
 #if OOJSENGINE_MONITOR_SUPPORT
 
 /*	Protocol for debugging "monitor" object.
@@ -146,6 +203,11 @@ OOJavaScriptEngine *ToObjC(cxx::OOJavaScriptEngine *engine);
 // The C++ engine behind a facade, borrowed; null for nil.
 cxx::OOJavaScriptEngine *ToCxx(OOJavaScriptEngine *engine);
 
+// The one null's facade, the same object every time (+[OONull null]); nil for null.
+OONull *ToObjC(cxx::OONull *null);
+// The C++ null behind the facade, borrowed; null for nil.
+cxx::OONull *ToCxx(OONull *null);
+
 }	// namespace oo
 
 
@@ -159,5 +221,19 @@ oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName
 id OOJavaScriptEngineWeakRefUnderlyingObject(id object);
 // -displayName of a script (OOScript); nullopt for nil.
 std::optional<std::string> OOJavaScriptEngineDisplayName(id script);
+// The JS glue of any object (OOObject (OOJavaScript)), as the object's class answers it.
+ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context);
+std::optional<std::string> OOJavaScriptEngineJSClassName(id object);
+std::optional<std::string> OOJavaScriptEngineJSDescriptionWithClassName(id object, const std::optional<std::string> &className);
+// -cxx_descriptionComponents (OODescription.h) and -class of any object.
+std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object);
+Class OOJavaScriptEngineClass(id object);
+// [OOObject class]
+Class OOJavaScriptEngineOOObjectClass();
+/*	Inside a catch (...) handler: true, with the exception's name and reason, if the exception
+	being handled is an OOException (what @catch (OOException *) caught); false for anything else,
+	which the handler rethrows.
+*/
+bool OOJavaScriptEngineCaughtOOException(std::string &name, std::string &reason);
 
 #endif	// OOJAVASCRIPTENGINE_OBJCBRIDGE_H

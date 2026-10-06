@@ -248,7 +248,7 @@ oo::PList OODebugMonitor::configurationValueForKey(const std::string &key)
 	const auto isNil = [](const oo::PList *v) { return v == nullptr || v->isNull() || (v->type() == oo::PList::Type::Object && oo::ObjectIn(*v) == nil); };
 	const oo::PList *result = _configOverrides.find(key);
 	if (isNil(result))  result = _configFromOXPs.find(key);
-	if (isNil(result) || oo::ObjectIn(*result) == [OONull null])  return oo::PList();
+	if (isNil(result) || oo::ObjectIn(*result) == [::OONull null])  return oo::PList();
 	return *result;
 }
 

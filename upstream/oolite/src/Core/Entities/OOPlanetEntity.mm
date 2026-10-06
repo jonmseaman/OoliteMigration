@@ -126,7 +126,7 @@ oo::PList ValuesForKeys(const oo::PList &info, std::initializer_list<const char 
 	for (const char *key : keys)
 	{
 		const oo::PList *value = info.find(key);
-		result[key] = value != nullptr ? *value : oo::PListObject([OONull null]);
+		result[key] = value != nullptr ? *value : oo::PListObject([::OONull null]);
 	}
 	return oo::PList(std::move(result));
 }

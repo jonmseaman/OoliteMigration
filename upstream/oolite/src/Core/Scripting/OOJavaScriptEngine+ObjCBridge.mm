@@ -2,9 +2,10 @@
 
 OOJavaScriptEngine+ObjCBridge.mm
 
-TRANSITIONAL (proposed ADR-0056, beads oo-10qz and oo-903c): the Objective-C OOJavaScriptEngine
+TRANSITIONAL (proposed ADR-0056, beads oo-10qz, oo-903c and oo-elta): the Objective-C OOJavaScriptEngine
 facade (see OOJavaScriptEngine+ObjCBridge.h). Every method forwards to its C++ member in one line.
-Then the one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139).
+Then the OONull facade, the categories on OOObject and OONativeVector that forward to the free
+functions holding their bodies (amendment oo-ppc item 3), and the one-line bridges of OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139).
 Deleted with OOJavaScriptEngine+ObjCBridge.h.
 
 JavaScript support for Oolite
@@ -31,6 +32,8 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOScript.h"
 #import "OOWeakReference.h"
+#import "OOVector.h"
+#include "oofnd/objc/OOException.h"
 
 #include "oofnd/objc/OOObjCPeer.h"
 
@@ -162,6 +165,69 @@ cxx::OOJavaScriptEngine *oo::ToCxx(OOJavaScriptEngine *engine)
 #endif
 
 
+@interface OONull (OOObjCBridgePrivate)
+
+- (id) initWithCxxNull:(cxx::OONull *)null;
+
+@end
+
+
+@implementation OONull
+
+// Inside the @implementation for the private ivar.
+OONull *oo::ToObjC(cxx::OONull *null)
+{
+	// One facade for the one null, for the life of the process: collections and callers compare it
+	// by identity (amendments oo-r7m0 item 5 and oo-kq7 item 2), so no peer table.
+	static OONull *facade = nil;
+	if (null == nullptr)  return nil;
+	if (facade == nil)  facade = [[OONull alloc] initWithCxxNull:null];
+	return facade;
+}
+
+
+cxx::OONull *oo::ToCxx(OONull *null)
+{
+	if (null == nil)  return nullptr;
+	return null->_cxxNull.get();
+}
+
+
+- (id) initWithCxxNull:(cxx::OONull *)null
+{
+	self = [super init];
+	if (self != nil)  _cxxNull = oo::Ref<cxx::OONull>(null);
+	return self;
+}
+
+
++ (OONull *) null										{ return oo::ToObjC(cxx::OONull::null()); }
+- (id) copyWithZone:(OOZone *)zone						{ return [self retain]; }
+- (std::optional<std::string>) cxx_description			{ return _cxxNull->description(); }
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return _cxxNull->jsValueInContext(context); }
+
+@end
+
+
+// The root class's JS glue (amendment oo-ppc item 3): the bodies are in OOJavaScriptEngine.mm.
+@implementation OOObject (OOJavaScriptConversion)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return OOObjectJSValueInContext(context); }
+- (std::optional<std::string>) cxx_oo_jsClassName		{ return OOObjectJSClassName(); }
+- (std::optional<std::string>) cxx_oo_jsDescription		{ return OOObjectJSDescription(self); }
+- (std::optional<std::string>) cxx_oo_jsDescriptionWithClassName:(const std::optional<std::string> &)className	{ return OOObjectJSDescriptionWithClassName(self, className); }
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal		{ OOObjectClearJSSelf(selfVal); }
+
+@end
+
+
+@implementation OONativeVector (OOJavaScriptConversion)
+
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context	{ return OONativeVectorJSValueInContext(oo::ToCxx(self), context); }
+
+@end
+
+
 oo::PList OOJavaScriptEngineDictionaryFromFilesNamed(const std::string &fileName, const std::optional<std::string> &folderName, bool mergeFiles)
 {
 	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles];
@@ -177,4 +243,60 @@ id OOJavaScriptEngineWeakRefUnderlyingObject(id object)
 std::optional<std::string> OOJavaScriptEngineDisplayName(id script)
 {
 	return [script displayName];
+}
+
+
+Class OOJavaScriptEngineClass(id object)
+{
+	return [object class];
+}
+
+
+ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context)
+{
+	return [object oo_jsValueInContext:context];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineJSClassName(id object)
+{
+	return [object cxx_oo_jsClassName];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineJSDescriptionWithClassName(id object, const std::optional<std::string> &className)
+{
+	return [object cxx_oo_jsDescriptionWithClassName:className];
+}
+
+
+std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object)
+{
+	return [object cxx_descriptionComponents];
+}
+
+
+Class OOJavaScriptEngineOOObjectClass()
+{
+	return [OOObject class];
+}
+
+
+bool OOJavaScriptEngineCaughtOOException(std::string &name, std::string &reason)
+{
+	try
+	{
+		throw;
+	}
+	catch (id exception)
+	{
+		if (![exception isKindOfClass:[OOException class]])  return false;
+		name = [(OOException *)exception name];
+		reason = [(OOException *)exception reason];
+		return true;
+	}
+	catch (...)
+	{
+		return false;	// not an Objective-C exception: not what @catch (OOException *) caught
+	}
 }
