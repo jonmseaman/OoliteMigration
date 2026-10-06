@@ -3403,7 +3403,6 @@ the stages are members there is no selector to send.
 **Consequences.** `OODefaultShaderSynthesizer.mm` has no Objective-C method left; its façade and
 `cxx::` go with oo-9ht.134.
 
-
 ## Amendment (bead oo-engam): a class shell whose dials are called by name, and colours it held as façades
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/HeadUpDisplay.h/.mm` (slice 1 of
@@ -3441,6 +3440,50 @@ class, and nine getters share their ivar's name. The colours were `OOColor *` iv
 **Consequences.** One façade (deletion bead oo-mwd58) whose deletion waits for the HUD's
 callers and the drawing slices; the slice beads 2-6 turn the category's methods into members and
 leave one forwarder per dial.
+
+## Amendment (bead oo-tsa4): the OXPVerifier manager, a class whose façade other objects keep unretained
+
+- Date: 2026-10-01. Status: Proposed, as above. Exemplar: `src/Core/OXPVerifier/OOOXPVerifier.h/.mm`,
+  `OOOXPVerifier+ObjCBridge.h/.mm`, `tests/unit/core/test_OOOXPVerifier.mm`. Follows Amendment 1
+  (oo-cwz), amendments oo-up4b, oo-94qk, oo-smy, oo-novu and oo-fg7i, and human bead oo-4amcj.
+
+**Context.** `OOOXPVerifier` drives the stage hierarchy, which still has Objective-C subclasses
+(`OOCheckShipDataPListVerifierStage`, `OOModelVerifierStage`). Every stage keeps its verifier as
+an unretained `OOOXPVerifier *` (`cxx::OOOXPVerifierStage::verifier()`) and messages it; the
+verifier was made by `+runVerificationIfRequested` and lived for the whole run. The stage tests
+link a test double instead of the verifier (oo-9ht.65), an `@implementation OOOXPVerifier` with
+ivars of its own.
+
+**Decision (recommended defaults).**
+
+1. **A C++ object whose façade other objects keep unretained keeps that façade alive itself** for
+   the span the Objective-C object lived: `run()` opens with
+   `const oo::ObjCRef<::OOOXPVerifier *> facade(oo::ToObjC(this));`, so every stage registered
+   during the run sees one façade. The C++ object never retains its façade beyond that span (no
+   cycle); a stage registered outside a run sees the façade of the moment, as `ToObjC` makes it.
+2. **Converted code that drives a hierarchy with Objective-C subclasses keeps the objects as
+   their Objective-C objects** (`oo::ObjCRef<::OOOXPVerifierStage *>`, amendment oo-smy) and calls
+   their C++ part, `oo::ToCxx(stage)->name()`: an adapter's virtual members message the subclass,
+   so its overrides answer as before. Where the old code exposed the Objective-C pointer (the
+   graphviz node names), the C++ objects it gets back cross with `oo::ToObjC` so the same pointer
+   is printed.
+3. **A failing initialiser becomes `createWithX()` + `bool initWithX()`** (amendment oo-fg7i);
+   the class method that made and ran the object is a `static` member that holds it in an
+   `oo::Ref`.
+4. **Categories that other files add to the class stay on the façade** (`-fileScannerStage`,
+   `-textureVerifierStage`, `-modelVerifierStage`) until those files' deletion beads; the façade's
+   own interface is the old one, so the stage tests' double, an `@implementation` of the façade
+   class with ivars of its own, compiles unchanged and does not link the bridge.
+5. **Once the class is `cxx::X`, code inside `namespace cxx` that keeps the façade names it `::X`**
+   (`::OOOXPVerifier *verifier()`, `oo::ObjCRef<::OOOXPVerifierStage *>`): unqualified, `X` there is
+   now the C++ class. The stages' `verifier()`/`setVerifier()` and the `nameFor…ForVerifier()`
+   helpers changed only in that spelling; global leaves need no change.
+
+**Consequences.** One façade and its deletion bead (oo-9ht.130). No caller's behaviour and no test
+expectation changed: the stages changed only in spelling (item 5), and the two stage tests that
+had pasted the old double moved to the shared one first (oo-9ht.141). The
+verifier no longer messages the `OOCacheManager` façade (it calls `cxx::OOCacheManager`), which the
+cache manager's deletion bead (oo-9ht.31) waited on.
 
 ## Amendment (bead oo-dnbf): the class-shell slice of a converted root's subclass
 
@@ -3506,3 +3549,127 @@ and rendering (4) stay Objective-C. Those slices implement two of the root's vir
 2-4 and the callers. A C++ subclass of a root is now visible to Objective-C as its own façade
 class, through the root's bridge. Slices 2-4 each delete their category and trampolines as they
 convert, and slice 2 replaces `[self init]` and the façade-level copy with C++ members.
+
+## Amendment (bead oo-0tx6c): the rest of a class-shell plan's slices, when the dials are its façade's methods
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/HeadUpDisplay.h/.mm` and
+  `HeadUpDisplay+ObjCBridge.h/.mm` after slices 2-6 of `docs/phases/3-slices/HeadUpDisplay.md`
+  (beads oo-8fiz9, oo-8j1y2, oo-2p1ug, oo-kdrc6, oo-0tx6c). Follows amendment oo-engam.
+
+**Decision (recommended defaults).**
+
+1. **A slice moves its methods out of the façade's in-place category into the member section** of
+   `X.mm`, bodies verbatim but for `oo::ToCxx(self)->` (dropped) and `[self m]` (a member call). A
+   method the slice's own callers still send through the façade (`-renderHUD`) returns to the
+   façade's main interface as a forwarder; a dial (sent by name) moves to an `OODials` category,
+   one forwarder each. When the last slice lands, the in-place category and its `@interface` are
+   deleted, and `X.mm` has no Objective-C left.
+2. **A member that calls a slice still on the façade** sends `[oo::ToObjC(this) m]` until that
+   slice lands, which turns it into a member call. A file-scope helper a moved member now calls
+   before its definition gets a declaration with the file's other prototypes.
+3. **A category on a converted class's façade in the file** (`OOPolygonSprite (OOHUDBeaconIcon)`)
+   becomes a free function on the C++ class, declared in `X.h`, and its `@implementation` forwards
+   from `X+ObjCBridge.mm` (amendments oo-6ia4 item 3, oo-9fwb). **A small class the entities hold by
+   a protocol** (`OOHUDBeaconCodeIcon`) becomes `cxx::` with its own façade in the same bridge, and
+   the protocol moves verbatim to the bridge header (amendments oo-jpd8, oo-4nhg).
+4. **An enum a member's signature needs from a header that `X.h` cannot import** (an import cycle:
+   `OOMissileStatus` in `PlayerEntity.h`) is passed as `int` in that one private member, with a
+   comment naming the enum; the body's `switch` is unchanged.
+5. **A singleton made by its façade's class method** (`+[OOJoystickManager sharedStickHandler]`,
+   which picks the platform subclass, amendment oo-6bux) is still asked for through the façade, and
+   used through `oo::ToCxx`.
+
+**Consequences.** The HUD's façade serves only its callers and the dial dispatch; its deletion
+(oo-mwd58) replaces `OOCallByName` with a table of member pointers.
+
+## Amendment (bead oo-9z7x): a later slice of a converted subclass, whose units sat in the private category between other slices' units
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 3 of `docs/phases/3-slices/OOMesh.md`
+  in `src/Core/OOMesh.h/.mm`, `OOMesh+ObjCBridge.h/.mm`, `tests/unit/core/test_OOMesh.mm`. Follows
+  amendments oo-dnbf, oo-bwjb and oo-pni4.
+
+**Decision (recommended defaults).**
+
+1. **A later slice's units that sit inside the private category, between units of slices still
+   Objective-C, move to just after that category's `@end`** as `cxx::X` members, with the
+   file-static C functions they call. An `@implementation` of one category cannot be closed and
+   reopened in a file, and a second category name would leave the private `@interface` without
+   its methods (`-Wincomplete-implementation`). Their declarations leave the private
+   `@interface`; their Objective-C senders in the slices still Objective-C call
+   `oo::ToCxx(self)->m(...)`, and the selectors the façade's callers send move from the slice's
+   category in `X+ObjCBridge.h` back to the façade's `@interface`, forwarded in one line.
+2. **A member that held a converted class's façade by hand** (`::Octree *octree`, retained) becomes
+   `oo::Ref<cxx::Y>` when its slice converts: the destructor's `DESTROY`, the copy's `-retain` and
+   the size's crossing go, and the façade method answers `oo::ToObjC(member)`.
+3. **`@autoreleasepool { ... }` in a converted member** is `objc_autoreleasePoolPush()` /
+   `objc_autoreleasePoolPop(pool)` around the same block, as the file's loader already did.
+4. **A trampoline (amendment oo-dnbf item 3) is deleted by the slice that converts its method**;
+   the member is then the body.
+
+## Amendment (bead oo-9ht.12): deleting a façade
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: the first façade deletion, bead oo-9ht.12
+  (`OORegExpMatcher+ObjCBridge`): `src/Core/OORegExpMatcher.h/.mm`, its one caller
+  `src/Core/OOOpenGLExtensionManager.mm`, `tests/unit/core/test_OORegExpMatcher.mm` and the
+  stand-ins in eleven other core tests; approval lines landed by oo-9ht.145.
+
+**Context.** Item 5 says a deletion bead "moves the class to the global namespace and deletes `cxx::`
+at every use, one mechanical replacement". The first one showed what else it takes: a caller whose
+deps were wrong, converted code that still messages the façade, tests that stub the Objective-C
+class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façade carried.
+
+**Decision (recommended defaults).** A "Delete X+ObjCBridge" bead does this, in this order:
+
+1. **Check readiness first, with the bead's grep and one wider one:** `\[X |\[\[X |\bX \*|ObjCRef<X\b`
+   and `\[::X ` outside `X*` files. An unconverted Objective-C file that still messages, makes,
+   declares or answers `X` means the deps are wrong: `bd dep add` the caller's conversion bead (or
+   its slices, or its own façade's deletion bead), note the lines in the bead, and skip it. Do not
+   convert the caller in a deletion bead. A converted file (C++ class, `namespace cxx`) that still
+   messages the façade (`[::X ...]`, `oo::ObjCRef<::X *>`, `oo::ToCxx(...)` of it) is adapted in the
+   deletion bead: it calls the C++ class directly.
+2. **List the test cases and stand-ins that go, and land their approval lines first.** Under the
+   standing approval oo-9n5p9 only the façade's own cases go: its selectors, `oo::ToObjC`/`oo::ToCxx`
+   crossings, `-dealloc`, its autorelease-pool lifetime. A case that asked a question through a
+   selector keeps its name and every expectation and asks the C++ class instead. A test that stubs
+   the Objective-C class (an `@interface X` stand-in, because the code it links messaged the façade)
+   gets a C++ stand-in with the same answers: definitions of the members that code now calls (and the
+   virtual destructor, for the vtable), after `#import "X.h"`. One path line per changed test file in
+   `tools/retire-test-approvals.txt`, reason `oo-9n5p9: <deletion bead> deletes the X façade - ONLY
+   ...`, landed by a separate small bead the deletion bead depends on, because a change may not
+   approve its own retirement. One approvals bead may carry the lines of several deletion beads.
+3. **Delete the bridge**: `git rm X+ObjCBridge.h/.mm`, the `#import` at the end of `X.h` with its
+   comment, the meson line in the module, and the bridge in each core test's meson entry.
+4. **Move the class to the global namespace**: drop `namespace cxx {` / `}` around the class in
+   `X.h` and `X.mm`, and replace `cxx::X` with `X` everywhere (sources and tests). Code that stays in
+   `namespace cxx` may keep `::X`; it now names the C++ class. Rewrite comments that described the
+   façade (the header banner says which bead deleted it).
+   **Leaving `namespace cxx` changes what an unqualified name means.** Inside a member function an
+   unqualified base name still finds the C++ base (the injected class name), but any other class
+   that is still `cxx::Y` with a façade `Y` now names the Objective-C façade: qualify it
+   (`cxx::OOOpenGLExtensionManager::sharedManager()`, `cxx::OOColor *` in a signature, the base in
+   `class X : public cxx::Base`). List the candidates before building: every class declared in a
+   `namespace cxx { }` block, used unqualified in the moved files.
+5. **Keep what the façade kept.** A façade's autoreleased object lived until the pool drained
+   (amendment oo-ct7c); a converted caller that made several calls in one pass now holds one
+   `oo::Ref<X>` across them (taken on first use if the old code took it lazily, so nothing new is
+   made when no call happens), and a test counts what is made per pass.
+6. **A subclass façade's objects cross as the nearest façade left.** Once `X+ObjCBridge` (a subclass
+   façade, `@interface X : Root`) is gone, the root's `oo::ToObjC` gives an object of the nearest
+   Objective-C façade class still standing (the root's, or an intermediate's). Its description
+   still names the C++ class where the root prints `ClassName` of the C++ object. Code and tests
+   that asked `-isKindOfClass:[X class]` / `-isMemberOfClass:` ask `dynamic_cast<X *>(oo::ToCxx(o))`
+   / `typeid` instead; a test adds one case that pins the new crossing (the façade class it now
+   gets, identity, `ToCxx`). Where the deleted façade kept an object for the process (a
+   singleton's `+shared...`), the C++ caller that answers it keeps the root façade the same way.
+   Deletion beads of one hierarchy that touch the same tests are stacked: each branch is made from
+   the previous one and queued after it.
+7. **Gates and acceptance**: build (`tools/build-windows.sh test`, no new warning), `check-core-tests`
+   for the class's test and every test whose stand-in changed, tier-a on the changed sources, goldens,
+   guardrails, all through `buildslot.sh`. The bead's acceptance is the fast proof: `! test -e` both
+   bridge files, `! git grep -n 'ObjCBridge'` over `X.h` and the module's meson, `! git grep -nw
+   'cxx::X'` over `src` and `tests`, `grep -qF '[<id>] ' tests/nightly/checks.txt`, guardrails; the
+   nightly line runs the build, those core tests and the goldens.
+
+**Consequences.** Every deletion bead is two beads (approval lines, then deletion) unless it retires
+no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
+deps instead of growing into conversions.

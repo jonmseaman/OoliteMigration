@@ -265,8 +265,8 @@ id <OOHUDBeaconIcon> OOWaypointEntity::beaconDrawable()
 
 		if (_beaconDrawable.get() == nil)
 		{
-			if (length > 0)  _beaconDrawable = oo::adoptObjC<id <OOHUDBeaconIcon>>([[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))]);	// -substringToIndex:1
-			else  _beaconDrawable = oo::adoptObjC<id <OOHUDBeaconIcon>>([[OOHUDBeaconCodeIcon alloc] initWithText:std::string()]);
+			if (length > 0)  _beaconDrawable = oo::adoptObjC<id <OOHUDBeaconIcon>>([[::OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))]);	// -substringToIndex:1
+			else  _beaconDrawable = oo::adoptObjC<id <OOHUDBeaconIcon>>([[::OOHUDBeaconCodeIcon alloc] initWithText:std::string()]);
 		}
 	}
 	
