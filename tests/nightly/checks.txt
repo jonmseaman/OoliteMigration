@@ -313,5 +313,11 @@
 [oo-0tx6c] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
 [oo-9ht.83] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALBufferedSound test_OOALStreamedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
+[oo-9ht.16] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJoystickProfile test_OOJoystickManager test_OOSDLJoystickManager test_PlayerEntityStickProfile && bash tools/tier-c.sh --only goldens
+[oo-9ht.134] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OODefaultShaderSynthesizer && bash tools/tier-c.sh --only goldens
+[oo-9ht.142] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSScript && bash tools/tier-c.sh --only goldens
+[oo-9ht.120] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOpenGLExtensionManager test_OOShaderUniformMethodType
+[oo-9ht.115] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureScaling && bash tools/tier-c.sh --only goldens
 [oo-q7r3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXZManager && bash tools/tier-c.sh --only goldens
 [oo-zmix] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
+[oo-rdwg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
