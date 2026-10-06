@@ -887,7 +887,7 @@ void cxx::HeadUpDisplay::refreshLastTransmitter()
 	::Entity* lt = [UNIVERSE entityForUniversalID:last_transmitter];
 	if ((lt == nil)||(!(lt->_cxxEntity->isShip)))
 		return;
-	ShipEntity* st = (ShipEntity*)lt;
+	::ShipEntity* st = (::ShipEntity*)lt;
 	if ([st messageTime] <= 0.0)
 		[st setMessageTime:2.5];
 }
@@ -1573,13 +1573,13 @@ void cxx::HeadUpDisplay::drawScanner(const oo::PList &info)
 						(nonlinear_scanner && nonlinearScannerFunc(act_dist, zoom, siz.width) - nonlinearScannerFunc(lim_dist, zoom, siz.width) > 4.5 ))
 					{
 						Vector bounds[6];
-						BoundingBox bb = ship->totalBoundingBox;
-						bounds[0] = ship->v_forward;	scale_vector(&bounds[0], bb.max.z);
-						bounds[1] = ship->v_forward;	scale_vector(&bounds[1], bb.min.z);
-						bounds[2] = ship->v_right;		scale_vector(&bounds[2], bb.max.x);
-						bounds[3] = ship->v_right;		scale_vector(&bounds[3], bb.min.x);
-						bounds[4] = ship->v_up;			scale_vector(&bounds[4], bb.max.y);
-						bounds[5] = ship->v_up;			scale_vector(&bounds[5], bb.min.y);
+						BoundingBox bb = ship->_cxxShip->totalBoundingBox;
+						bounds[0] = ship->_cxxShip->v_forward;	scale_vector(&bounds[0], bb.max.z);
+						bounds[1] = ship->_cxxShip->v_forward;	scale_vector(&bounds[1], bb.min.z);
+						bounds[2] = ship->_cxxShip->v_right;		scale_vector(&bounds[2], bb.max.x);
+						bounds[3] = ship->_cxxShip->v_right;		scale_vector(&bounds[3], bb.min.x);
+						bounds[4] = ship->_cxxShip->v_up;			scale_vector(&bounds[4], bb.max.y);
+						bounds[5] = ship->_cxxShip->v_up;			scale_vector(&bounds[5], bb.min.y);
 						// rotate the view
 						int i;
 						for (i = 0; i < 6; i++)
