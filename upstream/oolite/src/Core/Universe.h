@@ -583,6 +583,13 @@ public:
 	void defineFrustum();
 	bool viewFrustumIntersectsSphereAt(Vector position, GLfloat radius);
 
+	// Slice 12: drawUniverse, framebuffer preparation, frame counters, the view matrix.
+	void drawUniverse();
+	void prepareToRenderIntoDefaultFramebuffer();
+	int getFramesDoneThisUpdate();
+	void resetFramesDoneThisUpdate();
+	OOMatrix getViewMatrix();
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);

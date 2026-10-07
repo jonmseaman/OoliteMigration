@@ -177,7 +177,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 
 @interface Universe (OOPrivate)
 
-- (void) prepareToRenderIntoDefaultFramebuffer;
 
 
 // Set shader effects level without logging or triggering a reset -- should only be used directly during startup.
@@ -651,522 +650,6 @@ static const OOMatrix	starboard_matrix =
 							{-1.0f,  0.0f,  0.0f,  0.0f },
 							{ 0.0f,  0.0f,  0.0f,  1.0f }
 						}};
-
-
-- (void) drawUniverse
-{
-	int currentPostFX = [self currentPostFX];
-	BOOL hudSeparateRenderPass =  [self useShaders] && (currentPostFX == OO_POSTFX_NONE || ((currentPostFX == OO_POSTFX_CLOAK || currentPostFX == OO_POSTFX_CRTBADSIGNAL) && [self colorblindMode] == OO_POSTFX_NONE));
- 	NSSize  viewSize = [_cxxUniverse->gameView backingViewSize];
-	OO_LOG("universe.profile.draw", "{}", "Begin draw");
-	
-	if (!_cxxUniverse->no_update)
-	{
-		if ((int)_cxxUniverse->targetFramebufferSize.width != (int)viewSize.width || (int)_cxxUniverse->targetFramebufferSize.height != (int)viewSize.height)
-		{
-			[self resizeTargetFramebufferWithViewSize:viewSize];
-		}
-	
-		if([self useShaders])
-		{
-			if ([_cxxUniverse->gameView msaa])
-			{
-				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->msaaFramebufferID));
-			}
-			else
-			{
-				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->targetFramebufferID));
-			}
-		}
-		@try
-		{
-			_cxxUniverse->no_update = YES;	// block other attempts to draw
-			
-			int				i, v_status, vdist;
-			Vector			view_dir, view_up;
-			OOMatrix		view_matrix;
-			int				ent_count =	_cxxUniverse->n_entities;
-			Entity			*my_entities[ent_count];
-			int				draw_count = 0;
-			PlayerEntity	*player = PLAYER;
-			Entity			*drawthing = nil;
-			BOOL			demoShipMode = [player showDemoShips];
-			
-			float   aspect = viewSize.height/viewSize.width;
-
-			if (!_cxxUniverse->displayGUI && _cxxUniverse->wasDisplayGUI)
-			{
-				// reset light1 position for the shaders
-				if (_cxxUniverse->cachedSun) [UNIVERSE setMainLightPosition:HPVectorToVector([_cxxUniverse->cachedSun position])]; // the main light is the sun.
-				else [UNIVERSE setMainLightPosition:kZeroVector];
-			}
-			_cxxUniverse->wasDisplayGUI = _cxxUniverse->displayGUI;
-			// use a non-mutable copy so this can't be changed under us.
-			for (i = 0; i < ent_count; i++)
-			{
-				/* BUG: this list is ordered nearest to furthest from
-				 * the player, and we just assume that the camera is
-				 * on/near the player. So long as everything uses
-				 * depth tests, we'll get away with it; it'll just
-				 * occasionally be inefficient. - CIM */
-				Entity *e = _cxxUniverse->sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
-				if ([e isVisible])
-				{
-					my_entities[draw_count++] = [[e retain] autorelease];
-				}
-			}
-			
-			v_status = [player status];
-			
-			cxx_OOCheckOpenGLErrors("Universe before doing anything");
-			
-			OOSetOpenGLState(OPENGL_STATE_OPAQUE);  // FIXME: should be redundant.
-			
-			OOGL(glClear(GL_COLOR_BUFFER_BIT));
-
-			if (!_cxxUniverse->displayGUI)
-			{
-				OOGL(glClearColor(_cxxUniverse->skyClearColor[0], _cxxUniverse->skyClearColor[1], _cxxUniverse->skyClearColor[2], _cxxUniverse->skyClearColor[3]));
-			}
-			else
-			{
-				OOGL(glClearColor(0.0, 0.0, 0.0, 0.0));
-				// If set, display background GUI image. Must be done before enabling lights to avoid dim backgrounds
-				OOGLResetProjection();
-				OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
-				[_cxxUniverse->gui drawGUIBackground];
-			
-			}
-
-			BOOL		fogging, bpHide = [self breakPatternHide];
-
-			_cxxUniverse->drawCounter++;
-			float breakPlane = INTERMEDIATE_CLEAR_DEPTH;
-			for( int i = 0; i < draw_count; i++ )
-			{
-				if ([my_entities[i] cameraRangeFront] > breakPlane)
-				{
-					continue;
-				}
-				if ([my_entities[i] cameraRangeBack] > breakPlane)
-				{
-					breakPlane = [my_entities[i] cameraRangeBack];
-				}
-			}
-
-			// We need to bring forward the near plane of the frustum on the long distance pass by this factor to avoid clipping objects at the corner of the window
-			float distanceFactor = sqrt(1 + ([_cxxUniverse->gameView fov:YES]*[_cxxUniverse->gameView fov:YES] * (1.0 + 1.0/(aspect*aspect)))); 
-
-			for (vdist=0;vdist<=1;vdist++)
-			{
-				float   nearPlane = vdist ? 1.0 : INTERMEDIATE_CLEAR_DEPTH;
-				float   farPlane = vdist ? breakPlane : MAX_CLEAR_DEPTH;
-				float   ratio = (_cxxUniverse->displayGUI ? 0.5 : [_cxxUniverse->gameView fov:YES]) * nearPlane / distanceFactor; // 0.5 is field of view ratio for GUIs
-				
-				OOGLResetProjection();
-				if ((_cxxUniverse->displayGUI && 4*aspect >= 3) || (!_cxxUniverse->displayGUI && 4*aspect <= 3))
-				{
-					OOGLFrustum(-ratio, ratio, -aspect*ratio, aspect*ratio, nearPlane / distanceFactor, farPlane);
-				}
-				else
-				{
-					OOGLFrustum(-3*ratio/aspect/4, 3*ratio/aspect/4, -3*ratio/4, 3*ratio/4, nearPlane / distanceFactor, farPlane);
-				}
-
-				[self getActiveViewMatrix:&view_matrix forwardVector:&view_dir upVector:&view_up];
-
-				OOGLResetModelView();	// reset matrix
-				OOGLLookAt(kZeroVector, kBasisZVector, kBasisYVector);
-			
-				// HACK BUSTED
-				OOGLMultModelView(OOMatrixForScale(-1.0,1.0,1.0)); // flip left and right
-				OOGLPushModelView(); // save this flat viewpoint
-
-				/* OpenGL viewpoints: 
-				 *
-				 * Oolite used to transform the viewpoint by the inverse of the
-				 * view position, and then transform the objects by the inverse
-				 * of their position, to get the correct view. However, as
-				 * OpenGL only uses single-precision floats, this causes
-				 * noticeable display inaccuracies relatively close to the
-				 * origin.
-				 *
-				 * Instead, we now calculate the difference between the view
-				 * position and the object using high-precision vectors, convert
-				 * the difference to a low-precision vector (since if you can
-				 * see it, it's close enough for the loss of precision not to
-				 * matter) and use that relative vector for the OpenGL transform
-				 *
-				 * Objects which reset the view matrix in their display need to be
-				 * handled a little more carefully than before.
-				 */
-
-				OOSetOpenGLState(OPENGL_STATE_OPAQUE); 
-				// clearing the depth buffer waits until we've set
-				// STATE_OPAQUE so that depth writes are definitely
-				// available.
-				OOGL(glClear(GL_DEPTH_BUFFER_BIT));
-		
-
-				// Set up view transformation matrix
-				OOMatrix flipMatrix = kIdentityMatrix;
-				flipMatrix.m[2][2] = -1;
-				view_matrix = OOMatrixMultiply(view_matrix, flipMatrix);
-				Vector viewOffset = [player viewpointOffset];
-			
-				OOGLLookAt(view_dir, kZeroVector, view_up); 
-
-				if (EXPECT(!_cxxUniverse->displayGUI || demoShipMode))
-				{
-					if (EXPECT(!demoShipMode))	// we're in flight
-					{
-						// rotate the view
-						OOGLMultModelView([player rotationMatrix]);
-						// translate the view
-						// HPVect: camera-relative position
-						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, _cxxUniverse->stars_ambient));
-						// main light position, no shaders, in-flight / shaders, in-flight and docked.
-						if (_cxxUniverse->cachedSun)
-						{
-							[self setMainLightPosition:[_cxxUniverse->cachedSun cameraRelativePosition]];
-						}
-						else
-						{
-							// in witchspace
-							[self setMainLightPosition:HPVectorToVector(HPvector_flip([PLAYER viewpointPosition]))];
-						}
-						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, _cxxUniverse->main_light_position));	
-					}
-					else
-					{
-						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, docked_light_ambient));
-						// main_light_position no shaders, docked/GUI.
-						OOGL(glLightfv(GL_LIGHT0, GL_POSITION, _cxxUniverse->main_light_position));
-						// main light position, no shaders, in-flight / shaders, in-flight and docked.		
-						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, _cxxUniverse->main_light_position));
-					}
-				
-				
-					OOGL([self useGUILightSource:demoShipMode]);
-				
-					// HACK: store view matrix for absolute drawing of active subentities (i.e., turrets, flashers).
-					_cxxUniverse->viewMatrix = OOGLGetModelView();
-
-					int			furthest = draw_count - 1;
-					int			nearest = 0;
-					BOOL		inAtmosphere = _cxxUniverse->airResistanceFactor > 0.01;
-					GLfloat		fogFactor = 0.5 / _cxxUniverse->airResistanceFactor;
-					double 		fog_scale, half_scale;
-					GLfloat 	flat_ambdiff[4]	= {1.0, 1.0, 1.0, 1.0};   // for alpha
-					GLfloat 	mat_no[4]		= {0.0, 0.0, 0.0, 1.0};   // nothing
-					GLfloat		fog_blend;
-				
-					OOGL(glHint(GL_FOG_HINT, [self reducedDetail] ? GL_FASTEST : GL_NICEST));
-
-					[self defineFrustum]; // camera is set up for this frame
-
-					OOVerifyOpenGLState();
-					cxx_OOCheckOpenGLErrors("Universe after setting up for opaque pass");
-					OO_LOG("universe.profile.draw", "{}", "Begin opaque pass");
-
-				
-					//		DRAW ALL THE OPAQUE ENTITIES
-					for (i = furthest; i >= nearest; i--)
-					{
-						drawthing = my_entities[i];
-						OOEntityStatus d_status = [drawthing status];
-					
-						if (bpHide && !drawthing->_cxxEntity->isImmuneToBreakPatternHide)  continue;
-						if ([drawthing lastDrawCounter] == _cxxUniverse->drawCounter) continue;
-						if (vdist == 0 && [drawthing cameraRangeFront] < nearPlane)
-						{
-							continue;
-						}
-
-						if (!((d_status == STATUS_COCKPIT_DISPLAY) ^ demoShipMode)) // either demo ship mode or in flight
-						{
-							// reset material properties
-							// FIXME: should be part of SetState
-							OOGL(glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, flat_ambdiff));
-							OOGL(glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, mat_no));
-						
-							OOGLPushModelView();
-							if (EXPECT(drawthing != player))
-							{
-								//translate the object
-								// HPVect: camera relative
-								[drawthing updateCameraRelativePosition];
-								OOGLTranslateModelView([drawthing cameraRelativePosition]);
-								//rotate the object
-								OOGLMultModelView([drawthing drawRotationMatrix]);
-							}
-							else
-							{
-								// Load transformation matrix
-								OOGLLoadModelView(view_matrix);
-								//translate the object  from the viewpoint
-								OOGLTranslateModelView(vector_flip(viewOffset));
-							}
-						
-							// atmospheric fog
-							fogging = (inAtmosphere && ![drawthing isStellarObject]);
-						
-							if (fogging)
-							{
-								fog_scale = BILLBOARD_DEPTH * fogFactor;
-								half_scale = fog_scale * 0.50;
-								OOGL(glEnable(GL_FOG));
-								OOGL(glFogi(GL_FOG_MODE, GL_LINEAR));
-								OOGL(glFogfv(GL_FOG_COLOR, _cxxUniverse->skyClearColor));
-								OOGL(glFogf(GL_FOG_START, half_scale));
-								OOGL(glFogf(GL_FOG_END, fog_scale));
-								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
-								[drawthing setAtmosphereFogging: [OOColor colorWithRed: _cxxUniverse->skyClearColor[0] green: _cxxUniverse->skyClearColor[1] blue: _cxxUniverse->skyClearColor[2] alpha: fog_blend]];
-							}
-						
-							[self lightForEntity:demoShipMode || drawthing->_cxxEntity->isSunlit];
-						
-							// draw the thing
-							[drawthing setLastDrawCounter: _cxxUniverse->drawCounter];
-							[drawthing drawImmediate:false translucent:false];
-						
-							OOGLPopModelView();
-
-							// atmospheric fog
-							if (fogging)
-							{
-								[drawthing setAtmosphereFogging: [OOColor colorWithRed: 0.0 green: 0.0 blue: 0.0 alpha: 0.0]];
-								OOGL(glDisable(GL_FOG));
-							}
-						
-						}
-				
-						if (!((d_status == STATUS_COCKPIT_DISPLAY) ^ demoShipMode)) // either in flight or in demo ship mode
-						{
-							OOGLPushModelView();
-							if (EXPECT(drawthing != player))
-							{
-								//translate the object
-								// HPVect: camera relative positions
-								[drawthing updateCameraRelativePosition];
-								OOGLTranslateModelView([drawthing cameraRelativePosition]);
-								//rotate the object
-								OOGLMultModelView([drawthing drawRotationMatrix]);
-							}
-							else
-							{
-								// Load transformation matrix
-								OOGLLoadModelView(view_matrix);
-								//translate the object  from the viewpoint
-								OOGLTranslateModelView(vector_flip(viewOffset));
-							}
-						
-							// experimental - atmospheric fog
-							fogging = (inAtmosphere && ![drawthing isStellarObject]);
-						
-							if (fogging)
-							{
-								fog_scale = BILLBOARD_DEPTH * fogFactor;
-								half_scale = fog_scale * 0.50;
-								OOGL(glEnable(GL_FOG));
-								OOGL(glFogi(GL_FOG_MODE, GL_LINEAR));
-								OOGL(glFogfv(GL_FOG_COLOR, _cxxUniverse->skyClearColor));
-								OOGL(glFogf(GL_FOG_START, half_scale));
-								OOGL(glFogf(GL_FOG_END, fog_scale));
-								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
-								[drawthing setAtmosphereFogging: [OOColor colorWithRed: _cxxUniverse->skyClearColor[0] green: _cxxUniverse->skyClearColor[1] blue: _cxxUniverse->skyClearColor[2] alpha: fog_blend]];
-							}
-						
-							// draw the thing
-							[drawthing setLastDrawCounter: _cxxUniverse->drawCounter];
-							[drawthing drawImmediate:false translucent:true];
-						
-							// atmospheric fog
-							if (fogging)
-							{
-								[drawthing setAtmosphereFogging: [OOColor colorWithRed: 0.0 green: 0.0 blue: 0.0 alpha: 0.0]];
-								OOGL(glDisable(GL_FOG));
-							}
-						
-							OOGLPopModelView();
-						}
-					}
-				}
-
-				OOGLPopModelView();
-			}
-			
-			// glare effects covering the entire game window
-			OOGLResetProjection();
-			OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
-			OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
-			if (EXPECT(!_cxxUniverse->displayGUI))
-			{
-				if (!bpHide && _cxxUniverse->cachedSun)
-				{
-					[_cxxUniverse->cachedSun drawDirectVisionSunGlare];
-					[_cxxUniverse->cachedSun drawStarGlare];
-				}
-			}
-			
-			// actions when the HUD should be rendered separately from the 3d universe
-			if (hudSeparateRenderPass)
-			{
-				cxx_OOCheckOpenGLErrors("Universe after drawing entities");
-				OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
-				
-				[self prepareToRenderIntoDefaultFramebuffer];	
-				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-				
-				OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
-				[self drawTargetTextureIntoDefaultFramebuffer];
-				cxx_OOCheckOpenGLErrors("Universe after drawing from custom framebuffer to screen framebuffer");
-				OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
-	
-				OO_LOG("universe.profile.drawHUD", "{}", "Begin HUD drawing");
-			}
-			
-			/* Reset for HUD drawing */
-			cxx_OOCheckOpenGLErrors("Universe after drawing entities");
-			OO_LOG("universe.profile.draw", "{}", "Begin HUD");
-			
-			GLfloat	lineWidth = [_cxxUniverse->gameView backingViewSize].width / 1024.0; // restore line size
-			if (lineWidth < 1.0)  lineWidth = 1.0;
-			if (lineWidth > 1.5)  lineWidth = 1.5; // don't overscale; think of ultra-wide screen setups
-			OOGL(GLScaledLineWidth(lineWidth));
-
-			HeadUpDisplay *theHUD = [player hud];
-			
-			// If the HUD has a non-nil deferred name string, it means that a HUD switch was requested while it was being rendered.
-			// If so, execute the deferred HUD switch now - Nikos 20110628
-			if ([theHUD cxx_deferredHudName].has_value())
-			{
-				const std::string deferredName = *[theHUD cxx_deferredHudName];	// a copy: the switch releases the HUD
-				[player cxx_switchHudTo:deferredName];
-				theHUD = [player hud];	// HUD has been changed, so point to its new address
-			}
-			
-			// Hiding HUD: has been a regular - non-debug - feature as of r2749, about 2 yrs ago! --Kaks 2011.10.14
-			static float sPrevHudAlpha = -1.0f;
-			if ([theHUD isHidden])
-			{
-				if (sPrevHudAlpha < 0.0f)
-				{
-					sPrevHudAlpha = [theHUD overallAlpha];
-				}
-				[theHUD setOverallAlpha:0.0f];
-			}
-			else if (sPrevHudAlpha >= 0.0f)
-			{
-				[theHUD setOverallAlpha:sPrevHudAlpha];
-				sPrevHudAlpha = -1.0f;
-			}
-			
-			switch (v_status) {
-			case STATUS_DEAD:
-			case STATUS_ESCAPE_SEQUENCE:
-			case STATUS_START_GAME:
-				// no HUD rendering in these modes
-				break;
-			default:
-				switch ([player guiScreen])
-				{
-				//case GUI_SCREEN_KEYBOARD:
-					// no HUD rendering on this screen
-					//break;
-				default:
-					[theHUD setLineWidth:lineWidth];
-					[theHUD renderHUD];
-				}
-			}
-
-			// should come after the HUD to avoid it being overlapped by it
-			[self drawMessage];
-			
-#if (defined (DEV_RELEASE))
-			[self drawWatermarkString:"Development version " OO_VERSION_FULL];
-#endif
-			
-			OO_LOG("universe.profile.drawHUD", "{}", "End HUD drawing");
-			cxx_OOCheckOpenGLErrors("Universe after drawing HUD");
-			
-			OOGL(glFlush());	// don't wait around for drawing to complete
-			
-			_cxxUniverse->no_update = NO;	// allow other attempts to draw
-			
-			// frame complete, when it is time to update the fps_counter, updateClocks:delta_t
-			// in PlayerEntity.m will take care of resetting the processed frames number to 0.
-			if (![[self gameController] isGamePaused])
-			{
-				_cxxUniverse->framesDoneThisUpdate++;
-			}
-		}
-		@catch (OOException *exception)
-		{
-			_cxxUniverse->no_update = NO;	// make sure we don't get stuck in all subsequent frames.
-			
-			if (strncmp([exception name], "Oolite", 6) == 0)
-			{
-				[self handleOoliteException:exception];
-			}
-			else
-			{
-				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", [exception name], [exception reason]);
-				@throw exception;
-			}
-		}
-	}
-	
-	OO_LOG("universe.profile.draw", "{}", "End drawing");
-	
-	// actions when the HUD should be rendered together with the 3d universe
-	if(!hudSeparateRenderPass)
-	{
-		if([self useShaders])
-		{
-			[self prepareToRenderIntoDefaultFramebuffer];
-			OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-			
-			OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
-			[self drawTargetTextureIntoDefaultFramebuffer];
-			OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
-		}
-	}
-}
-
-
-- (void) prepareToRenderIntoDefaultFramebuffer
-{
-	NSSize viewSize = [_cxxUniverse->gameView backingViewSize];
-	if([self useShaders])
-	{
-		if ([_cxxUniverse->gameView msaa])
-		{
-			// resolve MSAA framebuffer to target framebuffer
-			OOGL(glBindFramebuffer(GL_READ_FRAMEBUFFER, _cxxUniverse->msaaFramebufferID));
-			OOGL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _cxxUniverse->targetFramebufferID));
-			OOGL(glBlitFramebuffer(0, 0, (GLint)viewSize.width, (GLint)viewSize.height, 0, 0, (GLint)viewSize.width, (GLint)viewSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST));
-		}
-	}
-}
-
-
-- (int) framesDoneThisUpdate
-{
-	return _cxxUniverse->framesDoneThisUpdate;
-}
-
-
-- (void) resetFramesDoneThisUpdate
-{
-	_cxxUniverse->framesDoneThisUpdate = 0;
-}
-
-
-- (OOMatrix) viewMatrix
-{
-	return _cxxUniverse->viewMatrix;
-}
 
 
 - (void) drawMessage
@@ -6134,6 +5617,532 @@ bool Universe::viewFrustumIntersectsSphereAt(Vector position, GLfloat radius)
 		}
 	}
 	return YES;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 12 of docs/phases/3-slices/Universe.md (bead oo-9lucq): drawUniverse, framebuffer
+// preparation, frame counters, the view matrix. The facade forwards each selector
+// (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+void Universe::drawUniverse()
+{
+	::Universe *self = oo::ToObjC(this);
+	int currentPostFX = [self currentPostFX];
+	BOOL hudSeparateRenderPass =  [self useShaders] && (currentPostFX == OO_POSTFX_NONE || ((currentPostFX == OO_POSTFX_CLOAK || currentPostFX == OO_POSTFX_CRTBADSIGNAL) && [self colorblindMode] == OO_POSTFX_NONE));
+ 	NSSize  viewSize = [gameView backingViewSize];
+	OO_LOG("universe.profile.draw", "{}", "Begin draw");
+	
+	if (!no_update)
+	{
+		if ((int)targetFramebufferSize.width != (int)viewSize.width || (int)targetFramebufferSize.height != (int)viewSize.height)
+		{
+			[self resizeTargetFramebufferWithViewSize:viewSize];
+		}
+	
+		if([self useShaders])
+		{
+			if ([gameView msaa])
+			{
+				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, msaaFramebufferID));
+			}
+			else
+			{
+				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, targetFramebufferID));
+			}
+		}
+		@try
+		{
+			no_update = YES;	// block other attempts to draw
+			
+			int				i, v_status, vdist;
+			Vector			view_dir, view_up;
+			OOMatrix		view_matrix;
+			int				ent_count =	n_entities;
+			::Entity			*my_entities[ent_count];
+			int				draw_count = 0;
+			::PlayerEntity	*player = PLAYER;
+			::Entity			*drawthing = nil;
+			BOOL			demoShipMode = [player showDemoShips];
+			
+			float   aspect = viewSize.height/viewSize.width;
+
+			if (!displayGUI && wasDisplayGUI)
+			{
+				// reset light1 position for the shaders
+				if (cachedSun) [UNIVERSE setMainLightPosition:HPVectorToVector([cachedSun position])]; // the main light is the sun.
+				else [UNIVERSE setMainLightPosition:kZeroVector];
+			}
+			wasDisplayGUI = displayGUI;
+			// use a non-mutable copy so this can't be changed under us.
+			for (i = 0; i < ent_count; i++)
+			{
+				/* BUG: this list is ordered nearest to furthest from
+				 * the player, and we just assume that the camera is
+				 * on/near the player. So long as everything uses
+				 * depth tests, we'll get away with it; it'll just
+				 * occasionally be inefficient. - CIM */
+				::Entity *e = sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
+				if ([e isVisible])
+				{
+					my_entities[draw_count++] = [[e retain] autorelease];
+				}
+			}
+			
+			v_status = [player status];
+			
+			cxx_OOCheckOpenGLErrors("Universe before doing anything");
+			
+			OOSetOpenGLState(OPENGL_STATE_OPAQUE);  // FIXME: should be redundant.
+			
+			OOGL(glClear(GL_COLOR_BUFFER_BIT));
+
+			if (!displayGUI)
+			{
+				OOGL(glClearColor(skyClearColor[0], skyClearColor[1], skyClearColor[2], skyClearColor[3]));
+			}
+			else
+			{
+				OOGL(glClearColor(0.0, 0.0, 0.0, 0.0));
+				// If set, display background GUI image. Must be done before enabling lights to avoid dim backgrounds
+				OOGLResetProjection();
+				OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
+				[gui drawGUIBackground];
+			
+			}
+
+			BOOL		fogging, bpHide = [self breakPatternHide];
+
+			drawCounter++;
+			float breakPlane = INTERMEDIATE_CLEAR_DEPTH;
+			for( int i = 0; i < draw_count; i++ )
+			{
+				if ([my_entities[i] cameraRangeFront] > breakPlane)
+				{
+					continue;
+				}
+				if ([my_entities[i] cameraRangeBack] > breakPlane)
+				{
+					breakPlane = [my_entities[i] cameraRangeBack];
+				}
+			}
+
+			// We need to bring forward the near plane of the frustum on the long distance pass by this factor to avoid clipping objects at the corner of the window
+			float distanceFactor = sqrt(1 + ([gameView fov:YES]*[gameView fov:YES] * (1.0 + 1.0/(aspect*aspect)))); 
+
+			for (vdist=0;vdist<=1;vdist++)
+			{
+				float   nearPlane = vdist ? 1.0 : INTERMEDIATE_CLEAR_DEPTH;
+				float   farPlane = vdist ? breakPlane : MAX_CLEAR_DEPTH;
+				float   ratio = (displayGUI ? 0.5 : [gameView fov:YES]) * nearPlane / distanceFactor; // 0.5 is field of view ratio for GUIs
+				
+				OOGLResetProjection();
+				if ((displayGUI && 4*aspect >= 3) || (!displayGUI && 4*aspect <= 3))
+				{
+					OOGLFrustum(-ratio, ratio, -aspect*ratio, aspect*ratio, nearPlane / distanceFactor, farPlane);
+				}
+				else
+				{
+					OOGLFrustum(-3*ratio/aspect/4, 3*ratio/aspect/4, -3*ratio/4, 3*ratio/4, nearPlane / distanceFactor, farPlane);
+				}
+
+				[self getActiveViewMatrix:&view_matrix forwardVector:&view_dir upVector:&view_up];
+
+				OOGLResetModelView();	// reset matrix
+				OOGLLookAt(kZeroVector, kBasisZVector, kBasisYVector);
+			
+				// HACK BUSTED
+				OOGLMultModelView(OOMatrixForScale(-1.0,1.0,1.0)); // flip left and right
+				OOGLPushModelView(); // save this flat viewpoint
+
+				/* OpenGL viewpoints: 
+				 *
+				 * Oolite used to transform the viewpoint by the inverse of the
+				 * view position, and then transform the objects by the inverse
+				 * of their position, to get the correct view. However, as
+				 * OpenGL only uses single-precision floats, this causes
+				 * noticeable display inaccuracies relatively close to the
+				 * origin.
+				 *
+				 * Instead, we now calculate the difference between the view
+				 * position and the object using high-precision vectors, convert
+				 * the difference to a low-precision vector (since if you can
+				 * see it, it's close enough for the loss of precision not to
+				 * matter) and use that relative vector for the OpenGL transform
+				 *
+				 * Objects which reset the view matrix in their display need to be
+				 * handled a little more carefully than before.
+				 */
+
+				OOSetOpenGLState(OPENGL_STATE_OPAQUE); 
+				// clearing the depth buffer waits until we've set
+				// STATE_OPAQUE so that depth writes are definitely
+				// available.
+				OOGL(glClear(GL_DEPTH_BUFFER_BIT));
+		
+
+				// Set up view transformation matrix
+				OOMatrix flipMatrix = kIdentityMatrix;
+				flipMatrix.m[2][2] = -1;
+				view_matrix = OOMatrixMultiply(view_matrix, flipMatrix);
+				Vector viewOffset = [player viewpointOffset];
+			
+				OOGLLookAt(view_dir, kZeroVector, view_up); 
+
+				if (EXPECT(!displayGUI || demoShipMode))
+				{
+					if (EXPECT(!demoShipMode))	// we're in flight
+					{
+						// rotate the view
+						OOGLMultModelView([player rotationMatrix]);
+						// translate the view
+						// HPVect: camera-relative position
+						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, stars_ambient));
+						// main light position, no shaders, in-flight / shaders, in-flight and docked.
+						if (cachedSun)
+						{
+							[self setMainLightPosition:[cachedSun cameraRelativePosition]];
+						}
+						else
+						{
+							// in witchspace
+							[self setMainLightPosition:HPVectorToVector(HPvector_flip([PLAYER viewpointPosition]))];
+						}
+						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, main_light_position));	
+					}
+					else
+					{
+						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, docked_light_ambient));
+						// main_light_position no shaders, docked/GUI.
+						OOGL(glLightfv(GL_LIGHT0, GL_POSITION, main_light_position));
+						// main light position, no shaders, in-flight / shaders, in-flight and docked.		
+						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, main_light_position));
+					}
+				
+				
+					OOGL([self useGUILightSource:demoShipMode]);
+				
+					// HACK: store view matrix for absolute drawing of active subentities (i.e., turrets, flashers).
+					viewMatrix = OOGLGetModelView();
+
+					int			furthest = draw_count - 1;
+					int			nearest = 0;
+					BOOL		inAtmosphere = airResistanceFactor > 0.01;
+					GLfloat		fogFactor = 0.5 / airResistanceFactor;
+					double 		fog_scale, half_scale;
+					GLfloat 	flat_ambdiff[4]	= {1.0, 1.0, 1.0, 1.0};   // for alpha
+					GLfloat 	mat_no[4]		= {0.0, 0.0, 0.0, 1.0};   // nothing
+					GLfloat		fog_blend;
+				
+					OOGL(glHint(GL_FOG_HINT, [self reducedDetail] ? GL_FASTEST : GL_NICEST));
+
+					[self defineFrustum]; // camera is set up for this frame
+
+					OOVerifyOpenGLState();
+					cxx_OOCheckOpenGLErrors("Universe after setting up for opaque pass");
+					OO_LOG("universe.profile.draw", "{}", "Begin opaque pass");
+
+				
+					//		DRAW ALL THE OPAQUE ENTITIES
+					for (i = furthest; i >= nearest; i--)
+					{
+						drawthing = my_entities[i];
+						OOEntityStatus d_status = [drawthing status];
+					
+						if (bpHide && !drawthing->_cxxEntity->isImmuneToBreakPatternHide)  continue;
+						if ([drawthing lastDrawCounter] == drawCounter) continue;
+						if (vdist == 0 && [drawthing cameraRangeFront] < nearPlane)
+						{
+							continue;
+						}
+
+						if (!((d_status == STATUS_COCKPIT_DISPLAY) ^ demoShipMode)) // either demo ship mode or in flight
+						{
+							// reset material properties
+							// FIXME: should be part of SetState
+							OOGL(glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, flat_ambdiff));
+							OOGL(glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, mat_no));
+						
+							OOGLPushModelView();
+							if (EXPECT(drawthing != player))
+							{
+								//translate the object
+								// HPVect: camera relative
+								[drawthing updateCameraRelativePosition];
+								OOGLTranslateModelView([drawthing cameraRelativePosition]);
+								//rotate the object
+								OOGLMultModelView([drawthing drawRotationMatrix]);
+							}
+							else
+							{
+								// Load transformation matrix
+								OOGLLoadModelView(view_matrix);
+								//translate the object  from the viewpoint
+								OOGLTranslateModelView(vector_flip(viewOffset));
+							}
+						
+							// atmospheric fog
+							fogging = (inAtmosphere && ![drawthing isStellarObject]);
+						
+							if (fogging)
+							{
+								fog_scale = BILLBOARD_DEPTH * fogFactor;
+								half_scale = fog_scale * 0.50;
+								OOGL(glEnable(GL_FOG));
+								OOGL(glFogi(GL_FOG_MODE, GL_LINEAR));
+								OOGL(glFogfv(GL_FOG_COLOR, skyClearColor));
+								OOGL(glFogf(GL_FOG_START, half_scale));
+								OOGL(glFogf(GL_FOG_END, fog_scale));
+								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
+								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
+							}
+						
+							[self lightForEntity:demoShipMode || drawthing->_cxxEntity->isSunlit];
+						
+							// draw the thing
+							[drawthing setLastDrawCounter: drawCounter];
+							[drawthing drawImmediate:false translucent:false];
+						
+							OOGLPopModelView();
+
+							// atmospheric fog
+							if (fogging)
+							{
+								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: 0.0 green: 0.0 blue: 0.0 alpha: 0.0]];
+								OOGL(glDisable(GL_FOG));
+							}
+						
+						}
+				
+						if (!((d_status == STATUS_COCKPIT_DISPLAY) ^ demoShipMode)) // either in flight or in demo ship mode
+						{
+							OOGLPushModelView();
+							if (EXPECT(drawthing != player))
+							{
+								//translate the object
+								// HPVect: camera relative positions
+								[drawthing updateCameraRelativePosition];
+								OOGLTranslateModelView([drawthing cameraRelativePosition]);
+								//rotate the object
+								OOGLMultModelView([drawthing drawRotationMatrix]);
+							}
+							else
+							{
+								// Load transformation matrix
+								OOGLLoadModelView(view_matrix);
+								//translate the object  from the viewpoint
+								OOGLTranslateModelView(vector_flip(viewOffset));
+							}
+						
+							// experimental - atmospheric fog
+							fogging = (inAtmosphere && ![drawthing isStellarObject]);
+						
+							if (fogging)
+							{
+								fog_scale = BILLBOARD_DEPTH * fogFactor;
+								half_scale = fog_scale * 0.50;
+								OOGL(glEnable(GL_FOG));
+								OOGL(glFogi(GL_FOG_MODE, GL_LINEAR));
+								OOGL(glFogfv(GL_FOG_COLOR, skyClearColor));
+								OOGL(glFogf(GL_FOG_START, half_scale));
+								OOGL(glFogf(GL_FOG_END, fog_scale));
+								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
+								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
+							}
+						
+							// draw the thing
+							[drawthing setLastDrawCounter: drawCounter];
+							[drawthing drawImmediate:false translucent:true];
+						
+							// atmospheric fog
+							if (fogging)
+							{
+								[drawthing setAtmosphereFogging: [::OOColor colorWithRed: 0.0 green: 0.0 blue: 0.0 alpha: 0.0]];
+								OOGL(glDisable(GL_FOG));
+							}
+						
+							OOGLPopModelView();
+						}
+					}
+				}
+
+				OOGLPopModelView();
+			}
+			
+			// glare effects covering the entire game window
+			OOGLResetProjection();
+			OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
+			OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
+			if (EXPECT(!displayGUI))
+			{
+				if (!bpHide && cachedSun)
+				{
+					[cachedSun drawDirectVisionSunGlare];
+					[cachedSun drawStarGlare];
+				}
+			}
+			
+			// actions when the HUD should be rendered separately from the 3d universe
+			if (hudSeparateRenderPass)
+			{
+				cxx_OOCheckOpenGLErrors("Universe after drawing entities");
+				OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
+				
+				[self prepareToRenderIntoDefaultFramebuffer];	
+				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+				
+				OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
+				[self drawTargetTextureIntoDefaultFramebuffer];
+				cxx_OOCheckOpenGLErrors("Universe after drawing from custom framebuffer to screen framebuffer");
+				OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
+	
+				OO_LOG("universe.profile.drawHUD", "{}", "Begin HUD drawing");
+			}
+			
+			/* Reset for HUD drawing */
+			cxx_OOCheckOpenGLErrors("Universe after drawing entities");
+			OO_LOG("universe.profile.draw", "{}", "Begin HUD");
+			
+			GLfloat	lineWidth = [gameView backingViewSize].width / 1024.0; // restore line size
+			if (lineWidth < 1.0)  lineWidth = 1.0;
+			if (lineWidth > 1.5)  lineWidth = 1.5; // don't overscale; think of ultra-wide screen setups
+			OOGL(GLScaledLineWidth(lineWidth));
+
+			::HeadUpDisplay *theHUD = [player hud];
+			
+			// If the HUD has a non-nil deferred name string, it means that a HUD switch was requested while it was being rendered.
+			// If so, execute the deferred HUD switch now - Nikos 20110628
+			if ([theHUD cxx_deferredHudName].has_value())
+			{
+				const std::string deferredName = *[theHUD cxx_deferredHudName];	// a copy: the switch releases the HUD
+				[player cxx_switchHudTo:deferredName];
+				theHUD = [player hud];	// HUD has been changed, so point to its new address
+			}
+			
+			// Hiding HUD: has been a regular - non-debug - feature as of r2749, about 2 yrs ago! --Kaks 2011.10.14
+			static float sPrevHudAlpha = -1.0f;
+			if ([theHUD isHidden])
+			{
+				if (sPrevHudAlpha < 0.0f)
+				{
+					sPrevHudAlpha = [theHUD overallAlpha];
+				}
+				[theHUD setOverallAlpha:0.0f];
+			}
+			else if (sPrevHudAlpha >= 0.0f)
+			{
+				[theHUD setOverallAlpha:sPrevHudAlpha];
+				sPrevHudAlpha = -1.0f;
+			}
+			
+			switch (v_status) {
+			case STATUS_DEAD:
+			case STATUS_ESCAPE_SEQUENCE:
+			case STATUS_START_GAME:
+				// no HUD rendering in these modes
+				break;
+			default:
+				switch ([player guiScreen])
+				{
+				//case GUI_SCREEN_KEYBOARD:
+					// no HUD rendering on this screen
+					//break;
+				default:
+					[theHUD setLineWidth:lineWidth];
+					[theHUD renderHUD];
+				}
+			}
+
+			// should come after the HUD to avoid it being overlapped by it
+			[self drawMessage];
+			
+#if (defined (DEV_RELEASE))
+			[self drawWatermarkString:"Development version " OO_VERSION_FULL];
+#endif
+			
+			OO_LOG("universe.profile.drawHUD", "{}", "End HUD drawing");
+			cxx_OOCheckOpenGLErrors("Universe after drawing HUD");
+			
+			OOGL(glFlush());	// don't wait around for drawing to complete
+			
+			no_update = NO;	// allow other attempts to draw
+			
+			// frame complete, when it is time to update the fps_counter, updateClocks:delta_t
+			// in PlayerEntity.m will take care of resetting the processed frames number to 0.
+			if (![[self gameController] isGamePaused])
+			{
+				framesDoneThisUpdate++;
+			}
+		}
+		@catch (::OOException *exception)
+		{
+			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
+			
+			if (strncmp([exception name], "Oolite", 6) == 0)
+			{
+				[self handleOoliteException:exception];
+			}
+			else
+			{
+				OO_LOG(cxx_kOOLogException, "***** Exception: {} : {} *****", [exception name], [exception reason]);
+				@throw exception;
+			}
+		}
+	}
+	
+	OO_LOG("universe.profile.draw", "{}", "End drawing");
+	
+	// actions when the HUD should be rendered together with the 3d universe
+	if(!hudSeparateRenderPass)
+	{
+		if([self useShaders])
+		{
+			[self prepareToRenderIntoDefaultFramebuffer];
+			OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+			
+			OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
+			[self drawTargetTextureIntoDefaultFramebuffer];
+			OO_LOG("universe.profile.secondPassDraw", "{}", "End second pass drawing");
+		}
+	}
+}
+
+
+void Universe::prepareToRenderIntoDefaultFramebuffer()
+{
+	::Universe *self = oo::ToObjC(this);
+	NSSize viewSize = [gameView backingViewSize];
+	if([self useShaders])
+	{
+		if ([gameView msaa])
+		{
+			// resolve MSAA framebuffer to target framebuffer
+			OOGL(glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFramebufferID));
+			OOGL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFramebufferID));
+			OOGL(glBlitFramebuffer(0, 0, (GLint)viewSize.width, (GLint)viewSize.height, 0, 0, (GLint)viewSize.width, (GLint)viewSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST));
+		}
+	}
+}
+
+
+int Universe::getFramesDoneThisUpdate()
+{
+	return framesDoneThisUpdate;
+}
+
+
+void Universe::resetFramesDoneThisUpdate()
+{
+	framesDoneThisUpdate = 0;
+}
+
+
+OOMatrix Universe::getViewMatrix()
+{
+	return viewMatrix;
 }
 
 
