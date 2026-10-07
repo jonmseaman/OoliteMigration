@@ -124,20 +124,8 @@ MA 02110-1301, USA.
 - (OOAlertCondition) realAlertCondition; // full calculation for scripting
 
 // defense target handling
-- (NSUInteger) defenseTargetCount;
-- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
-- (void) validateDefenseTargets;
-- (BOOL) addDefenseTarget:(Entity *)target;
-- (BOOL) isDefenseTarget:(Entity *)target;
-- (void) removeDefenseTarget:(Entity *)target;
-- (void) removeAllDefenseTargets;
 
 // collision exceptions
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
-- (void) addCollisionException:(ShipEntity *)ship;
-- (void) removeCollisionException:(ShipEntity *)ship;
-- (BOOL) collisionExceptedFor:(ShipEntity *)ship;
 
 
 
@@ -209,19 +197,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 
-- (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
-
-- (GLfloat) rangeToDestination;
-- (double) trackDestination:(double) delta_t :(BOOL) retreat;
 
 
-- (double) missileTrackPrimaryTarget:(double) delta_t;
+
 
 //return 0.0 if there is no primary target
-- (double) rangeToPrimaryTarget;
-- (double) approachAspectToPrimaryTarget;
-- (double) rangeToSecondaryTarget:(Entity *)target;
-- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
 - (GLfloat) currentAimTolerance;
 /* This method returns a value between 0.0f and 1.0f, depending on how directly our view point
    faces the sun and is used for generating the "staring at the sun" glare effect. 0.0f means that
@@ -1147,6 +1127,35 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) evasiveAction:(double) delta_t;
 - (double) trackPrimaryTarget:(double) delta_t :(BOOL) retreat;
 - (double) trackSideTarget:(double) delta_t :(BOOL) leftside;
+
+@end
+
+
+// Slice 26 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice26)
+
+- (double) missileTrackPrimaryTarget:(double) delta_t;
+- (double) trackDestination:(double) delta_t :(BOOL) retreat;
+- (GLfloat) rollToMatchUp:(Vector) up_vec rotating:(GLfloat) match_roll;
+- (GLfloat) rangeToDestination;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
+- (void) addCollisionException:(ShipEntity *)ship;
+- (void) removeCollisionException:(ShipEntity *)ship;
+- (BOOL) collisionExceptedFor:(ShipEntity *)ship;
+- (NSUInteger) defenseTargetCount;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
+- (BOOL) addDefenseTarget:(Entity *)target;
+- (void) validateDefenseTargets;
+- (BOOL) isDefenseTarget:(Entity *)target;
+- (void) removeAllDefenseTargets;
+- (void) removeDefenseTarget:(Entity *)target;
+- (double) rangeToPrimaryTarget;
+- (double) rangeToSecondaryTarget:(Entity *)target;
+- (double) approachAspectToPrimaryTarget;
+- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target;
 
 @end
 
