@@ -257,7 +257,31 @@ OO_TEST(facadeAndPart)
 // Slice 14 (bead oo-7jhs5): demo ships, safe vectors, hazards on route, laser hits. Written against
 // the Objective-C API and run on the unconverted class first. The entities sit in the universe's
 // sorted list by hand (no -addEntity:, which needs the whole game).
+
+// PLAYER: a stand-in (OOGetPlayer() asserts there is a player, and an entity's position is kept
+// relative to the player's viewpoint, as test_Entity's TestPlayer). It answers the player
+// messages the tests reach as an absent player's nil did.
+@interface UniverseTestPlayer: Entity
+@end
+
+@implementation UniverseTestPlayer
+- (HPVector) viewpointPosition	{ return kZeroHPVector; }
+- (id) dockedStation			{ return nil; }
+@end
+
+
+@class PlayerEntity;
+extern PlayerEntity *gOOPlayer;
+
 namespace {
+
+void SetUpTestPlayer()
+{
+	static Entity *player = nil;
+	if (player == nil)  player = [[UniverseTestPlayer alloc] init];	// never released, as the player is not
+	gOOPlayer = (PlayerEntity *)player;
+}
+
 
 void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 {
@@ -270,6 +294,7 @@ void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 
 Entity *MakeEntity(HPVector position, GLfloat radius)
 {
+	SetUpTestPlayer();
 	Entity *entity = [[[Entity alloc] init] autorelease];
 	[entity setPosition:position];
 	[entity setCollisionRadius:radius];
@@ -299,6 +324,7 @@ OO_TEST(slice14NoEntity)
 		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:nil toDistance:0 fromPoint:p2], kZeroHPVector));
 		OO_CHECK([u firstShipHitByLaserFromShip:nil inDirection:WEAPON_FACING_FORWARD offset:kZeroVector gettingRangeFound:NULL] == nil);
 		// The demo ship needs a docked player; with none there is no ship.
+		SetUpTestPlayer();
 		OO_CHECK([u cxx_makeDemoShipWithRole:"oolite-test" spinning:YES] == nil);
 	}
 }
@@ -499,8 +525,9 @@ OO_TEST(slice15TimeAndCollisions)
 
 // Slice 16 (bead oo-focfo): the view direction, custom sounds, screen
 // backgrounds, messages. Written against the Objective-C API and run on the unconverted class
-// first. A headless universe has no GUIs and no player, so the messages are seen in the members
-// that remember them (the current message and its repeat times).
+// first. A headless universe has no GUIs and no player (the messages that reach the player's
+// script events are left to the goldens), so the messages are seen in the members that remember
+// them (the current message and its repeat times).
 namespace {
 
 std::optional<std::string> CurrentMessage(Universe *u)	{ return u->_cxxUniverse->currentMessage; }
@@ -524,20 +551,17 @@ OO_TEST(slice16Messages)
 		OO_CHECK(MessageRepeatTime(u) == 16.0);
 		[u cxx_displayMessage:std::string("b") forCount:3];
 		OO_CHECK(CurrentMessage(u) == "b" && MessageRepeatTime(u) == 18.0);
+		u->_cxxUniverse->universal_time = 20.0;
+		[u cxx_displayMessage:std::string("b") forCount:3];	// the same, once the repeat time has passed
+		OO_CHECK(CurrentMessage(u) == "b" && MessageRepeatTime(u) == 26.0);
 
 		// A countdown message waits for its own repeat time, whatever the message.
 		[u cxx_displayCountdownMessage:std::string("c") forCount:5];
-		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 17.0);
+		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 25.0);
 		[u cxx_displayCountdownMessage:std::string("d") forCount:5];
-		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 17.0);
-
-		[u cxx_addMessage:std::string("e") forCount:3];
-		OO_CHECK(CurrentMessage(u) == "e" && MessageRepeatTime(u) == 18.0);
-		u->_cxxUniverse->universal_time = 13.0;
-		[u cxx_addMessage:std::string("e") forCount:3];	// the same, too soon
-		OO_CHECK(MessageRepeatTime(u) == 18.0);
-		[u cxx_addMessage:std::string("e") forCount:3 forceDisplay:YES];
-		OO_CHECK(MessageRepeatTime(u) == 19.0);
+		OO_CHECK(CurrentMessage(u) == "c" && CountdownRepeatTime(u) == 25.0);
+		[u cxx_displayCountdownMessage:std::string("c") forCount:5];	// the same message: nothing
+		OO_CHECK(CountdownRepeatTime(u) == 25.0);
 
 		[u clearPreviousMessage];
 		OO_CHECK(!CurrentMessage(u).has_value());
@@ -550,18 +574,12 @@ OO_TEST(slice16ViewDirection)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
-		u->_cxxUniverse->_descriptions = oo::PList(oo::PList::Dict{ { "aft-view-string", oo::PList("Aft View") } });
 
+		// The view it already has, with no GUI shown: nothing changes and nothing is said. (A
+		// change speaks through the player's script events, which need the whole game.)
+		u->_cxxUniverse->viewDirection = VIEW_AFT;
 		[u setViewDirection:VIEW_AFT];
-		OO_CHECK([u viewDirection] == VIEW_AFT && CurrentMessage(u) == "Aft View");
-		[u clearPreviousMessage];
-		[u setViewDirection:VIEW_AFT];	// no change: no message
-		OO_CHECK(!CurrentMessage(u).has_value());
-
-		// A view with no description says its key.
-		[u setViewDirection:VIEW_PORT];
-		OO_CHECK([u viewDirection] == VIEW_PORT && CurrentMessage(u) == "port-view-string");
-		OO_CHECK(![u displayGUI]);
+		OO_CHECK([u viewDirection] == VIEW_AFT && !CurrentMessage(u).has_value() && ![u displayGUI]);
 	}
 }
 
@@ -607,6 +625,7 @@ OO_TEST(slice17UpdateOff)
 	@autoreleasepool
 	{
 		Universe *u = NewUniverse();
+		SetUpTestPlayer();	// a player that is not dead: no dead player's update
 		u->_cxxUniverse->no_update = YES;
 		u->_cxxUniverse->universal_time = 5.0;
 		u->_cxxUniverse->time_delta = 0.5;
