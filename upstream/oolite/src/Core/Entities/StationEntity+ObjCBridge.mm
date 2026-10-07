@@ -199,3 +199,29 @@ OOWeakReference *StationEntityWeakReference(StationEntity *station)	{ return [[s
 - (void) addShipToStationCount:(ShipEntity *)ship	{ _cxxStation->addShipToStationCount(ship); }
 
 @end
+
+
+// Slice 3 of docs/phases/3-slices/StationEntity.md (bead oo-hjzwk).
+@implementation StationEntity (OOSlice3)
+
+- (BOOL) collideWithShip:(ShipEntity *)other	{ return _cxxStation->cxx::StationEntity::collideWithShip(other); }
+- (BOOL) hasHostileTarget	{ return _cxxStation->cxx::StationEntity::hasHostileTarget(); }
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier	{ _cxxStation->cxx::StationEntity::takeEnergyDamage(amount, oo::ToCxx(ent), oo::ToCxx(other), weaponIdentifier); }
+- (void) adjustVelocity:(Vector)xVel	{ _cxxStation->cxx::StationEntity::adjustVelocity(xVel); }
+- (void) takeScrapeDamage:(double)amount from:(Entity *)ent	{ _cxxStation->cxx::StationEntity::takeScrapeDamage(amount, ent); }
+- (void) takeHeatDamage:(double)amount	{ _cxxStation->cxx::StationEntity::takeHeatDamage(amount); }
+- (std::optional<std::string>) cxx_allegiance	{ return _cxxStation->getAllegiance(); }
+- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance	{ _cxxStation->setAllegiance(newAllegiance); }
+- (OOStationAlertLevel) alertLevel	{ return _cxxStation->getAlertLevel(); }
+- (void) setAlertLevel:(OOStationAlertLevel)level signallingScript:(BOOL)signallingScript	{ _cxxStation->setAlertLevel(level, signallingScript); }
+- (void) increaseAlertLevel	{ _cxxStation->increaseAlertLevel(); }
+- (void) decreaseAlertLevel	{ _cxxStation->decreaseAlertLevel(); }
+- (void) becomeExplosion	{ _cxxStation->cxx::StationEntity::becomeExplosion(); }
+- (void) becomeEnergyBlast	{ _cxxStation->cxx::StationEntity::becomeEnergyBlast(); }
+- (void) becomeLargeExplosion:(double)factor	{ _cxxStation->cxx::StationEntity::becomeLargeExplosion(factor); }
+- (void) acceptPatrolReportFrom:(ShipEntity*)patrol_ship	{ _cxxStation->acceptPatrolReportFrom(patrol_ship); }
+- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other	{ return _cxxStation->acceptDockingClearanceRequestFrom(other); }
+- (unsigned) currentlyInDockingQueues	{ return _cxxStation->currentlyInDockingQueues(); }
+- (unsigned) currentlyInLaunchingQueues	{ return _cxxStation->currentlyInLaunchingQueues(); }
+
+@end

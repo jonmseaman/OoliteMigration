@@ -159,6 +159,27 @@ public:
 	void noteDockedShip(::ShipEntity *ship);
 	void addShipToStationCount(::ShipEntity *ship);
 
+	// Slice 3: docking clearance, damage, allegiance and alert level.
+	bool collideWithShip(::ShipEntity *other) override;
+	bool hasHostileTarget() override;
+	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
+	void adjustVelocity(Vector xVel) override;
+	void takeScrapeDamage(double amount, ::Entity *ent) override;
+	void takeHeatDamage(double amount) override;
+	std::optional<std::string> getAllegiance();
+	void setAllegiance(const std::optional<std::string> &newAllegiance);
+	OOStationAlertLevel getAlertLevel();
+	void setAlertLevel(OOStationAlertLevel level, bool signallingScript);
+	void increaseAlertLevel();
+	void decreaseAlertLevel();
+	void becomeExplosion() override;
+	void becomeEnergyBlast() override;
+	void becomeLargeExplosion(double factor) override;
+	void acceptPatrolReportFrom(::ShipEntity *patrol_ship);
+	std::optional<std::string> acceptDockingClearanceRequestFrom(::ShipEntity *other);
+	unsigned currentlyInDockingQueues();
+	unsigned currentlyInLaunchingQueues();
+
 	// @private in Objective-C: private once StationEntity is converted; public while the facade's
 	// unconverted methods read them, since an Objective-C class cannot be a C++ friend
 	::OOWeakSet				*_shipsOnHold = {};
