@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObjCRef.h"
 #include <string_view>
 
-@class OOSound, OOSystemDescriptionManager, OOScript;
+@class OOSound, OOMusic, OOSystemDescriptionManager, OOScript;
 namespace cxx { class OOMusic; }
 
 
