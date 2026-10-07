@@ -340,3 +340,11 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
   `3-slices/HeadUpDisplay.md` landed (oo-engam, oo-8fiz9, oo-8j1y2, oo-2p1ug, oo-kdrc6, oo-0tx6c) and
   each reports `--slice-done`; the frame-hash proof is the goldens, run nightly from the slices'
   `tests/nightly/checks.txt` lines.
+- 2026-10-06 — `OOVisualEffectEntity` fully converted (umbrella bead oo-xjga): slice 1 (oo-ukxy8, the
+  class shell and entity side) and slice 2 (oo-xkf6c, the scripted surface) of
+  `3-slices/OOVisualEffectEntity.md` landed; `OOVisualEffectEntity.h/.mm` have no Objective-C, and the
+  callers reach `cxx::OOVisualEffectEntity` through its façade until oo-9ht.165 deletes it.
+- 2026-10-07 — ShipEntity fully converted (oo-k8a): all 34 slices of `3-slices/ShipEntity.md` and
+  the four of `3-slices/ShipEntityAI.md` report `--slice-done`; the last `@implementation ShipEntity`
+  left `ShipEntity.mm` (its body was only file-scope statics and plain-C helpers, kept verbatim as
+  file-scope C++) and the façade's empty primary `@implementation` is now in `ShipEntity+ObjCBridge.mm`.

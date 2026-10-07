@@ -3779,6 +3779,30 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
 
+## Amendment (bead oo-ukxy8): an entity leaf's class-shell slice whose later slice answers a protocol
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Entities/OOVisualEffectEntity.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOVisualEffectEntity.md`), `OOVisualEffectEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOVisualEffectEntity.mm`. Follows amendments oo-dnbf, oo-0mxi and oo-ubjo.
+
+**Decision (recommended defaults).**
+
+1. **The shell slice's members are one `namespace cxx { }` block before the later slice's in-place
+   category** (`OOVisualEffectEntity (OOVisualEffectEntityScripting)`), moved there from between that
+   slice's methods (amendment oo-zkpmt item 2), so the category is one block.
+2. **A protocol whose methods are all the later slice's** (`OOBeaconEntity`) is adopted by that
+   category's interface in `X+ObjCBridge.h`, not by the façade's `@interface`, so the façade's own
+   `@implementation` is complete; static conformance (`Entity<OOBeaconEntity> *`) is unchanged.
+   A protocol the shell answers (`OOSubEntity`) stays on the façade, forwarded in one line each.
+3. **A protocol-qualified Objective-C type named inside `namespace cxx`** (`Entity<OOSubEntity> *`,
+   where `::Entity<…>` parses as a template) gets a global typedef in `X.h`
+   (`typedef Entity<OOSubEntity> OOVisualEffectSubEntity;`).
+4. **A file-local helper of the slice that asked an entity `-isVisualEffect`** asks the converted
+   root (`oo::ToCxx((::Entity *)e)->getIsVisualEffect()`), which answers for Objective-C subclasses
+   through their adapters (amendment oo-9ht.139 item 1).
+5. **An initialiser that released itself on failure** is a `bool` member the façade's initialiser
+   runs after making the C++ part; on false the façade releases itself and answers nil.
 ## Amendment (bead oo-zkpmt): a class-shell slice whose later slices are the class's own `@X` block
 
 - Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
@@ -4308,3 +4332,184 @@ façade's deletion bead (oo-9ht.144) removes them with the forwarders.
    façade's forwarder converts (`oo::ToCxx(who)`), as slice 6's `-checkCloseCollisionWith:` does.
 4. **The tests** set a ship's target through the helper `SetPrimaryTarget()`, not `-addTarget:`,
    which tells the ship's scripts (the unit tests' ships have no JavaScript object).
+
+## Amendment (bead oo-zd80m): ShipEntity slices 24-34, a block converted beside the others
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 24-34 (beads oo-zd80m, oo-k6wuw, oo-v92af, oo-pnfyp,
+  oo-40ocf, oo-g900k, oo-ogoct, oo-gx86h, oo-5e0ny, oo-tz2ra, oo-nkyn3). Exemplar:
+  `src/Core/Entities/ShipEntity.h/.mm`, `ShipEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendment oo-60fwo (the class shell) and the
+  conventions of amendment oo-mvzmb (slices 2-12), which this block repeats in short so that it
+  stands whichever block lands first.
+
+**Context.** Three workers convert slices of `ShipEntity.mm` at once (2-12, 13-23, 24-34), each
+block stacked on `main` and on nothing of the others'. The later slices move the ship's target
+memory, tracking, weapons, missiles, collisions, damage, docking, comms and script events; the
+Objective-C subclasses (`PlayerEntity`, `StationEntity`, `DockEntity`, `ProxyPlayerEntity`)
+override a good part of them.
+
+**Decision (recommended defaults).**
+
+1. **As amendment oo-mvzmb items 1-5 and 7:** a slice's members are a `namespace cxx` block of
+   their own after the `@implementation`, under a comment naming the slice and its bead, declared
+   in a block of `cxx::ShipEntity` under the same comment; the façade forwards each selector from
+   a category `ShipEntity (OOSliceN)` in `ShipEntity+ObjCBridge.mm`, and the selector's declaration
+   moves to that category's `@interface` in the bridge header (one the class did not declare is
+   declared there). Sends to `self` in a moved body stay sends (`::ShipEntity *self =
+   oo::ToObjC(this)`), so a subclass's override still runs and a selector of a slice not yet
+   landed still answers. Each slice adds its `OO_TEST(sliceN...)` cases to `test_ShipEntity.mm`,
+   written against the façade and run on the unconverted class first.
+2. **A member an Objective-C subclass overrides is `virtual` and gets a line in the ship's adapter
+   `ObjCShipEntity`** (private to `ShipEntity+ObjCBridge.mm`, derived from
+   `oo::ObjCEntity<cxx::ShipEntity>`, made by `-initShipPart`), which messages the Objective-C
+   object; its forwarder calls `cxx::ShipEntity`'s own member (`_cxxShip->cxx::ShipEntity::m()`),
+   which is what `[super ...]` reached. A member that overrides a virtual member of `cxx::Entity`
+   (`throwSparks()`, `getVelocity()`, `takeEnergyDamage()`, `dumpSelfState()`,
+   `descriptionForObjDump()`) is `override`; the root's template already has its line. The block
+   that lands first adds the adapter class; a merge with another block keeps one class and every
+   block's lines, each under its slice's comment.
+3. **Every Objective-C class named in a member is written `::X`**, whether or not a `cxx::X`
+   exists yet (`::StationEntity *`, `[::OOColor ...]`): classes are converting under the block,
+   and a bare name that a later `cxx::X` captures breaks the build on a merge (p3-resume note of
+   2026-10-06 03:00). Protocol qualifiers drop after `::X` (oo-mvzmb item 5).
+4. **A member whose selector names a data member is `getX`** (`-behaviour` is `getBehaviour()`,
+   `-coordinates` `getCoordinates()`, `-isDemoShip` `getIsDemoShip()`), as slice 11's `getThrust()`;
+   `-velocity` is `getVelocity()`, the root's virtual.
+5. **The forwarder keeps the Objective-C signature**; a result the member answers as a plainer
+   type (`::Entity *` for `Entity<OOSubEntity> *`) is cast back in the forwarder.
+
+6. **A unit inside a preprocessor condition keeps it** around its member, declaration and
+   forwarder (`#if OO_SALVAGE_SUPPORT` for the salvage methods, `#ifndef NDEBUG` for
+   `dumpSelfState()` and `descriptionForObjDump()`, as `cxx::Entity` declares them).
+7. **A `[super x]` that still reaches the root after a slice makes `x` a `cxx::ShipEntity`
+   override** is pointed at the root's member by name in the unconverted method
+   (`_cxxShip->cxx::OOEntityWithDrawable::getVelocity()` in `-update:`, slice 30): the root's
+   `-velocity` answers `superGetVelocity()`, which is now the ship's.
+8. **A C function the plan assigns to a slice loses its messages without a new interface**
+   (`--slice-done` counts any Objective-C syntax in it): `AuthorityPredicate()` (slice 33) gets
+   the two answers it messaged for in its parameter, read once by its only caller;
+   the shader and weapon-range helpers (slice 34) call `cxx::ResourceManager`,
+   `cxx::OOEquipmentType` and the entity's C++ part, and ask the runtime for the binding target's
+   class (`-isPlayerLikeShip` is YES for exactly `PlayerEntity` and `ProxyPlayerEntity`).
+
+**Consequences.** One adapter class for the ship whichever block lands first; the façade's
+deletion bead removes the categories, the forwarders and the adapter's lines.
+
+## Amendment (bead oo-64ako): the class shell of an Objective-C subclass of the half-converted ShipEntity (StationEntity)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/StationEntity.md` slice 1. Exemplar: `src/Core/Entities/StationEntity.h/.mm`,
+  `StationEntity+ObjCBridge.h/.mm`, `ShipEntity+ObjCAdapter.h`, `tests/unit/core/test_StationEntity.mm`.
+  Follows amendments oo-60fwo (ShipEntity's class shell) and oo-mvzmb / oo-zd80m (its later slices).
+
+**Context.** `StationEntity` is the first subclass of `ShipEntity` to convert. The ship's C++ part
+is made by the ship's façade (`-initShipPart`) as the adapter `ObjCShipEntity`, private to
+`ShipEntity+ObjCBridge.mm`, over `cxx::ShipEntity`; a station's part must be a
+`cxx::StationEntity` and still carry every line of that adapter, since the station's unconverted
+methods and the Objective-C ship methods it overrides are reached from C++ through them.
+
+**Decision (recommended defaults).**
+
+1. **The subclass shell is amendment oo-60fwo's, one level down:** `cxx::StationEntity :
+   cxx::ShipEntity` holds the ivars as public, zero-initialised members with their names, and the
+   façade `@interface StationEntity : ShipEntity` carries one `@public`, borrowed, typed alias,
+   `cxx::StationEntity *_cxxStation`, set by its override of `-initWithCxxEntity:` (a checked
+   `dynamic_cast`). Unconverted station code reads its ivars as `_cxxStation->alertLevel` (the
+   compiler-guided rewrite of oo-60fwo item 1); typed `oo::ToCxx(::StationEntity *)` and
+   `oo::ToObjC(cxx::StationEntity *)` are the root's crossings, `static_cast`.
+2. **The ship's adapter becomes a template, `oo::ObjCShipEntity<Base>`,** moved unchanged (each
+   line's `_objcOwner` is `this->_objcOwner`, the base being dependent) to the private header
+   `ShipEntity+ObjCAdapter.h` with the façade's private `-initShipPart`. The ship's façade makes
+   `ObjCShipEntity<cxx::ShipEntity>`; the station's façade overrides `-initShipPart` to make
+   `ObjCShipEntity<cxx::StationEntity>`. Every later ship slice still adds its lines in one place;
+   `PlayerEntity` and `DockEntity` take the same route when they convert.
+3. **Slice 1's units are members of `cxx::StationEntity`** in one `namespace cxx` block after the
+   `@implementation`, forwarded by the category `StationEntity (OOSlice1)` in the bridge `.mm`,
+   whose `@interface` in the bridge header takes their declarations from the primary interface
+   (amendment oo-mvzmb item 1). The initialiser (`-cxx_initWithKey:definition:`, three assignments
+   after `[super ...]`) and `-dealloc` (with the root's no-part guard) are the façade's category
+   `StationEntity (OOObjCBridge)`, as oo-60fwo item 6. Members that override the ship's
+   (`isUnpiloted`, `setUpShipFromDictionary`, `setUpSubEntities`, `descriptionComponents`,
+   `dumpSelfState`) are `override`; their forwarders call `cxx::StationEntity`'s own member and a
+   `[super x]` in a moved body is `ShipEntity::x()`. Getters named like a member take `get`
+   (amendment oo-zd80m item 4: `getEquivalentTechLevel()`, `getPlanet()`, `getHasNPCTraffic()`).
+4. **Tests:** `test_StationEntity.mm` (['*'], as `test_ShipEntity`), against the façade, run on the
+   unconverted class first; its station is a subclass whose only override is the virtual dock's
+   `-cxx_setUpOneStandardSubentity:asTurret:` (the dock is a shipdata entry).
+
+**Consequences.** One more façade (`StationEntity+ObjCBridge`, deletion bead filed with this one);
+`ShipEntity+ObjCBridge`'s deletion bead also deletes `ShipEntity+ObjCAdapter.h`. Slices 2-4 each
+move their units into `cxx::StationEntity` and drop `_cxxStation->` from them.
+
+## Amendment (bead oo-42dr): ShipEntity's category files, after the class's last slice
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Entities/ShipEntityScriptMethods.h/.mm` (bead oo-42dr), `ShipEntityLoadRestore.h/.mm`
+  (bead oo-kw44), the blocks of `ShipEntity.h` and `ShipEntity+ObjCBridge.h/.mm` naming them,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendments oo-o89 item 4, oo-9fwb and oo-mvzmb.
+
+**Context.** `ShipEntityScriptMethods.mm` and `ShipEntityLoadRestore.mm` are categories of
+`ShipEntity` in files of their own, converted after the 34 slices of `ShipEntity.mm`. Their
+callers are Objective-C (`OOJSShip`, the legacy script engine) or C++ that still messages the
+façade (`cxx::WormholeEntity`, `cxx::ShipEntity::spawn()`).
+
+**Decision (recommended defaults).**
+
+1. **The category's methods become members of `cxx::ShipEntity`, defined in the category's own
+   file** in a `namespace cxx` block, and declared in a block of `cxx::ShipEntity` under a comment
+   naming the category and its bead (amendment oo-o89 item 4). A class method is a static member
+   (`shipRestoredFromDictionary()`, which answers `::ShipEntity *` where it answered `id`); a
+   method of a private category of the file (`LoadRestoreInternal`) is a member like the others,
+   public while the class is half converted (amendment oo-60fwo item 2). Sends to `self` stay sends
+   to the façade (amendment oo-mvzmb item 4).
+2. **The category's `@interface` moves to `ShipEntity+ObjCBridge.h`, and its forwarders to
+   `ShipEntity+ObjCBridge.mm`**, under the category's own name, not to bridge files of the
+   category's file (amendment oo-9fwb item 2): the façade is the ship's, and its deletion bead
+   (oo-9ht.144) removes every forwarding category at once.
+3. **The category's header stays**, for the files that import it, with what it declared that is
+   not the category (`OOShipSaveContext`); `ShipEntity.h` forward-declares such a type for its
+   members.
+4. **The tests** pin the cases that reach neither the uninitialised universe nor the ship
+   registry (whose data the unit test does not load: it would scan for add-ons); the goldens run
+   the rest.
+
+**Consequences.** No `@implementation` is left in the ship's category files; their callers are
+unchanged and reach the members through the façade until their own conversion.
+
+## Amendment (bead oo-iebuz): ShipEntityAI.mm, a category file converted slice by slice
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntityAI.md` (beads oo-iebuz, oo-xurzn, oo-wc9o3, oo-lqyhf). Exemplar:
+  `src/Core/Entities/ShipEntityAI.h/.mm`, the blocks of `ShipEntity.h`, `StationEntity.h` and the
+  two façades' bridge files naming them, `tests/unit/core/test_ShipEntityAI.mm`. Follows amendments
+  oo-42dr (the ship's category files), oo-mvzmb (later slices) and oo-64ako (the station's shell).
+
+**Context.** `ShipEntityAI.mm` holds four categories of `ShipEntity` (`AI`, `PureAI`,
+`OOAIPrivate`, the macro-generated `OOAIStationStubs`) and one of `StationEntity`
+(`OOAIPrivate`), in four slices; `PureAI` alone spans slices 2-4.
+
+**Decision (recommended defaults).**
+
+1. **Amendment oo-42dr per slice:** the slice's methods are `cxx::ShipEntity` members defined in a
+   `namespace cxx` block at the end of `ShipEntityAI.mm`, declared in a block of `cxx::ShipEntity`
+   naming the slice. A category the slice empties (`AI`, `OOAIPrivate`; `PureAI` at slice 4) keeps
+   its name: its `@interface` moves whole to `ShipEntity+ObjCBridge.h` and its forwarders to
+   `ShipEntity+ObjCBridge.mm`. A category the slice only thins (`PureAI` at slices 2 and 3)
+   forwards from `ShipEntity (OOAISliceN)`, whose `@interface` takes the moved declarations from
+   the private one, so the category's remaining `@implementation` stays complete. A selector no
+   interface declared (`-performBuoyTumble`) is declared with its category's.
+2. **The station's unit is a member of `cxx::StationEntity`** (`acceptDistressMessageFrom()`,
+   `override` of the ship's, which is `virtual` and has its line in `oo::ObjCShipEntity`); its
+   category's `@interface` and forwarder move to `StationEntity+ObjCBridge.h/.mm`.
+3. **The macro-generated stubs are written out as members** (`increaseAlertLevel()` …
+   `abortAllDockings()`), each logging through one file-local function, and forwarded by an
+   implementation-only `ShipEntity (OOAIStationStubs)` in the bridge `.mm`, as the macros made it:
+   `StationEntity` declares the selectors with its own return types. They are not virtual: nothing
+   calls them from C++, AI plists send them by name, and the station's `-launchDefenseShip` answers
+   a ship where the stub answered nothing, which no C++ override can.
+4. **`ShipEntity.h` repeats `Universe.h`'s `EntityFilterPredicate` typedef** for the scans'
+   members (amendment oo-42dr item 3).
+
+**Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
+ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
