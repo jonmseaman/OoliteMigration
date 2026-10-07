@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
-@class OOExhaustPlumeEntity;
 
 
 #ifdef __cplusplus
@@ -41,9 +40,8 @@ void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
 
 
 /*	The bodies of OOExhaustPlumeEntity (OOJavaScriptExtensions), which the engine reaches by
-	selector. Its methods are one-line forwarders to these on the OOExhaustPlumeEntity facade, in
-	OOExhaustPlumeEntity+ObjCBridge.mm (bead oo-9ht.48), until that facade goes (oo-9ht.110;
-	proposed ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
+	selector through the root's JS members: the C++ OOExhaustPlumeEntity's overrides call these
+	(bead oo-9ht.110; proposed ADR-0056 amendments oo-ppc, oo-ykoy, oo-6ia4 and oo-9ht.107).
 */
 void OOJSExhaustPlumeGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSExhaustPlumeJSClassName(void);
