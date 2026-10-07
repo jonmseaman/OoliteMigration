@@ -1295,7 +1295,7 @@ void cxx::HeadUpDisplay::drawYellowSurround(const oo::PList &info)
 
 void cxx::HeadUpDisplay::drawMultiFunctionDisplay(const oo::PList &info, const std::string &text, NSUInteger index)
 {
-	PlayerEntity		*player1 = PLAYER;
+	::PlayerEntity		*player1 = PLAYER;
 	struct CachedInfo	cached;
 	NSInteger			i, x, y;
 	NSSize				siz, tmpsiz;
