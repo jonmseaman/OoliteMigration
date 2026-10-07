@@ -148,3 +148,11 @@ extern Universe *gSharedUniverse;
 - (void) setECMVisualFXEnabled:(BOOL)isEnabled	{ _cxxUniverse->setECMVisualFXEnabled(isEnabled); }
 
 @end
+
+
+@implementation Universe (OOSlice18)
+
+- (void) filterSortedLists	{ _cxxUniverse->filterSortedLists(); }
+- (void) setGalaxyTo:(OOGalaxyID) g	{ _cxxUniverse->setGalaxyTo(g); }
+
+@end

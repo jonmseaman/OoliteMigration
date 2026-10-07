@@ -6064,525 +6064,6 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 }	// namespace
 
 
-- (void) filterSortedLists
-{
-	/*
-	Eric, 17-10-2010: raised the area to be not filtered out, from the combined collision size to 2x this size.
-	This allows this filtered list to be used also for proximity_alert and not only for collisions. Before the
-	proximity_alert could only trigger when already very near a collision. To late for ships to react.
-	This does raise the number of entities in the collision chain with as result that the number of pairs to compair
-	becomes significant larger. However, almost all of these extra pairs are dealt with by a simple distance check.
-	I currently see no noticeable negative effect while playing, but this change might still give some trouble I missed.
-	*/
-	Entity	*e0, *next, *prev;
-	OOHPScalar start, finish, next_start, next_finish, prev_start, prev_finish;
-	
-	// using the z_list - set or clear collisionTestFilter and clear collision_chain
-	e0 = _cxxUniverse->z_list_start;
-	while (e0)
-	{
-		e0->_cxxEntity->collisionTestFilter = [e0 canCollide]?0:3;
-		e0->_cxxEntity->collision_chain = nil;
-		e0 = e0->_cxxEntity->z_next;
-	}
-	// done.
-	
-	/* We need to check the lists in both ascending and descending order
-	 * to catch some cases with interposition of entities. We set cTF =
-	 * 1 on the way up, and |= 2 on the way down. Therefore it's only 3
-	 * at the end of the list if it was caught both ways on the same
-	 * list. - CIM: 7/11/2012 */
-
-	// start with the z_list
-	e0 = _cxxUniverse->z_list_start;
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->z_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->z_next;
-		if (next)
-		{
-			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
-			if (next_start < finish)
-			{
-				// e0 and next overlap
-				while ((next)&&(next_start < finish))
-				{
-					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
-					if (next_finish > finish)
-						finish = next_finish;
-					e0 = next;
-					next = e0->_cxxEntity->z_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->z_next;
-					if (next)
-						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
-				}
-				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
-			}
-		}
-		else // (next == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
-		}
-		e0 = next;
-	}
-	// list filtered upwards, now filter downwards
-	// e0 currently = end of z list
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->z_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->z_previous;
-		if (prev)
-		{
-			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
-			if (prev_start > finish)
-			{
-				// e0 and next overlap
-				while ((prev)&&(prev_start > finish))
-				{
-					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
-					if (prev_finish < finish)
-						finish = prev_finish;
-					e0 = prev;
-					prev = e0->_cxxEntity->z_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->z_previous;
-					if (prev)
-						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
-				}
-				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
-			}
-		}
-		else // (prev == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
-		}
-		e0 = prev;
-	}
-	// done! list filtered
-	
-	// then with the y_list, z_list singletons now create more gaps..
-	e0 = _cxxUniverse->y_list_start;
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->y_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->y_next;
-		if (next)
-		{
-			
-			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
-			if (next_start < finish)
-			{
-				// e0 and next overlap
-				while ((next)&&(next_start < finish))
-				{
-					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
-					if (next_finish > finish)
-						finish = next_finish;
-					e0 = next;
-					next = e0->_cxxEntity->y_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->y_next;
-					if (next)
-						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
-				}
-				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
-			}
-		}
-		else // (next == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
-		}
-		e0 = next;
-	}
-	// list filtered upwards, now filter downwards
-	// e0 currently = end of y list
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->y_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->y_previous;
-		if (prev)
-		{
-			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
-			if (prev_start > finish)
-			{
-				// e0 and next overlap
-				while ((prev)&&(prev_start > finish))
-				{
-					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
-					if (prev_finish < finish)
-						finish = prev_finish;
-					e0 = prev;
-					prev = e0->_cxxEntity->y_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->y_previous;
-					if (prev)
-						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
-				}
-				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
-			}
-		}
-		else // (prev == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
-		}
-		e0 = prev;
-	}
-	// done! list filtered
-	
-	// finish with the x_list
-	e0 = _cxxUniverse->x_list_start;
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.x - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->x_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->x_next;
-		if (next)
-		{
-			next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
-			if (next_start < finish)
-			{
-				// e0 and next overlap
-				while ((next)&&(next_start < finish))
-				{
-					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
-					if (next_finish > finish)
-						finish = next_finish;
-					e0 = next;
-					next = e0->_cxxEntity->x_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->x_next;
-					if (next)
-						next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
-				}
-				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
-			}
-		}
-		else // (next == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
-		}
-		e0 = next;
-	}
-	// list filtered upwards, now filter downwards
-	// e0 currently = end of x list
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.x + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->x_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->x_previous;
-		if (prev)
-		{
-			prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
-			if (prev_start > finish)
-			{
-				// e0 and next overlap
-				while ((prev)&&(prev_start > finish))
-				{
-					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
-					if (prev_finish < finish)
-						finish = prev_finish;
-					e0 = prev;
-					prev = e0->_cxxEntity->x_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->x_previous;
-					if (prev)
-						prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
-				}
-				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
-			}
-		}
-		else // (prev == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
-		}
-		e0 = prev;
-	}
-	// done! list filtered
-	
-	// repeat the y_list - so gaps from the x_list influence singletons
-	e0 = _cxxUniverse->y_list_start;
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->y_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->y_next;
-		if (next)
-		{
-			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
-			if (next_start < finish)
-			{
-				// e0 and next overlap
-				while ((next)&&(next_start < finish))
-				{
-					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
-					if (next_finish > finish)
-						finish = next_finish;
-					e0 = next;
-					next = e0->_cxxEntity->y_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->y_next;
-					if (next)
-						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
-				}
-				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
-			}
-		}
-		else // (next == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
-		}
-		e0 = next;
-	}
-	// e0 currently = end of y list
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->y_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->y_previous;
-		if (prev)
-		{
-			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
-			if (prev_start > finish)
-			{
-				// e0 and next overlap
-				while ((prev)&&(prev_start > finish))
-				{
-					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
-					if (prev_finish < finish)
-						finish = prev_finish;
-					e0 = prev;
-					prev = e0->_cxxEntity->y_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->y_previous;
-					if (prev)
-						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
-				}
-				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
-			}
-		}
-		else // (prev == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
-		}
-		e0 = prev;
-	}
-	// done! list filtered
-	
-	// finally, repeat the z_list - this time building collision chains...
-	e0 = _cxxUniverse->z_list_start;
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
-		next = e0->_cxxEntity->z_next;
-		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
-			next = next->_cxxEntity->z_next;
-		if (next)
-		{
-			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
-			if (next_start < finish)
-			{
-				// e0 and next overlap
-				while ((next)&&(next_start < finish))
-				{
-					// chain e0 to next in collision
-					e0->_cxxEntity->collision_chain = next;
-					// skip forward to the next gap or the end of the list
-					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
-					if (next_finish > finish)
-						finish = next_finish;
-					e0 = next;
-					next = e0->_cxxEntity->z_next;
-					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						next = next->_cxxEntity->z_next;
-					if (next)
-						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
-				}
-				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
-				e0->_cxxEntity->collision_chain = nil;	// end the collision chain
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter = 1;
-			}
-		}
-		else // (next == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter = 1;
-		}
-		e0 = next;
-	}
-	// e0 currently = end of z list
-	while (e0)
-	{
-		// here we are either at the start of the list or just past a gap
-		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
-		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
-		prev = e0->_cxxEntity->z_previous;
-		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
-			prev = prev->_cxxEntity->z_previous;
-		if (prev)
-		{
-			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
-			if (prev_start > finish)
-			{
-				// e0 and next overlap
-				while ((prev)&&(prev_start > finish))
-				{
-					// e0 probably already in collision chain at this point, but if it
-					// isn't we have to insert it
-					if (prev->_cxxEntity->collision_chain != e0)
-					{
-						if (prev->_cxxEntity->collision_chain == nil)
-						{
-							// easy, just add it onto the start of the chain
-							prev->_cxxEntity->collision_chain = e0;
-						}
-						else
-						{
-							/* not nil and not e0 shouldn't be possible, I think.
-							 * if it is, that implies that e0->collision_chain is nil, though
-							 * so: */
-							if (e0->_cxxEntity->collision_chain == nil)
-							{
-								e0->_cxxEntity->collision_chain = prev->_cxxEntity->collision_chain;
-								prev->_cxxEntity->collision_chain = e0;
-							}
-							else
-							{
-								/* This shouldn't happen... If it does, we accept
-								 * missing collision checks and move on */
-								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(prev), oo::DescriptionOf(prev->_cxxEntity->collision_chain), oo::DescriptionOf(e0), oo::DescriptionOf(e0->_cxxEntity->collision_chain));
-							}
-						}
-					}
-					// skip forward to the next gap or the end of the list
-					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
-					if (prev_finish < finish)
-						finish = prev_finish;
-					e0 = prev;
-					prev = e0->_cxxEntity->z_previous;
-					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
-						prev = prev->_cxxEntity->z_previous;
-					if (prev)
-						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
-				}
-				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
-
-				// all the collision chains are already terminated somewhere
-				// at this point so no need to set e0->collision_chain = nil
-			}
-			else
-			{
-				// e0 is a singleton
-				e0->_cxxEntity->collisionTestFilter |= 2;
-			}
-		}
-		else // (prev == nil)
-		{
-			// at the end of the list so e0 is a singleton
-			e0->_cxxEntity->collisionTestFilter |= 2;
-		}
-		e0 = prev;
-	}
-	// done! list filtered
-}
-
-
-- (void) setGalaxyTo:(OOGalaxyID) g
-{
-	[self setGalaxyTo:g andReinit:NO];
-}
-
-
 - (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced
 {
 	int						i;
@@ -11837,6 +11318,534 @@ bool Universe::getECMVisualFXEnabled()
 void Universe::setECMVisualFXEnabled(bool isEnabled)
 {
 	ECMVisualFXEnabled = isEnabled;
+}
+
+}	// namespace cxx
+
+
+// Slice 18 of docs/phases/3-slices/Universe.md (bead oo-tail0): filterSortedLists, setGalaxyTo:. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+void Universe::filterSortedLists()
+{
+	/*
+	Eric, 17-10-2010: raised the area to be not filtered out, from the combined collision size to 2x this size.
+	This allows this filtered list to be used also for proximity_alert and not only for collisions. Before the
+	proximity_alert could only trigger when already very near a collision. To late for ships to react.
+	This does raise the number of entities in the collision chain with as result that the number of pairs to compair
+	becomes significant larger. However, almost all of these extra pairs are dealt with by a simple distance check.
+	I currently see no noticeable negative effect while playing, but this change might still give some trouble I missed.
+	*/
+	::Entity	*e0, *next, *prev;
+	OOHPScalar start, finish, next_start, next_finish, prev_start, prev_finish;
+	
+	// using the z_list - set or clear collisionTestFilter and clear collision_chain
+	e0 = z_list_start;
+	while (e0)
+	{
+		e0->_cxxEntity->collisionTestFilter = [e0 canCollide]?0:3;
+		e0->_cxxEntity->collision_chain = nil;
+		e0 = e0->_cxxEntity->z_next;
+	}
+	// done.
+	
+	/* We need to check the lists in both ascending and descending order
+	 * to catch some cases with interposition of entities. We set cTF =
+	 * 1 on the way up, and |= 2 on the way down. Therefore it's only 3
+	 * at the end of the list if it was caught both ways on the same
+	 * list. - CIM: 7/11/2012 */
+
+	// start with the z_list
+	e0 = z_list_start;
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->z_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->z_next;
+		if (next)
+		{
+			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+			if (next_start < finish)
+			{
+				// e0 and next overlap
+				while ((next)&&(next_start < finish))
+				{
+					// skip forward to the next gap or the end of the list
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					if (next_finish > finish)
+						finish = next_finish;
+					e0 = next;
+					next = e0->_cxxEntity->z_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->z_next;
+					if (next)
+						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+				}
+				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter = 1;
+			}
+		}
+		else // (next == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter = 1;
+		}
+		e0 = next;
+	}
+	// list filtered upwards, now filter downwards
+	// e0 currently = end of z list
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->z_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->z_previous;
+		if (prev)
+		{
+			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+			if (prev_start > finish)
+			{
+				// e0 and next overlap
+				while ((prev)&&(prev_start > finish))
+				{
+					// skip forward to the next gap or the end of the list
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					if (prev_finish < finish)
+						finish = prev_finish;
+					e0 = prev;
+					prev = e0->_cxxEntity->z_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->z_previous;
+					if (prev)
+						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+				}
+				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter |= 2;
+			}
+		}
+		else // (prev == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter |= 2;
+		}
+		e0 = prev;
+	}
+	// done! list filtered
+	
+	// then with the y_list, z_list singletons now create more gaps..
+	e0 = y_list_start;
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->y_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->y_next;
+		if (next)
+		{
+			
+			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+			if (next_start < finish)
+			{
+				// e0 and next overlap
+				while ((next)&&(next_start < finish))
+				{
+					// skip forward to the next gap or the end of the list
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					if (next_finish > finish)
+						finish = next_finish;
+					e0 = next;
+					next = e0->_cxxEntity->y_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->y_next;
+					if (next)
+						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+				}
+				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter = 1;
+			}
+		}
+		else // (next == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter = 1;
+		}
+		e0 = next;
+	}
+	// list filtered upwards, now filter downwards
+	// e0 currently = end of y list
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->y_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->y_previous;
+		if (prev)
+		{
+			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+			if (prev_start > finish)
+			{
+				// e0 and next overlap
+				while ((prev)&&(prev_start > finish))
+				{
+					// skip forward to the next gap or the end of the list
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					if (prev_finish < finish)
+						finish = prev_finish;
+					e0 = prev;
+					prev = e0->_cxxEntity->y_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->y_previous;
+					if (prev)
+						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+				}
+				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter |= 2;
+			}
+		}
+		else // (prev == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter |= 2;
+		}
+		e0 = prev;
+	}
+	// done! list filtered
+	
+	// finish with the x_list
+	e0 = x_list_start;
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.x - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->x_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->x_next;
+		if (next)
+		{
+			next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
+			if (next_start < finish)
+			{
+				// e0 and next overlap
+				while ((next)&&(next_start < finish))
+				{
+					// skip forward to the next gap or the end of the list
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					if (next_finish > finish)
+						finish = next_finish;
+					e0 = next;
+					next = e0->_cxxEntity->x_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->x_next;
+					if (next)
+						next_start = next->_cxxEntity->position.x - 2.0f * next->_cxxEntity->collision_radius;
+				}
+				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter = 1;
+			}
+		}
+		else // (next == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter = 1;
+		}
+		e0 = next;
+	}
+	// list filtered upwards, now filter downwards
+	// e0 currently = end of x list
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.x + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->x_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->x_previous;
+		if (prev)
+		{
+			prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
+			if (prev_start > finish)
+			{
+				// e0 and next overlap
+				while ((prev)&&(prev_start > finish))
+				{
+					// skip forward to the next gap or the end of the list
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					if (prev_finish < finish)
+						finish = prev_finish;
+					e0 = prev;
+					prev = e0->_cxxEntity->x_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->x_previous;
+					if (prev)
+						prev_start = prev->_cxxEntity->position.x + 2.0f * prev->_cxxEntity->collision_radius;
+				}
+				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter |= 2;
+			}
+		}
+		else // (prev == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter |= 2;
+		}
+		e0 = prev;
+	}
+	// done! list filtered
+	
+	// repeat the y_list - so gaps from the x_list influence singletons
+	e0 = y_list_start;
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.y - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->y_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->y_next;
+		if (next)
+		{
+			next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+			if (next_start < finish)
+			{
+				// e0 and next overlap
+				while ((next)&&(next_start < finish))
+				{
+					// skip forward to the next gap or the end of the list
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					if (next_finish > finish)
+						finish = next_finish;
+					e0 = next;
+					next = e0->_cxxEntity->y_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->y_next;
+					if (next)
+						next_start = next->_cxxEntity->position.y - 2.0f * next->_cxxEntity->collision_radius;
+				}
+				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter = 1;
+			}
+		}
+		else // (next == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter = 1;
+		}
+		e0 = next;
+	}
+	// e0 currently = end of y list
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.y + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->y_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->y_previous;
+		if (prev)
+		{
+			prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+			if (prev_start > finish)
+			{
+				// e0 and next overlap
+				while ((prev)&&(prev_start > finish))
+				{
+					// skip forward to the next gap or the end of the list
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					if (prev_finish < finish)
+						finish = prev_finish;
+					e0 = prev;
+					prev = e0->_cxxEntity->y_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->y_previous;
+					if (prev)
+						prev_start = prev->_cxxEntity->position.y + 2.0f * prev->_cxxEntity->collision_radius;
+				}
+				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter |= 2;
+			}
+		}
+		else // (prev == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter |= 2;
+		}
+		e0 = prev;
+	}
+	// done! list filtered
+	
+	// finally, repeat the z_list - this time building collision chains...
+	e0 = z_list_start;
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.z - 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start + 4.0f * e0->_cxxEntity->collision_radius;
+		next = e0->_cxxEntity->z_next;
+		while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated from the list of possible colliders - so skip it
+			next = next->_cxxEntity->z_next;
+		if (next)
+		{
+			next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+			if (next_start < finish)
+			{
+				// e0 and next overlap
+				while ((next)&&(next_start < finish))
+				{
+					// chain e0 to next in collision
+					e0->_cxxEntity->collision_chain = next;
+					// skip forward to the next gap or the end of the list
+					next_finish = next_start + 4.0f * next->_cxxEntity->collision_radius;
+					if (next_finish > finish)
+						finish = next_finish;
+					e0 = next;
+					next = e0->_cxxEntity->z_next;
+					while ((next)&&(next->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						next = next->_cxxEntity->z_next;
+					if (next)
+						next_start = next->_cxxEntity->position.z - 2.0f * next->_cxxEntity->collision_radius;
+				}
+				// now either (next == nil) or (next_start >= finish)-which would imply a gap!
+				e0->_cxxEntity->collision_chain = nil;	// end the collision chain
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter = 1;
+			}
+		}
+		else // (next == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter = 1;
+		}
+		e0 = next;
+	}
+	// e0 currently = end of z list
+	while (e0)
+	{
+		// here we are either at the start of the list or just past a gap
+		start = e0->_cxxEntity->position.z + 2.0f * e0->_cxxEntity->collision_radius;
+		finish = start - 4.0f * e0->_cxxEntity->collision_radius;
+		prev = e0->_cxxEntity->z_previous;
+		while ((prev)&&(prev->_cxxEntity->collisionTestFilter == 3))	// next has been eliminated from the list of possible colliders - so skip it
+			prev = prev->_cxxEntity->z_previous;
+		if (prev)
+		{
+			prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+			if (prev_start > finish)
+			{
+				// e0 and next overlap
+				while ((prev)&&(prev_start > finish))
+				{
+					// e0 probably already in collision chain at this point, but if it
+					// isn't we have to insert it
+					if (prev->_cxxEntity->collision_chain != e0)
+					{
+						if (prev->_cxxEntity->collision_chain == nil)
+						{
+							// easy, just add it onto the start of the chain
+							prev->_cxxEntity->collision_chain = e0;
+						}
+						else
+						{
+							/* not nil and not e0 shouldn't be possible, I think.
+							 * if it is, that implies that e0->collision_chain is nil, though
+							 * so: */
+							if (e0->_cxxEntity->collision_chain == nil)
+							{
+								e0->_cxxEntity->collision_chain = prev->_cxxEntity->collision_chain;
+								prev->_cxxEntity->collision_chain = e0;
+							}
+							else
+							{
+								/* This shouldn't happen... If it does, we accept
+								 * missing collision checks and move on */
+								OO_LOG("general.error.inconsistentState", "Unexpected state in collision chain builder prev={}, prev->c={}, e0={}, e0->c={}", oo::DescriptionOf(prev), oo::DescriptionOf(prev->_cxxEntity->collision_chain), oo::DescriptionOf(e0), oo::DescriptionOf(e0->_cxxEntity->collision_chain));
+							}
+						}
+					}
+					// skip forward to the next gap or the end of the list
+					prev_finish = prev_start - 4.0f * prev->_cxxEntity->collision_radius;
+					if (prev_finish < finish)
+						finish = prev_finish;
+					e0 = prev;
+					prev = e0->_cxxEntity->z_previous;
+					while ((prev)&&(prev->_cxxEntity->collisionTestFilter==3))	// next has been eliminated - so skip it
+						prev = prev->_cxxEntity->z_previous;
+					if (prev)
+						prev_start = prev->_cxxEntity->position.z + 2.0f * prev->_cxxEntity->collision_radius;
+				}
+				// now either (prev == nil) or (prev_start <= finish)-which would imply a gap!
+
+				// all the collision chains are already terminated somewhere
+				// at this point so no need to set e0->collision_chain = nil
+			}
+			else
+			{
+				// e0 is a singleton
+				e0->_cxxEntity->collisionTestFilter |= 2;
+			}
+		}
+		else // (prev == nil)
+		{
+			// at the end of the list so e0 is a singleton
+			e0->_cxxEntity->collisionTestFilter |= 2;
+		}
+		e0 = prev;
+	}
+	// done! list filtered
+}
+
+
+void Universe::setGalaxyTo(OOGalaxyID g)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	[self setGalaxyTo:g andReinit:NO];
 }
 
 }	// namespace cxx

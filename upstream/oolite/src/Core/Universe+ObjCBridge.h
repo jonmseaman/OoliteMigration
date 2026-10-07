@@ -241,12 +241,8 @@ MA 02110-1301, USA.
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-
-- (void) filterSortedLists;
-
 ///////////////////////////////////////
 
-- (void) setGalaxyTo:(OOGalaxyID) g;
 - (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced;
 
 - (void) setSystemTo:(OOSystemID) s;
@@ -536,6 +532,16 @@ MA 02110-1301, USA.
 - (void) update:(OOTimeDelta)delta_t;
 - (BOOL) ECMVisualFXEnabled;
 - (void) setECMVisualFXEnabled:(BOOL)isEnabled;
+
+@end
+
+
+// Slice 18 of docs/phases/3-slices/Universe.md (bead oo-tail0): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice18)
+
+- (void) filterSortedLists;
+- (void) setGalaxyTo:(OOGalaxyID) g;
 
 @end
 

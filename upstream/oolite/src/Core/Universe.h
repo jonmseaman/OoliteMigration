@@ -480,6 +480,10 @@ public:
 	void setECMVisualFXEnabled(bool isEnabled);
 	double getTimeAccelerationFactor();
 	void setTimeAccelerationFactor(double newTimeAccelerationFactor);
+
+	// Slice 18: filterSortedLists, setGalaxyTo:.
+	void filterSortedLists();
+	void setGalaxyTo(OOGalaxyID g);
 };
 
 }	// namespace cxx
