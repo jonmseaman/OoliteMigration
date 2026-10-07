@@ -452,7 +452,7 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	// set up cargopod templates
 	[self setUpCargoPods];
 
-	PlayerEntity *player = [PlayerEntity sharedPlayer];
+	::PlayerEntity *player = [::PlayerEntity sharedPlayer];
 	[player deferredInit];
 	[self addEntity:player];
 
