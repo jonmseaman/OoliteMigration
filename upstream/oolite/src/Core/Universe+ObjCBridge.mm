@@ -131,6 +131,22 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice5)
+
+- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet	{ return _cxxUniverse->locationByCode(code, sun, planet); }
+- (void) setAmbientLightLevel:(float)newValue	{ _cxxUniverse->setAmbientLightLevel(newValue); }
+- (float) ambientLightLevel	{ return _cxxUniverse->getAmbientLightLevel(); }
+- (void) setLighting	{ _cxxUniverse->setLighting(); }
+- (void) forceLightSwitch	{ _cxxUniverse->forceLightSwitch(); }
+- (void) setMainLightPosition:(Vector)sunPos	{ _cxxUniverse->setMainLightPosition(sunPos); }
+- (ShipEntity *) addShipWithRole:(const std::string &)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor	{ return _cxxUniverse->addShipWithRole(desc, launchPos, rfactor); }
+- (void) cxx_addShipWithRole:(const std::string &)desc nearRouteOneAt:(double)route_fraction	{ _cxxUniverse->addShipWithRole(desc, route_fraction); }
+- (HPVector) cxx_coordinatesForPosition:(HPVector)pos withCoordinateSystem:(const std::string &)system returningScalar:(GLfloat*)my_scalar	{ return _cxxUniverse->coordinatesForPosition(pos, system, my_scalar); }
+- (std::optional<std::string>) cxx_expressPosition:(HPVector)pos inCoordinateSystem:(const std::string &)system	{ return _cxxUniverse->expressPosition(pos, system); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
