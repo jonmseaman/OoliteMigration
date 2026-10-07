@@ -309,11 +309,16 @@ struct ContextState
 	std::unordered_map<void*, void*> ctorForProto;          // initClass without a constructor
 };
 
-std::unordered_map<JSContext*, ContextState*> gContexts;
-std::unordered_map<JSRuntime*, JSContext*>    gCtxForRuntime;   // finalizers get only a JSRuntime*
+// The process registries are immortal: allocated once and never destroyed (bead oo-9ht.173).
+// libobjc drains a thread's open autorelease pools at thread detach, which on Windows runs after
+// the CRT has destroyed namespace-scope objects; an autoreleased OOJSValue or script freed there
+// still reaches them (beginRequest -> csOf, finalizers, roots). The same holds for every
+// registry below that a finalizer or a façade call can reach.
+std::unordered_map<JSContext*, ContextState*>& gContexts = *new std::unordered_map<JSContext*, ContextState*>;
+std::unordered_map<JSRuntime*, JSContext*>&   gCtxForRuntime = *new std::unordered_map<JSRuntime*, JSContext*>;   // finalizers get only a JSRuntime*
 JSContext*                                    gDefaultCtx = nullptr;   // for the ctx-less calls
 ContextCallback                               gContextCallbackHook = nullptr;   // setContextCallback (bead oo-1gc.3)
-std::vector<const Value*>                     gConstructing;   // vp blocks of constructor calls
+std::vector<const Value*>&                    gConstructing = *new std::vector<const Value*>;   // vp blocks of constructor calls
 
 JSClassID gNativeClassId = 0;
 JSClassID gScriptClassId = 0;
@@ -840,7 +845,7 @@ struct BackendClass
 	std::vector<std::pair<void*, JSAtom>> enumerated;                // last newEnumerate listing
 };
 
-std::unordered_map<JSClassID, BackendClass*> gClasses;
+std::unordered_map<JSClassID, BackendClass*>& gClasses = *new std::unordered_map<JSClassID, BackendClass*>;
 
 // Names an old-style enumerate hook defines while ExGetOwnPropertyNames runs it (bead oo-1gc.4):
 // QuickJS-ng snapshots the shape's names before calling the exotic hook, so a name the hook adds
@@ -855,7 +860,7 @@ DefineCollector* gDefineCollector = nullptr;
 // read-only) so own-property queries and enumeration can report them the same way; property
 // reads are unaffected. (bead oo-1gc.6)
 struct SharedPermanent { JSAtom atom; bool enumerable; bool readOnly; };
-std::unordered_map<void*, std::vector<SharedPermanent>> gSharedPermanent;   // prototype -> entries (atoms owned)
+std::unordered_map<void*, std::vector<SharedPermanent>>& gSharedPermanent = *new std::unordered_map<void*, std::vector<SharedPermanent>>;   // prototype -> entries (atoms owned)
 
 
 BackendClass* classOf(JSValueConst obj)
@@ -1980,8 +1985,8 @@ JSEvalOptions evalOptions(const char* filename, unsigned lineno, int flags)
 // called directly from another ship's handler (no façade call in between) resolves through the
 // caller's object. (beads oo-1gc.4, oo-1gc.15)
 JSClassID gScopeFallbackClassId = 0;
-std::unordered_map<std::string, JSValue> gScopeByFile;   // owned references
-std::vector<JSValue> gCallThis;                          // `this` of each façade call in progress (borrowed)
+std::unordered_map<std::string, JSValue>& gScopeByFile = *new std::unordered_map<std::string, JSValue>;   // owned references
+std::vector<JSValue>& gCallThis = *new std::vector<JSValue>;                          // `this` of each façade call in progress (borrowed)
 
 struct CallThisMark
 {
@@ -2450,7 +2455,7 @@ Object getGlobalObject(Context cx)
 // Object.prototype.toString's tag the first time an id is seen.
 const ClassDef* foreignClassDef(JSContext* ctx, JSValueConst obj)
 {
-	static std::unordered_map<JSClassID, ClassDef*> sForeign;
+	static std::unordered_map<JSClassID, ClassDef*>& sForeign = *new std::unordered_map<JSClassID, ClassDef*>;	// immortal, as the registries above (bead oo-9ht.173)
 	const JSClassID id = JS_GetClassID(obj);
 	auto it = sForeign.find(id);
 	if (it != sForeign.end())  return it->second;
@@ -3567,8 +3572,8 @@ struct FrameSnapshot
 	struct Frame { std::string file; unsigned line; };
 	std::vector<Frame> frames;
 };
-std::unordered_map<JSContext*, FrameSnapshot> gFrames;
-std::unordered_map<std::string, ScriptRep*>    gFrameScripts;   // one stable Script token per filename
+std::unordered_map<JSContext*, FrameSnapshot>& gFrames = *new std::unordered_map<JSContext*, FrameSnapshot>;
+std::unordered_map<std::string, ScriptRep*>&   gFrameScripts = *new std::unordered_map<std::string, ScriptRep*>;   // one stable Script token per filename
 DebuggerHandler gDebuggerHandler = nullptr;
 
 void snapshotFrames(JSContext* ctx)
