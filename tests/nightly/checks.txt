@@ -407,6 +407,10 @@
 [oo-9j462] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-hjzwk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-9ht.107] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFlasherEntity test_OOJSFlasher test_EntityOOJavaScriptExtensions test_OOVisualEffectEntity test_ShipEntity test_OOLightParticleEntity test_Entity && bash tools/tier-c.sh --only goldens
+[oo-ra76k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMusicController test_ResourceManager test_OOMusic && bash tools/tier-c.sh --only goldens
+[oo-9ht.173] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh --repeat 20 test_OOJavaScriptEngine test_GameController test_OOJSSystem
+[oo-9ht.176] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh --repeat 30 test_GameController
+[oo-9ht.41] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSFunction test_OORegExpMatcher test_ShipEntityAI && bash tools/tier-c.sh --only goldens
 [oo-9ht.93] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSVisualEffect test_OOVisualEffectEntity && bash tools/tier-c.sh --only goldens
 [oo-0806] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
 [oo-uqen] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
