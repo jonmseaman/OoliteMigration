@@ -30,6 +30,7 @@
 #import "AI.h"
 #import "PlayerEntity.h"
 #import "ShipEntityScriptMethods.h"
+#import "ShipEntityLoadRestore.h"
 
 #include "oo_test.hpp"
 
@@ -3244,6 +3245,26 @@ OO_TEST(scriptMethodsEjectAndSpawnNothing)
 		// A count of zero spawns nothing and answers an empty list.
 		OO_CHECK([ship spawnShipsWithRole:"trader" count:0].empty());
 		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// --- ShipEntityLoadRestore.mm (bead oo-kw44): the category ShipEntity (LoadRestore) -------------------
+// The cases that reach neither the ship registry nor the universe: restoring from no dictionary.
+// Saving a ship, and restoring one, look its key up in the ship registry, whose data the unit test
+// does not load (it would scan for add-ons); the goldens' wormholes run those.
+
+OO_TEST(loadRestoreFromNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		// Null restores no ship, with or without fallback and a context, as nil did.
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:NO context:nullptr] == nil);
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:YES context:nullptr] == nil);
+		OOShipSaveContext context;
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:YES context:&context] == nil);
+		OO_CHECK(context.nextGroupID == 0 && context.groups.empty() && context.groupsByID.empty());
 	}
 }
 
