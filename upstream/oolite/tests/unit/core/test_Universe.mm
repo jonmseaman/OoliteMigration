@@ -1078,4 +1078,86 @@ OO_TEST(slice25DoRemoveEntity)
 }
 
 
+// Slice 26 (bead oo-32kcu): graph-viz references, localisation tools, planet-material pruning,
+// condition scripts, the custom-sound categories of OOSound and OOSoundSource, description look-ups.
+// Written against the Objective-C API and run on the unconverted class first. Loading a condition
+// script or a sound file needs the JavaScript engine and the game's files (the goldens): here only
+// what is missing.
+@interface Universe (Slice26TestPrivate)
+#if OO_LOCALIZATION_TOOLS
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
+- (void) runLocalizationTools;
+#endif
+- (void) prunePreloadingPlanetMaterials;
+@end
+
+
+OO_TEST(slice26GraphVizAndTools)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+#if OO_LOCALIZATION_TOOLS
+		std::string graphViz = "start\n";
+		[u addNumericRefsInString:"a [3] b %H" toGraphViz:graphViz fromNode:"from" nodeCount:10];
+		OO_CHECK(graphViz == "start\n"
+				 "\tfrom -> n3_0 [color=\"0.300000,0.75,0.8\" lhead=cluster_3]\n"
+				 "\tfrom -> percent_H [color=\"0,0,0.45\"]\n");
+		graphViz.clear();
+		[u addNumericRefsInString:"%I %R %J %G" toGraphViz:graphViz fromNode:"x" nodeCount:4];
+		OO_CHECK(graphViz == "\tx -> percent_I [color=\"0,0,0.25\"]\n"
+				 "\tx -> percent_RN [color=\"0,0,0.65\"]\n"
+				 "\tx -> percent_J [color=\"0,0,0.75\"]\n"
+				 "\tx -> percent_G [color=\"0,0,0.85\"]\n");
+		graphViz.clear();
+		[u addNumericRefsInString:"no refs [unclosed" toGraphViz:graphViz fromNode:"x" nodeCount:4];
+		OO_CHECK(graphViz.empty());
+
+		[u runLocalizationTools];	// no --compile-sysdesc / --export-sysdesc: nothing
+#endif
+
+		[u prunePreloadingPlanetMaterials];	// none preloading
+		OO_CHECK(u->_cxxUniverse->_preloadingPlanetMaterials.empty());
+	}
+}
+
+
+OO_TEST(slice26ConditionScriptsAndSounds)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		[u addConditionScripts:std::vector<std::string>()];
+		OO_CHECK(u->_cxxUniverse->conditionScripts.empty());
+		OO_CHECK([u cxx_getConditionScript:"slice26-missing.js"] == nil);
+
+		// A key with no custom sound makes no sound and no source.
+		u->_cxxUniverse->customSounds = oo::PList(oo::PList::Dict{});
+		OO_CHECK([OOSound cxx_soundWithCustomSoundKey:"[slice26-missing]"] == nil);
+		OO_CHECK([OOSoundSource sourceWithCustomSoundKey:"[slice26-missing]"] == nil);
+		OO_CHECK([[OOSoundSource alloc] initWithCustomSoundKey:"[slice26-missing]"] == nil);
+	}
+}
+
+
+OO_TEST(slice26PluralDescriptions)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->_descriptions = oo::PList(oo::PList::Dict{
+			{ "plural-rules", oo::PList(oo::PList::Array{ oo::PList("=1") }) },
+			{ "slice26-apple%0", oo::PList("apple") },
+			{ "slice26-apple%1", oo::PList("apples") },
+			{ "slice26-word", oo::PList("word") },
+		});
+		OO_CHECK(cxx_OOLookUpPluralDescriptionPRIV("slice26-apple", 1) == "apple");
+		OO_CHECK(cxx_OOLookUpPluralDescriptionPRIV("slice26-apple", 3) == "apples");
+		OO_CHECK(cxx_OOLookUpPluralDescriptionPRIV("slice26-apple", 0) == "apples");
+		OO_CHECK(cxx_OOLookUpDescriptionPRIV("slice26-word") == "word");
+		OO_CHECK(cxx_OOLookUpDescriptionPRIV("slice26-none") == "slice26-none");	// the key itself
+	}
+}
+
+
 OO_TEST_MAIN()

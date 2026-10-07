@@ -255,10 +255,6 @@ MA 02110-1301, USA.
 - (int) framesDoneThisUpdate;
 - (void) resetFramesDoneThisUpdate;
 
-- (void) loadConditionScripts;
-- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
-- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
-
 @end
 
 
@@ -583,6 +579,26 @@ MA 02110-1301, USA.
 @end
 
 
+// Slice 26 of docs/phases/3-slices/Universe.md (bead oo-32kcu): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice26)
+
+#if OO_LOCALIZATION_TOOLS
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
+/**
+ * \ingroup cli
+ * Scans the command line for --complie-sysdesc, --export-sysdec, --xml and --penstep arguments.
+ */
+- (void) runLocalizationTools;
+#endif
+- (void) prunePreloadingPlanetMaterials;
+- (void) loadConditionScripts;
+- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
+- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
+
+@end
+
+
 namespace oo {
 
 // The C++ universe behind the Objective-C one, borrowed; null for nil and for a universe whose
@@ -593,5 +609,14 @@ inline cxx::Universe *ToCxx(::Universe *universe)  { return universe != nil ? un
 inline ::Universe *ToObjC(cxx::Universe *universe)  { return universe != nullptr ? universe->_objcOwner : nil; }
 
 }	// namespace oo
+
+
+/*	The messages to UNIVERSE behind the description and custom-sound look-ups (slice 26): sends,
+	not member calls, because many tests stand in for the universe with a class of their own
+	(amendment oo-rmd7 item 3; ADR-0056 amendment oo-7jhs5). Defined in Universe+ObjCBridge.mm.
+*/
+std::optional<std::string> OOUniverseDescriptionForKey(const std::string &key);	// [UNIVERSE cxx_descriptionForKey:key]
+const oo::PList *OOUniverseDescriptions();	// [UNIVERSE cxx_descriptions]
+std::optional<std::string> OOUniverseSoundNameForCustomSoundKey(const std::string &key);	// [UNIVERSE soundNameForCustomSoundKey:key]
 
 #endif	// UNIVERSE_OBJCBRIDGE_H

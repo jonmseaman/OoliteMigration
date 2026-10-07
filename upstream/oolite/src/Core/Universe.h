@@ -625,6 +625,16 @@ public:
 	void dumpDebugGraphViz();
 	void dumpSystemDescriptionGraphViz();
 #endif
+
+	// Slice 26: graph-viz references, localisation tools, planet-material pruning, condition scripts, the custom-sound categories of OOSound and OOSoundSource, description look-ups.
+#if OO_LOCALIZATION_TOOLS
+	void addNumericRefsInString(const std::string &string, std::string &graphViz, const std::string &fromNode, NSUInteger nodeCount);
+	void runLocalizationTools();
+#endif
+	void prunePreloadingPlanetMaterials();
+	void loadConditionScripts();
+	void addConditionScripts(const std::vector<std::string> &scripts);
+	::OOJSScript *getConditionScript(const std::string &scriptname);
 };
 
 }	// namespace cxx
@@ -653,6 +663,10 @@ OOINLINE Universe *OOGetUniverse(void)
 // The lookups behind OO_DESC() / OO_DESC_PLURAL(): the description, or the key itself when there is none.
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);
+
+// The bodies of the two categories below (slice 26), which forward to them.
+::OOSound *OOSoundWithCustomSoundKey(const std::string &key);
+void OOSoundSourcePlayCustomSoundWithKey(::OOSoundSource *source, const std::string &key);
 
 @interface OOSound (OOCustomSounds)
 

@@ -183,17 +183,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) prepareToRenderIntoDefaultFramebuffer;
 - (void) drawTargetTextureIntoDefaultFramebuffer;
 
-#if OO_LOCALIZATION_TOOLS
-- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
-
-/**
- * \ingroup cli
- * Scans the command line for --complie-sysdesc, --export-sysdec, --xml and --penstep arguments.
- */
-- (void) runLocalizationTools;
-#endif
-
-- (void) prunePreloadingPlanetMaterials;
 
 // Set shader effects level without logging or triggering a reset -- should only be used directly during startup.
 - (void) setShaderEffectsLevelDirectly:(OOShaderSetting)value;
@@ -6352,93 +6341,7 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 
 }	// namespace
 #endif	// DEBUG_GRAPHVIZ
-
-
-// A missing line is "" here (the old nil receiver answered zeroed ranges and never ended the scan).
-- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount
-{
-	std::size_t					start, end, remaining = 0;
-	unsigned					i;
-
-	for (;;)
-	{
-		const std::size_t open = string.find('[', remaining);
-		if (open == std::string::npos)  break;
-		start = open + 1;
-		remaining = start;
-
-		const std::size_t close = string.find(']', remaining);
-		if (close == std::string::npos)  break;
-		end = close;
-		remaining = end;
-
-		const std::string index = string.substr(start, end - start);
-		i = oo::str::intValue(index);
-
-		// Each node gets a colour for its incoming edges. The multiplication and mod shuffle them to avoid adjacent nodes having similar colours.
-		graphViz += oo::str::format("\t%s -> n%u_0 [color=\"%f,0.75,0.8\" lhead=cluster_%u]\n", fromNode.c_str(), i, ((float)(i * 511 % nodeCount)) / ((float)nodeCount), i);
-	}
-
-	if (string.find("%I") != std::string::npos)
-	{
-		graphViz += oo::str::format("\t%s -> percent_I [color=\"0,0,0.25\"]\n", fromNode.c_str());
-	}
-	if (string.find("%H") != std::string::npos)
-	{
-		graphViz += oo::str::format("\t%s -> percent_H [color=\"0,0,0.45\"]\n", fromNode.c_str());
-	}
-	if (string.find("%R") != std::string::npos || string.find("%N") != std::string::npos)
-	{
-		graphViz += oo::str::format("\t%s -> percent_RN [color=\"0,0,0.65\"]\n", fromNode.c_str());
-	}
-
-	// TODO: test graphViz output for "%Jxxx" and "%Gxxxxxx"
-	if (string.find("%J") != std::string::npos)
-	{
-		graphViz += oo::str::format("\t%s -> percent_J [color=\"0,0,0.75\"]\n", fromNode.c_str());
-	}
-
-	if (string.find("%G") != std::string::npos)
-	{
-		graphViz += oo::str::format("\t%s -> percent_G [color=\"0,0,0.85\"]\n", fromNode.c_str());
-	}
-}
-
-- (void) runLocalizationTools
-{
-	// Handle command line options to transform system_description array for easier localization
-	
-	BOOL				compileSysDesc = NO, exportSysDesc = NO, xml = NO;
-
-	for (const std::string &arg : oo::process::arguments())
-	{
-		if (arg == "--compile-sysdesc")  compileSysDesc = YES;
-		else if (arg == "--export-sysdesc")  exportSysDesc = YES;
-		else if (arg == "--xml")  xml = YES;
-		else if (arg == "--openstep")  xml = NO;
-	}
-	
-	if (compileSysDesc)  CompileSystemDescriptions(xml);
-	if (exportSysDesc)  ExportSystemDescriptions(xml);
-}
 #endif
-
-
-// See notes at preloadPlanetTexturesForSystem:.
-- (void) prunePreloadingPlanetMaterials
-{
-	[[OOAsyncWorkManager sharedAsyncWorkManager] completePendingTasks];
-	
-	NSUInteger i = _cxxUniverse->_preloadingPlanetMaterials.size();
-	while (i--)
-	{
-		if ([_cxxUniverse->_preloadingPlanetMaterials[i].get() isFinishedLoading])
-		{
-			_cxxUniverse->_preloadingPlanetMaterials.erase(_cxxUniverse->_preloadingPlanetMaterials.begin() + i);
-		}
-	}
-}
-
 
 
 namespace {
@@ -6448,7 +6351,7 @@ namespace {
 std::vector<std::string> CachedConditionScripts(const std::string &key)
 {
 	std::vector<std::string> scripts;
-	const oo::PList names = [[OOCacheManager sharedCache] cxx_pListForKey:key inCache:"condition scripts"];
+	const oo::PList names = cxx::OOCacheManager::sharedCache()->pListForKey(key, "condition scripts");
 	if (const oo::PList::Array *entries = names.getIf<oo::PList::Array>())
 	{
 		for (const oo::PList &entry : *entries)
@@ -6461,98 +6364,35 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 
 }	// namespace
 
-
-- (void) loadConditionScripts
-{
-	_cxxUniverse->conditionScripts.clear();
-	// get list of names from cache manager (arrays of script names)
-	[self addConditionScripts:CachedConditionScripts("equipment conditions")];
-
-	[self addConditionScripts:CachedConditionScripts("ship conditions")];
-
-	[self addConditionScripts:CachedConditionScripts("demoship conditions")];
-}
-
-
-- (void) addConditionScripts:(const std::vector<std::string> &)scripts
-{
-	for (const std::string &scriptname : scripts)
-	{
-		if (!_cxxUniverse->conditionScripts.contains(scriptname))
-		{
-			OOJSScript *script = [OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
-			if (script != nil)
-			{
-				_cxxUniverse->conditionScripts[scriptname] = oo::ObjCRef<OOJSScript *>(script);
-			}
-		}
-	}
-}
-
-
-- (OOJSScript*) cxx_getConditionScript:(const std::string &)scriptname
-{
-	const auto found = _cxxUniverse->conditionScripts.find(scriptname);
-	return (found != _cxxUniverse->conditionScripts.end()) ? found->second.get() : nil;
-}
-
 @end
 
 
-@implementation OOSound (OOCustomSounds)
+/*	The custom-sound categories of OOSound and OOSoundSource on converted classes' facades
+	(slice 26 of docs/phases/3-slices/Universe.md, bead oo-32kcu): their bodies are free functions
+	on the facades, and the categories forward to them from Universe+ObjCBridge.mm (ADR-0056
+	amendments oo-6ia4 item 3, oo-9fwb, oo-7jhs5).
+*/
 
-+ (id) cxx_soundWithCustomSoundKey:(const std::string &)key
+// +[OOSound cxx_soundWithCustomSoundKey:]: the sound for a customsounds.plist key, autoreleased; nil
+// for none.
+::OOSound *OOSoundWithCustomSoundKey(const std::string &key)
 {
-	const std::optional<std::string> fileName = [UNIVERSE soundNameForCustomSoundKey:key];
+	const std::optional<std::string> fileName = OOUniverseSoundNameForCustomSoundKey(key);
 	if (!fileName.has_value())  return nil;
-	return [ResourceManager cxx_ooSoundNamed:*fileName inFolder:std::string("Sounds")];
+	return cxx::ResourceManager::ooSoundNamed(*fileName, std::string("Sounds"));
 }
 
 
-- (id) initWithCustomSoundKey:(const std::string &)key
+// -[OOSoundSource cxx_playCustomSoundWithKey:]
+void OOSoundSourcePlayCustomSoundWithKey(::OOSoundSource *source, const std::string &key)
 {
-	[self release];
-	return [[OOSound cxx_soundWithCustomSoundKey:key] retain];
+	::OOSound *theSound = OOSoundWithCustomSoundKey(key);
+	if (theSound != nil)  oo::ToCxx(source)->playOOSound(theSound);
 }
-
-@end
-
-
-@implementation OOSoundSource (OOCustomSounds)
-
-+ (id) sourceWithCustomSoundKey:(const std::string &)key
-{
-	return [[[self alloc] initWithCustomSoundKey:key] autorelease];
-}
-
-
-- (id) initWithCustomSoundKey:(const std::string &)key
-{
-	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:key];
-	if (theSound != nil)
-	{
-		self = [self initWithSound:theSound];
-	}
-	else
-	{
-		[self release];
-		self = nil;
-	}
-	return self;
-}
-
-
-- (void) cxx_playCustomSoundWithKey:(const std::string &)key
-{
-	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:key];
-	if (theSound != nil)  [self playOOSound:theSound];
-}
-
-@end
 
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 {
-	std::optional<std::string> result = [UNIVERSE cxx_descriptionForKey:key];
+	std::optional<std::string> result = OOUniverseDescriptionForKey(key);
 	if (!result.has_value())  result = key;
 	return *result;
 }
@@ -6561,11 +6401,11 @@ std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 // There's a hint of gettext about this...
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count)
 {
-	const oo::PList *descriptions = [UNIVERSE cxx_descriptions];
+	const oo::PList *descriptions = OOUniverseDescriptions();
 	const oo::PList *conditions = (descriptions != nullptr) ? descriptions->get<oo::PList::Array>("plural-rules") : nullptr;
 
 	// are we using an older descriptions.plist (1.72.x) ?
-	std::optional<std::string> tmp = [UNIVERSE cxx_descriptionForKey:key];
+	std::optional<std::string> tmp = OOUniverseDescriptionForKey(key);
 	if (tmp.has_value())
 	{
 		static std::set<std::string> warned;
@@ -11965,5 +11805,137 @@ void Universe::dumpSystemDescriptionGraphViz()
 	[::ResourceManager cxx_writeDiagnosticData:oo::Data(graphViz.data(), graphViz.size()) toFileNamed:"SystemDescription.dot"];
 }
 #endif
+
+}	// namespace cxx
+
+
+#if OO_LOCALIZATION_TOOLS
+// Slice 26 of docs/phases/3-slices/Universe.md (bead oo-32kcu): graph-viz references, localisation tools, planet-material pruning, condition scripts, the custom-sound categories of OOSound and OOSoundSource, description look-ups. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+// A missing line is "" here (the old nil receiver answered zeroed ranges and never ended the scan).
+void Universe::addNumericRefsInString(const std::string &string, std::string &graphViz, const std::string &fromNode, NSUInteger nodeCount)
+{
+	std::size_t					start, end, remaining = 0;
+	unsigned					i;
+
+	for (;;)
+	{
+		const std::size_t open = string.find('[', remaining);
+		if (open == std::string::npos)  break;
+		start = open + 1;
+		remaining = start;
+
+		const std::size_t close = string.find(']', remaining);
+		if (close == std::string::npos)  break;
+		end = close;
+		remaining = end;
+
+		const std::string index = string.substr(start, end - start);
+		i = oo::str::intValue(index);
+
+		// Each node gets a colour for its incoming edges. The multiplication and mod shuffle them to avoid adjacent nodes having similar colours.
+		graphViz += oo::str::format("\t%s -> n%u_0 [color=\"%f,0.75,0.8\" lhead=cluster_%u]\n", fromNode.c_str(), i, ((float)(i * 511 % nodeCount)) / ((float)nodeCount), i);
+	}
+
+	if (string.find("%I") != std::string::npos)
+	{
+		graphViz += oo::str::format("\t%s -> percent_I [color=\"0,0,0.25\"]\n", fromNode.c_str());
+	}
+	if (string.find("%H") != std::string::npos)
+	{
+		graphViz += oo::str::format("\t%s -> percent_H [color=\"0,0,0.45\"]\n", fromNode.c_str());
+	}
+	if (string.find("%R") != std::string::npos || string.find("%N") != std::string::npos)
+	{
+		graphViz += oo::str::format("\t%s -> percent_RN [color=\"0,0,0.65\"]\n", fromNode.c_str());
+	}
+
+	// TODO: test graphViz output for "%Jxxx" and "%Gxxxxxx"
+	if (string.find("%J") != std::string::npos)
+	{
+		graphViz += oo::str::format("\t%s -> percent_J [color=\"0,0,0.75\"]\n", fromNode.c_str());
+	}
+
+	if (string.find("%G") != std::string::npos)
+	{
+		graphViz += oo::str::format("\t%s -> percent_G [color=\"0,0,0.85\"]\n", fromNode.c_str());
+	}
+}
+
+
+void Universe::runLocalizationTools()
+{
+	// Handle command line options to transform system_description array for easier localization
+	
+	BOOL				compileSysDesc = NO, exportSysDesc = NO, xml = NO;
+
+	for (const std::string &arg : oo::process::arguments())
+	{
+		if (arg == "--compile-sysdesc")  compileSysDesc = YES;
+		else if (arg == "--export-sysdesc")  exportSysDesc = YES;
+		else if (arg == "--xml")  xml = YES;
+		else if (arg == "--openstep")  xml = NO;
+	}
+	
+	if (compileSysDesc)  CompileSystemDescriptions(xml);
+	if (exportSysDesc)  ExportSystemDescriptions(xml);
+}
+#endif
+
+
+// See notes at preloadPlanetTexturesForSystem:.
+void Universe::prunePreloadingPlanetMaterials()
+{
+	[[::OOAsyncWorkManager sharedAsyncWorkManager] completePendingTasks];
+	
+	NSUInteger i = _preloadingPlanetMaterials.size();
+	while (i--)
+	{
+		if ([_preloadingPlanetMaterials[i].get() isFinishedLoading])
+		{
+			_preloadingPlanetMaterials.erase(_preloadingPlanetMaterials.begin() + i);
+		}
+	}
+}
+
+
+void Universe::loadConditionScripts()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	conditionScripts.clear();
+	// get list of names from cache manager (arrays of script names)
+	[self addConditionScripts:CachedConditionScripts("equipment conditions")];
+
+	[self addConditionScripts:CachedConditionScripts("ship conditions")];
+
+	[self addConditionScripts:CachedConditionScripts("demoship conditions")];
+}
+
+
+void Universe::addConditionScripts(const std::vector<std::string> &scripts)
+{
+	for (const std::string &scriptname : scripts)
+	{
+		if (!conditionScripts.contains(scriptname))
+		{
+			::OOJSScript *script = [::OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
+			if (script != nil)
+			{
+				conditionScripts[scriptname] = oo::ObjCRef<::OOJSScript *>(script);
+			}
+		}
+	}
+}
+
+
+::OOJSScript *Universe::getConditionScript(const std::string &scriptname)
+{
+	const auto found = conditionScripts.find(scriptname);
+	return (found != conditionScripts.end()) ? found->second.get() : nil;
+}
 
 }	// namespace cxx

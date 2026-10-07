@@ -325,3 +325,69 @@ extern Universe *gSharedUniverse;
 #endif
 
 @end
+
+
+@implementation Universe (OOSlice26)
+
+#if OO_LOCALIZATION_TOOLS
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount	{ _cxxUniverse->addNumericRefsInString(string, graphViz, fromNode, nodeCount); }
+- (void) runLocalizationTools	{ _cxxUniverse->runLocalizationTools(); }
+#endif
+- (void) prunePreloadingPlanetMaterials	{ _cxxUniverse->prunePreloadingPlanetMaterials(); }
+- (void) loadConditionScripts	{ _cxxUniverse->loadConditionScripts(); }
+- (void) addConditionScripts:(const std::vector<std::string> &)scripts	{ _cxxUniverse->addConditionScripts(scripts); }
+- (OOJSScript*) cxx_getConditionScript:(const std::string &)scriptname	{ return _cxxUniverse->getConditionScript(scriptname); }
+
+@end
+
+
+// The custom-sound categories (slice 26 of docs/phases/3-slices/Universe.md): their bodies are
+// OOSoundWithCustomSoundKey() and OOSoundSourcePlayCustomSoundWithKey() in Universe.mm; the
+// initialisers keep their retains and releases here.
+@implementation OOSound (OOCustomSounds)
+
++ (id) cxx_soundWithCustomSoundKey:(const std::string &)key	{ return OOSoundWithCustomSoundKey(key); }
+
+
+- (id) initWithCustomSoundKey:(const std::string &)key
+{
+	[self release];
+	return [OOSoundWithCustomSoundKey(key) retain];
+}
+
+@end
+
+
+@implementation OOSoundSource (OOCustomSounds)
+
++ (id) sourceWithCustomSoundKey:(const std::string &)key
+{
+	return [[[self alloc] initWithCustomSoundKey:key] autorelease];
+}
+
+
+- (id) initWithCustomSoundKey:(const std::string &)key
+{
+	OOSound *theSound = OOSoundWithCustomSoundKey(key);
+	if (theSound != nil)
+	{
+		self = [self initWithSound:theSound];
+	}
+	else
+	{
+		[self release];
+		self = nil;
+	}
+	return self;
+}
+
+
+- (void) cxx_playCustomSoundWithKey:(const std::string &)key	{ OOSoundSourcePlayCustomSoundWithKey(self, key); }
+
+@end
+
+
+// The look-ups' messages to UNIVERSE (Universe+ObjCBridge.h).
+std::optional<std::string> OOUniverseDescriptionForKey(const std::string &key)	{ return [UNIVERSE cxx_descriptionForKey:key]; }
+const oo::PList *OOUniverseDescriptions()	{ return [UNIVERSE cxx_descriptions]; }
+std::optional<std::string> OOUniverseSoundNameForCustomSoundKey(const std::string &key)	{ return [UNIVERSE soundNameForCustomSoundKey:key]; }
