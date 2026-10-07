@@ -40,9 +40,10 @@ void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global);
 #endif
 
 
-/*	The bodies of OOWaypointEntity (OOJavaScriptExtensions), which the engine reaches by
-	selector. Its methods are one-line forwarders to these in OOJSWaypoint+ObjCBridge.mm until
-	OOWaypointEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+/*	The bodies of OOWaypointEntity (OOJavaScriptExtensions), which the engine reaches by selector.
+	Its methods are one-line forwarders to these on the OOWaypointEntity facade, in
+	OOWaypointEntity+ObjCBridge.mm (bead oo-9ht.50), until that facade goes (oo-9ht.108; proposed
+	ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 */
 void OOJSWaypointGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSWaypointJSClassName(void);

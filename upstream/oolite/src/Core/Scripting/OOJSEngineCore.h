@@ -37,6 +37,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOFoundationTypes.h"
 #include "oofnd/objc/OOAssert.h"
 #include "OOFunctionAttributes.h"
@@ -398,6 +399,40 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJ
 #define OOJSAddGCObjectRoot(context, root, name)	ooscript::addNamedObjectRoot((context), (root), "" name)
 #endif
 
+
+namespace cxx {
+
+/*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
+	This is somewhat useful for putting JavaScript objects in ObjC collections,
+	for instance to pass as properties to script loaders. The value is
+	GC rooted for the lifetime of the OOJSValue.
+
+	All methods take a context parameter, which must either be nil or a context
+	in a request. The Objective-C OOJSValue (OOJavaScriptEngine+ObjCBridge.h) is
+	its facade, which the collections hold.
+*/
+class OOJSValue : public oo::RefCounted
+{
+public:
+	static oo::Ref<OOJSValue> valueWithJSValue(ooscript::Value value, ooscript::Context context);
+	static oo::Ref<OOJSValue> valueWithJSObject(ooscript::Object object, ooscript::Context context);
+
+	~OOJSValue();
+
+	ooscript::Value jsValueInContext(ooscript::Context context);	// the held value
+
+private:
+	// The initialisers after [super init], which could not fail: run by the factories.
+	void initWithJSValue(ooscript::Value value, ooscript::Context context);
+	void initWithJSObject(ooscript::Object object, ooscript::Context context);
+
+	void deleteJSValue();
+
+	ooscript::Value					_val = {};
+	const void						*_resetSender = {};	// the engine's facade, while _val is rooted
+};
+
+}	// namespace cxx
 
 #include "OOJSEngineNativeWrappers.h"
 

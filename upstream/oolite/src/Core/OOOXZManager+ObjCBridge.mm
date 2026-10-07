@@ -2,9 +2,9 @@
 
 OOOXZManager+ObjCBridge.mm
 
-TRANSITIONAL (proposed ADR-0056, bead oo-bwjb): the Objective-C OOOXZManager facade. Every slice 1
-method forwards to cxx::OOOXZManager in one line; slices 2 to 4 are implemented, still Objective-C,
-in OOOXZManager.mm. See OOOXZManager+ObjCBridge.h.
+TRANSITIONAL (proposed ADR-0056, bead oo-bwjb): the Objective-C OOOXZManager facade. Every converted
+method forwards to cxx::OOOXZManager in one line; the whole class is C++
+(OOOXZManager.mm). See OOOXZManager+ObjCBridge.h.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -98,6 +98,23 @@ cxx::OOOXZManager *oo::ToCxx(OOOXZManager *manager)
 - (void) processDownloadEvents							{ _cxxManager->processDownloadEvents(); }
 - (oo::PList) manifests									{ return _cxxManager->manifests(); }
 - (oo::PList) managedOXZs								{ return _cxxManager->managedOXZs(); }
+- (BOOL) isRestarting									{ return _cxxManager->isRestarting(); }
+- (void) gui											{ _cxxManager->gui(); }
+- (BOOL) isAcceptingTextInput							{ return _cxxManager->isAcceptingTextInput(); }
+- (BOOL) isAcceptingGUIInput							{ return _cxxManager->isAcceptingGUIInput(); }
+- (void) processSelection								{ _cxxManager->processSelection(); }
+- (void) processTextInput:(const std::string &)input	{ _cxxManager->processTextInput(input); }
+- (void) refreshTextInput:(const std::string &)input	{ _cxxManager->refreshTextInput(input); }
+- (void) processFilterKey								{ _cxxManager->processFilterKey(); }
+- (void) processShowInfoKey								{ _cxxManager->processShowInfoKey(); }
+- (void) processExtractKey								{ _cxxManager->processExtractKey(); }
+- (OOGUIRow) showInstallOptions							{ return _cxxManager->showInstallOptions(); }
+- (OOGUIRow) showRemoveOptions							{ return _cxxManager->showRemoveOptions(); }
+- (void) showOptionsUpdate								{ _cxxManager->showOptionsUpdate(); }
+- (void) showOptionsPrev								{ _cxxManager->showOptionsPrev(); }
+- (void) showOptionsNext								{ _cxxManager->showOptionsNext(); }
+- (void) processOptionsPrev								{ _cxxManager->processOptionsPrev(); }
+- (void) processOptionsNext								{ _cxxManager->processOptionsNext(); }
 
 @end
 
@@ -108,11 +125,16 @@ cxx::OOOXZManager *oo::ToCxx(OOOXZManager *manager)
 - (std::optional<std::string>) extractionBasePathForIdentifier:(const std::string &)identifier andVersion:(const std::string &)version	{ return _cxxManager->extractionBasePathForIdentifier(identifier, version); }
 - (std::optional<std::string>) humanSize:(NSUInteger)bytes	{ return _cxxManager->humanSize(bytes); }
 - (BOOL) ensureInstallPath								{ return _cxxManager->ensureInstallPath(); }
-- (BOOL) beginDownload:(const std::string &)url			{ return _cxxManager->beginDownload(url); }
 - (BOOL) validateFilter:(const std::string &)input		{ return _cxxManager->validateFilter(input); }
 - (void) setFilteredList:(const oo::PList &)list		{ _cxxManager->setFilteredList(list); }
 - (void) setFilter:(const std::string &)filter			{ _cxxManager->setFilter(filter); }
 - (oo::PList) applyCurrentFilter:(const oo::PList &)list	{ return _cxxManager->applyCurrentFilter(list); }
 - (void) setProgressStatus:(const std::string &)newStatus	{ _cxxManager->setProgressStatus(newStatus); }
+- (OOColor *) colorForManifest:(const oo::PList &)manifest	{ return oo::ToObjC(_cxxManager->colorForManifest(manifest)); }
+- (std::optional<std::string>) installStatusForManifest:(const oo::PList &)manifest	{ return _cxxManager->installStatusForManifest(manifest); }
+- (BOOL) installOXZ:(NSUInteger)item					{ return _cxxManager->installOXZ(item); }
+- (BOOL) updateAllOXZ									{ return _cxxManager->updateAllOXZ(); }
+- (BOOL) removeOXZ:(NSUInteger)item						{ return _cxxManager->removeOXZ(item); }
+- (std::string) extractOXZ:(NSUInteger)item				{ return _cxxManager->extractOXZ(item); }
 
 @end

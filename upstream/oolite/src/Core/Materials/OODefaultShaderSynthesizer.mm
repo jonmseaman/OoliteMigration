@@ -82,7 +82,7 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 	// Kept from the @autoreleasepool: the material specifier functions answer autoreleased colours.
 	void *pool = objc_autoreleasePoolPush();
 	{
-		oo::Ref<cxx::OODefaultShaderSynthesizer> synthesizer = oo::makeRef<cxx::OODefaultShaderSynthesizer>(configuration, materialKey, entityName);
+		oo::Ref<OODefaultShaderSynthesizer> synthesizer = oo::makeRef<OODefaultShaderSynthesizer>(configuration, materialKey, entityName);
 
 		bool OK = synthesizer->run();
 		if (OK)
@@ -106,7 +106,7 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 }
 
 
-cxx::OODefaultShaderSynthesizer::OODefaultShaderSynthesizer(const oo::PList &configuration, const std::optional<std::string> &materialKey, const std::optional<std::string> & /*name*/)
+OODefaultShaderSynthesizer::OODefaultShaderSynthesizer(const oo::PList &configuration, const std::optional<std::string> &materialKey, const std::optional<std::string> & /*name*/)
 {
 	_configuration = CanonicalizeMaterialSpecifier(configuration, materialKey);
 	_materialKey = materialKey;
@@ -114,37 +114,36 @@ cxx::OODefaultShaderSynthesizer::OODefaultShaderSynthesizer(const oo::PList &con
 }
 
 
-/*	-dealloc sent -destroyTemporaries (slice 2, still Objective-C on the facade), which only empties
-	members that the destructor destroys anyway; the destructor is the implicit one (amendment
-	oo-vt0o item 2), and does not make a facade for an object that is going away.
+/*	-dealloc sent -destroyTemporaries, which only empties members that the destructor destroys
+	anyway; the destructor is the implicit one (amendment oo-vt0o item 2).
 */
 
 
-std::string cxx::OODefaultShaderSynthesizer::vertexShader()
+std::string OODefaultShaderSynthesizer::vertexShader()
 {
 	return _vertexShader;
 }
 
 
-std::string cxx::OODefaultShaderSynthesizer::fragmentShader()
+std::string OODefaultShaderSynthesizer::fragmentShader()
 {
 	return _fragmentShader;
 }
 
 
-oo::PList cxx::OODefaultShaderSynthesizer::textureSpecifications()
+oo::PList OODefaultShaderSynthesizer::textureSpecifications()
 {
 	return oo::PList(oo::PList::Array(_textures));
 }
 
 
-oo::PList cxx::OODefaultShaderSynthesizer::uniformSpecifications()
+oo::PList OODefaultShaderSynthesizer::uniformSpecifications()
 {
 	return oo::PList(_uniforms);
 }
 
 
-bool cxx::OODefaultShaderSynthesizer::run()
+bool OODefaultShaderSynthesizer::run()
 {
 	createTemporaries();
 	_uniforms.clear();
@@ -171,13 +170,13 @@ bool cxx::OODefaultShaderSynthesizer::run()
 	return true;
 }
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::materialKey()
+std::optional<std::string> OODefaultShaderSynthesizer::materialKey()
 {
 	return _materialKey;
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::entityName()
+std::optional<std::string> OODefaultShaderSynthesizer::entityName()
 {
 	return _entityName;
 }
@@ -241,7 +240,7 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 }	// namespace
 
 
-void cxx::OODefaultShaderSynthesizer::appendVariable(const std::string &name, const std::string &type, const std::string &prefix, std::string &buffer)
+void OODefaultShaderSynthesizer::appendVariable(const std::string &name, const std::string &type, const std::string &prefix, std::string &buffer)
 {
 	NSUInteger typeDeclLength = prefix.size() + type.size() + 1;
 	NSUInteger padding = (typeDeclLength < 20) ? (23 - typeDeclLength) / 4 : 1;
@@ -249,31 +248,31 @@ void cxx::OODefaultShaderSynthesizer::appendVariable(const std::string &name, co
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addAttribute(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addAttribute(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "attribute", _attributes);
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addVarying(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addVarying(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "varying", _varyings);
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addVertexUniform(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addVertexUniform(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "uniform", _vertexUniforms);
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addFragmentUniform(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addFragmentUniform(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "uniform", _fragmentUniforms);
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::defineBindingUniform(const oo::PList &binding, const std::string &type)
+std::optional<std::string> OODefaultShaderSynthesizer::defineBindingUniform(const oo::PList &binding, const std::string &type)
 {
 	std::string name = OptionalStringFor(binding, "binding").value_or(std::string());
 	OOCParameterAssert(!name.empty());
@@ -312,7 +311,7 @@ std::optional<std::string> cxx::OODefaultShaderSynthesizer::defineBindingUniform
 }
 
 
-void cxx::OODefaultShaderSynthesizer::composeVertexShader()
+void OODefaultShaderSynthesizer::composeVertexShader()
 {
 	while (_vertexBody.ends_with("\t\n"))
 	{
@@ -331,7 +330,7 @@ void cxx::OODefaultShaderSynthesizer::composeVertexShader()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::composeFragmentShader()
+void OODefaultShaderSynthesizer::composeFragmentShader()
 {
 	while (_fragmentBody.ends_with("\t\n"))
 	{
@@ -393,7 +392,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 }	// namespace
 
 
-NSUInteger cxx::OODefaultShaderSynthesizer::assignIDForTexture(const oo::PList &textureSpec)
+NSUInteger OODefaultShaderSynthesizer::assignIDForTexture(const oo::PList &textureSpec)
 {
 	OOCParameterAssert(!textureSpec.isNull());
 
@@ -452,14 +451,14 @@ NSUInteger cxx::OODefaultShaderSynthesizer::assignIDForTexture(const oo::PList &
 }
 
 
-NSUInteger cxx::OODefaultShaderSynthesizer::textureIDForSpec(const oo::PList &textureSpec)
+NSUInteger OODefaultShaderSynthesizer::textureIDForSpec(const oo::PList &textureSpec)
 {
 	auto found = _textureIDs.find(KeyFromTextureSpec(textureSpec));
 	return (found != _textureIDs.end()) ? found->second : 0;
 }
 
 
-void cxx::OODefaultShaderSynthesizer::setUpOneTexture(const oo::PList &textureSpec)
+void OODefaultShaderSynthesizer::setUpOneTexture(const oo::PList &textureSpec)
 {
 	if (textureSpec.isNull())  return;
 
@@ -473,7 +472,7 @@ void cxx::OODefaultShaderSynthesizer::setUpOneTexture(const oo::PList &textureSp
 }
 
 
-void cxx::OODefaultShaderSynthesizer::getSampleName(std::string *outSampleName, std::string *outSwizzleOp, const oo::PList &textureSpec)
+void OODefaultShaderSynthesizer::getSampleName(std::string *outSampleName, std::string *outSwizzleOp, const oo::PList &textureSpec)
 {
 	OOCParameterAssert(outSampleName != NULL && outSwizzleOp != NULL && !textureSpec.isNull());
 
@@ -485,7 +484,7 @@ void cxx::OODefaultShaderSynthesizer::getSampleName(std::string *outSampleName, 
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::readRGBForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
+std::optional<std::string> OODefaultShaderSynthesizer::readRGBForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
 {
 	std::string sample, swizzle;
 	getSampleName(&sample, &swizzle, textureSpec);
@@ -511,7 +510,7 @@ std::optional<std::string> cxx::OODefaultShaderSynthesizer::readRGBForTextureSpe
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::readOneChannelForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
+std::optional<std::string> OODefaultShaderSynthesizer::readOneChannelForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
 {
 	std::string sample, swizzle;
 	getSampleName(&sample, &swizzle, textureSpec);
@@ -534,7 +533,7 @@ std::optional<std::string> cxx::OODefaultShaderSynthesizer::readOneChannelForTex
 
 
 #ifndef NDEBUG
-void cxx::OODefaultShaderSynthesizer::performStage(const char *name, Stage stage)
+void OODefaultShaderSynthesizer::performStage(const char *name, Stage stage)
 {
 	// Ensure that we aren’t recursing.
 	if (_stagesInProgress.count(name) != 0)
@@ -552,7 +551,7 @@ void cxx::OODefaultShaderSynthesizer::performStage(const char *name, Stage stage
 #endif
 
 
-void cxx::OODefaultShaderSynthesizer::createTemporaries()
+void OODefaultShaderSynthesizer::createTemporaries()
 {
 	_attributes.clear();
 	_varyings.clear();
@@ -578,7 +577,7 @@ void cxx::OODefaultShaderSynthesizer::createTemporaries()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::destroyTemporaries()
+void OODefaultShaderSynthesizer::destroyTemporaries()
 {
 	_attributes.clear();
 	_varyings.clear();
@@ -607,7 +606,7 @@ void cxx::OODefaultShaderSynthesizer::destroyTemporaries()
 
 // MARK: - Synthesis stages
 
-void cxx::OODefaultShaderSynthesizer::writeTextureCoordRead()
+void OODefaultShaderSynthesizer::writeTextureCoordRead()
 {
 	addVarying("vTexCoords", "vec2");
 	_vertexBody += "\tvTexCoords = gl_MultiTexCoord0.st;\n\t\n";
@@ -665,7 +664,7 @@ void cxx::OODefaultShaderSynthesizer::writeTextureCoordRead()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeDiffuseColorTermIfNeeded()
+void OODefaultShaderSynthesizer::writeDiffuseColorTermIfNeeded()
 {
 	oo::PList			diffuseMap = cxx_OOMaterialDiffuseMapSpecifier(_configuration, materialKey());
 	oo::Ref<cxx::OOColor>	diffuseColor(oo::ToCxx(cxx_OOMaterialDiffuseColor(_configuration)));
@@ -709,7 +708,7 @@ void cxx::OODefaultShaderSynthesizer::writeDiffuseColorTermIfNeeded()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeDiffuseColorTerm()
+void OODefaultShaderSynthesizer::writeDiffuseColorTerm()
 {
 	REQUIRE_STAGE(writeDiffuseColorTermIfNeeded);
 	
@@ -720,7 +719,7 @@ void cxx::OODefaultShaderSynthesizer::writeDiffuseColorTerm()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeDiffuseLighting()
+void OODefaultShaderSynthesizer::writeDiffuseLighting()
 {
 	REQUIRE_STAGE(writeDiffuseColorTermIfNeeded);
 	if (!_usesDiffuseTerm)  return;
@@ -742,7 +741,7 @@ void cxx::OODefaultShaderSynthesizer::writeDiffuseLighting()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeLightVector()
+void OODefaultShaderSynthesizer::writeLightVector()
 {
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeNormalIfNeeded);
@@ -756,7 +755,7 @@ void cxx::OODefaultShaderSynthesizer::writeLightVector()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeEyeVector()
+void OODefaultShaderSynthesizer::writeEyeVector()
 {
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeVertexTangentBasis);
@@ -768,7 +767,7 @@ void cxx::OODefaultShaderSynthesizer::writeEyeVector()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeVertexTangentBasis()
+void OODefaultShaderSynthesizer::writeVertexTangentBasis()
 {
 	addAttribute("tangent", "vec3");
 	
@@ -781,7 +780,7 @@ void cxx::OODefaultShaderSynthesizer::writeVertexTangentBasis()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeNormalIfNeeded()
+void OODefaultShaderSynthesizer::writeNormalIfNeeded()
 {
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeVertexTangentBasis);
@@ -812,7 +811,7 @@ void cxx::OODefaultShaderSynthesizer::writeNormalIfNeeded()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeNormal()
+void OODefaultShaderSynthesizer::writeNormal()
 {
 	REQUIRE_STAGE(writeNormalIfNeeded);
 	
@@ -823,7 +822,7 @@ void cxx::OODefaultShaderSynthesizer::writeNormal()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeSpecularLighting()
+void OODefaultShaderSynthesizer::writeSpecularLighting()
 {
 	float specularExponent = cxx_OOMaterialSpecularExponent(_configuration);
 	if (specularExponent <= 0)  return;
@@ -953,7 +952,7 @@ void cxx::OODefaultShaderSynthesizer::writeSpecularLighting()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeLightMaps()
+void OODefaultShaderSynthesizer::writeLightMaps()
 {
 	const oo::PList *lightMaps = _configuration.get<oo::PList::Array>(cxx_kOOMaterialLightMapsName);
 	NSUInteger idx, count = (lightMaps != nullptr) ? lightMaps->count() : 0;
@@ -1034,7 +1033,7 @@ void cxx::OODefaultShaderSynthesizer::writeLightMaps()
 		if (binding != nullptr)
 		{
 			std::string bindingName = binding->get<std::string>("binding");
-			oo::PList bindingTypes = [ResourceManager cxx_shaderBindingTypesDictionary];
+			oo::PList bindingTypes = [::ResourceManager cxx_shaderBindingTypesDictionary];
 			const oo::PList *typeDict = bindingTypes.get<oo::PList::Dict>("player");	// FIXME: select appropriate binding subset.
 			std::optional<std::string> bindingType = (typeDict != nullptr) ? OptionalStringFor(*typeDict, bindingName.c_str()) : std::nullopt;
 			const char *glslType = nullptr;
@@ -1085,7 +1084,7 @@ void cxx::OODefaultShaderSynthesizer::writeLightMaps()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeVertexPosition()
+void OODefaultShaderSynthesizer::writeVertexPosition()
 {
 	_vertexBody +=
 	"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
@@ -1093,13 +1092,13 @@ void cxx::OODefaultShaderSynthesizer::writeVertexPosition()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeTotalColor()
+void OODefaultShaderSynthesizer::writeTotalColor()
 {
 	_fragmentPreTextures += "\tvec3 totalColor = vec3(0.0);\n\t\n";
 }
 
 
-void cxx::OODefaultShaderSynthesizer::writeFinalColorComposite()
+void OODefaultShaderSynthesizer::writeFinalColorComposite()
 {
 	REQUIRE_STAGE(writeTotalColor);	// Needed even if none of the following stages does anything.
 	REQUIRE_STAGE(writeDiffuseLighting);

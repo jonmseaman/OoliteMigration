@@ -4,9 +4,9 @@ OOOXPVerifierStage.mm
 
 C++20 since bead oo-cwz, the Phase 3 class-hierarchy exemplar (proposed ADR-0056, Amendment 1).
 Method bodies are the Objective-C ones with message sends turned into calls (ADR-0012); the
-subclass responsibilities are virtual, and an Objective-C subclass reaches them through its
-facade (OOOXPVerifierStage+ObjCBridge.mm). Still Objective-C++ until Phase 4: the verifier and
-the exceptions a stage raises are Objective-C objects.
+subclass responsibilities are virtual. Global since bead oo-9ht.4 deleted its facade. Still
+Objective-C++ until Phase 4: the verifier and the exceptions a stage raises are Objective-C
+objects.
 
 
 Copyright (C) 2007-2013 Jens Ayton
@@ -41,8 +41,10 @@ SOFTWARE.
 
 #include "oofnd/Log.hpp"
 
+#include <cstdlib>
+#include <cxxabi.h>
+#include <typeinfo>
 
-namespace cxx {
 
 // Adding a stage to a set of stages: identity, no duplicates, null ignored.
 namespace {
@@ -64,7 +66,26 @@ std::optional<std::string> OOOXPVerifierStage::descriptionComponents() const
 }
 
 
-OOOXPVerifier *OOOXPVerifierStage::verifier()
+// What the facade's -description printed (its -cxx_description, until bead oo-9ht.4).
+std::string OOOXPVerifierStage::description() const
+{
+	return oo::str::format("<%s %s>{", className().c_str(), oo::str::pointerDescription(this).c_str()) + descriptionComponents().value_or("") + "}";
+}
+
+
+// The C++ class's name (the facade's ClassName(): demangled, "cxx::" dropped).
+std::string OOOXPVerifierStage::className() const
+{
+	int status = 0;
+	char *demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(*this).name();
+	std::free(demangled);
+	if (result.starts_with("cxx::"))  result.erase(0, 5);
+	return result;
+}
+
+
+::OOOXPVerifier *OOOXPVerifierStage::verifier()
 {
 	return [[_verifier retain] autorelease];
 }
@@ -109,7 +130,7 @@ void OOOXPVerifierStage::run()
 
 // Internal (was the OOInternal category).
 
-void OOOXPVerifierStage::setVerifier(OOOXPVerifier *verifier)
+void OOOXPVerifierStage::setVerifier(::OOOXPVerifier *verifier)
 {
 	_verifier = verifier;	// Not retained.
 }
@@ -226,7 +247,5 @@ void OOOXPVerifierStage::notifyDependents()
 		dependent->dependencyCompleted(this);
 	}
 }
-
-}	// namespace cxx
 
 #endif	//OO_OXP_VERIFIER_ENABLED

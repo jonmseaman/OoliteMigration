@@ -6,13 +6,18 @@
 	registers it (once), its neighbours (the intermediate class's), the models other stages name
 	(found in the OXP or built in, or not; an empty name is not found; each model and context once),
 	when it runs, and what it logs (a placeholder check of each model, in the order named). The
-	verifier finds it again through -modelVerifierStage. Then the crossing: the converted stage is
-	global, so Objective-C sees it as an OOOXPVerifierStage.
+	verifier finds it again by its name (through -modelVerifierStage until bead oo-9ht.56 deleted
+	that category: standing approval oo-9n5p9). Then the crossing: the converted stage is global, so
+	Objective-C sees it as an OOOXPVerifierStage.
+	Bead oo-9ht.4 deleted the stage facade: the verifier registers and answers the C++ stage
+	itself, so nameRegistersTheStage and the facade case ask the stage (its description through
+	description()), and the checks that pinned only the facade crossing (its class, oo::ToObjC/
+	oo::ToCxx, oo::AsObjCStage) were retired with it (ADR-0049, standing approval oo-9n5p9).
 	Run: bash tools/check-core-tests.sh
 */
 
 #import "OOModelVerifierStage.h"
-#import "OOOXPVerifierStageInternal.h"
+#import "OOOXPVerifierStage.h"
 #import "OODescription.h"
 #import "OOPixMap.h"
 
@@ -127,8 +132,8 @@ void WriteFile(const std::filesystem::path &path, const char *contents)
 // The scanner, registered with the verifier and run over its OXP, as the verifier runs it first.
 void RunScanner(OOOXPVerifier *verifier)
 {
-	[OOFileScannerVerifierStage nameForDependencyForVerifier:verifier];
-	[[verifier fileScannerStage] run];
+	OOFileScannerVerifierStage::nameForDependencyForVerifier(verifier);
+	[verifier cxx_stageWithName:OOFileScannerVerifierStage::kName]->run();	// was -fileScannerStage (bead oo-9ht.7); the C++ stage since oo-9ht.4
 }
 
 
@@ -158,18 +163,18 @@ OO_TEST(nameRegistersTheStage)
 	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({});
-		OO_CHECK([verifier cxx_stageWithName:"Testing models"] == nil);
-		OO_CHECK([verifier modelVerifierStage] == nil);
+		OO_CHECK([verifier cxx_stageWithName:"Testing models"] == nullptr);
+		OO_CHECK([verifier cxx_stageWithName:OOModelVerifierStage::kName] == nullptr);
 		OO_CHECK(OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier) == "Testing models");
-		OOOXPVerifierStage *registered = [verifier modelVerifierStage];
-		OO_CHECK(registered != nil && [verifier cxx_stageWithName:"Testing models"] == registered);
+		OOOXPVerifierStage *registered = [verifier cxx_stageWithName:OOModelVerifierStage::kName];
+		OO_CHECK(registered != nullptr && [verifier cxx_stageWithName:"Testing models"] == registered);
 		OO_CHECK(OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier) == "Testing models");
-		OO_CHECK([verifier modelVerifierStage] == registered);	// once
+		OO_CHECK([verifier cxx_stageWithName:OOModelVerifierStage::kName] == registered);	// once
 
-		OO_CHECK([registered cxx_name] == std::optional<std::string>("Testing models"));
-		OO_CHECK([registered cxx_dependencies] == kScannerName);
-		OO_CHECK([registered dependents] == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images" }));
-		OO_CHECK(![registered shouldRun]);
+		OO_CHECK(registered->name() == std::optional<std::string>("Testing models"));
+		OO_CHECK(registered->dependencies() == kScannerName);
+		OO_CHECK(registered->dependents() == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images" }));
+		OO_CHECK(!registered->shouldRun());
 	}
 	std::filesystem::remove_all(kBase);
 }
@@ -217,29 +222,26 @@ OO_TEST(stagesNameModels)
 }
 
 
-// The converted stage is global: the stage the verifier registered is its facade, an
-// OOOXPVerifierStage, one per stage, and -modelVerifierStage finds it for the ship data stage.
+// The converted stage is global: the verifier registers the stage itself (its OOOXPVerifierStage
+// facade until bead oo-9ht.4), and finds it by name for the ship data stage.
 OO_TEST(facade)
 {
 	@autoreleasepool
 	{
 		OOOXPVerifier *verifier = MakeVerifier({ { "Models/ship.dat", "model" } });
 		OOModelVerifierStage::nameForReverseDependencyForVerifier(verifier);
-		OOOXPVerifierStage *facade = [verifier modelVerifierStage];
-		OO_CHECK(facade != nil && [facade class] == [OOOXPVerifierStage class]);
-		OOModelVerifierStage *stage = static_cast<OOModelVerifierStage *>(oo::ToCxx(facade));
-		OO_CHECK(stage != nullptr && oo::ToObjC(stage) == facade);
-		OO_CHECK(oo::AsObjCStage(stage) == nullptr);
-		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOModelVerifierStage 0x"));
+		OOModelVerifierStage *stage = static_cast<OOModelVerifierStage *>([verifier cxx_stageWithName:OOModelVerifierStage::kName]);
+		OO_CHECK(stage != nullptr);
+		OO_CHECK(stage->description().starts_with("<OOModelVerifierStage 0x"));
 
-		OO_CHECK([facade cxx_name] == std::optional<std::string>(OOModelVerifierStage::kName));
-		OO_CHECK([facade dependents] == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images" }));
-		OO_CHECK(![facade shouldRun]);
+		OO_CHECK(stage->name() == std::optional<std::string>(OOModelVerifierStage::kName));
+		OO_CHECK(stage->dependents() == (std::vector<std::string>{ "Checking for unused files", "Testing textures and images" }));
+		OO_CHECK(!stage->shouldRun());
 		OO_CHECK(stage->modelNamed("ship.dat", "a", "shipdata.plist", oo::PList(), oo::PList()));
-		OO_CHECK([facade shouldRun]);
+		OO_CHECK(stage->shouldRun());
 		gLog.clear();
-		[facade dependencyRegistrationComplete];
-		[facade performRun];
+		stage->dependencyRegistrationComplete();
+		stage->performRun();
 		OO_CHECK(gLog.size() == 2 && LogLinesContaining("- Pretending to verify model ship.dat referenced in entry \"a\" of shipdata.plist.") == 1);
 	}
 	std::filesystem::remove_all(kBase);
