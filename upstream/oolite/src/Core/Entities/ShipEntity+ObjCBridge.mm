@@ -330,3 +330,29 @@ DESTROY(_cxxShip->laser_color);
 - (void) setUpMixedEscorts	{ _cxxShip->setUpMixedEscorts(); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice6)
+
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount	{ _cxxShip->setUpOneEscort(escorter, escortGroup, escortRole, ex_pos, currentEscortCount); }
+- (std::optional<std::string>) cxx_shipDataKey	{ return _cxxShip->shipDataKey(); }
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole	{ return _cxxShip->shipDataKeyAutoRole(); }
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key	{ _cxxShip->setShipDataKey(key); }
+- (oo::PList) cxx_shipInfoDictionary	{ return _cxxShip->shipInfoDictionary(); }
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode	{ return _cxxShip->weaponOffsetsFrom(dict, key, mode); }
+- (std::vector<Vector>) cxx_aftWeaponOffset	{ return _cxxShip->getAftWeaponOffset(); }
+- (std::vector<Vector>) cxx_forwardWeaponOffset	{ return _cxxShip->getForwardWeaponOffset(); }
+- (std::vector<Vector>) cxx_portWeaponOffset	{ return _cxxShip->getPortWeaponOffset(); }
+- (std::vector<Vector>) cxx_starboardWeaponOffset	{ return _cxxShip->getStarboardWeaponOffset(); }
+- (BOOL) isFrangible	{ return _cxxShip->getIsFrangible(); }
+- (BOOL) suppressFlightNotifications	{ return _cxxShip->suppressFlightNotifications(); }
+- (OOScanClass) scanClass	{ return _cxxShip->cxx::ShipEntity::getScanClass(); }
+- (BOOL) canCollide	{ return _cxxShip->cxx::ShipEntity::canCollide(); }
+- (BOOL) checkCloseCollisionWith:(Entity *)other	{ return _cxxShip->cxx::ShipEntity::checkCloseCollisionWith(oo::ToCxx(other)); }
+- (BoundingBox) findSubentityBoundingBox	{ return _cxxShip->findSubentityBoundingBox(); }
+- (Triangle) absoluteIJKForSubentity	{ return _cxxShip->absoluteIJKForSubentity(); }
+- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent	{ _cxxShip->addSubentityToCollisionRadius(subent); }
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew	{ return _cxxShip->launchPodWithCrew(podCrew); }
+- (BOOL) validForAddToUniverse	{ return _cxxShip->cxx::ShipEntity::validForAddToUniverse(); }
+
+@end

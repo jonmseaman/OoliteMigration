@@ -385,455 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount
-{
-	std::string		autoAI;
-	std::string		pilotRole;
-	AI				*escortAI = nil;
-	std::string		defaultRole = "escort";
-
-	if ([self isPolice])
-	{
-		defaultRole = "wingman";
-		pilotRole = "police"; // police are always insured.
-	}
-	else
-	{
-		pilotRole = _cxxShip->bounty ? "pirate" : "hunter"; // hunters have insurancies, pirates not.
-	}
-	
-	double dd = escorter->_cxxEntity->collision_radius;
-		
-	if (EXPECT(currentEscortCount < (uint8_t)MAX_ESCORTS))
-	{
-		// spread them around a little randomly
-		ex_pos.x += dd * 6.0 * (randf() - 0.5);
-		ex_pos.y += dd * 6.0 * (randf() - 0.5);
-		ex_pos.z += dd * 6.0 * (randf() - 0.5);
-	}
-	else
-	{
-		// Thargoid armada(!) Add more distance between the 'escorts'.
-		ex_pos.x += dd * 12.0 * (randf() - 0.5);
-		ex_pos.y += dd * 12.0 * (randf() - 0.5);
-		ex_pos.z += dd * 12.0 * (randf() - 0.5);
-	}
-		
-	[escorter setPosition:ex_pos];	// minimise lollipop flash
-		
-	if (![escorter cxx_crew].has_value())
-	{
-		[escorter cxx_setSingleCrewWithRole:pilotRole];
-	}
-
-	[escorter setPrimaryRole:defaultRole];	//for mothership
-	// in case this hasn't yet been set, make sure escorts get a real scan class
-	// shouldn't happen very often, but is possible
-	if (_cxxEntity->scanClass == CLASS_NOT_SET)
-	{
-		_cxxEntity->scanClass = CLASS_NEUTRAL;
-	}
-	[escorter setScanClass:_cxxEntity->scanClass];		// you are the same as I
-		
-	if ([self bounty] == 0)  [escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];	// Avoid dirty escorts for clean mothers
-		
-	// find the right autoAI.
-	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
-	const std::optional<std::string> mappedAI = StringForKey(autoAIMap, defaultRole);
-	if (mappedAI.has_value())  autoAI = *mappedAI;
-	else // no 'wingman' defined in autoAImap?
-	{
-		autoAI = autoAIMap.get<std::string>("escort", "nullAI.plist");
-	}
-
-	escortAI = [escorter getAI];
-
-	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
-	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
-	if ( FuzzyBooleanForKey([escorter cxx_shipInfoDictionary], "auto_ai", YES)
-		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
-	{
-		[escorter switchAITo:autoAI];
-	}
-
-	[escorter setGroup:escortGroup];
-	[escorter setOwner:self];	// mark self as group leader
-
-	
-	if ([self status] == STATUS_DOCKED)
-	{
-		[[self owner] addShipToLaunchQueue:escorter withPriority:NO];
-	}
-	else
-	{
-		[UNIVERSE addEntity:escorter]; 	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[escortAI cxx_setState:"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
-		[escorter doScriptEvent:OOJSID("spawnedAsEscort") withArgument:self];
-	}
-	
-	if([escorter heatInsulation] < [self heatInsulation]) [escorter setHeatInsulation:[self heatInsulation]]; // give escorts same protection as mother.
-	if(([escorter maxFlightSpeed] < _cxxShip->cruiseSpeed) && ([escorter maxFlightSpeed] > _cxxShip->cruiseSpeed * 0.3)) 
-		_cxxShip->cruiseSpeed = [escorter maxFlightSpeed] * 0.99;  // adapt patrolSpeed to the slowest escort but ignore the very slow ones.
-		
-		
-	if (_cxxShip->bounty)
-	{
-		int extra = 1 | (ranrot_rand() & 15);
-		// if mothership is offender, make sure escorter is too.
-		[escorter markAsOffender:extra withReason:kOOLegalStatusReasonSetup];
-	}
-	else
-	{
-		// otherwise force the escort to be clean
-		[escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];
-	}
-	
-}
-
-- (std::optional<std::string>) cxx_shipDataKey
-{
-	return _cxxShip->_shipKey;
-}
-
-
-- (std::optional<std::string>) cxx_shipDataKeyAutoRole
-{
-	return oo::str::format("[%s]", [self cxx_shipDataKey].value_or("(null)").c_str());	// %@ printed nil as (null)
-}
-
-
-- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key
-{
-	_cxxShip->_shipKey = key;
-}
-
-
-- (oo::PList) cxx_shipInfoDictionary
-{
-	return _cxxShip->shipinfoDictionary;
-}
-
-
-- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode
-{
-	Vector offset;
-	if (mode == "single")
-	{
-		offset = vector_multiply_scalar(VectorFromPList(dict.find(key)),_cxxShip->_scaleFactor);
-		return { offset };
-	}
-	else
-	{
-		const oo::PList *offsets = ArrayForKey(dict, key);
-		if (offsets == nullptr) {
-			offset = kZeroVector;
-			return { offset };
-		}
-		std::vector<Vector> output;
-		output.reserve(offsets->count());
-		NSUInteger i;
-		for (i=0;i<offsets->count();i++) {
-			offset = vector_multiply_scalar(VectorFromPList(offsets->at(i)),_cxxShip->_scaleFactor);
-			output.push_back(offset);
-		}
-		return output;
-	}
-}
-
-
-- (std::vector<Vector>) cxx_aftWeaponOffset
-{
-	return _cxxShip->aftWeaponOffset;
-}
-
-
-- (std::vector<Vector>) cxx_forwardWeaponOffset
-{
-	return _cxxShip->forwardWeaponOffset;
-}
-
-
-- (std::vector<Vector>) cxx_portWeaponOffset
-{
-	return _cxxShip->portWeaponOffset;
-}
-
-
-- (std::vector<Vector>) cxx_starboardWeaponOffset
-{
-	return _cxxShip->starboardWeaponOffset;
-}
-
-
-- (BOOL)isFrangible
-{
-	return _cxxShip->isFrangible;
-}
-
-
-- (BOOL) suppressFlightNotifications
-{
-	return _cxxShip->suppressAegisMessages;
-}
-
-
-- (OOScanClass) scanClass
-{
-	if (_cxxShip->cloaking_device_active)  return CLASS_NO_DRAW;
-	return _cxxEntity->scanClass;
-}
-
-//////////////////////////////////////////////
-
-- (BOOL) canCollide
-{
-	int status = [self status];
-	if (status == STATUS_COCKPIT_DISPLAY || status == STATUS_DEAD || status == STATUS_BEING_SCOOPED)
-	{	
-		return NO;
-	}
-
-	if (_cxxShip->isWreckage)
-	{
-		// wreckage won't collide
-		return NO;
-	}
-	
-	if (_cxxShip->isMissile && [self shotTime] < 0.25) // not yet fused
-	{
-		return NO;
-	}
-	
-	return YES;
-}
-
-ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
-{
-	// octree check
-	Octree		*prime_octree = prime->_cxxShip->octree;
-	Octree		*other_octree = other->_cxxShip->octree;
-	
-	HPVector		prime_position = [prime absolutePositionForSubentity];
-	Triangle	prime_ijk = [prime absoluteIJKForSubentity];
-	HPVector		other_position = [other absolutePositionForSubentity];
-	Triangle	other_ijk = [other absoluteIJKForSubentity];
-
-	Vector		relative_position_of_other = resolveVectorInIJK(HPVectorToVector(HPvector_between(prime_position, other_position)), prime_ijk);
-	Triangle	relative_ijk_of_other;
-	relative_ijk_of_other.v[0] = resolveVectorInIJK(other_ijk.v[0], prime_ijk);
-	relative_ijk_of_other.v[1] = resolveVectorInIJK(other_ijk.v[1], prime_ijk);
-	relative_ijk_of_other.v[2] = resolveVectorInIJK(other_ijk.v[2], prime_ijk);
-	
-	// check hull octree against other hull octree
-	if ([prime_octree isHitByOctree:other_octree
-						 withOrigin:relative_position_of_other
-							 andIJK:relative_ijk_of_other])
-	{
-		return other;
-	}
-	
-	// check prime subentities against the other's hull
-	const std::vector<oo::ObjCRef<Entity *>> &prime_subs = prime->_cxxShip->subEntities;
-	if (!prime_subs.empty())
-	{
-		NSUInteger i, n_subs = prime_subs.size();
-		for (i = 0; i < n_subs; i++)
-		{
-			Entity* se = prime_subs[i].get();
-			if ([se isShip] && [se canCollide] && doOctreesCollide((ShipEntity*)se, other))
-				return other;
-		}
-	}
-
-	// check prime hull against the other's subentities
-	const std::vector<oo::ObjCRef<Entity *>> &other_subs = other->_cxxShip->subEntities;
-	if (!other_subs.empty())
-	{
-		NSUInteger i, n_subs = other_subs.size();
-		for (i = 0; i < n_subs; i++)
-		{
-			Entity* se = other_subs[i].get();
-			if ([se isShip] && [se canCollide] && doOctreesCollide(prime, (ShipEntity*)se))
-				return (ShipEntity*)se;
-		}
-	}
-	
-	// check prime subenties against the other's subentities
-	if ((!prime_subs.empty())&&(!other_subs.empty()))
-	{
-		NSUInteger i, n_osubs = other_subs.size();
-		for (i = 0; i < n_osubs; i++)
-		{
-			Entity* oe = other_subs[i].get();
-			if ([oe isShip] && [oe canCollide])
-			{
-				NSUInteger j, n_psubs = prime_subs.size();
-				for (j = 0; j <  n_psubs; j++)
-				{
-					Entity* pe = prime_subs[j].get();
-					if ([pe isShip] && [pe canCollide] && doOctreesCollide((ShipEntity*)pe, (ShipEntity*)oe))
-						return (ShipEntity*)oe;
-				}
-			}
-		}
-	}
-
-	// fall through => no collision
-	return nil;
-}
-
-
-- (BOOL) checkCloseCollisionWith:(Entity *)other
-{
-	if (other == nil)  return NO;
-	if (std::find_if(_cxxEntity->collidingEntities.begin(), _cxxEntity->collidingEntities.end(), [other](const oo::ObjCRef<Entity *> &e) { return e.get() == other; }) != _cxxEntity->collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
-	
-	ShipEntity *otherShip = nil;
-	if ([other isShip])  otherShip = (ShipEntity *)other;
-	
-	if ([self canScoop:otherShip])  return YES;	// quick test - could this improve scooping for small ships? I think so!
-	
-	if (otherShip != nil && _cxxShip->trackCloseContacts)
-	{
-		// in update we check if close contacts have gone out of touch range (origin within our collision_radius)
-		// here we check if something has come within that range
-		HPVector			otherPos = [otherShip position];
-		OOUniversalID	otherID = [otherShip universalID];
-		const std::string	other_key = oo::str::format("%d", otherID);
-
-		if (!_cxxShip->closeContactsInfo.contains(other_key) &&
-			HPdistance2(_cxxEntity->position, otherPos) < _cxxEntity->collision_radius * _cxxEntity->collision_radius)
-		{
-			// calculate position with respect to our own position and orientation
-			Vector	dpos = HPVectorToVector(HPvector_between(_cxxEntity->position, otherPos));
-			Vector  rpos = make_vector(dot_product(dpos, _cxxShip->v_right), dot_product(dpos, _cxxShip->v_up), dot_product(dpos, _cxxShip->v_forward));
-			_cxxShip->closeContactsInfo[other_key] = oo::str::format("%f %f %f", rpos.x, rpos.y, rpos.z);
-			
-			// send AI a message about the touch
-			OOWeakReference	*temp = _cxxShip->_primaryTarget;
-			_cxxShip->_primaryTarget = [otherShip weakRetain];
-			[self cxx_doScriptEvent:OOJSID("shipCloseContact") withArgument:otherShip andReactToAIMessage:"CLOSE CONTACT"];
-			_cxxShip->_primaryTarget = temp;
-		}
-	}
-	
-	/* This does not appear to save a significant amount of time in
-	 * most situations. No significant change in frame rate with a
-	 * 350-segment planetary ring at 1400 collision candidates, even
-	 * on old hardware. There are perhaps situations in which it could
-	 * be a significant optimisation, but those are likely to also be
-	 * the situations where the effect of adding hundreds of extra
-	 * false-positive collisions leaves the player returning to a
-	 * mess... So, commented out: CIM 21 Jan 2014
-	if (zero_distance > CLOSE_COLLISION_CHECK_MAX_RANGE2)	// don't work too hard on entities that are far from the player
-	return YES; 
-	*/
-	
-	if (otherShip != nil)
-	{
-		// check hull octree versus other hull octree
-		_cxxEntity->collider = doOctreesCollide(self, otherShip);
-		return (_cxxEntity->collider != nil);
-	}
-	
-	// default at this stage is to say YES they've collided!
-	_cxxEntity->collider = other;
-	return YES;
-}
-
-
-- (BoundingBox)findSubentityBoundingBox
-{
-	return [[self mesh] findSubentityBoundingBoxWithPosition:HPVectorToVector(_cxxEntity->position) rotMatrix:_cxxEntity->rotMatrix];
-}
-
-
-- (Triangle) absoluteIJKForSubentity
-{
-	Triangle	result = {{ kBasisXVector, kBasisYVector, kBasisZVector }};
-	Entity		*last = nil;
-	Entity		*father = self;
-	OOMatrix	r_mat;
-	
-	while ((father)&&(father != last) && (father != (Entity *)NO_TARGET))
-	{
-		r_mat = [father drawRotationMatrix];
-		result.v[0] = OOVectorMultiplyMatrix(result.v[0], r_mat);
-		result.v[1] = OOVectorMultiplyMatrix(result.v[1], r_mat);
-		result.v[2] = OOVectorMultiplyMatrix(result.v[2], r_mat);
-		
-		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
-	}
-	return result;
-}
-
-
-- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent
-{
-	if (!subent)  return;
-	
-	double distance = HPmagnitude([subent position]) + [subent findCollisionRadius];
-	if ([subent isKindOfClass:[ShipEntity class]])	// Solid subentity
-	{
-		if (distance > _cxxEntity->collision_radius)
-		{
-			_cxxEntity->collision_radius = distance;
-		}
-		
-		_cxxEntity->mass += [subent mass];
-	}
-	if (distance > _cxxShip->_profileRadius)
-	{
-		_cxxShip->_profileRadius = distance;
-	}
-}
-
-
-- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew
-{
-	ShipEntity *pod = nil;
-
-	const oo::PList &info = _cxxShip->shipinfoDictionary;
-	pod = [UNIVERSE cxx_newShipWithRole:StringForKey(info, "escape_pod_role").value_or("")];	// or nil
-	if (!pod)
-	{
-		//	_role not defined? it might have _model defined;
-		pod = [UNIVERSE cxx_newShipWithRole:info.get<std::string>("escape_pod_model", "escape-capsule")];
-		if (!pod)
-		{
-			pod = [UNIVERSE cxx_newShipWithRole:"escape-capsule"];
-			OO_LOG("shipEntity.noEscapePod", "Ship {} has no correct escape_pod_role defined. Now using default capsule.", oo::DescriptionOf(self));
-		}
-	}
-	
-	if (pod)
-	{
-		[pod setOwner:self];
-		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
-		[pod cxx_setCommodity:"slaves" andAmount:1];
-		[pod cxx_setCrew:podCrew];
-		[pod switchAITo:"oolite-shuttleAI.js"];
-		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
-		[pod release]; //release
-	}
-	
-	return pod;
-}
-
-
-- (BOOL) validForAddToUniverse
-{
-	if (_cxxShip->shipinfoDictionary.isNull())
-	{
-		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(self));
-		return NO;
-	}
-	return [super validForAddToUniverse];
-}
-
-
 - (void) update:(OOTimeDelta)delta_t
 {
 	if (_cxxShip->shipinfoDictionary.isNull())
@@ -14992,6 +14543,482 @@ void ShipEntity::setUpMixedEscorts()
 
 }	// namespace cxx
 
+
+// Slice 6 of docs/phases/3-slices/ShipEntity.md (bead oo-5z5wd): escort creation, ship data key,
+// weapon offsets, octree collision checks, subentity geometry, escape-pod launch. The facade
+// forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C
+// subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+/*	Slice 6 (bead oo-5z5wd): the octree collision check, without messages: the ships' C++ parts
+	answer their positions, frames and -canCollide (a virtual member, so PlayerEntity's override
+	still runs), and the octrees' C++ objects test the hit.
+*/
+::ShipEntity *doOctreesCollide(::ShipEntity *prime, ::ShipEntity *other)
+{
+	// octree check
+	::Octree		*prime_octree = prime->_cxxShip->octree;
+	::Octree		*other_octree = other->_cxxShip->octree;
+	
+	HPVector		prime_position = oo::ToCxx(prime)->absolutePositionForSubentity();
+	Triangle	prime_ijk = oo::ToCxx(prime)->absoluteIJKForSubentity();
+	HPVector		other_position = oo::ToCxx(other)->absolutePositionForSubentity();
+	Triangle	other_ijk = oo::ToCxx(other)->absoluteIJKForSubentity();
+
+	Vector		relative_position_of_other = resolveVectorInIJK(HPVectorToVector(HPvector_between(prime_position, other_position)), prime_ijk);
+	Triangle	relative_ijk_of_other;
+	relative_ijk_of_other.v[0] = resolveVectorInIJK(other_ijk.v[0], prime_ijk);
+	relative_ijk_of_other.v[1] = resolveVectorInIJK(other_ijk.v[1], prime_ijk);
+	relative_ijk_of_other.v[2] = resolveVectorInIJK(other_ijk.v[2], prime_ijk);
+	
+	// check hull octree against other hull octree
+	// [nil isHitByOctree:...] answered NO.
+	if (prime_octree != nil && oo::ToCxx(prime_octree)->isHitByOctree(oo::ToCxx(other_octree),
+						 relative_position_of_other,
+							 relative_ijk_of_other))
+	{
+		return other;
+	}
+	
+	// check prime subentities against the other's hull
+	const std::vector<oo::ObjCRef<::Entity *>> &prime_subs = prime->_cxxShip->subEntities;
+	if (!prime_subs.empty())
+	{
+		NSUInteger i, n_subs = prime_subs.size();
+		for (i = 0; i < n_subs; i++)
+		{
+			::Entity* se = prime_subs[i].get();
+			if (oo::ToCxx(se)->getIsShip() && oo::ToCxx(se)->canCollide() && doOctreesCollide((::ShipEntity*)se, other))
+				return other;
+		}
+	}
+
+	// check prime hull against the other's subentities
+	const std::vector<oo::ObjCRef<::Entity *>> &other_subs = other->_cxxShip->subEntities;
+	if (!other_subs.empty())
+	{
+		NSUInteger i, n_subs = other_subs.size();
+		for (i = 0; i < n_subs; i++)
+		{
+			::Entity* se = other_subs[i].get();
+			if (oo::ToCxx(se)->getIsShip() && oo::ToCxx(se)->canCollide() && doOctreesCollide(prime, (::ShipEntity*)se))
+				return (::ShipEntity*)se;
+		}
+	}
+	
+	// check prime subenties against the other's subentities
+	if ((!prime_subs.empty())&&(!other_subs.empty()))
+	{
+		NSUInteger i, n_osubs = other_subs.size();
+		for (i = 0; i < n_osubs; i++)
+		{
+			::Entity* oe = other_subs[i].get();
+			if (oo::ToCxx(oe)->getIsShip() && oo::ToCxx(oe)->canCollide())
+			{
+				NSUInteger j, n_psubs = prime_subs.size();
+				for (j = 0; j <  n_psubs; j++)
+				{
+					::Entity* pe = prime_subs[j].get();
+					if (oo::ToCxx(pe)->getIsShip() && oo::ToCxx(pe)->canCollide() && doOctreesCollide((::ShipEntity*)pe, (::ShipEntity*)oe))
+						return (::ShipEntity*)oe;
+				}
+			}
+		}
+	}
+
+	// fall through => no collision
+	return nil;
+}
+
+
+namespace cxx {
+
+void ShipEntity::setUpOneEscort(::ShipEntity *escorter, ::OOShipGroup *escortGroup, const std::string &/*escortRole*/, HPVector ex_pos, uint8_t currentEscortCount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string		autoAI;
+	std::string		pilotRole;
+	::AI				*escortAI = nil;
+	std::string		defaultRole = "escort";
+
+	if ([self isPolice])
+	{
+		defaultRole = "wingman";
+		pilotRole = "police"; // police are always insured.
+	}
+	else
+	{
+		pilotRole = bounty ? "pirate" : "hunter"; // hunters have insurancies, pirates not.
+	}
+	
+	double dd = escorter->_cxxEntity->collision_radius;
+		
+	if (EXPECT(currentEscortCount < (uint8_t)MAX_ESCORTS))
+	{
+		// spread them around a little randomly
+		ex_pos.x += dd * 6.0 * (randf() - 0.5);
+		ex_pos.y += dd * 6.0 * (randf() - 0.5);
+		ex_pos.z += dd * 6.0 * (randf() - 0.5);
+	}
+	else
+	{
+		// Thargoid armada(!) Add more distance between the 'escorts'.
+		ex_pos.x += dd * 12.0 * (randf() - 0.5);
+		ex_pos.y += dd * 12.0 * (randf() - 0.5);
+		ex_pos.z += dd * 12.0 * (randf() - 0.5);
+	}
+		
+	[escorter setPosition:ex_pos];	// minimise lollipop flash
+		
+	if (![escorter cxx_crew].has_value())
+	{
+		[escorter cxx_setSingleCrewWithRole:pilotRole];
+	}
+
+	[escorter setPrimaryRole:defaultRole];	//for mothership
+	// in case this hasn't yet been set, make sure escorts get a real scan class
+	// shouldn't happen very often, but is possible
+	if (scanClass == CLASS_NOT_SET)
+	{
+		scanClass = CLASS_NEUTRAL;
+	}
+	[escorter setScanClass:scanClass];		// you are the same as I
+		
+	if ([self bounty] == 0)  [escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];	// Avoid dirty escorts for clean mothers
+		
+	// find the right autoAI.
+	const oo::PList autoAIMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
+	const std::optional<std::string> mappedAI = StringForKey(autoAIMap, defaultRole);
+	if (mappedAI.has_value())  autoAI = *mappedAI;
+	else // no 'wingman' defined in autoAImap?
+	{
+		autoAI = autoAIMap.get<std::string>("escort", "nullAI.plist");
+	}
+
+	escortAI = [escorter getAI];
+
+	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
+	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
+	if ( FuzzyBooleanForKey([escorter cxx_shipInfoDictionary], "auto_ai", YES)
+		 || ([escortAI cxx_name].value_or(std::string()) == "nullAI.plist" && autoAI != "nullAI.plist") )
+	{
+		[escorter switchAITo:autoAI];
+	}
+
+	[escorter setGroup:escortGroup];
+	[escorter setOwner:self];	// mark self as group leader
+
+	
+	if ([self status] == STATUS_DOCKED)
+	{
+		[[self owner] addShipToLaunchQueue:escorter withPriority:NO];
+	}
+	else
+	{
+		[UNIVERSE addEntity:escorter]; 	// STATUS_IN_FLIGHT, AI state GLOBAL
+		[escortAI cxx_setState:"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
+		[escorter doScriptEvent:OOJSID("spawnedAsEscort") withArgument:self];
+	}
+	
+	if([escorter heatInsulation] < [self heatInsulation]) [escorter setHeatInsulation:[self heatInsulation]]; // give escorts same protection as mother.
+	if(([escorter maxFlightSpeed] < cruiseSpeed) && ([escorter maxFlightSpeed] > cruiseSpeed * 0.3)) 
+		cruiseSpeed = [escorter maxFlightSpeed] * 0.99;  // adapt patrolSpeed to the slowest escort but ignore the very slow ones.
+		
+		
+	if (bounty)
+	{
+		int extra = 1 | (ranrot_rand() & 15);
+		// if mothership is offender, make sure escorter is too.
+		[escorter markAsOffender:extra withReason:kOOLegalStatusReasonSetup];
+	}
+	else
+	{
+		// otherwise force the escort to be clean
+		[escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];
+	}
+	
+}
+
+
+std::optional<std::string> ShipEntity::shipDataKey()
+{
+	return _shipKey;
+}
+
+
+std::optional<std::string> ShipEntity::shipDataKeyAutoRole()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return oo::str::format("[%s]", [self cxx_shipDataKey].value_or("(null)").c_str());	// %@ printed nil as (null)
+}
+
+
+void ShipEntity::setShipDataKey(const std::optional<std::string> &key)
+{
+	_shipKey = key;
+}
+
+
+oo::PList ShipEntity::shipInfoDictionary()
+{
+	return shipinfoDictionary;
+}
+
+
+std::vector<Vector> ShipEntity::weaponOffsetsFrom(const oo::PList &dict, const std::string &key, const std::string &mode)
+{
+	Vector offset;
+	if (mode == "single")
+	{
+		offset = vector_multiply_scalar(VectorFromPList(dict.find(key)),_scaleFactor);
+		return { offset };
+	}
+	else
+	{
+		const oo::PList *offsets = ArrayForKey(dict, key);
+		if (offsets == nullptr) {
+			offset = kZeroVector;
+			return { offset };
+		}
+		std::vector<Vector> output;
+		output.reserve(offsets->count());
+		NSUInteger i;
+		for (i=0;i<offsets->count();i++) {
+			offset = vector_multiply_scalar(VectorFromPList(offsets->at(i)),_scaleFactor);
+			output.push_back(offset);
+		}
+		return output;
+	}
+}
+
+
+std::vector<Vector> ShipEntity::getAftWeaponOffset()
+{
+	return aftWeaponOffset;
+}
+
+
+std::vector<Vector> ShipEntity::getForwardWeaponOffset()
+{
+	return forwardWeaponOffset;
+}
+
+
+std::vector<Vector> ShipEntity::getPortWeaponOffset()
+{
+	return portWeaponOffset;
+}
+
+
+std::vector<Vector> ShipEntity::getStarboardWeaponOffset()
+{
+	return starboardWeaponOffset;
+}
+
+
+bool ShipEntity::getIsFrangible()
+{
+	return isFrangible;
+}
+
+
+bool ShipEntity::suppressFlightNotifications()
+{
+	return suppressAegisMessages;
+}
+
+
+OOScanClass ShipEntity::getScanClass()
+{
+	if (cloaking_device_active)  return CLASS_NO_DRAW;
+	return scanClass;
+}
+
+
+//////////////////////////////////////////////
+
+bool ShipEntity::canCollide()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	int status = [self status];
+	if (status == STATUS_COCKPIT_DISPLAY || status == STATUS_DEAD || status == STATUS_BEING_SCOOPED)
+	{	
+		return NO;
+	}
+
+	if (isWreckage)
+	{
+		// wreckage won't collide
+		return NO;
+	}
+	
+	if (isMissile && [self shotTime] < 0.25) // not yet fused
+	{
+		return NO;
+	}
+	
+	return YES;
+}
+
+
+BoundingBox ShipEntity::findSubentityBoundingBox()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [[self mesh] findSubentityBoundingBoxWithPosition:HPVectorToVector(position) rotMatrix:rotMatrix];
+}
+
+
+Triangle ShipEntity::absoluteIJKForSubentity()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Triangle	result = {{ kBasisXVector, kBasisYVector, kBasisZVector }};
+	::Entity		*last = nil;
+	::Entity		*father = self;
+	OOMatrix	r_mat;
+	
+	// NO_TARGET is 0, so the old `father != (Entity *)NO_TARGET` test only repeated the null check.
+	while ((father)&&(father != last))
+	{
+		r_mat = [father drawRotationMatrix];
+		result.v[0] = OOVectorMultiplyMatrix(result.v[0], r_mat);
+		result.v[1] = OOVectorMultiplyMatrix(result.v[1], r_mat);
+		result.v[2] = OOVectorMultiplyMatrix(result.v[2], r_mat);
+		
+		last = father;
+		if (![last isSubEntity]) break;
+		father = [father owner];
+	}
+	return result;
+}
+
+
+void ShipEntity::addSubentityToCollisionRadius(::Entity *subent)
+{
+	if (!subent)  return;
+	
+	double distance = HPmagnitude([subent position]) + [subent findCollisionRadius];
+	if ([subent isKindOfClass:[::ShipEntity class]])	// Solid subentity
+	{
+		if (distance > collision_radius)
+		{
+			collision_radius = distance;
+		}
+		
+		mass += [subent mass];
+	}
+	if (distance > _profileRadius)
+	{
+		_profileRadius = distance;
+	}
+}
+
+
+::ShipEntity *ShipEntity::launchPodWithCrew(const std::vector<oo::ObjCRef<::OOCharacter *>> &podCrew)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity *pod = nil;
+
+	const oo::PList &info = shipinfoDictionary;
+	pod = [UNIVERSE cxx_newShipWithRole:StringForKey(info, "escape_pod_role").value_or("")];	// or nil
+	if (!pod)
+	{
+		//	_role not defined? it might have _model defined;
+		pod = [UNIVERSE cxx_newShipWithRole:info.get<std::string>("escape_pod_model", "escape-capsule")];
+		if (!pod)
+		{
+			pod = [UNIVERSE cxx_newShipWithRole:"escape-capsule"];
+			OO_LOG("shipEntity.noEscapePod", "Ship {} has no correct escape_pod_role defined. Now using default capsule.", oo::DescriptionOf(self));
+		}
+	}
+	
+	if (pod)
+	{
+		[pod setOwner:self];
+		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
+		[pod cxx_setCommodity:"slaves" andAmount:1];
+		[pod cxx_setCrew:podCrew];
+		[pod switchAITo:"oolite-shuttleAI.js"];
+		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
+		[pod release]; //release
+	}
+	
+	return pod;
+}
+
+
+bool ShipEntity::validForAddToUniverse()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (shipinfoDictionary.isNull())
+	{
+		OO_LOG("shipEntity.notDict", "Ship {} was not set up from dictionary.", oo::DescriptionOf(self));
+		return NO;
+	}
+	return OOEntityWithDrawable::validForAddToUniverse();	// [super validForAddToUniverse]
+}
+
+
+bool ShipEntity::checkCloseCollisionWith(cxx::Entity *otherPart)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *other = oo::ToObjC(otherPart);
+
+	if (other == nil)  return NO;
+	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [other](const oo::ObjCRef<::Entity *> &e) { return e.get() == other; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
+	
+	::ShipEntity *otherShip = nil;
+	if ([other isShip])  otherShip = (::ShipEntity *)other;
+	
+	if ([self canScoop:otherShip])  return YES;	// quick test - could this improve scooping for small ships? I think so!
+	
+	if (otherShip != nil && trackCloseContacts)
+	{
+		// in update we check if close contacts have gone out of touch range (origin within our collision_radius)
+		// here we check if something has come within that range
+		HPVector			otherPos = [otherShip position];
+		OOUniversalID	otherID = [otherShip universalID];
+		const std::string	other_key = oo::str::format("%d", otherID);
+
+		if (!closeContactsInfo.contains(other_key) &&
+			HPdistance2(position, otherPos) < collision_radius * collision_radius)
+		{
+			// calculate position with respect to our own position and orientation
+			Vector	dpos = HPVectorToVector(HPvector_between(position, otherPos));
+			Vector  rpos = make_vector(dot_product(dpos, v_right), dot_product(dpos, v_up), dot_product(dpos, v_forward));
+			closeContactsInfo[other_key] = oo::str::format("%f %f %f", rpos.x, rpos.y, rpos.z);
+			
+			// send AI a message about the touch
+			::OOWeakReference	*temp = _primaryTarget;
+			_primaryTarget = [otherShip weakRetain];
+			[self cxx_doScriptEvent:OOJSID("shipCloseContact") withArgument:otherShip andReactToAIMessage:"CLOSE CONTACT"];
+			_primaryTarget = temp;
+		}
+	}
+	
+	/* This does not appear to save a significant amount of time in
+	 * most situations. No significant change in frame rate with a
+	 * 350-segment planetary ring at 1400 collision candidates, even
+	 * on old hardware. There are perhaps situations in which it could
+	 * be a significant optimisation, but those are likely to also be
+	 * the situations where the effect of adding hundreds of extra
+	 * false-positive collisions leaves the player returning to a
+	 * mess... So, commented out: CIM 21 Jan 2014
+	if (zero_distance > CLOSE_COLLISION_CHECK_MAX_RANGE2)	// don't work too hard on entities that are far from the player
+	return YES; 
+	*/
+	
+	if (otherShip != nil)
+	{
+		// check hull octree versus other hull octree
+		collider = doOctreesCollide(self, otherShip);
+		return (collider != nil);
+	}
+	
+	// default at this stage is to say YES they've collided!
+	collider = other;
+	return YES;
+}
+
+
+}	// namespace cxx
 
 
 oo::PList OODefaultShipShaderMacros(void)
