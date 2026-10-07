@@ -884,15 +884,15 @@ OO_TEST(slice23GUIsAndFlags)
 		Universe *u = NewUniverse();
 		OO_CHECK([u gui] == nil && [u commLogGUI] == nil && [u messageGUI] == nil);
 
-		[u setDisplayText:5];
-		OO_CHECK([u displayGUI] == YES && u->_cxxUniverse->displayGUI == YES);	// normalised
+		[u setDisplayText:YES];
+		OO_CHECK([u displayGUI] == YES && u->_cxxUniverse->displayGUI == YES);
 		[u setDisplayText:NO];
 		OO_CHECK(![u displayGUI]);
 		[u setDisplayFPS:YES];
 		OO_CHECK([u displayFPS]);
 		[u setDisplayFPS:NO];
 		OO_CHECK(![u displayFPS]);
-		[u setAutoSaveNow:3];
+		[u setAutoSaveNow:YES];
 		OO_CHECK(u->_cxxUniverse->autoSaveNow == YES);
 		u->_cxxUniverse->autoSave = YES;
 		OO_CHECK([u autoSave]);
