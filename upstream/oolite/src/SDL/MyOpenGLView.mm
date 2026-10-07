@@ -27,7 +27,6 @@ MA 02110-1301, USA.
 #import "png.h"
 #import "MyOpenGLView.h"
 #include "oofnd/Process.hpp"
-#import "MyOpenGLView+Input.h"
 
 #import "GameController.h"
 #import "Universe.h"
@@ -380,7 +379,7 @@ bool cxx::MyOpenGLView::init()
 
 	BOOL				noSplashArgFound = NO;
 
-	[oo::ToObjC(this) initKeyMappingData];
+	initKeyMappingData();
 
 	// preload the printscreen key into our translation array because SDLK_PRINTSCREEN isn't available
 	scancode2Unicode[55] = gvPrintScreenKey;
@@ -463,7 +462,7 @@ bool cxx::MyOpenGLView::init()
 		initialiseGLWithSize(firstScreen);
 	}
 
-	[oo::ToObjC(this) autoShowMouse];
+	autoShowMouse();
 
 	virtualJoystickPosition = NSMakePoint(0.0,0.0);
 	mouseWarped = NO;
@@ -536,7 +535,7 @@ void cxx::MyOpenGLView::endSplashScreen()
 
 	initialiseGLWithSize(firstScreen);
 	updateScreen();
-	[oo::ToObjC(this) autoShowMouse];
+	autoShowMouse();
 }
 
 void cxx::MyOpenGLView::updateGLSize(NSSize size)
@@ -643,7 +642,7 @@ void cxx::MyOpenGLView::initialiseGLWithSize(NSSize v_size)
 
 	OO_LOG("display.initGL", "Created a new surface of {} x {}, {}.", static_cast<int>((int)viewSize.width), static_cast<int>((int)viewSize.height), std::string((fullScreen ? "fullscreen" : "windowed")));
 
-	[oo::ToObjC(this) autoShowMouse];
+	autoShowMouse();
 
 	setUpBasicOpenGLStateWithSize();
 
@@ -1540,7 +1539,7 @@ void cxx::MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string &name, uint8_
 	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), SAVEDIR), SNAPSHOTDIR);
 	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
-	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
+	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);	// its own pixels, as -dumpGray: never the caller's 2-byte-a-pixel buffer (bead oo-5thb0)
 	for(int y = 0; y < height; y++)
 	{
 		uint8_t* srcRow = bytes + rowBytes*y;

@@ -197,6 +197,7 @@ inline constexpr std::string_view PLANETINFO_INTERSTELLAR_KEY			= "interstellar 
 
 
 @class Universe;
+@class OOUniverseDelayedMessage;	// Universe.mm's holder of a delayed message (slice 16)
 
 /*	The universe's state (bead oo-riqmz, slice 1 of docs/phases/3-slices/Universe.md): the old
 	@interface's ivars, by the same names and types, every one zero-initialised as the runtime
@@ -245,26 +246,6 @@ public:
 	void debugDumpEntities();
 	std::vector<oo::ObjCRef<::Entity *>> entityList();
 #endif
-
-	// Slice 3: pause and quit, carrying the player on, set-up from station / witchspace / misjump, witchspace and planet set-up.
-	void pauseGame();
-	void quitGame();
-	void carryPlayerOn(::StationEntity *carrier, ::WormholeEntity *wormhole);
-	void setUpUniverseFromStation();
-	void setUpUniverseFromWitchspace();
-	void setUpUniverseFromMisjump();
-	void setUpWitchspace();
-	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
-	::OOPlanetEntity *setUpPlanet();
-
-	// Slice 4: setUpSpace, populating normal space, the system populator.
-	void setUpSpace();
-	void populateNormalSpace();
-	void clearSystemPopulator();
-	oo::PList getPopulatorSettings();
-	void setPopulatorSetting(const std::string &key, const oo::PList &setting);
-	bool deterministicPopulation();
-	void populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet);
 
 	Universe(const Universe &) = delete;
 	Universe &operator=(const Universe &) = delete;
@@ -464,6 +445,242 @@ public:
 	BOOL					_bloom = NO;
 	int					_currentPostFX = 0;
 	int					_colorblindMode = 0;
+
+	// Slice 3: pause and quit, carrying the player on, set-up from station / witchspace / misjump, witchspace and planet set-up.
+	void pauseGame();
+	void quitGame();
+	void carryPlayerOn(::StationEntity *carrier, ::WormholeEntity *wormhole);
+	void setUpUniverseFromStation();
+	void setUpUniverseFromWitchspace();
+	void setUpUniverseFromMisjump();
+	void setUpWitchspace();
+	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
+	::OOPlanetEntity *setUpPlanet();
+
+	// Slice 4: setUpSpace, populating normal space, the system populator.
+	void setUpSpace();
+	void populateNormalSpace();
+	void clearSystemPopulator();
+	oo::PList getPopulatorSettings();
+	void setPopulatorSetting(const std::string &key, const oo::PList &setting);
+	bool deterministicPopulation();
+	void populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet);
+
+	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
+	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
+	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
+	::Entity *hazardOnRouteFromEntity(::Entity *e1, double dist, HPVector p2);
+	HPVector getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p2);
+	::ShipEntity *addWreckageFrom(::ShipEntity *ship, const std::string &wreckRole, HPVector rpos, GLfloat scale, GLfloat lifetime);
+	void addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float damage, ::OOColor *color);
+	::ShipEntity *firstShipHitByLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset, GLfloat *range_ptr);
+
+	// Slice 15: player targeting, entities in range, counting and finding ships by role and predicate, time, collisions, view direction.
+	::Entity *firstEntityTargetedByPlayer();
+	::Entity *firstEntityTargetedByPlayerPrecisely();
+	std::vector<oo::ObjCRef<::Entity *>> entitiesWithinRange(double range, ::Entity *entity);
+	unsigned countShipsWithRole(const std::string &role, double range, ::Entity *entity);
+	unsigned countShipsWithRole(const std::string &role);
+	unsigned countShipsWithPrimaryRole(const std::string &role, double range, ::Entity *entity);
+	unsigned countShipsWithScanClass(OOScanClass scanClass, double range, ::Entity *entity);
+	unsigned countShipsWithPrimaryRole(const std::string &role);
+	unsigned countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1);
+	unsigned countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity);
+	std::vector<oo::ObjCRef<::Entity *>> findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1);
+	id findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter);
+	std::vector<oo::ObjCRef<::Entity *>> findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity);
+	std::vector<oo::ObjCRef<::Entity *>> findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity);
+	id nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity);
+	id nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity);
+	OOTimeAbsolute getTime();
+	OOTimeDelta getTimeDelta();
+	void findCollisionsAndShadows();
+	std::string collisionDescription();
+	void dumpCollisions();
+	OOViewID getViewDirection();
+
+	// Slice 16: setting the view direction, GUI view mode, custom sounds, screen textures, messages and comms, delayed messages, repopulating.
+	void setViewDirection(OOViewID vd);
+	void enterGUIViewModeWithMouseInteraction(bool mouseInteraction);
+	std::optional<std::string> soundNameForCustomSoundKey(const std::string &soundKey);
+	oo::PList screenTextureDescriptorForKey(const std::string &key);
+	void setScreenTextureDescriptorForKey(const std::string &key, const oo::PList &desc);
+	void clearPreviousMessage();
+	void setMessageGuiBackgroundColor(::OOColor *some_color);
+	void displayMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void displayCountdownMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void addDelayedMessage(const std::optional<std::string> &text, OOTimeDelta count, double delay);
+	void addDelayedMessage(::OOUniverseDelayedMessage *holder);
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void speakWithSubstitutions(const std::optional<std::string> &text);
+	void addMessage(const std::optional<std::string> &text, OOTimeDelta count, bool forceDisplay);
+	void addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count);
+	void addCommsMessage(const std::optional<std::string> &text, OOTimeDelta count, bool showComms, bool logOnly);
+	void showCommsLog(OOTimeDelta how_long);
+	void showGUIMessage(const std::optional<std::string> &text, bool scroll, ::OOColor *selectedColor, OOTimeDelta how_long);
+	void repopulateSystem();
+
+	// Slice 17: update:, time acceleration, ECM visual effects.
+	void update(OOTimeDelta inDeltaT);
+	bool getECMVisualFXEnabled();
+	void setECMVisualFXEnabled(bool isEnabled);
+	double getTimeAccelerationFactor();
+	void setTimeAccelerationFactor(double newTimeAccelerationFactor);
+
+	// Slice 18: filterSortedLists, setGalaxyTo:.
+	void filterSortedLists();
+	void setGalaxyTo(OOGalaxyID g);
+
+	// Slice 19: galaxy and system changes, descriptions, scenarios, characters, mission text, system data and names, finding systems.
+	void setGalaxyTo(OOGalaxyID g, bool forced);
+	void setSystemTo(OOSystemID s);
+	OOSystemID currentSystemID();
+	const oo::PList *descriptions();
+	unsigned descriptionsGeneration();
+	void verifyDescriptions();
+	void loadDescriptions();
+	oo::PList explosionSetting(const std::string &explosion);
+	oo::PList scenarios();
+	void loadScenarios();
+	oo::PList getCharacters();
+	oo::PList getMissiontext();
+	std::optional<std::string> descriptionForKey(const std::string &key);
+	std::optional<std::string> descriptionForArrayKey(const std::string &key, unsigned index);
+	bool descriptionBooleanForKey(const std::string &key);
+	::OOSystemDescriptionManager *getSystemManager();
+	std::optional<std::string> keyForPlanetOverridesForSystem(OOSystemID s, OOGalaxyID g);
+	std::optional<std::string> keyForInterstellarOverridesForSystems(OOSystemID s1, OOSystemID s2, OOGalaxyID g);
+	oo::PList generateSystemData(OOSystemID s);
+	oo::PList generateSystemData(OOSystemID s, bool /*useCache*/);
+	oo::PList currentSystemData();
+	bool inInterstellarSpace();
+	void setSystemDataKey(const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest);
+	void setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest, OOSystemLayer layer);
+	oo::PList generateSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum);
+	std::vector<std::string> systemDataKeysForGalaxy(OOGalaxyID gnum, OOSystemID pnum);
+	oo::PList systemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key);
+	std::optional<std::string> getSystemName(OOSystemID sys);
+	std::optional<std::string> getSystemName(OOSystemID sys, OOGalaxyID gnum);
+	OOGovernmentID getSystemGovernment(OOSystemID sys);
+	std::optional<std::string> getSystemInhabitants(OOSystemID sys);
+	std::optional<std::string> getSystemInhabitants(OOSystemID sys, bool plural);
+	NSPoint coordinatesForSystem(OOSystemID s);
+	OOSystemID findSystemFromName(const std::string &sysName);
+	OOSystemID findSystemAtCoords(NSPoint coords, OOGalaxyID g);
+
+	// Slice 20: neighbouring systems, system-name look-up, routes (with RouteElement), planet textures, global and equipment data, the commodity market, time descriptions.
+	oo::PList nearbyDestinationsWithinRange(double range);
+	OOSystemID findNeighbouringSystemToCoords(NSPoint coords, OOGalaxyID g);
+	OOSystemID findConnectedSystemAtCoords(NSPoint coords, OOGalaxyID g);
+	OOSystemID findSystemNumberAtCoords(NSPoint coords, OOGalaxyID g, bool hidden);
+	NSPoint findSystemCoordinatesWithPrefix(const std::string &p_fix);
+	NSPoint findSystemCoordinatesWithPrefix(const std::string &p_fix, bool exactMatch);
+	BOOL *systemsFound();
+	std::optional<std::string> systemNameIndex(OOSystemID index);
+	oo::PList routeFromSystem(OOSystemID start, OOSystemID goal, OORouteType optimizeBy);
+	std::vector<OOSystemID> neighboursToSystem(OOSystemID s);
+	void preloadPlanetTexturesForSystem(OOSystemID /*s*/);
+	oo::PList getGlobalSettings();
+	oo::PList getEquipmentData();
+	oo::PList getEquipmentDataOutfitting();
+	::OOCommodityMarket *getCommodityMarket();
+	std::optional<std::string> timeDescription(double interval);
+
+	// Slice 21: short time descriptions, sun skimmers, station markets.
+	std::optional<std::string> shortTimeDescription(double interval);
+	void makeSunSkimmer(::ShipEntity *ship, bool setAI);
+	Random_Seed marketSeed();
+	void loadStationMarkets(const oo::PList &marketData);
+	oo::PList getStationMarkets();
+
+	// Slice 22: ships for sale (cxx_shipsForSaleForSystem:withTL:atTime:).
+	oo::PList shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL, OOTimeAbsolute current_time);
+
+	// Slice 23: trade-in value, brochure descriptions, witchspace exit and sun-skim positions, beacons by code, script events to all ships, the GUIs, FPS and autosave.
+	OOCreditsQuantity tradeInValueForCommanderDictionary(const oo::PList &dict);
+	std::optional<std::string> brochureDescriptionWithDictionary(const oo::PList &dict, const std::vector<std::string> &extras, const std::vector<std::string> &options);
+	HPVector getWitchspaceExitPosition();
+	Quaternion getWitchspaceExitRotation();
+	HPVector getSunSkimStartPositionForShip(::ShipEntity *ship);
+	HPVector getSunSkimEndPositionForShip(::ShipEntity *ship);
+	std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> listBeaconsWithCode(const std::string &code);
+	void allShipsDoScriptEvent(ooscript::PropertyId event, const std::optional<std::string> &message);
+	::GuiDisplayGen *getGui();
+	::GuiDisplayGen *commLogGUI();
+	::GuiDisplayGen *messageGUI();
+	void clearGUIs();
+	void resetCommsLogColor();
+	void setDisplayText(bool value);
+	bool getDisplayGUI();
+	void setDisplayFPS(bool value);
+	bool getDisplayFPS();
+	void setAutoSave(bool value);
+	bool getAutoSave();
+	void setAutoSaveNow(bool value);
+
+	// Slice 24: autosave, wireframe and detail levels, shaders, exceptions, air resistance, speech (eSpeak and none), message logs, settings, cargo pods, session IDs.
+	bool getAutoSaveNow();
+	void setWireframeGraphics(bool value);
+	bool getWireframeGraphics();
+	bool reducedDetail();
+	void setDetailLevelDirectly(OOGraphicsDetail value);
+	void setDetailLevel(OOGraphicsDetail value);
+	OOGraphicsDetail getDetailLevel();
+	bool useShaders();
+	void handleOoliteException(::OOException *exception);
+	GLfloat getAirResistanceFactor();
+	void setAirResistanceFactor(GLfloat newFactor);
+	bool pauseMessageVisible();
+	void setPauseMessageVisible(bool value);
+	bool permanentMessageLog();
+	void setPermanentMessageLog(bool value);
+	bool autoMessageLogBg();
+	void setAutoMessageLogBg(bool value);
+	bool permanentCommLog();
+	void setPermanentCommLog(bool value);
+	void setAutoCommLog(bool value);
+	bool blockJSPlayerShipProps();
+	void setBlockJSPlayerShipProps(bool value);
+	void setUpSettings();
+	void setUpCargoPods();
+	void verifyEntitySessionIDs();
+#if !OOLITE_MAC_OS_X	// the Mac arms stay Objective-C in the facade (docs/phases/3-slices/Universe.md "mac-only")
+	void startSpeakingString(const std::string &text);
+	void stopSpeaking();
+	bool isSpeaking();
+#endif
+#if OOLITE_ESPEAK
+	std::optional<std::string> voiceName(unsigned int index);
+	unsigned int voiceNumber(const std::string &name);
+	unsigned int nextVoice(unsigned int index);
+	unsigned int prevVoice(unsigned int index);
+	unsigned int setVoice(unsigned int index, bool isMale);
+#endif
+
+	// Slice 25: reinitialising and the demo, the initial universe, random positions, removing entities, preloading sounds, wormhole population, graph dumps.
+	bool reinitAndShowDemo(bool showDemo);
+	void setUpInitialUniverse();
+	float randomDistanceWithinScanner();
+	Vector randomPlaceWithinScannerFrom(Vector pos, Vector route, double offset);
+	HPVector fractionalPositionFrom(HPVector point0, HPVector point1, double routeFraction);
+	bool doRemoveEntity(::Entity *entity);
+	void preloadSounds();
+	void populateSpaceFromActiveWormholes();
+	std::optional<std::string> chooseStringForKey(const std::string &key, const oo::PList &dictionary);
+#if OO_LOCALIZATION_TOOLS && DEBUG_GRAPHVIZ
+	void dumpDebugGraphViz();
+	void dumpSystemDescriptionGraphViz();
+#endif
+
+	// Slice 26: graph-viz references, localisation tools, planet-material pruning, condition scripts, the custom-sound categories of OOSound and OOSoundSource, description look-ups.
+#if OO_LOCALIZATION_TOOLS
+	void addNumericRefsInString(const std::string &string, std::string &graphViz, const std::string &fromNode, NSUInteger nodeCount);
+	void runLocalizationTools();
+#endif
+	void prunePreloadingPlanetMaterials();
+	void loadConditionScripts();
+	void addConditionScripts(const std::vector<std::string> &scripts);
+	::OOJSScript *getConditionScript(const std::string &scriptname);
 };
 
 }	// namespace cxx
@@ -492,6 +709,10 @@ OOINLINE Universe *OOGetUniverse(void)
 // The lookups behind OO_DESC() / OO_DESC_PLURAL(): the description, or the key itself when there is none.
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);
+
+// The bodies of the two categories below (slice 26), which forward to them.
+::OOSound *OOSoundWithCustomSoundKey(const std::string &key);
+void OOSoundSourcePlayCustomSoundWithKey(::OOSoundSource *source, const std::string &key);
 
 @interface OOSound (OOCustomSounds)
 
