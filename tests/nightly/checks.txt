@@ -406,3 +406,4 @@
 [oo-lqyhf] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntityAI test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-9j462] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-hjzwk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-ra76k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMusicController test_ResourceManager test_OOMusic && bash tools/tier-c.sh --only goldens
