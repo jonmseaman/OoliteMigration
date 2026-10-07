@@ -26,6 +26,8 @@
 #import "ShipEntity.h"
 #import "OOColor.h"
 #import "OOJSPropID.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSVisualEffect.h"
 
 #include "oofnd/FileSystem.hpp"
 #include "oo_test.hpp"
@@ -487,6 +489,26 @@ OO_TEST(slice2Members)
 		OO_CHECK(cxxEffect->script() == [effect script]);
 		OO_CHECK(!cxxEffect->isBeacon() && !cxxEffect->isJammingScanning());
 		OO_CHECK(cxxEffect->scannerDisplayColorForShip(true, cxxEffect->scannerDisplayColor1(), nullptr)[0] == 1.0f);
+	}
+}
+
+
+
+// The binding's category, which the facade carries since bead oo-9ht.93: what the engine asks a
+// OOVisualEffectEntity for by selector is what OOJSVisualEffect.mm answers.
+OO_TEST(jsExtensions)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		OOVisualEffectEntity *effect = Effect("js-effect", Dict({}));
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[effect getJSClass:&jsClass andPrototype:&prototype];
+		OOJSVisualEffectGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([effect cxx_oo_jsClassName] == std::optional<std::string>("VisualEffect"));
+		OO_CHECK([effect isVisibleToScripts] == YES);
 	}
 }
 
