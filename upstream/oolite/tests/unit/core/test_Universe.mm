@@ -788,4 +788,55 @@ OO_TEST(slice19DataAndNames)
 }
 
 
+// Slice 20 (bead oo-lftoq): neighbouring systems, system-name look-up, routes, planet textures,
+// global and equipment data, the commodity market, time descriptions. Written against the
+// Objective-C API and run on the unconverted class first; with no system manager, what needs the
+// galaxy's data is left to the goldens.
+OO_TEST(slice20NamesAndRoutes)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->system_names[5] = std::string("Lave");
+		OO_CHECK([u cxx_systemNameIndex:5] == "Lave");
+		OO_CHECK([u cxx_systemNameIndex:256 + 5] == "Lave");	// the index wraps at 256
+		OO_CHECK(![u cxx_systemNameIndex:6].has_value());
+		OO_CHECK([u systemsFound] == (BOOL *)u->_cxxUniverse->system_found);
+
+		// No route from or to interstellar space, or outside the galaxy.
+		OO_CHECK([u cxx_routeFromSystem:-1 toSystem:7 optimizedBy:OPTIMIZED_BY_JUMPS].isNull());
+		OO_CHECK([u cxx_routeFromSystem:7 toSystem:-1 optimizedBy:OPTIMIZED_BY_TIME].isNull());
+		OO_CHECK([u cxx_routeFromSystem:300 toSystem:7 optimizedBy:OPTIMIZED_BY_JUMPS].isNull());
+
+		// The current system's neighbours, once cached, are the cache.
+		u->_cxxUniverse->systemID = 3;
+		u->_cxxUniverse->closeSystems = std::vector<OOSystemID>{ 1, 2 };
+		OO_CHECK([u neighboursToSystem:3] == (std::vector<OOSystemID>{ 1, 2 }));
+
+		[u preloadPlanetTexturesForSystem:3];	// disabled: does nothing
+	}
+}
+
+
+OO_TEST(slice20DataAndTime)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->globalSettings = oo::PList(oo::PList::Dict{ { "g", oo::PList("1") } });
+		u->_cxxUniverse->equipmentData = oo::PList(oo::PList::Array{ oo::PList("e") });
+		u->_cxxUniverse->equipmentDataOutfitting = oo::PList(oo::PList::Array{ oo::PList("o"), oo::PList("p") });
+		OO_CHECK([u cxx_globalSettings].get<std::string>("g") == "1");
+		OO_CHECK([u cxx_equipmentData].count() == 1);
+		OO_CHECK([u cxx_equipmentDataOutfitting].count() == 2);
+		OO_CHECK([u commodityMarket] == nil);
+
+		OO_CHECK([u timeDescription:90061] == "1 day 1 hour 1 minute 1 second");
+		OO_CHECK([u timeDescription:2 * 86400 + 7200 + 120 + 2.5] == "2 days 2 hours 2 minutes 2 seconds");
+		OO_CHECK([u timeDescription:3600] == "60 minutes");	// not more than an hour
+		OO_CHECK([u timeDescription:0] == "");
+	}
+}
+
+
 OO_TEST_MAIN()

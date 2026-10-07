@@ -243,33 +243,10 @@ MA 02110-1301, USA.
 
 ///////////////////////////////////////
 
-/**
- * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
- */
-- (oo::PList) cxx_nearbyDestinationsWithinRange:(double) range;	// an array of {distance, sysID, nova}
-
-- (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
-- (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
-// old alias for findSystemNumberAtCoords
-- (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal includingHidden:(BOOL)hidden;
-- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix;
-- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch;
-- (BOOL*) systemsFound;
-- (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID) index;
-- (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;	// {route, distance, time, jumps}; null for no route
-- (std::vector<OOSystemID>) neighboursToSystem:(OOSystemID) system_number;
-
-- (void) preloadPlanetTexturesForSystem:(OOSystemID)system;
 - (void) preloadSounds;
 
-- (oo::PList) cxx_globalSettings;
-
-- (oo::PList) cxx_equipmentData;
-- (oo::PList) cxx_equipmentDataOutfitting;
-- (OOCommodityMarket *) commodityMarket;
 - (Random_Seed) marketSeed;
 
-- (std::optional<std::string>) timeDescription:(OOTimeDelta) interval;
 - (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
 
 - (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
@@ -544,6 +521,34 @@ MA 02110-1301, USA.
 - (NSPoint) coordinatesForSystem:(OOSystemID)s;
 - (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName;
 - (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
+
+@end
+
+
+// Slice 20 of docs/phases/3-slices/Universe.md (bead oo-lftoq): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice20)
+
+/**
+ * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
+ */
+- (oo::PList) cxx_nearbyDestinationsWithinRange:(double) range;	// an array of {distance, sysID, nova}
+- (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
+- (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
+// old alias for findSystemNumberAtCoords
+- (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal includingHidden:(BOOL)hidden;
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix;
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch;
+- (BOOL*) systemsFound;
+- (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID) index;
+- (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;	// {route, distance, time, jumps}; null for no route
+- (std::vector<OOSystemID>) neighboursToSystem:(OOSystemID) system_number;
+- (void) preloadPlanetTexturesForSystem:(OOSystemID)system;
+- (oo::PList) cxx_globalSettings;
+- (oo::PList) cxx_equipmentData;
+- (oo::PList) cxx_equipmentDataOutfitting;
+- (OOCommodityMarket *) commodityMarket;
+- (std::optional<std::string>) timeDescription:(OOTimeDelta) interval;
 
 @end
 

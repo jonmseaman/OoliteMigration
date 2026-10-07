@@ -197,3 +197,25 @@ extern Universe *gSharedUniverse;
 - (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g	{ return _cxxUniverse->findSystemAtCoords(coords, g); }
 
 @end
+
+
+@implementation Universe (OOSlice20)
+
+- (oo::PList) cxx_nearbyDestinationsWithinRange:(double)range	{ return _cxxUniverse->nearbyDestinationsWithinRange(range); }
+- (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g	{ return _cxxUniverse->findNeighbouringSystemToCoords(coords, g); }
+- (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g	{ return _cxxUniverse->findConnectedSystemAtCoords(coords, g); }
+- (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID)g includingHidden:(BOOL)hidden	{ return _cxxUniverse->findSystemNumberAtCoords(coords, g, hidden); }
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix	{ return _cxxUniverse->findSystemCoordinatesWithPrefix(p_fix); }
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch	{ return _cxxUniverse->findSystemCoordinatesWithPrefix(p_fix, exactMatch); }
+- (BOOL*) systemsFound	{ return _cxxUniverse->systemsFound(); }
+- (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID)index	{ return _cxxUniverse->systemNameIndex(index); }
+- (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy	{ return _cxxUniverse->routeFromSystem(start, goal, optimizeBy); }
+- (std::vector<OOSystemID>) neighboursToSystem: (OOSystemID) s	{ return _cxxUniverse->neighboursToSystem(s); }
+- (void) preloadPlanetTexturesForSystem:(OOSystemID)s	{ _cxxUniverse->preloadPlanetTexturesForSystem(s); }
+- (oo::PList) cxx_globalSettings	{ return _cxxUniverse->getGlobalSettings(); }
+- (oo::PList) cxx_equipmentData	{ return _cxxUniverse->getEquipmentData(); }
+- (oo::PList) cxx_equipmentDataOutfitting	{ return _cxxUniverse->getEquipmentDataOutfitting(); }
+- (OOCommodityMarket *) commodityMarket	{ return _cxxUniverse->getCommodityMarket(); }
+- (std::optional<std::string>) timeDescription:(double) interval	{ return _cxxUniverse->timeDescription(interval); }
+
+@end
