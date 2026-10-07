@@ -162,6 +162,7 @@ void SetUp()
 
 	sRealPlayer = gOOPlayer;	// the one InitOOJSPlayerShip() made, which player.ship holds
 	object_setClass(sRealPlayer, [TestPlayerShip class]);
+	sRealPlayer->_cxxEntity->isPlayer = true;	// what the player's set-up sets, which the engine's player has not run
 
 	Universe *universe = (Universe *)class_createInstance([Universe class], 0);	// never released
 	universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
@@ -245,8 +246,8 @@ OO_TEST(getterNamesAndRoles)
 	OO_CHECK_EVAL("ship.shipUniqueName", "Bob");
 	OO_CHECK_EVAL("ship.shipClassName", "Viper");
 	OO_CHECK_EVAL("ship.scanDescription", "Cop");
-	OO_CHECK_EVAL("JSON.stringify(ship.roles)", "[\"police\",\"trader\"]");
-	OO_CHECK_EVAL("JSON.stringify(ship.roleWeights)", "{\"police\":1,\"trader\":1}");
+	OO_CHECK_EVAL("JSON.stringify(ship.roles)", "[\"[jsship]\",\"police\",\"trader\"]");	// the ship's key is one of its roles
+	OO_CHECK_EVAL("JSON.stringify(ship.roleWeights)", "{\"[jsship]\":1,\"police\":1,\"trader\":1}");
 	OO_CHECK_EVAL("ship.primaryRole", "police");
 	OO_CHECK_EVAL("ship.dataKey", "jsship");
 	OO_CHECK_EVAL("ship.beaconCode", "B");
@@ -259,12 +260,12 @@ OO_TEST(getterNamesAndRoles)
 OO_TEST(getterAIAndTargets)
 {
 	SetUp();
-	OO_CHECK_EVAL("ship.AI", "nullAI.plist");
-	OO_CHECK_EVAL("ship.AIState", "GLOBAL");
+	OO_CHECK_EVAL("ship.AI", "<no AI>");	// no AI plist to load in the test's game
+	OO_CHECK_EVAL("ship.AIState", "null");
 	OO_CHECK_EVAL("ship.AIFoundTarget", "null");
 	OO_CHECK_EVAL("ship.AIPrimaryAggressor", "null");
 	OO_CHECK_EVAL("ship.hasSuspendedAI", "false");
-	OO_CHECK_EVAL("ship.alertCondition", "1");
+	OO_CHECK_EVAL("ship.alertCondition", "2");
 	OO_CHECK_EVAL("ship.autoAI", "true");
 	OO_CHECK_EVAL("ship.autoWeapons", "false");
 	OO_CHECK_EVAL("ship.target", "null");
@@ -288,7 +289,7 @@ OO_TEST(getterFlight)
 	OO_CHECK_EVAL("ship.accuracy", "3");
 	OO_CHECK_EVAL("ship.fuel", "7");
 	OO_CHECK_EVAL("ship.fuelChargeRate", "1");
-	OO_CHECK_EVAL("ship.bounty", "25");
+	OO_CHECK_EVAL("ship.bounty", "0");	// a police ship keeps no bounty
 	OO_CHECK_EVAL("ship.temperature", "0.25");
 	OO_CHECK_EVAL("ship.heatInsulation", "1.5");
 	OO_CHECK_EVAL("ship.heading", "(0, 0, 1)");
@@ -311,8 +312,8 @@ OO_TEST(getterFlight)
 	OO_CHECK_EVAL("ship.vectorRight", "(1, 0, 0)");
 	OO_CHECK_EVAL("ship.vectorForward", "(0, 0, 1)");
 	OO_CHECK_EVAL("ship.vectorUp", "(0, 1, 0)");
-	OO_CHECK_EVAL("ship.velocity", "(4, 5, 6)");
-	OO_CHECK_EVAL("ship.thrustVector", "(0, 0, 0)");
+	OO_CHECK_EVAL("ship.velocity", "(4, 5, 56)");	// with the thrust of its speed
+	OO_CHECK_EVAL("ship.thrustVector", "(0, 0, 50)");
 	OO_CHECK_EVAL("ship.pitch", "0");
 	OO_CHECK_EVAL("ship.roll", "0");
 	OO_CHECK_EVAL("ship.yaw", "0");
@@ -349,7 +350,7 @@ OO_TEST(getterKind)
 	OO_CHECK_EVAL("ship.isFleeing", "false");
 	OO_CHECK_EVAL("ship.isCargo", "false");
 	OO_CHECK_EVAL("ship.isDerelict", "false");
-	OO_CHECK_EVAL("ship.isPiloted", "true");
+	OO_CHECK_EVAL("ship.isPiloted", "false");	// no crew
 	OO_CHECK_EVAL("ship.isFrangible", "true");
 	OO_CHECK_EVAL("ship.isCloaked", "false");
 	OO_CHECK_EVAL("ship.cloakAutomatic", "true");
@@ -367,7 +368,7 @@ OO_TEST(getterCargoAndCrew)
 	OO_CHECK_EVAL("ship.extraCargo", "5");
 	OO_CHECK_EVAL("ship.commodity", "null");
 	OO_CHECK_EVAL("ship.commodityAmount", "0");
-	OO_CHECK_EVAL("JSON.stringify(ship.crew)", "[]");
+	OO_CHECK_EVAL("JSON.stringify(ship.crew)", "null");
 	OO_CHECK_EVAL("ship.passengerCount", "0");
 	OO_CHECK_EVAL("ship.parcelCount", "0");
 	OO_CHECK_EVAL("ship.passengerCapacity", "0");
@@ -381,10 +382,10 @@ OO_TEST(getterCargoAndCrew)
 OO_TEST(getterGroupsAndSubentities)
 {
 	SetUp();
-	OO_CHECK_EVAL("ship.escorts", "null");
+	OO_CHECK_EVAL("JSON.stringify(ship.escorts)", "[]");	// its escort group holds only itself
 	OO_CHECK_EVAL("ship.group", "null");
-	OO_CHECK_EVAL("ship.escortGroup", "null");
-	OO_CHECK_EVAL("JSON.stringify(ship.subEntities)", "null");
+	OO_CHECK_EVAL("ship.escortGroup.name + ' ' + ship.escortGroup.count + ' ' + (ship.escortGroup.leader === ship)", "escort group 1 true");
+	OO_CHECK_EVAL("JSON.stringify(ship.subEntities)", "[]");
 	OO_CHECK_EVAL("JSON.stringify(ship.exhausts)", "[]");
 	OO_CHECK_EVAL("JSON.stringify(ship.flashers)", "[]");
 	OO_CHECK_EVAL("ship.subEntityCapacity", "0");
@@ -397,7 +398,7 @@ OO_TEST(getterWeaponsAndEquipment)
 	SetUp();
 	OO_CHECK_EVAL("ship.weaponRange", "0");
 	OO_CHECK_EVAL("ship.weaponFacings", "5");
-	OO_CHECK_EVAL("String(ship.weaponPositionAft)", "(0, 0, -2)");
+	OO_CHECK_EVAL("String(ship.weaponPositionAft)", "(0, 0, 0)");	// a lone string is not a mount list in multiply mode
 	OO_CHECK_EVAL("String(ship.weaponPositionForward)", "(1, 0, 0),(-1, 0, 0)");
 	OO_CHECK_EVAL("String(ship.weaponPositionPort)", "(0, 0, 0)");
 	OO_CHECK_EVAL("String(ship.weaponPositionStarboard)", "(0, 0, 0)");
