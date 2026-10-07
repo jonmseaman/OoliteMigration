@@ -473,6 +473,13 @@ public:
 	void showCommsLog(OOTimeDelta how_long);
 	void showGUIMessage(const std::optional<std::string> &text, bool scroll, ::OOColor *selectedColor, OOTimeDelta how_long);
 	void repopulateSystem();
+
+	// Slice 17: update:, time acceleration, ECM visual effects.
+	void update(OOTimeDelta inDeltaT);
+	bool getECMVisualFXEnabled();
+	void setECMVisualFXEnabled(bool isEnabled);
+	double getTimeAccelerationFactor();
+	void setTimeAccelerationFactor(double newTimeAccelerationFactor);
 };
 
 }	// namespace cxx

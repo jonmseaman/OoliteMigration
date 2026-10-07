@@ -137,3 +137,14 @@ extern Universe *gSharedUniverse;
 - (void) repopulateSystem	{ _cxxUniverse->repopulateSystem(); }
 
 @end
+
+
+@implementation Universe (OOSlice17)
+
+- (double) timeAccelerationFactor	{ return _cxxUniverse->getTimeAccelerationFactor(); }
+- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor	{ _cxxUniverse->setTimeAccelerationFactor(newTimeAccelerationFactor); }
+- (void) update:(OOTimeDelta)inDeltaT	{ _cxxUniverse->update(inDeltaT); }
+- (BOOL) ECMVisualFXEnabled	{ return _cxxUniverse->getECMVisualFXEnabled(); }
+- (void) setECMVisualFXEnabled:(BOOL)isEnabled	{ _cxxUniverse->setECMVisualFXEnabled(isEnabled); }
+
+@end

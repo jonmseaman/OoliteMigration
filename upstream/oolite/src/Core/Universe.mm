@@ -306,7 +306,7 @@ void AddIfAbsent(std::vector<oo::ObjCRef<T>> &objects, U object)
 template <class T>
 void AutoreleaseAll(std::vector<oo::ObjCRef<T>> &objects)
 {
-	for (oo::ObjCRef<T> &object : objects)  [object.leakRef() autorelease];
+	for (oo::ObjCRef<T> &object : objects)  objc_autorelease(object.leakRef());
 	objects.clear();
 }
 
@@ -6064,331 +6064,6 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 }	// namespace
 
 
-- (void) update:(OOTimeDelta)inDeltaT
-{
-	volatile OOTimeDelta delta_t = inDeltaT * [self timeAccelerationFactor];
-	NSUInteger sessionID = _cxxUniverse->_sessionID;
-	OO_LOG("universe.profile.update", "{}", "Begin update");
-	if (EXPECT(!_cxxUniverse->no_update))
-	{
-		_cxxUniverse->next_repopulation -= delta_t;
-		if (_cxxUniverse->next_repopulation < 0)
-		{
-			[self repopulateSystem];
-		}
-
-		unsigned	i, ent_count = _cxxUniverse->n_entities;
-		Entity		*my_entities[ent_count];
-		
-		[self verifyEntitySessionIDs];
-		
-		// use a retained copy so this can't be changed under us.
-		for (i = 0; i < ent_count; i++)
-		{
-			my_entities[i] = [_cxxUniverse->sortedEntities[i] retain];	// explicitly retain each one
-		}
-		
-		const char * volatile update_stage = "initialisation";
-#ifndef NDEBUG
-		id volatile update_stage_param = nil;
-#endif
-		
-		@try
-		{
-			PlayerEntity *player = PLAYER;
-			
-			_cxxUniverse->skyClearColor[0] = 0.0;
-			_cxxUniverse->skyClearColor[1] = 0.0;
-			_cxxUniverse->skyClearColor[2] = 0.0;
-			_cxxUniverse->skyClearColor[3] = 0.0;
-			
-			_cxxUniverse->time_delta = delta_t;
-			_cxxUniverse->universal_time += delta_t;
-			
-			if (EXPECT_NOT([player showDemoShips] && [player guiScreen] == GUI_SCREEN_SHIPLIBRARY))
-			{
-				update_stage = "demo management";
-				
-				if (_cxxUniverse->universal_time >= _cxxUniverse->demo_stage_time)
-				{
-					if (ent_count > 1)
-					{
-						Vector		vel;
-						Quaternion	q2 = kIdentityQuaternion;
-						
-						quaternion_rotate_about_y(&q2,M_PI);
-						
-						switch (_cxxUniverse->demo_stage)
-						{
-							case DEMO_FLY_IN:
-								[_cxxUniverse->demo_ship setPosition:[_cxxUniverse->demo_ship destination]];	// ideal position
-								_cxxUniverse->demo_stage = DEMO_SHOW_THING;
-								_cxxUniverse->demo_stage_time = _cxxUniverse->universal_time + 300.0;
-								break;
-							case DEMO_SHOW_THING:
-								vel = make_vector(0, 0, DEMO2_VANISHING_DISTANCE * _cxxUniverse->demo_ship->_cxxEntity->collision_radius * 6.0);
-								[_cxxUniverse->demo_ship setVelocity:vel];
-								_cxxUniverse->demo_stage = DEMO_FLY_OUT;
-								_cxxUniverse->demo_stage_time = _cxxUniverse->universal_time + 0.25;
-								break;
-							case DEMO_FLY_OUT:
-								// change the demo_ship here
-								[self removeEntity:_cxxUniverse->demo_ship];
-								_cxxUniverse->demo_ship = nil;
-								
-								_cxxUniverse->demo_ship_subindex = (_cxxUniverse->demo_ship_subindex + 1) % DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index);
-								_cxxUniverse->demo_ship = [self cxx_newShipWithName:OptionalStringIn([self demoShipData], kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];	// a missing key asked for "", as nil did
-								
-								if (_cxxUniverse->demo_ship != nil)
-								{
-									[_cxxUniverse->demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
-									[_cxxUniverse->demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
-
-									[_cxxUniverse->demo_ship switchAITo:"nullAI.plist"];
-									[_cxxUniverse->demo_ship setOrientation:q2];
-									[_cxxUniverse->demo_ship setScanClass: CLASS_NO_DRAW];
-									[_cxxUniverse->demo_ship setStatus: STATUS_COCKPIT_DISPLAY]; // prevents it getting escorts on addition
-									[_cxxUniverse->demo_ship setDemoShip: 1.0f];
-									[_cxxUniverse->demo_ship setDemoStartTime: _cxxUniverse->universal_time];
-									if ([self addEntity:_cxxUniverse->demo_ship])
-									{
-										[_cxxUniverse->demo_ship release];		// We now own a reference through the entity list.
-										[_cxxUniverse->demo_ship setStatus:STATUS_COCKPIT_DISPLAY];
-										_cxxUniverse->demo_start_z=DEMO2_VANISHING_DISTANCE * _cxxUniverse->demo_ship->_cxxEntity->collision_radius;
-										[_cxxUniverse->demo_ship setPositionX:0.0f y:0.0f z:_cxxUniverse->demo_start_z];
-										[_cxxUniverse->demo_ship setDestination: make_HPvector(0.0f, 0.0f, _cxxUniverse->demo_start_z * 0.01f)];	// ideal position
-										[_cxxUniverse->demo_ship setVelocity:kZeroVector];
-										[_cxxUniverse->demo_ship setScanClass: CLASS_NO_DRAW];
-//										[gui setText:shipName != nil ? shipName : [demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
-										
-										[self setLibraryTextForDemoShip];
-
-										_cxxUniverse->demo_stage = DEMO_FLY_IN;
-										_cxxUniverse->demo_start_time=_cxxUniverse->universal_time;
-										_cxxUniverse->demo_stage_time = _cxxUniverse->demo_start_time + DEMO2_FLY_IN_STAGE_TIME;
-									}
-									else
-									{
-										_cxxUniverse->demo_ship = nil;
-									}
-								}
-								break;
-						}
-					}
-				}
-				else if (_cxxUniverse->demo_stage == DEMO_FLY_IN)
-				{
-					GLfloat delta = (_cxxUniverse->universal_time - _cxxUniverse->demo_start_time) / DEMO2_FLY_IN_STAGE_TIME;
-					[_cxxUniverse->demo_ship setPositionX:0.0f y:[_cxxUniverse->demo_ship destination].y * delta z:_cxxUniverse->demo_start_z + ([_cxxUniverse->demo_ship destination].z - _cxxUniverse->demo_start_z) * delta ];
-				}
-			}
-			
-			update_stage = "update:entity";
-			std::vector<oo::ObjCRef<Entity *>> zombies;	// each once, in the order found
-			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
-			for (i = 0; i < ent_count; i++)
-			{
-				Entity *thing = my_entities[i];
-#ifndef NDEBUG
-				update_stage_param = thing;
-				update_stage = "update:entity [%@]";
-#endif
-				// Game Over code depends on regular delta_t updates to the dead player entity. Ignore the player entity, even when dead.
-				if (EXPECT_NOT([thing status] == STATUS_DEAD && std::find(_cxxUniverse->entitiesDeadThisUpdate.begin(), _cxxUniverse->entitiesDeadThisUpdate.end(), thing) == _cxxUniverse->entitiesDeadThisUpdate.end() && ![thing isPlayer]))
-				{
-					AddIfAbsent(zombies, thing);
-					continue;
-				}
-				
-				[thing update:delta_t];
-				if (EXPECT_NOT(sessionID != _cxxUniverse->_sessionID))
-				{
-					// Game was reset (in player update); end this update: cycle.
-					break;
-				}
-				
-#ifndef NDEBUG
-				update_stage = "update:list maintenance [%@]";
-#endif
-				
-				// maintain distance-from-player list
-				GLfloat z_distance = thing->_cxxEntity->zero_distance;
-				
-				int index = thing->_cxxEntity->zero_index;
-				while (index > 0 && z_distance < _cxxUniverse->sortedEntities[index - 1]->_cxxEntity->zero_distance)
-				{
-					_cxxUniverse->sortedEntities[index] = _cxxUniverse->sortedEntities[index - 1];	// bubble up the list, usually by just one position
-					_cxxUniverse->sortedEntities[index - 1] = thing;
-					thing->_cxxEntity->zero_index = index - 1;
-					_cxxUniverse->sortedEntities[index]->_cxxEntity->zero_index = index;
-					index--;
-				}
-				
-				// update deterministic AI
-				if ([thing isShip])
-				{
-#ifndef NDEBUG
-					update_stage = "update:think [%@]";
-#endif
-					AI* theShipsAI = [(ShipEntity *)thing getAI];
-					if (theShipsAI)
-					{
-						double thinkTime = [theShipsAI nextThinkTime];
-						if ((_cxxUniverse->universal_time > thinkTime)||(thinkTime == 0.0))
-						{
-							[theShipsAI setNextThinkTime:_cxxUniverse->universal_time + [theShipsAI thinkTimeInterval]];
-							[theShipsAI think];
-						}
-					}
-				}
-			}
-#ifndef NDEBUG
-		update_stage_param = nil;
-#endif
-			
-			if (!zombies.empty())
-			{
-				update_stage = "shootin' zombies";
-				Entity *zombie = nil;
-				for (const oo::ObjCRef<Entity *> &entry : zombies)
-				{
-					zombie = entry.get();
-					OO_LOG_ERR("universe.zombie", "Found dead entity {} in active entity list, removing. This is an internal error, please report it.", oo::DescriptionOf(zombie));
-					[self removeEntity:zombie];
-				}
-			}
-			
-			// Maintain x/y/z order lists
-			update_stage = "updating linked lists";
-			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
-			for (i = 0; i < ent_count; i++)
-			{
-				[my_entities[i] updateLinkedLists];
-			}
-			
-			// detect collisions and light ships that can see the sun
-			
-			update_stage = "collision and shadow detection";
-			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
-			[self filterSortedLists];
-			[self findCollisionsAndShadows];
-			
-			// do any required check and maintenance of linked lists
-			
-			if (_cxxUniverse->doLinkedListMaintenanceThisUpdate)
-			{
-				MaintainLinkedLists(self);
-				_cxxUniverse->doLinkedListMaintenanceThisUpdate = NO;
-			}
-		}
-		@catch (OOException *exception)
-		{
-			if (strncmp([exception name], "Oolite", 6) == 0)
-			{
-				[self handleOoliteException:exception];
-			}
-			else
-			{
-				std::string stage = update_stage;
-#ifndef NDEBUG
-				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
-#endif
-				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, [exception name], [exception reason]);
-				@throw exception;
-			}
-		}
-		
-		// dispose of the non-mutable copy and everything it references neatly
-		update_stage = "clean up";
-		OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
-		for (i = 0; i < ent_count; i++)
-		{
-			[my_entities[i] release];	// explicitly release each one
-		}
-		/* Garbage collection is going to result in a significant
-		 * pause when it happens. Doing it here is better than doing
-		 * it in the middle of the update when it might slow a
-		 * function into the timelimiter through no fault of its
-		 * own. ooscript::maybeGC will only run a GC when it's
-		 * necessary. Merely checking is not significant in terms of
-		 * time. - CIM: 4/8/2013
-		 */
-		update_stage = "JS Garbage Collection";
-		OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage)); 
-#ifndef NDEBUG
-		ooscript::Context context = OOJSAcquireContext(); 
-		uint32_t gcbytes1 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
-		OOJSRelinquishContext(context);
-#endif
-		[[OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:NO];
-#ifndef NDEBUG
-		context = OOJSAcquireContext(); 
-		uint32_t gcbytes2 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
-		OOJSRelinquishContext(context);
-		if (gcbytes2 < gcbytes1)
-		{
-			OO_LOG("universe.profile.jsgc", "Unplanned JS Garbage Collection from {} to {}", gcbytes1, gcbytes2);
-		}
-#endif
-
-
-	}
-	else
-	{
-		// always perform player's dead updates: allows deferred JS resets.
-		if ([PLAYER status] == STATUS_DEAD)  [PLAYER update:delta_t];
-	}
-	
-	// The dead stay alive until the autorelease pool drains, as the autoreleased set kept them.
-	AutoreleaseAll(_cxxUniverse->entitiesDeadThisUpdate);
-	_cxxUniverse->entitiesDeadThisUpdate.reserve(_cxxUniverse->n_entities);
-	
-	[self prunePreloadingPlanetMaterials];
-
-	OO_LOG("universe.profile.update", "{}", "Update complete");
-}
-
-
-#ifndef NDEBUG
-- (double) timeAccelerationFactor
-{
-	return _cxxUniverse->timeAccelerationFactor;
-}
-
-
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor
-{
-	if (newTimeAccelerationFactor < TIME_ACCELERATION_FACTOR_MIN || newTimeAccelerationFactor > TIME_ACCELERATION_FACTOR_MAX)
-	{
-		newTimeAccelerationFactor = TIME_ACCELERATION_FACTOR_DEFAULT;
-	}
-	_cxxUniverse->timeAccelerationFactor = newTimeAccelerationFactor;
-}
-#else
-- (double) timeAccelerationFactor
-{
-	return 1.0;
-}
-
-
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor
-{
-}
-#endif
-
-
-- (BOOL) ECMVisualFXEnabled
-{
-	return _cxxUniverse->ECMVisualFXEnabled;
-}
-
-
-- (void) setECMVisualFXEnabled:(BOOL)isEnabled
-{
-	_cxxUniverse->ECMVisualFXEnabled = isEnabled;
-}
-
-
 - (void) filterSortedLists
 {
 	/*
@@ -11827,6 +11502,340 @@ void Universe::repopulateSystem()
 	[PLAYER doWorldScriptEvent:(system_repopulator.has_value() ? cxx_OOJSIDFromString(*system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 	next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
+}
+
+}	// namespace cxx
+
+
+// Slice 17 of docs/phases/3-slices/Universe.md (bead oo-gr7a2): update:, time acceleration, ECM visual effects. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+void Universe::update(OOTimeDelta inDeltaT)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	volatile OOTimeDelta delta_t = inDeltaT * [self timeAccelerationFactor];
+	NSUInteger sessionID = _sessionID;
+	OO_LOG("universe.profile.update", "{}", "Begin update");
+	if (EXPECT(!no_update))
+	{
+		next_repopulation -= delta_t;
+		if (next_repopulation < 0)
+		{
+			[self repopulateSystem];
+		}
+
+		unsigned	i, ent_count = n_entities;
+		::Entity		*my_entities[ent_count];
+		
+		[self verifyEntitySessionIDs];
+		
+		// use a retained copy so this can't be changed under us.
+		for (i = 0; i < ent_count; i++)
+		{
+			my_entities[i] = [sortedEntities[i] retain];	// explicitly retain each one
+		}
+		
+		const char * volatile update_stage = "initialisation";
+#ifndef NDEBUG
+		id volatile update_stage_param = nil;
+#endif
+		
+		@try
+		{
+			::PlayerEntity *player = PLAYER;
+			
+			skyClearColor[0] = 0.0;
+			skyClearColor[1] = 0.0;
+			skyClearColor[2] = 0.0;
+			skyClearColor[3] = 0.0;
+			
+			time_delta = delta_t;
+			universal_time += delta_t;
+			
+			if (EXPECT_NOT([player showDemoShips] && [player guiScreen] == GUI_SCREEN_SHIPLIBRARY))
+			{
+				update_stage = "demo management";
+				
+				if (universal_time >= demo_stage_time)
+				{
+					if (ent_count > 1)
+					{
+						Vector		vel;
+						Quaternion	q2 = kIdentityQuaternion;
+						
+						quaternion_rotate_about_y(&q2,M_PI);
+						
+						switch (demo_stage)
+						{
+							case DEMO_FLY_IN:
+								[demo_ship setPosition:[demo_ship destination]];	// ideal position
+								demo_stage = DEMO_SHOW_THING;
+								demo_stage_time = universal_time + 300.0;
+								break;
+							case DEMO_SHOW_THING:
+								vel = make_vector(0, 0, DEMO2_VANISHING_DISTANCE * demo_ship->_cxxEntity->collision_radius * 6.0);
+								[demo_ship setVelocity:vel];
+								demo_stage = DEMO_FLY_OUT;
+								demo_stage_time = universal_time + 0.25;
+								break;
+							case DEMO_FLY_OUT:
+								// change the demo_ship here
+								[self removeEntity:demo_ship];
+								demo_ship = nil;
+								
+								demo_ship_subindex = (demo_ship_subindex + 1) % DemoClassCount(demo_ships, demo_ship_index);
+								demo_ship = [self cxx_newShipWithName:OptionalStringIn([self demoShipData], kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];	// a missing key asked for "", as nil did
+								
+								if (demo_ship != nil)
+								{
+									[demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+									[demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
+
+									[demo_ship switchAITo:"nullAI.plist"];
+									[demo_ship setOrientation:q2];
+									[demo_ship setScanClass: CLASS_NO_DRAW];
+									[demo_ship setStatus: STATUS_COCKPIT_DISPLAY]; // prevents it getting escorts on addition
+									[demo_ship setDemoShip: 1.0f];
+									[demo_ship setDemoStartTime: universal_time];
+									if ([self addEntity:demo_ship])
+									{
+										[demo_ship release];		// We now own a reference through the entity list.
+										[demo_ship setStatus:STATUS_COCKPIT_DISPLAY];
+										demo_start_z=DEMO2_VANISHING_DISTANCE * demo_ship->_cxxEntity->collision_radius;
+										[demo_ship setPositionX:0.0f y:0.0f z:demo_start_z];
+										[demo_ship setDestination: make_HPvector(0.0f, 0.0f, demo_start_z * 0.01f)];	// ideal position
+										[demo_ship setVelocity:kZeroVector];
+										[demo_ship setScanClass: CLASS_NO_DRAW];
+//										[gui setText:shipName != nil ? shipName : [demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
+										
+										[self setLibraryTextForDemoShip];
+
+										demo_stage = DEMO_FLY_IN;
+										demo_start_time=universal_time;
+										demo_stage_time = demo_start_time + DEMO2_FLY_IN_STAGE_TIME;
+									}
+									else
+									{
+										demo_ship = nil;
+									}
+								}
+								break;
+						}
+					}
+				}
+				else if (demo_stage == DEMO_FLY_IN)
+				{
+					GLfloat delta = (universal_time - demo_start_time) / DEMO2_FLY_IN_STAGE_TIME;
+					[demo_ship setPositionX:0.0f y:[demo_ship destination].y * delta z:demo_start_z + ([demo_ship destination].z - demo_start_z) * delta ];
+				}
+			}
+			
+			update_stage = "update:entity";
+			std::vector<oo::ObjCRef<::Entity *>> zombies;	// each once, in the order found
+			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
+			for (i = 0; i < ent_count; i++)
+			{
+				::Entity *thing = my_entities[i];
+#ifndef NDEBUG
+				update_stage_param = thing;
+				update_stage = "update:entity [%@]";
+#endif
+				// Game Over code depends on regular delta_t updates to the dead player entity. Ignore the player entity, even when dead.
+				if (EXPECT_NOT([thing status] == STATUS_DEAD && std::find(entitiesDeadThisUpdate.begin(), entitiesDeadThisUpdate.end(), thing) == entitiesDeadThisUpdate.end() && ![thing isPlayer]))
+				{
+					AddIfAbsent(zombies, thing);
+					continue;
+				}
+				
+				[thing update:delta_t];
+				if (EXPECT_NOT(sessionID != _sessionID))
+				{
+					// Game was reset (in player update); end this update: cycle.
+					break;
+				}
+				
+#ifndef NDEBUG
+				update_stage = "update:list maintenance [%@]";
+#endif
+				
+				// maintain distance-from-player list
+				GLfloat z_distance = thing->_cxxEntity->zero_distance;
+				
+				int index = thing->_cxxEntity->zero_index;
+				while (index > 0 && z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance)
+				{
+					sortedEntities[index] = sortedEntities[index - 1];	// bubble up the list, usually by just one position
+					sortedEntities[index - 1] = thing;
+					thing->_cxxEntity->zero_index = index - 1;
+					sortedEntities[index]->_cxxEntity->zero_index = index;
+					index--;
+				}
+				
+				// update deterministic AI
+				if ([thing isShip])
+				{
+#ifndef NDEBUG
+					update_stage = "update:think [%@]";
+#endif
+					::AI* theShipsAI = [(::ShipEntity *)thing getAI];
+					if (theShipsAI)
+					{
+						double thinkTime = [theShipsAI nextThinkTime];
+						if ((universal_time > thinkTime)||(thinkTime == 0.0))
+						{
+							[theShipsAI setNextThinkTime:universal_time + [theShipsAI thinkTimeInterval]];
+							[theShipsAI think];
+						}
+					}
+				}
+			}
+#ifndef NDEBUG
+		update_stage_param = nil;
+#endif
+			
+			if (!zombies.empty())
+			{
+				update_stage = "shootin' zombies";
+				::Entity *zombie = nil;
+				for (const oo::ObjCRef<::Entity *> &entry : zombies)
+				{
+					zombie = entry.get();
+					OO_LOG_ERR("universe.zombie", "Found dead entity {} in active entity list, removing. This is an internal error, please report it.", oo::DescriptionOf(zombie));
+					[self removeEntity:zombie];
+				}
+			}
+			
+			// Maintain x/y/z order lists
+			update_stage = "updating linked lists";
+			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
+			for (i = 0; i < ent_count; i++)
+			{
+				[my_entities[i] updateLinkedLists];
+			}
+			
+			// detect collisions and light ships that can see the sun
+			
+			update_stage = "collision and shadow detection";
+			OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
+			[self filterSortedLists];
+			[self findCollisionsAndShadows];
+			
+			// do any required check and maintenance of linked lists
+			
+			if (doLinkedListMaintenanceThisUpdate)
+			{
+				MaintainLinkedLists(self);
+				doLinkedListMaintenanceThisUpdate = NO;
+			}
+		}
+		@catch (::OOException *exception)
+		{
+			if (strncmp([exception name], "Oolite", 6) == 0)
+			{
+				[self handleOoliteException:exception];
+			}
+			else
+			{
+				std::string stage = update_stage;
+#ifndef NDEBUG
+				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
+#endif
+				OO_LOG(cxx_kOOLogException, "***** Exception during [{}] in [Universe update:] : {} : {} *****", stage, [exception name], [exception reason]);
+				@throw exception;
+			}
+		}
+		
+		// dispose of the non-mutable copy and everything it references neatly
+		update_stage = "clean up";
+		OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage));
+		for (i = 0; i < ent_count; i++)
+		{
+			[my_entities[i] release];	// explicitly release each one
+		}
+		/* Garbage collection is going to result in a significant
+		 * pause when it happens. Doing it here is better than doing
+		 * it in the middle of the update when it might slow a
+		 * function into the timelimiter through no fault of its
+		 * own. ooscript::maybeGC will only run a GC when it's
+		 * necessary. Merely checking is not significant in terms of
+		 * time. - CIM: 4/8/2013
+		 */
+		update_stage = "JS Garbage Collection";
+		OO_LOG("universe.profile.update", "{}", const_cast<const char *>(update_stage)); 
+#ifndef NDEBUG
+		ooscript::Context context = OOJSAcquireContext(); 
+		uint32_t gcbytes1 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
+		OOJSRelinquishContext(context);
+#endif
+		[[::OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:NO];
+#ifndef NDEBUG
+		context = OOJSAcquireContext(); 
+		uint32_t gcbytes2 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
+		OOJSRelinquishContext(context);
+		if (gcbytes2 < gcbytes1)
+		{
+			OO_LOG("universe.profile.jsgc", "Unplanned JS Garbage Collection from {} to {}", gcbytes1, gcbytes2);
+		}
+#endif
+
+
+	}
+	else
+	{
+		// always perform player's dead updates: allows deferred JS resets.
+		if ([PLAYER status] == STATUS_DEAD)  [PLAYER update:delta_t];
+	}
+	
+	// The dead stay alive until the autorelease pool drains, as the autoreleased set kept them.
+	AutoreleaseAll(entitiesDeadThisUpdate);
+	entitiesDeadThisUpdate.reserve(n_entities);
+	
+	[self prunePreloadingPlanetMaterials];
+
+	OO_LOG("universe.profile.update", "{}", "Update complete");
+}
+
+
+#ifndef NDEBUG
+double Universe::getTimeAccelerationFactor()
+{
+	return timeAccelerationFactor;
+}
+
+
+void Universe::setTimeAccelerationFactor(double newTimeAccelerationFactor)
+{
+	if (newTimeAccelerationFactor < TIME_ACCELERATION_FACTOR_MIN || newTimeAccelerationFactor > TIME_ACCELERATION_FACTOR_MAX)
+	{
+		newTimeAccelerationFactor = TIME_ACCELERATION_FACTOR_DEFAULT;
+	}
+	timeAccelerationFactor = newTimeAccelerationFactor;
+}
+#else
+double Universe::getTimeAccelerationFactor()
+{
+	return 1.0;
+}
+
+
+void Universe::setTimeAccelerationFactor(double /*newTimeAccelerationFactor*/)
+{
+}
+#endif
+
+
+bool Universe::getECMVisualFXEnabled()
+{
+	return ECMVisualFXEnabled;
+}
+
+
+void Universe::setECMVisualFXEnabled(bool isEnabled)
+{
+	ECMVisualFXEnabled = isEnabled;
 }
 
 }	// namespace cxx
