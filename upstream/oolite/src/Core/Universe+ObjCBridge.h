@@ -241,14 +241,6 @@ MA 02110-1301, USA.
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-- (void) update:(OOTimeDelta)delta_t;
-
-// Time Acelleration Factor. In deployment builds, this is always 1.0 and -setTimeAccelerationFactor: does nothing.
-- (double) timeAccelerationFactor;
-- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor;
-
-- (BOOL) ECMVisualFXEnabled;
-- (void) setECMVisualFXEnabled:(BOOL)isEnabled;
 
 - (void) filterSortedLists;
 
@@ -530,6 +522,20 @@ MA 02110-1301, USA.
 - (void) showCommsLog:(OOTimeDelta) how_long;
 - (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long;
 - (void) repopulateSystem;
+
+@end
+
+
+// Slice 17 of docs/phases/3-slices/Universe.md (bead oo-gr7a2): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice17)
+
+// Time Acelleration Factor. In deployment builds, this is always 1.0 and -setTimeAccelerationFactor: does nothing.
+- (double) timeAccelerationFactor;
+- (void) setTimeAccelerationFactor:(double)newTimeAccelerationFactor;
+- (void) update:(OOTimeDelta)delta_t;
+- (BOOL) ECMVisualFXEnabled;
+- (void) setECMVisualFXEnabled:(BOOL)isEnabled;
 
 @end
 
