@@ -248,39 +248,7 @@ MA 02110-1301, USA.
 
 - (void) preloadSounds;
 
-/* Calculate base cost, before depreciation */
-- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &) cmdr_dict;
-
-- (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &) dict standardEquipment:(const std::vector<std::string> &) extras optionalEquipment:(const std::vector<std::string> &) options;
-
-- (HPVector) getWitchspaceExitPosition;
-- (Quaternion) getWitchspaceExitRotation;
-
-- (HPVector) getSunSkimStartPositionForShip:(ShipEntity*) ship;
-- (HPVector) getSunSkimEndPositionForShip:(ShipEntity*) ship;
-
-- (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &) code;	// sorted by beacon code
-
-- (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message;	// nullopt: no AI message
-
 ///////////////////////////////////////
-
-- (void) clearGUIs;
-
-- (GuiDisplayGen *) gui;
-- (GuiDisplayGen *) commLogGUI;
-- (GuiDisplayGen *) messageGUI;
-
-- (void) resetCommsLogColor;
-
-- (void) setDisplayText:(BOOL) value;
-- (BOOL) displayGUI;
-
-- (void) setDisplayFPS:(BOOL) value;
-- (BOOL) displayFPS;
-
-- (void) setAutoSave:(BOOL) value;
-- (BOOL) autoSave;
 
 - (void) setWireframeGraphics:(BOOL) value;
 - (BOOL) wireframeGraphics;
@@ -316,8 +284,6 @@ MA 02110-1301, USA.
 //
 ////
 
-//autosave 
-- (void) setAutoSaveNow:(BOOL) value;
 - (BOOL) autoSaveNow;
 
 - (int) framesDoneThisUpdate;
@@ -562,6 +528,36 @@ MA 02110-1301, USA.
 @interface Universe (OOSlice22)
 
 - (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
+
+@end
+
+
+// Slice 23 of docs/phases/3-slices/Universe.md (bead oo-ni1hw): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice23)
+
+/* Calculate base cost, before depreciation */
+- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &) cmdr_dict;
+- (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &) dict standardEquipment:(const std::vector<std::string> &) extras optionalEquipment:(const std::vector<std::string> &) options;
+- (HPVector) getWitchspaceExitPosition;
+- (Quaternion) getWitchspaceExitRotation;
+- (HPVector) getSunSkimStartPositionForShip:(ShipEntity*) ship;
+- (HPVector) getSunSkimEndPositionForShip:(ShipEntity*) ship;
+- (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &) code;	// sorted by beacon code
+- (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message;	// nullopt: no AI message
+- (GuiDisplayGen *) gui;
+- (GuiDisplayGen *) commLogGUI;
+- (GuiDisplayGen *) messageGUI;
+- (void) clearGUIs;
+- (void) resetCommsLogColor;
+- (void) setDisplayText:(BOOL) value;
+- (BOOL) displayGUI;
+- (void) setDisplayFPS:(BOOL) value;
+- (BOOL) displayFPS;
+- (void) setAutoSave:(BOOL) value;
+- (BOOL) autoSave;
+//autosave 
+- (void) setAutoSaveNow:(BOOL) value;
 
 @end
 
