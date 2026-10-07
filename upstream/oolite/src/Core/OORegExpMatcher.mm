@@ -82,18 +82,18 @@ bool OORegExpMatcher::init()
 	[::OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 	
 	ooscript::Context context = OOJSAcquireContext();
-	_tester = [[::OOJSFunction alloc] initWithName:std::string("matchesRegExp")
-										   scope:NULL
-											code:std::string(code)
-								   argumentCount:2
-								   argumentNames:argumentNames
-										fileName:oo::str::lastPathComponent(__FILE__)
-									  lineNumber:codeLine
-										 context:context];
+	_tester = OOJSFunction::initWithName(std::string("matchesRegExp"),
+										 NULL,
+										 std::string(code),
+										 2,
+										 argumentNames,
+										 oo::str::lastPathComponent(__FILE__),
+										 codeLine,
+										 context);
 	
 	OOJSRelinquishContext(context);
 	
-	if (_tester == nil)  return false;	// was DESTROY(self)
+	if (_tester == nullptr)  return false;	// was DESTROY(self)
 	
 	return true;
 }
@@ -103,7 +103,7 @@ OORegExpMatcher::~OORegExpMatcher()
 {
 	if (sActiveInstance == this)  sActiveInstance = nullptr;
 	
-	DESTROY(_tester);
+	_tester = nullptr;
 	DESTROY(_cachedRegExpObject);
 }
 
@@ -153,7 +153,7 @@ bool OORegExpMatcher::string(const std::string &string, const std::string &regEx
 	argv[1] = (_cachedRegExpObject != nil) ? OOJSValueFromNativeObject(context, _cachedRegExpObject) : ooscript::Value{0};
 	OOJSAddGCValueRoot(context, &argv[1], "OORegExpMatcher argv");
 	ooscript::Value resultValue;
-	bool OK = [_tester evaluateWithContext:context scope:NULL argc:2 argv:argv result:&resultValue];
+	bool OK = _tester->evaluateWithContext(context, NULL, 2, argv, &resultValue);
 	bool matched = false;
 	if (OK)  OK = ooscript::valueToBoolean(context, resultValue, &matched);
 	ooscript::removeValueRoot(context, &argv[0]);
