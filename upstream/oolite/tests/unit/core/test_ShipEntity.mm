@@ -1068,4 +1068,57 @@ OO_TEST(behavioursWithoutATarget)
 }
 
 
+// --- Slice 12: behaviours: attack target, broadside, close with target (bead oo-0akes) --------------
+
+// With no target the attack behaviours note the lost target and go idle.
+OO_TEST(attackBehavioursWithoutATarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"attacker" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
+		[ship behaviour_attack_broadside:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+		[ship behaviour_attack_broadside_left:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+		[ship behaviour_attack_broadside_right:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
+		[ship behaviour_close_to_broadside_range:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
+		[ship behaviour_close_with_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// -behaviour_attack_target: chooses the next attack behaviour: an unarmed ship (no weapon on any
+// mount or subentity) flies from its target, and the choice resets the ship's frustration. The
+// broadside on either side, with no target, notes the lost target and goes idle.
+OO_TEST(attackTargetChoiceAndBroadsideSides)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"unarmed" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_TARGET;
+		MutablePart(ship)->frustration = 5.0f;
+		[ship behaviour_attack_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_ATTACK_FLY_FROM_TARGET);
+		OO_CHECK(Part(ship)->frustration == 0.0f);
+
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+		[ship behaviour_attack_broadside_target:0.1 leftside:YES];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+		[ship behaviour_attack_broadside_target:0.1 leftside:NO];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
 OO_TEST_MAIN()

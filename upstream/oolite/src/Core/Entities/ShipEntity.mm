@@ -385,482 +385,6 @@ void ShipEntity::initWithKey(const std::string &key)
 static constexpr std::string_view kBoulderRole = "boulder";
 
 
-- (void) behaviour_attack_target:(double) delta_t
-{
-	double  range = [self rangeToPrimaryTarget];
-	
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-
-/* Start of behaviour selection:
- * Anything beyond the basics should require accuracy >= COMBAT_AI_ISNT_AWFUL
- * Anything fancy should require accuracy >= COMBAT_AI_IS_SMART
- * If precise aim is required, behaviour should have accuracy >= COMBAT_AI_TRACKS_CLOSER
- * - CIM
- */
-
-	OOWeaponType forward_weapon_real_type = _cxxShip->forward_weapon_type;
-	GLfloat forward_weapon_real_temp = _cxxShip->forward_weapon_temp;
-
-// if forward weapon is actually on a subent
-	if (isWeaponNone(forward_weapon_real_type))
-	{
-		BOOL hasTurrets = NO;
-		for (const auto &sub : [self cxx_shipSubEntities])
-		{
-			if (!isWeaponNone(forward_weapon_real_type))  break;
-			ShipEntity *se = sub.get();
-			forward_weapon_real_type = se->_cxxShip->forward_weapon_type;
-			forward_weapon_real_temp = se->_cxxShip->forward_weapon_temp;
-			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
-			{
-				hasTurrets = YES;
-			}
-		}
-		if (isWeaponNone(forward_weapon_real_type) && hasTurrets)
-		{ // safety for ships only equipped with turrets
-			forward_weapon_real_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_PULSE_LASER");
-			forward_weapon_real_temp = COMBAT_AI_WEAPON_TEMP_USABLE * 0.9;
-		}
-	}
-
-	if ([forward_weapon_real_type isTurretLaser]) 
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
-	} 
-	else 
-	{
-		BOOL in_good_range = _cxxShip->aim_tolerance*range < COMBAT_AI_CONFIDENCE_FACTOR;
-
-		BOOL aft_weapon_ready = !isWeaponNone(_cxxShip->aft_weapon_type) && (_cxxShip->aft_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY) && in_good_range;
-		BOOL forward_weapon_ready = !isWeaponNone(forward_weapon_real_type) && (forward_weapon_real_temp < COMBAT_AI_WEAPON_TEMP_READY); // does not require in_good_range
-		BOOL port_weapon_ready = !isWeaponNone(_cxxShip->port_weapon_type) && (_cxxShip->port_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY) && in_good_range;
-		BOOL starboard_weapon_ready = !isWeaponNone(_cxxShip->starboard_weapon_type) && (_cxxShip->starboard_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY) && in_good_range;
-// if no weapons cool enough to be good choices, be less picky
-		BOOL weapons_heating = NO;
-		if (!forward_weapon_ready && !aft_weapon_ready && !port_weapon_ready && !starboard_weapon_ready)
-		{
-			weapons_heating = YES;
-			aft_weapon_ready = !isWeaponNone(_cxxShip->aft_weapon_type) && (_cxxShip->aft_weapon_temp < COMBAT_AI_WEAPON_TEMP_USABLE) && in_good_range;
-			forward_weapon_ready = !isWeaponNone(forward_weapon_real_type) && (forward_weapon_real_temp < COMBAT_AI_WEAPON_TEMP_USABLE); // does not require in_good_range
-			port_weapon_ready = !isWeaponNone(_cxxShip->port_weapon_type) && (_cxxShip->port_weapon_temp < COMBAT_AI_WEAPON_TEMP_USABLE) && in_good_range;
-		starboard_weapon_ready = !isWeaponNone(_cxxShip->starboard_weapon_type) && (_cxxShip->starboard_weapon_temp < COMBAT_AI_WEAPON_TEMP_USABLE) && in_good_range;
-		}
-
-		Entity*	target = [self primaryTarget];
-		double aspect = [self approachAspectToPrimaryTarget];
-
-		if (!forward_weapon_ready && !aft_weapon_ready && !port_weapon_ready && !starboard_weapon_ready)
-		{ // no usable weapons! Either not fitted or overheated
-			
-			// if unarmed
-			if (isWeaponNone(forward_weapon_real_type) && 
-				isWeaponNone(_cxxShip->aft_weapon_type) && 
-				isWeaponNone(_cxxShip->port_weapon_type) && 
-				isWeaponNone(_cxxShip->starboard_weapon_type))
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
-			}
-			else if (aspect > 0)
-			{
-				if (in_good_range)
-				{
-					if (_cxxShip->accuracy >= COMBAT_AI_IS_SMART && randf() < 0.75)
-					{
-						_cxxShip->behaviour = BEHAVIOUR_EVASIVE_ACTION;
-					}
-					else 
-					{
-						_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
-					}
-				}
-				else 
-				{
-					// ready to get more accurate shots later
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-				}
-			} 
-			else
-			{
-				// if target is running away, stay on target
-				// unless too close for safety
-				if (range < COMBAT_IN_RANGE_FACTOR * _cxxShip->weaponRange) {
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
-				} else {
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-				}
-			}
-		}
-// if our current target isn't targeting us, and we have some idea of how to fight, and our weapons are running hot, and we're fairly nearby
-		else if (weapons_heating && _cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && [target isShip] && [(ShipEntity *)target primaryTarget] != self && range < COMBAT_OUT_RANGE_FACTOR * _cxxShip->weaponRange) 
-		{
-// then back off a bit for weapons to cool so we get a good attack run later, rather than weaving closer
-			float relativeSpeed = magnitude(vector_subtract([self velocity], [target velocity]));
-			[self setEvasiveJink:(range + COMBAT_JINK_OFFSET - relativeSpeed / _cxxShip->max_flight_pitch)];
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
-		}
-		else 
-		{
-			BOOL nearby = range < COMBAT_IN_RANGE_FACTOR * getWeaponRangeFromType(_cxxShip->forward_weapon_type);
-			BOOL midrange = range < COMBAT_OUT_RANGE_FACTOR * getWeaponRangeFromType(_cxxShip->aft_weapon_type);
-
-
-			if (nearby && aft_weapon_ready)
-			{
-				_cxxShip->jink = kZeroVector; // almost all behaviours
-				_cxxShip->behaviour = BEHAVIOUR_RUNNING_DEFENSE;
-			}
-			else if (nearby && (port_weapon_ready || starboard_weapon_ready))
-			{
-				_cxxShip->jink = kZeroVector; // almost all behaviours
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
-			}
-			else if (nearby)
-			{
-				if (!_cxxShip->pitching_over) // don't change jink in the middle of a sharp turn.
-				{
-					/*
-						For most AIs, is behaviour_attack_target called as starting behaviour on every hit.
-						Target can both fly towards or away from ourselves here. Both situations
-						need a different jink.z for optimal collision avoidance at high speed approach and low speed dogfighting.
-						The COMBAT_JINK_OFFSET intentionally over-compensates the range for collision radii to send ships towards
-						the target at low speeds.
-					*/
-					float relativeSpeed = magnitude(vector_subtract([self velocity], [target velocity]));
-					[self setEvasiveJink:(range + COMBAT_JINK_OFFSET - relativeSpeed / _cxxShip->max_flight_pitch)];
-				}
-				// good pilots use behaviour_attack_break_off_target instead
-				if (_cxxShip->accuracy >= COMBAT_AI_FLEES_BETTER)
-				{
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_BREAK_OFF_TARGET;
-				}
-				else
-				{
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
-				}
-			}
-			else if (forward_weapon_ready)
-			{
-				_cxxShip->jink = kZeroVector; // almost all behaviours
-
-				// TODO: good pilots use behaviour_attack_sniper sometimes
-				if (getWeaponRangeFromType(forward_weapon_real_type) > 12500 && range > 12500)
-				{
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_SNIPER;
-				}
-// generally not good tactics the next two
-				else if (_cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL && aspect < 0)
-				{
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX;
-				}
-				else if (_cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL)
-				{
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
-				}
-				else
-				{
-					_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-				}
-			}
-			else if (port_weapon_ready || starboard_weapon_ready)
-			{
-				_cxxShip->jink = kZeroVector; // almost all behaviours
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
-			}
-			else if (aft_weapon_ready && midrange)
-			{
-				_cxxShip->jink = kZeroVector; // almost all behaviours
-				_cxxShip->behaviour = BEHAVIOUR_RUNNING_DEFENSE;
-			} 
-			else
-			{
-				_cxxShip->jink = kZeroVector; // almost all behaviours
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-			}
-		}
-	}
-
-	_cxxShip->frustration = 0.0;	// behaviour changed, so reset frustration
-	
-}
-
-
-- (void) behaviour_attack_broadside:(double) delta_t
-{
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	double  range = [self rangeToPrimaryTarget];
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	
-	_cxxShip->desired_speed = max_available_speed;
-	if (range < COMBAT_BROADSIDE_IN_RANGE_FACTOR * _cxxShip->weaponRange)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-	else
-	{
-		if (_cxxShip->port_weapon_temp < _cxxShip->starboard_weapon_temp)
-		{
-			if (isWeaponNone(_cxxShip->port_weapon_type))
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
-				[self setWeaponDataFromType:_cxxShip->starboard_weapon_type];
-			}
-			else
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
-				[self setWeaponDataFromType:_cxxShip->port_weapon_type];
-			}
-		}
-		else
-		{
-			if (isWeaponNone(_cxxShip->starboard_weapon_type))
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
-				[self setWeaponDataFromType:_cxxShip->starboard_weapon_type];
-			}
-			else
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
-				[self setWeaponDataFromType:_cxxShip->port_weapon_type];
-			}
-		}
-		_cxxShip->jink = kZeroVector;
-		if (_cxxShip->weapon_damage == 0.0)
-		{ // safety in case side lasers no longer exist
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		}
-		else if (range > 0.9 * _cxxShip->weaponRange)
-		{
-			_cxxShip->behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
-		}
-	}
-
-	_cxxShip->frustration = 0.0;	// behaviour changed, so reset frustration
-
-	
-}
-
-
-- (void) behaviour_attack_broadside_left:(double) delta_t
-{
-	[self behaviour_attack_broadside_target:delta_t leftside:YES];
-}
-
-
-- (void) behaviour_attack_broadside_right:(double) delta_t
-{
-	[self behaviour_attack_broadside_target:delta_t leftside:NO];
-}
-
-
-- (void) behaviour_attack_broadside_target:(double) delta_t leftside:(BOOL) leftside
-{
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	double  range = [self rangeToPrimaryTarget];
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	if ([self primaryTarget] == nil)
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	GLfloat currentWeaponRange = getWeaponRangeFromType(leftside?_cxxShip->port_weapon_type:_cxxShip->starboard_weapon_type);
-	if (range > COMBAT_BROADSIDE_RANGE_FACTOR * currentWeaponRange)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
-		return;
-	}
-
-// can get closer on broadsides since there's less risk of a collision
-	if ((range < COMBAT_BROADSIDE_IN_RANGE_FACTOR * currentWeaponRange)||([self proximityAlert] != nil))
-	{
-		if (![self hasProximityAlertIgnoringTarget:YES])
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		}
-		else
-		{
-			[self avoidCollision];
-			return;
-		}
-	}
-	else
-	{
-		if (![self canStillTrackPrimaryTarget])
-		{
-			[self noteLostTargetAndGoIdle];
-			return;
-		}
-	}
-	// control speed
-	//
-	BOOL isUsingAfterburner = canBurn && (_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed);
-	double slow_down_range = currentWeaponRange * COMBAT_WEAPON_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
-//	double target_speed = [target speed];
-	if (range <= slow_down_range)
-		_cxxShip->desired_speed = fmin(0.8 * _cxxShip->maxFlightSpeed, fmax((2.0-_cxxShip->frustration)*_cxxShip->maxFlightSpeed, 0.1 * _cxxShip->maxFlightSpeed));   // within the weapon's range slow down to aim
-	else
-		_cxxShip->desired_speed = max_available_speed; // use afterburner to approach
-
-	double last_success_factor = _cxxShip->success_factor;
-	_cxxShip->success_factor = [self trackSideTarget:delta_t:leftside];	// do the actual piloting
-	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
-	{ // will probably have more luck with the other laser or picking a different attack method
-		if (leftside)
-		{
-			if (!isWeaponNone(_cxxShip->starboard_weapon_type))
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
-			}
-			else
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-			}
-		}
-		else
-		{
-			if (!isWeaponNone(_cxxShip->port_weapon_type))
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
-			}
-			else 
-			{
-				_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-			}
-		}
-	}
-
-/* FIXME: again, basically all of this next bit common with standard attack  */
-	if ((_cxxShip->success_factor > 0.999)||(_cxxShip->success_factor > last_success_factor))
-	{
-		_cxxShip->frustration -= delta_t;
-		if (_cxxShip->frustration < 0.0)
-			_cxxShip->frustration = 0.0;
-	}
-	else
-	{
-		_cxxShip->frustration += delta_t;
-		if (_cxxShip->frustration > 3.0)	// 3s of frustration
-		{
-			
-			[self noteFrustration:"BEHAVIOUR_ATTACK_BROADSIDE"];
-			[self setEvasiveJink:1000.0];
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
-			_cxxShip->frustration = 0.0;
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-		}
-	}
-
-	if (_cxxShip->missiles) [self considerFiringMissile:delta_t];
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	if (leftside)
-	{
-		[self firePortWeapon:range];
-	}
-	else 
-	{
-		[self fireStarboardWeapon:range];
-	}
-	
-	
-	if (_cxxShip->weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-}
-
-
-- (void) behaviour_close_to_broadside_range:(double) delta_t
-{
-	double  range = [self rangeToPrimaryTarget];
-	if ([self proximityAlert] != nil)
-	{
-		if ([self proximityAlert] == [self primaryTarget])
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
-			[self behaviour_attack_fly_from_target: delta_t]; // do it now.
-		}
-		else
-		{
-			[self avoidCollision];
-		}
-		return;
-	}
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-
-	_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
-	[self behaviour_fly_to_target_six:delta_t];
-	if (!isWeaponNone(_cxxShip->port_weapon_type))
-	{
-		[self setWeaponDataFromType:_cxxShip->port_weapon_type];
-	}
-	else
-	{
-		[self setWeaponDataFromType:_cxxShip->starboard_weapon_type];
-	}
-	if (range <= COMBAT_BROADSIDE_RANGE_FACTOR * _cxxShip->weaponRange)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
-	}
-	else
-	{
-		_cxxShip->behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
-	}
-}
-
-
-- (void) behaviour_close_with_target:(double) delta_t
-{
-	double  range = [self rangeToPrimaryTarget];
-	if ([self proximityAlert] != nil)
-	{
-		if ([self proximityAlert] == [self primaryTarget])
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
-			[self behaviour_attack_fly_from_target: delta_t]; // do it now.
-		}
-		else
-		{
-			[self avoidCollision];
-		}
-		return;
-	}
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
-	double saved_frustration = _cxxShip->frustration;
-	[self behaviour_fly_to_target_six:delta_t];
-	_cxxShip->frustration = saved_frustration; // ignore fly-to-12 frustration
-	_cxxShip->frustration += delta_t;
-	if (range <= COMBAT_IN_RANGE_FACTOR * _cxxShip->weaponRange || _cxxShip->frustration > 5.0)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-	else
-	{
-		_cxxShip->behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
-	}
-
-
-}
-
-
 - (void) behaviour_attack_sniper:(double) delta_t
 {
 	if (![self canStillTrackPrimaryTarget])
@@ -15111,6 +14635,498 @@ void ShipEntity::behaviour_evasive_action(double delta_t)
 	// probably only useful for Thargoids, except for the occasional opportunist
 	[self fireMainWeapon:[self rangeToPrimaryTarget]];
 	
+}
+
+
+}	// namespace cxx
+
+
+// Slice 12 of docs/phases/3-slices/ShipEntity.md (bead oo-0akes): behaviours: attack target,
+// broadside, close with target. The facade forwards each selector (ShipEntity+ObjCBridge.mm); sends
+// to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::behaviour_attack_target(double /*delta_t*/)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	double  range = [self rangeToPrimaryTarget];
+	
+	if (cloakAutomatic) [self activateCloakingDevice];
+
+/* Start of behaviour selection:
+ * Anything beyond the basics should require accuracy >= COMBAT_AI_ISNT_AWFUL
+ * Anything fancy should require accuracy >= COMBAT_AI_IS_SMART
+ * If precise aim is required, behaviour should have accuracy >= COMBAT_AI_TRACKS_CLOSER
+ * - CIM
+ */
+
+	OOWeaponType forward_weapon_real_type = forward_weapon_type;
+	GLfloat forward_weapon_real_temp = forward_weapon_temp;
+
+// if forward weapon is actually on a subent
+	if (isWeaponNone(forward_weapon_real_type))
+	{
+		BOOL hasTurrets = NO;
+		for (const auto &sub : [self cxx_shipSubEntities])
+		{
+			if (!isWeaponNone(forward_weapon_real_type))  break;
+			::ShipEntity *se = sub.get();
+			forward_weapon_real_type = se->_cxxShip->forward_weapon_type;
+			forward_weapon_real_temp = se->_cxxShip->forward_weapon_temp;
+			if (se->_cxxShip->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
+			{
+				hasTurrets = YES;
+			}
+		}
+		if (isWeaponNone(forward_weapon_real_type) && hasTurrets)
+		{ // safety for ships only equipped with turrets
+			forward_weapon_real_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_PULSE_LASER");
+			forward_weapon_real_temp = COMBAT_AI_WEAPON_TEMP_USABLE * 0.9;
+		}
+	}
+
+	if ([forward_weapon_real_type isTurretLaser]) 
+	{
+		behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
+	} 
+	else 
+	{
+		BOOL in_good_range = aim_tolerance*range < COMBAT_AI_CONFIDENCE_FACTOR;
+
+		BOOL aft_weapon_ready = !isWeaponNone(aft_weapon_type) && (aft_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY) && in_good_range;
+		BOOL forward_weapon_ready = !isWeaponNone(forward_weapon_real_type) && (forward_weapon_real_temp < COMBAT_AI_WEAPON_TEMP_READY); // does not require in_good_range
+		BOOL port_weapon_ready = !isWeaponNone(port_weapon_type) && (port_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY) && in_good_range;
+		BOOL starboard_weapon_ready = !isWeaponNone(starboard_weapon_type) && (starboard_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY) && in_good_range;
+// if no weapons cool enough to be good choices, be less picky
+		BOOL weapons_heating = NO;
+		if (!forward_weapon_ready && !aft_weapon_ready && !port_weapon_ready && !starboard_weapon_ready)
+		{
+			weapons_heating = YES;
+			aft_weapon_ready = !isWeaponNone(aft_weapon_type) && (aft_weapon_temp < COMBAT_AI_WEAPON_TEMP_USABLE) && in_good_range;
+			forward_weapon_ready = !isWeaponNone(forward_weapon_real_type) && (forward_weapon_real_temp < COMBAT_AI_WEAPON_TEMP_USABLE); // does not require in_good_range
+			port_weapon_ready = !isWeaponNone(port_weapon_type) && (port_weapon_temp < COMBAT_AI_WEAPON_TEMP_USABLE) && in_good_range;
+		starboard_weapon_ready = !isWeaponNone(starboard_weapon_type) && (starboard_weapon_temp < COMBAT_AI_WEAPON_TEMP_USABLE) && in_good_range;
+		}
+
+		::Entity*	target = [self primaryTarget];
+		double aspect = [self approachAspectToPrimaryTarget];
+
+		if (!forward_weapon_ready && !aft_weapon_ready && !port_weapon_ready && !starboard_weapon_ready)
+		{ // no usable weapons! Either not fitted or overheated
+			
+			// if unarmed
+			if (isWeaponNone(forward_weapon_real_type) && 
+				isWeaponNone(aft_weapon_type) && 
+				isWeaponNone(port_weapon_type) && 
+				isWeaponNone(starboard_weapon_type))
+			{
+				behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
+			}
+			else if (aspect > 0)
+			{
+				if (in_good_range)
+				{
+					if (accuracy >= COMBAT_AI_IS_SMART && randf() < 0.75)
+					{
+						behaviour = BEHAVIOUR_EVASIVE_ACTION;
+					}
+					else 
+					{
+						behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
+					}
+				}
+				else 
+				{
+					// ready to get more accurate shots later
+					behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+				}
+			} 
+			else
+			{
+				// if target is running away, stay on target
+				// unless too close for safety
+				if (range < COMBAT_IN_RANGE_FACTOR * weaponRange) {
+					behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
+				} else {
+					behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+				}
+			}
+		}
+// if our current target isn't targeting us, and we have some idea of how to fight, and our weapons are running hot, and we're fairly nearby
+		else if (weapons_heating && accuracy >= COMBAT_AI_ISNT_AWFUL && [target isShip] && [(::ShipEntity *)target primaryTarget] != self && range < COMBAT_OUT_RANGE_FACTOR * weaponRange) 
+		{
+// then back off a bit for weapons to cool so we get a good attack run later, rather than weaving closer
+			float relativeSpeed = magnitude(vector_subtract([self velocity], [target velocity]));
+			[self setEvasiveJink:(range + COMBAT_JINK_OFFSET - relativeSpeed / max_flight_pitch)];
+			behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
+		}
+		else 
+		{
+			BOOL nearby = range < COMBAT_IN_RANGE_FACTOR * getWeaponRangeFromType(forward_weapon_type);
+			BOOL midrange = range < COMBAT_OUT_RANGE_FACTOR * getWeaponRangeFromType(aft_weapon_type);
+
+
+			if (nearby && aft_weapon_ready)
+			{
+				jink = kZeroVector; // almost all behaviours
+				behaviour = BEHAVIOUR_RUNNING_DEFENSE;
+			}
+			else if (nearby && (port_weapon_ready || starboard_weapon_ready))
+			{
+				jink = kZeroVector; // almost all behaviours
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
+			}
+			else if (nearby)
+			{
+				if (!pitching_over) // don't change jink in the middle of a sharp turn.
+				{
+					/*
+						For most AIs, is behaviour_attack_target called as starting behaviour on every hit.
+						Target can both fly towards or away from ourselves here. Both situations
+						need a different jink.z for optimal collision avoidance at high speed approach and low speed dogfighting.
+						The COMBAT_JINK_OFFSET intentionally over-compensates the range for collision radii to send ships towards
+						the target at low speeds.
+					*/
+					float relativeSpeed = magnitude(vector_subtract([self velocity], [target velocity]));
+					[self setEvasiveJink:(range + COMBAT_JINK_OFFSET - relativeSpeed / max_flight_pitch)];
+				}
+				// good pilots use behaviour_attack_break_off_target instead
+				if (accuracy >= COMBAT_AI_FLEES_BETTER)
+				{
+					behaviour = BEHAVIOUR_ATTACK_BREAK_OFF_TARGET;
+				}
+				else
+				{
+					behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
+				}
+			}
+			else if (forward_weapon_ready)
+			{
+				jink = kZeroVector; // almost all behaviours
+
+				// TODO: good pilots use behaviour_attack_sniper sometimes
+				if (getWeaponRangeFromType(forward_weapon_real_type) > 12500 && range > 12500)
+				{
+					behaviour = BEHAVIOUR_ATTACK_SNIPER;
+				}
+// generally not good tactics the next two
+				else if (accuracy < COMBAT_AI_ISNT_AWFUL && aspect < 0)
+				{
+					behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX;
+				}
+				else if (accuracy < COMBAT_AI_ISNT_AWFUL)
+				{
+					behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
+				}
+				else
+				{
+					behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+				}
+			}
+			else if (port_weapon_ready || starboard_weapon_ready)
+			{
+				jink = kZeroVector; // almost all behaviours
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
+			}
+			else if (aft_weapon_ready && midrange)
+			{
+				jink = kZeroVector; // almost all behaviours
+				behaviour = BEHAVIOUR_RUNNING_DEFENSE;
+			} 
+			else
+			{
+				jink = kZeroVector; // almost all behaviours
+				behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+			}
+		}
+	}
+
+	frustration = 0.0;	// behaviour changed, so reset frustration
+	
+}
+
+
+void ShipEntity::behaviour_attack_broadside(double /*delta_t*/)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+	double  range = [self rangeToPrimaryTarget];
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	
+	if (cloakAutomatic) [self activateCloakingDevice];
+
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	
+	desired_speed = max_available_speed;
+	if (range < COMBAT_BROADSIDE_IN_RANGE_FACTOR * weaponRange)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+	else
+	{
+		if (port_weapon_temp < starboard_weapon_temp)
+		{
+			if (isWeaponNone(port_weapon_type))
+			{
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+				[self setWeaponDataFromType:starboard_weapon_type];
+			}
+			else
+			{
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+				[self setWeaponDataFromType:port_weapon_type];
+			}
+		}
+		else
+		{
+			if (isWeaponNone(starboard_weapon_type))
+			{
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+				[self setWeaponDataFromType:starboard_weapon_type];
+			}
+			else
+			{
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+				[self setWeaponDataFromType:port_weapon_type];
+			}
+		}
+		jink = kZeroVector;
+		if (weapon_damage == 0.0)
+		{ // safety in case side lasers no longer exist
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+		}
+		else if (range > 0.9 * weaponRange)
+		{
+			behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
+		}
+	}
+
+	frustration = 0.0;	// behaviour changed, so reset frustration
+
+	
+}
+
+
+void ShipEntity::behaviour_attack_broadside_left(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self behaviour_attack_broadside_target:delta_t leftside:YES];
+}
+
+
+void ShipEntity::behaviour_attack_broadside_right(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self behaviour_attack_broadside_target:delta_t leftside:NO];
+}
+
+
+void ShipEntity::behaviour_attack_broadside_target(double delta_t, bool leftside)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+	double  range = [self rangeToPrimaryTarget];
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	if ([self primaryTarget] == nil)
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	GLfloat currentWeaponRange = getWeaponRangeFromType(leftside?port_weapon_type:starboard_weapon_type);
+	if (range > COMBAT_BROADSIDE_RANGE_FACTOR * currentWeaponRange)
+	{
+		behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
+		return;
+	}
+
+// can get closer on broadsides since there's less risk of a collision
+	if ((range < COMBAT_BROADSIDE_IN_RANGE_FACTOR * currentWeaponRange)||([self proximityAlert] != nil))
+	{
+		if (![self hasProximityAlertIgnoringTarget:YES])
+		{
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+		}
+		else
+		{
+			[self avoidCollision];
+			return;
+		}
+	}
+	else
+	{
+		if (![self canStillTrackPrimaryTarget])
+		{
+			[self noteLostTargetAndGoIdle];
+			return;
+		}
+	}
+	// control speed
+	//
+	BOOL isUsingAfterburner = canBurn && (flightSpeed > maxFlightSpeed);
+	double slow_down_range = currentWeaponRange * COMBAT_WEAPON_RANGE_FACTOR * ((isUsingAfterburner)? 3.0 * [self afterburnerFactor] : 1.0);
+//	double target_speed = [target speed];
+	if (range <= slow_down_range)
+		desired_speed = fmin(0.8 * maxFlightSpeed, fmax((2.0-frustration)*maxFlightSpeed, 0.1 * maxFlightSpeed));   // within the weapon's range slow down to aim
+	else
+		desired_speed = max_available_speed; // use afterburner to approach
+
+	double last_success_factor = success_factor;
+	success_factor = [self trackSideTarget:delta_t:leftside];	// do the actual piloting
+	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
+	{ // will probably have more luck with the other laser or picking a different attack method
+		if (leftside)
+		{
+			if (!isWeaponNone(starboard_weapon_type))
+			{
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+			}
+			else
+			{
+				behaviour = BEHAVIOUR_ATTACK_TARGET;
+			}
+		}
+		else
+		{
+			if (!isWeaponNone(port_weapon_type))
+			{
+				behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+			}
+			else 
+			{
+				behaviour = BEHAVIOUR_ATTACK_TARGET;
+			}
+		}
+	}
+
+/* FIXME: again, basically all of this next bit common with standard attack  */
+	if ((success_factor > 0.999)||(success_factor > last_success_factor))
+	{
+		frustration -= delta_t;
+		if (frustration < 0.0)
+			frustration = 0.0;
+	}
+	else
+	{
+		frustration += delta_t;
+		if (frustration > 3.0)	// 3s of frustration
+		{
+			
+			[self noteFrustration:"BEHAVIOUR_ATTACK_BROADSIDE"];
+			[self setEvasiveJink:1000.0];
+			behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
+			frustration = 0.0;
+			desired_speed = maxFlightSpeed;
+		}
+	}
+
+	if (missiles) [self considerFiringMissile:delta_t];
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+	if (leftside)
+	{
+		[self firePortWeapon:range];
+	}
+	else 
+	{
+		[self fireStarboardWeapon:range];
+	}
+	
+	
+	if (weapon_temp > COMBAT_AI_WEAPON_TEMP_USABLE)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+}
+
+
+void ShipEntity::behaviour_close_to_broadside_range(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	double  range = [self rangeToPrimaryTarget];
+	if ([self proximityAlert] != nil)
+	{
+		if ([self proximityAlert] == [self primaryTarget])
+		{
+			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
+			[self behaviour_attack_fly_from_target: delta_t]; // do it now.
+		}
+		else
+		{
+			[self avoidCollision];
+		}
+		return;
+	}
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+
+	behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
+	[self behaviour_fly_to_target_six:delta_t];
+	if (!isWeaponNone(port_weapon_type))
+	{
+		[self setWeaponDataFromType:port_weapon_type];
+	}
+	else
+	{
+		[self setWeaponDataFromType:starboard_weapon_type];
+	}
+	if (range <= COMBAT_BROADSIDE_RANGE_FACTOR * weaponRange)
+	{
+		behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
+	}
+	else
+	{
+		behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
+	}
+}
+
+
+void ShipEntity::behaviour_close_with_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	double  range = [self rangeToPrimaryTarget];
+	if ([self proximityAlert] != nil)
+	{
+		if ([self proximityAlert] == [self primaryTarget])
+		{
+			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET; // this behaviour will handle proximity_alert.
+			[self behaviour_attack_fly_from_target: delta_t]; // do it now.
+		}
+		else
+		{
+			[self avoidCollision];
+		}
+		return;
+	}
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET_TWELVE;
+	double saved_frustration = frustration;
+	[self behaviour_fly_to_target_six:delta_t];
+	frustration = saved_frustration; // ignore fly-to-12 frustration
+	frustration += delta_t;
+	if (range <= COMBAT_IN_RANGE_FACTOR * weaponRange || frustration > 5.0)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+	else
+	{
+		behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
+	}
+
+
 }
 
 
