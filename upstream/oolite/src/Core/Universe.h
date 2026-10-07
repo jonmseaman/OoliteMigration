@@ -484,6 +484,43 @@ public:
 	// Slice 18: filterSortedLists, setGalaxyTo:.
 	void filterSortedLists();
 	void setGalaxyTo(OOGalaxyID g);
+
+	// Slice 19: galaxy and system changes, descriptions, scenarios, characters, mission text, system data and names, finding systems.
+	void setGalaxyTo(OOGalaxyID g, bool forced);
+	void setSystemTo(OOSystemID s);
+	OOSystemID currentSystemID();
+	const oo::PList *descriptions();
+	unsigned descriptionsGeneration();
+	void verifyDescriptions();
+	void loadDescriptions();
+	oo::PList explosionSetting(const std::string &explosion);
+	oo::PList scenarios();
+	void loadScenarios();
+	oo::PList getCharacters();
+	oo::PList getMissiontext();
+	std::optional<std::string> descriptionForKey(const std::string &key);
+	std::optional<std::string> descriptionForArrayKey(const std::string &key, unsigned index);
+	bool descriptionBooleanForKey(const std::string &key);
+	::OOSystemDescriptionManager *getSystemManager();
+	std::optional<std::string> keyForPlanetOverridesForSystem(OOSystemID s, OOGalaxyID g);
+	std::optional<std::string> keyForInterstellarOverridesForSystems(OOSystemID s1, OOSystemID s2, OOGalaxyID g);
+	oo::PList generateSystemData(OOSystemID s);
+	oo::PList generateSystemData(OOSystemID s, bool /*useCache*/);
+	oo::PList currentSystemData();
+	bool inInterstellarSpace();
+	void setSystemDataKey(const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest);
+	void setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest, OOSystemLayer layer);
+	oo::PList generateSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum);
+	std::vector<std::string> systemDataKeysForGalaxy(OOGalaxyID gnum, OOSystemID pnum);
+	oo::PList systemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key);
+	std::optional<std::string> getSystemName(OOSystemID sys);
+	std::optional<std::string> getSystemName(OOSystemID sys, OOGalaxyID gnum);
+	OOGovernmentID getSystemGovernment(OOSystemID sys);
+	std::optional<std::string> getSystemInhabitants(OOSystemID sys);
+	std::optional<std::string> getSystemInhabitants(OOSystemID sys, bool plural);
+	NSPoint coordinatesForSystem(OOSystemID s);
+	OOSystemID findSystemFromName(const std::string &sysName);
+	OOSystemID findSystemAtCoords(NSPoint coords, OOGalaxyID g);
 };
 
 }	// namespace cxx
