@@ -55,35 +55,10 @@ MA 02110-1301, USA.
 @public
 	oo::Ref<cxx::Universe>	_cxxUniverse;	// the universe's state; owned, made by -initWithGameView:
 }
-- (BOOL) bloom;
-- (void) setBloom: (BOOL)newBloom;
-
-- (int) currentPostFX;
-- (void) setCurrentPostFX: (int) newCurrentPostFX;
-- (void) terminatePostFX:(int) postFX;
-
-
-// SessionID: a value that's incremented when the game is reset.
-- (NSUInteger) sessionID;
-
-- (BOOL) doProcedurallyTexturedPlanets;
-- (void) setDoProcedurallyTexturedPlanets:(BOOL) value;
-
-- (std::optional<std::string>) cxx_useAddOns;
-- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
-- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
 
 - (void) setUpSettings;
 
 - (BOOL) reinitAndShowDemo:(BOOL)showDemo;
-
-- (BOOL) doingStartUp;	// True during initial game startup (not reset).
-
-- (NSUInteger) entityCount;
-#ifndef NDEBUG
-- (void) debugDumpEntities;
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList;
-#endif
 
 - (void) pauseGame;
 - (void) quitGame;
@@ -474,9 +449,6 @@ MA 02110-1301, USA.
 - (unsigned int) prevVoice:(unsigned int) index;
 - (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale;
 #endif
-- (int) nextColorblindMode:(int) index;
-- (int) prevColorblindMode:(int) index;
-- (int) colorblindMode;
 //
 ////
 
@@ -508,6 +480,40 @@ MA 02110-1301, USA.
 
 @end
 
+
+
+// Slice 2 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice2)
+
+- (BOOL) bloom;
+- (void) setBloom: (BOOL)newBloom;
+- (int) currentPostFX;
+- (void) setCurrentPostFX: (int) newCurrentPostFX;
+- (void) terminatePostFX:(int) postFX;
+- (int) nextColorblindMode:(int) index;
+- (int) prevColorblindMode:(int) index;
+- (int) colorblindMode;
+- (void) initTargetFramebufferWithViewSize:(NSSize)viewSize;
+- (void) deleteOpenGLObjects;
+- (void) resizeTargetFramebufferWithViewSize:(NSSize)viewSize;
+- (void) drawTargetTextureIntoDefaultFramebuffer;
+// SessionID: a value that's incremented when the game is reset.
+- (NSUInteger) sessionID;
+- (BOOL) doingStartUp;	// True during initial game startup (not reset).
+- (BOOL) doProcedurallyTexturedPlanets;
+- (void) setDoProcedurallyTexturedPlanets:(BOOL) value;
+- (std::optional<std::string>) cxx_useAddOns;
+- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
+- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
+- (NSUInteger) entityCount;
+#ifndef NDEBUG
+- (void) debugDumpEntities;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList;
+#endif
+
+@end
 
 
 // Implemented by the facade's category in Universe+ObjCBridge.mm with -dealloc: they need the

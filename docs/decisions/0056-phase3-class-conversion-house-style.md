@@ -4513,3 +4513,44 @@ unchanged and reach the members through the façade until their own conversion.
 
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
+
+## Amendment (bead oo-27jxj): Universe slices 2-13, a singleton's later slices
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/Universe.md` slices 2-13 (beads oo-27jxj, oo-ef6rc, oo-ni9u8, oo-d0i7y,
+  oo-15e3o, oo-49wmm, oo-m0rz6, oo-hkvet, oo-e9enf, oo-8rsqz, oo-9lucq, oo-0uz9w), one stacked
+  chain on `main`; slices 14-26 are another worker's block on the same terms. Exemplar:
+  `src/Core/Universe.h/.mm`, `Universe+ObjCBridge.h/.mm`, `tests/unit/core/test_Universe.mm`.
+  Follows amendments oo-riqmz (the class shell) and oo-zd80m (ShipEntity's later slices).
+
+**Context.** Slice 1 moved the universe's state into `cxx::Universe`; its ~390 methods stay in the
+facade's `@implementation` in `Universe.mm` until their slice. `Universe` has no subclasses, so
+none of ShipEntity's adapter or `virtual` machinery applies.
+
+**Decision (recommended defaults).**
+
+1. **As amendment oo-zd80m item 1:** a slice's members are a `namespace cxx` block of their own
+   after the facade's `@implementation` (before the `OOSound` / `OOSoundSource` categories), under
+   a comment naming the slice and its bead, declared in a block of `cxx::Universe` under the same
+   comment. The facade forwards each selector from a category `Universe (OOSliceN)` in
+   `Universe+ObjCBridge.mm`, and the selector's declaration moves to that category's `@interface`
+   in `Universe+ObjCBridge.h` (with a comment that headed only moved declarations): from the
+   facade's `@interface`, or from the private category `Universe (OOPrivate)` in `Universe.mm`,
+   which loses it. The bodies are verbatim but for the deleted `_cxxUniverse->`.
+2. **Sends to `self` stay sends** to the facade (`::Universe *self = oo::ToObjC(this);` at the
+   top), so a selector of a slice not yet landed still answers. Every Objective-C class named in a
+   member is `::X` (amendment oo-zd80m item 3); a member's signature takes no protocol qualifier
+   (`::Entity *` for `Entity <OOBeaconEntity> *`), and its forwarder casts the result back.
+3. **A member whose name would be a data member's is `getX`** (`-doProcedurallyTexturedPlanets`
+   is `getDoProcedurallyTexturedPlanets()`, `-cxx_useAddOns` `getUseAddOns()`), as amendment
+   oo-zd80m item 4; `cxx_` drops as usual.
+4. **A unit inside a preprocessor condition keeps it** around its member, declaration, category
+   declaration and forwarder (`#ifndef NDEBUG` for `-debugDumpEntities` and `-cxx_entityList`).
+5. **Tests:** `test_Universe.mm` gains an `OO_TEST(sliceN...)` per slice under one comment, for the
+   units a universe that was never initialised can answer, written against the facade and run on
+   the unconverted class first. A slice none of whose units runs without the player, the GUI or
+   the game controller (slice 3: pausing, quitting, the set-up from a station or witchspace) adds
+   none; the goldens pin it.
+
+**Consequences.** One category per slice on the facade; the facade's deletion bead (oo-ql9rn)
+removes them with the forwarders.

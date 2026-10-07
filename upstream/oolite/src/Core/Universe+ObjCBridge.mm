@@ -71,3 +71,33 @@ extern Universe *gSharedUniverse;
 }
 
 @end
+
+
+@implementation Universe (OOSlice2)
+
+- (BOOL) bloom	{ return _cxxUniverse->bloom(); }
+- (void) setBloom:(BOOL)newBloom	{ _cxxUniverse->setBloom(newBloom); }
+- (int) currentPostFX	{ return _cxxUniverse->currentPostFX(); }
+- (void) setCurrentPostFX:(int)newCurrentPostFX	{ _cxxUniverse->setCurrentPostFX(newCurrentPostFX); }
+- (void) terminatePostFX:(int)postFX	{ _cxxUniverse->terminatePostFX(postFX); }
+- (int) nextColorblindMode:(int)index	{ return _cxxUniverse->nextColorblindMode(index); }
+- (int) prevColorblindMode:(int)index	{ return _cxxUniverse->prevColorblindMode(index); }
+- (int) colorblindMode	{ return _cxxUniverse->colorblindMode(); }
+- (void) initTargetFramebufferWithViewSize:(NSSize)viewSize	{ _cxxUniverse->initTargetFramebufferWithViewSize(viewSize); }
+- (void) deleteOpenGLObjects	{ _cxxUniverse->deleteOpenGLObjects(); }
+- (void) resizeTargetFramebufferWithViewSize:(NSSize)viewSize	{ _cxxUniverse->resizeTargetFramebufferWithViewSize(viewSize); }
+- (void) drawTargetTextureIntoDefaultFramebuffer	{ _cxxUniverse->drawTargetTextureIntoDefaultFramebuffer(); }
+- (NSUInteger) sessionID	{ return _cxxUniverse->sessionID(); }
+- (BOOL) doingStartUp	{ return _cxxUniverse->doingStartUp(); }
+- (BOOL) doProcedurallyTexturedPlanets	{ return _cxxUniverse->getDoProcedurallyTexturedPlanets(); }
+- (void) setDoProcedurallyTexturedPlanets:(BOOL)value	{ _cxxUniverse->setDoProcedurallyTexturedPlanets(value); }
+- (std::optional<std::string>) cxx_useAddOns	{ return _cxxUniverse->getUseAddOns(); }
+- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame:(BOOL)saveGame	{ return _cxxUniverse->setUseAddOns(newUse, saveGame); }
+- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame:(BOOL)saveGame forceReinit:(BOOL)force	{ return _cxxUniverse->setUseAddOns(newUse, saveGame, force); }
+- (NSUInteger) entityCount	{ return _cxxUniverse->entityCount(); }
+#ifndef NDEBUG
+- (void) debugDumpEntities	{ _cxxUniverse->debugDumpEntities(); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList	{ return _cxxUniverse->entityList(); }
+#endif
+
+@end

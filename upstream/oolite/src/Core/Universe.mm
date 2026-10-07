@@ -222,11 +222,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 
 - (void) addDelayedMessage:(OOUniverseDelayedMessage *)holder;	// the deferred call of -cxx_addDelayedMessage:forCount:afterDelay:
 
-- (void) initTargetFramebufferWithViewSize:(NSSize)viewSize;
-- (void) deleteOpenGLObjects;
-- (void) resizeTargetFramebufferWithViewSize:(NSSize)viewSize;
 - (void) prepareToRenderIntoDefaultFramebuffer;
-- (void) drawTargetTextureIntoDefaultFramebuffer;
 
 - (BOOL) doRemoveEntity:(Entity *)entity;
 - (void) setUpCargoPods;
@@ -622,505 +618,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #define SUN_AMBIENT_INFLUENCE		0.75
 // How dark the default ambient level of 1.0 will be
 #define SKY_AMBIENT_ADJUSTMENT		0.0625
-
-- (BOOL) bloom
-{
-	return _cxxUniverse->_bloom && [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
-}
-
-- (void) setBloom: (BOOL)newBloom
-{
-	_cxxUniverse->_bloom = !!newBloom;
-}
-
-- (int) currentPostFX
-{
-	return _cxxUniverse->_currentPostFX;
-}
-
-- (void) setCurrentPostFX: (int) newCurrentPostFX
-{
-	if (newCurrentPostFX < 1 || newCurrentPostFX > OO_POSTFX_ENDOFLIST - 1)
-	{
-		newCurrentPostFX = OO_POSTFX_NONE;
-	}
-	
-	if	(OO_POSTFX_NONE <= newCurrentPostFX && newCurrentPostFX <= OO_POSTFX_COLORBLINDNESS_TRITAN)
-	{
-		_cxxUniverse->_colorblindMode = newCurrentPostFX;
-	}		
-	
-	_cxxUniverse->_currentPostFX = newCurrentPostFX;
-}
-
-
-- (void) terminatePostFX:(int)postFX
-{
-	if ([self currentPostFX] == postFX)
-	{
-		[self setCurrentPostFX:[self colorblindMode]];
-	}
-}
-
-- (int) nextColorblindMode:(int) index
-{
-	if (++index > OO_POSTFX_COLORBLINDNESS_TRITAN)
-		index = OO_POSTFX_NONE;
-	
-	return index;
-}
-
-- (int) prevColorblindMode:(int) index
-{
-	if (--index < OO_POSTFX_NONE)
-		index = OO_POSTFX_COLORBLINDNESS_TRITAN;
-	
-	return index;
-}
-
-- (int) colorblindMode
-{
-	return _cxxUniverse->_colorblindMode;
-}
-
-- (void) initTargetFramebufferWithViewSize:(NSSize)viewSize
-{
-	// liberate us from the 0.0 to 1.0 rgb range!
-	OOGL(glClampColor(GL_CLAMP_VERTEX_COLOR, GL_FALSE));
-	OOGL(glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE));
-	OOGL(glClampColor(GL_CLAMP_FRAGMENT_COLOR, GL_FALSE));
-
-	// have to do this because on my machine the default framebuffer is not zero
-	OOGL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &_cxxUniverse->defaultDrawFBO));
-
-	GLint previousProgramID;
-	OOGL(glGetIntegerv(GL_CURRENT_PROGRAM, &previousProgramID));
-	GLint previousTextureID;
-	OOGL(glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureID));
-	GLint previousVAO;
-	OOGL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &previousVAO));
-	GLint previousArrayBuffer;
-	OOGL(glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &previousArrayBuffer));
-	GLint previousElementBuffer;
-	OOGL(glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &previousElementBuffer));
-
-	// create MSAA framebuffer and attach MSAA texture and depth buffer to framebuffer
-	OOGL(glGenFramebuffers(1, &_cxxUniverse->msaaFramebufferID));
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->msaaFramebufferID));
-	
-	// creating MSAA texture that should be rendered into
-	OOGL(glGenTextures(1, &_cxxUniverse->msaaTextureID));
-	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID));
-	OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
-	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
-	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID, 0));
-	
-	// create necessary MSAA depth render buffer
-	OOGL(glGenRenderbuffers(1, &_cxxUniverse->msaaDepthBufferID));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));
-	OOGL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));
-	
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Multisample framebuffer not complete");
-	}
-	
-	// create framebuffer and attach texture and depth buffer to framebuffer
-	OOGL(glGenFramebuffers(1, &_cxxUniverse->targetFramebufferID));
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->targetFramebufferID));
-	
-	// creating texture that should be rendered into
-	OOGL(glGenTextures(1, &_cxxUniverse->targetTextureID));
-	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->targetTextureID));
-	OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
-	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _cxxUniverse->targetTextureID, 0));
-	
-	// create necessary depth render buffer
-	OOGL(glGenRenderbuffers(1, &_cxxUniverse->targetDepthBufferID));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->targetDepthBufferID));
-	OOGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
-	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _cxxUniverse->targetDepthBufferID));
-	
-	GLenum attachment[1] = { GL_COLOR_ATTACHMENT0 };
-	OOGL(glDrawBuffers(1, attachment));
-	
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Framebuffer not complete");
-	}
-	
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-	
-	_cxxUniverse->targetFramebufferSize = viewSize;
-	
-	// passthrough buffer
-	// This is a framebuffer whose sole purpose is to pass on the texture rendered from the game to the blur and the final bloom
-	// shaders. We need it in order to be able to use the OpenGL 3.3 layout (location = x) out vec4 outVector; construct, which allows
-	// us to perform multiple render target operations needed for bloom. The alternative would be to not use this and change all our
-	// shaders to be OpenGL 3.3 compatible, but given how Oolite synthesizes them and the work needed to port them over, well yeah no,
-	// not doing it at this time - Nikos 20220814.
-	OOGL(glGenFramebuffers(1, &_cxxUniverse->passthroughFramebufferID));
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->passthroughFramebufferID));
-	
-	// creating textures that should be rendered into
-	OOGL(glGenTextures(2, _cxxUniverse->passthroughTextureID));
-	for (unsigned int i = 0; i < 2; i++)
-	{
-		OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[i]));
-		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
-		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-		OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[i], 0));
-	}
-	
-	GLenum attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	OOGL(glDrawBuffers(2, attachments));
-	
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Passthrough framebuffer not complete");
-	}
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-	
-	// ping-pong-framebuffer for blurring
-    OOGL(glGenFramebuffers(2, _cxxUniverse->pingpongFBO));
-    OOGL(glGenTextures(2, _cxxUniverse->pingpongColorbuffers));
-    for (unsigned int i = 0; i < 2; i++)
-    {
-        OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->pingpongFBO[i]));
-        OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[i]));
-        OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
-        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
-        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-        OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[i], 0));
-        // check if framebuffers are complete (no need for depth buffer)
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		{
-            OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Pingpong framebuffers not complete");
-		}
-    }
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-	
-	_cxxUniverse->_bloom = [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
-	_cxxUniverse->_currentPostFX = _cxxUniverse->_colorblindMode = OO_POSTFX_NONE;
-
-	/* TODO (upstream; OOEnvironmentCubeMap.m was never built and was deleted as dead code, bead oo-v7ob,
-	   decision oo-9wpwn - kept for a revival): in OOEnvironmentCubeMap.m call these bind functions not with 0 but with "previousXxxID"s:
-	  - OOGL(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
-	  - OOGL(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0));
-	  - OOGL(glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0));
-	*/
-	
-	// shader for drawing a textured quad on the passthrough framebuffer and preparing it for bloom using MRT
-	if (![[OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
-	{
-		_cxxUniverse->textureProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-texture.vertex"
-													fragmentShaderName:"oolite-texture.fragment"
-													prefix:"#version 330\n"
-													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
-		// shader for blurring the over-threshold brightness image generated from the previous step using Gaussian filter
-		_cxxUniverse->blurProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-blur.vertex"
-													fragmentShaderName:"oolite-blur.fragment"
-													prefix:"#version 330\n"
-													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
-		// shader for applying bloom and any necessary post-proc fx, tonemapping and gamma correction
-		_cxxUniverse->finalProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-final.vertex"
-#if OOLITE_WINDOWS
-													fragmentShaderName:[[UNIVERSE gameView] hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment"
-#else
-													fragmentShaderName:"oolite-final.fragment"
-#endif
-													prefix:"#version 330\n"
-													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
-	}
-	
-	OOGL(glGenVertexArrays(1, &_cxxUniverse->quadTextureVAO));
-	OOGL(glGenBuffers(1, &_cxxUniverse->quadTextureVBO));
-	OOGL(glGenBuffers(1, &_cxxUniverse->quadTextureEBO));
-
-	OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
-
-	OOGL(glBindBuffer(GL_ARRAY_BUFFER, _cxxUniverse->quadTextureVBO));
-	OOGL(glBufferData(GL_ARRAY_BUFFER, sizeof(framebufferQuadVertices), framebufferQuadVertices, GL_STATIC_DRAW));
-
-	OOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _cxxUniverse->quadTextureEBO));
-	OOGL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(framebufferQuadIndices), framebufferQuadIndices, GL_STATIC_DRAW));
-
-	OOGL(glEnableVertexAttribArray(0));
-	// position attribute
-	OOGL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0));
-	OOGL(glEnableVertexAttribArray(1));
-	// texture coord attribute
-	OOGL(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float))));
-
-
-	// restoring previous bindings
-	OOGL(glUseProgram(previousProgramID));
-	OOGL(glBindTexture(GL_TEXTURE_2D, previousTextureID));
-	OOGL(glBindVertexArray(previousVAO));
-	OOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, previousElementBuffer));
-	OOGL(glBindBuffer(GL_ARRAY_BUFFER, previousArrayBuffer));
-
-}
-
-
-- (void) deleteOpenGLObjects
-{
-	OOGL(glDeleteTextures(1, &_cxxUniverse->msaaTextureID));
-	OOGL(glDeleteTextures(1, &_cxxUniverse->targetTextureID));
-	OOGL(glDeleteTextures(2, _cxxUniverse->passthroughTextureID));
-	OOGL(glDeleteTextures(2, _cxxUniverse->pingpongColorbuffers));
-	OOGL(glDeleteRenderbuffers(1, &_cxxUniverse->msaaDepthBufferID));
-	OOGL(glDeleteRenderbuffers(1, &_cxxUniverse->targetDepthBufferID));
-	OOGL(glDeleteFramebuffers(1, &_cxxUniverse->msaaFramebufferID));
-	OOGL(glDeleteFramebuffers(1, &_cxxUniverse->targetFramebufferID));
-	OOGL(glDeleteFramebuffers(2, _cxxUniverse->pingpongFBO));
-	OOGL(glDeleteFramebuffers(1, &_cxxUniverse->passthroughFramebufferID));
-	OOGL(glDeleteVertexArrays(1, &_cxxUniverse->quadTextureVAO));
-	OOGL(glDeleteBuffers(1, &_cxxUniverse->quadTextureVBO));
-	OOGL(glDeleteBuffers(1, &_cxxUniverse->quadTextureEBO));
-	[_cxxUniverse->textureProgram release];
-	[_cxxUniverse->blurProgram release];
-	[_cxxUniverse->finalProgram release];
-}
-
-
-- (void) resizeTargetFramebufferWithViewSize:(NSSize)viewSize
-{
-	int i;
-	// resize MSAA color attachment
-	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID));
-	OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
-	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
-	
-	// resize MSAA depth attachment
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));
-	OOGL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-	
-	// resize color attachments
-	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->targetTextureID));
-	OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
-	OOGL(glBindTexture(GL_TEXTURE_2D, 0));
-	
-	for (i = 0; i < 2; i++)
-	{
-		OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[i]));
-		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
-		OOGL(glBindTexture(GL_TEXTURE_2D, 0));
-	}
-	
-	for (i = 0; i < 2; i++)
-	{
-		OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[i]));
-		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
-		OOGL(glBindTexture(GL_TEXTURE_2D, 0));
-	}
-	
-	// resize depth attachment
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->targetDepthBufferID));
-	OOGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-	
-	_cxxUniverse->targetFramebufferSize.width = viewSize.width;
-	_cxxUniverse->targetFramebufferSize.height = viewSize.height;
-}
-
-
-- (void) drawTargetTextureIntoDefaultFramebuffer
-{
-	// save previous bindings state
-	GLint previousFBO;
-	OOGL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousFBO));
-	GLint previousProgramID;
-	OOGL(glGetIntegerv(GL_CURRENT_PROGRAM, &previousProgramID));
-	GLint previousTextureID;
-	OOGL(glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureID));
-	GLint previousVAO;
-	OOGL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &previousVAO));
-	GLint previousActiveTexture;
-	OOGL(glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture));	
-	
-	OOGL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-	// fixes transparency issue for some reason
-	OOGL(glDisable(GL_BLEND));
-	
-	GLhandleARB program = [_cxxUniverse->textureProgram program];
-	GLhandleARB blur = [_cxxUniverse->blurProgram program];
-	GLhandleARB final = [_cxxUniverse->finalProgram program];
-	NSSize viewSize = [_cxxUniverse->gameView backingViewSize];
-	float fboResolution[2] = {(float)viewSize.width, (float)viewSize.height};
-
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->passthroughFramebufferID));
-	OOGL(glClear(GL_COLOR_BUFFER_BIT));
-
-	OOGL(glUseProgram(program));
-	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->targetTextureID));
-	OOGL(glUniform1i(glGetUniformLocation(program, "image"), 0));
-	
-	
-	OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
-	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
-	OOGL(glBindVertexArray(0));
-	
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-	
-		
-	BOOL horizontal = YES, firstIteration = YES;
-	unsigned int amount = [self bloom] ? 10 : 0; // if not blooming, why bother with the heavy calculations?
-	OOGL(glUseProgram(blur));
-	for (unsigned int i = 0; i < amount; i++)
-	{
-		OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->pingpongFBO[horizontal]));
-		OOGL(glUniform1i(glGetUniformLocation(blur, "horizontal"), horizontal));
-		OOGL(glActiveTexture(GL_TEXTURE0));
-		// bind texture of other framebuffer (or scene if first iteration)
-		OOGL(glBindTexture(GL_TEXTURE_2D, firstIteration ? _cxxUniverse->passthroughTextureID[1] : _cxxUniverse->pingpongColorbuffers[!horizontal]));  
-		OOGL(glUniform1i(glGetUniformLocation([_cxxUniverse->blurProgram program], "imageIn"), 0));
-		OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
-		OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
-		OOGL(glBindVertexArray(0));
-		horizontal = !horizontal;
-		firstIteration = NO;
-	}
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
-	
-	
-	OOGL(glUseProgram(final));
-
-	OOGL(glActiveTexture(GL_TEXTURE0));
-	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[0]));
-	OOGL(glUniform1i(glGetUniformLocation(final, "scene"), 0));
-	OOGL(glUniform1i(glGetUniformLocation(final, "bloom"), [self bloom]));
-	OOGL(glUniform1f(glGetUniformLocation(final, "uTime"), [self getTime]));
-	OOGL(glUniform2fv(glGetUniformLocation(final, "uResolution"), 1, fboResolution));
-	OOGL(glUniform1i(glGetUniformLocation(final, "uPostFX"), [self currentPostFX]));
-#if OOLITE_WINDOWS
-	if([_cxxUniverse->gameView hdrOutput])
-	{
-		OOGL(glUniform1f(glGetUniformLocation(final, "uMaxBrightness"), [_cxxUniverse->gameView hdrMaxBrightness]));
-		OOGL(glUniform1f(glGetUniformLocation(final, "uPaperWhiteBrightness"), [_cxxUniverse->gameView hdrPaperWhiteBrightness]));
-		OOGL(glUniform1i(glGetUniformLocation(final, "uHDRToneMapper"), [_cxxUniverse->gameView hdrToneMapper]));
-	}
-#endif
-	OOGL(glUniform1i(glGetUniformLocation(final, "uSDRToneMapper"), [_cxxUniverse->gameView sdrToneMapper]));
-	
-	OOGL(glActiveTexture(GL_TEXTURE1));
-	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[!horizontal]));
-	OOGL(glUniform1i(glGetUniformLocation(final, "bloomBlur"), 1));
-	OOGL(glUniform1f(glGetUniformLocation(final, "uSaturation"), [_cxxUniverse->gameView colorSaturation]));
-	
-	OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
-	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
-	
-	// restore GL_TEXTURE1 to 0, just in case we are returning from a
-	// DETAIL_LEVEL_NORMAL to DETAIL_LEVEL_SHADERS
-	OOGL(glBindTexture(GL_TEXTURE_2D, 0));
-
-	// restore previous bindings
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, previousFBO));
-	OOGL(glActiveTexture(previousActiveTexture));
-	OOGL(glBindTexture(GL_TEXTURE_2D, previousTextureID));
-	OOGL(glUseProgram(previousProgramID));
-	OOGL(glBindVertexArray(previousVAO));
-	OOGL(glEnable(GL_BLEND));
-}
-
-- (NSUInteger) sessionID
-{
-	return _cxxUniverse->_sessionID;
-}
-
-
-- (BOOL) doingStartUp
-{
-	return _cxxUniverse->_doingStartUp;
-}
-
-
-- (BOOL) doProcedurallyTexturedPlanets
-{
-	return _cxxUniverse->doProcedurallyTexturedPlanets;
-}
-
-
-- (void) setDoProcedurallyTexturedPlanets:(BOOL) value
-{
-	_cxxUniverse->doProcedurallyTexturedPlanets = !!value;	// ensure yes or no
-	oo::Defaults::standard().setBool("procedurally-textured-planets", _cxxUniverse->doProcedurallyTexturedPlanets);
-}
-
-
-- (std::optional<std::string>) cxx_useAddOns
-{
-	return _cxxUniverse->useAddOns;
-}
-
-
-- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame
-{
-	return [self cxx_setUseAddOns:newUse fromSaveGame:saveGame forceReinit:NO];
-}
-
-
-- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force
-{
-	if (!force && newUse == _cxxUniverse->useAddOns)
-	{
-		return YES;
-	}
-	_cxxUniverse->useAddOns = newUse;
-
-	return [self reinitAndShowDemo:!saveGame];
-}
-
-
-
-- (NSUInteger) entityCount
-{
-	return _cxxUniverse->entities.size();
-}
-
-
-#ifndef NDEBUG
-- (void) debugDumpEntities
-{
-	int				i;
-	int				show_count = _cxxUniverse->n_entities;
-	
-	if (!oo::log::willDisplay("universe.objectDump"))  return;
-	
-	OO_LOG("universe.objectDump", "DEBUG: Entity Dump - [entities count] = {},\tn_entities = {}", static_cast<size_t>(_cxxUniverse->entities.size()), static_cast<unsigned>(_cxxUniverse->n_entities));
-	
-	OOLogIndent();
-	for (i = 0; i < show_count; i++)
-	{
-		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [_cxxUniverse->sortedEntities[i] descriptionForObjDump].value_or("(null)"));
-	}
-	OOLogOutdent();
-	
-	if (_cxxUniverse->entities.size() != _cxxUniverse->n_entities)
-	{
-		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::PListFromObjects(_cxxUniverse->entities)));
-	}
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList
-{
-	return _cxxUniverse->entities;
-}
-#endif
 
 
 - (void) pauseGame
@@ -11619,6 +11116,527 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 }
 
 @end
+
+
+// Slice 2 of docs/phases/3-slices/Universe.md (bead oo-27jxj): post-processing FX and colour-blind
+// modes, the target framebuffer, start-up flags, add-ons, the entity list. The facade forwards each
+// selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+bool Universe::bloom()
+{
+	::Universe *self = oo::ToObjC(this);
+	return _bloom && [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
+}
+
+
+void Universe::setBloom(bool newBloom)
+{
+	_bloom = !!newBloom;
+}
+
+
+int Universe::currentPostFX()
+{
+	return _currentPostFX;
+}
+
+
+void Universe::setCurrentPostFX(int newCurrentPostFX)
+{
+	if (newCurrentPostFX < 1 || newCurrentPostFX > OO_POSTFX_ENDOFLIST - 1)
+	{
+		newCurrentPostFX = OO_POSTFX_NONE;
+	}
+	
+	if	(OO_POSTFX_NONE <= newCurrentPostFX && newCurrentPostFX <= OO_POSTFX_COLORBLINDNESS_TRITAN)
+	{
+		_colorblindMode = newCurrentPostFX;
+	}		
+	
+	_currentPostFX = newCurrentPostFX;
+}
+
+
+void Universe::terminatePostFX(int postFX)
+{
+	::Universe *self = oo::ToObjC(this);
+	if ([self currentPostFX] == postFX)
+	{
+		[self setCurrentPostFX:[self colorblindMode]];
+	}
+}
+
+
+int Universe::nextColorblindMode(int index)
+{
+	if (++index > OO_POSTFX_COLORBLINDNESS_TRITAN)
+		index = OO_POSTFX_NONE;
+	
+	return index;
+}
+
+
+int Universe::prevColorblindMode(int index)
+{
+	if (--index < OO_POSTFX_NONE)
+		index = OO_POSTFX_COLORBLINDNESS_TRITAN;
+	
+	return index;
+}
+
+
+int Universe::colorblindMode()
+{
+	return _colorblindMode;
+}
+
+
+void Universe::initTargetFramebufferWithViewSize(NSSize viewSize)
+{
+	::Universe *self = oo::ToObjC(this);
+	// liberate us from the 0.0 to 1.0 rgb range!
+	OOGL(glClampColor(GL_CLAMP_VERTEX_COLOR, GL_FALSE));
+	OOGL(glClampColor(GL_CLAMP_READ_COLOR, GL_FALSE));
+	OOGL(glClampColor(GL_CLAMP_FRAGMENT_COLOR, GL_FALSE));
+
+	// have to do this because on my machine the default framebuffer is not zero
+	OOGL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &defaultDrawFBO));
+
+	GLint previousProgramID;
+	OOGL(glGetIntegerv(GL_CURRENT_PROGRAM, &previousProgramID));
+	GLint previousTextureID;
+	OOGL(glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureID));
+	GLint previousVAO;
+	OOGL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &previousVAO));
+	GLint previousArrayBuffer;
+	OOGL(glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &previousArrayBuffer));
+	GLint previousElementBuffer;
+	OOGL(glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &previousElementBuffer));
+
+	// create MSAA framebuffer and attach MSAA texture and depth buffer to framebuffer
+	OOGL(glGenFramebuffers(1, &msaaFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, msaaFramebufferID));
+	
+	// creating MSAA texture that should be rendered into
+	OOGL(glGenTextures(1, &msaaTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaTextureID));
+	OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
+	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
+	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, msaaTextureID, 0));
+	
+	// create necessary MSAA depth render buffer
+	OOGL(glGenRenderbuffers(1, &msaaDepthBufferID));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, msaaDepthBufferID));
+	OOGL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, msaaDepthBufferID));
+	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Multisample framebuffer not complete");
+	}
+	
+	// create framebuffer and attach texture and depth buffer to framebuffer
+	OOGL(glGenFramebuffers(1, &targetFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, targetFramebufferID));
+	
+	// creating texture that should be rendered into
+	OOGL(glGenTextures(1, &targetTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D, targetTextureID));
+	OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
+	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, targetTextureID, 0));
+	
+	// create necessary depth render buffer
+	OOGL(glGenRenderbuffers(1, &targetDepthBufferID));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, targetDepthBufferID));
+	OOGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
+	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, targetDepthBufferID));
+	
+	GLenum attachment[1] = { GL_COLOR_ATTACHMENT0 };
+	OOGL(glDrawBuffers(1, attachment));
+	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Framebuffer not complete");
+	}
+	
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	
+	targetFramebufferSize = viewSize;
+	
+	// passthrough buffer
+	// This is a framebuffer whose sole purpose is to pass on the texture rendered from the game to the blur and the final bloom
+	// shaders. We need it in order to be able to use the OpenGL 3.3 layout (location = x) out vec4 outVector; construct, which allows
+	// us to perform multiple render target operations needed for bloom. The alternative would be to not use this and change all our
+	// shaders to be OpenGL 3.3 compatible, but given how Oolite synthesizes them and the work needed to port them over, well yeah no,
+	// not doing it at this time - Nikos 20220814.
+	OOGL(glGenFramebuffers(1, &passthroughFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, passthroughFramebufferID));
+	
+	// creating textures that should be rendered into
+	OOGL(glGenTextures(2, passthroughTextureID));
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		OOGL(glBindTexture(GL_TEXTURE_2D, passthroughTextureID[i]));
+		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
+		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+		OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, passthroughTextureID[i], 0));
+	}
+	
+	GLenum attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	OOGL(glDrawBuffers(2, attachments));
+	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Passthrough framebuffer not complete");
+	}
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	
+	// ping-pong-framebuffer for blurring
+    OOGL(glGenFramebuffers(2, pingpongFBO));
+    OOGL(glGenTextures(2, pingpongColorbuffers));
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        OOGL(glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]));
+        OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]));
+        OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
+        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+        OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+        OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0));
+        // check if framebuffers are complete (no need for depth buffer)
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+            OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Pingpong framebuffers not complete");
+		}
+    }
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	
+	_bloom = [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
+	_currentPostFX = _colorblindMode = OO_POSTFX_NONE;
+
+	/* TODO (upstream; OOEnvironmentCubeMap.m was never built and was deleted as dead code, bead oo-v7ob,
+	   decision oo-9wpwn - kept for a revival): in OOEnvironmentCubeMap.m call these bind functions not with 0 but with "previousXxxID"s:
+	  - OOGL(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
+	  - OOGL(glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0));
+	  - OOGL(glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0));
+	*/
+	
+	// shader for drawing a textured quad on the passthrough framebuffer and preparing it for bloom using MRT
+	if (![[::OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
+	{
+		textureProgram = [[::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-texture.vertex"
+													fragmentShaderName:"oolite-texture.fragment"
+													prefix:"#version 330\n"
+													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
+		// shader for blurring the over-threshold brightness image generated from the previous step using Gaussian filter
+		blurProgram = [[::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-blur.vertex"
+													fragmentShaderName:"oolite-blur.fragment"
+													prefix:"#version 330\n"
+													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
+		// shader for applying bloom and any necessary post-proc fx, tonemapping and gamma correction
+		finalProgram = [[::OOShaderProgram shaderProgramWithVertexShaderName:"oolite-final.vertex"
+#if OOLITE_WINDOWS
+													fragmentShaderName:[[UNIVERSE gameView] hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment"
+#else
+													fragmentShaderName:"oolite-final.fragment"
+#endif
+													prefix:"#version 330\n"
+													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
+	}
+	
+	OOGL(glGenVertexArrays(1, &quadTextureVAO));
+	OOGL(glGenBuffers(1, &quadTextureVBO));
+	OOGL(glGenBuffers(1, &quadTextureEBO));
+
+	OOGL(glBindVertexArray(quadTextureVAO));
+
+	OOGL(glBindBuffer(GL_ARRAY_BUFFER, quadTextureVBO));
+	OOGL(glBufferData(GL_ARRAY_BUFFER, sizeof(framebufferQuadVertices), framebufferQuadVertices, GL_STATIC_DRAW));
+
+	OOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadTextureEBO));
+	OOGL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(framebufferQuadIndices), framebufferQuadIndices, GL_STATIC_DRAW));
+
+	OOGL(glEnableVertexAttribArray(0));
+	// position attribute
+	OOGL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0));
+	OOGL(glEnableVertexAttribArray(1));
+	// texture coord attribute
+	OOGL(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float))));
+
+
+	// restoring previous bindings
+	OOGL(glUseProgram(previousProgramID));
+	OOGL(glBindTexture(GL_TEXTURE_2D, previousTextureID));
+	OOGL(glBindVertexArray(previousVAO));
+	OOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, previousElementBuffer));
+	OOGL(glBindBuffer(GL_ARRAY_BUFFER, previousArrayBuffer));
+
+}
+
+
+void Universe::deleteOpenGLObjects()
+{
+	OOGL(glDeleteTextures(1, &msaaTextureID));
+	OOGL(glDeleteTextures(1, &targetTextureID));
+	OOGL(glDeleteTextures(2, passthroughTextureID));
+	OOGL(glDeleteTextures(2, pingpongColorbuffers));
+	OOGL(glDeleteRenderbuffers(1, &msaaDepthBufferID));
+	OOGL(glDeleteRenderbuffers(1, &targetDepthBufferID));
+	OOGL(glDeleteFramebuffers(1, &msaaFramebufferID));
+	OOGL(glDeleteFramebuffers(1, &targetFramebufferID));
+	OOGL(glDeleteFramebuffers(2, pingpongFBO));
+	OOGL(glDeleteFramebuffers(1, &passthroughFramebufferID));
+	OOGL(glDeleteVertexArrays(1, &quadTextureVAO));
+	OOGL(glDeleteBuffers(1, &quadTextureVBO));
+	OOGL(glDeleteBuffers(1, &quadTextureEBO));
+	[textureProgram release];
+	[blurProgram release];
+	[finalProgram release];
+}
+
+
+void Universe::resizeTargetFramebufferWithViewSize(NSSize viewSize)
+{
+	int i;
+	// resize MSAA color attachment
+	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaTextureID));
+	OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
+	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
+	
+	// resize MSAA depth attachment
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, msaaDepthBufferID));
+	OOGL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+	
+	// resize color attachments
+	OOGL(glBindTexture(GL_TEXTURE_2D, targetTextureID));
+	OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
+	OOGL(glBindTexture(GL_TEXTURE_2D, 0));
+	
+	for (i = 0; i < 2; i++)
+	{
+		OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]));
+		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
+		OOGL(glBindTexture(GL_TEXTURE_2D, 0));
+	}
+	
+	for (i = 0; i < 2; i++)
+	{
+		OOGL(glBindTexture(GL_TEXTURE_2D, passthroughTextureID[i]));
+		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
+		OOGL(glBindTexture(GL_TEXTURE_2D, 0));
+	}
+	
+	// resize depth attachment
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, targetDepthBufferID));
+	OOGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+	
+	targetFramebufferSize.width = viewSize.width;
+	targetFramebufferSize.height = viewSize.height;
+}
+
+
+void Universe::drawTargetTextureIntoDefaultFramebuffer()
+{
+	::Universe *self = oo::ToObjC(this);
+	// save previous bindings state
+	GLint previousFBO;
+	OOGL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &previousFBO));
+	GLint previousProgramID;
+	OOGL(glGetIntegerv(GL_CURRENT_PROGRAM, &previousProgramID));
+	GLint previousTextureID;
+	OOGL(glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTextureID));
+	GLint previousVAO;
+	OOGL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &previousVAO));
+	GLint previousActiveTexture;
+	OOGL(glGetIntegerv(GL_ACTIVE_TEXTURE, &previousActiveTexture));	
+	
+	OOGL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+	// fixes transparency issue for some reason
+	OOGL(glDisable(GL_BLEND));
+	
+	GLhandleARB program = [textureProgram program];
+	GLhandleARB blur = [blurProgram program];
+	GLhandleARB final = [finalProgram program];
+	NSSize viewSize = [gameView backingViewSize];
+	float fboResolution[2] = {(float)viewSize.width, (float)viewSize.height};
+
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, passthroughFramebufferID));
+	OOGL(glClear(GL_COLOR_BUFFER_BIT));
+
+	OOGL(glUseProgram(program));
+	OOGL(glBindTexture(GL_TEXTURE_2D, targetTextureID));
+	OOGL(glUniform1i(glGetUniformLocation(program, "image"), 0));
+	
+	
+	OOGL(glBindVertexArray(quadTextureVAO));
+	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
+	OOGL(glBindVertexArray(0));
+	
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	
+		
+	BOOL horizontal = YES, firstIteration = YES;
+	unsigned int amount = [self bloom] ? 10 : 0; // if not blooming, why bother with the heavy calculations?
+	OOGL(glUseProgram(blur));
+	for (unsigned int i = 0; i < amount; i++)
+	{
+		OOGL(glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]));
+		OOGL(glUniform1i(glGetUniformLocation(blur, "horizontal"), horizontal));
+		OOGL(glActiveTexture(GL_TEXTURE0));
+		// bind texture of other framebuffer (or scene if first iteration)
+		OOGL(glBindTexture(GL_TEXTURE_2D, firstIteration ? passthroughTextureID[1] : pingpongColorbuffers[!horizontal]));  
+		OOGL(glUniform1i(glGetUniformLocation([blurProgram program], "imageIn"), 0));
+		OOGL(glBindVertexArray(quadTextureVAO));
+		OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
+		OOGL(glBindVertexArray(0));
+		horizontal = !horizontal;
+		firstIteration = NO;
+	}
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	
+	
+	OOGL(glUseProgram(final));
+
+	OOGL(glActiveTexture(GL_TEXTURE0));
+	OOGL(glBindTexture(GL_TEXTURE_2D, passthroughTextureID[0]));
+	OOGL(glUniform1i(glGetUniformLocation(final, "scene"), 0));
+	OOGL(glUniform1i(glGetUniformLocation(final, "bloom"), [self bloom]));
+	OOGL(glUniform1f(glGetUniformLocation(final, "uTime"), [self getTime]));
+	OOGL(glUniform2fv(glGetUniformLocation(final, "uResolution"), 1, fboResolution));
+	OOGL(glUniform1i(glGetUniformLocation(final, "uPostFX"), [self currentPostFX]));
+#if OOLITE_WINDOWS
+	if([gameView hdrOutput])
+	{
+		OOGL(glUniform1f(glGetUniformLocation(final, "uMaxBrightness"), [gameView hdrMaxBrightness]));
+		OOGL(glUniform1f(glGetUniformLocation(final, "uPaperWhiteBrightness"), [gameView hdrPaperWhiteBrightness]));
+		OOGL(glUniform1i(glGetUniformLocation(final, "uHDRToneMapper"), [gameView hdrToneMapper]));
+	}
+#endif
+	OOGL(glUniform1i(glGetUniformLocation(final, "uSDRToneMapper"), [gameView sdrToneMapper]));
+	
+	OOGL(glActiveTexture(GL_TEXTURE1));
+	OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]));
+	OOGL(glUniform1i(glGetUniformLocation(final, "bloomBlur"), 1));
+	OOGL(glUniform1f(glGetUniformLocation(final, "uSaturation"), [gameView colorSaturation]));
+	
+	OOGL(glBindVertexArray(quadTextureVAO));
+	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
+	
+	// restore GL_TEXTURE1 to 0, just in case we are returning from a
+	// DETAIL_LEVEL_NORMAL to DETAIL_LEVEL_SHADERS
+	OOGL(glBindTexture(GL_TEXTURE_2D, 0));
+
+	// restore previous bindings
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, previousFBO));
+	OOGL(glActiveTexture(previousActiveTexture));
+	OOGL(glBindTexture(GL_TEXTURE_2D, previousTextureID));
+	OOGL(glUseProgram(previousProgramID));
+	OOGL(glBindVertexArray(previousVAO));
+	OOGL(glEnable(GL_BLEND));
+}
+
+
+NSUInteger Universe::sessionID()
+{
+	return _sessionID;
+}
+
+
+bool Universe::doingStartUp()
+{
+	return _doingStartUp;
+}
+
+
+bool Universe::getDoProcedurallyTexturedPlanets()
+{
+	return doProcedurallyTexturedPlanets;
+}
+
+
+void Universe::setDoProcedurallyTexturedPlanets(bool value)
+{
+	doProcedurallyTexturedPlanets = !!value;	// ensure yes or no
+	oo::Defaults::standard().setBool("procedurally-textured-planets", doProcedurallyTexturedPlanets);
+}
+
+
+std::optional<std::string> Universe::getUseAddOns()
+{
+	return useAddOns;
+}
+
+
+bool Universe::setUseAddOns(const std::string &newUse, bool saveGame)
+{
+	::Universe *self = oo::ToObjC(this);
+	return [self cxx_setUseAddOns:newUse fromSaveGame:saveGame forceReinit:NO];
+}
+
+
+bool Universe::setUseAddOns(const std::string &newUse, bool saveGame, bool force)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (!force && newUse == useAddOns)
+	{
+		return YES;
+	}
+	useAddOns = newUse;
+
+	return [self reinitAndShowDemo:!saveGame];
+}
+
+
+NSUInteger Universe::entityCount()
+{
+	return entities.size();
+}
+
+
+#ifndef NDEBUG
+void Universe::debugDumpEntities()
+{
+	int				i;
+	int				show_count = n_entities;
+	
+	if (!oo::log::willDisplay("universe.objectDump"))  return;
+	
+	OO_LOG("universe.objectDump", "DEBUG: Entity Dump - [entities count] = {},\tn_entities = {}", static_cast<size_t>(entities.size()), static_cast<unsigned>(n_entities));
+	
+	OOLogIndent();
+	for (i = 0; i < show_count; i++)
+	{
+		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [sortedEntities[i] descriptionForObjDump].value_or("(null)"));
+	}
+	OOLogOutdent();
+	
+	if (entities.size() != n_entities)
+	{
+		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::PListFromObjects(entities)));
+	}
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::entityList()
+{
+	return entities;
+}
+#endif
+
+
+}	// namespace cxx
 
 
 @implementation OOSound (OOCustomSounds)
