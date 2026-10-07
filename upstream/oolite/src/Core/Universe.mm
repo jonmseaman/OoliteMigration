@@ -6042,484 +6042,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-- (Entity *) firstEntityTargetedByPlayer
-{
-	PlayerEntity	*player = PLAYER;
-	Entity			*hit_entity = nil;
-	OOScalar		nearest2 = SCANNER_MAX_RANGE - 100;	// 100m shorter than range at which target is lost
-	nearest2 *= nearest2;
-	int				i;
-	int				ent_count = _cxxUniverse->n_entities;
-	int				ship_count = 0;
-	Entity			*my_entities[ent_count];
-	
-	for (i = 0; i < ent_count; i++)
-	{
-		if (([_cxxUniverse->sortedEntities[i] isShip] && ![_cxxUniverse->sortedEntities[i] isPlayer]) || [_cxxUniverse->sortedEntities[i] isWormhole])
-		{
-			my_entities[ship_count++] = [_cxxUniverse->sortedEntities[i] retain];
-		}
-	}
-	
-	Quaternion q1 = [player normalOrientation];
-	Vector u1, f1, r1;
-	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
-	Vector offset = [player weaponViewOffset];
-	
-	HPVector p1 = HPvector_add([player position], vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
-	
-	// Note: deliberately tied to view direction, not weapon facing. All custom views count as forward for targeting.
-	switch (_cxxUniverse->viewDirection)
-	{
-		case VIEW_AFT :
-			quaternion_rotate_about_axis(&q1, u1, M_PI);
-			break;
-		case VIEW_PORT :
-			quaternion_rotate_about_axis(&q1, u1, 0.5 * M_PI);
-			break;
-		case VIEW_STARBOARD :
-			quaternion_rotate_about_axis(&q1, u1, -0.5 * M_PI);
-			break;
-		default:
-			break;
-	}
-	basis_vectors_from_quaternion(q1, &r1, NULL, &f1);
-	
-	for (i = 0; i < ship_count; i++)
-	{
-		Entity *e2 = my_entities[i];
-		if ([e2 canCollide] && [e2 scanClass] != CLASS_NO_DRAW)
-		{
-			Vector rp = HPVectorToVector(HPvector_subtract([e2 position], p1));
-			OOScalar dist2 = magnitude2(rp);
-			if (dist2 < nearest2)
-			{
-				OOScalar df = dot_product(f1, rp);
-				if (df > 0.0 && df * df < nearest2)
-				{
-					OOScalar du = dot_product(u1, rp);
-					OOScalar dr = dot_product(r1, rp);
-					OOScalar cr = [e2 collisionRadius];
-					if (du * du + dr * dr < cr * cr)
-					{
-						hit_entity = e2;
-						nearest2 = dist2;
-					}
-				}
-			}
-		}
-	}
-	// check for MASC'M
-	if (hit_entity != nil && [hit_entity isShip])
-	{
-		ShipEntity* ship = (ShipEntity*)hit_entity;
-		if ([ship isJammingScanning] && ![player hasMilitaryScannerFilter])
-		{
-			hit_entity = nil;
-		}
-	}
-	
-	for (i = 0; i < ship_count; i++)
-	{
-		[my_entities[i] release];
-	}
-	
-	return hit_entity;
-}
-
-
-- (Entity *) firstEntityTargetedByPlayerPrecisely
-{
-	OOWeaponFacing targetFacing;
-	Vector laserPortOffset = kZeroVector;
-	PlayerEntity *player = PLAYER;
-	// The first weapon offset, or the zero vector for none (as -oo_vectorAtIndex:0 of the old array).
-	const auto firstWeaponOffset = [](const std::vector<Vector> &offsets) { return offsets.empty() ? kZeroVector : offsets.front(); };
-
-	switch (_cxxUniverse->viewDirection)
-	{
-		case VIEW_FORWARD:
-			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
-			break;
-			
-		case VIEW_AFT:
-			targetFacing = WEAPON_FACING_AFT;
-			laserPortOffset = firstWeaponOffset([player cxx_aftWeaponOffset]);
-			break;
-			
-		case VIEW_PORT:
-			targetFacing = WEAPON_FACING_PORT;
-			laserPortOffset = firstWeaponOffset([player cxx_portWeaponOffset]);
-			break;
-			
-		case VIEW_STARBOARD:
-			targetFacing = WEAPON_FACING_STARBOARD;
-			laserPortOffset = firstWeaponOffset([player cxx_starboardWeaponOffset]);
-			break;
-			
-		default:
-			// Match behaviour of -firstEntityTargetedByPlayer.
-			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
-	}
-	
-	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity
-{
-	if (entity == nil)  return {};
-
-	return [self cxx_findShipsMatchingPredicate:YESPredicate
-								  parameter:NULL
-									inRange:range
-								   ofEntity:entity];
-}
-
-
-// The role predicates read a std::string, held here for the call.
-- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
-{
-	std::string roleParameter = role;
-	return [self countShipsMatchingPredicate:HasRolePredicate
-							   parameter:&roleParameter
-								 inRange:range
-								ofEntity:entity];
-}
-
-
-- (unsigned) cxx_countShipsWithRole:(const std::string &)role
-{
-	return [self cxx_countShipsWithRole:role inRange:-1 ofEntity:nil];
-}
-
-
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
-{
-	std::string roleParameter = role;
-	return [self countShipsMatchingPredicate:HasPrimaryRolePredicate
-							   parameter:&roleParameter
-								 inRange:range
-								ofEntity:entity];
-}
-
-
-// HasScanClassPredicate reads the scan class as an OOScanClass.
-- (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity
-{
-	return [self countShipsMatchingPredicate:HasScanClassPredicate
-							   parameter:&scanClass
-								 inRange:range
-								ofEntity:entity];
-}
-
-
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role
-{
-	return [self cxx_countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
-}
-
-
-- (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-								  parameter:(void *)parameter
-									inRange:(double)range
-								   ofEntity:(Entity *)e1
-{
-	unsigned		i, found = 0;
-	HPVector			p1;
-	double			distance, cr;
-	
-	if (predicate == NULL)  predicate = YESPredicate;
-	
-	if (e1 != nil)  p1 = e1->_cxxEntity->position;
-	else  p1 = kZeroHPVector;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		if (e2 != e1 && predicate(e2, parameter))
-		{
-			if (range < 0)  distance = -1;	// Negative range means infinity
-			else
-			{
-				cr = range + e2->_cxxEntity->collision_radius;
-				distance = HPdistance2(e2->_cxxEntity->position, p1) - cr * cr;
-			}
-			if (distance < 0)
-			{
-				found++;
-			}
-		}
-	}
-	
-	return found;
-}
-
-
-- (unsigned) countShipsMatchingPredicate:(EntityFilterPredicate)predicate
-							   parameter:(void *)parameter
-								 inRange:(double)range
-								ofEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsShipPredicate, NULL,
-			predicate, parameter
-		};
-		
-		return [self countEntitiesMatchingPredicate:ANDPredicate
-										  parameter:&param
-											inRange:range
-										   ofEntity:entity];
-	}
-	else
-	{
-		return [self countEntitiesMatchingPredicate:IsShipPredicate
-										  parameter:NULL
-											inRange:range
-										   ofEntity:entity];
-	}
-}
-
-
 OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 {
 	if (range < 0)  return YES;
 	float cr = range + e2->_cxxEntity->collision_radius;
 	return HPdistance2(e2->_cxxEntity->position,p1) < cr * cr;
-}
-
-
-// NOTE: OOJSSystem relies on this returning entities in distance-from-player order.
-// This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-								  parameter:(void *)parameter
-									inRange:(double)range
-								   ofEntity:(Entity *)e1
-{
-	OOJS_PROFILE_ENTER
-
-	unsigned		i;
-	HPVector			p1;
-	std::vector<oo::ObjCRef<Entity *>>	result;
-
-	OOJSPauseTimeLimiter();
-
-	if (predicate == NULL)  predicate = YESPredicate;
-
-	result.reserve(_cxxUniverse->n_entities);
-	
-	if (e1 != nil)  p1 = [e1 position];
-	else  p1 = kZeroHPVector;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		
-		if (e1 != e2 &&
-			EntityInRange(p1, e2, range) &&
-			predicate(e2, parameter))
-		{
-			result.emplace_back(e2);
-		}
-	}
-
-	OOJSResumeTimeLimiter();
-
-	return result;
-
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<Entity *>>())
-}
-
-
-- (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate
-							parameter:(void *)parameter
-{
-	unsigned		i;
-	Entity			*candidate = nil;
-	
-	OOJSPauseTimeLimiter();
-	
-	if (predicate == NULL)  predicate = YESPredicate;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		candidate = _cxxUniverse->sortedEntities[i];
-		if (predicate(candidate, parameter))  return candidate;
-	}
-	
-	OOJSResumeTimeLimiter();
-	
-	return nil;
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
-									  parameter:(void *)parameter
-										inRange:(double)range
-									   ofEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsShipPredicate, NULL,
-			predicate, parameter
-		};
-
-		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
-										 parameter:&param
-										   inRange:range
-										  ofEntity:entity];
-	}
-	else
-	{
-		return [self cxx_findEntitiesMatchingPredicate:IsShipPredicate
-										 parameter:NULL
-										   inRange:range
-										  ofEntity:entity];
-	}
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
-									  parameter:(void *)parameter
-										inRange:(double)range
-									   ofEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsVisualEffectPredicate, NULL,
-			predicate, parameter
-		};
-
-		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
-										 parameter:&param
-										   inRange:range
-										  ofEntity:entity];
-	}
-	else
-	{
-		return [self cxx_findEntitiesMatchingPredicate:IsVisualEffectPredicate
-										 parameter:NULL
-										   inRange:range
-										  ofEntity:entity];
-	}
-}
-
-
-- (id) nearestEntityMatchingPredicate:(EntityFilterPredicate)predicate
-							parameter:(void *)parameter
-					 relativeToEntity:(Entity *)entity
-{
-	unsigned		i;
-	HPVector			p1;
-	float			rangeSq = INFINITY;
-	id				result = nil;
-	
-	if (predicate == NULL)  predicate = YESPredicate;
-	
-	if (entity != nil)  p1 = [entity position];
-	else  p1 = kZeroHPVector;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, [e2 position]);
-		
-		if (entity != e2 &&
-			distanceToReferenceEntitySquared < rangeSq &&
-			predicate(e2, parameter))
-		{
-			result = e2;
-			rangeSq = distanceToReferenceEntitySquared;
-		}
-	}
-	
-	return [[result retain] autorelease];
-}
-
-
-- (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate
-						  parameter:(void *)parameter
-				   relativeToEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsShipPredicate, NULL,
-			predicate, parameter
-		};
-		
-		return [self nearestEntityMatchingPredicate:ANDPredicate
-										  parameter:&param
-								   relativeToEntity:entity];
-	}
-	else
-	{
-		return [self nearestEntityMatchingPredicate:IsShipPredicate
-										  parameter:NULL
-								   relativeToEntity:entity];
-	}
-}
-
-
-- (OOTimeAbsolute) getTime
-{
-	return _cxxUniverse->universal_time;
-}
-
-
-- (OOTimeDelta) getTimeDelta
-{
-	return _cxxUniverse->time_delta;
-}
-
-
-- (void) findCollisionsAndShadows
-{
-	unsigned i;
-	
-	[_cxxUniverse->universeRegion clearEntityList];
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		[_cxxUniverse->universeRegion checkEntity:_cxxUniverse->sortedEntities[i]];	// sorts out which region it's in
-	}
-	
-	if (![[self gameController] isGamePaused])
-	{
-		[_cxxUniverse->universeRegion findCollisions];
-	}
-	
-	// do check for entities that can't see the sun!
-	[_cxxUniverse->universeRegion findShadowedEntities];
-}
-
-
-- (std::string) collisionDescription
-{
-	if (_cxxUniverse->universeRegion != nil)  return [_cxxUniverse->universeRegion collisionDescription];
-	else  return "-";
-}
-
-
-- (void) dumpCollisions
-{
-	_cxxUniverse->dumpCollisionInfo = YES;
-}
-
-
-- (OOViewID) viewDirection
-{
-	return _cxxUniverse->viewDirection;
 }
 
 
@@ -11786,6 +11313,490 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float da
 	for (i = 0; i < ship_count; i++)  [my_entities[i] release]; //	released
 	
 	return hit_entity;
+}
+
+}	// namespace cxx
+
+
+// Slice 15 of docs/phases/3-slices/Universe.md (bead oo-dg9d1): player targeting, entities in range, counting and finding ships by role and predicate, time, collisions, view direction. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+::Entity *Universe::firstEntityTargetedByPlayer()
+{
+	::PlayerEntity	*player = PLAYER;
+	::Entity			*hit_entity = nil;
+	OOScalar		nearest2 = SCANNER_MAX_RANGE - 100;	// 100m shorter than range at which target is lost
+	nearest2 *= nearest2;
+	int				i;
+	int				ent_count = n_entities;
+	int				ship_count = 0;
+	::Entity			*my_entities[ent_count];
+	
+	for (i = 0; i < ent_count; i++)
+	{
+		if (([sortedEntities[i] isShip] && ![sortedEntities[i] isPlayer]) || [sortedEntities[i] isWormhole])
+		{
+			my_entities[ship_count++] = [sortedEntities[i] retain];
+		}
+	}
+	
+	Quaternion q1 = [player normalOrientation];
+	Vector u1, f1, r1;
+	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
+	Vector offset = [player weaponViewOffset];
+	
+	HPVector p1 = HPvector_add([player position], vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
+	
+	// Note: deliberately tied to view direction, not weapon facing. All custom views count as forward for targeting.
+	switch (viewDirection)
+	{
+		case VIEW_AFT :
+			quaternion_rotate_about_axis(&q1, u1, M_PI);
+			break;
+		case VIEW_PORT :
+			quaternion_rotate_about_axis(&q1, u1, 0.5 * M_PI);
+			break;
+		case VIEW_STARBOARD :
+			quaternion_rotate_about_axis(&q1, u1, -0.5 * M_PI);
+			break;
+		default:
+			break;
+	}
+	basis_vectors_from_quaternion(q1, &r1, NULL, &f1);
+	
+	for (i = 0; i < ship_count; i++)
+	{
+		::Entity *e2 = my_entities[i];
+		if ([e2 canCollide] && [e2 scanClass] != CLASS_NO_DRAW)
+		{
+			Vector rp = HPVectorToVector(HPvector_subtract([e2 position], p1));
+			OOScalar dist2 = magnitude2(rp);
+			if (dist2 < nearest2)
+			{
+				OOScalar df = dot_product(f1, rp);
+				if (df > 0.0 && df * df < nearest2)
+				{
+					OOScalar du = dot_product(u1, rp);
+					OOScalar dr = dot_product(r1, rp);
+					OOScalar cr = [e2 collisionRadius];
+					if (du * du + dr * dr < cr * cr)
+					{
+						hit_entity = e2;
+						nearest2 = dist2;
+					}
+				}
+			}
+		}
+	}
+	// check for MASC'M
+	if (hit_entity != nil && [hit_entity isShip])
+	{
+		::ShipEntity* ship = (::ShipEntity*)hit_entity;
+		if ([ship isJammingScanning] && ![player hasMilitaryScannerFilter])
+		{
+			hit_entity = nil;
+		}
+	}
+	
+	for (i = 0; i < ship_count; i++)
+	{
+		[my_entities[i] release];
+	}
+	
+	return hit_entity;
+}
+
+
+::Entity *Universe::firstEntityTargetedByPlayerPrecisely()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	OOWeaponFacing targetFacing;
+	Vector laserPortOffset = kZeroVector;
+	::PlayerEntity *player = PLAYER;
+	// The first weapon offset, or the zero vector for none (as -oo_vectorAtIndex:0 of the old array).
+	const auto firstWeaponOffset = [](const std::vector<Vector> &offsets) { return offsets.empty() ? kZeroVector : offsets.front(); };
+
+	switch (viewDirection)
+	{
+		case VIEW_FORWARD:
+			targetFacing = WEAPON_FACING_FORWARD;
+			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
+			break;
+			
+		case VIEW_AFT:
+			targetFacing = WEAPON_FACING_AFT;
+			laserPortOffset = firstWeaponOffset([player cxx_aftWeaponOffset]);
+			break;
+			
+		case VIEW_PORT:
+			targetFacing = WEAPON_FACING_PORT;
+			laserPortOffset = firstWeaponOffset([player cxx_portWeaponOffset]);
+			break;
+			
+		case VIEW_STARBOARD:
+			targetFacing = WEAPON_FACING_STARBOARD;
+			laserPortOffset = firstWeaponOffset([player cxx_starboardWeaponOffset]);
+			break;
+			
+		default:
+			// Match behaviour of -firstEntityTargetedByPlayer.
+			targetFacing = WEAPON_FACING_FORWARD;
+			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
+	}
+	
+	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::entitiesWithinRange(double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (entity == nil)  return {};
+
+	return [self cxx_findShipsMatchingPredicate:YESPredicate
+								  parameter:NULL
+									inRange:range
+								   ofEntity:entity];
+}
+
+
+// The role predicates read a std::string, held here for the call.
+unsigned Universe::countShipsWithRole(const std::string &role, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::string roleParameter = role;
+	return [self countShipsMatchingPredicate:HasRolePredicate
+							   parameter:&roleParameter
+								 inRange:range
+								ofEntity:entity];
+}
+
+
+unsigned Universe::countShipsWithRole(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_countShipsWithRole:role inRange:-1 ofEntity:nil];
+}
+
+
+unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::string roleParameter = role;
+	return [self countShipsMatchingPredicate:HasPrimaryRolePredicate
+							   parameter:&roleParameter
+								 inRange:range
+								ofEntity:entity];
+}
+
+
+// HasScanClassPredicate reads the scan class as an OOScanClass.
+unsigned Universe::countShipsWithScanClass(OOScanClass scanClass, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self countShipsMatchingPredicate:HasScanClassPredicate
+							   parameter:&scanClass
+								 inRange:range
+								ofEntity:entity];
+}
+
+
+unsigned Universe::countShipsWithPrimaryRole(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
+}
+
+
+unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1)
+{
+	unsigned		i, found = 0;
+	HPVector			p1;
+	double			distance, cr;
+	
+	if (predicate == NULL)  predicate = YESPredicate;
+	
+	if (e1 != nil)  p1 = e1->_cxxEntity->position;
+	else  p1 = kZeroHPVector;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		if (e2 != e1 && predicate(e2, parameter))
+		{
+			if (range < 0)  distance = -1;	// Negative range means infinity
+			else
+			{
+				cr = range + e2->_cxxEntity->collision_radius;
+				distance = HPdistance2(e2->_cxxEntity->position, p1) - cr * cr;
+			}
+			if (distance < 0)
+			{
+				found++;
+			}
+		}
+	}
+	
+	return found;
+}
+
+
+unsigned Universe::countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsShipPredicate, NULL,
+			predicate, parameter
+		};
+		
+		return [self countEntitiesMatchingPredicate:ANDPredicate
+										  parameter:&param
+											inRange:range
+										   ofEntity:entity];
+	}
+	else
+	{
+		return [self countEntitiesMatchingPredicate:IsShipPredicate
+										  parameter:NULL
+											inRange:range
+										   ofEntity:entity];
+	}
+}
+
+
+// NOTE: OOJSSystem relies on this returning entities in distance-from-player order.
+// This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
+std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1)
+{
+	OOJS_PROFILE_ENTER
+
+	unsigned		i;
+	HPVector			p1;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
+
+	OOJSPauseTimeLimiter();
+
+	if (predicate == NULL)  predicate = YESPredicate;
+
+	result.reserve(n_entities);
+	
+	if (e1 != nil)  p1 = [e1 position];
+	else  p1 = kZeroHPVector;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		
+		if (e1 != e2 &&
+			EntityInRange(p1, e2, range) &&
+			predicate(e2, parameter))
+		{
+			result.emplace_back(e2);
+		}
+	}
+
+	OOJSResumeTimeLimiter();
+
+	return result;
+
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::Entity *>>())
+}
+
+
+id Universe::findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter)
+{
+	unsigned		i;
+	::Entity			*candidate = nil;
+	
+	OOJSPauseTimeLimiter();
+	
+	if (predicate == NULL)  predicate = YESPredicate;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		candidate = sortedEntities[i];
+		if (predicate(candidate, parameter))  return candidate;
+	}
+	
+	OOJSResumeTimeLimiter();
+	
+	return nil;
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsShipPredicate, NULL,
+			predicate, parameter
+		};
+
+		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
+										 parameter:&param
+										   inRange:range
+										  ofEntity:entity];
+	}
+	else
+	{
+		return [self cxx_findEntitiesMatchingPredicate:IsShipPredicate
+										 parameter:NULL
+										   inRange:range
+										  ofEntity:entity];
+	}
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsVisualEffectPredicate, NULL,
+			predicate, parameter
+		};
+
+		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
+										 parameter:&param
+										   inRange:range
+										  ofEntity:entity];
+	}
+	else
+	{
+		return [self cxx_findEntitiesMatchingPredicate:IsVisualEffectPredicate
+										 parameter:NULL
+										   inRange:range
+										  ofEntity:entity];
+	}
+}
+
+
+id Universe::nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity)
+{
+	unsigned		i;
+	HPVector			p1;
+	float			rangeSq = INFINITY;
+	id				result = nil;
+	
+	if (predicate == NULL)  predicate = YESPredicate;
+	
+	if (entity != nil)  p1 = [entity position];
+	else  p1 = kZeroHPVector;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, [e2 position]);
+		
+		if (entity != e2 &&
+			distanceToReferenceEntitySquared < rangeSq &&
+			predicate(e2, parameter))
+		{
+			result = e2;
+			rangeSq = distanceToReferenceEntitySquared;
+		}
+	}
+	
+	return [[result retain] autorelease];
+}
+
+
+id Universe::nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsShipPredicate, NULL,
+			predicate, parameter
+		};
+		
+		return [self nearestEntityMatchingPredicate:ANDPredicate
+										  parameter:&param
+								   relativeToEntity:entity];
+	}
+	else
+	{
+		return [self nearestEntityMatchingPredicate:IsShipPredicate
+										  parameter:NULL
+								   relativeToEntity:entity];
+	}
+}
+
+
+OOTimeAbsolute Universe::getTime()
+{
+	return universal_time;
+}
+
+
+OOTimeDelta Universe::getTimeDelta()
+{
+	return time_delta;
+}
+
+
+void Universe::findCollisionsAndShadows()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	unsigned i;
+	
+	[universeRegion clearEntityList];
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		[universeRegion checkEntity:sortedEntities[i]];	// sorts out which region it's in
+	}
+	
+	if (![[self gameController] isGamePaused])
+	{
+		[universeRegion findCollisions];
+	}
+	
+	// do check for entities that can't see the sun!
+	[universeRegion findShadowedEntities];
+}
+
+
+std::string Universe::collisionDescription()
+{
+	if (universeRegion != nil)  return [universeRegion collisionDescription];
+	else  return "-";
+}
+
+
+void Universe::dumpCollisions()
+{
+	dumpCollisionInfo = YES;
+}
+
+
+OOViewID Universe::getViewDirection()
+{
+	return viewDirection;
 }
 
 }	// namespace cxx

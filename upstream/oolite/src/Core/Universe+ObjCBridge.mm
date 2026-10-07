@@ -84,3 +84,31 @@ extern Universe *gSharedUniverse;
 - (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat *)range_ptr	{ return _cxxUniverse->firstShipHitByLaserFromShip(srcEntity, direction, offset, range_ptr); }
 
 @end
+
+
+@implementation Universe (OOSlice15)
+
+- (Entity *) firstEntityTargetedByPlayer	{ return _cxxUniverse->firstEntityTargetedByPlayer(); }
+- (Entity *) firstEntityTargetedByPlayerPrecisely	{ return _cxxUniverse->firstEntityTargetedByPlayerPrecisely(); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->entitiesWithinRange(range, entity); }
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsWithRole(role, range, entity); }
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role	{ return _cxxUniverse->countShipsWithRole(role); }
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsWithPrimaryRole(role, range, entity); }
+- (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsWithScanClass(scanClass, range, entity); }
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role	{ return _cxxUniverse->countShipsWithPrimaryRole(role); }
+- (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)e1	{ return _cxxUniverse->countEntitiesMatchingPredicate(predicate, parameter, range, e1); }
+- (unsigned) countShipsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->countShipsMatchingPredicate(predicate, parameter, range, entity); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)e1	{ return _cxxUniverse->findEntitiesMatchingPredicate(predicate, parameter, range, e1); }
+- (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter	{ return _cxxUniverse->findOneEntityMatchingPredicate(predicate, parameter); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->findShipsMatchingPredicate(predicate, parameter, range, entity); }
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter inRange:(double)range ofEntity:(Entity *)entity	{ return _cxxUniverse->findVisualEffectsMatchingPredicate(predicate, parameter, range, entity); }
+- (id) nearestEntityMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter relativeToEntity:(Entity *)entity	{ return _cxxUniverse->nearestEntityMatchingPredicate(predicate, parameter, entity); }
+- (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter relativeToEntity:(Entity *)entity	{ return _cxxUniverse->nearestShipMatchingPredicate(predicate, parameter, entity); }
+- (OOTimeAbsolute) getTime	{ return _cxxUniverse->getTime(); }
+- (OOTimeDelta) getTimeDelta	{ return _cxxUniverse->getTimeDelta(); }
+- (void) findCollisionsAndShadows	{ _cxxUniverse->findCollisionsAndShadows(); }
+- (std::string) collisionDescription	{ return _cxxUniverse->collisionDescription(); }
+- (void) dumpCollisions	{ _cxxUniverse->dumpCollisions(); }
+- (OOViewID) viewDirection	{ return _cxxUniverse->getViewDirection(); }
+
+@end
