@@ -56,6 +56,9 @@ MA 02110-1301, USA.
 #include "oofnd/Defaults.hpp"
 #include <chrono>
 #include <thread>
+#if OOLITE_SDL
+#include <SDL3/SDL_init.h>
+#endif
 
 #if OOLITE_MAC_OS_X
 #import "JAPersistentFileReference.h"
@@ -73,15 +76,16 @@ static cxx::GameController *sSharedController = nullptr;
 
 
 
+#if OOLITE_MAC_OS_X
+// Only the fenced Mac category below still sends these; they are cxx::GameController members since
+// beads oo-hn0fw and oo-5ah4k (Phase 5 writes the Mac layer again).
 @interface GameController (OOPrivate)
 
 - (void)cxx_reportUnhandledStartupExceptionName:(const std::string &)name reason:(const std::optional<std::string> &)reason;	// reason nullopt: none (was nil)
-
-// Only the fenced Mac -performGameTick: still sends it; cxx::GameController::doPerformGameTick() since bead oo-hn0fw.
 - (void)doPerformGameTick;
 
-
 @end
+#endif
 
 
 /*	The frame loop (ADR-0029 Decision 5; proposed ADR-0033).
@@ -581,9 +585,9 @@ void GameController::runFrameLoop()
 }	// namespace cxx
 
 
-@implementation GameController
+namespace cxx {
 
-- (void) applicationDidFinishLaunching
+void GameController::applicationDidFinishLaunching()
 {
 	void				*pool = NULL;
 	
@@ -596,17 +600,17 @@ void GameController::runFrameLoop()
 
 #if OO_OXP_VERIFIER_ENABLED
 
-		if ([OOOXPVerifier runVerificationIfRequested])
+		if ([::OOOXPVerifier runVerificationIfRequested])
 		{
-			[self cxx_exitAppWithContext:"OXP verifier run"];
+			exitAppWithContext("OXP verifier run");
 		}
 		else 
 		{
-			[self beginSplashScreen];
+			beginSplashScreen();
 		}
 		
 #else
-		[self beginSplashScreen];
+		beginSplashScreen();
 #endif
 		
 #if OOLITE_MAC_OS_X
@@ -614,81 +618,81 @@ void GameController::runFrameLoop()
 		SetUpSparkle();
 #endif
 		
-		[self setUpDisplayModes];
+		[oo::ToObjC(this) setUpDisplayModes];
 		
 		// moved to before the Universe is created
-		for (const std::string &expansionPath : _cxxController->expansionPathsToInclude)
+		for (const std::string &expansionPath : expansionPathsToInclude)
 		{
-			[ResourceManager cxx_addExternalPath:expansionPath];
+			[::ResourceManager cxx_addExternalPath:expansionPath];
 		}
 		
 		// initialise OXZ manager
-		[OOOXZManager sharedManager];
+		cxx::OOOXZManager::sharedManager();
 
 		// moved here to try to avoid initialising this before having an Open GL context
-		//[self cxx_logProgress:OO_DESC("Initialising universe")]; // DESC expansions only possible after Universe init
-		[[Universe alloc] initWithGameView:_cxxController->_gameView];
+		//logProgress(OO_DESC("Initialising universe")); // DESC expansions only possible after Universe init
+		[[::Universe alloc] initWithGameView:_gameView];
 		
-		[self loadPlayerIfRequired];
+		loadPlayerIfRequired();
 		
-		[self cxx_logProgress:""];
+		logProgress("");
 		
 		// get the run loop and add the call to performGameTick:
-		[self startAnimationTimer];
+		startAnimationTimer();
 		
-		[self endSplashScreen];
+		endSplashScreen();
 	}
 	@catch (OOException *exception)
 	{
-		[self cxx_reportUnhandledStartupExceptionName:std::string([exception name]) reason:std::string([exception reason])];
+		reportUnhandledStartupExceptionName(std::string([exception name]), std::string([exception reason]));
 		exit(EXIT_FAILURE);
 	}
 	
-	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _cxxController->_splashStart);
+	OO_LOG("startup.complete", "========== Loading complete in {:.2f} seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
-	[self setFullScreenMode:oo::Defaults::standard().boolForKey("fullscreen")];
+	[oo::ToObjC(this) setFullScreenMode:oo::Defaults::standard().boolForKey("fullscreen")];
 #endif
 
-	_cxxController->_finishedLaunching = YES;
+	_finishedLaunching = true;
 	
 	// Release anything allocated above that is not required.
 	objc_autoreleasePoolPop(pool);
 	
 #if !OOLITE_MAC_OS_X
-	[self runFrameLoop];
+	runFrameLoop();
 #endif
 }
 
 
 
 
-- (void) loadPlayerIfRequired
+void GameController::loadPlayerIfRequired()
 {
-	if (_cxxController->_playerFileToLoad.has_value())
+	if (_playerFileToLoad.has_value())
 	{
-		[self cxx_logProgress:OO_DESC("loading-player")];
+		logProgress(OO_DESC("loading-player"));
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:*_cxxController->_playerFileToLoad asNew:NO];
+		[PLAYER loadPlayerFromFile:*_playerFileToLoad asNew:NO];
 	}
 }
 
 
-- (void) beginSplashScreen
+void GameController::beginSplashScreen()
 {
 #if !OOLITE_MAC_OS_X
-	if(!_cxxController->_gameView)
+	if(!_gameView)
 	{
-		_cxxController->_gameView = [MyOpenGLView alloc];
-		[_cxxController->_gameView init];
-		[_cxxController->_gameView setGameController:self];
-		[_cxxController->_gameView initSplashScreen];
+		_gameView = [::MyOpenGLView alloc];
+		[_gameView init];
+		[_gameView setGameController:oo::ToObjC(this)];
+		[_gameView initSplashScreen];
 	}
 #else
-	[_cxxController->_gameView updateScreen];
+	[_gameView updateScreen];
 #endif
 }
 
@@ -699,38 +703,38 @@ void GameController::runFrameLoop()
 	#error Unknown environment!
 #endif
 
-- (void) cxx_logProgress:(const std::string &)message
+void GameController::logProgress(const std::string &message)
 {
 	if (![UNIVERSE doingStartUp])  return;
 
 #if OOLITE_MAC_OS_X
-	[_cxxController->splashProgressTextField setStringValue:oo::NSStringFrom(message)];
-	[_cxxController->splashProgressTextField display];
+	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];
+	[splashProgressTextField display];
 #endif
 	if (!message.empty())
 	{
-		OO_LOG("startup.progress", "===== [{:.2f} s] {}", oo::date::monotonicSeconds() - _cxxController->_splashStart, message);
+		OO_LOG("startup.progress", "===== [{:.2f} s] {}", oo::date::monotonicSeconds() - _splashStart, message);
 	}
 }
 
 
 #if OO_DEBUG
 #if !OOLITE_MAC_OS_X	// the Mac arms are in GameController (MacOSX) at the end of the file
-- (BOOL) debugMessageTrackingIsOn
+bool GameController::debugMessageTrackingIsOn()
 {
 	return oo::log::willDisplay("startup.progress");
 }
 
 
-- (std::string) cxx_debugMessageCurrentString
+std::string GameController::debugMessageCurrentString()
 {
 	return "";
 }
 #endif
 
-- (void) cxx_debugLogProgress:(const std::string &)message
+void GameController::debugLogProgress(const std::string &message)
 {
-	[self cxx_logProgress:message];
+	logProgress(message);
 }
 
 
@@ -739,26 +743,26 @@ namespace
 std::vector<std::string> sMessageStack;
 }
 
-- (void) cxx_debugPushProgressMessage:(const std::string &)message
+void GameController::debugPushProgressMessage(const std::string &message)
 {
-	if ([self debugMessageTrackingIsOn])
+	if (debugMessageTrackingIsOn())
 	{
-		sMessageStack.push_back([self cxx_debugMessageCurrentString]);
-		[self cxx_debugLogProgress:message];
+		sMessageStack.push_back(debugMessageCurrentString());
+		debugLogProgress(message);
 	}
 
 	oo::log::indentIf("startup.progress");
 }
 
 
-- (void) debugPopProgressMessage
+void GameController::debugPopProgressMessage()
 {
 	oo::log::outdentIf("startup.progress");
 
 	if (!sMessageStack.empty())
 	{
 		const std::string message = sMessageStack.back();
-		if (!message.empty())  [self cxx_logProgress:message];
+		if (!message.empty())  logProgress(message);
 		sMessageStack.pop_back();
 	}
 }
@@ -766,37 +770,35 @@ std::vector<std::string> sMessageStack;
 #endif
 
 
-- (void) endSplashScreen
+void GameController::endSplashScreen()
 {
 	oo::log::logger().setDisplay("startup.progress", false);
 	
 #if OOLITE_MAC_OS_X
 	// These views will be released when we replace the content view.
-	_cxxController->splashProgressTextField = nil;
-	_cxxController->splashView = nil;
+	splashProgressTextField = nil;
+	splashView = nil;
 	
-	[_cxxController->gameWindow setAcceptsMouseMovedEvents:YES];
-	[_cxxController->gameWindow setContentView:_cxxController->_gameView];
-	[_cxxController->gameWindow makeFirstResponder:_cxxController->_gameView];
+	[gameWindow setAcceptsMouseMovedEvents:YES];
+	[gameWindow setContentView:_gameView];
+	[gameWindow makeFirstResponder:_gameView];
 #elif OOLITE_SDL
-	[_cxxController->_gameView endSplashScreen];
+	[_gameView endSplashScreen];
 #endif
 }
 
 
 #if OOLITE_SDL
-#include <SDL3/SDL_init.h>
-
-- (void) cxx_exitAppWithContext:(const std::string &)context
+void GameController::exitAppWithContext(const std::string &context)
 {
 	OO_LOG("exit.context", "Exiting: {}.", context);
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
-	[[OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
+	[[::OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
 #endif
 #if OOLITE_WINDOWS
 	// This should not be required normally but we have to ensure that
 	// desktop resolution is restored also on some Intel cards on Win10
-	if (![_cxxController->_gameView atDesktopResolution])
+	if (![_gameView atDesktopResolution])
 	{
 		OO_LOG("gameController.exitApp", "{}", "Restoring desktop resolution.");
 		ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
@@ -815,44 +817,44 @@ std::vector<std::string> sMessageStack;
 #endif
 
 
-- (void) exitAppCommandQ
+void GameController::exitAppCommandQ()
 {
-	[self cxx_exitAppWithContext:"Command-Q"];
+	exitAppWithContext("Command-Q");
 }
 
 
-- (void)windowDidResize
+void GameController::windowDidResize()
 {
-	[_cxxController->_gameView updateScreen];
+	[_gameView updateScreen];
 }
 
 
-- (std::optional<std::string>) cxx_playerFileToLoad
+std::optional<std::string> GameController::playerFileToLoad()
 {
-	return _cxxController->_playerFileToLoad;
+	return _playerFileToLoad;
 }
 
 
-- (void) cxx_setPlayerFileToLoad:(const std::string &)filename
+void GameController::setPlayerFileToLoad(const std::string &filename)
 {
-	_cxxController->_playerFileToLoad = std::nullopt;
+	_playerFileToLoad = std::nullopt;
 	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
-		_cxxController->_playerFileToLoad = filename;
+		_playerFileToLoad = filename;
 }
 
 
-- (std::optional<std::string>) cxx_playerFileDirectory
+std::optional<std::string> GameController::playerFileDirectory()
 {
-	if (!_cxxController->_playerFileDirectory.has_value())
+	if (!_playerFileDirectory.has_value())
 	{
 		// save-directory via oo::Defaults (ADR-0032 / oo-mwo0 shared store).
-		_cxxController->_playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
-		if (_cxxController->_playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*_cxxController->_playerFileDirectory)))
+		_playerFileDirectory = oo::Defaults::standard().stringForKey("save-directory");
+		if (_playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*_playerFileDirectory)))
 		{
-			_cxxController->_playerFileDirectory = std::nullopt;
+			_playerFileDirectory = std::nullopt;
 		}
 		// -[defaultCommanderPath]: OO_SAVEDIR or ~/oolite-saves, create if missing, else home.
-		if (!_cxxController->_playerFileDirectory.has_value())
+		if (!_playerFileDirectory.has_value())
 		{
 			const oo::ResourcePaths paths = oo::ResourcePaths::current();
 			const oo::fs::Path savedir = paths.saveDirectory();
@@ -861,31 +863,31 @@ std::vector<std::string> sMessageStack;
 			{
 				if (oo::fs::createDirectories(savedir))
 				{
-					_cxxController->_playerFileDirectory = oo::fs::utf8String(savedir);
+					_playerFileDirectory = oo::fs::utf8String(savedir);
 				}
 				else
 				{
 					OO_LOG_ERR("savedGame.defaultPath.create.failed", "Unable to create '{}'. Saved games will go to the home directory.", oo::fs::utf8String(savedir));
-					_cxxController->_playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+					_playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 				}
 			}
 			else if (type != oo::fs::FileType::directory)
 			{
 				OO_LOG_ERR("savedGame.defaultPath.notDirectory", "'{}' is not a directory, saved games will go to the home directory.", oo::fs::utf8String(savedir));
-				_cxxController->_playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
+				_playerFileDirectory = oo::fs::utf8String(paths.homeDirectory());
 			}
 			else
 			{
-				_cxxController->_playerFileDirectory = oo::fs::utf8String(savedir);
+				_playerFileDirectory = oo::fs::utf8String(savedir);
 			}
 		}
 	}
 
-	return _cxxController->_playerFileDirectory;
+	return _playerFileDirectory;
 }
 
 
-- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename
+void GameController::setPlayerFileDirectory(const std::optional<std::string> &filename)
 {
 	std::optional<std::string> directory = filename;
 	if (directory.has_value() && oo::str::lowercase(oo::str::pathExtension(*directory)) == "oolite-save")
@@ -893,13 +895,13 @@ std::vector<std::string> sMessageStack;
 		directory = oo::str::deletingLastPathComponent(*directory);
 	}
 
-	_cxxController->_playerFileDirectory = directory;
+	_playerFileDirectory = directory;
 	if (directory.has_value())  oo::Defaults::standard().setObject("save-directory", oo::PList(*directory));
 	else  oo::Defaults::standard().removeObject("save-directory");
 }
 
 
-- (void)cxx_reportUnhandledStartupExceptionName:(const std::string &)name reason:(const std::optional<std::string> &)reason
+void GameController::reportUnhandledStartupExceptionName(const std::string &name, const std::optional<std::string> &reason)
 {
 	// %@ of a nil reason printed "(null)", as NSStringOrNil's nil still does.
 	OO_LOG("startup.exception", "***** Unhandled exception during startup: {} ({}).", name, reason.value_or("(null)"));
@@ -911,8 +913,7 @@ std::vector<std::string> sMessageStack;
 	#endif
 }
 
-
-@end
+}	// namespace cxx
 
 
 #if OOLITE_MAC_OS_X

@@ -142,9 +142,27 @@ cxx::GameController *oo::ToCxx(GameController *controller)
 @end
 
 
-@implementation GameController (OOPrivateForwarded)
+// The class's own interface: slice 3's selectors (bead oo-5ah4k); the Mac-only ones are the fenced
+// GameController (MacOSX) category's, in GameController.mm.
+@implementation GameController
 
-- (void) runFrameLoop														{ _cxxController->runFrameLoop(); }
+- (void) applicationDidFinishLaunching										{ _cxxController->applicationDidFinishLaunching(); }
+- (void) cxx_exitAppWithContext:(const std::string &)context				{ _cxxController->exitAppWithContext(context); }
+- (void) exitAppCommandQ													{ _cxxController->exitAppCommandQ(); }
+- (std::optional<std::string>) cxx_playerFileToLoad							{ return _cxxController->playerFileToLoad(); }
+- (void) cxx_setPlayerFileToLoad:(const std::string &)filename				{ _cxxController->setPlayerFileToLoad(filename); }
+- (std::optional<std::string>) cxx_playerFileDirectory						{ return _cxxController->playerFileDirectory(); }
+- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename	{ _cxxController->setPlayerFileDirectory(filename); }
+- (void) loadPlayerIfRequired												{ _cxxController->loadPlayerIfRequired(); }
+- (void) beginSplashScreen													{ _cxxController->beginSplashScreen(); }
+- (void) cxx_logProgress:(const std::string &)message						{ _cxxController->logProgress(message); }
+#if OO_DEBUG
+- (void) cxx_debugLogProgress:(const std::string &)message					{ _cxxController->debugLogProgress(message); }
+- (void) cxx_debugPushProgressMessage:(const std::string &)message			{ _cxxController->debugPushProgressMessage(message); }
+- (void) debugPopProgressMessage											{ _cxxController->debugPopProgressMessage(); }
+#endif
+- (void) endSplashScreen													{ _cxxController->endSplashScreen(); }
+- (void)windowDidResize														{ _cxxController->windowDidResize(); }
 
 @end
 
