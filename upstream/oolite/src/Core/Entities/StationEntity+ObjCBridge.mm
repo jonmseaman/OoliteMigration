@@ -98,6 +98,9 @@ MA 02110-1301, USA.
 @end
 
 
+OOWeakReference *StationEntityWeakReference(StationEntity *station)	{ return [[station weakRetain] autorelease]; }
+
+
 // Slice 1 of docs/phases/3-slices/StationEntity.md (bead oo-64ako).
 @implementation StationEntity (OOSlice1)
 
@@ -161,5 +164,38 @@ MA 02110-1301, USA.
 @implementation StationEntity (OOAIPrivate)
 
 - (void) acceptDistressMessageFrom:(ShipEntity *)other	{ _cxxStation->cxx::StationEntity::acceptDistressMessageFrom(other); }
+
+@end
+
+
+// Slice 2 of docs/phases/3-slices/StationEntity.md (bead oo-9j462).
+@implementation StationEntity (OOSlice2)
+
+- (void) sanityCheckShipsOnApproach	{ _cxxStation->sanityCheckShipsOnApproach(); }
+- (void) launchShip:(ShipEntity *)ship	{ _cxxStation->launchShip(ship); }
+- (void) abortAllDockings	{ _cxxStation->abortAllDockings(); }
+- (void) autoDockShipsOnHold	{ _cxxStation->autoDockShipsOnHold(); }
+- (void) autoDockShipsOnApproach	{ _cxxStation->autoDockShipsOnApproach(); }
+- (Vector) portUpVectorForShip:(ShipEntity*)ship	{ return _cxxStation->portUpVectorForShip(ship); }
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship	{ return _cxxStation->dockingInstructionsForShip(ship); }
+- (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship	{ return _cxxStation->holdPositionInstructionForShip(ship); }
+- (void) abortDockingForShip:(ShipEntity *)ship	{ _cxxStation->abortDockingForShip(ship); }
+- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship	{ return _cxxStation->shipIsInDockingCorridor(ship); }
+- (void) pullInShipIfPermitted:(ShipEntity *)ship	{ _cxxStation->pullInShipIfPermitted(ship); }
+- (BOOL) dockingCorridorIsEmpty	{ return _cxxStation->dockingCorridorIsEmpty(); }
+- (void) clearDockingCorridor	{ _cxxStation->clearDockingCorridor(); }
+- (void) update:(OOTimeDelta)delta_t	{ _cxxStation->cxx::StationEntity::update(delta_t); }
+- (void) clear	{ _cxxStation->clear(); }
+- (BOOL) hasMultipleDocks	{ return _cxxStation->hasMultipleDocks(); }
+- (BOOL) hasClearDock	{ return _cxxStation->hasClearDock(); }
+- (BOOL) hasEligibleDock	{ return _cxxStation->hasEligibleDock(); }
+- (BOOL) hasLaunchDock	{ return _cxxStation->hasLaunchDock(); }
+- (DockEntity *) selectDockForDocking	{ return _cxxStation->selectDockForDocking(); }
+- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority	{ _cxxStation->addShipToLaunchQueue(ship, priority); }
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role	{ return _cxxStation->countOfShipsInLaunchQueueWithPrimaryRole(role); }
+- (BOOL) fitsInDock:(ShipEntity *)ship	{ return _cxxStation->fitsInDock(ship); }
+- (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit	{ return _cxxStation->fitsInDock(ship, logNoFit); }
+- (void) noteDockedShip:(ShipEntity *)ship	{ _cxxStation->noteDockedShip(ship); }
+- (void) addShipToStationCount:(ShipEntity *)ship	{ _cxxStation->addShipToStationCount(ship); }
 
 @end

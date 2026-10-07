@@ -70,152 +70,13 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 
 @interface StationEntity (OOPrivate)
 
-- (void) pullInShipIfPermitted:(ShipEntity *)ship;
-- (void) addShipToStationCount:(ShipEntity *)ship;
 
-- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
 
-- (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship;
 
 @end
 
 
 @implementation StationEntity
-
-
-- (void) sanityCheckShipsOnApproach
-{
-
-	unsigned soa = 0;
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		soa += [sub pruneAndCountShipsOnApproach];
-	}
-
-	if (soa == 0)
-	{
-		// if all docks have no ships on approach
-		[_cxxShip->shipAI message:"DOCKING_COMPLETE"];
-		[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];	
-	}
-}
-
-
-// only used by player - everything else ends up in a Dock's launch queue
-- (void) launchShip:(ShipEntity *)ship
-{
-	
-	// try to find an unused dock first
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] == 0) 
-		{
-			[sub launchShip:ship];
-			return;
-		}
-	}
-	// otherwise any launchable dock will do
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub allowsLaunching]) 
-		{
-			[sub launchShip:ship];
-			return;
-		}
-	}
-
-	// ship has no launch docks specified; just use the last one
-	// (the enumerator loop this replaced left its variable nil when it ran out, so this never fires)
-	DockEntity *sub = nil;
-	if (sub != nil)
-	{
-		[sub launchShip:ship];
-		return;
-	}
-	// guaranteed to always be a dock as virtual dock will suffice
-}
-
-
-// Exposed to AI
-- (void) abortAllDockings
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		[sub abortAllDockings];
-	}
-	
-	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
-	for (const oo::ObjCRef<id> &holdRef : [_cxxStation->_shipsOnHold cxx_objectEnumerator])  [static_cast<ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
-	for (const oo::ObjCRef<id> &holdRef : [_cxxStation->_shipsOnHold cxx_objectEnumerator])
-	{
-		ShipEntity *hold = static_cast<ShipEntity *>(holdRef.get());
-		[hold doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
-	}
-
-	PlayerEntity *player = PLAYER;
-
-	if ([player getTargetDockStation] == self && [player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_REQUESTED)
-	{
-		// then docking clearance is requested but hasn't been cancelled
-		// yet by a DockEntity
-		[self cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
-		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
-	}
-
-	[_cxxStation->_shipsOnHold removeAllObjects];
-	
-	[_cxxShip->shipAI message:"DOCKING_COMPLETE"];
-	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
-
-}
-
-
-- (void) autoDockShipsOnHold
-{
-	for (const oo::ObjCRef<id> &shipRef : [_cxxStation->_shipsOnHold cxx_objectEnumerator])
-	{
-		ShipEntity *ship = static_cast<ShipEntity *>(shipRef.get());
-		[self pullInShipIfPermitted:ship];
-	}
-	
-	[_cxxStation->_shipsOnHold removeAllObjects];
-}
-
-
-- (void) autoDockShipsOnApproach
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		[sub autoDockShipsOnApproach];
-	}
-
-	[self autoDockShipsOnHold];
-	
-	[_cxxShip->shipAI message:"DOCKING_COMPLETE"];
-	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
-
-}
-
-
-- (Vector) portUpVectorForShip:(ShipEntity*) ship
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub shipIsInDockingQueue:ship])
-		{
-			return [sub portUpVectorForShipsBoundingBox:[ship totalBoundingBox]];
-		}
-	}
-	return kZeroVector;
-}
 
 
 oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const std::optional<std::string> &ai_message, const std::optional<std::string> &comms_message, BOOL match_rotation, int docking_stage)
@@ -226,7 +87,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	acc["destination"] = oo::PList(oo::PList::Dict{ { "x", oo::PList(coords.x) }, { "y", oo::PList(coords.y) }, { "z", oo::PList(coords.z) } });
 	acc["speed"] = oo::PList(static_cast<double>(speed));
 	acc["range"] = oo::PList(static_cast<double>(range));
-	acc["station"] = oo::PListObject([[station weakRetain] autorelease]);
+	acc["station"] = oo::PListObject(StationEntityWeakReference(station));	// [[station weakRetain] autorelease]
 	acc["match_rotation"] = oo::PList(static_cast<bool>(match_rotation));
 	acc["docking_stage"] = oo::PList::signedInteger(docking_stage);
 	if (ai_message)
@@ -238,591 +99,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		acc["comms_message"] = oo::PList(*comms_message);
 	}
 	return oo::PList(std::move(acc));
-}
-
-
-// this method does initial traffic control, before passing the ship
-// to an appropriate dock for docking coordinates and instructions.
-// used for NPCs, and the player when they use the docking computer
-- (oo::PList) dockingInstructionsForShip:(ShipEntity *) ship
-{
-	if (ship == nil)  return oo::PList();
-
-	[self doScriptEvent:OOJSID("stationReceivedDockingRequest") withArgument:ship];
-
-	if ([ship isPlayer])
-	{
-		_cxxStation->player_reserved_dock = nil; // clear any dock reservation for manual docking
-	}
-
-	if ([ship isPlayer] && [ship legalStatus] > 50)	// note: non-player fugitives dock as normal
-	{
-		// refuse docking to the fugitive player
-		return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1);
-	}
-	
-	if	(magnitude2(_cxxEntity->velocity) > 1.0 ||
-			 fabs(_cxxShip->flightPitch) > 0.01 ||
-			 fabs(_cxxShip->flightYaw) > 0.01)
-	{
-		// no docking while station is moving, pitching or yawing
-		return [self holdPositionInstructionForShip:ship];
-	}
-	PlayerEntity *player = PLAYER;
-	BOOL player_is_ahead = (![ship isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == [player getTargetDockStation]));
-
-	DockEntity		*chosenDock = nil;
-	std::optional<std::string>	docking;	// nullopt: no dock asked yet (was nil)
-	NSUInteger		queue = 100;
-	
-	BOOL alldockstoosmall = YES;
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub shipIsInDockingQueue:ship]) 
-		{
-			// if already claimed a docking queue, use that one
-			chosenDock = sub;
-			alldockstoosmall = NO;
-			break;
-		}
-		if (player_is_ahead) {
-			// can't allocate a new queue while player is manually docking
-			continue;
-		}
-		if (sub != _cxxStation->player_reserved_dock || [ship isPlayer])
-		{
-			docking = [sub canAcceptShipForDocking:ship];
-			if (docking == "DOCK_CLOSED")
-			{
-				ooscript::Context context = OOJSAcquireContext();
-				ooscript::Value		rval = ooscript::undefinedValue();
-				ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
-													 OOJSValueFromNativeObject(context, ship) };
-				bool tempreject = NO;
-
-				BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
-				if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
-				if (!OK)  tempreject = NO; // default to permreject
-				if (tempreject)
-				{
-					docking = "TRY_AGAIN_LATER";
-				}
-				else
-				{
-					docking = "TOO_BIG_TO_DOCK";
-				}
-
-				OOJSRelinquishContext(context);
-			}
-
-			if (docking == "DOCKING_POSSIBLE" && [sub countOfShipsInDockingQueue] < queue) {
-				// try to select the dock with the fewest ships already enqueued
-				chosenDock = sub;
-				queue = [sub countOfShipsInDockingQueue];
-				alldockstoosmall = NO;
-			}
-			else if (!(docking == "TOO_BIG_TO_DOCK"))
-			{
-				alldockstoosmall = NO;
-			}
-		}
-		else
-		{
-			alldockstoosmall = NO;
-		}
-	}	
-	if (chosenDock == nil)
-	{
-		if (player_is_ahead || (docking == "TOO_BIG_TO_DOCK" && !alldockstoosmall) || !docking)
-		{
-			// either player is manually docking and we can't allocate new docks,
-			// or the last dock was too small, and there may be an acceptable one
-			// not tested yet or returning TRY_AGAIN_LATER
-			docking = "TRY_AGAIN_LATER";
-		}
-		// no docks accept this ship (or the player is blocking them)
-		return cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1);
-	}
-
-
-	// rolling is okay for some
-	if	(fabs(_cxxShip->flightRoll) > 0.01 && [chosenDock isOffCentre])
-	{
-		return [self holdPositionInstructionForShip:ship];
-	}
-	
-	// we made it through holding!
-	[_cxxStation->_shipsOnHold removeObject:ship];
-	
-	[_cxxShip->shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
-	[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:ship];
-
-	return [chosenDock dockingInstructionsForShip:ship];
-}
-
-
-- (oo::PList)holdPositionInstructionForShip:(ShipEntity *)ship
-{
-	if (![_cxxStation->_shipsOnHold containsObject:ship])
-	{
-		[self cxx_sendExpandedMessage:"[station-acknowledges-hold-position]" toShip:ship];
-		[_cxxStation->_shipsOnHold addObject:ship];
-	}
-	
-	return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "HOLD_POSITION", std::nullopt, NO, -1);
-}
-
-
-- (void) abortDockingForShip:(ShipEntity *) ship
-{
-	[ship sendAIMessage:"DOCKING_ABORTED"];
-	[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
-	
-	[_cxxStation->_shipsOnHold removeObject:ship];
-	
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		[sub abortDockingForShip:ship];
-	}
-	
-	if ([ship isPlayer])
-	{
-		_cxxStation->player_reserved_dock = nil;
-	}
-
-	[self sanityCheckShipsOnApproach];
-}
-
-
-//////////////////////////////////////////////// from superclass
-
-
-- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship
-{
-	if (![ship isShip])  return NO;
-	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
-
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub shipIsInDockingCorridor:ship])
-		{
-			return YES;
-		}
-	}
-	return NO;
-}
-
-	
-
-
-- (void) pullInShipIfPermitted:(ShipEntity *)ship
-{
-	[ship enterDock:self]; // dock performs permitted checks
-}
-
-
-- (BOOL) dockingCorridorIsEmpty
-{
-	if (!UNIVERSE)
-		return NO;
-
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub dockingCorridorIsEmpty])
-		{
-			return YES; // if any are
-		}
-	}
-	return NO;
-}
-
-
-- (void) clearDockingCorridor
-{
-	if (!UNIVERSE)
-		return;
-
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		[sub clearDockingCorridor];
-	}		
-
-	return;
-}
-
-
-- (void) update:(OOTimeDelta) delta_t
-{
-	BOOL isRockHermit = (_cxxEntity->scanClass == CLASS_ROCK);
-	BOOL isMainStation = (self == [UNIVERSE station]);
-	
-	double unitime = [UNIVERSE getTime];
-	
-	if (!isMainStation && _cxxStation->localMarket == nil)
-	{
-		[self initialiseLocalMarket];
-	}
-
-	[super update:delta_t];
-
-	PlayerEntity *player = PLAYER;
-
-	BOOL isDockingStation = (self == [player getTargetDockStation]);
-	if (isDockingStation && [player status] == STATUS_IN_FLIGHT)
-	{
-		if ([player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_GRANTED)
-		{
-			if (_cxxStation->last_launch_time-30 < unitime && [player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
-			{
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-about-to-expire]" toShip:player];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
-			}
-			else if (_cxxStation->last_launch_time < unitime)
-			{
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-expired]" toShip:player];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];	// Docking clearance for player has expired.
-				[player doScriptEvent:OOJSID("playerDockingClearanceExpired")];
-				if ([self currentlyInDockingQueues] == 0) 
-				{
-					[[self getAI] message:"DOCKING_COMPLETE"];
-					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
-				}
-				_cxxStation->player_reserved_dock = nil;
-			}
-		}
-
-		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_NOT_REQUIRED)
-		{
-			if (_cxxStation->last_launch_time < unitime)
-			{
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-				if ([self currentlyInDockingQueues] == 0) 
-				{
-					[[self getAI] message:"DOCKING_COMPLETE"];
-					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
-				}
-			}
-		}
-
-		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED &&
-				[self hasClearDock])
-		{
-			DockEntity *dock = [self selectDockForDocking];
-			_cxxStation->last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
-			if ([self hasMultipleDocks]) 
-			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
-								{ [dock displayName].value_or("(null)"),
-								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-					toShip:player];
-			}
-			else
-			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
-								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-					toShip:player];
-			}
-			_cxxStation->player_reserved_dock = dock;
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-			[player doScriptEvent:OOJSID("playerDockingClearanceGranted")];
-
-		}
-	}
-	
-	
-	if (_cxxStation->approach_spacing > 0.0)
-	{
-		_cxxStation->approach_spacing -= delta_t * 10.0;	// reduce by 10 m/s
-		if (_cxxStation->approach_spacing < 0.0)   _cxxStation->approach_spacing = 0.0;
-	}
-
-	/* JSAI: JS-based AIs handle their own traffic either alone or 
-	 * in conjunction with the system repopulator */
-	if (![self hasNewAI])
-	{
-		// begin launch of shuttles, traders, patrols
-		if ((_cxxStation->docked_shuttles > 0)&&(!isRockHermit))
-		{
-			if (unitime > _cxxStation->last_shuttle_launch_time + _cxxStation->shuttle_launch_interval)
-			{
-				if (([self hasNPCTraffic])&&(_cxxShip->aegis_status != AEGIS_NONE))
-				{
-					[self launchShuttle];
-				}
-				_cxxStation->last_shuttle_launch_time = unitime;
-			}
-		}
-
-		if ((_cxxStation->docked_traders > 0)&&(!isRockHermit))
-		{
-			if (unitime > _cxxStation->last_trader_launch_time + _cxxStation->trader_launch_interval)
-			{
-				if ([self hasNPCTraffic])
-				{
-					[self launchIndependentShip:"trader"];
-					_cxxStation->docked_traders--;
-				}
-				_cxxStation->last_trader_launch_time = unitime;
-			}
-		}
-	
-		// testing patrols
-		if (unitime > (_cxxStation->last_patrol_report_time + _cxxStation->patrol_launch_interval))
-		{
-			if (!((isMainStation && [self hasNPCTraffic]) || _cxxStation->hasPatrolShips) || [self launchPatrol] != nil)
-				_cxxStation->last_patrol_report_time = unitime;
-		}
-
-	}
-}
-
-
-- (void) clear
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		[sub clear];
-	}
-	
-	[_cxxStation->_shipsOnHold removeAllObjects];
-}
-
-
-- (BOOL) hasMultipleDocks
-{
-	return [self cxx_dockSubEntities].size() > 1;
-}
-
-
-// is there a dock free for the player to dock manually?
-// not used for NPCs
-- (BOOL) hasClearDock
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
-		{
-			if ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE")
-			{
-				return YES;
-			}
-		}
-	}
-	return NO;
-}
-
-
-- (BOOL) hasEligibleDock
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		// TRY_AGAIN_LATER in this context means "ships launching now"
-		if ([sub allowsDocking] && ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE" || [sub canAcceptShipForDocking:PLAYER] == "TRY_AGAIN_LATER"))
-		{
-			return YES;
-		}
-	}
-	return NO;
-}
-
-
-// is there any dock which may launch ships?
-- (BOOL) hasLaunchDock
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub allowsLaunching])
-		{
-			return YES;
-		}
-	}
-	return NO;
-}
-
-// only used to pick a dock for the player
-- (DockEntity *) selectDockForDocking
-{
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
-		{
-			return sub;
-		}
-	}
-	return nil;
-}
-
-
-- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority
-{
-	unsigned			threshold = 0;
-
-	// quickest launch if we assign ships to those bays with no incoming ships
-	// and spread the ships evenly around those bays
-	// much easier if the station has at least one launch-only dock
-	while (threshold < 16)
-	{
-		for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-		{
-			DockEntity *sub = dock.get();
-			if (sub != _cxxStation->player_reserved_dock)
-			{
-				if ([sub countOfShipsInDockingQueue] == 0)
-				{
-					if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] <= threshold)
-					{
-						if ([sub allowsLaunchingOf:ship])
-						{
-							[sub addShipToLaunchQueue:ship withPriority:priority];
-							return;
-						}
-					}
-				}
-			}
-		}
-		threshold++;
-	}
-	// if we get this far, all docks have at least some incoming traffic.
-	// usually most efficient (since launching is far faster than docking)
-	// to assign all ships to the *same* dock with the smallest incoming queue
-	// rather than to try spreading them out across several queues
-	// also stops escorts being launched before their mothership 
-	threshold = 0;
-	while (threshold < 16)
-	{
-		for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-		{
-			DockEntity *sub = dock.get();
-			/* so this time as long as it allows launching only check
-			 * the docking queue size so long as enumerator order is
-			 * deterministic, this will assign every launch this
-			 * update to the same dock (edge case where new docking
-			 * ship appears in the middle, probably not a problem) */
-			if ([sub allowsLaunching] && [sub countOfShipsInDockingQueue] <= threshold)
-			{
-				if ([sub allowsLaunchingOf:ship])
-				{
-					[sub addShipToLaunchQueue:ship withPriority:priority];
-					return;
-				}
-			}
-
-		}
-		threshold++;
-	}
-	
-	OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as the {} has too many ships in its launch queue(s) or no suitable launch docks.",
-			  [ship displayName].value_or("(null)"), [ship cxx_primaryRole].value_or("(null)"), [self displayName].value_or("(null)"));
-}
-
-
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role
-{
-	unsigned result = 0;
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		result += [sub countOfShipsInLaunchQueueWithPrimaryRole:role];
-	}
-	return result;
-}
-
-- (BOOL) fitsInDock:(ShipEntity *)ship
-{
-   return [self fitsInDock:ship andLogNoFit:YES];
-}
-
-
-- (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit
-{
-	if (![ship isShip])  return NO;
-	
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		if ([sub allowsLaunchingOf:ship])
-		{
-			return YES;
-		}
-	}
-
-	if (logNoFit) OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as it is too large for the docking port of the {}.",
-			  [ship displayName].value_or("(null)"), [ship cxx_primaryRole].value_or("(null)"), oo::DescriptionOf(self));
-	return NO;
-}	
-
-	
-- (void) noteDockedShip:(ShipEntity *) ship
-{
-	if (ship == nil)  return;	
-	
-	PlayerEntity *player = PLAYER;
-	// set last launch time to avoid clashes with outgoing ships
-	if ([player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_GRANTED)
-	{
-		// avoid interfering with docking clearance on another bay
-		_cxxStation->last_launch_time = [UNIVERSE getTime];
-	}
-	[self addShipToStationCount: ship];
-	
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		[sub noteDockingForShip:ship];
-	}
-	[self sanityCheckShipsOnApproach];
-	
-	[self doScriptEvent:OOJSID("otherShipDocked") withArgument:ship];
-	
-	BOOL isDockingStation = (self == [player getTargetDockStation]);
-	if (isDockingStation && [player status] == STATUS_IN_FLIGHT &&
-			[player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)
-	{
-		if (![self hasClearDock])
-		{
-			// then say why
-			if ([self currentlyInDockingQueues])
-			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-approaching"),
-																						{ [self currentlyInDockingQueues]+1 }) toShip:player];
-			}
-			else if([self currentlyInLaunchingQueues])
-			{
-				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-departing"),
-																						{ [self currentlyInLaunchingQueues]+1 }) toShip:player];
-			}
-		} 
-	}
-
-
-	if ([ship isPlayer])
-	{
-		_cxxStation->player_reserved_dock = nil;
-	}
-}
-
-- (void) addShipToStationCount:(ShipEntity *) ship
-{
- 	if ([ship isShuttle])  _cxxStation->docked_shuttles++;
-	else if ([ship isTrader] && ![ship isPlayer])  _cxxStation->docked_traders++;
-	else if (([ship isPolice] && ![ship isEscort]) || [ship cxx_hasPrimaryRole:"defense_ship"])
-	{
-		if (0 < _cxxStation->defenders_launched)  _cxxStation->defenders_launched--;
-	}
-	else if ([ship cxx_hasPrimaryRole:"scavenger"] || [ship cxx_hasPrimaryRole:"miner"])	// treat miners and scavengers alike!
-	{
-		if (0 < _cxxStation->scavengers_launched)  _cxxStation->scavengers_launched--;
-	}
 }
 
 
@@ -2479,5 +1755,760 @@ void StationEntity::dumpSelfState()
 		oo::log::outdent();
 	}
 }
+
+}	// namespace cxx
+
+
+// Slice 2 of docs/phases/3-slices/StationEntity.md (bead oo-9j462): docking traffic control and the
+// launch queue. The facade forwards each selector (StationEntity (OOSlice2),
+// StationEntity+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-mvzmb and
+// oo-64ako).
+
+namespace cxx {
+
+void StationEntity::sanityCheckShipsOnApproach()
+{
+	::StationEntity *self = oo::ToObjC(this);
+
+	unsigned soa = 0;
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		soa += [sub pruneAndCountShipsOnApproach];
+	}
+
+	if (soa == 0)
+	{
+		// if all docks have no ships on approach
+		[shipAI message:"DOCKING_COMPLETE"];
+		[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];	
+	}
+}
+
+
+// only used by player - everything else ends up in a Dock's launch queue
+void StationEntity::launchShip(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	
+	// try to find an unused dock first
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] == 0) 
+		{
+			[sub launchShip:ship];
+			return;
+		}
+	}
+	// otherwise any launchable dock will do
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub allowsLaunching]) 
+		{
+			[sub launchShip:ship];
+			return;
+		}
+	}
+
+	// ship has no launch docks specified; just use the last one
+	// (the enumerator loop this replaced left its variable nil when it ran out, so this never fires)
+	::DockEntity *sub = nil;
+	if (sub != nil)
+	{
+		[sub launchShip:ship];
+		return;
+	}
+	// guaranteed to always be a dock as virtual dock will suffice
+}
+
+
+// Exposed to AI
+void StationEntity::abortAllDockings()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		[sub abortAllDockings];
+	}
+	
+	// -makeObjectsPerformSelector:withObject: of the live ships on hold, in order
+	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])  [static_cast<::ShipEntity *>(holdRef.get()) sendAIMessage:"DOCKING_ABORTED"];
+	for (const oo::ObjCRef<id> &holdRef : [_shipsOnHold cxx_objectEnumerator])
+	{
+		::ShipEntity *hold = static_cast<::ShipEntity *>(holdRef.get());
+		[hold doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+	}
+
+	::PlayerEntity *player = PLAYER;
+
+	if ([player getTargetDockStation] == self && [player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_REQUESTED)
+	{
+		// then docking clearance is requested but hasn't been cancelled
+		// yet by a DockEntity
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-abort-cancelled]" toShip:player];
+		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+		[player doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+	}
+
+	[_shipsOnHold removeAllObjects];
+	
+	[shipAI message:"DOCKING_COMPLETE"];
+	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
+
+}
+
+
+void StationEntity::autoDockShipsOnHold()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<id> &shipRef : [_shipsOnHold cxx_objectEnumerator])
+	{
+		::ShipEntity *ship = static_cast<::ShipEntity *>(shipRef.get());
+		[self pullInShipIfPermitted:ship];
+	}
+	
+	[_shipsOnHold removeAllObjects];
+}
+
+
+void StationEntity::autoDockShipsOnApproach()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		[sub autoDockShipsOnApproach];
+	}
+
+	[self autoDockShipsOnHold];
+	
+	[shipAI message:"DOCKING_COMPLETE"];
+	[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
+
+}
+
+
+Vector StationEntity::portUpVectorForShip(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub shipIsInDockingQueue:ship])
+		{
+			return [sub portUpVectorForShipsBoundingBox:[ship totalBoundingBox]];
+		}
+	}
+	return kZeroVector;
+}
+
+
+// this method does initial traffic control, before passing the ship
+// to an appropriate dock for docking coordinates and instructions.
+// used for NPCs, and the player when they use the docking computer
+oo::PList StationEntity::dockingInstructionsForShip(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (ship == nil)  return oo::PList();
+
+	[self doScriptEvent:OOJSID("stationReceivedDockingRequest") withArgument:ship];
+
+	if ([ship isPlayer])
+	{
+		player_reserved_dock = nil; // clear any dock reservation for manual docking
+	}
+
+	if ([ship isPlayer] && [ship legalStatus] > 50)	// note: non-player fugitives dock as normal
+	{
+		// refuse docking to the fugitive player
+		return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1);
+	}
+	
+	if	(magnitude2(velocity) > 1.0 ||
+			 fabs(flightPitch) > 0.01 ||
+			 fabs(flightYaw) > 0.01)
+	{
+		// no docking while station is moving, pitching or yawing
+		return [self holdPositionInstructionForShip:ship];
+	}
+	::PlayerEntity *player = PLAYER;
+	BOOL player_is_ahead = (![ship isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == [player getTargetDockStation]));
+
+	::DockEntity		*chosenDock = nil;
+	std::optional<std::string>	docking;	// nullopt: no dock asked yet (was nil)
+	NSUInteger		queue = 100;
+	
+	BOOL alldockstoosmall = YES;
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub shipIsInDockingQueue:ship]) 
+		{
+			// if already claimed a docking queue, use that one
+			chosenDock = sub;
+			alldockstoosmall = NO;
+			break;
+		}
+		if (player_is_ahead) {
+			// can't allocate a new queue while player is manually docking
+			continue;
+		}
+		if (sub != player_reserved_dock || [ship isPlayer])
+		{
+			docking = [sub canAcceptShipForDocking:ship];
+			if (docking == "DOCK_CLOSED")
+			{
+				ooscript::Context context = OOJSAcquireContext();
+				ooscript::Value		rval = ooscript::undefinedValue();
+				ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
+													 OOJSValueFromNativeObject(context, ship) };
+				bool tempreject = NO;
+
+				BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
+				if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
+				if (!OK)  tempreject = NO; // default to permreject
+				if (tempreject)
+				{
+					docking = "TRY_AGAIN_LATER";
+				}
+				else
+				{
+					docking = "TOO_BIG_TO_DOCK";
+				}
+
+				OOJSRelinquishContext(context);
+			}
+
+			if (docking == "DOCKING_POSSIBLE" && [sub countOfShipsInDockingQueue] < queue) {
+				// try to select the dock with the fewest ships already enqueued
+				chosenDock = sub;
+				queue = [sub countOfShipsInDockingQueue];
+				alldockstoosmall = NO;
+			}
+			else if (!(docking == "TOO_BIG_TO_DOCK"))
+			{
+				alldockstoosmall = NO;
+			}
+		}
+		else
+		{
+			alldockstoosmall = NO;
+		}
+	}	
+	if (chosenDock == nil)
+	{
+		if (player_is_ahead || (docking == "TOO_BIG_TO_DOCK" && !alldockstoosmall) || !docking)
+		{
+			// either player is manually docking and we can't allocate new docks,
+			// or the last dock was too small, and there may be an acceptable one
+			// not tested yet or returning TRY_AGAIN_LATER
+			docking = "TRY_AGAIN_LATER";
+		}
+		// no docks accept this ship (or the player is blocking them)
+		return cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1);
+	}
+
+
+	// rolling is okay for some
+	if	(fabs(flightRoll) > 0.01 && [chosenDock isOffCentre])
+	{
+		return [self holdPositionInstructionForShip:ship];
+	}
+	
+	// we made it through holding!
+	[_shipsOnHold removeObject:ship];
+	
+	[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:"requestDockingCoordinates"];	// react to the request	
+	[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:ship];
+
+	return [chosenDock dockingInstructionsForShip:ship];
+}
+
+
+oo::PList StationEntity::holdPositionInstructionForShip(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (![_shipsOnHold containsObject:ship])
+	{
+		[self cxx_sendExpandedMessage:"[station-acknowledges-hold-position]" toShip:ship];
+		[_shipsOnHold addObject:ship];
+	}
+	
+	return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "HOLD_POSITION", std::nullopt, NO, -1);
+}
+
+
+void StationEntity::abortDockingForShip(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[ship sendAIMessage:"DOCKING_ABORTED"];
+	[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
+	
+	[_shipsOnHold removeObject:ship];
+	
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		[sub abortDockingForShip:ship];
+	}
+	
+	if ([ship isPlayer])
+	{
+		player_reserved_dock = nil;
+	}
+
+	[self sanityCheckShipsOnApproach];
+}
+
+
+//////////////////////////////////////////////// from superclass
+
+
+bool StationEntity::shipIsInDockingCorridor(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (![ship isShip])  return NO;
+	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
+
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub shipIsInDockingCorridor:ship])
+		{
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+void StationEntity::pullInShipIfPermitted(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[ship enterDock:self]; // dock performs permitted checks
+}
+
+
+bool StationEntity::dockingCorridorIsEmpty()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (!UNIVERSE)
+		return NO;
+
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub dockingCorridorIsEmpty])
+		{
+			return YES; // if any are
+		}
+	}
+	return NO;
+}
+
+
+void StationEntity::clearDockingCorridor()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (!UNIVERSE)
+		return;
+
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		[sub clearDockingCorridor];
+	}		
+
+	return;
+}
+
+
+void StationEntity::update(OOTimeDelta delta_t)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	BOOL isRockHermit = (scanClass == CLASS_ROCK);
+	BOOL isMainStation = (self == [UNIVERSE station]);
+	
+	double unitime = [UNIVERSE getTime];
+	
+	if (!isMainStation && localMarket == nil)
+	{
+		[self initialiseLocalMarket];
+	}
+
+	ShipEntity::update(delta_t);	// [super update:delta_t]
+
+	::PlayerEntity *player = PLAYER;
+
+	BOOL isDockingStation = (self == [player getTargetDockStation]);
+	if (isDockingStation && [player status] == STATUS_IN_FLIGHT)
+	{
+		if ([player getDockingClearanceStatus] >= DOCKING_CLEARANCE_STATUS_GRANTED)
+		{
+			if (last_launch_time-30 < unitime && [player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_TIMING_OUT)
+			{
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-about-to-expire]" toShip:player];
+				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_TIMING_OUT];
+			}
+			else if (last_launch_time < unitime)
+			{
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-expired]" toShip:player];
+				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];	// Docking clearance for player has expired.
+				[player doScriptEvent:OOJSID("playerDockingClearanceExpired")];
+				if ([self currentlyInDockingQueues] == 0) 
+				{
+					[[self getAI] message:"DOCKING_COMPLETE"];
+					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
+				}
+				player_reserved_dock = nil;
+			}
+		}
+
+		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_NOT_REQUIRED)
+		{
+			if (last_launch_time < unitime)
+			{
+				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				if ([self currentlyInDockingQueues] == 0) 
+				{
+					[[self getAI] message:"DOCKING_COMPLETE"];
+					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
+				}
+			}
+		}
+
+		else if ([player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED &&
+				[self hasClearDock])
+		{
+			::DockEntity *dock = [self selectDockForDocking];
+			last_launch_time = unitime + DOCKING_CLEARANCE_WINDOW;
+			if ([self hasMultipleDocks]) 
+			{
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
+								{ [dock displayName].value_or("(null)"),
+								  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+					toShip:player];
+			}
+			else
+			{
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
+								{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+					toShip:player];
+			}
+			player_reserved_dock = dock;
+			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
+			[player doScriptEvent:OOJSID("playerDockingClearanceGranted")];
+
+		}
+	}
+	
+	
+	if (approach_spacing > 0.0)
+	{
+		approach_spacing -= delta_t * 10.0;	// reduce by 10 m/s
+		if (approach_spacing < 0.0)   approach_spacing = 0.0;
+	}
+
+	/* JSAI: JS-based AIs handle their own traffic either alone or 
+	 * in conjunction with the system repopulator */
+	if (![self hasNewAI])
+	{
+		// begin launch of shuttles, traders, patrols
+		if ((docked_shuttles > 0)&&(!isRockHermit))
+		{
+			if (unitime > last_shuttle_launch_time + shuttle_launch_interval)
+			{
+				if (([self hasNPCTraffic])&&(aegis_status != AEGIS_NONE))
+				{
+					[self launchShuttle];
+				}
+				last_shuttle_launch_time = unitime;
+			}
+		}
+
+		if ((docked_traders > 0)&&(!isRockHermit))
+		{
+			if (unitime > last_trader_launch_time + trader_launch_interval)
+			{
+				if ([self hasNPCTraffic])
+				{
+					[self launchIndependentShip:"trader"];
+					docked_traders--;
+				}
+				last_trader_launch_time = unitime;
+			}
+		}
+	
+		// testing patrols
+		if (unitime > (last_patrol_report_time + patrol_launch_interval))
+		{
+			if (!((isMainStation && [self hasNPCTraffic]) || hasPatrolShips) || [self launchPatrol] != nil)
+				last_patrol_report_time = unitime;
+		}
+
+	}
+}
+
+
+void StationEntity::clear()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		[sub clear];
+	}
+	
+	[_shipsOnHold removeAllObjects];
+}
+
+
+bool StationEntity::hasMultipleDocks()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	return [self cxx_dockSubEntities].size() > 1;
+}
+
+
+// is there a dock free for the player to dock manually?
+// not used for NPCs
+bool StationEntity::hasClearDock()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
+		{
+			if ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE")
+			{
+				return YES;
+			}
+		}
+	}
+	return NO;
+}
+
+
+bool StationEntity::hasEligibleDock()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		// TRY_AGAIN_LATER in this context means "ships launching now"
+		if ([sub allowsDocking] && ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE" || [sub canAcceptShipForDocking:PLAYER] == "TRY_AGAIN_LATER"))
+		{
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+// is there any dock which may launch ships?
+bool StationEntity::hasLaunchDock()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub allowsLaunching])
+		{
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+// only used to pick a dock for the player
+::DockEntity * StationEntity::selectDockForDocking()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
+		{
+			return sub;
+		}
+	}
+	return nil;
+}
+
+
+void StationEntity::addShipToLaunchQueue(::ShipEntity *ship, bool priority)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	unsigned			threshold = 0;
+
+	// quickest launch if we assign ships to those bays with no incoming ships
+	// and spread the ships evenly around those bays
+	// much easier if the station has at least one launch-only dock
+	while (threshold < 16)
+	{
+		for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+		{
+			::DockEntity *sub = dock.get();
+			if (sub != player_reserved_dock)
+			{
+				if ([sub countOfShipsInDockingQueue] == 0)
+				{
+					if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] <= threshold)
+					{
+						if ([sub allowsLaunchingOf:ship])
+						{
+							[sub addShipToLaunchQueue:ship withPriority:priority];
+							return;
+						}
+					}
+				}
+			}
+		}
+		threshold++;
+	}
+	// if we get this far, all docks have at least some incoming traffic.
+	// usually most efficient (since launching is far faster than docking)
+	// to assign all ships to the *same* dock with the smallest incoming queue
+	// rather than to try spreading them out across several queues
+	// also stops escorts being launched before their mothership 
+	threshold = 0;
+	while (threshold < 16)
+	{
+		for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+		{
+			::DockEntity *sub = dock.get();
+			/* so this time as long as it allows launching only check
+			 * the docking queue size so long as enumerator order is
+			 * deterministic, this will assign every launch this
+			 * update to the same dock (edge case where new docking
+			 * ship appears in the middle, probably not a problem) */
+			if ([sub allowsLaunching] && [sub countOfShipsInDockingQueue] <= threshold)
+			{
+				if ([sub allowsLaunchingOf:ship])
+				{
+					[sub addShipToLaunchQueue:ship withPriority:priority];
+					return;
+				}
+			}
+
+		}
+		threshold++;
+	}
+	
+	OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as the {} has too many ships in its launch queue(s) or no suitable launch docks.",
+			  [ship displayName].value_or("(null)"), [ship cxx_primaryRole].value_or("(null)"), [self displayName].value_or("(null)"));
+}
+
+
+unsigned StationEntity::countOfShipsInLaunchQueueWithPrimaryRole(const std::string &role)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	unsigned result = 0;
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		result += [sub countOfShipsInLaunchQueueWithPrimaryRole:role];
+	}
+	return result;
+}
+
+
+bool StationEntity::fitsInDock(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+   return [self fitsInDock:ship andLogNoFit:YES];
+}
+
+
+bool StationEntity::fitsInDock(::ShipEntity *ship, bool logNoFit)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (![ship isShip])  return NO;
+	
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		if ([sub allowsLaunchingOf:ship])
+		{
+			return YES;
+		}
+	}
+
+	if (logNoFit) OO_LOG("station.launchShip.failed", "Cancelled launch for a {} with role {}, as it is too large for the docking port of the {}.",
+			  [ship displayName].value_or("(null)"), [ship cxx_primaryRole].value_or("(null)"), oo::DescriptionOf(self));
+	return NO;
+}
+
+
+void StationEntity::noteDockedShip(::ShipEntity *ship)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (ship == nil)  return;	
+	
+	::PlayerEntity *player = PLAYER;
+	// set last launch time to avoid clashes with outgoing ships
+	if ([player getDockingClearanceStatus] != DOCKING_CLEARANCE_STATUS_GRANTED)
+	{
+		// avoid interfering with docking clearance on another bay
+		last_launch_time = [UNIVERSE getTime];
+	}
+	[self addShipToStationCount: ship];
+	
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		[sub noteDockingForShip:ship];
+	}
+	[self sanityCheckShipsOnApproach];
+	
+	[self doScriptEvent:OOJSID("otherShipDocked") withArgument:ship];
+	
+	BOOL isDockingStation = (self == [player getTargetDockStation]);
+	if (isDockingStation && [player status] == STATUS_IN_FLIGHT &&
+			[player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)
+	{
+		if (![self hasClearDock])
+		{
+			// then say why
+			if ([self currentlyInDockingQueues])
+			{
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-approaching"),
+																						{ [self currentlyInDockingQueues]+1 }) toShip:player];
+			}
+			else if([self currentlyInLaunchingQueues])
+			{
+				[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-holding-d-ships-departing"),
+																						{ [self currentlyInLaunchingQueues]+1 }) toShip:player];
+			}
+		} 
+	}
+
+
+	if ([ship isPlayer])
+	{
+		player_reserved_dock = nil;
+	}
+}
+
+
+void StationEntity::addShipToStationCount(::ShipEntity *ship)
+{
+ 	if ([ship isShuttle])  docked_shuttles++;
+	else if ([ship isTrader] && ![ship isPlayer])  docked_traders++;
+	else if (([ship isPolice] && ![ship isEscort]) || [ship cxx_hasPrimaryRole:"defense_ship"])
+	{
+		if (0 < defenders_launched)  defenders_launched--;
+	}
+	else if ([ship cxx_hasPrimaryRole:"scavenger"] || [ship cxx_hasPrimaryRole:"miner"])	// treat miners and scavengers alike!
+	{
+		if (0 < scavengers_launched)  scavengers_launched--;
+	}
+}
+
 
 }	// namespace cxx

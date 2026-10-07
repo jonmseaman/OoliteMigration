@@ -19,6 +19,8 @@
 #import "DockEntity.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
+#import "OOWeakSet.h"
+#import "OOObjCPList.h"
 
 #include "oo_test.hpp"
 
@@ -399,6 +401,153 @@ OO_TEST(stationReleasedBeforeInit)
 		TestStation *station = [TestStation alloc];
 		OO_CHECK(station->_cxxStation == nullptr);
 		[station release];
+	}
+}
+
+
+// --- Slice 2: docking traffic control and the launch queue (bead oo-9j462) --------------------------
+// Written against the Objective-C API and run on the unconverted slice first. The test's stations
+// have no docks (the virtual dock is a stand-in), so the cases pin what the station does itself.
+
+@interface StationEntity (TestSlice2)
+- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;	// the private category of StationEntity.mm
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
+- (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship;
+- (void) addShipToStationCount:(ShipEntity *)ship;
+- (void) autoDockShipsOnHold;
+- (BOOL) hasEligibleDock;	// defined, declared nowhere
+@end
+
+
+// A ship visiting the station: its own set-up, and invisible to scripts.
+@interface TestVisitor: ShipEntity
+@end
+
+
+@implementation TestVisitor
+
+- (BOOL) isVisibleToScripts	{ return NO; }
+
+@end
+
+
+namespace {
+
+TestVisitor *MakeVisitor(const std::string &key, oo::PList::Dict extra = {})
+{
+	oo::PList::Dict dict{ { "unpiloted", oo::PList(true) } };
+	for (auto &entry : extra)  dict[entry.first] = entry.second;
+	return [[[TestVisitor alloc] cxx_initWithKey:key definition:oo::PList(std::move(dict))] autorelease];
+}
+
+OOWeakSet *ShipsOnHold2(StationEntity *s)				{ return s->_cxxStation->_shipsOnHold; }
+void SetDefendersLaunched2(StationEntity *s, unsigned n)	{ s->_cxxStation->defenders_launched = n; }
+void SetScavengersLaunched2(StationEntity *s, unsigned n)	{ s->_cxxStation->scavengers_launched = n; }
+unsigned DockedShuttles2(StationEntity *s)				{ return s->_cxxStation->docked_shuttles; }
+unsigned DockedTraders2(StationEntity *s)				{ return s->_cxxStation->docked_traders; }
+
+}	// namespace
+
+
+OO_TEST(slice2NoDocks)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("dockless2");
+		TestVisitor *ship = MakeVisitor("visitor");
+		OO_CHECK([station cxx_dockSubEntities].empty());
+		OO_CHECK(![station hasMultipleDocks] && ![station hasClearDock] && ![station hasLaunchDock] && ![station hasEligibleDock]);
+		OO_CHECK([station selectDockForDocking] == nil);
+		OO_CHECK(![station dockingCorridorIsEmpty]);
+		OO_CHECK(![station shipIsInDockingCorridor:ship] && ![station shipIsInDockingCorridor:nil]);
+		OO_CHECK(vector_equal([station portUpVectorForShip:ship], kZeroVector));
+		OO_CHECK([station countOfShipsInLaunchQueueWithPrimaryRole:"trader"] == 0);
+		OO_CHECK(![station fitsInDock:nil] && ![station fitsInDock:ship] && ![station fitsInDock:ship andLogNoFit:NO]);
+		OO_CHECK([station dockingInstructionsForShip:nil].isNull());
+
+		// Nothing to launch from, clear or check: nothing happens.
+		[station addShipToLaunchQueue:ship withPriority:YES];	// logged
+		[station launchShip:ship];
+		[station clearDockingCorridor];
+		[station sanityCheckShipsOnApproach];
+		[station autoDockShipsOnHold];
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT && [station status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// The ships on hold: told to hold position (as docking instructions), cleared, aborted.
+OO_TEST(slice2HoldPosition)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("holder");
+		TestVisitor *ship = MakeVisitor("waiter");
+		[ship setPosition:make_HPvector(1, 2, 3)];
+		[ShipsOnHold2(station) addObject:ship];		// already holding: no message
+		const oo::PList hold = [station holdPositionInstructionForShip:ship];
+		OO_CHECK(hold.get<std::string>("ai_message", "") == "HOLD_POSITION" && hold.find("comms_message") == nullptr);
+		OO_CHECK(hold.get<double>("speed", -1) == 0 && hold.get<double>("range", -1) == 100);
+		OO_CHECK(hold.get<int>("docking_stage", 0) == -1 && !hold.get<bool>("match_rotation", true));
+		const oo::PList *destination = hold.find("destination");
+		OO_CHECK(destination != nullptr && destination->get<double>("x", 0) == 1 && destination->get<double>("z", 0) == 3);
+		const oo::PList *stationRef = hold.find("station");
+		OO_CHECK(stationRef != nullptr && [oo::ObjectIn(*stationRef) weakRefUnderlyingObject] == station);
+		OO_CHECK([ShipsOnHold2(station) containsObject:ship] && [ShipsOnHold2(station) count] == 1);
+
+		[station clear];
+		OO_CHECK([ShipsOnHold2(station) count] == 0);
+
+		[ShipsOnHold2(station) addObject:ship];
+		[station abortDockingForShip:ship];
+		OO_CHECK(![ShipsOnHold2(station) containsObject:ship]);
+	}
+}
+
+
+// A docked ship counts back in: defenders and scavengers return. (Shuttles and traders are known by
+// the role categories, which the test's universe has not loaded: they count as neither.)
+OO_TEST(slice2StationCount)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("counter", { { "has_npc_traffic", oo::PList(false) } });
+		OO_CHECK(DockedShuttles2(station) == 0 && DockedTraders2(station) == 0);
+		[station addShipToStationCount:MakeVisitor("shuttle", { { "roles", oo::PList(std::string("shuttle")) } })];
+		OO_CHECK(DockedShuttles2(station) == 0 && DockedTraders2(station) == 0);
+
+		SetDefendersLaunched2(station, 2);
+		const unsigned police = [station countOfDockedPolice];
+		[station addShipToStationCount:MakeVisitor("cop", { { "roles", oo::PList(std::string("defense_ship")) } })];
+		OO_CHECK([station countOfDockedPolice] == police + 1);
+
+		SetScavengersLaunched2(station, 1);
+		const unsigned contractors = [station countOfDockedContractors];
+		[station addShipToStationCount:MakeVisitor("miner", { { "roles", oo::PList(std::string("miner")) } })];
+		OO_CHECK([station countOfDockedContractors] == contractors + 1);
+		[station addShipToStationCount:MakeVisitor("scavenger", { { "roles", oo::PList(std::string("scavenger")) } })];
+		OO_CHECK([station countOfDockedContractors] == contractors + 1);	// none out any more
+	}
+}
+
+
+// From C++ (after the conversion): the members.
+OO_TEST(slice2MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("member2");
+		TestVisitor *ship = MakeVisitor("guest");
+		cxx::StationEntity *part = station->_cxxStation;
+		OO_CHECK(!part->hasMultipleDocks() && !part->fitsInDock(nil) && part->selectDockForDocking() == nil);
+		[ShipsOnHold2(station) addObject:ship];
+		OO_CHECK(part->holdPositionInstructionForShip(ship).get<std::string>("ai_message", "") == "HOLD_POSITION");
+		part->clear();
+		OO_CHECK([ShipsOnHold2(station) count] == 0);
 	}
 }
 

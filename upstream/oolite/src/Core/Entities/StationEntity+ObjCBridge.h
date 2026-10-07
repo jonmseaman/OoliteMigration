@@ -50,40 +50,11 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) cxx_allegiance;	// nullopt: none
 
 
-- (void) sanityCheckShipsOnApproach;
-
-- (void) autoDockShipsOnApproach;
-
-- (Vector) portUpVectorForShip:(ShipEntity *)ship;
-
-- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship;	// null: none (bead oo-3rb.262)
-
-- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
-
-- (BOOL) dockingCorridorIsEmpty;
-
-- (void) clearDockingCorridor;
-
-- (void) clear;
-
-
-- (void) abortAllDockings;
-
-- (void) abortDockingForShip:(ShipEntity *)ship;
-
-- (BOOL) hasMultipleDocks;
-- (BOOL) hasClearDock;
-- (BOOL) hasLaunchDock;
-- (DockEntity *) selectDockForDocking;
 - (unsigned) currentlyInLaunchingQueues;
 - (unsigned) currentlyInDockingQueues;
 
 
-- (void) launchShip:(ShipEntity *)ship;
-
 - (oo::PList) launchIndependentShip:(const std::string &)role;	// called by name (ADR-0055 item 5): the ship launched, as an Object node (null: none)
-
-- (void) noteDockedShip:(ShipEntity *)ship;
 
 
 - (OOStationAlertLevel) alertLevel;
@@ -110,9 +81,6 @@ MA 02110-1301, USA.
 
 - (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other;
 
-
-- (BOOL) fitsInDock:(ShipEntity *)ship;
-- (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit;
 
 @end
 
@@ -175,7 +143,6 @@ MA 02110-1301, USA.
 @end
 
 
-
 // The category StationEntity (OOAIPrivate) of ShipEntityAI.mm, slice 1 of
 // docs/phases/3-slices/ShipEntityAI.md (bead oo-iebuz): a member of cxx::StationEntity defined in that
 // file, forwarded by the category of the same name in StationEntity+ObjCBridge.mm.
@@ -184,6 +151,45 @@ MA 02110-1301, USA.
 - (void) acceptDistressMessageFrom:(ShipEntity *)other;
 
 @end
+
+
+// Slice 2 of docs/phases/3-slices/StationEntity.md (bead oo-9j462): docking traffic control and the launch queue. Members of
+// cxx::StationEntity, forwarded by the category of the same name in StationEntity+ObjCBridge.mm.
+@interface StationEntity (OOSlice2)
+
+- (void) sanityCheckShipsOnApproach;
+- (void) launchShip:(ShipEntity *)ship;
+- (void) abortAllDockings;
+- (void) autoDockShipsOnHold;
+- (void) autoDockShipsOnApproach;
+- (Vector) portUpVectorForShip:(ShipEntity *)ship;
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship;	// null: none (bead oo-3rb.262)
+- (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship;
+- (void) abortDockingForShip:(ShipEntity *)ship;
+- (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
+- (void) pullInShipIfPermitted:(ShipEntity *)ship;
+- (BOOL) dockingCorridorIsEmpty;
+- (void) clearDockingCorridor;
+- (void) clear;
+- (BOOL) hasMultipleDocks;
+- (BOOL) hasClearDock;
+- (BOOL) hasEligibleDock;
+- (BOOL) hasLaunchDock;
+- (DockEntity *) selectDockForDocking;
+- (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
+- (BOOL) fitsInDock:(ShipEntity *)ship;
+- (BOOL) fitsInDock:(ShipEntity *)ship andLogNoFit:(BOOL)logNoFit;
+- (void) noteDockedShip:(ShipEntity *)ship;
+- (void) addShipToStationCount:(ShipEntity *)ship;
+
+@end
+
+
+
+// The send of StationEntity.mm's C function cxx_OOMakeDockingInstructions() to the station it
+// reaches as an Objective-C object (amendment oo-9ht.139 item 3); deleted with this header.
+OOWeakReference *StationEntityWeakReference(StationEntity *station);	// [[station weakRetain] autorelease]
 
 
 namespace oo {

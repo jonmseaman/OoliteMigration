@@ -404,3 +404,4 @@
 [oo-xurzn] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntityAI test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-wc9o3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntityAI test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-lqyhf] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntityAI test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-9j462] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
