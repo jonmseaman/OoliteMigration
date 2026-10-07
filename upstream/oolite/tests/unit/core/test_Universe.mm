@@ -257,7 +257,31 @@ OO_TEST(facadeAndPart)
 // Slice 14 (bead oo-7jhs5): demo ships, safe vectors, hazards on route, laser hits. Written against
 // the Objective-C API and run on the unconverted class first. The entities sit in the universe's
 // sorted list by hand (no -addEntity:, which needs the whole game).
+
+// PLAYER: a stand-in (OOGetPlayer() asserts there is a player, and an entity's position is kept
+// relative to the player's viewpoint, as test_Entity's TestPlayer). It answers the player
+// messages the tests reach as an absent player's nil did.
+@interface UniverseTestPlayer: Entity
+@end
+
+@implementation UniverseTestPlayer
+- (HPVector) viewpointPosition	{ return kZeroHPVector; }
+- (id) dockedStation			{ return nil; }
+@end
+
+
+@class PlayerEntity;
+extern PlayerEntity *gOOPlayer;
+
 namespace {
+
+void SetUpTestPlayer()
+{
+	static Entity *player = nil;
+	if (player == nil)  player = [[UniverseTestPlayer alloc] init];	// never released, as the player is not
+	gOOPlayer = (PlayerEntity *)player;
+}
+
 
 void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 {
@@ -270,6 +294,7 @@ void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
 
 Entity *MakeEntity(HPVector position, GLfloat radius)
 {
+	SetUpTestPlayer();
 	Entity *entity = [[[Entity alloc] init] autorelease];
 	[entity setPosition:position];
 	[entity setCollisionRadius:radius];
@@ -299,6 +324,7 @@ OO_TEST(slice14NoEntity)
 		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:nil toDistance:0 fromPoint:p2], kZeroHPVector));
 		OO_CHECK([u firstShipHitByLaserFromShip:nil inDirection:WEAPON_FACING_FORWARD offset:kZeroVector gettingRangeFound:NULL] == nil);
 		// The demo ship needs a docked player; with none there is no ship.
+		SetUpTestPlayer();
 		OO_CHECK([u cxx_makeDemoShipWithRole:"oolite-test" spinning:YES] == nil);
 	}
 }
