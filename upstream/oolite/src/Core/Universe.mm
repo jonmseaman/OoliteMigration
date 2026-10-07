@@ -11696,9 +11696,11 @@ unsigned int Universe::voiceNumber(const std::string &name)
 {
 	const char *const label = name.c_str();
 
-	unsigned int index = -1;
-	while (espeak_voices[++index] && strcmp (espeak_voices[index]->name, label))
-			/**/;
+	// clang-tidy's own fixes (bugprone-inc-dec-in-conditions, bugprone-suspicious-string-compare),
+	// as the line changed: the same search from the first voice (ADR-0056 amendment oo-7jhs5).
+	unsigned int index = 0;
+	while (espeak_voices[index] && strcmp (espeak_voices[index]->name, label) != 0)
+		++index;
 	return (index < espeak_voice_count) ? index : UINT_MAX;
 }
 
