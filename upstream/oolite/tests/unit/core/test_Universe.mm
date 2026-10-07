@@ -599,4 +599,53 @@ OO_TEST(slice16SoundsAndBackgrounds)
 }
 
 
+// Slice 17 (bead oo-gr7a2): update:, time acceleration, ECM visual effects. Written against the
+// Objective-C API and run on the unconverted class first. A full update needs the whole game (the
+// player, the JavaScript engine); a universe whose updates are off only lets go of the dead.
+OO_TEST(slice17UpdateOff)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->no_update = YES;
+		u->_cxxUniverse->universal_time = 5.0;
+		u->_cxxUniverse->time_delta = 0.5;
+		Entity *dead = [[Entity alloc] init];
+		u->_cxxUniverse->entitiesDeadThisUpdate.emplace_back(dead);
+		[dead release];
+
+		@autoreleasepool
+		{
+			[u update:1.0];
+			OO_CHECK([u getTime] == 5.0 && [u getTimeDelta] == 0.5);	// no time passes
+			OO_CHECK(u->_cxxUniverse->entitiesDeadThisUpdate.empty());
+			OO_CHECK([dead retainCount] == 1);	// alive until the pool drains
+		}
+	}
+}
+
+
+OO_TEST(slice17Settings)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+
+		[u setECMVisualFXEnabled:YES];
+		OO_CHECK([u ECMVisualFXEnabled] && u->_cxxUniverse->ECMVisualFXEnabled);
+		[u setECMVisualFXEnabled:NO];
+		OO_CHECK(![u ECMVisualFXEnabled]);
+
+		[u setTimeAccelerationFactor:4.0];
+#ifndef NDEBUG
+		OO_CHECK([u timeAccelerationFactor] == 4.0);
+		[u setTimeAccelerationFactor:100.0];
+		OO_CHECK([u timeAccelerationFactor] == TIME_ACCELERATION_FACTOR_DEFAULT);
+#else
+		OO_CHECK([u timeAccelerationFactor] == 1.0);
+#endif
+	}
+}
+
+
 OO_TEST_MAIN()
