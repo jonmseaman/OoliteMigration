@@ -748,6 +748,28 @@ public:
 	double trackPrimaryTarget(double delta_t, bool retreat);
 	double trackSideTarget(double delta_t, bool leftside);
 
+	// Slice 26: missile and destination tracking, collision exceptions, defence targets, ranges.
+	double missileTrackPrimaryTarget(double delta_t);
+	double trackDestination(double delta_t, bool retreat);
+	GLfloat rollToMatchUp(Vector up_vec, GLfloat match_roll);
+	GLfloat rangeToDestination();
+	std::vector<oo::ObjCRef<::ShipEntity *>> collisionExceptions();
+	void addCollisionException(::ShipEntity *ship);
+	void removeCollisionException(::ShipEntity *ship);
+	bool collisionExceptedFor(::ShipEntity *ship);
+	NSUInteger defenseTargetCount();
+	std::vector<oo::ObjCRef<::ShipEntity *>> allDefenseTargets();
+	std::vector<oo::ObjCRef<::ShipEntity *>> defenseTargets();
+	bool addDefenseTarget(::Entity *target);
+	void validateDefenseTargets();
+	bool isDefenseTarget(::Entity *target);
+	void removeAllDefenseTargets();
+	void removeDefenseTarget(::Entity *target);
+	double rangeToPrimaryTarget();
+	double rangeToSecondaryTarget(::Entity *target);
+	double approachAspectToPrimaryTarget();
+	bool hasProximityAlertIgnoringTarget(bool ignore_target);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

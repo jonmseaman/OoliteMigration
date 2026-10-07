@@ -930,3 +930,29 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (double) trackSideTarget:(double)delta_t :(BOOL)leftside	{ return _cxxShip->trackSideTarget(delta_t, leftside); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice26)
+
+- (double) missileTrackPrimaryTarget:(double)delta_t	{ return _cxxShip->missileTrackPrimaryTarget(delta_t); }
+- (double) trackDestination:(double)delta_t :(BOOL)retreat	{ return _cxxShip->trackDestination(delta_t, retreat); }
+- (GLfloat) rollToMatchUp:(Vector)up_vec rotating:(GLfloat)match_roll	{ return _cxxShip->rollToMatchUp(up_vec, match_roll); }
+- (GLfloat) rangeToDestination	{ return _cxxShip->rangeToDestination(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions	{ return _cxxShip->collisionExceptions(); }
+- (void) addCollisionException:(ShipEntity *)ship	{ _cxxShip->addCollisionException(ship); }
+- (void) removeCollisionException:(ShipEntity *)ship	{ _cxxShip->removeCollisionException(ship); }
+- (BOOL) collisionExceptedFor:(ShipEntity *)ship	{ return _cxxShip->collisionExceptedFor(ship); }
+- (NSUInteger) defenseTargetCount	{ return _cxxShip->defenseTargetCount(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets	{ return _cxxShip->allDefenseTargets(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets	{ return _cxxShip->defenseTargets(); }
+- (BOOL) addDefenseTarget:(Entity *)target	{ return _cxxShip->addDefenseTarget(target); }
+- (void) validateDefenseTargets	{ _cxxShip->validateDefenseTargets(); }
+- (BOOL) isDefenseTarget:(Entity *)target	{ return _cxxShip->isDefenseTarget(target); }
+- (void) removeAllDefenseTargets	{ _cxxShip->removeAllDefenseTargets(); }
+- (void) removeDefenseTarget:(Entity *)target	{ _cxxShip->removeDefenseTarget(target); }
+- (double) rangeToPrimaryTarget	{ return _cxxShip->rangeToPrimaryTarget(); }
+- (double) rangeToSecondaryTarget:(Entity *)target	{ return _cxxShip->rangeToSecondaryTarget(target); }
+- (double) approachAspectToPrimaryTarget	{ return _cxxShip->approachAspectToPrimaryTarget(); }
+- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target	{ return _cxxShip->hasProximityAlertIgnoringTarget(ignore_target); }
+
+@end

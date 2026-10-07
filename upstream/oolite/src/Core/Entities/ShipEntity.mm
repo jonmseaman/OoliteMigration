@@ -516,461 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (double) missileTrackPrimaryTarget:(double) delta_t
-{
-	Vector  relPos;
-	GLfloat  d_forward, d_up, d_right;
-	ShipEntity  *target = [self primaryTarget];
-	BOOL	inPursuit = YES;
-
-	if (!target || ![target isShip])   // leave now!
-		return 0.0;
-
-	double  damping = 0.5 * delta_t;
-
-	_cxxShip->stick_roll = 0.0;	//desired roll and pitch
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-
-	relPos = [self vectorTo:target];
-	
-	// Adjust missile course by taking into account target's velocity and missile
-	// accuracy. Modification on original code contributed by Cmdr James.
-
-	float missileSpeed = (float)[self speed];
-
-	// Avoid getting ourselves in a divide by zero situation by setting a missileSpeed
-	// low threshold. Arbitrarily chosen 0.01, since it seems to work quite well.
-	// Missile accuracy is already clamped within the 0.0 to 10.0 range at initialization,
-	// but doing these calculations every frame when accuracy equals 0.0 just wastes cycles.
-	if (missileSpeed > 0.01f && _cxxShip->accuracy > 0.0f)
-	{
-		inPursuit = (dot_product([target forwardVector], _cxxShip->v_forward) > 0.0f);
-		if (inPursuit)
-		{
-			Vector leading = [target velocity]; 
-			float lead = magnitude(relPos) / missileSpeed; 
-			
-			// Adjust where we are going to take into account target's velocity.
-			// Use accuracy value to determine how well missile will track target.
-			relPos.x += (lead * leading.x * (_cxxShip->accuracy / 10.0f)); 
-			relPos.y += (lead * leading.y * (_cxxShip->accuracy / 10.0f)); 
-			relPos.z += (lead * leading.z * (_cxxShip->accuracy / 10.0f));
-		}
-	}
-
-	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
-	else  relPos.z = 1.0;
-
-	d_right		=   dot_product(relPos, _cxxShip->v_right);		// = cosine of angle between angle to target and v_right
-	d_up		=   dot_product(relPos, _cxxShip->v_up);		// = cosine of angle between angle to target and v_up
-	d_forward   =   dot_product(relPos, _cxxShip->v_forward);	// = cosine of angle between angle to target and v_forward
-
-	// begin rule-of-thumb manoeuvres
-
-	_cxxShip->stick_roll = 0.0;
-
-	if (_cxxShip->pitching_over)
-		_cxxShip->pitching_over = (_cxxShip->stick_pitch != 0.0);
-
-	if ((d_forward < -_cxxShip->pitch_tolerance) && (!_cxxShip->pitching_over))
-	{
-		_cxxShip->pitching_over = YES;
-		if (d_up >= 0)
-			_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-		if (d_up < 0)
-			_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-	}
-
-	if (_cxxShip->pitching_over)
-	{
-		_cxxShip->pitching_over = (d_forward < 0.5);
-	}
-	else
-	{
-		_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch * d_up;
-		_cxxShip->stick_roll = -_cxxShip->max_flight_roll * d_right;
-	}
-
-	// end rule-of-thumb manoeuvres
-
-	// apply damping
-	if (_cxxShip->flightRoll < 0)
-		_cxxShip->flightRoll += (_cxxShip->flightRoll < -damping) ? damping : -_cxxShip->flightRoll;
-	if (_cxxShip->flightRoll > 0)
-		_cxxShip->flightRoll -= (_cxxShip->flightRoll > damping) ? damping : _cxxShip->flightRoll;
-	if (_cxxShip->flightPitch < 0)
-		_cxxShip->flightPitch += (_cxxShip->flightPitch < -damping) ? damping : -_cxxShip->flightPitch;
-	if (_cxxShip->flightPitch > 0)
-		_cxxShip->flightPitch -= (_cxxShip->flightPitch > damping) ? damping : _cxxShip->flightPitch;
-
-	
-	[self applySticks:delta_t];
-
-	//
-	//  return target confidence 0.0 .. 1.0
-	//
-	if (d_forward < 0.0)
-		return 0.0;
-	return d_forward;
-}
-
-
-- (double) trackDestination:(double) delta_t :(BOOL) retreat
-{
-	Vector  relPos;
-	GLfloat  d_forward, d_up, d_right;
-
-	BOOL	we_are_docking = !_cxxShip->dockingInstructions.isNull();
-
-	_cxxShip->stick_roll = 0.0;	//desired roll and pitch
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-
-	double reverse = 1.0;
-	double reversePlayer = 1.0;
-
-	double min_d = 0.004;
-	double max_cos = MAX_COS;  // should match default value of max_cos in behaviour_fly_to_destination!
-	double precision = we_are_docking ? 0.25 : 0.9025; // lower values force a direction closer to the target. (resp. 50% and 95% within range)
-
-	if (retreat)
-		reverse = -reverse;
-
-	if (_cxxEntity->isPlayer)
-	{
-		reverse = -reverse;
-		reversePlayer = -1;
-	}
-
-	relPos = HPVectorToVector(HPvector_subtract(_cxxShip->_destination, _cxxEntity->position));
-	double range2 = magnitude2(relPos);
-	double desired_range2 = _cxxShip->desired_range*_cxxShip->desired_range;
-	
-	/*	2009-7-18 Eric: We need to aim well inide the desired_range sphere round the target and not at the surface of the sphere. 
-		Because of the framerate most ships normally overshoot the target and they end up flying clearly on a path
-		through the sphere. Those ships give no problems, but ships with a very low turnrate will aim close to the surface and will than
-		have large trouble with reaching their destination. When those ships enter the slowdown range, they have almost no speed vector
-		in the direction of the target. I now used 95% of desired_range to aim at, but a smaller value might even be better. 
-	*/
-	if (range2 > desired_range2) 
-	{
-		max_cos = sqrt(1 - precision * desired_range2/range2);  // Head for a point within 95% of desired_range.
-		if (max_cos >= 0.99999)
-		{
-			max_cos = 0.99999;
-		}
-	}
-
-	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
-	else  relPos.z = 1.0;
-
-	d_right		=   dot_product(relPos, _cxxShip->v_right);
-	d_up		=   dot_product(relPos, _cxxShip->v_up);
-	d_forward   =   dot_product(relPos, _cxxShip->v_forward);	// == cos of angle between v_forward and vector to target
-
-	// begin rule-of-thumb manoeuvres
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_roll = 0.0;
-	
-	// pitching_over is currently only set in behaviour_formation_form_up, for escorts and in avoidCollision.
-	// This allows for immediate pitch corrections instead of first waiting untill roll has completed.
-	if (_cxxShip->pitching_over)
-	{
-		if (reverse * d_up > 0) // pitch up
-			_cxxShip->stick_pitch = -_cxxShip->max_flight_pitch;
-		else
-			_cxxShip->stick_pitch = _cxxShip->max_flight_pitch;
-		_cxxShip->pitching_over = (reverse * d_forward < 0.707);
-	}
-
-	// check if we are flying toward (or away from) the destination..
-	if ((d_forward < max_cos)||(retreat))	// not on course so we must adjust controls..
-	{
-
-		if (d_forward <= -max_cos || (retreat && d_forward >= max_cos))  // hack to avoid just flying away from the destination
-		{
-			d_up = min_d * 2.0;
-		} 
-
-		if (d_up > min_d)
-		{
-			int factor = sqrt(fabs(d_right) / fabs(min_d));
-			if (factor > 8)
-				factor = 8;
-			if (d_right > min_d)
-				_cxxShip->stick_roll = - _cxxShip->max_flight_roll * reversePlayer * 0.125 * factor;  // only reverse sign for the player;
-			if (d_right < -min_d)
-				_cxxShip->stick_roll = + _cxxShip->max_flight_roll * reversePlayer * 0.125 * factor;
-			if (fabs(d_right) < fabs(_cxxShip->stick_roll) * delta_t) 
-				_cxxShip->stick_roll = fabs(d_right) / delta_t * (_cxxShip->stick_roll<0 ? -1 : 1); // don't overshoot heading
-		}
-
-		if (d_up < -min_d)
-		{
-			int factor = sqrt(fabs(d_right) / fabs(min_d));
-			if (factor > 8)
-				factor = 8;
-			if (d_right > min_d)
-				_cxxShip->stick_roll = + _cxxShip->max_flight_roll * reversePlayer * 0.125 * factor;  // only reverse sign for the player;
-			if (d_right < -min_d)
-				_cxxShip->stick_roll = - _cxxShip->max_flight_roll * reversePlayer * 0.125 * factor;
-			if (fabs(d_right) < fabs(_cxxShip->stick_roll) * delta_t) 
-				_cxxShip->stick_roll = fabs(d_right) / delta_t * (_cxxShip->stick_roll<0 ? -1 : 1); // don't overshoot heading
-		}
-
-		if (_cxxShip->stick_roll == 0.0)
-		{
-			int factor = sqrt(fabs(d_up) / fabs(min_d));
-			if (factor > 8)
-				factor = 8;
-			if (d_up > min_d)
-				_cxxShip->stick_pitch = - _cxxShip->max_flight_pitch * reverse * 0.125 * factor;  //pitch_pitch * reverse;
-			if (d_up < -min_d)
-				_cxxShip->stick_pitch = + _cxxShip->max_flight_pitch * reverse * 0.125 * factor;
-			if (fabs(d_up) < fabs(_cxxShip->stick_pitch) * delta_t) 
-				_cxxShip->stick_pitch = fabs(d_up) / delta_t * (_cxxShip->stick_pitch<0 ? -1 : 1); // don't overshoot heading
-		}
-
-		if (_cxxShip->stick_pitch == 0.0)
-		{
-			// not sufficiently on course yet, but min_d is too high
-			// turn anyway slightly to adjust
-			_cxxShip->stick_pitch = 0.01;
-		}
-	}
-
-	if (we_are_docking && _cxxShip->docking_match_rotation && (d_forward > max_cos))
-	{
-		/* we are docking and need to consider the rotation/orientation of the docking port */
-		StationEntity* station_for_docking = (StationEntity*)[self targetStation];
-
-		if ((station_for_docking)&&(station_for_docking->_cxxEntity->isStation))
-		{
-			_cxxShip->stick_roll = [self rollToMatchUp:[station_for_docking portUpVectorForShip:self] rotating:[station_for_docking flightRoll]];
-		}
-	}
-
-	// end rule-of-thumb manoeuvres
-
-	[self applySticks:delta_t];
-
-	if (retreat)
-		d_forward *= d_forward;	// make positive AND decrease granularity
-
-	if (d_forward < 0.0)
-		return 0.0;
-
-	if ((!_cxxShip->flightRoll)&&(!_cxxShip->flightPitch))	// no correction
-		return 1.0;
-
-	return d_forward;
-}
-
-
-- (GLfloat) rollToMatchUp:(Vector)up_vec rotating:(GLfloat)match_roll
-{
-	GLfloat cosTheta = dot_product(up_vec, _cxxShip->v_up);	// == cos of angle between up vectors
-	GLfloat sinTheta = dot_product(up_vec, _cxxShip->v_right);
-
-	if (!_cxxEntity->isPlayer)
-	{
-		match_roll = -match_roll;	// make necessary corrections for a different viewpoint
-		sinTheta = -sinTheta;
-	}
-
-	if (cosTheta < 0.0f)
-	{
-		cosTheta = -cosTheta;
-		sinTheta = -sinTheta;
-	}
-
-	if (sinTheta > 0.0f)
-	{
-		// increase roll rate
-		return cosTheta * cosTheta * match_roll + sinTheta * sinTheta * _cxxShip->max_flight_roll;
-	}
-	else
-	{
-		// decrease roll rate
-		return cosTheta * cosTheta * match_roll - sinTheta * sinTheta * _cxxShip->max_flight_roll;
-	}
-}
-
-
-- (GLfloat) rangeToDestination
-{
-	return HPdistance(_cxxEntity->position, _cxxShip->_destination);
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions
-{
-	// The live ones, in the weak set's order (empty when there are none).
-	std::vector<oo::ObjCRef<ShipEntity *>> result;
-	for (const oo::ObjCRef<id> &exception : [_cxxShip->_collisionExceptions cxx_allObjects])  result.emplace_back(static_cast<ShipEntity *>(exception.get()));
-	return result;
-}
-
-
-- (void) addCollisionException:(ShipEntity *)ship
-{
-	if (_cxxShip->_collisionExceptions == nil)
-	{
-		// Allocate lazily for the benefit of the ships that never need this.
-		_cxxShip->_collisionExceptions = [[OOWeakSet alloc] init];
-	}
-	[_cxxShip->_collisionExceptions addObject:ship];
-}
-
-
-- (void) removeCollisionException:(ShipEntity *)ship
-{
-	if (_cxxShip->_collisionExceptions != nil)
-	{
-		[_cxxShip->_collisionExceptions removeObject:ship];
-	}
-}
-
-
-- (BOOL) collisionExceptedFor:(ShipEntity *)ship
-{
-	if (_cxxShip->_collisionExceptions == nil)
-	{
-		return NO;
-	}
-	return [_cxxShip->_collisionExceptions containsObject:ship];
-}
-
-
-- (NSUInteger) defenseTargetCount
-{
-	return [_cxxShip->_defenseTargets count];
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets
-{
-	std::vector<oo::ObjCRef<ShipEntity *>> result;
-	for (const oo::ObjCRef<id> &target : [_cxxShip->_defenseTargets cxx_allObjects])  result.emplace_back(static_cast<ShipEntity *>(target.get()));
-	return result;
-}
-
-
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets
-{
-	// What the weak set's enumerator gave, in its order: it stops at the first zeroed reference.
-	std::vector<oo::ObjCRef<ShipEntity *>> targets;
-	for (const oo::ObjCRef<id> &target : [_cxxShip->_defenseTargets cxx_objectEnumerator])  targets.emplace_back(static_cast<ShipEntity *>(target.get()));
-	return targets;
-}
-
-
-- (BOOL) addDefenseTarget:(Entity *)target
-{
-	if ([self defenseTargetCount] >= MAX_TARGETS)
-	{
-		return NO;
-	}
-	// primary target can be a wormhole, defense targets shouldn't be
-	if (target == nil || [self isDefenseTarget:target] || ![target isShip])
-	{
-		return NO;
-	}
-	if (_cxxShip->_defenseTargets == nil)
-	{
-		// Allocate lazily for the benefit of the ships that never get in fights.
-		_cxxShip->_defenseTargets = [[OOWeakSet alloc] init];
-	}
-	
-	[_cxxShip->_defenseTargets addObject:target];
-	return YES;
-}
-
-
-- (void) validateDefenseTargets
-{
-	if (_cxxShip->_defenseTargets == nil)
-	{
-		return;
-	}
-	// iterate a copy as we'll be modifying original during enumeration
-	for (const auto &targetRef : [self allDefenseTargets])
-	{
-		Entity *target = targetRef.get();
-		if ([target status] == STATUS_DEAD)
-		{
-			[self removeDefenseTarget:target];
-		}
-	}
-}
-
-
-- (BOOL) isDefenseTarget:(Entity *)target
-{
-	return [_cxxShip->_defenseTargets containsObject:target];
-}
-
-
-// exposed to AI (as alias of clearDefenseTargets)
-- (void) removeAllDefenseTargets
-{
-	[_cxxShip->_defenseTargets removeAllObjects];
-}
-
-
-- (void) removeDefenseTarget:(Entity *)target
-{
-	[_cxxShip->_defenseTargets removeObject:target];
-}
-
-
-- (double) rangeToPrimaryTarget
-{
-	return [self rangeToSecondaryTarget:[self primaryTarget]];
-}
-
-
-- (double) rangeToSecondaryTarget:(Entity *)target
-{
-	double dist;
-	Vector delta;
-	if (target == nil)   // leave now!
-		return 0.0;
-	delta = HPVectorToVector(HPvector_subtract(target->_cxxEntity->position, _cxxEntity->position));
-	dist = magnitude(delta);
-	dist -= target->_cxxEntity->collision_radius;
-	dist -= _cxxEntity->collision_radius;
-	return dist;
-}
-
-
-- (double) approachAspectToPrimaryTarget
-{
-	Vector delta;
-	Entity  *target = [self primaryTarget];
-	if (target == nil || ![target isShip])   // leave now!
-	{
-		return 0.0;
-	}
-	ShipEntity  *ship_target = (ShipEntity *)target;
-
-	delta = HPVectorToVector(HPvector_subtract(_cxxEntity->position, target->_cxxEntity->position));
-	
-	return dot_product(vector_normal(delta), ship_target->_cxxShip->v_forward);
-}
-
-
-- (BOOL) hasProximityAlertIgnoringTarget:(BOOL)ignore_target
-{
-	if (([self proximityAlert] != nil)&&(!ignore_target || ([self proximityAlert] != [self primaryTarget])))
-	{
-		return YES;
-	}
-	return NO;
-}
-
-
 // lower is better. Defines angular size of circle in which ship
 // thinks is on target
 - (GLfloat) currentAimTolerance
@@ -15464,6 +15009,478 @@ double ShipEntity::trackSideTarget(double delta_t, bool leftside)
 
 
 }	// namespace cxx
+
+
+// Slice 26 of docs/phases/3-slices/ShipEntity.md (bead oo-v92af): missile and destination tracking,
+// collision exceptions, defence targets, ranges. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+double ShipEntity::missileTrackPrimaryTarget(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector  relPos;
+	GLfloat  d_forward, d_up, d_right;
+	::ShipEntity  *target = [self primaryTarget];
+	BOOL	inPursuit = YES;
+
+	if (!target || ![target isShip])   // leave now!
+		return 0.0;
+
+	double  damping = 0.5 * delta_t;
+
+	stick_roll = 0.0;	//desired roll and pitch
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+
+	relPos = [self vectorTo:target];
+	
+	// Adjust missile course by taking into account target's velocity and missile
+	// accuracy. Modification on original code contributed by Cmdr James.
+
+	float missileSpeed = (float)[self speed];
+
+	// Avoid getting ourselves in a divide by zero situation by setting a missileSpeed
+	// low threshold. Arbitrarily chosen 0.01, since it seems to work quite well.
+	// Missile accuracy is already clamped within the 0.0 to 10.0 range at initialization,
+	// but doing these calculations every frame when accuracy equals 0.0 just wastes cycles.
+	if (missileSpeed > 0.01f && accuracy > 0.0f)
+	{
+		inPursuit = (dot_product([target forwardVector], v_forward) > 0.0f);
+		if (inPursuit)
+		{
+			Vector leading = [target velocity]; 
+			float lead = magnitude(relPos) / missileSpeed; 
+			
+			// Adjust where we are going to take into account target's velocity.
+			// Use accuracy value to determine how well missile will track target.
+			relPos.x += (lead * leading.x * (accuracy / 10.0f)); 
+			relPos.y += (lead * leading.y * (accuracy / 10.0f)); 
+			relPos.z += (lead * leading.z * (accuracy / 10.0f));
+		}
+	}
+
+	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
+	else  relPos.z = 1.0;
+
+	d_right		=   dot_product(relPos, v_right);		// = cosine of angle between angle to target and v_right
+	d_up		=   dot_product(relPos, v_up);		// = cosine of angle between angle to target and v_up
+	d_forward   =   dot_product(relPos, v_forward);	// = cosine of angle between angle to target and v_forward
+
+	// begin rule-of-thumb manoeuvres
+
+	stick_roll = 0.0;
+
+	if (pitching_over)
+		pitching_over = (stick_pitch != 0.0);
+
+	if ((d_forward < -pitch_tolerance) && (!pitching_over))
+	{
+		pitching_over = YES;
+		if (d_up >= 0)
+			stick_pitch = -max_flight_pitch;
+		if (d_up < 0)
+			stick_pitch = max_flight_pitch;
+	}
+
+	if (pitching_over)
+	{
+		pitching_over = (d_forward < 0.5);
+	}
+	else
+	{
+		stick_pitch = -max_flight_pitch * d_up;
+		stick_roll = -max_flight_roll * d_right;
+	}
+
+	// end rule-of-thumb manoeuvres
+
+	// apply damping
+	if (flightRoll < 0)
+		flightRoll += (flightRoll < -damping) ? damping : -flightRoll;
+	if (flightRoll > 0)
+		flightRoll -= (flightRoll > damping) ? damping : flightRoll;
+	if (flightPitch < 0)
+		flightPitch += (flightPitch < -damping) ? damping : -flightPitch;
+	if (flightPitch > 0)
+		flightPitch -= (flightPitch > damping) ? damping : flightPitch;
+
+	
+	[self applySticks:delta_t];
+
+	//
+	//  return target confidence 0.0 .. 1.0
+	//
+	if (d_forward < 0.0)
+		return 0.0;
+	return d_forward;
+}
+
+
+double ShipEntity::trackDestination(double delta_t, bool retreat)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector  relPos;
+	GLfloat  d_forward, d_up, d_right;
+
+	BOOL	we_are_docking = !dockingInstructions.isNull();
+
+	stick_roll = 0.0;	//desired roll and pitch
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+
+	double reverse = 1.0;
+	double reversePlayer = 1.0;
+
+	double min_d = 0.004;
+	double max_cos = MAX_COS;  // should match default value of max_cos in behaviour_fly_to_destination!
+	double precision = we_are_docking ? 0.25 : 0.9025; // lower values force a direction closer to the target. (resp. 50% and 95% within range)
+
+	if (retreat)
+		reverse = -reverse;
+
+	if (isPlayer)
+	{
+		reverse = -reverse;
+		reversePlayer = -1;
+	}
+
+	relPos = HPVectorToVector(HPvector_subtract(_destination, position));
+	double range2 = magnitude2(relPos);
+	double desired_range2 = desired_range*desired_range;
+	
+	/*	2009-7-18 Eric: We need to aim well inide the desired_range sphere round the target and not at the surface of the sphere. 
+		Because of the framerate most ships normally overshoot the target and they end up flying clearly on a path
+		through the sphere. Those ships give no problems, but ships with a very low turnrate will aim close to the surface and will than
+		have large trouble with reaching their destination. When those ships enter the slowdown range, they have almost no speed vector
+		in the direction of the target. I now used 95% of desired_range to aim at, but a smaller value might even be better. 
+	*/
+	if (range2 > desired_range2) 
+	{
+		max_cos = sqrt(1 - precision * desired_range2/range2);  // Head for a point within 95% of desired_range.
+		if (max_cos >= 0.99999)
+		{
+			max_cos = 0.99999;
+		}
+	}
+
+	if (!vector_equal(relPos, kZeroVector))  relPos = vector_normal(relPos);
+	else  relPos.z = 1.0;
+
+	d_right		=   dot_product(relPos, v_right);
+	d_up		=   dot_product(relPos, v_up);
+	d_forward   =   dot_product(relPos, v_forward);	// == cos of angle between v_forward and vector to target
+
+	// begin rule-of-thumb manoeuvres
+	stick_pitch = 0.0;
+	stick_roll = 0.0;
+	
+	// pitching_over is currently only set in behaviour_formation_form_up, for escorts and in avoidCollision.
+	// This allows for immediate pitch corrections instead of first waiting untill roll has completed.
+	if (pitching_over)
+	{
+		if (reverse * d_up > 0) // pitch up
+			stick_pitch = -max_flight_pitch;
+		else
+			stick_pitch = max_flight_pitch;
+		pitching_over = (reverse * d_forward < 0.707);
+	}
+
+	// check if we are flying toward (or away from) the destination..
+	if ((d_forward < max_cos)||(retreat))	// not on course so we must adjust controls..
+	{
+
+		if (d_forward <= -max_cos || (retreat && d_forward >= max_cos))  // hack to avoid just flying away from the destination
+		{
+			d_up = min_d * 2.0;
+		} 
+
+		if (d_up > min_d)
+		{
+			int factor = sqrt(fabs(d_right) / fabs(min_d));
+			if (factor > 8)
+				factor = 8;
+			if (d_right > min_d)
+				stick_roll = - max_flight_roll * reversePlayer * 0.125 * factor;  // only reverse sign for the player;
+			if (d_right < -min_d)
+				stick_roll = + max_flight_roll * reversePlayer * 0.125 * factor;
+			if (fabs(d_right) < fabs(stick_roll) * delta_t) 
+				stick_roll = fabs(d_right) / delta_t * (stick_roll<0 ? -1 : 1); // don't overshoot heading
+		}
+
+		if (d_up < -min_d)
+		{
+			int factor = sqrt(fabs(d_right) / fabs(min_d));
+			if (factor > 8)
+				factor = 8;
+			if (d_right > min_d)
+				stick_roll = + max_flight_roll * reversePlayer * 0.125 * factor;  // only reverse sign for the player;
+			if (d_right < -min_d)
+				stick_roll = - max_flight_roll * reversePlayer * 0.125 * factor;
+			if (fabs(d_right) < fabs(stick_roll) * delta_t) 
+				stick_roll = fabs(d_right) / delta_t * (stick_roll<0 ? -1 : 1); // don't overshoot heading
+		}
+
+		if (stick_roll == 0.0)
+		{
+			int factor = sqrt(fabs(d_up) / fabs(min_d));
+			if (factor > 8)
+				factor = 8;
+			if (d_up > min_d)
+				stick_pitch = - max_flight_pitch * reverse * 0.125 * factor;  //pitch_pitch * reverse;
+			if (d_up < -min_d)
+				stick_pitch = + max_flight_pitch * reverse * 0.125 * factor;
+			if (fabs(d_up) < fabs(stick_pitch) * delta_t) 
+				stick_pitch = fabs(d_up) / delta_t * (stick_pitch<0 ? -1 : 1); // don't overshoot heading
+		}
+
+		if (stick_pitch == 0.0)
+		{
+			// not sufficiently on course yet, but min_d is too high
+			// turn anyway slightly to adjust
+			stick_pitch = 0.01;
+		}
+	}
+
+	if (we_are_docking && docking_match_rotation && (d_forward > max_cos))
+	{
+		/* we are docking and need to consider the rotation/orientation of the docking port */
+		::StationEntity* station_for_docking = (::StationEntity*)[self targetStation];
+
+		if ((station_for_docking)&&(station_for_docking->_cxxEntity->isStation))
+		{
+			stick_roll = [self rollToMatchUp:[station_for_docking portUpVectorForShip:self] rotating:[station_for_docking flightRoll]];
+		}
+	}
+
+	// end rule-of-thumb manoeuvres
+
+	[self applySticks:delta_t];
+
+	if (retreat)
+		d_forward *= d_forward;	// make positive AND decrease granularity
+
+	if (d_forward < 0.0)
+		return 0.0;
+
+	if ((!flightRoll)&&(!flightPitch))	// no correction
+		return 1.0;
+
+	return d_forward;
+}
+
+
+GLfloat ShipEntity::rollToMatchUp(Vector up_vec, GLfloat match_roll)
+{
+	GLfloat cosTheta = dot_product(up_vec, v_up);	// == cos of angle between up vectors
+	GLfloat sinTheta = dot_product(up_vec, v_right);
+
+	if (!isPlayer)
+	{
+		match_roll = -match_roll;	// make necessary corrections for a different viewpoint
+		sinTheta = -sinTheta;
+	}
+
+	if (cosTheta < 0.0f)
+	{
+		cosTheta = -cosTheta;
+		sinTheta = -sinTheta;
+	}
+
+	if (sinTheta > 0.0f)
+	{
+		// increase roll rate
+		return cosTheta * cosTheta * match_roll + sinTheta * sinTheta * max_flight_roll;
+	}
+	else
+	{
+		// decrease roll rate
+		return cosTheta * cosTheta * match_roll - sinTheta * sinTheta * max_flight_roll;
+	}
+}
+
+
+GLfloat ShipEntity::rangeToDestination()
+{
+	return HPdistance(position, _destination);
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::collisionExceptions()
+{
+	// The live ones, in the weak set's order (empty when there are none).
+	std::vector<oo::ObjCRef<::ShipEntity *>> result;
+	for (const oo::ObjCRef<id> &exception : [_collisionExceptions cxx_allObjects])  result.emplace_back(static_cast<::ShipEntity *>(exception.get()));
+	return result;
+}
+
+
+void ShipEntity::addCollisionException(::ShipEntity *ship)
+{
+	if (_collisionExceptions == nil)
+	{
+		// Allocate lazily for the benefit of the ships that never need this.
+		_collisionExceptions = [[::OOWeakSet alloc] init];
+	}
+	[_collisionExceptions addObject:ship];
+}
+
+
+void ShipEntity::removeCollisionException(::ShipEntity *ship)
+{
+	if (_collisionExceptions != nil)
+	{
+		[_collisionExceptions removeObject:ship];
+	}
+}
+
+
+bool ShipEntity::collisionExceptedFor(::ShipEntity *ship)
+{
+	if (_collisionExceptions == nil)
+	{
+		return NO;
+	}
+	return [_collisionExceptions containsObject:ship];
+}
+
+
+NSUInteger ShipEntity::defenseTargetCount()
+{
+	return [_defenseTargets count];
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::allDefenseTargets()
+{
+	std::vector<oo::ObjCRef<::ShipEntity *>> result;
+	for (const oo::ObjCRef<id> &target : [_defenseTargets cxx_allObjects])  result.emplace_back(static_cast<::ShipEntity *>(target.get()));
+	return result;
+}
+
+
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::defenseTargets()
+{
+	// What the weak set's enumerator gave, in its order: it stops at the first zeroed reference.
+	std::vector<oo::ObjCRef<::ShipEntity *>> targets;
+	for (const oo::ObjCRef<id> &target : [_defenseTargets cxx_objectEnumerator])  targets.emplace_back(static_cast<::ShipEntity *>(target.get()));
+	return targets;
+}
+
+
+bool ShipEntity::addDefenseTarget(::Entity *target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self defenseTargetCount] >= MAX_TARGETS)
+	{
+		return NO;
+	}
+	// primary target can be a wormhole, defense targets shouldn't be
+	if (target == nil || [self isDefenseTarget:target] || ![target isShip])
+	{
+		return NO;
+	}
+	if (_defenseTargets == nil)
+	{
+		// Allocate lazily for the benefit of the ships that never get in fights.
+		_defenseTargets = [[::OOWeakSet alloc] init];
+	}
+	
+	[_defenseTargets addObject:target];
+	return YES;
+}
+
+
+void ShipEntity::validateDefenseTargets()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (_defenseTargets == nil)
+	{
+		return;
+	}
+	// iterate a copy as we'll be modifying original during enumeration
+	for (const auto &targetRef : [self allDefenseTargets])
+	{
+		::Entity *target = targetRef.get();
+		if ([target status] == STATUS_DEAD)
+		{
+			[self removeDefenseTarget:target];
+		}
+	}
+}
+
+
+bool ShipEntity::isDefenseTarget(::Entity *target)
+{
+	return [_defenseTargets containsObject:target];
+}
+
+
+// exposed to AI (as alias of clearDefenseTargets)
+void ShipEntity::removeAllDefenseTargets()
+{
+	[_defenseTargets removeAllObjects];
+}
+
+
+void ShipEntity::removeDefenseTarget(::Entity *target)
+{
+	[_defenseTargets removeObject:target];
+}
+
+
+double ShipEntity::rangeToPrimaryTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self rangeToSecondaryTarget:[self primaryTarget]];
+}
+
+
+double ShipEntity::rangeToSecondaryTarget(::Entity *target)
+{
+	double dist;
+	Vector delta;
+	if (target == nil)   // leave now!
+		return 0.0;
+	delta = HPVectorToVector(HPvector_subtract(target->_cxxEntity->position, position));
+	dist = magnitude(delta);
+	dist -= target->_cxxEntity->collision_radius;
+	dist -= collision_radius;
+	return dist;
+}
+
+
+double ShipEntity::approachAspectToPrimaryTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector delta;
+	::Entity  *target = [self primaryTarget];
+	if (target == nil || ![target isShip])   // leave now!
+	{
+		return 0.0;
+	}
+	::ShipEntity  *ship_target = (::ShipEntity *)target;
+
+	delta = HPVectorToVector(HPvector_subtract(position, target->_cxxEntity->position));
+	
+	return dot_product(vector_normal(delta), ship_target->_cxxShip->v_forward);
+}
+
+
+bool ShipEntity::hasProximityAlertIgnoringTarget(bool ignore_target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (([self proximityAlert] != nil)&&(!ignore_target || ([self proximityAlert] != [self primaryTarget])))
+	{
+		return YES;
+	}
+	return NO;
+}
+
+
+}	// namespace cxx
+
 
 
 
