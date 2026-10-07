@@ -3585,7 +3585,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibrarySpeed(_cxxUniverse->demo_ship);
+			field1 = OOShipLibrarySpeed(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3603,7 +3603,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryTurnRate(_cxxUniverse->demo_ship);
+			field2 = OOShipLibraryTurnRate(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3621,7 +3621,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibraryCargo(_cxxUniverse->demo_ship);
+			field3 = OOShipLibraryCargo(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3642,7 +3642,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibraryGenerator(_cxxUniverse->demo_ship);
+			field1 = OOShipLibraryGenerator(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3660,7 +3660,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryShields(_cxxUniverse->demo_ship);
+			field2 = OOShipLibraryShields(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3678,7 +3678,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibraryWitchspace(_cxxUniverse->demo_ship);
+			field3 = OOShipLibraryWitchspace(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3700,7 +3700,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibraryWeapons(_cxxUniverse->demo_ship);
+			field1 = OOShipLibraryWeapons(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 		override = LibrarySetting(librarySettings, kOODemoShipTurrets, nullptr);
@@ -3717,7 +3717,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryTurrets(_cxxUniverse->demo_ship);
+			field2 = OOShipLibraryTurrets(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 		override = LibrarySetting(librarySettings, kOODemoShipSize, nullptr);
@@ -3734,7 +3734,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibrarySize(_cxxUniverse->demo_ship);
+			field3 = OOShipLibrarySize(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
