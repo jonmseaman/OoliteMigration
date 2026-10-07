@@ -158,49 +158,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
-/*	A node of -cxx_routeFromSystem:toSystem:optimizedBy:'s search (slice 20 of
-	docs/phases/3-slices/Universe.md, bead oo-lftoq): the Objective-C RouteElement as a C++ class,
-	its accessors by the same names (ADR-0056 amendment oo-7jhs5).
-*/
-class RouteElement : public oo::RefCounted
-{
-public:
-	static oo::Ref<RouteElement> elementWithLocation(OOSystemID location, OOSystemID parent, double cost, double distance, double time, int jumps);
-	OOSystemID parent();
-	OOSystemID location();
-	double cost();
-	double distance();
-	double time();
-	int jumps();
-
-private:
-	OOSystemID _location = 0, _parent = 0;
-	double _cost = 0, _distance = 0, _time = 0;
-	int _jumps = 0;
-};
-
-
-oo::Ref<RouteElement> RouteElement::elementWithLocation(OOSystemID location, OOSystemID parent, double cost, double distance, double time, int jumps)
-{
-	oo::Ref<RouteElement> r = oo::makeRef<RouteElement>();
-
-	r->_location = location;
-	r->_parent = parent;
-	r->_cost = cost;
-	r->_distance = distance;
-	r->_time = time;
-	r->_jumps = jumps;
-
-	return r;
-}
-
-OOSystemID RouteElement::parent() { return _parent; }
-OOSystemID RouteElement::location() { return _location; }
-double RouteElement::cost() { return _cost; }
-double RouteElement::distance() { return _distance; }
-double RouteElement::time() { return _time; }
-int RouteElement::jumps() { return _jumps; }
-
 
 /*	Carries -cxx_addDelayedMessage:forCount:afterDelay:'s dictionary through
 	OOScheduleDeferredCall(), which retains it until the call fires, as it did the dictionary
@@ -11401,6 +11358,50 @@ OOSystemID Universe::findSystemAtCoords(NSPoint coords, OOGalaxyID g)
 }
 
 }	// namespace cxx
+
+
+/*	A node of -cxx_routeFromSystem:toSystem:optimizedBy:'s search (slice 20 of
+	docs/phases/3-slices/Universe.md, bead oo-lftoq): the Objective-C RouteElement as a C++ class,
+	its accessors by the same names (ADR-0056 amendment oo-7jhs5).
+*/
+class RouteElement : public oo::RefCounted
+{
+public:
+	static oo::Ref<RouteElement> elementWithLocation(OOSystemID location, OOSystemID parent, double cost, double distance, double time, int jumps);
+	OOSystemID parent();
+	OOSystemID location();
+	double cost();
+	double distance();
+	double time();
+	int jumps();
+
+private:
+	OOSystemID _location = 0, _parent = 0;
+	double _cost = 0, _distance = 0, _time = 0;
+	int _jumps = 0;
+};
+
+
+oo::Ref<RouteElement> RouteElement::elementWithLocation(OOSystemID location, OOSystemID parent, double cost, double distance, double time, int jumps)
+{
+	oo::Ref<RouteElement> r = oo::makeRef<RouteElement>();
+
+	r->_location = location;
+	r->_parent = parent;
+	r->_cost = cost;
+	r->_distance = distance;
+	r->_time = time;
+	r->_jumps = jumps;
+
+	return r;
+}
+
+OOSystemID RouteElement::parent() { return _parent; }
+OOSystemID RouteElement::location() { return _location; }
+double RouteElement::cost() { return _cost; }
+double RouteElement::distance() { return _distance; }
+double RouteElement::time() { return _time; }
+int RouteElement::jumps() { return _jumps; }
 
 
 // Slice 20 of docs/phases/3-slices/Universe.md (bead oo-lftoq): neighbouring systems, system-name look-up, routes (with RouteElement), planet textures, global and equipment data, the commodity market, time descriptions. The facade forwards
