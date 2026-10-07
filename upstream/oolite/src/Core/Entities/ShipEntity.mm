@@ -384,469 +384,6 @@ void ShipEntity::initWithKey(const std::string &key)
 
 static constexpr std::string_view kBoulderRole = "boulder";
 
-- (float) afterburnerFactor
-{
-	return _cxxShip->afterburner_speed_factor;
-}
-
-
-- (float) afterburnerRate
-{
-	return _cxxShip->afterburner_rate;
-}
-
-
-- (void) setAfterburnerFactor:(GLfloat)newValue
-{
-	_cxxShip->afterburner_speed_factor = newValue;
-}
-
-
-- (void) setAfterburnerRate:(GLfloat)newValue
-{
-	_cxxShip->afterburner_rate = newValue;
-}
-
-
-- (float) maxThrust
-{
-	return _cxxShip->max_thrust;
-}
-
-
-- (void) setMaxThrust:(GLfloat)newValue
-{
-	_cxxShip->max_thrust = newValue;
-}
-
-
-- (float) thrust
-{
-	return _cxxShip->thrust;
-}
-
-
-////////////////
-//            //
-// behaviours //
-//            //
-- (void) behaviour_stop_still:(double) delta_t
-{
-	_cxxShip->stick_roll = 0.0;
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-	[self applySticks:delta_t];
-
-	
-}
-
-
-- (void) behaviour_idle:(double) delta_t
-{
-	_cxxShip->stick_yaw = 0.0;
-	if ((!_cxxEntity->isStation)&&(_cxxEntity->scanClass != CLASS_BUOY))
-	{
-		_cxxShip->stick_roll = 0.0;
-	}
-	else
-	{
-		_cxxShip->stick_roll = _cxxShip->flightRoll;
-	}
-	if (_cxxEntity->scanClass != CLASS_BUOY)
-	{
-		_cxxShip->stick_pitch = 0.0;
-	}
-	else
-	{
-		_cxxShip->stick_pitch = _cxxShip->flightPitch;
-	}
-	[self applySticks:delta_t];
-	
-	
-}
-
-
-- (void) behaviour_tumble:(double) delta_t
-{
-	[self applySticks:delta_t];
-	
-	
-}
-
-
-- (void) behaviour_tractored:(double) delta_t
-{
-	_cxxShip->desired_range = _cxxEntity->collision_radius * 2.0;
-	ShipEntity* hauler = (ShipEntity*)[self owner];
-	if ((hauler)&&([hauler isShip]))
-	{
-		_cxxShip->_destination = [hauler absoluteTractorPosition];
-		double  distance = [self rangeToDestination];
-		if (distance < _cxxShip->desired_range)
-		{
-			[self performTumble];
-			[self setStatus:STATUS_IN_FLIGHT];
-			[hauler scoopUp:self];
-			return;
-		}
-		GLfloat tf = TRACTOR_FORCE / _cxxEntity->mass;
-		// adjust for difference in velocity (spring rule)
-		Vector dv = vector_between([self velocity], [hauler velocity]);
-		GLfloat moment = delta_t * 0.25 * tf;
-		_cxxEntity->velocity.x += moment * dv.x;
-		_cxxEntity->velocity.y += moment * dv.y;
-		_cxxEntity->velocity.z += moment * dv.z;
-		// acceleration = force / mass
-		// force proportional to distance (spring rule)
-		HPVector dp = HPvector_between(_cxxEntity->position, _cxxShip->_destination);
-		moment = delta_t * 0.5 * tf;
-		_cxxEntity->velocity.x += moment * dp.x;
-		_cxxEntity->velocity.y += moment * dp.y;
-		_cxxEntity->velocity.z += moment * dp.z;
-		// force inversely proportional to distance
-		GLfloat d2 = HPmagnitude2(dp);
-		moment = (d2 > 0.0)? delta_t * 5.0 * tf / d2 : 0.0;
-		if (d2 > 0.0)
-		{
-			_cxxEntity->velocity.x += moment * dp.x;
-			_cxxEntity->velocity.y += moment * dp.y;
-			_cxxEntity->velocity.z += moment * dp.z;
-		}
-		//
-		if ([self status] == STATUS_BEING_SCOOPED)
-		{
-			BOOL lost_contact = (distance > hauler->_cxxEntity->collision_radius + _cxxEntity->collision_radius + 250.0f);	// 250m range for tractor beam
-			if ([hauler isPlayer])
-			{
-				switch ([(PlayerEntity*)hauler dialFuelScoopStatus])
-				{
-					case SCOOP_STATUS_NOT_INSTALLED:
-					case SCOOP_STATUS_FULL_HOLD:
-						lost_contact = YES;	// don't draw
-						break;
-						
-					case SCOOP_STATUS_OKAY:
-					case SCOOP_STATUS_ACTIVE:
-						break;
-				}
-			}
-			
-			if (lost_contact)	// 250m range for tractor beam
-			{
-				// escaped tractor beam
-				[self setStatus:STATUS_IN_FLIGHT];
-				_cxxShip->behaviour = BEHAVIOUR_IDLE;
-				[self setThrust:[self maxThrust]]; // restore old thrust.
-				_cxxShip->frustration = 0.0;
-				[self setOwner:self];
-				[_cxxShip->shipAI cxx_exitStateMachineWithMessage:std::nullopt];	// exit nullAI.plist
-				return;
-			}
-			else if ([hauler isPlayer])
-			{
-				[(PlayerEntity*)hauler setScoopsActive];
-			}
-		}
-	}
-
-// being tractored; sticks ignored - CIM
-	_cxxShip->flightYaw = 0.0;
-	
-	_cxxShip->desired_speed = 0.0;
-	_cxxShip->thrust = 25.0;	// used to damp velocity (must be less than hauler thrust)
-	
-	_cxxShip->thrust = 0.0;	// must reset thrust now
-}
-
-
-- (void) behaviour_track_target:(double) delta_t
-{
-	if ([self primaryTarget] == nil)
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	[self trackPrimaryTarget:delta_t:NO]; // applies sticks
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-}
-
-
-- (void) behaviour_intercept_target:(double) delta_t
-{
-	double  range = [self rangeToPrimaryTarget];
-	if (_cxxShip->behaviour == BEHAVIOUR_INTERCEPT_TARGET)
-	{
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-		if (range < _cxxShip->desired_range)
-		{
-			[_cxxShip->shipAI cxx_reactToMessage:"DESIRED_RANGE_ACHIEVED" context:"BEHAVIOUR_INTERCEPT_TARGET"];
-			[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
-
-		}
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * [self trackPrimaryTarget:delta_t:NO];
-	}
-	else
-	{
-		// = BEHAVIOUR_COLLECT_TARGET
-		ShipEntity*	target = [self primaryTarget];
-// if somehow ended up in this state but target is not cargo, stop
-// trying to scoop it
-		if (!target || [target scanClass] != CLASS_CARGO || [target cargoType] == CARGO_NOT_CARGO)
-		{
-			[self noteLostTargetAndGoIdle];
-			return;
-		}
-		double target_speed = [target speed];
-		double eta = range / (_cxxShip->flightSpeed - target_speed);
-		double last_success_factor = _cxxShip->success_factor;
-		double last_distance = last_success_factor;
-		double  distance = [self rangeToDestination];
-		_cxxShip->success_factor = distance;
-		//
-		double slowdownTime = 96.0 / (_cxxShip->thrust*SHIP_THRUST_FACTOR);	// more thrust implies better slowing
-		double minTurnSpeedFactor = 0.005 * _cxxShip->max_flight_pitch * _cxxShip->max_flight_roll;	// faster turning implies higher speeds
-
-		if ((eta < slowdownTime)&&(_cxxShip->flightSpeed > _cxxShip->maxFlightSpeed * minTurnSpeedFactor))
-			_cxxShip->desired_speed = _cxxShip->flightSpeed * 0.75;   // cut speed by 50% to a minimum minTurnSpeedFactor of speed
-		else
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-
-		if (_cxxShip->desired_speed < target_speed)
-		{
-			_cxxShip->desired_speed += target_speed;
-			if (target_speed > _cxxShip->maxFlightSpeed)
-			{
-				[self noteLostTargetAndGoIdle];
-				return;
-			}
-		}
-		if (_cxxShip->desired_speed > _cxxShip->maxFlightSpeed)
-		{ // never use injectors for scooping
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-		}
-
-		_cxxShip->_destination = target->_cxxEntity->position;
-		_cxxShip->desired_range = 0.5 * target->_cxxEntity->collision_radius;
-		[self trackDestination: delta_t : NO];
-
-		//
-		if (distance < last_distance)	// improvement
-		{
-			_cxxShip->frustration -= delta_t;
-			if (_cxxShip->frustration < 0.0)
-				_cxxShip->frustration = 0.0;
-		}
-		else
-		{
-			_cxxShip->frustration += delta_t * 0.9;
-			if (_cxxShip->frustration > 10.0)	// 10s of frustration
-			{
-				[self noteFrustration:"BEHAVIOUR_INTERCEPT_TARGET"];
-				_cxxShip->frustration -= 5.0;	//repeat after another five seconds' frustration
-			}
-		}
-	}
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-	}
-	
-	
-}
-
-
-- (void) behaviour_attack_break_off_target:(double) delta_t
-{
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-	double  range = [self rangeToPrimaryTarget];
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-
-	_cxxShip->desired_speed = max_available_speed;
-
-	Entity*	target = [self primaryTarget];
-
-	if (_cxxShip->desired_speed > _cxxShip->maxFlightSpeed)
-	{
-		double target_speed = [target speed];
-		if (_cxxShip->desired_speed > target_speed * 3.0)
-		{
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed; // don't overuse the injectors
-		}
-	}
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	if ([self hasProximityAlertIgnoringTarget:NO])
-	{
-		[self avoidCollision];
-		return;
-	}
-
-	_cxxShip->frustration += delta_t;
-	if (_cxxShip->frustration > 15.0 && _cxxShip->accuracy >= COMBAT_AI_DOGFIGHTER && !canBurn)
-	{
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed / 2.0;
-	}
-	double aspect = [self approachAspectToPrimaryTarget];
-	if (range > 3000.0 || ([target isShip] && [(ShipEntity*)target primaryTarget] != self) || _cxxShip->frustration - floor(_cxxShip->frustration) > fmin(1.6/_cxxShip->max_flight_roll,aspect))
-	{
-		[self trackPrimaryTarget:delta_t:YES];
-	}
-	else
-	{
-// less useful at long range if not under direct fire
-		[self evasiveAction:delta_t];
-	}
-
-	if (range > COMBAT_OUT_RANGE_FACTOR * _cxxShip->weaponRange)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-	else if (aspect < -0.75 && _cxxShip->accuracy >= COMBAT_AI_DOGFIGHTER)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_SLOW_DOGFIGHT;
-	}
-	else if (_cxxShip->frustration > 10.0 && [self approachAspectToPrimaryTarget] < 0.85 && _cxxShip->forward_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY)
-	{
-		_cxxShip->frustration = 0.0;
-		if (_cxxShip->accuracy >= COMBAT_AI_DOGFIGHTER)
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_SLOW_DOGFIGHT;
-		}
-		else
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
-		}
-	}
-
-	_cxxShip->flightYaw = 0.0;
-}
-
-
-- (void) behaviour_attack_slow_dogfight:(double) delta_t
-{
-	if (![self canStillTrackPrimaryTarget])
-	{
-		[self noteLostTargetAndGoIdle];
-		return;
-	}
-	if ([self hasProximityAlertIgnoringTarget:YES])
-	{
-		[self avoidCollision];
-		return;
-	} 
-	double  range = [self rangeToPrimaryTarget];
-	ShipEntity*	target = [self primaryTarget];
-	double aspect = [self approachAspectToPrimaryTarget];
-	if (range < 2.5*(_cxxEntity->collision_radius+target->_cxxEntity->collision_radius) && [self proximityAlert] == target && aspect > 0) {
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed;
-		[self avoidCollision];
-		return;
-	}
-	if (aspect < -0.5 && range > COMBAT_IN_RANGE_FACTOR * _cxxShip->weaponRange * 2.0)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-	}
-	else if (aspect < -0.5)
-	{
-// mostly behind target - try to stay there and keep up
-		_cxxShip->desired_speed = fmin(_cxxShip->maxFlightSpeed * 0.5,[target speed]*0.5);		
-	}
-	else if (aspect < 0.3)
-	{
-// to side of target - slow right down
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * 0.1;
-	}
-	else
-	{
-// coming to front of target - accelerate for a quick getaway
-		_cxxShip->desired_speed = _cxxShip->maxFlightSpeed * fmin(aspect*2.5,1.0);
-	}
-	if (aspect > 0.85)
-	{
-		_cxxShip->behaviour = BEHAVIOUR_ATTACK_BREAK_OFF_TARGET;
-	}
-	if (aspect > 0.0)
-	{
-		_cxxShip->frustration += delta_t;
-	}
-	else
-	{
-		_cxxShip->frustration -= delta_t;
-	}
-	if (_cxxShip->frustration > 10.0)
-	{
-		_cxxShip->desired_speed /= 2.0;
-	}
-	else if (_cxxShip->frustration < 0.0)
-		_cxxShip->frustration = 0.0;
-	
-	[self trackPrimaryTarget:delta_t:NO];
-	
-	if (_cxxShip->missiles) [self considerFiringMissile:delta_t];
-
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-
-}
-
-
-- (void) behaviour_evasive_action:(double) delta_t
-{
-	BOOL	canBurn = [self hasFuelInjection] && (_cxxShip->fuel > MIN_FUEL);
-	float	max_available_speed = _cxxShip->maxFlightSpeed;
-//	double  range = [self rangeToPrimaryTarget];
-	if (canBurn) max_available_speed *= [self afterburnerFactor];
-	_cxxShip->desired_speed = max_available_speed;
-	if (_cxxShip->desired_speed > _cxxShip->maxFlightSpeed)
-	{
-		ShipEntity*	target = [self primaryTarget];
-		double target_speed = [target speed];
-		if (_cxxShip->desired_speed > target_speed)
-		{
-			_cxxShip->desired_speed = _cxxShip->maxFlightSpeed; // don't overuse the injectors
-		}
-	}
-	
-	if (_cxxShip->cloakAutomatic) [self activateCloakingDevice];
-	if ([self proximityAlert] != nil)
-	{
-		[self avoidCollision];
-		return;
-	}
-
-	[self evasiveAction:delta_t];
-
-	_cxxShip->frustration += delta_t;
-	
-	if (_cxxShip->frustration > 0.5)
-	{
-		if (_cxxShip->behaviour == BEHAVIOUR_FLEE_EVASIVE_ACTION)
-		{
-			[self setEvasiveJink:400.0];
-			_cxxShip->behaviour = BEHAVIOUR_FLEE_TARGET;
-		}
-		else
-		{
-			_cxxShip->behaviour = BEHAVIOUR_ATTACK_TARGET;
-		}
-	}
-
-	_cxxShip->flightYaw = 0.0;
-
-	// probably only useful for Thargoids, except for the occasional opportunist
-	[self fireMainWeapon:[self rangeToPrimaryTarget]];
-	
-}
-
 
 - (void) behaviour_attack_target:(double) delta_t
 {
@@ -15092,6 +14629,488 @@ float ShipEntity::shieldRechargeRate()
 double ShipEntity::maxHyperspaceDistance()
 {
 	return MAX_JUMP_RANGE;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 11 of docs/phases/3-slices/ShipEntity.md (bead oo-eh955): thrust and afterburner;
+// behaviours: idle, tumble, tractored, track, intercept, break off, dogfight, evasive. The facade
+// forwards each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C
+// subclass's override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+float ShipEntity::afterburnerFactor()
+{
+	return afterburner_speed_factor;
+}
+
+
+float ShipEntity::afterburnerRate()
+{
+	return afterburner_rate;
+}
+
+
+void ShipEntity::setAfterburnerFactor(GLfloat newValue)
+{
+	afterburner_speed_factor = newValue;
+}
+
+
+void ShipEntity::setAfterburnerRate(GLfloat newValue)
+{
+	afterburner_rate = newValue;
+}
+
+
+float ShipEntity::maxThrust()
+{
+	return max_thrust;
+}
+
+
+void ShipEntity::setMaxThrust(GLfloat newValue)
+{
+	max_thrust = newValue;
+}
+
+
+float ShipEntity::getThrust()
+{
+	return thrust;
+}
+
+
+////////////////
+//            //
+// behaviours //
+//            //
+void ShipEntity::behaviour_stop_still(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	stick_roll = 0.0;
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+	[self applySticks:delta_t];
+
+	
+}
+
+
+void ShipEntity::behaviour_idle(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	stick_yaw = 0.0;
+	if ((!isStation)&&(scanClass != CLASS_BUOY))
+	{
+		stick_roll = 0.0;
+	}
+	else
+	{
+		stick_roll = flightRoll;
+	}
+	if (scanClass != CLASS_BUOY)
+	{
+		stick_pitch = 0.0;
+	}
+	else
+	{
+		stick_pitch = flightPitch;
+	}
+	[self applySticks:delta_t];
+	
+	
+}
+
+
+void ShipEntity::behaviour_tumble(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self applySticks:delta_t];
+	
+	
+}
+
+
+void ShipEntity::behaviour_tractored(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	desired_range = collision_radius * 2.0;
+	::ShipEntity* hauler = (::ShipEntity*)[self owner];
+	if ((hauler)&&([hauler isShip]))
+	{
+		_destination = [hauler absoluteTractorPosition];
+		double  distance = [self rangeToDestination];
+		if (distance < desired_range)
+		{
+			[self performTumble];
+			[self setStatus:STATUS_IN_FLIGHT];
+			[hauler scoopUp:self];
+			return;
+		}
+		GLfloat tf = TRACTOR_FORCE / mass;
+		// adjust for difference in velocity (spring rule)
+		Vector dv = vector_between([self velocity], [hauler velocity]);
+		GLfloat moment = delta_t * 0.25 * tf;
+		velocity.x += moment * dv.x;
+		velocity.y += moment * dv.y;
+		velocity.z += moment * dv.z;
+		// acceleration = force / mass
+		// force proportional to distance (spring rule)
+		HPVector dp = HPvector_between(position, _destination);
+		moment = delta_t * 0.5 * tf;
+		velocity.x += moment * dp.x;
+		velocity.y += moment * dp.y;
+		velocity.z += moment * dp.z;
+		// force inversely proportional to distance
+		GLfloat d2 = HPmagnitude2(dp);
+		moment = (d2 > 0.0)? delta_t * 5.0 * tf / d2 : 0.0;
+		if (d2 > 0.0)
+		{
+			velocity.x += moment * dp.x;
+			velocity.y += moment * dp.y;
+			velocity.z += moment * dp.z;
+		}
+		//
+		if ([self status] == STATUS_BEING_SCOOPED)
+		{
+			BOOL lost_contact = (distance > hauler->_cxxEntity->collision_radius + collision_radius + 250.0f);	// 250m range for tractor beam
+			if ([hauler isPlayer])
+			{
+				switch ([(PlayerEntity*)hauler dialFuelScoopStatus])
+				{
+					case SCOOP_STATUS_NOT_INSTALLED:
+					case SCOOP_STATUS_FULL_HOLD:
+						lost_contact = YES;	// don't draw
+						break;
+						
+					case SCOOP_STATUS_OKAY:
+					case SCOOP_STATUS_ACTIVE:
+						break;
+				}
+			}
+			
+			if (lost_contact)	// 250m range for tractor beam
+			{
+				// escaped tractor beam
+				[self setStatus:STATUS_IN_FLIGHT];
+				behaviour = BEHAVIOUR_IDLE;
+				[self setThrust:[self maxThrust]]; // restore old thrust.
+				frustration = 0.0;
+				[self setOwner:self];
+				[shipAI cxx_exitStateMachineWithMessage:std::nullopt];	// exit nullAI.plist
+				return;
+			}
+			else if ([hauler isPlayer])
+			{
+				[(PlayerEntity*)hauler setScoopsActive];
+			}
+		}
+	}
+
+// being tractored; sticks ignored - CIM
+	flightYaw = 0.0;
+	
+	desired_speed = 0.0;
+	thrust = 25.0;	// used to damp velocity (must be less than hauler thrust)
+	
+	thrust = 0.0;	// must reset thrust now
+}
+
+
+void ShipEntity::behaviour_track_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self primaryTarget] == nil)
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	[self trackPrimaryTarget:delta_t:NO]; // applies sticks
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+}
+
+
+void ShipEntity::behaviour_intercept_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	double  range = [self rangeToPrimaryTarget];
+	if (behaviour == BEHAVIOUR_INTERCEPT_TARGET)
+	{
+		desired_speed = maxFlightSpeed;
+		if (range < desired_range)
+		{
+			[shipAI cxx_reactToMessage:"DESIRED_RANGE_ACHIEVED" context:"BEHAVIOUR_INTERCEPT_TARGET"];
+			[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
+
+		}
+		desired_speed = maxFlightSpeed * [self trackPrimaryTarget:delta_t:NO];
+	}
+	else
+	{
+		// = BEHAVIOUR_COLLECT_TARGET
+		::ShipEntity*	target = [self primaryTarget];
+// if somehow ended up in this state but target is not cargo, stop
+// trying to scoop it
+		if (!target || [target scanClass] != CLASS_CARGO || [target cargoType] == CARGO_NOT_CARGO)
+		{
+			[self noteLostTargetAndGoIdle];
+			return;
+		}
+		double target_speed = [target speed];
+		double eta = range / (flightSpeed - target_speed);
+		double last_success_factor = success_factor;
+		double last_distance = last_success_factor;
+		double  distance = [self rangeToDestination];
+		success_factor = distance;
+		//
+		double slowdownTime = 96.0 / (thrust*SHIP_THRUST_FACTOR);	// more thrust implies better slowing
+		double minTurnSpeedFactor = 0.005 * max_flight_pitch * max_flight_roll;	// faster turning implies higher speeds
+
+		if ((eta < slowdownTime)&&(flightSpeed > maxFlightSpeed * minTurnSpeedFactor))
+			desired_speed = flightSpeed * 0.75;   // cut speed by 50% to a minimum minTurnSpeedFactor of speed
+		else
+			desired_speed = maxFlightSpeed;
+
+		if (desired_speed < target_speed)
+		{
+			desired_speed += target_speed;
+			if (target_speed > maxFlightSpeed)
+			{
+				[self noteLostTargetAndGoIdle];
+				return;
+			}
+		}
+		if (desired_speed > maxFlightSpeed)
+		{ // never use injectors for scooping
+			desired_speed = maxFlightSpeed;
+		}
+
+		_destination = target->_cxxEntity->position;
+		desired_range = 0.5 * target->_cxxEntity->collision_radius;
+		[self trackDestination: delta_t : NO];
+
+		//
+		if (distance < last_distance)	// improvement
+		{
+			frustration -= delta_t;
+			if (frustration < 0.0)
+				frustration = 0.0;
+		}
+		else
+		{
+			frustration += delta_t * 0.9;
+			if (frustration > 10.0)	// 10s of frustration
+			{
+				[self noteFrustration:"BEHAVIOUR_INTERCEPT_TARGET"];
+				frustration -= 5.0;	//repeat after another five seconds' frustration
+			}
+		}
+	}
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+	}
+	
+	
+}
+
+
+void ShipEntity::behaviour_attack_break_off_target(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+	double  range = [self rangeToPrimaryTarget];
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+
+	desired_speed = max_available_speed;
+
+	::Entity*	target = [self primaryTarget];
+
+	if (desired_speed > maxFlightSpeed)
+	{
+		double target_speed = [target speed];
+		if (desired_speed > target_speed * 3.0)
+		{
+			desired_speed = maxFlightSpeed; // don't overuse the injectors
+		}
+	}
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+	if ([self hasProximityAlertIgnoringTarget:NO])
+	{
+		[self avoidCollision];
+		return;
+	}
+
+	frustration += delta_t;
+	if (frustration > 15.0 && accuracy >= COMBAT_AI_DOGFIGHTER && !canBurn)
+	{
+		desired_speed = maxFlightSpeed / 2.0;
+	}
+	double aspect = [self approachAspectToPrimaryTarget];
+	if (range > 3000.0 || ([target isShip] && [(::ShipEntity*)target primaryTarget] != self) || frustration - floor(frustration) > fmin(1.6/max_flight_roll,aspect))
+	{
+		[self trackPrimaryTarget:delta_t:YES];
+	}
+	else
+	{
+// less useful at long range if not under direct fire
+		[self evasiveAction:delta_t];
+	}
+
+	if (range > COMBAT_OUT_RANGE_FACTOR * weaponRange)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+	else if (aspect < -0.75 && accuracy >= COMBAT_AI_DOGFIGHTER)
+	{
+		behaviour = BEHAVIOUR_ATTACK_SLOW_DOGFIGHT;
+	}
+	else if (frustration > 10.0 && [self approachAspectToPrimaryTarget] < 0.85 && forward_weapon_temp < COMBAT_AI_WEAPON_TEMP_READY)
+	{
+		frustration = 0.0;
+		if (accuracy >= COMBAT_AI_DOGFIGHTER)
+		{
+			behaviour = BEHAVIOUR_ATTACK_SLOW_DOGFIGHT;
+		}
+		else
+		{
+			behaviour = BEHAVIOUR_ATTACK_FLY_TO_TARGET;
+		}
+	}
+
+	flightYaw = 0.0;
+}
+
+
+void ShipEntity::behaviour_attack_slow_dogfight(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self canStillTrackPrimaryTarget])
+	{
+		[self noteLostTargetAndGoIdle];
+		return;
+	}
+	if ([self hasProximityAlertIgnoringTarget:YES])
+	{
+		[self avoidCollision];
+		return;
+	} 
+	double  range = [self rangeToPrimaryTarget];
+	::ShipEntity*	target = [self primaryTarget];
+	double aspect = [self approachAspectToPrimaryTarget];
+	if (range < 2.5*(collision_radius+target->_cxxEntity->collision_radius) && [self proximityAlert] == target && aspect > 0) {
+		desired_speed = maxFlightSpeed;
+		[self avoidCollision];
+		return;
+	}
+	if (aspect < -0.5 && range > COMBAT_IN_RANGE_FACTOR * weaponRange * 2.0)
+	{
+		behaviour = BEHAVIOUR_ATTACK_TARGET;
+	}
+	else if (aspect < -0.5)
+	{
+// mostly behind target - try to stay there and keep up
+		desired_speed = fmin(maxFlightSpeed * 0.5,[target speed]*0.5);		
+	}
+	else if (aspect < 0.3)
+	{
+// to side of target - slow right down
+		desired_speed = maxFlightSpeed * 0.1;
+	}
+	else
+	{
+// coming to front of target - accelerate for a quick getaway
+		desired_speed = maxFlightSpeed * fmin(aspect*2.5,1.0);
+	}
+	if (aspect > 0.85)
+	{
+		behaviour = BEHAVIOUR_ATTACK_BREAK_OFF_TARGET;
+	}
+	if (aspect > 0.0)
+	{
+		frustration += delta_t;
+	}
+	else
+	{
+		frustration -= delta_t;
+	}
+	if (frustration > 10.0)
+	{
+		desired_speed /= 2.0;
+	}
+	else if (frustration < 0.0)
+		frustration = 0.0;
+	
+	[self trackPrimaryTarget:delta_t:NO];
+	
+	if (missiles) [self considerFiringMissile:delta_t];
+
+	if (cloakAutomatic) [self activateCloakingDevice];
+
+}
+
+
+void ShipEntity::behaviour_evasive_action(double delta_t)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL	canBurn = [self hasFuelInjection] && (fuel > MIN_FUEL);
+	float	max_available_speed = maxFlightSpeed;
+//	double  range = [self rangeToPrimaryTarget];
+	if (canBurn) max_available_speed *= [self afterburnerFactor];
+	desired_speed = max_available_speed;
+	if (desired_speed > maxFlightSpeed)
+	{
+		::ShipEntity*	target = [self primaryTarget];
+		double target_speed = [target speed];
+		if (desired_speed > target_speed)
+		{
+			desired_speed = maxFlightSpeed; // don't overuse the injectors
+		}
+	}
+	
+	if (cloakAutomatic) [self activateCloakingDevice];
+	if ([self proximityAlert] != nil)
+	{
+		[self avoidCollision];
+		return;
+	}
+
+	[self evasiveAction:delta_t];
+
+	frustration += delta_t;
+	
+	if (frustration > 0.5)
+	{
+		if (behaviour == BEHAVIOUR_FLEE_EVASIVE_ACTION)
+		{
+			[self setEvasiveJink:400.0];
+			behaviour = BEHAVIOUR_FLEE_TARGET;
+		}
+		else
+		{
+			behaviour = BEHAVIOUR_ATTACK_TARGET;
+		}
+	}
+
+	flightYaw = 0.0;
+
+	// probably only useful for Thargoids, except for the occasional opportunist
+	[self fireMainWeapon:[self rangeToPrimaryTarget]];
+	
 }
 
 

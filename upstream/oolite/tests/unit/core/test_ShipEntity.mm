@@ -1000,4 +1000,72 @@ OO_TEST(removeMissiles)
 }
 
 
+// --- Slice 11: thrust and afterburner; idle, tumble, tractored, track, intercept, dogfight (oo-eh955)
+
+OO_TEST(thrustAndAfterburner)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"burner" definition:Definition()] autorelease];
+		[ship setAfterburnerFactor:4.0f];
+		[ship setAfterburnerRate:0.5f];
+		[ship setMaxThrust:30.0f];
+		OO_CHECK([ship afterburnerFactor] == 4.0f && [ship afterburnerRate] == 0.5f && [ship maxThrust] == 30.0f);
+		OO_CHECK([ship thrust] == 0.0f);	// the thrust itself is the set-up's, not -setMaxThrust:'s
+	}
+}
+
+
+// -behaviour_stop_still: and -behaviour_idle: centre the sticks (a buoy keeps rolling), and the
+// sticks move the flight controls at their rate (-applySticks:).
+OO_TEST(behaviourStopStillAndIdle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"still" definition:Definition()] autorelease];
+		MutablePart(ship)->flightRoll = 1.0f;
+		MutablePart(ship)->stick_roll = 1.0f;
+		MutablePart(ship)->stick_pitch = 1.0f;
+		[ship behaviour_stop_still:0.1];
+		OO_CHECK(Part(ship)->stick_roll == 0 && Part(ship)->stick_pitch == 0 && Part(ship)->stick_yaw == 0);
+		OO_CHECK(fabs(Part(ship)->flightRoll - 0.8f) < 1e-5f);
+
+		[ship setScanClass:CLASS_BUOY];
+		MutablePart(ship)->flightRoll = 0.5f;
+		MutablePart(ship)->flightPitch = 0.25f;
+		[ship behaviour_idle:0.1];
+		OO_CHECK(Part(ship)->stick_roll == 0.5f && Part(ship)->stick_pitch == 0.25f && Part(ship)->stick_yaw == 0);
+		OO_CHECK(Part(ship)->flightRoll == 0.5f && Part(ship)->flightPitch == 0.25f);
+
+		[ship setScanClass:CLASS_NEUTRAL];
+		[ship behaviour_idle:0.1];
+		OO_CHECK(Part(ship)->stick_roll == 0 && Part(ship)->stick_pitch == 0);
+
+		MutablePart(ship)->stick_roll = 0.5f;
+		MutablePart(ship)->flightRoll = 0.0f;
+		[ship behaviour_tumble:0.1];	// the sticks as they are
+		OO_CHECK(Part(ship)->stick_roll == 0.5f && fabs(Part(ship)->flightRoll - 0.2f) < 1e-5f);
+	}
+}
+
+
+// Behaviours that need a target, with none: the ship notes the lost target and goes idle.
+OO_TEST(behavioursWithoutATarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"hunter" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_SLOW_DOGFIGHT;
+		[ship behaviour_attack_slow_dogfight:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BREAK_OFF_TARGET;
+		[ship behaviour_attack_break_off_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
 OO_TEST_MAIN()

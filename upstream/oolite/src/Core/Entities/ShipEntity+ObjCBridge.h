@@ -103,14 +103,7 @@ MA 02110-1301, USA.
 
 // Shield information derived from equipment. NPCs can't have shields, but that should change at some point.
 
-- (float) afterburnerFactor;
-- (float) afterburnerRate;
-- (void) setAfterburnerFactor:(GLfloat)newValue;
-- (void) setAfterburnerRate:(GLfloat)newValue;
-- (float) maxThrust;
-- (float) thrust;
 
-- (void) setMaxThrust:(GLfloat)newValue;
 - (void) setMaxFlightPitch:(GLfloat)newValue;
 - (void) setMaxFlightSpeed:(GLfloat)newValue;
 - (void) setMaxFlightRoll:(GLfloat)newValue;
@@ -119,16 +112,7 @@ MA 02110-1301, USA.
 
 
 // Behaviours
-- (void) behaviour_stop_still:(double) delta_t;
-- (void) behaviour_idle:(double) delta_t;
-- (void) behaviour_tumble:(double) delta_t;
-- (void) behaviour_tractored:(double) delta_t;
-- (void) behaviour_track_target:(double) delta_t;
-- (void) behaviour_intercept_target:(double) delta_t;
 - (void) behaviour_attack_target:(double) delta_t;
-- (void) behaviour_attack_slow_dogfight:(double) delta_t;
-- (void) behaviour_evasive_action:(double) delta_t;
-- (void) behaviour_attack_break_off_target:(double) delta_t;
 - (void) behaviour_fly_to_target_six:(double) delta_t;
 - (void) behaviour_attack_mining_target:(double) delta_t;
 - (void) behaviour_attack_fly_to_target:(double) delta_t;
@@ -982,6 +966,31 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (float) maxAftShieldLevel;
 - (float) shieldRechargeRate;
 - (double) maxHyperspaceDistance;
+
+@end
+
+
+// Slice 11 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice11)
+
+- (float) afterburnerFactor;
+- (float) afterburnerRate;
+- (void) setAfterburnerFactor:(GLfloat)newValue;
+- (void) setAfterburnerRate:(GLfloat)newValue;
+- (float) maxThrust;
+- (void) setMaxThrust:(GLfloat)newValue;
+- (float) thrust;
+- (void) behaviour_stop_still:(double) delta_t;
+- (void) behaviour_idle:(double) delta_t;
+- (void) behaviour_tumble:(double) delta_t;
+- (void) behaviour_tractored:(double) delta_t;
+- (void) behaviour_track_target:(double) delta_t;
+- (void) behaviour_intercept_target:(double) delta_t;
+- (void) behaviour_attack_break_off_target:(double) delta_t;
+- (void) behaviour_attack_slow_dogfight:(double) delta_t;
+- (void) behaviour_evasive_action:(double) delta_t;
 
 @end
 

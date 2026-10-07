@@ -471,3 +471,25 @@ DESTROY(_cxxShip->laser_color);
 - (double) maxHyperspaceDistance	{ return _cxxShip->maxHyperspaceDistance(); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice11)
+
+- (float) afterburnerFactor	{ return _cxxShip->afterburnerFactor(); }
+- (float) afterburnerRate	{ return _cxxShip->afterburnerRate(); }
+- (void) setAfterburnerFactor:(GLfloat)newValue	{ _cxxShip->setAfterburnerFactor(newValue); }
+- (void) setAfterburnerRate:(GLfloat)newValue	{ _cxxShip->setAfterburnerRate(newValue); }
+- (float) maxThrust	{ return _cxxShip->maxThrust(); }
+- (void) setMaxThrust:(GLfloat)newValue	{ _cxxShip->setMaxThrust(newValue); }
+- (float) thrust	{ return _cxxShip->getThrust(); }
+- (void) behaviour_stop_still:(double)delta_t	{ _cxxShip->behaviour_stop_still(delta_t); }
+- (void) behaviour_idle:(double)delta_t	{ _cxxShip->behaviour_idle(delta_t); }
+- (void) behaviour_tumble:(double)delta_t	{ _cxxShip->behaviour_tumble(delta_t); }
+- (void) behaviour_tractored:(double)delta_t	{ _cxxShip->behaviour_tractored(delta_t); }
+- (void) behaviour_track_target:(double)delta_t	{ _cxxShip->behaviour_track_target(delta_t); }
+- (void) behaviour_intercept_target:(double)delta_t	{ _cxxShip->behaviour_intercept_target(delta_t); }
+- (void) behaviour_attack_break_off_target:(double)delta_t	{ _cxxShip->behaviour_attack_break_off_target(delta_t); }
+- (void) behaviour_attack_slow_dogfight:(double)delta_t	{ _cxxShip->behaviour_attack_slow_dogfight(delta_t); }
+- (void) behaviour_evasive_action:(double)delta_t	{ _cxxShip->behaviour_evasive_action(delta_t); }
+
+@end
