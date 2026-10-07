@@ -124,6 +124,7 @@ void SetUp()
 	if (player == nil)  player = [[TestAIPlayer alloc] init];
 	gOOPlayer = (PlayerEntity *)player;
 	if (gOOJSMainThreadContext == nullptr)  gOOJSMainThreadContext = ooscript::newContext(ooscript::newRuntime(8u * 1024u * 1024u), 8192);
+	ranrot_srand(20261007);	// as the game seeds it: an unseeded generator answers one value, and OOHPVectorRandomSpatial() never ends
 }
 
 
