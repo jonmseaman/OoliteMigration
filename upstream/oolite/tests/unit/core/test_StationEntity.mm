@@ -728,4 +728,25 @@ OO_TEST(slice4LaunchersAnswerTheirSelectors)
 }
 
 
+// From C++ (after the conversion): the members, which the facade's selectors forward to.
+OO_TEST(slice4MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("member4");
+		SetPrimaryTarget3(station, MakeVisitor("mark"));
+		cxx::StationEntity *part = station->_cxxStation;
+		const unsigned defenders = DefendersLaunched4(station);
+		OO_CHECK(part->launchIndependentShip("trader").isNull());
+		OO_CHECK(oo::ObjCRefsIn<ShipEntity *>(part->launchPolice()).empty());
+		OO_CHECK(part->launchDefenseShip() == nil && part->launchScavenger() == nil && part->launchMiner() == nil);
+		OO_CHECK(part->launchPirateShip() == nil && part->launchShuttle() == nil && part->launchEscort() == nil);
+		OO_CHECK(part->launchPatrol() == nil);
+		part->launchShipWithRole("escort");
+		OO_CHECK(DefendersLaunched4(station) == defenders && part->currentlyInLaunchingQueues() == 0);
+	}
+}
+
+
 OO_TEST_MAIN()
