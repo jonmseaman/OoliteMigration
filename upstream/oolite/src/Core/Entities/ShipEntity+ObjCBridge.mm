@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "ShipEntityAI.h"
 #import "ShipEntityScriptMethods.h"
 #import "AI.h"
+#import "PlayerEntity.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
 #import "OOWeakSet.h"
@@ -45,6 +46,81 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 #include <cmath>
+
+
+namespace {
+
+/*	The C++ part of an Objective-C ship (ShipEntity, StationEntity, DockEntity, PlayerEntity, ...):
+	the root's adapter over cxx::ShipEntity, plus the members cxx::ShipEntity added that the
+	Objective-C subclasses override, which message the Objective-C object (ADR-0056 amendments
+	oo-vl43 item 1 and oo-mvzmb). Each slice that makes such a member virtual adds its line
+	(docs/phases/3-slices/ShipEntity.md); the facade's forwarder calls cxx::ShipEntity's own
+	member, which is what [super ...] (or not overriding) reached.
+*/
+class ObjCShipEntity final : public oo::ObjCEntity<cxx::ShipEntity>
+{
+public:
+	explicit ObjCShipEntity(::Entity *objcOwner) : oo::ObjCEntity<cxx::ShipEntity>(objcOwner) {}
+
+	// Slice 3 (bead oo-mvzmb).
+	bool setUpShipFromDictionary(const oo::PList &shipDict) override	{ return [(::ShipEntity *)_objcOwner setUpShipFromDictionary:shipDict]; }
+	bool setUpSubEntities() override	{ return [(::ShipEntity *)_objcOwner setUpSubEntities]; }
+
+	// Slice 5 (bead oo-ddnn8).
+	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override	{ return [(::ShipEntity *)_objcOwner doesHitLine:v0 :v1 :hitEntity]; }
+
+	// Slice 8 (bead oo-vxdsc).
+	bool hasPrimaryWeapon(OOWeaponType weaponType) override	{ return [(::ShipEntity *)_objcOwner hasPrimaryWeapon:weaponType]; }
+
+	// Slice 9 (bead oo-ke13m).
+	bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner canAddEquipment:equipmentKeyIn inContext:context]; }
+	::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict) override	{ return [(::ShipEntity *)_objcOwner weaponTypeForFacing:facing strict:strict]; }
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList() override	{ return [(::ShipEntity *)_objcOwner missilesList]; }
+	oo::PList passengerListForScripting() override	{ return [(::ShipEntity *)_objcOwner passengerListForScripting]; }
+	oo::PList parcelListForScripting() override	{ return [(::ShipEntity *)_objcOwner parcelListForScripting]; }
+	oo::PList contractListForScripting() override	{ return [(::ShipEntity *)_objcOwner contractListForScripting]; }
+	bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey) override	{ return [(::ShipEntity *)_objcOwner setWeaponMount:facing toWeapon:eqKey]; }
+	bool addEquipmentItem(const std::string &equipmentKey, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKey inContext:context]; }
+	bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKeyIn withValidation:validateAddition inContext:context]; }
+
+	// Slice 10 (bead oo-wvcs2).
+	void removeEquipmentItem(const std::string &equipmentKey) override	{ [(::ShipEntity *)_objcOwner removeEquipmentItem:equipmentKey]; }
+	bool removeExternalStore(::OOEquipmentType *eqType) override	{ return [(::ShipEntity *)_objcOwner removeExternalStore:eqType]; }
+	OOCreditsQuantity removeMissiles() override	{ return [(::ShipEntity *)_objcOwner removeMissiles]; }
+	NSUInteger parcelCount() override	{ return [(::ShipEntity *)_objcOwner parcelCount]; }
+	NSUInteger passengerCount() override	{ return [(::ShipEntity *)_objcOwner passengerCount]; }
+	NSUInteger passengerCapacity() override	{ return [(::ShipEntity *)_objcOwner passengerCapacity]; }
+	float maxForwardShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxForwardShieldLevel]; }
+	float maxAftShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxAftShieldLevel]; }
+
+	// Slice 17 (bead oo-6hofy).
+	void applyAttitudeChanges(double delta_t) override	{ [(::ShipEntity *)_objcOwner applyAttitudeChanges:delta_t]; }
+	void setName(const std::optional<std::string> &inName) override	{ [(::ShipEntity *)_objcOwner cxx_setName:inName]; }
+
+	// Slice 18 (bead oo-vho1o).
+	bool isUnpiloted() override	{ return [(::ShipEntity *)_objcOwner isUnpiloted]; }
+	bool hasHostileTarget() override	{ return [(::ShipEntity *)_objcOwner hasHostileTarget]; }
+
+	// Slice 19 (bead oo-umyg2).
+	GLfloat fuelChargeRate() override	{ return [(::ShipEntity *)_objcOwner fuelChargeRate]; }
+
+	// Slice 20 (bead oo-66inv).
+	void setBounty(OOCreditsQuantity amount) override	{ [(::ShipEntity *)_objcOwner setBounty:amount]; }
+	void setBounty(OOCreditsQuantity amount, OOLegalStatusReason reason) override	{ [(::ShipEntity *)_objcOwner setBounty:amount withReason:reason]; }
+	void setBounty(OOCreditsQuantity amount, const std::string &reason) override	{ [(::ShipEntity *)_objcOwner setBounty:amount withReasonAsString:reason]; }
+	OOCreditsQuantity getBounty() override	{ return [(::ShipEntity *)_objcOwner bounty]; }
+	int legalStatus() override	{ return [(::ShipEntity *)_objcOwner legalStatus]; }
+	OOCargoQuantity cargoQuantityOnBoard() override	{ return [(::ShipEntity *)_objcOwner cargoQuantityOnBoard]; }
+	oo::PList cargoListForScripting() override	{ return [(::ShipEntity *)_objcOwner cargoListForScripting]; }
+
+	// Slice 21 (bead oo-cicod).
+	void setMaxFlightPitch(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightPitch:newValue]; }
+	void setMaxFlightRoll(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightRoll:newValue]; }
+	void setMaxFlightYaw(GLfloat newValue) override	{ [(::ShipEntity *)_objcOwner setMaxFlightYaw:newValue]; }
+	void noteTakingDamage(double amount, ::Entity *entity, OOShipDamageType type) override	{ [(::ShipEntity *)_objcOwner noteTakingDamage:amount from:entity type:type]; }
+};
+
+}	// namespace
 
 
 @interface ShipEntity (OOObjCBridgePrivate)
@@ -108,7 +184,7 @@ MA 02110-1301, USA.
 {
 	// -init sent again to an initialised ship keeps its C++ part (the root's -initWithCxxEntity:).
 	if (_cxxEntity != nullptr)  return [self initWithCxxEntity:_cxxEntity.get()];
-	return [self initWithCxxEntity:oo::makeRef<oo::ObjCEntity<cxx::ShipEntity>>(self).get()];
+	return [self initWithCxxEntity:oo::makeRef<ObjCShipEntity>(self).get()];
 }
 
 
@@ -187,6 +263,10 @@ DESTROY(_cxxShip->laser_color);
 @end
 
 
+double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar)	{ return [stellar radius]; }
+GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
+
+
 @implementation Entity (SubEntityRelationship)
 
 - (BOOL) isShipWithSubEntityShip:(Entity *)other
@@ -206,5 +286,533 @@ DESTROY(_cxxShip->laser_color);
 @implementation ShipEntity (SubEntityRelationship)
 
 - (BOOL) isShipWithSubEntityShip:(Entity *)other	{ return oo::ToCxx(self)->isShipWithSubEntityShip(other); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice2)
+
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &)inShipDict	{ return _cxxShip->setUpFromDictionary(inShipDict); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice3)
+
+- (BOOL) setUpShipFromDictionary:(const oo::PList &)shipDict	{ return _cxxShip->cxx::ShipEntity::setUpShipFromDictionary(shipDict); }
+- (void) setSubIdx:(NSUInteger)value	{ _cxxShip->setSubIdx(value); }
+- (NSUInteger) subIdx	{ return _cxxShip->subIdx(); }
+- (NSUInteger) maxShipSubEntities	{ return _cxxShip->maxShipSubEntities(); }
+- (std::optional<std::string>) cxx_serializeShipSubEntities	{ return _cxxShip->serializeShipSubEntities(); }
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string	{ _cxxShip->deserializeShipSubEntitiesFrom(string); }
+- (BOOL) setUpSubEntities	{ return _cxxShip->cxx::ShipEntity::setUpSubEntities(); }
+- (GLfloat) frustumRadius	{ return _cxxShip->cxx::ShipEntity::frustumRadius(); }
+- (BOOL) setUpOneSubentity:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneSubentity(subentDict); }
+- (BOOL) setUpOneFlasher:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneFlasher(subentDict); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice4)
+
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret	{ return _cxxShip->setUpOneStandardSubentity(subentDict, asTurret); }
+- (BOOL) isTemplateCargoPod	{ return _cxxShip->isTemplateCargoPod(); }
+- (void) setUpCargoType:(const std::string &)cargoString	{ _cxxShip->setUpCargoType(cargoString); }
+- (void) removeScript	{ _cxxShip->removeScript(); }
+- (void) clearSubEntities	{ _cxxShip->clearSubEntities(); }
+- (Quaternion) subEntityRotationalVelocity	{ return _cxxShip->subEntityRotationalVelocity(); }
+- (void) setSubEntityRotationalVelocity:(Quaternion)rv	{ _cxxShip->setSubEntityRotationalVelocity(rv); }
+- (std::optional<std::string>) cxx_shortDescriptionComponents	{ return _cxxShip->shortDescriptionComponents(); }
+- (GLfloat) sunGlareFilter	{ return _cxxShip->getSunGlareFilter(); }
+- (void) setSunGlareFilter:(GLfloat)newValue	{ _cxxShip->setSunGlareFilter(newValue); }
+- (GLfloat) accuracy	{ return _cxxShip->getAccuracy(); }
+- (void) setAccuracy:(GLfloat)new_accuracy	{ _cxxShip->setAccuracy(new_accuracy); }
+- (OOMesh *) mesh	{ return _cxxShip->mesh(); }
+- (void) setMesh:(OOMesh *)mesh	{ _cxxShip->setMesh(mesh); }
+- (BoundingBox) totalBoundingBox	{ return _cxxShip->getTotalBoundingBox(); }
+- (Vector) forwardVector	{ return _cxxShip->forwardVector(); }
+- (Vector) upVector	{ return _cxxShip->upVector(); }
+- (Vector) rightVector	{ return _cxxShip->rightVector(); }
+- (BOOL) scriptedMisjump	{ return _cxxShip->scriptedMisjump(); }
+- (void) setScriptedMisjump:(BOOL)newValue	{ _cxxShip->setScriptedMisjump(newValue); }
+- (GLfloat) scriptedMisjumpRange	{ return _cxxShip->scriptedMisjumpRange(); }
+- (void) setScriptedMisjumpRange:(GLfloat)newValue	{ _cxxShip->setScriptedMisjumpRange(newValue); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntities	{ return _cxxShip->getSubEntities(); }
+- (NSUInteger) subEntityCount	{ return _cxxShip->subEntityCount(); }
+- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub	{ return _cxxShip->hasSubEntity(sub); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator	{ return _cxxShip->subEntityEnumerator(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities	{ return _cxxShip->shipSubEntities(); }
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator	{ return _cxxShip->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts	{ return _cxxShip->exhausts(); }
+- (ShipEntity *) subEntityTakingDamage	{ return _cxxShip->subEntityTakingDamage(); }
+- (void) setSubEntityTakingDamage:(ShipEntity *)sub	{ _cxxShip->setSubEntityTakingDamage(sub); }
+- (OOScript *) shipScript	{ return _cxxShip->shipScript(); }
+- (OOScript *) shipAIScript	{ return _cxxShip->shipAIScript(); }
+- (OOTimeAbsolute) shipAIScriptWakeTime	{ return _cxxShip->shipAIScriptWakeTime(); }
+- (void) setAIScriptWakeTime:(OOTimeAbsolute)t	{ _cxxShip->setAIScriptWakeTime(t); }
+- (std::optional<std::string>) cxx_descriptionComponents	{ return _cxxShip->cxx::ShipEntity::descriptionComponents(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice5)
+
+- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)_i :(Vector)_j :(Vector)_k	{ return _cxxShip->findBoundingBoxRelativeToPosition(opv, _i, _j, _k); }
+- (Octree *) octree	{ return _cxxShip->getOctree(); }
+- (float) volume	{ return _cxxShip->volume(); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1	{ return _cxxShip->doesHitLine(v0, v1); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity	{ return _cxxShip->cxx::ShipEntity::doesHitLine(v0, v1, hitEntity); }
+- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k	{ return _cxxShip->doesHitLine(v0, v1, o, i, j, k); }
+- (void) wasAddedToUniverse	{ _cxxShip->cxx::ShipEntity::wasAddedToUniverse(); }
+- (void) wasRemovedFromUniverse	{ _cxxShip->cxx::ShipEntity::wasRemovedFromUniverse(); }
+- (HPVector) absoluteTractorPosition	{ return _cxxShip->absoluteTractorPosition(); }
+- (std::optional<std::string>) beaconCode	{ return _cxxShip->beaconCode(); }
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode	{ _cxxShip->setBeaconCode(bcode); }
+- (std::optional<std::string>) beaconLabel	{ return _cxxShip->beaconLabel(); }
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel	{ _cxxShip->setBeaconLabel(blabel); }
+- (BOOL) isVisible	{ return _cxxShip->cxx::ShipEntity::isVisible(); }
+- (BOOL) isBeacon	{ return _cxxShip->isBeacon(); }
+- (id <OOHUDBeaconIcon>) beaconDrawable	{ return _cxxShip->beaconDrawable(); }
+- (Entity <OOBeaconEntity> *) prevBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->prevBeacon(); }
+- (Entity <OOBeaconEntity> *) nextBeacon	{ return (Entity <OOBeaconEntity> *)_cxxShip->nextBeacon(); }
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setPrevBeacon(beaconShip); }
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxShip->setNextBeacon(beaconShip); }
+- (void) setIsBoulder:(BOOL)flag	{ _cxxShip->setIsBoulder(flag); }
+- (BOOL) isBoulder	{ return _cxxShip->isBoulder(); }
+- (BOOL) isMinable	{ return _cxxShip->isMinable(); }
+- (BOOL) countsAsKill	{ return _cxxShip->countsAsKill(); }
+- (void) setUpEscorts	{ _cxxShip->setUpEscorts(); }
+- (void) setUpMixedEscorts	{ _cxxShip->setUpMixedEscorts(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice6)
+
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount	{ _cxxShip->setUpOneEscort(escorter, escortGroup, escortRole, ex_pos, currentEscortCount); }
+- (std::optional<std::string>) cxx_shipDataKey	{ return _cxxShip->shipDataKey(); }
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole	{ return _cxxShip->shipDataKeyAutoRole(); }
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key	{ _cxxShip->setShipDataKey(key); }
+- (oo::PList) cxx_shipInfoDictionary	{ return _cxxShip->shipInfoDictionary(); }
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode	{ return _cxxShip->weaponOffsetsFrom(dict, key, mode); }
+- (std::vector<Vector>) cxx_aftWeaponOffset	{ return _cxxShip->getAftWeaponOffset(); }
+- (std::vector<Vector>) cxx_forwardWeaponOffset	{ return _cxxShip->getForwardWeaponOffset(); }
+- (std::vector<Vector>) cxx_portWeaponOffset	{ return _cxxShip->getPortWeaponOffset(); }
+- (std::vector<Vector>) cxx_starboardWeaponOffset	{ return _cxxShip->getStarboardWeaponOffset(); }
+- (BOOL) isFrangible	{ return _cxxShip->getIsFrangible(); }
+- (BOOL) suppressFlightNotifications	{ return _cxxShip->suppressFlightNotifications(); }
+- (OOScanClass) scanClass	{ return _cxxShip->cxx::ShipEntity::getScanClass(); }
+- (BOOL) canCollide	{ return _cxxShip->cxx::ShipEntity::canCollide(); }
+- (BOOL) checkCloseCollisionWith:(Entity *)other	{ return _cxxShip->cxx::ShipEntity::checkCloseCollisionWith(oo::ToCxx(other)); }
+- (BoundingBox) findSubentityBoundingBox	{ return _cxxShip->findSubentityBoundingBox(); }
+- (Triangle) absoluteIJKForSubentity	{ return _cxxShip->absoluteIJKForSubentity(); }
+- (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *)subent	{ _cxxShip->addSubentityToCollisionRadius(subent); }
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew	{ return _cxxShip->launchPodWithCrew(podCrew); }
+- (BOOL) validForAddToUniverse	{ return _cxxShip->cxx::ShipEntity::validForAddToUniverse(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice7)
+
+- (void) update:(OOTimeDelta)delta_t	{ _cxxShip->cxx::ShipEntity::update(delta_t); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice8)
+
+- (void) processBehaviour:(OOTimeDelta)delta_t	{ _cxxShip->processBehaviour(delta_t); }
+- (void) noteFrustration:(const std::string &)context	{ _cxxShip->noteFrustration(context); }
+- (void) respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other	{ _cxxShip->respondToAttackFrom(from, other); }
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading	{ return _cxxShip->hasOneEquipmentItem(itemKey, includeWeapons, loading); }
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading	{ return _cxxShip->hasOneEquipmentItemIncludingMissiles(itemKey, includeMissiles, loading); }
+- (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType	{ return _cxxShip->cxx::ShipEntity::hasPrimaryWeapon(weaponType); }
+- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey	{ return _cxxShip->countEquipmentItem(eqkey); }
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading	{ return _cxxShip->hasEquipmentItem(equipmentKeys, includeWeapons, loading); }
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys	{ return _cxxShip->hasEquipmentItem(equipmentKeys); }
+- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType	{ return _cxxShip->hasEquipmentItemProviding(equipmentType); }
+- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType	{ return _cxxShip->equipmentItemProviding(equipmentType); }
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading	{ return _cxxShip->hasAllEquipment(equipmentKeys, includeWeapons, loading); }
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys	{ return _cxxShip->hasAllEquipment(equipmentKeys); }
+- (BOOL) hasHyperspaceMotor	{ return _cxxShip->hasHyperspaceMotor(); }
+- (float) hyperspaceSpinTime	{ return _cxxShip->hyperspaceSpinTime(); }
+- (void) setHyperspaceSpinTime:(float)newValue	{ _cxxShip->setHyperspaceSpinTime(newValue); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice9)
+
+- (BOOL) canAddEquipment:(const std::string &)equipmentKeyIn inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::canAddEquipment(equipmentKeyIn, context); }
+- (OOWeaponFacingSet) weaponFacings	{ return _cxxShip->weaponFacings(); }
+- (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->weaponTypeIDForFacing(facing, strict); }
+- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->cxx::ShipEntity::weaponTypeForFacing(facing, strict); }
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList	{ return _cxxShip->cxx::ShipEntity::missilesList(); }
+- (oo::PList) passengerListForScripting	{ return _cxxShip->cxx::ShipEntity::passengerListForScripting(); }
+- (oo::PList) parcelListForScripting	{ return _cxxShip->cxx::ShipEntity::parcelListForScripting(); }
+- (oo::PList) contractListForScripting	{ return _cxxShip->cxx::ShipEntity::contractListForScripting(); }
+- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role	{ return _cxxShip->generateMissileEquipmentTypeFrom(role); }
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting	{ return _cxxShip->equipmentListForScripting(); }
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(equipmentKey, context); }
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)fullEquipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(fullEquipmentKey, loading, context); }
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey	{ return _cxxShip->cxx::ShipEntity::setWeaponMount(facing, eqKey); }
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKey, context); }
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKeyIn withValidation:(BOOL)validateAddition inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKeyIn, validateAddition, context); }
+- (std::vector<std::string>) cxx_equipmentKeys	{ return _cxxShip->equipmentKeys(); }
+- (NSUInteger) equipmentCount	{ return _cxxShip->equipmentCount(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice10)
+
+- (void) removeEquipmentItem:(const std::string &)equipmentKey	{ _cxxShip->cxx::ShipEntity::removeEquipmentItem(equipmentKey); }
+- (BOOL) removeExternalStore:(OOEquipmentType *)eqType	{ return _cxxShip->cxx::ShipEntity::removeExternalStore(eqType); }
+- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole	{ return _cxxShip->verifiedMissileTypeFromRole(requestedRole); }
+- (OOEquipmentType *) selectMissile	{ return _cxxShip->selectMissile(); }
+- (void) removeAllEquipment	{ _cxxShip->removeAllEquipment(); }
+- (OOCreditsQuantity) removeMissiles	{ return _cxxShip->cxx::ShipEntity::removeMissiles(); }
+- (NSUInteger) parcelCount	{ return _cxxShip->cxx::ShipEntity::parcelCount(); }
+- (NSUInteger) passengerCount	{ return _cxxShip->cxx::ShipEntity::passengerCount(); }
+- (NSUInteger) passengerCapacity	{ return _cxxShip->cxx::ShipEntity::passengerCapacity(); }
+- (NSUInteger) missileCount	{ return _cxxShip->missileCount(); }
+- (NSUInteger) missileCapacity	{ return _cxxShip->missileCapacity(); }
+- (NSUInteger) extraCargo	{ return _cxxShip->extraCargo(); }
+- (BOOL) hasScoop	{ return _cxxShip->hasScoop(); }
+- (BOOL) hasFuelScoop	{ return _cxxShip->hasFuelScoop(); }
+- (BOOL) hasCargoScoop	{ return _cxxShip->hasCargoScoop(); }
+- (BOOL) hasECM	{ return _cxxShip->hasECM(); }
+- (BOOL) hasCloakingDevice	{ return _cxxShip->hasCloakingDevice(); }
+- (BOOL) hasMilitaryScannerFilter	{ return _cxxShip->hasMilitaryScannerFilter(); }
+- (BOOL) hasMilitaryJammer	{ return _cxxShip->hasMilitaryJammer(); }
+- (BOOL) hasExpandedCargoBay	{ return _cxxShip->hasExpandedCargoBay(); }
+- (BOOL) hasShieldBooster	{ return _cxxShip->hasShieldBooster(); }
+- (BOOL) hasMilitaryShieldEnhancer	{ return _cxxShip->hasMilitaryShieldEnhancer(); }
+- (BOOL) hasHeatShield	{ return _cxxShip->hasHeatShield(); }
+- (BOOL) hasFuelInjection	{ return _cxxShip->hasFuelInjection(); }
+- (BOOL) hasCascadeMine	{ return _cxxShip->hasCascadeMine(); }
+- (BOOL) hasEscapePod	{ return _cxxShip->hasEscapePod(); }
+- (BOOL) hasDockingComputer	{ return _cxxShip->hasDockingComputer(); }
+- (BOOL) hasGalacticHyperdrive	{ return _cxxShip->hasGalacticHyperdrive(); }
+- (float) shieldBoostFactor	{ return _cxxShip->shieldBoostFactor(); }
+- (float) maxForwardShieldLevel	{ return _cxxShip->cxx::ShipEntity::maxForwardShieldLevel(); }
+- (float) maxAftShieldLevel	{ return _cxxShip->cxx::ShipEntity::maxAftShieldLevel(); }
+- (float) shieldRechargeRate	{ return _cxxShip->shieldRechargeRate(); }
+- (double) maxHyperspaceDistance	{ return _cxxShip->maxHyperspaceDistance(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice11)
+
+- (float) afterburnerFactor	{ return _cxxShip->afterburnerFactor(); }
+- (float) afterburnerRate	{ return _cxxShip->afterburnerRate(); }
+- (void) setAfterburnerFactor:(GLfloat)newValue	{ _cxxShip->setAfterburnerFactor(newValue); }
+- (void) setAfterburnerRate:(GLfloat)newValue	{ _cxxShip->setAfterburnerRate(newValue); }
+- (float) maxThrust	{ return _cxxShip->maxThrust(); }
+- (void) setMaxThrust:(GLfloat)newValue	{ _cxxShip->setMaxThrust(newValue); }
+- (float) thrust	{ return _cxxShip->getThrust(); }
+- (void) behaviour_stop_still:(double)delta_t	{ _cxxShip->behaviour_stop_still(delta_t); }
+- (void) behaviour_idle:(double)delta_t	{ _cxxShip->behaviour_idle(delta_t); }
+- (void) behaviour_tumble:(double)delta_t	{ _cxxShip->behaviour_tumble(delta_t); }
+- (void) behaviour_tractored:(double)delta_t	{ _cxxShip->behaviour_tractored(delta_t); }
+- (void) behaviour_track_target:(double)delta_t	{ _cxxShip->behaviour_track_target(delta_t); }
+- (void) behaviour_intercept_target:(double)delta_t	{ _cxxShip->behaviour_intercept_target(delta_t); }
+- (void) behaviour_attack_break_off_target:(double)delta_t	{ _cxxShip->behaviour_attack_break_off_target(delta_t); }
+- (void) behaviour_attack_slow_dogfight:(double)delta_t	{ _cxxShip->behaviour_attack_slow_dogfight(delta_t); }
+- (void) behaviour_evasive_action:(double)delta_t	{ _cxxShip->behaviour_evasive_action(delta_t); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice12)
+
+- (void) behaviour_attack_target:(double)delta_t	{ _cxxShip->behaviour_attack_target(delta_t); }
+- (void) behaviour_attack_broadside:(double)delta_t	{ _cxxShip->behaviour_attack_broadside(delta_t); }
+- (void) behaviour_attack_broadside_left:(double)delta_t	{ _cxxShip->behaviour_attack_broadside_left(delta_t); }
+- (void) behaviour_attack_broadside_right:(double)delta_t	{ _cxxShip->behaviour_attack_broadside_right(delta_t); }
+- (void) behaviour_attack_broadside_target:(double)delta_t leftside:(BOOL)leftside	{ _cxxShip->behaviour_attack_broadside_target(delta_t, leftside); }
+- (void) behaviour_close_to_broadside_range:(double)delta_t	{ _cxxShip->behaviour_close_to_broadside_range(delta_t); }
+- (void) behaviour_close_with_target:(double)delta_t	{ _cxxShip->behaviour_close_with_target(delta_t); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice13)
+
+- (void) behaviour_attack_sniper:(double)delta_t	{ _cxxShip->behaviour_attack_sniper(delta_t); }
+- (void) behaviour_fly_to_target_six:(double)delta_t	{ _cxxShip->behaviour_fly_to_target_six(delta_t); }
+- (void) behaviour_attack_mining_target:(double)delta_t	{ _cxxShip->behaviour_attack_mining_target(delta_t); }
+- (void) behaviour_attack_fly_to_target:(double)delta_t	{ _cxxShip->behaviour_attack_fly_to_target(delta_t); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice14)
+
+- (void) behaviour_attack_fly_from_target:(double)delta_t	{ _cxxShip->behaviour_attack_fly_from_target(delta_t); }
+- (void) behaviour_running_defense:(double)delta_t	{ _cxxShip->behaviour_running_defense(delta_t); }
+- (void) behaviour_flee_target:(double)delta_t	{ _cxxShip->behaviour_flee_target(delta_t); }
+- (void) behaviour_fly_range_from_destination:(double)delta_t	{ _cxxShip->behaviour_fly_range_from_destination(delta_t); }
+- (void) behaviour_face_destination:(double)delta_t	{ _cxxShip->behaviour_face_destination(delta_t); }
+- (void) behaviour_land_on_planet:(double)delta_t	{ _cxxShip->behaviour_land_on_planet(delta_t); }
+- (void) behaviour_formation_form_up:(double)delta_t	{ _cxxShip->behaviour_formation_form_up(delta_t); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice15)
+
+- (void) behaviour_fly_to_destination:(double)delta_t	{ _cxxShip->behaviour_fly_to_destination(delta_t); }
+- (void) behaviour_fly_from_destination:(double)delta_t	{ _cxxShip->behaviour_fly_from_destination(delta_t); }
+- (void) behaviour_avoid_collision:(double)delta_t	{ _cxxShip->behaviour_avoid_collision(delta_t); }
+- (void) behaviour_track_as_turret:(double)delta_t	{ _cxxShip->behaviour_track_as_turret(delta_t); }
+- (void) behaviour_fly_thru_navpoints:(double)delta_t	{ _cxxShip->behaviour_fly_thru_navpoints(delta_t); }
+- (void) behaviour_scripted_ai:(double)delta_t	{ _cxxShip->behaviour_scripted_ai(delta_t); }
+- (float) reactionTime	{ return _cxxShip->getReactionTime(); }
+- (void) setReactionTime:(float)newReactionTime	{ _cxxShip->setReactionTime(newReactionTime); }
+- (HPVector) calculateTargetPosition	{ return _cxxShip->calculateTargetPosition(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice16)
+
+- (void) startTrackingCurve	{ _cxxShip->startTrackingCurve(); }
+- (void) updateTrackingCurve	{ _cxxShip->updateTrackingCurve(); }
+- (void) calculateTrackingCurve	{ _cxxShip->calculateTrackingCurve(); }
+- (void) drawImmediate:(bool)immediate translucent:(bool)translucent	{ _cxxShip->cxx::ShipEntity::drawImmediate(immediate, translucent); }
+#ifndef NDEBUG
+- (void) drawDebugStuff	{ _cxxShip->drawDebugStuff(); }
+#endif
+- (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent	{ _cxxShip->drawSubEntityImmediate(immediate, translucent); }
+- (GLfloat *) scannerDisplayColorForShip:(ShipEntity*)otherShip :(BOOL)isHostile :(BOOL)flash :(OOColor *)scannerDisplayColor1 :(OOColor *)scannerDisplayColor2 :(OOColor *)scannerDisplayColorH1 :(OOColor *)scannerDisplayColorH2	{ return _cxxShip->scannerDisplayColorForShip(otherShip, isHostile, flash, scannerDisplayColor1, scannerDisplayColor2, scannerDisplayColorH1, scannerDisplayColorH2); }
+- (void) setScannerDisplayColor1:(OOColor *)color	{ _cxxShip->setScannerDisplayColor1(color); }
+- (void) setScannerDisplayColor2:(OOColor *)color	{ _cxxShip->setScannerDisplayColor2(color); }
+- (OOColor *) scannerDisplayColor1	{ return _cxxShip->scannerDisplayColor1(); }
+- (OOColor *) scannerDisplayColor2	{ return _cxxShip->scannerDisplayColor2(); }
+- (void) setScannerDisplayColorHostile1:(OOColor *)color	{ _cxxShip->setScannerDisplayColorHostile1(color); }
+- (void) setScannerDisplayColorHostile2:(OOColor *)color	{ _cxxShip->setScannerDisplayColorHostile2(color); }
+- (OOColor *) scannerDisplayColorHostile1	{ return _cxxShip->scannerDisplayColorHostile1(); }
+- (OOColor *) scannerDisplayColorHostile2	{ return _cxxShip->scannerDisplayColorHostile2(); }
+- (BOOL) isCloaked	{ return _cxxShip->isCloaked(); }
+- (BOOL) cloakPassive	{ return _cxxShip->getCloakPassive(); }
+- (void) setCloaked:(BOOL)cloak	{ _cxxShip->setCloaked(cloak); }
+- (BOOL) hasAutoCloak	{ return _cxxShip->hasAutoCloak(); }
+- (void) setAutoCloak:(BOOL)automatic	{ _cxxShip->setAutoCloak(automatic); }
+- (BOOL) isJammingScanning	{ return _cxxShip->isJammingScanning(); }
+- (void) addSubEntity:(Entity<OOSubEntity> *)sub	{ _cxxShip->addSubEntity(sub); }
+- (void) setOwner:(Entity *)who_owns_entity	{ _cxxShip->cxx::ShipEntity::setOwner(oo::ToCxx(who_owns_entity)); }
+- (void) applyThrust:(double)delta_t	{ _cxxShip->applyThrust(delta_t); }
+- (void) orientationChanged	{ _cxxShip->cxx::ShipEntity::orientationChanged(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice17)
+
+- (void) applyRoll:(GLfloat)roll1 andClimb:(GLfloat)climb1	{ _cxxShip->cxx::ShipEntity::applyRoll(roll1, climb1); }
+- (void) applyRoll:(GLfloat)roll1 climb:(GLfloat)climb1 andYaw:(GLfloat)yaw1	{ _cxxShip->cxx::ShipEntity::applyRoll(roll1, climb1, yaw1); }
+- (void) applyAttitudeChanges:(double)delta_t	{ _cxxShip->cxx::ShipEntity::applyAttitudeChanges(delta_t); }
+- (void) avoidCollision	{ _cxxShip->avoidCollision(); }
+- (void) resumePostProximityAlert	{ _cxxShip->resumePostProximityAlert(); }
+- (double) messageTime	{ return _cxxShip->getMessageTime(); }
+- (void) setMessageTime:(double)value	{ _cxxShip->setMessageTime(value); }
+- (OOShipGroup *) group	{ return _cxxShip->group(); }
+- (void) setGroup:(OOShipGroup *)group	{ _cxxShip->setGroup(group); }
+- (OOShipGroup *) escortGroup	{ return _cxxShip->escortGroup(); }
+- (void) setEscortGroup:(OOShipGroup *)group	{ _cxxShip->setEscortGroup(group); }
+#ifndef NDEBUG
+- (OOShipGroup *) rawEscortGroup	{ return _cxxShip->rawEscortGroup(); }
+#endif
+- (OOShipGroup *) stationGroup	{ return _cxxShip->stationGroup(); }
+- (BOOL) hasEscorts	{ return _cxxShip->hasEscorts(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts	{ return _cxxShip->escorts(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray	{ return _cxxShip->escortArray(); }
+- (uint8_t) escortCount	{ return _cxxShip->escortCount(); }
+- (uint8_t) pendingEscortCount	{ return _cxxShip->pendingEscortCount(); }
+- (void) setPendingEscortCount:(uint8_t)count	{ _cxxShip->setPendingEscortCount(count); }
+- (uint8_t) maxEscortCount	{ return _cxxShip->maxEscortCount(); }
+- (void) setMaxEscortCount:(uint8_t)newCount	{ _cxxShip->setMaxEscortCount(newCount); }
+- (NSUInteger) turretCount	{ return _cxxShip->turretCount(); }
+- (Entity*) proximityAlert	{ return _cxxShip->proximityAlert(); }
+- (void) setProximityAlert:(ShipEntity*)other	{ _cxxShip->setProximityAlert(other); }
+- (std::optional<std::string>) cxx_name	{ return _cxxShip->getName(); }
+- (std::optional<std::string>) cxx_shipUniqueName	{ return _cxxShip->getShipUniqueName(); }
+- (std::optional<std::string>) cxx_shipClassName	{ return _cxxShip->getShipClassName(); }
+- (std::optional<std::string>) displayName	{ return _cxxShip->getDisplayName(); }
+- (std::optional<std::string>) cxx_scanDescriptionForScripting	{ return _cxxShip->scanDescriptionForScripting(); }
+- (std::optional<std::string>) cxx_scanDescription	{ return _cxxShip->scanDescription(); }
+- (void) cxx_setName:(const std::optional<std::string> &)inName	{ _cxxShip->cxx::ShipEntity::setName(inName); }
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName	{ _cxxShip->setShipUniqueName(inName); }
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName	{ _cxxShip->setShipClassName(inName); }
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName	{ _cxxShip->setDisplayName(inName); }
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName	{ _cxxShip->setScanDescription(inName); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice18)
+
+- (std::optional<std::string>) identFromShip:(ShipEntity*)otherShip	{ return _cxxShip->identFromShip(otherShip); }
+- (BOOL) hasRole:(const std::string &)role	{ return _cxxShip->hasRole(role); }
+- (OORoleSet *) roleSet	{ return _cxxShip->getRoleSet(); }
+- (void) addRole:(const std::string &)role	{ _cxxShip->addRole(role); }
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability	{ _cxxShip->addRole(role, probability); }
+- (void) cxx_removeRole:(const std::string &)role	{ _cxxShip->removeRole(role); }
+- (std::optional<std::string>) cxx_primaryRole	{ return _cxxShip->getPrimaryRole(); }
+- (void) setPrimaryRole:(const std::string &)role	{ _cxxShip->setPrimaryRole(role); }
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role	{ return _cxxShip->hasPrimaryRole(role); }
+- (BOOL) isPolice	{ return _cxxShip->isPolice(); }
+- (BOOL) isThargoid	{ return _cxxShip->isThargoid(); }
+- (BOOL) isTrader	{ return _cxxShip->isTrader(); }
+- (BOOL) isPirate	{ return _cxxShip->isPirate(); }
+- (BOOL) isMissile	{ return _cxxShip->getIsMissile(); }
+- (BOOL) isMine	{ return _cxxShip->isMine(); }
+- (BOOL) isWeapon	{ return _cxxShip->isWeapon(); }
+- (BOOL) isEscort	{ return _cxxShip->isEscort(); }
+- (BOOL) isShuttle	{ return _cxxShip->isShuttle(); }
+- (BOOL) isTurret	{ return _cxxShip->isTurret(); }
+- (BOOL) isPirateVictim	{ return _cxxShip->isPirateVictim(); }
+- (BOOL) isExplicitlyUnpiloted	{ return _cxxShip->isExplicitlyUnpiloted(); }
+- (BOOL) isUnpiloted	{ return _cxxShip->cxx::ShipEntity::isUnpiloted(); }
+- (BOOL) hasHostileTarget	{ return _cxxShip->cxx::ShipEntity::hasHostileTarget(); }
+- (BOOL) isHostileTo:(Entity *)entity	{ return _cxxShip->isHostileTo(entity); }
+- (GLfloat) weaponRange	{ return _cxxShip->getWeaponRange(); }
+- (void) setWeaponRange:(GLfloat)value	{ _cxxShip->setWeaponRange(value); }
+- (void) setWeaponDataFromType:(OOWeaponType)weapon_type	{ _cxxShip->setWeaponDataFromType(weapon_type); }
+- (float) energyRechargeRate	{ return _cxxShip->energyRechargeRate(); }
+- (void) setEnergyRechargeRate:(GLfloat)newValue	{ _cxxShip->setEnergyRechargeRate(newValue); }
+- (float) weaponRechargeRate	{ return _cxxShip->weaponRechargeRate(); }
+- (void) setWeaponRechargeRate:(float)value	{ _cxxShip->setWeaponRechargeRate(value); }
+- (void) setWeaponEnergy:(float)value	{ _cxxShip->setWeaponEnergy(value); }
+- (OOWeaponFacing) currentWeaponFacing	{ return _cxxShip->getCurrentWeaponFacing(); }
+- (GLfloat) scannerRange	{ return _cxxShip->getScannerRange(); }
+- (void) setScannerRange:(GLfloat)value	{ _cxxShip->setScannerRange(value); }
+- (Vector) reference	{ return _cxxShip->getReference(); }
+- (void) setReference:(Vector)v	{ _cxxShip->setReference(v); }
+- (BOOL) reportAIMessages	{ return _cxxShip->getReportAIMessages(); }
+- (void) setReportAIMessages:(BOOL)yn	{ _cxxShip->setReportAIMessages(yn); }
+- (void) transitionToAegisNone	{ _cxxShip->transitionToAegisNone(); }
+- (OOPlanetEntity *) findNearestPlanet	{ return _cxxShip->findNearestPlanet(); }
+- (Entity<OOStellarBody> *) findNearestStellarBody	{ return (Entity<OOStellarBody> *)_cxxShip->findNearestStellarBody(); }
+- (OOPlanetEntity *) findNearestPlanetExcludingMoons	{ return _cxxShip->findNearestPlanetExcludingMoons(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice19)
+
+- (OOAegisStatus) checkForAegis	{ return _cxxShip->checkForAegis(); }
+- (void) forceAegisCheck	{ _cxxShip->forceAegisCheck(); }
+- (BOOL) withinStationAegis	{ return _cxxShip->withinStationAegis(); }
+- (Entity<OOStellarBody> *) lastAegisLock	{ return (Entity<OOStellarBody> *)_cxxShip->lastAegisLock(); }
+- (void) setLastAegisLock:(Entity<OOStellarBody> *)lastAegisLock	{ _cxxShip->setLastAegisLock(lastAegisLock); }
+- (OOSystemID) homeSystem	{ return _cxxShip->homeSystem(); }
+- (OOSystemID) destinationSystem	{ return _cxxShip->destinationSystem(); }
+- (void) setHomeSystem:(OOSystemID)s	{ _cxxShip->setHomeSystem(s); }
+- (void) setDestinationSystem:(OOSystemID)s	{ _cxxShip->setDestinationSystem(s); }
+- (void) setStatus:(OOEntityStatus)stat	{ _cxxShip->cxx::ShipEntity::setStatus(stat); }
+- (void) setLaunchDelay:(double)delay	{ _cxxShip->setLaunchDelay(delay); }
+- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew	{ return _cxxShip->getCrew(); }
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray	{ _cxxShip->setCrew(crewArray); }
+- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole	{ _cxxShip->setSingleCrewWithRole(crewRole); }
+- (std::vector<oo::PList>) cxx_crewForScripting	{ return _cxxShip->crewForScripting(); }
+- (void) setStateMachine:(const std::string &)smName	{ _cxxShip->setStateMachine(smName); }
+- (void) setAI:(AI *)ai	{ _cxxShip->setAI(ai); }
+- (AI *) getAI	{ return _cxxShip->getAI(); }
+- (BOOL) hasAutoAI	{ return _cxxShip->hasAutoAI(); }
+- (BOOL) hasNewAI	{ return _cxxShip->hasNewAI(); }
+- (BOOL) hasAutoWeapons	{ return _cxxShip->hasAutoWeapons(); }
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name	{ _cxxShip->setShipScript(script_name); }
+- (double) frustration	{ return _cxxShip->getFrustration(); }
+- (OOFuelQuantity) fuel	{ return _cxxShip->getFuel(); }
+- (void) setFuel:(OOFuelQuantity)amount	{ _cxxShip->setFuel(amount); }
+- (OOFuelQuantity) fuelCapacity	{ return _cxxShip->fuelCapacity(); }
+- (GLfloat) fuelChargeRate	{ return _cxxShip->cxx::ShipEntity::fuelChargeRate(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice20)
+
+- (void) applySticks:(double)delta_t	{ _cxxShip->applySticks(delta_t); }
+- (void) setRoll:(double)amount	{ _cxxShip->setRoll(amount); }
+- (void) setRawRoll:(double)amount	{ _cxxShip->setRawRoll(amount); }
+- (void) setPitch:(double)amount	{ _cxxShip->setPitch(amount); }
+- (void) setYaw:(double)amount	{ _cxxShip->setYaw(amount); }
+- (void) setThrust:(double)amount	{ _cxxShip->setThrust(amount); }
+- (void) setThrustForDemo:(float)factor	{ _cxxShip->setThrustForDemo(factor); }
+- (void) setBounty:(OOCreditsQuantity)amount	{ _cxxShip->cxx::ShipEntity::setBounty(amount); }
+- (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason	{ _cxxShip->cxx::ShipEntity::setBounty(amount, reason); }
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason	{ _cxxShip->cxx::ShipEntity::setBounty(amount, reason); }
+- (OOCreditsQuantity) bounty	{ return _cxxShip->cxx::ShipEntity::getBounty(); }
+- (int) legalStatus	{ return _cxxShip->cxx::ShipEntity::legalStatus(); }
+- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount	{ _cxxShip->setCommodity(co_type, co_amount); }
+- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount	{ _cxxShip->setCommodityForPod(co_type, co_amount); }
+- (std::optional<std::string>) cxx_commodityType	{ return _cxxShip->commodityType(); }
+- (OOCargoQuantity) commodityAmount	{ return _cxxShip->commodityAmount(); }
+- (OOCargoQuantity) maxAvailableCargoSpace	{ return _cxxShip->maxAvailableCargoSpace(); }
+- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue	{ _cxxShip->setMaxAvailableCargoSpace(newValue); }
+- (OOCargoQuantity) availableCargoSpace	{ return _cxxShip->availableCargoSpace(); }
+- (OOCargoQuantity) cargoQuantityOnBoard	{ return _cxxShip->cxx::ShipEntity::cargoQuantityOnBoard(); }
+- (OOCargoType) cargoType	{ return _cxxShip->cargoType(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo	{ return _cxxShip->getCargo(); }
+- (NSUInteger) cxx_cargoCount	{ return _cxxShip->cargoCount(); }
+- (oo::PList) cargoListForScripting	{ return _cxxShip->cxx::ShipEntity::cargoListForScripting(); }
+- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo	{ _cxxShip->setCargo(some_cargo); }
+- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo	{ return _cxxShip->addCargo(some_cargo); }
+- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity)amount	{ return _cxxShip->removeCargo(commodity, amount); }
+- (BOOL) showScoopMessage	{ return _cxxShip->showScoopMessage(); }
+- (OOCargoFlag) cargoFlag	{ return _cxxShip->cargoFlag(); }
+- (void) setCargoFlag:(OOCargoFlag)flag	{ _cxxShip->setCargoFlag(flag); }
+- (void) setSpeed:(double)amount	{ _cxxShip->setSpeed(amount); }
+- (void) setDesiredSpeed:(double)amount	{ _cxxShip->setDesiredSpeed(amount); }
+- (double) desiredSpeed	{ return _cxxShip->desiredSpeed(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice21)
+
+- (double) desiredRange	{ return _cxxShip->desiredRange(); }
+- (void) setDesiredRange:(double)amount	{ _cxxShip->setDesiredRange(amount); }
+- (double) cruiseSpeed	{ return _cxxShip->getCruiseSpeed(); }
+- (void) increase_flight_speed:(double)delta	{ _cxxShip->increase_flight_speed(delta); }
+- (void) decrease_flight_speed:(double)delta	{ _cxxShip->decrease_flight_speed(delta); }
+- (void) increase_flight_roll:(double)delta	{ _cxxShip->increase_flight_roll(delta); }
+- (void) decrease_flight_roll:(double)delta	{ _cxxShip->decrease_flight_roll(delta); }
+- (void) increase_flight_pitch:(double)delta	{ _cxxShip->increase_flight_pitch(delta); }
+- (void) decrease_flight_pitch:(double)delta	{ _cxxShip->decrease_flight_pitch(delta); }
+- (void) increase_flight_yaw:(double)delta	{ _cxxShip->increase_flight_yaw(delta); }
+- (void) decrease_flight_yaw:(double)delta	{ _cxxShip->decrease_flight_yaw(delta); }
+- (GLfloat) flightRoll	{ return _cxxShip->getFlightRoll(); }
+- (GLfloat) flightPitch	{ return _cxxShip->getFlightPitch(); }
+- (GLfloat) flightYaw	{ return _cxxShip->getFlightYaw(); }
+- (GLfloat) flightSpeed	{ return _cxxShip->getFlightSpeed(); }
+- (GLfloat) maxFlightPitch	{ return _cxxShip->maxFlightPitch(); }
+- (GLfloat) maxFlightSpeed	{ return _cxxShip->getMaxFlightSpeed(); }
+- (GLfloat) maxFlightRoll	{ return _cxxShip->maxFlightRoll(); }
+- (GLfloat) maxFlightYaw	{ return _cxxShip->maxFlightYaw(); }
+- (void) setMaxFlightPitch:(GLfloat)newValue	{ _cxxShip->cxx::ShipEntity::setMaxFlightPitch(newValue); }
+- (void) setMaxFlightSpeed:(GLfloat)newValue	{ _cxxShip->setMaxFlightSpeed(newValue); }
+- (void) setMaxFlightRoll:(GLfloat)newValue	{ _cxxShip->cxx::ShipEntity::setMaxFlightRoll(newValue); }
+- (void) setMaxFlightYaw:(GLfloat)newValue	{ _cxxShip->cxx::ShipEntity::setMaxFlightYaw(newValue); }
+- (GLfloat) speedFactor	{ return _cxxShip->speedFactor(); }
+- (GLfloat) temperature	{ return _cxxShip->temperature(); }
+- (void) setTemperature:(GLfloat)value	{ _cxxShip->setTemperature(value); }
+- (float) randomEjectaTemperature	{ return _cxxShip->randomEjectaTemperature(); }
+- (float) randomEjectaTemperatureWithMaxFactor:(float)factor	{ return _cxxShip->randomEjectaTemperatureWithMaxFactor(factor); }
+- (GLfloat) heatInsulation	{ return _cxxShip->heatInsulation(); }
+- (void) setHeatInsulation:(GLfloat)value	{ _cxxShip->setHeatInsulation(value); }
+- (int) damage	{ return _cxxShip->damage(); }
+- (void) dealEnergyDamage:(GLfloat)baseDamage atRange:(GLfloat)range withBias:(GLfloat)velocityBias	{ _cxxShip->dealEnergyDamage(baseDamage, range, velocityBias); }
+- (void) dealEnergyDamageWithinDesiredRange	{ _cxxShip->dealEnergyDamageWithinDesiredRange(); }
+- (void) dealMomentumWithinDesiredRange:(double)amount	{ _cxxShip->dealMomentumWithinDesiredRange(amount); }
+- (BOOL) isHulk	{ return _cxxShip->getIsHulk(); }
+- (void) setHulk:(BOOL)isNowHulk	{ _cxxShip->setHulk(isNowHulk); }
+- (void) noteTakingDamage:(double)amount from:(Entity *)entity type:(OOShipDamageType)type	{ _cxxShip->cxx::ShipEntity::noteTakingDamage(amount, entity, type); }
+- (void) noteKilledBy:(Entity *)whom damageType:(OOShipDamageType)type	{ _cxxShip->noteKilledBy(whom, type); }
 
 @end

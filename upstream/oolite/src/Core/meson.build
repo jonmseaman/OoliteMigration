@@ -7,7 +7,9 @@ oolite_sources += files(
     'CollisionRegion.mm',
     'CollisionRegion+ObjCBridge.mm',
     'GameController.mm',
+    'GameController+ObjCBridge.mm',
     'GuiDisplayGen.mm',
+    'GuiDisplayGen+ObjCBridge.mm',
     'HeadUpDisplay.mm',
     'HeadUpDisplay+ObjCBridge.mm',
     'NSObjectOOExtensions.mm',
@@ -104,6 +106,7 @@ oolite_sources += files(
     'OOSoundSourcePool.mm',
     'OOSoundSourcePool+ObjCBridge.mm',
     'OOStringExpander.mm',
+    'OOStringExpander+ObjCBridge.mm',
     'OOStringParsing.mm',
     'OOSystemDescriptionManager.mm',
     'OOSystemDescriptionManager+ObjCBridge.mm',
@@ -125,6 +128,7 @@ oolite_sources += files(
     'ResourceManager.mm',
     'ResourceManager+ObjCBridge.mm',
     'Universe.mm',
+    'Universe+ObjCBridge.mm',
     'legacy_random.c',
 )
 
