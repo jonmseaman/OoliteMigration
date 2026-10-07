@@ -1151,6 +1151,45 @@ install_delta frozen
 git rm -q tools/upstream-delta.sh
 expect_fail "the policy file without its checker fails the run" "freeze policy cannot be checked"
 
+echo
+echo "=== markers: a merge-conflict marker line added by the change is REFUSED (bead oo-w6uwu) ==="
+# Built by repetition so no marker line appears in this file's own source.
+M_OURS=$(printf '<%.0s' 1 2 3 4 5 6 7); M_THEIRS=$(printf '>%.0s' 1 2 3 4 5 6 7)
+M_SEP=$(printf '=%.0s' 1 2 3 4 5 6 7);  M_BASE=$(printf '|%.0s' 1 2 3 4 5 6 7)
+fixture markers_tracked || exit 1
+printf "project('oolite', 'c')\n%s HEAD\nsrc = ['a.mm']\n%s\nsrc = ['b.mm']\n%s main\n" \
+  "$M_OURS" "$M_SEP" "$M_THEIRS" > upstream/oolite/src/Core/meson.build
+expect_fail "conflict markers in a tracked meson.build refused" "merge-conflict marker"
+
+fixture markers_committed || exit 1
+git_c checkout -q -b bead/x
+printf '# ADR\n%s\nours\n%s\ntheirs\n' "$M_SEP" "$M_THEIRS" >> notes.md
+git_c add notes.md; git_c commit -qm "a merge resolution that kept a marker"
+expect_fail "a committed separator and closing marker refused" "merge-conflict marker"
+
+fixture markers_diff3 || exit 1
+printf '%s base\n' "$M_BASE" >> upstream/oolite/src/Core/OOColor.m
+expect_fail "a diff3 base marker refused" "merge-conflict marker"
+
+fixture markers_crlf || exit 1
+printf 'x\r\n%s\r\n' "$M_SEP" >> .github/workflows/ci.yml
+expect_fail "a CRLF separator line refused" "merge-conflict marker"
+
+fixture markers_untracked || exit 1
+printf '%s ours\nx\n' "$M_OURS" > untracked.txt
+expect_fail "a marker in an untracked new file refused" "merge-conflict marker"
+
+fixture markers_ok || exit 1
+printf 'Title\n========\nSub\n%s-\n  %s indented\nx %s\n%sx\n' "$M_SEP" "$M_OURS" "$M_THEIRS" "$M_OURS" > doc.md
+expect_pass "underlines of other lengths, indented or embedded marker text pass"
+
+fixture markers_preexisting || exit 1
+printf 'README\n%s\n' "$M_SEP" > readme.txt
+git_c add readme.txt; git_c commit -qm "a heading underline that predates the change"
+printf 'more\n' >> readme.txt
+expect_pass "a pre-existing separator-shaped line is not charged to a later edit"
+
+echo
 echo "=== base branch: a stacked phase branch is the base when BEADS_WORKER_BASE_BRANCH names it ==="
 # accept.sh merges a bead into BEADS_WORKER_BASE_BRANCH (a phase branch stacked on main). A change
 # the phase branch already carries (here a human-approved test deletion) is not the bead's, and must
