@@ -805,4 +805,61 @@ OO_TEST(closeCollisionAndFrame)
 }
 
 
+// --- Slice 7: -update: (bead oo-k2q1f) -------------------------------------------------------------
+
+// A ship whose -update: only counts: a subentity that a demo ship updates.
+@interface CountingShip: TestShip
+{
+@public
+	int		_updates;
+}
+@end
+
+
+@implementation CountingShip
+
+- (void) update:(OOTimeDelta)delta_t
+{
+	_updates++;
+}
+
+@end
+
+
+// A demo ship (the ship library's) turns at its demo rate, has its subentities updated, and has an
+// infinite top speed clamped first.
+OO_TEST(updateDemoShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"demo" definition:Definition()] autorelease];
+		CountingShip *sub = [[[CountingShip alloc] cxx_initWithKey:"sub" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList()]);
+		[ship addSubEntity:sub];
+		MutablePart(ship)->isDemoShip = YES;
+		MutablePart(ship)->demoRate = 0;
+		[ship setMaxFlightSpeed:INFINITY];
+		[ship update:0.1];
+		OO_CHECK([ship maxFlightSpeed] == 300.0f);
+		OO_CHECK(sub->_updates == 1);
+		[ship clearSubEntities];
+	}
+}
+
+
+// From C++, update() reaches an Objective-C subclass's override (the root's adapter line).
+OO_TEST(updateReachesTheSubclass)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		CountingShip *ship = [[[CountingShip alloc] cxx_initWithKey:"counted" definition:Definition()] autorelease];
+		cxx::Entity *part = oo::ToCxx(static_cast<Entity *>(ship));
+		part->update(0.1);
+		OO_CHECK(ship->_updates == 1);
+	}
+}
+
+
 OO_TEST_MAIN()
