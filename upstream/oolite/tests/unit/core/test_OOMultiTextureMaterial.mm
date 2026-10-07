@@ -402,7 +402,7 @@ OO_TEST(cxxAPI)
 }
 
 
-// Objective-C sees a multi-texture material as the nearest facade, OOBasicMaterial's (bead oo-9ht.42).
+// Objective-C sees a multi-texture material as an OOMaterial (beads oo-9ht.42, oo-9ht.33).
 OO_TEST(crossesAsTheBasicMaterialFacade)
 {
 	if (!CombinersSupported())  { OO_CHECK(false); return; }
@@ -410,7 +410,7 @@ OO_TEST(crossesAsTheBasicMaterialFacade)
 	{
 		const oo::Ref<OOMultiTextureMaterial> m = OOMultiTextureMaterial::materialWithName(std::string("Cxx"), oo::PList());
 		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOBasicMaterial class]] && oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())) == facade);
+		OO_CHECK([facade isMemberOfClass:[OOMaterial class]] && oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get())) == facade);
 		OO_CHECK(oo::ToCxx(facade) == m.get() && oo::AsObjCMaterial(m.get()) == nullptr);
 		OO_CHECK(oo::DescriptionOf(facade).starts_with("<OOMultiTextureMaterial 0x"));
 	}
