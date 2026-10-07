@@ -254,4 +254,273 @@ OO_TEST(facadeAndPart)
 }
 
 
+// Slice 14 (bead oo-7jhs5): demo ships, safe vectors, hazards on route, laser hits. Written against
+// the Objective-C API and run on the unconverted class first. The entities sit in the universe's
+// sorted list by hand (no -addEntity:, which needs the whole game).
+
+// PLAYER: a stand-in (OOGetPlayer() asserts there is a player, and an entity's position is kept
+// relative to the player's viewpoint, as test_Entity's TestPlayer). It answers the player
+// messages the tests reach as an absent player's nil did.
+@interface UniverseTestPlayer: Entity
+@end
+
+@implementation UniverseTestPlayer
+- (HPVector) viewpointPosition	{ return kZeroHPVector; }
+- (id) dockedStation			{ return nil; }
+@end
+
+
+@class PlayerEntity;
+extern PlayerEntity *gOOPlayer;
+
+namespace {
+
+void SetUpTestPlayer()
+{
+	static Entity *player = nil;
+	if (player == nil)  player = [[UniverseTestPlayer alloc] init];	// never released, as the player is not
+	gOOPlayer = (PlayerEntity *)player;
+}
+
+
+void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
+{
+	unsigned n = 0;
+	for (Entity *e : list)  u->_cxxUniverse->sortedEntities[n++] = e;
+	u->_cxxUniverse->sortedEntities[n] = nil;
+	u->_cxxUniverse->n_entities = n;
+}
+
+
+Entity *MakeEntity(HPVector position, GLfloat radius)
+{
+	SetUpTestPlayer();
+	Entity *entity = [[[Entity alloc] init] autorelease];
+	[entity setPosition:position];
+	[entity setCollisionRadius:radius];
+	return entity;
+}
+
+}	// namespace
+
+
+@interface Slice14GhostEntity: Entity	// an entity nothing collides with
+@end
+
+@implementation Slice14GhostEntity
+- (BOOL) canCollide	{ return NO; }
+@end
+
+
+OO_TEST(slice14NoEntity)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		HPVector p2 = make_HPvector(0, 0, 1000);
+
+		OO_CHECK(![u isVectorClearFromEntity:nil toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:nil toDistance:0 fromPoint:p2] == nil);
+		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:nil toDistance:0 fromPoint:p2], kZeroHPVector));
+		OO_CHECK([u firstShipHitByLaserFromShip:nil inDirection:WEAPON_FACING_FORWARD offset:kZeroVector gettingRangeFound:NULL] == nil);
+		// The demo ship needs a docked player; with none there is no ship.
+		SetUpTestPlayer();
+		OO_CHECK([u cxx_makeDemoShipWithRole:"oolite-test" spinning:YES] == nil);
+	}
+}
+
+
+OO_TEST(slice14ClearRoute)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		HPVector p2 = make_HPvector(0, 0, 1000);
+
+		// Nothing else in the universe: clear, no hazard, the destination is safe as it is.
+		SetSortedEntities(u, { e1 });
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == nil);
+		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:e1 toDistance:0 fromPoint:p2], p2));
+
+		// An entity off the route, behind the start, or beyond the destination is no hazard.
+		Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
+		Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
+		Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
+		SetSortedEntities(u, { e1, aside, behind, beyond });
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == nil);
+		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:e1 toDistance:0 fromPoint:p2], p2));
+
+		// An entity nothing collides with is no hazard either.
+		Entity *ghost = [[[Slice14GhostEntity alloc] init] autorelease];
+		[ghost setPosition:make_HPvector(0, 0, 500)];
+		[ghost setCollisionRadius:50];
+		SetSortedEntities(u, { e1, ghost });
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == nil);
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+OO_TEST(slice14Hazard)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
+		HPVector p2 = make_HPvector(0, 0, 1000);
+		SetSortedEntities(u, { e1, rock });
+
+		OO_CHECK(![u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == rock);
+
+		// The safe vector steers short of the rock and away from the side it is on.
+		HPVector safe = [u getSafeVectorFromEntity:e1 toDistance:0 fromPoint:p2];
+		OO_CHECK(!HPvector_equal(safe, p2));
+		OO_CHECK(safe.z < 500 && safe.x < 20);
+
+		// Within range of the destination already: clear, whatever is in the way.
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:2000 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:2000 fromPoint:p2] == nil);
+
+		// Stopping short of the rock: the route is clear.
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:600 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:600 fromPoint:p2] == nil);
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+// Slice 15 (bead oo-dg9d1): counting and finding entities by predicate, time, collisions, the view
+// direction. Written against the Objective-C API and run on the unconverted class first; the
+// entities sit in the sorted list by hand, as slice 14's.
+@interface Slice15ShipLike: Entity	// counts as a ship for the ship predicates
+@end
+
+@implementation Slice15ShipLike
+- (BOOL) isShip	{ return YES; }
+@end
+
+
+namespace {
+
+Entity *MakeShipLike(HPVector position, GLfloat radius)
+{
+	Entity *entity = [[[Slice15ShipLike alloc] init] autorelease];
+	[entity setPosition:position];
+	[entity setCollisionRadius:radius];
+	return entity;
+}
+
+
+BOOL IsFarPredicate(Entity *entity, void *parameter)	// x beyond *(double *)parameter
+{
+	return [entity position].x > *(double *)parameter;
+}
+
+}	// namespace
+
+
+OO_TEST(slice15CountAndFind)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *b = MakeEntity(make_HPvector(100, 0, 0), 10);
+		Entity *c = MakeShipLike(make_HPvector(1000, 0, 0), 10);
+		SetSortedEntities(u, { a, b, c });
+
+		// No predicate is every entity; no entity counts from the origin; the reference itself never counts.
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil] == 3);
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a] == 2);
+		// The range reaches the other entity's surface: b's is 90 away from a, c's 990.
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:95 ofEntity:a] == 1);
+		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:85 ofEntity:a] == 0);
+		double limit = 50;
+		OO_CHECK([u countEntitiesMatchingPredicate:IsFarPredicate parameter:&limit inRange:-1 ofEntity:nil] == 2);
+
+		// Ships: only c.
+		OO_CHECK([u countShipsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a] == 1);
+		OO_CHECK([u countShipsMatchingPredicate:IsFarPredicate parameter:&limit inRange:-1 ofEntity:nil] == 1);
+		OO_CHECK([u countShipsMatchingPredicate:NULL parameter:NULL inRange:500 ofEntity:a] == 0);
+
+		std::vector<oo::ObjCRef<Entity *>> found = [u cxx_findEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a];
+		OO_CHECK(found.size() == 2 && found[0].get() == b && found[1].get() == c);	// in the sorted list's order
+		found = [u cxx_findEntitiesMatchingPredicate:IsFarPredicate parameter:&limit inRange:95 ofEntity:a];
+		OO_CHECK(found.size() == 1 && found[0].get() == b);
+		found = [u cxx_findShipsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil];
+		OO_CHECK(found.size() == 1 && found[0].get() == c);
+		OO_CHECK([u cxx_findVisualEffectsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil].empty());
+
+		// Within range of an entity: the ships only; none for no entity.
+		OO_CHECK([u cxx_entitiesWithinRange:2000 ofEntity:a].size() == 1);
+		OO_CHECK([u cxx_entitiesWithinRange:500 ofEntity:a].empty());
+		OO_CHECK([u cxx_entitiesWithinRange:2000 ofEntity:nil].empty());
+
+		// The scan class.
+		[c setScanClass:CLASS_ROCK];
+		OO_CHECK([u countShipsWithScanClass:CLASS_ROCK inRange:-1 ofEntity:nil] == 1);
+		OO_CHECK([u countShipsWithScanClass:CLASS_NEUTRAL inRange:-1 ofEntity:nil] == 0);
+
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+OO_TEST(slice15FindOneAndNearest)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *a = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *b = MakeEntity(make_HPvector(300, 0, 0), 10);
+		Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
+		Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
+		SetSortedEntities(u, { a, b, c, d });
+		double limit = 250;
+
+		OO_CHECK([u findOneEntityMatchingPredicate:NULL parameter:NULL] == a);
+		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&limit] == b);
+		limit = 5000;
+		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&limit] == nil);
+
+		OO_CHECK([u nearestEntityMatchingPredicate:NULL parameter:NULL relativeToEntity:a] == c);
+		OO_CHECK([u nearestEntityMatchingPredicate:NULL parameter:NULL relativeToEntity:nil] == a);
+		limit = 250;
+		OO_CHECK([u nearestEntityMatchingPredicate:IsFarPredicate parameter:&limit relativeToEntity:a] == b);
+		OO_CHECK([u nearestShipMatchingPredicate:NULL parameter:NULL relativeToEntity:b] == c);
+		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&limit relativeToEntity:a] == nil);
+		limit = -1000;
+		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&limit relativeToEntity:c] == d);
+
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+OO_TEST(slice15TimeAndCollisions)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->universal_time = 12.5;
+		u->_cxxUniverse->time_delta = 0.25;
+		OO_CHECK([u getTime] == 12.5 && [u getTimeDelta] == 0.25);
+
+		// No collision region yet: the description is a dash.
+		OO_CHECK([u collisionDescription] == "-");
+		[u dumpCollisions];
+		OO_CHECK(u->_cxxUniverse->dumpCollisionInfo);
+
+		u->_cxxUniverse->viewDirection = VIEW_AFT;
+		OO_CHECK([u viewDirection] == VIEW_AFT);
+	}
+}
+
+
 OO_TEST_MAIN()

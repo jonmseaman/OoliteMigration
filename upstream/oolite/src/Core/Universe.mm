@@ -6042,921 +6042,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning
-{
-	if ([PLAYER dockedStation] == nil)  return nil;
-	
-	[self removeDemoShips];	// get rid of any pre-existing models on display
-	
-	[PLAYER setShowDemoShips: YES];
-	Quaternion q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0, (GLfloat)0.0 };
-	
-	ShipEntity *ship = [self cxx_newShipWithRole:role];   // retain count = 1
-	if (ship)
-	{
-		double cr = [ship collisionRadius];
-		[ship setOrientation:q2];
-		[ship setPositionX:0.0f y:0.0f z:3.6f * cr];
-		[ship setScanClass:CLASS_NO_DRAW];
-		[ship switchAITo:"nullAI.plist"];
-		[ship setPendingEscortCount:0];
-		
-		[UNIVERSE addEntity:ship];		// STATUS_IN_FLIGHT, AI state GLOBAL
-
-		if (spinning)
-		{
-			[ship setDemoShip: 1.0f];
-		}
-		else
-		{
-			[ship setDemoShip: 0.0f];
-		}
-		[ship setStatus:STATUS_COCKPIT_DISPLAY];
-		// stop problems on the ship library screen
-		// demo ships shouldn't have this equipment
-		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
-		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
-	}
-	
-	return [ship autorelease];
-}
-
-
-- (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2
-{
-	if (!e1)
-		return NO;
-	
-	HPVector  f1;
-	HPVector p1 = e1->_cxxEntity->position;
-	HPVector v1 = p2;
-	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
-	
-	double  nearest = sqrt(v1.x*v1.x + v1.y*v1.y + v1.z*v1.z) - dist;  // length of vector
-	
-	if (nearest < 0.0)
-		return YES;			// within range already!
-	
-	int i;
-	int ent_count = _cxxUniverse->n_entities;
-	Entity* my_entities[ent_count];
-	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; //	retained
-	
-	if (v1.x || v1.y || v1.z)
-		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
-	else
-		f1 = make_HPvector(0, 0, 1);
-	
-	for (i = 0; i < ent_count ; i++)
-	{
-		Entity *e2 = my_entities[i];
-		if ((e2 != e1)&&([e2 canCollide]))
-		{
-			HPVector epos = e2->_cxxEntity->position;
-			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
-			
-			double d_forward = HPdot_product(epos,f1);	// distance along f1 which is nearest to e2's position
-			
-			if ((d_forward > 0)&&(d_forward < nearest))
-			{
-				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
-				HPVector p0 = e1->_cxxEntity->position;
-				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
-				// p0 holds nearest point on current course to center of incident object
-				HPVector epos = e2->_cxxEntity->position;
-				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
-				// compare with center of incident object
-				double  dist2 = p0.x * p0.x + p0.y * p0.y + p0.z * p0.z;
-				if (dist2 < cr*cr)
-				{
-					for (i = 0; i < ent_count; i++)
-						[my_entities[i] release]; //	released
-					return NO;
-				}
-			}
-		}
-	}
-	for (i = 0; i < ent_count; i++)
-		[my_entities[i] release]; //	released
-	return YES;
-}
-
-
-- (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2
-{
-	if (!e1)
-		return nil;
-	
-	HPVector f1;
-	HPVector p1 = e1->_cxxEntity->position;
-	HPVector v1 = p2;
-	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
-	
-	double  nearest = HPmagnitude(v1) - dist;  // length of vector
-	
-	if (nearest < 0.0)
-		return nil;			// within range already!
-	
-	Entity* result = nil;
-	int i;
-	int ent_count = _cxxUniverse->n_entities;
-	Entity* my_entities[ent_count];
-	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; //	retained
-	
-	if (v1.x || v1.y || v1.z)
-		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
-	else
-		f1 = make_HPvector(0, 0, 1);
-	
-	for (i = 0; (i < ent_count) && (!result) ; i++)
-	{
-		Entity *e2 = my_entities[i];
-		if ((e2 != e1)&&([e2 canCollide]))
-		{
-			HPVector epos = e2->_cxxEntity->position;
-			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
-			
-			double d_forward = HPdot_product(epos,f1);	// distance along f1 which is nearest to e2's position
-			
-			if ((d_forward > 0)&&(d_forward < nearest))
-			{
-				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
-				HPVector p0 = e1->_cxxEntity->position;
-				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
-				// p0 holds nearest point on current course to center of incident object
-				HPVector epos = e2->_cxxEntity->position;
-				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
-				// compare with center of incident object
-				double  dist2 = HPmagnitude2(p0);
-				if (dist2 < cr*cr)
-					result = e2;
-			}
-		}
-	}
-	for (i = 0; i < ent_count; i++)
-		[my_entities[i] release]; //	released
-	return result;
-}
-
-
-- (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2
-{
-	// heuristic three
-	
-	if (!e1)
-	{
-		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No entity set in Universe getSafeVectorFromEntity:toDistance:fromPoint:");
-		return kZeroHPVector;
-	}
-	
-	HPVector  f1;
-	HPVector  result = p2;
-	int i;
-	int ent_count = _cxxUniverse->n_entities;
-	Entity* my_entities[ent_count];
-	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [_cxxUniverse->sortedEntities[i] retain];	// retained
-	HPVector p1 = e1->_cxxEntity->position;
-	HPVector v1 = p2;
-	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
-	
-	double  nearest = sqrt(v1.x*v1.x + v1.y*v1.y + v1.z*v1.z) - dist;  // length of vector
-	
-	if (v1.x || v1.y || v1.z)
-		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
-	else
-		f1 = make_HPvector(0, 0, 1);
-	
-	for (i = 0; i < ent_count; i++)
-	{
-		Entity *e2 = my_entities[i];
-		if ((e2 != e1)&&([e2 canCollide]))
-		{
-			HPVector epos = e2->_cxxEntity->position;
-			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z;
-			double d_forward = HPdot_product(epos,f1);
-			if ((d_forward > 0)&&(d_forward < nearest))
-			{
-				double cr = 1.20 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  20% safety margin
-				
-				HPVector p0 = e1->_cxxEntity->position;
-				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
-				// p0 holds nearest point on current course to center of incident object
-				
-				HPVector epos = e2->_cxxEntity->position;
-				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
-				// compare with center of incident object
-				
-				double  dist2 = p0.x * p0.x + p0.y * p0.y + p0.z * p0.z;
-				
-				if (dist2 < cr*cr)
-				{
-					result = e2->_cxxEntity->position;			// center of incident object
-					nearest = d_forward;
-					
-					if (dist2 == 0.0)
-					{
-						// ie. we're on a line through the object's center !
-						// jitter the position somewhat!
-						result.x += ((int)(Ranrot() % 1024) - 512)/512.0; //   -1.0 .. +1.0
-						result.y += ((int)(Ranrot() % 1024) - 512)/512.0; //   -1.0 .. +1.0
-						result.z += ((int)(Ranrot() % 1024) - 512)/512.0; //   -1.0 .. +1.0
-					}
-					
-					HPVector  nearest_point = p1;
-					nearest_point.x += d_forward * f1.x;	nearest_point.y += d_forward * f1.y;	nearest_point.z += d_forward * f1.z;
-					// nearest point now holds nearest point on line to center of incident object
-					
-					HPVector outward = nearest_point;
-					outward.x -= result.x;	outward.y -= result.y;	outward.z -= result.z;
-					if (outward.x||outward.y||outward.z)
-						outward = HPvector_normal(outward);
-					else
-						outward.y = 1.0;
-					// outward holds unit vector through the nearest point on the line from the center of incident object
-					
-					HPVector backward = p1;
-					backward.x -= result.x;	backward.y -= result.y;	backward.z -= result.z;
-					if (backward.x||backward.y||backward.z)
-						backward = HPvector_normal(backward);
-					else
-						backward.z = -1.0;
-					// backward holds unit vector from center of the incident object to the center of the ship
-					
-					HPVector dd = result;
-					dd.x -= p1.x; dd.y -= p1.y; dd.z -= p1.z;
-					double current_distance = HPmagnitude(dd);
-					
-					// sanity check current_distance
-					if (current_distance < cr * 1.25)	// 25% safety margin
-						current_distance = cr * 1.25;
-					if (current_distance > cr * 5.0)	// up to 2 diameters away 
-						current_distance = cr * 5.0;
-					
-					// choose a point that's three parts backward and one part outward
-					
-					result.x += 0.25 * (outward.x * current_distance) + 0.75 * (backward.x * current_distance);		// push 'out' by this amount
-					result.y += 0.25 * (outward.y * current_distance) + 0.75 * (backward.y * current_distance);
-					result.z += 0.25 * (outward.z * current_distance) + 0.75 * (backward.z * current_distance);
-					
-				}
-			}
-		}
-	}
-	for (i = 0; i < ent_count; i++)
-		[my_entities[i] release]; //	released
-	return result;
-}
-
-
-- (ShipEntity*) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime
-{
-	ShipEntity* wreck = [UNIVERSE cxx_newShipWithRole:wreckRole];   // retain count = 1
-	Quaternion q;
-	if (wreck)
-	{
-		GLfloat expected_mass = 0.1f * [ship mass] * (0.75 + 0.5 * randf());
-		GLfloat wreck_mass = [wreck mass];
-		GLfloat scale_factor = powf(expected_mass / wreck_mass, 0.33333333f) * scale;	// cube root of volume ratio
-		[wreck rescaleBy:scale_factor writeToCache:NO];
-
-		[wreck setPosition:rpos];
-
-		[wreck setVelocity:[ship velocity]];
-
-		quaternion_set_random(&q);
-		[wreck setOrientation:q];
-							
-		[wreck setTemperature: 1000.0];		// take 1000e heat damage per second
-		[wreck setHeatInsulation: 1.0e7];	// very large! so it won't cool down
-		[wreck setEnergy: lifetime];
-							
-		[wreck setIsWreckage:YES];
-
-		[UNIVERSE addEntity:wreck];	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[wreck performTumble];
-		//	[wreck rescaleBy: 1.0/scale_factor];
-		[wreck release];
-	}
-	return wreck;
-}
-
-
-
-- (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color
-{
-	// low energy, start getting small surface explosions
-	if ([target showDamage] && [target energy] < [target maxEnergy]/2)
-	{
-		const char *key = (randf() < 0.5) ? "oolite-hull-spark" : "oolite-hull-spark-b";
-		const oo::PList settings = [UNIVERSE cxx_explosionSetting:key];
-		oo::Ref<OOExplosionCloudEntity> burst = OOExplosionCloudEntity::explosionCloudFromEntity(target, settings);
-		if (burst != nullptr)  burst->setPosition(pos);
-		[self addEntity:oo::NewEntityFacade(burst)];
-		if ([target energy] * randf() < damage)
-		{
-			ShipEntity *wreck = [self cxx_addWreckageFrom:target withRole:"oolite-wreckage-chunk" at:pos scale:0.05 lifetime:(125.0+(randf()*200.0))];
-			if (wreck)
-			{
-				Vector direction = HPVectorToVector(HPvector_normal(HPvector_subtract(pos,[target position])));
-				[wreck setVelocity:vector_add([wreck velocity],vector_multiply_scalar(direction,10+20*randf()))];
-			}
-		}
-	}
-	else
-	{
-		[self addEntity:[OOFlashEffectEntity laserFlashWithPosition:pos velocity:[target velocity] color:color]];
-	}
-}
-
-
-- (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat *)range_ptr
-{
-	if (srcEntity == nil) return nil;
-	
-	ShipEntity		*hit_entity = nil;
-	ShipEntity		*hit_subentity = nil;
-	HPVector			p0 = [srcEntity position];
-	Quaternion		q1 = [srcEntity normalOrientation];
-	ShipEntity		*parent = [srcEntity parentEntity];
-	
-	if (parent)
-	{
-		// we're a subentity!
-		BoundingBox bbox = [srcEntity boundingBox];
-		HPVector midfrontplane = make_HPvector(0.5 * (bbox.max.x + bbox.min.x), 0.5 * (bbox.max.y + bbox.min.y), bbox.max.z);
-		p0 = [srcEntity absolutePositionForSubentityOffset:midfrontplane];
-		q1 = [parent orientation];
-		if ([parent isPlayer])  q1.w = -q1.w;
-	}
-	
-	double			nearest = [srcEntity weaponRange];
-	int				i;
-	int				ent_count = _cxxUniverse->n_entities;
-	int				ship_count = 0;
-	ShipEntity		*my_entities[ent_count];
-	
-	for (i = 0; i < ent_count; i++)
-	{
-		Entity* ent = _cxxUniverse->sortedEntities[i];
-		if (ent != srcEntity && ent != parent && [ent isShip] && [ent canCollide])
-		{
-			my_entities[ship_count++] = [(ShipEntity *)ent retain];
-		}
-	}
-	
-	
-	Vector u1, f1, r1;
-	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
-	p0 = HPvector_add(p0, vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
-	
-	switch (direction)
-	{
-		case WEAPON_FACING_FORWARD:
-		case WEAPON_FACING_NONE:
-			break;
-			
-		case WEAPON_FACING_AFT:
-			quaternion_rotate_about_axis(&q1, u1, M_PI);
-			break;
-			
-		case WEAPON_FACING_PORT:
-			quaternion_rotate_about_axis(&q1, u1, M_PI/2.0);
-			break;
-			
-		case WEAPON_FACING_STARBOARD:
-			quaternion_rotate_about_axis(&q1, u1, -M_PI/2.0);
-			break;
-	}
-	
-	basis_vectors_from_quaternion(q1, &r1, NULL, &f1);
-	HPVector p1 = HPvector_add(p0, vectorToHPVector(vector_multiply_scalar(f1, nearest)));	//endpoint
-	
-	for (i = 0; i < ship_count; i++)
-	{
-		ShipEntity *e2 = my_entities[i];
-		
-		// check outermost bounding sphere
-		GLfloat cr = e2->_cxxEntity->collision_radius;
-		Vector rpos = HPVectorToVector(HPvector_subtract(e2->_cxxEntity->position, p0));
-		Vector v_off = make_vector(dot_product(rpos, r1), dot_product(rpos, u1), dot_product(rpos, f1));
-		if (v_off.z > 0.0 && v_off.z < nearest + cr &&								// ahead AND within range
-			v_off.x < cr && v_off.x > -cr && v_off.y < cr && v_off.y > -cr &&		// AND not off to one side or another
-			v_off.x * v_off.x + v_off.y * v_off.y < cr * cr)						// AND not off to both sides
-		{
-			ShipEntity *entHit = nil;
-			GLfloat hit = [(ShipEntity *)e2 doesHitLine:p0 :p1 :&entHit];	// octree detection
-			
-			if (hit > 0.0 && hit < nearest)
-			{
-				if ([entHit isSubEntity])
-				{
-					hit_subentity = entHit;
-				}
-				hit_entity = e2;
-				nearest = hit;
-				p1 = HPvector_add(p0, vectorToHPVector(vector_multiply_scalar(f1, nearest)));
-			}
-		}
-	}
-	
-	if (hit_entity)
-	{
-		// I think the above code does not guarantee that the closest hit_subentity belongs to the closest hit_entity.
-		if (hit_subentity && [hit_subentity owner] == hit_entity)  [hit_entity setSubEntityTakingDamage:hit_subentity];
-		
-		if (range_ptr != NULL)
-		{
-			*range_ptr = nearest;
-		}
-	}
-	
-	for (i = 0; i < ship_count; i++)  [my_entities[i] release]; //	released
-	
-	return hit_entity;
-}
-
-
-- (Entity *) firstEntityTargetedByPlayer
-{
-	PlayerEntity	*player = PLAYER;
-	Entity			*hit_entity = nil;
-	OOScalar		nearest2 = SCANNER_MAX_RANGE - 100;	// 100m shorter than range at which target is lost
-	nearest2 *= nearest2;
-	int				i;
-	int				ent_count = _cxxUniverse->n_entities;
-	int				ship_count = 0;
-	Entity			*my_entities[ent_count];
-	
-	for (i = 0; i < ent_count; i++)
-	{
-		if (([_cxxUniverse->sortedEntities[i] isShip] && ![_cxxUniverse->sortedEntities[i] isPlayer]) || [_cxxUniverse->sortedEntities[i] isWormhole])
-		{
-			my_entities[ship_count++] = [_cxxUniverse->sortedEntities[i] retain];
-		}
-	}
-	
-	Quaternion q1 = [player normalOrientation];
-	Vector u1, f1, r1;
-	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
-	Vector offset = [player weaponViewOffset];
-	
-	HPVector p1 = HPvector_add([player position], vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
-	
-	// Note: deliberately tied to view direction, not weapon facing. All custom views count as forward for targeting.
-	switch (_cxxUniverse->viewDirection)
-	{
-		case VIEW_AFT :
-			quaternion_rotate_about_axis(&q1, u1, M_PI);
-			break;
-		case VIEW_PORT :
-			quaternion_rotate_about_axis(&q1, u1, 0.5 * M_PI);
-			break;
-		case VIEW_STARBOARD :
-			quaternion_rotate_about_axis(&q1, u1, -0.5 * M_PI);
-			break;
-		default:
-			break;
-	}
-	basis_vectors_from_quaternion(q1, &r1, NULL, &f1);
-	
-	for (i = 0; i < ship_count; i++)
-	{
-		Entity *e2 = my_entities[i];
-		if ([e2 canCollide] && [e2 scanClass] != CLASS_NO_DRAW)
-		{
-			Vector rp = HPVectorToVector(HPvector_subtract([e2 position], p1));
-			OOScalar dist2 = magnitude2(rp);
-			if (dist2 < nearest2)
-			{
-				OOScalar df = dot_product(f1, rp);
-				if (df > 0.0 && df * df < nearest2)
-				{
-					OOScalar du = dot_product(u1, rp);
-					OOScalar dr = dot_product(r1, rp);
-					OOScalar cr = [e2 collisionRadius];
-					if (du * du + dr * dr < cr * cr)
-					{
-						hit_entity = e2;
-						nearest2 = dist2;
-					}
-				}
-			}
-		}
-	}
-	// check for MASC'M
-	if (hit_entity != nil && [hit_entity isShip])
-	{
-		ShipEntity* ship = (ShipEntity*)hit_entity;
-		if ([ship isJammingScanning] && ![player hasMilitaryScannerFilter])
-		{
-			hit_entity = nil;
-		}
-	}
-	
-	for (i = 0; i < ship_count; i++)
-	{
-		[my_entities[i] release];
-	}
-	
-	return hit_entity;
-}
-
-
-- (Entity *) firstEntityTargetedByPlayerPrecisely
-{
-	OOWeaponFacing targetFacing;
-	Vector laserPortOffset = kZeroVector;
-	PlayerEntity *player = PLAYER;
-	// The first weapon offset, or the zero vector for none (as -oo_vectorAtIndex:0 of the old array).
-	const auto firstWeaponOffset = [](const std::vector<Vector> &offsets) { return offsets.empty() ? kZeroVector : offsets.front(); };
-
-	switch (_cxxUniverse->viewDirection)
-	{
-		case VIEW_FORWARD:
-			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
-			break;
-			
-		case VIEW_AFT:
-			targetFacing = WEAPON_FACING_AFT;
-			laserPortOffset = firstWeaponOffset([player cxx_aftWeaponOffset]);
-			break;
-			
-		case VIEW_PORT:
-			targetFacing = WEAPON_FACING_PORT;
-			laserPortOffset = firstWeaponOffset([player cxx_portWeaponOffset]);
-			break;
-			
-		case VIEW_STARBOARD:
-			targetFacing = WEAPON_FACING_STARBOARD;
-			laserPortOffset = firstWeaponOffset([player cxx_starboardWeaponOffset]);
-			break;
-			
-		default:
-			// Match behaviour of -firstEntityTargetedByPlayer.
-			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
-	}
-	
-	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity
-{
-	if (entity == nil)  return {};
-
-	return [self cxx_findShipsMatchingPredicate:YESPredicate
-								  parameter:NULL
-									inRange:range
-								   ofEntity:entity];
-}
-
-
-// The role predicates read a std::string, held here for the call.
-- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
-{
-	std::string roleParameter = role;
-	return [self countShipsMatchingPredicate:HasRolePredicate
-							   parameter:&roleParameter
-								 inRange:range
-								ofEntity:entity];
-}
-
-
-- (unsigned) cxx_countShipsWithRole:(const std::string &)role
-{
-	return [self cxx_countShipsWithRole:role inRange:-1 ofEntity:nil];
-}
-
-
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
-{
-	std::string roleParameter = role;
-	return [self countShipsMatchingPredicate:HasPrimaryRolePredicate
-							   parameter:&roleParameter
-								 inRange:range
-								ofEntity:entity];
-}
-
-
-// HasScanClassPredicate reads the scan class as an OOScanClass.
-- (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity
-{
-	return [self countShipsMatchingPredicate:HasScanClassPredicate
-							   parameter:&scanClass
-								 inRange:range
-								ofEntity:entity];
-}
-
-
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role
-{
-	return [self cxx_countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
-}
-
-
-- (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-								  parameter:(void *)parameter
-									inRange:(double)range
-								   ofEntity:(Entity *)e1
-{
-	unsigned		i, found = 0;
-	HPVector			p1;
-	double			distance, cr;
-	
-	if (predicate == NULL)  predicate = YESPredicate;
-	
-	if (e1 != nil)  p1 = e1->_cxxEntity->position;
-	else  p1 = kZeroHPVector;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		if (e2 != e1 && predicate(e2, parameter))
-		{
-			if (range < 0)  distance = -1;	// Negative range means infinity
-			else
-			{
-				cr = range + e2->_cxxEntity->collision_radius;
-				distance = HPdistance2(e2->_cxxEntity->position, p1) - cr * cr;
-			}
-			if (distance < 0)
-			{
-				found++;
-			}
-		}
-	}
-	
-	return found;
-}
-
-
-- (unsigned) countShipsMatchingPredicate:(EntityFilterPredicate)predicate
-							   parameter:(void *)parameter
-								 inRange:(double)range
-								ofEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsShipPredicate, NULL,
-			predicate, parameter
-		};
-		
-		return [self countEntitiesMatchingPredicate:ANDPredicate
-										  parameter:&param
-											inRange:range
-										   ofEntity:entity];
-	}
-	else
-	{
-		return [self countEntitiesMatchingPredicate:IsShipPredicate
-										  parameter:NULL
-											inRange:range
-										   ofEntity:entity];
-	}
-}
-
-
 OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 {
 	if (range < 0)  return YES;
 	float cr = range + e2->_cxxEntity->collision_radius;
 	return HPdistance2(e2->_cxxEntity->position,p1) < cr * cr;
-}
-
-
-// NOTE: OOJSSystem relies on this returning entities in distance-from-player order.
-// This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-								  parameter:(void *)parameter
-									inRange:(double)range
-								   ofEntity:(Entity *)e1
-{
-	OOJS_PROFILE_ENTER
-
-	unsigned		i;
-	HPVector			p1;
-	std::vector<oo::ObjCRef<Entity *>>	result;
-
-	OOJSPauseTimeLimiter();
-
-	if (predicate == NULL)  predicate = YESPredicate;
-
-	result.reserve(_cxxUniverse->n_entities);
-	
-	if (e1 != nil)  p1 = [e1 position];
-	else  p1 = kZeroHPVector;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		
-		if (e1 != e2 &&
-			EntityInRange(p1, e2, range) &&
-			predicate(e2, parameter))
-		{
-			result.emplace_back(e2);
-		}
-	}
-
-	OOJSResumeTimeLimiter();
-
-	return result;
-
-	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<Entity *>>())
-}
-
-
-- (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate
-							parameter:(void *)parameter
-{
-	unsigned		i;
-	Entity			*candidate = nil;
-	
-	OOJSPauseTimeLimiter();
-	
-	if (predicate == NULL)  predicate = YESPredicate;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		candidate = _cxxUniverse->sortedEntities[i];
-		if (predicate(candidate, parameter))  return candidate;
-	}
-	
-	OOJSResumeTimeLimiter();
-	
-	return nil;
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
-									  parameter:(void *)parameter
-										inRange:(double)range
-									   ofEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsShipPredicate, NULL,
-			predicate, parameter
-		};
-
-		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
-										 parameter:&param
-										   inRange:range
-										  ofEntity:entity];
-	}
-	else
-	{
-		return [self cxx_findEntitiesMatchingPredicate:IsShipPredicate
-										 parameter:NULL
-										   inRange:range
-										  ofEntity:entity];
-	}
-}
-
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
-									  parameter:(void *)parameter
-										inRange:(double)range
-									   ofEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsVisualEffectPredicate, NULL,
-			predicate, parameter
-		};
-
-		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
-										 parameter:&param
-										   inRange:range
-										  ofEntity:entity];
-	}
-	else
-	{
-		return [self cxx_findEntitiesMatchingPredicate:IsVisualEffectPredicate
-										 parameter:NULL
-										   inRange:range
-										  ofEntity:entity];
-	}
-}
-
-
-- (id) nearestEntityMatchingPredicate:(EntityFilterPredicate)predicate
-							parameter:(void *)parameter
-					 relativeToEntity:(Entity *)entity
-{
-	unsigned		i;
-	HPVector			p1;
-	float			rangeSq = INFINITY;
-	id				result = nil;
-	
-	if (predicate == NULL)  predicate = YESPredicate;
-	
-	if (entity != nil)  p1 = [entity position];
-	else  p1 = kZeroHPVector;
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		Entity *e2 = _cxxUniverse->sortedEntities[i];
-		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, [e2 position]);
-		
-		if (entity != e2 &&
-			distanceToReferenceEntitySquared < rangeSq &&
-			predicate(e2, parameter))
-		{
-			result = e2;
-			rangeSq = distanceToReferenceEntitySquared;
-		}
-	}
-	
-	return [[result retain] autorelease];
-}
-
-
-- (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate
-						  parameter:(void *)parameter
-				   relativeToEntity:(Entity *)entity
-{
-	if (predicate != NULL)
-	{
-		BinaryOperationPredicateParameter param =
-		{
-			IsShipPredicate, NULL,
-			predicate, parameter
-		};
-		
-		return [self nearestEntityMatchingPredicate:ANDPredicate
-										  parameter:&param
-								   relativeToEntity:entity];
-	}
-	else
-	{
-		return [self nearestEntityMatchingPredicate:IsShipPredicate
-										  parameter:NULL
-								   relativeToEntity:entity];
-	}
-}
-
-
-- (OOTimeAbsolute) getTime
-{
-	return _cxxUniverse->universal_time;
-}
-
-
-- (OOTimeDelta) getTimeDelta
-{
-	return _cxxUniverse->time_delta;
-}
-
-
-- (void) findCollisionsAndShadows
-{
-	unsigned i;
-	
-	[_cxxUniverse->universeRegion clearEntityList];
-	
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		[_cxxUniverse->universeRegion checkEntity:_cxxUniverse->sortedEntities[i]];	// sorts out which region it's in
-	}
-	
-	if (![[self gameController] isGamePaused])
-	{
-		[_cxxUniverse->universeRegion findCollisions];
-	}
-	
-	// do check for entities that can't see the sun!
-	[_cxxUniverse->universeRegion findShadowedEntities];
-}
-
-
-- (std::string) collisionDescription
-{
-	if (_cxxUniverse->universeRegion != nil)  return [_cxxUniverse->universeRegion collisionDescription];
-	else  return "-";
-}
-
-
-- (void) dumpCollisions
-{
-	_cxxUniverse->dumpCollisionInfo = YES;
-}
-
-
-- (OOViewID) viewDirection
-{
-	return _cxxUniverse->viewDirection;
 }
 
 
@@ -11779,3 +10869,934 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 passed:
 	return cxx_OOLookUpDescriptionPRIV(oo::str::format("%s%%%ld", key.c_str(), index));
 }
+
+
+// Slice 14 of docs/phases/3-slices/Universe.md (bead oo-7jhs5): making demo ships, safe vectors, hazards on route, wreckage, laser hits. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+::ShipEntity *Universe::makeDemoShipWithRole(const std::string &role, bool spinning)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if ([PLAYER dockedStation] == nil)  return nil;
+	
+	[self removeDemoShips];	// get rid of any pre-existing models on display
+	
+	[PLAYER setShowDemoShips: YES];
+	Quaternion q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0, (GLfloat)0.0 };
+	
+	::ShipEntity *ship = [self cxx_newShipWithRole:role];   // retain count = 1
+	if (ship)
+	{
+		double cr = [ship collisionRadius];
+		[ship setOrientation:q2];
+		[ship setPositionX:0.0f y:0.0f z:3.6f * cr];
+		[ship setScanClass:CLASS_NO_DRAW];
+		[ship switchAITo:"nullAI.plist"];
+		[ship setPendingEscortCount:0];
+		
+		[UNIVERSE addEntity:ship];		// STATUS_IN_FLIGHT, AI state GLOBAL
+
+		if (spinning)
+		{
+			[ship setDemoShip: 1.0f];
+		}
+		else
+		{
+			[ship setDemoShip: 0.0f];
+		}
+		[ship setStatus:STATUS_COCKPIT_DISPLAY];
+		// stop problems on the ship library screen
+		// demo ships shouldn't have this equipment
+		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
+	}
+	
+	return [ship autorelease];
+}
+
+
+bool Universe::isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2)
+{
+	if (!e1)
+		return NO;
+	
+	HPVector  f1;
+	HPVector p1 = e1->_cxxEntity->position;
+	HPVector v1 = p2;
+	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
+	
+	double  nearest = sqrt(v1.x*v1.x + v1.y*v1.y + v1.z*v1.z) - dist;  // length of vector
+	
+	if (nearest < 0.0)
+		return YES;			// within range already!
+	
+	int i;
+	int ent_count = n_entities;
+	::Entity* my_entities[ent_count];
+	for (i = 0; i < ent_count; i++)
+		my_entities[i] = [sortedEntities[i] retain]; //	retained
+	
+	if (v1.x || v1.y || v1.z)
+		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
+	else
+		f1 = make_HPvector(0, 0, 1);
+	
+	for (i = 0; i < ent_count ; i++)
+	{
+		::Entity *e2 = my_entities[i];
+		if ((e2 != e1)&&([e2 canCollide]))
+		{
+			HPVector epos = e2->_cxxEntity->position;
+			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
+			
+			double d_forward = HPdot_product(epos,f1);	// distance along f1 which is nearest to e2's position
+			
+			if ((d_forward > 0)&&(d_forward < nearest))
+			{
+				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
+				HPVector p0 = e1->_cxxEntity->position;
+				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
+				// p0 holds nearest point on current course to center of incident object
+				HPVector epos = e2->_cxxEntity->position;
+				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
+				// compare with center of incident object
+				double  dist2 = p0.x * p0.x + p0.y * p0.y + p0.z * p0.z;
+				if (dist2 < cr*cr)
+				{
+					for (i = 0; i < ent_count; i++)
+						[my_entities[i] release]; //	released
+					return NO;
+				}
+			}
+		}
+	}
+	for (i = 0; i < ent_count; i++)
+		[my_entities[i] release]; //	released
+	return YES;
+}
+
+
+::Entity *Universe::hazardOnRouteFromEntity(::Entity *e1, double dist, HPVector p2)
+{
+	if (!e1)
+		return nil;
+	
+	HPVector f1;
+	HPVector p1 = e1->_cxxEntity->position;
+	HPVector v1 = p2;
+	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
+	
+	double  nearest = HPmagnitude(v1) - dist;  // length of vector
+	
+	if (nearest < 0.0)
+		return nil;			// within range already!
+	
+	::Entity* result = nil;
+	int i;
+	int ent_count = n_entities;
+	::Entity* my_entities[ent_count];
+	for (i = 0; i < ent_count; i++)
+		my_entities[i] = [sortedEntities[i] retain]; //	retained
+	
+	if (v1.x || v1.y || v1.z)
+		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
+	else
+		f1 = make_HPvector(0, 0, 1);
+	
+	for (i = 0; (i < ent_count) && (!result) ; i++)
+	{
+		::Entity *e2 = my_entities[i];
+		if ((e2 != e1)&&([e2 canCollide]))
+		{
+			HPVector epos = e2->_cxxEntity->position;
+			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z; // epos now holds vector from p1 to this entities position
+			
+			double d_forward = HPdot_product(epos,f1);	// distance along f1 which is nearest to e2's position
+			
+			if ((d_forward > 0)&&(d_forward < nearest))
+			{
+				double cr = 1.10 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  10% safety margin
+				HPVector p0 = e1->_cxxEntity->position;
+				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
+				// p0 holds nearest point on current course to center of incident object
+				HPVector epos = e2->_cxxEntity->position;
+				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
+				// compare with center of incident object
+				double  dist2 = HPmagnitude2(p0);
+				if (dist2 < cr*cr)
+					result = e2;
+			}
+		}
+	}
+	for (i = 0; i < ent_count; i++)
+		[my_entities[i] release]; //	released
+	return result;
+}
+
+
+HPVector Universe::getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p2)
+{
+	// heuristic three
+	
+	if (!e1)
+	{
+		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No entity set in Universe getSafeVectorFromEntity:toDistance:fromPoint:");
+		return kZeroHPVector;
+	}
+	
+	HPVector  f1;
+	HPVector  result = p2;
+	int i;
+	int ent_count = n_entities;
+	::Entity* my_entities[ent_count];
+	for (i = 0; i < ent_count; i++)
+		my_entities[i] = [sortedEntities[i] retain];	// retained
+	HPVector p1 = e1->_cxxEntity->position;
+	HPVector v1 = p2;
+	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
+	
+	double  nearest = sqrt(v1.x*v1.x + v1.y*v1.y + v1.z*v1.z) - dist;  // length of vector
+	
+	if (v1.x || v1.y || v1.z)
+		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
+	else
+		f1 = make_HPvector(0, 0, 1);
+	
+	for (i = 0; i < ent_count; i++)
+	{
+		::Entity *e2 = my_entities[i];
+		if ((e2 != e1)&&([e2 canCollide]))
+		{
+			HPVector epos = e2->_cxxEntity->position;
+			epos.x -= p1.x;	epos.y -= p1.y;	epos.z -= p1.z;
+			double d_forward = HPdot_product(epos,f1);
+			if ((d_forward > 0)&&(d_forward < nearest))
+			{
+				double cr = 1.20 * (e2->_cxxEntity->collision_radius + e1->_cxxEntity->collision_radius); //  20% safety margin
+				
+				HPVector p0 = e1->_cxxEntity->position;
+				p0.x += d_forward * f1.x;	p0.y += d_forward * f1.y;	p0.z += d_forward * f1.z;
+				// p0 holds nearest point on current course to center of incident object
+				
+				HPVector epos = e2->_cxxEntity->position;
+				p0.x -= epos.x;	p0.y -= epos.y;	p0.z -= epos.z;
+				// compare with center of incident object
+				
+				double  dist2 = p0.x * p0.x + p0.y * p0.y + p0.z * p0.z;
+				
+				if (dist2 < cr*cr)
+				{
+					result = e2->_cxxEntity->position;			// center of incident object
+					nearest = d_forward;
+					
+					if (dist2 == 0.0)
+					{
+						// ie. we're on a line through the object's center !
+						// jitter the position somewhat!
+						result.x += ((int)(Ranrot() % 1024) - 512)/512.0; //   -1.0 .. +1.0
+						result.y += ((int)(Ranrot() % 1024) - 512)/512.0; //   -1.0 .. +1.0
+						result.z += ((int)(Ranrot() % 1024) - 512)/512.0; //   -1.0 .. +1.0
+					}
+					
+					HPVector  nearest_point = p1;
+					nearest_point.x += d_forward * f1.x;	nearest_point.y += d_forward * f1.y;	nearest_point.z += d_forward * f1.z;
+					// nearest point now holds nearest point on line to center of incident object
+					
+					HPVector outward = nearest_point;
+					outward.x -= result.x;	outward.y -= result.y;	outward.z -= result.z;
+					if (outward.x||outward.y||outward.z)
+						outward = HPvector_normal(outward);
+					else
+						outward.y = 1.0;
+					// outward holds unit vector through the nearest point on the line from the center of incident object
+					
+					HPVector backward = p1;
+					backward.x -= result.x;	backward.y -= result.y;	backward.z -= result.z;
+					if (backward.x||backward.y||backward.z)
+						backward = HPvector_normal(backward);
+					else
+						backward.z = -1.0;
+					// backward holds unit vector from center of the incident object to the center of the ship
+					
+					HPVector dd = result;
+					dd.x -= p1.x; dd.y -= p1.y; dd.z -= p1.z;
+					double current_distance = HPmagnitude(dd);
+					
+					// sanity check current_distance
+					if (current_distance < cr * 1.25)	// 25% safety margin
+						current_distance = cr * 1.25;
+					if (current_distance > cr * 5.0)	// up to 2 diameters away 
+						current_distance = cr * 5.0;
+					
+					// choose a point that's three parts backward and one part outward
+					
+					result.x += 0.25 * (outward.x * current_distance) + 0.75 * (backward.x * current_distance);		// push 'out' by this amount
+					result.y += 0.25 * (outward.y * current_distance) + 0.75 * (backward.y * current_distance);
+					result.z += 0.25 * (outward.z * current_distance) + 0.75 * (backward.z * current_distance);
+					
+				}
+			}
+		}
+	}
+	for (i = 0; i < ent_count; i++)
+		[my_entities[i] release]; //	released
+	return result;
+}
+
+
+::ShipEntity *Universe::addWreckageFrom(::ShipEntity *ship, const std::string &wreckRole, HPVector rpos, GLfloat scale, GLfloat lifetime)
+{
+	::ShipEntity* wreck = [UNIVERSE cxx_newShipWithRole:wreckRole];   // retain count = 1
+	Quaternion q;
+	if (wreck)
+	{
+		GLfloat expected_mass = 0.1f * [ship mass] * (0.75 + 0.5 * randf());
+		GLfloat wreck_mass = [wreck mass];
+		GLfloat scale_factor = powf(expected_mass / wreck_mass, 0.33333333f) * scale;	// cube root of volume ratio
+		[wreck rescaleBy:scale_factor writeToCache:NO];
+
+		[wreck setPosition:rpos];
+
+		[wreck setVelocity:[ship velocity]];
+
+		quaternion_set_random(&q);
+		[wreck setOrientation:q];
+							
+		[wreck setTemperature: 1000.0];		// take 1000e heat damage per second
+		[wreck setHeatInsulation: 1.0e7];	// very large! so it won't cool down
+		[wreck setEnergy: lifetime];
+							
+		[wreck setIsWreckage:YES];
+
+		[UNIVERSE addEntity:wreck];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		[wreck performTumble];
+		//	[wreck rescaleBy: 1.0/scale_factor];
+		[wreck release];
+	}
+	return wreck;
+}
+
+
+void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float damage, ::OOColor *color)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	// low energy, start getting small surface explosions
+	if ([target showDamage] && [target energy] < [target maxEnergy]/2)
+	{
+		const char *key = (randf() < 0.5) ? "oolite-hull-spark" : "oolite-hull-spark-b";
+		const oo::PList settings = [UNIVERSE cxx_explosionSetting:key];
+		oo::Ref<::OOExplosionCloudEntity> burst = ::OOExplosionCloudEntity::explosionCloudFromEntity(target, settings);
+		if (burst != nullptr)  burst->setPosition(pos);
+		[self addEntity:oo::NewEntityFacade(burst)];
+		if ([target energy] * randf() < damage)
+		{
+			::ShipEntity *wreck = [self cxx_addWreckageFrom:target withRole:"oolite-wreckage-chunk" at:pos scale:0.05 lifetime:(125.0+(randf()*200.0))];
+			if (wreck)
+			{
+				Vector direction = HPVectorToVector(HPvector_normal(HPvector_subtract(pos,[target position])));
+				[wreck setVelocity:vector_add([wreck velocity],vector_multiply_scalar(direction,10+20*randf()))];
+			}
+		}
+	}
+	else
+	{
+		[self addEntity:[::OOFlashEffectEntity laserFlashWithPosition:pos velocity:[target velocity] color:color]];
+	}
+}
+
+
+::ShipEntity *Universe::firstShipHitByLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset, GLfloat *range_ptr)
+{
+	if (srcEntity == nil) return nil;
+	
+	::ShipEntity		*hit_entity = nil;
+	::ShipEntity		*hit_subentity = nil;
+	HPVector			p0 = [srcEntity position];
+	Quaternion		q1 = [srcEntity normalOrientation];
+	::ShipEntity		*parent = [srcEntity parentEntity];
+	
+	if (parent)
+	{
+		// we're a subentity!
+		BoundingBox bbox = [srcEntity boundingBox];
+		HPVector midfrontplane = make_HPvector(0.5 * (bbox.max.x + bbox.min.x), 0.5 * (bbox.max.y + bbox.min.y), bbox.max.z);
+		p0 = [srcEntity absolutePositionForSubentityOffset:midfrontplane];
+		q1 = [parent orientation];
+		if ([parent isPlayer])  q1.w = -q1.w;
+	}
+	
+	double			nearest = [srcEntity weaponRange];
+	int				i;
+	int				ent_count = n_entities;
+	int				ship_count = 0;
+	::ShipEntity		*my_entities[ent_count];
+	
+	for (i = 0; i < ent_count; i++)
+	{
+		::Entity* ent = sortedEntities[i];
+		if (ent != srcEntity && ent != parent && [ent isShip] && [ent canCollide])
+		{
+			my_entities[ship_count++] = [(::ShipEntity *)ent retain];
+		}
+	}
+	
+	
+	Vector u1, f1, r1;
+	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
+	p0 = HPvector_add(p0, vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
+	
+	switch (direction)
+	{
+		case WEAPON_FACING_FORWARD:
+		case WEAPON_FACING_NONE:
+			break;
+			
+		case WEAPON_FACING_AFT:
+			quaternion_rotate_about_axis(&q1, u1, M_PI);
+			break;
+			
+		case WEAPON_FACING_PORT:
+			quaternion_rotate_about_axis(&q1, u1, M_PI/2.0);
+			break;
+			
+		case WEAPON_FACING_STARBOARD:
+			quaternion_rotate_about_axis(&q1, u1, -M_PI/2.0);
+			break;
+	}
+	
+	basis_vectors_from_quaternion(q1, &r1, NULL, &f1);
+	HPVector p1 = HPvector_add(p0, vectorToHPVector(vector_multiply_scalar(f1, nearest)));	//endpoint
+	
+	for (i = 0; i < ship_count; i++)
+	{
+		::ShipEntity *e2 = my_entities[i];
+		
+		// check outermost bounding sphere
+		GLfloat cr = e2->_cxxEntity->collision_radius;
+		Vector rpos = HPVectorToVector(HPvector_subtract(e2->_cxxEntity->position, p0));
+		Vector v_off = make_vector(dot_product(rpos, r1), dot_product(rpos, u1), dot_product(rpos, f1));
+		if (v_off.z > 0.0 && v_off.z < nearest + cr &&								// ahead AND within range
+			v_off.x < cr && v_off.x > -cr && v_off.y < cr && v_off.y > -cr &&		// AND not off to one side or another
+			v_off.x * v_off.x + v_off.y * v_off.y < cr * cr)						// AND not off to both sides
+		{
+			::ShipEntity *entHit = nil;
+			GLfloat hit = [(::ShipEntity *)e2 doesHitLine:p0 :p1 :&entHit];	// octree detection
+			
+			if (hit > 0.0 && hit < nearest)
+			{
+				if ([entHit isSubEntity])
+				{
+					hit_subentity = entHit;
+				}
+				hit_entity = e2;
+				nearest = hit;
+				p1 = HPvector_add(p0, vectorToHPVector(vector_multiply_scalar(f1, nearest)));
+			}
+		}
+	}
+	
+	if (hit_entity)
+	{
+		// I think the above code does not guarantee that the closest hit_subentity belongs to the closest hit_entity.
+		if (hit_subentity && [hit_subentity owner] == hit_entity)  [hit_entity setSubEntityTakingDamage:hit_subentity];
+		
+		if (range_ptr != NULL)
+		{
+			*range_ptr = nearest;
+		}
+	}
+	
+	for (i = 0; i < ship_count; i++)  [my_entities[i] release]; //	released
+	
+	return hit_entity;
+}
+
+}	// namespace cxx
+
+
+// Slice 15 of docs/phases/3-slices/Universe.md (bead oo-dg9d1): player targeting, entities in range, counting and finding ships by role and predicate, time, collisions, view direction. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+::Entity *Universe::firstEntityTargetedByPlayer()
+{
+	::PlayerEntity	*player = PLAYER;
+	::Entity			*hit_entity = nil;
+	OOScalar		nearest2 = SCANNER_MAX_RANGE - 100;	// 100m shorter than range at which target is lost
+	nearest2 *= nearest2;
+	int				i;
+	int				ent_count = n_entities;
+	int				ship_count = 0;
+	::Entity			*my_entities[ent_count];
+	
+	for (i = 0; i < ent_count; i++)
+	{
+		if (([sortedEntities[i] isShip] && ![sortedEntities[i] isPlayer]) || [sortedEntities[i] isWormhole])
+		{
+			my_entities[ship_count++] = [sortedEntities[i] retain];
+		}
+	}
+	
+	Quaternion q1 = [player normalOrientation];
+	Vector u1, f1, r1;
+	basis_vectors_from_quaternion(q1, &r1, &u1, &f1);
+	Vector offset = [player weaponViewOffset];
+	
+	HPVector p1 = HPvector_add([player position], vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
+	
+	// Note: deliberately tied to view direction, not weapon facing. All custom views count as forward for targeting.
+	switch (viewDirection)
+	{
+		case VIEW_AFT :
+			quaternion_rotate_about_axis(&q1, u1, M_PI);
+			break;
+		case VIEW_PORT :
+			quaternion_rotate_about_axis(&q1, u1, 0.5 * M_PI);
+			break;
+		case VIEW_STARBOARD :
+			quaternion_rotate_about_axis(&q1, u1, -0.5 * M_PI);
+			break;
+		default:
+			break;
+	}
+	basis_vectors_from_quaternion(q1, &r1, NULL, &f1);
+	
+	for (i = 0; i < ship_count; i++)
+	{
+		::Entity *e2 = my_entities[i];
+		if ([e2 canCollide] && [e2 scanClass] != CLASS_NO_DRAW)
+		{
+			Vector rp = HPVectorToVector(HPvector_subtract([e2 position], p1));
+			OOScalar dist2 = magnitude2(rp);
+			if (dist2 < nearest2)
+			{
+				OOScalar df = dot_product(f1, rp);
+				if (df > 0.0 && df * df < nearest2)
+				{
+					OOScalar du = dot_product(u1, rp);
+					OOScalar dr = dot_product(r1, rp);
+					OOScalar cr = [e2 collisionRadius];
+					if (du * du + dr * dr < cr * cr)
+					{
+						hit_entity = e2;
+						nearest2 = dist2;
+					}
+				}
+			}
+		}
+	}
+	// check for MASC'M
+	if (hit_entity != nil && [hit_entity isShip])
+	{
+		::ShipEntity* ship = (::ShipEntity*)hit_entity;
+		if ([ship isJammingScanning] && ![player hasMilitaryScannerFilter])
+		{
+			hit_entity = nil;
+		}
+	}
+	
+	for (i = 0; i < ship_count; i++)
+	{
+		[my_entities[i] release];
+	}
+	
+	return hit_entity;
+}
+
+
+::Entity *Universe::firstEntityTargetedByPlayerPrecisely()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	OOWeaponFacing targetFacing;
+	Vector laserPortOffset = kZeroVector;
+	::PlayerEntity *player = PLAYER;
+	// The first weapon offset, or the zero vector for none (as -oo_vectorAtIndex:0 of the old array).
+	const auto firstWeaponOffset = [](const std::vector<Vector> &offsets) { return offsets.empty() ? kZeroVector : offsets.front(); };
+
+	switch (viewDirection)
+	{
+		case VIEW_FORWARD:
+			targetFacing = WEAPON_FACING_FORWARD;
+			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
+			break;
+			
+		case VIEW_AFT:
+			targetFacing = WEAPON_FACING_AFT;
+			laserPortOffset = firstWeaponOffset([player cxx_aftWeaponOffset]);
+			break;
+			
+		case VIEW_PORT:
+			targetFacing = WEAPON_FACING_PORT;
+			laserPortOffset = firstWeaponOffset([player cxx_portWeaponOffset]);
+			break;
+			
+		case VIEW_STARBOARD:
+			targetFacing = WEAPON_FACING_STARBOARD;
+			laserPortOffset = firstWeaponOffset([player cxx_starboardWeaponOffset]);
+			break;
+			
+		default:
+			// Match behaviour of -firstEntityTargetedByPlayer.
+			targetFacing = WEAPON_FACING_FORWARD;
+			laserPortOffset = firstWeaponOffset([player cxx_forwardWeaponOffset]);
+	}
+	
+	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::entitiesWithinRange(double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (entity == nil)  return {};
+
+	return [self cxx_findShipsMatchingPredicate:YESPredicate
+								  parameter:NULL
+									inRange:range
+								   ofEntity:entity];
+}
+
+
+// The role predicates read a std::string, held here for the call.
+unsigned Universe::countShipsWithRole(const std::string &role, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::string roleParameter = role;
+	return [self countShipsMatchingPredicate:HasRolePredicate
+							   parameter:&roleParameter
+								 inRange:range
+								ofEntity:entity];
+}
+
+
+unsigned Universe::countShipsWithRole(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_countShipsWithRole:role inRange:-1 ofEntity:nil];
+}
+
+
+unsigned Universe::countShipsWithPrimaryRole(const std::string &role, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::string roleParameter = role;
+	return [self countShipsMatchingPredicate:HasPrimaryRolePredicate
+							   parameter:&roleParameter
+								 inRange:range
+								ofEntity:entity];
+}
+
+
+// HasScanClassPredicate reads the scan class as an OOScanClass.
+unsigned Universe::countShipsWithScanClass(OOScanClass scanClass, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self countShipsMatchingPredicate:HasScanClassPredicate
+							   parameter:&scanClass
+								 inRange:range
+								ofEntity:entity];
+}
+
+
+unsigned Universe::countShipsWithPrimaryRole(const std::string &role)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
+}
+
+
+unsigned Universe::countEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1)
+{
+	unsigned		i, found = 0;
+	HPVector			p1;
+	double			distance, cr;
+	
+	if (predicate == NULL)  predicate = YESPredicate;
+	
+	if (e1 != nil)  p1 = e1->_cxxEntity->position;
+	else  p1 = kZeroHPVector;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		if (e2 != e1 && predicate(e2, parameter))
+		{
+			if (range < 0)  distance = -1;	// Negative range means infinity
+			else
+			{
+				cr = range + e2->_cxxEntity->collision_radius;
+				distance = HPdistance2(e2->_cxxEntity->position, p1) - cr * cr;
+			}
+			if (distance < 0)
+			{
+				found++;
+			}
+		}
+	}
+	
+	return found;
+}
+
+
+unsigned Universe::countShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsShipPredicate, NULL,
+			predicate, parameter
+		};
+		
+		return [self countEntitiesMatchingPredicate:ANDPredicate
+										  parameter:&param
+											inRange:range
+										   ofEntity:entity];
+	}
+	else
+	{
+		return [self countEntitiesMatchingPredicate:IsShipPredicate
+										  parameter:NULL
+											inRange:range
+										   ofEntity:entity];
+	}
+}
+
+
+// NOTE: OOJSSystem relies on this returning entities in distance-from-player order.
+// This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
+std::vector<oo::ObjCRef<::Entity *>> Universe::findEntitiesMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *e1)
+{
+	OOJS_PROFILE_ENTER
+
+	unsigned		i;
+	HPVector			p1;
+	std::vector<oo::ObjCRef<::Entity *>>	result;
+
+	OOJSPauseTimeLimiter();
+
+	if (predicate == NULL)  predicate = YESPredicate;
+
+	result.reserve(n_entities);
+	
+	if (e1 != nil)  p1 = [e1 position];
+	else  p1 = kZeroHPVector;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		
+		if (e1 != e2 &&
+			EntityInRange(p1, e2, range) &&
+			predicate(e2, parameter))
+		{
+			result.emplace_back(e2);
+		}
+	}
+
+	OOJSResumeTimeLimiter();
+
+	return result;
+
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<::Entity *>>())
+}
+
+
+id Universe::findOneEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter)
+{
+	unsigned		i;
+	::Entity			*candidate = nil;
+	
+	OOJSPauseTimeLimiter();
+	
+	if (predicate == NULL)  predicate = YESPredicate;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		candidate = sortedEntities[i];
+		if (predicate(candidate, parameter))  return candidate;
+	}
+	
+	OOJSResumeTimeLimiter();
+	
+	return nil;
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::findShipsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsShipPredicate, NULL,
+			predicate, parameter
+		};
+
+		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
+										 parameter:&param
+										   inRange:range
+										  ofEntity:entity];
+	}
+	else
+	{
+		return [self cxx_findEntitiesMatchingPredicate:IsShipPredicate
+										 parameter:NULL
+										   inRange:range
+										  ofEntity:entity];
+	}
+}
+
+
+std::vector<oo::ObjCRef<::Entity *>> Universe::findVisualEffectsMatchingPredicate(EntityFilterPredicate predicate, void *parameter, double range, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsVisualEffectPredicate, NULL,
+			predicate, parameter
+		};
+
+		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
+										 parameter:&param
+										   inRange:range
+										  ofEntity:entity];
+	}
+	else
+	{
+		return [self cxx_findEntitiesMatchingPredicate:IsVisualEffectPredicate
+										 parameter:NULL
+										   inRange:range
+										  ofEntity:entity];
+	}
+}
+
+
+id Universe::nearestEntityMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity)
+{
+	unsigned		i;
+	HPVector			p1;
+	float			rangeSq = INFINITY;
+	id				result = nil;
+	
+	if (predicate == NULL)  predicate = YESPredicate;
+	
+	if (entity != nil)  p1 = [entity position];
+	else  p1 = kZeroHPVector;
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		::Entity *e2 = sortedEntities[i];
+		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, [e2 position]);
+		
+		if (entity != e2 &&
+			distanceToReferenceEntitySquared < rangeSq &&
+			predicate(e2, parameter))
+		{
+			result = e2;
+			rangeSq = distanceToReferenceEntitySquared;
+		}
+	}
+	
+	return [[result retain] autorelease];
+}
+
+
+id Universe::nearestShipMatchingPredicate(EntityFilterPredicate predicate, void *parameter, ::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (predicate != NULL)
+	{
+		BinaryOperationPredicateParameter param =
+		{
+			IsShipPredicate, NULL,
+			predicate, parameter
+		};
+		
+		return [self nearestEntityMatchingPredicate:ANDPredicate
+										  parameter:&param
+								   relativeToEntity:entity];
+	}
+	else
+	{
+		return [self nearestEntityMatchingPredicate:IsShipPredicate
+										  parameter:NULL
+								   relativeToEntity:entity];
+	}
+}
+
+
+OOTimeAbsolute Universe::getTime()
+{
+	return universal_time;
+}
+
+
+OOTimeDelta Universe::getTimeDelta()
+{
+	return time_delta;
+}
+
+
+void Universe::findCollisionsAndShadows()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	unsigned i;
+	
+	[universeRegion clearEntityList];
+	
+	for (i = 0; i < n_entities; i++)
+	{
+		[universeRegion checkEntity:sortedEntities[i]];	// sorts out which region it's in
+	}
+	
+	if (![[self gameController] isGamePaused])
+	{
+		[universeRegion findCollisions];
+	}
+	
+	// do check for entities that can't see the sun!
+	[universeRegion findShadowedEntities];
+}
+
+
+std::string Universe::collisionDescription()
+{
+	if (universeRegion != nil)  return [universeRegion collisionDescription];
+	else  return "-";
+}
+
+
+void Universe::dumpCollisions()
+{
+	dumpCollisionInfo = YES;
+}
+
+
+OOViewID Universe::getViewDirection()
+{
+	return viewDirection;
+}
+
+}	// namespace cxx

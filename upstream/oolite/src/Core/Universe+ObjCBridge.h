@@ -241,65 +241,6 @@ MA 02110-1301, USA.
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
-
-- (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-- (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-- (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-
-- (ShipEntity *) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;
-- (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color;
-- (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat*)range_ptr;
-- (Entity *) firstEntityTargetedByPlayer;
-- (Entity *) firstEntityTargetedByPlayerPrecisely;
-
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) cxx_countShipsWithRole:(const std::string &)role;
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role;
-- (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity;
-
-
-// General count/search methods. Pass range of -1 and entity of nil to search all of system.
-- (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-								  parameter:(void *)parameter
-									inRange:(double)range
-								   ofEntity:(Entity *)entity;
-- (unsigned) countShipsMatchingPredicate:(EntityFilterPredicate)predicate
-							   parameter:(void *)parameter
-								 inRange:(double)range
-								ofEntity:(Entity *)entity;
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
-										 parameter:(void *)parameter
-										   inRange:(double)range
-										  ofEntity:(Entity *)entity;
-- (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate
-							parameter:(void *)parameter;
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
-									  parameter:(void *)parameter
-										inRange:(double)range
-									   ofEntity:(Entity *)entity;
-- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
-									  parameter:(void *)parameter
-										inRange:(double)range
-									   ofEntity:(Entity *)entity;
-- (id) nearestEntityMatchingPredicate:(EntityFilterPredicate)predicate
-							parameter:(void *)parameter
-					 relativeToEntity:(Entity *)entity;
-- (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate
-						  parameter:(void *)parameter
-				   relativeToEntity:(Entity *)entity;
-
-
-- (OOTimeAbsolute) getTime;
-- (OOTimeDelta) getTimeDelta;
-
-- (void) findCollisionsAndShadows;
-- (std::string) collisionDescription;	// flipped with its family (bead oo-3rb.277)
-- (void) dumpCollisions;
-
-- (OOViewID) viewDirection;
 - (void) setViewDirection:(OOViewID)vd;
 - (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction;	// Use instead of setViewDirection:VIEW_GUI_DISPLAY
 
@@ -515,6 +456,72 @@ MA 02110-1301, USA.
 @interface Universe (OOObjCBridge)
 
 - (id)initWithGameView:(MyOpenGLView *)gameView;
+
+@end
+
+
+// Slice 14 of docs/phases/3-slices/Universe.md (bead oo-7jhs5): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice14)
+
+- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
+- (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
+- (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
+- (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
+- (ShipEntity *) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;
+- (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color;
+- (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat*)range_ptr;
+
+@end
+
+
+// Slice 15 of docs/phases/3-slices/Universe.md (bead oo-dg9d1): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice15)
+
+- (Entity *) firstEntityTargetedByPlayer;
+- (Entity *) firstEntityTargetedByPlayerPrecisely;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role;
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role;
+// General count/search methods. Pass range of -1 and entity of nil to search all of system.
+- (unsigned) countEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+								  parameter:(void *)parameter
+									inRange:(double)range
+								   ofEntity:(Entity *)entity;
+- (unsigned) countShipsMatchingPredicate:(EntityFilterPredicate)predicate
+							   parameter:(void *)parameter
+								 inRange:(double)range
+								ofEntity:(Entity *)entity;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+										 parameter:(void *)parameter
+										   inRange:(double)range
+										  ofEntity:(Entity *)entity;
+- (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate
+							parameter:(void *)parameter;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (id) nearestEntityMatchingPredicate:(EntityFilterPredicate)predicate
+							parameter:(void *)parameter
+					 relativeToEntity:(Entity *)entity;
+- (id) nearestShipMatchingPredicate:(EntityFilterPredicate)predicate
+						  parameter:(void *)parameter
+				   relativeToEntity:(Entity *)entity;
+- (OOTimeAbsolute) getTime;
+- (OOTimeDelta) getTimeDelta;
+- (void) findCollisionsAndShadows;
+- (std::string) collisionDescription;	// flipped with its family (bead oo-3rb.277)
+- (void) dumpCollisions;
+- (OOViewID) viewDirection;
 
 @end
 
