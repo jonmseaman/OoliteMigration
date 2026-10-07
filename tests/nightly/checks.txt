@@ -420,3 +420,4 @@
 [oo-dg9d1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-focfo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-gr7a2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-tail0] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
