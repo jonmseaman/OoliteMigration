@@ -407,6 +407,8 @@
 [oo-9j462] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-hjzwk] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_StationEntity test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-9ht.71] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureSprite test_HeadUpDisplay test_GuiDisplayGen && bash tools/tier-c.sh --only goldens
+[oo-9ht.107] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOFlasherEntity test_OOJSFlasher test_EntityOOJavaScriptExtensions test_OOVisualEffectEntity test_ShipEntity test_OOLightParticleEntity test_Entity && bash tools/tier-c.sh --only goldens
+[oo-9ht.110] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOExhaustPlumeEntity test_OOJSExhaustPlume test_ShipEntity test_EntityOOJavaScriptExtensions test_Entity && bash tools/tier-c.sh --only goldens
 [oo-jx5np] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_PlayerEntity test_ShipEntity test_PlayerEntityStickProfile && bash tools/tier-c.sh --only goldens
 [oo-5thb0] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
 [oo-ra76k] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMusicController test_ResourceManager test_OOMusic && bash tools/tier-c.sh --only goldens
@@ -416,3 +418,16 @@
 [oo-9ht.93] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSVisualEffect test_OOVisualEffectEntity && bash tools/tier-c.sh --only goldens
 [oo-0806] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
 [oo-uqen] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
+[oo-7jhs5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-dg9d1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-focfo] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-gr7a2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-tail0] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-z3u03] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-lftoq] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-enek8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-05ow5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-ni1hw] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-jxitg] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-wmc72] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-32kcu] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens

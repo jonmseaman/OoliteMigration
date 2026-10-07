@@ -27,11 +27,10 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "OOColor.h"
+#import "OOJSFlasher.h"
 
 #include "oofnd/PListGet.hpp"
 
-
-namespace cxx {
 
 oo::Ref<OOFlasherEntity> OOFlasherEntity::flasherWithDictionary(const oo::PList &dictionary)
 {
@@ -62,12 +61,12 @@ void OOFlasherEntity::initWithDictionary(const oo::PList &dictionary)
 
 void OOFlasherEntity::setUpColors(const oo::PList *colorSpecifiers)
 {
-	std::vector<oo::Ref<OOColor>> colors;
+	std::vector<oo::Ref<cxx::OOColor>> colors;
 	if (colorSpecifiers != nullptr)
 	{
 		for (const oo::PList &specifier : *colorSpecifiers->getIf<oo::PList::Array>())
 		{
-			colors.emplace_back(OOColor::colorWithDescription(specifier, 0.75f));
+			colors.emplace_back(cxx::OOColor::colorWithDescription(specifier, 0.75f));
 		}
 	}
 	
@@ -76,7 +75,7 @@ void OOFlasherEntity::setUpColors(const oo::PList *colorSpecifiers)
 
 
 // The colour at index; null past the end (-objectAtIndex: raised there).
-OOColor *OOFlasherEntity::flasherColorAtIndex(NSUInteger index)
+cxx::OOColor *OOFlasherEntity::flasherColorAtIndex(NSUInteger index)
 {
 	return index < _colors.size() ? _colors[index].get() : nullptr;
 }
@@ -100,9 +99,9 @@ void OOFlasherEntity::setActive(bool active)
 }
 
 
-oo::Ref<OOColor> OOFlasherEntity::color()
+oo::Ref<cxx::OOColor> OOFlasherEntity::color()
 {
-	return OOColor::colorWithRed(_colorComponents[0],
+	return cxx::OOColor::colorWithRed(_colorComponents[0],
 								 _colorComponents[1],
 								 _colorComponents[2],
 								 _colorComponents[3]);
@@ -235,4 +234,21 @@ void OOFlasherEntity::rescaleBy(GLfloat /*factor*/, bool /*writeToCache*/)
 	   implementation requirements */
 }
 
-}	// namespace cxx
+
+// The binding's bodies (OOJSFlasher.mm), which the façade forwarded to until bead oo-9ht.107.
+void OOFlasherEntity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)
+{
+	::OOJSFlasherGetJSClass(outClass, outPrototype);
+}
+
+
+std::optional<std::string> OOFlasherEntity::jsClassName()
+{
+	return ::OOJSFlasherJSClassName();
+}
+
+
+bool OOFlasherEntity::isVisibleToScripts()
+{
+	return ::OOJSFlasherIsVisibleToScripts();
+}
