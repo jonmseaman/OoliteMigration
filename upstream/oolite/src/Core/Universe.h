@@ -610,6 +610,21 @@ public:
 	unsigned int prevVoice(unsigned int index);
 	unsigned int setVoice(unsigned int index, bool isMale);
 #endif
+
+	// Slice 25: reinitialising and the demo, the initial universe, random positions, removing entities, preloading sounds, wormhole population, graph dumps.
+	bool reinitAndShowDemo(bool showDemo);
+	void setUpInitialUniverse();
+	float randomDistanceWithinScanner();
+	Vector randomPlaceWithinScannerFrom(Vector pos, Vector route, double offset);
+	HPVector fractionalPositionFrom(HPVector point0, HPVector point1, double routeFraction);
+	bool doRemoveEntity(::Entity *entity);
+	void preloadSounds();
+	void populateSpaceFromActiveWormholes();
+	std::optional<std::string> chooseStringForKey(const std::string &key, const oo::PList &dictionary);
+#if OO_LOCALIZATION_TOOLS && DEBUG_GRAPHVIZ
+	void dumpDebugGraphViz();
+	void dumpSystemDescriptionGraphViz();
+#endif
 };
 
 }	// namespace cxx

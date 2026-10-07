@@ -183,19 +183,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) prepareToRenderIntoDefaultFramebuffer;
 - (void) drawTargetTextureIntoDefaultFramebuffer;
 
-- (BOOL) doRemoveEntity:(Entity *)entity;
-- (void) setUpInitialUniverse;
-- (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction;
-
-- (void) populateSpaceFromActiveWormholes;
-
-- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary;
-
 #if OO_LOCALIZATION_TOOLS
-#if DEBUG_GRAPHVIZ
-- (void) dumpDebugGraphViz;
-- (void) dumpSystemDescriptionGraphViz;
-#endif
 - (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
 
 /**
@@ -212,9 +200,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 
 - (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
-
-- (float) randomDistanceWithinScanner;
-- (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset;
 
 - (oo::PList) demoShipData;	// null where there is no such entry
 - (void) setLibraryTextForDemoShip;
@@ -295,7 +280,7 @@ void RemoveFirstWormhole(std::vector<oo::ObjCRef<WormholeEntity *>> &wormholes)
 {
 	if (wormholes.empty())
 	{
-		[OOException raise:OORangeException format:"Index 0 is out of range 0 (in 'removeObjectAtIndex:')"];
+		OORaiseException(OORangeException, "Index 0 is out of range 0 (in 'removeObjectAtIndex:')");
 	}
 	wormholes.erase(wormholes.begin());
 }
@@ -6340,389 +6325,18 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 #endif
 
 
-// FIXME: needs less redundancy?
-- (BOOL) reinitAndShowDemo:(BOOL) showDemo
-{
-	_cxxUniverse->no_update = YES;
-	PlayerEntity* player = PLAYER;
-	assert(player != nil);
-	
-	if (JSResetFlags != 0)	// JS reset failed, remember previous settings 
-	{
-		showDemo = (JSResetFlags & 2) > 0;	// binary 10, a.k.a. 1 << 1
-	}
-	else
-	{
-		JSResetFlags = (showDemo << 1);
-	}
-	
-	[self removeAllEntitiesExceptPlayer];
-	[OOTexture clearCache];
-	
-	_cxxUniverse->_sessionID++;	// Must be after removing old entities and before adding new ones.
-	
-	[ResourceManager cxx_setUseAddOns:_cxxUniverse->useAddOns];	// also logs the paths
-	//[ResourceManager loadScripts]; // initialised inside [player setUp]!
-	
-	// NOTE: Anything in the sharedCache is now trashed and must be
-	//       reloaded. Ideally anything using the sharedCache should
-	//       be aware of cache flushes so it can automatically
-	//       reinitialize itself - mwerle 20081107.
-	[OOShipRegistry reload];
-	[[self gameController] setGamePaused:NO];
-	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
-	[PLAYER setSpeed:0.0];
-	
-	[self loadDescriptions];
-	[self loadScenarios];
-	
-	_cxxUniverse->missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
-	
-	
-	if(showDemo)
-	{
-		_cxxUniverse->demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
-		_cxxUniverse->demo_ship_index = 0;
-		_cxxUniverse->demo_ship_subindex = 0;
-	}
-	
-	_cxxUniverse->breakPatternCounter = 0;
-	
-	_cxxUniverse->cachedSun = nil;
-	_cxxUniverse->cachedPlanet = nil;
-	_cxxUniverse->cachedStation = nil;
-	
-	[self setUpSettings];
-
-	// reset these in case OXP set has changed
-
-	// set up cargopod templates
-	[self setUpCargoPods];
-	
-	if (![player setUpAndConfirmOK:YES]) 
-	{
-		// reinitAndShowDemo rescheduled inside setUpAndConfirmOK...
-		return NO;	// Abort!
-	}
-	
-	// we can forget the previous settings now.
-	JSResetFlags = 0;
-	
-	[self addEntity:player];
-	_cxxUniverse->demo_ship = nil;
-	[[self gameController] cxx_setPlayerFileToLoad:""];		// reset Quicksave
-	
-	[self setUpInitialUniverse];
-	_cxxUniverse->autoSaveNow = NO;	// don't autosave immediately after restarting a game
-	
-	[[self station] initialiseLocalMarket];
-	
-	if(showDemo)
-	{
-		[player setStatus:STATUS_START_GAME];
-		// re-read keyconfig.plist just in case we've loaded a keyboard
-		// configuration expansion
-		[player initControls];
-	}
-	else
-	{
-		[player setDockedAtMainStation];
-	}
-	
-	[player completeSetUp];
-	if(showDemo)
-	{
-		[player setGuiToIntroFirstGo:YES];
-	}
-	else
-	{
-		// no need to do these if showing the demo as the only way out
-		// now is to load a game
-		[self populateNormalSpace];
-
-		[player startUpComplete];
-	}
-
-	if(!showDemo)
-	{
-		[player setGuiToStatusScreen];
-		[player doWorldEventUntilMissionScreen:OOJSID("missionScreenOpportunity")];
-	}
-	
-	[self verifyEntitySessionIDs];
-
-	_cxxUniverse->no_update = NO;
-	return YES;
-}
-
-
-- (void) setUpInitialUniverse
-{
-	PlayerEntity* player = PLAYER;
-	
-	OO_DEBUG_PUSH_PROGRESS("Wormhole and character reset");
-	AutoreleaseAll(_cxxUniverse->activeWormholes);	// the old list was autoreleased
-	_cxxUniverse->activeWormholes.reserve(16);
-	AutoreleaseAll(_cxxUniverse->characterPool);	// the old pool was autoreleased
-	_cxxUniverse->characterPool.reserve(256);
-	OO_DEBUG_POP_PROGRESS();
-	
-	OO_DEBUG_PUSH_PROGRESS("Galaxy reset");
-	[self setGalaxyTo: [player galaxyNumber] andReinit:YES];
-	_cxxUniverse->systemID = [player systemID];
-	OO_DEBUG_POP_PROGRESS();
-	
-	OO_DEBUG_PUSH_PROGRESS("Player init: setUpShipFromDictionary");
-	[player setUpShipFromDictionary:[[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())]];	// the standard cobra at this point
-	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
-	OO_DEBUG_POP_PROGRESS();
-	
-	// Player init above finishes initialising all standard player ship properties. Now that the base mass is set, we can run setUpSpace! 
-	[self setUpSpace];
-	
-	[self setDockingClearanceProtocolActive:
-			  [self cxx_currentSystemData].get<bool>("stations_require_docking_clearance", YES)];
-
-	[self enterGUIViewModeWithMouseInteraction:NO];
-	[player setPosition:[[self station] position]];
-	[player setOrientation:kIdentityQuaternion];
-}
-
-
-- (float) randomDistanceWithinScanner
-{
-	return SCANNER_MAX_RANGE * ((Ranrot() & 255) / 256.0 - 0.5);
-}
-
-
-- (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset
-{
-	pos.x += offset * route.x + [self randomDistanceWithinScanner];
-	pos.y += offset * route.y + [self randomDistanceWithinScanner];
-	pos.z += offset * route.z + [self randomDistanceWithinScanner];
-	
-	return pos;
-}
-
-
-- (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction
-{
-	if (routeFraction == NSNotFound) routeFraction = randf();
-	
-	point1 = OOHPVectorInterpolate(point0, point1, routeFraction);
-	
-	point1.x += 2 * SCANNER_MAX_RANGE * (randf() - 0.5);
-	point1.y += 2 * SCANNER_MAX_RANGE * (randf() - 0.5);
-	point1.z += 2 * SCANNER_MAX_RANGE * (randf() - 0.5);
-	
-	return point1;
-}
-
-
-- (BOOL)doRemoveEntity:(Entity *)entity
-{
-	// remove reference to entity in linked lists
-	if ([entity canCollide])	// filter only collidables disappearing
-	{
-		_cxxUniverse->doLinkedListMaintenanceThisUpdate = YES;
-	}
-	
-	[entity removeFromLinkedLists];
-	
-	// moved forward ^^
-	// remove from the reference dictionary
-	int old_id = [entity universalID];
-	_cxxUniverse->entity_for_uid[old_id] = nil;
-	[entity setUniversalID:NO_TARGET];
-	[entity wasRemovedFromUniverse];
-	
-	// maintain sorted lists
-	int index = entity->_cxxEntity->zero_index;
-	
-	int n = 1;
-	if (index >= 0)
-	{
-		if (_cxxUniverse->sortedEntities[index] != entity)
-		{
-			OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE RIGHT PLACE IN THE ZERO_DISTANCE SORTED LIST -- FIXING...", oo::DescriptionOf(entity));
-			unsigned i;
-			index = -1;
-			for (i = 0; (i < _cxxUniverse->n_entities)&&(index == -1); i++)
-				if (_cxxUniverse->sortedEntities[i] == entity)
-					index = i;
-			if (index == -1)
-				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE ZERO_DISTANCE SORTED LIST -- CONTINUING...", oo::DescriptionOf(entity));
-		}
-		if (index != -1)
-		{
-			while ((unsigned)index < _cxxUniverse->n_entities)
-			{
-				while (((unsigned)index + n < _cxxUniverse->n_entities)&&(_cxxUniverse->sortedEntities[index + n] == entity))
-				{
-					n++;	// ie there's a duplicate entry for this entity
-				}
-				
-				/*
-					BUG: when n_entities == UNIVERSE_MAX_ENTITIES, this read
-					off the end of the array and copied (Entity *)n_entities =
-					0x800 into the list. The subsequent update of zero_index
-					derferenced 0x800 and crashed.
-					FIX: add an extra unused slot to sortedEntities, which is
-					always nil.
-					EFFICIENCY CONCERNS: this could have been an alignment
-					issue since UNIVERSE_MAX_ENTITIES == 2048, but it isn't
-					really. sortedEntities is part of the object, not malloced,
-					it isn't aligned, and the end of it is only live in
-					degenerate cases.
-					-- Ahruman 2012-07-11
-				*/
-				_cxxUniverse->sortedEntities[index] = _cxxUniverse->sortedEntities[index + n];	// copy entity[index + n] -> entity[index] (preserves sort order)
-				if (_cxxUniverse->sortedEntities[index])
-				{
-					_cxxUniverse->sortedEntities[index]->_cxxEntity->zero_index = index;				// give it its correct position
-				}
-				index++;
-			}
-			if (n > 1)
-				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity: REMOVED {} EXTRA COPIES OF {} FROM THE ZERO_DISTANCE SORTED LIST", n - 1, oo::DescriptionOf(entity));
-			while (n--)
-			{
-				_cxxUniverse->n_entities--;
-				_cxxUniverse->sortedEntities[_cxxUniverse->n_entities] = nil;
-			}
-		}
-		entity->_cxxEntity->zero_index = -1;	// it's GONE!
-	}
-	
-	// remove from the definitive list
-	if (std::find(_cxxUniverse->entities.begin(), _cxxUniverse->entities.end(), entity) != _cxxUniverse->entities.end())
-	{
-		// FIXME: better approach needed for core break patterns - CIM
-		if ([entity isBreakPattern] && ![entity isVisualEffect])
-		{
-			_cxxUniverse->breakPatternCounter--;
-		}
-		
-		if ([entity isShip])
-		{
-			ShipEntity *se = (ShipEntity*)entity;
-			[self clearBeacon:se];
-		}
-		if ([entity isWaypoint])
-		{
-			OOWaypointEntity *wp = (OOWaypointEntity*)entity;
-			[self clearBeacon:wp];
-		}
-		if ([entity isVisualEffect])
-		{
-			OOVisualEffectEntity *ve = (OOVisualEffectEntity*)entity;
-			[self clearBeacon:ve];
-		}
-		
-		if ([entity isWormhole])
-		{
-			std::erase(_cxxUniverse->activeWormholes, entity);
-		}
-		else if ([entity isPlanet])
-		{
-			std::erase(_cxxUniverse->allPlanets, entity);
-		}
-
-		std::erase(_cxxUniverse->entities, entity);
-		return YES;
-	}
-	
-	return NO;
-}
-
-
 static void PreloadOneSound(const std::string &soundName)
 {
 	if (!oo::str::hasPrefix(soundName, "[") && !oo::str::hasSuffix(soundName, "]"))
 	{
-		[ResourceManager cxx_ooSoundNamed:soundName inFolder:std::string("Sounds")];
+		cxx::ResourceManager::ooSoundNamed(soundName, std::string("Sounds"));
 	}
-}
-
-
-// ORDER-SENSITIVE (decision D): the keys in byte order (was the dictionary's hash order).
-- (void) preloadSounds
-{
-	// Preload sounds to avoid loading stutter.
-	if (const oo::PList::Dict *sounds = _cxxUniverse->customSounds.getIf<oo::PList::Dict>())
-	{
-		for (const auto &[key, object] : *sounds)
-		{
-			if (object.isString())
-			{
-				PreloadOneSound(*object.getIf<std::string>());
-			}
-			else if (object.isArray() && object.count() > 0)
-			{
-				for (const oo::PList &soundName : *object.getIf<oo::PList::Array>())
-				{
-					if (soundName.isString())
-					{
-						PreloadOneSound(*soundName.getIf<std::string>());
-					}
-				}
-			}
-		}
-	}
-
-	// Afterburner sound doesn't go through customsounds.plist.
-	PreloadOneSound("afterburner1.ogg");
-}
-
-
-- (void) populateSpaceFromActiveWormholes
-{
-	while (!_cxxUniverse->activeWormholes.empty())
-	{
-		@autoreleasepool
-		{
-			@try
-			{
-				WormholeEntity* whole = _cxxUniverse->activeWormholes[0].get();
-				// If the wormhole has been scanned by the player then the
-				// PlayerEntity will take care of it
-				if (![whole isScanned] &&
-					NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
-				{
-					// this is a wormhole to this system
-					[whole disgorgeShips];
-				}
-				RemoveFirstWormhole(_cxxUniverse->activeWormholes);	// empty it out
-			}
-			@catch (OOException *exception)
-			{
-				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", [exception name], [exception reason]);
-			}
-		}
-	}
-}
-
-
-- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary
-{
-	const oo::PList *object = dictionary.find(key);
-	if (object == nullptr)  return std::nullopt;
-	if (object->isString())  return *object->getIf<std::string>();
-	else if (object->isArray() && object->count() > 0)  return OptionalStringAt(*object, Ranrot() % object->count());
-	return std::nullopt;
 }
 
 
 #if OO_LOCALIZATION_TOOLS
 
 #if DEBUG_GRAPHVIZ
-- (void) dumpDebugGraphViz
-{
-	if (oo::Defaults::standard().boolForKey("universe-dump-debug-graphviz"))
-	{
-		[self dumpSystemDescriptionGraphViz];
-	}
-}
 
 
 namespace {
@@ -6737,109 +6351,6 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 }
 
 }	// namespace
-
-
-- (void) dumpSystemDescriptionGraphViz
-{
-	std::string					graphViz;
-	const oo::PList				*systemDescriptions = nullptr;
-	const oo::PList				*thisDesc = nullptr;
-	NSUInteger					i, count, j, subCount;
-	std::string					descLine;
-	const oo::PList				*curses = nullptr;
-	std::string					label;
-	oo::PList					keyMap;
-
-	keyMap = [ResourceManager cxx_dictionaryFromFilesNamed:"sysdesc_key_table.plist"
-											  inFolder:std::string("Config")
-											  andMerge:NO];
-
-	graphViz = "// System description grammar:\n\n"
-				"digraph system_descriptions\n"
-				"{\n"
-				"\tgraph [charset=\"UTF-8\", label=\"System description grammar\", labelloc=t, labeljust=l rankdir=LR compound=true nodesep=0.02 ranksep=1.5 concentrate=true fontname=Helvetica]\n"
-				"\tedge [arrowhead=dot]\n"
-				"\tnode [shape=none height=0.2 width=3 fontname=Helvetica]\n\t\n";
-
-	systemDescriptions = [self cxx_descriptions]->get<oo::PList::Array>("system_description");
-	count = (systemDescriptions != nullptr) ? systemDescriptions->count() : 0;
-
-	// Add system-description-string as special node (it's the one thing that ties [14] to everything else).
-	descLine = cxx_OOLookUpDescriptionPRIV("system-description-string");
-	graphViz += oo::str::format("\tsystem_description_string [label=\"%s\" shape=ellipse]\n", StringifiedLabel(descLine, keyMap).c_str());
-	[self addNumericRefsInString:descLine
-					  toGraphViz:graphViz
-						fromNode:"system_description_string"
-					   nodeCount:count];
-	graphViz += "\t\n";
-
-	// Add special nodes for formatting codes
-	graphViz +=
-	 "\tpercent_I [label=\"%I\\nInhabitants\" shape=diamond]\n"
-	 "\tpercent_H [label=\"%H\\nSystem name\" shape=diamond]\n"
-	 "\tpercent_RN [label=\"%R/%N\\nRandom name\" shape=diamond]\n"
-	 "\tpercent_J [label=\"%J\\nNumbered system name\" shape=diamond]\n"
-	 "\tpercent_G [label=\"%G\\nNumbered system name in chart number\" shape=diamond]\n\t\n";
-
-	// Toss in the Thargoid curses, too
-	graphViz += "\tsubgraph cluster_thargoid_curses\n\t{\n\t\tlabel = \"Thargoid curses\"\n";
-	curses = [self cxx_descriptions]->get<oo::PList::Array>("thargoid_curses");
-	subCount = (curses != nullptr) ? curses->count() : 0;
-	for (j = 0; j < subCount; ++j)
-	{
-		graphViz += oo::str::format("\t\tthargoid_curse_%zu [label=\"%s\"]\n", j, StringifiedLabel(OptionalStringAt(*curses, j), keyMap).c_str());
-	}
-	graphViz += "\t}\n";
-	for (j = 0; j < subCount; ++j)
-	{
-		[self addNumericRefsInString:OptionalStringAt(*curses, j).value_or(std::string())
-						  toGraphViz:graphViz
-							fromNode:oo::str::format("thargoid_curse_%zu", j)
-						   nodeCount:count];
-	}
-	graphViz += "\t\n";
-
-	// The main show: the bits of systemDescriptions itself.
-	// Define the nodes
-	for (i = 0; i < count; ++i)
-	{
-		// Build label, using sysdesc_key_table.plist if available
-		const oo::PList *keyLabel = keyMap.find(oo::str::format("%zu", i));
-		if (keyLabel == nullptr)  label = oo::str::format("[%zu]", i);
-		else  label = oo::str::format("[%zu] (%s)", i, oo::DescriptionOf(*keyLabel).c_str());
-
-		graphViz += oo::str::format("\tsubgraph cluster_%zu\n\t{\n\t\tlabel=\"%s\"\n", i, cxx_EscapedGraphVizString(label).c_str());
-
-		thisDesc = systemDescriptions->at<oo::PList::Array>(i);
-		subCount = (thisDesc != nullptr) ? thisDesc->count() : 0;
-		for (j = 0; j < subCount; ++j)
-		{
-			graphViz += oo::str::format("\t\tn%zu_%zu [label=\"\\\"%s\\\"\"]\n", i, j, StringifiedLabel(OptionalStringAt(*thisDesc, j), keyMap).c_str());
-		}
-
-		graphViz += "\t}\n";
-	}
-	graphViz += "\t\n";
-
-	// Define the edges
-	for (i = 0; i != count; ++i)
-	{
-		thisDesc = systemDescriptions->at<oo::PList::Array>(i);
-		subCount = (thisDesc != nullptr) ? thisDesc->count() : 0;
-		for (j = 0; j != subCount; ++j)
-		{
-			descLine = OptionalStringAt(*thisDesc, j).value_or(std::string());
-			[self addNumericRefsInString:descLine
-							  toGraphViz:graphViz
-								fromNode:oo::str::format("n%zu_%zu", i, j)
-							   nodeCount:count];
-		}
-	}
-
-	// Write file
-	graphViz += "\t}\n";
-	[ResourceManager cxx_writeDiagnosticData:oo::Data(graphViz.data(), graphViz.size()) toFileNamed:"SystemDescription.dot"];
-}
 #endif	// DEBUG_GRAPHVIZ
 
 
@@ -11951,5 +11462,502 @@ void Universe::verifyEntitySessionIDs()
 	}
 #endif
 }
+
+}	// namespace cxx
+
+
+// Slice 25 of docs/phases/3-slices/Universe.md (bead oo-wmc72): reinitialising and the demo, the initial universe, random positions, removing entities, preloading sounds, wormhole population, graph dumps. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+// FIXME: needs less redundancy?
+bool Universe::reinitAndShowDemo(bool showDemo)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	no_update = YES;
+	::PlayerEntity* player = PLAYER;
+	assert(player != nil);
+	
+	if (JSResetFlags != 0)	// JS reset failed, remember previous settings 
+	{
+		showDemo = (JSResetFlags & 2) > 0;	// binary 10, a.k.a. 1 << 1
+	}
+	else
+	{
+		JSResetFlags = (showDemo << 1);
+	}
+	
+	[self removeAllEntitiesExceptPlayer];
+	[::OOTexture clearCache];
+	
+	_sessionID++;	// Must be after removing old entities and before adding new ones.
+	
+	[::ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths
+	//[ResourceManager loadScripts]; // initialised inside [player setUp]!
+	
+	// NOTE: Anything in the sharedCache is now trashed and must be
+	//       reloaded. Ideally anything using the sharedCache should
+	//       be aware of cache flushes so it can automatically
+	//       reinitialize itself - mwerle 20081107.
+	[::OOShipRegistry reload];
+	[[self gameController] setGamePaused:NO];
+	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:NO];
+	[PLAYER setSpeed:0.0];
+	
+	[self loadDescriptions];
+	[self loadScenarios];
+	
+	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+	
+	
+	if(showDemo)
+	{
+		demo_ships = [[::OOShipRegistry sharedRegistry] cxx_demoShipKeys];
+		demo_ship_index = 0;
+		demo_ship_subindex = 0;
+	}
+	
+	breakPatternCounter = 0;
+	
+	cachedSun = nil;
+	cachedPlanet = nil;
+	cachedStation = nil;
+	
+	[self setUpSettings];
+
+	// reset these in case OXP set has changed
+
+	// set up cargopod templates
+	[self setUpCargoPods];
+	
+	if (![player setUpAndConfirmOK:YES]) 
+	{
+		// reinitAndShowDemo rescheduled inside setUpAndConfirmOK...
+		return NO;	// Abort!
+	}
+	
+	// we can forget the previous settings now.
+	JSResetFlags = 0;
+	
+	[self addEntity:player];
+	demo_ship = nil;
+	[[self gameController] cxx_setPlayerFileToLoad:""];		// reset Quicksave
+	
+	[self setUpInitialUniverse];
+	autoSaveNow = NO;	// don't autosave immediately after restarting a game
+	
+	[[self station] initialiseLocalMarket];
+	
+	if(showDemo)
+	{
+		[player setStatus:STATUS_START_GAME];
+		// re-read keyconfig.plist just in case we've loaded a keyboard
+		// configuration expansion
+		[player initControls];
+	}
+	else
+	{
+		[player setDockedAtMainStation];
+	}
+	
+	[player completeSetUp];
+	if(showDemo)
+	{
+		[player setGuiToIntroFirstGo:YES];
+	}
+	else
+	{
+		// no need to do these if showing the demo as the only way out
+		// now is to load a game
+		[self populateNormalSpace];
+
+		[player startUpComplete];
+	}
+
+	if(!showDemo)
+	{
+		[player setGuiToStatusScreen];
+		[player doWorldEventUntilMissionScreen:OOJSID("missionScreenOpportunity")];
+	}
+	
+	[self verifyEntitySessionIDs];
+
+	no_update = NO;
+	return YES;
+}
+
+
+void Universe::setUpInitialUniverse()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	::PlayerEntity* player = PLAYER;
+	
+	OO_DEBUG_PUSH_PROGRESS("Wormhole and character reset");
+	AutoreleaseAll(activeWormholes);	// the old list was autoreleased
+	activeWormholes.reserve(16);
+	AutoreleaseAll(characterPool);	// the old pool was autoreleased
+	characterPool.reserve(256);
+	OO_DEBUG_POP_PROGRESS();
+	
+	OO_DEBUG_PUSH_PROGRESS("Galaxy reset");
+	[self setGalaxyTo: [player galaxyNumber] andReinit:YES];
+	systemID = [player systemID];
+	OO_DEBUG_POP_PROGRESS();
+	
+	OO_DEBUG_PUSH_PROGRESS("Player init: setUpShipFromDictionary");
+	[player setUpShipFromDictionary:[[::OOShipRegistry sharedRegistry] cxx_shipInfoForKey:[player cxx_shipDataKey].value_or(std::string())]];	// the standard cobra at this point
+	[player baseMass]; // bootstrap the base mass used in all fuel charge calculations.
+	OO_DEBUG_POP_PROGRESS();
+	
+	// Player init above finishes initialising all standard player ship properties. Now that the base mass is set, we can run setUpSpace! 
+	[self setUpSpace];
+	
+	[self setDockingClearanceProtocolActive:
+			  [self cxx_currentSystemData].get<bool>("stations_require_docking_clearance", YES)];
+
+	[self enterGUIViewModeWithMouseInteraction:NO];
+	[player setPosition:[[self station] position]];
+	[player setOrientation:kIdentityQuaternion];
+}
+
+
+float Universe::randomDistanceWithinScanner()
+{
+	return SCANNER_MAX_RANGE * ((Ranrot() & 255) / 256.0 - 0.5);
+}
+
+
+Vector Universe::randomPlaceWithinScannerFrom(Vector pos, Vector route, double offset)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	pos.x += offset * route.x + [self randomDistanceWithinScanner];
+	pos.y += offset * route.y + [self randomDistanceWithinScanner];
+	pos.z += offset * route.z + [self randomDistanceWithinScanner];
+	
+	return pos;
+}
+
+
+HPVector Universe::fractionalPositionFrom(HPVector point0, HPVector point1, double routeFraction)
+{
+	if (routeFraction == NSNotFound) routeFraction = randf();
+	
+	point1 = OOHPVectorInterpolate(point0, point1, routeFraction);
+	
+	point1.x += 2 * SCANNER_MAX_RANGE * (randf() - 0.5);
+	point1.y += 2 * SCANNER_MAX_RANGE * (randf() - 0.5);
+	point1.z += 2 * SCANNER_MAX_RANGE * (randf() - 0.5);
+	
+	return point1;
+}
+
+
+bool Universe::doRemoveEntity(::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	// remove reference to entity in linked lists
+	if ([entity canCollide])	// filter only collidables disappearing
+	{
+		doLinkedListMaintenanceThisUpdate = YES;
+	}
+	
+	[entity removeFromLinkedLists];
+	
+	// moved forward ^^
+	// remove from the reference dictionary
+	int old_id = [entity universalID];
+	entity_for_uid[old_id] = nil;
+	[entity setUniversalID:NO_TARGET];
+	[entity wasRemovedFromUniverse];
+	
+	// maintain sorted lists
+	int index = entity->_cxxEntity->zero_index;
+	
+	int n = 1;
+	if (index >= 0)
+	{
+		if (sortedEntities[index] != entity)
+		{
+			OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE RIGHT PLACE IN THE ZERO_DISTANCE SORTED LIST -- FIXING...", oo::DescriptionOf(entity));
+			unsigned i;
+			index = -1;
+			for (i = 0; (i < n_entities)&&(index == -1); i++)
+				if (sortedEntities[i] == entity)
+					index = i;
+			if (index == -1)
+				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE ZERO_DISTANCE SORTED LIST -- CONTINUING...", oo::DescriptionOf(entity));
+		}
+		if (index != -1)
+		{
+			while ((unsigned)index < n_entities)
+			{
+				while (((unsigned)index + n < n_entities)&&(sortedEntities[index + n] == entity))
+				{
+					n++;	// ie there's a duplicate entry for this entity
+				}
+				
+				/*
+					BUG: when n_entities == UNIVERSE_MAX_ENTITIES, this read
+					off the end of the array and copied (Entity *)n_entities =
+					0x800 into the list. The subsequent update of zero_index
+					derferenced 0x800 and crashed.
+					FIX: add an extra unused slot to sortedEntities, which is
+					always nil.
+					EFFICIENCY CONCERNS: this could have been an alignment
+					issue since UNIVERSE_MAX_ENTITIES == 2048, but it isn't
+					really. sortedEntities is part of the object, not malloced,
+					it isn't aligned, and the end of it is only live in
+					degenerate cases.
+					-- Ahruman 2012-07-11
+				*/
+				sortedEntities[index] = sortedEntities[index + n];	// copy entity[index + n] -> entity[index] (preserves sort order)
+				if (sortedEntities[index])
+				{
+					sortedEntities[index]->_cxxEntity->zero_index = index;				// give it its correct position
+				}
+				index++;
+			}
+			if (n > 1)
+				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity: REMOVED {} EXTRA COPIES OF {} FROM THE ZERO_DISTANCE SORTED LIST", n - 1, oo::DescriptionOf(entity));
+			while (n--)
+			{
+				n_entities--;
+				sortedEntities[n_entities] = nil;
+			}
+		}
+		entity->_cxxEntity->zero_index = -1;	// it's GONE!
+	}
+	
+	// remove from the definitive list
+	if (std::find(entities.begin(), entities.end(), entity) != entities.end())
+	{
+		// FIXME: better approach needed for core break patterns - CIM
+		if ([entity isBreakPattern] && ![entity isVisualEffect])
+		{
+			breakPatternCounter--;
+		}
+		
+		if ([entity isShip])
+		{
+			::ShipEntity *se = (::ShipEntity*)entity;
+			[self clearBeacon:se];
+		}
+		if ([entity isWaypoint])
+		{
+			::OOWaypointEntity *wp = (::OOWaypointEntity*)entity;
+			[self clearBeacon:wp];
+		}
+		if ([entity isVisualEffect])
+		{
+			::OOVisualEffectEntity *ve = (::OOVisualEffectEntity*)entity;
+			[self clearBeacon:ve];
+		}
+		
+		if ([entity isWormhole])
+		{
+			std::erase(activeWormholes, entity);
+		}
+		else if ([entity isPlanet])
+		{
+			std::erase(allPlanets, entity);
+		}
+
+		std::erase(entities, entity);
+		return YES;
+	}
+	
+	return NO;
+}
+
+
+// ORDER-SENSITIVE (decision D): the keys in byte order (was the dictionary's hash order).
+void Universe::preloadSounds()
+{
+	// Preload sounds to avoid loading stutter.
+	if (const oo::PList::Dict *sounds = customSounds.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, object] : *sounds)
+		{
+			if (object.isString())
+			{
+				PreloadOneSound(*object.getIf<std::string>());
+			}
+			else if (object.isArray() && object.count() > 0)
+			{
+				for (const oo::PList &soundName : *object.getIf<oo::PList::Array>())
+				{
+					if (soundName.isString())
+					{
+						PreloadOneSound(*soundName.getIf<std::string>());
+					}
+				}
+			}
+		}
+	}
+
+	// Afterburner sound doesn't go through customsounds.plist.
+	PreloadOneSound("afterburner1.ogg");
+}
+
+
+void Universe::populateSpaceFromActiveWormholes()
+{
+	while (!activeWormholes.empty())
+	{
+		@autoreleasepool
+		{
+			@try
+			{
+				::WormholeEntity* whole = activeWormholes[0].get();
+				// If the wormhole has been scanned by the player then the
+				// PlayerEntity will take care of it
+				if (![whole isScanned] &&
+					NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
+				{
+					// this is a wormhole to this system
+					[whole disgorgeShips];
+				}
+				RemoveFirstWormhole(activeWormholes);	// empty it out
+			}
+			@catch (::OOException *exception)
+			{
+				OO_LOG(cxx_kOOLogException, "Squashing exception during wormhole unpickling ({}: {}).", [exception name], [exception reason]);
+			}
+		}
+	}
+}
+
+
+std::optional<std::string> Universe::chooseStringForKey(const std::string &key, const oo::PList &dictionary)
+{
+	const oo::PList *object = dictionary.find(key);
+	if (object == nullptr)  return std::nullopt;
+	if (object->isString())  return *object->getIf<std::string>();
+	else if (object->isArray() && object->count() > 0)  return OptionalStringAt(*object, Ranrot() % object->count());
+	return std::nullopt;
+}
+
+
+#if OO_LOCALIZATION_TOOLS && DEBUG_GRAPHVIZ
+void Universe::dumpDebugGraphViz()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (oo::Defaults::standard().boolForKey("universe-dump-debug-graphviz"))
+	{
+		[self dumpSystemDescriptionGraphViz];
+	}
+}
+
+
+void Universe::dumpSystemDescriptionGraphViz()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::string					graphViz;
+	const oo::PList				*systemDescriptions = nullptr;
+	const oo::PList				*thisDesc = nullptr;
+	NSUInteger					i, count, j, subCount;
+	std::string					descLine;
+	const oo::PList				*curses = nullptr;
+	std::string					label;
+	oo::PList					keyMap;
+
+	keyMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"sysdesc_key_table.plist"
+											  inFolder:std::string("Config")
+											  andMerge:NO];
+
+	graphViz = "// System description grammar:\n\n"
+				"digraph system_descriptions\n"
+				"{\n"
+				"\tgraph [charset=\"UTF-8\", label=\"System description grammar\", labelloc=t, labeljust=l rankdir=LR compound=true nodesep=0.02 ranksep=1.5 concentrate=true fontname=Helvetica]\n"
+				"\tedge [arrowhead=dot]\n"
+				"\tnode [shape=none height=0.2 width=3 fontname=Helvetica]\n\t\n";
+
+	systemDescriptions = [self cxx_descriptions]->get<oo::PList::Array>("system_description");
+	count = (systemDescriptions != nullptr) ? systemDescriptions->count() : 0;
+
+	// Add system-description-string as special node (it's the one thing that ties [14] to everything else).
+	descLine = cxx_OOLookUpDescriptionPRIV("system-description-string");
+	graphViz += oo::str::format("\tsystem_description_string [label=\"%s\" shape=ellipse]\n", StringifiedLabel(descLine, keyMap).c_str());
+	[self addNumericRefsInString:descLine
+					  toGraphViz:graphViz
+						fromNode:"system_description_string"
+					   nodeCount:count];
+	graphViz += "\t\n";
+
+	// Add special nodes for formatting codes
+	graphViz +=
+	 "\tpercent_I [label=\"%I\\nInhabitants\" shape=diamond]\n"
+	 "\tpercent_H [label=\"%H\\nSystem name\" shape=diamond]\n"
+	 "\tpercent_RN [label=\"%R/%N\\nRandom name\" shape=diamond]\n"
+	 "\tpercent_J [label=\"%J\\nNumbered system name\" shape=diamond]\n"
+	 "\tpercent_G [label=\"%G\\nNumbered system name in chart number\" shape=diamond]\n\t\n";
+
+	// Toss in the Thargoid curses, too
+	graphViz += "\tsubgraph cluster_thargoid_curses\n\t{\n\t\tlabel = \"Thargoid curses\"\n";
+	curses = [self cxx_descriptions]->get<oo::PList::Array>("thargoid_curses");
+	subCount = (curses != nullptr) ? curses->count() : 0;
+	for (j = 0; j < subCount; ++j)
+	{
+		graphViz += oo::str::format("\t\tthargoid_curse_%zu [label=\"%s\"]\n", j, StringifiedLabel(OptionalStringAt(*curses, j), keyMap).c_str());
+	}
+	graphViz += "\t}\n";
+	for (j = 0; j < subCount; ++j)
+	{
+		[self addNumericRefsInString:OptionalStringAt(*curses, j).value_or(std::string())
+						  toGraphViz:graphViz
+							fromNode:oo::str::format("thargoid_curse_%zu", j)
+						   nodeCount:count];
+	}
+	graphViz += "\t\n";
+
+	// The main show: the bits of systemDescriptions itself.
+	// Define the nodes
+	for (i = 0; i < count; ++i)
+	{
+		// Build label, using sysdesc_key_table.plist if available
+		const oo::PList *keyLabel = keyMap.find(oo::str::format("%zu", i));
+		if (keyLabel == nullptr)  label = oo::str::format("[%zu]", i);
+		else  label = oo::str::format("[%zu] (%s)", i, oo::DescriptionOf(*keyLabel).c_str());
+
+		graphViz += oo::str::format("\tsubgraph cluster_%zu\n\t{\n\t\tlabel=\"%s\"\n", i, cxx_EscapedGraphVizString(label).c_str());
+
+		thisDesc = systemDescriptions->at<oo::PList::Array>(i);
+		subCount = (thisDesc != nullptr) ? thisDesc->count() : 0;
+		for (j = 0; j < subCount; ++j)
+		{
+			graphViz += oo::str::format("\t\tn%zu_%zu [label=\"\\\"%s\\\"\"]\n", i, j, StringifiedLabel(OptionalStringAt(*thisDesc, j), keyMap).c_str());
+		}
+
+		graphViz += "\t}\n";
+	}
+	graphViz += "\t\n";
+
+	// Define the edges
+	for (i = 0; i != count; ++i)
+	{
+		thisDesc = systemDescriptions->at<oo::PList::Array>(i);
+		subCount = (thisDesc != nullptr) ? thisDesc->count() : 0;
+		for (j = 0; j != subCount; ++j)
+		{
+			descLine = OptionalStringAt(*thisDesc, j).value_or(std::string());
+			[self addNumericRefsInString:descLine
+							  toGraphViz:graphViz
+								fromNode:oo::str::format("n%zu_%zu", i, j)
+							   nodeCount:count];
+		}
+	}
+
+	// Write file
+	graphViz += "\t}\n";
+	[::ResourceManager cxx_writeDiagnosticData:oo::Data(graphViz.data(), graphViz.size()) toFileNamed:"SystemDescription.dot"];
+}
+#endif
 
 }	// namespace cxx

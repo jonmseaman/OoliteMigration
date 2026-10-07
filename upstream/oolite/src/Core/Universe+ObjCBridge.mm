@@ -306,3 +306,22 @@ extern Universe *gSharedUniverse;
 - (void) verifyEntitySessionIDs	{ _cxxUniverse->verifyEntitySessionIDs(); }
 
 @end
+
+
+@implementation Universe (OOSlice25)
+
+- (BOOL) reinitAndShowDemo:(BOOL) showDemo	{ return _cxxUniverse->reinitAndShowDemo(showDemo); }
+- (void) setUpInitialUniverse	{ _cxxUniverse->setUpInitialUniverse(); }
+- (float) randomDistanceWithinScanner	{ return _cxxUniverse->randomDistanceWithinScanner(); }
+- (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset	{ return _cxxUniverse->randomPlaceWithinScannerFrom(pos, route, offset); }
+- (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction	{ return _cxxUniverse->fractionalPositionFrom(point0, point1, routeFraction); }
+- (BOOL)doRemoveEntity:(Entity *)entity	{ return _cxxUniverse->doRemoveEntity(entity); }
+- (void) preloadSounds	{ _cxxUniverse->preloadSounds(); }
+- (void) populateSpaceFromActiveWormholes	{ _cxxUniverse->populateSpaceFromActiveWormholes(); }
+- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary	{ return _cxxUniverse->chooseStringForKey(key, dictionary); }
+#if OO_LOCALIZATION_TOOLS && DEBUG_GRAPHVIZ
+- (void) dumpDebugGraphViz	{ _cxxUniverse->dumpDebugGraphViz(); }
+- (void) dumpSystemDescriptionGraphViz	{ _cxxUniverse->dumpSystemDescriptionGraphViz(); }
+#endif
+
+@end
