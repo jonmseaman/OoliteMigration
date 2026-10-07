@@ -159,8 +159,6 @@ MA 02110-1301, USA.
 
 
 
-- (Vector) thrustVector;
-- (void) setTotalVelocity:(Vector)vel;	// Set velocity to vel - thrustVector, effectively setting the instanteneous velocity to vel.
 
 
 
@@ -213,15 +211,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 - (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner;
 
-- (void) manageCollisions;
-- (BOOL) collideWithShip:(ShipEntity *)other;
-- (void) adjustVelocity:(Vector) xVel;
-- (void) addImpactMoment:(Vector) moment fraction:(GLfloat) howmuch;
-- (BOOL) canScoop:(ShipEntity *)other;
-- (void) getTractoredBy:(ShipEntity *)other;
-- (void) scoopIn:(ShipEntity *)other;
-- (void) scoopUp:(ShipEntity *)other;
-- (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL) proc_events processMessages:(BOOL) proc_messages;
 
 - (BOOL) abandonShip;
 
@@ -1185,6 +1174,28 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) dumpCargo;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 - (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
 - (OOCargoType) dumpItem: (ShipEntity*) jetto;
+
+@end
+
+
+// Slice 30 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice30)
+
+- (void) manageCollisions;
+- (BOOL) collideWithShip:(ShipEntity *)other;
+- (Vector) thrustVector;
+- (Vector) velocity;
+- (void) setTotalVelocity:(Vector)vel;	// Set velocity to vel - thrustVector, effectively setting the instanteneous velocity to vel.
+- (void) adjustVelocity:(Vector) xVel;
+- (void) addImpactMoment:(Vector) moment fraction:(GLfloat) howmuch;
+- (BOOL) canScoop:(ShipEntity *)other;
+- (void) getTractoredBy:(ShipEntity *)other;
+- (void) scoopIn:(ShipEntity *)other;
+- (void) suppressTargetLost;
+- (void) scoopUp:(ShipEntity *)other;
+- (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL) proc_events processMessages:(BOOL) proc_messages;
 
 @end
 

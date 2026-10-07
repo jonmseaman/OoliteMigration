@@ -151,6 +151,12 @@ public:
 	void deactivateCloakingDevice() override	{ [(::ShipEntity *)_objcOwner deactivateCloakingDevice]; }
 	::ShipEntity *launchEscapeCapsule() override	{ return [(::ShipEntity *)_objcOwner launchEscapeCapsule]; }
 	void dumpCargo() override	{ [(::ShipEntity *)_objcOwner dumpCargo]; }
+
+	// Slice 30 (bead oo-ogoct).
+	bool collideWithShip(::ShipEntity *other) override	{ return [(::ShipEntity *)_objcOwner collideWithShip:other]; }
+	void adjustVelocity(Vector xVel) override	{ [(::ShipEntity *)_objcOwner adjustVelocity:xVel]; }
+	bool canScoop(::ShipEntity *other) override	{ return [(::ShipEntity *)_objcOwner canScoop:other]; }
+	void suppressTargetLost() override	{ [(::ShipEntity *)_objcOwner suppressTargetLost]; }
 };
 
 }	// namespace
@@ -1027,5 +1033,24 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) dumpCargo	{ _cxxShip->cxx::ShipEntity::dumpCargo(); }
 - (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred	{ return _cxxShip->dumpCargoItem(preferred); }
 - (OOCargoType) dumpItem:(ShipEntity*)cargoObj	{ return _cxxShip->dumpItem(cargoObj); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice30)
+
+- (void) manageCollisions	{ _cxxShip->manageCollisions(); }
+- (BOOL) collideWithShip:(ShipEntity *)other	{ return _cxxShip->cxx::ShipEntity::collideWithShip(other); }
+- (Vector) thrustVector	{ return _cxxShip->thrustVector(); }
+- (Vector) velocity	{ return _cxxShip->cxx::ShipEntity::getVelocity(); }
+- (void) setTotalVelocity:(Vector)vel	{ _cxxShip->setTotalVelocity(vel); }
+- (void) adjustVelocity:(Vector)xVel	{ _cxxShip->cxx::ShipEntity::adjustVelocity(xVel); }
+- (void) addImpactMoment:(Vector)moment fraction:(GLfloat)howmuch	{ _cxxShip->addImpactMoment(moment, howmuch); }
+- (BOOL) canScoop:(ShipEntity*)other	{ return _cxxShip->cxx::ShipEntity::canScoop(other); }
+- (void) getTractoredBy:(ShipEntity *)other	{ _cxxShip->getTractoredBy(other); }
+- (void) scoopIn:(ShipEntity *)other	{ _cxxShip->scoopIn(other); }
+- (void) suppressTargetLost	{ _cxxShip->cxx::ShipEntity::suppressTargetLost(); }
+- (void) scoopUp:(ShipEntity *)other	{ _cxxShip->scoopUp(other); }
+- (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL)procEvents processMessages:(BOOL)procMessages	{ _cxxShip->scoopUpProcess(other, procEvents, procMessages); }
 
 @end
