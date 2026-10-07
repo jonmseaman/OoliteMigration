@@ -55,23 +55,16 @@ std::string FormatFloat(double value);
 
 /*
 	REQUIRE_STAGE(): pull in the required stage. A stage must have a
-	zero-parameter method and a matching _completed_stage instance variable.
+	zero-parameter member function and a matching _completed_stage member.
 
-	In debug/testrelease builds, this dispatches through performStage: which
-	checks for recursive calls.
-
-	Two forms while the stages are Objective-C methods of the facade (slice 2): REQUIRE_STAGE in
-	the stages (self is the facade, the flags are the C++ object's) and REQUIRE_CXX_STAGE in the
-	C++ members (bead oo-bm1q). Both name the stage with OOSelectorFromName, so performStage()
-	sees one selector per stage whichever side asked (OORuntime.h: a literal @selector need not be
-	the same pointer).
+	In debug/testrelease builds, this dispatches through performStage() which
+	checks for recursive calls. The stage is named by its text and called through
+	a member-function pointer where it was named by a selector (bead oo-bhxc).
 */
 #ifndef NDEBUG
-#define REQUIRE_STAGE(NAME) if (!oo::ToCxx(self)->_completed_##NAME) { [self performStage:OOSelectorFromName(#NAME)]; oo::ToCxx(self)->_completed_##NAME = YES; }
-#define REQUIRE_CXX_STAGE(NAME) if (!_completed_##NAME) { performStage(OOSelectorFromName(#NAME)); _completed_##NAME = YES; }
+#define REQUIRE_STAGE(NAME) if (!_completed_##NAME) { performStage(#NAME, &OODefaultShaderSynthesizer::NAME); _completed_##NAME = YES; }
 #else
-#define REQUIRE_STAGE(NAME) if (!oo::ToCxx(self)->_completed_##NAME) { [self NAME]; oo::ToCxx(self)->_completed_##NAME = YES; }
-#define REQUIRE_CXX_STAGE(NAME) if (!_completed_##NAME) { [oo::ToObjC(this) NAME]; _completed_##NAME = YES; }
+#define REQUIRE_STAGE(NAME) if (!_completed_##NAME) { NAME(); _completed_##NAME = YES; }
 #endif
 
 
@@ -86,10 +79,10 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 {
 	OOCParameterAssert(!configuration.isNull() && outVertexShader != NULL && outFragmentShader != NULL && outTextureSpecs != NULL && outUniformSpecs != NULL);
 	
-	// The stages (Objective-C until slice 2) autorelease the synthesizer's facade.
+	// Kept from the @autoreleasepool: the material specifier functions answer autoreleased colours.
 	void *pool = objc_autoreleasePoolPush();
 	{
-		oo::Ref<cxx::OODefaultShaderSynthesizer> synthesizer = oo::makeRef<cxx::OODefaultShaderSynthesizer>(configuration, materialKey, entityName);
+		oo::Ref<OODefaultShaderSynthesizer> synthesizer = oo::makeRef<OODefaultShaderSynthesizer>(configuration, materialKey, entityName);
 
 		bool OK = synthesizer->run();
 		if (OK)
@@ -113,7 +106,7 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 }
 
 
-cxx::OODefaultShaderSynthesizer::OODefaultShaderSynthesizer(const oo::PList &configuration, const std::optional<std::string> &materialKey, const std::optional<std::string> & /*name*/)
+OODefaultShaderSynthesizer::OODefaultShaderSynthesizer(const oo::PList &configuration, const std::optional<std::string> &materialKey, const std::optional<std::string> & /*name*/)
 {
 	_configuration = CanonicalizeMaterialSpecifier(configuration, materialKey);
 	_materialKey = materialKey;
@@ -121,46 +114,45 @@ cxx::OODefaultShaderSynthesizer::OODefaultShaderSynthesizer(const oo::PList &con
 }
 
 
-/*	-dealloc sent -destroyTemporaries (slice 2, still Objective-C on the facade), which only empties
-	members that the destructor destroys anyway; the destructor is the implicit one (amendment
-	oo-vt0o item 2), and does not make a facade for an object that is going away.
+/*	-dealloc sent -destroyTemporaries, which only empties members that the destructor destroys
+	anyway; the destructor is the implicit one (amendment oo-vt0o item 2).
 */
 
 
-std::string cxx::OODefaultShaderSynthesizer::vertexShader()
+std::string OODefaultShaderSynthesizer::vertexShader()
 {
 	return _vertexShader;
 }
 
 
-std::string cxx::OODefaultShaderSynthesizer::fragmentShader()
+std::string OODefaultShaderSynthesizer::fragmentShader()
 {
 	return _fragmentShader;
 }
 
 
-oo::PList cxx::OODefaultShaderSynthesizer::textureSpecifications()
+oo::PList OODefaultShaderSynthesizer::textureSpecifications()
 {
 	return oo::PList(oo::PList::Array(_textures));
 }
 
 
-oo::PList cxx::OODefaultShaderSynthesizer::uniformSpecifications()
+oo::PList OODefaultShaderSynthesizer::uniformSpecifications()
 {
 	return oo::PList(_uniforms);
 }
 
 
-bool cxx::OODefaultShaderSynthesizer::run()
+bool OODefaultShaderSynthesizer::run()
 {
-	[oo::ToObjC(this) createTemporaries];
+	createTemporaries();
 	_uniforms.clear();
 	_vertexBody += "void main(void)\n{\n";
 	_fragmentPreTextures += "void main(void)\n{\n";
 
 	@try
 	{
-		REQUIRE_CXX_STAGE(writeFinalColorComposite);
+		REQUIRE_STAGE(writeFinalColorComposite);
 
 		composeVertexShader();
 		composeFragmentShader();
@@ -172,19 +164,19 @@ bool cxx::OODefaultShaderSynthesizer::run()
 	}
 	@finally
 	{
-		[oo::ToObjC(this) destroyTemporaries];
+		destroyTemporaries();
 	}
 
 	return true;
 }
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::materialKey()
+std::optional<std::string> OODefaultShaderSynthesizer::materialKey()
 {
 	return _materialKey;
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::entityName()
+std::optional<std::string> OODefaultShaderSynthesizer::entityName()
 {
 	return _entityName;
 }
@@ -248,7 +240,7 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 }	// namespace
 
 
-void cxx::OODefaultShaderSynthesizer::appendVariable(const std::string &name, const std::string &type, const std::string &prefix, std::string &buffer)
+void OODefaultShaderSynthesizer::appendVariable(const std::string &name, const std::string &type, const std::string &prefix, std::string &buffer)
 {
 	NSUInteger typeDeclLength = prefix.size() + type.size() + 1;
 	NSUInteger padding = (typeDeclLength < 20) ? (23 - typeDeclLength) / 4 : 1;
@@ -256,31 +248,31 @@ void cxx::OODefaultShaderSynthesizer::appendVariable(const std::string &name, co
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addAttribute(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addAttribute(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "attribute", _attributes);
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addVarying(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addVarying(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "varying", _varyings);
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addVertexUniform(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addVertexUniform(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "uniform", _vertexUniforms);
 }
 
 
-void cxx::OODefaultShaderSynthesizer::addFragmentUniform(const std::string &name, const std::string &type)
+void OODefaultShaderSynthesizer::addFragmentUniform(const std::string &name, const std::string &type)
 {
 	appendVariable(name, type, "uniform", _fragmentUniforms);
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::defineBindingUniform(const oo::PList &binding, const std::string &type)
+std::optional<std::string> OODefaultShaderSynthesizer::defineBindingUniform(const oo::PList &binding, const std::string &type)
 {
 	std::string name = OptionalStringFor(binding, "binding").value_or(std::string());
 	OOCParameterAssert(!name.empty());
@@ -319,7 +311,7 @@ std::optional<std::string> cxx::OODefaultShaderSynthesizer::defineBindingUniform
 }
 
 
-void cxx::OODefaultShaderSynthesizer::composeVertexShader()
+void OODefaultShaderSynthesizer::composeVertexShader()
 {
 	while (_vertexBody.ends_with("\t\n"))
 	{
@@ -338,7 +330,7 @@ void cxx::OODefaultShaderSynthesizer::composeVertexShader()
 }
 
 
-void cxx::OODefaultShaderSynthesizer::composeFragmentShader()
+void OODefaultShaderSynthesizer::composeFragmentShader()
 {
 	while (_fragmentBody.ends_with("\t\n"))
 	{
@@ -400,7 +392,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 }	// namespace
 
 
-NSUInteger cxx::OODefaultShaderSynthesizer::assignIDForTexture(const oo::PList &textureSpec)
+NSUInteger OODefaultShaderSynthesizer::assignIDForTexture(const oo::PList &textureSpec)
 {
 	OOCParameterAssert(!textureSpec.isNull());
 
@@ -459,18 +451,18 @@ NSUInteger cxx::OODefaultShaderSynthesizer::assignIDForTexture(const oo::PList &
 }
 
 
-NSUInteger cxx::OODefaultShaderSynthesizer::textureIDForSpec(const oo::PList &textureSpec)
+NSUInteger OODefaultShaderSynthesizer::textureIDForSpec(const oo::PList &textureSpec)
 {
 	auto found = _textureIDs.find(KeyFromTextureSpec(textureSpec));
 	return (found != _textureIDs.end()) ? found->second : 0;
 }
 
 
-void cxx::OODefaultShaderSynthesizer::setUpOneTexture(const oo::PList &textureSpec)
+void OODefaultShaderSynthesizer::setUpOneTexture(const oo::PList &textureSpec)
 {
 	if (textureSpec.isNull())  return;
 
-	REQUIRE_CXX_STAGE(writeTextureCoordRead);
+	REQUIRE_STAGE(writeTextureCoordRead);
 
 	NSUInteger texID = assignIDForTexture(textureSpec);
 	if (_sampledTextures.insert(texID).second)
@@ -480,7 +472,7 @@ void cxx::OODefaultShaderSynthesizer::setUpOneTexture(const oo::PList &textureSp
 }
 
 
-void cxx::OODefaultShaderSynthesizer::getSampleName(std::string *outSampleName, std::string *outSwizzleOp, const oo::PList &textureSpec)
+void OODefaultShaderSynthesizer::getSampleName(std::string *outSampleName, std::string *outSwizzleOp, const oo::PList &textureSpec)
 {
 	OOCParameterAssert(outSampleName != NULL && outSwizzleOp != NULL && !textureSpec.isNull());
 
@@ -492,7 +484,7 @@ void cxx::OODefaultShaderSynthesizer::getSampleName(std::string *outSampleName, 
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::readRGBForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
+std::optional<std::string> OODefaultShaderSynthesizer::readRGBForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
 {
 	std::string sample, swizzle;
 	getSampleName(&sample, &swizzle, textureSpec);
@@ -518,7 +510,7 @@ std::optional<std::string> cxx::OODefaultShaderSynthesizer::readRGBForTextureSpe
 }
 
 
-std::optional<std::string> cxx::OODefaultShaderSynthesizer::readOneChannelForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
+std::optional<std::string> OODefaultShaderSynthesizer::readOneChannelForTextureSpec(const oo::PList &textureSpec, const std::string &mapName)
 {
 	std::string sample, swizzle;
 	getSampleName(&sample, &swizzle, textureSpec);
@@ -541,169 +533,90 @@ std::optional<std::string> cxx::OODefaultShaderSynthesizer::readOneChannelForTex
 
 
 #ifndef NDEBUG
-void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
+void OODefaultShaderSynthesizer::performStage(const char *name, Stage stage)
 {
 	// Ensure that we aren’t recursing.
-	if (_stagesInProgress.count(stage) != 0)
+	if (_stagesInProgress.count(name) != 0)
 	{
-		OO_LOG_ERR("material.synthesis.error.recursion", "Shader synthesis recursion for stage {}.", OOSelectorName(stage));
+		OO_LOG_ERR("material.synthesis.error.recursion", "Shader synthesis recursion for stage {}.", name);
 		OORaiseException(OOInternalInconsistencyException, "stage recursion");
 	}
 
-	_stagesInProgress.insert(stage);
+	_stagesInProgress.insert(name);
 
-	[oo::ToObjC(this) performSelector:stage];
+	(this->*stage)();
 
-	_stagesInProgress.erase(stage);
+	_stagesInProgress.erase(name);
 }
 #endif
 
 
-// MARK: - Shader stages (slice 2: Objective-C methods of the facade until bead oo-bhxc)
-
-/*	Stages (declared in OODefaultShaderSynthesizer+ObjCBridge.h). These should only be called through the REQUIRE_STAGE macro to
-	avoid duplicated code and ensure data depedencies are met.
-*/
-
-
-/*	writeTextureCoordRead
-	Generate vec2 texCoords.
-*/
-
-/*	writeDiffuseColorTermIfNeeded
-	Generates and populates the fragment shader value vec3 diffuseColor, unless
-	the diffuse term is black. If a diffuseColor is generated, _usesDiffuseTerm
-	is set. The value will be const if possible.
-	See also: writeDiffuseColorTerm.
-*/
-
-/*	writeDiffuseColorTerm
-	Generates vec3 diffuseColor unconditionally – that is, even if the diffuse
-	term is black.
-	See also: writeDiffuseColorTermIfNeeded.
-*/
-
-/*	writeDiffuseLighting
-	Generate the fragment variable vec3 diffuseLight and add Lambertian and
-	ambient terms to it.
-*/
-
-/*	writeLightVector
-	Generate the fragment variable vec3 lightVector (unit vector) for temporary
-	lighting. Calling this if lighting mode is kLightingUniform will cause an
-	exception.
-*/
-
-/*	writeEyeVector
-	Generate vec3 lightVector, the normalized direction from the fragment to
-	the light source.
-*/
-
-/*	writeVertexTangentBasis
-	Generates tangent space basis matrix (TBN) in vertex shader, if in tangent-
-	space lighting mode. If not, an exeception is raised.
-*/
-
-/*	writeNormalIfNeeded
-	Writes fragment variable vec3 normal if necessary. Otherwise, it sets
-	_constZNormal, indicating that the normal is always (0, 0, 1).
-	
-	See also: writeNormal.
-*/
-
-/*	writeNormal
-	Generates vec3 normal unconditionally – if _constZNormal is set, normal will
-	be const vec3 normal = vec3 (0.0, 0.0, 1.0).
-*/
-
-/*	writeSpecularLighting
-	Calculate specular writing and add it to totalColor.
-*/
-
-/*	writeLightMaps
-	Add emission and illumination maps to totalColor.
-*/
-
-/*	writeVertexPosition
-	Calculate vertex position and write it to gl_Position.
-*/
-
-/*	writeTotalColor
-	Generate vec3 totalColor, the accumulator for output colour values.
-*/
-
-/*	writeFinalColorComposite
-	This stage writes the final fragment shader. It also pulls in other stages
-	through dependencies.
-*/
-
-
-@implementation OODefaultShaderSynthesizer (Stages)
-
-- (void) createTemporaries
+void OODefaultShaderSynthesizer::createTemporaries()
 {
-	oo::ToCxx(self)->_attributes.clear();
-	oo::ToCxx(self)->_varyings.clear();
-	oo::ToCxx(self)->_vertexUniforms.clear();
-	oo::ToCxx(self)->_fragmentUniforms.clear();
-	oo::ToCxx(self)->_vertexHelpers.clear();
-	oo::ToCxx(self)->_fragmentHelpers.clear();
-	oo::ToCxx(self)->_vertexBody.clear();
-	oo::ToCxx(self)->_fragmentPreTextures.clear();
-	oo::ToCxx(self)->_fragmentTextureLookups.clear();
-	oo::ToCxx(self)->_fragmentBody.clear();
+	_attributes.clear();
+	_varyings.clear();
+	_vertexUniforms.clear();
+	_fragmentUniforms.clear();
+	_vertexHelpers.clear();
+	_fragmentHelpers.clear();
+	_vertexBody.clear();
+	_fragmentPreTextures.clear();
+	_fragmentTextureLookups.clear();
+	_fragmentBody.clear();
 	
-	oo::ToCxx(self)->_textures.clear();
-	oo::ToCxx(self)->_texturesByName.clear();
-	oo::ToCxx(self)->_textureIDs.clear();
-	oo::ToCxx(self)->_sampledTextures.clear();
+	_textures.clear();
+	_texturesByName.clear();
+	_textureIDs.clear();
+	_sampledTextures.clear();
 	
-	oo::ToCxx(self)->_uniformBindingNames.clear();
+	_uniformBindingNames.clear();
 	
 #ifndef NDEBUG
-	oo::ToCxx(self)->_stagesInProgress.clear();
+	_stagesInProgress.clear();
 #endif
 }
 
 
-- (void) destroyTemporaries
+void OODefaultShaderSynthesizer::destroyTemporaries()
 {
-	oo::ToCxx(self)->_attributes.clear();
-	oo::ToCxx(self)->_varyings.clear();
-	oo::ToCxx(self)->_vertexUniforms.clear();
-	oo::ToCxx(self)->_fragmentUniforms.clear();
-	oo::ToCxx(self)->_vertexHelpers.clear();
-	oo::ToCxx(self)->_fragmentHelpers.clear();
-	oo::ToCxx(self)->_vertexBody.clear();
-	oo::ToCxx(self)->_fragmentPreTextures.clear();
-	oo::ToCxx(self)->_fragmentTextureLookups.clear();
-	oo::ToCxx(self)->_fragmentBody.clear();
+	_attributes.clear();
+	_varyings.clear();
+	_vertexUniforms.clear();
+	_fragmentUniforms.clear();
+	_vertexHelpers.clear();
+	_fragmentHelpers.clear();
+	_vertexBody.clear();
+	_fragmentPreTextures.clear();
+	_fragmentTextureLookups.clear();
+	_fragmentBody.clear();
 	
-	oo::ToCxx(self)->_texturesByName.clear();
-	oo::ToCxx(self)->_textureIDs.clear();
-	oo::ToCxx(self)->_sampledTextures.clear();
+	_texturesByName.clear();
+	_textureIDs.clear();
+	_sampledTextures.clear();
 	
-	oo::ToCxx(self)->_uniformBindingNames.clear();
+	_uniformBindingNames.clear();
 	
 #ifndef NDEBUG
-	oo::ToCxx(self)->_stagesInProgress.clear();
+	_stagesInProgress.clear();
 #endif
 }
 
 
 // MARK: - Synthesis stages
 
-- (void) writeTextureCoordRead
+// MARK: - Synthesis stages
+
+void OODefaultShaderSynthesizer::writeTextureCoordRead()
 {
-	[self addVarying:"vTexCoords" ofType:"vec2"];
-	oo::ToCxx(self)->_vertexBody += "\tvTexCoords = gl_MultiTexCoord0.st;\n\t\n";
+	addVarying("vTexCoords", "vec2");
+	_vertexBody += "\tvTexCoords = gl_MultiTexCoord0.st;\n\t\n";
 	
 	BOOL haveTexCoords = NO;
-	oo::PList parallaxMap = cxx_OOMaterialParallaxMapSpecifier(oo::ToCxx(self)->_configuration);
+	oo::PList parallaxMap = cxx_OOMaterialParallaxMapSpecifier(_configuration);
 	
 	if (!parallaxMap.isNull())
 	{
-		float parallaxScale = cxx_OOMaterialParallaxScale(oo::ToCxx(self)->_configuration);
+		float parallaxScale = cxx_OOMaterialParallaxScale(_configuration);
 		if (parallaxScale != 0.0f)
 		{
 			/*
@@ -719,96 +632,97 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 				
 				REQUIRE_STAGE(writeEyeVector);
 				
-				oo::ToCxx(self)->_fragmentPreTextures += "\t// Parallax mapping\n";
+				_fragmentPreTextures += "\t// Parallax mapping\n";
 				
-				NSUInteger texID = [self assignIDForTexture:parallaxMap];
-				oo::ToCxx(self)->_fragmentPreTextures += oo::str::format("\tfloat parallax = texture2D(uTexture%zu, vTexCoords).%s;\n", texID, swizzle.c_str());
+				NSUInteger texID = assignIDForTexture(parallaxMap);
+				_fragmentPreTextures += oo::str::format("\tfloat parallax = texture2D(uTexture%zu, vTexCoords).%s;\n", texID, swizzle.c_str());
 				
 				if (parallaxScale != 1.0f)
 				{
-					oo::ToCxx(self)->_fragmentPreTextures += oo::str::format("\tparallax *= %s;  // Parallax scale\n", FormatFloat(parallaxScale).c_str());
+					_fragmentPreTextures += oo::str::format("\tparallax *= %s;  // Parallax scale\n", FormatFloat(parallaxScale).c_str());
 				}
 				
-				float parallaxBias = cxx_OOMaterialParallaxBias(oo::ToCxx(self)->_configuration);
+				float parallaxBias = cxx_OOMaterialParallaxBias(_configuration);
 				if (parallaxBias != 0.0)
 				{
-					oo::ToCxx(self)->_fragmentPreTextures += oo::str::format("\tparallax += %s;  // Parallax bias\n", FormatFloat(parallaxBias).c_str());
+					_fragmentPreTextures += oo::str::format("\tparallax += %s;  // Parallax bias\n", FormatFloat(parallaxBias).c_str());
 				}
 				
-				oo::ToCxx(self)->_fragmentPreTextures += "\tvec2 texCoords = vTexCoords - parallax * eyeVector.xy * vec2(1.0, -1.0);\n";
+				_fragmentPreTextures += "\tvec2 texCoords = vTexCoords - parallax * eyeVector.xy * vec2(1.0, -1.0);\n";
 			}
 			else
 			{
-				OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", "parallax", [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"), channelCount, "1");
+				OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", "parallax", materialKey().value_or("(null)"), entityName().value_or("(null)"), channelCount, "1");
 			}
 		}
 	}
 	
 	if (!haveTexCoords)
 	{
-		oo::ToCxx(self)->_fragmentPreTextures += "\tvec2 texCoords = vTexCoords;\n";
+		_fragmentPreTextures += "\tvec2 texCoords = vTexCoords;\n";
 	}
 }
 
 
-- (void) writeDiffuseColorTermIfNeeded
+void OODefaultShaderSynthesizer::writeDiffuseColorTermIfNeeded()
 {
-	oo::PList			diffuseMap = cxx_OOMaterialDiffuseMapSpecifier(oo::ToCxx(self)->_configuration, [self materialKey]);
-	OOColor				*diffuseColor = cxx_OOMaterialDiffuseColor(oo::ToCxx(self)->_configuration) ?: [OOColor whiteColor];
+	oo::PList			diffuseMap = cxx_OOMaterialDiffuseMapSpecifier(_configuration, materialKey());
+	oo::Ref<cxx::OOColor>	diffuseColor(oo::ToCxx(cxx_OOMaterialDiffuseColor(_configuration)));
+	if (diffuseColor == nullptr)  diffuseColor = cxx::OOColor::whiteColor();
 	
-	if ([diffuseColor isBlack])  return;
-	oo::ToCxx(self)->_usesDiffuseTerm = YES;
+	if (diffuseColor->isBlack())  return;
+	_usesDiffuseTerm = YES;
 	
 	BOOL haveDiffuseColor = NO;
 	if (!diffuseMap.isNull())
 	{
-		std::optional<std::string> readInstr = [self readRGBForTextureSpec:diffuseMap mapName:"diffuse"];
+		std::optional<std::string> readInstr = readRGBForTextureSpec(diffuseMap, "diffuse");
 		if (EXPECT_NOT(!readInstr.has_value()))
 		{
-			oo::ToCxx(self)->_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
+			_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
 		}
 		else
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tvec3 diffuseColor = %s;\n", readInstr->c_str());
+			_fragmentBody += oo::str::format("\tvec3 diffuseColor = %s;\n", readInstr->c_str());
 			 haveDiffuseColor = YES;
 		}
 	}
 	
-	if (!haveDiffuseColor || ![diffuseColor isWhite])
+	if (!haveDiffuseColor || !diffuseColor->isWhite())
 	{
 		float rgba[4];
-		[diffuseColor getRed:&rgba[0] green:&rgba[1] blue:&rgba[2] alpha:&rgba[3]];
+		diffuseColor->getRed(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
 		if (haveDiffuseColor)
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tdiffuseColor *= vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
+			_fragmentBody += oo::str::format("\tdiffuseColor *= vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 		}
 		else
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tconst vec3 diffuseColor = vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
+			_fragmentBody += oo::str::format("\tconst vec3 diffuseColor = vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 			haveDiffuseColor = YES;
 		}
 	}
 	
 	(void) haveDiffuseColor;
-	oo::ToCxx(self)->_fragmentBody += "\t\n";
+	_fragmentBody += "\t\n";
 }
 
 
-- (void) writeDiffuseColorTerm
+void OODefaultShaderSynthesizer::writeDiffuseColorTerm()
 {
 	REQUIRE_STAGE(writeDiffuseColorTermIfNeeded);
 	
-	if (!oo::ToCxx(self)->_usesDiffuseTerm)
+	if (!_usesDiffuseTerm)
 	{
-		oo::ToCxx(self)->_fragmentBody += "\tconst vec3 diffuseColor = vec3(0.0);  // Diffuse colour is black.\n\t\n";
+		_fragmentBody += "\tconst vec3 diffuseColor = vec3(0.0);  // Diffuse colour is black.\n\t\n";
 	}
 }
 
 
-- (void) writeDiffuseLighting
+void OODefaultShaderSynthesizer::writeDiffuseLighting()
 {
 	REQUIRE_STAGE(writeDiffuseColorTermIfNeeded);
-	if (!oo::ToCxx(self)->_usesDiffuseTerm)  return;
+	if (!_usesDiffuseTerm)  return;
 	
 	REQUIRE_STAGE(writeTotalColor);
 	REQUIRE_STAGE(writeVertexPosition);
@@ -816,48 +730,48 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 	REQUIRE_STAGE(writeLightVector);
 	
 	// FIXME: currently uncoloured diffuse and ambient lighting.
-	const char *normalDotLight = oo::ToCxx(self)->_constZNormal ? "lightVector.z" : "dot(normal, lightVector)";
+	const char *normalDotLight = _constZNormal ? "lightVector.z" : "dot(normal, lightVector)";
 	
-	oo::ToCxx(self)->_fragmentBody += oo::str::format(
+	_fragmentBody += oo::str::format(
 	"\t// Diffuse (Lambertian) and ambient lighting\n"
 	 "\tvec3 diffuseLight = (gl_LightSource[1].diffuse * max(0.0, %s) + gl_LightModel.ambient).rgb;\n\t\n",
 	 normalDotLight);
 	
-	oo::ToCxx(self)->_haveDiffuseLight = YES;
+	_haveDiffuseLight = YES;
 }
 
 
-- (void) writeLightVector
+void OODefaultShaderSynthesizer::writeLightVector()
 {
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeNormalIfNeeded);
 	
-	[self addVarying:"vLightVector" ofType:"vec3"];
+	addVarying("vLightVector", "vec3");
 	
-	oo::ToCxx(self)->_vertexBody +=
+	_vertexBody +=
 	 "\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
 	  "\tvLightVector = lightVector * TBN;\n\t\n";
-	oo::ToCxx(self)->_fragmentBody += "\tvec3 lightVector = normalize(vLightVector);\n\t\n";
+	_fragmentBody += "\tvec3 lightVector = normalize(vLightVector);\n\t\n";
 }
 
 
-- (void) writeEyeVector
+void OODefaultShaderSynthesizer::writeEyeVector()
 {
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeVertexTangentBasis);
 	
-	[self addVarying:"vEyeVector" ofType:"vec3"];
+	addVarying("vEyeVector", "vec3");
 	
-	oo::ToCxx(self)->_vertexBody += "\tvEyeVector = position.xyz * TBN;\n\t\n";
-	oo::ToCxx(self)->_fragmentPreTextures += "\tvec3 eyeVector = normalize(vEyeVector);\n\t\n";
+	_vertexBody += "\tvEyeVector = position.xyz * TBN;\n\t\n";
+	_fragmentPreTextures += "\tvec3 eyeVector = normalize(vEyeVector);\n\t\n";
 }
 
 
-- (void) writeVertexTangentBasis
+void OODefaultShaderSynthesizer::writeVertexTangentBasis()
 {
-	[self addAttribute:"tangent" ofType:"vec3"];
+	addAttribute("tangent", "vec3");
 	
-	oo::ToCxx(self)->_vertexBody +=
+	_vertexBody +=
 	 "\t// Build tangent space basis\n"
 	  "\tvec3 n = gl_NormalMatrix * gl_Normal;\n"
 	  "\tvec3 t = gl_NormalMatrix * tangent;\n"
@@ -866,55 +780,55 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 }
 
 
-- (void) writeNormalIfNeeded
+void OODefaultShaderSynthesizer::writeNormalIfNeeded()
 {
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeVertexTangentBasis);
 	
-	oo::PList normalMap = cxx_OOMaterialNormalMapSpecifier(oo::ToCxx(self)->_configuration);
+	oo::PList normalMap = cxx_OOMaterialNormalMapSpecifier(_configuration);
 	if (normalMap.isNull())
 	{
 		// FIXME: this stuff should be handled in OOMaterialSpecifier.m when synthesizer takes over the world. -- Ahruman 2012-02-08
-		normalMap = cxx_OOMaterialNormalAndParallaxMapSpecifier(oo::ToCxx(self)->_configuration);
+		normalMap = cxx_OOMaterialNormalAndParallaxMapSpecifier(_configuration);
 	}
 	if (!normalMap.isNull())
 	{
 		std::string sample, swizzle;
-		[self getSampleName:&sample andSwizzleOp:&swizzle forTextureSpec:normalMap];
+		getSampleName(&sample, &swizzle, normalMap);
 		if (swizzle.empty())  swizzle = "rgb";
 		if (swizzle.size() == 3)
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tvec3 normal = normalize(%s.%s - 0.5);\n\t\n", sample.c_str(), swizzle.c_str());
-			oo::ToCxx(self)->_usesNormalMap = YES;
+			_fragmentBody += oo::str::format("\tvec3 normal = normalize(%s.%s - 0.5);\n\t\n", sample.c_str(), swizzle.c_str());
+			_usesNormalMap = YES;
 			return;
 		}
 		else
 		{
-			OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", "normal", [self materialKey].value_or("(null)"), [self entityName].value_or("(null)"), swizzle.size(), "3");
+			OO_LOG_WARN("material.synthesis.warning.extractionMismatch", "The {} map for material \"{}\" of \"{}\" specifies {} channels to extract, but only {} may be used.", "normal", materialKey().value_or("(null)"), entityName().value_or("(null)"), swizzle.size(), "3");
 		}
 	}
-	oo::ToCxx(self)->_constZNormal = YES;
+	_constZNormal = YES;
 }
 
 
-- (void) writeNormal
+void OODefaultShaderSynthesizer::writeNormal()
 {
 	REQUIRE_STAGE(writeNormalIfNeeded);
 	
-	if (oo::ToCxx(self)->_constZNormal)
+	if (_constZNormal)
 	{
-		oo::ToCxx(self)->_fragmentBody += "\tconst vec3 normal = vec3(0.0, 0.0, 1.0);\n\t\n";
+		_fragmentBody += "\tconst vec3 normal = vec3(0.0, 0.0, 1.0);\n\t\n";
 	}
 }
 
 
-- (void) writeSpecularLighting
+void OODefaultShaderSynthesizer::writeSpecularLighting()
 {
-	float specularExponent = cxx_OOMaterialSpecularExponent(oo::ToCxx(self)->_configuration);
+	float specularExponent = cxx_OOMaterialSpecularExponent(_configuration);
 	if (specularExponent <= 0)  return;
 	
-	oo::PList specularColorMap = cxx_OOMaterialSpecularColorMapSpecifier(oo::ToCxx(self)->_configuration);
-	oo::PList specularExponentMap = cxx_OOMaterialSpecularExponentMapSpecifier(oo::ToCxx(self)->_configuration);
+	oo::PList specularColorMap = cxx_OOMaterialSpecularColorMapSpecifier(_configuration);
+	oo::PList specularExponentMap = cxx_OOMaterialSpecularExponentMapSpecifier(_configuration);
 	float scaleFactor = 1.0f;
 	
 	if (!specularColorMap.isNull())
@@ -922,17 +836,17 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 		scaleFactor = specularColorMap.get<double>(cxx_kOOTextureSpecifierScaleFactorKey, 1.0f);
 	}
 	
-	OOColor *specularColor = nil;
+	oo::Ref<cxx::OOColor> specularColor;	// never null: both functions below answer a default colour
 	if (specularColorMap.isNull())
 	{
-		specularColor = cxx_OOMaterialSpecularColor(oo::ToCxx(self)->_configuration);
+		specularColor = oo::Ref<cxx::OOColor>(oo::ToCxx(cxx_OOMaterialSpecularColor(_configuration)));
 	}
 	else
 	{
-		specularColor = cxx_OOMaterialSpecularModulateColor(oo::ToCxx(self)->_configuration);
+		specularColor = oo::Ref<cxx::OOColor>(oo::ToCxx(cxx_OOMaterialSpecularModulateColor(_configuration)));
 	}
 	
-	if ([specularColor isBlack])  return;
+	if (specularColor->isBlack())  return;
 	
 	BOOL modulateWithDiffuse = specularColorMap.get<bool>(cxx_kOOTextureSpecifierSelfColorKey);
 	
@@ -945,26 +859,26 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 		REQUIRE_STAGE(writeDiffuseColorTerm);
 	}
 	
-	oo::ToCxx(self)->_fragmentBody += "\t// Specular (Blinn-Phong) lighting\n";
+	_fragmentBody += "\t// Specular (Blinn-Phong) lighting\n";
 	
 	BOOL haveSpecularColor = NO;
 	if (!specularColorMap.isNull())
 	{
-		std::optional<std::string> readInstr = [self readRGBForTextureSpec:specularColorMap mapName:"specular colour"];
+		std::optional<std::string> readInstr = readRGBForTextureSpec(specularColorMap, "specular colour");
 		if (EXPECT_NOT(!readInstr.has_value()))
 		{
-			oo::ToCxx(self)->_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
+			_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
 			return;
 		}
 		
-		oo::ToCxx(self)->_fragmentBody += oo::str::format("\tvec3 specularColor = %s;\n", readInstr->c_str());
+		_fragmentBody += oo::str::format("\tvec3 specularColor = %s;\n", readInstr->c_str());
 		haveSpecularColor = YES;
 	}
 	
-	if (!haveSpecularColor || ![specularColor isWhite])
+	if (!haveSpecularColor || !specularColor->isWhite())
 	{
 		float rgba[4];
-		[specularColor getRed:&rgba[0] green:&rgba[1] blue:&rgba[2] alpha:&rgba[3]];
+		specularColor->getRed(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
 		
 		const char *comment = (scaleFactor == 1.0f) ? "Constant colour" : "Constant colour and scale factor";
 		
@@ -979,11 +893,11 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 		
 		if (haveSpecularColor)
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tspecularColor *= vec3(%s, %s, %s);  // %s\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str(), comment);
+			_fragmentBody += oo::str::format("\tspecularColor *= vec3(%s, %s, %s);  // %s\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str(), comment);
 		}
 		else
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tvec3 specularColor = vec3(%s, %s, %s);  // %s\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str(), comment);
+			_fragmentBody += oo::str::format("\tvec3 specularColor = vec3(%s, %s, %s);  // %s\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str(), comment);
 			haveSpecularColor = YES;
 		}
 	}
@@ -991,56 +905,56 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 	// Handle scale_factor if no constant colour.
 	if (haveSpecularColor && scaleFactor != 1.0f)
 	{
-		oo::ToCxx(self)->_fragmentBody += oo::str::format("\tspecularColor *= %s;  // Scale factor\n", FormatFloat(scaleFactor).c_str());
+		_fragmentBody += oo::str::format("\tspecularColor *= %s;  // Scale factor\n", FormatFloat(scaleFactor).c_str());
 	}
 	
 	// Handle self_color.
 	if (modulateWithDiffuse)
 	{
-		oo::ToCxx(self)->_fragmentBody += "\tspecularColor *= diffuseColor;  // Self-colouring\n";
+		_fragmentBody += "\tspecularColor *= diffuseColor;  // Self-colouring\n";
 	}
 	
 	// Specular exponent.
 	BOOL haveSpecularExponent = NO;
 	if (!specularExponentMap.isNull())
 	{
-		std::optional<std::string> readInstr = [self readOneChannelForTextureSpec:specularExponentMap mapName:"specular exponent"];
+		std::optional<std::string> readInstr = readOneChannelForTextureSpec(specularExponentMap, "specular exponent");
 		if (EXPECT_NOT(!readInstr.has_value()))
 		{
-			oo::ToCxx(self)->_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
+			_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
 			return;
 		}
 		
-		oo::ToCxx(self)->_fragmentBody += oo::str::format("\tfloat specularExponent = %s * %.1f;\n", readInstr->c_str(), specularExponent);
+		_fragmentBody += oo::str::format("\tfloat specularExponent = %s * %.1f;\n", readInstr->c_str(), specularExponent);
 		haveSpecularExponent = YES;
 	}
 	if (!haveSpecularExponent)
 	{
-		oo::ToCxx(self)->_fragmentBody += oo::str::format("\tconst float specularExponent = %.1f;\n", specularExponent);
+		_fragmentBody += oo::str::format("\tconst float specularExponent = %.1f;\n", specularExponent);
 	}
 	
-	if (oo::ToCxx(self)->_usesNormalMap)
+	if (_usesNormalMap)
 	{
-		oo::ToCxx(self)->_fragmentBody += "\tvec3 reflection = reflect(lightVector, normal);\n";
+		_fragmentBody += "\tvec3 reflection = reflect(lightVector, normal);\n";
 	}
 	else
 	{
 		/*	reflect(I, N) is defined as I - 2 * dot(N, I) * N
 			If N is (0,0,1), this becomes (I.x,I.y,-I.z).
 		*/
-		oo::ToCxx(self)->_fragmentBody += "\tvec3 reflection = vec3(lightVector.x, lightVector.y, -lightVector.z);  // Equivalent to reflect(lightVector, normal) since normal is known to be (0, 0, 1) in tangent space.\n";
+		_fragmentBody += "\tvec3 reflection = vec3(lightVector.x, lightVector.y, -lightVector.z);  // Equivalent to reflect(lightVector, normal) since normal is known to be (0, 0, 1) in tangent space.\n";
 	}
 	
-	oo::ToCxx(self)->_fragmentBody +=
+	_fragmentBody +=
 	"\tfloat specIntensity = dot(reflection, eyeVector);\n"
 	 "\tspecIntensity = pow(max(0.0, specIntensity), specularExponent);\n"
 	 "\ttotalColor += specIntensity * specularColor * gl_LightSource[1].specular.rgb;\n\t\n";
 }
 
 
-- (void) writeLightMaps
+void OODefaultShaderSynthesizer::writeLightMaps()
 {
-	const oo::PList *lightMaps = oo::ToCxx(self)->_configuration.get<oo::PList::Array>(cxx_kOOMaterialLightMapsName);
+	const oo::PList *lightMaps = _configuration.get<oo::PList::Array>(cxx_kOOMaterialLightMapsName);
 	NSUInteger idx, count = (lightMaps != nullptr) ? lightMaps->count() : 0;
 	if (count == 0)  return;
 	
@@ -1058,7 +972,7 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 		}
 	}
 	
-	oo::ToCxx(self)->_fragmentBody += "\tvec3 lightMapColor;\n";
+	_fragmentBody += "\tvec3 lightMapColor;\n";
 	
 	const oo::PList notADictionary;	// a light map entry that is not a dictionary reads as nil
 	for (idx = 0; idx < count; idx++)
@@ -1072,7 +986,7 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 		
 		if (EXPECT_NOT(color == nullptr && textureSpec.isNull()))
 		{
-			oo::ToCxx(self)->_fragmentBody += "\t// Light map with neither colour nor texture has no effect.\n\t\n";
+			_fragmentBody += "\t// Light map with neither colour nor texture has no effect.\n\t\n";
 			continue;
 		}
 		
@@ -1088,38 +1002,38 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 		}
 		
 		if (EXPECT_NOT((rgba[0] == 0.0f && rgba[1] == 0.0f && rgba[2] == 0.0f) ||
-					   (!oo::ToCxx(self)->_usesDiffuseTerm && isIllumination)))
+					   (!_usesDiffuseTerm && isIllumination)))
 		{
-			oo::ToCxx(self)->_fragmentBody += "\t// Light map tinted black has no effect.\n\t\n";
+			_fragmentBody += "\t// Light map tinted black has no effect.\n\t\n";
 			continue;
 		}
 		
 		if (!textureSpec.isNull())
 		{
-			std::optional<std::string> readInstr = [self readRGBForTextureSpec:textureSpec mapName:"light"];
+			std::optional<std::string> readInstr = readRGBForTextureSpec(textureSpec, "light");
 			if (EXPECT_NOT(!readInstr.has_value()))
 			{
-				oo::ToCxx(self)->_fragmentBody += "\t// INVALID EXTRACTION KEY\n\n";
+				_fragmentBody += "\t// INVALID EXTRACTION KEY\n\n";
 				continue;
 			}
 			
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tlightMapColor = %s;\n", readInstr->c_str());
+			_fragmentBody += oo::str::format("\tlightMapColor = %s;\n", readInstr->c_str());
 			
 			if (rgba[0] != 1.0f || rgba[1] != 1.0f || rgba[2] != 1.0f)
 			{
-				oo::ToCxx(self)->_fragmentBody += oo::str::format("\tlightMapColor *= vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
+				_fragmentBody += oo::str::format("\tlightMapColor *= vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 			}
 		}
 		else
 		{
-			oo::ToCxx(self)->_fragmentBody += oo::str::format("\tlightMapColor = vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
+			_fragmentBody += oo::str::format("\tlightMapColor = vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 		}
 		
 		const oo::PList *binding = textureSpec.get<oo::PList::Dict>(cxx_kOOTextureSpecifierBindingKey);
 		if (binding != nullptr)
 		{
 			std::string bindingName = binding->get<std::string>("binding");
-			oo::PList bindingTypes = [ResourceManager cxx_shaderBindingTypesDictionary];
+			oo::PList bindingTypes = [::ResourceManager cxx_shaderBindingTypesDictionary];
 			const oo::PList *typeDict = bindingTypes.get<oo::PList::Dict>("player");	// FIXME: select appropriate binding subset.
 			std::optional<std::string> bindingType = (typeDict != nullptr) ? OptionalStringFor(*typeDict, bindingName.c_str()) : std::nullopt;
 			const char *glslType = nullptr;
@@ -1141,8 +1055,8 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 			
 			if (glslType != nullptr)
 			{
-				std::optional<std::string> uniformName = [self defineBindingUniform:*binding ofType:bindingType.value_or(std::string())];
-				oo::ToCxx(self)->_fragmentBody += oo::str::format("\tlightMapColor *= %s%s;\n", uniformName.value_or(std::string()).c_str(), swizzle);
+				std::optional<std::string> uniformName = defineBindingUniform(*binding, bindingType.value_or(std::string()));
+				_fragmentBody += oo::str::format("\tlightMapColor *= %s%s;\n", uniformName.value_or(std::string()).c_str(), swizzle);
 			}
 			else
 			{
@@ -1154,52 +1068,50 @@ void cxx::OODefaultShaderSynthesizer::performStage(SEL stage)
 				{
 					OO_LOG_ERR("material.binding.error.badType", "Cannot bind light map to attribute \"{}\" of type {}.", bindingName, *bindingType);
 				}
-				oo::ToCxx(self)->_fragmentBody += "\tlightMapColor = vec3(0.0);  // Bad binding, see log.\n";
+				_fragmentBody += "\tlightMapColor = vec3(0.0);  // Bad binding, see log.\n";
 			}
 		}
 		
 		if (!isIllumination)
 		{
-			oo::ToCxx(self)->_fragmentBody += "\ttotalColor += lightMapColor;\n\t\n";
+			_fragmentBody += "\ttotalColor += lightMapColor;\n\t\n";
 		}
 		else
 		{
-			oo::ToCxx(self)->_fragmentBody += "\tdiffuseLight += lightMapColor;\n\t\n";
+			_fragmentBody += "\tdiffuseLight += lightMapColor;\n\t\n";
 		}
 	}
 }
 
 
-- (void) writeVertexPosition
+void OODefaultShaderSynthesizer::writeVertexPosition()
 {
-	oo::ToCxx(self)->_vertexBody +=
+	_vertexBody +=
 	"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
 	 "\tgl_Position = gl_ProjectionMatrix * position;\n\t\n";
 }
 
 
-- (void) writeTotalColor
+void OODefaultShaderSynthesizer::writeTotalColor()
 {
-	oo::ToCxx(self)->_fragmentPreTextures += "\tvec3 totalColor = vec3(0.0);\n\t\n";
+	_fragmentPreTextures += "\tvec3 totalColor = vec3(0.0);\n\t\n";
 }
 
 
-- (void) writeFinalColorComposite
+void OODefaultShaderSynthesizer::writeFinalColorComposite()
 {
 	REQUIRE_STAGE(writeTotalColor);	// Needed even if none of the following stages does anything.
 	REQUIRE_STAGE(writeDiffuseLighting);
 	REQUIRE_STAGE(writeSpecularLighting);
 	REQUIRE_STAGE(writeLightMaps);
 	
-	if (oo::ToCxx(self)->_haveDiffuseLight)
+	if (_haveDiffuseLight)
 	{
-		oo::ToCxx(self)->_fragmentBody += "\ttotalColor += diffuseColor * diffuseLight;\n";
+		_fragmentBody += "\ttotalColor += diffuseColor * diffuseLight;\n";
 	}
 	
-	oo::ToCxx(self)->_fragmentBody += "\tgl_FragColor = vec4(totalColor, 1.0);\n\t\n";
+	_fragmentBody += "\tgl_FragColor = vec4(totalColor, 1.0);\n\t\n";
 }
-
-@end
 
 namespace {
 

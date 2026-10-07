@@ -40,9 +40,10 @@ void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
 #endif
 
 
-/*	The bodies of OOFlasherEntity (OOJavaScriptExtensions), which the engine reaches by
-	selector. Its methods are one-line forwarders to these in OOJSFlasher+ObjCBridge.mm until
-	OOFlasherEntity converts (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+/*	The bodies of OOFlasherEntity (OOJavaScriptExtensions), which the engine reaches by selector.
+	Its methods are one-line forwarders to these on the OOFlasherEntity facade, in
+	OOFlasherEntity+ObjCBridge.mm (bead oo-9ht.49), until that facade goes (oo-9ht.107; proposed
+	ADR-0056 amendments oo-ppc, oo-ykoy and oo-6ia4).
 */
 void OOJSFlasherGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
 std::optional<std::string> OOJSFlasherJSClassName(void);
