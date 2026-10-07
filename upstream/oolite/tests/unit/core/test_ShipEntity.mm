@@ -26,6 +26,9 @@
 #import "Universe.h"
 #import "OOColor.h"
 #import "OORoleSet.h"
+#import "OOCharacter.h"
+#import "AI.h"
+#import "PlayerEntity.h"
 
 #include "oo_test.hpp"
 
@@ -109,6 +112,10 @@ unsigned NextNavpoint(ShipEntity *s)	{ return s->_cxxShip->next_navpoint_index; 
 GLfloat WeaponDamage(ShipEntity *s)	{ return s->_cxxShip->weapon_damage; }
 OOAegisStatus AegisStatus(ShipEntity *s)	{ return s->_cxxShip->aegis_status; }
 void SetAegisStatus(ShipEntity *s, OOAegisStatus status)	{ s->_cxxShip->aegis_status = status; }
+double NextAegisCheck(ShipEntity *s)	{ return s->_cxxShip->_nextAegisCheck; }
+double LaunchTime(ShipEntity *s)	{ return s->_cxxShip->launch_time; }
+double LaunchDelay(ShipEntity *s)	{ return s->_cxxShip->launch_delay; }
+void SetExplicitlyUnpiloted(ShipEntity *s, bool value)	{ s->_cxxShip->_explicitlyUnpiloted = value; }
 
 void SetPrimaryTarget(ShipEntity *s, Entity *target)
 {
@@ -1732,6 +1739,83 @@ OO_TEST(weaponAndScannerValues)
 		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
 		[ship transitionToAegisNone];
 		OO_CHECK(AegisStatus(ship) == AEGIS_NONE);
+	}
+}
+
+
+// Slice 19: the aegis bookkeeping, the systems, the status and the launch delay.
+OO_TEST(aegisSystemsAndStatus)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("navigator");
+		[ship forceAegisCheck];
+		OO_CHECK(NextAegisCheck(ship) == -1.0);
+		OO_CHECK(![ship withinStationAegis]);
+		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
+		OO_CHECK([ship withinStationAegis]);
+
+		OO_CHECK([ship lastAegisLock] == nil);
+		TestShip *body = FlyingShip("stand-in for a planet");
+		[ship setLastAegisLock:(Entity<OOStellarBody> *)body];
+		OO_CHECK([ship lastAegisLock] == (Entity<OOStellarBody> *)body);
+		[ship setLastAegisLock:nil];
+		OO_CHECK([ship lastAegisLock] == nil);
+
+		[ship setHomeSystem:7];
+		[ship setDestinationSystem:42];
+		OO_CHECK([ship homeSystem] == 7 && [ship destinationSystem] == 42);
+
+		[ship setStatus:STATUS_LAUNCHING];
+		OO_CHECK([ship status] == STATUS_LAUNCHING && LaunchTime(ship) == [UNIVERSE getTime]);
+		[ship setStatus:STATUS_IN_FLIGHT];
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+		[ship setLaunchDelay:2.5];
+		OO_CHECK(LaunchDelay(ship) == 2.5);
+	}
+}
+
+
+// Slice 19: the crew, the AI and the flags read from the definition.
+OO_TEST(crewAndAI)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("crewed");
+		OO_CHECK(![ship cxx_crew].has_value() && [ship cxx_crewForScripting].empty());
+		[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{}];
+		OO_CHECK([ship cxx_crew].has_value() && [ship cxx_crew]->empty());
+		SetExplicitlyUnpiloted(ship, true);
+		[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{}];	// unpiloted ships have none
+		OO_CHECK(![ship cxx_crew].has_value());
+
+		OO_CHECK([ship getAI] == nil && ![ship hasNewAI]);
+		AI *ai = [[[AI alloc] init] autorelease];
+		[ship setAI:ai];
+		OO_CHECK([ship getAI] == ai);
+		[ship setAI:nil];
+		OO_CHECK([ship getAI] == nil);
+
+		OO_CHECK([ship hasAutoAI] && ![ship hasAutoWeapons]);	// the definition says neither
+		OO_CHECK([ship frustration] == 0);
+	}
+}
+
+
+// Slice 19: fuel is clamped to the capacity.
+OO_TEST(fuel)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("tanker");
+		OO_CHECK([ship fuelCapacity] == PLAYER_MAX_FUEL);
+		[ship setFuel:35];
+		OO_CHECK([ship fuel] == 35);
+		[ship setFuel:PLAYER_MAX_FUEL + 10];
+		OO_CHECK([ship fuel] == PLAYER_MAX_FUEL);
 	}
 }
 

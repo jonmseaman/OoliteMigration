@@ -565,6 +565,35 @@ public:
 	::Entity *findNearestStellarBody();	// an Entity<OOStellarBody> (amendment oo-mvzmb item 5)
 	::OOPlanetEntity *findNearestPlanetExcludingMoons();
 
+	// Slice 19: aegis, home and destination systems, status, crew, AI and ship script, fuel.
+	OOAegisStatus checkForAegis();
+	void forceAegisCheck();
+	bool withinStationAegis();
+	::Entity *lastAegisLock();	// an Entity<OOStellarBody> (amendment oo-mvzmb item 5)
+	void setLastAegisLock(::Entity *lastAegisLock);
+	OOSystemID homeSystem();
+	OOSystemID destinationSystem();
+	void setHomeSystem(OOSystemID s);
+	void setDestinationSystem(OOSystemID s);
+	void setStatus(OOEntityStatus stat) override;
+	void setLaunchDelay(double delay);
+	std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> getCrew();
+	void setCrew(const std::optional<std::vector<oo::ObjCRef<::OOCharacter *>>> &crewArray);
+	void setSingleCrewWithRole(const std::string &crewRole);
+	std::vector<oo::PList> crewForScripting();
+	void setStateMachine(const std::string &smName);
+	void setAI(::AI *ai);
+	::AI *getAI();
+	bool hasAutoAI();
+	bool hasNewAI();
+	bool hasAutoWeapons();
+	void setShipScript(const std::optional<std::string> &script_name);
+	double getFrustration();
+	OOFuelQuantity getFuel();
+	void setFuel(OOFuelQuantity amount);
+	OOFuelQuantity fuelCapacity();
+	virtual GLfloat fuelChargeRate();	// PlayerEntity overrides
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

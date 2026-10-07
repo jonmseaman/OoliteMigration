@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "ShipEntityAI.h"
 #import "ShipEntityScriptMethods.h"
 #import "AI.h"
+#import "PlayerEntity.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
 #import "OOWeakSet.h"
@@ -99,6 +100,9 @@ public:
 	// Slice 18 (bead oo-vho1o).
 	bool isUnpiloted() override	{ return [(::ShipEntity *)_objcOwner isUnpiloted]; }
 	bool hasHostileTarget() override	{ return [(::ShipEntity *)_objcOwner hasHostileTarget]; }
+
+	// Slice 19 (bead oo-umyg2).
+	GLfloat fuelChargeRate() override	{ return [(::ShipEntity *)_objcOwner fuelChargeRate]; }
 };
 
 }	// namespace
@@ -245,6 +249,7 @@ DESTROY(_cxxShip->laser_color);
 
 
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar)	{ return [stellar radius]; }
+GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 
 
 @implementation Entity (SubEntityRelationship)
@@ -678,5 +683,38 @@ double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar)	{ return [ste
 - (OOPlanetEntity *) findNearestPlanet	{ return _cxxShip->findNearestPlanet(); }
 - (Entity<OOStellarBody> *) findNearestStellarBody	{ return (Entity<OOStellarBody> *)_cxxShip->findNearestStellarBody(); }
 - (OOPlanetEntity *) findNearestPlanetExcludingMoons	{ return _cxxShip->findNearestPlanetExcludingMoons(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice19)
+
+- (OOAegisStatus) checkForAegis	{ return _cxxShip->checkForAegis(); }
+- (void) forceAegisCheck	{ _cxxShip->forceAegisCheck(); }
+- (BOOL) withinStationAegis	{ return _cxxShip->withinStationAegis(); }
+- (Entity<OOStellarBody> *) lastAegisLock	{ return (Entity<OOStellarBody> *)_cxxShip->lastAegisLock(); }
+- (void) setLastAegisLock:(Entity<OOStellarBody> *)lastAegisLock	{ _cxxShip->setLastAegisLock(lastAegisLock); }
+- (OOSystemID) homeSystem	{ return _cxxShip->homeSystem(); }
+- (OOSystemID) destinationSystem	{ return _cxxShip->destinationSystem(); }
+- (void) setHomeSystem:(OOSystemID)s	{ _cxxShip->setHomeSystem(s); }
+- (void) setDestinationSystem:(OOSystemID)s	{ _cxxShip->setDestinationSystem(s); }
+- (void) setStatus:(OOEntityStatus)stat	{ _cxxShip->cxx::ShipEntity::setStatus(stat); }
+- (void) setLaunchDelay:(double)delay	{ _cxxShip->setLaunchDelay(delay); }
+- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew	{ return _cxxShip->getCrew(); }
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray	{ _cxxShip->setCrew(crewArray); }
+- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole	{ _cxxShip->setSingleCrewWithRole(crewRole); }
+- (std::vector<oo::PList>) cxx_crewForScripting	{ return _cxxShip->crewForScripting(); }
+- (void) setStateMachine:(const std::string &)smName	{ _cxxShip->setStateMachine(smName); }
+- (void) setAI:(AI *)ai	{ _cxxShip->setAI(ai); }
+- (AI *) getAI	{ return _cxxShip->getAI(); }
+- (BOOL) hasAutoAI	{ return _cxxShip->hasAutoAI(); }
+- (BOOL) hasNewAI	{ return _cxxShip->hasNewAI(); }
+- (BOOL) hasAutoWeapons	{ return _cxxShip->hasAutoWeapons(); }
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name	{ _cxxShip->setShipScript(script_name); }
+- (double) frustration	{ return _cxxShip->getFrustration(); }
+- (OOFuelQuantity) fuel	{ return _cxxShip->getFuel(); }
+- (void) setFuel:(OOFuelQuantity)amount	{ _cxxShip->setFuel(amount); }
+- (OOFuelQuantity) fuelCapacity	{ return _cxxShip->fuelCapacity(); }
+- (GLfloat) fuelChargeRate	{ return _cxxShip->cxx::ShipEntity::fuelChargeRate(); }
 
 @end
