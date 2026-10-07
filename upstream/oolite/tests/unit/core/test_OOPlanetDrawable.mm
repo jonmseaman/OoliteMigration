@@ -79,6 +79,7 @@ void SetUp()
 	if (sUniverse == nil)
 	{
 		sUniverse = (TestUniverse *)class_createInstance([TestUniverse class], 0);	// never released
+		sUniverse->_cxxUniverse = oo::makeRef<cxx::Universe>(sUniverse);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
 		sUniverse->_view = [[TestView alloc] init];
 	}
 	sUniverse->_reduced = NO;
@@ -104,7 +105,7 @@ float Level(float lod)
 
 OOMaterial *NamedMaterial(const char *name)
 {
-	return [[[OOBasicMaterial alloc] initWithName:std::string(name) configuration:oo::PList()] autorelease];
+	return oo::ToObjC(static_cast<cxx::OOMaterial *>(OOBasicMaterial::materialWithName(std::string(name), oo::PList()).get()));
 }
 
 
