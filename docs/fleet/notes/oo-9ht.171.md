@@ -1,0 +1,1 @@
+[oo-9ht.171] 2026-10-06 Verified on merge base: tier-a on ShipEntity.mm reports 0 new clang-tidy findings (57 baseline on unchanged lines); the 9 findings were absorbed into the baseline once oo-60fwo landed. No code change needed.
