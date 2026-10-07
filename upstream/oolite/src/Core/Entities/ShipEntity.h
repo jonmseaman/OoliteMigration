@@ -925,6 +925,12 @@ public:
 	std::optional<std::string> descriptionForObjDump() override;
 #endif
 
+	// Category ScriptMethods (ShipEntityScriptMethods.mm, bead oo-42dr): methods for use by scripting mechanisms.
+	// std::nullopt ejects nothing, as nil did (proposed ADR-0043, bead oo-tm7d).
+	::ShipEntity *ejectShipOfType(const std::optional<std::string> &shipKey);	// Note: ship type, not role.
+	::ShipEntity *ejectShipOfRole(const std::optional<std::string> &role);
+	std::vector<oo::ObjCRef<::ShipEntity *>> spawnShipsWithRole(const std::string &role, NSUInteger count);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

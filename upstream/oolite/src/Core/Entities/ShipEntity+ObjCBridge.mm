@@ -1186,3 +1186,14 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 #endif
 
 @end
+
+
+// The category ShipEntity (ScriptMethods) of ShipEntityScriptMethods.mm (bead oo-42dr), whose
+// members are cxx::ShipEntity's, defined in that file.
+@implementation ShipEntity (ScriptMethods)
+
+- (ShipEntity *) ejectShipOfType:(const std::optional<std::string> &)shipKey	{ return _cxxShip->ejectShipOfType(shipKey); }
+- (ShipEntity *) ejectShipOfRole:(const std::optional<std::string> &)role	{ return _cxxShip->ejectShipOfRole(role); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) spawnShipsWithRole:(const std::string &)role count:(NSUInteger)count	{ return _cxxShip->spawnShipsWithRole(role, count); }
+
+@end

@@ -1251,6 +1251,21 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
+// The category ShipEntity (ScriptMethods) of ShipEntityScriptMethods.mm (bead oo-42dr): members of
+// cxx::ShipEntity defined in that file (ADR-0056 amendments oo-o89 item 4 and oo-9fwb), forwarded
+// by the category of the same name in ShipEntity+ObjCBridge.mm for the Objective-C callers that
+// remain (OOJSShip, the legacy script engine).
+@interface ShipEntity (ScriptMethods)
+
+// Foundation sweep (proposed ADR-0043, bead oo-tm7d): std::nullopt ejects nothing, as nil did.
+- (ShipEntity *) ejectShipOfType:(const std::optional<std::string> &)shipKey;	// Note: ship type, not role.
+- (ShipEntity *) ejectShipOfRole:(const std::optional<std::string> &)role;
+
+- (std::vector<oo::ObjCRef<ShipEntity *>>) spawnShipsWithRole:(const std::string &)role count:(NSUInteger)count;
+
+@end
+
+
 // The sends of ShipEntity.mm's C functions to classes they reach as Objective-C objects (amendment
 // oo-9ht.139 item 3); deleted with this header.
 double ShipEntityStellarBodyRadius(Entity<OOStellarBody> *stellar);	// [stellar radius]
