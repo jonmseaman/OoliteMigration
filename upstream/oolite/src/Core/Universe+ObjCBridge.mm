@@ -71,3 +71,16 @@ extern Universe *gSharedUniverse;
 }
 
 @end
+
+
+@implementation Universe (OOSlice14)
+
+- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
+- (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2	{ return _cxxUniverse->isVectorClearFromEntity(e1, dist, p2); }
+- (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2	{ return _cxxUniverse->hazardOnRouteFromEntity(e1, dist, p2); }
+- (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2	{ return _cxxUniverse->getSafeVectorFromEntity(e1, dist, p2); }
+- (ShipEntity*) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime	{ return _cxxUniverse->addWreckageFrom(ship, wreckRole, rpos, scale, lifetime); }
+- (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color	{ _cxxUniverse->addLaserHitEffectsAt(pos, target, damage, color); }
+- (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat *)range_ptr	{ return _cxxUniverse->firstShipHitByLaserFromShip(srcEntity, direction, offset, range_ptr); }
+
+@end

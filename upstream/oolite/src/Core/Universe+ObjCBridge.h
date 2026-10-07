@@ -241,15 +241,6 @@ MA 02110-1301, USA.
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
-
-- (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-- (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-- (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
-
-- (ShipEntity *) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;
-- (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color;
-- (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat*)range_ptr;
 - (Entity *) firstEntityTargetedByPlayer;
 - (Entity *) firstEntityTargetedByPlayerPrecisely;
 
@@ -515,6 +506,21 @@ MA 02110-1301, USA.
 @interface Universe (OOObjCBridge)
 
 - (id)initWithGameView:(MyOpenGLView *)gameView;
+
+@end
+
+
+// Slice 14 of docs/phases/3-slices/Universe.md (bead oo-7jhs5): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice14)
+
+- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
+- (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
+- (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
+- (HPVector) getSafeVectorFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
+- (ShipEntity *) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;
+- (void) addLaserHitEffectsAt:(HPVector)pos against:(ShipEntity *)target damage:(float)damage color:(OOColor *)color;
+- (ShipEntity *) firstShipHitByLaserFromShip:(ShipEntity *)srcEntity inDirection:(OOWeaponFacing)direction offset:(Vector)offset gettingRangeFound:(GLfloat*)range_ptr;
 
 @end
 

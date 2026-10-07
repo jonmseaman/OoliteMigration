@@ -418,6 +418,15 @@ public:
 	BOOL					_bloom = NO;
 	int					_currentPostFX = 0;
 	int					_colorblindMode = 0;
+
+	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
+	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
+	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
+	::Entity *hazardOnRouteFromEntity(::Entity *e1, double dist, HPVector p2);
+	HPVector getSafeVectorFromEntity(::Entity *e1, double dist, HPVector p2);
+	::ShipEntity *addWreckageFrom(::ShipEntity *ship, const std::string &wreckRole, HPVector rpos, GLfloat scale, GLfloat lifetime);
+	void addLaserHitEffectsAt(HPVector pos, ::ShipEntity *target, float damage, ::OOColor *color);
+	::ShipEntity *firstShipHitByLaserFromShip(::ShipEntity *srcEntity, OOWeaponFacing direction, Vector offset, GLfloat *range_ptr);
 };
 
 }	// namespace cxx
