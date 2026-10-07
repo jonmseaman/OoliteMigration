@@ -312,7 +312,14 @@
 [oo-2p1ug] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay test_OOPolygonSprite test_OOWaypointEntity && bash tools/tier-c.sh --only goldens
 [oo-kdrc6] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
 [oo-0tx6c] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_HeadUpDisplay && bash tools/tier-c.sh --only goldens
+[oo-10qz] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJavaScriptEngine && bash tools/tier-c.sh --only goldens
+[oo-903c] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJavaScriptEngine && bash tools/tier-c.sh --only goldens
+[oo-elta] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJavaScriptEngine && bash tools/tier-c.sh --only goldens
+[oo-k4nu] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJavaScriptEngine && bash tools/tier-c.sh --only goldens
 [oo-9z7x] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOMesh test_OODrawable && bash tools/tier-c.sh --only goldens
+[oo-9ht.4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOXPVerifierStage test_OOOXPVerifier test_OOFileScannerVerifierStage test_OOAIStateMachineVerifierStage test_OOCheckJSSyntaxVerifierStage test_OOCheckPListSyntaxVerifierStage test_OOCheckDemoShipsPListVerifierStage test_OOCheckRequiresPListVerifierStage test_OOCheckEquipmentPListVerifierStage test_OOTextureVerifierStage test_OOCheckShipDataPListVerifierStage test_OOModelVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-9ht.119] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPListSchemaVerifier test_OOCheckShipDataPListVerifierStage && bash tools/tier-c.sh --only goldens
+[oo-9ht.54] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCheckShipDataPListVerifierStage test_OOPListSchemaVerifier && bash tools/tier-c.sh --only goldens
 [oo-9ht.56] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOModelVerifierStage test_OOCheckShipDataPListVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-9ht.83] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALBufferedSound test_OOALStreamedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
 [oo-9ht.84] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOALStreamedSound test_OOALBufferedSound test_OOSound test_OOMusic test_OOSoundChannel test_OOSoundMixer && bash tools/tier-c.sh --only goldens
@@ -342,6 +349,9 @@
 [oo-wvcs2] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-eh955] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-0akes] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-9ht.33] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOBasicMaterial test_OOSingleTextureMaterial test_OOMultiTextureMaterial test_OOShaderMaterial test_OOMaterialConvenienceCreators test_OOMesh test_OOPlanetDrawable test_OOPlanetEntity && bash tools/tier-c.sh --only goldens
+[oo-9ht.163] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOpenGLExtensionManager test_OOShaderUniformMethodType test_OOMesh test_OOPlanetDrawable && bash tools/tier-c.sh --only goldens
+[oo-9ht.161] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPixMapTextureLoader test_OOConcreteTexture test_OOCombinedEmissionMapGenerator test_OOPlanetTextureGenerator test_OOPNGTextureLoader test_OOTextureGenerator && bash tools/tier-c.sh --only goldens
 [oo-xmajv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-v9sa5] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-x4qqv] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
