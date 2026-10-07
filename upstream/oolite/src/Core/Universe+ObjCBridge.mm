@@ -204,6 +204,40 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice9)
+
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes	{ return _cxxUniverse->wormholes(); }
+- (void) unMagicMainStation	{ _cxxUniverse->unMagicMainStation(); }
+- (void) resetBeacons	{ _cxxUniverse->resetBeacons(); }
+- (Entity <OOBeaconEntity> *) firstBeacon	{ return (Entity <OOBeaconEntity> *)_cxxUniverse->firstBeacon(); }
+- (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon	{ _cxxUniverse->setFirstBeacon(beacon); }
+- (Entity <OOBeaconEntity> *) lastBeacon	{ return (Entity <OOBeaconEntity> *)_cxxUniverse->lastBeacon(); }
+- (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon	{ _cxxUniverse->setLastBeacon(beacon); }
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->setNextBeacon(beaconShip); }
+- (void) clearBeacon:(Entity <OOBeaconEntity> *)beaconShip	{ _cxxUniverse->clearBeacon(beaconShip); }
+- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints	{ return _cxxUniverse->currentWaypoints(); }
+- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key	{ _cxxUniverse->defineWaypoint(definition, key); }
+- (GLfloat *) skyClearColor	{ return _cxxUniverse->getSkyClearColor(); }
+- (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha	{ _cxxUniverse->setSkyColorRed(red, green, blue, alpha); }
+- (BOOL) breakPatternOver	{ return _cxxUniverse->breakPatternOver(); }
+- (BOOL) breakPatternHide	{ return _cxxUniverse->breakPatternHide(); }
+- (BOOL) canInstantiateShip:(const std::string &)shipKey	{ return _cxxUniverse->canInstantiateShip(shipKey); }
+- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role	{ return _cxxUniverse->randomShipKeyForRoleRespectingConditions(role); }
+- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role	{ return _cxxUniverse->newShipWithRole(role); }
+- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey	{ return _cxxUniverse->newVisualEffectWithName(effectKey); }
+- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale	{ return _cxxUniverse->newSubentityWithName(shipKey, scale); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale	{ return _cxxUniverse->newShipWithName(shipKey, usePlayerProxy, isSubentity, scale); }
+- (DockEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale	{ return _cxxUniverse->newDockWithName(shipDataKey, scale); }
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey	{ return _cxxUniverse->newShipWithName(shipKey); }
+- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict	{ return _cxxUniverse->shipClassForShipDictionary(dict); }
+- (std::optional<std::string>) defaultAIForRole:(const std::string &)role	{ return _cxxUniverse->defaultAIForRole(role); }
+- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &)desc	{ return _cxxUniverse->maxCargoForShip(desc); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
