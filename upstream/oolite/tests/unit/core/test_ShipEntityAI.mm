@@ -797,4 +797,174 @@ OO_TEST(slice3MembersFromCxx)
 }
 
 
+// --- Slice 4: PureAI part 3: stored targets, nearest-ship scans, stations, script actions, beacons
+// (bead oo-lqyhf) ------------------------------------------------------------------------------
+
+@interface ShipEntity (TestPureAI3)
+- (void) recallStoredTarget;
+- (void) scanForRocks;
+- (void) setDestinationToDockingAbort;
+- (void) requestNewTarget;
+- (void) rollD:(const std::string &)die_number;
+- (void) scanForNearestShipWithPrimaryRole:(const std::string &)scanRole;
+- (void) scanForNearestShipHavingRole:(const std::string &)scanRole;
+- (void) scanForNearestShipWithAnyPrimaryRole:(const std::string &)scanRoles;
+- (void) scanForNearestShipHavingAnyRole:(const std::string &)scanRoles;
+- (void) scanForNearestShipWithScanClass:(const std::string &)scanScanClass;
+- (void) scanForNearestShipWithoutPrimaryRole:(const std::string &)scanRole;
+- (void) scanForNearestShipNotHavingRole:(const std::string &)scanRole;
+- (void) scanForNearestShipWithoutAnyPrimaryRole:(const std::string &)scanRoles;
+- (void) scanForNearestShipNotHavingAnyRole:(const std::string &)scanRoles;
+- (void) scanForNearestShipWithoutScanClass:(const std::string &)scanScanClass;
+- (void) setCoordinates:(const std::string &)system_x_y_z;
+- (void) checkForNormalSpace;
+- (void) setTargetToRandomStation;
+- (void) setTargetToLastStation;
+- (void) addFuel:(const std::string &)fuel_number;
+- (void) scriptActionOnTarget:(const std::string &)action;
+- (void) safeScriptActionOnTarget:(const std::string &)action;
+- (void) sendScriptMessage:(const std::string &)message;
+- (void) ai_throwSparks;
+- (void) ai_debugMessage:(const std::string &)message;
+- (void) setRacepointsFromTarget;
+- (void) performFlyRacepoints;
+@end
+
+
+namespace {
+
+bool ThrowSparks4(Entity *e)						{ return e->_cxxEntity->throw_sparks; }
+unsigned NavpointCount4(ShipEntity *s)			{ return s->_cxxShip->number_of_navpoints; }
+unsigned NextNavpoint4(ShipEntity *s)			{ return s->_cxxShip->next_navpoint_index; }
+HPVector Navpoint4(ShipEntity *s, unsigned i)	{ return s->_cxxShip->navpoints[i]; }
+HPVector Coordinates4(ShipEntity *s)				{ return s->_cxxShip->coordinates; }
+void SetCoordinates4(ShipEntity *s, HPVector c)	{ s->_cxxShip->coordinates = c; }
+void SetPosition4(Entity *e, HPVector p)			{ e->_cxxEntity->position = p; }
+void SetCollisionRadius4(Entity *e, GLfloat r)	{ e->_cxxEntity->collision_radius = r; }
+
+}	// namespace
+
+
+OO_TEST(slice4StoredTargetsAndScans)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("seeker");
+		TestAIShip *other = MakeShip("other");
+		SetScannerRange(ship, 25000);
+
+		// A remembered ship in range is found again; none remembered, nothing found.
+		[ship setRememberedShip:other];
+		[ship recallStoredTarget];
+		OO_CHECK([ship foundTarget] == other);
+		[ship setRememberedShip:nil];
+		[ship setFoundTarget:nil];
+		[ship recallStoredTarget];
+		OO_CHECK([ship foundTarget] == nil && [ship rememberedShip] == nil);
+
+		// Every scan of an empty universe forgets the found target.
+		void (*scans[])(TestAIShip *) = {
+			[](TestAIShip *s) { [s scanForRocks]; },
+			[](TestAIShip *s) { [s scanForNearestShipWithPrimaryRole:"trader"]; },
+			[](TestAIShip *s) { [s scanForNearestShipHavingRole:"trader"]; },
+			[](TestAIShip *s) { [s scanForNearestShipWithAnyPrimaryRole:"trader pirate"]; },
+			[](TestAIShip *s) { [s scanForNearestShipHavingAnyRole:"trader pirate"]; },
+			[](TestAIShip *s) { [s scanForNearestShipWithScanClass:"CLASS_NEUTRAL"]; },
+			[](TestAIShip *s) { [s scanForNearestShipWithoutPrimaryRole:"trader"]; },
+			[](TestAIShip *s) { [s scanForNearestShipNotHavingRole:"trader"]; },
+			[](TestAIShip *s) { [s scanForNearestShipWithoutAnyPrimaryRole:"trader pirate"]; },
+			[](TestAIShip *s) { [s scanForNearestShipNotHavingAnyRole:"trader pirate"]; },
+			[](TestAIShip *s) { [s scanForNearestShipWithoutScanClass:"CLASS_NEUTRAL"]; },
+		};
+		for (auto scan : scans)
+		{
+			[ship setFoundTarget:other];
+			scan(ship);
+			OO_CHECK([ship foundTarget] == nil);
+		}
+
+		// No group, so no mother to defend: the found target stays.
+		[ship setFoundTarget:other];
+		[ship requestNewTarget];
+		OO_CHECK([ship foundTarget] == other);
+	}
+}
+
+
+OO_TEST(slice4StationsAndCoordinates)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("docker");
+		TestAIShip *other = MakeShip("other");
+
+		// No station anywhere: back off 8 km from the origin, straight back.
+		SetPosition4(ship, make_HPvector(0, 0, 0));
+		SetCollisionRadius4(ship, 0);
+		[ship setDestinationToDockingAbort];
+		OO_CHECK(HPdistance(Coordinates4(ship), make_HPvector(0, 0, -8000)) < 1e-3 && HPdistance(Destination(ship), make_HPvector(0, 0, -8000)) < 1e-3);
+
+		// No stations in range, and a last station that is not one: no target.
+		[ship setTargetToRandomStation];
+		OO_CHECK([ship primaryTarget] == nil);
+		[ship setTargetStation:other];
+		[ship setTargetToLastStation];
+		OO_CHECK([ship primaryTarget] == nil && [ship targetStation] == nil);
+
+		// A malformed coordinate string changes nothing.
+		SetCoordinates4(ship, make_HPvector(1, 2, 3));
+		[ship setCoordinates:"wpu 1 2"];
+		OO_CHECK(HPdistance2(Coordinates4(ship), make_HPvector(1, 2, 3)) == 0);
+		[ship checkForNormalSpace];
+	}
+}
+
+
+OO_TEST(slice4ActionsAndRacepoints)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestAIShip *ship = MakeShip("racer");
+		TestAIShip *pylon = MakeShip("pylon");
+
+		[ship setFuel:0];
+		[ship addFuel:"3"];
+		OO_CHECK([ship fuel] == 30);
+
+		[ship ai_throwSparks];
+		OO_CHECK(ThrowSparks4(ship));
+
+		// Nothing to act on, or no script to tell: nothing happens.
+		[ship scriptActionOnTarget:"set: mission_x 1"];
+		[ship safeScriptActionOnTarget:"set: mission_x 1"];
+		[ship sendScriptMessage:""];
+		[ship sendScriptMessage:"hello"];
+		[ship sendScriptMessage:"hello a b"];
+		[ship rollD:"0"];				// logged
+		[ship rollD:"6"];
+		[ship ai_debugMessage:"hi"];
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+
+		// No target: no racepoints.
+		[ship setRacepointsFromTarget];
+		OO_CHECK(NavpointCount4(ship) == 0);
+		SetPosition4(pylon, make_HPvector(100, 0, 0));
+		SetCollisionRadius4(pylon, 10);
+		[pylon setOrientation:kIdentityQuaternion];
+		SetPrimaryTarget(ship, pylon);
+		[ship setRacepointsFromTarget];
+		OO_CHECK(NavpointCount4(ship) == 2 && NextNavpoint4(ship) == 0);
+		OO_CHECK(HPdistance(Navpoint4(ship, 0), make_HPvector(100, 0, -10)) < 1e-3 && HPdistance(Navpoint4(ship, 1), make_HPvector(100, 0, 10)) < 1e-3);
+		OO_CHECK(HPdistance2(Destination(ship), Navpoint4(ship, 0)) == 0);
+
+		SetCollisionRadius4(ship, 25);
+		[ship performFlyRacepoints];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_THRU_NAVPOINTS && DesiredRange(ship) == 25 && NextNavpoint4(ship) == 0);
+	}
+}
+
+
 OO_TEST_MAIN()
