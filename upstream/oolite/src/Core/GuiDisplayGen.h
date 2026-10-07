@@ -344,16 +344,8 @@ public:
 
 	OOSystemID targetNextFoundSystem(int direction);
 
-	// Internal: the star chart (slice 4, still Objective-C on the facade) draws with these.
-	void drawCrossHairsWithSize(GLfloat size, GLfloat x, GLfloat y, GLfloat z);
-	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
-	void drawAdvancedNavArrayAtX(float x, float y, float z, float alpha, const oo::PList &routeInfo, OORouteType optimizeBy, OOScalar zoom);
 
-	/*	Internal: the GUI's state. The method of slice 4 of docs/phases/3-slices/GuiDisplayGen.md
-		(the star chart), still an Objective-C category of the facade in GuiDisplayGen.mm, reads and
-		writes it through oo::ToCxx(self) (ADR-0056 amendment oo-3bgz); it becomes private when that
-		slice converts.
-	*/
+private:
 	NSSize					size_in_pixels = {};
 	unsigned				n_columns = {};
 	unsigned				n_rows = {};
@@ -404,9 +396,13 @@ public:
 	NSUInteger				statusPage = {}; 		// status  screen: paging equipped items
 	OOSystemID				foundSystem = {};
 
-private:
+
 	void drawGLDisplay(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha);
+	void drawCrossHairsWithSize(GLfloat size, GLfloat x, GLfloat y, GLfloat z);
+	void drawStarChart(GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, bool compact);
+	void drawSystemMarkers(const oo::PList &markers, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
 	void drawSystemMarker(const oo::PList &marker, GLfloat x, GLfloat y, GLfloat z, GLfloat alpha, GLfloat scale);
+	void drawAdvancedNavArrayAtX(float x, float y, float z, float alpha, const oo::PList &routeInfo, OORouteType optimizeBy, OOScalar zoom);
 };
 
 }	// namespace cxx
