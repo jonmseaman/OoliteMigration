@@ -643,4 +643,29 @@ OO_TEST(slice3PatrolsAndQueues)
 }
 
 
+// From C++ (after the conversion): the members, and the ship's virtual members reaching the station's.
+OO_TEST(slice3MembersFromCxx)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestStation *station = MakeStation("member3");
+		cxx::StationEntity *part = station->_cxxStation;
+		part->setAlertLevel(STATION_ALERT_LEVEL_RED, NO);
+		OO_CHECK(part->getAlertLevel() == STATION_ALERT_LEVEL_RED && [station alertLevel] == STATION_ALERT_LEVEL_RED);
+		part->setAllegiance(std::string("neutral"));
+		OO_CHECK(part->getAllegiance() == std::optional<std::string>("neutral"));
+		cxx::ShipEntity *asShip = part;
+		SetPrimaryTarget3(station, MakeVisitor("foe"));
+		OO_CHECK(asShip->hasHostileTarget());		// virtual: the station's
+		TestVisitor *friendly = MakeVisitor("friend");
+		[friendly setGroup:[station group]];
+		SetEnergy3(station, 500);
+		cxx::Entity *asEntity = part;
+		asEntity->takeEnergyDamage(100, oo::ToCxx(static_cast<Entity *>(friendly)), oo::ToCxx(static_cast<Entity *>(friendly)), "");
+		OO_CHECK(Energy3(station) == 500);			// friendly fire, through the root's virtual
+	}
+}
+
+
 OO_TEST_MAIN()

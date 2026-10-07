@@ -102,139 +102,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (BOOL) collideWithShip:(ShipEntity *)other
-{
-	/*
-		There used to be a [self abortAllDockings] here. Removed as there
-		doesn't appear to be a good reason for it and it interferes with
-		docking clearance.
-		-- Micha 2010-06-10
-	       Reformatted, Ahruman 2012-08-26
-	*/
-	return [super collideWithShip:other];
-}
-
-
-- (BOOL) hasHostileTarget
-{
-	return [super hasHostileTarget] || ([self primaryTarget] != nil && ((_cxxStation->alertLevel == STATION_ALERT_LEVEL_YELLOW) || (_cxxStation->alertLevel == STATION_ALERT_LEVEL_RED)));
-}
-
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
-{
-	// stations must ignore friendly fire, otherwise the defenders' AI gets stuck.
-	BOOL			isFriend = NO;
-	OOShipGroup		*group = [self group];
-	
-	if ([other isShip] && group != nil)
-	{
-		OOShipGroup *otherGroup = [(ShipEntity *)other group];
-		isFriend = otherGroup == group || [otherGroup leader] == self;
-	}
-	
-	// If this is the system's main station...
-	if (self == [UNIVERSE station] && !isFriend)
-	{
-		//...get angry
-		BOOL isEnergyMine = [ent isCascadeWeapon];
-
-		// JSAIs might ignore friendly fire from conventional weapons
-		if ([self hasNewAI] || isEnergyMine)
-		{
-			unsigned b=isEnergyMine ? 96 : 64;
-			if ([(ShipEntity*)other bounty] >= b)	//already a hardened criminal?
-			{
-				b *= 1.5; //bigger bounty!
-			}
-			[(ShipEntity*)other markAsOffender:b withReason:kOOLegalStatusReasonAttackedMainStation];
-			[self setPrimaryAggressor:other];
-			[self setFoundTarget:other];
-			[self launchPolice];
-		}
-
-		if (isEnergyMine) //don't blow up!
-		{
-			[self increaseAlertLevel];
-			[self respondToAttackFrom:ent becauseOf:other];
-			return;
-		}
-	}
-	// Stop damage if main station & close to death!
-	if (!isFriend && (self != [UNIVERSE station] || amount < _cxxEntity->energy) )
-	{
-		// Handle damage like a ship.
-		[super takeEnergyDamage:amount from:ent becauseOf:other weaponIdentifier:weaponIdentifier];
-	}
-}
-
-- (void) adjustVelocity:(Vector) xVel
-{
-	if (self != [UNIVERSE station])  [super adjustVelocity:xVel]; //dont get moved
-}
-
-- (void)takeScrapeDamage:(double)amount from:(Entity *)ent
-{
-	// Stop damage if main station
-	if (self != [UNIVERSE station])  [super takeScrapeDamage:amount from:ent];
-}
-
-
-- (void) takeHeatDamage:(double)amount
-{
-	// Stop damage if main station
-	if (self != [UNIVERSE station])  [super takeHeatDamage:amount];
-}
-
-
-- (std::optional<std::string>) cxx_allegiance
-{
-	return _cxxStation->allegiance;
-}
-
-
-- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance
-{
-	_cxxStation->allegiance = newAllegiance;
-}
-
-
-- (OOStationAlertLevel) alertLevel
-{
-	return _cxxStation->alertLevel;
-}
-
-
-- (void) setAlertLevel:(OOStationAlertLevel)level signallingScript:(BOOL)signallingScript
-{
-	if (level < STATION_ALERT_LEVEL_GREEN)  level = STATION_ALERT_LEVEL_GREEN;
-	if (level > STATION_ALERT_LEVEL_RED)  level = STATION_ALERT_LEVEL_RED;
-	
-	if (_cxxStation->alertLevel != level)
-	{
-		OOStationAlertLevel oldLevel = _cxxStation->alertLevel;
-		_cxxStation->alertLevel = level;
-		if (signallingScript)
-		{
-			ShipScriptEventNoCx(self, "alertConditionChanged", ooscript::int32Value(level), ooscript::int32Value(oldLevel));
-		}
-		switch (level)
-		{
-			case STATION_ALERT_LEVEL_GREEN:
-				[_cxxShip->shipAI cxx_reactToMessage:"GREEN_ALERT" context:std::nullopt];
-				break;
-				
-			case STATION_ALERT_LEVEL_YELLOW:
-				[_cxxShip->shipAI cxx_reactToMessage:"YELLOW_ALERT" context:std::nullopt];
-				break;
-				
-			case STATION_ALERT_LEVEL_RED:
-				[_cxxShip->shipAI cxx_reactToMessage:"RED_ALERT" context:std::nullopt];
-				break;
-		}
-	}
-}
-
-
 // Exposed to AI
 - (oo::PList) launchIndependentShip:(const std::string &) role	// called by name (ADR-0055 item 5): the ship launched, as an Object node (null: none)
 {
@@ -316,23 +183,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[ship autorelease];
 	}
 	return oo::PListObject(ship);
-}
-
-
-//////////////////////////////////////////////// extra AI routines
-
-
-// Exposed to AI
-- (void) increaseAlertLevel
-{
-	[self setAlertLevel:(OOStationAlertLevel)([self alertLevel] + 1) signallingScript:YES];
-}
-
-
-// Exposed to AI
-- (void) decreaseAlertLevel
-{
-	[self setAlertLevel:(OOStationAlertLevel)([self alertLevel] - 1) signallingScript:YES];
 }
 
 
@@ -815,291 +665,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[self addShipToLaunchQueue:ship withPriority:NO];
 	}
 	[ship release];
-}
-
-
-// Exposed to AI
-- (void) becomeExplosion
-{
-	if (self == [UNIVERSE station])  return;
-	
-	// launch docked ships if possible
-	PlayerEntity* player = PLAYER;
-	if ((player)&&([player status] == STATUS_DOCKED || [player status] == STATUS_DOCKING)&&([player dockedStation] == self))
-	{
-		// undock the player!
-		[player leaveDock:self];
-		[UNIVERSE setViewDirection:VIEW_FORWARD];
-		[[UNIVERSE gameController] setMouseInteractionModeForFlight];
-		[player warnAboutHostiles];	// sound a klaxon
-	}
-	
-	if (_cxxEntity->scanClass == CLASS_ROCK)	// ie we're a rock hermit or similar
-	{
-		// set the role so that we break up into rocks!
-		[self setPrimaryRole:"asteroid"];
-		_cxxShip->being_mined = YES;
-	}
-	
-	// finally bite the bullet
-	[super becomeExplosion];
-}
-
-
-// Exposed to AI
-- (void) becomeEnergyBlast
-{
-	if (self == [UNIVERSE station])  return;
-	[super becomeEnergyBlast];
-}
-
-
-- (void) becomeLargeExplosion:(double) factor
-{
-	if (self == [UNIVERSE station])  return;
-	[super becomeLargeExplosion:factor];
-}
-
-
-- (void) acceptPatrolReportFrom:(ShipEntity*) patrol_ship
-{
-	_cxxStation->last_patrol_report_time = [UNIVERSE getTime];
-}
-
-
-// used by player - "other" should always be a reference to the player
-// there are some checks in the function from possibly when this wasn't true?
-- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other
-{
-	std::optional<std::string>	result;	// nullopt: no answer yet (was nil)
-	double		timeNow = [UNIVERSE getTime];
-	PlayerEntity	*player = PLAYER;
-	
-	[self doScriptEvent:OOJSID("stationReceivedDockingRequest") withArgument:other];
-
-
-	[UNIVERSE clearPreviousMessage];
-
-	[self sanityCheckShipsOnApproach];
-
-	// Docking clearance not required - clear it just in case it's been
-	// set for another nearby station.
-	if (![self requiresDockingClearance])
-	{
-		// TODO: We're potentially cancelling docking at another station, so
-		//       ensure we clear the timer to allow NPC traffic.  If we
-		//       don't, normal traffic will resume once the timer runs out.
-		// No clearance is needed, but don't send friendly messages to hostile ships!
-		if (!(([other isPlayer] && [other hasHostileTarget]) || (self == [UNIVERSE station] && [other bounty] > 50)))
-		{
-			[self cxx_sendExpandedMessage:"[station-docking-clearance-not-required]" toShip:other];
-		}
-		if ([other isPlayer])
-		{
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NOT_REQUIRED];
-		}
-		[_cxxShip->shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
-		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
-
-		_cxxStation->last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-		result = "DOCKING_CLEARANCE_NOT_REQUIRED";
-	}
-
-	// Docking clearance already granted for this station - check for
-	// time-out or cancellation (but only for the Player).
-	if( !result && [other isPlayer] && self == [player getTargetDockStation])
-	{
-		switch( [player getDockingClearanceStatus] )
-		{
-			case DOCKING_CLEARANCE_STATUS_TIMING_OUT:
-				if (!_cxxStation->no_docking_while_launching)
-				{
-					_cxxStation->last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-					[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-extended-until-@"),
-							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-						toShip:other];
-					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-					result = "DOCKING_CLEARANCE_EXTENDED";
-					break;
-				}
-				// else, continue with canceling.
-			case DOCKING_CLEARANCE_STATUS_REQUESTED:
-			case DOCKING_CLEARANCE_STATUS_GRANTED:
-				_cxxStation->last_launch_time = timeNow;
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-cancelled]" toShip:other];
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-				result = "DOCKING_CLEARANCE_CANCELLED";
-				_cxxStation->player_reserved_dock = nil;
-				if ([self currentlyInDockingQueues] == 0)
-				{
-					[_cxxShip->shipAI message:"DOCKING_COMPLETE"];
-					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
-				}
-				break;
-			case DOCKING_CLEARANCE_STATUS_NONE:
-			case DOCKING_CLEARANCE_STATUS_NOT_REQUIRED:
-				break;
-		}
-	}
-
-	// First we must set the status to REQUESTED to avoid problems when 
-	// switching docking targets - even if we later set it back to NONE.
-	if (!result && [other isPlayer] && self != [player getTargetDockStation])
-	{
-		_cxxStation->player_reserved_dock = nil; // and clear any previously reserved dock
-		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_REQUESTED];
-	}
-
-	// Deny docking for fugitives at the main station
-	// TODO: Should this be another key in shipdata.plist and/or should this
-	//  apply to all stations?
-	if (!result && self == [UNIVERSE station] && [other bounty] > 50)	// do not grant docking clearance to fugitives
-	{
-		[self cxx_sendExpandedMessage:"[station-docking-clearance-H-clearance-refused]" toShip:other];
-		if ([other isPlayer])
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		result = "DOCKING_CLEARANCE_DENIED_SHIP_FUGITIVE";
-	}
-	
-	if (!result && [other hasHostileTarget]) // do not grant docking clearance to hostile ships.
-	{
-		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied]" toShip:other];
-		if ([other isPlayer])
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		result = "DOCKING_CLEARANCE_DENIED_SHIP_HOSTILE";
-	}
-
-	if (![self hasEligibleDock]) // make sure at least one dock could plausibly accept the player
-	{
-		if ([other isPlayer])
-		{
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		}
-		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
-
-		result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
-	}
-	else if (![self hasClearDock]) // skip check if at least one dock clear
-	{
-		// Put ship in queue if we've got incoming or outgoing traffic or
-		// if the player is waiting for manual clearance and we are not
-		// the player
-		if (!result && (([self currentlyInDockingQueues] && _cxxStation->last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
-		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-approaching"),
-																					{ [self currentlyInDockingQueues]+1 }) toShip:other];
-			// No need to set status to REQUESTED as we've already done that earlier.
-			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_INBOUND";
-		}
-
-		if (!result && [self currentlyInLaunchingQueues])
-		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-departing"),
-																					{ [self currentlyInLaunchingQueues]+1 }) toShip:other];
-			// No need to set status to REQUESTED as we've already done that earlier.
-			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_OUTBOUND";
-		}
-		if (!result)
-		{
-			// if this happens, the station has no docks which allow
-			// docking, so deny clearance
-			if ([other isPlayer])
-			{
-				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-			}
-			result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
-			// but can check to see if we'll open some for later.
-			BOOL openLater = NO;
-			for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-			{
-				DockEntity *sub = dock.get();
-				std::string docking = [sub canAcceptShipForDocking:other].value_or("");
-				if (docking == "DOCK_CLOSED")
-				{
-					ooscript::Context context = OOJSAcquireContext();
-					ooscript::Value		rval = ooscript::undefinedValue();
-					ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
-														 OOJSValueFromNativeObject(context, other) };
-					bool tempreject = NO;
-
-					BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
-					if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
-					if (!OK)  tempreject = NO; // default to permreject
-					if (tempreject)
-					{
-						openLater = YES;
-					}
-					OOJSRelinquishContext(context);			
-				}
-				if (openLater) break;
-			}
-
-			if (openLater)
-			{
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks-yet]" toShip:other];
-			} 
-			else
-			{
-				[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
-			}
-
-		}
-	}
-
-	// Ship has passed all checks - grant docking!
-	if (!result)
-	{
-		_cxxStation->last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-		if ([other isPlayer]) 
-		{
-			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-			_cxxStation->player_reserved_dock = [self selectDockForDocking];
-		}
-
-		if ([self hasMultipleDocks] && [other isPlayer])
-		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
-					{ [_cxxStation->player_reserved_dock displayName].value_or("(null)"),
-					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-				toShip:other];
-		}
-		else
-		{
-			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
-					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
-				toShip:other];
-		}
-
-		result = "DOCKING_CLEARANCE_GRANTED";
-		[_cxxShip->shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
-		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
-	}
-	return result;
-}
-
-
-- (unsigned) currentlyInDockingQueues
-{
-	unsigned soa = 0;
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		soa += [sub countOfShipsInDockingQueue];
-	}
-	soa += [_cxxStation->_shipsOnHold count];
-	return soa;
-}
-
-
-- (unsigned) currentlyInLaunchingQueues
-{
-	unsigned soa = 0;
-	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
-	{
-		DockEntity *sub = dock.get();
-		soa += [sub countOfShipsInLaunchQueue];
-	}
-	return soa;
 }
 
 
@@ -2508,6 +2073,470 @@ void StationEntity::addShipToStationCount(::ShipEntity *ship)
 	{
 		if (0 < scavengers_launched)  scavengers_launched--;
 	}
+}
+
+
+}	// namespace cxx
+
+
+// Slice 3 of docs/phases/3-slices/StationEntity.md (bead oo-hjzwk): docking clearance, damage,
+// allegiance and alert level. The facade forwards each selector (StationEntity (OOSlice3),
+// StationEntity+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-mvzmb and
+// oo-64ako).
+
+namespace cxx {
+
+bool StationEntity::collideWithShip(::ShipEntity *other)
+{
+	/*
+		There used to be a [self abortAllDockings] here. Removed as there
+		doesn't appear to be a good reason for it and it interferes with
+		docking clearance.
+		-- Micha 2010-06-10
+	       Reformatted, Ahruman 2012-08-26
+	*/
+	return ShipEntity::collideWithShip(other);	// [super collideWithShip:other]
+}
+
+
+bool StationEntity::hasHostileTarget()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	return ShipEntity::hasHostileTarget() || ([self primaryTarget] != nil && ((alertLevel == STATION_ALERT_LEVEL_YELLOW) || (alertLevel == STATION_ALERT_LEVEL_RED)));
+}
+
+
+void StationEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string &weaponIdentifier)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	::Entity *ent = oo::ToObjC(entPart);
+	::Entity *other = oo::ToObjC(otherPart);
+	// stations must ignore friendly fire, otherwise the defenders' AI gets stuck.
+	BOOL			isFriend = NO;
+	::OOShipGroup		*group = [self group];
+	
+	if ([other isShip] && group != nil)
+	{
+		::OOShipGroup *otherGroup = [(::ShipEntity *)other group];
+		isFriend = otherGroup == group || [otherGroup leader] == self;
+	}
+	
+	// If this is the system's main station...
+	if (self == [UNIVERSE station] && !isFriend)
+	{
+		//...get angry
+		BOOL isEnergyMine = [ent isCascadeWeapon];
+
+		// JSAIs might ignore friendly fire from conventional weapons
+		if ([self hasNewAI] || isEnergyMine)
+		{
+			unsigned b=isEnergyMine ? 96 : 64;
+			if ([(::ShipEntity*)other bounty] >= b)	//already a hardened criminal?
+			{
+				b *= 1.5; //bigger bounty!
+			}
+			[(::ShipEntity*)other markAsOffender:b withReason:kOOLegalStatusReasonAttackedMainStation];
+			[self setPrimaryAggressor:other];
+			[self setFoundTarget:other];
+			[self launchPolice];
+		}
+
+		if (isEnergyMine) //don't blow up!
+		{
+			[self increaseAlertLevel];
+			[self respondToAttackFrom:ent becauseOf:other];
+			return;
+		}
+	}
+	// Stop damage if main station & close to death!
+	if (!isFriend && (self != [UNIVERSE station] || amount < energy) )
+	{
+		// Handle damage like a ship.
+		ShipEntity::takeEnergyDamage(amount, entPart, otherPart, weaponIdentifier);	// [super takeEnergyDamage:...]
+	}
+}
+
+
+void StationEntity::adjustVelocity(Vector xVel)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self != [UNIVERSE station])  ShipEntity::adjustVelocity(xVel); //dont get moved
+}
+
+
+void StationEntity::takeScrapeDamage(double amount, ::Entity *ent)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	// Stop damage if main station
+	if (self != [UNIVERSE station])  ShipEntity::takeScrapeDamage(amount, ent);
+}
+
+
+void StationEntity::takeHeatDamage(double amount)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	// Stop damage if main station
+	if (self != [UNIVERSE station])  ShipEntity::takeHeatDamage(amount);
+}
+
+
+std::optional<std::string> StationEntity::getAllegiance()
+{
+	return allegiance;
+}
+
+
+void StationEntity::setAllegiance(const std::optional<std::string> &newAllegiance)
+{
+	allegiance = newAllegiance;
+}
+
+
+OOStationAlertLevel StationEntity::getAlertLevel()
+{
+	return alertLevel;
+}
+
+
+void StationEntity::setAlertLevel(OOStationAlertLevel level, bool signallingScript)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (level < STATION_ALERT_LEVEL_GREEN)  level = STATION_ALERT_LEVEL_GREEN;
+	if (level > STATION_ALERT_LEVEL_RED)  level = STATION_ALERT_LEVEL_RED;
+	
+	if (alertLevel != level)
+	{
+		OOStationAlertLevel oldLevel = alertLevel;
+		alertLevel = level;
+		if (signallingScript)
+		{
+			ShipScriptEventNoCx(self, "alertConditionChanged", ooscript::int32Value(level), ooscript::int32Value(oldLevel));
+		}
+		switch (level)
+		{
+			case STATION_ALERT_LEVEL_GREEN:
+				[shipAI cxx_reactToMessage:"GREEN_ALERT" context:std::nullopt];
+				break;
+				
+			case STATION_ALERT_LEVEL_YELLOW:
+				[shipAI cxx_reactToMessage:"YELLOW_ALERT" context:std::nullopt];
+				break;
+				
+			case STATION_ALERT_LEVEL_RED:
+				[shipAI cxx_reactToMessage:"RED_ALERT" context:std::nullopt];
+				break;
+		}
+	}
+}
+
+
+//////////////////////////////////////////////// extra AI routines
+
+
+// Exposed to AI
+void StationEntity::increaseAlertLevel()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[self setAlertLevel:(OOStationAlertLevel)([self alertLevel] + 1) signallingScript:YES];
+}
+
+
+// Exposed to AI
+void StationEntity::decreaseAlertLevel()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	[self setAlertLevel:(OOStationAlertLevel)([self alertLevel] - 1) signallingScript:YES];
+}
+
+
+// Exposed to AI
+void StationEntity::becomeExplosion()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self == [UNIVERSE station])  return;
+	
+	// launch docked ships if possible
+	::PlayerEntity* player = PLAYER;
+	if ((player)&&([player status] == STATUS_DOCKED || [player status] == STATUS_DOCKING)&&([player dockedStation] == self))
+	{
+		// undock the player!
+		[player leaveDock:self];
+		[UNIVERSE setViewDirection:VIEW_FORWARD];
+		[[UNIVERSE gameController] setMouseInteractionModeForFlight];
+		[player warnAboutHostiles];	// sound a klaxon
+	}
+	
+	if (scanClass == CLASS_ROCK)	// ie we're a rock hermit or similar
+	{
+		// set the role so that we break up into rocks!
+		[self setPrimaryRole:"asteroid"];
+		being_mined = YES;
+	}
+	
+	// finally bite the bullet
+	ShipEntity::becomeExplosion();	// [super becomeExplosion]
+}
+
+
+// Exposed to AI
+void StationEntity::becomeEnergyBlast()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self == [UNIVERSE station])  return;
+	ShipEntity::becomeEnergyBlast();	// [super becomeEnergyBlast]
+}
+
+
+void StationEntity::becomeLargeExplosion(double factor)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	if (self == [UNIVERSE station])  return;
+	ShipEntity::becomeLargeExplosion(factor);	// [super becomeLargeExplosion:factor]
+}
+
+
+void StationEntity::acceptPatrolReportFrom(::ShipEntity * /* patrol_ship */)
+{
+	last_patrol_report_time = [UNIVERSE getTime];
+}
+
+
+// used by player - "other" should always be a reference to the player
+// there are some checks in the function from possibly when this wasn't true?
+std::optional<std::string> StationEntity::acceptDockingClearanceRequestFrom(::ShipEntity *other)
+{
+	::StationEntity *self = oo::ToObjC(this);
+	std::optional<std::string>	result;	// nullopt: no answer yet (was nil)
+	double		timeNow = [UNIVERSE getTime];
+	::PlayerEntity	*player = PLAYER;
+	
+	[self doScriptEvent:OOJSID("stationReceivedDockingRequest") withArgument:other];
+
+
+	[UNIVERSE clearPreviousMessage];
+
+	[self sanityCheckShipsOnApproach];
+
+	// Docking clearance not required - clear it just in case it's been
+	// set for another nearby station.
+	if (![self requiresDockingClearance])
+	{
+		// TODO: We're potentially cancelling docking at another station, so
+		//       ensure we clear the timer to allow NPC traffic.  If we
+		//       don't, normal traffic will resume once the timer runs out.
+		// No clearance is needed, but don't send friendly messages to hostile ships!
+		if (!(([other isPlayer] && [other hasHostileTarget]) || (self == [UNIVERSE station] && [other bounty] > 50)))
+		{
+			[self cxx_sendExpandedMessage:"[station-docking-clearance-not-required]" toShip:other];
+		}
+		if ([other isPlayer])
+		{
+			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NOT_REQUIRED];
+		}
+		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
+		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
+
+		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
+		result = "DOCKING_CLEARANCE_NOT_REQUIRED";
+	}
+
+	// Docking clearance already granted for this station - check for
+	// time-out or cancellation (but only for the Player).
+	if( !result && [other isPlayer] && self == [player getTargetDockStation])
+	{
+		switch( [player getDockingClearanceStatus] )
+		{
+			case DOCKING_CLEARANCE_STATUS_TIMING_OUT:
+				if (!no_docking_while_launching)
+				{
+					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
+					[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-extended-until-@"),
+							{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+						toShip:other];
+					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
+					result = "DOCKING_CLEARANCE_EXTENDED";
+					break;
+				}
+				// else, continue with canceling.
+			case DOCKING_CLEARANCE_STATUS_REQUESTED:
+			case DOCKING_CLEARANCE_STATUS_GRANTED:
+				last_launch_time = timeNow;
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-cancelled]" toShip:other];
+				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+				result = "DOCKING_CLEARANCE_CANCELLED";
+				player_reserved_dock = nil;
+				if ([self currentlyInDockingQueues] == 0)
+				{
+					[shipAI message:"DOCKING_COMPLETE"];
+					[self doScriptEvent:OOJSID("stationDockingQueuesAreEmpty")];
+				}
+				break;
+			case DOCKING_CLEARANCE_STATUS_NONE:
+			case DOCKING_CLEARANCE_STATUS_NOT_REQUIRED:
+				break;
+		}
+	}
+
+	// First we must set the status to REQUESTED to avoid problems when 
+	// switching docking targets - even if we later set it back to NONE.
+	if (!result && [other isPlayer] && self != [player getTargetDockStation])
+	{
+		player_reserved_dock = nil; // and clear any previously reserved dock
+		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_REQUESTED];
+	}
+
+	// Deny docking for fugitives at the main station
+	// TODO: Should this be another key in shipdata.plist and/or should this
+	//  apply to all stations?
+	if (!result && self == [UNIVERSE station] && [other bounty] > 50)	// do not grant docking clearance to fugitives
+	{
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-H-clearance-refused]" toShip:other];
+		if ([other isPlayer])
+			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+		result = "DOCKING_CLEARANCE_DENIED_SHIP_FUGITIVE";
+	}
+	
+	if (!result && [other hasHostileTarget]) // do not grant docking clearance to hostile ships.
+	{
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied]" toShip:other];
+		if ([other isPlayer])
+			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+		result = "DOCKING_CLEARANCE_DENIED_SHIP_HOSTILE";
+	}
+
+	if (![self hasEligibleDock]) // make sure at least one dock could plausibly accept the player
+	{
+		if ([other isPlayer])
+		{
+			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+		}
+		[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
+
+		result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
+	}
+	else if (![self hasClearDock]) // skip check if at least one dock clear
+	{
+		// Put ship in queue if we've got incoming or outgoing traffic or
+		// if the player is waiting for manual clearance and we are not
+		// the player
+		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
+		{
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-approaching"),
+																					{ [self currentlyInDockingQueues]+1 }) toShip:other];
+			// No need to set status to REQUESTED as we've already done that earlier.
+			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_INBOUND";
+		}
+
+		if (!result && [self currentlyInLaunchingQueues])
+		{
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-acknowledged-d-ships-departing"),
+																					{ [self currentlyInLaunchingQueues]+1 }) toShip:other];
+			// No need to set status to REQUESTED as we've already done that earlier.
+			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_OUTBOUND";
+		}
+		if (!result)
+		{
+			// if this happens, the station has no docks which allow
+			// docking, so deny clearance
+			if ([other isPlayer])
+			{
+				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+			}
+			result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
+			// but can check to see if we'll open some for later.
+			BOOL openLater = NO;
+			for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+			{
+				::DockEntity *sub = dock.get();
+				std::string docking = [sub canAcceptShipForDocking:other].value_or("");
+				if (docking == "DOCK_CLOSED")
+				{
+					ooscript::Context context = OOJSAcquireContext();
+					ooscript::Value		rval = ooscript::undefinedValue();
+					ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
+														 OOJSValueFromNativeObject(context, other) };
+					bool tempreject = NO;
+
+					BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
+					if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
+					if (!OK)  tempreject = NO; // default to permreject
+					if (tempreject)
+					{
+						openLater = YES;
+					}
+					OOJSRelinquishContext(context);			
+				}
+				if (openLater) break;
+			}
+
+			if (openLater)
+			{
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks-yet]" toShip:other];
+			} 
+			else
+			{
+				[self cxx_sendExpandedMessage:"[station-docking-clearance-denied-no-docks]" toShip:other];
+			}
+
+		}
+	}
+
+	// Ship has passed all checks - grant docking!
+	if (!result)
+	{
+		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
+		if ([other isPlayer]) 
+		{
+			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
+			player_reserved_dock = [self selectDockForDocking];
+		}
+
+		if ([self hasMultipleDocks] && [other isPlayer])
+		{
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-in-@-until-@"),
+					{ [player_reserved_dock displayName].value_or("(null)"),
+					  cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+				toShip:other];
+		}
+		else
+		{
+			[self cxx_sendExpandedMessage:oo::str::formatRuntime(OO_DESC("station-docking-clearance-granted-until-@"),
+					{ cxx_ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO) })
+				toShip:other];
+		}
+
+		result = "DOCKING_CLEARANCE_GRANTED";
+		[shipAI cxx_reactToMessage:"DOCKING_REQUESTED" context:std::nullopt];	// react to the request	
+		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
+	}
+	return result;
+}
+
+
+unsigned StationEntity::currentlyInDockingQueues()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	unsigned soa = 0;
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		soa += [sub countOfShipsInDockingQueue];
+	}
+	soa += [_shipsOnHold count];
+	return soa;
+}
+
+
+unsigned StationEntity::currentlyInLaunchingQueues()
+{
+	::StationEntity *self = oo::ToObjC(this);
+	unsigned soa = 0;
+	for (const oo::ObjCRef<::DockEntity *> &dock : [self cxx_dockSubEntities])
+	{
+		::DockEntity *sub = dock.get();
+		soa += [sub countOfShipsInLaunchQueue];
+	}
+	return soa;
 }
 
 

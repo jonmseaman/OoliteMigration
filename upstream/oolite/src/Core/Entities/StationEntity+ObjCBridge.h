@@ -46,24 +46,11 @@ MA 02110-1301, USA.
 }
 
 
-- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance;
-- (std::optional<std::string>) cxx_allegiance;	// nullopt: none
-
-
-- (unsigned) currentlyInLaunchingQueues;
-- (unsigned) currentlyInDockingQueues;
-
-
 - (oo::PList) launchIndependentShip:(const std::string &)role;	// called by name (ADR-0055 item 5): the ship launched, as an Object node (null: none)
 
 
-- (OOStationAlertLevel) alertLevel;
-- (void) setAlertLevel:(OOStationAlertLevel)level signallingScript:(BOOL)signallingScript;
-
 ////////////////////////////////////////////////////////////// AI methods...
 
-- (void) increaseAlertLevel;
-- (void) decreaseAlertLevel;
 
 - (oo::PList) launchPolice;	// called by name (ADR-0055 item 5): the ships launched, as Object nodes
 - (ShipEntity *) launchDefenseShip;
@@ -76,10 +63,6 @@ MA 02110-1301, USA.
 - (ShipEntity *) launchPatrol;
 
 - (void) launchShipWithRole:(const std::string &)role;	// called by name (ADR-0055 item 5)
-
-- (void) acceptPatrolReportFrom:(ShipEntity *)patrol_ship;
-
-- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other;
 
 
 @end
@@ -186,10 +169,27 @@ MA 02110-1301, USA.
 @end
 
 
-
 // The send of StationEntity.mm's C function cxx_OOMakeDockingInstructions() to the station it
 // reaches as an Objective-C object (amendment oo-9ht.139 item 3); deleted with this header.
 OOWeakReference *StationEntityWeakReference(StationEntity *station);	// [[station weakRetain] autorelease]
+
+
+// Slice 3 of docs/phases/3-slices/StationEntity.md (bead oo-hjzwk): docking clearance, damage, allegiance and alert level. Members of
+// cxx::StationEntity, forwarded by the category of the same name in StationEntity+ObjCBridge.mm.
+@interface StationEntity (OOSlice3)
+
+- (std::optional<std::string>) cxx_allegiance;	// nullopt: none
+- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance;
+- (OOStationAlertLevel) alertLevel;
+- (void) setAlertLevel:(OOStationAlertLevel)level signallingScript:(BOOL)signallingScript;
+- (void) increaseAlertLevel;
+- (void) decreaseAlertLevel;
+- (void) acceptPatrolReportFrom:(ShipEntity *)patrol_ship;
+- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other;
+- (unsigned) currentlyInDockingQueues;
+- (unsigned) currentlyInLaunchingQueues;
+
+@end
 
 
 namespace oo {
