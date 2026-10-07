@@ -652,72 +652,6 @@ static const OOMatrix	starboard_matrix =
 						}};
 
 
-- (void) drawMessage
-{
-	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
-	
-	OOGL(glDisable(GL_TEXTURE_2D));	// for background sheets
-	
-	float overallAlpha = [[PLAYER hud] overallAlpha];
-	if (_cxxUniverse->displayGUI)
-	{
-		if ([[self gameController] mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
-		{
-			_cxxUniverse->cursor_row = [_cxxUniverse->gui drawGUI:1.0 drawCursor:YES];
-		}
-		else
-		{
-			[_cxxUniverse->gui drawGUI:1.0 drawCursor:NO];
-		}
-	}
-	
-	[_cxxUniverse->message_gui drawGUI:[_cxxUniverse->message_gui alpha] * overallAlpha drawCursor:NO];
-	[_cxxUniverse->comm_log_gui drawGUI:[_cxxUniverse->comm_log_gui alpha] * overallAlpha drawCursor:NO];
-	
-	OOVerifyOpenGLState();
-}
-
-
-- (void) drawWatermarkString:(const std::string &) watermarkString
-{
-	NSSize watermarkStringSize = cxx_OORectFromString(watermarkString, 0.0f, 0.0f, NSMakeSize(10, 10)).size;
-
-	OOGL(glColor4f(0.0, 1.0, 0.0, 1.0));
-	// position the watermark string on the top right hand corner of the game window and right-align it
-	cxx_OODrawString(watermarkString, MAIN_GUI_PIXEL_WIDTH / 2 - watermarkStringSize.width + 80,
-						MAIN_GUI_PIXEL_HEIGHT / 2 - watermarkStringSize.height, [_cxxUniverse->gameView display_z], NSMakeSize(10,10));
-}
-
-
-- (id)entityForUniversalID:(OOUniversalID)u_id
-{
-	if (u_id == 100)
-		return PLAYER;	// the player
-	
-	if (MAX_ENTITY_UID < u_id)
-	{
-		OO_LOG("universe.badUID", "Attempt to retrieve entity for out-of-range UID {}. (This is an internal programming error, please report it.)", static_cast<unsigned>(u_id));
-		return nil;
-	}
-	
-	if ((u_id == NO_TARGET)||(!_cxxUniverse->entity_for_uid[u_id]))
-		return nil;
-	
-	Entity *ent = _cxxUniverse->entity_for_uid[u_id];
-	if ([ent isEffect])	// effects SHOULD NOT HAVE U_IDs!
-	{
-		return nil;
-	}
-	
-	if ([ent status] == STATUS_DEAD || [ent status] == STATUS_DOCKED)
-	{
-		return nil;
-	}
-	
-	return ent;
-}
-
-
 static BOOL MaintainLinkedLists(Universe *uni)
 {
 	OOCParameterAssert(uni != NULL);
@@ -870,279 +804,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			ent->_cxxEntity->y_previous = nil;
 			ent->_cxxEntity->z_next = nil;
 			ent->_cxxEntity->z_previous = nil;
-			[ent addToLinkedLists];
+			oo::ToCxx(ent)->addToLinkedLists();	// [ent addToLinkedLists]
 		}
 	}
 	
 	return result;
-}
-
-
-- (BOOL) addEntity:(Entity *) entity
-{
-	if (entity)
-	{
-		ShipEntity *se = nil;
-		OOVisualEffectEntity *ve = nil;
-		OOWaypointEntity *wp = nil;
-		
-		if (![entity validForAddToUniverse])  return NO;
-		
-		// don't add things twice!
-		if (std::find(_cxxUniverse->entities.begin(), _cxxUniverse->entities.end(), entity) != _cxxUniverse->entities.end())
-			return YES;
-		
-		if (_cxxUniverse->n_entities >= UNIVERSE_MAX_ENTITIES - 1)
-		{
-			// throw an exception here...
-			OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Universe is full ({} entities out of {})", oo::DescriptionOf(entity), static_cast<int>(_cxxUniverse->n_entities), static_cast<int>(UNIVERSE_MAX_ENTITIES));
-#ifndef NDEBUG
-			if (oo::log::willDisplay("universe.maxEntitiesDump")) [self debugDumpEntities];
-#endif
-			return NO;
-		}
-		
-		if (![entity isEffect])
-		{
-			unsigned limiter = UNIVERSE_MAX_ENTITIES;
-			while (_cxxUniverse->entity_for_uid[_cxxUniverse->next_universal_id] != nil)	// skip allocated numbers
-			{
-				_cxxUniverse->next_universal_id++;						// increment keeps idkeys unique
-				if (_cxxUniverse->next_universal_id >= MAX_ENTITY_UID)
-				{
-					_cxxUniverse->next_universal_id = MIN_ENTITY_UID;
-				}
-				if (limiter-- == 0)
-				{
-					// Every slot has been tried! This should not happen due to previous test, but there was a problem here in 1.70.
-					OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Could not find free slot for entity.", oo::DescriptionOf(entity));
-					return NO;
-				}
-			}
-			[entity setUniversalID:_cxxUniverse->next_universal_id];
-			_cxxUniverse->entity_for_uid[_cxxUniverse->next_universal_id] = entity;
-			if ([entity isShip])
-			{
-				se = (ShipEntity *)entity;
-				if ([se isBeacon])
-				{
-					[self setNextBeacon:se];
-				}
-				if ([se isStation])
-				{
-					// check if it is a proper rotating station (ie. roles contains the word "station")
-					if ([(StationEntity*)se isRotatingStation])
-					{
-						double stationRoll = 0.0;
-						// check for station_roll override
-						const oo::PList shipInfo = [se cxx_shipInfoDictionary];
-						const oo::PList *definedRoll = shipInfo.find("station_roll");
-						
-						if (definedRoll != nullptr)
-						{
-							stationRoll = oo::plist_get::realFrom<double>(definedRoll, stationRoll);	// OODoubleFromObject
-						}
-						else
-						{
-							stationRoll = [self cxx_currentSystemData].get<double>("station_roll", STANDARD_STATION_ROLL);
-						}
-						
-						[se setRoll: stationRoll];
-					}
-					else
-					{
-						[se setRoll: 0.0];
-					}
-					[(StationEntity *)se setPlanet:[self planet]];
-					if ([se maxFlightSpeed] > 0) se->_cxxEntity->isExplicitlyNotMainStation = YES; // we never want carriers to become main stations.
-				}
-				// stations used to have STATUS_ACTIVE, they're all STATUS_IN_FLIGHT now.
-				if ([se status] != STATUS_COCKPIT_DISPLAY)
-				{
-					[se setStatus:STATUS_IN_FLIGHT];
-				}
-			}
-		}
-		else
-		{
-			[entity setUniversalID:NO_TARGET];
-			if ([entity isVisualEffect])
-			{
-				ve = (OOVisualEffectEntity *)entity;
-				if ([ve isBeacon])
-				{
-					[self setNextBeacon:ve];
-				}
-			}
-			else if ([entity isWaypoint])
-			{
-				wp = (OOWaypointEntity *)entity;
-				if ([wp isBeacon])
-				{
-					[self setNextBeacon:wp];
-				}
-			}
-		}
-		
-		// lighting considerations
-		entity->_cxxEntity->isSunlit = YES;
-		entity->_cxxEntity->shadingEntityID = NO_TARGET;
-		
-		// add it to the universe
-		_cxxUniverse->entities.emplace_back(entity);
-		[entity wasAddedToUniverse];
-		
-		// maintain sorted list (and for the scanner relative position)
-		HPVector entity_pos = entity->_cxxEntity->position;
-		HPVector delta = HPvector_between(entity_pos, PLAYER->_cxxEntity->position);
-		double z_distance = HPmagnitude2(delta);
-		entity->_cxxEntity->zero_distance = z_distance;
-		unsigned index = _cxxUniverse->n_entities;
-		_cxxUniverse->sortedEntities[index] = entity;
-		entity->_cxxEntity->zero_index = index;
-		while ((index > 0)&&(z_distance < _cxxUniverse->sortedEntities[index - 1]->_cxxEntity->zero_distance))	// bubble into place
-		{
-			_cxxUniverse->sortedEntities[index] = _cxxUniverse->sortedEntities[index - 1];
-			_cxxUniverse->sortedEntities[index]->_cxxEntity->zero_index = index;
-			index--;
-			_cxxUniverse->sortedEntities[index] = entity;
-			entity->_cxxEntity->zero_index = index;
-		}
-		
-		// increase n_entities...
-		_cxxUniverse->n_entities++;
-		
-		// add entity to linked lists
-		[entity addToLinkedLists];	// position and universe have been set - so we can do this
-		if ([entity canCollide])	// filter only collidables disappearing
-		{
-			_cxxUniverse->doLinkedListMaintenanceThisUpdate = YES;
-		}
-		
-		if ([entity isWormhole])
-		{
-			_cxxUniverse->activeWormholes.emplace_back((WormholeEntity *)entity);
-		}
-		else if ([entity isPlanet])
-		{
-			_cxxUniverse->allPlanets.emplace_back((OOPlanetEntity *)entity);
-		}
-		else if ([entity isShip])
-		{
-			[[se getAI] setOwner:se];
-			[[se getAI] cxx_setState:"GLOBAL"];
-			if ([entity isStation])
-			{
-				AddIfAbsent(_cxxUniverse->allStations, (StationEntity *)entity);
-			}
-		}
-		
-		return YES;
-	}
-	return NO;
-}
-
-
-- (BOOL) removeEntity:(Entity *) entity
-{
-	if (entity != nil && ![entity isPlayer])
-	{
-		/*	Ensure entity won't actually be dealloced until the end of this
-			update (or the next update if none is in progress), because
-			there may be things pointing to it but not retaining it.
-		*/
-		AddIfAbsent(_cxxUniverse->entitiesDeadThisUpdate, entity);
-		if ([entity isStation])
-		{
-			std::erase(_cxxUniverse->allStations, entity);
-			if ([PLAYER getTargetDockStation] == entity)
-			{
-				[PLAYER setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-			}
-		}
-		return [self doRemoveEntity:entity];
-	}
-	return NO;
-}
-
-
-- (void) ensureEntityReallyRemoved:(Entity *)entity
-{
-	if ([entity universalID] != NO_TARGET)
-	{
-		OO_LOG("universe.unremovedEntity", "Entity {} dealloced without being removed from universe! (This is an internal programming error, please report it.)", oo::DescriptionOf(entity));
-		[self doRemoveEntity:entity];
-	}
-}
-
-
-- (void) removeAllEntitiesExceptPlayer
-{
-	BOOL updating = _cxxUniverse->no_update;
-	_cxxUniverse->no_update = YES;			// no drawing while we do this!
-	
-#ifndef NDEBUG
-	Entity* p0 = _cxxUniverse->entities[0].get();
-	if (!(p0->_cxxEntity->isPlayer))
-	{
-		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
-		exit(EXIT_FAILURE);
-	}
-#endif
-	
-	// preserve wormholes
-	std::vector<oo::ObjCRef<WormholeEntity *>> savedWormholes = _cxxUniverse->activeWormholes;
-
-	while (_cxxUniverse->entities.size() > 1)
-	{
-		Entity* ent = _cxxUniverse->entities[1].get();
-		if (ent->_cxxEntity->isStation)  // clear out queues
-			[(StationEntity *)ent clear];
-		if (EXPECT(![ent isVisualEffect]))
-		{
-			[self removeEntity:ent];
-		}
-		else
-		{
-			// this will ensure the effectRemoved script event will run
-			[(OOVisualEffectEntity *)ent remove];
-		}
-	}
-	
-	_cxxUniverse->activeWormholes = std::move(savedWormholes);	// will be cleared out by populateSpaceFromActiveWormholes
-	
-	// maintain sorted list
-	_cxxUniverse->n_entities = 1;
-	
-	_cxxUniverse->cachedSun = nil;
-	_cxxUniverse->cachedPlanet = nil;
-	_cxxUniverse->cachedStation = nil;
-	_cxxUniverse->closeSystems.reset();
-	
-	[self resetBeacons];
-	_cxxUniverse->waypoints.clear();
-	
-	_cxxUniverse->no_update = updating;	// restore drawing
-}
-
-
-- (void) removeDemoShips
-{
-	int i;
-	int ent_count = _cxxUniverse->n_entities;
-	if (ent_count > 0)
-	{
-		Entity* ent;
-		for (i = 0; i < ent_count; i++)
-		{
-			ent = _cxxUniverse->sortedEntities[i];
-			if ([ent status] == STATUS_COCKPIT_DISPLAY && ![ent isPlayer])
-			{
-				[self removeEntity:ent];
-			}
-		}
-	}
-	_cxxUniverse->demo_ship = nil;
 }
 
 
@@ -6143,6 +5809,355 @@ void Universe::resetFramesDoneThisUpdate()
 OOMatrix Universe::getViewMatrix()
 {
 	return viewMatrix;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 13 of docs/phases/3-slices/Universe.md (bead oo-0uz9w): messages and the watermark, entity
+// look-up, the linked lists, adding and removing entities, demo ships. The facade forwards each
+// selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+void Universe::drawMessage()
+{
+	::Universe *self = oo::ToObjC(this);
+	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
+	
+	OOGL(glDisable(GL_TEXTURE_2D));	// for background sheets
+	
+	float overallAlpha = [[PLAYER hud] overallAlpha];
+	if (displayGUI)
+	{
+		if ([[self gameController] mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
+		{
+			cursor_row = [gui drawGUI:1.0 drawCursor:YES];
+		}
+		else
+		{
+			[gui drawGUI:1.0 drawCursor:NO];
+		}
+	}
+	
+	[message_gui drawGUI:[message_gui alpha] * overallAlpha drawCursor:NO];
+	[comm_log_gui drawGUI:[comm_log_gui alpha] * overallAlpha drawCursor:NO];
+	
+	OOVerifyOpenGLState();
+}
+
+
+void Universe::drawWatermarkString(const std::string &watermarkString)
+{
+	NSSize watermarkStringSize = cxx_OORectFromString(watermarkString, 0.0f, 0.0f, NSMakeSize(10, 10)).size;
+
+	OOGL(glColor4f(0.0, 1.0, 0.0, 1.0));
+	// position the watermark string on the top right hand corner of the game window and right-align it
+	const int halfGuiWidth = MAIN_GUI_PIXEL_WIDTH / 2, halfGuiHeight = MAIN_GUI_PIXEL_HEIGHT / 2;	// integer halves, as before
+	cxx_OODrawString(watermarkString, halfGuiWidth - watermarkStringSize.width + 80,
+						halfGuiHeight - watermarkStringSize.height, [gameView display_z], NSMakeSize(10,10));
+}
+
+
+id Universe::entityForUniversalID(OOUniversalID u_id)
+{
+	if (u_id == 100)
+		return PLAYER;	// the player
+	
+	if (MAX_ENTITY_UID < u_id)
+	{
+		OO_LOG("universe.badUID", "Attempt to retrieve entity for out-of-range UID {}. (This is an internal programming error, please report it.)", static_cast<unsigned>(u_id));
+		return nil;
+	}
+	
+	if ((u_id == NO_TARGET)||(!entity_for_uid[u_id]))
+		return nil;
+	
+	::Entity *ent = entity_for_uid[u_id];
+	if ([ent isEffect])	// effects SHOULD NOT HAVE U_IDs!
+	{
+		return nil;
+	}
+	
+	if ([ent status] == STATUS_DEAD || [ent status] == STATUS_DOCKED)
+	{
+		return nil;
+	}
+	
+	return ent;
+}
+
+
+bool Universe::addEntity(::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (entity)
+	{
+		::ShipEntity *se = nil;
+		::OOVisualEffectEntity *ve = nil;
+		::OOWaypointEntity *wp = nil;
+		
+		if (![entity validForAddToUniverse])  return NO;
+		
+		// don't add things twice!
+		if (std::find(entities.begin(), entities.end(), entity) != entities.end())
+			return YES;
+		
+		if (n_entities >= UNIVERSE_MAX_ENTITIES - 1)
+		{
+			// throw an exception here...
+			OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Universe is full ({} entities out of {})", oo::DescriptionOf(entity), static_cast<int>(n_entities), static_cast<int>(UNIVERSE_MAX_ENTITIES));
+#ifndef NDEBUG
+			if (oo::log::willDisplay("universe.maxEntitiesDump")) [self debugDumpEntities];
+#endif
+			return NO;
+		}
+		
+		if (![entity isEffect])
+		{
+			unsigned limiter = UNIVERSE_MAX_ENTITIES;
+			while (entity_for_uid[next_universal_id] != nil)	// skip allocated numbers
+			{
+				next_universal_id++;						// increment keeps idkeys unique
+				if (next_universal_id >= MAX_ENTITY_UID)
+				{
+					next_universal_id = MIN_ENTITY_UID;
+				}
+				if (limiter-- == 0)
+				{
+					// Every slot has been tried! This should not happen due to previous test, but there was a problem here in 1.70.
+					OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Could not find free slot for entity.", oo::DescriptionOf(entity));
+					return NO;
+				}
+			}
+			[entity setUniversalID:next_universal_id];
+			entity_for_uid[next_universal_id] = entity;
+			if ([entity isShip])
+			{
+				se = (::ShipEntity *)entity;
+				if ([se isBeacon])
+				{
+					[self setNextBeacon:se];
+				}
+				if ([se isStation])
+				{
+					// check if it is a proper rotating station (ie. roles contains the word "station")
+					if ([(::StationEntity*)se isRotatingStation])
+					{
+						double stationRoll = 0.0;
+						// check for station_roll override
+						const oo::PList shipInfo = [se cxx_shipInfoDictionary];
+						const oo::PList *definedRoll = shipInfo.find("station_roll");
+						
+						if (definedRoll != nullptr)
+						{
+							stationRoll = oo::plist_get::realFrom<double>(definedRoll, stationRoll);	// OODoubleFromObject
+						}
+						else
+						{
+							stationRoll = [self cxx_currentSystemData].get<double>("station_roll", STANDARD_STATION_ROLL);
+						}
+						
+						[se setRoll: stationRoll];
+					}
+					else
+					{
+						[se setRoll: 0.0];
+					}
+					[(::StationEntity *)se setPlanet:[self planet]];
+					if ([se maxFlightSpeed] > 0) se->_cxxEntity->isExplicitlyNotMainStation = YES; // we never want carriers to become main stations.
+				}
+				// stations used to have STATUS_ACTIVE, they're all STATUS_IN_FLIGHT now.
+				if ([se status] != STATUS_COCKPIT_DISPLAY)
+				{
+					[se setStatus:STATUS_IN_FLIGHT];
+				}
+			}
+		}
+		else
+		{
+			[entity setUniversalID:NO_TARGET];
+			if ([entity isVisualEffect])
+			{
+				ve = (::OOVisualEffectEntity *)entity;
+				if ([ve isBeacon])
+				{
+					[self setNextBeacon:ve];
+				}
+			}
+			else if ([entity isWaypoint])
+			{
+				wp = (::OOWaypointEntity *)entity;
+				if ([wp isBeacon])
+				{
+					[self setNextBeacon:wp];
+				}
+			}
+		}
+		
+		// lighting considerations
+		entity->_cxxEntity->isSunlit = YES;
+		entity->_cxxEntity->shadingEntityID = NO_TARGET;
+		
+		// add it to the universe
+		entities.emplace_back(entity);
+		[entity wasAddedToUniverse];
+		
+		// maintain sorted list (and for the scanner relative position)
+		HPVector entity_pos = entity->_cxxEntity->position;
+		HPVector delta = HPvector_between(entity_pos, PLAYER->_cxxEntity->position);
+		double z_distance = HPmagnitude2(delta);
+		entity->_cxxEntity->zero_distance = z_distance;
+		unsigned index = n_entities;
+		sortedEntities[index] = entity;
+		entity->_cxxEntity->zero_index = index;
+		while ((index > 0)&&(z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance))	// bubble into place
+		{
+			sortedEntities[index] = sortedEntities[index - 1];
+			sortedEntities[index]->_cxxEntity->zero_index = index;
+			index--;
+			sortedEntities[index] = entity;
+			entity->_cxxEntity->zero_index = index;
+		}
+		
+		// increase n_entities...
+		n_entities++;
+		
+		// add entity to linked lists
+		[entity addToLinkedLists];	// position and universe have been set - so we can do this
+		if ([entity canCollide])	// filter only collidables disappearing
+		{
+			doLinkedListMaintenanceThisUpdate = YES;
+		}
+		
+		if ([entity isWormhole])
+		{
+			activeWormholes.emplace_back((::WormholeEntity *)entity);
+		}
+		else if ([entity isPlanet])
+		{
+			allPlanets.emplace_back((::OOPlanetEntity *)entity);
+		}
+		else if ([entity isShip])
+		{
+			[[se getAI] setOwner:se];
+			[[se getAI] cxx_setState:"GLOBAL"];
+			if ([entity isStation])
+			{
+				AddIfAbsent(allStations, (::StationEntity *)entity);
+			}
+		}
+		
+		return YES;
+	}
+	return NO;
+}
+
+
+bool Universe::removeEntity(::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (entity != nil && ![entity isPlayer])
+	{
+		/*	Ensure entity won't actually be dealloced until the end of this
+			update (or the next update if none is in progress), because
+			there may be things pointing to it but not retaining it.
+		*/
+		AddIfAbsent(entitiesDeadThisUpdate, entity);
+		if ([entity isStation])
+		{
+			std::erase(allStations, entity);
+			if ([PLAYER getTargetDockStation] == entity)
+			{
+				[PLAYER setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
+			}
+		}
+		return [self doRemoveEntity:entity];
+	}
+	return NO;
+}
+
+
+void Universe::ensureEntityReallyRemoved(::Entity *entity)
+{
+	::Universe *self = oo::ToObjC(this);
+	if ([entity universalID] != NO_TARGET)
+	{
+		OO_LOG("universe.unremovedEntity", "Entity {} dealloced without being removed from universe! (This is an internal programming error, please report it.)", oo::DescriptionOf(entity));
+		[self doRemoveEntity:entity];
+	}
+}
+
+
+void Universe::removeAllEntitiesExceptPlayer()
+{
+	::Universe *self = oo::ToObjC(this);
+	BOOL updating = no_update;
+	no_update = YES;			// no drawing while we do this!
+	
+#ifndef NDEBUG
+	::Entity* p0 = entities[0].get();
+	if (!(p0->_cxxEntity->isPlayer))
+	{
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
+		exit(EXIT_FAILURE);
+	}
+#endif
+	
+	// preserve wormholes
+	std::vector<oo::ObjCRef<::WormholeEntity *>> savedWormholes = activeWormholes;
+
+	while (entities.size() > 1)
+	{
+		::Entity* ent = entities[1].get();
+		if (ent->_cxxEntity->isStation)  // clear out queues
+			[(::StationEntity *)ent clear];
+		if (EXPECT(![ent isVisualEffect]))
+		{
+			[self removeEntity:ent];
+		}
+		else
+		{
+			// this will ensure the effectRemoved script event will run
+			[(::OOVisualEffectEntity *)ent remove];
+		}
+	}
+	
+	activeWormholes = std::move(savedWormholes);	// will be cleared out by populateSpaceFromActiveWormholes
+	
+	// maintain sorted list
+	n_entities = 1;
+	
+	cachedSun = nil;
+	cachedPlanet = nil;
+	cachedStation = nil;
+	closeSystems.reset();
+	
+	[self resetBeacons];
+	waypoints.clear();
+	
+	no_update = updating;	// restore drawing
+}
+
+
+void Universe::removeDemoShips()
+{
+	::Universe *self = oo::ToObjC(this);
+	int i;
+	int ent_count = n_entities;
+	if (ent_count > 0)
+	{
+		::Entity* ent;
+		for (i = 0; i < ent_count; i++)
+		{
+			ent = sortedEntities[i];
+			if ([ent status] == STATUS_COCKPIT_DISPLAY && ![ent isPlayer])
+			{
+				[self removeEntity:ent];
+			}
+		}
+	}
+	demo_ship = nil;
 }
 
 

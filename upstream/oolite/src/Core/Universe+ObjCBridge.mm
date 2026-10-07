@@ -283,6 +283,20 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice13)
+
+- (void) drawMessage	{ _cxxUniverse->drawMessage(); }
+- (void) drawWatermarkString:(const std::string &)watermarkString	{ _cxxUniverse->drawWatermarkString(watermarkString); }
+- (id) entityForUniversalID:(OOUniversalID)u_id	{ return _cxxUniverse->entityForUniversalID(u_id); }
+- (BOOL) addEntity:(Entity *)entity	{ return _cxxUniverse->addEntity(entity); }
+- (BOOL) removeEntity:(Entity *)entity	{ return _cxxUniverse->removeEntity(entity); }
+- (void) ensureEntityReallyRemoved:(Entity *)entity	{ _cxxUniverse->ensureEntityReallyRemoved(entity); }
+- (void) removeAllEntitiesExceptPlayer	{ _cxxUniverse->removeAllEntitiesExceptPlayer(); }
+- (void) removeDemoShips	{ _cxxUniverse->removeDemoShips(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }
