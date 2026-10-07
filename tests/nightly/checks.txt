@@ -410,4 +410,5 @@
 [oo-ef6rc] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-ni9u8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
 [oo-d0i7y] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_Universe && bash tools/tier-c.sh --only goldens
+[oo-0806] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_MyOpenGLView && bash tools/tier-c.sh --only goldens
 [oo-uqen] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOShipRegistry && bash tools/tier-c.sh --only goldens
