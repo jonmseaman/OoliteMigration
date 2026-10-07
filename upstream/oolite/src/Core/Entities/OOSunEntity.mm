@@ -240,7 +240,7 @@ void OOSunEntity::update(OOTimeDelta delta_t)
 {
 	Entity::update(delta_t);
 	
-	PlayerEntity	*player = PLAYER;
+	::PlayerEntity	*player = PLAYER;
 	assert(player != nil);
 	rotMatrix = OOMatrixForBillboard(position, [player viewpointPosition]);
 	

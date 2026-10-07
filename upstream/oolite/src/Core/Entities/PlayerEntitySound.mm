@@ -463,12 +463,12 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 {
 	static uint8_t which = 0;
 	
-	if (!afterburner_engaged)				// end the loop cycle
+	if (!_cxxPlayer->afterburner_engaged)				// end the loop cycle
 	{
-		afterburnerSoundLooping = NO;
+		_cxxPlayer->afterburnerSoundLooping = NO;
 	}
 	
-	if (afterburnerSoundLooping)
+	if (_cxxPlayer->afterburnerSoundLooping)
 	{
 		[sAfterburnerSources[which] play];
 		which = !which;
@@ -480,9 +480,9 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 
 - (void) startAfterburnerSound
 {
-	if (!afterburnerSoundLooping)
+	if (!_cxxPlayer->afterburnerSoundLooping)
 	{
-		afterburnerSoundLooping = YES;
+		_cxxPlayer->afterburnerSoundLooping = YES;
 		[self updateAfterburnerSound];
 	}
 }
