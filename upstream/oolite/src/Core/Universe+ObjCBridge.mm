@@ -263,3 +263,46 @@ extern Universe *gSharedUniverse;
 - (void) setAutoSaveNow:(BOOL) value	{ _cxxUniverse->setAutoSaveNow(value); }
 
 @end
+
+
+@implementation Universe (OOSlice24)
+
+#if !OOLITE_MAC_OS_X
+- (void) cxx_startSpeakingString:(const std::string &) text	{ _cxxUniverse->startSpeakingString(text); }
+- (void) stopSpeaking	{ _cxxUniverse->stopSpeaking(); }
+- (BOOL) isSpeaking	{ return _cxxUniverse->isSpeaking(); }
+#endif
+#if OOLITE_ESPEAK
+- (std::optional<std::string>) cxx_voiceName:(unsigned int) index	{ return _cxxUniverse->voiceName(index); }
+- (unsigned int) cxx_voiceNumber:(const std::string &) name	{ return _cxxUniverse->voiceNumber(name); }
+- (unsigned int) nextVoice:(unsigned int) index	{ return _cxxUniverse->nextVoice(index); }
+- (unsigned int) prevVoice:(unsigned int) index	{ return _cxxUniverse->prevVoice(index); }
+- (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale	{ return _cxxUniverse->setVoice(index, isMale); }
+#endif
+- (BOOL) autoSaveNow	{ return _cxxUniverse->getAutoSaveNow(); }
+- (void) setWireframeGraphics:(BOOL) value	{ _cxxUniverse->setWireframeGraphics(value); }
+- (BOOL) wireframeGraphics	{ return _cxxUniverse->getWireframeGraphics(); }
+- (BOOL) reducedDetail	{ return _cxxUniverse->reducedDetail(); }
+- (void) setDetailLevelDirectly:(OOGraphicsDetail)value	{ _cxxUniverse->setDetailLevelDirectly(value); }
+- (void) setDetailLevel:(OOGraphicsDetail)value	{ _cxxUniverse->setDetailLevel(value); }
+- (OOGraphicsDetail) detailLevel	{ return _cxxUniverse->getDetailLevel(); }
+- (BOOL) useShaders	{ return _cxxUniverse->useShaders(); }
+- (void) handleOoliteException:(OOException *)exception	{ _cxxUniverse->handleOoliteException(exception); }
+- (GLfloat)airResistanceFactor	{ return _cxxUniverse->getAirResistanceFactor(); }
+- (void) setAirResistanceFactor:(GLfloat)newFactor	{ _cxxUniverse->setAirResistanceFactor(newFactor); }
+- (BOOL) pauseMessageVisible	{ return _cxxUniverse->pauseMessageVisible(); }
+- (void) setPauseMessageVisible:(BOOL)value	{ _cxxUniverse->setPauseMessageVisible(value); }
+- (BOOL) permanentMessageLog	{ return _cxxUniverse->permanentMessageLog(); }
+- (void) setPermanentMessageLog:(BOOL)value	{ _cxxUniverse->setPermanentMessageLog(value); }
+- (BOOL) autoMessageLogBg	{ return _cxxUniverse->autoMessageLogBg(); }
+- (void) setAutoMessageLogBg:(BOOL)value	{ _cxxUniverse->setAutoMessageLogBg(value); }
+- (BOOL) permanentCommLog	{ return _cxxUniverse->permanentCommLog(); }
+- (void) setPermanentCommLog:(BOOL)value	{ _cxxUniverse->setPermanentCommLog(value); }
+- (void) setAutoCommLog:(BOOL)value	{ _cxxUniverse->setAutoCommLog(value); }
+- (BOOL) blockJSPlayerShipProps	{ return _cxxUniverse->blockJSPlayerShipProps(); }
+- (void) setBlockJSPlayerShipProps:(BOOL)value	{ _cxxUniverse->setBlockJSPlayerShipProps(value); }
+- (void) setUpSettings	{ _cxxUniverse->setUpSettings(); }
+- (void) setUpCargoPods	{ _cxxUniverse->setUpCargoPods(); }
+- (void) verifyEntitySessionIDs	{ _cxxUniverse->verifyEntitySessionIDs(); }
+
+@end

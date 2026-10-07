@@ -19,6 +19,7 @@
 */
 
 #import "Universe.h"
+#include "oofnd/objc/OOException.h"	// slice 24: -handleOoliteException:
 
 #include "oo_test.hpp"
 
@@ -916,6 +917,80 @@ OO_TEST(slice23GUIsAndFlags)
 		OO_CHECK([u autoSave]);
 	}
 }
+
+
+// Slice 24 (bead oo-jxitg): autosave, wireframe and detail levels, shaders, exceptions, speech
+// (eSpeak and none), message logs, settings, session IDs. Written against the Objective-C API and
+// run on the unconverted class first. The setters that write the user's preferences
+// (-setWireframeGraphics:, -setDetailLevel:) and the set-up that loads the game's files are left to
+// the goldens; their state is set in the members by hand.
+OO_TEST(slice24DetailAndLogs)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+
+		u->_cxxUniverse->detailLevel = DETAIL_LEVEL_SHADERS;
+		OO_CHECK([u detailLevel] == DETAIL_LEVEL_SHADERS && [u useShaders] && ![u reducedDetail]);
+		u->_cxxUniverse->detailLevel = DETAIL_LEVEL_MINIMUM;
+		OO_CHECK([u reducedDetail] && ![u useShaders]);
+		u->_cxxUniverse->wireframeGraphics = YES;
+		OO_CHECK([u wireframeGraphics]);
+
+		[u setAutoSaveNow:YES];
+		OO_CHECK([u autoSaveNow]);
+		[u setAutoSaveNow:NO];
+		OO_CHECK(![u autoSaveNow]);
+
+		[u setPauseMessageVisible:YES];
+		OO_CHECK([u pauseMessageVisible]);
+		[u setPauseMessageVisible:NO];
+		OO_CHECK(![u pauseMessageVisible]);
+		[u setAutoCommLog:YES];
+		OO_CHECK(u->_cxxUniverse->_autoCommLog);
+		[u setPermanentCommLog:NO];
+		[u setPermanentMessageLog:NO];
+		[u setAutoMessageLogBg:NO];
+		OO_CHECK(![u permanentCommLog] && ![u permanentMessageLog] && ![u autoMessageLogBg]);
+
+		// Blocking remembers the player as stale.
+		SetUpTestPlayer();
+		[u setBlockJSPlayerShipProps:YES];
+		OO_CHECK([u blockJSPlayerShipProps]);
+		[u setBlockJSPlayerShipProps:NO];
+		OO_CHECK(![u blockJSPlayerShipProps]);
+
+		// A non-fatal exception is only logged; nil is ignored.
+		[u handleOoliteException:[OOException exceptionWithName:"OoliteSlice24Exception" reason:"test"]];
+		[u handleOoliteException:nil];
+	}
+}
+
+
+#if OOLITE_ESPEAK
+OO_TEST(slice24Voices)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		espeak_VOICE v0 = {}, v1 = {}, v2 = {};
+		v0.name = "zero";
+		v1.name = "one";
+		v2.name = "two";
+		const espeak_VOICE *voices[] = { &v0, &v1, &v2, NULL };
+		u->_cxxUniverse->espeak_voices = voices;
+		u->_cxxUniverse->espeak_voice_count = 3;
+
+		OO_CHECK([u nextVoice:0] == 1 && [u nextVoice:2] == 0);
+		OO_CHECK([u prevVoice:1] == 0 && [u prevVoice:0] == 2);
+		OO_CHECK([u cxx_voiceName:1] == "one" && [u cxx_voiceName:3] == "-");
+		OO_CHECK([u cxx_voiceNumber:"two"] == 2 && [u cxx_voiceNumber:"nine"] == UINT_MAX);
+
+		u->_cxxUniverse->espeak_voices = nullptr;
+		u->_cxxUniverse->espeak_voice_count = 0;
+	}
+}
+#endif
 
 
 OO_TEST_MAIN()

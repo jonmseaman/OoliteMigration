@@ -184,7 +184,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) drawTargetTextureIntoDefaultFramebuffer;
 
 - (BOOL) doRemoveEntity:(Entity *)entity;
-- (void) setUpCargoPods;
 - (void) setUpInitialUniverse;
 - (HPVector) fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction;
 
@@ -214,11 +213,8 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
 
-- (void) verifyEntitySessionIDs;
 - (float) randomDistanceWithinScanner;
 - (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset;
-
-- (void) setDetailLevelDirectly:(OOGraphicsDetail)value;
 
 - (oo::PList) demoShipData;	// null where there is no such entry
 - (void) setLibraryTextForDemoShip;
@@ -6314,111 +6310,6 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }	// namespace
 
 
-- (BOOL) autoSaveNow
-{
-	return _cxxUniverse->autoSaveNow;
-}
-
-
-- (void) setWireframeGraphics:(BOOL) value
-{
-	_cxxUniverse->wireframeGraphics = !!value;
-	oo::Defaults::standard().setBool("wireframe-graphics", _cxxUniverse->wireframeGraphics);
-}
-
-
-- (BOOL) wireframeGraphics
-{
-	return _cxxUniverse->wireframeGraphics;
-}
-
-
-- (BOOL) reducedDetail
-{
-	return _cxxUniverse->detailLevel == DETAIL_LEVEL_MINIMUM;
-}
-
-
-/* Only to be called directly at initialisation */
-- (void) setDetailLevelDirectly:(OOGraphicsDetail)value
-{
-	if (value >= DETAIL_LEVEL_MAXIMUM)
-	{
-		value = DETAIL_LEVEL_MAXIMUM;
-	}
-	else if (value <= DETAIL_LEVEL_MINIMUM)
-	{
-		value = DETAIL_LEVEL_MINIMUM;
-	}
-	if (![[OOOpenGLExtensionManager sharedManager] shadersSupported])
-	{
-		value = DETAIL_LEVEL_MINIMUM;
-	}
-	_cxxUniverse->detailLevel = value;
-}
-
-
-- (void) setDetailLevel:(OOGraphicsDetail)value
-{
-	OOGraphicsDetail old = _cxxUniverse->detailLevel;
-	[self setDetailLevelDirectly:value];
-	oo::Defaults::standard().setInteger("detailLevel", _cxxUniverse->detailLevel);
-	// if changed then reset graphics state
-	// (some items now require this even if shader on/off mode unchanged)
-	if (old != _cxxUniverse->detailLevel)
-	{
-		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(_cxxUniverse->detailLevel));
-		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
-	}
-
-}
-
-- (OOGraphicsDetail) detailLevel
-{
-	return _cxxUniverse->detailLevel;
-}
-
-
-- (BOOL) useShaders
-{
-	return _cxxUniverse->detailLevel >= DETAIL_LEVEL_SHADERS;
-}
-
-
-- (void) handleOoliteException:(OOException *)exception
-{
-	if (exception != nil)
-	{
-		if (strcmp([exception name], OOLITE_EXCEPTION_FATAL) == 0)
-		{
-			PlayerEntity *player = PLAYER;
-			[player setStatus:STATUS_HANDLING_ERROR];
-			
-			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", [exception name], [exception reason]);
-			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
-			[self cxx_addMessage:exception_msg forCount:30.0];
-			[[self gameController] setGamePaused:YES];
-		}
-		else
-		{
-			OO_LOG(cxx_kOOLogException, "***** Handling Non-fatal : {} : {} *****", [exception name], [exception reason]);
-		}
-	}
-}
-
-
-- (GLfloat)airResistanceFactor
-{
-	return _cxxUniverse->airResistanceFactor;
-}
-
-
-- (void) setAirResistanceFactor:(GLfloat)newFactor
-{
-	_cxxUniverse->airResistanceFactor = OOClamp_0_1_f(newFactor);
-}
-
-
 // speech routines
 #if OOLITE_MAC_OS_X
 
@@ -6446,287 +6337,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	return [speechSynthesizer isSpeaking];
 }
 
-#elif OOLITE_ESPEAK
-
-- (void) cxx_startSpeakingString:(const std::string &) text
-{
-	// the UTF-8 bytes of the text
-	const char *stringToSay = text.c_str();
-	espeak_Synth(stringToSay, strlen(stringToSay) + 1 /* inc. NULL */, 0, POS_CHARACTER, 0, espeakCHARS_UTF8 | espeakPHONEMES | espeakENDPAUSE, NULL, NULL);
-}
-
-
-- (void) stopSpeaking
-{
-	espeak_Cancel();
-}
-
-
-- (BOOL) isSpeaking
-{
-	return espeak_IsPlaying();
-}
-
-
-- (std::optional<std::string>) cxx_voiceName:(unsigned int) index
-{
-	if (index >= _cxxUniverse->espeak_voice_count)
-		return std::string("-");
-	return std::string(_cxxUniverse->espeak_voices[index]->name);
-}
-
-
-- (unsigned int) cxx_voiceNumber:(const std::string &) name
-{
-	const char *const label = name.c_str();
-	
-	unsigned int index = -1;
-	while (_cxxUniverse->espeak_voices[++index] && strcmp (_cxxUniverse->espeak_voices[index]->name, label))
-			/**/;
-	return (index < _cxxUniverse->espeak_voice_count) ? index : UINT_MAX;
-}
-
-
-- (unsigned int) nextVoice:(unsigned int) index
-{
-	if (++index >= _cxxUniverse->espeak_voice_count)
-		index = 0;
-	return index;
-}
-
-
-- (unsigned int) prevVoice:(unsigned int) index
-{
-	if (--index >= _cxxUniverse->espeak_voice_count)
-		index = _cxxUniverse->espeak_voice_count - 1;
-	return index;
-}
-
-
-- (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale
-{
-	if (index == UINT_MAX)
-		index = [self cxx_voiceNumber:cxx_OOLookUpDescriptionPRIV("espeak-default-voice")];
-	
-	if (index < _cxxUniverse->espeak_voice_count)
-	{
-		espeak_VOICE voice = { _cxxUniverse->espeak_voices[index]->name, NULL, NULL, (unsigned char)(isMale ? 1 : 2) };
-		espeak_SetVoiceByProperties (&voice);
-	}
-	
-	return index;
-}
-
-#else
-
-- (void) cxx_startSpeakingString:(const std::string &) text  {}
-
-- (void) stopSpeaking {}
-
-- (BOOL) isSpeaking
-{
-	return NO;
-}
 #endif
-
-
-- (BOOL) pauseMessageVisible
-{
-	return _cxxUniverse->_pauseMessage;
-}
-
-
-- (void) setPauseMessageVisible:(BOOL)value
-{
-	_cxxUniverse->_pauseMessage = value;
-}
-
-
-- (BOOL) permanentMessageLog
-{
-	return _cxxUniverse->_permanentMessageLog;
-}
-
-
-- (void) setPermanentMessageLog:(BOOL)value
-{
-	_cxxUniverse->_permanentMessageLog = value;
-}
-
-
-- (BOOL) autoMessageLogBg
-{
-	return _cxxUniverse->_autoMessageLogBg;
-}
-
-
-- (void) setAutoMessageLogBg:(BOOL)value
-{
-	_cxxUniverse->_autoMessageLogBg = !!value;
-}
-
-
-- (BOOL) permanentCommLog
-{
-	return _cxxUniverse->_permanentCommLog;
-}
-
-
-- (void) setPermanentCommLog:(BOOL)value
-{
-	_cxxUniverse->_permanentCommLog = value;
-}
-
-
-- (void) setAutoCommLog:(BOOL)value
-{
-	_cxxUniverse->_autoCommLog = value;
-}
-
-
-- (BOOL) blockJSPlayerShipProps
-{
-	return gOOJSPlayerIfStale != nil;
-}
-
-
-- (void) setBlockJSPlayerShipProps:(BOOL)value
-{
-	if (value)
-	{
-		gOOJSPlayerIfStale = PLAYER;
-	}
-	else
-	{
-		gOOJSPlayerIfStale = nil;
-	}
-}
-
-
-- (void) setUpSettings
-{
-	[self resetBeacons];
-	
-	_cxxUniverse->next_universal_id = 100;	// start arbitrarily above zero
-	memset(_cxxUniverse->entity_for_uid, 0, sizeof _cxxUniverse->entity_for_uid);
-	
-	[self setMainLightPosition:kZeroVector];
-
-	[_cxxUniverse->gui autorelease];
-	_cxxUniverse->gui = [[::GuiDisplayGen alloc] init];
-	const oo::PList guiSettings = [_cxxUniverse->gui cxx_userSettings];
-	const oo::PList *defaultTextColor = guiSettings.find(cxx_kGuiDefaultTextColor);
-	[_cxxUniverse->gui setTextColor:[OOColor cxx_colorWithDescription:(defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()]];
-
-	// message_gui and comm_log_gui defaults are set up inside [hud resetGuis:] ( via [player deferredInit], called from the code that calls this method). 
-	[_cxxUniverse->message_gui autorelease];
-	_cxxUniverse->message_gui = [[::GuiDisplayGen alloc]
-					cxx_initWithPixelSize:NSMakeSize(480, 160)
-							  columns:1
-								 rows:9
-							rowHeight:19
-							 rowStart:20
-								title:std::nullopt];
-	
-	[_cxxUniverse->comm_log_gui autorelease];
-	_cxxUniverse->comm_log_gui = [[::GuiDisplayGen alloc]
-					cxx_initWithPixelSize:NSMakeSize(360, 120)
-							  columns:1
-								 rows:10
-							rowHeight:12
-							 rowStart:12
-								title:std::nullopt];
-	
-	//
-	
-	_cxxUniverse->time_delta = 0.0;
-#ifndef NDEBUG
-	[self setTimeAccelerationFactor:TIME_ACCELERATION_FACTOR_DEFAULT];
-#endif
-	_cxxUniverse->universal_time = 0.0;
-	_cxxUniverse->messageRepeatTime = 0.0;
-	_cxxUniverse->countdown_messageRepeatTime = 0.0;
-	
-#if OOLITE_SPEECH_SYNTH
-	_cxxUniverse->speechArray = [ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
-#endif
-	
-	[_cxxUniverse->commodities autorelease];
-	_cxxUniverse->commodities = [[OOCommodities alloc] init];
-
-	
-	[self loadDescriptions];
-	
-	_cxxUniverse->characters = [ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
-	
-	_cxxUniverse->customSounds = [ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
-	
-	_cxxUniverse->globalSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
-
-	
-	[_cxxUniverse->systemManager autorelease];
-	_cxxUniverse->systemManager = [[ResourceManager systemDescriptionManager] retain];
-
-	_cxxUniverse->screenBackgrounds = [ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
-
-	// role-categories.plist and pirate-victim-roles.plist
-	_cxxUniverse->roleCategories = [ResourceManager cxx_roleCategoriesDictionary];
-	
-	_cxxUniverse->autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
-	
-	// ORDER-SENSITIVE: std::stable_sort, so entries that compare equal keep their file order.
-	const oo::PList equipmentTemp = [ResourceManager cxx_arrayFromFilesNamed:"equipment.plist" inFolder:std::string("Config") andMerge:YES];
-	oo::PList::Array sortedEquipment;
-	if (const oo::PList::Array *items = equipmentTemp.getIf<oo::PList::Array>())  sortedEquipment = *items;
-	oo::PList::Array sortedOutfitting = sortedEquipment;
-	std::stable_sort(sortedEquipment.begin(), sortedEquipment.end(), equipmentSort);
-	std::stable_sort(sortedOutfitting.begin(), sortedOutfitting.end(), equipmentSortOutfitting);
-	_cxxUniverse->equipmentData = oo::PList(std::move(sortedEquipment));
-	_cxxUniverse->equipmentDataOutfitting = oo::PList(std::move(sortedOutfitting));
-	
-	[OOEquipmentType loadEquipment];
-
-	_cxxUniverse->explosionSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
-
-}
-
-
-- (void) setUpCargoPods
-{
-	std::map<std::string, oo::ObjCRef<ShipEntity *>, std::less<>> tmp;
-	for (const std::string &type : [_cxxUniverse->commodities goods])
-	{
-		ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
-		[container setScanClass:CLASS_CARGO];
-		[container cxx_setCommodity:type andAmount:1];
-		if (container != nil)  tmp[type] = oo::adoptObjC(container);	// a nil container was an exception before
-	}
-	_cxxUniverse->cargoPods = std::move(tmp);
-}
-
-- (void) verifyEntitySessionIDs
-{
-#ifndef NDEBUG
-	std::vector<oo::ObjCRef<Entity *>> badEntities;
-	Entity *entity = nil;
-	
-	unsigned i;
-	for (i = 0; i < _cxxUniverse->n_entities; i++)
-	{
-		entity = _cxxUniverse->sortedEntities[i];
-		if ([entity sessionID] != _cxxUniverse->_sessionID)
-		{
-			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::ShortDescriptionOf(entity), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_cxxUniverse->_sessionID));
-			badEntities.emplace_back(entity);
-		}
-	}
-
-	for (const oo::ObjCRef<Entity *> &entry : badEntities)
-	{
-		[self removeEntity:entry.get()];
-	}
-#endif
-}
 
 
 // FIXME: needs less redundancy?
@@ -11932,6 +11543,419 @@ bool Universe::getAutoSave()
 void Universe::setAutoSaveNow(bool value)
 {
 	autoSaveNow = !!value;
+}
+
+}	// namespace cxx
+
+
+// Slice 24 of docs/phases/3-slices/Universe.md (bead oo-jxitg): autosave, wireframe and detail levels, shaders, exceptions, air resistance, speech (eSpeak and none), message logs, settings, cargo pods, session IDs. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+bool Universe::getAutoSaveNow()
+{
+	return autoSaveNow;
+}
+
+
+void Universe::setWireframeGraphics(bool value)
+{
+	wireframeGraphics = !!value;
+	oo::Defaults::standard().setBool("wireframe-graphics", wireframeGraphics);
+}
+
+
+bool Universe::getWireframeGraphics()
+{
+	return wireframeGraphics;
+}
+
+
+bool Universe::reducedDetail()
+{
+	return detailLevel == DETAIL_LEVEL_MINIMUM;
+}
+
+
+/* Only to be called directly at initialisation */
+void Universe::setDetailLevelDirectly(OOGraphicsDetail value)
+{
+	if (value >= DETAIL_LEVEL_MAXIMUM)
+	{
+		value = DETAIL_LEVEL_MAXIMUM;
+	}
+	else if (value <= DETAIL_LEVEL_MINIMUM)
+	{
+		value = DETAIL_LEVEL_MINIMUM;
+	}
+	if (![[::OOOpenGLExtensionManager sharedManager] shadersSupported])
+	{
+		value = DETAIL_LEVEL_MINIMUM;
+	}
+	detailLevel = value;
+}
+
+
+void Universe::setDetailLevel(OOGraphicsDetail value)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	OOGraphicsDetail old = detailLevel;
+	[self setDetailLevelDirectly:value];
+	oo::Defaults::standard().setInteger("detailLevel", detailLevel);
+	// if changed then reset graphics state
+	// (some items now require this even if shader on/off mode unchanged)
+	if (old != detailLevel)
+	{
+		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(detailLevel));
+		[[::OOGraphicsResetManager sharedManager] resetGraphicsState];
+	}
+
+}
+
+
+OOGraphicsDetail Universe::getDetailLevel()
+{
+	return detailLevel;
+}
+
+
+bool Universe::useShaders()
+{
+	return detailLevel >= DETAIL_LEVEL_SHADERS;
+}
+
+
+void Universe::handleOoliteException(::OOException *exception)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (exception != nil)
+	{
+		if (strcmp([exception name], OOLITE_EXCEPTION_FATAL) == 0)
+		{
+			::PlayerEntity *player = PLAYER;
+			[player setStatus:STATUS_HANDLING_ERROR];
+			
+			OO_LOG(cxx_kOOLogException, "***** Handling Fatal : {} : {} *****", [exception name], [exception reason]);
+			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
+			[self cxx_addMessage:exception_msg forCount:30.0];
+			[[self gameController] setGamePaused:YES];
+		}
+		else
+		{
+			OO_LOG(cxx_kOOLogException, "***** Handling Non-fatal : {} : {} *****", [exception name], [exception reason]);
+		}
+	}
+}
+
+
+GLfloat Universe::getAirResistanceFactor()
+{
+	return airResistanceFactor;
+}
+
+
+void Universe::setAirResistanceFactor(GLfloat newFactor)
+{
+	airResistanceFactor = OOClamp_0_1_f(newFactor);
+}
+
+
+// The speech arms but the Mac's, which stay Objective-C in the facade's @implementation
+// (docs/phases/3-slices/Universe.md "mac-only"; Phase 5 rewrites the Mac layer).
+#if OOLITE_MAC_OS_X
+#elif OOLITE_ESPEAK
+
+void Universe::startSpeakingString(const std::string &text)
+{
+	// the UTF-8 bytes of the text
+	const char *stringToSay = text.c_str();
+	espeak_Synth(stringToSay, strlen(stringToSay) + 1 /* inc. NULL */, 0, POS_CHARACTER, 0, espeakCHARS_UTF8 | espeakPHONEMES | espeakENDPAUSE, NULL, NULL);
+}
+
+
+void Universe::stopSpeaking()
+{
+	espeak_Cancel();
+}
+
+
+bool Universe::isSpeaking()
+{
+	return espeak_IsPlaying();
+}
+
+
+std::optional<std::string> Universe::voiceName(unsigned int index)
+{
+	if (index >= espeak_voice_count)
+		return std::string("-");
+	return std::string(espeak_voices[index]->name);
+}
+
+
+unsigned int Universe::voiceNumber(const std::string &name)
+{
+	const char *const label = name.c_str();
+
+	// clang-tidy's own fixes (bugprone-inc-dec-in-conditions, bugprone-suspicious-string-compare),
+	// as the line changed: the same search from the first voice (ADR-0056 amendment oo-7jhs5).
+	unsigned int index = 0;
+	while (espeak_voices[index] && strcmp (espeak_voices[index]->name, label) != 0)
+		++index;
+	return (index < espeak_voice_count) ? index : UINT_MAX;
+}
+
+
+unsigned int Universe::nextVoice(unsigned int index)
+{
+	if (++index >= espeak_voice_count)
+		index = 0;
+	return index;
+}
+
+
+unsigned int Universe::prevVoice(unsigned int index)
+{
+	if (--index >= espeak_voice_count)
+		index = espeak_voice_count - 1;
+	return index;
+}
+
+
+unsigned int Universe::setVoice(unsigned int index, bool isMale)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (index == UINT_MAX)
+		index = [self cxx_voiceNumber:cxx_OOLookUpDescriptionPRIV("espeak-default-voice")];
+
+	if (index < espeak_voice_count)
+	{
+		espeak_VOICE voice = { espeak_voices[index]->name, NULL, NULL, (unsigned char)(isMale ? 1 : 2) };
+		espeak_SetVoiceByProperties (&voice);
+	}
+
+	return index;
+}
+
+#else
+
+void Universe::startSpeakingString(const std::string & /*text*/)  {}
+
+void Universe::stopSpeaking() {}
+
+bool Universe::isSpeaking()
+{
+	return NO;
+}
+#endif
+
+
+bool Universe::pauseMessageVisible()
+{
+	return _pauseMessage;
+}
+
+
+void Universe::setPauseMessageVisible(bool value)
+{
+	_pauseMessage = value;
+}
+
+
+bool Universe::permanentMessageLog()
+{
+	return _permanentMessageLog;
+}
+
+
+void Universe::setPermanentMessageLog(bool value)
+{
+	_permanentMessageLog = value;
+}
+
+
+bool Universe::autoMessageLogBg()
+{
+	return _autoMessageLogBg;
+}
+
+
+void Universe::setAutoMessageLogBg(bool value)
+{
+	_autoMessageLogBg = !!value;
+}
+
+
+bool Universe::permanentCommLog()
+{
+	return _permanentCommLog;
+}
+
+
+void Universe::setPermanentCommLog(bool value)
+{
+	_permanentCommLog = value;
+}
+
+
+void Universe::setAutoCommLog(bool value)
+{
+	_autoCommLog = value;
+}
+
+
+bool Universe::blockJSPlayerShipProps()
+{
+	return gOOJSPlayerIfStale != nil;
+}
+
+
+void Universe::setBlockJSPlayerShipProps(bool value)
+{
+	if (value)
+	{
+		gOOJSPlayerIfStale = PLAYER;
+	}
+	else
+	{
+		gOOJSPlayerIfStale = nil;
+	}
+}
+
+
+void Universe::setUpSettings()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	[self resetBeacons];
+	
+	next_universal_id = 100;	// start arbitrarily above zero
+	memset(entity_for_uid, 0, sizeof entity_for_uid);
+	
+	[self setMainLightPosition:kZeroVector];
+
+	[gui autorelease];
+	gui = [[::GuiDisplayGen alloc] init];
+	const oo::PList guiSettings = [gui cxx_userSettings];
+	const oo::PList *defaultTextColor = guiSettings.find(cxx_kGuiDefaultTextColor);
+	[gui setTextColor:[::OOColor cxx_colorWithDescription:(defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()]];
+
+	// message_gui and comm_log_gui defaults are set up inside [hud resetGuis:] ( via [player deferredInit], called from the code that calls this method). 
+	[message_gui autorelease];
+	message_gui = [[::GuiDisplayGen alloc]
+					cxx_initWithPixelSize:NSMakeSize(480, 160)
+							  columns:1
+								 rows:9
+							rowHeight:19
+							 rowStart:20
+								title:std::nullopt];
+	
+	[comm_log_gui autorelease];
+	comm_log_gui = [[::GuiDisplayGen alloc]
+					cxx_initWithPixelSize:NSMakeSize(360, 120)
+							  columns:1
+								 rows:10
+							rowHeight:12
+							 rowStart:12
+								title:std::nullopt];
+	
+	//
+	
+	time_delta = 0.0;
+#ifndef NDEBUG
+	[self setTimeAccelerationFactor:TIME_ACCELERATION_FACTOR_DEFAULT];
+#endif
+	universal_time = 0.0;
+	messageRepeatTime = 0.0;
+	countdown_messageRepeatTime = 0.0;
+	
+#if OOLITE_SPEECH_SYNTH
+	speechArray = [::ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
+#endif
+	
+	[commodities autorelease];
+	commodities = [[::OOCommodities alloc] init];
+
+	
+	[self loadDescriptions];
+	
+	characters = [::ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
+	
+	customSounds = [::ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
+	
+	globalSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
+
+	
+	[systemManager autorelease];
+	systemManager = [[::ResourceManager systemDescriptionManager] retain];
+
+	screenBackgrounds = [::ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
+
+	// role-categories.plist and pirate-victim-roles.plist
+	roleCategories = [::ResourceManager cxx_roleCategoriesDictionary];
+	
+	autoAIMap = [::ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
+	
+	// ORDER-SENSITIVE: std::stable_sort, so entries that compare equal keep their file order.
+	const oo::PList equipmentTemp = [::ResourceManager cxx_arrayFromFilesNamed:"equipment.plist" inFolder:std::string("Config") andMerge:YES];
+	oo::PList::Array sortedEquipment;
+	if (const oo::PList::Array *items = equipmentTemp.getIf<oo::PList::Array>())  sortedEquipment = *items;
+	oo::PList::Array sortedOutfitting = sortedEquipment;
+	std::stable_sort(sortedEquipment.begin(), sortedEquipment.end(), equipmentSort);
+	std::stable_sort(sortedOutfitting.begin(), sortedOutfitting.end(), equipmentSortOutfitting);
+	equipmentData = oo::PList(std::move(sortedEquipment));
+	equipmentDataOutfitting = oo::PList(std::move(sortedOutfitting));
+	
+	[::OOEquipmentType loadEquipment];
+
+	explosionSettings = [::ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
+
+}
+
+
+void Universe::setUpCargoPods()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::map<std::string, oo::ObjCRef<::ShipEntity *>, std::less<>> tmp;
+	for (const std::string &type : [commodities goods])
+	{
+		::ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
+		[container setScanClass:CLASS_CARGO];
+		[container cxx_setCommodity:type andAmount:1];
+		if (container != nil)  tmp[type] = oo::adoptObjC(container);	// a nil container was an exception before
+	}
+	cargoPods = std::move(tmp);
+}
+
+
+void Universe::verifyEntitySessionIDs()
+{
+#ifndef NDEBUG
+	::Universe *self = oo::ToObjC(this);
+	std::vector<oo::ObjCRef<::Entity *>> badEntities;
+	::Entity *entity = nil;
+	
+	unsigned i;
+	for (i = 0; i < n_entities; i++)
+	{
+		entity = sortedEntities[i];
+		if ([entity sessionID] != _sessionID)
+		{
+			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::ShortDescriptionOf(entity), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_sessionID));
+			badEntities.emplace_back(entity);
+		}
+	}
+
+	for (const oo::ObjCRef<::Entity *> &entry : badEntities)
+	{
+		[self removeEntity:entry.get()];
+	}
+#endif
 }
 
 }	// namespace cxx

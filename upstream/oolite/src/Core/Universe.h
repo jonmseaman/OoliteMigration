@@ -571,6 +571,45 @@ public:
 	void setAutoSave(bool value);
 	bool getAutoSave();
 	void setAutoSaveNow(bool value);
+
+	// Slice 24: autosave, wireframe and detail levels, shaders, exceptions, air resistance, speech (eSpeak and none), message logs, settings, cargo pods, session IDs.
+	bool getAutoSaveNow();
+	void setWireframeGraphics(bool value);
+	bool getWireframeGraphics();
+	bool reducedDetail();
+	void setDetailLevelDirectly(OOGraphicsDetail value);
+	void setDetailLevel(OOGraphicsDetail value);
+	OOGraphicsDetail getDetailLevel();
+	bool useShaders();
+	void handleOoliteException(::OOException *exception);
+	GLfloat getAirResistanceFactor();
+	void setAirResistanceFactor(GLfloat newFactor);
+	bool pauseMessageVisible();
+	void setPauseMessageVisible(bool value);
+	bool permanentMessageLog();
+	void setPermanentMessageLog(bool value);
+	bool autoMessageLogBg();
+	void setAutoMessageLogBg(bool value);
+	bool permanentCommLog();
+	void setPermanentCommLog(bool value);
+	void setAutoCommLog(bool value);
+	bool blockJSPlayerShipProps();
+	void setBlockJSPlayerShipProps(bool value);
+	void setUpSettings();
+	void setUpCargoPods();
+	void verifyEntitySessionIDs();
+#if !OOLITE_MAC_OS_X	// the Mac arms stay Objective-C in the facade (docs/phases/3-slices/Universe.md "mac-only")
+	void startSpeakingString(const std::string &text);
+	void stopSpeaking();
+	bool isSpeaking();
+#endif
+#if OOLITE_ESPEAK
+	std::optional<std::string> voiceName(unsigned int index);
+	unsigned int voiceNumber(const std::string &name);
+	unsigned int nextVoice(unsigned int index);
+	unsigned int prevVoice(unsigned int index);
+	unsigned int setVoice(unsigned int index, bool isMale);
+#endif
 };
 
 }	// namespace cxx

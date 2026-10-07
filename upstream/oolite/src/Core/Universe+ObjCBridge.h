@@ -73,8 +73,6 @@ MA 02110-1301, USA.
 - (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
 - (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
 
-- (void) setUpSettings;
-
 - (BOOL) reinitAndShowDemo:(BOOL)showDemo;
 
 - (BOOL) doingStartUp;	// True during initial game startup (not reset).
@@ -246,33 +244,11 @@ MA 02110-1301, USA.
 
 ///////////////////////////////////////
 
-- (void) setWireframeGraphics:(BOOL) value;
-- (BOOL) wireframeGraphics;
-
-- (BOOL) reducedDetail;
-- (void) setDetailLevel:(OOGraphicsDetail)value;
-- (OOGraphicsDetail) detailLevel;
-- (BOOL) useShaders;
-
-- (void) handleOoliteException:(OOException *)ooliteException;
-
-- (GLfloat)airResistanceFactor;
-- (void) setAirResistanceFactor:(GLfloat)newFactor;
-
-// speech routines
-//
+// speech routines: the Mac arms, still the @implementation's (the others are slice 24's)
+#if OOLITE_MAC_OS_X
 - (void) cxx_startSpeakingString:(const std::string &) text;
-//
 - (void) stopSpeaking;
-//
 - (BOOL) isSpeaking;
-//
-#if OOLITE_ESPEAK
-- (std::optional<std::string>) cxx_voiceName:(unsigned int) index;
-- (unsigned int) cxx_voiceNumber:(const std::string &) name;
-- (unsigned int) nextVoice:(unsigned int) index;
-- (unsigned int) prevVoice:(unsigned int) index;
-- (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale;
 #endif
 - (int) nextColorblindMode:(int) index;
 - (int) prevColorblindMode:(int) index;
@@ -280,25 +256,8 @@ MA 02110-1301, USA.
 //
 ////
 
-- (BOOL) autoSaveNow;
-
 - (int) framesDoneThisUpdate;
 - (void) resetFramesDoneThisUpdate;
-
-// True if textual pause message (as opposed to overlay) is being shown.
-- (BOOL) pauseMessageVisible;
-- (void) setPauseMessageVisible:(BOOL)value;
-
-- (BOOL) permanentCommLog;
-- (void) setPermanentCommLog:(BOOL)value;
-- (void) setAutoCommLog:(BOOL)value;
-- (BOOL) permanentMessageLog;
-- (void) setPermanentMessageLog:(BOOL)value;
-- (BOOL) autoMessageLogBg;
-- (void) setAutoMessageLogBg:(BOOL)value;
-
-- (BOOL) blockJSPlayerShipProps;
-- (void) setBlockJSPlayerShipProps:(BOOL)value;
 
 - (void) loadConditionScripts;
 - (void) addConditionScripts:(const std::vector<std::string> &)scripts;
@@ -557,6 +516,52 @@ MA 02110-1301, USA.
 - (BOOL) autoSave;
 //autosave 
 - (void) setAutoSaveNow:(BOOL) value;
+
+@end
+
+
+// Slice 24 of docs/phases/3-slices/Universe.md (bead oo-jxitg): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice24)
+
+#if !OOLITE_MAC_OS_X
+- (void) cxx_startSpeakingString:(const std::string &) text;
+- (void) stopSpeaking;
+- (BOOL) isSpeaking;
+#endif
+#if OOLITE_ESPEAK
+- (std::optional<std::string>) cxx_voiceName:(unsigned int) index;
+- (unsigned int) cxx_voiceNumber:(const std::string &) name;
+- (unsigned int) nextVoice:(unsigned int) index;
+- (unsigned int) prevVoice:(unsigned int) index;
+- (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale;
+#endif
+- (BOOL) autoSaveNow;
+- (void) setWireframeGraphics:(BOOL) value;
+- (BOOL) wireframeGraphics;
+- (BOOL) reducedDetail;
+- (void) setDetailLevelDirectly:(OOGraphicsDetail)value;
+- (void) setDetailLevel:(OOGraphicsDetail)value;
+- (OOGraphicsDetail) detailLevel;
+- (BOOL) useShaders;
+- (void) handleOoliteException:(OOException *)ooliteException;
+- (GLfloat)airResistanceFactor;
+- (void) setAirResistanceFactor:(GLfloat)newFactor;
+// True if textual pause message (as opposed to overlay) is being shown.
+- (BOOL) pauseMessageVisible;
+- (void) setPauseMessageVisible:(BOOL)value;
+- (BOOL) permanentMessageLog;
+- (void) setPermanentMessageLog:(BOOL)value;
+- (BOOL) autoMessageLogBg;
+- (void) setAutoMessageLogBg:(BOOL)value;
+- (BOOL) permanentCommLog;
+- (void) setPermanentCommLog:(BOOL)value;
+- (void) setAutoCommLog:(BOOL)value;
+- (BOOL) blockJSPlayerShipProps;
+- (void) setBlockJSPlayerShipProps:(BOOL)value;
+- (void) setUpSettings;
+- (void) setUpCargoPods;
+- (void) verifyEntitySessionIDs;
 
 @end
 
