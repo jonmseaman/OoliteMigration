@@ -516,72 +516,37 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (void) landOnPlanet:(OOPlanetEntity *)planet
+/*	Slice 33 (bead oo-tz2ra): -broadcastHitByLaserFrom:'s search for the authorities, without
+	messages. Its parameter is the victim's C++ part with the two answers the predicate messaged for,
+	read once before the search (both are plain reads); the entities' C++ parts answer the rest
+	(getScanClass() is virtual, so an Objective-C subclass's -scanClass still runs).
+*/
+namespace {
+
+struct AuthorityPredicateParameter
 {
-	if (planet && [self isShuttle])
-	{
-		[planet welcomeShuttle:self];
-	}
-	[self cxx_doScriptEvent:OOJSID("shipLandedOnPlanet") withArgument:planet andReactToAIMessage:"LANDED_ON_PLANET"];
-	
-#ifndef NDEBUG
-	if ([self reportAIMessages])
-	{
-		OO_LOG("planet.collide.shuttleLanded", "DEBUG: {} landed on planet {}", oo::DescriptionOf(self), oo::DescriptionOf(planet));
-	}
-#endif
-	
-	[UNIVERSE removeEntity:self];
-}
+	cxx::ShipEntity		*victim;
+	::Entity			*mainStation;			// [UNIVERSE station]
+	bool				victimWithinAegis;		// [victim withinStationAegis]
+};
 
-
-// Exposed to AI
-- (void) abortDocking
-{
-	// -makeObjectsPerformSelector:withObject: of the stations, in order
-	for (const oo::ObjCRef<Entity *> &station : [UNIVERSE cxx_findEntitiesMatchingPredicate:IsStationPredicate
-								   parameter:nil
-									 inRange:-1
-									ofEntity:nil])
-	{
-		[(StationEntity *)station.get() abortDockingForShip:self];
-	}
-}
-
-
-- (oo::PList) cxx_dockingInstructions
-{
-	return _cxxShip->dockingInstructions;
-}
-
-
-- (void) broadcastThargoidDestroyed
-{
-	std::string role = "tharglet";
-	// -makeObjectsPerformSelector:withObject: of the ships, in order
-	for (const oo::ObjCRef<Entity *> &ship : [UNIVERSE cxx_findShipsMatchingPredicate:HasRolePredicate
-							   parameter:&role
-								 inRange:SCANNER_MAX_RANGE
-								ofEntity:self])
-	{
-		[(ShipEntity *)ship.get() sendAIMessage:"THARGOID_DESTROYED"];
-	}
-}
+}	// namespace
 
 
 static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 {
-	ShipEntity			*victim = (ShipEntity *)parameter;
+	const AuthorityPredicateParameter	*param = (const AuthorityPredicateParameter *)parameter;
+	cxx::Entity							*entityPart = oo::ToCxx(entity);
 	
 	// Select main station, if victim is in aegis
-	if (entity == [UNIVERSE station] && [victim withinStationAegis])
+	if (entity == param->mainStation && param->victimWithinAegis)
 	{
 		return YES;
 	}
 	
 	// Select police units in typical scanner range
-	if ([entity scanClass] == CLASS_POLICE &&
-		HPdistance2([victim position], [entity position]) < SCANNER_MAX_RANGE2)
+	if (entityPart->getScanClass() == CLASS_POLICE &&
+		HPdistance2(param->victim->getPosition(), entityPart->getPosition()) < SCANNER_MAX_RANGE2)
 	{
 		return YES;
 	}
@@ -591,392 +556,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) broadcastHitByLaserFrom:(ShipEntity *) aggressor_ship
-{
-	/*-- If you're clean, locates all police and stations in range and tells them OFFENCE_COMMITTED --*/
-	if (!UNIVERSE)  return;
-	if ([self bounty])  return;
-	if (!aggressor_ship)  return;
-	
-	if (	(_cxxEntity->scanClass == CLASS_NEUTRAL)||
-			(_cxxEntity->scanClass == CLASS_STATION)||
-			(_cxxEntity->scanClass == CLASS_BUOY)||
-			(_cxxEntity->scanClass == CLASS_POLICE)||
-			(_cxxEntity->scanClass == CLASS_MILITARY)||
-			(_cxxEntity->scanClass == CLASS_PLAYER))	// only for active ships...
-	{
-		const std::vector<oo::ObjCRef<Entity *>> authorities = [UNIVERSE cxx_findShipsMatchingPredicate:AuthorityPredicate
-												 parameter:self
-												   inRange:-1
-												  ofEntity:nil];
-		for (const auto &authority : authorities)
-		{
-			ShipEntity *auth = (ShipEntity *)authority.get();
-			[auth setFoundTarget:aggressor_ship];
-			[auth doScriptEvent:OOJSID("offenceCommittedNearby") withArgument:aggressor_ship andArgument:self];
-			[auth cxx_reactToAIMessage:"OFFENCE_COMMITTED" context:"combat update"];
-		}
-	}
-}
-
-
-- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride
-{
-	if (!other_ship) return;
-	if (!_cxxShip->crew && !unpilotedOverride) return;
-
-	double d2 = HPdistance2(_cxxEntity->position, [other_ship position]);
-	if (d2 > _cxxShip->scannerRange * _cxxShip->scannerRange)
-		return;					// out of comms range
-
-	const std::string expandedMessage = ExpandedText(message_text); // consistent with broadcast message.
-
-	if (other_ship->_cxxEntity->isPlayer)
-	{
-		[self setCommsMessageColor];
-		[(PlayerEntity *)other_ship receiveCommsMessage:expandedMessage from:self];
-		_cxxShip->messageTime = 6.0;
-		[UNIVERSE resetCommsLogColor];
-	}
-	else
-		[other_ship receiveCommsMessage:expandedMessage from:self];
-}
-
-
-- (void) cxx_sendExpandedMessage:(const std::string &)message_text toShip:(ShipEntity *)other_ship
-{
-	if (!other_ship || !_cxxShip->crew)
-		return;	// nobody to receive or send the signal
-	if ((_cxxShip->lastRadioMessage) && (_cxxShip->messageTime > 0.0) && message_text == *_cxxShip->lastRadioMessage)
-		return;	// don't send the same message too often
-	_cxxShip->lastRadioMessage = message_text;
-
-	double d2 = HPdistance2(_cxxEntity->position, [other_ship position]);
-	if (d2 > _cxxShip->scannerRange * _cxxShip->scannerRange)
-	{
-		// out of comms range
-		return;
-	}
-	
-	Random_Seed very_random_seed;
-	very_random_seed.a = rand() & 255;
-	very_random_seed.b = rand() & 255;
-	very_random_seed.c = rand() & 255;
-	very_random_seed.d = rand() & 255;
-	very_random_seed.e = rand() & 255;
-	very_random_seed.f = rand() & 255;
-	seed_RNG_only_for_planet_description(very_random_seed);
-	
-	// The specials dictionary as +dictionaryWithObjectsAndKeys: built it: it ended at the first nil.
-	oo::PList::Dict specials;
-	const std::optional<std::string> selfName = [self displayName];
-	if (selfName.has_value())
-	{
-		specials["[self:name]"] = *selfName;
-		const std::optional<std::string> targetName = [other_ship identFromShip: self];
-		if (targetName.has_value())  specials["[target:name]"] = *targetName;
-	}
-	const std::optional<std::string> expandedMessage = cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), message_text, oo::PList(std::move(specials)), oo::PList(), std::nullopt, kOOExpandNoOptions);
-
-	if (expandedMessage.has_value())  [self cxx_sendMessage:*expandedMessage toShip:other_ship withUnpilotedOverride:NO];	// nil was not sent
-}
-
-
-- (void) broadcastAIMessage:(const std::string &) ai_message
-{
-	const std::string expandedMessage = ExpandedText(ai_message);
-
-	[self checkScanner];
-	unsigned i;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		ShipEntity* ship = _cxxShip->scanned_ships[i];
-		[[ship getAI] message:expandedMessage];
-	}
-}
-
-
-- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride
-{
-	const std::string expandedMessage = ExpandedText(message_text); // consistent with broadcast message.
-
-
-	if (!_cxxShip->crew && !unpilotedOverride)
-		return;	// nobody to send the signal and no override for unpiloted craft is set
-
-	[self checkScanner];
-	unsigned i;
-	for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-	{
-		ShipEntity* ship = _cxxShip->scanned_ships[i];
-		if (![ship isPlayer]) [ship receiveCommsMessage:expandedMessage from:self];
-	}
-	
-	PlayerEntity *player = PLAYER; // make sure that the player always receives a message when in range
-	// SCANNER_MAX_RANGE2 because it's the player's scanner range
-	// which is important
-	if (HPdistance2(_cxxEntity->position, [player position]) < SCANNER_MAX_RANGE2)
-	{
-		[self setCommsMessageColor];
-		[player receiveCommsMessage:expandedMessage from:self];
-		_cxxShip->messageTime = 6.0;
-		[UNIVERSE resetCommsLogColor];
-	}
-}
-
-
-- (void) setCommsMessageColor
-{
-	float hue = 0.0625f * (_cxxEntity->universalID & 15);
-	[[UNIVERSE commLogGUI] setTextColor:[OOColor colorWithHue:hue saturation:0.375f brightness:1.0f alpha:1.0f]];
-	if (_cxxEntity->scanClass == CLASS_THARGOID)
-		[[UNIVERSE commLogGUI] setTextColor:[OOColor greenColor]];
-	if (_cxxEntity->scanClass == CLASS_POLICE)
-		[[UNIVERSE commLogGUI] setTextColor:[OOColor cyanColor]];
-}
-
-
-- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other
-{
-	// Too complex for AI scripts to handle, JS event only.
-	[self cxx_doScriptEvent:OOJSID("commsMessageReceived") withPListArguments:{ oo::PList(message_text), oo::PListObject(other) }];
-}
-
-
-- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride
-{
-	Random_Seed very_random_seed;
-	very_random_seed.a = rand() & 255;
-	very_random_seed.b = rand() & 255;
-	very_random_seed.c = rand() & 255;
-	very_random_seed.d = rand() & 255;
-	very_random_seed.e = rand() & 255;
-	very_random_seed.f = rand() & 255;
-	seed_RNG_only_for_planet_description(very_random_seed);
-	
-	[self broadcastMessage:valueString withUnpilotedOverride:unpilotedOverride];
-}
-
-
-- (BOOL) markedForFines
-{
-	return _cxxShip->being_fined;
-}
-
-
-- (BOOL) markForFines
-{
-	if (_cxxShip->being_fined)
-		return NO;	// can't mark twice
-	_cxxShip->being_fined = ([self legalStatus] > 0);
-	return _cxxShip->being_fined;
-}
-
-
-- (BOOL) isMining
-{
-	return ((_cxxShip->behaviour == BEHAVIOUR_ATTACK_MINING_TARGET)&&([_cxxShip->forward_weapon_type isMiningLaser]));
-}
-
-
-- (void) interpretAIMessage:(const std::string &)ms	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-{
-	if (oo::str::hasPrefix(ms, std::string(AIMS_AGGRESSOR_SWITCHED_TARGET)))
-	{
-		// if I'm under attack send a thank-you message to the rescuer
-		//
-		const std::vector<std::string> tokens = oo::str::tokens(ms);
-		if (tokens.size() < 3)  return;	// (-objectAtIndex: raised on a short message; never sent)
-		int switcher_id = oo::str::intValue(tokens[1]); // Attacker that switched targets.
-		Entity* switcher = [UNIVERSE entityForUniversalID:switcher_id];
-		int rescuer_id = oo::str::intValue(tokens[2]); // New primary target of attacker.
-		Entity* rescuer = [UNIVERSE entityForUniversalID:rescuer_id];
-		if ((switcher == [self primaryAggressor])&&(switcher == [self primaryTarget])&&(switcher)&&(rescuer)&&(rescuer->_cxxEntity->isShip)&&([self thankedShip] != rescuer)&&(_cxxEntity->scanClass != CLASS_THARGOID))
-		{
-			ShipEntity* rescueShip = (ShipEntity*)rescuer;
-//			ShipEntity* switchingShip = (ShipEntity*)switcher;
-			if (_cxxEntity->scanClass == CLASS_POLICE)
-			{
-				[self cxx_sendExpandedMessage:"[police-thanks-for-assist]" toShip:rescueShip];
-				[rescueShip setBounty:[rescueShip bounty] * 0.80 withReason:kOOLegalStatusReasonAssistingPolice];	// lower bounty by 20%
-			}
-			else
-			{
-				[self cxx_sendExpandedMessage:"[thanks-for-assist]" toShip:rescueShip];
-			}
-			[self setThankedShip:rescuer];
-		}
-	}
-}
-
-
-- (BoundingBox) findBoundingBoxRelativeTo:(Entity *)other InVectors:(Vector) _i :(Vector) _j :(Vector) _k
-{
-	HPVector  opv = other ? other->_cxxEntity->position : _cxxEntity->position;
-	return [self findBoundingBoxRelativeToPosition:opv InVectors:_i :_j :_k];
-}
-
-
-// Exposed to AI and legacy scripts.
-- (void) spawn:(const std::string &)roles_number	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-{
-	const std::vector<std::string> tokens = oo::str::tokens(roles_number);
-	NSUInteger	number;
-
-	if (tokens.size() != 2)
-	{
-		OO_LOG("script.debug.syntax.addShips", "***** Could not spawn: \"{}\" (must be two tokens, role and number)", roles_number);
-		return;
-	}
-
-	const std::string &roleString = tokens[0];
-	const std::string &numberString = tokens[1];
-
-	number = oo::str::intValue(numberString);
-
-	[self spawnShipsWithRole:roleString count:number];
-}
-
-
-- (int) checkShipsInVicinityForWitchJumpExit
-{
-	// checks if there are any large masses close by
-	// since we want to place the space station at least 10km away
-	// the formula we'll use is K x m / d2 < 1.0
-	// (m = mass, d2 = distance squared)
-	// coriolis station is mass 455,223,200
-	// 10km is 10,000m,
-	// 10km squared is 100,000,000
-	// therefore K is 0.22 (approx)
-
-	int result = NO_TARGET;
-
-	GLfloat k = 0.1;
-
-	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
-	Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
-	ShipEntity*	my_entities[ent_count];
-	int i;
-
-	int ship_count = 0;
-	for (i = 0; i < ent_count; i++)
-		if ((uni_entities[i]->_cxxEntity->isShip)&&(uni_entities[i] != self))
-			my_entities[ship_count++] = (ShipEntity*)[uni_entities[i] retain];		//	retained
-	//
-	for (i = 0; (i < ship_count)&&(result == NO_TARGET) ; i++)
-	{
-		ShipEntity* ship = my_entities[i];
-		HPVector delta = HPvector_between(_cxxEntity->position, ship->_cxxEntity->position);
-		GLfloat d2 = HPmagnitude2(delta);
-		if (![ship isPlayer] || ![PLAYER isDocked])
-		{ // player doesn't block if docked
-			if ((k * [ship mass] > d2)&&(d2 < SCANNER_MAX_RANGE2))	// if you go off (typical) scanner from a blocker - it ceases to block
-				result = [ship universalID];
-		}
-	}
-	for (i = 0; i < ship_count; i++)
-		[my_entities[i] release];	//		released
-
-	return result;
-}
-
-
-- (BOOL) trackCloseContacts
-{
-	return _cxxShip->trackCloseContacts;
-}
-
-
-- (void) setTrackCloseContacts:(BOOL) value
-{
-	if (value == (BOOL)_cxxShip->trackCloseContacts)  return;
-	
-	_cxxShip->trackCloseContacts = value;
-	// A fresh (empty) record either way; it is only read while tracking.
-	_cxxShip->closeContactsInfo.clear();
-}
-
-
 #if OO_SALVAGE_SUPPORT
-// Never used.
-- (void) claimAsSalvage
-{
-	// Create a bouy and beacon where the hulk is.
-	// Get the main GalCop station to launch a pilot boat to deliver a pilot to the hulk.
-	OO_LOG("claimAsSalvage.called", "claimAsSalvage called on {} {}", [self cxx_name].value_or("(null)"), oo::DescriptionOf([self roleSet]));
-	
-	// Not an abandoned hulk, so don't allow the salvage
-	if (![self isHulk])
-	{
-		OO_LOG("claimAsSalvage.failed.notHulk", "{}", "claimAsSalvage failed because not a hulk");
-		return;
-	}
-
-	// Set target to main station, and return now if it can't be found
-	[self setTargetToSystemStation];
-	if ([self primaryTarget] == nil)
-	{
-		OO_LOG("claimAsSalvage.failed.noStation", "{}", "claimAsSalvage failed because did not find a station");
-		return;
-	}
-
-	// Get the station to launch a pilot boat to bring a pilot out to the hulk (use a viper for now)
-	StationEntity *station = (StationEntity *)[self primaryTarget];
-	OO_LOG("claimAsSalvage.requestingPilot", "{}", "claimAsSalvage asking station to launch a pilot boat");
-	[station launchShipWithRole:"pilot"];
-	[self setReportAIMessages:YES];
-	OO_LOG("claimAsSalvage.success", "{}", "claimAsSalvage setting own state machine to capturedShipAI.plist");
-	[self setAITo:"capturedShipAI.plist"];
-}
-
-
-- (void) sendCoordinatesToPilot
-{
-	Entity		*scan;
-	ShipEntity	*scanShip, *pilot;
-	
-	_cxxShip->n_scanned_ships = 0;
-	scan = z_previous;
-	OO_LOG("ship.pilotage", "{}", "searching for pilot boat");
-	while (scan &&(scan->isShip == NO))
-	{
-		scan = scan->z_previous;	// skip non-ships
-	}
-
-	pilot = nil;
-	while (scan)
-	{
-		if (scan->isShip)
-		{
-			scanShip = (ShipEntity *)scan;
-			
-			if ([self hasRole:"pilot"] == YES)
-			{
-				if ([scanShip primaryTarget] == nil)
-				{
-					OO_LOG("ship.pilotage", "{}", "found pilot boat with no target, will use this one");
-					pilot = scanShip;
-					[pilot setPrimaryRole:"pilot"];
-					break;
-				}
-			}
-		}
-		scan = scan->z_previous;
-		while (scan && (scan->isShip == NO))
-		{
-			scan = scan->z_previous;
-		}
-	}
-
-	if (pilot != nil)
-	{
-		OO_LOG("ship.pilotage", "{}", "becoming pilot target and setting AI");
-		[pilot setReportAIMessages:YES];
-		[pilot addTarget:self];
-		[pilot setAITo:"pilotAI.plist"];
-		[self cxx_reactToAIMessage:"FOUND_PILOT" context:"flight update"];
-	}
-}
 
 
 - (void) pilotArrived
@@ -15599,6 +15179,476 @@ void ShipEntity::setTargetToSystemStation()
 
 
 }	// namespace cxx
+
+
+// Slice 33 of docs/phases/3-slices/ShipEntity.md (bead oo-tz2ra): landing, docking abort,
+// broadcasts and comms, fines, AI messages, spawning, close contacts, salvage. The facade forwards
+// each selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::landOnPlanet(::OOPlanetEntity *planet)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (planet && [self isShuttle])
+	{
+		[planet welcomeShuttle:self];
+	}
+	[self cxx_doScriptEvent:OOJSID("shipLandedOnPlanet") withArgument:planet andReactToAIMessage:"LANDED_ON_PLANET"];
+	
+#ifndef NDEBUG
+	if ([self reportAIMessages])
+	{
+		OO_LOG("planet.collide.shuttleLanded", "DEBUG: {} landed on planet {}", oo::DescriptionOf(self), oo::DescriptionOf(planet));
+	}
+#endif
+	
+	[UNIVERSE removeEntity:self];
+}
+
+
+// Exposed to AI
+void ShipEntity::abortDocking()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// -makeObjectsPerformSelector:withObject: of the stations, in order
+	for (const oo::ObjCRef<::Entity *> &station : [UNIVERSE cxx_findEntitiesMatchingPredicate:IsStationPredicate
+								   parameter:nil
+									 inRange:-1
+									ofEntity:nil])
+	{
+		[(::StationEntity *)station.get() abortDockingForShip:self];
+	}
+}
+
+
+oo::PList ShipEntity::getDockingInstructions()
+{
+	return dockingInstructions;
+}
+
+
+void ShipEntity::broadcastThargoidDestroyed()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string role = "tharglet";
+	// -makeObjectsPerformSelector:withObject: of the ships, in order
+	for (const oo::ObjCRef<::Entity *> &ship : [UNIVERSE cxx_findShipsMatchingPredicate:HasRolePredicate
+							   parameter:&role
+								 inRange:SCANNER_MAX_RANGE
+								ofEntity:self])
+	{
+		[(::ShipEntity *)ship.get() sendAIMessage:"THARGOID_DESTROYED"];
+	}
+}
+
+
+void ShipEntity::broadcastHitByLaserFrom(::ShipEntity *aggressor_ship)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/*-- If you're clean, locates all police and stations in range and tells them OFFENCE_COMMITTED --*/
+	if (!UNIVERSE)  return;
+	if ([self bounty])  return;
+	if (!aggressor_ship)  return;
+	
+	if (	(scanClass == CLASS_NEUTRAL)||
+			(scanClass == CLASS_STATION)||
+			(scanClass == CLASS_BUOY)||
+			(scanClass == CLASS_POLICE)||
+			(scanClass == CLASS_MILITARY)||
+			(scanClass == CLASS_PLAYER))	// only for active ships...
+	{
+		AuthorityPredicateParameter param = { this, [UNIVERSE station], (bool)[self withinStationAegis] };
+		const std::vector<oo::ObjCRef<::Entity *>> authorities = [UNIVERSE cxx_findShipsMatchingPredicate:AuthorityPredicate
+												 parameter:&param
+												   inRange:-1
+												  ofEntity:nil];
+		for (const auto &authority : authorities)
+		{
+			::ShipEntity *auth = (::ShipEntity *)authority.get();
+			[auth setFoundTarget:aggressor_ship];
+			[auth doScriptEvent:OOJSID("offenceCommittedNearby") withArgument:aggressor_ship andArgument:self];
+			[auth cxx_reactToAIMessage:"OFFENCE_COMMITTED" context:"combat update"];
+		}
+	}
+}
+
+
+void ShipEntity::sendMessage(const std::string &message_text, ::ShipEntity *other_ship, bool unpilotedOverride)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!other_ship) return;
+	if (!crew && !unpilotedOverride) return;
+
+	double d2 = HPdistance2(position, [other_ship position]);
+	if (d2 > scannerRange * scannerRange)
+		return;					// out of comms range
+
+	const std::string expandedMessage = ExpandedText(message_text); // consistent with broadcast message.
+
+	if (other_ship->_cxxEntity->isPlayer)
+	{
+		[self setCommsMessageColor];
+		[(::PlayerEntity *)other_ship receiveCommsMessage:expandedMessage from:self];
+		messageTime = 6.0;
+		[UNIVERSE resetCommsLogColor];
+	}
+	else
+		[other_ship receiveCommsMessage:expandedMessage from:self];
+}
+
+
+void ShipEntity::sendExpandedMessage(const std::string &message_text, ::ShipEntity *other_ship)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!other_ship || !crew)
+		return;	// nobody to receive or send the signal
+	if ((lastRadioMessage) && (messageTime > 0.0) && message_text == *lastRadioMessage)
+		return;	// don't send the same message too often
+	lastRadioMessage = message_text;
+
+	double d2 = HPdistance2(position, [other_ship position]);
+	if (d2 > scannerRange * scannerRange)
+	{
+		// out of comms range
+		return;
+	}
+	
+	Random_Seed very_random_seed;
+	very_random_seed.a = rand() & 255;
+	very_random_seed.b = rand() & 255;
+	very_random_seed.c = rand() & 255;
+	very_random_seed.d = rand() & 255;
+	very_random_seed.e = rand() & 255;
+	very_random_seed.f = rand() & 255;
+	seed_RNG_only_for_planet_description(very_random_seed);
+	
+	// The specials dictionary as +dictionaryWithObjectsAndKeys: built it: it ended at the first nil.
+	oo::PList::Dict specials;
+	const std::optional<std::string> selfName = [self displayName];
+	if (selfName.has_value())
+	{
+		specials["[self:name]"] = *selfName;
+		const std::optional<std::string> targetName = [other_ship identFromShip: self];
+		if (targetName.has_value())  specials["[target:name]"] = *targetName;
+	}
+	const std::optional<std::string> expandedMessage = cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), message_text, oo::PList(std::move(specials)), oo::PList(), std::nullopt, kOOExpandNoOptions);
+
+	if (expandedMessage.has_value())  [self cxx_sendMessage:*expandedMessage toShip:other_ship withUnpilotedOverride:NO];	// nil was not sent
+}
+
+
+void ShipEntity::broadcastAIMessage(const std::string &ai_message)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const std::string expandedMessage = ExpandedText(ai_message);
+
+	[self checkScanner];
+	unsigned i;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		::ShipEntity* ship = scanned_ships[i];
+		[[ship getAI] message:expandedMessage];
+	}
+}
+
+
+void ShipEntity::broadcastMessage(const std::string &message_text, bool unpilotedOverride)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const std::string expandedMessage = ExpandedText(message_text); // consistent with broadcast message.
+
+
+	if (!crew && !unpilotedOverride)
+		return;	// nobody to send the signal and no override for unpiloted craft is set
+
+	[self checkScanner];
+	unsigned i;
+	for (i = 0; i < n_scanned_ships ; i++)
+	{
+		::ShipEntity* ship = scanned_ships[i];
+		if (![ship isPlayer]) [ship receiveCommsMessage:expandedMessage from:self];
+	}
+	
+	::PlayerEntity *player = PLAYER; // make sure that the player always receives a message when in range
+	// SCANNER_MAX_RANGE2 because it's the player's scanner range
+	// which is important
+	if (HPdistance2(position, [player position]) < SCANNER_MAX_RANGE2)
+	{
+		[self setCommsMessageColor];
+		[player receiveCommsMessage:expandedMessage from:self];
+		messageTime = 6.0;
+		[UNIVERSE resetCommsLogColor];
+	}
+}
+
+
+void ShipEntity::setCommsMessageColor()
+{
+	float hue = 0.0625f * (universalID & 15);
+	[[UNIVERSE commLogGUI] setTextColor:[::OOColor colorWithHue:hue saturation:0.375f brightness:1.0f alpha:1.0f]];
+	if (scanClass == CLASS_THARGOID)
+		[[UNIVERSE commLogGUI] setTextColor:[::OOColor greenColor]];
+	if (scanClass == CLASS_POLICE)
+		[[UNIVERSE commLogGUI] setTextColor:[::OOColor cyanColor]];
+}
+
+
+void ShipEntity::receiveCommsMessage(const std::string &message_text, ::ShipEntity *other)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Too complex for AI scripts to handle, JS event only.
+	[self cxx_doScriptEvent:OOJSID("commsMessageReceived") withPListArguments:{ oo::PList(message_text), oo::PListObject(other) }];
+}
+
+
+void ShipEntity::commsMessage(const std::string &valueString, bool unpilotedOverride)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Random_Seed very_random_seed;
+	very_random_seed.a = rand() & 255;
+	very_random_seed.b = rand() & 255;
+	very_random_seed.c = rand() & 255;
+	very_random_seed.d = rand() & 255;
+	very_random_seed.e = rand() & 255;
+	very_random_seed.f = rand() & 255;
+	seed_RNG_only_for_planet_description(very_random_seed);
+	
+	[self broadcastMessage:valueString withUnpilotedOverride:unpilotedOverride];
+}
+
+
+bool ShipEntity::markedForFines()
+{
+	return being_fined;
+}
+
+
+bool ShipEntity::markForFines()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (being_fined)
+		return NO;	// can't mark twice
+	being_fined = ([self legalStatus] > 0);
+	return being_fined;
+}
+
+
+bool ShipEntity::isMining()
+{
+	return ((behaviour == BEHAVIOUR_ATTACK_MINING_TARGET)&&([forward_weapon_type isMiningLaser]));
+}
+
+
+void ShipEntity::interpretAIMessage(const std::string &ms)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (oo::str::hasPrefix(ms, std::string(AIMS_AGGRESSOR_SWITCHED_TARGET)))
+	{
+		// if I'm under attack send a thank-you message to the rescuer
+		//
+		const std::vector<std::string> tokens = oo::str::tokens(ms);
+		if (tokens.size() < 3)  return;	// (-objectAtIndex: raised on a short message; never sent)
+		int switcher_id = oo::str::intValue(tokens[1]); // Attacker that switched targets.
+		::Entity* switcher = [UNIVERSE entityForUniversalID:switcher_id];
+		int rescuer_id = oo::str::intValue(tokens[2]); // New primary target of attacker.
+		::Entity* rescuer = [UNIVERSE entityForUniversalID:rescuer_id];
+		if ((switcher == [self primaryAggressor])&&(switcher == [self primaryTarget])&&(switcher)&&(rescuer)&&(rescuer->_cxxEntity->isShip)&&([self thankedShip] != rescuer)&&(scanClass != CLASS_THARGOID))
+		{
+			::ShipEntity* rescueShip = (::ShipEntity*)rescuer;
+//			ShipEntity* switchingShip = (ShipEntity*)switcher;
+			if (scanClass == CLASS_POLICE)
+			{
+				[self cxx_sendExpandedMessage:"[police-thanks-for-assist]" toShip:rescueShip];
+				[rescueShip setBounty:[rescueShip bounty] * 0.80 withReason:kOOLegalStatusReasonAssistingPolice];	// lower bounty by 20%
+			}
+			else
+			{
+				[self cxx_sendExpandedMessage:"[thanks-for-assist]" toShip:rescueShip];
+			}
+			[self setThankedShip:rescuer];
+		}
+	}
+}
+
+
+BoundingBox ShipEntity::findBoundingBoxRelativeTo(::Entity *other, Vector _i, Vector _j, Vector _k)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	HPVector  opv = other ? other->_cxxEntity->position : position;
+	return [self findBoundingBoxRelativeToPosition:opv InVectors:_i :_j :_k];
+}
+
+
+// Exposed to AI and legacy scripts.
+void ShipEntity::spawn(const std::string &roles_number)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const std::vector<std::string> tokens = oo::str::tokens(roles_number);
+	NSUInteger	number;
+
+	if (tokens.size() != 2)
+	{
+		OO_LOG("script.debug.syntax.addShips", "***** Could not spawn: \"{}\" (must be two tokens, role and number)", roles_number);
+		return;
+	}
+
+	const std::string &roleString = tokens[0];
+	const std::string &numberString = tokens[1];
+
+	number = oo::str::intValue(numberString);
+
+	[self spawnShipsWithRole:roleString count:number];
+}
+
+
+int ShipEntity::checkShipsInVicinityForWitchJumpExit()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// checks if there are any large masses close by
+	// since we want to place the space station at least 10km away
+	// the formula we'll use is K x m / d2 < 1.0
+	// (m = mass, d2 = distance squared)
+	// coriolis station is mass 455,223,200
+	// 10km is 10,000m,
+	// 10km squared is 100,000,000
+	// therefore K is 0.22 (approx)
+
+	int result = NO_TARGET;
+
+	GLfloat k = 0.1;
+
+	int			ent_count =		UNIVERSE->_cxxUniverse->n_entities;
+	::Entity**	uni_entities =	UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
+	::ShipEntity*	my_entities[ent_count];
+	int i;
+
+	int ship_count = 0;
+	for (i = 0; i < ent_count; i++)
+		if ((uni_entities[i]->_cxxEntity->isShip)&&(uni_entities[i] != self))
+			my_entities[ship_count++] = (::ShipEntity*)[uni_entities[i] retain];		//	retained
+	//
+	for (i = 0; (i < ship_count)&&(result == NO_TARGET) ; i++)
+	{
+		::ShipEntity* ship = my_entities[i];
+		HPVector delta = HPvector_between(position, ship->_cxxEntity->position);
+		GLfloat d2 = HPmagnitude2(delta);
+		if (![ship isPlayer] || ![PLAYER isDocked])
+		{ // player doesn't block if docked
+			if ((k * [ship mass] > d2)&&(d2 < SCANNER_MAX_RANGE2))	// if you go off (typical) scanner from a blocker - it ceases to block
+				result = [ship universalID];
+		}
+	}
+	for (i = 0; i < ship_count; i++)
+		[my_entities[i] release];	//		released
+
+	return result;
+}
+
+
+bool ShipEntity::getTrackCloseContacts()
+{
+	return trackCloseContacts;
+}
+
+
+void ShipEntity::setTrackCloseContacts(bool value)
+{
+	if (value == (BOOL)trackCloseContacts)  return;
+	
+	trackCloseContacts = value;
+	// A fresh (empty) record either way; it is only read while tracking.
+	closeContactsInfo.clear();
+}
+
+
+#if OO_SALVAGE_SUPPORT
+// Never used.
+void ShipEntity::claimAsSalvage()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Create a bouy and beacon where the hulk is.
+	// Get the main GalCop station to launch a pilot boat to deliver a pilot to the hulk.
+	OO_LOG("claimAsSalvage.called", "claimAsSalvage called on {} {}", [self cxx_name].value_or("(null)"), oo::DescriptionOf([self roleSet]));
+	
+	// Not an abandoned hulk, so don't allow the salvage
+	if (![self isHulk])
+	{
+		OO_LOG("claimAsSalvage.failed.notHulk", "{}", "claimAsSalvage failed because not a hulk");
+		return;
+	}
+
+	// Set target to main station, and return now if it can't be found
+	[self setTargetToSystemStation];
+	if ([self primaryTarget] == nil)
+	{
+		OO_LOG("claimAsSalvage.failed.noStation", "{}", "claimAsSalvage failed because did not find a station");
+		return;
+	}
+
+	// Get the station to launch a pilot boat to bring a pilot out to the hulk (use a viper for now)
+	::StationEntity *station = (::StationEntity *)[self primaryTarget];
+	OO_LOG("claimAsSalvage.requestingPilot", "{}", "claimAsSalvage asking station to launch a pilot boat");
+	[station launchShipWithRole:"pilot"];
+	[self setReportAIMessages:YES];
+	OO_LOG("claimAsSalvage.success", "{}", "claimAsSalvage setting own state machine to capturedShipAI.plist");
+	[self setAITo:"capturedShipAI.plist"];
+}
+
+
+void ShipEntity::sendCoordinatesToPilot()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity		*scan;
+	::ShipEntity	*scanShip, *pilot;
+	
+	n_scanned_ships = 0;
+	scan = z_previous;
+	OO_LOG("ship.pilotage", "{}", "searching for pilot boat");
+	while (scan &&(scan->isShip == NO))
+	{
+		scan = scan->z_previous;	// skip non-ships
+	}
+
+	pilot = nil;
+	while (scan)
+	{
+		if (scan->isShip)
+		{
+			scanShip = (::ShipEntity *)scan;
+			
+			if ([self hasRole:"pilot"] == YES)
+			{
+				if ([scanShip primaryTarget] == nil)
+				{
+					OO_LOG("ship.pilotage", "{}", "found pilot boat with no target, will use this one");
+					pilot = scanShip;
+					[pilot setPrimaryRole:"pilot"];
+					break;
+				}
+			}
+		}
+		scan = scan->z_previous;
+		while (scan && (scan->isShip == NO))
+		{
+			scan = scan->z_previous;
+		}
+	}
+
+	if (pilot != nil)
+	{
+		OO_LOG("ship.pilotage", "{}", "becoming pilot target and setting AI");
+		[pilot setReportAIMessages:YES];
+		[pilot addTarget:self];
+		[pilot setAITo:"pilotAI.plist"];
+		[self cxx_reactToAIMessage:"FOUND_PILOT" context:"flight update"];
+	}
+}
+#endif
+
+
+}	// namespace cxx
+
 
 
 

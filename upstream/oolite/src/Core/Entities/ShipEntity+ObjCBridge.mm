@@ -170,6 +170,11 @@ public:
 	// Slice 32 (bead oo-5e0ny).
 	void markAsOffender(int offence_value) override	{ [(::ShipEntity *)_objcOwner markAsOffender:offence_value]; }
 	void markAsOffender(int offence_value, OOLegalStatusReason reason) override	{ [(::ShipEntity *)_objcOwner markAsOffender:offence_value withReason:reason]; }
+
+	// Slice 33 (bead oo-tz2ra).
+	void receiveCommsMessage(const std::string &message_text, ::ShipEntity *other) override	{ [(::ShipEntity *)_objcOwner receiveCommsMessage:message_text from:other]; }
+	bool isMining() override	{ return [(::ShipEntity *)_objcOwner isMining]; }
+	void interpretAIMessage(const std::string &ms) override	{ [(::ShipEntity *)_objcOwner interpretAIMessage:ms]; }
 };
 
 }	// namespace
@@ -1107,5 +1112,36 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setTargetToNearestFriendlyStation	{ _cxxShip->setTargetToNearestFriendlyStation(); }
 - (void) setTargetToNearestStation	{ _cxxShip->setTargetToNearestStation(); }
 - (void) setTargetToSystemStation	{ _cxxShip->setTargetToSystemStation(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice33)
+
+- (void) landOnPlanet:(OOPlanetEntity *)planet	{ _cxxShip->landOnPlanet(planet); }
+- (void) abortDocking	{ _cxxShip->abortDocking(); }
+- (oo::PList) cxx_dockingInstructions	{ return _cxxShip->getDockingInstructions(); }
+- (void) broadcastThargoidDestroyed	{ _cxxShip->broadcastThargoidDestroyed(); }
+- (void) broadcastHitByLaserFrom:(ShipEntity *)aggressor_ship	{ _cxxShip->broadcastHitByLaserFrom(aggressor_ship); }
+- (void) cxx_sendMessage:(const std::string &)message_text toShip:(ShipEntity*)other_ship withUnpilotedOverride:(BOOL)unpilotedOverride	{ _cxxShip->sendMessage(message_text, other_ship, unpilotedOverride); }
+- (void) cxx_sendExpandedMessage:(const std::string &)message_text toShip:(ShipEntity *)other_ship	{ _cxxShip->sendExpandedMessage(message_text, other_ship); }
+- (void) broadcastAIMessage:(const std::string &)ai_message	{ _cxxShip->broadcastAIMessage(ai_message); }
+- (void) broadcastMessage:(const std::string &)message_text withUnpilotedOverride:(BOOL)unpilotedOverride	{ _cxxShip->broadcastMessage(message_text, unpilotedOverride); }
+- (void) setCommsMessageColor	{ _cxxShip->setCommsMessageColor(); }
+- (void) receiveCommsMessage:(const std::string &)message_text from:(ShipEntity *)other	{ _cxxShip->cxx::ShipEntity::receiveCommsMessage(message_text, other); }
+- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride	{ _cxxShip->commsMessage(valueString, unpilotedOverride); }
+- (BOOL) markedForFines	{ return _cxxShip->markedForFines(); }
+- (BOOL) markForFines	{ return _cxxShip->markForFines(); }
+- (BOOL) isMining	{ return _cxxShip->cxx::ShipEntity::isMining(); }
+- (void) interpretAIMessage:(const std::string &)ms	{ _cxxShip->cxx::ShipEntity::interpretAIMessage(ms); }
+- (BoundingBox) findBoundingBoxRelativeTo:(Entity *)other InVectors:(Vector)_i :(Vector)_j :(Vector)_k	{ return _cxxShip->findBoundingBoxRelativeTo(other, _i, _j, _k); }
+- (void) spawn:(const std::string &)roles_number	{ _cxxShip->spawn(roles_number); }
+- (int) checkShipsInVicinityForWitchJumpExit	{ return _cxxShip->checkShipsInVicinityForWitchJumpExit(); }
+- (BOOL) trackCloseContacts	{ return _cxxShip->getTrackCloseContacts(); }
+- (void) setTrackCloseContacts:(BOOL)value	{ _cxxShip->setTrackCloseContacts(value); }
+#if OO_SALVAGE_SUPPORT
+- (void) claimAsSalvage	{ _cxxShip->claimAsSalvage(); }
+- (void) sendCoordinatesToPilot	{ _cxxShip->sendCoordinatesToPilot(); }
+#endif
 
 @end

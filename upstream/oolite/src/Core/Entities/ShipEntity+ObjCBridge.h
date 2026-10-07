@@ -48,7 +48,6 @@ MA 02110-1301, USA.
 
 // ship brains
 
-- (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
 
 
@@ -223,45 +222,24 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 
-- (void) landOnPlanet:(OOPlanetEntity *)planet;
 
-- (void) abortDocking;
-- (oo::PList) cxx_dockingInstructions;	// null: none
 
-- (void) broadcastThargoidDestroyed;
 
-- (void) broadcastHitByLaserFrom:(ShipEntity*) aggressor_ship;
 
 // Sun glare filter - 0 for no filter, 1 for full filter
 
 // Unpiloted ships cannot broadcast messages, unless the unpilotedOverride is set to YES.
-- (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
-- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
-- (void) broadcastAIMessage:(const std::string &) ai_message;
-- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
-- (void) setCommsMessageColor;
-- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other;	// flipped with its family (bead oo-3rb.259)
-- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
 
-- (BOOL) markedForFines;
-- (BOOL) markForFines;
 
-- (BOOL) isMining;
 
-- (void) spawn:(const std::string &)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
-- (int) checkShipsInVicinityForWitchJumpExit;
 
-- (BOOL) trackCloseContacts;
-- (void) setTrackCloseContacts:(BOOL) value;
 
 /*
  * Changes a ship to a hulk, for example when the pilot ejects.
  * Aso unsets hulkiness for example when a new pilot gets in.
  */
 #if OO_SALVAGE_SUPPORT
-- (void) claimAsSalvage;
-- (void) sendCoordinatesToPilot;
 - (void) pilotArrived;
 #endif
 
@@ -1218,6 +1196,40 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) setTargetToNearestFriendlyStation;
 - (void) setTargetToNearestStation;
 - (void) setTargetToSystemStation;
+
+@end
+
+
+// Slice 33 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice33)
+
+- (void) landOnPlanet:(OOPlanetEntity *)planet;
+- (void) abortDocking;
+- (oo::PList) cxx_dockingInstructions;	// null: none
+- (void) broadcastThargoidDestroyed;
+- (void) broadcastHitByLaserFrom:(ShipEntity*) aggressor_ship;
+- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
+- (void) broadcastAIMessage:(const std::string &) ai_message;
+- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
+- (void) setCommsMessageColor;
+- (void) receiveCommsMessage:(const std::string &) message_text from:(ShipEntity *) other;	// flipped with its family (bead oo-3rb.259)
+- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (BOOL) markedForFines;
+- (BOOL) markForFines;
+- (BOOL) isMining;
+- (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (BoundingBox) findBoundingBoxRelativeTo:(Entity *)other InVectors:(Vector)_i :(Vector)_j :(Vector)_k;
+- (void) spawn:(const std::string &)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (int) checkShipsInVicinityForWitchJumpExit;
+- (BOOL) trackCloseContacts;
+- (void) setTrackCloseContacts:(BOOL) value;
+#if OO_SALVAGE_SUPPORT
+- (void) claimAsSalvage;
+- (void) sendCoordinatesToPilot;
+#endif
 
 @end
 
