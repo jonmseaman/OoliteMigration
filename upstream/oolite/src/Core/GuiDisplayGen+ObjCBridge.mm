@@ -597,6 +597,12 @@ cxx::GuiDisplayGen *oo::ToCxx(GuiDisplayGen *gui)
 	return _cxxGui->targetNextFoundSystem(direction);
 }
 
+
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
+{
+	_cxxGui->drawSystemMarkers(marker, x, y, z, alpha, scale);
+}
+
 @end
 
 
