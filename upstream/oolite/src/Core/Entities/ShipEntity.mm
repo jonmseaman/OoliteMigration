@@ -516,440 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (Entity *) thankedShip
-{
-	Entity *result = [_cxxShip->_thankedShip weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_thankedShip);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setThankedShip:(Entity *) targetEntity
-{
-	[_cxxShip->_thankedShip release];
-	_cxxShip->_thankedShip = [targetEntity weakRetain];
-}
-
-
-- (Entity *) rememberedShip
-{
-	Entity *result = [_cxxShip->_rememberedShip weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_rememberedShip);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setRememberedShip:(Entity *) targetEntity
-{
-	[_cxxShip->_rememberedShip release];
-	_cxxShip->_rememberedShip = [targetEntity weakRetain];
-}
-
-
-- (StationEntity *) targetStation
-{
-	StationEntity *result = [_cxxShip->_targetStation weakRefUnderlyingObject];
-	if (result == nil || ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_targetStation);
-		return nil;
-	}
-	return result;
-}
-
-
-- (void) setTargetStation:(Entity *) targetEntity
-{
-	[_cxxShip->_targetStation release];
-	_cxxShip->_targetStation = [targetEntity weakRetain];
-}
-
-/* Now we use weakrefs rather than universal ID this function checks
- * for targets which may have a valid reference but are not currently
- * targetable. */
-- (BOOL) isValidTarget:(Entity *)target
-{
-	if (target == nil) 
-	{
-		return NO;
-	}
-	if ([target isShip])
-	{
-		OOEntityStatus tstatus = [target status];
-		if (tstatus == STATUS_ENTERING_WITCHSPACE || tstatus == STATUS_IN_HOLD || tstatus == STATUS_DOCKED || tstatus == STATUS_DEAD)
-        // 2013-01-13, Eric: added STATUS_DEAD because I keep seeing ships locked on dead ships in attack mode.
-		{
-			return NO;
-		}
-		return YES;
-	}
-	if ([target isWormhole] && [target scanClass] != CLASS_NO_DRAW)
-	{
-		return YES;
-	}
-	return NO;
-}
-
-
-- (void) addTarget:(Entity *) targetEntity
-{
-	if (targetEntity == self)  return;
-	if (targetEntity != nil) 
-	{
-		DESTROY(_cxxShip->_primaryTarget);
-		_cxxShip->_primaryTarget = [targetEntity weakRetain];
-		[self startTrackingCurve];
-	}
-	
-	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() addTarget:targetEntity];
-	if (![self isSubEntity])  [self doScriptEvent:OOJSID("shipTargetAcquired") withArgument:targetEntity];
-}
-
-
-- (void) removeTarget:(Entity *) targetEntity
-{
-	if(targetEntity != nil) [self noteLostTarget];
-	else DESTROY(_cxxShip->_primaryTarget);
-	// targetEntity == nil is currently only true for mounted player missiles. 
-	// we don't want to send lostTarget messages while the missile is mounted.
-	
-	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() removeTarget:targetEntity];
-}
-
-
-/* Checks if the primary target is still trackable.
- * 
- * 1.80 behaviour: still exists, is in scanner range, is not cloaked
- *
- * 1.81 (planned) behaviour:
- * - track cloaked ships once primary targeted (but no missiles, and can't keep as a mere defense target, and probably some other penalties)
- * - track ships at 120% scanner range *if* they are also primary aggressor
- *
- * But first, just switch over to this method on 1.80 behaviour and check
- * that things still work.
- */
-- (BOOL) canStillTrackPrimaryTarget
-{
-	Entity *target = (Entity *)[self primaryTargetWithoutValidityCheck];
-	if (target == nil)
-	{
-		return NO;
-	}
-	if (![self isValidTarget:target])
-	{
-		return NO;
-	}
-	double range2 = HPmagnitude2(HPvector_subtract([target position], _cxxEntity->position));
-	if (range2 > _cxxShip->scannerRange * _cxxShip->scannerRange * 1.5625) 
-	{
-		// 1.5625 = 1.25*1.25
-		return NO;
-	}
-	// 1.81: can retain cloaked ships as a *primary* target now
-/*	if ([target isShip] && [(ShipEntity*)target isCloaked])
-	{
-		return NO;
-		} */
-	return YES;
-}
-
-
-- (id) primaryTarget
-{
-	id result = [_cxxShip->_primaryTarget weakRefUnderlyingObject];
-	if ((result == nil && _cxxShip->_primaryTarget != nil)
-			|| ![self isValidTarget:result])
-	{
-		DESTROY(_cxxShip->_primaryTarget);
-		return nil;
-	}
-	else if (EXPECT_NOT(result == self))
-	{
-		/*	Added in response to a crash report showing recursion in
-			[PlayerEntity hasHostileTarget].
-			-- Ahruman 2009-12-17
-		*/
-		DESTROY(_cxxShip->_primaryTarget);
-	}
-	return result;
-}
-
-
-// used when we need to check the target - perhaps for a potential
-// noteTargetLost - without invalidating the target first
-- (id) primaryTargetWithoutValidityCheck
-{
-	id result = [_cxxShip->_primaryTarget weakRefUnderlyingObject];
-	if (EXPECT_NOT(result == self))
-	{
-		// just in case
-		DESTROY(_cxxShip->_primaryTarget);
-		return nil;
-	}
-	return result;
-}
-
-
-- (BOOL) isFriendlyTo:(ShipEntity *)otherShip
-{
-	BOOL isFriendly = NO;
-	OOShipGroup	*myGroup = [self group];
-	OOShipGroup	*otherGroup = [otherShip group];
-	
-	if ((otherShip == self) ||
-		([self isPolice] && [otherShip isPolice]) ||
-		([self isThargoid] && [otherShip isThargoid]) ||
-		(myGroup != nil && otherGroup != nil && (myGroup == otherGroup || [otherGroup leader] == self)) ||
-		([self scanClass] == CLASS_MILITARY && [otherShip scanClass] == CLASS_MILITARY))
-	{
-		isFriendly = YES;
-	}
-	
-	return isFriendly;
-}
-
-
-- (ShipEntity *) shipHitByLaser
-{
-	return [_cxxShip->_shipHitByLaser weakRefUnderlyingObject];
-}
-
-
-- (void) setShipHitByLaser:(ShipEntity *)ship
-{
-	if (ship != [self shipHitByLaser])
-	{
-		[_cxxShip->_shipHitByLaser release];
-		_cxxShip->_shipHitByLaser = [ship weakRetain];
-	}
-}
-
-
-- (void) noteLostTarget
-{
-	id target = nil;
-	if ([self primaryTarget] != nil)
-	{
-		ShipEntity* ship = [self primaryTarget];
-		if ([self isDefenseTarget:ship]) 
-		{
-			[self removeDefenseTarget:ship];
-		}
-		// for compatibility with 1.76 behaviour of this function, only pass
-		// the target as a function parameter if the target is still a potential
-		// valid target (e.g. not scooped, docked, hyperspaced, etc.)
-		target = (ship && ship->_cxxEntity->isShip && [self isValidTarget:ship]) ? (id)ship : nil;
-		if ([self primaryAggressor] == ship) 
-		{
-			DESTROY(_cxxShip->_primaryAggressor);
-		}
-		DESTROY(_cxxShip->_primaryTarget);
-	}
-	// always do target lost
-	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
-	if (target == nil) [_cxxShip->shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
-	else [_cxxShip->shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
-}
-
-
-- (void) noteLostTargetAndGoIdle
-{
-	_cxxShip->behaviour = BEHAVIOUR_IDLE;
-	_cxxShip->frustration = 0.0;
-	[self noteLostTarget];
-}
-
-- (void) noteTargetDestroyed:(ShipEntity *)target
-{
-	[self collectBountyFor:(ShipEntity *)target];
-	if ([self primaryTarget] == target)
-	{
-		[self removeTarget:target];
-		[self doScriptEvent:OOJSID("shipTargetDestroyed") withArgument:target];
-		[_cxxShip->shipAI message:"TARGET_DESTROYED"];
-	}
-	if ([self isDefenseTarget:target]) 
-	{
-		[self removeDefenseTarget:target];
-		[_cxxShip->shipAI message:"DEFENSE_TARGET_DESTROYED"];
-		[self doScriptEvent:OOJSID("defenseTargetDestroyed") withArgument:target];
-	}
-}
-
-
-- (OOBehaviour) behaviour
-{
-	return _cxxShip->behaviour;
-}
-
-
-- (void) setBehaviour:(OOBehaviour) cond
-{
-	if (cond != _cxxShip->behaviour)
-	{
-		_cxxShip->frustration = 0.0;	// change is a GOOD thing
-		_cxxShip->behaviour = cond;
-	}
-}
-
-
-- (HPVector) destination
-{
-	return _cxxShip->_destination;
-}
-
-- (HPVector) coordinates
-{
-	return _cxxShip->coordinates;
-}
-
-- (void) setCoordinate:(HPVector) coord // The name "setCoordinates" is already used by AI scripting.
-{
-	_cxxShip->coordinates = coord;
-}
-
-- (HPVector) distance_six: (GLfloat) dist
-{
-	HPVector six = _cxxEntity->position;
-	six.x -= dist * _cxxShip->v_forward.x;	six.y -= dist * _cxxShip->v_forward.y;	six.z -= dist * _cxxShip->v_forward.z;
-	return six;
-}
-
-
-- (HPVector) distance_twelve: (GLfloat) dist withOffset:(GLfloat)offset
-{
-	HPVector twelve = _cxxEntity->position;
-	twelve.x += dist * _cxxShip->v_up.x;	twelve.y += dist * _cxxShip->v_up.y;	twelve.z += dist * _cxxShip->v_up.z;
-	twelve.x += offset * _cxxShip->v_right.x;	twelve.y += offset * _cxxShip->v_right.y;	twelve.z += offset * _cxxShip->v_right.z;
-	return twelve;
-}
-
-
-- (void) trackOntoTarget:(double) delta_t withDForward: (GLfloat) dp
-{
-	Vector vector_to_target;
-	Quaternion q_minarc;
-	//
-	Entity* target = [self primaryTarget];
-	//
-	if (!target)
-		return;
-
-	vector_to_target = [self vectorTo:target];
-	//
-	GLfloat range2 =		magnitude2(vector_to_target);
-	GLfloat	targetRadius =	0.75 * target->_cxxEntity->collision_radius;
-	GLfloat	max_cos =		sqrt(1 - targetRadius*targetRadius/range2);
-	
-	if (dp > max_cos)
-		return;	// ON TARGET!
-	
-	if (vector_to_target.x||vector_to_target.y||vector_to_target.z)
-		vector_to_target = vector_normal(vector_to_target);
-	else
-		vector_to_target.z = 1.0;
-	
-	q_minarc = quaternion_rotation_between(_cxxShip->v_forward, vector_to_target);
-	
-	_cxxEntity->orientation = quaternion_multiply(q_minarc, _cxxEntity->orientation);
-	[self orientationChanged];
-	
-	_cxxShip->flightRoll = 0.0;
-	_cxxShip->flightPitch = 0.0;
-	_cxxShip->flightYaw = 0.0;
-	_cxxShip->stick_roll = 0.0;
-	_cxxShip->stick_pitch = 0.0;
-	_cxxShip->stick_yaw = 0.0;
-}
-
-
-- (double) ballTrackLeadingTarget:(double) delta_t atTarget:(Entity *)target
-{
-	if (!target)
-	{
-		return -2.0; // no target
-	}
-
-	Vector		vector_to_target;
-	Vector		axis_to_track_by;
-	Vector		my_aim = vector_forward_from_quaternion(_cxxEntity->orientation);
-	Vector		my_ref = _cxxShip->reference;
-	double		aim_cos, ref_cos;
-	Vector		leading = [target velocity];
-
-	// need to get vector to target in terms of this entities coordinate system
-	HPVector my_position = [self absolutePositionForSubentity];
-	vector_to_target = HPVectorToVector(HPvector_subtract([target position], my_position));
-	// this is in absolute coordinates, so now rotate it
-
-	Entity		*last = nil;
-	Entity		*father = [self parentEntity];
-
-	Quaternion  q = kIdentityQuaternion;
-	while ((father)&&(father != last) && (father != (Entity *)NO_TARGET))
-	{
-		/* Fix orientation */
-		Quaternion fo = [father normalOrientation];
-		fo.w = -fo.w;
-		/* The below code works for player turrets where the
-		 * orientation is different, but not for NPC turrets. Taking
-		 * the normal orientation with -w works: there is probably a
-		 * neater way which someone who understands quaternions can
-		 * find, but this works well enough for 1.82 - CIM */
-		q = quaternion_multiply(q,quaternion_conjugate(fo));
-		last = father;
-		if (![last isSubEntity]) break;
-		father = [father owner];
-	}
-	q = quaternion_conjugate(q);
-	// q now contains the rotation to the turret's reference system
-
-	vector_to_target = quaternion_rotate_vector(q,vector_to_target);
-
-	leading = quaternion_rotate_vector(q,leading);
-	// rotate the vector to target and its velocity
-	
-	if (magnitude(vector_to_target) > _cxxShip->weaponRange * 1.01)
-	{
-		return -2.0; // out of range
-	}
-
-	float lead = magnitude(vector_to_target) / TURRET_SHOT_SPEED;
-		
-	vector_to_target = vector_add(vector_to_target, vector_multiply_scalar(leading, lead));
-	vector_to_target = vector_normal_or_fallback(vector_to_target, kBasisZVector);
-		
-	// do the tracking!
-	aim_cos = dot_product(vector_to_target, my_aim);
-	ref_cos = dot_product(vector_to_target, my_ref);
-
-	
-	if (ref_cos > TURRET_MINIMUM_COS)  // target is forward of self
-	{
-		axis_to_track_by = cross_product(vector_to_target, my_aim);
-	}
-	else
-	{
-		return -2.0; // target is out of fire arc
-	}
-	
-	quaternion_rotate_about_axis(&_cxxEntity->orientation, axis_to_track_by, _cxxShip->thrust * delta_t);
-	[self orientationChanged];
-	
-	[self setStatus:STATUS_ACTIVE];
-	
-	return aim_cos;
-}
-
-
 - (void) setEvasiveJink:(GLfloat) z
 {
 	if (_cxxShip->accuracy < COMBAT_AI_ISNT_AWFUL)
@@ -15424,6 +14990,470 @@ void ShipEntity::setLastEscortTarget(::Entity *targetEntity)
 
 
 }	// namespace cxx
+
+
+// Slice 24 of docs/phases/3-slices/ShipEntity.md (bead oo-zd80m): target memory and validity,
+// behaviour and destination accessors, distances, leading the target. The facade forwards each
+// selector (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's
+// override still runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+::Entity *ShipEntity::thankedShip()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_thankedShip weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_thankedShip);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setThankedShip(::Entity *targetEntity)
+{
+	[_thankedShip release];
+	_thankedShip = [targetEntity weakRetain];
+}
+
+
+::Entity *ShipEntity::rememberedShip()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *result = [_rememberedShip weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_rememberedShip);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setRememberedShip(::Entity *targetEntity)
+{
+	[_rememberedShip release];
+	_rememberedShip = [targetEntity weakRetain];
+}
+
+
+::StationEntity *ShipEntity::targetStation()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::StationEntity *result = [_targetStation weakRefUnderlyingObject];
+	if (result == nil || ![self isValidTarget:result])
+	{
+		DESTROY(_targetStation);
+		return nil;
+	}
+	return result;
+}
+
+
+void ShipEntity::setTargetStation(::Entity *targetEntity)
+{
+	[_targetStation release];
+	_targetStation = [targetEntity weakRetain];
+}
+
+
+/* Now we use weakrefs rather than universal ID this function checks
+ * for targets which may have a valid reference but are not currently
+ * targetable. */
+bool ShipEntity::isValidTarget(::Entity *target)
+{
+	if (target == nil) 
+	{
+		return NO;
+	}
+	if ([target isShip])
+	{
+		OOEntityStatus tstatus = [target status];
+		if (tstatus == STATUS_ENTERING_WITCHSPACE || tstatus == STATUS_IN_HOLD || tstatus == STATUS_DOCKED || tstatus == STATUS_DEAD)
+        // 2013-01-13, Eric: added STATUS_DEAD because I keep seeing ships locked on dead ships in attack mode.
+		{
+			return NO;
+		}
+		return YES;
+	}
+	if ([target isWormhole] && [target scanClass] != CLASS_NO_DRAW)
+	{
+		return YES;
+	}
+	return NO;
+}
+
+
+void ShipEntity::addTarget(::Entity *targetEntity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (targetEntity == self)  return;
+	if (targetEntity != nil) 
+	{
+		DESTROY(_primaryTarget);
+		_primaryTarget = [targetEntity weakRetain];
+		[self startTrackingCurve];
+	}
+	
+	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() addTarget:targetEntity];
+	if (![self isSubEntity])  [self doScriptEvent:OOJSID("shipTargetAcquired") withArgument:targetEntity];
+}
+
+
+void ShipEntity::removeTarget(::Entity *targetEntity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if(targetEntity != nil) [self noteLostTarget];
+	else DESTROY(_primaryTarget);
+	// targetEntity == nil is currently only true for mounted player missiles. 
+	// we don't want to send lostTarget messages while the missile is mounted.
+	
+	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() removeTarget:targetEntity];
+}
+
+
+/* Checks if the primary target is still trackable.
+ * 
+ * 1.80 behaviour: still exists, is in scanner range, is not cloaked
+ *
+ * 1.81 (planned) behaviour:
+ * - track cloaked ships once primary targeted (but no missiles, and can't keep as a mere defense target, and probably some other penalties)
+ * - track ships at 120% scanner range *if* they are also primary aggressor
+ *
+ * But first, just switch over to this method on 1.80 behaviour and check
+ * that things still work.
+ */
+bool ShipEntity::canStillTrackPrimaryTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *target = (::Entity *)[self primaryTargetWithoutValidityCheck];
+	if (target == nil)
+	{
+		return NO;
+	}
+	if (![self isValidTarget:target])
+	{
+		return NO;
+	}
+	double range2 = HPmagnitude2(HPvector_subtract([target position], position));
+	if (range2 > scannerRange * scannerRange * 1.5625) 
+	{
+		// 1.5625 = 1.25*1.25
+		return NO;
+	}
+	// 1.81: can retain cloaked ships as a *primary* target now
+/*	if ([target isShip] && [(ShipEntity*)target isCloaked])
+	{
+		return NO;
+		} */
+	return YES;
+}
+
+
+id ShipEntity::primaryTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	id result = [_primaryTarget weakRefUnderlyingObject];
+	if ((result == nil && _primaryTarget != nil)
+			|| ![self isValidTarget:result])
+	{
+		DESTROY(_primaryTarget);
+		return nil;
+	}
+	else if (EXPECT_NOT(result == self))
+	{
+		/*	Added in response to a crash report showing recursion in
+			[PlayerEntity hasHostileTarget].
+			-- Ahruman 2009-12-17
+		*/
+		DESTROY(_primaryTarget);
+	}
+	return result;
+}
+
+
+// used when we need to check the target - perhaps for a potential
+// noteTargetLost - without invalidating the target first
+id ShipEntity::primaryTargetWithoutValidityCheck()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	id result = [_primaryTarget weakRefUnderlyingObject];
+	if (EXPECT_NOT(result == self))
+	{
+		// just in case
+		DESTROY(_primaryTarget);
+		return nil;
+	}
+	return result;
+}
+
+
+bool ShipEntity::isFriendlyTo(::ShipEntity *otherShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL isFriendly = NO;
+	::OOShipGroup	*myGroup = [self group];
+	::OOShipGroup	*otherGroup = [otherShip group];
+	
+	if ((otherShip == self) ||
+		([self isPolice] && [otherShip isPolice]) ||
+		([self isThargoid] && [otherShip isThargoid]) ||
+		(myGroup != nil && otherGroup != nil && (myGroup == otherGroup || [otherGroup leader] == self)) ||
+		([self scanClass] == CLASS_MILITARY && [otherShip scanClass] == CLASS_MILITARY))
+	{
+		isFriendly = YES;
+	}
+	
+	return isFriendly;
+}
+
+
+::ShipEntity *ShipEntity::shipHitByLaser()
+{
+	return [_shipHitByLaser weakRefUnderlyingObject];
+}
+
+
+void ShipEntity::setShipHitByLaser(::ShipEntity *ship)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (ship != [self shipHitByLaser])
+	{
+		[_shipHitByLaser release];
+		_shipHitByLaser = [ship weakRetain];
+	}
+}
+
+
+void ShipEntity::noteLostTarget()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	id target = nil;
+	if ([self primaryTarget] != nil)
+	{
+		::ShipEntity* ship = [self primaryTarget];
+		if ([self isDefenseTarget:ship]) 
+		{
+			[self removeDefenseTarget:ship];
+		}
+		// for compatibility with 1.76 behaviour of this function, only pass
+		// the target as a function parameter if the target is still a potential
+		// valid target (e.g. not scooped, docked, hyperspaced, etc.)
+		target = (ship && ship->_cxxEntity->isShip && [self isValidTarget:ship]) ? (id)ship : nil;
+		if ([self primaryAggressor] == ship) 
+		{
+			DESTROY(_primaryAggressor);
+		}
+		DESTROY(_primaryTarget);
+	}
+	// always do target lost
+	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
+	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
+	else [shipAI cxx_reactToMessage:"TARGET_LOST" context:"flight updates"];	// execute immediately otherwise.
+}
+
+
+void ShipEntity::noteLostTargetAndGoIdle()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	behaviour = BEHAVIOUR_IDLE;
+	frustration = 0.0;
+	[self noteLostTarget];
+}
+
+
+void ShipEntity::noteTargetDestroyed(::ShipEntity *target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self collectBountyFor:(::ShipEntity *)target];
+	if ([self primaryTarget] == target)
+	{
+		[self removeTarget:target];
+		[self doScriptEvent:OOJSID("shipTargetDestroyed") withArgument:target];
+		[shipAI message:"TARGET_DESTROYED"];
+	}
+	if ([self isDefenseTarget:target]) 
+	{
+		[self removeDefenseTarget:target];
+		[shipAI message:"DEFENSE_TARGET_DESTROYED"];
+		[self doScriptEvent:OOJSID("defenseTargetDestroyed") withArgument:target];
+	}
+}
+
+
+OOBehaviour ShipEntity::getBehaviour()
+{
+	return behaviour;
+}
+
+
+void ShipEntity::setBehaviour(OOBehaviour cond)
+{
+	if (cond != behaviour)
+	{
+		frustration = 0.0;	// change is a GOOD thing
+		behaviour = cond;
+	}
+}
+
+
+HPVector ShipEntity::destination()
+{
+	return _destination;
+}
+
+
+HPVector ShipEntity::getCoordinates()
+{
+	return coordinates;
+}
+
+
+void ShipEntity::setCoordinate(HPVector coord)
+{
+	coordinates = coord;
+}
+
+
+HPVector ShipEntity::distance_six(GLfloat dist)
+{
+	HPVector six = position;
+	six.x -= dist * v_forward.x;	six.y -= dist * v_forward.y;	six.z -= dist * v_forward.z;
+	return six;
+}
+
+
+HPVector ShipEntity::distance_twelve(GLfloat dist, GLfloat offset)
+{
+	HPVector twelve = position;
+	twelve.x += dist * v_up.x;	twelve.y += dist * v_up.y;	twelve.z += dist * v_up.z;
+	twelve.x += offset * v_right.x;	twelve.y += offset * v_right.y;	twelve.z += offset * v_right.z;
+	return twelve;
+}
+
+
+void ShipEntity::trackOntoTarget(double /* delta_t */, GLfloat dp)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Vector vector_to_target;
+	Quaternion q_minarc;
+	//
+	::Entity* target = [self primaryTarget];
+	//
+	if (!target)
+		return;
+
+	vector_to_target = [self vectorTo:target];
+	//
+	GLfloat range2 =		magnitude2(vector_to_target);
+	GLfloat	targetRadius =	0.75 * target->_cxxEntity->collision_radius;
+	GLfloat	max_cos =		sqrt(1 - targetRadius*targetRadius/range2);
+	
+	if (dp > max_cos)
+		return;	// ON TARGET!
+	
+	if (vector_to_target.x||vector_to_target.y||vector_to_target.z)
+		vector_to_target = vector_normal(vector_to_target);
+	else
+		vector_to_target.z = 1.0;
+	
+	q_minarc = quaternion_rotation_between(v_forward, vector_to_target);
+	
+	orientation = quaternion_multiply(q_minarc, orientation);
+	[self orientationChanged];
+	
+	flightRoll = 0.0;
+	flightPitch = 0.0;
+	flightYaw = 0.0;
+	stick_roll = 0.0;
+	stick_pitch = 0.0;
+	stick_yaw = 0.0;
+}
+
+
+double ShipEntity::ballTrackLeadingTarget(double delta_t, ::Entity *target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!target)
+	{
+		return -2.0; // no target
+	}
+
+	Vector		vector_to_target;
+	Vector		axis_to_track_by;
+	Vector		my_aim = vector_forward_from_quaternion(orientation);
+	Vector		my_ref = reference;
+	double		aim_cos, ref_cos;
+	Vector		leading = [target velocity];
+
+	// need to get vector to target in terms of this entities coordinate system
+	HPVector my_position = [self absolutePositionForSubentity];
+	vector_to_target = HPVectorToVector(HPvector_subtract([target position], my_position));
+	// this is in absolute coordinates, so now rotate it
+
+	::Entity		*last = nil;
+	::Entity		*father = [self parentEntity];
+
+	Quaternion  q = kIdentityQuaternion;
+	while ((father)&&(father != last) && (father != nil))	// (Entity *)NO_TARGET
+	{
+		/* Fix orientation */
+		Quaternion fo = [father normalOrientation];
+		fo.w = -fo.w;
+		/* The below code works for player turrets where the
+		 * orientation is different, but not for NPC turrets. Taking
+		 * the normal orientation with -w works: there is probably a
+		 * neater way which someone who understands quaternions can
+		 * find, but this works well enough for 1.82 - CIM */
+		q = quaternion_multiply(q,quaternion_conjugate(fo));
+		last = father;
+		if (![last isSubEntity]) break;
+		father = [father owner];
+	}
+	q = quaternion_conjugate(q);
+	// q now contains the rotation to the turret's reference system
+
+	vector_to_target = quaternion_rotate_vector(q,vector_to_target);
+
+	leading = quaternion_rotate_vector(q,leading);
+	// rotate the vector to target and its velocity
+	
+	if (magnitude(vector_to_target) > weaponRange * 1.01)
+	{
+		return -2.0; // out of range
+	}
+
+	float lead = magnitude(vector_to_target) / TURRET_SHOT_SPEED;
+		
+	vector_to_target = vector_add(vector_to_target, vector_multiply_scalar(leading, lead));
+	vector_to_target = vector_normal_or_fallback(vector_to_target, kBasisZVector);
+		
+	// do the tracking!
+	aim_cos = dot_product(vector_to_target, my_aim);
+	ref_cos = dot_product(vector_to_target, my_ref);
+
+	
+	if (ref_cos > TURRET_MINIMUM_COS)  // target is forward of self
+	{
+		axis_to_track_by = cross_product(vector_to_target, my_aim);
+	}
+	else
+	{
+		return -2.0; // target is out of fire arc
+	}
+	
+	quaternion_rotate_about_axis(&orientation, axis_to_track_by, thrust * delta_t);
+	[self orientationChanged];
+	
+	[self setStatus:STATUS_ACTIVE];
+	
+	return aim_cos;
+}
+
+
+}	// namespace cxx
+
 
 
 
