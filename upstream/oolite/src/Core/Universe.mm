@@ -369,6 +369,236 @@ bool BeaconCodeMatches(const std::optional<std::string> &beaconCode, const std::
 }
 
 
+//------------------------------------------------------------------------------------//
+//	The class shell (slice 1 of docs/phases/3-slices/Universe.md): cxx::Universe's members. The
+//	methods of slices 2-26 follow, still Objective-C, in the facade's @implementation; they reach
+//	the state through _cxxUniverse (Universe+ObjCBridge.h).
+
+cxx::Universe::Universe(::Universe *objcOwner)
+:	_objcOwner(objcOwner)
+{
+}
+
+
+cxx::Universe::~Universe() = default;
+
+
+/*	-initWithGameView: after [super init]: the facade made this part, checked that it is the only
+	universe, and sent [super init] (Universe+ObjCBridge.mm). The body is the method's; it names
+	the Objective-C object as self (amendment oo-bj8 item 4).
+*/
+void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	_doingStartUp = YES;
+
+	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
+
+	oo::Defaults &prefs = oo::Defaults::standard();
+
+	// prefs value no longer used - per save game but startup needs to
+	// be non-strict
+	useAddOns = std::string(SCENARIO_OXP_DEFINITION_ALL);
+
+	[self setGameView:inGameView];
+	gSharedUniverse = self;
+
+	allPlanets.clear();
+	allStations.clear();
+
+	OOCPUInfoInit();
+	[::OOJoystickManager sharedStickHandler];
+
+	// init OpenGL extension manager (must be done before any other threads might use it)
+	[::OOOpenGLExtensionManager sharedManager];
+	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(prefs.object("detailLevel").isNull() ? [[::OOOpenGLExtensionManager sharedManager] defaultDetailLevel] : static_cast<unsigned int>(prefs.integerForKey("detailLevel")))];
+
+	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
+
+	[::OOMaterial setUp];
+
+	// Preload cache
+	[::OOCacheManager sharedCache];
+
+#if OOLITE_SPEECH_SYNTH
+	OO_LOG("speech.synthesis", "Spoken messages are {}.", (prefs.boolForKey("speech_on") ? "on" : "off"));
+#endif
+
+	// init the Resource Manager
+	[::ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths if changed
+
+	// Set up the internal game strings
+	[self loadDescriptions];
+	// DESC expansion is now possible!
+
+	// load starting saves
+	[self loadScenarios];
+
+	autoSave = prefs.boolForKey("autosave");
+	wireframeGraphics = prefs.boolForKey("wireframe-graphics");
+	doProcedurallyTexturedPlanets = prefs.object("procedurally-textured-planets").isNull() ? YES : prefs.boolForKey("procedurally-textured-planets");
+	[inGameView setMsaa:prefs.boolForKey("anti-aliasing")];
+	OO_LOG("MSAA.setup", "Multisample anti-aliasing {}requested.", [inGameView msaa] ? "" : "not ");
+	[inGameView setFov:OOClamp_0_max_f(prefs.object("fov-value").isNull() ? 57.2f : prefs.floatForKey("fov-value"), MAX_FOV_DEG) fromFraction:NO];
+	if ([inGameView fov:NO] < MIN_FOV_DEG)  [inGameView setFov:MIN_FOV_DEG fromFraction:NO];
+
+ 	[self setECMVisualFXEnabled:prefs.object("ecm-visual-fx").isNull() ? YES : prefs.boolForKey("ecm-visual-fx")];
+
+	// Set up speech synthesizer.
+#if OOLITE_SPEECH_SYNTH
+#if OOLITE_MAC_OS_X
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0),
+	^{
+		/*
+			NSSpeechSynthesizer can take over a second on an SSD and several
+			seconds on an HDD for a cold start, and a third of a second upward
+			for a warm start. There are no particular thread safety consider-
+			ations documented for NSSpeechSynthesizer, so I'm assuming the
+			default one-thread-at-a-time access rule applies.
+			-- Ahruman 2012-09-13
+		*/
+		OO_LOG("speech.setup.begin", "Starting to set up speech synthesizer.");
+		NSSpeechSynthesizer *synth = [[NSSpeechSynthesizer alloc] init];
+		OO_LOG("speech.setup.end", "Finished setting up speech synthesizer.");
+		speechSynthesizer = synth;
+	});
+#elif OOLITE_ESPEAK
+	int volume = [::OOSound masterVolume] * 100;
+	espeak_SetParameter(espeakPUNCTUATION, espeakPUNCT_NONE, 0);
+	espeak_SetParameter(espeakVOLUME, volume, 0);
+	espeak_voices = espeak_ListVoices(NULL);
+	for (espeak_voice_count = 0;
+	     espeak_voices[espeak_voice_count];
+	     ++espeak_voice_count)
+		/**/;
+#endif
+#endif
+
+	[[GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
+	// Load ship data
+
+	[::OOShipRegistry sharedRegistry];
+
+	entities.reserve(MAX_NUMBER_OF_ENTITIES);
+
+	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+
+	// this MUST have the default no. of rows else the GUI_ROW macros in PlayerEntity.h need modification
+	gui = [[GuiDisplayGen alloc] init]; // alloc retains
+	comm_log_gui = [[GuiDisplayGen alloc] init]; // alloc retains
+
+	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+
+	waypoints.clear();
+
+	[self setUpSettings];
+
+	// can't do this here as it might lock an OXZ open
+	// [self preloadSounds];	// Must be after setUpSettings.
+
+	// Preload particle effect textures:
+	[::OOLightParticleEntity setUpTexture];
+	[::OOFlashEffectEntity setUpTexture];
+
+
+	// set up cargopod templates
+	[self setUpCargoPods];
+
+	PlayerEntity *player = [PlayerEntity sharedPlayer];
+	[player deferredInit];
+	[self addEntity:player];
+
+	[player setStatus:STATUS_START_GAME];
+	[player setShowDemoShips: YES];
+
+	[self setUpInitialUniverse];
+
+	universeRegion = [[::CollisionRegion alloc] initAsUniverse];
+	entitiesDeadThisUpdate.clear();
+	framesDoneThisUpdate = 0;
+	drawCounter = 0;
+
+	[[GameController sharedController] cxx_logProgress:OO_DESC("initializing-debug-support")];
+	OOInitDebugSupport();
+
+	[[GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
+	[player completeSetUp];
+
+	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
+	[self populateNormalSpace];
+
+	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+
+#if OO_LOCALIZATION_TOOLS
+	[self runLocalizationTools];
+#if DEBUG_GRAPHVIZ
+	[self dumpDebugGraphViz];
+#endif
+#endif
+
+	[player startUpComplete];
+	_doingStartUp = NO;
+}
+
+
+/*	-dealloc's body before [super dealloc], which the facade sends after it releases this part
+	(Universe+ObjCBridge.mm): what the part still owns (the property lists, the names) is released
+	then, as the runtime released the ivars after -dealloc.
+*/
+void cxx::Universe::dealloc()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	gSharedUniverse = nil;
+
+	currentMessage.reset();
+
+	[gui release];
+	[message_gui release];
+	[comm_log_gui release];
+
+	entities.clear();
+
+	[commodities release];
+
+	customSounds = oo::PList();
+	globalSettings = oo::PList();
+	[systemManager release];
+	demo_ships = oo::PList();
+	screenBackgrounds = oo::PList();
+	[gameView release];
+	allPlanets.clear();
+	allStations.clear();
+
+	activeWormholes.clear();
+	characterPool.clear();
+	[universeRegion release];
+
+	DESTROY(_firstBeacon);
+	DESTROY(_lastBeacon);
+	waypoints.clear();
+
+	unsigned i;
+	for (i = 0; i < 256; i++)  system_names[i].reset();
+
+	entitiesDeadThisUpdate.clear();
+
+	[[::OOCacheManager sharedCache] flush];
+
+#if OOLITE_SPEECH_SYNTH
+	speechArray = oo::PList();
+#if OOLITE_MAC_OS_X
+	[speechSynthesizer release];
+#elif OOLITE_ESPEAK
+	espeak_Cancel();
+#endif
+#endif
+
+	[self deleteOpenGLObjects];
+}
+
+
 @implementation Universe
 
 // Flags needed when JS reset fails.
@@ -395,17 +625,17 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (BOOL) bloom
 {
-	return _bloom && [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
+	return _cxxUniverse->_bloom && [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
 }
 
 - (void) setBloom: (BOOL)newBloom
 {
-	_bloom = !!newBloom;
+	_cxxUniverse->_bloom = !!newBloom;
 }
 
 - (int) currentPostFX
 {
-	return _currentPostFX;
+	return _cxxUniverse->_currentPostFX;
 }
 
 - (void) setCurrentPostFX: (int) newCurrentPostFX
@@ -417,10 +647,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if	(OO_POSTFX_NONE <= newCurrentPostFX && newCurrentPostFX <= OO_POSTFX_COLORBLINDNESS_TRITAN)
 	{
-		_colorblindMode = newCurrentPostFX;
+		_cxxUniverse->_colorblindMode = newCurrentPostFX;
 	}		
 	
-	_currentPostFX = newCurrentPostFX;
+	_cxxUniverse->_currentPostFX = newCurrentPostFX;
 }
 
 
@@ -450,7 +680,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (int) colorblindMode
 {
-	return _colorblindMode;
+	return _cxxUniverse->_colorblindMode;
 }
 
 - (void) initTargetFramebufferWithViewSize:(NSSize)viewSize
@@ -461,7 +691,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGL(glClampColor(GL_CLAMP_FRAGMENT_COLOR, GL_FALSE));
 
 	// have to do this because on my machine the default framebuffer is not zero
-	OOGL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &defaultDrawFBO));
+	OOGL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &_cxxUniverse->defaultDrawFBO));
 
 	GLint previousProgramID;
 	OOGL(glGetIntegerv(GL_CURRENT_PROGRAM, &previousProgramID));
@@ -475,22 +705,22 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGL(glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &previousElementBuffer));
 
 	// create MSAA framebuffer and attach MSAA texture and depth buffer to framebuffer
-	OOGL(glGenFramebuffers(1, &msaaFramebufferID));
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, msaaFramebufferID));
+	OOGL(glGenFramebuffers(1, &_cxxUniverse->msaaFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->msaaFramebufferID));
 	
 	// creating MSAA texture that should be rendered into
-	OOGL(glGenTextures(1, &msaaTextureID));
-	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaTextureID));
+	OOGL(glGenTextures(1, &_cxxUniverse->msaaTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID));
 	OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
 	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
-	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, msaaTextureID, 0));
+	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID, 0));
 	
 	// create necessary MSAA depth render buffer
-	OOGL(glGenRenderbuffers(1, &msaaDepthBufferID));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, msaaDepthBufferID));
+	OOGL(glGenRenderbuffers(1, &_cxxUniverse->msaaDepthBufferID));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));
 	OOGL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
 	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
-	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, msaaDepthBufferID));
+	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));
 	
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
@@ -498,24 +728,24 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	
 	// create framebuffer and attach texture and depth buffer to framebuffer
-	OOGL(glGenFramebuffers(1, &targetFramebufferID));
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, targetFramebufferID));
+	OOGL(glGenFramebuffers(1, &_cxxUniverse->targetFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->targetFramebufferID));
 	
 	// creating texture that should be rendered into
-	OOGL(glGenTextures(1, &targetTextureID));
-	OOGL(glBindTexture(GL_TEXTURE_2D, targetTextureID));
+	OOGL(glGenTextures(1, &_cxxUniverse->targetTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->targetTextureID));
 	OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
 	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
 	OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, targetTextureID, 0));
+	OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _cxxUniverse->targetTextureID, 0));
 	
 	// create necessary depth render buffer
-	OOGL(glGenRenderbuffers(1, &targetDepthBufferID));
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, targetDepthBufferID));
+	OOGL(glGenRenderbuffers(1, &_cxxUniverse->targetDepthBufferID));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->targetDepthBufferID));
 	OOGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
-	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, targetDepthBufferID));
+	OOGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _cxxUniverse->targetDepthBufferID));
 	
 	GLenum attachment[1] = { GL_COLOR_ATTACHMENT0 };
 	OOGL(glDrawBuffers(1, attachment));
@@ -525,9 +755,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Framebuffer not complete");
 	}
 	
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 	
-	targetFramebufferSize = viewSize;
+	_cxxUniverse->targetFramebufferSize = viewSize;
 	
 	// passthrough buffer
 	// This is a framebuffer whose sole purpose is to pass on the texture rendered from the game to the blur and the final bloom
@@ -535,20 +765,20 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// us to perform multiple render target operations needed for bloom. The alternative would be to not use this and change all our
 	// shaders to be OpenGL 3.3 compatible, but given how Oolite synthesizes them and the work needed to port them over, well yeah no,
 	// not doing it at this time - Nikos 20220814.
-	OOGL(glGenFramebuffers(1, &passthroughFramebufferID));
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, passthroughFramebufferID));
+	OOGL(glGenFramebuffers(1, &_cxxUniverse->passthroughFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->passthroughFramebufferID));
 	
 	// creating textures that should be rendered into
-	OOGL(glGenTextures(2, passthroughTextureID));
+	OOGL(glGenTextures(2, _cxxUniverse->passthroughTextureID));
 	for (unsigned int i = 0; i < 2; i++)
 	{
-		OOGL(glBindTexture(GL_TEXTURE_2D, passthroughTextureID[i]));
+		OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[i]));
 		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
 		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
 		OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-		OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, passthroughTextureID[i], 0));
+		OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[i], 0));
 	}
 	
 	GLenum attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
@@ -558,31 +788,31 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Passthrough framebuffer not complete");
 	}
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 	
 	// ping-pong-framebuffer for blurring
-    OOGL(glGenFramebuffers(2, pingpongFBO));
-    OOGL(glGenTextures(2, pingpongColorbuffers));
+    OOGL(glGenFramebuffers(2, _cxxUniverse->pingpongFBO));
+    OOGL(glGenTextures(2, _cxxUniverse->pingpongColorbuffers));
     for (unsigned int i = 0; i < 2; i++)
     {
-        OOGL(glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]));
-        OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]));
+        OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->pingpongFBO[i]));
+        OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[i]));
         OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
         OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
         OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
         OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
         OOGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-        OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0));
+        OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[i], 0));
         // check if framebuffers are complete (no need for depth buffer)
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
             OO_LOG_ERR("initTargetFramebufferWithViewSize.result", "{}", "***** Error: Pingpong framebuffers not complete");
 		}
     }
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 	
-	_bloom = [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
-	_currentPostFX = _colorblindMode = OO_POSTFX_NONE;
+	_cxxUniverse->_bloom = [self detailLevel] >= DETAIL_LEVEL_EXTRAS;
+	_cxxUniverse->_currentPostFX = _cxxUniverse->_colorblindMode = OO_POSTFX_NONE;
 
 	/* TODO (upstream; OOEnvironmentCubeMap.m was never built and was deleted as dead code, bead oo-v7ob,
 	   decision oo-9wpwn - kept for a revival): in OOEnvironmentCubeMap.m call these bind functions not with 0 but with "previousXxxID"s:
@@ -594,17 +824,17 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// shader for drawing a textured quad on the passthrough framebuffer and preparing it for bloom using MRT
 	if (![[OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 	{
-		textureProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-texture.vertex"
+		_cxxUniverse->textureProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-texture.vertex"
 													fragmentShaderName:"oolite-texture.fragment"
 													prefix:"#version 330\n"
 													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
 		// shader for blurring the over-threshold brightness image generated from the previous step using Gaussian filter
-		blurProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-blur.vertex"
+		_cxxUniverse->blurProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-blur.vertex"
 													fragmentShaderName:"oolite-blur.fragment"
 													prefix:"#version 330\n"
 													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
 		// shader for applying bloom and any necessary post-proc fx, tonemapping and gamma correction
-		finalProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-final.vertex"
+		_cxxUniverse->finalProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-final.vertex"
 #if OOLITE_WINDOWS
 													fragmentShaderName:[[UNIVERSE gameView] hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment"
 #else
@@ -614,16 +844,16 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
 	}
 	
-	OOGL(glGenVertexArrays(1, &quadTextureVAO));
-	OOGL(glGenBuffers(1, &quadTextureVBO));
-	OOGL(glGenBuffers(1, &quadTextureEBO));
+	OOGL(glGenVertexArrays(1, &_cxxUniverse->quadTextureVAO));
+	OOGL(glGenBuffers(1, &_cxxUniverse->quadTextureVBO));
+	OOGL(glGenBuffers(1, &_cxxUniverse->quadTextureEBO));
 
-	OOGL(glBindVertexArray(quadTextureVAO));
+	OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
 
-	OOGL(glBindBuffer(GL_ARRAY_BUFFER, quadTextureVBO));
+	OOGL(glBindBuffer(GL_ARRAY_BUFFER, _cxxUniverse->quadTextureVBO));
 	OOGL(glBufferData(GL_ARRAY_BUFFER, sizeof(framebufferQuadVertices), framebufferQuadVertices, GL_STATIC_DRAW));
 
-	OOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadTextureEBO));
+	OOGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _cxxUniverse->quadTextureEBO));
 	OOGL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(framebufferQuadIndices), framebufferQuadIndices, GL_STATIC_DRAW));
 
 	OOGL(glEnableVertexAttribArray(0));
@@ -646,22 +876,22 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) deleteOpenGLObjects
 {
-	OOGL(glDeleteTextures(1, &msaaTextureID));
-	OOGL(glDeleteTextures(1, &targetTextureID));
-	OOGL(glDeleteTextures(2, passthroughTextureID));
-	OOGL(glDeleteTextures(2, pingpongColorbuffers));
-	OOGL(glDeleteRenderbuffers(1, &msaaDepthBufferID));
-	OOGL(glDeleteRenderbuffers(1, &targetDepthBufferID));
-	OOGL(glDeleteFramebuffers(1, &msaaFramebufferID));
-	OOGL(glDeleteFramebuffers(1, &targetFramebufferID));
-	OOGL(glDeleteFramebuffers(2, pingpongFBO));
-	OOGL(glDeleteFramebuffers(1, &passthroughFramebufferID));
-	OOGL(glDeleteVertexArrays(1, &quadTextureVAO));
-	OOGL(glDeleteBuffers(1, &quadTextureVBO));
-	OOGL(glDeleteBuffers(1, &quadTextureEBO));
-	[textureProgram release];
-	[blurProgram release];
-	[finalProgram release];
+	OOGL(glDeleteTextures(1, &_cxxUniverse->msaaTextureID));
+	OOGL(glDeleteTextures(1, &_cxxUniverse->targetTextureID));
+	OOGL(glDeleteTextures(2, _cxxUniverse->passthroughTextureID));
+	OOGL(glDeleteTextures(2, _cxxUniverse->pingpongColorbuffers));
+	OOGL(glDeleteRenderbuffers(1, &_cxxUniverse->msaaDepthBufferID));
+	OOGL(glDeleteRenderbuffers(1, &_cxxUniverse->targetDepthBufferID));
+	OOGL(glDeleteFramebuffers(1, &_cxxUniverse->msaaFramebufferID));
+	OOGL(glDeleteFramebuffers(1, &_cxxUniverse->targetFramebufferID));
+	OOGL(glDeleteFramebuffers(2, _cxxUniverse->pingpongFBO));
+	OOGL(glDeleteFramebuffers(1, &_cxxUniverse->passthroughFramebufferID));
+	OOGL(glDeleteVertexArrays(1, &_cxxUniverse->quadTextureVAO));
+	OOGL(glDeleteBuffers(1, &_cxxUniverse->quadTextureVBO));
+	OOGL(glDeleteBuffers(1, &_cxxUniverse->quadTextureEBO));
+	[_cxxUniverse->textureProgram release];
+	[_cxxUniverse->blurProgram release];
+	[_cxxUniverse->finalProgram release];
 }
 
 
@@ -669,41 +899,41 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 {
 	int i;
 	// resize MSAA color attachment
-	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID));
 	OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
 	OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
 	
 	// resize MSAA depth attachment
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, msaaDepthBufferID));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));
 	OOGL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
 	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
 	
 	// resize color attachments
-	OOGL(glBindTexture(GL_TEXTURE_2D, targetTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->targetTextureID));
 	OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
 	OOGL(glBindTexture(GL_TEXTURE_2D, 0));
 	
 	for (i = 0; i < 2; i++)
 	{
-		OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]));
+		OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[i]));
 		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
 		OOGL(glBindTexture(GL_TEXTURE_2D, 0));
 	}
 	
 	for (i = 0; i < 2; i++)
 	{
-		OOGL(glBindTexture(GL_TEXTURE_2D, passthroughTextureID[i]));
+		OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[i]));
 		OOGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, 0, GL_RGBA, GL_FLOAT, NULL));
 		OOGL(glBindTexture(GL_TEXTURE_2D, 0));
 	}
 	
 	// resize depth attachment
-	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, targetDepthBufferID));
+	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->targetDepthBufferID));
 	OOGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, (GLsizei)viewSize.width, (GLsizei)viewSize.height));
 	OOGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
 	
-	targetFramebufferSize.width = viewSize.width;
-	targetFramebufferSize.height = viewSize.height;
+	_cxxUniverse->targetFramebufferSize.width = viewSize.width;
+	_cxxUniverse->targetFramebufferSize.height = viewSize.height;
 }
 
 
@@ -725,25 +955,25 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// fixes transparency issue for some reason
 	OOGL(glDisable(GL_BLEND));
 	
-	GLhandleARB program = [textureProgram program];
-	GLhandleARB blur = [blurProgram program];
-	GLhandleARB final = [finalProgram program];
-	NSSize viewSize = [gameView backingViewSize];
+	GLhandleARB program = [_cxxUniverse->textureProgram program];
+	GLhandleARB blur = [_cxxUniverse->blurProgram program];
+	GLhandleARB final = [_cxxUniverse->finalProgram program];
+	NSSize viewSize = [_cxxUniverse->gameView backingViewSize];
 	float fboResolution[2] = {(float)viewSize.width, (float)viewSize.height};
 
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, passthroughFramebufferID));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->passthroughFramebufferID));
 	OOGL(glClear(GL_COLOR_BUFFER_BIT));
 
 	OOGL(glUseProgram(program));
-	OOGL(glBindTexture(GL_TEXTURE_2D, targetTextureID));
+	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->targetTextureID));
 	OOGL(glUniform1i(glGetUniformLocation(program, "image"), 0));
 	
 	
-	OOGL(glBindVertexArray(quadTextureVAO));
+	OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
 	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
 	OOGL(glBindVertexArray(0));
 	
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 	
 		
 	BOOL horizontal = YES, firstIteration = YES;
@@ -751,46 +981,46 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGL(glUseProgram(blur));
 	for (unsigned int i = 0; i < amount; i++)
 	{
-		OOGL(glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]));
+		OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->pingpongFBO[horizontal]));
 		OOGL(glUniform1i(glGetUniformLocation(blur, "horizontal"), horizontal));
 		OOGL(glActiveTexture(GL_TEXTURE0));
 		// bind texture of other framebuffer (or scene if first iteration)
-		OOGL(glBindTexture(GL_TEXTURE_2D, firstIteration ? passthroughTextureID[1] : pingpongColorbuffers[!horizontal]));  
-		OOGL(glUniform1i(glGetUniformLocation([blurProgram program], "imageIn"), 0));
-		OOGL(glBindVertexArray(quadTextureVAO));
+		OOGL(glBindTexture(GL_TEXTURE_2D, firstIteration ? _cxxUniverse->passthroughTextureID[1] : _cxxUniverse->pingpongColorbuffers[!horizontal]));  
+		OOGL(glUniform1i(glGetUniformLocation([_cxxUniverse->blurProgram program], "imageIn"), 0));
+		OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
 		OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
 		OOGL(glBindVertexArray(0));
 		horizontal = !horizontal;
 		firstIteration = NO;
 	}
-	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+	OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 	
 	
 	OOGL(glUseProgram(final));
 
 	OOGL(glActiveTexture(GL_TEXTURE0));
-	OOGL(glBindTexture(GL_TEXTURE_2D, passthroughTextureID[0]));
+	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->passthroughTextureID[0]));
 	OOGL(glUniform1i(glGetUniformLocation(final, "scene"), 0));
 	OOGL(glUniform1i(glGetUniformLocation(final, "bloom"), [self bloom]));
 	OOGL(glUniform1f(glGetUniformLocation(final, "uTime"), [self getTime]));
 	OOGL(glUniform2fv(glGetUniformLocation(final, "uResolution"), 1, fboResolution));
 	OOGL(glUniform1i(glGetUniformLocation(final, "uPostFX"), [self currentPostFX]));
 #if OOLITE_WINDOWS
-	if([gameView hdrOutput])
+	if([_cxxUniverse->gameView hdrOutput])
 	{
-		OOGL(glUniform1f(glGetUniformLocation(final, "uMaxBrightness"), [gameView hdrMaxBrightness]));
-		OOGL(glUniform1f(glGetUniformLocation(final, "uPaperWhiteBrightness"), [gameView hdrPaperWhiteBrightness]));
-		OOGL(glUniform1i(glGetUniformLocation(final, "uHDRToneMapper"), [gameView hdrToneMapper]));
+		OOGL(glUniform1f(glGetUniformLocation(final, "uMaxBrightness"), [_cxxUniverse->gameView hdrMaxBrightness]));
+		OOGL(glUniform1f(glGetUniformLocation(final, "uPaperWhiteBrightness"), [_cxxUniverse->gameView hdrPaperWhiteBrightness]));
+		OOGL(glUniform1i(glGetUniformLocation(final, "uHDRToneMapper"), [_cxxUniverse->gameView hdrToneMapper]));
 	}
 #endif
-	OOGL(glUniform1i(glGetUniformLocation(final, "uSDRToneMapper"), [gameView sdrToneMapper]));
+	OOGL(glUniform1i(glGetUniformLocation(final, "uSDRToneMapper"), [_cxxUniverse->gameView sdrToneMapper]));
 	
 	OOGL(glActiveTexture(GL_TEXTURE1));
-	OOGL(glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]));
+	OOGL(glBindTexture(GL_TEXTURE_2D, _cxxUniverse->pingpongColorbuffers[!horizontal]));
 	OOGL(glUniform1i(glGetUniformLocation(final, "bloomBlur"), 1));
-	OOGL(glUniform1f(glGetUniformLocation(final, "uSaturation"), [gameView colorSaturation]));
+	OOGL(glUniform1f(glGetUniformLocation(final, "uSaturation"), [_cxxUniverse->gameView colorSaturation]));
 	
-	OOGL(glBindVertexArray(quadTextureVAO));
+	OOGL(glBindVertexArray(_cxxUniverse->quadTextureVAO));
 	OOGL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
 	
 	// restore GL_TEXTURE1 to 0, just in case we are returning from a
@@ -806,253 +1036,34 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGL(glEnable(GL_BLEND));
 }
 
-- (id) initWithGameView:(MyOpenGLView *)inGameView
-{
-	if (gSharedUniverse != nil)
-	{
-		[self release];
-		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one Universe to exist at a time.", __PRETTY_FUNCTION__];
-	}
-	
-	OO_DEBUG_PROGRESS("Universe initWithGameView:");
-	
-	self = [super init];
-	if (self == nil)  return nil;
-	
-	_doingStartUp = YES;
-
-	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
-	
-	oo::Defaults &prefs = oo::Defaults::standard();
-	
-	// prefs value no longer used - per save game but startup needs to
-	// be non-strict
-	useAddOns = std::string(SCENARIO_OXP_DEFINITION_ALL);
-	
-	[self setGameView:inGameView];
-	gSharedUniverse = self;
-	
-	allPlanets.clear();
-	allStations.clear();
-	
-	OOCPUInfoInit();
-	[OOJoystickManager sharedStickHandler];
-	
-	// init OpenGL extension manager (must be done before any other threads might use it)
-	[OOOpenGLExtensionManager sharedManager];
-	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(prefs.object("detailLevel").isNull() ? [[OOOpenGLExtensionManager sharedManager] defaultDetailLevel] : static_cast<unsigned int>(prefs.integerForKey("detailLevel")))];
-								
-	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
-	
-	[OOMaterial setUp];
-	
-	// Preload cache
-	[OOCacheManager sharedCache];
-	
-#if OOLITE_SPEECH_SYNTH
-	OO_LOG("speech.synthesis", "Spoken messages are {}.", (prefs.boolForKey("speech_on") ? "on" : "off"));
-#endif
-	
-	// init the Resource Manager
-	[ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths if changed
-	
-	// Set up the internal game strings
-	[self loadDescriptions];
-	// DESC expansion is now possible!
-	
-	// load starting saves
-	[self loadScenarios];
-
-	autoSave = prefs.boolForKey("autosave");
-	wireframeGraphics = prefs.boolForKey("wireframe-graphics");
-	doProcedurallyTexturedPlanets = prefs.object("procedurally-textured-planets").isNull() ? YES : prefs.boolForKey("procedurally-textured-planets");
-	[inGameView setMsaa:prefs.boolForKey("anti-aliasing")];
-	OO_LOG("MSAA.setup", "Multisample anti-aliasing {}requested.", [inGameView msaa] ? "" : "not ");
-	[inGameView setFov:OOClamp_0_max_f(prefs.object("fov-value").isNull() ? 57.2f : prefs.floatForKey("fov-value"), MAX_FOV_DEG) fromFraction:NO];
-	if ([inGameView fov:NO] < MIN_FOV_DEG)  [inGameView setFov:MIN_FOV_DEG fromFraction:NO];
-
- 	[self setECMVisualFXEnabled:prefs.object("ecm-visual-fx").isNull() ? YES : prefs.boolForKey("ecm-visual-fx")];
-  	
-	// Set up speech synthesizer.
-#if OOLITE_SPEECH_SYNTH
-#if OOLITE_MAC_OS_X
-	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0),
-	^{
-		/*
-			NSSpeechSynthesizer can take over a second on an SSD and several
-			seconds on an HDD for a cold start, and a third of a second upward
-			for a warm start. There are no particular thread safety consider-
-			ations documented for NSSpeechSynthesizer, so I'm assuming the
-			default one-thread-at-a-time access rule applies.
-			-- Ahruman 2012-09-13
-		*/
-		OO_LOG("speech.setup.begin", "Starting to set up speech synthesizer.");
-		NSSpeechSynthesizer *synth = [[NSSpeechSynthesizer alloc] init];
-		OO_LOG("speech.setup.end", "Finished setting up speech synthesizer.");
-		speechSynthesizer = synth;
-	});
-#elif OOLITE_ESPEAK
-	int volume = [OOSound masterVolume] * 100;
-	espeak_SetParameter(espeakPUNCTUATION, espeakPUNCT_NONE, 0);
-	espeak_SetParameter(espeakVOLUME, volume, 0);
-	espeak_voices = espeak_ListVoices(NULL);
-	for (espeak_voice_count = 0;
-	     espeak_voices[espeak_voice_count];
-	     ++espeak_voice_count)
-		/**/;
-#endif
-#endif
-	
-	[[GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
-	// Load ship data
-	
-	[OOShipRegistry sharedRegistry];
-	
-	entities.reserve(MAX_NUMBER_OF_ENTITIES);
-	
-	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
-	
-	// this MUST have the default no. of rows else the GUI_ROW macros in PlayerEntity.h need modification
-	gui = [[GuiDisplayGen alloc] init]; // alloc retains
-	comm_log_gui = [[GuiDisplayGen alloc] init]; // alloc retains
-	
-	missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
-
-	waypoints.clear();
-	
-	[self setUpSettings];
-	
-	// can't do this here as it might lock an OXZ open
-	// [self preloadSounds];	// Must be after setUpSettings.
-	
-	// Preload particle effect textures:
-	[OOLightParticleEntity setUpTexture];
-	[OOFlashEffectEntity setUpTexture];
-
-	
-	// set up cargopod templates
-	[self setUpCargoPods];
-
-	PlayerEntity *player = [PlayerEntity sharedPlayer];
-	[player deferredInit];
-	[self addEntity:player];
-	
-	[player setStatus:STATUS_START_GAME];
-	[player setShowDemoShips: YES];
-	
-	[self setUpInitialUniverse];
-	
-	universeRegion = [[CollisionRegion alloc] initAsUniverse];
-	entitiesDeadThisUpdate.clear();
-	framesDoneThisUpdate = 0;
-	drawCounter = 0;
-	
-	[[GameController sharedController] cxx_logProgress:OO_DESC("initializing-debug-support")];
-	OOInitDebugSupport();
-	
-	[[GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
-	[player completeSetUp];
-	
-	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
-	[self populateNormalSpace];
-	
-	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
-	
-#if OO_LOCALIZATION_TOOLS
-	[self runLocalizationTools];
-#if DEBUG_GRAPHVIZ
-	[self dumpDebugGraphViz];
-#endif
-#endif
-	
-	[player startUpComplete];
-	_doingStartUp = NO;
-	
-	return self;
-}
-
-
-- (void) dealloc
-{
-	gSharedUniverse = nil;
-	
-	currentMessage.reset();
-	
-	[gui release];
-	[message_gui release];
-	[comm_log_gui release];
-	
-	entities.clear();
-
-	[commodities release];
-	
-	customSounds = oo::PList();
-	globalSettings = oo::PList();
-	[systemManager release];
-	demo_ships = oo::PList();
-	screenBackgrounds = oo::PList();
-	[gameView release];
-	allPlanets.clear();
-	allStations.clear();
-
-	activeWormholes.clear();
-	characterPool.clear();
-	[universeRegion release];
-
-	DESTROY(_firstBeacon);
-	DESTROY(_lastBeacon);
-	waypoints.clear();
-	
-	unsigned i;
-	for (i = 0; i < 256; i++)  system_names[i].reset();
-	
-	entitiesDeadThisUpdate.clear();
-
-	[[OOCacheManager sharedCache] flush];
-	
-#if OOLITE_SPEECH_SYNTH
-	speechArray = oo::PList();
-#if OOLITE_MAC_OS_X
-	[speechSynthesizer release];
-#elif OOLITE_ESPEAK
-	espeak_Cancel();
-#endif
-#endif
-
-	[self deleteOpenGLObjects];
-	
-	[super dealloc];
-}
-
-
 - (NSUInteger) sessionID
 {
-	return _sessionID;
+	return _cxxUniverse->_sessionID;
 }
 
 
 - (BOOL) doingStartUp
 {
-	return _doingStartUp;
+	return _cxxUniverse->_doingStartUp;
 }
 
 
 - (BOOL) doProcedurallyTexturedPlanets
 {
-	return doProcedurallyTexturedPlanets;
+	return _cxxUniverse->doProcedurallyTexturedPlanets;
 }
 
 
 - (void) setDoProcedurallyTexturedPlanets:(BOOL) value
 {
-	doProcedurallyTexturedPlanets = !!value;	// ensure yes or no
-	oo::Defaults::standard().setBool("procedurally-textured-planets", doProcedurallyTexturedPlanets);
+	_cxxUniverse->doProcedurallyTexturedPlanets = !!value;	// ensure yes or no
+	oo::Defaults::standard().setBool("procedurally-textured-planets", _cxxUniverse->doProcedurallyTexturedPlanets);
 }
 
 
 - (std::optional<std::string>) cxx_useAddOns
 {
-	return useAddOns;
+	return _cxxUniverse->useAddOns;
 }
 
 
@@ -1064,11 +1075,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force
 {
-	if (!force && newUse == useAddOns)
+	if (!force && newUse == _cxxUniverse->useAddOns)
 	{
 		return YES;
 	}
-	useAddOns = newUse;
+	_cxxUniverse->useAddOns = newUse;
 
 	return [self reinitAndShowDemo:!saveGame];
 }
@@ -1077,7 +1088,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (NSUInteger) entityCount
 {
-	return entities.size();
+	return _cxxUniverse->entities.size();
 }
 
 
@@ -1085,29 +1096,29 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) debugDumpEntities
 {
 	int				i;
-	int				show_count = n_entities;
+	int				show_count = _cxxUniverse->n_entities;
 	
 	if (!oo::log::willDisplay("universe.objectDump"))  return;
 	
-	OO_LOG("universe.objectDump", "DEBUG: Entity Dump - [entities count] = {},\tn_entities = {}", static_cast<size_t>(entities.size()), static_cast<unsigned>(n_entities));
+	OO_LOG("universe.objectDump", "DEBUG: Entity Dump - [entities count] = {},\tn_entities = {}", static_cast<size_t>(_cxxUniverse->entities.size()), static_cast<unsigned>(_cxxUniverse->n_entities));
 	
 	OOLogIndent();
 	for (i = 0; i < show_count; i++)
 	{
-		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [sortedEntities[i] descriptionForObjDump].value_or("(null)"));
+		OO_LOG("universe.objectDump", "Ent:{:4}  {}", static_cast<unsigned>(i), [_cxxUniverse->sortedEntities[i] descriptionForObjDump].value_or("(null)"));
 	}
 	OOLogOutdent();
 	
-	if (entities.size() != n_entities)
+	if (_cxxUniverse->entities.size() != _cxxUniverse->n_entities)
 	{
-		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::PListFromObjects(entities)));
+		OO_LOG("universe.objectDump", "entities = {}", oo::DescriptionOf(oo::PListFromObjects(_cxxUniverse->entities)));
 	}
 }
 
 
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList
 {
-	return entities;
+	return _cxxUniverse->entities;
 }
 #endif
 
@@ -1122,9 +1133,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if ([player status] == STATUS_DOCKED)
 	{
-		if ([gui cxx_setForegroundTextureKey:"paused_docked_overlay"])
+		if ([_cxxUniverse->gui cxx_setForegroundTextureKey:"paused_docked_overlay"])
 		{
-			[gui drawGUI:1.0 drawCursor:NO];
+			[_cxxUniverse->gui drawGUI:1.0 drawCursor:NO];
 		}
 		else
 		{
@@ -1134,9 +1145,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	else
 	{
-		if ([player guiScreen] != GUI_SCREEN_MAIN && [gui cxx_setForegroundTextureKey:"paused_overlay"])
+		if ([player guiScreen] != GUI_SCREEN_MAIN && [_cxxUniverse->gui cxx_setForegroundTextureKey:"paused_overlay"])
 		{
-			[gui drawGUI:1.0 drawCursor:NO];
+			[_cxxUniverse->gui drawGUI:1.0 drawCursor:NO];
 		}
 		else
 		{
@@ -1233,12 +1244,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (dockedStation && !interstel)
 		{	// jump to the nearest system
 			[player setSystemID:sys];
-			closeSystems.reset();
+			_cxxUniverse->closeSystems.reset();
 			[self setSystemTo: sys];
 			int index = 0;
-			while (entities.size() > 2)
+			while (_cxxUniverse->entities.size() > 2)
 			{
-				Entity *ent = entities[index].get();
+				Entity *ent = _cxxUniverse->entities[index].get();
 				if ((ent != player)&&(ent != dockedStation))
 				{
 					if (ent->_cxxEntity->isStation)  // clear out queues
@@ -1288,8 +1299,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 	}
 	
-	if(!autoSaveNow) [self setViewDirection:VIEW_FORWARD];
-	displayGUI = NO;
+	if(!_cxxUniverse->autoSaveNow) [self setViewDirection:VIEW_FORWARD];
+	_cxxUniverse->displayGUI = NO;
 	
 	//reset atmospherics in case we ejected while we were in the atmophere
 	[UNIVERSE setSkyColorRed:0.0f		// back to black
@@ -1306,7 +1317,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	//
 	// check the player is still around!
 	//
-	if (entities.empty())
+	if (_cxxUniverse->entities.empty())
 	{
 		/*- the player ship -*/
 		player = [[PlayerEntity alloc] init];	// alloc retains!
@@ -1330,12 +1341,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// the printed lines go to the player's comm log
 	std::vector<std::string> printedLines;
-	[comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str())
+	[_cxxUniverse->comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:_cxxUniverse->systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str())
 		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:&printedLines];
 	std::vector<std::string> *commLog = [player cxx_commLog];
 	if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 	
-	displayGUI = NO;
+	_cxxUniverse->displayGUI = NO;
 }
 
 
@@ -1346,7 +1357,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	//
 	// check the player is still around!
 	//
-	if (entities.empty())
+	if (_cxxUniverse->entities.empty())
 	{
 		/*- the player ship -*/
 		player = [[PlayerEntity alloc] init];	// alloc retains!
@@ -1370,7 +1381,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	[self setViewDirection:VIEW_FORWARD];
 	
-	displayGUI = NO;
+	_cxxUniverse->displayGUI = NO;
 }
 
 
@@ -1388,11 +1399,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	PlayerEntity*		player = PLAYER;
 	Quaternion			randomQ;
 	
-	const std::string	override_key = *[self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:galaxyID];
+	const std::string	override_key = *[self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:_cxxUniverse->galaxyID];
 
-	const oo::PList systeminfo = [systemManager cxx_getPropertiesForSystemKey:override_key];
+	const oo::PList systeminfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystemKey:override_key];
 	
-	[universeRegion clearSubregions];
+	[_cxxUniverse->universeRegion clearSubregions];
 	
 	// fixed entities (part of the graphics system really) come first...
 	
@@ -1412,7 +1423,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[self addEntity:thing];
 	[thing release];
 	
-	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
+	_cxxUniverse->ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
 	[self setLighting];	// also sets initial lights positions.
 
 	OO_LOG(kOOLogUniversePopulateWitchspace, "{}", "Populating witchspace ...");
@@ -1420,7 +1431,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[self clearSystemPopulator];
 	const std::string populator = systeminfo.get<std::string>("populator", "interstellarSpaceWillPopulate");
-	system_repopulator = systeminfo.get<std::string>("repopulator", "interstellarSpaceWillRepopulate");
+	_cxxUniverse->system_repopulator = systeminfo.get<std::string>("repopulator", "interstellarSpaceWillRepopulate");
 	ooscript::Context context = OOJSAcquireContext();
 	[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
@@ -1440,7 +1451,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 	}
 	
-	next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
+	_cxxUniverse->next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
 
 	oo::log::outdentIf(kOOLogUniversePopulateWitchspace);
 }
@@ -1449,14 +1460,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (OOPlanetEntity *) setUpPlanet
 {
 	// set the system seed for random number generation
-	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
 	seed_for_planet_description(systemSeed);
 
 	// a copy of the system data, marked as the main planet (a bool, as -oo_setBool:forKey: stored it)
-	oo::PList planetDict = [systemManager cxx_getPropertiesForCurrentSystem];
+	oo::PList planetDict = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
 	if (!planetDict.isDict())  planetDict = oo::PList(oo::PList::Dict{});
 	(*planetDict.getIf<oo::PList::Dict>())["mainForLocalSystem"] = oo::PList(true);
-	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
+	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:_cxxUniverse->systemID];
 
 	double planet_zpos = planetDict.get<float>("planet_distance", 500000);
 	planet_zpos *= planetDict.get<float>("planet_distance_multiplier", 1.0);
@@ -1467,13 +1478,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[a_planet setPosition:(HPVector){ 0, 0, planet_zpos }];
 	[a_planet setEnergy:1000000.0];
 	
-	if (allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
+	if (_cxxUniverse->allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
 	{
-		OOPlanetEntity *tmp=allPlanets[0].get();
+		OOPlanetEntity *tmp=_cxxUniverse->allPlanets[0].get();
 		[self addEntity:a_planet];
-		std::erase(allPlanets, a_planet);
-		cachedPlanet=a_planet;
-		allPlanets[0] = oo::ObjCRef<OOPlanetEntity *>(a_planet);
+		std::erase(_cxxUniverse->allPlanets, a_planet);
+		_cxxUniverse->cachedPlanet=a_planet;
+		_cxxUniverse->allPlanets[0] = oo::ObjCRef<OOPlanetEntity *>(a_planet);
 		[self removeEntity:(Entity *)tmp];
 	}
 	else
@@ -1499,21 +1510,21 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	Vector				vf;
 	oo::PList	dict_object;
 
-	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+	const oo::PList		systeminfo = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
 	unsigned			techlevel = systeminfo.get<unsigned int>(std::string(KEY_TECHLEVEL));
 	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
 	OOColor				*bgcolor;
 	OOColor				*pale_bgcolor;
 	BOOL				sunGoneNova;
 	
-	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
 
 	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	
 	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
 
 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - clearSubRegions, sky, dust");
-	[universeRegion clearSubregions];
+	[_cxxUniverse->universeRegion clearSubregions];
 	
 	// fixed entities (part of the graphics system really) come first...
 	[self setSkyColorRed:0.0f
@@ -1563,7 +1574,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		h1 += 0.33;
 	}
 	
-	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
+	_cxxUniverse->ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
 
 	// pick a main sequence colour
 
@@ -1790,10 +1801,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	OO_DEBUG_POP_PROGRESS();
 	
-	cachedSun = a_sun;
-	cachedPlanet = a_planet;
-	cachedStation = a_station;
-	closeSystems.reset();
+	_cxxUniverse->cachedSun = a_sun;
+	_cxxUniverse->cachedPlanet = a_planet;
+	_cxxUniverse->cachedStation = a_station;
+	_cxxUniverse->closeSystems.reset();
 	OO_DEBUG_POP_PROGRESS();
 	
 	
@@ -1808,7 +1819,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) populateNormalSpace
 {	
-	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+	const oo::PList		systeminfo = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
 
 	BOOL sunGoneNova = systeminfo.get<bool>("sun_gone_nova");
 	// check for nova
@@ -1818,20 +1829,20 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		
 	 	HPVector v0 = make_HPvector(0,0,34567.89);
 	 	double min_safe_dist2 = 6000000.0 * 6000000.0;
-		HPVector sunPos = [cachedSun position];
-	 	while (HPmagnitude2(cachedSun->_cxxEntity->position) < min_safe_dist2)	// back off the planetary bodies
+		HPVector sunPos = [_cxxUniverse->cachedSun position];
+	 	while (HPmagnitude2(_cxxUniverse->cachedSun->_cxxEntity->position) < min_safe_dist2)	// back off the planetary bodies
 	 	{
 	 		v0.z *= 2.0;
 			
 	 		sunPos = HPvector_add(sunPos, v0);
-	 		[cachedSun setPosition:sunPos];  // also sets light origin
+	 		[_cxxUniverse->cachedSun setPosition:sunPos];  // also sets light origin
 			
 	 	}
 		
-	 	[self removeEntity:cachedPlanet];	// and Poof! it's gone
-	 	cachedPlanet = nil;	
-	 	[self removeEntity:cachedStation];	// also remove main station
-	 	cachedStation = nil;	
+	 	[self removeEntity:_cxxUniverse->cachedPlanet];	// and Poof! it's gone
+	 	_cxxUniverse->cachedPlanet = nil;	
+	 	[self removeEntity:_cxxUniverse->cachedStation];	// also remove main station
+	 	_cxxUniverse->cachedStation = nil;	
 	}
 
 	OO_DEBUG_PUSH_PROGRESS("setUpSpace - populate from hyperpoint");
@@ -1841,12 +1852,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	if ([PLAYER status] != STATUS_START_GAME)
 	{
 		const std::string populator = systeminfo.get<std::string>("populator", (sunGoneNova)?"novaSystemWillPopulate":"systemWillPopulate");
-		system_repopulator = systeminfo.get<std::string>("repopulator", (sunGoneNova)?"novaSystemWillRepopulate":"systemWillRepopulate");
+		_cxxUniverse->system_repopulator = systeminfo.get<std::string>("repopulator", (sunGoneNova)?"novaSystemWillRepopulate":"systemWillRepopulate");
 
 		ooscript::Context context = OOJSAcquireContext();
 		[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 		OOJSRelinquishContext(context);
-		[self populateSystemFromDictionariesWithSun:cachedSun andPlanet:cachedPlanet];
+		[self populateSystemFromDictionariesWithSun:_cxxUniverse->cachedSun andPlanet:_cxxUniverse->cachedPlanet];
 	}
 
 	OO_DEBUG_POP_PROGRESS();
@@ -1855,7 +1866,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
 	if (script_actions != nullptr)
 	{
-		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",TextOrNull([self cxx_getSystemName:systemID]).c_str()));
+		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",TextOrNull([self cxx_getSystemName:_cxxUniverse->systemID]).c_str()));
 		if (!OOEnforceStandards())
 		{
 			OO_DEBUG_PUSH_PROGRESS("setUpSpace - legacy script_actions");
@@ -1867,26 +1878,26 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 	}
 
-	next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
+	_cxxUniverse->next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
 }
 
 
 - (void) clearSystemPopulator
 {
-	populatorSettings = oo::PList(oo::PList::Dict{});
+	_cxxUniverse->populatorSettings = oo::PList(oo::PList::Dict{});
 }
 
 
 - (oo::PList) cxx_getPopulatorSettings
 {
-	return populatorSettings;
+	return _cxxUniverse->populatorSettings;
 }
 
 
 - (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting
 {
-	if (!populatorSettings.isDict())  populatorSettings = oo::PList(oo::PList::Dict{});
-	oo::PList::Dict &settings = *populatorSettings.getIf<oo::PList::Dict>();
+	if (!_cxxUniverse->populatorSettings.isDict())  _cxxUniverse->populatorSettings = oo::PList(oo::PList::Dict{});
+	oo::PList::Dict &settings = *_cxxUniverse->populatorSettings.getIf<oo::PList::Dict>();
 	if (setting.isNull())
 	{
 		settings.erase(key);
@@ -1900,17 +1911,17 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (BOOL) deterministicPopulation
 {
-	return deterministic_population;
+	return _cxxUniverse->deterministic_population;
 }
 
 
 - (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
 {
-	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
 	// A copy of the blocks (the callbacks may change the settings), in key byte order (was the
 	// dictionary's hash order), then stably sorted by priority: order-sensitive, the goldens decide.
 	std::vector<oo::PList> sortedBlocks;
-	if (const oo::PList::Dict *blocks = populatorSettings.getIf<oo::PList::Dict>())
+	if (const oo::PList::Dict *blocks = _cxxUniverse->populatorSettings.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[key, block] : *blocks)  sortedBlocks.push_back(block);
 	}
@@ -1923,11 +1934,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOJSPopulatorDefinition *pdef = nil;
 	for (const oo::PList &populator : sortedBlocks)
 	{
-		deterministic_population = populator.get<bool>("deterministic", NO);
+		_cxxUniverse->deterministic_population = populator.get<bool>("deterministic", NO);
 		if (EXPECT_NOT(sun == nil || planet == nil))
 		{
 			// needs to be a non-nova system, and not interstellar space
-			deterministic_population = NO;
+			_cxxUniverse->deterministic_population = NO;
 		}
 
 		locationSeed = populator.get<unsigned int>("locationSeed", 0);
@@ -1958,7 +1969,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				{
 					// not fixed coordinates and not seeded RNG; can't
 					// be deterministic
-					deterministic_population = NO;
+					_cxxUniverse->deterministic_population = NO;
 				}
 				if (sun == nil || planet == nil)
 				{
@@ -1981,7 +1992,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 	}
 	// nothing is deterministic once the populator is done
-	deterministic_population = NO;
+	_cxxUniverse->deterministic_population = NO;
 }
 
 
@@ -2129,14 +2140,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 {
 	OOAssert(UNIVERSE != nil, "Attempt to set ambient light level with a non yet existent universe.");
 	
-	ambientLightLevel = OOClamp_0_max_f(newValue, 10.0f);
+	_cxxUniverse->ambientLightLevel = OOClamp_0_max_f(newValue, 10.0f);
 	return;
 }
 
 
 - (float) ambientLightLevel
 {
-	return ambientLightLevel;
+	return _cxxUniverse->ambientLightLevel;
 }
 
 
@@ -2164,17 +2175,17 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	GLfloat			sun_ambient[] = {0.0, 0.0, 0.0, 1.0};	// overridden later in code
 	int i;
 	
-	for (i = n_entities - 1; i > 0; i--)
-		if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[SkyEntity class]]))
-			the_sky = (SkyEntity*)sortedEntities[i];
+	for (i = _cxxUniverse->n_entities - 1; i > 0; i--)
+		if ((_cxxUniverse->sortedEntities[i]) && ([_cxxUniverse->sortedEntities[i] isKindOfClass:[SkyEntity class]]))
+			the_sky = (SkyEntity*)_cxxUniverse->sortedEntities[i];
 	
 	if (the_sun)
 	{
-		[the_sun getDiffuseComponents:sun_diffuse];
-		[the_sun getSpecularComponents:sun_specular];
+		[the_sun getDiffuseComponents:_cxxUniverse->sun_diffuse];
+		[the_sun getSpecularComponents:_cxxUniverse->sun_specular];
 		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
-		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
-		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
+		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, _cxxUniverse->sun_diffuse));
+		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, _cxxUniverse->sun_specular));
 		sun_pos[0] = the_sun->_cxxEntity->position.x;
 		sun_pos[1] = the_sun->_cxxEntity->position.y;
 		sun_pos[2] = the_sun->_cxxEntity->position.z;
@@ -2182,12 +2193,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	else
 	{
 		// witchspace
-		stars_ambient[0] = 0.05;	stars_ambient[1] = 0.20;	stars_ambient[2] = 0.05;	stars_ambient[3] = 1.0;
-		sun_diffuse[0] = 0.85;	sun_diffuse[1] = 1.0;	sun_diffuse[2] = 0.85;	sun_diffuse[3] = 1.0;
-		sun_specular[0] = 0.95;	sun_specular[1] = 1.0;	sun_specular[2] = 0.95;	sun_specular[3] = 1.0;
+		_cxxUniverse->stars_ambient[0] = 0.05;	_cxxUniverse->stars_ambient[1] = 0.20;	_cxxUniverse->stars_ambient[2] = 0.05;	_cxxUniverse->stars_ambient[3] = 1.0;
+		_cxxUniverse->sun_diffuse[0] = 0.85;	_cxxUniverse->sun_diffuse[1] = 1.0;	_cxxUniverse->sun_diffuse[2] = 0.85;	_cxxUniverse->sun_diffuse[3] = 1.0;
+		_cxxUniverse->sun_specular[0] = 0.95;	_cxxUniverse->sun_specular[1] = 1.0;	_cxxUniverse->sun_specular[2] = 0.95;	_cxxUniverse->sun_specular[3] = 1.0;
 		OOGL(glLightfv(GL_LIGHT1, GL_AMBIENT, sun_ambient));
-		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
-		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
+		OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, _cxxUniverse->sun_diffuse));
+		OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, _cxxUniverse->sun_specular));
 	}
 	
 	OOGL(glLightfv(GL_LIGHT1, GL_POSITION, sun_pos));
@@ -2197,14 +2208,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		// ambient lighting!
 		GLfloat r,g,b,a;
 		[[the_sky skyColor] getRed:&r green:&g blue:&b alpha:&a];
-		r = r * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[0] * SUN_AMBIENT_INFLUENCE;
-		g = g * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[1] * SUN_AMBIENT_INFLUENCE;
-		b = b * (1.0 - SUN_AMBIENT_INFLUENCE) + sun_diffuse[2] * SUN_AMBIENT_INFLUENCE;
+		r = r * (1.0 - SUN_AMBIENT_INFLUENCE) + _cxxUniverse->sun_diffuse[0] * SUN_AMBIENT_INFLUENCE;
+		g = g * (1.0 - SUN_AMBIENT_INFLUENCE) + _cxxUniverse->sun_diffuse[1] * SUN_AMBIENT_INFLUENCE;
+		b = b * (1.0 - SUN_AMBIENT_INFLUENCE) + _cxxUniverse->sun_diffuse[2] * SUN_AMBIENT_INFLUENCE;
 		GLfloat ambient_level = [self ambientLightLevel];
-		stars_ambient[0] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + r) * (1.0 + r);
-		stars_ambient[1] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + g) * (1.0 + g);
-		stars_ambient[2] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + b) * (1.0 + b);
-		stars_ambient[3] = 1.0;
+		_cxxUniverse->stars_ambient[0] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + r) * (1.0 + r);
+		_cxxUniverse->stars_ambient[1] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + g) * (1.0 + g);
+		_cxxUniverse->stars_ambient[2] = ambient_level * SKY_AMBIENT_ADJUSTMENT * (1.0 + b) * (1.0 + b);
+		_cxxUniverse->stars_ambient[3] = 1.0;
 	}
 	
 	// light for demo ships display..
@@ -2212,7 +2223,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGL(glLightfv(GL_LIGHT0, GL_DIFFUSE, docked_light_diffuse));
 	OOGL(glLightfv(GL_LIGHT0, GL_SPECULAR, docked_light_specular));
 	OOGL(glLightfv(GL_LIGHT0, GL_POSITION, demo_light_position));	
-	OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, stars_ambient));
+	OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, _cxxUniverse->stars_ambient));
 }
 
 
@@ -2225,10 +2236,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) setMainLightPosition: (Vector) sunPos
 {
-	main_light_position[0] = sunPos.x;
-	main_light_position[1] = sunPos.y;
-	main_light_position[2] = sunPos.z;
-	main_light_position[3] = 1.0;
+	_cxxUniverse->main_light_position[0] = sunPos.x;
+	_cxxUniverse->main_light_position[1] = sunPos.y;
+	_cxxUniverse->main_light_position[2] = sunPos.z;
+	_cxxUniverse->main_light_position[3] = 1.0;
 }
 
 
@@ -3130,7 +3141,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category
 {
-	const oo::PList *categoryInfo = roleCategories.get<oo::PList::Array>(category);	// the category's roles, each once
+	const oo::PList *categoryInfo = _cxxUniverse->roleCategories.get<oo::PList::Array>(category);	// the category's roles, each once
 	if (categoryInfo == nullptr)
 	{
 		return NO;
@@ -3147,11 +3158,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) forceWitchspaceEntries
 {
 	unsigned i;
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		if (sortedEntities[i]->_cxxEntity->isShip)
+		if (_cxxUniverse->sortedEntities[i]->_cxxEntity->isShip)
 		{
-			ShipEntity *my_ship = (ShipEntity*)sortedEntities[i];
+			ShipEntity *my_ship = (ShipEntity*)_cxxUniverse->sortedEntities[i];
 			Entity* my_target = [my_ship primaryTarget];
 			if ([my_target isWormhole])
 			{
@@ -3179,9 +3190,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (GLfloat) safeWitchspaceExitDistance
 {
-	for (unsigned i = 0; i < n_entities; i++)
+	for (unsigned i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		Entity *e2 = sortedEntities[i];
+		Entity *e2 = _cxxUniverse->sortedEntities[i];
 		if ([e2 isShip] && [(ShipEntity*)e2 cxx_hasPrimaryRole:"buoy-witchpoint"])
 		{
 			return [(ShipEntity*)e2 collisionRadius] + MIN_DISTANCE_TO_BUOY;
@@ -3210,7 +3221,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.5];	//standard tunnel colour
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:0.0 blue:1.0 alpha:0.25];	//standard tunnel colour
 	
-	colorDesc = PListForKeyIn(globalSettings, "hyperspace_tunnel_color_1");	// +cxx_colorWithDescription: takes any description
+	colorDesc = PListForKeyIn(_cxxUniverse->globalSettings, "hyperspace_tunnel_color_1");	// +cxx_colorWithDescription: takes any description
 	if (!colorDesc.isNull())
 	{
 		color = [OOColor cxx_colorWithDescription:colorDesc];
@@ -3218,7 +3229,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		else  OO_LOG_WARN("hyperspaceTunnel.fromDict", "could not interpret \"{}\" as a colour.", oo::DescriptionOf(colorDesc));
 	}
 
-	colorDesc = PListForKeyIn(globalSettings, "hyperspace_tunnel_color_2");
+	colorDesc = PListForKeyIn(_cxxUniverse->globalSettings, "hyperspace_tunnel_color_2");
 	if (!colorDesc.isNull())
 	{
 		color = [OOColor cxx_colorWithDescription:colorDesc];
@@ -3263,26 +3274,26 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			ring->_cxxEntity->isImmuneToBreakPatternHide = NO;
 		}
 		[self addEntity:ring];
-		breakPatternCounter++;
+		_cxxUniverse->breakPatternCounter++;
 	}
 }
 
 
 - (BOOL) witchspaceBreakPattern
 {
-	return _witchspaceBreakPattern;
+	return _cxxUniverse->_witchspaceBreakPattern;
 }
 
 
 - (void) setWitchspaceBreakPattern:(BOOL)newValue
 {
-	_witchspaceBreakPattern = !!newValue;
+	_cxxUniverse->_witchspaceBreakPattern = !!newValue;
 }
 
 
 - (BOOL) dockingClearanceProtocolActive
 {
-	return _dockingClearanceProtocolActive;
+	return _cxxUniverse->_dockingClearanceProtocolActive;
 }
 
 
@@ -3296,7 +3307,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	 * clearance requirements seems unlikely to work entirely
 	 * correctly. To be fixed. */
 						   
-	for (const oo::ObjCRef<StationEntity *> &entry : allStations)
+	for (const oo::ObjCRef<StationEntity *> &entry : _cxxUniverse->allStations)
 	{
 		station = entry.get();
 		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:[station cxx_primaryRole].value_or("")];
@@ -3307,7 +3318,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 	}
 	
-	_dockingClearanceProtocolActive = !!newValue;
+	_cxxUniverse->_dockingClearanceProtocolActive = !!newValue;
 }
 
 
@@ -3403,7 +3414,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	// in status demo draw ships and display text
 	if (!justCobra)
 	{
-		demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
+		_cxxUniverse->demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
 		// always, even if it's the cobra, because it's repositioned
 		[self removeDemoShips];
 	}
@@ -3412,7 +3423,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		[player setStatus: STATUS_START_GAME];
 	}
 	[player setShowDemoShips: YES];
-	displayGUI = YES;
+	_cxxUniverse->displayGUI = YES;
 
 	if (justCobra)
 	{
@@ -3423,26 +3434,26 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	{
 		/*- demo ships - intro2 -*/
 
-		demo_ship_index = 0;
-		demo_ship_subindex = 0;
+		_cxxUniverse->demo_ship_index = 0;
+		_cxxUniverse->demo_ship_subindex = 0;
 
 		/* Try to set the initial list position to Cobra III if
 		 * available, and at least the Ships category. */
-		const oo::PList::Array *demoClasses = demo_ships.getIf<oo::PList::Array>();
+		const oo::PList::Array *demoClasses = _cxxUniverse->demo_ships.getIf<oo::PList::Array>();
 		if (demoClasses != nullptr)
 		{
 			for (NSUInteger k = 0; k < demoClasses->size(); k++)
 			{
 				const oo::PList &subList = (*demoClasses)[k];
-				if (OptionalStringIn(DemoShipEntry(demo_ships, k, 0), kOODemoShipClass) == "ship")
+				if (OptionalStringIn(DemoShipEntry(_cxxUniverse->demo_ships, k, 0), kOODemoShipClass) == "ship")
 				{
-					demo_ship_index = std::find(demoClasses->begin(), demoClasses->end(), subList) - demoClasses->begin();	// -indexOfObject:
+					_cxxUniverse->demo_ship_index = std::find(demoClasses->begin(), demoClasses->end(), subList) - demoClasses->begin();	// -indexOfObject:
 					const oo::PList::Array *shipEntries = subList.getIf<oo::PList::Array>();	// an array: its first entry was found above
 					for (const oo::PList &shipEntry : *shipEntries)
 					{
 						if (OptionalStringIn(shipEntry, kOODemoShipKey) == "cobra3-trader")
 						{
-							demo_ship_subindex = std::find(shipEntries->begin(), shipEntries->end(), shipEntry) - shipEntries->begin();	// -indexOfObject:
+							_cxxUniverse->demo_ship_subindex = std::find(shipEntries->begin(), shipEntries->end(), shipEntry) - shipEntries->begin();	// -indexOfObject:
 							break;
 						}
 					}
@@ -3452,7 +3463,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 
 
-		if (!demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
+		if (!_cxxUniverse->demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index, _cxxUniverse->demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
 		// stop consistency problems on the ship library screen
 		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
 		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
@@ -3472,14 +3483,14 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 			[ship setPositionX:0.0f y:0.0f z:3.6 * ship->_cxxEntity->collision_radius];
 		}
 		[ship setDemoShip: 1.0f];
-		[ship setDemoStartTime: universal_time];
+		[ship setDemoStartTime: _cxxUniverse->universal_time];
 		[ship setScanClass: CLASS_NO_DRAW];
 		[ship switchAITo:"nullAI.plist"];
 		if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
 		[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
 		// now override status
 		[ship setStatus:STATUS_COCKPIT_DISPLAY];
-		demo_ship = ship;
+		_cxxUniverse->demo_ship = ship;
 
 		[ship release];
 	}
@@ -3493,15 +3504,15 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	[self enterGUIViewModeWithMouseInteraction:NO];
 	if (!justCobra)
 	{
-		demo_stage = DEMO_SHOW_THING;
-		demo_stage_time = universal_time + 300.0;
+		_cxxUniverse->demo_stage = DEMO_SHOW_THING;
+		_cxxUniverse->demo_stage_time = _cxxUniverse->universal_time + 300.0;
 	}
 }
 
 
 - (oo::PList) demoShipData
 {
-	return DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex);
+	return DemoShipEntry(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index, _cxxUniverse->demo_ship_subindex);
 }
 
 
@@ -3511,7 +3522,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	tab_stops[0] = 0;
 	tab_stops[1] = 170;
 	tab_stops[2] = 340;
-	[gui setTabStops:tab_stops];
+	[_cxxUniverse->gui setTabStops:tab_stops];
 
 /*	[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor whiteColor] forRow:19]; */
@@ -3528,7 +3539,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	// clear rows
 	for (NSUInteger i=1;i<=26;i++)
 	{
-		[gui cxx_setText:"" forRow:i];
+		[_cxxUniverse->gui cxx_setText:"" forRow:i];
 	}
 
 	/* Row 1: ScanClass, Name, Summary */
@@ -3536,7 +3547,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	field1 = OOShipLibraryCategorySingular(override.value_or(std::string()));
 
 
-	field2 = [demo_ship cxx_shipClassName];
+	field2 = [_cxxUniverse->demo_ship cxx_shipClassName];
 
 
 	override = LibrarySetting(librarySettings, kOODemoShipSummary, nullptr);
@@ -3548,8 +3559,8 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	{
 		field3 = std::string();
 	}
-	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:1];
-	[gui setColor:[OOColor greenColor] forRow:1];
+	[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:1];
+	[_cxxUniverse->gui setColor:[OOColor greenColor] forRow:1];
 
 	// ship_data defaults to true for "ship" class, false for everything else
 	if (!librarySettings.get<bool>(kOODemoShipShipData, LibrarySetting(librarySettings, kOODemoShipClass, "ship") == "ship"))
@@ -3574,7 +3585,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibrarySpeed(demo_ship);
+			field1 = OOShipLibrarySpeed(_cxxUniverse->demo_ship);
 		}
 
 
@@ -3592,7 +3603,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryTurnRate(demo_ship);
+			field2 = OOShipLibraryTurnRate(_cxxUniverse->demo_ship);
 		}
 
 
@@ -3610,11 +3621,11 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibraryCargo(demo_ship);
+			field3 = OOShipLibraryCargo(_cxxUniverse->demo_ship);
 		}
 
 
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:3];
+		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:3];
 
 		/* Row 3: recharge rate, energy banks, witchspace */
 		override = LibrarySetting(librarySettings, kOODemoShipGenerator, nullptr);
@@ -3631,7 +3642,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibraryGenerator(demo_ship);
+			field1 = OOShipLibraryGenerator(_cxxUniverse->demo_ship);
 		}
 
 
@@ -3649,7 +3660,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryShields(demo_ship);
+			field2 = OOShipLibraryShields(_cxxUniverse->demo_ship);
 		}
 
 
@@ -3667,11 +3678,11 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibraryWitchspace(demo_ship);
+			field3 = OOShipLibraryWitchspace(_cxxUniverse->demo_ship);
 		}
 
 
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:4];
+		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:4];
 
 
 		/* Row 4: weapons, turrets, size */
@@ -3689,7 +3700,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibraryWeapons(demo_ship);
+			field1 = OOShipLibraryWeapons(_cxxUniverse->demo_ship);
 		}
 
 		override = LibrarySetting(librarySettings, kOODemoShipTurrets, nullptr);
@@ -3706,7 +3717,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryTurrets(demo_ship);
+			field2 = OOShipLibraryTurrets(_cxxUniverse->demo_ship);
 		}
 
 		override = LibrarySetting(librarySettings, kOODemoShipSize, nullptr);
@@ -3723,31 +3734,31 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibrarySize(demo_ship);
+			field3 = OOShipLibrarySize(_cxxUniverse->demo_ship);
 		}
 
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
+		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
 	}
 
 	override = LibrarySetting(librarySettings, kOODemoShipDescription, nullptr);
 	if (override.has_value())
 	{
-		[gui cxx_addLongText:ExpandText(*override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
+		[_cxxUniverse->gui cxx_addLongText:ExpandText(*override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
 	}
 
 
 	// line 19: ship categories
-	field1 = oo::str::format("<-- %s",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+demo_ships.count()-1)%demo_ships.count())).c_str());
-	field2 = OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, demo_ship_index));
-	field3 = oo::str::format("%s -->",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+1)%demo_ships.count())).c_str());
+	field1 = oo::str::format("<-- %s",OOShipLibraryCategoryPlural(DemoClassAt(_cxxUniverse->demo_ships, (_cxxUniverse->demo_ship_index+_cxxUniverse->demo_ships.count()-1)%_cxxUniverse->demo_ships.count())).c_str());
+	field2 = OOShipLibraryCategoryPlural(DemoClassAt(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index));
+	field3 = oo::str::format("%s -->",OOShipLibraryCategoryPlural(DemoClassAt(_cxxUniverse->demo_ships, (_cxxUniverse->demo_ship_index+1)%_cxxUniverse->demo_ships.count())).c_str());
 
-	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:19];
-	[gui setColor:[OOColor greenColor] forRow:19];
+	[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:19];
+	[_cxxUniverse->gui setColor:[OOColor greenColor] forRow:19];
 
 	// lines 21-25: ship names
-	const oo::PList *subListEntry = demo_ships.at(demo_ship_index);
+	const oo::PList *subListEntry = _cxxUniverse->demo_ships.at(_cxxUniverse->demo_ship_index);
 	const oo::PList subList = (subListEntry != nullptr) ? *subListEntry : oo::PList();
-	NSUInteger i,start = demo_ship_subindex - (demo_ship_subindex%5);
+	NSUInteger i,start = _cxxUniverse->demo_ship_subindex - (_cxxUniverse->demo_ship_subindex%5);
 	NSUInteger end = start + 4;
 	if (end >= subList.count())
 	{
@@ -3760,14 +3771,14 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	{
 		const oo::PList *shipEntry = subList.at(i);
 		field2 = (shipEntry != nullptr) ? OptionalStringIn(*shipEntry, kOODemoShipName) : std::nullopt;
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:row];
-		if (i == demo_ship_subindex)
+		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:row];
+		if (i == _cxxUniverse->demo_ship_subindex)
 		{
-			[gui setColor:[OOColor yellowColor] forRow:row];
+			[_cxxUniverse->gui setColor:[OOColor yellowColor] forRow:row];
 		}
 		else
 		{
-			[gui setColor:[OOColor whiteColor] forRow:row];
+			[_cxxUniverse->gui setColor:[OOColor whiteColor] forRow:row];
 		}
 		row++;
 	}
@@ -3775,13 +3786,13 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 	field2 = "...";
 	if (start > 0)
 	{
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:20];
-		[gui setColor:[OOColor whiteColor] forRow:20];
+		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:20];
+		[_cxxUniverse->gui setColor:[OOColor whiteColor] forRow:20];
 	}
 	if (end < subList.count()-1)
 	{
-		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:26];
-		[gui setColor:[OOColor whiteColor] forRow:26];
+		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:26];
+		[_cxxUniverse->gui setColor:[OOColor whiteColor] forRow:26];
 	}
 
 }
@@ -3789,35 +3800,35 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 
 - (void) selectIntro2Previous
 {
-	demo_stage = DEMO_SHOW_THING;
-	NSUInteger subcount = DemoClassCount(demo_ships, demo_ship_index);
-	demo_ship_subindex = (demo_ship_subindex + subcount - 2) % subcount;
-	demo_stage_time  = universal_time - 1.0;	// force change
+	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
+	NSUInteger subcount = DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index);
+	_cxxUniverse->demo_ship_subindex = (_cxxUniverse->demo_ship_subindex + subcount - 2) % subcount;
+	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
 }
 
 
 - (void) selectIntro2PreviousCategory
 {
-	demo_stage = DEMO_SHOW_THING;
-	demo_ship_index = (demo_ship_index + demo_ships.count() - 1) % demo_ships.count();
-	demo_ship_subindex = DemoClassCount(demo_ships, demo_ship_index) - 1;
-	demo_stage_time  = universal_time - 1.0;	// force change
+	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
+	_cxxUniverse->demo_ship_index = (_cxxUniverse->demo_ship_index + _cxxUniverse->demo_ships.count() - 1) % _cxxUniverse->demo_ships.count();
+	_cxxUniverse->demo_ship_subindex = DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index) - 1;
+	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
 }
 
 
 - (void) selectIntro2NextCategory
 {
-	demo_stage = DEMO_SHOW_THING;
- 	demo_ship_index = (demo_ship_index + 1) % demo_ships.count();
-	demo_ship_subindex = DemoClassCount(demo_ships, demo_ship_index) - 1;
-	demo_stage_time  = universal_time - 1.0;	// force change
+	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
+ 	_cxxUniverse->demo_ship_index = (_cxxUniverse->demo_ship_index + 1) % _cxxUniverse->demo_ships.count();
+	_cxxUniverse->demo_ship_subindex = DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index) - 1;
+	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
 }
 
 
 - (void) selectIntro2Next
 {
-	demo_stage = DEMO_SHOW_THING;
-	demo_stage_time  = universal_time - 1.0;	// force change
+	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
+	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
 }
 
 
@@ -3835,12 +3846,12 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (StationEntity *) station
 {
-	if (cachedSun != nil && cachedStation == nil)
+	if (_cxxUniverse->cachedSun != nil && _cxxUniverse->cachedStation == nil)
 	{
-		cachedStation = [self findOneEntityMatchingPredicate:IsCandidateMainStationPredicate
+		_cxxUniverse->cachedStation = [self findOneEntityMatchingPredicate:IsCandidateMainStationPredicate
 												   parameter:nil];
 	}
-	return cachedStation;
+	return _cxxUniverse->cachedStation;
 }
 
 
@@ -3880,39 +3891,39 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (OOPlanetEntity *) planet
 {
-	if (cachedPlanet == nil && allPlanets.size() > 0)
+	if (_cxxUniverse->cachedPlanet == nil && _cxxUniverse->allPlanets.size() > 0)
 	{
-		cachedPlanet = allPlanets[0].get();
+		_cxxUniverse->cachedPlanet = _cxxUniverse->allPlanets[0].get();
 	}
-	return cachedPlanet;
+	return _cxxUniverse->cachedPlanet;
 }
 
 
 - (OOSunEntity *) sun
 {
-	if (cachedSun == nil)
+	if (_cxxUniverse->cachedSun == nil)
 	{
-		cachedSun = [self findOneEntityMatchingPredicate:IsSunPredicate parameter:nil];
+		_cxxUniverse->cachedSun = [self findOneEntityMatchingPredicate:IsSunPredicate parameter:nil];
 	}
-	return cachedSun;
+	return _cxxUniverse->cachedSun;
 }
 
 
 - (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets
 {
-	return allPlanets;
+	return _cxxUniverse->allPlanets;
 }
 
 
 - (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations
 {
-	return allStations;
+	return _cxxUniverse->allStations;
 }
 
 
 - (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes
 {
-	return activeWormholes;
+	return _cxxUniverse->activeWormholes;
 }
 
 
@@ -3932,7 +3943,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	
 	StationEntity *theStation = [self station];
 	if (theStation != nil)  theStation->_cxxEntity->isExplicitlyNotMainStation = YES;
-	cachedStation = nil;
+	_cxxUniverse->cachedStation = nil;
 }
 
 
@@ -3954,7 +3965,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (Entity <OOBeaconEntity> *) firstBeacon
 {
-	return [_firstBeacon weakRefUnderlyingObject];
+	return [_cxxUniverse->_firstBeacon weakRefUnderlyingObject];
 }
 
 
@@ -3965,15 +3976,15 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		[beacon setPrevBeacon:nil];
 		[beacon setNextBeacon:[self firstBeacon]];
 		[[self firstBeacon] setPrevBeacon:beacon];
-		[_firstBeacon release];
-		_firstBeacon = [beacon weakRetain];
+		[_cxxUniverse->_firstBeacon release];
+		_cxxUniverse->_firstBeacon = [beacon weakRetain];
 	}
 }
 
 
 - (Entity <OOBeaconEntity> *) lastBeacon
 {
-	return [_lastBeacon weakRefUnderlyingObject];
+	return [_cxxUniverse->_lastBeacon weakRefUnderlyingObject];
 }
 
 
@@ -3984,8 +3995,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		[beacon setNextBeacon:nil];
 		[beacon setPrevBeacon:[self lastBeacon]];
 		[[self lastBeacon] setNextBeacon:beacon];
-		[_lastBeacon release];
-		_lastBeacon = [beacon weakRetain];
+		[_cxxUniverse->_lastBeacon release];
+		_cxxUniverse->_lastBeacon = [beacon weakRetain];
 	}
 }
 
@@ -4034,7 +4045,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints
 {
-	return waypoints;
+	return _cxxUniverse->waypoints;
 }
 
 
@@ -4042,8 +4053,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	OOWaypointEntity *waypoint = nil;
 	BOOL preserveCompass = NO;
-	const auto existing = waypoints.find(key);
-	if (existing != waypoints.end())  waypoint = existing->second.get();
+	const auto existing = _cxxUniverse->waypoints.find(key);
+	if (existing != _cxxUniverse->waypoints.end())  waypoint = existing->second.get();
 	if (waypoint != nil)
 	{
 		if ([PLAYER compassTarget] == waypoint)
@@ -4051,7 +4062,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			preserveCompass = YES;
 		}
 		[self removeEntity:waypoint];
-		waypoints.erase(key);
+		_cxxUniverse->waypoints.erase(key);
 	}
 	if (!definition.isNull())
 	{
@@ -4059,7 +4070,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
-			waypoints[key] = oo::ObjCRef<OOWaypointEntity *>(waypoint);
+			_cxxUniverse->waypoints[key] = oo::ObjCRef<OOWaypointEntity *>(waypoint);
 			if (preserveCompass)
 			{
 				[PLAYER setCompassTarget:waypoint];
@@ -4072,30 +4083,30 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (GLfloat *) skyClearColor
 {
-	return skyClearColor;
+	return _cxxUniverse->skyClearColor;
 }
 
 
 - (void) setSkyColorRed:(GLfloat)red green:(GLfloat)green blue:(GLfloat)blue alpha:(GLfloat)alpha
 {
-	skyClearColor[0] = red;
-	skyClearColor[1] = green;
-	skyClearColor[2] = blue;
-	skyClearColor[3] = alpha;
+	_cxxUniverse->skyClearColor[0] = red;
+	_cxxUniverse->skyClearColor[1] = green;
+	_cxxUniverse->skyClearColor[2] = blue;
+	_cxxUniverse->skyClearColor[3] = alpha;
 	[self setAirResistanceFactor:alpha];
 }
 
 
 - (BOOL) breakPatternOver
 {
-	return (breakPatternCounter == 0);
+	return (_cxxUniverse->breakPatternCounter == 0);
 }
 
 
 - (BOOL) breakPatternHide
 {
 	Entity* player = PLAYER;
-	return ((breakPatternCounter > 5)||(!player)||([player status] == STATUS_DOCKING));
+	return ((_cxxUniverse->breakPatternCounter > 5)||(!player)||([player status] == STATUS_DOCKING));
 }
 
 
@@ -4418,7 +4429,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role
 {
-	return OptionalStringIn(autoAIMap, role);
+	return OptionalStringIn(_cxxUniverse->autoAIMap, role);
 }
 
 
@@ -4432,7 +4443,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
  */
 - (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &)eq_key
 {
-	if (const oo::PList::Array *items = equipmentData.getIf<oo::PList::Array>())
+	if (const oo::PList::Array *items = _cxxUniverse->equipmentData.getIf<oo::PList::Array>())
 	{
 		for (const oo::PList &itemData : *items)
 		{
@@ -4450,7 +4461,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (OOCommodities *) commodities
 {
-	return commodities;
+	return _cxxUniverse->commodities;
 }
 
 
@@ -4495,15 +4506,15 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	*/
 	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
 	accumulator.reserve(how_many);
-	NSUInteger		i=0, commodityCount = [commodityMarket count];
+	NSUInteger		i=0, commodityCount = [_cxxUniverse->commodityMarket count];
 	OOCargoQuantity quantities[commodityCount];
 	OOCargoQuantity total_quantity = 0;
 
-	const std::vector<std::string>	goodsKeys = [commodityMarket goods];
+	const std::vector<std::string>	goodsKeys = [_cxxUniverse->commodityMarket goods];
 
 	for (const std::string &goodsKey : goodsKeys)
 	{
-		OOCargoQuantity q = [commodityMarket cxx_quantityForGood:goodsKey];
+		OOCargoQuantity q = [_cxxUniverse->commodityMarket cxx_quantityForGood:goodsKey];
 		if (scarce)
 		{
 			if (q < 64)  q = 64 - q;
@@ -4511,7 +4522,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		// legal YES restricts (almost) only to legal goods
 		// legal NO allows illegal goods, but not necessarily a full hold
-		if (legal && [commodityMarket cxx_exportLegalityForGood:goodsKey] > 0)
+		if (legal && [_cxxUniverse->commodityMarket cxx_exportLegalityForGood:goodsKey] > 0)
 		{
 			q &= 1; // keep a very small chance, sometimes
 		}
@@ -4542,8 +4553,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		ShipEntity *container = nil;
 		if (goodsKey.has_value())
 		{
-			const auto pod = cargoPods.find(*goodsKey);
-			if (pod != cargoPods.end())  container = pod->second.get();
+			const auto pod = _cxxUniverse->cargoPods.find(*goodsKey);
+			if (pod != _cxxUniverse->cargoPods.end())  container = pod->second.get();
 		}
 
 		if (container != nil)
@@ -4564,14 +4575,14 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
 	accumulator.reserve(how_much);
-	if (![commodities cxx_goodDefined:commodity_name])
+	if (![_cxxUniverse->commodities cxx_goodDefined:commodity_name])
 	{
 		return accumulator; // empty array
 	}
 
 	ShipEntity *container = nil;
-	const auto pod = cargoPods.find(commodity_name);
-	if (pod != cargoPods.end())  container = pod->second.get();
+	const auto pod = _cxxUniverse->cargoPods.find(commodity_name);
+	if (pod != _cxxUniverse->cargoPods.end())  container = pod->second.get();
 	while (how_much > 0)
 	{
 		if (container)
@@ -4604,7 +4615,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (std::string) getRandomCommodity
 {
-	return [commodities getRandomCommodity];
+	return [_cxxUniverse->commodities getRandomCommodity];
 }
 
 
@@ -4612,7 +4623,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	OOMassUnit		units;
 
-	units = [commodities massUnitForGood:co_type];
+	units = [_cxxUniverse->commodities massUnitForGood:co_type];
 	switch (units)
 	{
 		case 0 :	// TONNES
@@ -4631,13 +4642,13 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (oo::PList) commodityDataForType:(const std::string &)type
 {
-	return [commodityMarket cxx_definitionForGood:type];
+	return [_cxxUniverse->commodityMarket cxx_definitionForGood:type];
 }
 
 
 - (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type
 {
-	return [commodityMarket cxx_nameForGood:co_type];
+	return [_cxxUniverse->commodityMarket cxx_nameForGood:co_type];
 }
 
 
@@ -4650,7 +4661,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 	if (commodity.isNull()) return std::string();
 
-	units = [commodityMarket massUnitForGood:co_type];
+	units = [_cxxUniverse->commodityMarket massUnitForGood:co_type];
 	if (co_amount == 1)
 	{
 		switch (units)
@@ -4684,7 +4695,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 	}
 
-	typeDesc = [commodityMarket cxx_nameForGood:co_type];
+	typeDesc = [_cxxUniverse->commodityMarket cxx_nameForGood:co_type];
 
 	return oo::str::format("%d %s %s",co_amount, unitDesc.c_str(), TextOrNull(typeDesc).c_str());
 }
@@ -4693,14 +4704,14 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (void) setGameView:(MyOpenGLView *)view
 {
-	[gameView release];
-	gameView = [view retain];
+	[_cxxUniverse->gameView release];
+	_cxxUniverse->gameView = [view retain];
 }
 
 
 - (MyOpenGLView *) gameView
 {
-	return gameView;
+	return _cxxUniverse->gameView;
 }
 
 
@@ -4717,22 +4728,22 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	oo::PList::Dict result;
 
 	result["speechOn"] = oo::PList::signedInteger([PLAYER isSpeechOn]);
-	result["autosave"] = oo::PList(static_cast<bool>(autoSave));
-	result["wireframeGraphics"] = oo::PList(static_cast<bool>(wireframeGraphics));
-	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(doProcedurallyTexturedPlanets));
+	result["autosave"] = oo::PList(static_cast<bool>(_cxxUniverse->autoSave));
+	result["wireframeGraphics"] = oo::PList(static_cast<bool>(_cxxUniverse->wireframeGraphics));
+	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(_cxxUniverse->doProcedurallyTexturedPlanets));
 
-	result["fovValue"] = oo::PList::singleReal([gameView fov:NO]);
+	result["fovValue"] = oo::PList::singleReal([_cxxUniverse->gameView fov:NO]);
 
 #if OOLITE_WINDOWS
-	if ([gameView hdrOutput])
+	if ([_cxxUniverse->gameView hdrOutput])
 	{
-		result["hdr-max-brightness"] = oo::PList::singleReal([gameView hdrMaxBrightness]);
-		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([gameView hdrPaperWhiteBrightness]);
-		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]));
+		result["hdr-max-brightness"] = oo::PList::singleReal([_cxxUniverse->gameView hdrMaxBrightness]);
+		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([_cxxUniverse->gameView hdrPaperWhiteBrightness]);
+		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([_cxxUniverse->gameView hdrToneMapper]));
 	}
 #endif
 
-	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]));
+	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([_cxxUniverse->gameView sdrToneMapper]));
 
 	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail([self detailLevel]));
 
@@ -4746,8 +4757,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	result["musicMode"] = oo::PList(desc);
 
 	result["gameWindow"] = oo::PList(oo::PList::Dict{
-		{ "width", oo::PList::singleReal([gameView backingViewSize].width) },
-		{ "height", oo::PList::singleReal([gameView backingViewSize].height) },
+		{ "width", oo::PList::singleReal([_cxxUniverse->gameView backingViewSize].width) },
+		{ "height", oo::PList::singleReal([_cxxUniverse->gameView backingViewSize].height) },
 		{ "fullScreen", oo::PList(static_cast<bool>([[self gameController] inFullScreenMode])) },
 	});
 
@@ -4795,8 +4806,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		{
 			if (isLit)
 			{
-				OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, sun_diffuse));
-				OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, sun_specular));
+				OOGL(glLightfv(GL_LIGHT1, GL_DIFFUSE, _cxxUniverse->sun_diffuse));
+				OOGL(glLightfv(GL_LIGHT1, GL_SPECULAR, _cxxUniverse->sun_specular));
 			}
 			else
 			{
@@ -4864,7 +4875,7 @@ static const OOMatrix	starboard_matrix =
 	
 	PlayerEntity			*player = nil;
 	
-	switch (viewDirection)
+	switch (_cxxUniverse->viewDirection)
 	{
 		case VIEW_AFT:
 			*outMatrix = aft_matrix;
@@ -4927,82 +4938,82 @@ static const OOMatrix	starboard_matrix =
 	clip = OOGLGetModelViewProjection();
 	
 	/* Extract the numbers for the RIGHT plane */
-	frustum[0][0] = clip.m[0][3] - clip.m[0][0];
-	frustum[0][1] = clip.m[1][3] - clip.m[1][0];
-	frustum[0][2] = clip.m[2][3] - clip.m[2][0];
-	frustum[0][3] = clip.m[3][3] - clip.m[3][0];
+	_cxxUniverse->frustum[0][0] = clip.m[0][3] - clip.m[0][0];
+	_cxxUniverse->frustum[0][1] = clip.m[1][3] - clip.m[1][0];
+	_cxxUniverse->frustum[0][2] = clip.m[2][3] - clip.m[2][0];
+	_cxxUniverse->frustum[0][3] = clip.m[3][3] - clip.m[3][0];
 	
 	/* Normalize the result */
-	rt = 1.0f / sqrt(frustum[0][0] * frustum[0][0] + frustum[0][1] * frustum[0][1] + frustum[0][2] * frustum[0][2]);
-	frustum[0][0] *= rt;
-	frustum[0][1] *= rt;
-	frustum[0][2] *= rt;
-	frustum[0][3] *= rt;
+	rt = 1.0f / sqrt(_cxxUniverse->frustum[0][0] * _cxxUniverse->frustum[0][0] + _cxxUniverse->frustum[0][1] * _cxxUniverse->frustum[0][1] + _cxxUniverse->frustum[0][2] * _cxxUniverse->frustum[0][2]);
+	_cxxUniverse->frustum[0][0] *= rt;
+	_cxxUniverse->frustum[0][1] *= rt;
+	_cxxUniverse->frustum[0][2] *= rt;
+	_cxxUniverse->frustum[0][3] *= rt;
 	
 	/* Extract the numbers for the LEFT plane */
-	frustum[1][0] = clip.m[0][3] + clip.m[0][0];
-	frustum[1][1] = clip.m[1][3] + clip.m[1][0];
-	frustum[1][2] = clip.m[2][3] + clip.m[2][0];
-	frustum[1][3] = clip.m[3][3] + clip.m[3][0];
+	_cxxUniverse->frustum[1][0] = clip.m[0][3] + clip.m[0][0];
+	_cxxUniverse->frustum[1][1] = clip.m[1][3] + clip.m[1][0];
+	_cxxUniverse->frustum[1][2] = clip.m[2][3] + clip.m[2][0];
+	_cxxUniverse->frustum[1][3] = clip.m[3][3] + clip.m[3][0];
 	
 	/* Normalize the result */
-	rt = 1.0f / sqrt(frustum[1][0] * frustum[1][0] + frustum[1][1] * frustum[1][1] + frustum[1][2] * frustum[1][2]);
-	frustum[1][0] *= rt;
-	frustum[1][1] *= rt;
-	frustum[1][2] *= rt;
-	frustum[1][3] *= rt;
+	rt = 1.0f / sqrt(_cxxUniverse->frustum[1][0] * _cxxUniverse->frustum[1][0] + _cxxUniverse->frustum[1][1] * _cxxUniverse->frustum[1][1] + _cxxUniverse->frustum[1][2] * _cxxUniverse->frustum[1][2]);
+	_cxxUniverse->frustum[1][0] *= rt;
+	_cxxUniverse->frustum[1][1] *= rt;
+	_cxxUniverse->frustum[1][2] *= rt;
+	_cxxUniverse->frustum[1][3] *= rt;
 
 	/* Extract the BOTTOM plane */
-	frustum[2][0] = clip.m[0][3] + clip.m[0][1];
-	frustum[2][1] = clip.m[1][3] + clip.m[1][1];
-	frustum[2][2] = clip.m[2][3] + clip.m[2][1];
-	frustum[2][3] = clip.m[3][3] + clip.m[3][1];
+	_cxxUniverse->frustum[2][0] = clip.m[0][3] + clip.m[0][1];
+	_cxxUniverse->frustum[2][1] = clip.m[1][3] + clip.m[1][1];
+	_cxxUniverse->frustum[2][2] = clip.m[2][3] + clip.m[2][1];
+	_cxxUniverse->frustum[2][3] = clip.m[3][3] + clip.m[3][1];
 
 	/* Normalize the result */
-	rt = 1.0 / sqrt(frustum[2][0] * frustum[2][0] + frustum[2][1] * frustum[2][1] + frustum[2][2] * frustum[2][2]);
-	frustum[2][0] *= rt;
-	frustum[2][1] *= rt;
-	frustum[2][2] *= rt;
-	frustum[2][3] *= rt;
+	rt = 1.0 / sqrt(_cxxUniverse->frustum[2][0] * _cxxUniverse->frustum[2][0] + _cxxUniverse->frustum[2][1] * _cxxUniverse->frustum[2][1] + _cxxUniverse->frustum[2][2] * _cxxUniverse->frustum[2][2]);
+	_cxxUniverse->frustum[2][0] *= rt;
+	_cxxUniverse->frustum[2][1] *= rt;
+	_cxxUniverse->frustum[2][2] *= rt;
+	_cxxUniverse->frustum[2][3] *= rt;
 
 	/* Extract the TOP plane */
-	frustum[3][0] = clip.m[0][3] - clip.m[0][1];
-	frustum[3][1] = clip.m[1][3] - clip.m[1][1];
-	frustum[3][2] = clip.m[2][3] - clip.m[2][1];
-	frustum[3][3] = clip.m[3][3] - clip.m[3][1];
+	_cxxUniverse->frustum[3][0] = clip.m[0][3] - clip.m[0][1];
+	_cxxUniverse->frustum[3][1] = clip.m[1][3] - clip.m[1][1];
+	_cxxUniverse->frustum[3][2] = clip.m[2][3] - clip.m[2][1];
+	_cxxUniverse->frustum[3][3] = clip.m[3][3] - clip.m[3][1];
 
 	/* Normalize the result */
-	rt = 1.0 / sqrt(frustum[3][0] * frustum[3][0] + frustum[3][1] * frustum[3][1] + frustum[3][2] * frustum[3][2]);
-	frustum[3][0] *= rt;
-	frustum[3][1] *= rt;
-	frustum[3][2] *= rt;
-	frustum[3][3] *= rt;
+	rt = 1.0 / sqrt(_cxxUniverse->frustum[3][0] * _cxxUniverse->frustum[3][0] + _cxxUniverse->frustum[3][1] * _cxxUniverse->frustum[3][1] + _cxxUniverse->frustum[3][2] * _cxxUniverse->frustum[3][2]);
+	_cxxUniverse->frustum[3][0] *= rt;
+	_cxxUniverse->frustum[3][1] *= rt;
+	_cxxUniverse->frustum[3][2] *= rt;
+	_cxxUniverse->frustum[3][3] *= rt;
 
 	/* Extract the FAR plane */
-	frustum[4][0] = clip.m[0][3] - clip.m[0][2];
-	frustum[4][1] = clip.m[1][3] - clip.m[1][2];
-	frustum[4][2] = clip.m[2][3] - clip.m[2][2];
-	frustum[4][3] = clip.m[3][3] - clip.m[3][2];
+	_cxxUniverse->frustum[4][0] = clip.m[0][3] - clip.m[0][2];
+	_cxxUniverse->frustum[4][1] = clip.m[1][3] - clip.m[1][2];
+	_cxxUniverse->frustum[4][2] = clip.m[2][3] - clip.m[2][2];
+	_cxxUniverse->frustum[4][3] = clip.m[3][3] - clip.m[3][2];
 
 	/* Normalize the result */
-	rt = sqrt(frustum[4][0] * frustum[4][0] + frustum[4][1] * frustum[4][1] + frustum[4][2] * frustum[4][2]);
-	frustum[4][0] *= rt;
-	frustum[4][1] *= rt;
-	frustum[4][2] *= rt;
-	frustum[4][3] *= rt;
+	rt = sqrt(_cxxUniverse->frustum[4][0] * _cxxUniverse->frustum[4][0] + _cxxUniverse->frustum[4][1] * _cxxUniverse->frustum[4][1] + _cxxUniverse->frustum[4][2] * _cxxUniverse->frustum[4][2]);
+	_cxxUniverse->frustum[4][0] *= rt;
+	_cxxUniverse->frustum[4][1] *= rt;
+	_cxxUniverse->frustum[4][2] *= rt;
+	_cxxUniverse->frustum[4][3] *= rt;
 
 	/* Extract the NEAR plane */
-	frustum[5][0] = clip.m[0][3] + clip.m[0][2];
-	frustum[5][1] = clip.m[1][3] + clip.m[1][2];
-	frustum[5][2] = clip.m[2][3] + clip.m[2][2];
-	frustum[5][3] = clip.m[3][3] + clip.m[3][2];
+	_cxxUniverse->frustum[5][0] = clip.m[0][3] + clip.m[0][2];
+	_cxxUniverse->frustum[5][1] = clip.m[1][3] + clip.m[1][2];
+	_cxxUniverse->frustum[5][2] = clip.m[2][3] + clip.m[2][2];
+	_cxxUniverse->frustum[5][3] = clip.m[3][3] + clip.m[3][2];
 
 	/* Normalize the result */
-	rt = sqrt(frustum[5][0] * frustum[5][0] + frustum[5][1] * frustum[5][1] + frustum[5][2] * frustum[5][2]);
-	frustum[5][0] *= rt;
-	frustum[5][1] *= rt;
-	frustum[5][2] *= rt;
-	frustum[5][3] *= rt;
+	rt = sqrt(_cxxUniverse->frustum[5][0] * _cxxUniverse->frustum[5][0] + _cxxUniverse->frustum[5][1] * _cxxUniverse->frustum[5][1] + _cxxUniverse->frustum[5][2] * _cxxUniverse->frustum[5][2]);
+	_cxxUniverse->frustum[5][0] *= rt;
+	_cxxUniverse->frustum[5][1] *= rt;
+	_cxxUniverse->frustum[5][2] *= rt;
+	_cxxUniverse->frustum[5][3] *= rt;
 }
 
 
@@ -5012,7 +5023,7 @@ static const OOMatrix	starboard_matrix =
 	int p;
 	for (p = 0; p < 6; p++)
 	{
-		if (frustum[p][0] * position.x + frustum[p][1] * position.y + frustum[p][2] * position.z + frustum[p][3] <= -radius)
+		if (_cxxUniverse->frustum[p][0] * position.x + _cxxUniverse->frustum[p][1] * position.y + _cxxUniverse->frustum[p][2] * position.z + _cxxUniverse->frustum[p][3] <= -radius)
 		{
 			return NO;
 		}
@@ -5025,35 +5036,35 @@ static const OOMatrix	starboard_matrix =
 {
 	int currentPostFX = [self currentPostFX];
 	BOOL hudSeparateRenderPass =  [self useShaders] && (currentPostFX == OO_POSTFX_NONE || ((currentPostFX == OO_POSTFX_CLOAK || currentPostFX == OO_POSTFX_CRTBADSIGNAL) && [self colorblindMode] == OO_POSTFX_NONE));
- 	NSSize  viewSize = [gameView backingViewSize];
+ 	NSSize  viewSize = [_cxxUniverse->gameView backingViewSize];
 	OO_LOG("universe.profile.draw", "{}", "Begin draw");
 	
-	if (!no_update)
+	if (!_cxxUniverse->no_update)
 	{
-		if ((int)targetFramebufferSize.width != (int)viewSize.width || (int)targetFramebufferSize.height != (int)viewSize.height)
+		if ((int)_cxxUniverse->targetFramebufferSize.width != (int)viewSize.width || (int)_cxxUniverse->targetFramebufferSize.height != (int)viewSize.height)
 		{
 			[self resizeTargetFramebufferWithViewSize:viewSize];
 		}
 	
 		if([self useShaders])
 		{
-			if ([gameView msaa])
+			if ([_cxxUniverse->gameView msaa])
 			{
-				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, msaaFramebufferID));
+				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->msaaFramebufferID));
 			}
 			else
 			{
-				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, targetFramebufferID));
+				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->targetFramebufferID));
 			}
 		}
 		@try
 		{
-			no_update = YES;	// block other attempts to draw
+			_cxxUniverse->no_update = YES;	// block other attempts to draw
 			
 			int				i, v_status, vdist;
 			Vector			view_dir, view_up;
 			OOMatrix		view_matrix;
-			int				ent_count =	n_entities;
+			int				ent_count =	_cxxUniverse->n_entities;
 			Entity			*my_entities[ent_count];
 			int				draw_count = 0;
 			PlayerEntity	*player = PLAYER;
@@ -5062,13 +5073,13 @@ static const OOMatrix	starboard_matrix =
 			
 			float   aspect = viewSize.height/viewSize.width;
 
-			if (!displayGUI && wasDisplayGUI)
+			if (!_cxxUniverse->displayGUI && _cxxUniverse->wasDisplayGUI)
 			{
 				// reset light1 position for the shaders
-				if (cachedSun) [UNIVERSE setMainLightPosition:HPVectorToVector([cachedSun position])]; // the main light is the sun.
+				if (_cxxUniverse->cachedSun) [UNIVERSE setMainLightPosition:HPVectorToVector([_cxxUniverse->cachedSun position])]; // the main light is the sun.
 				else [UNIVERSE setMainLightPosition:kZeroVector];
 			}
-			wasDisplayGUI = displayGUI;
+			_cxxUniverse->wasDisplayGUI = _cxxUniverse->displayGUI;
 			// use a non-mutable copy so this can't be changed under us.
 			for (i = 0; i < ent_count; i++)
 			{
@@ -5077,7 +5088,7 @@ static const OOMatrix	starboard_matrix =
 				 * on/near the player. So long as everything uses
 				 * depth tests, we'll get away with it; it'll just
 				 * occasionally be inefficient. - CIM */
-				Entity *e = sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
+				Entity *e = _cxxUniverse->sortedEntities[i]; // ordered NEAREST -> FURTHEST AWAY
 				if ([e isVisible])
 				{
 					my_entities[draw_count++] = [[e retain] autorelease];
@@ -5092,9 +5103,9 @@ static const OOMatrix	starboard_matrix =
 			
 			OOGL(glClear(GL_COLOR_BUFFER_BIT));
 
-			if (!displayGUI)
+			if (!_cxxUniverse->displayGUI)
 			{
-				OOGL(glClearColor(skyClearColor[0], skyClearColor[1], skyClearColor[2], skyClearColor[3]));
+				OOGL(glClearColor(_cxxUniverse->skyClearColor[0], _cxxUniverse->skyClearColor[1], _cxxUniverse->skyClearColor[2], _cxxUniverse->skyClearColor[3]));
 			}
 			else
 			{
@@ -5102,13 +5113,13 @@ static const OOMatrix	starboard_matrix =
 				// If set, display background GUI image. Must be done before enabling lights to avoid dim backgrounds
 				OOGLResetProjection();
 				OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
-				[gui drawGUIBackground];
+				[_cxxUniverse->gui drawGUIBackground];
 			
 			}
 
 			BOOL		fogging, bpHide = [self breakPatternHide];
 
-			drawCounter++;
+			_cxxUniverse->drawCounter++;
 			float breakPlane = INTERMEDIATE_CLEAR_DEPTH;
 			for( int i = 0; i < draw_count; i++ )
 			{
@@ -5123,16 +5134,16 @@ static const OOMatrix	starboard_matrix =
 			}
 
 			// We need to bring forward the near plane of the frustum on the long distance pass by this factor to avoid clipping objects at the corner of the window
-			float distanceFactor = sqrt(1 + ([gameView fov:YES]*[gameView fov:YES] * (1.0 + 1.0/(aspect*aspect)))); 
+			float distanceFactor = sqrt(1 + ([_cxxUniverse->gameView fov:YES]*[_cxxUniverse->gameView fov:YES] * (1.0 + 1.0/(aspect*aspect)))); 
 
 			for (vdist=0;vdist<=1;vdist++)
 			{
 				float   nearPlane = vdist ? 1.0 : INTERMEDIATE_CLEAR_DEPTH;
 				float   farPlane = vdist ? breakPlane : MAX_CLEAR_DEPTH;
-				float   ratio = (displayGUI ? 0.5 : [gameView fov:YES]) * nearPlane / distanceFactor; // 0.5 is field of view ratio for GUIs
+				float   ratio = (_cxxUniverse->displayGUI ? 0.5 : [_cxxUniverse->gameView fov:YES]) * nearPlane / distanceFactor; // 0.5 is field of view ratio for GUIs
 				
 				OOGLResetProjection();
-				if ((displayGUI && 4*aspect >= 3) || (!displayGUI && 4*aspect <= 3))
+				if ((_cxxUniverse->displayGUI && 4*aspect >= 3) || (!_cxxUniverse->displayGUI && 4*aspect <= 3))
 				{
 					OOGLFrustum(-ratio, ratio, -aspect*ratio, aspect*ratio, nearPlane / distanceFactor, farPlane);
 				}
@@ -5184,7 +5195,7 @@ static const OOMatrix	starboard_matrix =
 			
 				OOGLLookAt(view_dir, kZeroVector, view_up); 
 
-				if (EXPECT(!displayGUI || demoShipMode))
+				if (EXPECT(!_cxxUniverse->displayGUI || demoShipMode))
 				{
 					if (EXPECT(!demoShipMode))	// we're in flight
 					{
@@ -5192,38 +5203,38 @@ static const OOMatrix	starboard_matrix =
 						OOGLMultModelView([player rotationMatrix]);
 						// translate the view
 						// HPVect: camera-relative position
-						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, stars_ambient));
+						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, _cxxUniverse->stars_ambient));
 						// main light position, no shaders, in-flight / shaders, in-flight and docked.
-						if (cachedSun)
+						if (_cxxUniverse->cachedSun)
 						{
-							[self setMainLightPosition:[cachedSun cameraRelativePosition]];
+							[self setMainLightPosition:[_cxxUniverse->cachedSun cameraRelativePosition]];
 						}
 						else
 						{
 							// in witchspace
 							[self setMainLightPosition:HPVectorToVector(HPvector_flip([PLAYER viewpointPosition]))];
 						}
-						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, main_light_position));	
+						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, _cxxUniverse->main_light_position));	
 					}
 					else
 					{
 						OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, docked_light_ambient));
 						// main_light_position no shaders, docked/GUI.
-						OOGL(glLightfv(GL_LIGHT0, GL_POSITION, main_light_position));
+						OOGL(glLightfv(GL_LIGHT0, GL_POSITION, _cxxUniverse->main_light_position));
 						// main light position, no shaders, in-flight / shaders, in-flight and docked.		
-						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, main_light_position));
+						OOGL(glLightfv(GL_LIGHT1, GL_POSITION, _cxxUniverse->main_light_position));
 					}
 				
 				
 					OOGL([self useGUILightSource:demoShipMode]);
 				
 					// HACK: store view matrix for absolute drawing of active subentities (i.e., turrets, flashers).
-					viewMatrix = OOGLGetModelView();
+					_cxxUniverse->viewMatrix = OOGLGetModelView();
 
 					int			furthest = draw_count - 1;
 					int			nearest = 0;
-					BOOL		inAtmosphere = airResistanceFactor > 0.01;
-					GLfloat		fogFactor = 0.5 / airResistanceFactor;
+					BOOL		inAtmosphere = _cxxUniverse->airResistanceFactor > 0.01;
+					GLfloat		fogFactor = 0.5 / _cxxUniverse->airResistanceFactor;
 					double 		fog_scale, half_scale;
 					GLfloat 	flat_ambdiff[4]	= {1.0, 1.0, 1.0, 1.0};   // for alpha
 					GLfloat 	mat_no[4]		= {0.0, 0.0, 0.0, 1.0};   // nothing
@@ -5245,7 +5256,7 @@ static const OOMatrix	starboard_matrix =
 						OOEntityStatus d_status = [drawthing status];
 					
 						if (bpHide && !drawthing->_cxxEntity->isImmuneToBreakPatternHide)  continue;
-						if ([drawthing lastDrawCounter] == drawCounter) continue;
+						if ([drawthing lastDrawCounter] == _cxxUniverse->drawCounter) continue;
 						if (vdist == 0 && [drawthing cameraRangeFront] < nearPlane)
 						{
 							continue;
@@ -5285,17 +5296,17 @@ static const OOMatrix	starboard_matrix =
 								half_scale = fog_scale * 0.50;
 								OOGL(glEnable(GL_FOG));
 								OOGL(glFogi(GL_FOG_MODE, GL_LINEAR));
-								OOGL(glFogfv(GL_FOG_COLOR, skyClearColor));
+								OOGL(glFogfv(GL_FOG_COLOR, _cxxUniverse->skyClearColor));
 								OOGL(glFogf(GL_FOG_START, half_scale));
 								OOGL(glFogf(GL_FOG_END, fog_scale));
 								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
-								[drawthing setAtmosphereFogging: [OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
+								[drawthing setAtmosphereFogging: [OOColor colorWithRed: _cxxUniverse->skyClearColor[0] green: _cxxUniverse->skyClearColor[1] blue: _cxxUniverse->skyClearColor[2] alpha: fog_blend]];
 							}
 						
 							[self lightForEntity:demoShipMode || drawthing->_cxxEntity->isSunlit];
 						
 							// draw the thing
-							[drawthing setLastDrawCounter: drawCounter];
+							[drawthing setLastDrawCounter: _cxxUniverse->drawCounter];
 							[drawthing drawImmediate:false translucent:false];
 						
 							OOGLPopModelView();
@@ -5338,15 +5349,15 @@ static const OOMatrix	starboard_matrix =
 								half_scale = fog_scale * 0.50;
 								OOGL(glEnable(GL_FOG));
 								OOGL(glFogi(GL_FOG_MODE, GL_LINEAR));
-								OOGL(glFogfv(GL_FOG_COLOR, skyClearColor));
+								OOGL(glFogfv(GL_FOG_COLOR, _cxxUniverse->skyClearColor));
 								OOGL(glFogf(GL_FOG_START, half_scale));
 								OOGL(glFogf(GL_FOG_END, fog_scale));
 								fog_blend = OOClamp_0_1_f((magnitude([drawthing cameraRelativePosition]) - half_scale)/half_scale);
-								[drawthing setAtmosphereFogging: [OOColor colorWithRed: skyClearColor[0] green: skyClearColor[1] blue: skyClearColor[2] alpha: fog_blend]];
+								[drawthing setAtmosphereFogging: [OOColor colorWithRed: _cxxUniverse->skyClearColor[0] green: _cxxUniverse->skyClearColor[1] blue: _cxxUniverse->skyClearColor[2] alpha: fog_blend]];
 							}
 						
 							// draw the thing
-							[drawthing setLastDrawCounter: drawCounter];
+							[drawthing setLastDrawCounter: _cxxUniverse->drawCounter];
 							[drawthing drawImmediate:false translucent:true];
 						
 							// atmospheric fog
@@ -5368,12 +5379,12 @@ static const OOMatrix	starboard_matrix =
 			OOGLResetProjection();
 			OOGLFrustum(-0.5, 0.5, -aspect*0.5, aspect*0.5, 1.0, MAX_CLEAR_DEPTH);
 			OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
-			if (EXPECT(!displayGUI))
+			if (EXPECT(!_cxxUniverse->displayGUI))
 			{
-				if (!bpHide && cachedSun)
+				if (!bpHide && _cxxUniverse->cachedSun)
 				{
-					[cachedSun drawDirectVisionSunGlare];
-					[cachedSun drawStarGlare];
+					[_cxxUniverse->cachedSun drawDirectVisionSunGlare];
+					[_cxxUniverse->cachedSun drawStarGlare];
 				}
 			}
 			
@@ -5384,7 +5395,7 @@ static const OOMatrix	starboard_matrix =
 				OOSetOpenGLState(OPENGL_STATE_OVERLAY);  // FIXME: should be redundant.
 				
 				[self prepareToRenderIntoDefaultFramebuffer];	
-				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+				OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 				
 				OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
 				[self drawTargetTextureIntoDefaultFramebuffer];
@@ -5398,7 +5409,7 @@ static const OOMatrix	starboard_matrix =
 			cxx_OOCheckOpenGLErrors("Universe after drawing entities");
 			OO_LOG("universe.profile.draw", "{}", "Begin HUD");
 			
-			GLfloat	lineWidth = [gameView backingViewSize].width / 1024.0; // restore line size
+			GLfloat	lineWidth = [_cxxUniverse->gameView backingViewSize].width / 1024.0; // restore line size
 			if (lineWidth < 1.0)  lineWidth = 1.0;
 			if (lineWidth > 1.5)  lineWidth = 1.5; // don't overscale; think of ultra-wide screen setups
 			OOGL(GLScaledLineWidth(lineWidth));
@@ -5460,18 +5471,18 @@ static const OOMatrix	starboard_matrix =
 			
 			OOGL(glFlush());	// don't wait around for drawing to complete
 			
-			no_update = NO;	// allow other attempts to draw
+			_cxxUniverse->no_update = NO;	// allow other attempts to draw
 			
 			// frame complete, when it is time to update the fps_counter, updateClocks:delta_t
 			// in PlayerEntity.m will take care of resetting the processed frames number to 0.
 			if (![[self gameController] isGamePaused])
 			{
-				framesDoneThisUpdate++;
+				_cxxUniverse->framesDoneThisUpdate++;
 			}
 		}
 		@catch (OOException *exception)
 		{
-			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
+			_cxxUniverse->no_update = NO;	// make sure we don't get stuck in all subsequent frames.
 			
 			if (strncmp([exception name], "Oolite", 6) == 0)
 			{
@@ -5493,7 +5504,7 @@ static const OOMatrix	starboard_matrix =
 		if([self useShaders])
 		{
 			[self prepareToRenderIntoDefaultFramebuffer];
-			OOGL(glBindFramebuffer(GL_FRAMEBUFFER, defaultDrawFBO));
+			OOGL(glBindFramebuffer(GL_FRAMEBUFFER, _cxxUniverse->defaultDrawFBO));
 			
 			OO_LOG("universe.profile.secondPassDraw", "{}", "Begin second pass draw");
 			[self drawTargetTextureIntoDefaultFramebuffer];
@@ -5505,14 +5516,14 @@ static const OOMatrix	starboard_matrix =
 
 - (void) prepareToRenderIntoDefaultFramebuffer
 {
-	NSSize viewSize = [gameView backingViewSize];
+	NSSize viewSize = [_cxxUniverse->gameView backingViewSize];
 	if([self useShaders])
 	{
-		if ([gameView msaa])
+		if ([_cxxUniverse->gameView msaa])
 		{
 			// resolve MSAA framebuffer to target framebuffer
-			OOGL(glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFramebufferID));
-			OOGL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targetFramebufferID));
+			OOGL(glBindFramebuffer(GL_READ_FRAMEBUFFER, _cxxUniverse->msaaFramebufferID));
+			OOGL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _cxxUniverse->targetFramebufferID));
 			OOGL(glBlitFramebuffer(0, 0, (GLint)viewSize.width, (GLint)viewSize.height, 0, 0, (GLint)viewSize.width, (GLint)viewSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST));
 		}
 	}
@@ -5521,19 +5532,19 @@ static const OOMatrix	starboard_matrix =
 
 - (int) framesDoneThisUpdate
 {
-	return framesDoneThisUpdate;
+	return _cxxUniverse->framesDoneThisUpdate;
 }
 
 
 - (void) resetFramesDoneThisUpdate
 {
-	framesDoneThisUpdate = 0;
+	_cxxUniverse->framesDoneThisUpdate = 0;
 }
 
 
 - (OOMatrix) viewMatrix
 {
-	return viewMatrix;
+	return _cxxUniverse->viewMatrix;
 }
 
 
@@ -5544,20 +5555,20 @@ static const OOMatrix	starboard_matrix =
 	OOGL(glDisable(GL_TEXTURE_2D));	// for background sheets
 	
 	float overallAlpha = [[PLAYER hud] overallAlpha];
-	if (displayGUI)
+	if (_cxxUniverse->displayGUI)
 	{
 		if ([[self gameController] mouseInteractionMode] == MOUSE_MODE_UI_SCREEN_WITH_INTERACTION)
 		{
-			cursor_row = [gui drawGUI:1.0 drawCursor:YES];
+			_cxxUniverse->cursor_row = [_cxxUniverse->gui drawGUI:1.0 drawCursor:YES];
 		}
 		else
 		{
-			[gui drawGUI:1.0 drawCursor:NO];
+			[_cxxUniverse->gui drawGUI:1.0 drawCursor:NO];
 		}
 	}
 	
-	[message_gui drawGUI:[message_gui alpha] * overallAlpha drawCursor:NO];
-	[comm_log_gui drawGUI:[comm_log_gui alpha] * overallAlpha drawCursor:NO];
+	[_cxxUniverse->message_gui drawGUI:[_cxxUniverse->message_gui alpha] * overallAlpha drawCursor:NO];
+	[_cxxUniverse->comm_log_gui drawGUI:[_cxxUniverse->comm_log_gui alpha] * overallAlpha drawCursor:NO];
 	
 	OOVerifyOpenGLState();
 }
@@ -5570,7 +5581,7 @@ static const OOMatrix	starboard_matrix =
 	OOGL(glColor4f(0.0, 1.0, 0.0, 1.0));
 	// position the watermark string on the top right hand corner of the game window and right-align it
 	cxx_OODrawString(watermarkString, MAIN_GUI_PIXEL_WIDTH / 2 - watermarkStringSize.width + 80,
-						MAIN_GUI_PIXEL_HEIGHT / 2 - watermarkStringSize.height, [gameView display_z], NSMakeSize(10,10));
+						MAIN_GUI_PIXEL_HEIGHT / 2 - watermarkStringSize.height, [_cxxUniverse->gameView display_z], NSMakeSize(10,10));
 }
 
 
@@ -5585,10 +5596,10 @@ static const OOMatrix	starboard_matrix =
 		return nil;
 	}
 	
-	if ((u_id == NO_TARGET)||(!entity_for_uid[u_id]))
+	if ((u_id == NO_TARGET)||(!_cxxUniverse->entity_for_uid[u_id]))
 		return nil;
 	
-	Entity *ent = entity_for_uid[u_id];
+	Entity *ent = _cxxUniverse->entity_for_uid[u_id];
 	if ([ent isEffect])	// effects SHOULD NOT HAVE U_IDs!
 	{
 		return nil;
@@ -5609,15 +5620,15 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	BOOL result = YES;
 	
 	// DEBUG check for loops and short lists
-	if (uni->n_entities > 0)
+	if (uni->_cxxUniverse->n_entities > 0)
 	{
 		int n;
 		Entity	*checkEnt, *last;
 		
 		last = nil;
 		
-		n = uni->n_entities;
-		checkEnt = uni->x_list_start;
+		n = uni->_cxxUniverse->n_entities;
+		checkEnt = uni->_cxxUniverse->x_list_start;
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
@@ -5626,25 +5637,25 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(uni->x_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_next {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->x_list_start), n);
 #endif
 			result = NO;
 		}
 		
-		n = uni->n_entities;
+		n = uni->_cxxUniverse->n_entities;
 		checkEnt = last;
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->x_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(uni->x_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken x_previous {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->x_list_start), n);
 #endif
 			if (result)
 			{
 #ifndef NDEBUG
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING x_previous list from x_next list");
 #endif
-				checkEnt = uni->x_list_start;
+				checkEnt = uni->_cxxUniverse->x_list_start;
 				checkEnt->_cxxEntity->x_previous = nil;
 				while (checkEnt->_cxxEntity->x_next)
 				{
@@ -5655,8 +5666,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			}
 		}
 		
-		n = uni->n_entities;
-		checkEnt = uni->y_list_start;
+		n = uni->_cxxUniverse->n_entities;
+		checkEnt = uni->_cxxUniverse->y_list_start;
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
@@ -5665,25 +5676,25 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken *** broken y_next {} list ({}) ***", oo::DescriptionOf(uni->y_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken *** broken y_next {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->y_list_start), n);
 #endif
 			result = NO;
 		}
 		
-		n = uni->n_entities;
+		n = uni->_cxxUniverse->n_entities;
 		checkEnt = last;
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->y_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(uni->y_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken y_previous {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->y_list_start), n);
 #endif
 			if (result)
 			{
 #ifndef NDEBUG
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING y_previous list from y_next list");
 #endif
-				checkEnt = uni->y_list_start;
+				checkEnt = uni->_cxxUniverse->y_list_start;
 				checkEnt->_cxxEntity->y_previous = nil;
 				while (checkEnt->_cxxEntity->y_next)
 				{
@@ -5694,8 +5705,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			}
 		}
 		
-		n = uni->n_entities;
-		checkEnt = uni->z_list_start;
+		n = uni->_cxxUniverse->n_entities;
+		checkEnt = uni->_cxxUniverse->z_list_start;
 		while ((n--)&&(checkEnt))
 		{
 			last = checkEnt;
@@ -5704,25 +5715,25 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(uni->z_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_next {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->z_list_start), n);
 #endif
 			result = NO;
 		}
 		
-		n = uni->n_entities;
+		n = uni->_cxxUniverse->n_entities;
 		checkEnt = last;
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->_cxxEntity->z_previous;
 		if ((checkEnt)||(n > 0))
 		{
 #ifndef NDEBUG
-			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(uni->z_list_start), n);
+			OO_LOG(kOOLogEntityVerificationError, "Broken z_previous {} list ({}) ***", oo::DescriptionOf(uni->_cxxUniverse->z_list_start), n);
 #endif
 			if (result)
 			{
 #ifndef NDEBUG
 				OO_LOG(kOOLogEntityVerificationRebuild, "{}", "REBUILDING z_previous list from z_next list");
 #endif
-				checkEnt = uni->z_list_start;
+				checkEnt = uni->_cxxUniverse->z_list_start;
 				OOCAssert(checkEnt != nil, "Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
 				checkEnt->_cxxEntity->z_previous = nil;
 				while (checkEnt->_cxxEntity->z_next)
@@ -5740,10 +5751,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 #ifndef NDEBUG
 		OO_LOG(kOOLogEntityVerificationRebuild, "{}", "Rebuilding all linked lists from scratch");
 #endif
-		const std::vector<oo::ObjCRef<Entity *>> allEntities = uni->entities;	// a snapshot, as the enumeration was
-		uni->x_list_start = nil;
-		uni->y_list_start = nil;
-		uni->z_list_start = nil;
+		const std::vector<oo::ObjCRef<Entity *>> allEntities = uni->_cxxUniverse->entities;	// a snapshot, as the enumeration was
+		uni->_cxxUniverse->x_list_start = nil;
+		uni->_cxxUniverse->y_list_start = nil;
+		uni->_cxxUniverse->z_list_start = nil;
 
 		Entity *ent = nil;
 		for (const oo::ObjCRef<Entity *> &entry : allEntities)
@@ -5774,13 +5785,13 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if (![entity validForAddToUniverse])  return NO;
 		
 		// don't add things twice!
-		if (std::find(entities.begin(), entities.end(), entity) != entities.end())
+		if (std::find(_cxxUniverse->entities.begin(), _cxxUniverse->entities.end(), entity) != _cxxUniverse->entities.end())
 			return YES;
 		
-		if (n_entities >= UNIVERSE_MAX_ENTITIES - 1)
+		if (_cxxUniverse->n_entities >= UNIVERSE_MAX_ENTITIES - 1)
 		{
 			// throw an exception here...
-			OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Universe is full ({} entities out of {})", oo::DescriptionOf(entity), static_cast<int>(n_entities), static_cast<int>(UNIVERSE_MAX_ENTITIES));
+			OO_LOG("universe.addEntity.failed", "***** Universe cannot addEntity:{} -- Universe is full ({} entities out of {})", oo::DescriptionOf(entity), static_cast<int>(_cxxUniverse->n_entities), static_cast<int>(UNIVERSE_MAX_ENTITIES));
 #ifndef NDEBUG
 			if (oo::log::willDisplay("universe.maxEntitiesDump")) [self debugDumpEntities];
 #endif
@@ -5790,12 +5801,12 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if (![entity isEffect])
 		{
 			unsigned limiter = UNIVERSE_MAX_ENTITIES;
-			while (entity_for_uid[next_universal_id] != nil)	// skip allocated numbers
+			while (_cxxUniverse->entity_for_uid[_cxxUniverse->next_universal_id] != nil)	// skip allocated numbers
 			{
-				next_universal_id++;						// increment keeps idkeys unique
-				if (next_universal_id >= MAX_ENTITY_UID)
+				_cxxUniverse->next_universal_id++;						// increment keeps idkeys unique
+				if (_cxxUniverse->next_universal_id >= MAX_ENTITY_UID)
 				{
-					next_universal_id = MIN_ENTITY_UID;
+					_cxxUniverse->next_universal_id = MIN_ENTITY_UID;
 				}
 				if (limiter-- == 0)
 				{
@@ -5804,8 +5815,8 @@ static BOOL MaintainLinkedLists(Universe *uni)
 					return NO;
 				}
 			}
-			[entity setUniversalID:next_universal_id];
-			entity_for_uid[next_universal_id] = entity;
+			[entity setUniversalID:_cxxUniverse->next_universal_id];
+			_cxxUniverse->entity_for_uid[_cxxUniverse->next_universal_id] = entity;
 			if ([entity isShip])
 			{
 				se = (ShipEntity *)entity;
@@ -5874,7 +5885,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		entity->_cxxEntity->shadingEntityID = NO_TARGET;
 		
 		// add it to the universe
-		entities.emplace_back(entity);
+		_cxxUniverse->entities.emplace_back(entity);
 		[entity wasAddedToUniverse];
 		
 		// maintain sorted list (and for the scanner relative position)
@@ -5882,35 +5893,35 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		HPVector delta = HPvector_between(entity_pos, PLAYER->_cxxEntity->position);
 		double z_distance = HPmagnitude2(delta);
 		entity->_cxxEntity->zero_distance = z_distance;
-		unsigned index = n_entities;
-		sortedEntities[index] = entity;
+		unsigned index = _cxxUniverse->n_entities;
+		_cxxUniverse->sortedEntities[index] = entity;
 		entity->_cxxEntity->zero_index = index;
-		while ((index > 0)&&(z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance))	// bubble into place
+		while ((index > 0)&&(z_distance < _cxxUniverse->sortedEntities[index - 1]->_cxxEntity->zero_distance))	// bubble into place
 		{
-			sortedEntities[index] = sortedEntities[index - 1];
-			sortedEntities[index]->_cxxEntity->zero_index = index;
+			_cxxUniverse->sortedEntities[index] = _cxxUniverse->sortedEntities[index - 1];
+			_cxxUniverse->sortedEntities[index]->_cxxEntity->zero_index = index;
 			index--;
-			sortedEntities[index] = entity;
+			_cxxUniverse->sortedEntities[index] = entity;
 			entity->_cxxEntity->zero_index = index;
 		}
 		
 		// increase n_entities...
-		n_entities++;
+		_cxxUniverse->n_entities++;
 		
 		// add entity to linked lists
 		[entity addToLinkedLists];	// position and universe have been set - so we can do this
 		if ([entity canCollide])	// filter only collidables disappearing
 		{
-			doLinkedListMaintenanceThisUpdate = YES;
+			_cxxUniverse->doLinkedListMaintenanceThisUpdate = YES;
 		}
 		
 		if ([entity isWormhole])
 		{
-			activeWormholes.emplace_back((WormholeEntity *)entity);
+			_cxxUniverse->activeWormholes.emplace_back((WormholeEntity *)entity);
 		}
 		else if ([entity isPlanet])
 		{
-			allPlanets.emplace_back((OOPlanetEntity *)entity);
+			_cxxUniverse->allPlanets.emplace_back((OOPlanetEntity *)entity);
 		}
 		else if ([entity isShip])
 		{
@@ -5918,7 +5929,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			[[se getAI] cxx_setState:"GLOBAL"];
 			if ([entity isStation])
 			{
-				AddIfAbsent(allStations, (StationEntity *)entity);
+				AddIfAbsent(_cxxUniverse->allStations, (StationEntity *)entity);
 			}
 		}
 		
@@ -5936,10 +5947,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			update (or the next update if none is in progress), because
 			there may be things pointing to it but not retaining it.
 		*/
-		AddIfAbsent(entitiesDeadThisUpdate, entity);
+		AddIfAbsent(_cxxUniverse->entitiesDeadThisUpdate, entity);
 		if ([entity isStation])
 		{
-			std::erase(allStations, entity);
+			std::erase(_cxxUniverse->allStations, entity);
 			if ([PLAYER getTargetDockStation] == entity)
 			{
 				[PLAYER setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
@@ -5963,11 +5974,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 
 - (void) removeAllEntitiesExceptPlayer
 {
-	BOOL updating = no_update;
-	no_update = YES;			// no drawing while we do this!
+	BOOL updating = _cxxUniverse->no_update;
+	_cxxUniverse->no_update = YES;			// no drawing while we do this!
 	
 #ifndef NDEBUG
-	Entity* p0 = entities[0].get();
+	Entity* p0 = _cxxUniverse->entities[0].get();
 	if (!(p0->_cxxEntity->isPlayer))
 	{
 		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
@@ -5976,11 +5987,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 #endif
 	
 	// preserve wormholes
-	std::vector<oo::ObjCRef<WormholeEntity *>> savedWormholes = activeWormholes;
+	std::vector<oo::ObjCRef<WormholeEntity *>> savedWormholes = _cxxUniverse->activeWormholes;
 
-	while (entities.size() > 1)
+	while (_cxxUniverse->entities.size() > 1)
 	{
-		Entity* ent = entities[1].get();
+		Entity* ent = _cxxUniverse->entities[1].get();
 		if (ent->_cxxEntity->isStation)  // clear out queues
 			[(StationEntity *)ent clear];
 		if (EXPECT(![ent isVisualEffect]))
@@ -5994,40 +6005,40 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 	}
 	
-	activeWormholes = std::move(savedWormholes);	// will be cleared out by populateSpaceFromActiveWormholes
+	_cxxUniverse->activeWormholes = std::move(savedWormholes);	// will be cleared out by populateSpaceFromActiveWormholes
 	
 	// maintain sorted list
-	n_entities = 1;
+	_cxxUniverse->n_entities = 1;
 	
-	cachedSun = nil;
-	cachedPlanet = nil;
-	cachedStation = nil;
-	closeSystems.reset();
+	_cxxUniverse->cachedSun = nil;
+	_cxxUniverse->cachedPlanet = nil;
+	_cxxUniverse->cachedStation = nil;
+	_cxxUniverse->closeSystems.reset();
 	
 	[self resetBeacons];
-	waypoints.clear();
+	_cxxUniverse->waypoints.clear();
 	
-	no_update = updating;	// restore drawing
+	_cxxUniverse->no_update = updating;	// restore drawing
 }
 
 
 - (void) removeDemoShips
 {
 	int i;
-	int ent_count = n_entities;
+	int ent_count = _cxxUniverse->n_entities;
 	if (ent_count > 0)
 	{
 		Entity* ent;
 		for (i = 0; i < ent_count; i++)
 		{
-			ent = sortedEntities[i];
+			ent = _cxxUniverse->sortedEntities[i];
 			if ([ent status] == STATUS_COCKPIT_DISPLAY && ![ent isPlayer])
 			{
 				[self removeEntity:ent];
 			}
 		}
 	}
-	demo_ship = nil;
+	_cxxUniverse->demo_ship = nil;
 }
 
 
@@ -6087,10 +6098,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		return YES;			// within range already!
 	
 	int i;
-	int ent_count = n_entities;
+	int ent_count = _cxxUniverse->n_entities;
 	Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [sortedEntities[i] retain]; //	retained
+		my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; //	retained
 	
 	if (v1.x || v1.y || v1.z)
 		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
@@ -6149,10 +6160,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 	Entity* result = nil;
 	int i;
-	int ent_count = n_entities;
+	int ent_count = _cxxUniverse->n_entities;
 	Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [sortedEntities[i] retain]; //	retained
+		my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; //	retained
 	
 	if (v1.x || v1.y || v1.z)
 		f1 = HPvector_normal(v1);   // unit vector in direction of p2 from p1
@@ -6203,10 +6214,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	HPVector  f1;
 	HPVector  result = p2;
 	int i;
-	int ent_count = n_entities;
+	int ent_count = _cxxUniverse->n_entities;
 	Entity* my_entities[ent_count];
 	for (i = 0; i < ent_count; i++)
-		my_entities[i] = [sortedEntities[i] retain];	// retained
+		my_entities[i] = [_cxxUniverse->sortedEntities[i] retain];	// retained
 	HPVector p1 = e1->_cxxEntity->position;
 	HPVector v1 = p2;
 	v1.x -= p1.x;   v1.y -= p1.y;   v1.z -= p1.z;   // vector from entity to p2
@@ -6383,13 +6394,13 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 	double			nearest = [srcEntity weaponRange];
 	int				i;
-	int				ent_count = n_entities;
+	int				ent_count = _cxxUniverse->n_entities;
 	int				ship_count = 0;
 	ShipEntity		*my_entities[ent_count];
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		Entity* ent = sortedEntities[i];
+		Entity* ent = _cxxUniverse->sortedEntities[i];
 		if (ent != srcEntity && ent != parent && [ent isShip] && [ent canCollide])
 		{
 			my_entities[ship_count++] = [(ShipEntity *)ent retain];
@@ -6475,15 +6486,15 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	OOScalar		nearest2 = SCANNER_MAX_RANGE - 100;	// 100m shorter than range at which target is lost
 	nearest2 *= nearest2;
 	int				i;
-	int				ent_count = n_entities;
+	int				ent_count = _cxxUniverse->n_entities;
 	int				ship_count = 0;
 	Entity			*my_entities[ent_count];
 	
 	for (i = 0; i < ent_count; i++)
 	{
-		if (([sortedEntities[i] isShip] && ![sortedEntities[i] isPlayer]) || [sortedEntities[i] isWormhole])
+		if (([_cxxUniverse->sortedEntities[i] isShip] && ![_cxxUniverse->sortedEntities[i] isPlayer]) || [_cxxUniverse->sortedEntities[i] isWormhole])
 		{
-			my_entities[ship_count++] = [sortedEntities[i] retain];
+			my_entities[ship_count++] = [_cxxUniverse->sortedEntities[i] retain];
 		}
 	}
 	
@@ -6495,7 +6506,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	HPVector p1 = HPvector_add([player position], vectorToHPVector(OOVectorMultiplyMatrix(offset, OOMatrixFromBasisVectors(r1, u1, f1))));
 	
 	// Note: deliberately tied to view direction, not weapon facing. All custom views count as forward for targeting.
-	switch (viewDirection)
+	switch (_cxxUniverse->viewDirection)
 	{
 		case VIEW_AFT :
 			quaternion_rotate_about_axis(&q1, u1, M_PI);
@@ -6562,7 +6573,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	// The first weapon offset, or the zero vector for none (as -oo_vectorAtIndex:0 of the old array).
 	const auto firstWeaponOffset = [](const std::vector<Vector> &offsets) { return offsets.empty() ? kZeroVector : offsets.front(); };
 
-	switch (viewDirection)
+	switch (_cxxUniverse->viewDirection)
 	{
 		case VIEW_FORWARD:
 			targetFacing = WEAPON_FACING_FORWARD;
@@ -6662,9 +6673,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	if (e1 != nil)  p1 = e1->_cxxEntity->position;
 	else  p1 = kZeroHPVector;
 	
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		Entity *e2 = sortedEntities[i];
+		Entity *e2 = _cxxUniverse->sortedEntities[i];
 		if (e2 != e1 && predicate(e2, parameter))
 		{
 			if (range < 0)  distance = -1;	// Negative range means infinity
@@ -6737,14 +6748,14 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 
 	if (predicate == NULL)  predicate = YESPredicate;
 
-	result.reserve(n_entities);
+	result.reserve(_cxxUniverse->n_entities);
 	
 	if (e1 != nil)  p1 = [e1 position];
 	else  p1 = kZeroHPVector;
 	
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		Entity *e2 = sortedEntities[i];
+		Entity *e2 = _cxxUniverse->sortedEntities[i];
 		
 		if (e1 != e2 &&
 			EntityInRange(p1, e2, range) &&
@@ -6772,9 +6783,9 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	
 	if (predicate == NULL)  predicate = YESPredicate;
 	
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		candidate = sortedEntities[i];
+		candidate = _cxxUniverse->sortedEntities[i];
 		if (predicate(candidate, parameter))  return candidate;
 	}
 	
@@ -6854,9 +6865,9 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	if (entity != nil)  p1 = [entity position];
 	else  p1 = kZeroHPVector;
 	
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		Entity *e2 = sortedEntities[i];
+		Entity *e2 = _cxxUniverse->sortedEntities[i];
 		float distanceToReferenceEntitySquared = (float)HPdistance2(p1, [e2 position]);
 		
 		if (entity != e2 &&
@@ -6899,13 +6910,13 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 
 - (OOTimeAbsolute) getTime
 {
-	return universal_time;
+	return _cxxUniverse->universal_time;
 }
 
 
 - (OOTimeDelta) getTimeDelta
 {
-	return time_delta;
+	return _cxxUniverse->time_delta;
 }
 
 
@@ -6913,39 +6924,39 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 {
 	unsigned i;
 	
-	[universeRegion clearEntityList];
+	[_cxxUniverse->universeRegion clearEntityList];
 	
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		[universeRegion checkEntity:sortedEntities[i]];	// sorts out which region it's in
+		[_cxxUniverse->universeRegion checkEntity:_cxxUniverse->sortedEntities[i]];	// sorts out which region it's in
 	}
 	
 	if (![[self gameController] isGamePaused])
 	{
-		[universeRegion findCollisions];
+		[_cxxUniverse->universeRegion findCollisions];
 	}
 	
 	// do check for entities that can't see the sun!
-	[universeRegion findShadowedEntities];
+	[_cxxUniverse->universeRegion findShadowedEntities];
 }
 
 
 - (std::string) collisionDescription
 {
-	if (universeRegion != nil)  return [universeRegion collisionDescription];
+	if (_cxxUniverse->universeRegion != nil)  return [_cxxUniverse->universeRegion collisionDescription];
 	else  return "-";
 }
 
 
 - (void) dumpCollisions
 {
-	dumpCollisionInfo = YES;
+	_cxxUniverse->dumpCollisionInfo = YES;
 }
 
 
 - (OOViewID) viewDirection
 {
-	return viewDirection;
+	return _cxxUniverse->viewDirection;
 }
 
 
@@ -6954,7 +6965,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	std::optional<std::string>	ms;
 	BOOL			guiSelected = NO;
 	
-	if ((viewDirection == vd) && (vd != VIEW_CUSTOM) && (!displayGUI))
+	if ((_cxxUniverse->viewDirection == vd) && (vd != VIEW_CUSTOM) && (!_cxxUniverse->displayGUI))
 		return;
 	
 	switch (vd)
@@ -6996,11 +7007,11 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	}
 	else
 	{
-		displayGUI = NO;   // switch off any text displays
+		_cxxUniverse->displayGUI = NO;   // switch off any text displays
 		[[self gameController] setMouseInteractionModeForFlight];
 	}
 	
-	if (viewDirection != vd || viewDirection == VIEW_CUSTOM)
+	if (_cxxUniverse->viewDirection != vd || _cxxUniverse->viewDirection == VIEW_CUSTOM)
 	{
 		#if (ALLOW_CUSTOM_VIEWS_WHILE_PAUSED)
 		BOOL gamePaused = [[self gameController] isGamePaused];
@@ -7009,14 +7020,14 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		#endif
 		// view notifications for when the player switches to/from gui!
 		//if (EXPECT(viewDirection == VIEW_GUI_DISPLAY || vd == VIEW_GUI_DISPLAY )) [PLAYER noteViewDidChangeFrom:viewDirection toView:vd];
-		viewDirection = vd;
+		_cxxUniverse->viewDirection = vd;
 		if (ms.has_value() && !gamePaused)
 		{
 			[self cxx_addMessage:ms forCount:3];
 		}
 		else if (gamePaused)
 		{
-			[message_gui clear];
+			[_cxxUniverse->message_gui clear];
 		}
 	}
 }
@@ -7024,12 +7035,12 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 
 - (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction
 {
-	OOViewID vd = viewDirection;
+	OOViewID vd = _cxxUniverse->viewDirection;
 	[self setViewDirection:VIEW_GUI_DISPLAY];
-	if (viewDirection != vd) {
+	if (_cxxUniverse->viewDirection != vd) {
 		PlayerEntity	*player = PLAYER;
 		ooscript::Context context = OOJSAcquireContext();
-		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, vd));
+		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, _cxxUniverse->viewDirection), OOJSValueFromViewID(context, vd));
 		OOJSRelinquishContext(context);
 	}
 	[[self gameController] setMouseInteractionModeForUIWithMouseInteraction:mouseInteraction];
@@ -7059,7 +7070,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	std::optional<std::string>	key = soundKey;
 	std::optional<std::string>	result;
 	std::set<std::string>		seen;
-	const oo::PList				*object = customSounds.find(*key);
+	const oo::PList				*object = _cxxUniverse->customSounds.find(*key);
 
 	if (object != nullptr && object->isArray() && object->count() > 0)
 	{
@@ -7082,7 +7093,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			for (;;)
 			{
 				seen.insert(*result);
-				object = customSounds.find(*result);
+				object = _cxxUniverse->customSounds.find(*result);
 				if (object != nullptr && object->isArray() && object->count() > 0)
 				{
 					result = OptionalStringAt(*object, Ranrot() % object->count());
@@ -7120,7 +7131,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 - (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key
 {
-	const oo::PList *entry = screenBackgrounds.find(key);
+	const oo::PList *entry = _cxxUniverse->screenBackgrounds.find(key);
 	oo::PList value = (entry != nullptr) ? *entry : oo::PList();
 	while (value.isArray())
 	{
@@ -7142,7 +7153,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 // Unloaded backgrounds (null) stay unloaded, as messaging nil changed nothing.
 - (void) cxx_setScreenTextureDescriptorForKey:(const std::string &)key descriptor:(const oo::PList &)desc
 {
-	oo::PList::Dict *backgrounds = screenBackgrounds.getIf<oo::PList::Dict>();
+	oo::PList::Dict *backgrounds = _cxxUniverse->screenBackgrounds.getIf<oo::PList::Dict>();
 	if (backgrounds == nullptr)  return;
 	if (desc.isNull())
 	{
@@ -7157,34 +7168,34 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 - (void) clearPreviousMessage
 {
-	currentMessage.reset();
+	_cxxUniverse->currentMessage.reset();
 }
 
 
 - (void) setMessageGuiBackgroundColor:(OOColor *)some_color
 {
-	[message_gui setBackgroundColor:some_color];
+	[_cxxUniverse->message_gui setBackgroundColor:some_color];
 }
 
 
 - (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count
 {
-	if (!SameMessage(currentMessage, text) || universal_time >= messageRepeatTime)
+	if (!SameMessage(_cxxUniverse->currentMessage, text) || _cxxUniverse->universal_time >= _cxxUniverse->messageRepeatTime)
 	{
-		currentMessage = text;
-		messageRepeatTime=universal_time + 6.0;
-		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
+		_cxxUniverse->currentMessage = text;
+		_cxxUniverse->messageRepeatTime=_cxxUniverse->universal_time + 6.0;
+		[self showGUIMessage:text withScroll:YES andColor:[_cxxUniverse->message_gui textColor] overDuration:count];
 	}
 }
 
 
 - (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count
 {
-	if (!SameMessage(currentMessage, text) && universal_time >= countdown_messageRepeatTime)
+	if (!SameMessage(_cxxUniverse->currentMessage, text) && _cxxUniverse->universal_time >= _cxxUniverse->countdown_messageRepeatTime)
 	{
-		currentMessage = text;
-		countdown_messageRepeatTime=universal_time + count;
-		[self showGUIMessage:text withScroll:NO andColor:[message_gui textColor] overDuration:count];
+		_cxxUniverse->currentMessage = text;
+		_cxxUniverse->countdown_messageRepeatTime=_cxxUniverse->universal_time + count;
+		[self showGUIMessage:text withScroll:NO andColor:[_cxxUniverse->message_gui textColor] overDuration:count];
 	}
 }
 
@@ -7234,7 +7245,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		std::optional<std::string>	systemSaid;
 		std::optional<std::string>	h_systemSaid;
 
-		const std::optional<std::string>	systemName = [self cxx_getSystemName:systemID];
+		const std::optional<std::string>	systemName = [self cxx_getSystemName:_cxxUniverse->systemID];
 
 		systemSaid = systemName;
 
@@ -7242,9 +7253,9 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		h_systemSaid = h_systemName;
 
 		std::optional<std::string>	spokenText = text;
-		if (!speechArray.isNull())
+		if (!_cxxUniverse->speechArray.isNull())
 		{
-			const oo::PList::Array *pairs = speechArray.getIf<oo::PList::Array>();
+			const oo::PList::Array *pairs = _cxxUniverse->speechArray.getIf<oo::PList::Array>();
 			if (pairs != nullptr)  for (const oo::PList &thePair : *pairs)
 			{
 				const std::optional<std::string> original_phrase = OptionalStringAt(thePair, 0);
@@ -7275,26 +7286,26 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 - (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay
 {
-	if (!SameMessage(currentMessage, text) || forceDisplay || universal_time >= messageRepeatTime)
+	if (!SameMessage(_cxxUniverse->currentMessage, text) || forceDisplay || _cxxUniverse->universal_time >= _cxxUniverse->messageRepeatTime)
 	{
 		if ([PLAYER isSpeechOn] == OOSPEECHSETTINGS_ALL)
 		{
 			[self speakWithSubstitutions:text];
 		}
 
-		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
+		[self showGUIMessage:text withScroll:YES andColor:[_cxxUniverse->message_gui textColor] overDuration:count];
 
 		[PLAYER cxx_doScriptEvent:OOJSID("consoleMessageReceived") withPListArguments:{ StringOrNull(text) }];
 
-		currentMessage = text;
-		messageRepeatTime=universal_time + 6.0;
+		_cxxUniverse->currentMessage = text;
+		_cxxUniverse->messageRepeatTime=_cxxUniverse->universal_time + 6.0;
 	}
 }
 
 
 - (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
 {
-	[self cxx_addCommsMessage:text forCount:count andShowComms:_autoCommLog logOnly:NO];
+	[self cxx_addCommsMessage:text forCount:count andShowComms:_cxxUniverse->_autoCommLog logOnly:NO];
 }
 
 
@@ -7304,7 +7315,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 	const std::optional<std::string> expandedMessage = text.has_value() ? cxx_OOExpand(*text) : std::nullopt;
 
-	if (!SameMessage(currentMessage, expandedMessage) || universal_time >= messageRepeatTime)
+	if (!SameMessage(_cxxUniverse->currentMessage, expandedMessage) || _cxxUniverse->universal_time >= _cxxUniverse->messageRepeatTime)
 	{
 		PlayerEntity* player = PLAYER;
 
@@ -7317,15 +7328,15 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				[self speakWithSubstitutions:oo::str::formatRuntime(format, { expandedMessage.has_value() ? oo::str::FormatArg(*expandedMessage) : oo::str::FormatArg::null() })];
 			}
 
-			[self showGUIMessage:expandedMessage withScroll:YES andColor:[message_gui textCommsColor] overDuration:count];
+			[self showGUIMessage:expandedMessage withScroll:YES andColor:[_cxxUniverse->message_gui textCommsColor] overDuration:count];
 
-			currentMessage = expandedMessage;
-			messageRepeatTime=universal_time + 6.0;
+			_cxxUniverse->currentMessage = expandedMessage;
+			_cxxUniverse->messageRepeatTime=_cxxUniverse->universal_time + 6.0;
 		}
 
 		// the printed lines go to the player's comm log
 		std::vector<std::string> printedLines;
-		[comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
+		[_cxxUniverse->comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
 		std::vector<std::string> *commLog = [player cxx_commLog];
 		if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
 
@@ -7336,8 +7347,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 - (void) showCommsLog:(OOTimeDelta)how_long
 {
-	[comm_log_gui setAlpha:1.0];
-	if (![self permanentCommLog]) [comm_log_gui fadeOutFromTime:[self getTime] overDuration:how_long];
+	[_cxxUniverse->comm_log_gui setAlpha:1.0];
+	if (![self permanentCommLog]) [_cxxUniverse->comm_log_gui fadeOutFromTime:[self getTime] overDuration:how_long];
 }
 
 
@@ -7345,13 +7356,13 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 {
 	if (scroll)
 	{
-		[message_gui cxx_printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
+		[_cxxUniverse->message_gui cxx_printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
 	}
 	else
 	{
-		[message_gui cxx_printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
+		[_cxxUniverse->message_gui cxx_printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
 	}
-	[message_gui setAlpha:1.0f];
+	[_cxxUniverse->message_gui setAlpha:1.0f];
 }
 
 
@@ -7362,26 +7373,26 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		return; // no need to be adding ships as this is not a "real" game
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:(system_repopulator.has_value() ? cxx_OOJSIDFromString(*system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	[PLAYER doWorldScriptEvent:(_cxxUniverse->system_repopulator.has_value() ? cxx_OOJSIDFromString(*_cxxUniverse->system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
-	next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
+	_cxxUniverse->next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
 }
 
 
 - (void) update:(OOTimeDelta)inDeltaT
 {
 	volatile OOTimeDelta delta_t = inDeltaT * [self timeAccelerationFactor];
-	NSUInteger sessionID = _sessionID;
+	NSUInteger sessionID = _cxxUniverse->_sessionID;
 	OO_LOG("universe.profile.update", "{}", "Begin update");
-	if (EXPECT(!no_update))
+	if (EXPECT(!_cxxUniverse->no_update))
 	{
-		next_repopulation -= delta_t;
-		if (next_repopulation < 0)
+		_cxxUniverse->next_repopulation -= delta_t;
+		if (_cxxUniverse->next_repopulation < 0)
 		{
 			[self repopulateSystem];
 		}
 
-		unsigned	i, ent_count = n_entities;
+		unsigned	i, ent_count = _cxxUniverse->n_entities;
 		Entity		*my_entities[ent_count];
 		
 		[self verifyEntitySessionIDs];
@@ -7389,7 +7400,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		// use a retained copy so this can't be changed under us.
 		for (i = 0; i < ent_count; i++)
 		{
-			my_entities[i] = [sortedEntities[i] retain];	// explicitly retain each one
+			my_entities[i] = [_cxxUniverse->sortedEntities[i] retain];	// explicitly retain each one
 		}
 		
 		const char * volatile update_stage = "initialisation";
@@ -7401,19 +7412,19 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		{
 			PlayerEntity *player = PLAYER;
 			
-			skyClearColor[0] = 0.0;
-			skyClearColor[1] = 0.0;
-			skyClearColor[2] = 0.0;
-			skyClearColor[3] = 0.0;
+			_cxxUniverse->skyClearColor[0] = 0.0;
+			_cxxUniverse->skyClearColor[1] = 0.0;
+			_cxxUniverse->skyClearColor[2] = 0.0;
+			_cxxUniverse->skyClearColor[3] = 0.0;
 			
-			time_delta = delta_t;
-			universal_time += delta_t;
+			_cxxUniverse->time_delta = delta_t;
+			_cxxUniverse->universal_time += delta_t;
 			
 			if (EXPECT_NOT([player showDemoShips] && [player guiScreen] == GUI_SCREEN_SHIPLIBRARY))
 			{
 				update_stage = "demo management";
 				
-				if (universal_time >= demo_stage_time)
+				if (_cxxUniverse->universal_time >= _cxxUniverse->demo_stage_time)
 				{
 					if (ent_count > 1)
 					{
@@ -7422,68 +7433,68 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 						
 						quaternion_rotate_about_y(&q2,M_PI);
 						
-						switch (demo_stage)
+						switch (_cxxUniverse->demo_stage)
 						{
 							case DEMO_FLY_IN:
-								[demo_ship setPosition:[demo_ship destination]];	// ideal position
-								demo_stage = DEMO_SHOW_THING;
-								demo_stage_time = universal_time + 300.0;
+								[_cxxUniverse->demo_ship setPosition:[_cxxUniverse->demo_ship destination]];	// ideal position
+								_cxxUniverse->demo_stage = DEMO_SHOW_THING;
+								_cxxUniverse->demo_stage_time = _cxxUniverse->universal_time + 300.0;
 								break;
 							case DEMO_SHOW_THING:
-								vel = make_vector(0, 0, DEMO2_VANISHING_DISTANCE * demo_ship->_cxxEntity->collision_radius * 6.0);
-								[demo_ship setVelocity:vel];
-								demo_stage = DEMO_FLY_OUT;
-								demo_stage_time = universal_time + 0.25;
+								vel = make_vector(0, 0, DEMO2_VANISHING_DISTANCE * _cxxUniverse->demo_ship->_cxxEntity->collision_radius * 6.0);
+								[_cxxUniverse->demo_ship setVelocity:vel];
+								_cxxUniverse->demo_stage = DEMO_FLY_OUT;
+								_cxxUniverse->demo_stage_time = _cxxUniverse->universal_time + 0.25;
 								break;
 							case DEMO_FLY_OUT:
 								// change the demo_ship here
-								[self removeEntity:demo_ship];
-								demo_ship = nil;
+								[self removeEntity:_cxxUniverse->demo_ship];
+								_cxxUniverse->demo_ship = nil;
 								
-								demo_ship_subindex = (demo_ship_subindex + 1) % DemoClassCount(demo_ships, demo_ship_index);
-								demo_ship = [self cxx_newShipWithName:OptionalStringIn([self demoShipData], kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];	// a missing key asked for "", as nil did
+								_cxxUniverse->demo_ship_subindex = (_cxxUniverse->demo_ship_subindex + 1) % DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index);
+								_cxxUniverse->demo_ship = [self cxx_newShipWithName:OptionalStringIn([self demoShipData], kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];	// a missing key asked for "", as nil did
 								
-								if (demo_ship != nil)
+								if (_cxxUniverse->demo_ship != nil)
 								{
-									[demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
-									[demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
+									[_cxxUniverse->demo_ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+									[_cxxUniverse->demo_ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
 
-									[demo_ship switchAITo:"nullAI.plist"];
-									[demo_ship setOrientation:q2];
-									[demo_ship setScanClass: CLASS_NO_DRAW];
-									[demo_ship setStatus: STATUS_COCKPIT_DISPLAY]; // prevents it getting escorts on addition
-									[demo_ship setDemoShip: 1.0f];
-									[demo_ship setDemoStartTime: universal_time];
-									if ([self addEntity:demo_ship])
+									[_cxxUniverse->demo_ship switchAITo:"nullAI.plist"];
+									[_cxxUniverse->demo_ship setOrientation:q2];
+									[_cxxUniverse->demo_ship setScanClass: CLASS_NO_DRAW];
+									[_cxxUniverse->demo_ship setStatus: STATUS_COCKPIT_DISPLAY]; // prevents it getting escorts on addition
+									[_cxxUniverse->demo_ship setDemoShip: 1.0f];
+									[_cxxUniverse->demo_ship setDemoStartTime: _cxxUniverse->universal_time];
+									if ([self addEntity:_cxxUniverse->demo_ship])
 									{
-										[demo_ship release];		// We now own a reference through the entity list.
-										[demo_ship setStatus:STATUS_COCKPIT_DISPLAY];
-										demo_start_z=DEMO2_VANISHING_DISTANCE * demo_ship->_cxxEntity->collision_radius;
-										[demo_ship setPositionX:0.0f y:0.0f z:demo_start_z];
-										[demo_ship setDestination: make_HPvector(0.0f, 0.0f, demo_start_z * 0.01f)];	// ideal position
-										[demo_ship setVelocity:kZeroVector];
-										[demo_ship setScanClass: CLASS_NO_DRAW];
+										[_cxxUniverse->demo_ship release];		// We now own a reference through the entity list.
+										[_cxxUniverse->demo_ship setStatus:STATUS_COCKPIT_DISPLAY];
+										_cxxUniverse->demo_start_z=DEMO2_VANISHING_DISTANCE * _cxxUniverse->demo_ship->_cxxEntity->collision_radius;
+										[_cxxUniverse->demo_ship setPositionX:0.0f y:0.0f z:_cxxUniverse->demo_start_z];
+										[_cxxUniverse->demo_ship setDestination: make_HPvector(0.0f, 0.0f, _cxxUniverse->demo_start_z * 0.01f)];	// ideal position
+										[_cxxUniverse->demo_ship setVelocity:kZeroVector];
+										[_cxxUniverse->demo_ship setScanClass: CLASS_NO_DRAW];
 //										[gui setText:shipName != nil ? shipName : [demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
 										
 										[self setLibraryTextForDemoShip];
 
-										demo_stage = DEMO_FLY_IN;
-										demo_start_time=universal_time;
-										demo_stage_time = demo_start_time + DEMO2_FLY_IN_STAGE_TIME;
+										_cxxUniverse->demo_stage = DEMO_FLY_IN;
+										_cxxUniverse->demo_start_time=_cxxUniverse->universal_time;
+										_cxxUniverse->demo_stage_time = _cxxUniverse->demo_start_time + DEMO2_FLY_IN_STAGE_TIME;
 									}
 									else
 									{
-										demo_ship = nil;
+										_cxxUniverse->demo_ship = nil;
 									}
 								}
 								break;
 						}
 					}
 				}
-				else if (demo_stage == DEMO_FLY_IN)
+				else if (_cxxUniverse->demo_stage == DEMO_FLY_IN)
 				{
-					GLfloat delta = (universal_time - demo_start_time) / DEMO2_FLY_IN_STAGE_TIME;
-					[demo_ship setPositionX:0.0f y:[demo_ship destination].y * delta z:demo_start_z + ([demo_ship destination].z - demo_start_z) * delta ];
+					GLfloat delta = (_cxxUniverse->universal_time - _cxxUniverse->demo_start_time) / DEMO2_FLY_IN_STAGE_TIME;
+					[_cxxUniverse->demo_ship setPositionX:0.0f y:[_cxxUniverse->demo_ship destination].y * delta z:_cxxUniverse->demo_start_z + ([_cxxUniverse->demo_ship destination].z - _cxxUniverse->demo_start_z) * delta ];
 				}
 			}
 			
@@ -7498,14 +7509,14 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				update_stage = "update:entity [%@]";
 #endif
 				// Game Over code depends on regular delta_t updates to the dead player entity. Ignore the player entity, even when dead.
-				if (EXPECT_NOT([thing status] == STATUS_DEAD && std::find(entitiesDeadThisUpdate.begin(), entitiesDeadThisUpdate.end(), thing) == entitiesDeadThisUpdate.end() && ![thing isPlayer]))
+				if (EXPECT_NOT([thing status] == STATUS_DEAD && std::find(_cxxUniverse->entitiesDeadThisUpdate.begin(), _cxxUniverse->entitiesDeadThisUpdate.end(), thing) == _cxxUniverse->entitiesDeadThisUpdate.end() && ![thing isPlayer]))
 				{
 					AddIfAbsent(zombies, thing);
 					continue;
 				}
 				
 				[thing update:delta_t];
-				if (EXPECT_NOT(sessionID != _sessionID))
+				if (EXPECT_NOT(sessionID != _cxxUniverse->_sessionID))
 				{
 					// Game was reset (in player update); end this update: cycle.
 					break;
@@ -7519,12 +7530,12 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				GLfloat z_distance = thing->_cxxEntity->zero_distance;
 				
 				int index = thing->_cxxEntity->zero_index;
-				while (index > 0 && z_distance < sortedEntities[index - 1]->_cxxEntity->zero_distance)
+				while (index > 0 && z_distance < _cxxUniverse->sortedEntities[index - 1]->_cxxEntity->zero_distance)
 				{
-					sortedEntities[index] = sortedEntities[index - 1];	// bubble up the list, usually by just one position
-					sortedEntities[index - 1] = thing;
+					_cxxUniverse->sortedEntities[index] = _cxxUniverse->sortedEntities[index - 1];	// bubble up the list, usually by just one position
+					_cxxUniverse->sortedEntities[index - 1] = thing;
 					thing->_cxxEntity->zero_index = index - 1;
-					sortedEntities[index]->_cxxEntity->zero_index = index;
+					_cxxUniverse->sortedEntities[index]->_cxxEntity->zero_index = index;
 					index--;
 				}
 				
@@ -7538,9 +7549,9 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 					if (theShipsAI)
 					{
 						double thinkTime = [theShipsAI nextThinkTime];
-						if ((universal_time > thinkTime)||(thinkTime == 0.0))
+						if ((_cxxUniverse->universal_time > thinkTime)||(thinkTime == 0.0))
 						{
-							[theShipsAI setNextThinkTime:universal_time + [theShipsAI thinkTimeInterval]];
+							[theShipsAI setNextThinkTime:_cxxUniverse->universal_time + [theShipsAI thinkTimeInterval]];
 							[theShipsAI think];
 						}
 					}
@@ -7579,10 +7590,10 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			
 			// do any required check and maintenance of linked lists
 			
-			if (doLinkedListMaintenanceThisUpdate)
+			if (_cxxUniverse->doLinkedListMaintenanceThisUpdate)
 			{
 				MaintainLinkedLists(self);
-				doLinkedListMaintenanceThisUpdate = NO;
+				_cxxUniverse->doLinkedListMaintenanceThisUpdate = NO;
 			}
 		}
 		@catch (OOException *exception)
@@ -7644,8 +7655,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	}
 	
 	// The dead stay alive until the autorelease pool drains, as the autoreleased set kept them.
-	AutoreleaseAll(entitiesDeadThisUpdate);
-	entitiesDeadThisUpdate.reserve(n_entities);
+	AutoreleaseAll(_cxxUniverse->entitiesDeadThisUpdate);
+	_cxxUniverse->entitiesDeadThisUpdate.reserve(_cxxUniverse->n_entities);
 	
 	[self prunePreloadingPlanetMaterials];
 
@@ -7656,7 +7667,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 #ifndef NDEBUG
 - (double) timeAccelerationFactor
 {
-	return timeAccelerationFactor;
+	return _cxxUniverse->timeAccelerationFactor;
 }
 
 
@@ -7666,7 +7677,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	{
 		newTimeAccelerationFactor = TIME_ACCELERATION_FACTOR_DEFAULT;
 	}
-	timeAccelerationFactor = newTimeAccelerationFactor;
+	_cxxUniverse->timeAccelerationFactor = newTimeAccelerationFactor;
 }
 #else
 - (double) timeAccelerationFactor
@@ -7683,13 +7694,13 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 - (BOOL) ECMVisualFXEnabled
 {
-	return ECMVisualFXEnabled;
+	return _cxxUniverse->ECMVisualFXEnabled;
 }
 
 
 - (void) setECMVisualFXEnabled:(BOOL)isEnabled
 {
-	ECMVisualFXEnabled = isEnabled;
+	_cxxUniverse->ECMVisualFXEnabled = isEnabled;
 }
 
 
@@ -7707,7 +7718,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	OOHPScalar start, finish, next_start, next_finish, prev_start, prev_finish;
 	
 	// using the z_list - set or clear collisionTestFilter and clear collision_chain
-	e0 = z_list_start;
+	e0 = _cxxUniverse->z_list_start;
 	while (e0)
 	{
 		e0->_cxxEntity->collisionTestFilter = [e0 canCollide]?0:3;
@@ -7723,7 +7734,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	 * list. - CIM: 7/11/2012 */
 
 	// start with the z_list
-	e0 = z_list_start;
+	e0 = _cxxUniverse->z_list_start;
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
@@ -7813,7 +7824,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	// done! list filtered
 	
 	// then with the y_list, z_list singletons now create more gaps..
-	e0 = y_list_start;
+	e0 = _cxxUniverse->y_list_start;
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
@@ -7904,7 +7915,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	// done! list filtered
 	
 	// finish with the x_list
-	e0 = x_list_start;
+	e0 = _cxxUniverse->x_list_start;
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
@@ -7994,7 +8005,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	// done! list filtered
 	
 	// repeat the y_list - so gaps from the x_list influence singletons
-	e0 = y_list_start;
+	e0 = _cxxUniverse->y_list_start;
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
@@ -8083,7 +8094,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	// done! list filtered
 	
 	// finally, repeat the z_list - this time building collision chains...
-	e0 = z_list_start;
+	e0 = _cxxUniverse->z_list_start;
 	while (e0)
 	{
 		// here we are either at the start of the list or just past a gap
@@ -8216,15 +8227,15 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 {
 	int						i;
 	
-	if (galaxyID != g || forced) {
-		galaxyID = g;
+	if (_cxxUniverse->galaxyID != g || forced) {
+		_cxxUniverse->galaxyID = g;
 		
 		// systems
 		@autoreleasepool
 		{
 			for (i = 0; i < 256; i++)
 			{
-				system_names[i] = SystemPropertyString([systemManager cxx_getProperty:"name" forSystem:i inGalaxy:g]);
+				_cxxUniverse->system_names[i] = SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:"name" forSystem:i inGalaxy:g]);
 
 			}
 		}
@@ -8241,21 +8252,21 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 
 	[self setGalaxyTo: [player galaxyNumber]];
 
-	systemID = s;
-	targetSystemID = s;
+	_cxxUniverse->systemID = s;
+	_cxxUniverse->targetSystemID = s;
 
-	systemData = [self cxx_generateSystemData:targetSystemID];
+	systemData = [self cxx_generateSystemData:_cxxUniverse->targetSystemID];
 	economy = systemData.get<unsigned char>(std::string(KEY_ECONOMY));
 	scriptName = OptionalStringIn(systemData, "market_script");
 
-	DESTROY(commodityMarket);
-	commodityMarket = [[commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
+	DESTROY(_cxxUniverse->commodityMarket);
+	_cxxUniverse->commodityMarket = [[_cxxUniverse->commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
 }
 
 
 - (OOSystemID) currentSystemID
 {
-	return systemID;
+	return _cxxUniverse->systemID;
 }
 
 
@@ -8427,22 +8438,22 @@ std::optional<std::string> SystemPropertyString(const oo::PList &property)
 
 - (const oo::PList *) cxx_descriptions
 {
-	if (_descriptions.isNull())
+	if (_cxxUniverse->_descriptions.isNull())
 	{
 		// Load internal descriptions.plist for use in early init, OXP verifier etc.
 		// It will be replaced by merged version later if running the game normally.
-		_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "descriptions.plist"));
-		_descriptionsGeneration = ++sDescriptionsGeneration;
+		_cxxUniverse->_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "descriptions.plist"));
+		_cxxUniverse->_descriptionsGeneration = ++sDescriptionsGeneration;
 
 		[self verifyDescriptions];
 	}
-	return &_descriptions;
+	return &_cxxUniverse->_descriptions;
 }
 
 
 - (unsigned) cxx_descriptionsGeneration
 {
-	return _descriptionsGeneration;
+	return _cxxUniverse->_descriptionsGeneration;
 }
 
 
@@ -8506,13 +8517,13 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		-- Ahruman 2011-05-05
 	*/
 	
-	if (_descriptions.isNull())
+	if (_cxxUniverse->_descriptions.isNull())
 	{
 		OO_LOG("descriptions.verify", "{}", "***** FATAL: Tried to verify descriptions, but descriptions was nil - unable to load any descriptions.plist file.");
 		exit(EXIT_FAILURE);
 	}
 	// Byte order of the key (was hash order): it decides only which bad entry is reported first.
-	if (const oo::PList::Dict *entries = _descriptions.getIf<oo::PList::Dict>())
+	if (const oo::PList::Dict *entries = _cxxUniverse->_descriptions.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[key, value] : *entries)
 		{
@@ -8524,40 +8535,40 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (void) loadDescriptions
 {
-	_descriptions = [ResourceManager cxx_dictionaryFromFilesNamed:"descriptions.plist" inFolder:std::string("Config") andMerge:YES];
-	_descriptionsGeneration = ++sDescriptionsGeneration;
+	_cxxUniverse->_descriptions = [ResourceManager cxx_dictionaryFromFilesNamed:"descriptions.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->_descriptionsGeneration = ++sDescriptionsGeneration;
 	[self verifyDescriptions];
 }
 
 
 - (oo::PList) cxx_explosionSetting:(const std::string &)explosion
 {
-	const oo::PList *setting = explosionSettings.get<oo::PList::Dict>(explosion);
+	const oo::PList *setting = _cxxUniverse->explosionSettings.get<oo::PList::Dict>(explosion);
 	return (setting != nullptr) ? *setting : oo::PList();
 }
 
 
 - (oo::PList) cxx_scenarios
 {
-	return _scenarios;
+	return _cxxUniverse->_scenarios;
 }
 
 
 - (void) loadScenarios
 {
-	_scenarios = [ResourceManager cxx_arrayFromFilesNamed:"scenarios.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->_scenarios = [ResourceManager cxx_arrayFromFilesNamed:"scenarios.plist" inFolder:std::string("Config") andMerge:YES];
 }
 
 
 - (oo::PList) cxx_characters
 {
-	return characters;
+	return _cxxUniverse->characters;
 }
 
 
 - (oo::PList) cxx_missiontext
 {
-	return missiontext;
+	return _cxxUniverse->missiontext;
 }
 
 
@@ -8583,7 +8594,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (OOSystemDescriptionManager *) systemManager
 {
-	return systemManager;
+	return _cxxUniverse->systemManager;
 }
 
 
@@ -8615,7 +8626,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 // galaxynumber parameter.
 	const std::string systemKey = oo::str::format("%u %u",[PLAYER galaxyNumber],s);
 
-	return [systemManager cxx_getPropertiesForSystemKey:systemKey];
+	return [_cxxUniverse->systemManager cxx_getPropertiesForSystemKey:systemKey];
 
 	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
@@ -8627,7 +8638,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 	if (![self inInterstellarSpace])
 	{
-		return [self cxx_generateSystemData:systemID];
+		return [self cxx_generateSystemData:_cxxUniverse->systemID];
 	}
 	else
 	{
@@ -8670,7 +8681,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 // used by legacy script engine and sun going nova
 - (void) cxx_setSystemDataKey:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest
 {
-	[self cxx_setSystemDataForGalaxy:galaxyID planet:systemID key:key value:value fromManifest:manifest forLayer:OO_LAYER_OXP_DYNAMIC];
+	[self cxx_setSystemDataForGalaxy:_cxxUniverse->galaxyID planet:_cxxUniverse->systemID key:key value:value fromManifest:manifest forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
@@ -8705,7 +8716,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	oo::PList	sysInfo;
 
 	// short range map fix
-	[gui refreshStarChart];
+	[_cxxUniverse->gui refreshStarChart];
 
 	if (!object.isNull()) {
 		// long range map fixes
@@ -8717,7 +8728,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 			object = oo::PList(name);
 			if(sameGalaxy)
 			{
-				system_names[pnum] = name;
+				_cxxUniverse->system_names[pnum] = name;
 			}
 		}
 		else if (key == "sun_radius")
@@ -8734,13 +8745,13 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	}
 
 	// a null value removes the property, as nil did
-	[systemManager cxx_setProperty:key forSystemKey:overrideKey andLayer:layer toValue:object fromManifest:manifest];
+	[_cxxUniverse->systemManager cxx_setProperty:key forSystemKey:overrideKey andLayer:layer toValue:object fromManifest:manifest];
 
 
 	// Apply changes that can be effective immediately, issue warning if they can't be changed just now
 	if (sameSystem)
 	{
-		sysInfo = [systemManager cxx_getPropertiesForCurrentSystem];
+		sysInfo = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
 
 		OOSunEntity* the_sun = [self sun];
 		/* KEY_ECONOMY used to be here, but resetting the main station
@@ -8751,7 +8762,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		{	
 			if([self station]){
 				[[self station] setEquivalentTechLevel:ScriptValueInt(object)];
-				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
+				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:_cxxUniverse->systemID
 								withTL:ScriptValueInt(object) atTime:[PLAYER clockTime]];
 				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
 				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
@@ -8763,9 +8774,9 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 			SkyEntity	*the_sky = nil;
 			int i;
 			
-			for (i = n_entities - 1; i > 0; i--)
-				if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[SkyEntity class]]))
-					the_sky = (SkyEntity*)sortedEntities[i];
+			for (i = _cxxUniverse->n_entities - 1; i > 0; i--)
+				if ((_cxxUniverse->sortedEntities[i]) && ([_cxxUniverse->sortedEntities[i] isKindOfClass:[SkyEntity class]]))
+					the_sky = (SkyEntity*)_cxxUniverse->sortedEntities[i];
 			
 			if (the_sky != nil)
 			{
@@ -8777,12 +8788,12 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 					if (the_sun != nil)
 					{
 						[the_sun setSunColor:color];
-						[the_sun getDiffuseComponents:sun_diffuse];
-						[the_sun getSpecularComponents:sun_specular];
+						[the_sun getDiffuseComponents:_cxxUniverse->sun_diffuse];
+						[the_sun getSpecularComponents:_cxxUniverse->sun_specular];
 					}
-					for (i = n_entities - 1; i > 0; i--)
-						if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[DustEntity class]]))
-							[(DustEntity*)sortedEntities[i] setDustColor:[color blendedColorWithFraction:0.5 ofColor:[OOColor whiteColor]]];
+					for (i = _cxxUniverse->n_entities - 1; i > 0; i--)
+						if ((_cxxUniverse->sortedEntities[i]) && ([_cxxUniverse->sortedEntities[i] isKindOfClass:[DustEntity class]]))
+							[(DustEntity*)_cxxUniverse->sortedEntities[i] setDustColor:[color blendedColorWithFraction:0.5 ofColor:[OOColor whiteColor]]];
 				}
 			}
 		}
@@ -8826,7 +8837,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 - (oo::PList) generateSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum
 {
 	const std::optional<std::string> systemKey = [self cxx_keyForPlanetOverridesForSystem:pnum inGalaxy:gnum];
-	return [systemManager cxx_getPropertiesForSystemKey:*systemKey];
+	return [_cxxUniverse->systemManager cxx_getPropertiesForSystemKey:*systemKey];
 }
 
 
@@ -8846,26 +8857,26 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 /* Only called from OOJSSystemInfo. */
 - (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key
 {
-	return [systemManager cxx_getProperty:key forSystem:pnum inGalaxy:gnum];
+	return [_cxxUniverse->systemManager cxx_getProperty:key forSystem:pnum inGalaxy:gnum];
 }
 
 
 - (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys
 {
-	return [self cxx_getSystemName:sys forGalaxy:galaxyID];
+	return [self cxx_getSystemName:sys forGalaxy:_cxxUniverse->galaxyID];
 }
 
 
 - (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum
 {
-	return SystemPropertyString([systemManager cxx_getProperty:"name" forSystem:sys inGalaxy:gnum]);
+	return SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:"name" forSystem:sys inGalaxy:gnum]);
 }
 
 
 - (OOGovernmentID) getSystemGovernment:(OOSystemID) sys
 {
 	// -unsignedCharValue of the number (nil, where there is none, gave 0)
-	return static_cast<unsigned char>([systemManager cxx_getProperty:"government" forSystem:sys inGalaxy:galaxyID].int64Value());
+	return static_cast<unsigned char>([_cxxUniverse->systemManager cxx_getProperty:"government" forSystem:sys inGalaxy:_cxxUniverse->galaxyID].int64Value());
 }
 
 
@@ -8880,7 +8891,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	std::optional<std::string> ret;
 	if (!plural)
 	{
-		ret = SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANT) forSystem:sys inGalaxy:galaxyID]);
+		ret = SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:std::string(KEY_INHABITANT) forSystem:sys inGalaxy:_cxxUniverse->galaxyID]);
 	}
 	if (ret.has_value()) // the singular form might be absent.
 	{
@@ -8888,14 +8899,14 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	}
 	else
 	{
-		return SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANTS) forSystem:sys inGalaxy:galaxyID]);
+		return SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:std::string(KEY_INHABITANTS) forSystem:sys inGalaxy:_cxxUniverse->galaxyID]);
 	}
 }
 
 
 - (NSPoint) coordinatesForSystem:(OOSystemID)s
 {
-	return [systemManager getCoordinatesForSystem:s inGalaxy:galaxyID];
+	return [_cxxUniverse->systemManager getCoordinatesForSystem:s inGalaxy:_cxxUniverse->galaxyID];
 }
 
 
@@ -8906,7 +8917,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	for (i = 0; i < 256; i++)
 	{
 		// a missing name matched nothing
-		if (system_names[i].has_value() && oo::str::lowercase(*system_names[i]) == match)
+		if (_cxxUniverse->system_names[i].has_value() && oo::str::lowercase(*_cxxUniverse->system_names[i]) == match)
 		{
 			return i;
 		}
@@ -8933,7 +8944,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	{
 		NSPoint there = [self coordinatesForSystem:i];
 		double dist = distanceBetweenPlanetPositions(here.x, here.y, there.x, there.y);
-		if (dist <= range && (i != systemID || [self inInterstellarSpace])) // if we are in interstellar space, it's OK to include the system we (mis)jumped from
+		if (dist <= range && (i != _cxxUniverse->systemID || [self inInterstellarSpace])) // if we are in interstellar space, it's OK to include the system we (mis)jumped from
 		{
 			// the number kinds it held: a double, a signed integer
 			result.push_back(oo::PList(oo::PList::Dict{
@@ -8963,10 +8974,10 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	{
 		for (i = 0; i < 256; i++)   // flood fill out from system zero
 		{
-			NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+			NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
 			for (j = 0; j < 256; j++)
 			{
-				NSPoint jpos = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+				NSPoint jpos = [_cxxUniverse->systemManager getCoordinatesForSystem:j inGalaxy:g];
 				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
 				if (dist <= MAX_JUMP_RANGE)
 				{
@@ -8979,7 +8990,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	OOSystemID system = 0;
 	for (i = 0; i < 256; i++)
 	{
-		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
 		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
 		if ((connected[i])&&(distance < min_dist)&&(distance != 0.0))
 		{
@@ -9010,10 +9021,10 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	{
 		for (i = 0; i < 256; i++)   // flood fill out from system zero
 		{
-			NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+			NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
 			for (j = 0; j < 256; j++)
 			{
-				NSPoint jpos = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+				NSPoint jpos = [_cxxUniverse->systemManager getCoordinatesForSystem:j inGalaxy:g];
 				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
 				if (dist <= MAX_JUMP_RANGE)
 				{
@@ -9026,7 +9037,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	OOSystemID system = 0;
 	for (i = 0; i < 256; i++)
 	{
-		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
 		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
 		if ((connected[i])&&(distance < min_dist))
 		{
@@ -9055,14 +9066,14 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	for (i = 0; i < 256; i++)
 	{
 		if (!hidden) {
-			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g];
+			const oo::PList systemInfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystem:i inGalaxy:g];
 			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 				// system is not known
 				continue;
 			}
 		}
-		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
 		dx = ABS(coords.x - ipos.x);
 		dy = ABS(coords.y - ipos.y);
 		
@@ -9103,23 +9114,23 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	int result = -1;
 	for (i = 0; i < 256; i++)
 	{
-		system_found[i] = NO;
-		if (!system_names[i].has_value())  continue;	// a missing name matched nothing
-		system_name = oo::str::lowercase(*system_names[i]);
+		_cxxUniverse->system_found[i] = NO;
+		if (!_cxxUniverse->system_names[i].has_value())  continue;	// a missing name matched nothing
+		system_name = oo::str::lowercase(*_cxxUniverse->system_names[i]);
 		if ((exactMatch && system_name == p_fix) || (!exactMatch && oo::str::hasPrefix(system_name, p_fix)))
 		{
 			/* Only used in player-based search routines */
-			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+			const oo::PList systemInfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystem:i inGalaxy:_cxxUniverse->galaxyID];
 			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) {
 				// system is not known
 				continue;
 			}
 			
-			system_found[i] = YES;
+			_cxxUniverse->system_found[i] = YES;
 			if (result < 0)
 			{
-				system_coords = [systemManager getCoordinatesForSystem:i inGalaxy:galaxyID];
+				system_coords = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:_cxxUniverse->galaxyID];
 				result = i;
 			}
 		}
@@ -9130,13 +9141,13 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (BOOL*) systemsFound
 {
-	return (BOOL*)system_found;
+	return (BOOL*)_cxxUniverse->system_found;
 }
 
 
 - (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID)index
 {
-	return system_names[index & 255];
+	return _cxxUniverse->system_names[index & 255];
 }
 
 
@@ -9176,7 +9187,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	BOOL concealed[256];
 	for (i = 0; i < 256; i++)
 	{
-		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+		const oo::PList systemInfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystem:i inGalaxy:_cxxUniverse->galaxyID];
 		NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 			// system is not known
@@ -9215,8 +9226,8 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 				}
 				OOSystemID c = [ce location];
 				
-				NSPoint cpos = [systemManager getCoordinatesForSystem:c inGalaxy:galaxyID];
-				NSPoint npos = [systemManager getCoordinatesForSystem:n inGalaxy:galaxyID];
+				NSPoint cpos = [_cxxUniverse->systemManager getCoordinatesForSystem:c inGalaxy:_cxxUniverse->galaxyID];
+				NSPoint npos = [_cxxUniverse->systemManager getCoordinatesForSystem:n inGalaxy:_cxxUniverse->galaxyID];
 
 				double lastDistance = distanceBetweenPlanetPositions(npos.x,npos.y,cpos.x,cpos.y);
 				double lastTime = lastDistance * lastDistance;
@@ -9271,16 +9282,16 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (std::vector<OOSystemID>) neighboursToSystem: (OOSystemID) s
 {
-	if (s == systemID && closeSystems.has_value())
+	if (s == _cxxUniverse->systemID && _cxxUniverse->closeSystems.has_value())
 	{
-		return *closeSystems;
+		return *_cxxUniverse->closeSystems;
 	}
-	std::vector<OOSystemID> neighbours = [systemManager cxx_getNeighbourIDsForSystem:s inGalaxy:galaxyID];
+	std::vector<OOSystemID> neighbours = [_cxxUniverse->systemManager cxx_getNeighbourIDsForSystem:s inGalaxy:_cxxUniverse->galaxyID];
 
-	if (s == systemID)
+	if (s == _cxxUniverse->systemID)
 	{
-		closeSystems = neighbours;
-		return *closeSystems;
+		_cxxUniverse->closeSystems = neighbours;
+		return *_cxxUniverse->closeSystems;
 	}
 	return neighbours;
 }
@@ -9348,25 +9359,25 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (oo::PList) cxx_globalSettings
 {
-	return globalSettings;
+	return _cxxUniverse->globalSettings;
 }
 
 
 - (oo::PList) cxx_equipmentData
 {
-	return equipmentData;
+	return _cxxUniverse->equipmentData;
 }
 
 
 - (oo::PList) cxx_equipmentDataOutfitting
 {
-	return equipmentDataOutfitting;
+	return _cxxUniverse->equipmentDataOutfitting;
 }
 
 
 - (OOCommodityMarket *) commodityMarket
 {
-	return commodityMarket;
+	return _cxxUniverse->commodityMarket;
 }
 
 
@@ -9453,7 +9464,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 - (Random_Seed) marketSeed
 {
-	Random_Seed		ret = [systemManager getRandomSeedForCurrentSystem];
+	Random_Seed		ret = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
 	
 	// adjust basic seed by market random factor
 	// which for (very bad) historical reasons is 0x80
@@ -10259,11 +10270,11 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		{
 			const std::string &item_key = mut_extras[i];
 			std::optional<std::string> item_desc;
-			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
+			for (j = 0; ((j < _cxxUniverse->equipmentData.count())&&(!item_desc)) ; j++)
 			{
-				std::optional<std::string> eq_type = EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX);
+				std::optional<std::string> eq_type = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_KEY_INDEX);
 				if (eq_type == item_key)
-					item_desc = EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
+					item_desc = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
 			}
 			if (item_desc)
 			{
@@ -10292,11 +10303,11 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		{
 			const std::string &item_key = options[i];
 			std::optional<std::string> item_desc;
-			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
+			for (j = 0; ((j < _cxxUniverse->equipmentData.count())&&(!item_desc)) ; j++)
 			{
-				std::optional<std::string> eq_type = EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX);
+				std::optional<std::string> eq_type = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_KEY_INDEX);
 				if (eq_type == item_key)
-					item_desc = EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
+					item_desc = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
 			}
 			if (item_desc)
 			{
@@ -10448,14 +10459,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message
 {
 	int i;
-	int ent_count = n_entities;
+	int ent_count = _cxxUniverse->n_entities;
 	int ship_count = 0;
 	ShipEntity* my_ships[ent_count];
 	for (i = 0; i < ent_count; i++)
 	{
-		if (sortedEntities[i]->_cxxEntity->isShip)
+		if (_cxxUniverse->sortedEntities[i]->_cxxEntity->isShip)
 		{
-			my_ships[ship_count++] = [(ShipEntity *)sortedEntities[i] retain];	// retained
+			my_ships[ship_count++] = [(ShipEntity *)_cxxUniverse->sortedEntities[i] retain];	// retained
 		}
 	}
 	
@@ -10472,103 +10483,103 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 - (GuiDisplayGen *) gui
 {
-	return gui;
+	return _cxxUniverse->gui;
 }
 
 
 - (GuiDisplayGen *) commLogGUI
 {
-	return comm_log_gui;
+	return _cxxUniverse->comm_log_gui;
 }
 
 
 - (GuiDisplayGen *) messageGUI
 {
-	return message_gui;
+	return _cxxUniverse->message_gui;
 }
 
 
 - (void) clearGUIs
 {
-	[gui clear];
-	[message_gui clear];
-	[comm_log_gui clear];
-	[comm_log_gui cxx_printLongText:OO_DESC("communications-log-string")
+	[_cxxUniverse->gui clear];
+	[_cxxUniverse->message_gui clear];
+	[_cxxUniverse->comm_log_gui clear];
+	[_cxxUniverse->comm_log_gui cxx_printLongText:OO_DESC("communications-log-string")
 						  align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
 }
 
 
 - (void) resetCommsLogColor
 {
-	[comm_log_gui setTextColor:[OOColor whiteColor]];
+	[_cxxUniverse->comm_log_gui setTextColor:[OOColor whiteColor]];
 }
 
 
 - (void) setDisplayText:(BOOL) value
 {
-	displayGUI = !!value;
+	_cxxUniverse->displayGUI = !!value;
 }
 
 
 - (BOOL) displayGUI
 {
-	return displayGUI;
+	return _cxxUniverse->displayGUI;
 }
 
 
 - (void) setDisplayFPS:(BOOL) value
 {
-	displayFPS = !!value;
+	_cxxUniverse->displayFPS = !!value;
 }
 
 
 - (BOOL) displayFPS
 {
-	return displayFPS;
+	return _cxxUniverse->displayFPS;
 }
 
 
 - (void) setAutoSave:(BOOL) value
 {
-	autoSave = !!value;
-	oo::Defaults::standard().setBool("autosave", autoSave);
+	_cxxUniverse->autoSave = !!value;
+	oo::Defaults::standard().setBool("autosave", _cxxUniverse->autoSave);
 }
 
 
 - (BOOL) autoSave
 {
-	return autoSave;
+	return _cxxUniverse->autoSave;
 }
 
 
 - (void) setAutoSaveNow:(BOOL) value
 {
-	autoSaveNow = !!value;
+	_cxxUniverse->autoSaveNow = !!value;
 }
 
 
 - (BOOL) autoSaveNow
 {
-	return autoSaveNow;
+	return _cxxUniverse->autoSaveNow;
 }
 
 
 - (void) setWireframeGraphics:(BOOL) value
 {
-	wireframeGraphics = !!value;
-	oo::Defaults::standard().setBool("wireframe-graphics", wireframeGraphics);
+	_cxxUniverse->wireframeGraphics = !!value;
+	oo::Defaults::standard().setBool("wireframe-graphics", _cxxUniverse->wireframeGraphics);
 }
 
 
 - (BOOL) wireframeGraphics
 {
-	return wireframeGraphics;
+	return _cxxUniverse->wireframeGraphics;
 }
 
 
 - (BOOL) reducedDetail
 {
-	return detailLevel == DETAIL_LEVEL_MINIMUM;
+	return _cxxUniverse->detailLevel == DETAIL_LEVEL_MINIMUM;
 }
 
 
@@ -10587,20 +10598,20 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		value = DETAIL_LEVEL_MINIMUM;
 	}
-	detailLevel = value;
+	_cxxUniverse->detailLevel = value;
 }
 
 
 - (void) setDetailLevel:(OOGraphicsDetail)value
 {
-	OOGraphicsDetail old = detailLevel;
+	OOGraphicsDetail old = _cxxUniverse->detailLevel;
 	[self setDetailLevelDirectly:value];
-	oo::Defaults::standard().setInteger("detailLevel", detailLevel);
+	oo::Defaults::standard().setInteger("detailLevel", _cxxUniverse->detailLevel);
 	// if changed then reset graphics state
 	// (some items now require this even if shader on/off mode unchanged)
-	if (old != detailLevel)
+	if (old != _cxxUniverse->detailLevel)
 	{
-		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(detailLevel));
+		OO_LOG("rendering.detail-level", "Detail level set to {}.", cxx_OOStringFromGraphicsDetail(_cxxUniverse->detailLevel));
 		[[OOGraphicsResetManager sharedManager] resetGraphicsState];
 	}
 
@@ -10608,13 +10619,13 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 - (OOGraphicsDetail) detailLevel
 {
-	return detailLevel;
+	return _cxxUniverse->detailLevel;
 }
 
 
 - (BOOL) useShaders
 {
-	return detailLevel >= DETAIL_LEVEL_SHADERS;
+	return _cxxUniverse->detailLevel >= DETAIL_LEVEL_SHADERS;
 }
 
 
@@ -10642,13 +10653,13 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 - (GLfloat)airResistanceFactor
 {
-	return airResistanceFactor;
+	return _cxxUniverse->airResistanceFactor;
 }
 
 
 - (void) setAirResistanceFactor:(GLfloat)newFactor
 {
-	airResistanceFactor = OOClamp_0_1_f(newFactor);
+	_cxxUniverse->airResistanceFactor = OOClamp_0_1_f(newFactor);
 }
 
 
@@ -10703,9 +10714,9 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 - (std::optional<std::string>) cxx_voiceName:(unsigned int) index
 {
-	if (index >= espeak_voice_count)
+	if (index >= _cxxUniverse->espeak_voice_count)
 		return std::string("-");
-	return std::string(espeak_voices[index]->name);
+	return std::string(_cxxUniverse->espeak_voices[index]->name);
 }
 
 
@@ -10714,15 +10725,15 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	const char *const label = name.c_str();
 	
 	unsigned int index = -1;
-	while (espeak_voices[++index] && strcmp (espeak_voices[index]->name, label))
+	while (_cxxUniverse->espeak_voices[++index] && strcmp (_cxxUniverse->espeak_voices[index]->name, label))
 			/**/;
-	return (index < espeak_voice_count) ? index : UINT_MAX;
+	return (index < _cxxUniverse->espeak_voice_count) ? index : UINT_MAX;
 }
 
 
 - (unsigned int) nextVoice:(unsigned int) index
 {
-	if (++index >= espeak_voice_count)
+	if (++index >= _cxxUniverse->espeak_voice_count)
 		index = 0;
 	return index;
 }
@@ -10730,8 +10741,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 - (unsigned int) prevVoice:(unsigned int) index
 {
-	if (--index >= espeak_voice_count)
-		index = espeak_voice_count - 1;
+	if (--index >= _cxxUniverse->espeak_voice_count)
+		index = _cxxUniverse->espeak_voice_count - 1;
 	return index;
 }
 
@@ -10741,9 +10752,9 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	if (index == UINT_MAX)
 		index = [self cxx_voiceNumber:cxx_OOLookUpDescriptionPRIV("espeak-default-voice")];
 	
-	if (index < espeak_voice_count)
+	if (index < _cxxUniverse->espeak_voice_count)
 	{
-		espeak_VOICE voice = { espeak_voices[index]->name, NULL, NULL, (unsigned char)(isMale ? 1 : 2) };
+		espeak_VOICE voice = { _cxxUniverse->espeak_voices[index]->name, NULL, NULL, (unsigned char)(isMale ? 1 : 2) };
 		espeak_SetVoiceByProperties (&voice);
 	}
 	
@@ -10765,55 +10776,55 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 - (BOOL) pauseMessageVisible
 {
-	return _pauseMessage;
+	return _cxxUniverse->_pauseMessage;
 }
 
 
 - (void) setPauseMessageVisible:(BOOL)value
 {
-	_pauseMessage = value;
+	_cxxUniverse->_pauseMessage = value;
 }
 
 
 - (BOOL) permanentMessageLog
 {
-	return _permanentMessageLog;
+	return _cxxUniverse->_permanentMessageLog;
 }
 
 
 - (void) setPermanentMessageLog:(BOOL)value
 {
-	_permanentMessageLog = value;
+	_cxxUniverse->_permanentMessageLog = value;
 }
 
 
 - (BOOL) autoMessageLogBg
 {
-	return _autoMessageLogBg;
+	return _cxxUniverse->_autoMessageLogBg;
 }
 
 
 - (void) setAutoMessageLogBg:(BOOL)value
 {
-	_autoMessageLogBg = !!value;
+	_cxxUniverse->_autoMessageLogBg = !!value;
 }
 
 
 - (BOOL) permanentCommLog
 {
-	return _permanentCommLog;
+	return _cxxUniverse->_permanentCommLog;
 }
 
 
 - (void) setPermanentCommLog:(BOOL)value
 {
-	_permanentCommLog = value;
+	_cxxUniverse->_permanentCommLog = value;
 }
 
 
 - (void) setAutoCommLog:(BOOL)value
 {
-	_autoCommLog = value;
+	_cxxUniverse->_autoCommLog = value;
 }
 
 
@@ -10840,20 +10851,20 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 {
 	[self resetBeacons];
 	
-	next_universal_id = 100;	// start arbitrarily above zero
-	memset(entity_for_uid, 0, sizeof entity_for_uid);
+	_cxxUniverse->next_universal_id = 100;	// start arbitrarily above zero
+	memset(_cxxUniverse->entity_for_uid, 0, sizeof _cxxUniverse->entity_for_uid);
 	
 	[self setMainLightPosition:kZeroVector];
 
-	[gui autorelease];
-	gui = [[GuiDisplayGen alloc] init];
-	const oo::PList guiSettings = [gui cxx_userSettings];
+	[_cxxUniverse->gui autorelease];
+	_cxxUniverse->gui = [[GuiDisplayGen alloc] init];
+	const oo::PList guiSettings = [_cxxUniverse->gui cxx_userSettings];
 	const oo::PList *defaultTextColor = guiSettings.find(cxx_kGuiDefaultTextColor);
-	[gui setTextColor:[OOColor cxx_colorWithDescription:(defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()]];
+	[_cxxUniverse->gui setTextColor:[OOColor cxx_colorWithDescription:(defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()]];
 
 	// message_gui and comm_log_gui defaults are set up inside [hud resetGuis:] ( via [player deferredInit], called from the code that calls this method). 
-	[message_gui autorelease];
-	message_gui = [[GuiDisplayGen alloc]
+	[_cxxUniverse->message_gui autorelease];
+	_cxxUniverse->message_gui = [[GuiDisplayGen alloc]
 					cxx_initWithPixelSize:NSMakeSize(480, 160)
 							  columns:1
 								 rows:9
@@ -10861,8 +10872,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 							 rowStart:20
 								title:std::nullopt];
 	
-	[comm_log_gui autorelease];
-	comm_log_gui = [[GuiDisplayGen alloc]
+	[_cxxUniverse->comm_log_gui autorelease];
+	_cxxUniverse->comm_log_gui = [[GuiDisplayGen alloc]
 					cxx_initWithPixelSize:NSMakeSize(360, 120)
 							  columns:1
 								 rows:10
@@ -10872,40 +10883,40 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	//
 	
-	time_delta = 0.0;
+	_cxxUniverse->time_delta = 0.0;
 #ifndef NDEBUG
 	[self setTimeAccelerationFactor:TIME_ACCELERATION_FACTOR_DEFAULT];
 #endif
-	universal_time = 0.0;
-	messageRepeatTime = 0.0;
-	countdown_messageRepeatTime = 0.0;
+	_cxxUniverse->universal_time = 0.0;
+	_cxxUniverse->messageRepeatTime = 0.0;
+	_cxxUniverse->countdown_messageRepeatTime = 0.0;
 	
 #if OOLITE_SPEECH_SYNTH
-	speechArray = [ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->speechArray = [ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
 #endif
 	
-	[commodities autorelease];
-	commodities = [[OOCommodities alloc] init];
+	[_cxxUniverse->commodities autorelease];
+	_cxxUniverse->commodities = [[OOCommodities alloc] init];
 
 	
 	[self loadDescriptions];
 	
-	characters = [ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->characters = [ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
 	
-	customSounds = [ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->customSounds = [ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
 	
-	globalSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
+	_cxxUniverse->globalSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
 
 	
-	[systemManager autorelease];
-	systemManager = [[ResourceManager systemDescriptionManager] retain];
+	[_cxxUniverse->systemManager autorelease];
+	_cxxUniverse->systemManager = [[ResourceManager systemDescriptionManager] retain];
 
-	screenBackgrounds = [ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->screenBackgrounds = [ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
 
 	// role-categories.plist and pirate-victim-roles.plist
-	roleCategories = [ResourceManager cxx_roleCategoriesDictionary];
+	_cxxUniverse->roleCategories = [ResourceManager cxx_roleCategoriesDictionary];
 	
-	autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
 	
 	// ORDER-SENSITIVE: std::stable_sort, so entries that compare equal keep their file order.
 	const oo::PList equipmentTemp = [ResourceManager cxx_arrayFromFilesNamed:"equipment.plist" inFolder:std::string("Config") andMerge:YES];
@@ -10914,12 +10925,12 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	oo::PList::Array sortedOutfitting = sortedEquipment;
 	std::stable_sort(sortedEquipment.begin(), sortedEquipment.end(), equipmentSort);
 	std::stable_sort(sortedOutfitting.begin(), sortedOutfitting.end(), equipmentSortOutfitting);
-	equipmentData = oo::PList(std::move(sortedEquipment));
-	equipmentDataOutfitting = oo::PList(std::move(sortedOutfitting));
+	_cxxUniverse->equipmentData = oo::PList(std::move(sortedEquipment));
+	_cxxUniverse->equipmentDataOutfitting = oo::PList(std::move(sortedOutfitting));
 	
 	[OOEquipmentType loadEquipment];
 
-	explosionSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->explosionSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
 
 }
 
@@ -10927,14 +10938,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (void) setUpCargoPods
 {
 	std::map<std::string, oo::ObjCRef<ShipEntity *>, std::less<>> tmp;
-	for (const std::string &type : [commodities goods])
+	for (const std::string &type : [_cxxUniverse->commodities goods])
 	{
 		ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
 		[container setScanClass:CLASS_CARGO];
 		[container cxx_setCommodity:type andAmount:1];
 		if (container != nil)  tmp[type] = oo::adoptObjC(container);	// a nil container was an exception before
 	}
-	cargoPods = std::move(tmp);
+	_cxxUniverse->cargoPods = std::move(tmp);
 }
 
 - (void) verifyEntitySessionIDs
@@ -10944,12 +10955,12 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	Entity *entity = nil;
 	
 	unsigned i;
-	for (i = 0; i < n_entities; i++)
+	for (i = 0; i < _cxxUniverse->n_entities; i++)
 	{
-		entity = sortedEntities[i];
-		if ([entity sessionID] != _sessionID)
+		entity = _cxxUniverse->sortedEntities[i];
+		if ([entity sessionID] != _cxxUniverse->_sessionID)
 		{
-			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::ShortDescriptionOf(entity), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_sessionID));
+			OO_LOG_ERR("universe.sessionIDs.verify.failed", "Invalid entity {} (came from session {}, current session is {}).", oo::ShortDescriptionOf(entity), static_cast<size_t>([entity sessionID]), static_cast<size_t>(_cxxUniverse->_sessionID));
 			badEntities.emplace_back(entity);
 		}
 	}
@@ -10965,7 +10976,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 // FIXME: needs less redundancy?
 - (BOOL) reinitAndShowDemo:(BOOL) showDemo
 {
-	no_update = YES;
+	_cxxUniverse->no_update = YES;
 	PlayerEntity* player = PLAYER;
 	assert(player != nil);
 	
@@ -10981,9 +10992,9 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[self removeAllEntitiesExceptPlayer];
 	[OOTexture clearCache];
 	
-	_sessionID++;	// Must be after removing old entities and before adding new ones.
+	_cxxUniverse->_sessionID++;	// Must be after removing old entities and before adding new ones.
 	
-	[ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths
+	[ResourceManager cxx_setUseAddOns:_cxxUniverse->useAddOns];	// also logs the paths
 	//[ResourceManager loadScripts]; // initialised inside [player setUp]!
 	
 	// NOTE: Anything in the sharedCache is now trashed and must be
@@ -10998,21 +11009,21 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[self loadDescriptions];
 	[self loadScenarios];
 	
-	missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+	_cxxUniverse->missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
 	
 	
 	if(showDemo)
 	{
-		demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
-		demo_ship_index = 0;
-		demo_ship_subindex = 0;
+		_cxxUniverse->demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
+		_cxxUniverse->demo_ship_index = 0;
+		_cxxUniverse->demo_ship_subindex = 0;
 	}
 	
-	breakPatternCounter = 0;
+	_cxxUniverse->breakPatternCounter = 0;
 	
-	cachedSun = nil;
-	cachedPlanet = nil;
-	cachedStation = nil;
+	_cxxUniverse->cachedSun = nil;
+	_cxxUniverse->cachedPlanet = nil;
+	_cxxUniverse->cachedStation = nil;
 	
 	[self setUpSettings];
 
@@ -11031,11 +11042,11 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	JSResetFlags = 0;
 	
 	[self addEntity:player];
-	demo_ship = nil;
+	_cxxUniverse->demo_ship = nil;
 	[[self gameController] cxx_setPlayerFileToLoad:""];		// reset Quicksave
 	
 	[self setUpInitialUniverse];
-	autoSaveNow = NO;	// don't autosave immediately after restarting a game
+	_cxxUniverse->autoSaveNow = NO;	// don't autosave immediately after restarting a game
 	
 	[[self station] initialiseLocalMarket];
 	
@@ -11073,7 +11084,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	[self verifyEntitySessionIDs];
 
-	no_update = NO;
+	_cxxUniverse->no_update = NO;
 	return YES;
 }
 
@@ -11083,15 +11094,15 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	PlayerEntity* player = PLAYER;
 	
 	OO_DEBUG_PUSH_PROGRESS("Wormhole and character reset");
-	AutoreleaseAll(activeWormholes);	// the old list was autoreleased
-	activeWormholes.reserve(16);
-	AutoreleaseAll(characterPool);	// the old pool was autoreleased
-	characterPool.reserve(256);
+	AutoreleaseAll(_cxxUniverse->activeWormholes);	// the old list was autoreleased
+	_cxxUniverse->activeWormholes.reserve(16);
+	AutoreleaseAll(_cxxUniverse->characterPool);	// the old pool was autoreleased
+	_cxxUniverse->characterPool.reserve(256);
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS("Galaxy reset");
 	[self setGalaxyTo: [player galaxyNumber] andReinit:YES];
-	systemID = [player systemID];
+	_cxxUniverse->systemID = [player systemID];
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS("Player init: setUpShipFromDictionary");
@@ -11146,7 +11157,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// remove reference to entity in linked lists
 	if ([entity canCollide])	// filter only collidables disappearing
 	{
-		doLinkedListMaintenanceThisUpdate = YES;
+		_cxxUniverse->doLinkedListMaintenanceThisUpdate = YES;
 	}
 	
 	[entity removeFromLinkedLists];
@@ -11154,7 +11165,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	// moved forward ^^
 	// remove from the reference dictionary
 	int old_id = [entity universalID];
-	entity_for_uid[old_id] = nil;
+	_cxxUniverse->entity_for_uid[old_id] = nil;
 	[entity setUniversalID:NO_TARGET];
 	[entity wasRemovedFromUniverse];
 	
@@ -11164,22 +11175,22 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	int n = 1;
 	if (index >= 0)
 	{
-		if (sortedEntities[index] != entity)
+		if (_cxxUniverse->sortedEntities[index] != entity)
 		{
 			OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE RIGHT PLACE IN THE ZERO_DISTANCE SORTED LIST -- FIXING...", oo::DescriptionOf(entity));
 			unsigned i;
 			index = -1;
-			for (i = 0; (i < n_entities)&&(index == -1); i++)
-				if (sortedEntities[i] == entity)
+			for (i = 0; (i < _cxxUniverse->n_entities)&&(index == -1); i++)
+				if (_cxxUniverse->sortedEntities[i] == entity)
 					index = i;
 			if (index == -1)
 				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity:{} ENTITY IS NOT IN THE ZERO_DISTANCE SORTED LIST -- CONTINUING...", oo::DescriptionOf(entity));
 		}
 		if (index != -1)
 		{
-			while ((unsigned)index < n_entities)
+			while ((unsigned)index < _cxxUniverse->n_entities)
 			{
-				while (((unsigned)index + n < n_entities)&&(sortedEntities[index + n] == entity))
+				while (((unsigned)index + n < _cxxUniverse->n_entities)&&(_cxxUniverse->sortedEntities[index + n] == entity))
 				{
 					n++;	// ie there's a duplicate entry for this entity
 				}
@@ -11198,10 +11209,10 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 					degenerate cases.
 					-- Ahruman 2012-07-11
 				*/
-				sortedEntities[index] = sortedEntities[index + n];	// copy entity[index + n] -> entity[index] (preserves sort order)
-				if (sortedEntities[index])
+				_cxxUniverse->sortedEntities[index] = _cxxUniverse->sortedEntities[index + n];	// copy entity[index + n] -> entity[index] (preserves sort order)
+				if (_cxxUniverse->sortedEntities[index])
 				{
-					sortedEntities[index]->_cxxEntity->zero_index = index;				// give it its correct position
+					_cxxUniverse->sortedEntities[index]->_cxxEntity->zero_index = index;				// give it its correct position
 				}
 				index++;
 			}
@@ -11209,20 +11220,20 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 				 OO_LOG(cxx_kOOLogInconsistentState, "DEBUG: Universe removeEntity: REMOVED {} EXTRA COPIES OF {} FROM THE ZERO_DISTANCE SORTED LIST", n - 1, oo::DescriptionOf(entity));
 			while (n--)
 			{
-				n_entities--;
-				sortedEntities[n_entities] = nil;
+				_cxxUniverse->n_entities--;
+				_cxxUniverse->sortedEntities[_cxxUniverse->n_entities] = nil;
 			}
 		}
 		entity->_cxxEntity->zero_index = -1;	// it's GONE!
 	}
 	
 	// remove from the definitive list
-	if (std::find(entities.begin(), entities.end(), entity) != entities.end())
+	if (std::find(_cxxUniverse->entities.begin(), _cxxUniverse->entities.end(), entity) != _cxxUniverse->entities.end())
 	{
 		// FIXME: better approach needed for core break patterns - CIM
 		if ([entity isBreakPattern] && ![entity isVisualEffect])
 		{
-			breakPatternCounter--;
+			_cxxUniverse->breakPatternCounter--;
 		}
 		
 		if ([entity isShip])
@@ -11243,14 +11254,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		
 		if ([entity isWormhole])
 		{
-			std::erase(activeWormholes, entity);
+			std::erase(_cxxUniverse->activeWormholes, entity);
 		}
 		else if ([entity isPlanet])
 		{
-			std::erase(allPlanets, entity);
+			std::erase(_cxxUniverse->allPlanets, entity);
 		}
 
-		std::erase(entities, entity);
+		std::erase(_cxxUniverse->entities, entity);
 		return YES;
 	}
 	
@@ -11271,7 +11282,7 @@ static void PreloadOneSound(const std::string &soundName)
 - (void) preloadSounds
 {
 	// Preload sounds to avoid loading stutter.
-	if (const oo::PList::Dict *sounds = customSounds.getIf<oo::PList::Dict>())
+	if (const oo::PList::Dict *sounds = _cxxUniverse->customSounds.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[key, object] : *sounds)
 		{
@@ -11299,13 +11310,13 @@ static void PreloadOneSound(const std::string &soundName)
 
 - (void) populateSpaceFromActiveWormholes
 {
-	while (!activeWormholes.empty())
+	while (!_cxxUniverse->activeWormholes.empty())
 	{
 		@autoreleasepool
 		{
 			@try
 			{
-				WormholeEntity* whole = activeWormholes[0].get();
+				WormholeEntity* whole = _cxxUniverse->activeWormholes[0].get();
 				// If the wormhole has been scanned by the player then the
 				// PlayerEntity will take care of it
 				if (![whole isScanned] &&
@@ -11314,7 +11325,7 @@ static void PreloadOneSound(const std::string &soundName)
 					// this is a wormhole to this system
 					[whole disgorgeShips];
 				}
-				RemoveFirstWormhole(activeWormholes);	// empty it out
+				RemoveFirstWormhole(_cxxUniverse->activeWormholes);	// empty it out
 			}
 			@catch (OOException *exception)
 			{
@@ -11540,12 +11551,12 @@ std::string StringifiedLabel(const std::optional<std::string> &line, const oo::P
 {
 	[[OOAsyncWorkManager sharedAsyncWorkManager] completePendingTasks];
 	
-	NSUInteger i = _preloadingPlanetMaterials.size();
+	NSUInteger i = _cxxUniverse->_preloadingPlanetMaterials.size();
 	while (i--)
 	{
-		if ([_preloadingPlanetMaterials[i].get() isFinishedLoading])
+		if ([_cxxUniverse->_preloadingPlanetMaterials[i].get() isFinishedLoading])
 		{
-			_preloadingPlanetMaterials.erase(_preloadingPlanetMaterials.begin() + i);
+			_cxxUniverse->_preloadingPlanetMaterials.erase(_cxxUniverse->_preloadingPlanetMaterials.begin() + i);
 		}
 	}
 }
@@ -11575,7 +11586,7 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 
 - (void) loadConditionScripts
 {
-	conditionScripts.clear();
+	_cxxUniverse->conditionScripts.clear();
 	// get list of names from cache manager (arrays of script names)
 	[self addConditionScripts:CachedConditionScripts("equipment conditions")];
 
@@ -11589,12 +11600,12 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 {
 	for (const std::string &scriptname : scripts)
 	{
-		if (!conditionScripts.contains(scriptname))
+		if (!_cxxUniverse->conditionScripts.contains(scriptname))
 		{
 			OOJSScript *script = [OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
 			if (script != nil)
 			{
-				conditionScripts[scriptname] = oo::ObjCRef<OOJSScript *>(script);
+				_cxxUniverse->conditionScripts[scriptname] = oo::ObjCRef<OOJSScript *>(script);
 			}
 		}
 	}
@@ -11603,8 +11614,8 @@ std::vector<std::string> CachedConditionScripts(const std::string &key)
 
 - (OOJSScript*) cxx_getConditionScript:(const std::string &)scriptname
 {
-	const auto found = conditionScripts.find(scriptname);
-	return (found != conditionScripts.end()) ? found->second.get() : nil;
+	const auto found = _cxxUniverse->conditionScripts.find(scriptname);
+	return (found != _cxxUniverse->conditionScripts.end()) ? found->second.get() : nil;
 }
 
 @end

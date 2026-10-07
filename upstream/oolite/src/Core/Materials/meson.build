@@ -2,16 +2,13 @@
 
 oolite_sources += files(
     'OOBasicMaterial.mm',
-    'OOBasicMaterial+ObjCBridge.mm',
     'OOCombinedEmissionMapGenerator.mm',
     'OOCombinedEmissionMapGenerator+ObjCBridge.mm',
     'OOConcreteTexture.mm',
     'OODefaultShaderSynthesizer.mm',
-    'OODefaultShaderSynthesizer+ObjCBridge.mm',
     'OOMaterial.mm',
     'OOMaterial+ObjCBridge.mm',
     'OOMaterialConvenienceCreators.mm',
-    'OOMaterialConvenienceCreators+ObjCBridge.mm',
     'OOMaterialSpecifier.mm',
     'OOMultiTextureMaterial.mm',
     'OONullTexture.mm',

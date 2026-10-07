@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #if OOMATHS_OPENGL_INTEGRATION
 #include "OOOpenGLExtensionPointers.h"	// glUniformMatrix3fvARB, Windows' extension pointer (bead oo-9ht.120)
+#include "OOOpenGLCheck.h"	// OOGL() (bead oo-9ht.163)
 #endif
 
 const OOMatrix	kIdentityMatrix = 

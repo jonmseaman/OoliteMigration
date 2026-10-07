@@ -8,14 +8,17 @@
 	at a time. OpenAL runs on OpenAL Soft's null backend and the user's defaults are a scratch
 	folder's, as in test_OOSound.mm. The sound source is the game's; the mixer and its channels
 	under it are this file's stubs, which record what the source tells them, and so are the
-	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4):
-	"missing.ogg" has no decoder. These expectations were written against the Objective-C
+	decoder and the two concrete sounds that OOALSound.mm names (amendment oo-z1s4 item 4; C++
+	stand-ins since beads oo-9ht.83 and oo-9ht.84 deleted their facades): "missing.ogg" has no
+	decoder. These expectations were written against the Objective-C
 	API and ran on the unconverted class first; they now run through the facade, which is its
 	forwarding test. After them come the C++ API (cxx::OOMusic, a subclass of cxx::OOSound) and the
 	facade's contract. Run: bash tools/check-core-tests.sh test_OOMusic
 */
 
 #import "OOALMusic.h"
+#import "OOALBufferedSound.h"
+#import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
 #import "OODescription.h"
 
@@ -92,62 +95,43 @@ static int gLiveDecoders = 0;
 
 static int gLiveSounds = 0;
 
-@interface OOALBufferedSound: OOSound
+// The buffered sound: a C++ stand-in since bead oo-9ht.83 deleted the Objective-C facade this file
+// stubbed (the members the cluster and the root's facade call). Counts the live ones.
+oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)
 {
-	std::optional<std::string>	_name;
-}
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder;
-
-@end
-
-
-@implementation OOALBufferedSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder
-{
-	self = [super init];
-	if (self != nil)
-	{
-		_name = [inDecoder cxx_name];
-		gLiveSounds++;
-	}
-	return self;
+	oo::Ref<OOALBufferedSound> sound = oo::adopt(new OOALBufferedSound);
+	sound->_name = [inDecoder cxx_name];
+	gLiveSounds++;
+	return sound;
 }
 
 
-- (void)dealloc
+OOALBufferedSound::~OOALBufferedSound()
 {
 	gLiveSounds--;
-	[super dealloc];
 }
 
 
-- (std::optional<std::string>)cxx_name
+std::optional<std::string> OOALBufferedSound::name()
 {
 	return _name;
 }
 
-@end
 
-
-@interface OOALStreamedSound: OOSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder;
-
-@end
-
-
-@implementation OOALStreamedSound
-
-- (id)initWithDecoder:(OOALSoundDecoder *)inDecoder
+ALuint OOALBufferedSound::soundBuffer()
 {
-	(void)inDecoder;
-	[self release];
-	return nil;
+	return cxx::OOSound::soundBuffer();	// the stub did not override it
 }
 
-@end
+
+// The streamed sound: a C++ stand-in since bead oo-9ht.84 deleted the Objective-C facade this
+// file stubbed. It refuses every decoder, as the stub did.
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(::OOALSoundDecoder *inDecoder)	{ (void)inDecoder; return nullptr; }
+OOALStreamedSound::~OOALStreamedSound()  {}
+std::optional<std::string> OOALStreamedSound::name()  { return _name; }
+void OOALStreamedSound::rewind()  {}
+bool OOALStreamedSound::soundIncomplete()  { return false; }
+ALuint OOALStreamedSound::soundBuffer()  { return 0; }
 
 
 /*	The mixer and its channels, under the real sound source (OOSoundSource.mm): the mixer hands

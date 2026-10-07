@@ -77,7 +77,7 @@ public:
 private:
 	cxx::OOJoystickManager *stickHandler = nullptr;	// the shared handler, not retained, as before
 	NSUInteger current_axis = 0;
-	oo::Ref<cxx::OOJoystickAxisProfile> profiles[3][2] = {};
+	oo::Ref<OOJoystickAxisProfile> profiles[3][2] = {};
 	GuiDisplayGen *gui = nil;	// not retained, as before
 	NSRect graphRect = {};
 	NSInteger selected_control_point = 0;

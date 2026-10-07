@@ -372,7 +372,7 @@ void OOShipRegistry::loadShipData()
 	_playerShips.clear();
 
 	// Load shipdata.plist.
-	oo::PList result = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist"
+	oo::PList result = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipdata.plist"
 															inFolder:"Config"
 														   mergeMode:MERGE_BASIC
 															   cache:NO];
@@ -425,7 +425,7 @@ void OOShipRegistry::loadShipData()
 
 	_effectData = oo::PList();
 
-	result = [ResourceManager cxx_dictionaryFromFilesNamed:"effectdata.plist"
+	result = [::ResourceManager cxx_dictionaryFromFilesNamed:"effectdata.plist"
 												  inFolder:"Config"
 												 mergeMode:MERGE_BASIC
 													 cache:NO];
@@ -463,7 +463,7 @@ void OOShipRegistry::loadDemoShipConditions()
 	std::vector<std::string>	conditionScripts;
 
 	// OOCacheManager is an unmigrated callee: convert at the call.
-	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
+	const oo::PList initialDemoShips = [::ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
 																	   inFolder:"Config"
 																	   andMerge:YES
 																		  cache:NO];
@@ -496,7 +496,7 @@ void OOShipRegistry::loadDemoShips()
 {
 	_demoShips = oo::PList();
 
-	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
+	const oo::PList initialDemoShips = [::ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
 																	   inFolder:"Config"
 																	   andMerge:YES
 																		  cache:NO];
@@ -839,7 +839,7 @@ bool OOShipRegistry::makeShipEntriesMutable(oo::PList &ioData)
 bool OOShipRegistry::loadAndApplyShipDataOverrides(oo::PList &ioData)
 {
 	oo::PList::Dict &ships = Entries(ioData);
-	const oo::PList overrides = [ResourceManager cxx_dictionaryFromFilesNamed:"shipdata-overrides.plist"
+	const oo::PList overrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipdata-overrides.plist"
 																	 inFolder:"Config"
 																	mergeMode:MERGE_SMART
 																		cache:NO];
@@ -899,11 +899,11 @@ bool OOShipRegistry::loadAndMergeShipyard(oo::PList &ioData)
 		Entries(ship.second).erase("_oo_shipyard");
 	}
 
-	const oo::PList shipyard = [ResourceManager cxx_dictionaryFromFilesNamed:"shipyard.plist"
+	const oo::PList shipyard = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipyard.plist"
 																	inFolder:"Config"
 																   mergeMode:MERGE_BASIC
 																	   cache:NO];
-	const oo::PList shipyardOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:"shipyard-overrides.plist"
+	const oo::PList shipyardOverrides = [::ResourceManager cxx_dictionaryFromFilesNamed:"shipyard-overrides.plist"
 																			 inFolder:"Config"
 																			mergeMode:MERGE_SMART
 																				cache:NO];
@@ -974,7 +974,7 @@ bool OOShipRegistry::removeUnusableEntries(oo::PList &ioData, bool shipMode)
 				cxx_OOStandardsError("Error in shipdata.plist");
 				remove = YES;
 			}
-			else if (!modelName.empty() && ![ResourceManager cxx_pathForFileNamed:modelName inFolder:"Models"].has_value())
+			else if (!modelName.empty() && ![::ResourceManager cxx_pathForFileNamed:modelName inFolder:"Models"].has_value())
 			{
 				OO_LOG_ERR("shipData.load.error", "the shipdata.plist entry \"{}\" specifies non-existent model \"{}\".", shipKey, modelName);
 				cxx_OOStandardsError("Error in shipdata.plist");
@@ -1230,7 +1230,7 @@ bool OOShipRegistry::preloadShipMeshes(oo::PList &ioData)
 		const std::optional<std::string> modelName = StringForKey(&shipEntry, "model");
 		@autoreleasepool
 		{
-			[[GameController sharedController] setProgressBarValue:(float)i++ / (float)count];
+			[[::GameController sharedController] setProgressBarValue:(float)i++ / (float)count];
 
 			// (PRELOAD is 0: this names a -meshWithName: form OOMesh no longer has.)
 			const oo::PList *materials = shipEntry.get<oo::PList::Dict>("materials");
@@ -1255,7 +1255,7 @@ bool OOShipRegistry::preloadShipMeshes(oo::PList &ioData)
 		}
 	}
 
-	[[GameController sharedController] setProgressBarValue:-1.0f];
+	[[::GameController sharedController] setProgressBarValue:-1.0f];
 
 	return true;
 }

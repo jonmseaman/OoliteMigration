@@ -118,15 +118,14 @@ void OOFileScannerVerifierStage::run()
 }
 
 
-// The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
-// registered through its facade, oo::ToObjC.
+// The verifier holds the C++ stages (it held their facades until bead oo-9ht.4).
 std::optional<std::string> OOFileScannerVerifierStage::nameForDependencyForVerifier(::OOOXPVerifier *verifier)
 {
-	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kFileScannerStageName];
-	if (stage == nil)
+	OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kFileScannerStageName];
+	if (stage == nullptr)
 	{
 		const oo::Ref<OOFileScannerVerifierStage> newStage = oo::makeRef<OOFileScannerVerifierStage>();
-		[verifier registerStage:oo::ToObjC(newStage.get())];
+		[verifier registerStage:newStage.get()];
 	}
 	
 	return kFileScannerStageName;
@@ -213,7 +212,7 @@ std::optional<std::string> OOFileScannerVerifierStage::pathForFile(const std::op
 	
 	// If we get here, the file wasn't found in the OXP.
 	// FIXME: should check case for built-in files.
-	if (checkBuiltIn && file.has_value())  return [ResourceManager cxx_pathForFileNamed:*file inFolder:folder];	// a nil name found no path
+	if (checkBuiltIn && file.has_value())  return [::ResourceManager cxx_pathForFileNamed:*file inFolder:folder];	// a nil name found no path
 	
 	return std::nullopt;
 }
@@ -682,15 +681,14 @@ void OOListUnusedFilesStage::run()
 }
 
 
-// The verifier holds stages as Objective-C objects until it is converted: a C++ stage is
-// registered through its facade, oo::ToObjC.
+// The verifier holds the C++ stages (it held their facades until bead oo-9ht.4).
 std::string OOListUnusedFilesStage::nameForReverseDependencyForVerifier(::OOOXPVerifier *verifier)
 {
-	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
-	if (stage == nil)
+	OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kUnusedListerStageName];
+	if (stage == nullptr)
 	{
 		const oo::Ref<OOListUnusedFilesStage> newStage = oo::makeRef<OOListUnusedFilesStage>();
-		[verifier registerStage:oo::ToObjC(newStage.get())];
+		[verifier registerStage:newStage.get()];
 	}
 	
 	return kUnusedListerStageName;
