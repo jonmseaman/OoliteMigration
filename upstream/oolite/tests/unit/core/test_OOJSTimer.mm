@@ -6,7 +6,9 @@
 	The binding's test runs its JS class in a real context on the game's own façade backend
 	(ooscript/JSEngine_quickjs.cpp), and links the game's own objects for the binding, its base
 	class OOScriptTimer, the priority queue that schedules it and the engine's exception
-	translator (OOJSEngineNativeWrappers.mm). What the rest of the engine would provide is defined
+	translator (OOJSEngineNativeWrappers.mm), and, since bead oo-6symp put the C++ timer in the
+	Timer's private slot, the engine's C++ private-slot glue (OOJSPrivateObject.cpp: the getter,
+	finalizer and toString()). What the rest of the engine would provide is defined
 	below as the smallest stand-in that does the same thing (amendment oo-ppc item 6): the error
 	and warning reporters, the object getter and converters, the JS glue that OOObject gets from
 	OOJavaScriptEngine.mm, the engine object (which calls the timer's function), the script stack
@@ -206,6 +208,14 @@ extern "C" BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript:
 	}
 #endif
 	return YES;
+}
+
+
+// The JS class check of the engine's C++ getter (OOJSPrivateObject.cpp, linked since bead
+// oo-6symp, whose slot holds the C++ timer): no subclass of Timer is registered.
+extern "C" BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
+{
+	return putativeSubclass == superclass;
 }
 
 
