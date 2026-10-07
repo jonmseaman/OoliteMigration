@@ -186,8 +186,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
 
-- (oo::PList) demoShipData;	// null where there is no such entry
-- (void) setLibraryTextForDemoShip;
 
 @end
 
@@ -611,519 +609,15 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 }	// namespace
 
 
-- (void) setupIntroFirstGo:(BOOL)justCobra
-{
-	PlayerEntity	*player = PLAYER;
-	ShipEntity		*ship = nil;
-	Quaternion		q2 = { 0.0f, 0.0f, 1.0f, 0.0f }; // w,x,y,z
-
-	// in status demo draw ships and display text
-	if (!justCobra)
-	{
-		_cxxUniverse->demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
-		// always, even if it's the cobra, because it's repositioned
-		[self removeDemoShips];
-	}
-	if (justCobra)
-	{
-		[player setStatus: STATUS_START_GAME];
-	}
-	[player setShowDemoShips: YES];
-	_cxxUniverse->displayGUI = YES;
-
-	if (justCobra)
-	{
-		/*- cobra - intro1 -*/
-		ship = [self cxx_newShipWithName:std::string(PLAYER_SHIP_DESC) usePlayerProxy:YES];
-	}
-	else
-	{
-		/*- demo ships - intro2 -*/
-
-		_cxxUniverse->demo_ship_index = 0;
-		_cxxUniverse->demo_ship_subindex = 0;
-
-		/* Try to set the initial list position to Cobra III if
-		 * available, and at least the Ships category. */
-		const oo::PList::Array *demoClasses = _cxxUniverse->demo_ships.getIf<oo::PList::Array>();
-		if (demoClasses != nullptr)
-		{
-			for (NSUInteger k = 0; k < demoClasses->size(); k++)
-			{
-				const oo::PList &subList = (*demoClasses)[k];
-				if (OptionalStringIn(DemoShipEntry(_cxxUniverse->demo_ships, k, 0), kOODemoShipClass) == "ship")
-				{
-					_cxxUniverse->demo_ship_index = std::find(demoClasses->begin(), demoClasses->end(), subList) - demoClasses->begin();	// -indexOfObject:
-					const oo::PList::Array *shipEntries = subList.getIf<oo::PList::Array>();	// an array: its first entry was found above
-					for (const oo::PList &shipEntry : *shipEntries)
-					{
-						if (OptionalStringIn(shipEntry, kOODemoShipKey) == "cobra3-trader")
-						{
-							_cxxUniverse->demo_ship_subindex = std::find(shipEntries->begin(), shipEntries->end(), shipEntry) - shipEntries->begin();	// -indexOfObject:
-							break;
-						}
-					}
-					break;
-				}
-			}
-		}
-
-
-		if (!_cxxUniverse->demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index, _cxxUniverse->demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
-		// stop consistency problems on the ship library screen
-		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
-		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
-	}
-
-	if (ship)
-	{
-		[ship setOrientation:q2];
-		if (!justCobra)
-		{
-			[ship setPositionX:0.0f y:0.0f z:DEMO2_VANISHING_DISTANCE * ship->_cxxEntity->collision_radius * 0.01];
-			[ship setDestination: ship->_cxxEntity->position];	// ideal position
-		}
-		else
-		{
-			// main screen Cobra is closer
-			[ship setPositionX:0.0f y:0.0f z:3.6 * ship->_cxxEntity->collision_radius];
-		}
-		[ship setDemoShip: 1.0f];
-		[ship setDemoStartTime: _cxxUniverse->universal_time];
-		[ship setScanClass: CLASS_NO_DRAW];
-		[ship switchAITo:"nullAI.plist"];
-		if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
-		[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
-		// now override status
-		[ship setStatus:STATUS_COCKPIT_DISPLAY];
-		_cxxUniverse->demo_ship = ship;
-
-		[ship release];
-	}
-
-	if (!justCobra)
-	{
-//		[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
-		[self setLibraryTextForDemoShip];
-	}
-
-	[self enterGUIViewModeWithMouseInteraction:NO];
-	if (!justCobra)
-	{
-		_cxxUniverse->demo_stage = DEMO_SHOW_THING;
-		_cxxUniverse->demo_stage_time = _cxxUniverse->universal_time + 300.0;
-	}
-}
-
-
-- (oo::PList) demoShipData
-{
-	return DemoShipEntry(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index, _cxxUniverse->demo_ship_subindex);
-}
-
-
-- (void) setLibraryTextForDemoShip
-{
-	OOGUITabSettings tab_stops;
-	tab_stops[0] = 0;
-	tab_stops[1] = 170;
-	tab_stops[2] = 340;
-	[_cxxUniverse->gui setTabStops:tab_stops];
-
-/*	[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
-	[gui setColor:[OOColor whiteColor] forRow:19]; */
-
-	const oo::PList librarySettings = [self demoShipData];
-
-	OOGUIRow descRow = 7;
-
-	std::optional<std::string> field1;
-	std::optional<std::string> field2;
-	std::optional<std::string> field3;
-	std::optional<std::string> override;
-
-	// clear rows
-	for (NSUInteger i=1;i<=26;i++)
-	{
-		[_cxxUniverse->gui cxx_setText:"" forRow:i];
-	}
-
-	/* Row 1: ScanClass, Name, Summary */
-	override = LibrarySetting(librarySettings, kOODemoShipClass, "ship");
-	field1 = OOShipLibraryCategorySingular(override.value_or(std::string()));
-
-
-	field2 = [_cxxUniverse->demo_ship cxx_shipClassName];
-
-
-	override = LibrarySetting(librarySettings, kOODemoShipSummary, nullptr);
-	if (override.has_value())
-	{
-		field3 = ExpandText(*override);
-	}
-	else
-	{
-		field3 = std::string();
-	}
-	[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:1];
-	[_cxxUniverse->gui setColor:[OOColor greenColor] forRow:1];
-
-	// ship_data defaults to true for "ship" class, false for everything else
-	if (!librarySettings.get<bool>(kOODemoShipShipData, LibrarySetting(librarySettings, kOODemoShipClass, "ship") == "ship"))
-	{
-		descRow = 3;
-	}
-	else
-	{
-		/* Row 2: Speed, Turn Rate, Cargo */
-
-		override = LibrarySetting(librarySettings, kOODemoShipSpeed, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field1 = std::string();
-			}
-			else
-			{
-				field1 = CustomLibraryText("oolite-ship-library-speed-custom", *override);
-			}
-		}
-		else
-		{
-			field1 = OOShipLibrarySpeed(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-
-		override = LibrarySetting(librarySettings, kOODemoShipTurnRate, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field2 = std::string();
-			}
-			else
-			{
-				field2 = CustomLibraryText("oolite-ship-library-turn-custom", *override);
-			}
-		}
-		else
-		{
-			field2 = OOShipLibraryTurnRate(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-
-		override = LibrarySetting(librarySettings, kOODemoShipCargo, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field3 = std::string();
-			}
-			else
-			{
-				field3 = CustomLibraryText("oolite-ship-library-cargo-custom", *override);
-			}
-		}
-		else
-		{
-			field3 = OOShipLibraryCargo(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-
-		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:3];
-
-		/* Row 3: recharge rate, energy banks, witchspace */
-		override = LibrarySetting(librarySettings, kOODemoShipGenerator, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field1 = std::string();
-			}
-			else
-			{
-				field1 = CustomLibraryText("oolite-ship-library-generator-custom", *override);
-			}
-		}
-		else
-		{
-			field1 = OOShipLibraryGenerator(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-
-		override = LibrarySetting(librarySettings, kOODemoShipShields, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field2 = std::string();
-			}
-			else
-			{
-				field2 = CustomLibraryText("oolite-ship-library-shields-custom", *override);
-			}
-		}
-		else
-		{
-			field2 = OOShipLibraryShields(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-
-		override = LibrarySetting(librarySettings, kOODemoShipWitchspace, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field3 = std::string();
-			}
-			else
-			{
-				field3 = CustomLibraryText("oolite-ship-library-witchspace-custom", *override);
-			}
-		}
-		else
-		{
-			field3 = OOShipLibraryWitchspace(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-
-		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:4];
-
-
-		/* Row 4: weapons, turrets, size */
-		override = LibrarySetting(librarySettings, kOODemoShipWeapons, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field1 = std::string();
-			}
-			else
-			{
-				field1 = CustomLibraryText("oolite-ship-library-weapons-custom", *override);
-			}
-		}
-		else
-		{
-			field1 = OOShipLibraryWeapons(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-		override = LibrarySetting(librarySettings, kOODemoShipTurrets, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field2 = std::string();
-			}
-			else
-			{
-				field2 = CustomLibraryText("oolite-ship-library-turrets-custom", *override);
-			}
-		}
-		else
-		{
-			field2 = OOShipLibraryTurrets(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-		override = LibrarySetting(librarySettings, kOODemoShipSize, nullptr);
-		if (override.has_value())
-		{
-			if (override->empty())
-			{
-				field3 = std::string();
-			}
-			else
-			{
-				field3 = CustomLibraryText("oolite-ship-library-size-custom", *override);
-			}
-		}
-		else
-		{
-			field3 = OOShipLibrarySize(oo::ToCxx(_cxxUniverse->demo_ship));
-		}
-
-		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
-	}
-
-	override = LibrarySetting(librarySettings, kOODemoShipDescription, nullptr);
-	if (override.has_value())
-	{
-		[_cxxUniverse->gui cxx_addLongText:ExpandText(*override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
-	}
-
-
-	// line 19: ship categories
-	field1 = oo::str::format("<-- %s",OOShipLibraryCategoryPlural(DemoClassAt(_cxxUniverse->demo_ships, (_cxxUniverse->demo_ship_index+_cxxUniverse->demo_ships.count()-1)%_cxxUniverse->demo_ships.count())).c_str());
-	field2 = OOShipLibraryCategoryPlural(DemoClassAt(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index));
-	field3 = oo::str::format("%s -->",OOShipLibraryCategoryPlural(DemoClassAt(_cxxUniverse->demo_ships, (_cxxUniverse->demo_ship_index+1)%_cxxUniverse->demo_ships.count())).c_str());
-
-	[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:19];
-	[_cxxUniverse->gui setColor:[OOColor greenColor] forRow:19];
-
-	// lines 21-25: ship names
-	const oo::PList *subListEntry = _cxxUniverse->demo_ships.at(_cxxUniverse->demo_ship_index);
-	const oo::PList subList = (subListEntry != nullptr) ? *subListEntry : oo::PList();
-	NSUInteger i,start = _cxxUniverse->demo_ship_subindex - (_cxxUniverse->demo_ship_subindex%5);
-	NSUInteger end = start + 4;
-	if (end >= subList.count())
-	{
-		end = subList.count() - 1;
-	}
-	OOGUIRow row = 21;
-	field1 = std::string();
-	field3 = std::string();
-	for (i = start ; i <= end ; i++)
-	{
-		const oo::PList *shipEntry = subList.at(i);
-		field2 = (shipEntry != nullptr) ? OptionalStringIn(*shipEntry, kOODemoShipName) : std::nullopt;
-		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:row];
-		if (i == _cxxUniverse->demo_ship_subindex)
-		{
-			[_cxxUniverse->gui setColor:[OOColor yellowColor] forRow:row];
-		}
-		else
-		{
-			[_cxxUniverse->gui setColor:[OOColor whiteColor] forRow:row];
-		}
-		row++;
-	}
-
-	field2 = "...";
-	if (start > 0)
-	{
-		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:20];
-		[_cxxUniverse->gui setColor:[OOColor whiteColor] forRow:20];
-	}
-	if (end < subList.count()-1)
-	{
-		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:26];
-		[_cxxUniverse->gui setColor:[OOColor whiteColor] forRow:26];
-	}
-
-}
-
-
-- (void) selectIntro2Previous
-{
-	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
-	NSUInteger subcount = DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index);
-	_cxxUniverse->demo_ship_subindex = (_cxxUniverse->demo_ship_subindex + subcount - 2) % subcount;
-	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
-}
-
-
-- (void) selectIntro2PreviousCategory
-{
-	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
-	_cxxUniverse->demo_ship_index = (_cxxUniverse->demo_ship_index + _cxxUniverse->demo_ships.count() - 1) % _cxxUniverse->demo_ships.count();
-	_cxxUniverse->demo_ship_subindex = DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index) - 1;
-	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
-}
-
-
-- (void) selectIntro2NextCategory
-{
-	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
- 	_cxxUniverse->demo_ship_index = (_cxxUniverse->demo_ship_index + 1) % _cxxUniverse->demo_ships.count();
-	_cxxUniverse->demo_ship_subindex = DemoClassCount(_cxxUniverse->demo_ships, _cxxUniverse->demo_ship_index) - 1;
-	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
-}
-
-
-- (void) selectIntro2Next
-{
-	_cxxUniverse->demo_stage = DEMO_SHOW_THING;
-	_cxxUniverse->demo_stage_time  = _cxxUniverse->universal_time - 1.0;	// force change
-}
-
-
 static BOOL IsCandidateMainStationPredicate(Entity *entity, void *parameter)
 {
-	return [entity isStation] && !entity->_cxxEntity->isExplicitlyNotMainStation;
+	return oo::ToCxx(entity)->getIsStation() && !oo::ToCxx(entity)->isExplicitlyNotMainStation;	// [entity isStation]
 }
 
 
 static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
-	return [entity isStation] && ![(ShipEntity *)entity isHostileTo:(Entity *)parameter];
-}
-
-
-- (StationEntity *) station
-{
-	if (_cxxUniverse->cachedSun != nil && _cxxUniverse->cachedStation == nil)
-	{
-		_cxxUniverse->cachedStation = [self findOneEntityMatchingPredicate:IsCandidateMainStationPredicate
-												   parameter:nil];
-	}
-	return _cxxUniverse->cachedStation;
-}
-
-
-- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position
-{
-	if (role.empty())
-	{
-		return nil;
-	}
-
-	float range = 1000000; // allow a little variation in position
-
-	const std::vector<oo::ObjCRef<StationEntity *>> stations = [self cxx_stations];
-	StationEntity *station = nil;
-	for (const oo::ObjCRef<StationEntity *> &entry : stations)
-	{
-		station = entry.get();
-		if (HPdistance2(position,[station position]) < range)
-		{
-			if ([station cxx_primaryRole].value_or("") == role)
-			{
-				return station;
-			}
-		}
-	}
-	return nil;
-}
-
-
-- (StationEntity *) stationFriendlyTo:(ShipEntity *) ship
-{
-	// In interstellar space we select a random friendly carrier as mainStation.
-	// No caching: friendly status can change!
-	return [self findOneEntityMatchingPredicate:IsFriendlyStationPredicate parameter:ship];
-}
-
-
-- (OOPlanetEntity *) planet
-{
-	if (_cxxUniverse->cachedPlanet == nil && _cxxUniverse->allPlanets.size() > 0)
-	{
-		_cxxUniverse->cachedPlanet = _cxxUniverse->allPlanets[0].get();
-	}
-	return _cxxUniverse->cachedPlanet;
-}
-
-
-- (OOSunEntity *) sun
-{
-	if (_cxxUniverse->cachedSun == nil)
-	{
-		_cxxUniverse->cachedSun = [self findOneEntityMatchingPredicate:IsSunPredicate parameter:nil];
-	}
-	return _cxxUniverse->cachedSun;
-}
-
-
-- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets
-{
-	return _cxxUniverse->allPlanets;
-}
-
-
-- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations
-{
-	return _cxxUniverse->allStations;
+	return oo::ToCxx(entity)->getIsStation() && !oo::ToCxx((ShipEntity *)entity)->isHostileTo((Entity *)parameter);	// [entity isStation], -isHostileTo:
 }
 
 
@@ -6070,6 +5564,524 @@ void Universe::handleGameOver()
 	{
 		[self cxx_setUseAddOns:std::string(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
 	} 
+}
+
+
+}	// namespace cxx
+
+
+// Slice 8 of docs/phases/3-slices/Universe.md (bead oo-m0rz6): the intro and demo ships, the ship
+// library text, station and planet look-ups. The facade forwards each selector
+// (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+void Universe::setupIntroFirstGo(bool justCobra)
+{
+	::Universe *self = oo::ToObjC(this);
+	::PlayerEntity	*player = PLAYER;
+	::ShipEntity		*ship = nil;
+	Quaternion		q2 = { 0.0f, 0.0f, 1.0f, 0.0f }; // w,x,y,z
+
+	// in status demo draw ships and display text
+	if (!justCobra)
+	{
+		demo_ships = [[::OOShipRegistry sharedRegistry] cxx_demoShipKeys];
+		// always, even if it's the cobra, because it's repositioned
+		[self removeDemoShips];
+	}
+	if (justCobra)
+	{
+		[player setStatus: STATUS_START_GAME];
+	}
+	[player setShowDemoShips: YES];
+	displayGUI = YES;
+
+	if (justCobra)
+	{
+		/*- cobra - intro1 -*/
+		ship = [self cxx_newShipWithName:std::string(PLAYER_SHIP_DESC) usePlayerProxy:YES];
+	}
+	else
+	{
+		/*- demo ships - intro2 -*/
+
+		demo_ship_index = 0;
+		demo_ship_subindex = 0;
+
+		/* Try to set the initial list position to Cobra III if
+		 * available, and at least the Ships category. */
+		const oo::PList::Array *demoClasses = demo_ships.getIf<oo::PList::Array>();
+		if (demoClasses != nullptr)
+		{
+			for (NSUInteger k = 0; k < demoClasses->size(); k++)
+			{
+				const oo::PList &subList = (*demoClasses)[k];
+				if (OptionalStringIn(DemoShipEntry(demo_ships, k, 0), kOODemoShipClass) == "ship")
+				{
+					demo_ship_index = std::find(demoClasses->begin(), demoClasses->end(), subList) - demoClasses->begin();	// -indexOfObject:
+					const oo::PList::Array *shipEntries = subList.getIf<oo::PList::Array>();	// an array: its first entry was found above
+					for (const oo::PList &shipEntry : *shipEntries)
+					{
+						if (OptionalStringIn(shipEntry, kOODemoShipKey) == "cobra3-trader")
+						{
+							demo_ship_subindex = std::find(shipEntries->begin(), shipEntries->end(), shipEntry) - shipEntries->begin();	// -indexOfObject:
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
+
+
+		if (!demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
+		// stop consistency problems on the ship library screen
+		[ship removeEquipmentItem:"EQ_SHIELD_BOOSTER"];
+		[ship removeEquipmentItem:"EQ_SHIELD_ENHANCER"];
+	}
+
+	if (ship)
+	{
+		[ship setOrientation:q2];
+		if (!justCobra)
+		{
+			[ship setPositionX:0.0f y:0.0f z:DEMO2_VANISHING_DISTANCE * ship->_cxxEntity->collision_radius * 0.01];
+			[ship setDestination: ship->_cxxEntity->position];	// ideal position
+		}
+		else
+		{
+			// main screen Cobra is closer
+			[ship setPositionX:0.0f y:0.0f z:3.6 * ship->_cxxEntity->collision_radius];
+		}
+		[ship setDemoShip: 1.0f];
+		[ship setDemoStartTime: universal_time];
+		[ship setScanClass: CLASS_NO_DRAW];
+		[ship switchAITo:"nullAI.plist"];
+		if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
+		[self addEntity:ship];	// STATUS_IN_FLIGHT, AI state GLOBAL
+		// now override status
+		[ship setStatus:STATUS_COCKPIT_DISPLAY];
+		demo_ship = ship;
+
+		[ship release];
+	}
+
+	if (!justCobra)
+	{
+//		[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
+		[self setLibraryTextForDemoShip];
+	}
+
+	[self enterGUIViewModeWithMouseInteraction:NO];
+	if (!justCobra)
+	{
+		demo_stage = DEMO_SHOW_THING;
+		demo_stage_time = universal_time + 300.0;
+	}
+}
+
+
+oo::PList Universe::demoShipData()
+{
+	return DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex);
+}
+
+
+void Universe::setLibraryTextForDemoShip()
+{
+	::Universe *self = oo::ToObjC(this);
+	OOGUITabSettings tab_stops;
+	tab_stops[0] = 0;
+	tab_stops[1] = 170;
+	tab_stops[2] = 340;
+	[gui setTabStops:tab_stops];
+
+/*	[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
+	[gui setColor:[OOColor whiteColor] forRow:19]; */
+
+	const oo::PList librarySettings = [self demoShipData];
+
+	OOGUIRow descRow = 7;
+
+	std::optional<std::string> field1;
+	std::optional<std::string> field2;
+	std::optional<std::string> field3;
+	std::optional<std::string> override;
+
+	// clear rows
+	for (NSUInteger i=1;i<=26;i++)
+	{
+		[gui cxx_setText:"" forRow:i];
+	}
+
+	/* Row 1: ScanClass, Name, Summary */
+	override = LibrarySetting(librarySettings, kOODemoShipClass, "ship");
+	field1 = OOShipLibraryCategorySingular(override.value_or(std::string()));
+
+
+	field2 = [demo_ship cxx_shipClassName];
+
+
+	override = LibrarySetting(librarySettings, kOODemoShipSummary, nullptr);
+	if (override.has_value())
+	{
+		field3 = ExpandText(*override);
+	}
+	else
+	{
+		field3 = std::string();
+	}
+	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:1];
+	[gui setColor:[::OOColor greenColor] forRow:1];
+
+	// ship_data defaults to true for "ship" class, false for everything else
+	if (!librarySettings.get<bool>(kOODemoShipShipData, LibrarySetting(librarySettings, kOODemoShipClass, "ship") == "ship"))
+	{
+		descRow = 3;
+	}
+	else
+	{
+		/* Row 2: Speed, Turn Rate, Cargo */
+
+		override = LibrarySetting(librarySettings, kOODemoShipSpeed, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field1 = std::string();
+			}
+			else
+			{
+				field1 = CustomLibraryText("oolite-ship-library-speed-custom", *override);
+			}
+		}
+		else
+		{
+			field1 = OOShipLibrarySpeed(oo::ToCxx(demo_ship));
+		}
+
+
+		override = LibrarySetting(librarySettings, kOODemoShipTurnRate, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field2 = std::string();
+			}
+			else
+			{
+				field2 = CustomLibraryText("oolite-ship-library-turn-custom", *override);
+			}
+		}
+		else
+		{
+			field2 = OOShipLibraryTurnRate(oo::ToCxx(demo_ship));
+		}
+
+
+		override = LibrarySetting(librarySettings, kOODemoShipCargo, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field3 = std::string();
+			}
+			else
+			{
+				field3 = CustomLibraryText("oolite-ship-library-cargo-custom", *override);
+			}
+		}
+		else
+		{
+			field3 = OOShipLibraryCargo(oo::ToCxx(demo_ship));
+		}
+
+
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:3];
+
+		/* Row 3: recharge rate, energy banks, witchspace */
+		override = LibrarySetting(librarySettings, kOODemoShipGenerator, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field1 = std::string();
+			}
+			else
+			{
+				field1 = CustomLibraryText("oolite-ship-library-generator-custom", *override);
+			}
+		}
+		else
+		{
+			field1 = OOShipLibraryGenerator(oo::ToCxx(demo_ship));
+		}
+
+
+		override = LibrarySetting(librarySettings, kOODemoShipShields, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field2 = std::string();
+			}
+			else
+			{
+				field2 = CustomLibraryText("oolite-ship-library-shields-custom", *override);
+			}
+		}
+		else
+		{
+			field2 = OOShipLibraryShields(oo::ToCxx(demo_ship));
+		}
+
+
+		override = LibrarySetting(librarySettings, kOODemoShipWitchspace, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field3 = std::string();
+			}
+			else
+			{
+				field3 = CustomLibraryText("oolite-ship-library-witchspace-custom", *override);
+			}
+		}
+		else
+		{
+			field3 = OOShipLibraryWitchspace(oo::ToCxx(demo_ship));
+		}
+
+
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:4];
+
+
+		/* Row 4: weapons, turrets, size */
+		override = LibrarySetting(librarySettings, kOODemoShipWeapons, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field1 = std::string();
+			}
+			else
+			{
+				field1 = CustomLibraryText("oolite-ship-library-weapons-custom", *override);
+			}
+		}
+		else
+		{
+			field1 = OOShipLibraryWeapons(oo::ToCxx(demo_ship));
+		}
+
+		override = LibrarySetting(librarySettings, kOODemoShipTurrets, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field2 = std::string();
+			}
+			else
+			{
+				field2 = CustomLibraryText("oolite-ship-library-turrets-custom", *override);
+			}
+		}
+		else
+		{
+			field2 = OOShipLibraryTurrets(oo::ToCxx(demo_ship));
+		}
+
+		override = LibrarySetting(librarySettings, kOODemoShipSize, nullptr);
+		if (override.has_value())
+		{
+			if (override->empty())
+			{
+				field3 = std::string();
+			}
+			else
+			{
+				field3 = CustomLibraryText("oolite-ship-library-size-custom", *override);
+			}
+		}
+		else
+		{
+			field3 = OOShipLibrarySize(oo::ToCxx(demo_ship));
+		}
+
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
+	}
+
+	override = LibrarySetting(librarySettings, kOODemoShipDescription, nullptr);
+	if (override.has_value())
+	{
+		[gui cxx_addLongText:ExpandText(*override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
+	}
+
+
+	// line 19: ship categories
+	field1 = oo::str::format("<-- %s",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+demo_ships.count()-1)%demo_ships.count())).c_str());
+	field2 = OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, demo_ship_index));
+	field3 = oo::str::format("%s -->",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+1)%demo_ships.count())).c_str());
+
+	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:19];
+	[gui setColor:[::OOColor greenColor] forRow:19];
+
+	// lines 21-25: ship names
+	const oo::PList *subListEntry = demo_ships.at(demo_ship_index);
+	const oo::PList subList = (subListEntry != nullptr) ? *subListEntry : oo::PList();
+	NSUInteger i,start = demo_ship_subindex - (demo_ship_subindex%5);
+	NSUInteger end = start + 4;
+	if (end >= subList.count())
+	{
+		end = subList.count() - 1;
+	}
+	OOGUIRow row = 21;
+	field1 = std::string();
+	field3 = std::string();
+	for (i = start ; i <= end ; i++)
+	{
+		const oo::PList *shipEntry = subList.at(i);
+		field2 = (shipEntry != nullptr) ? OptionalStringIn(*shipEntry, kOODemoShipName) : std::nullopt;
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:row];
+		if (i == demo_ship_subindex)
+		{
+			[gui setColor:[::OOColor yellowColor] forRow:row];
+		}
+		else
+		{
+			[gui setColor:[::OOColor whiteColor] forRow:row];
+		}
+		row++;
+	}
+
+	field2 = "...";
+	if (start > 0)
+	{
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:20];
+		[gui setColor:[::OOColor whiteColor] forRow:20];
+	}
+	if (end < subList.count()-1)
+	{
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:26];
+		[gui setColor:[::OOColor whiteColor] forRow:26];
+	}
+
+}
+
+
+void Universe::selectIntro2Previous()
+{
+	demo_stage = DEMO_SHOW_THING;
+	NSUInteger subcount = DemoClassCount(demo_ships, demo_ship_index);
+	demo_ship_subindex = (demo_ship_subindex + subcount - 2) % subcount;
+	demo_stage_time  = universal_time - 1.0;	// force change
+}
+
+
+void Universe::selectIntro2PreviousCategory()
+{
+	demo_stage = DEMO_SHOW_THING;
+	demo_ship_index = (demo_ship_index + demo_ships.count() - 1) % demo_ships.count();
+	demo_ship_subindex = DemoClassCount(demo_ships, demo_ship_index) - 1;
+	demo_stage_time  = universal_time - 1.0;	// force change
+}
+
+
+void Universe::selectIntro2NextCategory()
+{
+	demo_stage = DEMO_SHOW_THING;
+ 	demo_ship_index = (demo_ship_index + 1) % demo_ships.count();
+	demo_ship_subindex = DemoClassCount(demo_ships, demo_ship_index) - 1;
+	demo_stage_time  = universal_time - 1.0;	// force change
+}
+
+
+void Universe::selectIntro2Next()
+{
+	demo_stage = DEMO_SHOW_THING;
+	demo_stage_time  = universal_time - 1.0;	// force change
+}
+
+
+::StationEntity * Universe::station()
+{
+	::Universe *self = oo::ToObjC(this);
+	if (cachedSun != nil && cachedStation == nil)
+	{
+		cachedStation = [self findOneEntityMatchingPredicate:IsCandidateMainStationPredicate
+												   parameter:nil];
+	}
+	return cachedStation;
+}
+
+
+::StationEntity * Universe::stationWithRole(const std::string &role, HPVector position)
+{
+	::Universe *self = oo::ToObjC(this);
+	if (role.empty())
+	{
+		return nil;
+	}
+
+	float range = 1000000; // allow a little variation in position
+
+	const std::vector<oo::ObjCRef<::StationEntity *>> stations = [self cxx_stations];
+	::StationEntity *station = nil;
+	for (const oo::ObjCRef<::StationEntity *> &entry : stations)
+	{
+		station = entry.get();
+		if (HPdistance2(position,[station position]) < range)
+		{
+			if ([station cxx_primaryRole].value_or("") == role)
+			{
+				return station;
+			}
+		}
+	}
+	return nil;
+}
+
+
+::StationEntity * Universe::stationFriendlyTo(::ShipEntity *ship)
+{
+	::Universe *self = oo::ToObjC(this);
+	// In interstellar space we select a random friendly carrier as mainStation.
+	// No caching: friendly status can change!
+	return [self findOneEntityMatchingPredicate:IsFriendlyStationPredicate parameter:ship];
+}
+
+
+::OOPlanetEntity * Universe::planet()
+{
+	if (cachedPlanet == nil && allPlanets.size() > 0)
+	{
+		cachedPlanet = allPlanets[0].get();
+	}
+	return cachedPlanet;
+}
+
+
+::OOSunEntity * Universe::sun()
+{
+	::Universe *self = oo::ToObjC(this);
+	if (cachedSun == nil)
+	{
+		cachedSun = [self findOneEntityMatchingPredicate:IsSunPredicate parameter:nil];
+	}
+	return cachedSun;
+}
+
+
+std::vector<oo::ObjCRef<::OOPlanetEntity *>> Universe::planets()
+{
+	return allPlanets;
+}
+
+
+std::vector<oo::ObjCRef<::StationEntity *>> Universe::stations()
+{
+	return allStations;
 }
 
 

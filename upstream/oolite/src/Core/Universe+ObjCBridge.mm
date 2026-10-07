@@ -184,6 +184,26 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice8)
+
+- (void) setupIntroFirstGo:(BOOL)justCobra	{ _cxxUniverse->setupIntroFirstGo(justCobra); }
+- (oo::PList) demoShipData	{ return _cxxUniverse->demoShipData(); }
+- (void) setLibraryTextForDemoShip	{ _cxxUniverse->setLibraryTextForDemoShip(); }
+- (void) selectIntro2Previous	{ _cxxUniverse->selectIntro2Previous(); }
+- (void) selectIntro2PreviousCategory	{ _cxxUniverse->selectIntro2PreviousCategory(); }
+- (void) selectIntro2NextCategory	{ _cxxUniverse->selectIntro2NextCategory(); }
+- (void) selectIntro2Next	{ _cxxUniverse->selectIntro2Next(); }
+- (StationEntity *) station	{ return _cxxUniverse->station(); }
+- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position	{ return _cxxUniverse->stationWithRole(role, position); }
+- (StationEntity *) stationFriendlyTo:(ShipEntity *)ship	{ return _cxxUniverse->stationFriendlyTo(ship); }
+- (OOPlanetEntity *) planet	{ return _cxxUniverse->planet(); }
+- (OOSunEntity *) sun	{ return _cxxUniverse->sun(); }
+- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets	{ return _cxxUniverse->planets(); }
+- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations	{ return _cxxUniverse->stations(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }

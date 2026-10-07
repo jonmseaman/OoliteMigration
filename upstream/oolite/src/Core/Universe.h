@@ -507,6 +507,22 @@ public:
 	void setDockingClearanceProtocolActive(bool newValue);
 	void handleGameOver();
 
+	// Slice 8: the intro and demo ships, the ship library text, station and planet look-ups.
+	void setupIntroFirstGo(bool justCobra);
+	oo::PList demoShipData();
+	void setLibraryTextForDemoShip();
+	void selectIntro2Previous();
+	void selectIntro2PreviousCategory();
+	void selectIntro2NextCategory();
+	void selectIntro2Next();
+	::StationEntity *station();
+	::StationEntity *stationWithRole(const std::string &role, HPVector position);
+	::StationEntity *stationFriendlyTo(::ShipEntity *ship);
+	::OOPlanetEntity *planet();
+	::OOSunEntity *sun();
+	std::vector<oo::ObjCRef<::OOPlanetEntity *>> planets();
+	std::vector<oo::ObjCRef<::StationEntity *>> stations();
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
