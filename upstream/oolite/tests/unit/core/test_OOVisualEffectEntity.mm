@@ -92,7 +92,10 @@ void SetUp()
 		OO_CHECK(::_putenv_s("HOMEPATH", root.string().c_str()) == 0);
 		stdfs::current_path(root);
 		OO_CHECK(oo::fs::writeFile(root / "Resources" / "Info-gnustep.plist", oo::Data("{ CFBundleVersion = \"9.9.9-test\"; }", 35), oo::fs::WriteMode::direct).has_value());
-		(void)[OOJavaScriptEngine sharedEngine];
+		@autoreleasepool	// the engine autoreleases facades as it starts (as test_OOJSSystem, bead oo-9ht.172; here oo-9ht.174)
+		{
+			(void)[OOJavaScriptEngine sharedEngine];
+		}
 	}
 	static Universe *universe = nil;
 	if (universe == nil)
@@ -102,7 +105,13 @@ void SetUp()
 	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nil;
-	if (player == nil)  player = [[TestPlayer alloc] init];
+	if (player == nil)
+	{
+		@autoreleasepool	// what the stand-in player's -init autoreleases is freed while the engine is alive (bead oo-9ht.174)
+		{
+			player = [[TestPlayer alloc] init];
+		}
+	}
 	gOOPlayer = (PlayerEntity *)player;
 }
 
