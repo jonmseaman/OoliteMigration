@@ -241,7 +241,7 @@ MA 02110-1301, USA.
 	return cxx::ResourceManager::pathForFileNamed(fileName, folderName, useCache);
 }
 
-+ (OOMusic *)cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
++ (id)cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
 	return oo::ToObjC(cxx::ResourceManager::ooMusicNamed(fileName, folderName).get());	// the facade, an OOMusic; nil for none
 }
