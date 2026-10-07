@@ -415,17 +415,17 @@ OO_TEST(slice15CountAndFind)
 		// The range reaches the other entity's surface: b's is 90 away from a, c's 990.
 		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:95 ofEntity:a] == 1);
 		OO_CHECK([u countEntitiesMatchingPredicate:NULL parameter:NULL inRange:85 ofEntity:a] == 0);
-		double far = 50;
-		OO_CHECK([u countEntitiesMatchingPredicate:IsFarPredicate parameter:&far inRange:-1 ofEntity:nil] == 2);
+		double limit = 50;
+		OO_CHECK([u countEntitiesMatchingPredicate:IsFarPredicate parameter:&limit inRange:-1 ofEntity:nil] == 2);
 
 		// Ships: only c.
 		OO_CHECK([u countShipsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a] == 1);
-		OO_CHECK([u countShipsMatchingPredicate:IsFarPredicate parameter:&far inRange:-1 ofEntity:nil] == 1);
+		OO_CHECK([u countShipsMatchingPredicate:IsFarPredicate parameter:&limit inRange:-1 ofEntity:nil] == 1);
 		OO_CHECK([u countShipsMatchingPredicate:NULL parameter:NULL inRange:500 ofEntity:a] == 0);
 
 		std::vector<oo::ObjCRef<Entity *>> found = [u cxx_findEntitiesMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:a];
 		OO_CHECK(found.size() == 2 && found[0].get() == b && found[1].get() == c);	// in the sorted list's order
-		found = [u cxx_findEntitiesMatchingPredicate:IsFarPredicate parameter:&far inRange:95 ofEntity:a];
+		found = [u cxx_findEntitiesMatchingPredicate:IsFarPredicate parameter:&limit inRange:95 ofEntity:a];
 		OO_CHECK(found.size() == 1 && found[0].get() == b);
 		found = [u cxx_findShipsMatchingPredicate:NULL parameter:NULL inRange:-1 ofEntity:nil];
 		OO_CHECK(found.size() == 1 && found[0].get() == c);
@@ -456,21 +456,21 @@ OO_TEST(slice15FindOneAndNearest)
 		Entity *c = MakeShipLike(make_HPvector(200, 0, 0), 10);
 		Entity *d = MakeShipLike(make_HPvector(-500, 0, 0), 10);
 		SetSortedEntities(u, { a, b, c, d });
-		double far = 250;
+		double limit = 250;
 
 		OO_CHECK([u findOneEntityMatchingPredicate:NULL parameter:NULL] == a);
-		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&far] == b);
-		far = 5000;
-		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&far] == nil);
+		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&limit] == b);
+		limit = 5000;
+		OO_CHECK([u findOneEntityMatchingPredicate:IsFarPredicate parameter:&limit] == nil);
 
 		OO_CHECK([u nearestEntityMatchingPredicate:NULL parameter:NULL relativeToEntity:a] == c);
 		OO_CHECK([u nearestEntityMatchingPredicate:NULL parameter:NULL relativeToEntity:nil] == a);
-		far = 250;
-		OO_CHECK([u nearestEntityMatchingPredicate:IsFarPredicate parameter:&far relativeToEntity:a] == b);
+		limit = 250;
+		OO_CHECK([u nearestEntityMatchingPredicate:IsFarPredicate parameter:&limit relativeToEntity:a] == b);
 		OO_CHECK([u nearestShipMatchingPredicate:NULL parameter:NULL relativeToEntity:b] == c);
-		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&far relativeToEntity:a] == nil);
-		far = -1000;
-		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&far relativeToEntity:c] == d);
+		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&limit relativeToEntity:a] == nil);
+		limit = -1000;
+		OO_CHECK([u nearestShipMatchingPredicate:IsFarPredicate parameter:&limit relativeToEntity:c] == d);
 
 		u->_cxxUniverse->n_entities = 0;
 	}
