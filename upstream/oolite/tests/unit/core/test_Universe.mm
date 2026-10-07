@@ -703,4 +703,70 @@ OO_TEST(slice18FilterSortedLists)
 }
 
 
+// Slice 19 (bead oo-z3u03): galaxy and system changes, descriptions, scenarios, characters, mission
+// text, system data and names, finding systems. Written against the Objective-C API and run on the
+// unconverted class first. A headless universe has no system manager, so the state these answer
+// is set in the members by hand.
+OO_TEST(slice19Descriptions)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->_descriptions = oo::PList(oo::PList::Dict{
+			{ "slice19-text", oo::PList("Hello") },
+			{ "slice19-array", oo::PList(oo::PList::Array{ oo::PList("zero"), oo::PList("one") }) },
+			{ "slice19-flag", oo::PList(true) },
+		});
+		u->_cxxUniverse->_descriptionsGeneration = 7;
+
+		const oo::PList *descriptions = [u cxx_descriptions];
+		OO_CHECK(descriptions == &u->_cxxUniverse->_descriptions);
+		OO_CHECK([u cxx_descriptionsGeneration] == 7);
+		OO_CHECK([u cxx_descriptionForKey:"slice19-text"] == "Hello");
+		OO_CHECK(![u cxx_descriptionForKey:"slice19-missing"].has_value());
+		OO_CHECK([u cxx_descriptionForArrayKey:"slice19-array" index:1] == "one");
+		OO_CHECK(![u cxx_descriptionForArrayKey:"slice19-array" index:2].has_value());
+		OO_CHECK(![u cxx_descriptionForArrayKey:"slice19-text" index:0].has_value());
+		OO_CHECK([u descriptionBooleanForKey:"slice19-flag"]);
+		OO_CHECK(![u descriptionBooleanForKey:"slice19-missing"]);
+		OO_CHECK(cxx_OOLookUpDescriptionPRIV("slice19-text") == "Hello");
+	}
+}
+
+
+OO_TEST(slice19DataAndNames)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		u->_cxxUniverse->explosionSettings = oo::PList(oo::PList::Dict{ { "slice19-boom", oo::PList(oo::PList::Dict{ { "size", oo::PList(2.0) } }) } });
+		u->_cxxUniverse->_scenarios = oo::PList(oo::PList::Array{ oo::PList("s") });
+		u->_cxxUniverse->characters = oo::PList(oo::PList::Dict{ { "c", oo::PList("x") } });
+		u->_cxxUniverse->missiontext = oo::PList(oo::PList::Dict{ { "m", oo::PList("y") } });
+		u->_cxxUniverse->systemID = 42;
+
+		OO_CHECK([u cxx_explosionSetting:"slice19-boom"].get<double>("size") == 2.0);
+		OO_CHECK([u cxx_explosionSetting:"slice19-missing"].isNull());
+		OO_CHECK([u cxx_scenarios].count() == 1);
+		OO_CHECK([u cxx_characters].get<std::string>("c") == "x");
+		OO_CHECK([u cxx_missiontext].get<std::string>("m") == "y");
+		OO_CHECK([u currentSystemID] == 42);
+		OO_CHECK([u systemManager] == nil);
+
+		OO_CHECK([u cxx_keyForPlanetOverridesForSystem:7 inGalaxy:2] == "2 7");
+		OO_CHECK([u keyForInterstellarOverridesForSystems:3 :4 inGalaxy:2] == "interstellar: 2 3 4");
+
+		// Names are found whatever their case; a missing name matches nothing.
+		u->_cxxUniverse->system_names[5] = std::string("Lave");
+		u->_cxxUniverse->system_names[9] = std::string("Diso");
+		OO_CHECK([u cxx_findSystemFromName:"lave"] == 5);
+		OO_CHECK([u cxx_findSystemFromName:"DISO"] == 9);
+		OO_CHECK([u cxx_findSystemFromName:"Zaonce"] == -1);
+
+		// No sun in the universe: interstellar space.
+		OO_CHECK([u inInterstellarSpace]);
+	}
+}
+
+
 OO_TEST_MAIN()
