@@ -56,6 +56,7 @@ extern ooscript::Context gOOJSMainThreadContext;
 - (void) scanForNearestShipWithPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
 - (void) scanForNearestShipWithNegatedPredicate:(EntityFilterPredicate)predicate parameter:(void *)parameter;
 - (void) acceptDistressMessageFrom:(ShipEntity *)other;
+- (void) performBuoyTumble;	// defined by the AI category, declared nowhere
 @end
 
 
@@ -205,7 +206,7 @@ OO_TEST(slice1AttackFleeMiningLanding)
 		SetAccuracy(ship, COMBAT_AI_ISNT_AWFUL);	// no aspect check
 		SetBehaviour(ship, BEHAVIOUR_IDLE);
 		[ship performFlee];
-		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLEE_TARGET && [ship evasiveJink] == 400.0);
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLEE_TARGET && Frustration(ship) == 0);
 		SetBehaviour(ship, BEHAVIOUR_FLEE_EVASIVE_ACTION);
 		[ship performFlee];
 		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLEE_EVASIVE_ACTION);
@@ -351,9 +352,9 @@ OO_TEST(slice1StationStubs)
 	{
 		SetUp();
 		TestAIShip *ship = MakeShip("notastation");
-		[ship increaseAlertLevel];
-		[ship decreaseAlertLevel];
-		[ship abortAllDockings];
+		[(id)ship increaseAlertLevel];
+		[(id)ship decreaseAlertLevel];
+		[(id)ship abortAllDockings];
 		[(id)ship launchShipWithRole:std::string("trader")];
 		OO_CHECK([(id)ship launchPolice].isNull());
 		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
