@@ -28,8 +28,6 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 
 
-namespace cxx {
-
 oo::Ref<OOTextureSprite> OOTextureSprite::initWithTexture(::OOTexture *inTexture)
 {
 	return initWithTexture(inTexture, [inTexture originalDimensions]);
@@ -111,5 +109,3 @@ void OOTextureSprite::blitBackgroundCentredToX(float x, float y, float z, float 
 	blitCentredToX(x, y, z * distance, a);
 	size.width /= distance; size.height /= distance;
 }
-
-}	// namespace cxx
