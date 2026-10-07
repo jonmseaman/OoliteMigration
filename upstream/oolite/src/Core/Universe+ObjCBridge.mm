@@ -156,3 +156,44 @@ extern Universe *gSharedUniverse;
 - (void) setGalaxyTo:(OOGalaxyID) g	{ _cxxUniverse->setGalaxyTo(g); }
 
 @end
+
+
+@implementation Universe (OOSlice19)
+
+- (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced	{ _cxxUniverse->setGalaxyTo(g, forced); }
+- (void) setSystemTo:(OOSystemID) s	{ _cxxUniverse->setSystemTo(s); }
+- (OOSystemID) currentSystemID	{ return _cxxUniverse->currentSystemID(); }
+- (const oo::PList *) cxx_descriptions	{ return _cxxUniverse->descriptions(); }
+- (unsigned) cxx_descriptionsGeneration	{ return _cxxUniverse->descriptionsGeneration(); }
+- (void) verifyDescriptions	{ _cxxUniverse->verifyDescriptions(); }
+- (void) loadDescriptions	{ _cxxUniverse->loadDescriptions(); }
+- (oo::PList) cxx_explosionSetting:(const std::string &)explosion	{ return _cxxUniverse->explosionSetting(explosion); }
+- (oo::PList) cxx_scenarios	{ return _cxxUniverse->scenarios(); }
+- (void) loadScenarios	{ _cxxUniverse->loadScenarios(); }
+- (oo::PList) cxx_characters	{ return _cxxUniverse->getCharacters(); }
+- (oo::PList) cxx_missiontext	{ return _cxxUniverse->getMissiontext(); }
+- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key	{ return _cxxUniverse->descriptionForKey(key); }
+- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index	{ return _cxxUniverse->descriptionForArrayKey(key, index); }
+- (BOOL) descriptionBooleanForKey:(const std::string &)key	{ return _cxxUniverse->descriptionBooleanForKey(key); }
+- (OOSystemDescriptionManager *) systemManager	{ return _cxxUniverse->getSystemManager(); }
+- (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g	{ return _cxxUniverse->keyForPlanetOverridesForSystem(s, g); }
+- (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g	{ return _cxxUniverse->keyForInterstellarOverridesForSystems(s1, s2, g); }
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s	{ return _cxxUniverse->generateSystemData(s); }
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache	{ return _cxxUniverse->generateSystemData(s, useCache); }
+- (oo::PList) cxx_currentSystemData	{ return _cxxUniverse->currentSystemData(); }
+- (BOOL) inInterstellarSpace	{ return _cxxUniverse->inInterstellarSpace(); }
+- (void) cxx_setSystemDataKey:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest	{ _cxxUniverse->setSystemDataKey(key, value, manifest); }
+- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer	{ _cxxUniverse->setSystemDataForGalaxy(gnum, pnum, key, value, manifest, layer); }
+- (oo::PList) generateSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum	{ return _cxxUniverse->generateSystemDataForGalaxy(gnum, pnum); }
+- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum	{ return _cxxUniverse->systemDataKeysForGalaxy(gnum, pnum); }
+- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key	{ return _cxxUniverse->systemDataForGalaxy(gnum, pnum, key); }
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys	{ return _cxxUniverse->getSystemName(sys); }
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum	{ return _cxxUniverse->getSystemName(sys, gnum); }
+- (OOGovernmentID) getSystemGovernment:(OOSystemID) sys	{ return _cxxUniverse->getSystemGovernment(sys); }
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys	{ return _cxxUniverse->getSystemInhabitants(sys); }
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural	{ return _cxxUniverse->getSystemInhabitants(sys, plural); }
+- (NSPoint) coordinatesForSystem:(OOSystemID)s	{ return _cxxUniverse->coordinatesForSystem(s); }
+- (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName	{ return _cxxUniverse->findSystemFromName(sysName); }
+- (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g	{ return _cxxUniverse->findSystemAtCoords(coords, g); }
+
+@end

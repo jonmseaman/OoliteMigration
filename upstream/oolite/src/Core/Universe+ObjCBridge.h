@@ -243,49 +243,6 @@ MA 02110-1301, USA.
 
 ///////////////////////////////////////
 
-- (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced;
-
-- (void) setSystemTo:(OOSystemID) s;
-
-- (OOSystemID) currentSystemID;
-
-// The live descriptions dictionary (the built-in descriptions.plist until the merged one is loaded);
-// nullptr only for a nil receiver. The generation changes whenever it is replaced.
-- (const oo::PList *) cxx_descriptions;
-- (unsigned) cxx_descriptionsGeneration;
-- (oo::PList) cxx_characters;
-- (oo::PList) cxx_missiontext;
-- (oo::PList) cxx_scenarios;
-- (oo::PList) cxx_explosionSetting:(const std::string &)explosion;	// a null PList for none
-
-- (OOSystemDescriptionManager *) systemManager;
-
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key;	// String, or random item from array; nullopt for none
-- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index;	// Indexed item from array; nullopt for none
-- (BOOL) descriptionBooleanForKey:(const std::string &)key;	// Boolean from descriptions.plist, for configuration.
-
-- (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
-- (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
-- (oo::PList) cxx_generateSystemData:(OOSystemID) s;
-- (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
-- (oo::PList) cxx_currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
-
-- (BOOL) inInterstellarSpace;
-
-// value: a script value (a null PList to remove); manifest nullopt where nil was passed.
-- (void) cxx_setSystemDataKey:(const std::string &) key value:(const oo::PList &) value fromManifest:(const std::optional<std::string> &)manifest;
-- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
-- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value (null: none)
-- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// byte order of the key
-- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys;
-- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
-- (OOGovernmentID) getSystemGovernment:(OOSystemID) sys;
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys;
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
-
-- (NSPoint) coordinatesForSystem:(OOSystemID)s;
-- (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName;
-
 /**
  * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
  */
@@ -294,7 +251,6 @@ MA 02110-1301, USA.
 - (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 // old alias for findSystemNumberAtCoords
-- (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal includingHidden:(BOOL)hidden;
 - (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix;
 - (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch;
@@ -542,6 +498,52 @@ MA 02110-1301, USA.
 
 - (void) filterSortedLists;
 - (void) setGalaxyTo:(OOGalaxyID) g;
+
+@end
+
+
+// Slice 19 of docs/phases/3-slices/Universe.md (bead oo-z3u03): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice19)
+
+- (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced;
+- (void) setSystemTo:(OOSystemID) s;
+- (OOSystemID) currentSystemID;
+// The live descriptions dictionary (the built-in descriptions.plist until the merged one is loaded);
+// nullptr only for a nil receiver. The generation changes whenever it is replaced.
+- (const oo::PList *) cxx_descriptions;
+- (unsigned) cxx_descriptionsGeneration;
+- (void) verifyDescriptions;
+- (void) loadDescriptions;
+- (oo::PList) cxx_explosionSetting:(const std::string &)explosion;	// a null PList for none
+- (oo::PList) cxx_scenarios;
+- (void) loadScenarios;
+- (oo::PList) cxx_characters;
+- (oo::PList) cxx_missiontext;
+- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key;	// String, or random item from array; nullopt for none
+- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index;	// Indexed item from array; nullopt for none
+- (BOOL) descriptionBooleanForKey:(const std::string &)key;	// Boolean from descriptions.plist, for configuration.
+- (OOSystemDescriptionManager *) systemManager;
+- (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
+- (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s;
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
+- (oo::PList) cxx_currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
+- (BOOL) inInterstellarSpace;
+// value: a script value (a null PList to remove); manifest nullopt where nil was passed.
+- (void) cxx_setSystemDataKey:(const std::string &) key value:(const oo::PList &) value fromManifest:(const std::optional<std::string> &)manifest;
+- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
+- (oo::PList) generateSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;
+- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// byte order of the key
+- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value (null: none)
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
+- (OOGovernmentID) getSystemGovernment:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
+- (NSPoint) coordinatesForSystem:(OOSystemID)s;
+- (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName;
+- (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 
 @end
 

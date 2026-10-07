@@ -257,10 +257,6 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) setFirstBeacon:(Entity <OOBeaconEntity> *)beacon;
 - (void) setLastBeacon:(Entity <OOBeaconEntity> *)beacon;
 
-- (void) verifyDescriptions;
-- (void) loadDescriptions;
-- (void) loadScenarios;
-
 - (void) verifyEntitySessionIDs;
 - (float) randomDistanceWithinScanner;
 - (Vector) randomPlaceWithinScannerFrom:(Vector)pos alongRoute:(Vector)route withOffset:(double)offset;
@@ -6064,53 +6060,6 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 }	// namespace
 
 
-- (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced
-{
-	int						i;
-	
-	if (_cxxUniverse->galaxyID != g || forced) {
-		_cxxUniverse->galaxyID = g;
-		
-		// systems
-		@autoreleasepool
-		{
-			for (i = 0; i < 256; i++)
-			{
-				_cxxUniverse->system_names[i] = SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:"name" forSystem:i inGalaxy:g]);
-
-			}
-		}
-	}
-}
-
-
-- (void) setSystemTo:(OOSystemID) s
-{
-	oo::PList		systemData;
-	PlayerEntity	*player = PLAYER;
-	OOEconomyID		economy;
-	std::optional<std::string>	scriptName;
-
-	[self setGalaxyTo: [player galaxyNumber]];
-
-	_cxxUniverse->systemID = s;
-	_cxxUniverse->targetSystemID = s;
-
-	systemData = [self cxx_generateSystemData:_cxxUniverse->targetSystemID];
-	economy = systemData.get<unsigned char>(std::string(KEY_ECONOMY));
-	scriptName = OptionalStringIn(systemData, "market_script");
-
-	DESTROY(_cxxUniverse->commodityMarket);
-	_cxxUniverse->commodityMarket = [[_cxxUniverse->commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
-}
-
-
-- (OOSystemID) currentSystemID
-{
-	return _cxxUniverse->systemID;
-}
-
-
 namespace {
 
 // Makes each assignment of a Universe's _descriptions distinguishable (see -cxx_descriptionsGeneration).
@@ -6277,27 +6226,6 @@ std::optional<std::string> SystemPropertyString(const oo::PList &property)
 }	// namespace
 
 
-- (const oo::PList *) cxx_descriptions
-{
-	if (_cxxUniverse->_descriptions.isNull())
-	{
-		// Load internal descriptions.plist for use in early init, OXP verifier etc.
-		// It will be replaced by merged version later if running the game normally.
-		_cxxUniverse->_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "descriptions.plist"));
-		_cxxUniverse->_descriptionsGeneration = ++sDescriptionsGeneration;
-
-		[self verifyDescriptions];
-	}
-	return &_cxxUniverse->_descriptions;
-}
-
-
-- (unsigned) cxx_descriptionsGeneration
-{
-	return _cxxUniverse->_descriptionsGeneration;
-}
-
-
 namespace {
 
 void VerifyDesc(const std::string &key, const oo::PList &desc);
@@ -6344,434 +6272,6 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 }	// namespace
-
-
-- (void) verifyDescriptions
-{
-	/*
-		Ensure that no descriptions.plist entries contain the %n format code,
-		which can be used to smash the stack and potentially call arbitrary
-		functions.
-		
-		%n is deliberately not supported in Foundation/CoreFoundation under
-		Mac OS X, but unfortunately GNUstep implements it.
-		-- Ahruman 2011-05-05
-	*/
-	
-	if (_cxxUniverse->_descriptions.isNull())
-	{
-		OO_LOG("descriptions.verify", "{}", "***** FATAL: Tried to verify descriptions, but descriptions was nil - unable to load any descriptions.plist file.");
-		exit(EXIT_FAILURE);
-	}
-	// Byte order of the key (was hash order): it decides only which bad entry is reported first.
-	if (const oo::PList::Dict *entries = _cxxUniverse->_descriptions.getIf<oo::PList::Dict>())
-	{
-		for (const auto &[key, value] : *entries)
-		{
-			VerifyDesc(key, value);
-		}
-	}
-}
-
-
-- (void) loadDescriptions
-{
-	_cxxUniverse->_descriptions = [ResourceManager cxx_dictionaryFromFilesNamed:"descriptions.plist" inFolder:std::string("Config") andMerge:YES];
-	_cxxUniverse->_descriptionsGeneration = ++sDescriptionsGeneration;
-	[self verifyDescriptions];
-}
-
-
-- (oo::PList) cxx_explosionSetting:(const std::string &)explosion
-{
-	const oo::PList *setting = _cxxUniverse->explosionSettings.get<oo::PList::Dict>(explosion);
-	return (setting != nullptr) ? *setting : oo::PList();
-}
-
-
-- (oo::PList) cxx_scenarios
-{
-	return _cxxUniverse->_scenarios;
-}
-
-
-- (void) loadScenarios
-{
-	_cxxUniverse->_scenarios = [ResourceManager cxx_arrayFromFilesNamed:"scenarios.plist" inFolder:std::string("Config") andMerge:YES];
-}
-
-
-- (oo::PList) cxx_characters
-{
-	return _cxxUniverse->characters;
-}
-
-
-- (oo::PList) cxx_missiontext
-{
-	return _cxxUniverse->missiontext;
-}
-
-
-- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key
-{
-	return [self chooseStringForKey:key inDictionary:*[self cxx_descriptions]];
-}
-
-
-- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index
-{
-	const oo::PList *array = [self cxx_descriptions]->get<oo::PList::Array>(key);
-	if (array == nullptr || array->count() <= index)  return std::nullopt;	// Catches a missing array
-	return OptionalStringAt(*array, index);
-}
-
-
-- (BOOL) descriptionBooleanForKey:(const std::string &)key
-{
-	return [self cxx_descriptions]->get<bool>(key);
-}
-
-
-- (OOSystemDescriptionManager *) systemManager
-{
-	return _cxxUniverse->systemManager;
-}
-
-
-- (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g
-{
-	return oo::str::format("%d %d", g, s);
-}
-
-
-- (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g
-{
-	return oo::str::format("interstellar: %d %d %d", g, s1, s2);
-}
-
-
-- (oo::PList) cxx_generateSystemData:(OOSystemID) s
-{
-	return [self cxx_generateSystemData:s useCache:YES];
-}
-
-
-// cache isn't handled this way any more
-- (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache
-{
-	OOJS_PROFILE_ENTER
-
-// TODO: At the moment this method is only called for systems in the
-// same galaxy. At some point probably needs generalising to have a
-// galaxynumber parameter.
-	const std::string systemKey = oo::str::format("%u %u",[PLAYER galaxyNumber],s);
-
-	return [_cxxUniverse->systemManager cxx_getPropertiesForSystemKey:systemKey];
-
-	OOJS_PROFILE_EXIT_VAL(oo::PList())
-}
-
-
-- (oo::PList) cxx_currentSystemData
-{
-	OOJS_PROFILE_ENTER
-
-	if (![self inInterstellarSpace])
-	{
-		return [self cxx_generateSystemData:_cxxUniverse->systemID];
-	}
-	else
-	{
-		static oo::PList interstellarDict;	// null until built
-		if (interstellarDict.isNull())
-		{
-			const std::string interstellarName = cxx_OOLookUpDescriptionPRIV("interstellar-space");
-			const std::string notApplicable = cxx_OOLookUpDescriptionPRIV("not-applicable");
-			// signed integers, as +numberWithInt: made them
-			const oo::PList minusOne = oo::PList::signedInteger(-1);
-			const oo::PList zero = oo::PList::signedInteger(0);
-			interstellarDict = oo::PList(oo::PList::Dict{
-								{ std::string(KEY_NAME), oo::PList(interstellarName) },
-								{ std::string(KEY_GOVERNMENT), minusOne },
-								{ std::string(KEY_ECONOMY), minusOne },
-								{ std::string(KEY_TECHLEVEL), minusOne },
-								{ std::string(KEY_POPULATION), zero },
-								{ std::string(KEY_PRODUCTIVITY), zero },
-								{ std::string(KEY_RADIUS), zero },
-								{ std::string(KEY_INHABITANTS), oo::PList(notApplicable) },
-								{ std::string(KEY_DESCRIPTION), oo::PList(notApplicable) } });
-		}
-
-		return interstellarDict;
-	}
-
-	OOJS_PROFILE_EXIT_VAL(oo::PList())
-}
-
-
-- (BOOL) inInterstellarSpace
-{
-	return [self sun] == nil;
-}
-
-
-
-
-// layer 2
-// used by legacy script engine and sun going nova
-- (void) cxx_setSystemDataKey:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest
-{
-	[self cxx_setSystemDataForGalaxy:_cxxUniverse->galaxyID planet:_cxxUniverse->systemID key:key value:value fromManifest:manifest forLayer:OO_LAYER_OXP_DYNAMIC];
-}
-
-
-- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key value:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer
-{
-	oo::PList	object = value;	// the script value, as the Objective-C object it was (null: nil)
-	static BOOL sysdataLocked = NO;
-	if (sysdataLocked)
-	{
-		OO_LOG_ERR("script.error", "{}", "System properties cannot be set during 'systemInformationChanged' events to avoid infinite loops.");
-		return;
-	}
-
-	BOOL sameGalaxy = (gnum == [PLAYER currentGalaxyID]);
-	BOOL sameSystem = (sameGalaxy && pnum == [self currentSystemID]);
-
-	// trying to set  unsettable properties?  
-	if (key == std::string(KEY_RADIUS) && sameGalaxy && sameSystem) // buggy if we allow this key to be set while in the system
-	{
-		OO_LOG_ERR("script.error", "System property '{}' cannot be set while in the system.", key);
-		return;
-	}
-
-	if (key == "coordinates") // setting this in game would be very confusing
-	{
-		OO_LOG_ERR("script.error", "System property '{}' cannot be set.", key);
-		return;
-	}
-
-
-	const std::string	overrideKey = oo::str::format("%u %u", gnum, pnum);
-	oo::PList	sysInfo;
-
-	// short range map fix
-	[_cxxUniverse->gui refreshStarChart];
-
-	if (!object.isNull()) {
-		// long range map fixes
-		if (key == std::string(KEY_NAME))
-		{
-			// -lowercaseString / -capitalizedString of the name (a script string)
-			const std::string *text = object.getIf<std::string>();
-			const std::string name = oo::str::capitalized(oo::str::lowercase(text != nullptr ? *text : std::string()));
-			object = oo::PList(name);
-			if(sameGalaxy)
-			{
-				_cxxUniverse->system_names[pnum] = name;
-			}
-		}
-		else if (key == "sun_radius")
-		{
-			if (ScriptValueDouble(object) < 1000.0 || ScriptValueDouble(object) > 10000000.0 )
-			{
-				object = oo::PList(ScriptValueDouble(object) < 1000.0 ? "1000.0" : "10000000.0"); // works!
-			}
-		}
-		else if (oo::str::hasPrefix(key, "corona_"))
-		{
-			object = oo::PList(oo::str::format("%f",OOClamp_0_1_f(ScriptValueFloat(object))));
-		}
-	}
-
-	// a null value removes the property, as nil did
-	[_cxxUniverse->systemManager cxx_setProperty:key forSystemKey:overrideKey andLayer:layer toValue:object fromManifest:manifest];
-
-
-	// Apply changes that can be effective immediately, issue warning if they can't be changed just now
-	if (sameSystem)
-	{
-		sysInfo = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
-
-		OOSunEntity* the_sun = [self sun];
-		/* KEY_ECONOMY used to be here, but resetting the main station
-		 * market while the player is in the system is likely to cause
-		 * more trouble than it's worth. Let them leave and come back
-		 * - CIM */
-		if (key == std::string(KEY_TECHLEVEL))
-		{	
-			if([self station]){
-				[[self station] setEquivalentTechLevel:ScriptValueInt(object)];
-				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:_cxxUniverse->systemID
-								withTL:ScriptValueInt(object) atTime:[PLAYER clockTime]];
-				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
-				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
-			}
-		}
-		else if (key == "sun_color" || key == "star_count_multiplier" ||
-				key == "nebula_count_multiplier" || oo::str::hasPrefix(key, "sky_"))
-		{
-			SkyEntity	*the_sky = nil;
-			int i;
-			
-			for (i = _cxxUniverse->n_entities - 1; i > 0; i--)
-				if ((_cxxUniverse->sortedEntities[i]) && ([_cxxUniverse->sortedEntities[i] isKindOfClass:[SkyEntity class]]))
-					the_sky = (SkyEntity*)_cxxUniverse->sortedEntities[i];
-			
-			if (the_sky != nil)
-			{
-				[the_sky changeProperty:key withDictionary:sysInfo];
-
-				if (key == "sun_color")
-				{
-					OOColor *color = [the_sky skyColor];
-					if (the_sun != nil)
-					{
-						[the_sun setSunColor:color];
-						[the_sun getDiffuseComponents:_cxxUniverse->sun_diffuse];
-						[the_sun getSpecularComponents:_cxxUniverse->sun_specular];
-					}
-					for (i = _cxxUniverse->n_entities - 1; i > 0; i--)
-						if ((_cxxUniverse->sortedEntities[i]) && ([_cxxUniverse->sortedEntities[i] isKindOfClass:[DustEntity class]]))
-							[(DustEntity*)_cxxUniverse->sortedEntities[i] setDustColor:[color blendedColorWithFraction:0.5 ofColor:[OOColor whiteColor]]];
-				}
-			}
-		}
-		else if (the_sun != nil && (oo::str::hasPrefix(key, "sun_") || oo::str::hasPrefix(key, "corona_")))
-		{
-			[the_sun changeSunProperty:key withDictionary:sysInfo];
-		}
-		else if (key == "texture")
-		{
-			const std::string *texture = object.getIf<std::string>();	// a texture name (a script string)
-			[[self planet] setUpPlanetFromTexture:(texture != nullptr) ? std::optional<std::string>(*texture) : std::nullopt];
-		}
-		else if (key == "texture_hsb_color")
-		{
-			[[self planet] setUpPlanetFromTexture: [[self planet] textureFileName]];
-		}
-		else if (key == "air_color")
-		{
-			[[self planet] setAirColor:[OOColor cxx_brightColorWithDescription:object]];
-		}
-		else if (key == "illumination_color")
-		{
-			[[self planet] setIlluminationColor:[OOColor cxx_colorWithDescription:object]];
-		}
-		else if (key == "air_color_mix_ratio")
-		{
-			[[self planet] setAirColorMixRatio:sysInfo.get<float>(key)];
-		}
-	}
-	
-	sysdataLocked = YES;
-	// the same arguments (a nil value ends the list, as it did)
-	std::vector<oo::PList> arguments{ oo::PList::signedInteger(gnum), oo::PList::signedInteger(pnum), oo::PList(key) };
-	if (!object.isNull())  arguments.push_back(object);
-	[PLAYER cxx_doScriptEvent:OOJSID("systemInformationChanged") withPListArguments:arguments];
-	sysdataLocked = NO;
-
-}
-
-
-- (oo::PList) generateSystemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum
-{
-	const std::optional<std::string> systemKey = [self cxx_keyForPlanetOverridesForSystem:pnum inGalaxy:gnum];
-	return [_cxxUniverse->systemManager cxx_getPropertiesForSystemKey:*systemKey];
-}
-
-
-// Byte order of the key (was the dictionary's -allKeys, hash order).
-- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum
-{
-	std::vector<std::string> keys;
-	const oo::PList systemData = [self generateSystemDataForGalaxy:gnum planet:pnum];
-	if (const oo::PList::Dict *entries = systemData.getIf<oo::PList::Dict>())
-	{
-		for (const auto &[key, value] : *entries)  keys.push_back(key);
-	}
-	return keys;
-}
-
-
-/* Only called from OOJSSystemInfo. */
-- (oo::PList) cxx_systemDataForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum key:(const std::string &)key
-{
-	return [_cxxUniverse->systemManager cxx_getProperty:key forSystem:pnum inGalaxy:gnum];
-}
-
-
-- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys
-{
-	return [self cxx_getSystemName:sys forGalaxy:_cxxUniverse->galaxyID];
-}
-
-
-- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum
-{
-	return SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:"name" forSystem:sys inGalaxy:gnum]);
-}
-
-
-- (OOGovernmentID) getSystemGovernment:(OOSystemID) sys
-{
-	// -unsignedCharValue of the number (nil, where there is none, gave 0)
-	return static_cast<unsigned char>([_cxxUniverse->systemManager cxx_getProperty:"government" forSystem:sys inGalaxy:_cxxUniverse->galaxyID].int64Value());
-}
-
-
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys
-{
-	return [self cxx_getSystemInhabitants:sys plural:YES];
-}
-
-
-- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural
-{
-	std::optional<std::string> ret;
-	if (!plural)
-	{
-		ret = SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:std::string(KEY_INHABITANT) forSystem:sys inGalaxy:_cxxUniverse->galaxyID]);
-	}
-	if (ret.has_value()) // the singular form might be absent.
-	{
-		return ret;
-	}
-	else
-	{
-		return SystemPropertyString([_cxxUniverse->systemManager cxx_getProperty:std::string(KEY_INHABITANTS) forSystem:sys inGalaxy:_cxxUniverse->galaxyID]);
-	}
-}
-
-
-- (NSPoint) coordinatesForSystem:(OOSystemID)s
-{
-	return [_cxxUniverse->systemManager getCoordinatesForSystem:s inGalaxy:_cxxUniverse->galaxyID];
-}
-
-
-- (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName
-{
-	const std::string match = oo::str::lowercase(sysName);
-	int i;
-	for (i = 0; i < 256; i++)
-	{
-		// a missing name matched nothing
-		if (_cxxUniverse->system_names[i].has_value() && oo::str::lowercase(*_cxxUniverse->system_names[i]) == match)
-		{
-			return i;
-		}
-	}
-	return -1;	// no match found!
-}
-
-
-- (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g
-{
-	OO_LOG("deprecated.function", "{}", "findSystemAtCoords");
-	return [self findSystemNumberAtCoords:coords withGalaxy:g includingHidden:YES];
-}
 
 
 - (oo::PList) cxx_nearbyDestinationsWithinRange:(double)range
@@ -11845,6 +11345,539 @@ void Universe::setGalaxyTo(OOGalaxyID g)
 	::Universe *self = oo::ToObjC(this);
 
 	[self setGalaxyTo:g andReinit:NO];
+}
+
+}	// namespace cxx
+
+
+// Slice 19 of docs/phases/3-slices/Universe.md (bead oo-z3u03): galaxy and system changes, descriptions, scenarios, characters, mission text, system data and names, finding systems. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+void Universe::setGalaxyTo(OOGalaxyID g, bool forced)
+{
+	int						i;
+	
+	if (galaxyID != g || forced) {
+		galaxyID = g;
+		
+		// systems
+		@autoreleasepool
+		{
+			for (i = 0; i < 256; i++)
+			{
+				system_names[i] = SystemPropertyString([systemManager cxx_getProperty:"name" forSystem:i inGalaxy:g]);
+
+			}
+		}
+	}
+}
+
+
+void Universe::setSystemTo(OOSystemID s)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	oo::PList		systemData;
+	::PlayerEntity	*player = PLAYER;
+	OOEconomyID		economy;
+	std::optional<std::string>	scriptName;
+
+	[self setGalaxyTo: [player galaxyNumber]];
+
+	systemID = s;
+	targetSystemID = s;
+
+	systemData = [self cxx_generateSystemData:targetSystemID];
+	economy = systemData.get<unsigned char>(std::string(KEY_ECONOMY));
+	scriptName = OptionalStringIn(systemData, "market_script");
+
+	DESTROY(commodityMarket);
+	commodityMarket = [[commodities cxx_generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
+}
+
+
+OOSystemID Universe::currentSystemID()
+{
+	return systemID;
+}
+
+
+const oo::PList *Universe::descriptions()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (_descriptions.isNull())
+	{
+		// Load internal descriptions.plist for use in early init, OXP verifier etc.
+		// It will be replaced by merged version later if running the game normally.
+		_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[::ResourceManager cxx_builtInPath], "Config"), "descriptions.plist"));
+		_descriptionsGeneration = ++sDescriptionsGeneration;
+
+		[self verifyDescriptions];
+	}
+	return &_descriptions;
+}
+
+
+unsigned Universe::descriptionsGeneration()
+{
+	return _descriptionsGeneration;
+}
+
+
+void Universe::verifyDescriptions()
+{
+	/*
+		Ensure that no descriptions.plist entries contain the %n format code,
+		which can be used to smash the stack and potentially call arbitrary
+		functions.
+		
+		%n is deliberately not supported in Foundation/CoreFoundation under
+		Mac OS X, but unfortunately GNUstep implements it.
+		-- Ahruman 2011-05-05
+	*/
+	
+	if (_descriptions.isNull())
+	{
+		OO_LOG("descriptions.verify", "{}", "***** FATAL: Tried to verify descriptions, but descriptions was nil - unable to load any descriptions.plist file.");
+		exit(EXIT_FAILURE);
+	}
+	// Byte order of the key (was hash order): it decides only which bad entry is reported first.
+	if (const oo::PList::Dict *entries = _descriptions.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, value] : *entries)
+		{
+			VerifyDesc(key, value);
+		}
+	}
+}
+
+
+void Universe::loadDescriptions()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	_descriptions = [::ResourceManager cxx_dictionaryFromFilesNamed:"descriptions.plist" inFolder:std::string("Config") andMerge:YES];
+	_descriptionsGeneration = ++sDescriptionsGeneration;
+	[self verifyDescriptions];
+}
+
+
+oo::PList Universe::explosionSetting(const std::string &explosion)
+{
+	const oo::PList *setting = explosionSettings.get<oo::PList::Dict>(explosion);
+	return (setting != nullptr) ? *setting : oo::PList();
+}
+
+
+oo::PList Universe::scenarios()
+{
+	return _scenarios;
+}
+
+
+void Universe::loadScenarios()
+{
+	_scenarios = [::ResourceManager cxx_arrayFromFilesNamed:"scenarios.plist" inFolder:std::string("Config") andMerge:YES];
+}
+
+
+oo::PList Universe::getCharacters()
+{
+	return characters;
+}
+
+
+oo::PList Universe::getMissiontext()
+{
+	return missiontext;
+}
+
+
+std::optional<std::string> Universe::descriptionForKey(const std::string &key)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self chooseStringForKey:key inDictionary:*[self cxx_descriptions]];
+}
+
+
+std::optional<std::string> Universe::descriptionForArrayKey(const std::string &key, unsigned index)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	const oo::PList *array = [self cxx_descriptions]->get<oo::PList::Array>(key);
+	if (array == nullptr || array->count() <= index)  return std::nullopt;	// Catches a missing array
+	return OptionalStringAt(*array, index);
+}
+
+
+bool Universe::descriptionBooleanForKey(const std::string &key)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_descriptions]->get<bool>(key);
+}
+
+
+::OOSystemDescriptionManager *Universe::getSystemManager()
+{
+	return systemManager;
+}
+
+
+std::optional<std::string> Universe::keyForPlanetOverridesForSystem(OOSystemID s, OOGalaxyID g)
+{
+	return oo::str::format("%d %d", g, s);
+}
+
+
+std::optional<std::string> Universe::keyForInterstellarOverridesForSystems(OOSystemID s1, OOSystemID s2, OOGalaxyID g)
+{
+	return oo::str::format("interstellar: %d %d %d", g, s1, s2);
+}
+
+
+oo::PList Universe::generateSystemData(OOSystemID s)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_generateSystemData:s useCache:YES];
+}
+
+
+// cache isn't handled this way any more
+oo::PList Universe::generateSystemData(OOSystemID s, bool /*useCache*/)
+{
+	OOJS_PROFILE_ENTER
+
+// TODO: At the moment this method is only called for systems in the
+// same galaxy. At some point probably needs generalising to have a
+// galaxynumber parameter.
+	const std::string systemKey = oo::str::format("%u %u",[PLAYER galaxyNumber],s);
+
+	return [systemManager cxx_getPropertiesForSystemKey:systemKey];
+
+	OOJS_PROFILE_EXIT_VAL(oo::PList())
+}
+
+
+oo::PList Universe::currentSystemData()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	OOJS_PROFILE_ENTER
+
+	if (![self inInterstellarSpace])
+	{
+		return [self cxx_generateSystemData:systemID];
+	}
+	else
+	{
+		static oo::PList interstellarDict;	// null until built
+		if (interstellarDict.isNull())
+		{
+			const std::string interstellarName = cxx_OOLookUpDescriptionPRIV("interstellar-space");
+			const std::string notApplicable = cxx_OOLookUpDescriptionPRIV("not-applicable");
+			// signed integers, as +numberWithInt: made them
+			const oo::PList minusOne = oo::PList::signedInteger(-1);
+			const oo::PList zero = oo::PList::signedInteger(0);
+			interstellarDict = oo::PList(oo::PList::Dict{
+								{ std::string(KEY_NAME), oo::PList(interstellarName) },
+								{ std::string(KEY_GOVERNMENT), minusOne },
+								{ std::string(KEY_ECONOMY), minusOne },
+								{ std::string(KEY_TECHLEVEL), minusOne },
+								{ std::string(KEY_POPULATION), zero },
+								{ std::string(KEY_PRODUCTIVITY), zero },
+								{ std::string(KEY_RADIUS), zero },
+								{ std::string(KEY_INHABITANTS), oo::PList(notApplicable) },
+								{ std::string(KEY_DESCRIPTION), oo::PList(notApplicable) } });
+		}
+
+		return interstellarDict;
+	}
+
+	OOJS_PROFILE_EXIT_VAL(oo::PList())
+}
+
+
+bool Universe::inInterstellarSpace()
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self sun] == nil;
+}
+
+
+// layer 2
+// used by legacy script engine and sun going nova
+void Universe::setSystemDataKey(const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	[self cxx_setSystemDataForGalaxy:galaxyID planet:systemID key:key value:value fromManifest:manifest forLayer:OO_LAYER_OXP_DYNAMIC];
+}
+
+
+void Universe::setSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key, const oo::PList &value, const std::optional<std::string> &manifest, OOSystemLayer layer)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	oo::PList	object = value;	// the script value, as the Objective-C object it was (null: nil)
+	static BOOL sysdataLocked = NO;
+	if (sysdataLocked)
+	{
+		OO_LOG_ERR("script.error", "{}", "System properties cannot be set during 'systemInformationChanged' events to avoid infinite loops.");
+		return;
+	}
+
+	BOOL sameGalaxy = (gnum == [PLAYER currentGalaxyID]);
+	BOOL sameSystem = (sameGalaxy && pnum == [self currentSystemID]);
+
+	// trying to set  unsettable properties?  
+	if (key == std::string(KEY_RADIUS) && sameGalaxy && sameSystem) // buggy if we allow this key to be set while in the system
+	{
+		OO_LOG_ERR("script.error", "System property '{}' cannot be set while in the system.", key);
+		return;
+	}
+
+	if (key == "coordinates") // setting this in game would be very confusing
+	{
+		OO_LOG_ERR("script.error", "System property '{}' cannot be set.", key);
+		return;
+	}
+
+
+	const std::string	overrideKey = oo::str::format("%u %u", gnum, pnum);
+	oo::PList	sysInfo;
+
+	// short range map fix
+	[gui refreshStarChart];
+
+	if (!object.isNull()) {
+		// long range map fixes
+		if (key == std::string(KEY_NAME))
+		{
+			// -lowercaseString / -capitalizedString of the name (a script string)
+			const std::string *text = object.getIf<std::string>();
+			const std::string name = oo::str::capitalized(oo::str::lowercase(text != nullptr ? *text : std::string()));
+			object = oo::PList(name);
+			if(sameGalaxy)
+			{
+				system_names[pnum] = name;
+			}
+		}
+		else if (key == "sun_radius")
+		{
+			if (ScriptValueDouble(object) < 1000.0 || ScriptValueDouble(object) > 10000000.0 )
+			{
+				object = oo::PList(ScriptValueDouble(object) < 1000.0 ? "1000.0" : "10000000.0"); // works!
+			}
+		}
+		else if (oo::str::hasPrefix(key, "corona_"))
+		{
+			object = oo::PList(oo::str::format("%f",OOClamp_0_1_f(ScriptValueFloat(object))));
+		}
+	}
+
+	// a null value removes the property, as nil did
+	[systemManager cxx_setProperty:key forSystemKey:overrideKey andLayer:layer toValue:object fromManifest:manifest];
+
+
+	// Apply changes that can be effective immediately, issue warning if they can't be changed just now
+	if (sameSystem)
+	{
+		sysInfo = [systemManager cxx_getPropertiesForCurrentSystem];
+
+		::OOSunEntity* the_sun = [self sun];
+		/* KEY_ECONOMY used to be here, but resetting the main station
+		 * market while the player is in the system is likely to cause
+		 * more trouble than it's worth. Let them leave and come back
+		 * - CIM */
+		if (key == std::string(KEY_TECHLEVEL))
+		{	
+			if([self station]){
+				[[self station] setEquivalentTechLevel:ScriptValueInt(object)];
+				const oo::PList shipyard = [self cxx_shipsForSaleForSystem:systemID
+								withTL:ScriptValueInt(object) atTime:[PLAYER clockTime]];
+				const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
+				[[self station] cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
+			}
+		}
+		else if (key == "sun_color" || key == "star_count_multiplier" ||
+				key == "nebula_count_multiplier" || oo::str::hasPrefix(key, "sky_"))
+		{
+			::SkyEntity	*the_sky = nil;
+			int i;
+			
+			for (i = n_entities - 1; i > 0; i--)
+				if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::SkyEntity class]]))
+					the_sky = (::SkyEntity*)sortedEntities[i];
+			
+			if (the_sky != nil)
+			{
+				[the_sky changeProperty:key withDictionary:sysInfo];
+
+				if (key == "sun_color")
+				{
+					::OOColor *color = [the_sky skyColor];
+					if (the_sun != nil)
+					{
+						[the_sun setSunColor:color];
+						[the_sun getDiffuseComponents:sun_diffuse];
+						[the_sun getSpecularComponents:sun_specular];
+					}
+					for (i = n_entities - 1; i > 0; i--)
+						if ((sortedEntities[i]) && ([sortedEntities[i] isKindOfClass:[::DustEntity class]]))
+							[(::DustEntity*)sortedEntities[i] setDustColor:[color blendedColorWithFraction:0.5 ofColor:[::OOColor whiteColor]]];
+				}
+			}
+		}
+		else if (the_sun != nil && (oo::str::hasPrefix(key, "sun_") || oo::str::hasPrefix(key, "corona_")))
+		{
+			[the_sun changeSunProperty:key withDictionary:sysInfo];
+		}
+		else if (key == "texture")
+		{
+			const std::string *texture = object.getIf<std::string>();	// a texture name (a script string)
+			[[self planet] setUpPlanetFromTexture:(texture != nullptr) ? std::optional<std::string>(*texture) : std::nullopt];
+		}
+		else if (key == "texture_hsb_color")
+		{
+			[[self planet] setUpPlanetFromTexture: [[self planet] textureFileName]];
+		}
+		else if (key == "air_color")
+		{
+			[[self planet] setAirColor:[::OOColor cxx_brightColorWithDescription:object]];
+		}
+		else if (key == "illumination_color")
+		{
+			[[self planet] setIlluminationColor:[::OOColor cxx_colorWithDescription:object]];
+		}
+		else if (key == "air_color_mix_ratio")
+		{
+			[[self planet] setAirColorMixRatio:sysInfo.get<float>(key)];
+		}
+	}
+	
+	sysdataLocked = YES;
+	// the same arguments (a nil value ends the list, as it did)
+	std::vector<oo::PList> arguments{ oo::PList::signedInteger(gnum), oo::PList::signedInteger(pnum), oo::PList(key) };
+	if (!object.isNull())  arguments.push_back(object);
+	[PLAYER cxx_doScriptEvent:OOJSID("systemInformationChanged") withPListArguments:arguments];
+	sysdataLocked = NO;
+
+}
+
+
+oo::PList Universe::generateSystemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	const std::optional<std::string> systemKey = [self cxx_keyForPlanetOverridesForSystem:pnum inGalaxy:gnum];
+	return [systemManager cxx_getPropertiesForSystemKey:*systemKey];
+}
+
+
+// Byte order of the key (was the dictionary's -allKeys, hash order).
+std::vector<std::string> Universe::systemDataKeysForGalaxy(OOGalaxyID gnum, OOSystemID pnum)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::vector<std::string> keys;
+	const oo::PList systemData = [self generateSystemDataForGalaxy:gnum planet:pnum];
+	if (const oo::PList::Dict *entries = systemData.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, value] : *entries)  keys.push_back(key);
+	}
+	return keys;
+}
+
+
+/* Only called from OOJSSystemInfo. */
+oo::PList Universe::systemDataForGalaxy(OOGalaxyID gnum, OOSystemID pnum, const std::string &key)
+{
+	return [systemManager cxx_getProperty:key forSystem:pnum inGalaxy:gnum];
+}
+
+
+std::optional<std::string> Universe::getSystemName(OOSystemID sys)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_getSystemName:sys forGalaxy:galaxyID];
+}
+
+
+std::optional<std::string> Universe::getSystemName(OOSystemID sys, OOGalaxyID gnum)
+{
+	return SystemPropertyString([systemManager cxx_getProperty:"name" forSystem:sys inGalaxy:gnum]);
+}
+
+
+OOGovernmentID Universe::getSystemGovernment(OOSystemID sys)
+{
+	// -unsignedCharValue of the number (nil, where there is none, gave 0)
+	return static_cast<unsigned char>([systemManager cxx_getProperty:"government" forSystem:sys inGalaxy:galaxyID].int64Value());
+}
+
+
+std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_getSystemInhabitants:sys plural:YES];
+}
+
+
+std::optional<std::string> Universe::getSystemInhabitants(OOSystemID sys, bool plural)
+{
+	std::optional<std::string> ret;
+	if (!plural)
+	{
+		ret = SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANT) forSystem:sys inGalaxy:galaxyID]);
+	}
+	if (ret.has_value()) // the singular form might be absent.
+	{
+		return ret;
+	}
+	else
+	{
+		return SystemPropertyString([systemManager cxx_getProperty:std::string(KEY_INHABITANTS) forSystem:sys inGalaxy:galaxyID]);
+	}
+}
+
+
+NSPoint Universe::coordinatesForSystem(OOSystemID s)
+{
+	return [systemManager getCoordinatesForSystem:s inGalaxy:galaxyID];
+}
+
+
+OOSystemID Universe::findSystemFromName(const std::string &sysName)
+{
+	const std::string match = oo::str::lowercase(sysName);
+	int i;
+	for (i = 0; i < 256; i++)
+	{
+		// a missing name matched nothing
+		if (system_names[i].has_value() && oo::str::lowercase(*system_names[i]) == match)
+		{
+			return i;
+		}
+	}
+	return -1;	// no match found!
+}
+
+
+OOSystemID Universe::findSystemAtCoords(NSPoint coords, OOGalaxyID g)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	OO_LOG("deprecated.function", "{}", "findSystemAtCoords");
+	return [self findSystemNumberAtCoords:coords withGalaxy:g includingHidden:YES];
 }
 
 }	// namespace cxx
