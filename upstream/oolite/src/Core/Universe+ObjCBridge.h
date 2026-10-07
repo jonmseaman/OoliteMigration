@@ -109,7 +109,6 @@ MA 02110-1301, USA.
 - (void) setMainLightPosition: (Vector) sunPos;
 - (OOPlanetEntity *) setUpPlanet;
 
-- (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
 - (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
 - (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
 - (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
@@ -244,13 +243,6 @@ MA 02110-1301, USA.
 ///////////////////////////////////////
 
 - (void) preloadSounds;
-
-- (Random_Seed) marketSeed;
-
-- (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
-
-- (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
-- (oo::PList) cxx_getStationMarkets;	// [{market, position}, ...] as saved in the savegame
 
 - (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
 
@@ -549,6 +541,19 @@ MA 02110-1301, USA.
 - (oo::PList) cxx_equipmentDataOutfitting;
 - (OOCommodityMarket *) commodityMarket;
 - (std::optional<std::string>) timeDescription:(OOTimeDelta) interval;
+
+@end
+
+
+// Slice 21 of docs/phases/3-slices/Universe.md (bead oo-enek8): members of cxx::Universe, forwarded by
+// the category of the same name in Universe+ObjCBridge.mm (amendment oo-mvzmb item 1).
+@interface Universe (OOSlice21)
+
+- (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
+- (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
+- (Random_Seed) marketSeed;
+- (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
+- (oo::PList) cxx_getStationMarkets;	// [{market, position}, ...] as saved in the savegame
 
 @end
 
