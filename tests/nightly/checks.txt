@@ -341,6 +341,7 @@
 [oo-cvbe3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-mvzmb] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-ln2m1] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
+[oo-ddnn8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_ShipEntity && bash tools/tier-c.sh --only goldens
 [oo-9ht.33] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOBasicMaterial test_OOSingleTextureMaterial test_OOMultiTextureMaterial test_OOShaderMaterial test_OOMaterialConvenienceCreators test_OOMesh test_OOPlanetDrawable test_OOPlanetEntity && bash tools/tier-c.sh --only goldens
 [oo-9ht.163] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOOpenGLExtensionManager test_OOShaderUniformMethodType test_OOMesh test_OOPlanetDrawable && bash tools/tier-c.sh --only goldens
 [oo-9ht.161] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPixMapTextureLoader test_OOConcreteTexture test_OOCombinedEmissionMapGenerator test_OOPlanetTextureGenerator test_OOPNGTextureLoader test_OOTextureGenerator && bash tools/tier-c.sh --only goldens

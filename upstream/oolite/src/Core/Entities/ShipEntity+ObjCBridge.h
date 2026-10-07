@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #define SHIPENTITY_OBJCBRIDGE_H
 
 
-@interface ShipEntity: OOEntityWithDrawable <OOSubEntity, OOBeaconEntity>
+@interface ShipEntity: OOEntityWithDrawable <OOSubEntity>	// and <OOBeaconEntity>, by the category ShipEntity (OOBeaconEntity)
 {
 @public
 	cxx::ShipEntity		*_cxxShip;		// _cxxEntity, typed; borrowed, set by the initialiser
@@ -70,27 +70,15 @@ MA 02110-1301, USA.
 
 // subentities management
 
-- (Octree *) octree;
-- (float) volume;
 
 // octree collision hunting
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1;
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity**)hitEntity;
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k;	// for subentities
 
-- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)i :(Vector)j :(Vector)k;
 
-- (HPVector)absoluteTractorPosition;
 
 // beacons // definitions now in <OOBeaconEntity> protocol
 
-- (void) setIsBoulder:(BOOL)flag;
-- (BOOL) isBoulder;
-- (BOOL) isMinable;
 
-- (BOOL) countsAsKill;
 
-- (void) setUpEscorts;
 - (void) updateEscortFormation;
 
 
@@ -894,6 +882,51 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (OOScript *) shipAIScript;
 - (OOTimeAbsolute) shipAIScriptWakeTime;
 - (void) setAIScriptWakeTime:(OOTimeAbsolute) t;
+
+@end
+
+
+/*	The ship adopts <OOBeaconEntity> here and not in its interface (slice 5, bead oo-ddnn8): the
+	protocol's methods are forwarders in the slices' categories, and a category that implements a
+	method of a protocol the class itself adopts is warned about as one the class will implement
+	(-Wobjc-protocol-method-implementation). Adopted by a category with no @implementation, the
+	ship conforms as before and the protocol's other methods stay in ShipEntity.mm.
+*/
+@interface ShipEntity (OOBeaconEntity) <OOBeaconEntity>
+@end
+
+
+// Slice 5 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice5)
+
+- (BoundingBox) findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector)i :(Vector)j :(Vector)k;
+- (Octree *) octree;
+- (float) volume;
+- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1;
+- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity**)hitEntity;
+- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k;	// for subentities
+- (void) wasAddedToUniverse;
+- (void) wasRemovedFromUniverse;
+- (HPVector)absoluteTractorPosition;
+- (std::optional<std::string>) beaconCode;
+- (void) setBeaconCode:(const std::optional<std::string> &)bcode;
+- (std::optional<std::string>) beaconLabel;
+- (void) setBeaconLabel:(const std::optional<std::string> &)blabel;
+- (BOOL) isVisible;
+- (BOOL) isBeacon;
+- (id <OOHUDBeaconIcon>) beaconDrawable;
+- (Entity <OOBeaconEntity> *) prevBeacon;
+- (Entity <OOBeaconEntity> *) nextBeacon;
+- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip;
+- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip;
+- (void) setIsBoulder:(BOOL)flag;
+- (BOOL) isBoulder;
+- (BOOL) isMinable;
+- (BOOL) countsAsKill;
+- (void) setUpEscorts;
+- (void) setUpMixedEscorts;
 
 @end
 

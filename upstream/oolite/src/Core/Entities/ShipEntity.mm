@@ -382,457 +382,7 @@ void ShipEntity::initWithKey(const std::string &key)
 @implementation ShipEntity
 
 
-
-- (BoundingBox)findBoundingBoxRelativeToPosition:(HPVector)opv InVectors:(Vector) _i :(Vector) _j :(Vector) _k
-{
-	// HPVect: check that this conversion doesn't lose needed precision
-	return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
-													basis:_i :_j :_k
-										 selfPosition:HPVectorToVector(_cxxEntity->position)
-												selfBasis:_cxxShip->v_right :_cxxShip->v_up :_cxxShip->v_forward];
-}
-
-
-- (Octree *) octree
-{
-	return _cxxShip->octree;
-}
-
-
-- (float) volume
-{
-	return [_cxxShip->octree volume];
-}
-
-
-- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1
-{
-	Vector u0 = HPVectorToVector(HPvector_between(_cxxEntity->position, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(_cxxEntity->position, v1));
-	Vector w0 = make_vector(dot_product(u0, _cxxShip->v_right), dot_product(u0, _cxxShip->v_up), dot_product(u0, _cxxShip->v_forward));	// in ijk vectors
-	Vector w1 = make_vector(dot_product(u1, _cxxShip->v_right), dot_product(u1, _cxxShip->v_up), dot_product(u1, _cxxShip->v_forward));
-	return [_cxxShip->octree isHitByLine:w0 :w1];
-}
-
-
-- (GLfloat) doesHitLine:(HPVector)v0 :(HPVector)v1 :(ShipEntity **)hitEntity
-{
-	if (hitEntity)
-		hitEntity[0] = (ShipEntity*)nil;
-	Vector u0 = HPVectorToVector(HPvector_between(_cxxEntity->position, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(_cxxEntity->position, v1));
-	Vector w0 = make_vector(dot_product(u0, _cxxShip->v_right), dot_product(u0, _cxxShip->v_up), dot_product(u0, _cxxShip->v_forward));	// in ijk vectors
-	Vector w1 = make_vector(dot_product(u1, _cxxShip->v_right), dot_product(u1, _cxxShip->v_up), dot_product(u1, _cxxShip->v_forward));
-	GLfloat hit_distance = [_cxxShip->octree isHitByLine:w0 :w1];
-	if (hit_distance)
-	{
-		if (hitEntity)
-			hitEntity[0] = self;
-	}
-	
-	for (const auto &sub : [self cxx_shipSubEntities])
-	{
-		ShipEntity *se = sub.get();
-		HPVector p0 = [se absolutePositionForSubentity];
-		Triangle ijk = [se absoluteIJKForSubentity];
-		u0 = HPVectorToVector(HPvector_between(p0, v0));
-		u1 = HPVectorToVector(HPvector_between(p0, v1));
-		w0 = resolveVectorInIJK(u0, ijk);
-		w1 = resolveVectorInIJK(u1, ijk);
-		
-		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
-		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
-		{	
-			hit_distance = hitSub;
-			if (hitEntity)
-			{
-				*hitEntity = se;
-			}
-		}
-	}
-	
-	return hit_distance;
-}
-
-
-- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1 withPosition:(HPVector)o andIJK:(Vector)i :(Vector)j :(Vector)k
-{
-	Vector u0 = HPVectorToVector(HPvector_between(o, v0));	// relative to origin of model / octree
-	Vector u1 = HPVectorToVector(HPvector_between(o, v1));
-	Vector w0 = make_vector(dot_product(u0, i), dot_product(u0, j), dot_product(u0, k));	// in ijk vectors
-	Vector w1 = make_vector(dot_product(u1, j), dot_product(u1, j), dot_product(u1, k));
-	return [_cxxShip->octree isHitByLine:w0 :w1];
-}
-
-
-- (void) wasAddedToUniverse
-{
-	[super wasAddedToUniverse];
-	
-	// if we have a universal id then we can proceed to set up any
-	// stuff that happens when we get added to the UNIVERSE
-	if (_cxxEntity->universalID != NO_TARGET)
-	{
-		// set up escorts
-		if (([self status] == STATUS_IN_FLIGHT || [self status] == STATUS_LAUNCHING) && _cxxShip->_pendingEscortCount != 0)	// just popped into existence
-		{
-			[self setUpEscorts];
-		}
-		else
-		{
-			/*	Earlier there was a silly log message here because I thought
-				this would never happen, but wasn't entirely sure. Turns out
-				it did!
-				-- Ahruman 2009-09-13
-			*/
-			_cxxShip->_pendingEscortCount = 0;
-		}
-	}
-
-	//	Tell subentities, too (last to first, as -makeObjectsPerformSelector: went)
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;
-	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasAddedToUniverse];
-	
-	[self resetExhaustPlumes];
-}
-
-
-- (void)wasRemovedFromUniverse
-{
-	// last to first, as -makeObjectsPerformSelector: went
-	const std::vector<oo::ObjCRef<Entity *>> subs = _cxxShip->subEntities;
-	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasRemovedFromUniverse];
-}
-
-
-- (HPVector)absoluteTractorPosition
-{
-	return HPvector_add(_cxxEntity->position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], _cxxShip->tractor_position)));
-}
-
-
-- (std::optional<std::string>) beaconCode
-{
-	return _cxxShip->_beaconCode;
-}
-
-
-// bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
-// old by pointer, so any new string (every string this class hands out is new) replaced it.
-- (void) setBeaconCode:(const std::optional<std::string> &)bcode
-{
-	std::optional<std::string> code = bcode;
-	if (code.has_value() && code->empty())  code.reset();
-
-	if (code.has_value() || _cxxShip->_beaconCode.has_value())
-	{
-		_cxxShip->_beaconCode = code;
-
-		DESTROY(_cxxShip->_beaconDrawable);
-	}
-	// if not blanking code and label is currently blank, default label to code
-	if (code.has_value() && (!_cxxShip->_beaconLabel.has_value() || _cxxShip->_beaconLabel->empty()))
-	{
-		[self setBeaconLabel:code];
-	}
-
-}
-
-
-- (std::optional<std::string>) beaconLabel
-{
-	return _cxxShip->_beaconLabel;
-}
-
-
-- (void) setBeaconLabel:(const std::optional<std::string> &)blabel
-{
-	std::optional<std::string> label = blabel;
-	if (label.has_value() && label->empty())  label.reset();
-
-	if (label.has_value() || _cxxShip->_beaconLabel.has_value())
-	{
-		_cxxShip->_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
-	}
-}
-
-
-- (BOOL) isVisible
-{
-	return _cxxEntity->cam_zero_distance <= _cxxEntity->no_draw_distance;
-}
-
-
-- (BOOL) isBeacon
-{
-	return [self beaconCode].has_value();
-}
-
-
-- (id <OOHUDBeaconIcon>) beaconDrawable
-{
-	if (_cxxShip->_beaconDrawable == nil)
-	{
-		const std::u16string	beaconCode = oo::utf8ToUtf16(_cxxShip->_beaconCode.value_or(std::string()));
-		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
-
-		if (length > 1)
-		{
-			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_cxxShip->_beaconCode);
-			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
-			if (iconData.isArray())  _cxxShip->_beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_cxxShip->_beaconCode];
-		}
-
-		if (_cxxShip->_beaconDrawable == nil)
-		{
-			if (length > 0)  _cxxShip->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
-			else  _cxxShip->_beaconDrawable = [[OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
-		}
-}
-	
-	return _cxxShip->_beaconDrawable;
-}
-
-
-- (Entity <OOBeaconEntity> *) prevBeacon
-{
-	return [_cxxShip->_prevBeacon weakRefUnderlyingObject];
-}
-
-
-- (Entity <OOBeaconEntity> *) nextBeacon
-{
-	return [_cxxShip->_nextBeacon weakRefUnderlyingObject];
-}
-
-
-- (void) setPrevBeacon:(Entity <OOBeaconEntity> *)beaconShip
-{
-	if (beaconShip != [self prevBeacon])
-	{
-		[_cxxShip->_prevBeacon release];
-		_cxxShip->_prevBeacon = [beaconShip weakRetain];
-	}
-}
-
-
-- (void) setNextBeacon:(Entity <OOBeaconEntity> *)beaconShip
-{
-	if (beaconShip != [self nextBeacon])
-	{
-		[_cxxShip->_nextBeacon release];
-		_cxxShip->_nextBeacon = [beaconShip weakRetain];
-	}
-}
-
-
 static constexpr std::string_view kBoulderRole = "boulder";
-
-- (void) setIsBoulder:(BOOL)flag
-{
-	if (flag)  [self addRole:std::string(kBoulderRole)];
-	else  [self cxx_removeRole:std::string(kBoulderRole)];
-}
-
-
-- (BOOL) isBoulder
-{
-	return [_cxxShip->roleSet hasRole:std::string(kBoulderRole)];
-}
-
-
-- (BOOL) isMinable
-{
-	if ([self hasRole:"asteroid"] || [self isBoulder])
-	{
-		if (!_cxxShip->noRocks)
-		{
-			return YES;
-		}
-	}
-	return NO;
-}
-
-
-- (BOOL) countsAsKill
-{
-	return _cxxShip->shipinfoDictionary.get<bool>("counts_as_kill", true);
-}
-
-
-- (void) setUpEscorts
-{
-	// Ensure that we do not try to create escorts if we are an escort ship ourselves.
-	// This could lead to circular reference memory overflows (e.g. "boa-mk2" trying to create 4 "boa-mk2"
-	// escorts or the case of two ships specifying eachother as escorts) - Nikos 20090510
-	if ([self isEscort])
-	{
-		OO_LOG_WARN("ship.setUp.escortShipCircularReference", 
-				"Ship {} requested escorts, when it is an escort ship itself. Avoiding possible circular reference overflow by ignoring escort setup.", oo::DescriptionOf(self));
-		return;
-	}
-
-	const oo::PList		&info = _cxxShip->shipinfoDictionary;
-	if (info.find("escort_roles") != nullptr)
-	{
-		[self setUpMixedEscorts];
-		return;
-	}
-
-	std::string						defaultRole = "escort";
-	std::string						escortRole;
-	std::optional<std::string>		escortShipKey;
-	
-	if (_cxxShip->_pendingEscortCount == 0)  return;
-	
-	if (_cxxShip->_maxEscortCount < _cxxShip->_pendingEscortCount)
-	{
-		if ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"])
-		{
-			_cxxShip->_maxEscortCount = MAX_ESCORTS; // police and hunters get up to MAX_ESCORTS, overriding the 'escorts' key.
-			[self updateEscortFormation];
-		}
-		else
-		{
-			_cxxShip->_pendingEscortCount = _cxxShip->_maxEscortCount;	// other ships can only get what's defined inside their 'escorts' key.
-		}
-	}
-	
-	if ([self isPolice])  defaultRole = "wingman";
-
-	const std::optional<std::string> escortRoleSetting = StringForKey(info, "escort_role");
-	escortRole = escortRoleSetting.has_value() ? *escortRoleSetting : info.get<std::string>("escort-role", defaultRole);
-	if (escortRole != defaultRole)
-	{
-		if (![[UNIVERSE cxx_newShipWithRole:escortRole] autorelease])
-		{
-			escortRole = defaultRole;
-		}
-	}
-
-	escortShipKey = StringForKey(info, "escort_ship");
-	if (!escortShipKey.has_value())
-		escortShipKey = StringForKey(info, "escort-ship");
-
-	if (escortShipKey.has_value())
-	{
-		if (![[UNIVERSE cxx_newShipWithName:*escortShipKey] autorelease])
-		{
-			escortShipKey = std::nullopt;
-		}
-		else
-		{
-			escortRole = oo::str::format("[%s]", escortShipKey->c_str());
-		}
-	}
-
-	OOShipGroup *escortGroup = [self escortGroup];
-	if ([self group] == nil)
-	{
-		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
-	}
-	[escortGroup setLeader:self];
-	
-	[self refreshEscortPositions];
-	
-	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0.
-	
-	while (_cxxShip->_pendingEscortCount > 0 && ([self isThargoid] || currentEscortCount < _cxxShip->_maxEscortCount))
-	{
-		 // The following line adds escort 1 in position 1, etc... up to MAX_ESCORTS.
-		HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
-		
-		ShipEntity *escorter = nil;
-		
-		escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
-
-		if (escorter == nil)  break;
-		[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
-
-		[escorter release];
-
-		_cxxShip->_pendingEscortCount--;
-		currentEscortCount = [escortGroup count] - 1;
-	}
-	// done assigning escorts
-	_cxxShip->_pendingEscortCount = 0;
-}
-
-
-- (void) setUpMixedEscorts
-{
-	const oo::PList &info = _cxxShip->shipinfoDictionary;
-	const oo::PList *escortRoles = ArrayForKey(info, "escort_roles");
-	if (escortRoles == nullptr)
-	{
-		OO_LOG_WARN("eship.setUp.escortShipRoles",
-				  "Ship {} has bad escort_roles definition.", oo::DescriptionOf(self));
-		return;
-	}
-	OOGovernmentID		government;
-
-	const oo::PList systeminfo = [UNIVERSE cxx_currentSystemData];
- 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
-
-	OOShipGroup *escortGroup = [self escortGroup];
-	if ([self group] == nil)
-	{
-		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
-	}
-	[escortGroup setLeader:self];
-	_cxxShip->_maxEscortCount = MAX_ESCORTS;
-	[self refreshEscortPositions];
-	
-	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0
-	
-	_cxxShip->_maxEscortCount = 0;
-	int8_t i = 0;
-	for (const oo::PList &escortDefinition : *escortRoles->getIf<oo::PList::Array>())
-	{
-		if (currentEscortCount >= MAX_ESCORTS)
-		{
-			break;
-		}
-		// int rather than uint because, at least for min, there is a
-		// use to giving a negative value
-		int8_t min = escortDefinition.get<int>("min", 0);
-		int8_t max = escortDefinition.get<int>("max", 2);
-		const std::string escortRole = escortDefinition.get<std::string>("role", "escort");
-		int8_t desired = max;
-		if (min < desired)
-		{
-			for (i = min ; i < max ; i++)
-			{
-				if (Ranrot()%11 < government+2)
-				{
-					desired--;
-				}
-			}
-		}
-		for (i = 0; i < desired; i++)
-		{
-			if (currentEscortCount >= MAX_ESCORTS)
-			{
-				break;
-			}
-			if (!escortRole.empty())
-			{
-				HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
-				ShipEntity *escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
-				if (escorter == nil)
-				{
-					break;
-				}
-				[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
-				[escorter release];
-			}
-			currentEscortCount++;
-			_cxxShip->_maxEscortCount++;
-		}
-	}
-	// done assigning escorts
-	_cxxShip->_pendingEscortCount = 0;
-}
 
 
 - (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount
@@ -14966,6 +14516,477 @@ std::optional<std::string> ShipEntity::descriptionComponents() const
 
 		return oo::str::format("\"%s\" position: %s %s", [self cxx_name].value_or("(null)").c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype);
 	}
+}
+
+
+}	// namespace cxx
+
+
+// Slice 5 of docs/phases/3-slices/ShipEntity.md (bead oo-ddnn8): bounding boxes, octree hit tests,
+// universe add / remove, beacons, boulders, escort set-up. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+BoundingBox ShipEntity::findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// HPVect: check that this conversion doesn't lose needed precision
+	return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
+													basis:_i :_j :_k
+										 selfPosition:HPVectorToVector(position)
+												selfBasis:v_right :v_up :v_forward];
+}
+
+
+::Octree *ShipEntity::getOctree()
+{
+	return octree;
+}
+
+
+float ShipEntity::volume()
+{
+	return [octree volume];
+}
+
+
+GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1)
+{
+	Vector u0 = HPVectorToVector(HPvector_between(position, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
+	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
+	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
+	return [octree isHitByLine:w0 :w1];
+}
+
+
+GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (hitEntity)
+		hitEntity[0] = (::ShipEntity*)nil;
+	Vector u0 = HPVectorToVector(HPvector_between(position, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(position, v1));
+	Vector w0 = make_vector(dot_product(u0, v_right), dot_product(u0, v_up), dot_product(u0, v_forward));	// in ijk vectors
+	Vector w1 = make_vector(dot_product(u1, v_right), dot_product(u1, v_up), dot_product(u1, v_forward));
+	GLfloat hit_distance = [octree isHitByLine:w0 :w1];
+	if (hit_distance)
+	{
+		if (hitEntity)
+			hitEntity[0] = self;
+	}
+	
+	for (const auto &sub : [self cxx_shipSubEntities])
+	{
+		::ShipEntity *se = sub.get();
+		HPVector p0 = [se absolutePositionForSubentity];
+		Triangle ijk = [se absoluteIJKForSubentity];
+		u0 = HPVectorToVector(HPvector_between(p0, v0));
+		u1 = HPVectorToVector(HPvector_between(p0, v1));
+		w0 = resolveVectorInIJK(u0, ijk);
+		w1 = resolveVectorInIJK(u1, ijk);
+		
+		GLfloat hitSub = [se->_cxxShip->octree isHitByLine:w0 :w1];
+		if (hitSub && (hit_distance == 0 || hit_distance > hitSub))
+		{	
+			hit_distance = hitSub;
+			if (hitEntity)
+			{
+				*hitEntity = se;
+			}
+		}
+	}
+	
+	return hit_distance;
+}
+
+
+GLfloat ShipEntity::doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, Vector j, Vector k)
+{
+	Vector u0 = HPVectorToVector(HPvector_between(o, v0));	// relative to origin of model / octree
+	Vector u1 = HPVectorToVector(HPvector_between(o, v1));
+	Vector w0 = make_vector(dot_product(u0, i), dot_product(u0, j), dot_product(u0, k));	// in ijk vectors
+	Vector w1 = make_vector(dot_product(u1, j), dot_product(u1, j), dot_product(u1, k));
+	return [octree isHitByLine:w0 :w1];
+}
+
+
+void ShipEntity::wasAddedToUniverse()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOEntityWithDrawable::wasAddedToUniverse();	// [super wasAddedToUniverse]
+	
+	// if we have a universal id then we can proceed to set up any
+	// stuff that happens when we get added to the UNIVERSE
+	if (universalID != NO_TARGET)
+	{
+		// set up escorts
+		if (([self status] == STATUS_IN_FLIGHT || [self status] == STATUS_LAUNCHING) && _pendingEscortCount != 0)	// just popped into existence
+		{
+			[self setUpEscorts];
+		}
+		else
+		{
+			/*	Earlier there was a silly log message here because I thought
+				this would never happen, but wasn't entirely sure. Turns out
+				it did!
+				-- Ahruman 2009-09-13
+			*/
+			_pendingEscortCount = 0;
+		}
+	}
+
+	//	Tell subentities, too (last to first, as -makeObjectsPerformSelector: went)
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasAddedToUniverse];
+	
+	[self resetExhaustPlumes];
+}
+
+
+void ShipEntity::wasRemovedFromUniverse()
+{
+	// last to first, as -makeObjectsPerformSelector: went
+	const std::vector<oo::ObjCRef<::Entity *>> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasRemovedFromUniverse];
+}
+
+
+HPVector ShipEntity::absoluteTractorPosition()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return HPvector_add(position, vectorToHPVector(quaternion_rotate_vector([self normalOrientation], tractor_position)));
+}
+
+
+std::optional<std::string> ShipEntity::beaconCode()
+{
+	return _beaconCode;
+}
+
+
+// bcode: optional string; empty is treated as none. The Foundation version compared the new string with the
+// old by pointer, so any new string (every string this class hands out is new) replaced it.
+void ShipEntity::setBeaconCode(const std::optional<std::string> &bcode)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::optional<std::string> code = bcode;
+	if (code.has_value() && code->empty())  code.reset();
+
+	if (code.has_value() || _beaconCode.has_value())
+	{
+		_beaconCode = code;
+
+		DESTROY(_beaconDrawable);
+	}
+	// if not blanking code and label is currently blank, default label to code
+	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
+	{
+		[self setBeaconLabel:code];
+	}
+
+}
+
+
+std::optional<std::string> ShipEntity::beaconLabel()
+{
+	return _beaconLabel;
+}
+
+
+void ShipEntity::setBeaconLabel(const std::optional<std::string> &blabel)
+{
+	std::optional<std::string> label = blabel;
+	if (label.has_value() && label->empty())  label.reset();
+
+	if (label.has_value() || _beaconLabel.has_value())
+	{
+		_beaconLabel = label.has_value() ? cxx_OOExpand(*label) : std::nullopt;
+	}
+}
+
+
+bool ShipEntity::isVisible()
+{
+	return cam_zero_distance <= no_draw_distance;
+}
+
+
+bool ShipEntity::isBeacon()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self beaconCode].has_value();
+}
+
+
+id <OOHUDBeaconIcon> ShipEntity::beaconDrawable()
+{
+	if (_beaconDrawable == nil)
+	{
+		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
+		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
+
+		if (length > 1)
+		{
+			const oo::PList *iconEntry = [UNIVERSE cxx_descriptions]->find(*_beaconCode);
+			const oo::PList iconData = (iconEntry != nullptr) ? *iconEntry : oo::PList();
+			if (iconData.isArray())  _beaconDrawable = [[::OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
+		}
+
+		if (_beaconDrawable == nil)
+		{
+			if (length > 0)  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:oo::utf16ToUtf8(beaconCode.substr(0, 1))];	// -substringToIndex:1
+			else  _beaconDrawable = [[::OOHUDBeaconCodeIcon alloc] initWithText:std::string()];
+		}
+}
+	
+	return _beaconDrawable;
+}
+
+
+::Entity *ShipEntity::prevBeacon()
+{
+	return [_prevBeacon weakRefUnderlyingObject];
+}
+
+
+::Entity *ShipEntity::nextBeacon()
+{
+	return [_nextBeacon weakRefUnderlyingObject];
+}
+
+
+void ShipEntity::setPrevBeacon(::Entity *beaconShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (beaconShip != [self prevBeacon])
+	{
+		[_prevBeacon release];
+		_prevBeacon = [beaconShip weakRetain];
+	}
+}
+
+
+void ShipEntity::setNextBeacon(::Entity *beaconShip)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (beaconShip != [self nextBeacon])
+	{
+		[_nextBeacon release];
+		_nextBeacon = [beaconShip weakRetain];
+	}
+}
+
+
+void ShipEntity::setIsBoulder(bool flag)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (flag)  [self addRole:std::string(kBoulderRole)];
+	else  [self cxx_removeRole:std::string(kBoulderRole)];
+}
+
+
+bool ShipEntity::isBoulder()
+{
+	return [roleSet hasRole:std::string(kBoulderRole)];
+}
+
+
+bool ShipEntity::isMinable()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self hasRole:"asteroid"] || [self isBoulder])
+	{
+		if (!noRocks)
+		{
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+bool ShipEntity::countsAsKill()
+{
+	return shipinfoDictionary.get<bool>("counts_as_kill", true);
+}
+
+
+void ShipEntity::setUpEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// Ensure that we do not try to create escorts if we are an escort ship ourselves.
+	// This could lead to circular reference memory overflows (e.g. "boa-mk2" trying to create 4 "boa-mk2"
+	// escorts or the case of two ships specifying eachother as escorts) - Nikos 20090510
+	if ([self isEscort])
+	{
+		OO_LOG_WARN("ship.setUp.escortShipCircularReference", 
+				"Ship {} requested escorts, when it is an escort ship itself. Avoiding possible circular reference overflow by ignoring escort setup.", oo::DescriptionOf(self));
+		return;
+	}
+
+	const oo::PList		&info = shipinfoDictionary;
+	if (info.find("escort_roles") != nullptr)
+	{
+		[self setUpMixedEscorts];
+		return;
+	}
+
+	std::string						defaultRole = "escort";
+	std::string						escortRole;
+	std::optional<std::string>		escortShipKey;
+	
+	if (_pendingEscortCount == 0)  return;
+	
+	if (_maxEscortCount < _pendingEscortCount)
+	{
+		if ([self cxx_hasPrimaryRole:"police"] || [self cxx_hasPrimaryRole:"hunter"])
+		{
+			_maxEscortCount = MAX_ESCORTS; // police and hunters get up to MAX_ESCORTS, overriding the 'escorts' key.
+			[self updateEscortFormation];
+		}
+		else
+		{
+			_pendingEscortCount = _maxEscortCount;	// other ships can only get what's defined inside their 'escorts' key.
+		}
+	}
+	
+	if ([self isPolice])  defaultRole = "wingman";
+
+	const std::optional<std::string> escortRoleSetting = StringForKey(info, "escort_role");
+	escortRole = escortRoleSetting.has_value() ? *escortRoleSetting : info.get<std::string>("escort-role", defaultRole);
+	if (escortRole != defaultRole)
+	{
+		if (![[UNIVERSE cxx_newShipWithRole:escortRole] autorelease])
+		{
+			escortRole = defaultRole;
+		}
+	}
+
+	escortShipKey = StringForKey(info, "escort_ship");
+	if (!escortShipKey.has_value())
+		escortShipKey = StringForKey(info, "escort-ship");
+
+	if (escortShipKey.has_value())
+	{
+		if (![[UNIVERSE cxx_newShipWithName:*escortShipKey] autorelease])
+		{
+			escortShipKey = std::nullopt;
+		}
+		else
+		{
+			escortRole = oo::str::format("[%s]", escortShipKey->c_str());
+		}
+	}
+
+	::OOShipGroup *escortGroup = [self escortGroup];
+	if ([self group] == nil)
+	{
+		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
+	}
+	[escortGroup setLeader:self];
+	
+	[self refreshEscortPositions];
+	
+	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0.
+	
+	while (_pendingEscortCount > 0 && ([self isThargoid] || currentEscortCount < _maxEscortCount))
+	{
+		 // The following line adds escort 1 in position 1, etc... up to MAX_ESCORTS.
+		HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
+		
+		::ShipEntity *escorter = nil;
+		
+		escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
+
+		if (escorter == nil)  break;
+		[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
+
+		[escorter release];
+
+		_pendingEscortCount--;
+		currentEscortCount = [escortGroup count] - 1;
+	}
+	// done assigning escorts
+	_pendingEscortCount = 0;
+}
+
+
+void ShipEntity::setUpMixedEscorts()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	const oo::PList &info = shipinfoDictionary;
+	const oo::PList *escortRoles = ArrayForKey(info, "escort_roles");
+	if (escortRoles == nullptr)
+	{
+		OO_LOG_WARN("eship.setUp.escortShipRoles",
+				  "Ship {} has bad escort_roles definition.", oo::DescriptionOf(self));
+		return;
+	}
+	OOGovernmentID		government;
+
+	const oo::PList systeminfo = [UNIVERSE cxx_currentSystemData];
+ 	government = systeminfo.get<unsigned char>(std::string(KEY_GOVERNMENT));
+
+	::OOShipGroup *escortGroup = [self escortGroup];
+	if ([self group] == nil)
+	{
+		[self setGroup:escortGroup]; // should probably become a copy of the escortGroup post NMSR.
+	}
+	[escortGroup setLeader:self];
+	_maxEscortCount = MAX_ESCORTS;
+	[self refreshEscortPositions];
+	
+	uint8_t currentEscortCount = [escortGroup count] - 1;	// always at least 0
+	
+	_maxEscortCount = 0;
+	int8_t i = 0;
+	for (const oo::PList &escortDefinition : *escortRoles->getIf<oo::PList::Array>())
+	{
+		if (currentEscortCount >= MAX_ESCORTS)
+		{
+			break;
+		}
+		// int rather than uint because, at least for min, there is a
+		// use to giving a negative value
+		int8_t min = escortDefinition.get<int>("min", 0);
+		int8_t max = escortDefinition.get<int>("max", 2);
+		const std::string escortRole = escortDefinition.get<std::string>("role", "escort");
+		int8_t desired = max;
+		if (min < desired)
+		{
+			for (i = min ; i < max ; i++)
+			{
+				if (Ranrot()%11 < government+2)
+				{
+					desired--;
+				}
+			}
+		}
+		for (i = 0; i < desired; i++)
+		{
+			if (currentEscortCount >= MAX_ESCORTS)
+			{
+				break;
+			}
+			if (!escortRole.empty())
+			{
+				HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
+				::ShipEntity *escorter = [UNIVERSE cxx_newShipWithRole:escortRole];	// retained
+				if (escorter == nil)
+				{
+					break;
+				}
+				[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
+				[escorter release];
+			}
+			currentEscortCount++;
+			_maxEscortCount++;
+		}
+	}
+	// done assigning escorts
+	_pendingEscortCount = 0;
 }
 
 

@@ -274,6 +274,34 @@ public:
 	void setAIScriptWakeTime(OOTimeAbsolute t);
 	std::optional<std::string> descriptionComponents() const override;
 
+	// Slice 5: bounding boxes, octree hit tests, universe add / remove, beacons, boulders, escort set-up.
+	BoundingBox findBoundingBoxRelativeToPosition(HPVector opv, Vector _i, Vector _j, Vector _k);
+	::Octree *getOctree();
+	float volume();
+	GLfloat doesHitLine(HPVector v0, HPVector v1);
+	virtual GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity);
+	GLfloat doesHitLine(HPVector v0, HPVector v1, HPVector o, Vector i, Vector j, Vector k);
+	void wasAddedToUniverse() override;
+	void wasRemovedFromUniverse() override;
+	HPVector absoluteTractorPosition();
+	std::optional<std::string> beaconCode();
+	void setBeaconCode(const std::optional<std::string> &bcode);
+	std::optional<std::string> beaconLabel();
+	void setBeaconLabel(const std::optional<std::string> &blabel);
+	bool isVisible() override;
+	bool isBeacon();
+	id <OOHUDBeaconIcon> beaconDrawable();
+	::Entity *prevBeacon();
+	::Entity *nextBeacon();
+	void setPrevBeacon(::Entity *beaconShip);
+	void setNextBeacon(::Entity *beaconShip);
+	void setIsBoulder(bool flag);
+	bool isBoulder();
+	bool isMinable();
+	bool countsAsKill();
+	void setUpEscorts();
+	void setUpMixedEscorts();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
