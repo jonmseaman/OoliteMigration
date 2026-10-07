@@ -254,4 +254,119 @@ OO_TEST(facadeAndPart)
 }
 
 
+// Slice 14 (bead oo-7jhs5): demo ships, safe vectors, hazards on route, laser hits. Written against
+// the Objective-C API and run on the unconverted class first. The entities sit in the universe's
+// sorted list by hand (no -addEntity:, which needs the whole game).
+namespace {
+
+void SetSortedEntities(Universe *u, std::initializer_list<Entity *> list)
+{
+	unsigned n = 0;
+	for (Entity *e : list)  u->_cxxUniverse->sortedEntities[n++] = e;
+	u->_cxxUniverse->sortedEntities[n] = nil;
+	u->_cxxUniverse->n_entities = n;
+}
+
+
+Entity *MakeEntity(HPVector position, GLfloat radius)
+{
+	Entity *entity = [[[Entity alloc] init] autorelease];
+	[entity setPosition:position];
+	[entity setCollisionRadius:radius];
+	return entity;
+}
+
+}	// namespace
+
+
+@interface Slice14GhostEntity: Entity	// an entity nothing collides with
+@end
+
+@implementation Slice14GhostEntity
+- (BOOL) canCollide	{ return NO; }
+@end
+
+
+OO_TEST(slice14NoEntity)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		HPVector p2 = make_HPvector(0, 0, 1000);
+
+		OO_CHECK(![u isVectorClearFromEntity:nil toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:nil toDistance:0 fromPoint:p2] == nil);
+		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:nil toDistance:0 fromPoint:p2], kZeroHPVector));
+		OO_CHECK([u firstShipHitByLaserFromShip:nil inDirection:WEAPON_FACING_FORWARD offset:kZeroVector gettingRangeFound:NULL] == nil);
+		// The demo ship needs a docked player; with none there is no ship.
+		OO_CHECK([u cxx_makeDemoShipWithRole:"oolite-test" spinning:YES] == nil);
+	}
+}
+
+
+OO_TEST(slice14ClearRoute)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		HPVector p2 = make_HPvector(0, 0, 1000);
+
+		// Nothing else in the universe: clear, no hazard, the destination is safe as it is.
+		SetSortedEntities(u, { e1 });
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == nil);
+		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:e1 toDistance:0 fromPoint:p2], p2));
+
+		// An entity off the route, behind the start, or beyond the destination is no hazard.
+		Entity *aside = MakeEntity(make_HPvector(500, 0, 500), 50);
+		Entity *behind = MakeEntity(make_HPvector(0, 0, -300), 50);
+		Entity *beyond = MakeEntity(make_HPvector(0, 0, 1500), 50);
+		SetSortedEntities(u, { e1, aside, behind, beyond });
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == nil);
+		OO_CHECK(HPvector_equal([u getSafeVectorFromEntity:e1 toDistance:0 fromPoint:p2], p2));
+
+		// An entity nothing collides with is no hazard either.
+		Entity *ghost = [[[Slice14GhostEntity alloc] init] autorelease];
+		[ghost setPosition:make_HPvector(0, 0, 500)];
+		[ghost setCollisionRadius:50];
+		SetSortedEntities(u, { e1, ghost });
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == nil);
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
+OO_TEST(slice14Hazard)
+{
+	@autoreleasepool
+	{
+		Universe *u = NewUniverse();
+		Entity *e1 = MakeEntity(make_HPvector(0, 0, 0), 10);
+		Entity *rock = MakeEntity(make_HPvector(20, 0, 500), 50);
+		HPVector p2 = make_HPvector(0, 0, 1000);
+		SetSortedEntities(u, { e1, rock });
+
+		OO_CHECK(![u isVectorClearFromEntity:e1 toDistance:0 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:0 fromPoint:p2] == rock);
+
+		// The safe vector steers short of the rock and away from the side it is on.
+		HPVector safe = [u getSafeVectorFromEntity:e1 toDistance:0 fromPoint:p2];
+		OO_CHECK(!HPvector_equal(safe, p2));
+		OO_CHECK(safe.z < 500 && safe.x < 20);
+
+		// Within range of the destination already: clear, whatever is in the way.
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:2000 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:2000 fromPoint:p2] == nil);
+
+		// Stopping short of the rock: the route is clear.
+		OO_CHECK([u isVectorClearFromEntity:e1 toDistance:600 fromPoint:p2]);
+		OO_CHECK([u hazardOnRouteFromEntity:e1 toDistance:600 fromPoint:p2] == nil);
+		u->_cxxUniverse->n_entities = 0;
+	}
+}
+
+
 OO_TEST_MAIN()
