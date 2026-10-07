@@ -112,6 +112,7 @@ unsigned NextNavpoint(ShipEntity *s)	{ return s->_cxxShip->next_navpoint_index; 
 GLfloat WeaponDamage(ShipEntity *s)	{ return s->_cxxShip->weapon_damage; }
 OOAegisStatus AegisStatus(ShipEntity *s)	{ return s->_cxxShip->aegis_status; }
 void SetAegisStatus(ShipEntity *s, OOAegisStatus status)	{ s->_cxxShip->aegis_status = status; }
+void SetSticks(ShipEntity *s, GLfloat roll, GLfloat pitch, GLfloat yaw)	{ s->_cxxShip->stick_roll = roll; s->_cxxShip->stick_pitch = pitch; s->_cxxShip->stick_yaw = yaw; }
 double NextAegisCheck(ShipEntity *s)	{ return s->_cxxShip->_nextAegisCheck; }
 double LaunchTime(ShipEntity *s)	{ return s->_cxxShip->launch_time; }
 double LaunchDelay(ShipEntity *s)	{ return s->_cxxShip->launch_delay; }
@@ -1816,6 +1817,104 @@ OO_TEST(fuel)
 		OO_CHECK([ship fuel] == 35);
 		[ship setFuel:PLAYER_MAX_FUEL + 10];
 		OO_CHECK([ship fuel] == PLAYER_MAX_FUEL);
+	}
+}
+
+
+// Slice 20: the sticks move the flight rates towards them by a limited step; the rate setters.
+OO_TEST(sticksAndRates)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("pilot");
+		SetSticks(ship, 1.0f, -1.0f, 0.01f);
+		[ship applySticks:0.1];			// roll moves 2 x dt, pitch and yaw 4 x dt, or reach the stick
+		OO_CHECK(fabs([ship flightRoll] - 0.2f) < 1e-6 && fabs([ship flightPitch] + 0.4f) < 1e-6 && fabs([ship flightYaw] - 0.01f) < 1e-6);
+		SetSticks(ship, -1.0f, -1.0f, 0.01f);
+		[ship applySticks:0.1];			// against the current roll: four times faster
+		OO_CHECK(fabs([ship flightRoll] - (0.2f - 0.8f)) < 1e-6);
+
+		[ship setRoll:1];
+		OO_CHECK(fabs([ship flightRoll] - M_PI / 2.0) < 1e-6);
+		[ship setRawRoll:0.25];
+		OO_CHECK([ship flightRoll] == 0.25f);
+		[ship setPitch:-1];
+		[ship setYaw:0.5];
+		OO_CHECK(fabs([ship flightPitch] + M_PI / 2.0) < 1e-6 && fabs([ship flightYaw] - M_PI / 4.0) < 1e-6);
+		[ship setThrust:12];
+		OO_CHECK([ship thrust] == 12);
+		[ship setThrustForDemo:0.5f];
+		OO_CHECK([ship flightSpeed] == 100);
+		[ship setSpeed:42];
+		OO_CHECK([ship flightSpeed] == 42);
+		[ship setDesiredSpeed:17];
+		OO_CHECK([ship desiredSpeed] == 17);
+	}
+}
+
+
+// Slice 20: bounty and legal status.
+OO_TEST(bountyAndLegalStatus)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("offender");
+		[ship setBounty:40];
+		OO_CHECK([ship bounty] == 40 && [ship legalStatus] == 40);
+		[ship setBounty:60 withReason:kOOLegalStatusReasonByScript];
+		OO_CHECK([ship bounty] == 60);
+		[ship setBounty:5 withReasonAsString:"setup"];
+		OO_CHECK([ship bounty] == 5);
+
+		[ship setScanClass:CLASS_POLICE];
+		[ship setBounty:30];		// police never have bounties
+		OO_CHECK([ship bounty] == 5);
+		[ship setScanClass:CLASS_THARGOID];
+		[ship setBounty:30];		// nor do Thargoids, but by script or set-up
+		OO_CHECK([ship bounty] == 5);
+		[ship setBounty:30 withReason:kOOLegalStatusReasonSetup];
+		OO_CHECK([ship bounty] == 30);
+		[ship setCollisionRadius:20];
+		OO_CHECK([ship legalStatus] == 100);	// a Thargoid's is five times its radius
+		[ship setScanClass:CLASS_ROCK];
+		OO_CHECK([ship legalStatus] == 0);
+	}
+}
+
+
+// Slice 20: commodities and cargo.
+OO_TEST(commoditiesAndCargo)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *pod = FlyingShip("pod");
+		OO_CHECK(![pod cxx_commodityType].has_value() && [pod commodityAmount] == 0);
+		[pod cxx_setCommodity:"food" andAmount:3];
+		OO_CHECK([pod cxx_commodityType] == std::optional<std::string>("food") && [pod commodityAmount] == 3);
+
+		TestShip *ship = FlyingShip("hauler");
+		[ship setMaxAvailableCargoSpace:3];
+		OO_CHECK([ship maxAvailableCargoSpace] == 3 && [ship availableCargoSpace] == 3 && [ship cargoQuantityOnBoard] == 0);
+		TestShip *food = FlyingShip("food pod");
+		[food cxx_setCommodity:"food" andAmount:1];
+		TestShip *gold = FlyingShip("gold pod");
+		[gold cxx_setCommodity:"gold" andAmount:1];
+		[ship setCargo:{ oo::ObjCRef<ShipEntity *>(food), oo::ObjCRef<ShipEntity *>(gold) }];
+		OO_CHECK([ship cxx_cargoCount] == 2 && [ship cargoQuantityOnBoard] == 2 && [ship availableCargoSpace] == 1);
+		OO_CHECK([ship cxx_cargo]->size() == 2 && (*[ship cxx_cargo])[1].get() == gold);
+		OO_CHECK((![ship cxx_addCargo:{ oo::ObjCRef<ShipEntity *>(food), oo::ObjCRef<ShipEntity *>(food) }]));	// no room
+		OO_CHECK([ship cxx_addCargo:{ oo::ObjCRef<ShipEntity *>(food) }] && [ship cxx_cargoCount] == 3);
+		OO_CHECK(![ship cxx_removeCargo:"gold" amount:2]);		// not that many: nothing removed
+		OO_CHECK([ship cxx_cargoCount] == 3);
+		OO_CHECK([ship cxx_removeCargo:"food" amount:2] && [ship cxx_cargoCount] == 1 && (*[ship cxx_cargo])[0].get() == gold);
+
+		OO_CHECK([ship cargoFlag] == (OOCargoFlag)0 && ![ship showScoopMessage]);	// TestShip skips the set-up that reads both
+		[ship setMaxAvailableCargoSpace:0];
+		[ship setCargoFlag:CARGO_FLAG_FULL_PASSENGERS];		// no room: no cargo
+		OO_CHECK([ship cargoFlag] == CARGO_FLAG_FULL_PASSENGERS && [ship cxx_cargoCount] == 0);
 	}
 }
 

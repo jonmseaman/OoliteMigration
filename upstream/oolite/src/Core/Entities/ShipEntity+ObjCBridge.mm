@@ -103,6 +103,15 @@ public:
 
 	// Slice 19 (bead oo-umyg2).
 	GLfloat fuelChargeRate() override	{ return [(::ShipEntity *)_objcOwner fuelChargeRate]; }
+
+	// Slice 20 (bead oo-66inv).
+	void setBounty(OOCreditsQuantity amount) override	{ [(::ShipEntity *)_objcOwner setBounty:amount]; }
+	void setBounty(OOCreditsQuantity amount, OOLegalStatusReason reason) override	{ [(::ShipEntity *)_objcOwner setBounty:amount withReason:reason]; }
+	void setBounty(OOCreditsQuantity amount, const std::string &reason) override	{ [(::ShipEntity *)_objcOwner setBounty:amount withReasonAsString:reason]; }
+	OOCreditsQuantity getBounty() override	{ return [(::ShipEntity *)_objcOwner bounty]; }
+	int legalStatus() override	{ return [(::ShipEntity *)_objcOwner legalStatus]; }
+	OOCargoQuantity cargoQuantityOnBoard() override	{ return [(::ShipEntity *)_objcOwner cargoQuantityOnBoard]; }
+	oo::PList cargoListForScripting() override	{ return [(::ShipEntity *)_objcOwner cargoListForScripting]; }
 };
 
 }	// namespace
@@ -716,5 +725,44 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) setFuel:(OOFuelQuantity)amount	{ _cxxShip->setFuel(amount); }
 - (OOFuelQuantity) fuelCapacity	{ return _cxxShip->fuelCapacity(); }
 - (GLfloat) fuelChargeRate	{ return _cxxShip->cxx::ShipEntity::fuelChargeRate(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice20)
+
+- (void) applySticks:(double)delta_t	{ _cxxShip->applySticks(delta_t); }
+- (void) setRoll:(double)amount	{ _cxxShip->setRoll(amount); }
+- (void) setRawRoll:(double)amount	{ _cxxShip->setRawRoll(amount); }
+- (void) setPitch:(double)amount	{ _cxxShip->setPitch(amount); }
+- (void) setYaw:(double)amount	{ _cxxShip->setYaw(amount); }
+- (void) setThrust:(double)amount	{ _cxxShip->setThrust(amount); }
+- (void) setThrustForDemo:(float)factor	{ _cxxShip->setThrustForDemo(factor); }
+- (void) setBounty:(OOCreditsQuantity)amount	{ _cxxShip->cxx::ShipEntity::setBounty(amount); }
+- (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason	{ _cxxShip->cxx::ShipEntity::setBounty(amount, reason); }
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(const std::string &)reason	{ _cxxShip->cxx::ShipEntity::setBounty(amount, reason); }
+- (OOCreditsQuantity) bounty	{ return _cxxShip->cxx::ShipEntity::getBounty(); }
+- (int) legalStatus	{ return _cxxShip->cxx::ShipEntity::legalStatus(); }
+- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount	{ _cxxShip->setCommodity(co_type, co_amount); }
+- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount	{ _cxxShip->setCommodityForPod(co_type, co_amount); }
+- (std::optional<std::string>) cxx_commodityType	{ return _cxxShip->commodityType(); }
+- (OOCargoQuantity) commodityAmount	{ return _cxxShip->commodityAmount(); }
+- (OOCargoQuantity) maxAvailableCargoSpace	{ return _cxxShip->maxAvailableCargoSpace(); }
+- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue	{ _cxxShip->setMaxAvailableCargoSpace(newValue); }
+- (OOCargoQuantity) availableCargoSpace	{ return _cxxShip->availableCargoSpace(); }
+- (OOCargoQuantity) cargoQuantityOnBoard	{ return _cxxShip->cxx::ShipEntity::cargoQuantityOnBoard(); }
+- (OOCargoType) cargoType	{ return _cxxShip->cargoType(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo	{ return _cxxShip->getCargo(); }
+- (NSUInteger) cxx_cargoCount	{ return _cxxShip->cargoCount(); }
+- (oo::PList) cargoListForScripting	{ return _cxxShip->cxx::ShipEntity::cargoListForScripting(); }
+- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo	{ _cxxShip->setCargo(some_cargo); }
+- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo	{ return _cxxShip->addCargo(some_cargo); }
+- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity)amount	{ return _cxxShip->removeCargo(commodity, amount); }
+- (BOOL) showScoopMessage	{ return _cxxShip->showScoopMessage(); }
+- (OOCargoFlag) cargoFlag	{ return _cxxShip->cargoFlag(); }
+- (void) setCargoFlag:(OOCargoFlag)flag	{ _cxxShip->setCargoFlag(flag); }
+- (void) setSpeed:(double)amount	{ _cxxShip->setSpeed(amount); }
+- (void) setDesiredSpeed:(double)amount	{ _cxxShip->setDesiredSpeed(amount); }
+- (double) desiredSpeed	{ return _cxxShip->desiredSpeed(); }
 
 @end

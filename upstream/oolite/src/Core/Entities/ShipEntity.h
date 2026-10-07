@@ -594,6 +594,41 @@ public:
 	OOFuelQuantity fuelCapacity();
 	virtual GLfloat fuelChargeRate();	// PlayerEntity overrides
 
+	// Slice 20: sticks, bounty and legal status, commodities and cargo, speed.
+	void applySticks(double delta_t);
+	void setRoll(double amount);
+	void setRawRoll(double amount);
+	void setPitch(double amount);
+	void setYaw(double amount);
+	void setThrust(double amount);
+	void setThrustForDemo(float factor);
+	virtual void setBounty(OOCreditsQuantity amount);
+	virtual void setBounty(OOCreditsQuantity amount, OOLegalStatusReason reason);
+	virtual void setBounty(OOCreditsQuantity amount, const std::string &reason);
+	virtual OOCreditsQuantity getBounty();
+	virtual int legalStatus();
+	void setCommodity(const std::string &co_type, OOCargoQuantity co_amount);
+	void setCommodityForPod(const std::optional<std::string> &co_type, OOCargoQuantity co_amount);
+	std::optional<std::string> commodityType();
+	OOCargoQuantity commodityAmount();
+	OOCargoQuantity maxAvailableCargoSpace();
+	void setMaxAvailableCargoSpace(OOCargoQuantity newValue);
+	OOCargoQuantity availableCargoSpace();
+	virtual OOCargoQuantity cargoQuantityOnBoard();
+	OOCargoType cargoType();
+	std::vector<oo::ObjCRef<::ShipEntity *>> *getCargo();
+	NSUInteger cargoCount();
+	virtual oo::PList cargoListForScripting();
+	void setCargo(const std::vector<oo::ObjCRef<::ShipEntity *>> &some_cargo);
+	bool addCargo(const std::vector<oo::ObjCRef<::ShipEntity *>> &some_cargo);
+	bool removeCargo(const std::string &commodity, OOCargoQuantity amount);
+	bool showScoopMessage();
+	OOCargoFlag cargoFlag();
+	void setCargoFlag(OOCargoFlag flag);
+	void setSpeed(double amount);
+	void setDesiredSpeed(double amount);
+	double desiredSpeed();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
