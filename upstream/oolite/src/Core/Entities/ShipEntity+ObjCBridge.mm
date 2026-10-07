@@ -143,6 +143,14 @@ public:
 
 	// Slice 28 (bead oo-40ocf).
 	::ShipEntity *fireMissile() override	{ return [(::ShipEntity *)_objcOwner fireMissile]; }
+
+	// Slice 29 (bead oo-g900k).
+	void noticeECM() override	{ [(::ShipEntity *)_objcOwner noticeECM]; }
+	bool fireECM() override	{ return [(::ShipEntity *)_objcOwner fireECM]; }
+	bool activateCloakingDevice() override	{ return [(::ShipEntity *)_objcOwner activateCloakingDevice]; }
+	void deactivateCloakingDevice() override	{ [(::ShipEntity *)_objcOwner deactivateCloakingDevice]; }
+	::ShipEntity *launchEscapeCapsule() override	{ return [(::ShipEntity *)_objcOwner launchEscapeCapsule]; }
+	void dumpCargo() override	{ [(::ShipEntity *)_objcOwner dumpCargo]; }
 };
 
 }	// namespace
@@ -999,5 +1007,25 @@ GLfloat ShipEntityPlayerBaseMass(void)	{ return [PLAYER baseMass]; }
 - (void) considerFiringMissile:(double)delta_t	{ _cxxShip->considerFiringMissile(delta_t); }
 - (Vector) missileLaunchPosition	{ return _cxxShip->missileLaunchPosition(); }
 - (ShipEntity *) fireMissile	{ return _cxxShip->cxx::ShipEntity::fireMissile(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice29)
+
+- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &)requestedIdentifier andTarget:(Entity *)target	{ return _cxxShip->fireMissileWithIdentifier(requestedIdentifier, target); }
+- (BOOL) isMissileFlagSet	{ return _cxxShip->isMissileFlagSet(); }
+- (void) setIsMissileFlag:(BOOL)newValue	{ _cxxShip->setIsMissileFlag(newValue); }
+- (OOTimeDelta) missileLoadTime	{ return _cxxShip->missileLoadTime(); }
+- (void) setMissileLoadTime:(OOTimeDelta)newMissileLoadTime	{ _cxxShip->setMissileLoadTime(newMissileLoadTime); }
+- (void) noticeECM	{ _cxxShip->cxx::ShipEntity::noticeECM(); }
+- (BOOL) fireECM	{ return _cxxShip->cxx::ShipEntity::fireECM(); }
+- (BOOL) activateCloakingDevice	{ return _cxxShip->cxx::ShipEntity::activateCloakingDevice(); }
+- (void) deactivateCloakingDevice	{ _cxxShip->cxx::ShipEntity::deactivateCloakingDevice(); }
+- (BOOL) launchCascadeMine	{ return _cxxShip->launchCascadeMine(); }
+- (ShipEntity*) launchEscapeCapsule	{ return _cxxShip->cxx::ShipEntity::launchEscapeCapsule(); }
+- (void) dumpCargo	{ _cxxShip->cxx::ShipEntity::dumpCargo(); }
+- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred	{ return _cxxShip->dumpCargoItem(preferred); }
+- (OOCargoType) dumpItem:(ShipEntity*)cargoObj	{ return _cxxShip->dumpItem(cargoObj); }
 
 @end

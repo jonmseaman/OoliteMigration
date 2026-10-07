@@ -516,463 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) requestedIdentifier andTarget:(Entity *) target
-{
-	std::optional<std::string>	identifier = requestedIdentifier;
-	// both players and NPCs!
-	//
-	ShipEntity		*missile = nil;
-	ShipEntity		*target_ship = nil;
-	
-	Vector			vel;
-	Vector			start, v_eject;
-	
-	if ([UNIVERSE getTime] < _cxxShip->missile_launch_time) return nil;
-
-	start = [self missileLaunchPosition];
-	
-	double  throw_speed = 250.0f;
-	
-	if	((_cxxShip->missiles <= 0)||(target == nil)||([target scanClass] == CLASS_NO_DRAW))	// no missile lock!
-		return nil;
-	
-	if ([target isShip])
-	{
-		target_ship = (ShipEntity*)target;
-		if ([target_ship isCloaked])
-		{
-			return nil;
-		}
-		// missile fire requires being in scanner range
-		if (HPmagnitude2(HPvector_subtract([target_ship position], _cxxEntity->position)) > _cxxShip->scannerRange * _cxxShip->scannerRange)
-		{
-			return nil;
-		}
-		if (![self hasMilitaryScannerFilter] && [target_ship isJammingScanning]) 
-		{
-			return nil;
-		}
-	}
-	
-	unsigned i;
-	if (!identifier.has_value())
-	{
-		// use a random missile from the list
-		i = floor(randf()*(double)_cxxShip->missiles);
-		identifier = [_cxxShip->missile_list[i] cxx_identifier];
-		missile = [UNIVERSE cxx_newShipWithRole:identifier.value_or("")];
-		if (EXPECT_NOT(missile == nil))	// invalid missile role.
-		{
-			// remove that invalid missile role from the missiles list.
-			while ( ++i < _cxxShip->missiles ) _cxxShip->missile_list[i - 1] = _cxxShip->missile_list[i];
-			_cxxShip->missiles--;
-		}
-	}
-	else
-		missile = [UNIVERSE cxx_newShipWithRole:*identifier];
-	
-	if (EXPECT_NOT(missile == nil))	return nil;
-	
-	// By definition, the player will always have the specified missile.
-	// What if the NPC didn't actually have the specified missile to begin with?
-	if (!_cxxEntity->isPlayer && ![self removeExternalStore:(identifier.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil)])
-	{
-		[missile release];
-		return nil;
-	}
-	
-	double mcr = missile->_cxxEntity->collision_radius;
-	v_eject = vector_normal(start);
-	vel = kZeroVector;	// starting velocity
-	
-	// check if start is within bounding box...
-	while (	(start.x > _cxxEntity->boundingBox.min.x - mcr)&&(start.x < _cxxEntity->boundingBox.max.x + mcr)&&
-			(start.y > _cxxEntity->boundingBox.min.y - mcr)&&(start.y < _cxxEntity->boundingBox.max.y + mcr)&&
-			(start.z > _cxxEntity->boundingBox.min.z - mcr)&&(start.z < _cxxEntity->boundingBox.max.z + mcr) )
-	{
-		start = vector_add(start, vector_multiply_scalar(v_eject, mcr));
-	}
-	
-	vel = vector_add(vel, vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->flightSpeed + throw_speed));
-	
-	Quaternion q1 = [self normalOrientation];
-	HPVector origin = HPvector_add(_cxxEntity->position, vectorToHPVector(quaternion_rotate_vector(q1, start)));
-	
-	if (_cxxEntity->isPlayer) [missile setScanClass: CLASS_MISSILE];
-	
-// special cases
-	
-	//We don't want real missiles in a group. Missiles could become escorts when the group is also used as escortGroup.
-	if ([missile scanClass] == CLASS_THARGOID) 
-	{
-		if([self group] == nil) [self setGroup:[OOShipGroup cxx_groupWithName:"thargoid group"]];
-		
-		ShipEntity	*thisGroupLeader = [_cxxShip->_group leader];
-		
-		if ([thisGroupLeader escortGroup] != _cxxShip->_group) // avoid adding tharons to escort groups
-		{
-			[missile setGroup:[self group]];
-		}
-	}
-	
-	// is this a submunition?
-	if (![self isMissileFlagSet])  [missile setOwner:self];
-	else  [missile setOwner:[self owner]];
-
-// end special cases
-
-	[missile setPosition:origin];
-	[missile addTarget:target];	
-	[missile setOrientation:q1];
-	[missile setIsMissileFlag:YES];
-	[missile setVelocity:vel];
-	[missile setSpeed:150.0f];
-	[missile setDistanceTravelled:0.0f];
-	[missile resetShotTime];
-	_cxxShip->missile_launch_time = [UNIVERSE getTime] + _cxxShip->missile_load_time; // set minimum launchtime for the next missile.
-	
-	[UNIVERSE addEntity:missile];	// STATUS_IN_FLIGHT, AI state GLOBAL
-	[missile release]; //release
-	
-	// missile lives on after UNIVERSE addEntity
-	if ([missile isMissile] && [target isShip])
-	{
-		[self doScriptEvent:OOJSID("shipFiredMissile") withArgument:missile andArgument:target_ship];
-		[target_ship setPrimaryAggressor:self];
-		[target_ship doScriptEvent:OOJSID("shipAttackedWithMissile") withArgument:missile andArgument:self];
-		[target_ship cxx_reactToAIMessage:"INCOMING_MISSILE" context:"someone's shooting at me!"];
-		if (_cxxShip->cloaking_device_active && _cxxShip->cloakPassive)
-		{
-			// parity between player &NPCs, only deactivate cloak for missiles
-			[self deactivateCloakingDevice];
-		}
-	}
-	else
-	{
-		[self doScriptEvent:OOJSID("shipReleasedEquipment") withArgument:missile];
-	}
-	
-	return missile;
-}
-
-
-- (BOOL) isMissileFlagSet
-{
-	return _cxxShip->isMissile; // were we created using fireMissile? (for tracking submunitions and preventing collisions at launch)
-}
-
-
-- (void) setIsMissileFlag:(BOOL)newValue
-{
-	_cxxShip->isMissile = !!newValue; // set the isMissile flag, used for tracking submunitions and preventing collisions at launch.
-}
-
-
-- (OOTimeDelta) missileLoadTime
-{
-	return _cxxShip->missile_load_time;
-}
-
-
-- (void) setMissileLoadTime:(OOTimeDelta)newMissileLoadTime
-{
-	_cxxShip->missile_load_time = fmax(0.0, newMissileLoadTime);
-}
-
-
-// reactions to ECM that are not dependent on current AI state here
-- (void) noticeECM
-{
-	if (_cxxShip->accuracy >= COMBAT_AI_ISNT_AWFUL && _cxxShip->missiles > 0 && ([_cxxShip->missile_list[0] cxx_identifier] == "EQ_MISSILE"))
-	{
-// if we're being ECMd, and our missiles appear to be standard, and we
-// have some combat sense, wait a bit before firing the next one!
-		_cxxShip->missile_launch_time = [UNIVERSE getTime] + fmax(2.0,_cxxShip->missile_load_time); // set minimum launchtime for the next missile.
-	}
-}
-
-
-// Exposed to AI
-- (BOOL) fireECM
-{
-	if (![self hasECM])  return NO;
-	
-	[UNIVERSE addEntity:oo::NewEntityFacade(OOECMBlastEntity::initFromShip(self))];
-	return YES;
-}
-
-
-- (BOOL) activateCloakingDevice
-{
-	if (![self hasCloakingDevice] || _cxxShip->cloaking_device_active)  return _cxxShip->cloaking_device_active; // no changes.
-	
-	if (!_cxxShip->cloaking_device_active)  _cxxShip->cloaking_device_active = (_cxxEntity->energy > CLOAKING_DEVICE_START_ENERGY * _cxxEntity->maxEnergy);
-	if (_cxxShip->cloaking_device_active)  [self doScriptEvent:OOJSID("shipCloakActivated")];
-	return _cxxShip->cloaking_device_active;
-}
-
-
-- (void) deactivateCloakingDevice
-{
-	if ([self hasCloakingDevice] && _cxxShip->cloaking_device_active)
-	{
-		_cxxShip->cloaking_device_active = NO;
-		[self doScriptEvent:OOJSID("shipCloakDeactivated")];
-	}
-}
-
-
-- (BOOL) launchCascadeMine
-{
-	if (![self hasCascadeMine])  return NO;
-	[self setSpeed: _cxxShip->maxFlightSpeed + 300];
-	ShipEntity*	bomb = [UNIVERSE cxx_newShipWithRole:"energy-bomb"];
-	if (bomb == nil)  return NO;
-	
-	[self removeEquipmentItem:"EQ_QC_MINE"];
-	
-	double  start = _cxxEntity->collision_radius + bomb->_cxxEntity->collision_radius;
-	Quaternion  random_direction;
-	Vector  vel;
-	HPVector  rpos;
-	double random_roll =	randf() - 0.5;  //  -0.5 to +0.5
-	double random_pitch = 	randf() - 0.5;  //  -0.5 to +0.5
-	quaternion_set_random(&random_direction);
-	
-	rpos = HPvector_subtract([self position], vectorToHPVector(vector_multiply_scalar(_cxxShip->v_forward, start)));
-	
-	double  eject_speed = -800.0;
-	vel = vector_multiply_scalar(_cxxShip->v_forward, [self flightSpeed] + eject_speed);
-	eject_speed *= 0.5 * (randf() - 0.5);   //  -0.25x .. +0.25x
-	vel = vector_add(vel, vector_multiply_scalar(_cxxShip->v_up, eject_speed));
-	eject_speed *= 0.5 * (randf() - 0.5);   //  -0.0625x .. +0.0625x
-	vel = vector_add(vel, vector_multiply_scalar(_cxxShip->v_right, eject_speed));
-	
-	[bomb setPosition:rpos];
-	[bomb setOrientation:random_direction];
-	[bomb setRoll:random_roll];
-	[bomb setPitch:random_pitch];
-	[bomb setVelocity:vel];
-	[bomb setScanClass:CLASS_MINE];
-	[bomb setEnergy:5.0];	// 5 second countdown
-	[bomb setBehaviour:BEHAVIOUR_ENERGY_BOMB_COUNTDOWN];
-	[bomb setOwner:self];
-	[UNIVERSE addEntity:bomb];	// STATUS_IN_FLIGHT, AI state GLOBAL
-	[bomb release];
-	
-	if (_cxxShip->cloaking_device_active && _cxxShip->cloakPassive)
-	{
-		[self deactivateCloakingDevice];
-	}
-	
-	if (self != PLAYER)	// get the heck out of here
-	{
-		[self addTarget:bomb];
-		[self setBehaviour:BEHAVIOUR_FLEE_TARGET];
-		_cxxShip->frustration = 0.0;
-	}
-	return YES;
-}
-
-
-- (ShipEntity*)launchEscapeCapsule
-{
-	ShipEntity		*result = nil;
-	ShipEntity			*mainPod = nil;
-	unsigned			n_pods, i;
-	std::optional<std::vector<oo::ObjCRef<ShipEntity *>>>	passengers;	// only with more than one pod, as before
-	
-	/*
-		CHANGE: both player & NPCs can now launch escape pods in interstellar
-		space. -- Kaks 20101113
-	*/
-	
-	// check number of pods aboard -- require at least one.
-	n_pods = _cxxShip->shipinfoDictionary.get<unsigned int>("has_escape_pod");
-	if (n_pods > 65) n_pods = 65; // maximum of 64 passengers.
-	if (n_pods > 1) passengers.emplace().reserve(n_pods-1);
-
-	if (_cxxShip->crew)	// transfer crew
-	{
-		// make sure crew inherit any legalStatus
-		for (i = 0; i < _cxxShip->crew->size(); i++)
-		{
-			OOCharacter *ch = (*_cxxShip->crew)[i].get();
-			[ch cxx_setLegalStatus: [self legalStatus] | [ch legalStatus]];
-		}
-		mainPod = [self launchPodWithCrew:*_cxxShip->crew];
-		if (mainPod)
-		{
-			result = mainPod;
-			[self cxx_setCrew:std::nullopt];
-			[self setHulk:YES]; // we are without crew now.
-		}
-	}
-	
-	// launch other pods (passengers)
-	for (i = 1; i < n_pods; i++)
-	{
-		ShipEntity	*passenger = nil;
-		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>([OOCharacter randomCharacterWithRole:"passenger" andOriginalSystem:gen_rnd_number()]) }];
-		if (passengers.has_value())  passengers->emplace_back(passenger);
-	}
-
-	// the passengers' pods as an array, or null (nil) with a single pod
-	if (mainPod) [self cxx_doScriptEvent:OOJSID("shipLaunchedEscapePod") withPListArguments:{ oo::PListObject(mainPod), passengers.has_value() ? oo::PListFromObjects(*passengers) : oo::PList() }];
-	
-	return result;
-}
-
-
-// This is a documented AI method; do not change semantics. (Note: AIs don't have access to the return value,
-// and no caller read it: PlayerEntity reads the commodity from -cxx_dumpCargoItem: itself.)
-- (void) dumpCargo	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-{
-	[self cxx_dumpCargoItem:std::nullopt];
-}
-
-
-- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred
-{
-	ShipEntity				*jetto = nil;
-	NSUInteger				 i = 0;
-	
-	if ((_cxxShip->cargo.size() > 0)&&([UNIVERSE getTime] - _cxxShip->cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
-	{
-		if (!preferred.has_value())
-		{
-			jetto = [[_cxxShip->cargo[0].get() retain] autorelease];
-		}
-		else
-		{
-			BOOL found = NO;
-			for (i=0;i<_cxxShip->cargo.size();i++)
-			{
-				if ([_cxxShip->cargo[i].get() cxx_commodityType] == preferred)
-				{
-					jetto = [[_cxxShip->cargo[i].get() retain] autorelease];
-					found = YES;
-					break;
-				}
-			}
-			if (found == NO)
-			{
-				// dump anything
-				jetto = [[_cxxShip->cargo[0].get() retain] autorelease];
-				i = 0;
-			}
-		}
-		if (jetto != nil)
-		{
-			[self dumpItem:jetto];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
-			_cxxShip->cargo.erase(_cxxShip->cargo.begin() + i);
-			[self broadcastAIMessage:"CARGO_DUMPED"]; // goes only to 16 nearby ships in range, but that should be enough.
-			unsigned i;
-			// only send script event to powered entities
-			[self checkScannerIgnoringUnpowered];
-			for (i = 0; i < _cxxShip->n_scanned_ships ; i++)
-			{
-				ShipEntity* other = _cxxShip->scanned_ships[i];
-				[other doScriptEvent:OOJSID("cargoDumpedNearby") withArgument:jetto andArgument:self];
-				
-			}
-		}
-	}
-	
-	return jetto;
-}
-
-
-- (OOCargoType) dumpItem: (ShipEntity*) cargoObj
-{
-	if (!cargoObj)
-		return (OOCargoType)0;
-
-	ShipEntity* jetto = [UNIVERSE reifyCargoPod:cargoObj];
-
-	int		result = [jetto cargoType];
-	AI		*jettoAI = nil;
-	Vector	start;
-	
-	// players get to see their old ship sailing forth, while NPCs run away more efficiently!
-	// cargo is ejected at higher speed from any ship
-	double  eject_speed = EXPECT_NOT([jetto cxx_crew].has_value() && [jetto isPlayer]) ? 20.0 : 100.0;
-	double  eject_reaction = -eject_speed * [jetto mass] / [self mass];
-	double	jcr = jetto->_cxxEntity->collision_radius;
-	
-	Quaternion  jetto_orientation = kIdentityQuaternion;
-	Vector  vel, v_eject, v_eject_normal;
-	HPVector  rpos = [self absolutePositionForSubentity];
-	double jetto_roll =	0;
-	double jetto_pitch = 0;
-	
-	// default launching position
-	start.x = 0.0;						// in the middle
-	start.y = 0.0;						//
-	start.z = _cxxEntity->boundingBox.min.z - jcr;	// 1m behind of bounding box
-	
-	// custom launching position
-	start = VectorForKey(_cxxShip->shipinfoDictionary, "aft_eject_position", start);
-	
-	v_eject = vector_normal(start);
-	
-	// check if start is within bounding box...
-	while (	(start.x > _cxxEntity->boundingBox.min.x - jcr)&&(start.x < _cxxEntity->boundingBox.max.x + jcr)&&
-			(start.y > _cxxEntity->boundingBox.min.y - jcr)&&(start.y < _cxxEntity->boundingBox.max.y + jcr)&&
-			(start.z > _cxxEntity->boundingBox.min.z - jcr)&&(start.z < _cxxEntity->boundingBox.max.z + jcr))
-	{
-		start = vector_add(start, vector_multiply_scalar(v_eject, jcr));
-	}
-	
-	v_eject = quaternion_rotate_vector([self normalOrientation], start);
-	rpos = HPvector_add(rpos, vectorToHPVector(v_eject));
-	v_eject = vector_normal(v_eject);
-	v_eject_normal = v_eject;
-	
-	v_eject.x += (randf() - randf())/eject_speed;
-	v_eject.y += (randf() - randf())/eject_speed;
-	v_eject.z += (randf() - randf())/eject_speed;
-	
-	vel = vector_add(vector_multiply_scalar(_cxxShip->v_forward, _cxxShip->flightSpeed), vector_multiply_scalar(v_eject, eject_speed));
-	_cxxEntity->velocity = vector_add(_cxxEntity->velocity, vector_multiply_scalar(v_eject, eject_reaction));
-	
-	[jetto setPosition:rpos];
-	if ([jetto cxx_crew].has_value()) // jetto has a crew, so assume it is an escape pod.
-	{
-		// orient the pod away from the ship to avoid colliding with it.
-		jetto_orientation = quaternion_rotation_between(v_eject_normal, kBasisZVector);
-	}
-	else
-	{
-		// It is true cargo, let it tumble.
-		jetto_roll =	((ranrot_rand() % 1024) - 512.0)/1024.0;  //  -0.5 to +0.5
-		jetto_pitch =   ((ranrot_rand() % 1024) - 512.0)/1024.0;  //  -0.5 to +0.5
-		quaternion_set_random(&jetto_orientation);
-	}
-	
-	[jetto setOrientation:jetto_orientation];
-	[jetto setRoll:jetto_roll];
-	[jetto setPitch:jetto_pitch];
-	[jetto setVelocity:vel];
-	[jetto setScanClass: CLASS_CARGO];
-	[jetto setTemperature:[self randomEjectaTemperature]];
-	[UNIVERSE addEntity:jetto];	// STATUS_IN_FLIGHT, AI state GLOBAL
-	
-	jettoAI = [jetto getAI];
-	if ([jettoAI hasSuspendedStateMachines]) // check if this was previous scooped cargo.
-	{
-		[jetto setThrust:[jetto maxThrust]]; // restore old thrust.
-		[jetto setOwner:jetto];
-		[jettoAI cxx_exitStateMachineWithMessage:std::nullopt]; // exit nullAI.
-	}
-	[jetto doScriptEvent:OOJSID("shipWasDumped") withArgument:self];
-	[self doScriptEvent:OOJSID("shipDumpedCargo") withArgument:jetto];
-	
-	_cxxShip->cargo_dump_time = [UNIVERSE getTime];
-	return (OOCargoType)result;
-}
-
-
 - (void) manageCollisions
 {
 	// deal with collisions
@@ -15518,6 +15061,482 @@ Vector ShipEntity::missileLaunchPosition()
 
 
 }	// namespace cxx
+
+
+// Slice 29 of docs/phases/3-slices/ShipEntity.md (bead oo-g900k): missile firing, ECM, cloak,
+// cascade mine, escape capsule, cargo dumping. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+::ShipEntity *ShipEntity::fireMissileWithIdentifier(const std::optional<std::string> &requestedIdentifier, ::Entity *target)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::optional<std::string>	identifier = requestedIdentifier;
+	// both players and NPCs!
+	//
+	::ShipEntity		*missile = nil;
+	::ShipEntity		*target_ship = nil;
+	
+	Vector			vel;
+	Vector			start, v_eject;
+	
+	if ([UNIVERSE getTime] < missile_launch_time) return nil;
+
+	start = [self missileLaunchPosition];
+	
+	double  throw_speed = 250.0f;
+	
+	if	((missiles <= 0)||(target == nil)||([target scanClass] == CLASS_NO_DRAW))	// no missile lock!
+		return nil;
+	
+	if ([target isShip])
+	{
+		target_ship = (::ShipEntity*)target;
+		if ([target_ship isCloaked])
+		{
+			return nil;
+		}
+		// missile fire requires being in scanner range
+		if (HPmagnitude2(HPvector_subtract([target_ship position], position)) > scannerRange * scannerRange)
+		{
+			return nil;
+		}
+		if (![self hasMilitaryScannerFilter] && [target_ship isJammingScanning]) 
+		{
+			return nil;
+		}
+	}
+	
+	unsigned i;
+	if (!identifier.has_value())
+	{
+		// use a random missile from the list
+		i = floor(randf()*(double)missiles);
+		identifier = [missile_list[i] cxx_identifier];
+		missile = [UNIVERSE cxx_newShipWithRole:identifier.value_or("")];
+		if (EXPECT_NOT(missile == nil))	// invalid missile role.
+		{
+			// remove that invalid missile role from the missiles list.
+			while ( ++i < missiles ) missile_list[i - 1] = missile_list[i];
+			missiles--;
+		}
+	}
+	else
+		missile = [UNIVERSE cxx_newShipWithRole:*identifier];
+	
+	if (EXPECT_NOT(missile == nil))	return nil;
+	
+	// By definition, the player will always have the specified missile.
+	// What if the NPC didn't actually have the specified missile to begin with?
+	if (!isPlayer && ![self removeExternalStore:(identifier.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil)])
+	{
+		[missile release];
+		return nil;
+	}
+	
+	double mcr = missile->_cxxEntity->collision_radius;
+	v_eject = vector_normal(start);
+	vel = kZeroVector;	// starting velocity
+	
+	// check if start is within bounding box...
+	while (	(start.x > boundingBox.min.x - mcr)&&(start.x < boundingBox.max.x + mcr)&&
+			(start.y > boundingBox.min.y - mcr)&&(start.y < boundingBox.max.y + mcr)&&
+			(start.z > boundingBox.min.z - mcr)&&(start.z < boundingBox.max.z + mcr) )
+	{
+		start = vector_add(start, vector_multiply_scalar(v_eject, mcr));
+	}
+	
+	vel = vector_add(vel, vector_multiply_scalar(v_forward, flightSpeed + throw_speed));
+	
+	Quaternion q1 = [self normalOrientation];
+	HPVector origin = HPvector_add(position, vectorToHPVector(quaternion_rotate_vector(q1, start)));
+	
+	if (isPlayer) [missile setScanClass: CLASS_MISSILE];
+	
+// special cases
+	
+	//We don't want real missiles in a group. Missiles could become escorts when the group is also used as escortGroup.
+	if ([missile scanClass] == CLASS_THARGOID) 
+	{
+		if([self group] == nil) [self setGroup:[::OOShipGroup cxx_groupWithName:"thargoid group"]];
+		
+		::ShipEntity	*thisGroupLeader = [_group leader];
+		
+		if ([thisGroupLeader escortGroup] != _group) // avoid adding tharons to escort groups
+		{
+			[missile setGroup:[self group]];
+		}
+	}
+	
+	// is this a submunition?
+	if (![self isMissileFlagSet])  [missile setOwner:self];
+	else  [missile setOwner:[self owner]];
+
+// end special cases
+
+	[missile setPosition:origin];
+	[missile addTarget:target];	
+	[missile setOrientation:q1];
+	[missile setIsMissileFlag:YES];
+	[missile setVelocity:vel];
+	[missile setSpeed:150.0f];
+	[missile setDistanceTravelled:0.0f];
+	[missile resetShotTime];
+	missile_launch_time = [UNIVERSE getTime] + missile_load_time; // set minimum launchtime for the next missile.
+	
+	[UNIVERSE addEntity:missile];	// STATUS_IN_FLIGHT, AI state GLOBAL
+	[missile release]; //release
+	
+	// missile lives on after UNIVERSE addEntity
+	if ([missile isMissile] && [target isShip])
+	{
+		[self doScriptEvent:OOJSID("shipFiredMissile") withArgument:missile andArgument:target_ship];
+		[target_ship setPrimaryAggressor:self];
+		[target_ship doScriptEvent:OOJSID("shipAttackedWithMissile") withArgument:missile andArgument:self];
+		[target_ship cxx_reactToAIMessage:"INCOMING_MISSILE" context:"someone's shooting at me!"];
+		if (cloaking_device_active && cloakPassive)
+		{
+			// parity between player &NPCs, only deactivate cloak for missiles
+			[self deactivateCloakingDevice];
+		}
+	}
+	else
+	{
+		[self doScriptEvent:OOJSID("shipReleasedEquipment") withArgument:missile];
+	}
+	
+	return missile;
+}
+
+
+bool ShipEntity::isMissileFlagSet()
+{
+	return isMissile; // were we created using fireMissile? (for tracking submunitions and preventing collisions at launch)
+}
+
+
+void ShipEntity::setIsMissileFlag(bool newValue)
+{
+	isMissile = !!newValue; // set the isMissile flag, used for tracking submunitions and preventing collisions at launch.
+}
+
+
+OOTimeDelta ShipEntity::missileLoadTime()
+{
+	return missile_load_time;
+}
+
+
+void ShipEntity::setMissileLoadTime(OOTimeDelta newMissileLoadTime)
+{
+	missile_load_time = fmax(0.0, newMissileLoadTime);
+}
+
+
+// reactions to ECM that are not dependent on current AI state here
+void ShipEntity::noticeECM()
+{
+	if (accuracy >= COMBAT_AI_ISNT_AWFUL && missiles > 0 && ([missile_list[0] cxx_identifier] == "EQ_MISSILE"))
+	{
+// if we're being ECMd, and our missiles appear to be standard, and we
+// have some combat sense, wait a bit before firing the next one!
+		missile_launch_time = [UNIVERSE getTime] + fmax(2.0,missile_load_time); // set minimum launchtime for the next missile.
+	}
+}
+
+
+// Exposed to AI
+bool ShipEntity::fireECM()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self hasECM])  return NO;
+	
+	[UNIVERSE addEntity:oo::NewEntityFacade(OOECMBlastEntity::initFromShip(self))];
+	return YES;
+}
+
+
+bool ShipEntity::activateCloakingDevice()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self hasCloakingDevice] || cloaking_device_active)  return cloaking_device_active; // no changes.
+	
+	if (!cloaking_device_active)  cloaking_device_active = (energy > CLOAKING_DEVICE_START_ENERGY * maxEnergy);
+	if (cloaking_device_active)  [self doScriptEvent:OOJSID("shipCloakActivated")];
+	return cloaking_device_active;
+}
+
+
+void ShipEntity::deactivateCloakingDevice()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self hasCloakingDevice] && cloaking_device_active)
+	{
+		cloaking_device_active = NO;
+		[self doScriptEvent:OOJSID("shipCloakDeactivated")];
+	}
+}
+
+
+bool ShipEntity::launchCascadeMine()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (![self hasCascadeMine])  return NO;
+	[self setSpeed: maxFlightSpeed + 300];
+	::ShipEntity*	bomb = [UNIVERSE cxx_newShipWithRole:"energy-bomb"];
+	if (bomb == nil)  return NO;
+	
+	[self removeEquipmentItem:"EQ_QC_MINE"];
+	
+	double  start = collision_radius + bomb->_cxxEntity->collision_radius;
+	Quaternion  random_direction;
+	Vector  vel;
+	HPVector  rpos;
+	double random_roll =	randf() - 0.5;  //  -0.5 to +0.5
+	double random_pitch = 	randf() - 0.5;  //  -0.5 to +0.5
+	quaternion_set_random(&random_direction);
+	
+	rpos = HPvector_subtract([self position], vectorToHPVector(vector_multiply_scalar(v_forward, start)));
+	
+	double  eject_speed = -800.0;
+	vel = vector_multiply_scalar(v_forward, [self flightSpeed] + eject_speed);
+	eject_speed *= 0.5 * (randf() - 0.5);   //  -0.25x .. +0.25x
+	vel = vector_add(vel, vector_multiply_scalar(v_up, eject_speed));
+	eject_speed *= 0.5 * (randf() - 0.5);   //  -0.0625x .. +0.0625x
+	vel = vector_add(vel, vector_multiply_scalar(v_right, eject_speed));
+	
+	[bomb setPosition:rpos];
+	[bomb setOrientation:random_direction];
+	[bomb setRoll:random_roll];
+	[bomb setPitch:random_pitch];
+	[bomb setVelocity:vel];
+	[bomb setScanClass:CLASS_MINE];
+	[bomb setEnergy:5.0];	// 5 second countdown
+	[bomb setBehaviour:BEHAVIOUR_ENERGY_BOMB_COUNTDOWN];
+	[bomb setOwner:self];
+	[UNIVERSE addEntity:bomb];	// STATUS_IN_FLIGHT, AI state GLOBAL
+	[bomb release];
+	
+	if (cloaking_device_active && cloakPassive)
+	{
+		[self deactivateCloakingDevice];
+	}
+	
+	if (self != PLAYER)	// get the heck out of here
+	{
+		[self addTarget:bomb];
+		[self setBehaviour:BEHAVIOUR_FLEE_TARGET];
+		frustration = 0.0;
+	}
+	return YES;
+}
+
+
+::ShipEntity *ShipEntity::launchEscapeCapsule()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity		*result = nil;
+	::ShipEntity			*mainPod = nil;
+	unsigned			n_pods, i;
+	std::optional<std::vector<oo::ObjCRef<::ShipEntity *>>>	passengers;	// only with more than one pod, as before
+	
+	/*
+		CHANGE: both player & NPCs can now launch escape pods in interstellar
+		space. -- Kaks 20101113
+	*/
+	
+	// check number of pods aboard -- require at least one.
+	n_pods = shipinfoDictionary.get<unsigned int>("has_escape_pod");
+	if (n_pods > 65) n_pods = 65; // maximum of 64 passengers.
+	if (n_pods > 1) passengers.emplace().reserve(n_pods-1);
+
+	if (crew)	// transfer crew
+	{
+		// make sure crew inherit any legalStatus
+		for (i = 0; i < crew->size(); i++)
+		{
+			::OOCharacter *ch = (*crew)[i].get();
+			[ch cxx_setLegalStatus: [self legalStatus] | [ch legalStatus]];
+		}
+		mainPod = [self launchPodWithCrew:*crew];
+		if (mainPod)
+		{
+			result = mainPod;
+			[self cxx_setCrew:std::nullopt];
+			[self setHulk:YES]; // we are without crew now.
+		}
+	}
+	
+	// launch other pods (passengers)
+	for (i = 1; i < n_pods; i++)
+	{
+		::ShipEntity	*passenger = nil;
+		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<::OOCharacter *>>{ oo::ObjCRef<::OOCharacter *>([::OOCharacter randomCharacterWithRole:"passenger" andOriginalSystem:gen_rnd_number()]) }];
+		if (passengers.has_value())  passengers->emplace_back(passenger);
+	}
+
+	// the passengers' pods as an array, or null (nil) with a single pod
+	if (mainPod) [self cxx_doScriptEvent:OOJSID("shipLaunchedEscapePod") withPListArguments:{ oo::PListObject(mainPod), passengers.has_value() ? oo::PListFromObjects(*passengers) : oo::PList() }];
+	
+	return result;
+}
+
+
+// This is a documented AI method; do not change semantics. (Note: AIs don't have access to the return value,
+// and no caller read it: PlayerEntity reads the commodity from -cxx_dumpCargoItem: itself.)
+void ShipEntity::dumpCargo()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self cxx_dumpCargoItem:std::nullopt];
+}
+
+
+::ShipEntity *ShipEntity::dumpCargoItem(const std::optional<std::string> &preferred)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity				*jetto = nil;
+	NSUInteger				 i = 0;
+	
+	if ((cargo.size() > 0)&&([UNIVERSE getTime] - cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
+	{
+		if (!preferred.has_value())
+		{
+			jetto = [[cargo[0].get() retain] autorelease];
+		}
+		else
+		{
+			BOOL found = NO;
+			for (i=0;i<cargo.size();i++)
+			{
+				if ([cargo[i].get() cxx_commodityType] == preferred)
+				{
+					jetto = [[cargo[i].get() retain] autorelease];
+					found = YES;
+					break;
+				}
+			}
+			if (found == NO)
+			{
+				// dump anything
+				jetto = [[cargo[0].get() retain] autorelease];
+				i = 0;
+			}
+		}
+		if (jetto != nil)
+		{
+			[self dumpItem:jetto];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
+			cargo.erase(cargo.begin() + i);
+			[self broadcastAIMessage:"CARGO_DUMPED"]; // goes only to 16 nearby ships in range, but that should be enough.
+			unsigned i;
+			// only send script event to powered entities
+			[self checkScannerIgnoringUnpowered];
+			for (i = 0; i < n_scanned_ships ; i++)
+			{
+				::ShipEntity* other = scanned_ships[i];
+				[other doScriptEvent:OOJSID("cargoDumpedNearby") withArgument:jetto andArgument:self];
+				
+			}
+		}
+	}
+	
+	return jetto;
+}
+
+
+OOCargoType ShipEntity::dumpItem(::ShipEntity *cargoObj)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (!cargoObj)
+		return (OOCargoType)0;
+
+	::ShipEntity* jetto = [UNIVERSE reifyCargoPod:cargoObj];
+
+	int		result = [jetto cargoType];
+	::AI		*jettoAI = nil;
+	Vector	start;
+	
+	// players get to see their old ship sailing forth, while NPCs run away more efficiently!
+	// cargo is ejected at higher speed from any ship
+	double  eject_speed = EXPECT_NOT([jetto cxx_crew].has_value() && [jetto isPlayer]) ? 20.0 : 100.0;
+	double  eject_reaction = -eject_speed * [jetto mass] / [self mass];
+	double	jcr = jetto->_cxxEntity->collision_radius;
+	
+	Quaternion  jetto_orientation = kIdentityQuaternion;
+	Vector  vel, v_eject, v_eject_normal;
+	HPVector  rpos = [self absolutePositionForSubentity];
+	double jetto_roll =	0;
+	double jetto_pitch = 0;
+	
+	// default launching position
+	start.x = 0.0;						// in the middle
+	start.y = 0.0;						//
+	start.z = boundingBox.min.z - jcr;	// 1m behind of bounding box
+	
+	// custom launching position
+	start = VectorForKey(shipinfoDictionary, "aft_eject_position", start);
+	
+	v_eject = vector_normal(start);
+	
+	// check if start is within bounding box...
+	while (	(start.x > boundingBox.min.x - jcr)&&(start.x < boundingBox.max.x + jcr)&&
+			(start.y > boundingBox.min.y - jcr)&&(start.y < boundingBox.max.y + jcr)&&
+			(start.z > boundingBox.min.z - jcr)&&(start.z < boundingBox.max.z + jcr))
+	{
+		start = vector_add(start, vector_multiply_scalar(v_eject, jcr));
+	}
+	
+	v_eject = quaternion_rotate_vector([self normalOrientation], start);
+	rpos = HPvector_add(rpos, vectorToHPVector(v_eject));
+	v_eject = vector_normal(v_eject);
+	v_eject_normal = v_eject;
+	
+	v_eject.x += (randf() - randf())/eject_speed;
+	v_eject.y += (randf() - randf())/eject_speed;
+	v_eject.z += (randf() - randf())/eject_speed;
+	
+	vel = vector_add(vector_multiply_scalar(v_forward, flightSpeed), vector_multiply_scalar(v_eject, eject_speed));
+	velocity = vector_add(velocity, vector_multiply_scalar(v_eject, eject_reaction));
+	
+	[jetto setPosition:rpos];
+	if ([jetto cxx_crew].has_value()) // jetto has a crew, so assume it is an escape pod.
+	{
+		// orient the pod away from the ship to avoid colliding with it.
+		jetto_orientation = quaternion_rotation_between(v_eject_normal, kBasisZVector);
+	}
+	else
+	{
+		// It is true cargo, let it tumble.
+		jetto_roll =	((ranrot_rand() % 1024) - 512.0)/1024.0;  //  -0.5 to +0.5
+		jetto_pitch =   ((ranrot_rand() % 1024) - 512.0)/1024.0;  //  -0.5 to +0.5
+		quaternion_set_random(&jetto_orientation);
+	}
+	
+	[jetto setOrientation:jetto_orientation];
+	[jetto setRoll:jetto_roll];
+	[jetto setPitch:jetto_pitch];
+	[jetto setVelocity:vel];
+	[jetto setScanClass: CLASS_CARGO];
+	[jetto setTemperature:[self randomEjectaTemperature]];
+	[UNIVERSE addEntity:jetto];	// STATUS_IN_FLIGHT, AI state GLOBAL
+	
+	jettoAI = [jetto getAI];
+	if ([jettoAI hasSuspendedStateMachines]) // check if this was previous scooped cargo.
+	{
+		[jetto setThrust:[jetto maxThrust]]; // restore old thrust.
+		[jetto setOwner:jetto];
+		[jettoAI cxx_exitStateMachineWithMessage:std::nullopt]; // exit nullAI.
+	}
+	[jetto doScriptEvent:OOJSID("shipWasDumped") withArgument:self];
+	[self doScriptEvent:OOJSID("shipDumpedCargo") withArgument:jetto];
+	
+	cargo_dump_time = [UNIVERSE getTime];
+	return (OOCargoType)result;
+}
+
+
+}	// namespace cxx
+
 
 
 

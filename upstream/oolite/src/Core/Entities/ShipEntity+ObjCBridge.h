@@ -211,21 +211,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 
-- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) identifier andTarget:(Entity *) target;	// nullopt: a random missile from the list
-- (BOOL) isMissileFlagSet;
-- (void) setIsMissileFlag:(BOOL)newValue;
-- (OOTimeDelta) missileLoadTime;
-- (void) setMissileLoadTime:(OOTimeDelta)newMissileLoadTime;
-- (void) noticeECM;
-- (BOOL) fireECM;
 - (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner;
-- (BOOL) activateCloakingDevice;
-- (void) deactivateCloakingDevice;
-- (BOOL) launchCascadeMine;
-- (ShipEntity *) launchEscapeCapsule;
-- (void) dumpCargo;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
-- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
-- (OOCargoType) dumpItem: (ShipEntity*) jetto;
 
 - (void) manageCollisions;
 - (BOOL) collideWithShip:(ShipEntity *)other;
@@ -1176,6 +1162,29 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) considerFiringMissile:(double)delta_t;
 - (Vector) missileLaunchPosition;
 - (ShipEntity *) fireMissile;
+
+@end
+
+
+// Slice 29 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice29)
+
+- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) identifier andTarget:(Entity *) target;	// nullopt: a random missile from the list
+- (BOOL) isMissileFlagSet;
+- (void) setIsMissileFlag:(BOOL)newValue;
+- (OOTimeDelta) missileLoadTime;
+- (void) setMissileLoadTime:(OOTimeDelta)newMissileLoadTime;
+- (void) noticeECM;
+- (BOOL) fireECM;
+- (BOOL) activateCloakingDevice;
+- (void) deactivateCloakingDevice;
+- (BOOL) launchCascadeMine;
+- (ShipEntity *) launchEscapeCapsule;
+- (void) dumpCargo;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
+- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
+- (OOCargoType) dumpItem: (ShipEntity*) jetto;
 
 @end
 

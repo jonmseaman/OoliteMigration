@@ -801,6 +801,22 @@ public:
 	Vector missileLaunchPosition();
 	virtual ::ShipEntity *fireMissile();
 
+	// Slice 29: missile firing, ECM, cloak, cascade mine, escape capsule, cargo dumping.
+	::ShipEntity *fireMissileWithIdentifier(const std::optional<std::string> &requestedIdentifier, ::Entity *target);
+	bool isMissileFlagSet();
+	void setIsMissileFlag(bool newValue);
+	OOTimeDelta missileLoadTime();
+	void setMissileLoadTime(OOTimeDelta newMissileLoadTime);
+	virtual void noticeECM();
+	virtual bool fireECM();
+	virtual bool activateCloakingDevice();
+	virtual void deactivateCloakingDevice();
+	bool launchCascadeMine();
+	virtual ::ShipEntity *launchEscapeCapsule();
+	virtual void dumpCargo();
+	::ShipEntity *dumpCargoItem(const std::optional<std::string> &preferred);
+	OOCargoType dumpItem(::ShipEntity *cargoObj);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
