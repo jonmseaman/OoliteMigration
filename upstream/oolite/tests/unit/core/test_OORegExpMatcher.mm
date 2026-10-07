@@ -7,7 +7,7 @@
 	and the ooscript engine (QuickJS), so every match below is the real engine's answer. The
 	Objective-C glue the matcher uses but whose files reach the whole game (the engine singleton,
 	OOJSFunction, OOJSValue and the two value converters; OOJavaScriptEngine.mm links everything)
-	is replaced by the minimal definitions below, which count what the matcher asks of them
+	is replaced by the minimal definitions below (OOJSFunction's C++ members since bead oo-9ht.41), which count what the matcher asks of them
 	(ADR-0056 amendment 1 item 8, amendment oo-z1s4 item 4). The expectations were written against the Objective-C API and
 	run on the unconverted class first: what matches, the flags, the empty pattern, the cache
 	(one compiled RegExp per pattern and flags), and the pseudo-singleton (one matcher per
@@ -19,6 +19,7 @@
 */
 
 #import "OORegExpMatcher.h"
+#import "OOJSFunction.h"
 #import "oofnd/objc/OOObject.h"
 
 #include "oo_test.hpp"
@@ -71,55 +72,38 @@ ooscript::ClassDef sGlobalClass = { "Global", ooscript::ClassFlag::Global, nullp
 @end
 
 
-@interface OOJSFunction: OOObject
+// OOJSFunction (src/Core/Scripting/OOJSFunction.h): the members the matcher calls, defined here in
+// place of OOJSFunction.mm. Until bead oo-9ht.41 deleted the class's Objective-C facade this was
+// an Objective-C stub of the same name; the C++ stand-in does and counts the same.
+oo::Ref<OOJSFunction> OOJSFunction::initWithName(const std::optional<std::string> &name, ooscript::Object scope, const std::optional<std::string> &code, NSUInteger argCount, const char **argNames, const std::optional<std::string> &fileName, NSUInteger lineNumber, ooscript::Context context)
 {
-@private
-	ooscript::Object _functionObject;
-	ooscript::Function _function;
-}
-- (id) initWithName:(const std::optional<std::string> &)name scope:(ooscript::Object)scope code:(const std::optional<std::string> &)code argumentCount:(NSUInteger)argCount argumentNames:(const char **)argNames fileName:(const std::optional<std::string> &)fileName lineNumber:(NSUInteger)lineNumber context:(ooscript::Context)context;
-- (BOOL) evaluateWithContext:(ooscript::Context)context scope:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)result;
-@end
-
-@implementation OOJSFunction
-
-- (id) initWithName:(const std::optional<std::string> &)name scope:(ooscript::Object)scope code:(const std::optional<std::string> &)code argumentCount:(NSUInteger)argCount argumentNames:(const char **)argNames fileName:(const std::optional<std::string> &)fileName lineNumber:(NSUInteger)lineNumber context:(ooscript::Context)context
-{
-	self = [super init];
-	if (self == nil)  return nil;
 	sFunctionsMade++;
-	if (sFailCompile)
-	{
-		[self release];
-		return nil;
-	}
+	if (sFailCompile)  return nullptr;
 	const std::u16string units = oo::utf8ToUtf16(code.value_or(std::string()));
-	_function = ooscript::compileUCFunction(context, (scope != nullptr) ? scope : sGlobal, name ? name->c_str() : nullptr, static_cast<unsigned>(argCount), argNames, units.data(), units.size(), fileName ? fileName->c_str() : nullptr, static_cast<unsigned>(lineNumber));
-	if (_function == nullptr)
-	{
-		[self release];
-		return nil;
-	}
-	_functionObject = ooscript::getFunctionObject(_function);
-	ooscript::addNamedObjectRoot(context, &_functionObject, "test OOJSFunction");
-	return self;
+	ooscript::Function function = ooscript::compileUCFunction(context, (scope != nullptr) ? scope : sGlobal, name ? name->c_str() : nullptr, static_cast<unsigned>(argCount), argNames, units.data(), units.size(), fileName ? fileName->c_str() : nullptr, static_cast<unsigned>(lineNumber));
+	if (function == nullptr)  return nullptr;
+	return oo::adopt(new OOJSFunction(function, context));
 }
 
 
-- (void) dealloc
+OOJSFunction::OOJSFunction(ooscript::Function function, ooscript::Context context)
 {
-	if (_functionObject != nullptr)  ooscript::removeObjectRoot(gOOJSMainThreadContext, &_functionObject);
-	[super dealloc];
+	_function = function;
+	ooscript::addNamedObjectRoot(context, reinterpret_cast<ooscript::Object *>(&_function), "test OOJSFunction");	// a function is its object, as OOJSFunction.mm roots it
 }
 
 
-- (BOOL) evaluateWithContext:(ooscript::Context)context scope:(ooscript::Object)jsThis argc:(unsigned)argc argv:(ooscript::Value *)argv result:(ooscript::Value *)result
+OOJSFunction::~OOJSFunction()
+{
+	if (_function != nullptr)  ooscript::removeObjectRoot(gOOJSMainThreadContext, reinterpret_cast<ooscript::Object *>(&_function));
+}
+
+
+bool OOJSFunction::evaluateWithContext(ooscript::Context context, ooscript::Object jsThis, unsigned argc, ooscript::Value *argv, ooscript::Value *result)
 {
 	sEvaluations++;
 	return ooscript::callFunction(context, (jsThis != nullptr) ? jsThis : sGlobal, _function, argc, argv, result);
 }
-
-@end
 
 
 @interface OOJSValue: OOObject
