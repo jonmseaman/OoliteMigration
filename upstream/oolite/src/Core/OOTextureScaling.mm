@@ -46,9 +46,9 @@ SOFTWARE.
 	NOTE: the function definitions are grouped together for best code cache
 	coherence rather than the order listed here.
  */
-static BOOL GenerateMipMaps1(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height) NONNULL_FUNC;
-static BOOL GenerateMipMaps2(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height) NONNULL_FUNC;
-static BOOL GenerateMipMaps4(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height) NONNULL_FUNC;
+static bool GenerateMipMaps1(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height) NONNULL_FUNC;
+static bool GenerateMipMaps2(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height) NONNULL_FUNC;
+static bool GenerateMipMaps4(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height) NONNULL_FUNC;
 
 
 /*	ScaleToHalf_P_xN functions
@@ -92,7 +92,7 @@ static void SqueezeHorizontally2(OOPixMap srcPx, OOPixMapDimension dstWidth);
 static void SqueezeHorizontally4(OOPixMap srcPx, OOPixMapDimension dstWidth);
 
 
-static BOOL EnsureCorrectDataSize(OOPixMap *pixMap, BOOL leaveSpaceForMipMaps) NONNULL_FUNC;
+static bool EnsureCorrectDataSize(OOPixMap *pixMap, bool leaveSpaceForMipMaps) NONNULL_FUNC;
 
 
 #if !OOLITE_NATIVE_64_BIT
@@ -228,7 +228,7 @@ int32_t	OSAtomicAdd32(int32_t __theAmount, volatile int32_t *__theValue);
 
 #define DUMP_MIP_MAP_PREPARE(pl)		uint32_t dumpPlanes = pl; \
 										uint32_t dumpLevel = 0; \
-										BOOL dumpThis = (dumpPlanes & DUMP_CHANNELS) != 0; \
+										bool dumpThis = (dumpPlanes & DUMP_CHANNELS) != 0; \
 										SInt32 dumpID = dumpThis ? OSAtomicAdd32(1, &sPreviousDumpID) : 0;
 #define DUMP_MIP_MAP_DUMP(px, w, h)		if (dumpThis) DumpMipMap(px, w, h, dumpPlanes, dumpID, dumpLevel++);
 static void DumpMipMap(void *data, OOPixMapDimension width, OOPixMapDimension height, OOPixMapFormat format, SInt32 ID, uint32_t level);
@@ -246,10 +246,10 @@ static void DumpMipMap(void *data, OOPixMapDimension width, OOPixMapDimension he
 #endif
 
 
-OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimension dstHeight, BOOL leaveSpaceForMipMaps)
+OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimension dstHeight, bool leaveSpaceForMipMaps)
 {
 	OOPixMap			dstPx = {0}, sparePx = {0};
-	BOOL				OK = YES;
+	bool				OK = YES;
 	
 	//	Sanity check.
 	if (EXPECT_NOT(!OOIsValidPixMap(srcPx)))
@@ -344,7 +344,7 @@ FAIL:
 
 
 // FIXME: should take an OOPixMap.
-BOOL OOGenerateMipMaps(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height, OOPixMapFormat format)
+bool OOGenerateMipMaps(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height, OOPixMapFormat format)
 {
 	if (EXPECT_NOT(width != OORoundUpToPowerOf2_PixMap(width) || height != OORoundUpToPowerOf2_PixMap(height)))
 	{
@@ -378,7 +378,7 @@ BOOL OOGenerateMipMaps(void *textureBytes, OOPixMapDimension width, OOPixMapDime
 }
 
 
-static BOOL GenerateMipMaps1(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height)
+static bool GenerateMipMaps1(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height)
 {
 	OOPixMapDimension		w = width, h = height;
 	uint8_t					*curr, *next;
@@ -600,7 +600,7 @@ static void ScaleToHalf_1_x8(void *srcBytes, void *dstBytes, OOPixMapDimension s
 #endif
 
 
-static BOOL GenerateMipMaps2(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height)
+static bool GenerateMipMaps2(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height)
 {
 	OOPixMapDimension		w = width, h = height;
 	uint16_t				*curr, *next;
@@ -697,7 +697,7 @@ static void ScaleToHalf_2_x1(void *srcBytes, void *dstBytes, OOPixMapDimension s
 }
 
 
-static BOOL GenerateMipMaps4(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height)
+static bool GenerateMipMaps4(void *textureBytes, OOPixMapDimension width, OOPixMapDimension height)
 {
 	OOPixMapDimension		w = width, h = height;
 	uint32_t				*curr, *next;
@@ -1681,7 +1681,7 @@ static void SqueezeVertically4(OOPixMap srcPx, OOPixMapDimension dstHeight)
 }
 
 
-static BOOL EnsureCorrectDataSize(OOPixMap *pixMap, BOOL leaveSpaceForMipMaps)
+static bool EnsureCorrectDataSize(OOPixMap *pixMap, bool leaveSpaceForMipMaps)
 {
 	size_t				correctSize;
 	void				*bytes = NULL;

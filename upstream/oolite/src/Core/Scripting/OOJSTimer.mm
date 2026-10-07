@@ -218,7 +218,7 @@ bool OOJSTimer::initWithDelay(OOTimeAbsolute delay, OOTimeDelta interval, ooscri
 		_owningScript = oo::adoptObjC(static_cast<::OOJSScript *>([[::OOJSScript currentlyRunningScript] weakRetain]));
 
 		oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-															[OOJavaScriptEngine sharedEngine],
+															[::OOJavaScriptEngine sharedEngine],
 															[this](const oo::Notification &) { deleteJSPointers(); });
 	}
 
@@ -241,7 +241,7 @@ void OOJSTimer::deleteJSPointers()
 		OOJSRelinquishContext(context);
 
 		oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-																[OOJavaScriptEngine sharedEngine]);
+																[::OOJavaScriptEngine sharedEngine]);
 	}
 }
 
@@ -288,7 +288,7 @@ void OOJSTimer::timerFired()
 	ooscript::Value					rval = ooscript::undefinedValue();
 	bool					described = false;	// was the description itself, used only to test for nil
 
-	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
+	::OOJavaScriptEngine *engine = [::OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();
 
 	// stop and remove the timer if _jsThis (the first parameter in the constructor) dies.

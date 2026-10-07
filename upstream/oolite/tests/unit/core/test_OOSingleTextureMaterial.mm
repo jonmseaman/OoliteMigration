@@ -278,7 +278,7 @@ OO_TEST(unapplyWithNext)
 		OO_CHECK(Same(c, { 0.5f, 0.25f, 0.125f, 1 }));
 
 		// A basic material: no texture; it sets its own GL material.
-		m->unapplyWithNext(oo::ToCxx(static_cast<OOMaterial *>([[[OOBasicMaterial alloc] cxx_initWithName:std::string("Basic")] autorelease])));
+		m->unapplyWithNext(OOBasicMaterial::materialWithName(std::string("Basic")).get());
 		OO_CHECK(gTextureApplyNones == applyNones + 1);
 		glGetMaterialfv(GL_FRONT, GL_DIFFUSE, c);
 		OO_CHECK(Same(c, { 0.5f, 0.25f, 0.125f, 1 }));
@@ -338,14 +338,14 @@ OO_TEST(cxxAPI)
 }
 
 
-// Objective-C sees a single-texture material as the nearest facade, OOBasicMaterial's (bead oo-9ht.38).
+// Objective-C sees a single-texture material as an OOMaterial (beads oo-9ht.38, oo-9ht.33).
 OO_TEST(crossesAsTheBasicMaterialFacade)
 {
 	@autoreleasepool
 	{
 		const oo::Ref<OOSingleTextureMaterial> m = OOSingleTextureMaterial::materialWithName(std::string("Cxx"), MakeTexture(), oo::PList());
 		OOMaterial *facade = oo::ToObjC(static_cast<cxx::OOMaterial *>(m.get()));
-		OO_CHECK([facade isMemberOfClass:[OOBasicMaterial class]]);
+		OO_CHECK([facade isMemberOfClass:[OOMaterial class]]);
 		OO_CHECK(oo::ToCxx(facade) == m.get() && oo::AsObjCMaterial(m.get()) == nullptr);
 		OO_CHECK([facade cxx_name] == std::optional<std::string>("Cxx"));
 		const std::string text = oo::DescriptionOf(facade);

@@ -2,7 +2,6 @@
 
 oolite_sources += files(
     'OOBasicMaterial.mm',
-    'OOBasicMaterial+ObjCBridge.mm',
     'OOCombinedEmissionMapGenerator.mm',
     'OOCombinedEmissionMapGenerator+ObjCBridge.mm',
     'OOConcreteTexture.mm',
@@ -10,7 +9,6 @@ oolite_sources += files(
     'OOMaterial.mm',
     'OOMaterial+ObjCBridge.mm',
     'OOMaterialConvenienceCreators.mm',
-    'OOMaterialConvenienceCreators+ObjCBridge.mm',
     'OOMaterialSpecifier.mm',
     'OOMultiTextureMaterial.mm',
     'OONullTexture.mm',

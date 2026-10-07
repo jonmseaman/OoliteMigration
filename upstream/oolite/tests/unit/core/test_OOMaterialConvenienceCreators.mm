@@ -6,13 +6,13 @@
 	shader material (named in the configuration, or synthesized from the configuration's maps when
 	shaders are on and the configuration asks for more than fixed function), a multitexture
 	material for emission and illumination maps, a single-texture material, or a basic one. This
-	pins, through the Objective-C API its caller (OOMesh) uses, which material each configuration
+	pins, through the C++ static members its caller (OOMesh) uses, which material each configuration
 	gets under each universe setting, and the synthesized configuration itself as it is written to
 	the cache, against the real material classes and GLSL programs compiled in a hidden GL context.
 	The universe, the resource manager (shader files), the cache manager, the textures and the
 	emission-map generator are stand-ins (proposed ADR-0056 amendment oo-z1s4 item 4).
-	Those checks ran on the Objective-C category first and now run through its forwarders; after
-	them, the same choices through the C++ static members (ADR-0056 amendment oo-9fwb).
+	Those checks ran on the Objective-C category first (oo-9fwb); its bridge was deleted by
+	bead oo-9ht.59 and they run through the C++ static members (ADR-0056 amendment oo-9fwb).
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -247,30 +247,19 @@ bool SetUp(BOOL useShaders, OOGraphicsDetail detail = DETAIL_LEVEL_MINIMUM)
 }
 
 
-OOMaterial *Make(const char *name, oo::PList::Dict config, BOOL smooth = NO, const std::optional<std::string> &cacheKey = std::nullopt)
+oo::Ref<cxx::OOMaterial> Make(const char *name, oo::PList::Dict config, bool smooth = false, const std::optional<std::string> &cacheKey = std::nullopt)
 {
-	return [OOMaterial materialWithName:(name != nullptr ? std::optional<std::string>(name) : std::nullopt)
-							   cacheKey:cacheKey
-						  configuration:oo::PList(std::move(config))
-								 macros:oo::PList()
-						  bindingTarget:nil
-						forSmoothedMesh:smooth];
-}
-
-
-bool Is(OOMaterial *material, Class cls)
-{
-	return material != nil && [material isMemberOfClass:cls];
+	return cxx::OOMaterial::materialWithName(name != nullptr ? std::optional<std::string>(name) : std::nullopt,
+											 cacheKey, oo::PList(std::move(config)), oo::PList(), nil, smooth);
 }
 
 
 // The material's C++ class, exactly: what -isMemberOfClass: asked of a subclass with a facade of
 // its own, before the facade-deletion beads (oo-9ht.42) made Objective-C see the nearest facade.
 template <typename T>
-bool IsExactly(OOMaterial *material)
+bool IsExactly(const oo::Ref<cxx::OOMaterial> &material)
 {
-	cxx::OOMaterial *part = oo::ToCxx(material);
-	return part != nullptr && typeid(*part) == typeid(T);
+	return material != nullptr && typeid(*material.get()) == typeid(T);
 }
 
 }	// namespace
@@ -286,17 +275,17 @@ OO_TEST(withoutShaders)
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "diffuse_map", oo::PList("d.png") } })));
 		// With no name the single-texture initialiser fails (it needs one), so basic (observed on the
 		// Objective-C category before its conversion).
-		OO_CHECK(Is(Make(nullptr, { { "diffuse_map", oo::PList("d.png") } }), [OOBasicMaterial class]));
+		OO_CHECK(IsExactly<OOBasicMaterial>(Make(nullptr, { { "diffuse_map", oo::PList("d.png") } })));
 		// No diffuse map: basic; one that fails to load: basic too.
-		OO_CHECK(Is(Make(nullptr, {}), [OOBasicMaterial class]));
-		OO_CHECK(Is(Make("missing", {}), [OOBasicMaterial class]));
+		OO_CHECK(IsExactly<OOBasicMaterial>(Make(nullptr, {})));
+		OO_CHECK(IsExactly<OOBasicMaterial>(Make("missing", {})));
 		// Emission or illumination maps: multitexture, when the combiners are there (they are).
 		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } })));
 		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "illumination_map", oo::PList("i.png") } })));
 		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "emission_and_illumination_map", oo::PList("ei.png") } })));
 		// A shader configuration without shaders: its fixed-function equivalent.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "vertex_shader", oo::PList("named") } })));
-		OO_CHECK([Make("Named", {}) cxx_name] == std::optional<std::string>("Named"));
+		OO_CHECK(Make("Named", {})->name() == std::optional<std::string>("Named"));
 	}
 }
 
@@ -306,7 +295,7 @@ OO_TEST(namedShaders)
 	if (!SetUp(YES))  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		OOMaterial *m = Make("hull.png", { { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } });
+		oo::Ref<cxx::OOMaterial> m = Make("hull.png", { { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } });
 		OO_CHECK(IsExactly<OOShaderMaterial>(m));
 		OO_CHECK(gCacheWrites.empty());
 
@@ -324,7 +313,7 @@ OO_TEST(synthesizedShaders)
 	{
 		// Full shader detail: the configuration is synthesized into a shader material, and the
 		// synthesized configuration is cached under the cache key, the name and the configuration.
-		OOMaterial *m = Make("hull.png", { { "emission_map", oo::PList("e.png") } }, NO, std::string("ship"));
+		oo::Ref<cxx::OOMaterial> m = Make("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"));
 		OO_CHECK(IsExactly<OOShaderMaterial>(m));
 		OO_CHECK(gCacheWrites.size() == 1 && gCacheWrites[0].starts_with("synthesized shader materials|ship/hull.png/"));
 
@@ -347,7 +336,7 @@ OO_TEST(synthesizedShaders)
 
 		// Asked again: read from the cache, not written.
 		gCacheWrites.clear();
-		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, NO, std::string("ship"))));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"))));
 		OO_CHECK(gCacheWrites.empty());
 
 		// No cache key: synthesized, not cached.
@@ -363,7 +352,7 @@ OO_TEST(synthesisTriggersAndLoops)
 	{
 		// Low detail: fixed function, unless smoothed or a map needs the shader.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
-		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", {}, YES)));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", {}, true)));
 		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "normal_map", oo::PList("n.png") } })));
 		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "specular_map", oo::PList("s.png") } })));
 
@@ -374,8 +363,8 @@ OO_TEST(synthesisTriggersAndLoops)
 			conversion).
 		*/
 		gShaderFiles.erase("oolite-default-shader.fragment");
-		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {}, YES)));
-		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, YES)));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {}, true)));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, true)));
 		// Without the smoothing that forces the shader, at low detail, the emission map still asks for
 		// the shader, and the result is the same.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } })));
@@ -393,44 +382,23 @@ OO_TEST(fromDictionaries)
 
 		auto make = [&](const char *name, const oo::PList &m, const oo::PList &s)
 		{
-			return [OOMaterial materialWithName:std::string(name) cacheKey:std::nullopt materialDictionary:m shadersDictionary:s macros:oo::PList() bindingTarget:nil forSmoothedMesh:NO];
+			return cxx::OOMaterial::materialWithName(std::string(name), std::nullopt, m, s, oo::PList(), nil, false);
 		};
 
 		// With shaders, the shaders dictionary's entry; without, the materials dictionary's.
 		OO_CHECK(IsExactly<OOShaderMaterial>(make("hull.png", materials, shaders)));
 		gUniverse->_useShaders = NO;
-		OOMaterial *m = make("hull.png", materials, shaders);
+		oo::Ref<cxx::OOMaterial> m = make("hull.png", materials, shaders);
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(m));
 		// Neither: an empty configuration if the texture of that name loads, else nothing.
 		OO_CHECK(IsExactly<OOSingleTextureMaterial>(make("other.png", materials, shaders)));
-		OO_CHECK(make("missing", materials, shaders) == nil);
-		OO_CHECK(make("missing", oo::PList(), oo::PList()) == nil);
+		OO_CHECK(make("missing", materials, shaders) == nullptr);
+		OO_CHECK(make("missing", oo::PList(), oo::PList()) == nullptr);
 	}
 }
 
 
-// --- The C++ static members (after the conversion) -------------------------------------------------
-
-namespace {
-
-bool IsCxx(const oo::Ref<cxx::OOMaterial> &material, Class cls)
-{
-	return material != nullptr && [oo::ToObjC(material) isMemberOfClass:cls];
-}
-
-template <typename T>
-bool IsCxxExactly(const oo::Ref<cxx::OOMaterial> &material)
-{
-	return material != nullptr && typeid(*material.get()) == typeid(T);
-}
-
-oo::Ref<cxx::OOMaterial> MakeCxx(const char *name, oo::PList::Dict config, bool smooth = false, const std::optional<std::string> &cacheKey = std::nullopt)
-{
-	return cxx::OOMaterial::materialWithName(name != nullptr ? std::optional<std::string>(name) : std::nullopt,
-											 cacheKey, oo::PList(std::move(config)), oo::PList(), nil, smooth);
-}
-
-}	// namespace
+// --- The C++ static members ------------------------------------------------------------------------
 
 
 OO_TEST(cxxStaticMembers)
@@ -438,25 +406,23 @@ OO_TEST(cxxStaticMembers)
 	if (!SetUp(NO))  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		OO_CHECK(IsCxxExactly<OOSingleTextureMaterial>(MakeCxx("hull.png", {})));
-		OO_CHECK(IsCxx(MakeCxx(nullptr, {}), [OOBasicMaterial class]));
-		OO_CHECK(IsCxxExactly<OOMultiTextureMaterial>(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } })));
-		OO_CHECK(MakeCxx("Named", {})->name() == std::optional<std::string>("Named"));
+		OO_CHECK(IsExactly<OOSingleTextureMaterial>(Make("hull.png", {})));
+		OO_CHECK(IsExactly<OOBasicMaterial>(Make(nullptr, {})));
+		OO_CHECK(IsExactly<OOMultiTextureMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } })));
+		OO_CHECK(Make("Named", {})->name() == std::optional<std::string>("Named"));
 	}
 
 	if (!SetUp(YES, DETAIL_LEVEL_SHADERS))  { OO_CHECK(false); return; }
 	@autoreleasepool
 	{
-		OO_CHECK(IsCxxExactly<OOShaderMaterial>(MakeCxx("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"))));
+		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", { { "emission_map", oo::PList("e.png") } }, false, std::string("ship"))));
 		OO_CHECK(gCacheWrites.size() == 1);
 
 		const oo::PList materials = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "diffuse_map", oo::PList("m.png") } }) } });
 		const oo::PList shaders = oo::PList(oo::PList::Dict{ { "hull.png", oo::PList(oo::PList::Dict{ { "vertex_shader", oo::PList("named") }, { "fragment_shader", oo::PList("named") } }) } });
-		OO_CHECK(IsCxxExactly<OOShaderMaterial>(cxx::OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false)));
+		OO_CHECK(IsExactly<OOShaderMaterial>(cxx::OOMaterial::materialWithName(std::string("hull.png"), std::nullopt, materials, shaders, oo::PList(), nil, false)));
 		OO_CHECK(cxx::OOMaterial::materialWithName(std::string("missing"), std::nullopt, oo::PList(), oo::PList(), oo::PList(), nil, false) == nullptr);
 
-		// The facade's class method answers the same kind as the static member it forwards to.
-		OO_CHECK(IsExactly<OOShaderMaterial>(Make("hull.png", {}, YES)) && IsCxxExactly<OOShaderMaterial>(MakeCxx("hull.png", {}, true)));
 	}
 }
 
