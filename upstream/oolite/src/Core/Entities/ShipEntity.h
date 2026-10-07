@@ -236,6 +236,44 @@ public:
 	bool setUpOneSubentity(const oo::PList &subentDict);
 	bool setUpOneFlasher(const oo::PList &subentDict);
 
+	// Slice 4: standard subentities and cargo pods; descriptions, mesh, vectors, misjump, subentity lists, AI scripts.
+	bool setUpOneStandardSubentity(const oo::PList &subentDict, bool asTurret);
+	bool isTemplateCargoPod();
+	void setUpCargoType(const std::string &cargoString);
+	void removeScript();
+	void clearSubEntities();
+	Quaternion subEntityRotationalVelocity();
+	void setSubEntityRotationalVelocity(Quaternion rv);
+	std::optional<std::string> shortDescriptionComponents();
+	GLfloat getSunGlareFilter();
+	void setSunGlareFilter(GLfloat newValue);
+	GLfloat getAccuracy();
+	void setAccuracy(GLfloat new_accuracy);
+	::OOMesh *mesh();
+	void setMesh(::OOMesh *mesh);
+	BoundingBox getTotalBoundingBox();
+	Vector forwardVector();
+	Vector upVector();
+	Vector rightVector();
+	bool scriptedMisjump();
+	void setScriptedMisjump(bool newValue);
+	GLfloat scriptedMisjumpRange();
+	void setScriptedMisjumpRange(GLfloat newValue);
+	std::vector<oo::ObjCRef<::Entity *>> getSubEntities();
+	NSUInteger subEntityCount();
+	bool hasSubEntity(::Entity *sub);
+	std::vector<oo::ObjCRef<::Entity *>> subEntityEnumerator();
+	std::vector<oo::ObjCRef<::ShipEntity *>> shipSubEntities();
+	std::vector<oo::ObjCRef<::OOFlasherEntity *>> flasherEnumerator();
+	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> exhausts();
+	::ShipEntity *subEntityTakingDamage();
+	void setSubEntityTakingDamage(::ShipEntity *sub);
+	::OOScript *shipScript();
+	::OOScript *shipAIScript();
+	OOTimeAbsolute shipAIScriptWakeTime();
+	void setAIScriptWakeTime(OOTimeAbsolute t);
+	std::optional<std::string> descriptionComponents() const override;
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired

@@ -546,4 +546,103 @@ OO_TEST(setUpSubEntitiesAndFrustumRadius)
 }
 
 
+// --- Slice 4: standard subentities, cargo pods, descriptions, mesh, vectors, misjump, lists (oo-ln2m1)
+
+OO_TEST(cargoTypeAndTemplatePod)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"pod" definition:Definition()] autorelease];
+		OO_CHECK(![ship isTemplateCargoPod]);
+		[ship setUpCargoType:"CARGO_ALLOY"];
+		OO_CHECK(Part(ship)->cargo_type == CARGO_RANDOM && Part(ship)->commodity_type == std::optional<std::string>("alloys") && Part(ship)->commodity_amount == 1);
+		[ship setUpCargoType:"CARGO_SCRIPTED_ITEM"];
+		OO_CHECK(Part(ship)->cargo_type == CARGO_SCRIPTED_ITEM && Part(ship)->commodity_type == std::nullopt && Part(ship)->commodity_amount == 1);
+		[ship setUpCargoType:"CARGO_NOT_CARGO"];
+		OO_CHECK(Part(ship)->cargo_type == CARGO_NOT_CARGO);
+	}
+}
+
+
+OO_TEST(simpleAccessors)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"acc" definition:Definition()] autorelease];
+		[ship setSunGlareFilter:2.0f];
+		OO_CHECK([ship sunGlareFilter] == 1.0f);
+		[ship setSunGlareFilter:0.25f];
+		OO_CHECK([ship sunGlareFilter] == 0.25f);
+
+		[ship setAccuracy:20.0f];
+		OO_CHECK([ship accuracy] == 10.0f);
+		OO_CHECK(Part(ship)->pitch_tolerance == (GLfloat)(0.01 * (85.0f + 10.0f)) && Part(ship)->aim_tolerance == (GLfloat)(240.0 - 18.0f * 10.0f));
+		OO_CHECK(Part(ship)->missile_load_time == 2.0);
+		[ship setAccuracy:-9.0f];
+		OO_CHECK([ship accuracy] == -5.0f);
+
+		Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f };
+		[ship setSubEntityRotationalVelocity:q];
+		OO_CHECK(quaternion_equal([ship subEntityRotationalVelocity], q));
+
+		[ship setScriptedMisjump:YES];
+		[ship setScriptedMisjumpRange:0.75f];
+		OO_CHECK([ship scriptedMisjump] && [ship scriptedMisjumpRange] == 0.75f);
+
+		OO_CHECK([ship mesh] == nil && [ship octree] == nil);
+		OO_CHECK([ship shipScript] == nil && [ship shipAIScript] == nil);
+		[ship setAIScriptWakeTime:12.5];
+		OO_CHECK([ship shipAIScriptWakeTime] == 12.5);
+		[ship removeScript];
+		OO_CHECK([ship shipScript] == nil);
+
+		BoundingBox box = [ship totalBoundingBox];
+		OO_CHECK(box.min.x == 0 && box.max.x == 0);
+	}
+}
+
+
+OO_TEST(descriptions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"desc" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{ { "name", oo::PList(std::string("Viper")) } })]);
+		OO_CHECK([ship cxx_shortDescriptionComponents] == std::optional<std::string>("\"Viper\""));
+		const std::optional<std::string> desc = [ship cxx_descriptionComponents];
+		OO_CHECK(desc.has_value() && desc->rfind("\"Viper\" ", 0) == 0);
+	}
+}
+
+
+// The subentity lists, the ship / flasher / exhaust filters, and the subentity taking damage.
+OO_TEST(subEntityLists)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"mother" definition:Definition()] autorelease];
+		TestShip *sub = [[[TestShip alloc] cxx_initWithKey:"sub" definition:Definition()] autorelease];
+		OO_CHECK([ship subEntityCount] == 0 && [ship subEntities].empty());
+		[ship addSubEntity:sub];
+		OO_CHECK([ship subEntityCount] == 1 && [ship hasSubEntity:sub]);
+		OO_CHECK([ship subEntities].size() == 1 && [ship subEntities][0].get() == sub);
+		OO_CHECK([ship subEntityEnumerator].size() == 1);
+		OO_CHECK([ship cxx_shipSubEntities].size() == 1 && [ship cxx_shipSubEntities][0].get() == sub);
+		OO_CHECK([ship flasherEnumerator].empty() && [ship cxx_exhausts].empty());
+		[ship setSubEntityTakingDamage:sub];
+		OO_CHECK([ship subEntityTakingDamage] == sub);
+		[ship setSubEntityTakingDamage:ship];	// not a subentity: refused (debug builds)
+#ifndef NDEBUG
+		OO_CHECK([ship subEntityTakingDamage] == nil);
+#endif
+		[ship clearSubEntities];
+		OO_CHECK([ship subEntityCount] == 0 && [sub owner] == nil);
+	}
+}
+
+
 OO_TEST_MAIN()

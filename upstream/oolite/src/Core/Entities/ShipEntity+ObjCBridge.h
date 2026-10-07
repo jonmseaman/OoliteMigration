@@ -53,45 +53,20 @@ MA 02110-1301, USA.
 - (BOOL) hasAutoAI;
 - (BOOL) hasNewAI;
 - (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
-- (void) removeScript;
-- (OOScript *) shipScript;
-- (OOScript *) shipAIScript;
-- (OOTimeAbsolute) shipAIScriptWakeTime;
-- (void) setAIScriptWakeTime:(OOTimeAbsolute) t;
 - (double) frustration;
 - (void) setLaunchDelay:(double)delay;
 
 - (void) interpretAIMessage:(const std::string &)message;	// shared selector (proposed ADR-0043), called by name (ADR-0055 item 5)
 
-- (GLfloat)accuracy;
-- (void)setAccuracy:(GLfloat) new_accuracy;
 
-- (OOMesh *)mesh;
-- (void)setMesh:(OOMesh *)mesh;
 
-- (BoundingBox) totalBoundingBox;
 
-- (Vector) forwardVector;
-- (Vector) upVector;
-- (Vector) rightVector;
 
-- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
-- (NSUInteger) subEntityCount;
-- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
-- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
 // The ship / exhaust subentities, a snapshot in subentity order (empty for a nil receiver).
-- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
-- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
 
-- (ShipEntity *) subEntityTakingDamage;
-- (void) setSubEntityTakingDamage:(ShipEntity *)sub;
 
-- (void) clearSubEntities;	// Releases and clears subentity array, after making sure subentities don't think ship is owner.
 
-- (Quaternion) subEntityRotationalVelocity;
-- (void) setSubEntityRotationalVelocity:(Quaternion)rv;
 
 // subentities management
 
@@ -118,7 +93,6 @@ MA 02110-1301, USA.
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 
 - (std::optional<std::string>) cxx_shipDataKey;
 - (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
@@ -444,8 +418,6 @@ MA 02110-1301, USA.
 
 - (int) legalStatus;
 
-- (BOOL) isTemplateCargoPod;
-- (void) setUpCargoType:(const std::string &)cargoString;
 - (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
 - (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
 - (std::optional<std::string>) cxx_commodityType;
@@ -737,8 +709,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) broadcastHitByLaserFrom:(ShipEntity*) aggressor_ship;
 
 // Sun glare filter - 0 for no filter, 1 for full filter
-- (GLfloat) sunGlareFilter;
-- (void) setSunGlareFilter:(GLfloat)newValue;
 
 // Unpiloted ships cannot broadcast messages, unless the unpilotedOverride is set to YES.
 - (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
@@ -779,10 +749,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (oo::PList) scriptInfo;	// flipped with its family (bead oo-3rb.284): empty dict when there is none
 - (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
-- (BOOL) scriptedMisjump;
-- (void) setScriptedMisjump:(BOOL)newValue;
-- (GLfloat) scriptedMisjumpRange;
-- (void) setScriptedMisjumpRange:(GLfloat)newValue;
 
 
 - (Entity *)entityForShaderProperties;
@@ -884,6 +850,50 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (GLfloat)frustumRadius;
 - (BOOL) setUpOneSubentity:(const oo::PList &)subentDict;
 - (BOOL) setUpOneFlasher:(const oo::PList &)subentDict;
+
+@end
+
+
+// Slice 4 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice4)
+
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
+- (BOOL) isTemplateCargoPod;
+- (void) setUpCargoType:(const std::string &)cargoString;
+- (void) removeScript;
+- (void) clearSubEntities;	// Releases and clears subentity array, after making sure subentities don't think ship is owner.
+- (Quaternion) subEntityRotationalVelocity;
+- (void) setSubEntityRotationalVelocity:(Quaternion)rv;
+- (std::optional<std::string>) cxx_shortDescriptionComponents;
+- (GLfloat) sunGlareFilter;
+- (void) setSunGlareFilter:(GLfloat)newValue;
+- (GLfloat)accuracy;
+- (void)setAccuracy:(GLfloat) new_accuracy;
+- (OOMesh *)mesh;
+- (void)setMesh:(OOMesh *)mesh;
+- (BoundingBox) totalBoundingBox;
+- (Vector) forwardVector;
+- (Vector) upVector;
+- (Vector) rightVector;
+- (BOOL) scriptedMisjump;
+- (void) setScriptedMisjump:(BOOL)newValue;
+- (GLfloat) scriptedMisjumpRange;
+- (void) setScriptedMisjumpRange:(GLfloat)newValue;
+- (std::vector<oo::ObjCRef<Entity *>>)subEntities;	// a snapshot; empty when there are none
+- (NSUInteger) subEntityCount;
+- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
+- (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>)flasherEnumerator;	// flasher subentities, a snapshot
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
+- (ShipEntity *) subEntityTakingDamage;
+- (void) setSubEntityTakingDamage:(ShipEntity *)sub;
+- (OOScript *) shipScript;
+- (OOScript *) shipAIScript;
+- (OOTimeAbsolute) shipAIScriptWakeTime;
+- (void) setAIScriptWakeTime:(OOTimeAbsolute) t;
 
 @end
 

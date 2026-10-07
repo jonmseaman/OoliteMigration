@@ -253,3 +253,45 @@ DESTROY(_cxxShip->laser_color);
 - (BOOL) setUpOneFlasher:(const oo::PList &)subentDict	{ return _cxxShip->setUpOneFlasher(subentDict); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice4)
+
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret	{ return _cxxShip->setUpOneStandardSubentity(subentDict, asTurret); }
+- (BOOL) isTemplateCargoPod	{ return _cxxShip->isTemplateCargoPod(); }
+- (void) setUpCargoType:(const std::string &)cargoString	{ _cxxShip->setUpCargoType(cargoString); }
+- (void) removeScript	{ _cxxShip->removeScript(); }
+- (void) clearSubEntities	{ _cxxShip->clearSubEntities(); }
+- (Quaternion) subEntityRotationalVelocity	{ return _cxxShip->subEntityRotationalVelocity(); }
+- (void) setSubEntityRotationalVelocity:(Quaternion)rv	{ _cxxShip->setSubEntityRotationalVelocity(rv); }
+- (std::optional<std::string>) cxx_shortDescriptionComponents	{ return _cxxShip->shortDescriptionComponents(); }
+- (GLfloat) sunGlareFilter	{ return _cxxShip->getSunGlareFilter(); }
+- (void) setSunGlareFilter:(GLfloat)newValue	{ _cxxShip->setSunGlareFilter(newValue); }
+- (GLfloat) accuracy	{ return _cxxShip->getAccuracy(); }
+- (void) setAccuracy:(GLfloat)new_accuracy	{ _cxxShip->setAccuracy(new_accuracy); }
+- (OOMesh *) mesh	{ return _cxxShip->mesh(); }
+- (void) setMesh:(OOMesh *)mesh	{ _cxxShip->setMesh(mesh); }
+- (BoundingBox) totalBoundingBox	{ return _cxxShip->getTotalBoundingBox(); }
+- (Vector) forwardVector	{ return _cxxShip->forwardVector(); }
+- (Vector) upVector	{ return _cxxShip->upVector(); }
+- (Vector) rightVector	{ return _cxxShip->rightVector(); }
+- (BOOL) scriptedMisjump	{ return _cxxShip->scriptedMisjump(); }
+- (void) setScriptedMisjump:(BOOL)newValue	{ _cxxShip->setScriptedMisjump(newValue); }
+- (GLfloat) scriptedMisjumpRange	{ return _cxxShip->scriptedMisjumpRange(); }
+- (void) setScriptedMisjumpRange:(GLfloat)newValue	{ _cxxShip->setScriptedMisjumpRange(newValue); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntities	{ return _cxxShip->getSubEntities(); }
+- (NSUInteger) subEntityCount	{ return _cxxShip->subEntityCount(); }
+- (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub	{ return _cxxShip->hasSubEntity(sub); }
+- (std::vector<oo::ObjCRef<Entity *>>) subEntityEnumerator	{ return _cxxShip->subEntityEnumerator(); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities	{ return _cxxShip->shipSubEntities(); }
+- (std::vector<oo::ObjCRef<OOFlasherEntity *>>) flasherEnumerator	{ return _cxxShip->flasherEnumerator(); }
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts	{ return _cxxShip->exhausts(); }
+- (ShipEntity *) subEntityTakingDamage	{ return _cxxShip->subEntityTakingDamage(); }
+- (void) setSubEntityTakingDamage:(ShipEntity *)sub	{ _cxxShip->setSubEntityTakingDamage(sub); }
+- (OOScript *) shipScript	{ return _cxxShip->shipScript(); }
+- (OOScript *) shipAIScript	{ return _cxxShip->shipAIScript(); }
+- (OOTimeAbsolute) shipAIScriptWakeTime	{ return _cxxShip->shipAIScriptWakeTime(); }
+- (void) setAIScriptWakeTime:(OOTimeAbsolute)t	{ _cxxShip->setAIScriptWakeTime(t); }
+- (std::optional<std::string>) cxx_descriptionComponents	{ return _cxxShip->cxx::ShipEntity::descriptionComponents(); }
+
+@end
