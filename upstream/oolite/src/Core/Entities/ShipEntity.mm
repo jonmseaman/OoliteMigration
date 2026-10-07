@@ -384,893 +384,6 @@ void ShipEntity::initWithKey(const std::string &key)
 
 static constexpr std::string_view kBoulderRole = "boulder";
 
-
-- (BOOL) canAddEquipment:(const std::string &)equipmentKeyIn inContext:(const std::string &)context
-{
-	std::string equipmentKey = equipmentKeyIn;
-	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
-	{
-		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
-	}
-
-	const std::string lcEquipmentKey = oo::str::lowercase(equipmentKey);
-	if (oo::str::hasSuffix(equipmentKey, "MISSILE")||oo::str::hasSuffix(equipmentKey, "MINE")||([self isThargoid] && (oo::str::hasPrefix(lcEquipmentKey, "thargon") || oo::str::hasSuffix(lcEquipmentKey, "thargon"))))
-	{
-		if (_cxxShip->missiles >= _cxxShip->max_missiles) return NO;
-	}
-
-	OOEquipmentType *eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
-
-	// -hasEquipmentItem: with one string key.
-	if (![eqType canCarryMultiple] && [self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO])  return NO;
-	if (![self cxx_equipmentValidToAdd:equipmentKey inContext:context])  return NO;
-
-	return YES;
-}
-
-
-- (OOWeaponFacingSet) weaponFacings
-{
-	return _cxxShip->weapon_facings;
-}
-
-
-- (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict
-{
-	OOWeaponType weaponType = nil;
-
-	if (facing & _cxxShip->weapon_facings)
-	{
-		switch (facing)
-		{
-			case WEAPON_FACING_FORWARD:
-				weaponType = _cxxShip->forward_weapon_type;
-				// if no forward weapon, and not carrying out a strict check, see if subentities have forward weapons, return the first one found.
-				if (isWeaponNone(weaponType) && !strict)
-				{
-					for (const auto &subEntity : [self cxx_shipSubEntities])
-					{
-						if (!isWeaponNone(weaponType))  break;
-						weaponType = subEntity.get()->_cxxShip->forward_weapon_type;
-					}
-				}
-				break;
-				
-			case WEAPON_FACING_AFT:
-				weaponType = _cxxShip->aft_weapon_type;
-				break;
-				
-			case WEAPON_FACING_PORT:
-				weaponType = _cxxShip->port_weapon_type;
-				break;
-				
-			case WEAPON_FACING_STARBOARD:
-				weaponType = _cxxShip->starboard_weapon_type;
-				break;
-				
-			case WEAPON_FACING_NONE:
-				break;
-		}
-	}
-	return weaponType;
-}
-
-- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict
-{
-//	OOWeaponType weaponType = [self weaponTypeIDForFacing:facing strict:strict];
-//	return [OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)];
-	return [self weaponTypeIDForFacing:facing strict:strict];
-}
-
-
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList
-{
-	// if missile_list is empty, avoid exception and return an empty array instead
-	std::vector<oo::ObjCRef<OOEquipmentType *>> list;
-	if (_cxxShip->missile_list[0] != nil)
-	{
-		list.reserve(_cxxShip->missiles);
-		for (unsigned i = 0; i < _cxxShip->missiles; i++)  list.emplace_back(_cxxShip->missile_list[i]);
-	}
-	return list;
-}
-
-
-- (oo::PList) passengerListForScripting
-{
-	return oo::PList(oo::PList::Array{});	// an empty array
-}
-
-
-- (oo::PList) parcelListForScripting
-{
-	return oo::PList(oo::PList::Array{});	// an empty array
-}
-
-
-- (oo::PList) contractListForScripting
-{
-	return oo::PList(oo::PList::Array{});	// an empty array
-}
-
-
-- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role
-{
-	/* 	The generated missile equipment type provides for backward compatibility with pre-1.74 OXPs  missile_roles
-		and follows this template:
-		
-		//NPC equipment, incompatible with player ship. Not buyable because of its TL.
-		(
-			100, 100000, "Missile",
-			"EQ_X_MISSILE",
-			"Unidentified missile type.",
-			{
-				is_external_store = true;
-			}
-		)
-	*/
-	const oo::PList itemInfo(oo::PList::Array{ "100", "100000", "Missile", role, "Unidentified missile type.",
-							oo::PList(oo::PList::Dict{ { "is_external_store", oo::PList("true") } }) });
-
-	[OOEquipmentType cxx_addEquipmentWithInfo:itemInfo];
-	return [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
-}
-
-
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting
-{
-	std::vector<oo::ObjCRef<OOEquipmentType *>>	quip;
-	OOEquipmentType		*eqType = nil;
-	BOOL				isDamaged;
-
-	for (const auto &eqTypeRef : [OOEquipmentType cxx_allEquipmentTypes])
-	{
-		eqType = eqTypeRef.get();
-		const std::string identifier = [eqType cxx_identifier].value_or("");
-		// Equipment list,  consistent with the rest of the API - Kaks
-		if ([eqType canCarryMultiple])
-		{
-			const std::string damagedIdentifier = identifier + "_DAMAGED";
-			NSUInteger i, count = 0;
-			count += [self cxx_countEquipmentItem:identifier];
-			count += [self cxx_countEquipmentItem:damagedIdentifier];
-			for (i=0;i<count;i++)
-			{
-				quip.emplace_back(eqType);
-			}
-		}
-		else
-		{
-			// -hasEquipmentItem: with one string key.
-			isDamaged = [self cxx_hasOneEquipmentItem:identifier + "_DAMAGED" includeWeapons:NO whileLoading:NO];
-			if ([self cxx_hasOneEquipmentItem:identifier includeWeapons:NO whileLoading:NO] || isDamaged)
-			{
-				quip.emplace_back(eqType);
-			}
-		}
-	}
-
-	// Passengers - not supported yet for NPCs, but it's here for genericity.
-	if ([self passengerCapacity] > 0)
-	{
-		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_PASSENGER_BERTH"];
-		//[quip addObject:[self eqDictionaryWithType:eqType isDamaged:NO]];
-		quip.emplace_back(eqType);
-	}
-
-	return quip;
-}
-
-
-- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context
-{
-	return [self cxx_equipmentValidToAdd:equipmentKey whileLoading:NO inContext:context];
-}
-
-
-- (BOOL) cxx_equipmentValidToAdd:(const std::string &)fullEquipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context
-{
-	OOEquipmentType			*eqType = nil;
-	BOOL					validationForDamagedEquipment = NO;
-
-	std::string equipmentKey = fullEquipmentKey;
-	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
-	{
-		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
-	}
-
-	eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
-	if (eqType == nil)  return NO;
-	
-	// need to know if we are trying to add a Repair version of the equipment. In some cases
-	// (e.g. available cargo space required), it makes sense to deny installation of equipment
-	// if the condition is not satisfied, but it doesn't make sense to deny repair when the
-	// equipment is already installed. For now, we are checking only the cargo space condition,
-	// but other conditions might need to be revised too. - Nikos, 20151115
-	if ([self hasEquipmentItem:OptionalKeyPList([eqType cxx_damagedIdentifier])])
-	{
-		validationForDamagedEquipment = YES;
-	}
-	
-	// not all conditions make sence checking while loading a game with already purchaged equipment.
-	// while loading, we mainly need to catch changes when the installed oxps set has changed since saving. 
-	if ([eqType requiresEmptyPylon] && [self missileCount] >= [self missileCapacity] && !loading)  return NO;
-	if ([eqType  requiresMountedPylon] && [self missileCount] == 0 && !loading)  return NO;
-	if ([self availableCargoSpace] < [eqType requiredCargoSpace] && !validationForDamagedEquipment && !loading)  return NO;
-	const std::optional<std::vector<std::string>> requiresEquipment = [eqType cxx_requiresEquipment];
-	const std::optional<std::vector<std::string>> requiresAnyEquipment = [eqType cxx_requiresAnyEquipment];
-	const std::optional<std::vector<std::string>> incompatibleEquipment = [eqType cxx_incompatibleEquipment];
-	if (requiresEquipment.has_value() && ![self hasAllEquipment:KeysPList(*requiresEquipment) includeWeapons:YES whileLoading:loading])  return NO;
-	if (requiresAnyEquipment.has_value() && ![self hasEquipmentItem:KeysPList(*requiresAnyEquipment) includeWeapons:YES whileLoading:loading])  return NO;
-	if (incompatibleEquipment.has_value() && [self hasEquipmentItem:KeysPList(*incompatibleEquipment) includeWeapons:YES whileLoading:loading])  return NO;
-	if ([eqType requiresCleanLegalRecord] && [self legalStatus] != 0 && !loading)  return NO;
-	if ([eqType requiresNonCleanLegalRecord] && [self legalStatus] == 0 && !loading)  return NO;
-	if ([eqType requiresFreePassengerBerth] && [self passengerCount] >= [self passengerCapacity])  return NO;
-	if ([eqType requiresFullFuel] && [self fuel] < [self fuelCapacity] && !loading)  return NO;
-	if ([eqType requiresNonFullFuel] && [self fuel] >= [self fuelCapacity] && !loading)  return NO;
-
-	if (!loading)
-	{
-		const std::optional<std::string> condition_script = [eqType cxx_conditionScript];
-		if (condition_script.has_value())
-		{
-			OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
-			if (condScript != nil) // should always be non-nil, but just in case
-			{
-				ooscript::Context JScontext = OOJSAcquireContext();
-				BOOL OK;
-				bool allow_addition = false;
-				ooscript::Value result;
-				ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(equipmentKey)) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromPList(JScontext, oo::PList(context))};
-				
-				OK = [condScript callMethod:OOJSID("allowAwardEquipment")
-											inContext:JScontext
-									withArguments:args count:sizeof args / sizeof *args
-												 result:&result];
-
-				if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
-				
-				OOJSRelinquishContext(JScontext);
-
-				if (OK && !allow_addition)
-				{
-					/* if the script exists, the function exists, the function
-					 * returns a bool, and that bool is false, block
-					 * addition. Otherwise allow it as default */
-					return NO;
-				}
-			}
-		}
-	}
-
-	if ([self isPlayer])
-	{
-		if (![eqType isAvailableToPlayer])  return NO;
-		if (![eqType isAvailableToAll])  
-		{
-			// find options that agree with this ship. Only player ships have these options.
-			// (Membership only: the string elements of the two arrays.)
-			OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
-			std::set<std::string>	options;
-			const oo::PList		*standardEquipment = shipyardInfo.find(std::string(KEY_STANDARD_EQUIPMENT));
-			for (const oo::PList *list : { ArrayForKey(shipyardInfo, std::string(KEY_OPTIONAL_EQUIPMENT)),
-										   standardEquipment != nullptr ? ArrayForKey(*standardEquipment, std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr })
-			{
-				for (std::size_t i = 0; list != nullptr && i < list->count(); i++)
-				{
-					if (const std::string *option = list->at(i)->getIf<std::string>())  options.insert(*option);
-				}
-			}
-			if (!options.contains(equipmentKey))  return NO;
-		}
-	}
-	else
-	{
-		if (![eqType isAvailableToNPCs])  return NO;
-	}
-	
-	return YES;
-}
-
-
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey
-{
-	// sets WEAPON_NONE if not recognised
-	if (_cxxShip->weapon_facings & facing) 
-	{
-		OOWeaponType chosen_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
-		switch (facing)
-		{
-			case WEAPON_FACING_FORWARD:
-				_cxxShip->forward_weapon_type = chosen_weapon;
-				break;
-				
-			case WEAPON_FACING_AFT:
-				_cxxShip->aft_weapon_type = chosen_weapon;
-				break;
-				
-			case WEAPON_FACING_PORT:
-				_cxxShip->port_weapon_type = chosen_weapon;
-				break;
-				
-			case WEAPON_FACING_STARBOARD:
-				_cxxShip->starboard_weapon_type = chosen_weapon;
-				break;
-				
-			case WEAPON_FACING_NONE:
-				break;
-		}
-
-		return YES;
-	}
-	else
-	{
-		return NO;
-	}
-}
-
-
-- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context
-{
-	return [self addEquipmentItem:equipmentKey withValidation:YES inContext:context];
-}
-
-
-- (BOOL) addEquipmentItem:(const std::string &)equipmentKeyIn withValidation:(BOOL)validateAddition inContext:(const std::string &)context
-{
-	OOEquipmentType			*eqType = nil;
-	std::string				equipmentKey = equipmentKeyIn;
-	const std::string		lcEquipmentKey = oo::str::lowercase(equipmentKey);
-	BOOL					isEqThargon = oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon");
-	BOOL					isRepairedEquipment = NO;
-
-	if(lcEquipmentKey == "thargon")
-	{
-		equipmentKey = "EQ_THARGON";
-	}
-
-	// canAddEquipment always checks if the undamaged version is equipped.
-	if (validateAddition == YES && ![self canAddEquipment:equipmentKey inContext:context])  return NO;
-
-	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
-	{
-		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size())];
-	}
-	else
-	{
-		eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
-		// in case we have the damaged version!
-		if (![eqType canCarryMultiple])
-		{
-			const std::string damagedKey = equipmentKey + "_DAMAGED";
-			if (std::ranges::find(_cxxShip->_equipment, damagedKey) != _cxxShip->_equipment.end())
-			{
-				std::erase(_cxxShip->_equipment, damagedKey);	// -removeObject: removed every occurrence
-				isRepairedEquipment = YES;
-			}
-		}
-	}
-	
-	// does this equipment actually exist?
-	if (eqType == nil)  return NO;
-	
-	// special cases
-	if ([eqType isMissileOrMine] || ([self isThargoid] && isEqThargon))
-	{
-		if (_cxxShip->missiles >= _cxxShip->max_missiles) return NO;
-		
-		_cxxShip->missile_list[_cxxShip->missiles] = eqType;
-		_cxxShip->missiles++;
-		return YES;
-	}
-	
-	// don't add any thargons to non-thargoid ships.
-	if(isEqThargon) return NO;
-	
-	// we can theoretically add a damaged weapon, but not a working one.
-	if(oo::str::hasPrefix(equipmentKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
-	{
-		return NO;
-	}
-	// end special cases
-
-	if (equipmentKey != "EQ_PASSENGER_BERTH" && !isRepairedEquipment)
-	{
-		// Add to equipment_weight with all other equipment.
-		_cxxShip->equipment_weight += [eqType requiredCargoSpace];
-		if (_cxxShip->equipment_weight > _cxxShip->max_cargo)
-		{
-			// should not even happen with old save games. Reject equipment now.
-			_cxxShip->equipment_weight -= [eqType requiredCargoSpace];
-			return NO;
-		}
-	}
-	
-	
-	if (!_cxxEntity->isPlayer)
-	{
-		if (equipmentKey == "EQ_CARGO_BAY")
-		{
-			_cxxShip->max_cargo += _cxxShip->extra_cargo;
-		}
-		else if(equipmentKey == "EQ_SHIELD_BOOSTER")
-		{
-			_cxxEntity->maxEnergy += 256.0f;
-		}
-		if(equipmentKey == "EQ_SHIELD_ENHANCER")
-		{
-			_cxxEntity->maxEnergy += 256.0f;
-			_cxxShip->energy_recharge_rate *= 1.5;
-		}
-	}
-	// add the equipment
-	_cxxShip->_equipment.push_back(equipmentKey);
-	[self cxx_doScriptEvent:OOJSID("equipmentAdded") withPListArguments:{ oo::PList(equipmentKey) }];
-	return YES;
-}
-
-
-- (std::vector<std::string>) cxx_equipmentKeys
-{
-	return _cxxShip->_equipment;
-}
-
-
-- (NSUInteger) equipmentCount
-{
-	return _cxxShip->_equipment.size();
-}
-
-
-- (void) removeEquipmentItem:(const std::string &)equipmentKey
-{
-	// "" (a former nil) matches no equipment key.
-	std::string			equipmentTypeCheckKey = equipmentKey;
-	const std::string	lcEquipmentKey = oo::str::lowercase(equipmentKey);
-	// determine the equipment type and make sure it works also in the case of damaged equipment
-	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
-	{
-		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
-	}
-	OOEquipmentType *eqType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentTypeCheckKey];
-	if (eqType == nil)  return;
-
-	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
-	{
-		[self removeExternalStore:eqType];
-	}
-	else
-	{
-		if (std::ranges::find(_cxxShip->_equipment, equipmentKey) != _cxxShip->_equipment.end())
-		{
-			if (equipmentKey != "EQ_PASSENGER_BERTH")
-			{
-				_cxxShip->equipment_weight -= [eqType requiredCargoSpace]; // all other cases;
-			}
-						
-			if (equipmentKey == "EQ_CLOAKING_DEVICE")
-			{
-				if ([self isCloaked])  [self setCloaked:NO];
-			}
-
-			if (!_cxxEntity->isPlayer)
-			{
-				if(equipmentKey == "EQ_SHIELD_BOOSTER")
-				{
-					_cxxEntity->maxEnergy -= 256.0f;
-					if (_cxxEntity->maxEnergy < _cxxEntity->energy) _cxxEntity->energy = _cxxEntity->maxEnergy;
-				}
-				else if(equipmentKey == "EQ_SHIELD_ENHANCER")
-				{
-					_cxxEntity->maxEnergy -= 256.0f;
-					_cxxShip->energy_recharge_rate /= 1.5;
-					if (_cxxEntity->maxEnergy < _cxxEntity->energy) _cxxEntity->energy = _cxxEntity->maxEnergy;
-				}
-				else if (equipmentKey == "EQ_CARGO_BAY")
-				{
-					_cxxShip->max_cargo -= _cxxShip->extra_cargo;
-				}
-			}
-		}
-
-		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && ![eqType canCarryMultiple])
-		{
-			const std::string damagedKey = equipmentKey + "_DAMAGED";
-			const auto damaged = std::ranges::find(_cxxShip->_equipment, damagedKey);
-			if (damaged != _cxxShip->_equipment.end())
-			{
-				// remove damaged counterpart (the first occurrence, as -indexOfObject: found it)
-				_cxxShip->_equipment.erase(damaged);
-				_cxxShip->equipment_weight -= [eqType requiredCargoSpace];
-			}
-		}
-		const auto equipped = std::ranges::find(_cxxShip->_equipment, equipmentKey);
-		if (equipped != _cxxShip->_equipment.end())
-		{
-			_cxxShip->_equipment.erase(equipped);
-		}
-		// this event must come after the item is actually removed
-		[self cxx_doScriptEvent:OOJSID("equipmentRemoved") withPListArguments:{ oo::PList(equipmentKey) }];
-		
-		// if all docking computers are damaged while active
-		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
-		{
-			[(PlayerEntity *)self disengageAutopilot];
-		}
-
-
-		if (_cxxShip->_equipment.empty())  [self removeAllEquipment];
-	}
-}
-
-
-- (BOOL) removeExternalStore:(OOEquipmentType *)eqType
-{
-	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
-	const std::optional<std::string>	identifier = [eqType cxx_identifier];
-	unsigned	i;
-
-	for (i = 0; i < _cxxShip->missiles; i++)
-	{
-		if (identifier.has_value() && [_cxxShip->missile_list[i] cxx_identifier] == identifier)
-		{
-			// now 'delete' [i] by compacting the array
-			while ( ++i < _cxxShip->missiles ) _cxxShip->missile_list[i - 1] = _cxxShip->missile_list[i];
-			
-			_cxxShip->missiles--;
-			return YES;
-		}
-	}
-	return NO;
-}
-
-
-- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole
-{
-	std::string			role = requestedRole;
-	std::optional<std::string> eqRole;
-	std::optional<std::string> shipKey;
-	ShipEntity			*missile = nil;
-	OOEquipmentType		*missileType = nil;
-	BOOL				isRandomMissile = role == "missile";
-
-	if (isRandomMissile)
-	{
-		while (!shipKey.has_value())
-		{
-			shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
-			if (!shipKey.has_value())
-			{
-				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", shipKey.value_or("(null)"), [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
-			}
-		}
-	}
-	else
-	{
-		shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
-		if (!shipKey.has_value())
-		{
-			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
-			return nil;
-		}
-	}
-
-	eqRole = [OOEquipmentType cxx_getMissileRegistryRoleForShip:*shipKey];	// eqRole != role for generic missiles.
-
-	if (!eqRole.has_value())
-	{
-		missile = [UNIVERSE cxx_newShipWithName:*shipKey];
-		if (!missile)
-		{
-			if (isRandomMissile)
-				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", *shipKey, [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
-			else
-				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
-
-			[OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
-			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
-			else return nil;
-		}
-
-		if(isRandomMissile)
-		{
-			for (const std::string &value : [[missile roleSet] roles])
-			{
-				role = value;
-				missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
-				// ensure that we have a missile or mine
-				if ([missileType isMissileOrMine]) break;
-			}
-
-			if (![missileType isMissileOrMine])
-			{
-				role = *shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
-			}
-		}
-
-		missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
-
-		if (!missileType)
-		{
-			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", (isRandomMissile ? "random missile" : "missile_role"), role, [self cxx_name].value_or("(null)"), "equipment", " Enabling compatibility mode.");
-			missileType = [self generateMissileEquipmentTypeFrom:role];
-		}
-
-		[OOEquipmentType cxx_setMissileRegistryRole:role forShip:*shipKey];
-		[missile release];
-	}
-	else
-	{
-		if (eqRole->empty())
-		{
-			// wrong ship definition, already written to the log in a previous call.
-			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
-			return nil;
-		}
-		missileType = [OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqRole];
-	}
-
-	return missileType;
-}
-
-
-- (OOEquipmentType *) selectMissile
-{
-	OOEquipmentType		*missileType = nil;
-	std::string			role;
-	double				chance = randf();
-	BOOL				thargoidMissile = NO;
-
-	if ([self isThargoid])
-	{
-		if (_cxxShip->_missileRole.has_value()) missileType = [self verifiedMissileTypeFromRole:*_cxxShip->_missileRole];
-		if (missileType == nil) {
-			_cxxShip->_missileRole = "EQ_THARGON";	// no valid missile_role defined, use thargoid fallback from now on.
-			missileType = [self verifiedMissileTypeFromRole:*_cxxShip->_missileRole];
-		}
-	}
-	else
-	{
-		// All other ships: random role 10% of the cases when auto weapons is set, if a missile_role is defined.
-		// Without auto weapons, never random.
-		float randomSelectionChance = chance;
-		if(![self hasAutoWeapons])  randomSelectionChance = 0.0f;
-		if (randomSelectionChance < 0.9f && _cxxShip->_missileRole.has_value())
-		{
-			missileType = [self verifiedMissileTypeFromRole:*_cxxShip->_missileRole];
-		}
-
-		if (missileType == nil)	// the random 10% , or no valid missile_role defined
-		{
-			if (chance < 0.9f && _cxxShip->_missileRole.has_value())	// no valid missile_role defined?
-			{
-				_cxxShip->_missileRole = std::nullopt;	// use generic ship fallback from now on.
-			}
-
-			// assign random missiles 20% of the time without missile_role (or 10% with valid missile_role)
-			if (chance > 0.8f) role = "missile";
-			// otherwise use the standard role
-			else role = "EQ_MISSILE";
-
-			missileType = [self verifiedMissileTypeFromRole:role];
-		}
-	}
-
-	if (missileType == nil) OO_LOG_ERR("ship.setUp.missiles", "could not resolve missile / mine type for ship \"{}\". Original missile role:\"{}\".", [self cxx_name].value_or("(null)"), _cxxShip->_missileRole.value_or("(null)"));
-
-	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
-	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
-
-	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
-	{
-		return missileType;
-	}
-	else
-	{
-		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", [missileType cxx_identifier].value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
-		return nil;
-	}
-}
-
-
-- (void) removeAllEquipment
-{
-	_cxxShip->_equipment.clear();
-}
-
-
-- (OOCreditsQuantity) removeMissiles
-{
-	_cxxShip->missiles = 0;
-	return 0;
-}
-
-
-- (NSUInteger) parcelCount
-{
-	return 0;
-}
-
-
-- (NSUInteger) passengerCount
-{
-	return 0;
-}
-
-
-- (NSUInteger) passengerCapacity
-{
-	return 0;
-}
-
-
-- (NSUInteger) missileCount
-{
-	return _cxxShip->missiles;
-}
-
-
-- (NSUInteger) missileCapacity
-{
-	return _cxxShip->max_missiles;
-}
-
-
-- (NSUInteger) extraCargo
-{
-	return _cxxShip->extra_cargo;
-}
-
-
-/* This is used for e.g. displaying the HUD icon */
-- (BOOL) hasScoop
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"] || [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
-}
-
-
-- (BOOL) hasFuelScoop
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"];
-}
-
-
-/* No such core equipment item, but EQ_FUEL_SCOOPS provides it */
-- (BOOL) hasCargoScoop
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
-}
-
-
-- (BOOL) hasECM
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_ECM"];
-}
-
-
-- (BOOL) hasCloakingDevice
-{
-	/* TODO: Checks above stop this being 'providing'. */
-	return [self hasEquipmentItem:oo::PList("EQ_CLOAKING_DEVICE")];
-}
-
-
-- (BOOL) hasMilitaryScannerFilter
-{
-#if USEMASC
-	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_SCANNER_FILTER"];
-#else
-	return NO;
-#endif
-}
-
-
-- (BOOL) hasMilitaryJammer
-{
-#if USEMASC
-	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_JAMMER"];
-#else
-	return NO;
-#endif
-}
-
-
-- (BOOL) hasExpandedCargoBay
-{
-	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:oo::PList("EQ_CARGO_BAY")];
-}
-
-
-- (BOOL) hasShieldBooster
-{
-	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:oo::PList("EQ_SHIELD_BOOSTER")];
-}
-
-
-- (BOOL) hasMilitaryShieldEnhancer
-{
-	/* Not 'providing' - controlled through scripts */
-	return [self hasEquipmentItem:oo::PList("EQ_NAVAL_SHIELD_BOOSTER")];
-}
-
-
-- (BOOL) hasHeatShield
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_HEAT_SHIELD"];
-}
-
-
-- (BOOL) hasFuelInjection
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_INJECTION"];
-}
-
-
-- (BOOL) hasCascadeMine
-{
-	/* TODO: this could be providing since theoretically OXP
-	 * deployable mines could also do cascade effects, but there are
-	 * probably better ways to manage OXP pylon AI */
-	return [self hasEquipmentItem:oo::PList("EQ_QC_MINE") includeWeapons:YES whileLoading:NO];
-}
-
-
-- (BOOL) hasEscapePod
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"];
-}
-
-
-- (BOOL) hasDockingComputer
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_DOCK_COMP"];
-}
-
-
-- (BOOL) hasGalacticHyperdrive
-{
-	return [self cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"];
-}
-
-
-- (float) shieldBoostFactor
-{
-	float boostFactor = 1.0f;
-	if ([self hasShieldBooster])  boostFactor += 1.0f;
-	if ([self hasMilitaryShieldEnhancer])  boostFactor += 1.0f;
-	
-	return boostFactor;
-}
-
-
-/* These next three are never called as of 12/12/2014, as NPCs don't
- * have shields and PlayerEntity overrides these. */
-- (float) maxForwardShieldLevel
-{
-	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
-}
-
-
-- (float) maxAftShieldLevel
-{
-	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
-}
-
-
-- (float) shieldRechargeRate
-{
-	return [self hasMilitaryShieldEnhancer] ? 3.0f : 2.0f;
-}
-
-
-- (double) maxHyperspaceDistance
-{
-	return MAX_JUMP_RANGE;
-}
-
 - (float) afterburnerFactor
 {
 	return _cxxShip->afterburner_speed_factor;
@@ -15042,6 +14155,943 @@ float ShipEntity::hyperspaceSpinTime()
 void ShipEntity::setHyperspaceSpinTime(float newValue)
 {
 	hyperspaceMotorSpinTime = newValue;
+}
+
+
+}	// namespace cxx
+
+
+// Slice 9 of docs/phases/3-slices/ShipEntity.md (bead oo-ke13m): equipment validity and adding,
+// weapon mounts, scripting lists. The facade forwards each selector (ShipEntity+ObjCBridge.mm);
+// sends to self stay sends, so an Objective-C subclass's override still runs (ADR-0056 amendment
+// oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::canAddEquipment(const std::string &equipmentKeyIn, const std::string &context)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string equipmentKey = equipmentKeyIn;
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
+	{
+		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
+	}
+
+	const std::string lcEquipmentKey = oo::str::lowercase(equipmentKey);
+	if (oo::str::hasSuffix(equipmentKey, "MISSILE")||oo::str::hasSuffix(equipmentKey, "MINE")||([self isThargoid] && (oo::str::hasPrefix(lcEquipmentKey, "thargon") || oo::str::hasSuffix(lcEquipmentKey, "thargon"))))
+	{
+		if (missiles >= max_missiles) return NO;
+	}
+
+	::OOEquipmentType *eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
+
+	// -hasEquipmentItem: with one string key.
+	if (![eqType canCarryMultiple] && [self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO])  return NO;
+	if (![self cxx_equipmentValidToAdd:equipmentKey inContext:context])  return NO;
+
+	return YES;
+}
+
+
+OOWeaponFacingSet ShipEntity::weaponFacings()
+{
+	return weapon_facings;
+}
+
+
+OOWeaponType ShipEntity::weaponTypeIDForFacing(OOWeaponFacing facing, bool strict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	OOWeaponType weaponType = nil;
+
+	if (facing & weapon_facings)
+	{
+		switch (facing)
+		{
+			case WEAPON_FACING_FORWARD:
+				weaponType = forward_weapon_type;
+				// if no forward weapon, and not carrying out a strict check, see if subentities have forward weapons, return the first one found.
+				if (isWeaponNone(weaponType) && !strict)
+				{
+					for (const auto &subEntity : [self cxx_shipSubEntities])
+					{
+						if (!isWeaponNone(weaponType))  break;
+						weaponType = subEntity.get()->_cxxShip->forward_weapon_type;
+					}
+				}
+				break;
+				
+			case WEAPON_FACING_AFT:
+				weaponType = aft_weapon_type;
+				break;
+				
+			case WEAPON_FACING_PORT:
+				weaponType = port_weapon_type;
+				break;
+				
+			case WEAPON_FACING_STARBOARD:
+				weaponType = starboard_weapon_type;
+				break;
+				
+			case WEAPON_FACING_NONE:
+				break;
+		}
+	}
+	return weaponType;
+}
+
+
+::OOEquipmentType *ShipEntity::weaponTypeForFacing(OOWeaponFacing facing, bool strict)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+//	OOWeaponType weaponType = [self weaponTypeIDForFacing:facing strict:strict];
+//	return [OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)];
+	return [self weaponTypeIDForFacing:facing strict:strict];
+}
+
+
+std::vector<oo::ObjCRef<::OOEquipmentType *>> ShipEntity::missilesList()
+{
+	// if missile_list is empty, avoid exception and return an empty array instead
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> list;
+	if (missile_list[0] != nil)
+	{
+		list.reserve(missiles);
+		for (unsigned i = 0; i < missiles; i++)  list.emplace_back(missile_list[i]);
+	}
+	return list;
+}
+
+
+oo::PList ShipEntity::passengerListForScripting()
+{
+	return oo::PList(oo::PList::Array{});	// an empty array
+}
+
+
+oo::PList ShipEntity::parcelListForScripting()
+{
+	return oo::PList(oo::PList::Array{});	// an empty array
+}
+
+
+oo::PList ShipEntity::contractListForScripting()
+{
+	return oo::PList(oo::PList::Array{});	// an empty array
+}
+
+
+::OOEquipmentType *ShipEntity::generateMissileEquipmentTypeFrom(const std::string &role)
+{
+	/* 	The generated missile equipment type provides for backward compatibility with pre-1.74 OXPs  missile_roles
+		and follows this template:
+		
+		//NPC equipment, incompatible with player ship. Not buyable because of its TL.
+		(
+			100, 100000, "Missile",
+			"EQ_X_MISSILE",
+			"Unidentified missile type.",
+			{
+				is_external_store = true;
+			}
+		)
+	*/
+	const oo::PList itemInfo(oo::PList::Array{ "100", "100000", "Missile", role, "Unidentified missile type.",
+							oo::PList(oo::PList::Dict{ { "is_external_store", oo::PList("true") } }) });
+
+	[::OOEquipmentType cxx_addEquipmentWithInfo:itemInfo];
+	return [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+}
+
+
+std::vector<oo::ObjCRef<::OOEquipmentType *>> ShipEntity::equipmentListForScripting()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::vector<oo::ObjCRef<::OOEquipmentType *>>	quip;
+	::OOEquipmentType		*eqType = nil;
+	BOOL				isDamaged;
+
+	for (const auto &eqTypeRef : [::OOEquipmentType cxx_allEquipmentTypes])
+	{
+		eqType = eqTypeRef.get();
+		const std::string identifier = [eqType cxx_identifier].value_or("");
+		// Equipment list,  consistent with the rest of the API - Kaks
+		if ([eqType canCarryMultiple])
+		{
+			const std::string damagedIdentifier = identifier + "_DAMAGED";
+			NSUInteger i, count = 0;
+			count += [self cxx_countEquipmentItem:identifier];
+			count += [self cxx_countEquipmentItem:damagedIdentifier];
+			for (i=0;i<count;i++)
+			{
+				quip.emplace_back(eqType);
+			}
+		}
+		else
+		{
+			// -hasEquipmentItem: with one string key.
+			isDamaged = [self cxx_hasOneEquipmentItem:identifier + "_DAMAGED" includeWeapons:NO whileLoading:NO];
+			if ([self cxx_hasOneEquipmentItem:identifier includeWeapons:NO whileLoading:NO] || isDamaged)
+			{
+				quip.emplace_back(eqType);
+			}
+		}
+	}
+
+	// Passengers - not supported yet for NPCs, but it's here for genericity.
+	if ([self passengerCapacity] > 0)
+	{
+		eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:"EQ_PASSENGER_BERTH"];
+		//[quip addObject:[self eqDictionaryWithType:eqType isDamaged:NO]];
+		quip.emplace_back(eqType);
+	}
+
+	return quip;
+}
+
+
+bool ShipEntity::equipmentValidToAdd(const std::string &equipmentKey, const std::string &context)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_equipmentValidToAdd:equipmentKey whileLoading:NO inContext:context];
+}
+
+
+bool ShipEntity::equipmentValidToAdd(const std::string &fullEquipmentKey, bool loading, const std::string &context)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOEquipmentType			*eqType = nil;
+	BOOL					validationForDamagedEquipment = NO;
+
+	std::string equipmentKey = fullEquipmentKey;
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
+	{
+		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
+	}
+
+	eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
+	if (eqType == nil)  return NO;
+	
+	// need to know if we are trying to add a Repair version of the equipment. In some cases
+	// (e.g. available cargo space required), it makes sense to deny installation of equipment
+	// if the condition is not satisfied, but it doesn't make sense to deny repair when the
+	// equipment is already installed. For now, we are checking only the cargo space condition,
+	// but other conditions might need to be revised too. - Nikos, 20151115
+	if ([self hasEquipmentItem:OptionalKeyPList([eqType cxx_damagedIdentifier])])
+	{
+		validationForDamagedEquipment = YES;
+	}
+	
+	// not all conditions make sence checking while loading a game with already purchaged equipment.
+	// while loading, we mainly need to catch changes when the installed oxps set has changed since saving. 
+	if ([eqType requiresEmptyPylon] && [self missileCount] >= [self missileCapacity] && !loading)  return NO;
+	if ([eqType  requiresMountedPylon] && [self missileCount] == 0 && !loading)  return NO;
+	if ([self availableCargoSpace] < [eqType requiredCargoSpace] && !validationForDamagedEquipment && !loading)  return NO;
+	const std::optional<std::vector<std::string>> requiresEquipment = [eqType cxx_requiresEquipment];
+	const std::optional<std::vector<std::string>> requiresAnyEquipment = [eqType cxx_requiresAnyEquipment];
+	const std::optional<std::vector<std::string>> incompatibleEquipment = [eqType cxx_incompatibleEquipment];
+	if (requiresEquipment.has_value() && ![self hasAllEquipment:KeysPList(*requiresEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (requiresAnyEquipment.has_value() && ![self hasEquipmentItem:KeysPList(*requiresAnyEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if (incompatibleEquipment.has_value() && [self hasEquipmentItem:KeysPList(*incompatibleEquipment) includeWeapons:YES whileLoading:loading])  return NO;
+	if ([eqType requiresCleanLegalRecord] && [self legalStatus] != 0 && !loading)  return NO;
+	if ([eqType requiresNonCleanLegalRecord] && [self legalStatus] == 0 && !loading)  return NO;
+	if ([eqType requiresFreePassengerBerth] && [self passengerCount] >= [self passengerCapacity])  return NO;
+	if ([eqType requiresFullFuel] && [self fuel] < [self fuelCapacity] && !loading)  return NO;
+	if ([eqType requiresNonFullFuel] && [self fuel] >= [self fuelCapacity] && !loading)  return NO;
+
+	if (!loading)
+	{
+		const std::optional<std::string> condition_script = [eqType cxx_conditionScript];
+		if (condition_script.has_value())
+		{
+			::OOJSScript *condScript = [UNIVERSE cxx_getConditionScript:*condition_script];
+			if (condScript != nil) // should always be non-nil, but just in case
+			{
+				ooscript::Context JScontext = OOJSAcquireContext();
+				BOOL OK;
+				bool allow_addition = false;
+				ooscript::Value result;
+				ooscript::Value args[] = { OOJSValueFromPList(JScontext, oo::PList(equipmentKey)) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromPList(JScontext, oo::PList(context))};
+				
+				OK = [condScript callMethod:OOJSID("allowAwardEquipment")
+											inContext:JScontext
+									withArguments:args count:sizeof args / sizeof *args
+												 result:&result];
+
+				if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
+				
+				OOJSRelinquishContext(JScontext);
+
+				if (OK && !allow_addition)
+				{
+					/* if the script exists, the function exists, the function
+					 * returns a bool, and that bool is false, block
+					 * addition. Otherwise allow it as default */
+					return NO;
+				}
+			}
+		}
+	}
+
+	if ([self isPlayer])
+	{
+		if (![eqType isAvailableToPlayer])  return NO;
+		if (![eqType isAvailableToAll])  
+		{
+			// find options that agree with this ship. Only player ships have these options.
+			// (Membership only: the string elements of the two arrays.)
+			::OOShipRegistry		*registry = [::OOShipRegistry sharedRegistry];
+			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:[self cxx_shipDataKey].value_or("")];
+			std::set<std::string>	options;
+			const oo::PList		*standardEquipment = shipyardInfo.find(std::string(KEY_STANDARD_EQUIPMENT));
+			for (const oo::PList *list : { ArrayForKey(shipyardInfo, std::string(KEY_OPTIONAL_EQUIPMENT)),
+										   standardEquipment != nullptr ? ArrayForKey(*standardEquipment, std::string(KEY_EQUIPMENT_EXTRAS)) : nullptr })
+			{
+				for (std::size_t i = 0; list != nullptr && i < list->count(); i++)
+				{
+					if (const std::string *option = list->at(i)->getIf<std::string>())  options.insert(*option);
+				}
+			}
+			if (!options.contains(equipmentKey))  return NO;
+		}
+	}
+	else
+	{
+		if (![eqType isAvailableToNPCs])  return NO;
+	}
+	
+	return YES;
+}
+
+
+bool ShipEntity::setWeaponMount(OOWeaponFacing facing, const std::string &eqKey)
+{
+	// sets WEAPON_NONE if not recognised
+	if (weapon_facings & facing) 
+	{
+		OOWeaponType chosen_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
+		switch (facing)
+		{
+			case WEAPON_FACING_FORWARD:
+				forward_weapon_type = chosen_weapon;
+				break;
+				
+			case WEAPON_FACING_AFT:
+				aft_weapon_type = chosen_weapon;
+				break;
+				
+			case WEAPON_FACING_PORT:
+				port_weapon_type = chosen_weapon;
+				break;
+				
+			case WEAPON_FACING_STARBOARD:
+				starboard_weapon_type = chosen_weapon;
+				break;
+				
+			case WEAPON_FACING_NONE:
+				break;
+		}
+
+		return YES;
+	}
+	else
+	{
+		return NO;
+	}
+}
+
+
+bool ShipEntity::addEquipmentItem(const std::string &equipmentKey, const std::string &context)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self addEquipmentItem:equipmentKey withValidation:YES inContext:context];
+}
+
+
+bool ShipEntity::addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOEquipmentType			*eqType = nil;
+	std::string				equipmentKey = equipmentKeyIn;
+	const std::string		lcEquipmentKey = oo::str::lowercase(equipmentKey);
+	BOOL					isEqThargon = oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon");
+	BOOL					isRepairedEquipment = NO;
+
+	if(lcEquipmentKey == "thargon")
+	{
+		equipmentKey = "EQ_THARGON";
+	}
+
+	// canAddEquipment always checks if the undamaged version is equipped.
+	if (validateAddition == YES && ![self canAddEquipment:equipmentKey inContext:context])  return NO;
+
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
+	{
+		eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size())];
+	}
+	else
+	{
+		eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentKey];
+		// in case we have the damaged version!
+		if (![eqType canCarryMultiple])
+		{
+			const std::string damagedKey = equipmentKey + "_DAMAGED";
+			if (std::ranges::find(_equipment, damagedKey) != _equipment.end())
+			{
+				std::erase(_equipment, damagedKey);	// -removeObject: removed every occurrence
+				isRepairedEquipment = YES;
+			}
+		}
+	}
+	
+	// does this equipment actually exist?
+	if (eqType == nil)  return NO;
+	
+	// special cases
+	if ([eqType isMissileOrMine] || ([self isThargoid] && isEqThargon))
+	{
+		if (missiles >= max_missiles) return NO;
+		
+		missile_list[missiles] = eqType;
+		missiles++;
+		return YES;
+	}
+	
+	// don't add any thargons to non-thargoid ships.
+	if(isEqThargon) return NO;
+	
+	// we can theoretically add a damaged weapon, but not a working one.
+	if(oo::str::hasPrefix(equipmentKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
+	{
+		return NO;
+	}
+	// end special cases
+
+	if (equipmentKey != "EQ_PASSENGER_BERTH" && !isRepairedEquipment)
+	{
+		// Add to equipment_weight with all other equipment.
+		equipment_weight += [eqType requiredCargoSpace];
+		if (equipment_weight > max_cargo)
+		{
+			// should not even happen with old save games. Reject equipment now.
+			equipment_weight -= [eqType requiredCargoSpace];
+			return NO;
+		}
+	}
+	
+	
+	if (!isPlayer)
+	{
+		if (equipmentKey == "EQ_CARGO_BAY")
+		{
+			max_cargo += extra_cargo;
+		}
+		else if(equipmentKey == "EQ_SHIELD_BOOSTER")
+		{
+			maxEnergy += 256.0f;
+		}
+		if(equipmentKey == "EQ_SHIELD_ENHANCER")
+		{
+			maxEnergy += 256.0f;
+			energy_recharge_rate *= 1.5;
+		}
+	}
+	// add the equipment
+	_equipment.push_back(equipmentKey);
+	[self cxx_doScriptEvent:OOJSID("equipmentAdded") withPListArguments:{ oo::PList(equipmentKey) }];
+	return YES;
+}
+
+
+std::vector<std::string> ShipEntity::equipmentKeys()
+{
+	return _equipment;
+}
+
+
+NSUInteger ShipEntity::equipmentCount()
+{
+	return _equipment.size();
+}
+
+
+}	// namespace cxx
+
+
+// Slice 10 of docs/phases/3-slices/ShipEntity.md (bead oo-wvcs2): equipment removal, missile
+// selection, capacities and has-equipment predicates, shields. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+void ShipEntity::removeEquipmentItem(const std::string &equipmentKey)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// "" (a former nil) matches no equipment key.
+	std::string			equipmentTypeCheckKey = equipmentKey;
+	const std::string	lcEquipmentKey = oo::str::lowercase(equipmentKey);
+	// determine the equipment type and make sure it works also in the case of damaged equipment
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
+	{
+		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
+	}
+	::OOEquipmentType *eqType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:equipmentTypeCheckKey];
+	if (eqType == nil)  return;
+
+	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
+	{
+		[self removeExternalStore:eqType];
+	}
+	else
+	{
+		if (std::ranges::find(_equipment, equipmentKey) != _equipment.end())
+		{
+			if (equipmentKey != "EQ_PASSENGER_BERTH")
+			{
+				equipment_weight -= [eqType requiredCargoSpace]; // all other cases;
+			}
+						
+			if (equipmentKey == "EQ_CLOAKING_DEVICE")
+			{
+				if ([self isCloaked])  [self setCloaked:NO];
+			}
+
+			if (!isPlayer)
+			{
+				if(equipmentKey == "EQ_SHIELD_BOOSTER")
+				{
+					maxEnergy -= 256.0f;
+					if (maxEnergy < energy) energy = maxEnergy;
+				}
+				else if(equipmentKey == "EQ_SHIELD_ENHANCER")
+				{
+					maxEnergy -= 256.0f;
+					energy_recharge_rate /= 1.5;
+					if (maxEnergy < energy) energy = maxEnergy;
+				}
+				else if (equipmentKey == "EQ_CARGO_BAY")
+				{
+					max_cargo -= extra_cargo;
+				}
+			}
+		}
+
+		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && ![eqType canCarryMultiple])
+		{
+			const std::string damagedKey = equipmentKey + "_DAMAGED";
+			const auto damaged = std::ranges::find(_equipment, damagedKey);
+			if (damaged != _equipment.end())
+			{
+				// remove damaged counterpart (the first occurrence, as -indexOfObject: found it)
+				_equipment.erase(damaged);
+				equipment_weight -= [eqType requiredCargoSpace];
+			}
+		}
+		const auto equipped = std::ranges::find(_equipment, equipmentKey);
+		if (equipped != _equipment.end())
+		{
+			_equipment.erase(equipped);
+		}
+		// this event must come after the item is actually removed
+		[self cxx_doScriptEvent:OOJSID("equipmentRemoved") withPListArguments:{ oo::PList(equipmentKey) }];
+		
+		// if all docking computers are damaged while active
+		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
+		{
+			[(PlayerEntity *)self disengageAutopilot];
+		}
+
+
+		if (_equipment.empty())  [self removeAllEquipment];
+	}
+}
+
+
+bool ShipEntity::removeExternalStore(::OOEquipmentType *eqType)
+{
+	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
+	const std::optional<std::string>	identifier = [eqType cxx_identifier];
+	unsigned	i;
+
+	for (i = 0; i < missiles; i++)
+	{
+		if (identifier.has_value() && [missile_list[i] cxx_identifier] == identifier)
+		{
+			// now 'delete' [i] by compacting the array
+			while ( ++i < missiles ) missile_list[i - 1] = missile_list[i];
+			
+			missiles--;
+			return YES;
+		}
+	}
+	return NO;
+}
+
+
+::OOEquipmentType *ShipEntity::verifiedMissileTypeFromRole(const std::string &requestedRole)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	std::string			role = requestedRole;
+	std::optional<std::string> eqRole;
+	std::optional<std::string> shipKey;
+	::ShipEntity			*missile = nil;
+	::OOEquipmentType		*missileType = nil;
+	BOOL				isRandomMissile = role == "missile";
+
+	if (isRandomMissile)
+	{
+		while (!shipKey.has_value())
+		{
+			shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
+			if (!shipKey.has_value())
+			{
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", shipKey.value_or("(null)"), [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
+			}
+		}
+	}
+	else
+	{
+		shipKey = [UNIVERSE cxx_randomShipKeyForRoleRespectingConditions:role];
+		if (!shipKey.has_value())
+		{
+			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
+			return nil;
+		}
+	}
+
+	eqRole = [::OOEquipmentType cxx_getMissileRegistryRoleForShip:*shipKey];	// eqRole != role for generic missiles.
+
+	if (!eqRole.has_value())
+	{
+		missile = [UNIVERSE cxx_newShipWithName:*shipKey];
+		if (!missile)
+		{
+			if (isRandomMissile)
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "random missile", *shipKey, [self cxx_name].value_or("(null)"), "shipdata",  "Trying another missile.");
+			else
+				OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", "missile_role", role, [self cxx_name].value_or("(null)"), "shipdata", " Using defaults instead.");
+
+			[::OOEquipmentType cxx_setMissileRegistryRole:"" forShip:*shipKey];	// no valid role for this shipKey
+			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
+			else return nil;
+		}
+
+		if(isRandomMissile)
+		{
+			for (const std::string &value : [[missile roleSet] roles])
+			{
+				role = value;
+				missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+				// ensure that we have a missile or mine
+				if ([missileType isMissileOrMine]) break;
+			}
+
+			if (![missileType isMissileOrMine])
+			{
+				role = *shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
+			}
+		}
+
+		missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:role];
+
+		if (!missileType)
+		{
+			OO_LOG_WARN("ship.setUp.missiles", "{} \"{}\" used in ship \"{}\" needs a valid {}.plist entry.{}", (isRandomMissile ? "random missile" : "missile_role"), role, [self cxx_name].value_or("(null)"), "equipment", " Enabling compatibility mode.");
+			missileType = [self generateMissileEquipmentTypeFrom:role];
+		}
+
+		[::OOEquipmentType cxx_setMissileRegistryRole:role forShip:*shipKey];
+		[missile release];
+	}
+	else
+	{
+		if (eqRole->empty())
+		{
+			// wrong ship definition, already written to the log in a previous call.
+			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
+			return nil;
+		}
+		missileType = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*eqRole];
+	}
+
+	return missileType;
+}
+
+
+::OOEquipmentType *ShipEntity::selectMissile()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::OOEquipmentType		*missileType = nil;
+	std::string			role;
+	double				chance = randf();
+	BOOL				thargoidMissile = NO;
+
+	if ([self isThargoid])
+	{
+		if (_missileRole.has_value()) missileType = [self verifiedMissileTypeFromRole:*_missileRole];
+		if (missileType == nil) {
+			_missileRole = "EQ_THARGON";	// no valid missile_role defined, use thargoid fallback from now on.
+			missileType = [self verifiedMissileTypeFromRole:*_missileRole];
+		}
+	}
+	else
+	{
+		// All other ships: random role 10% of the cases when auto weapons is set, if a missile_role is defined.
+		// Without auto weapons, never random.
+		float randomSelectionChance = chance;
+		if(![self hasAutoWeapons])  randomSelectionChance = 0.0f;
+		if (randomSelectionChance < 0.9f && _missileRole.has_value())
+		{
+			missileType = [self verifiedMissileTypeFromRole:*_missileRole];
+		}
+
+		if (missileType == nil)	// the random 10% , or no valid missile_role defined
+		{
+			if (chance < 0.9f && _missileRole.has_value())	// no valid missile_role defined?
+			{
+				_missileRole = std::nullopt;	// use generic ship fallback from now on.
+			}
+
+			// assign random missiles 20% of the time without missile_role (or 10% with valid missile_role)
+			if (chance > 0.8f) role = "missile";
+			// otherwise use the standard role
+			else role = "EQ_MISSILE";
+
+			missileType = [self verifiedMissileTypeFromRole:role];
+		}
+	}
+
+	if (missileType == nil) OO_LOG_ERR("ship.setUp.missiles", "could not resolve missile / mine type for ship \"{}\". Original missile role:\"{}\".", [self cxx_name].value_or("(null)"), _missileRole.value_or("(null)"));
+
+	role = oo::str::lowercase([missileType cxx_identifier].value_or(""));
+	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
+
+	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
+	{
+		return missileType;
+	}
+	else
+	{
+		OO_LOG_WARN("ship.setUp.missiles", "missile_role \"{}\" is not a valid missile / mine type for ship \"{}\".{}", [missileType cxx_identifier].value_or("(null)"), [self cxx_name].value_or("(null)"), " No missile selected.");
+		return nil;
+	}
+}
+
+
+void ShipEntity::removeAllEquipment()
+{
+	_equipment.clear();
+}
+
+
+OOCreditsQuantity ShipEntity::removeMissiles()
+{
+	missiles = 0;
+	return 0;
+}
+
+
+NSUInteger ShipEntity::parcelCount()
+{
+	return 0;
+}
+
+
+NSUInteger ShipEntity::passengerCount()
+{
+	return 0;
+}
+
+
+NSUInteger ShipEntity::passengerCapacity()
+{
+	return 0;
+}
+
+
+NSUInteger ShipEntity::missileCount()
+{
+	return missiles;
+}
+
+
+NSUInteger ShipEntity::missileCapacity()
+{
+	return max_missiles;
+}
+
+
+NSUInteger ShipEntity::extraCargo()
+{
+	return extra_cargo;
+}
+
+
+/* This is used for e.g. displaying the HUD icon */
+bool ShipEntity::hasScoop()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"] || [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
+}
+
+
+bool ShipEntity::hasFuelScoop()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"];
+}
+
+
+/* No such core equipment item, but EQ_FUEL_SCOOPS provides it */
+bool ShipEntity::hasCargoScoop()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
+}
+
+
+bool ShipEntity::hasECM()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_ECM"];
+}
+
+
+bool ShipEntity::hasCloakingDevice()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* TODO: Checks above stop this being 'providing'. */
+	return [self hasEquipmentItem:oo::PList("EQ_CLOAKING_DEVICE")];
+}
+
+
+bool ShipEntity::hasMilitaryScannerFilter()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+#if USEMASC
+	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_SCANNER_FILTER"];
+#else
+	return NO;
+#endif
+}
+
+
+bool ShipEntity::hasMilitaryJammer()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+#if USEMASC
+	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_JAMMER"];
+#else
+	return NO;
+#endif
+}
+
+
+bool ShipEntity::hasExpandedCargoBay()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* Not 'providing' - controlled through scripts */
+	return [self hasEquipmentItem:oo::PList("EQ_CARGO_BAY")];
+}
+
+
+bool ShipEntity::hasShieldBooster()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* Not 'providing' - controlled through scripts */
+	return [self hasEquipmentItem:oo::PList("EQ_SHIELD_BOOSTER")];
+}
+
+
+bool ShipEntity::hasMilitaryShieldEnhancer()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* Not 'providing' - controlled through scripts */
+	return [self hasEquipmentItem:oo::PList("EQ_NAVAL_SHIELD_BOOSTER")];
+}
+
+
+bool ShipEntity::hasHeatShield()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_HEAT_SHIELD"];
+}
+
+
+bool ShipEntity::hasFuelInjection()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_INJECTION"];
+}
+
+
+bool ShipEntity::hasCascadeMine()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	/* TODO: this could be providing since theoretically OXP
+	 * deployable mines could also do cascade effects, but there are
+	 * probably better ways to manage OXP pylon AI */
+	return [self hasEquipmentItem:oo::PList("EQ_QC_MINE") includeWeapons:YES whileLoading:NO];
+}
+
+
+bool ShipEntity::hasEscapePod()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"];
+}
+
+
+bool ShipEntity::hasDockingComputer()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_DOCK_COMP"];
+}
+
+
+bool ShipEntity::hasGalacticHyperdrive()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"];
+}
+
+
+float ShipEntity::shieldBoostFactor()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	float boostFactor = 1.0f;
+	if ([self hasShieldBooster])  boostFactor += 1.0f;
+	if ([self hasMilitaryShieldEnhancer])  boostFactor += 1.0f;
+	
+	return boostFactor;
+}
+
+
+/* These next three are never called as of 12/12/2014, as NPCs don't
+ * have shields and PlayerEntity overrides these. */
+float ShipEntity::maxForwardShieldLevel()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
+}
+
+
+float ShipEntity::maxAftShieldLevel()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return BASELINE_SHIELD_LEVEL * [self shieldBoostFactor];
+}
+
+
+float ShipEntity::shieldRechargeRate()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	return [self hasMilitaryShieldEnhancer] ? 3.0f : 2.0f;
+}
+
+
+double ShipEntity::maxHyperspaceDistance()
+{
+	return MAX_JUMP_RANGE;
 }
 
 

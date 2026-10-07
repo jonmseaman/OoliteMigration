@@ -70,6 +70,27 @@ public:
 
 	// Slice 8 (bead oo-vxdsc).
 	bool hasPrimaryWeapon(OOWeaponType weaponType) override	{ return [(::ShipEntity *)_objcOwner hasPrimaryWeapon:weaponType]; }
+
+	// Slice 9 (bead oo-ke13m).
+	bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner canAddEquipment:equipmentKeyIn inContext:context]; }
+	::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict) override	{ return [(::ShipEntity *)_objcOwner weaponTypeForFacing:facing strict:strict]; }
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList() override	{ return [(::ShipEntity *)_objcOwner missilesList]; }
+	oo::PList passengerListForScripting() override	{ return [(::ShipEntity *)_objcOwner passengerListForScripting]; }
+	oo::PList parcelListForScripting() override	{ return [(::ShipEntity *)_objcOwner parcelListForScripting]; }
+	oo::PList contractListForScripting() override	{ return [(::ShipEntity *)_objcOwner contractListForScripting]; }
+	bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey) override	{ return [(::ShipEntity *)_objcOwner setWeaponMount:facing toWeapon:eqKey]; }
+	bool addEquipmentItem(const std::string &equipmentKey, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKey inContext:context]; }
+	bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context) override	{ return [(::ShipEntity *)_objcOwner addEquipmentItem:equipmentKeyIn withValidation:validateAddition inContext:context]; }
+
+	// Slice 10 (bead oo-wvcs2).
+	void removeEquipmentItem(const std::string &equipmentKey) override	{ [(::ShipEntity *)_objcOwner removeEquipmentItem:equipmentKey]; }
+	bool removeExternalStore(::OOEquipmentType *eqType) override	{ return [(::ShipEntity *)_objcOwner removeExternalStore:eqType]; }
+	OOCreditsQuantity removeMissiles() override	{ return [(::ShipEntity *)_objcOwner removeMissiles]; }
+	NSUInteger parcelCount() override	{ return [(::ShipEntity *)_objcOwner parcelCount]; }
+	NSUInteger passengerCount() override	{ return [(::ShipEntity *)_objcOwner passengerCount]; }
+	NSUInteger passengerCapacity() override	{ return [(::ShipEntity *)_objcOwner passengerCapacity]; }
+	float maxForwardShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxForwardShieldLevel]; }
+	float maxAftShieldLevel() override	{ return [(::ShipEntity *)_objcOwner maxAftShieldLevel]; }
 };
 
 }	// namespace
@@ -386,5 +407,67 @@ DESTROY(_cxxShip->laser_color);
 - (BOOL) hasHyperspaceMotor	{ return _cxxShip->hasHyperspaceMotor(); }
 - (float) hyperspaceSpinTime	{ return _cxxShip->hyperspaceSpinTime(); }
 - (void) setHyperspaceSpinTime:(float)newValue	{ _cxxShip->setHyperspaceSpinTime(newValue); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice9)
+
+- (BOOL) canAddEquipment:(const std::string &)equipmentKeyIn inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::canAddEquipment(equipmentKeyIn, context); }
+- (OOWeaponFacingSet) weaponFacings	{ return _cxxShip->weaponFacings(); }
+- (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->weaponTypeIDForFacing(facing, strict); }
+- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict	{ return _cxxShip->cxx::ShipEntity::weaponTypeForFacing(facing, strict); }
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList	{ return _cxxShip->cxx::ShipEntity::missilesList(); }
+- (oo::PList) passengerListForScripting	{ return _cxxShip->cxx::ShipEntity::passengerListForScripting(); }
+- (oo::PList) parcelListForScripting	{ return _cxxShip->cxx::ShipEntity::parcelListForScripting(); }
+- (oo::PList) contractListForScripting	{ return _cxxShip->cxx::ShipEntity::contractListForScripting(); }
+- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role	{ return _cxxShip->generateMissileEquipmentTypeFrom(role); }
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting	{ return _cxxShip->equipmentListForScripting(); }
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(equipmentKey, context); }
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)fullEquipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context	{ return _cxxShip->equipmentValidToAdd(fullEquipmentKey, loading, context); }
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey	{ return _cxxShip->cxx::ShipEntity::setWeaponMount(facing, eqKey); }
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKey, context); }
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKeyIn withValidation:(BOOL)validateAddition inContext:(const std::string &)context	{ return _cxxShip->cxx::ShipEntity::addEquipmentItem(equipmentKeyIn, validateAddition, context); }
+- (std::vector<std::string>) cxx_equipmentKeys	{ return _cxxShip->equipmentKeys(); }
+- (NSUInteger) equipmentCount	{ return _cxxShip->equipmentCount(); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice10)
+
+- (void) removeEquipmentItem:(const std::string &)equipmentKey	{ _cxxShip->cxx::ShipEntity::removeEquipmentItem(equipmentKey); }
+- (BOOL) removeExternalStore:(OOEquipmentType *)eqType	{ return _cxxShip->cxx::ShipEntity::removeExternalStore(eqType); }
+- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole	{ return _cxxShip->verifiedMissileTypeFromRole(requestedRole); }
+- (OOEquipmentType *) selectMissile	{ return _cxxShip->selectMissile(); }
+- (void) removeAllEquipment	{ _cxxShip->removeAllEquipment(); }
+- (OOCreditsQuantity) removeMissiles	{ return _cxxShip->cxx::ShipEntity::removeMissiles(); }
+- (NSUInteger) parcelCount	{ return _cxxShip->cxx::ShipEntity::parcelCount(); }
+- (NSUInteger) passengerCount	{ return _cxxShip->cxx::ShipEntity::passengerCount(); }
+- (NSUInteger) passengerCapacity	{ return _cxxShip->cxx::ShipEntity::passengerCapacity(); }
+- (NSUInteger) missileCount	{ return _cxxShip->missileCount(); }
+- (NSUInteger) missileCapacity	{ return _cxxShip->missileCapacity(); }
+- (NSUInteger) extraCargo	{ return _cxxShip->extraCargo(); }
+- (BOOL) hasScoop	{ return _cxxShip->hasScoop(); }
+- (BOOL) hasFuelScoop	{ return _cxxShip->hasFuelScoop(); }
+- (BOOL) hasCargoScoop	{ return _cxxShip->hasCargoScoop(); }
+- (BOOL) hasECM	{ return _cxxShip->hasECM(); }
+- (BOOL) hasCloakingDevice	{ return _cxxShip->hasCloakingDevice(); }
+- (BOOL) hasMilitaryScannerFilter	{ return _cxxShip->hasMilitaryScannerFilter(); }
+- (BOOL) hasMilitaryJammer	{ return _cxxShip->hasMilitaryJammer(); }
+- (BOOL) hasExpandedCargoBay	{ return _cxxShip->hasExpandedCargoBay(); }
+- (BOOL) hasShieldBooster	{ return _cxxShip->hasShieldBooster(); }
+- (BOOL) hasMilitaryShieldEnhancer	{ return _cxxShip->hasMilitaryShieldEnhancer(); }
+- (BOOL) hasHeatShield	{ return _cxxShip->hasHeatShield(); }
+- (BOOL) hasFuelInjection	{ return _cxxShip->hasFuelInjection(); }
+- (BOOL) hasCascadeMine	{ return _cxxShip->hasCascadeMine(); }
+- (BOOL) hasEscapePod	{ return _cxxShip->hasEscapePod(); }
+- (BOOL) hasDockingComputer	{ return _cxxShip->hasDockingComputer(); }
+- (BOOL) hasGalacticHyperdrive	{ return _cxxShip->hasGalacticHyperdrive(); }
+- (float) shieldBoostFactor	{ return _cxxShip->shieldBoostFactor(); }
+- (float) maxForwardShieldLevel	{ return _cxxShip->cxx::ShipEntity::maxForwardShieldLevel(); }
+- (float) maxAftShieldLevel	{ return _cxxShip->cxx::ShipEntity::maxAftShieldLevel(); }
+- (float) shieldRechargeRate	{ return _cxxShip->shieldRechargeRate(); }
+- (double) maxHyperspaceDistance	{ return _cxxShip->maxHyperspaceDistance(); }
 
 @end

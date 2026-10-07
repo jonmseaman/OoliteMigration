@@ -89,61 +89,20 @@ MA 02110-1301, USA.
 
 
 // Equipment
-- (OOWeaponFacingSet) weaponFacings;
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
-- (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context;		// flipped with its family (bead oo-3rb.258). Test ability to add equipment, taking equipment-specific constriants into account.
-- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.
-- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context;
-- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
-- (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
 
 
-- (std::vector<std::string>) cxx_equipmentKeys;	// a snapshot, in order added
-- (NSUInteger) equipmentCount;
-- (void) removeEquipmentItem:(const std::string &)equipmentKey;	// flipped with its family (bead oo-3rb.258)
-- (void) removeAllEquipment;
-- (OOEquipmentType *) selectMissile;
-- (OOCreditsQuantity) removeMissiles;
 
 // Internal, subject to change. Use the methods above instead.
-- (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
 
 // Passengers and parcels - not supported for NPCs, but interface is here for genericity.
-- (NSUInteger) parcelCount;
-- (NSUInteger) passengerCount;
-- (NSUInteger) passengerCapacity;
 
-- (NSUInteger) missileCount;
-- (NSUInteger) missileCapacity;
 
-- (NSUInteger) extraCargo;
 
 // Tests for the various special-cased equipment items
 // (Nowadays, more convenience methods)
-- (BOOL) hasScoop;
-- (BOOL) hasFuelScoop;
-- (BOOL) hasCargoScoop;
-- (BOOL) hasECM;
-- (BOOL) hasCloakingDevice;
-- (BOOL) hasMilitaryScannerFilter;
-- (BOOL) hasMilitaryJammer;
-- (BOOL) hasExpandedCargoBay;
-- (BOOL) hasShieldBooster;
-- (BOOL) hasMilitaryShieldEnhancer;
-- (BOOL) hasHeatShield;
-- (BOOL) hasFuelInjection;
-- (BOOL) hasCascadeMine;
-- (BOOL) hasEscapePod;
-- (BOOL) hasDockingComputer;
-- (BOOL) hasGalacticHyperdrive;
 
 // Shield information derived from equipment. NPCs can't have shields, but that should change at some point.
-- (float) shieldBoostFactor;
-- (float) maxForwardShieldLevel;
-- (float) maxAftShieldLevel;
-- (float) shieldRechargeRate;
 
-- (double) maxHyperspaceDistance;
 - (float) afterburnerFactor;
 - (float) afterburnerRate;
 - (void) setAfterburnerFactor:(GLfloat)newValue;
@@ -398,13 +357,6 @@ MA 02110-1301, USA.
 - (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount;
 - (BOOL) showScoopMessage;
 
-- (oo::PList) passengerListForScripting;	// flipped with its family (bead oo-3rb.259): an array
-- (oo::PList) parcelListForScripting;	// flipped with its family (bead oo-3rb.259): an array
-- (oo::PList) contractListForScripting;	// flipped with its family (bead oo-3rb.259): an array
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
-- (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
-- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
-- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList;	// flipped with its family (bead oo-3rb.259)
 
 - (OOCargoFlag) cargoFlag;
 - (void) setCargoFlag:(OOCargoFlag)flag;
@@ -962,6 +914,74 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (BOOL) hasHyperspaceMotor;
 - (float) hyperspaceSpinTime;
 - (void) setHyperspaceSpinTime:(float)newValue;
+
+@end
+
+
+// Slice 9 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice9)
+
+- (BOOL) canAddEquipment:(const std::string &)equipmentKey inContext:(const std::string &)context;		// flipped with its family (bead oo-3rb.258). Test ability to add equipment, taking equipment-specific constriants into account.
+- (OOWeaponFacingSet) weaponFacings;
+- (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
+- (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) missilesList;	// flipped with its family (bead oo-3rb.259)
+- (oo::PList) passengerListForScripting;	// flipped with its family (bead oo-3rb.259): an array
+- (oo::PList) parcelListForScripting;	// flipped with its family (bead oo-3rb.259): an array
+- (oo::PList) contractListForScripting;	// flipped with its family (bead oo-3rb.259): an array
+- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role;
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context;
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) addEquipmentItem:(const std::string &)equipmentKey withValidation:(BOOL)validateAddition inContext:(const std::string &)context;	// flipped with its family (bead oo-3rb.258)
+- (std::vector<std::string>) cxx_equipmentKeys;	// a snapshot, in order added
+- (NSUInteger) equipmentCount;
+
+@end
+
+
+// Slice 10 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice10)
+
+- (void) removeEquipmentItem:(const std::string &)equipmentKey;	// flipped with its family (bead oo-3rb.258)
+- (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
+- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole;
+- (OOEquipmentType *) selectMissile;
+- (void) removeAllEquipment;
+- (OOCreditsQuantity) removeMissiles;
+- (NSUInteger) parcelCount;
+- (NSUInteger) passengerCount;
+- (NSUInteger) passengerCapacity;
+- (NSUInteger) missileCount;
+- (NSUInteger) missileCapacity;
+- (NSUInteger) extraCargo;
+- (BOOL) hasScoop;
+- (BOOL) hasFuelScoop;
+- (BOOL) hasCargoScoop;
+- (BOOL) hasECM;
+- (BOOL) hasCloakingDevice;
+- (BOOL) hasMilitaryScannerFilter;
+- (BOOL) hasMilitaryJammer;
+- (BOOL) hasExpandedCargoBay;
+- (BOOL) hasShieldBooster;
+- (BOOL) hasMilitaryShieldEnhancer;
+- (BOOL) hasHeatShield;
+- (BOOL) hasFuelInjection;
+- (BOOL) hasCascadeMine;
+- (BOOL) hasEscapePod;
+- (BOOL) hasDockingComputer;
+- (BOOL) hasGalacticHyperdrive;
+- (float) shieldBoostFactor;
+- (float) maxForwardShieldLevel;
+- (float) maxAftShieldLevel;
+- (float) shieldRechargeRate;
+- (double) maxHyperspaceDistance;
 
 @end
 

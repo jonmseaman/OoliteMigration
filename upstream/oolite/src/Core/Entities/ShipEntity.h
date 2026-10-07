@@ -345,6 +345,60 @@ public:
 	float hyperspaceSpinTime();
 	void setHyperspaceSpinTime(float newValue);
 
+	// Slice 9: equipment validity and adding, weapon mounts, scripting lists.
+	virtual bool canAddEquipment(const std::string &equipmentKeyIn, const std::string &context);
+	OOWeaponFacingSet weaponFacings();
+	OOWeaponType weaponTypeIDForFacing(OOWeaponFacing facing, bool strict);
+	virtual ::OOEquipmentType *weaponTypeForFacing(OOWeaponFacing facing, bool strict);
+	virtual std::vector<oo::ObjCRef<::OOEquipmentType *>> missilesList();
+	virtual oo::PList passengerListForScripting();
+	virtual oo::PList parcelListForScripting();
+	virtual oo::PList contractListForScripting();
+	::OOEquipmentType *generateMissileEquipmentTypeFrom(const std::string &role);
+	std::vector<oo::ObjCRef<::OOEquipmentType *>> equipmentListForScripting();
+	bool equipmentValidToAdd(const std::string &equipmentKey, const std::string &context);
+	bool equipmentValidToAdd(const std::string &fullEquipmentKey, bool loading, const std::string &context);
+	virtual bool setWeaponMount(OOWeaponFacing facing, const std::string &eqKey);
+	virtual bool addEquipmentItem(const std::string &equipmentKey, const std::string &context);
+	virtual bool addEquipmentItem(const std::string &equipmentKeyIn, bool validateAddition, const std::string &context);
+	std::vector<std::string> equipmentKeys();
+	NSUInteger equipmentCount();
+
+	// Slice 10: equipment removal, missile selection, capacities and has-equipment predicates, shields.
+	virtual void removeEquipmentItem(const std::string &equipmentKey);
+	virtual bool removeExternalStore(::OOEquipmentType *eqType);
+	::OOEquipmentType *verifiedMissileTypeFromRole(const std::string &requestedRole);
+	::OOEquipmentType *selectMissile();
+	void removeAllEquipment();
+	virtual OOCreditsQuantity removeMissiles();
+	virtual NSUInteger parcelCount();
+	virtual NSUInteger passengerCount();
+	virtual NSUInteger passengerCapacity();
+	NSUInteger missileCount();
+	NSUInteger missileCapacity();
+	NSUInteger extraCargo();
+	bool hasScoop();
+	bool hasFuelScoop();
+	bool hasCargoScoop();
+	bool hasECM();
+	bool hasCloakingDevice();
+	bool hasMilitaryScannerFilter();
+	bool hasMilitaryJammer();
+	bool hasExpandedCargoBay();
+	bool hasShieldBooster();
+	bool hasMilitaryShieldEnhancer();
+	bool hasHeatShield();
+	bool hasFuelInjection();
+	bool hasCascadeMine();
+	bool hasEscapePod();
+	bool hasDockingComputer();
+	bool hasGalacticHyperdrive();
+	float shieldBoostFactor();
+	virtual float maxForwardShieldLevel();
+	virtual float maxAftShieldLevel();
+	float shieldRechargeRate();
+	double maxHyperspaceDistance();
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
