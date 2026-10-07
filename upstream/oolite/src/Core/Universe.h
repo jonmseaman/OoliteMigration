@@ -257,6 +257,15 @@ public:
 	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
 	::OOPlanetEntity *setUpPlanet();
 
+	// Slice 4: setUpSpace, populating normal space, the system populator.
+	void setUpSpace();
+	void populateNormalSpace();
+	void clearSystemPopulator();
+	oo::PList getPopulatorSettings();
+	void setPopulatorSetting(const std::string &key, const oo::PList &setting);
+	bool deterministicPopulation();
+	void populateSystemFromDictionariesWithSun(::OOSunEntity *sun, ::OOPlanetEntity *planet);
+
 	Universe(const Universe &) = delete;
 	Universe &operator=(const Universe &) = delete;
 

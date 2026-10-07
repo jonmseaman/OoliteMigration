@@ -116,3 +116,16 @@ extern Universe *gSharedUniverse;
 - (OOPlanetEntity *) setUpPlanet	{ return _cxxUniverse->setUpPlanet(); }
 
 @end
+
+
+@implementation Universe (OOSlice4)
+
+- (void) setUpSpace	{ _cxxUniverse->setUpSpace(); }
+- (void) populateNormalSpace	{ _cxxUniverse->populateNormalSpace(); }
+- (void) clearSystemPopulator	{ _cxxUniverse->clearSystemPopulator(); }
+- (oo::PList) cxx_getPopulatorSettings	{ return _cxxUniverse->getPopulatorSettings(); }
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting	{ _cxxUniverse->setPopulatorSetting(key, setting); }
+- (BOOL) deterministicPopulation	{ return _cxxUniverse->deterministicPopulation(); }
+- (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet	{ _cxxUniverse->populateSystemFromDictionariesWithSun(sun, planet); }
+
+@end
