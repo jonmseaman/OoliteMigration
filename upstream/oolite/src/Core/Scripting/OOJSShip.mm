@@ -53,7 +53,21 @@ MA 02110-1301, USA.
 #import "OOCallByName.h"
 #include "oofnd/objc/OOAssert.h"
 #import "OOObjCPList.h"
+#import "OOColor.h"
+#import "OOJSShip+ObjCBridge.h"
 #include "oofnd/String.hpp"
+
+/*
+	Converted slice by slice to C++20 (docs/phases/3-slices/OOJSShip.md; proposed ADR-0056,
+	amendments oo-ppc, oo-luhd, oo-ft5n and oo-9ht.139). A converted native or helper has no
+	Objective-C: BOOL/YES/NO/nil are bool/true/false/nullptr; the ship it wraps is reached as
+	cxx::ShipEntity through oo::ToCxx (its members an Objective-C subclass overrides are virtual,
+	so dispatch is as before), the converted classes the ship hands out (AI, OORoleSet,
+	OOShipGroup, OOColor, OONativeVector) as cxx:: classes, null-guarded where a message to nil
+	answered; and a send to a class that is still Objective-C (the player, the universe) is a
+	one-line function in OOJSShip+ObjCBridge.mm. Slice 1 (bead oo-18mg2): ShipGetProperty() and
+	its helpers.
+*/
 
 
 namespace {
@@ -66,8 +80,9 @@ oo::PList NativeVectorArray(const std::vector<Vector> &vectors)
 	result.reserve(vectors.size());
 	for (Vector v : vectors)
 	{
-		const oo::ObjCRef<OONativeVector *> vector = oo::adoptObjC([[OONativeVector alloc] initWithVector:v]);
-		result.push_back(oo::PListObject(vector.get()));
+		// The box is C++ (cxx::OONativeVector); JavaScript is handed its facade, as before.
+		const oo::Ref<cxx::OONativeVector> vector = oo::makeRef<cxx::OONativeVector>(v);
+		result.push_back(oo::PListObject(oo::ToObjC(vector)));
 	}
 	return oo::PList(std::move(result));
 }
@@ -633,12 +648,34 @@ ooscript::Object JSShipPrototype(void)
 namespace {
 
 // A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
-oo::PList NormalizedColorComponents(OOColor *color)
+oo::PList NormalizedColorComponents(cxx::OOColor *color)
 {
-	if (color == nil)  return oo::PList();
+	if (color == nullptr)  return oo::PList();
 	oo::PList::Array components;
-	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	for (float component : color->normalizedArray())  components.push_back(oo::PList::singleReal(component));
 	return oo::PList(std::move(components));
+}
+
+/*	The ship's AI is converted (cxx::AI), and the ship answers its facade. A ship with no AI
+	answered none or false to what the getter sent the AI; so does a null AI here (ADR-0056
+	amendment oo-6ia4 item 2).
+*/
+std::optional<std::string> AIName(cxx::ShipEntity *ship)
+{
+	cxx::AI *ai = oo::ToCxx(ship->getAI());
+	return (ai != nullptr) ? ai->name() : std::nullopt;
+}
+
+std::optional<std::string> AIState(cxx::ShipEntity *ship)
+{
+	cxx::AI *ai = oo::ToCxx(ship->getAI());
+	return (ai != nullptr) ? ai->state() : std::nullopt;
+}
+
+bool AIHasSuspendedStateMachines(cxx::ShipEntity *ship)
+{
+	cxx::AI *ai = oo::ToCxx(ship->getAI());
+	return ai != nullptr && ai->hasSuspendedStateMachines();
 }
 
 // A string, or null for none (what a Foundation string or nil gave JavaScript).
@@ -658,49 +695,51 @@ oo::PList StringArray(const std::vector<std::string> &strings)
 
 static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, ooscript::Value *value)
 {
-	if (!ooscript::isInt32Id(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return true;
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	ShipEntity					*entity = nil;
+	ShipEntity					*entity = nullptr;
 	oo::PList					result;	// null maps to null
 	
-	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return NO;
-	if (OOIsStaleEntity(entity)) { *value = ooscript::undefinedValue(); return YES; }
+	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return false;
+	if (OOIsStaleEntity(entity)) { *value = ooscript::undefinedValue(); return true; }
+	cxx::ShipEntity				*ship = oo::ToCxx(entity);	// not null: entity is not
 	
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShip_name:
-			result = StringOrNull([entity cxx_name]);
+			result = StringOrNull(ship->getName());
 			break;
 			
 		case kShip_displayName:
-			result = StringOrNull([entity displayName]);
+			result = StringOrNull(ship->getDisplayName());
 			break;
 
 		case kShip_shipUniqueName:
-			result = StringOrNull([entity cxx_shipUniqueName]);
+			result = StringOrNull(ship->getShipUniqueName());
 			break;
 
 		case kShip_shipClassName:
-			result = StringOrNull([entity cxx_shipClassName]);
+			result = StringOrNull(ship->getShipClassName());
 			break;
 		
 		case kShip_scanDescription:
-			result = StringOrNull([entity cxx_scanDescriptionForScripting]);
+			result = StringOrNull(ship->scanDescriptionForScripting());
 			break;
 
 		case kShip_roles:
 			{
-				OORoleSet *roleSet = [entity roleSet];
-				result = roleSet != nil ? StringArray([roleSet sortedRoles]) : oo::PList();
+				cxx::OORoleSet *roleSet = oo::ToCxx(ship->getRoleSet());
+				result = roleSet != nullptr ? StringArray(roleSet->sortedRoles()) : oo::PList();
 			}
 			break;
 		
 		case kShip_roleWeights:
 			{
 				// Floats, as numberWithFloat: made them; nil when there is no role set.
-				if (const auto roleWeights = [[entity roleSet] rolesAndProbabilities])
+				cxx::OORoleSet *roleSet = oo::ToCxx(ship->getRoleSet());
+				if (const auto roleWeights = (roleSet != nullptr) ? roleSet->rolesAndProbabilities() : std::nullopt)
 				{
 					oo::PList::Dict weights;
 					for (const auto &[role, weight] : *roleWeights)
@@ -713,85 +752,89 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 		
 		case kShip_primaryRole:
-			result = StringOrNull([entity cxx_primaryRole]);
+			result = StringOrNull(ship->getPrimaryRole());
 			break;
 		
 		case kShip_AI:
-			result = StringOrNull([[entity getAI] cxx_name]);
+			result = StringOrNull(AIName(ship));
 			break;
 		
 		case kShip_AIState:
-			result = StringOrNull([[entity getAI] cxx_state]);
+			result = StringOrNull(AIState(ship));
 			break;
 		
 		case kShip_AIFoundTarget:
-			result = oo::PListObject([entity foundTarget]);
+			result = oo::PListObject(ship->foundTarget());
 			break;
 		
 		case kShip_AIPrimaryAggressor:
-			result = oo::PListObject([entity primaryAggressor]);
+			result = oo::PListObject(ship->primaryAggressor());
 			break;
 		
 		case kShip_alertCondition:
-			return ooscript::newNumberValue(context, [entity realAlertCondition], value);
+			return ooscript::newNumberValue(context, ship->realAlertCondition(), value);
 
 		case kShip_autoAI:
-			*value = OOJSValueFromBOOL([entity hasAutoAI]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->hasAutoAI());
+			return true;
 
 		case kShip_autoWeapons:
-			*value = OOJSValueFromBOOL([entity hasAutoWeapons]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->hasAutoWeapons());
+			return true;
 		
 		case kShip_accuracy:
-			return ooscript::newNumberValue(context, [entity accuracy], value);
+			return ooscript::newNumberValue(context, ship->getAccuracy(), value);
 			
 		case kShip_fuel:
-			return ooscript::newNumberValue(context, [entity fuel] * 0.1, value);
+			return ooscript::newNumberValue(context, ship->getFuel() * 0.1, value);
 			
 		case kShip_fuelChargeRate:
-			return ooscript::newNumberValue(context, [entity fuelChargeRate], value);
+			return ooscript::newNumberValue(context, ship->fuelChargeRate(), value);
 			
 		case kShip_bounty:
-			return ooscript::newNumberValue(context, [entity bounty], value);
-			return YES;
+			return ooscript::newNumberValue(context, ship->getBounty(), value);
+			return true;
 			
 		case kShip_subEntities:
-			result = oo::PListFromObjects([entity subEntitiesForScript]);
+			// What -subEntitiesForScript answered: ShipEntity's (OOJavaScriptExtensions) method, which no
+			// subclass overrides, forwards to this function.
+			result = oo::PListFromObjects(ShipEntityJSSubEntitiesForScript(entity));
 			break;
 
 		case kShip_exhausts:
-			result = oo::PListFromObjects([entity cxx_exhausts]);
+			result = oo::PListFromObjects(ship->exhausts());
 			break;
 
 		case kShip_flashers:
-			result = oo::PListFromObjects([entity flasherEnumerator]);
+			result = oo::PListFromObjects(ship->flasherEnumerator());
 			break;
 			
 		case kShip_subEntityCapacity:
-			return ooscript::newNumberValue(context, [entity maxShipSubEntities], value);
-			return YES;
+			return ooscript::newNumberValue(context, ship->maxShipSubEntities(), value);
+			return true;
 			
 		case kShip_subEntityRotation:
-			return QuaternionToJSValue(context, [entity subEntityRotationalVelocity], value);
+			return QuaternionToJSValue(context, ship->subEntityRotationalVelocity(), value);
 
 		case kShip_hasSuspendedAI:
-			*value = OOJSValueFromBOOL([[entity getAI] hasSuspendedStateMachines]);
-			return YES;
+			*value = OOJSValueFromBOOL(AIHasSuspendedStateMachines(ship));
+			return true;
 			
 		case kShip_target:
-			result = oo::PListObject([entity primaryTarget]);
+			result = oo::PListObject(ship->primaryTarget());
 			break;
 		
 		case kShip_defenseTargets:
 		{
-			[entity validateDefenseTargets];
+			ship->validateDefenseTargets();
 			std::vector<oo::ObjCRef<Entity *>> targets;
-			targets.reserve([entity defenseTargetCount]);
-			for (const auto &candidate : [entity cxx_defenseTargets])
+			targets.reserve(ship->defenseTargetCount());
+			for (const auto &candidate : ship->defenseTargets())
 			{
-				Entity *target = [candidate.get() weakRefUnderlyingObject];
-				if (target == nil)  break;	// the old loop stopped at the first zeroed reference
+				// The set's snapshot holds the ships themselves, whose -weakRefUnderlyingObject (OOObject's)
+				// was self.
+				Entity *target = candidate.get();
+				if (target == nullptr)  break;	// the old loop stopped at the first zeroed reference
 				targets.emplace_back(target);
 			}
 			result = oo::PListFromObjects(targets);
@@ -799,458 +842,461 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		}		
 
 		case kShip_crew:
-			if ([entity cxx_crew].has_value())	// unpiloted: nil, as before
+			if (ship->getCrew().has_value())	// unpiloted: nil, as before
 			{
-				const std::vector<oo::PList> entries = [entity cxx_crewForScripting];
+				const std::vector<oo::PList> entries = ship->crewForScripting();
 				result = oo::PList(oo::PList::Array(entries.begin(), entries.end()));
 			}
 			break;
 	
 		case kShip_escorts:
-			result = ([entity escortGroup] != nil) ? oo::PListFromObjects([[entity escortGroup] cxx_memberArrayExcludingLeader]) : oo::PList();
+			{
+				cxx::OOShipGroup *escortGroup = oo::ToCxx(ship->escortGroup());
+				result = (escortGroup != nullptr) ? oo::PListFromObjects(escortGroup->memberArrayExcludingLeader()) : oo::PList();
+			}
 			break;
 			
 		case kShip_group:
-			result = oo::PListObject([entity group]);
+			result = oo::PListObject(ship->group());
 			break;
 			
 		case kShip_escortGroup:
-			result = oo::PListObject([entity escortGroup]);
+			result = oo::PListObject(ship->escortGroup());
 			break;
 			
 		case kShip_temperature:
-			return ooscript::newNumberValue(context, [entity temperature] / SHIP_MAX_CABIN_TEMP, value);
+			return ooscript::newNumberValue(context, ship->temperature() / SHIP_MAX_CABIN_TEMP, value);
 			
 		case kShip_heatInsulation:
-			return ooscript::newNumberValue(context, [entity heatInsulation], value);
+			return ooscript::newNumberValue(context, ship->heatInsulation(), value);
 			
 		case kShip_heading:
-			return VectorToJSValue(context, [entity forwardVector], value);
+			return VectorToJSValue(context, ship->forwardVector(), value);
 			
 		case kShip_energyRechargeRate:
-			return ooscript::newNumberValue(context, [entity energyRechargeRate], value);
+			return ooscript::newNumberValue(context, ship->energyRechargeRate(), value);
 
 		case kShip_entityPersonality:
-			*value = ooscript::int32Value([entity entityPersonalityInt]);
-			return YES;
+			*value = ooscript::int32Value(ship->entityPersonalityInt());
+			return true;
 			
 		case kShip_isBeacon:
-			*value = OOJSValueFromBOOL([entity isBeacon]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isBeacon());
+			return true;
 			
 		case kShip_beaconCode:
-			result = StringOrNull([entity beaconCode]);
+			result = StringOrNull(ship->beaconCode());
 			break;
 
 		case kShip_beaconLabel:
-			result = StringOrNull([entity beaconLabel]);
+			result = StringOrNull(ship->beaconLabel());
 			break;
 		
 		case kShip_isFrangible:
-			*value = OOJSValueFromBOOL([entity isFrangible]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getIsFrangible());
+			return true;
 		
 		case kShip_isCloaked:
-			*value = OOJSValueFromBOOL([entity isCloaked]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isCloaked());
+			return true;
 			
 		case kShip_cloakAutomatic:
-			*value = OOJSValueFromBOOL([entity hasAutoCloak]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->hasAutoCloak());
+			return true;
 			
 		case kShip_isJamming:
-			*value = OOJSValueFromBOOL([entity isJammingScanning]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isJammingScanning());
+			return true;
 		
 		case kShip_potentialCollider:
-			result = oo::PListObject([entity proximityAlert]);
+			result = oo::PListObject(ship->proximityAlert());
 			break;
 		
 		case kShip_hasHostileTarget:
-			*value = OOJSValueFromBOOL([entity hasHostileTarget]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->hasHostileTarget());
+			return true;
 		
 		case kShip_hasHyperspaceMotor:
-			*value = OOJSValueFromBOOL([entity hasHyperspaceMotor]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->hasHyperspaceMotor());
+			return true;
 		
 		case kShip_hyperspaceSpinTime:
-			return ooscript::newNumberValue(context, [entity hyperspaceSpinTime], value);
+			return ooscript::newNumberValue(context, ship->hyperspaceSpinTime(), value);
 
 		case kShip_weaponRange:
-			return ooscript::newNumberValue(context, [entity weaponRange], value);
+			return ooscript::newNumberValue(context, ship->getWeaponRange(), value);
 
 		case kShip_weaponFacings:
-			if ([entity isPlayer])
+			if (ship->getIsPlayer())
 			{
 				PlayerEntity *pent = (PlayerEntity*)entity;
-				return ooscript::newNumberValue(context, [pent availableFacings], value);
+				return ooscript::newNumberValue(context, OOJSShipPlayerAvailableFacings(pent), value);
 			}
-			return ooscript::newNumberValue(context, [entity weaponFacings], value);
+			return ooscript::newNumberValue(context, ship->weaponFacings(), value);
 		
 		case kShip_weaponPositionAft:
-			result = NativeVectorArray([entity cxx_aftWeaponOffset]);
+			result = NativeVectorArray(ship->getAftWeaponOffset());
 			break;
 		
 		case kShip_weaponPositionForward:
-			result = NativeVectorArray([entity cxx_forwardWeaponOffset]);
+			result = NativeVectorArray(ship->getForwardWeaponOffset());
 			break;
 //			return VectorToJSValue(context, [entity forwardWeaponOffset], value);
 		
 		case kShip_weaponPositionPort:
-			result = NativeVectorArray([entity cxx_portWeaponOffset]);
+			result = NativeVectorArray(ship->getPortWeaponOffset());
 			break;
 		
 		case kShip_weaponPositionStarboard:
-			result = NativeVectorArray([entity cxx_starboardWeaponOffset]);
+			result = NativeVectorArray(ship->getStarboardWeaponOffset());
 			break;
 		
 		case kShip_scannerRange:
-			return ooscript::newNumberValue(context, [entity scannerRange], value);
+			return ooscript::newNumberValue(context, ship->getScannerRange(), value);
 		
 		case kShip_reactionTime:
-			return ooscript::newNumberValue(context, [entity reactionTime], value);
+			return ooscript::newNumberValue(context, ship->getReactionTime(), value);
 			
 		case kShip_reportAIMessages:
-			*value = OOJSValueFromBOOL([entity reportAIMessages]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getReportAIMessages());
+			return true;
 		
 		case kShip_withinStationAegis:
-			*value = OOJSValueFromBOOL([entity withinStationAegis]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->withinStationAegis());
+			return true;
 		
 		case kShip_cargoSpaceCapacity:
-			*value = ooscript::int32Value([entity maxAvailableCargoSpace]);
-			return YES;
+			*value = ooscript::int32Value(ship->maxAvailableCargoSpace());
+			return true;
 		
 		case kShip_cargoSpaceUsed:
-			*value = ooscript::int32Value([entity maxAvailableCargoSpace] - [entity availableCargoSpace]);
-			return YES;
+			*value = ooscript::int32Value(ship->maxAvailableCargoSpace() - ship->availableCargoSpace());
+			return true;
 		
 		case kShip_cargoSpaceAvailable:
-			*value = ooscript::int32Value([entity availableCargoSpace]);
-			return YES;
+			*value = ooscript::int32Value(ship->availableCargoSpace());
+			return true;
 
 	  case kShip_cargoList:
-			result = [entity cargoListForScripting];
+			result = ship->cargoListForScripting();
 			break;
 
 		case kShip_extraCargo:
-			return ooscript::newNumberValue(context, [entity extraCargo], value);
-			return YES;
+			return ooscript::newNumberValue(context, ship->extraCargo(), value);
+			return true;
 		
 		case kShip_commodity:
-			if ([entity commodityAmount] > 0)
+			if (ship->commodityAmount() > 0)
 			{
-				result = StringOrNull([entity cxx_commodityType]);
+				result = StringOrNull(ship->commodityType());
 			}
 			break;
 			
 		case kShip_commodityAmount:
-			*value = ooscript::int32Value([entity commodityAmount]);
-			return YES;
+			*value = ooscript::int32Value(ship->commodityAmount());
+			return true;
 
 	  case kShip_collisionExceptions:
-			result = oo::PListFromObjects([entity cxx_collisionExceptions]);
+			result = oo::PListFromObjects(ship->collisionExceptions());
 			break;
 
 			
 		case kShip_speed:
-			return ooscript::newNumberValue(context, [entity flightSpeed], value);
+			return ooscript::newNumberValue(context, ship->getFlightSpeed(), value);
 			
 		case kShip_cruiseSpeed:
-			return ooscript::newNumberValue(context, [entity cruiseSpeed], value);
+			return ooscript::newNumberValue(context, ship->getCruiseSpeed(), value);
 		
 		case kShip_dataKey:
-			result = StringOrNull([entity cxx_shipDataKey]);
+			result = StringOrNull(ship->shipDataKey());
 			break;
 			
 		case kShip_desiredRange:
-			return ooscript::newNumberValue(context, [entity desiredRange], value);
+			return ooscript::newNumberValue(context, ship->desiredRange(), value);
 		
 		case kShip_desiredSpeed:
-			return ooscript::newNumberValue(context, [entity desiredSpeed], value);
+			return ooscript::newNumberValue(context, ship->desiredSpeed(), value);
 			
 		case kShip_destination:
-			return HPVectorToJSValue(context, [entity destination], value);
+			return HPVectorToJSValue(context, ship->destination(), value);
 		
 		case kShip_markedForFines:
-			*value = OOJSValueFromBOOL([entity markedForFines]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->markedForFines());
+			return true;
 
 		case kShip_maxEscorts:
-			return ooscript::newNumberValue(context, [entity maxEscortCount], value);
+			return ooscript::newNumberValue(context, ship->maxEscortCount(), value);
 
 		case kShip_maxPitch:
-			return ooscript::newNumberValue(context, [entity maxFlightPitch], value);
+			return ooscript::newNumberValue(context, ship->maxFlightPitch(), value);
 		
 		case kShip_maxSpeed:
-			return ooscript::newNumberValue(context, [entity maxFlightSpeed], value);
+			return ooscript::newNumberValue(context, ship->getMaxFlightSpeed(), value);
 		
 		case kShip_maxRoll:
-			return ooscript::newNumberValue(context, [entity maxFlightRoll], value);
+			return ooscript::newNumberValue(context, ship->maxFlightRoll(), value);
 		
 		case kShip_maxYaw:
-			return ooscript::newNumberValue(context, [entity maxFlightYaw], value);
+			return ooscript::newNumberValue(context, ship->maxFlightYaw(), value);
 
 		case kShip_injectorBurnRate:
-			return ooscript::newNumberValue(context, [entity afterburnerRate], value);
+			return ooscript::newNumberValue(context, ship->afterburnerRate(), value);
 
 		case kShip_injectorSpeedFactor:
-			return ooscript::newNumberValue(context, [entity afterburnerFactor], value);
+			return ooscript::newNumberValue(context, ship->afterburnerFactor(), value);
 			
 		case kShip_script:
-			result = oo::PListObject([entity shipScript]);
+			result = oo::PListObject(ship->shipScript());
 			break;
 
 		case kShip_AIScript:
-			result = oo::PListObject([entity shipAIScript]);
+			result = oo::PListObject(ship->shipAIScript());
 			break;
 
 		case kShip_AIScriptWakeTime:
-			return ooscript::newNumberValue(context, [entity shipAIScriptWakeTime], value);
+			return ooscript::newNumberValue(context, ship->shipAIScriptWakeTime(), value);
 			break;
 
 		case kShip_destinationSystem:
-			return ooscript::newNumberValue(context, [entity destinationSystem], value);
+			return ooscript::newNumberValue(context, ship->destinationSystem(), value);
 			break;
 
 		case kShip_homeSystem:
-			return ooscript::newNumberValue(context, [entity homeSystem], value);
+			return ooscript::newNumberValue(context, ship->homeSystem(), value);
 			break;
 			
 		case kShip_isPirate:
-			*value = OOJSValueFromBOOL([entity isPirate]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isPirate());
+			return true;
 			
 		case kShip_isPolice:
-			*value = OOJSValueFromBOOL([entity isPolice]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isPolice());
+			return true;
 			
 		case kShip_isThargoid:
-			*value = OOJSValueFromBOOL([entity isThargoid]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isThargoid());
+			return true;
 			
 		case kShip_isTurret:
-			*value = OOJSValueFromBOOL([entity isTurret]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isTurret());
+			return true;
 
 		case kShip_isTrader:
-			*value = OOJSValueFromBOOL([entity isTrader]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isTrader());
+			return true;
 			
 		case kShip_isPirateVictim:
-			*value = OOJSValueFromBOOL([entity isPirateVictim]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isPirateVictim());
+			return true;
 			
 		case kShip_isMissile:
-			*value = OOJSValueFromBOOL([entity isMissile]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getIsMissile());
+			return true;
 			
 		case kShip_isMine:
-			*value = OOJSValueFromBOOL([entity isMine]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isMine());
+			return true;
 			
 		case kShip_isWeapon:
-			*value = OOJSValueFromBOOL([entity isWeapon]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isWeapon());
+			return true;
 			
 		case kShip_isRock:
-			*value = OOJSValueFromBOOL([entity scanClass] == CLASS_ROCK);	// hermits and asteroids!
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getScanClass() == CLASS_ROCK);	// hermits and asteroids!
+			return true;
 
 		case kShip_isMinable:
-			*value = OOJSValueFromBOOL([entity isMinable]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isMinable());
+			return true;
 			
 		case kShip_isBoulder:
-			*value = OOJSValueFromBOOL([entity isBoulder]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->isBoulder());
+			return true;
 
 		case kShip_isFleeing:
-			if ([entity isPlayer])
+			if (ship->getIsPlayer())
 			{
-				*value = OOJSValueFromBOOL([(PlayerEntity*)entity fleeingStatus] >= PLAYER_FLEEING_CARGO);
+				*value = OOJSValueFromBOOL(OOJSShipPlayerFleeingStatus((PlayerEntity*)entity) >= PLAYER_FLEEING_CARGO);
 			}
 			else
 			{
-				*value = OOJSValueFromBOOL([entity behaviour] == BEHAVIOUR_FLEE_TARGET || [entity behaviour] == BEHAVIOUR_FLEE_EVASIVE_ACTION);
+				*value = OOJSValueFromBOOL(ship->getBehaviour() == BEHAVIOUR_FLEE_TARGET || ship->getBehaviour() == BEHAVIOUR_FLEE_EVASIVE_ACTION);
 			}
-			return YES;
+			return true;
 			
 		case kShip_isCargo:
-			*value = OOJSValueFromBOOL([entity scanClass] == CLASS_CARGO && [entity commodityAmount] > 0);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getScanClass() == CLASS_CARGO && ship->commodityAmount() > 0);
+			return true;
 			
 		case kShip_isDerelict:
-			*value = OOJSValueFromBOOL([entity isHulk]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getIsHulk());
+			return true;
 			
 		case kShip_isPiloted:
-			*value = OOJSValueFromBOOL([entity isPlayer] || [entity cxx_crew].value_or(std::vector<oo::ObjCRef<OOCharacter *>>()).size() > 0);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getIsPlayer() || ship->getCrew().value_or(std::vector<oo::ObjCRef<OOCharacter *>>()).size() > 0);
+			return true;
 			
 		case kShip_scriptedMisjump:
-			*value = OOJSValueFromBOOL([entity scriptedMisjump]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->scriptedMisjump());
+			return true;
 
 		case kShip_scriptedMisjumpRange:
-			return ooscript::newNumberValue(context, [entity scriptedMisjumpRange], value);
+			return ooscript::newNumberValue(context, ship->scriptedMisjumpRange(), value);
 			
 		case kShip_scriptInfo:
-			result = [entity scriptInfo];	// empty dict, never null
+			result = ship->getScriptInfo();	// empty dict, never null
 			break;
 			
 		case kShip_sunGlareFilter:
-			return ooscript::newNumberValue(context, [entity sunGlareFilter], value);
+			return ooscript::newNumberValue(context, ship->getSunGlareFilter(), value);
 			
 		case kShip_trackCloseContacts:
-			*value = OOJSValueFromBOOL([entity trackCloseContacts]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->getTrackCloseContacts());
+			return true;
 			
 		case kShip_passengerCount:
-			return ooscript::newNumberValue(context, [entity passengerCount], value);
+			return ooscript::newNumberValue(context, ship->passengerCount(), value);
 
 		case kShip_parcelCount:
-			return ooscript::newNumberValue(context, [entity parcelCount], value);
+			return ooscript::newNumberValue(context, ship->parcelCount(), value);
 			
 		case kShip_passengerCapacity:
-			return ooscript::newNumberValue(context, [entity passengerCapacity], value);
+			return ooscript::newNumberValue(context, ship->passengerCapacity(), value);
 		
 		case kShip_missileCapacity:
-			return ooscript::newNumberValue(context, [entity missileCapacity], value);
+			return ooscript::newNumberValue(context, ship->missileCapacity(), value);
 			
 		case kShip_missileLoadTime:
-			return ooscript::newNumberValue(context, [entity missileLoadTime], value);
+			return ooscript::newNumberValue(context, ship->missileLoadTime(), value);
 		
 		case kShip_savedCoordinates:
-			return HPVectorToJSValue(context,[entity coordinates], value);
+			return HPVectorToJSValue(context,ship->getCoordinates(), value);
 		
 		case kShip_equipment:
-			result = oo::PListFromObjects([entity cxx_equipmentListForScripting]);
+			result = oo::PListFromObjects(ship->equipmentListForScripting());
 			break;
 			
 		case kShip_currentWeapon:
-			result = oo::PListObject([entity weaponTypeForFacing:[entity currentWeaponFacing] strict:YES]);
+			result = oo::PListObject(ship->weaponTypeForFacing(ship->getCurrentWeaponFacing(), true));
 			break;
 		
 		case kShip_forwardWeapon:
-			result = oo::PListObject([entity weaponTypeForFacing:WEAPON_FACING_FORWARD strict:YES]);
+			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_FORWARD, true));
 			break;
 		
 		case kShip_aftWeapon:
-			result = oo::PListObject([entity weaponTypeForFacing:WEAPON_FACING_AFT strict:YES]);
+			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_AFT, true));
 			break;
 		
 		case kShip_portWeapon:
-			result = oo::PListObject([entity weaponTypeForFacing:WEAPON_FACING_PORT strict:YES]);
+			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_PORT, true));
 			break;
 		
 		case kShip_starboardWeapon:
-			result = oo::PListObject([entity weaponTypeForFacing:WEAPON_FACING_STARBOARD strict:YES]);
+			result = oo::PListObject(ship->weaponTypeForFacing(WEAPON_FACING_STARBOARD, true));
 			break;
 		
 		case kShip_laserHeatLevel:
-			return ooscript::newNumberValue(context, [entity laserHeatLevel], value);
+			return ooscript::newNumberValue(context, ship->laserHeatLevel(), value);
 		
 		case kShip_laserHeatLevelAft:
-			return ooscript::newNumberValue(context, [entity laserHeatLevelAft], value);
+			return ooscript::newNumberValue(context, ship->laserHeatLevelAft(), value);
 		
 		case kShip_laserHeatLevelForward:
-			return ooscript::newNumberValue(context, [entity laserHeatLevelForward], value);
+			return ooscript::newNumberValue(context, ship->laserHeatLevelForward(), value);
 		
 		case kShip_laserHeatLevelPort:
-			return ooscript::newNumberValue(context, [entity laserHeatLevelPort], value);
+			return ooscript::newNumberValue(context, ship->laserHeatLevelPort(), value);
 		
 		case kShip_laserHeatLevelStarboard:
-			return ooscript::newNumberValue(context, [entity laserHeatLevelStarboard], value);
+			return ooscript::newNumberValue(context, ship->laserHeatLevelStarboard(), value);
 		
 		case kShip_missiles:
-			result = oo::PListFromObjects([entity missilesList]);
+			result = oo::PListFromObjects(ship->missilesList());
 			break;
 		
 		case kShip_passengers:
-			result = [entity passengerListForScripting];
+			result = ship->passengerListForScripting();
 			break;
 
 		case kShip_parcels:
-			result = [entity parcelListForScripting];
+			result = ship->parcelListForScripting();
 			break;
 		
 		case kShip_contracts:
-			result = [entity contractListForScripting];
+			result = ship->contractListForScripting();
 			break;
 			
   	case kShip_dockingInstructions:
-			result = [entity cxx_dockingInstructions];
+			result = ship->getDockingInstructions();
 			break;
 
 		case kShip_scannerDisplayColor1:
-			result = NormalizedColorComponents([entity scannerDisplayColor1]);
+			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColor1()));
 			break;
 
 		case kShip_scannerDisplayColor2:
-			result = NormalizedColorComponents([entity scannerDisplayColor2]);
+			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColor2()));
 			break;
 
 		case kShip_scannerHostileDisplayColor1:
-			result = NormalizedColorComponents([entity scannerDisplayColorHostile1]);
+			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColorHostile1()));
 			break;
 
 		case kShip_scannerHostileDisplayColor2:
-			result = NormalizedColorComponents([entity scannerDisplayColorHostile2]);
+			result = NormalizedColorComponents(oo::ToCxx(ship->scannerDisplayColorHostile2()));
 			break;
 
 		case kShip_exhaustEmissiveColor:
-			result = NormalizedColorComponents([entity exhaustEmissiveColor]);
+			result = NormalizedColorComponents(oo::ToCxx(ship->exhaustEmissiveColor()));
 			break;
 			
 		case kShip_maxThrust:
-			return ooscript::newNumberValue(context, [entity maxThrust], value);
+			return ooscript::newNumberValue(context, ship->maxThrust(), value);
 			
 		case kShip_thrust:
-			return ooscript::newNumberValue(context, [entity thrust], value);
+			return ooscript::newNumberValue(context, ship->getThrust(), value);
 			
 		case kShip_lightsActive:
-			*value = OOJSValueFromBOOL([entity lightsActive]);
-			return YES;
+			*value = OOJSValueFromBOOL(ship->lightsActive());
+			return true;
 			
 		case kShip_vectorRight:
-			return VectorToJSValue(context, [entity rightVector], value);
+			return VectorToJSValue(context, ship->rightVector(), value);
 			
 		case kShip_vectorForward:
-			return VectorToJSValue(context, [entity forwardVector], value);
+			return VectorToJSValue(context, ship->forwardVector(), value);
 			
 		case kShip_vectorUp:
-			return VectorToJSValue(context, [entity upVector], value);
+			return VectorToJSValue(context, ship->upVector(), value);
 			
 		case kShip_velocity:
-			return VectorToJSValue(context, [entity velocity], value);
+			return VectorToJSValue(context, ship->getVelocity(), value);
 			
 		case kShip_thrustVector:
-			return VectorToJSValue(context, [entity thrustVector], value);
+			return VectorToJSValue(context, ship->thrustVector(), value);
 		
 		case kShip_pitch:
-			return ooscript::newNumberValue(context, [entity flightPitch], value);
+			return ooscript::newNumberValue(context, ship->getFlightPitch(), value);
 		
 		case kShip_roll:
-			return ooscript::newNumberValue(context, [entity flightRoll], value);
+			return ooscript::newNumberValue(context, ship->getFlightRoll(), value);
 		
 		case kShip_yaw:
-			return ooscript::newNumberValue(context, [entity flightYaw], value);
+			return ooscript::newNumberValue(context, ship->getFlightYaw(), value);
 		
 		case kShip_boundingBox:
 			{
 				Vector bbvect;
 				BoundingBox box;
 				
-				if ([entity isSubEntity])
+				if (ship->getIsSubEntity())
 				{
-					box = [entity boundingBox];
+					box = ship->getBoundingBox();
 				}
 				else
 				{
-					box = [entity totalBoundingBox];
+					box = ship->getTotalBoundingBox();
 				}
 				bounding_box_get_dimensions(box,&bbvect.x,&bbvect.y,&bbvect.z);
 				return VectorToJSValue(context, bbvect, value);
@@ -1258,11 +1304,11 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			
 		default:
 			OOJSReportBadPropertySelector(context, thisObject, propID, sShipProperties);
-			return NO;
+			return false;
 	}
 	
 	*value = OOJSValueFromPList(context, result);
-	return YES;
+	return true;
 	
 	OOJS_NATIVE_EXIT
 }
