@@ -158,48 +158,48 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
-@interface RouteElement: OOObject
+/*	A node of -cxx_routeFromSystem:toSystem:optimizedBy:'s search (slice 20 of
+	docs/phases/3-slices/Universe.md, bead oo-lftoq): the Objective-C RouteElement as a C++ class,
+	its accessors by the same names (ADR-0056 amendment oo-7jhs5).
+*/
+class RouteElement : public oo::RefCounted
 {
-@private
-	OOSystemID _location, _parent;
-	double _cost, _distance, _time;
-	int _jumps;
-}
+public:
+	static oo::Ref<RouteElement> elementWithLocation(OOSystemID location, OOSystemID parent, double cost, double distance, double time, int jumps);
+	OOSystemID parent();
+	OOSystemID location();
+	double cost();
+	double distance();
+	double time();
+	int jumps();
 
-+ (instancetype) elementWithLocation:(OOSystemID) location parent:(OOSystemID)parent cost:(double) cost distance:(double) distance time:(double) time jumps:(int) jumps;
-- (OOSystemID) parent;
-- (OOSystemID) location;
-- (double) cost;
-- (double) distance;
-- (double) time;
-- (int) jumps;
+private:
+	OOSystemID _location = 0, _parent = 0;
+	double _cost = 0, _distance = 0, _time = 0;
+	int _jumps = 0;
+};
 
-@end
 
-@implementation RouteElement
-
-+ (instancetype) elementWithLocation:(OOSystemID) location parent:(OOSystemID) parent cost:(double) cost distance:(double) distance time:(double) time jumps:(int) jumps
+oo::Ref<RouteElement> RouteElement::elementWithLocation(OOSystemID location, OOSystemID parent, double cost, double distance, double time, int jumps)
 {
-	RouteElement *r = [[RouteElement alloc] init];
-	
+	oo::Ref<RouteElement> r = oo::makeRef<RouteElement>();
+
 	r->_location = location;
 	r->_parent = parent;
 	r->_cost = cost;
 	r->_distance = distance;
 	r->_time = time;
 	r->_jumps = jumps;
-	
-	return [r autorelease];
+
+	return r;
 }
 
-- (OOSystemID) parent { return _parent; }
-- (OOSystemID) location { return _location; }
-- (double) cost { return _cost; }
-- (double) distance { return _distance; }
-- (double) time { return _time; }
-- (int) jumps { return _jumps; }
-
-@end
+OOSystemID RouteElement::parent() { return _parent; }
+OOSystemID RouteElement::location() { return _location; }
+double RouteElement::cost() { return _cost; }
+double RouteElement::distance() { return _distance; }
+double RouteElement::time() { return _time; }
+int RouteElement::jumps() { return _jumps; }
 
 
 /*	Carries -cxx_addDelayedMessage:forCount:afterDelay:'s dictionary through
@@ -6274,486 +6274,6 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }	// namespace
 
 
-- (oo::PList) cxx_nearbyDestinationsWithinRange:(double)range
-{
-	oo::PList::Array result;
-	
-	range = OOClamp_0_max_d(range, MAX_JUMP_RANGE); // limit to systems within 7LY
-	NSPoint here = [PLAYER galaxy_coordinates];
-	
-	for (unsigned short i = 0; i < 256; i++)
-	{
-		NSPoint there = [self coordinatesForSystem:i];
-		double dist = distanceBetweenPlanetPositions(here.x, here.y, there.x, there.y);
-		if (dist <= range && (i != _cxxUniverse->systemID || [self inInterstellarSpace])) // if we are in interstellar space, it's OK to include the system we (mis)jumped from
-		{
-			// the number kinds it held: a double, a signed integer
-			result.push_back(oo::PList(oo::PList::Dict{
-								{ "distance", oo::PList(dist) },
-								{ "sysID", oo::PList::signedInteger(i) },
-								{ "nova", oo::PList([self cxx_generateSystemData:i].get<std::string>("sun_gone_nova", "0")) } }));
-		}
-	}
-
-	return oo::PList(std::move(result));
-}
-
-
-- (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g
-{
-
-	double distance;
-	int n,i,j;
-	double min_dist = 10000.0;
-	
-	// make list of connected systems
-	BOOL connected[256];
-	for (i = 0; i < 256; i++)
-		connected[i] = NO;
-	connected[0] = YES;			// system zero is always connected (true for galaxies 0..7)
-	for (n = 0; n < 3; n++)		//repeat three times for surety
-	{
-		for (i = 0; i < 256; i++)   // flood fill out from system zero
-		{
-			NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
-			for (j = 0; j < 256; j++)
-			{
-				NSPoint jpos = [_cxxUniverse->systemManager getCoordinatesForSystem:j inGalaxy:g];
-				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
-				if (dist <= MAX_JUMP_RANGE)
-				{
-					connected[j] |= connected[i];
-					connected[i] |= connected[j];
-				}
-			}
-		}
-	}
-	OOSystemID system = 0;
-	for (i = 0; i < 256; i++)
-	{
-		NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
-		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
-		if ((connected[i])&&(distance < min_dist)&&(distance != 0.0))
-		{
-			min_dist = distance;
-			system = i;
-		}
-	}
-	
-	return system;
-}
-
-
-/* This differs from the above function in that it can return a system
- * exactly at the specified coordinates */
-- (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) g
-{
-
-	double distance;
-	int n,i,j;
-	double min_dist = 10000.0;
-	
-	// make list of connected systems
-	BOOL connected[256];
-	for (i = 0; i < 256; i++)
-		connected[i] = NO;
-	connected[0] = YES;			// system zero is always connected (true for galaxies 0..7)
-	for (n = 0; n < 3; n++)		//repeat three times for surety
-	{
-		for (i = 0; i < 256; i++)   // flood fill out from system zero
-		{
-			NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
-			for (j = 0; j < 256; j++)
-			{
-				NSPoint jpos = [_cxxUniverse->systemManager getCoordinatesForSystem:j inGalaxy:g];
-				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
-				if (dist <= MAX_JUMP_RANGE)
-				{
-					connected[j] |= connected[i];
-					connected[i] |= connected[j];
-				}
-			}
-		}
-	}
-	OOSystemID system = 0;
-	for (i = 0; i < 256; i++)
-	{
-		NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
-		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
-		if ((connected[i])&&(distance < min_dist))
-		{
-			min_dist = distance;
-			system = i;
-		}
-	}
-	
-	return system;	
-}
-
-
-- (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID)g includingHidden:(BOOL)hidden
-{
-	/*
-		NOTE: this previously used NSNotFound as the default value, but
-		returned an int, which would truncate on 64-bit systems. I assume
-		no-one was using it in a context where the default value was returned.
-		-- Ahruman 2012-08-25
-	*/
-	OOSystemID	system = kOOMinimumSystemID;
-	unsigned	distance, dx, dy;
-	OOSystemID	i;
-	unsigned	min_dist = 10000;
-	
-	for (i = 0; i < 256; i++)
-	{
-		if (!hidden) {
-			const oo::PList systemInfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystem:i inGalaxy:g];
-			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-			if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
-				// system is not known
-				continue;
-			}
-		}
-		NSPoint ipos = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:g];
-		dx = ABS(coords.x - ipos.x);
-		dy = ABS(coords.y - ipos.y);
-		
-		if (dx > dy)	distance = (dx + dx + dy) / 2;
-		else			distance = (dx + dy + dy) / 2;
-		
-		if (distance < min_dist)
-		{
-			min_dist = distance;
-			system = i;
-		}
-		// with coincident systems choose only if ABOVE
-		if ((distance == min_dist)&&(coords.y > ipos.y))
-		{
-			system = i;
-		}
-		// or if EQUAL but already selected
-		else if ((distance == min_dist)&&(coords.y == ipos.y)&&(i==[PLAYER targetSystemID]))
-		{
-			system = i;
-		}
-	}
-	return system;
-}
-
-
-- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix
-{
-	return [self cxx_findSystemCoordinatesWithPrefix:p_fix exactMatch:NO];
-}
-
-
-- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch
-{
-	std::string	system_name;
-	NSPoint 	system_coords = NSMakePoint(-1.0,-1.0);
-	int i;
-	int result = -1;
-	for (i = 0; i < 256; i++)
-	{
-		_cxxUniverse->system_found[i] = NO;
-		if (!_cxxUniverse->system_names[i].has_value())  continue;	// a missing name matched nothing
-		system_name = oo::str::lowercase(*_cxxUniverse->system_names[i]);
-		if ((exactMatch && system_name == p_fix) || (!exactMatch && oo::str::hasPrefix(system_name, p_fix)))
-		{
-			/* Only used in player-based search routines */
-			const oo::PList systemInfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystem:i inGalaxy:_cxxUniverse->galaxyID];
-			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-			if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) {
-				// system is not known
-				continue;
-			}
-			
-			_cxxUniverse->system_found[i] = YES;
-			if (result < 0)
-			{
-				system_coords = [_cxxUniverse->systemManager getCoordinatesForSystem:i inGalaxy:_cxxUniverse->galaxyID];
-				result = i;
-			}
-		}
-	}
-	return system_coords;
-}
-
-
-- (BOOL*) systemsFound
-{
-	return (BOOL*)_cxxUniverse->system_found;
-}
-
-
-- (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID)index
-{
-	return _cxxUniverse->system_names[index & 255];
-}
-
-
-- (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy
-{
-	/*
-	 time_cost = distance * distance
-	 jump_cost = jumps * max_total_distance + distance = max_total_tistance + distance
-	 
-	 max_total_distance is 7 * 256
-	 
-	 max_time_cost = max_planets * max_time_cost = 256 * (7 * 7)
-	 max_jump_cost = max_planets * max_jump_cost = 256 * (7 * 256 + 7)
-	 */
-	
-	// no interstellar space for start and/or goal please
-	if (start == -1 || goal == -1)  return oo::PList();
-
-#ifdef CACHE_ROUTE_FROM_SYSTEM_RESULTS
-
-	static oo::PList c_route;
-	static OOSystemID c_start, c_goal;
-	static OORouteType c_optimizeBy;
-
-	if (!c_route.isNull() && c_start == start && c_goal == goal && c_optimizeBy == optimizeBy)
-	{
-		return c_route;
-	}
-
-#endif
-
-	unsigned i, j;
-
-	if (start > 255 || goal > 255) return oo::PList();
-
-	std::vector<OOSystemID> neighbours[256];
-	BOOL concealed[256];
-	for (i = 0; i < 256; i++)
-	{
-		const oo::PList systemInfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystem:i inGalaxy:_cxxUniverse->galaxyID];
-		NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
-		if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
-			// system is not known
-			neighbours[i].clear();
-			concealed[i] = YES;
-		}
-		else
-		{
-			neighbours[i] = [self neighboursToSystem:i];
-			concealed[i] = NO;
-		}
-	}
-	
-	RouteElement *cheapest[256] = {0};
-	
-	double maxCost = optimizeBy == OPTIMIZED_BY_TIME ? 256 * (7 * 7) : 256 * (7 * 256 + 7);
-	
-	std::vector<oo::ObjCRef<RouteElement *>> curr;
-	curr.reserve(256);
-	curr.push_back(oo::ObjCRef<RouteElement *>(cheapest[start] = [RouteElement elementWithLocation:start parent:-1 cost:0 distance:0 time:0 jumps: 0]));
-
-	std::vector<oo::ObjCRef<RouteElement *>> next;
-	next.reserve(256);
-	while (curr.size() != 0)
-	{
-		for (i = 0; i < curr.size(); i++) {
-			RouteElement *elemI = curr[i].get();
-			const std::vector<OOSystemID> &ns = neighbours[[elemI location]];
-			for (j = 0; j < ns.size(); j++)
-			{
-				RouteElement *ce = cheapest[[elemI location]];
-				OOSystemID n = ns[j];
-				if (concealed[n])
-				{
-					continue;
-				}
-				OOSystemID c = [ce location];
-				
-				NSPoint cpos = [_cxxUniverse->systemManager getCoordinatesForSystem:c inGalaxy:_cxxUniverse->galaxyID];
-				NSPoint npos = [_cxxUniverse->systemManager getCoordinatesForSystem:n inGalaxy:_cxxUniverse->galaxyID];
-
-				double lastDistance = distanceBetweenPlanetPositions(npos.x,npos.y,cpos.x,cpos.y);
-				double lastTime = lastDistance * lastDistance;
-				
-				double distance = [ce distance] + lastDistance;
-				double time = [ce time] + lastTime;
-				double cost = [ce cost] + (optimizeBy == OPTIMIZED_BY_TIME ? lastTime : 7 * 256 + lastDistance);
-				int jumps = [ce jumps] + 1;
-				
-				if (cost < maxCost && (cheapest[n] == nil || [cheapest[n] cost] > cost)) {
-					RouteElement *e = [RouteElement elementWithLocation:n parent:c cost:cost distance:distance time:time jumps:jumps];
-					cheapest[n] = e;
-					next.push_back(oo::ObjCRef<RouteElement *>(e));
-					
-					if (n == goal && cost < maxCost)
-						maxCost = cost;
-				}
-			}
-		}
-		curr = next;
-		next.clear();
-	}
-
-
-	if (!cheapest[goal]) return oo::PList();
-
-	oo::PList::Array route;	// system IDs as signed integers, as +numberWithInt: made them
-	RouteElement *e = cheapest[goal];
-	for (;;)
-	{
-		route.insert(route.begin(), oo::PList::signedInteger([e location]));
-		if ([e parent] == -1) break;
-		e = cheapest[[e parent]];
-	}
-
-#ifdef CACHE_ROUTE_FROM_SYSTEM_RESULTS
-	c_start = start;
-	c_goal = goal;
-	c_optimizeBy = optimizeBy;
-	c_route = oo::PList(oo::PList::Dict{ { "route", oo::PList(std::move(route)) }, { "distance", oo::PList((double)[cheapest[goal] distance]) } });
-
-	return c_route;
-#else
-	return oo::PList(oo::PList::Dict{
-			{ "route", oo::PList(std::move(route)) },
-			{ "distance", oo::PList((double)[cheapest[goal] distance]) },
-			{ "time", oo::PList((double)[cheapest[goal] time]) },
-			{ "jumps", oo::PList::signedInteger([cheapest[goal] jumps]) } });
-#endif
-}
-
-
-- (std::vector<OOSystemID>) neighboursToSystem: (OOSystemID) s
-{
-	if (s == _cxxUniverse->systemID && _cxxUniverse->closeSystems.has_value())
-	{
-		return *_cxxUniverse->closeSystems;
-	}
-	std::vector<OOSystemID> neighbours = [_cxxUniverse->systemManager cxx_getNeighbourIDsForSystem:s inGalaxy:_cxxUniverse->galaxyID];
-
-	if (s == _cxxUniverse->systemID)
-	{
-		_cxxUniverse->closeSystems = neighbours;
-		return *_cxxUniverse->closeSystems;
-	}
-	return neighbours;
-}
-
-
-/*
-	Planet texture preloading.
-	
-	In order to hide the cost of synthesizing textures, we want to start
-	rendering them asynchronously as soon as there's a hint they may be needed
-	soon: when a system is selected on one of the charts, and when beginning a
-	jump. However, it would be a Bad Idea™ to allow an arbitrary number of
-	planets to be queued, since you can click on lots of systems quite
-	quickly on the long-range chart.
-	
-	To rate-limit this, we track the materials that are being preloaded and
-	only queue the ones for a new system if there are no more than two in the
-	queue. (Currently, each system will have at most two materials, the main
-	planet and the main planet's atmosphere, but it may be worth adding the
-	ability to declare planets in planetinfo.plist instead of using scripts so
-	that they can also benefit from preloading.)
-	
-	The preloading materials list is pruned before preloading, and also once
-	per frame so textures can fall out of the regular cache.
-	-- Ahruman 2009-12-19
-	
-	DISABLED due to crashes on some Windows systems. Textures generated here
-	remain in the sRecentTextures cache when released, suggesting a retain
-	imbalance somewhere. Cannot reproduce under Mac OS X. Needs further
-	analysis before reenabling.
-	http://www.aegidian.org/bb/viewtopic.php?f=3&t=12109
-	-- Ahruman 2012-06-29
-*/
-- (void) preloadPlanetTexturesForSystem:(OOSystemID)s
-{
-// #if NEW_PLANETS
-#if 0
-	[self prunePreloadingPlanetMaterials];
-	
-	if (_preloadingPlanetMaterials.size() < 3)
-	{
-		
-		OOPlanetEntity *planet = [[OOPlanetEntity alloc] initAsMainPlanetForSystem:s];
-		OOMaterial *surface = [planet material];
-		// can be nil if texture mis-defined
-		if (surface != nil)
-		{
-			// if it's already loaded, no need to continue
-			if (![surface isFinishedLoading])
-			{
-				_preloadingPlanetMaterials.push_back(oo::ObjCRef<OOMaterial *>(surface));
-		
-				// In some instances (retextured planets atm), the main planet might not have an atmosphere defined.
-				// Trying to add nil to _preloadingPlanetMaterials will prematurely terminate the calling function.(!) --Kaks 20100107
-				OOMaterial *atmo = [planet atmosphereMaterial];
-				if (atmo != nil)  _preloadingPlanetMaterials.push_back(oo::ObjCRef<OOMaterial *>(atmo));
-			}
-		}
-		
-		[planet release];
-	}
-#endif
-}
-
-
-- (oo::PList) cxx_globalSettings
-{
-	return _cxxUniverse->globalSettings;
-}
-
-
-- (oo::PList) cxx_equipmentData
-{
-	return _cxxUniverse->equipmentData;
-}
-
-
-- (oo::PList) cxx_equipmentDataOutfitting
-{
-	return _cxxUniverse->equipmentDataOutfitting;
-}
-
-
-- (OOCommodityMarket *) commodityMarket
-{
-	return _cxxUniverse->commodityMarket;
-}
-
-
-- (std::optional<std::string>) timeDescription:(double) interval
-{
-	double r_time = interval;
-	std::string result;
-
-	if (r_time > 86400)
-	{
-		int days = floor(r_time / 86400);
-		r_time -= 86400 * days;
-		result = oo::str::format("%s %d day%s", result.c_str(), days, (days > 1) ? "s" : "");
-	}
-	if (r_time > 3600)
-	{
-		int hours = floor(r_time / 3600);
-		r_time -= 3600 * hours;
-		result = oo::str::format("%s %d hour%s", result.c_str(), hours, (hours > 1) ? "s" : "");
-	}
-	if (r_time > 60)
-	{
-		int mins = floor(r_time / 60);
-		r_time -= 60 * mins;
-		result = oo::str::format("%s %d minute%s", result.c_str(), mins, (mins > 1) ? "s" : "");
-	}
-	if (r_time > 0)
-	{
-		int secs = floor(r_time);
-		result = oo::str::format("%s %d second%s", result.c_str(), secs, (secs > 1) ? "s" : "");
-	}
-	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
-}
-
-
 - (std::optional<std::string>) cxx_shortTimeDescription:(double) interval
 {
 	double r_time = interval;
@@ -11879,6 +11399,499 @@ OOSystemID Universe::findSystemAtCoords(NSPoint coords, OOGalaxyID g)
 
 	OO_LOG("deprecated.function", "{}", "findSystemAtCoords");
 	return [self findSystemNumberAtCoords:coords withGalaxy:g includingHidden:YES];
+}
+
+}	// namespace cxx
+
+
+// Slice 20 of docs/phases/3-slices/Universe.md (bead oo-lftoq): neighbouring systems, system-name look-up, routes (with RouteElement), planet textures, global and equipment data, the commodity market, time descriptions. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+oo::PList Universe::nearbyDestinationsWithinRange(double range)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	oo::PList::Array result;
+	
+	range = OOClamp_0_max_d(range, MAX_JUMP_RANGE); // limit to systems within 7LY
+	NSPoint here = [PLAYER galaxy_coordinates];
+	
+	for (unsigned short i = 0; i < 256; i++)
+	{
+		NSPoint there = [self coordinatesForSystem:i];
+		double dist = distanceBetweenPlanetPositions(here.x, here.y, there.x, there.y);
+		if (dist <= range && (i != systemID || [self inInterstellarSpace])) // if we are in interstellar space, it's OK to include the system we (mis)jumped from
+		{
+			// the number kinds it held: a double, a signed integer
+			result.push_back(oo::PList(oo::PList::Dict{
+								{ "distance", oo::PList(dist) },
+								{ "sysID", oo::PList::signedInteger(i) },
+								{ "nova", oo::PList([self cxx_generateSystemData:i].get<std::string>("sun_gone_nova", "0")) } }));
+		}
+	}
+
+	return oo::PList(std::move(result));
+}
+
+
+OOSystemID Universe::findNeighbouringSystemToCoords(NSPoint coords, OOGalaxyID g)
+{
+
+	double distance;
+	int n,i,j;
+	double min_dist = 10000.0;
+	
+	// make list of connected systems
+	BOOL connected[256];
+	for (i = 0; i < 256; i++)
+		connected[i] = NO;
+	connected[0] = YES;			// system zero is always connected (true for galaxies 0..7)
+	for (n = 0; n < 3; n++)		//repeat three times for surety
+	{
+		for (i = 0; i < 256; i++)   // flood fill out from system zero
+		{
+			NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+			for (j = 0; j < 256; j++)
+			{
+				NSPoint jpos = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
+				if (dist <= MAX_JUMP_RANGE)
+				{
+					connected[j] |= connected[i];
+					connected[i] |= connected[j];
+				}
+			}
+		}
+	}
+	OOSystemID system = 0;
+	for (i = 0; i < 256; i++)
+	{
+		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
+		if ((connected[i])&&(distance < min_dist)&&(distance != 0.0))
+		{
+			min_dist = distance;
+			system = i;
+		}
+	}
+	
+	return system;
+}
+
+
+/* This differs from the above function in that it can return a system
+ * exactly at the specified coordinates */
+OOSystemID Universe::findConnectedSystemAtCoords(NSPoint coords, OOGalaxyID g)
+{
+
+	double distance;
+	int n,i,j;
+	double min_dist = 10000.0;
+	
+	// make list of connected systems
+	BOOL connected[256];
+	for (i = 0; i < 256; i++)
+		connected[i] = NO;
+	connected[0] = YES;			// system zero is always connected (true for galaxies 0..7)
+	for (n = 0; n < 3; n++)		//repeat three times for surety
+	{
+		for (i = 0; i < 256; i++)   // flood fill out from system zero
+		{
+			NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+			for (j = 0; j < 256; j++)
+			{
+				NSPoint jpos = [systemManager getCoordinatesForSystem:j inGalaxy:g];
+				double dist = distanceBetweenPlanetPositions(ipos.x,ipos.y,jpos.x,jpos.y);
+				if (dist <= MAX_JUMP_RANGE)
+				{
+					connected[j] |= connected[i];
+					connected[i] |= connected[j];
+				}
+			}
+		}
+	}
+	OOSystemID system = 0;
+	for (i = 0; i < 256; i++)
+	{
+		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		distance = distanceBetweenPlanetPositions((int)coords.x, (int)coords.y, ipos.x, ipos.y);
+		if ((connected[i])&&(distance < min_dist))
+		{
+			min_dist = distance;
+			system = i;
+		}
+	}
+	
+	return system;	
+}
+
+
+OOSystemID Universe::findSystemNumberAtCoords(NSPoint coords, OOGalaxyID g, bool hidden)
+{
+	/*
+		NOTE: this previously used NSNotFound as the default value, but
+		returned an int, which would truncate on 64-bit systems. I assume
+		no-one was using it in a context where the default value was returned.
+		-- Ahruman 2012-08-25
+	*/
+	OOSystemID	system = kOOMinimumSystemID;
+	unsigned	distance, dx, dy;
+	OOSystemID	i;
+	unsigned	min_dist = 10000;
+	
+	for (i = 0; i < 256; i++)
+	{
+		if (!hidden) {
+			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g];
+			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+			if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
+				// system is not known
+				continue;
+			}
+		}
+		NSPoint ipos = [systemManager getCoordinatesForSystem:i inGalaxy:g];
+		dx = ABS(coords.x - ipos.x);
+		dy = ABS(coords.y - ipos.y);
+		
+		if (dx > dy)	distance = (dx + dx + dy) / 2;
+		else			distance = (dx + dy + dy) / 2;
+		
+		if (distance < min_dist)
+		{
+			min_dist = distance;
+			system = i;
+		}
+		// with coincident systems choose only if ABOVE
+		if ((distance == min_dist)&&(coords.y > ipos.y))
+		{
+			system = i;
+		}
+		// or if EQUAL but already selected
+		else if ((distance == min_dist)&&(coords.y == ipos.y)&&(i==[PLAYER targetSystemID]))
+		{
+			system = i;
+		}
+	}
+	return system;
+}
+
+
+NSPoint Universe::findSystemCoordinatesWithPrefix(const std::string &p_fix)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	return [self cxx_findSystemCoordinatesWithPrefix:p_fix exactMatch:NO];
+}
+
+
+NSPoint Universe::findSystemCoordinatesWithPrefix(const std::string &p_fix, bool exactMatch)
+{
+	std::string	system_name;
+	NSPoint 	system_coords = NSMakePoint(-1.0,-1.0);
+	int i;
+	int result = -1;
+	for (i = 0; i < 256; i++)
+	{
+		system_found[i] = NO;
+		if (!system_names[i].has_value())  continue;	// a missing name matched nothing
+		system_name = oo::str::lowercase(*system_names[i]);
+		if ((exactMatch && system_name == p_fix) || (!exactMatch && oo::str::hasPrefix(system_name, p_fix)))
+		{
+			/* Only used in player-based search routines */
+			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+			if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) {
+				// system is not known
+				continue;
+			}
+			
+			system_found[i] = YES;
+			if (result < 0)
+			{
+				system_coords = [systemManager getCoordinatesForSystem:i inGalaxy:galaxyID];
+				result = i;
+			}
+		}
+	}
+	return system_coords;
+}
+
+
+BOOL *Universe::systemsFound()
+{
+	return (BOOL*)system_found;
+}
+
+
+std::optional<std::string> Universe::systemNameIndex(OOSystemID index)
+{
+	return system_names[index & 255];
+}
+
+
+oo::PList Universe::routeFromSystem(OOSystemID start, OOSystemID goal, OORouteType optimizeBy)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	/*
+	 time_cost = distance * distance
+	 jump_cost = jumps * max_total_distance + distance = max_total_tistance + distance
+	 
+	 max_total_distance is 7 * 256
+	 
+	 max_time_cost = max_planets * max_time_cost = 256 * (7 * 7)
+	 max_jump_cost = max_planets * max_jump_cost = 256 * (7 * 256 + 7)
+	 */
+	
+	// no interstellar space for start and/or goal please
+	if (start == -1 || goal == -1)  return oo::PList();
+
+#ifdef CACHE_ROUTE_FROM_SYSTEM_RESULTS
+
+	static oo::PList c_route;
+	static OOSystemID c_start, c_goal;
+	static OORouteType c_optimizeBy;
+
+	if (!c_route.isNull() && c_start == start && c_goal == goal && c_optimizeBy == optimizeBy)
+	{
+		return c_route;
+	}
+
+#endif
+
+	unsigned i, j;
+
+	if (start > 255 || goal > 255) return oo::PList();
+
+	std::vector<OOSystemID> neighbours[256];
+	BOOL concealed[256];
+	for (i = 0; i < 256; i++)
+	{
+		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+		NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+		if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
+			// system is not known
+			neighbours[i].clear();
+			concealed[i] = YES;
+		}
+		else
+		{
+			neighbours[i] = [self neighboursToSystem:i];
+			concealed[i] = NO;
+		}
+	}
+	
+	oo::Ref<::RouteElement> cheapest[256];	// keeps each element, as the autorelease pool did
+	
+	double maxCost = optimizeBy == OPTIMIZED_BY_TIME ? 256 * (7 * 7) : 256 * (7 * 256 + 7);
+	
+	std::vector<oo::Ref<::RouteElement>> curr;
+	curr.reserve(256);
+	curr.push_back(cheapest[start] = ::RouteElement::elementWithLocation(start, -1, 0, 0, 0, 0));
+
+	std::vector<oo::Ref<::RouteElement>> next;
+	next.reserve(256);
+	while (curr.size() != 0)
+	{
+		for (i = 0; i < curr.size(); i++) {
+			::RouteElement *elemI = curr[i].get();
+			const std::vector<OOSystemID> &ns = neighbours[elemI->location()];
+			for (j = 0; j < ns.size(); j++)
+			{
+				::RouteElement *ce = cheapest[elemI->location()].get();
+				OOSystemID n = ns[j];
+				if (concealed[n])
+				{
+					continue;
+				}
+				OOSystemID c = ce->location();
+				
+				NSPoint cpos = [systemManager getCoordinatesForSystem:c inGalaxy:galaxyID];
+				NSPoint npos = [systemManager getCoordinatesForSystem:n inGalaxy:galaxyID];
+
+				double lastDistance = distanceBetweenPlanetPositions(npos.x,npos.y,cpos.x,cpos.y);
+				double lastTime = lastDistance * lastDistance;
+				
+				double distance = ce->distance() + lastDistance;
+				double time = ce->time() + lastTime;
+				double cost = ce->cost() + (optimizeBy == OPTIMIZED_BY_TIME ? lastTime : 7 * 256 + lastDistance);
+				int jumps = ce->jumps() + 1;
+				
+				if (cost < maxCost && (cheapest[n] == nullptr || cheapest[n]->cost() > cost)) {
+					oo::Ref<::RouteElement> e = ::RouteElement::elementWithLocation(n, c, cost, distance, time, jumps);
+					cheapest[n] = e;
+					next.push_back(e);
+					
+					if (n == goal && cost < maxCost)
+						maxCost = cost;
+				}
+			}
+		}
+		curr = next;
+		next.clear();
+	}
+
+
+	if (!cheapest[goal]) return oo::PList();
+
+	oo::PList::Array route;	// system IDs as signed integers, as +numberWithInt: made them
+	::RouteElement *e = cheapest[goal].get();
+	for (;;)
+	{
+		route.insert(route.begin(), oo::PList::signedInteger(e->location()));
+		if (e->parent() == -1) break;
+		e = cheapest[e->parent()].get();
+	}
+
+#ifdef CACHE_ROUTE_FROM_SYSTEM_RESULTS
+	c_start = start;
+	c_goal = goal;
+	c_optimizeBy = optimizeBy;
+	c_route = oo::PList(oo::PList::Dict{ { "route", oo::PList(std::move(route)) }, { "distance", oo::PList((double)cheapest[goal]->distance()) } });
+
+	return c_route;
+#else
+	return oo::PList(oo::PList::Dict{
+			{ "route", oo::PList(std::move(route)) },
+			{ "distance", oo::PList((double)cheapest[goal]->distance()) },
+			{ "time", oo::PList((double)cheapest[goal]->time()) },
+			{ "jumps", oo::PList::signedInteger(cheapest[goal]->jumps()) } });
+#endif
+}
+
+
+std::vector<OOSystemID> Universe::neighboursToSystem(OOSystemID s)
+{
+	if (s == systemID && closeSystems.has_value())
+	{
+		return *closeSystems;
+	}
+	std::vector<OOSystemID> neighbours = [systemManager cxx_getNeighbourIDsForSystem:s inGalaxy:galaxyID];
+
+	if (s == systemID)
+	{
+		closeSystems = neighbours;
+		return *closeSystems;
+	}
+	return neighbours;
+}
+
+
+/*
+	Planet texture preloading.
+	
+	In order to hide the cost of synthesizing textures, we want to start
+	rendering them asynchronously as soon as there's a hint they may be needed
+	soon: when a system is selected on one of the charts, and when beginning a
+	jump. However, it would be a Bad Idea™ to allow an arbitrary number of
+	planets to be queued, since you can click on lots of systems quite
+	quickly on the long-range chart.
+	
+	To rate-limit this, we track the materials that are being preloaded and
+	only queue the ones for a new system if there are no more than two in the
+	queue. (Currently, each system will have at most two materials, the main
+	planet and the main planet's atmosphere, but it may be worth adding the
+	ability to declare planets in planetinfo.plist instead of using scripts so
+	that they can also benefit from preloading.)
+	
+	The preloading materials list is pruned before preloading, and also once
+	per frame so textures can fall out of the regular cache.
+	-- Ahruman 2009-12-19
+	
+	DISABLED due to crashes on some Windows systems. Textures generated here
+	remain in the sRecentTextures cache when released, suggesting a retain
+	imbalance somewhere. Cannot reproduce under Mac OS X. Needs further
+	analysis before reenabling.
+	http://www.aegidian.org/bb/viewtopic.php?f=3&t=12109
+	-- Ahruman 2012-06-29
+*/
+void Universe::preloadPlanetTexturesForSystem(OOSystemID /*s*/)
+{
+// #if NEW_PLANETS
+#if 0
+	[self prunePreloadingPlanetMaterials];
+	
+	if (_preloadingPlanetMaterials.size() < 3)
+	{
+		
+		::OOPlanetEntity *planet = [[::OOPlanetEntity alloc] initAsMainPlanetForSystem:s];
+		::OOMaterial *surface = [planet material];
+		// can be nil if texture mis-defined
+		if (surface != nil)
+		{
+			// if it's already loaded, no need to continue
+			if (![surface isFinishedLoading])
+			{
+				_preloadingPlanetMaterials.push_back(oo::ObjCRef<::OOMaterial *>(surface));
+		
+				// In some instances (retextured planets atm), the main planet might not have an atmosphere defined.
+				// Trying to add nil to _preloadingPlanetMaterials will prematurely terminate the calling function.(!) --Kaks 20100107
+				::OOMaterial *atmo = [planet atmosphereMaterial];
+				if (atmo != nil)  _preloadingPlanetMaterials.push_back(oo::ObjCRef<::OOMaterial *>(atmo));
+			}
+		}
+		
+		[planet release];
+	}
+#endif
+}
+
+
+oo::PList Universe::getGlobalSettings()
+{
+	return globalSettings;
+}
+
+
+oo::PList Universe::getEquipmentData()
+{
+	return equipmentData;
+}
+
+
+oo::PList Universe::getEquipmentDataOutfitting()
+{
+	return equipmentDataOutfitting;
+}
+
+
+::OOCommodityMarket *Universe::getCommodityMarket()
+{
+	return commodityMarket;
+}
+
+
+std::optional<std::string> Universe::timeDescription(double interval)
+{
+	double r_time = interval;
+	std::string result;
+
+	if (r_time > 86400)
+	{
+		int days = floor(r_time / 86400);
+		r_time -= 86400 * days;
+		result = oo::str::format("%s %d day%s", result.c_str(), days, (days > 1) ? "s" : "");
+	}
+	if (r_time > 3600)
+	{
+		int hours = floor(r_time / 3600);
+		r_time -= 3600 * hours;
+		result = oo::str::format("%s %d hour%s", result.c_str(), hours, (hours > 1) ? "s" : "");
+	}
+	if (r_time > 60)
+	{
+		int mins = floor(r_time / 60);
+		r_time -= 60 * mins;
+		result = oo::str::format("%s %d minute%s", result.c_str(), mins, (mins > 1) ? "s" : "");
+	}
+	if (r_time > 0)
+	{
+		int secs = floor(r_time);
+		result = oo::str::format("%s %d second%s", result.c_str(), secs, (secs > 1) ? "s" : "");
+	}
+	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
 }
 
 }	// namespace cxx

@@ -521,6 +521,24 @@ public:
 	NSPoint coordinatesForSystem(OOSystemID s);
 	OOSystemID findSystemFromName(const std::string &sysName);
 	OOSystemID findSystemAtCoords(NSPoint coords, OOGalaxyID g);
+
+	// Slice 20: neighbouring systems, system-name look-up, routes (with RouteElement), planet textures, global and equipment data, the commodity market, time descriptions.
+	oo::PList nearbyDestinationsWithinRange(double range);
+	OOSystemID findNeighbouringSystemToCoords(NSPoint coords, OOGalaxyID g);
+	OOSystemID findConnectedSystemAtCoords(NSPoint coords, OOGalaxyID g);
+	OOSystemID findSystemNumberAtCoords(NSPoint coords, OOGalaxyID g, bool hidden);
+	NSPoint findSystemCoordinatesWithPrefix(const std::string &p_fix);
+	NSPoint findSystemCoordinatesWithPrefix(const std::string &p_fix, bool exactMatch);
+	BOOL *systemsFound();
+	std::optional<std::string> systemNameIndex(OOSystemID index);
+	oo::PList routeFromSystem(OOSystemID start, OOSystemID goal, OORouteType optimizeBy);
+	std::vector<OOSystemID> neighboursToSystem(OOSystemID s);
+	void preloadPlanetTexturesForSystem(OOSystemID /*s*/);
+	oo::PList getGlobalSettings();
+	oo::PList getEquipmentData();
+	oo::PList getEquipmentDataOutfitting();
+	::OOCommodityMarket *getCommodityMarket();
+	std::optional<std::string> timeDescription(double interval);
 };
 
 }	// namespace cxx
