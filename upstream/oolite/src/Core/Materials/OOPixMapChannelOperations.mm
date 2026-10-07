@@ -26,7 +26,7 @@ SOFTWARE.
 */
 
 #include "OOPixMapChannelOperations.h"
-#import "OOCPUInfo.h"
+#include "OOCPUInfoEndian.h"
 #include "oofnd/objc/OOAssert.h"
 
 
@@ -38,7 +38,7 @@ static void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx);
 static void AddPixMap_4(OOPixMap mainPx, OOPixMap otherPx);
 
 
-BOOL OOExtractPixMapChannel(OOPixMap *ioPixMap, uint8_t channelIndex, BOOL compactWhenDone)
+bool OOExtractPixMapChannel(OOPixMap *ioPixMap, uint8_t channelIndex, bool compactWhenDone)
 {
 	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap) || ioPixMap->format != kOOPixMapRGBA || channelIndex > 3))
 	{
@@ -85,7 +85,7 @@ static void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex)
 }
 
 
-BOOL OOPixMapToRGBA(OOPixMap *ioPixMap)
+bool OOPixMapToRGBA(OOPixMap *ioPixMap)
 {
 	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap)))  return NO;
 	if (ioPixMap->format == kOOPixMapRGBA)  return YES;
@@ -93,7 +93,7 @@ BOOL OOPixMapToRGBA(OOPixMap *ioPixMap)
 	OOPixMap temp = OOAllocatePixMap(ioPixMap->width, ioPixMap->height, (OOPixMapFormat)4, 0, 0);
 	if (EXPECT_NOT(OOIsNullPixMap(temp)))  return NO;
 	
-	BOOL OK = NO;
+	bool OK = NO;
 	switch (ioPixMap->format)
 	{
 		case kOOPixMapGrayscale:
@@ -183,7 +183,7 @@ static void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx)
 }
 
 
-BOOL OOPixMapModulateUniform(OOPixMap *ioPixMap, float f0, float f1, float f2, float f3)
+bool OOPixMapModulateUniform(OOPixMap *ioPixMap, float f0, float f1, float f2, float f3)
 {
 	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap)))  return NO;
 	if (EXPECT_NOT(!OOPixMapToRGBA(ioPixMap)))  return NO;
@@ -240,7 +240,7 @@ static void ModulateUniform_4(OOPixMap pixMap, uint16_t f3, uint16_t f2, uint16_
 }
 
 
-BOOL OOPixMapModulatePixMap(OOPixMap *ioDstPixMap, OOPixMap otherPixMap)
+bool OOPixMapModulatePixMap(OOPixMap *ioDstPixMap, OOPixMap otherPixMap)
 {
 	if (EXPECT_NOT(ioDstPixMap == NULL || !OOIsValidPixMap(*ioDstPixMap)))  return NO;
 	if (EXPECT_NOT(!OOIsValidPixMap(otherPixMap) || otherPixMap.format != kOOPixMapRGBA))  return NO;
@@ -299,7 +299,7 @@ static void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx)
 }
 
 
-BOOL OOPixMapAddPixMap(OOPixMap *ioDstPixMap, OOPixMap otherPixMap)
+bool OOPixMapAddPixMap(OOPixMap *ioDstPixMap, OOPixMap otherPixMap)
 {
 	if (EXPECT_NOT(ioDstPixMap == NULL || !OOIsValidPixMap(*ioDstPixMap)))  return NO;
 	if (EXPECT_NOT(!OOIsValidPixMap(otherPixMap) || otherPixMap.format != kOOPixMapRGBA))  return NO;
