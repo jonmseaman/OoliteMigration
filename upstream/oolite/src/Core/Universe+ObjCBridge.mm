@@ -164,6 +164,26 @@ extern Universe *gSharedUniverse;
 @end
 
 
+@implementation Universe (OOSlice7)
+
+- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius	{ return _cxxUniverse->addShipAt(pos, role, radius); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsAt(pos, role, count, radius, isGroup); }
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup	{ return _cxxUniverse->addShipsToRoute(route, role, count, routeFraction, isGroup); }
+- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role	{ return _cxxUniverse->roleIsPirateVictim(role); }
+- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category	{ return _cxxUniverse->role(role, category); }
+- (void) forceWitchspaceEntries	{ _cxxUniverse->forceWitchspaceEntries(); }
+- (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship	{ _cxxUniverse->addWitchspaceJumpEffectForShip(ship); }
+- (GLfloat) safeWitchspaceExitDistance	{ return _cxxUniverse->safeWitchspaceExitDistance(); }
+- (void) setUpBreakPattern:(HPVector)pos orientation:(Quaternion)q forDocking:(BOOL)forDocking	{ _cxxUniverse->setUpBreakPattern(pos, q, forDocking); }
+- (BOOL) witchspaceBreakPattern	{ return _cxxUniverse->witchspaceBreakPattern(); }
+- (void) setWitchspaceBreakPattern:(BOOL)newValue	{ _cxxUniverse->setWitchspaceBreakPattern(newValue); }
+- (BOOL) dockingClearanceProtocolActive	{ return _cxxUniverse->dockingClearanceProtocolActive(); }
+- (void) setDockingClearanceProtocolActive:(BOOL)newValue	{ _cxxUniverse->setDockingClearanceProtocolActive(newValue); }
+- (void) handleGameOver	{ _cxxUniverse->handleGameOver(); }
+
+@end
+
+
 @implementation Universe (OOSlice14)
 
 - (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning	{ return _cxxUniverse->makeDemoShipWithRole(role, spinning); }

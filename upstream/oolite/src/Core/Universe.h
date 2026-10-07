@@ -491,6 +491,22 @@ public:
 	::ShipEntity *spawnShipWithRole(const std::string &desc, ::Entity *entity);
 	::OOVisualEffectEntity *addVisualEffectAt(HPVector pos, const std::string &key);
 
+	// Slice 7: adding ships within a radius and on routes, role categories, witchspace entries and effects, break patterns, the docking clearance protocol, game over.
+	::ShipEntity *addShipAt(HPVector pos, const std::string &role, GLfloat radius);
+	std::vector<oo::ObjCRef<::ShipEntity *>> addShipsAt(HPVector pos, const std::string &role, unsigned count, GLfloat radius, bool isGroup);
+	std::vector<oo::ObjCRef<::ShipEntity *>> addShipsToRoute(const std::string &route, const std::string &role, unsigned count, double routeFraction, bool isGroup);
+	bool roleIsPirateVictim(const std::string &role);
+	bool role(const std::string &role, const std::string &category);
+	void forceWitchspaceEntries();
+	void addWitchspaceJumpEffectForShip(::ShipEntity *ship);
+	GLfloat safeWitchspaceExitDistance();
+	void setUpBreakPattern(HPVector pos, Quaternion q, bool forDocking);
+	bool witchspaceBreakPattern();
+	void setWitchspaceBreakPattern(bool newValue);
+	bool dockingClearanceProtocolActive();
+	void setDockingClearanceProtocolActive(bool newValue);
+	void handleGameOver();
+
 	// Slice 14: making demo ships, safe vectors, hazards on route, wreckage, laser hits.
 	::ShipEntity *makeDemoShipWithRole(const std::string &role, bool spinning);
 	bool isVectorClearFromEntity(::Entity *e1, double dist, HPVector p2);
