@@ -549,6 +549,28 @@ public:
 
 	// Slice 22: ships for sale (cxx_shipsForSaleForSystem:withTL:atTime:).
 	oo::PList shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL, OOTimeAbsolute current_time);
+
+	// Slice 23: trade-in value, brochure descriptions, witchspace exit and sun-skim positions, beacons by code, script events to all ships, the GUIs, FPS and autosave.
+	OOCreditsQuantity tradeInValueForCommanderDictionary(const oo::PList &dict);
+	std::optional<std::string> brochureDescriptionWithDictionary(const oo::PList &dict, const std::vector<std::string> &extras, const std::vector<std::string> &options);
+	HPVector getWitchspaceExitPosition();
+	Quaternion getWitchspaceExitRotation();
+	HPVector getSunSkimStartPositionForShip(::ShipEntity *ship);
+	HPVector getSunSkimEndPositionForShip(::ShipEntity *ship);
+	std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> listBeaconsWithCode(const std::string &code);
+	void allShipsDoScriptEvent(ooscript::PropertyId event, const std::optional<std::string> &message);
+	::GuiDisplayGen *getGui();
+	::GuiDisplayGen *commLogGUI();
+	::GuiDisplayGen *messageGUI();
+	void clearGUIs();
+	void resetCommsLogColor();
+	void setDisplayText(bool value);
+	bool getDisplayGUI();
+	void setDisplayFPS(bool value);
+	bool getDisplayFPS();
+	void setAutoSave(bool value);
+	bool getAutoSave();
+	void setAutoSaveNow(bool value);
 };
 
 }	// namespace cxx

@@ -237,3 +237,29 @@ extern Universe *gSharedUniverse;
 - (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID)s withTL:(OOTechLevelID)specialTL atTime:(OOTimeAbsolute)current_time	{ return _cxxUniverse->shipsForSaleForSystem(s, specialTL, current_time); }
 
 @end
+
+
+@implementation Universe (OOSlice23)
+
+- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &)dict	{ return _cxxUniverse->tradeInValueForCommanderDictionary(dict); }
+- (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &)dict standardEquipment:(const std::vector<std::string> &)extras optionalEquipment:(const std::vector<std::string> &)options	{ return _cxxUniverse->brochureDescriptionWithDictionary(dict, extras, options); }
+- (HPVector) getWitchspaceExitPosition	{ return _cxxUniverse->getWitchspaceExitPosition(); }
+- (Quaternion) getWitchspaceExitRotation	{ return _cxxUniverse->getWitchspaceExitRotation(); }
+- (HPVector) getSunSkimStartPositionForShip:(ShipEntity*) ship	{ return _cxxUniverse->getSunSkimStartPositionForShip(ship); }
+- (HPVector) getSunSkimEndPositionForShip:(ShipEntity*) ship	{ return _cxxUniverse->getSunSkimEndPositionForShip(ship); }
+- (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &)code	{ return _cxxUniverse->listBeaconsWithCode(code); }
+- (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message	{ _cxxUniverse->allShipsDoScriptEvent(event, message); }
+- (GuiDisplayGen *) gui	{ return _cxxUniverse->getGui(); }
+- (GuiDisplayGen *) commLogGUI	{ return _cxxUniverse->commLogGUI(); }
+- (GuiDisplayGen *) messageGUI	{ return _cxxUniverse->messageGUI(); }
+- (void) clearGUIs	{ _cxxUniverse->clearGUIs(); }
+- (void) resetCommsLogColor	{ _cxxUniverse->resetCommsLogColor(); }
+- (void) setDisplayText:(BOOL) value	{ _cxxUniverse->setDisplayText(value); }
+- (BOOL) displayGUI	{ return _cxxUniverse->getDisplayGUI(); }
+- (void) setDisplayFPS:(BOOL) value	{ _cxxUniverse->setDisplayFPS(value); }
+- (BOOL) displayFPS	{ return _cxxUniverse->getDisplayFPS(); }
+- (void) setAutoSave:(BOOL) value	{ _cxxUniverse->setAutoSave(value); }
+- (BOOL) autoSave	{ return _cxxUniverse->getAutoSave(); }
+- (void) setAutoSaveNow:(BOOL) value	{ _cxxUniverse->setAutoSaveNow(value); }
+
+@end

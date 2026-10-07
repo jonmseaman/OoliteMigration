@@ -6314,523 +6314,6 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }	// namespace
 
 
-- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &)dict
-{
-	// get basic information about the craft
-	OOCreditsQuantity	base_price = 0ULL;
-	std::optional<std::string>	ship_desc = OptionalStringIn(dict, "ship_desc");
-	const oo::PList		shipyard_info = ship_desc.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*ship_desc] : oo::PList();
-	// This checks a rare, but possible case. If the ship for which we are trying to calculate a trade in value
-	// does not have a shipyard dictionary entry, report it and set its base price to 0 -- Nikos 20090613.
-	if (shipyard_info.isNull())
-	{
-		OO_LOG_ERR("universe.tradeInValueForCommanderDictionary.valueCalculationError", "Shipyard dictionary entry for ship {} required for trade in value calculation, but does not exist. Setting ship value to 0.", ship_desc.value_or("(null)"));
-	}
-	else
-	{
-		base_price = shipyard_info.get<unsigned long long>(std::string(SHIPYARD_KEY_PRICE), 0ULL);
-	}
-
-	if(base_price == 0ULL) return base_price;
-
-	// A missing key was priced as nothing ([UNIVERSE getEquipmentPriceForKey:nil]).
-	auto priceOf = [](const std::optional<std::string> &key) -> OOCreditsQuantity
-	{
-		return key.has_value() ? [UNIVERSE cxx_getEquipmentPriceForKey:*key] : 0;
-	};
-
-	OOCreditsQuantity	scrap_value = 351; // translates to 250 cr.
-
-	auto weaponTypeForKey = [&dict](const char *key) -> OOWeaponType	// nil for a missing key
-	{
-		const std::optional<std::string> identifier = OptionalStringIn(dict, key);
-		return identifier.has_value() ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil;
-	};
-	OOWeaponType		ship_fwd_weapon = weaponTypeForKey("forward_weapon");
-	OOWeaponType		ship_aft_weapon = weaponTypeForKey("aft_weapon");
-	OOWeaponType		ship_port_weapon = weaponTypeForKey("port_weapon");
-	OOWeaponType		ship_starboard_weapon = weaponTypeForKey("starboard_weapon");
-	unsigned			ship_missiles = dict.get<unsigned int>("missiles");
-	unsigned			ship_max_passengers = dict.get<unsigned int>("max_passengers");
-	std::vector<std::string>	ship_extra_equipment;
-	if (const oo::PList *extraEquipment = dict.get<oo::PList::Dict>("extra_equipment"))
-	{
-		for (const auto &entry : *extraEquipment->getIf<oo::PList::Dict>())  ship_extra_equipment.push_back(entry.first);
-	}
-
-	const oo::PList		*basicInfoEntry = shipyard_info.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
-	const oo::PList		basic_info = (basicInfoEntry != nullptr) ? *basicInfoEntry : oo::PList();
-	unsigned			base_missiles = basic_info.get<unsigned int>(std::string(KEY_EQUIPMENT_MISSILES));
-	OOCreditsQuantity	base_missiles_value = base_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
-	std::optional<std::string>	base_weapon_key = OptionalStringIn(basic_info, std::string(KEY_EQUIPMENT_FORWARD_WEAPON));
-	OOCreditsQuantity	base_weapons_value = priceOf(base_weapon_key) / 10;
-	std::vector<std::optional<std::string>>	base_extra_equipment;
-	if (const oo::PList *baseExtras = basic_info.get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)))
-	{
-		for (std::size_t k = 0; k < baseExtras->count(); k++)  base_extra_equipment.push_back(OptionalStringAt(*baseExtras, k));
-	}
-	std::string			weapon_key;
-
-	// was aft_weapon defined as standard equipment ?
-	base_weapon_key = OptionalStringIn(basic_info, std::string(KEY_EQUIPMENT_AFT_WEAPON));
-	if (base_weapon_key.has_value())
-		base_weapons_value += priceOf(base_weapon_key) / 10;
-
-	OOCreditsQuantity	ship_main_weapons_value = 0;
-	OOCreditsQuantity	ship_other_weapons_value = 0;
-	OOCreditsQuantity	ship_missiles_value = 0;
-
-	// calculate the actual value for the missiles present on board.
-	const oo::PList *missileRoles = dict.get<oo::PList::Array>("missile_roles");
-	if (missileRoles != nullptr)
-	{
-		unsigned i;
-		for (i = 0; i < ship_missiles; i++)
-		{
-			std::optional<std::string> missile_desc = OptionalStringAt(*missileRoles, i);
-			if (missile_desc.has_value() && *missile_desc != "NONE")
-			{
-				ship_missiles_value += [UNIVERSE cxx_getEquipmentPriceForKey:*missile_desc] / 10;
-			}
-		}
-	}
-	else
-		ship_missiles_value = ship_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
-
-	// needs to be a signed value, we can then subtract from the base price, if less than standard equipment.
-	long long extra_equipment_value = ship_max_passengers * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_PASSENGER_BERTH"]/10;
-
-	// add on missile values
-	extra_equipment_value += ship_missiles_value - base_missiles_value;
-
-	// work out weapon values
-	if (ship_fwd_weapon)
-	{
-		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon).value_or("");
-		ship_main_weapons_value = [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
-	}
-	if (ship_aft_weapon)
-	{
-		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_aft_weapon).value_or("");
-		if (base_weapon_key.has_value()) // aft weapon was defined as a base weapon
-		{
-			ship_main_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;	//take weapon downgrades into account
-		}
-		else
-		{
-			ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
-		}
-	}
-	if (ship_port_weapon)
-	{
-		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_port_weapon).value_or("");
-		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
-	}
-	if (ship_starboard_weapon)
-	{
-		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon).value_or("");
-		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
-	}
-
-	// add on extra weapons, take away the value of the base weapons
-	extra_equipment_value += ship_other_weapons_value;
-	extra_equipment_value += ship_main_weapons_value - base_weapons_value;
-
-	NSInteger i;
-	std::optional<std::string> eq_key;
-
-	// shipyard.plist settings might have duplicate keys.
-	// cull possible duplicates from inside base equipment
-	// (the search range 0..i-2, as NSMakeRange(0, i-1) gave it, never looks at the entry just before)
-	for (i = (NSInteger)base_extra_equipment.size()-1; i > 0;i--)
-	{
-		eq_key = base_extra_equipment[i];
-		const auto searchEnd = base_extra_equipment.begin() + (i - 1);
-		if (eq_key.has_value() && std::find(base_extra_equipment.begin(), searchEnd, eq_key) != searchEnd)
-								base_extra_equipment.erase(base_extra_equipment.begin() + i);
-	}
-
-	// do we at least have the same equipment as a standard ship?
-	for (i = (NSInteger)base_extra_equipment.size()-1; i >= 0; i--)
-	{
-		eq_key = base_extra_equipment[i];
-		if (eq_key.has_value() && std::find(ship_extra_equipment.begin(), ship_extra_equipment.end(), *eq_key) != ship_extra_equipment.end())
-				std::erase(ship_extra_equipment, *eq_key);
-		else // if the ship has less equipment than standard, deduct the missing equipent's price
-				extra_equipment_value -= (priceOf(eq_key) / 10);
-	}
-
-	// remove portable equipment from the totals
-	OOEquipmentType	*item = nil;
-
-	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
-	{
-		item = [OOEquipmentType cxx_equipmentTypeWithIdentifier:ship_extra_equipment[i]];
-		if ([item isPortableBetweenShips]) ship_extra_equipment.erase(ship_extra_equipment.begin() + i);
-	}
-
-	// add up what we've got left.
-	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
-		extra_equipment_value += ([UNIVERSE cxx_getEquipmentPriceForKey:ship_extra_equipment[i]] / 10);
-
-	// 10% discount for second hand value, steeper reduction if worse than standard.
-	extra_equipment_value *= extra_equipment_value < 0 ? 1.4 : 0.9;
-
-	// we'll return at least the scrap value
-	// TODO: calculate scrap value based on the size of the ship.
-	if ((long long)scrap_value > (long long)base_price + extra_equipment_value) return scrap_value;
-
-	return base_price + extra_equipment_value;
-}
-
-
-- (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &)dict standardEquipment:(const std::vector<std::string> &)extras optionalEquipment:(const std::vector<std::string> &)options
-{
-	std::vector<std::string>	mut_extras = extras;
-	std::string		allOptions;
-	for (std::size_t k = 0; k < options.size(); k++)
-	{
-		if (k > 0)  allOptions += " ";
-		allOptions += options[k];
-	}
-
-	std::string		desc = "The " + TextOrNull(OptionalStringIn(dict, std::string(KEY_NAME))) + ".";
-
-	// cargo capacity and expansion
-	OOCargoQuantity	max_cargo = dict.get<unsigned int>("max_cargo");
-	if (max_cargo)
-	{
-		OOCargoQuantity	extra_cargo = dict.get<unsigned int>("extra_cargo", 15);
-		desc += oo::str::format(" Cargo capacity %dt", max_cargo);
-		BOOL canExpand = (allOptions.find("EQ_CARGO_BAY") != std::string::npos);
-		if (canExpand)
-			desc += oo::str::format(" (expandable to %dt at most starports)", max_cargo + extra_cargo);
-		desc += ".";
-	}
-
-	// speed
-	float top_speed = dict.get<int>("max_flight_speed");
-	desc += oo::str::format(" Top speed %.3fLS.", 0.001 * top_speed);
-
-	// passenger berths
-	if (mut_extras.size())
-	{
-		unsigned n_berths = 0;
-		unsigned i;
-		for (i = 0; i < mut_extras.size(); i++)
-		{
-			if (mut_extras[i] == "EQ_PASSENGER_BERTH")
-			{
-				n_berths++;
-				mut_extras.erase(mut_extras.begin() + i--);
-			}
-		}
-		if (n_berths)
-		{
-			if (n_berths == 1)
-				desc += " Includes luxury accomodation for a single passenger.";
-			else
-				desc += oo::str::format(" Includes luxury accomodation for %d passengers.", n_berths);
-		}
-	}
-
-	// standard fittings
-	if (mut_extras.size())
-	{
-		desc += "\nComes with";
-		unsigned i, j;
-		for (i = 0; i < mut_extras.size(); i++)
-		{
-			const std::string &item_key = mut_extras[i];
-			std::optional<std::string> item_desc;
-			for (j = 0; ((j < _cxxUniverse->equipmentData.count())&&(!item_desc)) ; j++)
-			{
-				std::optional<std::string> eq_type = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_KEY_INDEX);
-				if (eq_type == item_key)
-					item_desc = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
-			}
-			if (item_desc)
-			{
-				switch (mut_extras.size() - i)
-				{
-					case 1:
-						desc += " " + *item_desc + " fitted as standard.";
-						break;
-					case 2:
-						desc += " " + *item_desc + " and";
-						break;
-					default:
-						desc += " " + *item_desc + ",";
-						break;
-				}
-			}
-		}
-	}
-
-	// optional fittings
-	if (options.size())
-	{
-		desc += "\nCan additionally be outfitted with";
-		unsigned i, j;
-		for (i = 0; i < options.size(); i++)
-		{
-			const std::string &item_key = options[i];
-			std::optional<std::string> item_desc;
-			for (j = 0; ((j < _cxxUniverse->equipmentData.count())&&(!item_desc)) ; j++)
-			{
-				std::optional<std::string> eq_type = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_KEY_INDEX);
-				if (eq_type == item_key)
-					item_desc = EquipmentItemString(_cxxUniverse->equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
-			}
-			if (item_desc)
-			{
-				switch (options.size() - i)
-				{
-					case 1:
-						desc += " " + *item_desc + " at suitably equipped starports.";
-						break;
-					case 2:
-						desc += " " + *item_desc + " and/or";
-						break;
-					default:
-						desc += " " + *item_desc + ",";
-						break;
-				}
-			}
-		}
-	}
-
-	return desc;
-}
-
-
-- (HPVector) getWitchspaceExitPosition
-{
-	return kZeroHPVector;
-}
-
-
-- (Quaternion) getWitchspaceExitRotation
-{
-	// this should be fairly close to {0,0,0,1}
-	Quaternion q_result;
-
-// CIM: seems to be no reason why this should be a per-system constant
-//  - trying it without resetting the RNG for now
-//	seed_RNG_only_for_planet_description(system_seed);
-	
-	q_result.x = (gen_rnd_number() - 128)/1024.0;
-	q_result.y = (gen_rnd_number() - 128)/1024.0;
-	q_result.z = (gen_rnd_number() - 128)/1024.0;
-	q_result.w = 1.0;
-	quaternion_normalize(&q_result);
-	
-	return q_result;
-}
-
-// FIXME: should use vector functions
-- (HPVector) getSunSkimStartPositionForShip:(ShipEntity*) ship
-{
-	if (!ship)
-	{
-		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No ship set in Universe getSunSkimStartPositionForShip:");
-		return kZeroHPVector;
-	}
-	OOSunEntity* the_sun = [self sun];
-	// get vector from sun position to ship
-	if (!the_sun)
-	{
-		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimStartPositionForShip:");
-		return kZeroHPVector;
-	}
-	HPVector v0 = the_sun->_cxxEntity->position;
-	HPVector v1 = ship->_cxxEntity->position;
-	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;	// vector from sun to ship
-	if (v1.x||v1.y||v1.z)
-		v1 = HPvector_normal(v1);
-	else
-		v1.z = 1.0;
-	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
-	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
-	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
-	
-	return v1;
-}
-
-// FIXME: should use vector functions
-- (HPVector) getSunSkimEndPositionForShip:(ShipEntity*) ship
-{
-	OOSunEntity* the_sun = [self sun];
-	if (!ship)
-	{
-		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No ship set in Universe getSunSkimEndPositionForShip:");
-		return kZeroHPVector;
-	}
-	// get vector from sun position to ship
-	if (!the_sun)
-	{
-		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimEndPositionForShip:");
-		return kZeroHPVector;
-	}
-	HPVector v0 = the_sun->_cxxEntity->position;
-	HPVector v1 = ship->_cxxEntity->position;
-	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;
-	if (v1.x||v1.y||v1.z)
-		v1 = HPvector_normal(v1);
-	else
-		v1.z = 1.0;
-	HPVector v2 = make_HPvector(randf()-0.5, randf()-0.5, randf()-0.5);	// random vector
-	if (v2.x||v2.y||v2.z)
-		v2 = HPvector_normal(v2);
-	else
-		v2.x = 1.0;
-	HPVector v3 = HPcross_product(v1, v2);	// random vector at 90 degrees to v1 and v2 (random Vector)
-	if (v3.x||v3.y||v3.z)
-		v3 = HPvector_normal(v3);
-	else
-		v3.y = 1.0;
-	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
-	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
-	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
-	v1.x += 15000 * v3.x;	v1.y += 15000 * v3.y;	v1.z += 15000 * v3.z;	// point 15000m at a tangent to sun from v1
-	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;
-	if (v1.x||v1.y||v1.z)
-		v1 = HPvector_normal(v1);
-	else
-		v1.z = 1.0;
-	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
-	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
-	
-	return v1;
-}
-
-
-- (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &)code
-{
-	std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>	result;
-	Entity <OOBeaconEntity>		*beacon = [self firstBeacon];
-
-	while (beacon != nil)
-	{
-		const std::optional<std::string> beaconCode = [beacon beaconCode];
-		if (BeaconCodeMatches(beaconCode, code))
-		{
-			result.emplace_back(beacon);
-		}
-		beacon = [beacon nextBeacon];
-	}
-
-	// ORDER-SENSITIVE (decision D): beacons whose codes compare the same keep their list order.
-	std::stable_sort(result.begin(), result.end(), [](const oo::ObjCRef<Entity <OOBeaconEntity> *> &a, const oo::ObjCRef<Entity <OOBeaconEntity> *> &b)
-	{
-		return [a.get() compareBeaconCodeWith:b.get()] == OOOrderedAscending;
-	});
-	return result;
-}
-
-
-- (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message
-{
-	int i;
-	int ent_count = _cxxUniverse->n_entities;
-	int ship_count = 0;
-	ShipEntity* my_ships[ent_count];
-	for (i = 0; i < ent_count; i++)
-	{
-		if (_cxxUniverse->sortedEntities[i]->_cxxEntity->isShip)
-		{
-			my_ships[ship_count++] = [(ShipEntity *)_cxxUniverse->sortedEntities[i] retain];	// retained
-		}
-	}
-	
-	for (i = 0; i < ship_count; i++)
-	{
-		ShipEntity* se = my_ships[i];
-		[se doScriptEvent:event];
-		if (message.has_value())  [[se getAI] cxx_reactToMessage:*message context:"global message"];
-		[se release]; //	released
-	}
-}
-
-///////////////////////////////////////
-
-- (GuiDisplayGen *) gui
-{
-	return _cxxUniverse->gui;
-}
-
-
-- (GuiDisplayGen *) commLogGUI
-{
-	return _cxxUniverse->comm_log_gui;
-}
-
-
-- (GuiDisplayGen *) messageGUI
-{
-	return _cxxUniverse->message_gui;
-}
-
-
-- (void) clearGUIs
-{
-	[_cxxUniverse->gui clear];
-	[_cxxUniverse->message_gui clear];
-	[_cxxUniverse->comm_log_gui clear];
-	[_cxxUniverse->comm_log_gui cxx_printLongText:OO_DESC("communications-log-string")
-						  align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
-}
-
-
-- (void) resetCommsLogColor
-{
-	[_cxxUniverse->comm_log_gui setTextColor:[OOColor whiteColor]];
-}
-
-
-- (void) setDisplayText:(BOOL) value
-{
-	_cxxUniverse->displayGUI = !!value;
-}
-
-
-- (BOOL) displayGUI
-{
-	return _cxxUniverse->displayGUI;
-}
-
-
-- (void) setDisplayFPS:(BOOL) value
-{
-	_cxxUniverse->displayFPS = !!value;
-}
-
-
-- (BOOL) displayFPS
-{
-	return _cxxUniverse->displayFPS;
-}
-
-
-- (void) setAutoSave:(BOOL) value
-{
-	_cxxUniverse->autoSave = !!value;
-	oo::Defaults::standard().setBool("autosave", _cxxUniverse->autoSave);
-}
-
-
-- (BOOL) autoSave
-{
-	return _cxxUniverse->autoSave;
-}
-
-
-- (void) setAutoSaveNow:(BOOL) value
-{
-	_cxxUniverse->autoSaveNow = !!value;
-}
-
-
 - (BOOL) autoSaveNow
 {
 	return _cxxUniverse->autoSaveNow;
@@ -11916,6 +11399,539 @@ oo::PList Universe::shipsForSaleForSystem(OOSystemID s, OOTechLevelID specialTL,
 	RANROTSetFullSeed(saved_seed);
 
 	return oo::PList(std::move(resultArray));
+}
+
+}	// namespace cxx
+
+
+// Slice 23 of docs/phases/3-slices/Universe.md (bead oo-ni1hw): trade-in value, brochure descriptions, witchspace exit and sun-skim positions, beacons by code, script events to all ships, the GUIs, FPS and autosave. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendments oo-riqmz,
+// oo-mvzmb).
+namespace cxx {
+
+OOCreditsQuantity Universe::tradeInValueForCommanderDictionary(const oo::PList &dict)
+{
+	// get basic information about the craft
+	OOCreditsQuantity	base_price = 0ULL;
+	std::optional<std::string>	ship_desc = OptionalStringIn(dict, "ship_desc");
+	const oo::PList		shipyard_info = ship_desc.has_value() ? [[::OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*ship_desc] : oo::PList();
+	// This checks a rare, but possible case. If the ship for which we are trying to calculate a trade in value
+	// does not have a shipyard dictionary entry, report it and set its base price to 0 -- Nikos 20090613.
+	if (shipyard_info.isNull())
+	{
+		OO_LOG_ERR("universe.tradeInValueForCommanderDictionary.valueCalculationError", "Shipyard dictionary entry for ship {} required for trade in value calculation, but does not exist. Setting ship value to 0.", ship_desc.value_or("(null)"));
+	}
+	else
+	{
+		base_price = shipyard_info.get<unsigned long long>(std::string(SHIPYARD_KEY_PRICE), 0ULL);
+	}
+
+	if(base_price == 0ULL) return base_price;
+
+	// A missing key was priced as nothing ([UNIVERSE getEquipmentPriceForKey:nil]).
+	auto priceOf = [](const std::optional<std::string> &key) -> OOCreditsQuantity
+	{
+		return key.has_value() ? [UNIVERSE cxx_getEquipmentPriceForKey:*key] : 0;
+	};
+
+	OOCreditsQuantity	scrap_value = 351; // translates to 250 cr.
+
+	auto weaponTypeForKey = [&dict](const char *key) -> OOWeaponType	// nil for a missing key
+	{
+		const std::optional<std::string> identifier = OptionalStringIn(dict, key);
+		return identifier.has_value() ? [::OOEquipmentType cxx_equipmentTypeWithIdentifier:*identifier] : nil;
+	};
+	OOWeaponType		ship_fwd_weapon = weaponTypeForKey("forward_weapon");
+	OOWeaponType		ship_aft_weapon = weaponTypeForKey("aft_weapon");
+	OOWeaponType		ship_port_weapon = weaponTypeForKey("port_weapon");
+	OOWeaponType		ship_starboard_weapon = weaponTypeForKey("starboard_weapon");
+	unsigned			ship_missiles = dict.get<unsigned int>("missiles");
+	unsigned			ship_max_passengers = dict.get<unsigned int>("max_passengers");
+	std::vector<std::string>	ship_extra_equipment;
+	if (const oo::PList *extraEquipment = dict.get<oo::PList::Dict>("extra_equipment"))
+	{
+		for (const auto &entry : *extraEquipment->getIf<oo::PList::Dict>())  ship_extra_equipment.push_back(entry.first);
+	}
+
+	const oo::PList		*basicInfoEntry = shipyard_info.get<oo::PList::Dict>(std::string(KEY_STANDARD_EQUIPMENT));
+	const oo::PList		basic_info = (basicInfoEntry != nullptr) ? *basicInfoEntry : oo::PList();
+	unsigned			base_missiles = basic_info.get<unsigned int>(std::string(KEY_EQUIPMENT_MISSILES));
+	OOCreditsQuantity	base_missiles_value = base_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
+	std::optional<std::string>	base_weapon_key = OptionalStringIn(basic_info, std::string(KEY_EQUIPMENT_FORWARD_WEAPON));
+	OOCreditsQuantity	base_weapons_value = priceOf(base_weapon_key) / 10;
+	std::vector<std::optional<std::string>>	base_extra_equipment;
+	if (const oo::PList *baseExtras = basic_info.get<oo::PList::Array>(std::string(KEY_EQUIPMENT_EXTRAS)))
+	{
+		for (std::size_t k = 0; k < baseExtras->count(); k++)  base_extra_equipment.push_back(OptionalStringAt(*baseExtras, k));
+	}
+	std::string			weapon_key;
+
+	// was aft_weapon defined as standard equipment ?
+	base_weapon_key = OptionalStringIn(basic_info, std::string(KEY_EQUIPMENT_AFT_WEAPON));
+	if (base_weapon_key.has_value())
+		base_weapons_value += priceOf(base_weapon_key) / 10;
+
+	OOCreditsQuantity	ship_main_weapons_value = 0;
+	OOCreditsQuantity	ship_other_weapons_value = 0;
+	OOCreditsQuantity	ship_missiles_value = 0;
+
+	// calculate the actual value for the missiles present on board.
+	const oo::PList *missileRoles = dict.get<oo::PList::Array>("missile_roles");
+	if (missileRoles != nullptr)
+	{
+		unsigned i;
+		for (i = 0; i < ship_missiles; i++)
+		{
+			std::optional<std::string> missile_desc = OptionalStringAt(*missileRoles, i);
+			if (missile_desc.has_value() && *missile_desc != "NONE")
+			{
+				ship_missiles_value += [UNIVERSE cxx_getEquipmentPriceForKey:*missile_desc] / 10;
+			}
+		}
+	}
+	else
+		ship_missiles_value = ship_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
+
+	// needs to be a signed value, we can then subtract from the base price, if less than standard equipment.
+	long long extra_equipment_value = ship_max_passengers * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_PASSENGER_BERTH"]/10;
+
+	// add on missile values
+	extra_equipment_value += ship_missiles_value - base_missiles_value;
+
+	// work out weapon values
+	if (ship_fwd_weapon)
+	{
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon).value_or("");
+		ship_main_weapons_value = [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
+	}
+	if (ship_aft_weapon)
+	{
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_aft_weapon).value_or("");
+		if (base_weapon_key.has_value()) // aft weapon was defined as a base weapon
+		{
+			ship_main_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;	//take weapon downgrades into account
+		}
+		else
+		{
+			ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
+		}
+	}
+	if (ship_port_weapon)
+	{
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_port_weapon).value_or("");
+		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
+	}
+	if (ship_starboard_weapon)
+	{
+		weapon_key = cxx_OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon).value_or("");
+		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
+	}
+
+	// add on extra weapons, take away the value of the base weapons
+	extra_equipment_value += ship_other_weapons_value;
+	extra_equipment_value += ship_main_weapons_value - base_weapons_value;
+
+	NSInteger i;
+	std::optional<std::string> eq_key;
+
+	// shipyard.plist settings might have duplicate keys.
+	// cull possible duplicates from inside base equipment
+	// (the search range 0..i-2, as NSMakeRange(0, i-1) gave it, never looks at the entry just before)
+	for (i = (NSInteger)base_extra_equipment.size()-1; i > 0;i--)
+	{
+		eq_key = base_extra_equipment[i];
+		const auto searchEnd = base_extra_equipment.begin() + (i - 1);
+		if (eq_key.has_value() && std::find(base_extra_equipment.begin(), searchEnd, eq_key) != searchEnd)
+								base_extra_equipment.erase(base_extra_equipment.begin() + i);
+	}
+
+	// do we at least have the same equipment as a standard ship?
+	for (i = (NSInteger)base_extra_equipment.size()-1; i >= 0; i--)
+	{
+		eq_key = base_extra_equipment[i];
+		if (eq_key.has_value() && std::find(ship_extra_equipment.begin(), ship_extra_equipment.end(), *eq_key) != ship_extra_equipment.end())
+				std::erase(ship_extra_equipment, *eq_key);
+		else // if the ship has less equipment than standard, deduct the missing equipent's price
+				extra_equipment_value -= (priceOf(eq_key) / 10);
+	}
+
+	// remove portable equipment from the totals
+	::OOEquipmentType	*item = nil;
+
+	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
+	{
+		item = [::OOEquipmentType cxx_equipmentTypeWithIdentifier:ship_extra_equipment[i]];
+		if ([item isPortableBetweenShips]) ship_extra_equipment.erase(ship_extra_equipment.begin() + i);
+	}
+
+	// add up what we've got left.
+	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
+		extra_equipment_value += ([UNIVERSE cxx_getEquipmentPriceForKey:ship_extra_equipment[i]] / 10);
+
+	// 10% discount for second hand value, steeper reduction if worse than standard.
+	extra_equipment_value *= extra_equipment_value < 0 ? 1.4 : 0.9;
+
+	// we'll return at least the scrap value
+	// TODO: calculate scrap value based on the size of the ship.
+	if ((long long)scrap_value > (long long)base_price + extra_equipment_value) return scrap_value;
+
+	return base_price + extra_equipment_value;
+}
+
+
+std::optional<std::string> Universe::brochureDescriptionWithDictionary(const oo::PList &dict, const std::vector<std::string> &extras, const std::vector<std::string> &options)
+{
+	std::vector<std::string>	mut_extras = extras;
+	std::string		allOptions;
+	for (std::size_t k = 0; k < options.size(); k++)
+	{
+		if (k > 0)  allOptions += " ";
+		allOptions += options[k];
+	}
+
+	std::string		desc = "The " + TextOrNull(OptionalStringIn(dict, std::string(KEY_NAME))) + ".";
+
+	// cargo capacity and expansion
+	OOCargoQuantity	max_cargo = dict.get<unsigned int>("max_cargo");
+	if (max_cargo)
+	{
+		OOCargoQuantity	extra_cargo = dict.get<unsigned int>("extra_cargo", 15);
+		desc += oo::str::format(" Cargo capacity %dt", max_cargo);
+		BOOL canExpand = (allOptions.find("EQ_CARGO_BAY") != std::string::npos);
+		if (canExpand)
+			desc += oo::str::format(" (expandable to %dt at most starports)", max_cargo + extra_cargo);
+		desc += ".";
+	}
+
+	// speed
+	float top_speed = dict.get<int>("max_flight_speed");
+	desc += oo::str::format(" Top speed %.3fLS.", 0.001 * top_speed);
+
+	// passenger berths
+	if (mut_extras.size())
+	{
+		unsigned n_berths = 0;
+		unsigned i;
+		for (i = 0; i < mut_extras.size(); i++)
+		{
+			if (mut_extras[i] == "EQ_PASSENGER_BERTH")
+			{
+				n_berths++;
+				mut_extras.erase(mut_extras.begin() + i--);
+			}
+		}
+		if (n_berths)
+		{
+			if (n_berths == 1)
+				desc += " Includes luxury accomodation for a single passenger.";
+			else
+				desc += oo::str::format(" Includes luxury accomodation for %d passengers.", n_berths);
+		}
+	}
+
+	// standard fittings
+	if (mut_extras.size())
+	{
+		desc += "\nComes with";
+		unsigned i, j;
+		for (i = 0; i < mut_extras.size(); i++)
+		{
+			const std::string &item_key = mut_extras[i];
+			std::optional<std::string> item_desc;
+			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
+			{
+				std::optional<std::string> eq_type = EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX);
+				if (eq_type == item_key)
+					item_desc = EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
+			}
+			if (item_desc)
+			{
+				switch (mut_extras.size() - i)
+				{
+					case 1:
+						desc += " " + *item_desc + " fitted as standard.";
+						break;
+					case 2:
+						desc += " " + *item_desc + " and";
+						break;
+					default:
+						desc += " " + *item_desc + ",";
+						break;
+				}
+			}
+		}
+	}
+
+	// optional fittings
+	if (options.size())
+	{
+		desc += "\nCan additionally be outfitted with";
+		unsigned i, j;
+		for (i = 0; i < options.size(); i++)
+		{
+			const std::string &item_key = options[i];
+			std::optional<std::string> item_desc;
+			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
+			{
+				std::optional<std::string> eq_type = EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX);
+				if (eq_type == item_key)
+					item_desc = EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
+			}
+			if (item_desc)
+			{
+				switch (options.size() - i)
+				{
+					case 1:
+						desc += " " + *item_desc + " at suitably equipped starports.";
+						break;
+					case 2:
+						desc += " " + *item_desc + " and/or";
+						break;
+					default:
+						desc += " " + *item_desc + ",";
+						break;
+				}
+			}
+		}
+	}
+
+	return desc;
+}
+
+
+HPVector Universe::getWitchspaceExitPosition()
+{
+	return kZeroHPVector;
+}
+
+
+Quaternion Universe::getWitchspaceExitRotation()
+{
+	// this should be fairly close to {0,0,0,1}
+	Quaternion q_result;
+
+// CIM: seems to be no reason why this should be a per-system constant
+//  - trying it without resetting the RNG for now
+//	seed_RNG_only_for_planet_description(system_seed);
+	
+	q_result.x = (gen_rnd_number() - 128)/1024.0;
+	q_result.y = (gen_rnd_number() - 128)/1024.0;
+	q_result.z = (gen_rnd_number() - 128)/1024.0;
+	q_result.w = 1.0;
+	quaternion_normalize(&q_result);
+	
+	return q_result;
+}
+
+
+// FIXME: should use vector functions
+HPVector Universe::getSunSkimStartPositionForShip(::ShipEntity *ship)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	if (!ship)
+	{
+		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No ship set in Universe getSunSkimStartPositionForShip:");
+		return kZeroHPVector;
+	}
+	::OOSunEntity* the_sun = [self sun];
+	// get vector from sun position to ship
+	if (!the_sun)
+	{
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimStartPositionForShip:");
+		return kZeroHPVector;
+	}
+	HPVector v0 = the_sun->_cxxEntity->position;
+	HPVector v1 = ship->_cxxEntity->position;
+	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;	// vector from sun to ship
+	if (v1.x||v1.y||v1.z)
+		v1 = HPvector_normal(v1);
+	else
+		v1.z = 1.0;
+	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
+	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
+	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
+	
+	return v1;
+}
+
+
+// FIXME: should use vector functions
+HPVector Universe::getSunSkimEndPositionForShip(::ShipEntity *ship)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	::OOSunEntity* the_sun = [self sun];
+	if (!ship)
+	{
+		OO_LOG(cxx_kOOLogParameterError, "{}", "***** No ship set in Universe getSunSkimEndPositionForShip:");
+		return kZeroHPVector;
+	}
+	// get vector from sun position to ship
+	if (!the_sun)
+	{
+		OO_LOG(cxx_kOOLogInconsistentState, "{}", "***** No sun set in Universe getSunSkimEndPositionForShip:");
+		return kZeroHPVector;
+	}
+	HPVector v0 = the_sun->_cxxEntity->position;
+	HPVector v1 = ship->_cxxEntity->position;
+	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;
+	if (v1.x||v1.y||v1.z)
+		v1 = HPvector_normal(v1);
+	else
+		v1.z = 1.0;
+	HPVector v2 = make_HPvector(randf()-0.5, randf()-0.5, randf()-0.5);	// random vector
+	if (v2.x||v2.y||v2.z)
+		v2 = HPvector_normal(v2);
+	else
+		v2.x = 1.0;
+	HPVector v3 = HPcross_product(v1, v2);	// random vector at 90 degrees to v1 and v2 (random Vector)
+	if (v3.x||v3.y||v3.z)
+		v3 = HPvector_normal(v3);
+	else
+		v3.y = 1.0;
+	double radius = SUN_SKIM_RADIUS_FACTOR * the_sun->_cxxEntity->collision_radius - 250.0; // 250 m inside the skim radius
+	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
+	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
+	v1.x += 15000 * v3.x;	v1.y += 15000 * v3.y;	v1.z += 15000 * v3.z;	// point 15000m at a tangent to sun from v1
+	v1.x -= v0.x;	v1.y -= v0.y;	v1.z -= v0.z;
+	if (v1.x||v1.y||v1.z)
+		v1 = HPvector_normal(v1);
+	else
+		v1.z = 1.0;
+	v1.x *= radius;	v1.y *= radius;	v1.z *= radius;
+	v1.x += v0.x;	v1.y += v0.y;	v1.z += v0.z;
+	
+	return v1;
+}
+
+
+std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>> Universe::listBeaconsWithCode(const std::string &code)
+{
+	::Universe *self = oo::ToObjC(this);
+
+	std::vector<oo::ObjCRef<::Entity <OOBeaconEntity> *>>	result;
+	::Entity <OOBeaconEntity>		*beacon = [self firstBeacon];
+
+	while (beacon != nil)
+	{
+		const std::optional<std::string> beaconCode = [beacon beaconCode];
+		if (BeaconCodeMatches(beaconCode, code))
+		{
+			result.emplace_back(beacon);
+		}
+		beacon = [beacon nextBeacon];
+	}
+
+	// ORDER-SENSITIVE (decision D): beacons whose codes compare the same keep their list order.
+	std::stable_sort(result.begin(), result.end(), [](const oo::ObjCRef<::Entity <OOBeaconEntity> *> &a, const oo::ObjCRef<::Entity <OOBeaconEntity> *> &b)
+	{
+		return [a.get() compareBeaconCodeWith:b.get()] == OOOrderedAscending;
+	});
+	return result;
+}
+
+
+void Universe::allShipsDoScriptEvent(ooscript::PropertyId event, const std::optional<std::string> &message)
+{
+	int i;
+	int ent_count = n_entities;
+	int ship_count = 0;
+	::ShipEntity* my_ships[ent_count];
+	for (i = 0; i < ent_count; i++)
+	{
+		if (sortedEntities[i]->_cxxEntity->isShip)
+		{
+			my_ships[ship_count++] = [(::ShipEntity *)sortedEntities[i] retain];	// retained
+		}
+	}
+	
+	for (i = 0; i < ship_count; i++)
+	{
+		::ShipEntity* se = my_ships[i];
+		[se doScriptEvent:event];
+		if (message.has_value())  [[se getAI] cxx_reactToMessage:*message context:"global message"];
+		[se release]; //	released
+	}
+}
+
+
+///////////////////////////////////////
+
+::GuiDisplayGen *Universe::getGui()
+{
+	return gui;
+}
+
+
+::GuiDisplayGen *Universe::commLogGUI()
+{
+	return comm_log_gui;
+}
+
+
+::GuiDisplayGen *Universe::messageGUI()
+{
+	return message_gui;
+}
+
+
+void Universe::clearGUIs()
+{
+	[gui clear];
+	[message_gui clear];
+	[comm_log_gui clear];
+	[comm_log_gui cxx_printLongText:OO_DESC("communications-log-string")
+						  align:GUI_ALIGN_CENTER color:[::OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
+}
+
+
+void Universe::resetCommsLogColor()
+{
+	[comm_log_gui setTextColor:[::OOColor whiteColor]];
+}
+
+
+void Universe::setDisplayText(bool value)
+{
+	displayGUI = !!value;
+}
+
+
+bool Universe::getDisplayGUI()
+{
+	return displayGUI;
+}
+
+
+void Universe::setDisplayFPS(bool value)
+{
+	displayFPS = !!value;
+}
+
+
+bool Universe::getDisplayFPS()
+{
+	return displayFPS;
+}
+
+
+void Universe::setAutoSave(bool value)
+{
+	autoSave = !!value;
+	oo::Defaults::standard().setBool("autosave", autoSave);
+}
+
+
+bool Universe::getAutoSave()
+{
+	return autoSave;
+}
+
+
+void Universe::setAutoSaveNow(bool value)
+{
+	autoSaveNow = !!value;
 }
 
 }	// namespace cxx
