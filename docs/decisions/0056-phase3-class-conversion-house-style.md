@@ -3290,6 +3290,75 @@ is a dependency cycle or a stall, and a slice cannot be done while it sends to t
 waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
 more call frame. `--slice-done` stays as strict as it is.
 
+## Amendment (bead oo-2g51): a class-shell slice whose later slices are methods of the class's own `@interface`
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/GuiDisplayGen.h/.mm` (slice 1 of `docs/phases/3-slices/GuiDisplayGen.md`),
+  `GuiDisplayGen+ObjCBridge.h/.mm`, `tests/unit/core/test_GuiDisplayGen.mm`; also
+  `src/Core/ResourceManager.*` (bead oo-jfno). Follows amendments oo-pni4 and oo-3bgz.
+
+**Context.** In `OOShipRegistry` (oo-3bgz) the later slices were already a category with its own
+`@interface`. In `GuiDisplayGen` and `ResourceManager` they are methods of the class itself,
+declared in its one `@interface` and defined in its one `@implementation`, interleaved with the
+shell slice's methods. `GuiDisplayGen`'s later slices also retain and autorelease two ivars
+(`backgroundSprite`, `foregroundSprite`) and read three that the shell slice sets with
+retain/release (`textColor`, `textCommsColor`, `backgroundColor`). `ResourceManager` is class
+methods over file-scope state and is never made.
+
+**Decision (recommended defaults).**
+
+1. **The façade header declares the later slices' selectors in a named category,**
+   `X (OOXUnconverted)`, copied exactly from the old `@interface`, and `X.mm` implements them as
+   `@implementation X (OOXUnconverted)`; the façade's own `@interface` keeps only the shell slice's
+   selectors, each forwarded by `X+ObjCBridge.mm`. (Amendment oo-bwjb item 1, written in parallel,
+   says the same with the name `XSlices`; either name is the category's, and the slice beads empty
+   it.) A shell-slice method that sat among the later
+   ones (`-rowAtVirtualJoystickPosition:`) moves, verbatim, into the C++ block. Each later slice's
+   bead moves its methods from the category to the class and adds their forwarders.
+2. **An Objective-C object ivar whose retains the later slices make** (`[backgroundSprite
+   autorelease]; backgroundSprite = New…()`) stays a raw `+1` pointer member, released by the
+   destructor (the old `-dealloc` body), so the category's code needs only the oo-3bgz rewrite; it
+   becomes an `oo::ObjCRef` in the slice that converts those methods. An object ivar whose
+   memory management is all in the shell slice is an `oo::ObjCRef` (amendment oo-862e item 4), and
+   the category reads it as `oo::ToCxx(self)->x.get()`. `GuiDisplayGen`'s colours stay façades
+   (`oo::ObjCRef<::OOColor *>`), unlike the HUD's (amendment oo-engam item 4), because the rows
+   already hold façades (`rowColor`, a Phase 2 type that stays) and every caller passes and reads
+   `OOColor *`; a later slice or the deletion bead may move all of them to `oo::Ref<cxx::OOColor>` at
+   once.
+3. **A getter named like its ivar** follows amendment oo-862e (`getTitle()`, `getSelectedRow()`,
+   `getTextColor()`, `getDrawPosition()`, `getSelectableRange()`), so the bodies, and the
+   category's rewritten ivar reads, stay verbatim.
+4. **A class of class methods only** (`ResourceManager`) is `cxx::X` with static members and a
+   deleted constructor, and no `oo::ToObjC`/`oo::ToCxx` (nothing crosses). Its file-scope state stays
+   file-scope, so the later slices' category needs no rewrite; a shell member that sends one of
+   their methods sends it to the façade class, `[::X …]`. A converted collaborator (`OOCacheManager`)
+   is called as C++ (`OOCacheManager::sharedCache()->…`) inside the members.
+5. **A unit test that selects a row** (`-setSelectedRow:` reports it with `OOJSID(…)`) starts the
+   JavaScript engine once in a scratch home and game folder, as `test_OOJSScript` does; `PLAYER` stays
+   nil, so nothing is sent.
+
+**Consequences.** Two façades with deletion beads that wait for the later slices as well as for the
+callers. The category's ivar reads cost one `oo::ToCxx` call each until their slice converts.
+
+## Amendment (bead oo-6dvw): a later slice that owns sprites of a converted class, and its file-scope helpers
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: `src/Core/GuiDisplayGen.h/.mm`
+  (slice 2 of `docs/phases/3-slices/GuiDisplayGen.md`). Follows amendments oo-2g51 and oo-9ht.139.
+
+**Decision (recommended defaults).**
+
+1. **The raw `+1` sprite ivars of amendment oo-2g51 item 2 become `oo::Ref<cxx::OOTextureSprite>`** in
+   the slice that converts their `-autorelease`/replace code, because `OOTextureSprite` is C++: the
+   factory is `cxx::OOTextureSprite::initWithTexture(texture, size)` (null where the façade's
+   initialiser answered nil), the destructor's releases go, and the assignment releases the old
+   sprite at once rather than at the pool's drain (amendment oo-862e item 4). The later slices'
+   category still reads them through `oo::ToCxx(self)`; its two blits become member calls
+   (`->blitCentredToX(x, y, z, a)`), the only lines of the category that change beyond the rewrite.
+2. **A file-scope helper of the slice that messaged the universe** (`TextureForGUITexture`'s
+   `[UNIVERSE useShaders]`) calls a one-line bridge function in `X+ObjCBridge.mm`
+   (`GuiDisplayGenUniverseUseShaders()`, amendment oo-9ht.139 item 3); its message to a converted
+   class becomes the C++ call (`cxx::OOTexture::textureWithName`, `oo::ToCxx(texture)->originalDimensions()`),
+   and a result it handed out autoreleased is returned as `oo::ObjCRef`.
 ## Amendment (bead oo-bwjb): a class-shell slice whose later slices hold public methods, and a filter called through its selector
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOOXZManager.h/.mm` (slice 1 of
@@ -3932,3 +4001,255 @@ subclasses (`StationEntity`, `DockEntity`, `PlayerEntity`, `ProxyPlayerEntity`),
 category files and every reader of a ship's ivars changed only by item 1. The facade's deletion
 bead removes every `_cxxShip->`, makes the item 2 members private and depends on the umbrella
 oo-k8a.
+
+## Amendment (bead oo-luhd): a binding's slice beads, whose natives message the universe and the player
+
+- Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSSystem.mm` and
+  `OOJSSystem+ObjCBridge.h/.mm` after slices 1-2 of `docs/phases/3-slices/OOJSSystem.md` (beads
+  oo-luhd, oo-yqoa), `tests/unit/core/test_OOJSSystem.mm`. Follows amendments oo-ppc, oo-6ia4,
+  oo-nge8, oo-dqxj and oo-9ht.139, which says these sends go behind one-line functions.
+
+**Context.** `OOJSSystem.mm` is the first binding converted slice by slice. It has no class of its
+own: its slices are natives and helpers, almost every line of which messages the universe or the
+player, and a few of which message a converted class (`OOJSScript`, `Entity`, the populator
+definition) or send a category selector that each entity class answers (`-isVisibleToScripts`).
+Its natives need the real engine to run, and the old test style (amendment oo-ppc item 6) would
+stand in for half of the game.
+
+**Decision (recommended defaults).**
+
+1. **A binding with no class gets `X+ObjCBridge.h/.mm` of one-line send functions only** (amendment
+   oo-9ht.139 item 3), with no façade. `X.mm` imports the bridge header; `X.h` does not, so the
+   binding's callers see nothing new. `meson.build` lists `X+ObjCBridge.mm` after `X.mm`. A send
+   repeated in several units is one function; the functions are grouped in the header by the
+   class they message.
+2. **A send to a converted class becomes a `cxx::` call, nil-guarded** (amendment oo-6ia4 item 2):
+   `cxx::OOJSScript::currentlyRunningScript()` then `oo::ToCxx(script)->propertyNamed(...)`, null for
+   no script; `[entity isPlayer]` is `oo::ToCxx(entity)->getIsPlayer()`.
+3. **A category selector that entity classes answer each in their own way** (`-isVisibleToScripts`,
+   implemented by the `OOJS*` bindings' categories) stays a message, in a bridge function
+   (`OOJSSystemEntityIsVisibleToScripts(entity)`), even when the receiver's root is converted: the
+   answer depends on the receiver's class.
+4. **A converted class whose façade only alloc/init may make** (amendment oo-o89 item 2:
+   `OOJSPopulatorDefinition`) is made by a bridge function that returns the façade retained
+   (`OOJSSystemNewPopulatorDefinition()`, `OO_RETURNS_RETAINED`), held in
+   `oo::ObjCRef` by `oo::adoptObjC` and used through `oo::ToCxx`; the reference is dropped where
+   `-release` was.
+5. **A slice converts only its units' bodies and the prototypes their signatures need** (a helper's
+   `BOOL isGroup` parameter becomes `bool` with its prototype). Callers outside the slice that pass
+   `YES`/`NO` compile unchanged.
+6. **The binding's test runs the real engine**, linking the whole game but `main` (meson entry
+   `['*']`, as `test_OOJSScript` does): `[OOJavaScriptEngine sharedEngine]` defines the binding's
+   objects in the engine's own context, and the test evaluates JS there. The universe and the player
+   are stand-in classes of other names (`FakeUniverse`, `FakePlayer`) stored in `gSharedUniverse`
+   and `gOOPlayer` after the engine exists; they answer only the selectors the slices send and log
+   what they are told. Entities are real `Entity` objects (a test subclass that is visible to
+   scripts), so the engine's predicates, wrappers and `JSValueToEntity()` run unchanged. The same
+   file runs on the Objective-C binding and on each converted slice; each slice adds its tests.
+
+**Consequences.** One bridge file per binding, with a deletion bead that waits for `Universe` and
+`PlayerEntity` (and, for a binding that wraps one, the entity class); no caller changes. The bridge
+functions are the binding's list of what it still needs from unconverted classes.
+
+## Amendment (bead oo-ft5n): a binding's category on a class that is still Objective-C, in a slice plan
+
+- Date: 2026-10-06. Status: Proposed, as above. Exemplar: `src/Core/Scripting/OOJSPlayerShip.h/.mm` and
+  `OOJSPlayerShip+ObjCBridge.h/.mm` after slices 1-3 of `docs/phases/3-slices/OOJSPlayerShip.md` (beads
+  oo-ft5n, oo-9t14, oo-1qr5), `tests/unit/core/test_OOJSPlayerShip.mm`. Follows amendments oo-ykoy and
+  oo-luhd.
+
+**Decision (recommended defaults).**
+
+1. **The category's methods become free functions in the plan's first slice** (amendment oo-ykoy
+   item 1: `OOJSPlayerShipJSClassName()`, `OOJSPlayerShipSetJSSelf(player, ...)`,
+   `OOJSPlayerShipJavaScriptEngineWillReset(player, ...)`), declared in `X.h` outside its
+   `extern "C"` block, and the `@implementation` forwards to them from the same `X+ObjCBridge.mm`
+   that holds the slices' send functions. `self->_ivar` in a body is `player->_cxxEntity->_ivar`.
+2. **A body that sent another method of the same category, or a converted unit that sent one**
+   (`[self javaScriptEngineWillReset:]` from the observer block, `[player setJSSelf:context:]` from
+   `InitOOJSPlayerShip()`), calls its free function directly, with a comment: the receiver's class
+   has no subclass that overrides the method, so dispatch picked that body anyway.
+3. **A converted class the binding reaches through an unconverted one** (`[player hud]`, a
+   `cxx::HeadUpDisplay`) is asked for by a bridge function and crossed with `oo::ToCxx`; many
+   reads go through one file-local helper that answers the value-initialised result for a player
+   with no HUD (`AskHud(player, &cxx::HeadUpDisplay::member)`, amendment oo-nge8 item 6), and a
+   setter is `if (cxx::HeadUpDisplay *hud = HudOf(player))  hud->...;`. A setter that answered the
+   HUD's `BOOL` answers `hud != nullptr && ...`.
+4. **A helper of the slice whose parameter was a converted class's façade** and whose callers are
+   all in the slice (`NormalizedColorComponents(OOColor *)`) takes the C++ class
+   (`cxx::OOColor *`); a façade from an unconverted class crosses with `oo::ToCxx` at the call.
+5. **A send function shared by several slices is added by the first slice that needs it**; later
+   slices reuse it.
+
+**Consequences.** The binding's bridge holds the category until `PlayerEntity` converts (its
+deletion bead waits for oo-a70 as well as `Universe`, `GuiDisplayGen` and the engine's slices). The
+test runs the real engine and the real `player.ship`, with stand-ins for what `PLAYER` and
+`UNIVERSE` answer and a real HUD in a hidden GL context.
+
+## Amendment (bead oo-10qz): the JavaScript engine, whose later slice is the class's own block, and the file's categories on other classes
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Scripting/OOJavaScriptEngine.h/.mm`, `OOJavaScriptEngine+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOJavaScriptEngine.mm` after the four slices of
+  `docs/phases/3-slices/OOJavaScriptEngine.md` (beads oo-10qz, oo-903c, oo-elta, oo-k4nu). Follows
+  amendments oo-r7m0, oo-kq7, oo-ppc, oo-3bgz, oo-bwjb, oo-9ht.139 and oo-dqxj.
+
+**Context.** `OOJavaScriptEngine` is the singleton that owns the JS runtime; about thirty files
+message `[OOJavaScriptEngine sharedEngine]`, observe its reset notifications with the engine as the
+sender, or adopt its monitor protocol. Its plan gives slice 1 the shell by named methods
+(`-[OOJavaScriptEngine init]`, ...) and slice 2 the rest of the class by its block
+(`@OOJavaScriptEngine`), the reverse of `OOOXZManager`'s plan, so amendment oo-bwjb's in-place
+category would take slice 2's methods out of the block the plan names. The same file holds a
+category on the root class (`OOObject (OOJavaScriptConversion)`, overridden by every scriptable
+class), one on a converted class's façade (`OONativeVector`), two small classes whose instances
+live in Objective-C collections (`OONull`, `OOJSValue`), free functions that send to entities,
+weak references and the resource manager, and a stack dump inside `@autoreleasepool` with
+`@catch (OOException *)`.
+
+**Decision (recommended defaults).**
+
+1. **When the plan names the later slice by the class's block, the bwjb split is mirrored.** The
+   later slice's methods stay where they are, in the façade's primary `@implementation X` in `X.mm`,
+   reading the C++ state through `oo::ToCxx(self)->` (amendment oo-3bgz item 1); the bridge header's
+   main `@interface X` declares their selectors. The shell's selectors are declared by a category
+   `@interface X (XShell)` in the bridge header and implemented, with `oo::ToObjC`/`oo::ToCxx`,
+   `-initWithCxxX:` and `-dealloc`, by `@implementation X (XShell)` in `X+ObjCBridge.mm` (a
+   category of the class reaches its private ivar). Both implementations are complete. The later
+   slice moves its methods into `cxx::X` and the category becomes the façade's primary
+   `@implementation`, with one forwarder per selector, in the old interface's order.
+2. **A singleton that is a notification sender posts as its façade.** Observers filter on the
+   object they got from `+sharedEngine`, so `reset()` posts with `oo::ToObjC(this)`, and a converted
+   observer (`cxx::OOJSValue`) filters on `oo::ToObjC(cxx::OOJavaScriptEngine::sharedEngine())`.
+   Calls that handed `self` to Objective-C (`OOJSTimeManagementInit`, the monitor's `-jsEngine:…`)
+   hand the façade. `+sharedEngine` keeps one façade (amendment oo-r7m0 item 5); `sharedEngine()`
+   records the engine before `init()` runs (amendment oo-3bgz item 3), as `-init` set
+   `sSharedEngine = self` before it built the context.
+3. **The monitor protocol and the `OOMonitorSupport` category move to the bridge header**
+   (amendment oo-kq7 item 4); `X.h` keeps a forward `@protocol` for the member
+   `oo::ObjCRef<id<OOJavaScriptEngineMonitor>> _monitor`. `[_monitor autorelease]; _monitor =
+   [m retain];` is `[_monitor.leakRef() autorelease]; _monitor = oo::ObjCRef<…>(m);`. The private
+   category another file declares only to type one send (`OOMonitorSupportInternal` in
+   `OOJSGlobal+ObjCBridge.mm`, amendment oo-6ia4 item 6) is implemented by forwarders in
+   `X+ObjCBridge.mm`, which declares it again for its own translation unit (a declaration in the
+   bridge header would be a duplicate category in that file's).
+4. **A category in the file on the root class or on a converted class's façade** follows amendment
+   oo-ppc item 3: the bodies are free functions in `X.mm` named class + selector
+   (`OOObjectJSDescription(id)`, `OONativeVectorJSValueInContext(cxx::OONativeVector *, …)`),
+   declared in `X.h`, and the category's `@implementation` forwards to them from `X+ObjCBridge.mm`.
+   A body that messaged `self` (`[self cxx_oo_jsClassName]`, `[self class]`, overridden by
+   subclasses) sends through one-line bridges that take `id` (amendment oo-9ht.139 item 3), so the
+   dynamic dispatch is unchanged. The root category's forwarders stay until the root class goes
+   (Phase 4); the bridge's deletion bead says so.
+5. **A small class whose instances are compared by identity in Objective-C collections**
+   (`OONull`) is a `cxx::` singleton whose one façade lives as long as the process: `oo::ToObjC`
+   answers that façade without a peer table (amendment oo-kq7 item 2), so `[OONull null]` and
+   `oo::ToObjC(cxx::OONull::null())` are the same object. `-copyWithZone:` (`[self retain]`) is the
+   façade's. **A value holder that callers make with `+alloc`** (`OOJSValue`) follows amendment
+   oo-bhb9 items 1-3: `cxx::OOJSValue` with factories and a private `init…`, its façade's
+   initialisers adopting the factory's result; the notification observer is `this` (amendment
+   oo-kq7 item 6).
+6. **`@catch (OOException *e)` in a converted free function** is `catch (...)` whose handler asks a
+   one-line bridge, `XCaughtOOException(name, reason)`, which rethrows inside an Objective-C++
+   `try` and answers whether the exception is an `OOException` (`-isKindOfClass:`, as `@catch` with
+   a class matched); if not, the handler rethrows with `throw;`, as an unmatched `@catch` let it
+   go on up. `[e name]`/`[e reason]` are the bridge's out-parameters. `@autoreleasepool` around it
+   is `objc_autoreleasePoolPush`/`Pop` (amendment oo-bm1q item 4), skipped by a rethrow as the pool
+   was. `@try`/`@catch (id)` that only squashed errors is `try`/`catch (...)` (amendment oo-ja7y
+   item 4).
+7. **Sends to an entity in a converted free function** go through one-line bridges on `Entity *`
+   (amendment oo-nge8 item 5: entities are messaged as the Objective-C `Entity` while their
+   subclasses are Objective-C); a converted leaf the code casts to (`OOPlanetEntity`) is reached
+   with `oo::ToCxx`.
+8. **The test is a whole-game test** (`['*']`, as `test_OOJSScript`'s): the real engine, a scratch
+   home, the log captured through `oo::log::logger().setSink`, and a test monitor; it pins the
+   engine's API, the log text of errors and warnings, the stack dump of a `debugger` statement,
+   value descriptions, the value holders and converters, the object wrapper and the predicates.
+
+**Consequences.** One bridge pair (`OOJavaScriptEngine+ObjCBridge.h/.mm`) holds the engine,
+`OONull` and `OOJSValue` façades, the root and `OONativeVector` categories and the one-line
+bridges; its deletion bead waits for the engine's callers (the player, the universe, the debug
+support, the bindings), the classes the bridges message, and, for the root category, Phase 4.
+Converted classes that message the engine from inside `namespace cxx` (`OODebugMonitor`,
+`OOJSScript`, `OOJSTimer`, `OOJSFunction`, the GUI/interface/populator definitions,
+`OORegExpMatcher`) now name the façade `::OOJavaScriptEngine`, since `cxx::OOJavaScriptEngine`
+hides it there (and later `::OONull`, `::OOJSValue`); no other caller changed: every selector,
+type and sender is the same. The test pins the reporter's guard of a report with no `linebuf`
+(which the QuickJS backend never sets; bead oo-9ht.142), found again by this test.
+
+## Amendment (bead oo-mvzmb): ShipEntity's later slices, members an Objective-C subclass overrides, and the ship's adapter
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 2-12. Exemplar: `src/Core/Entities/ShipEntity.h/.mm`,
+  `ShipEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_ShipEntity.mm`. Follows amendments oo-60fwo
+  (the class shell), oo-vl43 (an intermediate class's adapter) and oo-72cz (a later slice).
+
+**Context.** Each later slice of `ShipEntity.mm` moves its methods into `cxx::ShipEntity` while the
+class's `@implementation` stays in the file for the slices still to come, and three workers convert
+slices of the file at once. `StationEntity`, `DockEntity`, `PlayerEntity` and the unit tests'
+ships are Objective-C subclasses that override some of the moved selectors
+(`-setUpShipFromDictionary:`, `-setUpSubEntities`, `-update:`, ...), and the façade's adapter was
+the root's template, which messages only the root's virtual members.
+
+**Decision (recommended defaults).**
+
+1. **A slice's members are a `namespace cxx` block of their own after the `@implementation`**, in
+   the file's order, under a comment naming the slice and its bead; their declarations are a block
+   in `cxx::ShipEntity` under the same comment. The façade's forwarders are a category per slice,
+   `ShipEntity (OOSliceN)`, in `ShipEntity+ObjCBridge.mm`, and each forwarded declaration moves from
+   the primary `@interface` to that category's `@interface` in the bridge header (amendment oo-60fwo
+   item 6: the primary `@implementation` stays complete). A selector the class did not declare in
+   its interface (its private category, a protocol's, a root's) is declared in the slice's
+   category. One block per slice keeps the workers' merges to adjacent, independent hunks.
+2. **A member an Objective-C subclass overrides is `virtual`, and the ship's adapter gets its
+   line.** The adapter is `ObjCShipEntity`, private to `ShipEntity+ObjCBridge.mm`, derived from
+   `oo::ObjCEntity<cxx::ShipEntity>` (as `ObjCLightParticleEntity` is, amendment oo-vl43) and made
+   by the façade's `-initShipPart`; each slice that makes a member virtual adds its override, which
+   messages the Objective-C object. A member that overrides a virtual member of `cxx::Entity`
+   (`frustumRadius()`, `descriptionComponents()`, `update()`) is `override`, and the root's
+   template already has its line.
+3. **The forwarder of such a member calls `cxx::ShipEntity`'s own member**,
+   `_cxxShip->cxx::ShipEntity::setUpShipFromDictionary(dict)`, which is what `[super ...]` from a
+   subclass (or not overriding) reached; a call through the virtual would come back to the
+   subclass. Every ship has the adapter, so no `oo::AsObjCEntity` test is needed.
+4. **Sends to `self` in a moved body stay sends** to the façade (`::ShipEntity *self =
+   oo::ToObjC(this)` at the top, as slice 1's member does), so a subclass's override still runs and
+   a selector of a slice not yet landed still answers. `[super x]` becomes the base class's member,
+   qualified (`OOEntityWithDrawable::descriptionComponents()`); in a `const` member `self` is
+   `oo::ToObjC(const_cast<ShipEntity *>(this))`.
+5. **A parameter or result typed `Entity<OOSubEntity> *` is `::Entity *` in the member**: C++
+   takes no protocol qualifier after a qualified name. The façade's forwarder keeps the Objective-C
+   signature (and casts a result back to the qualified type).
+6. **A protocol the ship adopts whose methods a slice forwards** (`<OOBeaconEntity>`, slice 5) is
+   adopted by a category with no `@implementation`, `ShipEntity (OOBeaconEntity)`, instead of the
+   class's interface: a category that implements a method of a protocol the class itself adopts is
+   warned about as one the class will implement (`-Wobjc-protocol-method-implementation`), and a
+   warning is not silenced (CLAUDE.md rule 3). The ship conforms as before.
+7. **Tests:** each slice adds its cases to `test_ShipEntity.mm` under a comment naming the slice,
+   written against the façade and run on the unconverted class first; a ship that keeps
+   `ShipEntity`'s own set-up is a subclass with no overrides (`PlainShip`).
+
+**Consequences.** One adapter class for the ship, one category per slice on the façade; the
+façade's deletion bead (oo-9ht.144) removes them with the forwarders.
+
+## Amendment (bead oo-xmajv): ShipEntity slices 13-23, beyond amendment oo-mvzmb
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 13-23 (beads oo-xmajv … oo-xmrgd), stacked on slices
+  2-12. Exemplar: `src/Core/Entities/ShipEntity.h/.mm`, `ShipEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendment oo-mvzmb, whose seven items these slices
+  keep (a block and a category per slice, `ObjCShipEntity`, sends to `self` stay sends).
+
+**Decision (recommended defaults).**
+
+1. **A parameter the moved body never reads is named in a comment** (`double /*delta_t*/`), as the
+   debug monitor's members are: `-Wunused-parameter` (in `-Wextra`) warns about a C++ function's
+   unused parameter and never did about an Objective-C method's, and a warning is not silenced
+   (CLAUDE.md rule 3).
+2. **The ship's other protocol, `<OOSubEntity>`, is adopted by a category with no
+   `@implementation` once a slice forwards one of its methods** (slice 16,
+   `-drawSubEntityImmediate:translucent:`), for amendment oo-mvzmb item 6's reason.
+3. **A method that overrides one of `Entity`'s and takes an Objective-C object** (`-setOwner:`)
+   becomes the `override` of the root's virtual with the root's C++ types (`cxx::Entity *`); the
+   façade's forwarder converts (`oo::ToCxx(who)`), as slice 6's `-checkCloseCollisionWith:` does.
+4. **The tests** set a ship's target through the helper `SetPrimaryTarget()`, not `-addTarget:`,
+   which tells the ship's scripts (the unit tests' ships have no JavaScript object).

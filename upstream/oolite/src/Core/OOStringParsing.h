@@ -31,8 +31,6 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 
-@class Entity;
-
 
 // Tokens of a string: oo::str::tokens (oofnd/String.hpp).
 

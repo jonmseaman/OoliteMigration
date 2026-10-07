@@ -40,11 +40,11 @@ const char * const OOModelVerifierStage::kName = kStageName;
 
 std::string OOModelVerifierStage::nameForReverseDependencyForVerifier(OOOXPVerifier *verifier)
 {
-	::OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kStageName];
-	if (stage == nil)
+	OOOXPVerifierStage *stage = [verifier cxx_stageWithName:kStageName];
+	if (stage == nullptr)
 	{
 		const oo::Ref<OOModelVerifierStage> newStage = oo::makeRef<OOModelVerifierStage>();
-		[verifier registerStage:oo::ToObjC(newStage.get())];
+		[verifier registerStage:newStage.get()];
 	}
 
 	return kStageName;
@@ -95,7 +95,7 @@ bool OOModelVerifierStage::modelNamed(const std::string &name,
 	if (entryName.has_value())  context = oo::str::format("entry \"%s\" of %s", entryName->c_str(), fileName.c_str());
 	else context = fileName;
 
-	fileScanner = static_cast<OOFileScannerVerifierStage *>(oo::ToCxx(static_cast<::OOOXPVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName])));
+	fileScanner = static_cast<OOFileScannerVerifierStage *>([verifier() cxx_stageWithName:OOFileScannerVerifierStage::kName]);
 	if (fileScanner == nullptr || !fileScanner->fileExists(name, "Models", context, true))
 	{
 		return false;
