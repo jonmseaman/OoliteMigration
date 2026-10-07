@@ -7,8 +7,10 @@ C++ cxx::OOOXPVerifier (OOOXPVerifier.h), for GameController (+runVerificationIf
 stages, which keep it as their verifier and message it. Its interface is the one OOOXPVerifier.h
 declared before the conversion, copied exactly (same selectors, same types), so they compile and
 behave unchanged; the categories that other files add to it (-fileScannerStage,
--textureVerifierStage) are unchanged too (the model stage's went with bead oo-9ht.56). Imported as
-the last line of OOOXPVerifier.h; do not import it directly.
+-textureVerifierStage) are unchanged too (the model stage's went with bead oo-9ht.56). Since bead
+oo-9ht.4 deleted the stage facade, the stages it registers and answers by name are the C++
+stages (OOOXPVerifierStage *, borrowed). Imported as the last line of OOOXPVerifier.h; do not
+import it directly.
 
 Never add to this file; converted code does not message the facade. Deleted by its deletion bead.
 
@@ -61,14 +63,14 @@ SOFTWARE.
 	in their -initWithVerifier: methods, or when -dependencies or
 	-dependents are called. Registration at later points is not permitted.
 */
-- (void)registerStage:(OOOXPVerifierStage *)stage;
+- (void)registerStage:(OOOXPVerifierStage *)stage;	// the C++ stage (its facade until bead oo-9ht.4)
 
 
 //	All other methods are for use by verifier stages.
 - (std::optional<std::string>)cxx_oxpPath;
 - (std::optional<std::string>)cxx_oxpDisplayName;
 
-- (id)cxx_stageWithName:(const std::string &)name;
+- (OOOXPVerifierStage *)cxx_stageWithName:(const std::string &)name;	// borrowed; null: none (was an id, the stage's facade, until bead oo-9ht.4)
 
 // Read from verifyOXP.plist
 - (oo::PList)configurationValueForKey:(const std::string &)key;
