@@ -47,6 +47,6 @@ cxx::OOJSTimer *oo::ToCxx(::OOJSTimer *timer)
 @implementation OOJSTimer
 
 - (std::optional<std::string>) cxx_oo_jsClassName				{ return oo::ToCxx(self)->oo_jsClassName(); }
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return oo::ToCxx(self)->oo_jsValueInContext(context); }
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context	{ return oo::ToCxx(self)->jsValueInContext(context); }
 
 @end
