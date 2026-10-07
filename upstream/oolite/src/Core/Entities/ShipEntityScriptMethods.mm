@@ -28,11 +28,16 @@ MA 02110-1301, USA.
 #include "oofnd/Log.hpp"
 
 
-@implementation ShipEntity (ScriptMethods)
+/*	The category ShipEntity (ScriptMethods), bead oo-42dr: members of cxx::ShipEntity (ADR-0056
+	amendments oo-o89 item 4 and oo-9fwb), forwarded by the category of the same name in
+	ShipEntity+ObjCBridge.mm. Sends to self stay sends to the facade (amendment oo-mvzmb item 4).
+*/
+namespace cxx {
 
-- (ShipEntity *) ejectShipOfType:(const std::optional<std::string> &)shipKey
+::ShipEntity *ShipEntity::ejectShipOfType(const std::optional<std::string> &shipKey)
 {
-	ShipEntity		*item = nil;
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity		*item = nil;
 
 	if (shipKey.has_value())
 	{
@@ -44,9 +49,10 @@ MA 02110-1301, USA.
 }
 
 
-- (ShipEntity *) ejectShipOfRole:(const std::optional<std::string> &)role
+::ShipEntity *ShipEntity::ejectShipOfRole(const std::optional<std::string> &role)
 {
-	ShipEntity		*item = nil;
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity		*item = nil;
 
 	if (role.has_value())
 	{
@@ -58,11 +64,12 @@ MA 02110-1301, USA.
 }
 
 
-- (std::vector<oo::ObjCRef<ShipEntity *>>) spawnShipsWithRole:(const std::string &)role count:(NSUInteger)count
+std::vector<oo::ObjCRef<::ShipEntity *>> ShipEntity::spawnShipsWithRole(const std::string &role, NSUInteger count)
 {
-	ShipEntity				*ship = [self rootShipEntity];	// FIXME: (EMMSTRAN) implement an -absolutePosition method, use that in spawnShipWithRole:near:, and use self instead of root.
-	ShipEntity				*spawned = nil;
-	std::vector<oo::ObjCRef<ShipEntity *>>	result;
+	::ShipEntity *self = oo::ToObjC(this);
+	::ShipEntity				*ship = [self rootShipEntity];	// FIXME: (EMMSTRAN) implement an -absolutePosition method, use that in spawnShipWithRole:near:, and use self instead of root.
+	::ShipEntity				*spawned = nil;
+	std::vector<oo::ObjCRef<::ShipEntity *>>	result;
 
 	if (count == 0)  return result;
 
@@ -94,4 +101,4 @@ MA 02110-1301, USA.
 	return result;
 }
 
-@end
+}	// namespace cxx

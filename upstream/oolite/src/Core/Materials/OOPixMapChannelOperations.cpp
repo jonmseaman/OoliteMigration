@@ -17,7 +17,7 @@ copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN false EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -27,22 +27,30 @@ SOFTWARE.
 
 #include "OOPixMapChannelOperations.h"
 #include "OOCPUInfoEndian.h"
+#include "OOFunctionAttributes.h"
+#include "OOPixMap.h"
 #include "oofnd/objc/OOAssert.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 
-static void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex);
-static void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx);
-static void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx);
-static void ModulateUniform_4(OOPixMap pixMap, uint16_t f0, uint16_t f1, uint16_t f2, uint16_t f3);
-static void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx);
-static void AddPixMap_4(OOPixMap mainPx, OOPixMap otherPx);
+
+namespace {
+void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex);
+void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx);
+void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx);
+void ModulateUniform_4(OOPixMap pixMap, uint16_t f0, uint16_t f1, uint16_t f2, uint16_t f3);
+void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx);
+void AddPixMap_4(OOPixMap mainPx, OOPixMap otherPx);
+}
 
 
 bool OOExtractPixMapChannel(OOPixMap *ioPixMap, uint8_t channelIndex, bool compactWhenDone)
 {
 	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap) || ioPixMap->format != kOOPixMapRGBA || channelIndex > 3))
 	{
-		return NO;
+		return false;
 	}
 	
 	ExtractChannel_4(ioPixMap, channelIndex);
@@ -55,11 +63,12 @@ bool OOExtractPixMapChannel(OOPixMap *ioPixMap, uint8_t channelIndex, bool compa
 		OOCompactPixMap(ioPixMap);
 	}
 	
-	return YES;
+	return true;
 }
 
 
-static void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex)
+namespace {
+void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex)
 {
 	OOCParameterAssert(ioPixMap != NULL);
 	
@@ -83,32 +92,33 @@ static void ExtractChannel_4(OOPixMap *ioPixMap, uint8_t channelIndex)
 		while (--xCount);
 	}
 }
+}
 
 
 bool OOPixMapToRGBA(OOPixMap *ioPixMap)
 {
-	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap)))  return NO;
-	if (ioPixMap->format == kOOPixMapRGBA)  return YES;
+	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap)))  return false;
+	if (ioPixMap->format == kOOPixMapRGBA)  return true;
 	
 	OOPixMap temp = OOAllocatePixMap(ioPixMap->width, ioPixMap->height, (OOPixMapFormat)4, 0, 0);
-	if (EXPECT_NOT(OOIsNullPixMap(temp)))  return NO;
+	if (EXPECT_NOT(OOIsNullPixMap(temp)))  return false;
 	
-	bool OK = NO;
+	bool OK = false;
 	switch (ioPixMap->format)
 	{
 		case kOOPixMapGrayscale:
 			ToRGBA_1(*ioPixMap, temp);
-			OK = YES;
+			OK = true;
 			break;
 			
 		case kOOPixMapGrayscaleAlpha:
 			ToRGBA_2(*ioPixMap, temp);
-			OK = YES;
+			OK = true;
 			break;
 			
 		case kOOPixMapRGBA:
 		case kOOPixMapInvalidFormat:
-			OK = NO;
+			OK = false;
 			break;
 			// No default, because -Wswitch-enum is our friend.
 	}
@@ -127,7 +137,8 @@ bool OOPixMapToRGBA(OOPixMap *ioPixMap)
 }
 
 
-static void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx)
+namespace {
+void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx)
 {
 	OOCParameterAssert(OOPixMapBytesPerPixel(srcPx) == 1 && dstPx.format == kOOPixMapRGBA && srcPx.width == dstPx.width && srcPx.height == dstPx.height);
 	
@@ -149,9 +160,11 @@ static void ToRGBA_1(OOPixMap srcPx, OOPixMap dstPx)
 		while (--xCount);
 	}
 }
+}
 
 
-static void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx)
+namespace {
+void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx)
 {
 	OOCParameterAssert(OOPixMapBytesPerPixel(srcPx) == 2 && dstPx.format == kOOPixMapRGBA && srcPx.width == dstPx.width && srcPx.height == dstPx.height);
 	
@@ -181,20 +194,22 @@ static void ToRGBA_2(OOPixMap srcPx, OOPixMap dstPx)
 		while (--xCount);
 	}
 }
+}
 
 
 bool OOPixMapModulateUniform(OOPixMap *ioPixMap, float f0, float f1, float f2, float f3)
 {
-	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap)))  return NO;
-	if (EXPECT_NOT(!OOPixMapToRGBA(ioPixMap)))  return NO;
+	if (EXPECT_NOT(ioPixMap == NULL || !OOIsValidPixMap(*ioPixMap)))  return false;
+	if (EXPECT_NOT(!OOPixMapToRGBA(ioPixMap)))  return false;
 	
 	ModulateUniform_4(*ioPixMap, f0 * 256.0f, f1 * 256.0f, f2 * 256.0f, f3 * 256.0f);
 	
-	return YES;
+	return true;
 }
 
 
-static void ModulateUniform_4(OOPixMap pixMap, uint16_t f3, uint16_t f2, uint16_t f1, uint16_t f0)
+namespace {
+void ModulateUniform_4(OOPixMap pixMap, uint16_t f3, uint16_t f2, uint16_t f1, uint16_t f0)
 {
 	OOCParameterAssert(OOPixMapBytesPerPixel(pixMap) == 4);
 	
@@ -238,22 +253,24 @@ static void ModulateUniform_4(OOPixMap pixMap, uint16_t f3, uint16_t f2, uint16_
 		while (--xCount);
 	}
 }
+}
 
 
 bool OOPixMapModulatePixMap(OOPixMap *ioDstPixMap, OOPixMap otherPixMap)
 {
-	if (EXPECT_NOT(ioDstPixMap == NULL || !OOIsValidPixMap(*ioDstPixMap)))  return NO;
-	if (EXPECT_NOT(!OOIsValidPixMap(otherPixMap) || otherPixMap.format != kOOPixMapRGBA))  return NO;
-	if (EXPECT_NOT(!OOPixMapToRGBA(ioDstPixMap)))  return NO;
-	if (EXPECT_NOT(ioDstPixMap->width != otherPixMap.width || ioDstPixMap->height != otherPixMap.height))  return NO;
+	if (EXPECT_NOT(ioDstPixMap == NULL || !OOIsValidPixMap(*ioDstPixMap)))  return false;
+	if (EXPECT_NOT(!OOIsValidPixMap(otherPixMap) || otherPixMap.format != kOOPixMapRGBA))  return false;
+	if (EXPECT_NOT(!OOPixMapToRGBA(ioDstPixMap)))  return false;
+	if (EXPECT_NOT(ioDstPixMap->width != otherPixMap.width || ioDstPixMap->height != otherPixMap.height))  return false;
 	
 	ModulatePixMap_4(*ioDstPixMap, otherPixMap);
 	
-	return YES;
+	return true;
 }
 
 
-static void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx)
+namespace {
+void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx)
 {
 	uint32_t			*dst, *other;
 	uint32_t		px;
@@ -297,22 +314,24 @@ static void ModulatePixMap_4(OOPixMap mainPx, OOPixMap otherPx)
 		while (--xCount);
 	}
 }
+}
 
 
 bool OOPixMapAddPixMap(OOPixMap *ioDstPixMap, OOPixMap otherPixMap)
 {
-	if (EXPECT_NOT(ioDstPixMap == NULL || !OOIsValidPixMap(*ioDstPixMap)))  return NO;
-	if (EXPECT_NOT(!OOIsValidPixMap(otherPixMap) || otherPixMap.format != kOOPixMapRGBA))  return NO;
-	if (EXPECT_NOT(!OOPixMapToRGBA(ioDstPixMap)))  return NO;
-	if (EXPECT_NOT(ioDstPixMap->width != otherPixMap.width || ioDstPixMap->height != otherPixMap.height))  return NO;
+	if (EXPECT_NOT(ioDstPixMap == NULL || !OOIsValidPixMap(*ioDstPixMap)))  return false;
+	if (EXPECT_NOT(!OOIsValidPixMap(otherPixMap) || otherPixMap.format != kOOPixMapRGBA))  return false;
+	if (EXPECT_NOT(!OOPixMapToRGBA(ioDstPixMap)))  return false;
+	if (EXPECT_NOT(ioDstPixMap->width != otherPixMap.width || ioDstPixMap->height != otherPixMap.height))  return false;
 	
 	AddPixMap_4(*ioDstPixMap, otherPixMap);
 	
-	return YES;
+	return true;
 }
 
 
-static void AddPixMap_4(OOPixMap mainPx, OOPixMap otherPx)
+namespace {
+void AddPixMap_4(OOPixMap mainPx, OOPixMap otherPx)
 {
 	uint32_t			*dst, *other;
 	uint32_t		px;
@@ -352,5 +371,6 @@ static void AddPixMap_4(OOPixMap mainPx, OOPixMap otherPx)
 		}
 		while (--xCount);
 	}
+}
 }
 

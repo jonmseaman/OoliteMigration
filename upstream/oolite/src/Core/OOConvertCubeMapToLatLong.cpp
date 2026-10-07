@@ -27,8 +27,8 @@ SOFTWARE.
 
 */
 
-#import "OOConvertCubeMapToLatLong.h"
-#import "OOTextureScaling.h"
+#include "OOConvertCubeMapToLatLong.h"
+#include "OOTextureScaling.h"
 #include "oofnd/objc/OOAssert.h"
 
 

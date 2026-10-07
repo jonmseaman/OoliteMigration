@@ -475,18 +475,18 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 #endif
 #endif
 
-	[[GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
+	[[::GameController sharedController] cxx_logProgress:OO_DESC("loading-ships")];
 	// Load ship data
 
 	[::OOShipRegistry sharedRegistry];
 
 	entities.reserve(MAX_NUMBER_OF_ENTITIES);
 
-	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+	[[::GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 
 	// this MUST have the default no. of rows else the GUI_ROW macros in PlayerEntity.h need modification
-	gui = [[GuiDisplayGen alloc] init]; // alloc retains
-	comm_log_gui = [[GuiDisplayGen alloc] init]; // alloc retains
+	gui = [[::GuiDisplayGen alloc] init]; // alloc retains
+	comm_log_gui = [[::GuiDisplayGen alloc] init]; // alloc retains
 
 	missiontext = [::ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
 
@@ -519,16 +519,16 @@ void cxx::Universe::initWithGameView(::MyOpenGLView *inGameView)
 	framesDoneThisUpdate = 0;
 	drawCounter = 0;
 
-	[[GameController sharedController] cxx_logProgress:OO_DESC("initializing-debug-support")];
+	[[::GameController sharedController] cxx_logProgress:OO_DESC("initializing-debug-support")];
 	OOInitDebugSupport();
 
-	[[GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
+	[[::GameController sharedController] cxx_logProgress:OO_DESC("running-scripts")];
 	[player completeSetUp];
 
-	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
+	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	[self populateNormalSpace];
 
-	[[GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
+	[[::GameController sharedController] cxx_logProgress:cxx_OOExpandKeyRandomized("loading-miscellany").value_or(std::string())];
 
 #if OO_LOCALIZATION_TOOLS
 	[self runLocalizationTools];
@@ -1519,7 +1519,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
 
-	[[GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
+	[[::GameController sharedController] cxx_logProgress:OO_DESC("populating-space")];
 	
 	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
 
@@ -3585,7 +3585,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibrarySpeed(_cxxUniverse->demo_ship);
+			field1 = OOShipLibrarySpeed(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3603,7 +3603,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryTurnRate(_cxxUniverse->demo_ship);
+			field2 = OOShipLibraryTurnRate(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3621,7 +3621,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibraryCargo(_cxxUniverse->demo_ship);
+			field3 = OOShipLibraryCargo(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3642,7 +3642,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibraryGenerator(_cxxUniverse->demo_ship);
+			field1 = OOShipLibraryGenerator(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3660,7 +3660,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryShields(_cxxUniverse->demo_ship);
+			field2 = OOShipLibraryShields(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3678,7 +3678,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibraryWitchspace(_cxxUniverse->demo_ship);
+			field3 = OOShipLibraryWitchspace(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 
@@ -3700,7 +3700,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field1 = OOShipLibraryWeapons(_cxxUniverse->demo_ship);
+			field1 = OOShipLibraryWeapons(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 		override = LibrarySetting(librarySettings, kOODemoShipTurrets, nullptr);
@@ -3717,7 +3717,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field2 = OOShipLibraryTurrets(_cxxUniverse->demo_ship);
+			field2 = OOShipLibraryTurrets(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 		override = LibrarySetting(librarySettings, kOODemoShipSize, nullptr);
@@ -3734,7 +3734,7 @@ std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::
 		}
 		else
 		{
-			field3 = OOShipLibrarySize(_cxxUniverse->demo_ship);
+			field3 = OOShipLibrarySize(oo::ToCxx(_cxxUniverse->demo_ship));
 		}
 
 		[_cxxUniverse->gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
@@ -10857,14 +10857,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[self setMainLightPosition:kZeroVector];
 
 	[_cxxUniverse->gui autorelease];
-	_cxxUniverse->gui = [[GuiDisplayGen alloc] init];
+	_cxxUniverse->gui = [[::GuiDisplayGen alloc] init];
 	const oo::PList guiSettings = [_cxxUniverse->gui cxx_userSettings];
 	const oo::PList *defaultTextColor = guiSettings.find(cxx_kGuiDefaultTextColor);
 	[_cxxUniverse->gui setTextColor:[OOColor cxx_colorWithDescription:(defaultTextColor != nullptr) ? *defaultTextColor : oo::PList()]];
 
 	// message_gui and comm_log_gui defaults are set up inside [hud resetGuis:] ( via [player deferredInit], called from the code that calls this method). 
 	[_cxxUniverse->message_gui autorelease];
-	_cxxUniverse->message_gui = [[GuiDisplayGen alloc]
+	_cxxUniverse->message_gui = [[::GuiDisplayGen alloc]
 					cxx_initWithPixelSize:NSMakeSize(480, 160)
 							  columns:1
 								 rows:9
@@ -10873,7 +10873,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 								title:std::nullopt];
 	
 	[_cxxUniverse->comm_log_gui autorelease];
-	_cxxUniverse->comm_log_gui = [[GuiDisplayGen alloc]
+	_cxxUniverse->comm_log_gui = [[::GuiDisplayGen alloc]
 					cxx_initWithPixelSize:NSMakeSize(360, 120)
 							  columns:1
 								 rows:10
