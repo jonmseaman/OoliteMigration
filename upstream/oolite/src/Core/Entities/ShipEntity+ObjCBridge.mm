@@ -506,3 +506,13 @@ DESTROY(_cxxShip->laser_color);
 - (void) behaviour_close_with_target:(double)delta_t	{ _cxxShip->behaviour_close_with_target(delta_t); }
 
 @end
+
+
+@implementation ShipEntity (OOSlice13)
+
+- (void) behaviour_attack_sniper:(double)delta_t	{ _cxxShip->behaviour_attack_sniper(delta_t); }
+- (void) behaviour_fly_to_target_six:(double)delta_t	{ _cxxShip->behaviour_fly_to_target_six(delta_t); }
+- (void) behaviour_attack_mining_target:(double)delta_t	{ _cxxShip->behaviour_attack_mining_target(delta_t); }
+- (void) behaviour_attack_fly_to_target:(double)delta_t	{ _cxxShip->behaviour_attack_fly_to_target(delta_t); }
+
+@end

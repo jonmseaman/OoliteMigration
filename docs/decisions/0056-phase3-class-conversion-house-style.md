@@ -4230,3 +4230,26 @@ the root's template, which messages only the root's virtual members.
 
 **Consequences.** One adapter class for the ship, one category per slice on the façade; the
 façade's deletion bead (oo-9ht.144) removes them with the forwarders.
+
+## Amendment (bead oo-xmajv): ShipEntity slices 13-23, beyond amendment oo-mvzmb
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 13-23 (beads oo-xmajv … oo-xmrgd), stacked on slices
+  2-12. Exemplar: `src/Core/Entities/ShipEntity.h/.mm`, `ShipEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendment oo-mvzmb, whose seven items these slices
+  keep (a block and a category per slice, `ObjCShipEntity`, sends to `self` stay sends).
+
+**Decision (recommended defaults).**
+
+1. **A parameter the moved body never reads is named in a comment** (`double /*delta_t*/`), as the
+   debug monitor's members are: `-Wunused-parameter` (in `-Wextra`) warns about a C++ function's
+   unused parameter and never did about an Objective-C method's, and a warning is not silenced
+   (CLAUDE.md rule 3).
+2. **The ship's other protocol, `<OOSubEntity>`, is adopted by a category with no
+   `@implementation` once a slice forwards one of its methods** (slice 16,
+   `-drawSubEntityImmediate:translucent:`), for amendment oo-mvzmb item 6's reason.
+3. **A method that overrides one of `Entity`'s and takes an Objective-C object** (`-setOwner:`)
+   becomes the `override` of the root's virtual with the root's C++ types (`cxx::Entity *`); the
+   façade's forwarder converts (`oo::ToCxx(who)`), as slice 6's `-checkCloseCollisionWith:` does.
+4. **The tests** set a ship's target through the helper `SetPrimaryTarget()`, not `-addTarget:`,
+   which tells the ship's scripts (the unit tests' ships have no JavaScript object).

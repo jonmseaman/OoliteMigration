@@ -426,6 +426,12 @@ public:
 	void behaviour_close_to_broadside_range(double delta_t);
 	void behaviour_close_with_target(double delta_t);
 
+	// Slice 13: behaviours: sniper, fly to target six, mining target, attack fly to target.
+	void behaviour_attack_sniper(double delta_t);
+	void behaviour_fly_to_target_six(double delta_t);
+	void behaviour_attack_mining_target(double delta_t);
+	void behaviour_attack_fly_to_target(double delta_t);
+
 	// @public in Objective-C
 	// derived variables
 	OOTimeDelta				shot_time = {};					// time elapsed since last shot was fired
