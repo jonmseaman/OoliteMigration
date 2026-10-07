@@ -3340,6 +3340,25 @@ methods over file-scope state and is never made.
 **Consequences.** Two façades with deletion beads that wait for the later slices as well as for the
 callers. The category's ivar reads cost one `oo::ToCxx` call each until their slice converts.
 
+## Amendment (bead oo-6dvw): a later slice that owns sprites of a converted class, and its file-scope helpers
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: `src/Core/GuiDisplayGen.h/.mm`
+  (slice 2 of `docs/phases/3-slices/GuiDisplayGen.md`). Follows amendments oo-2g51 and oo-9ht.139.
+
+**Decision (recommended defaults).**
+
+1. **The raw `+1` sprite ivars of amendment oo-2g51 item 2 become `oo::Ref<cxx::OOTextureSprite>`** in
+   the slice that converts their `-autorelease`/replace code, because `OOTextureSprite` is C++: the
+   factory is `cxx::OOTextureSprite::initWithTexture(texture, size)` (null where the façade's
+   initialiser answered nil), the destructor's releases go, and the assignment releases the old
+   sprite at once rather than at the pool's drain (amendment oo-862e item 4). The later slices'
+   category still reads them through `oo::ToCxx(self)`; its two blits become member calls
+   (`->blitCentredToX(x, y, z, a)`), the only lines of the category that change beyond the rewrite.
+2. **A file-scope helper of the slice that messaged the universe** (`TextureForGUITexture`'s
+   `[UNIVERSE useShaders]`) calls a one-line bridge function in `X+ObjCBridge.mm`
+   (`GuiDisplayGenUniverseUseShaders()`, amendment oo-9ht.139 item 3); its message to a converted
+   class becomes the C++ call (`cxx::OOTexture::textureWithName`, `oo::ToCxx(texture)->originalDimensions()`),
+   and a result it handed out autoreleased is returned as `oo::ObjCRef`.
 ## Amendment (bead oo-bwjb): a class-shell slice whose later slices hold public methods, and a filter called through its selector
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOOXZManager.h/.mm` (slice 1 of
