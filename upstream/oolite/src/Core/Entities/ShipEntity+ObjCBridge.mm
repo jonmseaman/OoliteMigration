@@ -67,6 +67,9 @@ public:
 
 	// Slice 5 (bead oo-ddnn8).
 	GLfloat doesHitLine(HPVector v0, HPVector v1, ::ShipEntity **hitEntity) override	{ return [(::ShipEntity *)_objcOwner doesHitLine:v0 :v1 :hitEntity]; }
+
+	// Slice 8 (bead oo-vxdsc).
+	bool hasPrimaryWeapon(OOWeaponType weaponType) override	{ return [(::ShipEntity *)_objcOwner hasPrimaryWeapon:weaponType]; }
 };
 
 }	// namespace
@@ -361,5 +364,27 @@ DESTROY(_cxxShip->laser_color);
 @implementation ShipEntity (OOSlice7)
 
 - (void) update:(OOTimeDelta)delta_t	{ _cxxShip->cxx::ShipEntity::update(delta_t); }
+
+@end
+
+
+@implementation ShipEntity (OOSlice8)
+
+- (void) processBehaviour:(OOTimeDelta)delta_t	{ _cxxShip->processBehaviour(delta_t); }
+- (void) noteFrustration:(const std::string &)context	{ _cxxShip->noteFrustration(context); }
+- (void) respondToAttackFrom:(Entity *)from becauseOf:(Entity *)other	{ _cxxShip->respondToAttackFrom(from, other); }
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading	{ return _cxxShip->hasOneEquipmentItem(itemKey, includeWeapons, loading); }
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading	{ return _cxxShip->hasOneEquipmentItemIncludingMissiles(itemKey, includeMissiles, loading); }
+- (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType	{ return _cxxShip->cxx::ShipEntity::hasPrimaryWeapon(weaponType); }
+- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey	{ return _cxxShip->countEquipmentItem(eqkey); }
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading	{ return _cxxShip->hasEquipmentItem(equipmentKeys, includeWeapons, loading); }
+- (BOOL) hasEquipmentItem:(const oo::PList &)equipmentKeys	{ return _cxxShip->hasEquipmentItem(equipmentKeys); }
+- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType	{ return _cxxShip->hasEquipmentItemProviding(equipmentType); }
+- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType	{ return _cxxShip->equipmentItemProviding(equipmentType); }
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading	{ return _cxxShip->hasAllEquipment(equipmentKeys, includeWeapons, loading); }
+- (BOOL) hasAllEquipment:(const oo::PList &)equipmentKeys	{ return _cxxShip->hasAllEquipment(equipmentKeys); }
+- (BOOL) hasHyperspaceMotor	{ return _cxxShip->hasHyperspaceMotor(); }
+- (float) hyperspaceSpinTime	{ return _cxxShip->hyperspaceSpinTime(); }
+- (void) setHyperspaceSpinTime:(float)newValue	{ _cxxShip->setHyperspaceSpinTime(newValue); }
 
 @end
