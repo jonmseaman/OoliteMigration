@@ -351,12 +351,12 @@ void CollisionRegion::findCollisions()
 						{
 							if (e1->_cxxEntity->isStation)
 							{
-								StationEntity* se1 = (StationEntity *)e1;
+								::StationEntity* se1 = (::StationEntity *)e1;
 								[se1 shipIsInDockingCorridor:(::ShipEntity *)e2];
 							}
 							else if (e2->_cxxEntity->isStation)
 							{
-								StationEntity* se2 = (StationEntity *)e2;
+								::StationEntity* se2 = (::StationEntity *)e2;
 								[se2 shipIsInDockingCorridor:(::ShipEntity *)e1];
 							}
 						}
@@ -368,7 +368,7 @@ void CollisionRegion::findCollisions()
 					
 						if (e1->_cxxEntity->isStation)
 						{
-							StationEntity* se1 = (StationEntity *)e1;
+							::StationEntity* se1 = (::StationEntity *)e1;
 							if ([se1 shipIsInDockingCorridor:(::ShipEntity *)e2])
 							{
 								collision = NO;
@@ -380,7 +380,7 @@ void CollisionRegion::findCollisions()
 						}
 						else if (e2->_cxxEntity->isStation)
 						{
-							StationEntity* se2 = (StationEntity *)e2;
+							::StationEntity* se2 = (::StationEntity *)e2;
 							if ([se2 shipIsInDockingCorridor:(::ShipEntity *)e1])
 							{
 								collision = NO;

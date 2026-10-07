@@ -46,6 +46,9 @@
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
 	OOExhaustPlumeEntity, OOFlasherEntity;
 
+// Universe.h's, for the members of ShipEntityAI.mm's scans (ADR-0056 amendment oo-42dr item 3).
+typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
+
 #define MAX_TARGETS						24
 #define RAIDER_MAX_CARGO				5
 #define MERCHANTMAN_MAX_CARGO			125
@@ -194,6 +197,9 @@ typedef enum
 
 // OOShipDamageType (bead oo-9ht.64: plain header).
 #include "OOEntityEnums.h"
+
+
+struct OOShipSaveContext;	// ShipEntityLoadRestore.h
 
 
 namespace cxx {
@@ -712,6 +718,393 @@ public:
 	void setPrimaryAggressor(::Entity *targetEntity);
 	::Entity *lastEscortTarget();
 	void setLastEscortTarget(::Entity *targetEntity);
+
+	// Slice 24: target memory and validity, behaviour and destination accessors, distances, leading the target.
+	::Entity *thankedShip();
+	void setThankedShip(::Entity *targetEntity);
+	::Entity *rememberedShip();
+	void setRememberedShip(::Entity *targetEntity);
+	::StationEntity *targetStation();
+	void setTargetStation(::Entity *targetEntity);
+	virtual bool isValidTarget(::Entity *target);
+	virtual void addTarget(::Entity *targetEntity);
+	void removeTarget(::Entity *targetEntity);
+	bool canStillTrackPrimaryTarget();
+	id primaryTarget();
+	id primaryTargetWithoutValidityCheck();
+	bool isFriendlyTo(::ShipEntity *otherShip);
+	::ShipEntity *shipHitByLaser();
+	void setShipHitByLaser(::ShipEntity *ship);
+	void noteLostTarget();
+	void noteLostTargetAndGoIdle();
+	void noteTargetDestroyed(::ShipEntity *target);
+	OOBehaviour getBehaviour();
+	void setBehaviour(OOBehaviour cond);
+	HPVector destination();
+	HPVector getCoordinates();
+	void setCoordinate(HPVector coord);
+	HPVector distance_six(GLfloat dist);
+	HPVector distance_twelve(GLfloat dist, GLfloat offset);
+	void trackOntoTarget(double delta_t, GLfloat dp);
+	double ballTrackLeadingTarget(double delta_t, ::Entity *target);
+
+	// Slice 25: evasive jink, primary and side target tracking.
+	void setEvasiveJink(GLfloat z);
+	void evasiveAction(double delta_t);
+	double trackPrimaryTarget(double delta_t, bool retreat);
+	double trackSideTarget(double delta_t, bool leftside);
+
+	// Slice 26: missile and destination tracking, collision exceptions, defence targets, ranges.
+	double missileTrackPrimaryTarget(double delta_t);
+	double trackDestination(double delta_t, bool retreat);
+	GLfloat rollToMatchUp(Vector up_vec, GLfloat match_roll);
+	GLfloat rangeToDestination();
+	std::vector<oo::ObjCRef<::ShipEntity *>> collisionExceptions();
+	void addCollisionException(::ShipEntity *ship);
+	void removeCollisionException(::ShipEntity *ship);
+	bool collisionExceptedFor(::ShipEntity *ship);
+	NSUInteger defenseTargetCount();
+	std::vector<oo::ObjCRef<::ShipEntity *>> allDefenseTargets();
+	std::vector<oo::ObjCRef<::ShipEntity *>> defenseTargets();
+	bool addDefenseTarget(::Entity *target);
+	void validateDefenseTargets();
+	bool isDefenseTarget(::Entity *target);
+	void removeAllDefenseTargets();
+	void removeDefenseTarget(::Entity *target);
+	double rangeToPrimaryTarget();
+	double rangeToSecondaryTarget(::Entity *target);
+	double approachAspectToPrimaryTarget();
+	bool hasProximityAlertIgnoringTarget(bool ignore_target);
+
+	// Slice 27: aim tolerance, sun glare, main weapons and turret fire, laser colours.
+	GLfloat currentAimTolerance();
+	virtual GLfloat lookingAtSunWithThresholdAngleCos(GLfloat thresholdAngleCos);
+	bool onTarget(OOWeaponFacing direction, OOWeaponType weapon_type);
+	bool fireWeapon(OOWeaponType weapon_type, OOWeaponFacing direction, double range);
+	bool fireMainWeapon(double range);
+	bool fireAftWeapon(double range);
+	bool firePortWeapon(double range);
+	bool fireStarboardWeapon(double range);
+	OOTimeDelta shotTime();
+	void resetShotTime();
+	bool fireTurretCannon(double range);
+	void setLaserColor(::OOColor *color);
+	void setExhaustEmissiveColor(::OOColor *color);
+	::OOColor *laserColor();
+	::OOColor *exhaustEmissiveColor();
+
+	// Slice 28: laser shots, missed shots, sparks, missile launch decision.
+	bool fireSubentityLaserShot(double range);
+	bool fireDirectLaserShot(double range);
+	bool fireDirectLaserDefensiveShot();
+	bool fireDirectLaserShotAt(::Entity *my_target);
+	std::vector<Vector> laserPortOffset(OOWeaponFacing direction);
+	bool fireLaserShotInDirection(OOWeaponFacing direction, const std::string &weaponIdentifier);
+	void adjustMissedShots(int delta);
+	int missedShots();
+	void throwSparks() override;
+	void considerFiringMissile(double delta_t);
+	Vector missileLaunchPosition();
+	virtual ::ShipEntity *fireMissile();
+
+	// Slice 29: missile firing, ECM, cloak, cascade mine, escape capsule, cargo dumping.
+	::ShipEntity *fireMissileWithIdentifier(const std::optional<std::string> &requestedIdentifier, ::Entity *target);
+	bool isMissileFlagSet();
+	void setIsMissileFlag(bool newValue);
+	OOTimeDelta missileLoadTime();
+	void setMissileLoadTime(OOTimeDelta newMissileLoadTime);
+	virtual void noticeECM();
+	virtual bool fireECM();
+	virtual bool activateCloakingDevice();
+	virtual void deactivateCloakingDevice();
+	bool launchCascadeMine();
+	virtual ::ShipEntity *launchEscapeCapsule();
+	virtual void dumpCargo();
+	::ShipEntity *dumpCargoItem(const std::optional<std::string> &preferred);
+	OOCargoType dumpItem(::ShipEntity *cargoObj);
+
+	// Slice 30: collisions, velocity, tractoring and scooping.
+	void manageCollisions();
+	virtual bool collideWithShip(::ShipEntity *other);
+	Vector thrustVector();
+	Vector getVelocity() override;
+	void setTotalVelocity(Vector vel);
+	virtual void adjustVelocity(Vector xVel);
+	void addImpactMoment(Vector moment, GLfloat howmuch);
+	virtual bool canScoop(::ShipEntity *other);
+	void getTractoredBy(::ShipEntity *other);
+	void scoopIn(::ShipEntity *other);
+	virtual void suppressTargetLost();
+	void scoopUp(::ShipEntity *other);
+	void scoopUpProcess(::ShipEntity *other, bool procEvents, bool procMessages);
+
+	// Slice 31: cascades, energy / scrape / heat damage, abandoning ship, docks, wormholes, witchspace.
+	bool cascadeIfAppropriateWithDamageAmount(double amount, ::Entity *owner);
+	void takeEnergyDamage(double amount, cxx::Entity *ent, cxx::Entity *other, const std::string &weaponIdentifier) override;
+	bool abandonShip();
+	virtual void takeScrapeDamage(double amount, ::Entity *ent);
+	virtual void takeHeatDamage(double amount);
+	virtual void enterDock(::StationEntity *station);
+	virtual void leaveDock(::StationEntity *station);
+	virtual void enterWormhole(::WormholeEntity *w_hole);
+	void enterWormhole(::WormholeEntity *w_hole, bool replacing);
+	virtual void enterWitchspace();
+	virtual void leaveWitchspace();
+
+	// Slice 32: witchspace effects, offences, lights, escort formation and deployment, nearest stations.
+	bool witchspaceLeavingEffects();
+	virtual void markAsOffender(int offence_value);
+	virtual void markAsOffender(int offence_value, OOLegalStatusReason reason);
+	void switchLightsOn();
+	void switchLightsOff();
+	bool lightsActive();
+	void setDestination(HPVector dest);
+	void setEscortDestination(HPVector dest);
+	bool canAcceptEscort(::ShipEntity *potentialEscort);
+	bool acceptAsEscort(::ShipEntity *other_ship);
+	void updateEscortFormation();
+	void refreshEscortPositions();
+	HPVector coordinatesForEscortPosition(unsigned idx);
+	void deployEscorts();
+	void dockEscorts();
+	void setTargetToNearestStationIncludingHostiles(bool includeHostiles);
+	void setTargetToNearestFriendlyStation();
+	void setTargetToNearestStation();
+	void setTargetToSystemStation();
+
+	// Slice 33: landing, docking abort, broadcasts and comms, fines, AI messages, spawning, close contacts, salvage.
+	void landOnPlanet(::OOPlanetEntity *planet);
+	void abortDocking();
+	oo::PList getDockingInstructions();
+	void broadcastThargoidDestroyed();
+	void broadcastHitByLaserFrom(::ShipEntity *aggressor_ship);
+	void sendMessage(const std::string &message_text, ::ShipEntity *other_ship, bool unpilotedOverride);
+	void sendExpandedMessage(const std::string &message_text, ::ShipEntity *other_ship);
+	void broadcastAIMessage(const std::string &ai_message);
+	void broadcastMessage(const std::string &message_text, bool unpilotedOverride);
+	void setCommsMessageColor();
+	virtual void receiveCommsMessage(const std::string &message_text, ::ShipEntity *other);
+	void commsMessage(const std::string &valueString, bool unpilotedOverride);
+	bool markedForFines();
+	bool markForFines();
+	virtual bool isMining();
+	virtual void interpretAIMessage(const std::string &ms);
+	BoundingBox findBoundingBoxRelativeTo(::Entity *other, Vector _i, Vector _j, Vector _k);
+	void spawn(const std::string &roles_number);
+	int checkShipsInVicinityForWitchJumpExit();
+	bool getTrackCloseContacts();
+	void setTrackCloseContacts(bool value);
+#if OO_SALVAGE_SUPPORT
+	void claimAsSalvage();
+	void sendCoordinatesToPilot();
+#endif
+
+	// Slice 34: salvage pilot, debug dump, script info, demo ship, script events and AI reactions, alert condition, shader helpers.
+#if OO_SALVAGE_SUPPORT
+	void pilotArrived();
+#endif
+#ifndef NDEBUG
+	void dumpSelfState() override;
+#endif
+	::OOJSScript *getScript();
+	oo::PList getScriptInfo();
+	void overrideScriptInfo(const oo::PList &override);
+	::Entity *entityForShaderProperties();
+	void setDemoShip(OOScalar rate);
+	bool getIsDemoShip();
+	void setDemoStartTime(OOTimeAbsolute time);
+	OOTimeAbsolute getDemoStartTime();
+	void doScriptEvent(ooscript::PropertyId message);
+	void doScriptEvent(ooscript::PropertyId message, id argument);
+	void doScriptEvent(ooscript::PropertyId message, id argument1, id argument2);
+	void doScriptEvent(ooscript::PropertyId message, const std::vector<oo::PList> &arguments);
+	void doScriptEvent(ooscript::PropertyId message, ooscript::Value *argv, unsigned argc);
+	virtual void doScriptEvent(ooscript::PropertyId message, ooscript::Context context, ooscript::Value *argv, unsigned argc);
+	void reactToAIMessage(const std::string &message, const std::optional<std::string> &debugContext);
+	void sendAIMessage(const std::string &message);
+	void doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage);
+	void doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage);
+	virtual OOAlertCondition alertCondition();
+	virtual OOAlertCondition realAlertCondition();
+	void doNothing();
+#ifndef NDEBUG
+	std::optional<std::string> descriptionForObjDump() override;
+#endif
+
+	// Category ScriptMethods (ShipEntityScriptMethods.mm, bead oo-42dr): methods for use by scripting mechanisms.
+	// std::nullopt ejects nothing, as nil did (proposed ADR-0043, bead oo-tm7d).
+	::ShipEntity *ejectShipOfType(const std::optional<std::string> &shipKey);	// Note: ship type, not role.
+	::ShipEntity *ejectShipOfRole(const std::optional<std::string> &role);
+	std::vector<oo::ObjCRef<::ShipEntity *>> spawnShipsWithRole(const std::string &role, NSUInteger count);
+
+	// Category LoadRestore (ShipEntityLoadRestore.mm, bead oo-kw44): saving and restoring individual
+	// non-player ships. The context (nullptr for none) synchronises the groups of ships saved together.
+	oo::PList savedShipDictionaryWithContext(OOShipSaveContext *context);
+	static ::ShipEntity *shipRestoredFromDictionary(const oo::PList &dictionary, bool fallback, OOShipSaveContext *context);	// autoreleased; nil if it can't
+	void simplifyShipdata(oo::PList::Dict &data, std::vector<std::string> *deletes);	// the file's private category LoadRestoreInternal
+
+	// ShipEntityAI.mm slice 1: AI category, OOAIPrivate (ship and station) and the station stubs.
+	void setAITo(const std::string &aiString);
+	void setAIScript(const std::string &aiString);
+	void switchAITo(const std::string &aiString);
+	void scanForHostiles();
+	void groupAttackTarget();
+	void performAttack();
+	void performCollect();
+	void performEscort();
+	void performFaceDestination();
+	void performFlee();
+	void performFlyToRangeFromDestination();
+	void performHold();
+	void performIdle();
+	void performIntercept();
+	void performLandOnPlanet();
+	void performMining();
+	void performScriptedAI();
+	void performScriptedAttackAI();
+	void performBuoyTumble();
+	void performStop();
+	void performTumble();
+	bool performHyperSpaceToSpecificSystem(OOSystemID systemID);
+	void requestDockingCoordinates();
+	void recallDockingInstructions();
+	void scanForNearestIncomingMissile();
+	void enterPlayerWormhole();
+	void enterTargetWormhole();
+	void wormholeEscorts();
+	void wormholeEntireGroup();
+	bool suggestEscortTo(::ShipEntity *mother);
+	void broadcastDistressMessage();
+	void broadcastDistressMessageWithDumping(bool dumpCargo);
+	void checkFoundTarget();
+	bool performHyperSpaceExitReplace(bool replace);
+	bool performHyperSpaceExitReplace(bool replace, OOSystemID systemID);
+	void scanForNearestShipWithPredicate(EntityFilterPredicate predicate, void *parameter);
+	void scanForNearestShipWithNegatedPredicate(EntityFilterPredicate predicate, void *parameter);
+	virtual void acceptDistressMessageFrom(::ShipEntity *other);
+	// ShipEntityAI.mm slice 1: the category OOAIStationStubs (StationEntity's ObjC methods answer for a station).
+	void increaseAlertLevel();
+	void decreaseAlertLevel();
+	oo::PList launchPolice();
+	void launchDefenseShip();
+	void launchScavenger();
+	void launchMiner();
+	void launchPirateShip();
+	void launchShuttle();
+	void launchTrader();
+	void launchEscort();
+	bool launchPatrol();
+	void launchShipWithRole(const std::string &param);
+	void abortAllDockings();
+
+	// ShipEntityAI.mm slice 2: PureAI part 1: state, speed, scans for prey and loot, planets, legal status.
+	void setStateTo(const std::string &state);
+	void pauseAI(const std::string &intervalString);
+	void randomPauseAI(const std::string &intervalString);
+	void dropMessages(const std::string &messageString);
+	void debugDumpPendingMessages();
+	void setDestinationToCurrentLocation();
+	void setDestinationToJinkPosition();
+	void setDesiredRangeTo(const std::string &rangeString);
+	void setDesiredRangeForWaypoint();
+	void setSpeedTo(const std::string &speedString);
+	void setSpeedFactorTo(const std::string &speedString);
+	void setSpeedToCruiseSpeed();
+	void setThrustFactorTo(const std::string &thrustFactorString);
+	void setTargetToPrimaryAggressor();
+	void addPrimaryAggressorAsDefenseTarget();
+	void scanForNearestMerchantman();
+	void scanForRandomMerchantman();
+	void scanForLoot();
+	void scanForRandomLoot();
+	void setTargetToFoundTarget();
+	void addFoundTargetAsDefenseTarget();
+	void checkForFullHold();
+	void getWitchspaceEntryCoordinates();
+	void setDestinationFromCoordinates();
+	void setCoordinatesFromPosition();
+	void fightOrFleeMissile();
+	void setCourseToPlanet();
+	void setTakeOffFromPlanet();
+	void landOnPlanet();
+	void checkTargetLegalStatus();
+	void checkOwnLegalStatus();
+	void exitAIWithMessage(const std::string &message);
+	void setDestinationToTarget();
+	void setDestinationWithinTarget();
+	void checkCourseToDestination();
+
+	// ShipEntityAI.mm slice 3: PureAI part 2: checks, comms, Thargoids, escorts, patrols, target marking.
+	void checkAegis();
+	void checkEnergy();
+	void checkHeatInsulation();
+	void findNewDefenseTarget();
+	void scanForOffenders();
+	void setCourseToWitchpoint();
+	void setDestinationToWitchpoint();
+	void setDestinationToStationBeacon();
+	void performHyperSpaceExit();
+	void performHyperSpaceExitWithoutReplacing();
+	virtual void disengageAutopilot();
+	void wormholeGroup();
+	virtual void commsMessage(const std::string &valueString);
+	virtual void commsMessageByUnpiloted(const std::string &valueString);
+	void ejectCargo();
+	void scanForThargoid();
+	void scanForNonThargoid();
+	void thargonCheckMother();
+	void becomeUncontrolledThargon();
+	void checkDistanceTravelled();
+	void fightOrFleeHostiles();
+	void suggestEscort();
+	void escortCheckMother();
+	void checkGroupOddsVersusTarget();
+	void scanForFormationLeader();
+	void messageMother(const std::string &msgString);
+	void messageSelf(const std::string &msgString);
+	void setPlanetPatrolCoordinates();
+	void setSunSkimStartCoordinates();
+	void setSunSkimEndCoordinates();
+	void setSunSkimExitCoordinates();
+	void patrolReportIn();
+	void checkForMotherStation();
+	void sendTargetCommsMessage(const std::string &message);
+	void markTargetForFines();
+	void markTargetForOffence(const std::string &valueString);
+	void storeTarget();
+
+	// ShipEntityAI.mm slice 4: PureAI part 3: stored targets, nearest-ship scans, stations, script actions, beacons.
+	void recallStoredTarget();
+	void scanForRocks();
+	void setDestinationToDockingAbort();
+	void requestNewTarget();
+	void rollD(const std::string &die_number);
+	void scanForNearestShipWithPrimaryRole(const std::string &scanRole);
+	void scanForNearestShipHavingRole(const std::string &scanRole);
+	void scanForNearestShipWithAnyPrimaryRole(const std::string &scanRoles);
+	void scanForNearestShipHavingAnyRole(const std::string &scanRoles);
+	void scanForNearestShipWithScanClass(const std::string &scanScanClass);
+	void scanForNearestShipWithoutPrimaryRole(const std::string &scanRole);
+	void scanForNearestShipNotHavingRole(const std::string &scanRole);
+	void scanForNearestShipWithoutAnyPrimaryRole(const std::string &scanRoles);
+	void scanForNearestShipNotHavingAnyRole(const std::string &scanRoles);
+	void scanForNearestShipWithoutScanClass(const std::string &scanScanClass);
+	void scanForNearestShipMatchingPredicate(const std::string &predicateExpression);
+	void setCoordinates(const std::string &system_x_y_z);
+	void checkForNormalSpace();
+	void setTargetToRandomStation();
+	void setTargetToLastStation();
+	void addFuel(const std::string &fuel_number);
+	void scriptActionOnTarget(const std::string &action);
+	void safeScriptActionOnTarget(const std::string &action);
+	void sendScriptMessage(const std::string &message);
+	void ai_throwSparks();
+	void explodeSelf();
+	void ai_debugMessage(const std::string &message);
+	void targetFirstBeaconWithCode(const std::string &code);
+	void targetNextBeaconWithCode(const std::string &code);
+	void setRacepointsFromTarget();
+	void performFlyRacepoints();
 
 	// @public in Objective-C
 	// derived variables

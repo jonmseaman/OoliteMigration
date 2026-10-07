@@ -29,6 +29,8 @@
 #import "OOCharacter.h"
 #import "AI.h"
 #import "PlayerEntity.h"
+#import "ShipEntityScriptMethods.h"
+#import "ShipEntityLoadRestore.h"
 
 #include "oo_test.hpp"
 
@@ -2074,6 +2076,1195 @@ OO_TEST(heatPersonalityAlignmentAndBeacons)
 		[ship setBeaconCode:std::string("alpha")];
 		[other setBeaconCode:std::string("BETA")];
 		OO_CHECK([ship compareBeaconCodeWith:other] == OOOrderedAscending && [other compareBeaconCodeWith:ship] == OOOrderedDescending);
+	}
+}
+
+
+// --- Slice 24: target memory and validity, behaviour and destination accessors, distances, leading
+// the target (bead oo-zd80m). Written against the Objective-C API and run on the unconverted slice
+// first.
+
+@interface ShipEntity (TestSlice24)
+- (void) setShipHitByLaser:(ShipEntity *)ship;	// the private category of ShipEntity.mm
+@end
+
+
+// The later slices' ship: one that scripts cannot see, so that the events it sends with entities as
+// arguments make no JavaScript objects in the test's empty context.
+@interface LateSliceTestShip: TestShip
+@end
+
+
+@implementation LateSliceTestShip
+
+- (BOOL) isVisibleToScripts	{ return NO; }
+
+@end
+
+
+namespace {
+
+TestShip *MakeLateSliceShip(const char *key)
+{
+	return [[[LateSliceTestShip alloc] cxx_initWithKey:key definition:Definition()] autorelease];
+}
+
+GLfloat Frustration24(ShipEntity *s)			{ return s->_cxxShip->frustration; }
+void SetFrustration24(ShipEntity *s, GLfloat f)	{ s->_cxxShip->frustration = f; }
+void SetScannerRange24(ShipEntity *s, GLfloat r)	{ s->_cxxShip->scannerRange = r; }
+void SetWeaponRange24(ShipEntity *s, GLfloat r)	{ s->_cxxShip->weaponRange = r; }
+void SetDestination24(ShipEntity *s, HPVector d)	{ s->_cxxShip->_destination = d; }
+void SetPosition24(Entity *e, HPVector p)		{ e->_cxxEntity->position = p; }
+void SetFlightControls24(ShipEntity *s, GLfloat v)
+{
+	s->_cxxShip->flightRoll = s->_cxxShip->flightPitch = s->_cxxShip->flightYaw = v;
+	s->_cxxShip->stick_roll = s->_cxxShip->stick_pitch = s->_cxxShip->stick_yaw = v;
+}
+bool FlightControlsZero24(ShipEntity *s)
+{
+	cxx::ShipEntity *p = s->_cxxShip;
+	return p->flightRoll == 0 && p->flightPitch == 0 && p->flightYaw == 0 && p->stick_roll == 0 && p->stick_pitch == 0 && p->stick_yaw == 0;
+}
+bool Near24(HPVector a, HPVector b)	{ return HPdistance2(a, b) < 1e-6; }
+void SetCollisionRadius24(Entity *e, GLfloat r)	{ e->_cxxEntity->collision_radius = r; }
+
+}	// namespace
+
+
+OO_TEST(slice24RememberedShips)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("rememberer");
+		TestShip *other = MakeLateSliceShip("other");
+		OO_CHECK([ship thankedShip] == nil && [ship rememberedShip] == nil && [ship targetStation] == nil);
+
+		[ship setThankedShip:other];
+		[ship setRememberedShip:other];
+		[ship setTargetStation:other];
+		OO_CHECK([ship thankedShip] == other && [ship rememberedShip] == other && (id)[ship targetStation] == other);
+
+		// A ship that is no longer a valid target is forgotten, and stays forgotten.
+		[other setStatus:STATUS_DOCKED];
+		OO_CHECK([ship thankedShip] == nil && [ship rememberedShip] == nil && [ship targetStation] == nil);
+		[other setStatus:STATUS_IN_FLIGHT];
+		OO_CHECK([ship thankedShip] == nil && [ship rememberedShip] == nil && [ship targetStation] == nil);
+
+		[ship setThankedShip:other];
+		[ship setThankedShip:nil];
+		OO_CHECK([ship thankedShip] == nil);
+
+		OO_CHECK([ship shipHitByLaser] == nil);
+		[ship setShipHitByLaser:other];
+		OO_CHECK([ship shipHitByLaser] == other);
+		[ship setShipHitByLaser:nil];
+		OO_CHECK([ship shipHitByLaser] == nil);
+	}
+}
+
+
+OO_TEST(slice24IsValidTarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("judge");
+		TestShip *other = MakeLateSliceShip("target");
+		Entity *plain = [[[Entity alloc] init] autorelease];
+		OO_CHECK(![ship isValidTarget:nil]);
+		OO_CHECK([ship isValidTarget:other]);
+		OO_CHECK(![ship isValidTarget:plain]);		// neither a ship nor a wormhole
+		const OOEntityStatus invalid[] = { STATUS_ENTERING_WITCHSPACE, STATUS_IN_HOLD, STATUS_DOCKED, STATUS_DEAD };
+		for (OOEntityStatus s : invalid)
+		{
+			[other setStatus:s];
+			OO_CHECK(![ship isValidTarget:other]);
+		}
+		[other setStatus:STATUS_ACTIVE];
+		OO_CHECK([ship isValidTarget:other]);
+	}
+}
+
+
+OO_TEST(slice24PrimaryTarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("hunter");
+		TestShip *other = MakeLateSliceShip("prey");
+		OO_CHECK([ship primaryTarget] == nil && [ship primaryTargetWithoutValidityCheck] == nil);
+		OO_CHECK(![ship canStillTrackPrimaryTarget]);
+
+		[ship addTarget:ship];		// never itself
+		OO_CHECK([ship primaryTarget] == nil);
+
+		[ship addTarget:other];
+		OO_CHECK([ship primaryTarget] == other && [ship primaryTargetWithoutValidityCheck] == other);
+
+		// In range (a quarter more than the scanner's), and out of it.
+		SetScannerRange24(ship, 1000);
+		SetPosition24(other, make_HPvector(0, 0, 1240));
+		OO_CHECK([ship canStillTrackPrimaryTarget]);
+		SetPosition24(other, make_HPvector(0, 0, 1260));
+		OO_CHECK(![ship canStillTrackPrimaryTarget]);
+		SetPosition24(other, kZeroHPVector);
+
+		// An invalid target: the unchecked getter keeps it, the checked one drops it.
+		[other setStatus:STATUS_DEAD];
+		OO_CHECK(![ship canStillTrackPrimaryTarget]);
+		OO_CHECK([ship primaryTargetWithoutValidityCheck] == other);
+		OO_CHECK([ship primaryTarget] == nil);
+		OO_CHECK([ship primaryTargetWithoutValidityCheck] == nil);
+		[other setStatus:STATUS_IN_FLIGHT];
+
+		// -removeTarget:nil drops the target without the lost-target events.
+		[ship addTarget:other];
+		[ship removeTarget:nil];
+		OO_CHECK([ship primaryTarget] == nil);
+
+		// -removeTarget: with a target notes it lost.
+		[ship addTarget:other];
+		[ship removeTarget:other];
+		OO_CHECK([ship primaryTarget] == nil);
+	}
+}
+
+
+OO_TEST(slice24NoteLostTarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("forgetful");
+		TestShip *other = MakeLateSliceShip("lost");
+		[ship addTarget:other];
+		[ship noteLostTarget];
+		OO_CHECK([ship primaryTarget] == nil);
+		[ship noteLostTarget];		// with none, still fine
+		OO_CHECK([ship primaryTarget] == nil);
+
+		[ship addTarget:other];
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		SetFrustration24(ship, 5);
+		[ship noteLostTargetAndGoIdle];
+		OO_CHECK([ship primaryTarget] == nil);
+		OO_CHECK([ship behaviour] == BEHAVIOUR_IDLE && Frustration24(ship) == 0);
+	}
+}
+
+
+OO_TEST(slice24IsFriendlyTo)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("friend");
+		TestShip *other = MakeLateSliceShip("stranger");
+		OO_CHECK([ship isFriendlyTo:ship]);
+		OO_CHECK(![ship isFriendlyTo:other]);
+
+		[ship setScanClass:CLASS_POLICE];
+		[other setScanClass:CLASS_POLICE];
+		OO_CHECK([ship isFriendlyTo:other]);
+		[ship setScanClass:CLASS_THARGOID];
+		[other setScanClass:CLASS_THARGOID];
+		OO_CHECK([ship isFriendlyTo:other]);
+		[ship setScanClass:CLASS_MILITARY];
+		[other setScanClass:CLASS_MILITARY];
+		OO_CHECK([ship isFriendlyTo:other]);
+		[ship setScanClass:CLASS_NEUTRAL];
+		[other setScanClass:CLASS_NEUTRAL];
+		OO_CHECK(![ship isFriendlyTo:other]);
+
+		OOShipGroup *group = [[[OOShipGroup alloc] init] autorelease];
+		[ship setGroup:group];
+		[other setGroup:group];
+		OO_CHECK([ship isFriendlyTo:other] && [other isFriendlyTo:ship]);
+		[ship setGroup:nil];
+		[other setGroup:nil];
+	}
+}
+
+
+OO_TEST(slice24BehaviourAndDestination)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("navigator");
+		SetFrustration24(ship, 3);
+		[ship setBehaviour:[ship behaviour]];		// no change: frustration stays
+		OO_CHECK(Frustration24(ship) == 3);
+		[ship setBehaviour:BEHAVIOUR_FLEE_TARGET];	// a change is a good thing
+		OO_CHECK([ship behaviour] == BEHAVIOUR_FLEE_TARGET && Frustration24(ship) == 0);
+
+		SetDestination24(ship, make_HPvector(1, 2, 3));
+		OO_CHECK(Near24([ship destination], make_HPvector(1, 2, 3)));
+		[ship setCoordinate:make_HPvector(4, 5, 6)];
+		OO_CHECK(Near24([ship coordinates], make_HPvector(4, 5, 6)));
+	}
+}
+
+
+OO_TEST(slice24Distances)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("formation");
+		SetPosition24(ship, make_HPvector(10, 20, 30));
+		[ship setOrientation:kIdentityQuaternion];
+		Vector f = [ship forwardVector], u = [ship upVector], r = [ship rightVector];
+		OO_CHECK(Near24([ship distance_six:5], make_HPvector(10 - 5 * f.x, 20 - 5 * f.y, 30 - 5 * f.z)));
+		OO_CHECK(Near24([ship distance_twelve:5 withOffset:2], make_HPvector(10 + 5 * u.x + 2 * r.x, 20 + 5 * u.y + 2 * r.y, 30 + 5 * u.z + 2 * r.z)));
+	}
+}
+
+
+OO_TEST(slice24TrackOntoTarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("tracker");
+		TestShip *other = MakeLateSliceShip("tracked");
+		[ship setOrientation:kIdentityQuaternion];
+		SetFlightControls24(ship, 0.5f);
+
+		// No target: nothing changes.
+		[ship trackOntoTarget:0.1 withDForward:0];
+		OO_CHECK(!FlightControlsZero24(ship));
+
+		// Already on target (the dot product is inside the target's cone): nothing changes.
+		[ship addTarget:other];
+		SetPosition24(other, make_HPvector(1000, 0, 0));
+		SetCollisionRadius24(other, 100);
+		[ship trackOntoTarget:0.1 withDForward:1];
+		OO_CHECK(!FlightControlsZero24(ship));
+		OO_CHECK(fabs([ship forwardVector].z) > 0.999);
+
+		// Otherwise it turns onto the line to the target (the x axis) and stops turning.
+		[ship trackOntoTarget:0.1 withDForward:0];
+		Vector f = [ship forwardVector];
+		OO_CHECK(fabs(fabs(f.x) - 1) < 1e-4 && fabs(f.y) < 1e-4 && fabs(f.z) < 1e-4);
+		OO_CHECK(FlightControlsZero24(ship));
+	}
+}
+
+
+OO_TEST(slice24BallTrackLeadingTarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("turret");
+		TestShip *other = MakeLateSliceShip("aimed-at");
+		OO_CHECK([ship ballTrackLeadingTarget:0.1 atTarget:nil] == -2.0);
+		SetPosition24(other, make_HPvector(0, 0, 1000));
+		SetWeaponRange24(ship, 500);
+		OO_CHECK([ship ballTrackLeadingTarget:0.1 atTarget:other] == -2.0);	// out of range
+	}
+}
+
+
+// --- Slice 25: evasive jink, primary and side target tracking (bead oo-k6wuw). Written against the
+// Objective-C API and run on the unconverted slice first.
+
+namespace {
+
+void SetAccuracy25(ShipEntity *s, GLfloat a)	{ s->_cxxShip->accuracy = a; }
+Vector Jink25(ShipEntity *s)					{ return s->_cxxShip->jink; }
+void SetFrustration25(ShipEntity *s, GLfloat f)	{ s->_cxxShip->frustration = f; }
+GLfloat Frustration25(ShipEntity *s)			{ return s->_cxxShip->frustration; }
+
+}	// namespace
+
+
+OO_TEST(slice25SetEvasiveJink)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("jinker");
+
+		// An awful pilot does not jink.
+		SetAccuracy25(ship, COMBAT_AI_ISNT_AWFUL - 1);
+		[ship setEvasiveJink:400];
+		OO_CHECK(vector_equal(Jink25(ship), kZeroVector));
+
+		// Otherwise x and y are well away from zero, and z is what was asked for.
+		SetAccuracy25(ship, COMBAT_AI_ISNT_AWFUL + 1);
+		for (int i = 0; i < 50; i++)
+		{
+			[ship setEvasiveJink:400];
+			Vector j = Jink25(ship);
+			OO_CHECK(fabs(j.x) >= 128.0 && fabs(j.x) <= 256.0);
+			OO_CHECK(fabs(j.y) >= 128.0 && fabs(j.y) <= 256.0);
+			OO_CHECK(j.z == 400);
+		}
+	}
+}
+
+
+// With no target, each of them gives up: the ship goes idle and the tracking answers 0.
+OO_TEST(slice25NoTargetGoesIdle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("aimless");
+
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		SetFrustration25(ship, 2);
+		[ship evasiveAction:0.1];
+		OO_CHECK([ship behaviour] == BEHAVIOUR_IDLE && Frustration25(ship) == 0);
+
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		OO_CHECK([ship trackPrimaryTarget:0.1 :NO] == 0.0);
+		OO_CHECK([ship behaviour] == BEHAVIOUR_IDLE);
+
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		OO_CHECK([ship trackSideTarget:0.1 :YES] == 0.0);
+		OO_CHECK([ship behaviour] == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// A target the ship can no longer track (out of scanner range) is lost the same way.
+OO_TEST(slice25TargetOutOfRangeGoesIdle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("short-sighted");
+		TestShip *other = MakeLateSliceShip("far-away");
+		SetScannerRange24(ship, 100);
+		SetPosition24(other, make_HPvector(0, 0, 1000));
+
+		[ship addTarget:other];
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		OO_CHECK([ship trackPrimaryTarget:0.1 :NO] == 0.0);
+		OO_CHECK([ship behaviour] == BEHAVIOUR_IDLE && [ship primaryTarget] == nil);
+
+		[ship addTarget:other];
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		OO_CHECK([ship trackSideTarget:0.1 :NO] == 0.0);
+		OO_CHECK([ship behaviour] == BEHAVIOUR_IDLE && [ship primaryTarget] == nil);
+	}
+}
+
+
+// --- Slice 26: missile and destination tracking, collision exceptions, defence targets, ranges
+// (bead oo-v92af). Written against the Objective-C API and run on the unconverted slice first.
+
+namespace {
+
+void SetUpVectors26(ShipEntity *s, Vector up, Vector right)	{ s->_cxxShip->v_up = up; s->_cxxShip->v_right = right; }
+void SetMaxFlightRoll26(ShipEntity *s, GLfloat r)			{ s->_cxxShip->max_flight_roll = r; }
+void SetCollisionRadius26(Entity *e, GLfloat r)				{ e->_cxxEntity->collision_radius = r; }
+
+}	// namespace
+
+
+OO_TEST(slice26RollToMatchUp)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("roller");
+		SetMaxFlightRoll26(ship, 2);
+		SetUpVectors26(ship, kBasisYVector, kBasisXVector);
+
+		// Already up: the match roll, its sign flipped for a ship that is not the player.
+		OO_CHECK(fabs([ship rollToMatchUp:kBasisYVector rotating:0.5f] - (-0.5f)) < 1e-6);
+		// Upside down: the same.
+		OO_CHECK(fabs([ship rollToMatchUp:vector_flip(kBasisYVector) rotating:0.5f] - (-0.5f)) < 1e-6);
+		// Up is to the right (sin 1 flipped to -1): the roll decreases by the full max.
+		OO_CHECK(fabs([ship rollToMatchUp:kBasisXVector rotating:0.5f] - (-2.0f)) < 1e-6);
+		// Up is to the left: it increases by it.
+		OO_CHECK(fabs([ship rollToMatchUp:vector_flip(kBasisXVector) rotating:0.5f] - 2.0f) < 1e-6);
+	}
+}
+
+
+OO_TEST(slice26Ranges)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("ranger");
+		TestShip *other = MakeLateSliceShip("ranged");
+		SetPosition24(ship, make_HPvector(0, 0, 0));
+		SetDestination24(ship, make_HPvector(0, 3, 4));
+		OO_CHECK(fabs([ship rangeToDestination] - 5.0f) < 1e-5);
+
+		OO_CHECK([ship rangeToSecondaryTarget:nil] == 0.0);
+		OO_CHECK([ship rangeToPrimaryTarget] == 0.0);		// no target
+		OO_CHECK([ship approachAspectToPrimaryTarget] == 0.0);
+
+		SetPosition24(other, make_HPvector(0, 0, 100));
+		SetCollisionRadius26(ship, 10);
+		SetCollisionRadius26(other, 15);
+		OO_CHECK(fabs([ship rangeToSecondaryTarget:other] - 75.0) < 1e-6);
+		[ship addTarget:other];
+		OO_CHECK(fabs([ship rangeToPrimaryTarget] - 75.0) < 1e-6);
+
+		// Approach aspect: the target's forward vector against the direction from it to us.
+		[other setOrientation:kIdentityQuaternion];
+		Vector f = [other forwardVector];
+		Vector delta = vector_normal(HPVectorToVector(HPvector_subtract(make_HPvector(0, 0, 0), make_HPvector(0, 0, 100))));
+		OO_CHECK(fabs([ship approachAspectToPrimaryTarget] - dot_product(delta, f)) < 1e-6);
+
+		OO_CHECK(![ship hasProximityAlertIgnoringTarget:NO]);	// no proximity alert
+		OO_CHECK(![ship hasProximityAlertIgnoringTarget:YES]);
+	}
+}
+
+
+OO_TEST(slice26CollisionExceptions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("excepting");
+		TestShip *a = MakeLateSliceShip("a");
+		TestShip *b = MakeLateSliceShip("b");
+		OO_CHECK(![ship collisionExceptedFor:a] && [ship cxx_collisionExceptions].empty());
+		[ship removeCollisionException:a];		// none yet: fine
+
+		[ship addCollisionException:a];
+		[ship addCollisionException:b];
+		OO_CHECK([ship collisionExceptedFor:a] && [ship collisionExceptedFor:b]);
+		OO_CHECK([ship cxx_collisionExceptions].size() == 2);
+
+		[ship removeCollisionException:a];
+		OO_CHECK(![ship collisionExceptedFor:a] && [ship collisionExceptedFor:b]);
+		auto left = [ship cxx_collisionExceptions];
+		OO_CHECK(left.size() == 1 && left[0].get() == b);
+	}
+}
+
+
+OO_TEST(slice26DefenseTargets)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("defender");
+		TestShip *a = MakeLateSliceShip("attacker-a");
+		TestShip *b = MakeLateSliceShip("attacker-b");
+		Entity *plain = [[[Entity alloc] init] autorelease];
+		OO_CHECK([ship defenseTargetCount] == 0 && [ship allDefenseTargets].empty() && [ship cxx_defenseTargets].empty());
+		[ship validateDefenseTargets];		// none yet: fine
+
+		OO_CHECK(![ship addDefenseTarget:nil]);
+		OO_CHECK(![ship addDefenseTarget:plain]);		// not a ship
+		OO_CHECK([ship addDefenseTarget:a]);
+		OO_CHECK(![ship addDefenseTarget:a]);		// already one
+		OO_CHECK([ship addDefenseTarget:b]);
+		OO_CHECK([ship defenseTargetCount] == 2 && [ship isDefenseTarget:a] && [ship isDefenseTarget:b]);
+		OO_CHECK([ship allDefenseTargets].size() == 2 && [ship cxx_defenseTargets].size() == 2);
+
+		// A dead one is dropped by the validation.
+		[a setStatus:STATUS_DEAD];
+		[ship validateDefenseTargets];
+		OO_CHECK(![ship isDefenseTarget:a] && [ship isDefenseTarget:b] && [ship defenseTargetCount] == 1);
+
+		[ship removeDefenseTarget:b];
+		OO_CHECK([ship defenseTargetCount] == 0);
+
+		// At most MAX_TARGETS.
+		std::vector<TestShip *> many;
+		for (unsigned i = 0; i < MAX_TARGETS; i++)
+		{
+			many.push_back(MakeLateSliceShip("many"));
+			OO_CHECK([ship addDefenseTarget:many.back()]);
+		}
+		OO_CHECK(![ship addDefenseTarget:b]);
+		[ship removeAllDefenseTargets];
+		OO_CHECK([ship defenseTargetCount] == 0);
+	}
+}
+
+
+// --- Slice 27: aim tolerance, sun glare, main weapons and turret fire, laser colours (bead
+// oo-pnfyp). Written against the Objective-C API and run on the unconverted slice first.
+
+namespace {
+
+void SetAim27(ShipEntity *s, GLfloat tolerance, GLfloat accuracy, OOWeaponFacing facing)
+{
+	s->_cxxShip->aim_tolerance = tolerance;
+	s->_cxxShip->accuracy = accuracy;
+	s->_cxxShip->currentWeaponFacing = facing;
+	s->_cxxShip->_missed_shots = 0;
+	s->_cxxEntity->isSunlit = false;
+}
+GLfloat ExpectedAim27(GLfloat basic_aim, GLfloat best_cos)
+{
+	GLfloat max_cos = sqrt(1 - (basic_aim * basic_aim / 100000000.0));
+	return max_cos < best_cos ? max_cos : best_cos;
+}
+void SetShotTime27(ShipEntity *s, OOTimeDelta t)	{ s->_cxxShip->shot_time = t; }
+void SetRechargeRate27(ShipEntity *s, float r)	{ s->_cxxShip->weapon_recharge_rate = r; }
+
+}	// namespace
+
+
+OO_TEST(slice27CurrentAimTolerance)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("gunner");
+
+		// An awful shot, forward: the tolerance as it is.
+		SetAim27(ship, 1000, COMBAT_AI_ISNT_AWFUL - 1, WEAPON_FACING_FORWARD);
+		OO_CHECK(fabs([ship currentAimTolerance] - ExpectedAim27(1000, 0.99999)) < 1e-7);
+		// Aft: a third worse.
+		SetAim27(ship, 1000, COMBAT_AI_ISNT_AWFUL - 1, WEAPON_FACING_AFT);
+		OO_CHECK(fabs([ship currentAimTolerance] - ExpectedAim27(1000 * 1.3, 0.99999)) < 1e-7);
+		// Better pilots: tighter, and tighter still after missing.
+		SetAim27(ship, 1000, COMBAT_AI_ISNT_AWFUL, WEAPON_FACING_FORWARD);
+		OO_CHECK(fabs([ship currentAimTolerance] - ExpectedAim27(1000, 0.999999)) < 1e-7);
+		[ship adjustMissedShots:4];
+		OO_CHECK([ship missedShots] == 4);
+		OO_CHECK(fabs([ship currentAimTolerance] - ExpectedAim27(1000 / 2.0, 0.999999)) < 1e-7);
+		// A side laser makes even a good pilot worse.
+		SetAim27(ship, 1000, COMBAT_AI_ISNT_AWFUL, WEAPON_FACING_PORT);
+		OO_CHECK(fabs([ship currentAimTolerance] - ExpectedAim27(1000 * 1.3, 0.999999)) < 1e-7);
+		// Deadly shots.
+		SetAim27(ship, 1000, COMBAT_AI_TRACKS_CLOSER, WEAPON_FACING_FORWARD);
+		OO_CHECK(fabs([ship currentAimTolerance] - ExpectedAim27(1000 / 5.0, 0.9999999)) < 1e-7);
+	}
+}
+
+
+OO_TEST(slice27ShotTimeAndTurret)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("turret-gun");
+		SetShotTime27(ship, 3);
+		OO_CHECK([ship shotTime] == 3);
+		[ship resetShotTime];
+		OO_CHECK([ship shotTime] == 0);
+
+		// Not recharged: no shot.
+		SetRechargeRate27(ship, 1);
+		SetWeaponRange24(ship, 1000);
+		OO_CHECK(![ship fireTurretCannon:10]);
+		// Recharged, but out of range (more than 1% past it): no shot either.
+		SetShotTime27(ship, 2);
+		OO_CHECK(![ship fireTurretCannon:1011]);
+		OO_CHECK([ship shotTime] == 2);
+	}
+}
+
+
+OO_TEST(slice27Colours)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("painted");
+		OOColor *red = [OOColor redColor];
+		OOColor *blue = [OOColor blueColor];
+		[ship setLaserColor:red];
+		[ship setExhaustEmissiveColor:blue];
+		OO_CHECK([ship laserColor] == red && [ship exhaustEmissiveColor] == blue);
+		// nil is ignored.
+		[ship setLaserColor:nil];
+		[ship setExhaustEmissiveColor:nil];
+		OO_CHECK([ship laserColor] == red && [ship exhaustEmissiveColor] == blue);
+	}
+}
+
+
+// --- Slice 28: laser shots, missed shots, sparks, missile launch decision (bead oo-40ocf). Written
+// against the Objective-C API and run on the unconverted slice first.
+
+namespace {
+
+void SetBoundingBox28(Entity *e, BoundingBox bb)	{ e->_cxxEntity->boundingBox = bb; }
+void SetScaleFactor28(ShipEntity *s, GLfloat f)	{ s->_cxxShip->_scaleFactor = f; }
+void SetMissiles28(ShipEntity *s, unsigned n)		{ s->_cxxShip->missiles = n; }
+
+}	// namespace
+
+
+OO_TEST(slice28MissedShots)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("misser");
+		TestShip *sub = MakeLateSliceShip("sub-misser");
+		OO_CHECK([ship missedShots] == 0);
+		[ship adjustMissedShots:3];
+		[ship adjustMissedShots:2];
+		OO_CHECK([ship missedShots] == 5);
+		[ship adjustMissedShots:-10];		// never below zero
+		OO_CHECK([ship missedShots] == 0);
+
+		// A subentity's count is its owner's.
+		[ship addSubEntity:sub];
+		[sub adjustMissedShots:2];
+		OO_CHECK([ship missedShots] == 2 && [sub missedShots] == 2);
+		[ship clearSubEntities];
+	}
+}
+
+
+OO_TEST(slice28MissileLaunchPosition)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("launcher");
+		BoundingBox bb = { { -10, -20, -30 }, { 10, 20, 30 } };
+		SetBoundingBox28(ship, bb);
+		SetScaleFactor28(ship, 1);
+		// No missile_launch_position: 4 m below and 1 m ahead of the bounding box.
+		Vector start = [ship missileLaunchPosition];
+		OO_CHECK(start.x == 0 && start.y == -24 && start.z == 31);
+		// Scaled.
+		SetScaleFactor28(ship, 2);
+		start = [ship missileLaunchPosition];
+		OO_CHECK(start.x == 0 && start.y == -48 && start.z == 62);
+	}
+}
+
+
+OO_TEST(slice28ConsiderFiringMissileWithoutMissiles)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("unarmed");
+		SetMissiles28(ship, 0);
+		[ship considerFiringMissile:0.1];		// nothing to fire: nothing happens
+		OO_CHECK([ship missileCount] == 0);
+	}
+}
+
+
+// --- Slice 29: missile firing, ECM, cloak, cascade mine, escape capsule, cargo dumping (bead
+// oo-g900k). Written against the Objective-C API and run on the unconverted slice first.
+
+namespace {
+
+bool CloakActive29(ShipEntity *s)	{ return s->_cxxShip->cloaking_device_active; }
+
+}	// namespace
+
+
+OO_TEST(slice29MissileFlagAndLoadTime)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("missile-ish");
+		OO_CHECK(![ship isMissileFlagSet]);
+		[ship setIsMissileFlag:YES];
+		OO_CHECK([ship isMissileFlagSet]);
+		[ship setIsMissileFlag:NO];
+		OO_CHECK(![ship isMissileFlagSet]);
+
+		[ship setMissileLoadTime:2.5];
+		OO_CHECK([ship missileLoadTime] == 2.5);
+		[ship setMissileLoadTime:-1];		// never negative
+		OO_CHECK([ship missileLoadTime] == 0);
+	}
+}
+
+
+// Without the equipment, ECM and the cloak do nothing.
+OO_TEST(slice29NoEquipment)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("plain-hull");
+		OO_CHECK(![ship fireECM]);
+		OO_CHECK(![ship activateCloakingDevice] && !CloakActive29(ship));
+		[ship deactivateCloakingDevice];
+		OO_CHECK(!CloakActive29(ship));
+		[ship noticeECM];		// no missiles: nothing to delay
+	}
+}
+
+
+// With an empty hold, there is nothing to dump.
+OO_TEST(slice29DumpEmptyHold)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("empty-hold");
+		OO_CHECK([ship cxx_dumpCargoItem:std::nullopt] == nil);
+		OO_CHECK([ship cxx_dumpCargoItem:std::optional<std::string>("food")] == nil);
+		[ship dumpCargo];
+	}
+}
+
+
+// --- Slice 30: collisions, velocity, tractoring and scooping (bead oo-ogoct). Written against the
+// Objective-C API and run on the unconverted slice first.
+
+@interface ShipEntity (TestSlice30)
+- (void) suppressTargetLost;	// undeclared: sent by name
+@end
+
+
+namespace {
+
+void SetFlightSpeed30(ShipEntity *s, GLfloat v)	{ s->_cxxShip->flightSpeed = v; }
+Vector RawVelocity30(Entity *e)					{ return e->_cxxEntity->velocity; }
+void SetMass30(Entity *e, GLfloat m)			{ e->_cxxEntity->mass = m; }
+bool Near30(Vector a, Vector b)					{ return distance2(a, b) < 1e-8; }
+
+}	// namespace
+
+
+OO_TEST(slice30Velocity)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("mover");
+		[ship setOrientation:kIdentityQuaternion];
+		Vector f = [ship forwardVector];
+		SetFlightSpeed30(ship, 10);
+		OO_CHECK(Near30([ship thrustVector], vector_multiply_scalar(f, 10)));
+
+		// The velocity is the entity's plus the thrust.
+		[ship setVelocity:make_vector(1, 2, 3)];
+		OO_CHECK(Near30([ship velocity], vector_add(make_vector(1, 2, 3), vector_multiply_scalar(f, 10))));
+		// From C++, the root's virtual reaches the ship's.
+		OO_CHECK(Near30(oo::ToCxx(static_cast<Entity *>(ship))->getVelocity(), [ship velocity]));
+
+		// Setting the total velocity sets the entity's to what is left after the thrust.
+		[ship setTotalVelocity:make_vector(0, 0, 0)];
+		OO_CHECK(Near30(RawVelocity30(ship), vector_flip(vector_multiply_scalar(f, 10))));
+		OO_CHECK(Near30([ship velocity], kZeroVector));
+
+		[ship setVelocity:kZeroVector];
+		[ship adjustVelocity:make_vector(1, 0, 0)];
+		[ship adjustVelocity:make_vector(0, 2, 0)];
+		OO_CHECK(Near30(RawVelocity30(ship), make_vector(1, 2, 0)));
+
+		[ship setVelocity:kZeroVector];
+		SetMass30(ship, 4);
+		[ship addImpactMoment:make_vector(8, 0, 0) fraction:0.5f];
+		OO_CHECK(Near30(RawVelocity30(ship), make_vector(1, 0, 0)));
+	}
+}
+
+
+OO_TEST(slice30ScoopingAndCollisions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("scooper");
+		TestShip *other = MakeLateSliceShip("cargo");
+		OO_CHECK(![ship canScoop:nil]);
+		OO_CHECK(![ship canScoop:other]);		// no cargo scoop
+		[ship suppressTargetLost];		// does nothing
+		[ship manageCollisions];		// nothing colliding: nothing happens
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// --- Slice 31: cascades, energy / scrape / heat damage, abandoning ship, docks, wormholes,
+// witchspace (bead oo-gx86h). Written against the Objective-C API and run on the unconverted slice
+// first.
+
+namespace {
+
+void SetEnergy31(Entity *e, GLfloat energy, GLfloat maxEnergy)	{ e->_cxxEntity->energy = energy; e->_cxxEntity->maxEnergy = maxEnergy; }
+GLfloat Energy31(Entity *e)									{ return e->_cxxEntity->energy; }
+bool ThrowSparks31(Entity *e)									{ return e->_cxxEntity->throw_sparks; }
+
+}	// namespace
+
+
+OO_TEST(slice31DamageThatDoesNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("tough");
+		TestShip *other = MakeLateSliceShip("rammer");
+		SetEnergy31(ship, 100, 100);
+
+		// Nothing, or a negative amount: no damage.
+		[ship takeEnergyDamage:0 from:other becauseOf:other weaponIdentifier:""];
+		[ship takeEnergyDamage:-5 from:other becauseOf:other weaponIdentifier:""];
+		OO_CHECK(Energy31(ship) == 100);
+		// From C++, the root's virtual reaches the ship's.
+		oo::ToCxx(static_cast<Entity *>(ship))->takeEnergyDamage(0, oo::ToCxx(static_cast<Entity *>(other)), nullptr, "");
+		OO_CHECK(Energy31(ship) == 100);
+
+		// No scrapes while launching.
+		[other setStatus:STATUS_LAUNCHING];
+		[ship takeScrapeDamage:10 from:other];
+		OO_CHECK(Energy31(ship) == 100);
+
+		// The dead take nothing.
+		[ship setStatus:STATUS_DEAD];
+		[ship takeEnergyDamage:10 from:other becauseOf:other weaponIdentifier:""];
+		[ship takeScrapeDamage:10 from:other];
+		[ship takeHeatDamage:10];
+		OO_CHECK(Energy31(ship) == 100);
+	}
+}
+
+
+// A subentity of a ship that is not frangible takes no heat damage. (Damage that is taken sends the
+// shipTakingDamage event with JavaScript values, which the test's empty context cannot make.)
+OO_TEST(slice31HeatDamageToAFixedSubentity)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("fixed-mount");
+		TestShip *sub = MakeLateSliceShip("fixed-turret");
+		[ship addSubEntity:sub];
+		SetEnergy31(sub, 100, 100);
+		OO_CHECK(![ship isFrangible]);
+		[sub takeHeatDamage:10];
+		OO_CHECK(Energy31(sub) == 100 && !ThrowSparks31(sub));
+		[ship clearSubEntities];
+	}
+}
+
+
+OO_TEST(slice31NoCascadeWithEnergyToSpare)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("stable");
+		SetEnergy31(ship, 100, 100);
+		OO_CHECK(![ship cascadeIfAppropriateWithDamageAmount:50 cascadeOwner:nil]);	// survives the hit
+		SetEnergy31(ship, 5, 100);
+		OO_CHECK(![ship cascadeIfAppropriateWithDamageAmount:50 cascadeOwner:nil]);	// too little energy to go pop
+		[ship leaveDock:nil];		// no station: nothing
+	}
+}
+
+
+// --- Slice 32: witchspace effects, offences, lights, escort formation and deployment, nearest
+// stations (bead oo-5e0ny). Written against the Objective-C API and run on the unconverted slice
+// first.
+
+@interface ShipEntity (TestSlice32)
+- (HPVector) coordinatesForEscortPosition:(unsigned)idx;	// the private category of ShipEntity.mm
+@end
+
+
+namespace {
+
+bool EscortPositionsValid32(ShipEntity *s)	{ return s->_cxxShip->_escortPositionsValid; }
+void SetEscortPositionsValid32(ShipEntity *s, bool v)	{ s->_cxxShip->_escortPositionsValid = v; }
+
+}	// namespace
+
+
+OO_TEST(slice32Lights)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("lit");
+		TestShip *sub = MakeLateSliceShip("lit-turret");
+		[ship addSubEntity:sub];
+		[ship switchLightsOn];
+		OO_CHECK([ship lightsActive] && [sub lightsActive]);
+		[ship switchLightsOff];
+		OO_CHECK(![ship lightsActive] && ![sub lightsActive]);
+		[ship clearSubEntities];
+	}
+}
+
+
+OO_TEST(slice32Destinations)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("goer");
+		SetFrustration24(ship, 4);
+		[ship setEscortDestination:make_HPvector(1, 1, 1)];		// an escort's: frustration stays
+		OO_CHECK(Near24([ship destination], make_HPvector(1, 1, 1)) && Frustration24(ship) == 4);
+		[ship setDestination:make_HPvector(2, 2, 2)];			// a new destination: none
+		OO_CHECK(Near24([ship destination], make_HPvector(2, 2, 2)) && Frustration24(ship) == 0);
+	}
+}
+
+
+OO_TEST(slice32EscortFormation)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("mother");
+		TestShip *other = MakeLateSliceShip("would-be-escort");
+		SetEscortPositionsValid32(ship, true);
+		[ship updateEscortFormation];
+		OO_CHECK(!EscortPositionsValid32(ship));
+
+		// With no positions set, every escort position is the ship's own, however big the index.
+		SetPosition24(ship, make_HPvector(5, 6, 7));
+		[ship setOrientation:kIdentityQuaternion];
+		OO_CHECK(Near24([ship coordinatesForEscortPosition:0], make_HPvector(5, 6, 7)));
+		OO_CHECK(Near24([ship coordinatesForEscortPosition:1000], make_HPvector(5, 6, 7)));
+
+		// Escorts must share the scan class.
+		[other setScanClass:CLASS_POLICE];
+		OO_CHECK(![ship canAcceptEscort:other]);
+	}
+}
+
+
+OO_TEST(slice32PoliceAreNotOffenders)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("copper");
+		[ship setScanClass:CLASS_POLICE];
+		[ship markAsOffender:64];
+		[ship markAsOffender:64 withReason:kOOLegalStatusReasonByScript];
+		OO_CHECK([ship bounty] == 0);
+	}
+}
+
+
+// --- Slice 33: landing, docking abort, broadcasts and comms, fines, AI messages, spawning, close
+// contacts, salvage (bead oo-tz2ra). Written against the Objective-C API and run on the unconverted
+// slice first.
+
+@interface ShipEntity (TestSlice33)
+- (BoundingBox) findBoundingBoxRelativeTo:(Entity *)other InVectors:(Vector) _i :(Vector) _j :(Vector) _k;	// undeclared: sent by name
+@end
+
+
+namespace {
+
+void SetBounty33(ShipEntity *s, OOCreditsQuantity b)	{ s->_cxxShip->bounty = b; }
+
+}	// namespace
+
+
+OO_TEST(slice33Fines)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("clean");
+		TestShip *crook = MakeLateSliceShip("crook");
+		OO_CHECK(![ship markedForFines]);
+		OO_CHECK(![ship markForFines] && ![ship markedForFines]);	// clean: nothing to fine
+
+		SetBounty33(crook, 50);
+		OO_CHECK([crook markForFines] && [crook markedForFines]);
+		OO_CHECK(![crook markForFines] && [crook markedForFines]);	// never twice
+	}
+}
+
+
+OO_TEST(slice33SmallAccessors)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("contact");
+		OO_CHECK([ship cxx_dockingInstructions].isNull());
+
+		OO_CHECK(![ship trackCloseContacts]);
+		[ship setTrackCloseContacts:YES];
+		OO_CHECK([ship trackCloseContacts]);
+		[ship setTrackCloseContacts:NO];
+		OO_CHECK(![ship trackCloseContacts]);
+
+		// Mining needs the behaviour and a mining laser.
+		[ship setBehaviour:BEHAVIOUR_ATTACK_MINING_TARGET];
+		OO_CHECK(![ship isMining]);
+		[ship setBehaviour:BEHAVIOUR_IDLE];
+		OO_CHECK(![ship isMining]);
+
+		[ship spawn:"just-one-token"];		// bad syntax: logged, nothing spawned
+		[ship spawn:"a b c"];
+	}
+}
+
+
+OO_TEST(slice33FindBoundingBoxRelativeTo)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("boxed");
+		TestShip *other = MakeLateSliceShip("reference");
+		SetPosition24(other, make_HPvector(100, 0, 0));
+		// Relative to another entity is relative to its position; to nil, to our own.
+		BoundingBox a = [ship findBoundingBoxRelativeTo:other InVectors:kBasisXVector :kBasisYVector :kBasisZVector];
+		BoundingBox b = [ship findBoundingBoxRelativeToPosition:make_HPvector(100, 0, 0) InVectors:kBasisXVector :kBasisYVector :kBasisZVector];
+		OO_CHECK(vector_equal(a.min, b.min) && vector_equal(a.max, b.max));
+		BoundingBox c = [ship findBoundingBoxRelativeTo:nil InVectors:kBasisXVector :kBasisYVector :kBasisZVector];
+		BoundingBox d = [ship findBoundingBoxRelativeToPosition:[ship position] InVectors:kBasisXVector :kBasisYVector :kBasisZVector];
+		OO_CHECK(vector_equal(c.min, d.min) && vector_equal(c.max, d.max));
+	}
+}
+
+
+// --- Slice 34: salvage pilot, debug dump, script info, demo ship, script events and AI reactions,
+// alert condition, shader helpers (bead oo-nkyn3). Written against the Objective-C API and run on
+// the unconverted slice first.
+
+#import "OOJSPropID.h"
+
+
+@interface ShipEntity (TestSlice34)
+- (OOTimeAbsolute) getDemoStartTime;	// undeclared: sent by name
+- (void) doNothing;					// undeclared: sent by name
+@end
+
+
+namespace {
+
+Quaternion DemoStartOrientation34(ShipEntity *s)	{ return s->_cxxShip->demoStartOrientation; }
+OOScalar DemoRate34(ShipEntity *s)					{ return s->_cxxShip->demoRate; }
+
+}	// namespace
+
+
+OO_TEST(slice34ScriptInfo)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("scripted");
+		OO_CHECK([ship script] == nil);
+		// None: an empty dictionary, not null.
+		oo::PList info = [ship scriptInfo];
+		OO_CHECK(info.getIf<oo::PList::Dict>() != nullptr && info.getIf<oo::PList::Dict>()->empty());
+
+		[ship overrideScriptInfo:oo::PList(oo::PList::Dict{ { "a", oo::PList(1.0) }, { "b", oo::PList(2.0) } })];
+		OO_CHECK([ship scriptInfo].get<double>("a", 0) == 1.0 && [ship scriptInfo].get<double>("b", 0) == 2.0);
+		// An override replaces the entries it has and keeps the others.
+		[ship overrideScriptInfo:oo::PList(oo::PList::Dict{ { "b", oo::PList(3.0) }, { "c", oo::PList(4.0) } })];
+		info = [ship scriptInfo];
+		OO_CHECK(info.get<double>("a", 0) == 1.0 && info.get<double>("b", 0) == 3.0 && info.get<double>("c", 0) == 4.0);
+		// A null override changes nothing.
+		[ship overrideScriptInfo:oo::PList()];
+		OO_CHECK([ship scriptInfo].get<double>("b", 0) == 3.0);
+	}
+}
+
+
+OO_TEST(slice34DemoShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("demo");
+		OO_CHECK(![ship isDemoShip]);
+		Quaternion q = { 0.5f, 0.5f, 0.5f, 0.5f };
+		[ship setOrientation:q];
+		[ship setDemoShip:0.25];
+		OO_CHECK([ship isDemoShip] && DemoRate34(ship) == 0.25);
+		OO_CHECK(quaternion_equal(DemoStartOrientation34(ship), [ship orientation]));
+		[ship setDemoStartTime:12.5];
+		OO_CHECK([ship getDemoStartTime] == 12.5);
+	}
+}
+
+
+OO_TEST(slice34AlertConditionAndEvents)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("alert");
+		SetEnergy31(ship, 100, 100);
+		OO_CHECK([ship alertCondition] == ALERT_CONDITION_YELLOW);		// NPCs are never green
+		SetEnergy31(ship, 20, 100);
+		OO_CHECK([ship alertCondition] == ALERT_CONDITION_RED);		// low on energy
+		[ship setStatus:STATUS_DOCKED];
+		OO_CHECK([ship alertCondition] == ALERT_CONDITION_DOCKED);
+		[ship setStatus:STATUS_IN_FLIGHT];
+
+		// The ship is its own shader entity when it is not a subentity.
+		OO_CHECK([ship entityForShaderProperties] == ship);
+
+		// No scripts, no AI: the events and messages go nowhere, harmlessly.
+		[ship doScriptEvent:OOJSID("shipSpawned")];
+		[ship doScriptEvent:OOJSID("shipSpawned") withArgument:ship];
+		[ship doScriptEvent:OOJSID("shipSpawned") withArgument:ship andArgument:nil];
+		[ship cxx_doScriptEvent:OOJSID("shipSpawned") withPListArguments:{ oo::PList(1.0) }];
+		[ship cxx_doScriptEvent:OOJSID("shipSpawned") andReactToAIMessage:"NOTHING"];
+		[ship cxx_doScriptEvent:OOJSID("shipSpawned") withArgument:ship andReactToAIMessage:"NOTHING"];
+		[ship sendAIMessage:"NOTHING"];
+		[ship cxx_reactToAIMessage:"NOTHING" context:std::nullopt];
+		[ship doNothing];
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+OO_TEST(slice34WeaponHelpers)
+{
+	@autoreleasepool
+	{
+		OO_CHECK(isWeaponNone(nil));
+	}
+}
+
+
+// --- ShipEntityScriptMethods.mm (bead oo-42dr): the category ShipEntity (ScriptMethods) --------------
+// The cases that do not reach the universe (it was never initialised here): ejecting nothing and
+// spawning none. Ejecting or spawning a real ship needs the game's ship data, which the goldens run.
+
+OO_TEST(scriptMethodsEjectAndSpawnNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = MakeLateSliceShip("ejector");
+		// std::nullopt ejects nothing, as nil did.
+		OO_CHECK([ship ejectShipOfType:std::nullopt] == nil);
+		OO_CHECK([ship ejectShipOfRole:std::nullopt] == nil);
+		// A count of zero spawns nothing and answers an empty list.
+		OO_CHECK([ship spawnShipsWithRole:"trader" count:0].empty());
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+	}
+}
+
+
+// --- ShipEntityLoadRestore.mm (bead oo-kw44): the category ShipEntity (LoadRestore) -------------------
+// The cases that reach neither the ship registry nor the universe: restoring from no dictionary.
+// Saving a ship, and restoring one, look its key up in the ship registry, whose data the unit test
+// does not load (it would scan for add-ons); the goldens' wormholes run those.
+
+OO_TEST(loadRestoreFromNothing)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		// Null restores no ship, with or without fallback and a context, as nil did.
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:NO context:nullptr] == nil);
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:YES context:nullptr] == nil);
+		OOShipSaveContext context;
+		OO_CHECK([ShipEntity shipRestoredFromDictionary:oo::PList() useFallback:YES context:&context] == nil);
+		OO_CHECK(context.nextGroupID == 0 && context.groups.empty() && context.groupsByID.empty());
 	}
 }
 
