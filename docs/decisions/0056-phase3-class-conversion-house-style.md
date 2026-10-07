@@ -4513,3 +4513,47 @@ unchanged and reach the members through the façade until their own conversion.
 
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
+
+## Amendment (bead oo-jx5np): the class shell of a giant's subclass whose state moves first (PlayerEntity)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/PlayerEntity.md` "Slice 1". Exemplar: `src/Core/Entities/PlayerEntity.h`,
+  `PlayerEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_PlayerEntity.mm`. Follows amendments
+  oo-60fwo (the ship's class shell) and oo-64ako (the station's, the first subclass of the ship),
+  which it applies to the ship's player subclass.
+
+**Context.** `PlayerEntity` (13,900 lines and nine category files, 328 ivars, all `@private`) is a
+subclass of `ShipEntity`, whose state is already `cxx::ShipEntity` behind the facade's `_cxxShip`.
+It converts in 28 slices and the category beads; slice 1 moves its state. Its object is made in two
+steps: `-init` (by `+sharedPlayer`, before there is ship data) makes the ship the player's way, and
+`-deferredInit` sends the ship's initialiser to the same object again.
+
+**Decision (recommended defaults).**
+
+1. **Amendment oo-60fwo, one level down.** `cxx::PlayerEntity : cxx::ShipEntity` holds the ivars as
+   public members by the same names, zero-initialised (bit-fields `: 1 = 0`), marked private once
+   the class is converted (oo-a70). The facade `@interface PlayerEntity : ShipEntity` (the ship's
+   facade) carries one `@public` borrowed alias, `cxx::PlayerEntity *_cxxPlayer`, set beside
+   `_cxxShip` by its override of the root's `-initWithCxxEntity:` (a checked `dynamic_cast`).
+   Unconverted code reads `_cxxPlayer->hud`, or `player->_cxxPlayer->hud`; inherited ship members
+   stay `_cxxShip->fuel`. `oo::ToCxx(::PlayerEntity *)` is the ship's crossing, typed.
+2. **The part is made the station's way (amendment oo-64ako item 2).** The player's façade
+   overrides the ship's private `-initShipPart` to make `oo::ObjCShipEntity<cxx::PlayerEntity>`
+   (`ShipEntity+ObjCAdapter.h`), so the player's part carries every line of the ship's adapter and
+   the ship's members that the player overrides (`-setUpShipFromDictionary:`, `-doesHitLine:...`)
+   still reach its Objective-C methods from C++. `-init` still sends `[super initBypassForPlayer]`;
+   `-deferredInit` still sends `-[ShipEntity cxx_initWithKey:definition:]`, whose `-initShipPart`
+   keeps the part that is there, so the ship's body (`cxx::ShipEntity::initWithKey`) runs again
+   over the same object and the player's members keep their values (the oo-bj8 double-`-init`
+   case). The second `-init` is counted again by the debug entity count, as it was.
+3. **`+sharedPlayer`, `gOOPlayer`, `-init`, `-deferredInit` and `-dealloc` are the facade's**
+   (amendment oo-bj8 item 7), in `PlayerEntity+ObjCBridge.mm`; `+sharedPlayer` and `-deferredInit`
+   are declared by the facade's `(OOObjCBridge)` category. `-dealloc` has the root's guard
+   (oo-s6ic6): a player released before its initialiser ran has no part and skips the body.
+4. **A debug-only method that only names ivars becomes a member under the same `#ifndef NDEBUG`**
+   (`suppressClangStuff()`), defined in `namespace cxx` after the file's `@implementation`.
+5. **C++ code names the Objective-C class `::PlayerEntity`** (amendment oo-bj8 item 9), on the
+   lines the compiler reports once `cxx::PlayerEntity` exists.
+
+**Consequences.** As amendment oo-60fwo's. The facade's deletion bead removes every `_cxxPlayer->`,
+makes the members private and depends on the umbrella oo-a70.

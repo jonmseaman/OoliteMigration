@@ -58,13 +58,13 @@ extern ooscript::Context gOOJSMainThreadContext;
 
 @implementation PlayerEntity (TestIvars)
 
-- (double) testMaxFieldOfView	{ return maxFieldOfView; }
-- (BOOL) testScoopsActive	{ return scoopsActive; }
-- (NSUInteger) testTargetMemoryIndex	{ return target_memory_index; }
-- (ShipEntity *) testMissileAtPylon:(int)pylon	{ return missile_entity[pylon]; }
-- (void) testSetMissile:(ShipEntity *)missile atPylon:(int)pylon	{ missile_entity[pylon] = [missile retain]; }
-- (void) testSetSavePath:(const std::string &)path	{ save_path = path; }
-- (BOOL) testHasSavePath	{ return save_path.has_value(); }
+- (double) testMaxFieldOfView	{ return _cxxPlayer->maxFieldOfView; }
+- (BOOL) testScoopsActive	{ return _cxxPlayer->scoopsActive; }
+- (NSUInteger) testTargetMemoryIndex	{ return _cxxPlayer->target_memory_index; }
+- (ShipEntity *) testMissileAtPylon:(int)pylon	{ return _cxxPlayer->missile_entity[pylon]; }
+- (void) testSetMissile:(ShipEntity *)missile atPylon:(int)pylon	{ _cxxPlayer->missile_entity[pylon] = [missile retain]; }
+- (void) testSetSavePath:(const std::string &)path	{ _cxxPlayer->save_path = path; }
+- (BOOL) testHasSavePath	{ return _cxxPlayer->save_path.has_value(); }
 
 @end
 
@@ -268,6 +268,45 @@ OO_TEST(releasedBeforeInit)
 		TestPlayer *player = [TestPlayer alloc];
 		[player release];
 		OO_CHECK(gOOPlayer == nil);
+	}
+}
+
+
+// The crossing: an Objective-C player's C++ part is a cxx::PlayerEntity, the facade's _cxxPlayer,
+// beside the ship's _cxxShip, and the ship's adapter lines reach the player's overrides.
+OO_TEST(objCPlayerPartIsAPlayer)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestPlayer *player = [[TestPlayer alloc] init];
+		Entity *asEntity = player;
+		cxx::PlayerEntity *part = oo::ToCxx(player);
+		OO_CHECK(part != nullptr && part == player->_cxxPlayer);
+		OO_CHECK(static_cast<cxx::ShipEntity *>(part) == player->_cxxShip);
+		OO_CHECK(dynamic_cast<cxx::PlayerEntity *>(oo::ToCxx(asEntity)) == part);
+		OO_CHECK(oo::AsObjCEntity(part) != nullptr && oo::ToObjC(part) == player);
+
+		cxx::ShipEntity *asShip = part;
+		OO_CHECK(asShip->setUpShipFromDictionary(oo::PList()) && sShipSetUps == 1);
+		[player release];
+	}
+}
+
+
+// Every member starts zeroed, as the runtime zeroed the ivars.
+OO_TEST(membersStartZeroed)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestPlayer *player = [[TestPlayer alloc] init];
+		cxx::PlayerEntity *part = player->_cxxPlayer;
+		OO_CHECK(part->hud == nil && part->compassTarget == nil && part->wormhole == nil);
+		OO_CHECK(part->system_id == 0 && part->ship_clock == 0 && part->scoopsActive == NO);
+		for (int i = 0; i < PLAYER_MAX_MISSILES; i++)  OO_CHECK(part->missile_entity[i] == nil);
+		OO_CHECK(!part->save_path.has_value() && part->worldScripts.empty());
+		[player release];
 	}
 }
 
