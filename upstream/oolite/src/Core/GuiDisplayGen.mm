@@ -128,7 +128,7 @@ oo::ObjCRef<OOTexture *> TextureForGUITexture(const oo::PList &descriptor, uint3
 /*
 	Load a texture sprite given a descriptor. Null where there is no such texture.
 */
-oo::Ref<cxx::OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uint32_t srgbaOption)
+oo::Ref<OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uint32_t srgbaOption)
 {
 	oo::ObjCRef<OOTexture *>	texture;
 	NSSize			size;
@@ -172,7 +172,7 @@ oo::Ref<cxx::OOTextureSprite> NewTextureSpriteWithDescriptor(const oo::PList &de
 		}
 	}
 
-	return cxx::OOTextureSprite::initWithTexture(texture.get(), size);
+	return OOTextureSprite::initWithTexture(texture.get(), size);
 }
 
 }	// namespace
