@@ -3290,6 +3290,56 @@ is a dependency cycle or a stall, and a slice cannot be done while it sends to t
 waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
 more call frame. `--slice-done` stays as strict as it is.
 
+## Amendment (bead oo-2g51): a class-shell slice whose later slices are methods of the class's own `@interface`
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/GuiDisplayGen.h/.mm` (slice 1 of `docs/phases/3-slices/GuiDisplayGen.md`),
+  `GuiDisplayGen+ObjCBridge.h/.mm`, `tests/unit/core/test_GuiDisplayGen.mm`; also
+  `src/Core/ResourceManager.*` (bead oo-jfno). Follows amendments oo-pni4 and oo-3bgz.
+
+**Context.** In `OOShipRegistry` (oo-3bgz) the later slices were already a category with its own
+`@interface`. In `GuiDisplayGen` and `ResourceManager` they are methods of the class itself,
+declared in its one `@interface` and defined in its one `@implementation`, interleaved with the
+shell slice's methods. `GuiDisplayGen`'s later slices also retain and autorelease two ivars
+(`backgroundSprite`, `foregroundSprite`) and read three that the shell slice sets with
+retain/release (`textColor`, `textCommsColor`, `backgroundColor`). `ResourceManager` is class
+methods over file-scope state and is never made.
+
+**Decision (recommended defaults).**
+
+1. **The façade header declares the later slices' selectors in a named category,**
+   `X (OOXUnconverted)`, copied exactly from the old `@interface`, and `X.mm` implements them as
+   `@implementation X (OOXUnconverted)`; the façade's own `@interface` keeps only the shell slice's
+   selectors, each forwarded by `X+ObjCBridge.mm`. (Amendment oo-bwjb item 1, written in parallel,
+   says the same with the name `XSlices`; either name is the category's, and the slice beads empty
+   it.) A shell-slice method that sat among the later
+   ones (`-rowAtVirtualJoystickPosition:`) moves, verbatim, into the C++ block. Each later slice's
+   bead moves its methods from the category to the class and adds their forwarders.
+2. **An Objective-C object ivar whose retains the later slices make** (`[backgroundSprite
+   autorelease]; backgroundSprite = New…()`) stays a raw `+1` pointer member, released by the
+   destructor (the old `-dealloc` body), so the category's code needs only the oo-3bgz rewrite; it
+   becomes an `oo::ObjCRef` in the slice that converts those methods. An object ivar whose
+   memory management is all in the shell slice is an `oo::ObjCRef` (amendment oo-862e item 4), and
+   the category reads it as `oo::ToCxx(self)->x.get()`. `GuiDisplayGen`'s colours stay façades
+   (`oo::ObjCRef<::OOColor *>`), unlike the HUD's (amendment oo-engam item 4), because the rows
+   already hold façades (`rowColor`, a Phase 2 type that stays) and every caller passes and reads
+   `OOColor *`; a later slice or the deletion bead may move all of them to `oo::Ref<cxx::OOColor>` at
+   once.
+3. **A getter named like its ivar** follows amendment oo-862e (`getTitle()`, `getSelectedRow()`,
+   `getTextColor()`, `getDrawPosition()`, `getSelectableRange()`), so the bodies, and the
+   category's rewritten ivar reads, stay verbatim.
+4. **A class of class methods only** (`ResourceManager`) is `cxx::X` with static members and a
+   deleted constructor, and no `oo::ToObjC`/`oo::ToCxx` (nothing crosses). Its file-scope state stays
+   file-scope, so the later slices' category needs no rewrite; a shell member that sends one of
+   their methods sends it to the façade class, `[::X …]`. A converted collaborator (`OOCacheManager`)
+   is called as C++ (`OOCacheManager::sharedCache()->…`) inside the members.
+5. **A unit test that selects a row** (`-setSelectedRow:` reports it with `OOJSID(…)`) starts the
+   JavaScript engine once in a scratch home and game folder, as `test_OOJSScript` does; `PLAYER` stays
+   nil, so nothing is sent.
+
+**Consequences.** Two façades with deletion beads that wait for the later slices as well as for the
+callers. The category's ivar reads cost one `oo::ToCxx` call each until their slice converts.
+
 ## Amendment (bead oo-bwjb): a class-shell slice whose later slices hold public methods, and a filter called through its selector
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOOXZManager.h/.mm` (slice 1 of
