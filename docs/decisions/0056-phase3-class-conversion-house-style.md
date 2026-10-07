@@ -4513,3 +4513,32 @@ unchanged and reach the members through the façade until their own conversion.
 
 **Consequences.** `ShipEntityAI.h` keeps only its imports for the files that import it; the
 ship's façade deletion bead (oo-9ht.144) removes the forwarding categories with the others.
+
+## Amendment (bead oo-ao2d): the class shell of a second Objective-C subclass of ShipEntity (DockEntity)
+
+- Date: 2026-10-07. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/DockEntity.md` slice 1. Exemplar: `src/Core/Entities/DockEntity.h/.mm`,
+  `DockEntity+ObjCBridge.h/.mm`, `tests/unit/core/test_DockEntity.mm`. Follows amendment oo-64ako,
+  whose item 2 names `DockEntity`.
+
+**Context.** `DockEntity` (1,337 lines) is over the story budget, had no slice plan, and is the
+second subclass of `ShipEntity` to convert. `StationEntity` messages its docks by selector; no
+other class reads a dock's ivars.
+
+**Decision (recommended defaults).**
+
+1. **Amendment oo-64ako applies unchanged, one subclass over:** `cxx::DockEntity :
+   cxx::ShipEntity` with the ivars as public members, the façade's typed alias `_cxxDock`, the
+   override of `-initShipPart` making `oo::ObjCShipEntity<cxx::DockEntity>`, and slice 1's units
+   forwarded by `DockEntity (OOSlice1)`. The plan was written by this bead (no separate pre-split
+   bead) and the bead converts slice 1; slices 2 and 3 have beads of their own (oo-9ht.178,
+   oo-9ht.179).
+2. **The private category's methods of slice 1** (`-clearIdLocks:`, `-clearAllIdLocks`) are
+   declared in the `OOSlice1` interface of the bridge header, so the unconverted slices keep
+   sending them to `self`; a private method of a later slice that a slice 1 member sends
+   (`-abortAllLaunches`) is declared in the `.mm`'s private category.
+3. **A getter of the root's `boundingBox` ivar** is `getBoundingBox()` (amendment oo-862e item 1);
+   the queue counts and the flags keep their names, which no ivar shares.
+
+**Consequences.** One more façade (`DockEntity+ObjCBridge`, deletion bead oo-9ht.180, on which the
+ship's façade deletion oo-9ht.144 now waits); `ShipEntity+ObjCAdapter.h` is private to three files.
