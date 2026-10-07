@@ -365,7 +365,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (std::vector<oo::ObjCRef<Entity *>>)subEntityEnumerator;	// snapshot, same as -subEntities
 - (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
 - (std::vector<oo::ObjCRef<Entity *>>)flasherEnumerator;	// flasher subentities, a snapshot (the C++ OOFlasherEntity's objects)
-- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_exhausts;	// the C++ OOExhaustPlumeEntity's objects
 - (ShipEntity *) subEntityTakingDamage;
 - (void) setSubEntityTakingDamage:(ShipEntity *)sub;
 - (OOScript *) shipScript;
@@ -918,7 +918,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) becomeExplosion;
 - (void) becomeEnergyBlast;
 - (void) broadcastEnergyBlastImminent;
-- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;
+- (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust;	// the C++ plume (bead oo-9ht.110)
 
 @end
 

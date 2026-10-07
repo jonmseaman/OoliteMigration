@@ -1219,7 +1219,8 @@ bool ShipEntity::setUpSubEntities()
 	{
 		// at<std::string>: a string, or a number's text, else "" (no tokens), as the string reader gave.
 		const std::vector<std::string> definition = oo::str::tokens(plumes->at<std::string>(i));
-		::OOExhaustPlumeEntity *exhaust = [::OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
+		// C++ since bead oo-9ht.110: the plume's object is the root façade; nil for no tokens.
+		::Entity<OOSubEntity> *exhaust = (::Entity<OOSubEntity> *)oo::NewEntityFacade(OOExhaustPlumeEntity::exhaustForShip(self, definition, _scaleFactor));
 		[self addSubEntity:exhaust];
 	}
 
@@ -1247,7 +1248,7 @@ GLfloat ShipEntity::frustumRadius()
 	OOScalar exhaust_length = 0;
 	for (const auto &exhaust : [self cxx_exhausts])
 	{
-		::OOExhaustPlumeEntity *exEnt = exhaust.get();
+		::Entity *exEnt = exhaust.get();
 		if ([exEnt findCollisionRadius] > exhaust_length)
 		{
 			exhaust_length = [exEnt findCollisionRadius];
@@ -1632,12 +1633,12 @@ std::vector<oo::ObjCRef<::Entity *>> ShipEntity::flasherEnumerator()
 }
 
 
-std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> ShipEntity::exhausts()
+std::vector<oo::ObjCRef<::Entity *>> ShipEntity::exhausts()
 {
-	std::vector<oo::ObjCRef<::OOExhaustPlumeEntity *>> result;
+	std::vector<oo::ObjCRef<::Entity *>> result;
 	for (const auto &sub : subEntities)
 	{
-		if ([sub.get() isExhaust])  result.emplace_back((::OOExhaustPlumeEntity *)sub.get());
+		if (dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(sub.get())) != nullptr)  result.emplace_back(sub.get());
 	}
 	return result;
 }
@@ -10160,10 +10161,11 @@ void ShipEntity::broadcastEnergyBlastImminent()
 }
 
 
-void ShipEntity::removeExhaust(::OOExhaustPlumeEntity *exhaust)
+void ShipEntity::removeExhaust(OOExhaustPlumeEntity *exhaust)
 {
-	std::erase(subEntities, (::Entity *)exhaust);
-	[exhaust setOwner:nil];
+	::Entity *exhaustObject = oo::ToObjC(exhaust);
+	std::erase(subEntities, exhaustObject);
+	[exhaustObject setOwner:nil];
 }
 
 
@@ -10428,7 +10430,7 @@ void ShipEntity::resetExhaustPlumes()
 	::ShipEntity *self = oo::ToObjC(this);
 	for (const auto &exEnt : [self cxx_exhausts])
 	{
-		[exEnt.get() resetPlume];
+		if (OOExhaustPlumeEntity *exhaust = dynamic_cast<OOExhaustPlumeEntity *>(oo::ToCxx(exEnt.get())))  exhaust->resetPlume();
 	}
 }
 
