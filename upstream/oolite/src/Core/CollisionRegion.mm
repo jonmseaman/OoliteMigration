@@ -596,8 +596,8 @@ void CollisionRegion::findShadowedEntities()
 		return;	// sun is required
 	}
 	
-	unsigned	ent_count =	UNIVERSE->n_entities;
-	::Entity		**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
+	unsigned	ent_count =	UNIVERSE->_cxxUniverse->n_entities;
+	::Entity		**uni_entities = UNIVERSE->_cxxUniverse->sortedEntities;	// grab the public sorted list
 	std::vector<::Entity *>	planets(ent_count);
 	unsigned	n_planets = 0;
 	std::vector<::Entity *>	ships(ent_count);

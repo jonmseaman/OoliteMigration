@@ -2,17 +2,13 @@
 
 GuiDisplayGen+ObjCBridge.h
 
-TRANSITIONAL (proposed ADR-0056, bead oo-2g51): the Objective-C GuiDisplayGen, a facade over the C++
-cxx::GuiDisplayGen (GuiDisplayGen.h), for the code that is not converted yet: the universe, which
-makes the GUIs with +alloc and -init / -cxx_initWithPixelSize:..., the player, the HUD, the OXZ
-manager and the scripting bindings, which message them, and the methods of slices 2-4 of
-docs/phases/3-slices/GuiDisplayGen.md (text layout, textures, drawing, the star chart), which are
-still Objective-C, a category of this facade in GuiDisplayGen.mm (ADR-0056 amendment oo-3bgz). Its
-interface is the one GuiDisplayGen.h declared before the conversion, copied exactly (same
-selectors, same types), less the ivars, which are the C++ class's members; the selectors of slices
-2-4 are declared in the category GuiDisplayGen (OOGuiDisplayGenUnconverted) that implements them
-(proposed amendment oo-2g51 item 1). Each method of the class itself forwards to its C++ member.
-Imported as the last line of GuiDisplayGen.h; do not import it directly.
+TRANSITIONAL (proposed ADR-0056, beads oo-2g51, oo-6dvw, oo-bcz4, oo-v3ao): the Objective-C
+GuiDisplayGen, a facade over the C++ cxx::GuiDisplayGen (GuiDisplayGen.h), for the code that is not
+converted yet: the universe, which makes the GUIs with +alloc and -init / -cxx_initWithPixelSize:...
+and draws them, the player, the HUD, the OXZ manager and the scripting bindings, which message them.
+Its interface is the one GuiDisplayGen.h declared before the conversion, copied exactly (same
+selectors, same types), less the ivars, which are the C++ class's members. Each method forwards to
+its C++ member. Imported as the last line of GuiDisplayGen.h; do not import it directly.
 
 	a caller that is                       holds / passes                  crosses with
 	-------------------------------------  ------------------------------  ----------------------------
@@ -226,25 +222,6 @@ MA 02110-1301, USA.
 - (void) setStarChartTitle;
 
 - (OOSystemID) targetNextFoundSystem:(int)direction;
-
-@end
-
-
-// The private drawing methods that slice 4's star chart, still Objective-C, sends to the facade
-// (ADR-0056 amendment oo-bwjb item 2). Deleted with slice 4's conversion.
-@interface GuiDisplayGen (OOGuiDisplayGenInternalForwarded)
-
-- (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z;
-- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
-- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
-
-@end
-
-
-// Slice 4 of docs/phases/3-slices/GuiDisplayGen.md: still Objective-C, implemented by this
-// category in GuiDisplayGen.mm on the facade. Each slice's bead moves its methods to the C++ class
-// and their forwarders to GuiDisplayGen+ObjCBridge.mm.
-@interface GuiDisplayGen (OOGuiDisplayGenUnconverted)
 
 @end
 
