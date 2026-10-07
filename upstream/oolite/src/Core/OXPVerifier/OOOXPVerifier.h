@@ -9,7 +9,8 @@ NOTE: the overall design is discussed in OXP verifier design.txt.
 C++20 since bead oo-tsa4 (proposed ADR-0056 and its OXPVerifier amendments): the class is
 cxx::OOOXPVerifier. The stages, and GameController's +runVerificationIfRequested, still message the
 Objective-C OOOXPVerifier, so OOOXPVerifier+ObjCBridge.h, imported at the end of this header, keeps
-it as a facade; the bridge's deletion bead moves the class out of namespace cxx.
+it as a facade; the bridge's deletion bead moves the class out of namespace cxx. The stages are C++
+(OOOXPVerifierStage, global since bead oo-9ht.4 deleted its facade), kept and driven as they are.
 
 
 Copyright (C) 2007-2013 Jens Ayton and contributors
@@ -52,17 +53,19 @@ SOFTWARE.
 #include "oofnd/Ref.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class OOOXPVerifierStage;
+class OOOXPVerifierStage;	// OOOXPVerifierStage.h, which imports this header
+
+
+struct OOOXPVerifierTestAccess;	// tests only (amendment oo-862e item 2)
 
 
 namespace cxx {
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-hkvv): verifyOXP.plist is an oo::PList, paths
-	and names are UTF-8 std::strings, stages are retained through oo::ObjCRef. The stages waiting
+	and names are UTF-8 std::strings, stages are retained through oo::Ref. The stages waiting
 	to be examined or run are a vector in registration order (they were a set).
-	A stage is kept as its Objective-C object (oo::ObjCRef<::OOOXPVerifierStage *>): the stage
-	hierarchy still has Objective-C subclasses, whose C++ part (an adapter) does not retain them
-	(ADR-0056 amendment oo-smy).
+	A stage is kept as the C++ stage itself (oo::Ref<::OOOXPVerifierStage>; its Objective-C object
+	until bead oo-9ht.4 deleted the stage facade, ADR-0056 amendment oo-smy).
 */
 class OOOXPVerifier : public oo::RefCounted
 {
@@ -88,7 +91,7 @@ public:
 	std::optional<std::string> oxpPath();
 	std::optional<std::string> oxpDisplayName();
 
-	::OOOXPVerifierStage *stageWithName(const std::string &name);	// nil: none
+	::OOOXPVerifierStage *stageWithName(const std::string &name);	// null: none (borrowed: the verifier keeps it)
 
 	// Read from verifyOXP.plist
 	oo::PList configurationValueForKey(const std::string &key);
@@ -117,13 +120,21 @@ private:
 
 	void dumpDebugGraphviz();
 
+	/*	Test stand-in hook (ADR-0056 amendment oo-4jjl item 3): makes the stage a test names in its
+		verifyOXP.plist, asked after the stage table and before the class-name lookup (a stage
+		could be an Objective-C class made by its name until bead oo-9ht.4). Null in the game; set
+		only through OOOXPVerifierTestAccess.
+	*/
+	friend struct ::OOOXPVerifierTestAccess;
+	static oo::Ref<::OOOXPVerifierStage> (*sTestStageMaker)(const std::string &name);
+
 	oo::PList														_verifierPList = {};
 	
 	std::string														_basePath = {};
 	std::string														_displayName = {};
 	
-	std::map<std::string, oo::ObjCRef<::OOOXPVerifierStage *>, std::less<>>	_stagesByName = {};
-	std::vector<oo::ObjCRef<::OOOXPVerifierStage *>>				_waitingStages = {};
+	std::map<std::string, oo::Ref<::OOOXPVerifierStage>, std::less<>>	_stagesByName = {};
+	std::vector<oo::Ref<::OOOXPVerifierStage>>						_waitingStages = {};
 	
 	bool															_openForRegistration = {};
 };
