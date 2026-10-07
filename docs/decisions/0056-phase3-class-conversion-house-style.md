@@ -3290,6 +3290,75 @@ is a dependency cycle or a stall, and a slice cannot be done while it sends to t
 waits for `Universe` and `PlayerEntity`. Behaviour is unchanged: the same message is sent, from one
 more call frame. `--slice-done` stays as strict as it is.
 
+## Amendment (bead oo-2g51): a class-shell slice whose later slices are methods of the class's own `@interface`
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/GuiDisplayGen.h/.mm` (slice 1 of `docs/phases/3-slices/GuiDisplayGen.md`),
+  `GuiDisplayGen+ObjCBridge.h/.mm`, `tests/unit/core/test_GuiDisplayGen.mm`; also
+  `src/Core/ResourceManager.*` (bead oo-jfno). Follows amendments oo-pni4 and oo-3bgz.
+
+**Context.** In `OOShipRegistry` (oo-3bgz) the later slices were already a category with its own
+`@interface`. In `GuiDisplayGen` and `ResourceManager` they are methods of the class itself,
+declared in its one `@interface` and defined in its one `@implementation`, interleaved with the
+shell slice's methods. `GuiDisplayGen`'s later slices also retain and autorelease two ivars
+(`backgroundSprite`, `foregroundSprite`) and read three that the shell slice sets with
+retain/release (`textColor`, `textCommsColor`, `backgroundColor`). `ResourceManager` is class
+methods over file-scope state and is never made.
+
+**Decision (recommended defaults).**
+
+1. **The façade header declares the later slices' selectors in a named category,**
+   `X (OOXUnconverted)`, copied exactly from the old `@interface`, and `X.mm` implements them as
+   `@implementation X (OOXUnconverted)`; the façade's own `@interface` keeps only the shell slice's
+   selectors, each forwarded by `X+ObjCBridge.mm`. (Amendment oo-bwjb item 1, written in parallel,
+   says the same with the name `XSlices`; either name is the category's, and the slice beads empty
+   it.) A shell-slice method that sat among the later
+   ones (`-rowAtVirtualJoystickPosition:`) moves, verbatim, into the C++ block. Each later slice's
+   bead moves its methods from the category to the class and adds their forwarders.
+2. **An Objective-C object ivar whose retains the later slices make** (`[backgroundSprite
+   autorelease]; backgroundSprite = New…()`) stays a raw `+1` pointer member, released by the
+   destructor (the old `-dealloc` body), so the category's code needs only the oo-3bgz rewrite; it
+   becomes an `oo::ObjCRef` in the slice that converts those methods. An object ivar whose
+   memory management is all in the shell slice is an `oo::ObjCRef` (amendment oo-862e item 4), and
+   the category reads it as `oo::ToCxx(self)->x.get()`. `GuiDisplayGen`'s colours stay façades
+   (`oo::ObjCRef<::OOColor *>`), unlike the HUD's (amendment oo-engam item 4), because the rows
+   already hold façades (`rowColor`, a Phase 2 type that stays) and every caller passes and reads
+   `OOColor *`; a later slice or the deletion bead may move all of them to `oo::Ref<cxx::OOColor>` at
+   once.
+3. **A getter named like its ivar** follows amendment oo-862e (`getTitle()`, `getSelectedRow()`,
+   `getTextColor()`, `getDrawPosition()`, `getSelectableRange()`), so the bodies, and the
+   category's rewritten ivar reads, stay verbatim.
+4. **A class of class methods only** (`ResourceManager`) is `cxx::X` with static members and a
+   deleted constructor, and no `oo::ToObjC`/`oo::ToCxx` (nothing crosses). Its file-scope state stays
+   file-scope, so the later slices' category needs no rewrite; a shell member that sends one of
+   their methods sends it to the façade class, `[::X …]`. A converted collaborator (`OOCacheManager`)
+   is called as C++ (`OOCacheManager::sharedCache()->…`) inside the members.
+5. **A unit test that selects a row** (`-setSelectedRow:` reports it with `OOJSID(…)`) starts the
+   JavaScript engine once in a scratch home and game folder, as `test_OOJSScript` does; `PLAYER` stays
+   nil, so nothing is sent.
+
+**Consequences.** Two façades with deletion beads that wait for the later slices as well as for the
+callers. The category's ivar reads cost one `oo::ToCxx` call each until their slice converts.
+
+## Amendment (bead oo-6dvw): a later slice that owns sprites of a converted class, and its file-scope helpers
+
+- Date: 2026-10-05. Status: Proposed, as above (recommended default). Exemplar: `src/Core/GuiDisplayGen.h/.mm`
+  (slice 2 of `docs/phases/3-slices/GuiDisplayGen.md`). Follows amendments oo-2g51 and oo-9ht.139.
+
+**Decision (recommended defaults).**
+
+1. **The raw `+1` sprite ivars of amendment oo-2g51 item 2 become `oo::Ref<cxx::OOTextureSprite>`** in
+   the slice that converts their `-autorelease`/replace code, because `OOTextureSprite` is C++: the
+   factory is `cxx::OOTextureSprite::initWithTexture(texture, size)` (null where the façade's
+   initialiser answered nil), the destructor's releases go, and the assignment releases the old
+   sprite at once rather than at the pool's drain (amendment oo-862e item 4). The later slices'
+   category still reads them through `oo::ToCxx(self)`; its two blits become member calls
+   (`->blitCentredToX(x, y, z, a)`), the only lines of the category that change beyond the rewrite.
+2. **A file-scope helper of the slice that messaged the universe** (`TextureForGUITexture`'s
+   `[UNIVERSE useShaders]`) calls a one-line bridge function in `X+ObjCBridge.mm`
+   (`GuiDisplayGenUniverseUseShaders()`, amendment oo-9ht.139 item 3); its message to a converted
+   class becomes the C++ call (`cxx::OOTexture::textureWithName`, `oo::ToCxx(texture)->originalDimensions()`),
+   and a result it handed out autoreleased is returned as `oo::ObjCRef`.
 ## Amendment (bead oo-bwjb): a class-shell slice whose later slices hold public methods, and a filter called through its selector
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: `src/Core/OOOXZManager.h/.mm` (slice 1 of
@@ -3710,6 +3779,77 @@ class, façade-contract test cases (CLAUDE.md rule 2), and a lifetime the façad
 no test case and changes no stand-in. Deletion beads whose readiness check fails gain the missing
 deps instead of growing into conversions.
 
+## Amendment (bead oo-ukxy8): an entity leaf's class-shell slice whose later slice answers a protocol
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/Entities/OOVisualEffectEntity.h/.mm` (slice 1 of
+  `docs/phases/3-slices/OOVisualEffectEntity.md`), `OOVisualEffectEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_OOVisualEffectEntity.mm`. Follows amendments oo-dnbf, oo-0mxi and oo-ubjo.
+
+**Decision (recommended defaults).**
+
+1. **The shell slice's members are one `namespace cxx { }` block before the later slice's in-place
+   category** (`OOVisualEffectEntity (OOVisualEffectEntityScripting)`), moved there from between that
+   slice's methods (amendment oo-zkpmt item 2), so the category is one block.
+2. **A protocol whose methods are all the later slice's** (`OOBeaconEntity`) is adopted by that
+   category's interface in `X+ObjCBridge.h`, not by the façade's `@interface`, so the façade's own
+   `@implementation` is complete; static conformance (`Entity<OOBeaconEntity> *`) is unchanged.
+   A protocol the shell answers (`OOSubEntity`) stays on the façade, forwarded in one line each.
+3. **A protocol-qualified Objective-C type named inside `namespace cxx`** (`Entity<OOSubEntity> *`,
+   where `::Entity<…>` parses as a template) gets a global typedef in `X.h`
+   (`typedef Entity<OOSubEntity> OOVisualEffectSubEntity;`).
+4. **A file-local helper of the slice that asked an entity `-isVisualEffect`** asks the converted
+   root (`oo::ToCxx((::Entity *)e)->getIsVisualEffect()`), which answers for Objective-C subclasses
+   through their adapters (amendment oo-9ht.139 item 1).
+5. **An initialiser that released itself on failure** is a `bool` member the façade's initialiser
+   runs after making the C++ part; on false the façade releases itself and answers nil.
+## Amendment (bead oo-zkpmt): a class-shell slice whose later slices are the class's own `@X` block
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended default, CLAUDE.md rule 10). Exemplar:
+  `src/Core/GameController.h/.mm` (slice 1 of `docs/phases/3-slices/GameController.md`),
+  `GameController+ObjCBridge.h/.mm`, `SDL/GameController+SDLFullScreen.mm`,
+  `tests/unit/core/test_GameController.mm`. Follows amendments oo-r7m0, oo-bj8 item 2 and oo-bwjb.
+
+**Context.** Amendment oo-bwjb item 1 keeps the shell slice's selectors in the façade's
+`@interface` (forwarded by `X+ObjCBridge.mm`'s `@implementation X`) and moves the later slices'
+methods into a category `X (XSlices)` in `X.mm`. That works when the plan names the later slices'
+methods one by one. `GameController.md` gives slice 3 the whole block (`@GameController`), and
+`tools/check-slice-plan.py` matches an `@X` entry against the block's name: renamed to
+`GameController(GameControllerSlices)`, slice 3's eighteen methods became unassigned (the plan
+check fails) and `--slice-done 3` passed with nothing converted. The plan may not be edited by the
+slice bead.
+
+**Decision (recommended defaults).**
+
+1. **The later slices keep the class's `@implementation X` in `X.mm`, under its name, in place;**
+   the façade's own methods go in a category: `X+ObjCBridge.h` declares the old `@interface` with
+   the later slices' selectors (old order, unchanged) and the shell slice's selectors in
+   `@interface X (OOObjCBridge)`, which `X+ObjCBridge.mm` implements in one-line forwarders, with
+   the crossings, `-initWithCxxX:` and `-dealloc`. Both `@implementation`s are complete, callers see
+   the same selectors with the same types, and the plan's `@X` entry still finds the later slices.
+2. **The shell slice's members are defined in one `namespace cxx { }` block before the
+   `@implementation`,** moved there from their places in the block (here `-finishedLaunching` and
+   `-suppressClangStuff`), because one class may have only one `@implementation` per file.
+3. **The later slices and the class's other categories read the state through the façade's
+   `@public _cxxController`** (amendment oo-bj8 item 2's scripted, word-bounded rewrite, string
+   literals excluded); an ivar named like its getter takes a leading underscore (`_gameView`,
+   amendment oo-rdfh item 1). A shell member that told an Objective-C object of `self` hands it
+   `oo::ToObjC(this)` (`[_gameView setGameController:oo::ToObjC(this)]`), the façade
+   `+sharedController` keeps.
+4. **Header macros that message the class name the façade `::X`** (`OO_DEBUG_PROGRESS`), so a
+   caller inside `namespace cxx` still reaches the Objective-C class.
+5. **A singleton that callers also `alloc`/`init`** (`main.mm` makes the application's controller
+   that way, apart from `+sharedController`'s) keeps `-init` on the façade: it makes a new C++ object
+   (the constructor is the old `-init` body, raising where it raised, after releasing the receiver)
+   and becomes its peer. Converted senders name the façade `[::X sharedX]` (amendment oo-jfno item 2).
+6. **A Mac-only declaration with a Foundation type** (`-snapshotsURLCreatingIfNeeded:`) is not
+   copied into the new bridge header when only the fenced Mac category sends it: the type would be a
+   new deny-list hit in a new file (the guardrails' file-split limitation).
+
+**Consequences.** One façade and its deletion bead, which waits for slices 2 and 3 and the
+`FullScreen` category (oo-qinv); each later slice turns its methods into members and deletes their
+declarations from the façade's `@interface`.
+
 ## Amendment (bead oo-zmix): the rendering slice of a converted subclass, and a façade that stays a protocol client
 
 - Date: 2026-10-05. Status: Proposed, as above. Exemplar: slice 4 of `docs/phases/3-slices/OOMesh.md`
@@ -3970,6 +4110,61 @@ deletion bead waits for oo-a70 as well as `Universe`, `GuiDisplayGen` and the en
 test runs the real engine and the real `player.ship`, with stand-ins for what `PLAYER` and
 `UNIVERSE` answer and a real HUD in a hidden GL context.
 
+## Amendment (bead oo-riqmz): the class shell of a giant singleton that is not an entity (Universe)
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/Universe.md` "Slice 1". Exemplar: `src/Core/Universe.h/.mm`,
+  `Universe+ObjCBridge.h/.mm`, `tests/unit/core/test_Universe.mm`. Follows amendments oo-bj8 items
+  2, 4, 6 and 7 and oo-60fwo (the state moves first, the methods follow slice by slice).
+
+**Context.** `Universe` (11,800 lines, ~390 methods, 122 ivars) converts in 26 slices. Slice 1 moves
+its state into `cxx::Universe` so every later slice has a class to move its methods into. Unlike
+`ShipEntity` it is no entity: no root owns its part, its superclass `OOWeakRefObject` keeps state,
+and the Objective-C object is the game's one universe, `gSharedUniverse`, which about 150 files
+message through `UNIVERSE`. Ten other files read its `@public` ivars (`n_entities`,
+`sortedEntities`, the collision list heads, `cursor_row`, `stars_ambient`), and the unit tests of
+the entities use a Universe that was never initialised (`class_createInstance`).
+
+**Decision (recommended defaults).**
+
+1. **The facade owns the part:** one `@public` ivar, `oo::Ref<cxx::Universe> _cxxUniverse`, and
+   `cxx::Universe` is `oo::RefCounted` (the house's ownership, not a raw owning pointer). The part
+   keeps a borrowed `_objcOwner`, so `oo::ToObjC(cxx::Universe *)` answers the object (a converted
+   slice sends an unconverted method to it) and `oo::ToCxx(::Universe *)` answers `_cxxUniverse`.
+   Every member keeps its ivar's name and type and is zero-initialised; the `@private` ones are public
+   while the class is half converted (amendment oo-60fwo items 2 and 3).
+2. **The rewrite is amendment oo-bj8 item 2's**, compiler-guided: `_cxxUniverse->` in the facade's
+   unconverted methods and in the plain functions of `Universe.mm` that took the object
+   (`uni->_cxxUniverse->x_list_start`), and `UNIVERSE->_cxxUniverse->n_entities` in the other
+   files; proved by a poison-ivar syntax check of every TU that includes the header.
+3. **The initialiser and `-dealloc` are a category of the facade in `Universe+ObjCBridge.mm`**
+   (amendment oo-60fwo item 6), and their bodies are members: `-initWithGameView:` makes the part
+   *first*, then does the one-universe check, `[super init]` and `_cxxUniverse->initWithGameView()`;
+   `-dealloc` sends `_cxxUniverse->dealloc()`, releases the part and sends `[super dealloc]`. The
+   member bodies stay in `Universe.mm` beside the private category they message, naming the object
+   once (`::Universe *self = oo::ToObjC(this);`, amendment oo-bj8 item 4), so they are verbatim but
+   for the Objective-C classes that now have a C++ twin, named `::X`. Making the part before the
+   check keeps a refused second universe's teardown (its `[self release]` ran the whole `-dealloc`)
+   as it was; a universe released with no part (allocated, never initialised) skips the body
+   (oo-s6ic6). The part's remaining members (the property lists) are released when the facade
+   releases it, just before `[super dealloc]`, as the runtime released the ivars then.
+4. **`UNIVERSE`, `OOGetUniverse()` and `gSharedUniverse` stay the facade** (`@class Universe` before
+   the C++ class in `Universe.h`); so do the `OOSound` / `OOSoundSource` category interfaces.
+5. **A test's never-initialised Universe gets a part:** `class_createInstance` does not send
+   `-initWithGameView:`, so the tests that ask such a universe for its state set
+   `u->_cxxUniverse = oo::makeRef<cxx::Universe>(u)` where they made it, and read its members
+   through it (amendment oo-bj8 item 11): a set-up line, no expectation changed. In this bead that
+   was the set-up of the 22 entity tests that make one (`test_DustEntity` ... `test_WormholeEntity`,
+   each crashed on a null part without it) and, in `test_Entity`, its ivar helper (by name, now the
+   members) and its reads of the list heads and `n_entities` (`sUniverse->_cxxUniverse->`). Tests
+   that stub `Universe` with their own `@interface` (they do not import `Universe.h`) are untouched.
+6. **The deletion bead** "Delete Universe+ObjCBridge" waits on the umbrella oo-pas; it removes every
+   `_cxxUniverse->`, makes the item 1 members private, and turns the members that hold Objective-C
+   objects into `oo::Ref`/`oo::ObjCRef` as their classes convert.
+
+**Consequences.** One more load per member read from unconverted code. Slices 2-26 each move their
+methods into `cxx::Universe`, leave a forwarder on the facade and delete `_cxxUniverse->` from the
+moved bodies.
 ## Amendment (bead oo-10qz): the JavaScript engine, whose later slice is the class's own block, and the file's categories on other classes
 
 - Date: 2026-10-05. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Exemplar:
@@ -4114,3 +4309,26 @@ the root's template, which messages only the root's virtual members.
 
 **Consequences.** One adapter class for the ship, one category per slice on the façade; the
 façade's deletion bead (oo-9ht.144) removes them with the forwarders.
+
+## Amendment (bead oo-xmajv): ShipEntity slices 13-23, beyond amendment oo-mvzmb
+
+- Date: 2026-10-06. Status: Proposed, as above (recommended defaults, CLAUDE.md rule 10). Plan:
+  `docs/phases/3-slices/ShipEntity.md` slices 13-23 (beads oo-xmajv … oo-xmrgd), stacked on slices
+  2-12. Exemplar: `src/Core/Entities/ShipEntity.h/.mm`, `ShipEntity+ObjCBridge.h/.mm`,
+  `tests/unit/core/test_ShipEntity.mm`. Follows amendment oo-mvzmb, whose seven items these slices
+  keep (a block and a category per slice, `ObjCShipEntity`, sends to `self` stay sends).
+
+**Decision (recommended defaults).**
+
+1. **A parameter the moved body never reads is named in a comment** (`double /*delta_t*/`), as the
+   debug monitor's members are: `-Wunused-parameter` (in `-Wextra`) warns about a C++ function's
+   unused parameter and never did about an Objective-C method's, and a warning is not silenced
+   (CLAUDE.md rule 3).
+2. **The ship's other protocol, `<OOSubEntity>`, is adopted by a category with no
+   `@implementation` once a slice forwards one of its methods** (slice 16,
+   `-drawSubEntityImmediate:translucent:`), for amendment oo-mvzmb item 6's reason.
+3. **A method that overrides one of `Entity`'s and takes an Objective-C object** (`-setOwner:`)
+   becomes the `override` of the root's virtual with the root's C++ types (`cxx::Entity *`); the
+   façade's forwarder converts (`oo::ToCxx(who)`), as slice 6's `-checkCloseCollisionWith:` does.
+4. **The tests** set a ship's target through the helper `SetPrimaryTarget()`, not `-addTarget:`,
+   which tells the ship's scripts (the unit tests' ships have no JavaScript object).

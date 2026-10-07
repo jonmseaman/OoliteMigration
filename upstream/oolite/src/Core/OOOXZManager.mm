@@ -1383,7 +1383,7 @@ bool OOOXZManager::removeOXZ(NSUInteger item)
 
 void OOOXZManager::gui()
 {
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUIRow		startRow = OXZ_GUI_ROW_EXIT;
 
 #if OOLITE_WINDOWS
@@ -1610,7 +1610,7 @@ void OOOXZManager::gui()
 
 void OOOXZManager::processSelection()
 {
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUIRow selection = [gui selectedRow];
 
 	if (selection == OXZ_GUI_ROW_EXIT)
@@ -1775,7 +1775,7 @@ void OOOXZManager::processTextInput(const std::string &input)
 
 void OOOXZManager::refreshTextInput(const std::string &input)
 {
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	[gui cxx_setText:DescFormat(OO_DESC("oolite-oxzmanager-text-prompt-@"), {input}) forRow:OXZ_GUI_ROW_INPUT align:GUI_ALIGN_LEFT];
 	if (validateFilter(input))
 	{
@@ -1808,7 +1808,7 @@ void OOOXZManager::processShowInfoKey()
 {
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE)
 	{
-		GuiDisplayGen	*gui = [UNIVERSE gui];
+		::GuiDisplayGen	*gui = [UNIVERSE gui];
 
 		if (_interfaceShowingOXZDetail)
 		{
@@ -1884,7 +1884,7 @@ void OOOXZManager::processExtractKey()
 	// an OXP in the main AddOns folder if it's safe to do so.
 	if (!_interfaceShowingOXZDetail && (_interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE))
 	{
-		GuiDisplayGen	*gui = [UNIVERSE gui];
+		::GuiDisplayGen	*gui = [UNIVERSE gui];
 		OOGUIRow selection = [gui selectedRow];
 		
 		if (selection < OXZ_GUI_ROW_LISTSTART || selection >= OXZ_GUI_ROW_LISTSTART + OXZ_GUI_NUM_LISTROWS)
@@ -1923,7 +1923,7 @@ OOGUIRow OOOXZManager::showInstallOptions()
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
 	const std::vector<oo::PList> options = installOptions();
 	NSUInteger optCount = _filteredList.count();
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUITabSettings tab_stops;
 	tab_stops[0] = 0;
 	tab_stops[1] = 100;
@@ -2119,7 +2119,7 @@ OOGUIRow OOOXZManager::showRemoveOptions()
 	// shows the current installation options page
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
 	const std::vector<oo::PList> options = removeOptions();
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	if (options.empty())
 	{
 		[gui cxx_addLongText:OO_DESC("oolite-oxzmanager-nothing-removable") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
@@ -2241,7 +2241,7 @@ void OOOXZManager::showOptionsUpdate()
 
 void OOOXZManager::showOptionsPrev()
 {
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		if ([gui selectedRow] == OXZ_GUI_ROW_LISTPREV)
@@ -2279,7 +2279,7 @@ void OOOXZManager::processOptionsNext()
 
 void OOOXZManager::showOptionsNext()
 {
-	GuiDisplayGen	*gui = [UNIVERSE gui];
+	::GuiDisplayGen	*gui = [UNIVERSE gui];
 	if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_REMOVE || _interfaceState == OXZ_STATE_PICK_INSTALLED)
 	{
 		if ([gui selectedRow] == OXZ_GUI_ROW_LISTNEXT)
@@ -2469,7 +2469,7 @@ void OOOXZManager::downloadDidReceiveData(const std::string &data)
 	 * loop (it runs on its own thread, proposed ADR-0044); the call stays
 	 * so a burst of queued chunks still lets the game tick between them.
 	 */
-	[[GameController sharedController] fireDueTimers];
+	[[::GameController sharedController] fireDueTimers];
 #endif
 }
 

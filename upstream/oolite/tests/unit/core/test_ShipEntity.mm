@@ -24,10 +24,16 @@
 #import "OOShipGroup.h"
 #import "OODescription.h"
 #import "Universe.h"
+#import "OOColor.h"
+#import "OORoleSet.h"
+#import "OOCharacter.h"
+#import "AI.h"
+#import "PlayerEntity.h"
 
 #include "oo_test.hpp"
 
 #include <cmath>
+#include <initializer_list>
 #include <string>
 
 
@@ -99,6 +105,46 @@ namespace {
 OOTimeDelta ShotTime(ShipEntity *s)		{ return s->_cxxShip->shot_time; }
 OOBehaviour Behaviour(ShipEntity *s)	{ return s->_cxxShip->behaviour; }
 void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
+void SetFrustration(ShipEntity *s, GLfloat value)	{ s->_cxxShip->frustration = value; }
+void SetPlanetForLanding(ShipEntity *s, OOUniversalID uid)	{ s->_cxxShip->planetForLanding = uid; }
+void SetPreviousCondition(ShipEntity *s, const oo::PList &condition)	{ s->_cxxShip->previousCondition = condition; }
+unsigned NextNavpoint(ShipEntity *s)	{ return s->_cxxShip->next_navpoint_index; }
+GLfloat WeaponDamage(ShipEntity *s)	{ return s->_cxxShip->weapon_damage; }
+OOAegisStatus AegisStatus(ShipEntity *s)	{ return s->_cxxShip->aegis_status; }
+void SetAegisStatus(ShipEntity *s, OOAegisStatus status)	{ s->_cxxShip->aegis_status = status; }
+void SetSticks(ShipEntity *s, GLfloat roll, GLfloat pitch, GLfloat yaw)	{ s->_cxxShip->stick_roll = roll; s->_cxxShip->stick_pitch = pitch; s->_cxxShip->stick_yaw = yaw; }
+GLfloat ScaleFactor(ShipEntity *s)	{ return s->_cxxShip->_scaleFactor; }
+void SetMass(Entity *e, GLfloat value)	{ e->_cxxEntity->mass = value; }
+bool IsWreckage(ShipEntity *s)	{ return s->_cxxShip->isWreckage; }
+void SetShowDamage(ShipEntity *s, bool value)	{ s->_cxxShip->_showDamage = value; }
+void SetWeaponTemps(ShipEntity *s, GLfloat temp, GLfloat aft)	{ s->_cxxShip->weapon_temp = temp; s->_cxxShip->aft_weapon_temp = aft; }
+bool SuppressesExplosion(ShipEntity *s)	{ return s->_cxxShip->suppressExplosion; }
+void SetBoundingBox(Entity *e, BoundingBox box)	{ e->_cxxEntity->boundingBox = box; }
+void SetShotTime(ShipEntity *s, OOTimeDelta value)	{ s->_cxxShip->shot_time = value; }
+double NextAegisCheck(ShipEntity *s)	{ return s->_cxxShip->_nextAegisCheck; }
+double LaunchTime(ShipEntity *s)	{ return s->_cxxShip->launch_time; }
+double LaunchDelay(ShipEntity *s)	{ return s->_cxxShip->launch_delay; }
+void SetExplicitlyUnpiloted(ShipEntity *s, bool value)	{ s->_cxxShip->_explicitlyUnpiloted = value; }
+
+void SetPrimaryTarget(ShipEntity *s, Entity *target)
+{
+	[s->_cxxShip->_primaryTarget release];
+	s->_cxxShip->_primaryTarget = [target weakRetain];
+}
+
+void SetProximityAlert(ShipEntity *s, Entity *other)
+{
+	[s->_cxxShip->_proximityAlert release];
+	s->_cxxShip->_proximityAlert = [other weakRetain];
+}
+
+void SetNavpoints(ShipEntity *s, std::initializer_list<HPVector> points, unsigned next)
+{
+	unsigned n = 0;
+	for (HPVector p : points)  s->_cxxShip->navpoints[n++] = p;
+	s->_cxxShip->number_of_navpoints = n;
+	s->_cxxShip->next_navpoint_index = next;
+}
 
 // --------------------------------------------------------------------------------------------------
 
@@ -106,7 +152,11 @@ void SetSubEntity(Entity *e, bool value)	{ e->_cxxEntity->isSubEntity = value; }
 void SetUp()
 {
 	static Universe *universe = nil;
-	if (universe == nil)  universe = (Universe *)class_createInstance([Universe class], 0);	// never released
+	if (universe == nil)
+	{
+		universe = (Universe *)class_createInstance([Universe class], 0);	// never released
+		universe->_cxxUniverse = oo::makeRef<cxx::Universe>(universe);	// what -initWithGameView: makes first (ADR-0056 amendment oo-riqmz)
+	}
 	gSharedUniverse = universe;
 	static TestPlayer *player = nil;
 	if (player == nil)  player = [[TestPlayer alloc] init];
@@ -801,6 +851,1229 @@ OO_TEST(closeCollisionAndFrame)
 		[ship setOrientation:kIdentityQuaternion];
 		Triangle ijk = [ship absoluteIJKForSubentity];
 		OO_CHECK(vector_equal(ijk.v[0], kBasisXVector) && vector_equal(ijk.v[1], kBasisYVector) && vector_equal(ijk.v[2], kBasisZVector));
+	}
+}
+
+
+// --- Slice 7: -update: (bead oo-k2q1f) -------------------------------------------------------------
+
+// A ship whose -update: only counts: a subentity that a demo ship updates.
+@interface CountingShip: TestShip
+{
+@public
+	int		_updates;
+}
+@end
+
+
+@implementation CountingShip
+
+- (void) update:(OOTimeDelta)delta_t
+{
+	_updates++;
+}
+
+@end
+
+
+// A demo ship (the ship library's) turns at its demo rate, has its subentities updated, and has an
+// infinite top speed clamped first.
+OO_TEST(updateDemoShip)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"demo" definition:Definition()] autorelease];
+		CountingShip *sub = [[[CountingShip alloc] cxx_initWithKey:"sub" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList()]);
+		[ship addSubEntity:sub];
+		MutablePart(ship)->isDemoShip = YES;
+		MutablePart(ship)->demoRate = 0;
+		[ship setMaxFlightSpeed:INFINITY];
+		[ship update:0.1];
+		OO_CHECK([ship maxFlightSpeed] == 300.0f);
+		OO_CHECK(sub->_updates == 1);
+		[ship clearSubEntities];
+	}
+}
+
+
+// From C++, update() reaches an Objective-C subclass's override (the root's adapter line).
+OO_TEST(updateReachesTheSubclass)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		CountingShip *ship = [[[CountingShip alloc] cxx_initWithKey:"counted" definition:Definition()] autorelease];
+		cxx::Entity *part = oo::ToCxx(static_cast<Entity *>(ship));
+		part->update(0.1);
+		OO_CHECK(ship->_updates == 1);
+	}
+}
+
+
+// --- Slice 8: behaviour dispatch, attack response, equipment queries (bead oo-vxdsc) ---------------
+
+// The equipment queries over the ship's equipment keys (no equipment data is loaded, so no type is
+// known: a key provides only itself).
+OO_TEST(equipmentQueries)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"kit" definition:Definition()] autorelease];
+		OO_CHECK(![ship hasEquipmentItem:oo::PList(std::string("EQ_A"))]);
+		OO_CHECK(![ship hasAllEquipment:oo::PList(std::string("EQ_A"))]);	// none at all
+		MutablePart(ship)->_equipment = { "EQ_A", "EQ_B_DAMAGED", "EQ_A" };
+		OO_CHECK([ship cxx_countEquipmentItem:"EQ_A"] == 2 && [ship cxx_countEquipmentItem:"EQ_B"] == 0);
+		OO_CHECK([ship cxx_hasOneEquipmentItem:"EQ_A" includeWeapons:NO whileLoading:NO]);
+		OO_CHECK(![ship cxx_hasOneEquipmentItem:"EQ_B" includeWeapons:NO whileLoading:NO]);
+		OO_CHECK([ship cxx_hasOneEquipmentItem:"EQ_B" includeWeapons:NO whileLoading:YES]);	// damaged counts while loading
+		OO_CHECK([ship cxx_hasOneEquipmentItem:"EQ_B" includeMissiles:NO whileLoading:YES]);
+		OO_CHECK(![ship cxx_hasOneEquipmentItem:"EQ_C" includeMissiles:YES whileLoading:NO]);
+		OO_CHECK([ship hasEquipmentItem:oo::PList(std::string("EQ_A"))]);
+		OO_CHECK([ship hasEquipmentItem:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_X")), oo::PList(std::string("EQ_A")) })]);
+		OO_CHECK(![ship hasEquipmentItem:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_X")), oo::PList(1) })]);
+		OO_CHECK([ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")) })]);
+		OO_CHECK(![ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")), oo::PList(std::string("EQ_B")) })]);
+		OO_CHECK([ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")), oo::PList(std::string("EQ_B")) }) includeWeapons:NO whileLoading:YES]);
+		OO_CHECK(![ship hasAllEquipment:oo::PList(oo::PList::Array{ oo::PList(std::string("EQ_A")), oo::PList(2) })]);
+		OO_CHECK([ship cxx_hasEquipmentItemProviding:"EQ_A"] && ![ship cxx_hasEquipmentItemProviding:"EQ_Z"]);
+		OO_CHECK([ship cxx_equipmentItemProviding:"EQ_A"] == std::optional<std::string>("EQ_A"));
+		OO_CHECK([ship cxx_equipmentItemProviding:"EQ_Z"] == std::nullopt);
+		OO_CHECK(![ship hasPrimaryWeapon:nil]);
+	}
+}
+
+
+OO_TEST(hyperspaceMotor)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"motor" definition:Definition()] autorelease];
+		[ship setHyperspaceSpinTime:12.0f];
+		OO_CHECK([ship hyperspaceSpinTime] == 12.0f && [ship hasHyperspaceMotor]);
+		[ship setHyperspaceSpinTime:-1.0f];
+		OO_CHECK(![ship hasHyperspaceMotor]);
+	}
+}
+
+
+// --- Slice 9: equipment validity and adding, weapon mounts, scripting lists (bead oo-ke13m) ---------
+
+OO_TEST(weaponMountsAndLists)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"mounts" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{ { "weapon_facings", oo::PList(WEAPON_FACING_FORWARD | WEAPON_FACING_AFT) } })]);
+		OO_CHECK([ship weaponFacings] == (WEAPON_FACING_FORWARD | WEAPON_FACING_AFT));
+		// No weapon data is loaded: every mount is empty, and a facing the ship lacks has nothing.
+		OO_CHECK(isWeaponNone([ship weaponTypeIDForFacing:WEAPON_FACING_FORWARD strict:YES]));
+		OO_CHECK([ship weaponTypeIDForFacing:WEAPON_FACING_PORT strict:NO] == nil);
+		OO_CHECK([ship weaponTypeForFacing:WEAPON_FACING_STARBOARD strict:NO] == nil);
+		OO_CHECK([ship missilesList].empty());
+		const oo::PList passengers = [ship passengerListForScripting];
+		OO_CHECK(passengers.isArray() && passengers.count() == 0);
+		OO_CHECK([ship parcelListForScripting].isArray() && [ship contractListForScripting].isArray());
+	}
+}
+
+
+OO_TEST(equipmentKeysAndUnknownEquipment)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"keys" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_equipmentKeys].empty() && [ship equipmentCount] == 0);
+		MutablePart(ship)->_equipment = { "EQ_A", "EQ_B" };
+		OO_CHECK([ship cxx_equipmentKeys] == std::vector<std::string>({ "EQ_A", "EQ_B" }) && [ship equipmentCount] == 2);
+		// An equipment key with no equipment type is never valid, and is not added.
+		OO_CHECK(![ship cxx_equipmentValidToAdd:"EQ_UNKNOWN" inContext:"npc"]);
+		OO_CHECK(![ship canAddEquipment:"EQ_UNKNOWN" inContext:"npc"]);
+		OO_CHECK(![ship addEquipmentItem:"EQ_UNKNOWN" inContext:"npc"]);
+		OO_CHECK([ship equipmentCount] == 2);
+	}
+}
+
+
+// --- Slice 10: equipment removal, missiles, capacities, has-equipment predicates, shields (oo-wvcs2)
+
+OO_TEST(capacitiesAndPredicates)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"preds" definition:Definition()] autorelease];
+		OO_CHECK([ship cxx_setUpFromDictionary:oo::PList(oo::PList::Dict{
+			{ "missiles", oo::PList(2) }, { "max_missiles", oo::PList(4) }, { "extra_cargo", oo::PList(7) } })]);
+		OO_CHECK([ship missileCount] == 2 && [ship missileCapacity] == 4 && [ship extraCargo] == 7);
+		OO_CHECK([ship parcelCount] == 0 && [ship passengerCount] == 0 && [ship passengerCapacity] == 0);
+		OO_CHECK([ship maxHyperspaceDistance] == MAX_JUMP_RANGE);
+
+		OO_CHECK(![ship hasScoop] && ![ship hasECM] && ![ship hasShieldBooster] && ![ship hasEscapePod]);
+		OO_CHECK([ship shieldBoostFactor] == 1.0f && [ship shieldRechargeRate] == 2.0f);
+		OO_CHECK([ship maxForwardShieldLevel] == BASELINE_SHIELD_LEVEL && [ship maxAftShieldLevel] == BASELINE_SHIELD_LEVEL);
+
+		// Each predicate is "some equipment provides the key" (a key provides itself).
+		MutablePart(ship)->_equipment = { "EQ_FUEL_SCOOPS", "EQ_ECM", "EQ_SHIELD_BOOSTER", "EQ_NAVAL_SHIELD_BOOSTER",
+			"EQ_CLOAKING_DEVICE", "EQ_MILITARY_SCANNER_FILTER", "EQ_MILITARY_JAMMER", "EQ_CARGO_BAY", "EQ_HEAT_SHIELD",
+			"EQ_FUEL_INJECTION", "EQ_QC_MINE", "EQ_ESCAPE_POD", "EQ_DOCK_COMP", "EQ_GAL_DRIVE" };
+		OO_CHECK([ship hasScoop] && [ship hasFuelScoop] && ![ship hasCargoScoop]);
+		OO_CHECK([ship hasECM] && [ship hasCloakingDevice] && [ship hasMilitaryScannerFilter] && [ship hasMilitaryJammer]);
+		OO_CHECK([ship hasExpandedCargoBay] && [ship hasShieldBooster] && [ship hasMilitaryShieldEnhancer]);
+		OO_CHECK([ship hasHeatShield] && [ship hasFuelInjection] && [ship hasEscapePod] && [ship hasCascadeMine]);
+		OO_CHECK([ship hasDockingComputer] && [ship hasGalacticHyperdrive]);
+		OO_CHECK([ship shieldBoostFactor] == 3.0f && [ship shieldRechargeRate] == 3.0f);
+		OO_CHECK([ship maxForwardShieldLevel] == BASELINE_SHIELD_LEVEL * 3.0f);
+
+		// An unknown equipment type is not removed; -removeAllEquipment clears the keys.
+		[ship removeEquipmentItem:"EQ_ECM"];
+		OO_CHECK([ship hasECM]);
+		[ship removeAllEquipment];
+		OO_CHECK([ship equipmentCount] == 0 && ![ship hasECM]);
+	}
+}
+
+
+OO_TEST(removeMissiles)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"launcher" definition:Definition()] autorelease];
+		OO_CHECK([ship removeMissiles] == 0 && [ship missileCount] == 0);
+	}
+}
+
+
+// --- Slice 11: thrust and afterburner; idle, tumble, tractored, track, intercept, dogfight (oo-eh955)
+
+OO_TEST(thrustAndAfterburner)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"burner" definition:Definition()] autorelease];
+		[ship setAfterburnerFactor:4.0f];
+		[ship setAfterburnerRate:0.5f];
+		[ship setMaxThrust:30.0f];
+		OO_CHECK([ship afterburnerFactor] == 4.0f && [ship afterburnerRate] == 0.5f && [ship maxThrust] == 30.0f);
+		OO_CHECK([ship thrust] == 0.0f);	// the thrust itself is the set-up's, not -setMaxThrust:'s
+	}
+}
+
+
+// -behaviour_stop_still: and -behaviour_idle: centre the sticks (a buoy keeps rolling), and the
+// sticks move the flight controls at their rate (-applySticks:).
+OO_TEST(behaviourStopStillAndIdle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"still" definition:Definition()] autorelease];
+		MutablePart(ship)->flightRoll = 1.0f;
+		MutablePart(ship)->stick_roll = 1.0f;
+		MutablePart(ship)->stick_pitch = 1.0f;
+		[ship behaviour_stop_still:0.1];
+		OO_CHECK(Part(ship)->stick_roll == 0 && Part(ship)->stick_pitch == 0 && Part(ship)->stick_yaw == 0);
+		OO_CHECK(fabs(Part(ship)->flightRoll - 0.8f) < 1e-5f);
+
+		[ship setScanClass:CLASS_BUOY];
+		MutablePart(ship)->flightRoll = 0.5f;
+		MutablePart(ship)->flightPitch = 0.25f;
+		[ship behaviour_idle:0.1];
+		OO_CHECK(Part(ship)->stick_roll == 0.5f && Part(ship)->stick_pitch == 0.25f && Part(ship)->stick_yaw == 0);
+		OO_CHECK(Part(ship)->flightRoll == 0.5f && Part(ship)->flightPitch == 0.25f);
+
+		[ship setScanClass:CLASS_NEUTRAL];
+		[ship behaviour_idle:0.1];
+		OO_CHECK(Part(ship)->stick_roll == 0 && Part(ship)->stick_pitch == 0);
+
+		MutablePart(ship)->stick_roll = 0.5f;
+		MutablePart(ship)->flightRoll = 0.0f;
+		[ship behaviour_tumble:0.1];	// the sticks as they are
+		OO_CHECK(Part(ship)->stick_roll == 0.5f && fabs(Part(ship)->flightRoll - 0.2f) < 1e-5f);
+	}
+}
+
+
+// Behaviours that need a target, with none: the ship notes the lost target and goes idle.
+OO_TEST(behavioursWithoutATarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"hunter" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_SLOW_DOGFIGHT;
+		[ship behaviour_attack_slow_dogfight:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BREAK_OFF_TARGET;
+		[ship behaviour_attack_break_off_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// --- Slice 12: behaviours: attack target, broadside, close with target (bead oo-0akes) --------------
+
+// With no target the attack behaviours note the lost target and go idle.
+OO_TEST(attackBehavioursWithoutATarget)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"attacker" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE;
+		[ship behaviour_attack_broadside:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+		[ship behaviour_attack_broadside_left:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+		[ship behaviour_attack_broadside_right:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_TO_BROADSIDE_RANGE;
+		[ship behaviour_close_to_broadside_range:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_CLOSE_WITH_TARGET;
+		[ship behaviour_close_with_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// -behaviour_attack_target: chooses the next attack behaviour: an unarmed ship (no weapon on any
+// mount or subentity) flies from its target, and the choice resets the ship's frustration. The
+// broadside on either side, with no target, notes the lost target and goes idle.
+OO_TEST(attackTargetChoiceAndBroadsideSides)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = [[[TestShip alloc] cxx_initWithKey:"unarmed" definition:Definition()] autorelease];
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_TARGET;
+		MutablePart(ship)->frustration = 5.0f;
+		[ship behaviour_attack_target:0.1];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_ATTACK_FLY_FROM_TARGET);
+		OO_CHECK(Part(ship)->frustration == 0.0f);
+
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_LEFT;
+		[ship behaviour_attack_broadside_target:0.1 leftside:YES];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+		MutablePart(ship)->behaviour = BEHAVIOUR_ATTACK_BROADSIDE_RIGHT;
+		[ship behaviour_attack_broadside_target:0.1 leftside:NO];
+		OO_CHECK(Part(ship)->behaviour == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// --- Slices 13-15: the behaviours (the expectations were run on the Objective-C methods first) ----
+
+namespace {
+
+// A ship in flight at the origin, with a top speed and a scanner, and nothing else.
+TestShip *FlyingShip(const char *key)
+{
+	TestShip *ship = [[[TestShip alloc] cxx_initWithKey:key definition:Definition()] autorelease];
+	[ship setMaxFlightSpeed:200];
+	[ship setScannerRange:25600];
+	[ship setPosition:kZeroHPVector];
+	return ship;
+}
+
+
+// A ship the first one targets, at (0, 0, z).
+// (Not -addTarget:, which tells the ship's scripts, and a ship has no JavaScript object here.)
+TestShip *TargetAt(TestShip *ship, double z)
+{
+	TestShip *target = FlyingShip("target");
+	[target setPosition:make_HPvector(0, 0, z)];
+	SetPrimaryTarget(ship, target);
+	return target;
+}
+
+}	// namespace
+
+
+// Slices 13 and 14: an attack behaviour with no target to track notes the lost target and goes idle.
+OO_TEST(attackBehavioursWithoutATargetGoIdle)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		const struct { OOBehaviour behaviour; void (*run)(TestShip *); } cases[] =
+		{
+			{ BEHAVIOUR_ATTACK_SNIPER, [](TestShip *s) { [s behaviour_attack_sniper:0.1]; } },
+			{ BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX, [](TestShip *s) { [s behaviour_fly_to_target_six:0.1]; } },
+			{ BEHAVIOUR_ATTACK_MINING_TARGET, [](TestShip *s) { [s behaviour_attack_mining_target:0.1]; } },
+			{ BEHAVIOUR_ATTACK_FLY_TO_TARGET, [](TestShip *s) { [s behaviour_attack_fly_to_target:0.1]; } },
+			{ BEHAVIOUR_ATTACK_FLY_FROM_TARGET, [](TestShip *s) { [s behaviour_attack_fly_from_target:0.1]; } },
+			{ BEHAVIOUR_RUNNING_DEFENSE, [](TestShip *s) { [s behaviour_running_defense:0.1]; } },
+			{ BEHAVIOUR_FLEE_TARGET, [](TestShip *s) { [s behaviour_flee_target:0.1]; } },
+		};
+		for (const auto &c : cases)
+		{
+			TestShip *ship = FlyingShip("lonely");
+			[ship setBehaviour:c.behaviour];
+			SetFrustration(ship, 2);
+			c.run(ship);
+			OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE && [ship frustration] == 0);
+		}
+
+		// The miner also slows to three eighths of its top speed.
+		TestShip *miner = FlyingShip("miner");
+		[miner behaviour_attack_mining_target:0.1];
+		OO_CHECK([miner desiredSpeed] == 200 * 0.375);
+	}
+}
+
+
+// Slice 13: the sniper closes in to attack inside 15 km, and outside it flies at top speed while
+// out of weapon range.
+OO_TEST(sniper)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("sniper");
+		TargetAt(ship, 1000);
+		[ship setBehaviour:BEHAVIOUR_ATTACK_SNIPER];
+		[ship behaviour_attack_sniper:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_ATTACK_TARGET);
+
+		TestShip *distant = FlyingShip("distant sniper");
+		TargetAt(distant, 20000);
+		[distant setBehaviour:BEHAVIOUR_ATTACK_SNIPER];
+		[distant behaviour_attack_sniper:0.1];
+		OO_CHECK(Behaviour(distant) == BEHAVIOUR_ATTACK_SNIPER && [distant desiredSpeed] == 200);
+	}
+}
+
+
+// Slice 13: a ship already at the point it was heading for vectors in to attack at 0.4 of its top
+// speed (the target is at a standstill); the miner closes on a rock at seven eighths of it; and an
+// attacker inside its weapon range starts its attack run.
+OO_TEST(attackApproaches)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *six = FlyingShip("six");
+		TargetAt(six, 2000);
+		[six setBehaviour:BEHAVIOUR_ATTACK_FLY_TO_TARGET_SIX];
+		[six behaviour_fly_to_target_six:0.1];
+		OO_CHECK(Behaviour(six) == BEHAVIOUR_ATTACK_FLY_TO_TARGET && [six desiredSpeed] == 200 * 0.4);
+
+		TestShip *miner = FlyingShip("miner");
+		TargetAt(miner, 2000);
+		[miner setBehaviour:BEHAVIOUR_ATTACK_MINING_TARGET];
+		[miner behaviour_attack_mining_target:0.1];
+		OO_CHECK(Behaviour(miner) == BEHAVIOUR_ATTACK_MINING_TARGET && [miner desiredSpeed] == 200 * 0.875);
+
+		TestShip *attacker = FlyingShip("attacker");
+		TargetAt(attacker, 1000);
+		[attacker setWeaponRange:30000];
+		[attacker setBehaviour:BEHAVIOUR_ATTACK_FLY_TO_TARGET];
+		[attacker behaviour_attack_fly_to_target:0.1];
+		OO_CHECK(Behaviour(attacker) == BEHAVIOUR_ATTACK_TARGET);
+	}
+}
+
+
+// Slice 14: the destination behaviours that only decide.
+OO_TEST(destinationDecisions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		// Inside the range it should keep: fly away from the destination, at least at top speed.
+		TestShip *ship = FlyingShip("ranger");
+		[ship setDestination:make_HPvector(0, 0, 100)];
+		[ship setDesiredRange:500];
+		[ship setDesiredSpeed:10];
+		SetFrustration(ship, 3);
+		[ship behaviour_fly_range_from_destination:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_FROM_DESTINATION && [ship desiredSpeed] == 200 && [ship frustration] == 0);
+
+		// Outside it: fly to the destination.
+		[ship setDesiredRange:50];
+		[ship behaviour_fly_range_from_destination:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
+
+		// Facing a destination stops the ship.
+		TestShip *facer = FlyingShip("facer");
+		[facer setDestination:make_HPvector(0, 1000, 0)];
+		[facer setDesiredSpeed:50];
+		[facer setBehaviour:BEHAVIOUR_FACE_DESTINATION];
+		[facer behaviour_face_destination:0.1];
+		OO_CHECK([facer desiredSpeed] == 0);
+
+		// Landing with no planet to land on: idle, and the JS AI is woken to reconsider.
+		TestShip *lander = FlyingShip("lander");
+		SetPlanetForLanding(lander, NO_TARGET);
+		[lander setBehaviour:BEHAVIOUR_LAND_ON_PLANET];
+		[lander behaviour_land_on_planet:0.1];
+		OO_CHECK(Behaviour(lander) == BEHAVIOUR_IDLE && [lander shipAIScriptWakeTime] == 1 && [lander desiredSpeed] == 0);
+
+		// Forming up with no leader: top speed.
+		TestShip *escort = FlyingShip("escort");
+		[escort setDestination:make_HPvector(0, 0, 3000)];
+		[escort setBehaviour:BEHAVIOUR_FORMATION_FORM_UP];
+		[escort behaviour_formation_form_up:0.1];
+		OO_CHECK([escort desiredSpeed] == 200);
+	}
+}
+
+
+// Slice 15: arriving, leaving, resuming after a proximity alert, and the navpoints.
+OO_TEST(destinationArrivals)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("arriving");
+		[ship setDestination:make_HPvector(0, 0, 10)];
+		[ship setDesiredRange:100];
+		[ship setDesiredSpeed:50];
+		SetFrustration(ship, 3);
+		[ship setBehaviour:BEHAVIOUR_FLY_TO_DESTINATION];
+		[ship behaviour_fly_to_destination:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE && [ship desiredSpeed] == 0 && [ship frustration] == 0);
+
+		TestShip *leaving = FlyingShip("leaving");
+		[leaving setDestination:make_HPvector(0, 0, 1000)];
+		[leaving setDesiredRange:100];
+		[leaving setDesiredSpeed:50];
+		[leaving setBehaviour:BEHAVIOUR_FLY_FROM_DESTINATION];
+		[leaving behaviour_fly_from_destination:0.1];
+		OO_CHECK(Behaviour(leaving) == BEHAVIOUR_IDLE && [leaving desiredSpeed] == 0);
+
+		// Clear of the obstacle: what the ship did before the alert resumes.
+		TestShip *avoider = FlyingShip("avoider");
+		[avoider setDestination:make_HPvector(0, 0, 1000)];
+		[avoider setDesiredRange:100];
+		[avoider setBehaviour:BEHAVIOUR_AVOID_COLLISION];
+		SetFrustration(avoider, 3);
+		SetPreviousCondition(avoider, oo::PList(oo::PList::Dict{
+			{ "behaviour", oo::PList((double)BEHAVIOUR_FLY_TO_DESTINATION) },
+			{ "desired_range", oo::PList(300.0) },
+			{ "desired_speed", oo::PList(12.0) } }));
+		[avoider behaviour_avoid_collision:0.1];
+		OO_CHECK(Behaviour(avoider) == BEHAVIOUR_FLY_TO_DESTINATION && [avoider desiredRange] == 300 && [avoider desiredSpeed] == 12 && [avoider frustration] == 0);
+
+		// A turret with no mount and no targets does nothing.
+		TestShip *turret = FlyingShip("turret");
+		[turret setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
+		[turret behaviour_track_as_turret:0.1];
+		OO_CHECK(Behaviour(turret) == BEHAVIOUR_TRACK_AS_TURRET);
+
+		// Reaching a navpoint moves on to the next; reaching the last one is the end of the route.
+		TestShip *nav = FlyingShip("navigator");
+		[nav setDesiredRange:50];
+		[nav setBehaviour:BEHAVIOUR_FLY_THRU_NAVPOINTS];
+		SetNavpoints(nav, { make_HPvector(0, 0, 10), make_HPvector(0, 0, 5000), make_HPvector(0, 5000, 5000) }, 0);
+		[nav behaviour_fly_thru_navpoints:0.1];
+		OO_CHECK(NextNavpoint(nav) == 1 && Behaviour(nav) == BEHAVIOUR_FLY_THRU_NAVPOINTS);
+		SetNavpoints(nav, { make_HPvector(0, 5000, 5000), make_HPvector(0, 0, 10) }, 1);
+		[nav behaviour_fly_thru_navpoints:0.1];
+		OO_CHECK(NextNavpoint(nav) == 0 && Behaviour(nav) == BEHAVIOUR_IDLE);
+	}
+}
+
+
+// Slice 15: a scripted AI with no ship script reverts to idle; the reaction time, and the target
+// position it leads by.
+OO_TEST(scriptedAIAndReactionTime)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("scripted");
+		[ship setBehaviour:BEHAVIOUR_SCRIPTED_AI];
+		[ship behaviour_scripted_ai:0.1];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_IDLE);
+
+		OO_CHECK([ship reactionTime] == 0);
+		[ship setReactionTime:0.75f];
+		OO_CHECK([ship reactionTime] == 0.75f);
+
+		OO_CHECK(HPvector_equal([ship calculateTargetPosition], kZeroHPVector));		// no target
+		TestShip *hunter = FlyingShip("hunter");
+		TargetAt(hunter, 1234);
+		OO_CHECK(HPvector_equal([hunter calculateTargetPosition], make_HPvector(0, 0, 1234)));	// no reaction time: where it is
+	}
+}
+
+
+// Slice 16: the tracking curve through a target that is standing still is that target's position,
+// with or without a reaction time.
+OO_TEST(trackingCurve)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("tracker");
+		[ship setReactionTime:0.6f];
+		TargetAt(ship, 1500);
+		[ship startTrackingCurve];
+		HPVector led = [ship calculateTargetPosition];
+		OO_CHECK(fabs(led.x) < 1e-6 && fabs(led.y) < 1e-6 && fabs(led.z - 1500) < 1e-6);
+		[ship updateTrackingCurve];	// too soon after the start: unchanged
+		led = [ship calculateTargetPosition];
+		OO_CHECK(fabs(led.z - 1500) < 1e-6);
+
+		[ship setReactionTime:0];
+		[ship calculateTrackingCurve];
+		OO_CHECK(HPvector_equal([ship calculateTargetPosition], make_HPvector(0, 0, 1500)));
+	}
+}
+
+
+// Slice 16: the scanner colours, scripted and by scan class.
+OO_TEST(scannerColours)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("coloured");
+		OOColor *red = [OOColor colorWithRed:1 green:0 blue:0 alpha:1];
+		OOColor *blue = [OOColor colorWithRed:0 green:0 blue:1 alpha:1];
+		OO_CHECK([ship scannerDisplayColor1] == nil && [ship scannerDisplayColorHostile2] == nil);
+		[ship setScannerDisplayColor1:red];
+		[ship setScannerDisplayColor2:blue];
+		[ship setScannerDisplayColorHostile1:blue];
+		[ship setScannerDisplayColorHostile2:red];
+		OO_CHECK([ship scannerDisplayColor1] == red && [ship scannerDisplayColor2] == blue);
+		OO_CHECK([ship scannerDisplayColorHostile1] == blue && [ship scannerDisplayColorHostile2] == red);
+		[ship setScannerDisplayColor2:nil];		// nil: the ship's definition's, which has none
+		OO_CHECK([ship scannerDisplayColor2] == nil);
+
+		TestShip *other = FlyingShip("viewer");
+		GLfloat *c = [ship scannerDisplayColorForShip:other :NO :YES :red :nil :nil :nil];
+		OO_CHECK(c[0] == 1 && c[1] == 0 && c[2] == 0 && c[3] == 1);
+		c = [ship scannerDisplayColorForShip:other :YES :NO :red :nil :red :blue];	// hostile, not flashing: the second
+		OO_CHECK(c[0] == 0 && c[2] == 1);
+		[ship setScanClass:CLASS_CARGO];
+		c = [ship scannerDisplayColorForShip:other :NO :NO :nil :nil :nil :nil];
+		OO_CHECK(c[0] == 0.9f && c[1] == 0.9f && c[2] == 0.9f && c[3] == 1);
+		[ship setScanClass:CLASS_POLICE];
+		c = [ship scannerDisplayColorForShip:other :YES :YES :nil :nil :nil :nil];
+		OO_CHECK(c[0] == 1 && c[1] == 0 && c[2] == 0.5f);
+		[ship setScanClass:CLASS_NEUTRAL];
+		c = [ship scannerDisplayColorForShip:other :NO :NO :nil :nil :nil :nil];
+		OO_CHECK(c[0] == 1 && c[1] == 1 && c[2] == 0);
+	}
+}
+
+
+// Slice 16: cloaking flags, owner, thrust and orientation.
+OO_TEST(cloakOwnerThrustAndOrientation)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("flier");
+		OO_CHECK(![ship isCloaked] && ![ship hasAutoCloak] && ![ship isJammingScanning]);
+		[ship setAutoCloak:YES];
+		OO_CHECK([ship hasAutoCloak]);
+
+		TestShip *mother = FlyingShip("mother");
+		[ship setOwner:mother];
+		OO_CHECK([ship owner] == mother);
+		[ship setOwner:nil];
+
+		// Full thrust from a standstill: up to the desired speed, and forward by speed x time.
+		[ship setThrust:1000];
+		[ship setDesiredSpeed:100];
+		[ship applyThrust:0.5];
+		OO_CHECK([ship flightSpeed] == 100);
+		OO_CHECK(fabs([ship position].z - 50) < 1e-6);
+
+		// Turned at random: the vectors follow the orientation.
+		Quaternion q;
+		quaternion_set_random(&q);
+		[ship setOrientation:q];
+		Vector f = [ship forwardVector], expected = vector_forward_from_quaternion([ship orientation]);
+		OO_CHECK(fabs(f.x - expected.x) < 1e-6 && fabs(f.y - expected.y) < 1e-6 && fabs(f.z - expected.z) < 1e-6);
+	}
+}
+
+
+// Slice 17: rolling, climbing and yawing turn the ship by the product of the turns, and update its
+// vectors; with no turn and no rotation so far, nothing happens.
+OO_TEST(attitude)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("acrobat");
+		[ship applyRoll:0 andClimb:0];
+		OO_CHECK(quaternion_equal([ship orientation], kIdentityQuaternion));
+
+		Quaternion q = kIdentityQuaternion;
+		quaternion_rotate_about_z(&q, -0.1f);
+		quaternion_rotate_about_x(&q, -0.2f);
+		[ship applyRoll:0.1f andClimb:0.2f];
+		Quaternion o = [ship orientation];
+		OO_CHECK(fabs(o.w - q.w) < 1e-6 && fabs(o.x - q.x) < 1e-6 && fabs(o.y - q.y) < 1e-6 && fabs(o.z - q.z) < 1e-6);
+		Vector f = [ship forwardVector], expected = vector_forward_from_quaternion(o);
+		OO_CHECK(fabs(f.x - expected.x) < 1e-6 && fabs(f.y - expected.y) < 1e-6 && fabs(f.z - expected.z) < 1e-6);
+
+		// The attitude rates times the time step, as one turn.
+		TestShip *a = FlyingShip("rates");
+		TestShip *b = FlyingShip("by hand");
+		[a setRoll:0.5];
+		[a setPitch:0.25];
+		[a setYaw:-0.5];
+		[a applyAttitudeChanges:0.2];
+		[b applyRoll:(GLfloat)(0.5 * M_PI / 2.0) * 0.2 climb:(GLfloat)(0.25 * M_PI / 2.0) * 0.2 andYaw:(GLfloat)(-0.5 * M_PI / 2.0) * 0.2];	// -setRoll: is a fraction of a right angle
+		Quaternion qa = [a orientation], qb = [b orientation];
+		OO_CHECK(fabs(qa.w - qb.w) < 1e-6 && fabs(qa.x - qb.x) < 1e-6 && fabs(qa.y - qb.y) < 1e-6 && fabs(qa.z - qb.z) < 1e-6);
+	}
+}
+
+
+// Slice 17: avoiding a collision remembers what the ship was doing and heads for the point between
+// the two ships; resuming restores it.
+OO_TEST(avoidCollisionAndResume)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("careful");
+		TestShip *rock = FlyingShip("rock");
+		[rock setPosition:make_HPvector(0, 0, 400)];
+		[ship setBehaviour:BEHAVIOUR_FLY_TO_DESTINATION];
+		[ship setDestination:make_HPvector(0, 0, 9000)];
+		[ship setDesiredRange:300];
+		[ship setDesiredSpeed:12];
+
+		[ship avoidCollision];		// no alert: nothing
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
+
+		SetProximityAlert(ship, rock);
+		OO_CHECK([ship proximityAlert] == rock);
+		[ship avoidCollision];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_AVOID_COLLISION);
+		OO_CHECK(HPvector_equal([ship destination], make_HPvector(0, 0, 200)));
+
+		[ship resumePostProximityAlert];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION && [ship desiredRange] == 300 && [ship desiredSpeed] == 12);
+		OO_CHECK(HPvector_equal([ship destination], make_HPvector(0, 0, 9000)));
+		OO_CHECK([ship proximityAlert] == nil);
+
+		// A missile does not avoid anything.
+		[ship setScanClass:CLASS_MISSILE];
+		SetProximityAlert(ship, rock);
+		[ship avoidCollision];
+		OO_CHECK(Behaviour(ship) == BEHAVIOUR_FLY_TO_DESTINATION);
+
+		// Clearing the alert, and a light object never raises one.
+		[ship setProximityAlert:nil];
+		OO_CHECK([ship proximityAlert] == nil);
+		[ship setProximityAlert:rock];		// mass 0
+		OO_CHECK([ship proximityAlert] == nil);
+	}
+}
+
+
+// Slice 17: message time, groups and escorts.
+OO_TEST(groupsAndEscorts)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("leader");
+		[ship setMessageTime:4.5];
+		OO_CHECK([ship messageTime] == 4.5);
+
+		OO_CHECK(![ship hasEscorts] && [ship escortCount] == 0 && [ship cxx_escorts].empty());
+		OOShipGroup *escorts = [ship escortGroup];		// made on demand, led by the ship
+		OO_CHECK(escorts != nil && [escorts leader] == ship && [ship escortGroup] == escorts);
+		TestShip *wingman = FlyingShip("wingman");
+		[escorts addShip:wingman];
+		OO_CHECK([ship hasEscorts] && [ship escortCount] == 1);
+		OO_CHECK([ship cxx_escorts].size() == 1 && [ship cxx_escorts][0].get() == wingman && [ship escortArray].size() == 1);
+
+		OOShipGroup *other = [[[OOShipGroup alloc] init] autorelease];
+		[ship setEscortGroup:other];
+		OO_CHECK([ship escortGroup] == other && [other leader] == ship);
+
+		OOShipGroup *group = [[[OOShipGroup alloc] init] autorelease];
+		[wingman setGroup:group];
+		OO_CHECK([wingman group] == group && [group containsShip:wingman]);
+		[wingman setGroup:nil];
+		OO_CHECK([wingman group] == nil && ![group containsShip:wingman]);
+
+		TestShip *station = FlyingShip("station");
+		OOShipGroup *stationGroup = [station stationGroup];
+		OO_CHECK(stationGroup != nil && [stationGroup leader] == station && [station group] == stationGroup);
+
+		[ship setMaxEscortCount:3];
+		[ship setPendingEscortCount:5];
+		OO_CHECK([ship maxEscortCount] == 3 && [ship pendingEscortCount] == 3);
+		OO_CHECK([ship turretCount] == 0);
+	}
+}
+
+
+// Slice 17: the names, and what the ship is called on screen.
+OO_TEST(names)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("named");
+		[ship cxx_setName:std::string("Cobra Mk III")];
+		OO_CHECK([ship cxx_name] == std::optional<std::string>("Cobra Mk III"));
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra Mk III"));
+		[ship cxx_setShipUniqueName:std::string("Lucky")];
+		OO_CHECK([ship cxx_shipUniqueName] == std::optional<std::string>("Lucky"));
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra Mk III: Lucky"));
+		[ship cxx_setShipClassName:std::string("Cobra")];
+		OO_CHECK([ship cxx_shipClassName] == std::optional<std::string>("Cobra"));
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra: Lucky"));
+		[ship cxx_setShipUniqueName:std::string("")];
+		OO_CHECK([ship displayName] == std::optional<std::string>("Cobra"));
+		[ship cxx_setDisplayName:std::string("The Cobra")];
+		OO_CHECK([ship displayName] == std::optional<std::string>("The Cobra"));
+
+		OO_CHECK([ship cxx_scanDescriptionForScripting] == std::nullopt);
+		[ship cxx_setScanDescription:std::string("Trader")];
+		OO_CHECK([ship cxx_scanDescription] == std::optional<std::string>("Trader") && [ship cxx_scanDescriptionForScripting] == std::optional<std::string>("Trader"));
+	}
+}
+
+
+// Slice 18: roles. A ship has its primary role, its data key's automatic role and the roles of its
+// role set; adding is a no-op for a role it has.
+OO_TEST(roles)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("cobra3-trader");
+		[ship setPrimaryRole:"trader"];
+		OO_CHECK([ship cxx_primaryRole] == std::optional<std::string>("trader") && [ship cxx_hasPrimaryRole:"trader"]);
+		OO_CHECK([ship hasRole:"trader"] && [ship hasRole:"[cobra3-trader]"] && ![ship hasRole:"pirate"]);
+		[ship addRole:"pirate"];
+		OO_CHECK([ship hasRole:"pirate"]);
+		[ship cxx_addRole:"hunter" withProbability:0.5f];
+		OO_CHECK([ship hasRole:"hunter"]);
+		OORoleSet *roles = [ship roleSet];
+		OO_CHECK([roles hasRole:"pirate"] && [roles hasRole:"hunter"] && [roles hasRole:"trader"] && [roles hasRole:"[cobra3-trader]"]);
+		[ship cxx_removeRole:"pirate"];
+		OO_CHECK(![ship hasRole:"pirate"] && [ship hasRole:"hunter"]);
+
+		// The weapons are known by their primary role.
+		[ship setPrimaryRole:"EQ_HARDENED_MISSILE"];
+		OO_CHECK([ship isMissile] && ![ship isMine] && [ship isWeapon]);
+		[ship setPrimaryRole:"missile"];
+		OO_CHECK([ship isMissile]);
+		[ship setPrimaryRole:"EQ_QC_MINE"];
+		OO_CHECK(![ship isMissile] && [ship isMine] && [ship isWeapon]);
+	}
+}
+
+
+// Slice 18: the ship-type predicates that do not ask the universe, and hostility.
+OO_TEST(typesAndHostility)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("viper");
+		[ship setScanClass:CLASS_POLICE];
+		OO_CHECK([ship isPolice] && ![ship isThargoid]);
+		[ship setScanClass:CLASS_THARGOID];
+		OO_CHECK(![ship isPolice] && [ship isThargoid]);
+		OO_CHECK(![ship isUnpiloted] && ![ship isExplicitlyUnpiloted]);
+		[ship setScanClass:CLASS_CARGO];
+		OO_CHECK([ship isUnpiloted]);
+		[ship setScanClass:CLASS_NEUTRAL];
+		[ship setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
+		OO_CHECK([ship isTurret]);
+
+		// Hostile: a ship target and an attacking behaviour (or one it will resume after an alert).
+		[ship setBehaviour:BEHAVIOUR_ATTACK_TARGET];
+		OO_CHECK(![ship hasHostileTarget]);		// no target
+		TestShip *target = TargetAt(ship, 1000);
+		OO_CHECK([ship hasHostileTarget] && [ship isHostileTo:target] && ![ship isHostileTo:ship]);
+		[ship setBehaviour:BEHAVIOUR_FLY_TO_DESTINATION];
+		OO_CHECK(![ship hasHostileTarget]);
+		[ship setBehaviour:BEHAVIOUR_AVOID_COLLISION];
+		SetPreviousCondition(ship, oo::PList(oo::PList::Dict{ { "behaviour", oo::PList((double)BEHAVIOUR_ATTACK_SNIPER) } }));
+		OO_CHECK([ship hasHostileTarget]);
+		[ship setBehaviour:BEHAVIOUR_IDLE];
+		[ship setPrimaryRole:"missile"];
+		OO_CHECK([ship hasHostileTarget]);		// a missile's target always is
+
+		// Without a jammer, a ship is identified by its display name.
+		[ship cxx_setDisplayName:std::string("Viper")];
+		OO_CHECK([ship identFromShip:target] == std::optional<std::string>("Viper"));
+	}
+}
+
+
+// Slice 18: the weapon and scanner values, and leaving the aegis.
+OO_TEST(weaponAndScannerValues)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("gunship");
+		[ship setWeaponRange:5000];
+		OO_CHECK([ship weaponRange] == 5000);
+		[ship setEnergyRechargeRate:2.5f];
+		OO_CHECK([ship energyRechargeRate] == 2.5f);
+		[ship setWeaponRechargeRate:0.5f];
+		OO_CHECK([ship weaponRechargeRate] == 0.5f);
+		[ship setWeaponEnergy:12];
+		OO_CHECK(WeaponDamage(ship) == 12);
+		[ship setWeaponDataFromType:nil];		// no weapon: nothing
+		OO_CHECK([ship weaponRange] == 0 && [ship weaponRechargeRate] == 0 && WeaponDamage(ship) == 0);
+		OO_CHECK([ship currentWeaponFacing] == WEAPON_FACING_FORWARD);
+		[ship setScannerRange:30000];
+		OO_CHECK([ship scannerRange] == 30000);
+		[ship setReference:make_vector(1, 2, 3)];
+		OO_CHECK(vector_equal([ship reference], make_vector(1, 2, 3)));
+		OO_CHECK(![ship reportAIMessages]);
+		[ship setReportAIMessages:YES];
+		OO_CHECK([ship reportAIMessages]);
+
+		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
+		[ship transitionToAegisNone];
+		OO_CHECK(AegisStatus(ship) == AEGIS_NONE);
+	}
+}
+
+
+// Slice 19: the aegis bookkeeping, the systems, the status and the launch delay.
+OO_TEST(aegisSystemsAndStatus)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("navigator");
+		[ship forceAegisCheck];
+		OO_CHECK(NextAegisCheck(ship) == -1.0);
+		OO_CHECK(![ship withinStationAegis]);
+		SetAegisStatus(ship, AEGIS_IN_DOCKING_RANGE);
+		OO_CHECK([ship withinStationAegis]);
+
+		OO_CHECK([ship lastAegisLock] == nil);
+		TestShip *body = FlyingShip("stand-in for a planet");
+		[ship setLastAegisLock:(Entity<OOStellarBody> *)body];
+		OO_CHECK([ship lastAegisLock] == (Entity<OOStellarBody> *)body);
+		[ship setLastAegisLock:nil];
+		OO_CHECK([ship lastAegisLock] == nil);
+
+		[ship setHomeSystem:7];
+		[ship setDestinationSystem:42];
+		OO_CHECK([ship homeSystem] == 7 && [ship destinationSystem] == 42);
+
+		[ship setStatus:STATUS_LAUNCHING];
+		OO_CHECK([ship status] == STATUS_LAUNCHING && LaunchTime(ship) == [UNIVERSE getTime]);
+		[ship setStatus:STATUS_IN_FLIGHT];
+		OO_CHECK([ship status] == STATUS_IN_FLIGHT);
+		[ship setLaunchDelay:2.5];
+		OO_CHECK(LaunchDelay(ship) == 2.5);
+	}
+}
+
+
+// Slice 19: the crew, the AI and the flags read from the definition.
+OO_TEST(crewAndAI)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("crewed");
+		OO_CHECK(![ship cxx_crew].has_value() && [ship cxx_crewForScripting].empty());
+		[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{}];
+		OO_CHECK([ship cxx_crew].has_value() && [ship cxx_crew]->empty());
+		SetExplicitlyUnpiloted(ship, true);
+		[ship cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{}];	// unpiloted ships have none
+		OO_CHECK(![ship cxx_crew].has_value());
+
+		OO_CHECK([ship getAI] == nil && ![ship hasNewAI]);
+		AI *ai = [[[AI alloc] init] autorelease];
+		[ship setAI:ai];
+		OO_CHECK([ship getAI] == ai);
+		[ship setAI:nil];
+		OO_CHECK([ship getAI] == nil);
+
+		OO_CHECK([ship hasAutoAI] && ![ship hasAutoWeapons]);	// the definition says neither
+		OO_CHECK([ship frustration] == 0);
+	}
+}
+
+
+// Slice 19: fuel is clamped to the capacity.
+OO_TEST(fuel)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("tanker");
+		OO_CHECK([ship fuelCapacity] == PLAYER_MAX_FUEL);
+		[ship setFuel:35];
+		OO_CHECK([ship fuel] == 35);
+		[ship setFuel:PLAYER_MAX_FUEL + 10];
+		OO_CHECK([ship fuel] == PLAYER_MAX_FUEL);
+	}
+}
+
+
+// Slice 20: the sticks move the flight rates towards them by a limited step; the rate setters.
+OO_TEST(sticksAndRates)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("pilot");
+		SetSticks(ship, 1.0f, -1.0f, 0.01f);
+		[ship applySticks:0.1];			// roll moves 2 x dt, pitch and yaw 4 x dt, or reach the stick
+		OO_CHECK(fabs([ship flightRoll] - 0.2f) < 1e-6 && fabs([ship flightPitch] + 0.4f) < 1e-6 && fabs([ship flightYaw] - 0.01f) < 1e-6);
+		SetSticks(ship, -1.0f, -1.0f, 0.01f);
+		[ship applySticks:0.1];			// against the current roll: four times faster
+		OO_CHECK(fabs([ship flightRoll] - (0.2f - 0.8f)) < 1e-6);
+
+		[ship setRoll:1];
+		OO_CHECK(fabs([ship flightRoll] - M_PI / 2.0) < 1e-6);
+		[ship setRawRoll:0.25];
+		OO_CHECK([ship flightRoll] == 0.25f);
+		[ship setPitch:-1];
+		[ship setYaw:0.5];
+		OO_CHECK(fabs([ship flightPitch] + M_PI / 2.0) < 1e-6 && fabs([ship flightYaw] - M_PI / 4.0) < 1e-6);
+		[ship setThrust:12];
+		OO_CHECK([ship thrust] == 12);
+		[ship setThrustForDemo:0.5f];
+		OO_CHECK([ship flightSpeed] == 100);
+		[ship setSpeed:42];
+		OO_CHECK([ship flightSpeed] == 42);
+		[ship setDesiredSpeed:17];
+		OO_CHECK([ship desiredSpeed] == 17);
+	}
+}
+
+
+// Slice 20: bounty and legal status.
+OO_TEST(bountyAndLegalStatus)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("offender");
+		[ship setBounty:40];
+		OO_CHECK([ship bounty] == 40 && [ship legalStatus] == 40);
+		[ship setBounty:60 withReason:kOOLegalStatusReasonByScript];
+		OO_CHECK([ship bounty] == 60);
+		[ship setBounty:5 withReasonAsString:"setup"];
+		OO_CHECK([ship bounty] == 5);
+
+		[ship setScanClass:CLASS_POLICE];
+		[ship setBounty:30];		// police never have bounties
+		OO_CHECK([ship bounty] == 5);
+		[ship setScanClass:CLASS_THARGOID];
+		[ship setBounty:30];		// nor do Thargoids, but by script or set-up
+		OO_CHECK([ship bounty] == 5);
+		[ship setBounty:30 withReason:kOOLegalStatusReasonSetup];
+		OO_CHECK([ship bounty] == 30);
+		[ship setCollisionRadius:20];
+		OO_CHECK([ship legalStatus] == 100);	// a Thargoid's is five times its radius
+		[ship setScanClass:CLASS_ROCK];
+		OO_CHECK([ship legalStatus] == 0);
+	}
+}
+
+
+// Slice 20: commodities and cargo.
+OO_TEST(commoditiesAndCargo)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *pod = FlyingShip("pod");
+		OO_CHECK(![pod cxx_commodityType].has_value() && [pod commodityAmount] == 0);
+		[pod cxx_setCommodity:"food" andAmount:3];
+		OO_CHECK([pod cxx_commodityType] == std::optional<std::string>("food") && [pod commodityAmount] == 3);
+
+		TestShip *ship = FlyingShip("hauler");
+		[ship setMaxAvailableCargoSpace:3];
+		OO_CHECK([ship maxAvailableCargoSpace] == 3 && [ship availableCargoSpace] == 3 && [ship cargoQuantityOnBoard] == 0);
+		TestShip *food = FlyingShip("food pod");
+		[food cxx_setCommodity:"food" andAmount:1];
+		TestShip *gold = FlyingShip("gold pod");
+		[gold cxx_setCommodity:"gold" andAmount:1];
+		[ship setCargo:{ oo::ObjCRef<ShipEntity *>(food), oo::ObjCRef<ShipEntity *>(gold) }];
+		OO_CHECK([ship cxx_cargoCount] == 2 && [ship cargoQuantityOnBoard] == 2 && [ship availableCargoSpace] == 1);
+		OO_CHECK([ship cxx_cargo]->size() == 2 && (*[ship cxx_cargo])[1].get() == gold);
+		OO_CHECK((![ship cxx_addCargo:{ oo::ObjCRef<ShipEntity *>(food), oo::ObjCRef<ShipEntity *>(food) }]));	// no room
+		OO_CHECK([ship cxx_addCargo:{ oo::ObjCRef<ShipEntity *>(food) }] && [ship cxx_cargoCount] == 3);
+		OO_CHECK(![ship cxx_removeCargo:"gold" amount:2]);		// not that many: nothing removed
+		OO_CHECK([ship cxx_cargoCount] == 3);
+		OO_CHECK([ship cxx_removeCargo:"food" amount:2] && [ship cxx_cargoCount] == 1 && (*[ship cxx_cargo])[0].get() == gold);
+
+		OO_CHECK([ship cargoFlag] == (OOCargoFlag)0 && ![ship showScoopMessage]);	// TestShip skips the set-up that reads both
+		[ship setMaxAvailableCargoSpace:0];
+		[ship setCargoFlag:CARGO_FLAG_FULL_PASSENGERS];		// no room: no cargo
+		OO_CHECK([ship cargoFlag] == CARGO_FLAG_FULL_PASSENGERS && [ship cxx_cargoCount] == 0);
+	}
+}
+
+
+// Slice 21: the flight controls, clamped to the ship's limits.
+OO_TEST(flightControls)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("controls");
+		[ship setDesiredRange:750];
+		OO_CHECK([ship desiredRange] == 750 && [ship cruiseSpeed] == 0);
+
+		[ship increase_flight_speed:50];
+		OO_CHECK([ship flightSpeed] == 50);
+		[ship increase_flight_speed:500];		// past the top speed: overshoots once
+		OO_CHECK([ship flightSpeed] == 550);
+		[ship increase_flight_speed:1];			// then is the top speed
+		OO_CHECK([ship flightSpeed] == 200);
+		OO_CHECK([ship speedFactor] == 1);
+		[ship decrease_flight_speed:150];
+		OO_CHECK([ship flightSpeed] == 50);
+		[ship decrease_flight_speed:80];
+		OO_CHECK([ship flightSpeed] == 0);
+
+		[ship setMaxFlightRoll:2];
+		[ship setMaxFlightPitch:1];
+		[ship setMaxFlightYaw:0.5f];
+		OO_CHECK([ship maxFlightRoll] == 2 && [ship maxFlightPitch] == 1 && [ship maxFlightYaw] == 0.5f);
+		[ship increase_flight_roll:3];
+		[ship increase_flight_pitch:0.25];
+		[ship decrease_flight_yaw:1];
+		OO_CHECK([ship flightRoll] == 2 && [ship flightPitch] == 0.25f && [ship flightYaw] == -0.5f);
+		[ship decrease_flight_roll:5];
+		[ship decrease_flight_pitch:0.5];
+		[ship increase_flight_yaw:2];
+		OO_CHECK([ship flightRoll] == -2 && [ship flightPitch] == -0.25f && [ship flightYaw] == 0.5f);
+
+		[ship setMaxFlightSpeed:0];
+		OO_CHECK([ship speedFactor] == 0 && [ship maxFlightSpeed] == 0);
+	}
+}
+
+
+// Slice 21: temperature, insulation, damage and hulks.
+OO_TEST(temperatureDamageAndHulks)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("hot");
+		OO_CHECK([ship temperature] == SHIP_MIN_CABIN_TEMP);
+		OO_CHECK([ship randomEjectaTemperature] == SHIP_MIN_CABIN_TEMP);	// a cold ship's debris is as cold
+		[ship setTemperature:500];
+		OO_CHECK([ship temperature] == 500);
+		float ejecta = [ship randomEjectaTemperatureWithMaxFactor:0.5f];
+		OO_CHECK(ejecta > SHIP_MIN_CABIN_TEMP && ejecta < 500);
+		[ship setHeatInsulation:2];
+		OO_CHECK([ship heatInsulation] == 2);
+
+		[ship setMaxEnergy:200];
+		[ship setEnergy:150];
+		OO_CHECK([ship damage] == 25);
+
+		OO_CHECK(![ship isHulk]);
+		[ship setHulk:YES];
+		OO_CHECK([ship isHulk] && [ship isUnpiloted]);
+		[ship setHulk:NO];
+		TestShip *sub = FlyingShip("turret");
+		SetSubEntity(sub, true);
+		[sub setHulk:YES];		// a subentity never is
+		OO_CHECK(![sub isHulk]);
+		SetSubEntity(sub, false);
+	}
+}
+
+
+// Slice 22: a ship with no model rescales its scale factor and its mass (by the cube), and its
+// subentities' positions; wreckage and the damage flag; a ship with no cargo throws nothing out.
+OO_TEST(rescaleWreckageAndDebris)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("big");
+		TestShip *sub = FlyingShip("part");
+		[sub setPosition:make_HPvector(1, 2, 3)];
+		[ship addSubEntity:sub];
+		const GLfloat scale = ScaleFactor(ship);
+		SetMass(ship, 10);
+		[ship rescaleBy:2 writeToCache:NO];
+		OO_CHECK(ScaleFactor(ship) == scale * 2 && [ship mass] == 80);
+		OO_CHECK(HPdistance([sub position], make_HPvector(2, 4, 6)) < 1e-9);
+		[ship rescaleBy:0.5];
+		OO_CHECK(ScaleFactor(ship) == scale && [ship mass] == 10);
+
+		OO_CHECK(!IsWreckage(ship) && ![ship showDamage]);
+		[ship setIsWreckage:YES];
+		SetShowDamage(ship, true);
+		OO_CHECK(IsWreckage(ship) && [ship showDamage]);
+
+		OO_CHECK([ship cxx_cargoCount] == 0);
+		[ship releaseCargoPodsDebris];
+		OO_CHECK([ship cxx_cargoCount] == 0);
+	}
+}
+
+
+// Slice 23: the heat levels, clamped to 0 ... 1; the weapon's recovery; the personality, its shader
+// seed and its range; the explosion flag; the scanner; the alignment offsets in the bounding box;
+// and beacon codes compared without case.
+OO_TEST(heatPersonalityAlignmentAndBeacons)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		TestShip *ship = FlyingShip("warm");
+		SetWeaponTemps(ship, NPC_MAX_WEAPON_TEMP / 2, NPC_MAX_WEAPON_TEMP * 2);
+		OO_CHECK([ship laserHeatLevel] == 0.5f && [ship laserHeatLevelAft] == 1.0f);
+		[ship setTemperature:SHIP_MAX_CABIN_TEMP / 4];
+		OO_CHECK([ship hullHeatLevel] == 0.25f);
+		[ship setWeaponRechargeRate:2];
+		OO_CHECK([ship weaponRecoveryTime] == 0.0f);	// the shot time starts at INITIAL_SHOT_TIME: long recovered
+		SetShotTime(ship, 0.5);
+		OO_CHECK([ship weaponRecoveryTime] == 0.75f);
+
+		[ship setEntityPersonalityInt:100];
+		OO_CHECK([ship entityPersonalityInt] == 100 && [ship randomSeedForShaders] == 100u * 0x00010001u);
+		OO_CHECK([ship entityPersonality] == 100 / (float)ENTITY_PERSONALITY_MAX);
+		[ship setEntityPersonalityInt:ENTITY_PERSONALITY_MAX + 1];	// out of range: ignored
+		OO_CHECK([ship entityPersonalityInt] == 100);
+
+		OO_CHECK(!SuppressesExplosion(ship));
+		[ship setSuppressExplosion:YES];
+		OO_CHECK(SuppressesExplosion(ship));
+
+		OO_CHECK([ship numberOfScannedShips] == 0);
+		[ship setFoundTarget:nil];
+		OO_CHECK([ship foundTarget] == nil && [ship primaryAggressor] == nil && [ship lastEscortTarget] == nil);
+
+		SetBoundingBox(ship, BoundingBox{ { -1, -2, -3 }, { 3, 4, 5 } });
+		Vector offset = [ship positionOffsetForAlignment:"MmC"];
+		OO_CHECK(offset.x == 3 && offset.y == -2 && offset.z == 1);
+		offset = [ship positionOffsetForAlignment:"c"];		// the others are padded with '-': zero
+		OO_CHECK(offset.x == 1 && offset.y == 0 && offset.z == 0);
+
+		TestShip *other = FlyingShip("beacon");
+		[ship setBeaconCode:std::string("alpha")];
+		[other setBeaconCode:std::string("BETA")];
+		OO_CHECK([ship compareBeaconCodeWith:other] == OOOrderedAscending && [other compareBeaconCodeWith:ship] == OOOrderedDescending);
 	}
 }
 
