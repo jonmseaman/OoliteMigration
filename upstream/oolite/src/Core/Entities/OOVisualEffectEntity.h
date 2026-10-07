@@ -30,6 +30,7 @@
 #import "OOJSPropID.h"
 #import "HeadUpDisplay.h"
 #import "OOWeakReference.h"
+#import "OOColor.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -47,6 +48,7 @@
 */
 // A subentity, as the class names it from inside namespace cxx (where Entity is the C++ root).
 typedef Entity<OOSubEntity> OOVisualEffectSubEntity;
+typedef Entity<OOBeaconEntity> OOVisualEffectBeaconEntity;
 using OOVisualEffectSubEntities = std::vector<oo::ObjCRef<Entity<OOSubEntity> *>>;
 
 
@@ -58,10 +60,8 @@ namespace cxx {
 /*	A visual effect (bead oo-ukxy8, slice 1 of docs/phases/3-slices/OOVisualEffectEntity.md): the
 	class shell, its state and the entity side (construction from the effect definition, the mesh,
 	subentities and flashers, scaling, orientation vectors, drawing, update, the break pattern flag,
-	the subentity relationship). Slice 2 (scanner colours, the script and its events, the beacons
-	and the shader uniforms) is still Objective-C, a category of the façade
-	(OOVisualEffectEntity+ObjCBridge.h) in OOVisualEffectEntity.mm that reads the state below through
-	oo::ToCxx(self); the members here send its selectors to oo::ToObjC(this).
+	the subentity relationship), and its scripted surface (bead oo-xkf6c, slice 2: scanner colours,
+	the script and its events, the beacons and the shader uniforms).
 */
 class OOVisualEffectEntity : public OOEntityWithDrawable
 {
@@ -128,16 +128,58 @@ public:
 	void drawImmediate(bool immediate, bool translucent) override;
 	void update(OOTimeDelta delta_t) override;
 
-	// Internal: the state. Slice 2, still Objective-C on the façade, reads and writes it through
-	// oo::ToCxx(self); it becomes private as that slice converts.
+	cxx::OOColor *scannerDisplayColor1();
+	cxx::OOColor *scannerDisplayColor2();
+	void setScannerDisplayColor1(cxx::OOColor *color);
+	void setScannerDisplayColor2(cxx::OOColor *color);
+	GLfloat *scannerDisplayColorForShip(bool flash, cxx::OOColor *scannerDisplayColor1, cxx::OOColor *scannerDisplayColor2);
+
+	void setScript(const std::optional<std::string> &script_name);
+	::OOJSScript *script();
+	oo::PList scriptInfo();
+	void doScriptEvent(ooscript::PropertyId message);
+	void remove();
+
+	// OOBeaconEntity, answered by the façade.
+	OOComparisonResult compareBeaconCodeWith(OOVisualEffectBeaconEntity *other);
+	std::optional<std::string> beaconCode();
+	void setBeaconCode(const std::optional<std::string> &bcode);
+	std::optional<std::string> beaconLabel();
+	void setBeaconLabel(const std::optional<std::string> &blabel);
+	bool isBeacon();
+	id <OOHUDBeaconIcon> beaconDrawable();
+	OOVisualEffectBeaconEntity *prevBeacon();
+	OOVisualEffectBeaconEntity *nextBeacon();
+	void setPrevBeacon(OOVisualEffectBeaconEntity *beaconShip);
+	void setNextBeacon(OOVisualEffectBeaconEntity *beaconShip);
+	bool isJammingScanning();
+
+	// convenience for shaders
+	GLfloat hullHeatLevel();
+	void setHullHeatLevel(GLfloat value);
+	// shader properties
+	GLfloat shaderFloat1();
+	void setShaderFloat1(GLfloat value);
+	GLfloat shaderFloat2();
+	void setShaderFloat2(GLfloat value);
+	int shaderInt1();
+	void setShaderInt1(int value);
+	int shaderInt2();
+	void setShaderInt2(int value);
+	Vector shaderVector1();
+	void setShaderVector1(Vector value);
+	Vector shaderVector2();
+	void setShaderVector2(Vector value);
+
+	// The state, public as the class shell left it (the test reads some of it).
 	std::optional<OOVisualEffectSubEntities>	_subEntities;	// was subEntities, named like its getter
 
 	oo::PList				effectinfoDictionary;
 
 	GLfloat					_profileRadius = {}; // for frustum culling
 
-	::OOColor				*scanner_display_color1 = {};	// retained
-	::OOColor				*scanner_display_color2 = {};	// retained
+	oo::Ref<cxx::OOColor>	scanner_display_color1;
+	oo::Ref<cxx::OOColor>	scanner_display_color2;
 
 	GLfloat         _hullHeatLevel = {};
 	GLfloat         _shaderFloat1 = {};
@@ -151,8 +193,8 @@ public:
 	Vector _v_up = {};
 	Vector _v_right = {};
 
-	::OOJSScript			*script = {};	// retained
-	oo::PList				scriptInfo;
+	::OOJSScript			*_script = {};	// retained; was script, named like its getter
+	oo::PList				_scriptInfo;	// was scriptInfo, named like its getter
 
 	std::optional<std::string>	_effectKey;
 
