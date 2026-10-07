@@ -20,6 +20,8 @@
 */
 
 #import "OOWaypointEntity.h"
+#import "EntityOOJavaScriptExtensions.h"
+#import "OOJSWaypoint.h"
 #import "Universe.h"
 
 #include "oo_test.hpp"
@@ -272,6 +274,25 @@ OO_TEST(facade)
 		OO_CHECK(dynamic_cast<cxx::OOWaypointEntity *>(oo::ToCxx(wp)) != nullptr);
 		OO_CHECK(oo::AsObjCEntity(oo::ToCxx(wp)) == nullptr);
 		OO_CHECK(oo::ToObjC(oo::ToCxx(wp)) == wp);
+	}
+}
+
+
+// The binding's category, which the facade carries since bead oo-9ht.50: what the engine asks a
+// OOWaypointEntity for by selector is what OOJSWaypoint.mm answers.
+OO_TEST(jsExtensions)
+{
+	@autoreleasepool
+	{
+		SetUp();
+		OOWaypointEntity *wp = Waypoint("W");
+		ooscript::ClassDef *jsClass = nullptr, *expectedClass = nullptr;
+		ooscript::Object prototype = nullptr, expectedPrototype = nullptr;
+		[wp getJSClass:&jsClass andPrototype:&prototype];
+		OOJSWaypointGetJSClass(&expectedClass, &expectedPrototype);
+		OO_CHECK(jsClass != nullptr && jsClass == expectedClass && prototype == expectedPrototype);
+		OO_CHECK([wp cxx_oo_jsClassName] == std::optional<std::string>("Waypoint"));
+		OO_CHECK([wp isVisibleToScripts] == YES);
 	}
 }
 

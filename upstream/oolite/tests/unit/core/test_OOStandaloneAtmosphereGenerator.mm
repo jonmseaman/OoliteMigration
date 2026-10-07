@@ -10,8 +10,10 @@
 	from the seed's noise, their alpha scaled by cloud_alpha. It links the whole game but main
 	(tests/unit/core/meson.build entry ['*']), on the hidden GL context of oo_gl_test_context.hpp.
 	The expectations were written against the Objective-C API and run on the unconverted class
-	first. Making a generator and the class methods go through the helpers below, the only lines a
-	conversion ports (amendment oo-bj8 item 11).
+	first. Making a generator and the class methods go through the helpers below, the only lines
+	the conversion ported (amendment oo-bj8 item 11): the class is now a global C++ class with no
+	facade of its own, and its generator crosses as an OOTextureGenerator. The last test pins the
+	C++ API.
 	Run: bash tools/check-core-tests.sh test_OOStandaloneAtmosphereGenerator
 */
 
@@ -66,25 +68,25 @@ oo::PList PlanetInfo(float cloudAlpha, bool perlin3d)
 
 // --- The only lines a conversion ports ----------------------------------------------------------
 
-// [[OOStandaloneAtmosphereGenerator alloc] initWithPlanetInfo:seed:], autoreleased, as a generator.
+// Was [[OOStandaloneAtmosphereGenerator alloc] initWithPlanetInfo:seed:], autoreleased, as a generator.
 OOTextureGenerator *NewGenerator(const oo::PList &info, RANROTSeed seed)
 {
-	return [[[OOStandaloneAtmosphereGenerator alloc] initWithPlanetInfo:info seed:seed] autorelease];
+	return oo::ToObjC(OOStandaloneAtmosphereGenerator::generatorWithPlanetInfo(info, seed).get());
 }
 
 
-// +generateAtmosphereTexture:withInfo:seed:; the texture, or nil where it answered NO.
+// Was +generateAtmosphereTexture:withInfo:seed:; the texture (autoreleased), or nil where it answered NO.
 OOTexture *GenerateAtmosphere(const oo::PList &info, RANROTSeed seed)
 {
-	OOTexture *texture = nil;
-	return [OOStandaloneAtmosphereGenerator generateAtmosphereTexture:&texture withInfo:info seed:seed] ? texture : nil;
+	oo::ObjCRef<OOTexture *> texture;
+	return OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&texture, info, seed) ? [[texture.get() retain] autorelease] : nil;
 }
 
 
-// +planetTextureWithInfo:seed:.
+// Was +planetTextureWithInfo:seed: (autoreleased).
 OOTexture *PlanetTexture(const oo::PList &info, RANROTSeed seed)
 {
-	return [OOStandaloneAtmosphereGenerator planetTextureWithInfo:info seed:seed];
+	return [[OOStandaloneAtmosphereGenerator::planetTextureWithInfo(info, seed).get() retain] autorelease];
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -187,14 +189,47 @@ OO_TEST(textures)
 	@autoreleasepool
 	{
 		OOTexture *atmosphere = GenerateAtmosphere(PlanetInfo(1.0f, false), kSeed);
-		OO_CHECK([atmosphere isKindOfClass:[OOConcreteTexture class]]);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(atmosphere)) != nullptr));
 		[atmosphere ensureFinishedLoading];
 		OO_CHECK([atmosphere isFinishedLoading] && [atmosphere dimensions].width == 512 && [atmosphere dimensions].height == 512);
 
 		OOTexture *texture = PlanetTexture(PlanetInfo(1.0f, true), (RANROTSeed){ 3, 4 });
-		OO_CHECK([texture isKindOfClass:[OOConcreteTexture class]]);
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture)) != nullptr));
 		[texture ensureFinishedLoading];
 		OO_CHECK([texture dimensions].width == 512 && [texture dimensions].height == 256);
+	}
+	ClearCache();
+}
+
+
+// --- The C++ API (after the conversion) --------------------------------------------------------
+
+OO_TEST(cxxApi)
+{
+	SetUp();
+	@autoreleasepool
+	{
+		const oo::Ref<OOStandaloneAtmosphereGenerator> generator = OOStandaloneAtmosphereGenerator::generatorWithPlanetInfo(PlanetInfo(1.0f, false), kSeed);
+		OO_CHECK(generator && generator->textureOptions() == (kOOTextureMinFilterLinear | kOOTextureMagFilterLinear | kOOTextureRepeatS | kOOTextureNoShrink));
+		OO_CHECK(generator->descriptionComponents() == std::optional<std::string>("seed: 12345,67890"));
+		OO_CHECK(generator->cacheKey().value_or("").starts_with("OOStandaloneAtmosphereGenerator-@2\n"));
+
+		// Its facade is an OOTextureGenerator (it has none of its own), the same one each time.
+		OOTextureGenerator *facade = oo::ToObjC(generator.get());
+		OO_CHECK([facade class] == [OOTextureGenerator class] && oo::ToCxx(facade) == generator.get() && oo::ToObjC(generator.get()) == facade);
+
+		// Loading fills the root's state; the old -getResult:format:width:height: answers the result.
+		generator->loadTexture();
+		OO_CHECK(generator->_width == 512 && generator->_height == 512 && generator->_data != nullptr);
+		OOPixMap pixMap = kOONullPixMap;
+		OOTextureDataFormat format = kOOPixMapInvalidFormat;
+		generator->completeAsyncTask();
+		OO_CHECK(generator->getResultFormatWidthHeight(&pixMap, &format, nullptr, nullptr) && format == kOOPixMapRGBA && pixMap.width == 512);
+		OOFreePixMap(&pixMap);
+
+		oo::ObjCRef<OOTexture *> texture;
+		OO_CHECK(OOStandaloneAtmosphereGenerator::generateAtmosphereTexture(&texture, PlanetInfo(1.0f, false), (RANROTSeed){ 9, 9 }) && (dynamic_cast<OOConcreteTexture *>(oo::ToCxx(texture.get())) != nullptr));
+		OO_CHECK((dynamic_cast<OOConcreteTexture *>(oo::ToCxx(OOStandaloneAtmosphereGenerator::planetTextureWithInfo(PlanetInfo(1.0f, false), (RANROTSeed){ 9, 10 }).get())) != nullptr));
 	}
 	ClearCache();
 }

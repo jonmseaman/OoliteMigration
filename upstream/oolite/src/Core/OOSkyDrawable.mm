@@ -50,22 +50,28 @@ SOFTWARE.
 	sky-render-inset-coords can be used to modify them slightly as an attempted
 	work-around for artefacts on buggy S3/Via renderers.
 */
-static float sMinTexCoord = 0.0f, sMaxTexCoord = 1.0f;
-static BOOL sInited = NO;
+namespace {
+
+float sMinTexCoord = 0.0f, sMaxTexCoord = 1.0f;
+BOOL sInited = NO;
+
+}	// namespace
 
 
 /*	Struct used to describe quads initially. This form is optimized for
 	reasoning about.
+	The colour is owned (it was autoreleased into the initialiser's pool), so the quads are a
+	std::vector, not malloc()ed (bead oo-4jjl).
 */
-typedef struct OOSkyQuadDesc
+struct OOSkyQuadDesc
 {
-	Vector				corners[4];
-	OOColor				*color;
-	OOTexture			*texture;
-} OOSkyQuadDesc;
+	Vector					corners[4];
+	oo::Ref<cxx::OOColor>	color;
+	OOTexture				*texture;
+};
 
 
-enum
+enum : uint8_t
 {
 	kSkyQuadSetPositionEntriesPerVertex		= 3,
 	kSkyQuadSetTexCoordEntriesPerVertex		= 2,
@@ -75,74 +81,65 @@ enum
 
 /*	Class containing a set of quads with the same texture. This form is
 	optimized for rendering.
+	A second class in the file with no caller outside it: global, no facade (amendment oo-vt0o
+	item 2).
 */
-@interface OOSkyQuadSet: OOObject
+class OOSkyQuadSet : public oo::RefCounted
 {
-@private
-	OOTexture				*_texture;
-	unsigned				_count;
-	GLfloat					*_positions;	// 3 entries per vertex, 12 per quad
-	GLfloat					*_texCoords;	// 2 entries per vertex, 8 per quad
-	GLfloat					*_colors;		// 4 entries per vertex, 16 per quad
-}
+public:
+	static void addQuads(OOSkyQuadDesc *quads, unsigned count, std::vector<oo::Ref<OOSkyQuadSet>> &ioArray);
 
-+ (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count toArray:(std::vector<oo::ObjCRef<OOSkyQuadSet *>> &)ioArray;
+	// Null where -initWithQuadsWithTexture:inArray:count: answered nil (amendment oo-novu).
+	static oo::Ref<OOSkyQuadSet> initWithQuadsWithTexture(OOTexture *texture, OOSkyQuadDesc *array, unsigned totalCount);
 
-- (id)initWithQuadsWithTexture:(OOTexture *)texture inArray:(OOSkyQuadDesc *)array count:(unsigned)totalCount;
+	~OOSkyQuadSet();
 
-- (void)render;
+	// What "%@" printed between the braces of <OOSkyQuadSet 0x...>{...}.
+	std::optional<std::string> descriptionComponents() const;
+
+	void render();
 
 #ifndef NDEBUG
-- (size_t) totalSize;
-- (OOTexture *) texture;
+	size_t totalSize();
+	OOTexture *texture();
 #endif
 
-@end
+private:
+	oo::ObjCRef<OOTexture *>	_texture;
+	unsigned				_count = {};
+	GLfloat					*_positions = nullptr;	// 3 entries per vertex, 12 per quad
+	GLfloat					*_texCoords = nullptr;	// 2 entries per vertex, 8 per quad
+	GLfloat					*_colors = nullptr;		// 4 entries per vertex, 16 per quad
+};
 
 
 /*	Textures are global because there is always a sky, but the sky isn't
 	replaced very often, so the textures are likely to fall out of the cache.
 */
-static OOProbabilisticTextureManager	*sStarTextures;
-static OOProbabilisticTextureManager	*sNebulaTextures;
+namespace {
+
+OOProbabilisticTextureManager	*sStarTextures;
+OOProbabilisticTextureManager	*sNebulaTextures;
 
 
-static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hueFix);
+oo::Ref<cxx::OOColor> SaturatedColorInRange(cxx::OOColor *color1, cxx::OOColor *color2, BOOL hueFix);
+
+}	// namespace
 
 
-@interface OOSkyDrawable (OOPrivate) <OOGraphicsResetClient>
-
-- (void)setUpStarsWithColor1:(OOColor *)color1 color2:(OOColor *)color2;
-- (void)setUpNebulaeWithColor1:(OOColor *)color1
-						color2:(OOColor *)color2
-				 clusterFactor:(float)nebulaClusterFactor
-				  nebulaHueFix:(BOOL)nebulaHueFix
-						 alpha:(float)nebulaAlpha
-						 scale:(float)nebulaScale;
-						
-
-- (void)loadStarTextures;
-- (void)loadNebulaTextures;
-
-- (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count;
-
-- (void)ensureTexturesLoaded;
-
-@end
+void (*OOSkyDrawable::sSetUpStarsStandIn)(OOSkyDrawable *sky, cxx::OOColor *color1, cxx::OOColor *color2) = nullptr;
 
 
-@implementation OOSkyDrawable
-
-- (id)initWithColor1:(OOColor *)color1
-			  Color2:(OOColor *)color2
-			  Color3:(OOColor *)color3
-			  Color4:(OOColor *)color4
-		   starCount:(unsigned)starCount
-		 nebulaCount:(unsigned)nebulaCount
-	    nebulaHueFix:(BOOL)nebulaHueFix
-	   clusterFactor:(float)nebulaClusterFactor
-			   alpha:(float)nebulaAlpha
-			   scale:(float)nebulaScale
+OOSkyDrawable::OOSkyDrawable(cxx::OOColor *color1,
+							 cxx::OOColor *color2,
+							 cxx::OOColor *color3,
+							 cxx::OOColor *color4,
+							 unsigned starCount,
+							 unsigned nebulaCount,
+							 bool nebulaHueFix,
+							 float nebulaClusterFactor,
+							 float nebulaAlpha,
+							 float nebulaScale)
 {
 	if (!sInited)
 	{
@@ -153,60 +150,55 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 			sMaxTexCoord -= 1.0f/128.0f;
 		}
 	}
-	
-	self = [super init];
-	if (self == nil)  return nil;
-	
+
+	// self = [super init]: could not fail (amendment oo-lh0x item 3).
+
 	_starCount = starCount;
 	_nebulaCount = nebulaCount;
-	
+
 	@autoreleasepool
 	{
-		[self setUpStarsWithColor1:color1 color2:color2];
-	
+		setUpStars(color1, color2);
+
 		if (![UNIVERSE reducedDetail])
 		{
-			[self setUpNebulaeWithColor1:color3
-								  color2:color4
-						   clusterFactor:nebulaClusterFactor
-							nebulaHueFix:nebulaHueFix
-								   alpha:nebulaAlpha
-								   scale:nebulaScale];
+			setUpNebulae(color3,
+						 color4,
+						 nebulaClusterFactor,
+						 nebulaHueFix,
+						 nebulaAlpha,
+						 nebulaScale);
 		}
 	}
-	
-	[[OOGraphicsResetManager sharedManager] registerClient:self];
-	
-	return self;
+
+	cxx::OOGraphicsResetManager::sharedManager()->registerCxxClient(this);
 }
 
 
-- (void)dealloc
+OOSkyDrawable::~OOSkyDrawable()
 {
 	OO_ENTER_OPENGL();
-	
-	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
+
+	cxx::OOGraphicsResetManager::sharedManager()->unregisterCxxClient(this);
 	if (_displayListName != 0)  glDeleteLists(_displayListName, 1);
-	
-	[super dealloc];
 }
 
 
-- (void)renderOpaqueParts
+void OOSkyDrawable::renderOpaqueParts()
 {
 	// While technically translucent, the sky doesn't need to be depth-sorted
 	// since it'll be behind everything else anyway.
-	
+
 	OO_ENTER_OPENGL();
 	OOSetOpenGLState(OPENGL_STATE_ADDITIVE_BLENDING);
-	
+
 	OOGL(glDisable(GL_DEPTH_TEST));  // don't read the depth buffer
 	OOGL(glEnable(GL_TEXTURE_2D));
-	
+
 	// Make stars dim in atmosphere. Note: works OK on night side because sky is dark blue, not black.
 	GLfloat fogColor[4] = {0.02, 0.02, 0.02, 1.0};
 	OOGL(glFogfv(GL_FOG_COLOR, fogColor));
-	
+
 	if (_displayListName != 0)
 	{
 		OOGL(glCallList(_displayListName));
@@ -214,204 +206,213 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 	else
 	{
 		// Set up display list
-		[self ensureTexturesLoaded];
+		ensureTexturesLoaded();
 		_displayListName = glGenLists(1);
-		
+
 		OOGL(glNewList(_displayListName, GL_COMPILE));
-		
+
 		OOGL(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
 		OOGL(glEnableClientState(GL_COLOR_ARRAY));
-		
-		for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)  [quadSet.get() render];
-		
+
+		for (const oo::Ref<OOSkyQuadSet> &quadSet : _quadSets)  quadSet->render();
+
 		OOGL(glDisableClientState(GL_TEXTURE_COORD_ARRAY));
 		OOGL(glDisableClientState(GL_COLOR_ARRAY));
-		
+
 		OOGL(glEndList());
 	}
-	
+
 	// Restore state
 	OOGL(glEnable(GL_DEPTH_TEST));
 	OOGL(glDisable(GL_TEXTURE_2D));
-	
+
 	// Resetting fog is draw loop's responsibility.
-	
+
 	OOVerifyOpenGLState();
 	cxx_OOCheckOpenGLErrors("OOSkyDrawable after rendering");
 }
 
 
-- (BOOL)hasOpaqueParts
+bool OOSkyDrawable::hasOpaqueParts()
 {
 	return YES;
 }
 
 
-- (GLfloat)maxDrawDistance
+GLfloat OOSkyDrawable::maxDrawDistance()
 {
 	return INFINITY;
 }
 
 #ifndef NDEBUG
-- (std::vector<oo::ObjCRef<OOTexture *>>) cxx_allTextures
+std::vector<oo::ObjCRef<OOTexture *>> OOSkyDrawable::allTextures()
 {
 	std::vector<oo::ObjCRef<OOTexture *>> result;
 	result.reserve(_quadSets.size());
-	
-	for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)
+
+	for (const oo::Ref<OOSkyQuadSet> &quadSet : _quadSets)
 	{
-		result.emplace_back([quadSet.get() texture]);
+		result.emplace_back(quadSet->texture());
 	}
-	
+
 	return result;
 }
 
 
-- (size_t) totalSize
+size_t OOSkyDrawable::totalSize()
 {
-	size_t result = [super totalSize];
-	
-	for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)
+	size_t result = cxx::OODrawable::totalSize();
+
+	for (const oo::Ref<OOSkyQuadSet> &quadSet : _quadSets)
 	{
-		result += [quadSet.get() totalSize];
+		result += quadSet->totalSize();
 	}
-	
+
 	return result;
 }
 #endif
-
-@end
 
 
 #if DEBUG_COLORS
-static OOColor *DebugColor(Vector orientation)
+namespace {
+
+oo::Ref<cxx::OOColor> DebugColor(Vector orientation)
 {
 	Vector color = vector_add(make_vector(0.55, 0.55, 0.55), vector_multiply_scalar(vector_normal(orientation), 0.45));
-	return [OOColor colorWithCalibratedRed:color.x green:color.y blue:color.z alpha:1.0];
+	return cxx::OOColor::colorWithRed(color.x, color.y, color.z, 1.0);
 }
+
+}	// namespace
 #endif
 
 
-@implementation OOSkyDrawable (OOPrivate)
+// The category OOSkyDrawable (OOPrivate): private members.
 
-- (void)setUpStarsWithColor1:(OOColor *)color1 color2:(OOColor *)color2
+void OOSkyDrawable::setUpStars(cxx::OOColor *color1, cxx::OOColor *color2)
 {
-	OOSkyQuadDesc		*quads = NULL, *currQuad = NULL;
+	if (sSetUpStarsStandIn != nullptr)
+	{
+		sSetUpStarsStandIn(this, color1, color2);
+		return;
+	}
+
+	std::vector<OOSkyQuadDesc>	quads;
+	OOSkyQuadDesc		*currQuad = NULL;
 	unsigned			i;
 	Quaternion			q;
 	Vector				vi, vj, vk;
 	float				size;
 	Vector				middle, offset;
-	
-	[self loadStarTextures];
-	
-	quads = (OOSkyQuadDesc *)malloc(sizeof *quads * _starCount);
-	if (quads == NULL)  return;
-	
-	currQuad = quads;
+
+	loadStarTextures();
+
+	quads.resize(_starCount);
+
+	currQuad = quads.data();
 	for (i = 0; i != _starCount; ++i)
 	{
 		// Select a direction and rotation.
 		q = OORandomQuaternion();
 		basis_vectors_from_quaternion(q, &vi, &vj, &vk);
-		
+
 		// Select colour and texture.
 #if DEBUG_COLORS
 		currQuad->color = DebugColor(vk);
 #else
-		currQuad->color = [color1 blendedColorWithFraction:randf() ofColor:color2];
+		// The fraction is drawn even for no colour, as the message's argument was.
+		const float fraction = randf();
+		currQuad->color = (color1 != nullptr) ? color1->blendedColorWithFraction(fraction, color2) : nullptr;
 #endif
 		currQuad->texture = (sStarTextures != nullptr) ? sStarTextures->selectTexture() : nil;	// Not retained, since sStarTextures is never released.
-		
+
 		// Select scale; calculate centre position and offset to first corner.
 		size = (1 + (ranrot_rand() % 6)) * SKY_ELEMENT_SCALE_FACTOR;
 		middle = vector_multiply_scalar(vk, BILLBOARD_DEPTH);
 		offset = vector_multiply_scalar(vector_add(vi, vj), 0.5f * size);
-		
+
 		// Scale the "side" vectors.
 		Vector vj2 = vector_multiply_scalar(vj, size);
 		Vector vi2 = vector_multiply_scalar(vi, size);
-		
+
 		// Set up corners.
 		currQuad->corners[0] = vector_subtract(middle, offset);
 		currQuad->corners[1] = vector_add(currQuad->corners[0], vj2);
 		currQuad->corners[2] = vector_add(currQuad->corners[1], vi2);
 		currQuad->corners[3] = vector_add(currQuad->corners[0], vi2);
-		
+
 		++currQuad;
 	}
-	
-	[self addQuads:quads count:_starCount];
-	free(quads);
+
+	addQuads(quads.data(), _starCount);
 }
 
 
-- (void)setUpNebulaeWithColor1:(OOColor *)color1
-						color2:(OOColor *)color2
-				 clusterFactor:(float)nebulaClusterFactor
-				  nebulaHueFix:(BOOL)nebulaHueFix
-						 alpha:(float)nebulaAlpha
-						 scale:(float)nebulaScale
+void OOSkyDrawable::setUpNebulae(cxx::OOColor *color1,
+								 cxx::OOColor *color2,
+								 float nebulaClusterFactor,
+								 bool nebulaHueFix,
+								 float nebulaAlpha,
+								 float nebulaScale)
 {
-	OOSkyQuadDesc		*quads = NULL, *currQuad = NULL;
+	std::vector<OOSkyQuadDesc>	quads;
+	OOSkyQuadDesc		*currQuad = NULL;
 	unsigned			i, actualCount = 0;
-	OOColor				*color;
+	oo::Ref<cxx::OOColor>	color;
 	Quaternion			q;
 	Vector				vi, vj, vk;
 	double				size, r2;
 	Vector				middle, offset;
 	int					r1;
-	
-	[self loadNebulaTextures];
-	
-	quads = (OOSkyQuadDesc *)malloc(sizeof *quads * _nebulaCount);
-	if (quads == NULL)  return;
-	
-	currQuad = quads;
+
+	loadNebulaTextures();
+
+	quads.resize(_nebulaCount);
+
+	currQuad = quads.data();
 	for (i = 0; i < _nebulaCount; ++i)
 	{
 		color = SaturatedColorInRange(color1, color2, nebulaHueFix);
-		
+
 		// Select a direction and rotation.
 		q = OORandomQuaternion();
-		
+
 		// Create a cluster of nebula quads.
 		while ((i < _nebulaCount) && (randf() < nebulaClusterFactor))
 		{
 			// Select size.
 			r1 = 1 + (ranrot_rand() & 15);
 			size = nebulaScale * r1 * SKY_ELEMENT_SCALE_FACTOR;
-			
+
 			// Calculate centre position and offset to first corner.
 			basis_vectors_from_quaternion(q, &vi, &vj, &vk);
-			
+
 			// Select colour and texture. Smaller nebula quads are dimmer.
 #if DEBUG_COLORS
 			currQuad->color = DebugColor(vk);
 #else
-			currQuad->color = [color colorWithBrightnessFactor:nebulaAlpha * (0.5f + (float)r1 / 32.0f)];
+			currQuad->color = (color != nullptr) ? color->colorWithBrightnessFactor(nebulaAlpha * (0.5f + (float)r1 / 32.0f)) : nullptr;
 #endif
 			currQuad->texture = (sNebulaTextures != nullptr) ? sNebulaTextures->selectTexture() : nil;	// Not retained, since sStarTextures is never released.
-			
+
 			middle = vector_multiply_scalar(vk, BILLBOARD_DEPTH);
 			offset = vector_multiply_scalar(vector_add(vi, vj), 0.5f * size);
-			
+
 			// Rotate vi and vj by a random angle
 			r2 = randf() * M_PI * 2.0;
 			quaternion_rotate_about_axis(&q, vk, r2);
 			vi = vector_right_from_quaternion(q);
 			vj = vector_up_from_quaternion(q);
-			
+
 			// Scale the "side" vectors.
 			vj = vector_multiply_scalar(vj, size);
 			vi = vector_multiply_scalar(vi, size);
-			
+
 			// Set up corners.
 			currQuad->corners[0] = vector_subtract(middle, offset);
 			currQuad->corners[1] = vector_add(currQuad->corners[0], vj);
 			currQuad->corners[2] = vector_add(currQuad->corners[1], vi);
 			currQuad->corners[3] = vector_add(currQuad->corners[0], vi);
-			
+
 			// Shuffle direction quat around a bit to spread the cluster out.
 			size = NEBULA_SHUFFLE_FACTOR / (nebulaScale * SKY_ELEMENT_SCALE_FACTOR);
 			q.x += size * (randf() - 0.5);
@@ -419,32 +420,31 @@ static OOColor *DebugColor(Vector orientation)
 			q.z += size * (randf() - 0.5);
 			q.w += size * (randf() - 0.5);
 			quaternion_normalize(&q);
-			
+
 			++i;
 			++currQuad;
 			++actualCount;
 		}
 	}
-	
+
 	/*	The above code generates less than _nebulaCount quads, because i is
 		incremented once in the outer loop as well as in the inner loop. To
 		keep skies looking the same, we leave the bug in and fill in the
 		actual generated count here.
 	*/
 	_nebulaCount = actualCount;
-	
-	[self addQuads:quads count:_nebulaCount];
-	free(quads);
+
+	addQuads(quads.data(), _nebulaCount);
 }
 
 
-- (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count
+void OOSkyDrawable::addQuads(OOSkyQuadDesc *quads, unsigned count)
 {
-	[OOSkyQuadSet addQuads:quads count:count toArray:_quadSets];
+	OOSkyQuadSet::addQuads(quads, count, _quadSets);
 }
 
 
-- (void)loadStarTextures
+void OOSkyDrawable::loadStarTextures()
 {
 	if (sStarTextures == nullptr)
 	{
@@ -457,13 +457,13 @@ static OOColor *DebugColor(Vector orientation)
 			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No star textures could be loaded."];
 		}
 	}
-	
+
 	sStarTextures->setSeed(RANROTGetFullSeed());
-	
+
 }
 
 
-- (void)loadNebulaTextures
+void OOSkyDrawable::loadNebulaTextures()
 {
 	if (sNebulaTextures == nullptr)
 	{
@@ -476,23 +476,23 @@ static OOColor *DebugColor(Vector orientation)
 			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No nebula textures could be loaded."];
 		}
 	}
-	
+
 	sNebulaTextures->setSeed(RANROTGetFullSeed());
-	
+
 }
 
 
-- (void)ensureTexturesLoaded
+void OOSkyDrawable::ensureTexturesLoaded()
 {
 	if (sStarTextures != nullptr)  sStarTextures->ensureTexturesLoaded();
 	if (sNebulaTextures != nullptr)  sNebulaTextures->ensureTexturesLoaded();
 }
 
 
-- (void)resetGraphicsState
+void OOSkyDrawable::resetGraphicsState()
 {
 	OO_ENTER_OPENGL();
-	
+
 	if (_displayListName != 0)
 	{
 		glDeleteLists(_displayListName, 1);
@@ -500,42 +500,38 @@ static OOColor *DebugColor(Vector orientation)
 	}
 }
 
-@end
 
+// OOSkyQuadSet
 
-@implementation OOSkyQuadSet
-
-+ (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count toArray:(std::vector<oo::ObjCRef<OOSkyQuadSet *>> &)ioArray
+void OOSkyQuadSet::addQuads(OOSkyQuadDesc *quads, unsigned count, std::vector<oo::Ref<OOSkyQuadSet>> &ioArray)
 {
 	std::vector<oo::ObjCRef<OOTexture *>>	seenTextures;	// by identity (textures do not override -isEqual:)
 	OOTexture				*texture = nil;
-	OOSkyQuadSet			*quadSet = nil;
+	oo::Ref<OOSkyQuadSet>	quadSet;
 	unsigned				i;
-	
+
 	// Iterate over all quads.
 	for (i = 0; i != count; ++i)
 	{
 		texture = quads[i].texture;
-		
+
 		// If we haven't seen this quad's texture before...
 		if (std::find(seenTextures.begin(), seenTextures.end(), texture) == seenTextures.end())
 		{
 			seenTextures.emplace_back(texture);
-			
+
 			// ...create a quad set for this texture.
-			quadSet = [[self alloc] initWithQuadsWithTexture:texture
-													 inArray:quads
-													   count:count];
-			if (quadSet != nil)
+			quadSet = initWithQuadsWithTexture(texture, quads, count);
+			if (quadSet != nullptr)
 			{
-				ioArray.push_back(oo::adoptObjC(quadSet));
+				ioArray.push_back(quadSet);
 			}
 		}
 	}
 }
 
 
-- (id)initWithQuadsWithTexture:(OOTexture *)texture inArray:(OOSkyQuadDesc *)array count:(unsigned)totalCount
+oo::Ref<OOSkyQuadSet> OOSkyQuadSet::initWithQuadsWithTexture(OOTexture *texture, OOSkyQuadDesc *array, unsigned totalCount)
 {
 	BOOL					OK = YES;
 	unsigned				i, j, vertexCount;
@@ -547,47 +543,46 @@ static OOColor *DebugColor(Vector orientation)
 	unsigned				count = 0;
 	// -integerForKey: gives 0 wherever get<NSInteger>(key, 0) fell back to the default.
 	int					skyColorCorrection = (int)oo::Defaults::standard().integerForKey("sky-color-correction");
-	
+
 // Hejl / Burgess-Dawson filmic tone mapping
-// this algorithm has gamma correction already embedded	
+// this algorithm has gamma correction already embedded
 #define SKYCOLOR_TONEMAP_COMPONENT(skyColorComponent) \
 do { \
-	x = MAX(0.0, skyColorComponent - 0.004); \
+	x = MAX(0.0, (skyColorComponent) - 0.004); \
 	*col++ = (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06); \
-} while (0) 
+} while (0)
 
-	self = [super init];
-	if (self == nil)  OK = NO;
-	
+	oo::Ref<OOSkyQuadSet> self = oo::makeRef<OOSkyQuadSet>();	// [super init] could not fail
+
 	if (OK)
 	{
 		// Count the quads in the array using this texture.
 		for (i = 0; i != totalCount; ++i)
 		{
-			if (array[i].texture == texture)  ++_count;
+			if (array[i].texture == texture)  ++self->_count;
 		}
-		if (_count == 0)  OK = NO;
+		if (self->_count == 0)  OK = NO;
 	}
-	
+
 	if (OK)
 	{
 		// Allocate arrays.
-		vertexCount = _count * 4;
-		posSize = sizeof *_positions * vertexCount * kSkyQuadSetPositionEntriesPerVertex;
-		tcSize = sizeof *_texCoords * vertexCount * kSkyQuadSetTexCoordEntriesPerVertex;
-		colSize = sizeof *_colors * vertexCount * kSkyQuadSetColorEntriesPerVertex;
-		
-		_positions = (GLfloat *)malloc(posSize);
-		_texCoords = (GLfloat *)malloc(tcSize);
-		_colors = (GLfloat *)malloc(colSize);
-		
-		if (_positions == NULL || _texCoords == NULL || _colors == NULL)  OK = NO;
-		
-		pos = _positions;
-		tc = _texCoords;
-		col = _colors;
+		vertexCount = self->_count * 4;
+		posSize = sizeof *self->_positions * vertexCount * kSkyQuadSetPositionEntriesPerVertex;
+		tcSize = sizeof *self->_texCoords * vertexCount * kSkyQuadSetTexCoordEntriesPerVertex;
+		colSize = sizeof *self->_colors * vertexCount * kSkyQuadSetColorEntriesPerVertex;
+
+		self->_positions = (GLfloat *)malloc(posSize);
+		self->_texCoords = (GLfloat *)malloc(tcSize);
+		self->_colors = (GLfloat *)malloc(colSize);
+
+		if (self->_positions == NULL || self->_texCoords == NULL || self->_colors == NULL)  OK = NO;
+
+		pos = self->_positions;
+		tc = self->_texCoords;
+		col = self->_colors;
 	}
-	
+
 	if (OK)
 	{
 		// Find the matching quads again, and convert them to renderable representation.
@@ -595,17 +590,19 @@ do { \
 		{
 			if (array[i].texture == texture)
 			{
-				r = [array[i].color redComponent];
-				g = [array[i].color greenComponent];
-				b = [array[i].color blueComponent];
-				
+				// A message to a nil colour answered 0.
+				cxx::OOColor *color = array[i].color.get();
+				r = (color != nullptr) ? color->redComponent() : 0.0f;
+				g = (color != nullptr) ? color->greenComponent() : 0.0f;
+				b = (color != nullptr) ? color->blueComponent() : 0.0f;
+
 				// Loop over vertices
 				for (j = 0; j != 4; ++j)
 				{
 					*pos++ = array[i].corners[j].x;
 					*pos++ = array[i].corners[j].y;
 					*pos++ = array[i].corners[j].z;
-					
+
 					// Colour is the same for each vertex
 					if (skyColorCorrection == 0)		// no color correction
 					{
@@ -627,98 +624,96 @@ do { \
 					}
 					*col++ = 1.0f;	// Alpha is unused but needs to be there
 				}
-				
+
 				// Texture co-ordinates are the same for each quad.
 				*tc++ = sMinTexCoord;
 				*tc++ = sMinTexCoord;
-				
+
 				*tc++ = sMaxTexCoord;
 				*tc++ = sMinTexCoord;
-				
+
 				*tc++ = sMaxTexCoord;
 				*tc++ = sMaxTexCoord;
-				
+
 				*tc++ = sMinTexCoord;
 				*tc++ = sMaxTexCoord;
-				
+
 				count++;
 			}
 		}
-		
-		_texture = [texture retain];
-		OO_LOG("sky.setup", "Generated quadset with {} quads for texture {}", static_cast<unsigned>(count), oo::DescriptionOf(_texture));
+
+		self->_texture = oo::ObjCRef<OOTexture *>(texture);
+		OO_LOG("sky.setup", "Generated quadset with {} quads for texture {}", static_cast<unsigned>(count), oo::DescriptionOf(self->_texture.get()));
 	}
-	
+
 	if (!OK)
 	{
-		[self release];
-		self = nil;
+		return nullptr;	// [self release]; self = nil
 	}
-	
+
 	return self;
 }
 
 
-- (void)dealloc
+OOSkyQuadSet::~OOSkyQuadSet()
 {
-	[_texture release];
-	
+	// -dealloc's [_texture release] is the member's destructor.
+
 	if (_positions != NULL)  free(_positions);
 	if (_texCoords != NULL)  free(_texCoords);
 	if (_colors != NULL)  free(_colors);
-	
-	[super dealloc];
 }
 
 
-// OOObject's -description wraps this as "<OOSkyQuadSet 0x...>{...}", the text this class's own
-// -description printed. Shared selector (proposed ADR-0043).
-- (std::optional<std::string>) cxx_descriptionComponents
+std::optional<std::string> OOSkyQuadSet::descriptionComponents() const
 {
-	return oo::str::format("%u quads, texture: %s", _count, oo::DescriptionOf(_texture).c_str());
+	return oo::str::format("%u quads, texture: %s", _count, oo::DescriptionOf(_texture.get()).c_str());
 }
 
 
-- (void)render
+void OOSkyQuadSet::render()
 {
 	OO_ENTER_OPENGL();
-	
-	[_texture apply];
-	
+
+	if (cxx::OOTexture *texture = oo::ToCxx(_texture.get()))  texture->apply();	// a message to nil did nothing
+
 	OOGL(glVertexPointer(kSkyQuadSetPositionEntriesPerVertex, GL_FLOAT, 0, _positions));
 	OOGL(glTexCoordPointer(kSkyQuadSetTexCoordEntriesPerVertex, GL_FLOAT, 0, _texCoords));
 	OOGL(glColorPointer(kSkyQuadSetColorEntriesPerVertex, GL_FLOAT, 0, _colors));
-	
+
 	OOGL(glDrawArrays(GL_QUADS, 0, 4 * _count));
 }
 
 
 #ifndef NDEBUG
-- (size_t) totalSize
+size_t OOSkyQuadSet::totalSize()
 {
-	return [self oo_objectSize] + _count * 4 * (sizeof *_positions + sizeof *_texCoords + sizeof *_colors);
+	// sizeof *this stands for -oo_objectSize (the object's own size).
+	return sizeof *this + static_cast<size_t>(_count) * 4 * (sizeof *_positions + sizeof *_texCoords + sizeof *_colors);
 }
 
 
-- (OOTexture *) texture
+OOTexture *OOSkyQuadSet::texture()
 {
-	return _texture;
+	return _texture.get();
 }
 #endif
 
-@end
 
+namespace {
 
-static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hueFix)
+oo::Ref<cxx::OOColor> SaturatedColorInRange(cxx::OOColor *color1, cxx::OOColor *color2, BOOL hueFix)
 {
-	OOColor				*color = nil;
-	float				hue, saturation, brightness, alpha;
-	
-	color = [color1 blendedColorWithFraction:randf() ofColor:color2];
-	[color getHue:&hue saturation:&saturation brightness:&brightness alpha:&alpha];
-	
+	oo::Ref<cxx::OOColor>	color;
+	float				hue = 0, saturation = 0, brightness = 0, alpha = 0;	// left 0 by a nil colour
+
+	// The fraction is drawn even for no colour, as the message's argument was.
+	const float fraction = randf();
+	color = (color1 != nullptr) ? color1->blendedColorWithFraction(fraction, color2) : nullptr;
+	if (color != nullptr)  color->getHue(&hue, &saturation, &brightness, &alpha);
+
 	saturation = 0.5 * saturation + 0.5;	// move saturation up a notch!
-	
+
 	/*	NOTE: this changes the hue, because getHue:... produces hue values
 		in [0, 360], but colorWithCalibratedHue:... takes hue values in
 		[0, 1].
@@ -731,6 +726,8 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 		hue /= 360.0;
 	}
 	/* else keep it how it was before so the nebula hues are clearer */
-	
-	return [OOColor colorWithHue:hue saturation:saturation brightness:brightness alpha:alpha];
+
+	return cxx::OOColor::colorWithHue(hue, saturation, brightness, alpha);
 }
+
+}	// namespace
