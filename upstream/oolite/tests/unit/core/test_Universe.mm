@@ -1083,12 +1083,13 @@ OO_TEST(slice25DoRemoveEntity)
 // Written against the Objective-C API and run on the unconverted class first. Loading a condition
 // script or a sound file needs the JavaScript engine and the game's files (the goldens): here only
 // what is missing.
-#if OO_LOCALIZATION_TOOLS
 @interface Universe (Slice26TestPrivate)
+#if OO_LOCALIZATION_TOOLS
 - (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
 - (void) runLocalizationTools;
-@end
 #endif
+- (void) prunePreloadingPlanetMaterials;
+@end
 
 
 OO_TEST(slice26GraphVizAndTools)
