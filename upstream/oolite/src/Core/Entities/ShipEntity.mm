@@ -516,475 +516,6 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner
-{
-	BOOL cascade = NO;
-	switch ([self scanClass])
-	{
-		case CLASS_WORMHOLE:
-		case CLASS_ROCK:
-		case CLASS_CARGO:
-		case CLASS_VISUAL_EFFECT:
-		case CLASS_BUOY:
-			// does not normally cascade
-			if ((_cxxShip->fuel > MIN_FUEL) || _cxxEntity->isStation) 
-			{
-				//we have fuel onboard so we can still go pop, or we are a station which can
-			}
-			else break;
-			
-		case CLASS_STATION:
-		case CLASS_MINE:
-		case CLASS_PLAYER:
-		case CLASS_POLICE:
-		case CLASS_MILITARY:
-		case CLASS_THARGOID:
-		case CLASS_MISSILE:
-		case CLASS_NOT_SET:
-		case CLASS_NO_DRAW:
-		case CLASS_NEUTRAL:
-		case CLASS_TARGET:
-			// ...start a chain reaction, if we're dying and have a non-trivial amount of energy.
-			if (_cxxEntity->energy < amount && _cxxEntity->energy > 10 && [self countsAsKill])
-			{
-				cascade = YES;	// confirm we're cascading, then try to add our cascade to UNIVERSE.
-				[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
-			}
-			break;
-			//no default thanks, we want the compiler to tell us if we missed a case.
-	}
-	return cascade;
-}
-
-
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier
-{
-	if ([self status] == STATUS_DEAD)  return;
-	if (amount <= 0.0)  return;
-	
-	BOOL energyMine = [ent isCascadeWeapon];
-	BOOL cascade = NO;
-	if (energyMine)
-	{
-		cascade = [self cascadeIfAppropriateWithDamageAmount:amount cascadeOwner:[ent owner]];
-	}
-	
-	_cxxEntity->energy -= amount;
-	/* Heat increase from energy impacts will never directly cause
-	 * overheating - too easy for missile hits to cause an uncredited
-	 * death by overheating - CIM */
-	if (_cxxShip->ship_temperature < SHIP_MAX_CABIN_TEMP)
-	{
-		_cxxShip->ship_temperature += amount * SHIP_ENERGY_DAMAGE_TO_HEAT_FACTOR / [self heatInsulation];
-		if (_cxxShip->ship_temperature > SHIP_MAX_CABIN_TEMP)
-		{
-			_cxxShip->ship_temperature = SHIP_MAX_CABIN_TEMP;
-		}
-	}
-
-
-	_cxxShip->being_mined = NO;
-	ShipEntity *hunter = nil;
-	
-	hunter = [other rootShipEntity];
-	if (hunter == nil && [other isShip]) hunter = (ShipEntity *)other;
-	
-	// must check for this before potentially deleting 'other' for cloaking
-	if ((other)&&([other isShip]))
-	{
-		_cxxShip->being_mined = [(ShipEntity *)other isMining];
-	}
-
-	if (hunter !=nil && [self owner] != hunter) // our owner could be the same entity as the one responsible for our taking damage in the case of submunitions
-	{
-		if ([hunter isCloaked])
-		{
-			[self cxx_doScriptEvent:OOJSID("shipBeingAttackedByCloaked") andReactToAIMessage:"ATTACKED_BY_CLOAKED"];
-			
-			// lose it!
-			other = nil;
-			hunter = nil;
-		}
-	}
-	else
-	{
-		hunter = nil;
-	}
-	
-	// if the other entity is a ship note it as an aggressor
-	if (hunter != nil)
-	{
-		BOOL iAmTheLaw = [self isPolice];
-		BOOL uAreTheLaw = [hunter isPolice];
-		
-		DESTROY(_cxxShip->_lastEscortTarget);	// we're being attacked, escorts can scramble!
-		
-		[self setPrimaryAggressor:hunter];
-		[self setFoundTarget:hunter];
-
-		// firing on an innocent ship is an offence
-		[self broadcastHitByLaserFrom: hunter];
-
-		// tell ourselves we've been attacked
-		if (_cxxEntity->energy > 0)
-		{
-			[self respondToAttackFrom:ent becauseOf:hunter];
-		}
-
-		OOShipGroup *group = [self group];
-		// JSAIs manage group notifications themselves
-		if (![self hasNewAI])
-		{
-			// additionally, tell our group we've been attacked
-			if (group != nil && group != [hunter group] && !(iAmTheLaw || uAreTheLaw))
-			{
-				if ([self isTrader] || [self isEscort])
-				{
-					ShipEntity *groupLeader = [group leader];
-					if (groupLeader != self)
-					{
-						[groupLeader setFoundTarget:hunter];
-						[groupLeader setPrimaryAggressor:hunter];
-						[groupLeader respondToAttackFrom:ent becauseOf:hunter];
-						//unsetting group leader for carriers can break stuff
-					}
-				}
-				if ([self isPirate])
-				{
-					for (const oo::ObjCRef<ShipEntity *> &otherPirateRef : [group cxx_memberArray])
-					{
-						ShipEntity *otherPirate = otherPirateRef.get();
-						if (otherPirate != self && randf() < 0.5)	// 50% chance they'll help
-						{
-							[otherPirate setFoundTarget:hunter];
-							[otherPirate setPrimaryAggressor:hunter];
-							[otherPirate respondToAttackFrom:ent becauseOf:hunter];
-						}
-					}
-				}
-				else if (iAmTheLaw)
-				{
-					for (const oo::ObjCRef<ShipEntity *> &otherPoliceRef : [group cxx_memberArray])
-					{
-						ShipEntity *otherPolice = otherPoliceRef.get();
-						if (otherPolice != self)
-						{
-							[otherPolice setFoundTarget:hunter];
-							[otherPolice setPrimaryAggressor:hunter];
-							[otherPolice respondToAttackFrom:ent becauseOf:hunter];
-						}
-					}
-				}
-			}
-		}
-
-		// if I'm a copper and you're not, then mark the other as an offender!
-		if (iAmTheLaw && !uAreTheLaw)
-		{
-			// JSAI's can choose not to do this for friendly fire purposes
-			if (![self hasNewAI]) 
-			{
-				[hunter markAsOffender:64 withReason:kOOLegalStatusReasonAttackedPolice];
-			}
-		}
-
-		if ((group != nil && [hunter group] == group) || (iAmTheLaw && uAreTheLaw))
-		{
-			// avoid shooting each other
-			if ([hunter behaviour] == BEHAVIOUR_ATTACK_FLY_TO_TARGET)	// avoid me please!
-			{
-				[hunter setBehaviour:BEHAVIOUR_ATTACK_FLY_FROM_TARGET];
-				[hunter setDesiredSpeed:[hunter maxFlightSpeed]];
-			}
-		}
-
-	}
-	
-	OOShipDamageType damageType = kOODamageTypeEnergy;
-	if (_cxxShip->suppressExplosion)  damageType = kOODamageTypeRemoved;
-	else if (energyMine)  damageType = kOODamageTypeCascadeWeapon;
-	
-	if (!_cxxShip->suppressExplosion)
-	{
-		[self noteTakingDamage:amount from:other type:damageType];
-		if (cascade) _cxxEntity->energy = 0.0; // explicit set energy to zero in case an oxp raised the energy in previous line.
-	}
-
-	// die if I'm out of energy
-	if (_cxxEntity->energy <= 0.0)
-	{
-		// backup check just in case scripts have reduced energy
-		if (self != [UNIVERSE station]) 
-		{
-			if (hunter != nil)  [hunter noteTargetDestroyed:self];
-			[self getDestroyedBy:other damageType:damageType];
-		}
-	}
-	else
-	{
-		// warn if I'm low on energy
-		if (_cxxEntity->energy < _cxxEntity->maxEnergy * 0.25)
-		{
-			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
-		}
-		if ((_cxxEntity->energy < _cxxEntity->maxEnergy *0.125 || (_cxxEntity->energy < 64 && _cxxEntity->energy < amount*2)) && [self hasEscapePod] && (ranrot_rand() & 3) == 0)  // 25% chance he gets to an escape pod
-		{
-			[self abandonShip];
-		}
-	}
-}
-
-
-- (BOOL) abandonShip
-{
-	BOOL OK = NO;
-	if ([self isPlayer] && [(PlayerEntity *)self isDocked])
-	{
-		OO_LOG("ShipEntity.abandonShip.failed", "{}", "Player cannot abandon ship while docked.");
-		return OK;
-	}
-	
-	if (![self hasEscapePod])
-	{
-		OO_LOG("ShipEntity.abandonShip.failed", "Ship abandonment was requested for {}, but this ship does not carry escape pod(s).", oo::DescriptionOf(self));
-		return OK;
-	}
-		
-	if (EXPECT([self launchEscapeCapsule] != (ShipEntity *)NO_TARGET))	// -launchEscapeCapsule takes care of everything for the player
-	{
-		if (![self isPlayer])
-		{
-			OK = YES;
-			// if multiple items providing escape pod, remove all of them (NPC process)
-			while ([self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"])
-			{
-				[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"].value_or(std::string())];
-			}
-			[self setAITo:"nullAI.plist"];
-			_cxxShip->behaviour = BEHAVIOUR_IDLE;
-			_cxxShip->frustration = 0.0;
-			[self setScanClass: CLASS_CARGO];			// we're unmanned now!
-			_cxxShip->thrust = _cxxShip->thrust * 0.5;
-			if (_cxxShip->thrust > 5) _cxxShip->thrust = 5; // 5 is the thrust of an escape-capsule
-			_cxxShip->desired_speed = 0.0;
-			if ([self group]) [self setGroup:nil]; // remove self from group.
-			if (![self isSubEntity] && [self owner]) [self setOwner:nil]; //unset owner, but not if we are a subent
-			if ([self hasEscorts])
-			{
-				OOShipGroup			*escortGroup = [self escortGroup];
-				// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
-				for (const auto &escortRef : [self escortArray])
-				{
-					ShipEntity *escort = escortRef.get();
-					// act individually now!
-					if ([escort group] == escortGroup)  [escort setGroup:nil];
-					if ([escort owner] == self)  [escort setOwner:escort];
-				}
-				
-				// We now have no escorts.
-				[_cxxShip->_escortGroup release];
-				_cxxShip->_escortGroup = nil;
-			}
-		}
-	}
-	else if (EXPECT([self isSubEntity]))
-	{
-		// may still have launched passenger pods even if no crew
-		// if multiple items providing escape pod, remove all of them (NPC process)
-		while ([self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"])
-		{
-			[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"].value_or(std::string())];
-		}
-
-	}
-	else
-	{
-		// this shouldn't happen any more!
-		OO_LOG("ShipEntity.abandonShip.notPossible", "Ship {} cannot be abandoned at this time.", oo::DescriptionOf(self));
-	}
-	return OK;
-}
-
-
-- (void) takeScrapeDamage:(double) amount from:(Entity *)ent
-{
-	if ([self status] == STATUS_DEAD)  return;
-
-	if ([self status] == STATUS_LAUNCHING|| [ent status] == STATUS_LAUNCHING)
-	{
-		// no collisions during launches please
-		return;
-	}
-	
-	_cxxEntity->energy -= amount;
-	[self noteTakingDamage:amount from:ent type:kOODamageTypeScrape];
-	
-	// oops we hit too hard!!!
-	if (_cxxEntity->energy <= 0.0)
-	{
-		float frag_chance = [ent mass]*10/[self mass];
-		/* impacts from heavier entities produce fragments
-		 * impacts from lighter entities might do but not always
-		 * asteroid-asteroid impacts likely to fragment
-		 * ship-asteroid impacts might, or might just vaporise it
-		 * projectile weapons just get the default chance
-		 */
-		if (randf() < frag_chance)
-		{
-			_cxxShip->being_mined = YES;  // same as using a mining laser
-		}
-		if ([ent isShip])
-		{
-			[(ShipEntity *)ent noteTargetDestroyed:self];
-		}
-		[self getDestroyedBy:ent damageType:kOODamageTypeScrape];
-	}
-	else
-	{
-		// warn if I'm low on energy
-		if (_cxxEntity->energy < _cxxEntity->maxEnergy * 0.25)
-		{
-			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
-		}
-	}
-}
-
-
-- (void) takeHeatDamage:(double)amount
-{
-	if ([self status] == STATUS_DEAD)  return;
-
-	if ([self isSubEntity])
-	{
-		ShipEntity* owner = [self owner];
-		if (![owner isFrangible]) 
-		{
-			return;
-		}
-	}
-	
-	_cxxEntity->energy -= amount;
-	_cxxEntity->throw_sparks = YES;
-	
-	[self noteTakingDamage:amount from:nil type:kOODamageTypeHeat];
-	
-	// oops we're burning up!
-	if (_cxxEntity->energy <= 0.0)
-	{
-		[self getDestroyedBy:nil damageType:kOODamageTypeHeat];
-	}
-	else
-	{
-		// warn if I'm low on energy
-		if (_cxxEntity->energy < _cxxEntity->maxEnergy * 0.25)
-		{
-			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
-		}
-	}
-}
-
-
-- (void) enterDock:(StationEntity *)station
-{
-	// throw these away now we're docked...
-	_cxxShip->dockingInstructions = oo::PList();
-	
-	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:station];
-	[self doScriptEvent:OOJSID("shipDockedWithStation") withArgument:station];
-	[_cxxShip->shipAI message:"DOCKED"];
-	[station noteDockedShip:self];
-	[UNIVERSE removeEntity:self];
-}
-
-
-- (void) leaveDock:(StationEntity *)station
-{
-	// This code is never used. Currently npc ships are only launched from the stations launch queue.
-	if (station == nil)  return;
-	
-	[station launchShip:self];
-
-}
-
-
-- (void) enterWormhole:(WormholeEntity *) w_hole
-{
-	[self enterWormhole:w_hole replacing:YES];
-}
-
-
-- (void) enterWormhole:(WormholeEntity *) w_hole replacing:(BOOL)replacing
-{
-	if (w_hole == nil)  return;
-	if ([self status] == STATUS_ENTERING_WITCHSPACE)
-	{
-		return; // has already entered a different wormhole
-	}
-	// Replacement ships now handled by system repopulator
-
-	// MKW 2011.02.27 - Moved here from ShipEntityAI so escorts reliably follow
-	//                  mother in all wormhole cases, not just when the ship
-	//                  creates the wormhole.
-	[self addTarget:w_hole];
-	[self setFoundTarget:w_hole];
-	[_cxxShip->shipAI cxx_reactToMessage:"WITCHSPACE OKAY" context:"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
-	
-	// CIM 2012.07.22 above only covers those cases where ship expected to leave
-	if ([self escortArray].size() > 1)
-	{
-		// so wormhole escorts anyway if it leaves unexpectedly.
-		[self wormholeEscorts];
-	}
-
-	if ([self scriptedMisjump])
-	{
-		[self setScriptedMisjump:NO];
-		[w_hole setMisjumpWithRange:[self scriptedMisjumpRange]];
-		[self setScriptedMisjumpRange:0.5];
-	}
-	[w_hole suckInShip: self];	// removes ship from universe
-}
-
-
-- (void) enterWitchspace
-{
-	[UNIVERSE addWitchspaceJumpEffectForShip:self];
-	[_cxxShip->shipAI message:"ENTERED_WITCHSPACE"];
-	
-	if (![[UNIVERSE sun] willGoNova])
-	{
-		// if the sun's not going nova, add a new ship like this one leaving.
-		[UNIVERSE cxx_witchspaceShipWithPrimaryRole:[self cxx_primaryRole].value_or("")];
-	}
-	
-	[UNIVERSE removeEntity:self];
-}
-
-
-- (void) leaveWitchspace
-{
-	Quaternion	q1;
-	quaternion_set_random(&q1);
-	Vector		v1 = vector_forward_from_quaternion(q1);
-	double		d1 = 0.0;
-	
-	GLfloat min_d1 = [UNIVERSE safeWitchspaceExitDistance];
-
-	while (fabs(d1) < min_d1)
-	{
-		// not scannerRange - has no effect on witchspace exit
-		d1 = SCANNER_MAX_RANGE * (randf() - randf());
-	}
-	
-	HPVector exitposition = [UNIVERSE getWitchspaceExitPosition];
-	exitposition.x += v1.x * d1; // randomise exit position
-	exitposition.y += v1.y * d1;
-	exitposition.z += v1.z * d1;
-	[self setPosition:exitposition];
-	[self witchspaceLeavingEffects];
-}
-
-
 - (BOOL) witchspaceLeavingEffects
 {
 	// all ships exiting witchspace will share the same orientation.
@@ -15553,6 +15084,498 @@ void ShipEntity::scoopUpProcess(::ShipEntity *other, bool procEvents, bool procM
 
 
 }	// namespace cxx
+
+
+// Slice 31 of docs/phases/3-slices/ShipEntity.md (bead oo-gx86h): cascades, energy / scrape / heat
+// damage, abandoning ship, docks, wormholes, witchspace. The facade forwards each selector
+// (ShipEntity+ObjCBridge.mm); sends to self stay sends, so an Objective-C subclass's override still
+// runs (ADR-0056 amendment oo-mvzmb).
+namespace cxx {
+
+bool ShipEntity::cascadeIfAppropriateWithDamageAmount(double amount, ::Entity * /* owner */)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL cascade = NO;
+	switch ([self scanClass])
+	{
+		case CLASS_WORMHOLE:
+		case CLASS_ROCK:
+		case CLASS_CARGO:
+		case CLASS_VISUAL_EFFECT:
+		case CLASS_BUOY:
+			// does not normally cascade
+			if ((fuel > MIN_FUEL) || isStation) 
+			{
+				//we have fuel onboard so we can still go pop, or we are a station which can
+			}
+			else break;
+			
+		case CLASS_STATION:
+		case CLASS_MINE:
+		case CLASS_PLAYER:
+		case CLASS_POLICE:
+		case CLASS_MILITARY:
+		case CLASS_THARGOID:
+		case CLASS_MISSILE:
+		case CLASS_NOT_SET:
+		case CLASS_NO_DRAW:
+		case CLASS_NEUTRAL:
+		case CLASS_TARGET:
+			// ...start a chain reaction, if we're dying and have a non-trivial amount of energy.
+			if (energy < amount && energy > 10 && [self countsAsKill])
+			{
+				cascade = YES;	// confirm we're cascading, then try to add our cascade to UNIVERSE.
+				[UNIVERSE addEntity:oo::NewEntityFacade(OOQuiriumCascadeEntity::quiriumCascadeFromShip(self))];
+			}
+			break;
+			//no default thanks, we want the compiler to tell us if we missed a case.
+	}
+	return cascade;
+}
+
+
+void ShipEntity::takeEnergyDamage(double amount, cxx::Entity *entPart, cxx::Entity *otherPart, const std::string & /* weaponIdentifier */)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	::Entity *ent = oo::ToObjC(entPart);
+	::Entity *other = oo::ToObjC(otherPart);
+	if ([self status] == STATUS_DEAD)  return;
+	if (amount <= 0.0)  return;
+	
+	BOOL energyMine = [ent isCascadeWeapon];
+	BOOL cascade = NO;
+	if (energyMine)
+	{
+		cascade = [self cascadeIfAppropriateWithDamageAmount:amount cascadeOwner:[ent owner]];
+	}
+	
+	energy -= amount;
+	/* Heat increase from energy impacts will never directly cause
+	 * overheating - too easy for missile hits to cause an uncredited
+	 * death by overheating - CIM */
+	if (ship_temperature < SHIP_MAX_CABIN_TEMP)
+	{
+		ship_temperature += amount * (mass > 400000 ? 200000 / mass : 0.5) / [self heatInsulation];	// SHIP_ENERGY_DAMAGE_TO_HEAT_FACTOR, which names the facade's _cxxEntity
+		if (ship_temperature > SHIP_MAX_CABIN_TEMP)
+		{
+			ship_temperature = SHIP_MAX_CABIN_TEMP;
+		}
+	}
+
+
+	being_mined = NO;
+	::ShipEntity *hunter = nil;
+	
+	hunter = [other rootShipEntity];
+	if (hunter == nil && [other isShip]) hunter = (::ShipEntity *)other;
+	
+	// must check for this before potentially deleting 'other' for cloaking
+	if ((other)&&([other isShip]))
+	{
+		being_mined = ([(::ShipEntity *)other isMining] != NO);
+	}
+
+	if (hunter !=nil && [self owner] != hunter) // our owner could be the same entity as the one responsible for our taking damage in the case of submunitions
+	{
+		if ([hunter isCloaked])
+		{
+			[self cxx_doScriptEvent:OOJSID("shipBeingAttackedByCloaked") andReactToAIMessage:"ATTACKED_BY_CLOAKED"];
+			
+			// lose it!
+			other = nil;
+			hunter = nil;
+		}
+	}
+	else
+	{
+		hunter = nil;
+	}
+	
+	// if the other entity is a ship note it as an aggressor
+	if (hunter != nil)
+	{
+		BOOL iAmTheLaw = [self isPolice];
+		BOOL uAreTheLaw = [hunter isPolice];
+		
+		DESTROY(_lastEscortTarget);	// we're being attacked, escorts can scramble!
+		
+		[self setPrimaryAggressor:hunter];
+		[self setFoundTarget:hunter];
+
+		// firing on an innocent ship is an offence
+		[self broadcastHitByLaserFrom: hunter];
+
+		// tell ourselves we've been attacked
+		if (energy > 0)
+		{
+			[self respondToAttackFrom:ent becauseOf:hunter];
+		}
+
+		::OOShipGroup *group = [self group];
+		// JSAIs manage group notifications themselves
+		if (![self hasNewAI])
+		{
+			// additionally, tell our group we've been attacked
+			if (group != nil && group != [hunter group] && !(iAmTheLaw || uAreTheLaw))
+			{
+				if ([self isTrader] || [self isEscort])
+				{
+					::ShipEntity *groupLeader = [group leader];
+					if (groupLeader != self)
+					{
+						[groupLeader setFoundTarget:hunter];
+						[groupLeader setPrimaryAggressor:hunter];
+						[groupLeader respondToAttackFrom:ent becauseOf:hunter];
+						//unsetting group leader for carriers can break stuff
+					}
+				}
+				if ([self isPirate])
+				{
+					for (const oo::ObjCRef<::ShipEntity *> &otherPirateRef : [group cxx_memberArray])
+					{
+						::ShipEntity *otherPirate = otherPirateRef.get();
+						if (otherPirate != self && randf() < 0.5)	// 50% chance they'll help
+						{
+							[otherPirate setFoundTarget:hunter];
+							[otherPirate setPrimaryAggressor:hunter];
+							[otherPirate respondToAttackFrom:ent becauseOf:hunter];
+						}
+					}
+				}
+				else if (iAmTheLaw)
+				{
+					for (const oo::ObjCRef<::ShipEntity *> &otherPoliceRef : [group cxx_memberArray])
+					{
+						::ShipEntity *otherPolice = otherPoliceRef.get();
+						if (otherPolice != self)
+						{
+							[otherPolice setFoundTarget:hunter];
+							[otherPolice setPrimaryAggressor:hunter];
+							[otherPolice respondToAttackFrom:ent becauseOf:hunter];
+						}
+					}
+				}
+			}
+		}
+
+		// if I'm a copper and you're not, then mark the other as an offender!
+		if (iAmTheLaw && !uAreTheLaw)
+		{
+			// JSAI's can choose not to do this for friendly fire purposes
+			if (![self hasNewAI]) 
+			{
+				[hunter markAsOffender:64 withReason:kOOLegalStatusReasonAttackedPolice];
+			}
+		}
+
+		if ((group != nil && [hunter group] == group) || (iAmTheLaw && uAreTheLaw))
+		{
+			// avoid shooting each other
+			if ([hunter behaviour] == BEHAVIOUR_ATTACK_FLY_TO_TARGET)	// avoid me please!
+			{
+				[hunter setBehaviour:BEHAVIOUR_ATTACK_FLY_FROM_TARGET];
+				[hunter setDesiredSpeed:[hunter maxFlightSpeed]];
+			}
+		}
+
+	}
+	
+	OOShipDamageType damageType = kOODamageTypeEnergy;
+	if (suppressExplosion)  damageType = kOODamageTypeRemoved;
+	else if (energyMine)  damageType = kOODamageTypeCascadeWeapon;
+	
+	if (!suppressExplosion)
+	{
+		[self noteTakingDamage:amount from:other type:damageType];
+		if (cascade) energy = 0.0; // explicit set energy to zero in case an oxp raised the energy in previous line.
+	}
+
+	// die if I'm out of energy
+	if (energy <= 0.0)
+	{
+		// backup check just in case scripts have reduced energy
+		if (self != [UNIVERSE station]) 
+		{
+			if (hunter != nil)  [hunter noteTargetDestroyed:self];
+			[self getDestroyedBy:other damageType:damageType];
+		}
+	}
+	else
+	{
+		// warn if I'm low on energy
+		if (energy < maxEnergy * 0.25)
+		{
+			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
+		}
+		if ((energy < maxEnergy *0.125 || (energy < 64 && energy < amount*2)) && [self hasEscapePod] && (ranrot_rand() & 3) == 0)  // 25% chance he gets to an escape pod
+		{
+			[self abandonShip];
+		}
+	}
+}
+
+
+bool ShipEntity::abandonShip()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	BOOL OK = NO;
+	if ([self isPlayer] && [(::PlayerEntity *)self isDocked])
+	{
+		OO_LOG("ShipEntity.abandonShip.failed", "{}", "Player cannot abandon ship while docked.");
+		return OK;
+	}
+	
+	if (![self hasEscapePod])
+	{
+		OO_LOG("ShipEntity.abandonShip.failed", "Ship abandonment was requested for {}, but this ship does not carry escape pod(s).", oo::DescriptionOf(self));
+		return OK;
+	}
+		
+	if (EXPECT([self launchEscapeCapsule] != nil))	// (ShipEntity *)NO_TARGET	// -launchEscapeCapsule takes care of everything for the player
+	{
+		if (![self isPlayer])
+		{
+			OK = YES;
+			// if multiple items providing escape pod, remove all of them (NPC process)
+			while ([self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"])
+			{
+				[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"].value_or(std::string())];
+			}
+			[self setAITo:"nullAI.plist"];
+			behaviour = BEHAVIOUR_IDLE;
+			frustration = 0.0;
+			[self setScanClass: CLASS_CARGO];			// we're unmanned now!
+			thrust = thrust * 0.5;
+			if (thrust > 5) thrust = 5; // 5 is the thrust of an escape-capsule
+			desired_speed = 0.0;
+			if ([self group]) [self setGroup:nil]; // remove self from group.
+			if (![self isSubEntity] && [self owner]) [self setOwner:nil]; //unset owner, but not if we are a subent
+			if ([self hasEscorts])
+			{
+				::OOShipGroup			*escortGroup = [self escortGroup];
+				// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
+				for (const auto &escortRef : [self escortArray])
+				{
+					::ShipEntity *escort = escortRef.get();
+					// act individually now!
+					if ([escort group] == escortGroup)  [escort setGroup:nil];
+					if ([escort owner] == self)  [escort setOwner:escort];
+				}
+				
+				// We now have no escorts.
+				[_escortGroup release];
+				_escortGroup = nil;
+			}
+		}
+	}
+	else if (EXPECT([self isSubEntity]))
+	{
+		// may still have launched passenger pods even if no crew
+		// if multiple items providing escape pod, remove all of them (NPC process)
+		while ([self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"])
+		{
+			[self removeEquipmentItem:[self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"].value_or(std::string())];
+		}
+
+	}
+	else
+	{
+		// this shouldn't happen any more!
+		OO_LOG("ShipEntity.abandonShip.notPossible", "Ship {} cannot be abandoned at this time.", oo::DescriptionOf(self));
+	}
+	return OK;
+}
+
+
+void ShipEntity::takeScrapeDamage(double amount, ::Entity *ent)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self status] == STATUS_DEAD)  return;
+
+	if ([self status] == STATUS_LAUNCHING|| [ent status] == STATUS_LAUNCHING)
+	{
+		// no collisions during launches please
+		return;
+	}
+	
+	energy -= amount;
+	[self noteTakingDamage:amount from:ent type:kOODamageTypeScrape];
+	
+	// oops we hit too hard!!!
+	if (energy <= 0.0)
+	{
+		float frag_chance = [ent mass]*10/[self mass];
+		/* impacts from heavier entities produce fragments
+		 * impacts from lighter entities might do but not always
+		 * asteroid-asteroid impacts likely to fragment
+		 * ship-asteroid impacts might, or might just vaporise it
+		 * projectile weapons just get the default chance
+		 */
+		if (randf() < frag_chance)
+		{
+			being_mined = YES;  // same as using a mining laser
+		}
+		if ([ent isShip])
+		{
+			[(::ShipEntity *)ent noteTargetDestroyed:self];
+		}
+		[self getDestroyedBy:ent damageType:kOODamageTypeScrape];
+	}
+	else
+	{
+		// warn if I'm low on energy
+		if (energy < maxEnergy * 0.25)
+		{
+			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
+		}
+	}
+}
+
+
+void ShipEntity::takeHeatDamage(double amount)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if ([self status] == STATUS_DEAD)  return;
+
+	if ([self isSubEntity])
+	{
+		::ShipEntity* owner = [self owner];
+		if (![owner isFrangible]) 
+		{
+			return;
+		}
+	}
+	
+	energy -= amount;
+	throw_sparks = YES;
+	
+	[self noteTakingDamage:amount from:nil type:kOODamageTypeHeat];
+	
+	// oops we're burning up!
+	if (energy <= 0.0)
+	{
+		[self getDestroyedBy:nil damageType:kOODamageTypeHeat];
+	}
+	else
+	{
+		// warn if I'm low on energy
+		if (energy < maxEnergy * 0.25)
+		{
+			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
+		}
+	}
+}
+
+
+void ShipEntity::enterDock(::StationEntity *station)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// throw these away now we're docked...
+	dockingInstructions = oo::PList();
+	
+	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:station];
+	[self doScriptEvent:OOJSID("shipDockedWithStation") withArgument:station];
+	[shipAI message:"DOCKED"];
+	[station noteDockedShip:self];
+	[UNIVERSE removeEntity:self];
+}
+
+
+void ShipEntity::leaveDock(::StationEntity *station)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	// This code is never used. Currently npc ships are only launched from the stations launch queue.
+	if (station == nil)  return;
+	
+	[station launchShip:self];
+
+}
+
+
+void ShipEntity::enterWormhole(::WormholeEntity *w_hole)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[self enterWormhole:w_hole replacing:YES];
+}
+
+
+void ShipEntity::enterWormhole(::WormholeEntity *w_hole, bool /* replacing */)
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	if (w_hole == nil)  return;
+	if ([self status] == STATUS_ENTERING_WITCHSPACE)
+	{
+		return; // has already entered a different wormhole
+	}
+	// Replacement ships now handled by system repopulator
+
+	// MKW 2011.02.27 - Moved here from ShipEntityAI so escorts reliably follow
+	//                  mother in all wormhole cases, not just when the ship
+	//                  creates the wormhole.
+	[self addTarget:w_hole];
+	[self setFoundTarget:w_hole];
+	[shipAI cxx_reactToMessage:"WITCHSPACE OKAY" context:"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
+	
+	// CIM 2012.07.22 above only covers those cases where ship expected to leave
+	if ([self escortArray].size() > 1)
+	{
+		// so wormhole escorts anyway if it leaves unexpectedly.
+		[self wormholeEscorts];
+	}
+
+	if ([self scriptedMisjump])
+	{
+		[self setScriptedMisjump:NO];
+		[w_hole setMisjumpWithRange:[self scriptedMisjumpRange]];
+		[self setScriptedMisjumpRange:0.5];
+	}
+	[w_hole suckInShip: self];	// removes ship from universe
+}
+
+
+void ShipEntity::enterWitchspace()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	[UNIVERSE addWitchspaceJumpEffectForShip:self];
+	[shipAI message:"ENTERED_WITCHSPACE"];
+	
+	if (![[UNIVERSE sun] willGoNova])
+	{
+		// if the sun's not going nova, add a new ship like this one leaving.
+		[UNIVERSE cxx_witchspaceShipWithPrimaryRole:[self cxx_primaryRole].value_or("")];
+	}
+	
+	[UNIVERSE removeEntity:self];
+}
+
+
+void ShipEntity::leaveWitchspace()
+{
+	::ShipEntity *self = oo::ToObjC(this);
+	Quaternion	q1;
+	quaternion_set_random(&q1);
+	Vector		v1 = vector_forward_from_quaternion(q1);
+	double		d1 = 0.0;
+	
+	GLfloat min_d1 = [UNIVERSE safeWitchspaceExitDistance];
+
+	while (fabs(d1) < min_d1)
+	{
+		// not scannerRange - has no effect on witchspace exit
+		d1 = SCANNER_MAX_RANGE * (randf() - randf());
+	}
+	
+	HPVector exitposition = [UNIVERSE getWitchspaceExitPosition];
+	exitposition.x += v1.x * d1; // randomise exit position
+	exitposition.y += v1.y * d1;
+	exitposition.z += v1.z * d1;
+	[self setPosition:exitposition];
+	[self witchspaceLeavingEffects];
+}
+
+
+}	// namespace cxx
+
 
 
 

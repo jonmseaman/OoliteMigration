@@ -209,21 +209,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 
-- (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner;
 
 
-- (BOOL) abandonShip;
 
-- (void) takeScrapeDamage:(double) amount from:(Entity *) ent;
-- (void) takeHeatDamage:(double) amount;
 
-- (void) enterDock:(StationEntity *)station;
-- (void) leaveDock:(StationEntity *)station;
 
-- (void) enterWormhole:(WormholeEntity *) w_hole;
-- (void) enterWormhole:(WormholeEntity *) w_hole replacing:(BOOL)replacing;
-- (void) enterWitchspace;
-- (void) leaveWitchspace;
 - (BOOL) witchspaceLeavingEffects;
 
 /* 
@@ -1196,6 +1186,26 @@ unsigned argc = sizeof argv / sizeof *argv; \
 - (void) suppressTargetLost;
 - (void) scoopUp:(ShipEntity *)other;
 - (void) scoopUpProcess:(ShipEntity *)other processEvents:(BOOL) proc_events processMessages:(BOOL) proc_messages;
+
+@end
+
+
+// Slice 31 of docs/phases/3-slices/ShipEntity.md: members of cxx::ShipEntity, forwarded by the
+// category of the same name in ShipEntity+ObjCBridge.mm (the class's @implementation, still in
+// ShipEntity.mm, stays complete). Declared in the class's interface before the slice.
+@interface ShipEntity (OOSlice31)
+
+- (BOOL) cascadeIfAppropriateWithDamageAmount:(double)amount cascadeOwner:(Entity *)owner;
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(const std::string &)weaponIdentifier;
+- (BOOL) abandonShip;
+- (void) takeScrapeDamage:(double) amount from:(Entity *) ent;
+- (void) takeHeatDamage:(double) amount;
+- (void) enterDock:(StationEntity *)station;
+- (void) leaveDock:(StationEntity *)station;
+- (void) enterWormhole:(WormholeEntity *) w_hole;
+- (void) enterWormhole:(WormholeEntity *) w_hole replacing:(BOOL)replacing;
+- (void) enterWitchspace;
+- (void) leaveWitchspace;
 
 @end
 
