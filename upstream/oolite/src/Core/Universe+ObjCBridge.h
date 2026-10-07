@@ -60,15 +60,6 @@ MA 02110-1301, USA.
 
 - (BOOL) reinitAndShowDemo:(BOOL)showDemo;
 
-- (void) pauseGame;
-- (void) quitGame;
-
-- (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole;
-- (void) setUpUniverseFromStation;
-- (void) setUpUniverseFromWitchspace;
-- (void) setUpUniverseFromMisjump;
-- (void) setUpWitchspace;
-- (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2;
 - (void) setUpSpace;
 - (void) populateNormalSpace;
 - (void) clearSystemPopulator;
@@ -82,7 +73,6 @@ MA 02110-1301, USA.
 - (void) setLighting;
 - (void) forceLightSwitch;
 - (void) setMainLightPosition: (Vector) sunPos;
-- (OOPlanetEntity *) setUpPlanet;
 
 - (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
 - (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
@@ -512,6 +502,24 @@ MA 02110-1301, USA.
 - (void) debugDumpEntities;
 - (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList;
 #endif
+
+@end
+
+
+// Slice 3 of docs/phases/3-slices/Universe.md: members of cxx::Universe, forwarded by the
+// category of the same name in Universe+ObjCBridge.mm (the class's @implementation, still in
+// Universe.mm, stays complete).
+@interface Universe (OOSlice3)
+
+- (void) pauseGame;
+- (void) quitGame;
+- (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole;
+- (void) setUpUniverseFromStation;
+- (void) setUpUniverseFromWitchspace;
+- (void) setUpUniverseFromMisjump;
+- (void) setUpWitchspace;
+- (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2;
+- (OOPlanetEntity *) setUpPlanet;
 
 @end
 

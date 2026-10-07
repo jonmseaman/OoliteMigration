@@ -619,378 +619,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 // How dark the default ambient level of 1.0 will be
 #define SKY_AMBIENT_ADJUSTMENT		0.0625
 
-
-- (void) pauseGame
-{
-	// deal with the machine going to sleep, or player pressing 'p'.
-	PlayerEntity 	*player = PLAYER;
-	
-	[self setPauseMessageVisible:NO];
-	const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
-	
-	if ([player status] == STATUS_DOCKED)
-	{
-		if ([_cxxUniverse->gui cxx_setForegroundTextureKey:"paused_docked_overlay"])
-		{
-			[_cxxUniverse->gui drawGUI:1.0 drawCursor:NO];
-		}
-		else
-		{
-			[self setPauseMessageVisible:YES];
-			[self cxx_addMessage:ExpandKeyWith("game-paused-docked", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
-		}
-	}
-	else
-	{
-		if ([player guiScreen] != GUI_SCREEN_MAIN && [_cxxUniverse->gui cxx_setForegroundTextureKey:"paused_overlay"])
-		{
-			[_cxxUniverse->gui drawGUI:1.0 drawCursor:NO];
-		}
-		else
-		{
-			[self setPauseMessageVisible:YES];
-			[self cxx_addMessage:ExpandKeyWith("game-paused", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
-		}
-	}
-	
-	[[self gameController] setGamePaused:YES];
-}
-
-- (void) quitGame
-{
-	OO_LOG("universe.quit", "{}", "Quit command received by Universe.");
-	[[self gameController] cxx_exitAppWithContext:"Universe Request"];
-}
-
-- (void) carryPlayerOn:(StationEntity*)carrier inWormhole:(WormholeEntity*)wormhole
-{
-		PlayerEntity	*player = PLAYER;
-		OOSystemID dest = [wormhole destination];
-
-		[player setWormhole:wormhole];
-		[player addScannedWormhole:wormhole];
-		ooscript::Context context = OOJSAcquireContext();
-		[player cxx_setJumpCause:"carried"];
-		[player setPreviousSystemID:[player systemID]];
-		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [player cxx_jumpCause].value_or("").c_str())), ooscript::int32Value(dest));
-		OOJSRelinquishContext(context);
-	
-		[self cxx_allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:"PLAYER WITCHSPACE"];
-
-		[player setRandom_factor:(ranrot_rand() & 255)];						// random factor for market values is reset
-
-// misjump on wormhole sets correct travel time if needed
-		[player addToAdjustTime:[wormhole travelTime]];
-// clear old entities
-		[self removeAllEntitiesExceptPlayer];
-
-// should we add wear-and-tear to the player ship if they're not doing
-// the jump themselves? Left out for now. - CIM
-
-		if (![wormhole withMisjump])
-		{
-			[player setSystemID:dest];
-			[self setSystemTo: dest];
-			
-			[self setUpSpace];
-			[self populateNormalSpace];
-			[player setBounty:([player legalStatus]/2) withReason:kOOLegalStatusReasonNewSystem];
-			if ([player random_factor] < 8) [player erodeReputation];		// every 32 systems or so, dro
-		}
-		else
-		{
-			[player setGalaxyCoordinates:[wormhole destinationCoordinates]];
-
-			[self setUpWitchspaceBetweenSystem:[wormhole origin] andSystem:[wormhole destination]];
-
-			if (randf() < 0.1) [player erodeReputation];		// once every 10 misjumps - should be much rarer than successful jumps!
-		}
-		// which will kick the ship out of the wormhole with the
-		// player still aboard
-		[wormhole disgorgeShips];
-
-		//reset atmospherics in case carrier was in atmosphere
-		[UNIVERSE setSkyColorRed:0.0f		// back to black
-											 green:0.0f
-												blue:0.0f
-											 alpha:0.0f];
-
-		[self setWitchspaceBreakPattern:YES];
-		[player cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-		[player cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-		[player setWormhole:nil];
-
-}
-
-
-- (void) setUpUniverseFromStation
-{
-	if (![self sun])
-	{
-		// we're in witchspace...		
-		
-		PlayerEntity	*player = PLAYER;
-		StationEntity	*dockedStation = [player dockedStation];
-		NSPoint			coords = [player galaxy_coordinates];
-		// check the nearest system
-		OOSystemID sys = [self findSystemNumberAtCoords:coords withGalaxy:[player galaxyNumber] includingHidden:YES];
-		BOOL interstel =[dockedStation interstellarUndockingAllowed];// && (s_seed.d != coords.x || s_seed.b != coords.y); - Nikos 20110623: Do we really need the commented out check?
-		[player setPreviousSystemID:[player currentSystemID]];
-
-		// remove everything except the player and the docked station
-		if (dockedStation && !interstel)
-		{	// jump to the nearest system
-			[player setSystemID:sys];
-			_cxxUniverse->closeSystems.reset();
-			[self setSystemTo: sys];
-			int index = 0;
-			while (_cxxUniverse->entities.size() > 2)
-			{
-				Entity *ent = _cxxUniverse->entities[index].get();
-				if ((ent != player)&&(ent != dockedStation))
-				{
-					if (ent->_cxxEntity->isStation)  // clear out queues
-						[(StationEntity *)ent clear];
-					[self removeEntity:ent];
-				}
-				else
-				{
-					index++;	// leave that one alone
-				}
-			}
-		}
-		else
-		{
-			if (dockedStation == nil)  [self removeAllEntitiesExceptPlayer];	// get rid of witchspace sky etc. if still extant
-		}
-		
-		if (!dockedStation || !interstel) 
-		{
-			[self setUpSpace];	// launching from station that jumped from interstellar space to normal space.
-			[self populateNormalSpace];
-			if (dockedStation)
-			{
-				if ([dockedStation maxFlightSpeed] > 0) // we are a carrier: exit near the WitchspaceExitPosition
-				{
-					float		d1 = [self randomDistanceWithinScanner];
-					HPVector		pos = [UNIVERSE getWitchspaceExitPosition];		// no need to reset the PRNG
-					Quaternion	q1;
-					
-					quaternion_set_random(&q1);
-					if (abs((int)d1) < 2750)	
-					{
-						d1 += ((d1 > 0.0)? 2750.0f: -2750.0f); // no closer than 2750m. Carriers are bigger than player ships.
-					}
-					Vector		v1 = vector_forward_from_quaternion(q1);
-					pos.x += v1.x * d1; // randomise exit position
-					pos.y += v1.y * d1;
-					pos.z += v1.z * d1;
-					
-					[dockedStation setPosition: pos];
-				}
-				[self setWitchspaceBreakPattern:YES];
-				[player cxx_setJumpCause:"carried"];
-				[player cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-				[player cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
-			}
-		}
-	}
-	
-	if(!_cxxUniverse->autoSaveNow) [self setViewDirection:VIEW_FORWARD];
-	_cxxUniverse->displayGUI = NO;
-	
-	//reset atmospherics in case we ejected while we were in the atmophere
-	[UNIVERSE setSkyColorRed:0.0f		// back to black
-					   green:0.0f
-						blue:0.0f
-					   alpha:0.0f];
-}
-
-
-- (void) setUpUniverseFromWitchspace
-{
-	PlayerEntity		*player;
-	
-	//
-	// check the player is still around!
-	//
-	if (_cxxUniverse->entities.empty())
-	{
-		/*- the player ship -*/
-		player = [[PlayerEntity alloc] init];	// alloc retains!
-		
-		[self addEntity:player];
-		
-		/*--*/
-	}
-	else
-	{
-		player = [PLAYER retain];	// retained here
-	}
-	
-	[self setUpSpace];
-	[self populateNormalSpace];
-	
-	[player leaveWitchspace];
-	[player release];											// released here
-
-	[self setViewDirection:VIEW_FORWARD];
-	
-	// the printed lines go to the player's comm log
-	std::vector<std::string> printedLines;
-	[_cxxUniverse->comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:_cxxUniverse->systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str())
-		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:&printedLines];
-	std::vector<std::string> *commLog = [player cxx_commLog];
-	if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
-	
-	_cxxUniverse->displayGUI = NO;
-}
-
-
-- (void) setUpUniverseFromMisjump
-{
-	PlayerEntity		*player;
-	
-	//
-	// check the player is still around!
-	//
-	if (_cxxUniverse->entities.empty())
-	{
-		/*- the player ship -*/
-		player = [[PlayerEntity alloc] init];	// alloc retains!
-		
-		[self addEntity:player];
-		
-		/*--*/
-	}
-	else
-	{
-		player = [PLAYER retain];	// retained here
-	}
-	
-	[self setUpWitchspace];
-	// ensure that if we got here from a jump within a planet's atmosphere,
-	// we don't get any residual air friction
-	[self setAirResistanceFactor:0.0f];
-	
-	[player leaveWitchspace];
-	[player release];											// released here
-	
-	[self setViewDirection:VIEW_FORWARD];
-	
-	_cxxUniverse->displayGUI = NO;
-}
-
-
-- (void) setUpWitchspace
-{
-	[self setUpWitchspaceBetweenSystem:[PLAYER systemID] andSystem:[PLAYER nextHopTargetSystemID]];
-}
-
-
-- (void) setUpWitchspaceBetweenSystem:(OOSystemID)s1 andSystem:(OOSystemID)s2
-{
-	// new system is hyper-centric : witchspace exit point is origin
-	
-	Entity				*thing;
-	PlayerEntity*		player = PLAYER;
-	Quaternion			randomQ;
-	
-	const std::string	override_key = *[self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:_cxxUniverse->galaxyID];
-
-	const oo::PList systeminfo = [_cxxUniverse->systemManager cxx_getPropertiesForSystemKey:override_key];
-	
-	[_cxxUniverse->universeRegion clearSubregions];
-	
-	// fixed entities (part of the graphics system really) come first...
-	
-	/*- the sky backdrop -*/
-	OOColor *col1 = [OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
-	OOColor *col2 = [OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
-	[thing setScanClass: CLASS_NO_DRAW];
-	quaternion_set_random(&randomQ);
-	[thing setOrientation:randomQ];
-	[self addEntity:thing];
-	[thing release];
-	
-	/*- the dust particle system -*/
-	thing = [[DustEntity alloc] init];
-	[thing setScanClass: CLASS_NO_DRAW];
-	[self addEntity:thing];
-	[thing release];
-	
-	_cxxUniverse->ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
-	[self setLighting];	// also sets initial lights positions.
-
-	OO_LOG(kOOLogUniversePopulateWitchspace, "{}", "Populating witchspace ...");
-	oo::log::indentIf(kOOLogUniversePopulateWitchspace);
-
-	[self clearSystemPopulator];
-	const std::string populator = systeminfo.get<std::string>("populator", "interstellarSpaceWillPopulate");
-	_cxxUniverse->system_repopulator = systeminfo.get<std::string>("repopulator", "interstellarSpaceWillRepopulate");
-	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
-	OOJSRelinquishContext(context);
-	[self populateSystemFromDictionariesWithSun:nil andPlanet:nil];
-
-	// systeminfo might have a 'script_actions' resource we want to activate now...
-	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
-	if (script_actions != nullptr)
-	{
-		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",override_key.c_str()));
-		if (!OOEnforceStandards())
-		{
-			[player cxx_runUnsanitizedScriptActions:*script_actions
-							  allowingAIMethods:NO
-								withContextName:"<witchspace script_actions>"
-									  forTarget:nil];
-		}
-	}
-	
-	_cxxUniverse->next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
-
-	oo::log::outdentIf(kOOLogUniversePopulateWitchspace);
-}
-
-
-- (OOPlanetEntity *) setUpPlanet
-{
-	// set the system seed for random number generation
-	Random_Seed systemSeed = [_cxxUniverse->systemManager getRandomSeedForCurrentSystem];
-	seed_for_planet_description(systemSeed);
-
-	// a copy of the system data, marked as the main planet (a bool, as -oo_setBool:forKey: stored it)
-	oo::PList planetDict = [_cxxUniverse->systemManager cxx_getPropertiesForCurrentSystem];
-	if (!planetDict.isDict())  planetDict = oo::PList(oo::PList::Dict{});
-	(*planetDict.getIf<oo::PList::Dict>())["mainForLocalSystem"] = oo::PList(true);
-	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:_cxxUniverse->systemID];
-
-	double planet_zpos = planetDict.get<float>("planet_distance", 500000);
-	planet_zpos *= planetDict.get<float>("planet_distance_multiplier", 1.0);
-	
-#ifdef OO_DUMP_PLANETINFO
-	OO_LOG("planetinfo.record", "planet zpos = {:f}", planet_zpos);
-#endif
-	[a_planet setPosition:(HPVector){ 0, 0, planet_zpos }];
-	[a_planet setEnergy:1000000.0];
-	
-	if (_cxxUniverse->allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
-	{
-		OOPlanetEntity *tmp=_cxxUniverse->allPlanets[0].get();
-		[self addEntity:a_planet];
-		std::erase(_cxxUniverse->allPlanets, a_planet);
-		_cxxUniverse->cachedPlanet=a_planet;
-		_cxxUniverse->allPlanets[0] = oo::ObjCRef<OOPlanetEntity *>(a_planet);
-		[self removeEntity:(Entity *)tmp];
-	}
-	else
-	{
-		[self addEntity:a_planet];
-	}
-	return [a_planet autorelease];
-}
-
 /* At any time other than game start, any call to this must be followed
  * by [self populateNormalSpace]. However, at game start, they need to be
  * separated to allow Javascript startUp routines to be run in-between */
@@ -11634,6 +11262,397 @@ std::vector<oo::ObjCRef<::Entity *>> Universe::entityList()
 	return entities;
 }
 #endif
+
+
+}	// namespace cxx
+
+
+// Slice 3 of docs/phases/3-slices/Universe.md (bead oo-ef6rc): pause and quit, carrying the player
+// on, set-up from station / witchspace / misjump, witchspace and planet set-up. The facade forwards
+// each selector (Universe+ObjCBridge.mm); sends to self stay sends (ADR-0056 amendment oo-27jxj).
+namespace cxx {
+
+void Universe::pauseGame()
+{
+	::Universe *self = oo::ToObjC(this);
+	// deal with the machine going to sleep, or player pressing 'p'.
+	::PlayerEntity 	*player = PLAYER;
+	
+	[self setPauseMessageVisible:NO];
+	const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
+	
+	if ([player status] == STATUS_DOCKED)
+	{
+		if ([gui cxx_setForegroundTextureKey:"paused_docked_overlay"])
+		{
+			[gui drawGUI:1.0 drawCursor:NO];
+		}
+		else
+		{
+			[self setPauseMessageVisible:YES];
+			[self cxx_addMessage:ExpandKeyWith("game-paused-docked", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
+		}
+	}
+	else
+	{
+		if ([player guiScreen] != GUI_SCREEN_MAIN && [gui cxx_setForegroundTextureKey:"paused_overlay"])
+		{
+			[gui drawGUI:1.0 drawCursor:NO];
+		}
+		else
+		{
+			[self setPauseMessageVisible:YES];
+			[self cxx_addMessage:ExpandKeyWith("game-paused", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
+		}
+	}
+	
+	[[self gameController] setGamePaused:YES];
+}
+
+
+void Universe::quitGame()
+{
+	::Universe *self = oo::ToObjC(this);
+	OO_LOG("universe.quit", "{}", "Quit command received by Universe.");
+	[[self gameController] cxx_exitAppWithContext:"Universe Request"];
+}
+
+
+void Universe::carryPlayerOn(::StationEntity *carrier, ::WormholeEntity *wormhole)
+{
+	::Universe *self = oo::ToObjC(this);
+		::PlayerEntity	*player = PLAYER;
+		OOSystemID dest = [wormhole destination];
+
+		[player setWormhole:wormhole];
+		[player addScannedWormhole:wormhole];
+		ooscript::Context context = OOJSAcquireContext();
+		[player cxx_setJumpCause:"carried"];
+		[player setPreviousSystemID:[player systemID]];
+		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [player cxx_jumpCause].value_or("").c_str())), ooscript::int32Value(dest));
+		OOJSRelinquishContext(context);
+	
+		[self cxx_allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:"PLAYER WITCHSPACE"];
+
+		[player setRandom_factor:(ranrot_rand() & 255)];						// random factor for market values is reset
+
+// misjump on wormhole sets correct travel time if needed
+		[player addToAdjustTime:[wormhole travelTime]];
+// clear old entities
+		[self removeAllEntitiesExceptPlayer];
+
+// should we add wear-and-tear to the player ship if they're not doing
+// the jump themselves? Left out for now. - CIM
+
+		if (![wormhole withMisjump])
+		{
+			[player setSystemID:dest];
+			[self setSystemTo: dest];
+			
+			[self setUpSpace];
+			[self populateNormalSpace];
+			[player setBounty:([player legalStatus]/2) withReason:kOOLegalStatusReasonNewSystem];
+			if ([player random_factor] < 8) [player erodeReputation];		// every 32 systems or so, dro
+		}
+		else
+		{
+			[player setGalaxyCoordinates:[wormhole destinationCoordinates]];
+
+			[self setUpWitchspaceBetweenSystem:[wormhole origin] andSystem:[wormhole destination]];
+
+			if (randf() < 0.1) [player erodeReputation];		// once every 10 misjumps - should be much rarer than successful jumps!
+		}
+		// which will kick the ship out of the wormhole with the
+		// player still aboard
+		[wormhole disgorgeShips];
+
+		//reset atmospherics in case carrier was in atmosphere
+		[UNIVERSE setSkyColorRed:0.0f		// back to black
+											 green:0.0f
+												blue:0.0f
+											 alpha:0.0f];
+
+		[self setWitchspaceBreakPattern:YES];
+		[player cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
+		[player cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
+		[player setWormhole:nil];
+
+}
+
+
+void Universe::setUpUniverseFromStation()
+{
+	::Universe *self = oo::ToObjC(this);
+	if (![self sun])
+	{
+		// we're in witchspace...		
+		
+		::PlayerEntity	*player = PLAYER;
+		::StationEntity	*dockedStation = [player dockedStation];
+		NSPoint			coords = [player galaxy_coordinates];
+		// check the nearest system
+		OOSystemID sys = [self findSystemNumberAtCoords:coords withGalaxy:[player galaxyNumber] includingHidden:YES];
+		BOOL interstel =[dockedStation interstellarUndockingAllowed];// && (s_seed.d != coords.x || s_seed.b != coords.y); - Nikos 20110623: Do we really need the commented out check?
+		[player setPreviousSystemID:[player currentSystemID]];
+
+		// remove everything except the player and the docked station
+		if (dockedStation && !interstel)
+		{	// jump to the nearest system
+			[player setSystemID:sys];
+			closeSystems.reset();
+			[self setSystemTo: sys];
+			int index = 0;
+			while (entities.size() > 2)
+			{
+				::Entity *ent = entities[index].get();
+				if ((ent != player)&&(ent != dockedStation))
+				{
+					if (ent->_cxxEntity->isStation)  // clear out queues
+						[(::StationEntity *)ent clear];
+					[self removeEntity:ent];
+				}
+				else
+				{
+					index++;	// leave that one alone
+				}
+			}
+		}
+		else
+		{
+			if (dockedStation == nil)  [self removeAllEntitiesExceptPlayer];	// get rid of witchspace sky etc. if still extant
+		}
+		
+		if (!dockedStation || !interstel) 
+		{
+			[self setUpSpace];	// launching from station that jumped from interstellar space to normal space.
+			[self populateNormalSpace];
+			if (dockedStation)
+			{
+				if ([dockedStation maxFlightSpeed] > 0) // we are a carrier: exit near the WitchspaceExitPosition
+				{
+					float		d1 = [self randomDistanceWithinScanner];
+					HPVector		pos = [UNIVERSE getWitchspaceExitPosition];		// no need to reset the PRNG
+					Quaternion	q1;
+					
+					quaternion_set_random(&q1);
+					if (abs((int)d1) < 2750)	
+					{
+						d1 += ((d1 > 0.0)? 2750.0f: -2750.0f); // no closer than 2750m. Carriers are bigger than player ships.
+					}
+					Vector		v1 = vector_forward_from_quaternion(q1);
+					pos.x += v1.x * d1; // randomise exit position
+					pos.y += v1.y * d1;
+					pos.z += v1.z * d1;
+					
+					[dockedStation setPosition: pos];
+				}
+				[self setWitchspaceBreakPattern:YES];
+				[player cxx_setJumpCause:"carried"];
+				[player cxx_doScriptEvent:OOJSID("shipWillExitWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
+				[player cxx_doScriptEvent:OOJSID("shipExitedWitchspace") withPListArguments:{ StringOrNull([player cxx_jumpCause]) }];
+			}
+		}
+	}
+	
+	if(!autoSaveNow) [self setViewDirection:VIEW_FORWARD];
+	displayGUI = NO;
+	
+	//reset atmospherics in case we ejected while we were in the atmophere
+	[UNIVERSE setSkyColorRed:0.0f		// back to black
+					   green:0.0f
+						blue:0.0f
+					   alpha:0.0f];
+}
+
+
+void Universe::setUpUniverseFromWitchspace()
+{
+	::Universe *self = oo::ToObjC(this);
+	::PlayerEntity		*player;
+	
+	//
+	// check the player is still around!
+	//
+	if (entities.empty())
+	{
+		/*- the player ship -*/
+		player = [[::PlayerEntity alloc] init];	// alloc retains!
+		
+		[self addEntity:player];
+		
+		/*--*/
+	}
+	else
+	{
+		player = [PLAYER retain];	// retained here
+	}
+	
+	[self setUpSpace];
+	[self populateNormalSpace];
+	
+	[player leaveWitchspace];
+	[player release];											// released here
+
+	[self setViewDirection:VIEW_FORWARD];
+	
+	// the printed lines go to the player's comm log
+	std::vector<std::string> printedLines;
+	[comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), [player cxx_dial_clock_adjusted].c_str())
+		align:GUI_ALIGN_CENTER color:[::OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:&printedLines];
+	std::vector<std::string> *commLog = [player cxx_commLog];
+	if (commLog != nullptr)  commLog->insert(commLog->end(), printedLines.begin(), printedLines.end());
+	
+	displayGUI = NO;
+}
+
+
+void Universe::setUpUniverseFromMisjump()
+{
+	::Universe *self = oo::ToObjC(this);
+	::PlayerEntity		*player;
+	
+	//
+	// check the player is still around!
+	//
+	if (entities.empty())
+	{
+		/*- the player ship -*/
+		player = [[::PlayerEntity alloc] init];	// alloc retains!
+		
+		[self addEntity:player];
+		
+		/*--*/
+	}
+	else
+	{
+		player = [PLAYER retain];	// retained here
+	}
+	
+	[self setUpWitchspace];
+	// ensure that if we got here from a jump within a planet's atmosphere,
+	// we don't get any residual air friction
+	[self setAirResistanceFactor:0.0f];
+	
+	[player leaveWitchspace];
+	[player release];											// released here
+	
+	[self setViewDirection:VIEW_FORWARD];
+	
+	displayGUI = NO;
+}
+
+
+void Universe::setUpWitchspace()
+{
+	::Universe *self = oo::ToObjC(this);
+	[self setUpWitchspaceBetweenSystem:[PLAYER systemID] andSystem:[PLAYER nextHopTargetSystemID]];
+}
+
+
+void Universe::setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2)
+{
+	::Universe *self = oo::ToObjC(this);
+	// new system is hyper-centric : witchspace exit point is origin
+	
+	::Entity				*thing;
+	::PlayerEntity*		player = PLAYER;
+	Quaternion			randomQ;
+	
+	const std::string	override_key = *[self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:galaxyID];
+
+	const oo::PList systeminfo = [systemManager cxx_getPropertiesForSystemKey:override_key];
+	
+	[universeRegion clearSubregions];
+	
+	// fixed entities (part of the graphics system really) come first...
+	
+	/*- the sky backdrop -*/
+	::OOColor *col1 = [::OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
+	::OOColor *col2 = [::OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+	thing = [[::SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	[thing setScanClass: CLASS_NO_DRAW];
+	quaternion_set_random(&randomQ);
+	[thing setOrientation:randomQ];
+	[self addEntity:thing];
+	[thing release];
+	
+	/*- the dust particle system -*/
+	thing = [[::DustEntity alloc] init];
+	[thing setScanClass: CLASS_NO_DRAW];
+	[self addEntity:thing];
+	[thing release];
+	
+	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
+	[self setLighting];	// also sets initial lights positions.
+
+	OO_LOG(kOOLogUniversePopulateWitchspace, "{}", "Populating witchspace ...");
+	oo::log::indentIf(kOOLogUniversePopulateWitchspace);
+
+	[self clearSystemPopulator];
+	const std::string populator = systeminfo.get<std::string>("populator", "interstellarSpaceWillPopulate");
+	system_repopulator = systeminfo.get<std::string>("repopulator", "interstellarSpaceWillRepopulate");
+	ooscript::Context context = OOJSAcquireContext();
+	[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	OOJSRelinquishContext(context);
+	[self populateSystemFromDictionariesWithSun:nil andPlanet:nil];
+
+	// systeminfo might have a 'script_actions' resource we want to activate now...
+	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
+	if (script_actions != nullptr)
+	{
+		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",override_key.c_str()));
+		if (!OOEnforceStandards())
+		{
+			[player cxx_runUnsanitizedScriptActions:*script_actions
+							  allowingAIMethods:NO
+								withContextName:"<witchspace script_actions>"
+									  forTarget:nil];
+		}
+	}
+	
+	next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
+
+	oo::log::outdentIf(kOOLogUniversePopulateWitchspace);
+}
+
+
+::OOPlanetEntity * Universe::setUpPlanet()
+{
+	::Universe *self = oo::ToObjC(this);
+	// set the system seed for random number generation
+	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
+	seed_for_planet_description(systemSeed);
+
+	// a copy of the system data, marked as the main planet (a bool, as -oo_setBool:forKey: stored it)
+	oo::PList planetDict = [systemManager cxx_getPropertiesForCurrentSystem];
+	if (!planetDict.isDict())  planetDict = oo::PList(oo::PList::Dict{});
+	(*planetDict.getIf<oo::PList::Dict>())["mainForLocalSystem"] = oo::PList(true);
+	::OOPlanetEntity *a_planet = [[::OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
+
+	double planet_zpos = planetDict.get<float>("planet_distance", 500000);
+	planet_zpos *= planetDict.get<float>("planet_distance_multiplier", 1.0);
+	
+#ifdef OO_DUMP_PLANETINFO
+	OO_LOG("planetinfo.record", "planet zpos = {:f}", planet_zpos);
+#endif
+	[a_planet setPosition:(HPVector){ 0, 0, planet_zpos }];
+	[a_planet setEnergy:1000000.0];
+	
+	if (allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
+	{
+		::OOPlanetEntity *tmp=allPlanets[0].get();
+		[self addEntity:a_planet];
+		std::erase(allPlanets, a_planet);
+		cachedPlanet=a_planet;
+		allPlanets[0] = oo::ObjCRef<::OOPlanetEntity *>(a_planet);
+		[self removeEntity:(::Entity *)tmp];
+	}
+	else
+	{
+		[self addEntity:a_planet];
+	}
+	return [a_planet autorelease];
+}
 
 
 }	// namespace cxx

@@ -246,6 +246,17 @@ public:
 	std::vector<oo::ObjCRef<::Entity *>> entityList();
 #endif
 
+	// Slice 3: pause and quit, carrying the player on, set-up from station / witchspace / misjump, witchspace and planet set-up.
+	void pauseGame();
+	void quitGame();
+	void carryPlayerOn(::StationEntity *carrier, ::WormholeEntity *wormhole);
+	void setUpUniverseFromStation();
+	void setUpUniverseFromWitchspace();
+	void setUpUniverseFromMisjump();
+	void setUpWitchspace();
+	void setUpWitchspaceBetweenSystem(OOSystemID s1, OOSystemID s2);
+	::OOPlanetEntity *setUpPlanet();
+
 	Universe(const Universe &) = delete;
 	Universe &operator=(const Universe &) = delete;
 
