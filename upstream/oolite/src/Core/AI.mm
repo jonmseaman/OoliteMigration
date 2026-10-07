@@ -187,9 +187,9 @@ std::optional<std::string> AI::shortDescriptionComponents() const
 }
 
 
-ShipEntity *AI::owner()
+::ShipEntity *AI::owner()
 {
-	ShipEntity		*owner = [_owner.get() weakRefUnderlyingObject];
+	::ShipEntity		*owner = [_owner.get() weakRefUnderlyingObject];
 	if (owner == nil)
 	{
 		_owner = nullptr;
@@ -199,7 +199,7 @@ ShipEntity *AI::owner()
 }
 
 
-void AI::setOwner(ShipEntity *ship)
+void AI::setOwner(::ShipEntity *ship)
 {
 	_owner = oo::adoptObjC([ship weakRetain]);
 	refreshOwnerDesc();
@@ -389,7 +389,7 @@ typedef struct AIStackElement AIStackElement;
 struct AIStackElement
 {
 	AIStackElement			*back;
-	ShipEntity				*owner;
+	::ShipEntity				*owner;
 	std::string				aiName;		// at the time of the call (the state machine may change)
 	std::optional<std::string>	state;
 	const std::string		*message;
@@ -403,7 +403,7 @@ static AIStackElement *sStack = NULL;
 void AI::reactToMessage(const std::string &message, const std::optional<std::string> &debugContextArgument)
 {
 	std::size_t		i;
-	ShipEntity		*owner = this->owner();
+	::ShipEntity		*owner = this->owner();
 	static unsigned	recursionLimiter = 0;
 	AI				*previousRunning = sCurrentlyRunningAI;
 	
@@ -518,7 +518,7 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 
 void AI::takeAction(const std::string &action)
 {
-	ShipEntity *owner = this->owner();
+	::ShipEntity *owner = this->owner();
 
 #ifndef NDEBUG
 	bool report = [owner reportAIMessages];
@@ -749,7 +749,7 @@ void AI::deferredSetState(const std::string &stateName)
 
 void AI::refreshOwnerDesc()
 {
-	ShipEntity *owner = this->owner();
+	::ShipEntity *owner = this->owner();
 	if ([owner isPlayer])
 	{
 		ownerDesc = "player autopilot";
@@ -802,7 +802,7 @@ oo::PList AI::loadStateMachine(const std::string &smName, const std::string &scr
 		@try
 		{
 			// Load state machine and validate against whitelist.
-			const std::optional<std::string> aiPath = [ResourceManager cxx_pathForFileNamed:smName inFolder:"AIs"];
+			const std::optional<std::string> aiPath = [::ResourceManager cxx_pathForFileNamed:smName inFolder:"AIs"];
 			if (aiPath.has_value())
 			{
 				newSM = PListDictionaryFromFile(*aiPath);
@@ -889,7 +889,7 @@ oo::PList AI::cleanActions(const oo::PList &actions, const std::string &handlerK
 
 	if (!whitelist.has_value())
 	{
-		const oo::PList whitelistDictionary = [ResourceManager cxx_whitelistDictionary];
+		const oo::PList whitelistDictionary = [::ResourceManager cxx_whitelistDictionary];
 		whitelist.emplace();
 		for (const char *key : { "ai_methods", "ai_and_action_methods" })
 		{
